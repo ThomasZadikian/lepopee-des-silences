@@ -28,7 +28,7 @@ services:
     container_name: rpg_esi07_pgadmin
     restart: unless-stopped
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@rpg-esi07.local
+      PGADMIN_DEFAULT_EMAIL: admin@rpg-esi07.com
       PGADMIN_DEFAULT_PASSWORD: admin123
       PGADMIN_CONFIG_SERVER_MODE: 'False'
       PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'

@@ -97,12 +97,12 @@ public class UserEntityTests
         var user = new User
         {
             DeletedAt = DateTime.UtcNow,
-            DeletionReason = "GDPR request"
+            DeletionReason = "RGPD request"
         };
 
         // Assert
         user.DeletedAt.Should().NotBeNull();
-        user.DeletionReason.Should().Be("GDPR request");
+        user.DeletionReason.Should().Be("RGPD request");
     }
 }
 

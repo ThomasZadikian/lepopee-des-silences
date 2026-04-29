@@ -15,11 +15,13 @@ public class LoginHandler
     public LoginHandler(
     IUserRepository userRepo,
     IPasswordHasher hasher,
-    ITokenService tokenService)
+    ITokenService tokenService, 
+    ILogger<LoginHandler> logger)
     {
         _userRepo = userRepo;
         _hasher = hasher;
         _tokenService = tokenService;
+        _logger = logger; 
     }
 
     public async Task<AuthResponse> Handle(

@@ -126,7 +126,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     if (builder.Environment.IsDevelopment())
     {
         options.EnableSensitiveDataLogging();
-        options.EnableDetailedErrors();
+        options.EnableDetailedErrors(); 
     }
 });
 
@@ -167,7 +167,6 @@ app.UseSerilogRequestLogging(options =>
         diagnosticContext.Set("RemoteIP",
     httpContext.Connection
     .RemoteIpAddress?.ToString());
-
     };
 });
 app.UseAuthentication();
