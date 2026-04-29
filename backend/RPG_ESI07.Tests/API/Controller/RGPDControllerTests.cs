@@ -50,7 +50,7 @@ public class RGPDControllerTests
         CombatStats:     null
     );
 
-    // ── GET /api/gdpr/export — Article 15 ────────────────────────────────────
+    // ── GET /api/rgpd/export — Article 15 ────────────────────────────────────
 
     [Fact]
     public async Task ExportMyData_ReturnsOk_WithUserData()
@@ -90,7 +90,7 @@ public class RGPDControllerTests
             Times.Once);
     }
 
-    // ── DELETE /api/gdpr/me — Article 17 ─────────────────────────────────────
+    // ── DELETE /api/rgpd/me — Article 17 ─────────────────────────────────────
 
     [Fact]
     public async Task DeleteMyAccount_ReturnsOk_WhenSuccess()
@@ -173,7 +173,7 @@ public class RGPDControllerTests
         result.Should().BeOfType<OkObjectResult>();
     }
 
-    // ── GET /api/gdpr/export/json — Article 20 ───────────────────────────────
+    // ── GET /api/rgpd/export/json — Article 20 ───────────────────────────────
 
     [Fact]
     public async Task ExportMyDataAsJson_ReturnsFileResult()
