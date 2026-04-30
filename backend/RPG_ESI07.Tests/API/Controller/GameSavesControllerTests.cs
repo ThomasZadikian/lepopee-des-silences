@@ -162,4 +162,46 @@ public class GameSavesControllerTests
         okResult.StatusCode.Should().Be(200);
         okResult.Value.Should().BeEquivalentTo(expectedResponse);
     }
+
+    [Fact]
+    public async Task GetMySaves_ReturnsOk_WithPlayerSaves()
+    {
+        int currentUserId = 10;
+        SetUserContext(currentUserId, isAdmin: false);
+
+        var items = new List<GameSave> { new GameSave { Id = 1, PlayerId = currentUserId } };
+        var expectedResponse = new GetAllGameSavesResponse(items);
+
+        _mediatorMock.Setup(m => m.Send(
+                It.Is<GetAllGameSavesQuery>(q => q.UserId == currentUserId),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedResponse);
+
+        var result = await _controller.GetMySaves();
+
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        okResult.StatusCode.Should().Be(200);
+        okResult.Value.Should().BeEquivalentTo(expectedResponse);
+    }
+
+    [Fact]
+    public async Task GetMySaves_ExtractsUserIdFromJwt()
+    {
+        int currentUserId = 42;
+        SetUserContext(currentUserId);
+
+        var expectedResponse = new GetAllGameSavesResponse(new List<GameSave>());
+
+        _mediatorMock.Setup(m => m.Send(
+                It.Is<GetAllGameSavesQuery>(q => q.UserId == currentUserId),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedResponse);
+
+        await _controller.GetMySaves();
+
+        _mediatorMock.Verify(m => m.Send(
+                It.Is<GetAllGameSavesQuery>(q => q.UserId == 42),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
 }
