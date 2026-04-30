@@ -65,4 +65,13 @@ public class GameSavesController : ControllerBase
         var result = await _mediator.Send(new DeleteGameSaveCommand(id, currentUserId, isAdmin));
         return Ok(result);
     }
+
+    // GET /api/gamesaves/me — retourne les sauvegardes du joueur connecté
+    [HttpGet("me")]
+    public async Task<IActionResult> GetMySaves()
+    {
+        var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        var result = await _mediator.Send(new GetAllGameSavesQuery(currentUserId));
+        return Ok(result);
+    }
 }

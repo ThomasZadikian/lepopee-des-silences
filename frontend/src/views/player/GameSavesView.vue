@@ -41,7 +41,7 @@ const loading = ref(true);
 
 onMounted(async () => {
   try {
-    const res = await gameSavesApi.getAll();
+    const res = await gameSavesApi.getMe();
     saves.value = res.data.items ?? [];
   } finally {
     loading.value = false;

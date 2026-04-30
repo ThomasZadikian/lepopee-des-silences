@@ -16,12 +16,15 @@ public class PlayerInventoryRepository : IPlayerInventoryRepository
 
     public async Task<PlayerInventory?> GetByIdAsync(int id)
     {
-        return await _context.Set<PlayerInventory>().FindAsync(id);
+        return await _context.Set<PlayerInventory>()
+            .Include(e => e.Item)
+            .FirstOrDefaultAsync(e => e.Id == id);
     }
 
     public async Task<List<PlayerInventory>> GetAllAsync()
     {
         return await _context.Set<PlayerInventory>()
+            .Include(e => e.Item)
             .OrderBy(e => e.Id)
             .ToListAsync();
     }

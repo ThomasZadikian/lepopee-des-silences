@@ -16,12 +16,14 @@ public class PlayerSkillRepository : IPlayerSkillRepository
 
     public async Task<PlayerSkill?> GetByIdAsync(int id)
     {
-        return await _context.Set<PlayerSkill>().FindAsync(id);
+        return await _context.Set<PlayerSkill>().Include(e => e.Skill)
+        .FirstOrDefaultAsync(e => e.Id == id); ;
     }
 
     public async Task<List<PlayerSkill>> GetAllAsync()
     {
         return await _context.Set<PlayerSkill>()
+            .Include(e => e.Skill)
             .OrderBy(e => e.Id)
             .ToListAsync();
     }

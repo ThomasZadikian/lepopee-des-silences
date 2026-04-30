@@ -15,6 +15,10 @@ public class GetAllGameSavesHandler : IRequestHandler<GetAllGameSavesQuery, GetA
     public async Task<GetAllGameSavesResponse> Handle(GetAllGameSavesQuery request, CancellationToken cancellationToken)
     {
         var items = await _repository.GetAllAsync();
+
+        if (request.UserId.HasValue)
+            items = items.Where(s => s.PlayerId == request.UserId.Value).ToList();
+
         return new GetAllGameSavesResponse(items);
     }
 }
