@@ -1,6 +1,8 @@
 ﻿using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using Moq;
 using RPG_ESI07.Domain.Entities;
+using RPG_ESI07.Domain.Interfaces;
 using RPG_ESI07.Infrastructure.Data;
 using System.Text;
 
@@ -9,6 +11,7 @@ namespace RPG_ESI07.Tests.Infrastructure.Data;
 public class DatabaseSeederTests : IDisposable
 {
     private readonly AppDbContext _context;
+    private readonly IPasswordHasher _hasher;
 
     public DatabaseSeederTests()
     {
@@ -17,6 +20,12 @@ public class DatabaseSeederTests : IDisposable
             .Options;
 
         _context = new AppDbContext(options);
+
+        // Mock du hasher — retourne une valeur fixe pour les tests
+        var mockHasher = new Mock<IPasswordHasher>();
+        mockHasher.Setup(h => h.HashPassword(It.IsAny<string>()))
+                  .Returns("hashed_password_test");
+        _hasher = mockHasher.Object;
     }
 
     public void Dispose()
@@ -28,7 +37,7 @@ public class DatabaseSeederTests : IDisposable
     [Fact]
     public async Task SeedAsync_EmptyDatabase_PopulatesAllEntities()
     {
-        await DatabaseSeeder.SeedAsync(_context);
+        await DatabaseSeeder.SeedAsync(_context, _hasher);
 
         var userCount = await _context.Users.CountAsync();
         var profileCount = await _context.PlayerProfiles.CountAsync();
@@ -58,12 +67,23 @@ public class DatabaseSeederTests : IDisposable
         });
         await _context.SaveChangesAsync();
 
-        await DatabaseSeeder.SeedAsync(_context);
+        await DatabaseSeeder.SeedAsync(_context, _hasher);
 
         var userCount = await _context.Users.CountAsync();
         var profileCount = await _context.PlayerProfiles.CountAsync();
 
         userCount.Should().Be(1);
-        profileCount.Should().Be(0); // Le seeder a ignoré l'exécution complète
+        profileCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task SeedAsync_EmptyDatabase_HashesPasswordsViaHasher()
+    {
+        await DatabaseSeeder.SeedAsync(_context, _hasher);
+
+        // Vérifie que les mots de passe ont bien été hashés via le hasher
+        var users = await _context.Users.ToListAsync();
+        users.Should().AllSatisfy(u =>
+            u.PasswordHash.Should().Be("hashed_password_test"));
     }
 }
