@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/api/gameSave", () => ({
   gameSavesApi: {
-    getAll: vi.fn(),
+    getMe: vi.fn(), // ← getMe au lieu de getAll
     delete: vi.fn(),
   },
 }));
@@ -63,7 +63,7 @@ describe("GameSavesView", () => {
   });
 
   it("affiche le titre Mes sauvegardes", async () => {
-    vi.mocked(gameSavesApi.getAll).mockResolvedValue({
+    vi.mocked(gameSavesApi.getMe).mockResolvedValue({
       data: { items: [] },
     } as any);
     const wrapper = mount(GameSavesView, { global: { stubs } });
@@ -72,7 +72,7 @@ describe("GameSavesView", () => {
   });
 
   it("affiche un message si aucune sauvegarde", async () => {
-    vi.mocked(gameSavesApi.getAll).mockResolvedValue({
+    vi.mocked(gameSavesApi.getMe).mockResolvedValue({
       data: { items: [] },
     } as any);
     const wrapper = mount(GameSavesView, { global: { stubs } });
@@ -81,7 +81,7 @@ describe("GameSavesView", () => {
   });
 
   it("affiche la liste des sauvegardes", async () => {
-    vi.mocked(gameSavesApi.getAll).mockResolvedValue({
+    vi.mocked(gameSavesApi.getMe).mockResolvedValue({
       data: { items: fakeSaves },
     } as any);
     const wrapper = mount(GameSavesView, { global: { stubs } });
@@ -91,7 +91,7 @@ describe("GameSavesView", () => {
   });
 
   it("affiche la zone de chaque sauvegarde", async () => {
-    vi.mocked(gameSavesApi.getAll).mockResolvedValue({
+    vi.mocked(gameSavesApi.getMe).mockResolvedValue({
       data: { items: fakeSaves },
     } as any);
     const wrapper = mount(GameSavesView, { global: { stubs } });
@@ -100,7 +100,7 @@ describe("GameSavesView", () => {
   });
 
   it("supprime une sauvegarde au clic sur Supprimer", async () => {
-    vi.mocked(gameSavesApi.getAll).mockResolvedValue({
+    vi.mocked(gameSavesApi.getMe).mockResolvedValue({
       data: { items: fakeSaves },
     } as any);
     vi.mocked(gameSavesApi.delete).mockResolvedValue({} as any);
@@ -116,12 +116,12 @@ describe("GameSavesView", () => {
     expect(vi.mocked(gameSavesApi.delete)).toHaveBeenCalledWith(1);
   });
 
-  it("appelle getAll au montage", async () => {
-    vi.mocked(gameSavesApi.getAll).mockResolvedValue({
+  it("appelle getMe au montage", async () => {
+    vi.mocked(gameSavesApi.getMe).mockResolvedValue({
       data: { items: [] },
     } as any);
     mount(GameSavesView, { global: { stubs } });
     await flushPromises();
-    expect(vi.mocked(gameSavesApi.getAll)).toHaveBeenCalledOnce();
+    expect(vi.mocked(gameSavesApi.getMe)).toHaveBeenCalledOnce();
   });
 });

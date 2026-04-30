@@ -30,11 +30,19 @@ public class PlayerInventoryRepositoryTests : IDisposable
     [Fact]
     public async Task GetAllAsync_ReturnsAllRecords_OrderedById()
     {
+        // Ajouter les Items requis
+        var items = new List<Item>
+    {
+        new Item { Id = 3, Name = "Item3", Type = "weapon", Price = 10 },
+        new Item { Id = 5, Name = "Item5", Type = "consumable", Price = 5 },
+    };
+        await _context.Items.AddRangeAsync(items);
+
         var inventories = new List<PlayerInventory>
-        {
-            new PlayerInventory { Id = 2, PlayerId = 1, ItemId = 5, Quantity = 10 },
-            new PlayerInventory { Id = 1, PlayerId = 1, ItemId = 3, Quantity = 5 }
-        };
+    {
+        new PlayerInventory { Id = 2, PlayerId = 1, ItemId = 5, Quantity = 10 },
+        new PlayerInventory { Id = 1, PlayerId = 1, ItemId = 3, Quantity = 5 }
+    };
         await _context.PlayerInventory.AddRangeAsync(inventories);
         await _context.SaveChangesAsync();
 
@@ -48,6 +56,9 @@ public class PlayerInventoryRepositoryTests : IDisposable
     [Fact]
     public async Task GetByIdAsync_ReturnsRecord_WhenIdExists()
     {
+        var item = new Item { Id = 2, Name = "Item2", Type = "armor", Price = 100 };
+        await _context.Items.AddAsync(item);
+
         var inventory = new PlayerInventory { Id = 5, PlayerId = 10, ItemId = 2, Quantity = 1 };
         await _context.PlayerInventory.AddAsync(inventory);
         await _context.SaveChangesAsync();
