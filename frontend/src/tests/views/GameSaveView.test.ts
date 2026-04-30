@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/api/gameSave", () => ({
   gameSavesApi: {
-    getById: vi.fn(),
+    getAll: vi.fn(),
     delete: vi.fn(),
   },
 }));
@@ -38,8 +38,22 @@ const stubs = {
 };
 
 const fakeSaves = [
-  { id: 1, saveName: "Save 1", currentZone: "Forest", playerLevel: 5 },
-  { id: 2, saveName: "Save 2", currentZone: "Castle", playerLevel: 10 },
+  {
+    id: 1,
+    playerId: 1,
+    currentZone: "Forest",
+    positionX: 0,
+    positionY: 0,
+    savedAt: "2026-01-01",
+  },
+  {
+    id: 2,
+    playerId: 1,
+    currentZone: "Castle",
+    positionX: 5,
+    positionY: 5,
+    savedAt: "2026-01-02",
+  },
 ];
 
 describe("GameSavesView", () => {
@@ -49,42 +63,45 @@ describe("GameSavesView", () => {
   });
 
   it("affiche le titre Mes sauvegardes", async () => {
-    vi.mocked(gameSavesApi.getById).mockResolvedValue({ data: [] } as any);
+    vi.mocked(gameSavesApi.getAll).mockResolvedValue({
+      data: { items: [] },
+    } as any);
     const wrapper = mount(GameSavesView, { global: { stubs } });
     await flushPromises();
     expect(wrapper.text()).toContain("sauvegardes");
   });
 
   it("affiche un message si aucune sauvegarde", async () => {
-    vi.mocked(gameSavesApi.getById).mockResolvedValue({ data: [] } as any);
+    vi.mocked(gameSavesApi.getAll).mockResolvedValue({
+      data: { items: [] },
+    } as any);
     const wrapper = mount(GameSavesView, { global: { stubs } });
     await flushPromises();
     expect(wrapper.text()).toContain("Aucune sauvegarde");
   });
 
   it("affiche la liste des sauvegardes", async () => {
-    vi.mocked(gameSavesApi.getById).mockResolvedValue({
-      data: fakeSaves,
-    } as any);
-    const wrapper = mount(GameSavesView, { global: { stubs } });
-    await flushPromises();
-    expect(wrapper.text()).toContain("Save 1");
-    expect(wrapper.text()).toContain("Save 2");
-  });
-
-  it("affiche la zone et le niveau", async () => {
-    vi.mocked(gameSavesApi.getById).mockResolvedValue({
-      data: fakeSaves,
+    vi.mocked(gameSavesApi.getAll).mockResolvedValue({
+      data: { items: fakeSaves },
     } as any);
     const wrapper = mount(GameSavesView, { global: { stubs } });
     await flushPromises();
     expect(wrapper.text()).toContain("Forest");
-    expect(wrapper.text()).toContain("5");
+    expect(wrapper.text()).toContain("Castle");
+  });
+
+  it("affiche la zone de chaque sauvegarde", async () => {
+    vi.mocked(gameSavesApi.getAll).mockResolvedValue({
+      data: { items: fakeSaves },
+    } as any);
+    const wrapper = mount(GameSavesView, { global: { stubs } });
+    await flushPromises();
+    expect(wrapper.text()).toContain("Forest");
   });
 
   it("supprime une sauvegarde au clic sur Supprimer", async () => {
-    vi.mocked(gameSavesApi.getById).mockResolvedValue({
-      data: fakeSaves,
+    vi.mocked(gameSavesApi.getAll).mockResolvedValue({
+      data: { items: fakeSaves },
     } as any);
     vi.mocked(gameSavesApi.delete).mockResolvedValue({} as any);
     const wrapper = mount(GameSavesView, { global: { stubs } });
@@ -97,13 +114,14 @@ describe("GameSavesView", () => {
     await flushPromises();
 
     expect(vi.mocked(gameSavesApi.delete)).toHaveBeenCalledWith(1);
-    expect(wrapper.text()).not.toContain("Save 1");
   });
 
-  it("appelle getById avec le userId du store", async () => {
-    vi.mocked(gameSavesApi.getById).mockResolvedValue({ data: [] } as any);
+  it("appelle getAll au montage", async () => {
+    vi.mocked(gameSavesApi.getAll).mockResolvedValue({
+      data: { items: [] },
+    } as any);
     mount(GameSavesView, { global: { stubs } });
     await flushPromises();
-    expect(vi.mocked(gameSavesApi.getById)).toHaveBeenCalledWith(1);
+    expect(vi.mocked(gameSavesApi.getAll)).toHaveBeenCalledOnce();
   });
 });

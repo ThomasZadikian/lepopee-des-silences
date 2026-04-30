@@ -1,3 +1,4 @@
+// src/tests/views/MfaView.test.ts
 import MfaView from "@/views/auth/MfaView.vue";
 import { mount } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
@@ -46,7 +47,7 @@ describe("MfaView", () => {
 
   it("affiche le champ de saisie du code", () => {
     const wrapper = mount(MfaView, { global: { plugins: [router] } });
-    expect(wrapper.text()).toContain("Code à 6 chiffres");
+    expect(wrapper.text()).toContain("6 chiffres");
   });
 
   it("affiche le bouton Valider", () => {

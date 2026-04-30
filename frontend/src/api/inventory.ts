@@ -1,13 +1,9 @@
-import api from './auth';
-export interface InventoryItem 
-{
-    id: number; 
-    itemId: number; 
-    itemName: string; 
-    quantity: number
-}
+import type { PlayerInventory } from "@/interfaces/playerInventory";
+import api from "./auth";
 
-export const inventoryApi = 
-{
-    getAll: () => api.get<InventoryItem[]>('/playerinventory'),
-}
+export const inventoryApi = {
+  getAll: () => api.get<{ items: PlayerInventory[] }>("/playerinventories"),
+  getById: (id: number) =>
+    api.get<{ playerInventory: PlayerInventory }>(`/playerinventories/${id}`),
+  delete: (id: number) => api.delete(`/playerinventories/${id}`),
+};

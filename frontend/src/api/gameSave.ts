@@ -1,25 +1,10 @@
-import api from './auth';
+import type { CreateGameSaveDto, GameSave } from "@/interfaces/gameSave";
+import api from "./auth";
 
-export interface GameSave 
-{
-    id:  number; 
-    playedId: number; 
-    saveName: string; 
-    currentZone: string; 
-    playerLevel: number; 
-    createdAt: string; 
-}
-
-export interface CreateGameSaveDto 
-{
-    playerId: number;
-    saveName: string; 
-    currentZone: string; 
-    playerLevel: number; 
-}
-    export const gameSavesApi = 
-    {
-        getById: (id:number) => api.get<GameSave>(`/gamesaves/${id}`), 
-        create: (data:CreateGameSaveDto) => api.post<GameSave>('/gamesaves', data),
-        delete: (id:number) => api.delete(`/gamesaves/${id}`),
-}
+export const gameSavesApi = {
+  getAll: () => api.get<{ items: GameSave[] }>("/gamesaves"),
+  getById: (id: number) => api.get<{ gameSave: GameSave }>(`/gamesaves/${id}`),
+  create: (data: CreateGameSaveDto) =>
+    api.post<{ id: number; message: string }>("/gamesaves", data),
+  delete: (id: number) => api.delete(`/gamesaves/${id}`),
+};
