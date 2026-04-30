@@ -34,10 +34,8 @@
 <script setup lang="ts">
 import { gameSavesApi } from "@/api/gameSave";
 import type { GameSave } from "@/interfaces/gameSave";
-import { useAuthStore } from "@/stores/auth";
 import { onMounted, ref } from "vue";
 
-const auth = useAuthStore();
 const saves = ref<GameSave[]>([]);
 const loading = ref(true);
 
