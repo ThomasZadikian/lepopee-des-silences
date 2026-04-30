@@ -48,8 +48,6 @@ jobs:
             /d:sonar.token="${{ secrets.SONAR_TOKEN }}" \
             /d:sonar.cs.vstest.reportsPaths="**/*.trx" \
             /d:sonar.cs.opencover.reportsPaths="**/coverage.opencover.xml"
-            /d:sonar.exclusions="**/Data/DatabaseSeeder.cs" \
-            /d:sonar.coverage.exclusions="**/Data/DatabaseSeeder.cs"
 
       - name: Build
         run: dotnet build RPG_ESI07.slnx --no-restore --configuration Release

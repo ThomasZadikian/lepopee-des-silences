@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using RPG_ESI07.Domain.Interfaces;
+using Microsoft.EntityFrameworkCore;
 using RPG_ESI07.Domain.Entities;
 using System.Text;
 using System.Text.Json;
@@ -7,7 +8,7 @@ namespace RPG_ESI07.Infrastructure.Data;
 
 public static class DatabaseSeeder
 {
-    public static async Task SeedAsync(AppDbContext context)
+    public static async Task SeedAsync(AppDbContext context, IPasswordHasher hasher)
     {
         if (await context.Users.AnyAsync())
         {
@@ -17,45 +18,42 @@ public static class DatabaseSeeder
 
         Console.WriteLine("Starting database seeding...");
 
-        // ===== 1. USERS =====
-        // Mots de passe :
-        // devuser   → Password123!
-        // adminuser → AdminPass456!
-        // testplayer → TestPass789!
         var users = new[]
         {
-            new User
-            {
-                Username     = "devuser",
-                Email        = Encoding.UTF8.GetBytes("dev@test.com"),
-                PasswordHash = "wlgt0VoLTSWRk3TbAnXGMbqW8y/LWCE/5fuWzZ3a7rzsXJdVyzS7nbzuT2rZqzuE",
-                Role         = "Player",
-                MfaEnabled   = false,
-                CreatedAt    = DateTime.UtcNow,
-                LastLoginAt  = DateTime.UtcNow.AddHours(-1),
-                LastLoginIP  = "127.0.0.1",
-            },
-            new User
-            {
-                Username     = "adminuser",
-                Email        = Encoding.UTF8.GetBytes("admin@test.com"),
-                PasswordHash = "SOqeTc+zu6wE3dFhwVkdfm0Unuv7QrHCRGROn1f8fAYAkcrQ6QFpDUxm924VUDdb",
-                Role         = "Admin",
-                MfaEnabled   = false,
-                CreatedAt    = DateTime.UtcNow,
-                LastLoginAt  = DateTime.UtcNow.AddMinutes(-30),
-                LastLoginIP  = "127.0.0.1",
-            },
-            new User
-            {
-                Username     = "testplayer",
-                Email        = Encoding.UTF8.GetBytes("player@test.com"),
-                PasswordHash = "j+YE7FHE+hlMsWiNpMG1mVzb1VsrbLoJh/gcELNn9myzjm0S6AK1iIFkx11rKH1H",
-                Role         = "Player",
-                MfaEnabled   = false,
-                CreatedAt    = DateTime.UtcNow,
-            }
-        };
+        new User
+        {
+            Username     = "devuser",
+            Email        = Encoding.UTF8.GetBytes("dev@test.com"),
+            PasswordHash = hasher.HashPassword("Password123!"),
+            Role         = "Player",
+            MfaEnabled   = false,
+            CreatedAt    = DateTime.UtcNow,
+            LastLoginAt  = DateTime.UtcNow.AddHours(-1),
+            LastLoginIP  = "127.0.0.1",
+        },
+        new User
+        {
+            Username     = "adminuser",
+            Email        = Encoding.UTF8.GetBytes("admin@test.com"),
+            PasswordHash = hasher.HashPassword("AdminPass456!"),
+            Role         = "Admin",
+            MfaEnabled   = false,
+            CreatedAt    = DateTime.UtcNow,
+            LastLoginAt  = DateTime.UtcNow.AddMinutes(-30),
+            LastLoginIP  = "127.0.0.1",
+        },
+        new User
+        {
+            Username     = "testplayer",
+            Email        = Encoding.UTF8.GetBytes("player@test.com"),
+            PasswordHash = hasher.HashPassword("TestPass789!"),
+            Role         = "Player",
+            MfaEnabled   = false,
+            CreatedAt    = DateTime.UtcNow,
+        }
+    };
+
+        // reste du seeder identique...
         await context.Users.AddRangeAsync(users);
         await context.SaveChangesAsync();
         Console.WriteLine($"Seeded {users.Length} users");
