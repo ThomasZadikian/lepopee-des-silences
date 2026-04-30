@@ -3,7 +3,7 @@ using Moq;
 using RPG_ESI07.Application.Commands.CombatStatss;
 using RPG_ESI07.Domain.Interfaces;
 
-namespace RPG_ESI07.Tests.Application.Commands.CombatStats;
+namespace RPG_ESI07.Tests.Application.Commands.CombatStatss;
 
 public class CreateCombatStatsHandlerTests
 {

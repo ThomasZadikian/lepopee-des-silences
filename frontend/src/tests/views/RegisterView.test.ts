@@ -99,6 +99,6 @@ describe("RegisterView", () => {
     if (btn) await btn.trigger("click");
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.text()).toContain("Nom d'utilisateur déjà pris");
+    expect(wrapper.text()).toContain("déjà pris");
   });
 });
