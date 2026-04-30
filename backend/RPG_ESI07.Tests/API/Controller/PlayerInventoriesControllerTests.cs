@@ -162,4 +162,46 @@ public class PlayerInventoriesControllerTests
         okResult.StatusCode.Should().Be(200);
         okResult.Value.Should().BeEquivalentTo(expectedResponse);
     }
+
+    [Fact]
+    public async Task GetMyInventory_ReturnsOk_WithPlayerInventory()
+    {
+        int currentUserId = 10;
+        SetUserContext(currentUserId, isAdmin: false);
+
+        var items = new List<PlayerInventory> { new PlayerInventory { Id = 1, PlayerId = currentUserId } };
+        var expectedResponse = new GetAllPlayerInventorysResponse(items);
+
+        _mediatorMock.Setup(m => m.Send(
+                It.Is<GetAllPlayerInventorysQuery>(q => q.UserId == currentUserId),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedResponse);
+
+        var result = await _controller.GetMyInventory();
+
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        okResult.StatusCode.Should().Be(200);
+        okResult.Value.Should().BeEquivalentTo(expectedResponse);
+    }
+
+    [Fact]
+    public async Task GetMyInventory_ExtractsUserIdFromJwt()
+    {
+        int currentUserId = 42;
+        SetUserContext(currentUserId);
+
+        var expectedResponse = new GetAllPlayerInventorysResponse(new List<PlayerInventory>());
+
+        _mediatorMock.Setup(m => m.Send(
+                It.Is<GetAllPlayerInventorysQuery>(q => q.UserId == currentUserId),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedResponse);
+
+        await _controller.GetMyInventory();
+
+        _mediatorMock.Verify(m => m.Send(
+                It.Is<GetAllPlayerInventorysQuery>(q => q.UserId == 42),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
 }

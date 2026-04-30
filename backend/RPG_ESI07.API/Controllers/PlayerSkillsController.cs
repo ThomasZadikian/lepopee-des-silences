@@ -65,4 +65,12 @@ public class PlayerSkillsController : ControllerBase
         var result = await _mediator.Send(new DeletePlayerSkillCommand(id, currentUserId, isAdmin));
         return Ok(result);
     }
+    // GET /api/playerskills/me — retourne les skills du joueur connecté
+    [HttpGet("me")]
+    public async Task<IActionResult> GetMySkills()
+    {
+        var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        var result = await _mediator.Send(new GetAllPlayerSkillsQuery(currentUserId));
+        return Ok(result);
+    }
 }

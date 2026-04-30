@@ -15,4 +15,5 @@ export interface Item {
   description: string | null;
   price: number;
   effectValue: number | null;
+  statModifiers: string | null;
 }

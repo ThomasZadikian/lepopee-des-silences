@@ -10,6 +10,7 @@ using Serilog;
 using System.Security.Claims;
 using System.Text;
 using System.Threading.RateLimiting;
+using RPG_ESI07.Domain.Interfaces;
 
 Log.Logger = new LoggerConfiguration()
 .MinimumLevel.Information()
@@ -37,8 +38,12 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Host.UseSerilog();
 
 // Add services to the container
-builder.Services.AddControllers();
-builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.ReferenceHandler =
+            System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
+    }); builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 // Application Services (MediatR, FluentValidation, AutoMapper)
@@ -126,7 +131,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     if (builder.Environment.IsDevelopment())
     {
         options.EnableSensitiveDataLogging();
-        options.EnableDetailedErrors(); 
+        options.EnableDetailedErrors();
     }
 });
 
@@ -177,8 +182,9 @@ if (app.Environment.IsDevelopment())
 {
     using var scope = app.Services.CreateScope();
     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    var hasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
     await context.Database.EnsureCreatedAsync();
-    await DatabaseSeeder.SeedAsync(context);
+    await DatabaseSeeder.SeedAsync(context, hasher);
 }
 
 app.Run();

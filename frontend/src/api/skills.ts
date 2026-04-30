@@ -3,8 +3,7 @@ import api from "./auth";
 
 export const playerSkillsApi = {
   getAll: () => api.get<{ items: PlayerSkill[] }>("/playerskills"),
-  getById: (id: number) =>
-    api.get<{ playerSkill: PlayerSkill }>(`/playerskills/${id}`),
+  getMe: () => api.get<{ items: PlayerSkill[] }>("/playerskills/me"),
 };
 
 export const skillsApi = {

@@ -162,4 +162,46 @@ public class PlayerSkillsControllerTests
         okResult.StatusCode.Should().Be(200);
         okResult.Value.Should().BeEquivalentTo(expectedResponse);
     }
+
+    [Fact]
+    public async Task GetMySkills_ReturnsOk_WithPlayerSkills()
+    {
+        int currentUserId = 10;
+        SetUserContext(currentUserId, isAdmin: false);
+
+        var items = new List<PlayerSkill> { new PlayerSkill { Id = 1, PlayerId = currentUserId } };
+        var expectedResponse = new GetAllPlayerSkillsResponse(items);
+
+        _mediatorMock.Setup(m => m.Send(
+                It.Is<GetAllPlayerSkillsQuery>(q => q.UserId == currentUserId),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedResponse);
+
+        var result = await _controller.GetMySkills();
+
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        okResult.StatusCode.Should().Be(200);
+        okResult.Value.Should().BeEquivalentTo(expectedResponse);
+    }
+
+    [Fact]
+    public async Task GetMySkills_ExtractsUserIdFromJwt()
+    {
+        int currentUserId = 42;
+        SetUserContext(currentUserId);
+
+        var expectedResponse = new GetAllPlayerSkillsResponse(new List<PlayerSkill>());
+
+        _mediatorMock.Setup(m => m.Send(
+                It.Is<GetAllPlayerSkillsQuery>(q => q.UserId == currentUserId),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedResponse);
+
+        await _controller.GetMySkills();
+
+        _mediatorMock.Verify(m => m.Send(
+                It.Is<GetAllPlayerSkillsQuery>(q => q.UserId == 42),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
 }

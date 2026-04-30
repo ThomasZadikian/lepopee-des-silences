@@ -65,4 +65,13 @@ public class PlayerInventoriesController : ControllerBase
         var result = await _mediator.Send(new DeletePlayerInventoryCommand(id, currentUserId, isAdmin));
         return Ok(result);
     }
+
+    // GET /api/playerinventories/me — retourne l'inventaire du joueur connecté
+    [HttpGet("me")]
+    public async Task<IActionResult> GetMyInventory()
+    {
+        var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        var result = await _mediator.Send(new GetAllPlayerInventorysQuery(currentUserId));
+        return Ok(result);
+    }
 }
