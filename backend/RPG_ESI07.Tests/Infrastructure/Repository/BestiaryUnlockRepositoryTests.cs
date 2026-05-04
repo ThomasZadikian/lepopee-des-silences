@@ -30,11 +30,38 @@ public class BestiaryUnlockRepositoryTests : IDisposable
     [Fact]
     public async Task GetAllAsync_ReturnsAllRecords_OrderedById()
     {
-        var unlocks = new List<BestiaryUnlock>
+        // Seed des entités requises par les Include
+        var profile = new PlayerProfile
         {
-            new BestiaryUnlock { Id = 2, PlayerId = 1, EnemyId = 2 },
-            new BestiaryUnlock { Id = 1, PlayerId = 1, EnemyId = 1 }
+            Id = 1,
+            UserId = 1,
+            CharacterName = "Test",
+            Level = 1,
+            CurrentHP = 100,
+            MaxHP = 100,
+            CurrentMP = 50,
+            MaxMP = 50,
+            Strength = 10,
+            Intelligence = 10,
+            Speed = 10,
+            Experience = 0,
+            Gold = 0,
+            UpdatedAt = DateTime.UtcNow
         };
+        var enemies = new List<Enemy>
+    {
+        new Enemy { Id = 1, Name = "Goblin", Type = "basic", MaxHP = 50, Strength = 5, Intelligence = 3, Speed = 8, ExperienceReward = 10, GoldReward = 5, PhysicalResistance = 1.0f, MagicalResistance = 1.0f },
+        new Enemy { Id = 2, Name = "Orc",    Type = "basic", MaxHP = 80, Strength = 10, Intelligence = 4, Speed = 6, ExperienceReward = 20, GoldReward = 10, PhysicalResistance = 1.0f, MagicalResistance = 1.0f },
+    };
+        await _context.PlayerProfiles.AddAsync(profile);
+        await _context.Enemies.AddRangeAsync(enemies);
+        await _context.SaveChangesAsync();
+
+        var unlocks = new List<BestiaryUnlock>
+    {
+        new BestiaryUnlock { Id = 2, PlayerId = 1, EnemyId = 2 },
+        new BestiaryUnlock { Id = 1, PlayerId = 1, EnemyId = 1 }
+    };
         await _context.BestiaryUnlocks.AddRangeAsync(unlocks);
         await _context.SaveChangesAsync();
 

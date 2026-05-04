@@ -48,9 +48,9 @@ public class DatabaseSeederTests : IDisposable
 
         userCount.Should().Be(3);
         profileCount.Should().Be(3);
-        enemyCount.Should().Be(8);
-        itemCount.Should().Be(16);
-        skillCount.Should().Be(9);
+        enemyCount.Should().Be(20);
+        itemCount.Should().Be(30);
+        skillCount.Should().Be(18);
         combatStatsCount.Should().Be(3);
     }
 

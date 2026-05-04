@@ -1,279 +1,232 @@
 <template>
-  <v-container fluid>
+  <div>
+
     <!-- Chargement -->
-    <div v-if="loading" class="d-flex justify-center pa-12">
-      <v-progress-circular indeterminate color="primary" size="48" />
+    <div v-if="loading" class="d-flex justify-center align-center" style="min-height: 60vh;">
+      <v-progress-circular indeterminate color="primary" size="40" width="2" />
     </div>
 
-    <!-- Pas de personnage créé -->
-    <v-alert v-else-if="!profile" type="warning" class="mb-6">
-      Aucun personnage trouvé. Connectez-vous au jeu pour créer votre
-      personnage.
-    </v-alert>
+    <!-- Pas de personnage -->
+    <div v-else-if="!profile" class="d-flex justify-center align-center" style="min-height: 60vh;">
+      <div class="text-center">
+        <div class="editorial-label mb-4">Aucun personnage</div>
+        <div class="editorial-title" style="font-size: 2rem;">Commencez dans le jeu</div>
+        <div class="mt-3" style="color: var(--rpg-ink-muted); font-size: 14px;">
+          Connectez-vous au jeu pour créer votre personnage.
+        </div>
+      </div>
+    </div>
 
     <template v-else>
-      <!-- HERO PLAYER -->
-      <v-card rounded="lg" elevation="4" class="mb-6">
-        <v-row align="center">
-          <v-col cols="12" md="8">
-            <v-card-item>
-              <template #prepend>
-                <v-avatar size="64" color="primary">
-                  <v-icon size="36" icon="mdi-account" />
-                </v-avatar>
-              </template>
-              <v-card-title class="text-h4">
-                {{ profile.characterName }}
-              </v-card-title>
-              <v-card-subtitle>
-                {{ auth.username }} ·
-                <v-chip
-                  :color="auth.isAdmin ? 'error' : 'success'"
-                  variant="flat"
-                  size="small"
-                >
-                  {{ auth.isAdmin ? "Administrateur" : "Joueur" }}
-                </v-chip>
-              </v-card-subtitle>
-            </v-card-item>
-          </v-col>
 
-          <v-col cols="12" md="4">
-            <v-card-text>
-              <div class="d-flex justify-space-between text-caption mb-1">
-                <span>Niveau {{ profile.level }}</span>
-                <span>{{ profile.experience }} XP</span>
+      <!-- ── HERO éditorial ─────────────────────────────────────────── -->
+<div style="
+  margin: -32px -32px 40px -32px;
+  position: relative; overflow: hidden;
+  border-bottom: 1px solid var(--rpg-border);
+">
+  <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; min-height: 160px;">
+    <div style="padding: 40px 32px; border-right: 1px solid var(--rpg-border);">
+      <div class="editorial-label mb-3">{{ auth.username }} · Profil</div>
+      <div style="font-family:var(--font-serif);font-size:clamp(2rem,3vw,3rem);font-weight:900;line-height:1;letter-spacing:-0.03em;margin-bottom:12px;">
+        {{ profile.characterName }}
+        <span style="font-style:italic;color:var(--rpg-ink-muted);display:block;">
+          {{ auth.isAdmin ? '· Admin.' : '· Joueur.' }}
+        </span>
+      </div>
+    </div>
+    <div style="padding:40px 32px;border-right:1px solid var(--rpg-border);">
+      <div class="editorial-label mb-3">Niveau</div>
+      <div style="font-family:var(--font-serif);font-size:2.5rem;font-weight:700;line-height:1;">
+        {{ profile.level }}
+      </div>
+      <div style="margin-top:12px;">
+        <div class="d-flex justify-space-between editorial-label mb-1">
+          <span>XP</span>
+          <span>{{ profile.experience % 1000 }} / 1000</span>
+        </div>
+        <div style="height:2px;background:rgba(0,0,0,0.08);">
+          <div :style="`width:${xpPercent}%;height:100%;background:var(--rpg-ink);`" />
+        </div>
+      </div>
+    </div>
+    <div style="padding:40px 32px;border-right:1px solid var(--rpg-border);">
+      <div class="editorial-label mb-3">Or</div>
+      <div style="font-family:var(--font-serif);font-size:2.5rem;font-weight:700;line-height:1;">
+        {{ profile.gold.toLocaleString() }}
+      </div>
+      <div class="editorial-label mt-2">🪙 pièces</div>
+    </div>
+    <div style="padding:40px 32px;">
+      <div class="editorial-label mb-3">Dernière sync</div>
+      <div style="font-family:var(--font-serif);font-size:1.4rem;font-weight:700;line-height:1.2;">
+        {{ lastSync }}
+      </div>
+    </div>
+  </div>
+</div>
+      <!-- ── HP / MP ─────────────────────────────────────────────────── -->
+      <v-row class="mb-6" no-gutters>
+        <v-col cols="12" md="4" class="pr-md-6 mb-4 mb-md-0">
+          <div class="editorial-label mb-2">Points de vie</div>
+          <div class="d-flex align-baseline ga-1 mb-2">
+            <span style="font-family: var(--font-serif); font-size: 2rem; font-weight: 700;">
+              {{ profile.currentHP }}
+            </span>
+            <span style="color: var(--rpg-ink-muted); font-size: 13px;">/ {{ profile.maxHP }}</span>
+          </div>
+          <div style="height: 2px; background: rgba(0,0,0,0.08);">
+            <div :style="`width: ${(profile.currentHP / profile.maxHP) * 100}%; height: 100%; background: #C0392B;`" />
+          </div>
+        </v-col>
+
+        <v-col cols="12" md="4" class="px-md-6 mb-4 mb-md-0">
+          <div class="editorial-label mb-2">Points de magie</div>
+          <div class="d-flex align-baseline ga-1 mb-2">
+            <span style="font-family: var(--font-serif); font-size: 2rem; font-weight: 700;">
+              {{ profile.currentMP }}
+            </span>
+            <span style="color: var(--rpg-ink-muted); font-size: 13px;">/ {{ profile.maxMP }}</span>
+          </div>
+          <div style="height: 2px; background: rgba(0,0,0,0.08);">
+            <div :style="`width: ${(profile.currentMP / profile.maxMP) * 100}%; height: 100%; background: #2D4A8A;`" />
+          </div>
+        </v-col>
+
+        <v-col cols="12" md="4" class="pl-md-6">
+          <div class="editorial-label mb-2">Attributs</div>
+          <div style="font-family: var(--font-serif); font-size: 1.4rem; font-weight: 700;">
+            {{ profile.strength }} · {{ profile.intelligence }} · {{ profile.speed }}
+          </div>
+          <div class="editorial-label mt-1">Force · Intelligence · Vitesse</div>
+        </v-col>
+      </v-row>
+
+      <!-- ── COMPTEURS ──────────────────────────────────────────────── -->
+      <div style="border-top: 1px solid rgba(0,0,0,0.08); border-bottom: 1px solid rgba(0,0,0,0.08); margin-bottom: 40px;">
+        <v-row no-gutters>
+          <v-col
+            v-for="(stat, i) in statCards"
+            :key="stat.label"
+            cols="6" md="3"
+            :style="i < 3 ? 'border-right: 1px solid rgba(0,0,0,0.08);' : ''"
+          >
+            <div class="pa-5 text-center">
+              <div class="editorial-label mb-3">{{ stat.label }}</div>
+              <div style="font-family: var(--font-serif); font-size: 2.5rem; font-weight: 700; line-height: 1;">
+                {{ stat.value }}
               </div>
-              <v-progress-linear
-                :model-value="xpPercent"
-                color="primary"
-                height="10"
-                rounded
-              />
-              <div class="d-flex justify-space-between text-caption mt-2">
-                <span>{{ profile.gold }} 🪙</span>
-                <span>Dernière sync : {{ lastSync }}</span>
-              </div>
-            </v-card-text>
+            </div>
           </v-col>
         </v-row>
-      </v-card>
+      </div>
 
-      <!-- STATS HP/MP -->
-      <v-row class="mb-4">
-        <v-col cols="12" md="6">
-          <v-card elevation="2">
-            <v-card-text>
-              <div class="d-flex align-center mb-2">
-                <v-icon icon="mdi-heart" color="error" class="mr-2" />
-                <span class="text-caption"
-                  >HP — {{ profile.currentHP }} / {{ profile.maxHP }}</span
-                >
-              </div>
-              <v-progress-linear
-                :model-value="(profile.currentHP / profile.maxHP) * 100"
-                color="error"
-                height="8"
-                rounded
-              />
-            </v-card-text>
-          </v-card>
-        </v-col>
-        <v-col cols="12" md="6">
-          <v-card elevation="2">
-            <v-card-text>
-              <div class="d-flex align-center mb-2">
-                <v-icon icon="mdi-lightning-bolt" color="info" class="mr-2" />
-                <span class="text-caption"
-                  >MP — {{ profile.currentMP }} / {{ profile.maxMP }}</span
-                >
-              </div>
-              <v-progress-linear
-                :model-value="(profile.currentMP / profile.maxMP) * 100"
-                color="info"
-                height="8"
-                rounded
-              />
-            </v-card-text>
-          </v-card>
-        </v-col>
-      </v-row>
+      <!-- ── STATS DE COMBAT ────────────────────────────────────────── -->
+      <div v-if="profile.totalCombats !== null" style="margin-bottom: 40px;">
+        <div class="editorial-label mb-4">Stats de combat</div>
+        <v-row no-gutters style="border-top: 1px solid rgba(0,0,0,0.08);">
+          <v-col
+            v-for="(stat, i) in combatStats"
+            :key="stat.label"
+            cols="6" md="2"
+            class="pa-4"
+            :style="i < 5 ? 'border-right: 1px solid rgba(0,0,0,0.08);' : ''"
+          >
+            <div class="editorial-label mb-2">{{ stat.label }}</div>
+            <div style="font-family: var(--font-serif); font-size: 1.6rem; font-weight: 700; line-height: 1;">
+              {{ stat.value }}
+            </div>
+          </v-col>
+        </v-row>
+      </div>
 
-      <!-- COMPTEURS -->
-      <v-row class="mb-4">
-        <v-col cols="6" md="3">
-          <v-card elevation="2">
-            <v-card-text class="text-center">
-              <v-icon size="32" icon="mdi-content-save" color="primary" />
-              <div class="text-h5 mt-2">{{ profile.savesCount }}</div>
-              <div class="text-caption">Sauvegardes</div>
-            </v-card-text>
-          </v-card>
-        </v-col>
-        <v-col cols="6" md="3">
-          <v-card elevation="2">
-            <v-card-text class="text-center">
-              <v-icon size="32" icon="mdi-bag-personal" color="secondary" />
-              <div class="text-h5 mt-2">{{ profile.inventoryCount }}</div>
-              <div class="text-caption">Items</div>
-            </v-card-text>
-          </v-card>
-        </v-col>
-        <v-col cols="6" md="3">
-          <v-card elevation="2">
-            <v-card-text class="text-center">
-              <v-icon size="32" icon="mdi-lightning-bolt" color="warning" />
-              <div class="text-h5 mt-2">{{ profile.skillsCount }}</div>
-              <div class="text-caption">Compétences</div>
-            </v-card-text>
-          </v-card>
-        </v-col>
-        <v-col cols="6" md="3">
-          <v-card elevation="2">
-            <v-card-text class="text-center">
-              <v-icon size="32" icon="mdi-book-open" color="success" />
-              <div class="text-h5 mt-2">{{ profile.bestiaryCount }}</div>
-              <div class="text-caption">Bestiaire</div>
-            </v-card-text>
-          </v-card>
-        </v-col>
-      </v-row>
-
-      <!-- STATS DE COMBAT -->
-      <v-row class="mb-4" v-if="profile.totalCombats !== null">
-        <v-col cols="12">
-          <v-card elevation="2">
-            <v-card-title>
-              <v-icon start icon="mdi-sword-cross" />
-              Stats de combat
-            </v-card-title>
-            <v-card-text>
-              <v-row>
-                <v-col cols="6" md="2" class="text-center">
-                  <div class="text-h6">{{ profile.totalCombats }}</div>
-                  <div class="text-caption">Combats</div>
-                </v-col>
-                <v-col cols="6" md="2" class="text-center">
-                  <div class="text-h6 text-success">
-                    {{ profile.combatsWon }}
-                  </div>
-                  <div class="text-caption">Victoires</div>
-                </v-col>
-                <v-col cols="6" md="2" class="text-center">
-                  <div class="text-h6 text-error">
-                    {{ profile.combatsLost }}
-                  </div>
-                  <div class="text-caption">Défaites</div>
-                </v-col>
-                <v-col cols="6" md="3" class="text-center">
-                  <div class="text-h6">
-                    {{ profile.totalDamageDealt?.toLocaleString() }}
-                  </div>
-                  <div class="text-caption">Dégâts infligés</div>
-                </v-col>
-                <v-col cols="6" md="3" class="text-center">
-                  <div class="text-h6">
-                    {{ Math.round((profile.totalPlaytimeMinutes ?? 0) / 60) }}h
-                  </div>
-                  <div class="text-caption">Temps de jeu</div>
-                </v-col>
-              </v-row>
-            </v-card-text>
-          </v-card>
-        </v-col>
-      </v-row>
-
-      <!-- RACCOURCIS -->
+      <!-- ── RACCOURCIS ─────────────────────────────────────────────── -->
+      <div class="editorial-label mb-4">Accès rapide</div>
       <v-row>
-        <v-col cols="12" md="4">
-          <v-card elevation="2" hover>
-            <v-card-item>
-              <template #prepend>
-                <v-avatar color="primary">
-                  <v-icon icon="mdi-content-save" />
-                </v-avatar>
-              </template>
-              <v-card-title>Sauvegardes</v-card-title>
-              <v-card-subtitle>Gérez vos parties</v-card-subtitle>
-            </v-card-item>
-            <v-card-actions>
-              <v-btn block color="primary" :to="{ name: 'Saves' }"
-                >Accéder</v-btn
-              >
-            </v-card-actions>
-          </v-card>
-        </v-col>
-        <v-col cols="12" md="4">
-          <v-card elevation="2" hover>
-            <v-card-item>
-              <template #prepend>
-                <v-avatar color="secondary">
-                  <v-icon icon="mdi-bag-personal" />
-                </v-avatar>
-              </template>
-              <v-card-title>Inventaire</v-card-title>
-              <v-card-subtitle>Équipement & objets</v-card-subtitle>
-            </v-card-item>
-            <v-card-actions>
-              <v-btn block color="secondary" :to="{ name: 'Inventory' }"
-                >Accéder</v-btn
-              >
-            </v-card-actions>
-          </v-card>
-        </v-col>
-        <v-col cols="12" md="4">
-          <v-card elevation="2" hover>
-            <v-card-item>
-              <template #prepend>
-                <v-avatar color="error">
-                  <v-icon icon="mdi-shield-account" />
-                </v-avatar>
-              </template>
-              <v-card-title>RGPD</v-card-title>
-              <v-card-subtitle>Données personnelles</v-card-subtitle>
-            </v-card-item>
-            <v-card-actions>
-              <v-btn block color="error" :to="{ name: 'Rgpd' }">Gérer</v-btn>
-            </v-card-actions>
-          </v-card>
+        <v-col v-for="shortcut in shortcuts" :key="shortcut.name" cols="12" md="4">
+          <div
+            style="
+              border: 1px solid rgba(0,0,0,0.08);
+              padding: 24px;
+              cursor: pointer;
+              transition: background 0.15s ease;
+            "
+            @mouseenter="e => (e.currentTarget as HTMLElement).style.background = 'rgba(0,0,0,0.02)'"
+            @mouseleave="e => (e.currentTarget as HTMLElement).style.background = 'transparent'"
+            @click="router.push({ name: shortcut.name })"
+          >
+            <div class="editorial-label mb-3">{{ shortcut.category }}</div>
+            <div style="font-family: var(--font-serif); font-size: 1.3rem; font-weight: 700; margin-bottom: 6px;">
+              {{ shortcut.title }}
+            </div>
+            <div style="color: var(--rpg-ink-muted); font-size: 13px; margin-bottom: 20px;">
+              {{ shortcut.subtitle }}
+            </div>
+            <div style="font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;">
+              Accéder →
+            </div>
+          </div>
         </v-col>
       </v-row>
+
     </template>
-  </v-container>
+  </div>
 </template>
 
 <script setup lang="ts">
 import {
   playerProfileApi,
   type PlayerProfileResponse,
-} from "@/interfaces/playerProfile";
-import { useAuthStore } from "@/stores/auth";
-import { computed, onMounted, ref } from "vue";
+} from '@/interfaces/playerProfile'
+import { useAuthStore } from '@/stores/auth'
+import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 
-const auth = useAuthStore();
-const profile = ref<PlayerProfileResponse | null>(null);
-const loading = ref(true);
+const auth    = useAuthStore()
+const router  = useRouter()
+const profile = ref<PlayerProfileResponse | null>(null)
+const loading = ref(true)
 
-// XP vers le prochain niveau (simplifié : 1000 XP par niveau)
 const xpPercent = computed(() => {
-  if (!profile.value) return 0;
-  return (profile.value.experience % 1000) / 10;
-});
+  if (!profile.value) return 0
+  return (profile.value.experience % 1000) / 10
+})
 
 const lastSync = computed(() => {
-  if (!profile.value) return "—";
-  return new Date(profile.value.updatedAt).toLocaleString("fr-FR");
-});
+  if (!profile.value) return '—'
+  return new Date(profile.value.updatedAt).toLocaleString('fr-FR')
+})
+
+const statCards = computed(() => [
+  { label: 'Sauvegardes', value: profile.value?.savesCount ?? 0 },
+  { label: 'Items',        value: profile.value?.inventoryCount ?? 0 },
+  { label: 'Compétences',  value: profile.value?.skillsCount ?? 0 },
+  { label: 'Bestiaire',    value: profile.value?.bestiaryCount ?? 0 },
+])
+
+const combatStats = computed(() => [
+  { label: 'Combats',         value: profile.value?.totalCombats ?? 0 },
+  { label: 'Victoires',       value: profile.value?.combatsWon ?? 0 },
+  { label: 'Défaites',        value: profile.value?.combatsLost ?? 0 },
+  { label: 'Dégâts infligés', value: profile.value?.totalDamageDealt?.toLocaleString() ?? 0 },
+  { label: 'Dégâts reçus',    value: profile.value?.totalDamageTaken?.toLocaleString() ?? 0 },
+  { label: 'Temps de jeu',    value: `${Math.round((profile.value?.totalPlaytimeMinutes ?? 0) / 60)}h` },
+])
+
+const shortcuts = [
+  { name: 'Saves',     category: 'Progression', title: 'Sauvegardes',  subtitle: 'Consultez vos parties sauvegardées' },
+  { name: 'Inventory', category: 'Équipement',  title: 'Inventaire',   subtitle: 'Gérez votre équipement et vos objets' },
+  { name: 'Rgpd',      category: 'Données',     title: 'Mes données',  subtitle: 'Gestion de vos données personnelles' },
+]
 
 onMounted(async () => {
   try {
-    const res = await playerProfileApi.getMe();
-    profile.value = res.data;
+    const res = await playerProfileApi.getMe()
+    profile.value = res.data
   } catch {
-    // Pas de personnage créé — on affiche le message d'avertissement
-    profile.value = null;
+    profile.value = null
   } finally {
-    loading.value = false;
+    loading.value = false
   }
-});
+})
 </script>

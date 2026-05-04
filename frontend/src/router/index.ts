@@ -51,15 +51,33 @@ const router = createRouter({
           component: () => import("@/views/player/RgpdView.vue"),
         },
         {
+          path: 'bestiary',
+          name: 'Bestiary',
+          component: () => import('@/views/player/BestiaryView.vue'),
+          meta: { requiresAuth: true }
+        },
+        {
           path: "admin/users",
           name: "AdminUsers",
-          component: () => import("@/views/admin/UsersView.vue"),
+          component: () => import("@/views/admin/AdminUsersView.vue"),
           meta: { requiresAdmin: true },
         },
         {
           path: "admin/items",
           name: "AdminItems",
-          component: () => import("@/views/admin/ItemsView.vue"),
+          component: () => import("@/views/admin/AdminItemsView.vue"),
+          meta: { requiresAdmin: true },
+        },
+        {
+          path: "admin/skills",
+          name: "AdminSkills",
+          component: () => import("@/views/admin/AdminSkillsView.vue"),
+          meta: { requiresAdmin: true },
+        },
+        {
+          path: "admin/bestiary",
+          name: "AdminBestiary",
+          component: () => import("@/views/admin/AdminBestiaireView.vue"),
           meta: { requiresAdmin: true },
         },
       ],

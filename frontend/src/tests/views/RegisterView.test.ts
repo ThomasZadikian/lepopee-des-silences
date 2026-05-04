@@ -3,6 +3,7 @@ import { mount } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createMemoryHistory, createRouter } from "vue-router";
+import { flushPromises } from "@vue/test-utils";
 
 const mockRegister = vi.fn();
 
@@ -39,12 +40,12 @@ describe("RegisterView", () => {
 
   it("affiche le champ username", () => {
     const wrapper = mount(RegisterView, { global: { plugins: [router] } });
-    expect(wrapper.text()).toContain("Nom d'utilisateur");
+    expect(wrapper.text()).toContain("Nom de marcheur");
   });
 
   it("affiche le champ email", () => {
     const wrapper = mount(RegisterView, { global: { plugins: [router] } });
-    expect(wrapper.text()).toContain("Email");
+    expect(wrapper.text()).toContain("Adresse email");
   });
 
   it("affiche le champ mot de passe", () => {
@@ -54,7 +55,7 @@ describe("RegisterView", () => {
 
   it("affiche le bouton S'inscrire", () => {
     const wrapper = mount(RegisterView, { global: { plugins: [router] } });
-    expect(wrapper.text()).toContain("inscrire");
+    expect(wrapper.text()).toContain("Créer mon compte");
   });
 
   it("affiche le lien vers Login", () => {
@@ -62,30 +63,27 @@ describe("RegisterView", () => {
     expect(wrapper.text()).toContain("compte");
   });
 
-  it("appelle register au clic sur S'inscrire", async () => {
-    mockRegister.mockResolvedValue(undefined);
-    const wrapper = mount(RegisterView, { global: { plugins: [router] } });
+it("appelle register au clic sur S'inscrire", async () => {
+  mockRegister.mockResolvedValue(undefined);
+  const wrapper = mount(RegisterView, { global: { plugins: [router] } });
 
-    const btn = wrapper
-      .findAll("button")
-      .find((b) => b.text().includes("inscrire"));
-    if (btn) await btn.trigger("click");
+  const btn = wrapper.findAll("button").find(b => b.text().includes("Créer mon compte"));
+  if (btn) await btn.trigger("click");
+  await flushPromises();
 
-    expect(mockRegister).toHaveBeenCalled();
-  });
+  expect(mockRegister).toHaveBeenCalled();
+});
 
-  it("affiche un message de succès après inscription", async () => {
-    mockRegister.mockResolvedValue(undefined);
-    const wrapper = mount(RegisterView, { global: { plugins: [router] } });
+it("affiche un message de succès après inscription", async () => {
+  mockRegister.mockResolvedValue(undefined);
+  const wrapper = mount(RegisterView, { global: { plugins: [router] } });
 
-    const btn = wrapper
-      .findAll("button")
-      .find((b) => b.text().includes("inscrire"));
-    if (btn) await btn.trigger("click");
-    await wrapper.vm.$nextTick();
+  const btn = wrapper.findAll("button").find(b => b.text().includes("Créer mon compte"));
+  if (btn) await btn.trigger("click");
+  await flushPromises();
 
-    expect(wrapper.text()).toContain("créé");
-  });
+  expect(wrapper.text()).toContain("Compte créé");
+});
 
   it("affiche une erreur si l'inscription échoue", async () => {
     mockRegister.mockRejectedValue({
@@ -95,7 +93,7 @@ describe("RegisterView", () => {
 
     const btn = wrapper
       .findAll("button")
-      .find((b) => b.text().includes("inscrire"));
+      .find((b) => b.text().includes("Créer mon compte"));
     if (btn) await btn.trigger("click");
     await wrapper.vm.$nextTick();
 

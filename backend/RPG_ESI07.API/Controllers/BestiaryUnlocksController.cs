@@ -65,4 +65,11 @@ public class BestiaryUnlocksController : ControllerBase
         var result = await _mediator.Send(new DeleteBestiaryUnlockCommand(id, currentUserId, isAdmin));
         return Ok(result);
     }
+    [HttpGet("me")]
+    public async Task<IActionResult> GetMine()
+    {
+        var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        var result = await _mediator.Send(new GetAllBestiaryUnlocksQuery(currentUserId));
+        return Ok(result);
+    }
 }

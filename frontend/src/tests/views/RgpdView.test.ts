@@ -51,22 +51,22 @@ describe("RgpdView", () => {
 
   it("affiche le titre Mes données personnelles", () => {
     const wrapper = mount(RgpdView, { global: { stubs } });
-    expect(wrapper.text()).toContain("données personnelles");
+    expect(wrapper.text()).toContain("Confidentialité");
   });
 
   it("affiche Art. 15", () => {
     const wrapper = mount(RgpdView, { global: { stubs } });
-    expect(wrapper.text()).toContain("Art. 15");
+    expect(wrapper.text()).toContain("Droit 01");
   });
 
   it("affiche Art. 20", () => {
     const wrapper = mount(RgpdView, { global: { stubs } });
-    expect(wrapper.text()).toContain("Art. 20");
+    expect(wrapper.text()).toContain("Droit 02");
   });
 
   it("affiche Art. 17", () => {
     const wrapper = mount(RgpdView, { global: { stubs } });
-    expect(wrapper.text()).toContain("Art. 17");
+    expect(wrapper.text()).toContain("Droit 03");
   });
 
   it("affiche le bouton Voir mes données", () => {
@@ -76,7 +76,7 @@ describe("RgpdView", () => {
 
   it("affiche le bouton Télécharger JSON", () => {
     const wrapper = mount(RgpdView, { global: { stubs } });
-    expect(wrapper.text()).toContain("Télécharger JSON");
+    expect(wrapper.text()).toContain("Demander l'export");
   });
 
   it("affiche le bouton Supprimer mon compte", () => {
@@ -84,48 +84,32 @@ describe("RgpdView", () => {
     expect(wrapper.text()).toContain("Supprimer mon compte");
   });
 
-  it("appelle exportData au clic sur Voir mes données", async () => {
-    vi.mocked(rgpdApi.exportData).mockResolvedValue({
-      data: { userId: 1 },
-    } as any);
-    const wrapper = mount(RgpdView, { global: { stubs } });
+it("appelle exportData au clic sur Voir mes données", async () => {
+  vi.mocked(rgpdApi.exportData).mockResolvedValue({ data: {} } as any)
+  const wrapper = mount(RgpdView, { global: { stubs } })
+  const btn = wrapper.findAll("button").find(b => b.text().includes("Ouvrir la vue"))
+  if (btn) await btn.trigger("click")
+  await flushPromises()
+  expect(vi.mocked(rgpdApi.exportData)).toHaveBeenCalled()
+})
 
-    const btn = wrapper
-      .findAll("button")
-      .find((b) => b.text().includes("Voir mes données"));
-    if (btn) await btn.trigger("click");
-    await flushPromises();
+it("appelle exportJson au clic sur Télécharger JSON", async () => {
+  vi.mocked(rgpdApi.exportJson).mockResolvedValue({ data: new Blob(["{}"]) } as any)
+  const wrapper = mount(RgpdView, { global: { stubs } })
+  const btn = wrapper.findAll("button").find(b => b.text().includes("Demander l'export"))
+  if (btn) await btn.trigger("click")
+  await flushPromises()
+  expect(vi.mocked(rgpdApi.exportJson)).toHaveBeenCalled()
+})
 
-    expect(vi.mocked(rgpdApi.exportData)).toHaveBeenCalled();
-  });
-
-  it("appelle exportJson au clic sur Télécharger JSON", async () => {
-    vi.mocked(rgpdApi.exportJson).mockResolvedValue({
-      data: new Blob(["{}"]),
-    } as any);
-    const wrapper = mount(RgpdView, { global: { stubs } });
-
-    const btn = wrapper
-      .findAll("button")
-      .find((b) => b.text().includes("Télécharger JSON"));
-    if (btn) await btn.trigger("click");
-    await flushPromises();
-
-    expect(vi.mocked(rgpdApi.exportJson)).toHaveBeenCalled();
-  });
-
-  it("ouvre le dialogue au clic sur Supprimer mon compte", async () => {
-    const wrapper = mount(RgpdView, { global: { stubs } });
-    const vm = wrapper.vm as any;
-    expect(vm.confirmDelete).toBe(false);
-
-    const btn = wrapper
-      .findAll("button")
-      .find((b) => b.text().includes("Supprimer mon compte"));
-    if (btn) await btn.trigger("click");
-
-    expect(vm.confirmDelete).toBe(true);
-  });
+it("ouvre le dialogue au clic sur Supprimer mon compte", async () => {
+  const wrapper = mount(RgpdView, { global: { stubs } })
+  const vm = wrapper.vm as any
+  expect(vm.confirmDelete).toBe(false)
+  const btn = wrapper.findAll("button").find(b => b.text().includes("Demander la suppression"))
+  if (btn) await btn.trigger("click")
+  expect(vm.confirmDelete).toBe(true)
+})
 
   it("le dialogue est fermé par défaut", () => {
     const wrapper = mount(RgpdView, { global: { stubs } });

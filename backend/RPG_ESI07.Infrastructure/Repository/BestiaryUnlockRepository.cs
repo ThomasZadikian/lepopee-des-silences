@@ -22,6 +22,8 @@ public class BestiaryUnlockRepository : IBestiaryUnlockRepository
     public async Task<List<BestiaryUnlock>> GetAllAsync()
     {
         return await _context.Set<BestiaryUnlock>()
+            .Include(e => e.Enemy)
+            .Include(e => e.Player)
             .OrderBy(e => e.Id)
             .ToListAsync();
     }

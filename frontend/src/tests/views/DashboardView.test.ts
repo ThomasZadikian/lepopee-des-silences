@@ -122,7 +122,7 @@ describe("DashboardView", () => {
       global: { plugins: [router], stubs },
     });
     await flushPromises();
-    expect(wrapper.text()).toContain("Administrateur");
+    expect(wrapper.text()).toContain("Admin.");
   });
 
   it("affiche le lien Voir mes sauvegardes", async () => {
@@ -138,7 +138,7 @@ describe("DashboardView", () => {
       global: { plugins: [router], stubs },
     });
     await flushPromises();
-    expect(wrapper.text()).toContain("RGPD");
+    expect(wrapper.text()).toContain("Mes données");
   });
 
   it("affiche un avertissement si aucun personnage", async () => {
