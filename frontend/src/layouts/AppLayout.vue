@@ -2,7 +2,11 @@
   <v-app theme="rpgLight">
     <v-layout>
       <!-- ── Sidebar ────────────────────────────────────────────────── -->
-      <v-navigation-drawer permanent width="200" class="rpg-sidebar">
+      <v-navigation-drawer 
+      permanent 
+      width="200" 
+      class="rpg-sidebar" 
+      style="position: fixed; height: 100vh; overflow-y: auto;">
         <!-- Logo -->
         <div class="pa-5 grid-border-bottom">
           <div
@@ -145,6 +149,8 @@ const navItems = [
 const adminItems = [
   { name: "AdminUsers", label: "Utilisateurs" },
   { name: "AdminItems", label: "Items" },
+  {name: "AdminSkills", label:"Compétences"}, 
+  {name:"AdminBestiary", label:"Monstres"}
 ];
 
 const currentRoute = computed(() => route.name as string);

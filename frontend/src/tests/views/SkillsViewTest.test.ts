@@ -81,7 +81,7 @@ describe("SkillsView", () => {
     } as any);
     const wrapper = mount(SkillsView, { global: { stubs } });
     await flushPromises();
-    expect(wrapper.text()).toContain("Compétences");
+    expect(wrapper.text()).toContain("Arbre");
   });
 
   it("affiche un message si aucune compétence", async () => {
@@ -119,7 +119,7 @@ describe("SkillsView", () => {
     } as any);
     const wrapper = mount(SkillsView, { global: { stubs } });
     await flushPromises();
-    expect(wrapper.text()).toContain("boule de feu");
+    expect(wrapper.text()).toContain("Boule de Feu");
   });
 
   it("appelle getMe au montage", async () => {

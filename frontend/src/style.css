@@ -14,7 +14,11 @@
 * {
   box-sizing: border-box;
 }
-
+.v-navigation-drawer {
+  position: fixed !important;
+  height: 100vh !important;
+  overflow-y: auto !important;
+}
 body,
 .v-application,
 .v-application__wrap {

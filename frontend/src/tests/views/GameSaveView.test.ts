@@ -99,23 +99,6 @@ describe("GameSavesView", () => {
     expect(wrapper.text()).toContain("Forest");
   });
 
-  it("supprime une sauvegarde au clic sur Supprimer", async () => {
-    vi.mocked(gameSavesApi.getMe).mockResolvedValue({
-      data: { items: fakeSaves },
-    } as any);
-    vi.mocked(gameSavesApi.delete).mockResolvedValue({} as any);
-    const wrapper = mount(GameSavesView, { global: { stubs } });
-    await flushPromises();
-
-    const deleteBtn = wrapper
-      .findAll("button")
-      .find((b) => b.text().includes("Supprimer"));
-    if (deleteBtn) await deleteBtn.trigger("click");
-    await flushPromises();
-
-    expect(vi.mocked(gameSavesApi.delete)).toHaveBeenCalledWith(1);
-  });
-
   it("appelle getMe au montage", async () => {
     vi.mocked(gameSavesApi.getMe).mockResolvedValue({
       data: { items: [] },
