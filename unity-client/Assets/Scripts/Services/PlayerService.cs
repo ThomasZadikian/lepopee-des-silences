@@ -84,5 +84,26 @@ namespace RPG.Services
                 return false;
             }
         }
+        public async Task<GameSaveResponse> LoadLastSaveAsync()
+        {
+            try
+            {
+                var wrapper = await ApiClient.Instance.GetAsync<GameSaveArrayWrapper>("/api/gamesaves/me");
+                if (wrapper.items == null || wrapper.items.Length == 0) return null;
+
+                // Prendre la save la plus récente
+                GameSaveResponse latest = wrapper.items[0];
+                foreach (var save in wrapper.items)
+                    if (string.Compare(save.savedAt, latest.savedAt) > 0)
+                        latest = save;
+
+                return latest;
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[Player] LoadLastSave : {e.Message}");
+                return null;
+            }
+        }
     }
 }

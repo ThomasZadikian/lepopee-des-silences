@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 using TMPro;
+using RPG.Core; 
 using RPG.Services;
 
 public class LoginPanel : MonoBehaviour
@@ -34,6 +35,14 @@ public class LoginPanel : MonoBehaviour
             errorLabel.text = "Profil introuvable.";
             loginButton.interactable = true;
             return;
+        }
+
+        var lastSave = await PlayerService.Instance.LoadLastSaveAsync();
+        if (lastSave != null)
+        {
+            GameManager.Instance.PosX = lastSave.positionX;
+            GameManager.Instance.PosY = lastSave.positionY;
+            GameManager.Instance.CurrentZone = lastSave.currentZone;
         }
 
         SceneManager.LoadScene("GameScene");
