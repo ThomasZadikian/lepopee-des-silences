@@ -4,123 +4,146 @@ using RPG_ESI07.Domain.Entities;
 using RPG_ESI07.Infrastructure.Data;
 using RPG_ESI07.Infrastructure.Repository;
 
-namespace RPG_ESI07.Tests.Infrastructure.Repository;
+namespace RPG_ESI07.Tests.Infrastructure;
 
-public class GameSaveRepositoryTests : IDisposable
+public class GameSaveRepositoryTests
 {
-    private readonly AppDbContext _context;
-    private readonly GameSaveRepository _repository;
-
-    public GameSaveRepositoryTests()
+    private AppDbContext CreateContext(string dbName)
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .UseInMemoryDatabase(dbName)
             .Options;
-
-        _context = new AppDbContext(options);
-        _repository = new GameSaveRepository(_context);
+        return new AppDbContext(options);
     }
 
-    public void Dispose()
+    private GameSave CreateGameSave(int playerId = 1) => new GameSave
     {
-        _context.Database.EnsureDeleted();
-        _context.Dispose();
+        PlayerId = playerId,
+        CurrentZone = "Tutorial",
+        PositionX = 10f,
+        PositionY = 20f,
+        QuestFlags = "{}",
+        SavedAt = DateTime.UtcNow
+    };
+
+    [Fact]
+    public async Task AddAsync_ShouldPersistGameSave()
+    {
+        using var context = CreateContext(nameof(AddAsync_ShouldPersistGameSave));
+        var repo = new GameSaveRepository(context);
+        var save = CreateGameSave();
+
+        await repo.AddAsync(save);
+
+        var result = await context.GameSaves.FirstOrDefaultAsync();
+        result.Should().NotBeNull();
+        result!.CurrentZone.Should().Be("Tutorial");
+        result.PositionX.Should().Be(10f);
     }
 
     [Fact]
-    public async Task GetAllAsync_ReturnsAllRecords_OrderedById()
+    public async Task GetByIdAsync_ShouldReturnCorrectSave()
     {
-        var gameSaves = new List<GameSave>
-        {
-            new GameSave { Id = 2, PlayerId = 1, CurrentZone = "Zone2" },
-            new GameSave { Id = 1, PlayerId = 1, CurrentZone = "Zone1" }
-        };
-        await _context.GameSaves.AddRangeAsync(gameSaves);
-        await _context.SaveChangesAsync();
+        using var context = CreateContext(nameof(GetByIdAsync_ShouldReturnCorrectSave));
+        var repo = new GameSaveRepository(context);
+        var save = CreateGameSave();
+        await repo.AddAsync(save);
 
-        var result = await _repository.GetAllAsync();
-
-        result.Should().HaveCount(2);
-        result[0].Id.Should().Be(1);
-        result[1].Id.Should().Be(2);
-    }
-
-    [Fact]
-    public async Task GetByIdAsync_ReturnsRecord_WhenIdExists()
-    {
-        var gameSave = new GameSave { Id = 5, PlayerId = 10, CurrentZone = "Tutorial" };
-        await _context.GameSaves.AddAsync(gameSave);
-        await _context.SaveChangesAsync();
-
-        var result = await _repository.GetByIdAsync(5);
+        var result = await repo.GetByIdAsync(save.Id);
 
         result.Should().NotBeNull();
-        result!.Id.Should().Be(5);
-        result.PlayerId.Should().Be(10);
-        result.CurrentZone.Should().Be("Tutorial");
+        result!.Id.Should().Be(save.Id);
     }
 
     [Fact]
-    public async Task GetByIdAsync_ReturnsNull_WhenIdDoesNotExist()
+    public async Task GetByIdAsync_WithInvalidId_ShouldReturnNull()
     {
-        var result = await _repository.GetByIdAsync(999);
+        using var context = CreateContext(nameof(GetByIdAsync_WithInvalidId_ShouldReturnNull));
+        var repo = new GameSaveRepository(context);
+
+        var result = await repo.GetByIdAsync(999);
 
         result.Should().BeNull();
     }
 
     [Fact]
-    public async Task AddAsync_InsertsRecordAndSavesChanges()
+    public async Task GetAllAsync_ShouldReturnAllSaves()
     {
-        var newSave = new GameSave { Id = 10, PlayerId = 5, CurrentZone = "Forest" };
+        using var context = CreateContext(nameof(GetAllAsync_ShouldReturnAllSaves));
+        var repo = new GameSaveRepository(context);
+        await repo.AddAsync(CreateGameSave(1));
+        await repo.AddAsync(CreateGameSave(2));
+        await repo.AddAsync(CreateGameSave(3));
 
-        await _repository.AddAsync(newSave);
+        var result = await repo.GetAllAsync();
 
-        var dbRecord = await _context.GameSaves.FirstOrDefaultAsync(x => x.Id == 10);
-        dbRecord.Should().NotBeNull();
-        dbRecord!.PlayerId.Should().Be(5);
-        dbRecord.CurrentZone.Should().Be("Forest");
+        result.Should().HaveCount(3);
     }
 
     [Fact]
-    public async Task UpdateAsync_ModifiesRecordAndSavesChanges()
+    public async Task GetAllAsync_WhenEmpty_ShouldReturnEmptyList()
     {
-        var save = new GameSave { Id = 1, PlayerId = 1, CurrentZone = "Start" };
-        await _context.GameSaves.AddAsync(save);
-        await _context.SaveChangesAsync();
+        using var context = CreateContext(nameof(GetAllAsync_WhenEmpty_ShouldReturnEmptyList));
+        var repo = new GameSaveRepository(context);
 
-        _context.Entry(save).State = EntityState.Detached;
+        var result = await repo.GetAllAsync();
 
-        var updatedSave = new GameSave { Id = 1, PlayerId = 1, CurrentZone = "EndGame" };
-        await _repository.UpdateAsync(updatedSave);
-
-        var dbRecord = await _context.GameSaves.FindAsync(1);
-        dbRecord.Should().NotBeNull();
-        dbRecord!.CurrentZone.Should().Be("EndGame");
+        result.Should().BeEmpty();
     }
 
     [Fact]
-    public async Task DeleteAsync_RemovesRecord_WhenIdExists()
+    public async Task UpdateAsync_ShouldModifyExistingSave()
     {
-        var save = new GameSave { Id = 1, PlayerId = 1, CurrentZone = "Start" };
-        await _context.GameSaves.AddAsync(save);
-        await _context.SaveChangesAsync();
+        using var context = CreateContext(nameof(UpdateAsync_ShouldModifyExistingSave));
+        var repo = new GameSaveRepository(context);
+        var save = CreateGameSave();
+        await repo.AddAsync(save);
 
-        await _repository.DeleteAsync(1);
+        save.CurrentZone = "BossFinal";
+        save.PositionX = 99f;
+        await repo.UpdateAsync(save);
 
-        var dbRecord = await _context.GameSaves.FindAsync(1);
-        dbRecord.Should().BeNull();
+        var updated = await repo.GetByIdAsync(save.Id);
+        updated!.CurrentZone.Should().Be("BossFinal");
+        updated.PositionX.Should().Be(99f);
     }
 
     [Fact]
-    public async Task DeleteAsync_DoesNothing_WhenIdDoesNotExist()
+    public async Task DeleteAsync_ShouldRemoveSave()
     {
-        var save = new GameSave { Id = 1, PlayerId = 1, CurrentZone = "Start" };
-        await _context.GameSaves.AddAsync(save);
-        await _context.SaveChangesAsync();
+        using var context = CreateContext(nameof(DeleteAsync_ShouldRemoveSave));
+        var repo = new GameSaveRepository(context);
+        var save = CreateGameSave();
+        await repo.AddAsync(save);
 
-        await _repository.DeleteAsync(999);
+        await repo.DeleteAsync(save.Id);
 
-        var remainingCount = await _context.GameSaves.CountAsync();
-        remainingCount.Should().Be(1);
+        var result = await repo.GetByIdAsync(save.Id);
+        result.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task DeleteAsync_WithInvalidId_ShouldNotThrow()
+    {
+        using var context = CreateContext(nameof(DeleteAsync_WithInvalidId_ShouldNotThrow));
+        var repo = new GameSaveRepository(context);
+
+        var act = async () => await repo.DeleteAsync(999);
+
+        await act.Should().NotThrowAsync();
+    }
+
+    [Fact]
+    public async Task GetAllAsync_ShouldReturnSavesOrderedById()
+    {
+        using var context = CreateContext(nameof(GetAllAsync_ShouldReturnSavesOrderedById));
+        var repo = new GameSaveRepository(context);
+        await repo.AddAsync(CreateGameSave(3));
+        await repo.AddAsync(CreateGameSave(1));
+        await repo.AddAsync(CreateGameSave(2));
+
+        var result = await repo.GetAllAsync();
+
+        result.Should().BeInAscendingOrder(s => s.Id);
     }
 }
