@@ -202,7 +202,8 @@ if (app.Environment.IsDevelopment())
     using var scope = app.Services.CreateScope();
     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     var hasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
-    await context.Database.MigrateAsync();  // Applique les migrations manquantes
+    if (context.Database.IsRelational())
+        await context.Database.MigrateAsync();
     await DatabaseSeeder.SeedAsync(context, hasher);
 }
 
