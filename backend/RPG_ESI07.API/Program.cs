@@ -2,15 +2,17 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi;
 using RPG_ESI07.Application;
 using RPG_ESI07.Application.Configuration;
+using RPG_ESI07.Domain.Interfaces;
 using RPG_ESI07.Infrastructure;
 using RPG_ESI07.Infrastructure.Data;
 using Serilog;
 using System.Security.Claims;
 using System.Text;
 using System.Threading.RateLimiting;
-using RPG_ESI07.Domain.Interfaces;
+
 
 Log.Logger = new LoggerConfiguration()
 .MinimumLevel.Information()
@@ -44,7 +46,24 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.ReferenceHandler =
             System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
     }); builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+
+builder.Services.AddSwaggerGen(options =>
+{
+    const string schemeId = "Bearer";
+    options.AddSecurityDefinition(schemeId, new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Description = "JWT Authorization header using the Bearer scheme."
+    });
+    options.AddSecurityRequirement(document => new OpenApiSecurityRequirement
+    {
+        [new OpenApiSecuritySchemeReference(schemeId, document)] = []
+    });
+});
 
 // Application Services (MediatR, FluentValidation, AutoMapper)
 builder.Services.AddApplicationServices();
@@ -183,7 +202,7 @@ if (app.Environment.IsDevelopment())
     using var scope = app.Services.CreateScope();
     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     var hasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
-    await context.Database.EnsureCreatedAsync();
+    await context.Database.MigrateAsync();  // Applique les migrations manquantes
     await DatabaseSeeder.SeedAsync(context, hasher);
 }
 

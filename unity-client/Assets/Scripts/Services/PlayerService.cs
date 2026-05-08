@@ -80,7 +80,7 @@ namespace RPG.Services
             }
             catch (Exception e)
             {
-                Debug.LogError($"[Player] Exception lors du sync : {e.Message}");
+                Debug.LogError($"[Player] Exception lors du sync : {e.Message} | {e.InnerException?.Message}");
                 return false;
             }
         }

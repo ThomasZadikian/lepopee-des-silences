@@ -17,7 +17,7 @@ namespace RPG_ESI07.Infrastructure.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.3")
+                .HasAnnotation("ProductVersion", "10.0.5")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -61,7 +61,7 @@ namespace RPG_ESI07.Infrastructure.Migrations
 
                     b.ToTable("AuditLogs", t =>
                         {
-                            t.HasCheckConstraint("CK_AuditLog_EventType", "\"EventType\" IN ('LOGIN_SUCCESS', 'LOGIN_FAILED', 'LOGOUT', \r\n                    'DATA_EXPORT', 'DATA_DELETE', 'DATA_MODIFY', \r\n                    'CHEAT_DETECTED', 'ADMIN_ACTION', 'MFA_ENABLED', 'MFA_FAILED')");
+                            t.HasCheckConstraint("CK_AuditLog_EventType", "\"EventType\" IN ('LOGIN_SUCCESS', 'LOGIN_FAILED', 'LOGOUT',\r\n                    'DATA_EXPORT', 'DATA_DELETE', 'DATA_MODIFY',\r\n                    'CHEAT_DETECTED', 'ADMIN_ACTION', 'MFA_ENABLED', 'MFA_FAILED')");
                         });
                 });
 
@@ -497,6 +497,13 @@ namespace RPG_ESI07.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("Player");
 
                     b.Property<string>("Username")
                         .IsRequired()
