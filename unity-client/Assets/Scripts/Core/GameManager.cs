@@ -57,6 +57,7 @@ namespace RPG.Core
                 speed = Player.Speed,
                 experience = Player.Experience,
                 gold = Player.Gold,
+                questFlags = {}, 
                 // Position dans le monde
                 currentZone = CurrentZone,
                 positionX = PosX,

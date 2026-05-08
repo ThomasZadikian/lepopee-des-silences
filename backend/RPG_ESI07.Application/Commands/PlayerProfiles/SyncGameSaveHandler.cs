@@ -28,6 +28,7 @@ public class SyncGameSaveHandler
         // 1. Récupérer le profil du joueur via son UserId
         var profiles = await _profileRepository.GetAllAsync();
         var profile  = profiles.FirstOrDefault(p => p.UserId == request.RequestingUserId);
+        var questFlags = string.IsNullOrEmpty(request.QuestFlags) ? "{}" : request.QuestFlags;
 
         if (profile == null)
             throw new KeyNotFoundException(
@@ -46,6 +47,7 @@ public class SyncGameSaveHandler
         profile.Gold         = request.Gold;
         profile.UpdatedAt    = DateTime.UtcNow;
 
+
         await _profileRepository.UpdateAsync(profile);
 
         // 3. Créer une nouvelle GameSave (snapshot de la partie)
@@ -55,7 +57,7 @@ public class SyncGameSaveHandler
             CurrentZone = request.CurrentZone,
             PositionX   = request.PositionX,
             PositionY   = request.PositionY,
-            QuestFlags  = request.QuestFlags,
+            QuestFlags = questFlags,
             SavedAt     = DateTime.UtcNow,
         };
 

@@ -75,7 +75,8 @@ namespace RPG.Network
                 throw new Exception(
                     $"POST {endpoint} échoué : {request.error}\n{request.downloadHandler.text}");
 
-            return JsonUtility.FromJson<T>(request.downloadHandler.text); 
+            Debug.Log($"[API] Réponse sync : {request.downloadHandler.text}");
+            return JsonUtility.FromJson<T>(request.downloadHandler.text);
         }
 
         // PUT /endpoint

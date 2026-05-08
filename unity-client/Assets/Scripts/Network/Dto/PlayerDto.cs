@@ -65,4 +65,22 @@ namespace RPG.Network.Dto
         public bool success;
         public string message;
     }
+
+    [Serializable]
+    public class GameSaveResponse
+    {
+        public int id;
+        public int playerId;
+        public string currentZone;
+        public float positionX;
+        public float positionY;
+        public string questFlags;
+        public string savedAt;
+    }
+
+    [Serializable]
+    public class GameSaveArrayWrapper
+    {
+        public GameSaveResponse[] items;
+    }
 }

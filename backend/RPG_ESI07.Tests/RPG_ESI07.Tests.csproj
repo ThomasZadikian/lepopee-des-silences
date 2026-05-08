@@ -1,11 +1,17 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-    <IsPackable>false</IsPackable>
-  </PropertyGroup>
+	<PropertyGroup>
+		<TargetFramework>net10.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<IsPackable>false</IsPackable>
+		<CoverletOutput>../coverage/</CoverletOutput>
+		<CollectCoverage>true</CollectCoverage>
+		<Exclude>[*]*.Migrations.*</Exclude>
+		<Threshold>70</Threshold>
+		<ThresholdType>line</ThresholdType>
+		<ThresholdStat>average</ThresholdStat>
+	</PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="8.0.1">
