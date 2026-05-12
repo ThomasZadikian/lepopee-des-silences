@@ -1,8 +1,8 @@
-using UnityEngine;
-using UnityEngine.UI;
-using TMPro;
 using RPG.Core;
+using TMPro;
+using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.UI;
 
 public class HUD : MonoBehaviour
 {
@@ -14,7 +14,9 @@ public class HUD : MonoBehaviour
     [SerializeField] private TMP_Text hpText;
     [SerializeField] private TMP_Text mpText;
 
-    [SerializeField] private GameObject hudPanel; // Le panel parent qui contient tout le HUD
+    [SerializeField] private GameObject hudPanel;
+    [SerializeField] private RectTransform hpFill; // Glisse le Fill directement
+
 
     private bool _hudVisible = true;
 
@@ -33,7 +35,12 @@ public class HUD : MonoBehaviour
 
         var p = GameManager.Instance.Player;
 
-        if (hpBar != null) hpBar.value = p.MaxHP > 0 ? (float)p.CurrentHP / p.MaxHP : 0;
+        if (hpFill != null && p.MaxHP > 0)
+        {
+            float ratio = (float)p.CurrentHP / p.MaxHP;
+            hpFill.localScale = new Vector3(ratio, 1f, 1f);
+        }
+
         if (hpText != null) hpText.text = $"{p.CurrentHP} / {p.MaxHP}";
         if (mpBar != null) mpBar.value = p.MaxMP > 0 ? (float)p.CurrentMP / p.MaxMP : 0;
         if (mpText != null) mpText.text = $"{p.CurrentMP} / {p.MaxMP}";
