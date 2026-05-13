@@ -9,12 +9,11 @@ public class Combatant
     public int currentMP;
     public int maxMP;
     public float speed;
-    public float atbCurrent;   // 0 → 100
+    public float atbCurrent;
     public bool isPlayer;
-    public Color portraitColor; // Rouge ennemi, blanc joueur
-    public Sprite portrait;      // null pour l'instant → carré coloré
+    public Color portraitColor;
+    public Sprite portrait;
 
-    // Référence Unity (sprite dans la scène)
     public GameObject combatantObject;
     public RectTransform uiPortrait;
 
@@ -46,7 +45,7 @@ public class Combatant
             maxHP = e.maxHP,
             currentMP = 0,
             maxMP = 0,
-            speed = e.speed,
+            speed = e.speed * 1.4f,
             atbCurrent = 0f,
             isPlayer = false,
             portraitColor = Color.red,
