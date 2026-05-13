@@ -11,10 +11,14 @@ using Image = UnityEngine.UI.Image;
 public class CombatUIManager : MonoBehaviour
 {
     public static CombatUIManager Instance { get; private set; }
+    [Header("Database")]
+    [SerializeField] private EnemySpriteDatabase enemySpriteDatabase;
 
     [Header("Combattants")]
     [SerializeField] private RectTransform playerSpriteTransform;
     [SerializeField] private RectTransform enemySpriteTransform;
+    [SerializeField] private Image playerSpriteImage;
+    [SerializeField] private Image enemySpriteImage;
 
     [Header("Barres joueur")]
     [SerializeField] private Slider playerHPBar;
@@ -64,6 +68,22 @@ public class CombatUIManager : MonoBehaviour
 
         if (playerName != null) playerName.text = _player?.name ?? "Joueur";
         if (enemyName != null) enemyName.text = _enemy?.name ?? "Ennemi";
+
+        // Sprite ennemi
+        var enemyData = GameManager.Instance.CurrentEnemy;
+        Debug.Log($"[Combat] EnemyId: {enemyData?.id}, DB null: {enemySpriteDatabase == null}, Image null: {enemySpriteImage == null}");
+        if (enemySpriteDatabase != null && enemySpriteImage != null && enemyData != null)
+        {
+            var sprite = enemySpriteDatabase.GetSprite(enemyData.id);
+            Debug.Log($"[Combat] Sprite trouve: {sprite != null}");
+            if (sprite != null)
+                enemySpriteImage.sprite = sprite;
+        }
+
+        // Sprite joueur
+        Debug.Log($"[Combat] PlayerSprite null: {GameManager.Instance.PlayerSprite == null}");
+        if (playerSpriteImage != null && GameManager.Instance.PlayerSprite != null)
+            playerSpriteImage.sprite = GameManager.Instance.PlayerSprite;
 
         ShowActionButtons(false);
         UpdateBars();
