@@ -42,9 +42,17 @@ public class ATBManager : MonoBehaviour
 
         foreach (var c in Combatants)
         {
-
             if (c.IsDead) continue;
             c.atbCurrent += c.speed * atbFillRate * Time.deltaTime;
+
+            // Boss — boule de feu intermédiaire à 50% ATB
+            if (!c.isPlayer && BossController.Instance != null &&
+                BossController.Instance.IsBossFight &&
+                !BossController.Instance.FireballUsedThisCycle &&
+                c.atbCurrent >= 50f)
+            {
+                BossController.Instance.CastIntermediateFireball(c);
+            }
 
             if (c.IsATBFull && !ActionQueue.Contains(c))
             {
@@ -77,19 +85,37 @@ public class ATBManager : MonoBehaviour
     {
         await Task.Delay(800);
 
+        // Vérifier les phases du boss
+        var boss = BossController.Instance;
+        if (boss != null && boss.IsBossFight)
+            await boss.CheckPhases();
+
         var player = Combatants.Find(c => c.isPlayer);
         if (player != null && !player.IsDead)
         {
             var currentActor = CurrentActor;
-            int dmg = Mathf.Max(1,
-                (int)(currentActor.speed * 2) - (GameManager.Instance.Player.Strength / 4));
-            dmg = Mathf.Max(1, dmg + UnityEngine.Random.Range(-dmg / 5, dmg / 5));
+            int dmg;
+
+            // Boule de feu à demi-tour
+            float atbPercent = currentActor.atbCurrent / 100f;
+            if (boss != null && boss.ShouldCastFireball(atbPercent))
+            {
+                dmg = boss.GetFireballDamage();
+                CombatUIManager.Instance.AddLog(
+                    $"{currentActor.name} lance Boule de Feu et inflige {dmg} degats !");
+            }
+            else
+            {
+                dmg = Mathf.Max(1,
+                    (int)(currentActor.strength * 2) -
+                    (GameManager.Instance.Player.Strength / 4));
+                dmg = Mathf.Max(1, dmg + UnityEngine.Random.Range(-dmg / 5, dmg / 5));
+                CombatUIManager.Instance.AddLog(
+                    $"{currentActor.name} attaque et inflige {dmg} degats !");
+            }
 
             player.currentHP = Mathf.Max(0, player.currentHP - dmg);
             GameManager.Instance.TakeDamage(dmg);
-
-            CombatUIManager.Instance.AddLog(
-                $"{currentActor.name} attaque et inflige {dmg} degats !");
             CombatUIManager.Instance.UpdateBars();
 
             if (player.IsDead)
@@ -203,6 +229,9 @@ public class ATBManager : MonoBehaviour
     {
         if (CurrentActor != null)
             CurrentActor.atbCurrent = 0f;
+
+        // Reset du cycle boule de feu boss
+        BossController.Instance?.ResetFireballCycle();
 
         CurrentActor = null;
         CombatUIManager.Instance.ShowActionButtons(false);
