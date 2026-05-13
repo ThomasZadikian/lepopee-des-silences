@@ -4,12 +4,11 @@ using UnityEngine.SceneManagement;
 public class CombatTrigger : MonoBehaviour
 {
     [SerializeField] private int enemyId = 2;
-    [SerializeField] private int instanceId = 1; // ID unique par ennemi dans la scène
+    [SerializeField] private int instanceId = 1;
     private bool _isDead = false;
 
     private void Start()
     {
-        // Si cet ennemi est déjà mort, se désactiver
         if (RPG.Core.GameManager.Instance.DeadEnemies.Contains(instanceId))
             gameObject.SetActive(false);
     }
@@ -26,7 +25,6 @@ public class CombatTrigger : MonoBehaviour
             return;
         }
 
-        // Stocker l'ennemi dans GameManager et charger CombatScene
         RPG.Core.GameManager.Instance.CurrentEnemy = enemy;
         var pos = collision.transform.position;
         RPG.Core.GameManager.Instance.PosX = pos.x;

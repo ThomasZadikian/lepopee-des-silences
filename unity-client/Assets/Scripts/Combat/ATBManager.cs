@@ -40,7 +40,6 @@ public class ATBManager : MonoBehaviour
     {
         if (State != CombatState.Filling) return;
 
-        // Remplir les jauges ATB de tous les combattants
         foreach (var c in Combatants)
         {
 
@@ -54,7 +53,6 @@ public class ATBManager : MonoBehaviour
             }
         }
 
-        // Traiter la file d'action
         if (ActionQueue.Count > 0 && CurrentActor == null)
             ProcessNextActor();
     }
@@ -65,13 +63,11 @@ public class ATBManager : MonoBehaviour
 
         if (CurrentActor.isPlayer)
         {
-            // Figer le temps — joueur choisit son action
             State = CombatState.PlayerChoosing;
             CombatUIManager.Instance.ShowActionButtons(true);
         }
         else
         {
-            // Ennemi agit automatiquement
             State = CombatState.EnemyActing;
             EnemyActAsync();
         }
@@ -143,14 +139,12 @@ public class ATBManager : MonoBehaviour
         var player = Combatants.Find(c => c.isPlayer);
         var enemy = Combatants.Find(c => !c.isPlayer && !c.IsDead);
 
-        // Vérifier le MP
         if (GameManager.Instance.Player.CurrentMP < skill.mpCost)
         {
             CombatUIManager.Instance.AddLog("MP insuffisants !");
             return;
         }
 
-        // Consommer le MP
         GameManager.Instance.Player.CurrentMP -= skill.mpCost;
         player.currentMP -= skill.mpCost;
 
@@ -186,7 +180,6 @@ public class ATBManager : MonoBehaviour
         }
         else if (skill.effectType == "buff")
         {
-            // Hâte — augmente la vitesse ATB du joueur temporairement
             if (skill.name == "Hâte")
             {
                 player.speed *= 1.5f;
@@ -195,7 +188,6 @@ public class ATBManager : MonoBehaviour
         }
         else if (skill.effectType == "debuff")
         {
-            // Malédiction — réduit la résistance de l'ennemi
             if (enemy != null && skill.name == "Malédiction")
             {
                 enemy.speed *= 0.75f;
@@ -209,7 +201,6 @@ public class ATBManager : MonoBehaviour
 
     public void FinishTurn()
     {
-        // Remettre la jauge ATB à 0
         if (CurrentActor != null)
             CurrentActor.atbCurrent = 0f;
 

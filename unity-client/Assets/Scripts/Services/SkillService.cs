@@ -21,7 +21,6 @@ public class SkillService : MonoBehaviour
             var wrapper = await RPG.Network.ApiClient.Instance
                 .GetAsync<PlayerSkillArrayWrapper>("/api/playerskills/me");
 
-            // Extraire les SkillData depuis les PlayerSkillResponse
             var skills = new System.Collections.Generic.List<SkillData>();
             foreach (var ps in wrapper.items)
                 if (ps.skill != null)

@@ -8,8 +8,8 @@ public class SkillData
     public int mpCost;
     public int baseDamage;
     public int healAmount;
-    public string effectType;   // "damage", "heal", "buff", "debuff"
-    public string elementType;  // "fire", "lightning", "ice", "neutral"
+    public string effectType;
+    public string elementType;
     public string description;
 }
 
