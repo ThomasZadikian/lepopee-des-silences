@@ -19,6 +19,14 @@ public class CombatSceneInit : MonoBehaviour
             Combatant.FromEnemy(GameManager.Instance.CurrentEnemy)
         };
 
+        // Initialiser le boss si c'est un combat de boss
+        var bossController = FindObjectOfType<BossController>();
+        if (bossController != null)
+        {
+            var bossCombatant = combatants.Find(c => !c.isPlayer);
+            bossController.Initialize(bossCombatant);
+        }
+
         var combatSystem = gameObject.AddComponent<CombatSystem>();
         ATBManager.Instance.Initialize(combatants, combatSystem);
         CombatUIManager.Instance.Initialize(combatants);

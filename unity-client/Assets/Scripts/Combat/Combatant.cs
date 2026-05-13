@@ -13,6 +13,8 @@ public class Combatant
     public bool isPlayer;
     public Color portraitColor;
     public Sprite portrait;
+    public float physicalResistance = 1f;
+    public int strength = 0;
 
     public GameObject combatantObject;
     public RectTransform uiPortrait;
@@ -49,6 +51,8 @@ public class Combatant
             atbCurrent = 0f,
             isPlayer = false,
             portraitColor = Color.red,
+            physicalResistance = 1f,
+            strength = (int)e.strength,
         };
     }
 }

@@ -16,3 +16,6 @@ MonoBehaviour:
   - enemyId: 2
     sprite: {fileID: 3668477585986188777, guid: 0e0e7d176f3f09b4682a60cb8f71124d,
       type: 3}
+  - enemyId: 17
+    sprite: {fileID: 6330091150552197998, guid: 8a355bbd8460118418d2791dc2927c2c,
+      type: 3}

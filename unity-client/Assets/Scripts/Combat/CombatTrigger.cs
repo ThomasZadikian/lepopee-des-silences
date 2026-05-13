@@ -33,7 +33,10 @@ public class CombatTrigger : MonoBehaviour
         var sr = collision.gameObject.GetComponent<SpriteRenderer>();
         if (sr != null)
             RPG.Core.GameManager.Instance.PlayerSprite = sr.sprite;
-        SceneManager.LoadScene("CombatScene");
+        if (enemy.id == 17)
+            SceneManager.LoadScene("BossCombatScene");
+        else
+            SceneManager.LoadScene("CombatScene");
     }
 
     public void Die()
