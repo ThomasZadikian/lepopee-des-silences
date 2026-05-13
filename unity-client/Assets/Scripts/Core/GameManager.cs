@@ -9,6 +9,7 @@ namespace RPG.Core
         public static GameManager Instance { get; private set; }
 
         public PlayerData Player { get; private set; } = new PlayerData();
+        public Sprite PlayerSprite { get; set; } = null;
         public SessionStats Session { get; private set; } = new SessionStats();
         public EnemyResponse CurrentEnemy { get; set; } = null;
         public List<int> DeadEnemies { get; private set; } = new List<int>();

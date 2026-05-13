@@ -32,6 +32,9 @@ public class CombatTrigger : MonoBehaviour
         RPG.Core.GameManager.Instance.PosX = pos.x;
         RPG.Core.GameManager.Instance.PosY = pos.y;
         RPG.Core.GameManager.Instance.CurrentEnemyInstanceId = instanceId;
+        var sr = collision.gameObject.GetComponent<SpriteRenderer>();
+        if (sr != null)
+            RPG.Core.GameManager.Instance.PlayerSprite = sr.sprite;
         SceneManager.LoadScene("CombatScene");
     }
 
