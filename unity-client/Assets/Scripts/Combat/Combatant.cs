@@ -46,7 +46,7 @@ public class Combatant
             maxHP = e.maxHP,
             currentMP = 0,
             maxMP = 0,
-            speed = e.speed,
+            speed = e.speed * 1.4f,
             atbCurrent = 0f,
             isPlayer = false,
             portraitColor = Color.red,

@@ -26,6 +26,7 @@ public class CombatUIManager : MonoBehaviour
     [SerializeField] private Slider playerATBBar;
     [SerializeField] private TMP_Text playerName;
     [SerializeField] private TMP_Text playerHPText;
+    [SerializeField] private TMP_Text playerMPText;
 
     [Header("Barres ennemi")]
     [SerializeField] private Slider enemyHPBar;
@@ -44,6 +45,14 @@ public class CombatUIManager : MonoBehaviour
     [Header("File d'initiative")]
     [SerializeField] private Transform initiativeContainer;
     [SerializeField] private GameObject initiativePortraitPrefab;
+
+    [Header("Sorts")]
+    [SerializeField] private Button spell1Button;
+    [SerializeField] private Button spell2Button;
+    [SerializeField] private Button spell3Button;
+    [SerializeField] private TMP_Text spell1Text;
+    [SerializeField] private TMP_Text spell2Text;
+    [SerializeField] private TMP_Text spell3Text;
 
     private List<Combatant> _combatants;
     private Combatant _player;
@@ -71,20 +80,18 @@ public class CombatUIManager : MonoBehaviour
 
         // Sprite ennemi
         var enemyData = GameManager.Instance.CurrentEnemy;
-        Debug.Log($"[Combat] EnemyId: {enemyData?.id}, DB null: {enemySpriteDatabase == null}, Image null: {enemySpriteImage == null}");
         if (enemySpriteDatabase != null && enemySpriteImage != null && enemyData != null)
         {
             var sprite = enemySpriteDatabase.GetSprite(enemyData.id);
-            Debug.Log($"[Combat] Sprite trouve: {sprite != null}");
             if (sprite != null)
                 enemySpriteImage.sprite = sprite;
         }
 
         // Sprite joueur
-        Debug.Log($"[Combat] PlayerSprite null: {GameManager.Instance.PlayerSprite == null}");
         if (playerSpriteImage != null && GameManager.Instance.PlayerSprite != null)
             playerSpriteImage.sprite = GameManager.Instance.PlayerSprite;
 
+        InitializeSpellButtons();
         ShowActionButtons(false);
         UpdateBars();
     }
@@ -106,6 +113,10 @@ public class CombatUIManager : MonoBehaviour
         {
             if (playerHPBar != null) playerHPBar.value = _player.maxHP > 0 ? (float)_player.currentHP / _player.maxHP : 0;
             if (playerHPText != null) playerHPText.text = $"{_player.currentHP} / {_player.maxHP}";
+            if (playerMPBar != null && _player != null)
+                playerMPBar.value = _player.maxMP > 0 ? (float)_player.currentMP / _player.maxMP : 0;
+            if (playerMPText != null && _player != null)
+                playerMPText.text = $"{_player.currentMP} / {_player.maxMP}";
         }
         if (_enemy != null)
         {
@@ -184,6 +195,44 @@ public class CombatUIManager : MonoBehaviour
             if (txt != null)
                 txt.text = c.name[0].ToString();
         }
+    }
+
+    private void InitializeSpellButtons()
+    {
+        var skills = SkillService.Instance?.PlayerSkills;
+        if (skills == null) return;
+
+        var spellButtons = new (Button btn, TMP_Text txt)[]
+        {
+        (spell1Button, spell1Text),
+        (spell2Button, spell2Text),
+        (spell3Button, spell3Text),
+        };
+
+        for (int i = 0; i < spellButtons.Length; i++)
+        {
+            if (i >= skills.Length)
+            {
+                if (spellButtons[i].btn != null)
+                    spellButtons[i].btn.gameObject.SetActive(false);
+                continue;
+            }
+
+            var skill = skills[i];
+            if (spellButtons[i].txt != null)
+                spellButtons[i].txt.text = $"{skill.name} ({skill.mpCost} MP)";
+
+            // Capturer l'index pour le lambda
+            int idx = i;
+            spellButtons[i].btn?.onClick.AddListener(() =>
+                OnSpellClicked(SkillService.Instance.PlayerSkills[idx]));
+        }
+    }
+
+    public void OnSpellClicked(SkillData skill)
+    {
+        if (ATBManager.Instance.State != ATBManager.CombatState.PlayerChoosing) return;
+        ATBManager.Instance.PlayerCastSpell(skill);
     }
 
     public async Task AnimateAttack(bool isPlayer)

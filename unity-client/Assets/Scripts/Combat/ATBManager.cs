@@ -43,7 +43,6 @@ public class ATBManager : MonoBehaviour
         // Remplir les jauges ATB de tous les combattants
         foreach (var c in Combatants)
         {
-            Debug.Log($"[ATB] {c.name} ATB: {c.atbCurrent} Speed: {c.speed}");
 
             if (c.IsDead) continue;
             c.atbCurrent += c.speed * atbFillRate * Time.deltaTime;
@@ -131,6 +130,78 @@ public class ATBManager : MonoBehaviour
             State = CombatState.CombatOver;
             CombatUIManager.Instance.EnemyDefeated(enemy);
             return;
+        }
+
+        FinishTurn();
+    }
+
+    public void PlayerCastSpell(SkillData skill)
+    {
+        if (State != CombatState.PlayerChoosing) return;
+        if (skill == null) return;
+
+        var player = Combatants.Find(c => c.isPlayer);
+        var enemy = Combatants.Find(c => !c.isPlayer && !c.IsDead);
+
+        // Vérifier le MP
+        if (GameManager.Instance.Player.CurrentMP < skill.mpCost)
+        {
+            CombatUIManager.Instance.AddLog("MP insuffisants !");
+            return;
+        }
+
+        // Consommer le MP
+        GameManager.Instance.Player.CurrentMP -= skill.mpCost;
+        player.currentMP -= skill.mpCost;
+
+        if (skill.effectType == "damage" && enemy != null)
+        {
+            int dmg = Mathf.RoundToInt(
+                (skill.baseDamage + GameManager.Instance.Player.Intelligence) *
+                (GameManager.Instance.CurrentEnemy?.magicalResistance ?? 1f));
+            dmg = Mathf.Max(1, dmg + UnityEngine.Random.Range(-dmg / 5, dmg / 5));
+
+            enemy.currentHP = Mathf.Max(0, enemy.currentHP - dmg);
+            CombatUIManager.Instance.AddLog(
+                $"Tu lances {skill.name} et infliges {dmg} degats !");
+            CombatUIManager.Instance.UpdateBars();
+
+            if (enemy.IsDead)
+            {
+                State = CombatState.CombatOver;
+                CombatUIManager.Instance.EnemyDefeated(enemy);
+                return;
+            }
+        }
+        else if (skill.effectType == "heal")
+        {
+            int heal = skill.healAmount + GameManager.Instance.Player.Intelligence / 2;
+            GameManager.Instance.Player.CurrentHP = Mathf.Min(
+                GameManager.Instance.Player.MaxHP,
+                GameManager.Instance.Player.CurrentHP + heal);
+            player.currentHP = GameManager.Instance.Player.CurrentHP;
+
+            CombatUIManager.Instance.AddLog($"Tu lances {skill.name} et recuperes {heal} HP !");
+            CombatUIManager.Instance.UpdateBars();
+        }
+        else if (skill.effectType == "buff")
+        {
+            // Hâte — augmente la vitesse ATB du joueur temporairement
+            if (skill.name == "Hâte")
+            {
+                player.speed *= 1.5f;
+                CombatUIManager.Instance.AddLog("Hâte ! Ta vitesse ATB est augmentee !");
+            }
+        }
+        else if (skill.effectType == "debuff")
+        {
+            // Malédiction — réduit la résistance de l'ennemi
+            if (enemy != null && skill.name == "Malédiction")
+            {
+                enemy.speed *= 0.75f;
+                CombatUIManager.Instance.AddLog(
+                    $"Malediction ! La vitesse de {enemy.name} est reduite !");
+            }
         }
 
         FinishTurn();

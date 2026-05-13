@@ -37,7 +37,9 @@ public class LoginPanel : MonoBehaviour
             return;
         }
 
-        EnemyService.Instance.LoadEnemiesAsync(); 
+        EnemyService.Instance.LoadEnemiesAsync();
+        if (SkillService.Instance != null)
+            await SkillService.Instance.LoadPlayerSkillsAsync();
         var lastSave = await PlayerService.Instance.LoadLastSaveAsync();
         if (lastSave != null)
         {

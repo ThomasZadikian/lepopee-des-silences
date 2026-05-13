@@ -271,6 +271,7 @@ GameObject:
   - component: {fileID: 1892206663}
   - component: {fileID: 1892206662}
   - component: {fileID: 1892206668}
+  - component: {fileID: 1892206669}
   m_Layer: 0
   m_Name: Services
   m_TagString: Untagged
@@ -366,6 +367,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d04577083bf10b5448c16eb745148a25, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnemyService
+--- !u!114 &1892206669
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1892206661}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c1b7601054b582c44b0b5ad2bb455cc1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SkillService
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
