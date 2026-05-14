@@ -60,6 +60,14 @@ builder.Services.AddInfrastructureServices();
 
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 builder.Services.Configure<JwtSettings>(jwtSettings);
+
+// Validation du secret JWT au démarrage
+var jwtSecret = jwtSettings["Secret"];
+if (string.IsNullOrWhiteSpace(jwtSecret) || jwtSecret.Length < 32)
+    throw new InvalidOperationException(
+        "JwtSettings:Secret est manquant ou trop court (minimum 32 caractères). " +
+        "Configurez la variable d'environnement JwtSettings__Secret.");
+
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -75,7 +83,7 @@ builder.Services.AddAuthentication(options =>
         ValidAudience        = jwtSettings["Audience"],
         ValidateLifetime     = true,
         IssuerSigningKey     = new SymmetricSecurityKey(
-            Encoding.UTF8.GetBytes(jwtSettings["Secret"]!)),
+            Encoding.UTF8.GetBytes(jwtSecret)),
         ClockSkew            = TimeSpan.Zero
     };
 });
