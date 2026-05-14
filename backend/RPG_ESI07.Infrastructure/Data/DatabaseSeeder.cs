@@ -19,14 +19,9 @@ public static class DatabaseSeeder
 
         Console.WriteLine("Starting database seeding...");
 
-        // Mots de passe depuis les variables d'environnement
-        // Si absent, génère un mot de passe aléatoire sécurisé
-        var playerPassword = configuration?["Seed:PlayerPassword"]
-            ?? GenerateSecurePassword();
-        var adminPassword = configuration?["Seed:AdminPassword"]
-            ?? GenerateSecurePassword();
-        var testPassword = configuration?["Seed:TestPassword"]
-            ?? GenerateSecurePassword();
+        var playerPassword = GetRequiredSeedPassword(configuration, "Seed:PlayerPassword");
+        var adminPassword = GetRequiredSeedPassword(configuration, "Seed:AdminPassword");
+        var testPassword = GetRequiredSeedPassword(configuration, "Seed:TestPassword");
 
         // ===== 1. USERS =====
         var users = new[]
@@ -69,10 +64,6 @@ public static class DatabaseSeeder
         await context.SaveChangesAsync();
         Console.WriteLine($"Seeded {users.Length} users");
 
-        // ===== 2. PLAYERPROFILES =====
-        // devuser   → Elara (mage niveau 8, orienté magie)
-        // adminuser → Kael (guerrier niveau 25, build tank)
-        // testplayer → Zyx (voleur niveau 3, build vitesse)
         var profiles = new[]
         {
             new PlayerProfile
@@ -364,7 +355,6 @@ public static class DatabaseSeeder
         // ===== 6. COMBATSTATS =====
         var combatStats = new[]
         {
-            // Elara — mage, beaucoup de victoires propres, peu de dégâts physiques reçus
             new CombatStats
             {
                 PlayerId             = profiles[0].Id,
@@ -375,7 +365,6 @@ public static class DatabaseSeeder
                 TotalDamageTaken     = 4200,
                 TotalPlaytimeMinutes = 280
             },
-            // Kael — tank, énorme ratio de dégâts reçus / infligés
             new CombatStats
             {
                 PlayerId             = profiles[1].Id,
@@ -386,7 +375,6 @@ public static class DatabaseSeeder
                 TotalDamageTaken     = 62000,
                 TotalPlaytimeMinutes = 2880
             },
-            // Zyx — débutant, peu de combats
             new CombatStats
             {
                 PlayerId             = profiles[2].Id,
@@ -572,11 +560,13 @@ public static class DatabaseSeeder
         Console.WriteLine("Database seeding completed successfully!");
     }
 
-    private static string GenerateSecurePassword()
+    private static string GetRequiredSeedPassword(IConfiguration? configuration, string key)
     {
-        var chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
-        var random = new Random();
-        return new string(Enumerable.Repeat(chars, 20)
-            .Select(s => s[random.Next(s.Length)]).ToArray());
+        var value = configuration?[key];
+        if (string.IsNullOrWhiteSpace(value))
+            throw new InvalidOperationException(
+                $"La variable de seed '{key}' est requise. " +
+                $"Configurez-la dans les variables d'environnement.");
+        return value;
     }
 }
