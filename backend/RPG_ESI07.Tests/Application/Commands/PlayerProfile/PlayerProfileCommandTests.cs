@@ -124,7 +124,7 @@ public class SyncGameSaveHandlerTests
             _combatRepo.Object);
     }
 
-    private SyncGameSaveCommand BuildCommand(int userId = 1) => new(
+    private static SyncGameSaveCommand BuildCommand(int userId = 1) => new(
         RequestingUserId:      userId,
         CurrentZone:           "Forest",
         PositionX:             10f,
@@ -148,7 +148,7 @@ public class SyncGameSaveHandlerTests
         TotalPlaytimeMinutes:  120
     );
 
-    private PlayerProfile BuildProfile(int userId = 1) => new()
+    private static PlayerProfile BuildProfile(int userId = 1) => new()
     {
         Id     = 1,
         UserId = userId,

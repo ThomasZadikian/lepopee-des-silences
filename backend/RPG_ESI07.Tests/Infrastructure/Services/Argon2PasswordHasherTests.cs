@@ -38,13 +38,13 @@ public class Argon2PasswordHasherTests
         var hash1 = _hasher.HashPassword(password);
         var hash2 = _hasher.HashPassword(password);
 
-        hash1.Should().NotBe(hash2); // Le sel aléatoire garantit l'unicité
+        hash1.Should().NotBe(hash2); 
     }
 
     [Theory]
-    [InlineData(null, "somehash")]
+    [InlineData(null!, "somehash")]
     [InlineData("", "somehash")]
-    [InlineData("password", null)]
+    [InlineData("password", null!)]
     [InlineData("password", "")]
     public void VerifyPassword_ReturnsFalse_WhenInputsAreInvalid(string password, string hash)
     {

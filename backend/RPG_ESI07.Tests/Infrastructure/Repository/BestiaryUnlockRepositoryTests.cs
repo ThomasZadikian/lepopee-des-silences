@@ -25,6 +25,8 @@ public class BestiaryUnlockRepositoryTests : IDisposable
     {
         _context.Database.EnsureDeleted();
         _context.Dispose();
+        GC.SuppressFinalize(this);
+
     }
 
     [Fact]

@@ -30,7 +30,7 @@ public class EnemyRepository : IEnemyRepository
     public async Task<List<Enemy>> GetByTypeAsync(string type)
     {
         return await _context.Enemies
-            .Where(e => e.Type.ToLower() == type.ToLower())
+            .Where(e => e.Type.Equals(type, StringComparison.CurrentCultureIgnoreCase))
             .ToListAsync();
     }
 
