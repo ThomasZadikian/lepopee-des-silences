@@ -178,7 +178,9 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-// app.UseHttpsRedirection();
+// HTTPS redirection désactivée — géré par le reverse proxy Railway en production
+// app.UseHttpsRedirection() 
+
 app.UseCors("AllowFrontend");
 app.UseRateLimiter();
 app.UseSerilogRequestLogging(options =>

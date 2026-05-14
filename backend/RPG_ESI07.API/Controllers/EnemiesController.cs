@@ -11,6 +11,7 @@ namespace RPG_ESI07.API.Controllers;
 public class EnemiesController : ControllerBase
 {
     private readonly IMediator _mediator;
+
     public EnemiesController(IMediator mediator) => _mediator = mediator;
 
     [HttpGet]

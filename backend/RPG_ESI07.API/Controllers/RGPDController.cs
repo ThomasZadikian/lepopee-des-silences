@@ -5,6 +5,7 @@ using RPG_ESI07.Application.Commands.RGPD;
 using RPG_ESI07.Application.Queries.RGPD;
 using System.Security.Claims;
 using System.Text.Json;
+
 namespace RPG_ESI07.API.Controllers;
 
 [ApiController]
@@ -13,6 +14,7 @@ namespace RPG_ESI07.API.Controllers;
 public class RGPDController : ControllerBase
 {
     private readonly IMediator _mediator;
+
     public RGPDController(IMediator mediator) => _mediator = mediator;
 
     [HttpGet("export")]

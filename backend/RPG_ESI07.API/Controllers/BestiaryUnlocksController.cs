@@ -65,6 +65,7 @@ public class BestiaryUnlocksController : ControllerBase
         var result = await _mediator.Send(new DeleteBestiaryUnlockCommand(id, currentUserId, isAdmin));
         return Ok(result);
     }
+
     [HttpGet("me")]
     public async Task<IActionResult> GetMine()
     {

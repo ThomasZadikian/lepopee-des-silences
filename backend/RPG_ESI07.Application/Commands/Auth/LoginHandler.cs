@@ -15,18 +15,18 @@ public class LoginHandler
     public LoginHandler(
     IUserRepository userRepo,
     IPasswordHasher hasher,
-    ITokenService tokenService, 
+    ITokenService tokenService,
     ILogger<LoginHandler> logger)
     {
         _userRepo = userRepo;
         _hasher = hasher;
         _tokenService = tokenService;
-        _logger = logger; 
+        _logger = logger;
     }
 
     public async Task<AuthResponse> Handle(
     LoginCommand request,
-    CancellationToken ct)
+    CancellationToken cancellationToken)
     {
         _logger.LogInformation(
             "Login attempt for {Username}",
@@ -73,6 +73,5 @@ public class LoginHandler
         return new AuthResponse(
         true, token, false,
         "Login successful");
-
     }
 }
