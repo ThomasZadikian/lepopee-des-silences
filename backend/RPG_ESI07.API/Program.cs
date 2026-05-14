@@ -158,7 +158,7 @@ using (var scope = app.Services.CreateScope())
     if (context.Database.IsRelational())
         await context.Database.MigrateAsync();
 
-    await DatabaseSeeder.SeedAsync(context, hasher);
+    await DatabaseSeeder.SeedAsync(context, hasher, app.Configuration);
 }
 
 // ── Swagger — dev uniquement ───────────────────────────────────────────────────

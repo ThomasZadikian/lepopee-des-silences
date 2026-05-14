@@ -1,6 +1,7 @@
-﻿using RPG_ESI07.Domain.Interfaces;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using RPG_ESI07.Domain.Entities;
+using RPG_ESI07.Domain.Interfaces;
 using System.Text;
 using System.Text.Json;
 
@@ -8,7 +9,7 @@ namespace RPG_ESI07.Infrastructure.Data;
 
 public static class DatabaseSeeder
 {
-    public static async Task SeedAsync(AppDbContext context, IPasswordHasher hasher)
+    public static async Task SeedAsync(AppDbContext context, IPasswordHasher hasher, IConfiguration? configuration = null)
     {
         if (await context.Users.AnyAsync())
         {
@@ -18,17 +19,23 @@ public static class DatabaseSeeder
 
         Console.WriteLine("Starting database seeding...");
 
+        // Mots de passe depuis les variables d'environnement
+        // Si absent, génère un mot de passe aléatoire sécurisé
+        var playerPassword = configuration?["Seed:PlayerPassword"]
+            ?? GenerateSecurePassword();
+        var adminPassword = configuration?["Seed:AdminPassword"]
+            ?? GenerateSecurePassword();
+        var testPassword = configuration?["Seed:TestPassword"]
+            ?? GenerateSecurePassword();
+
         // ===== 1. USERS =====
-        // devuser   → Password123!  (Player — mage débutant)
-        // adminuser → AdminPass456! (Admin  — guerrier expérimenté)
-        // testplayer → TestPass789! (Player — voleur furtif)
         var users = new[]
         {
             new User
             {
                 Username    = "devuser",
-                Email       = Encoding.UTF8.GetBytes("dev@test.com"),
-                PasswordHash= hasher.HashPassword("Password123!"),
+                Email       = Encoding.UTF8.GetBytes("dev@rpg-esi07.com"),
+                PasswordHash= hasher.HashPassword(playerPassword),
                 Role        = "Player",
                 MfaEnabled  = false,
                 CreatedAt   = DateTime.UtcNow,
@@ -38,8 +45,8 @@ public static class DatabaseSeeder
             new User
             {
                 Username    = "adminuser",
-                Email       = Encoding.UTF8.GetBytes("admin@test.com"),
-                PasswordHash= hasher.HashPassword("AdminPass456!"),
+                Email       = Encoding.UTF8.GetBytes("admin@rpg-esi07.com"),
+                PasswordHash= hasher.HashPassword(adminPassword),
                 Role        = "Admin",
                 MfaEnabled  = false,
                 CreatedAt   = DateTime.UtcNow.AddDays(-60),
@@ -49,8 +56,8 @@ public static class DatabaseSeeder
             new User
             {
                 Username    = "testplayer",
-                Email       = Encoding.UTF8.GetBytes("player@test.com"),
-                PasswordHash= hasher.HashPassword("TestPass789!"),
+                Email       = Encoding.UTF8.GetBytes("player@rpg-esi07.com"),
+                PasswordHash= hasher.HashPassword(testPassword),
                 Role        = "Player",
                 MfaEnabled  = false,
                 CreatedAt   = DateTime.UtcNow.AddDays(-10),
@@ -556,16 +563,20 @@ public static class DatabaseSeeder
             new AuditLog { UserId = users[0].Id, EventType = "LOGIN_SUCCESS", EventData = JsonSerializer.Serialize(new { method = "password" }), IpAddress = "127.0.0.1", UserAgent = "Mozilla/5.0", Timestamp = DateTime.UtcNow.AddHours(-1) },
             new AuditLog { UserId = users[1].Id, EventType = "LOGIN_SUCCESS", EventData = JsonSerializer.Serialize(new { method = "password" }), IpAddress = "127.0.0.1", UserAgent = "Mozilla/5.0", Timestamp = DateTime.UtcNow.AddMinutes(-30) },
             new AuditLog { UserId = users[0].Id, EventType = "DATA_EXPORT",   EventData = JsonSerializer.Serialize(new { format = "json", size = "3.1KB" }), IpAddress = "127.0.0.1", UserAgent = "Mozilla/5.0", Timestamp = DateTime.UtcNow.AddMinutes(-15) },
-            new AuditLog { UserId = users[2].Id, EventType = "LOGIN_SUCCESS", EventData = JsonSerializer.Serialize(new { method = "password" }), IpAddress = "192.168.1.1", UserAgent = "Mozilla/5.0", Timestamp = DateTime.UtcNow.AddDays(-2) },
+            new AuditLog { UserId = users[2].Id, EventType = "LOGIN_SUCCESS", EventData = JsonSerializer.Serialize(new { method = "password" }), IpAddress = "127.0.0.1", UserAgent = "Mozilla/5.0", Timestamp = DateTime.UtcNow.AddDays(-2) },
         };
         await context.AuditLogs.AddRangeAsync(auditLogs);
         await context.SaveChangesAsync();
         Console.WriteLine($"Seeded {auditLogs.Length} audit logs");
 
-        Console.WriteLine("✅ Database seeding completed successfully!");
-        Console.WriteLine("Users créés :");
-        Console.WriteLine("  devuser     / Password123!  (Player — Elara, mage niv.8)");
-        Console.WriteLine("  adminuser   / AdminPass456! (Admin  — Kael, guerrier niv.25)");
-        Console.WriteLine("  testplayer  / TestPass789!  (Player — Zyx, voleur niv.3)");
+        Console.WriteLine("Database seeding completed successfully!");
+    }
+
+    private static string GenerateSecurePassword()
+    {
+        var chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
+        var random = new Random();
+        return new string(Enumerable.Repeat(chars, 20)
+            .Select(s => s[random.Next(s.Length)]).ToArray());
     }
 }
