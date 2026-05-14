@@ -1,14 +1,15 @@
 <template>
   <div>
-
     <!-- ── Header Admin ───────────────────────────────────────────── -->
-    <div style="
+    <div
+      style="
       margin: -32px -32px 0 -32px;
       padding: 10px 32px;
       background: var(--rpg-ink);
       color: white;
       display: flex; justify-content: space-between; align-items: center;
-    ">
+    "
+    >
       <div style="font-size:10px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;">
         ● RPG_ESI07 Admin · Console privée
       </div>
@@ -18,14 +19,18 @@
     </div>
 
     <!-- ── Titre + onglets ────────────────────────────────────────── -->
-    <div style="
+    <div
+      style="
       margin: 0 -32px;
       padding: 32px 32px 0;
       border-bottom: 1px solid var(--rpg-border);
       display: flex; justify-content: space-between; align-items: flex-end;
-    ">
+    "
+    >
       <div>
-        <div class="editorial-label mb-2">Console Admin · Arbres de talents</div>
+        <div class="editorial-label mb-2">
+          Console Admin · Arbres de talents
+        </div>
         <div style="font-family:var(--font-serif);font-size:clamp(2rem,4vw,3rem);font-weight:900;letter-spacing:-0.03em;line-height:1;margin-bottom:24px;">
           Toutes les compétences
         </div>
@@ -50,18 +55,22 @@
     </div>
 
     <!-- ── Compteurs ──────────────────────────────────────────────── -->
-    <div style="
+    <div
+      style="
       margin: 0 -32px;
       display: grid; grid-template-columns: repeat(4, 1fr);
       border-bottom: 1px solid var(--rpg-border);
-    ">
+    "
+    >
       <div
         v-for="(stat, i) in stats"
         :key="stat.label"
         style="padding:24px 32px;"
         :style="i < 3 ? 'border-right:1px solid var(--rpg-border);' : ''"
       >
-        <div class="editorial-label mb-2">{{ stat.label }}</div>
+        <div class="editorial-label mb-2">
+          {{ stat.label }}
+        </div>
         <div style="font-family:var(--font-serif);font-size:2rem;font-weight:700;line-height:1;">
           {{ stat.value }}
         </div>
@@ -69,12 +78,14 @@
     </div>
 
     <!-- ── Barre d'outils ────────────────────────────────────────── -->
-    <div style="
+    <div
+      style="
       margin: 0 -32px;
       padding: 14px 32px;
       border-bottom: 1px solid var(--rpg-border);
       display: flex; justify-content: space-between; align-items: center;
-    ">
+    "
+    >
       <div class="d-flex ga-4">
         <span style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;">
           ● Tous
@@ -99,37 +110,62 @@
             font-family:var(--font-sans);font-size:11px;
             outline:none;width:180px;
           "
-        />
-        <button style="
+        >
+        <button
+          style="
           padding:7px 14px;
           border:1px solid var(--rpg-border);
           background:transparent;cursor:pointer;
           font-family:var(--font-sans);font-size:10px;
           font-weight:600;letter-spacing:.1em;text-transform:uppercase;
-        ">
+        "
+        >
           Exporter CSV
         </button>
       </div>
     </div>
 
     <!-- Chargement -->
-    <div v-if="loading" class="d-flex justify-center pa-12">
-      <v-progress-circular indeterminate color="primary" size="40" width="2" />
+    <div
+      v-if="loading"
+      class="d-flex justify-center pa-12"
+    >
+      <v-progress-circular
+        indeterminate
+        color="primary"
+        size="40"
+        width="2"
+      />
     </div>
 
     <template v-else>
-
       <!-- ── Header tableau ────────────────────────────────────────── -->
       <div style="border-bottom:1px solid var(--rpg-border);padding:10px 0;margin-top:8px;">
         <div style="display:grid;grid-template-columns:80px 2fr 1fr 1fr 80px 80px 1fr 120px;gap:0;">
-          <div class="editorial-label">ID</div>
-          <div class="editorial-label">Nom</div>
-          <div class="editorial-label">Type</div>
-          <div class="editorial-label">Élément</div>
-          <div class="editorial-label">MP</div>
-          <div class="editorial-label">DMG</div>
-          <div class="editorial-label">Statut</div>
-          <div class="editorial-label text-right">Actions</div>
+          <div class="editorial-label">
+            ID
+          </div>
+          <div class="editorial-label">
+            Nom
+          </div>
+          <div class="editorial-label">
+            Type
+          </div>
+          <div class="editorial-label">
+            Élément
+          </div>
+          <div class="editorial-label">
+            MP
+          </div>
+          <div class="editorial-label">
+            DMG
+          </div>
+          <div class="editorial-label">
+            Statut
+          </div>
+          <div class="editorial-label text-right">
+            Actions
+          </div>
         </div>
       </div>
 
@@ -141,7 +177,6 @@
         style="padding:14px 0;"
       >
         <div style="display:grid;grid-template-columns:80px 2fr 1fr 1fr 80px 80px 1fr 120px;gap:0;align-items:center;">
-
           <div style="font-size:10px;font-weight:600;color:var(--rpg-ink-muted);">
             SKL-{{ String(i + 1).padStart(3, '0') }}
           </div>
@@ -174,10 +209,15 @@
 
           <div class="d-flex align-center ga-1">
             <div style="width:6px;height:6px;border-radius:50%;background:#1E8449;" />
-            <div style="font-size:11px;color:#1E8449;">Actif</div>
+            <div style="font-size:11px;color:#1E8449;">
+              Actif
+            </div>
           </div>
 
-          <div style="text-align:right;" class="d-flex justify-end ga-3">
+          <div
+            style="text-align:right;"
+            class="d-flex justify-end ga-3"
+          >
             <span style="font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;text-decoration:underline;">
               Éditer
             </span>
@@ -190,11 +230,17 @@
         </div>
       </div>
 
-      <div v-if="filteredSkills.length === 0" class="text-center py-12">
-        <div class="editorial-label mb-2">Aucun résultat</div>
-        <div style="font-size:13px;color:var(--rpg-ink-muted);">Aucune compétence ne correspond.</div>
+      <div
+        v-if="filteredSkills.length === 0"
+        class="text-center py-12"
+      >
+        <div class="editorial-label mb-2">
+          Aucun résultat
+        </div>
+        <div style="font-size:13px;color:var(--rpg-ink-muted);">
+          Aucune compétence ne correspond.
+        </div>
       </div>
-
     </template>
   </div>
 </template>

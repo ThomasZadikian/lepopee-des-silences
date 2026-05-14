@@ -3,10 +3,11 @@
     <v-layout>
       <!-- ── Sidebar ────────────────────────────────────────────────── -->
       <v-navigation-drawer 
-      permanent 
-      width="200" 
-      class="rpg-sidebar" 
-      style="position: fixed; height: 100vh; overflow-y: auto;">
+        permanent 
+        width="200" 
+        class="rpg-sidebar" 
+        style="position: fixed; height: 100vh; overflow-y: auto;"
+      >
         <!-- Logo -->
         <div class="pa-5 grid-border-bottom">
           <div
@@ -19,7 +20,9 @@
           >
             RPG_ESI07
           </div>
-          <div class="editorial-label mt-1">Portail joueur</div>
+          <div class="editorial-label mt-1">
+            Portail joueur
+          </div>
         </div>
 
         <!-- Navigation principale -->
@@ -38,7 +41,9 @@
         <!-- Section Admin -->
         <template v-if="auth.isAdmin">
           <div class="grid-border-top py-3">
-            <div class="editorial-label px-5 mb-2">Administration</div>
+            <div class="editorial-label px-5 mb-2">
+              Administration
+            </div>
             <div
               v-for="item in adminItems"
               :key="item.name"
@@ -105,7 +110,10 @@
         <v-spacer />
 
         <div class="d-flex align-center ga-4 mr-5">
-          <span class="editorial-label" style="color: var(--rpg-ink-muted)">
+          <span
+            class="editorial-label"
+            style="color: var(--rpg-ink-muted)"
+          >
             {{
               new Date().toLocaleDateString("fr-FR", {
                 day: "2-digit",
@@ -114,13 +122,19 @@
               })
             }}
           </span>
-          <span v-if="auth.isAdmin" class="editorial-tag"> Admin </span>
+          <span
+            v-if="auth.isAdmin"
+            class="editorial-tag"
+          > Admin </span>
         </div>
       </v-app-bar>
 
       <!-- ── Contenu principal ───────────────────────────────────────── -->
       <v-main>
-        <v-container fluid class="pa-8">
+        <v-container
+          fluid
+          class="pa-8"
+        >
           <RouterView />
         </v-container>
       </v-main>
