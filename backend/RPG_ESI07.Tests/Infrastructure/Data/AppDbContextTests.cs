@@ -41,7 +41,6 @@ public class AppDbContextTests : IDisposable
     [Fact]
     public void ModelConfiguration_EnemyEntity_AppliesCheckConstraints()
     {
-        // Accès au modèle de conception complet au lieu du modèle d'exécution optimisé
         var designTimeModel = _context.GetService<IDesignTimeModel>().Model;
         var entityType = designTimeModel.FindEntityType(typeof(Enemy));
 
@@ -59,7 +58,7 @@ public class AppDbContextTests : IDisposable
             .Single(fk => fk.PrincipalEntityType.ClrType == typeof(User));
 
         foreignKey.DeleteBehavior.Should().Be(DeleteBehavior.Cascade);
-        foreignKey.IsUnique.Should().BeTrue(); // Relation 1-to-1
+        foreignKey.IsUnique.Should().BeTrue();
     }
 
     [Fact]

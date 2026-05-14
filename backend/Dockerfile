@@ -21,8 +21,8 @@ FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 
 # Créer un utilisateur non-root
-RUN addgroup --system appgroup && \
-    adduser --system --ingroup appgroup appuser && \
+RUN groupadd --system appgroup && \
+    useradd --system --gid appgroup appuser && \
     mkdir -p logs && \
     chown -R appuser:appgroup /app
 

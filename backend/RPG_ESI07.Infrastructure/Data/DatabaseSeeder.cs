@@ -1,6 +1,7 @@
-﻿using RPG_ESI07.Domain.Interfaces;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using RPG_ESI07.Domain.Entities;
+using RPG_ESI07.Domain.Interfaces;
 using System.Text;
 using System.Text.Json;
 
@@ -8,7 +9,7 @@ namespace RPG_ESI07.Infrastructure.Data;
 
 public static class DatabaseSeeder
 {
-    public static async Task SeedAsync(AppDbContext context, IPasswordHasher hasher)
+    public static async Task SeedAsync(AppDbContext context, IPasswordHasher hasher, IConfiguration? configuration = null)
     {
         if (await context.Users.AnyAsync())
         {
@@ -18,17 +19,18 @@ public static class DatabaseSeeder
 
         Console.WriteLine("Starting database seeding...");
 
+        var playerPassword = GetRequiredSeedPassword(configuration, "Seed:PlayerPassword");
+        var adminPassword = GetRequiredSeedPassword(configuration, "Seed:AdminPassword");
+        var testPassword = GetRequiredSeedPassword(configuration, "Seed:TestPassword");
+
         // ===== 1. USERS =====
-        // devuser   → Password123!  (Player — mage débutant)
-        // adminuser → AdminPass456! (Admin  — guerrier expérimenté)
-        // testplayer → TestPass789! (Player — voleur furtif)
         var users = new[]
         {
             new User
             {
                 Username    = "devuser",
-                Email       = Encoding.UTF8.GetBytes("dev@test.com"),
-                PasswordHash= hasher.HashPassword("Password123!"),
+                Email       = Encoding.UTF8.GetBytes("dev@rpg-esi07.com"),
+                PasswordHash= hasher.HashPassword(playerPassword),
                 Role        = "Player",
                 MfaEnabled  = false,
                 CreatedAt   = DateTime.UtcNow,
@@ -38,8 +40,8 @@ public static class DatabaseSeeder
             new User
             {
                 Username    = "adminuser",
-                Email       = Encoding.UTF8.GetBytes("admin@test.com"),
-                PasswordHash= hasher.HashPassword("AdminPass456!"),
+                Email       = Encoding.UTF8.GetBytes("admin@rpg-esi07.com"),
+                PasswordHash= hasher.HashPassword(adminPassword),
                 Role        = "Admin",
                 MfaEnabled  = false,
                 CreatedAt   = DateTime.UtcNow.AddDays(-60),
@@ -49,8 +51,8 @@ public static class DatabaseSeeder
             new User
             {
                 Username    = "testplayer",
-                Email       = Encoding.UTF8.GetBytes("player@test.com"),
-                PasswordHash= hasher.HashPassword("TestPass789!"),
+                Email       = Encoding.UTF8.GetBytes("player@rpg-esi07.com"),
+                PasswordHash= hasher.HashPassword(testPassword),
                 Role        = "Player",
                 MfaEnabled  = false,
                 CreatedAt   = DateTime.UtcNow.AddDays(-10),
@@ -62,10 +64,6 @@ public static class DatabaseSeeder
         await context.SaveChangesAsync();
         Console.WriteLine($"Seeded {users.Length} users");
 
-        // ===== 2. PLAYERPROFILES =====
-        // devuser   → Elara (mage niveau 8, orienté magie)
-        // adminuser → Kael (guerrier niveau 25, build tank)
-        // testplayer → Zyx (voleur niveau 3, build vitesse)
         var profiles = new[]
         {
             new PlayerProfile
@@ -357,7 +355,6 @@ public static class DatabaseSeeder
         // ===== 6. COMBATSTATS =====
         var combatStats = new[]
         {
-            // Elara — mage, beaucoup de victoires propres, peu de dégâts physiques reçus
             new CombatStats
             {
                 PlayerId             = profiles[0].Id,
@@ -368,7 +365,6 @@ public static class DatabaseSeeder
                 TotalDamageTaken     = 4200,
                 TotalPlaytimeMinutes = 280
             },
-            // Kael — tank, énorme ratio de dégâts reçus / infligés
             new CombatStats
             {
                 PlayerId             = profiles[1].Id,
@@ -379,7 +375,6 @@ public static class DatabaseSeeder
                 TotalDamageTaken     = 62000,
                 TotalPlaytimeMinutes = 2880
             },
-            // Zyx — débutant, peu de combats
             new CombatStats
             {
                 PlayerId             = profiles[2].Id,
@@ -556,16 +551,22 @@ public static class DatabaseSeeder
             new AuditLog { UserId = users[0].Id, EventType = "LOGIN_SUCCESS", EventData = JsonSerializer.Serialize(new { method = "password" }), IpAddress = "127.0.0.1", UserAgent = "Mozilla/5.0", Timestamp = DateTime.UtcNow.AddHours(-1) },
             new AuditLog { UserId = users[1].Id, EventType = "LOGIN_SUCCESS", EventData = JsonSerializer.Serialize(new { method = "password" }), IpAddress = "127.0.0.1", UserAgent = "Mozilla/5.0", Timestamp = DateTime.UtcNow.AddMinutes(-30) },
             new AuditLog { UserId = users[0].Id, EventType = "DATA_EXPORT",   EventData = JsonSerializer.Serialize(new { format = "json", size = "3.1KB" }), IpAddress = "127.0.0.1", UserAgent = "Mozilla/5.0", Timestamp = DateTime.UtcNow.AddMinutes(-15) },
-            new AuditLog { UserId = users[2].Id, EventType = "LOGIN_SUCCESS", EventData = JsonSerializer.Serialize(new { method = "password" }), IpAddress = "192.168.1.1", UserAgent = "Mozilla/5.0", Timestamp = DateTime.UtcNow.AddDays(-2) },
+            new AuditLog { UserId = users[2].Id, EventType = "LOGIN_SUCCESS", EventData = JsonSerializer.Serialize(new { method = "password" }), IpAddress = "127.0.0.1", UserAgent = "Mozilla/5.0", Timestamp = DateTime.UtcNow.AddDays(-2) },
         };
         await context.AuditLogs.AddRangeAsync(auditLogs);
         await context.SaveChangesAsync();
         Console.WriteLine($"Seeded {auditLogs.Length} audit logs");
 
-        Console.WriteLine("✅ Database seeding completed successfully!");
-        Console.WriteLine("Users créés :");
-        Console.WriteLine("  devuser     / Password123!  (Player — Elara, mage niv.8)");
-        Console.WriteLine("  adminuser   / AdminPass456! (Admin  — Kael, guerrier niv.25)");
-        Console.WriteLine("  testplayer  / TestPass789!  (Player — Zyx, voleur niv.3)");
+        Console.WriteLine("Database seeding completed successfully!");
+    }
+
+    private static string GetRequiredSeedPassword(IConfiguration? configuration, string key)
+    {
+        var value = configuration?[key];
+        if (string.IsNullOrWhiteSpace(value))
+            throw new InvalidOperationException(
+                $"La variable de seed '{key}' est requise. " +
+                $"Configurez-la dans les variables d'environnement.");
+        return value;
     }
 }
