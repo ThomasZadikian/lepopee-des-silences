@@ -1,57 +1,80 @@
 <template>
   <div>
-
     <!-- Chargement -->
-    <div v-if="loading" class="d-flex justify-center align-center" style="min-height: 60vh;">
-      <v-progress-circular indeterminate color="primary" size="40" width="2" />
+    <div
+      v-if="loading"
+      class="d-flex justify-center align-center"
+      style="min-height: 60vh;"
+    >
+      <v-progress-circular
+        indeterminate
+        color="primary"
+        size="40"
+        width="2"
+      />
     </div>
 
     <template v-else>
-
       <!-- ── HERO ───────────────────────────────────────────────────── -->
-<div
-  style="
+      <div
+        style="
     margin: -32px -32px 40px -32px;
     position: relative; overflow: hidden;
     border-bottom: 1px solid var(--rpg-border);
   "
->
-  <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; min-height: 160px;">
-    <div style="padding: 40px 32px; border-right: 1px solid var(--rpg-border);">
-      <div class="editorial-label mb-3">Mes données · Progression</div>
-      <div style="font-family:var(--font-serif);font-size:clamp(2rem,3vw,3rem);font-weight:900;line-height:1;letter-spacing:-0.03em;margin-bottom:12px;">
-        Sauvegardes
-        <span style="font-style:italic;color:var(--rpg-ink-muted);display:block;">&amp; parties.</span>
+      >
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; min-height: 160px;">
+          <div style="padding: 40px 32px; border-right: 1px solid var(--rpg-border);">
+            <div class="editorial-label mb-3">
+              Mes données · Progression
+            </div>
+            <div style="font-family:var(--font-serif);font-size:clamp(2rem,3vw,3rem);font-weight:900;line-height:1;letter-spacing:-0.03em;margin-bottom:12px;">
+              Sauvegardes
+              <span style="font-style:italic;color:var(--rpg-ink-muted);display:block;">&amp; parties.</span>
+            </div>
+          </div>
+          <div style="padding:40px 32px;border-right:1px solid var(--rpg-border);">
+            <div class="editorial-label mb-3">
+              Total sauvegardes
+            </div>
+            <div style="font-family:var(--font-serif);font-size:2.5rem;font-weight:700;line-height:1;">
+              {{ saves.length }}
+            </div>
+          </div>
+          <div style="padding:40px 32px;border-right:1px solid var(--rpg-border);">
+            <div class="editorial-label mb-3">
+              Dernière zone
+            </div>
+            <div style="font-family:var(--font-serif);font-size:1.8rem;font-weight:700;line-height:1.2;">
+              {{ lastSave?.currentZone ?? '—' }}
+            </div>
+          </div>
+          <div style="padding:40px 32px;">
+            <div class="editorial-label mb-3">
+              Dernière sync
+            </div>
+            <div style="font-family:var(--font-serif);font-size:1.4rem;font-weight:700;line-height:1.2;">
+              {{ lastSave ? new Date(lastSave.savedAt).toLocaleDateString('fr-FR') : '—' }}
+            </div>
+          </div>
+        </div>
       </div>
-    </div>
-    <div style="padding:40px 32px;border-right:1px solid var(--rpg-border);">
-      <div class="editorial-label mb-3">Total sauvegardes</div>
-      <div style="font-family:var(--font-serif);font-size:2.5rem;font-weight:700;line-height:1;">
-        {{ saves.length }}
-      </div>
-    </div>
-    <div style="padding:40px 32px;border-right:1px solid var(--rpg-border);">
-      <div class="editorial-label mb-3">Dernière zone</div>
-      <div style="font-family:var(--font-serif);font-size:1.8rem;font-weight:700;line-height:1.2;">
-        {{ lastSave?.currentZone ?? '—' }}
-      </div>
-    </div>
-    <div style="padding:40px 32px;">
-      <div class="editorial-label mb-3">Dernière sync</div>
-      <div style="font-family:var(--font-serif);font-size:1.4rem;font-weight:700;line-height:1.2;">
-        {{ lastSave ? new Date(lastSave.savedAt).toLocaleDateString('fr-FR') : '—' }}
-      </div>
-    </div>
-  </div>
-</div>
 
       <!-- Aucune sauvegarde -->
-      <div v-if="saves.length === 0" class="text-center py-16">
-        <div class="editorial-label mb-4">Aucune donnée</div>
+      <div
+        v-if="saves.length === 0"
+        class="text-center py-16"
+      >
+        <div class="editorial-label mb-4">
+          Aucune donnée
+        </div>
         <div style="font-family: var(--font-serif); font-size: 1.5rem; font-weight: 700;">
           Aucune sauvegarde trouvée
         </div>
-        <div class="mt-2" style="color: var(--rpg-ink-muted); font-size: 13px;">
+        <div
+          class="mt-2"
+          style="color: var(--rpg-ink-muted); font-size: 13px;"
+        >
           Lancez le jeu pour créer votre première sauvegarde.
         </div>
       </div>
@@ -62,19 +85,32 @@
         <div style="border-bottom: 1px solid rgba(0,0,0,0.08); padding-bottom: 12px; margin-bottom: 0;">
           <v-row no-gutters>
             <v-col cols="1">
-              <div class="editorial-label">#</div>
+              <div class="editorial-label">
+                #
+              </div>
             </v-col>
             <v-col cols="3">
-              <div class="editorial-label">Zone</div>
+              <div class="editorial-label">
+                Zone
+              </div>
             </v-col>
             <v-col cols="3">
-              <div class="editorial-label">Position</div>
+              <div class="editorial-label">
+                Position
+              </div>
             </v-col>
             <v-col cols="3">
-              <div class="editorial-label">Sauvegardé le</div>
+              <div class="editorial-label">
+                Sauvegardé le
+              </div>
             </v-col>
-            <v-col cols="2" class="text-right">
-              <div class="editorial-label">Action</div>
+            <v-col
+              cols="2"
+              class="text-right"
+            >
+              <div class="editorial-label">
+                Action
+              </div>
             </v-col>
           </v-row>
         </div>
@@ -86,13 +122,18 @@
           class="editorial-row"
           style="padding: 20px 0;"
         >
-          <v-row no-gutters align="center">
+          <v-row
+            no-gutters
+            align="center"
+          >
             <v-col cols="1">
-              <div style="
+              <div
+                style="
                 font-size: 11px; font-weight: 600;
                 color: var(--rpg-ink-muted);
                 font-family: var(--font-sans);
-              ">
+              "
+              >
                 {{ String(i + 1).padStart(2, '0') }}
               </div>
             </v-col>
@@ -115,7 +156,10 @@
               </div>
             </v-col>
 
-            <v-col cols="2" class="text-right">
+            <v-col
+              cols="2"
+              class="text-right"
+            >
               <span
                 style="
                   font-size: 11px; font-weight: 600; letter-spacing: 0.08em;
@@ -133,17 +177,23 @@
           </v-row>
         </div>
       </template>
-
     </template>
 
     <!-- ── Dialogue confirmation ──────────────────────────────────── -->
-    <v-dialog v-model="dialog.show" max-width="420">
-      <div style="
+    <v-dialog
+      v-model="dialog.show"
+      max-width="420"
+    >
+      <div
+        style="
         background: var(--rpg-cream);
         border: 1px solid rgba(0,0,0,0.1);
         padding: 32px;
-      ">
-        <div class="editorial-label mb-3">Confirmer la suppression</div>
+      "
+      >
+        <div class="editorial-label mb-3">
+          Confirmer la suppression
+        </div>
         <div style="font-family: var(--font-serif); font-size: 1.3rem; font-weight: 700; margin-bottom: 12px;">
           Supprimer cette sauvegarde ?
         </div>
@@ -166,7 +216,6 @@
         </div>
       </div>
     </v-dialog>
-
   </div>
 </template>
 

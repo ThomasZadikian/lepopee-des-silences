@@ -23,7 +23,7 @@ public class RegisterHandler
 
     public async Task<AuthResponse> Handle(
     RegisterCommand request,
-    CancellationToken ct)
+    CancellationToken cancellationToken)
     {
         // 1. Vérifier unicité username
         if (await _userRepo.UsernameExistsAsync(

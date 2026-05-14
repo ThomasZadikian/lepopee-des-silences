@@ -1,7 +1,17 @@
 <template>
-  <v-container class="fill-height" fluid>
-    <v-row align="center" justify="center">
-      <v-col cols="12" sm="8" md="4">
+  <v-container
+    class="fill-height"
+    fluid
+  >
+    <v-row
+      align="center"
+      justify="center"
+    >
+      <v-col
+        cols="12"
+        sm="8"
+        md="4"
+      >
         <v-card class="pa-4">
           <v-card-title class="text-h5 text-center mb-2">
             Vérification MFA
@@ -18,10 +28,21 @@
               maxlength="6"
               class="mb-3"
             />
-            <v-alert v-if="error" type="error" class="mb-3">{{
-              error
-            }}</v-alert>
-            <v-btn block color="primary" :loading="loading" @click="handleMfa">
+            <v-alert
+              v-if="error"
+              type="error"
+              class="mb-3"
+            >
+              {{
+                error
+              }}
+            </v-alert>
+            <v-btn
+              block
+              color="primary"
+              :loading="loading"
+              @click="handleMfa"
+            >
               Valider
             </v-btn>
           </v-card-text>

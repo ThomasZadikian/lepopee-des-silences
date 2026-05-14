@@ -41,24 +41,24 @@ public class CharacterRepository : IPlayerProfileRepository
             .ToListAsync();
     }
 
-    public async Task AddAsync(PlayerProfile character)
+    public async Task AddAsync(PlayerProfile profile)
     {
-        _context.PlayerProfiles.Add(character);
+        _context.PlayerProfiles.Add(profile);
         await _context.SaveChangesAsync();
     }
 
-    public async Task UpdateAsync(PlayerProfile character)
+    public async Task UpdateAsync(PlayerProfile profile)
     {
-        _context.PlayerProfiles.Update(character);
+        _context.PlayerProfiles.Update(profile);
         await _context.SaveChangesAsync();
     }
 
     public async Task DeleteAsync(int id)
     {
-        var character = await _context.PlayerProfiles.FindAsync(id);
-        if (character != null)
+        var profile = await _context.PlayerProfiles.FindAsync(id);
+        if (profile != null)
         {
-            _context.PlayerProfiles.Remove(character);
+            _context.PlayerProfiles.Remove(profile);
             await _context.SaveChangesAsync();
         }
     }

@@ -1,12 +1,13 @@
 <template>
   <div style="min-height: 100vh; background: var(--rpg-cream); display: flex; flex-direction: column;">
-
     <!-- ── Header ─────────────────────────────────────────────────── -->
-    <div style="
+    <div
+      style="
       padding: 20px 48px;
       border-bottom: 1px solid var(--rpg-border);
       display: flex; align-items: center; justify-content: space-between;
-    ">
+    "
+    >
       <div style="font-family: var(--font-serif); font-size: 1.1rem; font-weight: 900; letter-spacing: -0.02em;">
         RPG_ESI07 <span style="font-weight: 300; color: var(--rpg-ink-muted);">· Codex</span>
       </div>
@@ -17,22 +18,27 @@
 
     <!-- ── Corps ──────────────────────────────────────────────────── -->
     <div style="flex: 1; display: grid; grid-template-columns: 1fr 1fr; min-height: 0;">
-
       <!-- Colonne gauche — éditoriale -->
-      <div style="
+      <div
+        style="
         padding: 64px 48px;
         border-right: 1px solid var(--rpg-border);
         display: flex; flex-direction: column; justify-content: space-between;
-      ">
+      "
+      >
         <div>
-          <div class="editorial-label mb-4">Nouveau marcheur</div>
+          <div class="editorial-label mb-4">
+            Nouveau marcheur
+          </div>
 
-          <div style="
+          <div
+            style="
             font-family: var(--font-serif);
             font-size: clamp(2.5rem, 4vw, 4rem);
             font-weight: 900; line-height: 1;
             letter-spacing: -0.03em; margin-bottom: 32px;
-          ">
+          "
+          >
             Forge ton <span style="font-style: italic; color: var(--rpg-ink-muted);">nom.</span>
           </div>
 
@@ -45,7 +51,9 @@
 
         <!-- Ce que conserve le Codex -->
         <div>
-          <div class="editorial-label mb-4">Ce que conserve le codex</div>
+          <div class="editorial-label mb-4">
+            Ce que conserve le codex
+          </div>
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0; border-top: 1px solid var(--rpg-border);">
             <div
               v-for="item in codexFeatures"
@@ -56,7 +64,9 @@
               <div style="font-family: var(--font-serif); font-size: 0.95rem; font-weight: 700; margin-bottom: 2px;">
                 {{ item.title }}
               </div>
-              <div style="font-size: 11px; color: var(--rpg-ink-muted);">{{ item.desc }}</div>
+              <div style="font-size: 11px; color: var(--rpg-ink-muted);">
+                {{ item.desc }}
+              </div>
             </div>
           </div>
         </div>
@@ -64,7 +74,6 @@
 
       <!-- Colonne droite — formulaire -->
       <div style="padding: 64px 48px; display: flex; flex-direction: column;">
-
         <!-- Onglets -->
         <div style="display: flex; gap: 24px; margin-bottom: 40px; border-bottom: 1px solid var(--rpg-border); padding-bottom: 16px;">
           <div style="font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; border-bottom: 2px solid var(--rpg-ink); padding-bottom: 16px; margin-bottom: -17px;">
@@ -80,12 +89,15 @@
 
         <!-- Champs -->
         <div style="max-width: 400px; width: 100%;">
-
           <!-- Username -->
           <div style="margin-bottom: 24px;">
             <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-              <div class="editorial-label">■ Nom de marcheur</div>
-              <div style="font-size: 10px; color: var(--rpg-ink-muted); font-style: italic;">Visible publiquement · 3–24 car.</div>
+              <div class="editorial-label">
+                ■ Nom de marcheur
+              </div>
+              <div style="font-size: 10px; color: var(--rpg-ink-muted); font-style: italic;">
+                Visible publiquement · 3–24 car.
+              </div>
             </div>
             <input
               v-model="form.username"
@@ -100,14 +112,18 @@
               "
               @focus="e => (e.target as HTMLInputElement).style.borderColor = 'var(--rpg-ink)'"
               @blur="e => (e.target as HTMLInputElement).style.borderColor = 'rgba(0,0,0,0.15)'"
-            />
+            >
           </div>
 
           <!-- Email -->
           <div style="margin-bottom: 24px;">
             <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-              <div class="editorial-label">■ Adresse email</div>
-              <div style="font-size: 10px; color: var(--rpg-ink-muted); font-style: italic;">Pour récupération uniquement.</div>
+              <div class="editorial-label">
+                ■ Adresse email
+              </div>
+              <div style="font-size: 10px; color: var(--rpg-ink-muted); font-style: italic;">
+                Pour récupération uniquement.
+              </div>
             </div>
             <input
               v-model="form.email"
@@ -122,14 +138,18 @@
               "
               @focus="e => (e.target as HTMLInputElement).style.borderColor = 'var(--rpg-ink)'"
               @blur="e => (e.target as HTMLInputElement).style.borderColor = 'rgba(0,0,0,0.15)'"
-            />
+            >
           </div>
 
           <!-- Mot de passe -->
           <div style="margin-bottom: 32px;">
             <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-              <div class="editorial-label">■ Mot de passe</div>
-              <div style="font-size: 10px; color: var(--rpg-ink-muted); font-style: italic;">Min. 8 car. · 1 majuscule · 1 chiffre</div>
+              <div class="editorial-label">
+                ■ Mot de passe
+              </div>
+              <div style="font-size: 10px; color: var(--rpg-ink-muted); font-style: italic;">
+                Min. 8 car. · 1 majuscule · 1 chiffre
+              </div>
             </div>
             <input
               v-model="form.password"
@@ -144,24 +164,30 @@
               "
               @focus="e => (e.target as HTMLInputElement).style.borderColor = 'var(--rpg-ink)'"
               @blur="e => (e.target as HTMLInputElement).style.borderColor = 'rgba(0,0,0,0.15)'"
-            />
+            >
           </div>
 
           <!-- Erreur / Succès -->
-          <div v-if="error" style="
+          <div
+            v-if="error"
+            style="
             font-size: 12px; color: #C0392B;
             border-left: 2px solid #C0392B;
             padding: 8px 12px; margin-bottom: 20px;
             background: rgba(192,57,43,0.05);
-          ">
+          "
+          >
             {{ error }}
           </div>
-          <div v-if="success" style="
+          <div
+            v-if="success"
+            style="
             font-size: 12px; color: #1E8449;
             border-left: 2px solid #1E8449;
             padding: 8px 12px; margin-bottom: 20px;
             background: rgba(30,132,73,0.05);
-          ">
+          "
+          >
             {{ success }}
           </div>
 
@@ -185,7 +211,6 @@
             <span v-if="loading">Création en cours...</span>
             <span v-else>Créer mon compte →</span>
           </button>
-
         </div>
 
         <!-- Footer note -->
@@ -201,16 +226,17 @@
             </span>
           </div>
         </div>
-
       </div>
     </div>
 
     <!-- ── Footer ─────────────────────────────────────────────────── -->
-    <div style="
+    <div
+      style="
       padding: 16px 48px;
       border-top: 1px solid var(--rpg-border);
       display: flex; justify-content: space-between; align-items: center;
-    ">
+    "
+    >
       <div style="font-size: 10px; font-weight: 600; letter-spacing: 0.15em; text-transform: uppercase; color: var(--rpg-ink-muted);">
         RPG ESI07 · Édition Joueur
       </div>
@@ -218,7 +244,6 @@
         P. 01 / 03 — Inscription
       </div>
     </div>
-
   </div>
 </template>
 
