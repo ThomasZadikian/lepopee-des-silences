@@ -5,6 +5,9 @@ RUN npm install
 COPY . .
 RUN npm run build
 
+ARG VITE_API_URL
+ENV VITE_API_URL=$VITE_API_URL
+
 FROM nginx:alpine AS runtime
 # Copie des fichiers statiques générés (Vue.js/Vite)
 COPY --from=build /app/dist /usr/share/nginx/html
