@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using RPG_ESI07.Application;
+using RPG_ESI07.Application.Configuration;
 using RPG_ESI07.Domain.Interfaces;
 using RPG_ESI07.Infrastructure;
 using RPG_ESI07.Infrastructure.Data;
@@ -66,6 +67,8 @@ builder.Services.AddOptions<JwtSettings>()
         "JwtSettings:Secret est manquant ou trop court (minimum 32 caractères).")
     .ValidateOnStart();
 
+var signingKey = builder.Configuration.GetValue<string>("JwtSettings:Secret")!;
+
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -81,7 +84,7 @@ builder.Services.AddAuthentication(options =>
         ValidAudience = jwtSection["Audience"],
         ValidateLifetime = true,
         IssuerSigningKey = new SymmetricSecurityKey(
-            Encoding.UTF8.GetBytes(jwtSection["Secret"]!)),
+            Encoding.UTF8.GetBytes(signingKey)),
         ClockSkew = TimeSpan.Zero
     };
 });
