@@ -14,6 +14,10 @@ namespace RPG_ESI07.API.Controllers;
 public class RGPDController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private static readonly JsonSerializerOptions _jsonOptions = new()
+    {
+        WriteIndented = true
+    };
 
     public RGPDController(IMediator mediator) => _mediator = mediator;
 
@@ -43,10 +47,7 @@ public class RGPDController : ControllerBase
         var userId = int.Parse(
         User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
         var result = await _mediator.Send(new GetUserDataQuery(userId));
-        var json = JsonSerializer.Serialize(result, new JsonSerializerOptions
-        {
-            WriteIndented = true
-        });
+        var json = JsonSerializer.Serialize(result, _jsonOptions);
         var fileName = $"mes-donnees-rgpd-{userId}-{DateTime.UtcNow:yyyyMMdd}.json";
         return File(
         System.Text.Encoding.UTF8.GetBytes(json),

@@ -28,9 +28,8 @@ public class LoginHandler
     LoginCommand request,
     CancellationToken cancellationToken)
     {
-        _logger.LogInformation(
-            "Login attempt for {Username}",
-            request.Username);
+        if (_logger.IsEnabled(LogLevel.Information))
+            _logger.LogInformation("Login attempt for {Username}", request.Username);
         // 1. Trouver le user
         var user = await _userRepo
         .GetByUsernameAsync(request.Username);
