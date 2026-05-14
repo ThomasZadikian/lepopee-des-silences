@@ -42,6 +42,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Content Include="appsettings.Test.json">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <ProjectReference Include="..\RPG_ESI07.API\RPG_ESI07.API.csproj" />
     <ProjectReference Include="..\RPG_ESI07.Application\RPG_ESI07.Application.csproj" />
     <ProjectReference Include="..\RPG_ESI07.Domain\RPG_ESI07.Domain.csproj" />

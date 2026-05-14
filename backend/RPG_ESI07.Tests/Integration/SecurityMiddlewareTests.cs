@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using RPG_ESI07.Infrastructure.Data;
@@ -22,15 +23,22 @@ public class AuthRateLimitingTests : IClassFixture<WebApplicationFactory<Program
     {
         _client = factory.WithWebHostBuilder(builder =>
         {
+            builder.ConfigureAppConfiguration((context, config) =>
+            {
+                var testDirectory = Path.GetDirectoryName(
+                    System.Reflection.Assembly.GetExecutingAssembly().Location)!;
+
+                config.AddJsonFile(
+                    Path.Combine(testDirectory, "appsettings.Test.json"),
+                    optional: false);
+            });
+
             builder.ConfigureTestServices(services =>
             {
-                // 1. SUPPRESSION RADICALE DE TOUT CE QUI TOUCHE À EF CORE
-                // Supprime le contexte, les options et TOUT fournisseur déjà enregistré
                 services.RemoveAll<AppDbContext>();
                 services.RemoveAll<DbContextOptions<AppDbContext>>();
                 services.RemoveAll<DbContextOptions>();
 
-                // On supprime également les services internes qui causent le conflit de provider
                 var efInternalServices = services
                     .Where(d => d.ServiceType.Namespace?.StartsWith("Microsoft.EntityFrameworkCore") == true)
                     .ToList();
@@ -40,9 +48,6 @@ public class AuthRateLimitingTests : IClassFixture<WebApplicationFactory<Program
                     services.Remove(service);
                 }
 
-                // 2. RÉ-ENREGISTREMENT TOTALEMENT ISOLÉ
-                // En utilisant un "InternalServiceProvider" dédié, on empêche le mélange
-                // entre les services Npgsql et InMemory.
                 var internalServiceProvider = new ServiceCollection()
                     .AddEntityFrameworkInMemoryDatabase()
                     .BuildServiceProvider();
@@ -59,14 +64,20 @@ public class AuthRateLimitingTests : IClassFixture<WebApplicationFactory<Program
     [Fact]
     public async Task Login_Policy_Triggers_After_Five_Requests()
     {
-        var content = new StringContent("{\"username\":\"test\",\"password\":\"pass\"}", Encoding.UTF8, "application/json");
-
         for (int i = 0; i < 5; i++)
         {
+            var content = new StringContent(
+                "{\"username\":\"test\",\"password\":\"pass\"}",
+                Encoding.UTF8,
+                "application/json");
             await _client.PostAsync("/api/auth/login", content);
         }
 
-        var response = await _client.PostAsync("/api/auth/login", content);
+        var lastContent = new StringContent(
+            "{\"username\":\"test\",\"password\":\"pass\"}",
+            Encoding.UTF8,
+            "application/json");
+        var response = await _client.PostAsync("/api/auth/login", lastContent);
 
         response.StatusCode.Should().Be((HttpStatusCode)429);
     }
