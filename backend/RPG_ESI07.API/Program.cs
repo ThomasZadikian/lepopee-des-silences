@@ -4,7 +4,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using RPG_ESI07.Application;
-using RPG_ESI07.Application.Configuration;
 using RPG_ESI07.Domain.Interfaces;
 using RPG_ESI07.Infrastructure;
 using RPG_ESI07.Infrastructure.Data;
@@ -42,11 +41,11 @@ builder.Services.AddSwaggerGen(options =>
     const string schemeId = "Bearer";
     options.AddSecurityDefinition(schemeId, new OpenApiSecurityScheme
     {
-        Name        = "Authorization",
-        Type        = SecuritySchemeType.Http,
-        Scheme      = "bearer",
-        BearerFormat= "JWT",
-        In          = ParameterLocation.Header,
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
         Description = "JWT Authorization header using the Bearer scheme."
     });
     options.AddSecurityRequirement(document => new OpenApiSecurityRequirement
@@ -58,33 +57,32 @@ builder.Services.AddSwaggerGen(options =>
 builder.Services.AddApplicationServices();
 builder.Services.AddInfrastructureServices();
 
-var jwtSettings = builder.Configuration.GetSection("JwtSettings");
-builder.Services.Configure<JwtSettings>(jwtSettings);
-
-// Validation du secret JWT au démarrage
-var jwtSecret = jwtSettings["Secret"];
-if (string.IsNullOrWhiteSpace(jwtSecret) || jwtSecret.Length < 32)
-    throw new InvalidOperationException(
-        "JwtSettings:Secret est manquant ou trop court (minimum 32 caractères). " +
-        "Configurez la variable d'environnement JwtSettings__Secret.");
+// ── JWT Configuration ──────────────────────────────────────────────────────────
+var jwtSection = builder.Configuration.GetSection("JwtSettings");
+builder.Services.Configure<JwtSettings>(jwtSection);
+builder.Services.AddOptions<JwtSettings>()
+    .Bind(jwtSection)
+    .Validate(s => !string.IsNullOrWhiteSpace(s.Secret) && s.Secret.Length >= 32,
+        "JwtSettings:Secret est manquant ou trop court (minimum 32 caractères).")
+    .ValidateOnStart();
 
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme    = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
 })
 .AddJwtBearer(options =>
 {
     options.TokenValidationParameters = new TokenValidationParameters
     {
-        ValidateIssuer       = true,
-        ValidIssuer          = jwtSettings["Issuer"],
-        ValidateAudience     = true,
-        ValidAudience        = jwtSettings["Audience"],
-        ValidateLifetime     = true,
-        IssuerSigningKey     = new SymmetricSecurityKey(
-            Encoding.UTF8.GetBytes(jwtSecret)),
-        ClockSkew            = TimeSpan.Zero
+        ValidateIssuer = true,
+        ValidIssuer = jwtSection["Issuer"],
+        ValidateAudience = true,
+        ValidAudience = jwtSection["Audience"],
+        ValidateLifetime = true,
+        IssuerSigningKey = new SymmetricSecurityKey(
+            Encoding.UTF8.GetBytes(jwtSection["Secret"]!)),
+        ClockSkew = TimeSpan.Zero
     };
 });
 
@@ -93,19 +91,23 @@ builder.Services.AddRateLimiter(options =>
     options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(
         context => RateLimitPartition.GetFixedWindowLimiter(
             context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-            _ => new FixedWindowRateLimiterOptions { PermitLimit = 60, Window = TimeSpan.FromMinutes(1) }));
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 60,
+                Window = TimeSpan.FromMinutes(1)
+            }));
 
     options.AddSlidingWindowLimiter("login", opt =>
     {
-        opt.PermitLimit       = 5;
-        opt.Window            = TimeSpan.FromMinutes(5);
+        opt.PermitLimit = 5;
+        opt.Window = TimeSpan.FromMinutes(5);
         opt.SegmentsPerWindow = 5;
     });
 
     options.AddFixedWindowLimiter("register", opt =>
     {
         opt.PermitLimit = 3;
-        opt.Window      = TimeSpan.FromHours(1);
+        opt.Window = TimeSpan.FromHours(1);
     });
 
     options.RejectionStatusCode = 429;
@@ -116,7 +118,10 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
     options.UseNpgsql(connectionString, npgsqlOptions =>
     {
-        npgsqlOptions.EnableRetryOnFailure(maxRetryCount: 3, maxRetryDelay: TimeSpan.FromSeconds(5), errorCodesToAdd: null);
+        npgsqlOptions.EnableRetryOnFailure(
+            maxRetryCount: 3,
+            maxRetryDelay: TimeSpan.FromSeconds(5),
+            errorCodesToAdd: null);
         npgsqlOptions.CommandTimeout(30);
     });
     if (builder.Environment.IsDevelopment())
@@ -141,11 +146,11 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// ── Migration + Seed — toujours exécutés ──────────────────────────────────────
+// ── Migration + Seed ───────────────────────────────────────────────────────────
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    var hasher  = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
+    var hasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
 
     if (context.Database.IsRelational())
         await context.Database.MigrateAsync();
@@ -153,7 +158,7 @@ using (var scope = app.Services.CreateScope())
     await DatabaseSeeder.SeedAsync(context, hasher);
 }
 
-// ── Swagger — uniquement en développement ─────────────────────────────────────
+// ── Swagger — dev uniquement ───────────────────────────────────────────────────
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();

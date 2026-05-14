@@ -1,6 +1,5 @@
 ﻿using FluentAssertions;
 using Microsoft.Extensions.Options;
-using RPG_ESI07.Application.Configuration;
 using RPG_ESI07.Domain.Entities;
 using RPG_ESI07.Infrastructure.Services;
 
