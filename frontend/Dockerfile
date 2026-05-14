@@ -6,7 +6,14 @@ COPY . .
 RUN npm run build
 
 FROM nginx:alpine AS runtime
+# Copie des fichiers statiques générés (Vue.js/Vite)
 COPY --from=build /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Utilisation du répertoire templates pour l'injection de variables
+COPY nginx.conf /etc/nginx/templates/default.conf.template
+
 EXPOSE 80
+
+# La commande par défaut de l'image nginx:alpine gère déjà envsubst 
+# si le fichier est dans /etc/nginx/templates/
 CMD ["nginx", "-g", "daemon off;"]
