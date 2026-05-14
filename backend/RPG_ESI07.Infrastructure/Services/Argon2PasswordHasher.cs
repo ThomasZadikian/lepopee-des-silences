@@ -60,7 +60,7 @@ public class Argon2PasswordHasher : IPasswordHasher
         }
     }
 
-    private byte[] HashPasswordWithSalt(string password, byte[] salt)
+    private static byte[] HashPasswordWithSalt(string password, byte[] salt)
     {
         using var argon2 = new Argon2id(Encoding.UTF8.GetBytes(password))
         {

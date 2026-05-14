@@ -19,7 +19,7 @@ public class GetPlayerProfileByUserIdHandlerTests
         _handler     = new GetPlayerProfileByUserIdHandler(_userRepo.Object);
     }
 
-    private User BuildUserWithProfile(int userId = 1) => new()
+    private static User BuildUserWithProfile(int userId = 1) => new()
     {
         Id       = userId,
         Username = "testuser",
