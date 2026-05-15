@@ -6,6 +6,7 @@ using Moq;
 using RPG_ESI07.API.Controllers;
 using RPG_ESI07.Application.Commands.RGPD;
 using RPG_ESI07.Application.Queries.RGPD;
+using RPG_ESI07.Domain;
 using RPG_ESI07.Domain.Entities;
 using System.Security.Claims;
 
@@ -14,12 +15,12 @@ namespace RPG_ESI07.Tests.Controllers;
 public class RGPDControllerTests
 {
     private readonly Mock<IMediator> _mediatorMock;
-    private readonly RGPDController _controller;
+    private readonly RgpdController _controller;
 
     public RGPDControllerTests()
     {
         _mediatorMock = new Mock<IMediator>(MockBehavior.Strict);
-        _controller = new RGPDController(_mediatorMock.Object);
+        _controller = new RgpdController(_mediatorMock.Object);
     }
 
     // ── Helper : simule un utilisateur connecté avec son userId dans le JWT ──
@@ -42,7 +43,7 @@ public class RGPDControllerTests
         Username:        "testuser",
         CreatedAt:       new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
         LastLoginAt:     new DateTime(2025, 6, 1, 0, 0, 0, DateTimeKind.Utc),
-        LastLoginIP:     "127.0.0.1",
+        LastLoginIP:     Constants.SeedIpAddress,
         GameSaves:       new List<GameSave>(),
         Inventory:       new List<PlayerInventory>(),
         Skills:          new List<PlayerSkill>(),

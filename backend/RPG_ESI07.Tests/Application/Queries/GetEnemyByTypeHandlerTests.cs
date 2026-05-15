@@ -1,6 +1,7 @@
 ﻿using FluentAssertions;
 using Moq;
 using RPG_ESI07.Application.Queries.Enemies;
+using RPG_ESI07.Domain;
 using RPG_ESI07.Domain.Entities;
 using RPG_ESI07.Domain.Interfaces;
 
@@ -22,15 +23,15 @@ public class GetEnemiesByTypeHandlerTests
     {
         var bosses = new List<Enemy>
         {
-            new() { Id = 1, Name = "Dragon", Type = "boss", MaxHP = 900 },
-            new() { Id = 2, Name = "Liche",  Type = "boss", MaxHP = 700 },
+            new() { Id = 1, Name = "Dragon", Type = Constants.EnemyTypeBoss, MaxHP = 900 },
+            new() { Id = 2, Name = "Liche",  Type = Constants.EnemyTypeBoss, MaxHP = 700 },
         };
-        _mockRepo.Setup(r => r.GetByTypeAsync("boss")).ReturnsAsync(bosses);
+        _mockRepo.Setup(r => r.GetByTypeAsync(Constants.EnemyTypeBoss)).ReturnsAsync(bosses);
 
-        var result = await _handler.Handle(new GetEnemiesByTypeQuery("boss"), CancellationToken.None);
+        var result = await _handler.Handle(new GetEnemiesByTypeQuery(Constants.EnemyTypeBoss), CancellationToken.None);
 
         result.Items.Should().HaveCount(2);
-        result.Items.Should().AllSatisfy(e => e.Type.Should().Be("boss"));
+        result.Items.Should().AllSatisfy(e => e.Type.Should().Be(Constants.EnemyTypeBoss));
     }
 
     [Fact]
@@ -46,10 +47,10 @@ public class GetEnemiesByTypeHandlerTests
     [Fact]
     public async Task Handle_CallsRepositoryWithCorrectType()
     {
-        _mockRepo.Setup(r => r.GetByTypeAsync("miniboss")).ReturnsAsync(new List<Enemy>());
+        _mockRepo.Setup(r => r.GetByTypeAsync(Constants.EnemyTypeMiniboss)).ReturnsAsync(new List<Enemy>());
 
-        await _handler.Handle(new GetEnemiesByTypeQuery("miniboss"), CancellationToken.None);
+        await _handler.Handle(new GetEnemiesByTypeQuery(Constants.EnemyTypeMiniboss), CancellationToken.None);
 
-        _mockRepo.Verify(r => r.GetByTypeAsync("miniboss"), Times.Once);
+        _mockRepo.Verify(r => r.GetByTypeAsync(Constants.EnemyTypeMiniboss), Times.Once);
     }
 }

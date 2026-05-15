@@ -6,6 +6,7 @@ using Moq;
 using RPG_ESI07.API.Controllers;
 using RPG_ESI07.Application.Commands.PlayerSkills;
 using RPG_ESI07.Application.Queries.PlayerSkills;
+using RPG_ESI07.Domain;
 using RPG_ESI07.Domain.Entities;
 using System.Security.Claims;
 
@@ -25,7 +26,7 @@ public class PlayerSkillsControllerTests
     private void SetUserContext(int userId, bool isAdmin = false)
     {
         var claims = new List<Claim> { new Claim(ClaimTypes.NameIdentifier, userId.ToString()) };
-        if (isAdmin) claims.Add(new Claim(ClaimTypes.Role, "Admin"));
+        if (isAdmin) claims.Add(new Claim(ClaimTypes.Role, Constants.RoleAdmin));
 
         var user = new ClaimsPrincipal(new ClaimsIdentity(claims, "TestAuth"));
         _controller.ControllerContext = new ControllerContext

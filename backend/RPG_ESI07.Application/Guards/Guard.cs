@@ -24,6 +24,15 @@ public static class Guard
     }
 
     /// <summary>
+    /// Throws if collection is null or empty
+    /// </summary>
+    public static void ThrowIfNullOrEmpty<T>(IEnumerable<T> collection, string parameterName)
+    {
+        if (collection == null || !collection.Any())
+            throw new ArgumentException($"{parameterName} cannot be null or empty", parameterName);
+    }
+
+    /// <summary>
     /// Throws if number is negative
     /// </summary>
     public static void ThrowIfNegative(int value, string parameterName)
@@ -66,14 +75,5 @@ public static class Guard
     {
         if (!collection?.Any() ?? true)
             throw new ArgumentException($"{parameterName} cannot be empty", parameterName);
-    }
-
-    /// <summary>
-    /// Throws if collection is null or empty
-    /// </summary>
-    public static void ThrowIfNullOrEmpty<T>(IEnumerable<T> collection, string parameterName)
-    {
-        if (collection == null || !collection.Any())
-            throw new ArgumentException($"{parameterName} cannot be null or empty", parameterName);
     }
 }

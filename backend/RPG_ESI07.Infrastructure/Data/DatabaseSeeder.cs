@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using RPG_ESI07.Domain;
 using RPG_ESI07.Domain.Entities;
 using RPG_ESI07.Domain.Interfaces;
 using System.Text;
@@ -28,33 +29,33 @@ public static class DatabaseSeeder
                 Username    = "devuser",
                 Email       = Encoding.UTF8.GetBytes("dev@rpg-esi07.com"),
                 PasswordHash= hasher.HashPassword(playerPassword),
-                Role        = "Player",
+                Role        = Constants.RolePlayer,
                 MfaEnabled  = false,
                 CreatedAt   = DateTime.UtcNow,
                 LastLoginAt = DateTime.UtcNow.AddHours(-1),
-                LastLoginIP = "127.0.0.1",
+                LastLoginIP = Constants.SeedIpAddress,
             },
             new User
             {
                 Username    = "adminuser",
                 Email       = Encoding.UTF8.GetBytes("admin@rpg-esi07.com"),
                 PasswordHash= hasher.HashPassword(adminPassword),
-                Role        = "Admin",
+                Role        = Constants.RoleAdmin,
                 MfaEnabled  = false,
                 CreatedAt   = DateTime.UtcNow.AddDays(-60),
                 LastLoginAt = DateTime.UtcNow.AddMinutes(-30),
-                LastLoginIP = "127.0.0.1",
+                LastLoginIP = Constants.SeedIpAddress,
             },
             new User
             {
                 Username    = "testplayer",
                 Email       = Encoding.UTF8.GetBytes("player@rpg-esi07.com"),
                 PasswordHash= hasher.HashPassword(testPassword),
-                Role        = "Player",
+                Role        = Constants.RolePlayer,
                 MfaEnabled  = false,
                 CreatedAt   = DateTime.UtcNow.AddDays(-10),
                 LastLoginAt = DateTime.UtcNow.AddDays(-2),
-                LastLoginIP = "127.0.0.1",
+                LastLoginIP = Constants.SeedIpAddress,
             }
         };
         await context.Users.AddRangeAsync(users);
@@ -120,70 +121,70 @@ public static class DatabaseSeeder
             // ── Basiques ──────────────────────────────────────────────────────
             new Enemy
             {
-                Name = "Gobelin des Bois", Type = "basic", MaxHP = 45, Strength = 8,
+                Name = "Gobelin des Bois", Type = Constants.EnemyTypeBasic, MaxHP = 45, Strength = 8,
                 Intelligence = 4, Speed = 10, PhysicalResistance = 1.0f, MagicalResistance = 1.2f,
                 ExperienceReward = 15, GoldReward = 8,
                 Description = "Petite créature rusée qui tend des embuscades dans les forêts denses"
             },
             new Enemy
             {
-                Name = "Rat Géant", Type = "basic", MaxHP = 30, Strength = 6,
+                Name = "Rat Géant", Type = Constants.EnemyTypeBasic, MaxHP = 30, Strength = 6,
                 Intelligence = 2, Speed = 14, PhysicalResistance = 1.0f, MagicalResistance = 1.0f,
                 ExperienceReward = 10, GoldReward = 3,
                 Description = "Rongeur mutant dont les dents percent l'armure de cuir"
             },
             new Enemy
             {
-                Name = "Orc Guerrier", Type = "basic", MaxHP = 85, Strength = 16,
+                Name = "Orc Guerrier", Type = Constants.EnemyTypeBasic, MaxHP = 85, Strength = 16,
                 Intelligence = 5, Speed = 7, PhysicalResistance = 0.9f, MagicalResistance = 1.1f,
                 ExperienceReward = 35, GoldReward = 20,
                 Description = "Guerrier brutal dont la rage compense le manque de finesse"
             },
             new Enemy
             {
-                Name = "Loup des Cendres", Type = "basic", MaxHP = 65, Strength = 13,
+                Name = "Loup des Cendres", Type = Constants.EnemyTypeBasic, MaxHP = 65, Strength = 13,
                 Intelligence = 5, Speed = 18, PhysicalResistance = 1.0f, MagicalResistance = 1.0f,
                 ExperienceReward = 28, GoldReward = 12,
                 Description = "Prédateur nocturne au pelage noirci par la magie corrompue"
             },
             new Enemy
             {
-                Name = "Squelette Archer", Type = "basic", MaxHP = 55, Strength = 10,
+                Name = "Squelette Archer", Type = Constants.EnemyTypeBasic, MaxHP = 55, Strength = 10,
                 Intelligence = 6, Speed = 9, PhysicalResistance = 0.8f, MagicalResistance = 1.4f,
                 ExperienceReward = 25, GoldReward = 15,
                 Description = "Mort-vivant dont les os craquent à chaque tir, mais qui ne manque jamais"
             },
             new Enemy
             {
-                Name = "Araignée Venimeuse", Type = "basic", MaxHP = 50, Strength = 9,
+                Name = "Araignée Venimeuse", Type = Constants.EnemyTypeBasic, MaxHP = 50, Strength = 9,
                 Intelligence = 3, Speed = 16, PhysicalResistance = 1.1f, MagicalResistance = 0.9f,
                 ExperienceReward = 22, GoldReward = 10,
                 Description = "Son venin paralyse ses proies avant qu'elle les cocon"
             },
             new Enemy
             {
-                Name = "Bandit de Grand Chemin", Type = "basic", MaxHP = 70, Strength = 12,
+                Name = "Bandit de Grand Chemin", Type = Constants.EnemyTypeBasic, MaxHP = 70, Strength = 12,
                 Intelligence = 8, Speed = 11, PhysicalResistance = 1.0f, MagicalResistance = 1.0f,
                 ExperienceReward = 30, GoldReward = 25,
                 Description = "Ancien soldat reconverti dans le pillage après la guerre"
             },
             new Enemy
             {
-                Name = "Zombie Pesteux", Type = "basic", MaxHP = 90, Strength = 14,
+                Name = "Zombie Pesteux", Type = Constants.EnemyTypeBasic, MaxHP = 90, Strength = 14,
                 Intelligence = 1, Speed = 4, PhysicalResistance = 0.7f, MagicalResistance = 1.3f,
                 ExperienceReward = 32, GoldReward = 5,
                 Description = "Sa lenteur cache une résistance aux dommages physiques déconcertante"
             },
             new Enemy
             {
-                Name = "Imp Pyromaniac", Type = "basic", MaxHP = 40, Strength = 7,
+                Name = "Imp Pyromaniac", Type = Constants.EnemyTypeBasic, MaxHP = 40, Strength = 7,
                 Intelligence = 15, Speed = 13, PhysicalResistance = 1.2f, MagicalResistance = 0.6f,
                 ExperienceReward = 28, GoldReward = 18,
                 Description = "Petit démon obsédé par les flammes, incapable de résister à y jouer"
             },
             new Enemy
             {
-                Name = "Troll des Marais", Type = "basic", MaxHP = 120, Strength = 18,
+                Name = "Troll des Marais", Type = Constants.EnemyTypeBasic, MaxHP = 120, Strength = 18,
                 Intelligence = 3, Speed = 5, PhysicalResistance = 0.8f, MagicalResistance = 1.2f,
                 ExperienceReward = 45, GoldReward = 22,
                 Description = "Sa régénération passive en fait un adversaire épuisant à l'usure"
@@ -191,35 +192,35 @@ public static class DatabaseSeeder
             // ── Miniboss ──────────────────────────────────────────────────────
             new Enemy
             {
-                Name = "Mage Corrompu", Type = "miniboss", MaxHP = 180, Strength = 10,
+                Name = "Mage Corrompu", Type = Constants.EnemyTypeMiniboss, MaxHP = 180, Strength = 10,
                 Intelligence = 30, Speed = 8, PhysicalResistance = 1.6f, MagicalResistance = 0.5f,
                 ExperienceReward = 120, GoldReward = 65,
                 Description = "Érudit ayant vendu son âme aux ténèbres pour un pouvoir illimité"
             },
             new Enemy
             {
-                Name = "Golem de Fer", Type = "miniboss", MaxHP = 250, Strength = 28,
+                Name = "Golem de Fer", Type = Constants.EnemyTypeMiniboss, MaxHP = 250, Strength = 28,
                 Intelligence = 2, Speed = 4, PhysicalResistance = 0.5f, MagicalResistance = 1.6f,
                 ExperienceReward = 140, GoldReward = 75,
                 Description = "Automate de guerre oublié dont la conscience s'est éteinte depuis longtemps"
             },
             new Enemy
             {
-                Name = "Vampire Ancien", Type = "miniboss", MaxHP = 200, Strength = 22,
+                Name = "Vampire Ancien", Type = Constants.EnemyTypeMiniboss, MaxHP = 200, Strength = 22,
                 Intelligence = 25, Speed = 20, PhysicalResistance = 1.3f, MagicalResistance = 0.7f,
                 ExperienceReward = 160, GoldReward = 90,
                 Description = "Seigneur de la nuit dont chaque coup vole la vitalité de ses victimes"
             },
             new Enemy
             {
-                Name = "Chevalier Maudit", Type = "miniboss", MaxHP = 220, Strength = 30,
+                Name = "Chevalier Maudit", Type = Constants.EnemyTypeMiniboss, MaxHP = 220, Strength = 30,
                 Intelligence = 12, Speed = 10, PhysicalResistance = 0.5f, MagicalResistance = 1.5f,
                 ExperienceReward = 150, GoldReward = 80,
                 Description = "Paladin déchu lié à son armure pour l'éternité par une malédiction ancienne"
             },
             new Enemy
             {
-                Name = "Wyverne des Pics", Type = "miniboss", MaxHP = 300, Strength = 25,
+                Name = "Wyverne des Pics", Type = Constants.EnemyTypeMiniboss, MaxHP = 300, Strength = 25,
                 Intelligence = 8, Speed = 22, PhysicalResistance = 0.9f, MagicalResistance = 1.1f,
                 ExperienceReward = 180, GoldReward = 100,
                 Description = "Dragon immature dont le venin acide dévore l'acier comme du tissu"
@@ -227,35 +228,35 @@ public static class DatabaseSeeder
             // ── Boss ──────────────────────────────────────────────────────────
             new Enemy
             {
-                Name = "Archiliches Tenebris", Type = "boss", MaxHP = 700, Strength = 20,
+                Name = "Archiliches Tenebris", Type = Constants.EnemyTypeBoss, MaxHP = 700, Strength = 20,
                 Intelligence = 50, Speed = 10, PhysicalResistance = 1.5f, MagicalResistance = 0.5f,
                 ExperienceReward = 800, GoldReward = 350,
                 Description = "Nécromancien ayant transcendé la mort, tissant la réalité à sa volonté"
             },
             new Enemy
             {
-                Name = "Dragon de l'Aube", Type = "boss", MaxHP = 900, Strength = 40,
+                Name = "Dragon de l'Aube", Type = Constants.EnemyTypeBoss, MaxHP = 900, Strength = 40,
                 Intelligence = 30, Speed = 20, PhysicalResistance = 0.7f, MagicalResistance = 0.7f,
                 ExperienceReward = 1000, GoldReward = 500,
                 Description = "Dernier représentant d'une race de dragons solaires, gardien du sanctuaire"
             },
             new Enemy
             {
-                Name = "Le Dévoreur", Type = "boss", MaxHP = 1200, Strength = 55,
+                Name = "Le Dévoreur", Type = Constants.EnemyTypeBoss, MaxHP = 1200, Strength = 55,
                 Intelligence = 15, Speed = 8, PhysicalResistance = 0.6f, MagicalResistance = 0.6f,
                 ExperienceReward = 1200, GoldReward = 400,
                 Description = "Entité primordiale sans forme définie, absorbant toute énergie vitale"
             },
             new Enemy
             {
-                Name = "Seigneur des Ombres", Type = "boss", MaxHP = 800, Strength = 35,
+                Name = "Seigneur des Ombres", Type = Constants.EnemyTypeBoss, MaxHP = 800, Strength = 35,
                 Intelligence = 40, Speed = 25, PhysicalResistance = 1.0f, MagicalResistance = 0.5f,
                 ExperienceReward = 950, GoldReward = 450,
                 Description = "Maître de l'illusion et de l'assassinat, se battant dans plusieurs dimensions"
             },
             new Enemy
             {
-                Name = "Titan de Pierre", Type = "boss", MaxHP = 1500, Strength = 60,
+                Name = "Titan de Pierre", Type = Constants.EnemyTypeBoss, MaxHP = 1500, Strength = 60,
                 Intelligence = 5, Speed = 3, PhysicalResistance = 0.5f, MagicalResistance = 1.7f,
                 ExperienceReward = 1500, GoldReward = 600,
                 Description = "Colosse millénaire réveillé d'un sommeil de pierre, dont chaque pas ébranle la terre"
@@ -534,10 +535,10 @@ public static class DatabaseSeeder
         // ===== 12. AUDITLOGS =====
         var auditLogs = new[]
         {
-            new AuditLog { UserId = users[0].Id, EventType = "LOGIN_SUCCESS", EventData = JsonSerializer.Serialize(new { method = "password" }), IpAddress = "127.0.0.1", UserAgent = "Mozilla/5.0", Timestamp = DateTime.UtcNow.AddHours(-1) },
-            new AuditLog { UserId = users[1].Id, EventType = "LOGIN_SUCCESS", EventData = JsonSerializer.Serialize(new { method = "password" }), IpAddress = "127.0.0.1", UserAgent = "Mozilla/5.0", Timestamp = DateTime.UtcNow.AddMinutes(-30) },
-            new AuditLog { UserId = users[0].Id, EventType = "DATA_EXPORT",   EventData = JsonSerializer.Serialize(new { format = "json", size = "3.1KB" }), IpAddress = "127.0.0.1", UserAgent = "Mozilla/5.0", Timestamp = DateTime.UtcNow.AddMinutes(-15) },
-            new AuditLog { UserId = users[2].Id, EventType = "LOGIN_SUCCESS", EventData = JsonSerializer.Serialize(new { method = "password" }), IpAddress = "127.0.0.1", UserAgent = "Mozilla/5.0", Timestamp = DateTime.UtcNow.AddDays(-2) },
+            new AuditLog { UserId = users[0].Id, EventType = "LOGIN_SUCCESS", EventData = JsonSerializer.Serialize(new { method = "password" }), IpAddress = Constants.SeedIpAddress, UserAgent = "Mozilla/5.0", Timestamp = DateTime.UtcNow.AddHours(-1) },
+            new AuditLog { UserId = users[1].Id, EventType = "LOGIN_SUCCESS", EventData = JsonSerializer.Serialize(new { method = "password" }), IpAddress = Constants.SeedIpAddress, UserAgent = "Mozilla/5.0", Timestamp = DateTime.UtcNow.AddMinutes(-30) },
+            new AuditLog { UserId = users[0].Id, EventType = "DATA_EXPORT",   EventData = JsonSerializer.Serialize(new { format = "json", size = "3.1KB" }), IpAddress = Constants.SeedIpAddress, UserAgent = "Mozilla/5.0", Timestamp = DateTime.UtcNow.AddMinutes(-15) },
+            new AuditLog { UserId = users[2].Id, EventType = "LOGIN_SUCCESS", EventData = JsonSerializer.Serialize(new { method = "password" }), IpAddress = Constants.SeedIpAddress, UserAgent = "Mozilla/5.0", Timestamp = DateTime.UtcNow.AddDays(-2) },
         };
         await context.AuditLogs.AddRangeAsync(auditLogs);
         await context.SaveChangesAsync();

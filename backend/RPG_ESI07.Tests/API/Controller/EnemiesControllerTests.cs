@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Moq;
 using RPG_ESI07.API.Controllers;
 using RPG_ESI07.Application.Queries.Enemies;
+using RPG_ESI07.Domain;
 using RPG_ESI07.Domain.Entities;
 
 namespace RPG_ESI07.Tests.Controllers;
@@ -24,8 +25,8 @@ public class EnemiesControllerTests
     {
         var enemies = new List<Enemy>
         {
-            new() { Id = 1, Name = "Goblin", Type = "basic",  MaxHP = 50  },
-            new() { Id = 2, Name = "Dragon", Type = "boss",   MaxHP = 900 },
+            new() { Id = 1, Name = "Goblin", Type = Constants.EnemyTypeBasic,  MaxHP = 50  },
+            new() { Id = 2, Name = "Dragon", Type = Constants.EnemyTypeBoss,   MaxHP = 900 },
         };
         var expected = new GetAllEnemiesResponse(enemies);
 
@@ -71,7 +72,7 @@ public class EnemiesControllerTests
     [Fact]
     public async Task GetById_ReturnsOk_WhenEnemyExists()
     {
-        var enemy = new Enemy { Id = 1, Name = "Goblin", Type = "basic", MaxHP = 50 };
+        var enemy = new Enemy { Id = 1, Name = "Goblin", Type = Constants.EnemyTypeBasic, MaxHP = 50 };
         var expected = new GetEnemyByIdResponse(enemy);
 
         _mediatorMock
@@ -88,14 +89,14 @@ public class EnemiesControllerTests
     [Fact]
     public async Task GetByType_ReturnsOk_WithFilteredEnemies()
     {
-        var enemies = new List<Enemy> { new() { Id = 2, Name = "Dragon", Type = "boss", MaxHP = 900 } };
+        var enemies = new List<Enemy> { new() { Id = 2, Name = "Dragon", Type = Constants.EnemyTypeBoss, MaxHP = 900 } };
         var expected = new GetEnemiesByTypeResponse(enemies);
 
         _mediatorMock
-            .Setup(m => m.Send(It.Is<GetEnemiesByTypeQuery>(q => q.Type == "boss"), It.IsAny<CancellationToken>()))
+            .Setup(m => m.Send(It.Is<GetEnemiesByTypeQuery>(q => q.Type == Constants.EnemyTypeBoss), It.IsAny<CancellationToken>()))
             .ReturnsAsync(expected);
 
-        var result = await _controller.GetByType("boss");
+        var result = await _controller.GetByType(Constants.EnemyTypeBoss);
 
         var ok = result.Should().BeOfType<OkObjectResult>().Subject;
         ok.StatusCode.Should().Be(200);

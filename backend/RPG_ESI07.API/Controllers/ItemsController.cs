@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RPG_ESI07.Application.Commands.Items;
 using RPG_ESI07.Application.Queries.Items;
+using RPG_ESI07.Domain;
 
 namespace RPG_ESI07.API.Controllers;
 
@@ -23,7 +24,7 @@ public class ItemsController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = Constants.RoleAdmin)]
     public async Task<IActionResult> Create([FromBody] CreateItemCommand command)
     {
         var result = await _mediator.Send(command);
@@ -31,7 +32,7 @@ public class ItemsController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = Constants.RoleAdmin)]
     public async Task<IActionResult> Update(int id, [FromBody] UpdateItemCommand command)
     {
         if (id != command.Id) return BadRequest("Id mismatch");
@@ -40,7 +41,7 @@ public class ItemsController : ControllerBase
     }
 
     [HttpDelete("{id}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = Constants.RoleAdmin)]
     public async Task<IActionResult> Delete(int id)
     {
         var result = await _mediator.Send(new DeleteItemCommand(id));
