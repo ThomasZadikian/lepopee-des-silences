@@ -20,7 +20,7 @@ public class RgpdController : ControllerBase
         WriteIndented = true
     };
 
-    public RGPDController(IMediator mediator) => _mediator = mediator;
+    public RgpdController(IMediator mediator) => _mediator = mediator;
 
     [HttpGet("export")]
     public async Task<IActionResult> ExportMyData()
