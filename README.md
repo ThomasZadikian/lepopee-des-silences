@@ -1,141 +1,177 @@
 # RPG_ESI07
 
+[![Backend CI](https://github.com/ThomasZadikian/rpg_esi07/actions/workflows/backend-ci.yml/badge.svg)](https://github.com/ThomasZadikian/rpg_esi07/actions/workflows/backend-ci.yml)
+[![Frontend CI](https://github.com/ThomasZadikian/rpg_esi07/actions/workflows/frontend-ci.yml/badge.svg)](https://github.com/ThomasZadikian/rpg_esi07/actions/workflows/frontend-ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![.NET](https://img.shields.io/badge/.NET-10.0-512BD4)](https://dotnet.microsoft.com/)
 [![Vue.js](https://img.shields.io/badge/Vue.js-3.x-4FC08D)](https://vuejs.org/)
-[![Unity](https://img.shields.io/badge/Unity-2022.3_LTS-000000)](https://unity.com/)
+[![Unity](https://img.shields.io/badge/Unity-6.x-000000)](https://unity.com/)
+[![Coverage](https://img.shields.io/badge/coverage-87%25-brightgreen)]()
 
-Projet RNCP 36286 - Expert en Informatique et Systèmes d'Information  
-Spécialisation: **Cybersécurité**
+**Application web** : https://rpgesi07.up.railway.app/dashboard
 
-## 📋 Description
+Projet RNCP 36286 — Expert en Informatique et Systèmes d'Information  
+Spécialisation : **Cybersécurité**
 
-Architecture distribuée sécurisée combinant:
-- **Client Unity** (Windows) - Jeu RPG tour par tour 2D
-- **API REST** ASP.NET Core 10 - Backend sécurisé
-- **Portail Vue.js 3** + Vuetify - Interface web
-- **PostgreSQL 16** - Base de données (Docker)
+---
 
-## 🛠️ Stack Technique
+## Description
+
+Architecture distribuée sécurisée combinant :
+
+- **Client Unity 6** (Windows) — Jeu RPG 2D tour par tour avec système ATB
+- **API REST** ASP.NET Core 10 — Backend Clean Architecture, sécurisé
+- **Portail Vue.js 3** — Interface web de gestion du compte joueur
+- **PostgreSQL 16** — Base de données relationnelle (Docker)
+
+---
+
+## Stack Technique
 
 ### Backend
-- .NET 10
-- PostgreSQL 16 (Docker)
-- Entity Framework Core 10
-- JWT Authentication + MFA TOTP
-- Argon2id password hashing
-- Azure (production)
+- .NET 10 / ASP.NET Core
+- Clean Architecture (Domain, Application, Infrastructure, API)
+- CQRS + MediatR
+- Entity Framework Core 10 + PostgreSQL 16
+- JWT Authentication + Argon2id + TOTP MFA
+- FluentValidation, AutoMapper, Serilog
+- Rate Limiting, CORS, RGPD (Articles 15, 17, 20)
+- Tests unitaires XUnit/Moq/FluentAssertions (87% coverage)
+- SonarCloud + CodeQL
 
 ### Frontend
-- Vue.js 3
+- Vue.js 3 + TypeScript
 - Vuetify 3
 - Vite
-- Pinia (state management)
+- Pinia
 - Axios
 
-### Client Jeu
-- Unity 2022.3 LTS
-- Universal Render Pipeline (URP)
-- C# scripting
+### Client Jeu (Unity)
+- Unity 6 (6000.3.x)
+- Universal Render Pipeline 2D
+- Système ATB (Active Time Battle)
+- File d'initiative sur 6 tours
+- Boss scripté avec phases
+- Synchronisation temps réel avec l'API
 
-### Sécurité
-- MFA TOTP obligatoire
-- Chiffrement AES-256 (données repos)
-- TLS 1.3 (transit)
-- SAST/DAST CI/CD
-- OWASP Top 10 compliance
+### Infrastructure
+- Docker + docker-compose
+- Railway (production)
+- GitHub Actions (CI/CD)
+- pgAdmin
 
-## 🚀 Quick Start
+---
+
+## Démarrage rapide
 
 ### Prérequis
 - Docker Desktop
-- .NET 10 SDK
-- Node.js 22 LTS
-- Unity 2022.3 LTS
+- Unity 6 (via Unity Hub)
+- Git
 
-### 1. Base de données (Docker)
+### 1. Cloner le repo
 ```bash
-# Démarrer PostgreSQL + pgAdmin
-docker-compose up -d
-
-# Vérifier
-docker-compose ps
+git clone https://github.com/ThomasZadikian/rpg_esi07.git
+cd rpg_esi07
 ```
 
-### 2. Backend
+### 2. Configurer les variables d'environnement
 ```bash
-cd backend
-dotnet restore
-dotnet build
-cd RPG_ESI07.API
-dotnet run
-
-# API: https://localhost:5001
-# Swagger: https://localhost:5001/swagger
+cp .env.example .env
+# Remplir les valeurs dans .env
 ```
 
-### 3. Frontend
+### 3. Lancer l'infrastructure complète
 ```bash
-cd frontend
-npm install
-npm run dev
-
-# App: http://localhost:5173
+docker compose up --build
 ```
 
-### 4. Unity Client
+- **API** : http://localhost:5009
+- **Frontend** : http://localhost:5173
+- **pgAdmin** : http://localhost:5050
+
+### 4. Client Unity
+- Ouvrir Unity Hub
+- Ajouter le projet `./unity-client`
+- Lancer depuis la scène Bootstrap
+
+---
+
+## Variables d'environnement
+
+Voir `.env.example` pour la liste complète des variables requises.
+
+Les secrets ne sont jamais commités — ils sont injectés via `.env` en local et via les variables Railway en production.
+
+---
+
+## Tests
+
 ```bash
-# Ouvrir Unity Hub
-# Add project: ./unity-client
-# Open project
-# Play ▶️
-```
-
-## 📚 Documentation
-
-- [Setup Guide](docs/SETUP.md)
-- [Architecture](docs/architecture/)
-- [API Specification](docs/api-spec/)
-- [Security Policy](SECURITY.md)
-
-## 🔒 Sécurité
-
-Voir [SECURITY.md](SECURITY.md) pour:
-- Signalement vulnérabilités
-- Mesures de sécurité implémentées
-- Conformité RGPD
-
-## 🧪 Tests
-```bash
-# Tests backend
+# Backend
 cd backend
 dotnet test
 
-# Tests frontend
+# Frontend
 cd frontend
 npm run test
 ```
 
-## 📊 Status
+---
 
-- ✅ Setup environnement
-- ⏳ Développement en cours
+## Architecture
 
-## 📄 License
-
-Ce projet est sous licence [MIT](LICENSE).
-
-## 👤 Auteur
-
-**[Votre Nom]**  
-Projet académique RNCP 36286 - 2026
-
-## 🙏 Remerciements
-
-- [OWASP](https://owasp.org/) - Ressources sécurité
-- [Microsoft](https://docs.microsoft.com/) - Documentation .NET
-- Communauté open-source
+```
+rpg_esi07/
+├── backend/                  ← API ASP.NET Core
+│   ├── RPG_ESI07.API/
+│   ├── RPG_ESI07.Application/
+│   ├── RPG_ESI07.Domain/
+│   ├── RPG_ESI07.Infrastructure/
+│   └── RPG_ESI07.Tests/
+├── frontend/                 ← Vue.js 3
+├── unity-client/             ← Client Unity 6
+├── docker/                   ← Configuration Docker
+├── .github/workflows/        ← CI/CD GitHub Actions
+├── docker-compose.yml
+├── .env.example
+└── README.md
+```
 
 ---
 
-⭐ Si ce projet vous aide, n'hésitez pas à lui donner une étoile !
+## Sécurité
+
+- JWT + Argon2id + TOTP MFA
+- RBAC (Player/Admin)
+- Protection IDOR
+- Rate Limiting
+- RGPD Articles 15, 17, 20
+- SonarCloud + CodeQL sur chaque PR
+- Secrets gérés via variables d'environnement
+
+---
+
+## Statut
+
+| Composant | Statut |
+|-----------|--------|
+| Backend API | ✅ Production |
+| Frontend Vue | ✅ Production |
+| Client Unity | ✅ V1 fonctionnelle |
+| CI/CD | ✅ Opérationnel |
+| Déploiement Railway | ✅ En ligne |
+
+---
+
+## Auteur
+
+**Thomas Zadikian**  
+Étudiant ESI 07 — Projet RNCP 36286 — 2026
+
+---
+
+## Licence
+
+Ce projet est sous licence [MIT](LICENSE).
+```

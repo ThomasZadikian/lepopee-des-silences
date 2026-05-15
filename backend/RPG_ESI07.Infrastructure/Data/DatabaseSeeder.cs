@@ -14,11 +14,8 @@ public static class DatabaseSeeder
     {
         if (await context.Users.AnyAsync())
         {
-            Console.WriteLine("Database already seeded. Skipping...");
             return;
         }
-
-        Console.WriteLine("Starting database seeding...");
 
         var playerPassword = GetRequiredSeedPassword(configuration, "Seed:PlayerPassword");
         var adminPassword = GetRequiredSeedPassword(configuration, "Seed:AdminPassword");
@@ -63,7 +60,6 @@ public static class DatabaseSeeder
         };
         await context.Users.AddRangeAsync(users);
         await context.SaveChangesAsync();
-        Console.WriteLine($"Seeded {users.Length} users");
 
         var profiles = new[]
         {
@@ -118,7 +114,6 @@ public static class DatabaseSeeder
         };
         await context.PlayerProfiles.AddRangeAsync(profiles);
         await context.SaveChangesAsync();
-        Console.WriteLine($"Seeded {profiles.Length} player profiles");
 
         // ===== 3. ENEMIES (20 ennemis) =====
         var enemies = new[]
@@ -269,7 +264,6 @@ public static class DatabaseSeeder
         };
         await context.Enemies.AddRangeAsync(enemies);
         await context.SaveChangesAsync();
-        Console.WriteLine($"Seeded {enemies.Length} enemies");
 
         // ===== 4. ITEMS (30 items) =====
         var items = new[]
@@ -318,7 +312,6 @@ public static class DatabaseSeeder
         };
         await context.Items.AddRangeAsync(items);
         await context.SaveChangesAsync();
-        Console.WriteLine($"Seeded {items.Length} items");
 
         // ===== 5. SKILLS (18 compétences) =====
         var skills = new[]
@@ -351,7 +344,6 @@ public static class DatabaseSeeder
         };
         await context.Skills.AddRangeAsync(skills);
         await context.SaveChangesAsync();
-        Console.WriteLine($"Seeded {skills.Length} skills");
 
         // ===== 6. COMBATSTATS =====
         var combatStats = new[]
@@ -389,7 +381,6 @@ public static class DatabaseSeeder
         };
         await context.CombatStats.AddRangeAsync(combatStats);
         await context.SaveChangesAsync();
-        Console.WriteLine($"Seeded {combatStats.Length} combat stats");
 
         // ===== 7. PLAYERINVENTORY =====
         var inventories = new[]
@@ -422,7 +413,6 @@ public static class DatabaseSeeder
         };
         await context.PlayerInventory.AddRangeAsync(inventories);
         await context.SaveChangesAsync();
-        Console.WriteLine($"Seeded {inventories.Length} inventory items");
 
         // ===== 8. PLAYERSKILLS =====
         var playerSkills = new[]
@@ -454,7 +444,6 @@ public static class DatabaseSeeder
         };
         await context.PlayerSkills.AddRangeAsync(playerSkills);
         await context.SaveChangesAsync();
-        Console.WriteLine($"Seeded {playerSkills.Length} player skills");
 
         // ===== 9. BESTIARYUNLOCKS =====
         var bestiaryUnlocks = new[]
@@ -496,7 +485,6 @@ public static class DatabaseSeeder
         };
         await context.BestiaryUnlocks.AddRangeAsync(bestiaryUnlocks);
         await context.SaveChangesAsync();
-        Console.WriteLine($"Seeded {bestiaryUnlocks.Length} bestiary unlocks");
 
         // ===== 10. GAMESAVES =====
         var gameSaves = new[]
@@ -533,7 +521,6 @@ public static class DatabaseSeeder
         };
         await context.GameSaves.AddRangeAsync(gameSaves);
         await context.SaveChangesAsync();
-        Console.WriteLine($"Seeded {gameSaves.Length} game saves");
 
         // ===== 11. USERCONSENTS =====
         var userConsents = new[]
@@ -544,7 +531,6 @@ public static class DatabaseSeeder
         };
         await context.UserConsents.AddRangeAsync(userConsents);
         await context.SaveChangesAsync();
-        Console.WriteLine($"Seeded {userConsents.Length} user consents");
 
         // ===== 12. AUDITLOGS =====
         var auditLogs = new[]
@@ -556,9 +542,6 @@ public static class DatabaseSeeder
         };
         await context.AuditLogs.AddRangeAsync(auditLogs);
         await context.SaveChangesAsync();
-        Console.WriteLine($"Seeded {auditLogs.Length} audit logs");
-
-        Console.WriteLine("Database seeding completed successfully!");
     }
 
     private static string GetRequiredSeedPassword(IConfiguration? configuration, string key)

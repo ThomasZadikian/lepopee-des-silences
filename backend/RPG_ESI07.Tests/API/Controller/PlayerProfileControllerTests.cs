@@ -37,7 +37,7 @@ public class PlayerProfileControllerTests
         };
     }
 
-    private GetPlayerProfileByUserIdResponse BuildProfileResponse(int userId = 1) => new(
+    private static GetPlayerProfileByUserIdResponse BuildProfileResponse(int userId = 1) => new(
         Id: 10, UserId: userId, CharacterName: "Aragorn",
         Level: 5, CurrentHP: 80, MaxHP: 100, CurrentMP: 30, MaxMP: 50,
         Strength: 15, Intelligence: 12, Speed: 11, Experience: 1250, Gold: 300,

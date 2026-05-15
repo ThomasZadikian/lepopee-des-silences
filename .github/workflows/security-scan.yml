@@ -1,8 +1,14 @@
-name: "Security Scan"
+name: Security Scan
 
 on:
   push:
-    branches: [ "develop" ]
+    branches:
+      - develop
+      - main
+  pull_request:
+    branches:
+      - develop
+      - main
   schedule:
     - cron: '0 2 * * 0'
 
@@ -16,26 +22,26 @@ jobs:
       security-events: write
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: '10.0.x'
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
 
-    - name: Initialize CodeQL
-      uses: github/codeql-action/init@v3
-      with:
-        languages: csharp
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: csharp
 
-    - name: Build application
-      working-directory: backend
-      run: |
-        dotnet restore RPG_ESI07.slnx
-        dotnet build RPG_ESI07.slnx --no-restore --configuration Release
+      - name: Build application
+        working-directory: backend
+        run: |
+          dotnet restore RPG_ESI07.slnx
+          dotnet build RPG_ESI07.slnx --no-restore --configuration Release
 
-    - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@v3
-      with:
-        category: "/language:csharp"
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:csharp"

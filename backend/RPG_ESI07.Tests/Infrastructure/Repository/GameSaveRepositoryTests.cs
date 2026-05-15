@@ -8,7 +8,7 @@ namespace RPG_ESI07.Tests.Infrastructure;
 
 public class GameSaveRepositoryTests
 {
-    private AppDbContext CreateContext(string dbName)
+    private static AppDbContext CreateContext(string dbName)
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseInMemoryDatabase(dbName)
@@ -16,7 +16,7 @@ public class GameSaveRepositoryTests
         return new AppDbContext(options);
     }
 
-    private GameSave CreateGameSave(int playerId = 1) => new GameSave
+    private static GameSave CreateGameSave(int playerId = 1) => new GameSave
     {
         PlayerId = playerId,
         CurrentZone = "Tutorial",

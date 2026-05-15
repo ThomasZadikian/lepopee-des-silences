@@ -1,6 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace RPG_ESI07.Application.Configuration; 
+namespace RPG_ESI07.Application.Configuration;
+
 public class JwtSettings
 {
     [Required]

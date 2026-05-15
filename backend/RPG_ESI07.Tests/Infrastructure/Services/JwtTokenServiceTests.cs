@@ -16,7 +16,7 @@ public class JwtTokenServiceTests
     {
         _settings = new JwtSettings
         {
-            Secret = "SuperSecretKeyThatIsLongEnoughForHmacSha256!", // Minimum 32 caractères pour SHA256
+            Secret = "SuperSecretKeyThatIsLongEnoughForHmacSha256!",
             Issuer = "TestIssuer",
             Audience = "TestAudience",
             AccessTokenExpirationMinutes = 60,
@@ -35,7 +35,7 @@ public class JwtTokenServiceTests
         var token = _service.GenerateAccessToken(user, Constants.RolePlayer);
 
         token.Should().NotBeNullOrWhiteSpace();
-        token.Split('.').Should().HaveCount(3); // Header.Payload.Signature
+        token.Split('.').Should().HaveCount(3);
     }
 
     [Fact]
@@ -76,8 +76,7 @@ public class JwtTokenServiceTests
         var user = new User { Id = 1, Username = "testuser" };
         var token = _service.GenerateAccessToken(user, Constants.RolePlayer);
 
-        // Falsification de la signature
-        var tamperedToken = token.Substring(0, token.Length - 5) + "abcde";
+        var tamperedToken = string.Concat(token.AsSpan(0, token.Length - 5), "abcde");
 
         var userId = _service.ValidateTokenAndGetUserId(tamperedToken);
 

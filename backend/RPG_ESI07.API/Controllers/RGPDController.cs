@@ -5,6 +5,7 @@ using RPG_ESI07.Application.Commands.RGPD;
 using RPG_ESI07.Application.Queries.RGPD;
 using System.Security.Claims;
 using System.Text.Json;
+
 namespace RPG_ESI07.API.Controllers;
 
 [ApiController]
@@ -14,6 +15,12 @@ public class RgpdController : ControllerBase
 {
     private readonly IMediator _mediator;
     public RgpdController(IMediator mediator) => _mediator = mediator;
+    private static readonly JsonSerializerOptions _jsonOptions = new()
+    {
+        WriteIndented = true
+    };
+
+    public RGPDController(IMediator mediator) => _mediator = mediator;
 
     [HttpGet("export")]
     public async Task<IActionResult> ExportMyData()
@@ -41,10 +48,7 @@ public class RgpdController : ControllerBase
         var userId = int.Parse(
         User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
         var result = await _mediator.Send(new GetUserDataQuery(userId));
-        var json = JsonSerializer.Serialize(result, new JsonSerializerOptions
-        {
-            WriteIndented = true
-        });
+        var json = JsonSerializer.Serialize(result, _jsonOptions);
         var fileName = $"mes-donnees-rgpd-{userId}-{DateTime.UtcNow:yyyyMMdd}.json";
         return File(
         System.Text.Encoding.UTF8.GetBytes(json),

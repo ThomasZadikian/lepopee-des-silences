@@ -20,6 +20,12 @@ public class UserRepositoryTests : IDisposable
         _context = new AppDbContext(options);
         _repository = new UserRepository(_context);
     }
+    public void Dispose()
+    {
+        _context.Database.EnsureDeleted();
+        _context.Dispose();
+        GC.SuppressFinalize(this);
+    }
 
     [Fact]
     public async Task GetByUsernameAsync_ReturnsUser_WhenExists()
@@ -58,7 +64,7 @@ public class UserRepositoryTests : IDisposable
         var user = new User
         {
             Username = "existing",
-            Email = new byte[0],
+            Email = Array.Empty<byte>(),
             PasswordHash = "hash"
         };
         await _repository.AddAsync(user);
@@ -78,11 +84,5 @@ public class UserRepositoryTests : IDisposable
 
         // Assert
         exists.Should().BeFalse();
-    }
-
-    public void Dispose()
-    {
-        _context.Database.EnsureDeleted();
-        _context.Dispose();
     }
 }
