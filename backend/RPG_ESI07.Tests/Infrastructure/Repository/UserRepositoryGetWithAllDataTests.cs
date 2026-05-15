@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using RPG_ESI07.Domain;
 using RPG_ESI07.Domain.Entities;
 using RPG_ESI07.Infrastructure.Data;
 using RPG_ESI07.Infrastructure.Repositories;
@@ -37,7 +38,7 @@ public class UserRepositoryGetWithAllDataTests : IDisposable
             Username     = "testuser",
             Email        = new byte[] { 1, 2, 3 },
             PasswordHash = "hash",
-            Role         = "Player",
+            Role         = Constants.RolePlayer,
             CreatedAt    = DateTime.UtcNow,
         };
 
@@ -144,7 +145,7 @@ public class UserRepositoryGetWithAllDataTests : IDisposable
             Username     = "noprofile",
             Email        = new byte[] { 9, 9 },
             PasswordHash = "hash",
-            Role         = "Player",
+            Role         = Constants.RolePlayer,
             CreatedAt    = DateTime.UtcNow,
         };
         _context.Users.Add(user);
@@ -172,8 +173,8 @@ public class UserRepositoryGetWithAllDataTests : IDisposable
     public async Task GetWithAllDataAsync_ReturnsCorrectUser_WhenMultipleUsersExist()
     {
         // Arrange — deux users en base
-        var user1 = new User { Username = "user1", Email = new byte[] { 1 }, PasswordHash = "h", Role = "Player", CreatedAt = DateTime.UtcNow };
-        var user2 = new User { Username = "user2", Email = new byte[] { 2 }, PasswordHash = "h", Role = "Player", CreatedAt = DateTime.UtcNow };
+        var user1 = new User { Username = "user1", Email = new byte[] { 1 }, PasswordHash = "h", Role = Constants.RolePlayer, CreatedAt = DateTime.UtcNow };
+        var user2 = new User { Username = "user2", Email = new byte[] { 2 }, PasswordHash = "h", Role = Constants.RolePlayer, CreatedAt = DateTime.UtcNow };
         _context.Users.AddRange(user1, user2);
         await _context.SaveChangesAsync();
 

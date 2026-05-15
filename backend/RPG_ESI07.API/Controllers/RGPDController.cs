@@ -10,10 +10,10 @@ namespace RPG_ESI07.API.Controllers;
 [ApiController]
 [Route("api/rgpd")]
 [Authorize]
-public class RGPDController : ControllerBase
+public class RgpdController : ControllerBase
 {
     private readonly IMediator _mediator;
-    public RGPDController(IMediator mediator) => _mediator = mediator;
+    public RgpdController(IMediator mediator) => _mediator = mediator;
 
     [HttpGet("export")]
     public async Task<IActionResult> ExportMyData()

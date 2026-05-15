@@ -1,5 +1,6 @@
 ﻿using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using RPG_ESI07.Domain;
 using RPG_ESI07.Domain.Entities;
 using RPG_ESI07.Infrastructure.Data;
 using RPG_ESI07.Infrastructure.Repository;
@@ -32,9 +33,9 @@ public class EnemyRepositoryTests : IDisposable
     {
         var enemies = new List<Enemy>
         {
-            new Enemy { Id = 1, Name = "Dragon", Type = "boss", MaxHP = 500 },
-            new Enemy { Id = 2, Name = "Troll", Type = "boss", MaxHP = 300 },
-            new Enemy { Id = 3, Name = "Goblin", Type = "basic", MaxHP = 100 }
+            new Enemy { Id = 1, Name = "Dragon", Type = Constants.EnemyTypeBoss, MaxHP = 500 },
+            new Enemy { Id = 2, Name = "Troll", Type = Constants.EnemyTypeBoss, MaxHP = 300 },
+            new Enemy { Id = 3, Name = "Goblin", Type = Constants.EnemyTypeBasic, MaxHP = 100 }
         };
         await _context.Enemies.AddRangeAsync(enemies);
         await _context.SaveChangesAsync();
@@ -53,8 +54,8 @@ public class EnemyRepositoryTests : IDisposable
         var enemies = new List<Enemy>
         {
             new Enemy { Id = 1, Name = "Dragon", Type = "Boss" },
-            new Enemy { Id = 2, Name = "Goblin", Type = "basic" },
-            new Enemy { Id = 3, Name = "Troll", Type = "boss" }
+            new Enemy { Id = 2, Name = "Goblin", Type = Constants.EnemyTypeBasic },
+            new Enemy { Id = 3, Name = "Troll", Type = Constants.EnemyTypeBoss }
         };
         await _context.Enemies.AddRangeAsync(enemies);
         await _context.SaveChangesAsync();
@@ -69,7 +70,7 @@ public class EnemyRepositoryTests : IDisposable
     [Fact]
     public async Task GetByIdAsync_ReturnsRecord_WhenIdExists()
     {
-        var enemy = new Enemy { Id = 5, Name = "Wolf", Type = "basic" };
+        var enemy = new Enemy { Id = 5, Name = "Wolf", Type = Constants.EnemyTypeBasic };
         await _context.Enemies.AddAsync(enemy);
         await _context.SaveChangesAsync();
 
@@ -91,7 +92,7 @@ public class EnemyRepositoryTests : IDisposable
     [Fact]
     public async Task AddAsync_InsertsRecordAndSavesChanges()
     {
-        var newEnemy = new Enemy { Id = 10, Name = "Slime", Type = "basic" };
+        var newEnemy = new Enemy { Id = 10, Name = "Slime", Type = Constants.EnemyTypeBasic };
 
         await _repository.AddAsync(newEnemy);
 
@@ -103,13 +104,13 @@ public class EnemyRepositoryTests : IDisposable
     [Fact]
     public async Task UpdateAsync_ModifiesRecordAndSavesChanges()
     {
-        var enemy = new Enemy { Id = 1, Name = "OldName", Type = "basic" };
+        var enemy = new Enemy { Id = 1, Name = "OldName", Type = Constants.EnemyTypeBasic };
         await _context.Enemies.AddAsync(enemy);
         await _context.SaveChangesAsync();
 
         _context.Entry(enemy).State = EntityState.Detached;
 
-        var updatedEnemy = new Enemy { Id = 1, Name = "NewName", Type = "basic" };
+        var updatedEnemy = new Enemy { Id = 1, Name = "NewName", Type = Constants.EnemyTypeBasic };
         await _repository.UpdateAsync(updatedEnemy);
 
         var dbRecord = await _context.Enemies.FindAsync(1);
@@ -120,7 +121,7 @@ public class EnemyRepositoryTests : IDisposable
     [Fact]
     public async Task DeleteAsync_RemovesRecord_WhenIdExists()
     {
-        var enemy = new Enemy { Id = 1, Name = "ToDelete", Type = "basic" };
+        var enemy = new Enemy { Id = 1, Name = "ToDelete", Type = Constants.EnemyTypeBasic };
         await _context.Enemies.AddAsync(enemy);
         await _context.SaveChangesAsync();
 
@@ -133,7 +134,7 @@ public class EnemyRepositoryTests : IDisposable
     [Fact]
     public async Task DeleteAsync_DoesNothing_WhenIdDoesNotExist()
     {
-        var enemy = new Enemy { Id = 1, Name = "ToKeep", Type = "basic" };
+        var enemy = new Enemy { Id = 1, Name = "ToKeep", Type = Constants.EnemyTypeBasic };
         await _context.Enemies.AddAsync(enemy);
         await _context.SaveChangesAsync();
 

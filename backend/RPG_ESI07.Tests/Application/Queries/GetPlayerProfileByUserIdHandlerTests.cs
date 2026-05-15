@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Moq;
 using RPG_ESI07.Application.Queries.PlayerProfiles;
+using RPG_ESI07.Domain;
 using RPG_ESI07.Domain.Entities;
 using RPG_ESI07.Domain.Interfaces;
 
@@ -25,7 +26,7 @@ public class GetPlayerProfileByUserIdHandlerTests
     {
         Id       = userId,
         Username = "testuser",
-        Role     = "Player",
+        Role     = Constants.RolePlayer,
         PlayerProfile = new PlayerProfile
         {
             Id           = 10,

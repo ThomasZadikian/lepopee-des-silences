@@ -6,6 +6,7 @@ using Moq;
 using RPG_ESI07.API.Controllers;
 using RPG_ESI07.Application.Commands.PlayerProfiles;
 using RPG_ESI07.Application.Queries.PlayerProfiles;
+using RPG_ESI07.Domain;
 using System.Security.Claims;
 
 namespace RPG_ESI07.Tests.Controllers;
@@ -27,7 +28,7 @@ public class PlayerProfileControllerTests
         {
             new Claim(ClaimTypes.NameIdentifier, userId.ToString())
         };
-        if (isAdmin) claims.Add(new Claim(ClaimTypes.Role, "Admin"));
+        if (isAdmin) claims.Add(new Claim(ClaimTypes.Role, Constants.RoleAdmin));
 
         var user = new ClaimsPrincipal(new ClaimsIdentity(claims, "TestAuth"));
         _controller.ControllerContext = new ControllerContext

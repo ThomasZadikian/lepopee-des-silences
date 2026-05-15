@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Moq;
 using RPG_ESI07.Application.Queries.RGPD;
+using RPG_ESI07.Domain;
 using RPG_ESI07.Domain.Entities;
 using RPG_ESI07.Domain.Interfaces;
 
@@ -24,7 +25,7 @@ public class GetUserDataHandlerTests
             Username     = "testuser",
             CreatedAt    = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
             LastLoginAt  = new DateTime(2025, 6, 1, 0, 0, 0, DateTimeKind.Utc),
-            LastLoginIP  = "127.0.0.1",
+            LastLoginIP  = Constants.SeedIpAddress,
             PlayerProfile = profile,
         };
         return user;

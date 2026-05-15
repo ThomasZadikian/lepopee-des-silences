@@ -1,4 +1,5 @@
 using FluentAssertions;
+using RPG_ESI07.Domain;
 using RPG_ESI07.Domain.Entities;
 
 namespace RPG_ESI07.Tests.Domain;
@@ -12,7 +13,7 @@ public class EnemyEntityTests
         var enemy = new Enemy();
 
         // Assert
-        enemy.Type.Should().Be("basic");
+        enemy.Type.Should().Be(Constants.EnemyTypeBasic);
         enemy.PhysicalResistance.Should().Be(1.0f);
         enemy.MagicalResistance.Should().Be(1.0f);
         enemy.BestiaryUnlocks.Should().BeEmpty();
@@ -25,7 +26,7 @@ public class EnemyEntityTests
         var enemy = new Enemy
         {
             Name = "Dragon",
-            Type = "boss",
+            Type = Constants.EnemyTypeBoss,
             MaxHP = 500,
             Strength = 30,
             Intelligence = 25,
@@ -36,7 +37,7 @@ public class EnemyEntityTests
 
         // Assert
         enemy.Name.Should().Be("Dragon");
-        enemy.Type.Should().Be("boss");
+        enemy.Type.Should().Be(Constants.EnemyTypeBoss);
         enemy.MaxHP.Should().Be(500);
     }
 }

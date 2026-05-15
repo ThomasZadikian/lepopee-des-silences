@@ -1,6 +1,7 @@
 ﻿using FluentAssertions;
 using Moq;
 using RPG_ESI07.Application.Commands.Auth;
+using RPG_ESI07.Domain;
 using RPG_ESI07.Domain.Entities;
 using RPG_ESI07.Domain.Interfaces;
 
@@ -39,7 +40,7 @@ public class RegisterHandlerTests
         .ReturnsAsync(new User { Id = 1 });
         _mockToken.Setup(t =>
         t.GenerateAccessToken(
-        It.IsAny<User>(), "Player"))
+        It.IsAny<User>(), Constants.RolePlayer))
         .Returns("jwt-token");
         var cmd = new RegisterCommand(
 "newuser", "test@test.com", "Pass123!");

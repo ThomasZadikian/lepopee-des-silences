@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RPG_ESI07.Application.Commands.PlayerProfiles;
 using RPG_ESI07.Application.Queries.PlayerProfiles;
+using RPG_ESI07.Domain;
 using System.Security.Claims;
 
 namespace RPG_ESI07.API.Controllers;
@@ -34,7 +35,7 @@ public class PlayerProfileController : ControllerBase
         var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
 
         // Un joueur ne peut créer que son propre profil
-        if (!User.IsInRole("Admin") && command.UserId != userId)
+        if (!User.IsInRole(Constants.RoleAdmin) && command.UserId != userId)
             return Forbid();
 
         var result = await _mediator.Send(command);

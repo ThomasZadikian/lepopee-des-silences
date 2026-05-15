@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RPG_ESI07.Application.Commands.PlayerInventorys;
 using RPG_ESI07.Application.Queries.PlayerInventorys;
+using RPG_ESI07.Domain;
 using System.Security.Claims;
 
 namespace RPG_ESI07.API.Controllers;
@@ -17,7 +18,7 @@ public class PlayerInventoriesController : ControllerBase
     public PlayerInventoriesController(IMediator mediator) => _mediator = mediator;
 
     [HttpGet]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = Constants.RoleAdmin)]
     public async Task<IActionResult> GetAll()
     {
         var result = await _mediator.Send(new GetAllPlayerInventorysQuery());
@@ -28,7 +29,7 @@ public class PlayerInventoriesController : ControllerBase
     public async Task<IActionResult> GetById(int id)
     {
         var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-        var isAdmin = User.IsInRole("Admin");
+        var isAdmin = User.IsInRole(Constants.RoleAdmin);
         var result = await _mediator.Send(new GetPlayerInventoryByIdQuery(id, currentUserId, isAdmin));
         return Ok(result);
     }
@@ -37,7 +38,7 @@ public class PlayerInventoriesController : ControllerBase
     public async Task<IActionResult> Create([FromBody] CreatePlayerInventoryCommand command)
     {
         var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-        if (!User.IsInRole("Admin") && command.PlayerId != currentUserId)
+        if (!User.IsInRole(Constants.RoleAdmin) && command.PlayerId != currentUserId)
             return Forbid();
 
         var result = await _mediator.Send(command);
@@ -50,7 +51,7 @@ public class PlayerInventoriesController : ControllerBase
         if (id != command.Id) return BadRequest("Id mismatch");
 
         var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-        var isAdmin = User.IsInRole("Admin");
+        var isAdmin = User.IsInRole(Constants.RoleAdmin);
 
         var result = await _mediator.Send(command with { RequestingUserId = currentUserId, IsAdmin = isAdmin });
         return Ok(result);
@@ -60,7 +61,7 @@ public class PlayerInventoriesController : ControllerBase
     public async Task<IActionResult> Delete(int id)
     {
         var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-        var isAdmin = User.IsInRole("Admin");
+        var isAdmin = User.IsInRole(Constants.RoleAdmin);
 
         var result = await _mediator.Send(new DeletePlayerInventoryCommand(id, currentUserId, isAdmin));
         return Ok(result);

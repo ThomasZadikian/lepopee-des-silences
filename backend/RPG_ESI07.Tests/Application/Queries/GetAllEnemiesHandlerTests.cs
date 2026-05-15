@@ -1,6 +1,7 @@
 ﻿using FluentAssertions;
 using Moq;
 using RPG_ESI07.Application.Queries.Enemies;
+using RPG_ESI07.Domain;
 using RPG_ESI07.Domain.Entities;
 using RPG_ESI07.Domain.Interfaces;
 
@@ -22,9 +23,9 @@ public class GetAllEnemiesHandlerTests
     {
         var enemies = new List<Enemy>
         {
-            new() { Id = 1, Name = "Goblin",  Type = "basic",    MaxHP = 50 },
-            new() { Id = 2, Name = "Dragon",  Type = "boss",     MaxHP = 900 },
-            new() { Id = 3, Name = "Golem",   Type = "miniboss", MaxHP = 250 },
+            new() { Id = 1, Name = "Goblin",  Type = Constants.EnemyTypeBasic,    MaxHP = 50 },
+            new() { Id = 2, Name = "Dragon",  Type = Constants.EnemyTypeBoss,     MaxHP = 900 },
+            new() { Id = 3, Name = "Golem",   Type = Constants.EnemyTypeMiniboss, MaxHP = 250 },
         };
         _mockRepo.Setup(r => r.GetAllAsync()).ReturnsAsync(enemies);
 
