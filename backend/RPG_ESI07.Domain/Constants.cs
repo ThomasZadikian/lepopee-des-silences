@@ -41,7 +41,7 @@ public static class Constants
     #endregion
 
     #region Database
-    public const string JsonbColumnType = "jsonb";
+    public const string JsonbColumnType = "jsonb"; 
     #endregion
 
     #region Seed

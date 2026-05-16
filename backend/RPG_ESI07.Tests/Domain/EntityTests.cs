@@ -121,10 +121,10 @@ public class ItemEntityTests
     }
 
     [Theory]
-    [InlineData("weapon")]
-    [InlineData("armor")]
-    [InlineData("accessory")]
-    [InlineData("consumable")]
+    [InlineData(Constants.ItemTypeWeapon)]
+    [InlineData(Constants.ItemTypeArmor)]
+    [InlineData(Constants.ItemTypeAccessory)]
+    [InlineData(Constants.ItemTypeConsumable)]
     public void Item_ValidTypes_CanBeAssigned(string type)
     {
         // Act
@@ -148,10 +148,10 @@ public class SkillEntityTests
     }
 
     [Theory]
-    [InlineData("damage")]
-    [InlineData("heal")]
-    [InlineData("buff")]
-    [InlineData("debuff")]
+    [InlineData(Constants.EffectDamage)]
+    [InlineData(Constants.EffectHeal)]
+    [InlineData(Constants.EffectBuff)]
+    [InlineData(Constants.EffectDebuff)]
     public void Skill_ValidEffectTypes_CanBeAssigned(string effectType)
     {
         // Act
