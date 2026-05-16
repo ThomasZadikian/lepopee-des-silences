@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using RPG_ESI07.Domain;
 using RPG_ESI07.Domain.Entities;
 
 namespace RPG_ESI07.Infrastructure.Data;
@@ -47,7 +48,7 @@ public class AppDbContext : DbContext
 
             entity.Property(e => e.Role)
                 .HasMaxLength(20)
-                .HasDefaultValue("Player")
+                .HasDefaultValue(Constants.RolePlayer)
                 .IsRequired();
 
             entity.Property(e => e.LastLoginIP)
@@ -156,10 +157,10 @@ public class AppDbContext : DbContext
                 .IsRequired();
 
             entity.Property(e => e.InventoryData)
-                .HasColumnType("jsonb");
+                .HasColumnType(Constants.JsonbColumnType);
 
             entity.Property(e => e.QuestFlags)
-                .HasColumnType("jsonb");
+                .HasColumnType(Constants.JsonbColumnType);
 
             entity.ToTable(t =>
             {
@@ -205,7 +206,7 @@ public class AppDbContext : DbContext
                 .IsRequired();
 
             entity.Property(e => e.StatModifiers)
-                .HasColumnType("jsonb");
+                .HasColumnType(Constants.JsonbColumnType);
 
             entity.ToTable(t =>
             {
@@ -282,7 +283,7 @@ public class AppDbContext : DbContext
                 .IsRequired();
 
             entity.Property(e => e.EventData)
-                .HasColumnType("jsonb");
+                .HasColumnType(Constants.JsonbColumnType);
 
             entity.Property(e => e.IpAddress)
                 .HasMaxLength(45);

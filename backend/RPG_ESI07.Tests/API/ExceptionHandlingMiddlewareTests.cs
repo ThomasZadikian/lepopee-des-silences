@@ -11,6 +11,10 @@ namespace RPG_ESI07.Tests.Middleware;
 public class ExceptionHandlingMiddlewareTests
 {
     private readonly Mock<ILogger<ExceptionHandlingMiddleware>> _loggerMock;
+    private static readonly JsonSerializerOptions _jsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true
+    };
 
     public ExceptionHandlingMiddlewareTests()
     {
@@ -41,10 +45,7 @@ public class ExceptionHandlingMiddlewareTests
         ApiResponse<object>? responseData = null;
         if (!string.IsNullOrEmpty(responseBody))
         {
-            responseData = JsonSerializer.Deserialize<ApiResponse<object>>(responseBody, new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            });
+            responseData = JsonSerializer.Deserialize<ApiResponse<object>>(responseBody, _jsonOptions);
         }
 
         return (context, responseData);

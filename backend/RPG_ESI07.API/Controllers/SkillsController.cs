@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RPG_ESI07.Application.Commands.Skills;
 using RPG_ESI07.Application.Queries.Skills;
+using RPG_ESI07.Domain;
 
 namespace RPG_ESI07.API.Controllers;
 
@@ -16,7 +17,7 @@ public class SkillsController : ControllerBase
     public SkillsController(IMediator mediator) => _mediator = mediator;
 
     [HttpGet]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = Constants.RoleAdmin)]
     public async Task<IActionResult> GetAll()
     {
         var result = await _mediator.Send(new GetAllSkillsQuery());
@@ -24,7 +25,7 @@ public class SkillsController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = Constants.RoleAdmin)]
     public async Task<IActionResult> Create([FromBody] CreateSkillCommand command)
     {
         var result = await _mediator.Send(command);
@@ -32,7 +33,7 @@ public class SkillsController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = Constants.RoleAdmin)]
     public async Task<IActionResult> Update(int id, [FromBody] UpdateSkillCommand command)
     {
         if (id != command.Id) return BadRequest("Id mismatch");
@@ -41,7 +42,7 @@ public class SkillsController : ControllerBase
     }
 
     [HttpDelete("{id}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = Constants.RoleAdmin)]
     public async Task<IActionResult> Delete(int id)
     {
         var result = await _mediator.Send(new DeleteSkillCommand(id));

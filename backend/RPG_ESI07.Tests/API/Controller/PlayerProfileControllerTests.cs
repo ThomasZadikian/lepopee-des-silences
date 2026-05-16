@@ -6,6 +6,7 @@ using Moq;
 using RPG_ESI07.API.Controllers;
 using RPG_ESI07.Application.Commands.PlayerProfiles;
 using RPG_ESI07.Application.Queries.PlayerProfiles;
+using RPG_ESI07.Domain;
 using System.Security.Claims;
 
 namespace RPG_ESI07.Tests.Controllers;
@@ -27,7 +28,7 @@ public class PlayerProfileControllerTests
         {
             new Claim(ClaimTypes.NameIdentifier, userId.ToString())
         };
-        if (isAdmin) claims.Add(new Claim(ClaimTypes.Role, "Admin"));
+        if (isAdmin) claims.Add(new Claim(ClaimTypes.Role, Constants.RoleAdmin));
 
         var user = new ClaimsPrincipal(new ClaimsIdentity(claims, "TestAuth"));
         _controller.ControllerContext = new ControllerContext
@@ -36,7 +37,7 @@ public class PlayerProfileControllerTests
         };
     }
 
-    private GetPlayerProfileByUserIdResponse BuildProfileResponse(int userId = 1) => new(
+    private static GetPlayerProfileByUserIdResponse BuildProfileResponse(int userId = 1) => new(
         Id: 10, UserId: userId, CharacterName: "Aragorn",
         Level: 5, CurrentHP: 80, MaxHP: 100, CurrentMP: 30, MaxMP: 50,
         Strength: 15, Intelligence: 12, Speed: 11, Experience: 1250, Gold: 300,

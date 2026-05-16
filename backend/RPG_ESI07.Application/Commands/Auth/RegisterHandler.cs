@@ -1,4 +1,5 @@
 ﻿using MediatR;
+using RPG_ESI07.Domain;
 using RPG_ESI07.Domain.Entities;
 using RPG_ESI07.Domain.Interfaces;
 
@@ -23,7 +24,7 @@ public class RegisterHandler
 
     public async Task<AuthResponse> Handle(
     RegisterCommand request,
-    CancellationToken ct)
+    CancellationToken cancellationToken)
     {
         // 1. Vérifier unicité username
         if (await _userRepo.UsernameExistsAsync(
@@ -45,7 +46,7 @@ public class RegisterHandler
         await _userRepo.AddAsync(user);
         // 4. Générer le JWT
         var token = _tokenService
-        .GenerateAccessToken(user, "Player");
+        .GenerateAccessToken(user, Constants.RolePlayer);
         return new AuthResponse(true, token, false,
         "Registration successful");
     }

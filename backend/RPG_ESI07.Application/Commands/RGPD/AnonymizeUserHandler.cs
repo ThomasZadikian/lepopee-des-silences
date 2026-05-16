@@ -1,19 +1,16 @@
 ﻿using MediatR;
 using RPG_ESI07.Domain.Interfaces;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
-namespace RPG_ESI07.Application.Commands.RGPD; 
+namespace RPG_ESI07.Application.Commands.RGPD;
 
 public class AnonymizeUserHandler : IRequestHandler<AnonymizeUserCommand, AnonymizeUserResponse>
 {
-    private readonly IUserRepository _repository; 
+    private readonly IUserRepository _repository;
 
     public AnonymizeUserHandler(IUserRepository repository)
     {
         _repository = repository;
-    }   
+    }
 
     public async Task<AnonymizeUserResponse> Handle(AnonymizeUserCommand request, CancellationToken cancellationToken)
     {

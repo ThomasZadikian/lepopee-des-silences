@@ -1,6 +1,5 @@
 <template>
   <div>
-
     <!-- ── HERO ───────────────────────────────────────────────────── -->
     <div
       style="
@@ -10,18 +9,19 @@
       "
     >
       <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; min-height: 160px;">
-
         <!-- Titre -->
         <div style="padding: 40px 32px; border-right: 1px solid var(--rpg-border);">
           <div class="editorial-label mb-3">
             Compte {{ auth.username }}
           </div>
-          <div style="
+          <div
+            style="
             font-family: var(--font-serif);
             font-size: clamp(2rem, 3vw, 3rem);
             font-weight: 900; line-height: 1;
             letter-spacing: -0.03em; margin-bottom: 12px;
-          ">
+          "
+          >
             Confidentialité
             <span style="font-style:italic;color:var(--rpg-ink-muted);display:block;">
               &amp; données
@@ -35,7 +35,9 @@
 
         <!-- Stat 1 -->
         <div style="padding:40px 32px;border-right:1px solid var(--rpg-border);">
-          <div class="editorial-label mb-3">Données stockées</div>
+          <div class="editorial-label mb-3">
+            Données stockées
+          </div>
           <div style="font-family:var(--font-serif);font-size:2.5rem;font-weight:700;line-height:1;">
             —
           </div>
@@ -43,7 +45,9 @@
 
         <!-- Stat 2 -->
         <div style="padding:40px 32px;border-right:1px solid var(--rpg-border);">
-          <div class="editorial-label mb-3">Catégories</div>
+          <div class="editorial-label mb-3">
+            Catégories
+          </div>
           <div style="font-family:var(--font-serif);font-size:2.5rem;font-weight:700;line-height:1;">
             3
           </div>
@@ -51,7 +55,9 @@
 
         <!-- Stat 3 -->
         <div style="padding:40px 32px;">
-          <div class="editorial-label mb-3">Conservation</div>
+          <div class="editorial-label mb-3">
+            Conservation
+          </div>
           <div style="font-family:var(--font-serif);font-size:1.6rem;font-weight:700;line-height:1.2;">
             Tant que compte actif
           </div>
@@ -61,14 +67,22 @@
 
     <!-- ── 3 DROITS ───────────────────────────────────────────────── -->
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;margin-bottom:40px;border:1px solid var(--rpg-border);">
-
       <!-- Droit 01 — Export ZIP -->
       <div style="padding:28px;border-right:1px solid var(--rpg-border);">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-          <div class="editorial-label">Droit 01</div>
-          <div style="font-size:16px;">→</div>
+          <div class="editorial-label">
+            Droit 01
+          </div>
+          <div style="font-size:16px;">
+            →
+          </div>
         </div>
-        <div class="editorial-label mb-2" style="color:var(--rpg-ink-muted);">■ Récupérer</div>
+        <div
+          class="editorial-label mb-2"
+          style="color:var(--rpg-ink-muted);"
+        >
+          ■ Récupérer
+        </div>
         <div style="font-family:var(--font-serif);font-size:1.4rem;font-weight:700;margin-bottom:12px;line-height:1.2;">
           Exporter mes données
         </div>
@@ -101,10 +115,19 @@
       <!-- Droit 02 — Voir données -->
       <div style="padding:28px;border-right:1px solid var(--rpg-border);">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-          <div class="editorial-label">Droit 02</div>
-          <div style="font-size:16px;">○</div>
+          <div class="editorial-label">
+            Droit 02
+          </div>
+          <div style="font-size:16px;">
+            ○
+          </div>
         </div>
-        <div class="editorial-label mb-2" style="color:var(--rpg-ink-muted);">■ Consulter</div>
+        <div
+          class="editorial-label mb-2"
+          style="color:var(--rpg-ink-muted);"
+        >
+          ■ Consulter
+        </div>
         <div style="font-family:var(--font-serif);font-size:1.4rem;font-weight:700;margin-bottom:12px;line-height:1.2;">
           Voir mes données
         </div>
@@ -137,10 +160,22 @@
       <!-- Droit 03 — Suppression -->
       <div style="padding:28px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-          <div class="editorial-label">Droit 03</div>
-          <div style="font-size:16px;cursor:pointer;" @click="confirmDelete = true">×</div>
+          <div class="editorial-label">
+            Droit 03
+          </div>
+          <div
+            style="font-size:16px;cursor:pointer;"
+            @click="confirmDelete = true"
+          >
+            ×
+          </div>
         </div>
-        <div class="editorial-label mb-2" style="color:#C0392B;">■ Effacer</div>
+        <div
+          class="editorial-label mb-2"
+          style="color:#C0392B;"
+        >
+          ■ Effacer
+        </div>
         <div style="font-family:var(--font-serif);font-size:1.4rem;font-weight:700;margin-bottom:12px;line-height:1.2;">
           Supprimer mon compte
         </div>
@@ -173,22 +208,36 @@
 
     <!-- ── DÉTAIL PAR CATÉGORIE ───────────────────────────────────── -->
     <div style="margin-bottom:40px;">
-      <div style="
+      <div
+        style="
         display:flex;justify-content:space-between;align-items:center;
         margin-bottom:0;padding-bottom:12px;
         border-bottom:1px solid var(--rpg-border);
-      ">
-        <div class="editorial-label">■ Détail par catégorie</div>
+      "
+      >
+        <div class="editorial-label">
+          ■ Détail par catégorie
+        </div>
       </div>
 
       <!-- Header -->
       <div style="border-bottom:1px solid var(--rpg-border);padding:10px 0;">
         <div style="display:grid;grid-template-columns:2fr 3fr 2fr 2fr 2fr;gap:0;">
-          <div class="editorial-label">Catégorie</div>
-          <div class="editorial-label">Description</div>
-          <div class="editorial-label">Volume</div>
-          <div class="editorial-label">Quantité</div>
-          <div class="editorial-label text-right">Actions</div>
+          <div class="editorial-label">
+            Catégorie
+          </div>
+          <div class="editorial-label">
+            Description
+          </div>
+          <div class="editorial-label">
+            Volume
+          </div>
+          <div class="editorial-label">
+            Quantité
+          </div>
+          <div class="editorial-label text-right">
+            Actions
+          </div>
         </div>
       </div>
 
@@ -205,8 +254,12 @@
           <div style="font-size:12px;color:var(--rpg-ink-muted);font-style:italic;">
             {{ cat.desc }}
           </div>
-          <div style="font-size:12px;color:var(--rpg-ink-muted);">—</div>
-          <div style="font-size:12px;color:var(--rpg-ink-muted);">—</div>
+          <div style="font-size:12px;color:var(--rpg-ink-muted);">
+            —
+          </div>
+          <div style="font-size:12px;color:var(--rpg-ink-muted);">
+            —
+          </div>
           <div style="text-align:right;">
             <span
               style="font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;text-decoration:underline;margin-left:12px;"
@@ -220,13 +273,23 @@
     </div>
 
     <!-- ── Dialogue confirmation suppression ─────────────────────── -->
-    <v-dialog v-model="confirmDelete" max-width="480">
-      <div style="
+    <v-dialog
+      v-model="confirmDelete"
+      max-width="480"
+    >
+      <div
+        style="
         background:var(--rpg-cream);
         border:1px solid rgba(0,0,0,0.1);
         padding:40px;
-      ">
-        <div class="editorial-label mb-3" style="color:#C0392B;">■ Action irréversible</div>
+      "
+      >
+        <div
+          class="editorial-label mb-3"
+          style="color:#C0392B;"
+        >
+          ■ Action irréversible
+        </div>
         <div style="font-family:var(--font-serif);font-size:1.5rem;font-weight:700;margin-bottom:12px;">
           Supprimer mon compte ?
         </div>
@@ -236,7 +299,9 @@
         </div>
 
         <div style="margin-bottom:24px;">
-          <div class="editorial-label mb-2">Raison (optionnel)</div>
+          <div class="editorial-label mb-2">
+            Raison (optionnel)
+          </div>
           <input
             v-model="deleteReason"
             type="text"
@@ -248,7 +313,7 @@
               font-family:var(--font-sans);font-size:13px;
               outline:none;
             "
-          />
+          >
         </div>
 
         <div class="d-flex justify-end ga-4">
@@ -273,7 +338,6 @@
         </div>
       </div>
     </v-dialog>
-
   </div>
 </template>
 

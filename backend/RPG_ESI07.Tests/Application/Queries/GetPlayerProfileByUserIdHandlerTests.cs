@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Moq;
 using RPG_ESI07.Application.Queries.PlayerProfiles;
+using RPG_ESI07.Domain;
 using RPG_ESI07.Domain.Entities;
 using RPG_ESI07.Domain.Interfaces;
 
@@ -16,16 +17,14 @@ public class GetPlayerProfileByUserIdHandlerTests
     {
         _profileRepo = new Mock<IPlayerProfileRepository>();
         _userRepo    = new Mock<IUserRepository>();
-        _handler     = new GetPlayerProfileByUserIdHandler(
-            _profileRepo.Object,
-            _userRepo.Object);
+        _handler     = new GetPlayerProfileByUserIdHandler(_userRepo.Object);
     }
 
-    private User BuildUserWithProfile(int userId = 1) => new()
+    private static User BuildUserWithProfile(int userId = 1) => new()
     {
         Id       = userId,
         Username = "testuser",
-        Role     = "Player",
+        Role     = Constants.RolePlayer,
         PlayerProfile = new PlayerProfile
         {
             Id           = 10,

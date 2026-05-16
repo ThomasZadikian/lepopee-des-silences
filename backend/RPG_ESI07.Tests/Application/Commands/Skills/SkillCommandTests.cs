@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Moq;
 using RPG_ESI07.Application.Commands.Skills;
+using RPG_ESI07.Domain;
 using RPG_ESI07.Domain.Entities;
 using RPG_ESI07.Domain.Interfaces;
 
@@ -21,7 +22,7 @@ public class CreateSkillHandlerTests
     public async Task Handle_ValidCommand_ReturnsSuccessResponse()
     {
         // Arrange
-        var command = new CreateSkillCommand("Fireball", "damage", 20);
+        var command = new CreateSkillCommand("Fireball", Constants.EffectDamage, 20);
         _mockRepo.Setup(r => r.AddAsync(It.IsAny<Skill>())).Returns(Task.CompletedTask);
 
         // Act
@@ -48,12 +49,12 @@ public class UpdateSkillHandlerTests
     public async Task Handle_ExistingEntity_UpdatesFields()
     {
         // Arrange
-        var entity = new Skill { Id = 1, Name = "Old", EffectType = "damage", MPCost = 10 };
+        var entity = new Skill { Id = 1, Name = "Old", EffectType = Constants.EffectDamage, MPCost = 10 };
         _mockRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(entity);
         _mockRepo.Setup(r => r.UpdateAsync(It.IsAny<Skill>())).Returns(Task.CompletedTask);
 
         // Act
-        var result = await _handler.Handle(new UpdateSkillCommand(1, "Blizzard", "damage", 25), CancellationToken.None);
+        var result = await _handler.Handle(new UpdateSkillCommand(1, "Blizzard", Constants.EffectDamage, 25), CancellationToken.None);
 
         // Assert
         result.Success.Should().BeTrue();

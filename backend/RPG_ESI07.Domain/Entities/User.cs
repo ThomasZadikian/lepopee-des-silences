@@ -15,7 +15,7 @@ public class User
     public string? LastLoginIP { get; set; }
     public DateTime? DeletedAt { get; set; } // Soft delete RGPD
     public string? DeletionReason { get; set; }
-    public string Role { get; set; } = "Player";
+    public string Role { get; set; } = Constants.RolePlayer;
 
     // Navigation properties
     public PlayerProfile? PlayerProfile { get; set; }

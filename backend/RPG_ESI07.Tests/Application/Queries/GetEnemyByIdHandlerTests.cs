@@ -1,6 +1,7 @@
 ﻿using FluentAssertions;
 using Moq;
 using RPG_ESI07.Application.Queries.Enemies;
+using RPG_ESI07.Domain;
 using RPG_ESI07.Domain.Entities;
 using RPG_ESI07.Domain.Interfaces;
 
@@ -20,7 +21,7 @@ public class GetEnemyByIdHandlerTests
     [Fact]
     public async Task Handle_ExistingId_ReturnsEnemy()
     {
-        var enemy = new Enemy { Id = 1, Name = "Goblin", Type = "basic", MaxHP = 50 };
+        var enemy = new Enemy { Id = 1, Name = "Goblin", Type = Constants.EnemyTypeBasic, MaxHP = 50 };
         _mockRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(enemy);
 
         var result = await _handler.Handle(new GetEnemyByIdQuery(1), CancellationToken.None);

@@ -10,8 +10,13 @@ public class PlayerSpawner : MonoBehaviour
         float x = GameManager.Instance.PosX;
         float y = GameManager.Instance.PosY;
 
-        // Si position valide (pas 0,0)
-        if (x != 0f || y != 0f)
-            transform.position = new Vector3(x, y, 0f);
+        // Si pas de save → spawn au point de départ
+        if (x == 0f && y == 0f)
+        {
+            x = 0.05f;
+            y = 0.57f;
+        }
+
+        transform.position = new Vector3(x, y, 0f);
     }
 }

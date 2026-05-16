@@ -4,7 +4,7 @@ public class Enemy
 {
     public int Id { get; set; }
     public string Name { get; set; } = string.Empty;
-    public string Type { get; set; } = "basic"; // basic, miniboss, boss
+    public string Type { get; set; } = Constants.EnemyTypeBasic; // basic, miniboss, boss
     public int MaxHP { get; set; }
     public int Strength { get; set; }
     public int Intelligence { get; set; }

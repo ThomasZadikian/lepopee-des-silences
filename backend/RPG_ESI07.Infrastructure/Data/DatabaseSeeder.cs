@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using RPG_ESI07.Domain;
 using RPG_ESI07.Domain.Entities;
 using RPG_ESI07.Domain.Interfaces;
 using System.Text;
@@ -13,11 +14,8 @@ public static class DatabaseSeeder
     {
         if (await context.Users.AnyAsync())
         {
-            Console.WriteLine("Database already seeded. Skipping...");
             return;
         }
-
-        Console.WriteLine("Starting database seeding...");
 
         var playerPassword = GetRequiredSeedPassword(configuration, "Seed:PlayerPassword");
         var adminPassword = GetRequiredSeedPassword(configuration, "Seed:AdminPassword");
@@ -31,38 +29,37 @@ public static class DatabaseSeeder
                 Username    = "devuser",
                 Email       = Encoding.UTF8.GetBytes("dev@rpg-esi07.com"),
                 PasswordHash= hasher.HashPassword(playerPassword),
-                Role        = "Player",
+                Role        = Constants.RolePlayer,
                 MfaEnabled  = false,
                 CreatedAt   = DateTime.UtcNow,
                 LastLoginAt = DateTime.UtcNow.AddHours(-1),
-                LastLoginIP = "127.0.0.1",
+                LastLoginIP = Constants.SeedIpAddress,
             },
             new User
             {
                 Username    = "adminuser",
                 Email       = Encoding.UTF8.GetBytes("admin@rpg-esi07.com"),
                 PasswordHash= hasher.HashPassword(adminPassword),
-                Role        = "Admin",
+                Role        = Constants.RoleAdmin,
                 MfaEnabled  = false,
                 CreatedAt   = DateTime.UtcNow.AddDays(-60),
                 LastLoginAt = DateTime.UtcNow.AddMinutes(-30),
-                LastLoginIP = "127.0.0.1",
+                LastLoginIP = Constants.SeedIpAddress,
             },
             new User
             {
                 Username    = "testplayer",
                 Email       = Encoding.UTF8.GetBytes("player@rpg-esi07.com"),
                 PasswordHash= hasher.HashPassword(testPassword),
-                Role        = "Player",
+                Role        = Constants.RolePlayer,
                 MfaEnabled  = false,
                 CreatedAt   = DateTime.UtcNow.AddDays(-10),
                 LastLoginAt = DateTime.UtcNow.AddDays(-2),
-                LastLoginIP = "127.0.0.1",
+                LastLoginIP = Constants.SeedIpAddress,
             }
         };
         await context.Users.AddRangeAsync(users);
         await context.SaveChangesAsync();
-        Console.WriteLine($"Seeded {users.Length} users");
 
         var profiles = new[]
         {
@@ -117,7 +114,6 @@ public static class DatabaseSeeder
         };
         await context.PlayerProfiles.AddRangeAsync(profiles);
         await context.SaveChangesAsync();
-        Console.WriteLine($"Seeded {profiles.Length} player profiles");
 
         // ===== 3. ENEMIES (20 ennemis) =====
         var enemies = new[]
@@ -125,70 +121,70 @@ public static class DatabaseSeeder
             // ── Basiques ──────────────────────────────────────────────────────
             new Enemy
             {
-                Name = "Gobelin des Bois", Type = "basic", MaxHP = 45, Strength = 8,
+                Name = "Gobelin des Bois", Type = Constants.EnemyTypeBasic, MaxHP = 45, Strength = 8,
                 Intelligence = 4, Speed = 10, PhysicalResistance = 1.0f, MagicalResistance = 1.2f,
                 ExperienceReward = 15, GoldReward = 8,
                 Description = "Petite créature rusée qui tend des embuscades dans les forêts denses"
             },
             new Enemy
             {
-                Name = "Rat Géant", Type = "basic", MaxHP = 30, Strength = 6,
+                Name = "Rat Géant", Type = Constants.EnemyTypeBasic, MaxHP = 30, Strength = 6,
                 Intelligence = 2, Speed = 14, PhysicalResistance = 1.0f, MagicalResistance = 1.0f,
                 ExperienceReward = 10, GoldReward = 3,
                 Description = "Rongeur mutant dont les dents percent l'armure de cuir"
             },
             new Enemy
             {
-                Name = "Orc Guerrier", Type = "basic", MaxHP = 85, Strength = 16,
+                Name = "Orc Guerrier", Type = Constants.EnemyTypeBasic, MaxHP = 85, Strength = 16,
                 Intelligence = 5, Speed = 7, PhysicalResistance = 0.9f, MagicalResistance = 1.1f,
                 ExperienceReward = 35, GoldReward = 20,
                 Description = "Guerrier brutal dont la rage compense le manque de finesse"
             },
             new Enemy
             {
-                Name = "Loup des Cendres", Type = "basic", MaxHP = 65, Strength = 13,
+                Name = "Loup des Cendres", Type = Constants.EnemyTypeBasic, MaxHP = 65, Strength = 13,
                 Intelligence = 5, Speed = 18, PhysicalResistance = 1.0f, MagicalResistance = 1.0f,
                 ExperienceReward = 28, GoldReward = 12,
                 Description = "Prédateur nocturne au pelage noirci par la magie corrompue"
             },
             new Enemy
             {
-                Name = "Squelette Archer", Type = "basic", MaxHP = 55, Strength = 10,
+                Name = "Squelette Archer", Type = Constants.EnemyTypeBasic, MaxHP = 55, Strength = 10,
                 Intelligence = 6, Speed = 9, PhysicalResistance = 0.8f, MagicalResistance = 1.4f,
                 ExperienceReward = 25, GoldReward = 15,
                 Description = "Mort-vivant dont les os craquent à chaque tir, mais qui ne manque jamais"
             },
             new Enemy
             {
-                Name = "Araignée Venimeuse", Type = "basic", MaxHP = 50, Strength = 9,
+                Name = "Araignée Venimeuse", Type = Constants.EnemyTypeBasic, MaxHP = 50, Strength = 9,
                 Intelligence = 3, Speed = 16, PhysicalResistance = 1.1f, MagicalResistance = 0.9f,
                 ExperienceReward = 22, GoldReward = 10,
                 Description = "Son venin paralyse ses proies avant qu'elle les cocon"
             },
             new Enemy
             {
-                Name = "Bandit de Grand Chemin", Type = "basic", MaxHP = 70, Strength = 12,
+                Name = "Bandit de Grand Chemin", Type = Constants.EnemyTypeBasic, MaxHP = 70, Strength = 12,
                 Intelligence = 8, Speed = 11, PhysicalResistance = 1.0f, MagicalResistance = 1.0f,
                 ExperienceReward = 30, GoldReward = 25,
                 Description = "Ancien soldat reconverti dans le pillage après la guerre"
             },
             new Enemy
             {
-                Name = "Zombie Pesteux", Type = "basic", MaxHP = 90, Strength = 14,
+                Name = "Zombie Pesteux", Type = Constants.EnemyTypeBasic, MaxHP = 90, Strength = 14,
                 Intelligence = 1, Speed = 4, PhysicalResistance = 0.7f, MagicalResistance = 1.3f,
                 ExperienceReward = 32, GoldReward = 5,
                 Description = "Sa lenteur cache une résistance aux dommages physiques déconcertante"
             },
             new Enemy
             {
-                Name = "Imp Pyromaniac", Type = "basic", MaxHP = 40, Strength = 7,
+                Name = "Imp Pyromaniac", Type = Constants.EnemyTypeBasic, MaxHP = 40, Strength = 7,
                 Intelligence = 15, Speed = 13, PhysicalResistance = 1.2f, MagicalResistance = 0.6f,
                 ExperienceReward = 28, GoldReward = 18,
                 Description = "Petit démon obsédé par les flammes, incapable de résister à y jouer"
             },
             new Enemy
             {
-                Name = "Troll des Marais", Type = "basic", MaxHP = 120, Strength = 18,
+                Name = "Troll des Marais", Type = Constants.EnemyTypeBasic, MaxHP = 120, Strength = 18,
                 Intelligence = 3, Speed = 5, PhysicalResistance = 0.8f, MagicalResistance = 1.2f,
                 ExperienceReward = 45, GoldReward = 22,
                 Description = "Sa régénération passive en fait un adversaire épuisant à l'usure"
@@ -196,35 +192,35 @@ public static class DatabaseSeeder
             // ── Miniboss ──────────────────────────────────────────────────────
             new Enemy
             {
-                Name = "Mage Corrompu", Type = "miniboss", MaxHP = 180, Strength = 10,
+                Name = "Mage Corrompu", Type = Constants.EnemyTypeMiniboss, MaxHP = 180, Strength = 10,
                 Intelligence = 30, Speed = 8, PhysicalResistance = 1.6f, MagicalResistance = 0.5f,
                 ExperienceReward = 120, GoldReward = 65,
                 Description = "Érudit ayant vendu son âme aux ténèbres pour un pouvoir illimité"
             },
             new Enemy
             {
-                Name = "Golem de Fer", Type = "miniboss", MaxHP = 250, Strength = 28,
+                Name = "Golem de Fer", Type = Constants.EnemyTypeMiniboss, MaxHP = 250, Strength = 28,
                 Intelligence = 2, Speed = 4, PhysicalResistance = 0.5f, MagicalResistance = 1.6f,
                 ExperienceReward = 140, GoldReward = 75,
                 Description = "Automate de guerre oublié dont la conscience s'est éteinte depuis longtemps"
             },
             new Enemy
             {
-                Name = "Vampire Ancien", Type = "miniboss", MaxHP = 200, Strength = 22,
+                Name = "Vampire Ancien", Type = Constants.EnemyTypeMiniboss, MaxHP = 200, Strength = 22,
                 Intelligence = 25, Speed = 20, PhysicalResistance = 1.3f, MagicalResistance = 0.7f,
                 ExperienceReward = 160, GoldReward = 90,
                 Description = "Seigneur de la nuit dont chaque coup vole la vitalité de ses victimes"
             },
             new Enemy
             {
-                Name = "Chevalier Maudit", Type = "miniboss", MaxHP = 220, Strength = 30,
+                Name = "Chevalier Maudit", Type = Constants.EnemyTypeMiniboss, MaxHP = 220, Strength = 30,
                 Intelligence = 12, Speed = 10, PhysicalResistance = 0.5f, MagicalResistance = 1.5f,
                 ExperienceReward = 150, GoldReward = 80,
                 Description = "Paladin déchu lié à son armure pour l'éternité par une malédiction ancienne"
             },
             new Enemy
             {
-                Name = "Wyverne des Pics", Type = "miniboss", MaxHP = 300, Strength = 25,
+                Name = "Wyverne des Pics", Type = Constants.EnemyTypeMiniboss, MaxHP = 300, Strength = 25,
                 Intelligence = 8, Speed = 22, PhysicalResistance = 0.9f, MagicalResistance = 1.1f,
                 ExperienceReward = 180, GoldReward = 100,
                 Description = "Dragon immature dont le venin acide dévore l'acier comme du tissu"
@@ -232,35 +228,35 @@ public static class DatabaseSeeder
             // ── Boss ──────────────────────────────────────────────────────────
             new Enemy
             {
-                Name = "Archiliches Tenebris", Type = "boss", MaxHP = 700, Strength = 20,
+                Name = "Archiliches Tenebris", Type = Constants.EnemyTypeBoss, MaxHP = 700, Strength = 20,
                 Intelligence = 50, Speed = 10, PhysicalResistance = 1.5f, MagicalResistance = 0.5f,
                 ExperienceReward = 800, GoldReward = 350,
                 Description = "Nécromancien ayant transcendé la mort, tissant la réalité à sa volonté"
             },
             new Enemy
             {
-                Name = "Dragon de l'Aube", Type = "boss", MaxHP = 900, Strength = 40,
+                Name = "Dragon de l'Aube", Type = Constants.EnemyTypeBoss, MaxHP = 900, Strength = 40,
                 Intelligence = 30, Speed = 20, PhysicalResistance = 0.7f, MagicalResistance = 0.7f,
                 ExperienceReward = 1000, GoldReward = 500,
                 Description = "Dernier représentant d'une race de dragons solaires, gardien du sanctuaire"
             },
             new Enemy
             {
-                Name = "Le Dévoreur", Type = "boss", MaxHP = 1200, Strength = 55,
+                Name = "Le Dévoreur", Type = Constants.EnemyTypeBoss, MaxHP = 1200, Strength = 55,
                 Intelligence = 15, Speed = 8, PhysicalResistance = 0.6f, MagicalResistance = 0.6f,
                 ExperienceReward = 1200, GoldReward = 400,
                 Description = "Entité primordiale sans forme définie, absorbant toute énergie vitale"
             },
             new Enemy
             {
-                Name = "Seigneur des Ombres", Type = "boss", MaxHP = 800, Strength = 35,
+                Name = "Seigneur des Ombres", Type = Constants.EnemyTypeBoss, MaxHP = 800, Strength = 35,
                 Intelligence = 40, Speed = 25, PhysicalResistance = 1.0f, MagicalResistance = 0.5f,
                 ExperienceReward = 950, GoldReward = 450,
                 Description = "Maître de l'illusion et de l'assassinat, se battant dans plusieurs dimensions"
             },
             new Enemy
             {
-                Name = "Titan de Pierre", Type = "boss", MaxHP = 1500, Strength = 60,
+                Name = "Titan de Pierre", Type = Constants.EnemyTypeBoss, MaxHP = 1500, Strength = 60,
                 Intelligence = 5, Speed = 3, PhysicalResistance = 0.5f, MagicalResistance = 1.7f,
                 ExperienceReward = 1500, GoldReward = 600,
                 Description = "Colosse millénaire réveillé d'un sommeil de pierre, dont chaque pas ébranle la terre"
@@ -268,89 +264,86 @@ public static class DatabaseSeeder
         };
         await context.Enemies.AddRangeAsync(enemies);
         await context.SaveChangesAsync();
-        Console.WriteLine($"Seeded {enemies.Length} enemies");
 
         // ===== 4. ITEMS (30 items) =====
         var items = new[]
         {
             // ── Armes ─────────────────────────────────────────────────────────
-            new Item { Name = "Dague Rouillée",       Type = "weapon", StatModifiers = JsonSerializer.Serialize(new { strength = 3 }),                           Price = 20,   Description = "Arme de fortune aux bords ébréchés, mais mortelle entre de bonnes mains" },
-            new Item { Name = "Épée Courte",           Type = "weapon", StatModifiers = JsonSerializer.Serialize(new { strength = 7 }),                           Price = 80,   Description = "Lame équilibrée pour les combattants débutants" },
-            new Item { Name = "Épée Longue en Fer",    Type = "weapon", StatModifiers = JsonSerializer.Serialize(new { strength = 12 }),                          Price = 200,  Description = "Arme à deux mains forgée par les forgerons du Nord" },
-            new Item { Name = "Lame de Lumière",       Type = "weapon", StatModifiers = JsonSerializer.Serialize(new { strength = 18, intelligence = 6 }),        Price = 650,  Description = "Épée bénie capable de dissoudre les non-morts au contact" },
-            new Item { Name = "Bâton des Arcanes",     Type = "weapon", StatModifiers = JsonSerializer.Serialize(new { intelligence = 20, maxMP = 40 }),          Price = 750,  Description = "Focalisateur magique taillé dans du bois de sorbier lunaire" },
-            new Item { Name = "Grimoire du Vide",      Type = "weapon", StatModifiers = JsonSerializer.Serialize(new { intelligence = 30, maxMP = 60 }),          Price = 1200, Description = "Tome interdit contenant des sorts oubliés depuis des siècles" },
-            new Item { Name = "Arc Elfique",           Type = "weapon", StatModifiers = JsonSerializer.Serialize(new { strength = 10, speed = 5 }),               Price = 420,  Description = "Arc en if enchanté dont les flèches semblent chercher leur cible" },
-            new Item { Name = "Hache de Guerre",       Type = "weapon", StatModifiers = JsonSerializer.Serialize(new { strength = 22, speed = -3 }),              Price = 480,  Description = "Arme brutale qui sacrifie la mobilité pour une puissance dévastatrice" },
-            new Item { Name = "Poignards Jumeaux",     Type = "weapon", StatModifiers = JsonSerializer.Serialize(new { strength = 8, speed = 8 }),                Price = 380,  Description = "Paire de lames conçue pour les attaques rapides en succession" },
-            new Item { Name = "Épée Runique",          Type = "weapon", StatModifiers = JsonSerializer.Serialize(new { strength = 25, intelligence = 10 }),       Price = 1500, Description = "Lame gravée de runes ancestrales canalisent la magie vers le fil" },
+            new Item { Name = "Dague Rouillée",       Type = Constants.ItemTypeWeapon, StatModifiers = JsonSerializer.Serialize(new { strength = 3 }),                           Price = 20,   Description = "Arme de fortune aux bords ébréchés, mais mortelle entre de bonnes mains" },
+            new Item { Name = "Épée Courte",           Type = Constants.ItemTypeWeapon, StatModifiers = JsonSerializer.Serialize(new { strength = 7 }),                           Price = 80,   Description = "Lame équilibrée pour les combattants débutants" },
+            new Item { Name = "Épée Longue en Fer",    Type = Constants.ItemTypeWeapon, StatModifiers = JsonSerializer.Serialize(new { strength = 12 }),                          Price = 200,  Description = "Arme à deux mains forgée par les forgerons du Nord" },
+            new Item { Name = "Lame de Lumière",       Type = Constants.ItemTypeWeapon, StatModifiers = JsonSerializer.Serialize(new { strength = 18, intelligence = 6 }),        Price = 650,  Description = "Épée bénie capable de dissoudre les non-morts au contact" },
+            new Item { Name = "Bâton des Arcanes",     Type = Constants.ItemTypeWeapon, StatModifiers = JsonSerializer.Serialize(new { intelligence = 20, maxMP = 40 }),          Price = 750,  Description = "Focalisateur magique taillé dans du bois de sorbier lunaire" },
+            new Item { Name = "Grimoire du Vide",      Type = Constants.ItemTypeWeapon, StatModifiers = JsonSerializer.Serialize(new { intelligence = 30, maxMP = 60 }),          Price = 1200, Description = "Tome interdit contenant des sorts oubliés depuis des siècles" },
+            new Item { Name = "Arc Elfique",           Type = Constants.ItemTypeWeapon, StatModifiers = JsonSerializer.Serialize(new { strength = 10, speed = 5 }),               Price = 420,  Description = "Arc en if enchanté dont les flèches semblent chercher leur cible" },
+            new Item { Name = "Hache de Guerre",       Type = Constants.ItemTypeWeapon, StatModifiers = JsonSerializer.Serialize(new { strength = 22, speed = -3 }),              Price = 480,  Description = "Arme brutale qui sacrifie la mobilité pour une puissance dévastatrice" },
+            new Item { Name = "Poignards Jumeaux",     Type = Constants.ItemTypeWeapon, StatModifiers = JsonSerializer.Serialize(new { strength = 8, speed = 8 }),                Price = 380,  Description = "Paire de lames conçue pour les attaques rapides en succession" },
+            new Item { Name = "Épée Runique",          Type = Constants.ItemTypeWeapon, StatModifiers = JsonSerializer.Serialize(new { strength = 25, intelligence = 10 }),       Price = 1500, Description = "Lame gravée de runes ancestrales canalisent la magie vers le fil" },
 
             // ── Armures ───────────────────────────────────────────────────────
-            new Item { Name = "Vêtements en Cuir",     Type = "armor",  StatModifiers = JsonSerializer.Serialize(new { maxHP = 15 }),                            Price = 60,   Description = "Protection minimale mais légère, idéale pour les voleurs" },
-            new Item { Name = "Tunique de Mage",       Type = "armor",  StatModifiers = JsonSerializer.Serialize(new { maxHP = 10, maxMP = 20 }),                Price = 120,  Description = "Tissu enchanté qui amplifie les capacités magiques" },
-            new Item { Name = "Cotte de Mailles",      Type = "armor",  StatModifiers = JsonSerializer.Serialize(new { maxHP = 45 }),                            Price = 350,  Description = "Protection intermédiaire offrant mobilité et résistance" },
-            new Item { Name = "Plastron d'Acier",      Type = "armor",  StatModifiers = JsonSerializer.Serialize(new { maxHP = 70, speed = -1 }),                Price = 600,  Description = "Armure lourde forgée pour les guerriers de première ligne" },
-            new Item { Name = "Armure du Crépuscule",  Type = "armor",  StatModifiers = JsonSerializer.Serialize(new { maxHP = 90, maxMP = 30 }),                Price = 1100, Description = "Alliage rare absorbant à la fois les coups physiques et magiques" },
+            new Item { Name = "Vêtements en Cuir",     Type = Constants.ItemTypeArmor,  StatModifiers = JsonSerializer.Serialize(new { maxHP = 15 }),                            Price = 60,   Description = "Protection minimale mais légère, idéale pour les voleurs" },
+            new Item { Name = "Tunique de Mage",       Type = Constants.ItemTypeArmor,  StatModifiers = JsonSerializer.Serialize(new { maxHP = 10, maxMP = 20 }),                Price = 120,  Description = "Tissu enchanté qui amplifie les capacités magiques" },
+            new Item { Name = "Cotte de Mailles",      Type = Constants.ItemTypeArmor,  StatModifiers = JsonSerializer.Serialize(new { maxHP = 45 }),                            Price = 350,  Description = "Protection intermédiaire offrant mobilité et résistance" },
+            new Item { Name = "Plastron d'Acier",      Type = Constants.ItemTypeArmor,  StatModifiers = JsonSerializer.Serialize(new { maxHP = 70, speed = -1 }),                Price = 600,  Description = "Armure lourde forgée pour les guerriers de première ligne" },
+            new Item { Name = "Armure du Crépuscule",  Type = Constants.ItemTypeArmor,  StatModifiers = JsonSerializer.Serialize(new { maxHP = 90, maxMP = 30 }),                Price = 1100, Description = "Alliage rare absorbant à la fois les coups physiques et magiques" },
 
             // ── Accessoires ───────────────────────────────────────────────────
-            new Item { Name = "Anneau de Force",       Type = "accessory", StatModifiers = JsonSerializer.Serialize(new { strength = 5 }),                       Price = 180,  Description = "Anneau forgé avec du métal des profondeurs, augmentant la puissance" },
-            new Item { Name = "Amulette d'Esprit",     Type = "accessory", StatModifiers = JsonSerializer.Serialize(new { intelligence = 8, maxMP = 15 }),       Price = 300,  Description = "Pendentif en cristal affinant la perception magique" },
-            new Item { Name = "Bottes de Mercure",     Type = "accessory", StatModifiers = JsonSerializer.Serialize(new { speed = 8 }),                          Price = 250,  Description = "Chaussures enchantées par un esprit du vent, presque trop rapides" },
-            new Item { Name = "Ceinture du Survivant", Type = "accessory", StatModifiers = JsonSerializer.Serialize(new { maxHP = 30 }),                         Price = 220,  Description = "Accessoire tressé avec des fibres régénératrices" },
-            new Item { Name = "Bague du Savant",       Type = "accessory", StatModifiers = JsonSerializer.Serialize(new { intelligence = 12, maxMP = 25 }),      Price = 550,  Description = "Anneau d'un mage défunt, encore imprégné de sa puissance" },
-            new Item { Name = "Cape de l'Ombre",       Type = "accessory", StatModifiers = JsonSerializer.Serialize(new { speed = 6, strength = 4 }),            Price = 480,  Description = "Cape tissée avec des fils d'obscurité, rend son porteur plus difficile à percevoir" },
+            new Item { Name = "Anneau de Force",       Type = Constants.ItemTypeAccessory, StatModifiers = JsonSerializer.Serialize(new { strength = 5 }),                       Price = 180,  Description = "Anneau forgé avec du métal des profondeurs, augmentant la puissance" },
+            new Item { Name = "Amulette d'Esprit",     Type = Constants.ItemTypeAccessory, StatModifiers = JsonSerializer.Serialize(new { intelligence = 8, maxMP = 15 }),       Price = 300,  Description = "Pendentif en cristal affinant la perception magique" },
+            new Item { Name = "Bottes de Mercure",     Type = Constants.ItemTypeAccessory, StatModifiers = JsonSerializer.Serialize(new { speed = 8 }),                          Price = 250,  Description = "Chaussures enchantées par un esprit du vent, presque trop rapides" },
+            new Item { Name = "Ceinture du Survivant", Type = Constants.ItemTypeAccessory, StatModifiers = JsonSerializer.Serialize(new { maxHP = 30 }),                         Price = 220,  Description = "Accessoire tressé avec des fibres régénératrices" },
+            new Item { Name = "Bague du Savant",       Type = Constants.ItemTypeAccessory, StatModifiers = JsonSerializer.Serialize(new { intelligence = 12, maxMP = 25 }),      Price = 550,  Description = "Anneau d'un mage défunt, encore imprégné de sa puissance" },
+            new Item { Name = "Cape de l'Ombre",       Type = Constants.ItemTypeAccessory, StatModifiers = JsonSerializer.Serialize(new { speed = 6, strength = 4 }),            Price = 480,  Description = "Cape tissée avec des fils d'obscurité, rend son porteur plus difficile à percevoir" },
 
             // ── Consommables HP ───────────────────────────────────────────────
-            new Item { Name = "Herbe Cicatrisante",    Type = "consumable", Category = "potion_hp",  EffectValue = 30,  Price = 12,  Description = "Plante médicinale commune stopant les saignements" },
-            new Item { Name = "Fiole de Soin",         Type = "consumable", Category = "potion_hp",  EffectValue = 60,  Price = 28,  Description = "Décoction alchimique réparant les tissus endommagés" },
-            new Item { Name = "Potion de Vitalité",    Type = "consumable", Category = "potion_hp",  EffectValue = 120, Price = 60,  Description = "Formule concentrée restaurant une large part des forces" },
-            new Item { Name = "Élixir de Guérison",    Type = "consumable", Category = "potion_hp",  EffectValue = 250, Price = 150, Description = "Préparation rare close toutes les blessures en instants" },
+            new Item { Name = "Herbe Cicatrisante",    Type = Constants.ItemTypeConsumable, Category = Constants.ItemCategoryPotionHp,  EffectValue = 30,  Price = 12,  Description = "Plante médicinale commune stopant les saignements" },
+            new Item { Name = "Fiole de Soin",         Type = Constants.ItemTypeConsumable, Category = Constants.ItemCategoryPotionHp,  EffectValue = 60,  Price = 28,  Description = "Décoction alchimique réparant les tissus endommagés" },
+            new Item { Name = "Potion de Vitalité",    Type = Constants.ItemTypeConsumable, Category = Constants.ItemCategoryPotionHp,  EffectValue = 120, Price = 60,  Description = "Formule concentrée restaurant une large part des forces" },
+            new Item { Name = "Élixir de Guérison",    Type = Constants.ItemTypeConsumable, Category = Constants.ItemCategoryPotionHp,  EffectValue = 250, Price = 150, Description = "Préparation rare close toutes les blessures en instants" },
 
             // ── Consommables MP ───────────────────────────────────────────────
-            new Item { Name = "Cristal de Mana",       Type = "consumable", Category = "potion_mp",  EffectValue = 30,  Price = 15,  Description = "Fragment cristallin libérant de l'énergie magique pure" },
-            new Item { Name = "Essence Magique",       Type = "consumable", Category = "potion_mp",  EffectValue = 70,  Price = 40,  Description = "Liquide luminescent distillé d'éthers magiques" },
-            new Item { Name = "Potion d'Éther",        Type = "consumable", Category = "potion_mp",  EffectValue = 150, Price = 90,  Description = "Potion rare restaurant une grande quantité de mana" },
+            new Item { Name = "Cristal de Mana",       Type = Constants.ItemTypeConsumable, Category = Constants.ItemCategoryPotionMp,  EffectValue = 30,  Price = 15,  Description = "Fragment cristallin libérant de l'énergie magique pure" },
+            new Item { Name = "Essence Magique",       Type = Constants.ItemTypeConsumable, Category = Constants.ItemCategoryPotionMp,  EffectValue = 70,  Price = 40,  Description = "Liquide luminescent distillé d'éthers magiques" },
+            new Item { Name = "Potion d'Éther",        Type = Constants.ItemTypeConsumable, Category = Constants.ItemCategoryPotionMp,  EffectValue = 150, Price = 90,  Description = "Potion rare restaurant une grande quantité de mana" },
 
             // ── Élixirs ───────────────────────────────────────────────────────
-            new Item { Name = "Élixir de Puissance",   Type = "consumable", Category = "elixir",     EffectValue = 500, Price = 350, Description = "Double temporairement la force et l'intelligence du buveur" },
-            new Item { Name = "Panacée Légendaire",    Type = "consumable", Category = "elixir",     EffectValue = 999, Price = 800, Description = "Remède universel restaurant complètement HP et MP, quasi introuvable" },
+            new Item { Name = "Élixir de Puissance",   Type = Constants.ItemTypeConsumable, Category = Constants.ItemCategoryElixir,     EffectValue = 500, Price = 350, Description = "Double temporairement la force et l'intelligence du buveur" },
+            new Item { Name = "Panacée Légendaire",    Type = Constants.ItemTypeConsumable, Category = Constants.ItemCategoryElixir,     EffectValue = 999, Price = 800, Description = "Remède universel restaurant complètement HP et MP, quasi introuvable" },
         };
         await context.Items.AddRangeAsync(items);
         await context.SaveChangesAsync();
-        Console.WriteLine($"Seeded {items.Length} items");
 
         // ===== 5. SKILLS (18 compétences) =====
         var skills = new[]
         {
             // ── Attaque ───────────────────────────────────────────────────────
-            new Skill { Name = "Boule de Feu",      MPCost = 15, BaseDamage = 35,  EffectType = "damage", ElementType = "fire",      Description = "Projectile enflammé infligeant des dégâts modérés de feu" },
-            new Skill { Name = "Foudre",             MPCost = 18, BaseDamage = 45,  EffectType = "damage", ElementType = "lightning", Description = "Éclair direct frappant avec une précision absolue" },
-            new Skill { Name = "Blizzard",           MPCost = 30, BaseDamage = 60,  EffectType = "damage", ElementType = "ice",       Description = "Tempête glaciale ralentissant et blessant les ennemis" },
-            new Skill { Name = "Météore",            MPCost = 45, BaseDamage = 95,  EffectType = "damage", ElementType = "fire",      Description = "Rocher céleste embrasé s'abattant avec une force dévastatrice" },
-            new Skill { Name = "Lance Sacrée",       MPCost = 25, BaseDamage = 55,  EffectType = "damage", ElementType = "neutral",   Description = "Projectile de lumière pure particulièrement efficace contre les morts-vivants" },
-            new Skill { Name = "Lame du Vent",       MPCost = 12, BaseDamage = 28,  EffectType = "damage", ElementType = "neutral",   Description = "Tranchant invisible propulsé à grande vitesse" },
-            new Skill { Name = "Nova de Ténèbres",   MPCost = 55, BaseDamage = 110, EffectType = "damage", ElementType = "neutral",   Description = "Explosion d'énergie sombre ravageant tout ce qu'elle touche" },
+            new Skill { Name = "Boule de Feu",      MPCost = 15, BaseDamage = 35,  EffectType = Constants.EffectDamage, ElementType = Constants.ElementFire,      Description = "Projectile enflammé infligeant des dégâts modérés de feu" },
+            new Skill { Name = "Foudre",             MPCost = 18, BaseDamage = 45,  EffectType = Constants.EffectDamage, ElementType = Constants.ElementLightning, Description = "Éclair direct frappant avec une précision absolue" },
+            new Skill { Name = "Blizzard",           MPCost = 30, BaseDamage = 60,  EffectType = Constants.EffectDamage, ElementType = Constants.ElementIce,       Description = "Tempête glaciale ralentissant et blessant les ennemis" },
+            new Skill { Name = "Météore",            MPCost = 45, BaseDamage = 95,  EffectType = Constants.EffectDamage, ElementType = Constants.ElementFire,      Description = "Rocher céleste embrasé s'abattant avec une force dévastatrice" },
+            new Skill { Name = "Lance Sacrée",       MPCost = 25, BaseDamage = 55,  EffectType = Constants.EffectDamage, ElementType = Constants.ElementNeutral,   Description = "Projectile de lumière pure particulièrement efficace contre les morts-vivants" },
+            new Skill { Name = "Lame du Vent",       MPCost = 12, BaseDamage = 28,  EffectType = Constants.EffectDamage, ElementType = Constants.ElementNeutral,   Description = "Tranchant invisible propulsé à grande vitesse" },
+            new Skill { Name = "Nova de Ténèbres",   MPCost = 55, BaseDamage = 110, EffectType = Constants.EffectDamage, ElementType = Constants.ElementNeutral,   Description = "Explosion d'énergie sombre ravageant tout ce qu'elle touche" },
 
             // ── Soin ──────────────────────────────────────────────────────────
-            new Skill { Name = "Soin",               MPCost = 10, HealAmount = 50,   EffectType = "heal",   ElementType = "neutral", Description = "Incantation basique restaurant une partie des points de vie" },
-            new Skill { Name = "Soin Mineur",        MPCost = 6,  HealAmount = 25,   EffectType = "heal",   ElementType = "neutral", Description = "Formule rapide pour les petites blessures" },
-            new Skill { Name = "Régénération",       MPCost = 20, HealAmount = 80,   EffectType = "heal",   ElementType = "neutral", Description = "Accélère la cicatrisation sur plusieurs secondes" },
-            new Skill { Name = "Soin de Groupe",     MPCost = 35, HealAmount = 60,   EffectType = "heal",   ElementType = "neutral", Description = "Aura curative soignant tous les alliés proches simultanément" },
-            new Skill { Name = "Résurrection",       MPCost = 80, HealAmount = 200,  EffectType = "heal",   ElementType = "neutral", Description = "Sort ultime permettant de rappeler un allié à la vie" },
+            new Skill { Name = "Soin",               MPCost = 10, HealAmount = 50,   EffectType = Constants.EffectHeal,   ElementType = Constants.ElementNeutral, Description = "Incantation basique restaurant une partie des points de vie" },
+            new Skill { Name = "Soin Mineur",        MPCost = 6,  HealAmount = 25,   EffectType = Constants.EffectHeal,   ElementType = Constants.ElementNeutral, Description = "Formule rapide pour les petites blessures" },
+            new Skill { Name = "Régénération",       MPCost = 20, HealAmount = 80,   EffectType = Constants.EffectHeal,   ElementType = Constants.ElementNeutral, Description = "Accélère la cicatrisation sur plusieurs secondes" },
+            new Skill { Name = "Soin de Groupe",     MPCost = 35, HealAmount = 60,   EffectType = Constants.EffectHeal,   ElementType = Constants.ElementNeutral, Description = "Aura curative soignant tous les alliés proches simultanément" },
+            new Skill { Name = "Résurrection",       MPCost = 80, HealAmount = 200,  EffectType = Constants.EffectHeal,   ElementType = Constants.ElementNeutral, Description = "Sort ultime permettant de rappeler un allié à la vie" },
 
             // ── Buff ──────────────────────────────────────────────────────────
-            new Skill { Name = "Rage Berserker",     MPCost = 20, EffectType = "buff",   ElementType = "neutral", Description = "Décuple la force physique au prix de la défense" },
-            new Skill { Name = "Hâte",               MPCost = 15, EffectType = "buff",   ElementType = "neutral", Description = "Accélère les mouvements et les attaques pendant quelques instants" },
-            new Skill { Name = "Bouclier Magique",   MPCost = 25, EffectType = "buff",   ElementType = "neutral", Description = "Barrière énergétique absorbant les prochains dégâts magiques" },
-            new Skill { Name = "Bénédiction",        MPCost = 30, EffectType = "buff",   ElementType = "neutral", Description = "Invocation divine augmentant toutes les statistiques temporairement" },
+            new Skill { Name = "Rage Berserker",     MPCost = 20, EffectType = Constants.EffectBuff,   ElementType = Constants.ElementNeutral, Description = "Décuple la force physique au prix de la défense" },
+            new Skill { Name = "Hâte",               MPCost = 15, EffectType = Constants.EffectBuff,   ElementType = Constants.ElementNeutral, Description = "Accélère les mouvements et les attaques pendant quelques instants" },
+            new Skill { Name = "Bouclier Magique",   MPCost = 25, EffectType = Constants.EffectBuff,   ElementType = Constants.ElementNeutral, Description = "Barrière énergétique absorbant les prochains dégâts magiques" },
+            new Skill { Name = "Bénédiction",        MPCost = 30, EffectType = Constants.EffectBuff,   ElementType = Constants.ElementNeutral, Description = "Invocation divine augmentant toutes les statistiques temporairement" },
 
             // ── Debuff ────────────────────────────────────────────────────────
-            new Skill { Name = "Malédiction",        MPCost = 22, EffectType = "debuff",  ElementType = "neutral", Description = "Réduit la résistance de l'ennemi à toutes les formes de dégâts" },
-            new Skill { Name = "Ralentissement",     MPCost = 14, EffectType = "debuff",  ElementType = "ice",     Description = "Congèle partiellement les membres de la cible, réduisant sa vitesse" },
+            new Skill { Name = "Malédiction",        MPCost = 22, EffectType = Constants.EffectDebuff,  ElementType = Constants.ElementNeutral, Description = "Réduit la résistance de l'ennemi à toutes les formes de dégâts" },
+            new Skill { Name = "Ralentissement",     MPCost = 14, EffectType = Constants.EffectDebuff,  ElementType = Constants.ElementIce,     Description = "Congèle partiellement les membres de la cible, réduisant sa vitesse" },
         };
         await context.Skills.AddRangeAsync(skills);
         await context.SaveChangesAsync();
-        Console.WriteLine($"Seeded {skills.Length} skills");
 
         // ===== 6. COMBATSTATS =====
         var combatStats = new[]
@@ -388,7 +381,6 @@ public static class DatabaseSeeder
         };
         await context.CombatStats.AddRangeAsync(combatStats);
         await context.SaveChangesAsync();
-        Console.WriteLine($"Seeded {combatStats.Length} combat stats");
 
         // ===== 7. PLAYERINVENTORY =====
         var inventories = new[]
@@ -421,7 +413,6 @@ public static class DatabaseSeeder
         };
         await context.PlayerInventory.AddRangeAsync(inventories);
         await context.SaveChangesAsync();
-        Console.WriteLine($"Seeded {inventories.Length} inventory items");
 
         // ===== 8. PLAYERSKILLS =====
         var playerSkills = new[]
@@ -453,7 +444,6 @@ public static class DatabaseSeeder
         };
         await context.PlayerSkills.AddRangeAsync(playerSkills);
         await context.SaveChangesAsync();
-        Console.WriteLine($"Seeded {playerSkills.Length} player skills");
 
         // ===== 9. BESTIARYUNLOCKS =====
         var bestiaryUnlocks = new[]
@@ -495,7 +485,6 @@ public static class DatabaseSeeder
         };
         await context.BestiaryUnlocks.AddRangeAsync(bestiaryUnlocks);
         await context.SaveChangesAsync();
-        Console.WriteLine($"Seeded {bestiaryUnlocks.Length} bestiary unlocks");
 
         // ===== 10. GAMESAVES =====
         var gameSaves = new[]
@@ -504,8 +493,9 @@ public static class DatabaseSeeder
             new GameSave
             {
                 PlayerId      = profiles[0].Id,
-                CurrentZone   = "Tutorial",
-                PositionX     = 15.2f, PositionY = 32.8f,
+                CurrentZone = "Dev Island",
+                PositionX   = 0.05f,
+                PositionY   = 0.57f,
                 InventoryData = JsonSerializer.Serialize(new { slotCount = 20, usedSlots = 7 }),
                 QuestFlags    = JsonSerializer.Serialize(new { tutorialCompleted = true, firstBossFight = false }),
                 SavedAt       = DateTime.UtcNow.AddHours(-3),
@@ -513,8 +503,9 @@ public static class DatabaseSeeder
             new GameSave
             {
                 PlayerId      = profiles[0].Id,
-                CurrentZone   = "BossFinal",
-                PositionX     = 88.4f, PositionY = 42.1f,
+                CurrentZone = "Dev Island",
+                PositionX   = 0.05f,
+                PositionY   = 0.57f,
                 InventoryData = JsonSerializer.Serialize(new { slotCount = 20, usedSlots = 12 }),
                 QuestFlags    = JsonSerializer.Serialize(new { tutorialCompleted = true, firstBossFight = true }),
                 SavedAt       = DateTime.UtcNow.AddHours(-1),
@@ -532,7 +523,6 @@ public static class DatabaseSeeder
         };
         await context.GameSaves.AddRangeAsync(gameSaves);
         await context.SaveChangesAsync();
-        Console.WriteLine($"Seeded {gameSaves.Length} game saves");
 
         // ===== 11. USERCONSENTS =====
         var userConsents = new[]
@@ -543,21 +533,17 @@ public static class DatabaseSeeder
         };
         await context.UserConsents.AddRangeAsync(userConsents);
         await context.SaveChangesAsync();
-        Console.WriteLine($"Seeded {userConsents.Length} user consents");
 
         // ===== 12. AUDITLOGS =====
         var auditLogs = new[]
         {
-            new AuditLog { UserId = users[0].Id, EventType = "LOGIN_SUCCESS", EventData = JsonSerializer.Serialize(new { method = "password" }), IpAddress = "127.0.0.1", UserAgent = "Mozilla/5.0", Timestamp = DateTime.UtcNow.AddHours(-1) },
-            new AuditLog { UserId = users[1].Id, EventType = "LOGIN_SUCCESS", EventData = JsonSerializer.Serialize(new { method = "password" }), IpAddress = "127.0.0.1", UserAgent = "Mozilla/5.0", Timestamp = DateTime.UtcNow.AddMinutes(-30) },
-            new AuditLog { UserId = users[0].Id, EventType = "DATA_EXPORT",   EventData = JsonSerializer.Serialize(new { format = "json", size = "3.1KB" }), IpAddress = "127.0.0.1", UserAgent = "Mozilla/5.0", Timestamp = DateTime.UtcNow.AddMinutes(-15) },
-            new AuditLog { UserId = users[2].Id, EventType = "LOGIN_SUCCESS", EventData = JsonSerializer.Serialize(new { method = "password" }), IpAddress = "127.0.0.1", UserAgent = "Mozilla/5.0", Timestamp = DateTime.UtcNow.AddDays(-2) },
+            new AuditLog { UserId = users[0].Id, EventType = "LOGIN_SUCCESS", EventData = JsonSerializer.Serialize(new { method = "password" }), IpAddress = Constants.SeedIpAddress, UserAgent = Constants.SeedUserAgent, Timestamp = DateTime.UtcNow.AddHours(-1) },
+            new AuditLog { UserId = users[1].Id, EventType = "LOGIN_SUCCESS", EventData = JsonSerializer.Serialize(new { method = "password" }), IpAddress = Constants.SeedIpAddress, UserAgent = Constants.SeedUserAgent, Timestamp = DateTime.UtcNow.AddMinutes(-30) },
+            new AuditLog { UserId = users[0].Id, EventType = "DATA_EXPORT",   EventData = JsonSerializer.Serialize(new { format = "json", size = "3.1KB" }), IpAddress = Constants.SeedIpAddress, UserAgent = Constants.SeedUserAgent, Timestamp = DateTime.UtcNow.AddMinutes(-15) },
+            new AuditLog { UserId = users[2].Id, EventType = "LOGIN_SUCCESS", EventData = JsonSerializer.Serialize(new { method = "password" }), IpAddress = Constants.SeedIpAddress, UserAgent = Constants.SeedUserAgent, Timestamp = DateTime.UtcNow.AddDays(-2) },
         };
         await context.AuditLogs.AddRangeAsync(auditLogs);
         await context.SaveChangesAsync();
-        Console.WriteLine($"Seeded {auditLogs.Length} audit logs");
-
-        Console.WriteLine("Database seeding completed successfully!");
     }
 
     private static string GetRequiredSeedPassword(IConfiguration? configuration, string key)

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RPG_ESI07.Application.Commands.Users;
 using RPG_ESI07.Application.Queries.Users;
+using RPG_ESI07.Domain;
 
 namespace RPG_ESI07.API.Controllers;
 
@@ -24,7 +25,7 @@ public class UsersController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = Constants.RoleAdmin)]
     public async Task<IActionResult> Create([FromBody] CreateUserCommand command)
     {
         var result = await _mediator.Send(command);
@@ -32,7 +33,7 @@ public class UsersController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = Constants.RoleAdmin)]
     public async Task<IActionResult> Update(int id, [FromBody] UpdateUserCommand command)
     {
         if (id != command.Id) return BadRequest("Id mismatch");
@@ -41,7 +42,7 @@ public class UsersController : ControllerBase
     }
 
     [HttpDelete("{id}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = Constants.RoleAdmin)]
     public async Task<IActionResult> Delete(int id)
     {
         var result = await _mediator.Send(new DeleteUserCommand(id));

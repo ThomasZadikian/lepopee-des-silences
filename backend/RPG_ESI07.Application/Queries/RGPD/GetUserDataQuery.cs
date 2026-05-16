@@ -1,8 +1,5 @@
 ﻿using MediatR;
 using RPG_ESI07.Domain.Entities;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace RPG_ESI07.Application.Queries.RGPD;
 
@@ -19,4 +16,4 @@ public record GetUserDataResponse(
     List<PlayerSkill> Skills,
     List<BestiaryUnlock> BestiaryUnlocks,
     CombatStats? CombatStats
-    ); 
+    );

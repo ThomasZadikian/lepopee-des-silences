@@ -1,5 +1,6 @@
 ﻿using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using RPG_ESI07.Domain;
 using RPG_ESI07.Domain.Entities;
 using RPG_ESI07.Infrastructure.Data;
 using RPG_ESI07.Infrastructure.Repository;
@@ -25,6 +26,8 @@ public class BestiaryUnlockRepositoryTests : IDisposable
     {
         _context.Database.EnsureDeleted();
         _context.Dispose();
+        GC.SuppressFinalize(this);
+
     }
 
     [Fact]
@@ -50,8 +53,8 @@ public class BestiaryUnlockRepositoryTests : IDisposable
         };
         var enemies = new List<Enemy>
     {
-        new Enemy { Id = 1, Name = "Goblin", Type = "basic", MaxHP = 50, Strength = 5, Intelligence = 3, Speed = 8, ExperienceReward = 10, GoldReward = 5, PhysicalResistance = 1.0f, MagicalResistance = 1.0f },
-        new Enemy { Id = 2, Name = "Orc",    Type = "basic", MaxHP = 80, Strength = 10, Intelligence = 4, Speed = 6, ExperienceReward = 20, GoldReward = 10, PhysicalResistance = 1.0f, MagicalResistance = 1.0f },
+        new Enemy { Id = 1, Name = "Goblin", Type = Constants.EnemyTypeBasic, MaxHP = 50, Strength = 5, Intelligence = 3, Speed = 8, ExperienceReward = 10, GoldReward = 5, PhysicalResistance = 1.0f, MagicalResistance = 1.0f },
+        new Enemy { Id = 2, Name = "Orc",    Type = Constants.EnemyTypeBasic, MaxHP = 80, Strength = 10, Intelligence = 4, Speed = 6, ExperienceReward = 20, GoldReward = 10, PhysicalResistance = 1.0f, MagicalResistance = 1.0f },
     };
         await _context.PlayerProfiles.AddAsync(profile);
         await _context.Enemies.AddRangeAsync(enemies);

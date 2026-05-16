@@ -1,16 +1,12 @@
 ﻿using MediatR;
-using Microsoft.AspNetCore.Mvc.RazorPages;
 using RPG_ESI07.Domain.Interfaces;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace RPG_ESI07.Application.Queries.RGPD;
 
-public class  GetUserDataHandler : IRequestHandler<GetUserDataQuery, GetUserDataResponse>
+public class GetUserDataHandler : IRequestHandler<GetUserDataQuery, GetUserDataResponse>
 {
-    private readonly IUserRepository _repository; 
-    
+    private readonly IUserRepository _repository;
+
     public GetUserDataHandler(IUserRepository repository)
     {
         _repository = repository;
@@ -33,6 +29,6 @@ public class  GetUserDataHandler : IRequestHandler<GetUserDataQuery, GetUserData
             Skills: profile?.Skills.ToList() ?? new(),
             BestiaryUnlocks: profile?.BestiaryUnlocks.ToList() ?? new(),
             CombatStats: profile?.CombatStats
-        ); 
+        );
     }
 }

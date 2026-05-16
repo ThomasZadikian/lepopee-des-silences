@@ -17,9 +17,9 @@ public class AuditLogRepository : IAuditLogRepository
     public async Task<AuditLog?> GetByIdAsync(int id) =>
         await _context.AuditLogs.FindAsync(id);
 
-    public async Task AddAsync(AuditLog entity)
+    public async Task AddAsync(AuditLog auditLog)
     {
-        _context.AuditLogs.Add(entity);
+        _context.AuditLogs.Add(auditLog);
         await _context.SaveChangesAsync();
     }
 

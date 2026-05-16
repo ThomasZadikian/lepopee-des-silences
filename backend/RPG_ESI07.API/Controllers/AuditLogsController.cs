@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RPG_ESI07.Application.Commands.AuditLogs;
 using RPG_ESI07.Application.Queries.AuditLogs;
+using RPG_ESI07.Domain;
 
 namespace RPG_ESI07.API.Controllers;
 
@@ -16,7 +17,7 @@ public class AuditLogsController : ControllerBase
     public AuditLogsController(IMediator mediator) => _mediator = mediator;
 
     [HttpGet]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = Constants.RoleAdmin)]
     public async Task<IActionResult> GetAll()
     {
         var result = await _mediator.Send(new GetAllAuditLogsQuery());
@@ -24,7 +25,7 @@ public class AuditLogsController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = Constants.RoleAdmin)]
     public async Task<IActionResult> Create([FromBody] CreateAuditLogCommand command)
     {
         var result = await _mediator.Send(command);
@@ -32,7 +33,7 @@ public class AuditLogsController : ControllerBase
     }
 
     [HttpDelete("{id}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = Constants.RoleAdmin)]
     public async Task<IActionResult> Delete(int id)
     {
         var result = await _mediator.Send(new DeleteAuditLogCommand(id));

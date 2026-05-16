@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RPG_ESI07.Application.Commands.GameSaves;
 using RPG_ESI07.Application.Queries.GameSaves;
+using RPG_ESI07.Domain;
 using System.Security.Claims;
 
 namespace RPG_ESI07.API.Controllers;
@@ -13,11 +14,10 @@ namespace RPG_ESI07.API.Controllers;
 public class GameSavesController : ControllerBase
 {
     private readonly IMediator _mediator;
-
     public GameSavesController(IMediator mediator) => _mediator = mediator;
 
     [HttpGet]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = Constants.RoleAdmin)]
     public async Task<IActionResult> GetAll()
     {
         var result = await _mediator.Send(new GetAllGameSavesQuery());
@@ -28,7 +28,7 @@ public class GameSavesController : ControllerBase
     public async Task<IActionResult> GetById(int id)
     {
         var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-        var isAdmin = User.IsInRole("Admin");
+        var isAdmin = User.IsInRole(Constants.RoleAdmin);
         var result = await _mediator.Send(new GetSaveByIdQuery(id, currentUserId, isAdmin));
         return Ok(result);
     }
@@ -37,7 +37,7 @@ public class GameSavesController : ControllerBase
     public async Task<IActionResult> Create([FromBody] CreateGameSaveCommand command)
     {
         var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-        if (!User.IsInRole("Admin") && command.PlayerId != currentUserId)
+        if (!User.IsInRole(Constants.RoleAdmin) && command.PlayerId != currentUserId)
             return Forbid();
 
         var result = await _mediator.Send(command);
@@ -50,7 +50,7 @@ public class GameSavesController : ControllerBase
         if (id != command.Id) return BadRequest("Id mismatch");
 
         var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-        var isAdmin = User.IsInRole("Admin");
+        var isAdmin = User.IsInRole(Constants.RoleAdmin);
 
         var result = await _mediator.Send(command with { RequestingUserId = currentUserId, IsAdmin = isAdmin });
         return Ok(result);
@@ -60,7 +60,7 @@ public class GameSavesController : ControllerBase
     public async Task<IActionResult> Delete(int id)
     {
         var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-        var isAdmin = User.IsInRole("Admin");
+        var isAdmin = User.IsInRole(Constants.RoleAdmin);
 
         var result = await _mediator.Send(new DeleteGameSaveCommand(id, currentUserId, isAdmin));
         return Ok(result);

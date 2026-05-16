@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RPG_ESI07.Application.Commands.PlayerSkills;
 using RPG_ESI07.Application.Queries.PlayerSkills;
+using RPG_ESI07.Domain;
 using System.Security.Claims;
 
 namespace RPG_ESI07.API.Controllers;
@@ -17,7 +18,7 @@ public class PlayerSkillsController : ControllerBase
     public PlayerSkillsController(IMediator mediator) => _mediator = mediator;
 
     [HttpGet]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = Constants.RoleAdmin)]
     public async Task<IActionResult> GetAll()
     {
         var result = await _mediator.Send(new GetAllPlayerSkillsQuery());
@@ -28,7 +29,7 @@ public class PlayerSkillsController : ControllerBase
     public async Task<IActionResult> GetById(int id)
     {
         var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-        var isAdmin = User.IsInRole("Admin");
+        var isAdmin = User.IsInRole(Constants.RoleAdmin);
         var result = await _mediator.Send(new GetPlayerSkillByIdQuery(id, currentUserId, isAdmin));
         return Ok(result);
     }
@@ -37,7 +38,7 @@ public class PlayerSkillsController : ControllerBase
     public async Task<IActionResult> Create([FromBody] CreatePlayerSkillCommand command)
     {
         var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-        if (!User.IsInRole("Admin") && command.PlayerId != currentUserId)
+        if (!User.IsInRole(Constants.RoleAdmin) && command.PlayerId != currentUserId)
             return Forbid();
 
         var result = await _mediator.Send(command);
@@ -50,7 +51,7 @@ public class PlayerSkillsController : ControllerBase
         if (id != command.Id) return BadRequest("Id mismatch");
 
         var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-        var isAdmin = User.IsInRole("Admin");
+        var isAdmin = User.IsInRole(Constants.RoleAdmin);
 
         var result = await _mediator.Send(command with { RequestingUserId = currentUserId, IsAdmin = isAdmin });
         return Ok(result);
@@ -60,11 +61,12 @@ public class PlayerSkillsController : ControllerBase
     public async Task<IActionResult> Delete(int id)
     {
         var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-        var isAdmin = User.IsInRole("Admin");
+        var isAdmin = User.IsInRole(Constants.RoleAdmin);
 
         var result = await _mediator.Send(new DeletePlayerSkillCommand(id, currentUserId, isAdmin));
         return Ok(result);
     }
+
     // GET /api/playerskills/me — retourne les skills du joueur connecté
     [HttpGet("me")]
     public async Task<IActionResult> GetMySkills()
