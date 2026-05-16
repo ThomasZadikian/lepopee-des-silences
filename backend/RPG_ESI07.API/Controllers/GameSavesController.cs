@@ -14,7 +14,6 @@ namespace RPG_ESI07.API.Controllers;
 public class GameSavesController : ControllerBase
 {
     private readonly IMediator _mediator;
-    private const string AdminRole = Constants.RoleAdmin;
     public GameSavesController(IMediator mediator) => _mediator = mediator;
 
     [HttpGet]

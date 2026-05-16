@@ -42,13 +42,13 @@ public class Argon2PasswordHasherTests
     }
 
     [Theory]
-    [InlineData(null!, "somehash")]
+    [InlineData(null, "somehash")]
     [InlineData("", "somehash")]
-    [InlineData("password", null!)]
+    [InlineData("password", null)]
     [InlineData("password", "")]
-    public void VerifyPassword_ReturnsFalse_WhenInputsAreInvalid(string password, string hash)
+    public void VerifyPassword_ReturnsFalse_WhenInputsAreInvalid(string? password, string? hash)
     {
-        var result = _hasher.VerifyPassword(password, hash);
+        var result = _hasher.VerifyPassword(password!, hash!);
         result.Should().BeFalse();
     }
 

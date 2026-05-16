@@ -1,5 +1,6 @@
 ﻿using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using RPG_ESI07.Domain;
 using RPG_ESI07.Domain.Entities;
 using RPG_ESI07.Infrastructure.Data;
 using RPG_ESI07.Infrastructure.Repository;
@@ -34,8 +35,8 @@ public class PlayerInventoryRepositoryTests : IDisposable
         // Ajouter les Items requis
         var items = new List<Item>
     {
-        new Item { Id = 3, Name = "Item3", Type = "weapon", Price = 10 },
-        new Item { Id = 5, Name = "Item5", Type = "consumable", Price = 5 },
+        new Item { Id = 3, Name = "Item3", Type = Constants.ItemTypeWeapon, Price = 10 },
+        new Item { Id = 5, Name = "Item5", Type = Constants.ItemTypeConsumable, Price = 5 },
     };
         await _context.Items.AddRangeAsync(items);
 
@@ -57,7 +58,7 @@ public class PlayerInventoryRepositoryTests : IDisposable
     [Fact]
     public async Task GetByIdAsync_ReturnsRecord_WhenIdExists()
     {
-        var item = new Item { Id = 2, Name = "Item2", Type = "armor", Price = 100 };
+        var item = new Item { Id = 2, Name = "Item2", Type = Constants.ItemTypeArmor, Price = 100 };
         await _context.Items.AddAsync(item);
 
         var inventory = new PlayerInventory { Id = 5, PlayerId = 10, ItemId = 2, Quantity = 1 };

@@ -1,5 +1,6 @@
 ﻿using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using RPG_ESI07.Domain;
 using RPG_ESI07.Domain.Entities;
 using RPG_ESI07.Infrastructure.Data;
 using RPG_ESI07.Infrastructure.Repository;
@@ -33,8 +34,8 @@ public class SkillRepositoryTests : IDisposable
     {
         var skills = new List<Skill>
         {
-            new Skill { Id = 2, Name = "Heal", EffectType = "heal", MPCost = 10 },
-            new Skill { Id = 1, Name = "Fireball", EffectType = "damage", MPCost = 15 }
+            new Skill { Id = 2, Name = "Heal", EffectType = Constants.EffectHeal, MPCost = 10 },
+            new Skill { Id = 1, Name = "Fireball", EffectType = Constants.EffectDamage, MPCost = 15 }
         };
         await _context.Skills.AddRangeAsync(skills);
         await _context.SaveChangesAsync();
@@ -49,7 +50,7 @@ public class SkillRepositoryTests : IDisposable
     [Fact]
     public async Task GetByIdAsync_ReturnsRecord_WhenIdExists()
     {
-        var skill = new Skill { Id = 5, Name = "Ice Spike", EffectType = "damage", MPCost = 20 };
+        var skill = new Skill { Id = 5, Name = "Ice Spike", EffectType = Constants.EffectDamage, MPCost = 20 };
         await _context.Skills.AddAsync(skill);
         await _context.SaveChangesAsync();
 
@@ -71,7 +72,7 @@ public class SkillRepositoryTests : IDisposable
     [Fact]
     public async Task AddAsync_InsertsRecordAndSavesChanges()
     {
-        var newSkill = new Skill { Id = 10, Name = "Shield", EffectType = "buff", MPCost = 25 };
+        var newSkill = new Skill { Id = 10, Name = "Shield", EffectType = Constants.EffectBuff, MPCost = 25 };
 
         await _repository.AddAsync(newSkill);
 
@@ -83,13 +84,13 @@ public class SkillRepositoryTests : IDisposable
     [Fact]
     public async Task UpdateAsync_ModifiesRecordAndSavesChanges()
     {
-        var skill = new Skill { Id = 1, Name = "OldName", EffectType = "damage", MPCost = 10 };
+        var skill = new Skill { Id = 1, Name = "OldName", EffectType = Constants.EffectDamage, MPCost = 10 };
         await _context.Skills.AddAsync(skill);
         await _context.SaveChangesAsync();
 
         _context.Entry(skill).State = EntityState.Detached;
 
-        var updatedSkill = new Skill { Id = 1, Name = "NewName", EffectType = "damage", MPCost = 10 };
+        var updatedSkill = new Skill { Id = 1, Name = "NewName", EffectType = Constants.EffectDamage, MPCost = 10 };
         await _repository.UpdateAsync(updatedSkill);
 
         var dbRecord = await _context.Skills.FindAsync(1);
@@ -100,7 +101,7 @@ public class SkillRepositoryTests : IDisposable
     [Fact]
     public async Task DeleteAsync_RemovesRecord_WhenIdExists()
     {
-        var skill = new Skill { Id = 1, Name = "ToDelete", EffectType = "damage", MPCost = 10 };
+        var skill = new Skill { Id = 1, Name = "ToDelete", EffectType = Constants.EffectDamage, MPCost = 10 };
         await _context.Skills.AddAsync(skill);
         await _context.SaveChangesAsync();
 
@@ -113,7 +114,7 @@ public class SkillRepositoryTests : IDisposable
     [Fact]
     public async Task DeleteAsync_DoesNothing_WhenIdDoesNotExist()
     {
-        var skill = new Skill { Id = 1, Name = "ToKeep", EffectType = "damage", MPCost = 10 };
+        var skill = new Skill { Id = 1, Name = "ToKeep", EffectType = Constants.EffectDamage, MPCost = 10 };
         await _context.Skills.AddAsync(skill);
         await _context.SaveChangesAsync();
 

@@ -17,7 +17,7 @@ public class PlayerSkillRepository : IPlayerSkillRepository
     public async Task<PlayerSkill?> GetByIdAsync(int id)
     {
         return await _context.Set<PlayerSkill>().Include(e => e.Skill)
-        .FirstOrDefaultAsync(e => e.Id == id); ;
+        .FirstOrDefaultAsync(e => e.Id == id);
     }
 
     public async Task<List<PlayerSkill>> GetAllAsync()

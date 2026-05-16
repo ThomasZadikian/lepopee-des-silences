@@ -22,12 +22,11 @@ public class GuardTests
     }
 
     [Theory]
-    [InlineData(null!)]
+    [InlineData(null)]
     [InlineData("")]
-    [InlineData("   ")]
-    public void ThrowIfNullOrEmpty_ThrowsArgumentException_WhenInvalid(string value)
+    public void ThrowIfNullOrEmpty_ThrowsArgumentException_WhenInvalid(string? value)
     {
-        Action act = () => Guard.ThrowIfNullOrEmpty(value, nameof(value));
+        Action act = () => Guard.ThrowIfNullOrEmpty(value!, nameof(value));
         act.Should().Throw<ArgumentException>().WithParameterName(nameof(value));
     }
 

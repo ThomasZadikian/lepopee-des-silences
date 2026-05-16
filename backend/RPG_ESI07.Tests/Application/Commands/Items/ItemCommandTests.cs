@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Moq;
 using RPG_ESI07.Application.Commands.Items;
+using RPG_ESI07.Domain;
 using RPG_ESI07.Domain.Entities;
 using RPG_ESI07.Domain.Interfaces;
 
@@ -21,7 +22,7 @@ public class CreateItemHandlerTests
     public async Task Handle_ValidCommand_ReturnsSuccessResponse()
     {
         // Arrange
-        var command = new CreateItemCommand("Épée", "weapon", 100);
+        var command = new CreateItemCommand("Épée", Constants.ItemTypeWeapon, 100);
         _mockRepo.Setup(r => r.AddAsync(It.IsAny<Item>())).Returns(Task.CompletedTask);
 
         // Act
@@ -48,17 +49,17 @@ public class UpdateItemHandlerTests
     public async Task Handle_ExistingEntity_UpdatesFields()
     {
         // Arrange
-        var entity = new Item { Id = 1, Name = "Old", Type = "weapon", Price = 50 };
+        var entity = new Item { Id = 1, Name = "Old", Type = Constants.ItemTypeWeapon, Price = 50 };
         _mockRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(entity);
         _mockRepo.Setup(r => r.UpdateAsync(It.IsAny<Item>())).Returns(Task.CompletedTask);
 
         // Act
-        var result = await _handler.Handle(new UpdateItemCommand(1, "New", "armor", 200), CancellationToken.None);
+        var result = await _handler.Handle(new UpdateItemCommand(1, "New", Constants.ItemTypeArmor, 200), CancellationToken.None);
 
         // Assert
         result.Success.Should().BeTrue();
         entity.Name.Should().Be("New");
-        entity.Type.Should().Be("armor");
+        entity.Type.Should().Be(Constants.ItemTypeArmor);
         entity.Price.Should().Be(200);
     }
 
