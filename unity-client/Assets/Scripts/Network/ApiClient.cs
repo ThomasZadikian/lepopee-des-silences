@@ -16,8 +16,11 @@ namespace RPG.Network
         // Modifie cette URL selon ton environnement
         // En local avec Docker : "http://localhost:5000"
         // En production : "https://ton-domaine.com"
-        [SerializeField] private string baseUrl = "http://localhost:5000";
-
+        #if UNITY_EDITOR
+            [SerializeField] private string baseUrl = "http://localhost:5009";
+        #else
+            [SerializeField] private string baseUrl = "https://rpgesi07-production.up.railway.app";
+        #endif
         // Le token JWT reçu après login
         // Null si l'utilisateur n'est pas connecté 
         private string _jwtToken = null; 

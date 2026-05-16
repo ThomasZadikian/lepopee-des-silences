@@ -1,4 +1,4 @@
-# RPG_ESI07 - v0.8.2.2
+# RPG_ESI07 - v0.8.3
 
 [![Backend CI](https://github.com/ThomasZadikian/rpg_esi07/actions/workflows/backend-ci.yml/badge.svg)](https://github.com/ThomasZadikian/rpg_esi07/actions/workflows/backend-ci.yml)
 [![Frontend CI](https://github.com/ThomasZadikian/rpg_esi07/actions/workflows/frontend-ci.yml/badge.svg)](https://github.com/ThomasZadikian/rpg_esi07/actions/workflows/frontend-ci.yml)

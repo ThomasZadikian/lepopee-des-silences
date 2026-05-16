@@ -493,8 +493,9 @@ public static class DatabaseSeeder
             new GameSave
             {
                 PlayerId      = profiles[0].Id,
-                CurrentZone   = "Tutorial",
-                PositionX     = 15.2f, PositionY = 32.8f,
+                CurrentZone = "Dev Island",
+                PositionX   = 0.05f,
+                PositionY   = 0.57f,
                 InventoryData = JsonSerializer.Serialize(new { slotCount = 20, usedSlots = 7 }),
                 QuestFlags    = JsonSerializer.Serialize(new { tutorialCompleted = true, firstBossFight = false }),
                 SavedAt       = DateTime.UtcNow.AddHours(-3),
@@ -502,8 +503,9 @@ public static class DatabaseSeeder
             new GameSave
             {
                 PlayerId      = profiles[0].Id,
-                CurrentZone   = "BossFinal",
-                PositionX     = 88.4f, PositionY = 42.1f,
+                CurrentZone = "Dev Island",
+                PositionX   = 0.05f,
+                PositionY   = 0.57f,
                 InventoryData = JsonSerializer.Serialize(new { slotCount = 20, usedSlots = 12 }),
                 QuestFlags    = JsonSerializer.Serialize(new { tutorialCompleted = true, firstBossFight = true }),
                 SavedAt       = DateTime.UtcNow.AddHours(-1),
