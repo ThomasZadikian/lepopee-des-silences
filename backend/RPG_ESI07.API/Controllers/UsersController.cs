@@ -17,7 +17,7 @@ public class UsersController : ControllerBase
     public UsersController(IMediator mediator) => _mediator = mediator;
 
     [HttpGet]
-    [Authorize]
+    [Authorize(Roles = Constants.RolePlayer)]
     public async Task<IActionResult> GetAll()
     {
         var result = await _mediator.Send(new GetAllUsersQuery());

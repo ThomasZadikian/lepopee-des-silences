@@ -10,12 +10,13 @@ public class AppDbContext : DbContext
     {
     }
 
-    // DbSets - Toutes les entities
+    // ── DbSets ────────────────────────────────────────────────────────────────
     public DbSet<User> Users => Set<User>();
-
     public DbSet<PlayerProfile> PlayerProfiles => Set<PlayerProfile>();
     public DbSet<GameSave> GameSaves => Set<GameSave>();
     public DbSet<Enemy> Enemies => Set<Enemy>();
+    public DbSet<Npc> Npcs => Set<Npc>();
+    public DbSet<NpcInteraction> NpcInteractions => Set<NpcInteraction>();
     public DbSet<BestiaryUnlock> BestiaryUnlocks => Set<BestiaryUnlock>();
     public DbSet<CombatStats> CombatStats => Set<CombatStats>();
     public DbSet<Item> Items => Set<Item>();
@@ -29,7 +30,7 @@ public class AppDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
-        // ===== USER CONFIGURATION =====
+        // ===== USER =====
         modelBuilder.Entity<User>(entity =>
         {
             entity.HasKey(e => e.Id);
@@ -52,22 +53,20 @@ public class AppDbContext : DbContext
                 .IsRequired();
 
             entity.Property(e => e.LastLoginIP)
-                .HasMaxLength(45); // IPv6
+                .HasMaxLength(45);
 
-            // Relation 1-to-1 avec PlayerProfile
             entity.HasOne(e => e.PlayerProfile)
                 .WithOne(e => e.User)
                 .HasForeignKey<PlayerProfile>(e => e.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // Relation 1-to-many avec AuditLogs
             entity.HasMany(e => e.AuditLogs)
                 .WithOne(e => e.User)
                 .HasForeignKey(e => e.UserId)
                 .OnDelete(DeleteBehavior.SetNull);
         });
 
-        // ===== PLAYERPROFILE CONFIGURATION =====
+        // ===== PLAYERPROFILE =====
         modelBuilder.Entity<PlayerProfile>(entity =>
         {
             entity.HasKey(e => e.Id);
@@ -76,7 +75,13 @@ public class AppDbContext : DbContext
                 .HasMaxLength(50)
                 .IsRequired();
 
-            // Check constraints
+            entity.Property(e => e.CurrentZone)
+                .HasMaxLength(100)
+                .HasDefaultValue(string.Empty);
+
+            entity.Property(e => e.ScalingFactor)
+                .HasDefaultValue(1.0f);
+
             entity.ToTable(t =>
             {
                 t.HasCheckConstraint("CK_PlayerProfile_Level",
@@ -87,9 +92,10 @@ public class AppDbContext : DbContext
                     "\"CurrentMP\" >= 0 AND \"CurrentMP\" <= \"MaxMP\"");
                 t.HasCheckConstraint("CK_PlayerProfile_Stats",
                     "\"Strength\" > 0 AND \"Intelligence\" > 0 AND \"Speed\" > 0");
+                t.HasCheckConstraint("CK_PlayerProfile_ScalingFactor",
+                    "\"ScalingFactor\" >= 1.0");
             });
 
-            // Relations
             entity.HasMany(e => e.GameSaves)
                 .WithOne(e => e.Player)
                 .HasForeignKey(e => e.PlayerId)
@@ -114,9 +120,14 @@ public class AppDbContext : DbContext
                 .WithOne(e => e.Player)
                 .HasForeignKey(e => e.PlayerId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasMany(e => e.NpcInteractions)
+                .WithOne(e => e.Player)
+                .HasForeignKey(e => e.PlayerId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
-        // ===== ENEMY CONFIGURATION =====
+        // ===== ENEMY =====
         modelBuilder.Entity<Enemy>(entity =>
         {
             entity.HasKey(e => e.Id);
@@ -130,14 +141,32 @@ public class AppDbContext : DbContext
                 .HasMaxLength(20)
                 .IsRequired();
 
+            entity.Property(e => e.InitialState)
+                .HasMaxLength(50)
+                .HasDefaultValue(Constants.EnemyStateRepos);
+
+            entity.Property(e => e.InfluenceRadius)
+                .HasDefaultValue(5.0f);
+
+            entity.Property(e => e.TransitionMatrix)
+                .HasColumnType(Constants.JsonbColumnType);
+
+            entity.Property(e => e.CombatScripts)
+                .HasColumnType(Constants.JsonbColumnType);
+
+            entity.Property(e => e.MapStates)
+                .HasColumnType(Constants.JsonbColumnType);
+
             entity.ToTable(t =>
             {
                 t.HasCheckConstraint("CK_Enemy_Type",
-                    "\"Type\" IN ('basic', 'miniboss', 'boss')");
+                    $"\"Type\" IN ('{Constants.EnemyTypeBasic}', '{Constants.EnemyTypeMiniboss}', '{Constants.EnemyTypeBoss}')");
                 t.HasCheckConstraint("CK_Enemy_Stats",
                     "\"MaxHP\" > 0 AND \"Strength\" > 0");
                 t.HasCheckConstraint("CK_Enemy_Resistance",
                     "\"PhysicalResistance\" BETWEEN 0.5 AND 2.0 AND \"MagicalResistance\" BETWEEN 0.5 AND 2.0");
+                t.HasCheckConstraint("CK_Enemy_InfluenceRadius",
+                    "\"InfluenceRadius\" > 0");
             });
 
             entity.HasMany(e => e.BestiaryUnlocks)
@@ -146,14 +175,85 @@ public class AppDbContext : DbContext
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
-        // ===== GAMESAVE CONFIGURATION =====
+        // ===== NPC =====
+        modelBuilder.Entity<Npc>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.Name);
+
+            entity.Property(e => e.Name)
+                .HasMaxLength(50)
+                .IsRequired();
+
+            entity.Property(e => e.Type)
+                .HasMaxLength(20)
+                .IsRequired();
+
+            entity.Property(e => e.Zone)
+                .HasMaxLength(100);
+
+            entity.Property(e => e.InitialState)
+                .HasMaxLength(50)
+                .HasDefaultValue(Constants.NpcStateSerein);
+
+            entity.Property(e => e.InfluenceRadius)
+                .HasDefaultValue(5.0f);
+
+            entity.Property(e => e.TransitionMatrix)
+                .HasColumnType(Constants.JsonbColumnType);
+
+            entity.Property(e => e.MapStates)
+                .HasColumnType(Constants.JsonbColumnType);
+
+            entity.Property(e => e.Dialogues)
+                .HasColumnType(Constants.JsonbColumnType);
+
+            entity.Property(e => e.MerchantInventory)
+                .HasColumnType(Constants.JsonbColumnType);
+
+            entity.Property(e => e.Quests)
+                .HasColumnType(Constants.JsonbColumnType);
+
+            entity.ToTable(t =>
+            {
+                t.HasCheckConstraint("CK_Npc_Type",
+                    $"\"Type\" IN ('{Constants.NpcTypeNeutral}', '{Constants.NpcTypeMerchant}', '{Constants.NpcTypeQuest}', '{Constants.NpcTypeAlly}')");
+                t.HasCheckConstraint("CK_Npc_InfluenceRadius",
+                    "\"InfluenceRadius\" > 0");
+            });
+
+            entity.HasMany(e => e.Interactions)
+                .WithOne(e => e.Npc)
+                .HasForeignKey(e => e.NpcId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ===== NPC INTERACTION =====
+        modelBuilder.Entity<NpcInteraction>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.NpcId, e.PlayerId });
+            entity.HasIndex(e => e.InteractedAt);
+
+            entity.Property(e => e.EventType)
+                .HasMaxLength(50)
+                .IsRequired();
+
+            entity.ToTable(t =>
+            {
+                t.HasCheckConstraint("CK_NpcInteraction_EventType",
+                    "\"EventType\" IN ('DIALOGUE', 'TRADE', 'QUEST_START', 'QUEST_COMPLETE')");
+            });
+        });
+
+        // ===== GAMESAVE =====
         modelBuilder.Entity<GameSave>(entity =>
         {
             entity.HasKey(e => e.Id);
             entity.HasIndex(e => new { e.PlayerId, e.SavedAt });
 
             entity.Property(e => e.CurrentZone)
-                .HasMaxLength(50)
+                .HasMaxLength(100)
                 .IsRequired();
 
             entity.Property(e => e.InventoryData)
@@ -162,21 +262,17 @@ public class AppDbContext : DbContext
             entity.Property(e => e.QuestFlags)
                 .HasColumnType(Constants.JsonbColumnType);
 
-            entity.ToTable(t =>
-            {
-                t.HasCheckConstraint("CK_GameSave_Zone",
-                    "\"CurrentZone\" IN ('Tutorial', 'BossFinal')");
-            });
+            // Contrainte de zone supprimée — zones dynamiques
         });
 
-        // ===== BESTIARYUNLOCK CONFIGURATION =====
+        // ===== BESTIARYUNLOCK =====
         modelBuilder.Entity<BestiaryUnlock>(entity =>
         {
             entity.HasKey(e => e.Id);
             entity.HasIndex(e => new { e.PlayerId, e.EnemyId }).IsUnique();
         });
 
-        // ===== COMBATSTATS CONFIGURATION =====
+        // ===== COMBATSTATS =====
         modelBuilder.Entity<CombatStats>(entity =>
         {
             entity.HasKey(e => e.Id);
@@ -191,7 +287,7 @@ public class AppDbContext : DbContext
             });
         });
 
-        // ===== ITEM CONFIGURATION =====
+        // ===== ITEM =====
         modelBuilder.Entity<Item>(entity =>
         {
             entity.HasKey(e => e.Id);
@@ -211,7 +307,7 @@ public class AppDbContext : DbContext
             entity.ToTable(t =>
             {
                 t.HasCheckConstraint("CK_Item_Type",
-                    "\"Type\" IN ('weapon', 'armor', 'accessory', 'consumable')");
+                    $"\"Type\" IN ('{Constants.ItemTypeWeapon}', '{Constants.ItemTypeArmor}', '{Constants.ItemTypeAccessory}', '{Constants.ItemTypeConsumable}')");
                 t.HasCheckConstraint("CK_Item_Price",
                     "\"Price\" >= 0");
             });
@@ -222,7 +318,7 @@ public class AppDbContext : DbContext
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
-        // ===== SKILL CONFIGURATION =====
+        // ===== SKILL =====
         modelBuilder.Entity<Skill>(entity =>
         {
             entity.HasKey(e => e.Id);
@@ -239,7 +335,7 @@ public class AppDbContext : DbContext
             entity.ToTable(t =>
             {
                 t.HasCheckConstraint("CK_Skill_EffectType",
-                    "\"EffectType\" IN ('damage', 'heal', 'buff', 'debuff')");
+                    $"\"EffectType\" IN ('{Constants.EffectDamage}', '{Constants.EffectHeal}', '{Constants.EffectBuff}', '{Constants.EffectDebuff}')");
                 t.HasCheckConstraint("CK_Skill_MPCost",
                     "\"MPCost\" > 0");
             });
@@ -250,7 +346,7 @@ public class AppDbContext : DbContext
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
-        // ===== PLAYERINVENTORY CONFIGURATION =====
+        // ===== PLAYERINVENTORY =====
         modelBuilder.Entity<PlayerInventory>(entity =>
         {
             entity.HasKey(e => e.Id);
@@ -263,14 +359,14 @@ public class AppDbContext : DbContext
             });
         });
 
-        // ===== PLAYERSKILL CONFIGURATION =====
+        // ===== PLAYERSKILL =====
         modelBuilder.Entity<PlayerSkill>(entity =>
         {
             entity.HasKey(e => e.Id);
             entity.HasIndex(e => new { e.PlayerId, e.SkillId }).IsUnique();
         });
 
-        // ===== AUDITLOG CONFIGURATION =====
+        // ===== AUDITLOG =====
         modelBuilder.Entity<AuditLog>(entity =>
         {
             entity.HasKey(e => e.Id);
@@ -297,7 +393,7 @@ public class AppDbContext : DbContext
             });
         });
 
-        // ===== USERCONSENT CONFIGURATION =====
+        // ===== USERCONSENT =====
         modelBuilder.Entity<UserConsent>(entity =>
         {
             entity.HasKey(e => e.Id);

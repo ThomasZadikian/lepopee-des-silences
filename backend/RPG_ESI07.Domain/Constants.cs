@@ -48,4 +48,32 @@ public static class Constants
     public const string SeedIpAddress = "127.0.0.1";
     public const string SeedUserAgent = "Mozilla/5.0";
     #endregion
+
+    #region NPC Types
+    public const string NpcTypeNeutral = "neutral";
+    public const string NpcTypeMerchant = "merchant";
+    public const string NpcTypeQuest = "quest";
+    public const string NpcTypeAlly = "ally";
+    #endregion
+
+    #region NPC States
+    public const string NpcStateSerein = "SEREIN";
+    public const string NpcStateApeure = "APEURÉ";
+    public const string NpcStateSoulage = "SOULAGÉ";
+    public const string NpcStatePanique = "PANIQUÉ";
+    #endregion
+
+    #region Enemy States
+    public const string EnemyStateRepos = "REPOS";
+    public const string EnemyStatePatrouille = "PATROUILLE";
+    public const string EnemyStateChasse = "CHASSE";
+    public const string EnemyStateFuite = "FUITE";
+    #endregion
+
+    #region Combat States
+    public const string CombatStateAgressif = "AGRESSIF";
+    public const string CombatStateDefensif = "DÉFENSIF";
+    public const string CombatStatePanique = "PANIQUÉ";
+    public const string CombatStateEnrage = "ENRAGÉ";
+    #endregion
 }

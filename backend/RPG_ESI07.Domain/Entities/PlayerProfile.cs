@@ -17,12 +17,19 @@ public class PlayerProfile
     public int Gold { get; set; } = 0;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
-    // Navigation properties
-    public User User { get; set; } = null!;
+    // ── Progression ───────────────────────────────────────────────────────────
+    /// <summary>Zone actuelle du joueur — pour le scaling des ennemis.</summary>
+    public string CurrentZone { get; set; } = string.Empty;
 
+    /// <summary>Multiplicateur de scaling global — calculé depuis le niveau.</summary>
+    public float ScalingFactor { get; set; } = 1.0f;
+
+    // ── Navigation properties ─────────────────────────────────────────────────
+    public User User { get; set; } = null!;
     public ICollection<GameSave> GameSaves { get; set; } = new List<GameSave>();
     public CombatStats? CombatStats { get; set; }
     public ICollection<BestiaryUnlock> BestiaryUnlocks { get; set; } = new List<BestiaryUnlock>();
     public ICollection<PlayerInventory> Inventory { get; set; } = new List<PlayerInventory>();
     public ICollection<PlayerSkill> Skills { get; set; } = new List<PlayerSkill>();
+    public ICollection<NpcInteraction> NpcInteractions { get; set; } = new List<NpcInteraction>();
 }
