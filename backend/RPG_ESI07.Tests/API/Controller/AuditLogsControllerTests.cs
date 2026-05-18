@@ -5,7 +5,6 @@ using Moq;
 using RPG_ESI07.API.Controllers;
 using RPG_ESI07.Application.Commands.AuditLogs;
 using RPG_ESI07.Application.Queries.AuditLogs;
-using RPG_ESI07.Domain.Entities;
 
 namespace RPG_ESI07.Tests.Controllers;
 
@@ -24,7 +23,7 @@ public class AuditLogsControllerTests
     public async Task GetAll_ReturnsOkResult_WithExpectedData()
     {
         // Arrange
-        var items = new List<AuditLog> { new AuditLog { Id = 1 } };
+        var items = new List<AuditLogDto> { new AuditLogDto(1, null, "LOGIN_SUCCESS", DateTime.UtcNow, "127.0.0.1") };
         var expectedResponse = new GetAllAuditLogsResponse(items);
 
         _mediatorMock.Setup(m => m.Send(It.IsAny<GetAllAuditLogsQuery>(), It.IsAny<CancellationToken>()))

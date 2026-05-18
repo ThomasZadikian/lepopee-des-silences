@@ -25,12 +25,17 @@ public class AuthRateLimitingTests : IClassFixture<WebApplicationFactory<Program
         {
             builder.ConfigureAppConfiguration((context, config) =>
             {
+                config.Sources.Clear();
+
+                config.AddJsonFile("appsettings.json", optional: true);
+
                 var testDirectory = Path.GetDirectoryName(
                     System.Reflection.Assembly.GetExecutingAssembly().Location)!;
-
                 config.AddJsonFile(
                     Path.Combine(testDirectory, "appsettings.Test.json"),
                     optional: false);
+
+                config.AddEnvironmentVariables();
             });
 
             builder.ConfigureTestServices(services =>

@@ -32,4 +32,23 @@ public class GetAllAuditLogsHandlerTests
 
         result.Items.Should().BeEmpty();
     }
+
+    [Fact]
+    public async Task Handle_DoesNotExposeEventData()
+    {
+        var mockRepo = new Mock<IAuditLogRepository>();
+        var items = new List<AuditLog>
+        {
+            new() { Id = 1, EventType = "LOGIN_SUCCESS", EventData = "sensitive_data", IpAddress = "127.0.0.1", Timestamp = DateTime.UtcNow }
+        };
+        mockRepo.Setup(r => r.GetAllAsync()).ReturnsAsync(items);
+        var handler = new GetAllAuditLogsHandler(mockRepo.Object);
+
+        var result = await handler.Handle(new GetAllAuditLogsQuery(), CancellationToken.None);
+
+        var dto = result.Items.First();
+        dto.Should().BeOfType<AuditLogDto>();
+        var dtoProperties = typeof(AuditLogDto).GetProperties().Select(p => p.Name);
+        dtoProperties.Should().NotContain("EventData");
+    }
 }

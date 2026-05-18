@@ -15,6 +15,15 @@ public class GetAllAuditLogsHandler : IRequestHandler<GetAllAuditLogsQuery, GetA
     public async Task<GetAllAuditLogsResponse> Handle(GetAllAuditLogsQuery request, CancellationToken cancellationToken)
     {
         var items = await _repository.GetAllAsync();
-        return new GetAllAuditLogsResponse(items);
+
+        var dtos = items.Select(a => new AuditLogDto(
+            a.Id,
+            a.UserId,
+            a.EventType,
+            a.Timestamp,
+            a.IpAddress
+        )).ToList();
+
+        return new GetAllAuditLogsResponse(dtos);
     }
 }

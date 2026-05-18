@@ -15,6 +15,16 @@ public class GetAllUsersHandler : IRequestHandler<GetAllUsersQuery, GetAllUsersR
     public async Task<GetAllUsersResponse> Handle(GetAllUsersQuery request, CancellationToken cancellationToken)
     {
         var items = await _repository.GetAllAsync();
-        return new GetAllUsersResponse(items.ToList());
+
+        var dtos = items.Select(u => new UserSummaryDto(
+            u.Id,
+            u.Username,
+            u.Role,
+            u.MfaEnabled,
+            u.CreatedAt,
+            u.LastLoginAt
+        )).ToList();
+
+        return new GetAllUsersResponse(dtos);
     }
 }
