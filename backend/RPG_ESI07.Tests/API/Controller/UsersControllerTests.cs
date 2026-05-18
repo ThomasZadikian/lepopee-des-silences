@@ -23,7 +23,10 @@ public class UsersControllerTests
     [Fact]
     public async Task GetAll_ReturnsOkResult_WithExpectedData()
     {
-        var items = new List<User> { new User { Id = 1 } };
+        var items = new List<UserSummaryDto>
+    {
+        new UserSummaryDto(1, "testuser", "Player", false, DateTime.UtcNow, null)
+    };
         var expectedResponse = new GetAllUsersResponse(items);
 
         _mediatorMock.Setup(m => m.Send(It.IsAny<GetAllUsersQuery>(), It.IsAny<CancellationToken>()))
