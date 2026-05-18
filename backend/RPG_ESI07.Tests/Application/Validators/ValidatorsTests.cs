@@ -22,7 +22,6 @@ public class ValidatorsTests
     {
         var command = new RegisterCommand("valid_user", "test@test.com", "weakpass");
         var result = _registerValidator.TestValidate(command);
-
         result.ShouldHaveValidationErrorFor(x => x.Password)
               .WithErrorMessage("One uppercase required");
     }
@@ -40,8 +39,35 @@ public class ValidatorsTests
     {
         var command = new LoginCommand("", "");
         var result = _loginValidator.TestValidate(command);
-
         result.ShouldHaveValidationErrorFor(x => x.Username);
         result.ShouldHaveValidationErrorFor(x => x.Password);
+    }
+
+    [Theory]
+    [InlineData("root")]
+    [InlineData("admin")]
+    [InlineData("administrator")]
+    [InlineData("superuser")]
+    [InlineData("system")]
+    [InlineData("ROOT")]
+    [InlineData("Admin")]
+    public void RegisterValidator_ShouldHaveError_WhenUsernameIsReserved(string username)
+    {
+        var command = new RegisterCommand(username, "test@test.com", "StrongPass1!");
+        var result = _registerValidator.TestValidate(command);
+        result.ShouldHaveValidationErrorFor(x => x.Username)
+              .WithErrorMessage("Ce nom d'utilisateur est réservé.");
+    }
+
+    [Theory]
+    [InlineData("devuser")]
+    [InlineData("adminuser")]
+    [InlineData("testplayer")]
+    public void RegisterValidator_ShouldHaveError_WhenUsernameIsSeederAccount(string username)
+    {
+        var command = new RegisterCommand(username, "test@test.com", "StrongPass1!");
+        var result = _registerValidator.TestValidate(command);
+        result.ShouldHaveValidationErrorFor(x => x.Username)
+              .WithErrorMessage("Ce nom d'utilisateur est réservé.");
     }
 }
