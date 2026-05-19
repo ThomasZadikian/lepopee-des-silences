@@ -25,11 +25,6 @@ const router = createRouter({
     component: () => import('@/views/auth/MfaSetupView.vue'),
     },
     {
-    path: 'enclos',
-    name: 'Enclos',
-    component: () => import('@/views/player/EnclosView.vue'),
-    },
-    {
       path: "/",
       component: () => import("@/layouts/AppLayout.vue"),
       meta: { requiresAuth: true },
@@ -59,6 +54,11 @@ const router = createRouter({
           path: "rgpd",
           name: "Rgpd",
           component: () => import("@/views/player/RgpdView.vue"),
+        },
+        {
+          path: 'enclos',
+          name: 'Enclos',
+          component: () => import('@/views/player/EnclosView.vue'),
         },
         {
           path: 'bestiary',

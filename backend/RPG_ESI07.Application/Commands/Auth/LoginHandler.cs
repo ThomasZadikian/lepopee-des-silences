@@ -61,13 +61,13 @@ public class LoginHandler
         if (!user.MfaEnabled)
         {
             var mfaSetupToken = _tokenService.GenerateMfaToken(user);
-            return new AuthResponse(true, mfaSetupToken, false, "MFA setup required.", requiresMfaSetup: true);
+            return new AuthResponse(true, mfaSetupToken, false, "MFA setup required.", requiresMfaSetup: true, userId: user.Id);
         }
 
         if (user.MfaEnabled)
         {
             var mfaToken = _tokenService.GenerateMfaToken(user);
-            return new AuthResponse(true, mfaToken, true, "MFA verification required");
+            return new AuthResponse(true, mfaToken, true, "MFA verification required", userId: user.Id);
         }
         // 6. Pas de MFA - JWT direct
         var token = _tokenService

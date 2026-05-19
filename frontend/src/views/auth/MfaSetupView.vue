@@ -55,7 +55,7 @@
 
           <div v-else-if="qrCodeUri" style="margin-bottom: 32px;">
             <div style="border: 1px solid var(--rpg-border); padding: 24px; display: inline-block; margin-bottom: 16px;">
-              <img :src="qrCodeUri" alt="QR Code MFA" width="180" height="180"/>
+              <canvas ref="qrCanvas" style="border: 1px solid var(--rpg-border);"/>
             </div>
             <div style="font-size: 11px; color: var(--rpg-ink-muted); margin-bottom: 8px;">
               Clé manuelle si le scan échoue :
@@ -116,7 +116,7 @@
               @click="handleVerify"
             >
               <span v-if="verifying">Vérification...</span>
-              <span v-else">Ouvrir le Codex →</span>
+              <span v-else>Ouvrir le Codex →</span>
             </button>
 
             <button
@@ -144,8 +144,9 @@
 
 <script setup lang="ts">
 import { useAuthStore } from '@/stores/auth'
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import QRCode from 'qrcode'
 
 const router      = useRouter()
 const auth        = useAuthStore()
@@ -156,6 +157,8 @@ const error       = ref('')
 const qrCodeUri   = ref('')
 const secret      = ref('')
 const code        = ref('')
+const qrCanvas = ref<HTMLCanvasElement | null>(null)
+
 
 const steps = [
   { title: 'Installer une application',  desc: 'Google Authenticator, Authy ou équivalent TOTP' },
@@ -176,6 +179,11 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
+})
+
+watch(qrCodeUri, async (uri) => {
+    if (!uri || !qrCanvas.value) return
+    await QRCode.toCanvas(qrCanvas.value, uri, { width: 200, margin: 2 })
 })
 
 async function handleVerify() {

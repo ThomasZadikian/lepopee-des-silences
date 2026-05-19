@@ -12,5 +12,6 @@ public record AuthResponse(
     string? token,
     bool requiresMfa,
     string message,
-    bool requiresMfaSetup = false
+    bool requiresMfaSetup = false, 
+    int? userId = null
 );

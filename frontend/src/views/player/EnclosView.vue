@@ -140,9 +140,9 @@ const spritePosition = computed(() => {
 })
 
 const foxScale = computed(() => {
-    if (currentState.value === 'EXCITE') return 1.1
-    if (currentState.value === 'ENDORMI') return 0.9
-    return 1.0
+    if (currentState.value === 'EXCITE') return 2.5
+    if (currentState.value === 'ENDORMI') return 2.0
+    return 2.2
 })
 
 const stateEmoji = computed(() => stateList.find(s => s.key === currentState.value)?.emoji ?? '🦊')
@@ -234,6 +234,7 @@ onUnmounted(() => {
 .fox-sprite {
     background-repeat: no-repeat;
     transition: left 1s ease-in-out;
+    mix-blend-mode: multiply;
 }
 
 @keyframes snowfall {

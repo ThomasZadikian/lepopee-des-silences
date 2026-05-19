@@ -37,8 +37,7 @@ public class RegisterHandler
         };
         await _userRepo.AddAsync(user);
 
-        // Génère un token MFA temporaire pour forcer le setup
         var mfaSetupToken = _tokenService.GenerateMfaToken(user);
-        return new AuthResponse(true, mfaSetupToken, false, "Registration successful. MFA setup required.", requiresMfaSetup: true);
+        return new AuthResponse(true, mfaSetupToken, false, "Registration successful. MFA setup required.", requiresMfaSetup: true, userId: user.Id);
     }
 }
