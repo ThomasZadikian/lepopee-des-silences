@@ -82,4 +82,46 @@ public class JwtTokenServiceTests
 
         userId.Should().BeNull();
     }
+    [Fact]
+    public void ValidateMfaToken_ReturnsUserId_WhenTokenIsValid()
+    {
+        var user = new User { Id = 42 };
+        var token = _service.GenerateMfaToken(user);
+
+        var userId = _service.ValidateMfaToken(token);
+
+        userId.Should().Be(42);
+    }
+
+    [Fact]
+    public void ValidateMfaToken_ReturnsNull_WhenTokenIsInvalid()
+    {
+        var userId = _service.ValidateMfaToken("invalid.token.format");
+
+        userId.Should().BeNull();
+    }
+
+    [Fact]
+    public void ValidateMfaToken_ReturnsNull_WhenAccessTokenUsed()
+    {
+        // Un token d'accès ne doit pas être accepté comme token MFA
+        var user = new User { Id = 1, Username = "testuser" };
+        var accessToken = _service.GenerateAccessToken(user, Constants.RolePlayer);
+
+        var userId = _service.ValidateMfaToken(accessToken);
+
+        userId.Should().BeNull();
+    }
+
+    [Fact]
+    public void ValidateMfaToken_ReturnsNull_WhenTokenIsTampered()
+    {
+        var user = new User { Id = 1 };
+        var token = _service.GenerateMfaToken(user);
+        var tamperedToken = string.Concat(token.AsSpan(0, token.Length - 5), "abcde");
+
+        var userId = _service.ValidateMfaToken(tamperedToken);
+
+        userId.Should().BeNull();
+    }
 }

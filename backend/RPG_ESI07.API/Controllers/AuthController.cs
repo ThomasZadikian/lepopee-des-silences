@@ -35,4 +35,24 @@ public class AuthController : ControllerBase
             return Unauthorized(result);
         return Ok(result);
     }
+
+    [HttpPost("mfa/setup")]
+    [EnableRateLimiting("login")]
+    public async Task<IActionResult> SetupMfa([FromBody] SetupMfaCommand command)
+    {
+        var result = await _mediator.Send(command);
+        if (!result.Success)
+            return BadRequest(result);
+        return Ok(result);
+    }
+
+    [HttpPost("mfa/verify")]
+    [EnableRateLimiting("login")]
+    public async Task<IActionResult> VerifyMfa([FromBody] VerifyMfaCommand command)
+    {
+        var result = await _mediator.Send(command);
+        if (!result.success)
+            return Unauthorized(result);
+        return Ok(result);
+    }
 }

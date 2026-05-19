@@ -40,7 +40,7 @@ public class LoginHandler
         if (user.LockedUntil.HasValue
         && user.LockedUntil > DateTime.UtcNow)
             return new AuthResponse(false, null, false,
-            "Account locked. Try again later.");
+            "Invalid credentials");
         // 3. Vérifier password
         if (!_hasher.VerifyPassword(
         request.Password, user.PasswordHash))
@@ -58,13 +58,16 @@ public class LoginHandler
         user.LastLoginAt = DateTime.UtcNow;
         await _userRepo.UpdateAsync(user);
         // 5. MFA check
+        if (!user.MfaEnabled)
+        {
+            var mfaSetupToken = _tokenService.GenerateMfaToken(user);
+            return new AuthResponse(true, mfaSetupToken, false, "MFA setup required.", requiresMfaSetup: true);
+        }
+
         if (user.MfaEnabled)
         {
-            var mfaToken = _tokenService
-            .GenerateMfaToken(user);
-            return new AuthResponse(
-            true, mfaToken, true,
-            "MFA verification required");
+            var mfaToken = _tokenService.GenerateMfaToken(user);
+            return new AuthResponse(true, mfaToken, true, "MFA verification required");
         }
         // 6. Pas de MFA - JWT direct
         var token = _tokenService

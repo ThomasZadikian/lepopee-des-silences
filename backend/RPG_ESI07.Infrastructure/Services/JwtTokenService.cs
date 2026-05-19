@@ -90,4 +90,33 @@ public class JwtTokenService : ITokenService
             return null;
         }
     }
+    public int? ValidateMfaToken(string token)
+    {
+        var handler = new JwtSecurityTokenHandler { MapInboundClaims = false };
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_settings.Secret));
+
+        try
+        {
+            var principal = handler.ValidateToken(token, new TokenValidationParameters
+            {
+                ValidateIssuer = true,
+                ValidIssuer = _settings.Issuer,
+                ValidateAudience = true,
+                ValidAudience = _settings.Audience,
+                ValidateLifetime = true,
+                IssuerSigningKey = key
+            }, out _);
+
+            // Vérifie que c'est bien un token MFA et non un token d'accès
+            var mfaPending = principal.FindFirst("mfa_pending")?.Value;
+            if (mfaPending != "true") return null;
+
+            var sub = principal.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+            return sub != null ? int.Parse(sub) : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
 }

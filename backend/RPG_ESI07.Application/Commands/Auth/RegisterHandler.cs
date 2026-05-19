@@ -22,32 +22,23 @@ public class RegisterHandler
         _tokenService = tokenService;
     }
 
-    public async Task<AuthResponse> Handle(
-    RegisterCommand request,
-    CancellationToken cancellationToken)
+    public async Task<AuthResponse> Handle(RegisterCommand request, CancellationToken cancellationToken)
     {
-        // 1. Vérifier unicité username
-        if (await _userRepo.UsernameExistsAsync(
-        request.Username))
-            return new AuthResponse(false, null, false,
-            "Username already exists");
-        // 2. Hash du password
-        var hash = _hasher.HashPassword(
-            request.Password);
-        // 3. Créer le User
+        if (await _userRepo.UsernameExistsAsync(request.Username))
+            return new AuthResponse(false, null, false, "Identifiants incorrects.");
+
+        var hash = _hasher.HashPassword(request.Password);
         var user = new User
         {
             Username = request.Username,
-            Email = System.Text.Encoding
-        .UTF8.GetBytes(request.Email),
+            Email = System.Text.Encoding.UTF8.GetBytes(request.Email),
             PasswordHash = hash,
             MfaEnabled = false
         };
         await _userRepo.AddAsync(user);
-        // 4. Générer le JWT
-        var token = _tokenService
-        .GenerateAccessToken(user, Constants.RolePlayer);
-        return new AuthResponse(true, token, false,
-        "Registration successful");
+
+        // Génère un token MFA temporaire pour forcer le setup
+        var mfaSetupToken = _tokenService.GenerateMfaToken(user);
+        return new AuthResponse(true, mfaSetupToken, false, "Registration successful. MFA setup required.", requiresMfaSetup: true);
     }
 }

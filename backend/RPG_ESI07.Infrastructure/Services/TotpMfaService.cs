@@ -10,6 +10,10 @@ public class TotpMfaService : IMfaService
     {
         return KeyGeneration.GenerateRandomKey(20);
     }
+    public string SecretToBase32(byte[] secret)
+    {
+        return Base32Encoding.ToString(secret);
+    }
 
     public string GetQrCodeUri(string secret, string username)
     {

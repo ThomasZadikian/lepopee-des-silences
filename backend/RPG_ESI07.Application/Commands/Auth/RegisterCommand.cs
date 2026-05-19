@@ -10,5 +10,7 @@ public record RegisterCommand(
 public record AuthResponse(
     bool success,
     string? token,
-    bool RequresMfa,
-    string Message);
+    bool requiresMfa,
+    string message,
+    bool requiresMfaSetup = false
+);

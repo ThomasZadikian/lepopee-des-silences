@@ -88,6 +88,32 @@ builder.Services.AddAuthentication(options =>
             Encoding.UTF8.GetBytes(signingKey)),
         ClockSkew = TimeSpan.Zero
     };
+
+    options.Events = new JwtBearerEvents
+    {
+        OnTokenValidated = async context =>
+        {
+            var userRepo = context.HttpContext.RequestServices
+                .GetRequiredService<IUserRepository>();
+
+            var userIdClaim = context.Principal?
+                .FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (!int.TryParse(userIdClaim, out var userId))
+            {
+                context.Fail("Invalid token");
+                return;
+            }
+
+            var user = await userRepo.GetByIdAsync(userId);
+
+            if (user == null || user.DeletedAt.HasValue)
+            {
+                context.Fail("Account not found or deleted");
+                return;
+            }
+        }
+    };
 });
 
 builder.Services.AddRateLimiter(options =>
@@ -97,7 +123,7 @@ builder.Services.AddRateLimiter(options =>
             context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
             _ => new FixedWindowRateLimiterOptions
             {
-                PermitLimit = 60,
+                PermitLimit = 200,
                 Window = TimeSpan.FromMinutes(1)
             }));
 
