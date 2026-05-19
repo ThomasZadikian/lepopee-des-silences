@@ -76,4 +76,13 @@ public static class Constants
     public const string CombatStatePanique = "PANIQUÉ";
     public const string CombatStateEnrage = "ENRAGÉ";
     #endregion
+
+    #region Companion States
+    public const string CompanionStateRepos = "REPOS";
+    public const string CompanionStateJeu = "JEU";
+    public const string CompanionStateManger = "MANGER";
+    public const string CompanionStateExcite = "EXCITE";
+    public const string CompanionStateTriste = "TRISTE";
+    public const string CompanionStateEndormi = "ENDORMI";
+    #endregion
 }

@@ -17,6 +17,7 @@ public class EnemiesController : ControllerBase
     public EnemiesController(IMediator mediator) => _mediator = mediator;
 
     [HttpGet]
+    [Authorize(Roles = Constants.RoleAdmin)]
     public async Task<IActionResult> GetAll()
     {
         var result = await _mediator.Send(new GetAllEnemiesQuery());
@@ -59,6 +60,15 @@ public class EnemiesController : ControllerBase
     public async Task<IActionResult> Delete(int id)
     {
         var result = await _mediator.Send(new DeleteEnemyCommand(id));
+        return Ok(result);
+    }
+
+    [HttpGet("{id}/scaled")]
+    [Authorize]
+    public async Task<IActionResult> GetScaled(int id, [FromQuery] int playerLevel, [FromQuery] int equipmentBonus = 0)
+    {
+        var result = await _mediator.Send(new GetScaledEnemyQuery(id, playerLevel, equipmentBonus));
+        if (result.Enemy == null) return NotFound();
         return Ok(result);
     }
 }

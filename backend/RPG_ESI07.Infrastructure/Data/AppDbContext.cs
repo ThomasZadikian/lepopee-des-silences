@@ -25,6 +25,7 @@ public class AppDbContext : DbContext
     public DbSet<PlayerSkill> PlayerSkills => Set<PlayerSkill>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<UserConsent> UserConsents => Set<UserConsent>();
+    public DbSet<CompanionState> CompanionStates => Set<CompanionState>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -390,6 +391,22 @@ public class AppDbContext : DbContext
                     @"""EventType"" IN ('LOGIN_SUCCESS', 'LOGIN_FAILED', 'LOGOUT',
                     'DATA_EXPORT', 'DATA_DELETE', 'DATA_MODIFY',
                     'CHEAT_DETECTED', 'ADMIN_ACTION', 'MFA_ENABLED', 'MFA_FAILED')");
+            });
+        });
+
+        // ===== COMPANION =====
+        modelBuilder.Entity<CompanionState>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.CurrentState)
+                .HasMaxLength(20)
+                .HasDefaultValue(Constants.CompanionStateRepos);
+
+            entity.ToTable(t =>
+            {
+                t.HasCheckConstraint("CK_CompanionState_State",
+                    $"\"CurrentState\" IN ('{Constants.CompanionStateRepos}', '{Constants.CompanionStateJeu}', '{Constants.CompanionStateManger}', '{Constants.CompanionStateExcite}', '{Constants.CompanionStateTriste}', '{Constants.CompanionStateEndormi}')");
             });
         });
 

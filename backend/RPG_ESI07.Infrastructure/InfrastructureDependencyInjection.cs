@@ -25,11 +25,13 @@ public static class InfrastructureDependencyInjection
         services.AddScoped<IAuditLogRepository, AuditLogRepository>();
         services.AddScoped<INpcInteractionRepository, NpcInteractionRepository>();
         services.AddScoped<INpcRepository, NpcRepository>();
+        services.AddScoped<ICompanionRepository, CompanionRepository>();
 
         // Services
         services.AddScoped<IPasswordHasher, Argon2PasswordHasher>();
         services.AddScoped<ITokenService, JwtTokenService>();
         services.AddScoped<IMfaService, TotpMfaService>();
+        services.AddHostedService<CompanionBackgroundService>();
 
         return services;
     }

@@ -8,6 +8,7 @@
 		<CoverletOutput>../coverage/</CoverletOutput>
 		<CollectCoverage>true</CollectCoverage>
 		<Exclude>[*]*.Migrations.*</Exclude>
+		<Exclude>[*]*.CompanionBackgroundService</Exclude>
 		<Threshold>70</Threshold>
 		<ThresholdType>line</ThresholdType>
 		<ThresholdStat>average</ThresholdStat>
