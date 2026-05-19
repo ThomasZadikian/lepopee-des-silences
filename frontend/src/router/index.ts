@@ -20,6 +20,16 @@ const router = createRouter({
       component: () => import("@/views/auth/MfaView.vue"),
     },
     {
+    path: '/mfa/setup',
+    name: 'MfaSetup',
+    component: () => import('@/views/auth/MfaSetupView.vue'),
+    },
+    {
+    path: 'enclos',
+    name: 'Enclos',
+    component: () => import('@/views/player/EnclosView.vue'),
+    },
+    {
       path: "/",
       component: () => import("@/layouts/AppLayout.vue"),
       meta: { requiresAuth: true },

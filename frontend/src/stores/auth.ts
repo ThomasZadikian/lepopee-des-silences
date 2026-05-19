@@ -24,57 +24,104 @@ function getUsernameFromToken(jwt: string | null): string | null {
 }
 
 export const useAuthStore = defineStore('auth', () => {
-    const token = ref<string | null>(localStorage.getItem('token'))
-    const userId = ref<number | null>(Number(localStorage.getItem('userId')) || null)
-
-    // Rôle et username toujours extraits du JWT — jamais du localStorage
-    const role = ref<string | null>(getRoleFromToken(token.value))
+    const token    = ref<string | null>(localStorage.getItem('token'))
+    const userId   = ref<number | null>(Number(localStorage.getItem('userId')) || null)
+    const role     = ref<string | null>(getRoleFromToken(token.value))
     const username = ref<string | null>(getUsernameFromToken(token.value))
 
+    // Token MFA temporaire — en mémoire uniquement, jamais en localStorage
+    const pendingMfaToken  = ref<string | null>(null)
+    const pendingUserId    = ref<number | null>(null)
+
     const isAuthenticated = computed(() => !!token.value)
-    const isAdmin = computed(() => role.value === 'Admin')
+    const isAdmin         = computed(() => role.value === 'Admin')
 
     async function login(data: LoginRequest) {
         const res = await authApi.login(data)
-        if (res.data.requiresMfa) {
-            localStorage.setItem('pendingUserId', String(res.data.userId))
-            return { requiresMfa: true }
+
+        if (res.data.requiresMfaSetup) {
+            pendingUserId.value   = res.data.userId
+            pendingMfaToken.value = res.data.token ?? null
+            return { requiresMfa: false, requiresMfaSetup: true }
         }
+
+        if (res.data.requiresMfa) {
+            pendingUserId.value = res.data.userId
+            return { requiresMfa: true, requiresMfaSetup: false }
+        }
+
         _setSession(res.data.token, res.data.userId)
-        return { requiresMfa: false }
+        return { requiresMfa: false, requiresMfaSetup: false }
     }
 
     async function register(data: RegisterRequest) {
-        await authApi.register(data)
-        await router.push('/login')
+        const res = await authApi.register(data)
+        pendingUserId.value   = res.data.userId
+        pendingMfaToken.value = res.data.token ?? null
+        await router.push({ name: 'MfaSetup' })
+    }
+
+    async function setupMfa() {
+        if (!pendingUserId.value || !pendingMfaToken.value)
+            throw new Error('Session expirée')
+
+        const res = await authApi.setupMfa({
+            userId:   pendingUserId.value,
+            mfaToken: pendingMfaToken.value
+        })
+        return res.data
+    }
+
+    async function verifyMfaSetup(code: string) {
+        if (!pendingUserId.value || !pendingMfaToken.value)
+            throw new Error('Session expirée')
+
+        const res = await authApi.verifyMfaWithToken({
+            userId:   pendingUserId.value,
+            mfaToken: pendingMfaToken.value,
+            code
+        })
+        pendingUserId.value   = null
+        pendingMfaToken.value = null
+        _setSession(res.data.token, res.data.userId)
     }
 
     async function verifyMfa(code: string) {
-        const pendingId = Number(localStorage.getItem('pendingUserId'))
-        const res = await authApi.mfa({ userId: pendingId, code })
-        localStorage.removeItem('pendingUserId')
+        if (!pendingUserId.value) throw new Error('Session expirée')
+
+        const res = await authApi.mfa({
+            userId: pendingUserId.value,
+            code
+        })
+        pendingUserId.value   = null
+        pendingMfaToken.value = null
         _setSession(res.data.token, res.data.userId)
     }
 
     function logout() {
-        token.value = null
-        userId.value = null
-        username.value = null
-        role.value = null
+        token.value           = null
+        userId.value          = null
+        username.value        = null
+        role.value            = null
+        pendingMfaToken.value = null
+        pendingUserId.value   = null
         localStorage.clear()
         router.push('/login')
     }
 
     function _setSession(jwt: string, id: number) {
-        token.value = jwt
-        userId.value = id
-
-        role.value = getRoleFromToken(jwt)
+        token.value    = jwt
+        userId.value   = id
+        role.value     = getRoleFromToken(jwt)
         username.value = getUsernameFromToken(jwt)
-
         localStorage.setItem('token', jwt)
         localStorage.setItem('userId', String(id))
     }
 
-    return { token, userId, username, role, isAuthenticated, isAdmin, login, register, verifyMfa, logout }
+    return {
+        token, userId, username, role,
+        isAuthenticated, isAdmin,
+        login, register, setupMfa, verifyMfa, verifyMfaSetup, logout,
+        _setSession
+    }
 })

@@ -217,6 +217,7 @@ const form    = reactive({ username: '', password: '' })
 const loading = ref(false)
 const error   = ref('')
 
+
 const codexFeatures = [
   { title: 'Sauvegardes', desc: '10 emplacements',      right: false },
   { title: 'Personnages', desc: 'tous niveaux',          right: true  },
@@ -227,19 +228,21 @@ const codexFeatures = [
 ]
 
 async function handleLogin() {
-  error.value   = ''
-  loading.value = true
-  try {
-    const result = await auth.login(form)
-    if (result.requiresMfa) {
-      await router.push({ name: 'Mfa' })
-    } else {
-      await router.push({ name: 'Dashboard' })
+    error.value   = ''
+    loading.value = true
+    try {
+        const result = await auth.login(form)
+        if (result.requiresMfaSetup) {
+            await router.push({ name: 'MfaSetup' })
+        } else if (result.requiresMfa) {
+            await router.push({ name: 'Mfa' })
+        } else {
+            await router.push({ name: 'Dashboard' })
+        }
+    } catch (err: any) {
+        error.value = err.response?.data?.message ?? 'Identifiants incorrects.'
+    } finally {
+        loading.value = false
     }
-  } catch (err: any) {
-    error.value = err.response?.data?.message ?? 'Identifiants incorrects'
-  } finally {
-    loading.value = false
-  }
 }
 </script>

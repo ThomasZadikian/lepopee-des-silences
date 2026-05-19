@@ -153,11 +153,12 @@ const router = useRouter();
 
 const navItems = [
   { name: "Dashboard", label: "Tableau de bord" },
-  { name: "Saves", label: "Sauvegardes" },
+  { name: "Saves",     label: "Sauvegardes" },
   { name: "Inventory", label: "Inventaire" },
-  { name: "Skills", label: "Compétences" },
-  { name: "Bestiary", label: "Bestiaire" },
-  { name: "Rgpd", label: "Mes données" },
+  { name: "Skills",    label: "Compétences" },
+  { name: "Bestiary",  label: "Bestiaire" },
+  { name: "Enclos",    label: "Enclos de Neige" },
+  { name: "Rgpd",      label: "Mes données" },
 ];
 
 const adminItems = [
@@ -170,14 +171,17 @@ const adminItems = [
 const currentRoute = computed(() => route.name as string);
 
 const pageTitles: Record<string, string> = {
-  Dashboard: "Tableau de bord",
-  Saves: "Sauvegardes",
-  Inventory: "Inventaire",
-  Skills: "Compétences",
-  Bestiary: "Bestiaire",
-  Rgpd: "Mes données",
-  AdminUsers: "Gestion utilisateurs",
-  AdminItems: "Gestion items",
+  Dashboard:    "Tableau de bord",
+  Saves:        "Sauvegardes",
+  Inventory:    "Inventaire",
+  Skills:       "Compétences",
+  Bestiary:     "Bestiaire",
+  Enclos:       "Enclos de Neige",
+  Rgpd:         "Mes données",
+  AdminUsers:   "Gestion utilisateurs",
+  AdminItems:   "Gestion items",
+  AdminSkills:  "Gestion compétences",
+  AdminBestiary:"Gestion monstres",
 };
 
 const currentPageTitle = computed(
