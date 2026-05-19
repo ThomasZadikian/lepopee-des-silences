@@ -26,6 +26,8 @@ public static class InfrastructureDependencyInjection
         services.AddScoped<INpcInteractionRepository, NpcInteractionRepository>();
         services.AddScoped<INpcRepository, NpcRepository>();
         services.AddScoped<ICompanionRepository, CompanionRepository>();
+        services.AddScoped<ILeaderboardRepository, LeaderboardRepository>();
+
 
         // Services
         services.AddScoped<IPasswordHasher, Argon2PasswordHasher>();
