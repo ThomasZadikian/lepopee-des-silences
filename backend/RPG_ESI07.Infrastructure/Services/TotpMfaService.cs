@@ -17,9 +17,7 @@ public class TotpMfaService : IMfaService
 
     public string GetQrCodeUri(string secret, string username)
     {
-        var base32Secret = Base32Encoding.ToString(Encoding.UTF8.GetBytes(secret));
-
-        return $"otpauth://totp/RPG_ESI07:{username}?secret={base32Secret}&issuer=RPG_ESI07";
+        return $"otpauth://totp/RPG_ESI07:{username}?secret={secret}&issuer=RPG_ESI07";
     }
 
     public bool ValidateCode(

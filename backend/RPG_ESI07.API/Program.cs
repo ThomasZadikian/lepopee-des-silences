@@ -123,13 +123,13 @@ builder.Services.AddRateLimiter(options =>
             context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
             _ => new FixedWindowRateLimiterOptions
             {
-                PermitLimit = 200,
+                PermitLimit = 500,
                 Window = TimeSpan.FromMinutes(1)
             }));
 
     options.AddSlidingWindowLimiter("login", opt =>
     {
-        opt.PermitLimit = 5;
+        opt.PermitLimit = 100;
         opt.Window = TimeSpan.FromMinutes(5);
         opt.SegmentsPerWindow = 5;
     });

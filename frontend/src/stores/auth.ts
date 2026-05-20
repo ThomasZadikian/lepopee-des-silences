@@ -36,23 +36,35 @@ export const useAuthStore = defineStore('auth', () => {
     const isAuthenticated = computed(() => !!token.value)
     const isAdmin         = computed(() => role.value === 'Admin')
 
-    async function login(data: LoginRequest) {
-        const res = await authApi.login(data)
+ async function login(data: LoginRequest) {
+    const res = await authApi.login(data)
 
-        if (res.data.requiresMfaSetup) {
-            pendingUserId.value   = res.data.userId
-            pendingMfaToken.value = res.data.token ?? null
-            return { requiresMfa: false, requiresMfaSetup: true }
-        }
-
-        if (res.data.requiresMfa) {
-            pendingUserId.value = res.data.userId
-            return { requiresMfa: true, requiresMfaSetup: false }
-        }
-
-        _setSession(res.data.token, res.data.userId)
-        return { requiresMfa: false, requiresMfaSetup: false }
+    if (res.data.requiresMfaSetup) {
+        pendingUserId.value   = res.data.userId
+        pendingMfaToken.value = res.data.token ?? null
+        return { requiresMfa: false, requiresMfaSetup: true }
     }
+
+    if (res.data.requiresMfa) {
+        pendingUserId.value = res.data.userId
+        // Stocke en sessionStorage pour survivre à la navigation
+        sessionStorage.setItem('pendingUserId', String(res.data.userId))
+        return { requiresMfa: true, requiresMfaSetup: false }
+    }
+
+    _setSession(res.data.token, res.data.userId)
+    return { requiresMfa: false, requiresMfaSetup: false }
+}
+
+async function verifyMfa(code: string) {
+    const id = pendingUserId.value ?? Number(sessionStorage.getItem('pendingUserId'))
+    if (!id) throw new Error('Session expirée')
+
+    const res = await authApi.mfa({ userId: id, code })
+    pendingUserId.value = null
+    sessionStorage.removeItem('pendingUserId')
+    _setSession(res.data.token, res.data.userId)
+}
 
     async function register(data: RegisterRequest) {
         const res = await authApi.register(data)
@@ -86,28 +98,17 @@ export const useAuthStore = defineStore('auth', () => {
         _setSession(res.data.token, res.data.userId)
     }
 
-    async function verifyMfa(code: string) {
-        if (!pendingUserId.value) throw new Error('Session expirée')
-
-        const res = await authApi.mfa({
-            userId: pendingUserId.value,
-            code
-        })
-        pendingUserId.value   = null
-        pendingMfaToken.value = null
-        _setSession(res.data.token, res.data.userId)
-    }
-
-    function logout() {
-        token.value           = null
-        userId.value          = null
-        username.value        = null
-        role.value            = null
-        pendingMfaToken.value = null
-        pendingUserId.value   = null
-        localStorage.clear()
-        router.push('/login')
-    }
+function logout() {
+    token.value           = null
+    userId.value          = null
+    username.value        = null
+    role.value            = null
+    pendingMfaToken.value = null
+    pendingUserId.value   = null
+    localStorage.clear()
+    sessionStorage.clear()
+    router.push('/login')
+}
 
     function _setSession(jwt: string, id: number) {
         token.value    = jwt

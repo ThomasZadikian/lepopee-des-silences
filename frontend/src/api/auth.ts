@@ -18,7 +18,7 @@ export interface VerifyMfaWithTokenRequest { userId: number; mfaToken: string; c
 export const authApi = {
     login:              (data: LoginRequest)              => api.post<LoginResponse>('/auth/login', data),
     register:           (data: RegisterRequest)           => api.post<LoginResponse>('/auth/register', data),
-    mfa:                (data: MfaRequest)                => api.post<LoginResponse>('/auth/mfa/verify', data),
+    mfa:                (data: MfaRequest)                => api.post<LoginResponse>('/auth/mfa', data),
     setupMfa:           (data: SetupMfaRequest)           => api.post<SetupMfaResponse>('/auth/mfa/setup', data),
     verifyMfaWithToken: (data: VerifyMfaWithTokenRequest) => api.post<LoginResponse>('/auth/mfa/verify', data),
 }

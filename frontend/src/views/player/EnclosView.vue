@@ -48,7 +48,7 @@
               :style="{
                 backgroundImage: `url(${foxSprite})`,
                 backgroundPosition: spritePosition,
-                width: '117px',
+                width: '195px',
                 height: '128px',
                 imageRendering: 'pixelated',
                 transform: `scale(${foxScale})`,
@@ -122,21 +122,21 @@ const frame          = ref(0)
 const foxPosition    = ref('40%')
 
 // Mapping état → row du sprite sheet
-// Image 1408x768, 6 rows de 128px, frames de largeur variable
 const stateConfig: Record<string, { row: number; frames: number; frameWidth: number }> = {
-    REPOS:   { row: 0, frames: 4, frameWidth: 234 },
-    JEU:     { row: 1, frames: 6, frameWidth: 234 },
-    MANGER:  { row: 2, frames: 4, frameWidth: 234 },
-    EXCITE:  { row: 3, frames: 6, frameWidth: 234 },
-    TRISTE:  { row: 4, frames: 4, frameWidth: 234 },
-    ENDORMI: { row: 5, frames: 4, frameWidth: 234 },
+    REPOS:   { row: 0, frames: 4, frameWidth: 293.33 },
+    JEU:     { row: 1, frames: 6, frameWidth: 293.33 },
+    MANGER:  { row: 2, frames: 4, frameWidth: 293.33 },
+    EXCITE:  { row: 3, frames: 6, frameWidth: 293.33 },
+    TRISTE:  { row: 4, frames: 4, frameWidth: 293.33 },
+    ENDORMI: { row: 5, frames: 4, frameWidth: 293.33 },
 }
 
 const spritePosition = computed(() => {
-    const config = stateConfig[currentState.value] ?? stateConfig['REPOS']
-    const x = -(frame.value * config.frameWidth)
-    const y = -(config.row * 128)
-    return `${x}px ${y}px`
+    const config = stateConfig[currentState.value] ?? stateConfig['REPOS']
+    const x = -(frame.value * config.frameWidth)
+    // Update: Row height is now 192px, not 128px.
+    const y = -(config.row * 192)
+    return `${x}px ${y}px`
 })
 
 const foxScale = computed(() => {
@@ -221,6 +221,7 @@ async function fetchState() {
 onMounted(async () => {
     await fetchState()
     pollInterval = setInterval(fetchState, 5 * 60 * 1000)
+    console.log("test1")
 })
 
 onUnmounted(() => {

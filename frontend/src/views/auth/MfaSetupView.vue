@@ -29,8 +29,11 @@
         <div>
           <div class="editorial-label mb-4">Procédure</div>
           <div style="border-top: 1px solid var(--rpg-border);">
-            <div v-for="(step, i) in steps" :key="i"
-              style="padding: 14px 0; border-bottom: 1px solid var(--rpg-border); display: flex; gap: 16px; align-items: flex-start;">
+            <div
+              v-for="(step, i) in steps"
+              :key="i"
+              style="padding: 14px 0; border-bottom: 1px solid var(--rpg-border); display: flex; gap: 16px; align-items: flex-start;"
+            >
               <div style="font-family: var(--font-serif); font-size: 1.2rem; font-weight: 900; color: var(--rpg-ink-muted); min-width: 24px;">
                 {{ i + 1 }}.
               </div>
@@ -45,6 +48,7 @@
 
       <!-- Colonne droite -->
       <div style="padding: 64px 48px; display: flex; flex-direction: column;">
+
         <!-- Étape 1 : QR Code -->
         <div v-if="currentStep === 1">
           <div class="editorial-label mb-4">■ Étape 1 — Scanner le sceau</div>
@@ -53,9 +57,9 @@
             <div style="font-size: 13px; color: var(--rpg-ink-muted);">Génération du sceau en cours...</div>
           </div>
 
-          <div v-else-if="qrCodeUri" style="margin-bottom: 32px;">
+          <div v-else style="margin-bottom: 32px;">
             <div style="border: 1px solid var(--rpg-border); padding: 24px; display: inline-block; margin-bottom: 16px;">
-              <canvas ref="qrCanvas" style="border: 1px solid var(--rpg-border);"/>
+              <canvas ref="qrCanvas" width="200" height="200"/>
             </div>
             <div style="font-size: 11px; color: var(--rpg-ink-muted); margin-bottom: 8px;">
               Clé manuelle si le scan échoue :
@@ -65,7 +69,10 @@
             </div>
           </div>
 
-          <div v-if="error" style="font-size: 12px; color: #C0392B; border-left: 2px solid #C0392B; padding: 8px 12px; margin-bottom: 20px; background: rgba(192,57,43,0.05);">
+          <div
+            v-if="error"
+            style="font-size: 12px; color: #C0392B; border-left: 2px solid #C0392B; padding: 8px 12px; margin-bottom: 20px; background: rgba(192,57,43,0.05);"
+          >
             {{ error }}
           </div>
 
@@ -103,7 +110,10 @@
             />
           </div>
 
-          <div v-if="error" style="font-size: 12px; color: #C0392B; border-left: 2px solid #C0392B; padding: 8px 12px; margin-bottom: 20px; background: rgba(192,57,43,0.05);">
+          <div
+            v-if="error"
+            style="font-size: 12px; color: #C0392B; border-left: 2px solid #C0392B; padding: 8px 12px; margin-bottom: 20px; background: rgba(192,57,43,0.05);"
+          >
             {{ error }}
           </div>
 
@@ -144,34 +154,43 @@
 
 <script setup lang="ts">
 import { useAuthStore } from '@/stores/auth'
+import QRCode from 'qrcode'
 import { onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import QRCode from 'qrcode'
 
-const router      = useRouter()
-const auth        = useAuthStore()
-const currentStep = ref(1)
-const loading     = ref(false)
-const verifying   = ref(false)
-const error       = ref('')
-const qrCodeUri   = ref('')
-const secret      = ref('')
-const code        = ref('')
-const qrCanvas = ref<HTMLCanvasElement | null>(null)
-
+const router       = useRouter()
+const auth         = useAuthStore()
+const currentStep  = ref(1)
+const loading      = ref(false)
+const verifying    = ref(false)
+const error        = ref('')
+const qrCodeUri    = ref('')
+const secret       = ref('')
+const code         = ref('')
+const qrCanvas     = ref<HTMLCanvasElement | null>(null)
 
 const steps = [
-  { title: 'Installer une application',  desc: 'Google Authenticator, Authy ou équivalent TOTP' },
-  { title: 'Scanner le sceau',           desc: 'Ouvrez l\'application et scannez le QR code' },
-  { title: 'Saisir le code',             desc: 'Entrez le code à 6 chiffres généré' },
-  { title: 'Accéder au Codex',           desc: 'Votre compte est désormais sécurisé' },
+  { title: 'Installer une application', desc: 'Google Authenticator, Authy ou équivalent TOTP' },
+  { title: 'Scanner le sceau',          desc: "Ouvrez l'application et scannez le QR code" },
+  { title: 'Saisir le code',            desc: 'Entrez le code à 6 chiffres généré' },
+  { title: 'Accéder au Codex',          desc: 'Votre compte est désormais sécurisé' },
 ]
+
+// Dès que le canvas est monté dans le DOM → génère le QR code
+watch(qrCanvas, async (canvas) => {
+  if (!canvas || !qrCodeUri.value) return
+  try {
+    await QRCode.toCanvas(canvas, qrCodeUri.value, { width: 200, margin: 2 })
+  } catch (e) {
+    console.error('QRCode error:', e)
+  }
+})
 
 onMounted(async () => {
   loading.value = true
   error.value   = ''
   try {
-    const res     = await auth.setupMfa()
+    const res       = await auth.setupMfa()
     qrCodeUri.value = res.qrCodeUri
     secret.value    = res.secret
   } catch {
@@ -181,14 +200,9 @@ onMounted(async () => {
   }
 })
 
-watch(qrCodeUri, async (uri) => {
-    if (!uri || !qrCanvas.value) return
-    await QRCode.toCanvas(qrCanvas.value, uri, { width: 200, margin: 2 })
-})
-
 async function handleVerify() {
   if (code.value.length !== 6) return
-  error.value    = ''
+  error.value     = ''
   verifying.value = true
   try {
     await auth.verifyMfaSetup(code.value)
