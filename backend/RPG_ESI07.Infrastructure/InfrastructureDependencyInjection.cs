@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using RPG_ESI07.Application.Queries.Leaderboard;
 using RPG_ESI07.Domain.Interfaces;
 using RPG_ESI07.Infrastructure.Repositories;
 using RPG_ESI07.Infrastructure.Repository;

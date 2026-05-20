@@ -36,4 +36,14 @@ public class LeaderboardRepository : ILeaderboardRepository
 
         return (items, totalCount);
     }
+    public async Task<List<PlayerProfile>> SearchByCharacterNameAsync(string term, CancellationToken ct)
+    {
+        // EF Core paramétrise automatiquement — pas d'injection SQL possible
+        return await _context.PlayerProfiles
+            .Where(p => EF.Functions.ILike(p.CharacterName, $"%{term}%"))
+            .OrderBy(p => p.CharacterName)
+            .Take(10) // Maximum 10 résultats
+            .AsNoTracking()
+            .ToListAsync(ct);
+    }
 }

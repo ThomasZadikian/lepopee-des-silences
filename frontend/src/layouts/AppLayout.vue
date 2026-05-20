@@ -159,6 +159,7 @@ const navItems = [
   { name: "Bestiary",  label: "Bestiaire" },
   { name: "Enclos",    label: "Enclos de Neige" },
   { name: "Rgpd",      label: "Mes données" },
+  { name: 'Leaderboard', label: 'Classement' },
 ];
 
 const adminItems = [

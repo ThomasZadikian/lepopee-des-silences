@@ -140,6 +140,18 @@ builder.Services.AddRateLimiter(options =>
         opt.Window = TimeSpan.FromHours(1);
     });
 
+    options.AddFixedWindowLimiter("leaderboard", opt =>
+    {
+        opt.PermitLimit = 30;
+        opt.Window = TimeSpan.FromMinutes(1);
+    });
+
+    options.AddFixedWindowLimiter("leaderboard_search", opt =>
+    {
+        opt.PermitLimit = 10;
+        opt.Window = TimeSpan.FromMinutes(1);
+    });
+
     options.RejectionStatusCode = 429;
 });
 
@@ -183,7 +195,14 @@ builder.Services.AddCors(options =>
         policy.WithOrigins(corsOrigins)
             .AllowAnyMethod()
             .AllowAnyHeader()
-            .AllowCredentials(); 
+            .AllowCredentials();
+    });
+
+    options.AddPolicy("AllowPublic", policy =>
+    {
+        policy.WithOrigins(corsOrigins)
+            .AllowAnyMethod()
+            .AllowAnyHeader();
     });
 });
 

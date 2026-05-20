@@ -9,4 +9,6 @@ public interface ILeaderboardRepository
         int skip,
         int take,
         CancellationToken ct);
+
+    Task<List<PlayerProfile>> SearchByCharacterNameAsync(string term, CancellationToken ct);
 }
