@@ -1,6 +1,5 @@
 <template>
   <div style="min-height: 100vh; background: var(--rpg-cream);">
-    <!-- ── Header ──────────────────────────────────────────────── -->
     <div style="padding: 32px 48px; border-bottom: 1px solid var(--rpg-border); display: flex; align-items: flex-end; justify-content: space-between;">
       <div>
         <div class="editorial-label mb-2">Enclos du Codex</div>
@@ -14,19 +13,14 @@
       </div>
     </div>
 
-    <!-- ── Corps ──────────────────────────────────────────────── -->
     <div style="display: grid; grid-template-columns: 1fr 400px; min-height: calc(100vh - 120px);">
 
-      <!-- Zone de jeu -->
       <div style="padding: 48px; border-right: 1px solid var(--rpg-border); display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; overflow: hidden;">
 
-        <!-- Fond enclos -->
         <div style="width: 100%; max-width: 600px; height: 320px; background: linear-gradient(180deg, #e8f4f8 0%, #d4ecf5 60%, #b8dce8 100%); border: 1px solid var(--rpg-border); position: relative; overflow: hidden;">
 
-          <!-- Sol -->
           <div style="position: absolute; bottom: 0; left: 0; right: 0; height: 60px; background: linear-gradient(180deg, #c8e8f0 0%, #a8d4e0 100%); border-top: 2px solid rgba(0,0,0,0.06);"/>
 
-          <!-- Flocons décoratifs -->
           <div v-for="i in 8" :key="i"
             style="position: absolute; font-size: 12px; opacity: 0.4; animation: snowfall linear infinite;"
             :style="{
@@ -38,27 +32,17 @@
             ❄
           </div>
 
-          <!-- Renard animé -->
           <div
-            style="position: absolute; bottom: 60px;"
-            :style="{ left: foxPosition }"
+            style="position: absolute; bottom: 60px; transition: left 1s ease-in-out, transform 0.3s;"
+            :style="{ left: foxPosition, transform: `scaleX(${scaleX})` }"
           >
             <div
               class="fox-sprite"
-              :style="{
-                backgroundImage: `url(${foxSprite})`,
-                backgroundPosition: spritePosition,
-                width: '195px',
-                height: '128px',
-                imageRendering: 'pixelated',
-                transform: `scale(${foxScale})`,
-                transformOrigin: 'bottom center'
-              }"
+              :style="spriteStyle"
             />
           </div>
         </div>
 
-        <!-- État actuel -->
         <div style="margin-top: 24px; text-align: center;">
           <div style="display: inline-flex; align-items: center; gap: 10px; padding: 8px 20px; border: 1px solid var(--rpg-border); background: white;">
             <span style="font-size: 18px;">{{ stateEmoji }}</span>
@@ -70,11 +54,9 @@
         </div>
       </div>
 
-      <!-- Panneau info -->
       <div style="padding: 48px 32px;">
         <div class="editorial-label mb-6">Journal de Neige</div>
 
-        <!-- Stats globales -->
         <div style="border-top: 1px solid var(--rpg-border); margin-bottom: 32px;">
           <div v-for="stat in stats" :key="stat.label"
             style="padding: 14px 0; border-bottom: 1px solid var(--rpg-border); display: flex; justify-content: space-between; align-items: baseline;">
@@ -83,7 +65,6 @@
           </div>
         </div>
 
-        <!-- Humeur -->
         <div class="editorial-label mb-4">Humeur actuelle</div>
         <div style="padding: 16px; border: 1px solid var(--rpg-border); margin-bottom: 32px;">
           <div style="font-size: 13px; line-height: 1.7; color: var(--rpg-ink-muted); font-style: italic;">
@@ -91,12 +72,12 @@
           </div>
         </div>
 
-        <!-- Légende états -->
         <div class="editorial-label mb-4">États possibles</div>
         <div style="border-top: 1px solid var(--rpg-border);">
-          <div v-for="s in stateList" :key="s.key"
-            style="padding: 10px 0; border-bottom: 1px solid var(--rpg-border); display: flex; align-items: center; gap: 10px;"
-            :style="{ opacity: currentState === s.key ? 1 : 0.4 }">
+          <div v-for="s in stateList" 
+               :key="s.key"
+               style="padding: 10px 0; border-bottom: 1px solid var(--rpg-border); display: flex; align-items: center; gap: 10px;"
+               :style="{ opacity: currentState === s.key ? 1 : 0.4 }">
             <span>{{ s.emoji }}</span>
             <div>
               <div style="font-size: 12px; font-weight: 600;">{{ s.label }}</div>
@@ -114,35 +95,45 @@ import { companionApi } from '@/api/companion'
 import foxSprite from '@/assets/white_fox.png'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 
-const currentState  = ref('REPOS')
+const currentState   = ref('REPOS')
 const victoriesToday = ref(0)
 const defeatesToday  = ref(0)
 const lastUpdated    = ref('')
-const frame          = ref(0)
 const foxPosition    = ref('40%')
+const scaleX         = ref(1)
 
-// Mapping état → row du sprite sheet
-const stateConfig: Record<string, { row: number; frames: number; frameWidth: number }> = {
-    REPOS:   { row: 0, frames: 4, frameWidth: 293.33 },
-    JEU:     { row: 1, frames: 6, frameWidth: 293.33 },
-    MANGER:  { row: 2, frames: 4, frameWidth: 293.33 },
-    EXCITE:  { row: 3, frames: 6, frameWidth: 293.33 },
-    TRISTE:  { row: 4, frames: 4, frameWidth: 293.33 },
-    ENDORMI: { row: 5, frames: 4, frameWidth: 293.33 },
+// Image: 1024x1114px
+const IMG_H = 1114
+
+const stateConfig: Record<string, { y: number; h: number; frames: number; frameW: number }> = {
+    REPOS:   { y: 0,    h: 131, frames: 6, frameW: 175 },
+    JEU:     { y: 194,  h: 135, frames: 7, frameW: 150 },
+    MANGER:  { y: 405,  h: 108, frames: 6, frameW: 175 },
+    EXCITE:  { y: 584,  h: 143, frames: 5, frameW: 210 },
+    TRISTE:  { y: 801,  h: 114, frames: 5, frameW: 210 },
+    ENDORMI: { y: 1002, h: 111, frames: 5, frameW: 210 },
 }
 
-const spritePosition = computed(() => {
-    const config = stateConfig[currentState.value] ?? stateConfig['REPOS']
-    const x = -(frame.value * config.frameWidth)
-    // Update: Row height is now 192px, not 128px.
-    const y = -(config.row * 192)
-    return `${x}px ${y}px`
-})
+const spriteStyle = computed(() => {
+    const config = stateConfig[currentState.value] ?? stateConfig['REPOS']
+    const frameW = config.frameW
+    const frameH = config.h
+    // backgroundSize = exactement la largeur d'une row complète
+    const rowW   = frameW * config.frames
 
-const foxScale = computed(() => {
-    if (currentState.value === 'EXCITE') return 2.5
-    if (currentState.value === 'ENDORMI') return 2.0
-    return 2.2
+    return {
+        backgroundImage:    `url(${foxSprite})`,
+        // Position Y centrée sur la bonne row
+        backgroundPosition: `0px ${-(config.y)}px`,
+        // Largeur = frameW * frames pour que steps() fonctionne
+        backgroundSize:     `${rowW}px ${IMG_H}px`,
+        backgroundRepeat:   'no-repeat',
+        width:              `${frameW}px`,
+        height:             `${frameH}px`,
+        imageRendering:     'pixelated' as const,
+        overflow:           'hidden' as const,
+        animation:          `fox-walk ${config.frames * 0.15}s steps(${config.frames}) infinite`,
+    }
 })
 
 const stateEmoji = computed(() => stateList.find(s => s.key === currentState.value)?.emoji ?? '🦊')
@@ -176,21 +167,8 @@ const stateList = [
     { key: 'ENDORMI', emoji: '💤', label: 'Dort',     desc: 'Inactivité prolongée' },
 ]
 
-// Animation frames
-let frameInterval: ReturnType<typeof setInterval> | null = null
 let pollInterval:  ReturnType<typeof setInterval> | null = null
 let moveInterval:  ReturnType<typeof setInterval> | null = null
-
-function startAnimation() {
-    if (frameInterval) clearInterval(frameInterval)
-    frame.value = 0
-    const config = stateConfig[currentState.value] ?? stateConfig['REPOS']
-    const speed = currentState.value === 'EXCITE' ? 80 : currentState.value === 'ENDORMI' ? 400 : 150
-
-    frameInterval = setInterval(() => {
-        frame.value = (frame.value + 1) % config.frames
-    }, speed)
-}
 
 function startMovement() {
     if (moveInterval) clearInterval(moveInterval)
@@ -200,32 +178,32 @@ function startMovement() {
         const current = parseFloat(foxPosition.value)
         const delta   = currentState.value === 'EXCITE' ? (Math.random() - 0.5) * 20 : (Math.random() - 0.5) * 8
         const next    = Math.max(5, Math.min(75, current + delta))
+        
+        scaleX.value = next < current ? -1 : 1
+        
         foxPosition.value = `${next}%`
     }, currentState.value === 'EXCITE' ? 600 : 2000)
 }
 
 async function fetchState() {
     try {
-        const res        = await companionApi.getState()
+        const res            = await companionApi.getState()
         currentState.value   = res.data.currentState
         victoriesToday.value = res.data.victoriesToday
         defeatesToday.value  = res.data.defeatesToday
         lastUpdated.value    = new Date(res.data.lastUpdated).toLocaleTimeString('fr-FR')
-        startAnimation()
         startMovement()
     } catch {
-        // Silencieux — le companion reste dans son dernier état connu
+        // Ignorer en cas d'erreur de récupération
     }
 }
 
 onMounted(async () => {
     await fetchState()
     pollInterval = setInterval(fetchState, 5 * 60 * 1000)
-    console.log("test1")
 })
 
 onUnmounted(() => {
-    if (frameInterval) clearInterval(frameInterval)
     if (pollInterval)  clearInterval(pollInterval)
     if (moveInterval)  clearInterval(moveInterval)
 })
@@ -234,12 +212,9 @@ onUnmounted(() => {
 <style scoped>
 .fox-sprite {
     background-repeat: no-repeat;
-    transition: left 1s ease-in-out;
-    mix-blend-mode: multiply;
 }
-
-@keyframes snowfall {
-    from { transform: translateY(-10px) rotate(0deg); opacity: 0.4; }
-    to   { transform: translateY(380px) rotate(360deg); opacity: 0; }
+@keyframes fox-walk {
+    from { background-position-x: 0px; }
+    to   { background-position-x: -100%; }
 }
 </style>
