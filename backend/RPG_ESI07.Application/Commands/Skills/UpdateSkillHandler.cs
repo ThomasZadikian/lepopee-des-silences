@@ -17,6 +17,11 @@ public class UpdateSkillHandler : IRequestHandler<UpdateSkillCommand, UpdateSkil
         entity.Name = request.Name;
         entity.EffectType = request.EffectType;
         entity.MPCost = request.MPCost;
+        entity.ElementType = request.ElementType;
+        entity.Description = request.Description;
+        entity.BaseDamage = request.BaseDamage;
+        entity.HealAmount = request.HealAmount;
+
         await _repository.UpdateAsync(entity);
         return new UpdateSkillResponse(true, "Skill updated successfully");
     }

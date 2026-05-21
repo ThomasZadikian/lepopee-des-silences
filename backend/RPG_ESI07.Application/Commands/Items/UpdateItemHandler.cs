@@ -17,6 +17,11 @@ public class UpdateItemHandler : IRequestHandler<UpdateItemCommand, UpdateItemRe
         entity.Name = request.Name;
         entity.Type = request.Type;
         entity.Price = request.Price;
+        entity.Category = request.Category;
+        entity.Description = request.Description;
+        entity.EffectValue = request.EffectValue;
+        entity.StatModifiers = string.IsNullOrWhiteSpace(request.StatModifiers) ? null : request.StatModifiers;
+
         await _repository.UpdateAsync(entity);
         return new UpdateItemResponse(true, "Item updated successfully");
     }
