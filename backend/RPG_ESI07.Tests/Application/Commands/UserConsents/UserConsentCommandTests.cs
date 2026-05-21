@@ -21,7 +21,7 @@ public class CreateUserConsentHandlerTests
     public async Task Handle_ValidCommand_ReturnsSuccess()
     {
         // Arrange
-        _mockRepo.Setup(r => r.AddAsync(It.IsAny<UserConsent>())).Returns(Task.CompletedTask);
+        _mockRepo.Setup(r => r.AddAsync(It.IsAny<UserConsent>())).ReturnsAsync((UserConsent)null!);
 
         // Act
         var result = await _handler.Handle(new CreateUserConsentCommand(1, true, false), CancellationToken.None);

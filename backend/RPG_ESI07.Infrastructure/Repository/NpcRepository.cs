@@ -5,61 +5,32 @@ using RPG_ESI07.Infrastructure.Data;
 
 namespace RPG_ESI07.Infrastructure.Repository;
 
-public class NpcRepository : INpcRepository
+public class NpcRepository : Repository<Npc>, INpcRepository
 {
-    private readonly AppDbContext _context;
+    public NpcRepository(AppDbContext context) : base(context) { }
 
-    public NpcRepository(AppDbContext context)
+    public override async Task<List<Npc>> GetAllAsync()
     {
-        _context = context;
-    }
-
-    public async Task<List<Npc>> GetAllAsync()
-    {
-        return await _context.Npcs
+        return await _dbSet
             .OrderBy(n => n.Zone)
             .ThenBy(n => n.Name)
+            .AsNoTracking()
             .ToListAsync();
-    }
-
-    public async Task<Npc?> GetByIdAsync(int id)
-    {
-        return await _context.Npcs.FindAsync(id);
     }
 
     public async Task<List<Npc>> GetByZoneAsync(string zone)
     {
-        return await _context.Npcs
-            .Where(n => n.Zone.Equals(zone, StringComparison.OrdinalIgnoreCase))
+        return await _dbSet
+            .Where(n => EF.Functions.Like(n.Zone, zone))
+            .AsNoTracking()
             .ToListAsync();
     }
 
     public async Task<List<Npc>> GetByTypeAsync(string type)
     {
-        return await _context.Npcs
-            .Where(n => n.Type.Equals(type, StringComparison.OrdinalIgnoreCase))
+        return await _dbSet
+            .Where(n => EF.Functions.Like(n.Type, type))
+            .AsNoTracking()
             .ToListAsync();
-    }
-
-    public async Task AddAsync(Npc npc)
-    {
-        _context.Npcs.Add(npc);
-        await _context.SaveChangesAsync();
-    }
-
-    public async Task UpdateAsync(Npc npc)
-    {
-        _context.Npcs.Update(npc);
-        await _context.SaveChangesAsync();
-    }
-
-    public async Task DeleteAsync(int id)
-    {
-        var npc = await _context.Npcs.FindAsync(id);
-        if (npc != null)
-        {
-            _context.Npcs.Remove(npc);
-            await _context.SaveChangesAsync();
-        }
     }
 }

@@ -22,7 +22,7 @@ public class CreateAuditLogHandlerTests
     {
         // Arrange
         var command = new CreateAuditLogCommand(1, "LOGIN_SUCCESS", "{}");
-        _mockRepo.Setup(r => r.AddAsync(It.IsAny<AuditLog>())).Returns(Task.CompletedTask);
+        _mockRepo.Setup(r => r.AddAsync(It.IsAny<AuditLog>())).ReturnsAsync((AuditLog)null!);
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);

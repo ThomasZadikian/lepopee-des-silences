@@ -5,56 +5,33 @@ using RPG_ESI07.Infrastructure.Data;
 
 namespace RPG_ESI07.Infrastructure.Repository;
 
-public class NpcInteractionRepository : INpcInteractionRepository
+public class NpcInteractionRepository : Repository<NpcInteraction>, INpcInteractionRepository
 {
-    private readonly AppDbContext _context;
+    public NpcInteractionRepository(AppDbContext context) : base(context) { }
 
-    public NpcInteractionRepository(AppDbContext context)
+    public override async Task<List<NpcInteraction>> GetAllAsync()
     {
-        _context = context;
-    }
-
-    public async Task<List<NpcInteraction>> GetAllAsync()
-    {
-        return await _context.NpcInteractions
+        return await _dbSet
             .OrderByDescending(n => n.InteractedAt)
+            .AsNoTracking()
             .ToListAsync();
-    }
-
-    public async Task<NpcInteraction?> GetByIdAsync(int id)
-    {
-        return await _context.NpcInteractions.FindAsync(id);
     }
 
     public async Task<List<NpcInteraction>> GetByPlayerIdAsync(int playerId)
     {
-        return await _context.NpcInteractions
+        return await _dbSet
             .Where(n => n.PlayerId == playerId)
             .OrderByDescending(n => n.InteractedAt)
+            .AsNoTracking()
             .ToListAsync();
     }
 
     public async Task<List<NpcInteraction>> GetByNpcIdAsync(int npcId)
     {
-        return await _context.NpcInteractions
+        return await _dbSet
             .Where(n => n.NpcId == npcId)
             .OrderByDescending(n => n.InteractedAt)
+            .AsNoTracking()
             .ToListAsync();
-    }
-
-    public async Task AddAsync(NpcInteraction interaction)
-    {
-        _context.NpcInteractions.Add(interaction);
-        await _context.SaveChangesAsync();
-    }
-
-    public async Task DeleteAsync(int id)
-    {
-        var interaction = await _context.NpcInteractions.FindAsync(id);
-        if (interaction != null)
-        {
-            _context.NpcInteractions.Remove(interaction);
-            await _context.SaveChangesAsync();
-        }
     }
 }

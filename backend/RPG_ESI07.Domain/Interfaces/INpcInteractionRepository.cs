@@ -2,12 +2,8 @@
 
 namespace RPG_ESI07.Domain.Interfaces;
 
-public interface INpcInteractionRepository
+public interface INpcInteractionRepository : IRepository<NpcInteraction>
 {
-    Task<List<NpcInteraction>> GetAllAsync();
-    Task<NpcInteraction?> GetByIdAsync(int id);
     Task<List<NpcInteraction>> GetByPlayerIdAsync(int playerId);
     Task<List<NpcInteraction>> GetByNpcIdAsync(int npcId);
-    Task AddAsync(NpcInteraction interaction);
-    Task DeleteAsync(int id);
 }

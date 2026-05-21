@@ -221,7 +221,7 @@ function confirmDelete(skill: Skill, event?: MouseEvent) {
 }
 
 function openCreate() {
-    panel.value = {} as Skill
+    panel.value = { id: 0, name: '', effectType: C.EFFECT_DAMAGE, elementType: C.ELEMENT_NEUTRAL, description: '', mpCost: 10, baseDamage: null, healAmount: null } as Skill
     mode.value = 'create'
     form.value = { name: '', effectType: C.EFFECT_DAMAGE, elementType: C.ELEMENT_NEUTRAL, description: '', mpCost: 10, baseDamage: null, healAmount: null }
     formError.value = ''

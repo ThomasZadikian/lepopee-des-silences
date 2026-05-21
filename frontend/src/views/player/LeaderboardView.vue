@@ -203,7 +203,7 @@
 
 <script setup lang="ts">
 import api from '@/api/auth'
-import { onMounted, ref } from 'vue'
+import { onMounted, onUnmounted, ref } from 'vue'
 
 interface LeaderboardEntry {
     rank:                 number
@@ -321,4 +321,7 @@ async function changePage(page: number) {
 }
 
 onMounted(fetchLeaderboard)
+onUnmounted(() => {
+  if (debounceTimer) clearTimeout(debounceTimer)
+})
 </script>

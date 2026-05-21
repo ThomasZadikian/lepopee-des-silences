@@ -47,10 +47,10 @@ public class GetAllBestiaryUnlocksHandlerTests
     {
         var items = new List<BestiaryUnlock>
         {
-            new() { Id = 1, Player = new PlayerProfile { UserId = 1 }, UnlockedAt = DateTime.UtcNow },
-            new() { Id = 2, Player = new PlayerProfile { UserId = 2 }, UnlockedAt = DateTime.UtcNow },
+            new() { Id = 1, PlayerId = 1, UnlockedAt = DateTime.UtcNow },
+            new() { Id = 2, PlayerId = 2, UnlockedAt = DateTime.UtcNow },
         };
-        _mockRepo.Setup(r => r.GetAllAsync()).ReturnsAsync(items);
+        _mockRepo.Setup(r => r.GetByPlayerIdAsync(1)).ReturnsAsync(new List<BestiaryUnlock> { items[0] });
 
         var result = await _handler.Handle(new GetAllBestiaryUnlocksQuery(UserId: 1), CancellationToken.None);
 

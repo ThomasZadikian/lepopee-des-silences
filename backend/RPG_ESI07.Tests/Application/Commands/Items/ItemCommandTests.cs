@@ -23,7 +23,7 @@ public class CreateItemHandlerTests
     {
         // Arrange
         var command = new CreateItemCommand("Épée", Constants.ItemTypeWeapon, 100, null, "Une épée puissante", 15, null);
-        _mockRepo.Setup(r => r.AddAsync(It.IsAny<Item>())).Returns(Task.CompletedTask);
+        _mockRepo.Setup(r => r.AddAsync(It.IsAny<Item>())).ReturnsAsync((Item)null!);
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);

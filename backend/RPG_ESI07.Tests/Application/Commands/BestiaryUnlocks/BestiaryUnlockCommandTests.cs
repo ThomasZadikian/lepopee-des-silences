@@ -21,7 +21,7 @@ public class CreateBestiaryUnlockHandlerTests
     public async Task Handle_ValidCommand_ReturnsSuccess()
     {
         // Arrange
-        _mockRepo.Setup(r => r.AddAsync(It.IsAny<BestiaryUnlock>())).Returns(Task.CompletedTask);
+        _mockRepo.Setup(r => r.AddAsync(It.IsAny<BestiaryUnlock>())).ReturnsAsync((BestiaryUnlock)null!);
 
         // Act
         var result = await _handler.Handle(new CreateBestiaryUnlockCommand(1, 2), CancellationToken.None);

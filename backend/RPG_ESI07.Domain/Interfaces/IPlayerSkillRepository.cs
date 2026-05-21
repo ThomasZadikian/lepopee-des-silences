@@ -2,15 +2,7 @@ using RPG_ESI07.Domain.Entities;
 
 namespace RPG_ESI07.Domain.Interfaces;
 
-public interface IPlayerSkillRepository
+public interface IPlayerSkillRepository : IRepository<PlayerSkill>
 {
-    Task<List<PlayerSkill>> GetAllAsync();
-
-    Task<PlayerSkill?> GetByIdAsync(int id);
-
-    Task AddAsync(PlayerSkill entity);
-
-    Task UpdateAsync(PlayerSkill entity);
-
-    Task DeleteAsync(int id);
+    Task<List<PlayerSkill>> GetByPlayerIdAsync(int playerId);
 }

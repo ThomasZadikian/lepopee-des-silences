@@ -21,7 +21,7 @@ public class CreatePlayerSkillHandlerTests
     public async Task Handle_ValidCommand_ReturnsSuccess()
     {
         // Arrange
-        _mockRepo.Setup(r => r.AddAsync(It.IsAny<PlayerSkill>())).Returns(Task.CompletedTask);
+        _mockRepo.Setup(r => r.AddAsync(It.IsAny<PlayerSkill>())).ReturnsAsync((PlayerSkill)null!);
 
         // Act
         var result = await _handler.Handle(new CreatePlayerSkillCommand(1, 2, 3), CancellationToken.None);

@@ -183,7 +183,7 @@
                     Or
                   </div>
                   <div style="font-family:var(--font-serif);font-size:1.3rem;font-weight:700;">
-                    {{ selected.enemy.goldReward }} 🪙
+                    {{ selected.enemy.goldReward }}
                   </div>
                 </v-col>
               </v-row>
@@ -314,7 +314,7 @@
 
                 <v-col cols="2">
                   <div style="font-size:12px;color:var(--rpg-ink-muted);">
-                    {{ entry.enemy.experienceReward }} XP · {{ entry.enemy.goldReward }} 🪙
+                    {{ entry.enemy.experienceReward }} XP · {{ entry.enemy.goldReward }} or
                   </div>
                 </v-col>
 
@@ -382,5 +382,4 @@ function typeColor(type: string): string {
   }
   return map[type] ?? 'var(--rpg-ink-muted)'
 }
-console.log(bestiary)
 </script>

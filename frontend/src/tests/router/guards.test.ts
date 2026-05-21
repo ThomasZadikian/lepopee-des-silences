@@ -34,7 +34,7 @@ function makeRouter() {
 describe("Guards de navigation", () => {
     beforeEach(() => {
         setActivePinia(createPinia())
-        localStorage.clear()
+        sessionStorage.clear()
     })
 
     it("redirige vers /login si non authentifié sur route protégée", async () => {
@@ -48,7 +48,7 @@ describe("Guards de navigation", () => {
     })
 
     it("accède à /dashboard si authentifié", async () => {
-        localStorage.setItem("token", makeJwt("Player"))
+        sessionStorage.setItem("token", makeJwt("Player"))
         const router = makeRouter()
         router.beforeEach((to) => {
             const auth = useAuthStore()
@@ -59,7 +59,7 @@ describe("Guards de navigation", () => {
     })
 
     it("redirige vers /dashboard si non Admin sur route admin", async () => {
-        localStorage.setItem("token", makeJwt("Player"))
+        sessionStorage.setItem("token", makeJwt("Player"))
         const router = makeRouter()
         router.beforeEach((to) => {
             const auth = useAuthStore()
@@ -71,7 +71,7 @@ describe("Guards de navigation", () => {
     })
 
     it("accède à /admin si rôle Admin", async () => {
-        localStorage.setItem("token", makeJwt("Admin"))
+        sessionStorage.setItem("token", makeJwt("Admin"))
         const router = makeRouter()
         router.beforeEach((to) => {
             const auth = useAuthStore()

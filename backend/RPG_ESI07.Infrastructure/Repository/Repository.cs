@@ -2,7 +2,7 @@
 using RPG_ESI07.Domain.Interfaces;
 using RPG_ESI07.Infrastructure.Data;
 
-namespace RPG_ESI07.Infrastructure.Repositories;
+namespace RPG_ESI07.Infrastructure.Repository;
 
 public class Repository<T> : IRepository<T> where T : class
 {
@@ -20,7 +20,7 @@ public class Repository<T> : IRepository<T> where T : class
         return await _dbSet.FindAsync(id);
     }
 
-    public virtual async Task<IEnumerable<T>> GetAllAsync()
+    public virtual async Task<List<T>> GetAllAsync()
     {
         return await _dbSet.AsNoTracking().ToListAsync();
     }
@@ -42,6 +42,16 @@ public class Repository<T> : IRepository<T> where T : class
     {
         _dbSet.Remove(entity);
         await _context.SaveChangesAsync();
+    }
+
+    public virtual async Task DeleteAsync(int id)
+    {
+        var entity = await _dbSet.FindAsync(id);
+        if (entity != null)
+        {
+            _dbSet.Remove(entity);
+            await _context.SaveChangesAsync();
+        }
     }
 
     public virtual async Task<bool> ExistsAsync(int id)

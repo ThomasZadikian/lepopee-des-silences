@@ -26,7 +26,7 @@ function makeJwt(payload: object): string {
 describe('useAuthStore', () => {
     beforeEach(() => {
         vi.resetModules()
-        localStorage.clear()
+        sessionStorage.clear()
         vi.clearAllMocks()
         setActivePinia(createPinia())
     })
@@ -36,8 +36,8 @@ describe('useAuthStore', () => {
         expect(store.isAuthenticated).toBe(false)
     })
 
-    it('isAuthenticated est true si un token est dans le localStorage', () => {
-        localStorage.setItem('token', 'fake-token')
+    it('isAuthenticated est true si un token est dans le sessionStorage', () => {
+        sessionStorage.setItem('token', 'fake-token')
         const store = useAuthStore()
         expect(store.isAuthenticated).toBe(true)
     })
@@ -57,7 +57,7 @@ describe('useAuthStore', () => {
         expect(result.requiresMfa).toBe(false)
         expect(result.requiresMfaSetup).toBe(false)
         expect(store.isAuthenticated).toBe(true)
-        expect(localStorage.getItem('token')).toBe(jwt)
+        expect(sessionStorage.getItem('token')).toBe(jwt)
     })
 
     it('login avec MFA requis retourne requiresMfa true', async () => {
@@ -83,8 +83,8 @@ describe('useAuthStore', () => {
 
         expect(result.requiresMfaSetup).toBe(true)
         expect(result.requiresMfa).toBe(false)
-        // Token MFA en mémoire — pas en localStorage
-        expect(localStorage.getItem('mfaSetupToken')).toBeNull()
+        // Token MFA en mémoire — pas en sessionStorage
+        expect(sessionStorage.getItem('mfaSetupToken')).toBeNull()
     })
 
     it('setupMfa appelle authApi.setupMfa et retourne qrCodeUri', async () => {
@@ -126,16 +126,16 @@ describe('useAuthStore', () => {
         await store.verifyMfaSetup('123456')
 
         expect(store.isAuthenticated).toBe(true)
-        expect(localStorage.getItem('token')).toBe(jwt)
+        expect(sessionStorage.getItem('token')).toBe(jwt)
     })
 
-    it('logout vide le store et le localStorage', () => {
-        localStorage.setItem('token', 'fake')
-        localStorage.setItem('userId', '1')
+    it('logout vide le store et le sessionStorage', () => {
+        sessionStorage.setItem('token', 'fake')
+        sessionStorage.setItem('userId', '1')
         const store = useAuthStore()
         store.logout()
         expect(store.isAuthenticated).toBe(false)
-        expect(localStorage.getItem('token')).toBeNull()
+        expect(sessionStorage.getItem('token')).toBeNull()
     })
 
     it('isAdmin est true si le rôle est Admin dans le JWT', () => {
@@ -143,7 +143,7 @@ describe('useAuthStore', () => {
             'http://schemas.microsoft.com/ws/2008/06/identity/claims/role': 'Admin',
             'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name': 'admin',
         })
-        localStorage.setItem('token', jwt)
+        sessionStorage.setItem('token', jwt)
         const store = useAuthStore()
         expect(store.isAdmin).toBe(true)
     })
@@ -153,15 +153,15 @@ describe('useAuthStore', () => {
             'http://schemas.microsoft.com/ws/2008/06/identity/claims/role': 'Player',
             'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name': 'player',
         })
-        localStorage.setItem('token', jwt)
+        sessionStorage.setItem('token', jwt)
         const store = useAuthStore()
         expect(store.isAdmin).toBe(false)
     })
 
-    it('le rôle n\'est pas lu depuis localStorage directement', () => {
-        // Modifier le localStorage ne doit pas changer isAdmin
-        localStorage.setItem('token', 'invalid-token')
-        localStorage.setItem('role', 'Admin') // Tentative de manipulation
+    it('le rôle n\'est pas lu depuis sessionStorage directement', () => {
+        // Modifier le sessionStorage ne doit pas changer isAdmin
+        sessionStorage.setItem('token', 'invalid-token')
+        sessionStorage.setItem('role', 'Admin') // Tentative de manipulation
         const store = useAuthStore()
         // Token invalide → role null → isAdmin false
         expect(store.isAdmin).toBe(false)

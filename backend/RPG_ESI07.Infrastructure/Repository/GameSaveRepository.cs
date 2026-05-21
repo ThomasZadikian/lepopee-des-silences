@@ -5,46 +5,16 @@ using RPG_ESI07.Infrastructure.Data;
 
 namespace RPG_ESI07.Infrastructure.Repository;
 
-public class GameSaveRepository : IGameSaveRepository
+public class GameSaveRepository : Repository<GameSave>, IGameSaveRepository
 {
-    private readonly AppDbContext _context;
+    public GameSaveRepository(AppDbContext context) : base(context) { }
 
-    public GameSaveRepository(AppDbContext context)
+    public async Task<List<GameSave>> GetByPlayerIdAsync(int playerId)
     {
-        _context = context;
-    }
-
-    public async Task<GameSave?> GetByIdAsync(int id)
-    {
-        return await _context.Set<GameSave>().FindAsync(id);
-    }
-
-    public async Task<List<GameSave>> GetAllAsync()
-    {
-        return await _context.Set<GameSave>()
+        return await _dbSet
+            .Where(e => e.PlayerId == playerId)
             .OrderBy(e => e.Id)
+            .AsNoTracking()
             .ToListAsync();
-    }
-
-    public async Task AddAsync(GameSave entity)
-    {
-        _context.Set<GameSave>().Add(entity);
-        await _context.SaveChangesAsync();
-    }
-
-    public async Task UpdateAsync(GameSave entity)
-    {
-        _context.Set<GameSave>().Update(entity);
-        await _context.SaveChangesAsync();
-    }
-
-    public async Task DeleteAsync(int id)
-    {
-        var entity = await _context.Set<GameSave>().FindAsync(id);
-        if (entity != null)
-        {
-            _context.Set<GameSave>().Remove(entity);
-            await _context.SaveChangesAsync();
-        }
     }
 }

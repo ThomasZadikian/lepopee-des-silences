@@ -216,7 +216,7 @@ function closePanel() {
 }
 
 function openCreate() {
-    panel.value = {} as Item
+    panel.value = { id: 0, name: '', type: C.ITEM_TYPE_WEAPON, category: '', description: '', price: 0, effectValue: null, statModifiers: '' } as Item
     mode.value = 'create'
     form.value = { name: '', type: C.ITEM_TYPE_WEAPON, category: '', description: '', price: 0, effectValue: null, statModifiers: '' }
     formError.value = ''

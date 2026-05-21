@@ -23,7 +23,7 @@ public class CreateSkillHandlerTests
     {
         // Arrange
         var command = new CreateSkillCommand("Fireball", Constants.EffectDamage, 20, Constants.ElementFire, "Une boule de feu", 80, 0);
-        _mockRepo.Setup(r => r.AddAsync(It.IsAny<Skill>())).Returns(Task.CompletedTask);
+        _mockRepo.Setup(r => r.AddAsync(It.IsAny<Skill>())).ReturnsAsync((Skill)null!);
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);

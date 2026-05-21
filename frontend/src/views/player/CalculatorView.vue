@@ -268,9 +268,21 @@
 import { enemiesApi } from '@/api/enemies'
 import { inventoryApi } from '@/api/inventory'
 import type { Enemy } from '@/interfaces/bestiary'
+import type { Item } from '@/interfaces/playerInventory'
 import type { PlayerInventory } from '@/interfaces/playerInventory'
+import type { PlayerProfileResponse } from '@/interfaces/playerProfile'
 import { computed, onMounted, ref } from 'vue'
 import api from '@/api/auth'
+
+interface ScaledEnemy {
+    id: number; name: string; type: string; multiplier: number
+    scaledMaxHP: number; scaledStrength: number; scaledIntelligence: number; scaledSpeed: number
+    experienceReward: number; goldReward: number
+}
+
+interface CalculatorResult {
+    enemy: ScaledEnemy
+}
 
 // ── State ──────────────────────────────────────────────────────────────────────
 const mode           = ref<'import'|'custom'>('import')
@@ -280,14 +292,14 @@ const loadingEnemies = ref(false)
 const calculating    = ref(false)
 const error          = ref('')
 
-const profile       = ref<any>(null)
+const profile       = ref<PlayerProfileResponse | null>(null)
 const inventory     = ref<PlayerInventory[]>([])
-const allItems      = ref<any[]>([])
+const allItems      = ref<Item[]>([])
 const enemies       = ref<Enemy[]>([])
 const enemySearch   = ref('')
 const selectedEnemy = ref<Enemy | null>(null)
 const customLevel   = ref(1)
-const result        = ref<any>(null)
+const result        = ref<CalculatorResult | null>(null)
 
 const selectedByType = ref<Record<string, number | ''>>({
     weapon:     '',

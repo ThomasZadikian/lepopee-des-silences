@@ -1,6 +1,7 @@
 ﻿using FluentAssertions;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
 using Moq;
 using RPG_ESI07.API.Controllers;
 using RPG_ESI07.Application.Queries.Leaderboard;
@@ -12,12 +13,17 @@ namespace RPG_ESI07.Tests.Application.Queries;
 public class GetLeaderboardHandlerTests
 {
     private readonly Mock<ILeaderboardRepository> _mockRepo;
+    private readonly Mock<IMemoryCache> _mockCache;
     private readonly GetLeaderboardHandler _handler;
 
     public GetLeaderboardHandlerTests()
     {
         _mockRepo = new Mock<ILeaderboardRepository>(MockBehavior.Strict);
-        _handler = new GetLeaderboardHandler(_mockRepo.Object);
+        _mockCache = new Mock<IMemoryCache>(MockBehavior.Loose);
+        var mockEntry = new Mock<ICacheEntry>(MockBehavior.Loose);
+        mockEntry.SetupAllProperties();
+        _mockCache.Setup(c => c.CreateEntry(It.IsAny<object>())).Returns(mockEntry.Object);
+        _handler = new GetLeaderboardHandler(_mockRepo.Object, _mockCache.Object);
     }
 
     private static PlayerProfile BuildProfile(string name, int level, int wins, long damage, int playtime) =>

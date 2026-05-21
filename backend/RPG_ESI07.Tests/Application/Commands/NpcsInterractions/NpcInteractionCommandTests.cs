@@ -21,7 +21,7 @@ public class CreateNpcInteractionHandlerTests
     [Fact]
     public async Task Handle_CreatesInteraction_AndReturnsResponse()
     {
-        _mockRepo.Setup(r => r.AddAsync(It.IsAny<NpcInteraction>())).Returns(Task.CompletedTask);
+        _mockRepo.Setup(r => r.AddAsync(It.IsAny<NpcInteraction>())).ReturnsAsync((NpcInteraction)null!);
 
         var command = new CreateNpcInteractionCommand(NpcId: 1, PlayerId: 1, EventType: "dialogue");
 
@@ -41,7 +41,7 @@ public class CreateNpcInteractionHandlerTests
         NpcInteraction? captured = null;
         _mockRepo.Setup(r => r.AddAsync(It.IsAny<NpcInteraction>()))
                  .Callback<NpcInteraction>(i => captured = i)
-                 .Returns(Task.CompletedTask);
+                 .ReturnsAsync((NpcInteraction)null!);
 
         await _handler.Handle(new CreateNpcInteractionCommand(1, 1, "trade"), CancellationToken.None);
 

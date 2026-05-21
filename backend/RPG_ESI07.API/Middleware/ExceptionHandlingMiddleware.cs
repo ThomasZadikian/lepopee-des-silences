@@ -35,20 +35,18 @@ public class ExceptionHandlingMiddleware
         {
             Success = false,
             Message = "An internal server error occurred",
-            Errors = new List<string> { exception.Message }
+            Errors = new List<string>()
         };
 
-        if (exception is ArgumentNullException argNullEx)
+        if (exception is ArgumentNullException)
         {
             context.Response.StatusCode = StatusCodes.Status400BadRequest;
             response.Message = "Invalid input";
-            response.Errors = new List<string> { argNullEx.Message };
         }
-        else if (exception is KeyNotFoundException keyNotFoundEx)
+        else if (exception is KeyNotFoundException)
         {
             context.Response.StatusCode = StatusCodes.Status404NotFound;
             response.Message = "Resource not found";
-            response.Errors = new List<string> { keyNotFoundEx.Message };
         }
 
         return context.Response.WriteAsJsonAsync(response);

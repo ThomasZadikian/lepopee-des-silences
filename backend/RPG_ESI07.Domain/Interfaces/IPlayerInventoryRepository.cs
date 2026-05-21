@@ -2,15 +2,7 @@ using RPG_ESI07.Domain.Entities;
 
 namespace RPG_ESI07.Domain.Interfaces;
 
-public interface IPlayerInventoryRepository
+public interface IPlayerInventoryRepository : IRepository<PlayerInventory>
 {
-    Task<List<PlayerInventory>> GetAllAsync();
-
-    Task<PlayerInventory?> GetByIdAsync(int id);
-
-    Task AddAsync(PlayerInventory entity);
-
-    Task UpdateAsync(PlayerInventory entity);
-
-    Task DeleteAsync(int id);
+    Task<List<PlayerInventory>> GetByPlayerIdAsync(int playerId);
 }

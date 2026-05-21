@@ -21,7 +21,7 @@ public class CreateEnemyHandlerTests
     [Fact]
     public async Task Handle_CreatesEnemy_AndReturnsResponse()
     {
-        _mockRepo.Setup(r => r.AddAsync(It.IsAny<Enemy>())).Returns(Task.CompletedTask);
+        _mockRepo.Setup(r => r.AddAsync(It.IsAny<Enemy>())).ReturnsAsync((Enemy)null!);
 
         var command = new CreateEnemyCommand(
             Name: "Rat Géant", Type: Constants.EnemyTypeBasic,

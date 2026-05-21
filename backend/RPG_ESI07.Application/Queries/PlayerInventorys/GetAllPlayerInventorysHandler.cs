@@ -14,10 +14,9 @@ public class GetAllPlayerInventorysHandler : IRequestHandler<GetAllPlayerInvento
 
     public async Task<GetAllPlayerInventorysResponse> Handle(GetAllPlayerInventorysQuery request, CancellationToken cancellationToken)
     {
-        var items = await _repository.GetAllAsync();
-
-        if (request.UserId.HasValue)
-            items = items.Where(i => i.PlayerId == request.UserId.Value).ToList();
+        var items = request.UserId.HasValue
+            ? await _repository.GetByPlayerIdAsync(request.UserId.Value)
+            : await _repository.GetAllAsync();
 
         return new GetAllPlayerInventorysResponse(items);
     }

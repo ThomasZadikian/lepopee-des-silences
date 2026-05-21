@@ -248,7 +248,7 @@ function confirmDelete(enemy: Enemy, event?: MouseEvent) {
 }
 
 function openCreate() {
-    panel.value = {} as Enemy
+    panel.value = { id: 0, name: '', type: C.ENEMY_TYPE_BASIC, description: '', maxHP: 100, strength: 10, intelligence: 5, speed: 10, physicalResistance: 1.0, magicalResistance: 1.0, experienceReward: 10, goldReward: 5, initialState: C.ENEMY_STATE_REPOS, influenceRadius: 5 } as Enemy
     mode.value  = 'create'
     form.value  = {
         name: '', type: C.ENEMY_TYPE_BASIC, maxHP: 100, strength: 10,

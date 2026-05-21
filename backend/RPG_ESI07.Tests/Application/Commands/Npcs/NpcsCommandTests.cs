@@ -22,7 +22,7 @@ public class CreateNpcHandlerTests
     [Fact]
     public async Task Handle_CreatesNpc_AndReturnsResponse()
     {
-        _mockRepo.Setup(r => r.AddAsync(It.IsAny<Npc>())).Returns(Task.CompletedTask);
+        _mockRepo.Setup(r => r.AddAsync(It.IsAny<Npc>())).ReturnsAsync((Npc)null!);
 
         var command = new CreateNpcCommand(
             Name: "Aldric", Type: Constants.NpcTypeNeutral,
