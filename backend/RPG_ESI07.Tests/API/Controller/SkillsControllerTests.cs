@@ -39,7 +39,7 @@ public class SkillsControllerTests
     [Fact]
     public async Task Create_ReturnsCreatedAtAction_WhenCommandSucceeds()
     {
-        var command = new CreateSkillCommand("Fireball", "Damage", 10);
+        var command = new CreateSkillCommand("Fireball", "Damage", 10, "fire", "Boule de feu", 80, 0);
         var expectedResponse = new CreateSkillResponse(1, "Skill created");
 
         _mediatorMock.Setup(m => m.Send(command, It.IsAny<CancellationToken>()))
@@ -56,7 +56,7 @@ public class SkillsControllerTests
     [Fact]
     public async Task Update_ReturnsBadRequest_WhenIdMismatch()
     {
-        var command = new UpdateSkillCommand(2, "Ice Spike", "Damage", 15);
+        var command = new UpdateSkillCommand(2, "Ice Spike", "Damage", 15, "ice", "Pique de glace", 70, 0);
 
         var result = await _controller.Update(1, command);
 
@@ -69,7 +69,7 @@ public class SkillsControllerTests
     public async Task Update_ReturnsOkResult_WhenCommandSucceeds()
     {
         int targetId = 1;
-        var command = new UpdateSkillCommand(targetId, "Ice Spike", "Damage", 15);
+        var command = new UpdateSkillCommand(targetId, "Ice Spike", "Damage", 15, "ice", "Pique de glace", 70, 0);
         var expectedResponse = new UpdateSkillResponse(true, "Skill updated");
 
         _mediatorMock.Setup(m => m.Send(command, It.IsAny<CancellationToken>()))

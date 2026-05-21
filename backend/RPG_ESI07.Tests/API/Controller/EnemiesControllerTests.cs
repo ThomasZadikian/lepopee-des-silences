@@ -117,8 +117,8 @@ public class EnemiesControllerTests
 
         var result = await _controller.Create(command);
 
-        var ok = result.Should().BeOfType<OkObjectResult>().Subject;
-        ok.StatusCode.Should().Be(200);
+        var created = result.Should().BeOfType<CreatedAtActionResult>().Subject;
+        created.StatusCode.Should().Be(201);
     }
 
     [Fact]

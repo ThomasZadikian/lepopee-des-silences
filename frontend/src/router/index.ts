@@ -72,6 +72,11 @@ const router = createRouter({
           component: () => import('@/views/player/LeaderboardView.vue'),
         },
         {
+          path: 'calculator',
+          name: 'Calculator',
+          component: () => import('@/views/player/CalculatorView.vue'),
+        },
+        {
           path: "admin/users",
           name: "AdminUsers",
           component: () => import("@/views/admin/AdminUsersView.vue"),

@@ -19,7 +19,7 @@ public class ItemsController : ControllerBase
     public ItemsController(IMediator mediator) => _mediator = mediator;
 
     [HttpGet]
-    [Authorize(Roles = Constants.RoleAdmin)]
+    [Authorize]
     public async Task<IActionResult> GetAll()
     {
         var result = await _mediator.Send(new GetAllItemsQuery());

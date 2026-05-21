@@ -17,7 +17,7 @@ public class EnemiesController : ControllerBase
     public EnemiesController(IMediator mediator) => _mediator = mediator;
 
     [HttpGet]
-    [Authorize(Roles = Constants.RoleAdmin)]
+    [Authorize]
     public async Task<IActionResult> GetAll()
     {
         var result = await _mediator.Send(new GetAllEnemiesQuery());
@@ -67,6 +67,9 @@ public class EnemiesController : ControllerBase
     [Authorize]
     public async Task<IActionResult> GetScaled(int id, [FromQuery] int playerLevel, [FromQuery] int equipmentBonus = 0)
     {
+        if (playerLevel < 1 || playerLevel > 99) return BadRequest("Niveau invalide.");
+        if (equipmentBonus < 0 || equipmentBonus > 500) return BadRequest("Bonus équipement invalide.");
+
         var result = await _mediator.Send(new GetScaledEnemyQuery(id, playerLevel, equipmentBonus));
         if (result.Enemy == null) return NotFound();
         return Ok(result);
