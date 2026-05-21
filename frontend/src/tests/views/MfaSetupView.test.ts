@@ -47,17 +47,16 @@ describe("MfaSetupView", () => {
     expect(wrapper.text()).toContain("Étape 1");
   });
 
-  it("affiche le QR code après chargement réussi", async () => {
-    mockSetupMfa.mockResolvedValue({ qrCodeUri: "otpauth://totp/test", secret: "ABCD1234" });
+it("affiche le QR code après chargement réussi", async () => {
+    mockSetupMfa.mockResolvedValue({ qrCodeUri: "otpauth://totp/test", secret: "ABCD1234" })
 
-    const wrapper = mount(MfaSetupView, { global: { plugins: [router] } });
-    await wrapper.vm.$nextTick();
-    await wrapper.vm.$nextTick();
+    const wrapper = mount(MfaSetupView, { global: { plugins: [router] } })
+    await wrapper.vm.$nextTick()
+    await wrapper.vm.$nextTick()
 
-    const img = wrapper.find("img");
-    expect(img.exists()).toBe(true);
-    expect(img.attributes("src")).toBe("otpauth://totp/test");
-  });
+    const canvas = wrapper.find("canvas")
+    expect(canvas.exists()).toBe(true)
+})
 
   it("affiche la clé manuelle après chargement réussi", async () => {
     mockSetupMfa.mockResolvedValue({ qrCodeUri: "otpauth://totp/test", secret: "ABCD1234" });

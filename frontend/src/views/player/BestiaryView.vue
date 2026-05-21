@@ -359,6 +359,8 @@ onMounted(async () => {
   try {
     const res = await bestiaryApi.getMe()
     bestiary.value = res.data.items ?? []
+  } catch {
+    bestiary.value = []
   } finally {
     loading.value = false
   }
