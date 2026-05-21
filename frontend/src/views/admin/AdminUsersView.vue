@@ -32,7 +32,7 @@
     <div v-if="loading" class="d-flex justify-center pa-12"><v-progress-circular indeterminate color="primary" size="40" width="2"/></div>
 
     <template v-else>
-      <div :style="panel ? 'display:grid;grid-template-columns:1fr 380px;gap:0;' : ''">
+      <div style="position: relative;" :style="panel ? 'display:grid;grid-template-columns:1fr 380px;gap:0;align-items:start;' : ''">
         <div>
           <div style="border-bottom:1px solid var(--rpg-border);padding:10px 0;margin-top:8px;">
             <div style="display:grid;grid-template-columns:40px 2fr 80px 80px 1fr 100px 100px 120px;gap:0;">
@@ -49,8 +49,8 @@
 
           <div v-for="(user, i) in filteredUsers" :key="user.id" class="editorial-row" style="padding:14px 0; cursor:pointer;"
             :style="panel?.id === user.id ? 'background:rgba(0,0,0,0.02);' : ''"
-            @click="(e) => openView(user, e)">
-            <div style="display:grid;grid-template-columns:40px 2fr 80px 80px 1fr 100px 100px 120px;gap:0;align-items:center;">
+            @click.self="(e) => openView(user, e)">
+            <div style="display:grid;grid-template-columns:40px 2fr 80px 80px 1fr 100px 100px 120px;gap:0;align-items:center; pointer-events:none;">
               <div style="font-size:11px;font-weight:600;color:var(--rpg-ink-muted);">{{ String(i+1).padStart(2,'0') }}</div>
               <div class="d-flex align-center ga-2">
                 <div style="width:28px;height:28px;border-radius:50%;background:var(--rpg-ink);color:white;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">{{ user.username.charAt(0).toUpperCase() }}</div>
@@ -70,7 +70,7 @@
                 <div style="width:6px;height:6px;border-radius:50%;" :style="user.deletedAt ? 'background:#C0392B;' : 'background:#1E8449;'"/>
                 <div style="font-size:11px;" :style="user.deletedAt ? 'color:#C0392B;' : 'color:#1E8449;'">{{ user.deletedAt ? 'Supprimé' : 'Actif' }}</div>
               </div>
-              <div style="text-align:right;" class="d-flex justify-end ga-3" @click.stop>
+              <div style="text-align:right; pointer-events:auto;" class="d-flex justify-end ga-3" @click.stop>
                 <span style="font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;text-decoration:underline;" @click="(e) => openView(user, e)">Voir</span>
                 <span v-if="!user.deletedAt" style="font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;text-decoration:underline;color:#C0392B;" @click.stop="(e) => confirmDelete(user, e)">Suppr.</span>
               </div>
@@ -80,8 +80,8 @@
           <div v-if="filteredUsers.length === 0" class="text-center py-12"><div class="editorial-label mb-2">Aucun résultat</div></div>
         </div>
 
-        <div v-if="panel" ref="panelRef" style="border-left:1px solid var(--rpg-border);padding:32px 24px;position:sticky;top:80px;max-height:calc(100vh - 80px);overflow-y:auto;">
-          <template v-if="mode === 'view'">
+          <div v-if="panel" ref="panelRef" :style="{ marginTop: panelMarginTop + 'px' }" style="border-left:1px solid var(--rpg-border);padding:32px 24px;">
+            <template v-if="mode === 'view'">
             <div class="editorial-label mb-3">Profil utilisateur</div>
             <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;">
               <div style="width:48px;height:48px;border-radius:50%;background:var(--rpg-ink);color:white;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;">{{ panel.username.charAt(0).toUpperCase() }}</div>
@@ -97,7 +97,7 @@
               </div>
             </div>
             <div v-if="!panel.deletedAt" style="display:flex;gap:8px;margin-top:16px;">
-              <button style="flex:1;padding:10px;border:1px solid #C0392B;background:#C0392B;color:white;cursor:pointer;font-family:var(--font-sans);font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;" @click="confirmDelete(panel)">Supprimer</button>
+              <button style="flex:1;padding:10px;border:1px solid #C0392B;background:#C0392B;color:white;cursor:pointer;font-family:var(--font-sans);font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;" @click="() => confirmDelete(panel!)">Supprimer</button>
               <button style="flex:1;padding:10px;border:1px solid var(--rpg-border);background:transparent;cursor:pointer;font-family:var(--font-sans);font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;" @click="closePanel">Fermer</button>
             </div>
             <button v-else style="width:100%;margin-top:16px;padding:10px;border:1px solid var(--rpg-border);background:transparent;cursor:pointer;font-family:var(--font-sans);font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;" @click="closePanel">Fermer</button>
@@ -110,7 +110,7 @@
             <div v-if="formError" style="font-size:12px;color:#C0392B;border-left:2px solid #C0392B;padding:8px 12px;margin-bottom:12px;">{{ formError }}</div>
             <div style="display:flex;gap:8px;">
               <button style="flex:1;padding:10px;border:1px solid #C0392B;background:#C0392B;color:white;cursor:pointer;font-family:var(--font-sans);font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;" :disabled="saving" @click="executeDelete">{{ saving ? 'Suppression...' : 'Confirmer' }}</button>
-              <button style="flex:1;padding:10px;border:1px solid var(--rpg-border);background:transparent;cursor:pointer;font-family:var(--font-sans);font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;" @click="openView(panel)">Annuler</button>
+              <button style="flex:1;padding:10px;border:1px solid var(--rpg-border);background:transparent;cursor:pointer;font-family:var(--font-sans);font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;" @click="() => openView(panel!)">Annuler</button>
             </div>
           </template>
         </div>
@@ -121,7 +121,7 @@
 
 <script setup lang="ts">
 import { useAuthStore } from '@/stores/auth'
-import { computed, nextTick, onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import api from '@/api/auth'
 
 interface User { id: number; username: string; role: string; mfaEnabled: boolean; createdAt: string; lastLoginAt: string | null; deletedAt: string | null }
@@ -134,6 +134,7 @@ const panel     = ref<User | null>(null)
 const mode      = ref<'view'|'delete'>('view')
 const saving    = ref(false)
 const formError = ref('')
+const panelMarginTop = ref(0)
 
 const adminTabs = [
     { label: 'Utilisateurs', route: null,            active: true  },
@@ -167,15 +168,6 @@ const detailStats = computed(() => {
     ]
 })
 
-function scrollToElement(event?: MouseEvent) {
-    if (!event) return
-    nextTick(() => {
-        const el = event.currentTarget as HTMLElement
-        const y  = el.getBoundingClientRect().top + window.scrollY - 100
-        window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' })
-    })
-}
-
 onMounted(async () => {
     try {
         const res = await api.get('/users')
@@ -185,9 +177,30 @@ onMounted(async () => {
     }
 })
 
-function openView(user: User, event?: MouseEvent)    { panel.value = user; mode.value = 'view'; scrollToElement(event) }
-function confirmDelete(user: User, event?: MouseEvent) { panel.value = user; mode.value = 'delete'; scrollToElement(event) }
-function closePanel() { panel.value = null; formError.value = '' }
+function alignPanel(event?: MouseEvent) {
+    if (!event) return // Conserve la position actuelle si aucun événement déclencheur
+    
+    const el = event.currentTarget as HTMLElement
+    panelMarginTop.value = el.offsetTop
+}
+
+function openView(user: User, event?: MouseEvent) {
+    panel.value = user
+    mode.value  = 'view'
+    if (event) alignPanel(event)
+}
+
+function confirmDelete(user: User, event?: MouseEvent) {
+    panel.value = user
+    mode.value  = 'delete'
+    if (event) alignPanel(event) 
+}
+
+function closePanel() { 
+    panel.value = null
+    formError.value = '' 
+    panelMarginTop.value = 0
+}
 
 async function executeDelete() {
     saving.value = true; formError.value = ''
@@ -196,8 +209,11 @@ async function executeDelete() {
         const idx = users.value.findIndex(u => u.id === panel.value!.id)
         if (idx !== -1) users.value[idx] = { ...users.value[idx], deletedAt: new Date().toISOString() }
         openView(users.value[idx])
-    } catch { formError.value = 'Erreur lors de la suppression.' }
-    finally { saving.value = false }
+    } catch { 
+        formError.value = 'Erreur lors de la suppression.' 
+    } finally { 
+        saving.value = false 
+    }
 }
 
 function formatDate(date: string | null): string {

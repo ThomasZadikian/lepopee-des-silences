@@ -40,8 +40,7 @@
     </div>
 
     <template v-else>
-      <div :style="panel ? 'display:grid;grid-template-columns:1fr 380px;gap:0;' : ''">
-        <div>
+        <div style="position: relative;" :style="panel ? 'display:grid;grid-template-columns:1fr 380px;gap:0;align-items:start;' : ''">        <div>
           <div style="border-bottom:1px solid var(--rpg-border);padding:10px 0;margin-top:8px;">
             <div style="display:grid;grid-template-columns:80px 2fr 100px 80px 80px 80px 80px 120px;gap:0;">
               <div class="editorial-label">ID</div>
@@ -57,8 +56,8 @@
 
           <div v-for="(enemy, i) in filteredEnemies" :key="enemy.id" class="editorial-row" style="padding:14px 0; cursor:pointer;"
             :style="panel?.id === enemy.id && mode === 'view' ? 'background:rgba(0,0,0,0.02);' : ''"
-            @click="(e) => openView(enemy, e)">
-            <div style="display:grid;grid-template-columns:80px 2fr 100px 80px 80px 80px 80px 120px;gap:0;align-items:center;">
+            @click.self="(e) => openView(enemy, e)">
+            <div style="display:grid;grid-template-columns:80px 2fr 100px 80px 80px 80px 80px 120px;gap:0;align-items:center; pointer-events:none;">
               <div style="font-size:10px;font-weight:600;color:var(--rpg-ink-muted);">MON-{{ String(i+1).padStart(2,'0') }}</div>
               <div>
                 <div style="font-family:var(--font-serif);font-size:0.95rem;font-weight:700;margin-bottom:2px;">{{ enemy.name }}</div>
@@ -69,7 +68,7 @@
               <div style="font-size:12px;color:var(--rpg-ink-muted);">{{ enemy.strength }}</div>
               <div style="font-size:12px;color:var(--rpg-ink-muted);">{{ enemy.experienceReward }}</div>
               <div style="font-size:12px;color:var(--rpg-ink-muted);">{{ enemy.goldReward }}</div>
-              <div style="text-align:right;" class="d-flex justify-end ga-3" @click.stop>
+              <div style="text-align:right; pointer-events:auto;" class="d-flex justify-end ga-3" @click.stop>
                 <span style="font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;text-decoration:underline;" @click="(e) => openEdit(enemy, e)">Éditer</span>
                 <span style="font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;text-decoration:underline;color:#C0392B;" @click="(e) => confirmDelete(enemy, e)">Suppr.</span>
               </div>
@@ -81,7 +80,7 @@
           </div>
         </div>
 
-        <div v-if="panel" ref="panelRef" style="border-left:1px solid var(--rpg-border);padding:32px 24px;position:sticky;top:80px;max-height:calc(100vh - 80px);overflow-y:auto;">
+        <div v-if="panel" ref="panelRef" :style="{ marginTop: panelMarginTop + 'px' }" style="border-left:1px solid var(--rpg-border);padding:32px 24px;max-height:calc(100vh - 80px);overflow-y:auto;">
           <template v-if="mode === 'view'">
             <div class="editorial-label mb-3">{{ panel.type.toUpperCase() }} · Détail</div>
             <div style="font-family:var(--font-serif);font-size:1.6rem;font-weight:900;margin-bottom:8px;">{{ panel.name }}</div>
@@ -141,7 +140,7 @@
 import { enemiesApi } from '@/api/enemies'
 import type { Enemy } from '@/interfaces/bestiary'
 import { useAuthStore } from '@/stores/auth'
-import { computed, nextTick, onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import api from '@/api/auth'
 import * as C from '@/constants'
 
@@ -150,6 +149,7 @@ const loading   = ref(true)
 const search    = ref('')
 const enemies   = ref<Enemy[]>([])
 const panel     = ref<Enemy | null>(null)
+const panelMarginTop = ref(0)
 const mode      = ref<'view'|'edit'|'create'|'delete'>('view')
 const saving    = ref(false)
 const formError = ref('')
@@ -213,15 +213,6 @@ const detailStats = computed(() => {
     ]
 })
 
-function scrollToElement(event?: MouseEvent) {
-    if (!event) return
-    nextTick(() => {
-        const el = event.currentTarget as HTMLElement
-        const y  = el.getBoundingClientRect().top + window.scrollY - 100
-        window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' })
-    })
-}
-
 onMounted(async () => {
     try {
         const res = await enemiesApi.getAll()
@@ -231,17 +222,29 @@ onMounted(async () => {
     }
 })
 
+function alignPanel(event?: MouseEvent) {
+    if (!event) return
+    const el = event.currentTarget as HTMLElement
+    panelMarginTop.value = el.offsetTop
+}
+
 function openView(enemy: Enemy, event?: MouseEvent) {
     panel.value = enemy
     mode.value  = 'view'
-    scrollToElement(event)
+    alignPanel(event)
 }
 
 function openEdit(enemy: Enemy, event?: MouseEvent) {
     panel.value = enemy
     mode.value  = 'edit'
     Object.assign(form.value, { ...enemy })
-    scrollToElement(event)
+    alignPanel(event)
+}
+
+function confirmDelete(enemy: Enemy, event?: MouseEvent) {
+    panel.value = enemy
+    mode.value  = 'delete'
+    alignPanel(event)
 }
 
 function openCreate() {
@@ -255,18 +258,14 @@ function openCreate() {
         initialState: C.ENEMY_STATE_REPOS, influenceRadius: 5
     }
     formError.value = ''
+    panelMarginTop.value = 0
     window.scrollTo({ top: 0, behavior: 'smooth' })
-}
-
-function confirmDelete(enemy: Enemy, event?: MouseEvent) {
-    panel.value = enemy
-    mode.value  = 'delete'
-    scrollToElement(event)
 }
 
 function closePanel() {
     panel.value = null
     formError.value = ''
+    panelMarginTop.value = 0
 }
 
 async function save() {

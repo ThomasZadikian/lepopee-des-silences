@@ -33,7 +33,7 @@
     <div v-if="loading" class="d-flex justify-center pa-12"><v-progress-circular indeterminate color="primary" size="40" width="2"/></div>
 
     <template v-else>
-      <div :style="panel ? 'display:grid;grid-template-columns:1fr 380px;gap:0;' : ''">
+      <div style="position: relative;" :style="panel ? 'display:grid;grid-template-columns:1fr 380px;gap:0;align-items:start;' : ''">
         <div>
           <div style="border-bottom:1px solid var(--rpg-border);padding:10px 0;margin-top:8px;">
             <div style="display:grid;grid-template-columns:80px 2fr 1fr 1fr 80px 80px 120px;gap:0;">
@@ -49,8 +49,8 @@
 
           <div v-for="(skill, i) in filteredSkills" :key="skill.id" class="editorial-row" style="padding:14px 0; cursor:pointer;"
             :style="panel?.id === skill.id && mode === 'view' ? 'background:rgba(0,0,0,0.02);' : ''"
-            @click="(e) => openView(skill, e)">
-            <div style="display:grid;grid-template-columns:80px 2fr 1fr 1fr 80px 80px 120px;gap:0;align-items:center;">
+            @click.self="(e) => openView(skill, e)">
+            <div style="display:grid;grid-template-columns:80px 2fr 1fr 1fr 80px 80px 120px;gap:0;align-items:center; pointer-events:none;">
               <div style="font-size:10px;font-weight:600;color:var(--rpg-ink-muted);">SKL-{{ String(i+1).padStart(3,'0') }}</div>
               <div class="d-flex align-center ga-2">
                 <div style="width:7px;height:7px;border-radius:50%;flex-shrink:0;" :style="`background:${effectColor(skill.effectType)};`"/>
@@ -60,7 +60,7 @@
               <div style="font-size:12px;color:var(--rpg-ink-muted);">{{ skill.elementType ?? '—' }}</div>
               <div style="font-size:12px;font-weight:600;">{{ skill.mpCost }}</div>
               <div style="font-size:12px;color:var(--rpg-ink-muted);">{{ skill.baseDamage ?? '—' }}</div>
-              <div style="text-align:right;" class="d-flex justify-end ga-3" @click.stop>
+              <div style="text-align:right; pointer-events:auto;" class="d-flex justify-end ga-3" @click.stop>
                 <span style="font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;text-decoration:underline;" @click="(e) => openEdit(skill, e)">Éditer</span>
                 <span style="font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;text-decoration:underline;color:#C0392B;" @click="(e) => confirmDelete(skill, e)">Suppr.</span>
               </div>
@@ -70,7 +70,7 @@
           <div v-if="filteredSkills.length === 0" class="text-center py-12"><div class="editorial-label mb-2">Aucun résultat</div></div>
         </div>
 
-        <div v-if="panel" ref="panelRef" style="border-left:1px solid var(--rpg-border);padding:32px 24px;position:sticky;top:80px;max-height:calc(100vh - 80px);overflow-y:auto;">
+        <div v-if="panel" ref="panelRef" :style="{ marginTop: panelMarginTop + 'px' }" style="border-left:1px solid var(--rpg-border);padding:32px 24px;max-height:calc(100vh - 80px);overflow-y:auto;">
           <template v-if="mode === 'view'">
             <div class="editorial-label mb-3">{{ panel.effectType?.toUpperCase() }} · Détail</div>
             <div style="font-family:var(--font-serif);font-size:1.6rem;font-weight:900;margin-bottom:8px;">{{ panel.name }}</div>
@@ -122,9 +122,10 @@
 <script setup lang="ts">
 import type { Skill } from '@/interfaces/playerSkill'
 import { useAuthStore } from '@/stores/auth'
-import { computed, nextTick, onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import api from '@/api/auth'
 import * as C from '@/constants'
+
 
 const auth      = useAuthStore()
 const loading   = ref(true)
@@ -134,6 +135,7 @@ const panel     = ref<Skill | null>(null)
 const mode      = ref<'view'|'edit'|'create'|'delete'>('view')
 const saving    = ref(false)
 const formError = ref('')
+const panelMarginTop = ref(0)
 
 const form = ref({ name: '', effectType: C.EFFECT_DAMAGE, elementType: C.ELEMENT_NEUTRAL, description: '', mpCost: 10, baseDamage: null as number|null, healAmount: null as number|null })
 
@@ -178,15 +180,6 @@ const detailStats = computed(() => {
     ]
 })
 
-function scrollToElement(event?: MouseEvent) {
-    if (!event) return
-    nextTick(() => {
-        const el = event.currentTarget as HTMLElement
-        const y  = el.getBoundingClientRect().top + window.scrollY - 100
-        window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' })
-    })
-}
-
 onMounted(async () => {
     try {
         const res = await api.get('/skills')
@@ -196,20 +189,43 @@ onMounted(async () => {
     }
 })
 
-function openView(skill: Skill, event?: MouseEvent)    { panel.value = skill; mode.value = 'view'; scrollToElement(event) }
-function confirmDelete(skill: Skill, event?: MouseEvent) { panel.value = skill; mode.value = 'delete'; scrollToElement(event) }
-function closePanel() { panel.value = null; formError.value = '' }
+function alignPanel(event?: MouseEvent) {
+    if (!event) return
+    const el = event.currentTarget as HTMLElement
+    panelMarginTop.value = el.offsetTop
+}
+
+function closePanel() { 
+    panel.value = null
+    formError.value = '' 
+    panelMarginTop.value = 0
+}
+
+function openView(skill: Skill, event?: MouseEvent) {
+    panel.value = skill
+    mode.value  = 'view'
+    alignPanel(event)
+}
 
 function openEdit(skill: Skill, event?: MouseEvent) {
-    panel.value = skill; mode.value = 'edit'
+    panel.value = skill
+    mode.value  = 'edit'
     Object.assign(form.value, { ...skill })
-    scrollToElement(event)
+    alignPanel(event)
+}
+
+function confirmDelete(skill: Skill, event?: MouseEvent) {
+    panel.value = skill
+    mode.value  = 'delete'
+    alignPanel(event)
 }
 
 function openCreate() {
-    panel.value = {} as Skill; mode.value = 'create'
+    panel.value = {} as Skill
+    mode.value = 'create'
     form.value = { name: '', effectType: C.EFFECT_DAMAGE, elementType: C.ELEMENT_NEUTRAL, description: '', mpCost: 10, baseDamage: null, healAmount: null }
     formError.value = ''
+    panelMarginTop.value = 0
     window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 

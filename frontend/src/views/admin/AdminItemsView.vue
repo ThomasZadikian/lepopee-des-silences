@@ -33,7 +33,7 @@
     <div v-if="loading" class="d-flex justify-center pa-12"><v-progress-circular indeterminate color="primary" size="40" width="2"/></div>
 
     <template v-else>
-      <div :style="panel ? 'display:grid;grid-template-columns:1fr 380px;gap:0;' : ''">
+      <div style="position: relative;" :style="panel ? 'display:grid;grid-template-columns:1fr 380px;gap:0;align-items:start;' : ''">
         <div>
           <div style="border-bottom:1px solid var(--rpg-border);padding:10px 0;margin-top:8px;">
             <div style="display:grid;grid-template-columns:80px 2fr 1fr 80px 1fr 120px;gap:0;">
@@ -48,8 +48,8 @@
 
           <div v-for="(item, i) in filteredItems" :key="item.id" class="editorial-row" style="padding:14px 0; cursor:pointer;"
             :style="panel?.id === item.id && mode === 'view' ? 'background:rgba(0,0,0,0.02);' : ''"
-            @click="(e) => openView(item, e)">
-            <div style="display:grid;grid-template-columns:80px 2fr 1fr 80px 1fr 120px;gap:0;align-items:center;">
+            @click.self="(e) => openView(item, e)">
+            <div style="display:grid;grid-template-columns:80px 2fr 1fr 80px 1fr 120px;gap:0;align-items:center; pointer-events:none;">
               <div style="font-size:10px;font-weight:600;color:var(--rpg-ink-muted);">ITM-{{ String(i+1).padStart(4,'0') }}</div>
               <div class="d-flex align-center ga-2">
                 <div style="width:7px;height:7px;border-radius:50%;flex-shrink:0;" :style="`background:${typeColor(item.type)};`"/>
@@ -58,7 +58,7 @@
               <div style="font-size:12px;color:var(--rpg-ink-muted);text-transform:capitalize;">{{ item.type }}</div>
               <div style="font-size:12px;font-weight:600;">{{ item.price }} 🪙</div>
               <div style="font-size:12px;color:var(--rpg-ink-muted);">{{ item.effectValue ? `+${item.effectValue}` : '—' }}</div>
-              <div style="text-align:right;" class="d-flex justify-end ga-3" @click.stop>
+              <div style="text-align:right; pointer-events:auto;" class="d-flex justify-end ga-3" @click.stop>
                 <span style="font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;text-decoration:underline;" @click="(e) => openEdit(item, e)">Éditer</span>
                 <span style="font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;text-decoration:underline;color:#C0392B;" @click="(e) => confirmDelete(item, e)">Suppr.</span>
               </div>
@@ -68,7 +68,7 @@
           <div v-if="filteredItems.length === 0" class="text-center py-12"><div class="editorial-label mb-2">Aucun résultat</div></div>
         </div>
 
-        <div v-if="panel" ref="panelRef" style="border-left:1px solid var(--rpg-border);padding:32px 24px;position:sticky;top:80px;max-height:calc(100vh - 80px);overflow-y:auto;">
+        <div v-if="panel" ref="panelRef" :style="{ marginTop: panelMarginTop + 'px' }" style="border-left:1px solid var(--rpg-border);padding:32px 24px;max-height:calc(100vh - 80px);overflow-y:auto;">
           <template v-if="mode === 'view'">
             <div class="editorial-label mb-3">{{ panel.type?.toUpperCase() }} · Détail</div>
             <div style="font-family:var(--font-serif);font-size:1.6rem;font-weight:900;margin-bottom:8px;">{{ panel.name }}</div>
@@ -120,7 +120,7 @@
 <script setup lang="ts">
 import type { Item } from '@/interfaces/playerInventory'
 import { useAuthStore } from '@/stores/auth'
-import { computed, nextTick, onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import api from '@/api/auth'
 import * as C from '@/constants'
 
@@ -132,6 +132,7 @@ const panel     = ref<Item | null>(null)
 const mode      = ref<'view'|'edit'|'create'|'delete'>('view')
 const saving    = ref(false)
 const formError = ref('')
+const panelMarginTop = ref(0)
 
 const form = ref({ name: '', type: C.ITEM_TYPE_WEAPON, category: '', description: '', price: 0, effectValue: null as number|null, statModifiers: '' })
 
@@ -143,11 +144,11 @@ const adminTabs = [
 ]
 
 const formFields = [
-    { key: 'name',        label: 'Nom',         type: 'text'     },
-    { key: 'type',        label: 'Type',        type: 'select',  options: [C.ITEM_TYPE_WEAPON, C.ITEM_TYPE_ARMOR, C.ITEM_TYPE_ACCESSORY, C.ITEM_TYPE_CONSUMABLE] },
-    { key: 'category',    label: 'Catégorie',   type: 'text'     },
-    { key: 'description', label: 'Description', type: 'textarea' },
-    { key: 'price',       label: 'Prix (or)',   type: 'number'   },
+    { key: 'name',        label: 'Nom',          type: 'text'     },
+    { key: 'type',        label: 'Type',         type: 'select',  options: [C.ITEM_TYPE_WEAPON, C.ITEM_TYPE_ARMOR, C.ITEM_TYPE_ACCESSORY, C.ITEM_TYPE_CONSUMABLE] },
+    { key: 'category',    label: 'Catégorie',    type: 'text'     },
+    { key: 'description', label: 'Description',  type: 'textarea' },
+    { key: 'price',       label: 'Prix (or)',    type: 'number'   },
     { key: 'effectValue', label: 'Valeur effet', type: 'number'  },
 ]
 
@@ -174,15 +175,6 @@ const detailStats = computed(() => {
     ]
 })
 
-function scrollToElement(event?: MouseEvent) {
-    if (!event) return
-    nextTick(() => {
-        const el = event.currentTarget as HTMLElement
-        const y  = el.getBoundingClientRect().top + window.scrollY - 100
-        window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' })
-    })
-}
-
 onMounted(async () => {
     try {
         const res = await api.get('/items')
@@ -192,26 +184,50 @@ onMounted(async () => {
     }
 })
 
-function openView(item: Item, event?: MouseEvent)   { panel.value = item; mode.value = 'view'; scrollToElement(event) }
-function confirmDelete(item: Item, event?: MouseEvent) { panel.value = item; mode.value = 'delete'; scrollToElement(event) }
-function closePanel() { panel.value = null; formError.value = '' }
+function alignPanel(event?: MouseEvent) {
+    if (!event) return
+    const el = event.currentTarget as HTMLElement
+    panelMarginTop.value = el.offsetTop
+}
+
+function openView(item: Item, event?: MouseEvent) {
+    panel.value = item
+    mode.value  = 'view'
+    alignPanel(event)
+}
 
 function openEdit(item: Item, event?: MouseEvent) {
-    panel.value = item; mode.value = 'edit'
+    panel.value = item
+    mode.value  = 'edit'
     Object.assign(form.value, { ...item })
-    scrollToElement(event)
+    alignPanel(event)
+}
+
+function confirmDelete(item: Item, event?: MouseEvent) {
+    panel.value = item
+    mode.value  = 'delete'
+    alignPanel(event)
+}
+
+function closePanel() { 
+    panel.value = null
+    formError.value = '' 
+    panelMarginTop.value = 0
 }
 
 function openCreate() {
-    panel.value = {} as Item; mode.value = 'create'
+    panel.value = {} as Item
+    mode.value = 'create'
     form.value = { name: '', type: C.ITEM_TYPE_WEAPON, category: '', description: '', price: 0, effectValue: null, statModifiers: '' }
     formError.value = ''
+    panelMarginTop.value = 0
     window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
 async function save() {
     if (!form.value.name.trim()) { formError.value = 'Le nom est requis.'; return }
-    saving.value = true; formError.value = ''
+    saving.value = true
+    formError.value = ''
     try {
         if (mode.value === 'create') {
             const res = await api.post('/items', form.value)
@@ -222,8 +238,11 @@ async function save() {
             if (idx !== -1) items.value[idx] = { ...items.value[idx], ...form.value }
         }
         closePanel()
-    } catch { formError.value = 'Une erreur est survenue.' }
-    finally { saving.value = false }
+    } catch { 
+        formError.value = 'Une erreur est survenue.' 
+    } finally { 
+        saving.value = false 
+    }
 }
 
 async function executeDelete() {
@@ -232,8 +251,11 @@ async function executeDelete() {
         await api.delete(`/items/${panel.value!.id}`)
         items.value = items.value.filter(i => i.id !== panel.value!.id)
         closePanel()
-    } catch { formError.value = 'Erreur lors de la suppression.' }
-    finally { saving.value = false }
+    } catch { 
+        formError.value = 'Erreur lors de la suppression.' 
+    } finally { 
+        saving.value = false 
+    }
 }
 
 function typeColor(type: string): string {
