@@ -440,6 +440,12 @@ dist-ssr/
 .env.test.local
 .env.production.local
 .eslintcache
+
 # Frontend — garder .env de base mais ignorer les .env locaux sensibles
 .env
 frontend/.env
+
+# Coverage
+coverage/
+TestResults/
+*.cobertura.xml

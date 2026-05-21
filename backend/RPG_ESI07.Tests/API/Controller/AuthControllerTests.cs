@@ -101,4 +101,91 @@ public class AuthControllerTests
         unauthorizedResult.StatusCode.Should().Be(401);
         unauthorizedResult.Value.Should().BeEquivalentTo(failedResponse);
     }
+    [Fact]
+    public async Task SetupMfa_ReturnsOk_WhenSuccessful()
+    {
+        var command = new SetupMfaCommand(1, "mfa-token");
+        var expected = new SetupMfaResponse(true, "otpauth://totp/test", "ABCD1234", "Scannez le QR code.");
+
+        _mediatorMock.Setup(m => m.Send(command, It.IsAny<CancellationToken>()))
+                     .ReturnsAsync(expected);
+
+        var result = await _controller.SetupMfa(command);
+
+        var ok = result.Should().BeOfType<OkObjectResult>().Subject;
+        ok.StatusCode.Should().Be(200);
+        ok.Value.Should().BeEquivalentTo(expected);
+    }
+
+    [Fact]
+    public async Task SetupMfa_ReturnsBadRequest_WhenFails()
+    {
+        var command = new SetupMfaCommand(1, "invalid-token");
+        var expected = new SetupMfaResponse(false, null, null, "Token invalide.");
+
+        _mediatorMock.Setup(m => m.Send(command, It.IsAny<CancellationToken>()))
+                     .ReturnsAsync(expected);
+
+        var result = await _controller.SetupMfa(command);
+
+        result.Should().BeOfType<BadRequestObjectResult>();
+    }
+
+    [Fact]
+    public async Task VerifyMfa_ReturnsOk_WhenSuccessful()
+    {
+        var command = new VerifyMfaCommand(1, "mfa-token", "123456");
+        var expected = new AuthResponse(true, "jwt-token", false, "Connexion réussie.");
+
+        _mediatorMock.Setup(m => m.Send(command, It.IsAny<CancellationToken>()))
+                     .ReturnsAsync(expected);
+
+        var result = await _controller.VerifyMfa(command);
+
+        var ok = result.Should().BeOfType<OkObjectResult>().Subject;
+        ok.StatusCode.Should().Be(200);
+    }
+
+    [Fact]
+    public async Task VerifyMfa_ReturnsUnauthorized_WhenFails()
+    {
+        var command = new VerifyMfaCommand(1, "mfa-token", "000000");
+        var expected = new AuthResponse(false, null, false, "Code invalide.");
+
+        _mediatorMock.Setup(m => m.Send(command, It.IsAny<CancellationToken>()))
+                     .ReturnsAsync(expected);
+
+        var result = await _controller.VerifyMfa(command);
+
+        result.Should().BeOfType<UnauthorizedObjectResult>();
+    }
+
+    [Fact]
+    public async Task VerifyMfaLogin_ReturnsOk_WhenSuccessful()
+    {
+        var command = new LoginMfaCommand(1, "123456");
+        var expected = new AuthResponse(true, "jwt-token", false, "Connexion réussie.");
+
+        _mediatorMock.Setup(m => m.Send(command, It.IsAny<CancellationToken>()))
+                     .ReturnsAsync(expected);
+
+        var result = await _controller.VerifyMfaLogin(command);
+
+        var ok = result.Should().BeOfType<OkObjectResult>().Subject;
+        ok.StatusCode.Should().Be(200);
+    }
+
+    [Fact]
+    public async Task VerifyMfaLogin_ReturnsUnauthorized_WhenFails()
+    {
+        var command = new LoginMfaCommand(1, "000000");
+        var expected = new AuthResponse(false, null, false, "Code invalide.");
+
+        _mediatorMock.Setup(m => m.Send(command, It.IsAny<CancellationToken>()))
+                     .ReturnsAsync(expected);
+
+        var result = await _controller.VerifyMfaLogin(command);
+
+        result.Should().BeOfType<UnauthorizedObjectResult>();
+    }
 }

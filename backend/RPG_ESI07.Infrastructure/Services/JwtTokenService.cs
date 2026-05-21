@@ -107,7 +107,6 @@ public class JwtTokenService : ITokenService
                 IssuerSigningKey = key
             }, out _);
 
-            // Vérifie que c'est bien un token MFA et non un token d'accès
             var mfaPending = principal.FindFirst("mfa_pending")?.Value;
             if (mfaPending != "true") return null;
 

@@ -28,12 +28,11 @@ public class TotpMfaServiceTests
     {
         var secret = "mysecretkey";
         var username = "testuser";
-        var base32Expected = Base32Encoding.ToString(Encoding.UTF8.GetBytes(secret));
 
         var uri = _service.GetQrCodeUri(secret, username);
 
         uri.Should().StartWith("otpauth://totp/RPG_ESI07:testuser");
-        uri.Should().Contain($"?secret={base32Expected}");
+        uri.Should().Contain($"?secret={secret}");
         uri.Should().Contain("&issuer=RPG_ESI07");
     }
 
@@ -58,5 +57,16 @@ public class TotpMfaServiceTests
         var result = _service.ValidateCode(secret, invalidCode);
 
         result.Should().BeFalse();
+    }
+
+    [Fact]
+    public void SecretToBase32_ReturnsBase32EncodedString()
+    {
+        var secret = _service.GenerateSecret();
+        var base32 = _service.SecretToBase32(secret);
+
+        base32.Should().NotBeNullOrWhiteSpace();
+        // Base32 ne contient que des caractères alphanumériques majuscules et '='
+        base32.Should().MatchRegex(@"^[A-Z2-7=]+$");
     }
 }

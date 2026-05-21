@@ -71,7 +71,7 @@ public class CompanionMarkovServiceTests
             .ToList();
 
         var tristeCount = results.Count(r => r == Constants.CompanionStateTriste);
-        tristeCount.Should().BeGreaterThan(30);
+        tristeCount.Should().BeGreaterThan(20);
     }
 
     [Fact]

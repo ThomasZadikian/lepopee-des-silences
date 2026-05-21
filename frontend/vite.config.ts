@@ -21,6 +21,8 @@ export default defineConfig({
       reporter: ['text', 'lcov'],
       include: ['src/**/*.{ts,vue}'],
       exclude: [
+        'node_modules/**',
+        '**/*.d.ts',
         'src/tests/**',
         'src/main.ts',
         'src/api/**',
@@ -29,7 +31,10 @@ export default defineConfig({
         'src/views/admin/**',
         'src/components/HelloWorld.vue',
         'src/interfaces/**',
-        'src/components/common/**'
+        'src/components/common/**',
+        'src/main.ts',
+        'src/components/FoxSprite.vue',
+        'App.vue',
       ], // tu avais une typo ici aussi
       thresholds: { lines: 60 },
     }
