@@ -22,6 +22,7 @@ public class CharacterRepository : IPlayerProfileRepository
     public async Task<List<PlayerProfile>> GetAllAsync()
     {
         return await _context.PlayerProfiles
+            .AsNoTracking()
             .OrderBy(e => e.Level)
             .ThenBy(e => e.Experience)
             .ToListAsync();
@@ -29,15 +30,18 @@ public class CharacterRepository : IPlayerProfileRepository
 
     public async Task<List<PlayerProfile>> GetBySpeedAsync()
     {
-        return await _context.PlayerProfiles.
-            OrderBy(e => e.Speed).
-            ToListAsync();
+        return await _context.PlayerProfiles
+            .AsNoTracking()
+            .OrderBy(e => e.Speed)
+            .ToListAsync();
     }
 
     public async Task<List<PlayerProfile>> GetByLevelAsync(int level)
     {
-        return await _context.PlayerProfiles.
-            OrderBy(e => e.Level)
+        return await _context.PlayerProfiles
+            .AsNoTracking()
+            .Where(e => e.Level == level)
+            .OrderBy(e => e.Level)
             .ToListAsync();
     }
 

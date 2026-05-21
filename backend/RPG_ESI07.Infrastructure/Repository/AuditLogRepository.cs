@@ -12,7 +12,7 @@ public class AuditLogRepository : IAuditLogRepository
     public AuditLogRepository(AppDbContext context) => _context = context;
 
     public async Task<List<AuditLog>> GetAllAsync() =>
-        await _context.AuditLogs.OrderBy(x => x.Id).ToListAsync();
+        await _context.AuditLogs.AsNoTracking().OrderBy(x => x.Id).ToListAsync();
 
     public async Task<AuditLog?> GetByIdAsync(int id) =>
         await _context.AuditLogs.FindAsync(id);

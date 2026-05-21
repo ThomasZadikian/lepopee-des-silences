@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Options;
+﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using RPG_ESI07.Application.Configuration;
 using RPG_ESI07.Domain.Entities;
@@ -11,11 +12,14 @@ namespace RPG_ESI07.Infrastructure.Services;
 
 public class JwtTokenService : ITokenService
 {
+    private static readonly JwtSecurityTokenHandler _handler = new() { MapInboundClaims = false };
     private readonly JwtSettings _settings;
+    private readonly ILogger<JwtTokenService> _logger;
 
-    public JwtTokenService(IOptions<JwtSettings> settings)
+    public JwtTokenService(IOptions<JwtSettings> settings, ILogger<JwtTokenService> logger)
     {
         _settings = settings.Value;
+        _logger = logger;
     }
 
     public string GenerateAccessToken(User user, string role)
@@ -36,7 +40,7 @@ public class JwtTokenService : ITokenService
             expires: DateTime.UtcNow.AddMinutes(_settings.AccessTokenExpirationMinutes),
             signingCredentials: creds);
 
-        return new JwtSecurityTokenHandler().WriteToken(token);
+        return _handler.WriteToken(token);
     }
 
     public string GenerateMfaToken(User user)
@@ -57,22 +61,16 @@ public class JwtTokenService : ITokenService
             expires: DateTime.UtcNow.AddMinutes(
                 _settings.MfaTokenExpirationMinutes),
             signingCredentials: creds);
-        return new JwtSecurityTokenHandler()
-            .WriteToken(token);
+        return _handler.WriteToken(token);
     }
 
     public int? ValidateTokenAndGetUserId(string token)
     {
-        var handler = new JwtSecurityTokenHandler
-        {
-            MapInboundClaims = false
-        };
-
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_settings.Secret));
 
         try
         {
-            var principal = handler.ValidateToken(token, new TokenValidationParameters
+            var principal = _handler.ValidateToken(token, new TokenValidationParameters
             {
                 ValidateIssuer = true,
                 ValidIssuer = _settings.Issuer,
@@ -85,19 +83,29 @@ public class JwtTokenService : ITokenService
             var sub = principal.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
             return sub != null ? int.Parse(sub) : null;
         }
-        catch
+        catch (SecurityTokenExpiredException)
         {
+            _logger.LogWarning("Token expiré");
+            return null;
+        }
+        catch (SecurityTokenInvalidSignatureException)
+        {
+            _logger.LogWarning("Signature de token invalide");
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erreur inattendue lors de la validation du token");
             return null;
         }
     }
     public int? ValidateMfaToken(string token)
     {
-        var handler = new JwtSecurityTokenHandler { MapInboundClaims = false };
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_settings.Secret));
 
         try
         {
-            var principal = handler.ValidateToken(token, new TokenValidationParameters
+            var principal = _handler.ValidateToken(token, new TokenValidationParameters
             {
                 ValidateIssuer = true,
                 ValidIssuer = _settings.Issuer,
@@ -113,8 +121,14 @@ public class JwtTokenService : ITokenService
             var sub = principal.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
             return sub != null ? int.Parse(sub) : null;
         }
-        catch
+        catch (SecurityTokenExpiredException)
         {
+            _logger.LogWarning("Token MFA expiré");
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erreur lors de la validation du token MFA");
             return null;
         }
     }

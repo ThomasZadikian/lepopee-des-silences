@@ -69,22 +69,21 @@ public class CharacterRepositoryTests : IDisposable
     }
 
     [Fact]
-    public async Task GetByLevelAsync_ReturnsAllRecords_OrderedByLevel_IgnoringParameter()
+    public async Task GetByLevelAsync_ReturnsOnlyMatchingLevels_OrderedByLevel()
     {
         var profiles = new List<PlayerProfile>
         {
-            new PlayerProfile { Id = 1, CharacterName = "A", Level = 20 },
-            new PlayerProfile { Id = 2, CharacterName = "B", Level = 10 }
+            new PlayerProfile { Id = 1, CharacterName = "A", Level = 20, Experience = 500 },
+            new PlayerProfile { Id = 2, CharacterName = "B", Level = 10, Experience = 100 },
+            new PlayerProfile { Id = 3, CharacterName = "C", Level = 10, Experience = 50 }
         };
         await _context.PlayerProfiles.AddRangeAsync(profiles);
         await _context.SaveChangesAsync();
 
-        // Le paramètre 99 n'a aucun impact selon l'implémentation actuelle
-        var result = await _repository.GetByLevelAsync(99);
+        var result = await _repository.GetByLevelAsync(10);
 
         result.Should().HaveCount(2);
-        result[0].Id.Should().Be(2); // Level 10
-        result[1].Id.Should().Be(1); // Level 20
+        result.Select(x => x.Id).Should().BeEquivalentTo(new[] { 2, 3 });
     }
 
     [Fact]

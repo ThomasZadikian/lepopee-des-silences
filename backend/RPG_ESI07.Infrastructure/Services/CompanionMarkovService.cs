@@ -6,74 +6,72 @@ namespace RPG_ESI07.Infrastructure.Services;
 public static class CompanionMarkovService
 {
     private static readonly Random _rng = new();
+    private static readonly Dictionary<string, Dictionary<string, float>> _transitions = new()
+    {
+        [Constants.CompanionStateRepos] = new()
+        {
+            [Constants.CompanionStateRepos] = 0.30f,
+            [Constants.CompanionStateJeu] = 0.25f,
+            [Constants.CompanionStateManger] = 0.20f,
+            [Constants.CompanionStateExcite] = 0.10f,
+            [Constants.CompanionStateTriste] = 0.05f,
+            [Constants.CompanionStateEndormi] = 0.10f,
+        },
+        [Constants.CompanionStateJeu] = new()
+        {
+            [Constants.CompanionStateRepos] = 0.30f,
+            [Constants.CompanionStateJeu] = 0.25f,
+            [Constants.CompanionStateManger] = 0.20f,
+            [Constants.CompanionStateExcite] = 0.15f,
+            [Constants.CompanionStateTriste] = 0.05f,
+            [Constants.CompanionStateEndormi] = 0.05f,
+        },
+        [Constants.CompanionStateManger] = new()
+        {
+            [Constants.CompanionStateRepos] = 0.40f,
+            [Constants.CompanionStateJeu] = 0.20f,
+            [Constants.CompanionStateManger] = 0.10f,
+            [Constants.CompanionStateExcite] = 0.10f,
+            [Constants.CompanionStateTriste] = 0.10f,
+            [Constants.CompanionStateEndormi] = 0.10f,
+        },
+        [Constants.CompanionStateExcite] = new()
+        {
+            [Constants.CompanionStateRepos] = 0.20f,
+            [Constants.CompanionStateJeu] = 0.35f,
+            [Constants.CompanionStateManger] = 0.15f,
+            [Constants.CompanionStateExcite] = 0.20f,
+            [Constants.CompanionStateTriste] = 0.05f,
+            [Constants.CompanionStateEndormi] = 0.05f,
+        },
+        [Constants.CompanionStateTriste] = new()
+        {
+            [Constants.CompanionStateRepos] = 0.30f,
+            [Constants.CompanionStateJeu] = 0.10f,
+            [Constants.CompanionStateManger] = 0.15f,
+            [Constants.CompanionStateExcite] = 0.05f,
+            [Constants.CompanionStateTriste] = 0.30f,
+            [Constants.CompanionStateEndormi] = 0.10f,
+        },
+        [Constants.CompanionStateEndormi] = new()
+        {
+            [Constants.CompanionStateRepos] = 0.50f,
+            [Constants.CompanionStateJeu] = 0.15f,
+            [Constants.CompanionStateManger] = 0.15f,
+            [Constants.CompanionStateExcite] = 0.05f,
+            [Constants.CompanionStateTriste] = 0.05f,
+            [Constants.CompanionStateEndormi] = 0.10f,
+        },
+    };
 
     public static string ComputeNextState(CompanionState current, int victoriesToday, int defeatesToday)
     {
         var timeSinceLastCombat = DateTime.UtcNow - current.LastCombatAt;
 
-        // Matrice de transition de base
-        var transitions = new Dictionary<string, Dictionary<string, float>>
-        {
-            [Constants.CompanionStateRepos] = new()
-            {
-                [Constants.CompanionStateRepos] = 0.30f,
-                [Constants.CompanionStateJeu] = 0.25f,
-                [Constants.CompanionStateManger] = 0.20f,
-                [Constants.CompanionStateExcite] = 0.10f,
-                [Constants.CompanionStateTriste] = 0.05f,
-                [Constants.CompanionStateEndormi] = 0.10f,
-            },
-            [Constants.CompanionStateJeu] = new()
-            {
-                [Constants.CompanionStateRepos] = 0.30f,
-                [Constants.CompanionStateJeu] = 0.25f,
-                [Constants.CompanionStateManger] = 0.20f,
-                [Constants.CompanionStateExcite] = 0.15f,
-                [Constants.CompanionStateTriste] = 0.05f,
-                [Constants.CompanionStateEndormi] = 0.05f,
-            },
-            [Constants.CompanionStateManger] = new()
-            {
-                [Constants.CompanionStateRepos] = 0.40f,
-                [Constants.CompanionStateJeu] = 0.20f,
-                [Constants.CompanionStateManger] = 0.10f,
-                [Constants.CompanionStateExcite] = 0.10f,
-                [Constants.CompanionStateTriste] = 0.10f,
-                [Constants.CompanionStateEndormi] = 0.10f,
-            },
-            [Constants.CompanionStateExcite] = new()
-            {
-                [Constants.CompanionStateRepos] = 0.20f,
-                [Constants.CompanionStateJeu] = 0.35f,
-                [Constants.CompanionStateManger] = 0.15f,
-                [Constants.CompanionStateExcite] = 0.20f,
-                [Constants.CompanionStateTriste] = 0.05f,
-                [Constants.CompanionStateEndormi] = 0.05f,
-            },
-            [Constants.CompanionStateTriste] = new()
-            {
-                [Constants.CompanionStateRepos] = 0.30f,
-                [Constants.CompanionStateJeu] = 0.10f,
-                [Constants.CompanionStateManger] = 0.15f,
-                [Constants.CompanionStateExcite] = 0.05f,
-                [Constants.CompanionStateTriste] = 0.30f,
-                [Constants.CompanionStateEndormi] = 0.10f,
-            },
-            [Constants.CompanionStateEndormi] = new()
-            {
-                [Constants.CompanionStateRepos] = 0.50f,
-                [Constants.CompanionStateJeu] = 0.15f,
-                [Constants.CompanionStateManger] = 0.15f,
-                [Constants.CompanionStateExcite] = 0.05f,
-                [Constants.CompanionStateTriste] = 0.05f,
-                [Constants.CompanionStateEndormi] = 0.10f,
-            },
-        };
-
         var probs = new Dictionary<string, float>(
-            transitions.TryGetValue(current.CurrentState, out var t)
+            _transitions.TryGetValue(current.CurrentState, out var t)
                 ? t
-                : transitions[Constants.CompanionStateRepos]);
+                : _transitions[Constants.CompanionStateRepos]);
 
         // Modificateurs selon les stats de combat
         if (victoriesToday > 10)

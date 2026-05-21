@@ -1,5 +1,6 @@
 ﻿using FluentAssertions;
 using Microsoft.Extensions.Options;
+using Moq;
 using RPG_ESI07.Application.Configuration;
 using RPG_ESI07.Domain;
 using RPG_ESI07.Domain.Entities;
@@ -24,7 +25,7 @@ public class JwtTokenServiceTests
         };
 
         var options = Options.Create(_settings);
-        _service = new JwtTokenService(options);
+        _service = new JwtTokenService(options, Mock.Of<Microsoft.Extensions.Logging.ILogger<JwtTokenService>>());
     }
 
     [Fact]
