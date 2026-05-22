@@ -94,11 +94,12 @@ namespace RPG.Core
         public bool IsPlayerDead => Player.CurrentHP <= 0;
     }
 
+    // MaxHP2 supprimé — était une erreur de duplication
     public class PlayerData
     {
         public int Id, UserId;
         public string CharacterName;
-        public int Level, CurrentHP, MaxHP, CurrentMP, MaxHP2, MaxMP;
+        public int Level, CurrentHP, MaxHP, CurrentMP, MaxMP;
         public int Strength, Intelligence, Speed, Experience, Gold;
     }
 
