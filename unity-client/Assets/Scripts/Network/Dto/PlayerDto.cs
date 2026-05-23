@@ -17,6 +17,13 @@ namespace RPG.Network.Dto
         public int speed;
         public int experience;
         public int gold;
+        // Stats de combat
+        public int totalCombats;
+        public int combatsWon;
+        public int combatsLost;
+        public long totalDamageDealt;
+        public long totalDamageTaken;
+        public int totalPlaytimeMinutes;
     }
 
     [Serializable]

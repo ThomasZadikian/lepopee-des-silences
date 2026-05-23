@@ -29,4 +29,9 @@ public class BestiaryUnlockRepository : Repository<BestiaryUnlock>, IBestiaryUnl
             .AsNoTracking()
             .ToListAsync();
     }
+    public async Task<BestiaryUnlock?> GetByPlayerAndEnemyAsync(int playerId, int enemyId)
+    {
+        return await _context.BestiaryUnlocks
+            .FirstOrDefaultAsync(b => b.PlayerId == playerId && b.EnemyId == enemyId);
+    }
 }

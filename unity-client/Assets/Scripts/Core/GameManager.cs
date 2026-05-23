@@ -41,7 +41,15 @@ namespace RPG.Core
             Player.Speed = profile.speed;
             Player.Experience = profile.experience;
             Player.Gold = profile.gold;
-            Session = new SessionStats();
+            Session = new SessionStats
+            {
+                TotalCombats = profile.totalCombats,
+                CombatsWon = profile.combatsWon,
+                CombatsLost = profile.combatsLost,
+                TotalDamageDealt = profile.totalDamageDealt,
+                TotalDamageTaken = profile.totalDamageTaken,
+                PlaytimeMinutes = profile.totalPlaytimeMinutes
+            };
         }
 
         public SyncRequest BuildSyncPayload()

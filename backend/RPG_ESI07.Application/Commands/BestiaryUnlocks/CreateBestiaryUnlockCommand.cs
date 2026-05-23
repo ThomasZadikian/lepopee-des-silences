@@ -7,3 +7,5 @@ public record CreateBestiaryUnlockCommand(
 ) : IRequest<CreateBestiaryUnlockResponse>;
 
 public record CreateBestiaryUnlockResponse(int Id, string Message);
+
+public record CreateBestiaryUnlockForMeCommand(int EnemyId);

@@ -11,15 +11,18 @@ public class RegisterHandler
     private readonly IUserRepository _userRepo;
     private readonly IPasswordHasher _hasher;
     private readonly ITokenService _tokenService;
+    private readonly IPlayerProfileRepository _profileRepo;
 
     public RegisterHandler(
     IUserRepository userRepo,
     IPasswordHasher hasher,
-    ITokenService tokenService)
+    ITokenService tokenService, 
+    IPlayerProfileRepository profileRepo)
     {
         _userRepo = userRepo;
         _hasher = hasher;
         _tokenService = tokenService;
+        _profileRepo = profileRepo; 
     }
 
     public async Task<AuthResponse> Handle(RegisterCommand request, CancellationToken cancellationToken)
@@ -35,7 +38,21 @@ public class RegisterHandler
             PasswordHash = hash,
             MfaEnabled = false
         };
-        await _userRepo.AddAsync(user);
+
+        user = await _userRepo.AddAsync(user);
+
+        var profile = new PlayerProfile
+        {
+            UserId = user.Id,
+            CharacterName = request.Username,
+            Level = 1,
+            Experience = 0,
+            Gold = 0,
+            UpdatedAt = DateTime.UtcNow,
+        };
+
+        await _profileRepo.AddAsync(profile);
+
 
         var mfaSetupToken = _tokenService.GenerateMfaToken(user);
         return new AuthResponse(true, mfaSetupToken, false, "Registration successful. MFA setup required.", requiresMfaSetup: true, userId: user.Id);

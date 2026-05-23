@@ -18,6 +18,38 @@ public class CreateBestiaryUnlockHandlerTests
     }
 
     [Fact]
+    public async Task Handle_NewUnlock_CreatesAndReturnsSuccess()
+    {
+        _mockRepo.Setup(r => r.GetByPlayerAndEnemyAsync(1, 2))
+                 .ReturnsAsync((BestiaryUnlock?)null);
+        _mockRepo.Setup(r => r.AddAsync(It.IsAny<BestiaryUnlock>()))
+                 .ReturnsAsync((BestiaryUnlock b) => b);
+
+        var result = await _handler.Handle(
+            new CreateBestiaryUnlockCommand(1, 2), CancellationToken.None);
+
+        result.Message.Should().Be("BestiaryUnlock created successfully");
+        _mockRepo.Verify(r => r.AddAsync(It.Is<BestiaryUnlock>(
+            b => b.PlayerId == 1 && b.EnemyId == 2
+        )), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_AlreadyUnlocked_ReturnsAlreadyUnlocked_DoesNotCallAdd()
+    {
+        var existing = new BestiaryUnlock { Id = 5, PlayerId = 1, EnemyId = 2 };
+        _mockRepo.Setup(r => r.GetByPlayerAndEnemyAsync(1, 2))
+                 .ReturnsAsync(existing);
+
+        var result = await _handler.Handle(
+            new CreateBestiaryUnlockCommand(1, 2), CancellationToken.None);
+
+        result.Id.Should().Be(5);
+        result.Message.Should().Be("Already unlocked.");
+        _mockRepo.Verify(r => r.AddAsync(It.IsAny<BestiaryUnlock>()), Times.Never);
+    }
+
+    [Fact]
     public async Task Handle_ValidCommand_ReturnsSuccess()
     {
         // Arrange
