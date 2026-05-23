@@ -1,9 +1,8 @@
 using RPG.World;
+using System.Threading.Tasks;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
-// EnemyWorldController — combine Markov + InfluenceDetector + mouvement.
-// Remplace CombatTrigger pour les ennemis avec IA de carte.
-// À placer sur chaque ennemi de la GameScene.
 [RequireComponent(typeof(MarkovStateMachine))]
 [RequireComponent(typeof(InfluenceDetector))]
 [RequireComponent(typeof(Rigidbody2D))]
@@ -39,23 +38,37 @@ public class EnemyWorldController : MonoBehaviour
         _rb.freezeRotation = true;
     }
 
-    private void Start()
+    private async void Start()
     {
-        // Désactiver si ennemi déjà mort
         if (RPG.Core.GameManager.Instance.DeadEnemies.Contains(instanceId))
         {
             gameObject.SetActive(false);
             return;
         }
 
-        // Configurer le rayon d'influence depuis le backend
+        // Attendre que EnemyService ait chargé les ennemis (max 5s)
+        float waited = 0f;
+        while ((EnemyService.Instance == null || EnemyService.Instance.Enemies == null)
+               && waited < 5f)
+        {
+            await Task.Delay(100);
+            waited += 0.1f;
+        }
+
         var enemy = EnemyService.Instance?.GetEnemyById(enemyId);
         if (enemy != null)
+        {
             _detector.SetRadius(enemy.influenceRadius);
+            Debug.Log($"[EnemyWorld] {enemy.name} initialisé (rayon {enemy.influenceRadius}).");
+        }
+        else
+        {
+            Debug.LogWarning($"[EnemyWorld] enemyId={enemyId} introuvable après attente. " +
+                             $"Vérifie l'Inspector et que les ennemis sont chargés.");
+        }
 
         _immunityTimer = immunityDuration;
 
-        // Trouver le joueur
         var playerObj = GameObject.FindGameObjectWithTag("Player");
         if (playerObj != null) _playerTransform = playerObj.transform;
     }
@@ -69,59 +82,33 @@ public class EnemyWorldController : MonoBehaviour
     {
         switch (_markov.CurrentState)
         {
-            case EnemyState.Repos:
-                _rb.linearVelocity = Vector2.zero;
-                break;
-
-            case EnemyState.Patrouille:
-                Patrol();
-                break;
-
-            case EnemyState.Chasse:
-                ChasePlayer();
-                break;
-
-            case EnemyState.Fuite:
-                FleeFromPlayer();
-                break;
+            case EnemyState.Repos: _rb.linearVelocity = Vector2.zero; break;
+            case EnemyState.Patrouille: Patrol(); break;
+            case EnemyState.Chasse: ChasePlayer(); break;
+            case EnemyState.Fuite: FleeFromPlayer(); break;
         }
     }
 
-    // ── Patrouille entre des points définis ───────────────────────
     private void Patrol()
     {
         if (patrolPoints == null || patrolPoints.Length == 0)
-        {
-            _rb.linearVelocity = Vector2.zero;
-            return;
-        }
+        { _rb.linearVelocity = Vector2.zero; return; }
 
         if (_waitingAtPoint)
         {
             _patrolWait -= Time.fixedDeltaTime;
             if (_patrolWait <= 0f)
-            {
-                _waitingAtPoint = false;
-                _patrolIndex = (_patrolIndex + 1) % patrolPoints.Length;
-            }
+            { _waitingAtPoint = false; _patrolIndex = (_patrolIndex + 1) % patrolPoints.Length; }
             return;
         }
 
-        var target = patrolPoints[_patrolIndex].position;
-        var dir = (target - transform.position);
-
+        var dir = patrolPoints[_patrolIndex].position - transform.position;
         if (dir.magnitude < 0.15f)
-        {
-            _waitingAtPoint = true;
-            _patrolWait = patrolWaitTime;
-            _rb.linearVelocity = Vector2.zero;
-            return;
-        }
+        { _waitingAtPoint = true; _patrolWait = patrolWaitTime; _rb.linearVelocity = Vector2.zero; return; }
 
         _rb.linearVelocity = dir.normalized * _markov.CurrentSpeed;
     }
 
-    // ── Chasse le joueur ──────────────────────────────────────────
     private void ChasePlayer()
     {
         if (_playerTransform == null) return;
@@ -129,7 +116,6 @@ public class EnemyWorldController : MonoBehaviour
         _rb.linearVelocity = new Vector2(dir.x, dir.y) * _markov.CurrentSpeed;
     }
 
-    // ── Fuite — s'éloigne du joueur ───────────────────────────────
     private void FleeFromPlayer()
     {
         if (_playerTransform == null) return;
@@ -137,18 +123,14 @@ public class EnemyWorldController : MonoBehaviour
         _rb.linearVelocity = new Vector2(dir.x, dir.y) * _markov.CurrentSpeed;
     }
 
-    // ── Contact physique → déclanche le combat ────────────────────
     private void OnTriggerEnter2D(Collider2D other)
     {
         if (_entering) return;
         if (_immunityTimer > 0f) return;
         if (!other.CompareTag("Player")) return;
-
-        // Ignorer si on est en fuite
         if (_markov.CurrentState == EnemyState.Fuite) return;
 
         _entering = true;
-
         var pos = other.transform.position;
         RPG.Core.GameManager.Instance.PosX = pos.x;
         RPG.Core.GameManager.Instance.PosY = pos.y;
@@ -157,31 +139,60 @@ public class EnemyWorldController : MonoBehaviour
         _ = StartCombatAsync();
     }
 
-    private async System.Threading.Tasks.Task StartCombatAsync()
+    private async Task StartCombatAsync()
     {
         var gm = RPG.Core.GameManager.Instance;
-        var baseEnemy = EnemyService.Instance.GetEnemyById(enemyId);
-        if (baseEnemy == null) { _entering = false; return; }
 
+        // 1. Récupérer les stats de base depuis le cache local
+        var baseEnemy = EnemyService.Instance?.GetEnemyById(enemyId);
+
+        // 2. Tenter le scaling via API
         EnemyResponse scaledEnemy = null;
         try
         {
             int level = gm.Player.Level;
-            var wrapper = await RPG.Network.ApiClient.Instance
-                .GetAsync<ScaledEnemyWrapper>(
-                    $"/api/enemies/{enemyId}/scaled?playerLevel={level}&equipmentBonus=0"
-                );
-            scaledEnemy = wrapper?.enemy;
+            string url = $"/api/enemies/{enemyId}/scaled?playerLevel={level}&equipmentBonus=0";
+
+            // Essayer d'abord avec wrapper, sinon directement
+            try
+            {
+                var wrapper = await RPG.Network.ApiClient.Instance
+                    .GetAsync<ScaledEnemyWrapper>(url);
+                scaledEnemy = wrapper?.enemy;
+            }
+            catch { }
+
+            // Si wrapper vide, tenter désérialisation directe
+            if (scaledEnemy == null)
+            {
+                scaledEnemy = await RPG.Network.ApiClient.Instance
+                    .GetAsync<EnemyResponse>(url);
+            }
+
+            if (scaledEnemy != null)
+                Debug.Log($"[Combat] Scaling OK — {scaledEnemy.name} ×{scaledEnemy.multiplier:F1}");
         }
         catch (System.Exception e)
         {
-            Debug.LogWarning($"[EnemyWorld] Scaling échoué, fallback stats base : {e.Message}");
+            Debug.LogWarning($"[Combat] Scaling échoué, fallback stats base : {e.Message}");
         }
 
+        // 3. Fallback sur stats de base si tout échoue
         gm.CurrentEnemy = scaledEnemy ?? baseEnemy;
 
-        UnityEngine.SceneManagement.SceneManager.LoadScene(
-            baseEnemy.type == "boss" ? "BossCombatScene" : "CombatScene"
+        if (gm.CurrentEnemy == null)
+        {
+            Debug.LogError($"[Combat] CurrentEnemy null — enemyId={enemyId} introuvable. " +
+                           $"Vérifie l'Inspector (enemyId doit correspondre à un ID en BDD).");
+            _entering = false;
+            return;
+        }
+
+        Debug.Log($"[Combat] Chargement scène — ennemi : {gm.CurrentEnemy.name}, " +
+                  $"type : {gm.CurrentEnemy.type}");
+
+        SceneManager.LoadScene(
+            gm.CurrentEnemy.type == "boss" ? "BossCombatScene" : "CombatScene"
         );
     }
 }

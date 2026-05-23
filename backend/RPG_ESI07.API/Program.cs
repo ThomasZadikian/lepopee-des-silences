@@ -221,11 +221,8 @@ using (var scope = app.Services.CreateScope())
 }
 
 // ── Swagger — dev uniquement ───────────────────────────────────────────────────
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+app.UseSwagger();
+app.UseSwaggerUI();
 
 // HTTPS redirection désactivée — géré par le reverse proxy Railway en production
 // app.UseHttpsRedirection() 
