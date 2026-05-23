@@ -375,6 +375,11 @@ public class CombatUIManager : MonoBehaviour
                 Debug.LogError($"[Bestiary] Unlock échoué : {ex.Message}");
             }
         }
+        GameManager.Instance.RecordCombatResult(
+            won: false,
+            dmgDealt: 0,
+            dmgTaken: 0
+        );
 
         await PlayerService.Instance.SyncAsync();
         await AnimateFlee();
