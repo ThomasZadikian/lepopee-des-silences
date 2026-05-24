@@ -2,13 +2,6 @@
 
 namespace RPG_ESI07.Domain.Interfaces;
 
-public interface IAuditLogRepository
+public interface IAuditLogRepository : IRepository<AuditLog>
 {
-    Task<List<AuditLog>> GetAllAsync();
-
-    Task<AuditLog?> GetByIdAsync(int id);
-
-    Task AddAsync(AuditLog auditLog);
-
-    Task DeleteAsync(int id);
 }

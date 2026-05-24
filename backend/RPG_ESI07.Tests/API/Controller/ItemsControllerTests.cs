@@ -39,7 +39,7 @@ public class ItemsControllerTests
     [Fact]
     public async Task Create_ReturnsCreatedAtAction_WhenCommandSucceeds()
     {
-        var command = new CreateItemCommand("Épée", "Arme", 150);
+        var command = new CreateItemCommand("Épée", "Arme", 150, null, "Épée longue", 15, null);
         var expectedResponse = new CreateItemResponse(10, "Item créé");
 
         _mediatorMock.Setup(m => m.Send(command, It.IsAny<CancellationToken>()))
@@ -56,7 +56,7 @@ public class ItemsControllerTests
     [Fact]
     public async Task Update_ReturnsBadRequest_WhenIdMismatch()
     {
-        var command = new UpdateItemCommand(2, "Bouclier", "Armure", 200);
+        var command = new UpdateItemCommand(2, "Bouclier", "Armure", 200, null, "Grand bouclier", 20, null);
 
         var result = await _controller.Update(1, command);
 
@@ -68,7 +68,7 @@ public class ItemsControllerTests
     public async Task Update_ReturnsOkResult_WhenCommandSucceeds()
     {
         int targetId = 1;
-        var command = new UpdateItemCommand(targetId, "Bouclier", "Armure", 200);
+        var command = new UpdateItemCommand(targetId, "Bouclier", "Armure", 200, null, "Grand bouclier", 20, null);
         var expectedResponse = new UpdateItemResponse(true, "Item mis à jour");
 
         _mediatorMock.Setup(m => m.Send(command, It.IsAny<CancellationToken>()))

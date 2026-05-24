@@ -17,7 +17,6 @@ public class CreatePlayerProfileHandler
         CreatePlayerProfileCommand request,
         CancellationToken cancellationToken)
     {
-        // Valeurs initiales du personnage — stats de départ équilibrées
         var profile = new Domain.Entities.PlayerProfile
         {
             UserId = request.UserId,

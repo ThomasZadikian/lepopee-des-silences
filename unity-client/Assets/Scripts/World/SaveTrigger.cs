@@ -51,7 +51,7 @@ public class SaveTrigger : MonoBehaviour
     {
         _saving = true;
 
-        var pos = FindObjectOfType<PlayerMovement>()?.transform.position ?? Vector3.zero;
+        var pos = FindFirstObjectByType<PlayerMovement>()?.transform.position ?? Vector3.zero;
         GameManager.Instance.PosX = pos.x;
         GameManager.Instance.PosY = pos.y;
         GameManager.Instance.CurrentZone = string.IsNullOrEmpty(zoneName)

@@ -6,6 +6,7 @@ using Moq;
 using RPG_ESI07.API.Controllers;
 using RPG_ESI07.Application.Commands.PlayerInventorys;
 using RPG_ESI07.Application.Queries.PlayerInventorys;
+using RPG_ESI07.Application.Queries.PlayerProfiles;
 using RPG_ESI07.Domain;
 using RPG_ESI07.Domain.Entities;
 using System.Security.Claims;
@@ -35,6 +36,23 @@ public class PlayerInventoriesControllerTests
         };
     }
 
+    private GetPlayerProfileByUserIdResponse BuildProfile(int userId, int playerId)
+    {
+        return new GetPlayerProfileByUserIdResponse(
+            playerId, userId, "Hero", 1, 100, 100, 50, 50, 10, 10, 10, 0, 0,
+            DateTime.UtcNow, null, null, null, null, null, null, 0, 0, 0, 0);
+    }
+
+    private void SetupProfileLookup(int userId, int playerId)
+    {
+        var profile = BuildProfile(userId, playerId);
+        _mediatorMock
+            .Setup(m => m.Send(
+                It.Is<GetPlayerProfileByUserIdQuery>(q => q.UserId == userId),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(profile);
+    }
+
     [Fact]
     public async Task GetAll_ReturnsOkResult_WithExpectedData()
     {
@@ -52,18 +70,20 @@ public class PlayerInventoriesControllerTests
     }
 
     [Fact]
-    public async Task GetById_ReturnsOkResult_ExtractsClaimsCorrectly()
+    public async Task GetById_ReturnsOkResult_UsesPlayerIdFromProfile()
     {
         int targetId = 5;
         int currentUserId = 10;
+        int playerId = 20;
         SetUserContext(currentUserId, isAdmin: false);
+        SetupProfileLookup(currentUserId, playerId);
 
         var expectedInventory = new PlayerInventory { Id = targetId };
         var expectedResponse = new GetPlayerInventoryByIdResponse(expectedInventory);
 
         _mediatorMock.Setup(m => m.Send(It.Is<GetPlayerInventoryByIdQuery>(q =>
                         q.Id == targetId &&
-                        q.RequestingUserId == currentUserId &&
+                        q.RequestingUserId == playerId &&
                         q.IsAdmin == false), It.IsAny<CancellationToken>()))
                      .ReturnsAsync(expectedResponse);
 
@@ -75,11 +95,30 @@ public class PlayerInventoriesControllerTests
     }
 
     [Fact]
-    public async Task Create_ReturnsForbid_WhenNonAdminCreatesForAnotherUser()
+    public async Task GetById_ReturnsNotFound_WhenProfileNotFound()
     {
         int currentUserId = 10;
+        SetUserContext(currentUserId, isAdmin: false);
+
+        _mediatorMock
+            .Setup(m => m.Send(
+                It.Is<GetPlayerProfileByUserIdQuery>(q => q.UserId == currentUserId),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync((GetPlayerProfileByUserIdResponse?)null!);
+
+        var result = await _controller.GetById(1);
+
+        result.Should().BeOfType<NotFoundResult>();
+    }
+
+    [Fact]
+    public async Task Create_ReturnsForbid_WhenNonAdminCreatesForAnotherPlayer()
+    {
+        int currentUserId = 10;
+        int playerId = 20;
         int targetPlayerId = 15;
         SetUserContext(currentUserId, isAdmin: false);
+        SetupProfileLookup(currentUserId, playerId);
 
         var command = new CreatePlayerInventoryCommand(targetPlayerId, 1, 5);
 
@@ -89,12 +128,14 @@ public class PlayerInventoriesControllerTests
     }
 
     [Fact]
-    public async Task Create_ReturnsCreatedAtAction_WhenSelfCreationSucceeds()
+    public async Task Create_ReturnsCreatedAtAction_WhenNonAdminCreatesForSelf()
     {
         int currentUserId = 10;
+        int playerId = 15;
         SetUserContext(currentUserId, isAdmin: false);
+        SetupProfileLookup(currentUserId, playerId);
 
-        var command = new CreatePlayerInventoryCommand(currentUserId, 1, 5);
+        var command = new CreatePlayerInventoryCommand(playerId, 1, 5);
         var expectedResponse = new CreatePlayerInventoryResponse(1, "Created");
 
         _mediatorMock.Setup(m => m.Send(command, It.IsAny<CancellationToken>()))
@@ -109,6 +150,44 @@ public class PlayerInventoriesControllerTests
     }
 
     [Fact]
+    public async Task Create_ReturnsNotFound_WhenProfileNotFoundForNonAdmin()
+    {
+        int currentUserId = 10;
+        SetUserContext(currentUserId, isAdmin: false);
+
+        _mediatorMock
+            .Setup(m => m.Send(
+                It.Is<GetPlayerProfileByUserIdQuery>(q => q.UserId == currentUserId),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync((GetPlayerProfileByUserIdResponse?)null!);
+
+        var command = new CreatePlayerInventoryCommand(15, 1, 5);
+
+        var result = await _controller.Create(command);
+
+        result.Should().BeOfType<NotFoundResult>();
+    }
+
+    [Fact]
+    public async Task Create_Admin_SkipsProfileCheck()
+    {
+        int currentUserId = 10;
+        int targetPlayerId = 99;
+        SetUserContext(currentUserId, isAdmin: true);
+
+        var command = new CreatePlayerInventoryCommand(targetPlayerId, 1, 5);
+        var expectedResponse = new CreatePlayerInventoryResponse(1, "Created");
+
+        _mediatorMock.Setup(m => m.Send(command, It.IsAny<CancellationToken>()))
+                     .ReturnsAsync(expectedResponse);
+
+        var result = await _controller.Create(command);
+
+        var createdResult = result.Should().BeOfType<CreatedAtActionResult>().Subject;
+        createdResult.StatusCode.Should().Be(201);
+    }
+
+    [Fact]
     public async Task Update_ReturnsBadRequest_WhenIdMismatch()
     {
         var command = new UpdatePlayerInventoryCommand(2, 10, 1, 5, 0, false);
@@ -120,10 +199,12 @@ public class PlayerInventoriesControllerTests
     }
 
     [Fact]
-    public async Task Update_ReturnsOkResult_AppliesClaimsToCommand()
+    public async Task Update_ReturnsOkResult_AppliesPlayerIdToCommand()
     {
         int currentUserId = 10;
+        int playerId = 20;
         SetUserContext(currentUserId, isAdmin: true);
+        SetupProfileLookup(currentUserId, playerId);
 
         int targetId = 1;
         var initialCommand = new UpdatePlayerInventoryCommand(targetId, 10, 1, 10, 0, false);
@@ -131,7 +212,7 @@ public class PlayerInventoriesControllerTests
 
         _mediatorMock.Setup(m => m.Send(It.Is<UpdatePlayerInventoryCommand>(c =>
                         c.Id == targetId &&
-                        c.RequestingUserId == currentUserId &&
+                        c.RequestingUserId == playerId &&
                         c.IsAdmin == true), It.IsAny<CancellationToken>()))
                      .ReturnsAsync(expectedResponse);
 
@@ -143,17 +224,38 @@ public class PlayerInventoriesControllerTests
     }
 
     [Fact]
-    public async Task Delete_ReturnsOkResult_ExtractsClaimsCorrectly()
+    public async Task Update_ReturnsNotFound_WhenProfileNotFound()
+    {
+        int currentUserId = 10;
+        SetUserContext(currentUserId, isAdmin: false);
+
+        _mediatorMock
+            .Setup(m => m.Send(
+                It.Is<GetPlayerProfileByUserIdQuery>(q => q.UserId == currentUserId),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync((GetPlayerProfileByUserIdResponse?)null!);
+
+        var command = new UpdatePlayerInventoryCommand(1, 10, 1, 5, 0, false);
+
+        var result = await _controller.Update(1, command);
+
+        result.Should().BeOfType<NotFoundResult>();
+    }
+
+    [Fact]
+    public async Task Delete_ReturnsOkResult_UsesPlayerIdFromProfile()
     {
         int targetId = 1;
         int currentUserId = 10;
+        int playerId = 20;
         SetUserContext(currentUserId, isAdmin: false);
+        SetupProfileLookup(currentUserId, playerId);
 
         var expectedResponse = new DeletePlayerInventoryResponse(true, "Deleted");
 
         _mediatorMock.Setup(m => m.Send(It.Is<DeletePlayerInventoryCommand>(c =>
                         c.Id == targetId &&
-                        c.RequestingUserId == currentUserId &&
+                        c.RequestingUserId == playerId &&
                         c.IsAdmin == false), It.IsAny<CancellationToken>()))
                      .ReturnsAsync(expectedResponse);
 
@@ -165,16 +267,35 @@ public class PlayerInventoriesControllerTests
     }
 
     [Fact]
-    public async Task GetMyInventory_ReturnsOk_WithPlayerInventory()
+    public async Task Delete_ReturnsNotFound_WhenProfileNotFound()
     {
         int currentUserId = 10;
         SetUserContext(currentUserId, isAdmin: false);
 
-        var items = new List<PlayerInventory> { new PlayerInventory { Id = 1, PlayerId = currentUserId } };
+        _mediatorMock
+            .Setup(m => m.Send(
+                It.Is<GetPlayerProfileByUserIdQuery>(q => q.UserId == currentUserId),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync((GetPlayerProfileByUserIdResponse?)null!);
+
+        var result = await _controller.Delete(1);
+
+        result.Should().BeOfType<NotFoundResult>();
+    }
+
+    [Fact]
+    public async Task GetMyInventory_ReturnsOk_WithPlayerInventory()
+    {
+        int currentUserId = 10;
+        int playerId = 20;
+        SetUserContext(currentUserId, isAdmin: false);
+        SetupProfileLookup(currentUserId, playerId);
+
+        var items = new List<PlayerInventory> { new PlayerInventory { Id = 1, PlayerId = playerId } };
         var expectedResponse = new GetAllPlayerInventorysResponse(items);
 
         _mediatorMock.Setup(m => m.Send(
-                It.Is<GetAllPlayerInventorysQuery>(q => q.UserId == currentUserId),
+                It.Is<GetAllPlayerInventorysQuery>(q => q.UserId == playerId),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(expectedResponse);
 
@@ -186,23 +307,19 @@ public class PlayerInventoriesControllerTests
     }
 
     [Fact]
-    public async Task GetMyInventory_ExtractsUserIdFromJwt()
+    public async Task GetMyInventory_ReturnsNotFound_WhenProfileNotFound()
     {
-        int currentUserId = 42;
-        SetUserContext(currentUserId);
+        int currentUserId = 10;
+        SetUserContext(currentUserId, isAdmin: false);
 
-        var expectedResponse = new GetAllPlayerInventorysResponse(new List<PlayerInventory>());
-
-        _mediatorMock.Setup(m => m.Send(
-                It.Is<GetAllPlayerInventorysQuery>(q => q.UserId == currentUserId),
+        _mediatorMock
+            .Setup(m => m.Send(
+                It.Is<GetPlayerProfileByUserIdQuery>(q => q.UserId == currentUserId),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync(expectedResponse);
+            .ReturnsAsync((GetPlayerProfileByUserIdResponse?)null!);
 
-        await _controller.GetMyInventory();
+        var result = await _controller.GetMyInventory();
 
-        _mediatorMock.Verify(m => m.Send(
-                It.Is<GetAllPlayerInventorysQuery>(q => q.UserId == 42),
-                It.IsAny<CancellationToken>()),
-            Times.Once);
+        result.Should().BeOfType<NotFoundResult>();
     }
 }

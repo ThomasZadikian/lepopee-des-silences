@@ -14,12 +14,9 @@ public class GetAllBestiaryUnlocksHandler : IRequestHandler<GetAllBestiaryUnlock
 
     public async Task<GetAllBestiaryUnlocksResponse> Handle(GetAllBestiaryUnlocksQuery request, CancellationToken cancellationToken)
     {
-        var items = await _repository.GetAllAsync();
-
-        if (request.UserId.HasValue)
-        {
-            items = items.Where(b => b != null && b.Player?.UserId == request.UserId.Value).ToList();
-        }
+        var items = request.UserId.HasValue
+            ? await _repository.GetByPlayerIdAsync(request.UserId.Value)
+            : await _repository.GetAllAsync();
 
         return new GetAllBestiaryUnlocksResponse(items);
     }

@@ -21,7 +21,7 @@ public class CreateGameSaveHandlerTests
     public async Task Handle_ValidCommand_ReturnsSuccess()
     {
         // Arrange
-        _mockRepo.Setup(r => r.AddAsync(It.IsAny<GameSave>())).Returns(Task.CompletedTask);
+        _mockRepo.Setup(r => r.AddAsync(It.IsAny<GameSave>())).ReturnsAsync((GameSave)null!);
 
         // Act
         var result = await _handler.Handle(new CreateGameSaveCommand(1, "Tutorial", 1), CancellationToken.None);

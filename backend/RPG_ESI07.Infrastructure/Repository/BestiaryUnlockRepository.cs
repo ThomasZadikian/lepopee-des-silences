@@ -5,48 +5,33 @@ using RPG_ESI07.Infrastructure.Data;
 
 namespace RPG_ESI07.Infrastructure.Repository;
 
-public class BestiaryUnlockRepository : IBestiaryUnlockRepository
+public class BestiaryUnlockRepository : Repository<BestiaryUnlock>, IBestiaryUnlockRepository
 {
-    private readonly AppDbContext _context;
+    public BestiaryUnlockRepository(AppDbContext context) : base(context) { }
 
-    public BestiaryUnlockRepository(AppDbContext context)
+    public override async Task<List<BestiaryUnlock>> GetAllAsync()
     {
-        _context = context;
-    }
-
-    public async Task<BestiaryUnlock?> GetByIdAsync(int id)
-    {
-        return await _context.Set<BestiaryUnlock>().FindAsync(id);
-    }
-
-    public async Task<List<BestiaryUnlock>> GetAllAsync()
-    {
-        return await _context.Set<BestiaryUnlock>()
+        return await _dbSet
             .Include(e => e.Enemy)
             .Include(e => e.Player)
             .OrderBy(e => e.Id)
+            .AsNoTracking()
             .ToListAsync();
     }
 
-    public async Task AddAsync(BestiaryUnlock entity)
+    public async Task<List<BestiaryUnlock>> GetByPlayerIdAsync(int playerId)
     {
-        _context.Set<BestiaryUnlock>().Add(entity);
-        await _context.SaveChangesAsync();
+        return await _dbSet
+            .Include(e => e.Enemy)
+            .Include(e => e.Player)
+            .Where(e => e.PlayerId == playerId)
+            .OrderBy(e => e.Id)
+            .AsNoTracking()
+            .ToListAsync();
     }
-
-    public async Task UpdateAsync(BestiaryUnlock entity)
+    public async Task<BestiaryUnlock?> GetByPlayerAndEnemyAsync(int playerId, int enemyId)
     {
-        _context.Set<BestiaryUnlock>().Update(entity);
-        await _context.SaveChangesAsync();
-    }
-
-    public async Task DeleteAsync(int id)
-    {
-        var entity = await _context.Set<BestiaryUnlock>().FindAsync(id);
-        if (entity != null)
-        {
-            _context.Set<BestiaryUnlock>().Remove(entity);
-            await _context.SaveChangesAsync();
-        }
+        return await _context.BestiaryUnlocks
+            .FirstOrDefaultAsync(b => b.PlayerId == playerId && b.EnemyId == enemyId);
     }
 }

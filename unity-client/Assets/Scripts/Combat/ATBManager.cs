@@ -1,4 +1,4 @@
-using RPG.Core; 
+using RPG.Core;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -8,19 +8,20 @@ public class ATBManager : MonoBehaviour
 {
     public static ATBManager Instance { get; private set; }
 
-    // ── Etat du combat ─────────────────────────────────────────────
     public enum CombatState { Filling, PlayerChoosing, EnemyActing, CombatOver }
     public CombatState State { get; set; } = CombatState.Filling;
 
-    // ── Combattants ────────────────────────────────────────────────
     public List<Combatant> Combatants { get; private set; } = new List<Combatant>();
     public Queue<Combatant> ActionQueue { get; private set; } = new Queue<Combatant>();
     public Combatant CurrentActor { get; private set; }
 
-    // ── Vitesse de remplissage ATB ─────────────────────────────────
-    [SerializeField] private float atbFillRate = 10f; // Multiplicateur global
+    [SerializeField] private float atbFillRate = 10f;
 
     private CombatSystem _combatSystem;
+
+    // Tracking dégâts pour CombatStats
+    private long _dmgDealtThisFight = 0;
+    private long _dmgTakenThisFight = 0;
 
     private void Awake()
     {
@@ -34,6 +35,8 @@ public class ATBManager : MonoBehaviour
         _combatSystem = combatSystem;
         State = CombatState.Filling;
         ActionQueue.Clear();
+        _dmgDealtThisFight = 0;
+        _dmgTakenThisFight = 0;
     }
 
     private void Update()
@@ -45,7 +48,6 @@ public class ATBManager : MonoBehaviour
             if (c.IsDead) continue;
             c.atbCurrent += c.speed * atbFillRate * Time.deltaTime;
 
-            // Boss — boule de feu intermédiaire à 50% ATB
             if (!c.isPlayer && BossController.Instance != null &&
                 BossController.Instance.IsBossFight &&
                 !BossController.Instance.FireballUsedThisCycle &&
@@ -85,7 +87,6 @@ public class ATBManager : MonoBehaviour
     {
         await Task.Delay(800);
 
-        // Vérifier les phases du boss
         var boss = BossController.Instance;
         if (boss != null && boss.IsBossFight)
             await boss.CheckPhases();
@@ -96,7 +97,6 @@ public class ATBManager : MonoBehaviour
             var currentActor = CurrentActor;
             int dmg;
 
-            // Boule de feu à demi-tour
             float atbPercent = currentActor.atbCurrent / 100f;
             if (boss != null && boss.ShouldCastFireball(atbPercent))
             {
@@ -114,6 +114,7 @@ public class ATBManager : MonoBehaviour
                     $"{currentActor.name} attaque et inflige {dmg} degats !");
             }
 
+            _dmgTakenThisFight += dmg;
             player.currentHP = Mathf.Max(0, player.currentHP - dmg);
             GameManager.Instance.TakeDamage(dmg);
             CombatUIManager.Instance.UpdateBars();
@@ -121,6 +122,10 @@ public class ATBManager : MonoBehaviour
             if (player.IsDead)
             {
                 State = CombatState.CombatOver;
+                GameManager.Instance.RecordCombatResult(
+                    won: false,
+                    dmgDealt: _dmgDealtThisFight,
+                    dmgTaken: _dmgTakenThisFight);
                 await CombatUIManager.Instance.EndCombat(false);
                 return;
             }
@@ -136,13 +141,13 @@ public class ATBManager : MonoBehaviour
         var enemy = Combatants.Find(c => !c.isPlayer && !c.IsDead);
         if (enemy == null) return;
 
-        var player = Combatants.Find(c => c.isPlayer);
         var enemyResponse = GameManager.Instance.CurrentEnemy;
         int dmg = Mathf.RoundToInt(
             GameManager.Instance.Player.Strength * 2 *
             (enemyResponse != null ? enemyResponse.physicalResistance : 1f));
-        dmg = Mathf.Max(1, dmg + UnityEngine.Random.Range(-dmg / 5, dmg / 5)); dmg = Mathf.Max(1, dmg + UnityEngine.Random.Range(-dmg / 5, dmg / 5));
+        dmg = Mathf.Max(1, dmg + UnityEngine.Random.Range(-dmg / 5, dmg / 5));
 
+        _dmgDealtThisFight += dmg;
         enemy.currentHP = Mathf.Max(0, enemy.currentHP - dmg);
         CombatUIManager.Instance.AddLog($"Tu attaques et infliges {dmg} degats !");
         CombatUIManager.Instance.UpdateBars();
@@ -150,6 +155,10 @@ public class ATBManager : MonoBehaviour
         if (enemy.IsDead)
         {
             State = CombatState.CombatOver;
+            GameManager.Instance.RecordCombatResult(
+                won: true,
+                dmgDealt: _dmgDealtThisFight,
+                dmgTaken: _dmgTakenThisFight);
             CombatUIManager.Instance.EnemyDefeated(enemy);
             return;
         }
@@ -181,6 +190,7 @@ public class ATBManager : MonoBehaviour
                 (GameManager.Instance.CurrentEnemy?.magicalResistance ?? 1f));
             dmg = Mathf.Max(1, dmg + UnityEngine.Random.Range(-dmg / 5, dmg / 5));
 
+            _dmgDealtThisFight += dmg;
             enemy.currentHP = Mathf.Max(0, enemy.currentHP - dmg);
             CombatUIManager.Instance.AddLog(
                 $"Tu lances {skill.name} et infliges {dmg} degats !");
@@ -189,6 +199,10 @@ public class ATBManager : MonoBehaviour
             if (enemy.IsDead)
             {
                 State = CombatState.CombatOver;
+                GameManager.Instance.RecordCombatResult(
+                    won: true,
+                    dmgDealt: _dmgDealtThisFight,
+                    dmgTaken: _dmgTakenThisFight);
                 CombatUIManager.Instance.EnemyDefeated(enemy);
                 return;
             }
@@ -200,7 +214,6 @@ public class ATBManager : MonoBehaviour
                 GameManager.Instance.Player.MaxHP,
                 GameManager.Instance.Player.CurrentHP + heal);
             player.currentHP = GameManager.Instance.Player.CurrentHP;
-
             CombatUIManager.Instance.AddLog($"Tu lances {skill.name} et recuperes {heal} HP !");
             CombatUIManager.Instance.UpdateBars();
         }
@@ -230,9 +243,7 @@ public class ATBManager : MonoBehaviour
         if (CurrentActor != null)
             CurrentActor.atbCurrent = 0f;
 
-        // Reset du cycle boule de feu boss
         BossController.Instance?.ResetFireballCycle();
-
         CurrentActor = null;
         CombatUIManager.Instance.ShowActionButtons(false);
         State = CombatState.Filling;

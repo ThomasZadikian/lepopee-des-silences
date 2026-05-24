@@ -5,49 +5,26 @@ using RPG_ESI07.Infrastructure.Data;
 
 namespace RPG_ESI07.Infrastructure.Repository;
 
-public class PlayerInventoryRepository : IPlayerInventoryRepository
+public class PlayerInventoryRepository : Repository<PlayerInventory>, IPlayerInventoryRepository
 {
-    private readonly AppDbContext _context;
+    public PlayerInventoryRepository(AppDbContext context) : base(context) { }
 
-    public PlayerInventoryRepository(AppDbContext context)
+    public override async Task<List<PlayerInventory>> GetAllAsync()
     {
-        _context = context;
-    }
-
-    public async Task<PlayerInventory?> GetByIdAsync(int id)
-    {
-        return await _context.Set<PlayerInventory>()
-            .Include(e => e.Item)
-            .FirstOrDefaultAsync(e => e.Id == id);
-    }
-
-    public async Task<List<PlayerInventory>> GetAllAsync()
-    {
-        return await _context.Set<PlayerInventory>()
+        return await _dbSet
             .Include(e => e.Item)
             .OrderBy(e => e.Id)
+            .AsNoTracking()
             .ToListAsync();
     }
 
-    public async Task AddAsync(PlayerInventory entity)
+    public async Task<List<PlayerInventory>> GetByPlayerIdAsync(int playerId)
     {
-        _context.Set<PlayerInventory>().Add(entity);
-        await _context.SaveChangesAsync();
-    }
-
-    public async Task UpdateAsync(PlayerInventory entity)
-    {
-        _context.Set<PlayerInventory>().Update(entity);
-        await _context.SaveChangesAsync();
-    }
-
-    public async Task DeleteAsync(int id)
-    {
-        var entity = await _context.Set<PlayerInventory>().FindAsync(id);
-        if (entity != null)
-        {
-            _context.Set<PlayerInventory>().Remove(entity);
-            await _context.SaveChangesAsync();
-        }
+        return await _dbSet
+            .Include(e => e.Item)
+            .Where(e => e.PlayerId == playerId)
+            .OrderBy(e => e.Id)
+            .AsNoTracking()
+            .ToListAsync();
     }
 }

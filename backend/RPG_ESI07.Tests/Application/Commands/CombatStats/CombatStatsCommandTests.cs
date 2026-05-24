@@ -20,7 +20,7 @@ public class CreateCombatStatsHandlerTests
     public async Task Handle_ValidCommand_ReturnsSuccess()
     {
         // Arrange
-        _mockRepo.Setup(r => r.AddAsync(It.IsAny<RPG_ESI07.Domain.Entities.CombatStats>())).Returns(Task.CompletedTask);
+        _mockRepo.Setup(r => r.AddAsync(It.IsAny<RPG_ESI07.Domain.Entities.CombatStats>())).ReturnsAsync((RPG_ESI07.Domain.Entities.CombatStats)null!);
 
         // Act
         var result = await _handler.Handle(new CreateCombatStatsCommand(1), CancellationToken.None);

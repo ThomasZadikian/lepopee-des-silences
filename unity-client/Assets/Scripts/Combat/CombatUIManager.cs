@@ -7,6 +7,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using Image = UnityEngine.UI.Image;
+using System;
 
 public class CombatUIManager : MonoBehaviour
 {
@@ -283,12 +284,30 @@ public class CombatUIManager : MonoBehaviour
     {
         ShowActionButtons(false);
         AddLog(playerWon ? "Victoire !" : "Defaite... Chargement de la derniere sauvegarde.");
-        await Task.Delay(2000);
 
         if (!playerWon)
         {
-            await PlayerService.Instance.LoadProfileAsync();
+            var p = GameManager.Instance.Player;
+            p.CurrentHP = 1;
 
+            var e = GameManager.Instance.CurrentEnemy;
+            if (e != null)
+            {
+                try
+                {
+                    var payload = new RPG.Network.Dto.BestiaryUnlockRequest { enemyId = e.id };
+                    await RPG.Network.ApiClient.Instance.PostAsync<object>("/api/bestiaryunlocks/me", payload);
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogError($"[Bestiary] Unlock échoué : {ex.Message}");
+                }
+            }
+
+            await PlayerService.Instance.SyncAsync();
+            await Task.Delay(2000);
+
+            await PlayerService.Instance.LoadProfileAsync();
             var lastSave = await PlayerService.Instance.LoadLastSaveAsync();
             if (lastSave != null)
             {
@@ -296,6 +315,11 @@ public class CombatUIManager : MonoBehaviour
                 GameManager.Instance.PosY = lastSave.positionY;
                 GameManager.Instance.CurrentZone = lastSave.currentZone;
             }
+        }
+        else
+        {
+            await PlayerService.Instance.SyncAsync();
+            await Task.Delay(2000);
         }
 
         SceneManager.LoadScene("GameScene");
@@ -314,7 +338,52 @@ public class CombatUIManager : MonoBehaviour
         GameManager.Instance.RegisterDeadEnemy(GameManager.Instance.CurrentEnemyInstanceId);
         AddLog($"{enemy.name} est vaincu ! +{e?.experienceReward} XP, +{e?.goldReward} Gold");
 
+        if (e != null)
+        {
+            try
+            {
+                var payload = new RPG.Network.Dto.BestiaryUnlockRequest { enemyId = e.id };
+                await RPG.Network.ApiClient.Instance.PostAsync<object>("/api/bestiaryunlocks/me", payload);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[Bestiary] Unlock échoué : {ex.Message}");
+            }
+        }
+
+        await PlayerService.Instance.SyncAsync();
         await Task.Delay(2000);
+        SceneManager.LoadScene("GameScene");
+    }
+
+    public async void OnFleeClicked()
+    {
+        if (ATBManager.Instance.State != ATBManager.CombatState.PlayerChoosing) return;
+        ATBManager.Instance.State = ATBManager.CombatState.CombatOver;
+        AddLog("Tu prends la fuite !");
+
+        var e = GameManager.Instance.CurrentEnemy;
+        if (e != null)
+        {
+            try
+            {
+                var payload = new RPG.Network.Dto.BestiaryUnlockRequest { enemyId = e.id };
+                await RPG.Network.ApiClient.Instance.PostAsync<object>("/api/bestiaryunlocks/me", payload);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[Bestiary] Unlock échoué : {ex.Message}");
+            }
+        }
+        GameManager.Instance.RecordCombatResult(
+            won: false,
+            dmgDealt: 0,
+            dmgTaken: 0
+        );
+
+        await PlayerService.Instance.SyncAsync();
+        await AnimateFlee();
+        await Task.Delay(500);
         SceneManager.LoadScene("GameScene");
     }
 
@@ -323,15 +392,5 @@ public class CombatUIManager : MonoBehaviour
         if (ATBManager.Instance.State != ATBManager.CombatState.PlayerChoosing) return;
         _ = AnimateAttack(true);
         ATBManager.Instance.PlayerAttack();
-    }
-
-    public async void OnFleeClicked()
-    {
-        if (ATBManager.Instance.State != ATBManager.CombatState.PlayerChoosing) return;
-        ATBManager.Instance.State = ATBManager.CombatState.CombatOver;
-        AddLog("Tu prends la fuite !");
-        await AnimateFlee();
-        await Task.Delay(500);
-        SceneManager.LoadScene("GameScene");
     }
 }

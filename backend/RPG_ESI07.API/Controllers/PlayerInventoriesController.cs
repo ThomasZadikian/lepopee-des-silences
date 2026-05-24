@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RPG_ESI07.Application.Commands.PlayerInventorys;
 using RPG_ESI07.Application.Queries.PlayerInventorys;
+using RPG_ESI07.Application.Queries.PlayerProfiles;
 using RPG_ESI07.Domain;
 using System.Security.Claims;
 
@@ -30,7 +31,9 @@ public class PlayerInventoriesController : ControllerBase
     {
         var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
         var isAdmin = User.IsInRole(Constants.RoleAdmin);
-        var result = await _mediator.Send(new GetPlayerInventoryByIdQuery(id, currentUserId, isAdmin));
+        var profile = await _mediator.Send(new GetPlayerProfileByUserIdQuery(currentUserId));
+        if (profile == null) return NotFound();
+        var result = await _mediator.Send(new GetPlayerInventoryByIdQuery(id, profile.Id, isAdmin));
         return Ok(result);
     }
 
@@ -38,8 +41,13 @@ public class PlayerInventoriesController : ControllerBase
     public async Task<IActionResult> Create([FromBody] CreatePlayerInventoryCommand command)
     {
         var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-        if (!User.IsInRole(Constants.RoleAdmin) && command.PlayerId != currentUserId)
-            return Forbid();
+        var isAdmin = User.IsInRole(Constants.RoleAdmin);
+        if (!isAdmin)
+        {
+            var profile = await _mediator.Send(new GetPlayerProfileByUserIdQuery(currentUserId));
+            if (profile == null) return NotFound();
+            if (command.PlayerId != profile.Id) return Forbid();
+        }
 
         var result = await _mediator.Send(command);
         return CreatedAtAction(nameof(GetAll), new { id = result.Id }, result);
@@ -52,8 +60,10 @@ public class PlayerInventoriesController : ControllerBase
 
         var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
         var isAdmin = User.IsInRole(Constants.RoleAdmin);
+        var profile = await _mediator.Send(new GetPlayerProfileByUserIdQuery(currentUserId));
+        if (profile == null) return NotFound();
 
-        var result = await _mediator.Send(command with { RequestingUserId = currentUserId, IsAdmin = isAdmin });
+        var result = await _mediator.Send(command with { RequestingUserId = profile.Id, IsAdmin = isAdmin });
         return Ok(result);
     }
 
@@ -62,17 +72,20 @@ public class PlayerInventoriesController : ControllerBase
     {
         var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
         var isAdmin = User.IsInRole(Constants.RoleAdmin);
+        var profile = await _mediator.Send(new GetPlayerProfileByUserIdQuery(currentUserId));
+        if (profile == null) return NotFound();
 
-        var result = await _mediator.Send(new DeletePlayerInventoryCommand(id, currentUserId, isAdmin));
+        var result = await _mediator.Send(new DeletePlayerInventoryCommand(id, profile.Id, isAdmin));
         return Ok(result);
     }
 
-    // GET /api/playerinventories/me — retourne l'inventaire du joueur connecté
     [HttpGet("me")]
     public async Task<IActionResult> GetMyInventory()
     {
         var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-        var result = await _mediator.Send(new GetAllPlayerInventorysQuery(currentUserId));
+        var profile = await _mediator.Send(new GetPlayerProfileByUserIdQuery(currentUserId));
+        if (profile == null) return NotFound();
+        var result = await _mediator.Send(new GetAllPlayerInventorysQuery(profile.Id));
         return Ok(result);
     }
 }

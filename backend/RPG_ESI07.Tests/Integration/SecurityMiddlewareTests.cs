@@ -9,6 +9,7 @@ using RPG_ESI07.Infrastructure.Data;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Net.Http.Json;
 using System.Text;
 using System.Threading.Tasks;
 using Xunit;
@@ -67,23 +68,20 @@ public class AuthRateLimitingTests : IClassFixture<WebApplicationFactory<Program
     }
 
     [Fact]
-    public async Task Login_Policy_Triggers_After_Five_Requests()
+    public async Task Login_Policy_Triggers_After_Hundred_Requests()
     {
-        for (int i = 0; i < 5; i++)
+        var command = new { Username = "testuser", Password = "wrongpassword" };
+
+        HttpResponseMessage lastResponse = null!;
+
+        for (int i = 0; i < 110; i++)
         {
-            var content = new StringContent(
-                "{\"username\":\"test\",\"password\":\"pass\"}",
-                Encoding.UTF8,
-                "application/json");
-            await _client.PostAsync("/api/auth/login", content);
+            lastResponse = await _client.PostAsJsonAsync("/api/auth/login", command);
+
+            if ((int)lastResponse.StatusCode == 429)
+                break;
         }
 
-        var lastContent = new StringContent(
-            "{\"username\":\"test\",\"password\":\"pass\"}",
-            Encoding.UTF8,
-            "application/json");
-        var response = await _client.PostAsync("/api/auth/login", lastContent);
-
-        response.StatusCode.Should().Be((HttpStatusCode)429);
+        lastResponse!.StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
     }
 }

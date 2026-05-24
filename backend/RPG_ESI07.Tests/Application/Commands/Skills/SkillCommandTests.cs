@@ -22,8 +22,8 @@ public class CreateSkillHandlerTests
     public async Task Handle_ValidCommand_ReturnsSuccessResponse()
     {
         // Arrange
-        var command = new CreateSkillCommand("Fireball", Constants.EffectDamage, 20);
-        _mockRepo.Setup(r => r.AddAsync(It.IsAny<Skill>())).Returns(Task.CompletedTask);
+        var command = new CreateSkillCommand("Fireball", Constants.EffectDamage, 20, Constants.ElementFire, "Une boule de feu", 80, 0);
+        _mockRepo.Setup(r => r.AddAsync(It.IsAny<Skill>())).ReturnsAsync((Skill)null!);
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -54,7 +54,7 @@ public class UpdateSkillHandlerTests
         _mockRepo.Setup(r => r.UpdateAsync(It.IsAny<Skill>())).Returns(Task.CompletedTask);
 
         // Act
-        var result = await _handler.Handle(new UpdateSkillCommand(1, "Blizzard", Constants.EffectDamage, 25), CancellationToken.None);
+        var result = await _handler.Handle(new UpdateSkillCommand(1, "Blizzard", Constants.EffectDamage, 25, Constants.ElementIce, "Tempête de glace", 90, 0), CancellationToken.None);
 
         // Assert
         result.Success.Should().BeTrue();
@@ -69,7 +69,7 @@ public class UpdateSkillHandlerTests
         _mockRepo.Setup(r => r.GetByIdAsync(99)).ReturnsAsync((Skill?)null);
 
         // Act
-        var result = await _handler.Handle(new UpdateSkillCommand(99, "X", "X", 0), CancellationToken.None);
+        var result = await _handler.Handle(new UpdateSkillCommand(99, "X", "X", 0, null, null, null, null), CancellationToken.None);
 
         // Assert
         result.Success.Should().BeFalse();

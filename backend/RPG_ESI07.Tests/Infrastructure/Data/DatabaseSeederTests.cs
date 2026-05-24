@@ -59,12 +59,12 @@ public class DatabaseSeederTests : IDisposable
         var skillCount = await _context.Skills.CountAsync();
         var combatStatsCount = await _context.CombatStats.CountAsync();
 
-        userCount.Should().Be(3);
-        profileCount.Should().Be(3);
-        enemyCount.Should().Be(20);
-        itemCount.Should().Be(30);
+        userCount.Should().Be(20);
+        profileCount.Should().Be(20);
+        enemyCount.Should().Be(71);
+        itemCount.Should().Be(55);
         skillCount.Should().Be(18);
-        combatStatsCount.Should().Be(3);
+        combatStatsCount.Should().Be(20);
     }
 
     [Fact]

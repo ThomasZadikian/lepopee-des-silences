@@ -154,4 +154,25 @@ public class BestiaryUnlockRepositoryTests : IDisposable
         var remainingCount = await _context.BestiaryUnlocks.CountAsync();
         remainingCount.Should().Be(1);
     }
+
+    [Fact]
+    public async Task GetByPlayerAndEnemyAsync_ReturnsUnlock_WhenExists()
+    {
+        var unlock = new BestiaryUnlock { Id = 1, PlayerId = 1, EnemyId = 2 };
+        await _context.BestiaryUnlocks.AddAsync(unlock);
+        await _context.SaveChangesAsync();
+
+        var result = await _repository.GetByPlayerAndEnemyAsync(1, 2);
+
+        result.Should().NotBeNull();
+        result!.Id.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task GetByPlayerAndEnemyAsync_ReturnsNull_WhenNotExists()
+    {
+        var result = await _repository.GetByPlayerAndEnemyAsync(99, 99);
+
+        result.Should().BeNull();
+    }
 }

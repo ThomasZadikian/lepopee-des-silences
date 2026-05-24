@@ -1,6 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
 using RPG_ESI07.Domain.Interfaces;
-using RPG_ESI07.Infrastructure.Repositories;
 using RPG_ESI07.Infrastructure.Repository;
 using RPG_ESI07.Infrastructure.Services;
 
@@ -23,11 +22,20 @@ public static class InfrastructureDependencyInjection
         services.AddScoped<ISkillRepository, SkillRepository>();
         services.AddScoped<IUserConsentRepository, UserConsentRepository>();
         services.AddScoped<IAuditLogRepository, AuditLogRepository>();
+        services.AddScoped<INpcInteractionRepository, NpcInteractionRepository>();
+        services.AddScoped<INpcRepository, NpcRepository>();
+        services.AddScoped<ICompanionRepository, CompanionRepository>();
+        services.AddScoped<ILeaderboardRepository, LeaderboardRepository>();
+
 
         // Services
         services.AddScoped<IPasswordHasher, Argon2PasswordHasher>();
         services.AddScoped<ITokenService, JwtTokenService>();
         services.AddScoped<IMfaService, TotpMfaService>();
+        services.AddHostedService<CompanionBackgroundService>();
+
+        // Caching
+        services.AddMemoryCache();
 
         return services;
     }

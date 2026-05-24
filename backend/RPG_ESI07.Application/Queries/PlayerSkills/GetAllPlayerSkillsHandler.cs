@@ -14,10 +14,9 @@ public class GetAllPlayerSkillsHandler : IRequestHandler<GetAllPlayerSkillsQuery
 
     public async Task<GetAllPlayerSkillsResponse> Handle(GetAllPlayerSkillsQuery request, CancellationToken cancellationToken)
     {
-        var items = await _repository.GetAllAsync();
-
-        if (request.UserId.HasValue)
-            items = items.Where(s => s.PlayerId == request.UserId.Value).ToList();
+        var items = request.UserId.HasValue
+            ? await _repository.GetByPlayerIdAsync(request.UserId.Value)
+            : await _repository.GetAllAsync();
 
         return new GetAllPlayerSkillsResponse(items);
     }

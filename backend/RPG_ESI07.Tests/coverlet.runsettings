@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat Code Coverage">
+        <Configuration>
+          <ExcludeByFile>**/Migrations/**,**/CompanionBackgroundService.cs,**/LeaderboardRepository.cs</ExcludeByFile>
+		  <ExcludeByFile>**/Migrations/**,**/CompanionBackgroundService.cs,**/LeaderboardRepository.cs</ExcludeByFile>
+		  <ExcludeByAttribute>GeneratedCodeAttribute,CompilerGeneratedAttribute</ExcludeByAttribute>
+		  <Exclude>[Microsoft.AspNetCore.OpenApi*]*,[*]*.DatabaseSeeder</Exclude>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>

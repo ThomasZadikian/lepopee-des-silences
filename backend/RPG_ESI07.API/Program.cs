@@ -88,6 +88,32 @@ builder.Services.AddAuthentication(options =>
             Encoding.UTF8.GetBytes(signingKey)),
         ClockSkew = TimeSpan.Zero
     };
+
+    options.Events = new JwtBearerEvents
+    {
+        OnTokenValidated = async context =>
+        {
+            var userRepo = context.HttpContext.RequestServices
+                .GetRequiredService<IUserRepository>();
+
+            var userIdClaim = context.Principal?
+                .FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (!int.TryParse(userIdClaim, out var userId))
+            {
+                context.Fail("Invalid token");
+                return;
+            }
+
+            var user = await userRepo.GetByIdAsync(userId);
+
+            if (user == null || user.DeletedAt.HasValue)
+            {
+                context.Fail("Account not found or deleted");
+                return;
+            }
+        }
+    };
 });
 
 builder.Services.AddRateLimiter(options =>
@@ -97,13 +123,13 @@ builder.Services.AddRateLimiter(options =>
             context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
             _ => new FixedWindowRateLimiterOptions
             {
-                PermitLimit = 60,
+                PermitLimit = 500,
                 Window = TimeSpan.FromMinutes(1)
             }));
 
     options.AddSlidingWindowLimiter("login", opt =>
     {
-        opt.PermitLimit = 5;
+        opt.PermitLimit = 100;
         opt.Window = TimeSpan.FromMinutes(5);
         opt.SegmentsPerWindow = 5;
     });
@@ -112,6 +138,18 @@ builder.Services.AddRateLimiter(options =>
     {
         opt.PermitLimit = 3;
         opt.Window = TimeSpan.FromHours(1);
+    });
+
+    options.AddFixedWindowLimiter("leaderboard", opt =>
+    {
+        opt.PermitLimit = 30;
+        opt.Window = TimeSpan.FromMinutes(1);
+    });
+
+    options.AddFixedWindowLimiter("leaderboard_search", opt =>
+    {
+        opt.PermitLimit = 10;
+        opt.Window = TimeSpan.FromMinutes(1);
     });
 
     options.RejectionStatusCode = 429;
@@ -157,7 +195,14 @@ builder.Services.AddCors(options =>
         policy.WithOrigins(corsOrigins)
             .AllowAnyMethod()
             .AllowAnyHeader()
-            .AllowCredentials(); 
+            .AllowCredentials();
+    });
+
+    options.AddPolicy("AllowPublic", policy =>
+    {
+        policy.WithOrigins(corsOrigins)
+            .AllowAnyMethod()
+            .AllowAnyHeader();
     });
 });
 
@@ -176,11 +221,8 @@ using (var scope = app.Services.CreateScope())
 }
 
 // ── Swagger — dev uniquement ───────────────────────────────────────────────────
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+app.UseSwagger();
+app.UseSwaggerUI();
 
 // HTTPS redirection désactivée — géré par le reverse proxy Railway en production
 // app.UseHttpsRedirection() 
@@ -188,6 +230,12 @@ if (app.Environment.IsDevelopment())
 app.UseCors("AllowFrontend");
 app.Use(async (context, next) =>
 {
+    if (context.Request.Method == "OPTIONS")
+    {
+        context.Response.StatusCode = 200;
+        await context.Response.CompleteAsync();
+        return;
+    }
     context.Response.Headers.Append("X-Frame-Options", "DENY");
     context.Response.Headers.Append("X-Content-Type-Options", "nosniff");
     context.Response.Headers.Append("Referrer-Policy", "strict-origin-when-cross-origin");

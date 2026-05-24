@@ -61,7 +61,7 @@ namespace RPG_ESI07.Infrastructure.Migrations
 
                     b.ToTable("AuditLogs", t =>
                         {
-                            t.HasCheckConstraint("CK_AuditLog_EventType", "\"EventType\" IN ('LOGIN_SUCCESS', 'LOGIN_FAILED', 'LOGOUT',\r\n                    'DATA_EXPORT', 'DATA_DELETE', 'DATA_MODIFY',\r\n                    'CHEAT_DETECTED', 'ADMIN_ACTION', 'MFA_ENABLED', 'MFA_FAILED')");
+                            t.HasCheckConstraint("CK_AuditLog_EventType", "\"EventType\" IN ('LOGIN_SUCCESS', 'LOGIN_FAILED', 'LOGOUT',\n                    'DATA_EXPORT', 'DATA_DELETE', 'DATA_MODIFY',\n                    'CHEAT_DETECTED', 'ADMIN_ACTION', 'MFA_ENABLED', 'MFA_FAILED')");
                         });
                 });
 
@@ -134,6 +134,41 @@ namespace RPG_ESI07.Infrastructure.Migrations
                         });
                 });
 
+            modelBuilder.Entity("RPG_ESI07.Domain.Entities.CompanionState", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("CurrentState")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("REPOS");
+
+                    b.Property<int>("DefeatesToday")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("LastCombatAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("LastUpdated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("VictoriesToday")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("CompanionStates", t =>
+                        {
+                            t.HasCheckConstraint("CK_CompanionState_State", "\"CurrentState\" IN ('REPOS', 'JEU', 'MANGER', 'EXCITE', 'TRISTE', 'ENDORMI')");
+                        });
+                });
+
             modelBuilder.Entity("RPG_ESI07.Domain.Entities.Enemy", b =>
                 {
                     b.Property<int>("Id")
@@ -141,6 +176,9 @@ namespace RPG_ESI07.Infrastructure.Migrations
                         .HasColumnType("integer");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("CombatScripts")
+                        .HasColumnType("jsonb");
 
                     b.Property<string>("Description")
                         .HasColumnType("text");
@@ -151,11 +189,26 @@ namespace RPG_ESI07.Infrastructure.Migrations
                     b.Property<int>("GoldReward")
                         .HasColumnType("integer");
 
+                    b.Property<float>("InfluenceRadius")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("real")
+                        .HasDefaultValue(5f);
+
+                    b.Property<string>("InitialState")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasDefaultValue("REPOS");
+
                     b.Property<int>("Intelligence")
                         .HasColumnType("integer");
 
                     b.Property<float>("MagicalResistance")
                         .HasColumnType("real");
+
+                    b.Property<string>("MapStates")
+                        .HasColumnType("jsonb");
 
                     b.Property<int>("MaxHP")
                         .HasColumnType("integer");
@@ -174,6 +227,9 @@ namespace RPG_ESI07.Infrastructure.Migrations
                     b.Property<int>("Strength")
                         .HasColumnType("integer");
 
+                    b.Property<string>("TransitionMatrix")
+                        .HasColumnType("jsonb");
+
                     b.Property<string>("Type")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -186,6 +242,8 @@ namespace RPG_ESI07.Infrastructure.Migrations
 
                     b.ToTable("Enemies", t =>
                         {
+                            t.HasCheckConstraint("CK_Enemy_InfluenceRadius", "\"InfluenceRadius\" > 0");
+
                             t.HasCheckConstraint("CK_Enemy_Resistance", "\"PhysicalResistance\" BETWEEN 0.5 AND 2.0 AND \"MagicalResistance\" BETWEEN 0.5 AND 2.0");
 
                             t.HasCheckConstraint("CK_Enemy_Stats", "\"MaxHP\" > 0 AND \"Strength\" > 0");
@@ -204,8 +262,8 @@ namespace RPG_ESI07.Infrastructure.Migrations
 
                     b.Property<string>("CurrentZone")
                         .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("InventoryData")
                         .HasColumnType("jsonb");
@@ -229,10 +287,7 @@ namespace RPG_ESI07.Infrastructure.Migrations
 
                     b.HasIndex("PlayerId", "SavedAt");
 
-                    b.ToTable("GameSaves", t =>
-                        {
-                            t.HasCheckConstraint("CK_GameSave_Zone", "\"CurrentZone\" IN ('Tutorial', 'BossFinal')");
-                        });
+                    b.ToTable("GameSaves");
                 });
 
             modelBuilder.Entity("RPG_ESI07.Domain.Entities.Item", b =>
@@ -278,6 +333,116 @@ namespace RPG_ESI07.Infrastructure.Migrations
                             t.HasCheckConstraint("CK_Item_Price", "\"Price\" >= 0");
 
                             t.HasCheckConstraint("CK_Item_Type", "\"Type\" IN ('weapon', 'armor', 'accessory', 'consumable')");
+                        });
+                });
+
+            modelBuilder.Entity("RPG_ESI07.Domain.Entities.Npc", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Dialogues")
+                        .HasColumnType("jsonb");
+
+                    b.Property<float>("InfluenceRadius")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("real")
+                        .HasDefaultValue(5f);
+
+                    b.Property<string>("InitialState")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasDefaultValue("SEREIN");
+
+                    b.Property<bool>("IsMerchant")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("MapStates")
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("MerchantInventory")
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("Quests")
+                        .HasColumnType("jsonb");
+
+                    b.Property<float>("SpawnX")
+                        .HasColumnType("real");
+
+                    b.Property<float>("SpawnY")
+                        .HasColumnType("real");
+
+                    b.Property<string>("TransitionMatrix")
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Zone")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name");
+
+                    b.ToTable("Npcs", t =>
+                        {
+                            t.HasCheckConstraint("CK_Npc_InfluenceRadius", "\"InfluenceRadius\" > 0");
+
+                            t.HasCheckConstraint("CK_Npc_Type", "\"Type\" IN ('neutral', 'merchant', 'quest', 'ally')");
+                        });
+                });
+
+            modelBuilder.Entity("RPG_ESI07.Domain.Entities.NpcInteraction", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime>("InteractedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("NpcId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("PlayerId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InteractedAt");
+
+                    b.HasIndex("PlayerId");
+
+                    b.HasIndex("NpcId", "PlayerId");
+
+                    b.ToTable("NpcInteractions", t =>
+                        {
+                            t.HasCheckConstraint("CK_NpcInteraction_EventType", "\"EventType\" IN ('DIALOGUE', 'TRADE', 'QUEST_START', 'QUEST_COMPLETE')");
                         });
                 });
 
@@ -333,6 +498,13 @@ namespace RPG_ESI07.Infrastructure.Migrations
                     b.Property<int>("CurrentMP")
                         .HasColumnType("integer");
 
+                    b.Property<string>("CurrentZone")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasDefaultValue("");
+
                     b.Property<int>("Experience")
                         .HasColumnType("integer");
 
@@ -350,6 +522,11 @@ namespace RPG_ESI07.Infrastructure.Migrations
 
                     b.Property<int>("MaxMP")
                         .HasColumnType("integer");
+
+                    b.Property<float>("ScalingFactor")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("real")
+                        .HasDefaultValue(1f);
 
                     b.Property<int>("Speed")
                         .HasColumnType("integer");
@@ -375,6 +552,8 @@ namespace RPG_ESI07.Infrastructure.Migrations
                             t.HasCheckConstraint("CK_PlayerProfile_Level", "\"Level\" >= 1 AND \"Level\" <= 99");
 
                             t.HasCheckConstraint("CK_PlayerProfile_MP", "\"CurrentMP\" >= 0 AND \"CurrentMP\" <= \"MaxMP\"");
+
+                            t.HasCheckConstraint("CK_PlayerProfile_ScalingFactor", "\"ScalingFactor\" >= 1.0");
 
                             t.HasCheckConstraint("CK_PlayerProfile_Stats", "\"Strength\" > 0 AND \"Intelligence\" > 0 AND \"Speed\" > 0");
                         });
@@ -600,6 +779,25 @@ namespace RPG_ESI07.Infrastructure.Migrations
                     b.Navigation("Player");
                 });
 
+            modelBuilder.Entity("RPG_ESI07.Domain.Entities.NpcInteraction", b =>
+                {
+                    b.HasOne("RPG_ESI07.Domain.Entities.Npc", "Npc")
+                        .WithMany("Interactions")
+                        .HasForeignKey("NpcId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("RPG_ESI07.Domain.Entities.PlayerProfile", "Player")
+                        .WithMany("NpcInteractions")
+                        .HasForeignKey("PlayerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Npc");
+
+                    b.Navigation("Player");
+                });
+
             modelBuilder.Entity("RPG_ESI07.Domain.Entities.PlayerInventory", b =>
                 {
                     b.HasOne("RPG_ESI07.Domain.Entities.Item", "Item")
@@ -670,6 +868,11 @@ namespace RPG_ESI07.Infrastructure.Migrations
                     b.Navigation("PlayerInventories");
                 });
 
+            modelBuilder.Entity("RPG_ESI07.Domain.Entities.Npc", b =>
+                {
+                    b.Navigation("Interactions");
+                });
+
             modelBuilder.Entity("RPG_ESI07.Domain.Entities.PlayerProfile", b =>
                 {
                     b.Navigation("BestiaryUnlocks");
@@ -679,6 +882,8 @@ namespace RPG_ESI07.Infrastructure.Migrations
                     b.Navigation("GameSaves");
 
                     b.Navigation("Inventory");
+
+                    b.Navigation("NpcInteractions");
 
                     b.Navigation("Skills");
                 });

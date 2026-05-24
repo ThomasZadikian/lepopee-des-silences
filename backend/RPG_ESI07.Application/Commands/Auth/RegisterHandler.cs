@@ -11,43 +11,50 @@ public class RegisterHandler
     private readonly IUserRepository _userRepo;
     private readonly IPasswordHasher _hasher;
     private readonly ITokenService _tokenService;
+    private readonly IPlayerProfileRepository _profileRepo;
 
     public RegisterHandler(
     IUserRepository userRepo,
     IPasswordHasher hasher,
-    ITokenService tokenService)
+    ITokenService tokenService, 
+    IPlayerProfileRepository profileRepo)
     {
         _userRepo = userRepo;
         _hasher = hasher;
         _tokenService = tokenService;
+        _profileRepo = profileRepo; 
     }
 
-    public async Task<AuthResponse> Handle(
-    RegisterCommand request,
-    CancellationToken cancellationToken)
+    public async Task<AuthResponse> Handle(RegisterCommand request, CancellationToken cancellationToken)
     {
-        // 1. Vérifier unicité username
-        if (await _userRepo.UsernameExistsAsync(
-        request.Username))
-            return new AuthResponse(false, null, false,
-            "Username already exists");
-        // 2. Hash du password
-        var hash = _hasher.HashPassword(
-            request.Password);
-        // 3. Créer le User
+        if (await _userRepo.UsernameExistsAsync(request.Username))
+            return new AuthResponse(false, null, false, "Identifiants incorrects.");
+
+        var hash = _hasher.HashPassword(request.Password);
         var user = new User
         {
             Username = request.Username,
-            Email = System.Text.Encoding
-        .UTF8.GetBytes(request.Email),
+            Email = System.Text.Encoding.UTF8.GetBytes(request.Email),
             PasswordHash = hash,
             MfaEnabled = false
         };
-        await _userRepo.AddAsync(user);
-        // 4. Générer le JWT
-        var token = _tokenService
-        .GenerateAccessToken(user, Constants.RolePlayer);
-        return new AuthResponse(true, token, false,
-        "Registration successful");
+
+        user = await _userRepo.AddAsync(user);
+
+        var profile = new PlayerProfile
+        {
+            UserId = user.Id,
+            CharacterName = request.Username,
+            Level = 1,
+            Experience = 0,
+            Gold = 0,
+            UpdatedAt = DateTime.UtcNow,
+        };
+
+        await _profileRepo.AddAsync(profile);
+
+
+        var mfaSetupToken = _tokenService.GenerateMfaToken(user);
+        return new AuthResponse(true, mfaSetupToken, false, "Registration successful. MFA setup required.", requiresMfaSetup: true, userId: user.Id);
     }
 }

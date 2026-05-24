@@ -15,7 +15,16 @@ public class CreateSkillHandler : IRequestHandler<CreateSkillCommand, CreateSkil
 
     public async Task<CreateSkillResponse> Handle(CreateSkillCommand request, CancellationToken cancellationToken)
     {
-        var entity = new Skill();
+        var entity = new Skill
+        {
+            Name = request.Name,
+            EffectType = request.EffectType,
+            MPCost = request.MPCost,
+            ElementType = request.ElementType,
+            Description = request.Description,
+            BaseDamage = request.BaseDamage,
+            HealAmount = request.HealAmount,
+        };
         await _repository.AddAsync(entity);
         return new CreateSkillResponse(entity.Id, "Skill created successfully");
     }

@@ -1,4 +1,5 @@
 ﻿using Konscious.Security.Cryptography;
+using Microsoft.Extensions.Logging;
 using RPG_ESI07.Domain.Interfaces;
 using System.Security.Cryptography;
 using System.Text;
@@ -7,6 +8,12 @@ namespace RPG_ESI07.Infrastructure.Services;
 
 public class Argon2PasswordHasher : IPasswordHasher
 {
+    private readonly ILogger<Argon2PasswordHasher> _logger;
+
+    public Argon2PasswordHasher(ILogger<Argon2PasswordHasher> logger)
+    {
+        _logger = logger;
+    }
     private const int SaltSize = 16;
     private const int HashSize = 32;
     private const int Iterations = 3;
@@ -54,8 +61,14 @@ public class Argon2PasswordHasher : IPasswordHasher
 
             return CryptographicOperations.FixedTimeEquals(hash, computedHash);
         }
-        catch
+        catch (FormatException)
         {
+            _logger.LogWarning("Format de hash invalide");
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erreur lors de la vérification du mot de passe");
             return false;
         }
     }

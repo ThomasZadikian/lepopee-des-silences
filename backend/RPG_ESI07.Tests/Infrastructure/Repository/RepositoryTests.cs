@@ -2,9 +2,9 @@
 using Microsoft.EntityFrameworkCore;
 using RPG_ESI07.Domain.Entities;
 using RPG_ESI07.Infrastructure.Data;
-using RPG_ESI07.Infrastructure.Repositories;
+using RPG_ESI07.Infrastructure.Repository;
 
-namespace RPG_ESI07.Tests.Infrastructure.Repositories;
+namespace RPG_ESI07.Tests.Infrastructure.Repository;
 
 public class RepositoryTests : IDisposable
 {

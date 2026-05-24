@@ -2,6 +2,10 @@ using RPG.Core;
 using RPG.Services;
 using System.Threading.Tasks;
 using UnityEngine;
+using RPG.Network;
+using RPG.Network.Dto;
+using System;
+
 
 public class CombatSystem : MonoBehaviour
 {
@@ -22,7 +26,7 @@ public class CombatSystem : MonoBehaviour
     {
         var p = GameManager.Instance.Player;
         int dmg = Mathf.RoundToInt(p.Strength * 2 * _currentEnemy.physicalResistance);
-        dmg = Mathf.Max(1, dmg + Random.Range(-dmg / 5, dmg / 5));
+        dmg = Mathf.Max(1, dmg + UnityEngine.Random.Range(-dmg / 5, dmg / 5));
 
         _enemyCurrentHP -= dmg;
         _dmgDealtThisFight += dmg;
@@ -33,7 +37,7 @@ public class CombatSystem : MonoBehaviour
     {
         var p = GameManager.Instance.Player;
         int dmg = Mathf.Max(1, _currentEnemy.strength - p.Strength / 4);
-        dmg = dmg + Random.Range(-dmg / 5, dmg / 5);
+        dmg = dmg + UnityEngine.Random.Range(-dmg / 5, dmg / 5);
 
         _dmgTakenThisFight += dmg;
         GameManager.Instance.TakeDamage(dmg);
@@ -47,7 +51,6 @@ public class CombatSystem : MonoBehaviour
     public async Task EndCombatAsync(bool playerWon)
     {
         var p = GameManager.Instance.Player;
-
         if (playerWon && _currentEnemy != null)
         {
             p.Experience += _currentEnemy.experienceReward;

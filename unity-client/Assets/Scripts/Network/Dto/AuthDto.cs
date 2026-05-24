@@ -1,14 +1,27 @@
 using System;
 namespace RPG.Network.Dto
 {
-    // Envoyé vers POST /api/auth/login
+    // ── Login ─────────────────────────────────────────────────────
     [Serializable]
     public class LoginRequest
     {
-        public string username; // Correspond à "username" dans le JSON
-        public string password; // Correspond à "password" dans le JSON
+        public string username;
+        public string password;
     }
-    // Envoyé vers POST /api/auth/register
+
+    // Réponse login — inclut les champs MFA
+    [Serializable]
+    public class LoginResponse
+    {
+        public bool success;
+        public string token;
+        public bool requiresMfa;
+        public bool requiresMfaSetup;
+        public string message;
+        public int userId;
+    }
+
+    // ── Register ──────────────────────────────────────────────────
     [Serializable]
     public class RegisterRequest
     {
@@ -16,22 +29,58 @@ namespace RPG.Network.Dto
         public string email;
         public string password;
     }
-    // Reçu depuis POST /api/auth/login
-    // Le token JWT est la valeur la plus importante ici.
-    // Il sera stocké dans ApiClient et envoyé dans chaque requête suivante.
-    [Serializable]
-    public class LoginResponse
-    {
-        public bool success;
-        public string token; // Le JWT — durée de vie définie dans ton backend
-        public string message; // Message d'erreur si success == false
-    }
-    // Reçu depuis POST /api/auth/register
+
     [Serializable]
     public class RegisterResponse
     {
         public bool success;
-        public int userId; // Nécessaire pour créer le PlayerProfile ensuite
+        public string token;
+        public bool requiresMfaSetup;
+        public string message;
+        public int userId;
+    }
+
+    // ── MFA Setup ─────────────────────────────────────────────────
+    [Serializable]
+    public class SetupMfaRequest
+    {
+        public int userId;
+        public string token; // mfaToken reçu lors du login
+    }
+
+    [Serializable]
+    public class SetupMfaResponse
+    {
+        public bool success;
+        public string qrCodeUri;
+        public string manualKey;
+        public string message;
+    }
+
+    // ── MFA Verify (setup) ────────────────────────────────────────
+    [Serializable]
+    public class VerifyMfaRequest
+    {
+        public int userId;
+        public string token;  // mfaToken
+        public string code;   // code TOTP 6 chiffres
+    }
+
+    // ── MFA Login ─────────────────────────────────────────────────
+    [Serializable]
+    public class LoginMfaRequest
+    {
+        public int userId;
+        public string code;   // code TOTP 6 chiffres
+    }
+
+    // Réponse commune auth (verify + login MFA)
+    [Serializable]
+    public class AuthResponse
+    {
+        public bool success;
+        public string token;
+        public bool requiresMfa;
         public string message;
     }
 }
