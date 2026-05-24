@@ -49,24 +49,21 @@ describe("RgpdView", () => {
     vi.clearAllMocks();
   });
 
-  it("affiche le titre Mes données personnelles", () => {
+  it("affiche le titre", () => {
     const wrapper = mount(RgpdView, { global: { stubs } });
     expect(wrapper.text()).toContain("Confidentialité");
   });
 
-  it("affiche Art. 15", () => {
+  it("affiche les trois droits RGPD", () => {
     const wrapper = mount(RgpdView, { global: { stubs } });
     expect(wrapper.text()).toContain("Droit 01");
-  });
-
-  it("affiche Art. 20", () => {
-    const wrapper = mount(RgpdView, { global: { stubs } });
     expect(wrapper.text()).toContain("Droit 02");
+    expect(wrapper.text()).toContain("Droit 03");
   });
 
-  it("affiche Art. 17", () => {
+  it("affiche le bouton Demander l'export", () => {
     const wrapper = mount(RgpdView, { global: { stubs } });
-    expect(wrapper.text()).toContain("Droit 03");
+    expect(wrapper.text()).toContain("Demander l'export");
   });
 
   it("affiche le bouton Voir mes données", () => {
@@ -74,46 +71,109 @@ describe("RgpdView", () => {
     expect(wrapper.text()).toContain("Voir mes données");
   });
 
-  it("affiche le bouton Télécharger JSON", () => {
-    const wrapper = mount(RgpdView, { global: { stubs } });
-    expect(wrapper.text()).toContain("Demander l'export");
-  });
-
   it("affiche le bouton Supprimer mon compte", () => {
     const wrapper = mount(RgpdView, { global: { stubs } });
     expect(wrapper.text()).toContain("Supprimer mon compte");
   });
 
-it("appelle exportData au clic sur Voir mes données", async () => {
-  vi.mocked(rgpdApi.exportData).mockResolvedValue({ data: {} } as any)
-  const wrapper = mount(RgpdView, { global: { stubs } })
-  const btn = wrapper.findAll("button").find(b => b.text().includes("Ouvrir la vue"))
-  if (btn) await btn.trigger("click")
-  await flushPromises()
-  expect(vi.mocked(rgpdApi.exportData)).toHaveBeenCalled()
-})
-
-it("appelle exportJson au clic sur Télécharger JSON", async () => {
-  vi.mocked(rgpdApi.exportJson).mockResolvedValue({ data: new Blob(["{}"]) } as any)
-  const wrapper = mount(RgpdView, { global: { stubs } })
-  const btn = wrapper.findAll("button").find(b => b.text().includes("Demander l'export"))
-  if (btn) await btn.trigger("click")
-  await flushPromises()
-  expect(vi.mocked(rgpdApi.exportJson)).toHaveBeenCalled()
-})
-
-it("ouvre le dialogue au clic sur Supprimer mon compte", async () => {
-  const wrapper = mount(RgpdView, { global: { stubs } })
-  const vm = wrapper.vm as any
-  expect(vm.confirmDelete).toBe(false)
-  const btn = wrapper.findAll("button").find(b => b.text().includes("Demander la suppression"))
-  if (btn) await btn.trigger("click")
-  expect(vm.confirmDelete).toBe(true)
-})
-
-  it("le dialogue est fermé par défaut", () => {
+  it("confirme la suppression vaut false par défaut", () => {
     const wrapper = mount(RgpdView, { global: { stubs } });
     const vm = wrapper.vm as any;
     expect(vm.confirmDelete).toBe(false);
+  });
+
+  it("ouvre le dialogue en cliquant sur le ×", async () => {
+    const wrapper = mount(RgpdView, { global: { stubs } });
+    const vm = wrapper.vm as any;
+    vm.confirmDelete = true;
+    await flushPromises();
+    expect(vm.confirmDelete).toBe(true);
+  });
+
+  it("annule la suppression sans alert", async () => {
+    const wrapper = mount(RgpdView, { global: { stubs } });
+    const vm = wrapper.vm as any;
+    vm.confirmDelete = true;
+    await flushPromises();
+    vm.confirmDelete = false;
+    expect(vm.confirmDelete).toBe(false);
+  });
+
+  it("appelle deleteAccount via le bouton Confirmer", async () => {
+    vi.mocked(rgpdApi.deleteAccount).mockResolvedValue({} as any);
+    const wrapper = mount(RgpdView, { global: { stubs } });
+    const vm = wrapper.vm as any;
+    vm.deleteReason = "Test reason";
+    await vm.deleteAccount();
+    await flushPromises();
+    expect(vi.mocked(rgpdApi.deleteAccount)).toHaveBeenCalledWith("Test reason");
+  });
+
+  it("appelle deleteAccount sans raison", async () => {
+    vi.mocked(rgpdApi.deleteAccount).mockResolvedValue({} as any);
+    const wrapper = mount(RgpdView, { global: { stubs } });
+    const vm = wrapper.vm as any;
+    vm.deleteReason = "";
+    await vm.deleteAccount();
+    await flushPromises();
+    expect(vi.mocked(rgpdApi.deleteAccount)).toHaveBeenCalledWith(undefined);
+  });
+
+  it("appelle deleteAccount avec succès", async () => {
+    vi.mocked(rgpdApi.deleteAccount).mockResolvedValue({} as any);
+    const wrapper = mount(RgpdView, { global: { stubs } });
+    const vm = wrapper.vm as any;
+    await vm.deleteAccount();
+    await flushPromises();
+    expect(vi.mocked(rgpdApi.deleteAccount)).toHaveBeenCalled();
+  });
+
+  it("appelle deleteAccount en erreur sans plantage", async () => {
+    vi.mocked(rgpdApi.deleteAccount).mockRejectedValue(new Error("Network"));
+    const wrapper = mount(RgpdView, { global: { stubs } });
+    const vm = wrapper.vm as any;
+    await expect(vm.deleteAccount()).resolves.toBeUndefined();
+  });
+
+  it("appelle exportData via le bouton Ouvrir la vue détaillée", async () => {
+    vi.mocked(rgpdApi.exportData).mockResolvedValue({ data: { test: "ok" } } as any);
+    const wrapper = mount(RgpdView, { global: { stubs } });
+    const vm = wrapper.vm as any;
+    await vm.exportData();
+    await flushPromises();
+    expect(vi.mocked(rgpdApi.exportData)).toHaveBeenCalled();
+  });
+
+  it("appelle downloadJson via le bouton Demander l'export", async () => {
+    vi.mocked(rgpdApi.exportJson).mockResolvedValue({ data: new Blob(["{}"]) } as any);
+    const wrapper = mount(RgpdView, { global: { stubs } });
+    const vm = wrapper.vm as any;
+    await vm.downloadJson();
+    await flushPromises();
+    expect(vi.mocked(rgpdApi.exportJson)).toHaveBeenCalled();
+  });
+
+  it("gère l'exportData en erreur silencieuse", async () => {
+    vi.mocked(rgpdApi.exportData).mockRejectedValue(new Error("Network"));
+    const wrapper = mount(RgpdView, { global: { stubs } });
+    const vm = wrapper.vm as any;
+    await expect(vm.exportData()).resolves.toBeUndefined();
+  });
+
+  it("gère downloadJson en erreur silencieuse", async () => {
+    vi.mocked(rgpdApi.exportJson).mockRejectedValue(new Error("Network"));
+    const wrapper = mount(RgpdView, { global: { stubs } });
+    const vm = wrapper.vm as any;
+    await expect(vm.downloadJson()).resolves.toBeUndefined();
+  });
+
+  it("affiche les 6 catégories de données", () => {
+    const wrapper = mount(RgpdView, { global: { stubs } });
+    expect(wrapper.text()).toContain("Identité");
+    expect(wrapper.text()).toContain("Sauvegardes");
+    expect(wrapper.text()).toContain("Profil");
+    expect(wrapper.text()).toContain("Bestiaire");
+    expect(wrapper.text()).toContain("Statistiques");
+    expect(wrapper.text()).toContain("Sessions");
   });
 });

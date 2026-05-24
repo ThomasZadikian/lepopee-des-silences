@@ -70,6 +70,15 @@ const mockScaledResult = {
   },
 }
 
+const mockAllItems = {
+  data: { items: [
+    { id: 10, name: "Épée longue", type: "weapon", effectValue: 15 },
+    { id: 20, name: "Bouclier", type: "armor", effectValue: 8 },
+    { id: 30, name: "Anneau", type: "accessory", effectValue: 5 },
+    { id: 40, name: "Potion", type: "consumable", effectValue: 50 },
+  ]},
+}
+
 describe("CalculatorView", () => {
   beforeEach(() => {
     setActivePinia(createPinia())
@@ -150,5 +159,252 @@ describe("CalculatorView", () => {
     const wrapper = mount(CalculatorView, { global: { plugins: [router] } })
     await flushPromises()
     expect(wrapper.text()).toContain("Calculateur")
+  })
+
+  it("bascule en mode custom", async () => {
+    vi.mocked(api.get).mockResolvedValue(mockAllItems as any)
+    const wrapper = mount(CalculatorView, { global: { plugins: [router] } })
+    await flushPromises()
+    const vm = wrapper.vm as any
+    vm.switchMode("custom")
+    await flushPromises()
+    expect(vm.mode).toBe("custom")
+    expect(vm.result).toBeNull()
+  })
+
+  it("charge tous les items en mode custom", async () => {
+    vi.mocked(api.get).mockResolvedValue(mockAllItems as any)
+    const wrapper = mount(CalculatorView, { global: { plugins: [router] } })
+    await flushPromises()
+    const vm = wrapper.vm as any
+    expect(vm.allItems.length).toBe(0)
+    vm.switchMode("custom")
+    await flushPromises()
+    expect(vm.allItems.length).toBeGreaterThan(0)
+  })
+
+  it("sélectionne un ennemi", async () => {
+    const wrapper = mount(CalculatorView, { global: { plugins: [router] } })
+    await flushPromises()
+    const vm = wrapper.vm as any
+    vm.selectEnemy(mockEnemies.data.items[0])
+    expect(vm.selectedEnemy).toEqual(mockEnemies.data.items[0])
+    expect(vm.result).toBeNull()
+  })
+
+  it("calcule et affiche le résultat", async () => {
+    vi.mocked(api.get).mockResolvedValueOnce(mockProfile as any)
+      .mockResolvedValueOnce(mockScaledResult as any)
+    const wrapper = mount(CalculatorView, { global: { plugins: [router] } })
+    await flushPromises()
+    const vm = wrapper.vm as any
+    vm.selectEnemy(mockEnemies.data.items[0])
+    await vm.calculate()
+    await flushPromises()
+    expect(vm.result).not.toBeNull()
+    expect(vm.result.enemy.name).toBe("Goblin")
+  })
+
+  it("gère l'erreur API calculate", async () => {
+    vi.mocked(api.get).mockResolvedValueOnce(mockProfile as any)
+      .mockRejectedValueOnce(new Error("Network"))
+    const wrapper = mount(CalculatorView, { global: { plugins: [router] } })
+    await flushPromises()
+    const vm = wrapper.vm as any
+    vm.selectEnemy(mockEnemies.data.items[0])
+    await vm.calculate()
+    await flushPromises()
+    expect(vm.error).toBe("Erreur lors du calcul. Réessayez.")
+  })
+
+  it("calcule playerPower correctement", async () => {
+    const wrapper = mount(CalculatorView, { global: { plugins: [router] } })
+    await flushPromises()
+    const vm = wrapper.vm as any
+    // level=10, bonus=23 (15+8)
+    expect(vm.playerPower).toBe(123)
+  })
+
+  it("calcule playerPower en mode custom", async () => {
+    vi.mocked(api.get).mockResolvedValue(mockAllItems as any)
+    const wrapper = mount(CalculatorView, { global: { plugins: [router] } })
+    await flushPromises()
+    const vm = wrapper.vm as any
+    vm.switchMode("custom")
+    vm.customLevel = 5
+    // customLevel=5, bonus=0 (aucun item sélectionné)
+    expect(vm.playerPower).toBe(50)
+  })
+
+  it("calcule totalEquipmentBonus en mode custom avec items sélectionnés", async () => {
+    vi.mocked(api.get).mockResolvedValue(mockAllItems as any)
+    const wrapper = mount(CalculatorView, { global: { plugins: [router] } })
+    await flushPromises()
+    const vm = wrapper.vm as any
+    vm.switchMode("custom")
+    await flushPromises()
+    vm.selectedByType.weapon = 10
+    expect(vm.totalEquipmentBonus).toBe(15)
+  })
+
+  it("affiche 'Aucun item équipé' quand la liste est vide", async () => {
+    vi.mocked(inventoryApi.getMe).mockResolvedValue({ data: { items: [] } } as any)
+    const wrapper = mount(CalculatorView, { global: { plugins: [router] } })
+    await flushPromises()
+    expect(wrapper.text()).toContain("Aucun item équipé")
+  })
+
+  it("canCalculate est false sans ennemi sélectionné", async () => {
+    const wrapper = mount(CalculatorView, { global: { plugins: [router] } })
+    await flushPromises()
+    const vm = wrapper.vm as any
+    expect(vm.canCalculate).toBe(false)
+  })
+
+  it("canCalculate est true avec ennemi et niveau valide", async () => {
+    const wrapper = mount(CalculatorView, { global: { plugins: [router] } })
+    await flushPromises()
+    const vm = wrapper.vm as any
+    vm.selectEnemy(mockEnemies.data.items[0])
+    expect(vm.canCalculate).toBe(true)
+  })
+
+  it("filtre les ennemis via filteredEnemies", async () => {
+    const wrapper = mount(CalculatorView, { global: { plugins: [router] } })
+    await flushPromises()
+    const vm = wrapper.vm as any
+    expect(vm.filteredEnemies.length).toBe(2)
+    vm.enemySearch = "Goblin"
+    expect(vm.filteredEnemies.length).toBe(1)
+    vm.enemySearch = "ZZZZZ"
+    expect(vm.filteredEnemies.length).toBe(0)
+  })
+
+  it("retourne profileStats vide quand profile est null", async () => {
+    const wrapper = mount(CalculatorView, { global: { plugins: [router] } })
+    await flushPromises()
+    const vm = wrapper.vm as any
+    vm.profile = null
+    expect(vm.profileStats).toEqual([])
+  })
+
+  it("retourne comparisonStats vide quand result ou selectedEnemy est null", async () => {
+    const wrapper = mount(CalculatorView, { global: { plugins: [router] } })
+    await flushPromises()
+    const vm = wrapper.vm as any
+    expect(vm.comparisonStats).toEqual([])
+  })
+
+  it("affiche les stats de comparaison après calcul", async () => {
+    vi.mocked(api.get).mockResolvedValueOnce(mockProfile as any)
+      .mockResolvedValueOnce(mockScaledResult as any)
+    const wrapper = mount(CalculatorView, { global: { plugins: [router] } })
+    await flushPromises()
+    const vm = wrapper.vm as any
+    vm.selectEnemy(mockEnemies.data.items[0])
+    await vm.calculate()
+    await flushPromises()
+    expect(vm.comparisonStats.length).toBeGreaterThan(0)
+    expect(vm.comparisonStats[0].base).toBe(50)
+    expect(vm.comparisonStats[0].scaled).toBe(75)
+  })
+
+  it("combatAnalysis est null sans result ou selectedEnemy", async () => {
+    const wrapper = mount(CalculatorView, { global: { plugins: [router] } })
+    await flushPromises()
+    const vm = wrapper.vm as any
+    expect(vm.combatAnalysis).toBeNull()
+  })
+
+  it("returnne le multiplierColor correct selon survivalRatio", async () => {
+    const wrapper = mount(CalculatorView, { global: { plugins: [router] } })
+    await flushPromises()
+    const vm = wrapper.vm as any
+    expect(vm.multiplierColor).toBe("var(--rpg-ink-muted)")
+  })
+
+  it("retourne multiplierLabel vide sans analyse", async () => {
+    const wrapper = mount(CalculatorView, { global: { plugins: [router] } })
+    await flushPromises()
+    const vm = wrapper.vm as any
+    expect(vm.multiplierLabel).toBe("")
+  })
+
+  it("retourne analysisText vide sans analyse", async () => {
+    const wrapper = mount(CalculatorView, { global: { plugins: [router] } })
+    await flushPromises()
+    const vm = wrapper.vm as any
+    expect(vm.analysisText).toBe("")
+  })
+
+  it("reset remet tous les états à zéro", async () => {
+    const wrapper = mount(CalculatorView, { global: { plugins: [router] } })
+    await flushPromises()
+    const vm = wrapper.vm as any
+    vm.selectEnemy(mockEnemies.data.items[0])
+    vm.result = mockScaledResult as any
+    vm.enemySearch = "Goblin"
+    vm.error = "Erreur"
+    vm.reset()
+    expect(vm.result).toBeNull()
+    expect(vm.selectedEnemy).toBeNull()
+    expect(vm.enemySearch).toBe("")
+    expect(vm.error).toBe("")
+  })
+
+  it("bloque les caractères invalides", async () => {
+    const wrapper = mount(CalculatorView, { global: { plugins: [router] } })
+    await flushPromises()
+    const vm = wrapper.vm as any
+    const preventDefault = vi.fn()
+    vm.blockInvalidChars({ key: "e", preventDefault } as any)
+    expect(preventDefault).toHaveBeenCalled()
+    vm.blockInvalidChars({ key: "3", preventDefault } as any)
+    expect(preventDefault).toHaveBeenCalledTimes(1)
+  })
+
+  it("estimatedPlayerStats utilise le profil en mode import", async () => {
+    const wrapper = mount(CalculatorView, { global: { plugins: [router] } })
+    await flushPromises()
+    const vm = wrapper.vm as any
+    expect(vm.estimatedPlayerStats.hp).toBe(100)
+    expect(vm.estimatedPlayerStats.strength).toBe(15)
+  })
+
+  it("estimatedPlayerStats calcule en mode custom", async () => {
+    const wrapper = mount(CalculatorView, { global: { plugins: [router] } })
+    await flushPromises()
+    const vm = wrapper.vm as any
+    vm.switchMode("custom")
+    vm.customLevel = 5
+    expect(vm.estimatedPlayerStats.hp).toBe(140)
+    expect(vm.estimatedPlayerStats.strength).toBe(18)
+  })
+
+  it("itemsByType filtre correctement les items", async () => {
+    vi.mocked(api.get).mockResolvedValue(mockAllItems as any)
+    const wrapper = mount(CalculatorView, { global: { plugins: [router] } })
+    await flushPromises()
+    const vm = wrapper.vm as any
+    vm.switchMode("custom")
+    await flushPromises()
+    const weapons = vm.itemsByType("weapon")
+    expect(weapons.length).toBe(1)
+    expect(weapons[0].name).toBe("Épée longue")
+  })
+
+  it("affiche le loader profile pendant le chargement", async () => {
+    vi.mocked(api.get).mockImplementationOnce(() => new Promise(() => {}))
+    const wrapper = mount(CalculatorView, { global: { plugins: [router] } })
+    const vm = wrapper.vm as any
+    expect(vm.loadingProfile).toBe(true)
+  })
+
+  it("gère le cas ou profile chargé est null", async () => {
+    vi.mocked(api.get).mockRejectedValue(new Error("fail"))
+    vi.mocked(inventoryApi.getMe).mockRejectedValue(new Error("fail"))
+    const wrapper = mount(CalculatorView, { global: { plugins: [router] } })
+    await flushPromises()
+    expect(wrapper.text()).toContain("Impossible de charger le profil")
   })
 })
