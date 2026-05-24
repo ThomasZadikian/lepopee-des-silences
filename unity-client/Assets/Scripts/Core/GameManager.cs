@@ -41,7 +41,15 @@ namespace RPG.Core
             Player.Speed = profile.speed;
             Player.Experience = profile.experience;
             Player.Gold = profile.gold;
-            Session = new SessionStats();
+            Session = new SessionStats
+            {
+                TotalCombats = profile.totalCombats,
+                CombatsWon = profile.combatsWon,
+                CombatsLost = profile.combatsLost,
+                TotalDamageDealt = profile.totalDamageDealt,
+                TotalDamageTaken = profile.totalDamageTaken,
+                PlaytimeMinutes = profile.totalPlaytimeMinutes
+            };
         }
 
         public SyncRequest BuildSyncPayload()
@@ -94,11 +102,12 @@ namespace RPG.Core
         public bool IsPlayerDead => Player.CurrentHP <= 0;
     }
 
+    // MaxHP2 supprimé — était une erreur de duplication
     public class PlayerData
     {
         public int Id, UserId;
         public string CharacterName;
-        public int Level, CurrentHP, MaxHP, CurrentMP, MaxHP2, MaxMP;
+        public int Level, CurrentHP, MaxHP, CurrentMP, MaxMP;
         public int Strength, Intelligence, Speed, Experience, Gold;
     }
 

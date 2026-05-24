@@ -5,48 +5,26 @@ using RPG_ESI07.Infrastructure.Data;
 
 namespace RPG_ESI07.Infrastructure.Repository;
 
-public class PlayerSkillRepository : IPlayerSkillRepository
+public class PlayerSkillRepository : Repository<PlayerSkill>, IPlayerSkillRepository
 {
-    private readonly AppDbContext _context;
+    public PlayerSkillRepository(AppDbContext context) : base(context) { }
 
-    public PlayerSkillRepository(AppDbContext context)
+    public override async Task<List<PlayerSkill>> GetAllAsync()
     {
-        _context = context;
-    }
-
-    public async Task<PlayerSkill?> GetByIdAsync(int id)
-    {
-        return await _context.Set<PlayerSkill>().Include(e => e.Skill)
-        .FirstOrDefaultAsync(e => e.Id == id);
-    }
-
-    public async Task<List<PlayerSkill>> GetAllAsync()
-    {
-        return await _context.Set<PlayerSkill>()
+        return await _dbSet
             .Include(e => e.Skill)
             .OrderBy(e => e.Id)
+            .AsNoTracking()
             .ToListAsync();
     }
 
-    public async Task AddAsync(PlayerSkill entity)
+    public async Task<List<PlayerSkill>> GetByPlayerIdAsync(int playerId)
     {
-        _context.Set<PlayerSkill>().Add(entity);
-        await _context.SaveChangesAsync();
-    }
-
-    public async Task UpdateAsync(PlayerSkill entity)
-    {
-        _context.Set<PlayerSkill>().Update(entity);
-        await _context.SaveChangesAsync();
-    }
-
-    public async Task DeleteAsync(int id)
-    {
-        var entity = await _context.Set<PlayerSkill>().FindAsync(id);
-        if (entity != null)
-        {
-            _context.Set<PlayerSkill>().Remove(entity);
-            await _context.SaveChangesAsync();
-        }
+        return await _dbSet
+            .Include(e => e.Skill)
+            .Where(e => e.PlayerId == playerId)
+            .OrderBy(e => e.Id)
+            .AsNoTracking()
+            .ToListAsync();
     }
 }

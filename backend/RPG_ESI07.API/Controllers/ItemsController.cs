@@ -1,5 +1,6 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
 using RPG_ESI07.Application.Commands.Items;
 using RPG_ESI07.Application.Queries.Items;
@@ -10,6 +11,7 @@ namespace RPG_ESI07.API.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
+[EnableCors("AllowFrontend")]
 public class ItemsController : ControllerBase
 {
     private readonly IMediator _mediator;
@@ -17,6 +19,7 @@ public class ItemsController : ControllerBase
     public ItemsController(IMediator mediator) => _mediator = mediator;
 
     [HttpGet]
+    [Authorize]
     public async Task<IActionResult> GetAll()
     {
         var result = await _mediator.Send(new GetAllItemsQuery());

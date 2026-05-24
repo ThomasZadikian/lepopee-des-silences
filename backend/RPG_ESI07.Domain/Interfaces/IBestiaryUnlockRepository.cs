@@ -2,15 +2,9 @@ using RPG_ESI07.Domain.Entities;
 
 namespace RPG_ESI07.Domain.Interfaces;
 
-public interface IBestiaryUnlockRepository
+public interface IBestiaryUnlockRepository : IRepository<BestiaryUnlock>
 {
-    Task<List<BestiaryUnlock>> GetAllAsync();
+    Task<List<BestiaryUnlock>> GetByPlayerIdAsync(int playerId);
+    Task<BestiaryUnlock?> GetByPlayerAndEnemyAsync(int playerId, int enemyId);
 
-    Task<BestiaryUnlock?> GetByIdAsync(int id);
-
-    Task AddAsync(BestiaryUnlock entity);
-
-    Task UpdateAsync(BestiaryUnlock entity);
-
-    Task DeleteAsync(int id);
 }

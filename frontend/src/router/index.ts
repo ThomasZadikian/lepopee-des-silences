@@ -20,6 +20,11 @@ const router = createRouter({
       component: () => import("@/views/auth/MfaView.vue"),
     },
     {
+    path: '/mfa/setup',
+    name: 'MfaSetup',
+    component: () => import('@/views/auth/MfaSetupView.vue'),
+    },
+    {
       path: "/",
       component: () => import("@/layouts/AppLayout.vue"),
       meta: { requiresAuth: true },
@@ -51,10 +56,25 @@ const router = createRouter({
           component: () => import("@/views/player/RgpdView.vue"),
         },
         {
+          path: 'enclos',
+          name: 'Enclos',
+          component: () => import('@/views/player/EnclosView.vue'),
+        },
+        {
           path: 'bestiary',
           name: 'Bestiary',
           component: () => import('@/views/player/BestiaryView.vue'),
           meta: { requiresAuth: true }
+        },
+        {
+          path: 'leaderboard',
+          name: 'Leaderboard',
+          component: () => import('@/views/player/LeaderboardView.vue'),
+        },
+        {
+          path: 'calculator',
+          name: 'Calculator',
+          component: () => import('@/views/player/CalculatorView.vue'),
         },
         {
           path: "admin/users",

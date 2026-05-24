@@ -21,7 +21,7 @@ public class CreatePlayerInventoryHandlerTests
     public async Task Handle_ValidCommand_ReturnsSuccess()
     {
         // Arrange
-        _mockRepo.Setup(r => r.AddAsync(It.IsAny<PlayerInventory>())).Returns(Task.CompletedTask);
+        _mockRepo.Setup(r => r.AddAsync(It.IsAny<PlayerInventory>())).ReturnsAsync((PlayerInventory)null!);
 
         // Act
         var result = await _handler.Handle(new CreatePlayerInventoryCommand(1, 2, 5), CancellationToken.None);

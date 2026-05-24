@@ -20,7 +20,7 @@ public class CombatSceneInit : MonoBehaviour
         };
 
         // Initialiser le boss si c'est un combat de boss
-        var bossController = FindObjectOfType<BossController>();
+        var bossController = FindFirstObjectByType<BossController>();
         if (bossController != null)
         {
             var bossCombatant = combatants.Find(c => !c.isPlayer);

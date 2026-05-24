@@ -27,7 +27,7 @@ public class CreatePlayerProfileHandlerTests
         _mockRepo
             .Setup(r => r.AddAsync(It.IsAny<PlayerProfile>()))
             .Callback<PlayerProfile>(p => captured = p)
-            .Returns(Task.CompletedTask);
+            .ReturnsAsync((PlayerProfile)null!);
 
         // Act
         var result = await _handler.Handle(
@@ -56,10 +56,10 @@ public class CreatePlayerProfileHandlerTests
     public async Task Handle_ValidCommand_CallsAddAsync()
     {
         // Arrange
-        _mockRepo.Setup(r => r.AddAsync(It.IsAny<PlayerProfile>())).Returns(Task.CompletedTask);
+        _mockRepo.Setup(r => r.AddAsync(It.IsAny<PlayerProfile>())).ReturnsAsync((PlayerProfile)null!);
 
         // Act
-        await _handler.Handle(
+        var result = await _handler.Handle(
             new CreatePlayerProfileCommand(1, "Hero"),
             CancellationToken.None);
 
@@ -73,7 +73,7 @@ public class CreatePlayerProfileHandlerTests
         // Arrange
         _mockRepo
             .Setup(r => r.AddAsync(It.IsAny<PlayerProfile>()))
-            .Returns(Task.CompletedTask);
+            .ReturnsAsync((PlayerProfile)null!);
 
         // Act
         var result = await _handler.Handle(
@@ -92,7 +92,7 @@ public class CreatePlayerProfileHandlerTests
         _mockRepo
             .Setup(r => r.AddAsync(It.IsAny<PlayerProfile>()))
             .Callback<PlayerProfile>(p => profiles.Add(p))
-            .Returns(Task.CompletedTask);
+            .ReturnsAsync((PlayerProfile)null!);
 
         // Act
         await _handler.Handle(new CreatePlayerProfileCommand(1, "Player1"), CancellationToken.None);
@@ -162,9 +162,9 @@ public class SyncGameSaveHandlerTests
         var profile = BuildProfile();
         _profileRepo.Setup(r => r.GetAllAsync()).ReturnsAsync(new List<PlayerProfile> { profile });
         _profileRepo.Setup(r => r.UpdateAsync(It.IsAny<PlayerProfile>())).Returns(Task.CompletedTask);
-        _gameSaveRepo.Setup(r => r.AddAsync(It.IsAny<GameSave>())).Returns(Task.CompletedTask);
+        _gameSaveRepo.Setup(r => r.AddAsync(It.IsAny<GameSave>())).ReturnsAsync((GameSave)null!);
         _combatRepo.Setup(r => r.GetAllAsync()).ReturnsAsync(new List<CombatStats>());
-        _combatRepo.Setup(r => r.AddAsync(It.IsAny<CombatStats>())).Returns(Task.CompletedTask);
+        _combatRepo.Setup(r => r.AddAsync(It.IsAny<CombatStats>())).ReturnsAsync((CombatStats)null!);
 
         // Act
         var result = await _handler.Handle(BuildCommand(), CancellationToken.None);
@@ -188,9 +188,9 @@ public class SyncGameSaveHandlerTests
         _gameSaveRepo
             .Setup(r => r.AddAsync(It.IsAny<GameSave>()))
             .Callback<GameSave>(s => capturedSave = s)
-            .Returns(Task.CompletedTask);
+            .ReturnsAsync((GameSave)null!);
         _combatRepo.Setup(r => r.GetAllAsync()).ReturnsAsync(new List<CombatStats>());
-        _combatRepo.Setup(r => r.AddAsync(It.IsAny<CombatStats>())).Returns(Task.CompletedTask);
+        _combatRepo.Setup(r => r.AddAsync(It.IsAny<CombatStats>())).ReturnsAsync((CombatStats)null!);
 
         // Act
         await _handler.Handle(BuildCommand(), CancellationToken.None);
@@ -210,9 +210,9 @@ public class SyncGameSaveHandlerTests
         var profile = BuildProfile();
         _profileRepo.Setup(r => r.GetAllAsync()).ReturnsAsync(new List<PlayerProfile> { profile });
         _profileRepo.Setup(r => r.UpdateAsync(It.IsAny<PlayerProfile>())).Returns(Task.CompletedTask);
-        _gameSaveRepo.Setup(r => r.AddAsync(It.IsAny<GameSave>())).Returns(Task.CompletedTask);
+        _gameSaveRepo.Setup(r => r.AddAsync(It.IsAny<GameSave>())).ReturnsAsync((GameSave)null!);
         _combatRepo.Setup(r => r.GetAllAsync()).ReturnsAsync(new List<CombatStats>());
-        _combatRepo.Setup(r => r.AddAsync(It.IsAny<CombatStats>())).Returns(Task.CompletedTask);
+        _combatRepo.Setup(r => r.AddAsync(It.IsAny<CombatStats>())).ReturnsAsync((CombatStats)null!);
 
         // Act
         await _handler.Handle(BuildCommand(), CancellationToken.None);
@@ -230,7 +230,7 @@ public class SyncGameSaveHandlerTests
         var existingStats = new CombatStats { Id = 1, PlayerId = profile.Id, TotalCombats = 5 };
         _profileRepo.Setup(r => r.GetAllAsync()).ReturnsAsync(new List<PlayerProfile> { profile });
         _profileRepo.Setup(r => r.UpdateAsync(It.IsAny<PlayerProfile>())).Returns(Task.CompletedTask);
-        _gameSaveRepo.Setup(r => r.AddAsync(It.IsAny<GameSave>())).Returns(Task.CompletedTask);
+        _gameSaveRepo.Setup(r => r.AddAsync(It.IsAny<GameSave>())).ReturnsAsync((GameSave)null!);
         _combatRepo.Setup(r => r.GetAllAsync()).ReturnsAsync(new List<CombatStats> { existingStats });
         _combatRepo.Setup(r => r.UpdateAsync(It.IsAny<CombatStats>())).Returns(Task.CompletedTask);
 
@@ -264,9 +264,9 @@ public class SyncGameSaveHandlerTests
         var profile = BuildProfile();
         _profileRepo.Setup(r => r.GetAllAsync()).ReturnsAsync(new List<PlayerProfile> { profile });
         _profileRepo.Setup(r => r.UpdateAsync(It.IsAny<PlayerProfile>())).Returns(Task.CompletedTask);
-        _gameSaveRepo.Setup(r => r.AddAsync(It.IsAny<GameSave>())).Returns(Task.CompletedTask);
+        _gameSaveRepo.Setup(r => r.AddAsync(It.IsAny<GameSave>())).ReturnsAsync((GameSave)null!);
         _combatRepo.Setup(r => r.GetAllAsync()).ReturnsAsync(new List<CombatStats>());
-        _combatRepo.Setup(r => r.AddAsync(It.IsAny<CombatStats>())).Returns(Task.CompletedTask);
+        _combatRepo.Setup(r => r.AddAsync(It.IsAny<CombatStats>())).ReturnsAsync((CombatStats)null!);
 
         // Act
         var result = await _handler.Handle(BuildCommand(), CancellationToken.None);

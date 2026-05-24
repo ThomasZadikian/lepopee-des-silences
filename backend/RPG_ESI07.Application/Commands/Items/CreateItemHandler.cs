@@ -15,7 +15,16 @@ public class CreateItemHandler : IRequestHandler<CreateItemCommand, CreateItemRe
 
     public async Task<CreateItemResponse> Handle(CreateItemCommand request, CancellationToken cancellationToken)
     {
-        var entity = new Item();
+        var entity = new Item
+        {
+            Name = request.Name,
+            Type = request.Type,
+            Price = request.Price,
+            Category = request.Category,
+            Description = request.Description,
+            EffectValue = request.EffectValue,
+            StatModifiers = string.IsNullOrWhiteSpace(request.StatModifiers) ? null : request.StatModifiers,
+        };
         await _repository.AddAsync(entity);
         return new CreateItemResponse(entity.Id, "Item created successfully");
     }

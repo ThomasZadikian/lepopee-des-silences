@@ -43,8 +43,8 @@ public class SkillRepositoryTests : IDisposable
         var result = await _repository.GetAllAsync();
 
         result.Should().HaveCount(2);
-        result[0].Id.Should().Be(1);
-        result[1].Id.Should().Be(2);
+        result.Should().ContainSingle(i => i.Id == 1);
+        result.Should().ContainSingle(i => i.Id == 2);
     }
 
     [Fact]

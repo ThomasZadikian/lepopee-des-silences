@@ -152,12 +152,15 @@ const route = useRoute();
 const router = useRouter();
 
 const navItems = [
-  { name: "Dashboard", label: "Tableau de bord" },
-  { name: "Saves", label: "Sauvegardes" },
-  { name: "Inventory", label: "Inventaire" },
-  { name: "Skills", label: "Compétences" },
-  { name: "Bestiary", label: "Bestiaire" },
-  { name: "Rgpd", label: "Mes données" },
+  { name: "Dashboard",   label: "Tableau de bord" },
+  { name: "Saves",       label: "Sauvegardes" },
+  { name: "Inventory",   label: "Inventaire" },
+  { name: "Skills",      label: "Compétences" },
+  { name: "Bestiary",    label: "Bestiaire" },
+  { name: "Calculator",  label: "Calculateur" },
+  { name: "Enclos",      label: "Enclos de Neige" },
+  { name: "Leaderboard", label: "Classement" },
+  { name: "Rgpd",        label: "Mes données" },
 ];
 
 const adminItems = [
@@ -170,14 +173,19 @@ const adminItems = [
 const currentRoute = computed(() => route.name as string);
 
 const pageTitles: Record<string, string> = {
-  Dashboard: "Tableau de bord",
-  Saves: "Sauvegardes",
-  Inventory: "Inventaire",
-  Skills: "Compétences",
-  Bestiary: "Bestiaire",
-  Rgpd: "Mes données",
-  AdminUsers: "Gestion utilisateurs",
-  AdminItems: "Gestion items",
+  Dashboard:     "Tableau de bord",
+  Saves:         "Sauvegardes",
+  Inventory:     "Inventaire",
+  Skills:        "Compétences",
+  Bestiary:      "Bestiaire",
+  Calculator:    "Calculateur de scaling",
+  Enclos:        "Enclos de Neige",
+  Leaderboard:   "Classement",
+  Rgpd:          "Mes données",
+  AdminUsers:    "Gestion utilisateurs",
+  AdminItems:    "Gestion items",
+  AdminSkills:   "Gestion compétences",
+  AdminBestiary: "Gestion monstres",
 };
 
 const currentPageTitle = computed(

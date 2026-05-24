@@ -40,19 +40,24 @@ public class Combatant
 
     public static Combatant FromEnemy(EnemyResponse e)
     {
+        // Lire les stats scalées si disponibles, sinon fallback sur stats de base
+        int hp = e.scaledMaxHP > 0 ? e.scaledMaxHP : e.maxHP;
+        int str = e.scaledStrength > 0 ? e.scaledStrength : e.strength;
+        float spd = e.scaledSpeed > 0 ? e.scaledSpeed : e.speed;
+
         return new Combatant
         {
             name = e.name,
-            currentHP = e.maxHP,
-            maxHP = e.maxHP,
+            currentHP = hp,
+            maxHP = hp,
             currentMP = 0,
             maxMP = 0,
-            speed = e.speed * 1.4f,
+            speed = spd * 1.4f,
             atbCurrent = 0f,
             isPlayer = false,
             portraitColor = Color.red,
-            physicalResistance = 1f,
-            strength = (int)e.strength,
+            physicalResistance = e.physicalResistance > 0 ? e.physicalResistance : 1f,
+            strength = str,
         };
     }
 }

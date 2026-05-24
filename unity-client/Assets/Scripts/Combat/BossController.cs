@@ -154,7 +154,6 @@ public class BossController : MonoBehaviour
     private async Task TriggerPhase3()
     {
         CombatUIManager.Instance.AddLog("Le Dragon souffle une flamme dévasta trice !");
-
         // Souffle de feu — 25% des HP restants du joueur
         var player = GameManager.Instance.Player;
         int dmg = Mathf.Max(1, player.CurrentHP / 4);
@@ -184,6 +183,7 @@ public class BossController : MonoBehaviour
             bossAura.color = new Color(1f, 0.85f, 0f, 0.4f);
         }
 
+        await Task.Delay(300);
         CombatUIManager.Instance.AddLog("Une aura dorée enveloppe le Dragon !");
     }
 

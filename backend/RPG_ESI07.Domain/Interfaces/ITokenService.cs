@@ -9,4 +9,5 @@ public interface ITokenService
     string GenerateMfaToken(User user);
 
     int? ValidateTokenAndGetUserId(string token);
+    int? ValidateMfaToken(string token);
 }

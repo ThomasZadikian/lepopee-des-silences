@@ -1,13 +1,13 @@
 import "@mdi/font/css/materialdesignicons.css";
 import { createVuetify } from "vuetify";
-import * as components from "vuetify/components";
-import * as directives from "vuetify/directives";
+import { VCard, VBtn, VTextField, VChip, VRow, VCol, VProgressCircular, VDialog, VList, VListItem, VSelect, VTextarea, VSwitch } from "vuetify/components";
+import { Ripple } from "vuetify/directives";
 import "vuetify/dist/vuetify.min.css";
 import { aliases, mdi } from "vuetify/iconsets/mdi";
 
 export default createVuetify({
-  components,
-  directives,
+  components: { VCard, VBtn, VTextField, VChip, VRow, VCol, VProgressCircular, VDialog, VList, VListItem, VSelect, VTextarea, VSwitch },
+  directives: { Ripple },
   icons: { defaultSet: "mdi", aliases, sets: { mdi } },
   theme: {
     defaultTheme: "rpgLight",

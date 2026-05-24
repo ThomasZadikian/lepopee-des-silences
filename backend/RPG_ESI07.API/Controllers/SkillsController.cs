@@ -1,5 +1,6 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
 using RPG_ESI07.Application.Commands.Skills;
 using RPG_ESI07.Application.Queries.Skills;
@@ -10,6 +11,7 @@ namespace RPG_ESI07.API.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
+[EnableCors("AllowFrontend")]
 public class SkillsController : ControllerBase
 {
     private readonly IMediator _mediator;

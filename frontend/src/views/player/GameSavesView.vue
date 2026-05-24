@@ -256,8 +256,13 @@ function confirmDelete(save: GameSave) {
 
 async function doDelete() {
   if (!dialog.save) return
-  await gameSavesApi.delete(dialog.save.id)
-  saves.value = saves.value.filter(s => s.id !== dialog.save!.id)
-  dialog.show = false
+  try {
+    await gameSavesApi.delete(dialog.save.id)
+    saves.value = saves.value.filter(s => s.id !== dialog.save!.id)
+  } catch {
+    // erreur silencieuse
+  } finally {
+    dialog.show = false
+  }
 }
 </script>

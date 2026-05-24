@@ -1,4 +1,5 @@
 ﻿using FluentAssertions;
+using Moq;
 using RPG_ESI07.Infrastructure.Services;
 
 namespace RPG_ESI07.Tests.Infrastructure.Services;
@@ -9,7 +10,7 @@ public class Argon2PasswordHasherTests
 
     public Argon2PasswordHasherTests()
     {
-        _hasher = new Argon2PasswordHasher();
+        _hasher = new Argon2PasswordHasher(Mock.Of<Microsoft.Extensions.Logging.ILogger<Argon2PasswordHasher>>());
     }
 
     [Fact]

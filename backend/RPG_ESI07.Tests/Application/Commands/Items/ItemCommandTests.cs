@@ -22,8 +22,8 @@ public class CreateItemHandlerTests
     public async Task Handle_ValidCommand_ReturnsSuccessResponse()
     {
         // Arrange
-        var command = new CreateItemCommand("Épée", Constants.ItemTypeWeapon, 100);
-        _mockRepo.Setup(r => r.AddAsync(It.IsAny<Item>())).Returns(Task.CompletedTask);
+        var command = new CreateItemCommand("Épée", Constants.ItemTypeWeapon, 100, null, "Une épée puissante", 15, null);
+        _mockRepo.Setup(r => r.AddAsync(It.IsAny<Item>())).ReturnsAsync((Item)null!);
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -54,7 +54,7 @@ public class UpdateItemHandlerTests
         _mockRepo.Setup(r => r.UpdateAsync(It.IsAny<Item>())).Returns(Task.CompletedTask);
 
         // Act
-        var result = await _handler.Handle(new UpdateItemCommand(1, "New", Constants.ItemTypeArmor, 200), CancellationToken.None);
+        var result = await _handler.Handle(new UpdateItemCommand(1, "New", Constants.ItemTypeArmor, 200, null, "Armure renforcée", 20, null), CancellationToken.None);
 
         // Assert
         result.Success.Should().BeTrue();
@@ -70,7 +70,7 @@ public class UpdateItemHandlerTests
         _mockRepo.Setup(r => r.GetByIdAsync(99)).ReturnsAsync((Item?)null);
 
         // Act
-        var result = await _handler.Handle(new UpdateItemCommand(99, "X", "X", 0), CancellationToken.None);
+        var result = await _handler.Handle(new UpdateItemCommand(99, "X", "X", 0, null, null, null, null), CancellationToken.None);
 
         // Assert
         result.Success.Should().BeFalse();

@@ -360,22 +360,39 @@ const categories = [
 ]
 
 async function exportData() {
-  const res = await rgpdApi.exportData()
-  alert(JSON.stringify(res.data, null, 2))
+  try {
+    const res = await rgpdApi.exportData()
+    const win = window.open('', '_blank')
+    if (win) {
+      win.document.write(`<pre>${JSON.stringify(res.data, null, 2)}</pre>`)
+      win.document.close()
+    }
+  } catch {
+    // erreur silencieuse — données RGPD
+  }
 }
 
 async function downloadJson() {
-  const res  = await rgpdApi.exportJson()
-  const url  = URL.createObjectURL(new Blob([res.data]))
-  const link = document.createElement('a')
-  link.href  = url
-  link.download = `mes-donnees-rgpd-${auth.userId}.json`
-  link.click()
-  URL.revokeObjectURL(url)
+  try {
+    const res  = await rgpdApi.exportJson()
+    const url  = URL.createObjectURL(new Blob([res.data]))
+    const link = document.createElement('a')
+    link.href  = url
+    link.download = `mes-donnees-rgpd-${auth.userId}.json`
+    link.click()
+    URL.revokeObjectURL(url)
+  } catch {
+    // erreur silencieuse
+  }
 }
 
 async function deleteAccount() {
-  await rgpdApi.deleteAccount(deleteReason.value || undefined)
-  auth.logout()
+  try {
+    await rgpdApi.deleteAccount(deleteReason.value || undefined)
+    auth.logout()
+  } catch {
+    // erreur silencieuse — logout forcé
+    auth.logout()
+  }
 }
 </script>

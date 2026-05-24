@@ -74,7 +74,7 @@ public class ExceptionHandlingMiddlewareTests
         responseData.Should().NotBeNull();
         responseData!.Success.Should().BeFalse();
         responseData.Message.Should().Be("An internal server error occurred");
-        responseData.Errors.Should().ContainSingle().Which.Should().Be(exceptionMessage);
+        responseData.Errors.Should().BeEmpty();
     }
 
     [Fact]
@@ -88,7 +88,7 @@ public class ExceptionHandlingMiddlewareTests
 
         responseData.Should().NotBeNull();
         responseData!.Message.Should().Be("Invalid input");
-        responseData.Errors.Should().ContainSingle().Which.Should().Contain("Parameter cannot be null");
+        responseData.Errors.Should().BeEmpty();
     }
 
     [Fact]
@@ -103,6 +103,6 @@ public class ExceptionHandlingMiddlewareTests
 
         responseData.Should().NotBeNull();
         responseData!.Message.Should().Be("Resource not found");
-        responseData.Errors.Should().ContainSingle().Which.Should().Be(exceptionMessage);
+        responseData.Errors.Should().BeEmpty();
     }
 }

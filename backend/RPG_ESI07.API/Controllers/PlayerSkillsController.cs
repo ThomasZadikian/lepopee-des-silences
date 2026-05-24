@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RPG_ESI07.Application.Commands.PlayerSkills;
+using RPG_ESI07.Application.Queries.PlayerProfiles;
 using RPG_ESI07.Application.Queries.PlayerSkills;
 using RPG_ESI07.Domain;
 using System.Security.Claims;
@@ -30,7 +31,9 @@ public class PlayerSkillsController : ControllerBase
     {
         var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
         var isAdmin = User.IsInRole(Constants.RoleAdmin);
-        var result = await _mediator.Send(new GetPlayerSkillByIdQuery(id, currentUserId, isAdmin));
+        var profile = await _mediator.Send(new GetPlayerProfileByUserIdQuery(currentUserId));
+        if (profile == null) return NotFound();
+        var result = await _mediator.Send(new GetPlayerSkillByIdQuery(id, profile.Id, isAdmin));
         return Ok(result);
     }
 
@@ -38,8 +41,13 @@ public class PlayerSkillsController : ControllerBase
     public async Task<IActionResult> Create([FromBody] CreatePlayerSkillCommand command)
     {
         var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-        if (!User.IsInRole(Constants.RoleAdmin) && command.PlayerId != currentUserId)
-            return Forbid();
+        var isAdmin = User.IsInRole(Constants.RoleAdmin);
+        if (!isAdmin)
+        {
+            var profile = await _mediator.Send(new GetPlayerProfileByUserIdQuery(currentUserId));
+            if (profile == null) return NotFound();
+            if (command.PlayerId != profile.Id) return Forbid();
+        }
 
         var result = await _mediator.Send(command);
         return CreatedAtAction(nameof(GetAll), new { id = result.Id }, result);
@@ -52,8 +60,10 @@ public class PlayerSkillsController : ControllerBase
 
         var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
         var isAdmin = User.IsInRole(Constants.RoleAdmin);
+        var profile = await _mediator.Send(new GetPlayerProfileByUserIdQuery(currentUserId));
+        if (profile == null) return NotFound();
 
-        var result = await _mediator.Send(command with { RequestingUserId = currentUserId, IsAdmin = isAdmin });
+        var result = await _mediator.Send(command with { RequestingUserId = profile.Id, IsAdmin = isAdmin });
         return Ok(result);
     }
 
@@ -62,17 +72,20 @@ public class PlayerSkillsController : ControllerBase
     {
         var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
         var isAdmin = User.IsInRole(Constants.RoleAdmin);
+        var profile = await _mediator.Send(new GetPlayerProfileByUserIdQuery(currentUserId));
+        if (profile == null) return NotFound();
 
-        var result = await _mediator.Send(new DeletePlayerSkillCommand(id, currentUserId, isAdmin));
+        var result = await _mediator.Send(new DeletePlayerSkillCommand(id, profile.Id, isAdmin));
         return Ok(result);
     }
 
-    // GET /api/playerskills/me — retourne les skills du joueur connecté
     [HttpGet("me")]
     public async Task<IActionResult> GetMySkills()
     {
         var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-        var result = await _mediator.Send(new GetAllPlayerSkillsQuery(currentUserId));
+        var profile = await _mediator.Send(new GetPlayerProfileByUserIdQuery(currentUserId));
+        if (profile == null) return NotFound();
+        var result = await _mediator.Send(new GetAllPlayerSkillsQuery(profile.Id));
         return Ok(result);
     }
 }

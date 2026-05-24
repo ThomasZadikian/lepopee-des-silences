@@ -5,10 +5,10 @@ public class Skill
     public int Id { get; set; }
     public string Name { get; set; } = string.Empty;
     public int MPCost { get; set; }
-    public int? BaseDamage { get; set; } // Si sort offensif
-    public int? HealAmount { get; set; } // Si sort soin
-    public string EffectType { get; set; } = string.Empty; // damage, heal, buff, debuff
-    public string? ElementType { get; set; } // fire, lightning, neutral
+    public int? BaseDamage { get; set; }
+    public int? HealAmount { get; set; }
+    public string EffectType { get; set; } = string.Empty;
+    public string? ElementType { get; set; }
     public string? Description { get; set; }
 
     // Navigation properties
