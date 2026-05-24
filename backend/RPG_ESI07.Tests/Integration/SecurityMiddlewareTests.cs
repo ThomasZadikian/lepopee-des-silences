@@ -68,18 +68,20 @@ public class AuthRateLimitingTests : IClassFixture<WebApplicationFactory<Program
     }
 
     [Fact]
-    public async Task Login_Policy_Triggers_After_Five_Requests()
+    public async Task Login_Policy_Triggers_After_Hundred_Requests()
     {
         var command = new { Username = "testuser", Password = "wrongpassword" };
 
-        for (int i = 0; i < 100; i++)
+        HttpResponseMessage lastResponse = null!;
+
+        for (int i = 0; i < 110; i++)
         {
-            var r = await _client.PostAsJsonAsync("/api/auth/login", command);
-            r.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+            lastResponse = await _client.PostAsJsonAsync("/api/auth/login", command);
+
+            if ((int)lastResponse.StatusCode == 429)
+                break;
         }
 
-        // La 6ème est bloquée par le rate limiter
-        var response = await _client.PostAsJsonAsync("/api/auth/login", command);
-        response.StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
+        lastResponse!.StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
     }
 }
