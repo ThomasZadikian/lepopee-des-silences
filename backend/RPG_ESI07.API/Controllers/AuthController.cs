@@ -15,7 +15,7 @@ public class AuthController : ControllerBase
     => _mediator = mediator;
 
     [HttpPost("register")]
-    [EnableRateLimiting("login")]
+    [EnableRateLimiting("register")]
     public async Task<IActionResult> Register(
     [FromBody] RegisterCommand command)
     {

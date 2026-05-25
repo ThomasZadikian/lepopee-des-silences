@@ -27,6 +27,7 @@ Log.Logger = new LoggerConfiguration()
     .CreateLogger();
 
 var builder = WebApplication.CreateBuilder(args);
+builder.WebHost.ConfigureKestrel(options => options.AddServerHeader = false);
 builder.Host.UseSerilog();
 
 builder.Services.AddControllers()
@@ -185,8 +186,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 var corsOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
 if (corsOrigins == null || corsOrigins.Length == 0)
-    throw new InvalidOperationException(
-        "Cors:AllowedOrigins est requis. Configurez la variable d'environnement.");
+    corsOrigins = new[] { "http://localhost" };
 
 builder.Services.AddCors(options =>
 {
@@ -221,11 +221,23 @@ using (var scope = app.Services.CreateScope())
 }
 
 // ── Swagger — dev uniquement ───────────────────────────────────────────────────
-app.UseSwagger();
-app.UseSwaggerUI();
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
 
 // HTTPS redirection désactivée — géré par le reverse proxy Railway en production
 // app.UseHttpsRedirection() 
+
+// ── Supprimer les en-têtes d'information du serveur ─────────────────────────────
+app.Use(async (context, next) =>
+{
+    context.Response.Headers.Remove("Server");
+    context.Response.Headers.Remove("X-Powered-By");
+    context.Response.Headers.Remove("X-AspNet-Version");
+    await next();
+});
 
 app.UseCors("AllowFrontend");
 app.Use(async (context, next) =>

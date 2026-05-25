@@ -364,8 +364,10 @@ async function exportData() {
     const res = await rgpdApi.exportData()
     const win = window.open('', '_blank')
     if (win) {
-      win.document.write(`<pre>${JSON.stringify(res.data, null, 2)}</pre>`)
+      win.document.write('<pre id="rgpd-data"></pre>')
       win.document.close()
+      const pre = win.document.getElementById('rgpd-data')
+      if (pre) pre.textContent = JSON.stringify(res.data, null, 2)
     }
   } catch {
     // erreur silencieuse — données RGPD

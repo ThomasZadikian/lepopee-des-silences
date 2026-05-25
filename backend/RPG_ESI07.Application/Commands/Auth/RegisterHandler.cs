@@ -1,4 +1,5 @@
 ﻿using MediatR;
+using Microsoft.EntityFrameworkCore;
 using RPG_ESI07.Domain;
 using RPG_ESI07.Domain.Entities;
 using RPG_ESI07.Domain.Interfaces;
@@ -39,7 +40,14 @@ public class RegisterHandler
             MfaEnabled = false
         };
 
-        user = await _userRepo.AddAsync(user);
+        try
+        {
+            user = await _userRepo.AddAsync(user);
+        }
+        catch (DbUpdateException)
+        {
+            return new AuthResponse(false, null, false, "Identifiants incorrects.");
+        }
 
         var profile = new PlayerProfile
         {

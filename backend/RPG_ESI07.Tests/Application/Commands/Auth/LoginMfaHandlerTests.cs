@@ -12,6 +12,7 @@ public class LoginMfaHandlerTests
     private readonly Mock<IUserRepository> _mockRepo;
     private readonly Mock<IMfaService> _mockMfa;
     private readonly Mock<ITokenService> _mockToken;
+    private readonly Mock<IEncryptionService> _mockEncryption;
     private readonly LoginMfaHandler _handler;
 
     public LoginMfaHandlerTests()
@@ -19,7 +20,8 @@ public class LoginMfaHandlerTests
         _mockRepo = new Mock<IUserRepository>(MockBehavior.Strict);
         _mockMfa = new Mock<IMfaService>(MockBehavior.Strict);
         _mockToken = new Mock<ITokenService>(MockBehavior.Strict);
-        _handler = new LoginMfaHandler(_mockRepo.Object, _mockMfa.Object, _mockToken.Object);
+        _mockEncryption = new Mock<IEncryptionService>(MockBehavior.Strict);
+        _handler = new LoginMfaHandler(_mockRepo.Object, _mockMfa.Object, _mockToken.Object, _mockEncryption.Object);
     }
 
     [Fact]
@@ -29,6 +31,7 @@ public class LoginMfaHandlerTests
         var user = new User { Id = 1, Username = "testuser", Role = Constants.RolePlayer, MfaSecret = secret };
 
         _mockRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(user);
+        _mockEncryption.Setup(e => e.Decrypt(secret)).Returns(secret);
         _mockMfa.Setup(m => m.ValidateCode(secret, "123456")).Returns(true);
         _mockRepo.Setup(r => r.UpdateAsync(It.IsAny<User>())).Returns(Task.CompletedTask);
         _mockToken.Setup(t => t.GenerateAccessToken(It.IsAny<User>(), Constants.RolePlayer)).Returns("jwt-token");
@@ -48,6 +51,7 @@ public class LoginMfaHandlerTests
         var user = new User { Id = 1, Username = "testuser", Role = Constants.RolePlayer, MfaSecret = secret };
 
         _mockRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(user);
+        _mockEncryption.Setup(e => e.Decrypt(secret)).Returns(secret);
         _mockMfa.Setup(m => m.ValidateCode(secret, "000000")).Returns(false);
 
         var result = await _handler.Handle(new LoginMfaCommand(1, "000000"), CancellationToken.None);
@@ -87,6 +91,7 @@ public class LoginMfaHandlerTests
         var user = new User { Id = 1, Username = "testuser", Role = Constants.RolePlayer, MfaSecret = secret };
 
         _mockRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(user);
+        _mockEncryption.Setup(e => e.Decrypt(secret)).Returns(secret);
         _mockMfa.Setup(m => m.ValidateCode(secret, "123456")).Returns(true);
         _mockRepo.Setup(r => r.UpdateAsync(It.IsAny<User>())).Returns(Task.CompletedTask);
         _mockToken.Setup(t => t.GenerateAccessToken(It.IsAny<User>(), Constants.RolePlayer)).Returns("jwt-token");
