@@ -32,6 +32,7 @@ public static class InfrastructureDependencyInjection
         services.AddScoped<IPasswordHasher, Argon2PasswordHasher>();
         services.AddScoped<ITokenService, JwtTokenService>();
         services.AddScoped<IMfaService, TotpMfaService>();
+        services.AddScoped<IEncryptionService, AesEncryptionService>();
         services.AddHostedService<CompanionBackgroundService>();
 
         // Caching

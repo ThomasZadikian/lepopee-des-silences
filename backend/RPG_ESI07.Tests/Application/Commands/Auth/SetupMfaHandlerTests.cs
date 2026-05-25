@@ -11,6 +11,7 @@ public class SetupMfaHandlerTests
     private readonly Mock<IUserRepository> _mockRepo;
     private readonly Mock<IMfaService> _mockMfa;
     private readonly Mock<ITokenService> _mockToken;
+    private readonly Mock<IEncryptionService> _mockEncryption;
     private readonly SetupMfaHandler _handler;
 
     public SetupMfaHandlerTests()
@@ -18,7 +19,8 @@ public class SetupMfaHandlerTests
         _mockRepo = new Mock<IUserRepository>(MockBehavior.Strict);
         _mockMfa = new Mock<IMfaService>(MockBehavior.Strict);
         _mockToken = new Mock<ITokenService>(MockBehavior.Strict);
-        _handler = new SetupMfaHandler(_mockRepo.Object, _mockMfa.Object, _mockToken.Object);
+        _mockEncryption = new Mock<IEncryptionService>(MockBehavior.Strict);
+        _handler = new SetupMfaHandler(_mockRepo.Object, _mockMfa.Object, _mockToken.Object, _mockEncryption.Object);
     }
 
     [Fact]
@@ -32,6 +34,7 @@ public class SetupMfaHandlerTests
         _mockMfa.Setup(m => m.GenerateSecret()).Returns(secret);
         _mockMfa.Setup(m => m.SecretToBase32(secret)).Returns("BASE32SECRET");
         _mockMfa.Setup(m => m.GetQrCodeUri("BASE32SECRET", "testuser")).Returns("otpauth://totp/...");
+        _mockEncryption.Setup(e => e.Encrypt(secret)).Returns(new byte[] { 10, 11, 12, 13, 14 });
         _mockRepo.Setup(r => r.UpdateAsync(It.IsAny<User>())).Returns(Task.CompletedTask);
 
         var result = await _handler.Handle(
