@@ -186,8 +186,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 var corsOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
 if (corsOrigins == null || corsOrigins.Length == 0)
-    throw new InvalidOperationException(
-        "Cors:AllowedOrigins est requis. Configurez la variable d'environnement.");
+    corsOrigins = new[] { "http://localhost" };
 
 builder.Services.AddCors(options =>
 {
