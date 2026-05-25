@@ -8,12 +8,14 @@ public class SetupMfaHandler : IRequestHandler<SetupMfaCommand, SetupMfaResponse
     private readonly IUserRepository _userRepo;
     private readonly IMfaService _mfaService;
     private readonly ITokenService _tokenService;
+    private readonly IEncryptionService _encryption;
 
-    public SetupMfaHandler(IUserRepository userRepo, IMfaService mfaService, ITokenService tokenService)
+    public SetupMfaHandler(IUserRepository userRepo, IMfaService mfaService, ITokenService tokenService, IEncryptionService encryption)
     {
         _userRepo = userRepo;
         _mfaService = mfaService;
         _tokenService = tokenService;
+        _encryption = encryption;
     }
 
     public async Task<SetupMfaResponse> Handle(SetupMfaCommand request, CancellationToken ct)
@@ -32,8 +34,8 @@ public class SetupMfaHandler : IRequestHandler<SetupMfaCommand, SetupMfaResponse
             _mfaService.SecretToBase32(secret),
             user.Username);
 
-        // Stocker le secret
-        user.MfaSecret = secret;
+        // Stocker le secret chiffré
+        user.MfaSecret = _encryption.Encrypt(secret);
         await _userRepo.UpdateAsync(user);
 
         return new SetupMfaResponse(

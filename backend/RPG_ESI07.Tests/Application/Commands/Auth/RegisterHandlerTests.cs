@@ -1,4 +1,5 @@
 ﻿using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
 using Moq;
 using RPG_ESI07.Application.Commands.Auth;
 using RPG_ESI07.Domain.Entities;
@@ -60,6 +61,21 @@ public class RegisterHandlerTests
 
         var result = await _handler.Handle(
             new RegisterCommand("existing", "x@x.com", "Pass123!"),
+            CancellationToken.None);
+
+        result.success.Should().BeFalse();
+        result.token.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Handle_RaceCondition_AddThrowsDbUpdateException_ReturnsFailure()
+    {
+        _mockUserRepo.Setup(r => r.UsernameExistsAsync("newuser")).ReturnsAsync(false);
+        _mockHasher.Setup(h => h.HashPassword("Pass123!")).Returns("hashed");
+        _mockUserRepo.Setup(r => r.AddAsync(It.IsAny<User>())).ThrowsAsync(new DbUpdateException("Duplicate key"));
+
+        var result = await _handler.Handle(
+            new RegisterCommand("newuser", "test@test.com", "Pass123!"),
             CancellationToken.None);
 
         result.success.Should().BeFalse();

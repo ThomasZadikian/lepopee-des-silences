@@ -445,6 +445,10 @@ dist-ssr/
 .env
 frontend/.env
 
+#backend
+**/appsettings.json
+**/appsettings.*.json
+
 # Coverage
 coverage/
 TestResults/

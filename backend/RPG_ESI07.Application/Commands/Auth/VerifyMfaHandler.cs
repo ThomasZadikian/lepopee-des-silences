@@ -8,12 +8,14 @@ public class VerifyMfaHandler : IRequestHandler<VerifyMfaCommand, AuthResponse>
     private readonly IUserRepository _userRepo;
     private readonly IMfaService _mfaService;
     private readonly ITokenService _tokenService;
+    private readonly IEncryptionService _encryption;
 
-    public VerifyMfaHandler(IUserRepository userRepo, IMfaService mfaService, ITokenService tokenService)
+    public VerifyMfaHandler(IUserRepository userRepo, IMfaService mfaService, ITokenService tokenService, IEncryptionService encryption)
     {
         _userRepo = userRepo;
         _mfaService = mfaService;
         _tokenService = tokenService;
+        _encryption = encryption;
     }
 
     public async Task<AuthResponse> Handle(VerifyMfaCommand request, CancellationToken ct)
@@ -26,7 +28,8 @@ public class VerifyMfaHandler : IRequestHandler<VerifyMfaCommand, AuthResponse>
         if (user == null || user.MfaSecret == null)
             return new AuthResponse(false, null, false, "Identifiants incorrects.");
 
-        if (!_mfaService.ValidateCode(user.MfaSecret, request.Code))
+        var decryptedSecret = _encryption.Decrypt(user.MfaSecret);
+        if (!_mfaService.ValidateCode(decryptedSecret, request.Code))
             return new AuthResponse(false, null, false, "Code invalide ou expiré.");
 
         // Active le MFA si ce n'est pas encore fait
