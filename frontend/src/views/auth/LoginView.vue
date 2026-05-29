@@ -199,6 +199,27 @@
       <div style="font-size: 10px; font-weight: 600; letter-spacing: 0.15em; text-transform: uppercase; color: var(--rpg-ink-muted);">
         RPG ESI07 · Édition Joueur
       </div>
+        <div
+    style="
+      display: flex; align-items: center; gap: 8px;
+      cursor: pointer;
+      font-size: 11px; font-weight: 700;
+      letter-spacing: 0.1em; text-transform: uppercase;
+    "
+    @click="$router.push({ name: 'Download' })"
+  >
+    <span style="color: var(--rpg-ink-muted);">Client Windows</span>
+    <span
+      style="
+        padding: 4px 10px;
+        background: var(--rpg-ink);
+        color: white;
+        font-size: 10px;
+      "
+    >
+      Télécharger →
+    </span>
+  </div>
       <div style="font-size: 10px; color: var(--rpg-ink-muted);">
         P. 02 / 03 — Connexion
       </div>
