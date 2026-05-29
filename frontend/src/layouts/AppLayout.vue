@@ -8,35 +8,39 @@
         class="rpg-sidebar" 
         style="position: fixed; height: 100vh; overflow-y: auto;"
       >
-        <!-- Logo -->
-        <div class="pa-5 grid-border-bottom">
-          <div
-            style="
-              font-family: var(--font-serif);
-              font-size: 1.1rem;
-              font-weight: 900;
-              letter-spacing: -0.02em;
-            "
-          >
-            RPG_ESI07
-          </div>
-          <div class="editorial-label mt-1">
-            Portail joueur
-          </div>
-        </div>
+<!-- Logo -->
+<div
+  class="pa-5 grid-border-bottom"
+  style="cursor: pointer;"
+  @click="router.push({ name: auth.isAuthenticated ? 'Dashboard' : 'Login' })"
+>
+  <div
+    style="
+      font-family: var(--font-serif);
+      font-size: 1.1rem;
+      font-weight: 900;
+      letter-spacing: -0.02em;
+    "
+  >
+    RPG_ESI07
+  </div>
+  <div class="editorial-label mt-1">
+    Portail joueur
+  </div>
+</div>
 
         <!-- Navigation principale -->
-        <div class="py-3">
-          <div
-            v-for="item in navItems"
-            :key="item.name"
-            class="rpg-sidebar-item"
-            :class="{ active: currentRoute === item.name }"
-            @click="router.push({ name: item.name })"
-          >
-            {{ item.label }}
-          </div>
-        </div>
+<div class="py-3" v-if="auth.isAuthenticated">
+  <div
+    v-for="item in navItems"
+    :key="item.name"
+    class="rpg-sidebar-item"
+    :class="{ active: currentRoute === item.name }"
+    @click="router.push({ name: item.name })"
+  >
+    {{ item.label }}
+  </div>
+</div>
 
         <!-- Section Admin -->
         <template v-if="auth.isAdmin">
@@ -58,7 +62,10 @@
 
         <!-- Logout -->
         <template #append>
-          <div class="grid-border-top">
+          <div 
+          v-if="auth.isAuthenticated" 
+          class="grid-border-top"
+          >
             <div class="pa-4">
               <div
                 class="editorial-label mb-1"
@@ -161,6 +168,7 @@ const navItems = [
   { name: "Enclos",      label: "Enclos de Neige" },
   { name: "Leaderboard", label: "Classement" },
   { name: "Rgpd",        label: "Mes données" },
+  { name: "Download",    label: "Télécharger le jeu" },
 ];
 
 const adminItems = [
@@ -186,6 +194,7 @@ const pageTitles: Record<string, string> = {
   AdminItems:    "Gestion items",
   AdminSkills:   "Gestion compétences",
   AdminBestiary: "Gestion monstres",
+  Download: "Télécharger le jeu",
 };
 
 const currentPageTitle = computed(

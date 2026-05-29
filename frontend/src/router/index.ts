@@ -77,6 +77,12 @@ const router = createRouter({
           component: () => import('@/views/player/CalculatorView.vue'),
         },
         {
+          path: '/download',
+          name: 'Download',
+          component: () => import('@/views/DownloadView.vue'),
+          meta: { requiresAuth: false }
+        },
+        {
           path: "admin/users",
           name: "AdminUsers",
           component: () => import("@/views/admin/AdminUsersView.vue"),
