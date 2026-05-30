@@ -30,12 +30,12 @@ public sealed class ChooseNodeCommandHandlerTests
 
         response.Run.Id.Should().Be(run.Id.Value);
 
-        var selectedNodeDto = response.Run.CurrentRoom.Nodes
+        var selectedNodeDto = response.Run.CurrentRoom.NodeLayers.SelectMany(layer => layer.Nodes)
             .Single(node => node.Id == selectedNode.Id.Value);
 
         selectedNodeDto.State.Should().Be(NodeState.Selected.ToString());
 
-        response.Run.CurrentRoom.Nodes
+        response.Run.CurrentRoom.NodeLayers.SelectMany(layer => layer.Nodes)
             .Where(node => node.Id != selectedNode.Id.Value)
             .Should()
             .OnlyContain(node => node.State == NodeState.Locked.ToString());

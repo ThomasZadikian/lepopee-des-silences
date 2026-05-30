@@ -1,7 +1,8 @@
 using Leds.GameEngine.Application.Runs.ChooseNode;
+using Leds.GameEngine.Application.Runs.GenerateNextNodes;
 using Leds.GameEngine.Application.Runs.GetRunById;
-using Leds.GameEngine.Application.Runs.StartRun;
 using Leds.GameEngine.Application.Runs.ResolveCurrentEvent;
+using Leds.GameEngine.Application.Runs.StartRun;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -74,6 +75,21 @@ public sealed class RunsController : ControllerBase
         CancellationToken cancellationToken)
     {
         var command = new ResolveCurrentEventCommand(runId);
+
+        var response = await _sender.Send(command, cancellationToken);
+
+        return Ok(response);
+    }
+
+    [HttpPost("{runId:guid}/nodes/next")]
+    [ProducesResponseType(typeof(GenerateNextNodesResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<GenerateNextNodesResponse>> GenerateNextNodes(
+    Guid runId,
+    CancellationToken cancellationToken)
+    {
+        var command = new GenerateNextNodesCommand(runId);
 
         var response = await _sender.Send(command, cancellationToken);
 

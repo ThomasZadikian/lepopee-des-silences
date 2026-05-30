@@ -31,7 +31,7 @@ public sealed class GetRunByIdEndpointTests : IClassFixture<WebApplicationFactor
         payload!.Run.Id.Should().Be(startRunResponse.Run.Id);
         payload.Run.PlayerId.Should().Be(startRunResponse.Run.PlayerId);
         payload.Run.Status.Should().Be("Active");
-        payload.Run.CurrentRoom.Nodes.Should().HaveCount(4);
+        payload.Run.CurrentRoom.NodeLayers.SelectMany(layer => layer.Nodes).Should().HaveCount(4);
     }
 
     [Fact]

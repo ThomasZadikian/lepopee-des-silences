@@ -42,8 +42,8 @@ public sealed class StartRunEndpointTests : IClassFixture<WebApplicationFactory<
         payload.Run.CurrentDepth.Should().Be(0);
         payload.Run.CurrentRoom.Depth.Should().Be(0);
         payload.Run.CurrentRoom.Theme.Should().Be("Threshold");
-        payload.Run.CurrentRoom.Nodes.Should().HaveCount(4);
-        payload.Run.CurrentRoom.Nodes.Should().OnlyContain(node => node.State == "Available");
+        payload.Run.CurrentRoom.NodeLayers.SelectMany(layer => layer.Nodes).Should().HaveCount(4);
+        payload.Run.CurrentRoom.NodeLayers.SelectMany(layer => layer.Nodes).Should().OnlyContain(node => node.State == "Available");
     }
 
     [Fact]

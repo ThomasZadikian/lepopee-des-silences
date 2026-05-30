@@ -30,7 +30,7 @@ public sealed class GetRunByIdQueryHandlerTests
         response.Run.Id.Should().Be(run.Id.Value);
         response.Run.PlayerId.Should().Be(run.PlayerId);
         response.Run.Status.Should().Be(RunStatus.Active.ToString());
-        response.Run.CurrentRoom.Nodes.Should().HaveCount(4);
+        response.Run.CurrentRoom.NodeLayers.SelectMany(layer => layer.Nodes).Should().HaveCount(4);
     }
 
     [Fact]

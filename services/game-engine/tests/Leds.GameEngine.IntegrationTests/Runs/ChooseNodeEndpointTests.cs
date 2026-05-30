@@ -20,7 +20,7 @@ public sealed class ChooseNodeEndpointTests : IClassFixture<WebApplicationFactor
     public async Task ChooseNode_ShouldSelectNode_AndLockOtherNodes()
     {
         var startRunResponse = await StartRunAsync();
-        var nodeToChoose = startRunResponse.Run.CurrentRoom.Nodes.First();
+        var nodeToChoose = startRunResponse.Run.CurrentRoom.NodeLayers.SelectMany(layer => layer.Nodes).First();
 
         var response = await _client.PostAsync(
             $"/api/v2/runs/{startRunResponse.Run.Id}/nodes/{nodeToChoose.Id}/choose",
@@ -33,12 +33,12 @@ public sealed class ChooseNodeEndpointTests : IClassFixture<WebApplicationFactor
         payload.Should().NotBeNull();
         payload!.Run.Id.Should().Be(startRunResponse.Run.Id);
 
-        var selectedNode = payload.Run.CurrentRoom.Nodes
+        var selectedNode = payload.Run.CurrentRoom.NodeLayers.SelectMany(layer => layer.Nodes)
             .Single(node => node.Id == nodeToChoose.Id);
 
         selectedNode.State.Should().Be("Selected");
 
-        payload.Run.CurrentRoom.Nodes
+        payload.Run.CurrentRoom.NodeLayers.SelectMany(layer => layer.Nodes)
             .Where(node => node.Id != nodeToChoose.Id)
             .Should()
             .OnlyContain(node => node.State == "Locked");

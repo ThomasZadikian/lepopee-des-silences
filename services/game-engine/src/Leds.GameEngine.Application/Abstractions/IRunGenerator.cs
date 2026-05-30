@@ -1,4 +1,6 @@
-﻿using Leds.GameEngine.Domain.Rooms;
+﻿using Leds.GameEngine.Domain.Nodes;
+using Leds.GameEngine.Domain.Rooms;
+using Leds.GameEngine.Domain.Runs;
 
 namespace Leds.GameEngine.Application.Abstractions;
 
@@ -11,4 +13,6 @@ public interface IRunGenerator
     string GenerateSeed();
 
     Room GenerateInitialRoom(string seed);
+    IReadOnlyCollection<Node> GenerateNextNodes(Run run);
+
 }

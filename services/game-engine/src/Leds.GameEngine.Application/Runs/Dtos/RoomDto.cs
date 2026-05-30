@@ -9,11 +9,19 @@ public sealed record RoomDto(
     string State,
     int CurrentNodeDepth,
     int MaxNodeDepth,
-    IReadOnlyCollection<NodeDto> Nodes,
+    IReadOnlyCollection<NodeLayerDto> NodeLayers,
     IReadOnlyCollection<NodeDto> AvailableNodes)
 {
     public static RoomDto FromDomain(Room room)
     {
+        var nodeLayers = room.Nodes
+            .GroupBy(node => node.NodeDepth)
+            .OrderBy(group => group.Key)
+            .Select(group => new NodeLayerDto(
+                group.Key,
+                group.Select(NodeDto.FromDomain).ToArray()))
+            .ToArray();
+
         return new RoomDto(
             room.Id.Value,
             room.Depth,
@@ -21,7 +29,7 @@ public sealed record RoomDto(
             room.State.ToString(),
             room.CurrentNodeDepth,
             room.MaxNodeDepth,
-            room.Nodes.Select(NodeDto.FromDomain).ToArray(),
+            nodeLayers,
             room.AvailableNodes.Select(NodeDto.FromDomain).ToArray());
     }
 }

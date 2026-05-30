@@ -44,7 +44,7 @@ public sealed class StartRunCommandHandlerTests
         response.Run.GeneratorVersion.Should().Be("gen-0.1.0");
         response.Run.MarkovMatrixVersion.Should().Be("markov-0.1.0");
         response.Run.Status.Should().Be(RunStatus.Active.ToString());
-        response.Run.CurrentRoom.Nodes.Should().HaveCount(4);
+        response.Run.CurrentRoom.NodeLayers.SelectMany(layer => layer.Nodes).Should().HaveCount(4);
 
         repository.Verify(
             repo => repo.AddAsync(

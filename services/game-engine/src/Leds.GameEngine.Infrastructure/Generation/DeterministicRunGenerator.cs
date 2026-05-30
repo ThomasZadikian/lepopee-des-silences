@@ -1,6 +1,7 @@
 using Leds.GameEngine.Application.Abstractions;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rooms;
+using Leds.GameEngine.Domain.Runs;
 
 namespace Leds.GameEngine.Infrastructure.Generation;
 
@@ -40,10 +41,73 @@ public sealed class DeterministicRunGenerator : IRunGenerator
             maxNodeDepth: maxNodeDepth);
     }
 
+    public IReadOnlyCollection<Node> GenerateNextNodes(Run run)
+    {
+        ArgumentNullException.ThrowIfNull(run);
+
+        var room = run.CurrentRoom;
+
+        if (room.State != RoomState.NodeResolved)
+        {
+            throw new Leds.GameEngine.Domain.Common.DomainException(
+                "Current node event must be resolved before adding next nodes.");
+        }
+        var resolvedNode = room.GetResolvedNodeAtCurrentDepth();
+        var nextNodeDepth = room.CurrentNodeDepth + 1;
+
+        var random = CreateDeterministicRandom(
+            $"{run.Seed}:room:{room.Depth}:next-depth:{nextNodeDepth}:parent-type:{resolvedNode.EventType}:parent-risk:{resolvedNode.RiskLevel}");
+
+        if (nextNodeDepth == room.MaxNodeDepth)
+        {
+            return new[]
+            {
+                CreateNode(
+                    random,
+                    NodeEventType.RoomBoss,
+                    nodeDepth: nextNodeDepth,
+                    parentNodeId: resolvedNode.Id,
+                    isRoomBossNode: true)
+            };
+        }
+
+        var nodeCount = random.Next(1, 5);
+
+        var eventTypes = new[]
+        {
+            NodeEventType.Combat,
+            NodeEventType.Memory,
+            NodeEventType.Rest,
+            NodeEventType.Item,
+            NodeEventType.Npc,
+            NodeEventType.Merchant,
+            NodeEventType.Law,
+            NodeEventType.Curse,
+            NodeEventType.Rare
+        };
+
+        return Enumerable
+            .Range(0, nodeCount)
+            .Select(_ =>
+            {
+                var eventType = eventTypes[random.Next(eventTypes.Length)];
+
+                return CreateNode(
+                    random,
+                    eventType,
+                    nodeDepth: nextNodeDepth,
+                    parentNodeId: resolvedNode.Id,
+                    isRoomBossNode: false);
+            })
+            .ToArray();
+    }
+
     private static Node CreateNode(
         Random random,
         NodeEventType eventType,
-        int nodeDepth)
+        int nodeDepth,
+        NodeId? parentNodeId = null,
+        bool isRoomBossNode = false)
     {
         var riskLevel = eventType switch
         {
@@ -83,7 +147,9 @@ public sealed class DeterministicRunGenerator : IRunGenerator
             eventType,
             riskLevel,
             rewardProfile,
-            nodeDepth);
+            nodeDepth,
+            parentNodeId,
+            isRoomBossNode);
     }
 
     private static Random CreateDeterministicRandom(string seed)
