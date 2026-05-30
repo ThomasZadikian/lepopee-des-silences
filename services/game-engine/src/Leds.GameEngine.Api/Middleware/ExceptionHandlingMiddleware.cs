@@ -1,6 +1,7 @@
 using FluentValidation;
 using Leds.GameEngine.Domain.Common;
 using Microsoft.AspNetCore.Mvc;
+using Leds.GameEngine.Application.Common.Exceptions;
 
 namespace Leds.GameEngine.Api.Middleware;
 
@@ -37,6 +38,14 @@ public sealed class ExceptionHandlingMiddleware
                 context,
                 StatusCodes.Status400BadRequest,
                 "Domain rule violated.",
+                new[] { exception.Message });
+        }
+        catch (NotFoundException exception)
+        {
+            await WriteProblemDetailsAsync(
+                context,
+                StatusCodes.Status404NotFound,
+                "Resource not found.",
                 new[] { exception.Message });
         }
         catch (Exception exception)

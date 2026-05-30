@@ -1,3 +1,4 @@
+using Leds.GameEngine.Application.Runs.GetRunById;
 using Leds.GameEngine.Application.Runs.StartRun;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -27,16 +28,23 @@ public sealed class RunsController : ControllerBase
         var response = await _sender.Send(command, cancellationToken);
 
         return CreatedAtAction(
-            nameof(GetRunByIdPlaceholder),
+            nameof(GetRunById),
             new { runId = response.Run.Id },
             response);
     }
 
     [HttpGet("{runId:guid}")]
-    [ApiExplorerSettings(IgnoreApi = true)]
-    public IActionResult GetRunByIdPlaceholder(Guid runId)
+    [ProducesResponseType(typeof(GetRunByIdResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<GetRunByIdResponse>> GetRunById(
+        Guid runId,
+        CancellationToken cancellationToken)
     {
-        return Ok(new { RunId = runId });
+        var query = new GetRunByIdQuery(runId);
+
+        var response = await _sender.Send(query, cancellationToken);
+
+        return Ok(response);
     }
 }
 
