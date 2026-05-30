@@ -23,6 +23,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Leds.GameEngine.Domain\Leds.GameEngine.Domain.csproj" />
     <ProjectReference Include="..\..\src\Leds.GameEngine.Application\Leds.GameEngine.Application.csproj" />
+    <ProjectReference Include="..\..\src\Leds.GameEngine.Infrastructure\Leds.GameEngine.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>
