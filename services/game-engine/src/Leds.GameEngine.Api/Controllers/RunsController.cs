@@ -1,3 +1,4 @@
+using Leds.GameEngine.Application.Runs.ChooseNode;
 using Leds.GameEngine.Application.Runs.GetRunById;
 using Leds.GameEngine.Application.Runs.StartRun;
 using MediatR;
@@ -43,6 +44,22 @@ public sealed class RunsController : ControllerBase
         var query = new GetRunByIdQuery(runId);
 
         var response = await _sender.Send(query, cancellationToken);
+
+        return Ok(response);
+    }
+
+    [HttpPost("{runId:guid}/nodes/{nodeId:guid}/choose")]
+    [ProducesResponseType(typeof(ChooseNodeResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ChooseNodeResponse>> ChooseNode(
+    Guid runId,
+    Guid nodeId,
+    CancellationToken cancellationToken)
+    {
+        var command = new ChooseNodeCommand(runId, nodeId);
+
+        var response = await _sender.Send(command, cancellationToken);
 
         return Ok(response);
     }
