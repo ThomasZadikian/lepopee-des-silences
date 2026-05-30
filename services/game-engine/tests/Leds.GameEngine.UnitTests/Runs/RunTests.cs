@@ -8,6 +8,10 @@ namespace Leds.GameEngine.UnitTests.Runs;
 
 public sealed class RunTests
 {
+    private const string Seed = "seed-001";
+    private const string GeneratorVersion = "gen-0.2.0";
+    private const string MarkovMatrixVersion = "markov-0.2.0";
+
     [Fact]
     public void StartNew_ShouldCreateActiveRun_WithInitialRoomAndMetadata()
     {
@@ -16,60 +20,78 @@ public sealed class RunTests
 
         var run = Run.StartNew(
             playerId,
-            "seed-001",
-            "gen-0.1.0",
-            "markov-0.1.0",
+            Seed,
+            GeneratorVersion,
+            MarkovMatrixVersion,
             initialRoom,
             DateTimeOffset.UtcNow);
 
         run.Id.Value.Should().NotBeEmpty();
         run.PlayerId.Should().Be(playerId);
-        run.Seed.Should().Be("seed-001");
-        run.GeneratorVersion.Should().Be("gen-0.1.0");
-        run.MarkovMatrixVersion.Should().Be("markov-0.1.0");
+        run.Seed.Should().Be(Seed);
+        run.GeneratorVersion.Should().Be(GeneratorVersion);
+        run.MarkovMatrixVersion.Should().Be(MarkovMatrixVersion);
         run.Status.Should().Be(RunStatus.Active);
         run.CurrentDepth.Should().Be(0);
+
+        run.CurrentRoom.Depth.Should().Be(0);
+        run.CurrentRoom.RoomType.Should().Be(RoomType.Threshold);
+        run.CurrentRoom.Theme.Should().Be("Threshold");
         run.CurrentRoom.CurrentNodeDepth.Should().Be(0);
-        run.CurrentRoom.MaxNodeDepth.Should().Be(3);
+        run.CurrentRoom.MaxNodeDepth.Should().Be(2);
         run.CurrentRoom.State.Should().Be(RoomState.Active);
-        run.CurrentRoom.AvailableNodes.Should().HaveCount(4);
+        run.CurrentRoom.TotalNodeCount.Should().Be(6);
+
+        run.CurrentRoom.AvailableNodes.Should().HaveCount(2);
+        run.CurrentRoom.Nodes.Should().ContainSingle(node => node.IsRoomBossNode);
+        run.CurrentRoom.Nodes.Should().OnlyContain(node =>
+            node.EventCount >= 1 && node.EventCount <= 4);
     }
 
     [Fact]
-    public void StartNew_ShouldThrow_WhenInitialRoomDoesNotHaveExactlyFourAvailableNodes()
+    public void RoomCreate_ShouldThrow_WhenRoomDoesNotContainBetweenSixAndTenNodes()
     {
-        var room = Room.Create(
-            0,
-            "Threshold",
-            new[]
-            {
-                Node.Create(NodeEventType.Combat, 20, "common"),
-                Node.Create(NodeEventType.Memory, 10, "common")
-            });
+        var roomType = RoomType.Threshold;
+        var bossProfile = CreateBossProfile(roomType);
 
-        var act = () => Run.StartNew(
-            Guid.NewGuid(),
-            "seed-001",
-            "gen-0.1.0",
-            "markov-0.1.0",
-            room,
-            DateTimeOffset.UtcNow);
+        var combatNode = Node.Create(
+            NodeEventType.Combat,
+            20,
+            "combat-common",
+            nodeDepth: 0,
+            initialState: NodeState.Available);
+
+        var bossNode = Node.Create(
+            NodeEventType.RoomBoss,
+            80,
+            "room-boss",
+            nodeDepth: 1,
+            parentNodeId: combatNode.Id,
+            isRoomBossNode: true,
+            initialState: NodeState.Planned);
+
+        var nodes = new[]
+        {
+        combatNode,
+        bossNode
+    };
+
+        var act = () => Room.Create(
+            0,
+            roomType,
+            "Threshold",
+            bossProfile,
+            nodes);
 
         act.Should()
             .Throw<DomainException>()
-            .WithMessage("A new run must start with exactly 4 available nodes.");
+            .WithMessage("A room must contain between 6 and 10 nodes.");
     }
 
     [Fact]
-    public void ChooseNode_ShouldSelectRequestedNode_AndLockOtherNodesAtCurrentDepth()
+    public void ChooseNode_ShouldSelectRequestedNode_LockSiblings_AndMarkUnreachableBranches()
     {
-        var run = Run.StartNew(
-            Guid.NewGuid(),
-            "seed-001",
-            "gen-0.1.0",
-            "markov-0.1.0",
-            CreateInitialRoom(),
-            DateTimeOffset.UtcNow);
+        var run = CreateRun();
 
         var selectedNode = run.CurrentRoom.AvailableNodes.First();
 
@@ -83,18 +105,33 @@ public sealed class RunTests
                            node.Id != selectedNode.Id)
             .Should()
             .OnlyContain(node => node.State == NodeState.Locked);
+
+        run.CurrentRoom.Nodes
+            .Where(node => node.NodeDepth > run.CurrentRoom.CurrentNodeDepth)
+            .Should()
+            .OnlyContain(node =>
+                node.State == NodeState.Planned ||
+                node.State == NodeState.Unreachable);
+
+        run.CurrentRoom.Nodes
+            .Where(node =>
+                node.NodeDepth > run.CurrentRoom.CurrentNodeDepth &&
+                IsReachableFrom(selectedNode.Id, node, run.CurrentRoom.Nodes))
+            .Should()
+            .OnlyContain(node => node.State == NodeState.Planned);
+
+        run.CurrentRoom.Nodes
+            .Where(node =>
+                node.NodeDepth > run.CurrentRoom.CurrentNodeDepth &&
+                !IsReachableFrom(selectedNode.Id, node, run.CurrentRoom.Nodes))
+            .Should()
+            .OnlyContain(node => node.State == NodeState.Unreachable);
     }
 
     [Fact]
     public void ChooseNode_ShouldThrow_WhenNodeWasAlreadySelectedAtCurrentDepth()
     {
-        var run = Run.StartNew(
-            Guid.NewGuid(),
-            "seed-001",
-            "gen-0.1.0",
-            "markov-0.1.0",
-            CreateInitialRoom(),
-            DateTimeOffset.UtcNow);
+        var run = CreateRun();
 
         var firstNode = run.CurrentRoom.AvailableNodes.First();
         var secondNode = run.CurrentRoom.AvailableNodes.Last();
@@ -111,13 +148,7 @@ public sealed class RunTests
     [Fact]
     public void ResolveCurrentEvent_ShouldResolveSelectedNode_AndKeepRunActive_WhenRoomBossIsNotResolved()
     {
-        var run = Run.StartNew(
-            Guid.NewGuid(),
-            "seed-001",
-            "gen-0.1.0",
-            "markov-0.1.0",
-            CreateInitialRoom(),
-            DateTimeOffset.UtcNow);
+        var run = CreateRun();
 
         var selectedNode = run.CurrentRoom.AvailableNodes.First();
 
@@ -130,15 +161,60 @@ public sealed class RunTests
     }
 
     [Fact]
+    public void ProgressCurrentRoom_ShouldUnlockNextLayer_AfterCurrentEventIsResolved()
+    {
+        var run = CreateRun();
+
+        var selectedNode = run.CurrentRoom.AvailableNodes.First();
+
+        run.ChooseNode(selectedNode.Id);
+        run.ResolveCurrentEvent();
+
+        run.CurrentRoom.State.Should().Be(RoomState.NodeResolved);
+
+        run.ProgressCurrentRoom();
+
+        run.CurrentRoom.CurrentNodeDepth.Should().Be(1);
+        run.CurrentRoom.State.Should().Be(RoomState.Active);
+        run.CurrentRoom.AvailableNodes.Should().NotBeEmpty();
+        run.CurrentRoom.AvailableNodes.Should().OnlyContain(node => node.NodeDepth == 1);
+        run.CurrentRoom.AvailableNodes.Should().OnlyContain(node => node.State == NodeState.Available);
+    }
+
+    [Fact]
+    public void ResolveCurrentEvent_ShouldCompleteRoom_AndSetRunRoomResolved_WhenRoomBossIsResolved()
+    {
+        var run = CreateRun();
+
+        while (run.CurrentRoom.State != RoomState.BossReached)
+        {
+            var node = run.CurrentRoom.AvailableNodes.First();
+
+            run.ChooseNode(node.Id);
+            run.ResolveCurrentEvent();
+            run.ProgressCurrentRoom();
+        }
+
+        run.CurrentRoom.State.Should().Be(RoomState.BossReached);
+        run.CurrentRoom.AvailableNodes.Should().ContainSingle();
+
+        var bossNode = run.CurrentRoom.AvailableNodes.Single();
+
+        bossNode.IsRoomBossNode.Should().BeTrue();
+        bossNode.EventTypes.Should().Contain(NodeEventType.RoomBoss);
+
+        run.ChooseNode(bossNode.Id);
+        run.ResolveCurrentEvent();
+
+        bossNode.State.Should().Be(NodeState.Resolved);
+        run.CurrentRoom.State.Should().Be(RoomState.Completed);
+        run.Status.Should().Be(RunStatus.RoomResolved);
+    }
+
+    [Fact]
     public void Abandon_ShouldCloseRun()
     {
-        var run = Run.StartNew(
-            Guid.NewGuid(),
-            "seed-001",
-            "gen-0.1.0",
-            "markov-0.1.0",
-            CreateInitialRoom(),
-            DateTimeOffset.UtcNow);
+        var run = CreateRun();
 
         var endedAt = DateTimeOffset.UtcNow.AddMinutes(5);
 
@@ -148,18 +224,134 @@ public sealed class RunTests
         run.EndedAt.Should().Be(endedAt);
     }
 
-    private static Room CreateInitialRoom()
+    private static Run CreateRun()
     {
-        return Room.Create(
-            0,
-            "Threshold",
-            new[]
+        return Run.StartNew(
+            Guid.NewGuid(),
+            Seed,
+            GeneratorVersion,
+            MarkovMatrixVersion,
+            CreateInitialRoom(),
+            DateTimeOffset.UtcNow);
+    }
+
+private static Room CreateInitialRoom()
+{
+    var roomType = RoomType.Threshold;
+
+    var bossProfile = RoomBossProfile.Create(
+        "threshold-guardian",
+        "Gardien du Seuil",
+        roomType,
+        "High");
+
+    var combatNode = Node.Create(
+        NodeEventType.Combat,
+        20,
+        "combat-common",
+        nodeDepth: 0,
+        initialState: NodeState.Available);
+
+    var itemNode = Node.Create(
+        NodeEventType.Item,
+        15,
+        "common",
+        nodeDepth: 0,
+        initialState: NodeState.Available);
+
+    var restNode = Node.Create(
+        NodeEventType.Rest,
+        5,
+        "healing-only",
+        nodeDepth: 1,
+        parentNodeId: combatNode.Id,
+        initialState: NodeState.Planned);
+
+    var npcNode = Node.Create(
+        new[]
+        {
+            NodeEvent.Create(NodeEventType.Npc, 1)
+        },
+        8,
+        "narrative-choice",
+        nodeDepth: 1,
+        parentNodeIds: new[]
+        {
+            combatNode.Id,
+            itemNode.Id
+        },
+        isRoomBossNode: false,
+        initialState: NodeState.Planned);
+
+    var rareNode = Node.Create(
+        NodeEventType.Rare,
+        25,
+        "rare",
+        nodeDepth: 1,
+        parentNodeId: itemNode.Id,
+        initialState: NodeState.Planned);
+
+    var bossNode = Node.Create(
+        new[]
+        {
+            NodeEvent.Create(NodeEventType.RoomBoss, 1)
+        },
+        riskLevel: 80,
+        rewardProfile: "room-boss",
+        nodeDepth: 2,
+        parentNodeIds: new[]
+        {
+            restNode.Id,
+            npcNode.Id,
+            rareNode.Id
+        },
+        isRoomBossNode: true,
+        initialState: NodeState.Planned);
+
+    return Room.Create(
+        0,
+        roomType,
+        "Threshold",
+        bossProfile,
+        new[]
+        {
+            combatNode,
+            itemNode,
+            restNode,
+            npcNode,
+            rareNode,
+            bossNode
+        });
+}
+
+    private static RoomBossProfile CreateBossProfile(RoomType roomType)
+    {
+        return RoomBossProfile.Create(
+            "threshold-guardian",
+            "Gardien du Seuil",
+            roomType,
+            "High");
+    }
+    private static bool IsReachableFrom(
+    NodeId ancestorNodeId,
+    Node node,
+    IReadOnlyCollection<Node> allNodes)
+    {
+        if (node.ParentNodeIds.Contains(ancestorNodeId))
+        {
+            return true;
+        }
+
+        foreach (var parentNodeId in node.ParentNodeIds)
+        {
+            var parent = allNodes.SingleOrDefault(candidate => candidate.Id == parentNodeId);
+
+            if (parent is not null && IsReachableFrom(ancestorNodeId, parent, allNodes))
             {
-                Node.Create(NodeEventType.Combat, 20, "common"),
-                Node.Create(NodeEventType.Memory, 10, "common"),
-                Node.Create(NodeEventType.Rest, 5, "none"),
-                Node.Create(NodeEventType.Item, 15, "common")
-            },
-            maxNodeDepth: 3);
+                return true;
+            }
+        }
+
+        return false;
     }
 }

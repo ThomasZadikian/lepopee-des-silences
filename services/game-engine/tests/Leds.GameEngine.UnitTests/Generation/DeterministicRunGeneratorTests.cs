@@ -8,141 +8,266 @@ namespace Leds.GameEngine.UnitTests.Generation;
 public sealed class DeterministicRunGeneratorTests
 {
     [Fact]
-    public void GenerateInitialRoom_ShouldCreateRoom_WithFourInitialNodes()
+    public void GenerateInitialRoom_ShouldCreateVisibleRoomPlan_WithSixToTenNodes()
     {
         var generator = new DeterministicRunGenerator();
 
         var room = generator.GenerateInitialRoom("seed-test-001");
 
         room.Depth.Should().Be(0);
+        room.RoomType.Should().Be(RoomType.Threshold);
         room.Theme.Should().Be("Threshold");
-        room.Nodes.Should().HaveCount(4);
-        room.Nodes.Should().OnlyContain(node => node.State == NodeState.Available);
+        room.State.Should().Be(RoomState.Active);
+        room.CurrentNodeDepth.Should().Be(0);
+
+        room.TotalNodeCount.Should().BeInRange(6, 10);
+        room.Nodes.Should().HaveCount(room.TotalNodeCount);
+
+        room.AvailableNodes.Should().HaveCountGreaterThanOrEqualTo(1);
+        room.AvailableNodes.Should().HaveCountLessThanOrEqualTo(4);
+        room.AvailableNodes.Should().OnlyContain(node => node.NodeDepth == 0);
+        room.AvailableNodes.Should().OnlyContain(node => node.State == NodeState.Available);
+
+        room.Nodes
+            .Where(node => node.NodeDepth > 0)
+            .Should()
+            .OnlyContain(node => node.State == NodeState.Planned);
+
+        room.Nodes.Should().ContainSingle(node => node.IsRoomBossNode);
     }
 
     [Fact]
-    public void GenerateInitialRoom_ShouldGenerateExpectedInitialEventTypes()
+    public void GenerateInitialRoom_ShouldCreateNodes_WithOneToFourEventsEach()
     {
         var generator = new DeterministicRunGenerator();
 
         var room = generator.GenerateInitialRoom("seed-test-001");
 
-        room.Nodes.Select(node => node.EventType)
-            .Should()
-            .BeEquivalentTo(new[]
-            {
-                NodeEventType.Combat,
-                NodeEventType.Memory,
-                NodeEventType.Rest,
-                NodeEventType.Item
-            });
+        room.Nodes.Should().OnlyContain(node =>
+            node.EventCount >= 1 && node.EventCount <= 4);
+
+        room.Nodes.Should().OnlyContain(node =>
+            node.EventTypes.Count >= 1 && node.EventTypes.Count <= 4);
     }
 
     [Fact]
-    public void GenerateInitialRoom_ShouldBeDeterministic_ForRiskAndRewardProfiles()
+    public void GenerateInitialRoom_ShouldCreateRoomBossMatchingRoomType()
+    {
+        var generator = new DeterministicRunGenerator();
+
+        var room = generator.GenerateInitialRoom("seed-test-001");
+
+        room.BossProfile.Should().NotBeNull();
+        room.BossProfile.RoomType.Should().Be(RoomType.Threshold);
+        room.BossProfile.BossId.Should().Be("threshold-guardian");
+        room.BossProfile.Name.Should().Be("Gardien du Seuil");
+        room.BossProfile.DangerHint.Should().Be("High");
+
+        var bossNode = room.Nodes.Single(node => node.IsRoomBossNode);
+
+        bossNode.NodeDepth.Should().Be(room.MaxNodeDepth);
+        bossNode.State.Should().Be(NodeState.Planned);
+        bossNode.EventTypes.Should().Contain(NodeEventType.RoomBoss);
+        bossNode.EventCount.Should().Be(1);
+    }
+
+    [Fact]
+    public void GenerateInitialRoom_ShouldCreateLayers_WithOneToFourNodesEach()
+    {
+        var generator = new DeterministicRunGenerator();
+
+        var room = generator.GenerateInitialRoom("seed-test-001");
+
+        var layers = room.Nodes
+            .GroupBy(node => node.NodeDepth)
+            .ToArray();
+
+        layers.Should().NotBeEmpty();
+
+        layers.Should().OnlyContain(layer =>
+            layer.Count() >= 1 && layer.Count() <= 4);
+
+        layers.Select(layer => layer.Key)
+            .Should()
+            .Contain(0);
+
+        layers.Select(layer => layer.Key)
+            .Should()
+            .Contain(room.MaxNodeDepth);
+    }
+
+    [Fact]
+    public void GenerateInitialRoom_ShouldBeDeterministic_ForVisibleRoomPlan()
     {
         var generator = new DeterministicRunGenerator();
 
         var firstRoom = generator.GenerateInitialRoom("seed-test-001");
         var secondRoom = generator.GenerateInitialRoom("seed-test-001");
 
-        var firstSnapshot = firstRoom.Nodes
-            .Select(node => new
-            {
-                node.EventType,
-                node.RiskLevel,
-                node.RewardProfile
-            })
-            .ToArray();
+        var firstSnapshot = CreateRoomPlanSnapshot(firstRoom);
+        var secondSnapshot = CreateRoomPlanSnapshot(secondRoom);
 
-        var secondSnapshot = secondRoom.Nodes
-            .Select(node => new
-            {
-                node.EventType,
-                node.RiskLevel,
-                node.RewardProfile
-            })
-            .ToArray();
-
-        secondSnapshot.Should().BeEquivalentTo(firstSnapshot, options => options.WithStrictOrdering());
-    }
-    [Fact]
-    public void GenerateNextNodes_ShouldCreateNextNodeLayer_WhenCurrentEventIsResolved()
-    {
-        var generator = new DeterministicRunGenerator();
-        var run = CreateRunWithResolvedCurrentEvent(generator);
-
-        var nextNodes = generator.GenerateNextNodes(run);
-
-        nextNodes.Should().NotBeEmpty();
-        nextNodes.Count.Should().BeInRange(1, 4);
-        nextNodes.Should().OnlyContain(node => node.NodeDepth == 1);
-        nextNodes.Should().OnlyContain(node => node.ParentNodeId != null);
-        nextNodes.Should().OnlyContain(node => node.State == NodeState.Available);
-        nextNodes.Should().OnlyContain(node => node.IsRoomBossNode == false);
+        secondSnapshot.Should().BeEquivalentTo(
+            firstSnapshot,
+            options => options.WithStrictOrdering());
     }
 
     [Fact]
-    public void GenerateNextNodes_ShouldCreateRoomBossNode_WhenNextDepthIsMaxNodeDepth()
+    public void GenerateInitialRoom_ShouldGenerateDifferentPlans_ForDifferentSeeds()
     {
         var generator = new DeterministicRunGenerator();
 
-        var room = Room.Create(
-            0,
-            "Threshold",
-            new[]
+        var firstRoom = generator.GenerateInitialRoom("seed-test-001");
+        var secondRoom = generator.GenerateInitialRoom("seed-test-002");
+
+        var firstSnapshot = CreateRoomPlanSnapshot(firstRoom);
+        var secondSnapshot = CreateRoomPlanSnapshot(secondRoom);
+
+        secondSnapshot.Should().NotBeEquivalentTo(firstSnapshot);
+    }
+
+    private static object[] CreateRoomPlanSnapshot(Room room)
+    {
+        return room.Nodes
+            .OrderBy(node => node.NodeDepth)
+            .ThenBy(node => node.ParentNodeId?.Value)
+            .ThenBy(node => node.RiskLevel)
+            .Select(node => new
             {
-            Node.Create(NodeEventType.Combat, 20, "common"),
-            Node.Create(NodeEventType.Memory, 10, "common"),
-            Node.Create(NodeEventType.Rest, 5, "none"),
-            Node.Create(NodeEventType.Item, 15, "common")
-            },
-            maxNodeDepth: 1);
+                node.NodeDepth,
+                ParentNodeIdIsPresent = node.ParentNodeId is not null,
+                node.IsRoomBossNode,
+                node.RiskLevel,
+                node.RewardProfile,
+                EventTypes = node.EventTypes
+                    .Select(eventType => eventType.ToString())
+                    .ToArray(),
+                node.EventCount,
+                InitialState = node.State.ToString()
+            })
+            .Cast<object>()
+            .ToArray();
+    }
+    [Fact]
+    public void GenerateInitialRoom_ShouldCreateConvergentGraph_ToRoomBoss()
+    {
+        var generator = new DeterministicRunGenerator();
 
-        var run = Domain.Runs.Run.StartNew(
-            Guid.NewGuid(),
-            "seed-test-001",
-            generator.GeneratorVersion,
-            generator.MarkovMatrixVersion,
-            room,
-            DateTimeOffset.UtcNow);
+        var room = generator.GenerateInitialRoom("seed-test-001");
 
-        var selectedNode = run.CurrentRoom.AvailableNodes.First();
+        var bossNode = room.Nodes.Single(node => node.IsRoomBossNode);
 
-        run.ChooseNode(selectedNode.Id);
-        run.ResolveCurrentEvent();
+        foreach (var node in room.Nodes.Where(node => !node.IsRoomBossNode))
+        {
+            HasPathToBoss(node, bossNode, room.Nodes).Should().BeTrue();
+        }
+    }
 
-        var nextNodes = generator.GenerateNextNodes(run);
+    private static bool HasPathToBoss(
+        Node currentNode,
+        Node bossNode,
+        IReadOnlyCollection<Node> nodes)
+    {
+        var children = nodes
+            .Where(node => node.ParentNodeIds.Contains(currentNode.Id))
+            .ToArray();
 
-        nextNodes.Should().ContainSingle();
+        if (children.Any(child => child.Id == bossNode.Id))
+        {
+            return true;
+        }
 
-        var bossNode = nextNodes.Single();
+        return children.Any(child => HasPathToBoss(child, bossNode, nodes));
+    }
+    [Fact]
+    public void GenerateInitialRoom_ShouldGiveEveryNonBossNodeAtLeastOneChild()
+    {
+        var generator = new DeterministicRunGenerator();
 
-        bossNode.EventType.Should().Be(NodeEventType.RoomBoss);
-        bossNode.NodeDepth.Should().Be(1);
+        var room = generator.GenerateInitialRoom("seed-test-001");
+
+        foreach (var node in room.Nodes.Where(node => !node.IsRoomBossNode))
+        {
+            room.Nodes
+                .Any(candidate => candidate.ParentNodeIds.Contains(node.Id))
+                .Should()
+                .BeTrue();
+        }
+    }
+
+    [Fact]
+    public void GenerateInitialRoom_ShouldPlaceSingleRoomBossNodeAtFinalDepth()
+    {
+        var generator = new DeterministicRunGenerator();
+
+        var room = generator.GenerateInitialRoom("seed-test-001");
+
+        var finalLayerNodes = room.Nodes
+            .Where(node => node.NodeDepth == room.MaxNodeDepth)
+            .ToArray();
+
+        finalLayerNodes.Should().ContainSingle();
+
+        var bossNode = finalLayerNodes.Single();
+
         bossNode.IsRoomBossNode.Should().BeTrue();
-        bossNode.ParentNodeId.Should().Be(selectedNode.Id);
-        bossNode.State.Should().Be(NodeState.Available);
+        bossNode.EventTypes.Should().Contain(NodeEventType.RoomBoss);
+        bossNode.State.Should().Be(NodeState.Planned);
     }
 
-    private static Domain.Runs.Run CreateRunWithResolvedCurrentEvent(
-        DeterministicRunGenerator generator)
+    [Fact]
+    public void GenerateInitialRoom_ShouldRespectNodeEventTypeRoomConstraints()
     {
-        var initialRoom = generator.GenerateInitialRoom("seed-test-001");
+        var generator = new DeterministicRunGenerator();
 
-        var run = Domain.Runs.Run.StartNew(
-            Guid.NewGuid(),
-            "seed-test-001",
-            generator.GeneratorVersion,
-            generator.MarkovMatrixVersion,
-            initialRoom,
-            DateTimeOffset.UtcNow);
+        var room = generator.GenerateInitialRoom("seed-test-001");
 
-        var selectedNode = run.CurrentRoom.AvailableNodes.First();
+        var allEventTypes = room.Nodes
+            .SelectMany(node => node.EventTypes)
+            .ToArray();
 
-        run.ChooseNode(selectedNode.Id);
-        run.ResolveCurrentEvent();
+        allEventTypes.Should().NotContain(NodeEventType.Memory);
+        allEventTypes.Count(eventType => eventType == NodeEventType.Elite).Should().BeLessThanOrEqualTo(1);
+        allEventTypes.Count(eventType => eventType == NodeEventType.Item).Should().BeLessThanOrEqualTo(room.TotalNodeCount / 2);
+        allEventTypes.Count(eventType => eventType == NodeEventType.Npc).Should().BeLessThanOrEqualTo(1);
+        allEventTypes.Count(eventType => eventType == NodeEventType.Rest).Should().BeLessThanOrEqualTo(1);
+        allEventTypes.Count(eventType => eventType == NodeEventType.Merchant).Should().BeLessThanOrEqualTo(1);
+        allEventTypes.Count(eventType => eventType == NodeEventType.Law).Should().BeLessThanOrEqualTo(1);
+        allEventTypes.Count(eventType => eventType == NodeEventType.Curse).Should().BeLessThanOrEqualTo(1);
+        allEventTypes.Count(eventType => eventType == NodeEventType.Rare).Should().BeLessThanOrEqualTo(3);
+    }
 
-        return run;
+    [Fact]
+    public void GenerateInitialRoom_ShouldRespectNodeEventTypeNodeConstraints()
+    {
+        var generator = new DeterministicRunGenerator();
+
+        var room = generator.GenerateInitialRoom("seed-test-001");
+
+        foreach (var node in room.Nodes.Where(node => !node.IsRoomBossNode))
+        {
+            node.EventTypes.Count(eventType => eventType == NodeEventType.Item)
+                .Should()
+                .BeLessThanOrEqualTo(1);
+
+            if (node.EventTypes.Contains(NodeEventType.Rest))
+            {
+                node.EventTypes.Should().ContainSingle();
+                node.RewardProfile.Should().Be("healing-only");
+            }
+        }
+    }
+
+    [Fact]
+    public void GenerateInitialRoom_ShouldCreateAtLeastTwoAvailableNodesAtInitialDepth()
+    {
+        var generator = new DeterministicRunGenerator();
+
+        var room = generator.GenerateInitialRoom("seed-test-001");
+
+        room.AvailableNodes.Should().HaveCountGreaterThanOrEqualTo(2);
+        room.AvailableNodes.Should().HaveCountLessThanOrEqualTo(4);
+        room.AvailableNodes.Should().OnlyContain(node => node.NodeDepth == 0);
+        room.AvailableNodes.Should().OnlyContain(node => node.State == NodeState.Available);
     }
 }

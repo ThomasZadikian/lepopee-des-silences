@@ -1,6 +1,6 @@
 using Leds.GameEngine.Application.Runs.ChooseNode;
-using Leds.GameEngine.Application.Runs.GenerateNextNodes;
 using Leds.GameEngine.Application.Runs.GetRunById;
+using Leds.GameEngine.Application.Runs.ProgressRun;
 using Leds.GameEngine.Application.Runs.ResolveCurrentEvent;
 using Leds.GameEngine.Application.Runs.StartRun;
 using MediatR;
@@ -80,16 +80,15 @@ public sealed class RunsController : ControllerBase
 
         return Ok(response);
     }
-
-    [HttpPost("{runId:guid}/nodes/next")]
-    [ProducesResponseType(typeof(GenerateNextNodesResponse), StatusCodes.Status200OK)]
+    [HttpPost("{runId:guid}/progress")]
+    [ProducesResponseType(typeof(ProgressRunResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<GenerateNextNodesResponse>> GenerateNextNodes(
+    public async Task<ActionResult<ProgressRunResponse>> ProgressRun(
     Guid runId,
     CancellationToken cancellationToken)
     {
-        var command = new GenerateNextNodesCommand(runId);
+        var command = new ProgressRunCommand(runId);
 
         var response = await _sender.Send(command, cancellationToken);
 

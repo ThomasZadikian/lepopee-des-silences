@@ -4,29 +4,47 @@ namespace Leds.GameEngine.Domain.Nodes;
 
 public sealed class Node
 {
+    private readonly List<NodeEvent> _events;
+    private readonly List<NodeId> _parentNodeIds;
+
     private Node(
         NodeId id,
-        NodeEventType eventType,
+        IReadOnlyCollection<NodeEvent> events,
         int riskLevel,
         string rewardProfile,
         int nodeDepth,
-        NodeId? parentNodeId,
+        IReadOnlyCollection<NodeId> parentNodeIds,
         bool isRoomBossNode,
         NodeState state)
     {
         Id = id;
-        EventType = eventType;
+        _events = events.ToList();
         RiskLevel = riskLevel;
         RewardProfile = rewardProfile;
         NodeDepth = nodeDepth;
-        ParentNodeId = parentNodeId;
+        _parentNodeIds = parentNodeIds.ToList();
         IsRoomBossNode = isRoomBossNode;
         State = state;
     }
 
     public NodeId Id { get; }
 
-    public NodeEventType EventType { get; }
+    public IReadOnlyCollection<NodeEvent> Events => _events.AsReadOnly();
+
+    public IReadOnlyCollection<NodeEventType> EventTypes => _events
+        .OrderBy(nodeEvent => nodeEvent.Order)
+        .Select(nodeEvent => nodeEvent.EventType)
+        .ToArray();
+
+    public int EventCount => _events.Count;
+
+    /// <summary>
+    /// Compatibility shortcut while migrating toward multi-event nodes.
+    /// </summary>
+    public NodeEventType EventType => _events
+        .OrderBy(nodeEvent => nodeEvent.Order)
+        .First()
+        .EventType;
 
     public int RiskLevel { get; }
 
@@ -34,7 +52,15 @@ public sealed class Node
 
     public int NodeDepth { get; }
 
-    public NodeId? ParentNodeId { get; }
+    public IReadOnlyCollection<NodeId> ParentNodeIds => _parentNodeIds.AsReadOnly();
+
+    /// <summary>
+    /// Compatibility shortcut for older tests / DTOs.
+    /// Prefer ParentNodeIds for the final graph model.
+    /// </summary>
+    public NodeId? ParentNodeId => _parentNodeIds.Count == 0
+        ? null
+        : _parentNodeIds.First();
 
     public bool IsRoomBossNode { get; }
 
@@ -42,13 +68,62 @@ public sealed class Node
 
     public bool IsAvailable => State == NodeState.Available;
 
+    public bool IsPlanned => State == NodeState.Planned;
+
     public static Node Create(
         NodeEventType eventType,
         int riskLevel,
         string rewardProfile,
         int nodeDepth = 0,
         NodeId? parentNodeId = null,
-        bool isRoomBossNode = false)
+        bool isRoomBossNode = false,
+        NodeState initialState = NodeState.Available)
+    {
+        var parentNodeIds = parentNodeId is null
+            ? Array.Empty<NodeId>()
+            : new[] { parentNodeId.Value };
+
+        return Create(
+            new[] { NodeEvent.Create(eventType, 1) },
+            riskLevel,
+            rewardProfile,
+            nodeDepth,
+            parentNodeIds,
+            isRoomBossNode,
+            initialState);
+    }
+
+    public static Node Create(
+        IReadOnlyCollection<NodeEvent> events,
+        int riskLevel,
+        string rewardProfile,
+        int nodeDepth,
+        NodeId? parentNodeId,
+        bool isRoomBossNode,
+        NodeState initialState)
+    {
+        var parentNodeIds = parentNodeId is null
+            ? Array.Empty<NodeId>()
+            : new[] { parentNodeId.Value };
+
+        return Create(
+            events,
+            riskLevel,
+            rewardProfile,
+            nodeDepth,
+            parentNodeIds,
+            isRoomBossNode,
+            initialState);
+    }
+
+    public static Node Create(
+        IReadOnlyCollection<NodeEvent> events,
+        int riskLevel,
+        string rewardProfile,
+        int nodeDepth,
+        IReadOnlyCollection<NodeId> parentNodeIds,
+        bool isRoomBossNode,
+        NodeState initialState)
     {
         if (riskLevel is < 0 or > 100)
         {
@@ -65,25 +140,74 @@ public sealed class Node
             throw new DomainException("Node depth must be greater than or equal to 0.");
         }
 
-        if (isRoomBossNode && eventType != NodeEventType.RoomBoss)
+        if (initialState is not NodeState.Planned and not NodeState.Available)
         {
-            throw new DomainException("A room boss node must have the RoomBoss event type.");
+            throw new DomainException("A newly created node must be Planned or Available.");
         }
 
-        if (!isRoomBossNode && eventType == NodeEventType.RoomBoss)
+        var eventList = events?.OrderBy(nodeEvent => nodeEvent.Order).ToList()
+            ?? throw new DomainException("Node events are required.");
+
+        if (eventList.Count is < 1 or > 4)
         {
-            throw new DomainException("A RoomBoss event type must be marked as a room boss node.");
+            throw new DomainException("A node must contain between 1 and 4 events.");
+        }
+
+        if (eventList.Select(nodeEvent => nodeEvent.Order).Distinct().Count() != eventList.Count)
+        {
+            throw new DomainException("Node event orders must be unique.");
+        }
+
+        var parentList = parentNodeIds?.Distinct().ToList()
+            ?? throw new DomainException("Parent node ids are required.");
+
+        if (nodeDepth == 0 && parentList.Count != 0)
+        {
+            throw new DomainException("Initial layer nodes cannot have parents.");
+        }
+
+        if (nodeDepth > 0 && parentList.Count == 0)
+        {
+            throw new DomainException("Non-initial nodes must have at least one parent.");
+        }
+
+        var hasRoomBossEvent = eventList.Any(nodeEvent => nodeEvent.EventType == NodeEventType.RoomBoss);
+        var hasFinalBossEvent = eventList.Any(nodeEvent => nodeEvent.EventType == NodeEventType.FinalBoss);
+
+        if (isRoomBossNode && !hasRoomBossEvent)
+        {
+            throw new DomainException("A room boss node must contain a RoomBoss event.");
+        }
+
+        if (!isRoomBossNode && hasRoomBossEvent)
+        {
+            throw new DomainException("A RoomBoss event can only appear on a room boss node.");
+        }
+
+        if (hasFinalBossEvent && !isRoomBossNode)
+        {
+            throw new DomainException("A FinalBoss event can only appear on a boss node.");
         }
 
         return new Node(
             NodeId.New(),
-            eventType,
+            eventList,
             riskLevel,
             rewardProfile.Trim(),
             nodeDepth,
-            parentNodeId,
+            parentList,
             isRoomBossNode,
-            NodeState.Available);
+            initialState);
+    }
+
+    public void Unlock()
+    {
+        if (State != NodeState.Planned)
+        {
+            throw new DomainException("Only a planned node can be unlocked.");
+        }
+
+        State = NodeState.Available;
     }
 
     public void Select()
@@ -98,12 +222,27 @@ public sealed class Node
 
     public void Lock()
     {
-        if (State == NodeState.Selected || State == NodeState.Resolved)
+        if (State is NodeState.Selected or NodeState.Resolved or NodeState.Unreachable)
+        {
+            return;
+        }
+
+        if (State == NodeState.Planned)
         {
             return;
         }
 
         State = NodeState.Locked;
+    }
+
+    public void MarkUnreachable()
+    {
+        if (State is NodeState.Selected or NodeState.Resolved)
+        {
+            return;
+        }
+
+        State = NodeState.Unreachable;
     }
 
     public void Resolve()

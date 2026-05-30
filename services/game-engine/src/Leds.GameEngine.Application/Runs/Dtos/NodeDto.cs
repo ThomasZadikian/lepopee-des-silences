@@ -4,24 +4,28 @@ namespace Leds.GameEngine.Application.Runs.Dtos;
 
 public sealed record NodeDto(
     Guid Id,
-    string EventType,
+    IReadOnlyCollection<string> EventTypes,
+    int EventCount,
     int RiskLevel,
     string RewardProfile,
     string State,
     int NodeDepth,
     Guid? ParentNodeId,
+    IReadOnlyCollection<Guid> ParentNodeIds,
     bool IsRoomBossNode)
 {
     public static NodeDto FromDomain(Node node)
     {
         return new NodeDto(
             node.Id.Value,
-            node.EventType.ToString(),
+            node.EventTypes.Select(eventType => eventType.ToString()).ToArray(),
+            node.EventCount,
             node.RiskLevel,
             node.RewardProfile,
             node.State.ToString(),
             node.NodeDepth,
             node.ParentNodeId?.Value,
+            node.ParentNodeIds.Select(parentNodeId => parentNodeId.Value).ToArray(),
             node.IsRoomBossNode);
     }
 }

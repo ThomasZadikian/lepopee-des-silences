@@ -92,9 +92,23 @@ public sealed class Run
             throw new DomainException("Initial room node depth must be 0.");
         }
 
-        if (initialRoom.AvailableNodes.Count != 4)
+        if (initialRoom.TotalNodeCount is < 6 or > 10)
         {
-            throw new DomainException("A new run must start with exactly 4 available nodes.");
+            throw new DomainException("A new run must start with a room containing between 6 and 10 nodes.");
+        }
+
+        if (initialRoom.AvailableNodes.Count is < 1 or > 4)
+        {
+            throw new DomainException("A new run must start with between 1 and 4 available nodes.");
+        }
+        if (initialRoom.Nodes.Count(node => node.IsRoomBossNode) != 1)
+        {
+            throw new DomainException("A new run must start with exactly one room boss node.");
+        }
+
+        if (initialRoom.Nodes.Any(node => node.EventCount is < 1 or > 4))
+        {
+            throw new DomainException("Each node must contain between 1 and 4 events.");
         }
 
         return new Run(
@@ -127,11 +141,11 @@ public sealed class Run
         }
     }
 
-    public void AddNextNodesToCurrentRoom(IEnumerable<Node> nextNodes)
+    public void ProgressCurrentRoom()
     {
         EnsureActive();
 
-        CurrentRoom.AddNextNodes(nextNodes);
+        CurrentRoom.UnlockNextNodeLayer();
     }
 
     public void MoveToNextRoom(Room nextRoom)

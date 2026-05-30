@@ -31,7 +31,27 @@ public sealed class GetRunByIdEndpointTests : IClassFixture<WebApplicationFactor
         payload!.Run.Id.Should().Be(startRunResponse.Run.Id);
         payload.Run.PlayerId.Should().Be(startRunResponse.Run.PlayerId);
         payload.Run.Status.Should().Be("Active");
-        payload.Run.CurrentRoom.NodeLayers.SelectMany(layer => layer.Nodes).Should().HaveCount(4);
+        var allNodes = payload!.Run.CurrentRoom.NodeLayers
+            .SelectMany(layer => layer.Nodes)
+            .ToArray();
+
+        payload.Run.CurrentRoom.TotalNodeCount.Should().BeInRange(6, 10);
+        allNodes.Should().HaveCount(payload.Run.CurrentRoom.TotalNodeCount);
+
+        payload.Run.CurrentRoom.AvailableNodes.Should().HaveCountGreaterThanOrEqualTo(1);
+        payload.Run.CurrentRoom.AvailableNodes.Should().HaveCountLessThanOrEqualTo(4);
+        payload.Run.CurrentRoom.AvailableNodes.Should().OnlyContain(node => node.State == "Available");
+        payload.Run.CurrentRoom.AvailableNodes.Should().OnlyContain(node => node.NodeDepth == 0);
+
+        allNodes.Where(node => node.NodeDepth > 0)
+            .Should()
+            .OnlyContain(node => node.State == "Planned");
+
+        allNodes.Should().ContainSingle(node => node.IsRoomBossNode);
+        allNodes.Should().OnlyContain(node => node.EventCount >= 1 && node.EventCount <= 4);
+
+        payload.Run.CurrentRoom.BossPreview.Should().NotBeNull();
+        payload.Run.CurrentRoom.BossPreview.Name.Should().NotBeNullOrWhiteSpace();
     }
 
     [Fact]
@@ -58,7 +78,11 @@ public sealed class GetRunByIdEndpointTests : IClassFixture<WebApplicationFactor
                 PlayerId = Guid.Parse("11111111-1111-1111-1111-111111111111")
             });
 
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var body = await response.Content.ReadAsStringAsync();
+
+        response.StatusCode.Should().Be(
+            HttpStatusCode.Created,
+            because: body);
 
         var payload = await response.Content.ReadFromJsonAsync<StartRunResponse>();
 

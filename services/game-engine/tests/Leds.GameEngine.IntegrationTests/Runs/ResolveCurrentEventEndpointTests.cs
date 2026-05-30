@@ -89,8 +89,11 @@ public sealed class ResolveCurrentEventEndpointTests : IClassFixture<WebApplicat
                 PlayerId = Guid.Parse("11111111-1111-1111-1111-111111111111")
             });
 
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var body = await response.Content.ReadAsStringAsync();
 
+        response.StatusCode.Should().Be(
+            HttpStatusCode.Created,
+            because: body);
         var payload = await response.Content.ReadFromJsonAsync<StartRunResponse>();
 
         payload.Should().NotBeNull();

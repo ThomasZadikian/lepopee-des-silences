@@ -2,8 +2,10 @@
 
 public enum NodeState
 {
-    Available = 0,
-    Selected = 1,
-    Locked = 2,
-    Resolved = 3
+    Planned = 0,
+    Available = 1,
+    Selected = 2,
+    Locked = 3,
+    Resolved = 4,
+    Unreachable = 5
 }
