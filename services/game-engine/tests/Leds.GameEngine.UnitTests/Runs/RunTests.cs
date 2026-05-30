@@ -29,7 +29,10 @@ public sealed class RunTests
         run.MarkovMatrixVersion.Should().Be("markov-0.1.0");
         run.Status.Should().Be(RunStatus.Active);
         run.CurrentDepth.Should().Be(0);
-        run.CurrentRoom.Nodes.Should().HaveCount(4);
+        run.CurrentRoom.CurrentNodeDepth.Should().Be(0);
+        run.CurrentRoom.MaxNodeDepth.Should().Be(3);
+        run.CurrentRoom.State.Should().Be(RoomState.Active);
+        run.CurrentRoom.AvailableNodes.Should().HaveCount(4);
     }
 
     [Fact]
@@ -58,7 +61,7 @@ public sealed class RunTests
     }
 
     [Fact]
-    public void ChooseNode_ShouldSelectRequestedNode_AndLockOtherNodes()
+    public void ChooseNode_ShouldSelectRequestedNode_AndLockOtherNodesAtCurrentDepth()
     {
         var run = Run.StartNew(
             Guid.NewGuid(),
@@ -68,20 +71,22 @@ public sealed class RunTests
             CreateInitialRoom(),
             DateTimeOffset.UtcNow);
 
-        var selectedNode = run.CurrentRoom.Nodes.First();
+        var selectedNode = run.CurrentRoom.AvailableNodes.First();
 
         run.ChooseNode(selectedNode.Id);
 
         selectedNode.State.Should().Be(NodeState.Selected);
+        run.CurrentRoom.State.Should().Be(RoomState.NodeSelected);
 
         run.CurrentRoom.Nodes
-            .Where(node => node.Id != selectedNode.Id)
+            .Where(node => node.NodeDepth == run.CurrentRoom.CurrentNodeDepth &&
+                           node.Id != selectedNode.Id)
             .Should()
             .OnlyContain(node => node.State == NodeState.Locked);
     }
 
     [Fact]
-    public void ChooseNode_ShouldThrow_WhenNodeWasAlreadySelectedInCurrentRoom()
+    public void ChooseNode_ShouldThrow_WhenNodeWasAlreadySelectedAtCurrentDepth()
     {
         var run = Run.StartNew(
             Guid.NewGuid(),
@@ -91,8 +96,8 @@ public sealed class RunTests
             CreateInitialRoom(),
             DateTimeOffset.UtcNow);
 
-        var firstNode = run.CurrentRoom.Nodes.First();
-        var secondNode = run.CurrentRoom.Nodes.Last();
+        var firstNode = run.CurrentRoom.AvailableNodes.First();
+        var secondNode = run.CurrentRoom.AvailableNodes.Last();
 
         run.ChooseNode(firstNode.Id);
 
@@ -100,11 +105,11 @@ public sealed class RunTests
 
         act.Should()
             .Throw<DomainException>()
-            .WithMessage("A node has already been selected for the current room.");
+            .WithMessage("Room is not waiting for a node selection.");
     }
 
     [Fact]
-    public void ResolveSelectedNode_ShouldMarkSelectedNodeAsResolved_AndSetRoomResolvedStatus()
+    public void ResolveCurrentEvent_ShouldResolveSelectedNode_AndKeepRunActive_WhenRoomBossIsNotResolved()
     {
         var run = Run.StartNew(
             Guid.NewGuid(),
@@ -114,46 +119,14 @@ public sealed class RunTests
             CreateInitialRoom(),
             DateTimeOffset.UtcNow);
 
-        var selectedNode = run.CurrentRoom.Nodes.First();
+        var selectedNode = run.CurrentRoom.AvailableNodes.First();
 
         run.ChooseNode(selectedNode.Id);
-        run.ResolveSelectedNode();
+        run.ResolveCurrentEvent();
 
         selectedNode.State.Should().Be(NodeState.Resolved);
-        run.Status.Should().Be(RunStatus.RoomResolved);
-    }
-
-    [Fact]
-    public void MoveToNextRoom_ShouldMoveRunToNextDepth()
-    {
-        var run = Run.StartNew(
-            Guid.NewGuid(),
-            "seed-001",
-            "gen-0.1.0",
-            "markov-0.1.0",
-            CreateInitialRoom(),
-            DateTimeOffset.UtcNow);
-
-        var selectedNode = run.CurrentRoom.Nodes.First();
-
-        run.ChooseNode(selectedNode.Id);
-        run.ResolveSelectedNode();
-
-        var nextRoom = Room.Create(
-            1,
-            "Memory",
-            new[]
-            {
-                Node.Create(NodeEventType.Combat, 30, "common"),
-                Node.Create(NodeEventType.Rest, 5, "none")
-            });
-
-        run.MoveToNextRoom(nextRoom);
-
         run.Status.Should().Be(RunStatus.Active);
-        run.CurrentDepth.Should().Be(1);
-        run.CurrentRoom.Should().Be(nextRoom);
-        run.Rooms.Should().HaveCount(2);
+        run.CurrentRoom.State.Should().Be(RoomState.NodeResolved);
     }
 
     [Fact]
@@ -186,6 +159,7 @@ public sealed class RunTests
                 Node.Create(NodeEventType.Memory, 10, "common"),
                 Node.Create(NodeEventType.Rest, 5, "none"),
                 Node.Create(NodeEventType.Item, 15, "common")
-            });
+            },
+            maxNodeDepth: 3);
     }
 }

@@ -1,26 +1,26 @@
 ﻿using System.Net;
 using System.Net.Http.Json;
 using FluentAssertions;
-using Leds.GameEngine.Application.Runs.ResolveSelectedNode;
+using Leds.GameEngine.Application.Runs.ResolveCurrentEvent;
 using Leds.GameEngine.Application.Runs.StartRun;
 using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace Leds.GameEngine.IntegrationTests.Runs;
 
-public sealed class ResolveSelectedNodeEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class ResolveCurrentEventEndpointTests : IClassFixture<WebApplicationFactory<Program>>
 {
     private readonly HttpClient _client;
 
-    public ResolveSelectedNodeEndpointTests(WebApplicationFactory<Program> factory)
+    public ResolveCurrentEventEndpointTests(WebApplicationFactory<Program> factory)
     {
         _client = factory.CreateClient();
     }
 
     [Fact]
-    public async Task ResolveSelectedNode_ShouldResolveSelectedNode_AndSetRunStatusToRoomResolved()
+    public async Task ResolveCurrentEvent_ShouldResolveSelectedNode_AndKeepRunActive()
     {
         var startRunResponse = await StartRunAsync();
-        var nodeToChoose = startRunResponse.Run.CurrentRoom.Nodes.First();
+        var nodeToChoose = startRunResponse.Run.CurrentRoom.AvailableNodes.First();
 
         var chooseResponse = await _client.PostAsync(
             $"/api/v2/runs/{startRunResponse.Run.Id}/nodes/{nodeToChoose.Id}/choose",
@@ -29,15 +29,16 @@ public sealed class ResolveSelectedNodeEndpointTests : IClassFixture<WebApplicat
         chooseResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var resolveResponse = await _client.PostAsync(
-            $"/api/v2/runs/{startRunResponse.Run.Id}/selected-node/resolve",
+            $"/api/v2/runs/{startRunResponse.Run.Id}/current-event/resolve",
             content: null);
 
         resolveResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var payload = await resolveResponse.Content.ReadFromJsonAsync<ResolveSelectedNodeResponse>();
+        var payload = await resolveResponse.Content.ReadFromJsonAsync<ResolveCurrentEventResponse>();
 
         payload.Should().NotBeNull();
-        payload!.Run.Status.Should().Be("RoomResolved");
+        payload!.Run.Status.Should().Be("Active");
+        payload.Run.CurrentRoom.State.Should().Be("NodeResolved");
 
         var resolvedNode = payload.Run.CurrentRoom.Nodes
             .Single(node => node.Id == nodeToChoose.Id);
@@ -46,12 +47,12 @@ public sealed class ResolveSelectedNodeEndpointTests : IClassFixture<WebApplicat
     }
 
     [Fact]
-    public async Task ResolveSelectedNode_ShouldReturnBadRequest_WhenNoNodeWasSelected()
+    public async Task ResolveCurrentEvent_ShouldReturnBadRequest_WhenNoNodeWasSelected()
     {
         var startRunResponse = await StartRunAsync();
 
         var response = await _client.PostAsync(
-            $"/api/v2/runs/{startRunResponse.Run.Id}/selected-node/resolve",
+            $"/api/v2/runs/{startRunResponse.Run.Id}/current-event/resolve",
             content: null);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -59,16 +60,16 @@ public sealed class ResolveSelectedNodeEndpointTests : IClassFixture<WebApplicat
         var body = await response.Content.ReadAsStringAsync();
 
         body.Should().Contain("Domain rule violated.");
-        body.Should().Contain("No node has been selected for the current room.");
+        body.Should().Contain("Room must have a selected node before resolving an event.");
     }
 
     [Fact]
-    public async Task ResolveSelectedNode_ShouldReturnNotFound_WhenRunDoesNotExist()
+    public async Task ResolveCurrentEvent_ShouldReturnNotFound_WhenRunDoesNotExist()
     {
         var unknownRunId = Guid.NewGuid();
 
         var response = await _client.PostAsync(
-            $"/api/v2/runs/{unknownRunId}/selected-node/resolve",
+            $"/api/v2/runs/{unknownRunId}/current-event/resolve",
             content: null);
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);

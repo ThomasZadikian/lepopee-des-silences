@@ -4,20 +4,20 @@ using Leds.GameEngine.Application.Runs.Dtos;
 using Leds.GameEngine.Domain.Runs;
 using MediatR;
 
-namespace Leds.GameEngine.Application.Runs.ResolveSelectedNode;
+namespace Leds.GameEngine.Application.Runs.ResolveCurrentEvent;
 
-public sealed class ResolveSelectedNodeCommandHandler
-    : IRequestHandler<ResolveSelectedNodeCommand, ResolveSelectedNodeResponse>
+public sealed class ResolveCurrentEventCommandHandler
+    : IRequestHandler<ResolveCurrentEventCommand, ResolveCurrentEventResponse>
 {
     private readonly IRunRepository _runRepository;
 
-    public ResolveSelectedNodeCommandHandler(IRunRepository runRepository)
+    public ResolveCurrentEventCommandHandler(IRunRepository runRepository)
     {
         _runRepository = runRepository;
     }
 
-    public async Task<ResolveSelectedNodeResponse> Handle(
-        ResolveSelectedNodeCommand request,
+    public async Task<ResolveCurrentEventResponse> Handle(
+        ResolveCurrentEventCommand request,
         CancellationToken cancellationToken)
     {
         var runId = new RunId(request.RunId);
@@ -29,10 +29,10 @@ public sealed class ResolveSelectedNodeCommandHandler
             throw new NotFoundException("Run", request.RunId);
         }
 
-        run.ResolveSelectedNode();
+        run.ResolveCurrentEvent();
 
         await _runRepository.UpdateAsync(run, cancellationToken);
 
-        return new ResolveSelectedNodeResponse(RunDto.FromDomain(run));
+        return new ResolveCurrentEventResponse(RunDto.FromDomain(run));
     }
 }

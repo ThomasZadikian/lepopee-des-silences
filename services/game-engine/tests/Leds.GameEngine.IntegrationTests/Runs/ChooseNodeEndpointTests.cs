@@ -45,12 +45,12 @@ public sealed class ChooseNodeEndpointTests : IClassFixture<WebApplicationFactor
     }
 
     [Fact]
-    public async Task ChooseNode_ShouldReturnBadRequest_WhenChoosingSecondNodeInSameRoom()
+    public async Task ChooseNode_ShouldReturnBadRequest_WhenChoosingSecondNodeAtSameRoomDepth()
     {
         var startRunResponse = await StartRunAsync();
 
-        var firstNode = startRunResponse.Run.CurrentRoom.Nodes.First();
-        var secondNode = startRunResponse.Run.CurrentRoom.Nodes.Last();
+        var firstNode = startRunResponse.Run.CurrentRoom.AvailableNodes.First();
+        var secondNode = startRunResponse.Run.CurrentRoom.AvailableNodes.Last();
 
         var firstResponse = await _client.PostAsync(
             $"/api/v2/runs/{startRunResponse.Run.Id}/nodes/{firstNode.Id}/choose",
@@ -67,7 +67,7 @@ public sealed class ChooseNodeEndpointTests : IClassFixture<WebApplicationFactor
         var body = await secondResponse.Content.ReadAsStringAsync();
 
         body.Should().Contain("Domain rule violated.");
-        body.Should().Contain("A node has already been selected for the current room.");
+        body.Should().Contain("Room is not waiting for a node selection.");
     }
 
     [Fact]

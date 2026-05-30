@@ -9,12 +9,18 @@ public sealed class Node
         NodeEventType eventType,
         int riskLevel,
         string rewardProfile,
+        int nodeDepth,
+        NodeId? parentNodeId,
+        bool isRoomBossNode,
         NodeState state)
     {
         Id = id;
         EventType = eventType;
         RiskLevel = riskLevel;
         RewardProfile = rewardProfile;
+        NodeDepth = nodeDepth;
+        ParentNodeId = parentNodeId;
+        IsRoomBossNode = isRoomBossNode;
         State = state;
     }
 
@@ -26,6 +32,12 @@ public sealed class Node
 
     public string RewardProfile { get; }
 
+    public int NodeDepth { get; }
+
+    public NodeId? ParentNodeId { get; }
+
+    public bool IsRoomBossNode { get; }
+
     public NodeState State { get; private set; }
 
     public bool IsAvailable => State == NodeState.Available;
@@ -33,7 +45,10 @@ public sealed class Node
     public static Node Create(
         NodeEventType eventType,
         int riskLevel,
-        string rewardProfile)
+        string rewardProfile,
+        int nodeDepth = 0,
+        NodeId? parentNodeId = null,
+        bool isRoomBossNode = false)
     {
         if (riskLevel is < 0 or > 100)
         {
@@ -45,11 +60,29 @@ public sealed class Node
             throw new DomainException("Node reward profile is required.");
         }
 
+        if (nodeDepth < 0)
+        {
+            throw new DomainException("Node depth must be greater than or equal to 0.");
+        }
+
+        if (isRoomBossNode && eventType != NodeEventType.RoomBoss)
+        {
+            throw new DomainException("A room boss node must have the RoomBoss event type.");
+        }
+
+        if (!isRoomBossNode && eventType == NodeEventType.RoomBoss)
+        {
+            throw new DomainException("A RoomBoss event type must be marked as a room boss node.");
+        }
+
         return new Node(
             NodeId.New(),
             eventType,
             riskLevel,
             rewardProfile.Trim(),
+            nodeDepth,
+            parentNodeId,
+            isRoomBossNode,
             NodeState.Available);
     }
 

@@ -87,7 +87,12 @@ public sealed class Run
             throw new DomainException("Initial room depth must be 0.");
         }
 
-        if (initialRoom.Nodes.Count(node => node.IsAvailable) != 4)
+        if (initialRoom.CurrentNodeDepth != 0)
+        {
+            throw new DomainException("Initial room node depth must be 0.");
+        }
+
+        if (initialRoom.AvailableNodes.Count != 4)
         {
             throw new DomainException("A new run must start with exactly 4 available nodes.");
         }
@@ -107,30 +112,33 @@ public sealed class Run
     {
         EnsureActive();
 
-        if (CurrentRoom.Nodes.Any(node => node.State == NodeState.Selected || node.State == NodeState.Resolved))
-        {
-            throw new DomainException("A node has already been selected for the current room.");
-        }
-
         CurrentRoom.SelectNode(nodeId);
     }
 
-    public void ResolveSelectedNode()
+    public void ResolveCurrentEvent()
     {
         EnsureActive();
 
-        var selectedNode = CurrentRoom.Nodes.SingleOrDefault(node => node.State == NodeState.Selected)
-            ?? throw new DomainException("No node has been selected for the current room.");
+        CurrentRoom.ResolveSelectedNodeEvent();
 
-        selectedNode.Resolve();
-        Status = RunStatus.RoomResolved;
+        if (CurrentRoom.State == RoomState.Completed)
+        {
+            Status = RunStatus.RoomResolved;
+        }
+    }
+
+    public void AddNextNodesToCurrentRoom(IEnumerable<Node> nextNodes)
+    {
+        EnsureActive();
+
+        CurrentRoom.AddNextNodes(nextNodes);
     }
 
     public void MoveToNextRoom(Room nextRoom)
     {
-        if (Status != RunStatus.RoomResolved)
+        if (Status != RunStatus.RoomResolved || CurrentRoom.State != RoomState.Completed)
         {
-            throw new DomainException("Current room must be resolved before moving to the next room.");
+            throw new DomainException("Current room must be completed before moving to the next room.");
         }
 
         if (nextRoom.Depth != CurrentDepth + 1)

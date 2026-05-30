@@ -7,7 +7,10 @@ public sealed record NodeDto(
     string EventType,
     int RiskLevel,
     string RewardProfile,
-    string State)
+    string State,
+    int NodeDepth,
+    Guid? ParentNodeId,
+    bool IsRoomBossNode)
 {
     public static NodeDto FromDomain(Node node)
     {
@@ -16,6 +19,9 @@ public sealed record NodeDto(
             node.EventType.ToString(),
             node.RiskLevel,
             node.RewardProfile,
-            node.State.ToString());
+            node.State.ToString(),
+            node.NodeDepth,
+            node.ParentNodeId?.Value,
+            node.IsRoomBossNode);
     }
 }

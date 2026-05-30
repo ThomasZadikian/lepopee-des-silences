@@ -6,7 +6,11 @@ public sealed record RoomDto(
     Guid Id,
     int Depth,
     string Theme,
-    IReadOnlyCollection<NodeDto> Nodes)
+    string State,
+    int CurrentNodeDepth,
+    int MaxNodeDepth,
+    IReadOnlyCollection<NodeDto> Nodes,
+    IReadOnlyCollection<NodeDto> AvailableNodes)
 {
     public static RoomDto FromDomain(Room room)
     {
@@ -14,6 +18,10 @@ public sealed record RoomDto(
             room.Id.Value,
             room.Depth,
             room.Theme,
-            room.Nodes.Select(NodeDto.FromDomain).ToArray());
+            room.State.ToString(),
+            room.CurrentNodeDepth,
+            room.MaxNodeDepth,
+            room.Nodes.Select(NodeDto.FromDomain).ToArray(),
+            room.AvailableNodes.Select(NodeDto.FromDomain).ToArray());
     }
 }
