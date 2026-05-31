@@ -1,3 +1,4 @@
+using Leds.GameEngine.Application.Runs.AbandonRun;
 using Leds.GameEngine.Application.Runs.ChooseNode;
 using Leds.GameEngine.Application.Runs.GetRunById;
 using Leds.GameEngine.Application.Runs.MoveToNextRoom;
@@ -105,6 +106,21 @@ public sealed class RunsController : ControllerBase
     CancellationToken cancellationToken)
     {
         var command = new MoveToNextRoomCommand(runId);
+
+        var response = await _sender.Send(command, cancellationToken);
+
+        return Ok(response);
+    }
+
+    [HttpPost("{runId:guid}/abandon")]
+    [ProducesResponseType(typeof(AbandonRunResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<AbandonRunResponse>> AbandonRun(
+    Guid runId,
+    CancellationToken cancellationToken)
+    {
+        var command = new AbandonRunCommand(runId);
 
         var response = await _sender.Send(command, cancellationToken);
 
