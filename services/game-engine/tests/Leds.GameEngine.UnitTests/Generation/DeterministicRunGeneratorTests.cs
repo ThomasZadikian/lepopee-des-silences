@@ -2,6 +2,7 @@ using FluentAssertions;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Infrastructure.Generation;
+using Leds.GameEngine.UnitTests.Common.Factories;
 
 namespace Leds.GameEngine.UnitTests.Generation;
 
@@ -10,7 +11,7 @@ public sealed class DeterministicRunGeneratorTests
     [Fact]
     public void GenerateInitialRoom_ShouldCreateVisibleRoomPlan_WithSixToTenNodes()
     {
-        var generator = new DeterministicRunGenerator();
+        var generator = TestGeneratorFactory.CreateDeterministicRunGenerator();
 
         var room = generator.GenerateInitialRoom("seed-test-001");
 
@@ -39,7 +40,7 @@ public sealed class DeterministicRunGeneratorTests
     [Fact]
     public void GenerateInitialRoom_ShouldCreateNodes_WithOneToFourEventsEach()
     {
-        var generator = new DeterministicRunGenerator();
+        var generator = TestGeneratorFactory.CreateDeterministicRunGenerator();
 
         var room = generator.GenerateInitialRoom("seed-test-001");
 
@@ -53,7 +54,7 @@ public sealed class DeterministicRunGeneratorTests
     [Fact]
     public void GenerateInitialRoom_ShouldCreateRoomBossMatchingRoomType()
     {
-        var generator = new DeterministicRunGenerator();
+        var generator = TestGeneratorFactory.CreateDeterministicRunGenerator();
 
         var room = generator.GenerateInitialRoom("seed-test-001");
 
@@ -74,7 +75,7 @@ public sealed class DeterministicRunGeneratorTests
     [Fact]
     public void GenerateInitialRoom_ShouldCreateLayers_WithOneToFourNodesEach()
     {
-        var generator = new DeterministicRunGenerator();
+        var generator = TestGeneratorFactory.CreateDeterministicRunGenerator();
 
         var room = generator.GenerateInitialRoom("seed-test-001");
 
@@ -99,7 +100,7 @@ public sealed class DeterministicRunGeneratorTests
     [Fact]
     public void GenerateInitialRoom_ShouldBeDeterministic_ForVisibleRoomPlan()
     {
-        var generator = new DeterministicRunGenerator();
+        var generator = TestGeneratorFactory.CreateDeterministicRunGenerator();
 
         var firstRoom = generator.GenerateInitialRoom("seed-test-001");
         var secondRoom = generator.GenerateInitialRoom("seed-test-001");
@@ -115,7 +116,7 @@ public sealed class DeterministicRunGeneratorTests
     [Fact]
     public void GenerateInitialRoom_ShouldGenerateDifferentPlans_ForDifferentSeeds()
     {
-        var generator = new DeterministicRunGenerator();
+        var generator = TestGeneratorFactory.CreateDeterministicRunGenerator();
 
         var firstRoom = generator.GenerateInitialRoom("seed-test-001");
         var secondRoom = generator.GenerateInitialRoom("seed-test-002");
@@ -151,7 +152,7 @@ public sealed class DeterministicRunGeneratorTests
     [Fact]
     public void GenerateInitialRoom_ShouldCreateConvergentGraph_ToRoomBoss()
     {
-        var generator = new DeterministicRunGenerator();
+        var generator = TestGeneratorFactory.CreateDeterministicRunGenerator();
 
         var room = generator.GenerateInitialRoom("seed-test-001");
 
@@ -182,7 +183,7 @@ public sealed class DeterministicRunGeneratorTests
     [Fact]
     public void GenerateInitialRoom_ShouldGiveEveryNonBossNodeAtLeastOneChild()
     {
-        var generator = new DeterministicRunGenerator();
+        var generator = TestGeneratorFactory.CreateDeterministicRunGenerator();
 
         var room = generator.GenerateInitialRoom("seed-test-001");
 
@@ -198,7 +199,7 @@ public sealed class DeterministicRunGeneratorTests
     [Fact]
     public void GenerateInitialRoom_ShouldPlaceSingleRoomBossNodeAtFinalDepth()
     {
-        var generator = new DeterministicRunGenerator();
+        var generator = TestGeneratorFactory.CreateDeterministicRunGenerator();
 
         var room = generator.GenerateInitialRoom("seed-test-001");
 
@@ -218,7 +219,7 @@ public sealed class DeterministicRunGeneratorTests
     [Fact]
     public void GenerateInitialRoom_ShouldRespectNodeEventTypeRoomConstraints()
     {
-        var generator = new DeterministicRunGenerator();
+        var generator = TestGeneratorFactory.CreateDeterministicRunGenerator();
 
         var room = generator.GenerateInitialRoom("seed-test-001");
 
@@ -240,7 +241,7 @@ public sealed class DeterministicRunGeneratorTests
     [Fact]
     public void GenerateInitialRoom_ShouldRespectNodeEventTypeNodeConstraints()
     {
-        var generator = new DeterministicRunGenerator();
+        var generator = TestGeneratorFactory.CreateDeterministicRunGenerator();
 
         var room = generator.GenerateInitialRoom("seed-test-001");
 
@@ -261,7 +262,7 @@ public sealed class DeterministicRunGeneratorTests
     [Fact]
     public void GenerateInitialRoom_ShouldCreateAtLeastTwoAvailableNodesAtInitialDepth()
     {
-        var generator = new DeterministicRunGenerator();
+        var generator = TestGeneratorFactory.CreateDeterministicRunGenerator();
 
         var room = generator.GenerateInitialRoom("seed-test-001");
 

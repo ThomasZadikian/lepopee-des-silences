@@ -3,6 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Leds.GameEngine.Application\Leds.GameEngine.Application.csproj" />
     <ProjectReference Include="..\Leds.GameEngine.Domain\Leds.GameEngine.Domain.csproj" />
+	<InternalsVisibleTo Include="Leds.GameEngine.UnitTests" />
   </ItemGroup>
 
   <ItemGroup>

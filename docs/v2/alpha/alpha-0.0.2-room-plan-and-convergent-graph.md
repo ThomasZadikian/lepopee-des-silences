@@ -1,1015 +1,847 @@
-# L’épopée des silences — Game Engine Service
+# L’épopée des silences — SPEC-TECH alpha.3
 
-## Suivi technique alpha 0.0.2 — RoomPlan visible, graphe convergent, progression par chemins et contraintes d’événements
+## Room Plan Generation & Internal Progression Foundation
 
-Date : 2026-05-30
-Branche : `v2/develop`
-Service concerné : `services/game-engine`
-Statut : validé par tests unitaires, tests d’intégration et vérifications API manuelles Swagger
+## 1. Objet du document
 
----
+Ce document complète le précédent suivi technique `alpha.2 — Game Engine Foundation`.
 
-# 1. Objectif du jalon
+Il formalise les évolutions réalisées depuis la mise en place de la première verticale API `StartRun / GetRunById / ChooseNode / ResolveCurrentEvent`.
 
-Ce jalon vise à stabiliser la base gameplay du Game Engine Service pour la refonte v2 de **L’épopée des silences**.
+Ce jalon stabilise une partie centrale du gameplay de **L’épopée des silences** : la génération complète d’une Room, sa représentation sous forme de plan visible, sa progression interne, ses contraintes de nodes, ses contraintes d’événements, et la séparation propre des responsabilités de génération.
 
-L’objectif principal était de corriger le modèle de Room pour qu’il corresponde réellement à la vision cible du jeu :
+Ce document a pour objectifs :
 
-* une Room n’est pas un simple écran de choix ;
-* une Room est un plan stratégique complet ;
-* une Room contient plusieurs nodes ;
-* chaque node peut contenir plusieurs événements ;
-* le joueur choisit un chemin ;
-* les branches non choisies deviennent inaccessibles ;
-* toutes les branches doivent converger vers le boss de room ;
-* le boss est le dernier node obligatoire ;
-* la progression est serveur-autoritaire.
-
-Ce jalon remplace donc une première version trop simplifiée du modèle par une base plus proche de la finalité.
+* documenter les décisions prises ;
+* expliquer les refactors effectués ;
+* clarifier les règles métier stabilisées ;
+* garder une trace des choix d’architecture ;
+* préparer proprement la suite : génération de la room suivante, persistance événementielle, vraie matrice Markov et frontend de carte.
 
 ---
 
-# 2. Contexte avant refactor
+## 2. Contexte du jalon
 
-Avant ce jalon, le Game Engine Service disposait déjà des fondations suivantes :
+À la fin du jalon précédent, la boucle serveur minimale était :
 
-* solution Clean Architecture initialisée ;
-* séparation Domain / Application / Infrastructure / API ;
-* MediatR / CQRS ;
-* endpoints de base pour démarrer et consulter une run ;
-* modèle initial `Run`, `Room`, `Node` ;
-* génération déterministe initiale par seed ;
-* repository in-memory temporaire ;
-* tests unitaires et tests d’intégration ;
-* endpoints :
+```text
+POST /api/v2/runs
+GET  /api/v2/runs/{runId}
+POST /api/v2/runs/{runId}/nodes/{nodeId}/choose
+POST /api/v2/runs/{runId}/current-event/resolve
+```
 
-  * `POST /api/v2/runs`
-  * `GET /api/v2/runs/{runId}`
-  * `POST /api/v2/runs/{runId}/nodes/{nodeId}/choose`
-  * `POST /api/v2/runs/{runId}/current-event/resolve`
-  * `POST /api/v2/runs/{runId}/nodes/next`
+Cette boucle permettait déjà de :
 
-Cependant, le modèle précédent avait plusieurs limites :
+* créer une run ;
+* récupérer son état courant ;
+* sélectionner un node ;
+* résoudre l’événement courant.
 
-* les nodes suivants étaient générés progressivement ;
-* la Room n’était pas représentée comme un plan complet ;
-* un node ne portait qu’un seul type d’événement ;
-* le boss n’était pas encore intégré comme dernier node obligatoire d’un graphe ;
-* les branches n’étaient pas réellement des chemins ;
-* la progression ne dépendait pas encore du parent choisi ;
-* les contraintes de rareté des événements n’étaient pas appliquées ;
-* `Memory`, `Rest`, `Npc`, `Item`, etc. pouvaient apparaître de manière incohérente ;
-* la matrice Markov n’était pas encore structurante dans la génération.
+Cependant, le modèle initial avait encore une ambiguïté importante : une Room était traitée trop simplement comme une étape courte, alors que la vision gameplay finale exige une structure plus riche.
 
-Ce refactor a donc été décidé pour éviter d’empiler du développement sur une base métier incorrecte.
+La clarification métier a été la suivante :
+
+```text
+Une Room n’est pas un node.
+Une Room est un ensemble organisé de nodes.
+Une Room contient plusieurs couches de nodes.
+Le joueur progresse de couche en couche.
+Toutes les branches convergent vers un boss de room.
+La victoire contre ce boss débloque la room suivante.
+```
+
+Cette clarification a entraîné un refactor important du domaine et du générateur.
 
 ---
 
-# 3. Décisions métier actées
+## 3. Règles métier stabilisées
 
-## 3.1 Une Room est un plan visible complet
+Les règles suivantes sont désormais considérées comme structurantes pour le gameplay v2.
 
-La Room est désormais générée entièrement dès son entrée.
+### 3.1 Room
 
-Le joueur connaît dès le début :
+Une Room représente une zone complète du Palais mental.
 
-* le nombre total de nodes de la Room ;
-* les différentes profondeurs de la Room ;
-* les nodes disponibles immédiatement ;
-* les nodes futurs ;
-* le nombre d’événements visibles par node ;
-* la nature générale des événements visibles ;
-* le boss de room à venir.
+Elle contient :
 
-Cela permet au joueur de prendre une décision stratégique.
+* un type de room ;
+* un thème ;
+* un boss de room ;
+* un plan complet visible ;
+* entre 6 et 10 nodes ;
+* des nodes organisés en couches ;
+* une progression interne ;
+* un état de progression ;
+* des nodes disponibles à la profondeur actuelle ;
+* des nodes futurs visibles mais non sélectionnables.
 
-Le joueur ne connaît pas encore :
+Règles principales :
 
-* les ennemis exacts ;
+```text
+Une Room contient entre 6 et 10 nodes.
+Une Room contient exactement un boss de room.
+Le boss de room est placé au dernier niveau de profondeur interne.
+Les couches de nodes sont continues.
+Les nodes de profondeur 0 sont Available au lancement.
+Les nodes futurs sont Planned.
+Toutes les branches doivent converger vers le boss.
+La room n’est Completed qu’après résolution du boss.
+```
+
+### 3.2 Node
+
+Un Node représente un choix ou une étape dans une Room.
+
+Un Node contient désormais :
+
+* un identifiant ;
+* une profondeur interne ;
+* un ou plusieurs parents ;
+* un état ;
+* un niveau de risque ;
+* un profil de récompense ;
+* une collection d’événements ;
+* une indication éventuelle de boss de room.
+
+Règles principales :
+
+```text
+Un Node contient entre 1 et 4 events.
+Un Node peut être Available, Planned, Selected, Locked, Resolved ou Unreachable.
+Un Node Available peut être choisi.
+Un Node Planned est visible mais non sélectionnable.
+Un Node Selected représente le choix courant.
+Un Node Resolved représente un choix terminé.
+Un RoomBossNode contient l’événement RoomBoss.
+```
+
+### 3.3 NodeEvent
+
+Un Node ne porte plus un seul type d’événement simple. Il porte une collection de `NodeEvent`.
+
+Chaque `NodeEvent` contient :
+
+* un type d’événement ;
+* un ordre dans le node.
+
+Cela permet de représenter des nodes composites :
+
+```text
+Node A : Combat
+Node B : Memory + Rest
+Node C : Law + Combat + Item
+Node D : Merchant + Curse
+```
+
+La structure prépare les futures résolutions détaillées :
+
+* combat exact ;
+* récompense exacte ;
+* texte narratif ;
+* effet de loi ;
+* effet de malédiction ;
+* mémoire débloquée ;
+* conséquence cachée éventuelle.
+
+---
+
+## 4. Décision de visibilité joueur
+
+Une décision importante a été prise à partir de retours joueurs.
+
+Le joueur doit connaître au lancement d’une room :
+
+* le nombre de nodes avant le boss ;
+* le nombre d’événements par node ;
+* la nature générale des événements de chaque node ;
+* la structure des chemins ;
+* le boss de room annoncé.
+
+En revanche, le joueur ne connaît pas :
+
+* l’ennemi exact ;
+* les statistiques exactes ;
 * les récompenses exactes ;
+* les textes narratifs exacts ;
 * les effets numériques exacts ;
-* les détails narratifs exacts ;
-* les résultats précis des événements ;
-* les événements `Memory` dynamiques.
+* certaines conséquences cachées ;
+* les tirages internes.
 
 La règle retenue est donc :
 
-> Le joueur voit la structure stratégique, mais pas la résolution exacte.
+```text
+Le plan stratégique est visible.
+La résolution exacte reste serveur-autoritaire.
+```
+
+Cette décision donne au joueur de vrais choix stratégiques sans supprimer l’incertitude du roguelite.
 
 ---
 
-## 3.2 Une Room contient entre 6 et 10 nodes
+## 5. Modèle de progression interne d’une Room
 
-Une Room doit contenir entre 6 et 10 nodes au total, boss inclus.
+La Room fonctionne maintenant comme une progression en couches.
 
-Cette règle a été posée pour garantir :
-
-* une durée de Room suffisante ;
-* une vraie prise de décision ;
-* une carte lisible ;
-* une génération contrôlable ;
-* une base adaptée au futur frontend.
-
-Invariant métier :
+Exemple conceptuel :
 
 ```text
-6 <= Room.TotalNodeCount <= 10
+Room: Memory
+Boss: Archiviste Fêlé
+
+Depth 0
+├── Node A: Combat
+├── Node B: Npc + Law
+└── Node C: Rest
+
+Depth 1
+├── Node D: Combat + Item
+└── Node E: Merchant
+
+Depth 2
+├── Node F: Elite
+└── Node G: Curse + Rare
+
+Depth 3
+└── Node H: RoomBoss
+```
+
+Au lancement :
+
+```text
+Depth 0 = Available
+Depth 1+ = Planned
+Boss = Planned
+```
+
+Pendant la progression :
+
+```text
+ChooseNode
+→ ResolveCurrentEvent
+→ ProgressCurrentRoom
+→ prochaine couche Available
+```
+
+À la fin :
+
+```text
+Choose RoomBossNode
+→ ResolveCurrentEvent
+→ Room Completed
+→ Run RoomResolved
 ```
 
 ---
 
-## 3.3 Chaque node contient entre 1 et 4 événements
+## 6. États de Room
 
-Un node n’est plus limité à un seul événement.
+La Room possède désormais un état de progression.
 
-Un node peut désormais contenir une séquence de 1 à 4 événements visibles.
+Les états principaux sont :
+
+```text
+Active       : le joueur peut choisir un node disponible.
+NodeSelected : un node a été choisi et attend résolution.
+NodeResolved : l’événement du node courant est résolu.
+BossReached  : le boss de room est accessible.
+Completed    : le boss de room est résolu.
+```
+
+La Run ne peut passer à la Room suivante que si :
+
+```text
+CurrentRoom.State == Completed
+Run.Status == RoomResolved
+```
+
+---
+
+## 7. États de Node
+
+Les états de Node permettent de représenter le plan complet de la Room sans rendre tous les choix immédiatement accessibles.
+
+États utilisés :
+
+```text
+Planned     : visible sur le plan, mais pas encore sélectionnable.
+Available   : sélectionnable maintenant.
+Selected    : choisi, événement en cours.
+Locked      : non choisi à la profondeur courante.
+Resolved    : choisi et terminé.
+Unreachable : branche rendue inaccessible par les choix précédents.
+```
+
+Cette distinction est essentielle pour le futur affichage de carte.
+
+---
+
+## 8. Contraintes d’événements
+
+Les contraintes suivantes ont été stabilisées :
+
+```text
+Combat : illimité.
+Elite : maximum 1 par room.
+Item : maximum 1 par node et maximum totalNodeCount / 2 par room.
+Npc : maximum 1 par room.
+Memory : non planifié comme node event standard.
+Rest : maximum 1 par room.
+Rest : doit être seul dans son node.
+Merchant : maximum 1 par room.
+Law : maximum 1 par room.
+Curse : maximum 1 par room.
+Rare : maximum 3 par room.
+RoomBoss : exactement 1, dans le boss node.
+```
+
+Le profil de récompense `Rest` a été ajusté :
+
+```text
+Rest seul → rewardProfile = healing-only
+```
+
+Cela clarifie le fait que Rest sert au soin et ne constitue pas une récompense classique.
+
+---
+
+## 9. Boss dépendant du type de Room
+
+Le boss de room dépend directement du `RoomType`.
 
 Exemples :
 
 ```text
-Node A : Combat
-Node B : Combat + Item
-Node C : Npc + Item + Combat
-Node D : Rest
+Threshold   → Gardien du Seuil
+Memory      → Archiviste Fêlé
+Forest      → Cerf de Cendre
+Rupture     → Fragment Brisé
+Silence     → Veilleur Muet
+Antechamber → Gardien de l’Antichambre
+Final       → Him’Lit
 ```
 
-Invariant métier :
+Le boss est exposé dans le DTO de room sous forme de preview.
 
-```text
-1 <= Node.EventCount <= 4
-```
-
-Ce changement est important, car il permet de créer des nodes plus intéressants que de simples cases monotype.
+Cette décision est importante pour la planification joueur : le joueur sait vers quel affrontement la room converge.
 
 ---
 
-## 3.4 La progression fonctionne par chemins
-
-Le joueur ne peut progresser que vers les enfants du node choisi.
-
-Ancien comportement :
-
-```text
-Résoudre un node
-→ débloquer toute la couche suivante
-```
-
-Nouveau comportement :
-
-```text
-Résoudre un node
-→ débloquer uniquement les enfants directs de ce node
-```
-
-Un node enfant est atteignable si :
-
-```text
-child.ParentNodeIds contient resolvedNode.Id
-```
-
-Cette règle transforme la Room en vraie carte de chemins.
-
----
-
-## 3.5 Les branches non choisies deviennent inaccessibles
-
-Lorsqu’un joueur choisit un node :
-
-* le node choisi passe en `Selected` ;
-* les autres nodes de la même profondeur passent en `Locked` ;
-* les futurs nodes non atteignables depuis le node choisi passent en `Unreachable` ;
-* les futurs nodes encore atteignables restent `Planned`.
-
-Cela permet au frontend d’afficher clairement :
-
-* le chemin choisi ;
-* les branches verrouillées ;
-* les branches futures encore possibles ;
-* les branches définitivement perdues.
-
----
-
-## 3.6 Toutes les branches convergent vers le boss
-
-La génération d’une Room doit garantir qu’aucune branche ne mène à une impasse.
-
-Chaque node non-boss doit avoir au moins un chemin valide vers le boss de room.
-
-Invariant métier :
-
-```text
-Pour chaque node non-boss :
-il existe au moins un chemin jusqu’au RoomBossNode.
-```
-
-Le graphe de Room doit donc être un graphe orienté acyclique en couches, avec convergence obligatoire vers le boss.
-
----
-
-## 3.7 Le BossNode est unique et final
-
-Le boss de room est représenté par un node spécifique : le `RoomBossNode`.
-
-Règles actées :
-
-* une Room contient exactement un boss de room ;
-* le boss est placé à la dernière profondeur ;
-* le boss est le seul node de la dernière profondeur ;
-* le boss contient l’événement `RoomBoss` ;
-* le boss démarre en `Planned` ;
-* il devient `Available` uniquement lorsque le joueur atteint la dernière profondeur ;
-* sa résolution termine la Room.
-
-Invariant métier :
-
-```text
-FinalLayer.Count == 1
-FinalLayer.Single().IsRoomBossNode == true
-```
-
-Après résolution du boss :
-
-```text
-RoomState = Completed
-RunStatus = RoomResolved
-```
-
----
-
-# 4. Contraintes d’événements actées
-
-Les contraintes suivantes sont désormais appliquées à la génération.
-
-## 4.1 Combat
-
-```text
-Par node : illimité
-Par room : illimité
-```
-
-`Combat` est l’événement de fallback principal.
-
----
-
-## 4.2 Elite
-
-```text
-Maximum par room : 1
-```
-
----
-
-## 4.3 Item
-
-```text
-Maximum par node : 1
-Maximum par room : floor(totalNodeCount / 2)
-```
-
-Exemple :
-
-```text
-Room avec 10 nodes
-→ maximum 5 Item dans la room
-```
-
----
-
-## 4.4 Npc
-
-```text
-Maximum par room : 1
-```
-
----
-
-## 4.5 Memory
-
-```text
-Interdit dans le plan visible de la Room
-```
-
-`Memory` n’est plus généré comme événement planifié dans un node.
-
-Il sera traité plus tard comme un événement dynamique pouvant apparaître lors de la résolution d’un node.
-
-Règle cible :
-
-```text
-Memory = événement aléatoire de résolution
-Memory != événement visible planifié
-```
-
----
-
-## 4.6 Rest
-
-```text
-Maximum par room : 1
-Exclusif dans son node
-RewardProfile = healing-only
-```
-
-`Rest` ne donne pas de récompense classique.
-
-Son rôle est uniquement de permettre au joueur de se soigner.
-
-Exemple valide :
-
-```text
-Node : Rest
-RewardProfile : healing-only
-```
-
-Exemples invalides :
-
-```text
-Rest + Combat
-Rest + Item
-Rest + Npc
-Rest + Rest
-```
-
----
-
-## 4.7 Merchant
-
-```text
-Maximum par room : 1
-```
-
----
-
-## 4.8 Law
-
-```text
-Maximum par room : 1
-```
-
----
-
-## 4.9 Curse
-
-```text
-Maximum par room : 1
-```
-
----
-
-## 4.10 Rare
-
-```text
-Maximum par room : 3
-```
-
----
-
-## 4.11 RoomBoss
-
-```text
-Exactement 1 par room
-Uniquement sur le RoomBossNode
-```
-
----
-
-## 4.12 FinalBoss
-
-```text
-Interdit dans les rooms standards
-Réservé à la room finale / Him’Lit
-```
-
----
-
-# 5. Évolution du modèle Domain
-
-## 5.1 NodeState
-
-L’énumération `NodeState` a évolué pour gérer les branches inaccessibles.
-
-États actuels :
-
-```csharp
-public enum NodeState
-{
-    Planned = 0,
-    Available = 1,
-    Selected = 2,
-    Locked = 3,
-    Resolved = 4,
-    Unreachable = 5
-}
-```
-
-Signification :
-
-```text
-Planned
-→ node visible dans le plan, mais pas encore sélectionnable
-
-Available
-→ node sélectionnable par le joueur
-
-Selected
-→ node choisi, événement en cours ou prêt à être résolu
-
-Locked
-→ node de la même profondeur non choisi
-
-Resolved
-→ node choisi et résolu
-
-Unreachable
-→ node futur situé sur une branche devenue impossible
-```
-
----
-
-## 5.2 Node
-
-Le modèle `Node` a été profondément refactorisé.
-
-Ancien modèle :
-
-```text
-Node
-- EventType
-- ParentNodeId
-```
-
-Nouveau modèle :
-
-```text
-Node
-- Events
-- EventTypes
-- EventCount
-- ParentNodeIds
-- ParentNodeId de compatibilité
-- IsRoomBossNode
-- State
-```
-
-Un node peut désormais :
-
-* contenir plusieurs événements ;
-* avoir plusieurs parents ;
-* participer à une convergence de branches ;
-* être marqué inaccessible ;
-* représenter le boss de room.
-
----
-
-## 5.3 ParentNodeIds
-
-`ParentNodeId` ne suffit plus pour représenter les graphes convergents.
-
-Exemple :
-
-```text
-A ─┐
-   ├── C
-B ─┘
-```
-
-Dans ce cas, `C` doit avoir deux parents :
-
-```json
-"parentNodeIds": ["A", "B"]
-```
-
-Le champ `parentNodeId` est conservé temporairement pour compatibilité et lecture simple, mais le champ cible est désormais :
-
-```text
-parentNodeIds
-```
-
----
-
-## 5.4 Room
-
-`Room` est maintenant responsable des invariants du graphe.
-
-Elle vérifie notamment :
-
-* le nombre total de nodes ;
-* l’existence d’un boss unique ;
-* la position du boss ;
-* l’unicité du node final ;
-* la continuité des profondeurs ;
-* la validité des parents ;
-* l’absence de parents sur les nodes initiaux ;
-* l’existence d’au moins un parent pour les nodes non-initiaux ;
-* l’existence d’au moins un enfant pour chaque node non-boss ;
-* l’existence d’un chemin vers le boss pour chaque node non-boss.
-
-La Room n’est donc plus une simple collection de nodes.
-
-Elle est devenue le garant métier de la carte.
-
----
-
-# 6. Évolution du modèle Application / DTO
-
-## 6.1 NodeDto
-
-`NodeDto` expose désormais :
-
-```text
-Id
-EventTypes
-EventCount
-RiskLevel
-RewardProfile
-State
-NodeDepth
-ParentNodeId
-ParentNodeIds
-IsRoomBossNode
-```
-
-Ce DTO permet au frontend de dessiner une carte complète en couches et en chemins.
-
----
-
-## 6.2 NodeLayerDto
-
-Les nodes sont exposés regroupés par profondeur :
-
-```text
-NodeLayerDto
-- Depth
-- Nodes
-```
-
-Cela donne une structure directement exploitable pour afficher une carte.
-
----
-
-## 6.3 RoomBossProfileDto
-
-La Room expose une prévisualisation du boss :
-
-```text
-BossId
-Name
-RoomType
-DangerHint
-```
-
-Exemple :
+## 10. API et DTOs
+
+La réponse API expose maintenant la Room comme un plan.
+
+La Room DTO contient notamment :
+
+* `roomType` ;
+* `theme` ;
+* `state` ;
+* `currentNodeDepth` ;
+* `maxNodeDepth` ;
+* `totalNodeCount` ;
+* `bossPreview` ;
+* `nodeLayers` ;
+* `availableNodes`.
+
+Les nodes sont regroupés en couches :
 
 ```json
 {
-  "bossId": "threshold-guardian",
-  "name": "Gardien du Seuil",
-  "roomType": "Threshold",
-  "dangerHint": "High"
+  "nodeLayers": [
+    {
+      "depth": 0,
+      "nodes": []
+    },
+    {
+      "depth": 1,
+      "nodes": []
+    }
+  ]
 }
 ```
 
----
-
-## 6.4 RoomDto
-
-`RoomDto` expose désormais :
-
-```text
-Id
-Depth
-RoomType
-Theme
-State
-CurrentNodeDepth
-MaxNodeDepth
-TotalNodeCount
-BossPreview
-NodeLayers
-AvailableNodes
-```
-
-Cela donne au client un état complet, lisible et stratégique de la Room.
+Cela évite d’exposer une simple liste plate illisible et prépare l’affichage frontend de carte.
 
 ---
 
-# 7. Évolution du flux API
+## 11. Endpoint de progression
 
-## 7.1 Démarrer une run
+L’ancien raisonnement autour de `/nodes/next` a été abandonné.
 
-Endpoint :
+Dans le nouveau modèle, les nodes ne sont plus générés progressivement après chaque résolution. La Room complète est générée dès son entrée.
 
-```http
-POST /api/v2/runs
-```
+La progression consiste donc à déverrouiller la couche suivante, pas à générer de nouveaux nodes.
 
-Résultat :
-
-* crée une run active ;
-* génère une room complète ;
-* expose tout le plan visible ;
-* place les nodes de profondeur 0 en `Available` ;
-* place les nodes futurs en `Planned`.
-
----
-
-## 7.2 Choisir un node
-
-Endpoint :
-
-```http
-POST /api/v2/runs/{runId}/nodes/{nodeId}/choose
-```
-
-Effets :
-
-* le node choisi passe en `Selected` ;
-* les autres nodes de la profondeur courante passent en `Locked` ;
-* les branches futures non atteignables passent en `Unreachable` ;
-* les branches futures atteignables restent `Planned` ;
-* la Room passe en `NodeSelected` ;
-* `availableNodes` devient vide.
-
----
-
-## 7.3 Résoudre l’événement courant
-
-Endpoint :
-
-```http
-POST /api/v2/runs/{runId}/current-event/resolve
-```
-
-Effets :
-
-* le node sélectionné passe en `Resolved` ;
-* la Room passe en `NodeResolved` ;
-* la Run reste `Active`, sauf si le node résolu est le boss ;
-* si le node résolu est le boss :
-
-  * la Room passe en `Completed` ;
-  * la Run passe en `RoomResolved`.
-
----
-
-## 7.4 Progresser dans la Room
-
-Endpoint :
+L’endpoint utilisé est :
 
 ```http
 POST /api/v2/runs/{runId}/progress
 ```
 
-Effets :
+Il permet de faire avancer la Room après résolution du node courant.
 
-* vérifie que la Room est en `NodeResolved` ;
-* récupère le node résolu à la profondeur courante ;
-* passe à la profondeur suivante ;
-* débloque uniquement les enfants directs du node résolu ;
-* met ces enfants en `Available` ;
-* passe la Room en `Active` ou `BossReached`.
-
-Si la prochaine profondeur contient le boss :
+Flux actuel :
 
 ```text
-RoomState = BossReached
-AvailableNodes = [RoomBossNode]
+POST /api/v2/runs
+→ Room complète générée
+
+POST /api/v2/runs/{runId}/nodes/{nodeId}/choose
+→ Node choisi
+
+POST /api/v2/runs/{runId}/current-event/resolve
+→ Node résolu
+
+POST /api/v2/runs/{runId}/progress
+→ Couche suivante disponible
 ```
 
 ---
 
-# 8. Évolution du générateur
+## 12. Refactor du générateur déterministe
 
-## 8.1 Version
+Le fichier `DeterministicRunGenerator` était devenu trop volumineux et contenait trop de responsabilités.
 
-Le générateur est actuellement identifié par :
+Il mélangeait :
+
+* seed ;
+* random déterministe ;
+* choix du type de room ;
+* choix du boss ;
+* génération du plan ;
+* répartition en couches ;
+* création de nodes ;
+* génération d’événements ;
+* contraintes d’événements ;
+* calcul du risque ;
+* calcul du reward profile ;
+* thème de room.
+
+Cette structure risquait de devenir une `God class`.
+
+Un refactor a donc été décidé pour appliquer les principes SOLID dès maintenant.
+
+---
+
+## 13. Nouvelle architecture de génération
+
+La génération a été découpée en composants spécialisés.
+
+Structure cible :
 
 ```text
-GeneratorVersion = gen-0.2.0
-MarkovMatrixVersion = markov-0.2.0
+Infrastructure/Generation/
+├── DeterministicRunGenerator.cs
+├── Common/
+│   └── RoomGenerationConstants.cs
+├── Randomness/
+│   ├── ISeededRandomFactory.cs
+│   └── SeededRandomFactory.cs
+└── Rooms/
+    ├── Planning/
+    │   ├── IRoomPlanGenerator.cs
+    │   └── RoomPlanGenerator.cs
+    ├── Types/
+    │   ├── IRoomTypeResolver.cs
+    │   └── RoomTypeResolver.cs
+    ├── Themes/
+    │   ├── IRoomThemeResolver.cs
+    │   └── RoomThemeResolver.cs
+    ├── Bosses/
+    │   ├── IRoomBossProfileResolver.cs
+    │   └── RoomBossProfileResolver.cs
+    ├── Events/
+    │   ├── IRoomEventGenerationState.cs
+    │   ├── RoomEventGenerationState.cs
+    │   ├── IRoomEventGenerationStateFactory.cs
+    │   ├── RoomEventGenerationStateFactory.cs
+    │   ├── INodeEventCandidateResolver.cs
+    │   ├── NodeEventCandidateResolver.cs
+    │   ├── INodeEventGenerator.cs
+    │   └── NodeEventGenerator.cs
+    ├── Layers/
+    │   ├── IRoomNodeLayerPlanner.cs
+    │   └── RoomNodeLayerPlanner.cs
+    ├── Nodes/
+    │   ├── IRoomNodeFactory.cs
+    │   └── RoomNodeFactory.cs
+    ├── Risk/
+    │   ├── INodeRiskResolver.cs
+    │   └── NodeRiskResolver.cs
+    └── Rewards/
+        ├── INodeRewardProfileResolver.cs
+        └── NodeRewardProfileResolver.cs
 ```
 
-Même si la vraie matrice de Markov n’est pas encore pleinement introduite, la version indique que la génération a changé de structure.
-
 ---
 
-## 8.2 RoomPlan complet
+## 14. Responsabilités des composants
 
-Le générateur produit maintenant :
+### DeterministicRunGenerator
 
-* une room complète ;
-* un nombre de nodes entre 6 et 10 ;
-* plusieurs couches de nodes ;
-* un boss final unique ;
-* un graphe convergent ;
-* des nodes multi-events ;
-* des contraintes d’événements.
-
----
-
-## 8.3 Génération convergente
-
-Le générateur doit garantir :
+Responsabilité :
 
 ```text
-Chaque node non-boss possède au moins un enfant.
-Chaque node non-boss possède un chemin vers le boss.
-Tous les nodes de l’avant-dernière profondeur mènent au boss.
-Le boss est seul sur la dernière profondeur.
+Orchestrer la génération d’une room initiale ou suivante.
+```
+
+Il dépend de :
+
+* `ISeededRandomFactory` ;
+* `IRoomTypeResolver` ;
+* `IRoomPlanGenerator`.
+
+Il ne contient plus la logique détaillée de construction du plan.
+
+### SeededRandomFactory
+
+Responsabilité :
+
+```text
+Créer un Random déterministe à partir de seed + roomDepth + generatorVersion.
+```
+
+Cela centralise la reproductibilité.
+
+### RoomTypeResolver
+
+Responsabilité :
+
+```text
+Choisir le type de room selon la profondeur et le hasard déterministe.
+```
+
+Règles :
+
+```text
+depth 0     → Threshold
+depth >= 10 → Final
+sinon       → Memory / Forest / Rupture / Silence / Antechamber
+```
+
+### RoomThemeResolver
+
+Responsabilité :
+
+```text
+Convertir un RoomType en thème textuel.
+```
+
+### RoomBossProfileResolver
+
+Responsabilité :
+
+```text
+Associer un boss au type de room.
+```
+
+### RoomPlanGenerator
+
+Responsabilité :
+
+```text
+Assembler une Room complète valide.
+```
+
+Il orchestre :
+
+* total node count ;
+* génération des couches ;
+* création du boss ;
+* création finale de `Room`.
+
+### RoomNodeLayerPlanner
+
+Responsabilité :
+
+```text
+Déterminer combien de couches normales existent et combien de nodes placer dans chaque couche.
+```
+
+### RoomNodeFactory
+
+Responsabilité :
+
+```text
+Créer les nodes normaux et le boss node.
+```
+
+Il ne décide pas directement des events, risques ou rewards. Il délègue.
+
+### NodeEventGenerator
+
+Responsabilité :
+
+```text
+Générer entre 1 et 4 événements valides pour un node.
+```
+
+### NodeEventCandidateResolver
+
+Responsabilité :
+
+```text
+Construire la liste des événements candidats selon les contraintes de room.
+```
+
+C’est ici que vivent les règles comme :
+
+* Elite max 1 ;
+* Rest singleton ;
+* Memory non planifié ;
+* Item max par node ;
+* etc.
+
+### RoomEventGenerationState
+
+Responsabilité :
+
+```text
+Suivre les événements déjà générés dans la room.
+```
+
+### NodeRiskResolver
+
+Responsabilité :
+
+```text
+Calculer le risque global d’un node à partir de ses events.
+```
+
+### NodeRewardProfileResolver
+
+Responsabilité :
+
+```text
+Déterminer le rewardProfile global du node.
 ```
 
 ---
 
-## 8.4 Contraintes de génération d’events
+## 15. Application stricte de Clean Architecture
 
-Un état interne de génération suit les compteurs d’événements par Room.
+La couche `Application` ne connaît pas les détails de génération.
 
-Cet état permet de contrôler :
+Elle dépend uniquement de :
 
-* le nombre de `Rest` ;
-* le nombre de `Npc` ;
-* le nombre de `Elite` ;
-* le nombre de `Item` ;
-* le nombre de `Rare` ;
-* le nombre de `Merchant` ;
-* le nombre de `Law` ;
-* le nombre de `Curse`.
+```text
+IRunGenerator
+```
 
----
+Les composants suivants restent dans `Infrastructure`, car ils sont des détails internes de l’implémentation déterministe :
 
-# 9. Tests ajoutés ou adaptés
+```text
+ISeededRandomFactory
+IRoomTypeResolver
+IRoomPlanGenerator
+IRoomBossProfileResolver
+IRoomThemeResolver
+INodeEventGenerator
+INodeEventCandidateResolver
+INodeRiskResolver
+INodeRewardProfileResolver
+IRoomNodeFactory
+IRoomNodeLayerPlanner
+```
 
-## 9.1 Tests unitaires Domain
+Cela respecte la frontière :
 
-Les tests Domain couvrent notamment :
-
-* création d’une run active ;
-* validation du nombre de nodes ;
-* sélection d’un node ;
-* verrouillage des siblings ;
-* marquage des branches inaccessibles ;
-* résolution du node courant ;
-* progression vers les enfants ;
-* arrivée au boss ;
-* résolution du boss ;
-* passage de la Room en `Completed` ;
-* passage de la Run en `RoomResolved`.
+```text
+Application dit : je veux une Room.
+Infrastructure décide : comment cette Room est générée.
+```
 
 ---
 
-## 9.2 Tests unitaires Generator
+## 16. Principes SOLID appliqués
 
-Les tests du générateur couvrent notamment :
+### SRP — Single Responsibility Principle
 
-* génération d’une Room de 6 à 10 nodes ;
-* génération de nodes avec 1 à 4 événements ;
-* absence de `Memory` dans le plan visible ;
-* unicité du boss ;
-* boss seul à la dernière profondeur ;
-* respect des contraintes par type d’événement ;
-* respect des contraintes par node ;
-* convergence vers le boss ;
-* présence d’au moins un enfant pour chaque node non-boss.
+Chaque composant possède une responsabilité claire :
 
----
+```text
+RoomTypeResolver       → type de room
+RoomBossProfileResolver → boss
+RoomThemeResolver      → thème
+NodeEventGenerator     → events
+NodeRiskResolver       → risque
+NodeRewardProfileResolver → reward profile
+RoomNodeLayerPlanner   → répartition en couches
+RoomNodeFactory        → création de nodes
+RoomPlanGenerator      → assemblage de room
+```
 
-## 9.3 Tests unitaires Application
+### OCP — Open/Closed Principle
 
-Les handlers testés incluent notamment :
+On pourra ajouter :
 
-* `StartRunCommandHandler` ;
-* `ChooseNodeCommandHandler` ;
-* `ResolveCurrentEventCommandHandler` ;
-* `ProgressRunCommandHandler`.
+* un autre générateur ;
+* une vraie matrice Markov ;
+* un générateur saisonnier ;
+* un générateur de difficulté ;
+* un générateur narratif ;
 
-Les tests vérifient que les handlers appellent bien le repository, modifient correctement l’état de la run et retournent des DTO cohérents.
+sans casser l’Application.
 
----
+### DIP — Dependency Inversion Principle
 
-## 9.4 Tests d’intégration API
+`Application` dépend de `IRunGenerator`.
 
-Les tests d’intégration couvrent :
+`Infrastructure` fournit `DeterministicRunGenerator`.
 
-* démarrage d’une run ;
-* validation d’erreur sur playerId vide ;
-* choix d’un node ;
-* refus d’un second choix à la même profondeur ;
-* refus de choisir un node `Planned` ;
-* résolution de l’événement courant ;
-* progression vers les enfants du node résolu ;
-* progression jusqu’au boss ;
-* résolution du boss ;
-* erreurs `404` sur run inconnue ;
-* erreurs `400` sur progression invalide.
+### ISP — Interface Segregation Principle
+
+Les interfaces sont petites et spécialisées.
+
+Aucune interface massive de type `IGenerationService` n’a été créée.
 
 ---
 
-# 10. Vérifications API manuelles
+## 17. Tests et couverture
 
-Des vérifications manuelles via Swagger ont confirmé :
+Les tests existants ont été adaptés pour vérifier le nouveau modèle :
 
-* génération d’une Room à 10 nodes ;
-* absence de `Memory` dans `eventTypes` ;
-* présence d’un seul `Rest` ;
-* `Rest` exclusif dans son node ;
-* `Rest` avec `rewardProfile = healing-only` ;
-* `Npc` limité à une occurrence ;
-* `Item` limité correctement ;
+* génération d’une room complète ;
+* total nodes entre 6 et 10 ;
+* 1 à 4 events par node ;
 * boss unique ;
-* boss seul à la dernière profondeur ;
-* progression correcte après résolution d’un node ;
-* `/progress` débloque les enfants du node résolu ;
-* le chemin atteint bien le boss.
+* boss au dernier depth ;
+* layers continues ;
+* nodes initiaux disponibles ;
+* nodes futurs planned ;
+* branches convergentes ;
+* contraintes d’événements ;
+* absence de Memory planifié ;
+* Rest singleton ;
+* Rest avec reward profile `healing-only`.
 
----
-
-# 11. Limites connues
-
-## 11.1 Markov n’est pas encore réellement structurant
-
-La génération est encore principalement déterministe par seed et contraintes.
-
-La vraie logique Markov doit être introduite dans un jalon suivant.
-
-La cible est :
+Les tests de génération traversent désormais une chaîne plus propre :
 
 ```text
-Markov propose.
-Les contraintes métier filtrent.
-La seed rend le résultat reproductible.
+DeterministicRunGenerator
+→ SeededRandomFactory
+→ RoomTypeResolver
+→ RoomPlanGenerator
+→ RoomNodeLayerPlanner
+→ RoomNodeFactory
+→ NodeEventGenerator
+→ NodeEventCandidateResolver
+→ NodeRiskResolver
+→ NodeRewardProfileResolver
+→ RoomBossProfileResolver
+→ RoomThemeResolver
+→ Domain Room / Node / NodeEvent
 ```
 
-Markov devra s’appliquer à deux niveaux :
+Cela donne un coverage fonctionnel utile sur la génération.
+
+Des tests plus ciblés pourront être ajoutés ensuite pour renforcer :
+
+* `RoomTypeResolverTests` ;
+* `RoomBossProfileResolverTests` ;
+* `NodeEventCandidateResolverTests` ;
+* `NodeRewardProfileResolverTests` ;
+* `NodeRiskResolverTests` ;
+* `RoomNodeLayerPlannerTests` ;
+* `SeededRandomFactoryTests`.
+
+---
+
+## 18. État actuel validé
+
+À ce jalon, la génération de Room est désormais :
 
 ```text
-RoomType → RoomType
-NodeEventType → NodeEventType
+- structurée ;
+- testée ;
+- déterministe ;
+- compatible avec seed ;
+- compatible avec version de générateur ;
+- compatible avec version de matrice Markov ;
+- organisée par responsabilités ;
+- prête pour la génération de room suivante ;
+- prête pour la future persistance événementielle ;
+- prête pour le futur affichage frontend de carte.
 ```
 
 ---
 
-## 11.2 Les formes de graphe sont parfois très convergentes
+## 19. Prochaines étapes recommandées
 
-Certaines Rooms peuvent produire des formes du type :
+### 19.1 Commit du refactor
+
+Commit recommandé :
+
+```bash
+refactor(game-engine): split room generation architecture
+```
+
+### 19.2 Ajouter des tests unitaires ciblés
+
+Après ce commit, ajouter un petit jalon qualité :
 
 ```text
-4 → 1 → 3 → 1 → Boss
+test(game-engine): cover room generation resolvers
 ```
 
-C’est valide, mais pas toujours optimal en termes de sensation de choix.
+Tests recommandés :
 
-À terme, le générateur devra favoriser des structures plus variées :
+* `SeededRandomFactoryTests`
+* `RoomTypeResolverTests`
+* `RoomBossProfileResolverTests`
+* `RoomThemeResolverTests`
+* `NodeEventCandidateResolverTests`
+* `NodeRewardProfileResolverTests`
+* `NodeRiskResolverTests`
+* `RoomNodeLayerPlannerTests`
 
-```text
-3 → 2 → 2 → Boss
-4 → 3 → 2 → Boss
-2 → 3 → 2 → Boss
-```
+### 19.3 Implémenter MoveToNextRoom
 
----
-
-## 11.3 Le champ `ParentNodeId` est temporaire
-
-`ParentNodeId` reste exposé pour compatibilité.
-
-Le champ cible est :
-
-```text
-ParentNodeIds
-```
-
-Le frontend devra utiliser `parentNodeIds`.
-
----
-
-## 11.4 La résolution réelle des événements n’existe pas encore
-
-Pour l’instant, `current-event/resolve` résout le node dans son ensemble.
-
-À terme, il faudra résoudre réellement :
-
-* chaque événement du node ;
-* les combats ;
-* les soins ;
-* les marchands ;
-* les lois ;
-* les malédictions ;
-* les événements rares ;
-* les objets ;
-* les apparitions dynamiques de `Memory`.
-
----
-
-## 11.5 La persistance est encore in-memory
-
-Le repository actuel est temporaire.
-
-La persistance finale devra s’appuyer sur :
-
-* PostgreSQL ;
-* Event Store ;
-* éventuellement snapshots ;
-* audit trail ;
-* événements de domaine persistés.
-
----
-
-# 12. Prochaines étapes recommandées
-
-## 12.1 Générer la room suivante
-
-Prochaine étape fonctionnelle recommandée :
+Prochaine feature métier :
 
 ```http
 POST /api/v2/runs/{runId}/rooms/next
 ```
 
-Préconditions :
+Règles :
 
 ```text
-RunStatus = RoomResolved
-CurrentRoom.State = Completed
+Seulement si CurrentRoom.State == Completed.
+Seulement si Run.Status == RoomResolved.
+Génère une nouvelle Room complète.
+Ajoute la Room à la Run.
+Passe la Run en Active.
+Si room finale, passe vers BossReached / Final.
 ```
 
-Effets :
+### 19.4 Préparer l’Event Store
 
-* générer une nouvelle Room ;
-* choisir son `RoomType` ;
-* déterminer son boss ;
-* générer son RoomPlan complet ;
-* respecter les mêmes contraintes ;
-* remettre la Run en `Active`.
-
----
-
-## 12.2 Introduire la vraie matrice de Markov
-
-Créer des composants dédiés :
+Une fois la boucle complète stabilisée :
 
 ```text
-MarkovRoomTransitionMatrix
-MarkovNodeEventTransitionMatrix
-WeightedRandomPicker
-RoomGenerationContext
-NodeGenerationContext
+StartRun
+→ ChooseNode
+→ ResolveCurrentEvent
+→ ProgressCurrentRoom
+→ CompleteRoom
+→ MoveToNextRoom
 ```
 
-Markov devra influencer :
-
-* le type de la room suivante ;
-* les événements visibles proposés ;
-* la difficulté ;
-* les risques ;
-* les patterns de room ;
-* les probabilités d’événements rares ;
-* les futures apparitions de `Memory`.
-
----
-
-## 12.3 Introduire la résolution réelle des NodeEvents
-
-Actuellement, le node entier est résolu en bloc.
-
-À terme, il faudra introduire :
+on pourra introduire l’Event Sourcing :
 
 ```text
-NodeEventResolution
-CombatResolution
-RestResolution
-RewardResolution
-MemoryProcResolution
-LawResolution
-CurseResolution
-MerchantResolution
+RunStarted
+RoomGenerated
+NodeChosen
+NodeResolved
+RoomProgressed
+RoomCompleted
+NextRoomGenerated
 ```
 
 ---
 
-## 12.4 Préparer l’intégration frontend
-
-Le frontend devra consommer :
-
-```text
-nodeLayers
-parentNodeIds
-availableNodes
-state
-eventTypes
-bossPreview
-```
-
-Cela permettra d’afficher :
-
-* la carte complète de la Room ;
-* les branches accessibles ;
-* les branches verrouillées ;
-* les branches inaccessibles ;
-* la position courante du joueur ;
-* le boss à venir.
-
----
-
-# 13. Conclusion
+## 20. Conclusion
 
 Ce jalon stabilise une partie centrale du gameplay de **L’épopée des silences**.
 
@@ -1023,7 +855,8 @@ La Room est désormais :
 * contrôlée par des contraintes d’événements ;
 * compatible avec une future matrice Markov ;
 * exposée proprement via API ;
-* protégée par tests unitaires et tests d’intégration.
+* protégée par tests unitaires et tests d’intégration ;
+* générée par une architecture propre, découpée et maintenable.
 
 Cette base est suffisamment solide pour poursuivre vers :
 

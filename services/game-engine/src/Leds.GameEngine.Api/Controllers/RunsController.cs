@@ -1,5 +1,6 @@
 using Leds.GameEngine.Application.Runs.ChooseNode;
 using Leds.GameEngine.Application.Runs.GetRunById;
+using Leds.GameEngine.Application.Runs.MoveToNextRoom;
 using Leds.GameEngine.Application.Runs.ProgressRun;
 using Leds.GameEngine.Application.Runs.ResolveCurrentEvent;
 using Leds.GameEngine.Application.Runs.StartRun;
@@ -89,6 +90,21 @@ public sealed class RunsController : ControllerBase
     CancellationToken cancellationToken)
     {
         var command = new ProgressRunCommand(runId);
+
+        var response = await _sender.Send(command, cancellationToken);
+
+        return Ok(response);
+    }
+
+    [HttpPost("{runId:guid}/rooms/next")]
+    [ProducesResponseType(typeof(MoveToNextRoomResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<MoveToNextRoomResponse>> MoveToNextRoom(
+    Guid runId,
+    CancellationToken cancellationToken)
+    {
+        var command = new MoveToNextRoomCommand(runId);
 
         var response = await _sender.Send(command, cancellationToken);
 
