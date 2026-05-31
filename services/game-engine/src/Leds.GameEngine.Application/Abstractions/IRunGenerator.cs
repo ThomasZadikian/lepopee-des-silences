@@ -12,6 +12,6 @@ public interface IRunGenerator
     string GenerateSeed();
 
     Room GenerateInitialRoom(string seed);
-    Room GenerateNextRoom(Run run);
 
+    Room GenerateNextRoom(Run run);
 }
