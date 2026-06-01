@@ -2,6 +2,7 @@
 using System.Net.Http.Json;
 using FluentAssertions;
 using Leds.GameEngine.Application.Runs.MoveToNextRoom;
+using Leds.GameEngine.Application.Runs.ProgressRun;
 using Leds.GameEngine.Application.Runs.ResolveCurrentEvent;
 using Leds.GameEngine.Application.Runs.StartRun;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -83,6 +84,47 @@ public sealed class MoveToNextRoomEndpointTests : IClassFixture<WebApplicationFa
         payload.Run.CurrentRoom.TotalNodeCount.Should().BeInRange(6, 10);
     }
 
+    private async Task<ResolveCurrentEventResponse> ResolveCurrentEventAndChooseOptionIfRequiredAsync(
+        Guid runId)
+    {
+        var resolveResponse = await _client.PostAsync(
+            $"/api/v2/runs/{runId}/current-event/resolve",
+            content: null);
+
+        var resolveBody = await resolveResponse.Content.ReadAsStringAsync();
+
+        resolveResponse.StatusCode.Should().Be(
+            HttpStatusCode.OK,
+            because: resolveBody);
+
+        var resolvePayload = await resolveResponse.Content
+            .ReadFromJsonAsync<ResolveCurrentEventResponse>();
+
+        resolvePayload.Should().NotBeNull();
+
+        if (!resolvePayload!.Outcome.RequiresPlayerChoice)
+        {
+            return resolvePayload;
+        }
+
+        resolvePayload.Outcome.Choices.Should()
+            .NotBeEmpty("an event requiring a player choice must expose at least one available choice.");
+
+        var firstChoice = resolvePayload.Outcome.Choices.First();
+
+        var choiceResponse = await _client.PostAsJsonAsync(
+            $"/api/v2/runs/{runId}/current-event/choice",
+            new { firstChoice.ChoiceId });
+
+        var choiceBody = await choiceResponse.Content.ReadAsStringAsync();
+
+        choiceResponse.StatusCode.Should().Be(
+            HttpStatusCode.OK,
+            because: choiceBody);
+
+        return resolvePayload;
+    }
+
     private async Task<StartRunResponse> StartRunAsync()
     {
         var response = await _client.PostAsJsonAsync(
@@ -104,7 +146,7 @@ public sealed class MoveToNextRoomEndpointTests : IClassFixture<WebApplicationFa
 
     private async Task<dynamic> CompleteCurrentRoomAsync(Guid runId, dynamic currentRoom)
     {
-        while (currentRoom.State != "Completed")
+        while ((string)currentRoom.State != "Completed")
         {
             var nodeToChoose = currentRoom.AvailableNodes[0];
 
@@ -112,26 +154,17 @@ public sealed class MoveToNextRoomEndpointTests : IClassFixture<WebApplicationFa
                 $"/api/v2/runs/{runId}/nodes/{nodeToChoose.Id}/choose",
                 content: null);
 
-            chooseResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+            var chooseBody = await chooseResponse.Content.ReadAsStringAsync();
 
-            var resolveResponse = await _client.PostAsync(
-                $"/api/v2/runs/{runId}/current-event/resolve",
-                content: null);
-
-            var resolveBody = await resolveResponse.Content.ReadAsStringAsync();
-
-            resolveResponse.StatusCode.Should().Be(
+            chooseResponse.StatusCode.Should().Be(
                 HttpStatusCode.OK,
-                because: resolveBody);
+                because: chooseBody);
 
-            var resolvedPayload = await resolveResponse.Content
-                .ReadFromJsonAsync<ResolveCurrentEventResponse>();
+            var resolvedPayload = await ResolveCurrentEventAndChooseOptionIfRequiredAsync(runId);
 
-            resolvedPayload.Should().NotBeNull();
+            currentRoom = resolvedPayload.Run.CurrentRoom;
 
-            currentRoom = resolvedPayload!.Run.CurrentRoom;
-
-            if (currentRoom.State == "Completed")
+            if ((string)currentRoom.State == "Completed")
             {
                 return currentRoom;
             }
@@ -147,7 +180,7 @@ public sealed class MoveToNextRoomEndpointTests : IClassFixture<WebApplicationFa
                 because: progressBody);
 
             var progressPayload = await progressResponse.Content
-                .ReadFromJsonAsync<Leds.GameEngine.Application.Runs.ProgressRun.ProgressRunResponse>();
+                .ReadFromJsonAsync<ProgressRunResponse>();
 
             progressPayload.Should().NotBeNull();
 

@@ -66,6 +66,11 @@ public sealed class Node
 
     public NodeState State { get; private set; }
 
+    public string? ChosenEventOptionId { get; private set; }
+
+    public bool HasChosenEventOption =>
+        !string.IsNullOrWhiteSpace(ChosenEventOptionId);
+
     public bool IsAvailable => State == NodeState.Available;
 
     public bool IsPlanned => State == NodeState.Planned;
@@ -171,8 +176,11 @@ public sealed class Node
             throw new DomainException("Non-initial nodes must have at least one parent.");
         }
 
-        var hasRoomBossEvent = eventList.Any(nodeEvent => nodeEvent.EventType == NodeEventType.RoomBoss);
-        var hasFinalBossEvent = eventList.Any(nodeEvent => nodeEvent.EventType == NodeEventType.FinalBoss);
+        var hasRoomBossEvent = eventList.Any(nodeEvent =>
+            nodeEvent.EventType == NodeEventType.RoomBoss);
+
+        var hasFinalBossEvent = eventList.Any(nodeEvent =>
+            nodeEvent.EventType == NodeEventType.FinalBoss);
 
         if (isRoomBossNode && !hasRoomBossEvent)
         {
@@ -253,5 +261,25 @@ public sealed class Node
         }
 
         State = NodeState.Resolved;
+    }
+
+    public void ChooseEventOption(string choiceId)
+    {
+        if (State != NodeState.Resolved)
+        {
+            throw new DomainException("Only a resolved node can receive an event choice.");
+        }
+
+        if (string.IsNullOrWhiteSpace(choiceId))
+        {
+            throw new DomainException("Event choice id is required.");
+        }
+
+        if (HasChosenEventOption)
+        {
+            throw new DomainException("Current event choice has already been resolved.");
+        }
+
+        ChosenEventOptionId = choiceId.Trim();
     }
 }

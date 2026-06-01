@@ -62,6 +62,11 @@ public sealed class ChooseCurrentEventOptionCommandHandler
 
         var result = _choiceResolverDispatcher.Resolve(context);
 
+        if (result.Accepted)
+        {
+            resolvedNode.ChooseEventOption(result.ChoiceId);
+        }
+
         await _runRepository.UpdateAsync(run, cancellationToken);
 
         return new ChooseCurrentEventOptionResponse(

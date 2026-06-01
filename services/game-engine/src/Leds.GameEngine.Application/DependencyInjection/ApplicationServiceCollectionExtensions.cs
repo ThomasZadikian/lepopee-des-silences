@@ -43,6 +43,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<ICurrentEventChoiceResolver, LawEventChoiceResolver>();
         services.AddScoped<ICurrentEventChoiceResolver, MerchantEventChoiceResolver>();
         services.AddScoped<ICurrentEventChoiceResolver, CurseEventChoiceResolver>();
+        services.AddScoped<ICurrentEventChoiceRequirementResolver, CurrentEventChoiceRequirementResolver>();
 
         return services;
     }

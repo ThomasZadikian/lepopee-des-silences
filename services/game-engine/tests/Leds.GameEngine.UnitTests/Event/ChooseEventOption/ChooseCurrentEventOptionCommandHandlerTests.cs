@@ -48,6 +48,8 @@ public sealed class ChooseCurrentEventOptionCommandHandlerTests
         response.Result.Accepted.Should().BeTrue();
         response.Result.Message.Should().Be("Choice resolved.");
         response.Result.NarrativeFragments.Should().ContainSingle();
+        runWithNode.TargetNode.ChosenEventOptionId.Should().Be("listen");
+        runWithNode.TargetNode.HasChosenEventOption.Should().BeTrue();
 
         dispatcher.Verify(
             service => service.Resolve(
@@ -152,6 +154,48 @@ public sealed class ChooseCurrentEventOptionCommandHandlerTests
             DateTimeOffset.UtcNow);
 
         return new RunWithTargetNode(run, roomWithNode.TargetNode);
+    }
+
+    [Fact]
+    public async Task Handle_ShouldThrowDomainException_WhenChoiceWasAlreadyResolved()
+    {
+        // Arrange
+        var runWithNode = CreateRunWithResolvedCurrentEvent(NodeEventType.Npc);
+
+        runWithNode.TargetNode.ChooseEventOption("listen");
+
+        var repository = new Mock<IRunRepository>();
+        repository
+            .Setup(repo => repo.GetByIdAsync(runWithNode.Run.Id, CancellationToken.None))
+            .ReturnsAsync(runWithNode.Run);
+
+        var dispatcher = new Mock<ICurrentEventChoiceResolverDispatcher>();
+        dispatcher
+            .Setup(service => service.Resolve(It.IsAny<CurrentEventChoiceResolutionContext>()))
+            .Returns(CurrentEventChoiceResolutionResult.Create(
+                "leave",
+                accepted: true,
+                "Choice resolved."));
+
+        var handler = new ChooseCurrentEventOptionCommandHandler(
+            repository.Object,
+            dispatcher.Object);
+
+        // Act
+        var act = async () => await handler.Handle(
+            new ChooseCurrentEventOptionCommand(runWithNode.Run.Id.Value, "leave"),
+            CancellationToken.None);
+
+        // Assert
+        await act.Should()
+            .ThrowAsync<DomainException>()
+            .WithMessage("Current event choice has already been resolved.");
+
+        repository.Verify(
+            repo => repo.UpdateAsync(
+                It.IsAny<Run>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     private static RoomWithTargetNode CreateRoom(NodeEventType eventType)

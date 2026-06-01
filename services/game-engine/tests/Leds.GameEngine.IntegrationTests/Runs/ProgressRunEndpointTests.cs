@@ -29,19 +29,23 @@ public sealed class ProgressRunEndpointTests : IClassFixture<WebApplicationFacto
             $"/api/v2/runs/{runId}/nodes/{chosenNode.Id}/choose",
             content: null);
 
-        chooseResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var chooseBody = await chooseResponse.Content.ReadAsStringAsync();
 
-        var resolveResponse = await _client.PostAsync(
-            $"/api/v2/runs/{runId}/current-event/resolve",
-            content: null);
+        chooseResponse.StatusCode.Should().Be(
+            HttpStatusCode.OK,
+            because: chooseBody);
 
-        resolveResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        await ResolveCurrentEventAndChooseOptionIfRequiredAsync(runId);
 
         var progressResponse = await _client.PostAsync(
             $"/api/v2/runs/{runId}/progress",
             content: null);
 
-        progressResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var progressBody = await progressResponse.Content.ReadAsStringAsync();
+
+        progressResponse.StatusCode.Should().Be(
+            HttpStatusCode.OK,
+            because: progressBody);
 
         var payload = await progressResponse.Content.ReadFromJsonAsync<ProgressRunResponse>();
 
@@ -116,20 +120,15 @@ public sealed class ProgressRunEndpointTests : IClassFixture<WebApplicationFacto
                 $"/api/v2/runs/{runId}/nodes/{chosenNode.Id}/choose",
                 content: null);
 
-            chooseResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+            var chooseBody = await chooseResponse.Content.ReadAsStringAsync();
 
-            var resolveResponse = await _client.PostAsync(
-                $"/api/v2/runs/{runId}/current-event/resolve",
-                content: null);
+            chooseResponse.StatusCode.Should().Be(
+                HttpStatusCode.OK,
+                because: chooseBody);
 
-            resolveResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+            var resolvedPayload = await ResolveCurrentEventAndChooseOptionIfRequiredAsync(runId);
 
-            var resolvedPayload = await resolveResponse.Content
-                .ReadFromJsonAsync<ResolveCurrentEventResponse>();
-
-            resolvedPayload.Should().NotBeNull();
-
-            if (resolvedPayload!.Run.CurrentRoom.State == "Completed")
+            if (resolvedPayload.Run.CurrentRoom.State == "Completed")
             {
                 currentRoom = resolvedPayload.Run.CurrentRoom;
                 break;
@@ -139,7 +138,11 @@ public sealed class ProgressRunEndpointTests : IClassFixture<WebApplicationFacto
                 $"/api/v2/runs/{runId}/progress",
                 content: null);
 
-            progressResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+            var progressBody = await progressResponse.Content.ReadAsStringAsync();
+
+            progressResponse.StatusCode.Should().Be(
+                HttpStatusCode.OK,
+                because: progressBody);
 
             var progressPayload = await progressResponse.Content
                 .ReadFromJsonAsync<ProgressRunResponse>();
@@ -153,6 +156,47 @@ public sealed class ProgressRunEndpointTests : IClassFixture<WebApplicationFacto
         currentRoom.AvailableNodes.Should().ContainSingle();
         currentRoom.AvailableNodes.Single().IsRoomBossNode.Should().BeTrue();
         currentRoom.AvailableNodes.Single().EventTypes.Should().Contain("RoomBoss");
+    }
+
+    private async Task<ResolveCurrentEventResponse> ResolveCurrentEventAndChooseOptionIfRequiredAsync(
+        Guid runId)
+    {
+        var resolveResponse = await _client.PostAsync(
+            $"/api/v2/runs/{runId}/current-event/resolve",
+            content: null);
+
+        var resolveBody = await resolveResponse.Content.ReadAsStringAsync();
+
+        resolveResponse.StatusCode.Should().Be(
+            HttpStatusCode.OK,
+            because: resolveBody);
+
+        var resolvePayload = await resolveResponse.Content
+            .ReadFromJsonAsync<ResolveCurrentEventResponse>();
+
+        resolvePayload.Should().NotBeNull();
+
+        if (!resolvePayload!.Outcome.RequiresPlayerChoice)
+        {
+            return resolvePayload;
+        }
+
+        resolvePayload.Outcome.Choices.Should()
+            .NotBeEmpty("an event requiring a player choice must expose at least one available choice.");
+
+        var firstChoice = resolvePayload.Outcome.Choices.First();
+
+        var choiceResponse = await _client.PostAsJsonAsync(
+            $"/api/v2/runs/{runId}/current-event/choice",
+            new { firstChoice.ChoiceId });
+
+        var choiceBody = await choiceResponse.Content.ReadAsStringAsync();
+
+        choiceResponse.StatusCode.Should().Be(
+            HttpStatusCode.OK,
+            because: choiceBody);
+
+        return resolvePayload;
     }
 
     private async Task<StartRunResponse> StartRunAsync()

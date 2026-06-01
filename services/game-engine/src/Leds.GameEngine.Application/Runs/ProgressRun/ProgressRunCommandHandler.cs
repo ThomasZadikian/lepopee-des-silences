@@ -1,6 +1,9 @@
 ﻿using Leds.GameEngine.Application.Abstractions;
 using Leds.GameEngine.Application.Common.Exceptions;
+using Leds.GameEngine.Application.Events.ChooseEventOption;
 using Leds.GameEngine.Application.Runs.Dtos;
+using Leds.GameEngine.Domain.Common;
+using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Runs;
 using MediatR;
 
@@ -10,10 +13,14 @@ public sealed class ProgressRunCommandHandler
     : IRequestHandler<ProgressRunCommand, ProgressRunResponse>
 {
     private readonly IRunRepository _runRepository;
+    private readonly ICurrentEventChoiceRequirementResolver _choiceRequirementResolver;
 
-    public ProgressRunCommandHandler(IRunRepository runRepository)
+    public ProgressRunCommandHandler(
+        IRunRepository runRepository,
+        ICurrentEventChoiceRequirementResolver choiceRequirementResolver)
     {
         _runRepository = runRepository;
+        _choiceRequirementResolver = choiceRequirementResolver;
     }
 
     public async Task<ProgressRunResponse> Handle(
@@ -27,6 +34,20 @@ public sealed class ProgressRunCommandHandler
         if (run is null)
         {
             throw new NotFoundException("Run", request.RunId);
+        }
+
+        var room = run.CurrentRoom;
+
+        var resolvedNode = room.Nodes.SingleOrDefault(node =>
+            node.NodeDepth == room.CurrentNodeDepth &&
+            node.State == NodeState.Resolved);
+
+        if (resolvedNode is not null &&
+            _choiceRequirementResolver.RequiresChoice(resolvedNode) &&
+            !resolvedNode.HasChosenEventOption)
+        {
+            throw new DomainException(
+                "Current event requires a player choice before progressing.");
         }
 
         run.ProgressCurrentRoom();

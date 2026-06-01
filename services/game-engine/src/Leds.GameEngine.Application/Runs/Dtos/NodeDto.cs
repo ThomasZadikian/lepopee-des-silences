@@ -12,7 +12,9 @@ public sealed record NodeDto(
     int NodeDepth,
     Guid? ParentNodeId,
     IReadOnlyCollection<Guid> ParentNodeIds,
-    bool IsRoomBossNode)
+    bool IsRoomBossNode,
+    string? ChosenEventOptionId,
+    bool HasChosenEventOption)
 {
     public static NodeDto FromDomain(Node node)
     {
@@ -26,6 +28,8 @@ public sealed record NodeDto(
             node.NodeDepth,
             node.ParentNodeId?.Value,
             node.ParentNodeIds.Select(parentNodeId => parentNodeId.Value).ToArray(),
-            node.IsRoomBossNode);
+            node.IsRoomBossNode,
+            node.ChosenEventOptionId,
+            node.HasChosenEventOption);
     }
 }
