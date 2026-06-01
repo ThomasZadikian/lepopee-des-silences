@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Nodes;
+using Leds.GameEngine.Domain.PalaceLaws;
 using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
 
@@ -235,94 +236,94 @@ public sealed class RunTests
             DateTimeOffset.UtcNow);
     }
 
-private static Room CreateInitialRoom()
-{
-    var roomType = RoomType.Threshold;
+    private static Room CreateInitialRoom()
+    {
+        var roomType = RoomType.Threshold;
 
-    var bossProfile = RoomBossProfile.Create(
-        "threshold-guardian",
-        "Gardien du Seuil",
-        roomType,
-        "High");
+        var bossProfile = RoomBossProfile.Create(
+            "threshold-guardian",
+            "Gardien du Seuil",
+            roomType,
+            "High");
 
-    var combatNode = Node.Create(
-        NodeEventType.Combat,
-        20,
-        "combat-common",
-        nodeDepth: 0,
-        initialState: NodeState.Available);
+        var combatNode = Node.Create(
+            NodeEventType.Combat,
+            20,
+            "combat-common",
+            nodeDepth: 0,
+            initialState: NodeState.Available);
 
-    var itemNode = Node.Create(
-        NodeEventType.Item,
-        15,
-        "common",
-        nodeDepth: 0,
-        initialState: NodeState.Available);
+        var itemNode = Node.Create(
+            NodeEventType.Item,
+            15,
+            "common",
+            nodeDepth: 0,
+            initialState: NodeState.Available);
 
-    var restNode = Node.Create(
-        NodeEventType.Rest,
-        5,
-        "healing-only",
-        nodeDepth: 1,
-        parentNodeId: combatNode.Id,
-        initialState: NodeState.Planned);
+        var restNode = Node.Create(
+            NodeEventType.Rest,
+            5,
+            "healing-only",
+            nodeDepth: 1,
+            parentNodeId: combatNode.Id,
+            initialState: NodeState.Planned);
 
-    var npcNode = Node.Create(
-        new[]
-        {
+        var npcNode = Node.Create(
+            new[]
+            {
             NodeEvent.Create(NodeEventType.Npc, 1)
-        },
-        8,
-        "narrative-choice",
-        nodeDepth: 1,
-        parentNodeIds: new[]
-        {
+            },
+            8,
+            "narrative-choice",
+            nodeDepth: 1,
+            parentNodeIds: new[]
+            {
             combatNode.Id,
             itemNode.Id
-        },
-        isRoomBossNode: false,
-        initialState: NodeState.Planned);
+            },
+            isRoomBossNode: false,
+            initialState: NodeState.Planned);
 
-    var rareNode = Node.Create(
-        NodeEventType.Rare,
-        25,
-        "rare",
-        nodeDepth: 1,
-        parentNodeId: itemNode.Id,
-        initialState: NodeState.Planned);
+        var rareNode = Node.Create(
+            NodeEventType.Rare,
+            25,
+            "rare",
+            nodeDepth: 1,
+            parentNodeId: itemNode.Id,
+            initialState: NodeState.Planned);
 
-    var bossNode = Node.Create(
-        new[]
-        {
+        var bossNode = Node.Create(
+            new[]
+            {
             NodeEvent.Create(NodeEventType.RoomBoss, 1)
-        },
-        riskLevel: 80,
-        rewardProfile: "room-boss",
-        nodeDepth: 2,
-        parentNodeIds: new[]
-        {
+            },
+            riskLevel: 80,
+            rewardProfile: "room-boss",
+            nodeDepth: 2,
+            parentNodeIds: new[]
+            {
             restNode.Id,
             npcNode.Id,
             rareNode.Id
-        },
-        isRoomBossNode: true,
-        initialState: NodeState.Planned);
+            },
+            isRoomBossNode: true,
+            initialState: NodeState.Planned);
 
-    return Room.Create(
-        0,
-        roomType,
-        "Threshold",
-        bossProfile,
-        new[]
-        {
+        return Room.Create(
+            0,
+            roomType,
+            "Threshold",
+            bossProfile,
+            new[]
+            {
             combatNode,
             itemNode,
             restNode,
             npcNode,
             rareNode,
             bossNode
-        });
-}
+            });
+    }
 
     private static RoomBossProfile CreateBossProfile(RoomType roomType)
     {
@@ -353,5 +354,66 @@ private static Room CreateInitialRoom()
         }
 
         return false;
+    }
+    [Fact]
+    public void ActivatePalaceLaw_ShouldAddActiveLaw_WhenRunIsActive()
+    {
+        var run = CreateRun();
+
+        var law = PalaceLaw.Create(
+            "law-silence-v1",
+            "Loi du Silence",
+            "1.0.0",
+            new[]
+            {
+            PalaceLawDomain.Narrative,
+            PalaceLawDomain.Generation
+            });
+
+        run.ActivatePalaceLaw(law);
+
+        run.ActivePalaceLaws.Should().ContainSingle();
+
+        var activeLaw = run.ActivePalaceLaws.Single();
+
+        activeLaw.Key.Should().Be("law-silence-v1");
+        activeLaw.Name.Should().Be("Loi du Silence");
+    }
+
+    [Fact]
+    public void ActivatePalaceLaw_ShouldNotDuplicateLaw_WhenLawIsAlreadyActive()
+    {
+        var run = CreateRun();
+
+        var law = PalaceLaw.Create(
+            "law-silence-v1",
+            "Loi du Silence",
+            "1.0.0",
+            new[] { PalaceLawDomain.Narrative });
+
+        run.ActivatePalaceLaw(law);
+        run.ActivatePalaceLaw(law);
+
+        run.ActivePalaceLaws.Should().ContainSingle();
+    }
+
+    [Fact]
+    public void ActivatePalaceLaw_ShouldThrowDomainException_WhenRunIsClosed()
+    {
+        var run = CreateRun();
+
+        run.Abandon(DateTimeOffset.UtcNow);
+
+        var law = PalaceLaw.Create(
+            "law-silence-v1",
+            "Loi du Silence",
+            "1.0.0",
+            new[] { PalaceLawDomain.Narrative });
+
+        var act = () => run.ActivatePalaceLaw(law);
+
+        act.Should()
+            .Throw<DomainException>()
+            .WithMessage("Cannot activate a palace law on a closed run.");
     }
 }

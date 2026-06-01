@@ -10,7 +10,9 @@ public sealed record RunDto(
     string MarkovMatrixVersion,
     string Status,
     int CurrentDepth,
-    RoomDto CurrentRoom)
+    RoomDto CurrentRoom,
+    IReadOnlyCollection<RoomDto> Rooms,
+    IReadOnlyCollection<ActivePalaceLawDto> ActivePalaceLaws)
 {
     public static RunDto FromDomain(Run run)
     {
@@ -22,6 +24,8 @@ public sealed record RunDto(
             run.MarkovMatrixVersion,
             run.Status.ToString(),
             run.CurrentDepth,
-            RoomDto.FromDomain(run.CurrentRoom));
+            RoomDto.FromDomain(run.CurrentRoom),
+            run.Rooms.Select(RoomDto.FromDomain).ToArray(),
+            run.ActivePalaceLaws.Select(ActivePalaceLawDto.FromDomain).ToArray());
     }
 }

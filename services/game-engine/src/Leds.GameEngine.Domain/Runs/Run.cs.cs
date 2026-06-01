@@ -1,5 +1,6 @@
 ﻿using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Nodes;
+using Leds.GameEngine.Domain.PalaceLaws;
 using Leds.GameEngine.Domain.Rooms;
 
 namespace Leds.GameEngine.Domain.Runs;
@@ -7,6 +8,9 @@ namespace Leds.GameEngine.Domain.Runs;
 public sealed class Run
 {
     private readonly List<Room> _rooms = [];
+    private readonly List<ActivePalaceLaw> _activePalaceLaws = [];
+    public IReadOnlyCollection<ActivePalaceLaw> ActivePalaceLaws =>
+    _activePalaceLaws.AsReadOnly();
 
     private Run(
         RunId id,
@@ -189,5 +193,21 @@ public sealed class Run
         {
             throw new DomainException("Run must be active.");
         }
+    }
+    public void ActivatePalaceLaw(PalaceLaw law)
+    {
+        ArgumentNullException.ThrowIfNull(law);
+
+        if (Status is RunStatus.Completed or RunStatus.Failed or RunStatus.Abandoned)
+        {
+            throw new DomainException("Cannot activate a palace law on a closed run.");
+        }
+
+        if (_activePalaceLaws.Any(activeLaw => activeLaw.Key == law.Key))
+        {
+            return;
+        }
+
+        _activePalaceLaws.Add(ActivePalaceLaw.From(law));
     }
 }
