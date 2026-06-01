@@ -60,7 +60,7 @@ public sealed class ResolveCurrentEventEndpointTests : IClassFixture<WebApplicat
         var body = await response.Content.ReadAsStringAsync();
 
         body.Should().Contain("Domain rule violated.");
-        body.Should().Contain("Room must have a selected node before resolving an event.");
+        body.Should().Contain("No node has been selected for the current room depth.");
     }
 
     [Fact]

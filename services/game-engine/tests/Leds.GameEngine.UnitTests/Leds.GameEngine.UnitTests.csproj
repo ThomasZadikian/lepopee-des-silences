@@ -26,4 +26,8 @@
     <ProjectReference Include="..\..\src\Leds.GameEngine.Infrastructure\Leds.GameEngine.Infrastructure.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Event\ResolveNodeEvent\" />
+  </ItemGroup>
+
 </Project>

@@ -1,5 +1,7 @@
 using FluentValidation;
 using Leds.GameEngine.Application.Common.Behaviors;
+using Leds.GameEngine.Application.Events.ResolveNodeEvent;
+using Leds.GameEngine.Application.Events.Resolvers;
 using Leds.GameEngine.Application.Runs.StartRun;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
@@ -20,6 +22,20 @@ public static class ApplicationServiceCollectionExtensions
         services.AddValidatorsFromAssembly(applicationAssembly);
 
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+
+        services.AddScoped<INodeEventResolverDispatcher, NodeEventResolverDispatcher>();
+
+        services.AddScoped<INodeEventResolver, CombatNodeEventResolver>();
+        services.AddScoped<INodeEventResolver, EliteNodeEventResolver>();
+        services.AddScoped<INodeEventResolver, ItemNodeEventResolver>();
+        services.AddScoped<INodeEventResolver, NpcNodeEventResolver>();
+        services.AddScoped<INodeEventResolver, RestNodeEventResolver>();
+        services.AddScoped<INodeEventResolver, MerchantNodeEventResolver>();
+        services.AddScoped<INodeEventResolver, LawNodeEventResolver>();
+        services.AddScoped<INodeEventResolver, CurseNodeEventResolver>();
+        services.AddScoped<INodeEventResolver, RareNodeEventResolver>();
+        services.AddScoped<INodeEventResolver, RoomBossNodeEventResolver>();
+        services.AddScoped<INodeEventResolver, FinalBossNodeEventResolver>();
 
         return services;
     }

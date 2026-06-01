@@ -1,6 +1,8 @@
 using FluentAssertions;
 using Leds.GameEngine.Application.Abstractions;
 using Leds.GameEngine.Application.Common.Exceptions;
+using Leds.GameEngine.Application.Events.Dtos;
+using Leds.GameEngine.Application.Events.ResolveNodeEvent;
 using Leds.GameEngine.Application.Runs.ResolveCurrentEvent;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rooms;
@@ -11,6 +13,26 @@ namespace Leds.GameEngine.UnitTests.Runs.ResolveCurrentEvent;
 
 public sealed class ResolveCurrentEventCommandHandlerTests
 {
+    private static Mock<INodeEventResolverDispatcher> CreateDispatcherMock(
+    NodeEventResolutionKind resolutionKind = NodeEventResolutionKind.CombatStarted)
+    {
+        var dispatcher = new Mock<INodeEventResolverDispatcher>();
+
+        dispatcher
+            .Setup(service => service.Resolve(It.IsAny<NodeEventResolutionContext>()))
+            .Returns(NodeEventResolutionResult.Create(
+                resolutionKind,
+                "Test outcome",
+                "Test outcome description",
+                narrativeFragments: new[]
+                {
+                new NarrativeFragmentDto(
+                    "Elise",
+                    "Test narrative fragment.")
+                }));
+
+        return dispatcher;
+    }
     [Fact]
     public async Task Handle_ShouldResolveCurrentEvent_AndKeepRunActive_WhenRoomBossIsNotResolved()
     {
@@ -24,7 +46,11 @@ public sealed class ResolveCurrentEventCommandHandlerTests
             .Setup(repo => repo.GetByIdAsync(run.Id, CancellationToken.None))
             .ReturnsAsync(run);
 
-        var handler = new ResolveCurrentEventCommandHandler(repository.Object);
+        var dispatcher = CreateDispatcherMock();
+
+        var handler = new ResolveCurrentEventCommandHandler(
+            repository.Object,
+            dispatcher.Object);
 
         var response = await handler.Handle(
             new ResolveCurrentEventCommand(run.Id.Value),
@@ -54,7 +80,11 @@ public sealed class ResolveCurrentEventCommandHandlerTests
             .Setup(repo => repo.GetByIdAsync(new RunId(runId), CancellationToken.None))
             .ReturnsAsync((Run?)null);
 
-        var handler = new ResolveCurrentEventCommandHandler(repository.Object);
+        var dispatcher = CreateDispatcherMock();
+
+        var handler = new ResolveCurrentEventCommandHandler(
+            repository.Object,
+            dispatcher.Object);
 
         var act = () => handler.Handle(
             new ResolveCurrentEventCommand(runId),
@@ -75,7 +105,11 @@ public sealed class ResolveCurrentEventCommandHandlerTests
             .Setup(repo => repo.GetByIdAsync(run.Id, CancellationToken.None))
             .ReturnsAsync(run);
 
-        var handler = new ResolveCurrentEventCommandHandler(repository.Object);
+        var dispatcher = CreateDispatcherMock();
+
+        var handler = new ResolveCurrentEventCommandHandler(
+            repository.Object,
+            dispatcher.Object);
 
         var act = () => handler.Handle(
             new ResolveCurrentEventCommand(run.Id.Value),
@@ -83,7 +117,7 @@ public sealed class ResolveCurrentEventCommandHandlerTests
 
         await act.Should()
             .ThrowAsync<Leds.GameEngine.Domain.Common.DomainException>()
-            .WithMessage("Room must have a selected node before resolving an event.");
+            .WithMessage("No node has been selected for the current room depth.");
     }
 
     private static Run CreateRun()
