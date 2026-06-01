@@ -1,7 +1,8 @@
 ﻿using FluentAssertions;
-using Leds.Catalog.Domain.Common;
+using Leds.Catalog.Domain.CatalogContent;
+using Leds.Catalog.Domain.Errors;
 
-namespace Leds.Catalog.UnitTests.Common;
+namespace Leds.Catalog.UnitTests.CatalogContent;
 
 public sealed class CatalogContentNameTests
 {

@@ -24,4 +24,9 @@
     <ProjectReference Include="..\..\src\Leds.Catalog.Application\Leds.Catalog.Application.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Combat\" />
+    <Folder Include="Errors\" />
+  </ItemGroup>
+
 </Project>

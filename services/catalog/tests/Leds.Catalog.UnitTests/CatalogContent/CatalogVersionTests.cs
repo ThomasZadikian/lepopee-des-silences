@@ -1,14 +1,15 @@
 ﻿using FluentAssertions;
-using Leds.Catalog.Domain.Common;
+using Leds.Catalog.Domain.CatalogContent;
+using Leds.Catalog.Domain.Errors;
 
-namespace Leds.Catalog.UnitTests.Common;
+namespace Leds.Catalog.UnitTests.CatalogContent;
 
 public sealed class CatalogVersionTests
 {
     [Fact]
     public void From_ShouldCreateCatalogVersion_WhenValueIsValid()
     {
-        var version = CatalogVersion.From("catalog-0.1.0");
+        var version = CatalogContentVersion.From("catalog-0.1.0");
 
         version.Value.Should().Be("catalog-0.1.0");
         version.ToString().Should().Be("catalog-0.1.0");
@@ -17,7 +18,7 @@ public sealed class CatalogVersionTests
     [Fact]
     public void From_ShouldTrimValue_WhenValueContainsWhitespaces()
     {
-        var version = CatalogVersion.From("  catalog-0.1.0  ");
+        var version = CatalogContentVersion.From("  catalog-0.1.0  ");
 
         version.Value.Should().Be("catalog-0.1.0");
     }
@@ -25,7 +26,7 @@ public sealed class CatalogVersionTests
     [Fact]
     public void From_ShouldThrowDomainException_WhenValueIsEmpty()
     {
-        var act = () => CatalogVersion.From(string.Empty);
+        var act = () => CatalogContentVersion.From(string.Empty);
 
         act.Should()
             .Throw<DomainException>()
@@ -35,7 +36,7 @@ public sealed class CatalogVersionTests
     [Fact]
     public void From_ShouldThrowDomainException_WhenValueIsWhitespace()
     {
-        var act = () => CatalogVersion.From("   ");
+        var act = () => CatalogContentVersion.From("   ");
 
         act.Should()
             .Throw<DomainException>()

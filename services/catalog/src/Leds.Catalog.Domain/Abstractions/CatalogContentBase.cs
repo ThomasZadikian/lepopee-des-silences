@@ -1,14 +1,17 @@
-﻿namespace Leds.Catalog.Domain.Common;
+﻿using Leds.Catalog.Domain.CatalogContent;
+using Leds.Catalog.Domain.Errors;
 
-public abstract class CatalogContentBase
+namespace Leds.Catalog.Domain.Abstractions;
+
+public abstract class CatalogContentBase : ICatalogContent
 {
     protected CatalogContentBase(
         CatalogContentId id,
         CatalogContentKey key,
         CatalogContentName name,
         CatalogContentDescription description,
-        CatalogVersion version,
-        CatalogItemStatus status)
+        CatalogContentVersion version,
+        CatalogContentStatus status)
     {
         Id = id;
         Key = key;
@@ -26,17 +29,17 @@ public abstract class CatalogContentBase
 
     public CatalogContentDescription Description { get; private set; }
 
-    public CatalogVersion Version { get; private set; }
+    public CatalogContentVersion Version { get; private set; }
 
-    public CatalogItemStatus Status { get; private set; }
+    public CatalogContentStatus Status { get; private set; }
 
-    public bool IsActive => Status == CatalogItemStatus.Active;
+    public bool IsActive => Status == CatalogContentStatus.Active;
 
-    public bool IsDraft => Status == CatalogItemStatus.Draft;
+    public bool IsDraft => Status == CatalogContentStatus.Draft;
 
-    public bool IsDeprecated => Status == CatalogItemStatus.Deprecated;
+    public bool IsDeprecated => Status == CatalogContentStatus.Deprecated;
 
-    public bool IsDisabled => Status == CatalogItemStatus.Disabled;
+    public bool IsDisabled => Status == CatalogContentStatus.Disabled;
 
     public void Rename(CatalogContentName name)
     {
@@ -48,38 +51,38 @@ public abstract class CatalogContentBase
         Description = description;
     }
 
-    public void ChangeVersion(CatalogVersion version)
+    public void ChangeVersion(CatalogContentVersion version)
     {
         Version = version;
     }
 
     public void Activate()
     {
-        if (Status == CatalogItemStatus.Disabled)
+        if (Status == CatalogContentStatus.Disabled)
         {
             throw new DomainException("Disabled catalog content cannot be activated.");
         }
 
-        Status = CatalogItemStatus.Active;
+        Status = CatalogContentStatus.Active;
     }
 
     public void Deprecate()
     {
-        if (Status == CatalogItemStatus.Draft)
+        if (Status == CatalogContentStatus.Draft)
         {
             throw new DomainException("Draft catalog content cannot be deprecated.");
         }
 
-        if (Status == CatalogItemStatus.Disabled)
+        if (Status == CatalogContentStatus.Disabled)
         {
             throw new DomainException("Disabled catalog content cannot be deprecated.");
         }
 
-        Status = CatalogItemStatus.Deprecated;
+        Status = CatalogContentStatus.Deprecated;
     }
 
     public void Disable()
     {
-        Status = CatalogItemStatus.Disabled;
+        Status = CatalogContentStatus.Disabled;
     }
 }

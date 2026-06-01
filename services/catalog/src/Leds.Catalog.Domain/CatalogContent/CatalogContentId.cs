@@ -1,4 +1,4 @@
-﻿namespace Leds.Catalog.Domain.Common;
+﻿namespace Leds.Catalog.Domain.CatalogContent;
 
 public readonly record struct CatalogContentId(Guid Value)
 {

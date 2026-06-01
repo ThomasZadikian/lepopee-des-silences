@@ -1,8 +1,10 @@
-﻿namespace Leds.Catalog.Domain.Common;
+﻿using Leds.Catalog.Domain.Errors;
 
-public readonly record struct CatalogVersion
+namespace Leds.Catalog.Domain.CatalogContent;
+
+public readonly record struct CatalogContentVersion
 {
-    public CatalogVersion(string value)
+    public CatalogContentVersion(string value)
     {
         if (string.IsNullOrWhiteSpace(value))
         {
@@ -19,8 +21,8 @@ public readonly record struct CatalogVersion
         return Value;
     }
 
-    public static CatalogVersion From(string value)
+    public static CatalogContentVersion From(string value)
     {
-        return new CatalogVersion(value);
+        return new CatalogContentVersion(value);
     }
 }

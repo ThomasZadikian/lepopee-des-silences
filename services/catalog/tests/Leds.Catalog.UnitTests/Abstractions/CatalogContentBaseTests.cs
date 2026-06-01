@@ -1,7 +1,9 @@
 ﻿using FluentAssertions;
-using Leds.Catalog.Domain.Common;
+using Leds.Catalog.Domain.CatalogContent;
+using Leds.Catalog.Domain.Abstractions;
+using Leds.Catalog.Domain.Errors;
 
-namespace Leds.Catalog.UnitTests.Common;
+namespace Leds.Catalog.UnitTests.Abstractions;
 
 public sealed class CatalogContentBaseTests
 {
@@ -19,7 +21,7 @@ public sealed class CatalogContentBaseTests
         content.Name.Value.Should().Be("Loup d’Ombre");
         content.Description.Value.Should().Be("Une entité née dans un couloir du Palais.");
         content.Version.Value.Should().Be("catalog-0.1.0");
-        content.Status.Should().Be(CatalogItemStatus.Draft);
+        content.Status.Should().Be(CatalogContentStatus.Draft);
         content.IsDraft.Should().BeTrue();
         content.IsActive.Should().BeFalse();
         content.IsDeprecated.Should().BeFalse();
@@ -51,7 +53,7 @@ public sealed class CatalogContentBaseTests
     {
         var content = CreateContent();
 
-        content.ChangeVersion(CatalogVersion.From("catalog-0.2.0"));
+        content.ChangeVersion(CatalogContentVersion.From("catalog-0.2.0"));
 
         content.Version.Value.Should().Be("catalog-0.2.0");
     }
@@ -63,7 +65,7 @@ public sealed class CatalogContentBaseTests
 
         content.Activate();
 
-        content.Status.Should().Be(CatalogItemStatus.Active);
+        content.Status.Should().Be(CatalogContentStatus.Active);
         content.IsActive.Should().BeTrue();
     }
 
@@ -74,7 +76,7 @@ public sealed class CatalogContentBaseTests
 
         content.Disable();
 
-        content.Status.Should().Be(CatalogItemStatus.Disabled);
+        content.Status.Should().Be(CatalogContentStatus.Disabled);
         content.IsDisabled.Should().BeTrue();
     }
 
@@ -100,7 +102,7 @@ public sealed class CatalogContentBaseTests
         content.Activate();
         content.Deprecate();
 
-        content.Status.Should().Be(CatalogItemStatus.Deprecated);
+        content.Status.Should().Be(CatalogContentStatus.Deprecated);
         content.IsDeprecated.Should().BeTrue();
     }
 
@@ -146,8 +148,8 @@ public sealed class CatalogContentBaseTests
             CatalogContentKey key,
             CatalogContentName name,
             CatalogContentDescription description,
-            CatalogVersion version,
-            CatalogItemStatus status)
+            CatalogContentVersion version,
+            CatalogContentStatus status)
             : base(id, key, name, description, version, status)
         {
         }
@@ -157,14 +159,14 @@ public sealed class CatalogContentBaseTests
             string name,
             string? description,
             string version,
-            CatalogItemStatus status = CatalogItemStatus.Draft)
+            CatalogContentStatus status = CatalogContentStatus.Draft)
         {
             return new TestCatalogContent(
                 CatalogContentId.New(),
                 CatalogContentKey.From(key),
                 CatalogContentName.From(name),
                 CatalogContentDescription.From(description),
-                CatalogVersion.From(version),
+                CatalogContentVersion.From(version),
                 status);
         }
     }

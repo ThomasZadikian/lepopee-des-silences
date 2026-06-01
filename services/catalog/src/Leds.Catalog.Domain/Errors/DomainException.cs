@@ -1,4 +1,4 @@
-﻿namespace Leds.Catalog.Domain.Common;
+﻿namespace Leds.Catalog.Domain.Errors;
 
 public sealed class DomainException : Exception
 {

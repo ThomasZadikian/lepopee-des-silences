@@ -1,4 +1,6 @@
-﻿namespace Leds.Catalog.Domain.Common;
+﻿using Leds.Catalog.Domain.Errors;
+
+namespace Leds.Catalog.Domain.CatalogContent;
 
 public readonly record struct CatalogContentName
 {
