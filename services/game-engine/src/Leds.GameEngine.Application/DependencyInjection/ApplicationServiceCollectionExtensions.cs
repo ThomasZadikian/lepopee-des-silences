@@ -1,5 +1,7 @@
 using FluentValidation;
 using Leds.GameEngine.Application.Common.Behaviors;
+using Leds.GameEngine.Application.Events.ChoiceResolvers;
+using Leds.GameEngine.Application.Events.ChooseEventOption;
 using Leds.GameEngine.Application.Events.ResolveNodeEvent;
 using Leds.GameEngine.Application.Events.Resolvers;
 using Leds.GameEngine.Application.Runs.StartRun;
@@ -36,6 +38,11 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<INodeEventResolver, RareNodeEventResolver>();
         services.AddScoped<INodeEventResolver, RoomBossNodeEventResolver>();
         services.AddScoped<INodeEventResolver, FinalBossNodeEventResolver>();
+        services.AddScoped<ICurrentEventChoiceResolverDispatcher, CurrentEventChoiceResolverDispatcher>();
+        services.AddScoped<ICurrentEventChoiceResolver, NpcEventChoiceResolver>();
+        services.AddScoped<ICurrentEventChoiceResolver, LawEventChoiceResolver>();
+        services.AddScoped<ICurrentEventChoiceResolver, MerchantEventChoiceResolver>();
+        services.AddScoped<ICurrentEventChoiceResolver, CurseEventChoiceResolver>();
 
         return services;
     }

@@ -1,3 +1,4 @@
+using Leds.GameEngine.Application.Events.ChooseEventOption;
 using Leds.GameEngine.Application.Runs.AbandonRun;
 using Leds.GameEngine.Application.Runs.ChooseNode;
 using Leds.GameEngine.Application.Runs.GetRunById;
@@ -121,6 +122,24 @@ public sealed class RunsController : ControllerBase
     CancellationToken cancellationToken)
     {
         var command = new AbandonRunCommand(runId);
+
+        var response = await _sender.Send(command, cancellationToken);
+
+        return Ok(response);
+    }
+
+    [HttpPost("{runId:guid}/current-event/choice")]
+    [ProducesResponseType(typeof(ChooseCurrentEventOptionResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ChooseCurrentEventOptionResponse>> ChooseCurrentEventOption(
+    Guid runId,
+    [FromBody] ChooseCurrentEventOptionCommand request,
+    CancellationToken cancellationToken)
+    {
+        var command = new ChooseCurrentEventOptionCommand(
+            runId,
+            request.ChoiceId);
 
         var response = await _sender.Send(command, cancellationToken);
 
