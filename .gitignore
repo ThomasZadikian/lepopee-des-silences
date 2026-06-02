@@ -215,6 +215,19 @@ PublishScripts/
 **/[Pp]ackages/*
 # except build/, which is used as an MSBuild target.
 !**/[Pp]ackages/build/
+
+# Monorepo shared source packages
+!packages/shared-building-blocks/
+!packages/shared-building-blocks/**
+
+# Do not version .NET build outputs inside shared packages
+packages/shared-building-blocks/**/bin/
+packages/shared-building-blocks/**/obj/
+packages/shared-building-blocks/**/*.dll
+packages/shared-building-blocks/**/*.pdb
+packages/shared-building-blocks/**/*.deps.json
+packages/shared-building-blocks/**/*.runtimeconfig.json
+
 # Uncomment if necessary however generally it will be regenerated when needed
 #!**/[Pp]ackages/repositories.config
 # NuGet v3's project.json files produces more ignorable files
@@ -453,3 +466,14 @@ frontend/.env
 coverage/
 TestResults/
 *.cobertura.xml
+
+# Visual Studio local workspace files
+.vs/
+**/.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.vsidx
+*.dtbcache.*
+*.futdcache.*
