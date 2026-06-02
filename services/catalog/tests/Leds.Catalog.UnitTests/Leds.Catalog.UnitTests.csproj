@@ -8,6 +8,15 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Combat\**" />
+    <Compile Remove="Errors\**" />
+    <EmbeddedResource Remove="Combat\**" />
+    <EmbeddedResource Remove="Errors\**" />
+    <None Remove="Combat\**" />
+    <None Remove="Errors\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="6.0.4" />
     <PackageReference Include="FluentAssertions" Version="8.10.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
@@ -23,11 +32,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Leds.Catalog.Domain\Leds.Catalog.Domain.csproj" />
     <ProjectReference Include="..\..\src\Leds.Catalog.Application\Leds.Catalog.Application.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Combat\" />
-    <Folder Include="Errors\" />
+	<ProjectReference Include="..\..\src\Leds.Catalog.Infrastructure\Leds.Catalog.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>
