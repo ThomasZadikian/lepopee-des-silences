@@ -4,7 +4,7 @@ using Leds.Catalog.Domain.Errors;
 
 namespace Leds.Catalog.Domain.Items;
 
-public sealed class ItemTemplate : CatalogContentBase
+public sealed class ItemTemplate : CatalogContentBase, IItemTemplate
 {
     private ItemTemplate(
         CatalogContentId id,

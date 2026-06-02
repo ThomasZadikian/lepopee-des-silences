@@ -5,7 +5,7 @@ using Leds.Catalog.Domain.Errors;
 
 namespace Leds.Catalog.Domain.Enemies;
 
-public sealed class EnemyTemplate : CatalogContentBase
+public sealed class EnemyTemplate : CatalogContentBase, IEnemyTemplate
 {
     private EnemyTemplate(
         CatalogContentId id,

@@ -5,7 +5,7 @@ using Leds.Catalog.Domain.Errors;
 
 namespace Leds.Catalog.Domain.Skills;
 
-public sealed class SkillTemplate : CatalogContentBase
+public sealed class SkillTemplate : CatalogContentBase, ISkillTemplate
 {
     private SkillTemplate(
         CatalogContentId id,
