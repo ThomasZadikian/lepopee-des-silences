@@ -27,7 +27,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Event\ResolveNodeEvent\" />
+    <Folder Include="Events\ResolveNodeEvent\" />
   </ItemGroup>
 
 </Project>
