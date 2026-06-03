@@ -9,4 +9,5 @@
     <Project Path="tests/Leds.GameEngine.IntegrationTests/Leds.GameEngine.IntegrationTests.csproj" />
     <Project Path="tests/Leds.GameEngine.UnitTests/Leds.GameEngine.UnitTests.csproj" />
   </Folder>
+  <Project Path="../../packages/shared-building-blocks/src/Leds.SharedBuildingBlocks/Leds.SharedBuildingBlocks.csproj" />
 </Solution>

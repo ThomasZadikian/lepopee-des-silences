@@ -1,4 +1,6 @@
 using Leds.GameEngine.Application.Abstractions;
+using Leds.GameEngine.Application.Catalog.Ports;
+using Leds.GameEngine.Infrastructure.Catalog;
 using Leds.GameEngine.Infrastructure.Clock;
 using Leds.GameEngine.Infrastructure.Generation;
 using Leds.GameEngine.Infrastructure.Generation.Randomness;
@@ -42,6 +44,7 @@ public static class InfrastructureServiceCollectionExtensions
 
         services.AddSingleton<IRoomPlanGenerator, RoomPlanGenerator>();
         services.AddSingleton<IRunGenerator, DeterministicRunGenerator>();
+        services.AddSingleton<ICatalogContentGateway, InMemoryCatalogContentGateway>();
 
         return services;
     }

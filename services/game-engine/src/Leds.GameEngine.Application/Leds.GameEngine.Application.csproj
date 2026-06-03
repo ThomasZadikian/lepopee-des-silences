@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Leds.GameEngine.Domain\Leds.GameEngine.Domain.csproj" />
+    <ProjectReference Include="..\..\..\..\packages\shared-building-blocks\src\Leds.SharedBuildingBlocks\Leds.SharedBuildingBlocks.csproj" />
   </ItemGroup>
 
   <ItemGroup>
