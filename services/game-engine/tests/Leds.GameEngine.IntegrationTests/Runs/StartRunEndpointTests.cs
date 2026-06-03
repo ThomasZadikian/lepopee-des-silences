@@ -39,7 +39,7 @@ public sealed class StartRunEndpointTests : IClassFixture<WebApplicationFactory<
         payload!.Run.Id.Should().NotBeEmpty();
         payload.Run.PlayerId.Should().Be(playerId);
         payload.Run.Seed.Should().StartWith("seed-");
-        payload.Run.GeneratorVersion.Should().Be("gen-0.3.0");
+        payload.Run.GeneratorVersion.Should().Be("gen-0.4.0");
         payload.Run.MarkovMatrixVersion.Should().Be("markov-room-type-0.1.0");
         payload.Run.Status.Should().Be("Active");
         payload.Run.CurrentDepth.Should().Be(0);

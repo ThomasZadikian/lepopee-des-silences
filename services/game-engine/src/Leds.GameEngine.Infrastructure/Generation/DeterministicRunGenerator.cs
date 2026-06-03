@@ -24,7 +24,7 @@ public sealed class DeterministicRunGenerator : IRunGenerator
         _roomPlanGenerator = roomPlanGenerator;
     }
 
-    public string GeneratorVersion => "gen-0.3.0";
+    public string GeneratorVersion => "gen-0.4.0";
 
     public string MarkovMatrixVersion => StaticRoomTypeMarkovMatrixProvider.SupportedVersion;
 

@@ -10,7 +10,7 @@ namespace Leds.GameEngine.UnitTests.Runs;
 public sealed class RunTests
 {
     private const string Seed = "seed-001";
-    private const string GeneratorVersion = "gen-0.2.0";
+    private const string GeneratorVersion = "gen-0.4.0";
     private const string MarkovMatrixVersion = "markov-0.2.0";
 
     [Fact]

@@ -12,7 +12,7 @@ namespace Leds.GameEngine.UnitTests.Runs.AbandonRun;
 public sealed class AbandonRunCommandHandlerTests
 {
     private const string Seed = "seed-abandon-test";
-    private const string GeneratorVersion = "gen-0.2.0";
+    private const string GeneratorVersion = "gen-0.4.0";
     private const string MarkovMatrixVersion = "markov-0.2.0";
 
     [Fact]

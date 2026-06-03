@@ -1,8 +1,11 @@
 using Leds.GameEngine.Application.Abstractions;
 using Leds.GameEngine.Application.Catalog.Ports;
+using Leds.GameEngine.Application.Events.Ports;
+using Leds.GameEngine.Application.Events.Resolution;
 using Leds.GameEngine.Domain.Markov;
 using Leds.GameEngine.Infrastructure.Catalog;
 using Leds.GameEngine.Infrastructure.Clock;
+using Leds.GameEngine.Infrastructure.Events.Resolution;
 using Leds.GameEngine.Infrastructure.Generation;
 using Leds.GameEngine.Infrastructure.Generation.Randomness;
 using Leds.GameEngine.Infrastructure.Generation.Rooms.Bosses;
@@ -51,6 +54,15 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IRoomPlanGenerator, RoomPlanGenerator>();
         services.AddSingleton<IRunGenerator, DeterministicRunGenerator>();
         services.AddSingleton<ICatalogContentGateway, InMemoryCatalogContentGateway>();
+        services.AddSingleton<IEventContentResolver, EventContentResolver>();
+
+        services.AddSingleton<IEventContentResolutionStrategy, CombatEventContentResolutionStrategy>();
+        services.AddSingleton<IEventContentResolutionStrategy, ItemEventContentResolutionStrategy>();
+        services.AddSingleton<IEventContentResolutionStrategy, PalaceLawEventContentResolutionStrategy>();
+        services.AddSingleton<IEventContentResolutionStrategy, NpcEventContentResolutionStrategy>();
+        services.AddSingleton<IEventContentResolutionStrategy, RestEventContentResolutionStrategy>();
+        services.AddSingleton<IEventContentResolutionStrategy, MerchantEventContentResolutionStrategy>();
+        services.AddSingleton<IEventContentResolutionStrategy, RareEventContentResolutionStrategy>();
 
         return services;
     }
