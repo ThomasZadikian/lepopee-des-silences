@@ -4,5 +4,9 @@ namespace Leds.GameEngine.Infrastructure.Generation.Rooms.Types;
 
 public interface IRoomTypeResolver
 {
-    RoomType Resolve(int roomDepth, Random random);
+    RoomType ResolveNextRoomType(
+        string seed,
+        int nextRoomDepth,
+        RoomType currentRoomType,
+        string matrixVersion);
 }

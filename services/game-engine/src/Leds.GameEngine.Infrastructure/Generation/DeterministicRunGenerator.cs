@@ -23,9 +23,9 @@ public sealed class DeterministicRunGenerator : IRunGenerator
         _roomPlanGenerator = roomPlanGenerator;
     }
 
-    public string GeneratorVersion => "gen-0.2.0";
+    public string GeneratorVersion => "gen-0.3.0";
 
-    public string MarkovMatrixVersion => "markov-0.2.0";
+    public string MarkovMatrixVersion => StaticRoomTypeMarkovMatrixProvider.SupportedVersion;
 
     public string GenerateSeed()
     {
@@ -51,14 +51,16 @@ public sealed class DeterministicRunGenerator : IRunGenerator
 
         var nextRoomDepth = run.CurrentDepth + 1;
 
+        var roomType = _roomTypeResolver.ResolveNextRoomType(
+            run.Seed,
+            nextRoomDepth,
+            run.CurrentRoom.RoomType,
+            MarkovMatrixVersion);
+
         var random = _randomFactory.CreateForRoom(
             run.Seed,
             nextRoomDepth,
             GeneratorVersion);
-
-        var roomType = _roomTypeResolver.Resolve(
-            nextRoomDepth,
-            random);
 
         return _roomPlanGenerator.Generate(
             nextRoomDepth,

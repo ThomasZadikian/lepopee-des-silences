@@ -1,5 +1,6 @@
 using Leds.GameEngine.Application.Abstractions;
 using Leds.GameEngine.Application.Catalog.Ports;
+using Leds.GameEngine.Domain.Markov;
 using Leds.GameEngine.Infrastructure.Catalog;
 using Leds.GameEngine.Infrastructure.Clock;
 using Leds.GameEngine.Infrastructure.Generation;
@@ -28,7 +29,10 @@ public static class InfrastructureServiceCollectionExtensions
         /// Génération
         services.AddSingleton<ISeededRandomFactory, SeededRandomFactory>();
 
-        services.AddSingleton<IRoomTypeResolver, RoomTypeResolver>();
+        services.AddSingleton<DeterministicMarkovSampler>();
+        services.AddSingleton<MarkovTransitionResolver>();
+        services.AddSingleton<IRoomTypeMarkovMatrixProvider, StaticRoomTypeMarkovMatrixProvider>();
+        services.AddSingleton<IRoomTypeResolver, MarkovRoomTypeResolver>();
         services.AddSingleton<IRoomThemeResolver, RoomThemeResolver>();
         services.AddSingleton<IRoomBossProfileResolver, RoomBossProfileResolver>();
 

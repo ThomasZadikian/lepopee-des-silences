@@ -271,4 +271,12 @@ public sealed class DeterministicRunGeneratorTests
         room.AvailableNodes.Should().OnlyContain(node => node.NodeDepth == 0);
         room.AvailableNodes.Should().OnlyContain(node => node.State == NodeState.Available);
     }
+
+    [Fact]
+    public void GenerateNextRoom_ShouldUseMarkovMatrixVersion()
+    {
+        var generator = TestGeneratorFactory.CreateDeterministicRunGenerator();
+
+        generator.MarkovMatrixVersion.Should().Be("markov-room-type-0.1.0");
+    }
 }

@@ -1,4 +1,5 @@
-﻿using Leds.GameEngine.Infrastructure.Generation;
+﻿using Leds.GameEngine.Domain.Markov;
+using Leds.GameEngine.Infrastructure.Generation;
 using Leds.GameEngine.Infrastructure.Generation.Randomness;
 using Leds.GameEngine.Infrastructure.Generation.Rooms.Bosses;
 using Leds.GameEngine.Infrastructure.Generation.Rooms.Events;
@@ -33,9 +34,13 @@ public static class TestGeneratorFactory
             new RoomNodeLayerPlanner(),
             nodeFactory);
 
+        var roomTypeResolver = new MarkovRoomTypeResolver(
+            new StaticRoomTypeMarkovMatrixProvider(),
+            new MarkovTransitionResolver(new DeterministicMarkovSampler()));
+
         return new DeterministicRunGenerator(
             new SeededRandomFactory(),
-            new RoomTypeResolver(),
+            roomTypeResolver,
             roomPlanGenerator);
     }
 }
