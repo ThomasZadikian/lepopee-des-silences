@@ -31,15 +31,28 @@ public sealed class RoomPlanGenerator : IRoomPlanGenerator
         _nodeFactory = nodeFactory;
     }
 
-    public Room Generate(int roomDepth, RoomType roomType, Random random)
+    public Room Generate(
+        string seed,
+        string matrixVersion,
+        int roomDepth,
+        RoomType roomType,
+        Random random)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(seed);
+        ArgumentException.ThrowIfNullOrWhiteSpace(matrixVersion);
         ArgumentNullException.ThrowIfNull(random);
 
         var totalNodeCount = random.Next(
             RoomGenerationConstants.MinRoomNodeCount,
             RoomGenerationConstants.MaxRoomNodeCount + 1);
 
-        var nodes = GenerateNodes(random, roomType, totalNodeCount);
+        var nodes = GenerateNodes(
+            random,
+            seed,
+            matrixVersion,
+            roomDepth,
+            roomType,
+            totalNodeCount);
 
         return Room.Create(
             roomDepth,
@@ -51,6 +64,9 @@ public sealed class RoomPlanGenerator : IRoomPlanGenerator
 
     private IReadOnlyCollection<Node> GenerateNodes(
         Random random,
+        string seed,
+        string matrixVersion,
+        int roomDepth,
         RoomType roomType,
         int totalNodeCount)
     {
@@ -73,7 +89,10 @@ public sealed class RoomPlanGenerator : IRoomPlanGenerator
 
             var layerNodes = _nodeFactory.CreateLayerNodes(
                 random,
+                seed,
+                matrixVersion,
                 roomType,
+                roomDepth,
                 totalNodeCount,
                 eventGenerationState,
                 nodeDepth,

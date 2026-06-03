@@ -2,6 +2,7 @@ using Leds.GameEngine.Application.Abstractions;
 using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
 using Leds.GameEngine.Infrastructure.Generation.Randomness;
+using Leds.GameEngine.Infrastructure.Generation.Rooms.Events;
 using Leds.GameEngine.Infrastructure.Generation.Rooms.Planning;
 using Leds.GameEngine.Infrastructure.Generation.Rooms.Types;
 
@@ -27,6 +28,9 @@ public sealed class DeterministicRunGenerator : IRunGenerator
 
     public string MarkovMatrixVersion => StaticRoomTypeMarkovMatrixProvider.SupportedVersion;
 
+    private static string NodeEventTypeMarkovMatrixVersion =>
+        StaticNodeEventTypeMarkovMatrixProvider.SupportedVersion;
+
     public string GenerateSeed()
     {
         return $"seed-{Guid.NewGuid():N}";
@@ -40,6 +44,8 @@ public sealed class DeterministicRunGenerator : IRunGenerator
             GeneratorVersion);
 
         return _roomPlanGenerator.Generate(
+            seed,
+            NodeEventTypeMarkovMatrixVersion,
             roomDepth: 0,
             roomType: RoomType.Threshold,
             random);
@@ -63,6 +69,8 @@ public sealed class DeterministicRunGenerator : IRunGenerator
             GeneratorVersion);
 
         return _roomPlanGenerator.Generate(
+            run.Seed,
+            NodeEventTypeMarkovMatrixVersion,
             nextRoomDepth,
             roomType,
             random);

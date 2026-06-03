@@ -18,7 +18,11 @@ public static class TestGeneratorFactory
     public static DeterministicRunGenerator CreateDeterministicRunGenerator()
     {
         var candidateResolver = new NodeEventCandidateResolver();
-        var eventGenerator = new NodeEventGenerator(candidateResolver);
+        var eventGenerator = new NodeEventGenerator(
+            candidateResolver,
+            new MarkovNodeEventTypeResolver(
+                new StaticNodeEventTypeMarkovMatrixProvider(),
+                new MarkovTransitionResolver(new DeterministicMarkovSampler())));
         var riskResolver = new NodeRiskResolver();
         var rewardProfileResolver = new NodeRewardProfileResolver();
 

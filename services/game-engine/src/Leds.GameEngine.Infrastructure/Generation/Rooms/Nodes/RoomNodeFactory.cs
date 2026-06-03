@@ -24,7 +24,10 @@ public sealed class RoomNodeFactory : IRoomNodeFactory
 
     public IReadOnlyCollection<Node> CreateLayerNodes(
         Random random,
+        string seed,
+        string matrixVersion,
         RoomType roomType,
+        int roomDepth,
         int totalNodeCount,
         IRoomEventGenerationState eventGenerationState,
         int nodeDepth,
@@ -33,6 +36,8 @@ public sealed class RoomNodeFactory : IRoomNodeFactory
         NodeState initialState)
     {
         ArgumentNullException.ThrowIfNull(random);
+        ArgumentException.ThrowIfNullOrWhiteSpace(seed);
+        ArgumentException.ThrowIfNullOrWhiteSpace(matrixVersion);
         ArgumentNullException.ThrowIfNull(eventGenerationState);
         ArgumentNullException.ThrowIfNull(previousLayer);
 
@@ -46,7 +51,11 @@ public sealed class RoomNodeFactory : IRoomNodeFactory
         {
             var events = _nodeEventGenerator.Generate(
                 random,
+                seed,
+                matrixVersion,
                 roomType,
+                roomDepth,
+                nodeDepth,
                 totalNodeCount,
                 eventGenerationState);
 

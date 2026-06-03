@@ -7,24 +7,38 @@ namespace Leds.GameEngine.Infrastructure.Generation.Rooms.Events;
 public sealed class NodeEventGenerator : INodeEventGenerator
 {
     private readonly INodeEventCandidateResolver _candidateResolver;
+    private readonly MarkovNodeEventTypeResolver _markovNodeEventTypeResolver;
 
-    public NodeEventGenerator(INodeEventCandidateResolver candidateResolver)
+    public NodeEventGenerator(
+        INodeEventCandidateResolver candidateResolver,
+        MarkovNodeEventTypeResolver markovNodeEventTypeResolver)
     {
         _candidateResolver = candidateResolver;
+        _markovNodeEventTypeResolver = markovNodeEventTypeResolver;
     }
 
     public IReadOnlyCollection<NodeEvent> Generate(
         Random random,
+        string seed,
+        string matrixVersion,
         RoomType roomType,
+        int roomDepth,
+        int nodeDepth,
         int totalNodeCount,
         IRoomEventGenerationState state)
     {
         ArgumentNullException.ThrowIfNull(random);
+        ArgumentException.ThrowIfNullOrWhiteSpace(seed);
+        ArgumentException.ThrowIfNullOrWhiteSpace(matrixVersion);
         ArgumentNullException.ThrowIfNull(state);
 
         var firstEventType = ResolveEventType(
-            random,
+            seed,
+            matrixVersion,
             roomType,
+            roomDepth,
+            nodeDepth,
+            eventIndex: 0,
             totalNodeCount,
             state,
             Array.Empty<NodeEvent>());
@@ -48,8 +62,12 @@ public sealed class NodeEventGenerator : INodeEventGenerator
         for (var order = 2; order <= eventCount; order++)
         {
             var eventType = ResolveEventType(
-                random,
+                seed,
+                matrixVersion,
                 roomType,
+                roomDepth,
+                nodeDepth,
+                eventIndex: order - 1,
                 totalNodeCount,
                 state,
                 events);
@@ -62,8 +80,12 @@ public sealed class NodeEventGenerator : INodeEventGenerator
     }
 
     private NodeEventType ResolveEventType(
-        Random random,
+        string seed,
+        string matrixVersion,
         RoomType roomType,
+        int roomDepth,
+        int nodeDepth,
+        int eventIndex,
         int totalNodeCount,
         IRoomEventGenerationState state,
         IReadOnlyCollection<NodeEvent> currentNodeEvents)
@@ -74,6 +96,20 @@ public sealed class NodeEventGenerator : INodeEventGenerator
             state,
             currentNodeEvents);
 
-        return candidates[random.Next(candidates.Count)];
+        var previousEventType = currentNodeEvents
+            .OrderByDescending(nodeEvent => nodeEvent.Order)
+            .Select(nodeEvent => (NodeEventType?)nodeEvent.EventType)
+            .FirstOrDefault();
+
+        return _markovNodeEventTypeResolver.ResolveNextEventType(
+            new NodeEventTypeSelectionContext(
+                Seed: seed,
+                MatrixVersion: matrixVersion,
+                RoomType: roomType,
+                RoomDepth: roomDepth,
+                NodeDepth: nodeDepth,
+                EventIndex: eventIndex,
+                PreviousEventType: previousEventType,
+                AllowedEventTypes: candidates));
     }
 }

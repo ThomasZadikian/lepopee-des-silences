@@ -26,11 +26,13 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IClock, SystemClock>();
         services.AddSingleton<IRunRepository, InMemoryRunRepository>();
 
-        /// Génération
+        // Génération
         services.AddSingleton<ISeededRandomFactory, SeededRandomFactory>();
 
         services.AddSingleton<DeterministicMarkovSampler>();
         services.AddSingleton<MarkovTransitionResolver>();
+        services.AddSingleton<INodeEventTypeMarkovMatrixProvider, StaticNodeEventTypeMarkovMatrixProvider>();
+        services.AddSingleton<MarkovNodeEventTypeResolver>();
         services.AddSingleton<IRoomTypeMarkovMatrixProvider, StaticRoomTypeMarkovMatrixProvider>();
         services.AddSingleton<IRoomTypeResolver, MarkovRoomTypeResolver>();
         services.AddSingleton<IRoomThemeResolver, RoomThemeResolver>();

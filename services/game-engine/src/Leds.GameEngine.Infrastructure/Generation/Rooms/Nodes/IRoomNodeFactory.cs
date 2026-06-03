@@ -8,7 +8,10 @@ public interface IRoomNodeFactory
 {
     IReadOnlyCollection<Node> CreateLayerNodes(
         Random random,
+        string seed,
+        string matrixVersion,
         RoomType roomType,
+        int roomDepth,
         int totalNodeCount,
         IRoomEventGenerationState eventGenerationState,
         int nodeDepth,

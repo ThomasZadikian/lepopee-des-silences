@@ -4,5 +4,10 @@ namespace Leds.GameEngine.Infrastructure.Generation.Rooms.Planning;
 
 public interface IRoomPlanGenerator
 {
-    Room Generate(int roomDepth, RoomType roomType, Random random);
+    Room Generate(
+        string seed,
+        string matrixVersion,
+        int roomDepth,
+        RoomType roomType,
+        Random random);
 }
