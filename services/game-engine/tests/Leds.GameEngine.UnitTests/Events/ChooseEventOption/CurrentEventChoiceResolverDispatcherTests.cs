@@ -11,8 +11,11 @@ public sealed class CurrentEventChoiceResolverDispatcherTests
     [Fact]
     public void Resolve_ShouldUseResolverMatchingPrimaryEventType()
     {
-        var context = TestCurrentEventChoiceResolutionContextFactory.Create(
-            NodeEventType.Npc,
+        var runWithNode = TestGameEngineFactory.CreateRunWithResolvedCurrentEvent(NodeEventType.Npc);
+        var context = new CurrentEventChoiceResolutionContext(
+            runWithNode.Run,
+            runWithNode.Run.CurrentRoom,
+            runWithNode.TargetNode,
             "listen");
 
         var dispatcher = new CurrentEventChoiceResolverDispatcher(new ICurrentEventChoiceResolver[]
@@ -29,8 +32,11 @@ public sealed class CurrentEventChoiceResolverDispatcherTests
     [Fact]
     public void Resolve_ShouldThrowDomainException_WhenNoResolverIsRegistered()
     {
-        var context = TestCurrentEventChoiceResolutionContextFactory.Create(
-            NodeEventType.Combat,
+        var runWithNode = TestGameEngineFactory.CreateRunWithResolvedCurrentEvent(NodeEventType.Combat);
+        var context = new CurrentEventChoiceResolutionContext(
+            runWithNode.Run,
+            runWithNode.Run.CurrentRoom,
+            runWithNode.TargetNode,
             "any-choice");
 
         var dispatcher = new CurrentEventChoiceResolverDispatcher(new ICurrentEventChoiceResolver[]

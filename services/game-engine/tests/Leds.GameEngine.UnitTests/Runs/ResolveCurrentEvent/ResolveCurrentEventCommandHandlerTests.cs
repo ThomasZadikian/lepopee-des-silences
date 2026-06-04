@@ -4,10 +4,10 @@ using Leds.GameEngine.Application.Common.Exceptions;
 using Leds.GameEngine.Application.Events.Dtos;
 using Leds.GameEngine.Application.Events.ResolveNodeEvent;
 using Leds.GameEngine.Application.Runs.ResolveCurrentEvent;
-using Leds.GameEngine.Domain.NodeEvents;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
+using Leds.GameEngine.UnitTests.Common.Factories;
 using Moq;
 
 namespace Leds.GameEngine.UnitTests.Runs.ResolveCurrentEvent;
@@ -37,7 +37,7 @@ public sealed class ResolveCurrentEventCommandHandlerTests
     [Fact]
     public async Task Handle_ShouldResolveCurrentEvent_AndKeepRunActive_WhenRoomBossIsNotResolved()
     {
-        var run = CreateRun();
+        var run = TestGameEngineFactory.CreateRun();
         var selectedNode = run.CurrentRoom.AvailableNodes.First();
 
         run.ChooseNode(selectedNode.Id);
@@ -99,7 +99,7 @@ public sealed class ResolveCurrentEventCommandHandlerTests
     [Fact]
     public async Task Handle_ShouldThrowDomainException_WhenNoNodeWasSelected()
     {
-        var run = CreateRun();
+        var run = TestGameEngineFactory.CreateRun();
 
         var repository = new Mock<IRunRepository>();
         repository
@@ -121,103 +121,4 @@ public sealed class ResolveCurrentEventCommandHandlerTests
             .WithMessage("No node has been selected for the current room depth.");
     }
 
-    private static Run CreateRun()
-    {
-        return Run.StartNew(
-            Guid.NewGuid(),
-            "seed-test-001",
-            "gen-0.1.0",
-            "markov-0.1.0",
-            CreateInitialRoom(),
-            DateTimeOffset.UtcNow);
-    }
-
-    private static Room CreateInitialRoom()
-    {
-        var roomType = RoomType.Threshold;
-
-        var bossProfile = RoomBossProfile.Create(
-            "threshold-guardian",
-            "Gardien du Seuil",
-            roomType,
-            "High");
-
-        var combatNode = Node.Create(
-            NodeEventType.Combat,
-            20,
-            "combat-common",
-            nodeDepth: 0,
-            initialState: NodeState.Available);
-
-        var itemNode = Node.Create(
-            NodeEventType.Item,
-            15,
-            "common",
-            nodeDepth: 0,
-            initialState: NodeState.Available);
-
-        var restNode = Node.Create(
-            NodeEventType.Rest,
-            5,
-            "healing-only",
-            nodeDepth: 1,
-            parentNodeId: combatNode.Id,
-            initialState: NodeState.Planned);
-
-        var npcNode = Node.Create(
-                new[]
-                {
-                    NodeEvent.Create(NodeEventType.Npc, 1)
-                },
-            8,
-            "narrative-choice",
-            nodeDepth: 1,
-            parentNodeIds: new[]
-            {
-            combatNode.Id,
-            itemNode.Id
-            },
-            isRoomBossNode: false,
-            initialState: NodeState.Planned);
-
-        var rareNode = Node.Create(
-            NodeEventType.Rare,
-            25,
-            "rare",
-            nodeDepth: 1,
-            parentNodeId: itemNode.Id,
-            initialState: NodeState.Planned);
-
-        var bossNode = Node.Create(
-            new[]
-            {
-            NodeEvent.Create(NodeEventType.RoomBoss, 1)
-            },
-            riskLevel: 80,
-            rewardProfile: "room-boss",
-            nodeDepth: 2,
-            parentNodeIds: new[]
-            {
-            restNode.Id,
-            npcNode.Id,
-            rareNode.Id
-            },
-            isRoomBossNode: true,
-            initialState: NodeState.Planned);
-
-        return Room.Create(
-            0,
-            roomType,
-            "Threshold",
-            bossProfile,
-            new[]
-            {
-            combatNode,
-            itemNode,
-            restNode,
-            npcNode,
-            rareNode,
-            bossNode
-            });
-    }
 }

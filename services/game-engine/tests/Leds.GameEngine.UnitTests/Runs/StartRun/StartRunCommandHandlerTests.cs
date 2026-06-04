@@ -1,10 +1,8 @@
 using FluentAssertions;
 using Leds.GameEngine.Application.Abstractions;
 using Leds.GameEngine.Application.Runs.StartRun;
-using Leds.GameEngine.Domain.NodeEvents;
-using Leds.GameEngine.Domain.Nodes;
-using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
+using Leds.GameEngine.UnitTests.Common.Factories;
 using Moq;
 
 namespace Leds.GameEngine.UnitTests.Runs.StartRun;
@@ -17,7 +15,7 @@ public sealed class StartRunCommandHandlerTests
         var playerId = Guid.NewGuid();
         var now = new DateTimeOffset(2026, 5, 30, 12, 0, 0, TimeSpan.Zero);
 
-        var initialRoom = CreateInitialRoom();
+        var initialRoom = TestGameEngineFactory.CreateThresholdRoom();
 
         var generator = new Mock<IRunGenerator>();
         generator.SetupGet(service => service.GeneratorVersion).Returns("gen-0.1.0");
@@ -90,92 +88,4 @@ public sealed class StartRunCommandHandlerTests
             Times.Once);
     }
 
-    private static Room CreateInitialRoom()
-    {
-        var roomType = RoomType.Threshold;
-
-        var bossProfile = RoomBossProfile.Create(
-            "threshold-guardian",
-            "Gardien du Seuil",
-            roomType,
-            "High");
-
-        var combatNode = Node.Create(
-            NodeEventType.Combat,
-            20,
-            "combat-common",
-            nodeDepth: 0,
-            initialState: NodeState.Available);
-
-        var itemNode = Node.Create(
-            NodeEventType.Item,
-            15,
-            "common",
-            nodeDepth: 0,
-            initialState: NodeState.Available);
-
-        var restNode = Node.Create(
-            NodeEventType.Rest,
-            5,
-            "healing-only",
-            nodeDepth: 1,
-            parentNodeId: combatNode.Id,
-            initialState: NodeState.Planned);
-
-        var npcNode = Node.Create(
-            new[]
-            {
-                NodeEvent.Create(NodeEventType.Npc, 1)
-            },
-            8,
-            "narrative-choice",
-            nodeDepth: 1,
-            parentNodeIds: new[]
-            {
-            combatNode.Id,
-            itemNode.Id
-            },
-            isRoomBossNode: false,
-            initialState: NodeState.Planned);
-
-        var rareNode = Node.Create(
-            NodeEventType.Rare,
-            25,
-            "rare",
-            nodeDepth: 1,
-            parentNodeId: itemNode.Id,
-            initialState: NodeState.Planned);
-
-        var bossNode = Node.Create(
-            new[]
-            {
-            NodeEvent.Create(NodeEventType.RoomBoss, 1)
-            },
-            riskLevel: 80,
-            rewardProfile: "room-boss",
-            nodeDepth: 2,
-            parentNodeIds: new[]
-            {
-            restNode.Id,
-            npcNode.Id,
-            rareNode.Id
-            },
-            isRoomBossNode: true,
-            initialState: NodeState.Planned);
-
-        return Room.Create(
-            0,
-            roomType,
-            "Threshold",
-            bossProfile,
-            new[]
-            {
-            combatNode,
-            itemNode,
-            restNode,
-            npcNode,
-            rareNode,
-            bossNode
-            });
-    }
 }

@@ -13,8 +13,11 @@ public sealed class LawEventChoiceResolverTests
     [Fact]
     public void Resolve_ShouldActivatePalaceLaw_WhenChoiceIsAcceptLaw()
     {
-        var context = TestCurrentEventChoiceResolutionContextFactory.Create(
-            NodeEventType.Law,
+        var runWithNode = TestGameEngineFactory.CreateRunWithResolvedCurrentEvent(NodeEventType.Law);
+        var context = new CurrentEventChoiceResolutionContext(
+            runWithNode.Run,
+            runWithNode.Run.CurrentRoom,
+            runWithNode.TargetNode,
             "accept-law");
 
         var sut = new LawEventChoiceResolver(new StaticPalaceLawCatalog());
@@ -39,8 +42,11 @@ public sealed class LawEventChoiceResolverTests
     [Fact]
     public void Resolve_ShouldNotActivatePalaceLaw_WhenChoiceIsRejectLaw()
     {
-        var context = TestCurrentEventChoiceResolutionContextFactory.Create(
-            NodeEventType.Law,
+        var runWithNode = TestGameEngineFactory.CreateRunWithResolvedCurrentEvent(NodeEventType.Law);
+        var context = new CurrentEventChoiceResolutionContext(
+            runWithNode.Run,
+            runWithNode.Run.CurrentRoom,
+            runWithNode.TargetNode,
             "reject-law");
 
         var sut = new LawEventChoiceResolver(new StaticPalaceLawCatalog());
@@ -56,8 +62,11 @@ public sealed class LawEventChoiceResolverTests
     [Fact]
     public void Resolve_ShouldThrowDomainException_WhenChoiceIsInvalid()
     {
-        var context = TestCurrentEventChoiceResolutionContextFactory.Create(
-            NodeEventType.Law,
+        var runWithNode = TestGameEngineFactory.CreateRunWithResolvedCurrentEvent(NodeEventType.Law);
+        var context = new CurrentEventChoiceResolutionContext(
+            runWithNode.Run,
+            runWithNode.Run.CurrentRoom,
+            runWithNode.TargetNode,
             "unknown-choice");
 
         var sut = new LawEventChoiceResolver(new StaticPalaceLawCatalog());

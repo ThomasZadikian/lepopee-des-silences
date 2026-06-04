@@ -2,25 +2,19 @@
 using Leds.GameEngine.Application.Abstractions;
 using Leds.GameEngine.Application.Common.Exceptions;
 using Leds.GameEngine.Application.Runs.AbandonRun;
-using Leds.GameEngine.Domain.NodeEvents;
-using Leds.GameEngine.Domain.Nodes;
-using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
+using Leds.GameEngine.UnitTests.Common.Factories;
 using Moq;
 
 namespace Leds.GameEngine.UnitTests.Runs.AbandonRun;
 
 public sealed class AbandonRunCommandHandlerTests
 {
-    private const string Seed = "seed-abandon-test";
-    private const string GeneratorVersion = "gen-0.4.0";
-    private const string MarkovMatrixVersion = "markov-0.2.0";
-
     [Fact]
     public async Task Handle_ShouldAbandonRun_AndPersistIt()
     {
         // Arrange
-        var run = CreateRun();
+        var run = TestGameEngineFactory.CreateRun();
 
         var now = new DateTimeOffset(
             2026,
@@ -105,7 +99,7 @@ public sealed class AbandonRunCommandHandlerTests
     public async Task Handle_ShouldThrowDomainException_WhenRunIsAlreadyClosed()
     {
         // Arrange
-        var run = CreateRun();
+        var run = TestGameEngineFactory.CreateRun();
 
         run.Abandon(DateTimeOffset.UtcNow);
 
@@ -140,88 +134,4 @@ public sealed class AbandonRunCommandHandlerTests
             Times.Never);
     }
 
-    private static Run CreateRun()
-    {
-        return Run.StartNew(
-            Guid.NewGuid(),
-            Seed,
-            GeneratorVersion,
-            MarkovMatrixVersion,
-            CreateInitialRoom(),
-            DateTimeOffset.UtcNow);
-    }
-
-    private static Room CreateInitialRoom()
-    {
-        var roomType = RoomType.Threshold;
-
-        var bossProfile = RoomBossProfile.Create(
-            "threshold-guardian",
-            "Gardien du Seuil",
-            roomType,
-            "High");
-
-        var combatNode = Node.Create(
-            NodeEventType.Combat,
-            20,
-            "combat-common",
-            nodeDepth: 0,
-            initialState: NodeState.Available);
-
-        var itemNode = Node.Create(
-            NodeEventType.Item,
-            15,
-            "common",
-            nodeDepth: 0,
-            initialState: NodeState.Available);
-
-        var restNode = Node.Create(
-            NodeEventType.Rest,
-            5,
-            "healing-only",
-            nodeDepth: 1,
-            parentNodeId: combatNode.Id,
-            initialState: NodeState.Planned);
-
-        var npcNode = Node.Create(
-            new[] { NodeEvent.Create(NodeEventType.Npc, 1) },
-            8,
-            "narrative-choice",
-            nodeDepth: 1,
-            parentNodeIds: new[] { combatNode.Id, itemNode.Id },
-            isRoomBossNode: false,
-            initialState: NodeState.Planned);
-
-        var rareNode = Node.Create(
-            NodeEventType.Rare,
-            25,
-            "rare",
-            nodeDepth: 1,
-            parentNodeId: itemNode.Id,
-            initialState: NodeState.Planned);
-
-        var bossNode = Node.Create(
-            new[] { NodeEvent.Create(NodeEventType.RoomBoss, 1) },
-            riskLevel: 80,
-            rewardProfile: "room-boss",
-            nodeDepth: 2,
-            parentNodeIds: new[] { restNode.Id, npcNode.Id, rareNode.Id },
-            isRoomBossNode: true,
-            initialState: NodeState.Planned);
-
-        return Room.Create(
-            0,
-            roomType,
-            "Threshold",
-            bossProfile,
-            new[]
-            {
-                combatNode,
-                itemNode,
-                restNode,
-                npcNode,
-                rareNode,
-                bossNode
-            });
-    }
 }

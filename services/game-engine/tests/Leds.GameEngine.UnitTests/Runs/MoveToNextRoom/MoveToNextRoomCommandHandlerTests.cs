@@ -14,8 +14,8 @@ public sealed class MoveToNextRoomCommandHandlerTests
     [Fact]
     public async Task Handle_ShouldMoveRunToNextRoom_WhenCurrentRoomIsCompleted()
     {
-        var run = TestRunFactory.CreateRunWithCompletedCurrentRoom();
-        var nextRoom = TestRoomFactory.CreatePlannedRoom(depth: run.CurrentDepth + 1);
+        var run = TestGameEngineFactory.CreateRunWithCompletedCurrentRoom();
+        var nextRoom = TestGameEngineFactory.CreateThresholdRoom(depth: run.CurrentDepth + 1);
 
         var repository = new Mock<IRunRepository>();
         repository

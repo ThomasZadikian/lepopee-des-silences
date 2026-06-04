@@ -5,34 +5,31 @@ using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.PalaceLaws;
 using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
+using Leds.GameEngine.UnitTests.Common.Factories;
 
 namespace Leds.GameEngine.UnitTests.Runs;
 
 public sealed class RunTests
 {
-    private const string Seed = "seed-001";
-    private const string GeneratorVersion = "gen-0.4.0";
-    private const string MarkovMatrixVersion = "markov-0.2.0";
-
     [Fact]
     public void StartNew_ShouldCreateActiveRun_WithInitialRoomAndMetadata()
     {
         var playerId = Guid.NewGuid();
-        var initialRoom = CreateInitialRoom();
+        var initialRoom = TestGameEngineFactory.CreateThresholdRoom();
 
         var run = Run.StartNew(
             playerId,
-            Seed,
-            GeneratorVersion,
-            MarkovMatrixVersion,
+            "seed-001",
+            "gen-0.4.0",
+            "markov-0.2.0",
             initialRoom,
             DateTimeOffset.UtcNow);
 
         run.Id.Value.Should().NotBeEmpty();
         run.PlayerId.Should().Be(playerId);
-        run.Seed.Should().Be(Seed);
-        run.GeneratorVersion.Should().Be(GeneratorVersion);
-        run.MarkovMatrixVersion.Should().Be(MarkovMatrixVersion);
+        run.Seed.Should().Be("seed-001");
+        run.GeneratorVersion.Should().Be("gen-0.4.0");
+        run.MarkovMatrixVersion.Should().Be("markov-0.2.0");
         run.Status.Should().Be(RunStatus.Active);
         run.CurrentDepth.Should().Be(0);
 
@@ -93,7 +90,7 @@ public sealed class RunTests
     [Fact]
     public void ChooseNode_ShouldSelectRequestedNode_LockSiblings_AndMarkUnreachableBranches()
     {
-        var run = CreateRun();
+        var run = TestGameEngineFactory.CreateRun();
 
         var selectedNode = run.CurrentRoom.AvailableNodes.First();
 
@@ -133,7 +130,7 @@ public sealed class RunTests
     [Fact]
     public void ChooseNode_ShouldThrow_WhenNodeWasAlreadySelectedAtCurrentDepth()
     {
-        var run = CreateRun();
+        var run = TestGameEngineFactory.CreateRun();
 
         var firstNode = run.CurrentRoom.AvailableNodes.First();
         var secondNode = run.CurrentRoom.AvailableNodes.Last();
@@ -150,7 +147,7 @@ public sealed class RunTests
     [Fact]
     public void ResolveCurrentEvent_ShouldResolveSelectedNode_AndKeepRunActive_WhenRoomBossIsNotResolved()
     {
-        var run = CreateRun();
+        var run = TestGameEngineFactory.CreateRun();
 
         var selectedNode = run.CurrentRoom.AvailableNodes.First();
 
@@ -165,7 +162,7 @@ public sealed class RunTests
     [Fact]
     public void ProgressCurrentRoom_ShouldUnlockNextLayer_AfterCurrentEventIsResolved()
     {
-        var run = CreateRun();
+        var run = TestGameEngineFactory.CreateRun();
 
         var selectedNode = run.CurrentRoom.AvailableNodes.First();
 
@@ -186,7 +183,7 @@ public sealed class RunTests
     [Fact]
     public void ResolveCurrentEvent_ShouldCompleteRoom_AndSetRunRoomResolved_WhenRoomBossIsResolved()
     {
-        var run = CreateRun();
+        var run = TestGameEngineFactory.CreateRun();
 
         while (run.CurrentRoom.State != RoomState.BossReached)
         {
@@ -216,7 +213,7 @@ public sealed class RunTests
     [Fact]
     public void Abandon_ShouldCloseRun()
     {
-        var run = CreateRun();
+        var run = TestGameEngineFactory.CreateRun();
 
         var endedAt = DateTimeOffset.UtcNow.AddMinutes(5);
 
@@ -224,106 +221,6 @@ public sealed class RunTests
 
         run.Status.Should().Be(RunStatus.Abandoned);
         run.EndedAt.Should().Be(endedAt);
-    }
-
-    private static Run CreateRun()
-    {
-        return Run.StartNew(
-            Guid.NewGuid(),
-            Seed,
-            GeneratorVersion,
-            MarkovMatrixVersion,
-            CreateInitialRoom(),
-            DateTimeOffset.UtcNow);
-    }
-
-    private static Room CreateInitialRoom()
-    {
-        var roomType = RoomType.Threshold;
-
-        var bossProfile = RoomBossProfile.Create(
-            "threshold-guardian",
-            "Gardien du Seuil",
-            roomType,
-            "High");
-
-        var combatNode = Node.Create(
-            NodeEventType.Combat,
-            20,
-            "combat-common",
-            nodeDepth: 0,
-            initialState: NodeState.Available);
-
-        var itemNode = Node.Create(
-            NodeEventType.Item,
-            15,
-            "common",
-            nodeDepth: 0,
-            initialState: NodeState.Available);
-
-        var restNode = Node.Create(
-            NodeEventType.Rest,
-            5,
-            "healing-only",
-            nodeDepth: 1,
-            parentNodeId: combatNode.Id,
-            initialState: NodeState.Planned);
-
-        var npcNode = Node.Create(
-            new[]
-            {
-            NodeEvent.Create(NodeEventType.Npc, 1)
-            },
-            8,
-            "narrative-choice",
-            nodeDepth: 1,
-            parentNodeIds: new[]
-            {
-            combatNode.Id,
-            itemNode.Id
-            },
-            isRoomBossNode: false,
-            initialState: NodeState.Planned);
-
-        var rareNode = Node.Create(
-            NodeEventType.Rare,
-            25,
-            "rare",
-            nodeDepth: 1,
-            parentNodeId: itemNode.Id,
-            initialState: NodeState.Planned);
-
-        var bossNode = Node.Create(
-            new[]
-            {
-            NodeEvent.Create(NodeEventType.RoomBoss, 1)
-            },
-            riskLevel: 80,
-            rewardProfile: "room-boss",
-            nodeDepth: 2,
-            parentNodeIds: new[]
-            {
-            restNode.Id,
-            npcNode.Id,
-            rareNode.Id
-            },
-            isRoomBossNode: true,
-            initialState: NodeState.Planned);
-
-        return Room.Create(
-            0,
-            roomType,
-            "Threshold",
-            bossProfile,
-            new[]
-            {
-            combatNode,
-            itemNode,
-            restNode,
-            npcNode,
-            rareNode,
-            bossNode
-            });
     }
 
     private static RoomBossProfile CreateBossProfile(RoomType roomType)
@@ -359,7 +256,7 @@ public sealed class RunTests
     [Fact]
     public void ActivatePalaceLaw_ShouldAddActiveLaw_WhenRunIsActive()
     {
-        var run = CreateRun();
+        var run = TestGameEngineFactory.CreateRun();
 
         var law = PalaceLaw.Create(
             "law-silence-v1",
@@ -384,7 +281,7 @@ public sealed class RunTests
     [Fact]
     public void ActivatePalaceLaw_ShouldNotDuplicateLaw_WhenLawIsAlreadyActive()
     {
-        var run = CreateRun();
+        var run = TestGameEngineFactory.CreateRun();
 
         var law = PalaceLaw.Create(
             "law-silence-v1",
@@ -401,7 +298,7 @@ public sealed class RunTests
     [Fact]
     public void ActivatePalaceLaw_ShouldThrowDomainException_WhenRunIsClosed()
     {
-        var run = CreateRun();
+        var run = TestGameEngineFactory.CreateRun();
 
         run.Abandon(DateTimeOffset.UtcNow);
 
