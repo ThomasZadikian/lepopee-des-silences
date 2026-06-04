@@ -3,18 +3,15 @@ using System.Net.Http.Json;
 using FluentAssertions;
 using Leds.GameEngine.Application.Runs.ProgressRun;
 using Leds.GameEngine.Application.Runs.ResolveCurrentEvent;
-using Leds.GameEngine.Application.Runs.StartRun;
 using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace Leds.GameEngine.IntegrationTests.Runs;
 
-public sealed class RoomBossProgressionEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class RoomBossProgressionEndpointTests : RunIntegrationTestBase, IClassFixture<WebApplicationFactory<Program>>
 {
-    private readonly HttpClient _client;
-
     public RoomBossProgressionEndpointTests(WebApplicationFactory<Program> factory)
+        : base(factory.CreateClient())
     {
-        _client = factory.CreateClient();
     }
 
     [Fact]
@@ -29,7 +26,7 @@ public sealed class RoomBossProgressionEndpointTests : IClassFixture<WebApplicat
         {
             var nodeToChoose = currentRoom.AvailableNodes.First();
 
-            var chooseResponse = await _client.PostAsync(
+            var chooseResponse = await Client.PostAsync(
                 $"/api/v2/runs/{runId}/nodes/{nodeToChoose.Id}/choose",
                 content: null);
 
@@ -39,12 +36,12 @@ public sealed class RoomBossProgressionEndpointTests : IClassFixture<WebApplicat
                 HttpStatusCode.OK,
                 because: chooseBody);
 
-            var resolvedPayload = await ResolveCurrentEventAndChooseOptionIfRequiredAsync(runId);
+            var resolvedPayload = await ResolveAndHandleCombatAsync(runId);
 
             resolvedPayload.Run.Status.Should().Be("Active");
             resolvedPayload.Run.CurrentRoom.State.Should().Be("NodeResolved");
 
-            var progressResponse = await _client.PostAsync(
+            var progressResponse = await Client.PostAsync(
                 $"/api/v2/runs/{runId}/progress",
                 content: null);
 
@@ -76,7 +73,7 @@ public sealed class RoomBossProgressionEndpointTests : IClassFixture<WebApplicat
         bossNode.IsRoomBossNode.Should().BeTrue();
         bossNode.State.Should().Be("Available");
 
-        var chooseBossResponse = await _client.PostAsync(
+        var chooseBossResponse = await Client.PostAsync(
             $"/api/v2/runs/{runId}/nodes/{bossNode.Id}/choose",
             content: null);
 
@@ -86,7 +83,7 @@ public sealed class RoomBossProgressionEndpointTests : IClassFixture<WebApplicat
             HttpStatusCode.OK,
             because: chooseBossBody);
 
-        var finalPayload = await ResolveCurrentEventAndChooseOptionIfRequiredAsync(runId);
+        var finalPayload = await ResolveAndHandleCombatAsync(runId);
 
         finalPayload.Run.Status.Should().Be("RoomResolved");
         finalPayload.Run.CurrentRoom.State.Should().Be("Completed");
@@ -99,68 +96,5 @@ public sealed class RoomBossProgressionEndpointTests : IClassFixture<WebApplicat
             .State
             .Should()
             .Be("Resolved");
-    }
-
-    private async Task<ResolveCurrentEventResponse> ResolveCurrentEventAndChooseOptionIfRequiredAsync(
-        Guid runId)
-    {
-        var resolveResponse = await _client.PostAsync(
-            $"/api/v2/runs/{runId}/current-event/resolve",
-            content: null);
-
-        var resolveBody = await resolveResponse.Content.ReadAsStringAsync();
-
-        resolveResponse.StatusCode.Should().Be(
-            HttpStatusCode.OK,
-            because: resolveBody);
-
-        var resolvePayload = await resolveResponse.Content
-            .ReadFromJsonAsync<ResolveCurrentEventResponse>();
-
-        resolvePayload.Should().NotBeNull();
-
-        if (!resolvePayload!.Outcome.RequiresPlayerChoice)
-        {
-            return resolvePayload;
-        }
-
-        resolvePayload.Outcome.Choices.Should()
-            .NotBeEmpty("an event requiring a player choice must expose at least one available choice.");
-
-        var firstChoice = resolvePayload.Outcome.Choices.First();
-
-        var choiceResponse = await _client.PostAsJsonAsync(
-            $"/api/v2/runs/{runId}/current-event/choice",
-            new { firstChoice.ChoiceId });
-
-        var choiceBody = await choiceResponse.Content.ReadAsStringAsync();
-
-        choiceResponse.StatusCode.Should().Be(
-            HttpStatusCode.OK,
-            because: choiceBody);
-
-        return resolvePayload;
-    }
-
-    private async Task<StartRunResponse> StartRunAsync()
-    {
-        var response = await _client.PostAsJsonAsync(
-            "/api/v2/runs",
-            new
-            {
-                PlayerId = Guid.Parse("11111111-1111-1111-1111-111111111111")
-            });
-
-        var body = await response.Content.ReadAsStringAsync();
-
-        response.StatusCode.Should().Be(
-            HttpStatusCode.Created,
-            because: body);
-
-        var payload = await response.Content.ReadFromJsonAsync<StartRunResponse>();
-
-        payload.Should().NotBeNull();
-
-        return payload!;
     }
 }

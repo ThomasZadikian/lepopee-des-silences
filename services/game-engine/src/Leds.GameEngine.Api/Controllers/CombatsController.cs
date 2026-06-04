@@ -1,0 +1,82 @@
+using Leds.GameEngine.Application.Abstractions;
+using Leds.GameEngine.Application.Combats.Dtos;
+using Leds.GameEngine.Application.Combats.Ports;
+using Leds.GameEngine.Application.Combats.SubmitCombatAction;
+using Leds.GameEngine.Domain.Combats;
+using Leds.GameEngine.Domain.Runs;
+using MediatR;
+using Microsoft.AspNetCore.Mvc;
+
+namespace Leds.GameEngine.Api.Controllers;
+
+[ApiController]
+[Route("api/v2/runs/{runId:guid}/combats")]
+public sealed class CombatsController : ControllerBase
+{
+    private readonly ISender _sender;
+    private readonly ICombatInstanceRepository _combatInstanceRepository;
+    private readonly IRunRepository _runRepository;
+
+    public CombatsController(
+        ISender sender,
+        ICombatInstanceRepository combatInstanceRepository,
+        IRunRepository runRepository)
+    {
+        _sender = sender;
+        _combatInstanceRepository = combatInstanceRepository;
+        _runRepository = runRepository;
+    }
+
+    [HttpGet("{combatId:guid}")]
+    [ProducesResponseType(typeof(CombatInstanceDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<CombatInstanceDto>> GetCombat(
+        Guid runId,
+        Guid combatId,
+        CancellationToken cancellationToken)
+    {
+        var run = await _runRepository.GetByIdAsync(new RunId(runId), cancellationToken);
+
+        if (run is null)
+        {
+            return NotFound(new { message = $"Run with id '{runId}' was not found." });
+        }
+
+        var combat = await _combatInstanceRepository.GetByIdAsync(
+            new CombatId(combatId), cancellationToken);
+
+        if (combat is null)
+        {
+            return NotFound(new { message = $"Combat with id '{combatId}' was not found." });
+        }
+
+        return Ok(CombatInstanceDto.FromDomain(combat));
+    }
+
+    [HttpPost("{combatId:guid}/actions")]
+    [ProducesResponseType(typeof(SubmitCombatActionResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<SubmitCombatActionResponse>> SubmitAction(
+        Guid runId,
+        Guid combatId,
+        [FromBody] SubmitCombatActionRequest request,
+        CancellationToken cancellationToken)
+    {
+        var command = new SubmitCombatActionCommand(
+            runId,
+            combatId,
+            request.ActorId,
+            request.TargetId,
+            request.ActionType);
+
+        var response = await _sender.Send(command, cancellationToken);
+
+        return Ok(response);
+    }
+}
+
+public sealed record SubmitCombatActionRequest(
+    Guid ActorId,
+    Guid TargetId,
+    string ActionType);

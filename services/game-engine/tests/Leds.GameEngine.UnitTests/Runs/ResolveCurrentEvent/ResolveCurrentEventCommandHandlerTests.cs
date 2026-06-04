@@ -1,7 +1,11 @@
 using FluentAssertions;
 using Leds.GameEngine.Application.Abstractions;
+using Leds.GameEngine.Application.Catalog.Ports;
+using Leds.GameEngine.Application.Combats.Ports;
 using Leds.GameEngine.Application.Common.Exceptions;
+using Leds.GameEngine.Application.Events.Contracts;
 using Leds.GameEngine.Application.Events.Dtos;
+using Leds.GameEngine.Application.Events.Ports;
 using Leds.GameEngine.Application.Events.ResolveNodeEvent;
 using Leds.GameEngine.Application.Runs.ResolveCurrentEvent;
 using Leds.GameEngine.Domain.Nodes;
@@ -15,7 +19,7 @@ namespace Leds.GameEngine.UnitTests.Runs.ResolveCurrentEvent;
 public sealed class ResolveCurrentEventCommandHandlerTests
 {
     private static Mock<INodeEventResolverDispatcher> CreateDispatcherMock(
-    NodeEventResolutionKind resolutionKind = NodeEventResolutionKind.CombatStarted)
+        NodeEventResolutionKind resolutionKind = NodeEventResolutionKind.NarrativeFragmentRevealed)
     {
         var dispatcher = new Mock<INodeEventResolverDispatcher>();
 
@@ -27,13 +31,34 @@ public sealed class ResolveCurrentEventCommandHandlerTests
                 "Test outcome description",
                 narrativeFragments: new[]
                 {
-                new NarrativeFragmentDto(
-                    "Elise",
-                    "Test narrative fragment.")
+                    new NarrativeFragmentDto(
+                        "Elise",
+                        "Test narrative fragment.")
                 }));
 
         return dispatcher;
     }
+
+    private static Mock<IEventContentResolver> CreateContentResolverMock()
+    {
+        return new Mock<IEventContentResolver>();
+    }
+
+    private static Mock<ICatalogContentGateway> CreateCatalogGatewayMock()
+    {
+        return new Mock<ICatalogContentGateway>();
+    }
+
+    private static Mock<ICombatInstanceFactory> CreateCombatFactoryMock()
+    {
+        return new Mock<ICombatInstanceFactory>();
+    }
+
+    private static Mock<ICombatInstanceRepository> CreateCombatRepositoryMock()
+    {
+        return new Mock<ICombatInstanceRepository>();
+    }
+
     [Fact]
     public async Task Handle_ShouldResolveCurrentEvent_AndKeepRunActive_WhenRoomBossIsNotResolved()
     {
@@ -51,7 +76,11 @@ public sealed class ResolveCurrentEventCommandHandlerTests
 
         var handler = new ResolveCurrentEventCommandHandler(
             repository.Object,
-            dispatcher.Object);
+            dispatcher.Object,
+            CreateContentResolverMock().Object,
+            CreateCatalogGatewayMock().Object,
+            CreateCombatFactoryMock().Object,
+            CreateCombatRepositoryMock().Object);
 
         var response = await handler.Handle(
             new ResolveCurrentEventCommand(run.Id.Value),
@@ -85,7 +114,11 @@ public sealed class ResolveCurrentEventCommandHandlerTests
 
         var handler = new ResolveCurrentEventCommandHandler(
             repository.Object,
-            dispatcher.Object);
+            dispatcher.Object,
+            CreateContentResolverMock().Object,
+            CreateCatalogGatewayMock().Object,
+            CreateCombatFactoryMock().Object,
+            CreateCombatRepositoryMock().Object);
 
         var act = () => handler.Handle(
             new ResolveCurrentEventCommand(runId),
@@ -110,7 +143,11 @@ public sealed class ResolveCurrentEventCommandHandlerTests
 
         var handler = new ResolveCurrentEventCommandHandler(
             repository.Object,
-            dispatcher.Object);
+            dispatcher.Object,
+            CreateContentResolverMock().Object,
+            CreateCatalogGatewayMock().Object,
+            CreateCombatFactoryMock().Object,
+            CreateCombatRepositoryMock().Object);
 
         var act = () => handler.Handle(
             new ResolveCurrentEventCommand(run.Id.Value),
@@ -120,5 +157,4 @@ public sealed class ResolveCurrentEventCommandHandlerTests
             .ThrowAsync<Leds.GameEngine.Domain.Common.DomainException>()
             .WithMessage("No node has been selected for the current room depth.");
     }
-
 }

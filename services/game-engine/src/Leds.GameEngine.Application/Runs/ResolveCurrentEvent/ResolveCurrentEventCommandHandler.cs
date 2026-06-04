@@ -1,6 +1,10 @@
 ﻿using Leds.GameEngine.Application.Abstractions;
+using Leds.GameEngine.Application.Catalog.Ports;
+using Leds.GameEngine.Application.Combats.Ports;
 using Leds.GameEngine.Application.Common.Exceptions;
+using Leds.GameEngine.Application.Events.Contracts;
 using Leds.GameEngine.Application.Events.Dtos;
+using Leds.GameEngine.Application.Events.Ports;
 using Leds.GameEngine.Application.Events.ResolveNodeEvent;
 using Leds.GameEngine.Application.Runs.Dtos;
 using Leds.GameEngine.Domain.Common;
@@ -15,13 +19,25 @@ public sealed class ResolveCurrentEventCommandHandler
 {
     private readonly IRunRepository _runRepository;
     private readonly INodeEventResolverDispatcher _nodeEventResolverDispatcher;
+    private readonly IEventContentResolver _eventContentResolver;
+    private readonly ICatalogContentGateway _catalogContentGateway;
+    private readonly ICombatInstanceFactory _combatInstanceFactory;
+    private readonly ICombatInstanceRepository _combatInstanceRepository;
 
     public ResolveCurrentEventCommandHandler(
         IRunRepository runRepository,
-        INodeEventResolverDispatcher nodeEventResolverDispatcher)
+        INodeEventResolverDispatcher nodeEventResolverDispatcher,
+        IEventContentResolver eventContentResolver,
+        ICatalogContentGateway catalogContentGateway,
+        ICombatInstanceFactory combatInstanceFactory,
+        ICombatInstanceRepository combatInstanceRepository)
     {
         _runRepository = runRepository;
         _nodeEventResolverDispatcher = nodeEventResolverDispatcher;
+        _eventContentResolver = eventContentResolver;
+        _catalogContentGateway = catalogContentGateway;
+        _combatInstanceFactory = combatInstanceFactory;
+        _combatInstanceRepository = combatInstanceRepository;
     }
 
     public async Task<ResolveCurrentEventResponse> Handle(
@@ -47,14 +63,65 @@ public sealed class ResolveCurrentEventCommandHandler
             throw new DomainException("No node has been selected for the current room depth.");
         }
 
-        var context = new NodeEventResolutionContext(
+        var resolutionContext = new NodeEventResolutionContext(
             run,
             room,
             selectedNode);
 
-        var resolutionResult = _nodeEventResolverDispatcher.Resolve(context);
+        var resolutionResult = _nodeEventResolverDispatcher.Resolve(resolutionContext);
 
-        run.ResolveCurrentEvent();
+        var isCombat = resolutionResult.ResolutionKind is NodeEventResolutionKind.CombatStarted
+            or NodeEventResolutionKind.EliteEncounterStarted;
+
+        if (isCombat)
+        {
+            var contentContext = new EventContentResolutionContext(
+                Seed: run.Seed,
+                RoomType: room.RoomType,
+                RoomDepth: room.Depth,
+                NodeDepth: selectedNode.NodeDepth,
+                EventOrder: 1,
+                EventType: selectedNode.EventType,
+                RiskLevel: selectedNode.RiskLevel,
+                RewardProfile: selectedNode.RewardProfile);
+
+            var contentResult = await _eventContentResolver.ResolveAsync(
+                contentContext, cancellationToken);
+
+            if (contentResult.IsFailure)
+            {
+                throw new DomainException(
+                    $"Failed to resolve event content: {contentResult.Error.Message}");
+            }
+
+            var (enemyTemplateKey, _) = contentResult.Value switch
+            {
+                ResolvedCombatEventContent c => (c.EnemyTemplateKey, c.RiskLevel),
+                ResolvedEliteEventContent e => (e.EnemyTemplateKey, e.RiskLevel),
+                _ => throw new DomainException(
+                    "Expected combat or elite event content but got a different type.")
+            };
+
+            var enemyTemplateResult = await _catalogContentGateway.GetEnemyTemplateByKeyAsync(
+                enemyTemplateKey, cancellationToken);
+
+            if (enemyTemplateResult.IsFailure)
+            {
+                throw new DomainException(
+                    $"Failed to retrieve enemy template: {enemyTemplateResult.Error.Message}");
+            }
+
+            var combat = _combatInstanceFactory.CreateFromEnemyTemplate(
+                enemyTemplateResult.Value);
+
+            await _combatInstanceRepository.AddAsync(combat, cancellationToken);
+
+            run.SetActiveCombat(combat.Id);
+        }
+        else
+        {
+            run.ResolveCurrentEvent();
+        }
 
         await _runRepository.UpdateAsync(run, cancellationToken);
 

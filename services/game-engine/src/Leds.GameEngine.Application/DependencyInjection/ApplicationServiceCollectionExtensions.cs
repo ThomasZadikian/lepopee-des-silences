@@ -5,6 +5,7 @@ using Leds.GameEngine.Application.Events.ChooseEventOption;
 using Leds.GameEngine.Application.Events.ResolveNodeEvent;
 using Leds.GameEngine.Application.Events.Resolvers;
 using Leds.GameEngine.Application.PalaceLaws;
+using Leds.GameEngine.Application.Rewards.RewardOfferFactory;
 using Leds.GameEngine.Application.Runs.StartRun;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
@@ -46,6 +47,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<ICurrentEventChoiceResolver, CurseEventChoiceResolver>();
         services.AddScoped<ICurrentEventChoiceRequirementResolver, CurrentEventChoiceRequirementResolver>();
         services.AddScoped<IPalaceLawCatalog, StaticPalaceLawCatalog>();
+        services.AddScoped<RewardOfferFactory>();
 
         return services;
     }

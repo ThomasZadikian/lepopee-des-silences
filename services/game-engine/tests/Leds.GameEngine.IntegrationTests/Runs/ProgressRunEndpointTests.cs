@@ -3,18 +3,15 @@ using System.Net.Http.Json;
 using FluentAssertions;
 using Leds.GameEngine.Application.Runs.ProgressRun;
 using Leds.GameEngine.Application.Runs.ResolveCurrentEvent;
-using Leds.GameEngine.Application.Runs.StartRun;
 using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace Leds.GameEngine.IntegrationTests.Runs;
 
-public sealed class ProgressRunEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class ProgressRunEndpointTests : RunIntegrationTestBase, IClassFixture<WebApplicationFactory<Program>>
 {
-    private readonly HttpClient _client;
-
     public ProgressRunEndpointTests(WebApplicationFactory<Program> factory)
+        : base(factory.CreateClient())
     {
-        _client = factory.CreateClient();
     }
 
     [Fact]
@@ -25,7 +22,7 @@ public sealed class ProgressRunEndpointTests : IClassFixture<WebApplicationFacto
         var runId = startRunResponse.Run.Id;
         var chosenNode = startRunResponse.Run.CurrentRoom.AvailableNodes.First();
 
-        var chooseResponse = await _client.PostAsync(
+        var chooseResponse = await Client.PostAsync(
             $"/api/v2/runs/{runId}/nodes/{chosenNode.Id}/choose",
             content: null);
 
@@ -35,9 +32,9 @@ public sealed class ProgressRunEndpointTests : IClassFixture<WebApplicationFacto
             HttpStatusCode.OK,
             because: chooseBody);
 
-        await ResolveCurrentEventAndChooseOptionIfRequiredAsync(runId);
+        await ResolveAndHandleCombatAsync(runId);
 
-        var progressResponse = await _client.PostAsync(
+        var progressResponse = await Client.PostAsync(
             $"/api/v2/runs/{runId}/progress",
             content: null);
 
@@ -75,7 +72,7 @@ public sealed class ProgressRunEndpointTests : IClassFixture<WebApplicationFacto
     {
         var startRunResponse = await StartRunAsync();
 
-        var response = await _client.PostAsync(
+        var response = await Client.PostAsync(
             $"/api/v2/runs/{startRunResponse.Run.Id}/progress",
             content: null);
 
@@ -92,7 +89,7 @@ public sealed class ProgressRunEndpointTests : IClassFixture<WebApplicationFacto
     {
         var unknownRunId = Guid.NewGuid();
 
-        var response = await _client.PostAsync(
+        var response = await Client.PostAsync(
             $"/api/v2/runs/{unknownRunId}/progress",
             content: null);
 
@@ -116,7 +113,7 @@ public sealed class ProgressRunEndpointTests : IClassFixture<WebApplicationFacto
         {
             var chosenNode = currentRoom.AvailableNodes.First();
 
-            var chooseResponse = await _client.PostAsync(
+            var chooseResponse = await Client.PostAsync(
                 $"/api/v2/runs/{runId}/nodes/{chosenNode.Id}/choose",
                 content: null);
 
@@ -126,7 +123,7 @@ public sealed class ProgressRunEndpointTests : IClassFixture<WebApplicationFacto
                 HttpStatusCode.OK,
                 because: chooseBody);
 
-            var resolvedPayload = await ResolveCurrentEventAndChooseOptionIfRequiredAsync(runId);
+            var resolvedPayload = await ResolveAndHandleCombatAsync(runId);
 
             if (resolvedPayload.Run.CurrentRoom.State == "Completed")
             {
@@ -134,7 +131,7 @@ public sealed class ProgressRunEndpointTests : IClassFixture<WebApplicationFacto
                 break;
             }
 
-            var progressResponse = await _client.PostAsync(
+            var progressResponse = await Client.PostAsync(
                 $"/api/v2/runs/{runId}/progress",
                 content: null);
 
@@ -156,68 +153,5 @@ public sealed class ProgressRunEndpointTests : IClassFixture<WebApplicationFacto
         currentRoom.AvailableNodes.Should().ContainSingle();
         currentRoom.AvailableNodes.Single().IsRoomBossNode.Should().BeTrue();
         currentRoom.AvailableNodes.Single().EventTypes.Should().Contain("RoomBoss");
-    }
-
-    private async Task<ResolveCurrentEventResponse> ResolveCurrentEventAndChooseOptionIfRequiredAsync(
-        Guid runId)
-    {
-        var resolveResponse = await _client.PostAsync(
-            $"/api/v2/runs/{runId}/current-event/resolve",
-            content: null);
-
-        var resolveBody = await resolveResponse.Content.ReadAsStringAsync();
-
-        resolveResponse.StatusCode.Should().Be(
-            HttpStatusCode.OK,
-            because: resolveBody);
-
-        var resolvePayload = await resolveResponse.Content
-            .ReadFromJsonAsync<ResolveCurrentEventResponse>();
-
-        resolvePayload.Should().NotBeNull();
-
-        if (!resolvePayload!.Outcome.RequiresPlayerChoice)
-        {
-            return resolvePayload;
-        }
-
-        resolvePayload.Outcome.Choices.Should()
-            .NotBeEmpty("an event requiring a player choice must expose at least one available choice.");
-
-        var firstChoice = resolvePayload.Outcome.Choices.First();
-
-        var choiceResponse = await _client.PostAsJsonAsync(
-            $"/api/v2/runs/{runId}/current-event/choice",
-            new { firstChoice.ChoiceId });
-
-        var choiceBody = await choiceResponse.Content.ReadAsStringAsync();
-
-        choiceResponse.StatusCode.Should().Be(
-            HttpStatusCode.OK,
-            because: choiceBody);
-
-        return resolvePayload;
-    }
-
-    private async Task<StartRunResponse> StartRunAsync()
-    {
-        var response = await _client.PostAsJsonAsync(
-            "/api/v2/runs",
-            new
-            {
-                PlayerId = Guid.Parse("11111111-1111-1111-1111-111111111111")
-            });
-
-        var body = await response.Content.ReadAsStringAsync();
-
-        response.StatusCode.Should().Be(
-            HttpStatusCode.Created,
-            because: body);
-
-        var payload = await response.Content.ReadFromJsonAsync<StartRunResponse>();
-
-        payload.Should().NotBeNull();
-
-        return payload!;
     }
 }

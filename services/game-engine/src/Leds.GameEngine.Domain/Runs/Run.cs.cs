@@ -1,6 +1,8 @@
-﻿using Leds.GameEngine.Domain.Common;
+﻿using Leds.GameEngine.Domain.Combats;
+using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.PalaceLaws;
+using Leds.GameEngine.Domain.Rewards;
 using Leds.GameEngine.Domain.Rooms;
 
 namespace Leds.GameEngine.Domain.Runs;
@@ -9,8 +11,13 @@ public sealed class Run
 {
     private readonly List<Room> _rooms = [];
     private readonly List<ActivePalaceLaw> _activePalaceLaws = [];
+    private readonly List<string> _memoryFragments = [];
+
     public IReadOnlyCollection<ActivePalaceLaw> ActivePalaceLaws =>
     _activePalaceLaws.AsReadOnly();
+
+    public IReadOnlyCollection<string> MemoryFragments =>
+        _memoryFragments.AsReadOnly();
 
     private Run(
         RunId id,
@@ -20,7 +27,14 @@ public sealed class Run
         string markovMatrixVersion,
         RunStatus status,
         Room initialRoom,
-        DateTimeOffset startedAt)
+        DateTimeOffset startedAt,
+        int maxHp,
+        int currentHp,
+        int attack,
+        int defense,
+        int speed,
+        CombatId? activeCombatId = null,
+        RewardOfferId? pendingRewardOfferId = null)
     {
         Id = id;
         PlayerId = playerId;
@@ -30,6 +44,13 @@ public sealed class Run
         Status = status;
         CurrentRoomId = initialRoom.Id;
         StartedAt = startedAt;
+        MaxHp = maxHp;
+        CurrentHp = currentHp;
+        Attack = attack;
+        Defense = defense;
+        Speed = speed;
+        ActiveCombatId = activeCombatId;
+        PendingRewardOfferId = pendingRewardOfferId;
 
         _rooms.Add(initialRoom);
     }
@@ -48,6 +69,24 @@ public sealed class Run
 
     public RoomId CurrentRoomId { get; private set; }
 
+    public CombatId? ActiveCombatId { get; private set; }
+
+    public bool HasActiveCombat => ActiveCombatId.HasValue;
+
+    public RewardOfferId? PendingRewardOfferId { get; private set; }
+
+    public bool HasPendingRewardOffer => PendingRewardOfferId.HasValue;
+
+    public int MaxHp { get; }
+
+    public int CurrentHp { get; private set; }
+
+    public int Attack { get; private set; }
+
+    public int Defense { get; private set; }
+
+    public int Speed { get; private set; }
+
     public DateTimeOffset StartedAt { get; }
 
     public DateTimeOffset? EndedAt { get; private set; }
@@ -64,7 +103,12 @@ public sealed class Run
         string generatorVersion,
         string markovMatrixVersion,
         Room initialRoom,
-        DateTimeOffset startedAt)
+        DateTimeOffset startedAt,
+        int maxHp = 40,
+        int currentHp = 40,
+        int attack = 12,
+        int defense = 6,
+        int speed = 10)
     {
         if (playerId == Guid.Empty)
         {
@@ -115,6 +159,36 @@ public sealed class Run
             throw new DomainException("Each node must contain between 1 and 4 events.");
         }
 
+        if (currentHp <= 0)
+        {
+            throw new DomainException("Current HP must be greater than 0.");
+        }
+
+        if (maxHp <= 0)
+        {
+            throw new DomainException("Max HP must be greater than 0.");
+        }
+
+        if (currentHp > maxHp)
+        {
+            throw new DomainException("Current HP cannot exceed max HP.");
+        }
+
+        if (attack <= 0)
+        {
+            throw new DomainException("Attack must be greater than 0.");
+        }
+
+        if (defense < 0)
+        {
+            throw new DomainException("Defense cannot be negative.");
+        }
+
+        if (speed <= 0)
+        {
+            throw new DomainException("Speed must be greater than 0.");
+        }
+
         return new Run(
             RunId.New(),
             playerId,
@@ -123,7 +197,12 @@ public sealed class Run
             markovMatrixVersion.Trim(),
             RunStatus.Active,
             initialRoom,
-            startedAt);
+            startedAt,
+            maxHp,
+            currentHp,
+            attack,
+            defense,
+            speed);
     }
 
     public void ChooseNode(NodeId nodeId)
@@ -184,6 +263,183 @@ public sealed class Run
         }
 
         Status = RunStatus.Abandoned;
+        EndedAt = endedAt;
+    }
+
+    public void SetActiveCombat(CombatId combatId)
+    {
+        if (combatId.Value == Guid.Empty)
+        {
+            throw new DomainException("Combat id is required.");
+        }
+
+        if (Status != RunStatus.Active)
+        {
+            throw new DomainException("Run must be active to set an active combat.");
+        }
+
+        if (HasActiveCombat)
+        {
+            throw new DomainException("Run already has an active combat.");
+        }
+
+        ActiveCombatId = combatId;
+    }
+
+    public void CompleteActiveCombat(CombatId combatId)
+    {
+        if (!HasActiveCombat)
+        {
+            throw new DomainException("Run has no active combat.");
+        }
+
+        if (ActiveCombatId != combatId)
+        {
+            throw new DomainException("Combat does not match the active run combat.");
+        }
+
+        ActiveCombatId = null;
+
+        ResolveCurrentEvent();
+    }
+
+    public void SetPendingRewardOffer(RewardOfferId rewardOfferId)
+    {
+        if (rewardOfferId.Value == Guid.Empty)
+        {
+            throw new DomainException("Reward offer id is required.");
+        }
+
+        if (Status != RunStatus.Active && Status != RunStatus.RoomResolved)
+        {
+            throw new DomainException("Run must be active or room resolved to set a pending reward offer.");
+        }
+
+        if (HasPendingRewardOffer)
+        {
+            throw new DomainException("Run already has a pending reward offer.");
+        }
+
+        PendingRewardOfferId = rewardOfferId;
+    }
+
+    public void ClearPendingRewardOffer()
+    {
+        if (!HasPendingRewardOffer)
+        {
+            throw new DomainException("Run has no pending reward offer.");
+        }
+
+        PendingRewardOfferId = null;
+    }
+
+    public void ApplyHeal(int amount)
+    {
+        if (amount <= 0)
+        {
+            throw new DomainException("Heal amount must be positive.");
+        }
+
+        CurrentHp = Math.Min(MaxHp, CurrentHp + amount);
+    }
+
+    public void ApplyStatBonus(string stat, int value)
+    {
+        if (string.IsNullOrWhiteSpace(stat))
+        {
+            throw new DomainException("Stat name is required.");
+        }
+
+        switch (stat.Trim().ToLowerInvariant())
+        {
+            case "attack":
+                Attack += value;
+                break;
+            case "defense":
+                Defense += value;
+                break;
+            case "speed":
+                Speed += value;
+                break;
+            default:
+                throw new DomainException($"Unknown stat: '{stat}'.");
+        }
+    }
+
+    public void AddMemoryFragment(string fragmentKey)
+    {
+        if (string.IsNullOrWhiteSpace(fragmentKey))
+        {
+            throw new DomainException("Memory fragment key is required.");
+        }
+
+        _memoryFragments.Add(fragmentKey.Trim());
+    }
+
+    public void ApplyRewardEffect(RewardChoice choice)
+    {
+        ArgumentNullException.ThrowIfNull(choice);
+
+        switch (choice.RewardType)
+        {
+            case RewardType.Heal:
+                var parts = choice.PayloadKey.Split(':');
+                if (parts.Length >= 2 && int.TryParse(parts[1], out var healAmount))
+                {
+                    ApplyHeal(healAmount);
+                }
+                break;
+
+            case RewardType.StatBonus:
+                var statParts = choice.PayloadKey.Split(':');
+                if (statParts.Length >= 3
+                    && int.TryParse(statParts[2], out var statValue))
+                {
+                    ApplyStatBonus(statParts[1], statValue);
+                }
+                break;
+
+            case RewardType.MemoryFragment:
+                var fragmentParts = choice.PayloadKey.Split(':');
+                var fragmentKey = fragmentParts.Length >= 2
+                    ? fragmentParts[1]
+                    : choice.PayloadKey;
+                AddMemoryFragment(fragmentKey);
+                break;
+
+            default:
+                throw new DomainException($"Reward type '{choice.RewardType}' is not supported.");
+        }
+    }
+
+    public CombatantSnapshot CreatePlayerSnapshot()
+    {
+        return CombatantSnapshot.Create(
+            CombatantId.New(),
+            "player-runtime-v1",
+            "Player",
+            CombatantSide.Player,
+            maxHealth: MaxHp,
+            currentHealth: CurrentHp,
+            attack: Attack,
+            defense: Defense,
+            speed: Speed);
+    }
+
+    public void FailActiveCombat(CombatId combatId, DateTimeOffset endedAt)
+    {
+        if (!HasActiveCombat)
+        {
+            throw new DomainException("Run has no active combat.");
+        }
+
+        if (ActiveCombatId != combatId)
+        {
+            throw new DomainException("Combat does not match the active run combat.");
+        }
+
+        ActiveCombatId = null;
+        Status = RunStatus.Failed;
         EndedAt = endedAt;
     }
 

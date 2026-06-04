@@ -10,6 +10,8 @@ public sealed record RunDto(
     string MarkovMatrixVersion,
     string Status,
     int CurrentDepth,
+    Guid? ActiveCombatId,
+    Guid? PendingRewardOfferId,
     RoomDto CurrentRoom,
     IReadOnlyCollection<RoomDto> Rooms,
     IReadOnlyCollection<ActivePalaceLawDto> ActivePalaceLaws)
@@ -24,6 +26,8 @@ public sealed record RunDto(
             run.MarkovMatrixVersion,
             run.Status.ToString(),
             run.CurrentDepth,
+            run.ActiveCombatId?.Value,
+            run.PendingRewardOfferId?.Value,
             RoomDto.FromDomain(run.CurrentRoom),
             run.Rooms.Select(RoomDto.FromDomain).ToArray(),
             run.ActivePalaceLaws.Select(ActivePalaceLawDto.FromDomain).ToArray());

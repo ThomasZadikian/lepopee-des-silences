@@ -2,45 +2,72 @@
 using System.Net.Http.Json;
 using FluentAssertions;
 using Leds.GameEngine.Application.Runs.ResolveCurrentEvent;
-using Leds.GameEngine.Application.Runs.StartRun;
 using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace Leds.GameEngine.IntegrationTests.Runs;
 
-public sealed class ResolveCurrentEventEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class ResolveCurrentEventEndpointTests : RunIntegrationTestBase, IClassFixture<WebApplicationFactory<Program>>
 {
-    private readonly HttpClient _client;
-
     public ResolveCurrentEventEndpointTests(WebApplicationFactory<Program> factory)
+        : base(factory.CreateClient())
     {
-        _client = factory.CreateClient();
     }
 
     [Fact]
-    public async Task ResolveCurrentEvent_ShouldResolveSelectedNode_AndKeepRunActive()
+    public async Task ResolveCurrentEvent_ShouldStartCombat_WhenEventIsCombat()
     {
         var startRunResponse = await StartRunAsync();
-        var nodeToChoose = startRunResponse.Run.CurrentRoom.AvailableNodes.First();
+        var nodeToChoose = startRunResponse.Run.CurrentRoom.AvailableNodes
+            .FirstOrDefault(node => node.EventTypes.Contains("Combat"));
 
-        var chooseResponse = await _client.PostAsync(
+        if (nodeToChoose is null)
+        {
+            return;
+        }
+
+        var chooseResponse = await Client.PostAsync(
             $"/api/v2/runs/{startRunResponse.Run.Id}/nodes/{nodeToChoose.Id}/choose",
             content: null);
 
         chooseResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var resolveResponse = await _client.PostAsync(
+        var resolveResponse = await Client.PostAsync(
             $"/api/v2/runs/{startRunResponse.Run.Id}/current-event/resolve",
             content: null);
 
-        resolveResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var resolveBody = await resolveResponse.Content.ReadAsStringAsync();
+
+        resolveResponse.StatusCode.Should().Be(
+            HttpStatusCode.OK,
+            because: resolveBody);
 
         var payload = await resolveResponse.Content.ReadFromJsonAsync<ResolveCurrentEventResponse>();
 
-        payload.Should().NotBeNull();
+        payload.Should().NotBeNull(because: resolveBody);
         payload!.Run.Status.Should().Be("Active");
-        payload.Run.CurrentRoom.State.Should().Be("NodeResolved");
+        payload.Run.ActiveCombatId.Should().NotBeNull(because: resolveBody);
+        payload.Run.CurrentRoom.State.Should().Be("NodeSelected");
+    }
 
-        var resolvedNode = payload.Run.CurrentRoom.NodeLayers.SelectMany(layer => layer.Nodes)
+    [Fact]
+    public async Task ResolveCurrentEvent_ShouldResolveNode_AfterCombatCompleted()
+    {
+        var startRunResponse = await StartRunAsync();
+        var nodeToChoose = startRunResponse.Run.CurrentRoom.AvailableNodes.First();
+
+        var chooseResponse = await Client.PostAsync(
+            $"/api/v2/runs/{startRunResponse.Run.Id}/nodes/{nodeToChoose.Id}/choose",
+            content: null);
+
+        chooseResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var resolvePayload = await ResolveAndHandleCombatAsync(startRunResponse.Run.Id);
+
+        resolvePayload.Run.Status.Should().Be("Active");
+        resolvePayload.Run.CurrentRoom.State.Should().Be("NodeResolved");
+
+        var resolvedNode = resolvePayload.Run.CurrentRoom.NodeLayers
+            .SelectMany(layer => layer.Nodes)
             .Single(node => node.Id == nodeToChoose.Id);
 
         resolvedNode.State.Should().Be("Resolved");
@@ -51,7 +78,7 @@ public sealed class ResolveCurrentEventEndpointTests : IClassFixture<WebApplicat
     {
         var startRunResponse = await StartRunAsync();
 
-        var response = await _client.PostAsync(
+        var response = await Client.PostAsync(
             $"/api/v2/runs/{startRunResponse.Run.Id}/current-event/resolve",
             content: null);
 
@@ -68,7 +95,7 @@ public sealed class ResolveCurrentEventEndpointTests : IClassFixture<WebApplicat
     {
         var unknownRunId = Guid.NewGuid();
 
-        var response = await _client.PostAsync(
+        var response = await Client.PostAsync(
             $"/api/v2/runs/{unknownRunId}/current-event/resolve",
             content: null);
 
@@ -78,26 +105,5 @@ public sealed class ResolveCurrentEventEndpointTests : IClassFixture<WebApplicat
 
         body.Should().Contain("Resource not found.");
         body.Should().Contain($"Run with id '{unknownRunId}' was not found.");
-    }
-
-    private async Task<StartRunResponse> StartRunAsync()
-    {
-        var response = await _client.PostAsJsonAsync(
-            "/api/v2/runs",
-            new
-            {
-                PlayerId = Guid.Parse("11111111-1111-1111-1111-111111111111")
-            });
-
-        var body = await response.Content.ReadAsStringAsync();
-
-        response.StatusCode.Should().Be(
-            HttpStatusCode.Created,
-            because: body);
-        var payload = await response.Content.ReadFromJsonAsync<StartRunResponse>();
-
-        payload.Should().NotBeNull();
-
-        return payload!;
     }
 }
