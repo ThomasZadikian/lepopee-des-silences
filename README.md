@@ -1,4 +1,4 @@
-# L’épopée des silences
+# L’épopée des silences - aplha-0.0.6
 
 > RPG roguelite narratif full web — Palais mental — Runs procédurales — Backend serveur-autoritaire.
 
@@ -514,26 +514,6 @@ La licence du code ne vaut pas abandon des droits d’auteur sur l’univers, le
 ## Statut
 
 Projet en développement actif.
-
-Version actuelle :
-
-```text
-alpha-0.0.6
-```
-
-Objectif court terme :
-
-```text
-alpha-0.1.0
-→ première boucle backend jouable de bout en bout
-```
-
-Objectif long terme :
-
-```text
-app-2.0.0
-→ première version stable de L’épopée des silences v2
-```
 
 ## Licence
 
