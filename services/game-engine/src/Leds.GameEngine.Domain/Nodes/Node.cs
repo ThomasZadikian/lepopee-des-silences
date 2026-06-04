@@ -1,4 +1,5 @@
 ﻿using Leds.GameEngine.Domain.Common;
+using Leds.GameEngine.Domain.NodeEvents;
 
 namespace Leds.GameEngine.Domain.Nodes;
 
@@ -38,13 +39,21 @@ public sealed class Node
 
     public int EventCount => _events.Count;
 
-    /// <summary>
-    /// Compatibility shortcut while migrating toward multi-event nodes.
-    /// </summary>
-    public NodeEventType EventType => _events
+    public NodeEvent PrimaryEvent => _events
         .OrderBy(nodeEvent => nodeEvent.Order)
-        .First()
-        .EventType;
+        .First();
+
+    public NodeEventType EventType => PrimaryEvent.EventType;
+
+    public NodeEvent? ResolvedEvent => _events
+        .SingleOrDefault(nodeEvent => nodeEvent.IsResolved);
+
+    public bool HasResolvedEvent => ResolvedEvent is not null;
+
+    public IReadOnlyCollection<NodeEvent> ClosedEvents => _events
+        .Where(nodeEvent => nodeEvent.IsClosed)
+        .OrderBy(nodeEvent => nodeEvent.Order)
+        .ToArray();
 
     public int RiskLevel { get; }
 
@@ -54,10 +63,6 @@ public sealed class Node
 
     public IReadOnlyCollection<NodeId> ParentNodeIds => _parentNodeIds.AsReadOnly();
 
-    /// <summary>
-    /// Compatibility shortcut for older tests / DTOs.
-    /// Prefer ParentNodeIds for the final graph model.
-    /// </summary>
     public NodeId? ParentNodeId => _parentNodeIds.Count == 0
         ? null
         : _parentNodeIds.First();
@@ -68,8 +73,7 @@ public sealed class Node
 
     public string? ChosenEventOptionId { get; private set; }
 
-    public bool HasChosenEventOption =>
-        !string.IsNullOrWhiteSpace(ChosenEventOptionId);
+    public bool HasChosenEventOption => !string.IsNullOrWhiteSpace(ChosenEventOptionId);
 
     public bool IsAvailable => State == NodeState.Available;
 
@@ -163,6 +167,11 @@ public sealed class Node
             throw new DomainException("Node event orders must be unique.");
         }
 
+        if (eventList.Any(nodeEvent => nodeEvent.Status != NodeEventStatus.Planned))
+        {
+            throw new DomainException("Newly created node events must be planned.");
+        }
+
         var parentList = parentNodeIds?.Distinct().ToList()
             ?? throw new DomainException("Parent node ids are required.");
 
@@ -253,14 +262,52 @@ public sealed class Node
         State = NodeState.Unreachable;
     }
 
-    public void Resolve()
+    public NodeEvent ResolvePrimaryEvent()
+    {
+        return ResolveEvent(PrimaryEvent.Order);
+    }
+
+    public NodeEvent ResolveEvent(int eventOrder)
     {
         if (State != NodeState.Selected)
         {
-            throw new DomainException("Only a selected node can be resolved.");
+            throw new DomainException("Only a selected node can resolve an event.");
+        }
+
+        if (HasResolvedEvent)
+        {
+            throw new DomainException("Node event has already been resolved.");
+        }
+
+        var selectedEvent = _events.SingleOrDefault(nodeEvent =>
+            nodeEvent.Order == eventOrder);
+
+        if (selectedEvent is null)
+        {
+            throw new DomainException($"Node event with order '{eventOrder}' was not found.");
+        }
+
+        if (!selectedEvent.IsPlanned)
+        {
+            throw new DomainException("Only a planned node event can be resolved.");
+        }
+
+        selectedEvent.Resolve();
+
+        foreach (var alternativeEvent in _events.Where(nodeEvent =>
+                     nodeEvent.Order != selectedEvent.Order))
+        {
+            alternativeEvent.Close();
         }
 
         State = NodeState.Resolved;
+
+        return selectedEvent;
+    }
+
+    public void Resolve()
+    {
+        ResolvePrimaryEvent();
     }
 
     public void ChooseEventOption(string choiceId)

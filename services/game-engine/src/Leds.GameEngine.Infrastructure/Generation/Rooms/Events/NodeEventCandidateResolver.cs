@@ -1,4 +1,5 @@
-﻿using Leds.GameEngine.Domain.Nodes;
+﻿using Leds.GameEngine.Domain.NodeEvents;
+using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Infrastructure.Generation.Common;
 

@@ -214,7 +214,7 @@ public sealed class NodeTests
         // Assert
         act.Should()
             .Throw<DomainException>()
-            .WithMessage("Only a selected node can be resolved.");
+            .WithMessage("Only a selected node can resolve an event.");
     }
 
     [Fact]

@@ -1,4 +1,5 @@
 ﻿using FluentAssertions;
+using Leds.GameEngine.Domain.NodeEvents;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Infrastructure.Generation.Rooms.Risk;
 

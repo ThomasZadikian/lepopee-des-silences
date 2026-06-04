@@ -1,4 +1,5 @@
-﻿using Leds.GameEngine.Domain.Nodes;
+﻿using Leds.GameEngine.Domain.NodeEvents;
+using Leds.GameEngine.Domain.Nodes;
 
 namespace Leds.GameEngine.Infrastructure.Generation.Rooms.Rewards;
 
