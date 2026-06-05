@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { onMounted, watch } from 'vue';
+import { computed, onMounted, watch } from 'vue';
 import { useRoute } from 'vue-router';
 
 import GameShellLayout from '../app/layouts/GameShellLayout.vue';
 import CombatRuntimePanel from '../features/combats/components/CombatRuntimePanel.vue';
 import EliseOverlay from '../features/elise/EliseOverlay.vue';
+import EventOutcomePanel from '../features/events/components/EventOutcomePanel.vue';
 import NodeDetailPanel from '../features/node-details/NodeDetailPanel.vue';
 import PalaceLawPanel from '../features/palace-laws/PalaceLawPanel.vue';
 import PalaceMapPlaceholder from '../features/palace-map/PalaceMapPlaceholder.vue';
@@ -14,6 +15,14 @@ import { useRunStore } from '../features/runs/stores/runStore';
 
 const route = useRoute();
 const runStore = useRunStore();
+
+const shouldDisplayRightPanel = computed(() => {
+  return runStore.gameplayPhase === 'Map';
+});
+
+const shouldUseWideCenterPanel = computed(() => {
+  return runStore.gameplayPhase !== 'Map';
+});
 
 function getRouteRunId(): string | null {
   const rawRunId = route.params.runId;
@@ -61,7 +70,9 @@ watch(
     <template v-if="runStore.currentRun && runStore.currentRun.currentRoom">
       <section
         class="run-grid"
-        :class="{ 'run-grid--combat': runStore.currentRun.activeCombatId }"
+        :class="{
+          'run-grid--wide-center': shouldUseWideCenterPanel,
+        }"
       >
         <aside class="run-grid__left">
           <PartyPanel />
@@ -72,59 +83,56 @@ watch(
         </aside>
 
         <section class="run-grid__center panel">
-            <RewardOfferPanel
-              v-if="runStore.gameplayPhase === 'Reward' && runStore.pendingRewardOffer"
-              :offer="runStore.pendingRewardOffer"
-              :is-loading="runStore.isLoading"
-              @select-reward="runStore.selectReward"
+          <RewardOfferPanel
+            v-if="runStore.gameplayPhase === 'Reward' && runStore.pendingRewardOffer"
+            :offer="runStore.pendingRewardOffer"
+            :is-loading="runStore.isLoading"
+            @select-reward="runStore.selectReward"
+          />
+
+          <CombatRuntimePanel
+            v-else-if="runStore.gameplayPhase === 'Combat' && runStore.currentRun.activeCombatId"
+            :run-id="runStore.currentRun.id"
+            :combat-id="runStore.currentRun.activeCombatId"
+            @combat-completed="runStore.handleCombatCompleted"
+          />
+
+          <EventOutcomePanel
+            v-else-if="runStore.gameplayPhase === 'EventOutcome' && runStore.lastOutcome"
+            :outcome="runStore.lastOutcome"
+            :is-loading="runStore.isLoading"
+            @continue="runStore.continueAfterOutcome"
+          />
+
+          <template v-else-if="runStore.gameplayPhase === 'Map'">
+            <PalaceMapPlaceholder
+              :nodes="runStore.allNodes"
+              :available-nodes="runStore.availableNodes"
+              :selected-node-id="runStore.selectedNode?.id ?? null"
+              @choose-node="runStore.previewNode"
             />
 
-            <CombatRuntimePanel
-              v-else-if="runStore.gameplayPhase === 'Combat' && runStore.currentRun.activeCombatId"
-              :run-id="runStore.currentRun.id"
-              :combat-id="runStore.currentRun.activeCombatId"
-              @combat-completed="runStore.handleCombatCompleted"
+            <EliseOverlay
+              :message="runStore.lastOutcome?.description"
             />
+          </template>
 
-            <template v-else-if="runStore.gameplayPhase === 'Map'">
-              <PalaceMapPlaceholder
-                :nodes="runStore.allNodes"
-                :available-nodes="runStore.availableNodes"
-                :selected-node-id="runStore.selectedNode?.id ?? null"
-                @choose-node="runStore.previewNode"
-              />
+          <section
+            v-else
+            class="run-grid__outcome panel"
+          >
+            <p class="system-label">Run terminée</p>
 
-              <EliseOverlay
-                :message="runStore.lastOutcome?.description"
-              />
+            <h3>Le Tome se referme</h3>
 
-              <div
-                v-if="runStore.lastOutcome"
-                class="run-grid__outcome panel"
-              >
-                <p class="system-label">
-                  {{ runStore.lastOutcome.resolutionKind }}
-                </p>
-
-                <h3>{{ runStore.lastOutcome.title }}</h3>
-                <p>{{ runStore.lastOutcome.description }}</p>
-              </div>
-            </template>
-
-            <section
-              v-else
-              class="run-grid__outcome panel"
-            >
-              <p class="system-label">Run terminée</p>
-              <h3>Le Tome se referme</h3>
-              <p>
-                La traversée est terminée. Le bilan détaillé sera intégré dans une prochaine version.
-              </p>
-            </section>
+            <p>
+              La traversée est terminée. Le bilan détaillé sera intégré dans une prochaine version.
+            </p>
+          </section>
         </section>
 
         <aside
-          v-if="runStore.gameplayPhase === 'Map'"
+          v-if="shouldDisplayRightPanel"
           class="run-grid__right"
         >
           <NodeDetailPanel
@@ -145,6 +153,7 @@ watch(
 
         <template v-if="runStore.isLoading">
           <h2>Le Palais recompose la pièce...</h2>
+
           <p>
             Le backend reconstitue l’état de la run.
           </p>
@@ -152,9 +161,11 @@ watch(
 
         <template v-else-if="runStore.error">
           <h2>Run introuvable ou indisponible</h2>
+
           <p>
             {{ runStore.error }}
           </p>
+
           <p class="run-loading__hint">
             En environnement local, les runs sont encore stockées en mémoire.
             Si le backend a redémarré, l’identifiant présent dans l’URL n’existe plus.
@@ -163,6 +174,7 @@ watch(
 
         <template v-else>
           <h2>Aucune run chargée</h2>
+
           <p>
             Vérifie l’identifiant dans l’URL ou génère une nouvelle run depuis le seuil.
           </p>
@@ -180,11 +192,11 @@ watch(
   height: calc(100vh - 7rem);
 }
 
-.run-grid--combat {
+.run-grid--wide-center {
   grid-template-columns: 17rem minmax(42rem, 1fr);
 }
 
-.run-grid--combat .run-grid__center {
+.run-grid--wide-center .run-grid__center {
   grid-column: 2 / 3;
 }
 

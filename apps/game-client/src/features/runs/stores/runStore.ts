@@ -322,7 +322,7 @@ export const useRunStore = defineStore('run', () => {
     });
   }
 
-  const gameplayPhase = computed(() => {
+const gameplayPhase = computed(() => {
   if (!currentRun.value) {
     return 'Loading';
   }
@@ -339,8 +339,20 @@ export const useRunStore = defineStore('run', () => {
     return 'Completed';
   }
 
+  if (lastOutcome.value) {
+    return 'EventOutcome';
+  }
+
   return 'Map';
 });
+
+async function continueAfterOutcome() {
+  if (!lastOutcome.value) {
+    return;
+  }
+
+  await progressRun();
+}
 
   return {
     currentRun,
@@ -367,5 +379,6 @@ export const useRunStore = defineStore('run', () => {
     selectReward,
     handleCombatCompleted,
     refreshPendingRewardIfNeeded,
+    continueAfterOutcome,
   };
 });

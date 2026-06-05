@@ -38,11 +38,15 @@ function getNodeGlyph(node: NodeDto): string {
 }
 
 function getNodeClass(node: NodeDto): string {
+  if (node.state === 'Resolved') {
+    return 'map__node--resolved';
+  }
+
   if (node.id === props.selectedNodeId || node.state === 'Selected') {
     return 'map__node--selected';
   }
 
-  if (isAvailable(node) || node.state === 'Available') {
+  if (node.state === 'Available') {
     return 'map__node--available';
   }
 
@@ -195,5 +199,21 @@ function isAvailable(node: NodeDto): boolean {
 .map__node--danger {
   color: var(--color-blood);
   border-color: var(--color-blood);
+}
+.map__node--resolved {
+  color: oklch(78% 0.14 145);
+  border-color: oklch(70% 0.16 145);
+  box-shadow:
+    0 0 18px color-mix(in oklch, oklch(70% 0.16 145), transparent 45%),
+    0 0 42px color-mix(in oklch, oklch(70% 0.16 145), transparent 70%);
+}
+
+.map__node--resolved::before {
+  content: '';
+  position: absolute;
+  inset: -0.45rem;
+  border-radius: 50%;
+  border: 1px solid color-mix(in oklch, oklch(70% 0.16 145), transparent 45%);
+  opacity: 0.75;
 }
 </style>
