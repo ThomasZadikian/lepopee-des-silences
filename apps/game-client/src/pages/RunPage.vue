@@ -3,6 +3,7 @@ import { onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 
 import GameShellLayout from '../app/layouts/GameShellLayout.vue';
+import CombatRuntimePanel from '../features/combats/components/CombatRuntimePanel.vue';
 import EliseOverlay from '../features/elise/EliseOverlay.vue';
 import NodeDetailPanel from '../features/node-details/NodeDetailPanel.vue';
 import PalaceLawPanel from '../features/palace-laws/PalaceLawPanel.vue';
@@ -31,48 +32,62 @@ onMounted(async () => {
 <template>
   <GameShellLayout>
     <template v-if="runStore.currentRun && runStore.currentRun.currentRoom">
-      <section class="run-grid">
+      <section
+        class="run-grid"
+        :class="{ 'run-grid--combat': runStore.currentRun.activeCombatId }"
+      >
         <aside class="run-grid__left">
           <PartyPanel />
-          <PalaceLawPanel :laws="runStore.currentRun.activePalaceLaws" />
+
+          <PalaceLawPanel
+            :laws="runStore.currentRun.activePalaceLaws"
+          />
         </aside>
 
         <section class="run-grid__center panel">
-          <PalaceMapPlaceholder
-            :nodes="runStore.allNodes"
-            :available-nodes="runStore.availableNodes"
-            :selected-node-id="runStore.selectedNode?.id ?? null"
-            @choose-node="runStore.chooseNode"
+          <CombatRuntimePanel
+            v-if="runStore.currentRun.activeCombatId"
+            :run-id="runStore.currentRun.id"
+            :combat-id="runStore.currentRun.activeCombatId"
+            @combat-completed="runStore.progressRun"
           />
 
-          <EliseOverlay
-            :message="runStore.lastOutcome?.description"
-          />
+          <template v-else>
+            <PalaceMapPlaceholder
+              :nodes="runStore.allNodes"
+              :available-nodes="runStore.availableNodes"
+              :selected-node-id="runStore.selectedNode?.id ?? null"
+              @choose-node="runStore.chooseNode"
+            />
 
-          <div v-if="runStore.lastOutcome" class="run-grid__outcome panel">
-            <p class="system-label">
-              {{ runStore.lastOutcome.resolutionKind }}
-            </p>
-            <h3>{{ runStore.lastOutcome.title }}</h3>
-            <p>{{ runStore.lastOutcome.description }}</p>
-          </div>
+            <EliseOverlay
+              :message="runStore.lastOutcome?.description"
+            />
 
-          <div v-if="runStore.activeCombat" class="run-grid__combat panel">
-            <p class="system-label">Combat démarré</p>
-            <h3>
-              {{ runStore.activeCombat.state }} · Tour {{ runStore.activeCombat.round }}
-            </h3>
-            <p>
-              Combat ID :
-              <span class="system-value">{{ runStore.activeCombat.id }}</span>
-            </p>
-          </div>
+            <div
+              v-if="runStore.lastOutcome"
+              class="run-grid__outcome panel"
+            >
+              <p class="system-label">
+                {{ runStore.lastOutcome.resolutionKind }}
+              </p>
+
+              <h3>{{ runStore.lastOutcome.title }}</h3>
+
+              <p>{{ runStore.lastOutcome.description }}</p>
+            </div>
+          </template>
         </section>
 
-        <aside class="run-grid__right">
+        <aside
+          v-if="!runStore.currentRun.activeCombatId"
+          class="run-grid__right"
+        >
           <NodeDetailPanel
             :node="runStore.selectedNode"
             :is-loading="runStore.isLoading"
+            :has-active-combat="false"
+            :has-pending-reward="Boolean(runStore.currentRun.pendingRewardOfferId)"
             @resolve-current-event="runStore.resolveCurrentEvent"
             @generate-next-nodes="runStore.generateNextNodes"
           />
@@ -83,8 +98,14 @@ onMounted(async () => {
     <template v-else>
       <section class="run-loading panel">
         <p class="system-label">Chargement run</p>
-        <p v-if="runStore.error">{{ runStore.error }}</p>
-        <p v-else>Le Palais recompose la pièce...</p>
+
+        <p v-if="runStore.error">
+          {{ runStore.error }}
+        </p>
+
+        <p v-else>
+          Le Palais recompose la pièce...
+        </p>
       </section>
     </template>
   </GameShellLayout>
@@ -93,9 +114,17 @@ onMounted(async () => {
 <style scoped>
 .run-grid {
   display: grid;
-  grid-template-columns: 18rem minmax(36rem, 1fr) 20rem;
+  grid-template-columns: 17rem minmax(36rem, 1fr) 20rem;
   gap: var(--space-4);
   height: calc(100vh - 7rem);
+}
+
+.run-grid--combat {
+  grid-template-columns: 17rem minmax(42rem, 1fr);
+}
+
+.run-grid--combat .run-grid__center {
+  grid-column: 2 / 3;
 }
 
 .run-grid__left,
@@ -111,8 +140,7 @@ onMounted(async () => {
   padding: var(--space-6);
 }
 
-.run-grid__outcome,
-.run-grid__combat {
+.run-grid__outcome {
   position: absolute;
   right: var(--space-6);
   bottom: var(--space-6);
@@ -120,9 +148,14 @@ onMounted(async () => {
   padding: var(--space-4);
 }
 
-.run-grid__combat {
-  bottom: 11rem;
-  border-color: color-mix(in oklch, var(--color-blood), transparent 30%);
+.run-grid__outcome h3 {
+  margin: var(--space-2) 0;
+  color: var(--color-frost);
+}
+
+.run-grid__outcome p:last-child {
+  color: var(--color-muted);
+  line-height: 1.55;
 }
 
 .run-loading {

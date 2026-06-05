@@ -1,10 +1,10 @@
 import { gameEngineApi } from '../../../shared/api/gameEnginApi';
 import type {
-    ChooseNodeResponse,
-    GenerateNextNodesResponse,
-    ResolveCurrentEventResponse,
-    RunDto,
-    StartRunResponse,
+  ChooseNodeResponse,
+  GenerateNextNodesResponse,
+  ResolveCurrentEventResponse,
+  RunDto,
+  StartRunResponse,
 } from '../types/runTypes';
 
 export const runApi = {
@@ -27,6 +27,12 @@ export const runApi = {
   resolveCurrentEvent(runId: string) {
     return gameEngineApi.post<ResolveCurrentEventResponse>(
       `/api/v2/runs/${runId}/current-event/resolve`,
+    );
+  },
+
+  progressRun(runId: string) {
+    return gameEngineApi.post<GenerateNextNodesResponse>(
+      `/api/v2/runs/${runId}/progress`,
     );
   },
 

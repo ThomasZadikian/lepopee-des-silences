@@ -1,6 +1,11 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 
+import { rewardApi } from '../../rewards/api/rewardApi';
+import {
+  unwrapRewardOffer,
+  type RewardOfferDto,
+} from '../../rewards/types/rewardTypes';
 import { runApi } from '../api/runApi';
 import {
   unwrapRunResponse,
@@ -10,6 +15,7 @@ import {
 } from '../types/runTypes';
 
 const demoPlayerId = '00000000-0000-0000-0000-000000000001';
+const pendingRewardOffer = ref<RewardOfferDto | null>(null);
 
 export const useRunStore = defineStore('run', () => {
   const currentRun = ref<RunDto | null>(null);
@@ -30,6 +36,39 @@ const allNodes = computed(() => {
 
   return room.nodeLayers.flatMap((layer) => layer.nodes);
 });
+
+async function loadPendingReward() {
+  if (!currentRun.value) {
+    return;
+  }
+
+  await execute(async () => {
+    const response = await rewardApi.getPendingReward(currentRun.value!.id);
+
+    pendingRewardOffer.value = unwrapRewardOffer(response);
+  });
+}
+
+async function selectReward(optionId: string) {
+  if (!currentRun.value || !pendingRewardOffer.value) {
+    return;
+  }
+
+  await execute(async () => {
+    await rewardApi.selectReward(currentRun.value!.id, {
+      rewardOfferId: pendingRewardOffer.value!.id,
+      rewardOptionId: optionId,
+      optionId,
+    });
+
+    pendingRewardOffer.value = null;
+
+    const response = await runApi.progressRun(currentRun.value!.id);
+    currentRun.value = unwrapRunResponse(response);
+    lastOutcome.value = null;
+    activeCombat.value = null;
+  });
+}
 
 const selectedNode = computed(() => {
   return allNodes.value.find((node) => node.state === 'Selected') ?? null;
@@ -113,6 +152,20 @@ async function chooseNode(nodeId: string) {
     });
   }
 
+  async function progressRun() {
+  if (!currentRun.value) {
+    return;
+  }
+
+  await execute(async () => {
+    const response = await runApi.progressRun(currentRun.value!.id);
+
+    currentRun.value = unwrapRunResponse(response);
+    lastOutcome.value = null;
+    activeCombat.value = null;
+  });
+}
+
 async function generateNextNodes() {
   if (!currentRun.value) {
     return;
@@ -139,7 +192,11 @@ return {
   startRun,
   loadRun,
   chooseNode,
+  progressRun,
   resolveCurrentEvent,
   generateNextNodes,
+  pendingRewardOffer,
+  loadPendingReward,
+  selectReward,
 };
 });
