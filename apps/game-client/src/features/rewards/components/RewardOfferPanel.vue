@@ -66,10 +66,10 @@ function mapRewardOption(option: RewardOptionDto): DisplayRewardChoice {
       ?? option.name
       ?? option.label
       ?? option.key
-      ?? 'Récompense inconnue',
-    rewardType: option.rewardType ?? option.type ?? 'Type non renseigné',
+      ?? 'PLACEHOLDER_REWARD_NAME',
+    rewardType: option.rewardType ?? option.type ?? 'PLACEHOLDER_REWARD_TYPE',
     description:
-      option.description ?? 'Le Tome n’a pas encore décrit cette faveur.',
+      option.description ?? 'PLACEHOLDER_REWARD_DESCRIPTION',
     rarity: option.rarity,
   };
 }
@@ -90,11 +90,11 @@ function selectChoice(choiceId: string) {
       <p class="system-label">Récompense · reward offered</p>
 
       <h2>
-        {{ offer.title ?? 'Le Palais reconnaît ta traversée' }}
+        {{ offer.title ?? 'PLACEHOLDER_REWARD_OFFER_TITLE' }}
       </h2>
 
       <p>
-        {{ offer.description ?? 'Choisis une faveur. Une seule. Le reste se referme.' }}
+        {{ offer.description ?? 'PLACEHOLDER_REWARD_OFFER_DESCRIPTION' }}
       </p>
     </header>
 
@@ -113,7 +113,7 @@ function selectChoice(choiceId: string) {
         @click="selectChoice(choice.id)"
       >
         <span class="system-label">
-          {{ choice.rarity ?? 'Récompense' }}
+          {{ choice.rarity ?? 'PLACEHOLDER_RARITY' }}
         </span>
 
         <strong>
@@ -141,13 +141,12 @@ function selectChoice(choiceId: string) {
       v-else
       class="reward-offer__empty panel"
     >
-      <p class="system-label">Reward offer invalide</p>
+      <p class="system-label">REWARD_OFFER_EMPTY</p>
 
-      <h3>Aucune faveur disponible</h3>
+      <h3>NO_REWARDS_AVAILABLE</h3>
 
       <p>
-        Le backend indique une récompense en attente, mais aucune option exploitable
-        n’a été reçue par le client.
+        PLACEHOLDER_REWARD_OFFER_EMPTY_DESCRIPTION
       </p>
     </section>
   </section>

@@ -18,7 +18,7 @@ defineEmits<{
   <section class="panel node-detail">
     <template v-if="node">
       <p class="system-label">
-        {{ node.eventTypes[0] }} · profondeur {{ node.nodeDepth }} · {{ node.state }}
+        {{ node.eventTypes[0] }} · NODE_DEEP {{ node.nodeDepth }} · {{ node.state }}
       </p>
 
       <h2>{{ node.eventTypes.join(' · ') }}</h2>
@@ -28,18 +28,17 @@ defineEmits<{
       </div>
 
       <p>
-        Le Palais a isolé ce nœud. Tu peux l’observer avant de confirmer ton choix.
-        Une fois confirmé, les autres chemins se refermeront.
+        'DESCRIPTION_PLACEHOLDER'
       </p>
 
       <div class="node-detail__meta">
         <div>
-          <span class="system-label">Risque</span>
+          <span class="system-label">RISK_LEVEL</span>
           <strong>{{ node.riskLevel }}</strong>
         </div>
 
         <div>
-          <span class="system-label">Récompense</span>
+          <span class="system-label">REWARD</span>
           <strong>{{ node.rewardProfile }}</strong>
         </div>
       </div>
@@ -50,10 +49,10 @@ defineEmits<{
         :disabled="isLoading || hasActiveCombat || hasPendingReward"
         @click="$emit('resolveCurrentEvent')"
       >
-        <span v-if="hasActiveCombat">Combat en cours</span>
-        <span v-else-if="hasPendingReward">Récompense en attente</span>
-        <span v-else-if="node.state === 'Available'">Confirmer et résoudre →</span>
-        <span v-else>Résoudre →</span>
+        <span v-if="hasActiveCombat">EVENT_BATTLE_IN_PROGRESS</span>
+        <span v-else-if="hasPendingReward">EVENT_PENDING_REWARD</span>
+        <span v-else-if="node.state === 'Available'">EVENT_CONFIRM_AND_RESOLVE</span>
+        <span v-else>EVENT_RESOLVE</span>
       </button>
 
       <button
@@ -62,20 +61,19 @@ defineEmits<{
         :disabled="isLoading || hasActiveCombat || hasPendingReward"
         @click="$emit('generateNextNodes')"
       >
-        <span v-if="hasActiveCombat">Combat en cours</span>
-        <span v-else-if="hasPendingReward">Récompense en attente</span>
-        <span v-else>Prochaine strate →</span>
+        <span v-if="hasActiveCombat">EVENT_BATTLE_IN_PROGRESS</span>
+        <span v-else-if="hasPendingReward">EVENT_PENDING_REWARD</span>
+        <span v-else>EVENT_GENERATE_NEXT_NODES</span>
       </button>
     </template>
 
     <template v-else>
-      <p class="system-label">Aucun nœud sélectionné</p>
+      <p class="system-label">ERROR_MESSAGE_NODE_NOT_FOUND</p>
 
-      <h2>Choisis un chemin</h2>
+      <h2>MESSAGE_NEXT_NODES</h2>
 
       <p>
-        Les chemins disponibles sont visibles sur la carte. Clique un nœud pour
-        l’observer, puis confirme ton choix depuis ce panneau.
+        PLACEHOLDER_NODE_DETAIL_NEXT_NODE_FUNCTIONNALITY
       </p>
     </template>
   </section>

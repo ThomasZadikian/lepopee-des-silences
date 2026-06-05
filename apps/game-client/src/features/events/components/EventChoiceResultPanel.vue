@@ -18,10 +18,10 @@ defineEmits<{
         Choix résolu · {{ result.outcomeKind ?? result.state ?? 'Resolved' }}
       </p>
 
-      <h2>{{ result.title ?? 'Le Palais a reçu ton choix' }}</h2>
+      <h2>{{ result.title ?? 'CHOISE_DONE' }}</h2>
 
       <p>
-        {{ result.description ?? result.message ?? 'Le choix a été enregistré dans la run.' }}
+        {{ result.description ?? result.message ?? 'CHOICE_REGISTERED' }}
       </p>
     </header>
 

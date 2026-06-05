@@ -1,17 +1,16 @@
 <template>
   <section class="panel party">
     <header>
-      <span class="system-label">Équipe</span>
-      <span class="system-value">Joueur + 1</span>
+      <span class="system-label">PARTY_MEMBER</span>
     </header>
 
     <article class="party__member">
       <div class="party__portrait" />
       <div>
-        <strong>Joueur</strong>
-        <span>Toi</span>
+        <strong>NAME</strong>
+        <span>PLAYER</span>
       </div>
-      <em>Saignement</em>
+      <em>CURSE</em>
       <meter min="0" max="190" value="138" />
       <small>PV 138 / 190 · PP 6 / 12</small>
     </article>
@@ -19,10 +18,10 @@
     <article class="party__member">
       <div class="party__portrait" />
       <div>
-        <strong>Neige</strong>
-        <span>Compagnon · Givre</span>
+        <strong>NAME</strong>
+        <span>COMPANION</span>
       </div>
-      <em class="party__tag--frost">Givre +1</em>
+      <em class="party__tag--frost">BUFF</em>
       <meter min="0" max="190" value="172" />
       <small>PV 172 / 190 · PP 9 / 12</small>
     </article>

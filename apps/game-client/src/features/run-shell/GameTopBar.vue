@@ -1,33 +1,33 @@
 <template>
   <header class="topbar panel">
     <section class="topbar__brand">
-      <span class="system-label">Palais</span>
-      <strong>L'Épopée des silences</strong>
+      <span class="system-label">PALACE</span>
+      <strong>NAME_OF_GAME</strong>
     </section>
 
     <section class="topbar__item">
-      <span class="system-label">Seed</span>
-      <span class="system-value">SIL-7F3A-29D</span>
+      <span class="system-label">SEED_NUMBER</span>
+      <span class="system-value">PLACEHOLDER_SEED_NUMBER</span>
     </section>
 
     <section class="topbar__item">
-      <span class="system-label">Profondeur</span>
-      <span class="system-value">05 / 10</span>
+      <span class="system-label">DEEPTH</span>
+      <span class="system-value">PLACEHOLDER_DEEPTH</span>
     </section>
 
     <section class="topbar__item">
-      <span class="system-label">Lois actives</span>
-      <span class="system-value">03</span>
+      <span class="system-label">ACTIVE_LAWS</span>
+      <span class="system-value">PLACEHOLDER_ACTIVE_LAWS</span>
     </section>
 
     <section class="topbar__item topbar__score">
-      <span class="system-label">Score projeté</span>
-      <span class="system-value">12 480</span>
+      <span class="system-label">PROJECTED_SCORE</span>
+      <span class="system-value">PLACEHOLDER_PROJECTED_SCORE</span>
     </section>
 
     <section class="topbar__state">
-      <span class="system-label">État</span>
-      <span class="topbar__active">● Active</span>
+      <span class="system-label">SEED_STATE</span>
+      <span class="topbar__active">PLACEHOLDER_SEED_STATE</span>
     </section>
   </header>
 </template>

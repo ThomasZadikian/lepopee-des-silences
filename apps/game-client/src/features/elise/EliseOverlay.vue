@@ -6,9 +6,9 @@ defineProps<{
 
 <template>
   <aside class="elise panel">
-    <p class="system-label">Élise · observe</p>
+    <p class="system-label">ELISE</p>
     <p>
-      {{ message || "Le Palais ne ment jamais — il ne dit simplement pas tout." }}
+      {{ message || "ELISE_PLACEHOLDER_MESSAGES" }}
     </p>
   </aside>
 </template>

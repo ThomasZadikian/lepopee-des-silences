@@ -18,18 +18,18 @@ defineEmits<{
       :disabled="!canSubmit || isLoading"
       @click="$emit('basicAttack')"
     >
-      <strong>Aveu</strong>
-      <span>BasicAttack · Frappe ciblée serveur-autoritaire.</span>
+      <strong>ATTAQUE_DE_BASE</strong>
+      <span>BasicAttack</span>
     </button>
 
     <button class="combat-actions__button" disabled>
-      <strong>Refoulement</strong>
-      <span>Garde · bientôt disponible.</span>
+      <strong>SKILL_1</strong>
+      <span>UNAVAILABLE</span>
     </button>
 
     <button class="combat-actions__button" disabled>
-      <strong>Cri</strong>
-      <span>Zone · bientôt disponible.</span>
+      <strong>SKILL_2</strong>
+      <span>UNAVAILABLE</span>
     </button>
   </section>
 </template>

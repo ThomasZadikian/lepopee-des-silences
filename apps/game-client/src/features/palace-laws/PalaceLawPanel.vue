@@ -9,14 +9,13 @@ defineProps<{
 <template>
   <section class="panel laws">
     <header>
-      <span class="system-label">Lois du Palais</span>
-      <span class="system-value">{{ laws?.length ?? 0 }} actives</span>
+      <span class="system-label">PALACE_LAWS</span>
+      <span class="system-value">{{ laws?.length ?? 0 }} ACTIVES</span>
     </header>
 
     <article v-if="!laws || laws.length === 0">
-      <strong>Aucune loi active</strong>
-      <p>Le Palais retient encore son souffle.</p>
-      <small>Système</small>
+      <strong>NO_ACTIVE_LAWS</strong>
+      <p>MESSAGE_NO_ACTIVE_LAWS</p>
     </article>
 
     <article v-for="law in laws" :key="`${law.key}-${law.version}`">

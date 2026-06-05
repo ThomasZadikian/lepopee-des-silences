@@ -100,10 +100,9 @@ function getNodePulseDelay(node: NodeDto): number {
   <section class="map">
     <header>
       <div>
-        <p class="system-label">Carte du Palais — embranchements visibles</p>
-        <h2>Les chemins sont irréversibles · ils peuvent se rejoindre</h2>
+        <p class="system-label">PLACEHOLDER_PALACE_MAP_HEADER</p>
       </div>
-      <span class="system-value">Nodes {{ nodes.length }}</span>
+      <span class="system-value">PLACEHOLDER_NUMBER_OF_NODES {{ nodes.length }}</span>
     </header>
 
     <div class="map__canvas" aria-label="Carte roguelite">

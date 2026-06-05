@@ -52,7 +52,7 @@ watch(
           :disabled="combatStore.isLoading"
           @click="emit('combatCompleted')"
         >
-          Revenir au Palais →
+          CHOOSE_NODE
         </button>
 
         <span class="system-value">
@@ -64,7 +64,7 @@ watch(
 
       <section class="combat-runtime__board">
         <div class="combat-runtime__side">
-          <p class="system-label">Équipe joueur</p>
+          <p class="system-label">PLAYER_TEAM</p>
 
           <CombatantCard
             v-for="combatant in combatStore.playerCombatants"
@@ -75,7 +75,7 @@ watch(
         </div>
 
         <div class="combat-runtime__side">
-          <p class="system-label">Adversaires</p>
+          <p class="system-label">ENEMY_TEAM</p>
 
           <CombatantCard
             v-for="combatant in combatStore.enemyCombatants"
@@ -104,9 +104,9 @@ watch(
     </template>
 
     <section v-else class="combat-runtime__loading panel">
-      <p class="system-label">Chargement combat</p>
+      <p class="system-label">LOADING_BATTLE</p>
       <p v-if="combatStore.error">{{ combatStore.error }}</p>
-      <p v-else>Les manifestations prennent forme...</p>
+      <p v-else>ENNEMIES_LOADING</p>
     </section>
   </section>
   

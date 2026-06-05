@@ -22,7 +22,7 @@ defineProps<{
     </p>
 
     <p v-else>
-      En attente d’une action serveur.
+      PLACEHOLDER_WAITING_MESSAGE.
     </p>
   </section>
 </template>

@@ -2,11 +2,11 @@
 import { computed, ref, watch } from 'vue';
 
 import {
-    getOutcomeChoices,
-    getOutcomeFamily,
-    isChoiceOutcome,
-    isRewardLikeOutcome,
-    type EventOutcomeDto,
+  getOutcomeChoices,
+  getOutcomeFamily,
+  isChoiceOutcome,
+  isRewardLikeOutcome,
+  type EventOutcomeDto,
 } from '../types/eventTypes';
 
 const props = defineProps<{
@@ -80,17 +80,17 @@ function selectChoice(choiceId: string) {
 
     <section class="event-outcome__meta">
       <div>
-        <span class="system-label">Risque</span>
+        <span class="system-label">RISK_LEVEL</span>
         <strong>{{ outcome.riskLevel }}</strong>
       </div>
 
       <div>
-        <span class="system-label">Récompense</span>
+        <span class="system-label">REWARD</span>
         <strong>{{ outcome.rewardProfile }}</strong>
       </div>
 
       <div>
-        <span class="system-label">État</span>
+        <span class="system-label">NODE_EVENT_STATE</span>
         <strong>
           {{ requiresChoice ? 'Choix requis' : 'Résolu' }}
         </strong>
@@ -101,7 +101,7 @@ function selectChoice(choiceId: string) {
       v-if="requiresChoice"
       class="event-outcome__choices"
     >
-      <p class="system-label">Choix joueur requis</p>
+      <p class="system-label">PLAYER_CHOICE_REQUIRED</p>
 
       <div
         v-if="choices.length > 0"
@@ -135,8 +135,7 @@ function selectChoice(choiceId: string) {
         v-else
         class="event-outcome__warning"
       >
-        Le backend indique qu’un choix est requis, mais aucun choix exploitable
-        n’a été reçu par le client.
+        ERROR_PLACEHOLDER_MESSAGE_LOADING_CHOICES
       </p>
     </section>
 
@@ -148,8 +147,7 @@ function selectChoice(choiceId: string) {
         v-if="isRewardLike"
         class="event-outcome__note"
       >
-        Le Palais a enregistré l’issue. Si une récompense structurée est requise,
-        elle sera proposée dans l’écran dédié.
+        REWARD_LIKE_OUTCOME_NOTE  
       </p>
 
       <button
