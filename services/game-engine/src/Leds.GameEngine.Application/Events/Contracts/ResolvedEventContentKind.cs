@@ -10,5 +10,6 @@ public enum ResolvedEventContentKind
     Npc = 6,
     Rest = 7,
     Merchant = 8,
-    Rare = 9
+    Rare = 9,
+    Boss = 10
 }

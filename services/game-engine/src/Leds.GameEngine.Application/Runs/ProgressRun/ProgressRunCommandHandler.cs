@@ -36,6 +36,18 @@ public sealed class ProgressRunCommandHandler
             throw new NotFoundException("Run", request.RunId);
         }
 
+        if (run.HasActiveCombat)
+        {
+            throw new DomainException(
+                "Cannot progress while a combat is active.");
+        }
+
+        if (run.HasPendingRewardOffer)
+        {
+            throw new DomainException(
+                "Cannot progress while a pending reward offer requires selection.");
+        }
+
         var room = run.CurrentRoom;
 
         var resolvedNode = room.Nodes.SingleOrDefault(node =>

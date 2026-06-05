@@ -211,6 +211,90 @@ public sealed class RunTests
     }
 
     [Fact]
+    public void MoveToNextRoom_ShouldThrow_WhenRunIsCompleted()
+    {
+        var run = TestGameEngineFactory.CreateRun();
+
+        run.CompleteRun(DateTimeOffset.UtcNow);
+
+        var act = () => run.MoveToNextRoom(
+            TestGameEngineFactory.CreateThresholdRoom(depth: 1));
+
+        act.Should()
+            .Throw<DomainException>()
+            .WithMessage("Run is closed.");
+    }
+
+    [Fact]
+    public void MoveToNextRoom_ShouldThrow_WhenRunIsFailed()
+    {
+        var run = TestGameEngineFactory.CreateRun();
+
+        run.FailRun(DateTimeOffset.UtcNow);
+
+        var act = () => run.MoveToNextRoom(
+            TestGameEngineFactory.CreateThresholdRoom(depth: 1));
+
+        act.Should()
+            .Throw<DomainException>()
+            .WithMessage("Run is closed.");
+    }
+
+    [Fact]
+    public void CompleteRun_ShouldCloseRun_AsCompleted()
+    {
+        var run = TestGameEngineFactory.CreateRun();
+
+        var endedAt = DateTimeOffset.UtcNow.AddMinutes(5);
+
+        run.CompleteRun(endedAt);
+
+        run.Status.Should().Be(RunStatus.Completed);
+        run.EndedAt.Should().Be(endedAt);
+    }
+
+    [Fact]
+    public void CompleteRun_ShouldThrow_WhenRunIsAlreadyClosed()
+    {
+        var run = TestGameEngineFactory.CreateRun();
+
+        run.CompleteRun(DateTimeOffset.UtcNow);
+
+        var act = () => run.CompleteRun(DateTimeOffset.UtcNow);
+
+        act.Should()
+            .Throw<DomainException>()
+            .WithMessage("Run is already closed.");
+    }
+
+    [Fact]
+    public void FailRun_ShouldCloseRun_AsFailed()
+    {
+        var run = TestGameEngineFactory.CreateRun();
+
+        var endedAt = DateTimeOffset.UtcNow.AddMinutes(3);
+
+        run.FailRun(endedAt);
+
+        run.Status.Should().Be(RunStatus.Failed);
+        run.EndedAt.Should().Be(endedAt);
+    }
+
+    [Fact]
+    public void FailRun_ShouldThrow_WhenRunIsAlreadyClosed()
+    {
+        var run = TestGameEngineFactory.CreateRun();
+
+        run.FailRun(DateTimeOffset.UtcNow);
+
+        var act = () => run.FailRun(DateTimeOffset.UtcNow);
+
+        act.Should()
+            .Throw<DomainException>()
+            .WithMessage("Run is already closed.");
+    }
+
+    [Fact]
     public void Abandon_ShouldCloseRun()
     {
         var run = TestGameEngineFactory.CreateRun();

@@ -71,7 +71,8 @@ public sealed class ResolveCurrentEventCommandHandler
         var resolutionResult = _nodeEventResolverDispatcher.Resolve(resolutionContext);
 
         var isCombat = resolutionResult.ResolutionKind is NodeEventResolutionKind.CombatStarted
-            or NodeEventResolutionKind.EliteEncounterStarted;
+            or NodeEventResolutionKind.EliteEncounterStarted
+            or NodeEventResolutionKind.RoomBossEncounterStarted;
 
         if (isCombat)
         {
@@ -98,8 +99,9 @@ public sealed class ResolveCurrentEventCommandHandler
             {
                 ResolvedCombatEventContent c => (c.EnemyTemplateKey, c.RiskLevel),
                 ResolvedEliteEventContent e => (e.EnemyTemplateKey, e.RiskLevel),
+                ResolvedRoomBossEventContent b => (b.EnemyTemplateKey, b.RiskLevel),
                 _ => throw new DomainException(
-                    "Expected combat or elite event content but got a different type.")
+                    "Expected combat, elite, or room boss event content but got a different type.")
             };
 
             var enemyTemplateResult = await _catalogContentGateway.GetEnemyTemplateByKeyAsync(

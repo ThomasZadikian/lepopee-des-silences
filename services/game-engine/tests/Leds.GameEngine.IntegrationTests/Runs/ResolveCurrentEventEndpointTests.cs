@@ -18,7 +18,7 @@ public sealed class ResolveCurrentEventEndpointTests : RunIntegrationTestBase, I
     {
         var startRunResponse = await StartRunAsync();
         var nodeToChoose = startRunResponse.Run.CurrentRoom.AvailableNodes
-            .FirstOrDefault(node => node.EventTypes.Contains("Combat"));
+            .FirstOrDefault(node => node.EventTypes.First() == "Combat");
 
         if (nodeToChoose is null)
         {

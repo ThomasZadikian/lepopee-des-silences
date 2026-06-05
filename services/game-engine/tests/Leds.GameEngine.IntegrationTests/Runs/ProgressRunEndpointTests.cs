@@ -1,6 +1,8 @@
 ﻿using System.Net;
 using System.Net.Http.Json;
 using FluentAssertions;
+using Leds.GameEngine.Application.Combats.Dtos;
+using Leds.GameEngine.Application.Combats.SubmitCombatAction;
 using Leds.GameEngine.Application.Runs.ProgressRun;
 using Leds.GameEngine.Application.Runs.ResolveCurrentEvent;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -99,6 +101,149 @@ public sealed class ProgressRunEndpointTests : RunIntegrationTestBase, IClassFix
 
         body.Should().Contain("Resource not found.");
         body.Should().Contain($"Run with id '{unknownRunId}' was not found.");
+    }
+
+    [Fact]
+    public async Task ProgressRun_ShouldReturnBadRequest_WhenCombatIsActive()
+    {
+        var startRunResponse = await StartRunAsync();
+
+        var runId = startRunResponse.Run.Id;
+
+        var chosenNode = startRunResponse.Run.CurrentRoom.AvailableNodes
+            .FirstOrDefault(n => n.EventTypes.First() == "Combat");
+
+        if (chosenNode is null)
+        {
+            return; // Skip when no node has Combat as primary event
+        }
+
+        var chooseResponse = await Client.PostAsync(
+            $"/api/v2/runs/{runId}/nodes/{chosenNode.Id}/choose",
+            content: null);
+
+        chooseResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // Resolve event to create a combat (don't complete it)
+        var resolveResponse = await Client.PostAsync(
+            $"/api/v2/runs/{runId}/current-event/resolve", null);
+
+        var resolveBody = await resolveResponse.Content.ReadAsStringAsync();
+
+        resolveResponse.StatusCode.Should().Be(
+            HttpStatusCode.OK,
+            because: resolveBody);
+
+        // Try to progress while combat is active
+        var progressResponse = await Client.PostAsync(
+            $"/api/v2/runs/{runId}/progress",
+            content: null);
+
+        progressResponse.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        var progressBody = await progressResponse.Content.ReadAsStringAsync();
+
+        progressBody.Should().Contain("Domain rule violated.");
+        progressBody.Should().Contain("Cannot progress while a combat is active.");
+    }
+
+    [Fact]
+    public async Task ProgressRun_ShouldReturnBadRequest_WhenRewardIsPending()
+    {
+        var startRunResponse = await StartRunAsync();
+
+        var runId = startRunResponse.Run.Id;
+
+        var chosenNode = startRunResponse.Run.CurrentRoom.AvailableNodes
+            .FirstOrDefault(n => n.EventTypes.First() == "Combat");
+
+        if (chosenNode is null)
+        {
+            return; // Skip when no node has Combat as primary event
+        }
+
+        var chooseResponse = await Client.PostAsync(
+            $"/api/v2/runs/{runId}/nodes/{chosenNode.Id}/choose",
+            content: null);
+
+        chooseResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // Full resolve + complete combat to create a reward offer
+        var resolveResponse = await Client.PostAsync(
+            $"/api/v2/runs/{runId}/current-event/resolve", null);
+
+        var resolveBody = await resolveResponse.Content.ReadAsStringAsync();
+
+        resolveResponse.StatusCode.Should().Be(
+            HttpStatusCode.OK,
+            because: resolveBody);
+
+        var resolvePayload = await resolveResponse.Content
+            .ReadFromJsonAsync<ResolveCurrentEventResponse>();
+
+        resolvePayload.Should().NotBeNull();
+
+        if (resolvePayload!.Run.ActiveCombatId is not null)
+        {
+            await CompleteActiveCombatAsyncWithoutSelectingRewardAsync(
+                runId, resolvePayload.Run.ActiveCombatId.Value);
+        }
+        else
+        {
+            return; // Skip when no combat was created
+        }
+
+        // Try to progress while reward is pending
+        var progressResponse = await Client.PostAsync(
+            $"/api/v2/runs/{runId}/progress",
+            content: null);
+
+        progressResponse.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        var progressBody = await progressResponse.Content.ReadAsStringAsync();
+
+        progressBody.Should().Contain("Domain rule violated.");
+        progressBody.Should().Contain("Cannot progress while a pending reward offer requires selection.");
+    }
+
+    private async Task CompleteActiveCombatAsyncWithoutSelectingRewardAsync(
+        Guid runId, Guid combatId)
+    {
+        var combatResponse = await Client.GetAsync(
+            $"/api/v2/runs/{runId}/combats/{combatId}");
+
+        combatResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var combat = await combatResponse.Content
+            .ReadFromJsonAsync<CombatInstanceDto>();
+
+        combat.Should().NotBeNull();
+
+        var playerId = combat!.Combatants.Single(c => c.Side == "Player").Id;
+        var enemyId = combat.Combatants.Single(c => c.Side == "Enemy").Id;
+
+        while (true)
+        {
+            var actionResponse = await Client.PostAsJsonAsync(
+                $"/api/v2/runs/{runId}/combats/{combatId}/actions",
+                new { ActorId = playerId, TargetId = enemyId, ActionType = "BasicAttack" });
+
+            var actionBody = await actionResponse.Content.ReadAsStringAsync();
+
+            actionResponse.StatusCode.Should().Be(
+                HttpStatusCode.OK,
+                because: actionBody);
+
+            var actionResult = await actionResponse.Content
+                .ReadFromJsonAsync<SubmitCombatActionResponse>();
+
+            actionResult.Should().NotBeNull();
+
+            if (actionResult!.Result.CombatState == "Completed")
+            {
+                break;
+            }
+        }
     }
 
     [Fact]

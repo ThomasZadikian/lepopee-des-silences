@@ -25,7 +25,19 @@ public sealed class InMemoryCatalogContentGateway : ICatalogContentGateway
                 BaseDefense: 4,
                 BaseSpeed: 6,
                 Affinity: "Shadow",
-                SkillKeys: ["skill-shadow-strike-v1"])
+                SkillKeys: ["skill-shadow-strike-v1"]),
+            ["boss-threshold-guardian-v1"] = new EnemyTemplateSnapshot(
+                Key: "boss-threshold-guardian-v1",
+                Name: "Threshold Guardian",
+                Description: "Room boss used by the Game Engine for boss encounters.",
+                Version: "1.0.0",
+                Status: "Active",
+                BaseHealth: 50,
+                BaseAttack: 10,
+                BaseDefense: 6,
+                BaseSpeed: 8,
+                Affinity: "Void",
+                SkillKeys: ["skill-boss-void-slam-v1"])
         };
 
     private static readonly IReadOnlyDictionary<string, SkillTemplateSnapshot> SkillTemplates =
@@ -39,6 +51,18 @@ public sealed class InMemoryCatalogContentGateway : ICatalogContentGateway
                 Status: "Active",
                 SkillType: "Shadow",
                 Power: 10,
+                Cost: 1,
+                CostType: "Charge",
+                TargetingMode: "SingleEnemy",
+                EffectTags: ["damage"]),
+            ["skill-boss-void-slam-v1"] = new SkillTemplateSnapshot(
+                Key: "skill-boss-void-slam-v1",
+                Name: "Void Slam",
+                Description: "Boss skill used by the Game Engine for boss encounters.",
+                Version: "1.0.0",
+                Status: "Active",
+                SkillType: "Void",
+                Power: 14,
                 Cost: 1,
                 CostType: "Charge",
                 TargetingMode: "SingleEnemy",
@@ -74,7 +98,19 @@ public sealed class InMemoryCatalogContentGateway : ICatalogContentGateway
                 MinRiskLevel: 5,
                 MaxRiskLevel: 25,
                 RequiresPlayerChoice: false,
-                NarrativeTags: ["test", "combat"])
+                NarrativeTags: ["test", "combat"]),
+            ["event-boss-threshold-guardian-v1"] = new EventTemplateSnapshot(
+                Key: "event-boss-threshold-guardian-v1",
+                Name: "Threshold Guardian Boss Event",
+                Description: "Boss event used by the Game Engine for room boss encounters.",
+                Version: "1.0.0",
+                Status: "Active",
+                Type: "RoomBoss",
+                DefaultOutcomeKind: "BossEncounterStarted",
+                MinRiskLevel: 10,
+                MaxRiskLevel: 50,
+                RequiresPlayerChoice: false,
+                NarrativeTags: ["test", "boss"])
         };
 
     private static readonly IReadOnlyDictionary<string, PalaceLawDefinitionSnapshot> PalaceLawDefinitions =

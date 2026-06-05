@@ -61,6 +61,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IEventContentResolver, EventContentResolver>();
 
         services.AddSingleton<IEventContentResolutionStrategy, CombatEventContentResolutionStrategy>();
+        services.AddSingleton<IEventContentResolutionStrategy, RoomBossEventContentResolutionStrategy>();
         services.AddSingleton<IEventContentResolutionStrategy, ItemEventContentResolutionStrategy>();
         services.AddSingleton<IEventContentResolutionStrategy, PalaceLawEventContentResolutionStrategy>();
         services.AddSingleton<IEventContentResolutionStrategy, NpcEventContentResolutionStrategy>();

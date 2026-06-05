@@ -21,6 +21,7 @@ public sealed class EventContentResolverTests
             new IEventContentResolutionStrategy[]
             {
                 new CombatEventContentResolutionStrategy(catalogGateway),
+                new RoomBossEventContentResolutionStrategy(catalogGateway),
                 new ItemEventContentResolutionStrategy(catalogGateway),
                 new PalaceLawEventContentResolutionStrategy(catalogGateway),
                 new NpcEventContentResolutionStrategy(catalogGateway),
@@ -172,12 +173,19 @@ public sealed class EventContentResolverTests
     }
 
     [Fact]
-    public async Task ResolveAsync_ShouldRejectRoomBossContent()
+    public async Task ResolveAsync_ShouldResolveRoomBossContent()
     {
         var result = await _resolver.ResolveAsync(CreateContext(NodeEventType.RoomBoss));
 
-        result.IsFailure.Should().BeTrue();
-        result.Error.Code.Should().Be("event_content.unsupported_standard_pipeline_event_type");
+        result.IsSuccess.Should().BeTrue();
+
+        var content = result.Value.Should()
+            .BeOfType<ResolvedRoomBossEventContent>()
+            .Subject;
+
+        content.Kind.Should().Be(ResolvedEventContentKind.Boss);
+        content.EnemyTemplateKey.Should().Be("boss-threshold-guardian-v1");
+        content.RiskLevel.Should().Be(25);
     }
 
     [Fact]

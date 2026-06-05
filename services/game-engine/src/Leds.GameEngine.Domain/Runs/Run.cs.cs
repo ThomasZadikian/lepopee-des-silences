@@ -233,6 +233,11 @@ public sealed class Run
 
     public void MoveToNextRoom(Room nextRoom)
     {
+        if (Status is RunStatus.Completed or RunStatus.Failed or RunStatus.Abandoned)
+        {
+            throw new DomainException("Run is closed.");
+        }
+
         if (Status != RunStatus.RoomResolved || CurrentRoom.State != RoomState.Completed)
         {
             throw new DomainException("Current room must be completed before moving to the next room.");
@@ -253,6 +258,28 @@ public sealed class Run
         Status = nextRoom.Depth == 10
             ? RunStatus.BossReached
             : RunStatus.Active;
+    }
+
+    public void CompleteRun(DateTimeOffset endedAt)
+    {
+        if (Status is RunStatus.Completed or RunStatus.Failed or RunStatus.Abandoned)
+        {
+            throw new DomainException("Run is already closed.");
+        }
+
+        Status = RunStatus.Completed;
+        EndedAt = endedAt;
+    }
+
+    public void FailRun(DateTimeOffset endedAt)
+    {
+        if (Status is RunStatus.Completed or RunStatus.Failed or RunStatus.Abandoned)
+        {
+            throw new DomainException("Run is already closed.");
+        }
+
+        Status = RunStatus.Failed;
+        EndedAt = endedAt;
     }
 
     public void Abandon(DateTimeOffset endedAt)
@@ -445,6 +472,11 @@ public sealed class Run
 
     private void EnsureActive()
     {
+        if (Status is RunStatus.Completed or RunStatus.Failed or RunStatus.Abandoned)
+        {
+            throw new DomainException("Run is closed.");
+        }
+
         if (Status != RunStatus.Active)
         {
             throw new DomainException("Run must be active.");

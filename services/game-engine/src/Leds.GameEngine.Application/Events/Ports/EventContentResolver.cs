@@ -12,7 +12,6 @@ public sealed class EventContentResolver : IEventContentResolver
         new HashSet<NodeEventType>
         {
             NodeEventType.Memory,
-            NodeEventType.RoomBoss,
             NodeEventType.FinalBoss
         };
 
