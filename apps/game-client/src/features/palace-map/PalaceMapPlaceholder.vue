@@ -86,6 +86,14 @@ function isAvailable(node: NodeDto): boolean {
   return props.availableNodes.some((availableNode) => availableNode.id === node.id);
 }
 
+function getNodePulseDelay(node: NodeDto): number {
+  const hash = [...node.id].reduce((accumulator, character) => {
+    return accumulator + character.charCodeAt(0);
+  }, 0);
+
+  return -(hash % 1800);
+}
+
 </script>
 
 <template>
@@ -104,8 +112,11 @@ function isAvailable(node: NodeDto): boolean {
         :key="node.id"
         class="map__node"
         :class="getNodeClass(node)"
-        :style="getNodePosition(node)"
-        :disabled="!isAvailable(node) && node.state !== 'Available'"
+        :style="{
+          ...getNodePosition(node),
+          '--node-pulse-delay': `${getNodePulseDelay(node)}ms`,
+        }"
+        :disabled="node.state !== 'Available'"
         @click="chooseNode(node)"
       >
         <span>{{ getNodeGlyph(node) }}</span>
@@ -168,6 +179,8 @@ function isAvailable(node: NodeDto): boolean {
   font-family: var(--font-mono);
   box-shadow: 0 0 40px rgb(0 0 0 / 50%);
   cursor: pointer;
+  animation: node-pulse 2.8s ease-in-out infinite;
+  isolation: isolate;
 }
 
 .map__node:disabled {
@@ -216,4 +229,80 @@ function isAvailable(node: NodeDto): boolean {
   border: 1px solid color-mix(in oklch, oklch(70% 0.16 145), transparent 45%);
   opacity: 0.75;
 }
+
+.map__node::after {
+  content: '';
+  position: absolute;
+  inset: -0.35rem;
+  border-radius: 50%;
+  border: 1px solid currentColor;
+  opacity: 0.18;
+  animation: node-aura-pulse 2.8s ease-in-out infinite;
+  z-index: -1;
+}
+
+@keyframes node-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+
+  45% {
+    transform: scale(1.045);
+    filter: brightness(1.22);
+  }
+
+  60% {
+    transform: scale(0.985);
+    filter: brightness(0.96);
+  }
+}
+
+@keyframes node-aura-pulse {
+  0%,
+  100% {
+    opacity: 0.05;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.30;
+    transform: scale(1.18);
+  }
+}
+
+.map__node,
+.map__node::after {
+  animation-delay: var(--node-pulse-delay, 0ms);
+}
+
+.map__node--available {
+  animation-duration: 2.4s;
+}
+
+.map__node--selected {
+  animation-duration: 1.2s;
+}
+
+.map__node--resolved {
+  animation-duration: 5s;
+}
+
+.map__node--locked {
+  animation-duration: 4.4s;
+  opacity: 0.45;
+}
+
+.map__node--danger {
+  animation-duration: 2.1s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .map__node,
+  .map__node::after {
+    animation: none;
+  }
+}
+
 </style>

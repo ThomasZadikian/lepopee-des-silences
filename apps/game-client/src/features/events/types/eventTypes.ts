@@ -1,4 +1,7 @@
-import type { ResolveCurrentEventResponse } from '../../runs/types/runTypes';
+import type {
+    ResolveCurrentEventResponse,
+    RunDto,
+} from '../../runs/types/runTypes';
 
 export type EventOutcomeDto = ResolveCurrentEventResponse['outcome'];
 
@@ -18,6 +21,86 @@ export type NormalizedEventChoice = {
   description: string;
   isEnabled: boolean;
 };
+
+export type ChooseCurrentEventOptionRequest = {
+  choiceId?: string;
+  optionId?: string;
+  eventChoiceId?: string;
+};
+
+export type CurrentEventChoiceResultDto = {
+  choiceId?: string;
+  selectedChoiceId?: string;
+  title?: string;
+  description?: string;
+  outcomeKind?: string;
+  state?: string;
+  message?: string;
+};
+
+export type ChooseCurrentEventOptionResponse =
+  | RunDto
+  | {
+      run: RunDto;
+      choiceResult?: CurrentEventChoiceResultDto;
+      result?: CurrentEventChoiceResultDto;
+    }
+  | {
+      choiceResult: CurrentEventChoiceResultDto;
+      run?: RunDto;
+    }
+  | {
+      result: CurrentEventChoiceResultDto;
+      run?: RunDto;
+    };
+
+export function unwrapRunFromEventChoiceResponse(
+  response: ChooseCurrentEventOptionResponse,
+): RunDto | null {
+  if (
+    typeof response === 'object' &&
+    response !== null &&
+    'run' in response &&
+    response.run
+  ) {
+    return response.run;
+  }
+
+  if (
+    typeof response === 'object' &&
+    response !== null &&
+    'id' in response &&
+    'currentRoom' in response
+  ) {
+    return response as RunDto;
+  }
+
+  return null;
+}
+
+export function unwrapChoiceResultFromEventChoiceResponse(
+  response: ChooseCurrentEventOptionResponse,
+): CurrentEventChoiceResultDto | null {
+  if (
+    typeof response === 'object' &&
+    response !== null &&
+    'choiceResult' in response &&
+    response.choiceResult
+  ) {
+    return response.choiceResult;
+  }
+
+  if (
+    typeof response === 'object' &&
+    response !== null &&
+    'result' in response &&
+    response.result
+  ) {
+    return response.result;
+  }
+
+  return null;
+}
 
 export function getOutcomeChoices(outcome: EventOutcomeDto): NormalizedEventChoice[] {
   const rawChoices = Array.isArray(outcome.choices)

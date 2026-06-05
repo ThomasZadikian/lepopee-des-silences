@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 import {
     getOutcomeChoices,
@@ -14,9 +14,12 @@ const props = defineProps<{
   isLoading: boolean;
 }>();
 
-defineEmits<{
+const emit = defineEmits<{
   continue: [];
+  selectChoice: [choiceId: string];
 }>();
+
+const selectedChoiceId = ref<string | null>(null);
 
 const choices = computed(() => getOutcomeChoices(props.outcome));
 
@@ -29,6 +32,22 @@ const requiresChoice = computed(() => isChoiceOutcome(props.outcome));
 const isRewardLike = computed(() => isRewardLikeOutcome(
   props.outcome.resolutionKind,
 ));
+
+watch(
+  () => props.outcome.nodeId,
+  () => {
+    selectedChoiceId.value = null;
+  },
+);
+
+function selectChoice(choiceId: string) {
+  if (!choiceId || props.isLoading) {
+    return;
+  }
+
+  selectedChoiceId.value = choiceId;
+  emit('selectChoice', choiceId);
+}
 </script>
 
 <template>
@@ -88,21 +107,36 @@ const isRewardLike = computed(() => isRewardLikeOutcome(
         v-if="choices.length > 0"
         class="event-outcome__choice-list"
       >
-        <article
+        <button
           v-for="choice in choices"
           :key="choice.id"
           class="event-outcome__choice"
-          :class="{ 'event-outcome__choice--disabled': !choice.isEnabled }"
+          :class="{
+            'event-outcome__choice--disabled': !choice.isEnabled,
+            'event-outcome__choice--selected': selectedChoiceId === choice.id,
+          }"
+          :disabled="isLoading || !choice.isEnabled"
+          @click="selectChoice(choice.id)"
         >
           <strong>{{ choice.label }}</strong>
           <p>{{ choice.description }}</p>
           <small>{{ choice.id }}</small>
-        </article>
+
+          <span
+            v-if="selectedChoiceId === choice.id"
+            class="event-outcome__selected-label"
+          >
+            ◎ Choisi
+          </span>
+        </button>
       </div>
 
-      <p class="event-outcome__warning">
-        Les choix d’événements sont détectés mais seront branchés dans la prochaine PR frontend.
-        Pour le moment, cet événement est affiché sans résolution interactive.
+      <p
+        v-else
+        class="event-outcome__warning"
+      >
+        Le backend indique qu’un choix est requis, mais aucun choix exploitable
+        n’a été reçu par le client.
       </p>
     </section>
 
@@ -110,7 +144,10 @@ const isRewardLike = computed(() => isRewardLikeOutcome(
       v-else
       class="event-outcome__actions"
     >
-      <p v-if="isRewardLike" class="event-outcome__note">
+      <p
+        v-if="isRewardLike"
+        class="event-outcome__note"
+      >
         Le Palais a enregistré l’issue. Si une récompense structurée est requise,
         elle sera proposée dans l’écran dédié.
       </p>
@@ -200,14 +237,29 @@ const isRewardLike = computed(() => isRewardLikeOutcome(
 }
 
 .event-outcome__choice {
+  position: relative;
   min-height: 12rem;
   padding: var(--space-4);
+  color: var(--color-ink);
   border: 1px solid color-mix(in oklch, var(--color-line), transparent 25%);
   background: color-mix(in oklch, var(--color-panel), transparent 4%);
+  text-align: left;
+  cursor: pointer;
+}
+
+.event-outcome__choice:hover:not(:disabled) {
+  border-color: var(--color-gold);
+  box-shadow: 0 0 30px color-mix(in oklch, var(--color-gold), transparent 78%);
 }
 
 .event-outcome__choice--disabled {
   opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.event-outcome__choice--selected {
+  border-color: var(--color-gold);
+  box-shadow: 0 0 34px color-mix(in oklch, var(--color-gold), transparent 72%);
 }
 
 .event-outcome__choice strong {
@@ -224,6 +276,17 @@ const isRewardLike = computed(() => isRewardLikeOutcome(
   color: var(--color-dim);
   font-family: var(--font-mono);
   font-size: 0.7rem;
+}
+
+.event-outcome__selected-label {
+  position: absolute;
+  right: var(--space-4);
+  bottom: var(--space-4);
+  color: var(--color-gold);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
 }
 
 .event-outcome__warning {

@@ -16,6 +16,13 @@ import {
   type RunDto,
 } from '../types/runTypes';
 
+import { eventChoiceApi } from '../../events/api/eventChoiceApi';
+import {
+  unwrapChoiceResultFromEventChoiceResponse,
+  unwrapRunFromEventChoiceResponse,
+  type CurrentEventChoiceResultDto,
+} from '../../events/types/eventTypes';
+
 const demoPlayerId = '00000000-0000-0000-0000-000000000001';
 
 export const useRunStore = defineStore('run', () => {
@@ -24,6 +31,7 @@ export const useRunStore = defineStore('run', () => {
   const lastOutcome = ref<ResolveCurrentEventResponse['outcome'] | null>(null);
   const activeCombat = ref<CombatInstanceDto | null>(null);
   const previewedNodeId = ref<string | null>(null);
+  const lastChoiceResult = ref<CurrentEventChoiceResultDto | null>(null);
 
   const isLoading = ref(false);
   const error = ref<string | null>(null);
@@ -104,23 +112,21 @@ export const useRunStore = defineStore('run', () => {
 
     previewedNodeId.value = nodeId;
   }
+  
+async function execute(action: () => Promise<void>) {
+  isLoading.value = true;
+  error.value = null;
 
-  async function execute(action: () => Promise<void>) {
-    isLoading.value = true;
-    error.value = null;
-
-    try {
-      await action();
-    } catch (caught) {
-      error.value = caught instanceof Error
-        ? caught.message
-        : 'Une erreur inconnue est survenue.';
-
-      throw caught;
-    } finally {
-      isLoading.value = false;
-    }
+  try {
+    await action();
+  } catch (caught) {
+    error.value = caught instanceof Error
+      ? caught.message
+      : 'Une erreur inconnue est survenue.';
+  } finally {
+    isLoading.value = false;
   }
+}
 
   async function refreshPendingRewardIfNeeded() {
     if (!currentRun.value?.pendingRewardOfferId) {
@@ -147,6 +153,7 @@ export const useRunStore = defineStore('run', () => {
       const response = await runApi.startRun(demoPlayerId);
       const run = unwrapRunResponse(response);
 
+      lastChoiceResult.value = null;
       currentRun.value = run;
       pendingRewardOffer.value = null;
       lastOutcome.value = null;
@@ -162,6 +169,7 @@ export const useRunStore = defineStore('run', () => {
       const response = await runApi.getRun(runId);
       const run = unwrapRunResponse(response);
 
+      lastChoiceResult.value = null;
       currentRun.value = run;
       resetPreviewedNode();
 
@@ -178,6 +186,7 @@ export const useRunStore = defineStore('run', () => {
       return;
     }
 
+    lastChoiceResult.value = null;
     const node = selectedNode.value;
 
     if (node.state === 'Resolved') {
@@ -227,6 +236,7 @@ export const useRunStore = defineStore('run', () => {
     await execute(async () => {
       const response = await runApi.resolveCurrentEvent(currentRun.value!.id);
 
+      lastChoiceResult.value = null;
       currentRun.value = response.run;
       lastOutcome.value = response.outcome;
       activeCombat.value = response.startedCombat ?? null;
@@ -252,6 +262,7 @@ export const useRunStore = defineStore('run', () => {
 
       const response = await runApi.progressRun(currentRun.value!.id);
 
+      lastChoiceResult.value = null;
       currentRun.value = unwrapRunResponse(response);
       lastOutcome.value = null;
       activeCombat.value = null;
@@ -286,6 +297,7 @@ export const useRunStore = defineStore('run', () => {
       const response = await runApi.getRun(currentRun.value!.id);
       const run = unwrapRunResponse(response);
 
+      lastChoiceResult.value = null;
       currentRun.value = run;
       activeCombat.value = null;
       lastOutcome.value = null;
@@ -314,6 +326,7 @@ export const useRunStore = defineStore('run', () => {
       const response = await runApi.getRun(currentRun.value!.id);
       currentRun.value = unwrapRunResponse(response);
 
+      lastChoiceResult.value = null;
       lastOutcome.value = null;
       activeCombat.value = null;
       resetPreviewedNode();
@@ -321,6 +334,40 @@ export const useRunStore = defineStore('run', () => {
       await refreshPendingRewardIfNeeded();
     });
   }
+
+  async function selectCurrentEventChoice(choiceId: string) {
+  if (!currentRun.value || !lastOutcome.value) {
+    return;
+  }
+
+  await execute(async () => {
+    const response = await eventChoiceApi.chooseCurrentEventOption(
+      currentRun.value!.id,
+      {
+        choiceId,
+        optionId: choiceId,
+        eventChoiceId: choiceId,
+      },
+    );
+
+    const run = unwrapRunFromEventChoiceResponse(response);
+    const choiceResult = unwrapChoiceResultFromEventChoiceResponse(response);
+
+    if (run) {
+      currentRun.value = run;
+    } else {
+      const runResponse = await runApi.getRun(currentRun.value!.id);
+      currentRun.value = unwrapRunResponse(runResponse);
+    }
+
+    lastChoiceResult.value = choiceResult;
+    lastOutcome.value = null;
+    activeCombat.value = null;
+    resetPreviewedNode();
+
+    await refreshPendingRewardIfNeeded();
+  });
+}
 
 const gameplayPhase = computed(() => {
   if (!currentRun.value) {
@@ -339,6 +386,10 @@ const gameplayPhase = computed(() => {
     return 'Completed';
   }
 
+  if (lastChoiceResult.value) {
+    return 'EventChoiceResult';
+  }
+
   if (lastOutcome.value) {
     return 'EventOutcome';
   }
@@ -346,13 +397,21 @@ const gameplayPhase = computed(() => {
   return 'Map';
 });
 
-async function continueAfterOutcome() {
-  if (!lastOutcome.value) {
-    return;
+  async function continueAfterOutcome() {
+    if (!lastOutcome.value) {
+      return;
+    }
+
+    await progressRun();
   }
 
-  await progressRun();
-}
+  async function continueAfterChoiceResult() {
+    if (!lastChoiceResult.value) {
+      return;
+    }
+
+    await progressRun();
+  }
 
   return {
     currentRun,
@@ -362,11 +421,13 @@ async function continueAfterOutcome() {
     availableNodes,
     previewedNodeId,
     lastOutcome,
+    lastChoiceResult,
     activeCombat,
     pendingRewardOffer,
+    gameplayPhase,
     isLoading,
     error,
-    gameplayPhase,
+
     startRun,
     loadRun,
     chooseNode,
@@ -380,5 +441,7 @@ async function continueAfterOutcome() {
     handleCombatCompleted,
     refreshPendingRewardIfNeeded,
     continueAfterOutcome,
+    continueAfterChoiceResult,
+    selectCurrentEventChoice,
   };
 });

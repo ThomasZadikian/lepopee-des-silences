@@ -5,6 +5,7 @@ import { useRoute } from 'vue-router';
 import GameShellLayout from '../app/layouts/GameShellLayout.vue';
 import CombatRuntimePanel from '../features/combats/components/CombatRuntimePanel.vue';
 import EliseOverlay from '../features/elise/EliseOverlay.vue';
+import EventChoiceResultPanel from '../features/events/components/EventChoiceResultPanel.vue';
 import EventOutcomePanel from '../features/events/components/EventOutcomePanel.vue';
 import NodeDetailPanel from '../features/node-details/NodeDetailPanel.vue';
 import PalaceLawPanel from '../features/palace-laws/PalaceLawPanel.vue';
@@ -102,6 +103,14 @@ watch(
             :outcome="runStore.lastOutcome"
             :is-loading="runStore.isLoading"
             @continue="runStore.continueAfterOutcome"
+              @select-choice="runStore.selectCurrentEventChoice"
+            />
+
+          <EventChoiceResultPanel
+            v-else-if="runStore.gameplayPhase === 'EventChoiceResult' && runStore.lastChoiceResult"
+            :result="runStore.lastChoiceResult"
+            :is-loading="runStore.isLoading"
+            @continue="runStore.continueAfterChoiceResult"
           />
 
           <template v-else-if="runStore.gameplayPhase === 'Map'">
