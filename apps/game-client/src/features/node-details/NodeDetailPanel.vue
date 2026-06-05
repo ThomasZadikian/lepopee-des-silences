@@ -1,28 +1,73 @@
+<script setup lang="ts">
+import type { NodeDto } from '../runs/types/runTypes';
+
+defineProps<{
+  node: NodeDto | null;
+  isLoading: boolean;
+}>();
+
+defineEmits<{
+  resolveCurrentEvent: [];
+  generateNextNodes: [];
+}>();
+</script>
+
 <template>
   <section class="panel node-detail">
-    <p class="system-label">Marchand · pièce 05 · nœud sélectionné</p>
-    <h2>Le Colporteur Muet</h2>
+    <template v-if="node">
+      <p class="system-label">
+        {{ node.eventTypes[0] }} · profondeur {{ node.nodeDepth }} · {{ node.state }}
+      </p>
 
-    <div class="node-detail__image">PNJ · Placeholder</div>
+      <h2>{{ node.eventTypes.join(' · ') }}</h2>
 
-    <p>
-      Une silhouette voûtée derrière un étal d'objets sans nom. Il ne parle pas —
-      il échange. Ce que tu donnes, tu ne le retrouveras pas.
-    </p>
-
-    <div class="node-detail__meta">
-      <div>
-        <span class="system-label">Risque</span>
-        <strong>Faible</strong>
+      <div class="node-detail__image">
+        {{ node.eventTypes[0] }} · Placeholder
       </div>
-      <div>
-        <span class="system-label">Récompense</span>
-        <strong>Objet · jusqu'à rare</strong>
-      </div>
-    </div>
 
-    <button class="ghost-button">Aperçu</button>
-    <button class="ghost-button node-detail__confirm">Confirmer →</button>
+      <p>
+        Le Palais a isolé ce nœud. Le backend attend une intention :
+        résoudre l’événement courant ou poursuivre si le nœud est déjà clos.
+      </p>
+
+      <div class="node-detail__meta">
+        <div>
+          <span class="system-label">Risque</span>
+          <strong>{{ node.riskLevel }}</strong>
+        </div>
+        <div>
+          <span class="system-label">Récompense</span>
+          <strong>{{ node.rewardProfile }}</strong>
+        </div>
+      </div>
+
+      <button
+        v-if="node.state === 'Selected'"
+        class="ghost-button node-detail__confirm"
+        :disabled="isLoading"
+        @click="$emit('resolveCurrentEvent')"
+      >
+        Résoudre →
+      </button>
+
+      <button
+        v-if="node.state === 'Resolved'"
+        class="ghost-button node-detail__confirm"
+        :disabled="isLoading"
+        @click="$emit('generateNextNodes')"
+      >
+        Prochaine strate →
+      </button>
+    </template>
+
+    <template v-else>
+      <p class="system-label">Aucun nœud sélectionné</p>
+      <h2>Choisis un chemin</h2>
+      <p>
+        Les chemins disponibles sont visibles sur la carte. Une fois confirmé,
+        le Palais ferme les alternatives.
+      </p>
+    </template>
   </section>
 </template>
 

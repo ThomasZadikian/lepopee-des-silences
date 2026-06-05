@@ -1,10 +1,29 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router';
 
-const router = useRouter();
+import { useRunStore } from '../features/runs/stores/runStore';
 
-function startMockRun() {
-  router.push('/run/mock-run-alpha-0-0-1');
+const router = useRouter();
+const runStore = useRunStore();
+
+async function startRun() {
+  try {
+    await runStore.startRun();
+
+    const runId = runStore.currentRun?.id;
+
+    if (!runId) {
+      console.error('[game-client] Unable to navigate: run id is missing.', {
+        currentRun: runStore.currentRun,
+      });
+
+      return;
+    }
+
+    await router.push(`/run/${runId}`);
+  } catch (error) {
+    console.error('[game-client] startRun failed.', error);
+  }
 }
 </script>
 
@@ -26,15 +45,15 @@ function startMockRun() {
         <dl>
           <div>
             <dt>Seed</dt>
-            <dd>SIL-7F3A-29D</dd>
+            <dd>À charger</dd>
           </div>
           <div>
             <dt>Profondeur</dt>
-            <dd>04 / 10</dd>
+            <dd>—</dd>
           </div>
           <div>
             <dt>Dernière pièce</dt>
-            <dd>Galerie des Aveux</dd>
+            <dd>—</dd>
           </div>
           <div>
             <dt>Compagnon</dt>
@@ -42,7 +61,7 @@ function startMockRun() {
           </div>
         </dl>
 
-        <button class="ghost-button" @click="startMockRun">
+        <button class="ghost-button" disabled>
           Reprendre la descente →
         </button>
       </article>
@@ -55,9 +74,13 @@ function startMockRun() {
           ennemis. Tu n'emportes que ce que le Tome a déjà retenu.
         </p>
 
-        <button class="ghost-button" @click="startMockRun">
-          Générer une run →
+        <button class="ghost-button" :disabled="runStore.isLoading" @click="startRun">
+          {{ runStore.isLoading ? 'Génération...' : 'Générer une run →' }}
         </button>
+
+        <p v-if="runStore.error" class="threshold-card__error">
+          {{ runStore.error }}
+        </p>
       </article>
     </section>
 
@@ -81,6 +104,12 @@ function startMockRun() {
 
 .threshold__hero {
   max-width: 56rem;
+}
+
+.threshold-card__error {
+  margin-top: var(--space-4);
+  color: var(--color-blood);
+  font-family: var(--font-mono);
 }
 
 .threshold__hero h1 {

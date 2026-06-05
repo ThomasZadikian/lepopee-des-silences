@@ -1,3 +1,89 @@
+<script setup lang="ts">
+import type { NodeDto } from '../runs/types/runTypes';
+
+const props = defineProps<{
+  nodes: NodeDto[];
+  availableNodes: NodeDto[];
+  selectedNodeId?: string | null;
+}>();
+
+const emit = defineEmits<{
+  chooseNode: [nodeId: string];
+}>();
+
+function getNodeGlyph(node: NodeDto): string {
+  const type = node.eventTypes[0];
+
+  switch (type) {
+    case 'Combat':
+      return '△';
+    case 'Elite':
+      return '▲';
+    case 'Item':
+      return '♢';
+    case 'Npc':
+      return '◇';
+    case 'Rest':
+      return '◐';
+    case 'Merchant':
+      return '◎';
+    case 'Law':
+      return '◆';
+    case 'RoomBoss':
+    case 'FinalBoss':
+      return '◎';
+    default:
+      return '○';
+  }
+}
+
+function getNodeClass(node: NodeDto): string {
+  if (node.id === props.selectedNodeId || node.state === 'Selected') {
+    return 'map__node--selected';
+  }
+
+  if (isAvailable(node) || node.state === 'Available') {
+    return 'map__node--available';
+  }
+
+  if (node.isRoomBossNode) {
+    return 'map__node--danger';
+  }
+
+  return 'map__node--locked';
+}
+
+function getNodePosition(node: NodeDto) {
+  const depth = Math.max(0, node.nodeDepth);
+  const sameDepthNodes = props.nodes.filter((candidate) => candidate.nodeDepth === depth);
+  const indexAtDepth = sameDepthNodes.findIndex((candidate) => candidate.id === node.id);
+  const countAtDepth = Math.max(1, sameDepthNodes.length);
+
+  const maxDepth = Math.max(...props.nodes.map((candidate) => candidate.nodeDepth), 1);
+
+  const x = 8 + (depth / maxDepth) * 84;
+  const y = 20 + ((indexAtDepth + 1) / (countAtDepth + 1)) * 60;
+
+  return {
+    left: `${x}%`,
+    top: `${y}%`,
+  };
+}
+
+function chooseNode(node: NodeDto) {
+  if (!isAvailable(node) && node.state !== 'Available') {
+    return;
+  }
+
+  emit('chooseNode', node.id);
+}
+
+function isAvailable(node: NodeDto): boolean {
+  return props.availableNodes.some((availableNode) => availableNode.id === node.id);
+}
+
+</script>
+
 <template>
   <section class="map">
     <header>
@@ -5,34 +91,25 @@
         <p class="system-label">Carte du Palais — embranchements visibles</p>
         <h2>Les chemins sont irréversibles · ils peuvent se rejoindre</h2>
       </div>
-      <span class="system-value">Profondeur 05 → 10</span>
+      <span class="system-value">Nodes {{ nodes.length }}</span>
     </header>
 
-    <div class="map__canvas" aria-label="Carte roguelite placeholder">
-      <div
+    <div class="map__canvas" aria-label="Carte roguelite">
+      <button
         v-for="node in nodes"
         :key="node.id"
         class="map__node"
-        :class="`map__node--${node.kind}`"
-        :style="{ left: node.x, top: node.y }"
+        :class="getNodeClass(node)"
+        :style="getNodePosition(node)"
+        :disabled="!isAvailable(node) && node.state !== 'Available'"
+        @click="chooseNode(node)"
       >
-        {{ node.glyph }}
-      </div>
+        <span>{{ getNodeGlyph(node) }}</span>
+        <small>{{ node.eventTypes[0] }}</small>
+      </button>
     </div>
   </section>
 </template>
-
-<script setup lang="ts">
-const nodes = [
-  { id: 1, x: '8%', y: '45%', glyph: '◎', kind: 'selected' },
-  { id: 2, x: '20%', y: '28%', glyph: '△', kind: 'available' },
-  { id: 3, x: '20%', y: '62%', glyph: '☉', kind: 'frost' },
-  { id: 4, x: '35%', y: '40%', glyph: '◌', kind: 'locked' },
-  { id: 5, x: '52%', y: '48%', glyph: '♢', kind: 'locked' },
-  { id: 6, x: '72%', y: '34%', glyph: '◐', kind: 'locked' },
-  { id: 7, x: '88%', y: '50%', glyph: '◎', kind: 'danger' },
-];
-</script>
 
 <style scoped>
 .map {
@@ -74,10 +151,11 @@ const nodes = [
 
 .map__node {
   position: absolute;
-  width: 3.2rem;
-  height: 3.2rem;
+  width: 3.6rem;
+  height: 3.6rem;
   display: grid;
   place-items: center;
+  gap: 0.1rem;
   translate: -50% -50%;
   border-radius: 50%;
   background: var(--color-panel);
@@ -85,6 +163,21 @@ const nodes = [
   color: var(--color-muted);
   font-family: var(--font-mono);
   box-shadow: 0 0 40px rgb(0 0 0 / 50%);
+  cursor: pointer;
+}
+
+.map__node:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.map__node small {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  color: var(--color-dim);
+  font-size: 0.55rem;
+  white-space: nowrap;
+  text-transform: uppercase;
 }
 
 .map__node--selected {

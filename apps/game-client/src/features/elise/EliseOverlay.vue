@@ -1,9 +1,14 @@
+<script setup lang="ts">
+defineProps<{
+  message?: string | null;
+}>();
+</script>
+
 <template>
   <aside class="elise panel">
     <p class="system-label">Élise · observe</p>
     <p>
-      Le Colporteur ne ment jamais — il ne dit simplement rien.
-      Méfie-toi du silence qui sourit.
+      {{ message || "Le Palais ne ment jamais — il ne dit simplement pas tout." }}
     </p>
   </aside>
 </template>
