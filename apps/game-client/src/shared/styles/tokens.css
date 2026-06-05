@@ -1,0 +1,33 @@
+:root {
+  color-scheme: dark;
+
+  --color-void: oklch(10% 0.015 265);
+  --color-bg: oklch(14% 0.018 265);
+  --color-panel: oklch(18% 0.02 265);
+  --color-panel-soft: oklch(22% 0.018 265);
+  --color-line: oklch(35% 0.025 265);
+
+  --color-ink: oklch(86% 0.025 260);
+  --color-muted: oklch(61% 0.025 260);
+  --color-dim: oklch(45% 0.025 260);
+
+  --color-gold: oklch(73% 0.11 82);
+  --color-frost: oklch(76% 0.09 225);
+  --color-blood: oklch(55% 0.17 24);
+
+  --font-ui: 'Schibsted Grotesk', Inter, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Cascadia Mono', Consolas, monospace;
+
+  --radius-sm: 4px;
+  --radius-md: 8px;
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+
+  --shadow-panel: 0 0 0 1px color-mix(in oklch, var(--color-line), transparent 35%),
+    0 24px 80px rgb(0 0 0 / 35%);
+}

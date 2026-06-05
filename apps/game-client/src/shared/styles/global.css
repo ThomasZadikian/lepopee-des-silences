@@ -1,0 +1,62 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  background:
+    radial-gradient(circle at 50% 15%, rgb(110 130 160 / 10%), transparent 38%),
+    radial-gradient(circle at 75% 85%, rgb(130 60 70 / 8%), transparent 32%),
+    var(--color-void);
+  color: var(--color-ink);
+  font-family: var(--font-ui);
+  letter-spacing: 0.01em;
+}
+
+button {
+  font: inherit;
+}
+
+.system-label {
+  color: var(--color-muted);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+}
+
+.system-value {
+  color: var(--color-ink);
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+}
+
+.panel {
+  background: color-mix(in oklch, var(--color-panel), transparent 4%);
+  border: 1px solid color-mix(in oklch, var(--color-line), transparent 25%);
+  box-shadow: var(--shadow-panel);
+}
+
+.ghost-button {
+  min-height: 2.4rem;
+  padding: 0 var(--space-4);
+  color: var(--color-ink);
+  background: transparent;
+  border: 1px solid color-mix(in oklch, var(--color-line), transparent 10%);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.ghost-button:hover {
+  border-color: var(--color-frost);
+  color: var(--color-frost);
+}
