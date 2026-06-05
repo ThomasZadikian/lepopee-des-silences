@@ -215,7 +215,7 @@ export const useRunStore = defineStore('run', () => {
     });
   }
 
-  async function chooseNode(nodeId: string) {
+  function chooseNode(nodeId: string) {
     previewNode(nodeId);
   }
 
@@ -322,6 +322,26 @@ export const useRunStore = defineStore('run', () => {
     });
   }
 
+  const gameplayPhase = computed(() => {
+  if (!currentRun.value) {
+    return 'Loading';
+  }
+
+  if (pendingRewardOffer.value || currentRun.value.pendingRewardOfferId) {
+    return 'Reward';
+  }
+
+  if (currentRun.value.activeCombatId) {
+    return 'Combat';
+  }
+
+  if (currentRun.value.status === 'Completed' || currentRun.value.status === 'Failed') {
+    return 'Completed';
+  }
+
+  return 'Map';
+});
+
   return {
     currentRun,
     currentRoom,
@@ -334,6 +354,7 @@ export const useRunStore = defineStore('run', () => {
     pendingRewardOffer,
     isLoading,
     error,
+    gameplayPhase,
     startRun,
     loadRun,
     chooseNode,

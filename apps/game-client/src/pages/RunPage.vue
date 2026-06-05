@@ -73,48 +73,58 @@ watch(
 
         <section class="run-grid__center panel">
             <RewardOfferPanel
-              v-if="runStore.pendingRewardOffer"
+              v-if="runStore.gameplayPhase === 'Reward' && runStore.pendingRewardOffer"
               :offer="runStore.pendingRewardOffer"
               :is-loading="runStore.isLoading"
               @select-reward="runStore.selectReward"
             />
 
             <CombatRuntimePanel
-              v-else-if="runStore.currentRun.activeCombatId"
+              v-else-if="runStore.gameplayPhase === 'Combat' && runStore.currentRun.activeCombatId"
               :run-id="runStore.currentRun.id"
               :combat-id="runStore.currentRun.activeCombatId"
               @combat-completed="runStore.handleCombatCompleted"
             />
 
-          <template v-else>
-            <PalaceMapPlaceholder
-              :nodes="runStore.allNodes"
-              :available-nodes="runStore.availableNodes"
-              :selected-node-id="runStore.selectedNode?.id ?? null"
-              @choose-node="runStore.previewNode"
-            />
+            <template v-else-if="runStore.gameplayPhase === 'Map'">
+              <PalaceMapPlaceholder
+                :nodes="runStore.allNodes"
+                :available-nodes="runStore.availableNodes"
+                :selected-node-id="runStore.selectedNode?.id ?? null"
+                @choose-node="runStore.previewNode"
+              />
 
-            <EliseOverlay
-              :message="runStore.lastOutcome?.description"
-            />
+              <EliseOverlay
+                :message="runStore.lastOutcome?.description"
+              />
 
-            <div
-              v-if="runStore.lastOutcome"
+              <div
+                v-if="runStore.lastOutcome"
+                class="run-grid__outcome panel"
+              >
+                <p class="system-label">
+                  {{ runStore.lastOutcome.resolutionKind }}
+                </p>
+
+                <h3>{{ runStore.lastOutcome.title }}</h3>
+                <p>{{ runStore.lastOutcome.description }}</p>
+              </div>
+            </template>
+
+            <section
+              v-else
               class="run-grid__outcome panel"
             >
-              <p class="system-label">
-                {{ runStore.lastOutcome.resolutionKind }}
+              <p class="system-label">Run terminée</p>
+              <h3>Le Tome se referme</h3>
+              <p>
+                La traversée est terminée. Le bilan détaillé sera intégré dans une prochaine version.
               </p>
-
-              <h3>{{ runStore.lastOutcome.title }}</h3>
-
-              <p>{{ runStore.lastOutcome.description }}</p>
-            </div>
-          </template>
+            </section>
         </section>
 
         <aside
-          v-if="!runStore.currentRun.activeCombatId"
+          v-if="runStore.gameplayPhase === 'Map'"
           class="run-grid__right"
         >
           <NodeDetailPanel
@@ -133,17 +143,30 @@ watch(
       <section class="run-loading panel">
         <p class="system-label">Chargement run</p>
 
-        <p v-if="runStore.isLoading">
-          Le Palais recompose la pièce...
-        </p>
+        <template v-if="runStore.isLoading">
+          <h2>Le Palais recompose la pièce...</h2>
+          <p>
+            Le backend reconstitue l’état de la run.
+          </p>
+        </template>
 
-        <p v-else-if="runStore.error">
-          {{ runStore.error }}
-        </p>
+        <template v-else-if="runStore.error">
+          <h2>Run introuvable ou indisponible</h2>
+          <p>
+            {{ runStore.error }}
+          </p>
+          <p class="run-loading__hint">
+            En environnement local, les runs sont encore stockées en mémoire.
+            Si le backend a redémarré, l’identifiant présent dans l’URL n’existe plus.
+          </p>
+        </template>
 
-        <p v-else>
-          Aucune run chargée. Vérifie l’identifiant dans l’URL ou génère une nouvelle run.
-        </p>
+        <template v-else>
+          <h2>Aucune run chargée</h2>
+          <p>
+            Vérifie l’identifiant dans l’URL ou génère une nouvelle run depuis le seuil.
+          </p>
+        </template>
       </section>
     </template>
   </GameShellLayout>
@@ -199,5 +222,24 @@ watch(
 .run-loading {
   margin: var(--space-4);
   padding: var(--space-6);
+}
+
+.run-loading h2 {
+  margin: var(--space-2) 0;
+  color: var(--color-frost);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.run-loading p {
+  color: var(--color-muted);
+  line-height: 1.55;
+}
+
+.run-loading__hint {
+  margin-top: var(--space-4);
+  color: var(--color-gold);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
 }
 </style>

@@ -1,4 +1,4 @@
-import { gameEngineApi } from '../../../shared/api/gameEnginApi';
+import { gameEngineApi } from '../../../shared/api/gameEngineApi';
 // Si tu as renommé le fichier correctement, utilise plutôt :
 // import { gameEngineApi } from '../../../shared/api/gameEngineApi';
 

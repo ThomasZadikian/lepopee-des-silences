@@ -12,6 +12,56 @@ export class HttpError extends Error {
   }
 }
 
+function getErrorMessage(body: unknown, fallback: string): string {
+  if (
+    typeof body === 'object' &&
+    body !== null &&
+    'message' in body &&
+    typeof body.message === 'string'
+  ) {
+    return body.message;
+  }
+
+  if (
+    typeof body === 'object' &&
+    body !== null &&
+    'title' in body &&
+    typeof body.title === 'string'
+  ) {
+    return body.title;
+  }
+
+  if (
+    typeof body === 'object' &&
+    body !== null &&
+    'detail' in body &&
+    typeof body.detail === 'string'
+  ) {
+    return body.detail;
+  }
+
+  if (typeof body === 'string' && body.trim().length > 0) {
+    return body;
+  }
+
+  return fallback;
+}
+
+async function parseResponseBody(response: Response): Promise<unknown> {
+  const contentType = response.headers.get('content-type');
+  const hasJson = contentType?.includes('application/json') ?? false;
+
+  if (response.status === 204) {
+    return null;
+  }
+
+  if (hasJson) {
+    return response.json();
+  }
+
+  return response.text();
+}
+
 export async function httpRequest<TResponse>(
   path: string,
   options: RequestInit = {},
@@ -25,13 +75,14 @@ export async function httpRequest<TResponse>(
     },
   });
 
-  const contentType = response.headers.get('content-type');
-  const hasJson = contentType?.includes('application/json') ?? false;
-  const body = hasJson ? await response.json() : await response.text();
+  const body = await parseResponseBody(response);
 
   if (!response.ok) {
     throw new HttpError(
-      `Game Engine API request failed with status ${response.status}.`,
+      getErrorMessage(
+        body,
+        `Game Engine API request failed with status ${response.status}.`,
+      ),
       response.status,
       body,
     );

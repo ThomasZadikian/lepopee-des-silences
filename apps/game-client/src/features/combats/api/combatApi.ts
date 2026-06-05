@@ -1,4 +1,4 @@
-import { gameEngineApi } from '../../../shared/api/gameEnginApi';
+import { gameEngineApi } from '../../../shared/api/gameEngineApi';
 import type {
     CombatInstanceDto,
     SubmitCombatActionRequest,
