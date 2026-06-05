@@ -1,8 +1,9 @@
 import { gameEngineApi } from '../../../shared/api/gameEnginApi';
+
 import type {
-    PendingRewardOfferResponse,
-    SelectRewardRequest,
-    SelectRewardResponse,
+  PendingRewardOfferResponse,
+  SelectRewardRequest,
+  SelectRewardResponse,
 } from '../types/rewardTypes';
 
 export const rewardApi = {
@@ -13,7 +14,7 @@ export const rewardApi = {
   },
 
   selectReward(runId: string, body: SelectRewardRequest) {
-    return gameEngineApi.post<SelectRewardResponse>(
+    return gameEngineApi.post<SelectRewardResponse, SelectRewardRequest>(
       `/api/v2/runs/${runId}/rewards/select`,
       body,
     );

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted } from 'vue';
+import { onMounted, watch } from 'vue';
 import { useRoute } from 'vue-router';
 
 import GameShellLayout from '../app/layouts/GameShellLayout.vue';
@@ -9,24 +9,51 @@ import NodeDetailPanel from '../features/node-details/NodeDetailPanel.vue';
 import PalaceLawPanel from '../features/palace-laws/PalaceLawPanel.vue';
 import PalaceMapPlaceholder from '../features/palace-map/PalaceMapPlaceholder.vue';
 import PartyPanel from '../features/party/PartyPanel.vue';
+import RewardOfferPanel from '../features/rewards/components/RewardOfferPanel.vue';
 import { useRunStore } from '../features/runs/stores/runStore';
 
 const route = useRoute();
 const runStore = useRunStore();
 
-onMounted(async () => {
-  const runId = route.params.runId;
+function getRouteRunId(): string | null {
+  const rawRunId = route.params.runId;
 
-  if (typeof runId !== 'string' || runId.length === 0 || runId === 'undefined') {
+  if (typeof rawRunId !== 'string') {
+    return null;
+  }
+
+  const runId = rawRunId.trim();
+
+  if (runId.length === 0 || runId === 'undefined' || runId === 'null') {
+    return null;
+  }
+
+  return runId;
+}
+
+async function loadRunFromRoute() {
+  const runId = getRouteRunId();
+
+  if (!runId) {
     return;
   }
 
   if (runStore.currentRun?.id === runId) {
+    await runStore.refreshPendingRewardIfNeeded();
     return;
   }
 
   await runStore.loadRun(runId);
-});
+}
+
+onMounted(loadRunFromRoute);
+
+watch(
+  () => route.params.runId,
+  async () => {
+    await loadRunFromRoute();
+  },
+);
 </script>
 
 <template>
@@ -45,19 +72,26 @@ onMounted(async () => {
         </aside>
 
         <section class="run-grid__center panel">
-          <CombatRuntimePanel
-            v-if="runStore.currentRun.activeCombatId"
-            :run-id="runStore.currentRun.id"
-            :combat-id="runStore.currentRun.activeCombatId"
-            @combat-completed="runStore.progressRun"
-          />
+            <RewardOfferPanel
+              v-if="runStore.pendingRewardOffer"
+              :offer="runStore.pendingRewardOffer"
+              :is-loading="runStore.isLoading"
+              @select-reward="runStore.selectReward"
+            />
+
+            <CombatRuntimePanel
+              v-else-if="runStore.currentRun.activeCombatId"
+              :run-id="runStore.currentRun.id"
+              :combat-id="runStore.currentRun.activeCombatId"
+              @combat-completed="runStore.handleCombatCompleted"
+            />
 
           <template v-else>
             <PalaceMapPlaceholder
               :nodes="runStore.allNodes"
               :available-nodes="runStore.availableNodes"
               :selected-node-id="runStore.selectedNode?.id ?? null"
-              @choose-node="runStore.chooseNode"
+              @choose-node="runStore.previewNode"
             />
 
             <EliseOverlay
@@ -86,10 +120,10 @@ onMounted(async () => {
           <NodeDetailPanel
             :node="runStore.selectedNode"
             :is-loading="runStore.isLoading"
-            :has-active-combat="false"
-            :has-pending-reward="Boolean(runStore.currentRun.pendingRewardOfferId)"
-            @resolve-current-event="runStore.resolveCurrentEvent"
-            @generate-next-nodes="runStore.generateNextNodes"
+            :has-active-combat="Boolean(runStore.currentRun.activeCombatId)"
+            :has-pending-reward="Boolean(runStore.pendingRewardOffer || runStore.currentRun.pendingRewardOfferId)"
+            @resolve-current-event="runStore.confirmAndResolveNode"
+            @generate-next-nodes="runStore.progressRun"
           />
         </aside>
       </section>
@@ -99,12 +133,16 @@ onMounted(async () => {
       <section class="run-loading panel">
         <p class="system-label">Chargement run</p>
 
-        <p v-if="runStore.error">
+        <p v-if="runStore.isLoading">
+          Le Palais recompose la pièce...
+        </p>
+
+        <p v-else-if="runStore.error">
           {{ runStore.error }}
         </p>
 
         <p v-else>
-          Le Palais recompose la pièce...
+          Aucune run chargée. Vérifie l’identifiant dans l’URL ou génère une nouvelle run.
         </p>
       </section>
     </template>

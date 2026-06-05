@@ -1,21 +1,29 @@
 import { gameEngineApi } from '../../../shared/api/gameEnginApi';
+// Si tu as renommé le fichier correctement, utilise plutôt :
+// import { gameEngineApi } from '../../../shared/api/gameEngineApi';
+
 import type {
   ChooseNodeResponse,
   GenerateNextNodesResponse,
   ResolveCurrentEventResponse,
-  RunDto,
+  RunResponse,
   StartRunResponse,
 } from '../types/runTypes';
 
 export const runApi = {
   startRun(playerId: string) {
-    return gameEngineApi.post<StartRunResponse>('/api/v2/runs', {
-      playerId,
-    });
+    return gameEngineApi.post<StartRunResponse, { playerId: string }>(
+      '/api/v2/runs',
+      {
+        playerId,
+      },
+    );
   },
 
   getRun(runId: string) {
-    return gameEngineApi.get<RunDto>(`/api/v2/runs/${runId}`);
+    return gameEngineApi.get<RunResponse>(
+      `/api/v2/runs/${runId}`,
+    );
   },
 
   chooseNode(runId: string, nodeId: string) {

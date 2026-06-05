@@ -4,6 +4,8 @@ import type { NodeDto } from '../runs/types/runTypes';
 defineProps<{
   node: NodeDto | null;
   isLoading: boolean;
+  hasActiveCombat: boolean;
+  hasPendingReward: boolean;
 }>();
 
 defineEmits<{
@@ -26,8 +28,8 @@ defineEmits<{
       </div>
 
       <p>
-        Le Palais a isolé ce nœud. Le backend attend une intention :
-        résoudre l’événement courant ou poursuivre si le nœud est déjà clos.
+        Le Palais a isolé ce nœud. Tu peux l’observer avant de confirmer ton choix.
+        Une fois confirmé, les autres chemins se refermeront.
       </p>
 
       <div class="node-detail__meta">
@@ -35,6 +37,7 @@ defineEmits<{
           <span class="system-label">Risque</span>
           <strong>{{ node.riskLevel }}</strong>
         </div>
+
         <div>
           <span class="system-label">Récompense</span>
           <strong>{{ node.rewardProfile }}</strong>
@@ -42,30 +45,37 @@ defineEmits<{
       </div>
 
       <button
-        v-if="node.state === 'Selected'"
+        v-if="node.state === 'Available' || node.state === 'Selected'"
         class="ghost-button node-detail__confirm"
-        :disabled="isLoading"
+        :disabled="isLoading || hasActiveCombat || hasPendingReward"
         @click="$emit('resolveCurrentEvent')"
       >
-        Résoudre →
+        <span v-if="hasActiveCombat">Combat en cours</span>
+        <span v-else-if="hasPendingReward">Récompense en attente</span>
+        <span v-else-if="node.state === 'Available'">Confirmer et résoudre →</span>
+        <span v-else>Résoudre →</span>
       </button>
 
       <button
         v-if="node.state === 'Resolved'"
         class="ghost-button node-detail__confirm"
-        :disabled="isLoading"
+        :disabled="isLoading || hasActiveCombat || hasPendingReward"
         @click="$emit('generateNextNodes')"
       >
-        Prochaine strate →
+        <span v-if="hasActiveCombat">Combat en cours</span>
+        <span v-else-if="hasPendingReward">Récompense en attente</span>
+        <span v-else>Prochaine strate →</span>
       </button>
     </template>
 
     <template v-else>
       <p class="system-label">Aucun nœud sélectionné</p>
+
       <h2>Choisis un chemin</h2>
+
       <p>
-        Les chemins disponibles sont visibles sur la carte. Une fois confirmé,
-        le Palais ferme les alternatives.
+        Les chemins disponibles sont visibles sur la carte. Clique un nœud pour
+        l’observer, puis confirme ton choix depuis ce panneau.
       </p>
     </template>
   </section>

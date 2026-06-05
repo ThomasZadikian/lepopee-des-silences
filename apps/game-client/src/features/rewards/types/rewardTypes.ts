@@ -1,14 +1,27 @@
 import type { RunDto } from '../../runs/types/runTypes';
 
+export type RewardChoiceDto = {
+  id: string;
+  rewardType: string;
+  label: string;
+  description: string;
+  payloadKey?: string;
+  rarity?: string;
+  isSelected?: boolean;
+};
+
 export type RewardOptionDto = {
   id?: string;
   rewardId?: string;
   key?: string;
   name?: string;
   displayName?: string;
+  label?: string;
   rarity?: string;
   rewardType?: string;
+  type?: string;
   description?: string;
+  payloadKey?: string;
   isSelected?: boolean;
 };
 
@@ -16,9 +29,14 @@ export type RewardOfferDto = {
   id: string;
   runId?: string;
   source?: string;
+  state?: string;
+  status?: string;
   title?: string;
   description?: string;
-  options: RewardOptionDto[];
+  choices?: RewardChoiceDto[];
+  options?: RewardOptionDto[];
+  selectedChoiceId?: string | null;
+  selectedOptionId?: string | null;
 };
 
 export type PendingRewardOfferResponse =
@@ -28,7 +46,9 @@ export type PendingRewardOfferResponse =
 
 export type SelectRewardRequest = {
   rewardOfferId?: string;
+  rewardChoiceId?: string;
   rewardOptionId?: string;
+  choiceId?: string;
   optionId?: string;
 };
 
@@ -36,6 +56,7 @@ export type SelectRewardResponse =
   | RunDto
   | { run: RunDto }
   | { rewardOffer: RewardOfferDto }
+  | { offer: RewardOfferDto }
   | unknown;
 
 export function unwrapRewardOffer(
