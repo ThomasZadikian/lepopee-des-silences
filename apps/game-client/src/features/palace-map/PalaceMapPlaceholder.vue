@@ -8,6 +8,8 @@ const props = defineProps<{
   availableNodes: NodeDto[];
   selectedNodeId?: string | null;
   currentRow?: number;
+  layoutTemplateKey?: string | null;
+  layoutTemplateVersion?: string | null;
 }>();
 
 const emit = defineEmits<{
@@ -306,10 +308,11 @@ function getNodePulseDelay(node: NodeDto): number {
   <section class="map">
     <header>
       <div>
-        <p class="system-label">PLACEHOLDER_PALACE_MAP_HEADER</p>
+        <p class="system-label">{{ layoutTemplateKey ?? 'CARTE' }}</p>
+        <p v-if="layoutTemplateVersion" class="system-dim">{{ layoutTemplateVersion }}</p>
       </div>
 
-      <span class="system-value">PLACEHOLDER_NUMBER_OF_NODES {{ nodes.length }}</span>
+      <span class="system-value">{{ nodes.length }} NŒUDS · ROW {{ currentRow ?? 0 }}/{{ Math.max(...nodes.map(n => n.row), 0) }}</span>
     </header>
 
     <div class="map__canvas" aria-label="Carte roguelite">

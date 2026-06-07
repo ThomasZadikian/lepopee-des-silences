@@ -39,6 +39,8 @@ export type RoomDto = {
   bossPreview: BossPreviewDto;
   nodes: NodeDto[];
   availableNodes: NodeDto[];
+  layoutTemplateKey: string | null;
+  layoutTemplateVersion: string | null;
 };
 
 export type RunDto = {

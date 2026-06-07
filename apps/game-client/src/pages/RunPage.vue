@@ -119,6 +119,8 @@ watch(
               :available-nodes="runStore.availableNodes"
               :selected-node-id="runStore.selectedNode?.id ?? null"
               :current-row="runStore.currentRun.currentRoom.currentNodeDepth"
+              :layout-template-key="runStore.currentRun.currentRoom.layoutTemplateKey"
+              :layout-template-version="runStore.currentRun.currentRoom.layoutTemplateVersion"
               @choose-node="runStore.previewNode"
             />
 

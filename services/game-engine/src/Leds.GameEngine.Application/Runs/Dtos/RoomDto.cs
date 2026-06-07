@@ -13,7 +13,9 @@ public sealed record RoomDto(
     int TotalNodeCount,
     RoomBossProfileDto BossPreview,
     IReadOnlyCollection<MapNodeDto> Nodes,
-    IReadOnlyCollection<MapNodeDto> AvailableNodes)
+    IReadOnlyCollection<MapNodeDto> AvailableNodes,
+    string? LayoutTemplateKey,
+    string? LayoutTemplateVersion)
 {
     public static RoomDto FromDomain(Room room)
     {
@@ -28,6 +30,8 @@ public sealed record RoomDto(
             room.TotalNodeCount,
             RoomBossProfileDto.FromDomain(room.BossProfile),
             room.Nodes.Select(MapNodeDto.FromDomain).ToArray(),
-            room.AvailableNodes.Select(MapNodeDto.FromDomain).ToArray());
+            room.AvailableNodes.Select(MapNodeDto.FromDomain).ToArray(),
+            room.LayoutTemplateKey,
+            room.LayoutTemplateVersion);
     }
 }

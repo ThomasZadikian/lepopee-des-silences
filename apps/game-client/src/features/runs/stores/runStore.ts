@@ -73,20 +73,9 @@ export const useRunStore = defineStore('run', () => {
       return selected;
     }
 
-    const resolvedAtCurrentDepth = allNodes.value.find((node) =>
-      node.state === 'Resolved' &&
-      node.row === room.currentNodeDepth
-    );
-
-    if (resolvedAtCurrentDepth) {
-      return resolvedAtCurrentDepth;
-    }
-
-    const lastResolved = [...allNodes.value]
-      .filter((node) => node.state === 'Resolved')
-      .sort((left, right) => right.row - left.row)[0];
-
-    return lastResolved ?? null;
+    // Ne pas revenir sur un nœud résolu : NodeDetailPanel afficherait "Generate Next Nodes"
+    // sur un ancien nœud, permettant de sauter des rows sans faire de sélection.
+    return null;
   });
 
   const availableNodes = computed(() => {
