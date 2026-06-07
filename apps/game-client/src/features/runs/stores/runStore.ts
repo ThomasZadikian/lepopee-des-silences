@@ -293,6 +293,10 @@ async function execute(action: () => Promise<void>) {
       resetPreviewedNode();
 
       await refreshPendingRewardIfNeeded();
+
+      // Si aucune récompense n'est en attente, progresser directement vers les
+      // prochains nodes (cas théorique : combat sans reward offer).
+      await progressRunInlineIfReady();
     });
   }
 
@@ -321,7 +325,33 @@ async function execute(action: () => Promise<void>) {
       resetPreviewedNode();
 
       await refreshPendingRewardIfNeeded();
+
+      // La récompense a été sélectionnée : débloquer les prochains nodes.
+      // Ne pas progresser si la room est terminée (boss vaincu → RoomResolved).
+      await progressRunInlineIfReady();
     });
+  }
+
+  // Appelée à l'intérieur d'un bloc execute() existant — ne crée pas de nouveau
+  // execute() pour éviter les imbrications. Avance la room si l'état le permet.
+  async function progressRunInlineIfReady() {
+    if (!currentRun.value) {
+      return;
+    }
+
+    // RoomResolved = boss vaincu → room terminée → MoveToNextRoom est la prochaine étape.
+    // On ne progresse pas avec ProgressRun dans ce cas.
+    if (currentRun.value.status === 'RoomResolved') {
+      return;
+    }
+
+    // Garde de sécurité : ne pas progresser si une récompense est encore en attente.
+    if (pendingRewardOffer.value || currentRun.value.pendingRewardOfferId) {
+      return;
+    }
+
+    const response = await runApi.progressRun(currentRun.value.id);
+    currentRun.value = unwrapRunResponse(response);
   }
 
   async function selectCurrentEventChoice(choiceId: string) {

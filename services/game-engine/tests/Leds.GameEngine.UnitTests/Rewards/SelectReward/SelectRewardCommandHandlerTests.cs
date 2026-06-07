@@ -153,6 +153,53 @@ public sealed class SelectRewardCommandHandlerTests
     }
 
     [Fact]
+    public async Task SelectReward_ShouldClearPendingRewardAndAllowProgression()
+    {
+        // Arrange: run with a combat node resolved and a pending reward offer
+        var runWithNode = TestGameEngineFactory.CreateRunWithResolvedCurrentEvent(
+            Leds.GameEngine.Domain.Nodes.NodeEventType.Combat);
+
+        var run = runWithNode.Run;
+        var factory = CreateFactory();
+        var offer = factory.CreateCombatRewardOffer(
+            Leds.GameEngine.Domain.Rewards.RewardSource.Combat, riskLevel: 25);
+
+        run.SetPendingRewardOffer(offer.Id);
+
+        var runRepository = new Mock<IRunRepository>();
+        runRepository
+            .Setup(r => r.GetByIdAsync(run.Id, CancellationToken.None))
+            .ReturnsAsync(run);
+
+        var rewardRepository = new Mock<IRewardOfferRepository>();
+        rewardRepository
+            .Setup(r => r.GetByIdAsync(offer.Id, CancellationToken.None))
+            .ReturnsAsync(offer);
+
+        var handler = new SelectRewardCommandHandler(
+            runRepository.Object,
+            rewardRepository.Object);
+
+        var choiceId = offer.Choices.First().Id;
+
+        // Act
+        var response = await handler.Handle(
+            new SelectRewardCommand(run.Id.Value, choiceId.Value),
+            CancellationToken.None);
+
+        // Assert: reward cleared
+        response.Run.PendingRewardOfferId.Should().BeNull(
+            because: "PendingRewardOfferId must be null after selection.");
+
+        // Assert: run is still in a state that allows ProgressRun
+        run.HasActiveCombat.Should().BeFalse();
+        run.HasPendingRewardOffer.Should().BeFalse(
+            because: "HasPendingRewardOffer must be false — backend guard in ProgressRunCommandHandler.");
+        run.Status.Should().Be(RunStatus.Active,
+            because: "Run must still be Active after reward selection on a non-boss node.");
+    }
+
+    [Fact]
     public async Task Handle_ShouldThrow_WhenRewardOfferDoesNotExist()
     {
         var run = TestGameEngineFactory.CreateRun();

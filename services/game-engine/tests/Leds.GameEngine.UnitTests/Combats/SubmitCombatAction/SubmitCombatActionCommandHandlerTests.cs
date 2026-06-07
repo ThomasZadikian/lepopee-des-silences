@@ -8,6 +8,7 @@ using Leds.GameEngine.Application.Rewards.Ports;
 using Leds.GameEngine.Application.Rewards.RewardOfferFactory;
 using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Common;
+using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rewards;
 using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
@@ -301,6 +302,233 @@ public sealed class SubmitCombatActionCommandHandlerTests
         response.Result.TargetDefeated.Should().BeFalse();
         response.Run.ActiveCombatId.Should().NotBeNull();
         response.Run.CurrentRoom.State.Should().Be(RoomState.NodeSelected.ToString());
+    }
+
+    // -----------------------------------------------------------------------
+    // Post-combat state invariants (handler level)
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public async Task CompleteCombat_ShouldClearActiveCombatId()
+    {
+        var (run, combat, player, enemy) = CreateWinningCombat(NodeEventType.Combat);
+
+        var (handler, _) = CreateHandlerWithCaptureRepo(run, combat);
+
+        var response = await handler.Handle(
+            new SubmitCombatActionCommand(
+                run.Id.Value, combat.Id.Value,
+                player.Value, enemy.Value, "BasicAttack"),
+            CancellationToken.None);
+
+        response.Run.ActiveCombatId.Should().BeNull(
+            "activeCombatId must be cleared after combat completion.");
+    }
+
+    [Fact]
+    public async Task CompleteCombat_ShouldCreatePendingRewardOffer()
+    {
+        var (run, combat, player, enemy) = CreateWinningCombat(NodeEventType.Combat);
+
+        var (handler, _) = CreateHandlerWithCaptureRepo(run, combat);
+
+        var response = await handler.Handle(
+            new SubmitCombatActionCommand(
+                run.Id.Value, combat.Id.Value,
+                player.Value, enemy.Value, "BasicAttack"),
+            CancellationToken.None);
+
+        response.Run.PendingRewardOfferId.Should().NotBeNull(
+            because: "a reward offer must be created after a victorious combat.");
+    }
+
+    [Fact]
+    public async Task CompleteCombat_ShouldKeepCombatNodeResolved()
+    {
+        var (run, combat, player, enemy) = CreateWinningCombat(NodeEventType.Combat);
+
+        var (handler, _) = CreateHandlerWithCaptureRepo(run, combat);
+
+        await handler.Handle(
+            new SubmitCombatActionCommand(
+                run.Id.Value, combat.Id.Value,
+                player.Value, enemy.Value, "BasicAttack"),
+            CancellationToken.None);
+
+        var resolvedNode = run.CurrentRoom.Nodes
+            .SingleOrDefault(n => n.State == NodeState.Resolved);
+
+        resolvedNode.Should().NotBeNull(
+            because: "the combat node must remain in Resolved state after combat completion.");
+
+        resolvedNode!.EventType.Should().Be(NodeEventType.Combat);
+    }
+
+    [Fact]
+    public async Task CompleteRareCombat_ShouldCreateRareRewardOffer()
+    {
+        var (run, combat, player, enemy) = CreateWinningCombat(NodeEventType.Rare);
+
+        RewardOffer? captured = null;
+        var (handler, rewardRepo) = CreateHandlerWithCaptureRepo(run, combat);
+        rewardRepo
+            .Setup(r => r.AddAsync(It.IsAny<RewardOffer>(), CancellationToken.None))
+            .Callback<RewardOffer, CancellationToken>((offer, _) => captured = offer)
+            .Returns(Task.CompletedTask);
+
+        await handler.Handle(
+            new SubmitCombatActionCommand(
+                run.Id.Value, combat.Id.Value,
+                player.Value, enemy.Value, "BasicAttack"),
+            CancellationToken.None);
+
+        captured.Should().NotBeNull();
+        captured!.Source.Should().Be(RewardSource.Rare,
+            because: "Rare combat must yield a Rare reward tier.");
+    }
+
+    [Fact]
+    public async Task CompleteEliteCombat_ShouldCreateEliteRewardOffer()
+    {
+        var (run, combat, player, enemy) = CreateWinningCombat(NodeEventType.Elite);
+
+        RewardOffer? captured = null;
+        var (handler, rewardRepo) = CreateHandlerWithCaptureRepo(run, combat);
+        rewardRepo
+            .Setup(r => r.AddAsync(It.IsAny<RewardOffer>(), CancellationToken.None))
+            .Callback<RewardOffer, CancellationToken>((offer, _) => captured = offer)
+            .Returns(Task.CompletedTask);
+
+        await handler.Handle(
+            new SubmitCombatActionCommand(
+                run.Id.Value, combat.Id.Value,
+                player.Value, enemy.Value, "BasicAttack"),
+            CancellationToken.None);
+
+        captured.Should().NotBeNull();
+        captured!.Source.Should().Be(RewardSource.Elite,
+            because: "Elite combat must yield an Elite reward tier.");
+    }
+
+    [Fact]
+    public async Task CompleteBossCombat_ShouldCreateBossRewardOffer_AndSetRoomToRoomResolved()
+    {
+        // Use a RoomBoss node (the boss is reached at the end of the room)
+        var runWithNode = TestGameEngineFactory.CreateRunWithSelectedTargetNode(
+            NodeEventType.RoomBoss);
+        var run = runWithNode.Run;
+
+        var player = CombatantSnapshot.Create(
+            "player-runtime-v1", "Player", CombatantSide.Player,
+            maxHealth: 40, attack: 999, defense: 0, speed: 10);
+
+        var enemy = CombatantSnapshot.Create(
+            "enemy-fragile-v1", "Fragile Enemy", CombatantSide.Enemy,
+            maxHealth: 5, attack: 1, defense: 0, speed: 1);
+
+        var combat = CombatInstance.Create(new[] { player, enemy });
+        run.SetActiveCombat(combat.Id);
+
+        RewardOffer? captured = null;
+
+        var runRepository = new Mock<IRunRepository>();
+        runRepository
+            .Setup(r => r.GetByIdAsync(run.Id, CancellationToken.None))
+            .ReturnsAsync(run);
+
+        var combatRepository = new Mock<ICombatInstanceRepository>();
+        combatRepository
+            .Setup(r => r.GetByIdAsync(combat.Id, CancellationToken.None))
+            .ReturnsAsync(combat);
+
+        var rewardRepository = new Mock<IRewardOfferRepository>();
+        rewardRepository
+            .Setup(r => r.AddAsync(It.IsAny<RewardOffer>(), CancellationToken.None))
+            .Callback<RewardOffer, CancellationToken>((offer, _) => captured = offer)
+            .Returns(Task.CompletedTask);
+
+        var handler = new SubmitCombatActionCommandHandler(
+            runRepository.Object,
+            combatRepository.Object,
+            rewardRepository.Object,
+            CreateRewardOfferFactory(),
+            CreateClockMock().Object);
+
+        var response = await handler.Handle(
+            new SubmitCombatActionCommand(
+                run.Id.Value, combat.Id.Value,
+                player.Id.Value, enemy.Id.Value, "BasicAttack"),
+            CancellationToken.None);
+
+        response.Run.ActiveCombatId.Should().BeNull();
+        response.Run.PendingRewardOfferId.Should().NotBeNull(
+            because: "boss combat must create a reward offer.");
+
+        captured.Should().NotBeNull();
+        captured!.Source.Should().Be(RewardSource.RoomBoss,
+            "RoomBoss combat must yield a RoomBoss reward tier.");
+
+        // Le nœud cible (row 0, isBoss=false) n'est pas le vrai boss de la room.
+        // La room reste Active — RoomResolved n'est atteint que quand le boss réel (isBoss=true) est vaincu.
+        response.Run.Status.Should().Be("Active",
+            "the target RoomBoss node at row 0 is not isBoss=true, so the room is not completed.");
+    }
+
+    // -----------------------------------------------------------------------
+    // Helpers
+    // -----------------------------------------------------------------------
+
+    private static (SubmitCombatActionCommandHandler handler,
+                    Mock<IRewardOfferRepository> rewardRepo)
+        CreateHandlerWithCaptureRepo(Run run, CombatInstance combat)
+    {
+        var runRepository = new Mock<IRunRepository>();
+        runRepository
+            .Setup(r => r.GetByIdAsync(run.Id, CancellationToken.None))
+            .ReturnsAsync(run);
+
+        var combatRepository = new Mock<ICombatInstanceRepository>();
+        combatRepository
+            .Setup(r => r.GetByIdAsync(combat.Id, CancellationToken.None))
+            .ReturnsAsync(combat);
+
+        var rewardRepository = new Mock<IRewardOfferRepository>();
+        rewardRepository
+            .Setup(r => r.AddAsync(It.IsAny<RewardOffer>(), CancellationToken.None))
+            .Returns(Task.CompletedTask);
+
+        var handler = new SubmitCombatActionCommandHandler(
+            runRepository.Object,
+            combatRepository.Object,
+            rewardRepository.Object,
+            CreateRewardOfferFactory(),
+            CreateClockMock().Object);
+
+        return (handler, rewardRepository);
+    }
+
+    /// <summary>
+    /// Creates a run with a selected node of the given event type,
+    /// and a combat instance the player can win in one hit.
+    /// </summary>
+    private static (Run run, CombatInstance combat, CombatantId playerId, CombatantId enemyId)
+        CreateWinningCombat(NodeEventType eventType)
+    {
+        var runWithNode = TestGameEngineFactory.CreateRunWithSelectedTargetNode(eventType);
+        var run = runWithNode.Run;
+
+        var player = CombatantSnapshot.Create(
+            "player-runtime-v1", "Player", CombatantSide.Player,
+            maxHealth: 40, attack: 999, defense: 0, speed: 10);
+
+        var enemy = CombatantSnapshot.Create(
+            "enemy-fragile-v1", "Fragile Enemy", CombatantSide.Enemy,
+            maxHealth: 5, attack: 1, defense: 0, speed: 1);
+
+        var combat = CombatInstance.Create(new[] { player, enemy });
+        run.SetActiveCombat(combat.Id);
+
+        return (run, combat, player.Id, enemy.Id);
     }
 
     private static (Run run, CombatInstance combat, CombatantId playerId) CreateRunWithActiveCombat()

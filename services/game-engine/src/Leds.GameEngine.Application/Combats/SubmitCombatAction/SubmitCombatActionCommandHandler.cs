@@ -111,12 +111,14 @@ public sealed class SubmitCombatActionCommandHandler
         {
             if (result.WinningSide == CombatantSide.Player)
             {
-                run.CompleteActiveCombat(combat.Id);
-
+                // Capturer le nœud AVANT CompleteActiveCombat : celui-ci appelle
+                // ResolveCurrentEvent() qui fait passer le nœud Selected → Resolved.
                 var room = run.CurrentRoom;
                 var combatNode = room.Nodes.SingleOrDefault(n =>
                     n.State == NodeState.Selected &&
                     n.Row == room.CurrentNodeDepth);
+
+                run.CompleteActiveCombat(combat.Id);
 
                 var source = combatNode?.EventType switch
                 {
