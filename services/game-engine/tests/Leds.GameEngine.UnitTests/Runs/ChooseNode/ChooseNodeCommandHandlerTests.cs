@@ -33,9 +33,7 @@ public sealed class ChooseNodeCommandHandlerTests
         response.Run.CurrentRoom.State.Should().Be(RoomState.NodeSelected.ToString());
         response.Run.CurrentRoom.CurrentNodeDepth.Should().Be(0);
 
-        var allNodes = response.Run.CurrentRoom.NodeLayers
-            .SelectMany(layer => layer.Nodes)
-            .ToArray();
+        var allNodes = response.Run.CurrentRoom.Nodes.ToArray();
 
         allNodes.Should().HaveCount(response.Run.CurrentRoom.TotalNodeCount);
         allNodes.Should().HaveCountGreaterThanOrEqualTo(6);
@@ -45,27 +43,27 @@ public sealed class ChooseNodeCommandHandlerTests
             .Single(node => node.Id == selectedNode.Id.Value);
 
         selectedNodeDto.State.Should().Be(NodeState.Selected.ToString());
-        selectedNodeDto.NodeDepth.Should().Be(0);
+        selectedNodeDto.Row.Should().Be(0);
 
         allNodes
-            .Where(node => node.NodeDepth == 0 && node.Id != selectedNode.Id.Value)
+            .Where(node => node.Row == 0 && node.Id != selectedNode.Id.Value)
             .Should()
             .OnlyContain(node => node.State == NodeState.Locked.ToString());
 
         allNodes
-            .Where(node => node.NodeDepth > 0)
+            .Where(node => node.Row > 0)
             .Should()
             .OnlyContain(node =>
                 node.State == NodeState.Planned.ToString() ||
                 node.State == NodeState.Unreachable.ToString());
 
         allNodes
-            .Where(node => node.NodeDepth > 0 && IsReachableFrom(selectedNode.Id.Value, node, allNodes))
+            .Where(node => node.Row > 0 && IsReachableFrom(selectedNode.Id.Value, node, allNodes))
             .Should()
             .OnlyContain(node => node.State == NodeState.Planned.ToString());
 
         allNodes
-            .Where(node => node.NodeDepth > 0 && !IsReachableFrom(selectedNode.Id.Value, node, allNodes))
+            .Where(node => node.Row > 0 && !IsReachableFrom(selectedNode.Id.Value, node, allNodes))
             .Should()
             .OnlyContain(node => node.State == NodeState.Unreachable.ToString());
 
@@ -73,15 +71,7 @@ public sealed class ChooseNodeCommandHandlerTests
 
         allNodes
             .Should()
-            .ContainSingle(node => node.IsRoomBossNode);
-
-        allNodes
-            .Should()
-            .OnlyContain(node => node.EventCount >= 1 && node.EventCount <= 4);
-
-        allNodes
-            .Should()
-            .OnlyContain(node => node.EventTypes.Count >= 1 && node.EventTypes.Count <= 4);
+            .ContainSingle(node => node.IsBoss);
 
         repository.Verify(
             repo => repo.UpdateAsync(run, CancellationToken.None),
@@ -112,8 +102,8 @@ public sealed class ChooseNodeCommandHandlerTests
 
     private static bool IsReachableFrom(
         Guid ancestorNodeId,
-        Leds.GameEngine.Application.Runs.Dtos.NodeDto node,
-        IReadOnlyCollection<Leds.GameEngine.Application.Runs.Dtos.NodeDto> allNodes)
+        Leds.GameEngine.Application.Runs.Dtos.MapNodeDto node,
+        IReadOnlyCollection<Leds.GameEngine.Application.Runs.Dtos.MapNodeDto> allNodes)
     {
         if (node.ParentNodeIds.Contains(ancestorNodeId))
         {

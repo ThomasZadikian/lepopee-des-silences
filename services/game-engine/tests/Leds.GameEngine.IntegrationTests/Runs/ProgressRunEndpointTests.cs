@@ -66,7 +66,7 @@ public sealed class ProgressRunEndpointTests : RunIntegrationTestBase, IClassFix
 
         payload.Run.CurrentRoom.AvailableNodes
             .Should()
-            .OnlyContain(node => node.NodeDepth == payload.Run.CurrentRoom.CurrentNodeDepth);
+            .OnlyContain(node => node.Row == payload.Run.CurrentRoom.CurrentNodeDepth);
     }
 
     [Fact]
@@ -111,7 +111,7 @@ public sealed class ProgressRunEndpointTests : RunIntegrationTestBase, IClassFix
         var runId = startRunResponse.Run.Id;
 
         var chosenNode = startRunResponse.Run.CurrentRoom.AvailableNodes
-            .FirstOrDefault(n => n.EventTypes.First() == "Combat");
+            .FirstOrDefault(n => n.Type == "Combat");
 
         if (chosenNode is null)
         {
@@ -155,7 +155,7 @@ public sealed class ProgressRunEndpointTests : RunIntegrationTestBase, IClassFix
         var runId = startRunResponse.Run.Id;
 
         var chosenNode = startRunResponse.Run.CurrentRoom.AvailableNodes
-            .FirstOrDefault(n => n.EventTypes.First() == "Combat");
+            .FirstOrDefault(n => n.Type == "Combat");
 
         if (chosenNode is null)
         {
@@ -296,7 +296,7 @@ public sealed class ProgressRunEndpointTests : RunIntegrationTestBase, IClassFix
 
         currentRoom.State.Should().Be("BossReached");
         currentRoom.AvailableNodes.Should().ContainSingle();
-        currentRoom.AvailableNodes.Single().IsRoomBossNode.Should().BeTrue();
-        currentRoom.AvailableNodes.Single().EventTypes.Should().Contain("RoomBoss");
+        currentRoom.AvailableNodes.Single().IsBoss.Should().BeTrue();
+        currentRoom.AvailableNodes.Single().Type.Should().Be("RoomBoss");
     }
 }

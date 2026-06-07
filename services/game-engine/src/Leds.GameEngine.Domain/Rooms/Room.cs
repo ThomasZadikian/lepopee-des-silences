@@ -5,7 +5,7 @@ namespace Leds.GameEngine.Domain.Rooms;
 
 public sealed class Room
 {
-    private readonly List<Node> _nodes;
+    private readonly List<MapNode> _nodes;
 
     private Room(
         RoomId id,
@@ -14,7 +14,9 @@ public sealed class Room
         string theme,
         RoomBossProfile bossProfile,
         RoomState state,
-        IEnumerable<Node> nodes)
+        IEnumerable<MapNode> nodes,
+        string? layoutTemplateKey,
+        string? layoutTemplateVersion)
     {
         Id = id;
         Depth = depth;
@@ -24,7 +26,9 @@ public sealed class Room
         State = state;
         CurrentNodeDepth = 0;
         _nodes = nodes.ToList();
-        MaxNodeDepth = _nodes.Max(node => node.NodeDepth);
+        MaxNodeDepth = _nodes.Count > 0 ? _nodes.Max(n => n.Row) : 0;
+        LayoutTemplateKey = layoutTemplateKey;
+        LayoutTemplateVersion = layoutTemplateVersion;
     }
 
     public RoomId Id { get; }
@@ -45,10 +49,14 @@ public sealed class Room
 
     public RoomState State { get; private set; }
 
-    public IReadOnlyCollection<Node> Nodes => _nodes.AsReadOnly();
+    public IReadOnlyCollection<MapNode> Nodes => _nodes.AsReadOnly();
 
-    public IReadOnlyCollection<Node> AvailableNodes => _nodes
-        .Where(node => node.NodeDepth == CurrentNodeDepth && node.State == NodeState.Available)
+    public string? LayoutTemplateKey { get; }
+
+    public string? LayoutTemplateVersion { get; }
+
+    public IReadOnlyCollection<MapNode> AvailableNodes => _nodes
+        .Where(n => n.Row == CurrentNodeDepth && n.State == NodeState.Available)
         .ToArray();
 
     public static Room Create(
@@ -56,7 +64,7 @@ public sealed class Room
         RoomType roomType,
         string theme,
         RoomBossProfile bossProfile,
-        IEnumerable<Node> nodes)
+        IEnumerable<MapNode> nodes)
     {
         if (depth is < 0 or > 10)
         {
@@ -73,76 +81,63 @@ public sealed class Room
         var nodeList = nodes?.ToList()
             ?? throw new DomainException("Room nodes are required.");
 
-        if (nodeList.Count is < 6 or > 10)
+        if (nodeList.Count < 2)
         {
-            throw new DomainException("A room must contain between 6 and 10 nodes.");
+            throw new DomainException("A room must contain at least 2 nodes.");
         }
 
-        var maxNodeDepth = nodeList.Max(node => node.NodeDepth);
+        var maxRow = nodeList.Max(n => n.Row);
 
-        if (maxNodeDepth < 1)
-        {
-            throw new DomainException("A room must contain at least one progression layer before the boss.");
-        }
-
-        var bossNodes = nodeList.Where(node => node.IsRoomBossNode).ToArray();
+        var bossNodes = nodeList.Where(n => n.IsBoss).ToArray();
 
         if (bossNodes.Length != 1)
         {
-            throw new DomainException("A room must contain exactly one room boss node.");
+            throw new DomainException("A room must contain exactly one boss node.");
         }
 
         var bossNode = bossNodes.Single();
 
-        if (bossNode.NodeDepth != maxNodeDepth)
+        if (bossNode.Row != maxRow)
         {
-            throw new DomainException("The room boss node must be placed at the final node depth.");
+            throw new DomainException("The boss node must be placed at the final row.");
         }
 
         if (bossNode.State != NodeState.Planned)
         {
-            throw new DomainException("The room boss node must start as planned.");
+            throw new DomainException("The boss node must start as planned.");
         }
 
-        var finalLayerNodes = nodeList
-        .Where(node => node.NodeDepth == maxNodeDepth)
-        .ToArray();
+        var finalRowNodes = nodeList.Where(n => n.Row == maxRow).ToArray();
 
-        if (finalLayerNodes.Length != 1 || !finalLayerNodes.Single().IsRoomBossNode)
+        if (finalRowNodes.Length != 1 || !finalRowNodes.Single().IsBoss)
         {
-            throw new DomainException("The final node depth must contain exactly one room boss node.");
+            throw new DomainException("The final row must contain exactly one boss node.");
         }
 
-        var initialNodes = nodeList.Where(node => node.NodeDepth == 0).ToArray();
+        var initialNodes = nodeList.Where(n => n.Row == 0).ToArray();
 
-        if (initialNodes.Length is < 1 or > 4)
+        if (initialNodes.Length < 1)
         {
-            throw new DomainException("Initial node layer must contain between 1 and 4 nodes.");
+            throw new DomainException("Initial row must contain at least 1 node.");
         }
 
-        if (initialNodes.Any(node => node.State != NodeState.Available))
+        if (initialNodes.Any(n => n.State != NodeState.Available))
         {
-            throw new DomainException("Initial node layer must start as available.");
+            throw new DomainException("Initial row nodes must start as available.");
         }
 
-        var futureNodes = nodeList.Where(node => node.NodeDepth > 0).ToArray();
+        var futureNodes = nodeList.Where(n => n.Row > 0).ToArray();
 
-        if (futureNodes.Any(node => node.State != NodeState.Planned))
+        if (futureNodes.Any(n => n.State != NodeState.Planned))
         {
-            throw new DomainException("Future node layers must start as planned.");
+            throw new DomainException("Future row nodes must start as planned.");
         }
 
-        var groupedLayers = nodeList.GroupBy(node => node.NodeDepth).ToArray();
-
-        if (groupedLayers.Any(group => group.Count() is < 1 or > 4))
-        {
-            throw new DomainException("Each node layer must contain between 1 and 4 nodes.");
-        }
-
-        EnsureLayerDepthsAreContinuous(nodeList, maxNodeDepth);
+        EnsureRowsAreContinuous(nodeList, maxRow);
         EnsureParentReferencesAreValid(nodeList);
-        EnsureAllNonBossNodesHaveChildren(nodeList, maxNodeDepth);
+        EnsureAllNonBossNodesHaveChildren(nodeList, maxRow);
         EnsureAllPathsConvergeToBoss(nodeList, bossNode);
+        EnsureNoCrossRowConnections(nodeList);
 
         return new Room(
             RoomId.New(),
@@ -151,12 +146,47 @@ public sealed class Room
             theme.Trim(),
             bossProfile,
             RoomState.Active,
-            nodeList);
+            nodeList,
+            layoutTemplateKey: null,
+            layoutTemplateVersion: null);
     }
 
-    public Node GetNode(NodeId nodeId)
+    public static Room CreateFromTemplate(
+        int depth,
+        RoomType roomType,
+        string theme,
+        RoomBossProfile bossProfile,
+        IEnumerable<MapNode> nodes,
+        string layoutTemplateKey,
+        string layoutTemplateVersion)
     {
-        return _nodes.FirstOrDefault(node => node.Id == nodeId)
+        var room = Create(depth, roomType, theme, bossProfile, nodes);
+
+        if (string.IsNullOrWhiteSpace(layoutTemplateKey))
+        {
+            throw new DomainException("Layout template key is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(layoutTemplateVersion))
+        {
+            throw new DomainException("Layout template version is required.");
+        }
+
+        return new Room(
+            room.Id,
+            room.Depth,
+            room.RoomType,
+            room.Theme,
+            room.BossProfile,
+            room.State,
+            room._nodes,
+            layoutTemplateKey.Trim(),
+            layoutTemplateVersion.Trim());
+    }
+
+    public MapNode GetNode(NodeId nodeId)
+    {
+        return _nodes.FirstOrDefault(n => n.Id == nodeId)
             ?? throw new DomainException("Node does not belong to this room.");
     }
 
@@ -169,16 +199,15 @@ public sealed class Room
 
         var selectedNode = GetNode(nodeId);
 
-        if (selectedNode.NodeDepth != CurrentNodeDepth)
+        if (selectedNode.Row != CurrentNodeDepth)
         {
             throw new DomainException("Only a node from the current room depth can be selected.");
         }
 
         selectedNode.Select();
 
-        foreach (var node in _nodes.Where(node =>
-                     node.NodeDepth == CurrentNodeDepth &&
-                     node.Id != nodeId))
+        foreach (var node in _nodes.Where(n =>
+                     n.Row == CurrentNodeDepth && n.Id != nodeId))
         {
             node.Lock();
         }
@@ -195,14 +224,13 @@ public sealed class Room
             throw new DomainException("Room must have a selected node before resolving an event.");
         }
 
-        var selectedNode = _nodes.SingleOrDefault(node =>
-                node.NodeDepth == CurrentNodeDepth &&
-                node.State == NodeState.Selected)
+        var selectedNode = _nodes.SingleOrDefault(n =>
+                n.Row == CurrentNodeDepth && n.State == NodeState.Selected)
             ?? throw new DomainException("No node has been selected for the current room depth.");
 
         selectedNode.Resolve();
 
-        State = selectedNode.IsRoomBossNode
+        State = selectedNode.IsBoss
             ? RoomState.Completed
             : RoomState.NodeResolved;
     }
@@ -219,18 +247,17 @@ public sealed class Room
             throw new DomainException("Room has already reached its final node depth.");
         }
 
-        var resolvedNode = _nodes.SingleOrDefault(node =>
-                node.NodeDepth == CurrentNodeDepth &&
-                node.State == NodeState.Resolved)
+        var resolvedNode = _nodes.SingleOrDefault(n =>
+                n.Row == CurrentNodeDepth && n.State == NodeState.Resolved)
             ?? throw new DomainException("No node has been resolved at the current room depth.");
 
         var nextDepth = CurrentNodeDepth + 1;
 
         var nextLayerNodes = _nodes
-            .Where(node =>
-                node.NodeDepth == nextDepth &&
-                node.State == NodeState.Planned &&
-                node.ParentNodeIds.Contains(resolvedNode.Id))
+            .Where(n =>
+                n.Row == nextDepth &&
+                n.State == NodeState.Planned &&
+                n.ParentNodeIds.Contains(resolvedNode.Id))
             .ToArray();
 
         if (nextLayerNodes.Length == 0)
@@ -245,14 +272,14 @@ public sealed class Room
 
         CurrentNodeDepth = nextDepth;
 
-        State = nextLayerNodes.Any(node => node.IsRoomBossNode)
+        State = nextLayerNodes.Any(n => n.IsBoss)
             ? RoomState.BossReached
             : RoomState.Active;
     }
 
-    private void MarkUnreachableBranches(Node selectedNode)
+    private void MarkUnreachableBranches(MapNode selectedNode)
     {
-        foreach (var node in _nodes.Where(node => node.NodeDepth > selectedNode.NodeDepth))
+        foreach (var node in _nodes.Where(n => n.Row > selectedNode.Row))
         {
             if (!IsReachableFrom(selectedNode.Id, node))
             {
@@ -261,7 +288,7 @@ public sealed class Room
         }
     }
 
-    private bool IsReachableFrom(NodeId ancestorNodeId, Node node)
+    private bool IsReachableFrom(NodeId ancestorNodeId, MapNode node)
     {
         if (node.ParentNodeIds.Contains(ancestorNodeId))
         {
@@ -281,38 +308,32 @@ public sealed class Room
         return false;
     }
 
-    private static void EnsureLayerDepthsAreContinuous(
-        IReadOnlyCollection<Node> nodes,
-        int maxNodeDepth)
+    private static void EnsureRowsAreContinuous(
+        IReadOnlyCollection<MapNode> nodes, int maxRow)
     {
-        var depths = nodes
-            .Select(node => node.NodeDepth)
+        var rows = nodes
+            .Select(n => n.Row)
             .Distinct()
             .Order()
             .ToArray();
 
-        var expectedDepths = Enumerable.Range(0, maxNodeDepth + 1).ToArray();
+        var expectedRows = Enumerable.Range(0, maxRow + 1).ToArray();
 
-        if (!depths.SequenceEqual(expectedDepths))
+        if (!rows.SequenceEqual(expectedRows))
         {
-            throw new DomainException("Room node depths must be continuous from 0 to the boss depth.");
+            throw new DomainException("Room rows must be continuous from 0 to the boss row.");
         }
     }
 
-    private static void EnsureParentReferencesAreValid(IReadOnlyCollection<Node> nodes)
+    private static void EnsureParentReferencesAreValid(IReadOnlyCollection<MapNode> nodes)
     {
-        var nodesById = nodes.ToDictionary(node => node.Id);
+        var nodesById = nodes.ToDictionary(n => n.Id);
 
         foreach (var node in nodes)
         {
-            if (node.NodeDepth == 0 && node.ParentNodeIds.Count != 0)
+            if (node.Row == 0 && node.ParentNodeIds.Count != 0)
             {
-                throw new DomainException("Initial layer nodes cannot have parents.");
-            }
-
-            if (node.NodeDepth > 0 && node.ParentNodeIds.Count == 0)
-            {
-                throw new DomainException("Non-initial nodes must have at least one parent.");
+                throw new DomainException("Initial row nodes cannot have parents.");
             }
 
             foreach (var parentNodeId in node.ParentNodeIds)
@@ -322,32 +343,31 @@ public sealed class Room
                     throw new DomainException("Node parent reference does not belong to this room.");
                 }
 
-                if (parent.NodeDepth != node.NodeDepth - 1)
+                if (parent.Row != node.Row - 1)
                 {
-                    throw new DomainException("Node parents must belong to the previous node depth.");
+                    throw new DomainException("Node parents must belong to the previous row.");
                 }
 
-                if (parent.IsRoomBossNode)
+                if (parent.IsBoss)
                 {
-                    throw new DomainException("Room boss node cannot be used as a parent.");
+                    throw new DomainException("Boss node cannot be used as a parent.");
                 }
             }
         }
     }
 
     private static void EnsureAllNonBossNodesHaveChildren(
-        IReadOnlyCollection<Node> nodes,
-        int maxNodeDepth)
+        IReadOnlyCollection<MapNode> nodes, int maxRow)
     {
-        foreach (var node in nodes.Where(node => !node.IsRoomBossNode))
+        foreach (var node in nodes.Where(n => !n.IsBoss))
         {
-            if (node.NodeDepth >= maxNodeDepth)
+            if (node.Row >= maxRow)
             {
-                throw new DomainException("Only the room boss node can exist at the final node depth.");
+                throw new DomainException("Only the boss node can exist at the final row.");
             }
 
             var hasChild = nodes.Any(candidate =>
-                candidate.NodeDepth == node.NodeDepth + 1 &&
+                candidate.Row == node.Row + 1 &&
                 candidate.ParentNodeIds.Contains(node.Id));
 
             if (!hasChild)
@@ -358,32 +378,51 @@ public sealed class Room
     }
 
     private static void EnsureAllPathsConvergeToBoss(
-        IReadOnlyCollection<Node> nodes,
-        Node bossNode)
+        IReadOnlyCollection<MapNode> nodes, MapNode bossNode)
     {
-        foreach (var node in nodes.Where(node => !node.IsRoomBossNode))
+        foreach (var node in nodes.Where(n => !n.IsBoss))
         {
             if (!HasPathToBoss(node, bossNode, nodes))
             {
-                throw new DomainException("Every node must have a valid path to the room boss.");
+                throw new DomainException("Every node must have a valid path to the boss.");
             }
         }
     }
 
     private static bool HasPathToBoss(
-        Node currentNode,
-        Node bossNode,
-        IReadOnlyCollection<Node> nodes)
+        MapNode currentNode, MapNode bossNode, IReadOnlyCollection<MapNode> nodes)
     {
         var children = nodes
-            .Where(node => node.ParentNodeIds.Contains(currentNode.Id))
+            .Where(n => n.ParentNodeIds.Contains(currentNode.Id))
             .ToArray();
 
-        if (children.Any(child => child.Id == bossNode.Id))
+        if (children.Any(c => c.Id == bossNode.Id))
         {
             return true;
         }
 
-        return children.Any(child => HasPathToBoss(child, bossNode, nodes));
+        return children.Any(c => HasPathToBoss(c, bossNode, nodes));
+    }
+
+    private static void EnsureNoCrossRowConnections(IReadOnlyCollection<MapNode> nodes)
+    {
+        var nodesById = nodes.ToDictionary(n => n.Id);
+
+        foreach (var node in nodes)
+        {
+            foreach (var parentNodeId in node.ParentNodeIds)
+            {
+                if (!nodesById.TryGetValue(parentNodeId, out var parent))
+                {
+                    continue;
+                }
+
+                if (Math.Abs(parent.Lane - node.Lane) > 1)
+                {
+                    throw new DomainException(
+                        "Node connections must be between same or adjacent lanes only.");
+                }
+            }
+        }
     }
 }

@@ -7,4 +7,4 @@ namespace Leds.GameEngine.Application.Events.ResolveNodeEvent;
 public sealed record NodeEventResolutionContext(
     Run Run,
     Room Room,
-    Node Node);
+    MapNode Node);

@@ -1,23 +1,14 @@
-export type NodeEventDto = {
-  eventType: string;
-  order: number;
-  status?: string;
-};
-
 export type NodeDto = {
   id: string;
-  events?: NodeEventDto[];
-  eventTypes: string[];
-  eventCount: number;
-  resolvedEventType?: string | null;
+  type: string;
+  row: number;
+  lane: number;
   riskLevel: number;
   rewardProfile: string;
-  state: string;
-  nodeDepth: number;
-  parentNodeId?: string | null;
   parentNodeIds: string[];
-  isRoomBossNode: boolean;
-  chosenEventOptionId?: string | null;
+  state: string;
+  isBoss: boolean;
+  isInitial: boolean;
   hasChosenEventOption: boolean;
 };
 
@@ -27,11 +18,6 @@ export type ActivePalaceLawDto = {
   displayName: string;
   description: string;
   domain: string;
-};
-
-export type NodeLayerDto = {
-  depth: number;
-  nodes: NodeDto[];
 };
 
 export type BossPreviewDto = {
@@ -51,7 +37,7 @@ export type RoomDto = {
   maxNodeDepth: number;
   totalNodeCount: number;
   bossPreview: BossPreviewDto;
-  nodeLayers: NodeLayerDto[];
+  nodes: NodeDto[];
   availableNodes: NodeDto[];
 };
 

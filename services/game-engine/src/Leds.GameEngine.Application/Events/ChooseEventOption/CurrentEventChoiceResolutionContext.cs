@@ -7,5 +7,5 @@ namespace Leds.GameEngine.Application.Events.ChooseEventOption;
 public sealed record CurrentEventChoiceResolutionContext(
     Run Run,
     Room Room,
-    Node Node,
+    MapNode Node,
     string ChoiceId);

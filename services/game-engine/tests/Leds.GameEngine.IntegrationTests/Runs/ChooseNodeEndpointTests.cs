@@ -35,43 +35,39 @@ public sealed class ChooseNodeEndpointTests : IClassFixture<WebApplicationFactor
         payload.Run.CurrentRoom.State.Should().Be("NodeSelected");
         payload.Run.CurrentRoom.CurrentNodeDepth.Should().Be(0);
 
-        var allNodes = payload.Run.CurrentRoom.NodeLayers
-            .SelectMany(layer => layer.Nodes)
-            .ToArray();
+        var allNodes = payload.Run.CurrentRoom.Nodes.ToArray();
 
-        payload.Run.CurrentRoom.TotalNodeCount.Should().BeInRange(6, 10);
+        payload.Run.CurrentRoom.TotalNodeCount.Should().BeInRange(6, 30);
         allNodes.Should().HaveCount(payload.Run.CurrentRoom.TotalNodeCount);
 
         var selectedNode = allNodes.Single(node => node.Id == nodeToChoose.Id);
 
         selectedNode.State.Should().Be("Selected");
-        selectedNode.NodeDepth.Should().Be(0);
+        selectedNode.Row.Should().Be(0);
 
         allNodes
-            .Where(node => node.NodeDepth == 0 && node.Id != nodeToChoose.Id)
+            .Where(node => node.Row == 0 && node.Id != nodeToChoose.Id)
             .Should()
             .OnlyContain(node => node.State == "Locked");
 
         allNodes
-            .Where(node => node.NodeDepth > 0)
+            .Where(node => node.Row > 0)
             .Should()
             .OnlyContain(node => node.State == "Planned" || node.State == "Unreachable");
 
         allNodes
-            .Where(node => node.NodeDepth > 0 && IsReachableFrom(nodeToChoose.Id, node, allNodes))
+            .Where(node => node.Row > 0 && IsReachableFrom(nodeToChoose.Id, node, allNodes))
             .Should()
             .OnlyContain(node => node.State == "Planned");
 
         allNodes
-            .Where(node => node.NodeDepth > 0 && !IsReachableFrom(nodeToChoose.Id, node, allNodes))
+            .Where(node => node.Row > 0 && !IsReachableFrom(nodeToChoose.Id, node, allNodes))
             .Should()
             .OnlyContain(node => node.State == "Unreachable");
 
         payload.Run.CurrentRoom.AvailableNodes.Should().BeEmpty();
 
-        allNodes.Should().ContainSingle(node => node.IsRoomBossNode);
-        allNodes.Should().OnlyContain(node => node.EventCount >= 1 && node.EventCount <= 4);
-        allNodes.Should().OnlyContain(node => node.EventTypes.Count >= 1 && node.EventTypes.Count <= 4);
+        allNodes.Should().ContainSingle(node => node.IsBoss);
 
         payload.Run.CurrentRoom.BossPreview.Should().NotBeNull();
         payload.Run.CurrentRoom.BossPreview.Name.Should().NotBeNullOrWhiteSpace();
@@ -79,8 +75,8 @@ public sealed class ChooseNodeEndpointTests : IClassFixture<WebApplicationFactor
 
     private static bool IsReachableFrom(
         Guid ancestorNodeId,
-        Leds.GameEngine.Application.Runs.Dtos.NodeDto node,
-        IReadOnlyCollection<Leds.GameEngine.Application.Runs.Dtos.NodeDto> allNodes)
+        Leds.GameEngine.Application.Runs.Dtos.MapNodeDto node,
+        IReadOnlyCollection<Leds.GameEngine.Application.Runs.Dtos.MapNodeDto> allNodes)
     {
         if (node.ParentNodeIds.Contains(ancestorNodeId))
         {
@@ -135,8 +131,7 @@ public sealed class ChooseNodeEndpointTests : IClassFixture<WebApplicationFactor
     {
         var startRunResponse = await StartRunAsync();
 
-        var plannedNode = startRunResponse.Run.CurrentRoom.NodeLayers
-            .SelectMany(layer => layer.Nodes)
+        var plannedNode = startRunResponse.Run.CurrentRoom.Nodes
             .First(node => node.State == "Planned");
 
         var response = await _client.PostAsync(

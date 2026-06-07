@@ -90,7 +90,7 @@ public sealed class ResolveCurrentEventCommandHandlerTests
         response.Run.Status.Should().Be(RunStatus.Active.ToString());
         response.Run.CurrentRoom.State.Should().Be(RoomState.NodeResolved.ToString());
 
-        var resolvedNode = response.Run.CurrentRoom.NodeLayers.SelectMany(layer => layer.Nodes)
+        var resolvedNode = response.Run.CurrentRoom.Nodes
             .Single(node => node.Id == selectedNode.Id.Value);
 
         resolvedNode.State.Should().Be(NodeState.Resolved.ToString());

@@ -1,9 +1,9 @@
 using Leds.GameEngine.Application.Abstractions;
+using Leds.GameEngine.Application.RoomMaps;
 using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
 using Leds.GameEngine.Infrastructure.Generation.Randomness;
-using Leds.GameEngine.Infrastructure.Generation.Rooms.Events;
-using Leds.GameEngine.Infrastructure.Generation.Rooms.Planning;
+using Leds.GameEngine.Infrastructure.Generation.RoomMaps;
 using Leds.GameEngine.Infrastructure.Generation.Rooms.Types;
 
 namespace Leds.GameEngine.Infrastructure.Generation;
@@ -12,24 +12,21 @@ public sealed class DeterministicRunGenerator : IRunGenerator
 {
     private readonly ISeededRandomFactory _randomFactory;
     private readonly IRoomTypeResolver _roomTypeResolver;
-    private readonly IRoomPlanGenerator _roomPlanGenerator;
+    private readonly IMapRoomGenerator _mapRoomGenerator;
 
     public DeterministicRunGenerator(
         ISeededRandomFactory randomFactory,
         IRoomTypeResolver roomTypeResolver,
-        IRoomPlanGenerator roomPlanGenerator)
+        IMapRoomGenerator mapRoomGenerator)
     {
         _randomFactory = randomFactory;
         _roomTypeResolver = roomTypeResolver;
-        _roomPlanGenerator = roomPlanGenerator;
+        _mapRoomGenerator = mapRoomGenerator;
     }
 
-    public string GeneratorVersion => "gen-0.4.0";
+    public string GeneratorVersion => DefaultRoomMapLayoutTemplates.GeneratorVersion;
 
     public string MarkovMatrixVersion => StaticRoomTypeMarkovMatrixProvider.SupportedVersion;
-
-    private static string NodeEventTypeMarkovMatrixVersion =>
-        StaticNodeEventTypeMarkovMatrixProvider.SupportedVersion;
 
     public string GenerateSeed()
     {
@@ -43,9 +40,9 @@ public sealed class DeterministicRunGenerator : IRunGenerator
             roomDepth: 0,
             GeneratorVersion);
 
-        return _roomPlanGenerator.Generate(
+        return _mapRoomGenerator.Generate(
             seed,
-            NodeEventTypeMarkovMatrixVersion,
+            GeneratorVersion,
             roomDepth: 0,
             roomType: RoomType.Threshold,
             random);
@@ -68,9 +65,9 @@ public sealed class DeterministicRunGenerator : IRunGenerator
             nextRoomDepth,
             GeneratorVersion);
 
-        return _roomPlanGenerator.Generate(
+        return _mapRoomGenerator.Generate(
             run.Seed,
-            NodeEventTypeMarkovMatrixVersion,
+            GeneratorVersion,
             nextRoomDepth,
             roomType,
             random);

@@ -18,13 +18,13 @@ defineEmits<{
   <section class="panel node-detail">
     <template v-if="node">
       <p class="system-label">
-        {{ node.eventTypes[0] }} · NODE_DEEP {{ node.nodeDepth }} · {{ node.state }}
+        {{ node.type }} · NODE_DEEP {{ node.row }} · {{ node.state }}
       </p>
 
-      <h2>{{ node.eventTypes.join(' · ') }}</h2>
+      <h2>{{ node.type }}</h2>
 
       <div class="node-detail__image">
-        {{ node.eventTypes[0] }} · Placeholder
+        {{ node.type }} · Placeholder
       </div>
 
       <p>

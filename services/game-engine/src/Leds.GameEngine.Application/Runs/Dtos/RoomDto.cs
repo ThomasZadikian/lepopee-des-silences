@@ -12,19 +12,11 @@ public sealed record RoomDto(
     int MaxNodeDepth,
     int TotalNodeCount,
     RoomBossProfileDto BossPreview,
-    IReadOnlyCollection<NodeLayerDto> NodeLayers,
-    IReadOnlyCollection<NodeDto> AvailableNodes)
+    IReadOnlyCollection<MapNodeDto> Nodes,
+    IReadOnlyCollection<MapNodeDto> AvailableNodes)
 {
     public static RoomDto FromDomain(Room room)
     {
-        var nodeLayers = room.Nodes
-            .GroupBy(node => node.NodeDepth)
-            .OrderBy(group => group.Key)
-            .Select(group => new NodeLayerDto(
-                group.Key,
-                group.Select(NodeDto.FromDomain).ToArray()))
-            .ToArray();
-
         return new RoomDto(
             room.Id.Value,
             room.Depth,
@@ -35,7 +27,7 @@ public sealed record RoomDto(
             room.MaxNodeDepth,
             room.TotalNodeCount,
             RoomBossProfileDto.FromDomain(room.BossProfile),
-            nodeLayers,
-            room.AvailableNodes.Select(NodeDto.FromDomain).ToArray());
+            room.Nodes.Select(MapNodeDto.FromDomain).ToArray(),
+            room.AvailableNodes.Select(MapNodeDto.FromDomain).ToArray());
     }
 }

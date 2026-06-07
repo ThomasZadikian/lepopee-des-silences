@@ -7,25 +7,24 @@ namespace Leds.GameEngine.UnitTests.Common.Factories;
 
 public static class TestGameEngineFactory
 {
-    public static Node CreateNode(
+    public static MapNode CreateMapNode(
         NodeEventType eventType = NodeEventType.Combat,
         int riskLevel = 25,
         string rewardProfile = "standard",
-        int nodeDepth = 0,
+        int row = 0,
+        int lane = 0,
         IReadOnlyCollection<NodeId>? parentNodeIds = null,
-        bool isRoomBossNode = false,
+        bool isBoss = false,
         NodeState initialState = NodeState.Available)
     {
-        return Node.Create(
-            new[]
-            {
-                NodeEvent.Create(eventType, order: 1)
-            },
+        return MapNode.Create(
+            eventType,
             riskLevel,
             rewardProfile,
-            nodeDepth,
+            row,
+            lane,
             parentNodeIds ?? Array.Empty<NodeId>(),
-            isRoomBossNode,
+            isBoss,
             initialState);
     }
 
@@ -48,63 +47,69 @@ public static class TestGameEngineFactory
             roomType: roomType,
             dangerHint: "A first guardian watches the threshold.");
 
-        var targetNode = CreateNode(
+        var targetNode = CreateMapNode(
             eventType: targetInitialEventType,
             riskLevel: 25,
             rewardProfile: "standard",
-            nodeDepth: 0,
+            row: 0,
+            lane: 0,
             parentNodeIds: Array.Empty<NodeId>(),
-            isRoomBossNode: false,
+            isBoss: false,
             initialState: NodeState.Available);
 
-        var alternativeInitialNode = CreateNode(
+        var alternativeInitialNode = CreateMapNode(
             eventType: NodeEventType.Item,
             riskLevel: 10,
             rewardProfile: "standard",
-            nodeDepth: 0,
+            row: 0,
+            lane: 1,
             parentNodeIds: Array.Empty<NodeId>(),
-            isRoomBossNode: false,
+            isBoss: false,
             initialState: NodeState.Available);
 
-        var progressionNodeFromTarget = CreateNode(
+        var progressionNodeFromTarget = CreateMapNode(
             eventType: NodeEventType.Combat,
             riskLevel: 30,
             rewardProfile: "combat-common",
-            nodeDepth: 1,
+            row: 1,
+            lane: 0,
             parentNodeIds: new[] { targetNode.Id },
-            isRoomBossNode: false,
+            isBoss: false,
             initialState: NodeState.Planned);
 
-        var progressionNodeFromAlternativeA = CreateNode(
+        var progressionNodeFromAlternativeA = CreateMapNode(
             eventType: NodeEventType.Rest,
             riskLevel: 5,
             rewardProfile: "healing-only",
-            nodeDepth: 1,
+            row: 1,
+            lane: 1,
             parentNodeIds: new[] { alternativeInitialNode.Id },
-            isRoomBossNode: false,
+            isBoss: false,
             initialState: NodeState.Planned);
 
-        var progressionNodeFromAlternativeB = CreateNode(
+        var progressionNodeFromAlternativeB = CreateMapNode(
             eventType: NodeEventType.Rare,
             riskLevel: 40,
             rewardProfile: "rare",
-            nodeDepth: 1,
+            row: 1,
+            lane: 2,
             parentNodeIds: new[] { alternativeInitialNode.Id },
-            isRoomBossNode: false,
+            isBoss: false,
             initialState: NodeState.Planned);
 
-        var bossNode = CreateNode(
+        var bossNode = CreateMapNode(
             eventType: NodeEventType.RoomBoss,
             riskLevel: 85,
             rewardProfile: "room-boss",
-            nodeDepth: 2,
+            row: 2,
+            lane: 1,
             parentNodeIds: new[]
             {
                 progressionNodeFromTarget.Id,
                 progressionNodeFromAlternativeA.Id,
                 progressionNodeFromAlternativeB.Id
             },
-            isRoomBossNode: true,
+            isBoss: true,
             initialState: NodeState.Planned);
 
         var room = Room.Create(
@@ -203,8 +208,8 @@ public static class TestGameEngineFactory
 
 public sealed record TestRoomWithTargetNode(
     Room Room,
-    Node TargetNode);
+    MapNode TargetNode);
 
 public sealed record TestRunWithTargetNode(
     Run Run,
-    Node TargetNode);
+    MapNode TargetNode);

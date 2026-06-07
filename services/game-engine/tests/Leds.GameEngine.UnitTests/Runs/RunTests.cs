@@ -42,38 +42,26 @@ public sealed class RunTests
         run.CurrentRoom.TotalNodeCount.Should().Be(6);
 
         run.CurrentRoom.AvailableNodes.Should().HaveCount(2);
-        run.CurrentRoom.Nodes.Should().ContainSingle(node => node.IsRoomBossNode);
-        run.CurrentRoom.Nodes.Should().OnlyContain(node =>
-            node.EventCount >= 1 && node.EventCount <= 4);
+        run.CurrentRoom.Nodes.Should().ContainSingle(node => node.IsBoss);
     }
 
     [Fact]
-    public void RoomCreate_ShouldThrow_WhenRoomDoesNotContainBetweenSixAndTenNodes()
+    public void RoomCreate_ShouldThrow_WhenRoomDoesNotContainAtLeastTwoNodes()
     {
         var roomType = RoomType.Threshold;
         var bossProfile = CreateBossProfile(roomType);
 
-        var combatNode = Node.Create(
+        var singleNode = MapNode.Create(
             NodeEventType.Combat,
             20,
             "combat-common",
-            nodeDepth: 0,
+            row: 0,
+            lane: 0,
+            parentNodeIds: Array.Empty<NodeId>(),
+            isBoss: false,
             initialState: NodeState.Available);
 
-        var bossNode = Node.Create(
-            NodeEventType.RoomBoss,
-            80,
-            "room-boss",
-            nodeDepth: 1,
-            parentNodeId: combatNode.Id,
-            isRoomBossNode: true,
-            initialState: NodeState.Planned);
-
-        var nodes = new[]
-        {
-        combatNode,
-        bossNode
-    };
+        var nodes = new[] { singleNode };
 
         var act = () => Room.Create(
             0,
@@ -84,7 +72,7 @@ public sealed class RunTests
 
         act.Should()
             .Throw<DomainException>()
-            .WithMessage("A room must contain between 6 and 10 nodes.");
+            .WithMessage("A room must contain at least 2 nodes.");
     }
 
     [Fact]
@@ -100,13 +88,13 @@ public sealed class RunTests
         run.CurrentRoom.State.Should().Be(RoomState.NodeSelected);
 
         run.CurrentRoom.Nodes
-            .Where(node => node.NodeDepth == run.CurrentRoom.CurrentNodeDepth &&
+            .Where(node => node.Row == run.CurrentRoom.CurrentNodeDepth &&
                            node.Id != selectedNode.Id)
             .Should()
             .OnlyContain(node => node.State == NodeState.Locked);
 
         run.CurrentRoom.Nodes
-            .Where(node => node.NodeDepth > run.CurrentRoom.CurrentNodeDepth)
+            .Where(node => node.Row > run.CurrentRoom.CurrentNodeDepth)
             .Should()
             .OnlyContain(node =>
                 node.State == NodeState.Planned ||
@@ -114,14 +102,14 @@ public sealed class RunTests
 
         run.CurrentRoom.Nodes
             .Where(node =>
-                node.NodeDepth > run.CurrentRoom.CurrentNodeDepth &&
+                node.Row > run.CurrentRoom.CurrentNodeDepth &&
                 IsReachableFrom(selectedNode.Id, node, run.CurrentRoom.Nodes))
             .Should()
             .OnlyContain(node => node.State == NodeState.Planned);
 
         run.CurrentRoom.Nodes
             .Where(node =>
-                node.NodeDepth > run.CurrentRoom.CurrentNodeDepth &&
+                node.Row > run.CurrentRoom.CurrentNodeDepth &&
                 !IsReachableFrom(selectedNode.Id, node, run.CurrentRoom.Nodes))
             .Should()
             .OnlyContain(node => node.State == NodeState.Unreachable);
@@ -176,7 +164,7 @@ public sealed class RunTests
         run.CurrentRoom.CurrentNodeDepth.Should().Be(1);
         run.CurrentRoom.State.Should().Be(RoomState.Active);
         run.CurrentRoom.AvailableNodes.Should().NotBeEmpty();
-        run.CurrentRoom.AvailableNodes.Should().OnlyContain(node => node.NodeDepth == 1);
+        run.CurrentRoom.AvailableNodes.Should().OnlyContain(node => node.Row == 1);
         run.CurrentRoom.AvailableNodes.Should().OnlyContain(node => node.State == NodeState.Available);
     }
 
@@ -199,8 +187,8 @@ public sealed class RunTests
 
         var bossNode = run.CurrentRoom.AvailableNodes.Single();
 
-        bossNode.IsRoomBossNode.Should().BeTrue();
-        bossNode.EventTypes.Should().Contain(NodeEventType.RoomBoss);
+        bossNode.IsBoss.Should().BeTrue();
+        bossNode.EventType.Should().Be(NodeEventType.RoomBoss);
 
         run.ChooseNode(bossNode.Id);
         run.ResolveCurrentEvent();
@@ -317,8 +305,8 @@ public sealed class RunTests
     }
     private static bool IsReachableFrom(
     NodeId ancestorNodeId,
-    Node node,
-    IReadOnlyCollection<Node> allNodes)
+    MapNode node,
+    IReadOnlyCollection<MapNode> allNodes)
     {
         if (node.ParentNodeIds.Contains(ancestorNodeId))
         {

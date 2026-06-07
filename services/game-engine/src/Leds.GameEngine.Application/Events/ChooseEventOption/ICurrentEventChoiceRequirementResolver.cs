@@ -4,5 +4,5 @@ namespace Leds.GameEngine.Application.Events.ChooseEventOption;
 
 public interface ICurrentEventChoiceRequirementResolver
 {
-    bool RequiresChoice(Node node);
+    bool RequiresChoice(MapNode node);
 }

@@ -140,10 +140,9 @@ public abstract class RunIntegrationTestBase
 
         var currentDepth = getPayload.Run.CurrentRoom.CurrentNodeDepth;
 
-        var resolvedNode = getPayload.Run.CurrentRoom.NodeLayers
-            .SelectMany(layer => layer.Nodes)
+        var resolvedNode = getPayload.Run.CurrentRoom.Nodes
             .FirstOrDefault(node =>
-                node.NodeDepth == currentDepth &&
+                node.Row == currentDepth &&
                 node.State == "Resolved" &&
                 !node.HasChosenEventOption);
 
@@ -152,15 +151,7 @@ public abstract class RunIntegrationTestBase
             return;
         }
 
-        var primaryEventType = resolvedNode.ResolvedEventType
-            ?? resolvedNode.EventTypes.FirstOrDefault();
-
-        if (primaryEventType is null)
-        {
-            return;
-        }
-
-        var choiceId = primaryEventType switch
+        var choiceId = resolvedNode.Type switch
         {
             "Npc" => "listen",
             "Merchant" => "trade",

@@ -118,6 +118,7 @@ watch(
               :nodes="runStore.allNodes"
               :available-nodes="runStore.availableNodes"
               :selected-node-id="runStore.selectedNode?.id ?? null"
+              :current-row="runStore.currentRun.currentRoom.currentNodeDepth"
               @choose-node="runStore.previewNode"
             />
 

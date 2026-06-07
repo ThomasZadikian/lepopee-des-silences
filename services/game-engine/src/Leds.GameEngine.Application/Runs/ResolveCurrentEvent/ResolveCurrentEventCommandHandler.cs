@@ -55,7 +55,7 @@ public sealed class ResolveCurrentEventCommandHandler
 
         var room = run.CurrentRoom;
         var selectedNode = room.Nodes.SingleOrDefault(node =>
-            node.NodeDepth == room.CurrentNodeDepth &&
+            node.Row == room.CurrentNodeDepth &&
             node.State == NodeState.Selected);
 
         if (selectedNode is null)
@@ -80,7 +80,7 @@ public sealed class ResolveCurrentEventCommandHandler
                 Seed: run.Seed,
                 RoomType: room.RoomType,
                 RoomDepth: room.Depth,
-                NodeDepth: selectedNode.NodeDepth,
+                NodeDepth: selectedNode.Row,
                 EventOrder: 1,
                 EventType: selectedNode.EventType,
                 RiskLevel: selectedNode.RiskLevel,

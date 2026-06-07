@@ -45,7 +45,7 @@ export const useRunStore = defineStore('run', () => {
       return [];
     }
 
-    return room.nodeLayers.flatMap((layer) => layer.nodes);
+    return room.nodes;
   });
 
   const previewedNode = computed<NodeDto | null>(() => {
@@ -75,7 +75,7 @@ export const useRunStore = defineStore('run', () => {
 
     const resolvedAtCurrentDepth = allNodes.value.find((node) =>
       node.state === 'Resolved' &&
-      node.nodeDepth === room.currentNodeDepth
+      node.row === room.currentNodeDepth
     );
 
     if (resolvedAtCurrentDepth) {
@@ -84,7 +84,7 @@ export const useRunStore = defineStore('run', () => {
 
     const lastResolved = [...allNodes.value]
       .filter((node) => node.state === 'Resolved')
-      .sort((left, right) => right.nodeDepth - left.nodeDepth)[0];
+      .sort((left, right) => right.row - left.row)[0];
 
     return lastResolved ?? null;
   });

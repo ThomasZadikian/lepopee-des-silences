@@ -15,7 +15,7 @@ public sealed class CurrentEventChoiceRequirementResolver
             .ToHashSet();
     }
 
-    public bool RequiresChoice(Node node)
+    public bool RequiresChoice(MapNode node)
     {
         return _eventTypesRequiringChoice.Contains(node.EventType);
     }

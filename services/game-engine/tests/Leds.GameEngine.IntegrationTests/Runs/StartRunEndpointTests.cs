@@ -39,7 +39,7 @@ public sealed class StartRunEndpointTests : IClassFixture<WebApplicationFactory<
         payload!.Run.Id.Should().NotBeEmpty();
         payload.Run.PlayerId.Should().Be(playerId);
         payload.Run.Seed.Should().StartWith("seed-");
-        payload.Run.GeneratorVersion.Should().Be("gen-0.4.0");
+        payload.Run.GeneratorVersion.Should().Be("room-map-layout-1.0.0");
         payload.Run.MarkovMatrixVersion.Should().Be("markov-room-type-0.1.0");
         payload.Run.Status.Should().Be("Active");
         payload.Run.CurrentDepth.Should().Be(0);
@@ -58,48 +58,33 @@ public sealed class StartRunEndpointTests : IClassFixture<WebApplicationFactory<
         payload.Run.CurrentRoom.BossPreview.RoomType.Should().Be("Threshold");
         payload.Run.CurrentRoom.BossPreview.DangerHint.Should().Be("High");
 
-        var allNodes = payload.Run.CurrentRoom.NodeLayers
-            .SelectMany(layer => layer.Nodes)
-            .ToArray();
+        var allNodes = payload.Run.CurrentRoom.Nodes.ToArray();
 
-        payload.Run.CurrentRoom.TotalNodeCount.Should().BeInRange(6, 10);
+        payload.Run.CurrentRoom.TotalNodeCount.Should().BeInRange(6, 30);
         allNodes.Should().HaveCount(payload.Run.CurrentRoom.TotalNodeCount);
-
-        payload.Run.CurrentRoom.NodeLayers.Should().NotBeEmpty();
-        payload.Run.CurrentRoom.NodeLayers
-            .Select(layer => layer.Depth)
-            .Should()
-            .OnlyHaveUniqueItems();
-
-        payload.Run.CurrentRoom.NodeLayers
-            .Should()
-            .OnlyContain(layer => layer.Nodes.Count >= 1 && layer.Nodes.Count <= 4);
 
         payload.Run.CurrentRoom.AvailableNodes.Should().HaveCountGreaterThanOrEqualTo(1);
         payload.Run.CurrentRoom.AvailableNodes.Should().HaveCountLessThanOrEqualTo(4);
         payload.Run.CurrentRoom.AvailableNodes.Should().OnlyContain(node => node.State == "Available");
-        payload.Run.CurrentRoom.AvailableNodes.Should().OnlyContain(node => node.NodeDepth == 0);
+        payload.Run.CurrentRoom.AvailableNodes.Should().OnlyContain(node => node.Row == 0);
 
         allNodes
-            .Where(node => node.NodeDepth == 0)
+            .Where(node => node.Row == 0)
             .Should()
             .OnlyContain(node => node.State == "Available");
 
         allNodes
-            .Where(node => node.NodeDepth > 0)
+            .Where(node => node.Row > 0)
             .Should()
             .OnlyContain(node => node.State == "Planned");
 
-        allNodes.Should().ContainSingle(node => node.IsRoomBossNode);
+        allNodes.Should().ContainSingle(node => node.IsBoss);
 
-        var bossNode = allNodes.Single(node => node.IsRoomBossNode);
+        var bossNode = allNodes.Single(node => node.IsBoss);
 
         bossNode.State.Should().Be("Planned");
-        bossNode.EventTypes.Should().Contain("RoomBoss");
-        bossNode.NodeDepth.Should().Be(payload.Run.CurrentRoom.MaxNodeDepth);
-
-        allNodes.Should().OnlyContain(node => node.EventCount >= 1 && node.EventCount <= 4);
-        allNodes.Should().OnlyContain(node => node.EventTypes.Count >= 1 && node.EventTypes.Count <= 4);
+        bossNode.Type.Should().Be("RoomBoss");
+        bossNode.Row.Should().Be(payload.Run.CurrentRoom.MaxNodeDepth);
     }
 
     [Fact]

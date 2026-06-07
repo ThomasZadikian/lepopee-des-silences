@@ -10,10 +10,15 @@ public sealed class CurrentEventChoiceRequirementResolverTests
     public void RequiresChoice_ShouldReturnTrue_WhenResolverExistsForNodeEventType()
     {
         // Arrange
-        var node = Node.Create(
+        var node = MapNode.Create(
             NodeEventType.Npc,
             riskLevel: 10,
-            rewardProfile: "narrative-choice");
+            rewardProfile: "narrative-choice",
+            row: 0,
+            lane: 0,
+            parentNodeIds: Array.Empty<NodeId>(),
+            isBoss: false,
+            initialState: NodeState.Available);
 
         var sut = new CurrentEventChoiceRequirementResolver(
             new ICurrentEventChoiceResolver[]
@@ -32,10 +37,15 @@ public sealed class CurrentEventChoiceRequirementResolverTests
     public void RequiresChoice_ShouldReturnFalse_WhenNoResolverExistsForNodeEventType()
     {
         // Arrange
-        var node = Node.Create(
+        var node = MapNode.Create(
             NodeEventType.Combat,
             riskLevel: 20,
-            rewardProfile: "combat-common");
+            rewardProfile: "combat-common",
+            row: 0,
+            lane: 0,
+            parentNodeIds: Array.Empty<NodeId>(),
+            isBoss: false,
+            initialState: NodeState.Available);
 
         var sut = new CurrentEventChoiceRequirementResolver(
             new ICurrentEventChoiceResolver[]

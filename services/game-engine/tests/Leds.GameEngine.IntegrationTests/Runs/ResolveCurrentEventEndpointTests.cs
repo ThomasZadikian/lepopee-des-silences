@@ -18,7 +18,7 @@ public sealed class ResolveCurrentEventEndpointTests : RunIntegrationTestBase, I
     {
         var startRunResponse = await StartRunAsync();
         var nodeToChoose = startRunResponse.Run.CurrentRoom.AvailableNodes
-            .FirstOrDefault(node => node.EventTypes.First() == "Combat");
+            .FirstOrDefault(node => node.Type == "Combat");
 
         if (nodeToChoose is null)
         {
@@ -66,8 +66,7 @@ public sealed class ResolveCurrentEventEndpointTests : RunIntegrationTestBase, I
         resolvePayload.Run.Status.Should().Be("Active");
         resolvePayload.Run.CurrentRoom.State.Should().Be("NodeResolved");
 
-        var resolvedNode = resolvePayload.Run.CurrentRoom.NodeLayers
-            .SelectMany(layer => layer.Nodes)
+        var resolvedNode = resolvePayload.Run.CurrentRoom.Nodes
             .Single(node => node.Id == nodeToChoose.Id);
 
         resolvedNode.State.Should().Be("Resolved");

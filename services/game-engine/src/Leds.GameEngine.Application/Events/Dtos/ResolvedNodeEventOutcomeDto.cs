@@ -17,12 +17,12 @@ public sealed record ResolvedNodeEventOutcomeDto(
     IReadOnlyCollection<NarrativeFragmentDto> NarrativeFragments)
 {
     public static ResolvedNodeEventOutcomeDto FromResult(
-        Node node,
+        MapNode node,
         NodeEventResolutionResult result)
     {
         return new ResolvedNodeEventOutcomeDto(
             node.Id.Value,
-            node.EventTypes.Select(eventType => eventType.ToString()).ToArray(),
+            new[] { node.EventType.ToString() },
             node.EventType.ToString(),
             result.ResolutionKind.ToString(),
             node.RiskLevel,

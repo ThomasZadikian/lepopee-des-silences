@@ -78,7 +78,7 @@ public sealed class MoveToNextRoomEndpointTests : RunIntegrationTestBase, IClass
         payload.Run.CurrentRoom.Depth.Should().Be(1);
         payload.Run.CurrentRoom.State.Should().Be("Active");
         payload.Run.CurrentRoom.AvailableNodes.Should().NotBeEmpty();
-        payload.Run.CurrentRoom.TotalNodeCount.Should().BeInRange(6, 10);
+        payload.Run.CurrentRoom.TotalNodeCount.Should().BeInRange(6, 30);
     }
 
     private async Task<dynamic> CompleteCurrentRoomAsync(Guid runId, dynamic currentRoom)

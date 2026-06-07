@@ -31,24 +31,21 @@ public sealed class GetRunByIdEndpointTests : IClassFixture<WebApplicationFactor
         payload!.Run.Id.Should().Be(startRunResponse.Run.Id);
         payload.Run.PlayerId.Should().Be(startRunResponse.Run.PlayerId);
         payload.Run.Status.Should().Be("Active");
-        var allNodes = payload!.Run.CurrentRoom.NodeLayers
-            .SelectMany(layer => layer.Nodes)
-            .ToArray();
+        var allNodes = payload!.Run.CurrentRoom.Nodes.ToArray();
 
-        payload.Run.CurrentRoom.TotalNodeCount.Should().BeInRange(6, 10);
+        payload.Run.CurrentRoom.TotalNodeCount.Should().BeInRange(6, 30);
         allNodes.Should().HaveCount(payload.Run.CurrentRoom.TotalNodeCount);
 
         payload.Run.CurrentRoom.AvailableNodes.Should().HaveCountGreaterThanOrEqualTo(1);
         payload.Run.CurrentRoom.AvailableNodes.Should().HaveCountLessThanOrEqualTo(4);
         payload.Run.CurrentRoom.AvailableNodes.Should().OnlyContain(node => node.State == "Available");
-        payload.Run.CurrentRoom.AvailableNodes.Should().OnlyContain(node => node.NodeDepth == 0);
+        payload.Run.CurrentRoom.AvailableNodes.Should().OnlyContain(node => node.Row == 0);
 
-        allNodes.Where(node => node.NodeDepth > 0)
+        allNodes.Where(node => node.Row > 0)
             .Should()
             .OnlyContain(node => node.State == "Planned");
 
-        allNodes.Should().ContainSingle(node => node.IsRoomBossNode);
-        allNodes.Should().OnlyContain(node => node.EventCount >= 1 && node.EventCount <= 4);
+        allNodes.Should().ContainSingle(node => node.IsBoss);
 
         payload.Run.CurrentRoom.BossPreview.Should().NotBeNull();
         payload.Run.CurrentRoom.BossPreview.Name.Should().NotBeNullOrWhiteSpace();

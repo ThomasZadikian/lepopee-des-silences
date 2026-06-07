@@ -60,7 +60,7 @@ public sealed class RoomBossProgressionEndpointTests : RunIntegrationTestBase, I
 
             currentRoom.AvailableNodes.Should().NotBeEmpty();
             currentRoom.AvailableNodes.Should().OnlyContain(node =>
-                node.NodeDepth == currentRoom.CurrentNodeDepth);
+                node.Row == currentRoom.CurrentNodeDepth);
         }
 
         currentRoom.State.Should().Be("BossReached");
@@ -69,8 +69,8 @@ public sealed class RoomBossProgressionEndpointTests : RunIntegrationTestBase, I
 
         var bossNode = currentRoom.AvailableNodes.Single();
 
-        bossNode.EventTypes.Should().Contain("RoomBoss");
-        bossNode.IsRoomBossNode.Should().BeTrue();
+        bossNode.Type.Should().Be("RoomBoss");
+        bossNode.IsBoss.Should().BeTrue();
         bossNode.State.Should().Be("Available");
 
         var chooseBossResponse = await Client.PostAsync(
@@ -88,9 +88,7 @@ public sealed class RoomBossProgressionEndpointTests : RunIntegrationTestBase, I
         finalPayload.Run.Status.Should().Be("RoomResolved");
         finalPayload.Run.CurrentRoom.State.Should().Be("Completed");
 
-        var allNodes = finalPayload.Run.CurrentRoom.NodeLayers
-            .SelectMany(layer => layer.Nodes)
-            .ToArray();
+        var allNodes = finalPayload.Run.CurrentRoom.Nodes.ToArray();
 
         allNodes.Single(node => node.Id == bossNode.Id)
             .State

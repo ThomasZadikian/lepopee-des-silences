@@ -51,7 +51,7 @@ public sealed class ProgressRunCommandHandler
         var room = run.CurrentRoom;
 
         var resolvedNode = room.Nodes.SingleOrDefault(node =>
-            node.NodeDepth == room.CurrentNodeDepth &&
+            node.Row == room.CurrentNodeDepth &&
             node.State == NodeState.Resolved);
 
         if (resolvedNode is not null &&

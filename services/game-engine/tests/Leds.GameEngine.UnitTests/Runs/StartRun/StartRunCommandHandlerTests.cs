@@ -43,40 +43,27 @@ public sealed class StartRunCommandHandlerTests
         response.Run.GeneratorVersion.Should().Be("gen-0.1.0");
         response.Run.MarkovMatrixVersion.Should().Be("markov-0.1.0");
         response.Run.Status.Should().Be(RunStatus.Active.ToString());
-        var allNodes = response.Run.CurrentRoom.NodeLayers
-    .SelectMany(layer => layer.Nodes)
-    .ToArray();
+        var allNodes = response.Run.CurrentRoom.Nodes.ToArray();
 
         allNodes.Should().HaveCount(response.Run.CurrentRoom.TotalNodeCount);
-        allNodes.Should().HaveCountGreaterThanOrEqualTo(6);
-        allNodes.Should().HaveCountLessThanOrEqualTo(10);
+        allNodes.Should().HaveCount(6);
 
         response.Run.CurrentRoom.AvailableNodes
             .Should()
-            .HaveCountGreaterThanOrEqualTo(1)
-            .And
-            .HaveCountLessThanOrEqualTo(4);
+            .HaveCount(2);
 
         response.Run.CurrentRoom.AvailableNodes
             .Should()
-            .OnlyContain(node => node.State == "Available" && node.NodeDepth == 0);
+            .OnlyContain(node => node.State == "Available" && node.Row == 0);
 
         allNodes
-            .Where(node => node.NodeDepth > 0)
+            .Where(node => node.Row > 0)
             .Should()
             .OnlyContain(node => node.State == "Planned");
 
         allNodes
             .Should()
-            .ContainSingle(node => node.IsRoomBossNode);
-
-        allNodes
-            .Should()
-            .OnlyContain(node => node.EventCount >= 1 && node.EventCount <= 4);
-
-        allNodes
-            .Should()
-            .OnlyContain(node => node.EventTypes.Count >= 1 && node.EventTypes.Count <= 4);
+            .ContainSingle(node => node.IsBoss);
 
         repository.Verify(
             repo => repo.AddAsync(
