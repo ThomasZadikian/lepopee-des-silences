@@ -1,4 +1,4 @@
-﻿using Leds.GameEngine.Application.Catalog.Ports;
+using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Application.Events.Contracts;
 using Leds.GameEngine.Application.Events.Resolution;
 using Leds.GameEngine.Domain.Nodes;
@@ -8,7 +8,8 @@ namespace Leds.GameEngine.Infrastructure.Events.Resolution;
 
 public sealed class RareEventContentResolutionStrategy : IEventContentResolutionStrategy
 {
-    private const string DefaultEventTemplateKey = "event-combat-shadow-v1";
+    private const string DefaultEventTemplateKey = "event-rare-encounter-v1";
+    private const string DefaultEnemyTemplateKey = "enemy-rare-v1";
 
     private readonly ICatalogContentGateway _catalogContentGateway;
 
@@ -33,13 +34,25 @@ public sealed class RareEventContentResolutionStrategy : IEventContentResolution
             return Result<ResolvedNodeEventContent>.Failure(eventTemplateResult.Error);
         }
 
+        var enemyTemplateResult = await _catalogContentGateway.GetEnemyTemplateByKeyAsync(
+            DefaultEnemyTemplateKey,
+            cancellationToken);
+
+        if (enemyTemplateResult.IsFailure)
+        {
+            return Result<ResolvedNodeEventContent>.Failure(enemyTemplateResult.Error);
+        }
+
         var eventTemplate = eventTemplateResult.Value;
+        var enemyTemplate = enemyTemplateResult.Value;
 
         return Result<ResolvedNodeEventContent>.Success(
-            new ResolvedRareEventContent(
+            new ResolvedRareCombatEventContent(
                 EventTemplateKey: eventTemplate.Key,
                 EventTemplateVersion: eventTemplate.Version,
                 Tags: eventTemplate.NarrativeTags,
-                RareEventProfileKey: "rare-event-placeholder-v1"));
+                EnemyTemplateKey: enemyTemplate.Key,
+                EnemyTemplateVersion: enemyTemplate.Version,
+                RiskLevel: context.RiskLevel));
     }
 }

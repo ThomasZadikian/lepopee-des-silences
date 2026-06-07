@@ -10,6 +10,7 @@ public enum ResolvedEventContentKind
     Npc = 6,
     Rest = 7,
     Merchant = 8,
-    Rare = 9,
-    Boss = 10
+    Rare = 9,       // Kept for backward compat — use RareCombat for combat resolution
+    Boss = 10,
+    RareCombat = 11
 }

@@ -157,10 +157,12 @@ public sealed class EventContentResolverTests
         result.IsSuccess.Should().BeTrue();
 
         var content = result.Value.Should()
-            .BeOfType<ResolvedRareEventContent>()
+            .BeOfType<ResolvedRareCombatEventContent>()
             .Subject;
 
-        content.RareEventProfileKey.Should().Be("rare-event-placeholder-v1");
+        content.Kind.Should().Be(ResolvedEventContentKind.RareCombat);
+        content.EnemyTemplateKey.Should().Be("enemy-rare-v1");
+        content.RiskLevel.Should().Be(25);
     }
 
     [Fact]

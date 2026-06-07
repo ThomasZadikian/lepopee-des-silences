@@ -11,14 +11,15 @@ public sealed class RareNodeEventResolver : INodeEventResolver
     public NodeEventResolutionResult Resolve(NodeEventResolutionContext context)
     {
         return NodeEventResolutionResult.Create(
-            NodeEventResolutionKind.RareEventResolved,
-            "Anomalie lumineuse",
-            "Un événement rare déforme brièvement la logique du Palais.",
+            NodeEventResolutionKind.RareCombatStarted,
+            "Présence singulière",
+            "Une entité rare du Palais bloque le passage. Ce combat promet des récompenses inhabituelles.",
+            requiresPlayerChoice: false,
             narrativeFragments: new[]
             {
                 new NarrativeFragmentDto(
                     "Elise",
-                    "Souviens-toi de cet endroit. Il ne reviendra peut-être jamais sous cette forme.")
+                    "Certaines choses ne se montrent qu'une fois. Affronte-la.")
             });
     }
 }

@@ -37,7 +37,19 @@ public sealed class InMemoryCatalogContentGateway : ICatalogContentGateway
                 BaseDefense: 6,
                 BaseSpeed: 8,
                 Affinity: "Void",
-                SkillKeys: ["skill-boss-void-slam-v1"])
+                SkillKeys: ["skill-boss-void-slam-v1"]),
+            ["enemy-rare-v1"] = new EnemyTemplateSnapshot(
+                Key: "enemy-rare-v1",
+                Name: "Rare Entity",
+                Description: "Rare enemy used by the Game Engine for rare combat encounters.",
+                Version: "1.0.0",
+                Status: "Active",
+                BaseHealth: 40,
+                BaseAttack: 9,
+                BaseDefense: 5,
+                BaseSpeed: 7,
+                Affinity: "Void",
+                SkillKeys: ["skill-shadow-strike-v1"])
         };
 
     private static readonly IReadOnlyDictionary<string, SkillTemplateSnapshot> SkillTemplates =
@@ -110,7 +122,19 @@ public sealed class InMemoryCatalogContentGateway : ICatalogContentGateway
                 MinRiskLevel: 10,
                 MaxRiskLevel: 50,
                 RequiresPlayerChoice: false,
-                NarrativeTags: ["test", "boss"])
+                NarrativeTags: ["test", "boss"]),
+            ["event-rare-encounter-v1"] = new EventTemplateSnapshot(
+                Key: "event-rare-encounter-v1",
+                Name: "Rare Encounter Event",
+                Description: "Rare encounter event used by the Game Engine for rare combat encounters.",
+                Version: "1.0.0",
+                Status: "Active",
+                Type: "Rare",
+                DefaultOutcomeKind: "RareCombatStarted",
+                MinRiskLevel: 10,
+                MaxRiskLevel: 40,
+                RequiresPlayerChoice: false,
+                NarrativeTags: ["test", "rare"])
         };
 
     private static readonly IReadOnlyDictionary<string, PalaceLawDefinitionSnapshot> PalaceLawDefinitions =

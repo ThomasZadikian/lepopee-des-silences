@@ -113,13 +113,21 @@ public sealed class SubmitCombatActionCommandHandler
             {
                 run.CompleteActiveCombat(combat.Id);
 
-                var source = combat.Combatants
-                    .Where(c => c.Side == CombatantSide.Enemy)
-                    .Any(c => c.TemplateKey.Contains("boss"))
-                        ? RewardSource.RoomBoss
-                        : RewardSource.Combat;
+                var room = run.CurrentRoom;
+                var combatNode = room.Nodes.SingleOrDefault(n =>
+                    n.State == NodeState.Selected &&
+                    n.Row == room.CurrentNodeDepth);
 
-                var riskLevel = 25;
+                var source = combatNode?.EventType switch
+                {
+                    NodeEventType.Rare      => RewardSource.Rare,
+                    NodeEventType.Elite     => RewardSource.Elite,
+                    NodeEventType.RoomBoss  => RewardSource.RoomBoss,
+                    NodeEventType.FinalBoss => RewardSource.RoomBoss,
+                    _                       => RewardSource.Combat
+                };
+
+                var riskLevel = combatNode?.RiskLevel ?? 25;
                 var rewardOffer = _rewardOfferFactory.CreateCombatRewardOffer(source, riskLevel);
 
                 await _rewardOfferRepository.AddAsync(rewardOffer, cancellationToken);

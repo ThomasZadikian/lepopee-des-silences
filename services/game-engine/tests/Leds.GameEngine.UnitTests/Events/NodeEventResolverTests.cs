@@ -97,12 +97,54 @@ public sealed class NodeEventResolverTests
 
         dto.NodeId.Should().NotBeEmpty();
         dto.PrimaryEventType.Should().Be(NodeEventType.Rare.ToString());
-        dto.ResolutionKind.Should().Be(NodeEventResolutionKind.RareEventResolved.ToString());
+        dto.ResolutionKind.Should().Be(NodeEventResolutionKind.RareCombatStarted.ToString());
         dto.RiskLevel.Should().BeGreaterThanOrEqualTo(0).And.BeLessThanOrEqualTo(100);
         dto.RewardProfile.Should().NotBeNullOrWhiteSpace();
         dto.Title.Should().NotBeNullOrWhiteSpace();
         dto.Description.Should().NotBeNullOrWhiteSpace();
         dto.RequiresPlayerChoice.Should().BeFalse();
+    }
+
+    // ---------------------------------------------------------------------------
+    // Non-regression — combat type isolation
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void ItemNode_ShouldNotBeTreatedAsRareCombat()
+    {
+        var dto = ResolveDto(new ItemNodeEventResolver(), NodeEventType.Item);
+
+        dto.ResolutionKind.Should().NotBe(NodeEventResolutionKind.RareCombatStarted.ToString(),
+            because: "Item nodes grant rewards directly, they are not rare combats.");
+    }
+
+    [Fact]
+    public void RareNode_ShouldNotReturnDirectItemReward()
+    {
+        var dto = ResolveDto(new RareNodeEventResolver(), NodeEventType.Rare);
+
+        dto.ResolutionKind.Should().NotBe(NodeEventResolutionKind.RewardGranted.ToString(),
+            because: "Rare is a combat encounter, not a direct reward node.");
+    }
+
+    [Fact]
+    public void EliteNode_ShouldRemainCombatType()
+    {
+        var dto = ResolveDto(new EliteNodeEventResolver(), NodeEventType.Elite);
+
+        dto.ResolutionKind.Should().Be(NodeEventResolutionKind.EliteEncounterStarted.ToString(),
+            because: "Elite nodes must remain a distinct combat tier from Rare.");
+        dto.ResolutionKind.Should().NotBe(NodeEventResolutionKind.RareCombatStarted.ToString());
+    }
+
+    [Fact]
+    public void RoomBossNode_ShouldRemainBossType()
+    {
+        var dto = ResolveDto(new RoomBossNodeEventResolver(), NodeEventType.RoomBoss);
+
+        dto.ResolutionKind.Should().Be(NodeEventResolutionKind.RoomBossEncounterStarted.ToString(),
+            because: "RoomBoss nodes must keep their own resolution kind, distinct from Rare.");
+        dto.ResolutionKind.Should().NotBe(NodeEventResolutionKind.RareCombatStarted.ToString());
     }
 
     // ---------------------------------------------------------------------------
