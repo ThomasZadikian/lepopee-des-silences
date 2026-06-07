@@ -157,4 +157,111 @@ public sealed class ResolveCurrentEventCommandHandlerTests
             .ThrowAsync<Leds.GameEngine.Domain.Common.DomainException>()
             .WithMessage("No node has been selected for the current room depth.");
     }
+
+    [Fact]
+    public async Task ResolveCurrentEvent_ShouldFail_WhenSelectedNodeAlreadyResolved()
+    {
+        // The node is already Resolved — no Selected node exists at current depth.
+        var runWithNode = TestGameEngineFactory.CreateRunWithResolvedCurrentEvent(NodeEventType.Item);
+        var run = runWithNode.Run;
+
+        var repository = new Mock<IRunRepository>();
+        repository
+            .Setup(repo => repo.GetByIdAsync(run.Id, CancellationToken.None))
+            .ReturnsAsync(run);
+
+        var handler = new ResolveCurrentEventCommandHandler(
+            repository.Object,
+            CreateDispatcherMock().Object,
+            CreateContentResolverMock().Object,
+            CreateCatalogGatewayMock().Object,
+            CreateCombatFactoryMock().Object,
+            CreateCombatRepositoryMock().Object);
+
+        var act = () => handler.Handle(
+            new ResolveCurrentEventCommand(run.Id.Value),
+            CancellationToken.None);
+
+        await act.Should()
+            .ThrowAsync<Leds.GameEngine.Domain.Common.DomainException>()
+            .WithMessage("No node has been selected for the current room depth.");
+    }
+
+    [Fact]
+    public async Task ResolveCurrentEvent_ShouldNotModifyRoomMapTopology()
+    {
+        var run = TestGameEngineFactory.CreateRun();
+        var nodeCountBefore = run.CurrentRoom.Nodes.Count;
+        var selectedNode = run.CurrentRoom.AvailableNodes.First();
+        run.ChooseNode(selectedNode.Id);
+
+        var repository = new Mock<IRunRepository>();
+        repository
+            .Setup(repo => repo.GetByIdAsync(run.Id, CancellationToken.None))
+            .ReturnsAsync(run);
+
+        var handler = new ResolveCurrentEventCommandHandler(
+            repository.Object,
+            CreateDispatcherMock().Object,
+            CreateContentResolverMock().Object,
+            CreateCatalogGatewayMock().Object,
+            CreateCombatFactoryMock().Object,
+            CreateCombatRepositoryMock().Object);
+
+        var response = await handler.Handle(
+            new ResolveCurrentEventCommand(run.Id.Value),
+            CancellationToken.None);
+
+        response.Run.CurrentRoom.Nodes.Should().HaveCount(nodeCountBefore,
+            because: "ResolveCurrentEvent must not add or remove nodes from the RoomMap.");
+    }
+
+    [Fact]
+    public async Task ResolveCurrentEvent_ShouldKeepRunProgressionConsistent()
+    {
+        var run = TestGameEngineFactory.CreateRun();
+        var selectedNode = run.CurrentRoom.AvailableNodes.First();
+        run.ChooseNode(selectedNode.Id);
+
+        var repository = new Mock<IRunRepository>();
+        repository
+            .Setup(repo => repo.GetByIdAsync(run.Id, CancellationToken.None))
+            .ReturnsAsync(run);
+
+        var handler = new ResolveCurrentEventCommandHandler(
+            repository.Object,
+            CreateDispatcherMock().Object,
+            CreateContentResolverMock().Object,
+            CreateCatalogGatewayMock().Object,
+            CreateCombatFactoryMock().Object,
+            CreateCombatRepositoryMock().Object);
+
+        var response = await handler.Handle(
+            new ResolveCurrentEventCommand(run.Id.Value),
+            CancellationToken.None);
+
+        // Run remains Active (boss not yet reached).
+        response.Run.Status.Should().Be(RunStatus.Active.ToString());
+
+        // Room transitioned to NodeResolved — ready for progress.
+        response.Run.CurrentRoom.State.Should().Be(RoomState.NodeResolved.ToString());
+
+        // CurrentNodeDepth has not advanced (ProgressRun is a separate command).
+        response.Run.CurrentRoom.CurrentNodeDepth.Should().Be(0);
+
+        // The target node is now Resolved.
+        response.Run.CurrentRoom.Nodes
+            .Single(n => n.Id == selectedNode.Id.Value)
+            .State.Should().Be(NodeState.Resolved.ToString());
+
+        // Repository was updated exactly once.
+        repository.Verify(
+            repo => repo.UpdateAsync(run, CancellationToken.None),
+            Times.Once);
+
+        // Outcome carries the correct node metadata.
+        response.Outcome.NodeId.Should().Be(selectedNode.Id.Value);
+        response.Outcome.Title.Should().NotBeNullOrWhiteSpace();
+        response.Outcome.Description.Should().NotBeNullOrWhiteSpace();
+    }
 }
