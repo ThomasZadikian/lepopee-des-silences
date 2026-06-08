@@ -13,28 +13,18 @@ public sealed class MapRoomGenerator : IMapRoomGenerator
     private readonly IRoomMapLayoutTemplateProvider _templateProvider;
     private readonly IRoomThemeResolver _themeResolver;
     private readonly IRoomBossProfileResolver _bossProfileResolver;
-
-    private static readonly NodeEventType[] NormalNodeTypes =
-    [
-        NodeEventType.Combat,
-        NodeEventType.Rest,
-        NodeEventType.Item,
-        NodeEventType.Npc,
-        NodeEventType.Merchant,
-        NodeEventType.Law,
-        NodeEventType.Curse,
-        NodeEventType.Rare,
-        NodeEventType.Elite
-    ];
+    private readonly IRoomTypeGenerationProfileProvider _generationProfileProvider;
 
     public MapRoomGenerator(
         IRoomMapLayoutTemplateProvider templateProvider,
         IRoomThemeResolver themeResolver,
-        IRoomBossProfileResolver bossProfileResolver)
+        IRoomBossProfileResolver bossProfileResolver,
+        IRoomTypeGenerationProfileProvider generationProfileProvider)
     {
         _templateProvider = templateProvider;
         _themeResolver = themeResolver;
         _bossProfileResolver = bossProfileResolver;
+        _generationProfileProvider = generationProfileProvider;
     }
 
     public Room Generate(
@@ -49,8 +39,9 @@ public sealed class MapRoomGenerator : IMapRoomGenerator
         ArgumentNullException.ThrowIfNull(random);
 
         var template = _templateProvider.GetTemplate(roomType, generatorVersion);
+        var profile = _generationProfileProvider.GetProfile(roomType);
 
-        var nodes = CreateNodes(template, random);
+        var nodes = CreateNodes(template, profile, random);
         ConnectNodes(nodes, template, random);
 
         var room = Room.Create(
@@ -70,7 +61,10 @@ public sealed class MapRoomGenerator : IMapRoomGenerator
             template.Version);
     }
 
-    private static List<MapNode> CreateNodes(RoomMapLayoutTemplate template, Random random)
+    private static List<MapNode> CreateNodes(
+        RoomMapLayoutTemplate template,
+        RoomTypeGenerationProfile profile,
+        Random random)
     {
         var nodes = new List<MapNode>();
 
@@ -83,9 +77,12 @@ public sealed class MapRoomGenerator : IMapRoomGenerator
             {
                 var type = isBossRow
                     ? NodeEventType.RoomBoss
-                    : NormalNodeTypes[random.Next(NormalNodeTypes.Length)];
+                    : PickWeightedNodeType(profile, random);
 
-                var riskLevel = isBossRow ? 85 : random.Next(5, 76);
+                var riskLevel = isBossRow
+                    ? 85
+                    : random.Next(profile.RiskMin, profile.RiskMax);
+
                 var rewardProfile = isBossRow
                     ? "room-boss"
                     : PickRewardProfile(type, random);
@@ -93,19 +90,40 @@ public sealed class MapRoomGenerator : IMapRoomGenerator
                 var parentNodeIds = Array.Empty<NodeId>();
                 var initialState = row == 0 ? NodeState.Available : NodeState.Planned;
 
-            nodes.Add(MapNode.Create(
-                eventType: type,
-                riskLevel,
-                rewardProfile,
-                row,
-                lane,
-                parentNodeIds,
-                isBoss: isBossRow,
-                initialState));
+                nodes.Add(MapNode.Create(
+                    eventType: type,
+                    riskLevel,
+                    rewardProfile,
+                    row,
+                    lane,
+                    parentNodeIds,
+                    isBoss: isBossRow,
+                    initialState));
             }
         }
 
         return nodes;
+    }
+
+    /// <summary>
+    /// Selects a node type using the profile's weighted distribution.
+    /// </summary>
+    private static NodeEventType PickWeightedNodeType(RoomTypeGenerationProfile profile, Random random)
+    {
+        var roll = random.Next(profile.TotalWeight);
+        var cumulative = 0;
+
+        foreach (var weight in profile.NodeTypeWeights)
+        {
+            cumulative += weight.Weight;
+            if (roll < cumulative)
+            {
+                return weight.NodeType;
+            }
+        }
+
+        // Fallback — unreachable if TotalWeight is consistent.
+        return profile.NodeTypeWeights[0].NodeType;
     }
 
     private static void ConnectNodes(

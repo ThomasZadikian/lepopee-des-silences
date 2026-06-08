@@ -18,7 +18,8 @@ public sealed class MapRoomGeneratorTests
         return new MapRoomGenerator(
             new RoomMapLayoutTemplateProvider(),
             new RoomThemeResolver(),
-            new RoomBossProfileResolver());
+            new RoomBossProfileResolver(),
+            new HardcodedRoomTypeGenerationProfileProvider());
     }
 
     [Fact]
@@ -338,5 +339,221 @@ public sealed class MapRoomGeneratorTests
         return children.Any(c => HasPathToBoss(c, bossNode, nodes));
     }
 
+    // -----------------------------------------------------------------------
+    // Per-RoomType structure tests
+    // -----------------------------------------------------------------------
 
+    [Theory]
+    [InlineData(RoomType.Threshold)]
+    [InlineData(RoomType.Forest)]
+    [InlineData(RoomType.Rupture)]
+    [InlineData(RoomType.Silence)]
+    [InlineData(RoomType.Memory)]
+    public void GenerateRoom_ShouldCreate22Nodes_ForAllSupportedRoomTypes(RoomType roomType)
+    {
+        var sut = CreateSut();
+        var room = sut.Generate(Seed, GeneratorVersion, roomDepth: 0, roomType, new Random(42));
+
+        room.Nodes.Should().HaveCount(22,
+            because: $"all room types use the default 22-node template.");
+    }
+
+    [Theory]
+    [InlineData(RoomType.Threshold)]
+    [InlineData(RoomType.Forest)]
+    [InlineData(RoomType.Rupture)]
+    [InlineData(RoomType.Silence)]
+    [InlineData(RoomType.Memory)]
+    public void GenerateRoom_ShouldHaveCorrectRowDistribution_ForAllSupportedRoomTypes(RoomType roomType)
+    {
+        var sut = CreateSut();
+        var room = sut.Generate(Seed, GeneratorVersion, roomDepth: 0, roomType, new Random(42));
+
+        var rows = room.Nodes
+            .GroupBy(n => n.Row)
+            .OrderBy(g => g.Key)
+            .Select(g => g.Count())
+            .ToArray();
+
+        rows.Should().Equal(new[] { 2, 3, 4, 3, 4, 3, 2, 1 },
+            "the layout template is the same for all room types.");
+    }
+
+    [Theory]
+    [InlineData(RoomType.Threshold)]
+    [InlineData(RoomType.Forest)]
+    [InlineData(RoomType.Rupture)]
+    [InlineData(RoomType.Silence)]
+    [InlineData(RoomType.Memory)]
+    public void GenerateRoom_ShouldHaveSingleBossOnFinalRow_ForAllSupportedRoomTypes(RoomType roomType)
+    {
+        var sut = CreateSut();
+        var room = sut.Generate(Seed, GeneratorVersion, roomDepth: 0, roomType, new Random(42));
+
+        var bossNodes = room.Nodes.Where(n => n.IsBoss).ToArray();
+        bossNodes.Should().HaveCount(1);
+        bossNodes.Single().EventType.Should().Be(NodeEventType.RoomBoss);
+    }
+
+    [Theory]
+    [InlineData(RoomType.Threshold)]
+    [InlineData(RoomType.Forest)]
+    [InlineData(RoomType.Rupture)]
+    [InlineData(RoomType.Silence)]
+    [InlineData(RoomType.Memory)]
+    public void GenerateRoom_ShouldMatchRoomType_ForAllSupportedRoomTypes(RoomType roomType)
+    {
+        var sut = CreateSut();
+        var room = sut.Generate(Seed, GeneratorVersion, roomDepth: 0, roomType, new Random(42));
+
+        room.RoomType.Should().Be(roomType);
+    }
+
+    [Theory]
+    [InlineData(RoomType.Threshold)]
+    [InlineData(RoomType.Forest)]
+    [InlineData(RoomType.Rupture)]
+    [InlineData(RoomType.Silence)]
+    [InlineData(RoomType.Memory)]
+    public void GenerateRoom_ShouldBeDeterministic_ForAllSupportedRoomTypes(RoomType roomType)
+    {
+        var sut = CreateSut();
+
+        var room1 = sut.Generate(Seed, GeneratorVersion, roomDepth: 0, roomType, new Random(99));
+        var room2 = sut.Generate(Seed, GeneratorVersion, roomDepth: 0, roomType, new Random(99));
+
+        var types1 = room1.Nodes.OrderBy(n => n.Row).ThenBy(n => n.Lane).Select(n => n.EventType).ToArray();
+        var types2 = room2.Nodes.OrderBy(n => n.Row).ThenBy(n => n.Lane).Select(n => n.EventType).ToArray();
+
+        types2.Should().Equal(types1,
+            because: $"same seed + roomType must always produce the same result.");
+    }
+
+    // -----------------------------------------------------------------------
+    // Differentiation tests — statistical over many nodes
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public void GenerateRoom_ShouldProduceDifferentNodeTypeDistribution_ForDifferentRoomTypes()
+    {
+        var sut = CreateSut();
+
+        // Discriminator: Elite+Rare+Curse weight = 15% in Threshold vs 50% in Rupture.
+        var thresholdTypes = GenerateManyNodes(sut, RoomType.Threshold);
+        var ruptureTypes = GenerateManyNodes(sut, RoomType.Rupture);
+
+        var IsRisky = (NodeEventType t) =>
+            t == NodeEventType.Elite || t == NodeEventType.Rare || t == NodeEventType.Curse;
+
+        var thresholdRiskyRatio = thresholdTypes.Count(IsRisky) / (double)thresholdTypes.Count;
+        var ruptureRiskyRatio = ruptureTypes.Count(IsRisky) / (double)ruptureTypes.Count;
+
+        ruptureRiskyRatio.Should().BeGreaterThan(thresholdRiskyRatio + 0.20,
+            because: "Rupture has Elite+Rare+Curse at ~50%; Threshold only at ~15%.");
+    }
+
+    [Fact]
+    public void GenerateRuptureRoom_ShouldFavorRiskierNodes()
+    {
+        var sut = CreateSut();
+
+        var types = GenerateManyNodes(sut, RoomType.Rupture);
+
+        var riskyCount = types.Count(t =>
+            t == NodeEventType.Combat ||
+            t == NodeEventType.Elite ||
+            t == NodeEventType.Rare ||
+            t == NodeEventType.Curse);
+
+        var riskyRatio = riskyCount / (double)types.Count;
+
+        riskyRatio.Should().BeGreaterThan(0.60,
+            because: "Rupture favours Combat, Elite, Rare, Curse — combined weight > 60%.");
+    }
+
+    [Fact]
+    public void GenerateForestRoom_ShouldFavorSupportOrNarrativeNodes()
+    {
+        var sut = CreateSut();
+
+        var types = GenerateManyNodes(sut, RoomType.Forest);
+
+        var supportCount = types.Count(t =>
+            t == NodeEventType.Npc ||
+            t == NodeEventType.Rest ||
+            t == NodeEventType.Item);
+
+        var supportRatio = supportCount / (double)types.Count;
+
+        supportRatio.Should().BeGreaterThan(0.55,
+            because: "Forest favours Npc, Rest, Item — combined weight > 55%.");
+    }
+
+    [Fact]
+    public void GenerateSilenceRoom_ShouldFavorLawNpcOrMerchantNodes()
+    {
+        var sut = CreateSut();
+
+        var types = GenerateManyNodes(sut, RoomType.Silence);
+
+        var silenceCount = types.Count(t =>
+            t == NodeEventType.Law ||
+            t == NodeEventType.Npc ||
+            t == NodeEventType.Merchant);
+
+        var silenceRatio = silenceCount / (double)types.Count;
+
+        silenceRatio.Should().BeGreaterThan(0.55,
+            because: "Silence favours Law, Npc, Merchant — combined weight > 55%.");
+    }
+
+    [Fact]
+    public void GenerateMemoryRoom_ShouldFavorNpcLawItemOrRestNodes()
+    {
+        var sut = CreateSut();
+
+        var types = GenerateManyNodes(sut, RoomType.Memory);
+
+        var memoryCount = types.Count(t =>
+            t == NodeEventType.Npc ||
+            t == NodeEventType.Law ||
+            t == NodeEventType.Item ||
+            t == NodeEventType.Rest);
+
+        var memoryRatio = memoryCount / (double)types.Count;
+
+        memoryRatio.Should().BeGreaterThan(0.80,
+            because: "Memory favours Npc, Law, Item, Rest — combined weight > 80%.");
+    }
+
+    [Fact]
+    public void GenerateMemoryRoom_ShouldNotGenerateDirectMemoryOrNarrativeMapNodes_WhenNotSupported()
+    {
+        var sut = CreateSut();
+
+        var types = GenerateManyNodes(sut, RoomType.Memory);
+
+        types.Should().NotContain(NodeEventType.Memory,
+            because: "NodeEventType.Memory is not a supported MapNode type in the current system.");
+    }
+
+    // -----------------------------------------------------------------------
+    // Helper
+    // -----------------------------------------------------------------------
+
+    /// <summary>
+    /// Generates non-boss nodes across many seeds to get a statistically reliable sample.
+    /// </summary>
+    private static List<NodeEventType> GenerateManyNodes(IMapRoomGenerator sut, RoomType roomType, int roomCount = 30)
+    {
+        var types = new List<NodeEventType>();
+
+        for (var i = 0; i < roomCount; i++)
+        {
+            var room = sut.Generate($"seed-stat-{i}", GeneratorVersion, roomDepth: 0, roomType, new Random(i));
+            types.AddRange(room.Nodes.Where(n => !n.IsBoss).Select(n => n.EventType));
+        }
+
+        return types;
+    }
 }

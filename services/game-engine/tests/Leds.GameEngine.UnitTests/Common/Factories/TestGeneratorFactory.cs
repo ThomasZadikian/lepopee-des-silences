@@ -15,7 +15,8 @@ public static class TestGeneratorFactory
         var mapRoomGenerator = new MapRoomGenerator(
             new RoomMapLayoutTemplateProvider(),
             new RoomThemeResolver(),
-            new RoomBossProfileResolver());
+            new RoomBossProfileResolver(),
+            new HardcodedRoomTypeGenerationProfileProvider());
 
         var roomTypeResolver = new MarkovRoomTypeResolver(
             new StaticRoomTypeMarkovMatrixProvider(),

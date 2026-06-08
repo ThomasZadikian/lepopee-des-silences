@@ -42,6 +42,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IRunGenerator, DeterministicRunGenerator>();
 
         services.AddSingleton<IRoomMapLayoutTemplateProvider, RoomMapLayoutTemplateProvider>();
+        services.AddSingleton<IRoomTypeGenerationProfileProvider, HardcodedRoomTypeGenerationProfileProvider>();
         services.AddSingleton<IMapRoomGenerator, MapRoomGenerator>();
         services.AddSingleton<ICatalogContentGateway, InMemoryCatalogContentGateway>();
         services.AddSingleton<IEventContentResolver, EventContentResolver>();

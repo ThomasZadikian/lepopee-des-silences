@@ -2,35 +2,44 @@
   <header class="topbar panel">
     <section class="topbar__brand">
       <span class="system-label">PALACE</span>
-      <strong>NAME_OF_GAME</strong>
+      <strong>{{ currentRoom?.theme ?? '—' }}</strong>
     </section>
 
     <section class="topbar__item">
-      <span class="system-label">SEED_NUMBER</span>
-      <span class="system-value">PLACEHOLDER_SEED_NUMBER</span>
+      <span class="system-label">SEED</span>
+      <span class="system-value">{{ currentRun?.seed ?? '—' }}</span>
     </section>
 
     <section class="topbar__item">
-      <span class="system-label">DEEPTH</span>
-      <span class="system-value">PLACEHOLDER_DEEPTH</span>
+      <span class="system-label">DEPTH</span>
+      <span class="system-value">{{ currentRoom != null ? currentRoom.depth : '—' }}</span>
     </section>
 
     <section class="topbar__item">
-      <span class="system-label">ACTIVE_LAWS</span>
-      <span class="system-value">PLACEHOLDER_ACTIVE_LAWS</span>
+      <span class="system-label">ACTIVE LAWS</span>
+      <span class="system-value">{{ currentRun?.activePalaceLaws?.length ?? 0 }}</span>
     </section>
 
     <section class="topbar__item topbar__score">
-      <span class="system-label">PROJECTED_SCORE</span>
-      <span class="system-value">PLACEHOLDER_PROJECTED_SCORE</span>
+      <span class="system-label">SCORE</span>
+      <span class="system-value">—</span>
     </section>
 
     <section class="topbar__state">
-      <span class="system-label">SEED_STATE</span>
-      <span class="topbar__active">PLACEHOLDER_SEED_STATE</span>
+      <span class="system-label">STATUS</span>
+      <span class="topbar__active">{{ currentRun?.status ?? '—' }}</span>
     </section>
   </header>
 </template>
+
+<script setup lang="ts">
+import { computed } from 'vue';
+import { useRunStore } from '../../features/runs/stores/runStore';
+
+const runStore = useRunStore();
+const currentRun = computed(() => runStore.currentRun);
+const currentRoom = computed(() => runStore.currentRun?.currentRoom ?? null);
+</script>
 
 <style scoped>
 .topbar {
