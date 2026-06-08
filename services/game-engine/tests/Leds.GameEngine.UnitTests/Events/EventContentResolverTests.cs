@@ -21,7 +21,7 @@ public sealed class EventContentResolverTests
             new IEventContentResolutionStrategy[]
             {
                 new CombatEventContentResolutionStrategy(catalogGateway),
-                new RoomBossEventContentResolutionStrategy(catalogGateway),
+                new RoomBossEventContentResolutionStrategy(catalogGateway, new Leds.GameEngine.Infrastructure.Generation.Rooms.Bosses.RoomBossProfileResolver()),
                 new ItemEventContentResolutionStrategy(catalogGateway),
                 new PalaceLawEventContentResolutionStrategy(catalogGateway),
                 new NpcEventContentResolutionStrategy(catalogGateway),
@@ -177,7 +177,8 @@ public sealed class EventContentResolverTests
     [Fact]
     public async Task ResolveAsync_ShouldResolveRoomBossContent()
     {
-        var result = await _resolver.ResolveAsync(CreateContext(NodeEventType.RoomBoss));
+        var result = await _resolver.ResolveAsync(
+            CreateContext(NodeEventType.RoomBoss) with { RoomType = RoomType.Threshold });
 
         result.IsSuccess.Should().BeTrue();
 

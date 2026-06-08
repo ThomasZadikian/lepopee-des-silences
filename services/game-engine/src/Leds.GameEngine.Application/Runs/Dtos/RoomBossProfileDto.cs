@@ -6,7 +6,8 @@ public sealed record RoomBossProfileDto(
     string BossId,
     string Name,
     string RoomType,
-    string DangerHint)
+    string DangerHint,
+    string EnemyTemplateKey)
 {
     public static RoomBossProfileDto FromDomain(RoomBossProfile bossProfile)
     {
@@ -14,6 +15,7 @@ public sealed record RoomBossProfileDto(
             bossProfile.BossId,
             bossProfile.Name,
             bossProfile.RoomType.ToString(),
-            bossProfile.DangerHint);
+            bossProfile.DangerHint,
+            bossProfile.EnemyTemplateKey);
     }
 }

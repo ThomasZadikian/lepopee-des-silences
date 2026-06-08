@@ -301,7 +301,8 @@ public sealed class RunTests
             "threshold-guardian",
             "Gardien du Seuil",
             roomType,
-            "High");
+            "High",
+            "boss-threshold-guardian-v1");
     }
     private static bool IsReachableFrom(
     NodeId ancestorNodeId,

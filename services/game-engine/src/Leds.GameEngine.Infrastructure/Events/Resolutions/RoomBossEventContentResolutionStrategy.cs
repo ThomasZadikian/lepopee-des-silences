@@ -2,20 +2,22 @@ using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Application.Events.Contracts;
 using Leds.GameEngine.Application.Events.Resolution;
 using Leds.GameEngine.Domain.Nodes;
+using Leds.GameEngine.Infrastructure.Generation.Rooms.Bosses;
 using Leds.SharedBuildingBlocks.Results;
 
 namespace Leds.GameEngine.Infrastructure.Events.Resolution;
 
 public sealed class RoomBossEventContentResolutionStrategy : IEventContentResolutionStrategy
 {
-    private const string DefaultEventTemplateKey = "event-boss-threshold-guardian-v1";
-    private const string DefaultEnemyTemplateKey = "boss-threshold-guardian-v1";
-
     private readonly ICatalogContentGateway _catalogContentGateway;
+    private readonly IRoomBossProfileResolver _bossProfileResolver;
 
-    public RoomBossEventContentResolutionStrategy(ICatalogContentGateway catalogContentGateway)
+    public RoomBossEventContentResolutionStrategy(
+        ICatalogContentGateway catalogContentGateway,
+        IRoomBossProfileResolver bossProfileResolver)
     {
         _catalogContentGateway = catalogContentGateway;
+        _bossProfileResolver = bossProfileResolver;
     }
 
     public IReadOnlyCollection<NodeEventType> SupportedEventTypes { get; } =
@@ -25,8 +27,14 @@ public sealed class RoomBossEventContentResolutionStrategy : IEventContentResolu
         EventContentResolutionContext context,
         CancellationToken cancellationToken = default)
     {
+        var bossProfile = _bossProfileResolver.Resolve(context.RoomType);
+
+        // Convention : event template key = "event-" + enemyTemplateKey
+        // e.g. "boss-threshold-guardian-v1" → "event-boss-threshold-guardian-v1"
+        var eventTemplateKey = $"event-{bossProfile.EnemyTemplateKey}";
+
         var eventTemplateResult = await _catalogContentGateway.GetEventTemplateByKeyAsync(
-            DefaultEventTemplateKey,
+            eventTemplateKey,
             cancellationToken);
 
         if (eventTemplateResult.IsFailure)
@@ -35,7 +43,7 @@ public sealed class RoomBossEventContentResolutionStrategy : IEventContentResolu
         }
 
         var enemyTemplateResult = await _catalogContentGateway.GetEnemyTemplateByKeyAsync(
-            DefaultEnemyTemplateKey,
+            bossProfile.EnemyTemplateKey,
             cancellationToken);
 
         if (enemyTemplateResult.IsFailure)

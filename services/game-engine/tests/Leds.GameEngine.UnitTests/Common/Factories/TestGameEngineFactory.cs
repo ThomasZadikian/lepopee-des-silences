@@ -42,10 +42,11 @@ public static class TestGameEngineFactory
         var roomType = RoomType.Threshold;
 
         var bossProfile = RoomBossProfile.Create(
-            bossId: "boss-threshold-v1",
-            name: "Threshold Guardian",
+            bossId: "threshold-guardian",
+            name: "Gardien du Seuil",
             roomType: roomType,
-            dangerHint: "A first guardian watches the threshold.");
+            dangerHint: "High",
+            enemyTemplateKey: "boss-threshold-guardian-v1");
 
         var targetNode = CreateMapNode(
             eventType: targetInitialEventType,

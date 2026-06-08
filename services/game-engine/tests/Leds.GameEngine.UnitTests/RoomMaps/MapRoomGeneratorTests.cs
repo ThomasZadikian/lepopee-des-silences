@@ -556,4 +556,89 @@ public sealed class MapRoomGeneratorTests
 
         return types;
     }
+
+    // -----------------------------------------------------------------------
+    // Boss profile per RoomType
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public void GenerateThresholdRoom_ShouldUseThresholdBossProfile()
+    {
+        var room = CreateSut().Generate(Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, new Random(42));
+
+        room.RoomType.Should().Be(RoomType.Threshold);
+        room.BossProfile.BossId.Should().Be("threshold-guardian");
+        room.BossProfile.Name.Should().Be("Gardien du Seuil");
+        room.BossProfile.RoomType.Should().Be(RoomType.Threshold);
+        room.BossProfile.DangerHint.Should().NotBeNullOrWhiteSpace();
+        room.BossProfile.EnemyTemplateKey.Should().Be("boss-threshold-guardian-v1");
+        AssertSingleBossOnFinalRow(room);
+    }
+
+    [Fact]
+    public void GenerateForestRoom_ShouldUseForestBossProfile()
+    {
+        var room = CreateSut().Generate(Seed, GeneratorVersion, roomDepth: 1, RoomType.Forest, new Random(42));
+
+        room.RoomType.Should().Be(RoomType.Forest);
+        room.BossProfile.BossId.Should().Be("forest-guardian");
+        room.BossProfile.Name.Should().Be("Gardien des Racines");
+        room.BossProfile.RoomType.Should().Be(RoomType.Forest);
+        room.BossProfile.DangerHint.Should().NotBeNullOrWhiteSpace();
+        room.BossProfile.EnemyTemplateKey.Should().Be("boss-forest-guardian-v1");
+        AssertSingleBossOnFinalRow(room);
+    }
+
+    [Fact]
+    public void GenerateRuptureRoom_ShouldUseRuptureBossProfile()
+    {
+        var room = CreateSut().Generate(Seed, GeneratorVersion, roomDepth: 1, RoomType.Rupture, new Random(42));
+
+        room.RoomType.Should().Be(RoomType.Rupture);
+        room.BossProfile.BossId.Should().Be("rupture-warden");
+        room.BossProfile.Name.Should().Be("Fragment de Rupture");
+        room.BossProfile.RoomType.Should().Be(RoomType.Rupture);
+        room.BossProfile.DangerHint.Should().NotBeNullOrWhiteSpace();
+        room.BossProfile.EnemyTemplateKey.Should().Be("boss-rupture-warden-v1");
+        AssertSingleBossOnFinalRow(room);
+    }
+
+    [Fact]
+    public void GenerateSilenceRoom_ShouldUseSilenceBossProfile()
+    {
+        var room = CreateSut().Generate(Seed, GeneratorVersion, roomDepth: 1, RoomType.Silence, new Random(42));
+
+        room.RoomType.Should().Be(RoomType.Silence);
+        room.BossProfile.BossId.Should().Be("silence-warden");
+        room.BossProfile.Name.Should().Be("Voix Éteinte");
+        room.BossProfile.RoomType.Should().Be(RoomType.Silence);
+        room.BossProfile.DangerHint.Should().NotBeNullOrWhiteSpace();
+        room.BossProfile.EnemyTemplateKey.Should().Be("boss-silence-warden-v1");
+        AssertSingleBossOnFinalRow(room);
+    }
+
+    [Fact]
+    public void GenerateMemoryRoom_ShouldUseMemoryBossProfile()
+    {
+        var room = CreateSut().Generate(Seed, GeneratorVersion, roomDepth: 1, RoomType.Memory, new Random(42));
+
+        room.RoomType.Should().Be(RoomType.Memory);
+        room.BossProfile.BossId.Should().Be("memory-keeper");
+        room.BossProfile.Name.Should().Be("Archiviste des Échos");
+        room.BossProfile.RoomType.Should().Be(RoomType.Memory);
+        room.BossProfile.DangerHint.Should().NotBeNullOrWhiteSpace();
+        room.BossProfile.EnemyTemplateKey.Should().Be("boss-memory-keeper-v1");
+        AssertSingleBossOnFinalRow(room);
+    }
+
+    private static void AssertSingleBossOnFinalRow(Room room)
+    {
+        var bossNodes = room.Nodes.Where(n => n.IsBoss).ToArray();
+        bossNodes.Should().HaveCount(1, "there must be exactly one boss node.");
+        bossNodes.Single().EventType.Should().Be(NodeEventType.RoomBoss);
+
+        var finalRow = room.Nodes.Max(n => n.Row);
+        room.Nodes.Where(n => n.Row == finalRow).Should().HaveCount(1,
+            "the boss must be alone on the final row.");
+    }
 }
