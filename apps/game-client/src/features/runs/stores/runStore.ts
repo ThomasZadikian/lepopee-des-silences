@@ -23,9 +23,18 @@ import {
   type CurrentEventChoiceResultDto,
 } from '../../events/types/eventTypes';
 
+import {
+  unwrapInterludeResponse,
+  type InterludeDto,
+} from '../../interlude/interludeTypes';
+
 const demoPlayerId = '00000000-0000-0000-0000-000000000001';
 
 export const useRunStore = defineStore('run', () => {
+  // -------------------------------------------------------------------------
+  // State
+  // -------------------------------------------------------------------------
+
   const currentRun = ref<RunDto | null>(null);
   const pendingRewardOffer = ref<RewardOfferDto | null>(null);
   const lastOutcome = ref<ResolveCurrentEventResponse['outcome'] | null>(null);
@@ -33,109 +42,133 @@ export const useRunStore = defineStore('run', () => {
   const previewedNodeId = ref<string | null>(null);
   const lastChoiceResult = ref<CurrentEventChoiceResultDto | null>(null);
 
+  const currentInterlude = ref<InterludeDto | null>(null);
+  const isEnteringInterlude = ref(false);
+  const isEnteringNextRoom = ref(false);
+
   const isLoading = ref(false);
   const error = ref<string | null>(null);
+
+  // -------------------------------------------------------------------------
+  // Computed
+  // -------------------------------------------------------------------------
 
   const currentRoom = computed(() => currentRun.value?.currentRoom ?? null);
 
   const allNodes = computed<NodeDto[]>(() => {
-    const room = currentRoom.value;
-
-    if (!room) {
-      return [];
-    }
-
-    return room.nodes;
+    return currentRoom.value?.nodes ?? [];
   });
 
   const previewedNode = computed<NodeDto | null>(() => {
-    if (!previewedNodeId.value) {
-      return null;
-    }
-
-    return allNodes.value.find((node) => node.id === previewedNodeId.value) ?? null;
+    if (!previewedNodeId.value) return null;
+    return allNodes.value.find((n) => n.id === previewedNodeId.value) ?? null;
   });
 
   const selectedNode = computed<NodeDto | null>(() => {
     const room = currentRoom.value;
-
-    if (!room) {
-      return null;
-    }
-
-    if (previewedNode.value) {
-      return previewedNode.value;
-    }
-
-    const selected = allNodes.value.find((node) => node.state === 'Selected');
-
-    if (selected) {
-      return selected;
-    }
-
-    // Ne pas revenir sur un nœud résolu : NodeDetailPanel afficherait "Generate Next Nodes"
-    // sur un ancien nœud, permettant de sauter des rows sans faire de sélection.
+    if (!room) return null;
+    if (previewedNode.value) return previewedNode.value;
+    const selected = allNodes.value.find((n) => n.state === 'Selected');
+    if (selected) return selected;
     return null;
   });
 
-  const availableNodes = computed(() => {
-    const room = currentRoom.value;
+  const availableNodes = computed(() => currentRoom.value?.availableNodes ?? []);
 
-    if (!room) {
-      return [];
+  /**
+   * True when the current room is fully cleared (boss defeated, reward selected)
+   * and the run is waiting to enter the Interlude.
+   * run.status === 'RoomResolved' is the backend's cleared state.
+   */
+  const isRoomCleared = computed(() =>
+    currentRun.value?.status === 'RoomResolved' &&
+    !pendingRewardOffer.value &&
+    !currentRun.value?.pendingRewardOfferId,
+  );
+
+  const gameplayPhase = computed(() => {
+    if (!currentRun.value) return 'Loading';
+
+    if (pendingRewardOffer.value || currentRun.value.pendingRewardOfferId) {
+      return 'Reward';
     }
 
-    return room.availableNodes;
+    if (currentRun.value.activeCombatId) {
+      return 'Combat';
+    }
+
+    if (currentRun.value.status === 'Completed' || currentRun.value.status === 'Failed') {
+      return 'Completed';
+    }
+
+    if (currentInterlude.value || currentRun.value.status === 'Interlude') {
+      return 'Interlude';
+    }
+
+    if (isRoomCleared.value) {
+      return 'RoomCleared';
+    }
+
+    if (lastChoiceResult.value) return 'EventChoiceResult';
+    if (lastOutcome.value) return 'EventOutcome';
+
+    return 'Map';
   });
+
+  // -------------------------------------------------------------------------
+  // Helpers
+  // -------------------------------------------------------------------------
 
   function resetPreviewedNode() {
     previewedNodeId.value = null;
   }
 
   function previewNode(nodeId: string) {
-    const node = allNodes.value.find((candidate) => candidate.id === nodeId);
-
-    if (!node || node.state !== 'Available') {
-      return;
-    }
-
+    const node = allNodes.value.find((n) => n.id === nodeId);
+    if (!node || node.state !== 'Available') return;
     previewedNodeId.value = nodeId;
   }
-  
-async function execute(action: () => Promise<void>) {
-  isLoading.value = true;
-  error.value = null;
 
-  try {
-    await action();
-  } catch (caught) {
-    error.value = caught instanceof Error
-      ? caught.message
-      : 'Une erreur inconnue est survenue.';
-  } finally {
-    isLoading.value = false;
+  async function execute(action: () => Promise<void>) {
+    isLoading.value = true;
+    error.value = null;
+    try {
+      await action();
+    } catch (caught) {
+      error.value = caught instanceof Error
+        ? caught.message
+        : 'Une erreur inconnue est survenue.';
+    } finally {
+      isLoading.value = false;
+    }
   }
-}
 
   async function refreshPendingRewardIfNeeded() {
     if (!currentRun.value?.pendingRewardOfferId) {
       pendingRewardOffer.value = null;
       return;
     }
-
     const response = await rewardApi.getPendingReward(currentRun.value.id);
     pendingRewardOffer.value = unwrapRewardOffer(response);
   }
 
-  async function loadPendingReward() {
-    if (!currentRun.value) {
-      return;
-    }
+  // Avance la room si l'état le permet (non-boss reward selected → continue).
+  // RoomResolved is handled explicitly by the RoomClearedPanel, not here.
+  async function progressRunInlineIfReady() {
+    if (!currentRun.value) return;
 
-    await execute(async () => {
-      await refreshPendingRewardIfNeeded();
-    });
+    // RoomResolved = salle terminée → RoomClearedPanel prend le relai.
+    if (currentRun.value.status === 'RoomResolved') return;
+
+    if (pendingRewardOffer.value || currentRun.value.pendingRewardOfferId) return;
+
+    const response = await runApi.progressRun(currentRun.value.id);
+    currentRun.value = unwrapRunResponse(response);
   }
+
+  // -------------------------------------------------------------------------
+  // Run lifecycle
+  // -------------------------------------------------------------------------
 
   async function startRun() {
     await execute(async () => {
@@ -147,6 +180,7 @@ async function execute(action: () => Promise<void>) {
       pendingRewardOffer.value = null;
       lastOutcome.value = null;
       activeCombat.value = null;
+      currentInterlude.value = null;
       resetPreviewedNode();
 
       await refreshPendingRewardIfNeeded();
@@ -160,6 +194,7 @@ async function execute(action: () => Promise<void>) {
 
       lastChoiceResult.value = null;
       currentRun.value = run;
+      currentInterlude.value = null;
       resetPreviewedNode();
 
       if (!run.activeCombatId) {
@@ -167,13 +202,25 @@ async function execute(action: () => Promise<void>) {
       }
 
       await refreshPendingRewardIfNeeded();
+
+      // Si on recharge avec un run déjà en état Interlude, charger l'interlude.
+      if (run.status === 'Interlude') {
+        const interludeResponse = await runApi.getInterlude(run.id);
+        currentInterlude.value = unwrapInterludeResponse(interludeResponse);
+      }
     });
   }
 
+  // -------------------------------------------------------------------------
+  // Map / node actions
+  // -------------------------------------------------------------------------
+
+  function chooseNode(nodeId: string) {
+    previewNode(nodeId);
+  }
+
   async function confirmAndResolveNode() {
-    if (!currentRun.value || !selectedNode.value) {
-      return;
-    }
+    if (!currentRun.value || !selectedNode.value) return;
 
     lastChoiceResult.value = null;
     const node = selectedNode.value;
@@ -188,23 +235,14 @@ async function execute(action: () => Promise<void>) {
       return;
     }
 
-    if (node.state !== 'Available') {
-      return;
-    }
+    if (node.state !== 'Available') return;
 
     await execute(async () => {
-      const chooseResponse = await runApi.chooseNode(
-        currentRun.value!.id,
-        node.id,
-      );
-
+      const chooseResponse = await runApi.chooseNode(currentRun.value!.id, node.id);
       currentRun.value = unwrapRunResponse(chooseResponse);
       resetPreviewedNode();
 
-      const resolveResponse = await runApi.resolveCurrentEvent(
-        currentRun.value!.id,
-      );
-
+      const resolveResponse = await runApi.resolveCurrentEvent(currentRun.value!.id);
       currentRun.value = resolveResponse.run;
       lastOutcome.value = resolveResponse.outcome;
       activeCombat.value = resolveResponse.startedCombat ?? null;
@@ -213,14 +251,8 @@ async function execute(action: () => Promise<void>) {
     });
   }
 
-  function chooseNode(nodeId: string) {
-    previewNode(nodeId);
-  }
-
   async function resolveCurrentEvent() {
-    if (!currentRun.value) {
-      return;
-    }
+    if (!currentRun.value) return;
 
     await execute(async () => {
       const response = await runApi.resolveCurrentEvent(currentRun.value!.id);
@@ -236,17 +268,13 @@ async function execute(action: () => Promise<void>) {
   }
 
   async function progressRun() {
-    if (!currentRun.value) {
-      return;
-    }
+    if (!currentRun.value) return;
 
     await execute(async () => {
       await refreshPendingRewardIfNeeded();
 
       if (pendingRewardOffer.value || currentRun.value?.pendingRewardOfferId) {
-        throw new Error(
-          'Une récompense est en attente : choisis une faveur avant de progresser.',
-        );
+        throw new Error('Une récompense est en attente : choisis une faveur avant de progresser.');
       }
 
       const response = await runApi.progressRun(currentRun.value!.id);
@@ -262,25 +290,23 @@ async function execute(action: () => Promise<void>) {
   }
 
   async function generateNextNodes() {
-    if (!currentRun.value) {
-      return;
-    }
+    if (!currentRun.value) return;
 
     await execute(async () => {
       const response = await runApi.generateNextNodes(currentRun.value!.id);
-
       currentRun.value = unwrapRunResponse(response);
       lastOutcome.value = null;
       resetPreviewedNode();
-
       await refreshPendingRewardIfNeeded();
     });
   }
 
+  // -------------------------------------------------------------------------
+  // Combat
+  // -------------------------------------------------------------------------
+
   async function handleCombatCompleted() {
-    if (!currentRun.value) {
-      return;
-    }
+    if (!currentRun.value) return;
 
     await execute(async () => {
       const response = await runApi.getRun(currentRun.value!.id);
@@ -293,17 +319,16 @@ async function execute(action: () => Promise<void>) {
       resetPreviewedNode();
 
       await refreshPendingRewardIfNeeded();
-
-      // Si aucune récompense n'est en attente, progresser directement vers les
-      // prochains nodes (cas théorique : combat sans reward offer).
       await progressRunInlineIfReady();
     });
   }
 
+  // -------------------------------------------------------------------------
+  // Rewards
+  // -------------------------------------------------------------------------
+
   async function selectReward(optionId: string) {
-    if (!currentRun.value || !pendingRewardOffer.value) {
-      return;
-    }
+    if (!currentRun.value || !pendingRewardOffer.value) return;
 
     await execute(async () => {
       await rewardApi.selectReward(currentRun.value!.id, {
@@ -326,138 +351,130 @@ async function execute(action: () => Promise<void>) {
 
       await refreshPendingRewardIfNeeded();
 
-      // La récompense a été sélectionnée : débloquer les prochains nodes.
-      // Ne pas progresser si la room est terminée (boss vaincu → RoomResolved).
+      // Pour les rewards non-boss, progresser normalement.
+      // RoomResolved (boss) → RoomClearedPanel prend le relai.
       await progressRunInlineIfReady();
     });
   }
 
-  // Appelée à l'intérieur d'un bloc execute() existant — ne crée pas de nouveau
-  // execute() pour éviter les imbrications. Avance la room si l'état le permet.
-  async function progressRunInlineIfReady() {
-    if (!currentRun.value) {
-      return;
+  // -------------------------------------------------------------------------
+  // Interlude
+  // -------------------------------------------------------------------------
+
+  async function enterInterlude() {
+    if (!currentRun.value) return;
+
+    isEnteringInterlude.value = true;
+    error.value = null;
+
+    try {
+      const response = await runApi.enterInterlude(currentRun.value.id);
+      const interlude = unwrapInterludeResponse(response);
+
+      currentInterlude.value = interlude;
+
+      // Mettre à jour le run avec le nouveau status Interlude
+      const runResponse = await runApi.getRun(currentRun.value.id);
+      currentRun.value = unwrapRunResponse(runResponse);
+    } catch (caught) {
+      error.value = caught instanceof Error
+        ? caught.message
+        : 'Impossible d\'entrer dans le Repli du Palais.';
+    } finally {
+      isEnteringInterlude.value = false;
     }
-
-    // RoomResolved = boss vaincu, récompense sélectionnée → traverser l'Interlude
-    // en silent puis entrer dans la prochaine salle.
-    // L'écran Interlude n'est pas encore implémenté en frontend (PR 0.2.0 backend only).
-    if (currentRun.value.status === 'RoomResolved') {
-      const interludeResponse = await runApi.enterInterlude(currentRun.value.id);
-      currentRun.value = unwrapRunResponse(interludeResponse);
-
-      const nextRoomResponse = await runApi.moveToNextRoom(currentRun.value.id);
-      currentRun.value = unwrapRunResponse(nextRoomResponse);
-      return;
-    }
-
-    // Garde de sécurité : ne pas progresser si une récompense est encore en attente.
-    if (pendingRewardOffer.value || currentRun.value.pendingRewardOfferId) {
-      return;
-    }
-
-    const response = await runApi.progressRun(currentRun.value.id);
-    currentRun.value = unwrapRunResponse(response);
   }
 
-  // Appelée quand le run est chargé directement en état Interlude (ex: rechargement page).
-  async function resumeFromInterlude() {
-    if (!currentRun.value || currentRun.value.status !== 'Interlude') {
-      return;
-    }
+  async function loadInterlude() {
+    if (!currentRun.value) return;
 
     await execute(async () => {
-      const nextRoomResponse = await runApi.moveToNextRoom(currentRun.value!.id);
-      currentRun.value = unwrapRunResponse(nextRoomResponse);
-      lastOutcome.value = null;
-      activeCombat.value = null;
-      resetPreviewedNode();
+      const response = await runApi.getInterlude(currentRun.value!.id);
+      currentInterlude.value = unwrapInterludeResponse(response);
     });
   }
 
-  async function selectCurrentEventChoice(choiceId: string) {
-  if (!currentRun.value || !lastOutcome.value) {
-    return;
-  }
+  async function enterNextRoom() {
+    if (!currentRun.value) return;
 
-  await execute(async () => {
-    const response = await eventChoiceApi.chooseCurrentEventOption(
-      currentRun.value!.id,
-      {
-        choiceId,
-        optionId: choiceId,
-        eventChoiceId: choiceId,
-      },
-    );
+    isEnteringNextRoom.value = true;
+    error.value = null;
 
-    const run = unwrapRunFromEventChoiceResponse(response);
-    const choiceResult = unwrapChoiceResultFromEventChoiceResponse(response);
+    try {
+      const response = await runApi.enterNextRoom(currentRun.value.id);
+      const run = unwrapRunResponse(response);
 
-    if (run) {
       currentRun.value = run;
-    } else {
-      const runResponse = await runApi.getRun(currentRun.value!.id);
-      currentRun.value = unwrapRunResponse(runResponse);
+      currentInterlude.value = null;
+      lastOutcome.value = null;
+      activeCombat.value = null;
+      lastChoiceResult.value = null;
+      resetPreviewedNode();
+    } catch (caught) {
+      error.value = caught instanceof Error
+        ? caught.message
+        : 'Impossible d\'entrer dans la prochaine salle.';
+    } finally {
+      isEnteringNextRoom.value = false;
     }
-
-    lastChoiceResult.value = choiceResult;
-    lastOutcome.value = null;
-    activeCombat.value = null;
-    resetPreviewedNode();
-
-    await refreshPendingRewardIfNeeded();
-  });
-}
-
-const gameplayPhase = computed(() => {
-  if (!currentRun.value) {
-    return 'Loading';
   }
 
-  if (pendingRewardOffer.value || currentRun.value.pendingRewardOfferId) {
-    return 'Reward';
-  }
-
-  if (currentRun.value.activeCombatId) {
-    return 'Combat';
-  }
-
-  if (currentRun.value.status === 'Completed' || currentRun.value.status === 'Failed') {
-    return 'Completed';
-  }
-
-  // Interlude is traversed silently in progressRunInlineIfReady.
-  // If the user reloads mid-interlude, auto-resume by entering the next room.
-  if (currentRun.value.status === 'Interlude') {
-    return 'Interlude';
-  }
-
-  if (lastChoiceResult.value) {
-    return 'EventChoiceResult';
-  }
-
-  if (lastOutcome.value) {
-    return 'EventOutcome';
-  }
-
-  return 'Map';
-});
+  // -------------------------------------------------------------------------
+  // Event choices / outcome
+  // -------------------------------------------------------------------------
 
   async function continueAfterOutcome() {
-    if (!lastOutcome.value) {
-      return;
-    }
-
+    if (!lastOutcome.value) return;
     await progressRun();
   }
 
   async function continueAfterChoiceResult() {
-    if (!lastChoiceResult.value) {
-      return;
-    }
-
+    if (!lastChoiceResult.value) return;
     await progressRun();
   }
+
+  async function selectCurrentEventChoice(choiceId: string) {
+    if (!currentRun.value || !lastOutcome.value) return;
+
+    await execute(async () => {
+      const response = await eventChoiceApi.chooseCurrentEventOption(
+        currentRun.value!.id,
+        { choiceId, optionId: choiceId, eventChoiceId: choiceId },
+      );
+
+      const run = unwrapRunFromEventChoiceResponse(response);
+      const choiceResult = unwrapChoiceResultFromEventChoiceResponse(response);
+
+      if (run) {
+        currentRun.value = run;
+      } else {
+        const runResponse = await runApi.getRun(currentRun.value!.id);
+        currentRun.value = unwrapRunResponse(runResponse);
+      }
+
+      lastChoiceResult.value = choiceResult;
+      lastOutcome.value = null;
+      activeCombat.value = null;
+      resetPreviewedNode();
+
+      await refreshPendingRewardIfNeeded();
+    });
+  }
+
+  // -------------------------------------------------------------------------
+  // Loads
+  // -------------------------------------------------------------------------
+
+  async function loadPendingReward() {
+    if (!currentRun.value) return;
+    await execute(async () => {
+      await refreshPendingRewardIfNeeded();
+    });
+  }
+
+  // -------------------------------------------------------------------------
+  // Exports
+  // -------------------------------------------------------------------------
 
   return {
     currentRun,
@@ -470,6 +487,10 @@ const gameplayPhase = computed(() => {
     lastChoiceResult,
     activeCombat,
     pendingRewardOffer,
+    currentInterlude,
+    isEnteringInterlude,
+    isEnteringNextRoom,
+    isRoomCleared,
     gameplayPhase,
     isLoading,
     error,
@@ -489,6 +510,8 @@ const gameplayPhase = computed(() => {
     continueAfterOutcome,
     continueAfterChoiceResult,
     selectCurrentEventChoice,
-    resumeFromInterlude,
+    enterInterlude,
+    loadInterlude,
+    enterNextRoom,
   };
 });

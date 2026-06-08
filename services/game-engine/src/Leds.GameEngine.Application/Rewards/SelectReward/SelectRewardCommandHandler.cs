@@ -53,10 +53,15 @@ public sealed class SelectRewardCommandHandler
 
         var choiceId = new RewardChoiceId(request.ChoiceId);
 
-        rewardOffer.SelectChoice(choiceId);
+        // Resolve the choice first (validates it exists in the offer) before mutating state.
+        var selectedChoice = rewardOffer.Choices.SingleOrDefault(choice => choice.Id == choiceId)
+            ?? throw new DomainException("Reward choice was not found in the offer.");
 
-        run.ApplyRewardEffect(
-            rewardOffer.Choices.Single(choice => choice.Id == choiceId));
+        // Validate + apply the reward effect before marking the offer as selected,
+        // so a failed ApplyRewardEffect does not corrupt the in-memory offer state.
+        run.ApplyRewardEffect(selectedChoice);
+
+        rewardOffer.SelectChoice(choiceId);
 
         run.ClearPendingRewardOffer();
 

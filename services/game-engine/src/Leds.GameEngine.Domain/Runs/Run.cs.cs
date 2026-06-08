@@ -445,6 +445,10 @@ public sealed class Run
             case "speed":
                 Speed += value;
                 break;
+            case "all":
+                Attack += value;
+                Defense += value;
+                break;
             default:
                 throw new DomainException($"Unknown stat: '{stat}'.");
         }

@@ -7,6 +7,8 @@ import CombatRuntimePanel from '../features/combats/components/CombatRuntimePane
 import EliseOverlay from '../features/elise/EliseOverlay.vue';
 import EventChoiceResultPanel from '../features/events/components/EventChoiceResultPanel.vue';
 import EventOutcomePanel from '../features/events/components/EventOutcomePanel.vue';
+import InterludePanel from '../features/interlude/InterludePanel.vue';
+import RoomClearedPanel from '../features/interlude/RoomClearedPanel.vue';
 import NodeDetailPanel from '../features/node-details/NodeDetailPanel.vue';
 import PalaceLawPanel from '../features/palace-laws/PalaceLawPanel.vue';
 import PalaceMapPlaceholder from '../features/palace-map/PalaceMapPlaceholder.vue';
@@ -18,56 +20,34 @@ import { useRunStore } from '../features/runs/stores/runStore';
 const route = useRoute();
 const runStore = useRunStore();
 
-const shouldDisplayRightPanel = computed(() => {
-  return runStore.gameplayPhase === 'Map';
-});
-
-const shouldUseWideCenterPanel = computed(() => {
-  return runStore.gameplayPhase !== 'Map';
-});
+const shouldDisplayRightPanel = computed(() => runStore.gameplayPhase === 'Map');
+const shouldUseWideCenterPanel = computed(() => runStore.gameplayPhase !== 'Map');
 
 function getRouteRunId(): string | null {
   const rawRunId = route.params.runId;
-
-  if (typeof rawRunId !== 'string') {
-    return null;
-  }
-
+  if (typeof rawRunId !== 'string') return null;
   const runId = rawRunId.trim();
-
-  if (runId.length === 0 || runId === 'undefined' || runId === 'null') {
-    return null;
-  }
-
+  if (runId.length === 0 || runId === 'undefined' || runId === 'null') return null;
   return runId;
 }
 
 async function loadRunFromRoute() {
   const runId = getRouteRunId();
-
-  if (!runId) {
-    return;
-  }
+  if (!runId) return;
 
   if (runStore.currentRun?.id === runId) {
     await runStore.refreshPendingRewardIfNeeded();
-  } else {
-    await runStore.loadRun(runId);
+    return;
   }
 
-  // Si le run est chargé en état Interlude (ex: rechargement page), reprendre automatiquement.
-  if (runStore.currentRun?.status === 'Interlude') {
-    await runStore.resumeFromInterlude();
-  }
+  await runStore.loadRun(runId);
 }
 
 onMounted(loadRunFromRoute);
 
 watch(
   () => route.params.runId,
-  async () => {
-    await loadRunFromRoute();
-  },
+  async () => { await loadRunFromRoute(); },
 );
 </script>
 
@@ -76,21 +56,17 @@ watch(
     <template v-if="runStore.currentRun && runStore.currentRun.currentRoom">
       <section
         class="run-grid"
-        :class="{
-          'run-grid--wide-center': shouldUseWideCenterPanel,
-        }"
+        :class="{ 'run-grid--wide-center': shouldUseWideCenterPanel }"
       >
         <aside class="run-grid__left">
           <RunHudPanel :run="runStore.currentRun" />
-
           <PartyPanel />
-
-          <PalaceLawPanel
-            :laws="runStore.currentRun.activePalaceLaws"
-          />
+          <PalaceLawPanel :laws="runStore.currentRun.activePalaceLaws" />
         </aside>
 
         <section class="run-grid__center panel">
+
+          <!-- 1. Reward (prioritaire) -->
           <RewardOfferPanel
             v-if="runStore.gameplayPhase === 'Reward' && runStore.pendingRewardOffer"
             :offer="runStore.pendingRewardOffer"
@@ -98,6 +74,7 @@ watch(
             @select-reward="runStore.selectReward"
           />
 
+          <!-- 2. Combat (prioritaire) -->
           <CombatRuntimePanel
             v-else-if="runStore.gameplayPhase === 'Combat' && runStore.currentRun.activeCombatId"
             :run-id="runStore.currentRun.id"
@@ -105,14 +82,33 @@ watch(
             @combat-completed="runStore.handleCombatCompleted"
           />
 
+          <!-- 3. Interlude hub -->
+          <InterludePanel
+            v-else-if="runStore.gameplayPhase === 'Interlude' && runStore.currentInterlude"
+            :interlude="runStore.currentInterlude"
+            :is-loading="runStore.isEnteringNextRoom"
+            @enter-next-room="runStore.enterNextRoom"
+          />
+
+          <!-- 4. Transition RoomCleared -->
+          <RoomClearedPanel
+            v-else-if="runStore.gameplayPhase === 'RoomCleared'"
+            :room="runStore.currentRun.currentRoom"
+            :current-room-index="runStore.currentRun.currentRoomIndex"
+            :is-loading="runStore.isEnteringInterlude"
+            @enter-interlude="runStore.enterInterlude"
+          />
+
+          <!-- 5. Event outcome -->
           <EventOutcomePanel
             v-else-if="runStore.gameplayPhase === 'EventOutcome' && runStore.lastOutcome"
             :outcome="runStore.lastOutcome"
             :is-loading="runStore.isLoading"
             @continue="runStore.continueAfterOutcome"
-              @select-choice="runStore.selectCurrentEventChoice"
-            />
+            @select-choice="runStore.selectCurrentEventChoice"
+          />
 
+          <!-- 6. Event choice result -->
           <EventChoiceResultPanel
             v-else-if="runStore.gameplayPhase === 'EventChoiceResult' && runStore.lastChoiceResult"
             :result="runStore.lastChoiceResult"
@@ -120,6 +116,7 @@ watch(
             @continue="runStore.continueAfterChoiceResult"
           />
 
+          <!-- 7. Map -->
           <template v-else-if="runStore.gameplayPhase === 'Map'">
             <PalaceMapPlaceholder
               :nodes="runStore.allNodes"
@@ -130,30 +127,19 @@ watch(
               :layout-template-version="runStore.currentRun.currentRoom.layoutTemplateVersion"
               @choose-node="runStore.previewNode"
             />
-
-            <EliseOverlay
-              :message="runStore.lastOutcome?.description"
-            />
+            <EliseOverlay :message="runStore.lastOutcome?.description" />
           </template>
 
-          <section
-            v-else
-            class="run-grid__outcome panel"
-          >
+          <!-- 8. Run terminée -->
+          <section v-else class="run-grid__outcome panel">
             <p class="system-label">Run terminée</p>
-
             <h3>Le Tome se referme</h3>
-
-            <p>
-              La traversée est terminée. Le bilan détaillé sera intégré dans une prochaine version.
-            </p>
+            <p>La traversée est terminée. Le bilan détaillé sera intégré dans une prochaine version.</p>
           </section>
+
         </section>
 
-        <aside
-          v-if="shouldDisplayRightPanel"
-          class="run-grid__right"
-        >
+        <aside v-if="shouldDisplayRightPanel" class="run-grid__right">
           <NodeDetailPanel
             :node="runStore.selectedNode"
             :is-loading="runStore.isLoading"
@@ -172,31 +158,21 @@ watch(
 
         <template v-if="runStore.isLoading">
           <h2>Le Palais recompose la pièce...</h2>
-
-          <p>
-            Le backend reconstitue l’état de la run.
-          </p>
+          <p>Le backend reconstitue l'état de la run.</p>
         </template>
 
         <template v-else-if="runStore.error">
           <h2>Run introuvable ou indisponible</h2>
-
-          <p>
-            {{ runStore.error }}
-          </p>
-
+          <p>{{ runStore.error }}</p>
           <p class="run-loading__hint">
             En environnement local, les runs sont encore stockées en mémoire.
-            Si le backend a redémarré, l’identifiant présent dans l’URL n’existe plus.
+            Si le backend a redémarré, l'identifiant présent dans l'URL n'existe plus.
           </p>
         </template>
 
         <template v-else>
           <h2>Aucune run chargée</h2>
-
-          <p>
-            Vérifie l’identifiant dans l’URL ou génère une nouvelle run depuis le seuil.
-          </p>
+          <p>Vérifie l'identifiant dans l'URL ou génère une nouvelle run depuis le seuil.</p>
         </template>
       </section>
     </template>

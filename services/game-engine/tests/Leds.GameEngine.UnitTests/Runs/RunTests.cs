@@ -3,6 +3,7 @@ using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.NodeEvents;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.PalaceLaws;
+using Leds.GameEngine.Domain.Rewards;
 using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
 using Leds.GameEngine.UnitTests.Common.Factories;
@@ -386,5 +387,49 @@ public sealed class RunTests
         act.Should()
             .Throw<DomainException>()
             .WithMessage("Cannot activate a palace law on a closed run.");
+    }
+
+    // -----------------------------------------------------------------------
+    // ApplyRewardEffect — stat_bonus:all (boss reward regression)
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public void ApplyRewardEffect_ShouldIncreaseAttackAndDefense_WhenStatIsAll()
+    {
+        var run = TestGameEngineFactory.CreateRun();
+
+        var initialAttack  = run.Attack;
+        var initialDefense = run.Defense;
+
+        var choice = RewardChoice.Create(
+            RewardType.StatBonus,
+            "Puissance du Palais",
+            "Augmente l'attaque et la défense de 5 pour la run.",
+            "stat_bonus:all:5");
+
+        run.ApplyRewardEffect(choice);
+
+        run.Attack.Should().Be(initialAttack + 5,
+            because: "'all' should add 5 to Attack.");
+        run.Defense.Should().Be(initialDefense + 5,
+            because: "'all' should add 5 to Defense.");
+    }
+
+    [Fact]
+    public void ApplyRewardEffect_ShouldThrow_WhenStatKeyIsUnknown()
+    {
+        var run = TestGameEngineFactory.CreateRun();
+
+        var choice = RewardChoice.Create(
+            RewardType.StatBonus,
+            "Bonus inconnu",
+            "Un stat inconnu.",
+            "stat_bonus:luck:5");
+
+        var act = () => run.ApplyRewardEffect(choice);
+
+        act.Should()
+            .Throw<DomainException>()
+            .WithMessage("Unknown stat: 'luck'.");
     }
 }

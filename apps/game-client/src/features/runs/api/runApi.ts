@@ -1,6 +1,4 @@
 import { gameEngineApi } from '../../../shared/api/gameEngineApi';
-// Si tu as renommé le fichier correctement, utilise plutôt :
-// import { gameEngineApi } from '../../../shared/api/gameEngineApi';
 
 import type {
   ChooseNodeResponse,
@@ -10,20 +8,21 @@ import type {
   StartRunResponse,
 } from '../types/runTypes';
 
+import type {
+  EnterInterludeApiResponse,
+  GetInterludeApiResponse,
+} from '../../interlude/interludeTypes';
+
 export const runApi = {
   startRun(playerId: string) {
     return gameEngineApi.post<StartRunResponse, { playerId: string }>(
       '/api/v2/runs',
-      {
-        playerId,
-      },
+      { playerId },
     );
   },
 
   getRun(runId: string) {
-    return gameEngineApi.get<RunResponse>(
-      `/api/v2/runs/${runId}`,
-    );
+    return gameEngineApi.get<RunResponse>(`/api/v2/runs/${runId}`);
   },
 
   chooseNode(runId: string, nodeId: string) {
@@ -51,12 +50,18 @@ export const runApi = {
   },
 
   enterInterlude(runId: string) {
-    return gameEngineApi.post<RunResponse>(
+    return gameEngineApi.post<EnterInterludeApiResponse>(
       `/api/v2/runs/${runId}/interlude/enter`,
     );
   },
 
-  moveToNextRoom(runId: string) {
+  getInterlude(runId: string) {
+    return gameEngineApi.get<GetInterludeApiResponse>(
+      `/api/v2/runs/${runId}/interlude`,
+    );
+  },
+
+  enterNextRoom(runId: string) {
     return gameEngineApi.post<RunResponse>(
       `/api/v2/runs/${runId}/rooms/next`,
     );
