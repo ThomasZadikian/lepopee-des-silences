@@ -79,9 +79,8 @@ const selectedRouteNodeIds = computed(() => {
 
   const result = new Set<string>();
 
-  collectAncestors(selectedNode, result);
-  collectDescendants(selectedNode, result);
   result.add(selectedNode.id);
+  collectDescendants(selectedNode, result);
 
   return result;
 });
@@ -118,23 +117,6 @@ const nodeEdges = computed<MapEdge[]>(() => {
       .filter((edge): edge is MapEdge => edge !== null);
   });
 });
-
-function collectAncestors(node: NodeDto, result: Set<string>) {
-  for (const parentNodeId of node.parentNodeIds) {
-    if (result.has(parentNodeId)) {
-      continue;
-    }
-
-    const parent = nodesById.value.get(parentNodeId);
-
-    if (!parent) {
-      continue;
-    }
-
-    result.add(parent.id);
-    collectAncestors(parent, result);
-  }
-}
 
 function collectDescendants(node: NodeDto, result: Set<string>) {
   const children = childrenByParentId.value.get(node.id) ?? [];
@@ -469,7 +451,7 @@ function getRiskLabel(node: NodeDto): string {
 
 .map__edge--available {
   stroke: var(--color-frost);
-  opacity: 0.5;
+  opacity: 0.8;
   stroke-width: 0.42;
 }
 
@@ -481,13 +463,13 @@ function getRiskLabel(node: NodeDto): string {
 
 .map__edge--resolved {
   stroke: oklch(70% 0.16 145);
-  opacity: 0.55;
+  opacity: 1;
   stroke-width: 0.42;
 }
 
 .map__edge--danger {
   stroke: color-mix(in oklch, var(--color-blood), var(--color-gold) 25%);
-  opacity: 0.65;
+  opacity: 0;
   stroke-width: 0.45;
 }
 
@@ -501,7 +483,7 @@ function getRiskLabel(node: NodeDto): string {
 .map__edge--unselected-route {
   stroke: color-mix(in oklch, var(--color-line), white 15%);
   stroke-dasharray: 4 6;
-  opacity: 0.07;
+  opacity: 0.05;
   stroke-width: 0.25;
 }
 
@@ -520,14 +502,13 @@ function getRiskLabel(node: NodeDto): string {
   font-family: var(--font-mono);
   box-shadow: 0 0 14px rgb(0 0 0 / 45%);
   cursor: pointer;
-  animation: none;
+  animation: node-pulse 2.8s ease-in-out infinite;
   isolation: isolate;
   z-index: 2;
 }
 
 .map__node:disabled {
   cursor: not-allowed;
-  opacity: 0.55;
 }
 
 .map__node small {
@@ -537,15 +518,6 @@ function getRiskLabel(node: NodeDto): string {
   font-size: 0.55rem;
   white-space: nowrap;
   text-transform: uppercase;
-}
-
-.map__node--selected {
-  /* Gold glow signals selection; risk class continues to set color/border. */
-  box-shadow:
-    0 0 20px color-mix(in oklch, var(--color-gold), transparent 55%),
-    0 0 5px  color-mix(in oklch, var(--color-gold), transparent 40%);
-  outline: 1px solid color-mix(in oklch, var(--color-gold), transparent 38%);
-  outline-offset: 2px;
 }
 
 .map__node--available,
@@ -586,13 +558,8 @@ function getRiskLabel(node: NodeDto): string {
   box-shadow: none;
 }
 
-.map__node--selected-route {
-  opacity: 1;
-  filter: brightness(1.18);
-}
-
 .map__node--unselected-route {
-  opacity: 0.24;
+  opacity: 0.36;
 }
 
 .map__node--available {
@@ -611,6 +578,24 @@ function getRiskLabel(node: NodeDto): string {
   animation-duration: 2.1s;
 }
 
+@keyframes node-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+
+  45% {
+    transform: scale(1.035);
+    filter: brightness(1.12);
+  }
+
+  60% {
+    transform: scale(0.99);
+    filter: brightness(0.98);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .map__node {
     animation: none;
@@ -618,9 +603,9 @@ function getRiskLabel(node: NodeDto): string {
 }
 
 /* ─── Risk classification ─────────────────────────────────────────────────────
-   Declared after all state classes (same specificity, later = wins).
-   Resolved and past-unchosen nodes are excluded in getRiskClass() so their
-   existing colours are unaffected.
+   Risk classes define the color.
+   State classes define interaction/readability.
+   Declared after base states so risk can win color/border priority.
    ─────────────────────────────────────────────────────────────────────────── */
 
 .map__node--risk-low {
@@ -646,5 +631,95 @@ function getRiskLabel(node: NodeDto): string {
 .map__node--risk-boss {
   color: var(--color-blood);
   border-color: var(--color-blood);
+}
+
+/* ─── Availability emphasis ───────────────────────────────────────────────────
+   Available nodes should be clearly readable.
+   Risk classes still define the color via currentColor.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+.map__node.map__node--available {
+  opacity: 1;
+  border-width: 1.6px;
+  background: var(--color-panel);
+  box-shadow:
+    0 0 10px rgb(0 0 0 / 45%),
+    inset 0 0 10px color-mix(in oklch, currentColor, transparent 88%);
+  filter: saturate(1.12) brightness(1.08);
+}
+
+.map__node.map__node--available small {
+  color: color-mix(in oklch, currentColor, white 20%);
+  opacity: 0.95;
+}
+
+.map__node.map__node--locked:disabled {
+  opacity: 0.22;
+  background: color-mix(in oklch, var(--color-panel), black 8%);
+  border-color: color-mix(in oklch, currentColor, transparent 78%);
+  box-shadow: 0 0 8px rgb(0 0 0 / 35%);
+  filter: grayscale(0.55) saturate(0.55) brightness(0.82);
+}
+
+.map__node.map__node--locked:disabled small {
+  opacity: 0.55;
+}
+
+/* ─── Active route readability ────────────────────────────────────────────────
+   Nodes on the selected route must remain readable even when not available.
+   This block must stay after locked/available/unselected rules.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+.map__node.map__node--selected-route {
+  opacity: 1;
+  border-width: 1.6px;
+  background: var(--color-panel);
+  filter: saturate(1.14) brightness(1.12);
+  box-shadow:
+    0 0 10px rgb(0 0 0 / 45%),
+    inset 0 0 10px color-mix(in oklch, currentColor, transparent 86%);
+}
+
+.map__node.map__node--selected-route small {
+  color: color-mix(in oklch, currentColor, white 18%);
+  opacity: 0.9;
+}
+
+.map__node.map__node--selected-route.map__node--resolved {
+  opacity: 1;
+  filter: saturate(1.05) brightness(1.08);
+}
+
+.map__node.map__node--selected-route.map__node--locked {
+  opacity: 0.72;
+  filter: saturate(0.95) brightness(1.02);
+}
+
+.map__node.map__node--selected-route.map__node--available {
+  opacity: 1;
+  filter: saturate(1.2) brightness(1.14);
+}
+
+/* ─── Selected node ───────────────────────────────────────────────────────────
+   Selection uses glow/outline. Risk still controls color and border.
+   Declared last so selection remains visible.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+.map__node.map__node--selected {
+  opacity: 1;
+  border-width: 2px;
+  filter: saturate(1.25) brightness(1.16);
+  box-shadow:
+    0 0 14px color-mix(in oklch, currentColor, transparent 72%),
+    0 0 10px color-mix(in oklch, var(--color-gold), transparent 60%),
+    0 0 8px rgb(0 0 0 / 45%);
+  outline: 1px solid color-mix(in oklch, var(--color-gold), transparent 36%);
+  outline-offset: 2px;
+}
+
+.map__node.map__node--selected.map__node--selected-route {
+  opacity: 1;
+  border-width: 2px;
+  filter: saturate(1.28) brightness(1.18);
 }
 </style>
