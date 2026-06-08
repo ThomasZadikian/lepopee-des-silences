@@ -33,6 +33,7 @@ public sealed class Run
         int attack,
         int defense,
         int speed,
+        int currentRoomIndex = 0,
         CombatId? activeCombatId = null,
         RewardOfferId? pendingRewardOfferId = null)
     {
@@ -49,6 +50,7 @@ public sealed class Run
         Attack = attack;
         Defense = defense;
         Speed = speed;
+        CurrentRoomIndex = currentRoomIndex;
         ActiveCombatId = activeCombatId;
         PendingRewardOfferId = pendingRewardOfferId;
 
@@ -91,6 +93,27 @@ public sealed class Run
 
     public DateTimeOffset? EndedAt { get; private set; }
 
+    /// <summary>
+    /// Zero-based index of the current room in the infinite run sequence.
+    /// Threshold is always index 0. Incremented by MoveToNextRoom (future).
+    /// Display as <c>CurrentRoomIndex + 1</c> for player-facing "Salle N" labels.
+    /// </summary>
+    /// <remarks>
+    /// Terminology guide:
+    /// <list type="bullet">
+    ///   <item><c>CurrentRoomIndex</c> — which room in the run (0, 1, 2 …)</item>
+    ///   <item><c>Room.CurrentNodeDepth</c> — how far into the current RoomMap's rows</item>
+    ///   <item><c>MapNode.Row</c> — a node's fixed position within the RoomMap layout</item>
+    /// </list>
+    /// Do not use <c>CurrentDepth</c> or <c>Room.Depth</c> to display room count to players.
+    /// </remarks>
+    public int CurrentRoomIndex { get; private set; }
+
+    /// <summary>
+    /// Depth of the current room within the run, derived from <see cref="Room.Depth"/>.
+    /// Used internally for room-sequencing validation (e.g. <see cref="MoveToNextRoom"/>).
+    /// Not intended as a player-facing room counter — use <see cref="CurrentRoomIndex"/> instead.
+    /// </summary>
     public int CurrentDepth => CurrentRoom.Depth;
 
     public Room CurrentRoom => _rooms.Single(room => room.Id == CurrentRoomId);
