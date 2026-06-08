@@ -1,11 +1,13 @@
 using Leds.GameEngine.Domain.Common;
+using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rooms;
 
 namespace Leds.GameEngine.Application.RoomMaps;
 
 /// <summary>
 /// Defines the content generation rules for a given RoomType:
-/// which node types appear and at what relative frequency, and the risk range for non-boss nodes.
+/// which node types appear and at what relative frequency, the risk range for non-boss nodes,
+/// and the reward profile options per node type.
 /// </summary>
 public sealed record RoomTypeGenerationProfile
 {
@@ -13,7 +15,8 @@ public sealed record RoomTypeGenerationProfile
         RoomType roomType,
         IReadOnlyList<NodeTypeWeight> nodeTypeWeights,
         int riskMin,
-        int riskMax)
+        int riskMax,
+        IReadOnlyDictionary<NodeEventType, IReadOnlyList<string>>? rewardProfilesByNodeType = null)
     {
         ArgumentNullException.ThrowIfNull(nodeTypeWeights);
 
@@ -37,6 +40,8 @@ public sealed record RoomTypeGenerationProfile
         RiskMin = riskMin;
         RiskMax = riskMax;
         TotalWeight = nodeTypeWeights.Sum(w => w.Weight);
+        RewardProfilesByNodeType = rewardProfilesByNodeType
+            ?? new Dictionary<NodeEventType, IReadOnlyList<string>>();
     }
 
     public RoomType RoomType { get; }
@@ -51,4 +56,10 @@ public sealed record RoomTypeGenerationProfile
 
     /// <summary>Sum of all weights; precomputed for efficient weighted selection.</summary>
     public int TotalWeight { get; }
+
+    /// <summary>
+    /// Per-node-type reward profile options. The generator picks one entry at random.
+    /// If a node type is absent, the generator falls back to a static default.
+    /// </summary>
+    public IReadOnlyDictionary<NodeEventType, IReadOnlyList<string>> RewardProfilesByNodeType { get; }
 }

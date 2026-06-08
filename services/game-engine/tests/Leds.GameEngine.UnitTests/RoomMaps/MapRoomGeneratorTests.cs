@@ -641,4 +641,290 @@ public sealed class MapRoomGeneratorTests
         room.Nodes.Where(n => n.Row == finalRow).Should().HaveCount(1,
             "the boss must be alone on the final row.");
     }
+
+    // -----------------------------------------------------------------------
+    // B-group — per-RoomType distribution tests (PR 0.1.8)
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public void GenerateThresholdRoom_ShouldUseBalancedNodeDistribution()
+    {
+        var sut = CreateSut();
+        var types = GenerateManyNodes(sut, RoomType.Threshold);
+
+        // Combat is the dominant type (weight 30 / 100).
+        var combatCount = types.Count(t => t == NodeEventType.Combat);
+        var combatRatio = combatCount / (double)types.Count;
+
+        combatRatio.Should().BeGreaterThan(0.20,
+            "Threshold Combat weight is 30 %; sample ratio should exceed 20 %.");
+
+        // No single risky type should dominate: Elite, Curse each ≤ 10% sample
+        var eliteRatio  = types.Count(t => t == NodeEventType.Elite)  / (double)types.Count;
+        var curseRatio  = types.Count(t => t == NodeEventType.Curse)  / (double)types.Count;
+
+        eliteRatio.Should().BeLessThan(0.15,
+            "Elite weight is 5 % in Threshold — sample ratio should stay well below 15 %.");
+        curseRatio.Should().BeLessThan(0.15);
+    }
+
+    [Fact]
+    public void GenerateForestRoom_ShouldGenerateSupportOrExplorationNodes()
+    {
+        var sut = CreateSut();
+        var types = GenerateManyNodes(sut, RoomType.Forest);
+
+        var supportCount = types.Count(t =>
+            t == NodeEventType.Npc  ||
+            t == NodeEventType.Rest ||
+            t == NodeEventType.Item);
+
+        (supportCount / (double)types.Count).Should().BeGreaterThan(0.55,
+            "Forest favours Npc, Rest, Item — combined weight is 65 %.");
+    }
+
+    [Fact]
+    public void GenerateRuptureRoom_ShouldGenerateRiskierNodes()
+    {
+        // Alias for existing test; kept as a named B-group entry.
+        var sut = CreateSut();
+        var types = GenerateManyNodes(sut, RoomType.Rupture);
+
+        var riskyCount = types.Count(t =>
+            t == NodeEventType.Combat ||
+            t == NodeEventType.Elite  ||
+            t == NodeEventType.Rare   ||
+            t == NodeEventType.Curse);
+
+        (riskyCount / (double)types.Count).Should().BeGreaterThan(0.60);
+    }
+
+    [Fact]
+    public void GenerateSilenceRoom_ShouldGenerateSystemicNodes()
+    {
+        var sut = CreateSut();
+        var types = GenerateManyNodes(sut, RoomType.Silence);
+
+        var systemicCount = types.Count(t =>
+            t == NodeEventType.Law      ||
+            t == NodeEventType.Npc      ||
+            t == NodeEventType.Merchant);
+
+        (systemicCount / (double)types.Count).Should().BeGreaterThan(0.55,
+            "Silence favours Law, Npc, Merchant — combined weight is 70 %.");
+    }
+
+    [Fact]
+    public void GenerateMemoryRoom_ShouldGenerateMemoryLikeButNotDirectMemoryMapNodes()
+    {
+        var sut = CreateSut();
+        var types = GenerateManyNodes(sut, RoomType.Memory);
+
+        // Must NOT contain direct Memory node type
+        types.Should().NotContain(NodeEventType.Memory,
+            "NodeEventType.Memory is not a supported direct MapNode type.");
+
+        // Npc+Law+Item+Rest must dominate
+        var likeMemory = types.Count(t =>
+            t == NodeEventType.Npc  ||
+            t == NodeEventType.Law  ||
+            t == NodeEventType.Item ||
+            t == NodeEventType.Rest);
+
+        (likeMemory / (double)types.Count).Should().BeGreaterThan(0.80);
+    }
+
+    // -----------------------------------------------------------------------
+    // C-group — Memory/Narrative non-regression (PR 0.1.8)
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public void GenerateMemoryRoom_ShouldNotGenerateDirectMemoryMapNodes()
+    {
+        var sut = CreateSut();
+        var types = GenerateManyNodes(sut, RoomType.Memory);
+
+        types.Should().NotContain(NodeEventType.Memory,
+            "NodeEventType.Memory must never appear as a direct MapNode type.");
+    }
+
+    // NodeEventType.Narrative does not exist in the current enum — test not applicable.
+    // If added in the future, add: types.Should().NotContain(NodeEventType.Narrative)
+
+    // -----------------------------------------------------------------------
+    // D-group — risk level comparison with known seeds (PR 0.1.8)
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public void GenerateRuptureRoom_ShouldHaveHigherAverageRiskThanThreshold_ForKnownSeed()
+    {
+        var sut = CreateSut();
+
+        var thresholdRisk = AverageNonBossRisk(sut, RoomType.Threshold);
+        var ruptureRisk   = AverageNonBossRisk(sut, RoomType.Rupture);
+
+        ruptureRisk.Should().BeGreaterThan(thresholdRisk,
+            "Rupture riskMin=25 versus Threshold riskMin=5 must yield a higher average risk.");
+    }
+
+    [Fact]
+    public void GenerateForestRoom_ShouldHaveLowerOrModerateAverageRisk_ForKnownSeed()
+    {
+        var sut = CreateSut();
+
+        var forestRisk  = AverageNonBossRisk(sut, RoomType.Forest);
+        var ruptureRisk = AverageNonBossRisk(sut, RoomType.Rupture);
+
+        forestRisk.Should().BeLessThan(ruptureRisk,
+            "Forest riskMax=51 versus Rupture riskMax=86 must yield a lower average risk.");
+    }
+
+    [Fact]
+    public void GenerateThresholdRoom_ShouldKeepIntroRiskModerate_ForKnownSeed()
+    {
+        var sut = CreateSut();
+        var room = sut.Generate(Seed, GeneratorVersion, 0, RoomType.Threshold, new Random(42));
+
+        var nonBossRisks = room.Nodes.Where(n => !n.IsBoss).Select(n => n.RiskLevel).ToArray();
+
+        nonBossRisks.Should().AllSatisfy(r =>
+            r.Should().BeInRange(5, 60,
+                "Threshold risk is bounded to [5, 61) — no node should exceed 60."));
+    }
+
+    private static double AverageNonBossRisk(IMapRoomGenerator sut, RoomType roomType, int roomCount = 10)
+    {
+        var risks = new List<int>();
+        for (var i = 0; i < roomCount; i++)
+        {
+            var room = sut.Generate($"seed-risk-{i}", GeneratorVersion, 0, roomType, new Random(i * 7 + 3));
+            risks.AddRange(room.Nodes.Where(n => !n.IsBoss).Select(n => n.RiskLevel));
+        }
+        return risks.Average();
+    }
+
+    // -----------------------------------------------------------------------
+    // E-group — reward profile assertions per node type (PR 0.1.8)
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public void GenerateCombatNode_ShouldUseRoomTypeAwareRewardProfile()
+    {
+        var sut = CreateSut();
+
+        // Threshold: only "combat-common"
+        var thresholdCombat = GenerateManyMapNodes(sut, RoomType.Threshold)
+            .Where(n => n.EventType == NodeEventType.Combat).ToList();
+
+        thresholdCombat.Should().NotBeEmpty("Threshold has 30% Combat weight — some combat nodes expected.");
+        thresholdCombat.Should().AllSatisfy(n =>
+            n.RewardProfile.Should().Be("combat-common",
+                "Threshold combat nodes use only 'combat-common'."));
+
+        // Rupture: "combat-common" or "combat-uncommon"
+        var ruptureCombat = GenerateManyMapNodes(sut, RoomType.Rupture)
+            .Where(n => n.EventType == NodeEventType.Combat).ToList();
+
+        ruptureCombat.Should().NotBeEmpty();
+        ruptureCombat.Should().AllSatisfy(n =>
+            n.RewardProfile.Should().BeOneOf(new[] { "combat-common", "combat-uncommon" },
+                "Rupture combat nodes use risk-aware reward profiles."));
+    }
+
+    [Fact]
+    public void GenerateRareNode_ShouldUseRareCombatRewardProfile()
+    {
+        var sut = CreateSut();
+
+        // Sample across all room types (Rare exists in all profiles)
+        var rareNodes = new[] { RoomType.Threshold, RoomType.Forest, RoomType.Rupture, RoomType.Silence, RoomType.Memory }
+            .SelectMany(rt => GenerateManyMapNodes(sut, rt))
+            .Where(n => n.EventType == NodeEventType.Rare)
+            .ToList();
+
+        rareNodes.Should().NotBeEmpty("At least some rare nodes must appear across all room types.");
+        rareNodes.Should().AllSatisfy(n =>
+            n.RewardProfile.Should().StartWith("rare",
+                "Rare nodes must always use a reward profile starting with 'rare'."));
+    }
+
+    [Fact]
+    public void GenerateEliteNode_ShouldUseEliteCombatRewardProfile()
+    {
+        var sut = CreateSut();
+
+        var eliteNodes = new[] { RoomType.Threshold, RoomType.Rupture }
+            .SelectMany(rt => GenerateManyMapNodes(sut, rt))
+            .Where(n => n.EventType == NodeEventType.Elite)
+            .ToList();
+
+        eliteNodes.Should().NotBeEmpty("Threshold and Rupture both have Elite weight — some elite nodes expected.");
+        eliteNodes.Should().AllSatisfy(n =>
+            n.RewardProfile.Should().StartWith("elite",
+                "Elite nodes must always use a reward profile starting with 'elite'."));
+    }
+
+    [Fact]
+    public void GenerateRestNode_ShouldUseRestRewardProfile()
+    {
+        var sut = CreateSut();
+
+        var restNodes = new[] { RoomType.Threshold, RoomType.Forest, RoomType.Rupture }
+            .SelectMany(rt => GenerateManyMapNodes(sut, rt))
+            .Where(n => n.EventType == NodeEventType.Rest)
+            .ToList();
+
+        restNodes.Should().NotBeEmpty();
+        restNodes.Should().AllSatisfy(n =>
+            n.RewardProfile.Should().StartWith("rest",
+                "Rest nodes must use a 'rest-*' reward profile."));
+    }
+
+    [Fact]
+    public void GenerateLawNode_ShouldUseLawRewardProfile()
+    {
+        var sut = CreateSut();
+
+        var lawNodes = new[] { RoomType.Threshold, RoomType.Silence, RoomType.Memory }
+            .SelectMany(rt => GenerateManyMapNodes(sut, rt))
+            .Where(n => n.EventType == NodeEventType.Law)
+            .ToList();
+
+        lawNodes.Should().NotBeEmpty("Silence and Memory both have high Law weight.");
+        lawNodes.Should().AllSatisfy(n =>
+            n.RewardProfile.Should().StartWith("law",
+                "Law nodes must use a 'law-*' reward profile."));
+    }
+
+    [Fact]
+    public void GenerateCurseNode_ShouldUseRiskRewardProfile()
+    {
+        var sut = CreateSut();
+
+        // Rupture and Threshold both include Curse
+        var curseNodes = new[] { RoomType.Rupture, RoomType.Threshold }
+            .SelectMany(rt => GenerateManyMapNodes(sut, rt))
+            .Where(n => n.EventType == NodeEventType.Curse)
+            .ToList();
+
+        curseNodes.Should().NotBeEmpty("Rupture has 15% Curse weight — some curse nodes expected.");
+        curseNodes.Should().AllSatisfy(n =>
+            n.RewardProfile.Should().StartWith("curse",
+                "Curse nodes must use a 'curse-*' reward profile."));
+    }
+
+    // -----------------------------------------------------------------------
+    // Helper — returns MapNode objects (with RewardProfile) across many seeds
+    // -----------------------------------------------------------------------
+
+    private static List<MapNode> GenerateManyMapNodes(IMapRoomGenerator sut, RoomType roomType, int roomCount = 30)
+    {
+        var nodes = new List<MapNode>();
+        for (var i = 0; i < roomCount; i++)
+        {
+            var room = sut.Generate($"seed-stat-{i}", GeneratorVersion, 0, roomType, new Random(i));
+            nodes.AddRange(room.Nodes.Where(n => !n.IsBoss));
+        }
+        return nodes;
+    }
 }

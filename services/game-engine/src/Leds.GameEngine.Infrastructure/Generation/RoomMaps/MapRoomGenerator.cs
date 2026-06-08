@@ -85,7 +85,7 @@ public sealed class MapRoomGenerator : IMapRoomGenerator
 
                 var rewardProfile = isBossRow
                     ? "room-boss"
-                    : PickRewardProfile(type, random);
+                    : PickRewardProfile(type, profile, random);
 
                 var parentNodeIds = Array.Empty<NodeId>();
                 var initialState = row == 0 ? NodeState.Available : NodeState.Planned;
@@ -182,20 +182,33 @@ public sealed class MapRoomGenerator : IMapRoomGenerator
         }
     }
 
-    private static string PickRewardProfile(NodeEventType type, Random random)
+    /// <summary>
+    /// Picks a reward profile for the given node type using the room profile's rules.
+    /// Falls back to static defaults when no rule is defined.
+    /// </summary>
+    private static string PickRewardProfile(
+        NodeEventType type,
+        RoomTypeGenerationProfile profile,
+        Random random)
     {
+        if (profile.RewardProfilesByNodeType.TryGetValue(type, out var options) && options.Count > 0)
+        {
+            return options.Count == 1 ? options[0] : options[random.Next(options.Count)];
+        }
+
+        // Static fallback — reached only for node types absent from the profile rules.
         return type switch
         {
-            NodeEventType.Combat => random.Next(2) == 0 ? "combat-common" : "combat-uncommon",
-            NodeEventType.Elite => "elite",
-            NodeEventType.Rest => "healing-only",
-            NodeEventType.Item => random.Next(2) == 0 ? "item-common" : "item-uncommon",
-            NodeEventType.Npc => "narrative",
+            NodeEventType.Combat   => "combat-common",
+            NodeEventType.Elite    => "elite",
+            NodeEventType.Rest     => "rest-safe",
+            NodeEventType.Item     => "item-common",
+            NodeEventType.Npc      => "narrative",
             NodeEventType.Merchant => "merchant",
-            NodeEventType.Law => "law",
-            NodeEventType.Curse => "curse",
-            NodeEventType.Rare => "rare",
-            _ => "standard"
+            NodeEventType.Law      => "law",
+            NodeEventType.Curse    => "curse",
+            NodeEventType.Rare     => "rare",
+            _                      => "standard"
         };
     }
 }
