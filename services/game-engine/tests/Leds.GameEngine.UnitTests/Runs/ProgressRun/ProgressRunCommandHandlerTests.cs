@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Leds.GameEngine.Application.Abstractions;
+using Leds.GameEngine.Application.Combats;
 using Leds.GameEngine.Application.Common.Exceptions;
 using Leds.GameEngine.Application.Events.ChooseEventOption;
 using Leds.GameEngine.Application.Rewards.RewardOfferFactory;
@@ -108,8 +109,8 @@ public sealed class ProgressRunCommandHandlerTests
     public async Task ProgressRun_ShouldThrow_WhenPendingRewardExists()
     {
         var run = TestGameEngineFactory.CreateRun();
-        var offer = new RewardOfferFactory().CreateCombatRewardOffer(
-            RewardSource.Combat, riskLevel: 25);
+        var offer = new RewardOfferFactory(new CombatRiskProfileResolver())
+            .CreateCombatRewardOffer(RewardSource.Combat, NodeEventType.Combat, riskLevel: 25);
         run.SetPendingRewardOffer(offer.Id);
 
         var handler = CreateHandler(run);

@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Leds.GameEngine.Application.Abstractions;
+using Leds.GameEngine.Application.Combats;
 using Leds.GameEngine.Application.Combats.Dtos;
 using Leds.GameEngine.Application.Combats.Ports;
 using Leds.GameEngine.Application.Combats.SubmitCombatAction;
@@ -31,10 +32,8 @@ public sealed class SubmitCombatActionCommandHandlerTests
         return new Mock<IRewardOfferRepository>();
     }
 
-    private static RewardOfferFactory CreateRewardOfferFactory()
-    {
-        return new RewardOfferFactory();
-    }
+    private static RewardOfferFactory CreateRewardOfferFactory() =>
+        new(new CombatRiskProfileResolver());
 
     [Fact]
     public async Task Handle_ShouldSubmitBasicAttack_WhenCombatIsActive()
@@ -472,6 +471,135 @@ public sealed class SubmitCombatActionCommandHandlerTests
         // La room reste Active — RoomResolved n'est atteint que quand le boss réel (isBoss=true) est vaincu.
         response.Run.Status.Should().Be("Active",
             "the target RoomBoss node at row 0 is not isBoss=true, so the room is not completed.");
+    }
+
+    // -----------------------------------------------------------------------
+    // Risk-scaling metadata tests (PR 0.1.9)
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public async Task CompleteCombat_ShouldUseNodeRiskLevelForRewardScaling()
+    {
+        // The target node in TestGameEngineFactory has riskLevel 25 for Combat nodes.
+        var (run, combat, player, enemy) = CreateWinningCombat(NodeEventType.Combat);
+
+        RewardOffer? captured = null;
+        var (handler, rewardRepo) = CreateHandlerWithCaptureRepo(run, combat);
+        rewardRepo
+            .Setup(r => r.AddAsync(It.IsAny<RewardOffer>(), CancellationToken.None))
+            .Callback<RewardOffer, CancellationToken>((offer, _) => captured = offer)
+            .Returns(Task.CompletedTask);
+
+        await handler.Handle(
+            new SubmitCombatActionCommand(
+                run.Id.Value, combat.Id.Value,
+                player.Value, enemy.Value, "BasicAttack"),
+            CancellationToken.None);
+
+        captured.Should().NotBeNull();
+        captured!.CombatScaling.Should().NotBeNull(
+            "CombatScaling must be populated when a combat node is resolved.");
+
+        // Node riskLevel = 25 (from factory), Normal baseRisk = 20, delta = 5
+        captured.CombatScaling!.ActualRisk.Should().Be(25,
+            "the node's actual riskLevel must be forwarded to the scaling calculation.");
+        captured.CombatScaling.Tier.Should().Be(CombatTier.Normal);
+        captured.CombatScaling.BaseRisk.Should().Be(20);
+        captured.CombatScaling.RiskDelta.Should().Be(5);
+    }
+
+    [Fact]
+    public async Task CompleteRareCombat_ShouldCreateRewardWithRareTierAndRiskMultiplier()
+    {
+        var (run, combat, player, enemy) = CreateWinningCombat(NodeEventType.Rare);
+
+        RewardOffer? captured = null;
+        var (handler, rewardRepo) = CreateHandlerWithCaptureRepo(run, combat);
+        rewardRepo
+            .Setup(r => r.AddAsync(It.IsAny<RewardOffer>(), CancellationToken.None))
+            .Callback<RewardOffer, CancellationToken>((offer, _) => captured = offer)
+            .Returns(Task.CompletedTask);
+
+        await handler.Handle(
+            new SubmitCombatActionCommand(
+                run.Id.Value, combat.Id.Value,
+                player.Value, enemy.Value, "BasicAttack"),
+            CancellationToken.None);
+
+        captured!.Source.Should().Be(RewardSource.Rare);
+        captured.CombatScaling!.Tier.Should().Be(CombatTier.Rare,
+            "Rare nodes must produce a Rare-tier scaling profile.");
+    }
+
+    [Fact]
+    public async Task CompleteEliteCombat_ShouldCreateRewardWithEliteTierAndRiskMultiplier()
+    {
+        var (run, combat, player, enemy) = CreateWinningCombat(NodeEventType.Elite);
+
+        RewardOffer? captured = null;
+        var (handler, rewardRepo) = CreateHandlerWithCaptureRepo(run, combat);
+        rewardRepo
+            .Setup(r => r.AddAsync(It.IsAny<RewardOffer>(), CancellationToken.None))
+            .Callback<RewardOffer, CancellationToken>((offer, _) => captured = offer)
+            .Returns(Task.CompletedTask);
+
+        await handler.Handle(
+            new SubmitCombatActionCommand(
+                run.Id.Value, combat.Id.Value,
+                player.Value, enemy.Value, "BasicAttack"),
+            CancellationToken.None);
+
+        captured!.Source.Should().Be(RewardSource.Elite);
+        captured.CombatScaling!.Tier.Should().Be(CombatTier.Elite,
+            "Elite nodes must produce an Elite-tier scaling profile.");
+    }
+
+    [Fact]
+    public async Task CompleteBossCombat_ShouldCreateRewardWithBossTierAndRiskMultiplier()
+    {
+        // Use the RoomBoss node from TestGameEngineFactory (riskLevel 85)
+        var runWithNode = TestGameEngineFactory.CreateRunWithSelectedTargetNode(NodeEventType.RoomBoss);
+        var run = runWithNode.Run;
+
+        var player = CombatantSnapshot.Create(
+            "player-runtime-v1", "Player", CombatantSide.Player,
+            maxHealth: 40, attack: 999, defense: 0, speed: 10);
+        var enemy = CombatantSnapshot.Create(
+            "enemy-fragile-v1", "Fragile Enemy", CombatantSide.Enemy,
+            maxHealth: 5, attack: 1, defense: 0, speed: 1);
+        var combat = CombatInstance.Create(new[] { player, enemy });
+        run.SetActiveCombat(combat.Id);
+
+        RewardOffer? captured = null;
+
+        var runRepository = new Mock<IRunRepository>();
+        runRepository.Setup(r => r.GetByIdAsync(run.Id, CancellationToken.None)).ReturnsAsync(run);
+
+        var combatRepository = new Mock<ICombatInstanceRepository>();
+        combatRepository.Setup(r => r.GetByIdAsync(combat.Id, CancellationToken.None)).ReturnsAsync(combat);
+
+        var rewardRepository = new Mock<IRewardOfferRepository>();
+        rewardRepository
+            .Setup(r => r.AddAsync(It.IsAny<RewardOffer>(), CancellationToken.None))
+            .Callback<RewardOffer, CancellationToken>((offer, _) => captured = offer)
+            .Returns(Task.CompletedTask);
+
+        var handler = new SubmitCombatActionCommandHandler(
+            runRepository.Object, combatRepository.Object,
+            rewardRepository.Object, CreateRewardOfferFactory(),
+            CreateClockMock().Object);
+
+        await handler.Handle(
+            new SubmitCombatActionCommand(
+                run.Id.Value, combat.Id.Value,
+                player.Id.Value, enemy.Id.Value, "BasicAttack"),
+            CancellationToken.None);
+
+        captured!.Source.Should().Be(RewardSource.RoomBoss);
+        captured.CombatScaling!.Tier.Should().Be(CombatTier.RoomBoss,
+            "RoomBoss nodes must produce a RoomBoss-tier scaling profile.");
+        captured.CombatScaling.ActualRisk.Should().Be(25,
+            "Target node at row=0 has riskLevel=25 in TestGameEngineFactory.");
     }
 
     // -----------------------------------------------------------------------

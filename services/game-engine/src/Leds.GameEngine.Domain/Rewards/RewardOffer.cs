@@ -1,3 +1,4 @@
+using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Common;
 
 namespace Leds.GameEngine.Domain.Rewards;
@@ -11,12 +12,14 @@ public sealed class RewardOffer
         RewardSource source,
         IReadOnlyCollection<RewardChoice> choices,
         RewardOfferState state,
+        CombatRiskProfile? combatScaling = null,
         RewardChoiceId? selectedChoiceId = null)
     {
         Id = id;
         Source = source;
         _choices = choices.ToList();
         State = state;
+        CombatScaling = combatScaling;
         SelectedChoiceId = selectedChoiceId;
     }
 
@@ -30,11 +33,18 @@ public sealed class RewardOffer
 
     public RewardChoiceId? SelectedChoiceId { get; private set; }
 
+    /// <summary>
+    /// Populated for combat encounters (Combat, Rare, Elite, RoomBoss, FinalBoss).
+    /// Null for non-combat node rewards (Item, Rest, Npc, Law, Merchant, Curse).
+    /// </summary>
+    public CombatRiskProfile? CombatScaling { get; }
+
     public bool IsPending => State == RewardOfferState.Pending;
 
     public static RewardOffer Create(
         RewardSource source,
-        IReadOnlyCollection<RewardChoice> choices)
+        IReadOnlyCollection<RewardChoice> choices,
+        CombatRiskProfile? combatScaling = null)
     {
         var choiceList = choices?.ToList()
             ?? throw new DomainException("Reward choices are required.");
@@ -53,7 +63,8 @@ public sealed class RewardOffer
             RewardOfferId.New(),
             source,
             choiceList,
-            RewardOfferState.Pending);
+            RewardOfferState.Pending,
+            combatScaling);
     }
 
     public void SelectChoice(RewardChoiceId choiceId)

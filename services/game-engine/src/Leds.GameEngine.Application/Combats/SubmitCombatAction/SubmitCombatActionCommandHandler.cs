@@ -130,7 +130,8 @@ public sealed class SubmitCombatActionCommandHandler
                 };
 
                 var riskLevel = combatNode?.RiskLevel ?? 25;
-                var rewardOffer = _rewardOfferFactory.CreateCombatRewardOffer(source, riskLevel);
+                var nodeEventType = combatNode?.EventType ?? NodeEventType.Combat;
+                var rewardOffer = _rewardOfferFactory.CreateCombatRewardOffer(source, nodeEventType, riskLevel);
 
                 await _rewardOfferRepository.AddAsync(rewardOffer, cancellationToken);
 

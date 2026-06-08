@@ -1,11 +1,31 @@
+using Leds.GameEngine.Application.Combats;
+using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rewards;
 
 namespace Leds.GameEngine.Application.Rewards.RewardOfferFactory;
 
 public sealed class RewardOfferFactory
 {
-    public RewardOffer CreateCombatRewardOffer(RewardSource source, int riskLevel)
+    private readonly ICombatRiskProfileResolver _riskProfileResolver;
+
+    public RewardOfferFactory(ICombatRiskProfileResolver riskProfileResolver)
     {
+        _riskProfileResolver = riskProfileResolver;
+    }
+
+    /// <summary>
+    /// Creates a combat reward offer for the given source tier and node risk level.
+    /// The <paramref name="eventType"/> is forwarded to <see cref="ICombatRiskProfileResolver"/>
+    /// so that the resulting <see cref="RewardOffer.CombatScaling"/> reflects the exact
+    /// tier base-risk and computed multipliers.
+    /// </summary>
+    public RewardOffer CreateCombatRewardOffer(
+        RewardSource source,
+        NodeEventType eventType,
+        int riskLevel)
+    {
+        var scaling = _riskProfileResolver.Resolve(eventType, riskLevel);
+
         var choices = source switch
         {
             RewardSource.RoomBoss => CreateBossRewardChoices(riskLevel),
@@ -14,7 +34,7 @@ public sealed class RewardOfferFactory
             _                     => CreateCombatRewardChoices(riskLevel)
         };
 
-        return RewardOffer.Create(source, choices);
+        return RewardOffer.Create(source, choices, scaling);
     }
 
     private static List<RewardChoice> CreateCombatRewardChoices(int riskLevel)

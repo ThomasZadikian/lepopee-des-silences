@@ -1,4 +1,5 @@
 using FluentValidation;
+using Leds.GameEngine.Application.Combats;
 using Leds.GameEngine.Application.Common.Behaviors;
 using Leds.GameEngine.Application.Events.ChoiceResolvers;
 using Leds.GameEngine.Application.Events.ChooseEventOption;
@@ -47,6 +48,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<ICurrentEventChoiceResolver, CurseEventChoiceResolver>();
         services.AddScoped<ICurrentEventChoiceRequirementResolver, CurrentEventChoiceRequirementResolver>();
         services.AddScoped<IPalaceLawCatalog, StaticPalaceLawCatalog>();
+        services.AddScoped<ICombatRiskProfileResolver, CombatRiskProfileResolver>();
         services.AddScoped<RewardOfferFactory>();
 
         return services;

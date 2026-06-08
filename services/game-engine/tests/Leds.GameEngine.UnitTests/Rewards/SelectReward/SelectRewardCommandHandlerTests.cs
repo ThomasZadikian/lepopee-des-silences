@@ -1,10 +1,12 @@
 using FluentAssertions;
 using Leds.GameEngine.Application.Abstractions;
+using Leds.GameEngine.Application.Combats;
 using Leds.GameEngine.Application.Common.Exceptions;
 using Leds.GameEngine.Application.Rewards.Ports;
 using Leds.GameEngine.Application.Rewards.RewardOfferFactory;
 using Leds.GameEngine.Application.Rewards.SelectReward;
 using Leds.GameEngine.Domain.Common;
+using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rewards;
 using Leds.GameEngine.Domain.Runs;
 using Leds.GameEngine.UnitTests.Common.Factories;
@@ -14,17 +16,15 @@ namespace Leds.GameEngine.UnitTests.Rewards.SelectReward;
 
 public sealed class SelectRewardCommandHandlerTests
 {
-    private static RewardOfferFactory CreateFactory()
-    {
-        return new RewardOfferFactory();
-    }
+    private static RewardOfferFactory CreateFactory() =>
+        new(new CombatRiskProfileResolver());
 
     private static (Run run, RewardOffer offer) CreateRunWithPendingReward()
     {
         var run = TestGameEngineFactory.CreateRun();
 
         var factory = CreateFactory();
-        var offer = factory.CreateCombatRewardOffer(RewardSource.Combat, riskLevel: 25);
+        var offer = factory.CreateCombatRewardOffer(RewardSource.Combat, NodeEventType.Combat, riskLevel: 25);
 
         run.SetPendingRewardOffer(offer.Id);
 
@@ -76,7 +76,7 @@ public sealed class SelectRewardCommandHandlerTests
             currentHp: 20);
 
         var factory = CreateFactory();
-        var offer = factory.CreateCombatRewardOffer(RewardSource.Combat, riskLevel: 25);
+        var offer = factory.CreateCombatRewardOffer(RewardSource.Combat, NodeEventType.Combat, riskLevel: 25);
         run.SetPendingRewardOffer(offer.Id);
 
         var runRepository = new Mock<IRunRepository>();
@@ -162,7 +162,9 @@ public sealed class SelectRewardCommandHandlerTests
         var run = runWithNode.Run;
         var factory = CreateFactory();
         var offer = factory.CreateCombatRewardOffer(
-            Leds.GameEngine.Domain.Rewards.RewardSource.Combat, riskLevel: 25);
+            Leds.GameEngine.Domain.Rewards.RewardSource.Combat,
+            NodeEventType.Combat,
+            riskLevel: 25);
 
         run.SetPendingRewardOffer(offer.Id);
 
