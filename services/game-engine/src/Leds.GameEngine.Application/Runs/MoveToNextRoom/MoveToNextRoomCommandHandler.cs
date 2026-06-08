@@ -1,6 +1,7 @@
 ﻿using Leds.GameEngine.Application.Abstractions;
 using Leds.GameEngine.Application.Common.Exceptions;
 using Leds.GameEngine.Application.Runs.Dtos;
+using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Runs;
 using MediatR;
 
@@ -31,6 +32,12 @@ public sealed class MoveToNextRoomCommandHandler
         if (run is null)
         {
             throw new NotFoundException("Run", request.RunId);
+        }
+
+        if (run.Status != RunStatus.Interlude)
+        {
+            throw new DomainException(
+                "Cannot enter the next room: run must be in Interlude state.");
         }
 
         var nextRoom = _runGenerator.GenerateNextRoom(run);

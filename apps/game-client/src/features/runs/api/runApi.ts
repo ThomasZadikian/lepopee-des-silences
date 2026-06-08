@@ -49,4 +49,16 @@ export const runApi = {
       `/api/v2/runs/${runId}/nodes/next`,
     );
   },
+
+  enterInterlude(runId: string) {
+    return gameEngineApi.post<RunResponse>(
+      `/api/v2/runs/${runId}/interlude/enter`,
+    );
+  },
+
+  moveToNextRoom(runId: string) {
+    return gameEngineApi.post<RunResponse>(
+      `/api/v2/runs/${runId}/rooms/next`,
+    );
+  },
 };

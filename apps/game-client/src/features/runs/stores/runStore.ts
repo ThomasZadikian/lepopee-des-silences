@@ -339,9 +339,15 @@ async function execute(action: () => Promise<void>) {
       return;
     }
 
-    // RoomResolved = boss vaincu → room terminée → MoveToNextRoom est la prochaine étape.
-    // On ne progresse pas avec ProgressRun dans ce cas.
+    // RoomResolved = boss vaincu, récompense sélectionnée → traverser l'Interlude
+    // en silent puis entrer dans la prochaine salle.
+    // L'écran Interlude n'est pas encore implémenté en frontend (PR 0.2.0 backend only).
     if (currentRun.value.status === 'RoomResolved') {
+      const interludeResponse = await runApi.enterInterlude(currentRun.value.id);
+      currentRun.value = unwrapRunResponse(interludeResponse);
+
+      const nextRoomResponse = await runApi.moveToNextRoom(currentRun.value.id);
+      currentRun.value = unwrapRunResponse(nextRoomResponse);
       return;
     }
 
@@ -352,6 +358,21 @@ async function execute(action: () => Promise<void>) {
 
     const response = await runApi.progressRun(currentRun.value.id);
     currentRun.value = unwrapRunResponse(response);
+  }
+
+  // Appelée quand le run est chargé directement en état Interlude (ex: rechargement page).
+  async function resumeFromInterlude() {
+    if (!currentRun.value || currentRun.value.status !== 'Interlude') {
+      return;
+    }
+
+    await execute(async () => {
+      const nextRoomResponse = await runApi.moveToNextRoom(currentRun.value!.id);
+      currentRun.value = unwrapRunResponse(nextRoomResponse);
+      lastOutcome.value = null;
+      activeCombat.value = null;
+      resetPreviewedNode();
+    });
   }
 
   async function selectCurrentEventChoice(choiceId: string) {
@@ -403,6 +424,12 @@ const gameplayPhase = computed(() => {
 
   if (currentRun.value.status === 'Completed' || currentRun.value.status === 'Failed') {
     return 'Completed';
+  }
+
+  // Interlude is traversed silently in progressRunInlineIfReady.
+  // If the user reloads mid-interlude, auto-resume by entering the next room.
+  if (currentRun.value.status === 'Interlude') {
+    return 'Interlude';
   }
 
   if (lastChoiceResult.value) {
@@ -462,5 +489,6 @@ const gameplayPhase = computed(() => {
     continueAfterOutcome,
     continueAfterChoiceResult,
     selectCurrentEventChoice,
+    resumeFromInterlude,
   };
 });

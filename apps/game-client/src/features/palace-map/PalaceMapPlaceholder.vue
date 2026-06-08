@@ -469,7 +469,7 @@ function getRiskLabel(node: NodeDto): string {
 
 .map__edge--danger {
   stroke: color-mix(in oklch, var(--color-blood), var(--color-gold) 25%);
-  opacity: 0;
+  opacity: 0.75;
   stroke-width: 0.45;
 }
 

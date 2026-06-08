@@ -53,6 +53,12 @@ public sealed class ResolveCurrentEventCommandHandler
             throw new NotFoundException("Run", request.RunId);
         }
 
+        if (run.Status == RunStatus.Interlude)
+        {
+            throw new DomainException(
+                "Cannot resolve an event: run is in Interlude. Navigate the interlude hub or enter the next room.");
+        }
+
         var room = run.CurrentRoom;
         var selectedNode = room.Nodes.SingleOrDefault(node =>
             node.Row == room.CurrentNodeDepth &&

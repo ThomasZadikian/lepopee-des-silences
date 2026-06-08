@@ -5,6 +5,7 @@ using Leds.GameEngine.Application.Events.ChoiceResolvers;
 using Leds.GameEngine.Application.Events.ChooseEventOption;
 using Leds.GameEngine.Application.Events.ResolveNodeEvent;
 using Leds.GameEngine.Application.Events.Resolvers;
+using Leds.GameEngine.Application.Interlude;
 using Leds.GameEngine.Application.PalaceLaws;
 using Leds.GameEngine.Application.Rewards.RewardOfferFactory;
 using Leds.GameEngine.Application.Runs.StartRun;
@@ -50,6 +51,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<IPalaceLawCatalog, StaticPalaceLawCatalog>();
         services.AddScoped<ICombatRiskProfileResolver, CombatRiskProfileResolver>();
         services.AddScoped<RewardOfferFactory>();
+        services.AddScoped<IInterludeNodeProvider, DefaultInterludeNodeProvider>();
 
         return services;
     }

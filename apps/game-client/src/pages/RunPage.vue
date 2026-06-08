@@ -51,10 +51,14 @@ async function loadRunFromRoute() {
 
   if (runStore.currentRun?.id === runId) {
     await runStore.refreshPendingRewardIfNeeded();
-    return;
+  } else {
+    await runStore.loadRun(runId);
   }
 
-  await runStore.loadRun(runId);
+  // Si le run est chargé en état Interlude (ex: rechargement page), reprendre automatiquement.
+  if (runStore.currentRun?.status === 'Interlude') {
+    await runStore.resumeFromInterlude();
+  }
 }
 
 onMounted(loadRunFromRoute);

@@ -43,6 +43,14 @@ public sealed class PlayableSliceTests : RunIntegrationTestBase, IClassFixture<W
         firstRoomPayload!.Run.Status.Should().Be("RoomResolved");
         firstRoomPayload.Run.CurrentDepth.Should().Be(0);
 
+        // === Enter interlude ===
+        var enterInterludeResponse = await Client.PostAsync(
+            $"/api/v2/runs/{runId}/interlude/enter",
+            content: null);
+
+        var enterInterludeBody = await enterInterludeResponse.Content.ReadAsStringAsync();
+        enterInterludeResponse.StatusCode.Should().Be(HttpStatusCode.OK, because: enterInterludeBody);
+
         // === Move to next room (depth 1) ===
         var moveResponse = await Client.PostAsync(
             $"/api/v2/runs/{runId}/rooms/next",

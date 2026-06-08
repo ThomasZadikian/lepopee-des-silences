@@ -58,6 +58,13 @@ public sealed class MoveToNextRoomEndpointTests : RunIntegrationTestBase, IClass
 
         ((string)completedRoom.State).Should().Be("Completed");
 
+        var enterInterludeResponse = await Client.PostAsync(
+            $"/api/v2/runs/{runId}/interlude/enter",
+            content: null);
+
+        var enterInterludeBody = await enterInterludeResponse.Content.ReadAsStringAsync();
+        enterInterludeResponse.StatusCode.Should().Be(HttpStatusCode.OK, because: enterInterludeBody);
+
         var response = await Client.PostAsync(
             $"/api/v2/runs/{runId}/rooms/next",
             content: null);

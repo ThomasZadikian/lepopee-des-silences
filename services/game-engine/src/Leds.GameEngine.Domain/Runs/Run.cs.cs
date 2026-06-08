@@ -249,6 +249,43 @@ public sealed class Run
         CurrentRoom.UnlockNextNodeLayer();
     }
 
+    /// <summary>
+    /// Transitions the run from <see cref="RunStatus.RoomResolved"/> (boss reward collected)
+    /// to <see cref="RunStatus.Interlude"/>, where the player navigates the interlude
+    /// hub before entering the next room.
+    /// </summary>
+    public void EnterInterlude()
+    {
+        if (Status is RunStatus.Completed or RunStatus.Failed or RunStatus.Abandoned)
+        {
+            throw new DomainException("Run is closed.");
+        }
+
+        if (Status != RunStatus.RoomResolved)
+        {
+            throw new DomainException(
+                "Cannot enter Interlude: run must be in RoomResolved (room cleared) state.");
+        }
+
+        if (HasActiveCombat)
+        {
+            throw new DomainException("Cannot enter Interlude: run has an active combat.");
+        }
+
+        if (HasPendingRewardOffer)
+        {
+            throw new DomainException(
+                "Cannot enter Interlude: run has a pending reward offer that must be selected first.");
+        }
+
+        Status = RunStatus.Interlude;
+    }
+
+    /// <summary>
+    /// Moves the run from <see cref="RunStatus.Interlude"/> to the next room.
+    /// Increments <see cref="CurrentRoomIndex"/> and sets the run back to
+    /// <see cref="RunStatus.Active"/>.
+    /// </summary>
     public void MoveToNextRoom(Room nextRoom)
     {
         if (Status is RunStatus.Completed or RunStatus.Failed or RunStatus.Abandoned)
@@ -256,9 +293,10 @@ public sealed class Run
             throw new DomainException("Run is closed.");
         }
 
-        if (Status != RunStatus.RoomResolved || CurrentRoom.State != RoomState.Completed)
+        if (Status != RunStatus.Interlude)
         {
-            throw new DomainException("Current room must be completed before moving to the next room.");
+            throw new DomainException(
+                "Cannot move to the next room: run must be in Interlude state.");
         }
 
         if (nextRoom.Depth != CurrentDepth + 1)
@@ -273,6 +311,7 @@ public sealed class Run
 
         _rooms.Add(nextRoom);
         CurrentRoomId = nextRoom.Id;
+        CurrentRoomIndex++;
         Status = nextRoom.Depth == 10
             ? RunStatus.BossReached
             : RunStatus.Active;

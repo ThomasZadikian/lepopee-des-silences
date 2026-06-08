@@ -1,6 +1,7 @@
 ﻿using Leds.GameEngine.Application.Abstractions;
 using Leds.GameEngine.Application.Common.Exceptions;
 using Leds.GameEngine.Application.Runs.Dtos;
+using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Runs;
 using MediatR;
@@ -28,6 +29,12 @@ public sealed class ChooseNodeCommandHandler : IRequestHandler<ChooseNodeCommand
         if (run is null)
         {
             throw new NotFoundException("Run", request.RunId);
+        }
+
+        if (run.Status == RunStatus.Interlude)
+        {
+            throw new DomainException(
+                "Cannot choose a node: run is in Interlude. Navigate the interlude hub or enter the next room.");
         }
 
         run.ChooseNode(nodeId);

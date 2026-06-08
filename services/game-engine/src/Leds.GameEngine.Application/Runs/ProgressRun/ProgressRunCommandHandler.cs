@@ -54,6 +54,12 @@ public sealed class ProgressRunCommandHandler
                 "Cannot progress: current room is cleared. Await the Interlude or MoveToNextRoom transition.");
         }
 
+        if (run.Status == RunStatus.Interlude)
+        {
+            throw new DomainException(
+                "Cannot progress: run is in Interlude. Navigate the interlude hub or enter the next room.");
+        }
+
         var room = run.CurrentRoom;
 
         var resolvedNode = room.Nodes.SingleOrDefault(node =>
