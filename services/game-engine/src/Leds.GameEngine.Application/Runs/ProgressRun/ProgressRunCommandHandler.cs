@@ -48,6 +48,12 @@ public sealed class ProgressRunCommandHandler
                 "Cannot progress while a pending reward offer requires selection.");
         }
 
+        if (run.Status == RunStatus.RoomResolved)
+        {
+            throw new DomainException(
+                "Cannot progress: current room is cleared. Await the Interlude or MoveToNextRoom transition.");
+        }
+
         var room = run.CurrentRoom;
 
         var resolvedNode = room.Nodes.SingleOrDefault(node =>
