@@ -52,6 +52,10 @@ export type RunDto = {
   status: string;
   activeCombatId?: string | null;
   currentDepth: number;
+  /** Zero-based index of the current room in the infinite run sequence. Use currentRoomIndex + 1 for display. */
+  currentRoomIndex: number;
+  /** One-based room number for player display ("Salle 1"). Equals currentRoomIndex + 1. */
+  currentRoomNumber: number;
   currentRoom: RoomDto;
   rooms: RoomDto[];
   pendingRewardOfferId?: string | null;

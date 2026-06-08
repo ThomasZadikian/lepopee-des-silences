@@ -12,6 +12,7 @@ import PalaceLawPanel from '../features/palace-laws/PalaceLawPanel.vue';
 import PalaceMapPlaceholder from '../features/palace-map/PalaceMapPlaceholder.vue';
 import PartyPanel from '../features/party/PartyPanel.vue';
 import RewardOfferPanel from '../features/rewards/components/RewardOfferPanel.vue';
+import RunHudPanel from '../features/runs/components/RunHudPanel.vue';
 import { useRunStore } from '../features/runs/stores/runStore';
 
 const route = useRoute();
@@ -76,6 +77,8 @@ watch(
         }"
       >
         <aside class="run-grid__left">
+          <RunHudPanel :run="runStore.currentRun" />
+
           <PartyPanel />
 
           <PalaceLawPanel

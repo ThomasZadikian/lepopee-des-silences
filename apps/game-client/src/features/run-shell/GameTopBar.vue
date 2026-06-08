@@ -11,8 +11,8 @@
     </section>
 
     <section class="topbar__item">
-      <span class="system-label">DEPTH</span>
-      <span class="system-value">{{ currentRoom != null ? currentRoom.depth : '—' }}</span>
+      <span class="system-label">SALLE</span>
+      <span class="system-value">{{ currentRun != null ? currentRun.currentRoomIndex + 1 : '—' }}</span>
     </section>
 
     <section class="topbar__item">
