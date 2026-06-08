@@ -302,6 +302,51 @@ function getNodePulseDelay(node: NodeDto): number {
 
   return -(hash % 1800);
 }
+
+function getRiskClass(node: NodeDto): string {
+  // Resolved nodes keep their green; past-unchosen are invisible — no risk colour needed.
+  if (isPastUnchosenNode(node) || node.state === 'Resolved') {
+    return '';
+  }
+
+  if (node.isBoss) {
+    return 'map__node--risk-boss';
+  }
+
+  if (node.riskLevel >= 75) {
+    return 'map__node--risk-critical';
+  }
+
+  if (node.riskLevel >= 50) {
+    return 'map__node--risk-high';
+  }
+
+  if (node.riskLevel >= 25) {
+    return 'map__node--risk-moderate';
+  }
+
+  return 'map__node--risk-low';
+}
+
+function getRiskLabel(node: NodeDto): string {
+  if (node.isBoss) {
+    return 'Boss';
+  }
+
+  if (node.riskLevel >= 75) {
+    return 'Risque critique';
+  }
+
+  if (node.riskLevel >= 50) {
+    return 'Risque élevé';
+  }
+
+  if (node.riskLevel >= 25) {
+    return 'Risque modéré';
+  }
+
+  return 'Risque faible';
+}
 </script>
 
 <template>
@@ -340,6 +385,7 @@ function getNodePulseDelay(node: NodeDto): number {
         class="map__node"
         :class="[
           getNodeClass(node),
+          getRiskClass(node),
           {
             'map__node--selected-route': isNodeInSelectedRoute(node),
             'map__node--unselected-route': hasSelectedNode() && !isNodeInSelectedRoute(node),
@@ -349,6 +395,7 @@ function getNodePulseDelay(node: NodeDto): number {
           ...getNodePosition(node),
           '--node-pulse-delay': `${getNodePulseDelay(node)}ms`,
         }"
+        :title="`${node.type} — ${getRiskLabel(node)} (${node.riskLevel}) — ${node.rewardProfile}`"
         :disabled="node.state !== 'Available'"
         @click="chooseNode(node)"
       >
@@ -493,9 +540,12 @@ function getNodePulseDelay(node: NodeDto): number {
 }
 
 .map__node--selected {
-  color: var(--color-gold);
-  border-color: var(--color-gold);
-  box-shadow: 0 0 24px color-mix(in oklch, var(--color-gold), transparent 60%);
+  /* Gold glow signals selection; risk class continues to set color/border. */
+  box-shadow:
+    0 0 20px color-mix(in oklch, var(--color-gold), transparent 55%),
+    0 0 5px  color-mix(in oklch, var(--color-gold), transparent 40%);
+  outline: 1px solid color-mix(in oklch, var(--color-gold), transparent 38%);
+  outline-offset: 2px;
 }
 
 .map__node--available,
@@ -565,5 +615,36 @@ function getNodePulseDelay(node: NodeDto): number {
   .map__node {
     animation: none;
   }
+}
+
+/* ─── Risk classification ─────────────────────────────────────────────────────
+   Declared after all state classes (same specificity, later = wins).
+   Resolved and past-unchosen nodes are excluded in getRiskClass() so their
+   existing colours are unaffected.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+.map__node--risk-low {
+  color: var(--color-frost);
+  border-color: var(--color-frost);
+}
+
+.map__node--risk-moderate {
+  color: color-mix(in oklch, var(--color-frost), var(--color-gold) 35%);
+  border-color: color-mix(in oklch, var(--color-frost), var(--color-gold) 35%);
+}
+
+.map__node--risk-high {
+  color: var(--color-gold);
+  border-color: var(--color-gold);
+}
+
+.map__node--risk-critical {
+  color: color-mix(in oklch, var(--color-blood), var(--color-gold) 20%);
+  border-color: color-mix(in oklch, var(--color-blood), var(--color-gold) 20%);
+}
+
+.map__node--risk-boss {
+  color: var(--color-blood);
+  border-color: var(--color-blood);
 }
 </style>

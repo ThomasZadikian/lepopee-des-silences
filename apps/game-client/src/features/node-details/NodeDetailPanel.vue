@@ -12,6 +12,22 @@ defineEmits<{
   resolveCurrentEvent: [];
   generateNextNodes: [];
 }>();
+
+function getRiskLabel(node: NodeDto): string {
+  if (node.isBoss) return 'Boss';
+  if (node.riskLevel >= 75) return 'Critique';
+  if (node.riskLevel >= 50) return 'Élevé';
+  if (node.riskLevel >= 25) return 'Modéré';
+  return 'Faible';
+}
+
+function getRiskClass(node: NodeDto): string {
+  if (node.isBoss) return 'risk-label--boss';
+  if (node.riskLevel >= 75) return 'risk-label--critical';
+  if (node.riskLevel >= 50) return 'risk-label--high';
+  if (node.riskLevel >= 25) return 'risk-label--moderate';
+  return 'risk-label--low';
+}
 </script>
 
 <template>
@@ -33,8 +49,11 @@ defineEmits<{
 
       <div class="node-detail__meta">
         <div>
-          <span class="system-label">RISK_LEVEL</span>
-          <strong>{{ node.riskLevel }}</strong>
+          <span class="system-label">RISQUE</span>
+          <strong
+            :class="getRiskClass(node)"
+            :title="`Niveau brut : ${node.riskLevel}`"
+          >{{ getRiskLabel(node) }}</strong>
         </div>
 
         <div>
@@ -131,4 +150,10 @@ defineEmits<{
   border-color: var(--color-frost);
   color: var(--color-frost);
 }
+
+.risk-label--low      { color: var(--color-frost); }
+.risk-label--moderate { color: color-mix(in oklch, var(--color-frost), var(--color-gold) 35%); }
+.risk-label--high     { color: var(--color-gold); }
+.risk-label--critical { color: color-mix(in oklch, var(--color-blood), var(--color-gold) 20%); }
+.risk-label--boss     { color: var(--color-blood); }
 </style>
