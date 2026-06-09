@@ -415,6 +415,216 @@ public sealed class InMemoryCatalogContentGateway : ICatalogContentGateway
         return Task.FromResult(profile);
     }
 
+    private static readonly IReadOnlyDictionary<string, CatalogEnemyDefinition> EnemyDefinitions =
+        new Dictionary<string, CatalogEnemyDefinition>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["enemy.threshold.doubt-fragment"] = new CatalogEnemyDefinition(
+                Key: "enemy.threshold.doubt-fragment",
+                DisplayName: "Fragment de Doute",
+                Description: "Un éclat de silence hésitant, première manifestation du Palais.",
+                Archetype: "Fragile",
+                CompatibleRoomTypes: ["Threshold"],
+                BaseDifficulty: 1,
+                MinRiskLevel: 1,
+                MaxRiskLevel: 2,
+                Tags: ["threshold", "fragile", "echo"],
+                SkillKeys: ["skill.basic.strike"]),
+            ["enemy.threshold.inner-resistance"] = new CatalogEnemyDefinition(
+                Key: "enemy.threshold.inner-resistance",
+                DisplayName: "Résistance Intérieure",
+                Description: "La première défense du Palais contre les pèlerins.",
+                Archetype: "Guard",
+                CompatibleRoomTypes: ["Threshold"],
+                BaseDifficulty: 2,
+                MinRiskLevel: 2,
+                MaxRiskLevel: 3,
+                Tags: ["threshold", "guard", "will"],
+                SkillKeys: ["skill.basic.strike", "skill.basic.shield"]),
+            ["enemy.forest.rooted-regret"] = new CatalogEnemyDefinition(
+                Key: "enemy.forest.rooted-regret",
+                DisplayName: "Regret Enraciné",
+                Description: "Une mémoire douloureuse qui refuse de disparaître.",
+                Archetype: "Bruiser",
+                CompatibleRoomTypes: ["Forest"],
+                BaseDifficulty: 2,
+                MinRiskLevel: 1,
+                MaxRiskLevel: 3,
+                Tags: ["forest", "bruiser", "memory"],
+                SkillKeys: ["skill.basic.strike", "skill.basic.charge"]),
+            ["enemy.forest.whispering-branch"] = new CatalogEnemyDefinition(
+                Key: "enemy.forest.whispering-branch",
+                DisplayName: "Branche Murmurante",
+                Description: "Les branches du Palais murmurent des secrets oubliés.",
+                Archetype: "Support",
+                CompatibleRoomTypes: ["Forest"],
+                BaseDifficulty: 2,
+                MinRiskLevel: 2,
+                MaxRiskLevel: 4,
+                Tags: ["forest", "support", "whisper"],
+                SkillKeys: ["skill.basic.heal", "skill.basic.strike"]),
+            ["enemy.rupture.broken-thought"] = new CatalogEnemyDefinition(
+                Key: "enemy.rupture.broken-thought",
+                DisplayName: "Pensée Brisée",
+                Description: "Un raisonnement interrompu par la Rupture.",
+                Archetype: "Skirmisher",
+                CompatibleRoomTypes: ["Rupture"],
+                BaseDifficulty: 3,
+                MinRiskLevel: 2,
+                MaxRiskLevel: 4,
+                Tags: ["rupture", "skirmisher", "thought"],
+                SkillKeys: ["skill.basic.strike", "skill.basic.swift"]),
+            ["enemy.rupture.contradiction"] = new CatalogEnemyDefinition(
+                Key: "enemy.rupture.contradiction",
+                DisplayName: "Contradiction",
+                Description: "Une impossibilité logique devenue agressive.",
+                Archetype: "Disruptor",
+                CompatibleRoomTypes: ["Rupture"],
+                BaseDifficulty: 4,
+                MinRiskLevel: 3,
+                MaxRiskLevel: 5,
+                Tags: ["rupture", "disruptor", "paradox"],
+                SkillKeys: ["skill.basic.strike", "skill.basic.disable"]),
+            ["enemy.silence.mute-witness"] = new CatalogEnemyDefinition(
+                Key: "enemy.silence.mute-witness",
+                DisplayName: "Témoin Muet",
+                Description: "Il observe sans jamais parler. Sa présence suffit.",
+                Archetype: "Guard",
+                CompatibleRoomTypes: ["Silence"],
+                BaseDifficulty: 3,
+                MinRiskLevel: 2,
+                MaxRiskLevel: 4,
+                Tags: ["silence", "guard", "witness"],
+                SkillKeys: ["skill.basic.shield", "skill.basic.strike"]),
+            ["enemy.silence.absent-voice"] = new CatalogEnemyDefinition(
+                Key: "enemy.silence.absent-voice",
+                DisplayName: "Voix Absente",
+                Description: "Un cri qui n'a jamais été poussé. Il pèse sur l'âme.",
+                Archetype: "Disruptor",
+                CompatibleRoomTypes: ["Silence"],
+                BaseDifficulty: 4,
+                MinRiskLevel: 3,
+                MaxRiskLevel: 5,
+                Tags: ["silence", "disruptor", "voice"],
+                SkillKeys: ["skill.basic.disable", "skill.basic.strike"]),
+            ["enemy.memory.archived-wound"] = new CatalogEnemyDefinition(
+                Key: "enemy.memory.archived-wound",
+                DisplayName: "Blessure Archivée",
+                Description: "Une douleur conservée dans les archives du Palais.",
+                Archetype: "Bruiser",
+                CompatibleRoomTypes: ["Memory"],
+                BaseDifficulty: 4,
+                MinRiskLevel: 2,
+                MaxRiskLevel: 5,
+                Tags: ["memory", "bruiser", "wound"],
+                SkillKeys: ["skill.basic.strike", "skill.basic.charge"]),
+            ["enemy.memory.named-loss"] = new CatalogEnemyDefinition(
+                Key: "enemy.memory.named-loss",
+                DisplayName: "Perte Nommée",
+                Description: "Chaque perte a un nom dans les archives du Palais.",
+                Archetype: "Support",
+                CompatibleRoomTypes: ["Memory"],
+                BaseDifficulty: 4,
+                MinRiskLevel: 3,
+                MaxRiskLevel: 5,
+                Tags: ["memory", "support", "loss"],
+                SkillKeys: ["skill.basic.heal", "skill.basic.buff"]),
+            ["enemy.antechamber.door-keeper"] = new CatalogEnemyDefinition(
+                Key: "enemy.antechamber.door-keeper",
+                DisplayName: "Gardien de Porte",
+                Description: "Il garde l'entrée de l'Antichambre. Il ne laisse passer personne.",
+                Archetype: "Guard",
+                CompatibleRoomTypes: ["Antechamber"],
+                BaseDifficulty: 5,
+                MinRiskLevel: 3,
+                MaxRiskLevel: 5,
+                Tags: ["antechamber", "guard", "door"],
+                SkillKeys: ["skill.basic.shield", "skill.basic.strike", "skill.basic.taunt"]),
+            ["enemy.antechamber.last-refusal"] = new CatalogEnemyDefinition(
+                Key: "enemy.antechamber.last-refusal",
+                DisplayName: "Dernier Refus",
+                Description: "Le dernier obstacle avant le Final. Il ne cédera pas.",
+                Archetype: "Bruiser",
+                CompatibleRoomTypes: ["Antechamber"],
+                BaseDifficulty: 5,
+                MinRiskLevel: 4,
+                MaxRiskLevel: 5,
+                Tags: ["antechamber", "bruiser", "final-stand"],
+                SkillKeys: ["skill.basic.strike", "skill.basic.charge", "skill.basic.enrage"]),
+            ["enemy.final.silent-double"] = new CatalogEnemyDefinition(
+                Key: "enemy.final.silent-double",
+                DisplayName: "Double Silencieux",
+                Description: "Votre propre silence reflété par le Palais.",
+                Archetype: "Elite",
+                CompatibleRoomTypes: ["Final"],
+                BaseDifficulty: 8,
+                MinRiskLevel: 4,
+                MaxRiskLevel: 5,
+                Tags: ["final", "elite", "mirror"],
+                SkillKeys: ["skill.basic.strike", "skill.basic.swift", "skill.basic.disable"]),
+            ["enemy.final.last-echo"] = new CatalogEnemyDefinition(
+                Key: "enemy.final.last-echo",
+                DisplayName: "Dernier Écho",
+                Description: "Le dernier son avant le silence éternel.",
+                Archetype: "Elite",
+                CompatibleRoomTypes: ["Final"],
+                BaseDifficulty: 9,
+                MinRiskLevel: 4,
+                MaxRiskLevel: 5,
+                Tags: ["final", "elite", "echo"],
+                SkillKeys: ["skill.basic.strike", "skill.basic.heal", "skill.basic.buff"])
+        };
+
+    public Task<CatalogEnemyDefinition?> GetEnemyDefinitionByKeyAsync(
+        string key,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            return Task.FromResult<CatalogEnemyDefinition?>(null);
+        }
+
+        var definition = EnemyDefinitions.GetValueOrDefault(key.Trim());
+        return Task.FromResult(definition);
+    }
+
+    public Task<IReadOnlyCollection<CatalogEnemyDefinition>> ListEnemyDefinitionsByRoomTypeAsync(
+        string roomType,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(roomType))
+        {
+            return Task.FromResult<IReadOnlyCollection<CatalogEnemyDefinition>>([]);
+        }
+
+        var trimmed = roomType.Trim();
+        var results = EnemyDefinitions.Values
+            .Where(d => d.CompatibleRoomTypes.Contains(trimmed, StringComparer.OrdinalIgnoreCase))
+            .ToArray();
+
+        return Task.FromResult<IReadOnlyCollection<CatalogEnemyDefinition>>(results);
+    }
+
+    public Task<IReadOnlyCollection<CatalogEnemyDefinition>> ListCompatibleEnemyDefinitionsAsync(
+        string roomType,
+        int riskLevel,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(roomType))
+        {
+            return Task.FromResult<IReadOnlyCollection<CatalogEnemyDefinition>>([]);
+        }
+
+        var trimmed = roomType.Trim();
+        var results = EnemyDefinitions.Values
+            .Where(d =>
+                d.CompatibleRoomTypes.Contains(trimmed, StringComparer.OrdinalIgnoreCase) &&
+                d.MinRiskLevel <= riskLevel &&
+                riskLevel <= d.MaxRiskLevel)
+            .ToArray();
+
+        return Task.FromResult<IReadOnlyCollection<CatalogEnemyDefinition>>(results);
+    }
+
     private static Result<TSnapshot> GetByKey<TSnapshot>(
         IReadOnlyDictionary<string, TSnapshot> source,
         string key,

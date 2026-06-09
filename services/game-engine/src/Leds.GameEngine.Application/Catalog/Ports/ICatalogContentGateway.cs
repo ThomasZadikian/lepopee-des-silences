@@ -33,4 +33,17 @@ public interface ICatalogContentGateway
     Task<CatalogRoomBossProfile?> GetRoomBossProfileAsync(
         string roomType,
         CancellationToken cancellationToken = default);
+
+    Task<CatalogEnemyDefinition?> GetEnemyDefinitionByKeyAsync(
+        string key,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyCollection<CatalogEnemyDefinition>> ListEnemyDefinitionsByRoomTypeAsync(
+        string roomType,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyCollection<CatalogEnemyDefinition>> ListCompatibleEnemyDefinitionsAsync(
+        string roomType,
+        int riskLevel,
+        CancellationToken cancellationToken = default);
 }

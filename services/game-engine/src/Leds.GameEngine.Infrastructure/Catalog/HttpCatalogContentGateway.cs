@@ -11,15 +11,15 @@ namespace Leds.GameEngine.Infrastructure.Catalog;
 /// HTTP implementation of <see cref="ICatalogContentGateway"/>.
 /// </summary>
 /// <remarks>
-/// In the current version, only room boss profiles are available through the
+/// Room Boss Profiles and Enemy Definitions are available through the
 /// Catalog Service HTTP API.
 ///
 /// Other content lookups still require the InMemory gateway and deliberately
 /// throw <see cref="CatalogGatewayException"/> when this gateway is used.
 ///
 /// Use <c>CatalogGateway:Mode = InMemory</c> for the complete playable local flow.
-/// Use <c>CatalogGateway:Mode = Http</c> only to validate the Room Boss Definition
-/// integration with the Catalog Service.
+/// Use <c>CatalogGateway:Mode = Http</c> to validate the Room Boss Definition
+/// and Enemy Definition integration with the Catalog Service.
 /// </remarks>
 public sealed class HttpCatalogContentGateway : ICatalogContentGateway
 {
@@ -142,6 +142,226 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
             Tags: httpDefinition.Tags);
     }
 
+    public async Task<CatalogEnemyDefinition?> GetEnemyDefinitionByKeyAsync(
+        string key,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            return null;
+        }
+
+        var encodedKey = Uri.EscapeDataString(key.Trim());
+        var url = $"/api/v2/catalog/enemy-definitions/{encodedKey}";
+
+        HttpResponseMessage response;
+        try
+        {
+            response = await _httpClient.GetAsync(url, cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            throw new CatalogGatewayException(
+                $"Failed to call Catalog Service at '{url}': {ex.Message}", ex);
+        }
+
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+
+        if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
+        {
+            return null;
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var body = await response.Content.ReadAsStringAsync(cancellationToken);
+            throw new CatalogGatewayException(
+                $"Catalog Service returned {(int)response.StatusCode} for '{url}': {body}");
+        }
+
+        var options = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        };
+
+        GetEnemyDefinitionByKeyHttpResponse? wrapper;
+        try
+        {
+            wrapper = await response.Content
+                .ReadFromJsonAsync<GetEnemyDefinitionByKeyHttpResponse>(options, cancellationToken);
+        }
+        catch (JsonException ex)
+        {
+            throw new CatalogGatewayException(
+                $"Failed to deserialize Catalog Service response from '{url}': {ex.Message}", ex);
+        }
+
+        var httpDefinition = wrapper?.Definition;
+
+        if (httpDefinition is null)
+        {
+            return null;
+        }
+
+        return MapToCatalogEnemyDefinition(httpDefinition);
+    }
+
+    public async Task<IReadOnlyCollection<CatalogEnemyDefinition>> ListEnemyDefinitionsByRoomTypeAsync(
+        string roomType,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(roomType))
+        {
+            return [];
+        }
+
+        var encodedRoomType = Uri.EscapeDataString(roomType.Trim());
+        var url = $"/api/v2/catalog/enemy-definitions/room-type/{encodedRoomType}";
+
+        HttpResponseMessage response;
+        try
+        {
+            response = await _httpClient.GetAsync(url, cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            throw new CatalogGatewayException(
+                $"Failed to call Catalog Service at '{url}': {ex.Message}", ex);
+        }
+
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return [];
+        }
+
+        if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
+        {
+            return [];
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var body = await response.Content.ReadAsStringAsync(cancellationToken);
+            throw new CatalogGatewayException(
+                $"Catalog Service returned {(int)response.StatusCode} for '{url}': {body}");
+        }
+
+        var options = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        };
+
+        ListEnemyDefinitionsHttpResponse? wrapper;
+        try
+        {
+            wrapper = await response.Content
+                .ReadFromJsonAsync<ListEnemyDefinitionsHttpResponse>(options, cancellationToken);
+        }
+        catch (JsonException ex)
+        {
+            throw new CatalogGatewayException(
+                $"Failed to deserialize Catalog Service response from '{url}': {ex.Message}", ex);
+        }
+
+        return wrapper?.Definitions?
+            .Select(MapToCatalogEnemyDefinition)
+            .ToArray() ?? [];
+    }
+
+    public async Task<IReadOnlyCollection<CatalogEnemyDefinition>> ListCompatibleEnemyDefinitionsAsync(
+        string roomType,
+        int riskLevel,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(roomType))
+        {
+            return [];
+        }
+
+        var encodedRoomType = Uri.EscapeDataString(roomType.Trim());
+        var url = $"/api/v2/catalog/enemy-definitions/compatible?roomType={encodedRoomType}&riskLevel={riskLevel}";
+
+        HttpResponseMessage response;
+        try
+        {
+            response = await _httpClient.GetAsync(url, cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            throw new CatalogGatewayException(
+                $"Failed to call Catalog Service at '{url}': {ex.Message}", ex);
+        }
+
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return [];
+        }
+
+        if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
+        {
+            return [];
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var body = await response.Content.ReadAsStringAsync(cancellationToken);
+            throw new CatalogGatewayException(
+                $"Catalog Service returned {(int)response.StatusCode} for '{url}': {body}");
+        }
+
+        var options = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        };
+
+        ListEnemyDefinitionsHttpResponse? wrapper;
+        try
+        {
+            wrapper = await response.Content
+                .ReadFromJsonAsync<ListEnemyDefinitionsHttpResponse>(options, cancellationToken);
+        }
+        catch (JsonException ex)
+        {
+            throw new CatalogGatewayException(
+                $"Failed to deserialize Catalog Service response from '{url}': {ex.Message}", ex);
+        }
+
+        return wrapper?.Definitions?
+            .Select(MapToCatalogEnemyDefinition)
+            .ToArray() ?? [];
+    }
+
+    private static CatalogEnemyDefinition MapToCatalogEnemyDefinition(
+        CatalogEnemyDefinitionHttpResponse source)
+    {
+        return new CatalogEnemyDefinition(
+            Key: source.Key,
+            DisplayName: source.Name,
+            Description: source.Description,
+            Archetype: source.Archetype,
+            CompatibleRoomTypes: source.CompatibleRoomTypes,
+            BaseDifficulty: source.BaseDifficulty,
+            MinRiskLevel: source.MinRiskLevel,
+            MaxRiskLevel: source.MaxRiskLevel,
+            Tags: source.Tags,
+            SkillKeys: source.SkillKeys);
+    }
+
     private static CatalogGatewayException NotAvailableYet(string contentType)
     {
         return new CatalogGatewayException(
@@ -151,4 +371,10 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
 
     private sealed record GetRoomBossDefinitionByRoomTypeHttpResponse(
         CatalogRoomBossDefinitionHttpResponse? Definition);
+
+    private sealed record GetEnemyDefinitionByKeyHttpResponse(
+        CatalogEnemyDefinitionHttpResponse? Definition);
+
+    private sealed record ListEnemyDefinitionsHttpResponse(
+        IReadOnlyCollection<CatalogEnemyDefinitionHttpResponse>? Definitions);
 }
