@@ -1,5 +1,7 @@
 ﻿using Leds.GameEngine.Application.Abstractions;
 using Leds.GameEngine.Application.Catalog.Ports;
+using Leds.GameEngine.Application.Combats.Dtos;
+using Leds.GameEngine.Application.Combats.EncounterDrafts;
 using Leds.GameEngine.Application.Combats.Ports;
 using Leds.GameEngine.Application.Common.Exceptions;
 using Leds.GameEngine.Application.Events.Contracts;
@@ -9,6 +11,7 @@ using Leds.GameEngine.Application.Events.ResolveNodeEvent;
 using Leds.GameEngine.Application.Runs.Dtos;
 using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Nodes;
+using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
 using MediatR;
 
@@ -23,6 +26,7 @@ public sealed class ResolveCurrentEventCommandHandler
     private readonly ICatalogContentGateway _catalogContentGateway;
     private readonly ICombatInstanceFactory _combatInstanceFactory;
     private readonly ICombatInstanceRepository _combatInstanceRepository;
+    private readonly ICombatEncounterDraftGenerator _encounterDraftGenerator;
 
     public ResolveCurrentEventCommandHandler(
         IRunRepository runRepository,
@@ -30,7 +34,8 @@ public sealed class ResolveCurrentEventCommandHandler
         IEventContentResolver eventContentResolver,
         ICatalogContentGateway catalogContentGateway,
         ICombatInstanceFactory combatInstanceFactory,
-        ICombatInstanceRepository combatInstanceRepository)
+        ICombatInstanceRepository combatInstanceRepository,
+        ICombatEncounterDraftGenerator encounterDraftGenerator)
     {
         _runRepository = runRepository;
         _nodeEventResolverDispatcher = nodeEventResolverDispatcher;
@@ -38,6 +43,7 @@ public sealed class ResolveCurrentEventCommandHandler
         _catalogContentGateway = catalogContentGateway;
         _combatInstanceFactory = combatInstanceFactory;
         _combatInstanceRepository = combatInstanceRepository;
+        _encounterDraftGenerator = encounterDraftGenerator;
     }
 
     public async Task<ResolveCurrentEventResponse> Handle(
@@ -80,6 +86,8 @@ public sealed class ResolveCurrentEventCommandHandler
             or NodeEventResolutionKind.EliteEncounterStarted
             or NodeEventResolutionKind.RoomBossEncounterStarted
             or NodeEventResolutionKind.RareCombatStarted;
+
+        CombatEncounterDraftDto? encounterDraftDto = null;
 
         if (isCombat)
         {
@@ -127,6 +135,9 @@ public sealed class ResolveCurrentEventCommandHandler
             await _combatInstanceRepository.AddAsync(combat, cancellationToken);
 
             run.SetActiveCombat(combat.Id);
+
+            encounterDraftDto = await GenerateEncounterDraft(
+                run, room, selectedNode, resolutionResult, cancellationToken);
         }
         else
         {
@@ -141,6 +152,54 @@ public sealed class ResolveCurrentEventCommandHandler
 
         return new ResolveCurrentEventResponse(
             RunDto.FromDomain(run),
-            outcome);
+            outcome,
+            encounterDraftDto);
+    }
+
+    private async Task<CombatEncounterDraftDto?> GenerateEncounterDraft(
+        Run run,
+        Room room,
+        MapNode selectedNode,
+        NodeEventResolutionResult resolutionResult,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var encounterType = resolutionResult.ResolutionKind switch
+            {
+                NodeEventResolutionKind.CombatStarted => "Combat",
+                NodeEventResolutionKind.EliteEncounterStarted => "Elite",
+                NodeEventResolutionKind.RoomBossEncounterStarted => "RoomBoss",
+                NodeEventResolutionKind.RareCombatStarted => "Rare",
+                _ => "Combat"
+            };
+
+            var enemyCount = encounterType switch
+            {
+                "Elite" => 1,
+                "Rare" => 1,
+                "RoomBoss" => 1,
+                _ => selectedNode.RiskLevel >= 3 ? 2 : 1
+            };
+
+            var draftContext = new CombatEncounterDraftContext(
+                RunId: run.Id.Value,
+                RoomId: room.Id.Value,
+                NodeId: selectedNode.Id.Value,
+                RoomType: room.RoomType.ToString(),
+                RoomIndex: room.Depth,
+                RiskLevel: selectedNode.RiskLevel,
+                EncounterType: encounterType,
+                EnemyCount: enemyCount);
+
+            var draft = await _encounterDraftGenerator.GenerateAsync(
+                draftContext, cancellationToken);
+
+            return CombatEncounterDraftDto.FromDomain(draft);
+        }
+        catch
+        {
+            return null;
+        }
     }
 }

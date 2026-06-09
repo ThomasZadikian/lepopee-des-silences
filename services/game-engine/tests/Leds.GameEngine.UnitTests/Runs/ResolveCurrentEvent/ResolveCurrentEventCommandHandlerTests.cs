@@ -1,6 +1,10 @@
 using FluentAssertions;
 using Leds.GameEngine.Application.Abstractions;
+using Leds.GameEngine.Application.Catalog;
+using Leds.GameEngine.Application.Catalog.Contracts;
 using Leds.GameEngine.Application.Catalog.Ports;
+using Leds.GameEngine.Application.Combats.Dtos;
+using Leds.GameEngine.Application.Combats.EncounterDrafts;
 using Leds.GameEngine.Application.Combats.Ports;
 using Leds.GameEngine.Application.Common.Exceptions;
 using Leds.GameEngine.Application.Events.Contracts;
@@ -8,10 +12,12 @@ using Leds.GameEngine.Application.Events.Dtos;
 using Leds.GameEngine.Application.Events.Ports;
 using Leds.GameEngine.Application.Events.ResolveNodeEvent;
 using Leds.GameEngine.Application.Runs.ResolveCurrentEvent;
+using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
 using Leds.GameEngine.UnitTests.Common.Factories;
+using Leds.SharedBuildingBlocks.Results;
 using Moq;
 
 namespace Leds.GameEngine.UnitTests.Runs.ResolveCurrentEvent;
@@ -59,6 +65,11 @@ public sealed class ResolveCurrentEventCommandHandlerTests
         return new Mock<ICombatInstanceRepository>();
     }
 
+    private static Mock<ICombatEncounterDraftGenerator> CreateEncounterDraftGeneratorMock()
+    {
+        return new Mock<ICombatEncounterDraftGenerator>();
+    }
+
     [Fact]
     public async Task Handle_ShouldResolveCurrentEvent_AndKeepRunActive_WhenRoomBossIsNotResolved()
     {
@@ -80,7 +91,8 @@ public sealed class ResolveCurrentEventCommandHandlerTests
             CreateContentResolverMock().Object,
             CreateCatalogGatewayMock().Object,
             CreateCombatFactoryMock().Object,
-            CreateCombatRepositoryMock().Object);
+            CreateCombatRepositoryMock().Object,
+            CreateEncounterDraftGeneratorMock().Object);
 
         var response = await handler.Handle(
             new ResolveCurrentEventCommand(run.Id.Value),
@@ -118,7 +130,8 @@ public sealed class ResolveCurrentEventCommandHandlerTests
             CreateContentResolverMock().Object,
             CreateCatalogGatewayMock().Object,
             CreateCombatFactoryMock().Object,
-            CreateCombatRepositoryMock().Object);
+            CreateCombatRepositoryMock().Object,
+            CreateEncounterDraftGeneratorMock().Object);
 
         var act = () => handler.Handle(
             new ResolveCurrentEventCommand(runId),
@@ -147,7 +160,8 @@ public sealed class ResolveCurrentEventCommandHandlerTests
             CreateContentResolverMock().Object,
             CreateCatalogGatewayMock().Object,
             CreateCombatFactoryMock().Object,
-            CreateCombatRepositoryMock().Object);
+            CreateCombatRepositoryMock().Object,
+            CreateEncounterDraftGeneratorMock().Object);
 
         var act = () => handler.Handle(
             new ResolveCurrentEventCommand(run.Id.Value),
@@ -176,7 +190,8 @@ public sealed class ResolveCurrentEventCommandHandlerTests
             CreateContentResolverMock().Object,
             CreateCatalogGatewayMock().Object,
             CreateCombatFactoryMock().Object,
-            CreateCombatRepositoryMock().Object);
+            CreateCombatRepositoryMock().Object,
+            CreateEncounterDraftGeneratorMock().Object);
 
         var act = () => handler.Handle(
             new ResolveCurrentEventCommand(run.Id.Value),
@@ -206,7 +221,8 @@ public sealed class ResolveCurrentEventCommandHandlerTests
             CreateContentResolverMock().Object,
             CreateCatalogGatewayMock().Object,
             CreateCombatFactoryMock().Object,
-            CreateCombatRepositoryMock().Object);
+            CreateCombatRepositoryMock().Object,
+            CreateEncounterDraftGeneratorMock().Object);
 
         var response = await handler.Handle(
             new ResolveCurrentEventCommand(run.Id.Value),
@@ -234,7 +250,8 @@ public sealed class ResolveCurrentEventCommandHandlerTests
             CreateContentResolverMock().Object,
             CreateCatalogGatewayMock().Object,
             CreateCombatFactoryMock().Object,
-            CreateCombatRepositoryMock().Object);
+            CreateCombatRepositoryMock().Object,
+            CreateEncounterDraftGeneratorMock().Object);
 
         var response = await handler.Handle(
             new ResolveCurrentEventCommand(run.Id.Value),
@@ -263,5 +280,124 @@ public sealed class ResolveCurrentEventCommandHandlerTests
         response.Outcome.NodeId.Should().Be(selectedNode.Id.Value);
         response.Outcome.Title.Should().NotBeNullOrWhiteSpace();
         response.Outcome.Description.Should().NotBeNullOrWhiteSpace();
+    }
+
+    [Fact]
+    public async Task Handle_ShouldIncludeEncounterDraft_ForCombatEvent()
+    {
+        var run = TestGameEngineFactory.CreateRun(NodeEventType.Combat);
+        var selectedNode = run.CurrentRoom.AvailableNodes.First();
+        run.ChooseNode(selectedNode.Id);
+
+        var repository = new Mock<IRunRepository>();
+        repository
+            .Setup(repo => repo.GetByIdAsync(run.Id, CancellationToken.None))
+            .ReturnsAsync(run);
+
+        var dispatcher = CreateDispatcherMock(NodeEventResolutionKind.CombatStarted);
+
+        var contentResolver = new Mock<IEventContentResolver>();
+        contentResolver
+            .Setup(r => r.ResolveAsync(It.IsAny<EventContentResolutionContext>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<ResolvedNodeEventContent>.Success(
+                new ResolvedCombatEventContent(
+                    EventTemplateKey: "event-combat-shadow-v1",
+                    EventTemplateVersion: "1.0.0",
+                    Tags: new[] { "combat" },
+                    EnemyTemplateKey: "enemy-shadow-v1",
+                    EnemyTemplateVersion: "1.0.0",
+                    RiskLevel: selectedNode.RiskLevel)));
+
+        var catalogGateway = new Mock<ICatalogContentGateway>();
+        catalogGateway
+            .Setup(g => g.GetEventTemplateByKeyAsync("event-combat-shadow-v1", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<EventTemplateSnapshot>.Success(new EventTemplateSnapshot(
+                "event-combat-shadow-v1", "Test Event", "", "1.0.0", "Active", "Combat",
+                "CombatStarted", It.IsAny<int>(), It.IsAny<int>(), false, new[] { "combat" })));
+        catalogGateway
+            .Setup(g => g.GetEnemyTemplateByKeyAsync("enemy-shadow-v1", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<EnemyTemplateSnapshot>.Success(new EnemyTemplateSnapshot(
+                "enemy-shadow-v1", "Shadow", "", "1.0.0", "Active", 30, 8, 4, 6, "Shadow",
+                new[] { "skill-shadow-strike-v1" })));
+
+        var draftEnemy = new CatalogEnemyDefinition(
+            "enemy.threshold.doubt-fragment", "Fragment de Doute", "", "Fragile",
+            new[] { "Threshold" }, 1, 1, 2, new[] { "fragile" }, new[] { "skill.basic.strike" });
+
+        catalogGateway
+            .Setup(g => g.ListCompatibleEnemyDefinitionsAsync(
+                It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[] { draftEnemy });
+
+        var draftGenerator = new Mock<ICombatEncounterDraftGenerator>();
+        var expectedDraft = new CombatEncounterDraft(
+            run.Id.Value, run.CurrentRoom.Id.Value, selectedNode.Id.Value,
+            "Threshold", 0, selectedNode.RiskLevel, "Combat",
+            new[] { new CombatEncounterDraftEnemy(
+                "enemy.threshold.doubt-fragment", "Fragment de Doute", "", "Fragile",
+                1, 1, 2, new[] { "fragile" }, new[] { "skill.basic.strike" }) },
+            new[] { new CombatEncounterDraftAlly("player.self", "Le Joueur", "Protagonist", new[] { "player" }) });
+
+        draftGenerator
+            .Setup(g => g.GenerateAsync(It.IsAny<CombatEncounterDraftContext>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedDraft);
+
+        var combatFactory = new Mock<ICombatInstanceFactory>();
+        var combatants = new CombatantSnapshot[]
+        {
+            CombatantSnapshot.Create("player.self", "Player", CombatantSide.Player, 100, 10, 5, 7),
+            CombatantSnapshot.Create("enemy-shadow-v1", "Shadow", CombatantSide.Enemy, 30, 8, 4, 6)
+        };
+        combatFactory
+            .Setup(f => f.CreateFromEnemyTemplate(It.IsAny<EnemyTemplateSnapshot>()))
+            .Returns(CombatInstance.Create(combatants));
+
+        var handler = new ResolveCurrentEventCommandHandler(
+            repository.Object,
+            dispatcher.Object,
+            contentResolver.Object,
+            catalogGateway.Object,
+            combatFactory.Object,
+            new Mock<ICombatInstanceRepository>().Object,
+            draftGenerator.Object);
+
+        var response = await handler.Handle(
+            new ResolveCurrentEventCommand(run.Id.Value),
+            CancellationToken.None);
+
+        response.EncounterDraft.Should().NotBeNull();
+        response.EncounterDraft!.EncounterType.Should().Be("Combat");
+        response.EncounterDraft.Enemies.Should().NotBeEmpty();
+        response.EncounterDraft.Allies.Should().NotBeEmpty();
+        response.EncounterDraft.Enemies.Should().Contain(e =>
+            e.EnemyKey == "enemy.threshold.doubt-fragment");
+    }
+
+    [Fact]
+    public async Task Handle_ShouldNotIncludeEncounterDraft_ForNonCombatEvent()
+    {
+        var run = TestGameEngineFactory.CreateRun(NodeEventType.Item);
+        var selectedNode = run.CurrentRoom.AvailableNodes.First();
+        run.ChooseNode(selectedNode.Id);
+
+        var repository = new Mock<IRunRepository>();
+        repository
+            .Setup(repo => repo.GetByIdAsync(run.Id, CancellationToken.None))
+            .ReturnsAsync(run);
+
+        var handler = new ResolveCurrentEventCommandHandler(
+            repository.Object,
+            CreateDispatcherMock().Object,
+            CreateContentResolverMock().Object,
+            CreateCatalogGatewayMock().Object,
+            CreateCombatFactoryMock().Object,
+            CreateCombatRepositoryMock().Object,
+            CreateEncounterDraftGeneratorMock().Object);
+
+        var response = await handler.Handle(
+            new ResolveCurrentEventCommand(run.Id.Value),
+            CancellationToken.None);
+
+        response.EncounterDraft.Should().BeNull();
     }
 }

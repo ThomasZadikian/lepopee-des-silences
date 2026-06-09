@@ -1,5 +1,6 @@
 using Leds.GameEngine.Application.Abstractions;
 using Leds.GameEngine.Application.Catalog.Ports;
+using Leds.GameEngine.Application.Combats.EncounterDrafts;
 using Leds.GameEngine.Application.Combats.Ports;
 using Leds.GameEngine.Application.Events.Ports;
 using Leds.GameEngine.Application.Events.Resolution;
@@ -9,6 +10,7 @@ using Leds.GameEngine.Domain.Markov;
 using Leds.GameEngine.Infrastructure.Catalog;
 using Leds.GameEngine.Infrastructure.Clock;
 using Leds.GameEngine.Infrastructure.Combats;
+using Leds.GameEngine.Infrastructure.Combats.EncounterDrafts;
 using Leds.GameEngine.Infrastructure.Events.Resolution;
 using Leds.GameEngine.Infrastructure.Generation;
 using Leds.GameEngine.Infrastructure.Generation.Randomness;
@@ -63,6 +65,8 @@ public static class InfrastructureServiceCollectionExtensions
 
         services.AddSingleton<ICombatInstanceRepository, InMemoryCombatInstanceRepository>();
         services.AddSingleton<ICombatInstanceFactory, CombatInstanceFactory>();
+
+        services.AddSingleton<ICombatEncounterDraftGenerator, CombatEncounterDraftGenerator>();
 
         services.AddSingleton<IRewardOfferRepository, InMemoryRewardOfferRepository>();
 
