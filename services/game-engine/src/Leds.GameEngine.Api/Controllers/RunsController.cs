@@ -1,7 +1,9 @@
+using Leds.GameEngine.Application.Combats.Dtos;
 using Leds.GameEngine.Application.Events.ChooseEventOption;
 using Leds.GameEngine.Application.Runs.AbandonRun;
 using Leds.GameEngine.Application.Runs.ChooseNode;
 using Leds.GameEngine.Application.Runs.ExitMidRoom;
+using Leds.GameEngine.Application.Runs.GetCurrentCombat;
 using Leds.GameEngine.Application.Runs.GetRunById;
 using Leds.GameEngine.Application.Runs.ResumeRun;
 using Leds.GameEngine.Application.Runs.MoveToNextRoom;
@@ -50,6 +52,20 @@ public sealed class RunsController : ControllerBase
         CancellationToken cancellationToken)
     {
         var query = new GetRunByIdQuery(runId);
+
+        var response = await _sender.Send(query, cancellationToken);
+
+        return Ok(response);
+    }
+
+    [HttpGet("{runId:guid}/current-combat")]
+    [ProducesResponseType(typeof(CombatRuntimeDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<CombatRuntimeDto>> GetCurrentCombat(
+        Guid runId,
+        CancellationToken cancellationToken)
+    {
+        var query = new GetCurrentCombatQuery(runId);
 
         var response = await _sender.Send(query, cancellationToken);
 

@@ -134,12 +134,12 @@ public sealed class ResolveCurrentEventCommandHandler
                     $"Failed to retrieve enemy template: {enemyTemplateResult.Error.Message}");
             }
 
-            var combat = _combatInstanceFactory.CreateFromEnemyTemplate(
+            var combatInstance = _combatInstanceFactory.CreateFromEnemyTemplate(
                 enemyTemplateResult.Value);
 
-            await _combatInstanceRepository.AddAsync(combat, cancellationToken);
+            await _combatInstanceRepository.AddAsync(combatInstance, cancellationToken);
 
-            run.SetActiveCombat(combat.Id);
+            run.SetActiveCombat(combatInstance.Id);
 
             var draft = await GenerateEncounterDraft(
                 run, room, selectedNode, resolutionResult, cancellationToken);
@@ -147,8 +147,9 @@ public sealed class ResolveCurrentEventCommandHandler
             if (draft is not null)
             {
                 encounterDraftDto = CombatEncounterDraftDto.FromDomain(draft);
-                combatRuntimeDto = CombatRuntimeDto.FromDomain(
-                    _combatFactory.CreateFromDraft(draft));
+                var combatRuntime = _combatFactory.CreateFromDraft(draft);
+                run.StartCombat(combatRuntime);
+                combatRuntimeDto = CombatRuntimeDto.FromDomain(combatRuntime);
             }
         }
         else

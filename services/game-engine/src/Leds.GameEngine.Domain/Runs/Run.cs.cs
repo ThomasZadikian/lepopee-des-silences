@@ -12,6 +12,7 @@ public sealed class Run
     private readonly List<Room> _rooms = [];
     private readonly List<ActivePalaceLaw> _activePalaceLaws = [];
     private readonly List<string> _memoryFragments = [];
+    private Combat? _activeCombat;
     private RunSnapshot? _roomSnapshot;
     private RunStatus? _preSuspendStatus;
 
@@ -83,7 +84,13 @@ public sealed class Run
 
     public CombatId? ActiveCombatId { get; private set; }
 
-    public bool HasActiveCombat => ActiveCombatId.HasValue;
+    public bool HasActiveCombat => ActiveCombatId.HasValue || _activeCombat is not null;
+
+    /// <summary>
+    /// The active combat runtime domain object, if any.
+    /// Set via <see cref="StartCombat"/>.
+    /// </summary>
+    public Combat? ActiveCombat => _activeCombat;
 
     public RewardOfferId? PendingRewardOfferId { get; private set; }
 
@@ -460,6 +467,38 @@ public sealed class Run
         ActiveCombatId = combatId;
     }
 
+    public void StartCombat(Combat combat)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+
+        if (combat.Id.Value == Guid.Empty)
+        {
+            throw new DomainException("Combat id is required.");
+        }
+
+        if (combat.RunId != Id)
+        {
+            throw new DomainException("Combat does not belong to this run.");
+        }
+
+        if (combat.Status != CombatStatus.Active)
+        {
+            throw new DomainException("Combat must be active to be started.");
+        }
+
+        if (Status != RunStatus.Active)
+        {
+            throw new DomainException("Run must be active to start a combat.");
+        }
+
+        if (_activeCombat is not null)
+        {
+            throw new DomainException("Run already has an active combat.");
+        }
+
+        _activeCombat = combat;
+    }
+
     public void CompleteActiveCombat(CombatId combatId)
     {
         if (!HasActiveCombat)
@@ -473,6 +512,7 @@ public sealed class Run
         }
 
         ActiveCombatId = null;
+        _activeCombat = null;
 
         ResolveCurrentEvent();
     }
@@ -625,6 +665,7 @@ public sealed class Run
         }
 
         ActiveCombatId = null;
+        _activeCombat = null;
         Status = RunStatus.Failed;
         EndedAt = endedAt;
     }

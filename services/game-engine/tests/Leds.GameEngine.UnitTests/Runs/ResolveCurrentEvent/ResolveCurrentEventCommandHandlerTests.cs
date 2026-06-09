@@ -385,6 +385,107 @@ public sealed class ResolveCurrentEventCommandHandlerTests
         response.EncounterDraft.Allies.Should().NotBeEmpty();
         response.EncounterDraft.Enemies.Should().Contain(e =>
             e.EnemyKey == "enemy.threshold.doubt-fragment");
+        response.Combat.Should().NotBeNull();
+        response.Combat!.Allies.Should().NotBeEmpty();
+        response.Combat.Enemies.Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public async Task Handle_ShouldIncludePersistedCombat_ForCombatEvent()
+    {
+        var run = TestGameEngineFactory.CreateRun(NodeEventType.Combat);
+        var selectedNode = run.CurrentRoom.AvailableNodes.First();
+        run.ChooseNode(selectedNode.Id);
+
+        var repository = new Mock<IRunRepository>();
+        repository
+            .Setup(repo => repo.GetByIdAsync(run.Id, CancellationToken.None))
+            .ReturnsAsync(run);
+
+        var dispatcher = CreateDispatcherMock(NodeEventResolutionKind.CombatStarted);
+
+        var contentResolver = new Mock<IEventContentResolver>();
+        contentResolver
+            .Setup(r => r.ResolveAsync(It.IsAny<EventContentResolutionContext>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<ResolvedNodeEventContent>.Success(
+                new ResolvedCombatEventContent(
+                    EventTemplateKey: "event-combat-shadow-v1",
+                    EventTemplateVersion: "1.0.0",
+                    Tags: new[] { "combat" },
+                    EnemyTemplateKey: "enemy-shadow-v1",
+                    EnemyTemplateVersion: "1.0.0",
+                    RiskLevel: selectedNode.RiskLevel)));
+
+        var catalogGateway = new Mock<ICatalogContentGateway>();
+        catalogGateway
+            .Setup(g => g.GetEventTemplateByKeyAsync("event-combat-shadow-v1", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<EventTemplateSnapshot>.Success(new EventTemplateSnapshot(
+                "event-combat-shadow-v1", "Test Event", "", "1.0.0", "Active", "Combat",
+                "CombatStarted", It.IsAny<int>(), It.IsAny<int>(), false, new[] { "combat" })));
+        catalogGateway
+            .Setup(g => g.GetEnemyTemplateByKeyAsync("enemy-shadow-v1", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<EnemyTemplateSnapshot>.Success(new EnemyTemplateSnapshot(
+                "enemy-shadow-v1", "Shadow", "", "1.0.0", "Active", 30, 8, 4, 6, "Shadow",
+                new[] { "skill-shadow-strike-v1" })));
+
+        var draftEnemy = new CatalogEnemyDefinition(
+            "enemy.threshold.doubt-fragment", "Fragment de Doute", "", "Fragile",
+            new[] { "Threshold" }, 1, 1, 2, new[] { "fragile" }, new[] { "skill.basic.strike" });
+
+        catalogGateway
+            .Setup(g => g.ListCompatibleEnemyDefinitionsAsync(
+                It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[] { draftEnemy });
+
+        var draftGenerator = new Mock<ICombatEncounterDraftGenerator>();
+        var expectedDraft = new CombatEncounterDraft(
+            run.Id.Value, run.CurrentRoom.Id.Value, selectedNode.Id.Value,
+            "Threshold", 0, selectedNode.RiskLevel, "Combat",
+            new[] { new CombatEncounterDraftEnemy(
+                "enemy.threshold.doubt-fragment", "Fragment de Doute", "", "Fragile",
+                1, 1, 2, new[] { "fragile" }, new[] { "skill.basic.strike" }, Skills: []) },
+            new[] { new CombatEncounterDraftAlly("player.self", "Le Joueur", "Protagonist", new[] { "player" }) });
+
+        draftGenerator
+            .Setup(g => g.GenerateAsync(It.IsAny<CombatEncounterDraftContext>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedDraft);
+
+        var combatFactory = new Mock<ICombatInstanceFactory>();
+        var combatants = new CombatantSnapshot[]
+        {
+            CombatantSnapshot.Create("player.self", "Player", CombatantSide.Player, 100, 10, 5, 7),
+            CombatantSnapshot.Create("enemy-shadow-v1", "Shadow", CombatantSide.Enemy, 30, 8, 4, 6)
+        };
+        combatFactory
+            .Setup(f => f.CreateFromEnemyTemplate(It.IsAny<EnemyTemplateSnapshot>()))
+            .Returns(CombatInstance.Create(combatants));
+
+        var runtimeCombat = new CombatFactory().CreateFromDraft(expectedDraft);
+        var runtimeFactoryMock = new Mock<ICombatFactory>();
+        runtimeFactoryMock
+            .Setup(f => f.CreateFromDraft(It.IsAny<CombatEncounterDraft>()))
+            .Returns(runtimeCombat);
+
+        var handler = new ResolveCurrentEventCommandHandler(
+            repository.Object,
+            dispatcher.Object,
+            contentResolver.Object,
+            catalogGateway.Object,
+            combatFactory.Object,
+            new Mock<ICombatInstanceRepository>().Object,
+            draftGenerator.Object,
+            runtimeFactoryMock.Object);
+
+        var response = await handler.Handle(
+            new ResolveCurrentEventCommand(run.Id.Value),
+            CancellationToken.None);
+
+        response.Combat.Should().NotBeNull();
+        response.Combat!.Id.Should().Be(runtimeCombat.Id);
+        response.Combat.Status.Should().Be(CombatStatus.Active);
+        response.Combat.Allies.Should().Contain(a => a.SourceKey == "player.self");
+        response.Combat.Enemies.Should().Contain(e => e.SourceKey == "enemy.threshold.doubt-fragment");
+        response.Combat.TurnNumber.Should().Be(1);
     }
 
     [Fact]
