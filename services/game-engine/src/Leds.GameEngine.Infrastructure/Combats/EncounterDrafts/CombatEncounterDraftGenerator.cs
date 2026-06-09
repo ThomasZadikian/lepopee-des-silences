@@ -1,5 +1,6 @@
 using Leds.GameEngine.Application.Catalog;
 using Leds.GameEngine.Application.Catalog.Ports;
+using Leds.GameEngine.Application.Combats.EncounterComposition;
 using Leds.GameEngine.Application.Combats.EncounterDrafts;
 
 namespace Leds.GameEngine.Infrastructure.Combats.EncounterDrafts;
@@ -11,13 +12,15 @@ public sealed class CombatEncounterDraftGenerator : ICombatEncounterDraftGenerat
     private const string PlayerRole = "Protagonist";
     private static readonly IReadOnlyCollection<string> PlayerTags = new[] { "player", "protagonist" };
 
-    private static readonly IReadOnlyCollection<string> EmptyTags = Array.Empty<string>();
-
     private readonly ICatalogContentGateway _catalogContentGateway;
+    private readonly IEncounterCompositionPolicy _compositionPolicy;
 
-    public CombatEncounterDraftGenerator(ICatalogContentGateway catalogContentGateway)
+    public CombatEncounterDraftGenerator(
+        ICatalogContentGateway catalogContentGateway,
+        IEncounterCompositionPolicy compositionPolicy)
     {
         _catalogContentGateway = catalogContentGateway;
+        _compositionPolicy = compositionPolicy;
     }
 
     public async Task<CombatEncounterDraft> GenerateAsync(
@@ -30,19 +33,16 @@ public sealed class CombatEncounterDraftGenerator : ICombatEncounterDraftGenerat
                 context.RiskLevel,
                 cancellationToken);
 
-        var ordered = compatibleEnemies
-            .OrderBy(e => e.Key, StringComparer.Ordinal)
-            .ToArray();
+        var compositionContext = new EncounterCompositionContext(
+            RoomType: context.RoomType,
+            RoomIndex: context.RoomIndex,
+            RiskLevel: context.RiskLevel,
+            EncounterType: context.EncounterType,
+            AvailableEnemies: compatibleEnemies);
 
-        var selected = SelectEnemies(ordered, context.EncounterType, context.EnemyCount);
+        var compositionResult = _compositionPolicy.Compose(compositionContext);
 
-        if (selected.Length == 0)
-        {
-            throw new InvalidOperationException(
-                $"No compatible enemy definitions found for RoomType='{context.RoomType}', " +
-                $"RiskLevel={context.RiskLevel}, EncounterType='{context.EncounterType}'. " +
-                "Cannot generate a combat encounter draft without enemies.");
-        }
+        var selected = compositionResult.SelectedEnemies;
 
         var skillKeys = selected
             .SelectMany(e => e.SkillKeys)
@@ -112,37 +112,5 @@ public sealed class CombatEncounterDraftGenerator : ICombatEncounterDraftGenerat
             EncounterType: context.EncounterType,
             Enemies: enemies,
             Allies: allies);
-    }
-
-    private static CatalogEnemyDefinition[] SelectEnemies(
-        CatalogEnemyDefinition[] ordered,
-        string encounterType,
-        int requestedCount)
-    {
-        if (ordered.Length == 0)
-        {
-            return [];
-        }
-
-        if (encounterType == "Elite")
-        {
-            var elite = ordered.FirstOrDefault(e =>
-                e.Tags.Contains("elite", StringComparer.OrdinalIgnoreCase));
-
-            if (elite is not null)
-            {
-                return [elite];
-            }
-
-            return [ordered[^1]];
-        }
-
-        if (encounterType == "Rare")
-        {
-            return [ordered[^1]];
-        }
-
-        var count = Math.Min(requestedCount, ordered.Length);
-        return ordered[..count];
     }
 }

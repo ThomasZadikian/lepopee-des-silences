@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Leds.GameEngine.Application.Catalog;
 using Leds.GameEngine.Application.Catalog.Ports;
+using Leds.GameEngine.Application.Combats.EncounterComposition;
 using Leds.GameEngine.Application.Combats.EncounterDrafts;
 using Leds.GameEngine.Infrastructure.Combats.EncounterDrafts;
 using Moq;
@@ -32,18 +33,6 @@ public sealed class CombatEncounterDraftGeneratorTests
         MaxRiskLevel: 3,
         Tags: new[] { "threshold", "guard" },
         SkillKeys: new[] { "skill.basic.strike", "skill.basic.shield" });
-
-    private static readonly CatalogEnemyDefinition SilentDouble = new(
-        Key: "enemy.final.silent-double",
-        DisplayName: "Double Silencieux",
-        Description: "Votre propre silence.",
-        Archetype: "Elite",
-        CompatibleRoomTypes: new[] { "Final" },
-        BaseDifficulty: 8,
-        MinRiskLevel: 4,
-        MaxRiskLevel: 5,
-        Tags: new[] { "final", "elite", "mirror" },
-        SkillKeys: new[] { "skill.basic.strike", "skill.basic.disable" });
 
     private static readonly CatalogSkillDefinition SkillStrike = new(
         Key: "skill.basic.strike",
@@ -114,12 +103,32 @@ public sealed class CombatEncounterDraftGeneratorTests
         return gateway;
     }
 
+    private static Mock<IEncounterCompositionPolicy> CreatePolicyThatReturns(
+        CatalogEnemyDefinition[] enemies)
+    {
+        var policy = new Mock<IEncounterCompositionPolicy>();
+        policy
+            .Setup(p => p.Compose(It.IsAny<EncounterCompositionContext>()))
+            .Returns(new EncounterCompositionResult(
+                DifficultyBudget: 5,
+                EnemyCount: enemies.Length,
+                SelectedEnemies: enemies));
+        return policy;
+    }
+
+    private static CombatEncounterDraftGenerator CreateGenerator(
+        Mock<ICatalogContentGateway> gateway,
+        Mock<IEncounterCompositionPolicy>? policy = null)
+    {
+        policy ??= CreatePolicyThatReturns([FragmentDoute]);
+        return new CombatEncounterDraftGenerator(gateway.Object, policy.Object);
+    }
+
     [Fact]
     public async Task GenerateAsync_ShouldUseCompatibleEnemiesFromCatalogGateway()
     {
         var gateway = CreateGatewayWithSkills([FragmentDoute]);
-
-        var generator = new CombatEncounterDraftGenerator(gateway.Object);
+        var generator = CreateGenerator(gateway);
 
         var draft = await generator.GenerateAsync(DefaultContext);
 
@@ -132,8 +141,7 @@ public sealed class CombatEncounterDraftGeneratorTests
     public async Task GenerateAsync_ShouldFilterByRoomTypeAndRiskLevel_ThroughGateway()
     {
         var gateway = CreateGatewayWithSkills([FragmentDoute]);
-
-        var generator = new CombatEncounterDraftGenerator(gateway.Object);
+        var generator = CreateGenerator(gateway);
 
         await generator.GenerateAsync(DefaultContext);
 
@@ -142,64 +150,10 @@ public sealed class CombatEncounterDraftGeneratorTests
     }
 
     [Fact]
-    public async Task GenerateAsync_ShouldCreateOneEnemy_WhenRiskLevelIsLow()
-    {
-        var gateway = CreateGatewayWithSkills([FragmentDoute, ResistanceInterieure]);
-
-        var generator = new CombatEncounterDraftGenerator(gateway.Object);
-
-        var context = DefaultContext with { RiskLevel = 1, EnemyCount = 1 };
-        var draft = await generator.GenerateAsync(context);
-
-        draft.Enemies.Should().ContainSingle();
-    }
-
-    [Fact]
-    public async Task GenerateAsync_ShouldCreateTwoEnemies_WhenRiskLevelIsHighAndEnoughEnemiesExist()
-    {
-        var gateway = CreateGatewayWithSkills([FragmentDoute, ResistanceInterieure]);
-
-        var generator = new CombatEncounterDraftGenerator(gateway.Object);
-
-        var context = DefaultContext with { RiskLevel = 4, EnemyCount = 2 };
-        var draft = await generator.GenerateAsync(context);
-
-        draft.Enemies.Should().HaveCount(2);
-    }
-
-    [Fact]
-    public async Task GenerateAsync_ShouldCreateOnlyAvailableEnemies_WhenNotEnoughCompatibleEnemiesExist()
-    {
-        var gateway = CreateGatewayWithSkills([FragmentDoute]);
-
-        var generator = new CombatEncounterDraftGenerator(gateway.Object);
-
-        var context = DefaultContext with { RiskLevel = 3, EnemyCount = 2 };
-        var draft = await generator.GenerateAsync(context);
-
-        draft.Enemies.Should().ContainSingle();
-    }
-
-    [Fact]
-    public async Task GenerateAsync_ShouldThrow_WhenNoCompatibleEnemiesExist()
-    {
-        var gateway = CreateGatewayWithSkills([]);
-
-        var generator = new CombatEncounterDraftGenerator(gateway.Object);
-
-        var context = DefaultContext with { RiskLevel = 1, EnemyCount = 1 };
-        var act = () => generator.GenerateAsync(context);
-
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*No compatible enemy definitions found*");
-    }
-
-    [Fact]
     public async Task GenerateAsync_ShouldCreatePlayerAlly()
     {
         var gateway = CreateGatewayWithSkills([FragmentDoute]);
-
-        var generator = new CombatEncounterDraftGenerator(gateway.Object);
+        var generator = CreateGenerator(gateway);
 
         var draft = await generator.GenerateAsync(DefaultContext);
 
@@ -209,26 +163,10 @@ public sealed class CombatEncounterDraftGeneratorTests
     }
 
     [Fact]
-    public async Task GenerateAsync_ShouldBeDeterministic_ForSameInput()
-    {
-        var gateway = CreateGatewayWithSkills([ResistanceInterieure, FragmentDoute]);
-
-        var generator = new CombatEncounterDraftGenerator(gateway.Object);
-
-        var context = DefaultContext with { RiskLevel = 3, EnemyCount = 2 };
-        var draft1 = await generator.GenerateAsync(context);
-        var draft2 = await generator.GenerateAsync(context);
-
-        draft1.Enemies.Select(e => e.EnemyKey)
-            .Should().Equal(draft2.Enemies.Select(e => e.EnemyKey));
-    }
-
-    [Fact]
     public async Task GenerateAsync_ShouldPreserveEnemySkillKeys()
     {
         var gateway = CreateGatewayWithSkills([FragmentDoute]);
-
-        var generator = new CombatEncounterDraftGenerator(gateway.Object);
+        var generator = CreateGenerator(gateway);
 
         var draft = await generator.GenerateAsync(DefaultContext);
 
@@ -239,8 +177,7 @@ public sealed class CombatEncounterDraftGeneratorTests
     public async Task GenerateAsync_ShouldPreserveEnemyTags()
     {
         var gateway = CreateGatewayWithSkills([FragmentDoute]);
-
-        var generator = new CombatEncounterDraftGenerator(gateway.Object);
+        var generator = CreateGenerator(gateway);
 
         var draft = await generator.GenerateAsync(DefaultContext);
 
@@ -248,50 +185,10 @@ public sealed class CombatEncounterDraftGeneratorTests
     }
 
     [Fact]
-    public async Task GenerateAsync_ShouldSelectEliteWithTag_WhenEncounterTypeIsElite()
-    {
-        var gateway = CreateGatewayWithSkills([SilentDouble]);
-
-        var generator = new CombatEncounterDraftGenerator(gateway.Object);
-
-        var context = DefaultContext with
-        {
-            RoomType = "Final",
-            RiskLevel = 4,
-            EncounterType = "Elite",
-            EnemyCount = 1
-        };
-        var draft = await generator.GenerateAsync(context);
-
-        draft.Enemies.Should().ContainSingle();
-        draft.Enemies.Single().EnemyKey.Should().Be("enemy.final.silent-double");
-    }
-
-    [Fact]
-    public async Task GenerateAsync_ShouldSelectHardestEnemy_WhenEncounterTypeIsRare()
-    {
-        var gateway = CreateGatewayWithSkills([FragmentDoute, ResistanceInterieure]);
-
-        var generator = new CombatEncounterDraftGenerator(gateway.Object);
-
-        var context = DefaultContext with
-        {
-            RiskLevel = 3,
-            EncounterType = "Rare",
-            EnemyCount = 1
-        };
-        var draft = await generator.GenerateAsync(context);
-
-        draft.Enemies.Should().ContainSingle();
-        draft.Enemies.Single().EnemyKey.Should().Be("enemy.threshold.inner-resistance");
-    }
-
-    [Fact]
     public async Task GenerateAsync_ShouldPopulateDraftMetadata()
     {
         var gateway = CreateGatewayWithSkills([FragmentDoute]);
-
-        var generator = new CombatEncounterDraftGenerator(gateway.Object);
+        var generator = CreateGenerator(gateway);
 
         var ctx = DefaultContext;
         var draft = await generator.GenerateAsync(ctx);
@@ -309,8 +206,7 @@ public sealed class CombatEncounterDraftGeneratorTests
     public async Task GenerateAsync_ShouldResolveEnemySkillDefinitions()
     {
         var gateway = CreateGatewayWithSkills([FragmentDoute]);
-
-        var generator = new CombatEncounterDraftGenerator(gateway.Object);
+        var generator = CreateGenerator(gateway);
 
         var draft = await generator.GenerateAsync(DefaultContext);
 
@@ -335,7 +231,7 @@ public sealed class CombatEncounterDraftGeneratorTests
                 It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([SkillStrike, SkillShield]);
 
-        var generator = new CombatEncounterDraftGenerator(gateway.Object);
+        var generator = CreateGenerator(gateway);
 
         await generator.GenerateAsync(DefaultContext);
 
@@ -347,11 +243,10 @@ public sealed class CombatEncounterDraftGeneratorTests
     public async Task GenerateAsync_ShouldAttachSkillsToEachEnemy()
     {
         var gateway = CreateGatewayWithSkills([FragmentDoute, ResistanceInterieure]);
+        var policy = CreatePolicyThatReturns([FragmentDoute, ResistanceInterieure]);
+        var generator = CreateGenerator(gateway, policy);
 
-        var generator = new CombatEncounterDraftGenerator(gateway.Object);
-
-        var context = DefaultContext with { RiskLevel = 3, EnemyCount = 2 };
-        var draft = await generator.GenerateAsync(context);
+        var draft = await generator.GenerateAsync(DefaultContext);
 
         draft.Enemies.Should().HaveCount(2);
         draft.Enemies.Should().AllSatisfy(e => e.Skills.Should().NotBeEmpty());
@@ -376,7 +271,8 @@ public sealed class CombatEncounterDraftGeneratorTests
                 It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
 
-        var generator = new CombatEncounterDraftGenerator(gateway.Object);
+        var policy = CreatePolicyThatReturns([unknownSkillEnemy]);
+        var generator = CreateGenerator(gateway, policy);
 
         var act = () => generator.GenerateAsync(DefaultContext);
 
@@ -388,8 +284,7 @@ public sealed class CombatEncounterDraftGeneratorTests
     public async Task GenerateAsync_ShouldNotExecuteSkills()
     {
         var gateway = CreateGatewayWithSkills([FragmentDoute]);
-
-        var generator = new CombatEncounterDraftGenerator(gateway.Object);
+        var generator = CreateGenerator(gateway);
 
         var draft = await generator.GenerateAsync(DefaultContext);
 
@@ -398,24 +293,52 @@ public sealed class CombatEncounterDraftGeneratorTests
     }
 
     [Fact]
-    public async Task GenerateAsync_ShouldRemainDeterministic_WithResolvedSkills()
+    public async Task GenerateAsync_ShouldBeDeterministic_ForSameInput()
     {
         var gateway = CreateGatewayWithSkills([ResistanceInterieure, FragmentDoute]);
+        var policy = CreatePolicyThatReturns([FragmentDoute, ResistanceInterieure]);
+        var generator = CreateGenerator(gateway, policy);
 
-        var generator = new CombatEncounterDraftGenerator(gateway.Object);
+        var draft1 = await generator.GenerateAsync(DefaultContext);
+        var draft2 = await generator.GenerateAsync(DefaultContext);
 
-        var context = DefaultContext with { RiskLevel = 3, EnemyCount = 2 };
-        var draft1 = await generator.GenerateAsync(context);
-        var draft2 = await generator.GenerateAsync(context);
+        draft1.Enemies.Select(e => e.EnemyKey)
+            .Should().Equal(draft2.Enemies.Select(e => e.EnemyKey));
+    }
 
-        draft1.Enemies.Should().HaveCount(2);
-        draft2.Enemies.Should().HaveCount(2);
+    [Fact]
+    public async Task GenerateAsync_ShouldUseEnemiesSelectedByCompositionPolicy()
+    {
+        var gateway = CreateGatewayWithSkills([FragmentDoute, ResistanceInterieure]);
+        var policy = new Mock<IEncounterCompositionPolicy>();
+        policy
+            .Setup(p => p.Compose(It.IsAny<EncounterCompositionContext>()))
+            .Returns(new EncounterCompositionResult(
+                DifficultyBudget: 3,
+                EnemyCount: 2,
+                SelectedEnemies: new[] { FragmentDoute, ResistanceInterieure }));
 
-        for (var i = 0; i < draft1.Enemies.Count; i++)
-        {
-            draft1.Enemies.ElementAt(i).Skills
-                .Select(s => s.Key)
-                .Should().Equal(draft2.Enemies.ElementAt(i).Skills.Select(s => s.Key));
-        }
+        var generator = new CombatEncounterDraftGenerator(gateway.Object, policy.Object);
+        var draft = await generator.GenerateAsync(DefaultContext);
+
+        draft.Enemies.Should().HaveCount(2);
+        draft.Enemies.Should().Contain(e => e.EnemyKey == FragmentDoute.Key);
+        draft.Enemies.Should().Contain(e => e.EnemyKey == ResistanceInterieure.Key);
+    }
+
+    [Fact]
+    public async Task GenerateAsync_ShouldThrow_WhenCompositionPolicyThrows()
+    {
+        var gateway = CreateGatewayWithSkills([FragmentDoute]);
+        var policy = new Mock<IEncounterCompositionPolicy>();
+        policy
+            .Setup(p => p.Compose(It.IsAny<EncounterCompositionContext>()))
+            .Throws(new InvalidOperationException("Policy failure"));
+
+        var generator = new CombatEncounterDraftGenerator(gateway.Object, policy.Object);
+        var act = () => generator.GenerateAsync(DefaultContext);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("Policy failure");
     }
 }
