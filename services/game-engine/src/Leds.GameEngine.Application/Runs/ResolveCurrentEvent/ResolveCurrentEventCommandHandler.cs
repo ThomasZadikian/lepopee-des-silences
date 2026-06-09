@@ -1,5 +1,6 @@
 ﻿using Leds.GameEngine.Application.Abstractions;
 using Leds.GameEngine.Application.Catalog.Ports;
+using Leds.GameEngine.Application.Combats;
 using Leds.GameEngine.Application.Combats.Dtos;
 using Leds.GameEngine.Application.Combats.EncounterDrafts;
 using Leds.GameEngine.Application.Combats.Ports;
@@ -27,6 +28,7 @@ public sealed class ResolveCurrentEventCommandHandler
     private readonly ICombatInstanceFactory _combatInstanceFactory;
     private readonly ICombatInstanceRepository _combatInstanceRepository;
     private readonly ICombatEncounterDraftGenerator _encounterDraftGenerator;
+    private readonly ICombatFactory _combatFactory;
 
     public ResolveCurrentEventCommandHandler(
         IRunRepository runRepository,
@@ -35,7 +37,8 @@ public sealed class ResolveCurrentEventCommandHandler
         ICatalogContentGateway catalogContentGateway,
         ICombatInstanceFactory combatInstanceFactory,
         ICombatInstanceRepository combatInstanceRepository,
-        ICombatEncounterDraftGenerator encounterDraftGenerator)
+        ICombatEncounterDraftGenerator encounterDraftGenerator,
+        ICombatFactory combatFactory)
     {
         _runRepository = runRepository;
         _nodeEventResolverDispatcher = nodeEventResolverDispatcher;
@@ -44,6 +47,7 @@ public sealed class ResolveCurrentEventCommandHandler
         _combatInstanceFactory = combatInstanceFactory;
         _combatInstanceRepository = combatInstanceRepository;
         _encounterDraftGenerator = encounterDraftGenerator;
+        _combatFactory = combatFactory;
     }
 
     public async Task<ResolveCurrentEventResponse> Handle(
@@ -88,6 +92,7 @@ public sealed class ResolveCurrentEventCommandHandler
             or NodeEventResolutionKind.RareCombatStarted;
 
         CombatEncounterDraftDto? encounterDraftDto = null;
+        CombatRuntimeDto? combatRuntimeDto = null;
 
         if (isCombat)
         {
@@ -136,8 +141,15 @@ public sealed class ResolveCurrentEventCommandHandler
 
             run.SetActiveCombat(combat.Id);
 
-            encounterDraftDto = await GenerateEncounterDraft(
+            var draft = await GenerateEncounterDraft(
                 run, room, selectedNode, resolutionResult, cancellationToken);
+
+            if (draft is not null)
+            {
+                encounterDraftDto = CombatEncounterDraftDto.FromDomain(draft);
+                combatRuntimeDto = CombatRuntimeDto.FromDomain(
+                    _combatFactory.CreateFromDraft(draft));
+            }
         }
         else
         {
@@ -153,10 +165,11 @@ public sealed class ResolveCurrentEventCommandHandler
         return new ResolveCurrentEventResponse(
             RunDto.FromDomain(run),
             outcome,
-            encounterDraftDto);
+            encounterDraftDto,
+            combatRuntimeDto);
     }
 
-    private async Task<CombatEncounterDraftDto?> GenerateEncounterDraft(
+    private async Task<CombatEncounterDraft?> GenerateEncounterDraft(
         Run run,
         Room room,
         MapNode selectedNode,
@@ -192,10 +205,8 @@ public sealed class ResolveCurrentEventCommandHandler
                 EncounterType: encounterType,
                 EnemyCount: enemyCount);
 
-            var draft = await _encounterDraftGenerator.GenerateAsync(
+            return await _encounterDraftGenerator.GenerateAsync(
                 draftContext, cancellationToken);
-
-            return CombatEncounterDraftDto.FromDomain(draft);
         }
         catch
         {

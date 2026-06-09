@@ -7,4 +7,5 @@ namespace Leds.GameEngine.Application.Runs.ResolveCurrentEvent;
 public sealed record ResolveCurrentEventResponse(
     RunDto Run,
     ResolvedNodeEventOutcomeDto Outcome,
-    CombatEncounterDraftDto? EncounterDraft = null);
+    CombatEncounterDraftDto? EncounterDraft = null,
+    CombatRuntimeDto? Combat = null);

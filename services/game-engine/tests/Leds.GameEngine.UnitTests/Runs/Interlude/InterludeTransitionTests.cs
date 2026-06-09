@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Leds.GameEngine.Application.Abstractions;
 using Leds.GameEngine.Application.Catalog.Ports;
+using Leds.GameEngine.Application.Combats;
 using Leds.GameEngine.Application.Combats.EncounterDrafts;
 using Leds.GameEngine.Application.Combats.Ports;
 using Leds.GameEngine.Application.Events.ChooseEventOption;
@@ -591,7 +592,8 @@ public sealed class InterludeTransitionTests
             catalogGateway.Object,
             combatFactory.Object,
             combatRepo.Object,
-            new Mock<ICombatEncounterDraftGenerator>().Object);
+            new Mock<ICombatEncounterDraftGenerator>().Object,
+            new Mock<ICombatFactory>().Object);
 
         var act = () => handler.Handle(
             new ResolveCurrentEventCommand(run.Id.Value),

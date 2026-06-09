@@ -52,6 +52,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<ICombatRiskProfileResolver, CombatRiskProfileResolver>();
         services.AddScoped<RewardOfferFactory>();
         services.AddScoped<IInterludeNodeProvider, DefaultInterludeNodeProvider>();
+        services.AddSingleton<ICombatFactory, CombatFactory>();
 
         return services;
     }

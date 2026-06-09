@@ -3,6 +3,7 @@ using Leds.GameEngine.Application.Abstractions;
 using Leds.GameEngine.Application.Catalog;
 using Leds.GameEngine.Application.Catalog.Contracts;
 using Leds.GameEngine.Application.Catalog.Ports;
+using Leds.GameEngine.Application.Combats;
 using Leds.GameEngine.Application.Combats.Dtos;
 using Leds.GameEngine.Application.Combats.EncounterDrafts;
 using Leds.GameEngine.Application.Combats.Ports;
@@ -92,7 +93,8 @@ public sealed class ResolveCurrentEventCommandHandlerTests
             CreateCatalogGatewayMock().Object,
             CreateCombatFactoryMock().Object,
             CreateCombatRepositoryMock().Object,
-            CreateEncounterDraftGeneratorMock().Object);
+            CreateEncounterDraftGeneratorMock().Object,
+            new Mock<ICombatFactory>().Object);
 
         var response = await handler.Handle(
             new ResolveCurrentEventCommand(run.Id.Value),
@@ -131,7 +133,8 @@ public sealed class ResolveCurrentEventCommandHandlerTests
             CreateCatalogGatewayMock().Object,
             CreateCombatFactoryMock().Object,
             CreateCombatRepositoryMock().Object,
-            CreateEncounterDraftGeneratorMock().Object);
+            CreateEncounterDraftGeneratorMock().Object,
+            new Mock<ICombatFactory>().Object);
 
         var act = () => handler.Handle(
             new ResolveCurrentEventCommand(runId),
@@ -161,7 +164,8 @@ public sealed class ResolveCurrentEventCommandHandlerTests
             CreateCatalogGatewayMock().Object,
             CreateCombatFactoryMock().Object,
             CreateCombatRepositoryMock().Object,
-            CreateEncounterDraftGeneratorMock().Object);
+            CreateEncounterDraftGeneratorMock().Object,
+            new Mock<ICombatFactory>().Object);
 
         var act = () => handler.Handle(
             new ResolveCurrentEventCommand(run.Id.Value),
@@ -191,7 +195,8 @@ public sealed class ResolveCurrentEventCommandHandlerTests
             CreateCatalogGatewayMock().Object,
             CreateCombatFactoryMock().Object,
             CreateCombatRepositoryMock().Object,
-            CreateEncounterDraftGeneratorMock().Object);
+            CreateEncounterDraftGeneratorMock().Object,
+            new Mock<ICombatFactory>().Object);
 
         var act = () => handler.Handle(
             new ResolveCurrentEventCommand(run.Id.Value),
@@ -222,7 +227,8 @@ public sealed class ResolveCurrentEventCommandHandlerTests
             CreateCatalogGatewayMock().Object,
             CreateCombatFactoryMock().Object,
             CreateCombatRepositoryMock().Object,
-            CreateEncounterDraftGeneratorMock().Object);
+            CreateEncounterDraftGeneratorMock().Object,
+            new Mock<ICombatFactory>().Object);
 
         var response = await handler.Handle(
             new ResolveCurrentEventCommand(run.Id.Value),
@@ -251,7 +257,8 @@ public sealed class ResolveCurrentEventCommandHandlerTests
             CreateCatalogGatewayMock().Object,
             CreateCombatFactoryMock().Object,
             CreateCombatRepositoryMock().Object,
-            CreateEncounterDraftGeneratorMock().Object);
+            CreateEncounterDraftGeneratorMock().Object,
+            new Mock<ICombatFactory>().Object);
 
         var response = await handler.Handle(
             new ResolveCurrentEventCommand(run.Id.Value),
@@ -352,6 +359,12 @@ public sealed class ResolveCurrentEventCommandHandlerTests
             .Setup(f => f.CreateFromEnemyTemplate(It.IsAny<EnemyTemplateSnapshot>()))
             .Returns(CombatInstance.Create(combatants));
 
+        var runtimeCombat = new CombatFactory().CreateFromDraft(expectedDraft);
+        var runtimeFactoryMock = new Mock<ICombatFactory>();
+        runtimeFactoryMock
+            .Setup(f => f.CreateFromDraft(It.IsAny<CombatEncounterDraft>()))
+            .Returns(runtimeCombat);
+
         var handler = new ResolveCurrentEventCommandHandler(
             repository.Object,
             dispatcher.Object,
@@ -359,7 +372,8 @@ public sealed class ResolveCurrentEventCommandHandlerTests
             catalogGateway.Object,
             combatFactory.Object,
             new Mock<ICombatInstanceRepository>().Object,
-            draftGenerator.Object);
+            draftGenerator.Object,
+            runtimeFactoryMock.Object);
 
         var response = await handler.Handle(
             new ResolveCurrentEventCommand(run.Id.Value),
@@ -392,7 +406,8 @@ public sealed class ResolveCurrentEventCommandHandlerTests
             CreateCatalogGatewayMock().Object,
             CreateCombatFactoryMock().Object,
             CreateCombatRepositoryMock().Object,
-            CreateEncounterDraftGeneratorMock().Object);
+            CreateEncounterDraftGeneratorMock().Object,
+            new Mock<ICombatFactory>().Object);
 
         var response = await handler.Handle(
             new ResolveCurrentEventCommand(run.Id.Value),
