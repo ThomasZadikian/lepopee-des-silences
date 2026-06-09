@@ -1,0 +1,123 @@
+using FluentAssertions;
+using Leds.GameEngine.Application.Abstractions;
+using Leds.GameEngine.Application.Common.Exceptions;
+using Leds.GameEngine.Application.Runs.ExitMidRoom;
+using Leds.GameEngine.Domain.Combats;
+using Leds.GameEngine.Domain.Common;
+using Leds.GameEngine.Domain.Runs;
+using Leds.GameEngine.UnitTests.Common.Factories;
+using Moq;
+
+namespace Leds.GameEngine.UnitTests.Runs.ExitMidRoom;
+
+public sealed class ExitMidRoomCommandHandlerTests
+{
+    private static Run CreateActiveRunWithSomeProgression()
+    {
+        var run = TestGameEngineFactory.CreateRun();
+        var node = run.CurrentRoom.AvailableNodes.First();
+        run.ChooseNode(node.Id);
+        run.ResolveCurrentEvent();
+        run.ProgressCurrentRoom();
+        return run;
+    }
+
+    private static (ExitMidRoomCommandHandler handler, Mock<IRunRepository> repo, Mock<IClock> clock)
+        CreateHandler(Run run)
+    {
+        var repo = new Mock<IRunRepository>();
+        repo.Setup(r => r.GetByIdAsync(run.Id, CancellationToken.None))
+            .ReturnsAsync(run);
+
+        var clock = new Mock<IClock>();
+        clock.SetupGet(c => c.UtcNow).Returns(DateTimeOffset.UtcNow);
+
+        var handler = new ExitMidRoomCommandHandler(repo.Object, clock.Object);
+        return (handler, repo, clock);
+    }
+
+    [Fact]
+    public async Task Handle_ShouldExitMidRoom_AndPersistRun()
+    {
+        var run = CreateActiveRunWithSomeProgression();
+        var now = new DateTimeOffset(2026, 6, 9, 14, 0, 0, TimeSpan.Zero);
+
+        var repo = new Mock<IRunRepository>();
+        repo.Setup(r => r.GetByIdAsync(run.Id, CancellationToken.None))
+            .ReturnsAsync(run);
+
+        var clock = new Mock<IClock>();
+        clock.SetupGet(c => c.UtcNow).Returns(now);
+
+        var handler = new ExitMidRoomCommandHandler(repo.Object, clock.Object);
+        var response = await handler.Handle(
+            new ExitMidRoomCommand(run.Id.Value),
+            CancellationToken.None);
+
+        response.Run.Status.Should().Be(RunStatus.Suspended.ToString());
+        response.Run.CanResume.Should().BeTrue();
+        response.Run.SavedAt.Should().Be(now);
+
+        repo.Verify(
+            r => r.UpdateAsync(
+                It.Is<Run>(candidate =>
+                    candidate.Id == run.Id &&
+                    candidate.Status == RunStatus.Suspended),
+                CancellationToken.None),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_ShouldThrowNotFound_WhenRunDoesNotExist()
+    {
+        var repo = new Mock<IRunRepository>();
+        repo.Setup(r => r.GetByIdAsync(It.IsAny<RunId>(), CancellationToken.None))
+            .ReturnsAsync((Run?)null);
+
+        var clock = new Mock<IClock>();
+        clock.SetupGet(c => c.UtcNow).Returns(DateTimeOffset.UtcNow);
+
+        var handler = new ExitMidRoomCommandHandler(repo.Object, clock.Object);
+
+        var act = () => handler.Handle(
+            new ExitMidRoomCommand(Guid.NewGuid()),
+            CancellationToken.None);
+
+        await act.Should()
+            .ThrowAsync<NotFoundException>()
+            .WithMessage("*Run*");
+    }
+
+    [Fact]
+    public async Task Handle_ShouldThrowDomainException_WhenRunHasActiveCombat()
+    {
+        var run = CreateActiveRunWithSomeProgression();
+        run.SetActiveCombat(new CombatId(Guid.NewGuid()));
+
+        var (handler, _, _) = CreateHandler(run);
+
+        var act = () => handler.Handle(
+            new ExitMidRoomCommand(run.Id.Value),
+            CancellationToken.None);
+
+        await act.Should()
+            .ThrowAsync<DomainException>()
+            .WithMessage("*active combat*");
+    }
+
+    [Fact]
+    public async Task Handle_ShouldThrowDomainException_WhenRunIsRoomResolved()
+    {
+        var run = TestGameEngineFactory.CreateRunWithCompletedCurrentRoom();
+        var (handler, _, _) = CreateHandler(run);
+
+        var act = () => handler.Handle(
+            new ExitMidRoomCommand(run.Id.Value),
+            CancellationToken.None);
+
+        await act.Should()
+            .ThrowAsync<DomainException>()
+            .WithMessage("*must be active*");
+    }
+
+}
