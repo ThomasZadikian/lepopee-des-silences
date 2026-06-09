@@ -53,7 +53,7 @@ public sealed class StartRunEndpointTests : IClassFixture<WebApplicationFactory<
         payload.Run.CurrentRoom.MaxNodeDepth.Should().BeGreaterThan(0);
 
         payload.Run.CurrentRoom.BossPreview.Should().NotBeNull();
-        payload.Run.CurrentRoom.BossPreview.BossId.Should().Be("threshold-guardian");
+        payload.Run.CurrentRoom.BossPreview.BossId.Should().Be("boss.threshold.warden");
         payload.Run.CurrentRoom.BossPreview.Name.Should().Be("Gardien du Seuil");
         payload.Run.CurrentRoom.BossPreview.RoomType.Should().Be("Threshold");
         payload.Run.CurrentRoom.BossPreview.DangerHint.Should().Be("High");

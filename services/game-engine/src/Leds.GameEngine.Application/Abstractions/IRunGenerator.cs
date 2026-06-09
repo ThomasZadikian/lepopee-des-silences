@@ -11,7 +11,7 @@ public interface IRunGenerator
 
     string GenerateSeed();
 
-    Room GenerateInitialRoom(string seed);
+    Task<Room> GenerateInitialRoomAsync(string seed, CancellationToken cancellationToken = default);
 
-    Room GenerateNextRoom(Run run);
+    Task<Room> GenerateNextRoomAsync(Run run, CancellationToken cancellationToken = default);
 }

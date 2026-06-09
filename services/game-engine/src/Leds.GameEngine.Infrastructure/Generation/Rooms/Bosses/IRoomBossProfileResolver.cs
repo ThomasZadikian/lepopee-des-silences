@@ -4,5 +4,5 @@ namespace Leds.GameEngine.Infrastructure.Generation.Rooms.Bosses;
 
 public interface IRoomBossProfileResolver
 {
-    RoomBossProfile Resolve(RoomType roomType);
+    Task<RoomBossProfile> ResolveAsync(RoomType roomType, CancellationToken cancellationToken = default);
 }

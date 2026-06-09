@@ -40,7 +40,7 @@ public sealed class MoveToNextRoomCommandHandler
                 "Cannot enter the next room: run must be in Interlude state.");
         }
 
-        var nextRoom = _runGenerator.GenerateNextRoom(run);
+        var nextRoom = await _runGenerator.GenerateNextRoomAsync(run, cancellationToken);
 
         run.MoveToNextRoom(nextRoom);
 

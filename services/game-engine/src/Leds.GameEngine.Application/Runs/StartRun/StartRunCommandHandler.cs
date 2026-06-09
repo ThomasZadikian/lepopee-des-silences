@@ -26,7 +26,7 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
         CancellationToken cancellationToken)
     {
         var seed = _runGenerator.GenerateSeed();
-        var initialRoom = _runGenerator.GenerateInitialRoom(seed);
+        var initialRoom = await _runGenerator.GenerateInitialRoomAsync(seed, cancellationToken);
 
         var run = Run.StartNew(
             request.PlayerId,

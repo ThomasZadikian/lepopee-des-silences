@@ -2,6 +2,7 @@ using FluentAssertions;
 using Leds.GameEngine.Application.RoomMaps;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rooms;
+using Leds.GameEngine.Infrastructure.Catalog;
 using Leds.GameEngine.Infrastructure.Generation.RoomMaps;
 using Leds.GameEngine.Infrastructure.Generation.Rooms.Bosses;
 using Leds.GameEngine.Infrastructure.Generation.Rooms.Themes;
@@ -18,17 +19,17 @@ public sealed class MapRoomGeneratorTests
         return new MapRoomGenerator(
             new RoomMapLayoutTemplateProvider(),
             new RoomThemeResolver(),
-            new RoomBossProfileResolver(),
+            new RoomBossProfileResolver(new InMemoryCatalogContentGateway()),
             new HardcodedRoomTypeGenerationProfileProvider());
     }
 
     [Fact]
-    public void GenerateRoom_ShouldUseDefaultRoomMapLayoutTemplate()
+    public async Task GenerateRoom_ShouldUseDefaultRoomMapLayoutTemplate()
     {
         var sut = CreateSut();
         var random = new Random(42);
 
-        var room = sut.Generate(Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, random);
+        var room = await sut.GenerateAsync(Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, random);
 
         room.LayoutTemplateKey.Should().Be("threshold-default-v1");
         room.LayoutTemplateVersion.Should().Be(GeneratorVersion);
@@ -36,23 +37,23 @@ public sealed class MapRoomGeneratorTests
     }
 
     [Fact]
-    public void GenerateRoom_ShouldCreateExactlyTwentyTwoMapNodes_WithDefaultTemplate()
+    public async Task GenerateRoom_ShouldCreateExactlyTwentyTwoMapNodes_WithDefaultTemplate()
     {
         var sut = CreateSut();
         var random = new Random(42);
 
-        var room = sut.Generate(Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, random);
+        var room = await sut.GenerateAsync(Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, random);
 
         room.Nodes.Should().HaveCount(22);
     }
 
     [Fact]
-    public void GenerateRoom_ShouldCreateFixedDefaultRowDistribution()
+    public async Task GenerateRoom_ShouldCreateFixedDefaultRowDistribution()
     {
         var sut = CreateSut();
         var random = new Random(42);
 
-        var room = sut.Generate(Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, random);
+        var room = await sut.GenerateAsync(Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, random);
 
         var rows = room.Nodes
             .GroupBy(n => n.Row)
@@ -64,12 +65,12 @@ public sealed class MapRoomGeneratorTests
     }
 
     [Fact]
-    public void GenerateRoom_ShouldCreateExactlyTwoInitialNodes_WithDefaultTemplate()
+    public async Task GenerateRoom_ShouldCreateExactlyTwoInitialNodes_WithDefaultTemplate()
     {
         var sut = CreateSut();
         var random = new Random(42);
 
-        var room = sut.Generate(Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, random);
+        var room = await sut.GenerateAsync(Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, random);
 
         var initialNodes = room.Nodes.Where(n => n.Row == 0).ToArray();
         initialNodes.Should().HaveCount(2);
@@ -77,12 +78,12 @@ public sealed class MapRoomGeneratorTests
     }
 
     [Fact]
-    public void GenerateRoom_ShouldPlaceBossAloneOnFinalRow_WithDefaultTemplate()
+    public async Task GenerateRoom_ShouldPlaceBossAloneOnFinalRow_WithDefaultTemplate()
     {
         var sut = CreateSut();
         var random = new Random(42);
 
-        var room = sut.Generate(Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, random);
+        var room = await sut.GenerateAsync(Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, random);
 
         var bossRow = room.Nodes.Max(n => n.Row);
         bossRow.Should().Be(7);
@@ -94,24 +95,24 @@ public sealed class MapRoomGeneratorTests
     }
 
     [Fact]
-    public void GenerateRoom_ShouldPersistLayoutTemplateKeyAndVersion()
+    public async Task GenerateRoom_ShouldPersistLayoutTemplateKeyAndVersion()
     {
         var sut = CreateSut();
         var random = new Random(42);
 
-        var room = sut.Generate(Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, random);
+        var room = await sut.GenerateAsync(Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, random);
 
         room.LayoutTemplateKey.Should().Be("threshold-default-v1");
         room.LayoutTemplateVersion.Should().Be(GeneratorVersion);
     }
 
     [Fact]
-    public void GenerateRoom_ShouldCreateAcyclicMapGraph()
+    public async Task GenerateRoom_ShouldCreateAcyclicMapGraph()
     {
         var sut = CreateSut();
         var random = new Random(42);
 
-        var room = sut.Generate(Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, random);
+        var room = await sut.GenerateAsync(Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, random);
 
         var nodesById = room.Nodes.ToDictionary(n => n.Id);
 
@@ -129,12 +130,12 @@ public sealed class MapRoomGeneratorTests
     }
 
     [Fact]
-    public void GenerateRoom_ShouldMakeEveryNodeReachBoss()
+    public async Task GenerateRoom_ShouldMakeEveryNodeReachBoss()
     {
         var sut = CreateSut();
         var random = new Random(42);
 
-        var room = sut.Generate(Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, random);
+        var room = await sut.GenerateAsync(Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, random);
 
         var bossNode = room.Nodes.Single(n => n.IsBoss);
 
@@ -146,12 +147,12 @@ public sealed class MapRoomGeneratorTests
     }
 
     [Fact]
-    public void GenerateRoom_ShouldNotCreateDeadBranches()
+    public async Task GenerateRoom_ShouldNotCreateDeadBranches()
     {
         var sut = CreateSut();
         var random = new Random(42);
 
-        var room = sut.Generate(Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, random);
+        var room = await sut.GenerateAsync(Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, random);
 
         var maxRow = room.Nodes.Max(n => n.Row);
 
@@ -167,12 +168,12 @@ public sealed class MapRoomGeneratorTests
     }
 
     [Fact]
-    public void GenerateRoom_ShouldOnlyConnectToNextRow()
+    public async Task GenerateRoom_ShouldOnlyConnectToNextRow()
     {
         var sut = CreateSut();
         var random = new Random(42);
 
-        var room = sut.Generate(Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, random);
+        var room = await sut.GenerateAsync(Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, random);
 
         var nodesById = room.Nodes.ToDictionary(n => n.Id);
 
@@ -190,12 +191,12 @@ public sealed class MapRoomGeneratorTests
     }
 
     [Fact]
-    public void GenerateRoom_ShouldKeepConnectionsLocalByLane()
+    public async Task GenerateRoom_ShouldKeepConnectionsLocalByLane()
     {
         var sut = CreateSut();
         var random = new Random(42);
 
-        var room = sut.Generate(Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, random);
+        var room = await sut.GenerateAsync(Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, random);
 
         var nodesById = room.Nodes.ToDictionary(n => n.Id);
 
@@ -214,12 +215,12 @@ public sealed class MapRoomGeneratorTests
     }
 
     [Fact]
-    public void GenerateRoom_ShouldBeDeterministicForSameSeed()
+    public async Task GenerateRoom_ShouldBeDeterministicForSameSeed()
     {
         var sut = CreateSut();
 
-        var room1 = sut.Generate(Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, new Random(42));
-        var room2 = sut.Generate(Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, new Random(42));
+        var room1 = await sut.GenerateAsync(Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, new Random(42));
+        var room2 = await sut.GenerateAsync(Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, new Random(42));
 
         var nodeTypes1 = room1.Nodes.OrderBy(n => n.Row).ThenBy(n => n.Lane).Select(n => n.EventType).ToArray();
         var nodeTypes2 = room2.Nodes.OrderBy(n => n.Row).ThenBy(n => n.Lane).Select(n => n.EventType).ToArray();
@@ -228,12 +229,12 @@ public sealed class MapRoomGeneratorTests
     }
 
     [Fact]
-    public void GenerateRoom_ShouldVaryContentForDifferentSeeds()
+    public async Task GenerateRoom_ShouldVaryContentForDifferentSeeds()
     {
         var sut = CreateSut();
 
-        var room1 = sut.Generate("seed-a", GeneratorVersion, roomDepth: 0, RoomType.Threshold, new Random(1));
-        var room2 = sut.Generate("seed-b", GeneratorVersion, roomDepth: 0, RoomType.Threshold, new Random(2));
+        var room1 = await sut.GenerateAsync("seed-a", GeneratorVersion, roomDepth: 0, RoomType.Threshold, new Random(1));
+        var room2 = await sut.GenerateAsync("seed-b", GeneratorVersion, roomDepth: 0, RoomType.Threshold, new Random(2));
 
         var nodeTypes1 = room1.Nodes.OrderBy(n => n.Row).ThenBy(n => n.Lane).Select(n => n.EventType).ToArray();
         var nodeTypes2 = room2.Nodes.OrderBy(n => n.Row).ThenBy(n => n.Lane).Select(n => n.EventType).ToArray();
@@ -242,12 +243,12 @@ public sealed class MapRoomGeneratorTests
     }
 
     [Fact]
-    public void GenerateRoom_ShouldRespectProvidedLayoutTemplate()
+    public async Task GenerateRoom_ShouldRespectProvidedLayoutTemplate()
     {
         var sut = CreateSut();
         var random = new Random(42);
 
-        var room = sut.Generate(Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, random);
+        var room = await sut.GenerateAsync(Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, random);
 
         room.LayoutTemplateKey.Should().Be("threshold-default-v1");
         room.LayoutTemplateVersion.Should().Be(GeneratorVersion);
@@ -255,12 +256,12 @@ public sealed class MapRoomGeneratorTests
     }
 
     [Fact]
-    public void GenerateRoom_ShouldNotHaveAllToAllConnections()
+    public async Task GenerateRoom_ShouldNotHaveAllToAllConnections()
     {
         var sut = CreateSut();
         var random = new Random(42);
 
-        var room = sut.Generate(Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, random);
+        var room = await sut.GenerateAsync(Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, random);
 
         var nodesByRow = room.Nodes
             .GroupBy(n => n.Row)
@@ -291,12 +292,12 @@ public sealed class MapRoomGeneratorTests
     }
 
     [Fact]
-    public void GenerateRoom_ShouldHaveEveryInitialNodeAsParent()
+    public async Task GenerateRoom_ShouldHaveEveryInitialNodeAsParent()
     {
         var sut = CreateSut();
         var random = new Random(42);
 
-        var room = sut.Generate(Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, random);
+        var room = await sut.GenerateAsync(Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, random);
 
         var initialNodes = room.Nodes.Where(n => n.Row == 0).ToArray();
 
@@ -311,12 +312,12 @@ public sealed class MapRoomGeneratorTests
     }
 
     [Fact]
-    public void GenerateRoom_ShouldHaveAllNonInitialNodesWithAtLeastOneParent()
+    public async Task GenerateRoom_ShouldHaveAllNonInitialNodesWithAtLeastOneParent()
     {
         var sut = CreateSut();
         var random = new Random(42);
 
-        var room = sut.Generate(Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, random);
+        var room = await sut.GenerateAsync(Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, random);
 
         foreach (var node in room.Nodes.Where(n => n.Row > 0))
         {
@@ -349,10 +350,10 @@ public sealed class MapRoomGeneratorTests
     [InlineData(RoomType.Rupture)]
     [InlineData(RoomType.Silence)]
     [InlineData(RoomType.Memory)]
-    public void GenerateRoom_ShouldCreate22Nodes_ForAllSupportedRoomTypes(RoomType roomType)
+    public async Task GenerateRoom_ShouldCreate22Nodes_ForAllSupportedRoomTypes(RoomType roomType)
     {
         var sut = CreateSut();
-        var room = sut.Generate(Seed, GeneratorVersion, roomDepth: 0, roomType, new Random(42));
+        var room = await sut.GenerateAsync(Seed, GeneratorVersion, roomDepth: 0, roomType, new Random(42));
 
         room.Nodes.Should().HaveCount(22,
             because: $"all room types use the default 22-node template.");
@@ -364,10 +365,10 @@ public sealed class MapRoomGeneratorTests
     [InlineData(RoomType.Rupture)]
     [InlineData(RoomType.Silence)]
     [InlineData(RoomType.Memory)]
-    public void GenerateRoom_ShouldHaveCorrectRowDistribution_ForAllSupportedRoomTypes(RoomType roomType)
+    public async Task GenerateRoom_ShouldHaveCorrectRowDistribution_ForAllSupportedRoomTypes(RoomType roomType)
     {
         var sut = CreateSut();
-        var room = sut.Generate(Seed, GeneratorVersion, roomDepth: 0, roomType, new Random(42));
+        var room = await sut.GenerateAsync(Seed, GeneratorVersion, roomDepth: 0, roomType, new Random(42));
 
         var rows = room.Nodes
             .GroupBy(n => n.Row)
@@ -385,10 +386,10 @@ public sealed class MapRoomGeneratorTests
     [InlineData(RoomType.Rupture)]
     [InlineData(RoomType.Silence)]
     [InlineData(RoomType.Memory)]
-    public void GenerateRoom_ShouldHaveSingleBossOnFinalRow_ForAllSupportedRoomTypes(RoomType roomType)
+    public async Task GenerateRoom_ShouldHaveSingleBossOnFinalRow_ForAllSupportedRoomTypes(RoomType roomType)
     {
         var sut = CreateSut();
-        var room = sut.Generate(Seed, GeneratorVersion, roomDepth: 0, roomType, new Random(42));
+        var room = await sut.GenerateAsync(Seed, GeneratorVersion, roomDepth: 0, roomType, new Random(42));
 
         var bossNodes = room.Nodes.Where(n => n.IsBoss).ToArray();
         bossNodes.Should().HaveCount(1);
@@ -401,10 +402,10 @@ public sealed class MapRoomGeneratorTests
     [InlineData(RoomType.Rupture)]
     [InlineData(RoomType.Silence)]
     [InlineData(RoomType.Memory)]
-    public void GenerateRoom_ShouldMatchRoomType_ForAllSupportedRoomTypes(RoomType roomType)
+    public async Task GenerateRoom_ShouldMatchRoomType_ForAllSupportedRoomTypes(RoomType roomType)
     {
         var sut = CreateSut();
-        var room = sut.Generate(Seed, GeneratorVersion, roomDepth: 0, roomType, new Random(42));
+        var room = await sut.GenerateAsync(Seed, GeneratorVersion, roomDepth: 0, roomType, new Random(42));
 
         room.RoomType.Should().Be(roomType);
     }
@@ -415,12 +416,12 @@ public sealed class MapRoomGeneratorTests
     [InlineData(RoomType.Rupture)]
     [InlineData(RoomType.Silence)]
     [InlineData(RoomType.Memory)]
-    public void GenerateRoom_ShouldBeDeterministic_ForAllSupportedRoomTypes(RoomType roomType)
+    public async Task GenerateRoom_ShouldBeDeterministic_ForAllSupportedRoomTypes(RoomType roomType)
     {
         var sut = CreateSut();
 
-        var room1 = sut.Generate(Seed, GeneratorVersion, roomDepth: 0, roomType, new Random(99));
-        var room2 = sut.Generate(Seed, GeneratorVersion, roomDepth: 0, roomType, new Random(99));
+        var room1 = await sut.GenerateAsync(Seed, GeneratorVersion, roomDepth: 0, roomType, new Random(99));
+        var room2 = await sut.GenerateAsync(Seed, GeneratorVersion, roomDepth: 0, roomType, new Random(99));
 
         var types1 = room1.Nodes.OrderBy(n => n.Row).ThenBy(n => n.Lane).Select(n => n.EventType).ToArray();
         var types2 = room2.Nodes.OrderBy(n => n.Row).ThenBy(n => n.Lane).Select(n => n.EventType).ToArray();
@@ -434,13 +435,13 @@ public sealed class MapRoomGeneratorTests
     // -----------------------------------------------------------------------
 
     [Fact]
-    public void GenerateRoom_ShouldProduceDifferentNodeTypeDistribution_ForDifferentRoomTypes()
+    public async Task GenerateRoom_ShouldProduceDifferentNodeTypeDistribution_ForDifferentRoomTypes()
     {
         var sut = CreateSut();
 
         // Discriminator: Elite+Rare+Curse weight = 15% in Threshold vs 50% in Rupture.
-        var thresholdTypes = GenerateManyNodes(sut, RoomType.Threshold);
-        var ruptureTypes = GenerateManyNodes(sut, RoomType.Rupture);
+        var thresholdTypes = await GenerateManyNodes(sut, RoomType.Threshold);
+        var ruptureTypes = await GenerateManyNodes(sut, RoomType.Rupture);
 
         var IsRisky = (NodeEventType t) =>
             t == NodeEventType.Elite || t == NodeEventType.Rare || t == NodeEventType.Curse;
@@ -453,11 +454,11 @@ public sealed class MapRoomGeneratorTests
     }
 
     [Fact]
-    public void GenerateRuptureRoom_ShouldFavorRiskierNodes()
+    public async Task GenerateRuptureRoom_ShouldFavorRiskierNodes()
     {
         var sut = CreateSut();
 
-        var types = GenerateManyNodes(sut, RoomType.Rupture);
+        var types = await GenerateManyNodes(sut, RoomType.Rupture);
 
         var riskyCount = types.Count(t =>
             t == NodeEventType.Combat ||
@@ -472,11 +473,11 @@ public sealed class MapRoomGeneratorTests
     }
 
     [Fact]
-    public void GenerateForestRoom_ShouldFavorSupportOrNarrativeNodes()
+    public async Task GenerateForestRoom_ShouldFavorSupportOrNarrativeNodes()
     {
         var sut = CreateSut();
 
-        var types = GenerateManyNodes(sut, RoomType.Forest);
+        var types = await GenerateManyNodes(sut, RoomType.Forest);
 
         var supportCount = types.Count(t =>
             t == NodeEventType.Npc ||
@@ -490,11 +491,11 @@ public sealed class MapRoomGeneratorTests
     }
 
     [Fact]
-    public void GenerateSilenceRoom_ShouldFavorLawNpcOrMerchantNodes()
+    public async Task GenerateSilenceRoom_ShouldFavorLawNpcOrMerchantNodes()
     {
         var sut = CreateSut();
 
-        var types = GenerateManyNodes(sut, RoomType.Silence);
+        var types = await GenerateManyNodes(sut, RoomType.Silence);
 
         var silenceCount = types.Count(t =>
             t == NodeEventType.Law ||
@@ -508,11 +509,11 @@ public sealed class MapRoomGeneratorTests
     }
 
     [Fact]
-    public void GenerateMemoryRoom_ShouldFavorNpcLawItemOrRestNodes()
+    public async Task GenerateMemoryRoom_ShouldFavorNpcLawItemOrRestNodes()
     {
         var sut = CreateSut();
 
-        var types = GenerateManyNodes(sut, RoomType.Memory);
+        var types = await GenerateManyNodes(sut, RoomType.Memory);
 
         var memoryCount = types.Count(t =>
             t == NodeEventType.Npc ||
@@ -527,11 +528,11 @@ public sealed class MapRoomGeneratorTests
     }
 
     [Fact]
-    public void GenerateMemoryRoom_ShouldNotGenerateDirectMemoryOrNarrativeMapNodes_WhenNotSupported()
+    public async Task GenerateMemoryRoom_ShouldNotGenerateDirectMemoryOrNarrativeMapNodes_WhenNotSupported()
     {
         var sut = CreateSut();
 
-        var types = GenerateManyNodes(sut, RoomType.Memory);
+        var types = await GenerateManyNodes(sut, RoomType.Memory);
 
         types.Should().NotContain(NodeEventType.Memory,
             because: "NodeEventType.Memory is not a supported MapNode type in the current system.");
@@ -544,13 +545,13 @@ public sealed class MapRoomGeneratorTests
     /// <summary>
     /// Generates non-boss nodes across many seeds to get a statistically reliable sample.
     /// </summary>
-    private static List<NodeEventType> GenerateManyNodes(IMapRoomGenerator sut, RoomType roomType, int roomCount = 30)
+    private static async Task<List<NodeEventType>> GenerateManyNodes(IMapRoomGenerator sut, RoomType roomType, int roomCount = 30)
     {
         var types = new List<NodeEventType>();
 
         for (var i = 0; i < roomCount; i++)
         {
-            var room = sut.Generate($"seed-stat-{i}", GeneratorVersion, roomDepth: 0, roomType, new Random(i));
+            var room = await sut.GenerateAsync($"seed-stat-{i}", GeneratorVersion, roomDepth: 0, roomType, new Random(i));
             types.AddRange(room.Nodes.Where(n => !n.IsBoss).Select(n => n.EventType));
         }
 
@@ -562,72 +563,72 @@ public sealed class MapRoomGeneratorTests
     // -----------------------------------------------------------------------
 
     [Fact]
-    public void GenerateThresholdRoom_ShouldUseThresholdBossProfile()
+    public async Task GenerateThresholdRoom_ShouldUseThresholdBossProfile()
     {
-        var room = CreateSut().Generate(Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, new Random(42));
+        var room = await CreateSut().GenerateAsync(Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, new Random(42));
 
         room.RoomType.Should().Be(RoomType.Threshold);
-        room.BossProfile.BossId.Should().Be("threshold-guardian");
+        room.BossProfile.BossId.Should().Be("boss.threshold.warden");
         room.BossProfile.Name.Should().Be("Gardien du Seuil");
         room.BossProfile.RoomType.Should().Be(RoomType.Threshold);
-        room.BossProfile.DangerHint.Should().NotBeNullOrWhiteSpace();
-        room.BossProfile.EnemyTemplateKey.Should().Be("boss-threshold-guardian-v1");
+        room.BossProfile.DangerHint.Should().Be("High");
+        room.BossProfile.EnemyTemplateKey.Should().Be("boss.threshold.warden-v1");
         AssertSingleBossOnFinalRow(room);
     }
 
     [Fact]
-    public void GenerateForestRoom_ShouldUseForestBossProfile()
+    public async Task GenerateForestRoom_ShouldUseForestBossProfile()
     {
-        var room = CreateSut().Generate(Seed, GeneratorVersion, roomDepth: 1, RoomType.Forest, new Random(42));
+        var room = await CreateSut().GenerateAsync(Seed, GeneratorVersion, roomDepth: 1, RoomType.Forest, new Random(42));
 
         room.RoomType.Should().Be(RoomType.Forest);
-        room.BossProfile.BossId.Should().Be("forest-guardian");
+        room.BossProfile.BossId.Should().Be("boss.forest.rootbound-memory");
         room.BossProfile.Name.Should().Be("Gardien des Racines");
         room.BossProfile.RoomType.Should().Be(RoomType.Forest);
-        room.BossProfile.DangerHint.Should().NotBeNullOrWhiteSpace();
-        room.BossProfile.EnemyTemplateKey.Should().Be("boss-forest-guardian-v1");
+        room.BossProfile.DangerHint.Should().Be("Medium");
+        room.BossProfile.EnemyTemplateKey.Should().Be("boss.forest.rootbound-memory-v1");
         AssertSingleBossOnFinalRow(room);
     }
 
     [Fact]
-    public void GenerateRuptureRoom_ShouldUseRuptureBossProfile()
+    public async Task GenerateRuptureRoom_ShouldUseRuptureBossProfile()
     {
-        var room = CreateSut().Generate(Seed, GeneratorVersion, roomDepth: 1, RoomType.Rupture, new Random(42));
+        var room = await CreateSut().GenerateAsync(Seed, GeneratorVersion, roomDepth: 1, RoomType.Rupture, new Random(42));
 
         room.RoomType.Should().Be(RoomType.Rupture);
-        room.BossProfile.BossId.Should().Be("rupture-warden");
+        room.BossProfile.BossId.Should().Be("boss.rupture.fractured-echo");
         room.BossProfile.Name.Should().Be("Fragment de Rupture");
         room.BossProfile.RoomType.Should().Be(RoomType.Rupture);
-        room.BossProfile.DangerHint.Should().NotBeNullOrWhiteSpace();
-        room.BossProfile.EnemyTemplateKey.Should().Be("boss-rupture-warden-v1");
+        room.BossProfile.DangerHint.Should().Be("High");
+        room.BossProfile.EnemyTemplateKey.Should().Be("boss.rupture.fractured-echo-v1");
         AssertSingleBossOnFinalRow(room);
     }
 
     [Fact]
-    public void GenerateSilenceRoom_ShouldUseSilenceBossProfile()
+    public async Task GenerateSilenceRoom_ShouldUseSilenceBossProfile()
     {
-        var room = CreateSut().Generate(Seed, GeneratorVersion, roomDepth: 1, RoomType.Silence, new Random(42));
+        var room = await CreateSut().GenerateAsync(Seed, GeneratorVersion, roomDepth: 1, RoomType.Silence, new Random(42));
 
         room.RoomType.Should().Be(RoomType.Silence);
-        room.BossProfile.BossId.Should().Be("silence-warden");
+        room.BossProfile.BossId.Should().Be("boss.silence.mute-herald");
         room.BossProfile.Name.Should().Be("Voix Éteinte");
         room.BossProfile.RoomType.Should().Be(RoomType.Silence);
-        room.BossProfile.DangerHint.Should().NotBeNullOrWhiteSpace();
-        room.BossProfile.EnemyTemplateKey.Should().Be("boss-silence-warden-v1");
+        room.BossProfile.DangerHint.Should().Be("Medium");
+        room.BossProfile.EnemyTemplateKey.Should().Be("boss.silence.mute-herald-v1");
         AssertSingleBossOnFinalRow(room);
     }
 
     [Fact]
-    public void GenerateMemoryRoom_ShouldUseMemoryBossProfile()
+    public async Task GenerateMemoryRoom_ShouldUseMemoryBossProfile()
     {
-        var room = CreateSut().Generate(Seed, GeneratorVersion, roomDepth: 1, RoomType.Memory, new Random(42));
+        var room = await CreateSut().GenerateAsync(Seed, GeneratorVersion, roomDepth: 1, RoomType.Memory, new Random(42));
 
         room.RoomType.Should().Be(RoomType.Memory);
-        room.BossProfile.BossId.Should().Be("memory-keeper");
+        room.BossProfile.BossId.Should().Be("boss.memory.archivist");
         room.BossProfile.Name.Should().Be("Archiviste des Échos");
         room.BossProfile.RoomType.Should().Be(RoomType.Memory);
-        room.BossProfile.DangerHint.Should().NotBeNullOrWhiteSpace();
-        room.BossProfile.EnemyTemplateKey.Should().Be("boss-memory-keeper-v1");
+        room.BossProfile.DangerHint.Should().Be("Medium");
+        room.BossProfile.EnemyTemplateKey.Should().Be("boss.memory.archivist-v1");
         AssertSingleBossOnFinalRow(room);
     }
 
@@ -647,10 +648,10 @@ public sealed class MapRoomGeneratorTests
     // -----------------------------------------------------------------------
 
     [Fact]
-    public void GenerateThresholdRoom_ShouldUseBalancedNodeDistribution()
+    public async Task GenerateThresholdRoom_ShouldUseBalancedNodeDistribution()
     {
         var sut = CreateSut();
-        var types = GenerateManyNodes(sut, RoomType.Threshold);
+        var types = await GenerateManyNodes(sut, RoomType.Threshold);
 
         // Combat is the dominant type (weight 30 / 100).
         var combatCount = types.Count(t => t == NodeEventType.Combat);
@@ -669,10 +670,10 @@ public sealed class MapRoomGeneratorTests
     }
 
     [Fact]
-    public void GenerateForestRoom_ShouldGenerateSupportOrExplorationNodes()
+    public async Task GenerateForestRoom_ShouldGenerateSupportOrExplorationNodes()
     {
         var sut = CreateSut();
-        var types = GenerateManyNodes(sut, RoomType.Forest);
+        var types = await GenerateManyNodes(sut, RoomType.Forest);
 
         var supportCount = types.Count(t =>
             t == NodeEventType.Npc  ||
@@ -684,11 +685,11 @@ public sealed class MapRoomGeneratorTests
     }
 
     [Fact]
-    public void GenerateRuptureRoom_ShouldGenerateRiskierNodes()
+    public async Task GenerateRuptureRoom_ShouldGenerateRiskierNodes()
     {
         // Alias for existing test; kept as a named B-group entry.
         var sut = CreateSut();
-        var types = GenerateManyNodes(sut, RoomType.Rupture);
+        var types = await GenerateManyNodes(sut, RoomType.Rupture);
 
         var riskyCount = types.Count(t =>
             t == NodeEventType.Combat ||
@@ -700,10 +701,10 @@ public sealed class MapRoomGeneratorTests
     }
 
     [Fact]
-    public void GenerateSilenceRoom_ShouldGenerateSystemicNodes()
+    public async Task GenerateSilenceRoom_ShouldGenerateSystemicNodes()
     {
         var sut = CreateSut();
-        var types = GenerateManyNodes(sut, RoomType.Silence);
+        var types = await GenerateManyNodes(sut, RoomType.Silence);
 
         var systemicCount = types.Count(t =>
             t == NodeEventType.Law      ||
@@ -715,10 +716,10 @@ public sealed class MapRoomGeneratorTests
     }
 
     [Fact]
-    public void GenerateMemoryRoom_ShouldGenerateMemoryLikeButNotDirectMemoryMapNodes()
+    public async Task GenerateMemoryRoom_ShouldGenerateMemoryLikeButNotDirectMemoryMapNodes()
     {
         var sut = CreateSut();
-        var types = GenerateManyNodes(sut, RoomType.Memory);
+        var types = await GenerateManyNodes(sut, RoomType.Memory);
 
         // Must NOT contain direct Memory node type
         types.Should().NotContain(NodeEventType.Memory,
@@ -739,10 +740,10 @@ public sealed class MapRoomGeneratorTests
     // -----------------------------------------------------------------------
 
     [Fact]
-    public void GenerateMemoryRoom_ShouldNotGenerateDirectMemoryMapNodes()
+    public async Task GenerateMemoryRoom_ShouldNotGenerateDirectMemoryMapNodes()
     {
         var sut = CreateSut();
-        var types = GenerateManyNodes(sut, RoomType.Memory);
+        var types = await GenerateManyNodes(sut, RoomType.Memory);
 
         types.Should().NotContain(NodeEventType.Memory,
             "NodeEventType.Memory must never appear as a direct MapNode type.");
@@ -756,34 +757,34 @@ public sealed class MapRoomGeneratorTests
     // -----------------------------------------------------------------------
 
     [Fact]
-    public void GenerateRuptureRoom_ShouldHaveHigherAverageRiskThanThreshold_ForKnownSeed()
+    public async Task GenerateRuptureRoom_ShouldHaveHigherAverageRiskThanThreshold_ForKnownSeed()
     {
         var sut = CreateSut();
 
-        var thresholdRisk = AverageNonBossRisk(sut, RoomType.Threshold);
-        var ruptureRisk   = AverageNonBossRisk(sut, RoomType.Rupture);
+        var thresholdRisk = await AverageNonBossRisk(sut, RoomType.Threshold);
+        var ruptureRisk   = await AverageNonBossRisk(sut, RoomType.Rupture);
 
         ruptureRisk.Should().BeGreaterThan(thresholdRisk,
             "Rupture riskMin=25 versus Threshold riskMin=5 must yield a higher average risk.");
     }
 
     [Fact]
-    public void GenerateForestRoom_ShouldHaveLowerOrModerateAverageRisk_ForKnownSeed()
+    public async Task GenerateForestRoom_ShouldHaveLowerOrModerateAverageRisk_ForKnownSeed()
     {
         var sut = CreateSut();
 
-        var forestRisk  = AverageNonBossRisk(sut, RoomType.Forest);
-        var ruptureRisk = AverageNonBossRisk(sut, RoomType.Rupture);
+        var forestRisk  = await AverageNonBossRisk(sut, RoomType.Forest);
+        var ruptureRisk = await AverageNonBossRisk(sut, RoomType.Rupture);
 
         forestRisk.Should().BeLessThan(ruptureRisk,
             "Forest riskMax=51 versus Rupture riskMax=86 must yield a lower average risk.");
     }
 
     [Fact]
-    public void GenerateThresholdRoom_ShouldKeepIntroRiskModerate_ForKnownSeed()
+    public async Task GenerateThresholdRoom_ShouldKeepIntroRiskModerate_ForKnownSeed()
     {
         var sut = CreateSut();
-        var room = sut.Generate(Seed, GeneratorVersion, 0, RoomType.Threshold, new Random(42));
+        var room = await sut.GenerateAsync(Seed, GeneratorVersion, 0, RoomType.Threshold, new Random(42));
 
         var nonBossRisks = room.Nodes.Where(n => !n.IsBoss).Select(n => n.RiskLevel).ToArray();
 
@@ -792,12 +793,12 @@ public sealed class MapRoomGeneratorTests
                 "Threshold risk is bounded to [5, 61) — no node should exceed 60."));
     }
 
-    private static double AverageNonBossRisk(IMapRoomGenerator sut, RoomType roomType, int roomCount = 10)
+    private static async Task<double> AverageNonBossRisk(IMapRoomGenerator sut, RoomType roomType, int roomCount = 10)
     {
         var risks = new List<int>();
         for (var i = 0; i < roomCount; i++)
         {
-            var room = sut.Generate($"seed-risk-{i}", GeneratorVersion, 0, roomType, new Random(i * 7 + 3));
+            var room = await sut.GenerateAsync($"seed-risk-{i}", GeneratorVersion, 0, roomType, new Random(i * 7 + 3));
             risks.AddRange(room.Nodes.Where(n => !n.IsBoss).Select(n => n.RiskLevel));
         }
         return risks.Average();
@@ -808,12 +809,13 @@ public sealed class MapRoomGeneratorTests
     // -----------------------------------------------------------------------
 
     [Fact]
-    public void GenerateCombatNode_ShouldUseRoomTypeAwareRewardProfile()
+    public async Task GenerateCombatNode_ShouldUseRoomTypeAwareRewardProfile()
     {
         var sut = CreateSut();
 
         // Threshold: only "combat-common"
-        var thresholdCombat = GenerateManyMapNodes(sut, RoomType.Threshold)
+        var thresholdCombatNodes = await GenerateManyMapNodes(sut, RoomType.Threshold);
+        var thresholdCombat = thresholdCombatNodes
             .Where(n => n.EventType == NodeEventType.Combat).ToList();
 
         thresholdCombat.Should().NotBeEmpty("Threshold has 30% Combat weight — some combat nodes expected.");
@@ -822,7 +824,8 @@ public sealed class MapRoomGeneratorTests
                 "Threshold combat nodes use only 'combat-common'."));
 
         // Rupture: "combat-common" or "combat-uncommon"
-        var ruptureCombat = GenerateManyMapNodes(sut, RoomType.Rupture)
+        var ruptureCombatNodes = await GenerateManyMapNodes(sut, RoomType.Rupture);
+        var ruptureCombat = ruptureCombatNodes
             .Where(n => n.EventType == NodeEventType.Combat).ToList();
 
         ruptureCombat.Should().NotBeEmpty();
@@ -832,13 +835,15 @@ public sealed class MapRoomGeneratorTests
     }
 
     [Fact]
-    public void GenerateRareNode_ShouldUseRareCombatRewardProfile()
+    public async Task GenerateRareNode_ShouldUseRareCombatRewardProfile()
     {
         var sut = CreateSut();
 
         // Sample across all room types (Rare exists in all profiles)
-        var rareNodes = new[] { RoomType.Threshold, RoomType.Forest, RoomType.Rupture, RoomType.Silence, RoomType.Memory }
-            .SelectMany(rt => GenerateManyMapNodes(sut, rt))
+        var rareNodeLists = await Task.WhenAll(
+            new[] { RoomType.Threshold, RoomType.Forest, RoomType.Rupture, RoomType.Silence, RoomType.Memory }
+                .Select(rt => GenerateManyMapNodes(sut, rt)));
+        var rareNodes = rareNodeLists.SelectMany(x => x)
             .Where(n => n.EventType == NodeEventType.Rare)
             .ToList();
 
@@ -849,12 +854,14 @@ public sealed class MapRoomGeneratorTests
     }
 
     [Fact]
-    public void GenerateEliteNode_ShouldUseEliteCombatRewardProfile()
+    public async Task GenerateEliteNode_ShouldUseEliteCombatRewardProfile()
     {
         var sut = CreateSut();
 
-        var eliteNodes = new[] { RoomType.Threshold, RoomType.Rupture }
-            .SelectMany(rt => GenerateManyMapNodes(sut, rt))
+        var eliteNodeLists = await Task.WhenAll(
+            new[] { RoomType.Threshold, RoomType.Rupture }
+                .Select(rt => GenerateManyMapNodes(sut, rt)));
+        var eliteNodes = eliteNodeLists.SelectMany(x => x)
             .Where(n => n.EventType == NodeEventType.Elite)
             .ToList();
 
@@ -865,12 +872,14 @@ public sealed class MapRoomGeneratorTests
     }
 
     [Fact]
-    public void GenerateRestNode_ShouldUseRestRewardProfile()
+    public async Task GenerateRestNode_ShouldUseRestRewardProfile()
     {
         var sut = CreateSut();
 
-        var restNodes = new[] { RoomType.Threshold, RoomType.Forest, RoomType.Rupture }
-            .SelectMany(rt => GenerateManyMapNodes(sut, rt))
+        var restNodeLists = await Task.WhenAll(
+            new[] { RoomType.Threshold, RoomType.Forest, RoomType.Rupture }
+                .Select(rt => GenerateManyMapNodes(sut, rt)));
+        var restNodes = restNodeLists.SelectMany(x => x)
             .Where(n => n.EventType == NodeEventType.Rest)
             .ToList();
 
@@ -881,12 +890,14 @@ public sealed class MapRoomGeneratorTests
     }
 
     [Fact]
-    public void GenerateLawNode_ShouldUseLawRewardProfile()
+    public async Task GenerateLawNode_ShouldUseLawRewardProfile()
     {
         var sut = CreateSut();
 
-        var lawNodes = new[] { RoomType.Threshold, RoomType.Silence, RoomType.Memory }
-            .SelectMany(rt => GenerateManyMapNodes(sut, rt))
+        var lawNodeLists = await Task.WhenAll(
+            new[] { RoomType.Threshold, RoomType.Silence, RoomType.Memory }
+                .Select(rt => GenerateManyMapNodes(sut, rt)));
+        var lawNodes = lawNodeLists.SelectMany(x => x)
             .Where(n => n.EventType == NodeEventType.Law)
             .ToList();
 
@@ -897,13 +908,15 @@ public sealed class MapRoomGeneratorTests
     }
 
     [Fact]
-    public void GenerateCurseNode_ShouldUseRiskRewardProfile()
+    public async Task GenerateCurseNode_ShouldUseRiskRewardProfile()
     {
         var sut = CreateSut();
 
         // Rupture and Threshold both include Curse
-        var curseNodes = new[] { RoomType.Rupture, RoomType.Threshold }
-            .SelectMany(rt => GenerateManyMapNodes(sut, rt))
+        var curseNodeLists = await Task.WhenAll(
+            new[] { RoomType.Rupture, RoomType.Threshold }
+                .Select(rt => GenerateManyMapNodes(sut, rt)));
+        var curseNodes = curseNodeLists.SelectMany(x => x)
             .Where(n => n.EventType == NodeEventType.Curse)
             .ToList();
 
@@ -917,12 +930,12 @@ public sealed class MapRoomGeneratorTests
     // Helper — returns MapNode objects (with RewardProfile) across many seeds
     // -----------------------------------------------------------------------
 
-    private static List<MapNode> GenerateManyMapNodes(IMapRoomGenerator sut, RoomType roomType, int roomCount = 30)
+    private static async Task<List<MapNode>> GenerateManyMapNodes(IMapRoomGenerator sut, RoomType roomType, int roomCount = 30)
     {
         var nodes = new List<MapNode>();
         for (var i = 0; i < roomCount; i++)
         {
-            var room = sut.Generate($"seed-stat-{i}", GeneratorVersion, 0, roomType, new Random(i));
+            var room = await sut.GenerateAsync($"seed-stat-{i}", GeneratorVersion, 0, roomType, new Random(i));
             nodes.AddRange(room.Nodes.Where(n => !n.IsBoss));
         }
         return nodes;

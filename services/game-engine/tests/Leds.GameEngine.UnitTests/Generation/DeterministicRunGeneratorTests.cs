@@ -10,11 +10,11 @@ namespace Leds.GameEngine.UnitTests.Generation;
 public sealed class DeterministicRunGeneratorTests
 {
     [Fact]
-    public void GenerateInitialRoom_ShouldCreateVisibleRoomPlan()
+    public async Task GenerateInitialRoom_ShouldCreateVisibleRoomPlan()
     {
         var generator = TestGeneratorFactory.CreateDeterministicRunGenerator();
 
-        var room = generator.GenerateInitialRoom("seed-test-001");
+        var room = await generator.GenerateInitialRoomAsync("seed-test-001");
 
         room.Depth.Should().Be(0);
         room.RoomType.Should().Be(RoomType.Threshold);
@@ -38,15 +38,15 @@ public sealed class DeterministicRunGeneratorTests
     }
 
     [Fact]
-    public void GenerateInitialRoom_ShouldCreateRoomBossMatchingRoomType()
+    public async Task GenerateInitialRoom_ShouldCreateRoomBossMatchingRoomType()
     {
         var generator = TestGeneratorFactory.CreateDeterministicRunGenerator();
 
-        var room = generator.GenerateInitialRoom("seed-test-001");
+        var room = await generator.GenerateInitialRoomAsync("seed-test-001");
 
         room.BossProfile.Should().NotBeNull();
         room.BossProfile.RoomType.Should().Be(RoomType.Threshold);
-        room.BossProfile.BossId.Should().Be("threshold-guardian");
+        room.BossProfile.BossId.Should().Be("boss.threshold.warden");
         room.BossProfile.Name.Should().Be("Gardien du Seuil");
         room.BossProfile.DangerHint.Should().Be("High");
 
@@ -58,11 +58,11 @@ public sealed class DeterministicRunGeneratorTests
     }
 
     [Fact]
-    public void GenerateInitialRoom_ShouldCreateEightRows()
+    public async Task GenerateInitialRoom_ShouldCreateEightRows()
     {
         var generator = TestGeneratorFactory.CreateDeterministicRunGenerator();
 
-        var room = generator.GenerateInitialRoom("seed-test-001");
+        var room = await generator.GenerateInitialRoomAsync("seed-test-001");
 
         var rowCount = room.Nodes
             .Select(node => node.Row)
@@ -73,12 +73,12 @@ public sealed class DeterministicRunGeneratorTests
     }
 
     [Fact]
-    public void GenerateInitialRoom_ShouldBeDeterministic()
+    public async Task GenerateInitialRoom_ShouldBeDeterministic()
     {
         var generator = TestGeneratorFactory.CreateDeterministicRunGenerator();
 
-        var firstRoom = generator.GenerateInitialRoom("seed-test-001");
-        var secondRoom = generator.GenerateInitialRoom("seed-test-001");
+        var firstRoom = await generator.GenerateInitialRoomAsync("seed-test-001");
+        var secondRoom = await generator.GenerateInitialRoomAsync("seed-test-001");
 
         var firstSnapshot = CreateRoomPlanSnapshot(firstRoom);
         var secondSnapshot = CreateRoomPlanSnapshot(secondRoom);
@@ -89,12 +89,12 @@ public sealed class DeterministicRunGeneratorTests
     }
 
     [Fact]
-    public void GenerateInitialRoom_ShouldGenerateDifferentPlans_ForDifferentSeeds()
+    public async Task GenerateInitialRoom_ShouldGenerateDifferentPlans_ForDifferentSeeds()
     {
         var generator = TestGeneratorFactory.CreateDeterministicRunGenerator();
 
-        var firstRoom = generator.GenerateInitialRoom("seed-test-001");
-        var secondRoom = generator.GenerateInitialRoom("seed-test-002");
+        var firstRoom = await generator.GenerateInitialRoomAsync("seed-test-001");
+        var secondRoom = await generator.GenerateInitialRoomAsync("seed-test-002");
 
         var firstSnapshot = CreateRoomPlanSnapshot(firstRoom);
         var secondSnapshot = CreateRoomPlanSnapshot(secondRoom);
@@ -123,11 +123,11 @@ public sealed class DeterministicRunGeneratorTests
     }
 
     [Fact]
-    public void GenerateInitialRoom_ShouldCreateConvergentGraph_ToRoomBoss()
+    public async Task GenerateInitialRoom_ShouldCreateConvergentGraph_ToRoomBoss()
     {
         var generator = TestGeneratorFactory.CreateDeterministicRunGenerator();
 
-        var room = generator.GenerateInitialRoom("seed-test-001");
+        var room = await generator.GenerateInitialRoomAsync("seed-test-001");
 
         var bossNode = room.Nodes.Single(node => node.IsBoss);
 
@@ -155,11 +155,11 @@ public sealed class DeterministicRunGeneratorTests
     }
 
     [Fact]
-    public void GenerateInitialRoom_ShouldGiveEveryNonBossNodeAtLeastOneChild()
+    public async Task GenerateInitialRoom_ShouldGiveEveryNonBossNodeAtLeastOneChild()
     {
         var generator = TestGeneratorFactory.CreateDeterministicRunGenerator();
 
-        var room = generator.GenerateInitialRoom("seed-test-001");
+        var room = await generator.GenerateInitialRoomAsync("seed-test-001");
 
         foreach (var node in room.Nodes.Where(node => !node.IsBoss))
         {
@@ -171,11 +171,11 @@ public sealed class DeterministicRunGeneratorTests
     }
 
     [Fact]
-    public void GenerateInitialRoom_ShouldPlaceSingleRoomBossNodeAtFinalRow()
+    public async Task GenerateInitialRoom_ShouldPlaceSingleRoomBossNodeAtFinalRow()
     {
         var generator = TestGeneratorFactory.CreateDeterministicRunGenerator();
 
-        var room = generator.GenerateInitialRoom("seed-test-001");
+        var room = await generator.GenerateInitialRoomAsync("seed-test-001");
 
         var finalRowNodes = room.Nodes
             .Where(node => node.Row == room.MaxNodeDepth)
@@ -191,11 +191,11 @@ public sealed class DeterministicRunGeneratorTests
     }
 
     [Fact]
-    public void GenerateInitialRoom_ShouldCreateAtLeastTwoAvailableNodesAtInitialRow()
+    public async Task GenerateInitialRoom_ShouldCreateAtLeastTwoAvailableNodesAtInitialRow()
     {
         var generator = TestGeneratorFactory.CreateDeterministicRunGenerator();
 
-        var room = generator.GenerateInitialRoom("seed-test-001");
+        var room = await generator.GenerateInitialRoomAsync("seed-test-001");
 
         room.AvailableNodes.Should().HaveCount(2);
         room.AvailableNodes.Should().OnlyContain(node => node.Row == 0);

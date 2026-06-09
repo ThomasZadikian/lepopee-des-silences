@@ -1,4 +1,5 @@
 ﻿using Leds.GameEngine.Domain.Markov;
+using Leds.GameEngine.Infrastructure.Catalog;
 using Leds.GameEngine.Infrastructure.Generation;
 using Leds.GameEngine.Infrastructure.Generation.Randomness;
 using Leds.GameEngine.Infrastructure.Generation.RoomMaps;
@@ -15,7 +16,7 @@ public static class TestGeneratorFactory
         var mapRoomGenerator = new MapRoomGenerator(
             new RoomMapLayoutTemplateProvider(),
             new RoomThemeResolver(),
-            new RoomBossProfileResolver(),
+            new RoomBossProfileResolver(new InMemoryCatalogContentGateway()),
             new HardcodedRoomTypeGenerationProfileProvider());
 
         var roomTypeResolver = new MarkovRoomTypeResolver(

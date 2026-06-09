@@ -21,7 +21,7 @@ public sealed class EventContentResolverTests
             new IEventContentResolutionStrategy[]
             {
                 new CombatEventContentResolutionStrategy(catalogGateway),
-                new RoomBossEventContentResolutionStrategy(catalogGateway, new Leds.GameEngine.Infrastructure.Generation.Rooms.Bosses.RoomBossProfileResolver()),
+                new RoomBossEventContentResolutionStrategy(catalogGateway, new Leds.GameEngine.Infrastructure.Generation.Rooms.Bosses.RoomBossProfileResolver(catalogGateway)),
                 new ItemEventContentResolutionStrategy(catalogGateway),
                 new PalaceLawEventContentResolutionStrategy(catalogGateway),
                 new NpcEventContentResolutionStrategy(catalogGateway),
@@ -187,7 +187,7 @@ public sealed class EventContentResolverTests
             .Subject;
 
         content.Kind.Should().Be(ResolvedEventContentKind.Boss);
-        content.EnemyTemplateKey.Should().Be("boss-threshold-guardian-v1");
+        content.EnemyTemplateKey.Should().Be("boss.threshold.warden-v1");
         content.RiskLevel.Should().Be(25);
     }
 

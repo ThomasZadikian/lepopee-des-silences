@@ -1,4 +1,5 @@
-﻿using Leds.GameEngine.Application.Catalog.Contracts;
+﻿using Leds.GameEngine.Application.Catalog;
+using Leds.GameEngine.Application.Catalog.Contracts;
 using Leds.SharedBuildingBlocks.Results;
 
 namespace Leds.GameEngine.Application.Catalog.Ports;
@@ -27,5 +28,9 @@ public interface ICatalogContentGateway
 
     Task<Result<PalaceLawDefinitionSnapshot>> GetPalaceLawDefinitionByKeyAsync(
         string key,
+        CancellationToken cancellationToken = default);
+
+    Task<CatalogRoomBossProfile?> GetRoomBossProfileAsync(
+        string roomType,
         CancellationToken cancellationToken = default);
 }

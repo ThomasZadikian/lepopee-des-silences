@@ -1,4 +1,5 @@
-﻿using Leds.GameEngine.Application.Catalog.Contracts;
+﻿using Leds.GameEngine.Application.Catalog;
+using Leds.GameEngine.Application.Catalog.Contracts;
 using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.SharedBuildingBlocks.Errors;
 using Leds.SharedBuildingBlocks.Results;
@@ -26,8 +27,8 @@ public sealed class InMemoryCatalogContentGateway : ICatalogContentGateway
                 BaseSpeed: 6,
                 Affinity: "Shadow",
                 SkillKeys: ["skill-shadow-strike-v1"]),
-            ["boss-threshold-guardian-v1"] = new EnemyTemplateSnapshot(
-                Key: "boss-threshold-guardian-v1",
+            ["boss.threshold.warden-v1"] = new EnemyTemplateSnapshot(
+                Key: "boss.threshold.warden-v1",
                 Name: "Gardien du Seuil",
                 Description: "Boss de la Room Threshold. Premier gardien de run.",
                 Version: "1.0.0",
@@ -38,8 +39,8 @@ public sealed class InMemoryCatalogContentGateway : ICatalogContentGateway
                 BaseSpeed: 8,
                 Affinity: "Void",
                 SkillKeys: ["skill-boss-void-slam-v1"]),
-            ["boss-forest-guardian-v1"] = new EnemyTemplateSnapshot(
-                Key: "boss-forest-guardian-v1",
+            ["boss.forest.rootbound-memory-v1"] = new EnemyTemplateSnapshot(
+                Key: "boss.forest.rootbound-memory-v1",
                 Name: "Gardien des Racines",
                 Description: "Boss de la Room Forest. Mémoire organique du Palais.",
                 Version: "1.0.0",
@@ -50,8 +51,8 @@ public sealed class InMemoryCatalogContentGateway : ICatalogContentGateway
                 BaseSpeed: 7,
                 Affinity: "Nature",
                 SkillKeys: ["skill-boss-void-slam-v1"]),
-            ["boss-rupture-warden-v1"] = new EnemyTemplateSnapshot(
-                Key: "boss-rupture-warden-v1",
+            ["boss.rupture.fractured-echo-v1"] = new EnemyTemplateSnapshot(
+                Key: "boss.rupture.fractured-echo-v1",
                 Name: "Fragment de Rupture",
                 Description: "Boss de la Room Rupture. Instable et agressif.",
                 Version: "1.0.0",
@@ -62,8 +63,8 @@ public sealed class InMemoryCatalogContentGateway : ICatalogContentGateway
                 BaseSpeed: 9,
                 Affinity: "Chaos",
                 SkillKeys: ["skill-boss-void-slam-v1"]),
-            ["boss-silence-warden-v1"] = new EnemyTemplateSnapshot(
-                Key: "boss-silence-warden-v1",
+            ["boss.silence.mute-herald-v1"] = new EnemyTemplateSnapshot(
+                Key: "boss.silence.mute-herald-v1",
                 Name: "Voix Éteinte",
                 Description: "Boss de la Room Silence. Systémique, mutique, altère les règles.",
                 Version: "1.0.0",
@@ -74,8 +75,8 @@ public sealed class InMemoryCatalogContentGateway : ICatalogContentGateway
                 BaseSpeed: 9,
                 Affinity: "Silence",
                 SkillKeys: ["skill-boss-void-slam-v1"]),
-            ["boss-memory-keeper-v1"] = new EnemyTemplateSnapshot(
-                Key: "boss-memory-keeper-v1",
+            ["boss.memory.archivist-v1"] = new EnemyTemplateSnapshot(
+                Key: "boss.memory.archivist-v1",
                 Name: "Archiviste des Échos",
                 Description: "Boss de la Room Memory. Lié au Tome et aux fragments.",
                 Version: "1.0.0",
@@ -86,8 +87,8 @@ public sealed class InMemoryCatalogContentGateway : ICatalogContentGateway
                 BaseSpeed: 8,
                 Affinity: "Memory",
                 SkillKeys: ["skill-boss-void-slam-v1"]),
-            ["boss-antechamber-warden-v1"] = new EnemyTemplateSnapshot(
-                Key: "boss-antechamber-warden-v1",
+            ["boss.antechamber.last-door-v1"] = new EnemyTemplateSnapshot(
+                Key: "boss.antechamber.last-door-v1",
                 Name: "Gardien de l'Antichambre",
                 Description: "Boss de la Room Antechamber. Avant-poste du Final.",
                 Version: "1.0.0",
@@ -96,6 +97,18 @@ public sealed class InMemoryCatalogContentGateway : ICatalogContentGateway
                 BaseAttack: 10,
                 BaseDefense: 5,
                 BaseSpeed: 9,
+                Affinity: "Void",
+                SkillKeys: ["skill-boss-void-slam-v1"]),
+            ["boss.final.himlit-v1"] = new EnemyTemplateSnapshot(
+                Key: "boss.final.himlit-v1",
+                Name: "Him'Lit",
+                Description: "Boss de la Room Final. Le silence originel.",
+                Version: "1.0.0",
+                Status: "Active",
+                BaseHealth: 60,
+                BaseAttack: 14,
+                BaseDefense: 8,
+                BaseSpeed: 10,
                 Affinity: "Void",
                 SkillKeys: ["skill-boss-void-slam-v1"]),
             ["enemy-rare-v1"] = new EnemyTemplateSnapshot(
@@ -171,8 +184,8 @@ public sealed class InMemoryCatalogContentGateway : ICatalogContentGateway
                 MaxRiskLevel: 25,
                 RequiresPlayerChoice: false,
                 NarrativeTags: ["test", "combat"]),
-            ["event-boss-threshold-guardian-v1"] = new EventTemplateSnapshot(
-                Key: "event-boss-threshold-guardian-v1",
+            ["event-boss.threshold.warden-v1"] = new EventTemplateSnapshot(
+                Key: "event-boss.threshold.warden-v1",
                 Name: "Rencontre — Gardien du Seuil",
                 Description: "Événement boss de la Room Threshold.",
                 Version: "1.0.0",
@@ -183,8 +196,8 @@ public sealed class InMemoryCatalogContentGateway : ICatalogContentGateway
                 MaxRiskLevel: 90,
                 RequiresPlayerChoice: false,
                 NarrativeTags: ["boss", "threshold"]),
-            ["event-boss-forest-guardian-v1"] = new EventTemplateSnapshot(
-                Key: "event-boss-forest-guardian-v1",
+            ["event-boss.forest.rootbound-memory-v1"] = new EventTemplateSnapshot(
+                Key: "event-boss.forest.rootbound-memory-v1",
                 Name: "Rencontre — Gardien des Racines",
                 Description: "Événement boss de la Room Forest.",
                 Version: "1.0.0",
@@ -195,8 +208,8 @@ public sealed class InMemoryCatalogContentGateway : ICatalogContentGateway
                 MaxRiskLevel: 90,
                 RequiresPlayerChoice: false,
                 NarrativeTags: ["boss", "forest"]),
-            ["event-boss-rupture-warden-v1"] = new EventTemplateSnapshot(
-                Key: "event-boss-rupture-warden-v1",
+            ["event-boss.rupture.fractured-echo-v1"] = new EventTemplateSnapshot(
+                Key: "event-boss.rupture.fractured-echo-v1",
                 Name: "Rencontre — Fragment de Rupture",
                 Description: "Événement boss de la Room Rupture.",
                 Version: "1.0.0",
@@ -207,8 +220,8 @@ public sealed class InMemoryCatalogContentGateway : ICatalogContentGateway
                 MaxRiskLevel: 90,
                 RequiresPlayerChoice: false,
                 NarrativeTags: ["boss", "rupture"]),
-            ["event-boss-silence-warden-v1"] = new EventTemplateSnapshot(
-                Key: "event-boss-silence-warden-v1",
+            ["event-boss.silence.mute-herald-v1"] = new EventTemplateSnapshot(
+                Key: "event-boss.silence.mute-herald-v1",
                 Name: "Rencontre — Voix Éteinte",
                 Description: "Événement boss de la Room Silence.",
                 Version: "1.0.0",
@@ -219,8 +232,8 @@ public sealed class InMemoryCatalogContentGateway : ICatalogContentGateway
                 MaxRiskLevel: 90,
                 RequiresPlayerChoice: false,
                 NarrativeTags: ["boss", "silence"]),
-            ["event-boss-memory-keeper-v1"] = new EventTemplateSnapshot(
-                Key: "event-boss-memory-keeper-v1",
+            ["event-boss.memory.archivist-v1"] = new EventTemplateSnapshot(
+                Key: "event-boss.memory.archivist-v1",
                 Name: "Rencontre — Archiviste des Échos",
                 Description: "Événement boss de la Room Memory.",
                 Version: "1.0.0",
@@ -231,8 +244,8 @@ public sealed class InMemoryCatalogContentGateway : ICatalogContentGateway
                 MaxRiskLevel: 90,
                 RequiresPlayerChoice: false,
                 NarrativeTags: ["boss", "memory"]),
-            ["event-boss-antechamber-warden-v1"] = new EventTemplateSnapshot(
-                Key: "event-boss-antechamber-warden-v1",
+            ["event-boss.antechamber.last-door-v1"] = new EventTemplateSnapshot(
+                Key: "event-boss.antechamber.last-door-v1",
                 Name: "Rencontre — Gardien de l'Antichambre",
                 Description: "Événement boss de la Room Antechamber.",
                 Version: "1.0.0",
@@ -243,6 +256,18 @@ public sealed class InMemoryCatalogContentGateway : ICatalogContentGateway
                 MaxRiskLevel: 90,
                 RequiresPlayerChoice: false,
                 NarrativeTags: ["boss", "antechamber"]),
+            ["event-boss.final.himlit-v1"] = new EventTemplateSnapshot(
+                Key: "event-boss.final.himlit-v1",
+                Name: "Rencontre — Him'Lit",
+                Description: "Événement boss de la Room Final. Le silence originel.",
+                Version: "1.0.0",
+                Status: "Active",
+                Type: "RoomBoss",
+                DefaultOutcomeKind: "BossEncounterStarted",
+                MinRiskLevel: 30,
+                MaxRiskLevel: 100,
+                RequiresPlayerChoice: false,
+                NarrativeTags: ["boss", "final"]),
             ["event-rare-encounter-v1"] = new EventTemplateSnapshot(
                 Key: "event-rare-encounter-v1",
                 Name: "Rare Encounter Event",
@@ -324,6 +349,70 @@ public sealed class InMemoryCatalogContentGateway : ICatalogContentGateway
             key,
             "catalog.palace_law_definition_not_found",
             "Palace law definition was not found."));
+    }
+
+    private static readonly IReadOnlyDictionary<string, CatalogRoomBossProfile> RoomBossProfiles =
+        new Dictionary<string, CatalogRoomBossProfile>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Threshold"] = new CatalogRoomBossProfile(
+                Key: "boss.threshold.warden",
+                DisplayName: "Gardien du Seuil",
+                Description: "Premier gardien de la run. Veille sur le seuil du Palais des Silences.",
+                RoomType: "Threshold",
+                BaseDifficulty: 70,
+                Tags: ["boss", "threshold", "guardian"]),
+            ["Forest"] = new CatalogRoomBossProfile(
+                Key: "boss.forest.rootbound-memory",
+                DisplayName: "Gardien des Racines",
+                Description: "Mémoire organique du Palais. Ses racines plongent dans les silences oubliés.",
+                RoomType: "Forest",
+                BaseDifficulty: 45,
+                Tags: ["boss", "forest", "nature"]),
+            ["Rupture"] = new CatalogRoomBossProfile(
+                Key: "boss.rupture.fractured-echo",
+                DisplayName: "Fragment de Rupture",
+                Description: "Instable et agressif. Une brèche dans la cohérence du Palais.",
+                RoomType: "Rupture",
+                BaseDifficulty: 65,
+                Tags: ["boss", "rupture", "chaos"]),
+            ["Silence"] = new CatalogRoomBossProfile(
+                Key: "boss.silence.mute-herald",
+                DisplayName: "Voix Éteinte",
+                Description: "Systémique, mutique. Altère les règles de la pièce par sa seule présence.",
+                RoomType: "Silence",
+                BaseDifficulty: 50,
+                Tags: ["boss", "silence", "void"]),
+            ["Antechamber"] = new CatalogRoomBossProfile(
+                Key: "boss.antechamber.last-door",
+                DisplayName: "Gardien de l'Antichambre",
+                Description: "Avant-poste du Final. Aucun pèlerin n'a franchi cette porte.",
+                RoomType: "Antechamber",
+                BaseDifficulty: 85,
+                Tags: ["boss", "antechamber", "elite"]),
+            ["Memory"] = new CatalogRoomBossProfile(
+                Key: "boss.memory.archivist",
+                DisplayName: "Archiviste des Échos",
+                Description: "Lié au Tome et aux fragments de mémoire. Connaît chaque silence.",
+                RoomType: "Memory",
+                BaseDifficulty: 40,
+                Tags: ["boss", "memory", "lore"]),
+            ["Final"] = new CatalogRoomBossProfile(
+                Key: "boss.final.himlit",
+                DisplayName: "Him'Lit",
+                Description: "Le silence originel. La source du Palais.",
+                RoomType: "Final",
+                BaseDifficulty: 100,
+                Tags: ["boss", "final", "himlit"])
+        };
+
+    public Task<CatalogRoomBossProfile?> GetRoomBossProfileAsync(
+        string roomType,
+        CancellationToken cancellationToken = default)
+    {
+        var profile = string.IsNullOrWhiteSpace(roomType)
+            ? null
+            : RoomBossProfiles.GetValueOrDefault(roomType.Trim());
+        return Task.FromResult(profile);
     }
 
     private static Result<TSnapshot> GetByKey<TSnapshot>(

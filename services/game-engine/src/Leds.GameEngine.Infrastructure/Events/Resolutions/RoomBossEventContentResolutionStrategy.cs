@@ -27,7 +27,7 @@ public sealed class RoomBossEventContentResolutionStrategy : IEventContentResolu
         EventContentResolutionContext context,
         CancellationToken cancellationToken = default)
     {
-        var bossProfile = _bossProfileResolver.Resolve(context.RoomType);
+        var bossProfile = await _bossProfileResolver.ResolveAsync(context.RoomType, cancellationToken);
 
         // Convention : event template key = "event-" + enemyTemplateKey
         // e.g. "boss-threshold-guardian-v1" → "event-boss-threshold-guardian-v1"

@@ -27,12 +27,13 @@ public sealed class MapRoomGenerator : IMapRoomGenerator
         _generationProfileProvider = generationProfileProvider;
     }
 
-    public Room Generate(
+    public async Task<Room> GenerateAsync(
         string seed,
         string generatorVersion,
         int roomDepth,
         RoomType roomType,
-        Random random)
+        Random random,
+        CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(seed);
         ArgumentException.ThrowIfNullOrWhiteSpace(generatorVersion);
@@ -44,11 +45,13 @@ public sealed class MapRoomGenerator : IMapRoomGenerator
         var nodes = CreateNodes(template, profile, random);
         ConnectNodes(nodes, template, random);
 
+        var bossProfile = await _bossProfileResolver.ResolveAsync(roomType, cancellationToken);
+
         var room = Room.Create(
             roomDepth,
             roomType,
             _themeResolver.Resolve(roomType),
-            _bossProfileResolver.Resolve(roomType),
+            bossProfile,
             nodes);
 
         return Room.CreateFromTemplate(
@@ -105,9 +108,6 @@ public sealed class MapRoomGenerator : IMapRoomGenerator
         return nodes;
     }
 
-    /// <summary>
-    /// Selects a node type using the profile's weighted distribution.
-    /// </summary>
     private static NodeEventType PickWeightedNodeType(RoomTypeGenerationProfile profile, Random random)
     {
         var roll = random.Next(profile.TotalWeight);
@@ -122,7 +122,6 @@ public sealed class MapRoomGenerator : IMapRoomGenerator
             }
         }
 
-        // Fallback — unreachable if TotalWeight is consistent.
         return profile.NodeTypeWeights[0].NodeType;
     }
 
@@ -182,10 +181,6 @@ public sealed class MapRoomGenerator : IMapRoomGenerator
         }
     }
 
-    /// <summary>
-    /// Picks a reward profile for the given node type using the room profile's rules.
-    /// Falls back to static defaults when no rule is defined.
-    /// </summary>
     private static string PickRewardProfile(
         NodeEventType type,
         RoomTypeGenerationProfile profile,
@@ -196,7 +191,6 @@ public sealed class MapRoomGenerator : IMapRoomGenerator
             return options.Count == 1 ? options[0] : options[random.Next(options.Count)];
         }
 
-        // Static fallback — reached only for node types absent from the profile rules.
         return type switch
         {
             NodeEventType.Combat   => "combat-common",

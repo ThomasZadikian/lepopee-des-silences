@@ -4,10 +4,11 @@ namespace Leds.GameEngine.Application.RoomMaps;
 
 public interface IMapRoomGenerator
 {
-    Room Generate(
+    Task<Room> GenerateAsync(
         string seed,
         string generatorVersion,
         int roomDepth,
         RoomType roomType,
-        Random random);
+        Random random,
+        CancellationToken cancellationToken = default);
 }

@@ -1,75 +1,77 @@
 using FluentAssertions;
 using Leds.GameEngine.Domain.Rooms;
+using Leds.GameEngine.Infrastructure.Catalog;
 using Leds.GameEngine.Infrastructure.Generation.Rooms.Bosses;
 
 namespace Leds.GameEngine.UnitTests.RoomMaps;
 
 public sealed class RoomBossProfileProviderTests
 {
-    private static IRoomBossProfileResolver CreateSut() => new RoomBossProfileResolver();
+    private static IRoomBossProfileResolver CreateSut() =>
+        new RoomBossProfileResolver(new InMemoryCatalogContentGateway());
 
     // -----------------------------------------------------------------------
     // Profile existence + correctness per RoomType
     // -----------------------------------------------------------------------
 
     [Fact]
-    public void ShouldReturnThresholdBossProfile()
+    public async Task ShouldReturnThresholdBossProfile()
     {
-        var profile = CreateSut().Resolve(RoomType.Threshold);
+        var profile = await CreateSut().ResolveAsync(RoomType.Threshold);
 
-        profile.BossId.Should().Be("threshold-guardian");
+        profile.BossId.Should().Be("boss.threshold.warden");
         profile.Name.Should().Be("Gardien du Seuil");
         profile.RoomType.Should().Be(RoomType.Threshold);
-        profile.DangerHint.Should().NotBeNullOrWhiteSpace();
-        profile.EnemyTemplateKey.Should().Be("boss-threshold-guardian-v1");
+        profile.DangerHint.Should().Be("High");
+        profile.EnemyTemplateKey.Should().Be("boss.threshold.warden-v1");
     }
 
     [Fact]
-    public void ShouldReturnForestBossProfile()
+    public async Task ShouldReturnForestBossProfile()
     {
-        var profile = CreateSut().Resolve(RoomType.Forest);
+        var profile = await CreateSut().ResolveAsync(RoomType.Forest);
 
-        profile.BossId.Should().Be("forest-guardian");
+        profile.BossId.Should().Be("boss.forest.rootbound-memory");
         profile.Name.Should().Be("Gardien des Racines");
         profile.RoomType.Should().Be(RoomType.Forest);
-        profile.DangerHint.Should().NotBeNullOrWhiteSpace();
-        profile.EnemyTemplateKey.Should().Be("boss-forest-guardian-v1");
+        profile.DangerHint.Should().Be("Medium");
+        profile.EnemyTemplateKey.Should().Be("boss.forest.rootbound-memory-v1");
     }
 
     [Fact]
-    public void ShouldReturnRuptureBossProfile()
+    public async Task ShouldReturnRuptureBossProfile()
     {
-        var profile = CreateSut().Resolve(RoomType.Rupture);
+        var profile = await CreateSut().ResolveAsync(RoomType.Rupture);
 
-        profile.BossId.Should().Be("rupture-warden");
+        profile.BossId.Should().Be("boss.rupture.fractured-echo");
         profile.Name.Should().Be("Fragment de Rupture");
         profile.RoomType.Should().Be(RoomType.Rupture);
-        profile.DangerHint.Should().NotBeNullOrWhiteSpace();
-        profile.EnemyTemplateKey.Should().Be("boss-rupture-warden-v1");
+        profile.DangerHint.Should().Be("High");
+        profile.EnemyTemplateKey.Should().Be("boss.rupture.fractured-echo-v1");
     }
 
     [Fact]
-    public void ShouldReturnSilenceBossProfile()
+    public async Task ShouldReturnSilenceBossProfile()
     {
-        var profile = CreateSut().Resolve(RoomType.Silence);
+        var profile = await CreateSut().ResolveAsync(RoomType.Silence);
 
-        profile.BossId.Should().Be("silence-warden");
+        profile.BossId.Should().Be("boss.silence.mute-herald");
         profile.Name.Should().Be("Voix Éteinte");
         profile.RoomType.Should().Be(RoomType.Silence);
-        profile.DangerHint.Should().NotBeNullOrWhiteSpace();
-        profile.EnemyTemplateKey.Should().Be("boss-silence-warden-v1");
+        profile.DangerHint.Should().Be("Medium");
+        profile.EnemyTemplateKey.Should().Be("boss.silence.mute-herald-v1");
     }
 
     [Fact]
-    public void ShouldReturnMemoryBossProfile()
+    public async Task ShouldReturnMemoryBossProfile()
     {
-        var profile = CreateSut().Resolve(RoomType.Memory);
+        var profile = await CreateSut().ResolveAsync(RoomType.Memory);
 
-        profile.BossId.Should().Be("memory-keeper");
+        profile.BossId.Should().Be("boss.memory.archivist");
         profile.Name.Should().Be("Archiviste des Échos");
         profile.RoomType.Should().Be(RoomType.Memory);
-        profile.DangerHint.Should().NotBeNullOrWhiteSpace();
-        profile.EnemyTemplateKey.Should().Be("boss-memory-keeper-v1");
+        profile.DangerHint.Should().Be("Medium");
+        profile.EnemyTemplateKey.Should().Be("boss.memory.archivist-v1");
     }
 
     // -----------------------------------------------------------------------
@@ -77,7 +79,7 @@ public sealed class RoomBossProfileProviderTests
     // -----------------------------------------------------------------------
 
     [Fact]
-    public void ShouldReturnDistinctBossProfiles_ForDifferentRoomTypes()
+    public async Task ShouldReturnDistinctBossProfiles_ForDifferentRoomTypes()
     {
         var sut = CreateSut();
         var roomTypes = new[]
@@ -89,7 +91,7 @@ public sealed class RoomBossProfileProviderTests
             RoomType.Memory
         };
 
-        var profiles = roomTypes.Select(sut.Resolve).ToArray();
+        var profiles = await Task.WhenAll(roomTypes.Select(rt => sut.ResolveAsync(rt)));
 
         profiles.Select(p => p.BossId).Should().OnlyHaveUniqueItems(
             "each supported RoomType must have a distinct BossId.");
@@ -108,12 +110,12 @@ public sealed class RoomBossProfileProviderTests
     [InlineData(RoomType.Rupture)]
     [InlineData(RoomType.Silence)]
     [InlineData(RoomType.Memory)]
-    public void ShouldReturnStableBossProfile_ForSameRoomType(RoomType roomType)
+    public async Task ShouldReturnStableBossProfile_ForSameRoomType(RoomType roomType)
     {
         var sut = CreateSut();
 
-        var profile1 = sut.Resolve(roomType);
-        var profile2 = sut.Resolve(roomType);
+        var profile1 = await sut.ResolveAsync(roomType);
+        var profile2 = await sut.ResolveAsync(roomType);
 
         profile2.BossId.Should().Be(profile1.BossId,
             "the same RoomType must always produce the same BossId.");
@@ -122,21 +124,31 @@ public sealed class RoomBossProfileProviderTests
     }
 
     // -----------------------------------------------------------------------
-    // Fallback for unsupported types
+    // Additional room types via Catalog
     // -----------------------------------------------------------------------
 
-    [Theory]
-    [InlineData(RoomType.Antechamber)]
-    [InlineData(RoomType.Final)]
-    public void ShouldReturnNonEmptyProfile_ForUnsupportedRoomType(RoomType roomType)
+    [Fact]
+    public async Task ShouldReturnAntechamberBossProfile()
     {
-        var profile = CreateSut().Resolve(roomType);
+        var profile = await CreateSut().ResolveAsync(RoomType.Antechamber);
 
-        profile.BossId.Should().NotBeNullOrWhiteSpace(
-            "unsupported RoomTypes must fall back to a valid profile rather than throw.");
-        profile.EnemyTemplateKey.Should().NotBeNullOrWhiteSpace();
-        profile.Name.Should().NotBeNullOrWhiteSpace();
-        profile.DangerHint.Should().NotBeNullOrWhiteSpace();
+        profile.BossId.Should().Be("boss.antechamber.last-door");
+        profile.Name.Should().Be("Gardien de l'Antichambre");
+        profile.RoomType.Should().Be(RoomType.Antechamber);
+        profile.DangerHint.Should().Be("Very High");
+        profile.EnemyTemplateKey.Should().Be("boss.antechamber.last-door-v1");
+    }
+
+    [Fact]
+    public async Task ShouldReturnFinalBossProfile()
+    {
+        var profile = await CreateSut().ResolveAsync(RoomType.Final);
+
+        profile.BossId.Should().Be("boss.final.himlit");
+        profile.Name.Should().Be("Him'Lit");
+        profile.RoomType.Should().Be(RoomType.Final);
+        profile.DangerHint.Should().Be("Extreme");
+        profile.EnemyTemplateKey.Should().Be("boss.final.himlit-v1");
     }
 
     // -----------------------------------------------------------------------
@@ -149,9 +161,11 @@ public sealed class RoomBossProfileProviderTests
     [InlineData(RoomType.Rupture)]
     [InlineData(RoomType.Silence)]
     [InlineData(RoomType.Memory)]
-    public void ShouldHaveAllFieldsPopulated_ForSupportedRoomTypes(RoomType roomType)
+    [InlineData(RoomType.Antechamber)]
+    [InlineData(RoomType.Final)]
+    public async Task ShouldHaveAllFieldsPopulated_ForAllRoomTypes(RoomType roomType)
     {
-        var profile = CreateSut().Resolve(roomType);
+        var profile = await CreateSut().ResolveAsync(roomType);
 
         profile.BossId.Should().NotBeNullOrWhiteSpace();
         profile.Name.Should().NotBeNullOrWhiteSpace();

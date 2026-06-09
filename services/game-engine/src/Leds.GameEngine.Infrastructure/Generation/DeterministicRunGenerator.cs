@@ -33,22 +33,27 @@ public sealed class DeterministicRunGenerator : IRunGenerator
         return $"seed-{Guid.NewGuid():N}";
     }
 
-    public Room GenerateInitialRoom(string seed)
+    public async Task<Room> GenerateInitialRoomAsync(
+        string seed,
+        CancellationToken cancellationToken = default)
     {
         var random = _randomFactory.CreateForRoom(
             seed,
             roomDepth: 0,
             GeneratorVersion);
 
-        return _mapRoomGenerator.Generate(
+        return await _mapRoomGenerator.GenerateAsync(
             seed,
             GeneratorVersion,
             roomDepth: 0,
             roomType: RoomType.Threshold,
-            random);
+            random,
+            cancellationToken);
     }
 
-    public Room GenerateNextRoom(Run run)
+    public async Task<Room> GenerateNextRoomAsync(
+        Run run,
+        CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(run);
 
@@ -65,11 +70,12 @@ public sealed class DeterministicRunGenerator : IRunGenerator
             nextRoomDepth,
             GeneratorVersion);
 
-        return _mapRoomGenerator.Generate(
+        return await _mapRoomGenerator.GenerateAsync(
             run.Seed,
             GeneratorVersion,
             nextRoomDepth,
             roomType,
-            random);
+            random,
+            cancellationToken);
     }
 }

@@ -25,8 +25,8 @@ public sealed class MoveToNextRoomCommandHandlerTests
 
         var generator = new Mock<IRunGenerator>();
         generator
-            .Setup(service => service.GenerateNextRoom(run))
-            .Returns(nextRoom);
+            .Setup(service => service.GenerateNextRoomAsync(run, CancellationToken.None))
+            .ReturnsAsync(nextRoom);
 
         var handler = new MoveToNextRoomCommandHandler(
             repository.Object,

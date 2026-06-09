@@ -1,21 +1,50 @@
-﻿using Leds.GameEngine.Domain.Rooms;
+﻿using Leds.GameEngine.Application.Catalog.Ports;
+using Leds.GameEngine.Domain.Common;
+using Leds.GameEngine.Domain.Rooms;
 
 namespace Leds.GameEngine.Infrastructure.Generation.Rooms.Bosses;
 
 public sealed class RoomBossProfileResolver : IRoomBossProfileResolver
 {
-    public RoomBossProfile Resolve(RoomType roomType)
+    private readonly ICatalogContentGateway _catalogGateway;
+
+    public RoomBossProfileResolver(ICatalogContentGateway catalogGateway)
     {
-        return roomType switch
+        _catalogGateway = catalogGateway;
+    }
+
+    public async Task<RoomBossProfile> ResolveAsync(
+        RoomType roomType,
+        CancellationToken cancellationToken = default)
+    {
+        var catalogProfile = await _catalogGateway.GetRoomBossProfileAsync(
+            roomType.ToString(),
+            cancellationToken);
+
+        if (catalogProfile is null)
         {
-            RoomType.Threshold  => RoomBossProfile.Create("threshold-guardian", "Gardien du Seuil",         roomType, "High",     "boss-threshold-guardian-v1"),
-            RoomType.Forest     => RoomBossProfile.Create("forest-guardian",    "Gardien des Racines",       roomType, "Medium",   "boss-forest-guardian-v1"),
-            RoomType.Rupture    => RoomBossProfile.Create("rupture-warden",     "Fragment de Rupture",       roomType, "High",     "boss-rupture-warden-v1"),
-            RoomType.Silence    => RoomBossProfile.Create("silence-warden",     "Voix Éteinte",              roomType, "Unstable", "boss-silence-warden-v1"),
-            RoomType.Memory     => RoomBossProfile.Create("memory-keeper",      "Archiviste des Échos",      roomType, "Medium",   "boss-memory-keeper-v1"),
-            RoomType.Antechamber => RoomBossProfile.Create("antechamber-warden", "Gardien de l’Antichambre", roomType, "Very High", "boss-antechamber-warden-v1"),
-            RoomType.Final      => RoomBossProfile.Create("himlit",             "Him’Lit",                   roomType, "Extreme",  "boss-himlit-v1"),
-            _                   => RoomBossProfile.Create("unknown-guardian",   "Gardien Inconnu",           roomType, "High",     "boss-threshold-guardian-v1")
+            throw new DomainException(
+                $"No boss profile found for room type '{roomType}'. "
+                + "Ensure the Catalog gateway has a profile registered for this room type.");
+        }
+
+        return RoomBossProfile.Create(
+            catalogProfile.Key,
+            catalogProfile.DisplayName,
+            roomType,
+            MapDifficultyToDangerHint(catalogProfile.BaseDifficulty),
+            $"{catalogProfile.Key}-v1");
+    }
+
+    private static string MapDifficultyToDangerHint(int difficulty)
+    {
+        return difficulty switch
+        {
+            <= 25 => "Low",
+            <= 50 => "Medium",
+            <= 75 => "High",
+            <= 90 => "Very High",
+            _ => "Extreme"
         };
     }
 }

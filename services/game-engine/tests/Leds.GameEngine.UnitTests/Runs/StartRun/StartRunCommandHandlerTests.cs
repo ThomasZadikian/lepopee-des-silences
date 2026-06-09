@@ -21,7 +21,7 @@ public sealed class StartRunCommandHandlerTests
         generator.SetupGet(service => service.GeneratorVersion).Returns("gen-0.1.0");
         generator.SetupGet(service => service.MarkovMatrixVersion).Returns("markov-0.1.0");
         generator.Setup(service => service.GenerateSeed()).Returns("seed-test-001");
-        generator.Setup(service => service.GenerateInitialRoom("seed-test-001")).Returns(initialRoom);
+        generator.Setup(service => service.GenerateInitialRoomAsync("seed-test-001", CancellationToken.None)).ReturnsAsync(initialRoom);
 
         var repository = new Mock<IRunRepository>();
 

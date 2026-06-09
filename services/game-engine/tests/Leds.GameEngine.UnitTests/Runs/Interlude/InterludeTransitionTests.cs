@@ -375,7 +375,7 @@ public sealed class InterludeTransitionTests
             .ReturnsAsync(run);
 
         var generator = new Mock<IRunGenerator>();
-        generator.Setup(g => g.GenerateNextRoom(run)).Returns(nextRoom);
+        generator.Setup(g => g.GenerateNextRoomAsync(run, CancellationToken.None)).ReturnsAsync(nextRoom);
 
         var handler = new MoveToNextRoomCommandHandler(repo.Object, generator.Object);
         var response = await handler.Handle(
@@ -396,7 +396,7 @@ public sealed class InterludeTransitionTests
             .ReturnsAsync(run);
 
         var generator = new Mock<IRunGenerator>();
-        generator.Setup(g => g.GenerateNextRoom(run)).Returns(nextRoom);
+        generator.Setup(g => g.GenerateNextRoomAsync(run, CancellationToken.None)).ReturnsAsync(nextRoom);
 
         var handler = new MoveToNextRoomCommandHandler(repo.Object, generator.Object);
         var response = await handler.Handle(
@@ -417,7 +417,7 @@ public sealed class InterludeTransitionTests
             .ReturnsAsync(run);
 
         var generator = new Mock<IRunGenerator>();
-        generator.Setup(g => g.GenerateNextRoom(run)).Returns(nextRoom);
+        generator.Setup(g => g.GenerateNextRoomAsync(run, CancellationToken.None)).ReturnsAsync(nextRoom);
 
         var handler = new MoveToNextRoomCommandHandler(repo.Object, generator.Object);
         var response = await handler.Handle(
@@ -439,7 +439,7 @@ public sealed class InterludeTransitionTests
             .ReturnsAsync(run);
 
         var generator = new Mock<IRunGenerator>();
-        generator.Setup(g => g.GenerateNextRoom(run)).Returns(nextRoom);
+        generator.Setup(g => g.GenerateNextRoomAsync(run, CancellationToken.None)).ReturnsAsync(nextRoom);
 
         var handler = new MoveToNextRoomCommandHandler(repo.Object, generator.Object);
         await handler.Handle(
@@ -461,7 +461,7 @@ public sealed class InterludeTransitionTests
             .ReturnsAsync(run);
 
         var generator = new Mock<IRunGenerator>();
-        generator.Setup(g => g.GenerateNextRoom(run)).Returns(nextRoom);
+        generator.Setup(g => g.GenerateNextRoomAsync(run, CancellationToken.None)).ReturnsAsync(nextRoom);
 
         var handler = new MoveToNextRoomCommandHandler(repo.Object, generator.Object);
 
@@ -470,7 +470,7 @@ public sealed class InterludeTransitionTests
             new MoveToNextRoomCommand(run.Id.Value),
             CancellationToken.None);
 
-        generator.Verify(g => g.GenerateNextRoom(run), Times.Once);
+        generator.Verify(g => g.GenerateNextRoomAsync(run, CancellationToken.None), Times.Once);
     }
 
     [Fact]
@@ -485,7 +485,7 @@ public sealed class InterludeTransitionTests
             .ReturnsAsync(run);
 
         var generator = new Mock<IRunGenerator>();
-        generator.Setup(g => g.GenerateNextRoom(run)).Returns(nextRoom);
+        generator.Setup(g => g.GenerateNextRoomAsync(run, CancellationToken.None)).ReturnsAsync(nextRoom);
 
         var handler = new MoveToNextRoomCommandHandler(repo.Object, generator.Object);
         var response = await handler.Handle(
@@ -506,7 +506,7 @@ public sealed class InterludeTransitionTests
             .ReturnsAsync(run);
 
         var generator = new Mock<IRunGenerator>();
-        generator.Setup(g => g.GenerateNextRoom(run)).Returns(nextRoom);
+        generator.Setup(g => g.GenerateNextRoomAsync(run, CancellationToken.None)).ReturnsAsync(nextRoom);
 
         var handler = new MoveToNextRoomCommandHandler(repo.Object, generator.Object);
         await handler.Handle(
