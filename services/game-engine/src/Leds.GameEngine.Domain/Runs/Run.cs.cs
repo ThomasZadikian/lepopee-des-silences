@@ -517,6 +517,42 @@ public sealed class Run
         ResolveCurrentEvent();
     }
 
+    public void CompleteActiveCombat()
+    {
+        if (_activeCombat is null)
+        {
+            throw new DomainException("Run has no active combat.");
+        }
+
+        if (_activeCombat.Status != CombatStatus.Completed)
+        {
+            throw new DomainException("Active combat must be completed before resolving combat victory.");
+        }
+
+        ActiveCombatId = null;
+        _activeCombat = null;
+
+        ResolveCurrentEvent();
+    }
+
+    public void FailActiveCombat(DateTimeOffset endedAt)
+    {
+        if (_activeCombat is null)
+        {
+            throw new DomainException("Run has no active combat.");
+        }
+
+        if (_activeCombat.Status != CombatStatus.Failed)
+        {
+            throw new DomainException("Active combat must be failed before resolving combat defeat.");
+        }
+
+        ActiveCombatId = null;
+        _activeCombat = null;
+        Status = RunStatus.Failed;
+        EndedAt = endedAt;
+    }
+
     public void SetPendingRewardOffer(RewardOfferId rewardOfferId)
     {
         if (rewardOfferId.Value == Guid.Empty)

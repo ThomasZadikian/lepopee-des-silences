@@ -10,4 +10,8 @@ public sealed record CombatSkillActionResult(
     bool Accepted,
     string? Message,
     CombatRuntimeDto Combat,
-    IReadOnlyCollection<CombatLogEntryDto> LogEntries);
+    IReadOnlyCollection<CombatLogEntryDto> LogEntries,
+    bool CombatCompleted = false,
+    bool CombatFailed = false,
+    bool CanProgressRun = false,
+    string? RunStatus = null);

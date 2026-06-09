@@ -301,7 +301,50 @@ public sealed class UseCombatSkillCommandHandlerTests
 
         result.Combat.Status.Should().Be(CombatStatus.Completed);
         result.Combat.ActiveCombatantId.Should().BeNull();
+        result.CombatCompleted.Should().BeTrue();
+        result.CombatFailed.Should().BeFalse();
+        result.CanProgressRun.Should().BeTrue();
+        result.RunStatus.Should().Be(RunStatus.Active.ToString());
         result.LogEntries.Should().Contain(e => e.Type == "CombatCompleted");
+    }
+
+    [Fact]
+    public async Task Handle_ShouldClearActiveCombat_WhenCombatCompleted()
+    {
+        var lethalSkill = CreateSkill("skill.basic.strike", "Damage", "SingleEnemy", 80);
+        var setup = CreateRunWithActiveCombat(lethalSkill);
+        var handler = CreateHandlerWithRealEffectResolver(setup, lethalSkill, setup.Ally, [setup.Enemy], out _, out _);
+
+        await handler.Handle(CreateCommand(setup, setup.Ally, lethalSkill, [setup.Enemy]), CancellationToken.None);
+
+        setup.Run.ActiveCombat.Should().BeNull();
+        setup.Run.HasActiveCombat.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Handle_ShouldReturnFinalCombat_WhenCombatCompleted()
+    {
+        var lethalSkill = CreateSkill("skill.basic.strike", "Damage", "SingleEnemy", 80);
+        var setup = CreateRunWithActiveCombat(lethalSkill);
+        var finalCombatId = setup.Combat.Id;
+        var handler = CreateHandlerWithRealEffectResolver(setup, lethalSkill, setup.Ally, [setup.Enemy], out _, out _);
+
+        var result = await handler.Handle(CreateCommand(setup, setup.Ally, lethalSkill, [setup.Enemy]), CancellationToken.None);
+
+        result.Combat.Id.Should().Be(finalCombatId);
+        result.Combat.Status.Should().Be(CombatStatus.Completed);
+    }
+
+    [Fact]
+    public async Task Handle_ShouldSetCanProgressRun_WhenCombatCompleted()
+    {
+        var lethalSkill = CreateSkill("skill.basic.strike", "Damage", "SingleEnemy", 80);
+        var setup = CreateRunWithActiveCombat(lethalSkill);
+        var handler = CreateHandlerWithRealEffectResolver(setup, lethalSkill, setup.Ally, [setup.Enemy], out _, out _);
+
+        var result = await handler.Handle(CreateCommand(setup, setup.Ally, lethalSkill, [setup.Enemy]), CancellationToken.None);
+
+        result.CanProgressRun.Should().BeTrue();
     }
 
     [Fact]
@@ -318,7 +361,81 @@ public sealed class UseCombatSkillCommandHandlerTests
 
         result.Combat.Status.Should().Be(CombatStatus.Failed);
         result.Combat.ActiveCombatantId.Should().BeNull();
+        result.CombatFailed.Should().BeTrue();
+        result.CombatCompleted.Should().BeFalse();
+        result.CanProgressRun.Should().BeFalse();
+        result.RunStatus.Should().Be(RunStatus.Failed.ToString());
         result.LogEntries.Should().Contain(e => e.Type == "CombatFailed");
+    }
+
+    [Fact]
+    public async Task Handle_ShouldFailRun_WhenLastAllyIsDefeated()
+    {
+        var lethalSkill = CreateSkill("skill.basic.strike", "Damage", "SingleEnemy", 100);
+        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100, []);
+        var enemy = Combatant.CreateEnemy("enemy.1", "Enemy1", "Guard", 80, [lethalSkill]);
+        var setup = CreateRunWithActiveCombat([ally], [enemy]);
+        setup.Combat.AdvanceTurn();
+        var handler = CreateHandlerWithRealEffectResolver(setup, lethalSkill, enemy, [ally], out _, out _);
+
+        await handler.Handle(CreateCommand(setup, enemy, lethalSkill, [ally]), CancellationToken.None);
+
+        setup.Run.Status.Should().Be(RunStatus.Failed);
+        setup.Run.ActiveCombat.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Handle_ShouldReturnRunStatusFailed_WhenCombatFailed()
+    {
+        var lethalSkill = CreateSkill("skill.basic.strike", "Damage", "SingleEnemy", 100);
+        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100, []);
+        var enemy = Combatant.CreateEnemy("enemy.1", "Enemy1", "Guard", 80, [lethalSkill]);
+        var setup = CreateRunWithActiveCombat([ally], [enemy]);
+        setup.Combat.AdvanceTurn();
+        var handler = CreateHandlerWithRealEffectResolver(setup, lethalSkill, enemy, [ally], out _, out _);
+
+        var result = await handler.Handle(CreateCommand(setup, enemy, lethalSkill, [ally]), CancellationToken.None);
+
+        result.RunStatus.Should().Be(RunStatus.Failed.ToString());
+    }
+
+    [Fact]
+    public async Task Handle_ShouldNotClearActiveCombat_WhenCombatStillActive()
+    {
+        var setup = CreateRunWithActiveCombat(_strikeSkill);
+        var handler = CreateHandlerWithRealEffectResolver(setup, _strikeSkill, setup.Ally, [setup.Enemy], out _, out _);
+
+        await handler.Handle(CreateCommand(setup, setup.Ally, _strikeSkill, [setup.Enemy]), CancellationToken.None);
+
+        setup.Run.ActiveCombat.Should().BeSameAs(setup.Combat);
+        setup.Run.HasActiveCombat.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Handle_ShouldResolveCurrentEvent_WhenCombatCompleted()
+    {
+        var lethalSkill = CreateSkill("skill.basic.strike", "Damage", "SingleEnemy", 80);
+        var setup = CreateRunWithActiveCombat(lethalSkill);
+        var handler = CreateHandlerWithRealEffectResolver(setup, lethalSkill, setup.Ally, [setup.Enemy], out _, out _);
+
+        await handler.Handle(CreateCommand(setup, setup.Ally, lethalSkill, [setup.Enemy]), CancellationToken.None);
+
+        setup.Run.CurrentRoom.State.Should().Be(RoomState.NodeResolved);
+    }
+
+    [Fact]
+    public async Task Handle_ShouldNotResolveCurrentEvent_WhenCombatFailed()
+    {
+        var lethalSkill = CreateSkill("skill.basic.strike", "Damage", "SingleEnemy", 100);
+        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100, []);
+        var enemy = Combatant.CreateEnemy("enemy.1", "Enemy1", "Guard", 80, [lethalSkill]);
+        var setup = CreateRunWithActiveCombat([ally], [enemy]);
+        setup.Combat.AdvanceTurn();
+        var handler = CreateHandlerWithRealEffectResolver(setup, lethalSkill, enemy, [ally], out _, out _);
+
+        await handler.Handle(CreateCommand(setup, enemy, lethalSkill, [ally]), CancellationToken.None);
+
+        setup.Run.CurrentRoom.State.Should().Be(RoomState.NodeSelected);
     }
 
     [Fact]

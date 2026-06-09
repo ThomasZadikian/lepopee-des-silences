@@ -110,6 +110,18 @@ Skill selection is stable: offensive skills first, then `Damage`, then the first
 
 ATB is intentionally out of scope before `0.4.0`. It will be specified separately later.
 
+## End of combat after actions
+
+After each player action and after automatic enemy turns:
+
+- The Game Engine checks both teams.
+- If all enemies are defeated, the response sets `CombatCompleted = true`.
+- If all allies are defeated, the response sets `CombatFailed = true`.
+- The final combat snapshot is returned in the action response that ended the combat.
+- On victory, the combat event is resolved on the run and `ActiveCombat` is cleared.
+- On defeat, the run status becomes `Failed` and `ActiveCombat` is cleared.
+- After cleanup, `GET current-combat` returns `404`.
+
 ## Non-objectives
 
 This PR does not handle:
@@ -120,4 +132,8 @@ This PR does not handle:
 - Individual speed.
 - Durable status effects.
 - Full run progression after combat victory.
+- Advanced post-combat rewards.
+- Loot tables.
+- Full combat history archival.
+- Final combat balancing.
 - Frontend behavior.

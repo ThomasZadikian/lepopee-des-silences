@@ -3,7 +3,9 @@ using System.Net.Http.Json;
 using FluentAssertions;
 using Leds.GameEngine.Application.Combats.Actions;
 using Leds.GameEngine.Application.Combats.Dtos;
+using Leds.GameEngine.Application.Runs.GetRunById;
 using Leds.GameEngine.Application.Runs.ResolveCurrentEvent;
+using Leds.GameEngine.Domain.Combats;
 using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace Leds.GameEngine.IntegrationTests.Runs;
@@ -128,6 +130,65 @@ public sealed class CombatActionEndpointTests : RunIntegrationTestBase, IClassFi
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest, because: body);
         body.Should().Contain("It is not this combatant's turn.");
+    }
+
+    [Fact]
+    public async Task UseCombatSkill_ShouldCompleteCombatAndClearCurrentCombat_WhenLastEnemyIsDefeated()
+    {
+        var setup = await StartActiveRuntimeCombatAsync();
+
+        if (setup is null)
+        {
+            return;
+        }
+
+        var (runId, combat) = setup.Value;
+        CombatSkillActionResult? result = null;
+
+        for (var i = 0; i < 20; i++)
+        {
+            var action = FindAction(combat, "SingleEnemy", targetSameSide: false);
+
+            if (action is null)
+            {
+                return;
+            }
+
+            var response = await Client.PostAsJsonAsync(
+                $"/api/v2/runs/{runId}/combats/{combat.Id.Value}/skill-actions",
+                new { ActorId = action.Value.Actor.Id.Value, SkillKey = action.Value.Skill.Key, TargetIds = new[] { action.Value.Target.Id.Value } });
+
+            var body = await response.Content.ReadAsStringAsync();
+            response.StatusCode.Should().Be(HttpStatusCode.OK, because: body);
+            result = await response.Content.ReadFromJsonAsync<CombatSkillActionResult>();
+            result.Should().NotBeNull();
+
+            if (result!.CombatFailed)
+            {
+                result.CombatFailed.Should().BeFalse("the player should not lose this seeded smoke combat before defeating enemies");
+            }
+
+            if (result.CombatCompleted)
+            {
+                break;
+            }
+
+            combat = result.Combat;
+        }
+
+        result.Should().NotBeNull();
+        result!.CombatCompleted.Should().BeTrue();
+        result.CanProgressRun.Should().BeTrue();
+        result.Combat.Status.Should().Be(CombatStatus.Completed);
+
+        var currentCombatResponse = await Client.GetAsync($"/api/v2/runs/{runId}/current-combat");
+        currentCombatResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
+
+        var runResponse = await Client.GetAsync($"/api/v2/runs/{runId}");
+        runResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var runPayload = await runResponse.Content.ReadFromJsonAsync<GetRunByIdResponse>();
+        runPayload.Should().NotBeNull();
+        runPayload!.Run.ActiveCombatId.Should().BeNull();
     }
 
     private async Task<(Guid RunId, CombatRuntimeDto Combat)?> StartActiveRuntimeCombatAsync()

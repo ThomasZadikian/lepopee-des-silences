@@ -147,4 +147,28 @@ public sealed class GetCurrentCombatQueryHandlerTests
         result.Id.Should().Be(combat.Id);
         result.Allies.Single().CurrentVitality.Should().Be(100);
     }
+
+    [Fact]
+    public async Task Handle_ShouldThrowNotFound_AfterCombatCompletedAndCleared()
+    {
+        var runWithNode = TestGameEngineFactory.CreateRunWithSelectedTargetNode(NodeEventType.Combat);
+        var run = runWithNode.Run;
+        var combat = CreateActiveCombat(run.Id);
+        run.StartCombat(combat);
+        combat.MarkCompleted();
+        run.CompleteActiveCombat();
+
+        var repo = new Mock<IRunRepository>();
+        repo.Setup(r => r.GetByIdAsync(run.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(run);
+
+        var handler = new GetCurrentCombatQueryHandler(repo.Object);
+
+        var act = () => handler.Handle(
+            new GetCurrentCombatQuery(run.Id.Value),
+            CancellationToken.None);
+
+        await act.Should().ThrowAsync<NotFoundException>()
+            .WithMessage("*ActiveCombat*");
+    }
 }

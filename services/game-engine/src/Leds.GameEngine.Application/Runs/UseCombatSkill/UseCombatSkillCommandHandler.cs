@@ -103,6 +103,18 @@ public sealed class UseCombatSkillCommandHandler
 
         var progressionLogEntries = AdvanceCombat(effectResolution.Combat, now.DateTime);
         var enemyTurnLogEntries = ResolveEnemyTurns(effectResolution.Combat);
+        var finalCombat = effectResolution.Combat;
+        var combatCompleted = finalCombat.Status == CombatStatus.Completed;
+        var combatFailed = finalCombat.Status == CombatStatus.Failed;
+
+        if (combatCompleted)
+        {
+            run.CompleteActiveCombat();
+        }
+        else if (combatFailed)
+        {
+            run.FailActiveCombat(now);
+        }
 
         await _runRepository.UpdateAsync(run, cancellationToken);
 
@@ -113,14 +125,18 @@ public sealed class UseCombatSkillCommandHandler
             .ToArray();
 
         return new CombatSkillActionResult(
-            CombatId: effectResolution.Combat.Id.Value,
+            CombatId: finalCombat.Id.Value,
             ActorId: request.ActorId,
             SkillKey: request.SkillKey,
             TargetIds: resolvedTargetIds,
             Accepted: true,
             Message: null,
-            Combat: CombatRuntimeDto.FromDomain(effectResolution.Combat),
-            LogEntries: logEntries);
+            Combat: CombatRuntimeDto.FromDomain(finalCombat),
+            LogEntries: logEntries,
+            CombatCompleted: combatCompleted,
+            CombatFailed: combatFailed,
+            CanProgressRun: combatCompleted,
+            RunStatus: run.Status.ToString());
     }
 
     private IReadOnlyCollection<CombatLogEntryDto> ResolveEnemyTurns(Combat combat)

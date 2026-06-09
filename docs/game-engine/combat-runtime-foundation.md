@@ -104,18 +104,20 @@ Dans `ResolveCurrentEventCommandHandler`, quand un `CombatEncounterDraft` est g�
 - `CombatFactory` (application service)
 - `CombatRuntimeDto`, `CombatantRuntimeDto`, `CombatantSkillRuntimeDto`
 - Intégration pipeline ResolveCurrentEvent
+- progression de tour déterministe
+- résolution simple des effets de skill
+- tours ennemis simples
+- finalisation du combat et reprise de la progression de run
 
 ## Ce que cette PR n'implémente pas
 
-- résolution des actions de combat ;
-- dégâts ;
-- IA ennemie ;
+- IA ennemie avancée ;
 - initiative avancée ;
 - effets temporaires / status ;
 - loot ;
 - frontend ;
 - persistance DB ;
-- tours de combat avancés.
+- ATB.
 
 ## Déterminisme
 
@@ -131,6 +133,27 @@ La création du combat est déterministe. Aucun `Random` non seedé n'est utilis
 - Quand la rotation revient au premier combattant actif, `TurnNumber` est incrémenté.
 - Si tous les ennemis sont `Defeated`, `Status` passe à `Completed` et `ActiveCombatantId` devient `null`.
 - Si tous les alliés sont `Defeated`, `Status` passe à `Failed` et `ActiveCombatantId` devient `null`.
+
+## Combat completion
+
+Un combat actif peut se terminer par victoire ou défaite.
+
+Victory:
+
+- Tous les ennemis sont `Defeated`.
+- Le `Combat` passe `Completed`.
+- La `Run` résout l'event de combat via le même flow que les events non-combat.
+- `ActiveCombat` est nettoyé sur la `Run`.
+- La progression de run peut reprendre.
+- `GET current-combat` retourne `404` après nettoyage.
+
+Defeat:
+
+- Tous les alliés sont `Defeated`.
+- Le `Combat` passe `Failed`.
+- La `Run` passe `Failed`.
+- `ActiveCombat` est nettoyé sur la `Run`.
+- La progression est bloquée.
 
 ## Invariants
 
@@ -150,9 +173,8 @@ La création du combat est déterministe. Aucun `Random` non seedé n'est utilis
 
 ## Future work
 
-- ajouter les actions de combat ;
-- ajouter les règles de ciblage ;
-- ajouter la résolution des skills ;
-- ajouter la gestion des tours (initiative) ;
-- ajouter les intentions ennemies ;
-- exposer les endpoints de combat.
+- rewards post-combat avancés ;
+- archivage complet de l'historique de combat ;
+- ATB / initiative avancée ;
+- IA ennemie avancée ;
+- frontend combat.
