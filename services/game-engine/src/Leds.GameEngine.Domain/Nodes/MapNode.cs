@@ -182,6 +182,12 @@ public sealed class MapNode
         State = NodeState.Resolved;
     }
 
+    public void ResetToInitial()
+    {
+        State = IsInitial ? NodeState.Available : NodeState.Planned;
+        ChosenEventOptionId = null;
+    }
+
     public void ChooseEventOption(string choiceId)
     {
         if (State != NodeState.Resolved)

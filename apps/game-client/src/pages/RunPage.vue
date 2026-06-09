@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 
 import GameShellLayout from '../app/layouts/GameShellLayout.vue';
 import CombatRuntimePanel from '../features/combats/components/CombatRuntimePanel.vue';
@@ -14,11 +14,39 @@ import PalaceLawPanel from '../features/palace-laws/PalaceLawPanel.vue';
 import PalaceMapPlaceholder from '../features/palace-map/PalaceMapPlaceholder.vue';
 import PartyPanel from '../features/party/PartyPanel.vue';
 import RewardOfferPanel from '../features/rewards/components/RewardOfferPanel.vue';
+import RunDangerActions from '../features/runs/components/RunDangerActions.vue';
 import RunHudPanel from '../features/runs/components/RunHudPanel.vue';
 import { useRunStore } from '../features/runs/stores/runStore';
 
 const route = useRoute();
+const router = useRouter();
 const runStore = useRunStore();
+
+const isSafePoint = computed(() =>
+  runStore.currentRun?.status === 'RoomResolved' ||
+  runStore.currentRun?.status === 'Interlude',
+);
+
+async function handleSaveAndExit() {
+  const ok = await runStore.saveAndExitCurrentRun();
+  if (ok) await router.replace('/');
+}
+
+async function handleAbandon() {
+  const ok = await runStore.abandonCurrentRun();
+  if (ok) await router.replace('/');
+}
+
+async function handleExitMidRoom() {
+  const ok = await runStore.exitMidRoom();
+  if (ok) await router.replace('/');
+}
+
+async function startNewRun() {
+  await runStore.startRun();
+  const runId = runStore.currentRun?.id;
+  if (runId) await router.replace(`/run/${runId}`);
+}
 
 const shouldDisplayRightPanel = computed(() => runStore.gameplayPhase === 'Map');
 const shouldUseWideCenterPanel = computed(() => runStore.gameplayPhase !== 'Map');
@@ -62,6 +90,16 @@ watch(
           <RunHudPanel :run="runStore.currentRun" />
           <PartyPanel />
           <PalaceLawPanel :laws="runStore.currentRun.activePalaceLaws" />
+          <RunDangerActions
+            :is-safe-point="isSafePoint"
+            :is-saving-and-exiting="runStore.isSavingAndExiting"
+            :is-abandoning-run="runStore.isAbandoningRun"
+            :is-exiting-mid-room="runStore.isExitingMidRoom"
+            :error="runStore.runActionError"
+            @save-and-exit="handleSaveAndExit"
+            @abandon="handleAbandon"
+            @exit-mid-room="handleExitMidRoom"
+          />
         </aside>
 
         <section class="run-grid__center panel">
@@ -87,7 +125,12 @@ watch(
             v-else-if="runStore.gameplayPhase === 'Interlude' && runStore.currentInterlude"
             :interlude="runStore.currentInterlude"
             :is-loading="runStore.isEnteringNextRoom"
+            :is-saving-and-exiting="runStore.isSavingAndExiting"
+            :is-abandoning-run="runStore.isAbandoningRun"
+            :run-action-error="runStore.runActionError"
             @enter-next-room="runStore.enterNextRoom"
+            @save-and-exit="handleSaveAndExit"
+            @abandon="handleAbandon"
           />
 
           <!-- 4. Transition RoomCleared -->
@@ -130,7 +173,29 @@ watch(
             <EliseOverlay :message="runStore.lastOutcome?.description" />
           </template>
 
-          <!-- 8. Run terminée -->
+          <!-- 8. Run suspendue (chargée directement via URL) -->
+          <section
+            v-else-if="runStore.gameplayPhase === 'Suspended'"
+            class="run-suspended panel"
+          >
+            <p class="system-label">Run suspendue · seed {{ runStore.currentRun.seed }}</p>
+            <h3>Run sauvegardée</h3>
+            <p>
+              La reprise de partie est prévue dans une prochaine version du Palais.
+              Pour l'instant, tu peux démarrer une seed inédite.
+            </p>
+            <div class="run-suspended__actions">
+              <button
+                class="ghost-button run-suspended__cta"
+                :disabled="runStore.isLoading"
+                @click="startNewRun"
+              >
+                {{ runStore.isLoading ? 'Génération…' : 'Démarrer une nouvelle run →' }}
+              </button>
+            </div>
+          </section>
+
+          <!-- 9. Run terminée -->
           <section v-else class="run-grid__outcome panel">
             <p class="system-label">Run terminée</p>
             <h3>Le Tome se referme</h3>
@@ -248,5 +313,45 @@ watch(
   color: var(--color-gold);
   font-family: var(--font-mono);
   font-size: 0.8rem;
+}
+
+
+.run-suspended {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-6);
+  align-content: start;
+}
+
+.run-suspended h3 {
+  margin: 0;
+  color: var(--color-frost);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.run-suspended p {
+  color: var(--color-muted);
+  line-height: 1.55;
+  margin: 0;
+}
+
+.run-suspended__actions {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.run-suspended__cta {
+  border-color: var(--color-gold);
+  color: var(--color-gold);
+}
+
+.run-suspended__cta:hover:not(:disabled) {
+  background: color-mix(in oklch, var(--color-gold), transparent 88%);
+}
+
+.run-suspended__cta:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 </style>

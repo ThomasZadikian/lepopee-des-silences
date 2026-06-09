@@ -1,7 +1,9 @@
 using Leds.GameEngine.Application.Events.ChooseEventOption;
 using Leds.GameEngine.Application.Runs.AbandonRun;
 using Leds.GameEngine.Application.Runs.ChooseNode;
+using Leds.GameEngine.Application.Runs.ExitMidRoom;
 using Leds.GameEngine.Application.Runs.GetRunById;
+using Leds.GameEngine.Application.Runs.ResumeRun;
 using Leds.GameEngine.Application.Runs.MoveToNextRoom;
 using Leds.GameEngine.Application.Runs.ProgressRun;
 using Leds.GameEngine.Application.Runs.ResolveCurrentEvent;
@@ -114,6 +116,21 @@ public sealed class RunsController : ControllerBase
         return Ok(response);
     }
 
+    [HttpPost("{runId:guid}/exit-mid-room")]
+    [ProducesResponseType(typeof(ExitMidRoomResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ExitMidRoomResponse>> ExitMidRoom(
+    Guid runId,
+    CancellationToken cancellationToken)
+    {
+        var command = new ExitMidRoomCommand(runId);
+
+        var response = await _sender.Send(command, cancellationToken);
+
+        return Ok(response);
+    }
+
     [HttpPost("{runId:guid}/abandon")]
     [ProducesResponseType(typeof(AbandonRunResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -138,6 +155,21 @@ public sealed class RunsController : ControllerBase
     CancellationToken cancellationToken)
     {
         var command = new SaveAndExitRunCommand(runId);
+
+        var response = await _sender.Send(command, cancellationToken);
+
+        return Ok(response);
+    }
+
+    [HttpPost("{runId:guid}/resume")]
+    [ProducesResponseType(typeof(ResumeRunResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ResumeRunResponse>> ResumeRun(
+    Guid runId,
+    CancellationToken cancellationToken)
+    {
+        var command = new ResumeRunCommand(runId);
 
         var response = await _sender.Send(command, cancellationToken);
 

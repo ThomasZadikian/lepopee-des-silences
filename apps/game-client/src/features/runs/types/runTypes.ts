@@ -60,6 +60,24 @@ export type RunDto = {
   rooms: RoomDto[];
   pendingRewardOfferId?: string | null;
   activePalaceLaws: ActivePalaceLawDto[];
+  /** true when status === 'Suspended' — run paused at a safe point, can be resumed. */
+  canResume?: boolean;
+  /** ISO timestamp set by SaveAndExit. null if the run was never suspended. */
+  savedAt?: string | null;
+  /** ISO timestamp set when status === 'Abandoned'. Equals EndedAt on the domain object. */
+  abandonedAt?: string | null;
+};
+
+/**
+ * Snapshot stored in localStorage when a run is saved and exited.
+ * Used to display the resumable run card on ThresholdPage without a backend list endpoint.
+ */
+export type ResumableRunDto = {
+  id: string;
+  seed: string;
+  savedAt: string;
+  currentRoomNumber: number;
+  status: string;
 };
 
 export type CombatantSnapshotDto = {

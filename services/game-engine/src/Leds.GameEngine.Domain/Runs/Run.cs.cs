@@ -12,6 +12,16 @@ public sealed class Run
     private readonly List<Room> _rooms = [];
     private readonly List<ActivePalaceLaw> _activePalaceLaws = [];
     private readonly List<string> _memoryFragments = [];
+    private RunSnapshot? _roomSnapshot;
+    private RunStatus? _preSuspendStatus;
+
+    private sealed record RunSnapshot(
+        int CurrentHp,
+        int Attack,
+        int Defense,
+        int Speed,
+        string[] MemoryFragments,
+        ActivePalaceLaw[] ActivePalaceLaws);
 
     public IReadOnlyCollection<ActivePalaceLaw> ActivePalaceLaws =>
     _activePalaceLaws.AsReadOnly();
@@ -214,7 +224,7 @@ public sealed class Run
             throw new DomainException("Speed must be greater than 0.");
         }
 
-        return new Run(
+        var run = new Run(
             RunId.New(),
             playerId,
             seed.Trim(),
@@ -228,6 +238,10 @@ public sealed class Run
             attack,
             defense,
             speed);
+
+        run._roomSnapshot = run.CreateSnapshot();
+
+        return run;
     }
 
     public void ChooseNode(NodeId nodeId)
@@ -295,6 +309,8 @@ public sealed class Run
     /// </summary>
     public void MoveToNextRoom(Room nextRoom)
     {
+        _roomSnapshot = CreateSnapshot();
+
         if (Status is RunStatus.Completed or RunStatus.Failed or RunStatus.Abandoned or RunStatus.Suspended)
         {
             throw new DomainException("Run is closed.");
@@ -389,8 +405,39 @@ public sealed class Run
                 "Cannot save and exit: run has a pending reward offer that must be selected first.");
         }
 
+        _preSuspendStatus = Status;
         Status = RunStatus.Suspended;
         SavedAt = savedAt;
+    }
+
+    /// <summary>
+    /// Resumes the run from a suspended state, restoring the pre-suspend status
+    /// (<see cref="RunStatus.RoomResolved"/> or <see cref="RunStatus.Interlude"/>)
+    /// so the player can continue from where they left off.
+    /// </summary>
+    public void Resume()
+    {
+        if (Status != RunStatus.Suspended)
+        {
+            throw new DomainException("Cannot resume a run that is not suspended.");
+        }
+
+        if (_preSuspendStatus is null)
+        {
+            throw new DomainException(
+                "Cannot resume: pre-suspend status is missing. The run may have been saved by an older version.");
+        }
+
+        var restoredStatus = _preSuspendStatus.Value;
+        Status = restoredStatus;
+        SavedAt = null;
+        _preSuspendStatus = null;
+
+        // Recreate a snapshot so the player can exit the room again after resuming.
+        if (restoredStatus == RunStatus.Active)
+        {
+            _roomSnapshot = CreateSnapshot();
+        }
     }
 
     public void SetActiveCombat(CombatId combatId)
@@ -543,6 +590,14 @@ public sealed class Run
         }
     }
 
+    private RunSnapshot CreateSnapshot() => new(
+        CurrentHp,
+        Attack,
+        Defense,
+        Speed,
+        [.. _memoryFragments],
+        [.. _activePalaceLaws]);
+
     public CombatantSnapshot CreatePlayerSnapshot()
     {
         return CombatantSnapshot.Create(
@@ -591,6 +646,60 @@ public sealed class Run
             throw new DomainException("Run must be active.");
         }
     }
+    /// <summary>
+    /// Exits the current room, rolling back all resources (HP, stats, memory
+    /// fragments, active palace laws) to the state they were in when the room
+    /// was first entered. The room is reset and the run is suspended so the
+    /// player can resume later from the beginning of this room.
+    /// </summary>
+    public void ExitMidRoom(DateTimeOffset savedAt)
+    {
+        if (Status is RunStatus.Completed or RunStatus.Failed or RunStatus.Abandoned or RunStatus.Suspended)
+        {
+            throw new DomainException("Run is closed.");
+        }
+
+        if (Status != RunStatus.Active)
+        {
+            throw new DomainException("Cannot exit mid-room: run must be active.");
+        }
+
+        if (HasActiveCombat)
+        {
+            throw new DomainException("Cannot exit mid-room: run has an active combat.");
+        }
+
+        if (HasPendingRewardOffer)
+        {
+            throw new DomainException("Cannot exit mid-room: run has a pending reward offer that must be selected first.");
+        }
+
+        if (_roomSnapshot is null)
+        {
+            throw new DomainException("Cannot exit mid-room: no room entry snapshot available.");
+        }
+
+        var snapshot = _roomSnapshot;
+        _roomSnapshot = null;
+
+        CurrentHp = snapshot.CurrentHp;
+        Attack = snapshot.Attack;
+        Defense = snapshot.Defense;
+        Speed = snapshot.Speed;
+
+        _memoryFragments.Clear();
+        _memoryFragments.AddRange(snapshot.MemoryFragments);
+
+        _activePalaceLaws.Clear();
+        _activePalaceLaws.AddRange(snapshot.ActivePalaceLaws);
+
+        CurrentRoom.ResetProgress();
+
+        _preSuspendStatus = RunStatus.Active;
+        Status = RunStatus.Suspended;
+        SavedAt = savedAt;
+    }
+
     public void ActivatePalaceLaw(PalaceLaw law)
     {
         ArgumentNullException.ThrowIfNull(law);

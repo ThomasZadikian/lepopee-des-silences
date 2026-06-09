@@ -13,6 +13,7 @@ import {
   type CombatInstanceDto,
   type NodeDto,
   type ResolveCurrentEventResponse,
+  type ResumableRunDto,
   type RunDto,
 } from '../types/runTypes';
 
@@ -30,6 +31,24 @@ import {
 
 const demoPlayerId = '00000000-0000-0000-0000-000000000001';
 
+// ---------------------------------------------------------------------------
+// localStorage — suspended run persistence
+// ---------------------------------------------------------------------------
+
+const SUSPENDED_RUN_KEY = 'rpg:suspended_run_id';
+
+function getSuspendedRunId(): string | null {
+  try { return localStorage.getItem(SUSPENDED_RUN_KEY); } catch { return null; }
+}
+
+function setSuspendedRunId(runId: string): void {
+  try { localStorage.setItem(SUSPENDED_RUN_KEY, runId); } catch {}
+}
+
+function clearSuspendedRunId(): void {
+  try { localStorage.removeItem(SUSPENDED_RUN_KEY); } catch {}
+}
+
 export const useRunStore = defineStore('run', () => {
   // -------------------------------------------------------------------------
   // State
@@ -45,6 +64,13 @@ export const useRunStore = defineStore('run', () => {
   const currentInterlude = ref<InterludeDto | null>(null);
   const isEnteringInterlude = ref(false);
   const isEnteringNextRoom = ref(false);
+
+  const resumableRun = ref<ResumableRunDto | null>(null);
+  const isLoadingResumableRun = ref(false);
+  const isSavingAndExiting = ref(false);
+  const isExitingMidRoom = ref(false);
+  const isAbandoningRun = ref(false);
+  const runActionError = ref<string | null>(null);
 
   const isLoading = ref(false);
   const error = ref<string | null>(null);
@@ -95,6 +121,10 @@ export const useRunStore = defineStore('run', () => {
 
     if (currentRun.value.activeCombatId) {
       return 'Combat';
+    }
+
+    if (currentRun.value.status === 'Suspended') {
+      return 'Suspended';
     }
 
     if (currentRun.value.status === 'Completed' || currentRun.value.status === 'Failed') {
@@ -172,6 +202,10 @@ export const useRunStore = defineStore('run', () => {
 
   async function startRun() {
     await execute(async () => {
+      // Vider currentRun avant l'appel pour que, si l'API échoue,
+      // le composant appelant ne navigue pas vers l'ancienne run.
+      currentRun.value = null;
+
       const response = await runApi.startRun(demoPlayerId);
       const run = unwrapRunResponse(response);
 
@@ -189,6 +223,14 @@ export const useRunStore = defineStore('run', () => {
 
   async function loadRun(runId: string) {
     await execute(async () => {
+      // Auto-resume suspended runs
+      const initialResponse = await runApi.getRun(runId);
+      const initialRun = unwrapRunResponse(initialResponse);
+
+      if (initialRun.status === 'Suspended') {
+        await runApi.resumeRun(runId);
+      }
+
       const response = await runApi.getRun(runId);
       const run = unwrapRunResponse(response);
 
@@ -203,7 +245,6 @@ export const useRunStore = defineStore('run', () => {
 
       await refreshPendingRewardIfNeeded();
 
-      // Si on recharge avec un run déjà en état Interlude, charger l'interlude.
       if (run.status === 'Interlude') {
         const interludeResponse = await runApi.getInterlude(run.id);
         currentInterlude.value = unwrapInterludeResponse(interludeResponse);
@@ -420,6 +461,143 @@ export const useRunStore = defineStore('run', () => {
   }
 
   // -------------------------------------------------------------------------
+  // Resumable run (localStorage-backed)
+  // -------------------------------------------------------------------------
+
+  async function loadResumableRun() {
+    const runId = getSuspendedRunId();
+    if (!runId) return;
+
+    isLoadingResumableRun.value = true;
+    try {
+      const response = await runApi.getRun(runId);
+      const run = unwrapRunResponse(response);
+      if (run.canResume) {
+        resumableRun.value = {
+          id: run.id,
+          seed: run.seed,
+          savedAt: run.savedAt ?? new Date().toISOString(),
+          currentRoomNumber: run.currentRoomNumber,
+          status: run.status,
+        };
+      } else {
+        clearSuspendedRunId();
+        resumableRun.value = null;
+      }
+    } catch {
+      // Backend restarted or run no longer exists — clear stale ref
+      clearSuspendedRunId();
+      resumableRun.value = null;
+    } finally {
+      isLoadingResumableRun.value = false;
+    }
+  }
+
+  async function saveAndExitCurrentRun(): Promise<boolean> {
+    if (!currentRun.value) return false;
+    const runId = currentRun.value.id;
+
+    isSavingAndExiting.value = true;
+    runActionError.value = null;
+
+    try {
+      const response = await runApi.saveAndExitRun(runId);
+      const run = unwrapRunResponse(response);
+
+      setSuspendedRunId(run.id);
+      resumableRun.value = {
+        id: run.id,
+        seed: run.seed,
+        savedAt: run.savedAt ?? new Date().toISOString(),
+        currentRoomNumber: run.currentRoomNumber,
+        status: run.status,
+      };
+
+      clearCurrentRun();
+      return true;
+    } catch (caught) {
+      runActionError.value = caught instanceof Error
+        ? caught.message
+        : 'Impossible de sauvegarder la run.';
+      return false;
+    } finally {
+      isSavingAndExiting.value = false;
+    }
+  }
+
+  async function exitMidRoom(): Promise<boolean> {
+    if (!currentRun.value) return false;
+    const runId = currentRun.value.id;
+
+    isExitingMidRoom.value = true;
+    runActionError.value = null;
+
+    try {
+      const response = await runApi.exitMidRoom(runId);
+      const run = unwrapRunResponse(response);
+
+      setSuspendedRunId(run.id);
+      resumableRun.value = {
+        id: run.id,
+        seed: run.seed,
+        savedAt: run.savedAt ?? new Date().toISOString(),
+        currentRoomNumber: run.currentRoomNumber,
+        status: run.status,
+      };
+
+      clearCurrentRun();
+      return true;
+    } catch (caught) {
+      runActionError.value = caught instanceof Error
+        ? caught.message
+        : 'Impossible de quitter la salle.';
+      return false;
+    } finally {
+      isExitingMidRoom.value = false;
+    }
+  }
+
+  async function abandonCurrentRun(): Promise<boolean> {
+    if (!currentRun.value) return false;
+    const runId = currentRun.value.id;
+
+    isAbandoningRun.value = true;
+    runActionError.value = null;
+
+    try {
+      await runApi.abandonRun(runId);
+
+      if (getSuspendedRunId() === runId) {
+        clearSuspendedRunId();
+      }
+      if (resumableRun.value?.id === runId) {
+        resumableRun.value = null;
+      }
+
+      clearCurrentRun();
+      return true;
+    } catch (caught) {
+      runActionError.value = caught instanceof Error
+        ? caught.message
+        : 'Impossible d\'abandonner la run.';
+      return false;
+    } finally {
+      isAbandoningRun.value = false;
+    }
+  }
+
+  function clearCurrentRun() {
+    currentRun.value = null;
+    pendingRewardOffer.value = null;
+    lastOutcome.value = null;
+    activeCombat.value = null;
+    previewedNodeId.value = null;
+    lastChoiceResult.value = null;
+    currentInterlude.value = null;
+    error.value = null;
+  }
+
+  // -------------------------------------------------------------------------
   // Event choices / outcome
   // -------------------------------------------------------------------------
 
@@ -513,5 +691,17 @@ export const useRunStore = defineStore('run', () => {
     enterInterlude,
     loadInterlude,
     enterNextRoom,
+
+    resumableRun,
+    isLoadingResumableRun,
+    isSavingAndExiting,
+    isExitingMidRoom,
+    isAbandoningRun,
+    runActionError,
+    loadResumableRun,
+    saveAndExitCurrentRun,
+    exitMidRoom,
+    abandonCurrentRun,
+    clearCurrentRun,
   };
 });

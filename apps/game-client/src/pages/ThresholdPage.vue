@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { useRunStore } from '../features/runs/stores/runStore';
@@ -6,23 +7,43 @@ import { useRunStore } from '../features/runs/stores/runStore';
 const router = useRouter();
 const runStore = useRunStore();
 
+const resumableRun = computed(() => runStore.resumableRun);
+
+onMounted(() => {
+  runStore.loadResumableRun();
+});
+
+async function resumeRun() {
+  const run = resumableRun.value;
+  if (!run) return;
+  await runStore.loadRun(run.id);
+  if (runStore.currentRun?.id) {
+    await router.push(`/run/${run.id}`);
+  }
+}
+
 async function startRun() {
+  await runStore.startRun();
+  const runId = runStore.currentRun?.id;
+  if (!runId) {
+    console.error('[game-client] Unable to navigate: run id is missing.', {
+      currentRun: runStore.currentRun,
+    });
+    return;
+  }
+  await router.push(`/run/${runId}`);
+}
+
+function formatSavedAt(savedAt: string): string {
   try {
-    await runStore.startRun();
-
-    const runId = runStore.currentRun?.id;
-
-    if (!runId) {
-      console.error('[game-client] Unable to navigate: run id is missing.', {
-        currentRun: runStore.currentRun,
-      });
-
-      return;
-    }
-
-    await router.push(`/run/${runId}`);
-  } catch (error) {
-    console.error('[game-client] startRun failed.', error);
+    return new Intl.DateTimeFormat('fr-FR', {
+      day: '2-digit',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(new Date(savedAt));
+  } catch {
+    return '—';
   }
 }
 </script>
@@ -38,34 +59,67 @@ async function startRun() {
     </section>
 
     <section class="threshold__grid">
+
+      <!-- Run en cours / reprise -->
       <article class="panel threshold-card">
-        <p class="system-label">Run en cours · reprise</p>
-        <h2>Reprendre la descente</h2>
+        <!-- Loading -->
+        <template v-if="runStore.isLoadingResumableRun">
+          <p class="system-label">Run en cours · vérification</p>
+          <h2>Recherche d'une run suspendue…</h2>
+        </template>
 
-        <dl>
-          <div>
-            <dt>Seed</dt>
-            <dd>À charger</dd>
-          </div>
-          <div>
-            <dt>Profondeur</dt>
-            <dd>—</dd>
-          </div>
-          <div>
-            <dt>Dernière pièce</dt>
-            <dd>—</dd>
-          </div>
-          <div>
-            <dt>Compagnon</dt>
-            <dd>Neige</dd>
-          </div>
-        </dl>
+        <!-- Live resumable run -->
+        <template v-else-if="resumableRun">
+          <p class="system-label">Run en cours · reprise</p>
+          <h2>Reprendre la descente</h2>
 
-        <button class="ghost-button" disabled>
-          Reprendre la descente →
-        </button>
+          <dl>
+            <div>
+              <dt>Seed</dt>
+              <dd>{{ resumableRun.seed }}</dd>
+            </div>
+            <div>
+              <dt>Salle</dt>
+              <dd>{{ resumableRun.currentRoomNumber }}</dd>
+            </div>
+            <div>
+              <dt>Sauvegardée le</dt>
+              <dd>{{ formatSavedAt(resumableRun.savedAt) }}</dd>
+            </div>
+            <div>
+              <dt>Compagnon</dt>
+              <dd>Neige</dd>
+            </div>
+          </dl>
+
+          <button
+            class="ghost-button"
+            :disabled="runStore.isLoading"
+            @click="resumeRun"
+          >
+            {{ runStore.isLoading ? 'Chargement…' : 'Reprendre →' }}
+          </button>
+
+          <p v-if="runStore.error" class="threshold-card__error">
+            {{ runStore.error }}
+          </p>
+        </template>
+
+        <!-- No resumable run -->
+        <template v-else>
+          <p class="system-label">Run en cours · aucune</p>
+          <h2>Aucune run suspendue</h2>
+          <p>
+            Sauvegarde ta progression depuis le Repli du Palais ou la fin
+            d'une pièce pour pouvoir reprendre ici.
+          </p>
+          <button class="ghost-button" disabled>
+            Reprendre →
+          </button>
+        </template>
       </article>
 
+      <!-- Nouvelle seed -->
       <article class="panel threshold-card threshold-card--primary">
         <p class="system-label">Nouveau seuil · seed inédite</p>
         <h2>Franchir un nouveau seuil</h2>
@@ -74,8 +128,12 @@ async function startRun() {
           ennemis. Tu n'emportes que ce que le Tome a déjà retenu.
         </p>
 
-        <button class="ghost-button" :disabled="runStore.isLoading" @click="startRun">
-          {{ runStore.isLoading ? 'Génération...' : 'Générer une run →' }}
+        <button
+          class="ghost-button"
+          :disabled="runStore.isLoading"
+          @click="startRun"
+        >
+          {{ runStore.isLoading ? 'Génération…' : 'Générer une run →' }}
         </button>
 
         <p v-if="runStore.error" class="threshold-card__error">
@@ -110,6 +168,7 @@ async function startRun() {
   margin-top: var(--space-4);
   color: var(--color-blood);
   font-family: var(--font-mono);
+  font-size: 0.8rem;
 }
 
 .threshold__hero h1 {

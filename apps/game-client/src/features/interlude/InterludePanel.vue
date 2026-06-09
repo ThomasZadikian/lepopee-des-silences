@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 
+import ConfirmDialog from '../../shared/components/ConfirmDialog.vue';
 import {
   nodeTypeGlyph,
   positionSlotToGridArea,
@@ -11,18 +12,37 @@ import {
 const props = defineProps<{
   interlude: InterludeDto;
   isLoading: boolean;
+  isSavingAndExiting?: boolean;
+  isAbandoningRun?: boolean;
+  runActionError?: string | null;
 }>();
 
 const emit = defineEmits<{
   enterNextRoom: [];
+  saveAndExit: [];
+  abandon: [];
 }>();
 
 const activeNodeId = ref<string | null>(null);
+const showAbandonDialog = ref(false);
 
 const activeNode = computed(() => {
   if (!activeNodeId.value) return null;
   return props.interlude.nodes.find((n) => n.id === activeNodeId.value) ?? null;
 });
+
+const saveAndExitAction = computed(() =>
+  props.interlude.availableActions.find((a) => a.key === 'save-and-exit'),
+);
+
+const abandonAction = computed(() =>
+  props.interlude.availableActions.find((a) => a.key === 'abandon-run'),
+);
+
+function onAbandonConfirm() {
+  showAbandonDialog.value = false;
+  emit('abandon');
+}
 
 function selectNode(node: InterludeNodeDto) {
   if (!node.isEnabled) return;
@@ -91,15 +111,53 @@ function isComingSoon(node: InterludeNodeDto): boolean {
     </Transition>
 
     <footer class="interlude__actions">
+      <div class="interlude__secondary-actions">
+        <button
+          v-if="saveAndExitAction?.isEnabled"
+          class="ghost-button interlude__action-secondary"
+          :disabled="isLoading || isSavingAndExiting || isAbandoningRun"
+          :title="saveAndExitAction.description"
+          @click="$emit('saveAndExit')"
+        >
+          <span v-if="isSavingAndExiting">Sauvegarde…</span>
+          <span v-else>{{ saveAndExitAction.label }}</span>
+        </button>
+
+        <button
+          v-if="abandonAction?.isEnabled"
+          class="ghost-button interlude__action-abandon"
+          :disabled="isLoading || isSavingAndExiting || isAbandoningRun"
+          :title="abandonAction.description"
+          @click="showAbandonDialog = true"
+        >
+          <span v-if="isAbandoningRun">Abandon…</span>
+          <span v-else>{{ abandonAction.label }}</span>
+        </button>
+      </div>
+
+      <p v-if="runActionError" class="interlude__action-error">{{ runActionError }}</p>
+
       <button
         class="ghost-button interlude__cta"
-        :disabled="isLoading"
+        :disabled="isLoading || isSavingAndExiting || isAbandoningRun"
         @click="$emit('enterNextRoom')"
       >
         <span v-if="isLoading">Préparation en cours…</span>
         <span v-else>Entrer dans la prochaine Room</span>
       </button>
     </footer>
+
+    <ConfirmDialog
+      v-if="abandonAction"
+      v-model="showAbandonDialog"
+      title="Abandonner la run ?"
+      :message="abandonAction.description"
+      confirm-label="Abandonner définitivement"
+      cancel-label="Annuler"
+      :danger="true"
+      :loading="isAbandoningRun"
+      @confirm="onAbandonConfirm"
+    />
   </section>
 </template>
 
@@ -217,10 +275,52 @@ function isComingSoon(node: InterludeNodeDto): boolean {
 
 /* Actions */
 .interlude__actions {
-  display: flex;
-  justify-content: flex-end;
+  display: grid;
+  gap: var(--space-3);
   padding-top: var(--space-4);
   border-top: 1px solid var(--color-line);
+}
+
+.interlude__secondary-actions {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.interlude__action-secondary {
+  color: var(--color-dim);
+  border-color: color-mix(in oklch, var(--color-line), transparent 20%);
+  font-size: 0.82rem;
+  padding: var(--space-2) var(--space-4);
+}
+
+.interlude__action-secondary:hover:not(:disabled) {
+  color: var(--color-muted);
+  border-color: var(--color-frost);
+}
+
+.interlude__action-abandon {
+  color: var(--color-blood);
+  border-color: color-mix(in oklch, var(--color-blood), transparent 55%);
+  font-size: 0.82rem;
+  padding: var(--space-2) var(--space-4);
+}
+
+.interlude__action-abandon:hover:not(:disabled) {
+  background: color-mix(in oklch, var(--color-blood), transparent 92%);
+  border-color: var(--color-blood);
+}
+
+.interlude__action-error {
+  color: var(--color-blood);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  margin: 0;
+}
+
+.interlude__actions > .interlude__cta {
+  align-self: end;
+  justify-self: end;
 }
 
 .interlude__cta {

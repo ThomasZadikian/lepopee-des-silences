@@ -66,4 +66,28 @@ export const runApi = {
       `/api/v2/runs/${runId}/rooms/next`,
     );
   },
+
+  saveAndExitRun(runId: string) {
+    return gameEngineApi.post<RunResponse>(
+      `/api/v2/runs/${runId}/save-and-exit`,
+    );
+  },
+
+  resumeRun(runId: string) {
+    return gameEngineApi.post<RunResponse>(
+      `/api/v2/runs/${runId}/resume`,
+    );
+  },
+
+  exitMidRoom(runId: string) {
+    return gameEngineApi.post<RunResponse>(
+      `/api/v2/runs/${runId}/exit-mid-room`,
+    );
+  },
+
+  abandonRun(runId: string) {
+    return gameEngineApi.post<RunResponse>(
+      `/api/v2/runs/${runId}/abandon`,
+    );
+  },
 };

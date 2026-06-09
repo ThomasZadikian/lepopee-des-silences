@@ -277,6 +277,24 @@ public sealed class Room
             : RoomState.Active;
     }
 
+    public void ResetProgress()
+    {
+        if (State is RoomState.Active or RoomState.NodeSelected
+            or RoomState.NodeResolved or RoomState.BossReached)
+        {
+            foreach (var node in _nodes)
+            {
+                node.ResetToInitial();
+            }
+
+            CurrentNodeDepth = 0;
+            State = RoomState.Active;
+            return;
+        }
+
+        throw new DomainException("Room is closed and cannot be reset.");
+    }
+
     private void MarkUnreachableBranches(MapNode selectedNode)
     {
         foreach (var node in _nodes.Where(n => n.Row > selectedNode.Row))
