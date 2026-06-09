@@ -1,7 +1,9 @@
 using FluentAssertions;
 using Leds.GameEngine.Application.Abstractions;
 using Leds.GameEngine.Application.Combats.Actions;
+using Leds.GameEngine.Application.Combats.Dtos;
 using Leds.GameEngine.Application.Combats.Effects;
+using Leds.GameEngine.Application.Combats.EnemyTurns;
 using Leds.GameEngine.Application.Common.Exceptions;
 using Leds.GameEngine.Application.Runs.UseCombatSkill;
 using Leds.GameEngine.Domain.Combats;
@@ -9,6 +11,8 @@ using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
+using Leds.GameEngine.Infrastructure.Combats.Actions;
+using Leds.GameEngine.Infrastructure.Combats.Targeting;
 using Leds.GameEngine.UnitTests.Common.Factories;
 using Moq;
 
@@ -56,6 +60,7 @@ public sealed class UseCombatSkillCommandHandlerTests
             runRepo.Object,
             new Mock<ICombatSkillActionValidator>().Object,
             new Mock<ICombatSkillEffectResolver>().Object,
+            new Mock<IEnemyCombatTurnResolver>().Object,
             new Mock<IClock>().Object);
 
         var act = () => handler.Handle(
@@ -75,6 +80,7 @@ public sealed class UseCombatSkillCommandHandlerTests
             runRepo.Object,
             new Mock<ICombatSkillActionValidator>().Object,
             new Mock<ICombatSkillEffectResolver>().Object,
+            new Mock<IEnemyCombatTurnResolver>().Object,
             new Mock<IClock>().Object);
 
         var act = () => handler.Handle(
@@ -364,6 +370,133 @@ public sealed class UseCombatSkillCommandHandlerTests
         result.TargetIds.Should().ContainSingle(id => id == setup.Enemy.Id.Value);
     }
 
+    [Fact]
+    public async Task Handle_ShouldResolveEnemyTurn_AfterPlayerAction_WhenNextCombatantIsEnemy()
+    {
+        var enemySkill = CreateSkill("skill.basic.strike", "Damage", "SingleEnemy", 10);
+        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100, [_strikeSkill]);
+        var enemy = Combatant.CreateEnemy("enemy.1", "Enemy1", "Guard", 80, [enemySkill]);
+        var setup = CreateRunWithActiveCombat([ally], [enemy]);
+        var handler = CreateHandlerWithRealEnemyResolver(setup, ally, _strikeSkill, [enemy], out _);
+
+        var result = await handler.Handle(CreateCommand(setup, ally, _strikeSkill, [enemy]), CancellationToken.None);
+
+        result.Combat.Allies.Single().CurrentVitality.Should().Be(90);
+        result.Combat.ActiveCombatantId.Should().Be(ally.Id);
+    }
+
+    [Fact]
+    public async Task Handle_ShouldResolveMultipleEnemyTurns_UntilNextAlly()
+    {
+        var enemySkill = CreateSkill("skill.basic.strike", "Damage", "SingleEnemy", 10);
+        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100, [_strikeSkill]);
+        var enemy1 = Combatant.CreateEnemy("enemy.1", "Enemy1", "Guard", 80, [enemySkill]);
+        var enemy2 = Combatant.CreateEnemy("enemy.2", "Enemy2", "Guard", 80, [enemySkill]);
+        var setup = CreateRunWithActiveCombat([ally], [enemy1, enemy2]);
+        var handler = CreateHandlerWithRealEnemyResolver(setup, ally, _strikeSkill, [enemy1], out _);
+
+        var result = await handler.Handle(CreateCommand(setup, ally, _strikeSkill, [enemy1]), CancellationToken.None);
+
+        result.Combat.Allies.Single().CurrentVitality.Should().Be(80);
+        result.Combat.ActiveCombatantId.Should().Be(ally.Id);
+        result.LogEntries.Count(e => e.Type == "EnemyTurnResolved").Should().Be(2);
+    }
+
+    [Fact]
+    public async Task Handle_ShouldReturnUpdatedCombatAfterEnemyTurns()
+    {
+        var enemySkill = CreateSkill("skill.basic.strike", "Damage", "SingleEnemy", 10);
+        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100, [_strikeSkill]);
+        var enemy = Combatant.CreateEnemy("enemy.1", "Enemy1", "Guard", 80, [enemySkill]);
+        var setup = CreateRunWithActiveCombat([ally], [enemy]);
+        var handler = CreateHandlerWithRealEnemyResolver(setup, ally, _strikeSkill, [enemy], out _);
+
+        var result = await handler.Handle(CreateCommand(setup, ally, _strikeSkill, [enemy]), CancellationToken.None);
+
+        result.Combat.Allies.Single().CurrentVitality.Should().Be(setup.Run.ActiveCombat!.Allies.Single().CurrentVitality);
+        result.Combat.Enemies.Single().CurrentVitality.Should().Be(setup.Run.ActiveCombat!.Enemies.Single().CurrentVitality);
+    }
+
+    [Fact]
+    public async Task Handle_ShouldReturnEnemyActionLogs()
+    {
+        var enemySkill = CreateSkill("skill.basic.strike", "Damage", "SingleEnemy", 10);
+        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100, [_strikeSkill]);
+        var enemy = Combatant.CreateEnemy("enemy.1", "Enemy1", "Guard", 80, [enemySkill]);
+        var setup = CreateRunWithActiveCombat([ally], [enemy]);
+        var handler = CreateHandlerWithRealEnemyResolver(setup, ally, _strikeSkill, [enemy], out _);
+
+        var result = await handler.Handle(CreateCommand(setup, ally, _strikeSkill, [enemy]), CancellationToken.None);
+
+        result.LogEntries.Should().Contain(e => e.Type == "EnemyTurnResolved");
+        result.LogEntries.Should().Contain(e => e.ActorId == enemy.Id.Value && e.Type == "SkillUsed");
+    }
+
+    [Fact]
+    public async Task Handle_ShouldStopAutoEnemyTurns_WhenCombatCompletes()
+    {
+        var lethalSkill = CreateSkill("skill.basic.strike", "Damage", "SingleEnemy", 80);
+        var setup = CreateRunWithActiveCombat(lethalSkill);
+        var handler = CreateHandlerWithRealEnemyResolver(setup, setup.Ally, lethalSkill, [setup.Enemy], out _);
+
+        var result = await handler.Handle(CreateCommand(setup, setup.Ally, lethalSkill, [setup.Enemy]), CancellationToken.None);
+
+        result.Combat.Status.Should().Be(CombatStatus.Completed);
+        result.LogEntries.Should().NotContain(e => e.Type == "EnemyTurnResolved");
+    }
+
+    [Fact]
+    public async Task Handle_ShouldStopAutoEnemyTurns_WhenCombatFails()
+    {
+        var enemySkill = CreateSkill("skill.basic.strike", "Damage", "SingleEnemy", 107);
+        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100, [_guardSkill]);
+        var enemy = Combatant.CreateEnemy("enemy.1", "Enemy1", "Guard", 80, [enemySkill]);
+        var setup = CreateRunWithActiveCombat([ally], [enemy]);
+        var handler = CreateHandlerWithRealEnemyResolver(setup, ally, _guardSkill, [ally], out _);
+
+        var result = await handler.Handle(CreateCommand(setup, ally, _guardSkill, [ally]), CancellationToken.None);
+
+        result.Combat.Status.Should().Be(CombatStatus.Failed);
+        result.LogEntries.Should().Contain(e => e.Type == "CombatFailed");
+    }
+
+    [Fact]
+    public async Task Handle_ShouldNotResolveEnemyTurn_WhenNextCombatantIsAlly()
+    {
+        var ally1 = Combatant.CreateAlly("player.1", "Hero1", "Fighter", 100, [_strikeSkill]);
+        var ally2 = Combatant.CreateAlly("player.2", "Hero2", "Fighter", 100, [_strikeSkill]);
+        var enemy = Combatant.CreateEnemy("enemy.1", "Enemy1", "Guard", 80, [_strikeSkill]);
+        var setup = CreateRunWithActiveCombat([ally1, ally2], [enemy]);
+        var handler = CreateHandlerWithRealEnemyResolver(setup, ally1, _strikeSkill, [enemy], out _);
+
+        var result = await handler.Handle(CreateCommand(setup, ally1, _strikeSkill, [enemy]), CancellationToken.None);
+
+        result.Combat.ActiveCombatantId.Should().Be(ally2.Id);
+        result.LogEntries.Should().NotContain(e => e.Type == "EnemyTurnResolved");
+    }
+
+    [Fact]
+    public async Task Handle_ShouldPreventInfiniteEnemyTurnLoop()
+    {
+        var setup = CreateRunWithActiveCombat(_strikeSkill);
+        var validationResult = ValidResult(setup.Ally, _strikeSkill, [setup.Enemy]);
+        var (runRepo, validator, effectResolver, clock) = CreateMocks(setup.Run, validationResult);
+        var enemyResolver = new Mock<IEnemyCombatTurnResolver>();
+        enemyResolver.Setup(r => r.Resolve(setup.Combat))
+            .Returns(new EnemyCombatTurnResolution(true, setup.Enemy.Id.Value, null, [], [], CombatRuntimeDto.FromDomain(setup.Combat)));
+        var handler = new UseCombatSkillCommandHandler(
+            runRepo.Object,
+            validator.Object,
+            effectResolver.Object,
+            enemyResolver.Object,
+            clock.Object);
+
+        var act = () => handler.Handle(CreateCommand(setup, _strikeSkill, [setup.Enemy]), CancellationToken.None);
+
+        await act.Should().ThrowAsync<DomainException>()
+            .WithMessage("Automatic enemy turn resolution exceeded the safety limit.");
+    }
+
     private static UseCombatSkillCommandHandler CreateHandlerWithRealEffectResolver(
         (Run Run, Combat Combat, Combatant Ally, Combatant Enemy) setup,
         CombatantSkill skill,
@@ -397,6 +530,36 @@ public sealed class UseCombatSkillCommandHandlerTests
             runRepo.Object,
             validator.Object,
             new CombatSkillEffectResolver(),
+            CreateNoOpEnemyTurnResolver().Object,
+            clock.Object);
+    }
+
+    private static UseCombatSkillCommandHandler CreateHandlerWithRealEnemyResolver(
+        (Run Run, Combat Combat, Combatant Ally, Combatant Enemy) setup,
+        Combatant actor,
+        CombatantSkill skill,
+        IReadOnlyCollection<Combatant> targets,
+        out Mock<IRunRepository> runRepo)
+    {
+        var validationResult = ValidResult(actor, skill, targets);
+        var clock = new Mock<IClock>();
+        clock.Setup(c => c.UtcNow).Returns(DateTimeOffset.UtcNow);
+
+        runRepo = new Mock<IRunRepository>();
+        runRepo.Setup(r => r.GetByIdAsync(setup.Run.Id, It.IsAny<CancellationToken>())).ReturnsAsync(setup.Run);
+
+        var validator = new Mock<ICombatSkillActionValidator>();
+        validator.Setup(v => v.Validate(setup.Combat, actor.Id.Value, skill.Key, It.IsAny<IReadOnlyCollection<Guid>>()))
+            .Returns(validationResult);
+
+        var realActionValidator = new CombatSkillActionValidator(new CombatTargetingRuleValidator());
+        var effectResolver = new CombatSkillEffectResolver();
+
+        return new UseCombatSkillCommandHandler(
+            runRepo.Object,
+            validator.Object,
+            effectResolver,
+            new EnemyCombatTurnResolver(realActionValidator, effectResolver),
             clock.Object);
     }
 
@@ -410,7 +573,23 @@ public sealed class UseCombatSkillCommandHandlerTests
             runRepo.Object,
             validator.Object,
             effectResolver.Object,
+            CreateNoOpEnemyTurnResolver().Object,
             clock.Object);
+    }
+
+    private static Mock<IEnemyCombatTurnResolver> CreateNoOpEnemyTurnResolver()
+    {
+        var enemyTurnResolver = new Mock<IEnemyCombatTurnResolver>();
+        enemyTurnResolver.Setup(r => r.Resolve(It.IsAny<Combat>()))
+            .Returns((Combat combat) => new EnemyCombatTurnResolution(
+                WasResolved: false,
+                ActorId: combat.ActiveCombatantId?.Value,
+                SkillKey: null,
+                TargetIds: [],
+                LogEntries: [],
+                Combat: CombatRuntimeDto.FromDomain(combat)));
+
+        return enemyTurnResolver;
     }
 
     private static (Mock<IRunRepository> RunRepo, Mock<ICombatSkillActionValidator> Validator, Mock<ICombatSkillEffectResolver> EffectResolver, Mock<IClock> Clock)

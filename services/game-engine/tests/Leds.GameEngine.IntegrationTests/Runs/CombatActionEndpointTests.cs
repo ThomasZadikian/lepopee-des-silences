@@ -34,6 +34,7 @@ public sealed class CombatActionEndpointTests : RunIntegrationTestBase, IClassFi
         }
 
         var targetVitalityBefore = action.Value.Target.CurrentVitality;
+        var actorVitalityBefore = action.Value.Actor.CurrentVitality;
         var turnNumberBefore = combat.TurnNumber;
         var activeCombatantBefore = combat.ActiveCombatantId;
 
@@ -52,13 +53,19 @@ public sealed class CombatActionEndpointTests : RunIntegrationTestBase, IClassFi
         result.LogEntries.Should().Contain(e => e.Type == "ActionAccepted");
         result.LogEntries.Should().Contain(e => e.Type == "SkillUsed");
         result.LogEntries.Should().Contain(e => e.Type == "DamageApplied");
-        result.Combat.TurnNumber.Should().Be(turnNumberBefore);
-        result.Combat.ActiveCombatantId.Should().NotBe(activeCombatantBefore);
+        result.LogEntries.Should().Contain(e => e.Type == "EnemyTurnResolved");
+        result.Combat.TurnNumber.Should().Be(turnNumberBefore + 1);
+        result.Combat.ActiveCombatantId.Should().Be(activeCombatantBefore);
 
         var updatedTarget = result.Combat.Allies
             .Concat(result.Combat.Enemies)
             .Single(c => c.Id == action.Value.Target.Id);
         updatedTarget.CurrentVitality.Should().BeLessThan(targetVitalityBefore);
+
+        var updatedActor = result.Combat.Allies
+            .Concat(result.Combat.Enemies)
+            .Single(c => c.Id == action.Value.Actor.Id);
+        updatedActor.CurrentVitality.Should().BeLessThan(actorVitalityBefore);
     }
 
     [Fact]

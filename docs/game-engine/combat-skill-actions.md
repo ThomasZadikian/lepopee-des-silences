@@ -80,15 +80,44 @@ Only the current `ActiveCombatantId` can submit an action. Actions from another 
 
 The turn order is deterministic: allies first, then enemies, in creation order.
 
+## Enemy turns
+
+When a player action is resolved, the Game Engine advances the turn.
+
+If the next active combatant is an enemy:
+
+- The backend resolves the enemy action automatically.
+- The enemy chooses a skill deterministically.
+- The enemy targets the first active ally.
+- The backend continues resolving consecutive enemy turns until the next active ally or combat end.
+- A safety limit stops automatic resolution after `living combatants + 1` enemy resolutions.
+
+Enemy logs are returned in the same action response as the player logs.
+
+## Current enemy AI
+
+The current enemy AI is intentionally minimal:
+
+- Deterministic.
+- No ATB.
+- No threat calculation.
+- No advanced strategy.
+- No adaptive behavior.
+
+Skill selection is stable: offensive skills first, then `Damage`, then the first available skill ordered by key.
+
+## ATB out of scope
+
+ATB is intentionally out of scope before `0.4.0`. It will be specified separately later.
+
 ## Non-objectives
 
 This PR does not handle:
 
-- Enemy AI.
+- Advanced enemy AI.
 - Initiative.
 - Advanced initiative.
 - Individual speed.
 - Durable status effects.
-- Automatic combat completion.
 - Full run progression after combat victory.
 - Frontend behavior.

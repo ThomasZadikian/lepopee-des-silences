@@ -2,6 +2,7 @@ using Leds.GameEngine.Application.Abstractions;
 using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Application.Combats.Actions;
 using Leds.GameEngine.Application.Combats.Effects;
+using Leds.GameEngine.Application.Combats.EnemyTurns;
 using Leds.GameEngine.Application.Combats.EncounterComposition;
 using Leds.GameEngine.Application.Combats.EncounterDrafts;
 using Leds.GameEngine.Application.Combats.Ports;
@@ -76,6 +77,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<ICombatTargetingRuleValidator, CombatTargetingRuleValidator>();
         services.AddSingleton<ICombatSkillActionValidator, CombatSkillActionValidator>();
         services.AddSingleton<ICombatSkillEffectResolver, CombatSkillEffectResolver>();
+        services.AddSingleton<IEnemyCombatTurnResolver, EnemyCombatTurnResolver>();
         services.AddSingleton<IEncounterCompositionPolicy, EncounterCompositionPolicy>();
         services.AddSingleton<ICombatEncounterDraftGenerator, CombatEncounterDraftGenerator>();
 

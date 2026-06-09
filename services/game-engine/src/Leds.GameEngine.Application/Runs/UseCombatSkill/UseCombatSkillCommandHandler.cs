@@ -2,6 +2,7 @@ using Leds.GameEngine.Application.Abstractions;
 using Leds.GameEngine.Application.Combats.Actions;
 using Leds.GameEngine.Application.Combats.Dtos;
 using Leds.GameEngine.Application.Combats.Effects;
+using Leds.GameEngine.Application.Combats.EnemyTurns;
 using Leds.GameEngine.Application.Common.Exceptions;
 using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Combats;
@@ -16,17 +17,20 @@ public sealed class UseCombatSkillCommandHandler
     private readonly IRunRepository _runRepository;
     private readonly ICombatSkillActionValidator _validator;
     private readonly ICombatSkillEffectResolver _effectResolver;
+    private readonly IEnemyCombatTurnResolver _enemyTurnResolver;
     private readonly IClock _clock;
 
     public UseCombatSkillCommandHandler(
         IRunRepository runRepository,
         ICombatSkillActionValidator validator,
         ICombatSkillEffectResolver effectResolver,
+        IEnemyCombatTurnResolver enemyTurnResolver,
         IClock clock)
     {
         _runRepository = runRepository;
         _validator = validator;
         _effectResolver = effectResolver;
+        _enemyTurnResolver = enemyTurnResolver;
         _clock = clock;
     }
 
@@ -98,12 +102,14 @@ public sealed class UseCombatSkillCommandHandler
             validationResult.Targets);
 
         var progressionLogEntries = AdvanceCombat(effectResolution.Combat, now.DateTime);
+        var enemyTurnLogEntries = ResolveEnemyTurns(effectResolution.Combat);
 
         await _runRepository.UpdateAsync(run, cancellationToken);
 
         var logEntries = new[] { logEntry }
             .Concat(effectResolution.LogEntries)
             .Concat(progressionLogEntries)
+            .Concat(enemyTurnLogEntries)
             .ToArray();
 
         return new CombatSkillActionResult(
@@ -115,6 +121,39 @@ public sealed class UseCombatSkillCommandHandler
             Message: null,
             Combat: CombatRuntimeDto.FromDomain(effectResolution.Combat),
             LogEntries: logEntries);
+    }
+
+    private IReadOnlyCollection<CombatLogEntryDto> ResolveEnemyTurns(Combat combat)
+    {
+        var logEntries = new List<CombatLogEntryDto>();
+        var maxAutoTurns = combat.Allies.Concat(combat.Enemies).Count(c => !c.IsDefeated) + 1;
+        var resolvedTurnCount = 0;
+
+        while (combat.Status == CombatStatus.Active)
+        {
+            var activeCombatant = combat.GetActiveCombatant();
+
+            if (activeCombatant.Side != CombatantSide.Enemy)
+            {
+                break;
+            }
+
+            if (resolvedTurnCount >= maxAutoTurns)
+            {
+                throw new DomainException("Automatic enemy turn resolution exceeded the safety limit.");
+            }
+
+            var enemyResolution = _enemyTurnResolver.Resolve(combat);
+            logEntries.AddRange(enemyResolution.LogEntries);
+            resolvedTurnCount++;
+
+            if (!enemyResolution.WasResolved)
+            {
+                break;
+            }
+        }
+
+        return logEntries;
     }
 
     private static IReadOnlyCollection<CombatLogEntryDto> AdvanceCombat(
