@@ -46,24 +46,50 @@ La v2 vise à construire progressivement :
 
 ## État actuel
 
-Version de travail : `alpha-0.0.6`
+Versions de travail :
+
+* Backend Game Engine : `alpha-0.3.8`
+* Frontend web-client : `alpha-0.2.1`
 
 Fondations déjà posées :
 
 * structure v2 du repository ;
 * isolation du legacy v1 ;
 * Game Engine Service en Clean Architecture ;
-* Catalog Service amorcé ;
+* Catalog Service en Clean Architecture ;
 * shared-building-blocks minimal ;
-* génération de runs, rooms et nodes ;
+* génération déterministe de runs, rooms, nodes et events ;
 * contraintes de room et de node ;
-* génération déterministe par seed ;
+* progression par chemins dans une room ;
 * sélection versionnée des types de rooms et d’événements ;
 * contrats Game Engine ↔ Catalog ;
-* pipeline typé de résolution de contenu événementiel ;
-* stratégie de transition v1 vers v2 documentée.
+* Catalog HTTP Gateway opt-in côté Game Engine ;
+* définitions Catalog pour les Room Bosses ;
+* définitions Catalog pour les ennemis ;
+* définitions Catalog pour les skills ;
+* consommation des RoomBossDefinitions, EnemyDefinitions et SkillDefinitions par le Game Engine ;
+* génération de CombatEncounterDrafts ;
+* composition déterministe des rencontres ;
+* création d’un Combat runtime multi-alliés / multi-ennemis ;
+* persistance du combat actif dans la Run ;
+* endpoint de récupération du combat courant ;
+* endpoint d’action de combat basé sur les skills ;
+* validation des actions de combat ;
+* règles de ciblage des skills ;
+* résolution des effets de base : Damage, Guard, Weaken et Disrupt ;
+* progression de tour déterministe ;
+* tours ennemis automatiques simples ;
+* fin de combat avec victoire ou défaite ;
+* reprise de la progression de run après victoire ;
+* passage de la run en échec après défaite ;
+* documentation de transition v1 vers v2 ;
+* documentation des fondations backend, du Catalog, du combat et des contrats Game Engine ↔ Catalog.
 
-La prochaine cible majeure est `alpha-0.1.0`, qui correspondra à une première boucle backend jouable de bout en bout.
+Le backend est actuellement stabilisé jusqu’à `alpha-0.3.8`. La prochaine étape backend prévue est `alpha-0.3.9`, dédiée à la stabilisation du flow complet de combat et des contrats API avant reprise du chantier frontend.
+
+Le frontend est actuellement en `alpha-0.2.1`. Une fois le backend combat stabilisé, la prochaine phase consistera à aligner le frontend sur les nouveaux contrats de combat, puis à construire l’interface de combat jouable : scène de combat, sélection de skills, ciblage, feedbacks visuels, animations d’attaque, animations de dégâts, états de fin de combat et reprise de la run.
+
+La prochaine cible majeure globale est `alpha-0.4.0`, qui correspondra à une première boucle de combat jouable de bout en bout côté backend et frontend.
 
 ---
 
