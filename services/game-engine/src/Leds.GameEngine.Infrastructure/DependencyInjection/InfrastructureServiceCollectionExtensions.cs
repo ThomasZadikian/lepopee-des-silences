@@ -1,5 +1,6 @@
 using Leds.GameEngine.Application.Abstractions;
 using Leds.GameEngine.Application.Catalog.Ports;
+using Leds.GameEngine.Application.Combats.Actions;
 using Leds.GameEngine.Application.Combats.EncounterComposition;
 using Leds.GameEngine.Application.Combats.EncounterDrafts;
 using Leds.GameEngine.Application.Combats.Ports;
@@ -11,6 +12,7 @@ using Leds.GameEngine.Domain.Markov;
 using Leds.GameEngine.Infrastructure.Catalog;
 using Leds.GameEngine.Infrastructure.Clock;
 using Leds.GameEngine.Infrastructure.Combats;
+using Leds.GameEngine.Infrastructure.Combats.Actions;
 using Leds.GameEngine.Infrastructure.Combats.EncounterComposition;
 using Leds.GameEngine.Infrastructure.Combats.EncounterDrafts;
 using Leds.GameEngine.Infrastructure.Events.Resolution;
@@ -68,6 +70,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<ICombatInstanceRepository, InMemoryCombatInstanceRepository>();
         services.AddSingleton<ICombatInstanceFactory, CombatInstanceFactory>();
 
+        services.AddSingleton<ICombatSkillActionValidator, CombatSkillActionValidator>();
         services.AddSingleton<IEncounterCompositionPolicy, EncounterCompositionPolicy>();
         services.AddSingleton<ICombatEncounterDraftGenerator, CombatEncounterDraftGenerator>();
 

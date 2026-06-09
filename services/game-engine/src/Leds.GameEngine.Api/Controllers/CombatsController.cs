@@ -1,7 +1,9 @@
 using Leds.GameEngine.Application.Abstractions;
+using Leds.GameEngine.Application.Combats.Actions;
 using Leds.GameEngine.Application.Combats.Dtos;
 using Leds.GameEngine.Application.Combats.Ports;
 using Leds.GameEngine.Application.Combats.SubmitCombatAction;
+using Leds.GameEngine.Application.Runs.UseCombatSkill;
 using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Runs;
 using MediatR;
@@ -74,7 +76,34 @@ public sealed class CombatsController : ControllerBase
 
         return Ok(response);
     }
+
+    [HttpPost("{combatId:guid}/skill-actions")]
+    [ProducesResponseType(typeof(CombatSkillActionResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<CombatSkillActionResult>> UseCombatSkill(
+        Guid runId,
+        Guid combatId,
+        [FromBody] UseCombatSkillRequest request,
+        CancellationToken cancellationToken)
+    {
+        var command = new UseCombatSkillCommand(
+            RunId: runId,
+            CombatId: combatId,
+            ActorId: request.ActorId,
+            SkillKey: request.SkillKey,
+            TargetIds: request.TargetIds);
+
+        var response = await _sender.Send(command, cancellationToken);
+
+        return Ok(response);
+    }
 }
+
+public sealed record UseCombatSkillRequest(
+    Guid ActorId,
+    string SkillKey,
+    IReadOnlyCollection<Guid> TargetIds);
 
 public sealed record SubmitCombatActionRequest(
     Guid ActorId,
