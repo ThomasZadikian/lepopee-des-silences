@@ -4,6 +4,7 @@ using Leds.Catalog.Application.EventTemplates.Ports;
 using Leds.Catalog.Application.Items.Ports;
 using Leds.Catalog.Application.PalaceLaws.Ports;
 using Leds.Catalog.Application.RoomBosses.Ports;
+using Leds.Catalog.Application.Skills.Definitions.Ports;
 using Leds.Catalog.Application.Skills.Ports;
 using Leds.Catalog.Infrastructure.ReadStores;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,6 +23,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IEventTemplateReadStore, InMemoryEventTemplateReadStore>();
         services.AddSingleton<IRoomBossDefinitionReadStore, InMemoryRoomBossDefinitionReadStore>();
         services.AddSingleton<IEnemyDefinitionReadStore, InMemoryEnemyDefinitionReadStore>();
+        services.AddSingleton<ISkillDefinitionReadStore, InMemorySkillDefinitionReadStore>();
 
         return services;
     }
