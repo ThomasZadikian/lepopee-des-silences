@@ -53,7 +53,7 @@ public sealed class CombatActionEndpointTests : RunIntegrationTestBase, IClassFi
         result.LogEntries.Should().Contain(e => e.Type == "SkillUsed");
         result.LogEntries.Should().Contain(e => e.Type == "DamageApplied");
         result.Combat.TurnNumber.Should().Be(turnNumberBefore);
-        result.Combat.ActiveCombatantId.Should().Be(activeCombatantBefore);
+        result.Combat.ActiveCombatantId.Should().NotBe(activeCombatantBefore);
 
         var updatedTarget = result.Combat.Allies
             .Concat(result.Combat.Enemies)
@@ -87,6 +87,40 @@ public sealed class CombatActionEndpointTests : RunIntegrationTestBase, IClassFi
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest, because: body);
         body.Should().Contain("opposite side");
+    }
+
+    [Fact]
+    public async Task UseCombatSkill_ShouldReturnBadRequest_WhenActorIsNotActiveCombatant()
+    {
+        var setup = await StartActiveRuntimeCombatAsync();
+
+        if (setup is null)
+        {
+            return;
+        }
+
+        var (runId, combat) = setup.Value;
+        var activeCombatant = combat.Allies.Concat(combat.Enemies)
+            .Single(c => c.Id == combat.ActiveCombatantId);
+        var actor = combat.Allies.Concat(combat.Enemies)
+            .FirstOrDefault(c => c.Id != activeCombatant.Id && c.Skills.Any(s => s.TargetingType == "SingleEnemy"));
+
+        if (actor is null)
+        {
+            return;
+        }
+
+        var skill = actor.Skills.First(s => s.TargetingType == "SingleEnemy");
+        var target = combat.Allies.Concat(combat.Enemies).First(c => c.Side != actor.Side);
+
+        var response = await Client.PostAsJsonAsync(
+            $"/api/v2/runs/{runId}/combats/{combat.Id.Value}/skill-actions",
+            new { ActorId = actor.Id.Value, SkillKey = skill.Key, TargetIds = new[] { target.Id.Value } });
+
+        var body = await response.Content.ReadAsStringAsync();
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest, because: body);
+        body.Should().Contain("It is not this combatant's turn.");
     }
 
     private async Task<(Guid RunId, CombatRuntimeDto Combat)?> StartActiveRuntimeCombatAsync()

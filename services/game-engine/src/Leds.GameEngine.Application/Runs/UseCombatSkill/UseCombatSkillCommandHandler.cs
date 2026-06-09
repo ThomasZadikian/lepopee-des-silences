@@ -65,6 +65,8 @@ public sealed class UseCombatSkillCommandHandler
             throw new DomainException("Combat does not match the active run combat.");
         }
 
+        run.ActiveCombat.EnsureActorCanAct(request.ActorId);
+
         var validationResult = _validator.Validate(
             run.ActiveCombat,
             request.ActorId,
@@ -95,10 +97,13 @@ public sealed class UseCombatSkillCommandHandler
             validationResult.Skill!,
             validationResult.Targets);
 
+        var progressionLogEntries = AdvanceCombat(effectResolution.Combat, now.DateTime);
+
         await _runRepository.UpdateAsync(run, cancellationToken);
 
         var logEntries = new[] { logEntry }
             .Concat(effectResolution.LogEntries)
+            .Concat(progressionLogEntries)
             .ToArray();
 
         return new CombatSkillActionResult(
@@ -110,5 +115,73 @@ public sealed class UseCombatSkillCommandHandler
             Message: null,
             Combat: CombatRuntimeDto.FromDomain(effectResolution.Combat),
             LogEntries: logEntries);
+    }
+
+    private static IReadOnlyCollection<CombatLogEntryDto> AdvanceCombat(
+        Combat combat,
+        DateTime occurredAtUtc)
+    {
+        combat.CompleteIfAllEnemiesDefeated();
+        combat.FailIfAllAlliesDefeated();
+
+        if (combat.Status == CombatStatus.Completed)
+        {
+            return
+            [
+                CreateSystemLog(occurredAtUtc, "CombatCompleted", "Combat completed.", combat)
+            ];
+        }
+
+        if (combat.Status == CombatStatus.Failed)
+        {
+            return
+            [
+                CreateSystemLog(occurredAtUtc, "CombatFailed", "Combat failed.", combat)
+            ];
+        }
+
+        combat.AdvanceTurn();
+
+        if (combat.Status == CombatStatus.Completed)
+        {
+            return
+            [
+                CreateSystemLog(occurredAtUtc, "CombatCompleted", "Combat completed.", combat)
+            ];
+        }
+
+        if (combat.Status == CombatStatus.Failed)
+        {
+            return
+            [
+                CreateSystemLog(occurredAtUtc, "CombatFailed", "Combat failed.", combat)
+            ];
+        }
+
+        var activeCombatant = combat.GetActiveCombatant();
+
+        return
+        [
+            CreateSystemLog(
+                occurredAtUtc,
+                "TurnAdvanced",
+                $"Turn advanced to {activeCombatant.DisplayName}.",
+                combat)
+        ];
+    }
+
+    private static CombatLogEntryDto CreateSystemLog(
+        DateTime occurredAtUtc,
+        string type,
+        string message,
+        Combat combat)
+    {
+        return new CombatLogEntryDto(
+            OccurredAtUtc: occurredAtUtc,
+            Type: type,
+            Message: message,
+            ActorId: combat.ActiveCombatantId?.Value,
+            SkillKey: null,
+            TargetIds: []);
     }
 }

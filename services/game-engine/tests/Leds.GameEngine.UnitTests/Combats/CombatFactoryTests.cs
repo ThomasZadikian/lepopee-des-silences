@@ -136,6 +136,20 @@ public sealed class CombatFactoryTests
     }
 
     [Fact]
+    public void CreateFromDraft_ShouldGiveDefaultSkillsToAllies()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft();
+
+        var combat = factory.CreateFromDraft(draft);
+
+        var ally = combat.Allies.Single();
+        ally.Skills.Select(s => s.Key).Should()
+            .Contain("skill.basic.strike")
+            .And.Contain("skill.basic.guard");
+    }
+
+    [Fact]
     public void CreateFromDraft_ShouldSetCombatActive()
     {
         var factory = new CombatFactory();

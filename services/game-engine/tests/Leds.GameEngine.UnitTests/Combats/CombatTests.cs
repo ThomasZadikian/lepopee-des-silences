@@ -188,4 +188,134 @@ public sealed class CombatTests
 
         act.Should().Throw<DomainException>().WithMessage("Only an active combat can be failed.");
     }
+
+    [Fact]
+    public void EnsureActorCanAct_ShouldSucceed_WhenActorIsActiveCombatant()
+    {
+        var combat = CreateSut();
+        var actor = combat.Allies.Single();
+
+        var act = () => combat.EnsureActorCanAct(actor.Id.Value);
+
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void EnsureActorCanAct_ShouldThrow_WhenActorIsNotActiveCombatant()
+    {
+        var combat = CreateSut();
+        var enemy = combat.Enemies.Single();
+
+        var act = () => combat.EnsureActorCanAct(enemy.Id.Value);
+
+        act.Should().Throw<DomainException>().WithMessage("It is not this combatant's turn.");
+    }
+
+    [Fact]
+    public void EnsureActorCanAct_ShouldThrow_WhenCombatIsNotActive()
+    {
+        var combat = CreateSut();
+        var actor = combat.Allies.Single();
+        combat.MarkCompleted();
+
+        var act = () => combat.EnsureActorCanAct(actor.Id.Value);
+
+        act.Should().Throw<DomainException>().WithMessage("Combat is not active.");
+    }
+
+    [Fact]
+    public void AdvanceTurn_ShouldMoveToNextActiveCombatant()
+    {
+        var combat = CreateSut();
+        var enemy = combat.Enemies.Single();
+
+        combat.AdvanceTurn();
+
+        combat.ActiveCombatantId.Should().Be(enemy.Id);
+        combat.TurnNumber.Should().Be(1);
+    }
+
+    [Fact]
+    public void AdvanceTurn_ShouldSkipDefeatedCombatants()
+    {
+        var allies = new[] { Combatant.CreateAlly("player.0", "Hero", "Fighter", 100) };
+        var enemies = new[]
+        {
+            Combatant.CreateEnemy("enemy.0", "Enemy0", "Guard", 80),
+            Combatant.CreateEnemy("enemy.1", "Enemy1", "Guard", 80)
+        };
+        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), allies, enemies);
+        enemies[0].MarkDefeated();
+
+        combat.AdvanceTurn();
+
+        combat.ActiveCombatantId.Should().Be(enemies[1].Id);
+    }
+
+    [Fact]
+    public void AdvanceTurn_ShouldIncrementTurnNumber_WhenReturningToFirstCombatant()
+    {
+        var combat = CreateSut();
+
+        combat.AdvanceTurn();
+        combat.AdvanceTurn();
+
+        combat.ActiveCombatantId.Should().Be(combat.Allies.Single().Id);
+        combat.TurnNumber.Should().Be(2);
+    }
+
+    [Fact]
+    public void AdvanceTurn_ShouldCompleteCombat_WhenAllEnemiesAreDefeated()
+    {
+        var combat = CreateSut();
+        combat.Enemies.Single().MarkDefeated();
+
+        combat.AdvanceTurn();
+
+        combat.Status.Should().Be(CombatStatus.Completed);
+        combat.ActiveCombatantId.Should().BeNull();
+    }
+
+    [Fact]
+    public void AdvanceTurn_ShouldFailCombat_WhenAllAlliesAreDefeated()
+    {
+        var combat = CreateSut();
+        combat.Allies.Single().MarkDefeated();
+
+        combat.AdvanceTurn();
+
+        combat.Status.Should().Be(CombatStatus.Failed);
+        combat.ActiveCombatantId.Should().BeNull();
+    }
+
+    [Fact]
+    public void AdvanceTurn_ShouldNotAdvance_WhenCombatIsCompleted()
+    {
+        var combat = CreateSut();
+        combat.MarkCompleted();
+
+        combat.AdvanceTurn();
+
+        combat.Status.Should().Be(CombatStatus.Completed);
+        combat.ActiveCombatantId.Should().BeNull();
+        combat.TurnNumber.Should().Be(1);
+    }
+
+    [Fact]
+    public void AdvanceTurn_ShouldBeDeterministic()
+    {
+        var combat = CreateSut(allyCount: 2, enemyCount: 2);
+        var expectedOrder = combat.Allies.Concat(combat.Enemies).Select(c => c.Id).ToArray();
+
+        combat.ActiveCombatantId.Should().Be(expectedOrder[0]);
+        combat.AdvanceTurn();
+        combat.ActiveCombatantId.Should().Be(expectedOrder[1]);
+        combat.AdvanceTurn();
+        combat.ActiveCombatantId.Should().Be(expectedOrder[2]);
+        combat.AdvanceTurn();
+        combat.ActiveCombatantId.Should().Be(expectedOrder[3]);
+        combat.AdvanceTurn();
+        combat.ActiveCombatantId.Should().Be(expectedOrder[0]);
+        combat.TurnNumber.Should().Be(2);
+    }
 }

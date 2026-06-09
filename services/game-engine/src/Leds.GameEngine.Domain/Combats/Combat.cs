@@ -42,6 +42,10 @@ public sealed class Combat
     public int TurnNumber { get; private set; }
     public DateTime CreatedAtUtc { get; }
 
+    public bool HasLivingAllies => Allies.Any(a => !a.IsDefeated);
+
+    public bool HasLivingEnemies => Enemies.Any(e => !e.IsDefeated);
+
     public static Combat Create(
         CombatId id,
         RunId runId,
@@ -84,6 +88,7 @@ public sealed class Combat
             throw new DomainException("Only an active combat can be completed.");
 
         Status = CombatStatus.Completed;
+        ActiveCombatantId = null;
     }
 
     public void MarkFailed()
@@ -92,5 +97,112 @@ public sealed class Combat
             throw new DomainException("Only an active combat can be failed.");
 
         Status = CombatStatus.Failed;
+        ActiveCombatantId = null;
+    }
+
+    public Combatant GetActiveCombatant()
+    {
+        if (Status != CombatStatus.Active)
+            throw new DomainException("Combat is not active.");
+
+        if (ActiveCombatantId is null)
+            throw new DomainException("Combat has no active combatant.");
+
+        return GetTurnOrder()
+            .FirstOrDefault(c => c.Id == ActiveCombatantId)
+            ?? throw new DomainException("Active combatant does not exist in this combat.");
+    }
+
+    public void EnsureActorCanAct(Guid actorId)
+    {
+        if (Status != CombatStatus.Active)
+            throw new DomainException("Combat is not active.");
+
+        var actor = GetTurnOrder()
+            .FirstOrDefault(c => c.Id.Value == actorId)
+            ?? throw new DomainException("Actor does not exist in this combat.");
+
+        if (actor.IsDefeated)
+            throw new DomainException("Defeated combatants cannot act.");
+
+        if (ActiveCombatantId is null || actor.Id != ActiveCombatantId)
+            throw new DomainException("It is not this combatant's turn.");
+    }
+
+    public void CompleteIfAllEnemiesDefeated()
+    {
+        if (Status == CombatStatus.Active && !HasLivingEnemies)
+        {
+            Status = CombatStatus.Completed;
+            ActiveCombatantId = null;
+        }
+    }
+
+    public void FailIfAllAlliesDefeated()
+    {
+        if (Status == CombatStatus.Active && !HasLivingAllies)
+        {
+            Status = CombatStatus.Failed;
+            ActiveCombatantId = null;
+        }
+    }
+
+    public void AdvanceTurn()
+    {
+        CompleteIfAllEnemiesDefeated();
+        FailIfAllAlliesDefeated();
+
+        if (Status != CombatStatus.Active)
+        {
+            return;
+        }
+
+        var livingCombatants = GetTurnOrder()
+            .Where(c => !c.IsDefeated)
+            .ToArray();
+
+        if (livingCombatants.Length == 0)
+        {
+            Status = CombatStatus.Failed;
+            ActiveCombatantId = null;
+            return;
+        }
+
+        var currentIndex = Array.FindIndex(livingCombatants, c => c.Id == ActiveCombatantId);
+        var nextIndex = currentIndex < 0 ? 0 : (currentIndex + 1) % livingCombatants.Length;
+
+        ActiveCombatantId = livingCombatants[nextIndex].Id;
+
+        if (currentIndex >= 0 && nextIndex <= currentIndex)
+        {
+            TurnNumber++;
+        }
+    }
+
+    public Combatant? GetNextActiveCombatant()
+    {
+        if (Status != CombatStatus.Active)
+        {
+            return null;
+        }
+
+        var livingCombatants = GetTurnOrder()
+            .Where(c => !c.IsDefeated)
+            .ToArray();
+
+        if (livingCombatants.Length == 0)
+        {
+            return null;
+        }
+
+        var currentIndex = Array.FindIndex(livingCombatants, c => c.Id == ActiveCombatantId);
+        var nextIndex = currentIndex < 0 ? 0 : (currentIndex + 1) % livingCombatants.Length;
+
+        return livingCombatants[nextIndex];
+    }
+
+    private Combatant[] GetTurnOrder()
+    {
+        return Allies.Concat(Enemies).ToArray();
     }
 }

@@ -66,13 +66,29 @@ Unsupported targeting types return `Unsupported targeting type: {targetingType}`
 
 `ManaCost` and `ChargeCost` are defined on skill definitions, but they are not consumed in this PR. Runtime resource costs will be enforced later.
 
+## Turn progression
+
+After a valid action:
+
+- The skill effect is applied.
+- The combat checks victory or defeat.
+- If the combat continues, the turn advances to the next active combatant.
+- Defeated combatants are skipped.
+- `TurnNumber` increases when the cycle returns to the first active combatant.
+
+Only the current `ActiveCombatantId` can submit an action. Actions from another combatant are rejected with `It is not this combatant's turn.`
+
+The turn order is deterministic: allies first, then enemies, in creation order.
+
 ## Non-objectives
 
 This PR does not handle:
 
-- Turn progression.
 - Enemy AI.
 - Initiative.
+- Advanced initiative.
+- Individual speed.
 - Durable status effects.
 - Automatic combat completion.
+- Full run progression after combat victory.
 - Frontend behavior.

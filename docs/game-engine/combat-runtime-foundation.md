@@ -87,6 +87,7 @@ Le système supporte :
 - transforme les ennemis du draft en `Combatant` côté `Enemy` ;
 - copie les `CombatEncounterDraftSkill` en `CombatantSkill` ;
 - allié : `MaxVitality = 100`, `CurrentVitality = 100`, `Guard = Mana = Charge = 0` ;
+- allié : skills runtime de base `skill.basic.strike` et `skill.basic.guard` ;
 - ennemi : `MaxVitality = 40 + BaseDifficulty * 10`, `CurrentVitality = MaxVitality` ;
 - `Status = CombatStatus.Active`, `TurnNumber = 1` ;
 - `ActiveCombatantId` = premier allié (déterministe).
@@ -121,9 +122,21 @@ Dans `ResolveCurrentEventCommandHandler`, quand un `CombatEncounterDraft` est g�
 La création du combat est déterministe. Aucun `Random` non seedé n'est utilisé.
 `ActiveCombatantId` = premier allié dans l'ordre du draft.
 
+## Turn Progression
+
+- `ActiveCombatantId` identifie le seul combattant autorisé à agir.
+- `TurnNumber` commence à 1.
+- L'ordre de tour est déterministe : alliés puis ennemis, dans l'ordre de création.
+- Les combattants `Defeated` sont ignorés pendant l'avancement.
+- Quand la rotation revient au premier combattant actif, `TurnNumber` est incrémenté.
+- Si tous les ennemis sont `Defeated`, `Status` passe à `Completed` et `ActiveCombatantId` devient `null`.
+- Si tous les alliés sont `Defeated`, `Status` passe à `Failed` et `ActiveCombatantId` devient `null`.
+
 ## Invariants
 
 - `Combat.Create` refuse : `allies` vide, `enemies` vide, combatant defeated
+- `Combat.EnsureActorCanAct` refuse un acteur qui n'est pas le combattant actif
+- `Combat.AdvanceTurn` ne fait rien si le combat est déjà terminé
 - `Combatant.Create` refuse : `sourceKey` vide, `displayName` vide, `maxVitality <= 0`, `currentVitality` hors [0, maxVitality], `guard/mana/charge < 0`
 - `CombatantSkill.Create` refuse : `key` vide, `displayName` vide, `basePower < 0`, `manaCost < 0`, `chargeCost < 0`
 

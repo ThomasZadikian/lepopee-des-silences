@@ -12,6 +12,28 @@ public sealed class CombatFactory : ICombatFactory
     private const int EnemyVitalityBase = 40;
     private const int VitalityPerDifficulty = 10;
 
+    private static readonly IReadOnlyCollection<CombatantSkill> DefaultAllySkills =
+    [
+        CombatantSkill.Create(
+            key: "skill.basic.strike",
+            displayName: "Frappe",
+            skillType: "Damage",
+            targetingType: "SingleEnemy",
+            effectType: "Damage",
+            manaCost: 0,
+            chargeCost: 0,
+            basePower: 10),
+        CombatantSkill.Create(
+            key: "skill.basic.guard",
+            displayName: "Garde",
+            skillType: "Defense",
+            targetingType: "Self",
+            effectType: "Guard",
+            manaCost: 0,
+            chargeCost: 0,
+            basePower: 5)
+    ];
+
     public Combat CreateFromDraft(CombatEncounterDraft draft)
     {
         var allies = draft.Allies
@@ -19,7 +41,8 @@ public sealed class CombatFactory : ICombatFactory
                 sourceKey: ally.AllyKey,
                 displayName: ally.DisplayName,
                 archetype: ally.Role,
-                maxVitality: DefaultAllyVitality))
+                maxVitality: DefaultAllyVitality,
+                skills: DefaultAllySkills))
             .ToArray();
 
         var enemies = draft.Enemies
