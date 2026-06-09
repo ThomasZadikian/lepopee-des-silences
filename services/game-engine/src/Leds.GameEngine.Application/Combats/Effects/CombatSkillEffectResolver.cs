@@ -1,0 +1,171 @@
+using Leds.GameEngine.Application.Combats.Actions;
+using Leds.GameEngine.Domain.Combats;
+using Leds.GameEngine.Domain.Common;
+
+namespace Leds.GameEngine.Application.Combats.Effects;
+
+public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
+{
+    public CombatSkillEffectResolution Resolve(
+        Combat combat,
+        Combatant actor,
+        CombatantSkill skill,
+        IReadOnlyCollection<Combatant> targets)
+    {
+        if (targets.Count == 0)
+        {
+            throw new DomainException("At least one target is required to resolve a skill effect.");
+        }
+
+        var logEntries = new List<CombatLogEntryDto>();
+
+        switch (ResolveEffectType(skill))
+        {
+            case "Damage":
+                ResolveDamage(actor, skill, targets, logEntries);
+                break;
+            case "Guard":
+                ResolveGuard(actor, skill, targets, logEntries);
+                break;
+            case "Weaken":
+                ResolveTextEffect(actor, skill, targets, "EffectApplied", "weakens", logEntries);
+                break;
+            case "Disrupt":
+                ResolveTextEffect(actor, skill, targets, "EffectApplied", "disrupts", logEntries);
+                break;
+            default:
+                throw new DomainException($"Unsupported skill effect type: {skill.EffectType}");
+        }
+
+        return new CombatSkillEffectResolution(true, logEntries, combat);
+    }
+
+    private static void ResolveDamage(
+        Combatant actor,
+        CombatantSkill skill,
+        IReadOnlyCollection<Combatant> targets,
+        List<CombatLogEntryDto> logEntries)
+    {
+        foreach (var target in targets)
+        {
+            var guardBefore = target.Guard;
+            var vitalityBefore = target.CurrentVitality;
+
+            target.ApplyDamage(skill.BasePower);
+
+            var absorbed = guardBefore - target.Guard;
+            var vitalityDamage = vitalityBefore - target.CurrentVitality;
+
+            logEntries.Add(CreateLog(
+                "SkillUsed",
+                $"{actor.DisplayName} uses {skill.DisplayName} on {target.DisplayName} for {skill.BasePower} damage.",
+                actor,
+                skill,
+                [target]));
+
+            if (absorbed > 0)
+            {
+                logEntries.Add(CreateLog(
+                    "DamageApplied",
+                    $"{target.DisplayName}'s guard absorbs {absorbed} damage.",
+                    actor,
+                    skill,
+                    [target]));
+            }
+
+            if (vitalityDamage > 0)
+            {
+                logEntries.Add(CreateLog(
+                    "DamageApplied",
+                    $"{target.DisplayName} takes {vitalityDamage} damage.",
+                    actor,
+                    skill,
+                    [target]));
+            }
+
+            if (target.IsDefeated)
+            {
+                logEntries.Add(CreateLog(
+                    "TargetDefeated",
+                    $"{target.DisplayName} is defeated.",
+                    actor,
+                    skill,
+                    [target]));
+            }
+        }
+    }
+
+    private static void ResolveGuard(
+        Combatant actor,
+        CombatantSkill skill,
+        IReadOnlyCollection<Combatant> targets,
+        List<CombatLogEntryDto> logEntries)
+    {
+        foreach (var target in targets)
+        {
+            target.GainGuard(skill.BasePower);
+
+            logEntries.Add(CreateLog(
+                "GuardGained",
+                $"{target.DisplayName} gains {skill.BasePower} guard.",
+                actor,
+                skill,
+                [target]));
+        }
+    }
+
+    private static void ResolveTextEffect(
+        Combatant actor,
+        CombatantSkill skill,
+        IReadOnlyCollection<Combatant> targets,
+        string type,
+        string verb,
+        List<CombatLogEntryDto> logEntries)
+    {
+        foreach (var target in targets)
+        {
+            logEntries.Add(CreateLog(
+                type,
+                $"{actor.DisplayName} {verb} {target.DisplayName}.",
+                actor,
+                skill,
+                [target]));
+        }
+    }
+
+    private static string ResolveEffectType(CombatantSkill skill)
+    {
+        if (string.Equals(skill.Key, "skill.basic.weaken", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Weaken";
+        }
+
+        if (string.Equals(skill.Key, "skill.basic.disrupt", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Disrupt";
+        }
+
+        if (string.Equals(skill.Key, "skill.basic.guard", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Guard";
+        }
+
+        return skill.EffectType;
+    }
+
+    private static CombatLogEntryDto CreateLog(
+        string type,
+        string message,
+        Combatant actor,
+        CombatantSkill skill,
+        IReadOnlyCollection<Combatant> targets)
+    {
+        return new CombatLogEntryDto(
+            OccurredAtUtc: DateTime.UtcNow,
+            Type: type,
+            Message: message,
+            ActorId: actor.Id.Value,
+            SkillKey: skill.Key,
+            TargetIds: targets.Select(t => t.Id.Value).ToArray());
+    }
+}

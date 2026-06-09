@@ -149,4 +149,45 @@ public sealed class Combatant
         Status = CombatantStatus.Defeated;
         CurrentVitality = 0;
     }
+
+    public void ApplyDamage(int amount)
+    {
+        if (amount <= 0)
+            throw new DomainException("Damage amount must be greater than zero.");
+
+        if (IsDefeated)
+            throw new DomainException("Defeated combatants cannot receive damage.");
+
+        var remainingDamage = amount;
+
+        if (Guard > 0)
+        {
+            var absorbed = Math.Min(Guard, remainingDamage);
+            Guard -= absorbed;
+            remainingDamage -= absorbed;
+        }
+
+        if (remainingDamage <= 0)
+        {
+            return;
+        }
+
+        CurrentVitality = Math.Max(0, CurrentVitality - remainingDamage);
+
+        if (CurrentVitality == 0)
+        {
+            Status = CombatantStatus.Defeated;
+        }
+    }
+
+    public void GainGuard(int amount)
+    {
+        if (amount <= 0)
+            throw new DomainException("Guard amount must be greater than zero.");
+
+        if (IsDefeated)
+            throw new DomainException("Defeated combatants cannot gain guard.");
+
+        Guard += amount;
+    }
 }

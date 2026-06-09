@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Leds.GameEngine.Application.Abstractions;
 using Leds.GameEngine.Application.Combats.Actions;
+using Leds.GameEngine.Application.Combats.Effects;
 using Leds.GameEngine.Application.Common.Exceptions;
 using Leds.GameEngine.Application.Runs.UseCombatSkill;
 using Leds.GameEngine.Domain.Combats;
@@ -15,95 +16,19 @@ namespace Leds.GameEngine.UnitTests.Runs.UseCombatSkill;
 
 public sealed class UseCombatSkillCommandHandlerTests
 {
-    private static readonly CombatantSkill StrikeSkill = CombatantSkill.Create(
-        key: "skill.basic.strike",
-        displayName: "Frappe",
-        skillType: "Damage",
-        targetingType: "SingleEnemy",
-        effectType: "Damage",
-        manaCost: 5,
-        chargeCost: 0,
-        basePower: 10);
-
-    private static readonly Combatant Ally = Combatant.CreateAlly(
-        sourceKey: "player.self",
-        displayName: "Hero",
-        archetype: "Fighter",
-        maxVitality: 100,
-        skills: [StrikeSkill]);
-
-    private static readonly Combatant Enemy = Combatant.CreateEnemy(
-        sourceKey: "enemy.sentinel",
-        displayName: "Sentinel",
-        archetype: "Guard",
-        maxVitality: 80,
-        skills: []);
-
-    private static Run CreateRunWithActiveCombat()
-    {
-        var run = TestGameEngineFactory.CreateRun(NodeEventType.Combat);
-        var runWithNode = TestGameEngineFactory.CreateRunWithSelectedTargetNode(NodeEventType.Combat);
-        var combat = Combat.Create(
-            CombatId.New(),
-            runWithNode.Run.Id,
-            RoomId.New(),
-            NodeId.New(),
-            allies: [Ally],
-            enemies: [Enemy]);
-        runWithNode.Run.StartCombat(combat);
-        return runWithNode.Run;
-    }
-
-    private static (Mock<IRunRepository> RunRepo, Mock<ICombatSkillActionValidator> Validator, Mock<IClock> Clock)
-        CreateMocks(Run run, CombatSkillActionValidationResult validationResult)
-    {
-        var runRepo = new Mock<IRunRepository>();
-        runRepo.Setup(r => r.GetByIdAsync(run.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(run);
-
-        var validator = new Mock<ICombatSkillActionValidator>();
-        validator
-            .Setup(v => v.Validate(
-                It.IsAny<Combat>(),
-                It.IsAny<Guid>(),
-                It.IsAny<string>(),
-                It.IsAny<IReadOnlyCollection<Guid>>()))
-            .Returns(validationResult);
-
-        var clock = new Mock<IClock>();
-        clock.Setup(c => c.UtcNow).Returns(DateTimeOffset.UtcNow);
-
-        return (runRepo, validator, clock);
-    }
+    private readonly CombatantSkill _strikeSkill = CreateSkill("skill.basic.strike", "Damage", "SingleEnemy", 10);
+    private readonly CombatantSkill _guardSkill = CreateSkill("skill.basic.guard", "Guard", "Self", 7);
 
     [Fact]
     public async Task Handle_ShouldReturnResult_WhenActionIsValid()
     {
-        var run = CreateRunWithActiveCombat();
-        var combat = run.ActiveCombat!;
+        var setup = CreateRunWithActiveCombat(_strikeSkill);
+        var validationResult = ValidResult(setup.Ally, _strikeSkill, [setup.Enemy]);
+        var (runRepo, validator, effectResolver, clock) = CreateMocks(setup.Run, validationResult);
+        var handler = CreateHandler(runRepo, validator, effectResolver, clock);
 
-        var validationResult = new CombatSkillActionValidationResult(
-            IsValid: true,
-            ErrorMessage: null,
-            Actor: Ally,
-            Skill: StrikeSkill,
-            Targets: [Enemy]);
+        var result = await handler.Handle(CreateCommand(setup, _strikeSkill, [setup.Enemy]), CancellationToken.None);
 
-        var (runRepo, validator, clock) = CreateMocks(run, validationResult);
-
-        var handler = new UseCombatSkillCommandHandler(
-            runRepo.Object, validator.Object, clock.Object);
-
-        var result = await handler.Handle(
-            new UseCombatSkillCommand(
-                RunId: run.Id.Value,
-                CombatId: combat.Id.Value,
-                ActorId: Ally.Id.Value,
-                SkillKey: "skill.basic.strike",
-                TargetIds: [Enemy.Id.Value]),
-            CancellationToken.None);
-
-        result.Should().NotBeNull();
         result.Accepted.Should().BeTrue();
         result.Combat.Should().NotBeNull();
     }
@@ -111,25 +36,14 @@ public sealed class UseCombatSkillCommandHandlerTests
     [Fact]
     public async Task Handle_ShouldLoadRun()
     {
-        var run = CreateRunWithActiveCombat();
-        var combat = run.ActiveCombat!;
+        var setup = CreateRunWithActiveCombat(_strikeSkill);
+        var validationResult = ValidResult(setup.Ally, _strikeSkill, [setup.Enemy]);
+        var (runRepo, validator, effectResolver, clock) = CreateMocks(setup.Run, validationResult);
+        var handler = CreateHandler(runRepo, validator, effectResolver, clock);
 
-        var (runRepo, validator, clock) = CreateMocks(run,
-            new CombatSkillActionValidationResult(true, null, Ally, StrikeSkill, [Enemy]));
+        await handler.Handle(CreateCommand(setup, _strikeSkill, [setup.Enemy]), CancellationToken.None);
 
-        var handler = new UseCombatSkillCommandHandler(
-            runRepo.Object, validator.Object, clock.Object);
-
-        await handler.Handle(
-            new UseCombatSkillCommand(
-                RunId: run.Id.Value,
-                CombatId: combat.Id.Value,
-                ActorId: Ally.Id.Value,
-                SkillKey: "skill.basic.strike",
-                TargetIds: [Enemy.Id.Value]),
-            CancellationToken.None);
-
-        runRepo.Verify(r => r.GetByIdAsync(run.Id, It.IsAny<CancellationToken>()), Times.Once);
+        runRepo.Verify(r => r.GetByIdAsync(setup.Run.Id, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -138,328 +52,302 @@ public sealed class UseCombatSkillCommandHandlerTests
         var runRepo = new Mock<IRunRepository>();
         runRepo.Setup(r => r.GetByIdAsync(It.IsAny<RunId>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Run?)null);
-
         var handler = new UseCombatSkillCommandHandler(
             runRepo.Object,
             new Mock<ICombatSkillActionValidator>().Object,
+            new Mock<ICombatSkillEffectResolver>().Object,
             new Mock<IClock>().Object);
 
         var act = () => handler.Handle(
-            new UseCombatSkillCommand(
-                RunId: Guid.NewGuid(),
-                CombatId: Guid.NewGuid(),
-                ActorId: Guid.NewGuid(),
-                SkillKey: "skill.basic.strike",
-                TargetIds: [Guid.NewGuid()]),
+            new UseCombatSkillCommand(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "skill.basic.strike", [Guid.NewGuid()]),
             CancellationToken.None);
 
-        await act.Should().ThrowAsync<NotFoundException>()
-            .WithMessage("*Run*");
+        await act.Should().ThrowAsync<NotFoundException>().WithMessage("*Run*");
     }
 
     [Fact]
     public async Task Handle_ShouldFail_WhenRunHasNoActiveCombat()
     {
         var run = TestGameEngineFactory.CreateRun();
-
         var runRepo = new Mock<IRunRepository>();
-        runRepo.Setup(r => r.GetByIdAsync(run.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(run);
-
+        runRepo.Setup(r => r.GetByIdAsync(run.Id, It.IsAny<CancellationToken>())).ReturnsAsync(run);
         var handler = new UseCombatSkillCommandHandler(
             runRepo.Object,
             new Mock<ICombatSkillActionValidator>().Object,
+            new Mock<ICombatSkillEffectResolver>().Object,
             new Mock<IClock>().Object);
 
         var act = () => handler.Handle(
-            new UseCombatSkillCommand(
-                RunId: run.Id.Value,
-                CombatId: Guid.NewGuid(),
-                ActorId: Guid.NewGuid(),
-                SkillKey: "skill.basic.strike",
-                TargetIds: [Guid.NewGuid()]),
+            new UseCombatSkillCommand(run.Id.Value, Guid.NewGuid(), Guid.NewGuid(), "skill.basic.strike", [Guid.NewGuid()]),
             CancellationToken.None);
 
-        await act.Should().ThrowAsync<DomainException>()
-            .WithMessage("*no active combat*");
+        await act.Should().ThrowAsync<DomainException>().WithMessage("*no active combat*");
     }
 
     [Fact]
     public async Task Handle_ShouldFail_WhenCombatIdDoesNotMatchActiveCombat()
     {
-        var run = CreateRunWithActiveCombat();
-        var otherCombatId = CombatId.New();
-
-        var (runRepo, validator, clock) = CreateMocks(run,
-            new CombatSkillActionValidationResult(true, null, Ally, StrikeSkill, [Enemy]));
-
-        var handler = new UseCombatSkillCommandHandler(
-            runRepo.Object, validator.Object, clock.Object);
+        var setup = CreateRunWithActiveCombat(_strikeSkill);
+        var validationResult = ValidResult(setup.Ally, _strikeSkill, [setup.Enemy]);
+        var (runRepo, validator, effectResolver, clock) = CreateMocks(setup.Run, validationResult);
+        var handler = CreateHandler(runRepo, validator, effectResolver, clock);
 
         var act = () => handler.Handle(
-            new UseCombatSkillCommand(
-                RunId: run.Id.Value,
-                CombatId: otherCombatId.Value,
-                ActorId: Ally.Id.Value,
-                SkillKey: "skill.basic.strike",
-                TargetIds: [Enemy.Id.Value]),
+            new UseCombatSkillCommand(setup.Run.Id.Value, Guid.NewGuid(), setup.Ally.Id.Value, _strikeSkill.Key, [setup.Enemy.Id.Value]),
             CancellationToken.None);
 
-        await act.Should().ThrowAsync<DomainException>()
-            .WithMessage("*does not match*");
+        await act.Should().ThrowAsync<DomainException>().WithMessage("*does not match*");
     }
 
     [Fact]
     public async Task Handle_ShouldFail_WhenActorDoesNotOwnSkill()
     {
-        var run = CreateRunWithActiveCombat();
-        var combat = run.ActiveCombat!;
+        var setup = CreateRunWithActiveCombat(_strikeSkill);
+        var validationResult = new CombatSkillActionValidationResult(false, "Actor does not own skill 'skill.unknown'.", null, null, []);
+        var (runRepo, validator, effectResolver, clock) = CreateMocks(setup.Run, validationResult);
+        var handler = CreateHandler(runRepo, validator, effectResolver, clock);
 
-        var validationResult = new CombatSkillActionValidationResult(
-            IsValid: false,
-            ErrorMessage: "Actor does not own skill 'skill.unknown'.",
-            Actor: null,
-            Skill: null,
-            Targets: []);
+        var act = () => handler.Handle(CreateCommand(setup, _strikeSkill, [setup.Enemy]), CancellationToken.None);
 
-        var (runRepo, validator, clock) = CreateMocks(run, validationResult);
-
-        var handler = new UseCombatSkillCommandHandler(
-            runRepo.Object, validator.Object, clock.Object);
-
-        var act = () => handler.Handle(
-            new UseCombatSkillCommand(
-                RunId: run.Id.Value,
-                CombatId: combat.Id.Value,
-                ActorId: Ally.Id.Value,
-                SkillKey: "skill.unknown",
-                TargetIds: [Enemy.Id.Value]),
-            CancellationToken.None);
-
-        await act.Should().ThrowAsync<DomainException>()
-            .WithMessage("*does not own skill*");
+        await act.Should().ThrowAsync<DomainException>().WithMessage("*does not own skill*");
     }
 
     [Fact]
     public async Task Handle_ShouldFail_WhenTargetingIsInvalid()
     {
-        var run = CreateRunWithActiveCombat();
-        var combat = run.ActiveCombat!;
-
+        var setup = CreateRunWithActiveCombat(_strikeSkill);
         var validationResult = new CombatSkillActionValidationResult(
-            IsValid: false,
-            ErrorMessage: "SingleEnemy targeting requires a target from the opposite side.",
-            Actor: null,
-            Skill: null,
-            Targets: []);
+            false,
+            "SingleEnemy targeting requires a target from the opposite side.",
+            null,
+            null,
+            []);
+        var (runRepo, validator, effectResolver, clock) = CreateMocks(setup.Run, validationResult);
+        var handler = CreateHandler(runRepo, validator, effectResolver, clock);
 
-        var (runRepo, validator, clock) = CreateMocks(run, validationResult);
+        var act = () => handler.Handle(CreateCommand(setup, _strikeSkill, [setup.Ally]), CancellationToken.None);
 
-        var handler = new UseCombatSkillCommandHandler(
-            runRepo.Object, validator.Object, clock.Object);
-
-        var act = () => handler.Handle(
-            new UseCombatSkillCommand(
-                RunId: run.Id.Value,
-                CombatId: combat.Id.Value,
-                ActorId: Ally.Id.Value,
-                SkillKey: "skill.basic.strike",
-                TargetIds: [Ally.Id.Value]),
-            CancellationToken.None);
-
-        await act.Should().ThrowAsync<DomainException>()
-            .WithMessage("*opposite side*");
+        await act.Should().ThrowAsync<DomainException>().WithMessage("*opposite side*");
     }
 
     [Fact]
-    public async Task Handle_ShouldReturnConflictOrFailure_WhenSkillTargetsWrongSide()
+    public async Task Handle_ShouldApplyDamage_WhenSkillEffectIsDamage()
     {
-        var run = CreateRunWithActiveCombat();
-        var combat = run.ActiveCombat!;
+        var setup = CreateRunWithActiveCombat(_strikeSkill);
+        var handler = CreateHandlerWithRealEffectResolver(setup, _strikeSkill, [setup.Enemy], out _, out _);
 
-        var validationResult = new CombatSkillActionValidationResult(
-            IsValid: false,
-            ErrorMessage: "SingleEnemy targeting requires a target from the opposite side.",
-            Actor: null,
-            Skill: null,
-            Targets: []);
+        var result = await handler.Handle(CreateCommand(setup, _strikeSkill, [setup.Enemy]), CancellationToken.None);
 
-        var (runRepo, validator, clock) = CreateMocks(run, validationResult);
-
-        var handler = new UseCombatSkillCommandHandler(
-            runRepo.Object, validator.Object, clock.Object);
-
-        var act = () => handler.Handle(
-            new UseCombatSkillCommand(
-                RunId: run.Id.Value,
-                CombatId: combat.Id.Value,
-                ActorId: Ally.Id.Value,
-                SkillKey: "skill.basic.strike",
-                TargetIds: [Ally.Id.Value]),
-            CancellationToken.None);
-
-        await act.Should().ThrowAsync<DomainException>()
-            .WithMessage("*opposite side*");
+        result.Combat.Enemies.Single().CurrentVitality.Should().Be(70);
     }
 
     [Fact]
-    public async Task Handle_ShouldSucceed_WhenTargetingIsValid()
+    public async Task Handle_ShouldIncreaseGuard_WhenSkillEffectIsGuard()
     {
-        var run = CreateRunWithActiveCombat();
-        var combat = run.ActiveCombat!;
+        var setup = CreateRunWithActiveCombat(_guardSkill);
+        var handler = CreateHandlerWithRealEffectResolver(setup, _guardSkill, [setup.Ally], out _, out _);
 
-        var validationResult = new CombatSkillActionValidationResult(
-            IsValid: true, null, Ally, StrikeSkill, [Enemy]);
+        var result = await handler.Handle(CreateCommand(setup, _guardSkill, [setup.Ally]), CancellationToken.None);
 
-        var (runRepo, validator, clock) = CreateMocks(run, validationResult);
+        result.Combat.Allies.Single().Guard.Should().Be(7);
+    }
 
-        var handler = new UseCombatSkillCommandHandler(
-            runRepo.Object, validator.Object, clock.Object);
+    [Fact]
+    public async Task Handle_ShouldReturnUpdatedCombatRuntimeDto()
+    {
+        var setup = CreateRunWithActiveCombat(_strikeSkill);
+        var handler = CreateHandlerWithRealEffectResolver(setup, _strikeSkill, [setup.Enemy], out _, out _);
 
-        var result = await handler.Handle(
-            new UseCombatSkillCommand(
-                RunId: run.Id.Value,
-                CombatId: combat.Id.Value,
-                ActorId: Ally.Id.Value,
-                SkillKey: "skill.basic.strike",
-                TargetIds: [Enemy.Id.Value]),
-            CancellationToken.None);
+        var result = await handler.Handle(CreateCommand(setup, _strikeSkill, [setup.Enemy]), CancellationToken.None);
 
-        result.Accepted.Should().BeTrue();
+        result.Combat.Id.Should().Be(setup.Combat.Id);
+        result.Combat.Enemies.Single().CurrentVitality.Should().Be(setup.Enemy.CurrentVitality);
+    }
+
+    [Fact]
+    public async Task Handle_ShouldReturnLogEntries()
+    {
+        var setup = CreateRunWithActiveCombat(_strikeSkill);
+        var handler = CreateHandlerWithRealEffectResolver(setup, _strikeSkill, [setup.Enemy], out _, out _);
+
+        var result = await handler.Handle(CreateCommand(setup, _strikeSkill, [setup.Enemy]), CancellationToken.None);
+
+        result.LogEntries.Should().Contain(e => e.Type == "ActionAccepted");
+        result.LogEntries.Should().Contain(e => e.Type == "SkillUsed");
+        result.LogEntries.Should().Contain(e => e.Type == "DamageApplied");
+    }
+
+    [Fact]
+    public async Task Handle_ShouldPersistUpdatedCombatOnRun()
+    {
+        var setup = CreateRunWithActiveCombat(_strikeSkill);
+        var handler = CreateHandlerWithRealEffectResolver(setup, _strikeSkill, [setup.Enemy], out var runRepo, out _);
+
+        await handler.Handle(CreateCommand(setup, _strikeSkill, [setup.Enemy]), CancellationToken.None);
+
+        runRepo.Verify(r => r.UpdateAsync(setup.Run, It.IsAny<CancellationToken>()), Times.Once);
+        setup.Run.ActiveCombat!.Enemies.Single().CurrentVitality.Should().Be(70);
+    }
+
+    [Fact]
+    public async Task Handle_ShouldNotAdvanceTurnYet()
+    {
+        var setup = CreateRunWithActiveCombat(_strikeSkill);
+        var activeCombatantId = setup.Combat.ActiveCombatantId;
+        var turnNumber = setup.Combat.TurnNumber;
+        var handler = CreateHandlerWithRealEffectResolver(setup, _strikeSkill, [setup.Enemy], out _, out _);
+
+        var result = await handler.Handle(CreateCommand(setup, _strikeSkill, [setup.Enemy]), CancellationToken.None);
+
+        result.Combat.ActiveCombatantId.Should().Be(activeCombatantId);
+        result.Combat.TurnNumber.Should().Be(turnNumber);
+    }
+
+    [Fact]
+    public async Task Handle_ShouldNotTriggerEnemyTurnYet()
+    {
+        var setup = CreateRunWithActiveCombat(_strikeSkill);
+        var handler = CreateHandlerWithRealEffectResolver(setup, _strikeSkill, [setup.Enemy], out _, out _);
+
+        var result = await handler.Handle(CreateCommand(setup, _strikeSkill, [setup.Enemy]), CancellationToken.None);
+
+        result.Combat.Allies.Single().CurrentVitality.Should().Be(100);
+    }
+
+    [Fact]
+    public async Task Handle_ShouldMarkTargetDefeated_WhenDamageKillsTarget()
+    {
+        var lethalSkill = CreateSkill("skill.basic.strike", "Damage", "SingleEnemy", 80);
+        var setup = CreateRunWithActiveCombat(lethalSkill);
+        var handler = CreateHandlerWithRealEffectResolver(setup, lethalSkill, [setup.Enemy], out _, out _);
+
+        var result = await handler.Handle(CreateCommand(setup, lethalSkill, [setup.Enemy]), CancellationToken.None);
+
+        result.Combat.Enemies.Single().Status.Should().Be(CombatantStatus.Defeated);
+        result.LogEntries.Should().Contain(e => e.Type == "TargetDefeated");
     }
 
     [Fact]
     public async Task Handle_ShouldReturnResolvedTargetsInActionResult()
     {
-        var run = CreateRunWithActiveCombat();
-        var combat = run.ActiveCombat!;
-        var requestedTargetId = Guid.NewGuid();
+        var setup = CreateRunWithActiveCombat(_strikeSkill);
+        var handler = CreateHandlerWithRealEffectResolver(setup, _strikeSkill, [setup.Enemy], out _, out _);
 
-        var validationResult = new CombatSkillActionValidationResult(
-            IsValid: true, null, Ally, StrikeSkill, [Enemy]);
-
-        var (runRepo, validator, clock) = CreateMocks(run, validationResult);
-
-        var handler = new UseCombatSkillCommandHandler(
-            runRepo.Object, validator.Object, clock.Object);
         var result = await handler.Handle(
-            new UseCombatSkillCommand(
-                RunId: run.Id.Value,
-                CombatId: combat.Id.Value,
-                ActorId: Ally.Id.Value,
-                SkillKey: "skill.basic.strike",
-                TargetIds: [requestedTargetId]),
+            new UseCombatSkillCommand(setup.Run.Id.Value, setup.Combat.Id.Value, setup.Ally.Id.Value, _strikeSkill.Key, [Guid.NewGuid()]),
             CancellationToken.None);
 
-        result.TargetIds.Should().ContainSingle(id => id == Enemy.Id.Value);
-        result.LogEntries.Single().TargetIds.Should().ContainSingle(id => id == Enemy.Id.Value);
+        result.TargetIds.Should().ContainSingle(id => id == setup.Enemy.Id.Value);
     }
 
-    [Fact]
-    public async Task Handle_ShouldReturnCombatRuntimeDto()
+    private static UseCombatSkillCommandHandler CreateHandlerWithRealEffectResolver(
+        (Run Run, Combat Combat, Combatant Ally, Combatant Enemy) setup,
+        CombatantSkill skill,
+        IReadOnlyCollection<Combatant> targets,
+        out Mock<IRunRepository> runRepo,
+        out Mock<ICombatSkillActionValidator> validator)
     {
-        var run = CreateRunWithActiveCombat();
-        var combat = run.ActiveCombat!;
+        var validationResult = ValidResult(setup.Ally, skill, targets);
+        var clock = new Mock<IClock>();
+        clock.Setup(c => c.UtcNow).Returns(DateTimeOffset.UtcNow);
 
-        var validationResult = new CombatSkillActionValidationResult(
-            IsValid: true, null, Ally, StrikeSkill, [Enemy]);
+        runRepo = new Mock<IRunRepository>();
+        runRepo.Setup(r => r.GetByIdAsync(setup.Run.Id, It.IsAny<CancellationToken>())).ReturnsAsync(setup.Run);
 
-        var (runRepo, validator, clock) = CreateMocks(run, validationResult);
+        validator = new Mock<ICombatSkillActionValidator>();
+        validator.Setup(v => v.Validate(setup.Combat, setup.Ally.Id.Value, skill.Key, It.IsAny<IReadOnlyCollection<Guid>>()))
+            .Returns(validationResult);
 
-        var handler = new UseCombatSkillCommandHandler(
-            runRepo.Object, validator.Object, clock.Object);
-
-        var result = await handler.Handle(
-            new UseCombatSkillCommand(
-                RunId: run.Id.Value,
-                CombatId: combat.Id.Value,
-                ActorId: Ally.Id.Value,
-                SkillKey: "skill.basic.strike",
-                TargetIds: [Enemy.Id.Value]),
-            CancellationToken.None);
-
-        result.Combat.Id.Should().Be(combat.Id);
-        result.Combat.Status.Should().Be(CombatStatus.Active);
+        return new UseCombatSkillCommandHandler(
+            runRepo.Object,
+            validator.Object,
+            new CombatSkillEffectResolver(),
+            clock.Object);
     }
 
-    [Fact]
-    public async Task Handle_ShouldNotApplyDamageYet()
+    private static UseCombatSkillCommandHandler CreateHandler(
+        Mock<IRunRepository> runRepo,
+        Mock<ICombatSkillActionValidator> validator,
+        Mock<ICombatSkillEffectResolver> effectResolver,
+        Mock<IClock> clock)
     {
-        var run = CreateRunWithActiveCombat();
-        var combat = run.ActiveCombat!;
-
-        var validationResult = new CombatSkillActionValidationResult(
-            IsValid: true, null, Ally, StrikeSkill, [Enemy]);
-
-        var (runRepo, validator, clock) = CreateMocks(run, validationResult);
-
-        var handler = new UseCombatSkillCommandHandler(
-            runRepo.Object, validator.Object, clock.Object);
-
-        var result = await handler.Handle(
-            new UseCombatSkillCommand(
-                RunId: run.Id.Value,
-                CombatId: combat.Id.Value,
-                ActorId: Ally.Id.Value,
-                SkillKey: "skill.basic.strike",
-                TargetIds: [Enemy.Id.Value]),
-            CancellationToken.None);
-
-        result.Combat.Enemies.Single().CurrentVitality.Should().Be(80);
+        return new UseCombatSkillCommandHandler(
+            runRepo.Object,
+            validator.Object,
+            effectResolver.Object,
+            clock.Object);
     }
 
-    [Fact]
-    public async Task Handle_ShouldNotCompleteCombatYet()
+    private static (Mock<IRunRepository> RunRepo, Mock<ICombatSkillActionValidator> Validator, Mock<ICombatSkillEffectResolver> EffectResolver, Mock<IClock> Clock)
+        CreateMocks(Run run, CombatSkillActionValidationResult validationResult)
     {
-        var run = CreateRunWithActiveCombat();
-        var combat = run.ActiveCombat!;
+        var runRepo = new Mock<IRunRepository>();
+        runRepo.Setup(r => r.GetByIdAsync(run.Id, It.IsAny<CancellationToken>())).ReturnsAsync(run);
 
-        var validationResult = new CombatSkillActionValidationResult(
-            IsValid: true, null, Ally, StrikeSkill, [Enemy]);
+        var validator = new Mock<ICombatSkillActionValidator>();
+        validator.Setup(v => v.Validate(It.IsAny<Combat>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<IReadOnlyCollection<Guid>>()))
+            .Returns(validationResult);
 
-        var (runRepo, validator, clock) = CreateMocks(run, validationResult);
+        var effectResolver = new Mock<ICombatSkillEffectResolver>();
+        effectResolver.Setup(r => r.Resolve(It.IsAny<Combat>(), It.IsAny<Combatant>(), It.IsAny<CombatantSkill>(), It.IsAny<IReadOnlyCollection<Combatant>>()))
+            .Returns((Combat combat, Combatant actor, CombatantSkill skill, IReadOnlyCollection<Combatant> targets) =>
+                new CombatSkillEffectResolution(true, [], combat));
 
-        var handler = new UseCombatSkillCommandHandler(
-            runRepo.Object, validator.Object, clock.Object);
+        var clock = new Mock<IClock>();
+        clock.Setup(c => c.UtcNow).Returns(DateTimeOffset.UtcNow);
 
-        var result = await handler.Handle(
-            new UseCombatSkillCommand(
-                RunId: run.Id.Value,
-                CombatId: combat.Id.Value,
-                ActorId: Ally.Id.Value,
-                SkillKey: "skill.basic.strike",
-                TargetIds: [Enemy.Id.Value]),
-            CancellationToken.None);
-
-        result.Combat.Status.Should().Be(CombatStatus.Active);
+        return (runRepo, validator, effectResolver, clock);
     }
 
-    [Fact]
-    public async Task Handle_ShouldIncludeLogEntry_WhenActionIsAccepted()
+    private static CombatSkillActionValidationResult ValidResult(
+        Combatant actor,
+        CombatantSkill skill,
+        IReadOnlyCollection<Combatant> targets)
     {
-        var run = CreateRunWithActiveCombat();
-        var combat = run.ActiveCombat!;
+        return new CombatSkillActionValidationResult(true, null, actor, skill, targets);
+    }
 
-        var validationResult = new CombatSkillActionValidationResult(
-            IsValid: true, null, Ally, StrikeSkill, [Enemy]);
+    private static UseCombatSkillCommand CreateCommand(
+        (Run Run, Combat Combat, Combatant Ally, Combatant Enemy) setup,
+        CombatantSkill skill,
+        IReadOnlyCollection<Combatant> targets)
+    {
+        return new UseCombatSkillCommand(
+            setup.Run.Id.Value,
+            setup.Combat.Id.Value,
+            setup.Ally.Id.Value,
+            skill.Key,
+            targets.Select(t => t.Id.Value).ToArray());
+    }
 
-        var (runRepo, validator, clock) = CreateMocks(run, validationResult);
+    private static (Run Run, Combat Combat, Combatant Ally, Combatant Enemy) CreateRunWithActiveCombat(CombatantSkill allySkill)
+    {
+        var runWithNode = TestGameEngineFactory.CreateRunWithSelectedTargetNode(NodeEventType.Combat);
+        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100, [allySkill]);
+        var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 80, []);
+        var combat = Combat.Create(
+            CombatId.New(),
+            runWithNode.Run.Id,
+            RoomId.New(),
+            NodeId.New(),
+            [ally],
+            [enemy]);
 
-        var handler = new UseCombatSkillCommandHandler(
-            runRepo.Object, validator.Object, clock.Object);
+        runWithNode.Run.StartCombat(combat);
 
-        var result = await handler.Handle(
-            new UseCombatSkillCommand(
-                RunId: run.Id.Value,
-                CombatId: combat.Id.Value,
-                ActorId: Ally.Id.Value,
-                SkillKey: "skill.basic.strike",
-                TargetIds: [Enemy.Id.Value]),
-            CancellationToken.None);
+        return (runWithNode.Run, combat, ally, enemy);
+    }
 
-        result.LogEntries.Should().NotBeEmpty();
-        result.LogEntries.Should().Contain(e => e.Type == "ActionAccepted");
-        result.LogEntries.Should().Contain(e => e.ActorId == Ally.Id.Value);
-        result.LogEntries.Should().Contain(e => e.SkillKey == "skill.basic.strike");
+    private static CombatantSkill CreateSkill(string key, string effectType, string targetingType, int basePower)
+    {
+        return CombatantSkill.Create(
+            key: key,
+            displayName: key,
+            skillType: effectType,
+            targetingType: targetingType,
+            effectType: effectType,
+            manaCost: 0,
+            chargeCost: 0,
+            basePower: basePower);
     }
 }

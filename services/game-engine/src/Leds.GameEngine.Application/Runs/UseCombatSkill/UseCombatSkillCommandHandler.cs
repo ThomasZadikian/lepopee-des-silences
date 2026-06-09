@@ -1,6 +1,7 @@
 using Leds.GameEngine.Application.Abstractions;
 using Leds.GameEngine.Application.Combats.Actions;
 using Leds.GameEngine.Application.Combats.Dtos;
+using Leds.GameEngine.Application.Combats.Effects;
 using Leds.GameEngine.Application.Common.Exceptions;
 using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Combats;
@@ -14,15 +15,18 @@ public sealed class UseCombatSkillCommandHandler
 {
     private readonly IRunRepository _runRepository;
     private readonly ICombatSkillActionValidator _validator;
+    private readonly ICombatSkillEffectResolver _effectResolver;
     private readonly IClock _clock;
 
     public UseCombatSkillCommandHandler(
         IRunRepository runRepository,
         ICombatSkillActionValidator validator,
+        ICombatSkillEffectResolver effectResolver,
         IClock clock)
     {
         _runRepository = runRepository;
         _validator = validator;
+        _effectResolver = effectResolver;
         _clock = clock;
     }
 
@@ -85,14 +89,26 @@ public sealed class UseCombatSkillCommandHandler
             SkillKey: request.SkillKey,
             TargetIds: resolvedTargetIds);
 
+        var effectResolution = _effectResolver.Resolve(
+            run.ActiveCombat,
+            validationResult.Actor!,
+            validationResult.Skill!,
+            validationResult.Targets);
+
+        await _runRepository.UpdateAsync(run, cancellationToken);
+
+        var logEntries = new[] { logEntry }
+            .Concat(effectResolution.LogEntries)
+            .ToArray();
+
         return new CombatSkillActionResult(
-            CombatId: run.ActiveCombat.Id.Value,
+            CombatId: effectResolution.Combat.Id.Value,
             ActorId: request.ActorId,
             SkillKey: request.SkillKey,
             TargetIds: resolvedTargetIds,
             Accepted: true,
             Message: null,
-            Combat: CombatRuntimeDto.FromDomain(run.ActiveCombat),
-            LogEntries: [logEntry]);
+            Combat: CombatRuntimeDto.FromDomain(effectResolution.Combat),
+            LogEntries: logEntries);
     }
 }

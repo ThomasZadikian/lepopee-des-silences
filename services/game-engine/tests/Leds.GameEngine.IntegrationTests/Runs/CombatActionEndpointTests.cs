@@ -16,7 +16,7 @@ public sealed class CombatActionEndpointTests : RunIntegrationTestBase, IClassFi
     }
 
     [Fact]
-    public async Task UseCombatSkill_ShouldReturnOk_WhenSingleEnemyTargetsOppositeSide()
+    public async Task UseCombatSkill_ShouldReduceTargetVitalityAndReturnUpdatedCombat_WhenDamageSkillTargetsOppositeSide()
     {
         var setup = await StartActiveRuntimeCombatAsync();
 
@@ -33,6 +33,10 @@ public sealed class CombatActionEndpointTests : RunIntegrationTestBase, IClassFi
             return;
         }
 
+        var targetVitalityBefore = action.Value.Target.CurrentVitality;
+        var turnNumberBefore = combat.TurnNumber;
+        var activeCombatantBefore = combat.ActiveCombatantId;
+
         var response = await Client.PostAsJsonAsync(
             $"/api/v2/runs/{runId}/combats/{combat.Id.Value}/skill-actions",
             new { ActorId = action.Value.Actor.Id.Value, SkillKey = action.Value.Skill.Key, TargetIds = new[] { action.Value.Target.Id.Value } });
@@ -45,6 +49,16 @@ public sealed class CombatActionEndpointTests : RunIntegrationTestBase, IClassFi
         result.Should().NotBeNull();
         result!.Accepted.Should().BeTrue();
         result.TargetIds.Should().ContainSingle(id => id == action.Value.Target.Id.Value);
+        result.LogEntries.Should().Contain(e => e.Type == "ActionAccepted");
+        result.LogEntries.Should().Contain(e => e.Type == "SkillUsed");
+        result.LogEntries.Should().Contain(e => e.Type == "DamageApplied");
+        result.Combat.TurnNumber.Should().Be(turnNumberBefore);
+        result.Combat.ActiveCombatantId.Should().Be(activeCombatantBefore);
+
+        var updatedTarget = result.Combat.Allies
+            .Concat(result.Combat.Enemies)
+            .Single(c => c.Id == action.Value.Target.Id);
+        updatedTarget.CurrentVitality.Should().BeLessThan(targetVitalityBefore);
     }
 
     [Fact]

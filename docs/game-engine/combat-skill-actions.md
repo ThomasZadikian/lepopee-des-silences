@@ -6,7 +6,7 @@ Current endpoint:
 
 `POST /api/v2/runs/{runId}/combats/{combatId}/skill-actions`
 
-The endpoint validates the action and returns the unchanged combat runtime snapshot plus an action-accepted log entry. It does not resolve skill effects yet.
+The endpoint validates the action, applies supported basic skill effects, and returns the updated combat runtime snapshot plus log entries.
 
 ## Targeting rules
 
@@ -41,4 +41,38 @@ All targeting modes reject missing targets and defeated targets before applying 
 
 Unsupported targeting types return `Unsupported targeting type: {targetingType}`.
 
-This PR validates targets but does not resolve skill effects, damage, guard, weaken, disrupt, turns, combat completion, or enemy AI.
+## Basic skill effect resolution
+
+`Damage`
+
+- Applies `BasePower` as raw damage.
+- `Guard` absorbs damage before `CurrentVitality`.
+- `CurrentVitality` never goes below zero.
+- A target becomes `Defeated` when `CurrentVitality` reaches zero.
+
+`Guard`
+
+- Increases target `Guard` by `BasePower`.
+
+`Weaken`
+
+- Produces a log entry only in this version.
+- Does not apply a durable status yet.
+
+`Disrupt`
+
+- Produces a log entry only in this version.
+- Does not apply a durable status yet.
+
+`ManaCost` and `ChargeCost` are defined on skill definitions, but they are not consumed in this PR. Runtime resource costs will be enforced later.
+
+## Non-objectives
+
+This PR does not handle:
+
+- Turn progression.
+- Enemy AI.
+- Initiative.
+- Durable status effects.
+- Automatic combat completion.
+- Frontend behavior.

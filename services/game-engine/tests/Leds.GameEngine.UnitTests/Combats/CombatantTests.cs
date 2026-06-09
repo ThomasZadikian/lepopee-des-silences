@@ -92,4 +92,105 @@ public sealed class CombatantTests
 
         act.Should().Throw<DomainException>().WithMessage("Combatant is already defeated.");
     }
+
+    [Fact]
+    public void ApplyDamage_ShouldReduceVitality()
+    {
+        var combatant = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 80);
+
+        combatant.ApplyDamage(12);
+
+        combatant.CurrentVitality.Should().Be(68);
+        combatant.Guard.Should().Be(0);
+        combatant.Status.Should().Be(CombatantStatus.Active);
+    }
+
+    [Fact]
+    public void ApplyDamage_ShouldConsumeGuardBeforeVitality()
+    {
+        var combatant = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 80);
+        combatant.GainGuard(5);
+
+        combatant.ApplyDamage(12);
+
+        combatant.Guard.Should().Be(0);
+        combatant.CurrentVitality.Should().Be(73);
+    }
+
+    [Fact]
+    public void ApplyDamage_ShouldNotReduceVitalityBelowZero()
+    {
+        var combatant = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 80);
+
+        combatant.ApplyDamage(120);
+
+        combatant.CurrentVitality.Should().Be(0);
+    }
+
+    [Fact]
+    public void ApplyDamage_ShouldMarkCombatantDefeated_WhenVitalityReachesZero()
+    {
+        var combatant = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 80);
+
+        combatant.ApplyDamage(80);
+
+        combatant.Status.Should().Be(CombatantStatus.Defeated);
+        combatant.IsDefeated.Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void ApplyDamage_ShouldThrow_WhenAmountIsZeroOrNegative(int amount)
+    {
+        var combatant = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 80);
+
+        var act = () => combatant.ApplyDamage(amount);
+
+        act.Should().Throw<DomainException>().WithMessage("Damage amount must be greater than zero.");
+    }
+
+    [Fact]
+    public void ApplyDamage_ShouldThrow_WhenCombatantIsDefeated()
+    {
+        var combatant = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 80);
+        combatant.MarkDefeated();
+
+        var act = () => combatant.ApplyDamage(1);
+
+        act.Should().Throw<DomainException>().WithMessage("Defeated combatants cannot receive damage.");
+    }
+
+    [Fact]
+    public void GainGuard_ShouldIncreaseGuard()
+    {
+        var combatant = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+
+        combatant.GainGuard(7);
+
+        combatant.Guard.Should().Be(7);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void GainGuard_ShouldThrow_WhenAmountIsZeroOrNegative(int amount)
+    {
+        var combatant = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+
+        var act = () => combatant.GainGuard(amount);
+
+        act.Should().Throw<DomainException>().WithMessage("Guard amount must be greater than zero.");
+    }
+
+    [Fact]
+    public void GainGuard_ShouldThrow_WhenCombatantIsDefeated()
+    {
+        var combatant = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+        combatant.MarkDefeated();
+
+        var act = () => combatant.GainGuard(1);
+
+        act.Should().Throw<DomainException>().WithMessage("Defeated combatants cannot gain guard.");
+    }
 }
