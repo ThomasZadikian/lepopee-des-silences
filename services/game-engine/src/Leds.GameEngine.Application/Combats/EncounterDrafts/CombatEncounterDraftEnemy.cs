@@ -9,4 +9,5 @@ public sealed record CombatEncounterDraftEnemy(
     int MinRiskLevel,
     int MaxRiskLevel,
     IReadOnlyCollection<string> Tags,
-    IReadOnlyCollection<string> SkillKeys);
+    IReadOnlyCollection<string> SkillKeys,
+    IReadOnlyCollection<CombatEncounterDraftSkill> Skills);

@@ -11,15 +11,15 @@ namespace Leds.GameEngine.Infrastructure.Catalog;
 /// HTTP implementation of <see cref="ICatalogContentGateway"/>.
 /// </summary>
 /// <remarks>
-/// Room Boss Profiles and Enemy Definitions are available through the
-/// Catalog Service HTTP API.
+/// Room Boss Profiles, Enemy Definitions and Skill Definitions are available
+/// through the Catalog Service HTTP API.
 ///
 /// Other content lookups still require the InMemory gateway and deliberately
 /// throw <see cref="CatalogGatewayException"/> when this gateway is used.
 ///
 /// Use <c>CatalogGateway:Mode = InMemory</c> for the complete playable local flow.
-/// Use <c>CatalogGateway:Mode = Http</c> to validate the Room Boss Definition
-/// and Enemy Definition integration with the Catalog Service.
+/// Use <c>CatalogGateway:Mode = Http</c> to validate the Room Boss Definition,
+/// Enemy Definition and Skill Definition integration with the Catalog Service.
 /// </remarks>
 public sealed class HttpCatalogContentGateway : ICatalogContentGateway
 {
@@ -346,6 +346,227 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
             .ToArray() ?? [];
     }
 
+    // ── Skill Definitions ─────────────────────────────────────────────
+
+    public async Task<CatalogSkillDefinition?> GetSkillDefinitionByKeyAsync(
+        string key,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            return null;
+        }
+
+        var encodedKey = Uri.EscapeDataString(key.Trim());
+        var url = $"/api/v2/catalog/skill-definitions/{encodedKey}";
+
+        HttpResponseMessage response;
+        try
+        {
+            response = await _httpClient.GetAsync(url, cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            throw new CatalogGatewayException(
+                $"Failed to call Catalog Service at '{url}': {ex.Message}", ex);
+        }
+
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+
+        if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
+        {
+            return null;
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var body = await response.Content.ReadAsStringAsync(cancellationToken);
+            throw new CatalogGatewayException(
+                $"Catalog Service returned {(int)response.StatusCode} for '{url}': {body}");
+        }
+
+        var options = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        };
+
+        GetSkillDefinitionByKeyHttpResponse? wrapper;
+        try
+        {
+            wrapper = await response.Content
+                .ReadFromJsonAsync<GetSkillDefinitionByKeyHttpResponse>(options, cancellationToken);
+        }
+        catch (JsonException ex)
+        {
+            throw new CatalogGatewayException(
+                $"Failed to deserialize Catalog Service response from '{url}': {ex.Message}", ex);
+        }
+
+        var httpDefinition = wrapper?.Definition;
+
+        if (httpDefinition is null)
+        {
+            return null;
+        }
+
+        return MapToCatalogSkillDefinition(httpDefinition);
+    }
+
+    public async Task<IReadOnlyCollection<CatalogSkillDefinition>> ListSkillDefinitionsByKeysAsync(
+        IReadOnlyCollection<string> keys,
+        CancellationToken cancellationToken = default)
+    {
+        if (keys is null || keys.Count == 0)
+        {
+            return [];
+        }
+
+        var url = "/api/v2/catalog/skill-definitions/batch/by-keys";
+
+        HttpResponseMessage response;
+        try
+        {
+            response = await _httpClient.PostAsJsonAsync(
+                url, new { keys }, cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            throw new CatalogGatewayException(
+                $"Failed to call Catalog Service at '{url}': {ex.Message}", ex);
+        }
+
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return [];
+        }
+
+        if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
+        {
+            return [];
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var body = await response.Content.ReadAsStringAsync(cancellationToken);
+            throw new CatalogGatewayException(
+                $"Catalog Service returned {(int)response.StatusCode} for '{url}': {body}");
+        }
+
+        var options = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        };
+
+        ListSkillDefinitionsHttpResponse? wrapper;
+        try
+        {
+            wrapper = await response.Content
+                .ReadFromJsonAsync<ListSkillDefinitionsHttpResponse>(options, cancellationToken);
+        }
+        catch (JsonException ex)
+        {
+            throw new CatalogGatewayException(
+                $"Failed to deserialize Catalog Service response from '{url}': {ex.Message}", ex);
+        }
+
+        return wrapper?.Definitions?
+            .Select(MapToCatalogSkillDefinition)
+            .ToArray() ?? [];
+    }
+
+    public async Task<IReadOnlyCollection<CatalogSkillDefinition>> ListSkillDefinitionsByTypeAsync(
+        string skillType,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(skillType))
+        {
+            return [];
+        }
+
+        var encodedSkillType = Uri.EscapeDataString(skillType.Trim());
+        var url = $"/api/v2/catalog/skill-definitions/type/{encodedSkillType}";
+
+        HttpResponseMessage response;
+        try
+        {
+            response = await _httpClient.GetAsync(url, cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            throw new CatalogGatewayException(
+                $"Failed to call Catalog Service at '{url}': {ex.Message}", ex);
+        }
+
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return [];
+        }
+
+        if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
+        {
+            return [];
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var body = await response.Content.ReadAsStringAsync(cancellationToken);
+            throw new CatalogGatewayException(
+                $"Catalog Service returned {(int)response.StatusCode} for '{url}': {body}");
+        }
+
+        var options = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        };
+
+        ListSkillDefinitionsHttpResponse? wrapper;
+        try
+        {
+            wrapper = await response.Content
+                .ReadFromJsonAsync<ListSkillDefinitionsHttpResponse>(options, cancellationToken);
+        }
+        catch (JsonException ex)
+        {
+            throw new CatalogGatewayException(
+                $"Failed to deserialize Catalog Service response from '{url}': {ex.Message}", ex);
+        }
+
+        return wrapper?.Definitions?
+            .Select(MapToCatalogSkillDefinition)
+            .ToArray() ?? [];
+    }
+
+    private static CatalogSkillDefinition MapToCatalogSkillDefinition(
+        CatalogSkillDefinitionHttpResponse source)
+    {
+        return new CatalogSkillDefinition(
+            Key: source.Key,
+            DisplayName: source.Name,
+            Description: source.Description,
+            SkillType: source.SkillType,
+            TargetingType: source.TargetingType,
+            EffectType: source.EffectType,
+            ManaCost: source.ManaCost,
+            ChargeCost: source.ChargeCost,
+            BasePower: source.BasePower,
+            Tags: source.Tags ?? []);
+    }
+
     private static CatalogEnemyDefinition MapToCatalogEnemyDefinition(
         CatalogEnemyDefinitionHttpResponse source)
     {
@@ -377,4 +598,10 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
 
     private sealed record ListEnemyDefinitionsHttpResponse(
         IReadOnlyCollection<CatalogEnemyDefinitionHttpResponse>? Definitions);
+
+    private sealed record GetSkillDefinitionByKeyHttpResponse(
+        CatalogSkillDefinitionHttpResponse? Definition);
+
+    private sealed record ListSkillDefinitionsHttpResponse(
+        IReadOnlyCollection<CatalogSkillDefinitionHttpResponse>? Definitions);
 }

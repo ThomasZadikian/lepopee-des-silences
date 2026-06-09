@@ -44,6 +44,27 @@ public sealed class CombatEncounterDraftGenerator : ICombatEncounterDraftGenerat
                 "Cannot generate a combat encounter draft without enemies.");
         }
 
+        var skillKeys = selected
+            .SelectMany(e => e.SkillKeys)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        var skillDefinitions = await _catalogContentGateway
+            .ListSkillDefinitionsByKeysAsync(skillKeys, cancellationToken);
+
+        var skillLookup = skillDefinitions
+            .ToDictionary(s => s.Key, StringComparer.OrdinalIgnoreCase);
+
+        var missingKeys = skillKeys
+            .Where(k => !skillLookup.ContainsKey(k))
+            .ToArray();
+
+        if (missingKeys.Length > 0)
+        {
+            throw new InvalidOperationException(
+                $"Missing skill definitions for keys: {string.Join(", ", missingKeys)}");
+        }
+
         var enemies = selected
             .Select(e => new CombatEncounterDraftEnemy(
                 EnemyKey: e.Key,
@@ -54,7 +75,22 @@ public sealed class CombatEncounterDraftGenerator : ICombatEncounterDraftGenerat
                 MinRiskLevel: e.MinRiskLevel,
                 MaxRiskLevel: e.MaxRiskLevel,
                 Tags: e.Tags,
-                SkillKeys: e.SkillKeys))
+                SkillKeys: e.SkillKeys,
+                Skills: e.SkillKeys
+                    .Select(sk => skillLookup.GetValueOrDefault(sk))
+                    .Where(s => s is not null)
+                    .Select(s => new CombatEncounterDraftSkill(
+                        Key: s!.Key,
+                        DisplayName: s.DisplayName,
+                        Description: s.Description,
+                        SkillType: s.SkillType,
+                        TargetingType: s.TargetingType,
+                        EffectType: s.EffectType,
+                        ManaCost: s.ManaCost,
+                        ChargeCost: s.ChargeCost,
+                        BasePower: s.BasePower,
+                        Tags: s.Tags))
+                    .ToArray()))
             .ToArray();
 
         var allies = new[]

@@ -335,7 +335,7 @@ public sealed class ResolveCurrentEventCommandHandlerTests
             "Threshold", 0, selectedNode.RiskLevel, "Combat",
             new[] { new CombatEncounterDraftEnemy(
                 "enemy.threshold.doubt-fragment", "Fragment de Doute", "", "Fragile",
-                1, 1, 2, new[] { "fragile" }, new[] { "skill.basic.strike" }) },
+                1, 1, 2, new[] { "fragile" }, new[] { "skill.basic.strike" }, Skills: []) },
             new[] { new CombatEncounterDraftAlly("player.self", "Le Joueur", "Protagonist", new[] { "player" }) });
 
         draftGenerator

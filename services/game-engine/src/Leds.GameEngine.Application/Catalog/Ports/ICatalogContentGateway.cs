@@ -46,4 +46,16 @@ public interface ICatalogContentGateway
         string roomType,
         int riskLevel,
         CancellationToken cancellationToken = default);
+
+    Task<CatalogSkillDefinition?> GetSkillDefinitionByKeyAsync(
+        string key,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyCollection<CatalogSkillDefinition>> ListSkillDefinitionsByKeysAsync(
+        IReadOnlyCollection<string> keys,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyCollection<CatalogSkillDefinition>> ListSkillDefinitionsByTypeAsync(
+        string skillType,
+        CancellationToken cancellationToken = default);
 }

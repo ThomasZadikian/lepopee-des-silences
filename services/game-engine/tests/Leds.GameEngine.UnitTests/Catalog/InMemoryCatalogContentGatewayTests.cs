@@ -250,4 +250,113 @@ public sealed class InMemoryCatalogContentGatewayTests
 
         all.Select(e => e.Key).Distinct().Should().HaveCount(14);
     }
+
+    // ── Skill Definitions ──────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetSkillDefinitionByKeyAsync_ShouldReturnSeededSkill()
+    {
+        var skill = await _gateway.GetSkillDefinitionByKeyAsync("skill.basic.strike");
+
+        skill.Should().NotBeNull();
+        skill!.Key.Should().Be("skill.basic.strike");
+        skill.DisplayName.Should().Be("Frappe");
+        skill.SkillType.Should().Be("Damage");
+        skill.TargetingType.Should().Be("SingleEnemy");
+        skill.EffectType.Should().Be("Damage");
+        skill.ManaCost.Should().Be(5);
+        skill.ChargeCost.Should().Be(0);
+        skill.BasePower.Should().Be(10);
+    }
+
+    [Fact]
+    public async Task GetSkillDefinitionByKeyAsync_ShouldReturnNull_WhenUnknown()
+    {
+        var skill = await _gateway.GetSkillDefinitionByKeyAsync("unknown");
+
+        skill.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task GetSkillDefinitionByKeyAsync_ShouldReturnNull_WhenKeyIsWhitespace()
+    {
+        var skill = await _gateway.GetSkillDefinitionByKeyAsync("   ");
+
+        skill.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task ListSkillDefinitionsByKeysAsync_ShouldReturnMatchingSkills()
+    {
+        var skills = await _gateway.ListSkillDefinitionsByKeysAsync(
+            ["skill.basic.strike", "skill.basic.guard"]);
+
+        skills.Select(s => s.Key).Should()
+            .Contain("skill.basic.strike")
+            .And.Contain("skill.basic.guard");
+    }
+
+    [Fact]
+    public async Task ListSkillDefinitionsByKeysAsync_ShouldIgnoreUnknownKeys()
+    {
+        var skills = await _gateway.ListSkillDefinitionsByKeysAsync(
+            ["skill.basic.strike", "unknown"]);
+
+        skills.Should().ContainSingle();
+        skills.Single().Key.Should().Be("skill.basic.strike");
+    }
+
+    [Fact]
+    public async Task ListSkillDefinitionsByKeysAsync_ShouldDeduplicateKeys()
+    {
+        var skills = await _gateway.ListSkillDefinitionsByKeysAsync(
+            ["skill.basic.strike", "skill.basic.strike", "skill.basic.guard"]);
+
+        skills.Select(s => s.Key).Distinct().Should().HaveCount(2);
+    }
+
+    [Fact]
+    public async Task ListSkillDefinitionsByTypeAsync_ShouldReturnSkillsOfType()
+    {
+        var skills = await _gateway.ListSkillDefinitionsByTypeAsync("Damage");
+
+        skills.Should().NotBeEmpty();
+        skills.Should().AllSatisfy(s => s.SkillType.Should().Be("Damage"));
+    }
+
+    [Fact]
+    public async Task ListSkillDefinitionsByTypeAsync_ShouldBeCaseInsensitive()
+    {
+        var skills = await _gateway.ListSkillDefinitionsByTypeAsync("damage");
+
+        skills.Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public async Task ListSkillDefinitionsByTypeAsync_ShouldReturnEmpty_WhenUnknown()
+    {
+        var skills = await _gateway.ListSkillDefinitionsByTypeAsync("Unknown");
+
+        skills.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ListSkillDefinitionsByTypeAsync_ShouldReturnEmpty_WhenSkillTypeIsWhitespace()
+    {
+        var skills = await _gateway.ListSkillDefinitionsByTypeAsync("   ");
+
+        skills.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task InMemorySeeds_ShouldContainAllEnemyReferencedSkillKeys()
+    {
+        var enemyDefs = await _gateway.ListCompatibleEnemyDefinitionsAsync("Threshold", 5);
+        var allSkillKeys = enemyDefs.SelectMany(e => e.SkillKeys).Distinct().ToArray();
+
+        var resolved = await _gateway.ListSkillDefinitionsByKeysAsync(allSkillKeys);
+
+        resolved.Select(s => s.Key).Distinct()
+            .Should().BeEquivalentTo(allSkillKeys);
+    }
 }

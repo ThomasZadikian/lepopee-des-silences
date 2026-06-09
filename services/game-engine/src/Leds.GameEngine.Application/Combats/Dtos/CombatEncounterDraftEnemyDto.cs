@@ -11,7 +11,8 @@ public sealed record CombatEncounterDraftEnemyDto(
     int MinRiskLevel,
     int MaxRiskLevel,
     IReadOnlyCollection<string> Tags,
-    IReadOnlyCollection<string> SkillKeys)
+    IReadOnlyCollection<string> SkillKeys,
+    IReadOnlyCollection<CombatEncounterDraftSkillDto> Skills)
 {
     public static CombatEncounterDraftEnemyDto FromDomain(CombatEncounterDraftEnemy enemy)
     {
@@ -24,6 +25,37 @@ public sealed record CombatEncounterDraftEnemyDto(
             MinRiskLevel: enemy.MinRiskLevel,
             MaxRiskLevel: enemy.MaxRiskLevel,
             Tags: enemy.Tags,
-            SkillKeys: enemy.SkillKeys);
+            SkillKeys: enemy.SkillKeys,
+            Skills: enemy.Skills
+                .Select(CombatEncounterDraftSkillDto.FromDomain)
+                .ToArray());
+    }
+}
+
+public sealed record CombatEncounterDraftSkillDto(
+    string Key,
+    string DisplayName,
+    string Description,
+    string SkillType,
+    string TargetingType,
+    string EffectType,
+    int ManaCost,
+    int ChargeCost,
+    int BasePower,
+    IReadOnlyCollection<string> Tags)
+{
+    public static CombatEncounterDraftSkillDto FromDomain(CombatEncounterDraftSkill skill)
+    {
+        return new CombatEncounterDraftSkillDto(
+            Key: skill.Key,
+            DisplayName: skill.DisplayName,
+            Description: skill.Description,
+            SkillType: skill.SkillType,
+            TargetingType: skill.TargetingType,
+            EffectType: skill.EffectType,
+            ManaCost: skill.ManaCost,
+            ChargeCost: skill.ChargeCost,
+            BasePower: skill.BasePower,
+            Tags: skill.Tags);
     }
 }

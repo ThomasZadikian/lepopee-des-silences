@@ -669,6 +669,464 @@ public sealed class HttpCatalogContentGatewayTests
             .WithMessage("*500*");
     }
 
+    // ── Skill Definitions ─────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetSkillDefinitionByKeyAsync_ShouldReturnSkill_WhenCatalogReturns200()
+    {
+        var httpResponse = new
+        {
+            Definition = new
+            {
+                Key = "skill.basic.strike",
+                Name = "Frappe",
+                Description = "Une attaque de base.",
+                SkillType = "Damage",
+                TargetingType = "SingleEnemy",
+                EffectType = "Damage",
+                ManaCost = 5,
+                ChargeCost = 0,
+                BasePower = 10,
+                Tags = new[] { "basic", "damage" }
+            }
+        };
+
+        var json = JsonSerializer.Serialize(httpResponse, JsonOptions);
+        var handler = CreateMockHandler(json, HttpStatusCode.OK);
+        var client = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost:5193") };
+        var gateway = new HttpCatalogContentGateway(client);
+
+        var skill = await gateway.GetSkillDefinitionByKeyAsync("skill.basic.strike");
+
+        skill.Should().NotBeNull();
+        skill!.Key.Should().Be("skill.basic.strike");
+        skill.DisplayName.Should().Be("Frappe");
+        skill.SkillType.Should().Be("Damage");
+        skill.TargetingType.Should().Be("SingleEnemy");
+        skill.EffectType.Should().Be("Damage");
+        skill.ManaCost.Should().Be(5);
+        skill.ChargeCost.Should().Be(0);
+        skill.BasePower.Should().Be(10);
+        skill.Tags.Should().BeEquivalentTo("basic", "damage");
+    }
+
+    [Fact]
+    public async Task GetSkillDefinitionByKeyAsync_ShouldMapAllFields_WhenCatalogReturns200()
+    {
+        var httpResponse = new
+        {
+            Definition = new
+            {
+                Key = "skill.basic.guard",
+                Name = "Garde",
+                Description = "Une posture defensive.",
+                SkillType = "Defense",
+                TargetingType = "Self",
+                EffectType = "Buff",
+                ManaCost = 3,
+                ChargeCost = 1,
+                BasePower = 0,
+                Tags = (string[]?)null
+            }
+        };
+
+        var json = JsonSerializer.Serialize(httpResponse, JsonOptions);
+        var handler = CreateMockHandler(json, HttpStatusCode.OK);
+        var client = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost:5193") };
+        var gateway = new HttpCatalogContentGateway(client);
+
+        var skill = await gateway.GetSkillDefinitionByKeyAsync("skill.basic.guard");
+
+        skill.Should().NotBeNull();
+        skill!.Key.Should().Be("skill.basic.guard");
+        skill.DisplayName.Should().Be("Garde");
+        skill.Description.Should().Be("Une posture defensive.");
+        skill.SkillType.Should().Be("Defense");
+        skill.TargetingType.Should().Be("Self");
+        skill.EffectType.Should().Be("Buff");
+        skill.ManaCost.Should().Be(3);
+        skill.ChargeCost.Should().Be(1);
+        skill.BasePower.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task GetSkillDefinitionByKeyAsync_ShouldCallExpectedEndpoint()
+    {
+        HttpRequestMessage? capturedRequest = null;
+
+        var handler = new Mock<HttpMessageHandler>();
+        handler
+            .Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .Callback<HttpRequestMessage, CancellationToken>((req, _) => capturedRequest = req)
+            .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.NotFound));
+
+        var client = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost:5193") };
+        var gateway = new HttpCatalogContentGateway(client);
+
+        await gateway.GetSkillDefinitionByKeyAsync("skill.basic.strike");
+
+        capturedRequest.Should().NotBeNull();
+        capturedRequest!.RequestUri!.AbsolutePath.Should().Be(
+            "/api/v2/catalog/skill-definitions/skill.basic.strike");
+    }
+
+    [Fact]
+    public async Task GetSkillDefinitionByKeyAsync_ShouldReturnNull_WhenCatalogReturns404()
+    {
+        var handler = CreateMockHandler("", HttpStatusCode.NotFound);
+        var client = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost:5193") };
+        var gateway = new HttpCatalogContentGateway(client);
+
+        var skill = await gateway.GetSkillDefinitionByKeyAsync("unknown");
+
+        skill.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task GetSkillDefinitionByKeyAsync_ShouldReturnNull_WhenKeyIsWhitespace()
+    {
+        var handler = CreateMockHandler("", HttpStatusCode.OK);
+        var client = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost:5193") };
+        var gateway = new HttpCatalogContentGateway(client);
+
+        var skill = await gateway.GetSkillDefinitionByKeyAsync("   ");
+
+        skill.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task GetSkillDefinitionByKeyAsync_ShouldThrowCatalogGatewayException_WhenCatalogReturns500()
+    {
+        var handler = CreateMockHandler("Internal Server Error", HttpStatusCode.InternalServerError);
+        var client = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost:5193") };
+        var gateway = new HttpCatalogContentGateway(client);
+
+        var act = async () => await gateway.GetSkillDefinitionByKeyAsync("some-key");
+
+        await act.Should()
+            .ThrowAsync<CatalogGatewayException>()
+            .WithMessage("*500*");
+    }
+
+    [Fact]
+    public async Task GetSkillDefinitionByKeyAsync_ShouldThrowCatalogGatewayException_WhenJsonIsInvalid()
+    {
+        var handler = CreateMockHandler("{ invalid json }", HttpStatusCode.OK);
+        var client = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost:5193") };
+        var gateway = new HttpCatalogContentGateway(client);
+
+        var act = async () => await gateway.GetSkillDefinitionByKeyAsync("some-key");
+
+        await act.Should()
+            .ThrowAsync<CatalogGatewayException>()
+            .WithMessage("*Failed to deserialize*");
+    }
+
+    [Fact]
+    public async Task GetSkillDefinitionByKeyAsync_ShouldPropagateOperationCanceledException()
+    {
+        var handler = new Mock<HttpMessageHandler>();
+        handler
+            .Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .ThrowsAsync(new OperationCanceledException());
+
+        var client = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost:5193") };
+        var gateway = new HttpCatalogContentGateway(client);
+
+        var act = async () => await gateway.GetSkillDefinitionByKeyAsync("some-key");
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    // ── ListSkillDefinitionsByKeysAsync ────────────────────────────────
+
+    [Fact]
+    public async Task ListSkillDefinitionsByKeysAsync_ShouldReturnSkills_WhenCatalogReturns200()
+    {
+        var httpResponse = new
+        {
+            Definitions = new[]
+            {
+                new
+                {
+                    Key = "skill.basic.strike",
+                    Name = "Frappe",
+                    Description = "Une attaque.",
+                    SkillType = "Damage",
+                    TargetingType = "SingleEnemy",
+                    EffectType = "Damage",
+                    ManaCost = 5,
+                    ChargeCost = 0,
+                    BasePower = 10,
+                    Tags = new[] { "basic" }
+                },
+                new
+                {
+                    Key = "skill.basic.guard",
+                    Name = "Garde",
+                    Description = "Une defense.",
+                    SkillType = "Defense",
+                    TargetingType = "Self",
+                    EffectType = "Buff",
+                    ManaCost = 3,
+                    ChargeCost = 1,
+                    BasePower = 0,
+                    Tags = Array.Empty<string>()
+                }
+            }
+        };
+
+        var json = JsonSerializer.Serialize(httpResponse, JsonOptions);
+        var handler = CreateMockHandler(json, HttpStatusCode.OK);
+        var client = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost:5193") };
+        var gateway = new HttpCatalogContentGateway(client);
+
+        var skills = await gateway.ListSkillDefinitionsByKeysAsync(
+            ["skill.basic.strike", "skill.basic.guard"]);
+
+        skills.Should().HaveCount(2);
+        skills.Select(s => s.Key).Should()
+            .BeEquivalentTo("skill.basic.strike", "skill.basic.guard");
+    }
+
+    [Fact]
+    public async Task ListSkillDefinitionsByKeysAsync_ShouldMapAllFields()
+    {
+        var httpResponse = new
+        {
+            Definitions = new[]
+            {
+                new
+                {
+                    Key = "skill.basic.strike",
+                    Name = "Frappe",
+                    Description = "Description.",
+                    SkillType = "Damage",
+                    TargetingType = "SingleEnemy",
+                    EffectType = "Damage",
+                    ManaCost = 5,
+                    ChargeCost = 0,
+                    BasePower = 10,
+                    Tags = new[] { "tag1" }
+                }
+            }
+        };
+
+        var json = JsonSerializer.Serialize(httpResponse, JsonOptions);
+        var handler = CreateMockHandler(json, HttpStatusCode.OK);
+        var client = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost:5193") };
+        var gateway = new HttpCatalogContentGateway(client);
+
+        var skills = await gateway.ListSkillDefinitionsByKeysAsync(["skill.basic.strike"]);
+
+        var skill = skills.Single();
+        skill.Key.Should().Be("skill.basic.strike");
+        skill.DisplayName.Should().Be("Frappe");
+        skill.Description.Should().Be("Description.");
+        skill.SkillType.Should().Be("Damage");
+        skill.TargetingType.Should().Be("SingleEnemy");
+        skill.EffectType.Should().Be("Damage");
+        skill.ManaCost.Should().Be(5);
+        skill.ChargeCost.Should().Be(0);
+        skill.BasePower.Should().Be(10);
+        skill.Tags.Should().BeEquivalentTo("tag1");
+    }
+
+    [Fact]
+    public async Task ListSkillDefinitionsByKeysAsync_ShouldCallExpectedEndpoint()
+    {
+        HttpRequestMessage? capturedRequest = null;
+
+        var handler = new Mock<HttpMessageHandler>();
+        handler
+            .Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .Callback<HttpRequestMessage, CancellationToken>((req, _) => capturedRequest = req)
+            .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.NotFound));
+
+        var client = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost:5193") };
+        var gateway = new HttpCatalogContentGateway(client);
+
+        await gateway.ListSkillDefinitionsByKeysAsync(["skill.basic.strike"]);
+
+        capturedRequest.Should().NotBeNull();
+        capturedRequest!.RequestUri!.AbsolutePath.Should().Be(
+            "/api/v2/catalog/skill-definitions/batch/by-keys");
+    }
+
+    [Fact]
+    public async Task ListSkillDefinitionsByKeysAsync_ShouldSendExpectedKeysPayload()
+    {
+        HttpRequestMessage? capturedRequest = null;
+
+        var handler = new Mock<HttpMessageHandler>();
+        handler
+            .Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .Callback<HttpRequestMessage, CancellationToken>(async (req, _) =>
+            {
+                capturedRequest = req;
+            })
+            .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.NotFound));
+
+        var client = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost:5193") };
+        var gateway = new HttpCatalogContentGateway(client);
+
+        await gateway.ListSkillDefinitionsByKeysAsync(["skill.a", "skill.b"]);
+
+        capturedRequest.Should().NotBeNull();
+        capturedRequest!.Method.Should().Be(HttpMethod.Post);
+
+        var body = await capturedRequest.Content!.ReadAsStringAsync();
+        body.Should().Contain("skill.a");
+        body.Should().Contain("skill.b");
+    }
+
+    [Fact]
+    public async Task ListSkillDefinitionsByKeysAsync_ShouldReturnEmpty_WhenKeysAreEmpty()
+    {
+        var handler = CreateMockHandler("", HttpStatusCode.OK);
+        var client = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost:5193") };
+        var gateway = new HttpCatalogContentGateway(client);
+
+        var skills = await gateway.ListSkillDefinitionsByKeysAsync([]);
+
+        skills.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ListSkillDefinitionsByKeysAsync_ShouldThrowCatalogGatewayException_WhenCatalogReturns500()
+    {
+        var handler = CreateMockHandler("Internal Server Error", HttpStatusCode.InternalServerError);
+        var client = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost:5193") };
+        var gateway = new HttpCatalogContentGateway(client);
+
+        var act = async () => await gateway.ListSkillDefinitionsByKeysAsync(["some-key"]);
+
+        await act.Should()
+            .ThrowAsync<CatalogGatewayException>()
+            .WithMessage("*500*");
+    }
+
+    // ── ListSkillDefinitionsByTypeAsync ────────────────────────────────
+
+    [Fact]
+    public async Task ListSkillDefinitionsByTypeAsync_ShouldReturnSkills_WhenCatalogReturns200()
+    {
+        var httpResponse = new
+        {
+            Definitions = new[]
+            {
+                new
+                {
+                    Key = "skill.basic.strike",
+                    Name = "Frappe",
+                    Description = "Une attaque.",
+                    SkillType = "Damage",
+                    TargetingType = "SingleEnemy",
+                    EffectType = "Damage",
+                    ManaCost = 5,
+                    ChargeCost = 0,
+                    BasePower = 10,
+                    Tags = new[] { "basic" }
+                }
+            }
+        };
+
+        var json = JsonSerializer.Serialize(httpResponse, JsonOptions);
+        var handler = CreateMockHandler(json, HttpStatusCode.OK);
+        var client = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost:5193") };
+        var gateway = new HttpCatalogContentGateway(client);
+
+        var skills = await gateway.ListSkillDefinitionsByTypeAsync("Damage");
+
+        skills.Should().ContainSingle();
+        skills.Single().Key.Should().Be("skill.basic.strike");
+    }
+
+    [Fact]
+    public async Task ListSkillDefinitionsByTypeAsync_ShouldCallExpectedEndpoint()
+    {
+        HttpRequestMessage? capturedRequest = null;
+
+        var handler = new Mock<HttpMessageHandler>();
+        handler
+            .Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .Callback<HttpRequestMessage, CancellationToken>((req, _) => capturedRequest = req)
+            .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.NotFound));
+
+        var client = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost:5193") };
+        var gateway = new HttpCatalogContentGateway(client);
+
+        await gateway.ListSkillDefinitionsByTypeAsync("Debuff");
+
+        capturedRequest.Should().NotBeNull();
+        capturedRequest!.RequestUri!.AbsolutePath.Should().Be(
+            "/api/v2/catalog/skill-definitions/type/Debuff");
+    }
+
+    [Fact]
+    public async Task ListSkillDefinitionsByTypeAsync_ShouldReturnEmpty_WhenSkillTypeIsWhitespace()
+    {
+        var handler = CreateMockHandler("", HttpStatusCode.OK);
+        var client = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost:5193") };
+        var gateway = new HttpCatalogContentGateway(client);
+
+        var skills = await gateway.ListSkillDefinitionsByTypeAsync("   ");
+
+        skills.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ListSkillDefinitionsByTypeAsync_ShouldThrowCatalogGatewayException_WhenCatalogReturns500()
+    {
+        var handler = CreateMockHandler("Internal Server Error", HttpStatusCode.InternalServerError);
+        var client = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost:5193") };
+        var gateway = new HttpCatalogContentGateway(client);
+
+        var act = async () => await gateway.ListSkillDefinitionsByTypeAsync("Damage");
+
+        await act.Should()
+            .ThrowAsync<CatalogGatewayException>()
+            .WithMessage("*500*");
+    }
+
+    // ── Legacy template methods remain unavailable ─────────────────────
+
+    [Fact]
+    public async Task GetSkillTemplateByKeyAsync_ShouldStillThrow_WhenUsingHttpGateway()
+    {
+        var handler = CreateMockHandler("", HttpStatusCode.OK);
+        var client = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost:5193") };
+        var gateway = new HttpCatalogContentGateway(client);
+
+        var act = async () => await gateway.GetSkillTemplateByKeyAsync("skill-shadow-strike-v1");
+
+        var exception = await act.Should()
+            .ThrowAsync<CatalogGatewayException>();
+
+        exception.Which.Message.Should().Contain("not available via the HTTP catalog gateway yet");
+        exception.Which.Message.Should().Contain("Use CatalogGateway:Mode = InMemory");
+    }
+
     private static Mock<HttpMessageHandler> CreateMockHandler(string content, HttpStatusCode statusCode)
     {
         var handler = new Mock<HttpMessageHandler>();

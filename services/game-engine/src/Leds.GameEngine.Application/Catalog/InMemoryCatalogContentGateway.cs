@@ -574,6 +574,202 @@ public sealed class InMemoryCatalogContentGateway : ICatalogContentGateway
                 SkillKeys: ["skill.basic.strike", "skill.basic.heal", "skill.basic.buff"])
         };
 
+    private static readonly IReadOnlyDictionary<string, CatalogSkillDefinition> SkillDefinitions =
+        new Dictionary<string, CatalogSkillDefinition>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["skill.basic.strike"] = new CatalogSkillDefinition(
+                Key: "skill.basic.strike",
+                DisplayName: "Frappe",
+                Description: "Une attaque de base qui inflige des degats legers a un ennemi.",
+                SkillType: "Damage",
+                TargetingType: "SingleEnemy",
+                EffectType: "Damage",
+                ManaCost: 5,
+                ChargeCost: 0,
+                BasePower: 10,
+                Tags: ["basic", "damage"]),
+            ["skill.basic.guard"] = new CatalogSkillDefinition(
+                Key: "skill.basic.guard",
+                DisplayName: "Garde",
+                Description: "Une posture defensive qui reduit les degats subis pendant un tour.",
+                SkillType: "Defense",
+                TargetingType: "Self",
+                EffectType: "Buff",
+                ManaCost: 3,
+                ChargeCost: 1,
+                BasePower: 0,
+                Tags: ["basic", "defense"]),
+            ["skill.basic.weaken"] = new CatalogSkillDefinition(
+                Key: "skill.basic.weaken",
+                DisplayName: "Affaiblissement",
+                Description: "Une malédiction qui reduit la puissance d'un ennemi.",
+                SkillType: "Debuff",
+                TargetingType: "SingleEnemy",
+                EffectType: "Debuff",
+                ManaCost: 4,
+                ChargeCost: 0,
+                BasePower: 0,
+                Tags: ["basic", "debuff"]),
+            ["skill.basic.disrupt"] = new CatalogSkillDefinition(
+                Key: "skill.basic.disrupt",
+                DisplayName: "Perturbation",
+                Description: "Une interference qui desorganise les competences ennemies.",
+                SkillType: "Debuff",
+                TargetingType: "SingleEnemy",
+                EffectType: "Debuff",
+                ManaCost: 6,
+                ChargeCost: 1,
+                BasePower: 0,
+                Tags: ["basic", "disrupt"]),
+            ["skill.basic.focus"] = new CatalogSkillDefinition(
+                Key: "skill.basic.focus",
+                DisplayName: "Concentration",
+                Description: "Un etat de focalisation qui augmente la puissance du prochain sort.",
+                SkillType: "Buff",
+                TargetingType: "Self",
+                EffectType: "Buff",
+                ManaCost: 2,
+                ChargeCost: 0,
+                BasePower: 0,
+                Tags: ["basic", "buff"]),
+            ["skill.basic.shield"] = new CatalogSkillDefinition(
+                Key: "skill.basic.shield",
+                DisplayName: "Bouclier",
+                Description: "Un bouclier qui absorbe les degats pendant un tour.",
+                SkillType: "Defense",
+                TargetingType: "Self",
+                EffectType: "Buff",
+                ManaCost: 4,
+                ChargeCost: 0,
+                BasePower: 0,
+                Tags: ["basic", "shield"]),
+            ["skill.basic.heal"] = new CatalogSkillDefinition(
+                Key: "skill.basic.heal",
+                DisplayName: "Soin",
+                Description: "Soigne un allié en restaurant ses points de vie.",
+                SkillType: "Heal",
+                TargetingType: "SingleAlly",
+                EffectType: "Heal",
+                ManaCost: 6,
+                ChargeCost: 0,
+                BasePower: 15,
+                Tags: ["basic", "heal"]),
+            ["skill.basic.charge"] = new CatalogSkillDefinition(
+                Key: "skill.basic.charge",
+                DisplayName: "Charge",
+                Description: "Une charge puissante qui inflige des degats supplémentaires.",
+                SkillType: "Damage",
+                TargetingType: "SingleEnemy",
+                EffectType: "Damage",
+                ManaCost: 7,
+                ChargeCost: 1,
+                BasePower: 18,
+                Tags: ["basic", "charge"]),
+            ["skill.basic.swift"] = new CatalogSkillDefinition(
+                Key: "skill.basic.swift",
+                DisplayName: "Rapidité",
+                Description: "Une attaque rapide qui peut frapper avant la réaction ennemie.",
+                SkillType: "Damage",
+                TargetingType: "SingleEnemy",
+                EffectType: "Damage",
+                ManaCost: 4,
+                ChargeCost: 0,
+                BasePower: 7,
+                Tags: ["basic", "swift"]),
+            ["skill.basic.disable"] = new CatalogSkillDefinition(
+                Key: "skill.basic.disable",
+                DisplayName: "Neutralisation",
+                Description: "Une compétence qui désactive temporairement les capacités ennemies.",
+                SkillType: "Debuff",
+                TargetingType: "SingleEnemy",
+                EffectType: "Debuff",
+                ManaCost: 8,
+                ChargeCost: 1,
+                BasePower: 0,
+                Tags: ["basic", "disable"]),
+            ["skill.basic.taunt"] = new CatalogSkillDefinition(
+                Key: "skill.basic.taunt",
+                DisplayName: "Provocation",
+                Description: "Force l'ennemi à cibler le lanceur.",
+                SkillType: "Utility",
+                TargetingType: "SingleEnemy",
+                EffectType: "Utility",
+                ManaCost: 3,
+                ChargeCost: 0,
+                BasePower: 0,
+                Tags: ["basic", "taunt"]),
+            ["skill.basic.enrage"] = new CatalogSkillDefinition(
+                Key: "skill.basic.enrage",
+                DisplayName: "Enragement",
+                Description: "Augmente la puissance d'attaque au prix de la défense.",
+                SkillType: "Buff",
+                TargetingType: "Self",
+                EffectType: "Buff",
+                ManaCost: 5,
+                ChargeCost: 1,
+                BasePower: 0,
+                Tags: ["basic", "enrage"]),
+            ["skill.basic.buff"] = new CatalogSkillDefinition(
+                Key: "skill.basic.buff",
+                DisplayName: "Renforcement",
+                Description: "Améliore les capacités d'un allié pour plusieurs tours.",
+                SkillType: "Buff",
+                TargetingType: "SingleAlly",
+                EffectType: "Buff",
+                ManaCost: 5,
+                ChargeCost: 0,
+                BasePower: 0,
+                Tags: ["basic", "buff"])
+        };
+
+    public Task<CatalogSkillDefinition?> GetSkillDefinitionByKeyAsync(
+        string key,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            return Task.FromResult<CatalogSkillDefinition?>(null);
+        }
+
+        var definition = SkillDefinitions.GetValueOrDefault(key.Trim());
+        return Task.FromResult(definition);
+    }
+
+    public Task<IReadOnlyCollection<CatalogSkillDefinition>> ListSkillDefinitionsByKeysAsync(
+        IReadOnlyCollection<string> keys,
+        CancellationToken cancellationToken = default)
+    {
+        if (keys is null || keys.Count == 0)
+        {
+            return Task.FromResult<IReadOnlyCollection<CatalogSkillDefinition>>([]);
+        }
+
+        var distinctKeys = keys.Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+        var results = SkillDefinitions.Values
+            .Where(d => distinctKeys.Any(k =>
+                string.Equals(d.Key, k, StringComparison.OrdinalIgnoreCase)))
+            .ToArray();
+
+        return Task.FromResult<IReadOnlyCollection<CatalogSkillDefinition>>(results);
+    }
+
+    public Task<IReadOnlyCollection<CatalogSkillDefinition>> ListSkillDefinitionsByTypeAsync(
+        string skillType,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(skillType))
+        {
+            return Task.FromResult<IReadOnlyCollection<CatalogSkillDefinition>>([]);
+        }
+
+        var trimmed = skillType.Trim();
+        var results = SkillDefinitions.Values
+            .Where(d => string.Equals(d.SkillType, trimmed, StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+
+        return Task.FromResult<IReadOnlyCollection<CatalogSkillDefinition>>(results);
+    }
+
     public Task<CatalogEnemyDefinition?> GetEnemyDefinitionByKeyAsync(
         string key,
         CancellationToken cancellationToken = default)
