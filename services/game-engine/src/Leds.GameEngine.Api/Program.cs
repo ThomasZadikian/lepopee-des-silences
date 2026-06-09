@@ -10,7 +10,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 builder.Services.AddGameEngineApplication();
-builder.Services.AddGameEngineInfrastructure();
+builder.Services.AddGameEngineInfrastructure(builder.Configuration);
 
 var allowedOrigins = builder.Configuration
     .GetSection("Cors:AllowedOrigins")

@@ -18,13 +18,17 @@ using Leds.GameEngine.Infrastructure.Generation.Rooms.Themes;
 using Leds.GameEngine.Infrastructure.Generation.Rooms.Types;
 using Leds.GameEngine.Infrastructure.Persistence;
 using Leds.GameEngine.Infrastructure.Rewards;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace Leds.GameEngine.Infrastructure.DependencyInjection;
 
 public static class InfrastructureServiceCollectionExtensions
 {
-    public static IServiceCollection AddGameEngineInfrastructure(this IServiceCollection services)
+    public static IServiceCollection AddGameEngineInfrastructure(
+        this IServiceCollection services,
+        IConfiguration configuration)
     {
         services.AddSingleton<IClock, SystemClock>();
         services.AddSingleton<IRunRepository, InMemoryRunRepository>();
@@ -44,7 +48,8 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IRoomMapLayoutTemplateProvider, RoomMapLayoutTemplateProvider>();
         services.AddSingleton<IRoomTypeGenerationProfileProvider, HardcodedRoomTypeGenerationProfileProvider>();
         services.AddSingleton<IMapRoomGenerator, MapRoomGenerator>();
-        services.AddSingleton<ICatalogContentGateway, InMemoryCatalogContentGateway>();
+        RegisterCatalogGateway(services, configuration);
+
         services.AddSingleton<IEventContentResolver, EventContentResolver>();
 
         services.AddSingleton<IEventContentResolutionStrategy, CombatEventContentResolutionStrategy>();
@@ -62,5 +67,35 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IRewardOfferRepository, InMemoryRewardOfferRepository>();
 
         return services;
+    }
+
+    private static void RegisterCatalogGateway(
+        IServiceCollection services,
+        IConfiguration configuration)
+    {
+        services.Configure<CatalogGatewayOptions>(
+            configuration.GetSection(CatalogGatewayOptions.SectionName));
+
+        var options = configuration
+            .GetSection(CatalogGatewayOptions.SectionName)
+            .Get<CatalogGatewayOptions>() ?? new CatalogGatewayOptions();
+
+        if (string.Equals(options.Mode, "Http", StringComparison.OrdinalIgnoreCase))
+        {
+            services.AddHttpClient<ICatalogContentGateway, HttpCatalogContentGateway>(
+                (serviceProvider, client) =>
+                {
+                    var gatewayOptions = serviceProvider
+                        .GetRequiredService<IOptions<CatalogGatewayOptions>>()
+                        .Value;
+
+                    client.BaseAddress = new Uri(gatewayOptions.BaseUrl);
+                    client.Timeout = gatewayOptions.Timeout;
+                });
+        }
+        else
+        {
+            services.AddSingleton<ICatalogContentGateway, InMemoryCatalogContentGateway>();
+        }
     }
 }
