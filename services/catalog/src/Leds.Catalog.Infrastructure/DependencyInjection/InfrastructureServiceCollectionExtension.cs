@@ -1,4 +1,5 @@
-﻿using Leds.Catalog.Application.Enemies.Ports;
+﻿using Leds.Catalog.Application.Enemies.Definitions.Ports;
+using Leds.Catalog.Application.Enemies.Ports;
 using Leds.Catalog.Application.EventTemplates.Ports;
 using Leds.Catalog.Application.Items.Ports;
 using Leds.Catalog.Application.PalaceLaws.Ports;
@@ -20,6 +21,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IPalaceLawDefinitionReadStore, InMemoryPalaceLawDefinitionReadStore>();
         services.AddSingleton<IEventTemplateReadStore, InMemoryEventTemplateReadStore>();
         services.AddSingleton<IRoomBossDefinitionReadStore, InMemoryRoomBossDefinitionReadStore>();
+        services.AddSingleton<IEnemyDefinitionReadStore, InMemoryEnemyDefinitionReadStore>();
 
         return services;
     }
