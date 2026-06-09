@@ -28,6 +28,7 @@ public sealed record InterludeDto(
 
     /// <summary>
     /// Standard available actions for the interlude screen.
+    /// Includes: enter next room, save and exit, and abandon run.
     /// </summary>
     public static IReadOnlyCollection<InterludeActionDto> BuildDefaultActions() =>
     [
@@ -37,6 +38,20 @@ public sealed record InterludeDto(
             Description: "Entrer dans la prochaine salle du Palais.",
             RequiresConfirmation: false,
             IsDangerous: false,
+            IsEnabled: true),
+        new InterludeActionDto(
+            Key: "save-and-exit",
+            Label: "Sauvegarder et quitter",
+            Description: "Sauvegarder la progression et retourner au menu principal. La run peut être reprise plus tard.",
+            RequiresConfirmation: false,
+            IsDangerous: false,
+            IsEnabled: true),
+        new InterludeActionDto(
+            Key: "abandon-run",
+            Label: "Abandonner la run",
+            Description: "Mettre fin définitivement à cette run. Cette action est irréversible.",
+            RequiresConfirmation: true,
+            IsDangerous: true,
             IsEnabled: true),
     ];
 }

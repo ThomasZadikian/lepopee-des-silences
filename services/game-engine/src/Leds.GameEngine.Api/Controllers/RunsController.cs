@@ -5,6 +5,7 @@ using Leds.GameEngine.Application.Runs.GetRunById;
 using Leds.GameEngine.Application.Runs.MoveToNextRoom;
 using Leds.GameEngine.Application.Runs.ProgressRun;
 using Leds.GameEngine.Application.Runs.ResolveCurrentEvent;
+using Leds.GameEngine.Application.Runs.SaveAndExitRun;
 using Leds.GameEngine.Application.Runs.StartRun;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -122,6 +123,21 @@ public sealed class RunsController : ControllerBase
     CancellationToken cancellationToken)
     {
         var command = new AbandonRunCommand(runId);
+
+        var response = await _sender.Send(command, cancellationToken);
+
+        return Ok(response);
+    }
+
+    [HttpPost("{runId:guid}/save-and-exit")]
+    [ProducesResponseType(typeof(SaveAndExitRunResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<SaveAndExitRunResponse>> SaveAndExitRun(
+    Guid runId,
+    CancellationToken cancellationToken)
+    {
+        var command = new SaveAndExitRunCommand(runId);
 
         var response = await _sender.Send(command, cancellationToken);
 

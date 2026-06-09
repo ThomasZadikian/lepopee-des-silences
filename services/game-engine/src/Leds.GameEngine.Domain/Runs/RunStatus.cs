@@ -15,5 +15,12 @@ public enum RunStatus
     /// The boss of the current room has been defeated and its reward selected.
     /// The player is navigating the Interlude before entering the next room.
     /// </summary>
-    Interlude = 7
+    Interlude = 7,
+
+    /// <summary>
+    /// Run has been saved and the player has returned to the menu.
+    /// The run is paused at a safe point (RoomResolved or Interlude) and can be resumed.
+    /// No game actions are permitted until the player resumes the run.
+    /// </summary>
+    Suspended = 8
 }

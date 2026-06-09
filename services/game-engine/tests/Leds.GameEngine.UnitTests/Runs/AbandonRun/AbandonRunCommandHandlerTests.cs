@@ -13,8 +13,8 @@ public sealed class AbandonRunCommandHandlerTests
     [Fact]
     public async Task Handle_ShouldAbandonRun_AndPersistIt()
     {
-        // Arrange
-        var run = TestGameEngineFactory.CreateRun();
+        // Arrange — run must be at a safe point (RoomResolved) for AbandonRun to be allowed
+        var run = TestGameEngineFactory.CreateRunWithCompletedCurrentRoom();
 
         var now = new DateTimeOffset(
             2026,
@@ -96,12 +96,11 @@ public sealed class AbandonRunCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ShouldThrowDomainException_WhenRunIsAlreadyClosed()
+    public async Task Handle_ShouldThrowDomainException_WhenRunIsNotAtSafePoint()
     {
-        // Arrange
+        // Arrange — Active run: handler-level safe-point guard fires before domain method.
         var run = TestGameEngineFactory.CreateRun();
-
-        run.Abandon(DateTimeOffset.UtcNow);
+        run.Status.Should().Be(RunStatus.Active);
 
         var repository = new Mock<IRunRepository>();
         repository
@@ -122,10 +121,10 @@ public sealed class AbandonRunCommandHandlerTests
             new AbandonRunCommand(run.Id.Value),
             CancellationToken.None);
 
-        // Assert
+        // Assert — handler guard throws before the domain Abandon() call
         await act.Should()
             .ThrowAsync<Leds.GameEngine.Domain.Common.DomainException>()
-            .WithMessage("Run is already closed.");
+            .WithMessage("*safe point*");
 
         repository.Verify(
             repo => repo.UpdateAsync(

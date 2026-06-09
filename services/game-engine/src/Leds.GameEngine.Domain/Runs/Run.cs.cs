@@ -94,6 +94,13 @@ public sealed class Run
     public DateTimeOffset? EndedAt { get; private set; }
 
     /// <summary>
+    /// The timestamp at which the run was saved and exited by the player.
+    /// Set when <see cref="SaveAndExit"/> is called.
+    /// <c>null</c> when the run has never been suspended.
+    /// </summary>
+    public DateTimeOffset? SavedAt { get; private set; }
+
+    /// <summary>
     /// Zero-based index of the current room in the infinite run sequence.
     /// Threshold is always index 0. Incremented by MoveToNextRoom (future).
     /// Display as <c>CurrentRoomIndex + 1</c> for player-facing "Salle N" labels.
@@ -256,7 +263,7 @@ public sealed class Run
     /// </summary>
     public void EnterInterlude()
     {
-        if (Status is RunStatus.Completed or RunStatus.Failed or RunStatus.Abandoned)
+        if (Status is RunStatus.Completed or RunStatus.Failed or RunStatus.Abandoned or RunStatus.Suspended)
         {
             throw new DomainException("Run is closed.");
         }
@@ -288,7 +295,7 @@ public sealed class Run
     /// </summary>
     public void MoveToNextRoom(Room nextRoom)
     {
-        if (Status is RunStatus.Completed or RunStatus.Failed or RunStatus.Abandoned)
+        if (Status is RunStatus.Completed or RunStatus.Failed or RunStatus.Abandoned or RunStatus.Suspended)
         {
             throw new DomainException("Run is closed.");
         }
@@ -348,6 +355,42 @@ public sealed class Run
 
         Status = RunStatus.Abandoned;
         EndedAt = endedAt;
+    }
+
+    /// <summary>
+    /// Suspends the run at a safe point (RoomResolved or Interlude) and returns the player
+    /// to the main menu. The run can be resumed later.
+    /// </summary>
+    /// <remarks>
+    /// Safe points: <see cref="RunStatus.RoomResolved"/> and <see cref="RunStatus.Interlude"/>.
+    /// The run must have no active combat and no pending reward offer.
+    /// </remarks>
+    public void SaveAndExit(DateTimeOffset savedAt)
+    {
+        if (Status is RunStatus.Completed or RunStatus.Failed or RunStatus.Abandoned or RunStatus.Suspended)
+        {
+            throw new DomainException("Run is closed or already suspended.");
+        }
+
+        if (Status is not (RunStatus.RoomResolved or RunStatus.Interlude))
+        {
+            throw new DomainException(
+                "Cannot save and exit: run must be at a safe point (RoomResolved or Interlude).");
+        }
+
+        if (HasActiveCombat)
+        {
+            throw new DomainException("Cannot save and exit: run has an active combat.");
+        }
+
+        if (HasPendingRewardOffer)
+        {
+            throw new DomainException(
+                "Cannot save and exit: run has a pending reward offer that must be selected first.");
+        }
+
+        Status = RunStatus.Suspended;
+        SavedAt = savedAt;
     }
 
     public void SetActiveCombat(CombatId combatId)
@@ -536,6 +579,11 @@ public sealed class Run
         if (Status is RunStatus.Completed or RunStatus.Failed or RunStatus.Abandoned)
         {
             throw new DomainException("Run is closed.");
+        }
+
+        if (Status == RunStatus.Suspended)
+        {
+            throw new DomainException("Run is suspended and cannot accept game actions until resumed.");
         }
 
         if (Status != RunStatus.Active)

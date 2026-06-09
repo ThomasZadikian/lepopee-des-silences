@@ -1,19 +1,18 @@
-﻿using Leds.GameEngine.Application.Abstractions;
+using Leds.GameEngine.Application.Abstractions;
 using Leds.GameEngine.Application.Common.Exceptions;
 using Leds.GameEngine.Application.Runs.Dtos;
-using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Runs;
 using MediatR;
 
-namespace Leds.GameEngine.Application.Runs.AbandonRun;
+namespace Leds.GameEngine.Application.Runs.SaveAndExitRun;
 
-public sealed class AbandonRunCommandHandler
-    : IRequestHandler<AbandonRunCommand, AbandonRunResponse>
+public sealed class SaveAndExitRunCommandHandler
+    : IRequestHandler<SaveAndExitRunCommand, SaveAndExitRunResponse>
 {
     private readonly IRunRepository _runRepository;
     private readonly IClock _clock;
 
-    public AbandonRunCommandHandler(
+    public SaveAndExitRunCommandHandler(
         IRunRepository runRepository,
         IClock clock)
     {
@@ -21,8 +20,8 @@ public sealed class AbandonRunCommandHandler
         _clock = clock;
     }
 
-    public async Task<AbandonRunResponse> Handle(
-        AbandonRunCommand request,
+    public async Task<SaveAndExitRunResponse> Handle(
+        SaveAndExitRunCommand request,
         CancellationToken cancellationToken)
     {
         var runId = new RunId(request.RunId);
@@ -34,16 +33,10 @@ public sealed class AbandonRunCommandHandler
             throw new NotFoundException("Run", request.RunId);
         }
 
-        if (run.Status is not (RunStatus.RoomResolved or RunStatus.Interlude))
-        {
-            throw new DomainException(
-                "AbandonRun is only allowed from a safe point (RoomResolved or Interlude).");
-        }
-
-        run.Abandon(_clock.UtcNow);
+        run.SaveAndExit(_clock.UtcNow);
 
         await _runRepository.UpdateAsync(run, cancellationToken);
 
-        return new AbandonRunResponse(RunDto.FromDomain(run));
+        return new SaveAndExitRunResponse(RunDto.FromDomain(run));
     }
 }

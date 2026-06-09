@@ -1,4 +1,4 @@
-# L’épopée des silences - aplha-0.2.0 / web-alpha-0.2.0
+# L’épopée des silences - aplha-0.2.1 / web-alpha-0.2.0
 
 > RPG roguelite narratif full web — Palais mental — Runs procédurales — Backend serveur-autoritaire.
 

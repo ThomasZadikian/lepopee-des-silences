@@ -10,6 +10,16 @@ namespace Leds.GameEngine.Application.Runs.Dtos;
 /// One-based room number for player display ("Salle 1", "Salle 2", …).
 /// Always equals <c>CurrentRoomIndex + 1</c>. Display-only — do not use for game logic.
 /// </param>
+/// <param name="CanResume">
+/// <c>true</c> when the run is in <see cref="RunStatus.Suspended"/> state and can be resumed.
+/// </param>
+/// <param name="SavedAt">
+/// The timestamp at which the player saved and exited the run. <c>null</c> if never suspended.
+/// </param>
+/// <param name="AbandonedAt">
+/// The timestamp at which the run was abandoned (<see cref="RunStatus.Abandoned"/>).
+/// Equals <c>EndedAt</c> on the domain object. <c>null</c> for non-abandoned runs.
+/// </param>
 public sealed record RunDto(
     Guid Id,
     Guid PlayerId,
@@ -24,7 +34,10 @@ public sealed record RunDto(
     IReadOnlyCollection<RoomDto> Rooms,
     IReadOnlyCollection<ActivePalaceLawDto> ActivePalaceLaws,
     int CurrentRoomIndex,
-    int CurrentRoomNumber)
+    int CurrentRoomNumber,
+    bool CanResume,
+    DateTimeOffset? SavedAt,
+    DateTimeOffset? AbandonedAt)
 {
     public static RunDto FromDomain(Run run)
     {
@@ -42,6 +55,9 @@ public sealed record RunDto(
             run.Rooms.Select(RoomDto.FromDomain).ToArray(),
             run.ActivePalaceLaws.Select(ActivePalaceLawDto.FromDomain).ToArray(),
             run.CurrentRoomIndex,
-            run.CurrentRoomIndex + 1);
+            run.CurrentRoomIndex + 1,
+            CanResume: run.Status == RunStatus.Suspended,
+            SavedAt: run.SavedAt,
+            AbandonedAt: run.Status == RunStatus.Abandoned ? run.EndedAt : null);
     }
 }

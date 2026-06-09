@@ -1,30 +1,75 @@
-﻿using System.Net;
+using System.Net;
 using System.Net.Http.Json;
 using FluentAssertions;
 using Leds.GameEngine.Application.Runs.AbandonRun;
-using Leds.GameEngine.Application.Runs.StartRun;
+using Leds.GameEngine.Application.Runs.Dtos;
 using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace Leds.GameEngine.IntegrationTests.Runs;
 
-public sealed class AbandonRunEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class AbandonRunEndpointTests : RunIntegrationTestBase, IClassFixture<WebApplicationFactory<Program>>
 {
-    private readonly HttpClient _client;
-
     public AbandonRunEndpointTests(WebApplicationFactory<Program> factory)
+        : base(factory.CreateClient())
     {
-        _client = factory.CreateClient();
+    }
+
+    /// <summary>
+    /// Drives the run to RoomResolved by choosing and resolving all nodes up to and including
+    /// the boss, then collecting the boss reward. Returns the run Id.
+    /// </summary>
+    private async Task<Guid> StartRunAtSafePointAsync()
+    {
+        var startRunResponse = await StartRunAsync();
+        var runId = startRunResponse.Run.Id;
+        var currentRoom = startRunResponse.Run.CurrentRoom;
+
+        // Navigate through all non-boss layers
+        while (currentRoom.CurrentNodeDepth < currentRoom.MaxNodeDepth)
+        {
+            var nodeToChoose = currentRoom.AvailableNodes.First();
+
+            var chooseResponse = await Client.PostAsync(
+                $"/api/v2/runs/{runId}/nodes/{nodeToChoose.Id}/choose",
+                content: null);
+            chooseResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+            var resolved = await ResolveAndHandleCombatAsync(runId);
+
+            var progressResponse = await Client.PostAsync(
+                $"/api/v2/runs/{runId}/progress",
+                content: null);
+            progressResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+            var progressBody = await progressResponse.Content
+                .ReadFromJsonAsync<Leds.GameEngine.Application.Runs.ProgressRun.ProgressRunResponse>();
+            currentRoom = progressBody!.Run.CurrentRoom;
+        }
+
+        // Choose and resolve the boss node
+        var bossNode = currentRoom.AvailableNodes.Single();
+        bossNode.IsBoss.Should().BeTrue();
+
+        var chooseBoss = await Client.PostAsync(
+            $"/api/v2/runs/{runId}/nodes/{bossNode.Id}/choose",
+            content: null);
+        chooseBoss.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var bossResolved = await ResolveAndHandleCombatAsync(runId);
+        bossResolved.Run.Status.Should().Be("RoomResolved");
+
+        return runId;
     }
 
     [Fact]
-    public async Task AbandonRun_ShouldReturnOk_WhenRunIsActive()
+    public async Task AbandonRun_ShouldReturnOk_WhenRunIsAtSafePoint()
     {
-        // Arrange
-        var startRunResponse = await StartRunAsync();
+        // Arrange — drive run to RoomResolved (safe point)
+        var runId = await StartRunAtSafePointAsync();
 
         // Act
-        var response = await _client.PostAsync(
-            $"/api/v2/runs/{startRunResponse.Run.Id}/abandon",
+        var response = await Client.PostAsync(
+            $"/api/v2/runs/{runId}/abandon",
             content: null);
 
         var body = await response.Content.ReadAsStringAsync();
@@ -37,24 +82,43 @@ public sealed class AbandonRunEndpointTests : IClassFixture<WebApplicationFactor
         var payload = await response.Content.ReadFromJsonAsync<AbandonRunResponse>();
 
         payload.Should().NotBeNull();
-        payload!.Run.Id.Should().Be(startRunResponse.Run.Id);
+        payload!.Run.Id.Should().Be(runId);
         payload.Run.Status.Should().Be("Abandoned");
+    }
+
+    [Fact]
+    public async Task AbandonRun_ShouldReturnBadRequest_WhenRunIsActive()
+    {
+        // Arrange — freshly started run is Active, not at a safe point
+        var startRunResponse = await StartRunAsync();
+        var runId = startRunResponse.Run.Id;
+
+        // Act
+        var response = await Client.PostAsync(
+            $"/api/v2/runs/{runId}/abandon",
+            content: null);
+
+        var body = await response.Content.ReadAsStringAsync();
+
+        // Assert — handler-level safe-point guard rejects the request
+        response.StatusCode.Should().Be(
+            HttpStatusCode.BadRequest,
+            because: body);
+
+        body.Should().Contain("AbandonRun is only allowed from a safe point");
     }
 
     [Fact]
     public async Task AbandonRun_ShouldReturnNotFound_WhenRunDoesNotExist()
     {
-        // Arrange
         var unknownRunId = Guid.NewGuid();
 
-        // Act
-        var response = await _client.PostAsync(
+        var response = await Client.PostAsync(
             $"/api/v2/runs/{unknownRunId}/abandon",
             content: null);
 
         var body = await response.Content.ReadAsStringAsync();
 
-        // Assert
         response.StatusCode.Should().Be(
             HttpStatusCode.NotFound,
             because: body);
@@ -66,49 +130,26 @@ public sealed class AbandonRunEndpointTests : IClassFixture<WebApplicationFactor
     [Fact]
     public async Task AbandonRun_ShouldReturnBadRequest_WhenRunIsAlreadyAbandoned()
     {
-        // Arrange
-        var startRunResponse = await StartRunAsync();
+        // Arrange — drive to safe point, then abandon successfully
+        var runId = await StartRunAtSafePointAsync();
 
-        var firstResponse = await _client.PostAsync(
-            $"/api/v2/runs/{startRunResponse.Run.Id}/abandon",
+        var firstResponse = await Client.PostAsync(
+            $"/api/v2/runs/{runId}/abandon",
             content: null);
-
         firstResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        // Act
-        var secondResponse = await _client.PostAsync(
-            $"/api/v2/runs/{startRunResponse.Run.Id}/abandon",
+        // Act — second abandon attempt
+        var secondResponse = await Client.PostAsync(
+            $"/api/v2/runs/{runId}/abandon",
             content: null);
 
         var body = await secondResponse.Content.ReadAsStringAsync();
 
-        // Assert
+        // Assert — run is now Abandoned (not at safe point), handler guard fires
         secondResponse.StatusCode.Should().Be(
             HttpStatusCode.BadRequest,
             because: body);
 
         body.Should().Contain("Domain rule violated.");
-        body.Should().Contain("Run is already closed.");
-    }
-
-    private async Task<StartRunResponse> StartRunAsync()
-    {
-        var playerId = Guid.Parse("11111111-1111-1111-1111-111111111111");
-
-        var response = await _client.PostAsJsonAsync(
-            "/api/v2/runs",
-            new { PlayerId = playerId });
-
-        var body = await response.Content.ReadAsStringAsync();
-
-        response.StatusCode.Should().Be(
-            HttpStatusCode.Created,
-            because: body);
-
-        var payload = await response.Content.ReadFromJsonAsync<StartRunResponse>();
-
-        payload.Should().NotBeNull();
-
-        return payload!;
     }
 }
