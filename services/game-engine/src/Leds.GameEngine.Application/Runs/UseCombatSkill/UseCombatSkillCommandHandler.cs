@@ -73,6 +73,9 @@ public sealed class UseCombatSkillCommandHandler
         }
 
         var now = _clock.UtcNow;
+        var resolvedTargetIds = validationResult.Targets
+            .Select(t => t.Id.Value)
+            .ToArray();
 
         var logEntry = new CombatLogEntryDto(
             OccurredAtUtc: now.DateTime,
@@ -80,13 +83,13 @@ public sealed class UseCombatSkillCommandHandler
             Message: $"Skill '{request.SkillKey}' used by actor '{request.ActorId}'.",
             ActorId: request.ActorId,
             SkillKey: request.SkillKey,
-            TargetIds: request.TargetIds);
+            TargetIds: resolvedTargetIds);
 
         return new CombatSkillActionResult(
             CombatId: run.ActiveCombat.Id.Value,
             ActorId: request.ActorId,
             SkillKey: request.SkillKey,
-            TargetIds: request.TargetIds,
+            TargetIds: resolvedTargetIds,
             Accepted: true,
             Message: null,
             Combat: CombatRuntimeDto.FromDomain(run.ActiveCombat),

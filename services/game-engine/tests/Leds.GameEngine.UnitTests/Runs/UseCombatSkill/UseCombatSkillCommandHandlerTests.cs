@@ -241,6 +241,121 @@ public sealed class UseCombatSkillCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_ShouldFail_WhenTargetingIsInvalid()
+    {
+        var run = CreateRunWithActiveCombat();
+        var combat = run.ActiveCombat!;
+
+        var validationResult = new CombatSkillActionValidationResult(
+            IsValid: false,
+            ErrorMessage: "SingleEnemy targeting requires a target from the opposite side.",
+            Actor: null,
+            Skill: null,
+            Targets: []);
+
+        var (runRepo, validator, clock) = CreateMocks(run, validationResult);
+
+        var handler = new UseCombatSkillCommandHandler(
+            runRepo.Object, validator.Object, clock.Object);
+
+        var act = () => handler.Handle(
+            new UseCombatSkillCommand(
+                RunId: run.Id.Value,
+                CombatId: combat.Id.Value,
+                ActorId: Ally.Id.Value,
+                SkillKey: "skill.basic.strike",
+                TargetIds: [Ally.Id.Value]),
+            CancellationToken.None);
+
+        await act.Should().ThrowAsync<DomainException>()
+            .WithMessage("*opposite side*");
+    }
+
+    [Fact]
+    public async Task Handle_ShouldReturnConflictOrFailure_WhenSkillTargetsWrongSide()
+    {
+        var run = CreateRunWithActiveCombat();
+        var combat = run.ActiveCombat!;
+
+        var validationResult = new CombatSkillActionValidationResult(
+            IsValid: false,
+            ErrorMessage: "SingleEnemy targeting requires a target from the opposite side.",
+            Actor: null,
+            Skill: null,
+            Targets: []);
+
+        var (runRepo, validator, clock) = CreateMocks(run, validationResult);
+
+        var handler = new UseCombatSkillCommandHandler(
+            runRepo.Object, validator.Object, clock.Object);
+
+        var act = () => handler.Handle(
+            new UseCombatSkillCommand(
+                RunId: run.Id.Value,
+                CombatId: combat.Id.Value,
+                ActorId: Ally.Id.Value,
+                SkillKey: "skill.basic.strike",
+                TargetIds: [Ally.Id.Value]),
+            CancellationToken.None);
+
+        await act.Should().ThrowAsync<DomainException>()
+            .WithMessage("*opposite side*");
+    }
+
+    [Fact]
+    public async Task Handle_ShouldSucceed_WhenTargetingIsValid()
+    {
+        var run = CreateRunWithActiveCombat();
+        var combat = run.ActiveCombat!;
+
+        var validationResult = new CombatSkillActionValidationResult(
+            IsValid: true, null, Ally, StrikeSkill, [Enemy]);
+
+        var (runRepo, validator, clock) = CreateMocks(run, validationResult);
+
+        var handler = new UseCombatSkillCommandHandler(
+            runRepo.Object, validator.Object, clock.Object);
+
+        var result = await handler.Handle(
+            new UseCombatSkillCommand(
+                RunId: run.Id.Value,
+                CombatId: combat.Id.Value,
+                ActorId: Ally.Id.Value,
+                SkillKey: "skill.basic.strike",
+                TargetIds: [Enemy.Id.Value]),
+            CancellationToken.None);
+
+        result.Accepted.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Handle_ShouldReturnResolvedTargetsInActionResult()
+    {
+        var run = CreateRunWithActiveCombat();
+        var combat = run.ActiveCombat!;
+        var requestedTargetId = Guid.NewGuid();
+
+        var validationResult = new CombatSkillActionValidationResult(
+            IsValid: true, null, Ally, StrikeSkill, [Enemy]);
+
+        var (runRepo, validator, clock) = CreateMocks(run, validationResult);
+
+        var handler = new UseCombatSkillCommandHandler(
+            runRepo.Object, validator.Object, clock.Object);
+        var result = await handler.Handle(
+            new UseCombatSkillCommand(
+                RunId: run.Id.Value,
+                CombatId: combat.Id.Value,
+                ActorId: Ally.Id.Value,
+                SkillKey: "skill.basic.strike",
+                TargetIds: [requestedTargetId]),
+            CancellationToken.None);
+
+        result.TargetIds.Should().ContainSingle(id => id == Enemy.Id.Value);
+        result.LogEntries.Single().TargetIds.Should().ContainSingle(id => id == Enemy.Id.Value);
+    }
+
+    [Fact]
     public async Task Handle_ShouldReturnCombatRuntimeDto()
     {
         var run = CreateRunWithActiveCombat();

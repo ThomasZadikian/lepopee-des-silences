@@ -1,11 +1,13 @@
 using FluentAssertions;
 using Leds.GameEngine.Application.Combats.Actions;
+using Leds.GameEngine.Application.Combats.Targeting;
 using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
 using Leds.GameEngine.Infrastructure.Combats.Actions;
+using Moq;
 
 namespace Leds.GameEngine.UnitTests.Combats.Actions;
 
@@ -16,7 +18,8 @@ public sealed class CombatSkillActionValidatorTests
     private readonly Combatant _ally;
     private readonly Combatant _enemy;
     private readonly Combat _activeCombat;
-    private readonly CombatSkillActionValidator _validator = new();
+    private readonly Mock<ICombatTargetingRuleValidator> _targetingRuleValidator;
+    private readonly CombatSkillActionValidator _validator;
 
     public CombatSkillActionValidatorTests()
     {
@@ -61,6 +64,17 @@ public sealed class CombatSkillActionValidatorTests
             nodeId: NodeId.New(),
             allies: [_ally],
             enemies: [_enemy]);
+
+        _targetingRuleValidator = new Mock<ICombatTargetingRuleValidator>();
+        _targetingRuleValidator
+            .Setup(v => v.Validate(
+                It.IsAny<Combat>(),
+                It.IsAny<Combatant>(),
+                It.IsAny<CombatantSkill>(),
+                It.IsAny<IReadOnlyCollection<Guid>>()))
+            .Returns(new CombatTargetingValidationResult(true, null, [_enemy]));
+
+        _validator = new CombatSkillActionValidator(_targetingRuleValidator.Object);
     }
 
     [Fact]
@@ -80,10 +94,8 @@ public sealed class CombatSkillActionValidatorTests
     [Fact]
     public void Validate_ShouldFail_WhenActorDoesNotExist()
     {
-        var fakeId = Guid.NewGuid();
-
         var result = _validator.Validate(
-            _activeCombat, fakeId, "skill.basic.strike", [_enemy.Id.Value]);
+            _activeCombat, Guid.NewGuid(), "skill.basic.strike", [_enemy.Id.Value]);
 
         result.IsValid.Should().BeFalse();
         result.ErrorMessage.Should().Contain("not exist");
@@ -112,75 +124,53 @@ public sealed class CombatSkillActionValidatorTests
     }
 
     [Fact]
-    public void Validate_ShouldFail_WhenTargetDoesNotExist()
+    public void Validate_ShouldDelegateTargetingRules()
     {
-        var fakeId = Guid.NewGuid();
+        _validator.Validate(_activeCombat, _ally.Id.Value, "skill.basic.strike", [_enemy.Id.Value]);
 
-        var result = _validator.Validate(
-            _activeCombat, _ally.Id.Value, "skill.basic.strike", [fakeId]);
-
-        result.IsValid.Should().BeFalse();
-        result.ErrorMessage.Should().Contain("Target");
+        _targetingRuleValidator.Verify(v => v.Validate(
+            _activeCombat,
+            _ally,
+            _strikeSkill,
+            It.Is<IReadOnlyCollection<Guid>>(ids => ids.Single() == _enemy.Id.Value)), Times.Once);
     }
 
     [Fact]
-    public void Validate_ShouldFail_WhenTargetIsDefeated()
+    public void Validate_ShouldFail_WhenTargetingRulesFail()
     {
-        _enemy.MarkDefeated();
+        _targetingRuleValidator
+            .Setup(v => v.Validate(_activeCombat, _ally, _strikeSkill, It.IsAny<IReadOnlyCollection<Guid>>()))
+            .Returns(new CombatTargetingValidationResult(false, "Targeting failed.", []));
 
         var result = _validator.Validate(
             _activeCombat, _ally.Id.Value, "skill.basic.strike", [_enemy.Id.Value]);
 
         result.IsValid.Should().BeFalse();
-        result.ErrorMessage.Should().Contain("defeated");
+        result.ErrorMessage.Should().Be("Targeting failed.");
     }
 
     [Fact]
-    public void Validate_ShouldFail_WhenTargetIdsIsEmpty()
+    public void Validate_ShouldReturnResolvedTargets_WhenTargetingRulesSucceed()
     {
-        var result = _validator.Validate(
-            _activeCombat, _ally.Id.Value, "skill.basic.strike", []);
+        _targetingRuleValidator
+            .Setup(v => v.Validate(_activeCombat, _ally, _strikeSkill, It.IsAny<IReadOnlyCollection<Guid>>()))
+            .Returns(new CombatTargetingValidationResult(true, null, [_enemy]));
 
-        result.IsValid.Should().BeFalse();
-        result.ErrorMessage.Should().Contain("target");
+        var result = _validator.Validate(
+            _activeCombat, _ally.Id.Value, "skill.basic.strike", [_enemy.Id.Value]);
+
+        result.IsValid.Should().BeTrue();
+        result.Targets.Should().ContainSingle(t => t.Id == _enemy.Id);
     }
 
     [Fact]
-    public void Validate_ShouldSucceed_WhenActorOwnsSkillAndTargetExists()
+    public void Validate_ShouldPreserveActorAndSkill_WhenValid()
     {
         var result = _validator.Validate(
             _activeCombat, _ally.Id.Value, "skill.basic.strike", [_enemy.Id.Value]);
 
         result.IsValid.Should().BeTrue();
-        result.ErrorMessage.Should().BeNull();
-    }
-
-    [Fact]
-    public void Validate_ShouldReturnActorSkillAndTargets_WhenValid()
-    {
-        var result = _validator.Validate(
-            _activeCombat, _ally.Id.Value, "skill.basic.strike", [_enemy.Id.Value]);
-
-        result.Actor.Should().NotBeNull();
-        result.Actor!.Id.Should().Be(_ally.Id);
-        result.Skill.Should().NotBeNull();
-        result.Skill!.Key.Should().Be("skill.basic.strike");
-        result.Targets.Should().HaveCount(1);
-        result.Targets.Single().Id.Should().Be(_enemy.Id);
-    }
-
-    [Fact]
-    public void Validate_ShouldSucceed_WithMultipleTargets()
-    {
-        var ally2 = Combatant.CreateAlly("player.ally2", "Sidekick", "Support", 60, [_strikeSkill]);
-        var combat = Combat.Create(
-            CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(),
-            [_ally, ally2], [_enemy]);
-
-        var result = _validator.Validate(
-            combat, _ally.Id.Value, "skill.basic.strike", [_enemy.Id.Value, ally2.Id.Value]);
-
-        result.IsValid.Should().BeTrue();
-        result.Targets.Should().HaveCount(2);
+        result.Actor.Should().Be(_ally);
+        result.Skill.Should().Be(_strikeSkill);
     }
 }

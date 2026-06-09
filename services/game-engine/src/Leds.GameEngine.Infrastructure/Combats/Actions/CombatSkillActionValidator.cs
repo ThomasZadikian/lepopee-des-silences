@@ -1,10 +1,18 @@
 using Leds.GameEngine.Application.Combats.Actions;
+using Leds.GameEngine.Application.Combats.Targeting;
 using Leds.GameEngine.Domain.Combats;
 
 namespace Leds.GameEngine.Infrastructure.Combats.Actions;
 
 public sealed class CombatSkillActionValidator : ICombatSkillActionValidator
 {
+    private readonly ICombatTargetingRuleValidator _targetingRuleValidator;
+
+    public CombatSkillActionValidator(ICombatTargetingRuleValidator targetingRuleValidator)
+    {
+        _targetingRuleValidator = targetingRuleValidator;
+    }
+
     public CombatSkillActionValidationResult Validate(
         Combat combat,
         Guid actorId,
@@ -37,29 +45,11 @@ public sealed class CombatSkillActionValidator : ICombatSkillActionValidator
             return Invalid($"Actor does not own skill '{skillKey}'.");
         }
 
-        if (targetIds.Count == 0)
+        var targetingResult = _targetingRuleValidator.Validate(combat, actor, skill, targetIds);
+
+        if (!targetingResult.IsValid)
         {
-            return Invalid("At least one target is required.");
-        }
-
-        var allCombatants = GetAllCombatants(combat);
-        var targets = new List<Combatant>();
-
-        foreach (var targetId in targetIds)
-        {
-            var target = allCombatants.FirstOrDefault(c => c.Id.Value == targetId);
-
-            if (target is null)
-            {
-                return Invalid($"Target with id '{targetId}' does not exist in this combat.");
-            }
-
-            if (target.IsDefeated)
-            {
-                return Invalid($"Target with id '{targetId}' is defeated.");
-            }
-
-            targets.Add(target);
+            return Invalid(targetingResult.ErrorMessage!);
         }
 
         return new CombatSkillActionValidationResult(
@@ -67,7 +57,7 @@ public sealed class CombatSkillActionValidator : ICombatSkillActionValidator
             ErrorMessage: null,
             Actor: actor,
             Skill: skill,
-            Targets: targets);
+            Targets: targetingResult.Targets);
     }
 
     private static CombatSkillActionValidationResult Invalid(string message)
