@@ -31,7 +31,7 @@ public sealed class GetCurrentCombatQueryHandler
 
         if (run.ActiveCombat is null)
         {
-            throw new NotFoundException("ActiveCombat", request.RunId);
+            throw new NotFoundException($"No active combat was found for run '{request.RunId}'.");
         }
 
         return CombatRuntimeDto.FromDomain(run.ActiveCombat);

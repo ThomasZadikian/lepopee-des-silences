@@ -1,11 +1,18 @@
-import { gameEngineApi } from '../../../shared/api/gameEngineApi';
+import { HttpError, httpRequest } from '../../../shared/api/httpClient';
 import type { CombatRuntimeDto, UseCombatSkillRequest, UseCombatSkillResponse } from '../types/combatContracts';
 
 export const combatApi = {
-  getCurrentCombat(runId: string) {
-    return gameEngineApi.get<CombatRuntimeDto>(
-      `/api/v2/runs/${runId}/current-combat`,
-    );
+  async getCurrentCombat(runId: string): Promise<CombatRuntimeDto | null> {
+    try {
+      return await httpRequest<CombatRuntimeDto>(
+        `/api/v2/runs/${runId}/current-combat`,
+      );
+    } catch (error) {
+      if (error instanceof HttpError && error.status === 404) {
+        return null;
+      }
+      throw error;
+    }
   },
 
   useSkillAction(
@@ -13,9 +20,12 @@ export const combatApi = {
     combatId: string,
     body: UseCombatSkillRequest,
   ) {
-    return gameEngineApi.post<UseCombatSkillResponse>(
+    return httpRequest<UseCombatSkillResponse>(
       `/api/v2/runs/${runId}/combats/${combatId}/skill-actions`,
-      body,
+      {
+        method: 'POST',
+        body: JSON.stringify(body),
+      },
     );
   },
 };

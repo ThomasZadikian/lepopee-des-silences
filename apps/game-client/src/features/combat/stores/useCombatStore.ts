@@ -152,7 +152,11 @@ export const useCombatStore = defineStore('combatRuntime', () => {
     error.value = null;
     try {
       const result = await combatApi.getCurrentCombat(runId);
-      initCombat(result);
+      if (result === null) {
+        combat.value = null;
+      } else {
+        initCombat(result);
+      }
     } catch (caught) {
       error.value = caught instanceof Error ? caught.message : 'Impossible de charger le combat.';
       combat.value = null;
@@ -161,10 +165,11 @@ export const useCombatStore = defineStore('combatRuntime', () => {
     }
   }
 
-  async function submitAction(runId: string, combatId: string) {
+  async function submitAction(runId: string) {
     const actor = currentActor.value;
     const skill = selectedSkill.value;
-    if (!actor || !skill) return;
+    const combatId = combat.value?.id;
+    if (!actor || !skill || !combatId) return;
 
     isLoading.value = true;
     error.value = null;

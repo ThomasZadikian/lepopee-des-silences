@@ -9,6 +9,13 @@ public sealed class NotFoundException : Exception
         ResourceId = resourceId;
     }
 
+    public NotFoundException(string message)
+        : base(message)
+    {
+        ResourceName = string.Empty;
+        ResourceId = string.Empty;
+    }
+
     public string ResourceName { get; }
 
     public object ResourceId { get; }

@@ -2,6 +2,7 @@
 import { computed, onMounted, watch } from 'vue';
 
 import { useCombatStore } from '../stores/useCombatStore';
+import { useRunStore } from '../../runs/stores/runStore';
 import CombatantCard from './CombatantCard.vue';
 import CombatantSidePanel from './CombatantSidePanel.vue';
 import CombatLogPanel from './CombatLogPanel.vue';
@@ -19,6 +20,7 @@ const emit = defineEmits<{
 }>();
 
 const combatStore = useCombatStore();
+const runStore = useRunStore();
 
 const activeCombatant = computed(() => combatStore.currentActor);
 
@@ -43,7 +45,7 @@ function handleSelect(combatantId: string) {
 }
 
 async function handleSubmit() {
-  await combatStore.submitAction(props.runId, props.combatId);
+  await combatStore.submitAction(props.runId);
 }
 
 function handleClearSelection() {
@@ -66,7 +68,11 @@ watch(
 );
 
 onMounted(() => {
-  if (!combatStore.combat) {
+  if (combatStore.combat) return;
+
+  if (runStore.combatRuntime?.id && runStore.combatRuntime.status === 'Active') {
+    combatStore.initCombat(runStore.combatRuntime);
+  } else {
     combatStore.loadCurrentCombat(props.runId);
   }
 });
@@ -74,7 +80,10 @@ onMounted(() => {
 watch(
   () => props.combatId,
   (newId) => {
-    if (newId) {
+    if (!newId) return;
+    if (runStore.combatRuntime?.id === newId) {
+      combatStore.initCombat(runStore.combatRuntime);
+    } else {
       combatStore.loadCurrentCombat(props.runId);
     }
   },

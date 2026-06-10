@@ -82,7 +82,7 @@ public sealed class GetCurrentCombatQueryHandlerTests
             CancellationToken.None);
 
         await act.Should().ThrowAsync<NotFoundException>()
-            .WithMessage("*ActiveCombat*");
+            .WithMessage("*No active combat was found*");
     }
 
     [Fact]
@@ -169,6 +169,6 @@ public sealed class GetCurrentCombatQueryHandlerTests
             CancellationToken.None);
 
         await act.Should().ThrowAsync<NotFoundException>()
-            .WithMessage("*ActiveCombat*");
+            .WithMessage("*No active combat was found*");
     }
 }
