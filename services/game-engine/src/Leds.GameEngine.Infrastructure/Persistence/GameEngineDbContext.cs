@@ -19,6 +19,8 @@ public sealed class GameEngineDbContext : DbContext
     public DbSet<CombatEntity> Combats => Set<CombatEntity>();
     public DbSet<CombatantEntity> Combatants => Set<CombatantEntity>();
     public DbSet<CombatantSkillEntity> CombatantSkills => Set<CombatantSkillEntity>();
+    public DbSet<PlayerRuntimeStateEntity> PlayerRuntimeStates => Set<PlayerRuntimeStateEntity>();
+    public DbSet<PlayerRuntimeSkillEntity> PlayerRuntimeSkills => Set<PlayerRuntimeSkillEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

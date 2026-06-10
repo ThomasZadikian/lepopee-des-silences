@@ -37,7 +37,8 @@ public sealed record RunDto(
     int CurrentRoomNumber,
     bool CanResume,
     DateTimeOffset? SavedAt,
-    DateTimeOffset? AbandonedAt)
+    DateTimeOffset? AbandonedAt,
+    PlayerRuntimeStateDto? PlayerState)
 {
     public static RunDto FromDomain(Run run)
     {
@@ -58,6 +59,7 @@ public sealed record RunDto(
             run.CurrentRoomIndex + 1,
             CanResume: run.Status == RunStatus.Suspended,
             SavedAt: run.SavedAt,
-            AbandonedAt: run.Status == RunStatus.Abandoned ? run.EndedAt : null);
+            AbandonedAt: run.Status == RunStatus.Abandoned ? run.EndedAt : null,
+            PlayerState: PlayerRuntimeStateDto.FromDomain(run.PlayerState));
     }
 }

@@ -34,4 +34,5 @@ public sealed class RunEntity
     public List<RunMemoryFragmentEntity> MemoryFragments { get; set; } = [];
     public List<RunActivePalaceLawEntity> ActivePalaceLaws { get; set; } = [];
     public CombatEntity? ActiveCombat { get; set; }
+    public PlayerRuntimeStateEntity? PlayerState { get; set; }
 }

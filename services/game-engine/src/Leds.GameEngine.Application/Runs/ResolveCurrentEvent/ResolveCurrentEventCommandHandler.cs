@@ -147,7 +147,7 @@ public sealed class ResolveCurrentEventCommandHandler
             if (draft is not null)
             {
                 encounterDraftDto = CombatEncounterDraftDto.FromDomain(draft);
-                var combatRuntime = _combatFactory.CreateFromDraft(draft);
+                var combatRuntime = _combatFactory.CreateFromDraft(draft, run.PlayerState);
                 run.StartCombat(combatRuntime);
                 combatRuntimeDto = CombatRuntimeDto.FromDomain(combatRuntime);
             }

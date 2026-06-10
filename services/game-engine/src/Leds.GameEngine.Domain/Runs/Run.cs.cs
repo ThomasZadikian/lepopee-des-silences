@@ -96,6 +96,8 @@ public sealed class Run
 
     public bool HasPendingRewardOffer => PendingRewardOfferId.HasValue;
 
+    public PlayerRuntimeState PlayerState { get; private set; } = null!;
+
     public int MaxHp { get; }
 
     public int CurrentHp { get; private set; }
@@ -246,9 +248,39 @@ public sealed class Run
             defense,
             speed);
 
+        run.PlayerState = PlayerRuntimeState.Create(
+            maxVitality: maxHp,
+            skills: CreateDefaultPlayerSkills(),
+            currentVitality: currentHp);
+
         run._roomSnapshot = run.CreateSnapshot();
 
         return run;
+    }
+
+    private static IReadOnlyCollection<PlayerRuntimeSkill> CreateDefaultPlayerSkills()
+    {
+        return
+        [
+            PlayerRuntimeSkill.Create(
+                key: "skill.basic.strike",
+                displayName: "Frappe",
+                skillType: "Damage",
+                targetingType: "SingleEnemy",
+                effectType: "Damage",
+                manaCost: 0,
+                chargeCost: 0,
+                basePower: 10),
+            PlayerRuntimeSkill.Create(
+                key: "skill.basic.guard",
+                displayName: "Garde",
+                skillType: "Defense",
+                targetingType: "Self",
+                effectType: "Guard",
+                manaCost: 0,
+                chargeCost: 0,
+                basePower: 5)
+        ];
     }
 
     public void ChooseNode(NodeId nodeId)
@@ -647,7 +679,9 @@ public sealed class Run
         switch (choice.RewardType)
         {
             case RewardType.Heal:
-                ApplyHeal(ParsePayloadAmount(choice, "heal"));
+                var healAmount = ParsePayloadAmount(choice, "heal");
+                ApplyHeal(healAmount);
+                PlayerState.Heal(healAmount);
                 break;
 
             default:
@@ -842,7 +876,8 @@ public sealed class Run
         IEnumerable<ActivePalaceLaw> activePalaceLaws,
         RunStatus? preSuspendStatus,
         RunSnapshotData? snapshot,
-        Combat? activeCombat = null)
+        Combat? activeCombat = null,
+        PlayerRuntimeState? playerState = null)
     {
         var firstRoom = rooms.First();
 
@@ -872,6 +907,11 @@ public sealed class Run
         }
 
         run._activeCombat = activeCombat;
+
+        run.PlayerState = playerState ?? PlayerRuntimeState.Create(
+            maxVitality: maxHp,
+            skills: CreateDefaultPlayerSkills(),
+            currentVitality: currentHp);
 
         return run;
     }

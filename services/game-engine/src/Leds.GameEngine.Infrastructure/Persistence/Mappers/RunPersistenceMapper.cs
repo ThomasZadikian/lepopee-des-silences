@@ -66,7 +66,8 @@ public static class RunPersistenceMapper
                 .ToList(),
             ActiveCombat = run.ActiveCombat is not null
                 ? CombatPersistenceMapper.ToEntity(run.ActiveCombat, run.Id.Value)
-                : null
+                : null,
+            PlayerState = PlayerRuntimeStatePersistenceMapper.ToEntity(run.PlayerState, run.Id.Value)
         };
 
         var snapshot = run.SnapshotData;
@@ -170,6 +171,10 @@ public static class RunPersistenceMapper
             ? CombatPersistenceMapper.ToDomain(entity.ActiveCombat)
             : null;
 
+        var playerState = entity.PlayerState is not null
+            ? PlayerRuntimeStatePersistenceMapper.ToDomain(entity.PlayerState)
+            : null;
+
         return Run.Rehydrate(
             new RunId(entity.Id),
             entity.PlayerId,
@@ -194,7 +199,8 @@ public static class RunPersistenceMapper
             activePalaceLaws,
             entity.PreSuspendStatus is not null ? Enum.Parse<RunStatus>(entity.PreSuspendStatus) : null,
             snapshot,
-            activeCombat);
+            activeCombat,
+            playerState);
     }
 
     public static Room ToDomain(RoomEntity entity)

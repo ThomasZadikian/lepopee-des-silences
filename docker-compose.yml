@@ -1,0 +1,16 @@
+services:
+  game-engine-postgres:
+    image: postgres:16
+    container_name: leds-game-engine-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: leds_game_engine
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - game_engine_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  game_engine_postgres_data:

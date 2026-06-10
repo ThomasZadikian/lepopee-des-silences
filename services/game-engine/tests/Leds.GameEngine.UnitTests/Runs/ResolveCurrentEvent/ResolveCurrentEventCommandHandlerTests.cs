@@ -362,7 +362,7 @@ public sealed class ResolveCurrentEventCommandHandlerTests
         var runtimeCombat = new CombatFactory().CreateFromDraft(expectedDraft);
         var runtimeFactoryMock = new Mock<ICombatFactory>();
         runtimeFactoryMock
-            .Setup(f => f.CreateFromDraft(It.IsAny<CombatEncounterDraft>()))
+            .Setup(f => f.CreateFromDraft(It.IsAny<CombatEncounterDraft>(), It.IsAny<PlayerRuntimeState?>()))
             .Returns(runtimeCombat);
 
         var handler = new ResolveCurrentEventCommandHandler(
@@ -463,7 +463,7 @@ public sealed class ResolveCurrentEventCommandHandlerTests
         var runtimeCombat = new CombatFactory().CreateFromDraft(expectedDraft);
         var runtimeFactoryMock = new Mock<ICombatFactory>();
         runtimeFactoryMock
-            .Setup(f => f.CreateFromDraft(It.IsAny<CombatEncounterDraft>()))
+            .Setup(f => f.CreateFromDraft(It.IsAny<CombatEncounterDraft>(), It.IsAny<PlayerRuntimeState?>()))
             .Returns(runtimeCombat);
 
         var handler = new ResolveCurrentEventCommandHandler(

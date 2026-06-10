@@ -26,6 +26,8 @@ public sealed class EfRunRepository : IRunRepository
             .Include(run => run.ActiveCombat)
                 .ThenInclude(combat => combat!.Combatants)
                     .ThenInclude(combatant => combatant.Skills)
+            .Include(run => run.PlayerState)
+                .ThenInclude(ps => ps!.Skills)
             .FirstOrDefaultAsync(run => run.Id == runId.Value, cancellationToken);
 
         return entity is null ? null : RunPersistenceMapper.ToDomain(entity);
@@ -51,6 +53,8 @@ public sealed class EfRunRepository : IRunRepository
             .Include(r => r.ActiveCombat)
                 .ThenInclude(combat => combat!.Combatants)
                     .ThenInclude(combatant => combatant.Skills)
+            .Include(r => r.PlayerState)
+                .ThenInclude(ps => ps!.Skills)
             .FirstOrDefaultAsync(r => r.Id == runId, cancellationToken);
 
         if (existing is null)
@@ -95,6 +99,7 @@ public sealed class EfRunRepository : IRunRepository
             : null;
 
         UpdateActiveCombat(existing, incomingCombat);
+        UpdatePlayerState(existing, entity);
 
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
@@ -276,5 +281,35 @@ public sealed class EfRunRepository : IRunRepository
     {
         existingCombatant.Skills.Clear();
         existingCombatant.Skills.AddRange(incomingCombatant.Skills);
+    }
+
+    private void UpdatePlayerState(RunEntity existingRun, RunEntity incoming)
+    {
+        if (incoming.PlayerState is null)
+        {
+            if (existingRun.PlayerState is not null)
+            {
+                _dbContext.PlayerRuntimeSkills.RemoveRange(existingRun.PlayerState.Skills);
+                _dbContext.PlayerRuntimeStates.Remove(existingRun.PlayerState);
+                existingRun.PlayerState = null;
+            }
+
+            return;
+        }
+
+        if (existingRun.PlayerState is null)
+        {
+            existingRun.PlayerState = incoming.PlayerState;
+            return;
+        }
+
+        existingRun.PlayerState.MaxVitality = incoming.PlayerState.MaxVitality;
+        existingRun.PlayerState.CurrentVitality = incoming.PlayerState.CurrentVitality;
+        existingRun.PlayerState.Guard = incoming.PlayerState.Guard;
+        existingRun.PlayerState.Mana = incoming.PlayerState.Mana;
+        existingRun.PlayerState.Charge = incoming.PlayerState.Charge;
+
+        existingRun.PlayerState.Skills.Clear();
+        existingRun.PlayerState.Skills.AddRange(incoming.PlayerState.Skills);
     }
 }

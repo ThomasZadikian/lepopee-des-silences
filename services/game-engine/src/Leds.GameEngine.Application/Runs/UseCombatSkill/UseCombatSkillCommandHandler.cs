@@ -116,6 +116,8 @@ public sealed class UseCombatSkillCommandHandler
         var combatCompleted = finalCombat.Status == CombatStatus.Completed;
         var combatFailed = finalCombat.Status == CombatStatus.Failed;
 
+        SyncPlayerStateFromCombat(run, finalCombat);
+
         if (combatCompleted)
         {
             var combatNode = run.CurrentRoom.Nodes.SingleOrDefault(n =>
@@ -272,5 +274,17 @@ public sealed class UseCombatSkillCommandHandler
             ActorId: combat.ActiveCombatantId?.Value,
             SkillKey: null,
             TargetIds: []);
+    }
+
+    private static void SyncPlayerStateFromCombat(Run run, Combat combat)
+    {
+        var playerCombatant = combat.Allies.FirstOrDefault(a => a.Side == CombatantSide.Player);
+        if (playerCombatant is null) return;
+
+        run.PlayerState.SyncFromCombat(
+            playerCombatant.CurrentVitality,
+            playerCombatant.Guard,
+            playerCombatant.Mana,
+            playerCombatant.Charge);
     }
 }
