@@ -28,6 +28,7 @@ using Leds.GameEngine.Infrastructure.Generation.Rooms.Themes;
 using Leds.GameEngine.Infrastructure.Generation.Rooms.Types;
 using Leds.GameEngine.Infrastructure.Persistence;
 using Leds.GameEngine.Infrastructure.Rewards;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -42,6 +43,8 @@ public static class InfrastructureServiceCollectionExtensions
     {
         services.AddSingleton<IClock, SystemClock>();
         services.AddSingleton<IRunRepository, InMemoryRunRepository>();
+
+        RegisterPersistence(services, configuration);
 
         // Génération
         services.AddSingleton<ISeededRandomFactory, SeededRandomFactory>();
@@ -84,6 +87,19 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IRewardOfferRepository, InMemoryRewardOfferRepository>();
 
         return services;
+    }
+
+    private static void RegisterPersistence(
+        IServiceCollection services,
+        IConfiguration configuration)
+    {
+        var persistenceMode = configuration["Persistence:Mode"];
+
+        if (string.Equals(persistenceMode, "Postgres", StringComparison.OrdinalIgnoreCase))
+        {
+            services.AddDbContext<GameEngineDbContext>(options =>
+                options.UseNpgsql(configuration.GetConnectionString("GameEngineDb")));
+        }
     }
 
     private static void RegisterCatalogGateway(
