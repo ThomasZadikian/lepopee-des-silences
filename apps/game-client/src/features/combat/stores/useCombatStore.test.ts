@@ -1,7 +1,69 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 
+import { combatApi } from '../api/combatApi';
+import type { CombatRuntimeDto } from '../types/combatContracts';
 import { useCombatStore } from './useCombatStore';
+
+vi.mock('../api/combatApi', () => ({
+  combatApi: {
+    getCurrentCombat: vi.fn(),
+    useSkillAction: vi.fn(),
+  },
+}));
+
+function createCombat(status: CombatRuntimeDto['status'] = 'Active'): CombatRuntimeDto {
+  return {
+    id: 'combat-1',
+    status,
+    turnNumber: 1,
+    activeCombatantId: status === 'Active' ? 'ally-1' : null,
+    allies: [
+      {
+        id: 'ally-1',
+        sourceKey: 'player.self',
+        displayName: 'Hero',
+        side: 'Player',
+        archetype: 'Fighter',
+        maxVitality: 100,
+        currentVitality: 100,
+        guard: 0,
+        mana: 0,
+        charge: 0,
+        status: 'Active',
+        skills: [
+          {
+            key: 'skill.basic.strike',
+            displayName: 'Frappe',
+            skillType: 'Damage',
+            targetingType: 'SingleEnemy',
+            effectType: 'Damage',
+            manaCost: 0,
+            chargeCost: 0,
+            basePower: 10,
+            tags: [],
+          },
+        ],
+      },
+    ],
+    enemies: [
+      {
+        id: 'enemy-1',
+        sourceKey: 'enemy.test',
+        displayName: 'Enemy',
+        side: 'Enemy',
+        archetype: 'Guard',
+        maxVitality: 30,
+        currentVitality: 30,
+        guard: 0,
+        mana: 0,
+        charge: 0,
+        status: 'Active',
+        skills: [],
+      },
+    ],
+  };
+}
 
 describe('useCombatStore visual feedback state', () => {
   beforeEach(() => {
@@ -60,5 +122,64 @@ describe('useCombatStore visual feedback state', () => {
     expect(store.recentlyGuardedIds).toEqual([]);
     expect(store.recentlyDefeatedIds).toEqual([]);
     expect(store.recentlyActingId).toBeNull();
+  });
+
+  it('clearCombat clears selections, logs, outcome and animation states', () => {
+    const store = useCombatStore();
+
+    store.initCombat(createCombat());
+    store.selectSkill('skill.basic.strike');
+    store.selectTarget('enemy-1');
+    store.logEntries.push({
+      occurredAtUtc: new Date().toISOString(),
+      type: 'CombatCompleted',
+      message: 'Combat completed.',
+      actorId: null,
+      skillKey: null,
+      targetIds: [],
+    });
+    store.terminalEvent = { kind: 'victory' };
+    store.markDamaged(['enemy-1']);
+
+    store.clearCombat();
+
+    expect(store.combat).toBeNull();
+    expect(store.selectedSkillKey).toBeNull();
+    expect(store.selectedTargetIds).toEqual([]);
+    expect(store.logEntries).toEqual([]);
+    expect(store.terminalEvent).toBeNull();
+    expect(store.recentlyDamagedIds).toEqual([]);
+  });
+
+  it('completed combat blocks skill submission', () => {
+    const store = useCombatStore();
+
+    store.initCombat(createCombat('Completed'));
+    store.selectSkill('skill.basic.strike');
+    store.selectedTargetIds = ['enemy-1'];
+
+    expect(store.isVictory).toBe(true);
+    expect(store.canSubmit).toBe(false);
+  });
+
+  it('failed combat blocks skill submission', () => {
+    const store = useCombatStore();
+
+    store.initCombat(createCombat('Failed'));
+    store.selectSkill('skill.basic.strike');
+    store.selectedTargetIds = ['enemy-1'];
+
+    expect(store.isDefeat).toBe(true);
+    expect(store.canSubmit).toBe(false);
+  });
+
+  it('current-combat null after completion is not a blocking error', async () => {
+    vi.mocked(combatApi.getCurrentCombat).mockResolvedValueOnce(null);
+    const store = useCombatStore();
+
+    await store.loadCurrentCombat('run-1');
+
+    expect(store.combat).toBeNull();
+    expect(store.error).toBeNull();
   });
 });

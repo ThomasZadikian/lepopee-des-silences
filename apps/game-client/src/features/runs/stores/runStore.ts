@@ -115,23 +115,42 @@ export const useRunStore = defineStore('run', () => {
     !currentRun.value?.pendingRewardOfferId,
   );
 
+  const shouldShowRunFailedPanel = computed(() =>
+    currentRun.value?.status === 'Failed',
+  );
+
+  const shouldShowCombatScene = computed(() =>
+    Boolean(currentRun.value?.activeCombatId),
+  );
+
+  const shouldShowRewardPanel = computed(() =>
+    Boolean(pendingRewardOffer.value || currentRun.value?.pendingRewardOfferId),
+  );
+
+  const shouldShowRunMap = computed(() =>
+    Boolean(currentRun.value) &&
+    !shouldShowRunFailedPanel.value &&
+    !shouldShowCombatScene.value &&
+    !shouldShowRewardPanel.value,
+  );
+
   const gameplayPhase = computed(() => {
     if (!currentRun.value) return 'Loading';
 
-    if (pendingRewardOffer.value || currentRun.value.pendingRewardOfferId) {
-      return 'Reward';
-    }
-
-    if (currentRun.value.activeCombatId) {
-      return 'Combat';
+    if (shouldShowRunFailedPanel.value || currentRun.value.status === 'Completed') {
+      return 'Completed';
     }
 
     if (currentRun.value.status === 'Suspended') {
       return 'Suspended';
     }
 
-    if (currentRun.value.status === 'Completed' || currentRun.value.status === 'Failed') {
-      return 'Completed';
+    if (shouldShowCombatScene.value) {
+      return 'Combat';
+    }
+
+    if (shouldShowRewardPanel.value) {
+      return 'Reward';
     }
 
     if (currentInterlude.value || currentRun.value.status === 'Interlude') {
@@ -695,6 +714,10 @@ export const useRunStore = defineStore('run', () => {
     isEnteringInterlude,
     isEnteringNextRoom,
     isRoomCleared,
+    shouldShowCombatScene,
+    shouldShowRewardPanel,
+    shouldShowRunMap,
+    shouldShowRunFailedPanel,
     gameplayPhase,
     isLoading,
     error,

@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 
 import GameShellLayout from '../app/layouts/GameShellLayout.vue';
 import CombatScene from '../features/combat/components/CombatScene.vue';
+import { useCombatStore } from '../features/combat/stores/useCombatStore';
 import EliseOverlay from '../features/elise/EliseOverlay.vue';
 import EventChoiceResultPanel from '../features/events/components/EventChoiceResultPanel.vue';
 import EventOutcomePanel from '../features/events/components/EventOutcomePanel.vue';
@@ -21,6 +22,7 @@ import { useRunStore } from '../features/runs/stores/runStore';
 const route = useRoute();
 const router = useRouter();
 const runStore = useRunStore();
+const combatStore = useCombatStore();
 
 const isSafePoint = computed(() =>
   runStore.currentRun?.status === 'RoomResolved' ||
@@ -43,6 +45,7 @@ async function handleExitMidRoom() {
 }
 
 async function handleLeaveRun() {
+  combatStore.clearCombat();
   runStore.clearCurrentRun();
   await router.replace('/');
 }
@@ -109,17 +112,9 @@ watch(
 
         <section class="run-grid__center panel">
 
-          <!-- 1. Reward (prioritaire) -->
-          <RewardOfferPanel
-            v-if="runStore.gameplayPhase === 'Reward' && runStore.pendingRewardOffer"
-            :offer="runStore.pendingRewardOffer"
-            :is-loading="runStore.isLoading"
-            @select-reward="runStore.selectReward"
-          />
-
-          <!-- 2. Combat (prioritaire) -->
+          <!-- 1. Combat actif ou outcome non confirmé -->
           <CombatScene
-            v-else-if="runStore.gameplayPhase === 'Combat' && runStore.currentRun.activeCombatId"
+            v-if="runStore.shouldShowCombatScene && runStore.currentRun.activeCombatId"
             :run-id="runStore.currentRun.id"
             :combat-id="runStore.currentRun.activeCombatId"
             @combat-completed="runStore.handleCombatCompleted"
@@ -127,7 +122,22 @@ watch(
             @leave-run="handleLeaveRun"
           />
 
-          <!-- 3. Interlude hub -->
+          <!-- 2. Reward pending après victoire -->
+          <RewardOfferPanel
+            v-else-if="runStore.shouldShowRewardPanel && runStore.pendingRewardOffer"
+            :offer="runStore.pendingRewardOffer"
+            :is-loading="runStore.isLoading"
+            @select-reward="runStore.selectReward"
+          />
+
+          <!-- 3. Reward pending en chargement -->
+          <section v-else-if="runStore.shouldShowRewardPanel" class="run-grid__transition panel">
+            <p class="system-label">Récompense</p>
+            <h3>Une résonance demeure.</h3>
+            <p>Le Palais rassemble ce que tu peux emporter.</p>
+          </section>
+
+          <!-- 4. Interlude hub -->
           <InterludePanel
             v-else-if="runStore.gameplayPhase === 'Interlude' && runStore.currentInterlude"
             :interlude="runStore.currentInterlude"
@@ -140,7 +150,7 @@ watch(
             @abandon="handleAbandon"
           />
 
-          <!-- 4. Transition RoomCleared -->
+          <!-- 5. Transition RoomCleared -->
           <RoomClearedPanel
             v-else-if="runStore.gameplayPhase === 'RoomCleared'"
             :room="runStore.currentRun.currentRoom"
@@ -149,7 +159,7 @@ watch(
             @enter-interlude="runStore.enterInterlude"
           />
 
-          <!-- 5. Event outcome -->
+          <!-- 6. Event outcome -->
           <EventOutcomePanel
             v-else-if="runStore.gameplayPhase === 'EventOutcome' && runStore.lastOutcome"
             :outcome="runStore.lastOutcome"
@@ -158,7 +168,7 @@ watch(
             @select-choice="runStore.selectCurrentEventChoice"
           />
 
-          <!-- 6. Event choice result -->
+          <!-- 7. Event choice result -->
           <EventChoiceResultPanel
             v-else-if="runStore.gameplayPhase === 'EventChoiceResult' && runStore.lastChoiceResult"
             :result="runStore.lastChoiceResult"
@@ -166,8 +176,8 @@ watch(
             @continue="runStore.continueAfterChoiceResult"
           />
 
-          <!-- 7. Map -->
-          <template v-else-if="runStore.gameplayPhase === 'Map'">
+          <!-- 8. Map -->
+          <template v-else-if="runStore.shouldShowRunMap && runStore.gameplayPhase === 'Map'">
             <PalaceMapPlaceholder
               :nodes="runStore.allNodes"
               :available-nodes="runStore.availableNodes"
@@ -180,7 +190,7 @@ watch(
             <EliseOverlay :message="runStore.lastOutcome?.description" />
           </template>
 
-          <!-- 8. Run suspendue (chargée directement via URL) -->
+          <!-- 9. Run suspendue (chargée directement via URL) -->
           <section
             v-else-if="runStore.gameplayPhase === 'Suspended'"
             class="run-suspended panel"
@@ -202,7 +212,7 @@ watch(
             </div>
           </section>
 
-          <!-- 9. Run terminée -->
+          <!-- 10. Run terminée -->
           <section v-else class="run-grid__outcome panel">
             <p class="system-label">Run terminée</p>
             <h3>{{ runStore.currentRun.status === 'Failed' ? 'Défaite définitive' : 'Le Tome se referme' }}</h3>
@@ -303,6 +313,25 @@ watch(
 .run-grid__outcome p {
   color: var(--color-muted);
   line-height: 1.55;
+}
+
+.run-grid__transition {
+  display: grid;
+  gap: var(--space-3);
+  align-content: center;
+  min-height: 100%;
+  padding: var(--space-6);
+}
+
+.run-grid__transition h3 {
+  margin: 0;
+  color: var(--color-gold);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.run-grid__transition p:last-child {
+  color: var(--color-muted);
 }
 
 .run-grid__outcome-button {

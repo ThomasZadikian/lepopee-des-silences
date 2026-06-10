@@ -87,14 +87,14 @@ function selectChoice(choiceId: string) {
 <template>
   <section class="reward-offer">
     <header>
-      <p class="system-label">Récompense · reward offered</p>
+      <p class="system-label">Récompense · Une résonance demeure</p>
 
       <h2>
         {{ offer.title ?? 'PLACEHOLDER_REWARD_OFFER_TITLE' }}
       </h2>
 
       <p>
-        {{ offer.description ?? 'PLACEHOLDER_REWARD_OFFER_DESCRIPTION' }}
+        {{ offer.description ?? 'Choisis ce que tu emportes.' }}
       </p>
     </header>
 
