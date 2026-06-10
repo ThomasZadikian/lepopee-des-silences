@@ -1,4 +1,7 @@
-# L’épopée des silences - aplha-0.5.0-dev-5 / web-alpha-0.4.0
+# L’épopée des silences
+game-engine-alpha-0.5.0-dev-5
+web-alpha-0.4.0
+player-service-alpha-0.1.0
 
 > RPG roguelite narratif full web — Palais mental — Runs procédurales — Backend serveur-autoritaire.
 
