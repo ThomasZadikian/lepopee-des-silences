@@ -17,6 +17,8 @@ import {
   type RunDto,
 } from '../types/runTypes';
 
+import type { CombatRuntimeDto } from '../../combat/types/combatContracts';
+
 import { eventChoiceApi } from '../../events/api/eventChoiceApi';
 import {
   unwrapChoiceResultFromEventChoiceResponse,
@@ -58,6 +60,7 @@ export const useRunStore = defineStore('run', () => {
   const pendingRewardOffer = ref<RewardOfferDto | null>(null);
   const lastOutcome = ref<ResolveCurrentEventResponse['outcome'] | null>(null);
   const activeCombat = ref<CombatInstanceDto | null>(null);
+  const combatRuntime = ref<CombatRuntimeDto | null>(null);
   const previewedNodeId = ref<string | null>(null);
   const lastChoiceResult = ref<CurrentEventChoiceResultDto | null>(null);
 
@@ -214,6 +217,7 @@ export const useRunStore = defineStore('run', () => {
       pendingRewardOffer.value = null;
       lastOutcome.value = null;
       activeCombat.value = null;
+      combatRuntime.value = null;
       currentInterlude.value = null;
       resetPreviewedNode();
 
@@ -287,6 +291,7 @@ export const useRunStore = defineStore('run', () => {
       currentRun.value = resolveResponse.run;
       lastOutcome.value = resolveResponse.outcome;
       activeCombat.value = resolveResponse.startedCombat ?? null;
+      combatRuntime.value = resolveResponse.combat ?? null;
 
       await refreshPendingRewardIfNeeded();
     });
@@ -302,6 +307,7 @@ export const useRunStore = defineStore('run', () => {
       currentRun.value = response.run;
       lastOutcome.value = response.outcome;
       activeCombat.value = response.startedCombat ?? null;
+      combatRuntime.value = response.combat ?? null;
       resetPreviewedNode();
 
       await refreshPendingRewardIfNeeded();
@@ -356,6 +362,7 @@ export const useRunStore = defineStore('run', () => {
       lastChoiceResult.value = null;
       currentRun.value = run;
       activeCombat.value = null;
+      combatRuntime.value = null;
       lastOutcome.value = null;
       resetPreviewedNode();
 
@@ -591,6 +598,7 @@ export const useRunStore = defineStore('run', () => {
     pendingRewardOffer.value = null;
     lastOutcome.value = null;
     activeCombat.value = null;
+    combatRuntime.value = null;
     previewedNodeId.value = null;
     lastChoiceResult.value = null;
     currentInterlude.value = null;
@@ -664,6 +672,7 @@ export const useRunStore = defineStore('run', () => {
     lastOutcome,
     lastChoiceResult,
     activeCombat,
+    combatRuntime,
     pendingRewardOffer,
     currentInterlude,
     isEnteringInterlude,

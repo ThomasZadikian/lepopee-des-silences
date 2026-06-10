@@ -125,6 +125,8 @@ export type ResolveCurrentEventResponse = {
   run: RunDto;
   outcome: ResolvedNodeEventOutcomeDto;
   startedCombat?: CombatInstanceDto | null;
+  encounterDraft?: import('../../combat/types/combatContracts').CombatEncounterDraftDto | null;
+  combat?: import('../../combat/types/combatContracts').CombatRuntimeDto | null;
 };
 
 export type RunResponse =

@@ -3,7 +3,7 @@ import { computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import GameShellLayout from '../app/layouts/GameShellLayout.vue';
-import CombatRuntimePanel from '../features/combats/components/CombatRuntimePanel.vue';
+import CombatScene from '../features/combat/components/CombatScene.vue';
 import EliseOverlay from '../features/elise/EliseOverlay.vue';
 import EventChoiceResultPanel from '../features/events/components/EventChoiceResultPanel.vue';
 import EventOutcomePanel from '../features/events/components/EventOutcomePanel.vue';
@@ -113,7 +113,7 @@ watch(
           />
 
           <!-- 2. Combat (prioritaire) -->
-          <CombatRuntimePanel
+          <CombatScene
             v-else-if="runStore.gameplayPhase === 'Combat' && runStore.currentRun.activeCombatId"
             :run-id="runStore.currentRun.id"
             :combat-id="runStore.currentRun.activeCombatId"
