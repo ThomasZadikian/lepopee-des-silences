@@ -87,7 +87,7 @@ public sealed class UseCombatSkillCommandHandlerTests
             new UseCombatSkillCommand(run.Id.Value, Guid.NewGuid(), Guid.NewGuid(), "skill.basic.strike", [Guid.NewGuid()]),
             CancellationToken.None);
 
-        await act.Should().ThrowAsync<DomainException>().WithMessage("*no active combat*");
+        await act.Should().ThrowAsync<ConflictException>().WithMessage("*no active combat*");
     }
 
     [Fact]
@@ -102,7 +102,7 @@ public sealed class UseCombatSkillCommandHandlerTests
             new UseCombatSkillCommand(setup.Run.Id.Value, Guid.NewGuid(), setup.Ally.Id.Value, _strikeSkill.Key, [setup.Enemy.Id.Value]),
             CancellationToken.None);
 
-        await act.Should().ThrowAsync<DomainException>().WithMessage("*does not match*");
+        await act.Should().ThrowAsync<ConflictException>().WithMessage("*does not match*");
     }
 
     [Fact]
@@ -115,7 +115,7 @@ public sealed class UseCombatSkillCommandHandlerTests
 
         var act = () => handler.Handle(CreateCommand(setup, _strikeSkill, [setup.Enemy]), CancellationToken.None);
 
-        await act.Should().ThrowAsync<DomainException>().WithMessage("*does not own skill*");
+        await act.Should().ThrowAsync<ConflictException>().WithMessage("*does not own skill*");
     }
 
     [Fact]
@@ -133,7 +133,7 @@ public sealed class UseCombatSkillCommandHandlerTests
 
         var act = () => handler.Handle(CreateCommand(setup, _strikeSkill, [setup.Ally]), CancellationToken.None);
 
-        await act.Should().ThrowAsync<DomainException>().WithMessage("*opposite side*");
+        await act.Should().ThrowAsync<ConflictException>().WithMessage("*opposite side*");
     }
 
     [Fact]
@@ -610,7 +610,7 @@ public sealed class UseCombatSkillCommandHandlerTests
 
         var act = () => handler.Handle(CreateCommand(setup, _strikeSkill, [setup.Enemy]), CancellationToken.None);
 
-        await act.Should().ThrowAsync<DomainException>()
+        await act.Should().ThrowAsync<ConflictException>()
             .WithMessage("Automatic enemy turn resolution exceeded the safety limit.");
     }
 

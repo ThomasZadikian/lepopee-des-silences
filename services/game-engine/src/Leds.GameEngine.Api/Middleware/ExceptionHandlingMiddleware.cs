@@ -1,7 +1,7 @@
 using FluentValidation;
+using Leds.GameEngine.Application.Common.Exceptions;
 using Leds.GameEngine.Domain.Common;
 using Microsoft.AspNetCore.Mvc;
-using Leds.GameEngine.Application.Common.Exceptions;
 
 namespace Leds.GameEngine.Api.Middleware;
 
@@ -31,6 +31,14 @@ public sealed class ExceptionHandlingMiddleware
                 StatusCodes.Status400BadRequest,
                 "Validation failed.",
                 exception.Errors.Select(error => error.ErrorMessage).ToArray());
+        }
+        catch (ConflictException exception)
+        {
+            await WriteProblemDetailsAsync(
+                context,
+                StatusCodes.Status409Conflict,
+                "Business rule conflict.",
+                new[] { exception.Message });
         }
         catch (DomainException exception)
         {

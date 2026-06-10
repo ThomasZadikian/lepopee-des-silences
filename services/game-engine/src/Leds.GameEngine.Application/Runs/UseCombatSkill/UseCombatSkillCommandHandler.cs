@@ -4,7 +4,6 @@ using Leds.GameEngine.Application.Combats.Dtos;
 using Leds.GameEngine.Application.Combats.Effects;
 using Leds.GameEngine.Application.Combats.EnemyTurns;
 using Leds.GameEngine.Application.Common.Exceptions;
-using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Runs;
 using MediatR;
@@ -49,24 +48,24 @@ public sealed class UseCombatSkillCommandHandler
 
         if (run.Status != RunStatus.Active)
         {
-            throw new DomainException("Run must be active to submit a combat action.");
+            throw new ConflictException("Run must be active to submit a combat action.");
         }
 
         if (!run.HasActiveCombat)
         {
-            throw new DomainException("Run has no active combat.");
+            throw new ConflictException("Run has no active combat.");
         }
 
         var combatId = new CombatId(request.CombatId);
 
         if (run.ActiveCombat is null)
         {
-            throw new DomainException("Run has no active combat.");
+            throw new ConflictException("Run has no active combat.");
         }
 
         if (run.ActiveCombat.Id != combatId)
         {
-            throw new DomainException("Combat does not match the active run combat.");
+            throw new ConflictException("Combat does not match the active run combat.");
         }
 
         run.ActiveCombat.EnsureActorCanAct(request.ActorId);
@@ -79,7 +78,7 @@ public sealed class UseCombatSkillCommandHandler
 
         if (!validationResult.IsValid)
         {
-            throw new DomainException(validationResult.ErrorMessage!);
+            throw new ConflictException(validationResult.ErrorMessage!);
         }
 
         var now = _clock.UtcNow;
@@ -156,7 +155,7 @@ public sealed class UseCombatSkillCommandHandler
 
             if (resolvedTurnCount >= maxAutoTurns)
             {
-                throw new DomainException("Automatic enemy turn resolution exceeded the safety limit.");
+                throw new ConflictException("Automatic enemy turn resolution exceeded the safety limit.");
             }
 
             var enemyResolution = _enemyTurnResolver.Resolve(combat);

@@ -94,7 +94,7 @@ public sealed class CombatActionEndpointTests : RunIntegrationTestBase, IClassFi
 
         var body = await response.Content.ReadAsStringAsync();
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest, because: body);
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict, because: body);
         body.Should().Contain("opposite side");
     }
 
