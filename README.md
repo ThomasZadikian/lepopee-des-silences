@@ -427,6 +427,16 @@ web-alpha-0.1.0 → afficher la première boucle backend jouable
 
 ---
 
+## Local development
+
+```powershell
+.\scripts\dev\start-dev.ps1
+```
+
+See [docs/development/local-dev-environment.md](docs/development/local-dev-environment.md).
+
+---
+
 ## Commandes utiles
 
 ### Tester le Game Engine
