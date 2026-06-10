@@ -62,6 +62,39 @@ public sealed class SelectRewardCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_ShouldPersistRunAfterRewardApplication()
+    {
+        var (run, offer) = CreateRunWithPendingReward();
+
+        var runRepository = new Mock<IRunRepository>();
+        runRepository
+            .Setup(repo => repo.GetByIdAsync(run.Id, CancellationToken.None))
+            .ReturnsAsync(run);
+
+        var rewardRepository = new Mock<IRewardOfferRepository>();
+        rewardRepository
+            .Setup(repo => repo.GetByIdAsync(offer.Id, CancellationToken.None))
+            .ReturnsAsync(offer);
+
+        var handler = new SelectRewardCommandHandler(
+            runRepository.Object,
+            rewardRepository.Object);
+
+        var choiceId = offer.Choices.First().Id;
+
+        await handler.Handle(
+            new SelectRewardCommand(run.Id.Value, choiceId.Value),
+            CancellationToken.None);
+
+        runRepository.Verify(
+            repo => repo.UpdateAsync(run, CancellationToken.None),
+            Times.Once);
+        rewardRepository.Verify(
+            repo => repo.UpdateAsync(offer, CancellationToken.None),
+            Times.Once);
+    }
+
+    [Fact]
     public async Task Handle_ShouldApplyHealEffect_WhenHealChoiceIsSelected()
     {
         var room = TestGameEngineFactory.CreateThresholdRoom();
@@ -125,6 +158,64 @@ public sealed class SelectRewardCommandHandlerTests
         await act.Should()
             .ThrowAsync<DomainException>()
             .WithMessage("Run has no pending reward offer.");
+    }
+
+    [Fact]
+    public async Task Handle_ShouldThrow_WhenChoiceDoesNotBelongToOffer()
+    {
+        var (run, offer) = CreateRunWithPendingReward();
+
+        var runRepository = new Mock<IRunRepository>();
+        runRepository
+            .Setup(repo => repo.GetByIdAsync(run.Id, CancellationToken.None))
+            .ReturnsAsync(run);
+
+        var rewardRepository = new Mock<IRewardOfferRepository>();
+        rewardRepository
+            .Setup(repo => repo.GetByIdAsync(offer.Id, CancellationToken.None))
+            .ReturnsAsync(offer);
+
+        var handler = new SelectRewardCommandHandler(
+            runRepository.Object,
+            rewardRepository.Object);
+
+        var act = () => handler.Handle(
+            new SelectRewardCommand(run.Id.Value, Guid.NewGuid()),
+            CancellationToken.None);
+
+        await act.Should()
+            .ThrowAsync<DomainException>()
+            .WithMessage("Reward choice was not found in the offer.");
+    }
+
+    [Fact]
+    public async Task Handle_ShouldThrow_WhenRewardOfferIsAlreadySelected()
+    {
+        var (run, offer) = CreateRunWithPendingReward();
+        var choiceId = offer.Choices.First().Id;
+        offer.SelectChoice(choiceId);
+
+        var runRepository = new Mock<IRunRepository>();
+        runRepository
+            .Setup(repo => repo.GetByIdAsync(run.Id, CancellationToken.None))
+            .ReturnsAsync(run);
+
+        var rewardRepository = new Mock<IRewardOfferRepository>();
+        rewardRepository
+            .Setup(repo => repo.GetByIdAsync(offer.Id, CancellationToken.None))
+            .ReturnsAsync(offer);
+
+        var handler = new SelectRewardCommandHandler(
+            runRepository.Object,
+            rewardRepository.Object);
+
+        var act = () => handler.Handle(
+            new SelectRewardCommand(run.Id.Value, choiceId.Value),
+            CancellationToken.None);
+
+        await act.Should()
+            .ThrowAsync<DomainException>()
+            .WithMessage("Only a pending reward offer can be selected.");
     }
 
     [Fact]

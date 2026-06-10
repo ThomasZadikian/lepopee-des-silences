@@ -50,16 +50,16 @@ public sealed class RewardOfferFactory
                 $"heal:{healAmount}"),
 
             RewardChoice.Create(
-                RewardType.StatBonus,
-                "Bonus d'attaque",
-                "Augmente l'attaque de 3 pour la run.",
-                "stat_bonus:attack:3"),
+                RewardType.Heal,
+                "Souffle retrouvé",
+                $"Récupère {healAmount + 4} PV.",
+                $"heal:{healAmount + 4}"),
 
             RewardChoice.Create(
-                RewardType.MemoryFragment,
-                "Fragment de Mémoire",
-                "Un fragment de souvenir du Palais.",
-                "memory_fragment:common")
+                RewardType.Heal,
+                "Calme intérieur",
+                $"Récupère {healAmount + 8} PV.",
+                $"heal:{healAmount + 8}")
         };
     }
 
@@ -70,22 +70,22 @@ public sealed class RewardOfferFactory
         return new List<RewardChoice>
         {
             RewardChoice.Create(
-                RewardType.MemoryFragment,
-                "Fragment Rare",
-                "Un fragment exceptionnel du Palais.",
-                "memory_fragment:rare"),
+                RewardType.Heal,
+                "Soin rare",
+                $"Récupère {healAmount} PV.",
+                $"heal:{healAmount}"),
 
             RewardChoice.Create(
-                RewardType.StatBonus,
-                "Bonus de puissance",
-                "Augmente l'attaque de 5 pour la run.",
-                "stat_bonus:attack:5"),
+                RewardType.Heal,
+                "Répit lucide",
+                $"Récupère {healAmount + 5} PV.",
+                $"heal:{healAmount + 5}"),
 
             RewardChoice.Create(
                 RewardType.Heal,
                 "Soin substantiel",
-                $"Récupère {healAmount} PV.",
-                $"heal:{healAmount}")
+                $"Récupère {healAmount + 10} PV.",
+                $"heal:{healAmount + 10}")
         };
     }
 
@@ -102,16 +102,16 @@ public sealed class RewardOfferFactory
                 $"heal:{healAmount}"),
 
             RewardChoice.Create(
-                RewardType.StatBonus,
-                "Bonus de défense",
-                "Augmente la défense de 5 pour la run.",
-                "stat_bonus:defense:5"),
+                RewardType.Heal,
+                "Volonté restaurée",
+                $"Récupère {healAmount + 8} PV.",
+                $"heal:{healAmount + 8}"),
 
             RewardChoice.Create(
-                RewardType.MemoryFragment,
-                "Fragment d'Élite",
-                "Un fragment de haute valeur du Palais.",
-                "memory_fragment:elite")
+                RewardType.Heal,
+                "Suture mentale",
+                $"Récupère {healAmount + 16} PV.",
+                $"heal:{healAmount + 16}")
         };
     }
 
@@ -128,16 +128,16 @@ public sealed class RewardOfferFactory
                 $"heal:{healAmount}"),
 
             RewardChoice.Create(
-                RewardType.StatBonus,
-                "Puissance du Palais",
-                "Augmente l'attaque et la défense de 5 pour la run.",
-                "stat_bonus:all:5"),
+                RewardType.Heal,
+                "Souffle du Gardien",
+                $"Récupère {healAmount + 12} PV.",
+                $"heal:{healAmount + 12}"),
 
             RewardChoice.Create(
-                RewardType.MemoryFragment,
-                "Fragment du Gardien",
-                "Un fragment de mémoire du boss du Palais.",
-                "memory_fragment:boss")
+                RewardType.Heal,
+                "Silence recomposé",
+                $"Récupère {healAmount + 24} PV.",
+                $"heal:{healAmount + 24}")
         };
     }
 }

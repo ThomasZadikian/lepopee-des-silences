@@ -37,21 +37,12 @@ public sealed class RewardOfferFactoryTests
     }
 
     [Fact]
-    public void CreateCombatRewardOffer_ShouldIncludeStatBonusChoice()
+    public void CreateCombatRewardOffer_ShouldOnlyExposeSupportedHealChoices()
     {
         var offer = CreateFactory()
             .CreateCombatRewardOffer(RewardSource.Elite, NodeEventType.Elite, riskLevel: 50);
 
-        offer.Choices.Should().Contain(choice => choice.RewardType == RewardType.StatBonus);
-    }
-
-    [Fact]
-    public void CreateCombatRewardOffer_ShouldIncludeMemoryFragmentChoice()
-    {
-        var offer = CreateFactory()
-            .CreateCombatRewardOffer(RewardSource.RoomBoss, NodeEventType.RoomBoss, riskLevel: 85);
-
-        offer.Choices.Should().Contain(choice => choice.RewardType == RewardType.MemoryFragment);
+        offer.Choices.Should().OnlyContain(choice => choice.RewardType == RewardType.Heal);
     }
 
     // -----------------------------------------------------------------------
@@ -66,10 +57,9 @@ public sealed class RewardOfferFactoryTests
 
         offer.Source.Should().Be(RewardSource.Combat);
         offer.Choices.Should().HaveCount(3);
-        offer.Choices.Should().Contain(c =>
-            c.RewardType == RewardType.MemoryFragment &&
-            c.PayloadKey.Contains("common"),
-            because: "Normal combat rewards memory_fragment:common.");
+        offer.Choices.Should().OnlyContain(c =>
+            c.RewardType == RewardType.Heal && c.PayloadKey.StartsWith("heal:"),
+            because: "MVP combat rewards must only expose applicable heal choices.");
     }
 
     [Fact]
@@ -80,14 +70,9 @@ public sealed class RewardOfferFactoryTests
 
         offer.Source.Should().Be(RewardSource.Rare);
         offer.Choices.Should().HaveCount(3);
-        offer.Choices.Should().Contain(c =>
-            c.RewardType == RewardType.MemoryFragment &&
-            c.PayloadKey.Contains("rare"),
-            because: "Rare combat rewards memory_fragment:rare.");
-        offer.Choices.Should().Contain(c =>
-            c.RewardType == RewardType.StatBonus &&
-            c.PayloadKey.Contains("5"),
-            because: "Rare combat stat bonus should be +5.");
+        offer.Choices.Should().OnlyContain(c =>
+            c.RewardType == RewardType.Heal && c.PayloadKey.StartsWith("heal:"),
+            because: "Rare rewards must not expose unsupported reward types yet.");
     }
 
     [Fact]
@@ -98,14 +83,9 @@ public sealed class RewardOfferFactoryTests
 
         offer.Source.Should().Be(RewardSource.Elite);
         offer.Choices.Should().HaveCount(3);
-        offer.Choices.Should().Contain(c =>
-            c.RewardType == RewardType.MemoryFragment &&
-            c.PayloadKey.Contains("elite"),
-            because: "Elite combat rewards memory_fragment:elite.");
-        offer.Choices.Should().Contain(c =>
-            c.RewardType == RewardType.StatBonus &&
-            c.PayloadKey.Contains("defense"),
-            because: "Elite combat stat bonus targets defense.");
+        offer.Choices.Should().OnlyContain(c =>
+            c.RewardType == RewardType.Heal && c.PayloadKey.StartsWith("heal:"),
+            because: "Elite rewards must not expose unsupported reward types yet.");
     }
 
     [Fact]
@@ -116,13 +96,9 @@ public sealed class RewardOfferFactoryTests
 
         offer.Source.Should().Be(RewardSource.RoomBoss);
         offer.Choices.Should().HaveCount(3);
-        offer.Choices.Should().Contain(c =>
-            c.RewardType == RewardType.MemoryFragment &&
-            c.PayloadKey.Contains("boss"),
-            because: "Boss rewards memory_fragment:boss.");
-        offer.Choices.Should().Contain(c =>
-            c.RewardType == RewardType.Heal,
-            because: "Boss reward must include a major heal choice.");
+        offer.Choices.Should().OnlyContain(c =>
+            c.RewardType == RewardType.Heal && c.PayloadKey.StartsWith("heal:"),
+            because: "Boss rewards must only expose applicable heal choices for now.");
     }
 
     // -----------------------------------------------------------------------

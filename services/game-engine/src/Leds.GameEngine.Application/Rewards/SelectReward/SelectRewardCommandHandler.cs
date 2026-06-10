@@ -51,6 +51,11 @@ public sealed class SelectRewardCommandHandler
             throw new NotFoundException("RewardOffer", run.PendingRewardOfferId!.Value);
         }
 
+        if (!rewardOffer.IsPending)
+        {
+            throw new DomainException("Only a pending reward offer can be selected.");
+        }
+
         var choiceId = new RewardChoiceId(request.ChoiceId);
 
         // Resolve the choice first (validates it exists in the offer) before mutating state.
@@ -59,7 +64,7 @@ public sealed class SelectRewardCommandHandler
 
         // Validate + apply the reward effect before marking the offer as selected,
         // so a failed ApplyRewardEffect does not corrupt the in-memory offer state.
-        run.ApplyRewardEffect(selectedChoice);
+        run.ApplyReward(selectedChoice);
 
         rewardOffer.SelectChoice(choiceId);
 

@@ -390,46 +390,92 @@ public sealed class RunTests
     }
 
     // -----------------------------------------------------------------------
-    // ApplyRewardEffect — stat_bonus:all (boss reward regression)
+    // ApplyReward — MVP heal rewards
     // -----------------------------------------------------------------------
 
     [Fact]
-    public void ApplyRewardEffect_ShouldIncreaseAttackAndDefense_WhenStatIsAll()
+    public void ApplyReward_ShouldHealPlayer_WhenRewardTypeIsHeal()
     {
-        var run = TestGameEngineFactory.CreateRun();
-
-        var initialAttack  = run.Attack;
-        var initialDefense = run.Defense;
+        var run = Run.StartNew(
+            Guid.NewGuid(),
+            "reward-heal-seed",
+            "gen-test",
+            "markov-test",
+            TestGameEngineFactory.CreateThresholdRoom(),
+            DateTimeOffset.UtcNow,
+            maxHp: 40,
+            currentHp: 10);
+        run.SetPendingRewardOffer(RewardOfferId.New());
 
         var choice = RewardChoice.Create(
-            RewardType.StatBonus,
-            "Puissance du Palais",
-            "Augmente l'attaque et la défense de 5 pour la run.",
-            "stat_bonus:all:5");
+            RewardType.Heal,
+            "Soin",
+            "Restaure 15 PV.",
+            "heal:15");
 
-        run.ApplyRewardEffect(choice);
+        run.ApplyReward(choice);
 
-        run.Attack.Should().Be(initialAttack + 5,
-            because: "'all' should add 5 to Attack.");
-        run.Defense.Should().Be(initialDefense + 5,
-            because: "'all' should add 5 to Defense.");
+        run.CurrentHp.Should().Be(25);
     }
 
     [Fact]
-    public void ApplyRewardEffect_ShouldThrow_WhenStatKeyIsUnknown()
+    public void ApplyReward_ShouldNotExceedMaxVitality()
     {
-        var run = TestGameEngineFactory.CreateRun();
+        var run = Run.StartNew(
+            Guid.NewGuid(),
+            "reward-heal-cap-seed",
+            "gen-test",
+            "markov-test",
+            TestGameEngineFactory.CreateThresholdRoom(),
+            DateTimeOffset.UtcNow,
+            maxHp: 40,
+            currentHp: 35);
+        run.SetPendingRewardOffer(RewardOfferId.New());
 
         var choice = RewardChoice.Create(
-            RewardType.StatBonus,
-            "Bonus inconnu",
-            "Un stat inconnu.",
-            "stat_bonus:luck:5");
+            RewardType.Heal,
+            "Soin",
+            "Restaure 15 PV.",
+            "heal:15");
 
-        var act = () => run.ApplyRewardEffect(choice);
+        run.ApplyReward(choice);
+
+        run.CurrentHp.Should().Be(40);
+    }
+
+    [Fact]
+    public void ApplyReward_ShouldThrow_WhenNoPendingReward()
+    {
+        var run = TestGameEngineFactory.CreateRun();
+        var choice = RewardChoice.Create(
+            RewardType.Heal,
+            "Soin",
+            "Restaure 10 PV.",
+            "heal:10");
+
+        var act = () => run.ApplyReward(choice);
 
         act.Should()
             .Throw<DomainException>()
-            .WithMessage("Unknown stat: 'luck'.");
+            .WithMessage("Run has no pending reward offer.");
+    }
+
+    [Fact]
+    public void ApplyReward_ShouldThrow_WhenRewardTypeIsUnsupported()
+    {
+        var run = TestGameEngineFactory.CreateRun();
+        run.SetPendingRewardOffer(RewardOfferId.New());
+
+        var choice = RewardChoice.Create(
+            RewardType.StatBonus,
+            "Bonus d'attaque",
+            "Non exposé dans le MVP.",
+            "stat_bonus:attack:5");
+
+        var act = () => run.ApplyReward(choice);
+
+        act.Should()
+            .Throw<DomainException>()
+            .WithMessage("Reward type 'StatBonus' is not supported.");
     }
 }

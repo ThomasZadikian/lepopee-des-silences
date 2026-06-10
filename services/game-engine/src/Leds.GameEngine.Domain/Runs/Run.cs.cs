@@ -630,40 +630,48 @@ public sealed class Run
         _memoryFragments.Add(fragmentKey.Trim());
     }
 
-    public void ApplyRewardEffect(RewardChoice choice)
+    public void ApplyReward(RewardChoice choice)
     {
         ArgumentNullException.ThrowIfNull(choice);
+
+        if (Status is RunStatus.Completed or RunStatus.Failed or RunStatus.Abandoned or RunStatus.Suspended)
+        {
+            throw new DomainException("Closed runs cannot receive rewards.");
+        }
+
+        if (!HasPendingRewardOffer)
+        {
+            throw new DomainException("Run has no pending reward offer.");
+        }
 
         switch (choice.RewardType)
         {
             case RewardType.Heal:
-                var parts = choice.PayloadKey.Split(':');
-                if (parts.Length >= 2 && int.TryParse(parts[1], out var healAmount))
-                {
-                    ApplyHeal(healAmount);
-                }
-                break;
-
-            case RewardType.StatBonus:
-                var statParts = choice.PayloadKey.Split(':');
-                if (statParts.Length >= 3
-                    && int.TryParse(statParts[2], out var statValue))
-                {
-                    ApplyStatBonus(statParts[1], statValue);
-                }
-                break;
-
-            case RewardType.MemoryFragment:
-                var fragmentParts = choice.PayloadKey.Split(':');
-                var fragmentKey = fragmentParts.Length >= 2
-                    ? fragmentParts[1]
-                    : choice.PayloadKey;
-                AddMemoryFragment(fragmentKey);
+                ApplyHeal(ParsePayloadAmount(choice, "heal"));
                 break;
 
             default:
                 throw new DomainException($"Reward type '{choice.RewardType}' is not supported.");
         }
+    }
+
+    public void ApplyRewardEffect(RewardChoice choice)
+    {
+        ApplyReward(choice);
+    }
+
+    private static int ParsePayloadAmount(RewardChoice choice, string expectedPrefix)
+    {
+        var parts = choice.PayloadKey.Split(':', StringSplitOptions.TrimEntries);
+
+        if (parts.Length != 2 ||
+            !string.Equals(parts[0], expectedPrefix, StringComparison.OrdinalIgnoreCase) ||
+            !int.TryParse(parts[1], out var amount))
+        {
+            throw new DomainException($"Invalid payload for reward type '{choice.RewardType}'.");
+        }
+
+        return amount;
     }
 
     private RunSnapshot CreateSnapshot() => new(

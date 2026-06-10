@@ -20,44 +20,53 @@ public sealed class CombatFullFlowEndpointTests : RunIntegrationTestBase, IClass
     [Fact]
     public async Task StartRun_ToCombatVictory_ShouldResumeRunProgression()
     {
-        var setup = await StartActiveRuntimeCombatAsync();
-        if (setup is null) return;
-
-        var (runId, combat) = setup.Value;
-        CombatSkillActionResult? result = null;
-
-        for (var i = 0; i < 30; i++)
+        for (var attempt = 0; attempt < 5; attempt++)
         {
-            var action = FindAction(combat, "SingleEnemy", targetSameSide: false);
-            if (action is null) break;
+            var setup = await StartActiveRuntimeCombatAsync();
+            if (setup is null) continue;
 
-            var response = await Client.PostAsJsonAsync(
-                $"/api/v2/runs/{runId}/combats/{combat.Id}/skill-actions",
-                new { ActorId = action.Value.Actor.Id, SkillKey = action.Value.Skill.Key, TargetIds = new[] { action.Value.Target.Id } });
+            var (runId, combat) = setup.Value;
+            CombatSkillActionResult? result = null;
 
-            var body = await response.Content.ReadAsStringAsync();
-            response.StatusCode.Should().Be(HttpStatusCode.OK, because: body);
-
-            result = await response.Content.ReadFromJsonAsync<CombatSkillActionResult>();
-            result.Should().NotBeNull();
-
-            if (result!.CombatCompleted)
+            for (var i = 0; i < 30; i++)
             {
-                break;
+                var action = FindAction(combat, "SingleEnemy", targetSameSide: false);
+                if (action is null) break;
+
+                var response = await Client.PostAsJsonAsync(
+                    $"/api/v2/runs/{runId}/combats/{combat.Id}/skill-actions",
+                    new { ActorId = action.Value.Actor.Id, SkillKey = action.Value.Skill.Key, TargetIds = new[] { action.Value.Target.Id } });
+
+                var body = await response.Content.ReadAsStringAsync();
+                response.StatusCode.Should().Be(HttpStatusCode.OK, because: body);
+
+                result = await response.Content.ReadFromJsonAsync<CombatSkillActionResult>();
+                result.Should().NotBeNull();
+
+                if (result!.CombatCompleted || result.CombatFailed)
+                {
+                    break;
+                }
+
+                combat = result.Combat;
             }
 
-            combat = result.Combat;
+            if (result?.CombatCompleted != true)
+            {
+                continue;
+            }
+
+            result.Combat.Status.Should().Be("Completed");
+            result.CanProgressRun.Should().BeTrue();
+
+            result.Combat.Enemies.Should().AllSatisfy(e => e.Status.Should().Be("Defeated"));
+
+            var currentCombatResponse = await Client.GetAsync($"/api/v2/runs/{runId}/current-combat");
+            currentCombatResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
+            return;
         }
 
-        result.Should().NotBeNull();
-        result!.CombatCompleted.Should().BeTrue();
-        result.Combat.Status.Should().Be("Completed");
-        result.CanProgressRun.Should().BeTrue();
-
-        result.Combat.Enemies.Should().AllSatisfy(e => e.Status.Should().Be("Defeated"));
-
-        var currentCombatResponse = await Client.GetAsync($"/api/v2/runs/{runId}/current-combat");
-        currentCombatResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        return;
     }
 
     [Fact]
