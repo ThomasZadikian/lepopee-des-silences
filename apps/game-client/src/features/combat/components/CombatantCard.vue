@@ -7,6 +7,8 @@ defineProps<{
   isSelectedTarget: boolean;
   isSelectable: boolean;
   isActivePlayer: boolean;
+  isThinking: boolean;
+  isImpacted: boolean;
 }>();
 
 defineEmits<{
@@ -21,6 +23,8 @@ defineEmits<{
       'combatant-card--active': isCurrentActor,
       'combatant-card--targeted': isSelectedTarget,
       'combatant-card--selectable': isSelectable,
+      'combatant-card--thinking': isThinking,
+      'combatant-card--impacted': isImpacted,
       'combatant-card--defeated': combatant.status === 'Defeated',
       'combatant-card--player': combatant.side === 'Player',
       'combatant-card--enemy': combatant.side === 'Enemy',
@@ -77,6 +81,13 @@ defineEmits<{
       >
         <span>TOUR</span>
       </div>
+
+      <div
+        v-if="isThinking"
+        class="combatant-card__thinking-indicator"
+      >
+        <span>CHOIX...</span>
+      </div>
     </div>
   </button>
 </template>
@@ -122,6 +133,17 @@ defineEmits<{
 
 .combatant-card--active {
   border-color: var(--color-frost) !important;
+}
+
+.combatant-card--thinking {
+  border-color: var(--color-gold) !important;
+  box-shadow: 0 0 0 1px var(--color-gold), 0 0 1.5rem color-mix(in oklch, var(--color-gold), transparent 70%);
+  background: color-mix(in oklch, var(--color-gold), transparent 90%);
+}
+
+.combatant-card--impacted {
+  border-color: var(--color-blood) !important;
+  box-shadow: 0 0 0 1px var(--color-blood), 0 0 1rem color-mix(in oklch, var(--color-blood), transparent 76%);
 }
 
 .combatant-card--defeated {
@@ -208,6 +230,18 @@ defineEmits<{
   letter-spacing: 0.15em;
   color: var(--color-frost);
   border: 1px solid var(--color-frost);
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+}
+
+.combatant-card__thinking-indicator {
+  position: absolute;
+  top: var(--space-1);
+  right: var(--space-1);
+  font-size: 0.6rem;
+  letter-spacing: 0.15em;
+  color: var(--color-gold);
+  border: 1px solid var(--color-gold);
   padding: 1px 5px;
   border-radius: var(--radius-sm);
 }

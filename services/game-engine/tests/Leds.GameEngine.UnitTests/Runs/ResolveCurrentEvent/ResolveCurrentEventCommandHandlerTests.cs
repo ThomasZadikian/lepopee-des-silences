@@ -481,8 +481,8 @@ public sealed class ResolveCurrentEventCommandHandlerTests
             CancellationToken.None);
 
         response.Combat.Should().NotBeNull();
-        response.Combat!.Id.Should().Be(runtimeCombat.Id);
-        response.Combat.Status.Should().Be(CombatStatus.Active);
+        response.Combat!.Id.Should().Be(runtimeCombat.Id.Value);
+        response.Combat.Status.Should().Be("Active");
         response.Combat.Allies.Should().Contain(a => a.SourceKey == "player.self");
         response.Combat.Enemies.Should().Contain(e => e.SourceKey == "enemy.threshold.doubt-fragment");
         response.Combat.TurnNumber.Should().Be(1);

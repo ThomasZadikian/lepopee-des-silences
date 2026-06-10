@@ -46,7 +46,7 @@ public sealed class GetCurrentCombatQueryHandlerTests
             CancellationToken.None);
 
         result.Should().NotBeNull();
-        result.Id.Should().Be(combat.Id);
+        result.Id.Should().Be(combat.Id.Value);
     }
 
     [Fact]
@@ -144,7 +144,7 @@ public sealed class GetCurrentCombatQueryHandlerTests
             new GetCurrentCombatQuery(run.Id.Value),
             CancellationToken.None);
 
-        result.Id.Should().Be(combat.Id);
+        result.Id.Should().Be(combat.Id.Value);
         result.Allies.Single().CurrentVitality.Should().Be(100);
     }
 

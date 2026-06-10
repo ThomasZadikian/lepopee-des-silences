@@ -59,6 +59,9 @@ function isSkillDisabled(combatant: CombatantRuntimeDto | null): boolean {
   display: grid;
   gap: var(--space-3);
   padding: var(--space-4);
+  align-content: start;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .skill-bar__header {

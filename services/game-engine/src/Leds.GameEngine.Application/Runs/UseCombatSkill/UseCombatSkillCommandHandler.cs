@@ -4,7 +4,11 @@ using Leds.GameEngine.Application.Combats.Dtos;
 using Leds.GameEngine.Application.Combats.Effects;
 using Leds.GameEngine.Application.Combats.EnemyTurns;
 using Leds.GameEngine.Application.Common.Exceptions;
+using Leds.GameEngine.Application.Rewards.Ports;
+using Leds.GameEngine.Application.Rewards.RewardOfferFactory;
 using Leds.GameEngine.Domain.Combats;
+using Leds.GameEngine.Domain.Nodes;
+using Leds.GameEngine.Domain.Rewards;
 using Leds.GameEngine.Domain.Runs;
 using MediatR;
 
@@ -17,6 +21,8 @@ public sealed class UseCombatSkillCommandHandler
     private readonly ICombatSkillActionValidator _validator;
     private readonly ICombatSkillEffectResolver _effectResolver;
     private readonly IEnemyCombatTurnResolver _enemyTurnResolver;
+    private readonly IRewardOfferRepository _rewardOfferRepository;
+    private readonly RewardOfferFactory _rewardOfferFactory;
     private readonly IClock _clock;
 
     public UseCombatSkillCommandHandler(
@@ -24,12 +30,16 @@ public sealed class UseCombatSkillCommandHandler
         ICombatSkillActionValidator validator,
         ICombatSkillEffectResolver effectResolver,
         IEnemyCombatTurnResolver enemyTurnResolver,
+        IRewardOfferRepository rewardOfferRepository,
+        RewardOfferFactory rewardOfferFactory,
         IClock clock)
     {
         _runRepository = runRepository;
         _validator = validator;
         _effectResolver = effectResolver;
         _enemyTurnResolver = enemyTurnResolver;
+        _rewardOfferRepository = rewardOfferRepository;
+        _rewardOfferFactory = rewardOfferFactory;
         _clock = clock;
     }
 
@@ -108,7 +118,15 @@ public sealed class UseCombatSkillCommandHandler
 
         if (combatCompleted)
         {
+            var combatNode = run.CurrentRoom.Nodes.SingleOrDefault(n =>
+                n.State == NodeState.Selected &&
+                n.Row == run.CurrentRoom.CurrentNodeDepth);
+
             run.CompleteActiveCombat();
+
+            var rewardOffer = CreateRewardOffer(combatNode);
+            await _rewardOfferRepository.AddAsync(rewardOffer, cancellationToken);
+            run.SetPendingRewardOffer(rewardOffer.Id);
         }
         else if (combatFailed)
         {
@@ -136,6 +154,23 @@ public sealed class UseCombatSkillCommandHandler
             CombatFailed: combatFailed,
             CanProgressRun: combatCompleted,
             RunStatus: run.Status.ToString());
+    }
+
+    private RewardOffer CreateRewardOffer(MapNode? combatNode)
+    {
+        var source = combatNode?.EventType switch
+        {
+            NodeEventType.Rare      => RewardSource.Rare,
+            NodeEventType.Elite     => RewardSource.Elite,
+            NodeEventType.RoomBoss  => RewardSource.RoomBoss,
+            NodeEventType.FinalBoss => RewardSource.RoomBoss,
+            _                       => RewardSource.Combat
+        };
+
+        return _rewardOfferFactory.CreateCombatRewardOffer(
+            source,
+            combatNode?.EventType ?? NodeEventType.Combat,
+            combatNode?.RiskLevel ?? 25);
     }
 
     private IReadOnlyCollection<CombatLogEntryDto> ResolveEnemyTurns(Combat combat)

@@ -497,7 +497,6 @@ public sealed class Run
         }
 
         _activeCombat = combat;
-        ActiveCombatId = combat.Id;
     }
 
     public void CompleteActiveCombat(CombatId combatId)

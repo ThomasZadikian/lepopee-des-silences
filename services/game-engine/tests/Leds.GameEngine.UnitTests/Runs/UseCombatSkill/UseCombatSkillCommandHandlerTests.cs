@@ -1,10 +1,13 @@
 using FluentAssertions;
 using Leds.GameEngine.Application.Abstractions;
+using Leds.GameEngine.Application.Combats;
 using Leds.GameEngine.Application.Combats.Actions;
 using Leds.GameEngine.Application.Combats.Dtos;
 using Leds.GameEngine.Application.Combats.Effects;
 using Leds.GameEngine.Application.Combats.EnemyTurns;
 using Leds.GameEngine.Application.Common.Exceptions;
+using Leds.GameEngine.Application.Rewards.Ports;
+using Leds.GameEngine.Application.Rewards.RewardOfferFactory;
 using Leds.GameEngine.Application.Runs.UseCombatSkill;
 using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Common;
@@ -61,6 +64,8 @@ public sealed class UseCombatSkillCommandHandlerTests
             new Mock<ICombatSkillActionValidator>().Object,
             new Mock<ICombatSkillEffectResolver>().Object,
             new Mock<IEnemyCombatTurnResolver>().Object,
+            new Mock<IRewardOfferRepository>().Object,
+            CreateRewardOfferFactory(),
             new Mock<IClock>().Object);
 
         var act = () => handler.Handle(
@@ -81,6 +86,8 @@ public sealed class UseCombatSkillCommandHandlerTests
             new Mock<ICombatSkillActionValidator>().Object,
             new Mock<ICombatSkillEffectResolver>().Object,
             new Mock<IEnemyCombatTurnResolver>().Object,
+            new Mock<IRewardOfferRepository>().Object,
+            CreateRewardOfferFactory(),
             new Mock<IClock>().Object);
 
         var act = () => handler.Handle(
@@ -181,7 +188,7 @@ public sealed class UseCombatSkillCommandHandlerTests
 
         var result = await handler.Handle(CreateCommand(setup, _strikeSkill, [setup.Enemy]), CancellationToken.None);
 
-        result.Combat.Id.Should().Be(setup.Combat.Id);
+        result.Combat.Id.Should().Be(setup.Combat.Id.Value);
         result.Combat.Enemies.Single().CurrentVitality.Should().Be(setup.Enemy.CurrentVitality);
     }
 
@@ -230,7 +237,7 @@ public sealed class UseCombatSkillCommandHandlerTests
 
         var result = await handler.Handle(CreateCommand(setup, setup.Ally, _strikeSkill, [setup.Enemy]), CancellationToken.None);
 
-        result.Combat.ActiveCombatantId.Should().Be(setup.Enemy.Id);
+        result.Combat.ActiveCombatantId.Should().Be(setup.Enemy.Id.Value);
         result.Combat.TurnNumber.Should().Be(1);
     }
 
@@ -246,8 +253,8 @@ public sealed class UseCombatSkillCommandHandlerTests
 
         var result = await handler.Handle(CreateCommand(setup, ally, lethalSkill, [enemy1]), CancellationToken.None);
 
-        result.Combat.ActiveCombatantId.Should().Be(enemy2.Id);
-        result.Combat.Enemies.Single(e => e.Id == enemy1.Id).Status.Should().Be(CombatantStatus.Defeated);
+        result.Combat.ActiveCombatantId.Should().Be(enemy2.Id.Value);
+        result.Combat.Enemies.Single(e => e.Id == enemy1.Id.Value).Status.Should().Be("Defeated");
     }
 
     [Fact]
@@ -262,7 +269,7 @@ public sealed class UseCombatSkillCommandHandlerTests
 
         var result = await handler.Handle(CreateCommand(setup, enemy, enemySkill, [ally]), CancellationToken.None);
 
-        result.Combat.ActiveCombatantId.Should().Be(ally.Id);
+        result.Combat.ActiveCombatantId.Should().Be(ally.Id.Value);
         result.Combat.TurnNumber.Should().Be(2);
     }
 
@@ -286,7 +293,7 @@ public sealed class UseCombatSkillCommandHandlerTests
 
         var result = await handler.Handle(CreateCommand(setup, setup.Ally, lethalSkill, [setup.Enemy]), CancellationToken.None);
 
-        result.Combat.Enemies.Single().Status.Should().Be(CombatantStatus.Defeated);
+        result.Combat.Enemies.Single().Status.Should().Be("Defeated");
         result.LogEntries.Should().Contain(e => e.Type == "TargetDefeated");
     }
 
@@ -299,7 +306,7 @@ public sealed class UseCombatSkillCommandHandlerTests
 
         var result = await handler.Handle(CreateCommand(setup, setup.Ally, lethalSkill, [setup.Enemy]), CancellationToken.None);
 
-        result.Combat.Status.Should().Be(CombatStatus.Completed);
+        result.Combat.Status.Should().Be("Completed");
         result.Combat.ActiveCombatantId.Should().BeNull();
         result.CombatCompleted.Should().BeTrue();
         result.CombatFailed.Should().BeFalse();
@@ -331,8 +338,8 @@ public sealed class UseCombatSkillCommandHandlerTests
 
         var result = await handler.Handle(CreateCommand(setup, setup.Ally, lethalSkill, [setup.Enemy]), CancellationToken.None);
 
-        result.Combat.Id.Should().Be(finalCombatId);
-        result.Combat.Status.Should().Be(CombatStatus.Completed);
+        result.Combat.Id.Should().Be(finalCombatId.Value);
+        result.Combat.Status.Should().Be("Completed");
     }
 
     [Fact]
@@ -359,7 +366,7 @@ public sealed class UseCombatSkillCommandHandlerTests
 
         var result = await handler.Handle(CreateCommand(setup, enemy, lethalSkill, [ally]), CancellationToken.None);
 
-        result.Combat.Status.Should().Be(CombatStatus.Failed);
+        result.Combat.Status.Should().Be("Failed");
         result.Combat.ActiveCombatantId.Should().BeNull();
         result.CombatFailed.Should().BeTrue();
         result.CombatCompleted.Should().BeFalse();
@@ -446,7 +453,7 @@ public sealed class UseCombatSkillCommandHandlerTests
 
         var result = await handler.Handle(CreateCommand(setup, setup.Ally, _strikeSkill, [setup.Enemy]), CancellationToken.None);
 
-        result.Combat.ActiveCombatantId.Should().Be(setup.Enemy.Id);
+        result.Combat.ActiveCombatantId.Should().Be(setup.Enemy.Id.Value);
     }
 
     [Fact]
@@ -469,7 +476,7 @@ public sealed class UseCombatSkillCommandHandlerTests
 
         var result = await handler.Handle(CreateCommand(setup, setup.Ally, lethalSkill, [setup.Enemy]), CancellationToken.None);
 
-        result.Combat.Status.Should().Be(CombatStatus.Completed);
+        result.Combat.Status.Should().Be("Completed");
         result.Combat.ActiveCombatantId.Should().BeNull();
         result.LogEntries.Should().NotContain(e => e.Type == "TurnAdvanced");
     }
@@ -499,7 +506,7 @@ public sealed class UseCombatSkillCommandHandlerTests
         var result = await handler.Handle(CreateCommand(setup, ally, _strikeSkill, [enemy]), CancellationToken.None);
 
         result.Combat.Allies.Single().CurrentVitality.Should().Be(90);
-        result.Combat.ActiveCombatantId.Should().Be(ally.Id);
+        result.Combat.ActiveCombatantId.Should().Be(ally.Id.Value);
     }
 
     [Fact]
@@ -515,7 +522,7 @@ public sealed class UseCombatSkillCommandHandlerTests
         var result = await handler.Handle(CreateCommand(setup, ally, _strikeSkill, [enemy1]), CancellationToken.None);
 
         result.Combat.Allies.Single().CurrentVitality.Should().Be(80);
-        result.Combat.ActiveCombatantId.Should().Be(ally.Id);
+        result.Combat.ActiveCombatantId.Should().Be(ally.Id.Value);
         result.LogEntries.Count(e => e.Type == "EnemyTurnResolved").Should().Be(2);
     }
 
@@ -558,7 +565,7 @@ public sealed class UseCombatSkillCommandHandlerTests
 
         var result = await handler.Handle(CreateCommand(setup, setup.Ally, lethalSkill, [setup.Enemy]), CancellationToken.None);
 
-        result.Combat.Status.Should().Be(CombatStatus.Completed);
+        result.Combat.Status.Should().Be("Completed");
         result.LogEntries.Should().NotContain(e => e.Type == "EnemyTurnResolved");
     }
 
@@ -573,7 +580,7 @@ public sealed class UseCombatSkillCommandHandlerTests
 
         var result = await handler.Handle(CreateCommand(setup, ally, _guardSkill, [ally]), CancellationToken.None);
 
-        result.Combat.Status.Should().Be(CombatStatus.Failed);
+        result.Combat.Status.Should().Be("Failed");
         result.LogEntries.Should().Contain(e => e.Type == "CombatFailed");
     }
 
@@ -588,7 +595,7 @@ public sealed class UseCombatSkillCommandHandlerTests
 
         var result = await handler.Handle(CreateCommand(setup, ally1, _strikeSkill, [enemy]), CancellationToken.None);
 
-        result.Combat.ActiveCombatantId.Should().Be(ally2.Id);
+        result.Combat.ActiveCombatantId.Should().Be(ally2.Id.Value);
         result.LogEntries.Should().NotContain(e => e.Type == "EnemyTurnResolved");
     }
 
@@ -606,6 +613,8 @@ public sealed class UseCombatSkillCommandHandlerTests
             validator.Object,
             effectResolver.Object,
             enemyResolver.Object,
+            new Mock<IRewardOfferRepository>().Object,
+            CreateRewardOfferFactory(),
             clock.Object);
 
         var act = () => handler.Handle(CreateCommand(setup, _strikeSkill, [setup.Enemy]), CancellationToken.None);
@@ -648,6 +657,8 @@ public sealed class UseCombatSkillCommandHandlerTests
             validator.Object,
             new CombatSkillEffectResolver(),
             CreateNoOpEnemyTurnResolver().Object,
+            new Mock<IRewardOfferRepository>().Object,
+            CreateRewardOfferFactory(),
             clock.Object);
     }
 
@@ -677,6 +688,8 @@ public sealed class UseCombatSkillCommandHandlerTests
             validator.Object,
             effectResolver,
             new EnemyCombatTurnResolver(realActionValidator, effectResolver),
+            new Mock<IRewardOfferRepository>().Object,
+            CreateRewardOfferFactory(),
             clock.Object);
     }
 
@@ -691,7 +704,14 @@ public sealed class UseCombatSkillCommandHandlerTests
             validator.Object,
             effectResolver.Object,
             CreateNoOpEnemyTurnResolver().Object,
+            new Mock<IRewardOfferRepository>().Object,
+            CreateRewardOfferFactory(),
             clock.Object);
+    }
+
+    private static RewardOfferFactory CreateRewardOfferFactory()
+    {
+        return new RewardOfferFactory(new CombatRiskProfileResolver());
     }
 
     private static Mock<IEnemyCombatTurnResolver> CreateNoOpEnemyTurnResolver()

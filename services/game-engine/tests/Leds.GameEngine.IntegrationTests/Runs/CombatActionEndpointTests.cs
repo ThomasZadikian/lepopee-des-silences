@@ -41,8 +41,8 @@ public sealed class CombatActionEndpointTests : RunIntegrationTestBase, IClassFi
         var activeCombatantBefore = combat.ActiveCombatantId;
 
         var response = await Client.PostAsJsonAsync(
-            $"/api/v2/runs/{runId}/combats/{combat.Id.Value}/skill-actions",
-            new { ActorId = action.Value.Actor.Id.Value, SkillKey = action.Value.Skill.Key, TargetIds = new[] { action.Value.Target.Id.Value } });
+            $"/api/v2/runs/{runId}/combats/{combat.Id}/skill-actions",
+            new { ActorId = action.Value.Actor.Id, SkillKey = action.Value.Skill.Key, TargetIds = new[] { action.Value.Target.Id } });
 
         var body = await response.Content.ReadAsStringAsync();
 
@@ -51,7 +51,7 @@ public sealed class CombatActionEndpointTests : RunIntegrationTestBase, IClassFi
         var result = await response.Content.ReadFromJsonAsync<CombatSkillActionResult>();
         result.Should().NotBeNull();
         result!.Accepted.Should().BeTrue();
-        result.TargetIds.Should().ContainSingle(id => id == action.Value.Target.Id.Value);
+        result.TargetIds.Should().ContainSingle(id => id == action.Value.Target.Id);
         result.LogEntries.Should().Contain(e => e.Type == "ActionAccepted");
         result.LogEntries.Should().Contain(e => e.Type == "SkillUsed");
         result.LogEntries.Should().Contain(e => e.Type == "DamageApplied");
@@ -89,8 +89,8 @@ public sealed class CombatActionEndpointTests : RunIntegrationTestBase, IClassFi
         }
 
         var response = await Client.PostAsJsonAsync(
-            $"/api/v2/runs/{runId}/combats/{combat.Id.Value}/skill-actions",
-            new { ActorId = action.Value.Actor.Id.Value, SkillKey = action.Value.Skill.Key, TargetIds = new[] { action.Value.Target.Id.Value } });
+            $"/api/v2/runs/{runId}/combats/{combat.Id}/skill-actions",
+            new { ActorId = action.Value.Actor.Id, SkillKey = action.Value.Skill.Key, TargetIds = new[] { action.Value.Target.Id } });
 
         var body = await response.Content.ReadAsStringAsync();
 
@@ -123,8 +123,8 @@ public sealed class CombatActionEndpointTests : RunIntegrationTestBase, IClassFi
         var target = combat.Allies.Concat(combat.Enemies).First(c => c.Side != actor.Side);
 
         var response = await Client.PostAsJsonAsync(
-            $"/api/v2/runs/{runId}/combats/{combat.Id.Value}/skill-actions",
-            new { ActorId = actor.Id.Value, SkillKey = skill.Key, TargetIds = new[] { target.Id.Value } });
+            $"/api/v2/runs/{runId}/combats/{combat.Id}/skill-actions",
+            new { ActorId = actor.Id, SkillKey = skill.Key, TargetIds = new[] { target.Id } });
 
         var body = await response.Content.ReadAsStringAsync();
 
@@ -155,8 +155,8 @@ public sealed class CombatActionEndpointTests : RunIntegrationTestBase, IClassFi
             }
 
             var response = await Client.PostAsJsonAsync(
-                $"/api/v2/runs/{runId}/combats/{combat.Id.Value}/skill-actions",
-                new { ActorId = action.Value.Actor.Id.Value, SkillKey = action.Value.Skill.Key, TargetIds = new[] { action.Value.Target.Id.Value } });
+                $"/api/v2/runs/{runId}/combats/{combat.Id}/skill-actions",
+                new { ActorId = action.Value.Actor.Id, SkillKey = action.Value.Skill.Key, TargetIds = new[] { action.Value.Target.Id } });
 
             var body = await response.Content.ReadAsStringAsync();
             response.StatusCode.Should().Be(HttpStatusCode.OK, because: body);
@@ -179,7 +179,7 @@ public sealed class CombatActionEndpointTests : RunIntegrationTestBase, IClassFi
         result.Should().NotBeNull();
         result!.CombatCompleted.Should().BeTrue();
         result.CanProgressRun.Should().BeTrue();
-        result.Combat.Status.Should().Be(CombatStatus.Completed);
+        result.Combat.Status.Should().Be("Completed");
 
         var currentCombatResponse = await Client.GetAsync($"/api/v2/runs/{runId}/current-combat");
         currentCombatResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
@@ -189,13 +189,16 @@ public sealed class CombatActionEndpointTests : RunIntegrationTestBase, IClassFi
         var runPayload = await runResponse.Content.ReadFromJsonAsync<GetRunByIdResponse>();
         runPayload.Should().NotBeNull();
         runPayload!.Run.ActiveCombatId.Should().BeNull();
+        runPayload.Run.PendingRewardOfferId.Should().NotBeNull();
     }
 
     private async Task<(Guid RunId, CombatRuntimeDto Combat)?> StartActiveRuntimeCombatAsync()
     {
         var startRunResponse = await StartRunAsync();
         var nodeToChoose = startRunResponse.Run.CurrentRoom.AvailableNodes
-            .FirstOrDefault(node => node.Type == "Combat");
+            .Where(node => node.Type == "Combat")
+            .OrderBy(node => node.RiskLevel)
+            .FirstOrDefault();
 
         if (nodeToChoose is null)
         {
@@ -247,16 +250,23 @@ public sealed class CombatActionEndpointTests : RunIntegrationTestBase, IClassFi
         bool targetSameSide)
     {
         var combatants = combat.Allies.Concat(combat.Enemies).ToArray();
-        var actor = combatants.FirstOrDefault(c => c.Skills.Any(s => s.TargetingType == targetingType));
+        var actor = combatants.FirstOrDefault(c => c.Status == "Active" && c.Skills.Any(IsMatchingSkill));
 
         if (actor is null)
         {
             return null;
         }
 
-        var skill = actor.Skills.First(s => s.TargetingType == targetingType);
-        var target = combatants.FirstOrDefault(c => targetSameSide ? c.Side == actor.Side : c.Side != actor.Side);
+        var skill = actor.Skills.Where(IsMatchingSkill).OrderByDescending(s => s.BasePower).First();
+        var target = combatants.FirstOrDefault(c => c.Status == "Active" && (targetSameSide ? c.Side == actor.Side : c.Side != actor.Side));
 
         return target is null ? null : (actor, skill, target);
+
+        bool IsMatchingSkill(CombatantSkillRuntimeDto skill)
+        {
+            return skill.TargetingType == targetingType
+                && skill.EffectType == "Damage"
+                && skill.BasePower > 0;
+        }
     }
 }

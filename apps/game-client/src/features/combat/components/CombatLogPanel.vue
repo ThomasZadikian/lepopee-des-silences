@@ -46,6 +46,10 @@ watch(
   grid-template-rows: auto minmax(0, 1fr);
   gap: var(--space-2);
   padding: var(--space-3);
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  overflow: hidden;
 }
 
 .log-panel__header {
@@ -59,6 +63,7 @@ watch(
   flex-direction: column;
   gap: var(--space-1);
   min-height: 0;
+  max-height: 100%;
 }
 
 .log-panel__entry {

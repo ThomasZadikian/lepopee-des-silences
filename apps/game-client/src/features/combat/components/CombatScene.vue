@@ -17,6 +17,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   combatCompleted: [];
   combatFailed: [];
+  leaveRun: [];
 }>();
 
 const combatStore = useCombatStore();
@@ -33,6 +34,7 @@ const selectedCombatant = computed(() => {
 const isPlayerTurn = computed(() => combatStore.isPlayerTurn);
 
 function canSelect(combatantId: string): boolean {
+  if (combatStore.isLoading) return false;
   if (!combatStore.selectedSkill || !isPlayerTurn.value) return false;
   return combatStore.validTargets.some((t) => t.id === combatantId);
 }
@@ -53,22 +55,21 @@ function handleClearSelection() {
 }
 
 function handleContinue() {
+  combatStore.clearCombat();
   emit('combatCompleted');
 }
 
 watch(
   () => combatStore.terminalEvent,
   (event) => {
-    if (event?.kind === 'victory') {
-      emit('combatCompleted');
-    } else if (event?.kind === 'defeat') {
+    if (event?.kind === 'defeat') {
       emit('combatFailed');
     }
   },
 );
 
 onMounted(() => {
-  if (combatStore.combat) return;
+  if (combatStore.combat?.id === props.combatId) return;
 
   if (runStore.combatRuntime?.id && runStore.combatRuntime.status === 'Active') {
     combatStore.initCombat(runStore.combatRuntime);
@@ -81,6 +82,10 @@ watch(
   () => props.combatId,
   (newId) => {
     if (!newId) return;
+    if (combatStore.combat?.id === newId) return;
+
+    combatStore.clearCombat();
+
     if (runStore.combatRuntime?.id === newId) {
       combatStore.initCombat(runStore.combatRuntime);
     } else {
@@ -92,102 +97,126 @@ watch(
 
 <template>
   <section class="combat-scene">
-    <header class="combat-scene__header">
-      <div>
-        <p class="system-label">COMBAT</p>
-        <h2>Tour {{ combatStore.combat?.turnNumber ?? '?' }}</h2>
+
+    <!-- Loading / absent -->
+    <template v-if="!combatStore.combat">
+      <div class="combat-scene__placeholder">
+        <template v-if="combatStore.isLoading">
+          <p class="system-label">COMBAT</p>
+          <h2>Le combat se met en place...</h2>
+        </template>
+        <template v-else>
+          <p class="system-label">COMBAT</p>
+          <h2>Combat indisponible</h2>
+          <p>Les données de combat runtime ne sont pas disponibles pour cette run.</p>
+        </template>
       </div>
+    </template>
 
-      <span class="system-value combat-scene__combat-id">
-        {{ combatId }}
-      </span>
-    </header>
+    <!-- Combat actif -->
+    <template v-else>
+      <header class="combat-scene__header">
+        <div>
+          <p class="system-label">COMBAT</p>
+          <h2>Tour {{ combatStore.combat?.turnNumber ?? '?' }}</h2>
+        </div>
 
-    <section class="combat-scene__board">
-      <div class="combat-scene__side combat-scene__side--allies">
-        <p class="system-label combat-scene__side-label">ALLIÉS</p>
+        <span class="system-value combat-scene__combat-id">
+          {{ combatId }}
+        </span>
+      </header>
 
-        <CombatantCard
-          v-for="combatant in combatStore.allies"
-          :key="combatant.id"
-          :combatant="combatant"
-          :is-current-actor="combatStore.isCurrentActor(combatant.id)"
-          :is-selected-target="combatStore.isSelectedTarget(combatant.id)"
-          :is-selectable="combatant.side === 'Player' && isPlayerTurn && canSelect(combatant.id)"
-          :is-active-player="combatant.side === 'Player' && isPlayerTurn"
-          @select="handleSelect"
+      <section class="combat-scene__board">
+        <div class="combat-scene__side combat-scene__side--allies">
+          <p class="system-label combat-scene__side-label">ALLIÉS</p>
+
+          <CombatantCard
+            v-for="combatant in combatStore.allies"
+            :key="combatant.id"
+            :combatant="combatant"
+            :is-current-actor="combatStore.isCurrentActor(combatant.id)"
+            :is-selected-target="combatStore.isSelectedTarget(combatant.id)"
+            :is-selectable="combatant.side === 'Player' && isPlayerTurn && canSelect(combatant.id)"
+            :is-active-player="combatant.side === 'Player' && isPlayerTurn"
+            :is-thinking="combatStore.thinkingCombatantId === combatant.id"
+            :is-impacted="combatStore.impactedCombatantId === combatant.id"
+            @select="handleSelect"
+          />
+        </div>
+
+        <div class="combat-scene__side combat-scene__side--enemies">
+          <p class="system-label combat-scene__side-label">ENNEMIS</p>
+
+          <CombatantCard
+            v-for="combatant in combatStore.enemies"
+            :key="combatant.id"
+            :combatant="combatant"
+            :is-current-actor="combatStore.isCurrentActor(combatant.id)"
+            :is-selected-target="combatStore.isSelectedTarget(combatant.id)"
+            :is-selectable="canSelect(combatant.id)"
+            :is-active-player="false"
+            :is-thinking="combatStore.thinkingCombatantId === combatant.id"
+            :is-impacted="combatStore.impactedCombatantId === combatant.id"
+            @select="handleSelect"
+          />
+        </div>
+      </section>
+
+      <section class="combat-scene__footer">
+        <SkillBar
+          :combatant="activeCombatant"
+          :selected-skill-key="combatStore.selectedSkillKey"
+          :is-player-turn="isPlayerTurn"
+          :is-loading="combatStore.isLoading"
+          @select-skill="combatStore.selectSkill"
         />
-      </div>
 
-      <div class="combat-scene__side combat-scene__side--enemies">
-        <p class="system-label combat-scene__side-label">ENNEMIS</p>
+        <CombatLogPanel :entries="combatStore.logEntries" />
 
-        <CombatantCard
-          v-for="combatant in combatStore.enemies"
-          :key="combatant.id"
-          :combatant="combatant"
-          :is-current-actor="combatStore.isCurrentActor(combatant.id)"
-          :is-selected-target="combatStore.isSelectedTarget(combatant.id)"
-          :is-selectable="canSelect(combatant.id)"
-          :is-active-player="false"
-          @select="handleSelect"
-        />
-      </div>
-    </section>
+        <div v-if="combatStore.error" class="combat-scene__error">
+          {{ combatStore.error }}
+        </div>
+      </section>
 
-    <section class="combat-scene__footer">
-      <SkillBar
-        :combatant="activeCombatant"
-        :selected-skill-key="combatStore.selectedSkillKey"
-        :is-player-turn="isPlayerTurn"
-        :is-loading="combatStore.isLoading"
-        @select-skill="combatStore.selectSkill"
+      <section class="combat-scene__action-bar">
+        <button
+          class="ghost-button"
+          :disabled="!combatStore.canSubmit || combatStore.isLoading"
+          @click="handleSubmit"
+        >
+          {{ combatStore.isLoading ? 'EXÉCUTION…' : 'EXÉCUTER L\'ACTION' }}
+        </button>
+
+        <button
+          class="ghost-button"
+          :disabled="(!combatStore.selectedSkillKey && combatStore.selectedTargetIds.length === 0) || combatStore.isLoading"
+          @click="handleClearSelection"
+        >
+          ANNULER
+        </button>
+      </section>
+
+      <CombatantSidePanel
+        class="combat-scene__side-panel"
+        :combatant="selectedCombatant ?? activeCombatant"
       />
 
-      <CombatLogPanel :entries="combatStore.logEntries" />
-
-      <div v-if="combatStore.error" class="combat-scene__error">
-        {{ combatStore.error }}
-      </div>
-    </section>
-
-    <section class="combat-scene__action-bar">
-      <button
-        class="ghost-button"
-        :disabled="!combatStore.canSubmit || combatStore.isLoading"
-        @click="handleSubmit"
-      >
-        {{ combatStore.isLoading ? 'EXÉCUTION…' : 'EXÉCUTER L\'ACTION' }}
-      </button>
-
-      <button
-        class="ghost-button"
-        :disabled="(!combatStore.selectedSkillKey && combatStore.selectedTargetIds.length === 0) || combatStore.isLoading"
-        @click="handleClearSelection"
-      >
-        ANNULER
-      </button>
-    </section>
-
-    <CombatantSidePanel
-      class="combat-scene__side-panel"
-      :combatant="selectedCombatant ?? activeCombatant"
-    />
-
-    <CombatOutcomePanel
-      v-if="combatStore.isVictory || combatStore.isDefeat"
-      :is-victory="combatStore.isVictory"
-      :is-loading="combatStore.isLoading"
-      @continue="handleContinue"
-    />
+      <CombatOutcomePanel
+        v-if="combatStore.isVictory || combatStore.isDefeat"
+        :is-victory="combatStore.isVictory"
+        :is-loading="combatStore.isLoading"
+        @continue="handleContinue"
+        @leave-run="$emit('leaveRun')"
+      />
+    </template>
   </section>
 </template>
 
 <style scoped>
 .combat-scene {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto auto;
-  grid-template-columns: 1fr 16rem;
+  grid-template-rows: auto minmax(0, 1fr) minmax(10rem, 14rem) auto;
+  grid-template-columns: minmax(0, 1fr) minmax(14rem, 16rem);
   gap: var(--space-4);
   height: 100%;
   min-height: 0;
@@ -213,7 +242,7 @@ watch(
 }
 
 .combat-scene__board {
-  grid-column: 1 / -1;
+  grid-column: 1;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--space-4);
@@ -233,18 +262,34 @@ watch(
 }
 
 .combat-scene__footer {
-  grid-column: 1 / -1;
+  grid-column: 1;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(18rem, 1fr);
   gap: var(--space-4);
   align-items: stretch;
   min-height: 0;
+  max-height: 14rem;
 }
 
 .combat-scene__action-bar {
-  grid-column: 1 / -1;
+  grid-column: 1;
   display: flex;
   gap: var(--space-3);
+}
+
+.combat-scene__placeholder {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: var(--space-8) var(--space-4);
+}
+
+.combat-scene__placeholder h2 {
+  margin: var(--space-2) 0;
+  color: var(--color-dim);
+}
+
+.combat-scene__placeholder p {
+  color: var(--color-dim);
 }
 
 .combat-scene__error {
@@ -257,12 +302,38 @@ watch(
 }
 
 .combat-scene__side-panel {
-  position: absolute;
-  right: 0;
-  top: 0;
-  width: 16rem;
-  max-height: 100%;
+  grid-column: 2;
+  grid-row: 2 / 5;
+  min-height: 0;
+  height: 100%;
   overflow-y: auto;
-  z-index: 5;
+}
+
+@media (max-width: 900px) {
+  .combat-scene {
+    grid-template-rows: auto minmax(16rem, 1fr) auto auto auto;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .combat-scene__board,
+  .combat-scene__footer,
+  .combat-scene__action-bar,
+  .combat-scene__side-panel {
+    grid-column: 1;
+  }
+
+  .combat-scene__board {
+    grid-template-columns: 1fr;
+  }
+
+  .combat-scene__footer {
+    grid-template-columns: 1fr;
+    max-height: none;
+  }
+
+  .combat-scene__side-panel {
+    grid-row: auto;
+    max-height: 16rem;
+  }
 }
 </style>

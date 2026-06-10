@@ -188,12 +188,14 @@ public sealed class ResolveCurrentEventCommandHandler
                 _ => "Combat"
             };
 
+            var catalogRiskLevel = Math.Clamp(selectedNode.RiskLevel / 20 + 1, 1, 5);
+
             var enemyCount = encounterType switch
             {
                 "Elite" => 1,
                 "Rare" => 1,
                 "RoomBoss" => 1,
-                _ => selectedNode.RiskLevel >= 3 ? 2 : 1
+                _ => catalogRiskLevel >= 3 ? 2 : 1
             };
 
             var draftContext = new CombatEncounterDraftContext(
@@ -202,7 +204,7 @@ public sealed class ResolveCurrentEventCommandHandler
                 NodeId: selectedNode.Id.Value,
                 RoomType: room.RoomType.ToString(),
                 RoomIndex: room.Depth,
-                RiskLevel: selectedNode.RiskLevel,
+                RiskLevel: catalogRiskLevel,
                 EncounterType: encounterType,
                 EnemyCount: enemyCount);
 

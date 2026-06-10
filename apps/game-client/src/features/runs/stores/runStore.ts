@@ -371,6 +371,23 @@ export const useRunStore = defineStore('run', () => {
     });
   }
 
+  async function handleCombatFailed() {
+    if (!currentRun.value) return;
+
+    await execute(async () => {
+      const response = await runApi.getRun(currentRun.value!.id);
+      const run = unwrapRunResponse(response);
+
+      lastChoiceResult.value = null;
+      currentRun.value = run;
+      activeCombat.value = null;
+      combatRuntime.value = null;
+      lastOutcome.value = null;
+      pendingRewardOffer.value = null;
+      resetPreviewedNode();
+    });
+  }
+
   // -------------------------------------------------------------------------
   // Rewards
   // -------------------------------------------------------------------------
@@ -693,6 +710,7 @@ export const useRunStore = defineStore('run', () => {
     loadPendingReward,
     selectReward,
     handleCombatCompleted,
+    handleCombatFailed,
     refreshPendingRewardIfNeeded,
     continueAfterOutcome,
     continueAfterChoiceResult,

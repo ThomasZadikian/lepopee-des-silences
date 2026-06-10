@@ -42,6 +42,11 @@ async function handleExitMidRoom() {
   if (ok) await router.replace('/');
 }
 
+async function handleLeaveRun() {
+  runStore.clearCurrentRun();
+  await router.replace('/');
+}
+
 async function startNewRun() {
   await runStore.startRun();
   const runId = runStore.currentRun?.id;
@@ -118,6 +123,8 @@ watch(
             :run-id="runStore.currentRun.id"
             :combat-id="runStore.currentRun.activeCombatId"
             @combat-completed="runStore.handleCombatCompleted"
+            @combat-failed="runStore.handleCombatFailed"
+            @leave-run="handleLeaveRun"
           />
 
           <!-- 3. Interlude hub -->
@@ -198,8 +205,15 @@ watch(
           <!-- 9. Run terminée -->
           <section v-else class="run-grid__outcome panel">
             <p class="system-label">Run terminée</p>
-            <h3>Le Tome se referme</h3>
-            <p>La traversée est terminée. Le bilan détaillé sera intégré dans une prochaine version.</p>
+            <h3>{{ runStore.currentRun.status === 'Failed' ? 'Défaite définitive' : 'Le Tome se referme' }}</h3>
+            <p>
+              {{ runStore.currentRun.status === 'Failed'
+                ? 'Tous les alliés ont été vaincus. Cette run est perdue définitivement.'
+                : 'La traversée est terminée. Le bilan détaillé sera intégré dans une prochaine version.' }}
+            </p>
+            <button class="ghost-button run-grid__outcome-button" @click="handleLeaveRun">
+              Quitter la run
+            </button>
           </section>
 
         </section>
@@ -286,9 +300,15 @@ watch(
   color: var(--color-frost);
 }
 
-.run-grid__outcome p:last-child {
+.run-grid__outcome p {
   color: var(--color-muted);
   line-height: 1.55;
+}
+
+.run-grid__outcome-button {
+  margin-top: var(--space-4);
+  border-color: var(--color-blood);
+  color: var(--color-blood);
 }
 
 .run-loading {

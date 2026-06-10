@@ -6,6 +6,7 @@ defineProps<{
 
 defineEmits<{
   continue: [];
+  leaveRun: [];
 }>();
 </script>
 
@@ -41,6 +42,15 @@ defineEmits<{
         @click="$emit('continue')"
       >
         {{ isLoading ? 'CHARGEMENT…' : 'CONTINUER →' }}
+      </button>
+
+      <button
+        v-else
+        class="ghost-button outcome-panel__button outcome-panel__button--defeat"
+        :disabled="isLoading"
+        @click="$emit('leaveRun')"
+      >
+        {{ isLoading ? 'CHARGEMENT…' : 'QUITTER LA RUN' }}
       </button>
     </div>
   </section>
@@ -100,5 +110,10 @@ defineEmits<{
   justify-self: center;
   border-color: var(--color-gold);
   color: var(--color-gold);
+}
+
+.outcome-panel__button--defeat {
+  border-color: var(--color-blood);
+  color: var(--color-blood);
 }
 </style>

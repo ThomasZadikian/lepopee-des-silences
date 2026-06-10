@@ -32,8 +32,8 @@ public sealed class CombatFullFlowEndpointTests : RunIntegrationTestBase, IClass
             if (action is null) break;
 
             var response = await Client.PostAsJsonAsync(
-                $"/api/v2/runs/{runId}/combats/{combat.Id.Value}/skill-actions",
-                new { ActorId = action.Value.Actor.Id.Value, SkillKey = action.Value.Skill.Key, TargetIds = new[] { action.Value.Target.Id.Value } });
+                $"/api/v2/runs/{runId}/combats/{combat.Id}/skill-actions",
+                new { ActorId = action.Value.Actor.Id, SkillKey = action.Value.Skill.Key, TargetIds = new[] { action.Value.Target.Id } });
 
             var body = await response.Content.ReadAsStringAsync();
             response.StatusCode.Should().Be(HttpStatusCode.OK, because: body);
@@ -51,10 +51,10 @@ public sealed class CombatFullFlowEndpointTests : RunIntegrationTestBase, IClass
 
         result.Should().NotBeNull();
         result!.CombatCompleted.Should().BeTrue();
-        result.Combat.Status.Should().Be(CombatStatus.Completed);
+        result.Combat.Status.Should().Be("Completed");
         result.CanProgressRun.Should().BeTrue();
 
-        result.Combat.Enemies.Should().AllSatisfy(e => e.Status.Should().Be(CombatantStatus.Defeated));
+        result.Combat.Enemies.Should().AllSatisfy(e => e.Status.Should().Be("Defeated"));
 
         var currentCombatResponse = await Client.GetAsync($"/api/v2/runs/{runId}/current-combat");
         currentCombatResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
@@ -68,13 +68,13 @@ public sealed class CombatFullFlowEndpointTests : RunIntegrationTestBase, IClass
 
         var (runId, combat) = setup.Value;
 
-        combat.Status.Should().Be(CombatStatus.Active);
+        combat.Status.Should().Be("Active");
         combat.TurnNumber.Should().Be(1);
         combat.ActiveCombatantId.Should().NotBeNull();
         combat.Allies.Should().NotBeEmpty();
         combat.Enemies.Should().NotBeEmpty();
-        combat.Allies.Should().AllSatisfy(a => a.Status.Should().Be(CombatantStatus.Active));
-        combat.Enemies.Should().AllSatisfy(e => e.Status.Should().Be(CombatantStatus.Active));
+        combat.Allies.Should().AllSatisfy(a => a.Status.Should().Be("Active"));
+        combat.Enemies.Should().AllSatisfy(e => e.Status.Should().Be("Active"));
     }
 
     [Fact]
@@ -119,8 +119,8 @@ public sealed class CombatFullFlowEndpointTests : RunIntegrationTestBase, IClass
         if (action is null) return;
 
         var response = await Client.PostAsJsonAsync(
-            $"/api/v2/runs/{runId}/combats/{combat.Id.Value}/skill-actions",
-            new { ActorId = action.Value.Actor.Id.Value, SkillKey = action.Value.Skill.Key, TargetIds = new[] { action.Value.Target.Id.Value } });
+            $"/api/v2/runs/{runId}/combats/{combat.Id}/skill-actions",
+            new { ActorId = action.Value.Actor.Id, SkillKey = action.Value.Skill.Key, TargetIds = new[] { action.Value.Target.Id } });
 
         var body = await response.Content.ReadAsStringAsync();
         response.StatusCode.Should().Be(HttpStatusCode.OK, because: body);
@@ -160,8 +160,8 @@ public sealed class CombatFullFlowEndpointTests : RunIntegrationTestBase, IClass
         if (action is null) return;
 
         var response = await Client.PostAsJsonAsync(
-            $"/api/v2/runs/{runId}/combats/{combat.Id.Value}/skill-actions",
-            new { ActorId = action.Value.Actor.Id.Value, SkillKey = action.Value.Skill.Key, TargetIds = new[] { action.Value.Target.Id.Value } });
+            $"/api/v2/runs/{runId}/combats/{combat.Id}/skill-actions",
+            new { ActorId = action.Value.Actor.Id, SkillKey = action.Value.Skill.Key, TargetIds = new[] { action.Value.Target.Id } });
 
         var body = await response.Content.ReadAsStringAsync();
         response.StatusCode.Should().Be(HttpStatusCode.Conflict, because: body);
@@ -181,7 +181,7 @@ public sealed class CombatFullFlowEndpointTests : RunIntegrationTestBase, IClass
 
         var response = await Client.PostAsJsonAsync(
             $"/api/v2/runs/{runId}/combats/{wrongCombatId}/skill-actions",
-            new { ActorId = action.Value.Actor.Id.Value, SkillKey = action.Value.Skill.Key, TargetIds = new[] { action.Value.Target.Id.Value } });
+            new { ActorId = action.Value.Actor.Id, SkillKey = action.Value.Skill.Key, TargetIds = new[] { action.Value.Target.Id } });
 
         var body = await response.Content.ReadAsStringAsync();
         response.StatusCode.Should().Be(HttpStatusCode.Conflict, because: body);
@@ -196,7 +196,7 @@ public sealed class CombatFullFlowEndpointTests : RunIntegrationTestBase, IClass
         var (runId, combat) = setup.Value;
 
         var response = await Client.PostAsJsonAsync(
-            $"/api/v2/runs/{runId}/combats/{combat.Id.Value}/skill-actions",
+            $"/api/v2/runs/{runId}/combats/{combat.Id}/skill-actions",
             new { ActorId = Guid.Empty, SkillKey = "", TargetIds = Array.Empty<Guid>() });
 
         var body = await response.Content.ReadAsStringAsync();
@@ -228,7 +228,9 @@ public sealed class CombatFullFlowEndpointTests : RunIntegrationTestBase, IClass
     {
         var startRunResponse = await StartRunAsync();
         var nodeToChoose = startRunResponse.Run.CurrentRoom.AvailableNodes
-            .FirstOrDefault(node => node.Type == "Combat");
+            .Where(node => node.Type == "Combat")
+            .OrderBy(node => node.RiskLevel)
+            .FirstOrDefault();
 
         if (nodeToChoose is null) return null;
 
@@ -271,8 +273,8 @@ public sealed class CombatFullFlowEndpointTests : RunIntegrationTestBase, IClass
             if (action is null) return null;
 
             var response = await Client.PostAsJsonAsync(
-                $"/api/v2/runs/{runId}/combats/{combat.Id.Value}/skill-actions",
-                new { ActorId = action.Value.Actor.Id.Value, SkillKey = action.Value.Skill.Key, TargetIds = new[] { action.Value.Target.Id.Value } });
+                $"/api/v2/runs/{runId}/combats/{combat.Id}/skill-actions",
+                new { ActorId = action.Value.Actor.Id, SkillKey = action.Value.Skill.Key, TargetIds = new[] { action.Value.Target.Id } });
 
             var body = await response.Content.ReadAsStringAsync();
             response.StatusCode.Should().Be(HttpStatusCode.OK, because: body);
@@ -296,11 +298,18 @@ public sealed class CombatFullFlowEndpointTests : RunIntegrationTestBase, IClass
         bool targetSameSide)
     {
         var combatants = combat.Allies.Concat(combat.Enemies).ToArray();
-        var actor = combatants.FirstOrDefault(c => c.Skills.Any(s => s.TargetingType == targetingType));
+        var actor = combatants.FirstOrDefault(c => c.Status == "Active" && c.Skills.Any(IsMatchingSkill));
         if (actor is null) return null;
 
-        var skill = actor.Skills.First(s => s.TargetingType == targetingType);
-        var target = combatants.FirstOrDefault(c => targetSameSide ? c.Side == actor.Side : c.Side != actor.Side);
+        var skill = actor.Skills.Where(IsMatchingSkill).OrderByDescending(s => s.BasePower).First();
+        var target = combatants.FirstOrDefault(c => c.Status == "Active" && (targetSameSide ? c.Side == actor.Side : c.Side != actor.Side));
         return target is null ? null : (actor, skill, target);
+
+        bool IsMatchingSkill(CombatantSkillRuntimeDto skill)
+        {
+            return skill.TargetingType == targetingType
+                && skill.EffectType == "Damage"
+                && skill.BasePower > 0;
+        }
     }
 }

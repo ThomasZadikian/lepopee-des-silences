@@ -25,7 +25,7 @@ public sealed class EnemyCombatTurnResolverTests
         var result = _resolver.Resolve(combat);
 
         result.WasResolved.Should().BeFalse();
-        result.Combat.Status.Should().Be(CombatStatus.Completed);
+        result.Combat.Status.Should().Be("Completed");
     }
 
     [Fact]
@@ -36,7 +36,7 @@ public sealed class EnemyCombatTurnResolverTests
         var result = _resolver.Resolve(combat);
 
         result.WasResolved.Should().BeFalse();
-        result.Combat.ActiveCombatantId.Should().Be(combat.Allies.Single().Id);
+        result.Combat.ActiveCombatantId.Should().Be(combat.Allies.Single().Id.Value);
     }
 
     [Fact]
@@ -101,7 +101,7 @@ public sealed class EnemyCombatTurnResolverTests
 
         var result = _resolver.Resolve(combat);
 
-        result.Combat.ActiveCombatantId.Should().Be(combat.Allies.Single().Id);
+        result.Combat.ActiveCombatantId.Should().Be(combat.Allies.Single().Id.Value);
         result.Combat.TurnNumber.Should().Be(2);
     }
 
@@ -132,7 +132,7 @@ public sealed class EnemyCombatTurnResolverTests
 
         var result = _resolver.Resolve(combat);
 
-        result.Combat.Status.Should().Be(CombatStatus.Failed);
+        result.Combat.Status.Should().Be("Failed");
         result.LogEntries.Should().Contain(e => e.Type == "CombatFailed");
     }
 
@@ -145,7 +145,7 @@ public sealed class EnemyCombatTurnResolverTests
         var result = _resolver.Resolve(combat);
 
         result.WasResolved.Should().BeTrue();
-        result.Combat.ActiveCombatantId.Should().Be(combat.Allies.Single().Id);
+        result.Combat.ActiveCombatantId.Should().Be(combat.Allies.Single().Id.Value);
         result.LogEntries.Should().Contain(e => e.Message.Contains("no usable skill"));
     }
 
