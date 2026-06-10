@@ -11,6 +11,11 @@ public sealed class GameEngineDbContext : DbContext
     }
 
     public DbSet<RunEntity> Runs => Set<RunEntity>();
+    public DbSet<RoomEntity> Rooms => Set<RoomEntity>();
+    public DbSet<MapNodeEntity> MapNodes => Set<MapNodeEntity>();
+    public DbSet<MapNodeParentNodeEntity> MapNodeParentNodes => Set<MapNodeParentNodeEntity>();
+    public DbSet<RunMemoryFragmentEntity> RunMemoryFragments => Set<RunMemoryFragmentEntity>();
+    public DbSet<RunActivePalaceLawEntity> RunActivePalaceLaws => Set<RunActivePalaceLawEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

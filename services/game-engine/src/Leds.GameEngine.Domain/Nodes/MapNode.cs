@@ -207,4 +207,21 @@ public sealed class MapNode
 
         ChosenEventOptionId = choiceId.Trim();
     }
+
+    public static MapNode Rehydrate(
+        NodeId id,
+        NodeEventType eventType,
+        int row,
+        int lane,
+        int riskLevel,
+        string rewardProfile,
+        IReadOnlyCollection<NodeId> parentNodeIds,
+        bool isBoss,
+        NodeState state,
+        string? chosenEventOptionId)
+    {
+        var node = new MapNode(id, eventType, row, lane, riskLevel, rewardProfile, parentNodeIds, isBoss, state);
+        node.ChosenEventOptionId = chosenEventOptionId;
+        return node;
+    }
 }

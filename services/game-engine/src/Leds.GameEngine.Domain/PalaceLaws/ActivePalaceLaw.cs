@@ -46,4 +46,14 @@ public sealed class ActivePalaceLaw
             law.Version,
             law.Domains);
     }
+
+    public static ActivePalaceLaw Rehydrate(
+        PalaceLawId lawId,
+        string key,
+        string name,
+        string version,
+        IReadOnlyCollection<PalaceLawDomain> domains)
+    {
+        return new ActivePalaceLaw(lawId, key, name, version, domains);
+    }
 }

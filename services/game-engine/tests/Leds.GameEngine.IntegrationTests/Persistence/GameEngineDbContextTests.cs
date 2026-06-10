@@ -26,6 +26,7 @@ public sealed class GameEngineDbContextTests : IDisposable
     {
         var runId = Guid.NewGuid();
         var playerId = Guid.NewGuid();
+        var roomId = Guid.NewGuid();
         var now = DateTime.UtcNow;
 
         var entity = new RunEntity
@@ -36,9 +37,14 @@ public sealed class GameEngineDbContextTests : IDisposable
             Seed = "test-seed-12345",
             GeneratorVersion = "1.0.0",
             MarkovMatrixVersion = "1.0.0",
-            CurrentDepth = 3,
-            ActiveCombatId = null,
-            PendingRewardOfferId = null,
+            CurrentRoomId = roomId,
+            CurrentRoomIndex = 0,
+            MaxHp = 40,
+            CurrentHp = 40,
+            Attack = 12,
+            Defense = 6,
+            Speed = 10,
+            StartedAtUtc = now,
             CreatedAtUtc = now,
             UpdatedAtUtc = now
         };
@@ -60,7 +66,13 @@ public sealed class GameEngineDbContextTests : IDisposable
         loaded.Seed.Should().Be("test-seed-12345");
         loaded.GeneratorVersion.Should().Be("1.0.0");
         loaded.MarkovMatrixVersion.Should().Be("1.0.0");
-        loaded.CurrentDepth.Should().Be(3);
+        loaded.CurrentRoomId.Should().Be(roomId);
+        loaded.CurrentRoomIndex.Should().Be(0);
+        loaded.MaxHp.Should().Be(40);
+        loaded.CurrentHp.Should().Be(40);
+        loaded.Attack.Should().Be(12);
+        loaded.Defense.Should().Be(6);
+        loaded.Speed.Should().Be(10);
         loaded.ActiveCombatId.Should().BeNull();
         loaded.PendingRewardOfferId.Should().BeNull();
         loaded.CreatedAtUtc.Should().Be(now);
@@ -81,7 +93,14 @@ public sealed class GameEngineDbContextTests : IDisposable
             Seed = "test-seed",
             GeneratorVersion = "1.0.0",
             MarkovMatrixVersion = "1.0.0",
-            CurrentDepth = 1,
+            CurrentRoomId = Guid.NewGuid(),
+            CurrentRoomIndex = 0,
+            MaxHp = 40,
+            CurrentHp = 40,
+            Attack = 12,
+            Defense = 6,
+            Speed = 10,
+            StartedAtUtc = now,
             CreatedAtUtc = now,
             UpdatedAtUtc = now
         };
@@ -90,7 +109,8 @@ public sealed class GameEngineDbContextTests : IDisposable
         await _context.SaveChangesAsync();
 
         entity.Status = "Completed";
-        entity.CurrentDepth = 5;
+        entity.CurrentRoomIndex = 3;
+        entity.CurrentHp = 25;
         entity.UpdatedAtUtc = now.AddMinutes(10);
         await _context.SaveChangesAsync();
 
@@ -98,7 +118,8 @@ public sealed class GameEngineDbContextTests : IDisposable
 
         loaded.Should().NotBeNull();
         loaded!.Status.Should().Be("Completed");
-        loaded.CurrentDepth.Should().Be(5);
+        loaded.CurrentRoomIndex.Should().Be(3);
+        loaded.CurrentHp.Should().Be(25);
     }
 
     public void Dispose()

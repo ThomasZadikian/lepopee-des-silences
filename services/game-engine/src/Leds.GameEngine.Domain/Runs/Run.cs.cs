@@ -801,4 +801,83 @@ public sealed class Run
 
         _activePalaceLaws.Add(ActivePalaceLaw.From(law));
     }
+
+    // -----------------------------------------------------------------------
+    // Rehydration (persistence restore)
+    // -----------------------------------------------------------------------
+
+    public RunSnapshotData? SnapshotData => _roomSnapshot is null
+        ? null
+        : new RunSnapshotData(
+            _roomSnapshot.CurrentHp,
+            _roomSnapshot.Attack,
+            _roomSnapshot.Defense,
+            _roomSnapshot.Speed,
+            _roomSnapshot.MemoryFragments,
+            _roomSnapshot.ActivePalaceLaws);
+
+    public RunStatus? PreSuspendStatus => _preSuspendStatus;
+
+    public static Run Rehydrate(
+        RunId id,
+        Guid playerId,
+        string seed,
+        string generatorVersion,
+        string markovMatrixVersion,
+        RunStatus status,
+        RoomId currentRoomId,
+        CombatId? activeCombatId,
+        RewardOfferId? pendingRewardOfferId,
+        int maxHp,
+        int currentHp,
+        int attack,
+        int defense,
+        int speed,
+        DateTimeOffset startedAt,
+        DateTimeOffset? endedAt,
+        DateTimeOffset? savedAt,
+        int currentRoomIndex,
+        IEnumerable<Room> rooms,
+        IEnumerable<string> memoryFragments,
+        IEnumerable<ActivePalaceLaw> activePalaceLaws,
+        RunStatus? preSuspendStatus,
+        RunSnapshotData? snapshot)
+    {
+        var firstRoom = rooms.First();
+
+        var run = new Run(id, playerId, seed, generatorVersion, markovMatrixVersion, status, firstRoom, startedAt, maxHp, currentHp, attack, defense, speed, currentRoomIndex, activeCombatId, pendingRewardOfferId);
+
+        foreach (var room in rooms.Skip(1))
+        {
+            run._rooms.Add(room);
+        }
+
+        run.CurrentRoomId = currentRoomId;
+        run.EndedAt = endedAt;
+        run.SavedAt = savedAt;
+        run._preSuspendStatus = preSuspendStatus;
+        run._memoryFragments.AddRange(memoryFragments);
+        run._activePalaceLaws.AddRange(activePalaceLaws);
+
+        if (snapshot is not null)
+        {
+            run._roomSnapshot = new RunSnapshot(
+                snapshot.CurrentHp,
+                snapshot.Attack,
+                snapshot.Defense,
+                snapshot.Speed,
+                snapshot.MemoryFragments,
+                snapshot.ActivePalaceLaws);
+        }
+
+        return run;
+    }
+
+    public sealed record RunSnapshotData(
+        int CurrentHp,
+        int Attack,
+        int Defense,
+        int Speed,
+        string[] MemoryFragments,
+        ActivePalaceLaw[] ActivePalaceLaws);
 }

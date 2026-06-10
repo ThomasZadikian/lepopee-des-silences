@@ -27,6 +27,7 @@ using Leds.GameEngine.Infrastructure.Generation.Rooms.Bosses;
 using Leds.GameEngine.Infrastructure.Generation.Rooms.Themes;
 using Leds.GameEngine.Infrastructure.Generation.Rooms.Types;
 using Leds.GameEngine.Infrastructure.Persistence;
+using Leds.GameEngine.Infrastructure.Persistence.Repositories;
 using Leds.GameEngine.Infrastructure.Rewards;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -99,6 +100,8 @@ public static class InfrastructureServiceCollectionExtensions
         {
             services.AddDbContext<GameEngineDbContext>(options =>
                 options.UseNpgsql(configuration.GetConnectionString("GameEngineDb")));
+
+            services.AddScoped<IRunRepository, EfRunRepository>();
         }
     }
 

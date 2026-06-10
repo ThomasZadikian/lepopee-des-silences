@@ -443,4 +443,21 @@ public sealed class Room
             }
         }
     }
+
+    public static Room Rehydrate(
+        RoomId id,
+        int depth,
+        RoomType roomType,
+        string theme,
+        RoomBossProfile bossProfile,
+        RoomState state,
+        int currentNodeDepth,
+        IEnumerable<MapNode> nodes,
+        string? layoutTemplateKey,
+        string? layoutTemplateVersion)
+    {
+        var room = new Room(id, depth, roomType, theme, bossProfile, state, nodes, layoutTemplateKey, layoutTemplateVersion);
+        room.CurrentNodeDepth = currentNodeDepth;
+        return room;
+    }
 }
