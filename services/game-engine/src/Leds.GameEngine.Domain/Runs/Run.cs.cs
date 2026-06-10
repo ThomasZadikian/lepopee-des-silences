@@ -841,7 +841,8 @@ public sealed class Run
         IEnumerable<string> memoryFragments,
         IEnumerable<ActivePalaceLaw> activePalaceLaws,
         RunStatus? preSuspendStatus,
-        RunSnapshotData? snapshot)
+        RunSnapshotData? snapshot,
+        Combat? activeCombat = null)
     {
         var firstRoom = rooms.First();
 
@@ -869,6 +870,8 @@ public sealed class Run
                 snapshot.MemoryFragments,
                 snapshot.ActivePalaceLaws);
         }
+
+        run._activeCombat = activeCombat;
 
         return run;
     }

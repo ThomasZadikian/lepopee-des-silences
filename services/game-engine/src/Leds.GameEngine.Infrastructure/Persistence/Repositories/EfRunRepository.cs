@@ -23,6 +23,9 @@ public sealed class EfRunRepository : IRunRepository
                     .ThenInclude(node => node.ParentNodeLinks)
             .Include(run => run.MemoryFragments)
             .Include(run => run.ActivePalaceLaws)
+            .Include(run => run.ActiveCombat)
+                .ThenInclude(combat => combat!.Combatants)
+                    .ThenInclude(combatant => combatant.Skills)
             .FirstOrDefaultAsync(run => run.Id == runId.Value, cancellationToken);
 
         return entity is null ? null : RunPersistenceMapper.ToDomain(entity);
@@ -45,6 +48,9 @@ public sealed class EfRunRepository : IRunRepository
                     .ThenInclude(node => node.ParentNodeLinks)
             .Include(r => r.MemoryFragments)
             .Include(r => r.ActivePalaceLaws)
+            .Include(r => r.ActiveCombat)
+                .ThenInclude(combat => combat!.Combatants)
+                    .ThenInclude(combatant => combatant.Skills)
             .FirstOrDefaultAsync(r => r.Id == runId, cancellationToken);
 
         if (existing is null)
@@ -83,6 +89,12 @@ public sealed class EfRunRepository : IRunRepository
         UpdateRooms(existing, entity);
         UpdateMemoryFragments(existing, entity);
         UpdateActivePalaceLaws(existing, entity);
+
+        CombatEntity? incomingCombat = run.ActiveCombat is not null
+            ? CombatPersistenceMapper.ToEntity(run.ActiveCombat, runId)
+            : null;
+
+        UpdateActiveCombat(existing, incomingCombat);
 
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
@@ -182,5 +194,87 @@ public sealed class EfRunRepository : IRunRepository
     {
         existing.ActivePalaceLaws.Clear();
         existing.ActivePalaceLaws.AddRange(incoming.ActivePalaceLaws);
+    }
+
+    private void UpdateActiveCombat(RunEntity existingRun, CombatEntity? incomingCombat)
+    {
+        var existingCombat = existingRun.ActiveCombat;
+
+        if (incomingCombat is null)
+        {
+            if (existingCombat is not null)
+            {
+                foreach (var combatant in existingCombat.Combatants)
+                {
+                    _dbContext.CombatantSkills.RemoveRange(combatant.Skills);
+                }
+                _dbContext.Combatants.RemoveRange(existingCombat.Combatants);
+                _dbContext.Combats.Remove(existingCombat);
+                existingRun.ActiveCombat = null;
+                existingRun.ActiveCombatId = null;
+            }
+
+            return;
+        }
+
+        if (existingCombat is null)
+        {
+            existingRun.ActiveCombat = incomingCombat;
+            existingRun.ActiveCombatId = incomingCombat.Id;
+            return;
+        }
+
+        existingCombat.Status = incomingCombat.Status;
+        existingCombat.TurnNumber = incomingCombat.TurnNumber;
+        existingCombat.ActiveCombatantId = incomingCombat.ActiveCombatantId;
+        existingCombat.UpdatedAtUtc = incomingCombat.UpdatedAtUtc;
+
+        UpdateCombatants(existingCombat, incomingCombat);
+    }
+
+    private void UpdateCombatants(CombatEntity existingCombat, CombatEntity incomingCombat)
+    {
+        var existingCombatantIds = existingCombat.Combatants.Select(c => c.Id).ToHashSet();
+        var incomingCombatantIds = incomingCombat.Combatants.Select(c => c.Id).ToHashSet();
+
+        var combatantsToRemove = existingCombat.Combatants
+            .Where(c => !incomingCombatantIds.Contains(c.Id))
+            .ToList();
+
+        foreach (var combatant in combatantsToRemove)
+        {
+            _dbContext.CombatantSkills.RemoveRange(combatant.Skills);
+            existingCombat.Combatants.Remove(combatant);
+        }
+
+        foreach (var incomingCombatant in incomingCombat.Combatants)
+        {
+            var existingCombatant = existingCombat.Combatants.FirstOrDefault(c => c.Id == incomingCombatant.Id);
+
+            if (existingCombatant is null)
+            {
+                existingCombat.Combatants.Add(incomingCombatant);
+                continue;
+            }
+
+            existingCombatant.SourceKey = incomingCombatant.SourceKey;
+            existingCombatant.DisplayName = incomingCombatant.DisplayName;
+            existingCombatant.Side = incomingCombatant.Side;
+            existingCombatant.Archetype = incomingCombatant.Archetype;
+            existingCombatant.MaxVitality = incomingCombatant.MaxVitality;
+            existingCombatant.CurrentVitality = incomingCombatant.CurrentVitality;
+            existingCombatant.Guard = incomingCombatant.Guard;
+            existingCombatant.Mana = incomingCombatant.Mana;
+            existingCombatant.Charge = incomingCombatant.Charge;
+            existingCombatant.Status = incomingCombatant.Status;
+
+            UpdateCombatantSkills(existingCombatant, incomingCombatant);
+        }
+    }
+
+    private void UpdateCombatantSkills(CombatantEntity existingCombatant, CombatantEntity incomingCombatant)
+    {
+        existingCombatant.Skills.Clear();
+        existingCombatant.Skills.AddRange(incomingCombatant.Skills);
     }
 }

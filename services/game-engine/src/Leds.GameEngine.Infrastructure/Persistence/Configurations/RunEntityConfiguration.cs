@@ -43,5 +43,11 @@ public sealed class RunEntityConfiguration : IEntityTypeConfiguration<RunEntity>
         builder.HasIndex(run => run.PlayerId);
         builder.HasIndex(run => run.Status);
         builder.HasIndex(run => run.CreatedAtUtc);
+
+        builder.HasOne(run => run.ActiveCombat)
+            .WithOne(c => c.Run)
+            .HasForeignKey<RunEntity>(run => run.ActiveCombatId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

@@ -63,7 +63,10 @@ public static class RunPersistenceMapper
                     Version = law.Version,
                     Domains = string.Join(",", law.Domains.Select(d => d.ToString()))
                 })
-                .ToList()
+                .ToList(),
+            ActiveCombat = run.ActiveCombat is not null
+                ? CombatPersistenceMapper.ToEntity(run.ActiveCombat, run.Id.Value)
+                : null
         };
 
         var snapshot = run.SnapshotData;
@@ -163,6 +166,10 @@ public static class RunPersistenceMapper
                 snapshotLaws);
         }
 
+        var activeCombat = entity.ActiveCombat is not null
+            ? CombatPersistenceMapper.ToDomain(entity.ActiveCombat)
+            : null;
+
         return Run.Rehydrate(
             new RunId(entity.Id),
             entity.PlayerId,
@@ -186,7 +193,8 @@ public static class RunPersistenceMapper
             memoryFragments,
             activePalaceLaws,
             entity.PreSuspendStatus is not null ? Enum.Parse<RunStatus>(entity.PreSuspendStatus) : null,
-            snapshot);
+            snapshot,
+            activeCombat);
     }
 
     public static Room ToDomain(RoomEntity entity)

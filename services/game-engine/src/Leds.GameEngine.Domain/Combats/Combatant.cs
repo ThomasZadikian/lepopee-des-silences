@@ -190,4 +190,25 @@ public sealed class Combatant
 
         Guard += amount;
     }
+
+    /// <summary>
+    /// Rehydrates a combatant from a trusted persistence snapshot.
+    /// This method must not be used to create a new gameplay combatant.
+    /// </summary>
+    public static Combatant Rehydrate(
+        CombatantId id,
+        string sourceKey,
+        string displayName,
+        CombatantSide side,
+        string archetype,
+        int maxVitality,
+        int currentVitality,
+        int guard,
+        int mana,
+        int charge,
+        CombatantStatus status,
+        IReadOnlyCollection<CombatantSkill> skills)
+    {
+        return new Combatant(id, sourceKey, displayName, side, archetype, maxVitality, currentVitality, guard, mana, charge, status, skills);
+    }
 }

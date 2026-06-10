@@ -73,4 +73,22 @@ public sealed record CombatantSkill
             basePower,
             tags?.ToArray() ?? Array.Empty<string>());
     }
+
+    /// <summary>
+    /// Rehydrates a combatant skill from a trusted persistence snapshot.
+    /// This method must not be used to create a new gameplay skill.
+    /// </summary>
+    public static CombatantSkill Rehydrate(
+        string key,
+        string displayName,
+        string skillType,
+        string targetingType,
+        string effectType,
+        int manaCost,
+        int chargeCost,
+        int basePower,
+        IReadOnlyCollection<string> tags)
+    {
+        return new CombatantSkill(key, displayName, skillType, targetingType, effectType, manaCost, chargeCost, basePower, tags);
+    }
 }

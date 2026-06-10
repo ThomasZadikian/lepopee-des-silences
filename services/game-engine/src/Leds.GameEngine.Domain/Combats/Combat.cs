@@ -205,4 +205,23 @@ public sealed class Combat
     {
         return Allies.Concat(Enemies).ToArray();
     }
+
+    /// <summary>
+    /// Rehydrates a combat from a trusted persistence snapshot.
+    /// This method must not be used to create a new gameplay combat.
+    /// </summary>
+    public static Combat Rehydrate(
+        CombatId id,
+        RunId runId,
+        RoomId roomId,
+        NodeId nodeId,
+        CombatStatus status,
+        IReadOnlyCollection<Combatant> allies,
+        IReadOnlyCollection<Combatant> enemies,
+        CombatantId? activeCombatantId,
+        int turnNumber,
+        DateTime createdAtUtc)
+    {
+        return new Combat(id, runId, roomId, nodeId, status, allies, enemies, activeCombatantId, turnNumber, createdAtUtc);
+    }
 }
