@@ -32,11 +32,25 @@ const selectedCombatant = computed(() => {
 });
 
 const isPlayerTurn = computed(() => combatStore.isPlayerTurn);
+const hasSelectedSkill = computed(() => Boolean(combatStore.selectedSkill));
 
 function canSelect(combatantId: string): boolean {
   if (combatStore.isLoading) return false;
   if (!combatStore.selectedSkill || !isPlayerTurn.value) return false;
   return combatStore.validTargets.some((t) => t.id === combatantId);
+}
+
+function isInvalidTarget(combatantId: string): boolean {
+  if (!hasSelectedSkill.value || combatStore.isLoading || combatStore.isSelectedTarget(combatantId)) return false;
+  return !combatStore.validTargets.some((t) => t.id === combatantId);
+}
+
+function isVisuallyActive(combatantId: string): boolean {
+  if (combatStore.thinkingCombatantId) {
+    return combatStore.thinkingCombatantId === combatantId;
+  }
+
+  return combatStore.isCurrentActor(combatantId);
 }
 
 function handleSelect(combatantId: string) {
@@ -134,12 +148,17 @@ watch(
             v-for="combatant in combatStore.allies"
             :key="combatant.id"
             :combatant="combatant"
-            :is-current-actor="combatStore.isCurrentActor(combatant.id)"
+            :is-current-actor="isVisuallyActive(combatant.id)"
             :is-selected-target="combatStore.isSelectedTarget(combatant.id)"
-            :is-selectable="combatant.side === 'Player' && isPlayerTurn && canSelect(combatant.id)"
+            :is-selectable="canSelect(combatant.id)"
+            :is-targetable="canSelect(combatant.id)"
+            :is-invalid-target="isInvalidTarget(combatant.id)"
             :is-active-player="combatant.side === 'Player' && isPlayerTurn"
             :is-thinking="combatStore.thinkingCombatantId === combatant.id"
-            :is-impacted="combatStore.impactedCombatantId === combatant.id"
+            :is-damaged="combatStore.recentlyDamagedIds.includes(combatant.id)"
+            :is-guarded="combatStore.recentlyGuardedIds.includes(combatant.id)"
+            :is-just-defeated="combatStore.recentlyDefeatedIds.includes(combatant.id)"
+            :is-acting="combatStore.recentlyActingId === combatant.id"
             @select="handleSelect"
           />
         </div>
@@ -151,12 +170,17 @@ watch(
             v-for="combatant in combatStore.enemies"
             :key="combatant.id"
             :combatant="combatant"
-            :is-current-actor="combatStore.isCurrentActor(combatant.id)"
+            :is-current-actor="isVisuallyActive(combatant.id)"
             :is-selected-target="combatStore.isSelectedTarget(combatant.id)"
             :is-selectable="canSelect(combatant.id)"
+            :is-targetable="canSelect(combatant.id)"
+            :is-invalid-target="isInvalidTarget(combatant.id)"
             :is-active-player="false"
             :is-thinking="combatStore.thinkingCombatantId === combatant.id"
-            :is-impacted="combatStore.impactedCombatantId === combatant.id"
+            :is-damaged="combatStore.recentlyDamagedIds.includes(combatant.id)"
+            :is-guarded="combatStore.recentlyGuardedIds.includes(combatant.id)"
+            :is-just-defeated="combatStore.recentlyDefeatedIds.includes(combatant.id)"
+            :is-acting="combatStore.recentlyActingId === combatant.id"
             @select="handleSelect"
           />
         </div>
@@ -167,7 +191,7 @@ watch(
           :combatant="activeCombatant"
           :selected-skill-key="combatStore.selectedSkillKey"
           :is-player-turn="isPlayerTurn"
-          :is-loading="combatStore.isLoading"
+          :is-loading="combatStore.isResolvingAction"
           @select-skill="combatStore.selectSkill"
         />
 
@@ -181,15 +205,15 @@ watch(
       <section class="combat-scene__action-bar">
         <button
           class="ghost-button"
-          :disabled="!combatStore.canSubmit || combatStore.isLoading"
+          :disabled="!combatStore.canSubmit || combatStore.isResolvingAction"
           @click="handleSubmit"
         >
-          {{ combatStore.isLoading ? 'EXÉCUTION…' : 'EXÉCUTER L\'ACTION' }}
+          {{ combatStore.isResolvingAction ? 'RÉSOLUTION…' : 'EXÉCUTER L\'ACTION' }}
         </button>
 
         <button
           class="ghost-button"
-          :disabled="(!combatStore.selectedSkillKey && combatStore.selectedTargetIds.length === 0) || combatStore.isLoading"
+          :disabled="(!combatStore.selectedSkillKey && combatStore.selectedTargetIds.length === 0) || combatStore.isResolvingAction"
           @click="handleClearSelection"
         >
           ANNULER
@@ -208,6 +232,10 @@ watch(
         @continue="handleContinue"
         @leave-run="$emit('leaveRun')"
       />
+
+      <div v-if="combatStore.isResolvingAction" class="combat-scene__resolving" aria-live="polite">
+        Résolution...
+      </div>
     </template>
   </section>
 </template>
@@ -247,7 +275,8 @@ watch(
   grid-template-columns: 1fr 1fr;
   gap: var(--space-4);
   min-height: 0;
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .combat-scene__side {
@@ -309,6 +338,29 @@ watch(
   overflow-y: auto;
 }
 
+.combat-scene__resolving {
+  position: absolute;
+  left: 50%;
+  bottom: var(--space-4);
+  transform: translateX(-50%);
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid color-mix(in oklch, var(--color-gold), transparent 45%);
+  border-radius: var(--radius-sm);
+  background: color-mix(in oklch, var(--color-void), transparent 12%);
+  color: var(--color-gold);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  z-index: 8;
+  animation: resolving-breathe 1.4s ease-in-out infinite;
+}
+
+@keyframes resolving-breathe {
+  0%, 100% { opacity: 0.65; }
+  50% { opacity: 1; }
+}
+
 @media (max-width: 900px) {
   .combat-scene {
     grid-template-rows: auto minmax(16rem, 1fr) auto auto auto;
@@ -334,6 +386,12 @@ watch(
   .combat-scene__side-panel {
     grid-row: auto;
     max-height: 16rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .combat-scene__resolving {
+    animation: none;
   }
 }
 </style>

@@ -70,6 +70,7 @@ defineEmits<{
   position: absolute;
   inset: 0;
   background: color-mix(in oklch, var(--color-void), transparent 25%);
+  animation: outcome-backdrop-in 280ms ease-out;
 }
 
 .outcome-panel--victory .outcome-panel__backdrop {
@@ -86,6 +87,7 @@ defineEmits<{
   gap: var(--space-4);
   text-align: center;
   padding: var(--space-8);
+  animation: outcome-content-in 360ms ease-out;
 }
 
 .outcome-panel__title {
@@ -115,5 +117,28 @@ defineEmits<{
 .outcome-panel__button--defeat {
   border-color: var(--color-blood);
   color: var(--color-blood);
+}
+
+@keyframes outcome-backdrop-in {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@keyframes outcome-content-in {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .outcome-panel__backdrop,
+  .outcome-panel__content {
+    animation: none;
+  }
 }
 </style>

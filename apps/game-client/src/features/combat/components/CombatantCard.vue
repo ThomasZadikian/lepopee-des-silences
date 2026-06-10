@@ -6,9 +6,14 @@ defineProps<{
   isCurrentActor: boolean;
   isSelectedTarget: boolean;
   isSelectable: boolean;
+  isTargetable: boolean;
+  isInvalidTarget: boolean;
   isActivePlayer: boolean;
   isThinking: boolean;
-  isImpacted: boolean;
+  isDamaged: boolean;
+  isGuarded: boolean;
+  isJustDefeated: boolean;
+  isActing: boolean;
 }>();
 
 defineEmits<{
@@ -21,10 +26,17 @@ defineEmits<{
     class="combatant-card"
     :class="{
       'combatant-card--active': isCurrentActor,
+      'combatant-card--selected': isSelectedTarget,
       'combatant-card--targeted': isSelectedTarget,
       'combatant-card--selectable': isSelectable,
+      'combatant-card--targetable': isTargetable,
+      'combatant-card--invalid-target': isInvalidTarget,
       'combatant-card--thinking': isThinking,
-      'combatant-card--impacted': isImpacted,
+      'combatant-card--enemy-thinking': isThinking,
+      'combatant-card--acting': isActing,
+      'combatant-card--damaged': isDamaged,
+      'combatant-card--guarded': isGuarded,
+      'combatant-card--just-defeated': isJustDefeated,
       'combatant-card--defeated': combatant.status === 'Defeated',
       'combatant-card--player': combatant.side === 'Player',
       'combatant-card--enemy': combatant.side === 'Enemy',
@@ -103,7 +115,7 @@ defineEmits<{
   background: var(--color-panel);
   padding: var(--space-3);
   cursor: default;
-  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+  transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease, filter 0.18s ease;
   font-family: inherit;
   color: var(--color-ink);
 }
@@ -116,39 +128,78 @@ defineEmits<{
   border-color: color-mix(in oklch, var(--color-blood), transparent 60%);
 }
 
-.combatant-card--selectable {
+.combatant-card--selectable,
+.combatant-card--targetable {
   cursor: pointer;
 }
 
-.combatant-card--selectable:hover {
+.combatant-card--selectable:hover,
+.combatant-card--targetable:hover {
   border-color: var(--color-gold);
   background: color-mix(in oklch, var(--color-gold), transparent 92%);
 }
 
+.combatant-card--invalid-target {
+  opacity: 0.58;
+  filter: saturate(0.72);
+}
+
+.combatant-card--selected,
 .combatant-card--targeted {
   border-color: var(--color-gold) !important;
-  box-shadow: 0 0 0 1px var(--color-gold);
-  background: color-mix(in oklch, var(--color-gold), transparent 88%);
+  box-shadow:
+    0 0 0 1px color-mix(in oklch, var(--color-gold), transparent 45%),
+    0 0 18px color-mix(in oklch, var(--color-gold), transparent 78%);
+  background: color-mix(in oklch, var(--color-gold), transparent 90%);
+}
+
+.combatant-card--selected::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 1px solid color-mix(in oklch, var(--color-gold), transparent 58%);
+  border-radius: inherit;
+  pointer-events: none;
+  animation: target-aura-pulse 1.8s ease-in-out infinite;
 }
 
 .combatant-card--active {
   border-color: var(--color-frost) !important;
+  box-shadow:
+    0 0 0 1px color-mix(in oklch, var(--color-frost), transparent 48%),
+    0 0 24px color-mix(in oklch, var(--color-frost), transparent 84%);
 }
 
-.combatant-card--thinking {
+.combatant-card--thinking,
+.combatant-card--enemy-thinking {
   border-color: var(--color-gold) !important;
   box-shadow: 0 0 0 1px var(--color-gold), 0 0 1.5rem color-mix(in oklch, var(--color-gold), transparent 70%);
   background: color-mix(in oklch, var(--color-gold), transparent 90%);
+  animation: enemy-thinking-pulse 1.2s ease-in-out infinite;
 }
 
-.combatant-card--impacted {
-  border-color: var(--color-blood) !important;
-  box-shadow: 0 0 0 1px var(--color-blood), 0 0 1rem color-mix(in oklch, var(--color-blood), transparent 76%);
+.combatant-card--acting {
+  border-color: color-mix(in oklch, var(--color-gold), transparent 25%) !important;
+  box-shadow: 0 0 20px color-mix(in oklch, var(--color-gold), transparent 80%);
+}
+
+.combatant-card--damaged {
+  animation: combat-damage-shake 420ms ease-out;
+}
+
+.combatant-card--guarded {
+  animation: combat-guard-flare 700ms ease-out;
 }
 
 .combatant-card--defeated {
-  opacity: 0.4;
+  opacity: 0.42;
+  filter: grayscale(0.75);
+  transform: translateY(4px);
   pointer-events: none;
+}
+
+.combatant-card--just-defeated {
+  animation: combat-defeat-fade 900ms ease-out;
 }
 
 .combatant-card__frame {
@@ -244,5 +295,69 @@ defineEmits<{
   border: 1px solid var(--color-gold);
   padding: 1px 5px;
   border-radius: var(--radius-sm);
+}
+
+@keyframes target-aura-pulse {
+  0%, 100% {
+    opacity: 0.45;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.025);
+  }
+}
+
+@keyframes enemy-thinking-pulse {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.12); }
+}
+
+@keyframes combat-damage-shake {
+  0% {
+    transform: translateX(0);
+    filter: brightness(1);
+  }
+  20% {
+    transform: translateX(-5px);
+    filter: brightness(1.22) saturate(1.08);
+  }
+  45% { transform: translateX(4px); }
+  70% { transform: translateX(-2px); }
+  100% {
+    transform: translateX(0);
+    filter: brightness(1);
+  }
+}
+
+@keyframes combat-guard-flare {
+  0% { box-shadow: 0 0 0 color-mix(in oklch, var(--color-frost), transparent 100%); }
+  40% { box-shadow: 0 0 22px color-mix(in oklch, var(--color-frost), transparent 72%); }
+  100% { box-shadow: 0 0 0 color-mix(in oklch, var(--color-frost), transparent 100%); }
+}
+
+@keyframes combat-defeat-fade {
+  0% {
+    opacity: 1;
+    filter: grayscale(0);
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0.42;
+    filter: grayscale(0.75);
+    transform: translateY(4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .combatant-card,
+  .combatant-card--selected::after,
+  .combatant-card--damaged,
+  .combatant-card--guarded,
+  .combatant-card--just-defeated,
+  .combatant-card--enemy-thinking {
+    animation: none;
+    transition: none;
+  }
 }
 </style>

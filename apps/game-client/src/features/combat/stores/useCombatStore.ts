@@ -25,7 +25,11 @@ export const useCombatStore = defineStore('combatRuntime', () => {
   const terminalEvent = ref<CombatTerminalEvent>(null);
   const hasRuntimeCombat = ref(false);
   const thinkingCombatantId = ref<string | null>(null);
-  const impactedCombatantId = ref<string | null>(null);
+  const recentlyDamagedIds = ref<string[]>([]);
+  const recentlyGuardedIds = ref<string[]>([]);
+  const recentlyDefeatedIds = ref<string[]>([]);
+  const recentlyActingId = ref<string | null>(null);
+  const animationTimers: ReturnType<typeof globalThis.setTimeout>[] = [];
 
   const allies = computed<CombatantRuntimeDto[]>(() => combat.value?.allies ?? []);
   const enemies = computed<CombatantRuntimeDto[]>(() => combat.value?.enemies ?? []);
@@ -62,6 +66,7 @@ export const useCombatStore = defineStore('combatRuntime', () => {
 
   const isVictory = computed<boolean>(() => combat.value?.status === 'Completed');
   const isDefeat = computed<boolean>(() => combat.value?.status === 'Failed');
+  const isResolvingAction = computed<boolean>(() => isLoading.value);
 
   function getValidTargets(
     targetingType: TargetingType,
@@ -89,6 +94,7 @@ export const useCombatStore = defineStore('combatRuntime', () => {
   }
 
   function initCombat(combatData: CombatRuntimeDto) {
+    resetAnimationState();
     combat.value = combatData;
     hasRuntimeCombat.value = true;
     logEntries.value = [];
@@ -96,8 +102,6 @@ export const useCombatStore = defineStore('combatRuntime', () => {
     selectedTargetIds.value = [];
     error.value = null;
     terminalEvent.value = null;
-    thinkingCombatantId.value = null;
-    impactedCombatantId.value = null;
   }
 
   function setCombatFromResponse(combatData: CombatRuntimeDto, newLogs: CombatLogEntryDto[]) {
@@ -118,26 +122,98 @@ export const useCombatStore = defineStore('combatRuntime', () => {
   }
 
   function delay(milliseconds: number): Promise<void> {
-    return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
+    return new Promise((resolve) => {
+      const timerId = globalThis.setTimeout(() => {
+        const index = animationTimers.indexOf(timerId);
+        if (index >= 0) animationTimers.splice(index, 1);
+        resolve();
+      }, milliseconds);
+      animationTimers.push(timerId);
+    });
   }
 
   async function playCombatLogs(entries: CombatLogEntryDto[]) {
     for (const entry of entries) {
       logEntries.value = [...logEntries.value, entry];
 
+      if (entry.actorId && entry.type === 'SkillUsed') {
+        markActing(entry.actorId);
+      }
+
       if (entry.type === 'EnemyTurnResolved' && entry.actorId) {
         thinkingCombatantId.value = entry.actorId;
+        markActing(entry.actorId, 900);
         await delay(2000);
         thinkingCombatantId.value = null;
         await delay(250);
       } else if (entry.targetIds.length > 0 && shouldHighlightTarget(entry)) {
         applyLogEffect(entry);
-        impactedCombatantId.value = entry.targetIds[0];
+        markFeedbackFromLog(entry);
         await delay(550);
-        impactedCombatantId.value = null;
         await delay(150);
       }
     }
+  }
+
+  function markFeedbackFromLog(entry: CombatLogEntryDto) {
+    if (entry.type === 'DamageApplied') {
+      markDamaged(entry.targetIds);
+    } else if (entry.type === 'GuardGained') {
+      markGuarded(entry.targetIds);
+    } else if (entry.type === 'TargetDefeated') {
+      markDefeated(entry.targetIds);
+    }
+  }
+
+  function markDamaged(targetIds: string[], duration = 700) {
+    flashIds(recentlyDamagedIds, targetIds, duration);
+  }
+
+  function markGuarded(targetIds: string[], duration = 800) {
+    flashIds(recentlyGuardedIds, targetIds, duration);
+  }
+
+  function markDefeated(targetIds: string[], duration = 900) {
+    flashIds(recentlyDefeatedIds, targetIds, duration);
+  }
+
+  function markActing(actorId: string, duration = 650) {
+    recentlyActingId.value = actorId;
+    schedule(() => {
+      if (recentlyActingId.value === actorId) {
+        recentlyActingId.value = null;
+      }
+    }, duration);
+  }
+
+  function flashIds(state: { value: string[] }, ids: string[], duration: number) {
+    const nextIds = ids.filter((id) => !state.value.includes(id));
+    state.value = [...state.value, ...nextIds];
+
+    schedule(() => {
+      state.value = state.value.filter((id) => !ids.includes(id));
+    }, duration);
+  }
+
+  function schedule(callback: () => void, milliseconds: number) {
+    const timerId = globalThis.setTimeout(() => {
+      const index = animationTimers.indexOf(timerId);
+      if (index >= 0) animationTimers.splice(index, 1);
+      callback();
+    }, milliseconds);
+    animationTimers.push(timerId);
+  }
+
+  function resetAnimationState() {
+    for (const timerId of animationTimers.splice(0)) {
+      globalThis.clearTimeout(timerId);
+    }
+
+    thinkingCombatantId.value = null;
+    recentlyDamagedIds.value = [];
+    recentlyGuardedIds.value = [];
+    recentlyDefeatedIds.value = [];
+    recentlyActingId.value = null;
   }
 
   function shouldHighlightTarget(entry: CombatLogEntryDto): boolean {
@@ -147,22 +223,20 @@ export const useCombatStore = defineStore('combatRuntime', () => {
   }
 
   function applyLogEffect(entry: CombatLogEntryDto) {
-    const targetId = entry.targetIds[0];
-    if (!combat.value || !targetId) return;
+    if (!combat.value || entry.targetIds.length === 0) return;
 
     combat.value = {
       ...combat.value,
-      allies: combat.value.allies.map((c) => applyEntryToCombatant(c, targetId, entry)),
-      enemies: combat.value.enemies.map((c) => applyEntryToCombatant(c, targetId, entry)),
+      allies: combat.value.allies.map((c) => applyEntryToCombatant(c, entry)),
+      enemies: combat.value.enemies.map((c) => applyEntryToCombatant(c, entry)),
     };
   }
 
   function applyEntryToCombatant(
     combatant: CombatantRuntimeDto,
-    targetId: string,
     entry: CombatLogEntryDto,
   ): CombatantRuntimeDto {
-    if (combatant.id !== targetId) return combatant;
+    if (!entry.targetIds.includes(combatant.id)) return combatant;
 
     if (entry.type === 'TargetDefeated') {
       return { ...combatant, currentVitality: 0, status: 'Defeated' };
@@ -192,6 +266,7 @@ export const useCombatStore = defineStore('combatRuntime', () => {
   }
 
   function clearCombat() {
+    resetAnimationState();
     combat.value = null;
     hasRuntimeCombat.value = false;
     logEntries.value = [];
@@ -199,8 +274,6 @@ export const useCombatStore = defineStore('combatRuntime', () => {
     selectedTargetIds.value = [];
     error.value = null;
     terminalEvent.value = null;
-    thinkingCombatantId.value = null;
-    impactedCombatantId.value = null;
   }
 
   function selectSkill(skillKey: string) {
@@ -286,8 +359,6 @@ export const useCombatStore = defineStore('combatRuntime', () => {
     } catch (caught) {
       error.value = caught instanceof Error ? caught.message : 'L\'action a échoué.';
     } finally {
-      thinkingCombatantId.value = null;
-      impactedCombatantId.value = null;
       isLoading.value = false;
     }
   }
@@ -301,7 +372,10 @@ export const useCombatStore = defineStore('combatRuntime', () => {
     error,
     terminalEvent,
     thinkingCombatantId,
-    impactedCombatantId,
+    recentlyDamagedIds,
+    recentlyGuardedIds,
+    recentlyDefeatedIds,
+    recentlyActingId,
     allies,
     enemies,
     allCombatants,
@@ -311,6 +385,7 @@ export const useCombatStore = defineStore('combatRuntime', () => {
     selectedSkill,
     validTargets,
     canSubmit,
+    isResolvingAction,
     isVictory,
     isDefeat,
     initCombat,
@@ -325,5 +400,10 @@ export const useCombatStore = defineStore('combatRuntime', () => {
     submitAction,
     findCombatantById,
     hasRuntimeCombat,
+    markDamaged,
+    markGuarded,
+    markDefeated,
+    markActing,
+    resetAnimationState,
   };
 });

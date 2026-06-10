@@ -30,9 +30,12 @@ function isSkillDisabled(combatant: CombatantRuntimeDto | null): boolean {
         <button
           v-for="skill in combatant.skills"
           :key="skill.key"
-          class="skill-bar__button"
+          class="skill-bar__button skill-card"
           :class="{
             'skill-bar__button--selected': selectedSkillKey === skill.key,
+            'skill-card--selected': selectedSkillKey === skill.key,
+            'skill-card--disabled': !isPlayerTurn || isLoading || isSkillDisabled(combatant),
+            'skill-card--usable': isPlayerTurn && !isLoading && !isSkillDisabled(combatant),
           }"
           :disabled="!isPlayerTurn || isLoading || isSkillDisabled(combatant)"
           @click="$emit('selectSkill', skill.key)"
@@ -83,24 +86,32 @@ function isSkillDisabled(combatant: CombatantRuntimeDto | null): boolean {
   background: var(--color-panel);
   padding: var(--space-2) var(--space-3);
   cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
+  transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
   font-family: inherit;
   color: var(--color-ink);
 }
 
-.skill-bar__button:hover:not(:disabled) {
+.skill-bar__button:hover:not(:disabled),
+.skill-card--usable:hover {
   border-color: var(--color-gold);
   background: color-mix(in oklch, var(--color-gold), transparent 92%);
 }
 
-.skill-bar__button--selected {
+.skill-bar__button--selected,
+.skill-card--selected {
   border-color: var(--color-gold) !important;
   background: color-mix(in oklch, var(--color-gold), transparent 85%) !important;
+  box-shadow: 0 0 16px color-mix(in oklch, var(--color-gold), transparent 82%);
 }
 
-.skill-bar__button:disabled {
+.skill-bar__button:disabled,
+.skill-card--disabled {
   opacity: 0.35;
   cursor: not-allowed;
+}
+
+.skill-card--usable {
+  cursor: pointer;
 }
 
 .skill-bar__button-name {
@@ -120,5 +131,11 @@ function isSkillDisabled(combatant: CombatantRuntimeDto | null): boolean {
 
 .skill-bar__empty {
   color: var(--color-dim);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skill-bar__button {
+    transition: none;
+  }
 }
 </style>

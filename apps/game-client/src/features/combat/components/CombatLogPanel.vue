@@ -74,6 +74,7 @@ watch(
   font-family: var(--font-mono);
   padding: var(--space-1) 0;
   border-bottom: 1px solid var(--color-line);
+  animation: combat-log-entry-in 220ms ease-out;
 }
 
 .log-panel__entry:last-child {
@@ -116,5 +117,22 @@ watch(
   color: var(--color-dim);
   font-size: 0.75rem;
   font-style: italic;
+}
+
+@keyframes combat-log-entry-in {
+  0% {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .log-panel__entry {
+    animation: none;
+  }
 }
 </style>
