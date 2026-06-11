@@ -10,6 +10,7 @@ Ce dossier contient les décisions d’architecture structurantes de la refonte 
 | ADR-002 | Backend serveur-autoritaire | Acceptée |
 | ADR-003 | Game Engine Service central | Acceptée |
 | ADR-004 | Event Sourcing ciblé sur les runs | Acceptée |
+| ADR-005 | Projections de résultats de run et outbox Game Engine vers Player | Acceptée |
 
 ## Règle
 

@@ -705,6 +705,8 @@ Retourne :
 
 Game Engine appelle Player Service au démarrage d'une run pour récupérer le snapshot. Game Engine copie le snapshot dans son propre état runtime. Player Service ne connaît pas les runs ni les combats.
 
+Les projections de résultats de run vers Player Service suivront le pattern Outbox décrit dans `docs/adr/ADR-005-run-event-projections-and-player-outbox.md`. Game Engine écrira des événements d'intégration dans une table outbox locale, puis un dispatcher les transmettra à Player Service pour mettre à jour les statistiques permanentes du joueur.
+
 ### 9.13 Tests importants
 
 13 unit tests + 6 integration tests :
@@ -1169,6 +1171,7 @@ Futur :
 | Docker local pour PostgreSQL | Simplicité de setup |
 | MediatR CQRS | Séparation commandes/queries, pipeline de validation |
 | Snapshot joueur copié au démarrage | Le Game Engine reste autonome pendant toute la durée de la run |
+| Outbox pattern pour projections | Évite les dual-writes, garantit la cohérence (ADR-005) |
 
 ---
 
@@ -1202,13 +1205,14 @@ Futur :
 
 1. **Persister les RewardOffers dans Game Engine** — ajouter table `run_reward_offers` et `run_reward_choices`.
 2. **Ajouter PostgreSQL au Player Service** — EF Core, migrations, remplacement d'InMemory.
-3. **Améliorer le mapping des skills** — utiliser le displayName et le type réel depuis le snapshot au lieu de hardcoder.
-4. **Ajouter Rest Node** — node qui soigne le joueur entre les combats.
-5. **Ajouter Law Node** — node qui applique des lois du palais.
-6. **Ajouter NPC/Narrative Node** — node avec du dialogue et des choix narratifs.
-7. **Compagnons et party runtime** — permettre au joueur d'avoir des compagnons en combat.
-8. **Inventaire et économie** — items persistants, monnaie, équipement.
-9. **Event Sourcing** — audit complet des actions de run (optionnel, futur lointain).
+3. **Implémenter les projections de résultats de run vers Player** — pattern Outbox décrit dans `docs/adr/ADR-005-run-event-projections-and-player-outbox.md`. Écrire les messages outbox dans les handlers Game Engine quand une run se termine, échoue ou est abandonnée. Implémenter un dispatcher simple pour transmettre les événements à Player Service.
+4. **Améliorer le mapping des skills** — utiliser le displayName et le type réel depuis le snapshot au lieu de hardcoder.
+5. **Ajouter Rest Node** — node qui soigne le joueur entre les combats.
+6. **Ajouter Law Node** — node qui applique des lois du palais.
+7. **Ajouter NPC/Narrative Node** — node avec du dialogue et des choix narratifs.
+8. **Compagnons et party runtime** — permettre au joueur d'avoir des compagnons en combat.
+9. **Inventaire et économie** — items persistants, monnaie, équipement.
+10. **Event Sourcing** — audit complet des actions de run (optionnel, futur lointain).
 
 ---
 
