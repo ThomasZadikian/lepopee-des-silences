@@ -507,6 +507,19 @@ docs/v2/architecture/
 
 Les décisions techniques importantes doivent être documentées dans un fichier de suivi ou un ADR.
 
+## CI
+
+The v2 branch is validated by `.github/workflows/v2-ci.yml`.
+
+Backend services are tested automatically on push/PR to `develop`:
+
+- Game Engine
+- Catalog
+- Player
+- web-client
+
+See [docs/development/ci.md](docs/development/ci.md).
+
 ---
 
 ## Règles de contribution internes
