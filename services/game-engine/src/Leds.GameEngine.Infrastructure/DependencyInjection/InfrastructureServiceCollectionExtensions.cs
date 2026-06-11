@@ -27,7 +27,9 @@ using Leds.GameEngine.Infrastructure.Generation.RoomMaps;
 using Leds.GameEngine.Infrastructure.Generation.Rooms.Bosses;
 using Leds.GameEngine.Infrastructure.Generation.Rooms.Themes;
 using Leds.GameEngine.Infrastructure.Generation.Rooms.Types;
+using Leds.GameEngine.Infrastructure.Outbox;
 using Leds.GameEngine.Infrastructure.Persistence;
+using Leds.GameEngine.Infrastructure.Persistence.Outbox;
 using Leds.GameEngine.Infrastructure.Persistence.Repositories;
 using Leds.GameEngine.Infrastructure.Players;
 using Leds.GameEngine.Infrastructure.Rewards;
@@ -66,6 +68,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IMapRoomGenerator, MapRoomGenerator>();
         RegisterCatalogGateway(services, configuration);
         RegisterPlayerGateway(services, configuration);
+        RegisterOutbox(services, configuration);
 
         services.AddSingleton<IEventContentResolver, EventContentResolver>();
 
@@ -165,6 +168,16 @@ public static class InfrastructureServiceCollectionExtensions
         else
         {
             services.AddSingleton<IPlayerRunSnapshotGateway, InMemoryPlayerRunSnapshotGateway>();
+        }
+    }
+
+    private static void RegisterOutbox(IServiceCollection services, IConfiguration configuration)
+    {
+        var outboxEnabled = configuration.GetValue<bool>("Outbox:DispatcherEnabled", false);
+
+        if (outboxEnabled)
+        {
+            services.AddHostedService<GameEngineOutboxDispatcherHostedService>();
         }
     }
 }

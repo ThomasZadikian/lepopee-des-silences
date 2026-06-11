@@ -21,6 +21,7 @@ public sealed class GameEngineDbContext : DbContext
     public DbSet<CombatantSkillEntity> CombatantSkills => Set<CombatantSkillEntity>();
     public DbSet<PlayerRuntimeStateEntity> PlayerRuntimeStates => Set<PlayerRuntimeStateEntity>();
     public DbSet<PlayerRuntimeSkillEntity> PlayerRuntimeSkills => Set<PlayerRuntimeSkillEntity>();
+    public DbSet<OutboxMessageEntity> OutboxMessages => Set<OutboxMessageEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

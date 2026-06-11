@@ -705,7 +705,7 @@ Retourne :
 
 Game Engine appelle Player Service au démarrage d'une run pour récupérer le snapshot. Game Engine copie le snapshot dans son propre état runtime. Player Service ne connaît pas les runs ni les combats.
 
-Les projections de résultats de run vers Player Service suivront le pattern Outbox décrit dans `docs/adr/ADR-005-run-event-projections-and-player-outbox.md`. Game Engine écrira des événements d'intégration dans une table outbox locale, puis un dispatcher les transmettra à Player Service pour mettre à jour les statistiques permanentes du joueur.
+Les projections de résultats de run vers Player Service suivent le pattern Outbox. Game Engine écrit des événements d'intégration dans une table outbox locale dans la même transaction que son état métier, puis un dispatcher in-process les transmet à Player Service pour mettre à jour les statistiques permanentes du joueur. L'implémentation couvre `RunCompletedIntegrationEvent`, `RunFailedIntegrationEvent` et `RunAbandonedIntegrationEvent`. Voir `docs/backend/game-engine-player-outbox-projections.md` et `docs/adr/ADR-005-run-event-projections-and-player-outbox.md`.
 
 ### 9.13 Tests importants
 
@@ -1205,7 +1205,7 @@ Futur :
 
 1. **Persister les RewardOffers dans Game Engine** — ajouter table `run_reward_offers` et `run_reward_choices`.
 2. **Ajouter PostgreSQL au Player Service** — EF Core, migrations, remplacement d'InMemory.
-3. **Implémenter les projections de résultats de run vers Player** — pattern Outbox décrit dans `docs/adr/ADR-005-run-event-projections-and-player-outbox.md`. Écrire les messages outbox dans les handlers Game Engine quand une run se termine, échoue ou est abandonnée. Implémenter un dispatcher simple pour transmettre les événements à Player Service.
+3. **Projections de résultats de run vers Player** — pattern Outbox implémenté. Les événements `RunCompleted`, `RunFailed`, `RunAbandoned` sont écrits dans `game_engine_outbox_messages` et dispatchés vers Player Service. L'idempotence Player est assurée via eventId. Le dispatcher est in-process pour l'instant. RabbitMQ sera envisagé dans une PR ultérieure si le volume le justifie. Voir `docs/backend/game-engine-player-outbox-projections.md`.
 4. **Améliorer le mapping des skills** — utiliser le displayName et le type réel depuis le snapshot au lieu de hardcoder.
 5. **Ajouter Rest Node** — node qui soigne le joueur entre les combats.
 6. **Ajouter Law Node** — node qui applique des lois du palais.

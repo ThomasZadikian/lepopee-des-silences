@@ -47,13 +47,15 @@ public sealed record PlayerCharacterDto(
 public sealed record PlayerProgressionDto(
     int TotalRunsStarted,
     int TotalRunsCompleted,
-    int TotalRunsFailed)
+    int TotalRunsFailed,
+    int TotalRunsAbandoned)
 {
     public static PlayerProgressionDto FromDomain(PlayerProgression progression)
     {
         return new PlayerProgressionDto(
             progression.TotalRunsStarted,
             progression.TotalRunsCompleted,
-            progression.TotalRunsFailed);
+            progression.TotalRunsFailed,
+            progression.TotalRunsAbandoned);
     }
 }

@@ -104,7 +104,7 @@ public sealed class PlayerProfileRehydrateTests
         var character = PlayerCharacter.Rehydrate(
             PlayerCharacterId.New(), "key", "Name", 100, 0, 0, ["skill"]);
         var roster = PlayerRoster.Rehydrate([character]);
-        var progression = PlayerProgression.Rehydrate(5, 3, 2);
+        var progression = PlayerProgression.Rehydrate(5, 3, 2, 1);
         var now = DateTimeOffset.UtcNow;
 
         var profile = PlayerProfile.Rehydrate(id, "Test", roster, progression, now, now);

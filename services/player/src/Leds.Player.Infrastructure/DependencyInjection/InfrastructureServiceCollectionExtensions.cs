@@ -9,6 +9,7 @@ public static class InfrastructureServiceCollectionExtensions
     public static IServiceCollection AddPlayerInfrastructure(this IServiceCollection services)
     {
         services.AddSingleton<IPlayerProfileRepository, InMemoryPlayerProfileRepository>();
+        services.AddSingleton<IProcessedIntegrationEventRepository, InMemoryProcessedIntegrationEventRepository>();
 
         return services;
     }
