@@ -9,7 +9,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 builder.Services.AddPlayerApplication();
-builder.Services.AddPlayerInfrastructure();
+builder.Services.AddPlayerInfrastructure(builder.Configuration);
 
 var app = builder.Build();
 

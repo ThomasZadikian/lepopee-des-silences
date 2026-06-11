@@ -31,7 +31,7 @@ Le projet est en architecture microservices avec séparation claire entre :
 | Composant | Version | État |
 |---|---|---|
 | Game Engine Service | alpha-0.5.0-dev.7 | Persistance relationnelle active, intégration Player Service |
-| Player Service | alpha-0.1.0 | Foundation créée, InMemory, endpoints MVP |
+| Player Service | alpha-0.5.4 | PostgreSQL persistence active, EF Core |
 | Catalog Service | alpha-0.0.4 | Stable pour contrats actuels, InMemory |
 | Frontend web-client | alpha-0.4.0 | Combat → reward → progression fonctionnel |
 | PostgreSQL Game Engine | Actif | localhost:5432 |
@@ -1180,7 +1180,6 @@ Futur :
 | Dette | Impact | Priorité |
 |---|---|---|
 | RewardOffers InMemory seulement | Perdues au redémarrage | Haute |
-| Player Service InMemory seulement | Données joueur perdues au redémarrage | Haute |
 | Legacy CombatInstance coexiste | Complexité du code | Moyenne |
 | Skills hardcodées dans le mapping StartRun | Skills basiques seulement | Moyenne |
 | Catalog gateway partiellement HTTP | Certaines méthodes throw | Moyenne |
@@ -1204,7 +1203,6 @@ Futur :
 ## 19. Prochaines étapes recommandées
 
 1. **Persister les RewardOffers dans Game Engine** — ajouter table `run_reward_offers` et `run_reward_choices`.
-2. **Ajouter PostgreSQL au Player Service** — EF Core, migrations, remplacement d'InMemory.
 3. **Projections de résultats de run vers Player** — pattern Outbox implémenté. Les événements `RunCompleted`, `RunFailed`, `RunAbandoned` sont écrits dans `game_engine_outbox_messages` et dispatchés vers Player Service. L'idempotence Player est assurée via eventId. Le dispatcher est in-process pour l'instant. RabbitMQ sera envisagé dans une PR ultérieure si le volume le justifie. Voir `docs/backend/game-engine-player-outbox-projections.md`.
 4. **Améliorer le mapping des skills** — utiliser le displayName et le type réel depuis le snapshot au lieu de hardcoder.
 5. **Ajouter Rest Node** — node qui soigne le joueur entre les combats.
