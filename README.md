@@ -435,6 +435,10 @@ web-alpha-0.1.0 → afficher la première boucle backend jouable
 
 See [docs/development/local-dev-environment.md](docs/development/local-dev-environment.md).
 
+## Architecture
+
+See [docs/architecture/alpha-0.5-system-architecture.md](docs/architecture/alpha-0.5-system-architecture.md).
+
 ---
 
 ## Commandes utiles

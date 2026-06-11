@@ -9,6 +9,7 @@ using Leds.GameEngine.Application.Combats.Ports;
 using Leds.GameEngine.Application.Combats.Targeting;
 using Leds.GameEngine.Application.Events.Ports;
 using Leds.GameEngine.Application.Events.Resolution;
+using Leds.GameEngine.Application.Players.Ports;
 using Leds.GameEngine.Application.Rewards.Ports;
 using Leds.GameEngine.Application.RoomMaps;
 using Leds.GameEngine.Domain.Markov;
@@ -28,6 +29,7 @@ using Leds.GameEngine.Infrastructure.Generation.Rooms.Themes;
 using Leds.GameEngine.Infrastructure.Generation.Rooms.Types;
 using Leds.GameEngine.Infrastructure.Persistence;
 using Leds.GameEngine.Infrastructure.Persistence.Repositories;
+using Leds.GameEngine.Infrastructure.Players;
 using Leds.GameEngine.Infrastructure.Rewards;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -63,6 +65,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IRoomTypeGenerationProfileProvider, HardcodedRoomTypeGenerationProfileProvider>();
         services.AddSingleton<IMapRoomGenerator, MapRoomGenerator>();
         RegisterCatalogGateway(services, configuration);
+        RegisterPlayerGateway(services, configuration);
 
         services.AddSingleton<IEventContentResolver, EventContentResolver>();
 
@@ -132,6 +135,36 @@ public static class InfrastructureServiceCollectionExtensions
         else
         {
             services.AddSingleton<ICatalogContentGateway, InMemoryCatalogContentGateway>();
+        }
+    }
+
+    private static void RegisterPlayerGateway(
+        IServiceCollection services,
+        IConfiguration configuration)
+    {
+        services.Configure<PlayerGatewayOptions>(
+            configuration.GetSection(PlayerGatewayOptions.SectionName));
+
+        var options = configuration
+            .GetSection(PlayerGatewayOptions.SectionName)
+            .Get<PlayerGatewayOptions>() ?? new PlayerGatewayOptions();
+
+        if (string.Equals(options.Mode, "Http", StringComparison.OrdinalIgnoreCase))
+        {
+            services.AddHttpClient<IPlayerRunSnapshotGateway, HttpPlayerRunSnapshotGateway>(
+                (serviceProvider, client) =>
+                {
+                    var gatewayOptions = serviceProvider
+                        .GetRequiredService<IOptions<PlayerGatewayOptions>>()
+                        .Value;
+
+                    client.BaseAddress = new Uri(gatewayOptions.BaseUrl);
+                    client.Timeout = gatewayOptions.Timeout;
+                });
+        }
+        else
+        {
+            services.AddSingleton<IPlayerRunSnapshotGateway, InMemoryPlayerRunSnapshotGateway>();
         }
     }
 }

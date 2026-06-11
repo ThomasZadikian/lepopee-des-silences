@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Leds.GameEngine.Application.Abstractions;
+using Leds.GameEngine.Application.Players.Ports;
 using Leds.GameEngine.Application.Runs.StartRun;
 using Leds.GameEngine.Domain.Runs;
 using Leds.GameEngine.UnitTests.Common.Factories;
@@ -25,12 +26,26 @@ public sealed class StartRunCommandHandlerTests
 
         var repository = new Mock<IRunRepository>();
 
+        var playerGateway = new Mock<IPlayerRunSnapshotGateway>();
+        playerGateway
+            .Setup(g => g.GetRunSnapshotAsync(playerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new PlayerRunSnapshot(
+                playerId,
+                "Test Player",
+                [new PlayerRunSnapshotCharacter(
+                    Guid.NewGuid(),
+                    "character.player.self",
+                    "Le Porteur",
+                    100, 0, 0,
+                    ["skill.basic.strike", "skill.basic.guard"])]));
+
         var clock = new Mock<IClock>();
         clock.SetupGet(service => service.UtcNow).Returns(now);
 
         var handler = new StartRunCommandHandler(
             generator.Object,
             repository.Object,
+            playerGateway.Object,
             clock.Object);
 
         var response = await handler.Handle(

@@ -157,7 +157,8 @@ public sealed class Run
         int currentHp = 40,
         int attack = 12,
         int defense = 6,
-        int speed = 10)
+        int speed = 10,
+        IReadOnlyCollection<PlayerRuntimeSkill>? playerSkills = null)
     {
         if (playerId == Guid.Empty)
         {
@@ -250,7 +251,7 @@ public sealed class Run
 
         run.PlayerState = PlayerRuntimeState.Create(
             maxVitality: maxHp,
-            skills: CreateDefaultPlayerSkills(),
+            skills: playerSkills ?? CreateDefaultPlayerSkills(),
             currentVitality: currentHp);
 
         run._roomSnapshot = run.CreateSnapshot();
