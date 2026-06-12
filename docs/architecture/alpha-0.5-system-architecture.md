@@ -32,7 +32,7 @@ Le projet est en architecture microservices avec séparation claire entre :
 |---|---|---|
 | Game Engine Service | alpha-0.5.0-dev.7 | Persistance relationnelle active, intégration Player Service |
 | Player Service | alpha-0.5.4 | PostgreSQL persistence active, EF Core |
-| Catalog Service | alpha-0.0.4 | Stable pour contrats actuels, InMemory |
+| Catalog Service | alpha-0.5.5 | PostgreSQL persistence avec seed versionné |
 | Frontend web-client | alpha-0.4.0 | Combat → reward → progression fonctionnel |
 | PostgreSQL Game Engine | Actif | localhost:5432 |
 | PostgreSQL Player | Prêt | localhost:5433 |
@@ -69,7 +69,7 @@ Le projet est en architecture microservices avec séparation claire entre :
 └──────────────────────┘  └──────────────────────┘
 ```
 
-Le Catalog Service ne possède pas encore de PostgreSQL. Ses définitions sont exposées via des endpoints HTTP et consommées par le Game Engine.
+Le Catalog Service expose ses définitions via des endpoints HTTP consommés par le Game Engine. En mode PostgreSQL, les définitions sont stockées dans `leds_catalog` (localhost:5434) avec un seed versionné minimal. En mode InMemory, les définitions viennent des read stores hardcodés.
 
 ---
 
