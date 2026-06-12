@@ -11,6 +11,8 @@ public sealed class CombatFactory : ICombatFactory
     private const int EnemyVitalityBase = 40;
     private const int VitalityPerDifficulty = 10;
 
+    private readonly EnemyStatScaler _enemyStatScaler = new();
+
     public Combat CreateFromDraft(CombatEncounterDraft draft, PlayerRuntimeState? playerState = null)
     {
         var allies = draft.Allies
@@ -53,26 +55,35 @@ public sealed class CombatFactory : ICombatFactory
         var enemies = draft.Enemies
             .Select(enemy =>
             {
-                var maxVitality = EnemyVitalityBase + enemy.BaseDifficulty * VitalityPerDifficulty;
+                var baseVitality = EnemyVitalityBase + enemy.BaseDifficulty * VitalityPerDifficulty;
+                var representativePower = enemy.Skills.Count > 0
+                    ? enemy.Skills.Max(s => s.BasePower)
+                    : 0;
+
+                var scaled = _enemyStatScaler.Scale(baseVitality, representativePower, draft.DifficultyMultiplier);
 
                 var skills = enemy.Skills
-                    .Select(s => CombatantSkill.Create(
-                        s.Key,
-                        s.DisplayName,
-                        s.SkillType,
-                        s.TargetingType,
-                        s.EffectType,
-                        s.ManaCost,
-                        s.ChargeCost,
-                        s.BasePower,
-                        s.Tags))
+                    .Select(s =>
+                    {
+                        var scaledSkill = _enemyStatScaler.Scale(baseVitality, s.BasePower, draft.DifficultyMultiplier);
+                        return CombatantSkill.Create(
+                            s.Key,
+                            s.DisplayName,
+                            s.SkillType,
+                            s.TargetingType,
+                            s.EffectType,
+                            s.ManaCost,
+                            s.ChargeCost,
+                            scaledSkill.Power,
+                            s.Tags);
+                    })
                     .ToArray();
 
                 return Combatant.CreateEnemy(
                     sourceKey: enemy.EnemyKey,
                     displayName: enemy.DisplayName,
                     archetype: enemy.Archetype,
-                    maxVitality: maxVitality,
+                    maxVitality: scaled.Vitality,
                     skills: skills);
             })
             .ToArray();
@@ -111,3 +122,4 @@ public sealed class CombatFactory : ICombatFactory
         ];
     }
 }
+

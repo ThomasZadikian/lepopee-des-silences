@@ -1,5 +1,6 @@
 using Leds.GameEngine.Application.Catalog;
 using Leds.GameEngine.Application.Catalog.Ports;
+using Leds.GameEngine.Application.Combats;
 using Leds.GameEngine.Application.Combats.EncounterComposition;
 using Leds.GameEngine.Application.Combats.EncounterDrafts;
 
@@ -14,13 +15,16 @@ public sealed class CombatEncounterDraftGenerator : ICombatEncounterDraftGenerat
 
     private readonly ICatalogContentGateway _catalogContentGateway;
     private readonly IEncounterCompositionPolicy _compositionPolicy;
+    private readonly ICombatRiskProfileResolver _riskProfileResolver;
 
     public CombatEncounterDraftGenerator(
         ICatalogContentGateway catalogContentGateway,
-        IEncounterCompositionPolicy compositionPolicy)
+        IEncounterCompositionPolicy compositionPolicy,
+        ICombatRiskProfileResolver riskProfileResolver)
     {
         _catalogContentGateway = catalogContentGateway;
         _compositionPolicy = compositionPolicy;
+        _riskProfileResolver = riskProfileResolver;
     }
 
     public async Task<CombatEncounterDraft> GenerateAsync(
@@ -102,6 +106,10 @@ public sealed class CombatEncounterDraftGenerator : ICombatEncounterDraftGenerat
                 Tags: PlayerTags)
         };
 
+        var riskProfile = _riskProfileResolver.Resolve(
+            Enum.Parse<Leds.GameEngine.Domain.Nodes.NodeEventType>(context.EncounterType),
+            context.RiskLevel);
+
         return new CombatEncounterDraft(
             RunId: context.RunId,
             RoomId: context.RoomId,
@@ -111,6 +119,7 @@ public sealed class CombatEncounterDraftGenerator : ICombatEncounterDraftGenerat
             RiskLevel: context.RiskLevel,
             EncounterType: context.EncounterType,
             Enemies: enemies,
-            Allies: allies);
+            Allies: allies,
+            DifficultyMultiplier: riskProfile.DifficultyMultiplier);
     }
 }

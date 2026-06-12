@@ -1,8 +1,10 @@
 using FluentAssertions;
 using Leds.GameEngine.Application.Catalog;
 using Leds.GameEngine.Application.Catalog.Ports;
+using Leds.GameEngine.Application.Combats;
 using Leds.GameEngine.Application.Combats.EncounterComposition;
 using Leds.GameEngine.Application.Combats.EncounterDrafts;
+using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Infrastructure.Combats.EncounterDrafts;
 using Moq;
 
@@ -121,7 +123,13 @@ public sealed class CombatEncounterDraftGeneratorTests
         Mock<IEncounterCompositionPolicy>? policy = null)
     {
         policy ??= CreatePolicyThatReturns([FragmentDoute]);
-        return new CombatEncounterDraftGenerator(gateway.Object, policy.Object);
+        var riskProfileResolver = new Mock<ICombatRiskProfileResolver>();
+        riskProfileResolver
+            .Setup(r => r.Resolve(It.IsAny<Leds.GameEngine.Domain.Nodes.NodeEventType>(), It.IsAny<int>()))
+            .Returns(new Leds.GameEngine.Domain.Combats.CombatRiskProfile(
+                Leds.GameEngine.Domain.Combats.CombatTier.Normal,
+                20, 20, 0, 1.0, 1.0, Leds.GameEngine.Domain.Combats.RiskBand.Low));
+        return new CombatEncounterDraftGenerator(gateway.Object, policy.Object, riskProfileResolver.Object);
     }
 
     [Fact]
@@ -318,7 +326,14 @@ public sealed class CombatEncounterDraftGeneratorTests
                 EnemyCount: 2,
                 SelectedEnemies: new[] { FragmentDoute, ResistanceInterieure }));
 
-        var generator = new CombatEncounterDraftGenerator(gateway.Object, policy.Object);
+        var riskProfileResolver = new Mock<ICombatRiskProfileResolver>();
+        riskProfileResolver
+            .Setup(r => r.Resolve(It.IsAny<Leds.GameEngine.Domain.Nodes.NodeEventType>(), It.IsAny<int>()))
+            .Returns(new Leds.GameEngine.Domain.Combats.CombatRiskProfile(
+                Leds.GameEngine.Domain.Combats.CombatTier.Normal,
+                20, 20, 0, 1.0, 1.0, Leds.GameEngine.Domain.Combats.RiskBand.Low));
+
+        var generator = new CombatEncounterDraftGenerator(gateway.Object, policy.Object, riskProfileResolver.Object);
         var draft = await generator.GenerateAsync(DefaultContext);
 
         draft.Enemies.Should().HaveCount(2);
@@ -335,7 +350,8 @@ public sealed class CombatEncounterDraftGeneratorTests
             .Setup(p => p.Compose(It.IsAny<EncounterCompositionContext>()))
             .Throws(new InvalidOperationException("Policy failure"));
 
-        var generator = new CombatEncounterDraftGenerator(gateway.Object, policy.Object);
+        var riskProfileResolver = new Mock<ICombatRiskProfileResolver>();
+        var generator = new CombatEncounterDraftGenerator(gateway.Object, policy.Object, riskProfileResolver.Object);
         var act = () => generator.GenerateAsync(DefaultContext);
 
         await act.Should().ThrowAsync<InvalidOperationException>()

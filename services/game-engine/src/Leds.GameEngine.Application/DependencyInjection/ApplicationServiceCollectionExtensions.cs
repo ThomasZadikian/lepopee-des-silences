@@ -49,7 +49,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<ICurrentEventChoiceResolver, CurseEventChoiceResolver>();
         services.AddScoped<ICurrentEventChoiceRequirementResolver, CurrentEventChoiceRequirementResolver>();
         services.AddScoped<IPalaceLawCatalog, StaticPalaceLawCatalog>();
-        services.AddScoped<ICombatRiskProfileResolver, CombatRiskProfileResolver>();
+        services.AddSingleton<ICombatRiskProfileResolver, CombatRiskProfileResolver>();
         services.AddScoped<RewardOfferFactory>();
         services.AddScoped<IInterludeNodeProvider, DefaultInterludeNodeProvider>();
         services.AddSingleton<ICombatFactory, CombatFactory>();

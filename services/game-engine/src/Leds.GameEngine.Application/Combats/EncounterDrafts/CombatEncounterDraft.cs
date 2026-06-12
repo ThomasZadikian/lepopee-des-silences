@@ -9,4 +9,5 @@ public sealed record CombatEncounterDraft(
     int RiskLevel,
     string EncounterType,
     IReadOnlyCollection<CombatEncounterDraftEnemy> Enemies,
-    IReadOnlyCollection<CombatEncounterDraftAlly> Allies);
+    IReadOnlyCollection<CombatEncounterDraftAlly> Allies,
+    double DifficultyMultiplier = 1.0);
