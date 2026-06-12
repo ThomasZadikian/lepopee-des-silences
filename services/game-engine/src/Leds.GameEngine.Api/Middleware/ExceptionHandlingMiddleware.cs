@@ -58,7 +58,8 @@ public sealed class ExceptionHandlingMiddleware
         }
         catch (Exception exception)
         {
-            _logger.LogError(exception, "Unhandled exception occurred.");
+            var correlationId = context.Items["CorrelationId"] as string;
+            _logger.LogError(exception, "Unhandled exception occurred. CorrelationId={CorrelationId}", correlationId);
 
             await WriteProblemDetailsAsync(
                 context,

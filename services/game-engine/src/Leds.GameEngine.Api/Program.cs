@@ -1,3 +1,4 @@
+using Leds.GameEngine.Api.Middleware;
 using Leds.GameEngine.Application.DependencyInjection;
 using Leds.GameEngine.Infrastructure.DependencyInjection;
 
@@ -31,7 +32,8 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-app.UseMiddleware<Leds.GameEngine.Api.Middleware.ExceptionHandlingMiddleware>();
+app.UseMiddleware<ExceptionHandlingMiddleware>();
+app.UseMiddleware<CorrelationIdMiddleware>();
 
 if (app.Environment.IsDevelopment())
 {
@@ -42,9 +44,6 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.UseCors(CorsPolicyName);
-
-app.UseAuthentication();
-app.UseAuthorization();
 
 app.MapControllers();
 
