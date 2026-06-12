@@ -39,6 +39,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<INodeEventResolver, MerchantNodeEventResolver>();
         services.AddScoped<INodeEventResolver, LawNodeEventResolver>();
         services.AddScoped<INodeEventResolver, CurseNodeEventResolver>();
+        services.AddScoped<INodeEventResolver, MemoryNodeEventResolver>();
         services.AddScoped<INodeEventResolver, RareNodeEventResolver>();
         services.AddScoped<INodeEventResolver, RoomBossNodeEventResolver>();
         services.AddScoped<INodeEventResolver, FinalBossNodeEventResolver>();

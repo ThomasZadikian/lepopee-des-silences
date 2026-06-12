@@ -9,6 +9,7 @@ using Leds.GameEngine.Application.Events.Contracts;
 using Leds.GameEngine.Application.Events.Dtos;
 using Leds.GameEngine.Application.Events.Ports;
 using Leds.GameEngine.Application.Events.ResolveNodeEvent;
+using Leds.GameEngine.Application.Rewards.Ports;
 using Leds.GameEngine.Application.Runs.Dtos;
 using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Nodes;
@@ -29,6 +30,8 @@ public sealed class ResolveCurrentEventCommandHandler
     private readonly ICombatInstanceRepository _combatInstanceRepository;
     private readonly ICombatEncounterDraftGenerator _encounterDraftGenerator;
     private readonly ICombatFactory _combatFactory;
+    private readonly IRewardOfferRepository _rewardOfferRepository;
+    private readonly Leds.GameEngine.Application.Rewards.RewardOfferFactory.RewardOfferFactory _rewardOfferFactory;
 
     public ResolveCurrentEventCommandHandler(
         IRunRepository runRepository,
@@ -38,7 +41,9 @@ public sealed class ResolveCurrentEventCommandHandler
         ICombatInstanceFactory combatInstanceFactory,
         ICombatInstanceRepository combatInstanceRepository,
         ICombatEncounterDraftGenerator encounterDraftGenerator,
-        ICombatFactory combatFactory)
+        ICombatFactory combatFactory,
+        IRewardOfferRepository rewardOfferRepository,
+        Leds.GameEngine.Application.Rewards.RewardOfferFactory.RewardOfferFactory rewardOfferFactory)
     {
         _runRepository = runRepository;
         _nodeEventResolverDispatcher = nodeEventResolverDispatcher;
@@ -48,6 +53,8 @@ public sealed class ResolveCurrentEventCommandHandler
         _combatInstanceRepository = combatInstanceRepository;
         _encounterDraftGenerator = encounterDraftGenerator;
         _combatFactory = combatFactory;
+        _rewardOfferRepository = rewardOfferRepository;
+        _rewardOfferFactory = rewardOfferFactory;
     }
 
     public async Task<ResolveCurrentEventResponse> Handle(
@@ -151,6 +158,29 @@ public sealed class ResolveCurrentEventCommandHandler
                 run.StartCombat(combatRuntime);
                 combatRuntimeDto = CombatRuntimeDto.FromDomain(combatRuntime);
             }
+        }
+        else if (selectedNode.EventType == NodeEventType.Merchant)
+        {
+            var merchantRewardOffer = _rewardOfferFactory.CreateCombatRewardOffer(
+                Domain.Rewards.RewardSource.NodeEvent,
+                selectedNode.EventType,
+                selectedNode.RiskLevel);
+
+            await _rewardOfferRepository.AddAsync(merchantRewardOffer, cancellationToken);
+            run.SetPendingRewardOffer(merchantRewardOffer.Id);
+            run.ResolveCurrentEvent();
+        }
+        else if (selectedNode.EventType == NodeEventType.Curse)
+        {
+            var curse = ActiveCurse.Create(
+                $"curse.{selectedNode.Id.Value.ToString()[..8]}",
+                resolutionResult.Title,
+                resolutionResult.Description,
+                0.10,
+                DateTime.UtcNow);
+
+            run.ApplyCurse(curse);
+            run.ResolveCurrentEvent();
         }
         else
         {

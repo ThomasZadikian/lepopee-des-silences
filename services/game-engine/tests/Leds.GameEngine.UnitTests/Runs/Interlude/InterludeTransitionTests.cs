@@ -11,6 +11,7 @@ using Leds.GameEngine.Application.Interlude;
 using Leds.GameEngine.Application.Interlude.Dtos;
 using Leds.GameEngine.Application.Interlude.EnterInterlude;
 using Leds.GameEngine.Application.Interlude.GetInterlude;
+using Leds.GameEngine.Application.Rewards.Ports;
 using Leds.GameEngine.Application.Runs.ChooseNode;
 using Leds.GameEngine.Application.Runs.MoveToNextRoom;
 using Leds.GameEngine.Application.Runs.ProgressRun;
@@ -593,7 +594,10 @@ public sealed class InterludeTransitionTests
             combatFactory.Object,
             combatRepo.Object,
             new Mock<ICombatEncounterDraftGenerator>().Object,
-            new Mock<ICombatFactory>().Object);
+            new Mock<ICombatFactory>().Object,
+            new Mock<IRewardOfferRepository>().Object,
+            new Leds.GameEngine.Application.Rewards.RewardOfferFactory.RewardOfferFactory(
+                new Mock<Leds.GameEngine.Application.Combats.ICombatRiskProfileResolver>().Object));
 
         var act = () => handler.Handle(
             new ResolveCurrentEventCommand(run.Id.Value),

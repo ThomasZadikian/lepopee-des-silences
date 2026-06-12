@@ -13,6 +13,7 @@ public sealed class Run
     private readonly List<ActivePalaceLaw> _activePalaceLaws = [];
     private readonly List<string> _memoryFragments = [];
     private Combat? _activeCombat;
+    private ActiveCurse? _activeCurse;
     private RunSnapshot? _roomSnapshot;
     private RunStatus? _preSuspendStatus;
 
@@ -95,6 +96,11 @@ public sealed class Run
     public RewardOfferId? PendingRewardOfferId { get; private set; }
 
     public bool HasPendingRewardOffer => PendingRewardOfferId.HasValue;
+
+    /// <summary>
+    /// The active curse applied to the run, if any.
+    /// </summary>
+    public ActiveCurse? ActiveCurse => _activeCurse;
 
     public PlayerRuntimeState PlayerState { get; private set; } = null!;
 
@@ -693,6 +699,27 @@ public sealed class Run
     public void ApplyRewardEffect(RewardChoice choice)
     {
         ApplyReward(choice);
+    }
+
+    /// <summary>
+    /// Applies a curse to the run, replacing any existing curse.
+    /// </summary>
+    public void ApplyCurse(ActiveCurse curse)
+    {
+        ArgumentNullException.ThrowIfNull(curse);
+
+        if (Status is RunStatus.Completed or RunStatus.Failed or RunStatus.Abandoned)
+            throw new DomainException("Cannot apply a curse to a closed run.");
+
+        _activeCurse = curse;
+    }
+
+    /// <summary>
+    /// Clears the active curse after it has been consumed.
+    /// </summary>
+    public void ClearActiveCurse()
+    {
+        _activeCurse = null;
     }
 
     private static int ParsePayloadAmount(RewardChoice choice, string expectedPrefix)
