@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, watch } from 'vue';
+import { computed, onMounted, watch, nextTick } from 'vue';
 
 import { useCombatStore } from '../stores/useCombatStore';
 import { useRunStore } from '../../runs/stores/runStore';
@@ -78,6 +78,18 @@ watch(
   (event) => {
     if (event?.kind === 'defeat') {
       emit('combatFailed');
+    }
+  },
+);
+
+// Auto-submit when skill + target are both selected — removes the need
+// for an explicit "EXÉCUTER L'ACTION" confirm button.
+watch(
+  () => combatStore.canSubmit,
+  async (isReady) => {
+    if (isReady && !combatStore.isResolvingAction) {
+      await nextTick();
+      await handleSubmit();
     }
   },
 );
@@ -203,14 +215,6 @@ watch(
       </section>
 
       <section class="combat-scene__action-bar">
-        <button
-          class="ghost-button"
-          :disabled="!combatStore.canSubmit || combatStore.isResolvingAction"
-          @click="handleSubmit"
-        >
-          {{ combatStore.isResolvingAction ? 'RÉSOLUTION…' : 'EXÉCUTER L\'ACTION' }}
-        </button>
-
         <button
           class="ghost-button"
           :disabled="(!combatStore.selectedSkillKey && combatStore.selectedTargetIds.length === 0) || combatStore.isResolvingAction"

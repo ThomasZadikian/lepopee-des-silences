@@ -8,4 +8,5 @@ public sealed record CombatEncounterDraftContext(
     int RoomIndex,
     int RiskLevel,
     string EncounterType,
-    int EnemyCount);
+    int EnemyCount,
+    int NodeDepth = 0);

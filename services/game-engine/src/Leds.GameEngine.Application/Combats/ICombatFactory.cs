@@ -6,5 +6,8 @@ namespace Leds.GameEngine.Application.Combats;
 
 public interface ICombatFactory
 {
-    Combat CreateFromDraft(CombatEncounterDraft draft, PlayerRuntimeState? playerState = null);
+    Combat CreateFromDraft(
+        CombatEncounterDraft draft,
+        PlayerRuntimeState? playerState = null,
+        IReadOnlyCollection<RunModifier>? runModifiers = null);
 }

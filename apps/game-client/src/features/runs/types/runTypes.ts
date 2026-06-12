@@ -60,12 +60,36 @@ export type RunDto = {
   rooms: RoomDto[];
   pendingRewardOfferId?: string | null;
   activePalaceLaws: ActivePalaceLawDto[];
+  inventoryItems: RunItemDto[];
   /** true when status === 'Suspended' — run paused at a safe point, can be resumed. */
   canResume?: boolean;
   /** ISO timestamp set by SaveAndExit. null if the run was never suspended. */
   savedAt?: string | null;
   /** ISO timestamp set when status === 'Abandoned'. Equals EndedAt on the domain object. */
   abandonedAt?: string | null;
+  /** Active (unconsumed) RunModifiers on this run. Null/absent when none are active. */
+  activeModifiers?: RunModifierDto[] | null;
+};
+
+export type RunItemDto = {
+  id: string;
+  definitionKey: string;
+  displayName: string;
+  description: string;
+  type: string;
+  rarity: string;
+  quantity: number;
+  effectType: string;
+  effectAmount: number;
+};
+
+export type RunModifierDto = {
+  id: string;
+  type: string;
+  value: number;
+  duration: string;
+  sourceType: string;
+  sourceKey: string;
 };
 
 /**

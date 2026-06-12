@@ -890,7 +890,7 @@ public sealed class MapRoomGeneratorTests
     }
 
     [Fact]
-    public async Task GenerateLawNode_ShouldUseLawRewardProfile()
+    public async Task GenerateLawNode_ShouldNotAppear_UntilRunModifierIsImplemented()
     {
         var sut = CreateSut();
 
@@ -901,10 +901,8 @@ public sealed class MapRoomGeneratorTests
             .Where(n => n.EventType == NodeEventType.Law)
             .ToList();
 
-        lawNodes.Should().NotBeEmpty("Silence and Memory both have high Law weight.");
-        lawNodes.Should().AllSatisfy(n =>
-            n.RewardProfile.Should().StartWith("law",
-                "Law nodes must use a 'law-*' reward profile."));
+        lawNodes.Should().BeEmpty(
+            because: "Law is excluded from all profiles until a gameplay-effective RunModifier implementation exists.");
     }
 
     [Fact]

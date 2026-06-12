@@ -12,6 +12,8 @@ public sealed class Run
     private readonly List<Room> _rooms = [];
     private readonly List<ActivePalaceLaw> _activePalaceLaws = [];
     private readonly List<string> _memoryFragments = [];
+    private readonly List<RunItem> _runItems = [];
+    private readonly List<RunModifier> _runModifiers = [];
     private Combat? _activeCombat;
     private ActiveCurse? _activeCurse;
     private RunSnapshot? _roomSnapshot;
@@ -30,6 +32,14 @@ public sealed class Run
 
     public IReadOnlyCollection<string> MemoryFragments =>
         _memoryFragments.AsReadOnly();
+
+    public IReadOnlyCollection<RunItem> RunItems => _runItems.AsReadOnly();
+
+    /// <summary>
+    /// All run modifiers — both active and already-consumed.
+    /// Filter by <see cref="RunModifier.IsConsumed"/> as needed.
+    /// </summary>
+    public IReadOnlyCollection<RunModifier> RunModifiers => _runModifiers.AsReadOnly();
 
     private Run(
         RunId id,
@@ -691,6 +701,15 @@ public sealed class Run
                 PlayerState.Heal(healAmount);
                 break;
 
+            case RewardType.TemporaryItem:
+                var itemKey = choice.PayloadKey;
+                AddRunItemFromPayload(itemKey);
+                break;
+
+            case RewardType.MemoryFragment:
+                AddMemoryFragment(choice.PayloadKey);
+                break;
+
             default:
                 throw new DomainException($"Reward type '{choice.RewardType}' is not supported.");
         }
@@ -699,6 +718,113 @@ public sealed class Run
     public void ApplyRewardEffect(RewardChoice choice)
     {
         ApplyReward(choice);
+    }
+
+    public void AddRunItem(RunItem item)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+
+        var existing = _runItems.FirstOrDefault(i =>
+            i.DefinitionKey == item.DefinitionKey &&
+            i.Type == RunItemType.Consumable);
+
+        if (existing is not null)
+        {
+            existing.AddQuantity(item.Quantity);
+        }
+        else
+        {
+            _runItems.Add(item);
+        }
+    }
+
+    /// <summary>
+    /// Adds a new modifier to the run. Duplicate (unconsumed) modifiers of the same type
+    /// are allowed — they stack.
+    /// </summary>
+    public void AddRunModifier(RunModifier modifier)
+    {
+        ArgumentNullException.ThrowIfNull(modifier);
+
+        if (Status is RunStatus.Completed or RunStatus.Failed or RunStatus.Abandoned)
+            throw new DomainException("Cannot add a modifier to a closed run.");
+
+        _runModifiers.Add(modifier);
+    }
+
+    /// <summary>
+    /// Returns all unconsumed modifiers of the specified type.
+    /// </summary>
+    public IReadOnlyCollection<RunModifier> GetActiveModifiers(RunModifierType type)
+        => _runModifiers
+            .Where(m => m.Type == type && !m.IsConsumed)
+            .ToArray();
+
+    /// <summary>
+    /// Consumes all unconsumed modifiers whose duration is <see cref="RunModifierDuration.NextCombatOnly"/>.
+    /// Call this after a combat resolves.
+    /// </summary>
+    public void ConsumeNextCombatModifiers()
+    {
+        var now = DateTime.UtcNow;
+
+        foreach (var modifier in _runModifiers
+            .Where(m => m.Duration == RunModifierDuration.NextCombatOnly && !m.IsConsumed))
+        {
+            modifier.Consume(now);
+        }
+    }
+
+    private void AddRunItemFromPayload(string payloadKey)
+    {
+        // Payload format: "item:<definitionKey>:<displayName>:<description>:<type>:<rarity>:<effectType>:<effectAmount>"
+        var parts = payloadKey.Split(':', StringSplitOptions.TrimEntries);
+
+        if (parts.Length < 8 || !string.Equals(parts[0], "item", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new DomainException("Invalid item reward payload format.");
+        }
+
+        var definitionKey = parts[1];
+        var displayName = parts[2];
+        var description = parts[3];
+        var itemType = Enum.Parse<RunItemType>(parts[4], ignoreCase: true);
+        var rarity = Enum.Parse<RunItemRarity>(parts[5], ignoreCase: true);
+        var effectType = Enum.Parse<RunItemEffectType>(parts[6], ignoreCase: true);
+        var effectAmount = int.Parse(parts[7]);
+
+        var item = RunItem.Create(
+            definitionKey,
+            displayName,
+            description,
+            itemType,
+            rarity,
+            1,
+            effectType,
+            effectAmount);
+
+        AddRunItem(item);
+
+        // Guard items create a permanent run-scoped StartingGuardBonus modifier.
+        // The bonus stacks across multiple guard items but is capped at MaxStartingGuardBonus.
+        if (effectType == RunItemEffectType.Guard && effectAmount > 0)
+        {
+            const int maxStartingGuardBonus = 30;
+            var currentGuardBonus = _runModifiers
+                .Where(m => m.Type == RunModifierType.StartingGuardBonus && !m.IsConsumed)
+                .Sum(m => (int)m.Value);
+
+            var cappedAmount = Math.Min(effectAmount, maxStartingGuardBonus - currentGuardBonus);
+            if (cappedAmount > 0)
+            {
+                AddRunModifier(RunModifier.Create(
+                    RunModifierType.StartingGuardBonus,
+                    cappedAmount,
+                    RunModifierDuration.UntilRunEnds,
+                    "RunItem",
+                    definitionKey));
+            }
+        }
     }
 
     /// <summary>
@@ -905,7 +1031,9 @@ public sealed class Run
         RunStatus? preSuspendStatus,
         RunSnapshotData? snapshot,
         Combat? activeCombat = null,
-        PlayerRuntimeState? playerState = null)
+        PlayerRuntimeState? playerState = null,
+        IEnumerable<RunItem>? runItems = null,
+        IEnumerable<RunModifier>? runModifiers = null)
     {
         var firstRoom = rooms.First();
 
@@ -935,6 +1063,16 @@ public sealed class Run
         }
 
         run._activeCombat = activeCombat;
+
+        if (runItems is not null)
+        {
+            run._runItems.AddRange(runItems);
+        }
+
+        if (runModifiers is not null)
+        {
+            run._runModifiers.AddRange(runModifiers);
+        }
 
         run.PlayerState = playerState ?? PlayerRuntimeState.Create(
             maxVitality: maxHp,

@@ -712,6 +712,126 @@ namespace Leds.GameEngine.Infrastructure.Persistence.Migrations
                     b.ToTable("runs", (string)null);
                 });
 
+            modelBuilder.Entity("Leds.GameEngine.Infrastructure.Persistence.Entities.RunItemEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<string>("DefinitionKey")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("definition_key");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(1024)
+                        .HasColumnType("character varying(1024)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("display_name");
+
+                    b.Property<int>("EffectAmount")
+                        .HasColumnType("integer")
+                        .HasColumnName("effect_amount");
+
+                    b.Property<string>("EffectType")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("effect_type");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer")
+                        .HasColumnName("quantity");
+
+                    b.Property<string>("Rarity")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("rarity");
+
+                    b.Property<Guid>("RunId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("run_id");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("type");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RunId");
+
+                    b.ToTable("run_items", (string)null);
+                });
+
+            modelBuilder.Entity("Leds.GameEngine.Infrastructure.Persistence.Entities.RunModifierEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime?>("ConsumedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("consumed_at_utc");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<string>("Duration")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("duration");
+
+                    b.Property<Guid>("RunId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("run_id");
+
+                    b.Property<string>("SourceKey")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("source_key");
+
+                    b.Property<string>("SourceType")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("source_type");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("type");
+
+                    b.Property<double>("Value")
+                        .HasColumnType("double precision")
+                        .HasColumnName("value");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RunId");
+
+                    b.ToTable("run_modifiers", (string)null);
+                });
+
             modelBuilder.Entity("Leds.GameEngine.Infrastructure.Persistence.Entities.RunMemoryFragmentEntity", b =>
                 {
                     b.Property<Guid>("Id")
@@ -838,6 +958,28 @@ namespace Leds.GameEngine.Infrastructure.Persistence.Migrations
                     b.Navigation("ActiveCombat");
                 });
 
+            modelBuilder.Entity("Leds.GameEngine.Infrastructure.Persistence.Entities.RunItemEntity", b =>
+                {
+                    b.HasOne("Leds.GameEngine.Infrastructure.Persistence.Entities.RunEntity", "Run")
+                        .WithMany("InventoryItems")
+                        .HasForeignKey("RunId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Run");
+                });
+
+            modelBuilder.Entity("Leds.GameEngine.Infrastructure.Persistence.Entities.RunModifierEntity", b =>
+                {
+                    b.HasOne("Leds.GameEngine.Infrastructure.Persistence.Entities.RunEntity", "Run")
+                        .WithMany("RunModifiers")
+                        .HasForeignKey("RunId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Run");
+                });
+
             modelBuilder.Entity("Leds.GameEngine.Infrastructure.Persistence.Entities.RunMemoryFragmentEntity", b =>
                 {
                     b.HasOne("Leds.GameEngine.Infrastructure.Persistence.Entities.RunEntity", "Run")
@@ -880,11 +1022,15 @@ namespace Leds.GameEngine.Infrastructure.Persistence.Migrations
                 {
                     b.Navigation("ActivePalaceLaws");
 
+                    b.Navigation("InventoryItems");
+
                     b.Navigation("MemoryFragments");
 
                     b.Navigation("PlayerState");
 
                     b.Navigation("Rooms");
+
+                    b.Navigation("RunModifiers");
                 });
 #pragma warning restore 612, 618
         }

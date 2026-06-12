@@ -13,8 +13,16 @@ public sealed class CombatFactory : ICombatFactory
 
     private readonly EnemyStatScaler _enemyStatScaler = new();
 
-    public Combat CreateFromDraft(CombatEncounterDraft draft, PlayerRuntimeState? playerState = null)
+    public Combat CreateFromDraft(
+        CombatEncounterDraft draft,
+        PlayerRuntimeState? playerState = null,
+        IReadOnlyCollection<RunModifier>? runModifiers = null)
     {
+        // Sum all unconsumed StartingGuardBonus modifiers (e.g. Éclat de garde: +8 garde).
+        var guardBonus = runModifiers?
+            .Where(m => m.Type == RunModifierType.StartingGuardBonus && !m.IsConsumed)
+            .Sum(m => (int)m.Value) ?? 0;
+
         var allies = draft.Allies
             .Select(ally =>
             {
@@ -33,7 +41,7 @@ public sealed class CombatFactory : ICombatFactory
 
                 var maxVitality = playerState?.MaxVitality ?? 100;
                 var currentVitality = playerState?.CurrentVitality ?? maxVitality;
-                var guard = playerState?.Guard ?? 0;
+                var guard = (playerState?.Guard ?? 0) + guardBonus;
                 var mana = playerState?.Mana ?? 0;
                 var charge = playerState?.Charge ?? 0;
 
@@ -46,6 +54,7 @@ public sealed class CombatFactory : ICombatFactory
                     maxVitality,
                     currentVitality,
                     guard,
+                    baseGuard: guardBonus,  // passive floor restored at round start
                     mana,
                     charge,
                     skills);

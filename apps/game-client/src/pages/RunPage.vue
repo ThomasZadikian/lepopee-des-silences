@@ -8,6 +8,7 @@ import { useCombatStore } from '../features/combat/stores/useCombatStore';
 import EliseOverlay from '../features/elise/EliseOverlay.vue';
 import EventChoiceResultPanel from '../features/events/components/EventChoiceResultPanel.vue';
 import EventOutcomePanel from '../features/events/components/EventOutcomePanel.vue';
+import InventoryPanel from '../features/inventory/components/InventoryPanel.vue';
 import InterludePanel from '../features/interlude/InterludePanel.vue';
 import RoomClearedPanel from '../features/interlude/RoomClearedPanel.vue';
 import NodeDetailPanel from '../features/node-details/NodeDetailPanel.vue';
@@ -97,6 +98,10 @@ watch(
         <aside class="run-grid__left">
           <RunHudPanel :run="runStore.currentRun" />
           <PartyPanel />
+          <InventoryPanel
+            v-if="runStore.currentRun?.inventoryItems"
+            :items="runStore.currentRun.inventoryItems"
+          />
           <PalaceLawPanel :laws="runStore.currentRun.activePalaceLaws" />
           <RunDangerActions
             :is-safe-point="isSafePoint"

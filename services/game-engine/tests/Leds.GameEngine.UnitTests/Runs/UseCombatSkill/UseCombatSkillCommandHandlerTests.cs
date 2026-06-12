@@ -245,7 +245,7 @@ public sealed class UseCombatSkillCommandHandlerTests
     public async Task Handle_ShouldSkipDefeatedCombatants_WhenAdvancingTurn()
     {
         var lethalSkill = CreateSkill("skill.basic.strike", "Damage", "SingleEnemy", 80);
-        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100, [lethalSkill]);
+        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100, 0, [lethalSkill]);
         var enemy1 = Combatant.CreateEnemy("enemy.1", "Enemy1", "Guard", 80, []);
         var enemy2 = Combatant.CreateEnemy("enemy.2", "Enemy2", "Guard", 80, []);
         var setup = CreateRunWithActiveCombat([ally], [enemy1, enemy2]);
@@ -261,7 +261,7 @@ public sealed class UseCombatSkillCommandHandlerTests
     public async Task Handle_ShouldIncrementTurnNumber_WhenRoundCycles()
     {
         var enemySkill = CreateSkill("skill.basic.strike", "Damage", "SingleEnemy", 1);
-        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100, []);
+        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100, 0, []);
         var enemy = Combatant.CreateEnemy("enemy.1", "Enemy1", "Guard", 80, [enemySkill]);
         var setup = CreateRunWithActiveCombat([ally], [enemy]);
         setup.Combat.AdvanceTurn();
@@ -358,7 +358,7 @@ public sealed class UseCombatSkillCommandHandlerTests
     public async Task Handle_ShouldFailCombat_WhenLastAllyIsDefeated()
     {
         var lethalSkill = CreateSkill("skill.basic.strike", "Damage", "SingleEnemy", 100);
-        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100, []);
+        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100, 0, []);
         var enemy = Combatant.CreateEnemy("enemy.1", "Enemy1", "Guard", 80, [lethalSkill]);
         var setup = CreateRunWithActiveCombat([ally], [enemy]);
         setup.Combat.AdvanceTurn();
@@ -379,7 +379,7 @@ public sealed class UseCombatSkillCommandHandlerTests
     public async Task Handle_ShouldFailRun_WhenLastAllyIsDefeated()
     {
         var lethalSkill = CreateSkill("skill.basic.strike", "Damage", "SingleEnemy", 100);
-        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100, []);
+        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100, 0, []);
         var enemy = Combatant.CreateEnemy("enemy.1", "Enemy1", "Guard", 80, [lethalSkill]);
         var setup = CreateRunWithActiveCombat([ally], [enemy]);
         setup.Combat.AdvanceTurn();
@@ -395,7 +395,7 @@ public sealed class UseCombatSkillCommandHandlerTests
     public async Task Handle_ShouldReturnRunStatusFailed_WhenCombatFailed()
     {
         var lethalSkill = CreateSkill("skill.basic.strike", "Damage", "SingleEnemy", 100);
-        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100, []);
+        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100, 0, []);
         var enemy = Combatant.CreateEnemy("enemy.1", "Enemy1", "Guard", 80, [lethalSkill]);
         var setup = CreateRunWithActiveCombat([ally], [enemy]);
         setup.Combat.AdvanceTurn();
@@ -434,7 +434,7 @@ public sealed class UseCombatSkillCommandHandlerTests
     public async Task Handle_ShouldNotResolveCurrentEvent_WhenCombatFailed()
     {
         var lethalSkill = CreateSkill("skill.basic.strike", "Damage", "SingleEnemy", 100);
-        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100, []);
+        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100, 0, []);
         var enemy = Combatant.CreateEnemy("enemy.1", "Enemy1", "Guard", 80, [lethalSkill]);
         var setup = CreateRunWithActiveCombat([ally], [enemy]);
         setup.Combat.AdvanceTurn();
@@ -498,7 +498,7 @@ public sealed class UseCombatSkillCommandHandlerTests
     public async Task Handle_ShouldResolveEnemyTurn_AfterPlayerAction_WhenNextCombatantIsEnemy()
     {
         var enemySkill = CreateSkill("skill.basic.strike", "Damage", "SingleEnemy", 10);
-        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100, [_strikeSkill]);
+        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100, 0, [_strikeSkill]);
         var enemy = Combatant.CreateEnemy("enemy.1", "Enemy1", "Guard", 80, [enemySkill]);
         var setup = CreateRunWithActiveCombat([ally], [enemy]);
         var handler = CreateHandlerWithRealEnemyResolver(setup, ally, _strikeSkill, [enemy], out _);
@@ -513,7 +513,7 @@ public sealed class UseCombatSkillCommandHandlerTests
     public async Task Handle_ShouldResolveMultipleEnemyTurns_UntilNextAlly()
     {
         var enemySkill = CreateSkill("skill.basic.strike", "Damage", "SingleEnemy", 10);
-        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100, [_strikeSkill]);
+        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100, 0, [_strikeSkill]);
         var enemy1 = Combatant.CreateEnemy("enemy.1", "Enemy1", "Guard", 80, [enemySkill]);
         var enemy2 = Combatant.CreateEnemy("enemy.2", "Enemy2", "Guard", 80, [enemySkill]);
         var setup = CreateRunWithActiveCombat([ally], [enemy1, enemy2]);
@@ -530,7 +530,7 @@ public sealed class UseCombatSkillCommandHandlerTests
     public async Task Handle_ShouldReturnUpdatedCombatAfterEnemyTurns()
     {
         var enemySkill = CreateSkill("skill.basic.strike", "Damage", "SingleEnemy", 10);
-        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100, [_strikeSkill]);
+        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100, 0, [_strikeSkill]);
         var enemy = Combatant.CreateEnemy("enemy.1", "Enemy1", "Guard", 80, [enemySkill]);
         var setup = CreateRunWithActiveCombat([ally], [enemy]);
         var handler = CreateHandlerWithRealEnemyResolver(setup, ally, _strikeSkill, [enemy], out _);
@@ -545,7 +545,7 @@ public sealed class UseCombatSkillCommandHandlerTests
     public async Task Handle_ShouldReturnEnemyActionLogs()
     {
         var enemySkill = CreateSkill("skill.basic.strike", "Damage", "SingleEnemy", 10);
-        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100, [_strikeSkill]);
+        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100, 0, [_strikeSkill]);
         var enemy = Combatant.CreateEnemy("enemy.1", "Enemy1", "Guard", 80, [enemySkill]);
         var setup = CreateRunWithActiveCombat([ally], [enemy]);
         var handler = CreateHandlerWithRealEnemyResolver(setup, ally, _strikeSkill, [enemy], out _);
@@ -573,7 +573,7 @@ public sealed class UseCombatSkillCommandHandlerTests
     public async Task Handle_ShouldStopAutoEnemyTurns_WhenCombatFails()
     {
         var enemySkill = CreateSkill("skill.basic.strike", "Damage", "SingleEnemy", 107);
-        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100, [_guardSkill]);
+        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100, 0, [_guardSkill]);
         var enemy = Combatant.CreateEnemy("enemy.1", "Enemy1", "Guard", 80, [enemySkill]);
         var setup = CreateRunWithActiveCombat([ally], [enemy]);
         var handler = CreateHandlerWithRealEnemyResolver(setup, ally, _guardSkill, [ally], out _);
@@ -587,8 +587,8 @@ public sealed class UseCombatSkillCommandHandlerTests
     [Fact]
     public async Task Handle_ShouldNotResolveEnemyTurn_WhenNextCombatantIsAlly()
     {
-        var ally1 = Combatant.CreateAlly("player.1", "Hero1", "Fighter", 100, [_strikeSkill]);
-        var ally2 = Combatant.CreateAlly("player.2", "Hero2", "Fighter", 100, [_strikeSkill]);
+        var ally1 = Combatant.CreateAlly("player.1", "Hero1", "Fighter", 100, 0, [_strikeSkill]);
+        var ally2 = Combatant.CreateAlly("player.2", "Hero2", "Fighter", 100, 0, [_strikeSkill]);
         var enemy = Combatant.CreateEnemy("enemy.1", "Enemy1", "Guard", 80, [_strikeSkill]);
         var setup = CreateRunWithActiveCombat([ally1, ally2], [enemy]);
         var handler = CreateHandlerWithRealEnemyResolver(setup, ally1, _strikeSkill, [enemy], out _);
@@ -783,7 +783,7 @@ public sealed class UseCombatSkillCommandHandlerTests
     private static (Run Run, Combat Combat, Combatant Ally, Combatant Enemy) CreateRunWithActiveCombat(CombatantSkill allySkill)
     {
         var runWithNode = TestGameEngineFactory.CreateRunWithSelectedTargetNode(NodeEventType.Combat);
-        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100, [allySkill]);
+        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100, 0, [allySkill]);
         var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 80, []);
         var combat = Combat.Create(
             CombatId.New(),

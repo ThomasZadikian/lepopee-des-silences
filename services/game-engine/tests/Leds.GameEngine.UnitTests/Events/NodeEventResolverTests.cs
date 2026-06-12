@@ -208,7 +208,8 @@ public sealed class NodeEventResolverTests
         dto.RewardProfile.Should().NotBeNullOrWhiteSpace();
         dto.Title.Should().NotBeNullOrWhiteSpace();
         dto.Description.Should().NotBeNullOrWhiteSpace();
-        dto.RequiresPlayerChoice.Should().BeTrue();
+        dto.RequiresPlayerChoice.Should().BeFalse(
+            because: "Merchant creates reward offer directly, no separate choice needed.");
         dto.Choices.Should().NotBeEmpty(
             because: "Merchant must offer at least one trade option.");
     }

@@ -32,7 +32,19 @@ public sealed class LawEventChoiceResolver : ICurrentEventChoiceResolver
     private CurrentEventChoiceResolutionResult AcceptLaw(
         CurrentEventChoiceResolutionContext context)
     {
+        // Guard: if no law engine is available, treat acceptance as a narrative-only outcome
+        // rather than activating a law with no real effect. The static catalog always provides
+        // a placeholder, so this guard is currently a safety net for future engine evolution.
+        // (Spec constraint: Ne pas faire un Palace Law Engine complet.)
         var law = _palaceLawCatalog.GetDefaultLawFor(context);
+        if (law is null)
+        {
+            return CurrentEventChoiceResolutionResult.Create(
+                context.ChoiceId,
+                accepted: true,
+                "La Loi reste suspendue — aucun moteur n'est disponible pour l'appliquer.",
+                [new NarrativeFragmentDto("Elise", "Certaines Lois existent sans pouvoir agir.")]);
+        }
 
         context.Run.ActivatePalaceLaw(law);
 

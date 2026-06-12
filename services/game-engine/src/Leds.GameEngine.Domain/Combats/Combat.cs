@@ -176,6 +176,12 @@ public sealed class Combat
         if (currentIndex >= 0 && nextIndex <= currentIndex)
         {
             TurnNumber++;
+
+            // Restore passive guard floor (from StartingGuardBonus items) at the
+            // start of every new round. Active guard gained via skill.basic.guard
+            // is NOT capped — ResetGuardToBase only raises guard if it dropped below BaseGuard.
+            foreach (var combatant in livingCombatants)
+                combatant.ResetGuardToBase();
         }
     }
 

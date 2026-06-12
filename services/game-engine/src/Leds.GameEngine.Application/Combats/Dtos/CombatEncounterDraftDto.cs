@@ -10,6 +10,7 @@ public sealed record CombatEncounterDraftDto(
     int RoomIndex,
     int RiskLevel,
     string EncounterType,
+    double DifficultyMultiplier,
     IReadOnlyCollection<CombatEncounterDraftEnemyDto> Enemies,
     IReadOnlyCollection<CombatEncounterDraftAllyDto> Allies)
 {
@@ -23,6 +24,7 @@ public sealed record CombatEncounterDraftDto(
             RoomIndex: draft.RoomIndex,
             RiskLevel: draft.RiskLevel,
             EncounterType: draft.EncounterType,
+            DifficultyMultiplier: draft.DifficultyMultiplier,
             Enemies: draft.Enemies
                 .Select(CombatEncounterDraftEnemyDto.FromDomain)
                 .ToArray(),

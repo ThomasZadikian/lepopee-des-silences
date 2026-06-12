@@ -28,6 +28,8 @@ public sealed class EfRunRepository : IRunRepository
                     .ThenInclude(combatant => combatant.Skills)
             .Include(run => run.PlayerState)
                 .ThenInclude(ps => ps!.Skills)
+            .Include(run => run.RunModifiers)
+            .Include(run => run.InventoryItems)
             .FirstOrDefaultAsync(run => run.Id == runId.Value, cancellationToken);
 
         return entity is null ? null : RunPersistenceMapper.ToDomain(entity);
@@ -44,6 +46,7 @@ public sealed class EfRunRepository : IRunRepository
     {
         var runId = run.Id.Value;
 
+        // Delete existing entity graph first to avoid EF tracking conflicts.
         var existing = await _dbContext.Runs
             .Include(r => r.Rooms)
                 .ThenInclude(room => room.Nodes)
@@ -55,6 +58,8 @@ public sealed class EfRunRepository : IRunRepository
                     .ThenInclude(combatant => combatant.Skills)
             .Include(r => r.PlayerState)
                 .ThenInclude(ps => ps!.Skills)
+            .Include(r => r.RunModifiers)
+            .Include(r => r.InventoryItems)
             .FirstOrDefaultAsync(r => r.Id == runId, cancellationToken);
 
         if (existing is null)
@@ -62,45 +67,12 @@ public sealed class EfRunRepository : IRunRepository
             throw new InvalidOperationException($"Run with id '{runId}' was not found for update.");
         }
 
+        _dbContext.Runs.Remove(existing);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        // Add fresh entity graph.
         var entity = RunPersistenceMapper.ToEntity(run);
-
-        existing.PlayerId = entity.PlayerId;
-        existing.Status = entity.Status;
-        existing.Seed = entity.Seed;
-        existing.GeneratorVersion = entity.GeneratorVersion;
-        existing.MarkovMatrixVersion = entity.MarkovMatrixVersion;
-        existing.CurrentRoomId = entity.CurrentRoomId;
-        existing.CurrentRoomIndex = entity.CurrentRoomIndex;
-        existing.ActiveCombatId = entity.ActiveCombatId;
-        existing.PendingRewardOfferId = entity.PendingRewardOfferId;
-        existing.MaxHp = entity.MaxHp;
-        existing.CurrentHp = entity.CurrentHp;
-        existing.Attack = entity.Attack;
-        existing.Defense = entity.Defense;
-        existing.Speed = entity.Speed;
-        existing.StartedAtUtc = entity.StartedAtUtc;
-        existing.EndedAtUtc = entity.EndedAtUtc;
-        existing.SavedAtUtc = entity.SavedAtUtc;
-        existing.PreSuspendStatus = entity.PreSuspendStatus;
-        existing.SnapshotCurrentHp = entity.SnapshotCurrentHp;
-        existing.SnapshotAttack = entity.SnapshotAttack;
-        existing.SnapshotDefense = entity.SnapshotDefense;
-        existing.SnapshotSpeed = entity.SnapshotSpeed;
-        existing.SnapshotMemoryFragments = entity.SnapshotMemoryFragments;
-        existing.SnapshotActivePalaceLaws = entity.SnapshotActivePalaceLaws;
-        existing.UpdatedAtUtc = entity.UpdatedAtUtc;
-
-        UpdateRooms(existing, entity);
-        UpdateMemoryFragments(existing, entity);
-        UpdateActivePalaceLaws(existing, entity);
-
-        CombatEntity? incomingCombat = run.ActiveCombat is not null
-            ? CombatPersistenceMapper.ToEntity(run.ActiveCombat, runId)
-            : null;
-
-        UpdateActiveCombat(existing, incomingCombat);
-        UpdatePlayerState(existing, entity);
-
+        _dbContext.Runs.Add(entity);
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
@@ -199,6 +171,68 @@ public sealed class EfRunRepository : IRunRepository
     {
         existing.ActivePalaceLaws.Clear();
         existing.ActivePalaceLaws.AddRange(incoming.ActivePalaceLaws);
+    }
+
+    private void UpdateRunModifiers(RunEntity existing, RunEntity incoming)
+    {
+        var existingIds = existing.RunModifiers.Select(m => m.Id).ToHashSet();
+        var incomingIds = incoming.RunModifiers.Select(m => m.Id).ToHashSet();
+
+        // Remove modifiers no longer in the domain (shouldn't normally happen).
+        var toRemove = existing.RunModifiers.Where(m => !incomingIds.Contains(m.Id)).ToList();
+        foreach (var m in toRemove) existing.RunModifiers.Remove(m);
+
+        foreach (var incomingModifier in incoming.RunModifiers)
+        {
+            var existingModifier = existing.RunModifiers.FirstOrDefault(m => m.Id == incomingModifier.Id);
+
+            if (existingModifier is null)
+            {
+                existing.RunModifiers.Add(incomingModifier);
+                continue;
+            }
+
+            // Only mutable field is ConsumedAtUtc.
+            existingModifier.ConsumedAtUtc = incomingModifier.ConsumedAtUtc;
+        }
+    }
+
+    private void UpdateInventoryItems(RunEntity existing, RunEntity incoming)
+    {
+        var incomingIds = incoming.InventoryItems.Select(i => i.Id).ToHashSet();
+
+        // Remove items no longer present.
+        var toRemove = existing.InventoryItems.Where(i => !incomingIds.Contains(i.Id)).ToList();
+        foreach (var item in toRemove) existing.InventoryItems.Remove(item);
+
+        foreach (var incomingItem in incoming.InventoryItems)
+        {
+            var existingItem = existing.InventoryItems.FirstOrDefault(i => i.Id == incomingItem.Id);
+
+            if (existingItem is null)
+            {
+                // Create a new entity in the context to avoid tracking conflicts.
+                var newItem = new RunItemEntity
+                {
+                    Id = Guid.NewGuid(),
+                    RunId = existing.Id,
+                    DefinitionKey = incomingItem.DefinitionKey,
+                    DisplayName = incomingItem.DisplayName,
+                    Description = incomingItem.Description,
+                    Type = incomingItem.Type,
+                    Rarity = incomingItem.Rarity,
+                    Quantity = incomingItem.Quantity,
+                    EffectType = incomingItem.EffectType,
+                    EffectAmount = incomingItem.EffectAmount,
+                    CreatedAtUtc = incomingItem.CreatedAtUtc
+                };
+                existing.InventoryItems.Add(newItem);
+                continue;
+            }
+
+            // Only mutable field is Quantity (stacking consumables).
+            existingItem.Quantity = incomingItem.Quantity;
+        }
     }
 
     private void UpdateActiveCombat(RunEntity existingRun, CombatEntity? incomingCombat)

@@ -149,7 +149,7 @@ public sealed class EfRunRepositoryCombatTests : IDisposable
 
     private static Run CreateTestRunWithCombat()
     {
-        var ally = Combatant.CreateAlly("player.test", "Hero", "Warrior", 100,
+        var ally = Combatant.CreateAlly("player.test", "Hero", "Warrior", 100, 0,
             [CombatantSkill.Create("skill.strike", "Strike", "Damage", "SingleEnemy", "Damage", 0, 0, 10)]);
 
         var enemy = Combatant.CreateEnemy("enemy.test", "Goblin", "Scout", 30,

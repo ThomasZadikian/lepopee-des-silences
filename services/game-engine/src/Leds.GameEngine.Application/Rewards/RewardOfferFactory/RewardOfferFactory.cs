@@ -1,6 +1,7 @@
 using Leds.GameEngine.Application.Combats;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rewards;
+using Leds.GameEngine.Domain.Runs;
 
 namespace Leds.GameEngine.Application.Rewards.RewardOfferFactory;
 
@@ -38,6 +39,18 @@ public sealed class RewardOfferFactory
         return RewardOffer.Create(source, choices, scaling);
     }
 
+    public RewardOffer CreateMerchantRewardOffer(int riskLevel)
+    {
+        var choices = CreateMerchantRewardChoices(riskLevel);
+        return RewardOffer.Create(RewardSource.NodeEvent, choices);
+    }
+
+    public RewardOffer CreateItemRewardOffer(string rewardProfile, int riskLevel)
+    {
+        var choices = CreateItemRewardChoices(rewardProfile, riskLevel);
+        return RewardOffer.Create(RewardSource.NodeEvent, choices);
+    }
+
     private List<RewardChoice> CreateCombatRewardChoices(int riskLevel, double multiplier)
     {
         var baseHeal = riskLevel / 5 + 10;
@@ -58,10 +71,10 @@ public sealed class RewardOfferFactory
                 $"heal:{_rewardPowerScaler.ScaleAmount(baseHeal + 4, multiplier)}"),
 
             RewardChoice.Create(
-                RewardType.Heal,
-                "Calme intérieur",
-                $"Récupère {_rewardPowerScaler.ScaleAmount(baseHeal + 8, multiplier)} PV.",
-                $"heal:{_rewardPowerScaler.ScaleAmount(baseHeal + 8, multiplier)}")
+                RewardType.TemporaryItem,
+                "Baume de mémoire",
+                "Restaure 15 PV depuis l'inventaire.",
+                "item:item.consumable.minor-heal:Baume de mémoire:Restaure une partie de la vitalité.:Consumable:Common:Heal:15")
         };
     }
 
@@ -143,6 +156,61 @@ public sealed class RewardOfferFactory
                 "Silence recomposé",
                 $"Récupère {_rewardPowerScaler.ScaleAmount(baseHeal + 24, multiplier)} PV.",
                 $"heal:{_rewardPowerScaler.ScaleAmount(baseHeal + 24, multiplier)}")
+        };
+    }
+
+    private List<RewardChoice> CreateItemRewardChoices(string rewardProfile, int riskLevel)
+    {
+        // Memory rooms give a guard shard + a heal option — thematically aligned with
+        // the exploration / knowledge flavour of the Memory biome.
+        // All other Item node profiles default to a guard shard + heal combo.
+        var baseHeal = riskLevel / 5 + 10;
+
+        return new List<RewardChoice>
+        {
+            RewardChoice.Create(
+                RewardType.TemporaryItem,
+                "Éclat de garde",
+                "Offre une protection permanente pendant la run.",
+                "item:item.consumable.guard-shard:Éclat de garde:Offre une protection permanente pendant la run.:Consumable:Uncommon:Guard:8"),
+
+            RewardChoice.Create(
+                RewardType.TemporaryItem,
+                "Baume de mémoire",
+                "Restaure une partie de la vitalité.",
+                "item:item.consumable.minor-heal:Baume de mémoire:Restaure une partie de la vitalité.:Consumable:Common:Heal:15"),
+
+            RewardChoice.Create(
+                RewardType.Heal,
+                "Souffle du passé",
+                $"Récupère {baseHeal} PV.",
+                $"heal:{baseHeal}")
+        };
+    }
+
+    private List<RewardChoice> CreateMerchantRewardChoices(int riskLevel)
+    {
+        var baseHeal = riskLevel / 5 + 12;
+
+        return new List<RewardChoice>
+        {
+            RewardChoice.Create(
+                RewardType.TemporaryItem,
+                "Baume de mémoire",
+                "Restaure une partie de la vitalité.",
+                "item:item.consumable.minor-heal:Baume de mémoire:Restaure une partie de la vitalité.:Consumable:Common:Heal:15"),
+
+            RewardChoice.Create(
+                RewardType.TemporaryItem,
+                "Éclat de garde",
+                "Offre une protection temporaire.",
+                "item:item.consumable.guard-shard:Éclat de garde:Offre une protection temporaire.:Consumable:Uncommon:Guard:8"),
+
+            RewardChoice.Create(
+                RewardType.Heal,
+                "Soin du marchand",
+                $"Récupère {baseHeal} PV.",
+                $"heal:{baseHeal}")
         };
     }
 }

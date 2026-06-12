@@ -3,6 +3,7 @@ using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.NodeEvents;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.PalaceLaws;
+using Leds.GameEngine.Domain.Rewards;
 using Leds.GameEngine.Domain.Runs;
 using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Infrastructure.Persistence;
@@ -139,6 +140,108 @@ public sealed class EfRunRepositoryTests : IDisposable
 
         loaded.Should().NotBeNull();
         loaded!.CurrentHp.Should().Be(run.CurrentHp);
+    }
+
+    // -----------------------------------------------------------------------
+    // InventoryItems round-trip
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public async Task SaveAndLoad_ShouldPersistInventoryItems()
+    {
+        var run = CreateTestRun();
+
+        // Give the run a pending reward and apply a guard-shard item
+        var offerId = RewardOfferId.New();
+        run.SetPendingRewardOffer(offerId);
+        var choice = RewardChoice.Create(
+            RewardType.TemporaryItem,
+            "Éclat de garde",
+            "Protection au combat.",
+            "item:item.consumable.guard-shard:Éclat de garde:Protection au combat.:Consumable:Uncommon:Guard:8");
+        run.ApplyReward(choice);
+        run.ClearPendingRewardOffer();
+
+        await _repository.AddAsync(run, CancellationToken.None);
+
+        using var verifyContext = new GameEngineDbContext(
+            new DbContextOptionsBuilder<GameEngineDbContext>()
+                .UseInMemoryDatabase(databaseName: _databaseName)
+                .Options);
+
+        var verifyRepository = new EfRunRepository(verifyContext);
+        var loaded = await verifyRepository.GetByIdAsync(run.Id, CancellationToken.None);
+
+        loaded.Should().NotBeNull();
+        loaded!.RunItems.Should().ContainSingle(
+            i => i.DefinitionKey == "item.consumable.guard-shard",
+            because: "The guard shard selected as reward must be persisted and reloaded.");
+    }
+
+    [Fact]
+    public async Task UpdateAndReload_ShouldPreserveInventoryItems()
+    {
+        var run = CreateTestRun();
+        await _repository.AddAsync(run, CancellationToken.None);
+
+        // Add item via update
+        var offerId = RewardOfferId.New();
+        run.SetPendingRewardOffer(offerId);
+        var choice = RewardChoice.Create(
+            RewardType.TemporaryItem,
+            "Éclat de garde",
+            "Protection au combat.",
+            "item:item.consumable.guard-shard:Éclat de garde:Protection au combat.:Consumable:Uncommon:Guard:8");
+        run.ApplyReward(choice);
+        run.ClearPendingRewardOffer();
+
+        await _repository.UpdateAsync(run, CancellationToken.None);
+
+        using var verifyContext = new GameEngineDbContext(
+            new DbContextOptionsBuilder<GameEngineDbContext>()
+                .UseInMemoryDatabase(databaseName: _databaseName)
+                .Options);
+
+        var verifyRepository = new EfRunRepository(verifyContext);
+        var loaded = await verifyRepository.GetByIdAsync(run.Id, CancellationToken.None);
+
+        loaded.Should().NotBeNull();
+        loaded!.RunItems.Should().ContainSingle(
+            i => i.DefinitionKey == "item.consumable.guard-shard",
+            because: "InventoryItems added after initial save must survive an UpdateAsync round-trip.");
+    }
+
+    [Fact]
+    public async Task UpdateAndReload_ShouldPreserveStartingGuardBonusModifier()
+    {
+        var run = CreateTestRun();
+        await _repository.AddAsync(run, CancellationToken.None);
+
+        // Apply guard shard reward
+        var offerId = RewardOfferId.New();
+        run.SetPendingRewardOffer(offerId);
+        var choice = RewardChoice.Create(
+            RewardType.TemporaryItem,
+            "Éclat de garde",
+            "Protection au combat.",
+            "item:item.consumable.guard-shard:Éclat de garde:Protection au combat.:Consumable:Uncommon:Guard:8");
+        run.ApplyReward(choice);
+        run.ClearPendingRewardOffer();
+
+        await _repository.UpdateAsync(run, CancellationToken.None);
+
+        using var verifyContext = new GameEngineDbContext(
+            new DbContextOptionsBuilder<GameEngineDbContext>()
+                .UseInMemoryDatabase(databaseName: _databaseName)
+                .Options);
+
+        var verifyRepository = new EfRunRepository(verifyContext);
+        var loaded = await verifyRepository.GetByIdAsync(run.Id, CancellationToken.None);
+
+        loaded.Should().NotBeNull();
+        loaded!.RunModifiers.Should().ContainSingle(
+            m => m.Type == RunModifierType.StartingGuardBonus && !m.IsConsumed,
+            because: "The StartingGuardBonus modifier created by the guard shard must survive a full persistence round-trip.");
     }
 
     private static Run CreateTestRun()

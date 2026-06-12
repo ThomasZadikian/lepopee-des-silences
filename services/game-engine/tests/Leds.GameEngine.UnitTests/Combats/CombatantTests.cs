@@ -41,7 +41,7 @@ public sealed class CombatantTests
     [Fact]
     public void Create_ShouldThrow_WhenSourceKeyIsEmpty()
     {
-        var act = () => Combatant.Create(CombatantId.New(), "", "Hero", CombatantSide.Player, "Fighter", 100, 100, 0, 0, 0);
+        var act = () => Combatant.Create(CombatantId.New(), "", "Hero", CombatantSide.Player, "Fighter", 100, 100, 0, 0, 0, 0);
 
         act.Should().Throw<DomainException>().WithMessage("Combatant source key is required.");
     }
@@ -49,7 +49,7 @@ public sealed class CombatantTests
     [Fact]
     public void Create_ShouldThrow_WhenDisplayNameIsEmpty()
     {
-        var act = () => Combatant.Create(CombatantId.New(), "player.self", "", CombatantSide.Player, "Fighter", 100, 100, 0, 0, 0);
+        var act = () => Combatant.Create(CombatantId.New(), "player.self", "", CombatantSide.Player, "Fighter", 100, 100, 0, 0, 0, 0);
 
         act.Should().Throw<DomainException>().WithMessage("Combatant display name is required.");
     }
@@ -57,7 +57,7 @@ public sealed class CombatantTests
     [Fact]
     public void Create_ShouldThrow_WhenMaxVitalityIsZeroOrNegative()
     {
-        var act = () => Combatant.Create(CombatantId.New(), "player.self", "Hero", CombatantSide.Player, "Fighter", 0, 0, 0, 0, 0);
+        var act = () => Combatant.Create(CombatantId.New(), "player.self", "Hero", CombatantSide.Player, "Fighter", 0, 0, 0, 0, 0, 0);
 
         act.Should().Throw<DomainException>().WithMessage("Combatant max vitality must be greater than zero.");
     }
@@ -65,7 +65,7 @@ public sealed class CombatantTests
     [Fact]
     public void Create_ShouldThrow_WhenCurrentVitalityExceedsMaxVitality()
     {
-        var act = () => Combatant.Create(CombatantId.New(), "player.self", "Hero", CombatantSide.Player, "Fighter", 100, 150, 0, 0, 0);
+        var act = () => Combatant.Create(CombatantId.New(), "player.self", "Hero", CombatantSide.Player, "Fighter", 100, 150, 0, 0, 0, 0);
 
         act.Should().Throw<DomainException>().WithMessage("Combatant current vitality must be between zero and max vitality.");
     }
@@ -192,5 +192,55 @@ public sealed class CombatantTests
         var act = () => combatant.GainGuard(1);
 
         act.Should().Throw<DomainException>().WithMessage("Defeated combatants cannot gain guard.");
+    }
+
+    // -----------------------------------------------------------------------
+    // BaseGuard / ResetGuardToBase
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public void CreateAlly_WithBaseGuard_ShouldSetBothGuardAndBaseGuard()
+    {
+        var combatant = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100, baseGuard: 8);
+
+        combatant.Guard.Should().Be(8);
+        combatant.BaseGuard.Should().Be(8);
+    }
+
+    [Fact]
+    public void ResetGuardToBase_ShouldRestoreGuard_AfterDamageConsumedIt()
+    {
+        var combatant = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100, baseGuard: 8);
+        combatant.ApplyDamage(5); // guard 8 → 3
+
+        combatant.ResetGuardToBase();
+
+        combatant.Guard.Should().Be(8,
+            because: "Guard must be restored to BaseGuard at round start.");
+    }
+
+    [Fact]
+    public void ResetGuardToBase_ShouldNotReduceGuard_WhenGainGuardExceedsBase()
+    {
+        var combatant = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100, baseGuard: 8);
+        combatant.GainGuard(5); // guard = 13 > BaseGuard 8
+
+        combatant.ResetGuardToBase();
+
+        combatant.Guard.Should().Be(13,
+            because: "ResetGuardToBase must not reduce guard earned via skill.basic.guard.");
+    }
+
+    [Fact]
+    public void ResetGuardToBase_ShouldDoNothing_WhenCombatantIsDefeated()
+    {
+        var combatant = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100, baseGuard: 8);
+        combatant.MarkDefeated();
+
+        var act = () => combatant.ResetGuardToBase();
+
+        act.Should().NotThrow();
+        combatant.Guard.Should().Be(8,
+            because: "MarkDefeated does not reset guard; baseGuard value persists.");
     }
 }

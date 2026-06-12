@@ -67,7 +67,33 @@ public static class RunPersistenceMapper
             ActiveCombat = run.ActiveCombat is not null
                 ? CombatPersistenceMapper.ToEntity(run.ActiveCombat, run.Id.Value)
                 : null,
-            PlayerState = PlayerRuntimeStatePersistenceMapper.ToEntity(run.PlayerState, run.Id.Value)
+            PlayerState = PlayerRuntimeStatePersistenceMapper.ToEntity(run.PlayerState, run.Id.Value),
+            InventoryItems = run.RunItems.Select(item => new RunItemEntity
+            {
+                Id = item.Id.Value,
+                RunId = run.Id.Value,
+                DefinitionKey = item.DefinitionKey,
+                DisplayName = item.DisplayName,
+                Description = item.Description,
+                Type = item.Type.ToString(),
+                Rarity = item.Rarity.ToString(),
+                Quantity = item.Quantity,
+                EffectType = item.EffectType.ToString(),
+                EffectAmount = item.EffectAmount,
+                CreatedAtUtc = item.CreatedAtUtc
+            }).ToList(),
+            RunModifiers = run.RunModifiers.Select(m => new RunModifierEntity
+            {
+                Id = m.Id.Value,
+                RunId = run.Id.Value,
+                Type = m.Type.ToString(),
+                Value = m.Value,
+                Duration = m.Duration.ToString(),
+                SourceType = m.SourceType,
+                SourceKey = m.SourceKey,
+                CreatedAtUtc = m.CreatedAtUtc,
+                ConsumedAtUtc = m.ConsumedAtUtc
+            }).ToList()
         };
 
         var snapshot = run.SnapshotData;
@@ -175,6 +201,28 @@ public static class RunPersistenceMapper
             ? PlayerRuntimeStatePersistenceMapper.ToDomain(entity.PlayerState)
             : null;
 
+        var runItems = entity.InventoryItems.Select(item => RunItem.Rehydrate(
+            new RunItemId(item.Id),
+            item.DefinitionKey,
+            item.DisplayName,
+            item.Description,
+            Enum.Parse<RunItemType>(item.Type),
+            Enum.Parse<RunItemRarity>(item.Rarity),
+            item.Quantity,
+            Enum.Parse<RunItemEffectType>(item.EffectType),
+            item.EffectAmount,
+            item.CreatedAtUtc)).ToList();
+
+        var runModifiers = entity.RunModifiers.Select(m => RunModifier.Rehydrate(
+            new RunModifierId(m.Id),
+            Enum.Parse<RunModifierType>(m.Type),
+            m.Value,
+            Enum.Parse<RunModifierDuration>(m.Duration),
+            m.SourceType,
+            m.SourceKey,
+            m.CreatedAtUtc,
+            m.ConsumedAtUtc)).ToList();
+
         return Run.Rehydrate(
             new RunId(entity.Id),
             entity.PlayerId,
@@ -200,7 +248,9 @@ public static class RunPersistenceMapper
             entity.PreSuspendStatus is not null ? Enum.Parse<RunStatus>(entity.PreSuspendStatus) : null,
             snapshot,
             activeCombat,
-            playerState);
+            playerState,
+            runItems,
+            runModifiers);
     }
 
     public static Room ToDomain(RoomEntity entity)

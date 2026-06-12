@@ -8,6 +8,7 @@ public sealed record CombatEncounterDraftEnemyDto(
     string Description,
     string Archetype,
     int BaseDifficulty,
+    string DifficultyLabel,
     int MinRiskLevel,
     int MaxRiskLevel,
     IReadOnlyCollection<string> Tags,
@@ -22,6 +23,7 @@ public sealed record CombatEncounterDraftEnemyDto(
             Description: enemy.Description,
             Archetype: enemy.Archetype,
             BaseDifficulty: enemy.BaseDifficulty,
+            DifficultyLabel: GetDifficultyLabel(enemy.BaseDifficulty),
             MinRiskLevel: enemy.MinRiskLevel,
             MaxRiskLevel: enemy.MaxRiskLevel,
             Tags: enemy.Tags,
@@ -30,6 +32,16 @@ public sealed record CombatEncounterDraftEnemyDto(
                 .Select(CombatEncounterDraftSkillDto.FromDomain)
                 .ToArray());
     }
+
+    private static string GetDifficultyLabel(int baseDifficulty) => baseDifficulty switch
+    {
+        <= 1 => "Fragile",
+        <= 2 => "Standard",
+        <= 3 => "Résistant",
+        <= 5 => "Dangereux",
+        <= 7 => "Élite",
+        _ => "Boss"
+    };
 }
 
 public sealed record CombatEncounterDraftSkillDto(

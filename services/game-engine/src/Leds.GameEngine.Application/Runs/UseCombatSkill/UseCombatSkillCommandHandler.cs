@@ -125,6 +125,7 @@ public sealed class UseCombatSkillCommandHandler
                 n.Row == run.CurrentRoom.CurrentNodeDepth);
 
             run.CompleteActiveCombat();
+            run.ConsumeNextCombatModifiers();
 
             var rewardOffer = CreateRewardOffer(combatNode);
             await _rewardOfferRepository.AddAsync(rewardOffer, cancellationToken);

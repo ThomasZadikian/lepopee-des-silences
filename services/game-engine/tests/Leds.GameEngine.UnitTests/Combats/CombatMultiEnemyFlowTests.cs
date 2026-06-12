@@ -251,7 +251,7 @@ public sealed class CombatMultiEnemyFlowTests
 
     private static Combatant CreateAlly(string sourceKey, string displayName, params CombatantSkill[] skills)
     {
-        return Combatant.CreateAlly(sourceKey, displayName, "Fighter", 100,
+        return Combatant.CreateAlly(sourceKey, displayName, "Fighter", 100, 0,
             skills.Length > 0 ? skills : Array.Empty<CombatantSkill>());
     }
 

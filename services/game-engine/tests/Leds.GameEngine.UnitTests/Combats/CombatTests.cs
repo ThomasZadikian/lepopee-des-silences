@@ -131,6 +131,7 @@ public sealed class CombatTests
                     maxVitality: -10,
                     currentVitality: -10,
                     guard: 0,
+                    baseGuard: 0,
                     mana: 0,
                     charge: 0)
             };

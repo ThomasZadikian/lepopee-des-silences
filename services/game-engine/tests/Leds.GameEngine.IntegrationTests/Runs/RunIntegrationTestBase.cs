@@ -43,6 +43,7 @@ public abstract class RunIntegrationTestBase
         }
 
         await ResolveEventChoiceIfRequiredAsync(runId);
+        await SelectPendingRewardIfAnyAsync(runId);
 
         var getResponse = await Client.GetAsync($"/api/v2/runs/{runId}");
 
@@ -170,6 +171,31 @@ public abstract class RunIntegrationTestBase
             new { ChoiceId = choiceId });
 
         choiceResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    private async Task SelectPendingRewardIfAnyAsync(Guid runId)
+    {
+        var pendingResponse = await Client.GetAsync(
+            $"/api/v2/runs/{runId}/rewards/pending");
+
+        if (pendingResponse.StatusCode != HttpStatusCode.OK)
+        {
+            return;
+        }
+
+        var rewardOffer = await pendingResponse.Content
+            .ReadFromJsonAsync<RewardOfferDto>();
+
+        if (rewardOffer?.SelectedChoiceId is null && rewardOffer?.Choices.Count > 0)
+        {
+            var firstChoice = rewardOffer.Choices.First();
+
+            var selectResponse = await Client.PostAsJsonAsync(
+                $"/api/v2/runs/{runId}/rewards/select",
+                new { ChoiceId = firstChoice.Id });
+
+            selectResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        }
     }
 
     protected async Task<StartRunResponse> StartRunAsync()

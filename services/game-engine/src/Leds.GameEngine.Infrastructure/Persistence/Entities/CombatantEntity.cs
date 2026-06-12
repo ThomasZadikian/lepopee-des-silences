@@ -11,6 +11,7 @@ public sealed class CombatantEntity
     public int MaxVitality { get; set; }
     public int CurrentVitality { get; set; }
     public int Guard { get; set; }
+    public int BaseGuard { get; set; }
     public int Mana { get; set; }
     public int Charge { get; set; }
     public string Status { get; set; } = string.Empty;

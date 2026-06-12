@@ -88,7 +88,7 @@ public sealed class ResolveCurrentEventCommandHandlerTests
             CreateEncounterDraftGeneratorMock().Object,
             combatFactory?.Object ?? new Mock<ICombatFactory>().Object,
             new Mock<IRewardOfferRepository>().Object,
-            new RewardOfferFactory(new Mock<Combats.ICombatRiskProfileResolver>().Object));
+            new RewardOfferFactory(new Mock<Leds.GameEngine.Application.Combats.ICombatRiskProfileResolver>().Object));
     }
 
     [Fact]
@@ -334,7 +334,10 @@ public sealed class ResolveCurrentEventCommandHandlerTests
         var runtimeCombat = new CombatFactory().CreateFromDraft(expectedDraft);
         var runtimeFactoryMock = new Mock<ICombatFactory>();
         runtimeFactoryMock
-            .Setup(f => f.CreateFromDraft(It.IsAny<CombatEncounterDraft>(), It.IsAny<PlayerRuntimeState?>()))
+            .Setup(f => f.CreateFromDraft(
+                It.IsAny<CombatEncounterDraft>(),
+                It.IsAny<PlayerRuntimeState?>(),
+                It.IsAny<IReadOnlyCollection<RunModifier>?>()))
             .Returns(runtimeCombat);
 
         var handler = new ResolveCurrentEventCommandHandler(
@@ -345,7 +348,9 @@ public sealed class ResolveCurrentEventCommandHandlerTests
             combatFactory.Object,
             new Mock<ICombatInstanceRepository>().Object,
             draftGenerator.Object,
-            runtimeFactoryMock.Object);
+            runtimeFactoryMock.Object,
+            new Mock<IRewardOfferRepository>().Object,
+            new RewardOfferFactory(new Mock<Leds.GameEngine.Application.Combats.ICombatRiskProfileResolver>().Object));
 
         var response = await handler.Handle(
             new ResolveCurrentEventCommand(run.Id.Value),
@@ -435,7 +440,10 @@ public sealed class ResolveCurrentEventCommandHandlerTests
         var runtimeCombat = new CombatFactory().CreateFromDraft(expectedDraft);
         var runtimeFactoryMock = new Mock<ICombatFactory>();
         runtimeFactoryMock
-            .Setup(f => f.CreateFromDraft(It.IsAny<CombatEncounterDraft>(), It.IsAny<PlayerRuntimeState?>()))
+            .Setup(f => f.CreateFromDraft(
+                It.IsAny<CombatEncounterDraft>(),
+                It.IsAny<PlayerRuntimeState?>(),
+                It.IsAny<IReadOnlyCollection<RunModifier>?>()))
             .Returns(runtimeCombat);
 
         var handler = new ResolveCurrentEventCommandHandler(
@@ -448,7 +456,7 @@ public sealed class ResolveCurrentEventCommandHandlerTests
             draftGenerator.Object,
             runtimeFactoryMock.Object,
             new Mock<IRewardOfferRepository>().Object,
-            new RewardOfferFactory(new Mock<Combats.ICombatRiskProfileResolver>().Object));
+            new RewardOfferFactory(new Mock<Leds.GameEngine.Application.Combats.ICombatRiskProfileResolver>().Object));
 
         var response = await handler.Handle(
             new ResolveCurrentEventCommand(run.Id.Value),

@@ -33,6 +33,8 @@ public sealed class RunEntity
     public List<RoomEntity> Rooms { get; set; } = [];
     public List<RunMemoryFragmentEntity> MemoryFragments { get; set; } = [];
     public List<RunActivePalaceLawEntity> ActivePalaceLaws { get; set; } = [];
+    public List<RunItemEntity> InventoryItems { get; set; } = [];
+    public List<RunModifierEntity> RunModifiers { get; set; } = [];
     public CombatEntity? ActiveCombat { get; set; }
     public PlayerRuntimeStateEntity? PlayerState { get; set; }
 }

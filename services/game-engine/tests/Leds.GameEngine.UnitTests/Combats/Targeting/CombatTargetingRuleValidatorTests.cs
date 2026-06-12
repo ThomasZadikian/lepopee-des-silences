@@ -31,8 +31,8 @@ public sealed class CombatTargetingRuleValidatorTests
         _allAlliesSkill = CreateSkill("skill.basic.rally", "AllAllies");
         _unsupportedSkill = CreateSkill("skill.basic.unknown", "Unsupported");
 
-        _ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100, [_selfSkill, _singleEnemySkill]);
-        _ally2 = Combatant.CreateAlly("player.ally2", "Sidekick", "Support", 60, [_singleAllySkill]);
+        _ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100, 0, [_selfSkill, _singleEnemySkill]);
+        _ally2 = Combatant.CreateAlly("player.ally2", "Sidekick", "Support", 60, 0, [_singleAllySkill]);
         _enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 80, [_singleEnemySkill]);
         _enemy2 = Combatant.CreateEnemy("enemy.skirmisher", "Skirmisher", "Skirmisher", 50, [_singleEnemySkill]);
 

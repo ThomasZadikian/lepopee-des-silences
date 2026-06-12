@@ -7,4 +7,5 @@ public sealed record EncounterCompositionContext(
     int RoomIndex,
     int RiskLevel,
     string EncounterType,
-    IReadOnlyCollection<CatalogEnemyDefinition> AvailableEnemies);
+    IReadOnlyCollection<CatalogEnemyDefinition> AvailableEnemies,
+    int NodeDepth = 0);

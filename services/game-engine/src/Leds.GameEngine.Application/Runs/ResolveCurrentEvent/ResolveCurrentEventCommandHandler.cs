@@ -151,35 +151,65 @@ public sealed class ResolveCurrentEventCommandHandler
             var draft = await GenerateEncounterDraft(
                 run, room, selectedNode, resolutionResult, cancellationToken);
 
-            if (draft is not null)
+            // Apply NextCombatDifficultyMultiplier modifiers (e.g. from curses).
+            var difficultyModifiers = run.GetActiveModifiers(RunModifierType.NextCombatDifficultyMultiplier);
+            if (difficultyModifiers.Count > 0)
             {
-                encounterDraftDto = CombatEncounterDraftDto.FromDomain(draft);
-                var combatRuntime = _combatFactory.CreateFromDraft(draft, run.PlayerState);
-                run.StartCombat(combatRuntime);
-                combatRuntimeDto = CombatRuntimeDto.FromDomain(combatRuntime);
+                var additionalMultiplier = difficultyModifiers.Sum(m => m.Value);
+                draft = draft with
+                {
+                    DifficultyMultiplier = Math.Min(draft.DifficultyMultiplier * (1.0 + additionalMultiplier), 2.0)
+                };
             }
+
+            encounterDraftDto = CombatEncounterDraftDto.FromDomain(draft);
+            var combatRuntime = _combatFactory.CreateFromDraft(draft, run.PlayerState, run.RunModifiers);
+            run.StartCombat(combatRuntime);
+            combatRuntimeDto = CombatRuntimeDto.FromDomain(combatRuntime);
+        }
+        else if (selectedNode.EventType == NodeEventType.Item)
+        {
+            var itemRewardOffer = _rewardOfferFactory.CreateItemRewardOffer(
+                selectedNode.RewardProfile,
+                selectedNode.RiskLevel);
+
+            await _rewardOfferRepository.AddAsync(itemRewardOffer, cancellationToken);
+            run.SetPendingRewardOffer(itemRewardOffer.Id);
+            run.ResolveCurrentEvent();
+            selectedNode.ChooseEventOption("item");
         }
         else if (selectedNode.EventType == NodeEventType.Merchant)
         {
-            var merchantRewardOffer = _rewardOfferFactory.CreateCombatRewardOffer(
-                Domain.Rewards.RewardSource.NodeEvent,
-                selectedNode.EventType,
+            var merchantRewardOffer = _rewardOfferFactory.CreateMerchantRewardOffer(
                 selectedNode.RiskLevel);
 
             await _rewardOfferRepository.AddAsync(merchantRewardOffer, cancellationToken);
             run.SetPendingRewardOffer(merchantRewardOffer.Id);
             run.ResolveCurrentEvent();
+            selectedNode.ChooseEventOption("trade");
         }
         else if (selectedNode.EventType == NodeEventType.Curse)
         {
+            var curseKey = $"curse.{selectedNode.Id.Value.ToString()[..8]}";
+
             var curse = ActiveCurse.Create(
-                $"curse.{selectedNode.Id.Value.ToString()[..8]}",
+                curseKey,
                 resolutionResult.Title,
                 resolutionResult.Description,
                 0.10,
                 DateTime.UtcNow);
 
             run.ApplyCurse(curse);
+
+            // Add a mechanical RunModifier: +10% enemy difficulty for the next combat.
+            var curseModifier = RunModifier.Create(
+                RunModifierType.NextCombatDifficultyMultiplier,
+                0.10,
+                RunModifierDuration.NextCombatOnly,
+                "Curse",
+                curseKey);
+            run.AddRunModifier(curseModifier);
+
             run.ResolveCurrentEvent();
         }
         else
@@ -200,50 +230,44 @@ public sealed class ResolveCurrentEventCommandHandler
             combatRuntimeDto);
     }
 
-    private async Task<CombatEncounterDraft?> GenerateEncounterDraft(
+    private async Task<CombatEncounterDraft> GenerateEncounterDraft(
         Run run,
         Room room,
         MapNode selectedNode,
         NodeEventResolutionResult resolutionResult,
         CancellationToken cancellationToken)
     {
-        try
+        var encounterType = resolutionResult.ResolutionKind switch
         {
-            var encounterType = resolutionResult.ResolutionKind switch
-            {
-                NodeEventResolutionKind.CombatStarted => "Combat",
-                NodeEventResolutionKind.EliteEncounterStarted => "Elite",
-                NodeEventResolutionKind.RoomBossEncounterStarted => "RoomBoss",
-                NodeEventResolutionKind.RareCombatStarted => "Rare",
-                _ => "Combat"
-            };
+            NodeEventResolutionKind.CombatStarted => "Combat",
+            NodeEventResolutionKind.EliteEncounterStarted => "Elite",
+            NodeEventResolutionKind.RoomBossEncounterStarted => "RoomBoss",
+            NodeEventResolutionKind.RareCombatStarted => "Rare",
+            _ => "Combat"
+        };
 
-            var catalogRiskLevel = Math.Clamp(selectedNode.RiskLevel / 20 + 1, 1, 5);
+        var catalogRiskLevel = Math.Clamp(selectedNode.RiskLevel / 20 + 1, 1, 5);
 
-            var enemyCount = encounterType switch
-            {
-                "Elite" => 1,
-                "Rare" => 1,
-                "RoomBoss" => 1,
-                _ => catalogRiskLevel >= 3 ? 2 : 1
-            };
-
-            var draftContext = new CombatEncounterDraftContext(
-                RunId: run.Id.Value,
-                RoomId: room.Id.Value,
-                NodeId: selectedNode.Id.Value,
-                RoomType: room.RoomType.ToString(),
-                RoomIndex: room.Depth,
-                RiskLevel: catalogRiskLevel,
-                EncounterType: encounterType,
-                EnemyCount: enemyCount);
-
-            return await _encounterDraftGenerator.GenerateAsync(
-                draftContext, cancellationToken);
-        }
-        catch
+        var enemyCount = encounterType switch
         {
-            return null;
-        }
+            "Elite" => 1,
+            "Rare" => 1,
+            "RoomBoss" => 1,
+            _ => catalogRiskLevel >= 3 ? 2 : 1
+        };
+
+        var draftContext = new CombatEncounterDraftContext(
+            RunId: run.Id.Value,
+            RoomId: room.Id.Value,
+            NodeId: selectedNode.Id.Value,
+            RoomType: room.RoomType.ToString(),
+            RoomIndex: room.Depth,
+            RiskLevel: catalogRiskLevel,
+            EncounterType: encounterType,
+            EnemyCount: enemyCount,
+            NodeDepth: selectedNode.Row);
+
+        return await _encounterDraftGenerator.GenerateAsync(
+            draftContext, cancellationToken);
     }
 }

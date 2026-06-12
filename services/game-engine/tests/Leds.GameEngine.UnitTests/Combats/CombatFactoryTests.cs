@@ -3,6 +3,7 @@ using Leds.GameEngine.Application.Combats;
 using Leds.GameEngine.Application.Combats.EncounterDrafts;
 using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Common;
+using Leds.GameEngine.Domain.Runs;
 
 namespace Leds.GameEngine.UnitTests.Combats;
 
@@ -218,5 +219,82 @@ public sealed class CombatFactoryTests
         var act = () => factory.CreateFromDraft(draft);
 
         act.Should().Throw<DomainException>().WithMessage("Combat requires at least one ally.");
+    }
+
+    // -----------------------------------------------------------------------
+    // StartingGuardBonus
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public void CreateFromDraft_ShouldApplyStartingGuardBonus_WhenModifierProvided()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft();
+
+        var modifier = RunModifier.Create(
+            RunModifierType.StartingGuardBonus,
+            8,
+            RunModifierDuration.UntilRunEnds,
+            "RunItem",
+            "item.consumable.guard-shard");
+
+        var combat = factory.CreateFromDraft(draft, runModifiers: new[] { modifier });
+
+        var ally = combat.Allies.Single();
+        ally.Guard.Should().Be(8,
+            because: "An unconsumed StartingGuardBonus modifier with value 8 should set ally guard to 8.");
+    }
+
+    [Fact]
+    public void CreateFromDraft_ShouldSumMultipleStartingGuardBonusModifiers()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft();
+
+        var modifiers = new[]
+        {
+            RunModifier.Create(RunModifierType.StartingGuardBonus, 8, RunModifierDuration.UntilRunEnds, "RunItem", "item.guard-shard.1"),
+            RunModifier.Create(RunModifierType.StartingGuardBonus, 6, RunModifierDuration.UntilRunEnds, "RunItem", "item.guard-shard.2"),
+        };
+
+        var combat = factory.CreateFromDraft(draft, runModifiers: modifiers);
+
+        var ally = combat.Allies.Single();
+        ally.Guard.Should().Be(14,
+            because: "Two guard bonus modifiers (8 + 6) should stack to 14.");
+    }
+
+    [Fact]
+    public void CreateFromDraft_ShouldNotApplyConsumedStartingGuardBonusModifiers()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft();
+
+        var modifier = RunModifier.Create(
+            RunModifierType.StartingGuardBonus,
+            8,
+            RunModifierDuration.UntilRunEnds,
+            "RunItem",
+            "item.consumable.guard-shard");
+        modifier.Consume(DateTime.UtcNow);
+
+        var combat = factory.CreateFromDraft(draft, runModifiers: new[] { modifier });
+
+        var ally = combat.Allies.Single();
+        ally.Guard.Should().Be(0,
+            because: "A consumed StartingGuardBonus modifier must not contribute to starting guard.");
+    }
+
+    [Fact]
+    public void CreateFromDraft_ShouldUseZeroGuard_WhenNoRunModifiersProvided()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft();
+
+        var combat = factory.CreateFromDraft(draft);
+
+        var ally = combat.Allies.Single();
+        ally.Guard.Should().Be(0,
+            because: "Without any RunModifiers the starting guard defaults to 0.");
     }
 }

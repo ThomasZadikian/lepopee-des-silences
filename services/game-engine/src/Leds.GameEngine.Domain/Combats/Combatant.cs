@@ -13,6 +13,7 @@ public sealed class Combatant
         int maxVitality,
         int currentVitality,
         int guard,
+        int baseGuard,
         int mana,
         int charge,
         CombatantStatus status,
@@ -26,6 +27,7 @@ public sealed class Combatant
         MaxVitality = maxVitality;
         CurrentVitality = currentVitality;
         Guard = guard;
+        BaseGuard = baseGuard;
         Mana = mana;
         Charge = charge;
         Status = status;
@@ -40,6 +42,11 @@ public sealed class Combatant
     public int MaxVitality { get; }
     public int CurrentVitality { get; private set; }
     public int Guard { get; private set; }
+    /// <summary>
+    /// The passive guard floor restored at the start of each new round.
+    /// Set from StartingGuardBonus run modifiers at combat creation.
+    /// </summary>
+    public int BaseGuard { get; private set; }
     public int Mana { get; private set; }
     public int Charge { get; private set; }
     public CombatantStatus Status { get; private set; }
@@ -52,6 +59,7 @@ public sealed class Combatant
         string displayName,
         string archetype,
         int maxVitality,
+        int baseGuard = 0,
         IReadOnlyCollection<CombatantSkill>? skills = null)
     {
         return Create(
@@ -62,7 +70,8 @@ public sealed class Combatant
             archetype,
             maxVitality,
             currentVitality: maxVitality,
-            guard: 0,
+            guard: baseGuard,
+            baseGuard: baseGuard,
             mana: 0,
             charge: 0,
             skills);
@@ -84,6 +93,7 @@ public sealed class Combatant
             maxVitality,
             currentVitality: maxVitality,
             guard: 0,
+            baseGuard: 0,
             mana: 0,
             charge: 0,
             skills);
@@ -98,6 +108,7 @@ public sealed class Combatant
         int maxVitality,
         int currentVitality,
         int guard,
+        int baseGuard,
         int mana,
         int charge,
         IReadOnlyCollection<CombatantSkill>? skills = null)
@@ -120,6 +131,9 @@ public sealed class Combatant
         if (guard < 0)
             throw new DomainException("Combatant guard must be non-negative.");
 
+        if (baseGuard < 0)
+            throw new DomainException("Combatant base guard must be non-negative.");
+
         if (mana < 0)
             throw new DomainException("Combatant mana must be non-negative.");
 
@@ -135,6 +149,7 @@ public sealed class Combatant
             maxVitality,
             currentVitality,
             guard,
+            baseGuard,
             mana,
             charge,
             CombatantStatus.Active,
@@ -192,6 +207,18 @@ public sealed class Combatant
     }
 
     /// <summary>
+    /// Restores Guard to BaseGuard at the start of each new round.
+    /// Guard may still exceed BaseGuard from GainGuard (skill.basic.guard);
+    /// we only restore if Guard has been consumed below BaseGuard.
+    /// </summary>
+    public void ResetGuardToBase()
+    {
+        if (IsDefeated) return;
+        if (Guard < BaseGuard)
+            Guard = BaseGuard;
+    }
+
+    /// <summary>
     /// Rehydrates a combatant from a trusted persistence snapshot.
     /// This method must not be used to create a new gameplay combatant.
     /// </summary>
@@ -204,11 +231,12 @@ public sealed class Combatant
         int maxVitality,
         int currentVitality,
         int guard,
+        int baseGuard,
         int mana,
         int charge,
         CombatantStatus status,
         IReadOnlyCollection<CombatantSkill> skills)
     {
-        return new Combatant(id, sourceKey, displayName, side, archetype, maxVitality, currentVitality, guard, mana, charge, status, skills);
+        return new Combatant(id, sourceKey, displayName, side, archetype, maxVitality, currentVitality, guard, baseGuard, mana, charge, status, skills);
     }
 }

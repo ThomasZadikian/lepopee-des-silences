@@ -33,15 +33,22 @@ public sealed record RunDto(
     RoomDto CurrentRoom,
     IReadOnlyCollection<RoomDto> Rooms,
     IReadOnlyCollection<ActivePalaceLawDto> ActivePalaceLaws,
+    IReadOnlyCollection<RunItemDto> InventoryItems,
     int CurrentRoomIndex,
     int CurrentRoomNumber,
     bool CanResume,
     DateTimeOffset? SavedAt,
     DateTimeOffset? AbandonedAt,
-    PlayerRuntimeStateDto? PlayerState)
+    PlayerRuntimeStateDto? PlayerState,
+    IReadOnlyCollection<RunModifierDto>? ActiveModifiers = null)
 {
     public static RunDto FromDomain(Run run)
     {
+        var activeModifiers = run.RunModifiers
+            .Where(m => !m.IsConsumed)
+            .Select(RunModifierDto.FromDomain)
+            .ToArray();
+
         return new RunDto(
             run.Id.Value,
             run.PlayerId,
@@ -55,11 +62,53 @@ public sealed record RunDto(
             RoomDto.FromDomain(run.CurrentRoom),
             run.Rooms.Select(RoomDto.FromDomain).ToArray(),
             run.ActivePalaceLaws.Select(ActivePalaceLawDto.FromDomain).ToArray(),
+            run.RunItems.Select(RunItemDto.FromDomain).ToArray(),
             run.CurrentRoomIndex,
             run.CurrentRoomIndex + 1,
             CanResume: run.Status == RunStatus.Suspended,
             SavedAt: run.SavedAt,
             AbandonedAt: run.Status == RunStatus.Abandoned ? run.EndedAt : null,
-            PlayerState: PlayerRuntimeStateDto.FromDomain(run.PlayerState));
+            PlayerState: PlayerRuntimeStateDto.FromDomain(run.PlayerState),
+            ActiveModifiers: activeModifiers.Length > 0 ? activeModifiers : null);
     }
+}
+
+public sealed record RunModifierDto(
+    Guid Id,
+    string Type,
+    double Value,
+    string Duration,
+    string SourceType,
+    string SourceKey)
+{
+    public static RunModifierDto FromDomain(RunModifier modifier) => new(
+        modifier.Id.Value,
+        modifier.Type.ToString(),
+        modifier.Value,
+        modifier.Duration.ToString(),
+        modifier.SourceType,
+        modifier.SourceKey);
+}
+
+public sealed record RunItemDto(
+    Guid Id,
+    string DefinitionKey,
+    string DisplayName,
+    string Description,
+    string Type,
+    string Rarity,
+    int Quantity,
+    string EffectType,
+    int EffectAmount)
+{
+    public static RunItemDto FromDomain(RunItem item) => new(
+        item.Id.Value,
+        item.DefinitionKey,
+        item.DisplayName,
+        item.Description,
+        item.Type.ToString(),
+        item.Rarity.ToString(),
+        item.Quantity,
+        item.EffectType.ToString(),
+        item.EffectAmount);
 }

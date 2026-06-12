@@ -237,7 +237,7 @@ public sealed class InMemoryCatalogContentGatewayTests
     }
 
     [Fact]
-    public async Task InMemorySeeds_ShouldContainAllFourteenEnemies()
+    public async Task InMemorySeeds_ShouldContainAllTwentySixEnemies()
     {
         var all = await _gateway.ListEnemyDefinitionsByRoomTypeAsync("Threshold");
         all = all.Concat(await _gateway.ListEnemyDefinitionsByRoomTypeAsync("Forest"))
@@ -248,7 +248,7 @@ public sealed class InMemoryCatalogContentGatewayTests
             .Concat(await _gateway.ListEnemyDefinitionsByRoomTypeAsync("Final"))
             .ToArray();
 
-        all.Select(e => e.Key).Distinct().Should().HaveCount(14);
+        all.Select(e => e.Key).Distinct().Should().HaveCount(26);
     }
 
     // ── Skill Definitions ──────────────────────────────────────────────

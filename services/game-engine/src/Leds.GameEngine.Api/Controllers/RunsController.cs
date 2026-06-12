@@ -6,6 +6,7 @@ using Leds.GameEngine.Application.Runs.ChooseNode;
 using Leds.GameEngine.Application.Runs.ExitMidRoom;
 using Leds.GameEngine.Application.Runs.GetCurrentCombat;
 using Leds.GameEngine.Application.Runs.GetRunById;
+using Leds.GameEngine.Application.Runs.GetRunInventory;
 using Leds.GameEngine.Application.Runs.ResumeRun;
 using Leds.GameEngine.Application.Runs.MoveToNextRoom;
 using Leds.GameEngine.Application.Runs.ProgressRun;
@@ -208,6 +209,20 @@ public sealed class RunsController : ControllerBase
             request.ChoiceId);
 
         var response = await _sender.Send(command, cancellationToken);
+
+        return Ok(response);
+    }
+
+    [HttpGet("{runId:guid}/inventory")]
+    [ProducesResponseType(typeof(GetRunInventoryResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<GetRunInventoryResponse>> GetRunInventory(
+        Guid runId,
+        CancellationToken cancellationToken)
+    {
+        var query = new GetRunInventoryQuery(runId);
+
+        var response = await _sender.Send(query, cancellationToken);
 
         return Ok(response);
     }

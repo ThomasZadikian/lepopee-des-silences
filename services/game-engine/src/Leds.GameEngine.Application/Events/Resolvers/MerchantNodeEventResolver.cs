@@ -13,8 +13,8 @@ public sealed class MerchantNodeEventResolver : INodeEventResolver
         return NodeEventResolutionResult.Create(
             NodeEventResolutionKind.TradeOffered,
             "Marchand de fragments",
-            "Une entité propose un échange dont le coût n’est pas entièrement visible.",
-            requiresPlayerChoice: true,
+            "Une entité propose un échange dont le coût n'est pas entièrement visible.",
+            requiresPlayerChoice: false,
             choices: new[]
             {
                 new NodeEventChoiceDto(
@@ -24,13 +24,13 @@ public sealed class MerchantNodeEventResolver : INodeEventResolver
                 new NodeEventChoiceDto(
                     "refuse",
                     "Refuser",
-                    "Ne modifie pas l’état de la run.")
+                    "Ne modifie pas l'état de la run.")
             },
             narrativeFragments: new[]
             {
                 new NarrativeFragmentDto(
                     "Elise",
-                    "Dans le Palais, rien ne s’achète seulement avec de la monnaie.")
+                    "Dans le Palais, rien ne s'achète seulement avec de la monnaie.")
             });
     }
 }

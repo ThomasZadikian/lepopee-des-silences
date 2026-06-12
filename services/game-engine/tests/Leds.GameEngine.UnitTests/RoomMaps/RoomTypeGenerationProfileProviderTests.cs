@@ -205,30 +205,41 @@ public sealed class RoomTypeGenerationProfileProviderTests
     }
 
     [Fact]
-    public void SilenceProfile_ShouldFavorLawNpcAndMerchantNodes()
+    public void SilenceProfile_ShouldFavorNpcAndMerchantNodes()
     {
+        // Law was removed from Silence until a gameplay-effective RunModifier implementation exists.
         var profile = CreateSut().GetProfile(RoomType.Silence);
         var total = profile.TotalWeight;
         var systemic = profile.NodeTypeWeights
-            .Where(w => w.NodeType is NodeEventType.Law or NodeEventType.Npc or NodeEventType.Merchant)
+            .Where(w => w.NodeType is NodeEventType.Npc or NodeEventType.Merchant)
             .Sum(w => w.Weight);
 
         ((double)systemic / total).Should().BeGreaterThan(0.55,
-            because: "Silence favours Law, Npc, Merchant — combined weight should exceed 55 %.");
+            because: "Silence favours Npc and Merchant — combined weight should exceed 55 %.");
     }
 
     [Fact]
-    public void MemoryProfile_ShouldFavorNpcLawItemAndRestNodes()
+    public void SilenceProfile_ShouldNotContainLawNodes()
     {
+        var profile = CreateSut().GetProfile(RoomType.Silence);
+
+        profile.NodeTypeWeights
+            .Should().NotContain(w => w.NodeType == NodeEventType.Law,
+                because: "Law nodes have no gameplay effect and must not appear until implemented.");
+    }
+
+    [Fact]
+    public void MemoryProfile_ShouldFavorNpcItemAndRestNodes()
+    {
+        // Law was removed from Memory until a gameplay-effective RunModifier implementation exists.
         var profile = CreateSut().GetProfile(RoomType.Memory);
         var total = profile.TotalWeight;
         var memory = profile.NodeTypeWeights
-            .Where(w => w.NodeType is NodeEventType.Npc or NodeEventType.Law
-                                   or NodeEventType.Item or NodeEventType.Rest)
+            .Where(w => w.NodeType is NodeEventType.Npc or NodeEventType.Item or NodeEventType.Rest)
             .Sum(w => w.Weight);
 
         ((double)memory / total).Should().BeGreaterThan(0.80,
-            because: "Memory favours Npc, Law, Item, Rest — combined weight should exceed 80 %.");
+            because: "Memory favours Npc, Item, Rest — combined weight should exceed 80 %.");
     }
 
     [Fact]
@@ -312,11 +323,27 @@ public sealed class RoomTypeGenerationProfileProviderTests
     }
 
     [Fact]
-    public void SilenceProfile_ShouldHaveLawChoiceRewardOption()
+    public void SilenceProfile_ShouldHaveMerchantSpecialRewardOption()
     {
+        // Law was removed from Silence. Merchant-special carries the player-choice semantics instead.
         var profile = CreateSut().GetProfile(RoomType.Silence);
 
-        profile.RewardProfilesByNodeType[NodeEventType.Law].Should().Contain("law-choice",
-            because: "Silence Law nodes emphasise player-choice reward semantics.");
+        profile.RewardProfilesByNodeType[NodeEventType.Merchant].Should().Contain("merchant-special",
+            because: "Silence Merchant nodes emphasise player-choice reward semantics in the absence of Law.");
+    }
+
+    [Theory]
+    [InlineData(RoomType.Threshold)]
+    [InlineData(RoomType.Forest)]
+    [InlineData(RoomType.Rupture)]
+    [InlineData(RoomType.Silence)]
+    [InlineData(RoomType.Memory)]
+    public void Profiles_ShouldNotContainLawNodeType(RoomType roomType)
+    {
+        var profile = CreateSut().GetProfile(roomType);
+
+        profile.NodeTypeWeights
+            .Should().NotContain(w => w.NodeType == NodeEventType.Law,
+                because: $"Law has no gameplay effect and must not appear in {roomType} generation until implemented.");
     }
 }

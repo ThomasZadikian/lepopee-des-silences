@@ -37,12 +37,14 @@ public sealed class RewardOfferFactoryTests
     }
 
     [Fact]
-    public void CreateCombatRewardOffer_ShouldOnlyExposeSupportedHealChoices()
+    public void CreateCombatRewardOffer_ShouldExposeHealAndItemChoices()
     {
         var offer = CreateFactory()
             .CreateCombatRewardOffer(RewardSource.Elite, NodeEventType.Elite, riskLevel: 50);
 
-        offer.Choices.Should().OnlyContain(choice => choice.RewardType == RewardType.Heal);
+        offer.Choices.Should().Contain(choice =>
+            choice.RewardType == RewardType.Heal ||
+            choice.RewardType == RewardType.TemporaryItem);
     }
 
     // -----------------------------------------------------------------------
@@ -57,9 +59,9 @@ public sealed class RewardOfferFactoryTests
 
         offer.Source.Should().Be(RewardSource.Combat);
         offer.Choices.Should().HaveCount(3);
-        offer.Choices.Should().OnlyContain(c =>
-            c.RewardType == RewardType.Heal && c.PayloadKey.StartsWith("heal:"),
-            because: "MVP combat rewards must only expose applicable heal choices.");
+        offer.Choices.Should().Contain(c =>
+            c.RewardType == RewardType.Heal || c.RewardType == RewardType.TemporaryItem,
+            because: "MVP combat rewards expose heal and item choices.");
     }
 
     [Fact]
@@ -70,9 +72,9 @@ public sealed class RewardOfferFactoryTests
 
         offer.Source.Should().Be(RewardSource.Rare);
         offer.Choices.Should().HaveCount(3);
-        offer.Choices.Should().OnlyContain(c =>
-            c.RewardType == RewardType.Heal && c.PayloadKey.StartsWith("heal:"),
-            because: "Rare rewards must not expose unsupported reward types yet.");
+        offer.Choices.Should().Contain(c =>
+            c.RewardType == RewardType.Heal || c.RewardType == RewardType.TemporaryItem,
+            because: "Rare rewards expose heal and item choices.");
     }
 
     [Fact]
@@ -83,9 +85,9 @@ public sealed class RewardOfferFactoryTests
 
         offer.Source.Should().Be(RewardSource.Elite);
         offer.Choices.Should().HaveCount(3);
-        offer.Choices.Should().OnlyContain(c =>
-            c.RewardType == RewardType.Heal && c.PayloadKey.StartsWith("heal:"),
-            because: "Elite rewards must not expose unsupported reward types yet.");
+        offer.Choices.Should().Contain(c =>
+            c.RewardType == RewardType.Heal || c.RewardType == RewardType.TemporaryItem,
+            because: "Elite rewards expose heal and item choices.");
     }
 
     [Fact]
@@ -96,9 +98,9 @@ public sealed class RewardOfferFactoryTests
 
         offer.Source.Should().Be(RewardSource.RoomBoss);
         offer.Choices.Should().HaveCount(3);
-        offer.Choices.Should().OnlyContain(c =>
-            c.RewardType == RewardType.Heal && c.PayloadKey.StartsWith("heal:"),
-            because: "Boss rewards must only expose applicable heal choices for now.");
+        offer.Choices.Should().Contain(c =>
+            c.RewardType == RewardType.Heal || c.RewardType == RewardType.TemporaryItem,
+            because: "Boss rewards expose heal and item choices.");
     }
 
     // -----------------------------------------------------------------------

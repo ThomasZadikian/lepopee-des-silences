@@ -56,11 +56,11 @@ public sealed class EncounterCompositionPolicy : IEncounterCompositionPolicy
 
         var selected = context.EncounterType switch
         {
-            "Combat" => SelectCombatEnemies(eligible, budget),
+            "Combat" => SelectCombatEnemies(eligible, budget, context),
             "Elite" => SelectEliteEnemies(eligible, budget),
             "Rare" => SelectRareEnemies(eligible, budget),
             "RoomBoss" => SelectRoomBossEnemies(eligible),
-            _ => SelectCombatEnemies(eligible, budget),
+            _ => SelectCombatEnemies(eligible, budget, context),
         };
 
         return new EncounterCompositionResult(
@@ -103,9 +103,11 @@ public sealed class EncounterCompositionPolicy : IEncounterCompositionPolicy
     }
 
     private static IReadOnlyCollection<CatalogEnemyDefinition> SelectCombatEnemies(
-        List<CatalogEnemyDefinition> eligible, int budget)
+        List<CatalogEnemyDefinition> eligible, int budget, EncounterCompositionContext context)
     {
-        const int maxEnemies = 3;
+        // Early-run balance: limit enemy count at low depth/risk
+        var maxEnemies = GetMaxEnemiesForEarlyRun(context);
+
         var selected = new List<CatalogEnemyDefinition>();
         var remainingBudget = budget;
 
@@ -130,6 +132,28 @@ public sealed class EncounterCompositionPolicy : IEncounterCompositionPolicy
         }
 
         return selected;
+    }
+
+    /// <summary>
+    /// Early-run balance: limits enemy count based on depth and risk level.
+    /// Prevents unfair encounters at the start of a run.
+    /// </summary>
+    private static int GetMaxEnemiesForEarlyRun(EncounterCompositionContext context)
+    {
+        // Depth 0-1 with low risk (1-2): 1 enemy maximum
+        if (context.NodeDepth <= 1 && context.RiskLevel <= 2)
+            return 1;
+
+        // Low risk (1-2): max 2 enemies
+        if (context.RiskLevel <= 2)
+            return 2;
+
+        // Medium risk (3): max 2 enemies
+        if (context.RiskLevel <= 3)
+            return 2;
+
+        // High risk (4-5): up to 3 enemies
+        return 3;
     }
 
     private static IReadOnlyCollection<CatalogEnemyDefinition> SelectEliteEnemies(

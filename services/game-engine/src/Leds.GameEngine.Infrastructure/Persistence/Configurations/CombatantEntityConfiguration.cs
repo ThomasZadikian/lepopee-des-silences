@@ -21,6 +21,7 @@ public sealed class CombatantEntityConfiguration : IEntityTypeConfiguration<Comb
         builder.Property(c => c.MaxVitality).HasColumnName("max_vitality");
         builder.Property(c => c.CurrentVitality).HasColumnName("current_vitality");
         builder.Property(c => c.Guard).HasColumnName("guard");
+        builder.Property(c => c.BaseGuard).HasColumnName("base_guard");
         builder.Property(c => c.Mana).HasColumnName("mana");
         builder.Property(c => c.Charge).HasColumnName("charge");
         builder.Property(c => c.Status).HasColumnName("status").HasMaxLength(32).IsRequired();
