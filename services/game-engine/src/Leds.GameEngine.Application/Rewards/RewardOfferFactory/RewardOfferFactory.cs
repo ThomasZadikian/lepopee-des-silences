@@ -7,6 +7,7 @@ namespace Leds.GameEngine.Application.Rewards.RewardOfferFactory;
 public sealed class RewardOfferFactory
 {
     private readonly ICombatRiskProfileResolver _riskProfileResolver;
+    private readonly RewardPowerScaler _rewardPowerScaler = new();
 
     public RewardOfferFactory(ICombatRiskProfileResolver riskProfileResolver)
     {
@@ -28,18 +29,19 @@ public sealed class RewardOfferFactory
 
         var choices = source switch
         {
-            RewardSource.RoomBoss => CreateBossRewardChoices(riskLevel),
-            RewardSource.Elite    => CreateEliteRewardChoices(riskLevel),
-            RewardSource.Rare     => CreateRareRewardChoices(riskLevel),
-            _                     => CreateCombatRewardChoices(riskLevel)
+            RewardSource.RoomBoss => CreateBossRewardChoices(riskLevel, scaling.RewardPowerMultiplier),
+            RewardSource.Elite    => CreateEliteRewardChoices(riskLevel, scaling.RewardPowerMultiplier),
+            RewardSource.Rare     => CreateRareRewardChoices(riskLevel, scaling.RewardPowerMultiplier),
+            _                     => CreateCombatRewardChoices(riskLevel, scaling.RewardPowerMultiplier)
         };
 
         return RewardOffer.Create(source, choices, scaling);
     }
 
-    private static List<RewardChoice> CreateCombatRewardChoices(int riskLevel)
+    private List<RewardChoice> CreateCombatRewardChoices(int riskLevel, double multiplier)
     {
-        var healAmount = riskLevel / 5 + 10;
+        var baseHeal = riskLevel / 5 + 10;
+        var healAmount = _rewardPowerScaler.ScaleAmount(baseHeal, multiplier);
 
         return new List<RewardChoice>
         {
@@ -52,20 +54,21 @@ public sealed class RewardOfferFactory
             RewardChoice.Create(
                 RewardType.Heal,
                 "Souffle retrouvé",
-                $"Récupère {healAmount + 4} PV.",
-                $"heal:{healAmount + 4}"),
+                $"Récupère {_rewardPowerScaler.ScaleAmount(baseHeal + 4, multiplier)} PV.",
+                $"heal:{_rewardPowerScaler.ScaleAmount(baseHeal + 4, multiplier)}"),
 
             RewardChoice.Create(
                 RewardType.Heal,
                 "Calme intérieur",
-                $"Récupère {healAmount + 8} PV.",
-                $"heal:{healAmount + 8}")
+                $"Récupère {_rewardPowerScaler.ScaleAmount(baseHeal + 8, multiplier)} PV.",
+                $"heal:{_rewardPowerScaler.ScaleAmount(baseHeal + 8, multiplier)}")
         };
     }
 
-    private static List<RewardChoice> CreateRareRewardChoices(int riskLevel)
+    private List<RewardChoice> CreateRareRewardChoices(int riskLevel, double multiplier)
     {
-        var healAmount = riskLevel / 4 + 15;
+        var baseHeal = riskLevel / 4 + 15;
+        var healAmount = _rewardPowerScaler.ScaleAmount(baseHeal, multiplier);
 
         return new List<RewardChoice>
         {
@@ -78,20 +81,21 @@ public sealed class RewardOfferFactory
             RewardChoice.Create(
                 RewardType.Heal,
                 "Répit lucide",
-                $"Récupère {healAmount + 5} PV.",
-                $"heal:{healAmount + 5}"),
+                $"Récupère {_rewardPowerScaler.ScaleAmount(baseHeal + 5, multiplier)} PV.",
+                $"heal:{_rewardPowerScaler.ScaleAmount(baseHeal + 5, multiplier)}"),
 
             RewardChoice.Create(
                 RewardType.Heal,
                 "Soin substantiel",
-                $"Récupère {healAmount + 10} PV.",
-                $"heal:{healAmount + 10}")
+                $"Récupère {_rewardPowerScaler.ScaleAmount(baseHeal + 10, multiplier)} PV.",
+                $"heal:{_rewardPowerScaler.ScaleAmount(baseHeal + 10, multiplier)}")
         };
     }
 
-    private static List<RewardChoice> CreateEliteRewardChoices(int riskLevel)
+    private List<RewardChoice> CreateEliteRewardChoices(int riskLevel, double multiplier)
     {
-        var healAmount = riskLevel / 3 + 20;
+        var baseHeal = riskLevel / 3 + 20;
+        var healAmount = _rewardPowerScaler.ScaleAmount(baseHeal, multiplier);
 
         return new List<RewardChoice>
         {
@@ -104,20 +108,21 @@ public sealed class RewardOfferFactory
             RewardChoice.Create(
                 RewardType.Heal,
                 "Volonté restaurée",
-                $"Récupère {healAmount + 8} PV.",
-                $"heal:{healAmount + 8}"),
+                $"Récupère {_rewardPowerScaler.ScaleAmount(baseHeal + 8, multiplier)} PV.",
+                $"heal:{_rewardPowerScaler.ScaleAmount(baseHeal + 8, multiplier)}"),
 
             RewardChoice.Create(
                 RewardType.Heal,
                 "Suture mentale",
-                $"Récupère {healAmount + 16} PV.",
-                $"heal:{healAmount + 16}")
+                $"Récupère {_rewardPowerScaler.ScaleAmount(baseHeal + 16, multiplier)} PV.",
+                $"heal:{_rewardPowerScaler.ScaleAmount(baseHeal + 16, multiplier)}")
         };
     }
 
-    private static List<RewardChoice> CreateBossRewardChoices(int riskLevel)
+    private List<RewardChoice> CreateBossRewardChoices(int riskLevel, double multiplier)
     {
-        var healAmount = riskLevel / 2 + 30;
+        var baseHeal = riskLevel / 2 + 30;
+        var healAmount = _rewardPowerScaler.ScaleAmount(baseHeal, multiplier);
 
         return new List<RewardChoice>
         {
@@ -130,14 +135,14 @@ public sealed class RewardOfferFactory
             RewardChoice.Create(
                 RewardType.Heal,
                 "Souffle du Gardien",
-                $"Récupère {healAmount + 12} PV.",
-                $"heal:{healAmount + 12}"),
+                $"Récupère {_rewardPowerScaler.ScaleAmount(baseHeal + 12, multiplier)} PV.",
+                $"heal:{_rewardPowerScaler.ScaleAmount(baseHeal + 12, multiplier)}"),
 
             RewardChoice.Create(
                 RewardType.Heal,
                 "Silence recomposé",
-                $"Récupère {healAmount + 24} PV.",
-                $"heal:{healAmount + 24}")
+                $"Récupère {_rewardPowerScaler.ScaleAmount(baseHeal + 24, multiplier)} PV.",
+                $"heal:{_rewardPowerScaler.ScaleAmount(baseHeal + 24, multiplier)}")
         };
     }
 }

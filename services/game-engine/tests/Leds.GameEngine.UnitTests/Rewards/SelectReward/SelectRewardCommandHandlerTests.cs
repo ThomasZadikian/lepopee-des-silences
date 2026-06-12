@@ -132,7 +132,7 @@ public sealed class SelectRewardCommandHandlerTests
             new SelectRewardCommand(run.Id.Value, healChoice.Id.Value),
             CancellationToken.None);
 
-        run.CurrentHp.Should().Be(35);
+        run.CurrentHp.Should().Be(36);
     }
 
     [Fact]
