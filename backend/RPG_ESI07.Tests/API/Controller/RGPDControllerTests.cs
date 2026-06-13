@@ -43,11 +43,10 @@ public class RGPDControllerTests
         Username:        "testuser",
         CreatedAt:       new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
         LastLoginAt:     new DateTime(2025, 6, 1, 0, 0, 0, DateTimeKind.Utc),
-        LastLoginIP:     Constants.SeedIpAddress,
-        GameSaves:       new List<GameSave>(),
-        Inventory:       new List<PlayerInventory>(),
-        Skills:          new List<PlayerSkill>(),
-        BestiaryUnlocks: new List<BestiaryUnlock>(),
+        GameSaves:       new List<GameSaveDto>(),
+        Inventory:       new List<InventoryItemDto>(),
+        Skills:          new List<SkillDto>(),
+        BestiaryUnlocks: new List<BestiaryUnlockDto>(),
         CombatStats:     null
     );
 

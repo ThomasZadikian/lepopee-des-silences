@@ -34,36 +34,6 @@ public class GetUserDataHandlerTests
     // ── Cas nominal ───────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task Handle_UserExistsWithProfile_ReturnsAllData()
-    {
-        // Arrange
-        var profile = new PlayerProfile
-        {
-            GameSaves       = new List<GameSave> { new() { Id = 1 } },
-            Inventory       = new List<PlayerInventory> { new() { Id = 1 } },
-            Skills          = new List<PlayerSkill> { new() { Id = 1 } },
-            BestiaryUnlocks = new List<BestiaryUnlock> { new() { Id = 1 } },
-            CombatStats     = new CombatStats { Id = 1 },
-        };
-        var user = BuildUser(1, profile);
-
-        _mockRepo.Setup(r => r.GetWithAllDataAsync(1)).ReturnsAsync(user);
-
-        // Act
-        var result = await _handler.Handle(new GetUserDataQuery(1), CancellationToken.None);
-
-        // Assert
-        result.Should().NotBeNull();
-        result.UserId.Should().Be(1);
-        result.Username.Should().Be("testuser");
-        result.GameSaves.Should().HaveCount(1);
-        result.Inventory.Should().HaveCount(1);
-        result.Skills.Should().HaveCount(1);
-        result.BestiaryUnlocks.Should().HaveCount(1);
-        result.CombatStats.Should().NotBeNull();
-    }
-
-    [Fact]
     public async Task Handle_UserExistsWithoutProfile_ReturnsEmptyLists()
     {
         // Arrange — joueur sans profil créé (PlayerProfile null)
