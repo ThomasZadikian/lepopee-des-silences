@@ -1,6 +1,7 @@
 using Leds.GameEngine.Application.Catalog;
 using Leds.GameEngine.Application.Combats.EncounterComposition;
 using Leds.GameEngine.Domain.Common;
+using Leds.GameEngine.Domain.PalaceLaws;
 
 namespace Leds.GameEngine.Infrastructure.Combats.EncounterComposition;
 
@@ -81,12 +82,18 @@ public sealed class EncounterCompositionPolicy : IEncounterCompositionPolicy
         };
 
         if (context.RoomIndex >= 6)
-        {
             budget += 2;
-        }
         else if (context.RoomIndex >= 3)
-        {
             budget += 1;
+
+        // Palace Laws targeting Generation add +1 budget per active law, capped at +3.
+        // This makes encounters progressively harder as more laws accumulate.
+        if (context.ActivePalaceLaws is { Count: > 0 })
+        {
+            var generationLaws = context.ActivePalaceLaws
+                .Count(law => law.Domains.Contains(PalaceLawDomain.Generation));
+
+            budget += Math.Min(generationLaws, 3);
         }
 
         return budget;

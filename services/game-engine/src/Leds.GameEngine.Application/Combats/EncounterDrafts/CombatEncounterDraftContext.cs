@@ -1,3 +1,5 @@
+using Leds.GameEngine.Domain.PalaceLaws;
+
 namespace Leds.GameEngine.Application.Combats.EncounterDrafts;
 
 public sealed record CombatEncounterDraftContext(
@@ -9,4 +11,5 @@ public sealed record CombatEncounterDraftContext(
     int RiskLevel,
     string EncounterType,
     int EnemyCount,
-    int NodeDepth = 0);
+    int NodeDepth = 0,
+    IReadOnlyCollection<ActivePalaceLaw>? ActivePalaceLaws = null);

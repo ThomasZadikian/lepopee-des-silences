@@ -4,6 +4,7 @@ using Leds.GameEngine.Application.Events.ChooseEventOption;
 using Leds.GameEngine.Application.PalaceLaws;
 using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Nodes;
+using Leds.GameEngine.Domain.PalaceLaws;
 using Leds.GameEngine.UnitTests.Common.Factories;
 
 namespace Leds.GameEngine.UnitTests.Events.ChoiceResolvers;
@@ -35,8 +36,9 @@ public sealed class LawEventChoiceResolverTests
         activeLaw.Key.Should().Be("law-silence-v1");
         activeLaw.Name.Should().Be("Loi du Silence");
         activeLaw.Version.Should().Be("1.0.0");
-        activeLaw.Domains.Should().Contain(Leds.GameEngine.Domain.PalaceLaws.PalaceLawDomain.Narrative);
-        activeLaw.Domains.Should().Contain(Leds.GameEngine.Domain.PalaceLaws.PalaceLawDomain.Generation);
+        activeLaw.Domains.Should().Contain(PalaceLawDomain.Generation);
+        activeLaw.Domains.Should().Contain(PalaceLawDomain.Combat);
+        activeLaw.Domains.Should().Contain(PalaceLawDomain.Rewards);
     }
 
     [Fact]

@@ -22,4 +22,12 @@ public enum RunModifierType
     /// Duration determines when it is consumed.
     /// </summary>
     RewardPowerMultiplierBonus = 2,
+
+    /// <summary>
+    /// Permanently increases combat difficulty for the entire run.
+    /// Applied by Palace Laws targeting the Combat domain.
+    /// Stacks additively across laws. Value is a delta (0.10 = +10%).
+    /// Unlike <see cref="NextCombatDifficultyMultiplier"/>, this is never consumed.
+    /// </summary>
+    PermanentCombatDifficultyBonus = 3,
 }

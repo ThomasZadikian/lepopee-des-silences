@@ -92,4 +92,16 @@ public sealed class RunItem
             throw new DomainException("Quantity to add must be positive.");
         Quantity += amount;
     }
+    public void ConsumeOne()
+    {
+        if (Type != RunItemType.Consumable)
+            throw new DomainException(
+                $"Item '{DefinitionKey}' is not consumable and cannot be used from inventory.");
+
+        if (Quantity <= 0)
+            throw new DomainException(
+                $"Item '{DefinitionKey}' has no remaining uses.");
+
+        Quantity--;
+    }
 }

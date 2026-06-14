@@ -15,8 +15,17 @@ public sealed record RunItemDto(
     string Rarity,
     int Quantity,
     string EffectType,
-    int EffectAmount)
+    int EffectAmount,
+    bool IsUsable)
 {
+    private static readonly HashSet<RunItemEffectType> UsableEffects =
+    [
+        RunItemEffectType.Heal,
+        RunItemEffectType.Guard,
+        RunItemEffectType.ManaRestore,
+        RunItemEffectType.ChargeRestore,
+    ];
+
     public static RunItemDto FromDomain(RunItem item) => new(
         item.Id.Value,
         item.DefinitionKey,
@@ -26,5 +35,8 @@ public sealed record RunItemDto(
         item.Rarity.ToString(),
         item.Quantity,
         item.EffectType.ToString(),
-        item.EffectAmount);
+        item.EffectAmount,
+        IsUsable: item.Type == RunItemType.Consumable
+               && item.Quantity > 0
+               && UsableEffects.Contains(item.EffectType));
 }

@@ -978,16 +978,114 @@ public sealed class Run
         ArgumentNullException.ThrowIfNull(law);
 
         if (Status is RunStatus.Completed or RunStatus.Failed or RunStatus.Abandoned)
-        {
             throw new DomainException("Cannot activate a palace law on a closed run.");
-        }
 
+        // Idempotent — same law key cannot be active twice.
         if (_activePalaceLaws.Any(activeLaw => activeLaw.Key == law.Key))
-        {
             return;
-        }
 
         _activePalaceLaws.Add(ActivePalaceLaw.From(law));
+
+        // Apply each mechanical effect of the law as a RunModifier.
+        foreach (var effect in law.Effects)
+        {
+            AddRunModifier(RunModifier.Create(
+                effect.ModifierType,
+                effect.Value,
+                effect.Duration,
+                sourceType: "PalaceLaw",
+                sourceKey: law.Key));
+        }
+    }
+    /// <summary>
+    /// Uses a consumable item from the run inventory.
+    /// Applies its effect to <see cref="PlayerState"/> and, if a combat is active,
+    /// to the player combatant inside that combat.
+    /// </summary>
+    /// <returns>
+    /// A tuple describing what was applied: the effect type, the amount, and whether
+    /// the item was fully consumed (quantity reached zero).
+    /// </returns>
+    public (RunItemEffectType effectType, int amount, bool itemDepleted) UseItem(RunItemId itemId)
+    {
+        if (Status is RunStatus.Completed or RunStatus.Failed or RunStatus.Abandoned)
+            throw new DomainException("Cannot use items on a closed run.");
+
+        var item = _runItems.FirstOrDefault(i => i.Id == itemId)
+            ?? throw new DomainException($"Item '{itemId.Value}' not found in run inventory.");
+
+        // ConsumeOne validates Type == Consumable and Quantity > 0.
+        item.ConsumeOne();
+
+        ApplyItemEffectToPlayerState(item);
+
+        if (_activeCombat is not null)
+            ApplyItemEffectToCombatant(item, _activeCombat);
+
+        var depleted = item.Quantity == 0;
+        return (item.EffectType, item.EffectAmount, depleted);
+    }
+
+    private void ApplyItemEffectToPlayerState(RunItem item)
+    {
+        switch (item.EffectType)
+        {
+            case RunItemEffectType.Heal:
+                PlayerState.Heal(item.EffectAmount);
+                CurrentHp = PlayerState.CurrentVitality;
+                break;
+
+            case RunItemEffectType.Guard:
+                PlayerState.GainGuard(item.EffectAmount);
+                break;
+
+            case RunItemEffectType.ManaRestore:
+                PlayerState.GainMana(item.EffectAmount);
+                break;
+
+            case RunItemEffectType.ChargeRestore:
+                PlayerState.GainCharge(item.EffectAmount);
+                break;
+
+            case RunItemEffectType.None:
+            case RunItemEffectType.NextCombatGuard:
+            case RunItemEffectType.NarrativeFragment:
+                // These effect types are not manually activatable from inventory.
+                throw new DomainException(
+                    $"Item effect '{item.EffectType}' cannot be triggered manually from inventory.");
+
+            default:
+                throw new DomainException(
+                    $"Unsupported item effect type: '{item.EffectType}'.");
+        }
+    }
+
+    private static void ApplyItemEffectToCombatant(RunItem item, Combat combat)
+    {
+        var playerCombatant = combat.Allies
+            .FirstOrDefault(a => a.Side == CombatantSide.Player);
+
+        if (playerCombatant is null || playerCombatant.IsDefeated)
+            return;
+
+        switch (item.EffectType)
+        {
+            case RunItemEffectType.Heal:
+                playerCombatant.ApplyHeal(item.EffectAmount);
+                break;
+
+            case RunItemEffectType.Guard:
+                playerCombatant.GainGuard(item.EffectAmount);
+                break;
+
+            case RunItemEffectType.ManaRestore:
+                playerCombatant.GainMana(item.EffectAmount);
+                break;
+
+            case RunItemEffectType.ChargeRestore:
+                playerCombatant.GainCharge(item.EffectAmount);
+                break;
+        }
     }
 
     // -----------------------------------------------------------------------

@@ -43,7 +43,8 @@ public sealed class CombatEncounterDraftGenerator : ICombatEncounterDraftGenerat
             RiskLevel: context.RiskLevel,
             EncounterType: context.EncounterType,
             AvailableEnemies: compatibleEnemies,
-            NodeDepth: context.NodeDepth);
+            NodeDepth: context.NodeDepth,
+            ActivePalaceLaws: context.ActivePalaceLaws);
 
         var compositionResult = _compositionPolicy.Compose(compositionContext);
 

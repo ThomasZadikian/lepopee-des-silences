@@ -25,6 +25,7 @@ public sealed class HardcodedRoomTypeGenerationProfileProvider : IRoomTypeGenera
                 RoomType.Threshold,
                 nodeTypeWeights:
                 [
+                    new(NodeEventType.Law,      25),
                     new(NodeEventType.Combat,   30),
                     new(NodeEventType.Rest,     15),
                     new(NodeEventType.Item,     15),
@@ -38,6 +39,7 @@ public sealed class HardcodedRoomTypeGenerationProfileProvider : IRoomTypeGenera
                 riskMax: 61,
                 rewardProfilesByNodeType: new Dictionary<NodeEventType, IReadOnlyList<string>>
                 {
+
                     [NodeEventType.Combat]   = ["combat-common"],
                     [NodeEventType.Elite]    = ["elite-low"],
                     [NodeEventType.Rest]     = ["rest-safe"],
@@ -59,6 +61,7 @@ public sealed class HardcodedRoomTypeGenerationProfileProvider : IRoomTypeGenera
                 RoomType.Forest,
                 nodeTypeWeights:
                 [
+                    new(NodeEventType.Law,      25),
                     new(NodeEventType.Npc,      25),
                     new(NodeEventType.Rest,     20),
                     new(NodeEventType.Item,     20),
@@ -72,6 +75,7 @@ public sealed class HardcodedRoomTypeGenerationProfileProvider : IRoomTypeGenera
                 riskMax: 51,
                 rewardProfilesByNodeType: new Dictionary<NodeEventType, IReadOnlyList<string>>
                 {
+
                     [NodeEventType.Combat]   = ["combat-common"],
                     [NodeEventType.Elite]    = ["elite-low"],
                     [NodeEventType.Rest]     = ["rest-safe", "rest-enhanced"],
@@ -91,6 +95,8 @@ public sealed class HardcodedRoomTypeGenerationProfileProvider : IRoomTypeGenera
                 RoomType.Rupture,
                 nodeTypeWeights:
                 [
+
+                    new(NodeEventType.Law,      25),
                     new(NodeEventType.Combat,   30),
                     new(NodeEventType.Elite,    20),
                     new(NodeEventType.Rare,     15),
@@ -125,6 +131,7 @@ public sealed class HardcodedRoomTypeGenerationProfileProvider : IRoomTypeGenera
                 RoomType.Silence,
                 nodeTypeWeights:
                 [
+                    new(NodeEventType.Law,      25),
                     new(NodeEventType.Npc,      35),
                     new(NodeEventType.Merchant, 30),
                     new(NodeEventType.Rest,     10),
@@ -160,6 +167,7 @@ public sealed class HardcodedRoomTypeGenerationProfileProvider : IRoomTypeGenera
                 RoomType.Memory,
                 nodeTypeWeights:
                 [
+                    new(NodeEventType.Law,      25),
                     new(NodeEventType.Npc,      40),
                     new(NodeEventType.Item,     30),
                     new(NodeEventType.Rest,     15),

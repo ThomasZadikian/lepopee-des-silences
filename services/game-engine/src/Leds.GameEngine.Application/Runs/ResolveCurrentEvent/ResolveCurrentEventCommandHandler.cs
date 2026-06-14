@@ -265,7 +265,8 @@ public sealed class ResolveCurrentEventCommandHandler
             RiskLevel: catalogRiskLevel,
             EncounterType: encounterType,
             EnemyCount: enemyCount,
-            NodeDepth: selectedNode.Row);
+            NodeDepth: selectedNode.Row,
+            ActivePalaceLaws: run.ActivePalaceLaws);
 
         return await _encounterDraftGenerator.GenerateAsync(
             draftContext, cancellationToken);

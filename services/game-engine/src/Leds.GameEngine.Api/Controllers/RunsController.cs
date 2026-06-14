@@ -7,13 +7,14 @@ using Leds.GameEngine.Application.Runs.ExitMidRoom;
 using Leds.GameEngine.Application.Runs.GetCurrentCombat;
 using Leds.GameEngine.Application.Runs.GetRunById;
 using Leds.GameEngine.Application.Runs.GetRunInventory;
-using Leds.GameEngine.Application.Runs.ResumeRun;
 using Leds.GameEngine.Application.Runs.MoveToNextRoom;
 using Leds.GameEngine.Application.Runs.ProgressRun;
 using Leds.GameEngine.Application.Runs.ResolveCurrentEvent;
+using Leds.GameEngine.Application.Runs.ResumeRun;
 using Leds.GameEngine.Application.Runs.SaveAndExitRun;
 using Leds.GameEngine.Application.Runs.StartRun;
 using Leds.GameEngine.Application.Runs.UseCombatSkill;
+using Leds.GameEngine.Application.Runs.UseRunItem;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -224,6 +225,20 @@ public sealed class RunsController : ControllerBase
 
         var response = await _sender.Send(query, cancellationToken);
 
+        return Ok(response);
+    }
+
+    [HttpPost("{runId:guid}/inventory/{itemId:guid}/use")]
+    [ProducesResponseType(typeof(UseRunItemResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<UseRunItemResponse>> UseRunItem(
+    Guid runId,
+    Guid itemId,
+    CancellationToken cancellationToken)
+    {
+        var command = new UseRunItemCommand(runId, itemId);
+        var response = await _sender.Send(command, cancellationToken);
         return Ok(response);
     }
 

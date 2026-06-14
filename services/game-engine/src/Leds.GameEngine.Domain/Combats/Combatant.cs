@@ -239,4 +239,30 @@ public sealed class Combatant
     {
         return new Combatant(id, sourceKey, displayName, side, archetype, maxVitality, currentVitality, guard, baseGuard, mana, charge, status, skills);
     }
+    public void ApplyHeal(int amount)
+    {
+        if (amount <= 0)
+            throw new DomainException("Heal amount must be greater than zero.");
+
+        if (IsDefeated)
+            throw new DomainException("Defeated combatant cannot be healed.");
+
+        CurrentVitality = Math.Min(MaxVitality, CurrentVitality + amount);
+    }
+
+    public void GainMana(int amount)
+    {
+        if (amount < 0)
+            throw new DomainException("Mana gain amount cannot be negative.");
+
+        Mana += amount;
+    }
+
+    public void GainCharge(int amount)
+    {
+        if (amount < 0)
+            throw new DomainException("Charge gain amount cannot be negative.");
+
+        Charge += amount;
+    }
 }
