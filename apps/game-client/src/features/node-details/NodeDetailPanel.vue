@@ -179,15 +179,15 @@ function getActionLabel(node: NodeDto): string {
 .node-detail {
   min-height: 100%;
   padding: var(--space-4);
-  border-color: color-mix(in oklch, var(--color-frost), transparent 45%);
+  border-color: color-mix(in oklch, var(--frost), transparent 45%);
 }
 
 .node-detail h2 {
-  color: var(--color-frost);
+  color: var(--frost);
 }
 
 .node-detail p {
-  color: var(--color-muted);
+  color: var(--ink-3);
   line-height: 1.55;
 }
 
@@ -202,9 +202,9 @@ function getActionLabel(node: NodeDto): string {
   display: grid;
   place-items: center;
   margin: var(--space-6) 0;
-  color: var(--color-dim);
-  background: radial-gradient(circle, var(--color-panel-soft), var(--color-void));
-  border: 1px solid var(--color-line);
+  color: var(--ink-4);
+  background: radial-gradient(circle, var(--panel-2), var(--void));
+  border: 1px solid var(--line);
   font-family: var(--font-mono);
   font-size: 0.75rem;
   text-transform: uppercase;
@@ -218,25 +218,25 @@ function getActionLabel(node: NodeDto): string {
 }
 
 .node-detail__meta div {
-  border-top: 1px solid var(--color-line);
+  border-top: 1px solid var(--line);
   padding-top: var(--space-2);
 }
 
 .node-detail__meta strong {
   display: block;
   margin-top: var(--space-1);
-  color: var(--color-gold);
+  color: var(--gold);
   font-size: 0.85rem;
 }
 
 .node-detail__confirm {
-  border-color: var(--color-frost);
-  color: var(--color-frost);
+  border-color: var(--frost);
+  color: var(--frost);
 }
 
-.risk-label--low      { color: var(--color-frost); }
-.risk-label--moderate { color: color-mix(in oklch, var(--color-frost), var(--color-gold) 35%); }
-.risk-label--high     { color: var(--color-gold); }
-.risk-label--critical { color: color-mix(in oklch, var(--color-blood), var(--color-gold) 20%); }
-.risk-label--boss     { color: var(--color-blood); }
+.risk-label--low      { color: var(--frost); }
+.risk-label--moderate { color: color-mix(in oklch, var(--frost), var(--gold) 35%); }
+.risk-label--high     { color: var(--gold); }
+.risk-label--critical { color: color-mix(in oklch, var(--blood), var(--gold) 20%); }
+.risk-label--boss     { color: var(--blood); }
 </style>

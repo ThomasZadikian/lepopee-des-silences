@@ -1,41 +1,49 @@
 <script setup lang="ts">
-import { computed, onMounted, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import GameShellLayout from '../app/layouts/GameShellLayout.vue';
 import CombatScene from '../features/combat/components/CombatScene.vue';
 import { useCombatStore } from '../features/combat/stores/useCombatStore';
+import DecisionDiptych from '../shared/components/DecisionDiptych.vue';
 import EliseOverlay from '../features/elise/EliseOverlay.vue';
 import EventChoiceResultPanel from '../features/events/components/EventChoiceResultPanel.vue';
 import EventOutcomePanel from '../features/events/components/EventOutcomePanel.vue';
 import InterludePanel from '../features/interlude/InterludePanel.vue';
 import RoomClearedPanel from '../features/interlude/RoomClearedPanel.vue';
-import InventoryPanel from '../features/inventory/components/InventoryPanel.vue';
-import NodeDetailPanel from '../features/node-details/NodeDetailPanel.vue';
-import PalaceLawPanel from '../features/palace-laws/PalaceLawPanel.vue';
+import InventoryDrawer from '../features/inventory/components/InventoryDrawer.vue';
+import LawsPopover from '../features/palace-laws/LawsPopover.vue';
+import PalaceNodeDrawer from '../features/node-details/PalaceNodeDrawer.vue';
 import PalaceMapPlaceholder from '../features/palace-map/PalaceMapPlaceholder.vue';
-import PartyPanel from '../features/party/PartyPanel.vue';
 import RewardOfferPanel from '../features/rewards/components/RewardOfferPanel.vue';
-import RunDangerActions from '../features/runs/components/RunDangerActions.vue';
-import RunHudPanel from '../features/runs/components/RunHudPanel.vue';
+import RunStatusRibbon from '../features/runs/components/RunStatusRibbon.vue';
 import { useRunStore } from '../features/runs/stores/runStore';
+import { useGameUiStore } from '../shared/stores/useGameUiStore';
 
 const route = useRoute();
 const router = useRouter();
 const runStore = useRunStore();
 const combatStore = useCombatStore();
+const uiStore = useGameUiStore();
 
 const isSafePoint = computed(() =>
   runStore.currentRun?.status === 'RoomResolved' ||
   runStore.currentRun?.status === 'Interlude',
 );
 
+const showConfirmAbandon = ref(false);
+
 async function handleSaveAndExit() {
   const ok = await runStore.saveAndExitCurrentRun();
   if (ok) await router.replace('/');
 }
 
-async function handleAbandon() {
+function requestAbandon() {
+  showConfirmAbandon.value = true;
+}
+
+async function confirmAbandon() {
+  showConfirmAbandon.value = false;
   const ok = await runStore.abandonCurrentRun();
   if (ok) await router.replace('/');
 }
@@ -57,8 +65,11 @@ async function startNewRun() {
   if (runId) await router.replace(`/run/${runId}`);
 }
 
-const shouldDisplayRightPanel = computed(() => runStore.gameplayPhase === 'Map');
-const shouldUseWideCenterPanel = computed(() => runStore.gameplayPhase !== 'Map');
+const isMapPhase = computed(() => runStore.gameplayPhase === 'Map');
+const isCombatPhase = computed(() => runStore.gameplayPhase === 'Combat');
+const showNodeDrawer = computed(() => isMapPhase.value && runStore.selectedNode);
+const showInventoryDrawer = computed(() => uiStore.activeDrawer === 'besace');
+const showLaws = computed(() => uiStore.isLawsOpen);
 
 function getRouteRunId(): string | null {
   const rawRunId = route.params.runId;
@@ -71,120 +82,25 @@ function getRouteRunId(): string | null {
 async function loadRunFromRoute() {
   const runId = getRouteRunId();
   if (!runId) return;
-
   if (runStore.currentRun?.id === runId) {
     await runStore.refreshPendingRewardIfNeeded();
     return;
   }
-
   await runStore.loadRun(runId);
 }
 
 onMounted(loadRunFromRoute);
-
-watch(
-  () => route.params.runId,
-  async () => { await loadRunFromRoute(); },
-);
+watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
 </script>
 
 <template>
   <GameShellLayout>
     <template v-if="runStore.currentRun && runStore.currentRun.currentRoom">
-      <section
-        class="run-grid"
-        :class="{ 'run-grid--wide-center': shouldUseWideCenterPanel }"
-      >
-        <aside class="run-grid__left">
-          <RunHudPanel :run="runStore.currentRun" />
-          <PartyPanel />
-          <InventoryPanel
-            v-if="runStore.currentRun?.inventoryItems"
-            :items="runStore.currentRun.inventoryItems"
-            :run-id="runStore.currentRun.id"
-
-          />
-          <PalaceLawPanel :laws="runStore.currentRun.activePalaceLaws" />
-          <RunDangerActions
-            :is-safe-point="isSafePoint"
-            :is-saving-and-exiting="runStore.isSavingAndExiting"
-            :is-abandoning-run="runStore.isAbandoningRun"
-            :is-exiting-mid-room="runStore.isExitingMidRoom"
-            :error="runStore.runActionError"
-            @save-and-exit="handleSaveAndExit"
-            @abandon="handleAbandon"
-            @exit-mid-room="handleExitMidRoom"
-          />
-        </aside>
-
-        <section class="run-grid__center panel">
-
-          <!-- 1. Combat actif ou outcome non confirmé -->
-          <CombatScene
-            v-if="runStore.shouldShowCombatScene && runStore.currentRun.activeCombatId"
-            :run-id="runStore.currentRun.id"
-            :combat-id="runStore.currentRun.activeCombatId"
-            @combat-completed="runStore.handleCombatCompleted"
-            @combat-failed="runStore.handleCombatFailed"
-            @leave-run="handleLeaveRun"
-          />
-
-          <!-- 2. Reward pending après victoire -->
-          <RewardOfferPanel
-            v-else-if="runStore.shouldShowRewardPanel && runStore.pendingRewardOffer"
-            :offer="runStore.pendingRewardOffer"
-            :is-loading="runStore.isLoading"
-            @select-reward="runStore.selectReward"
-          />
-
-          <!-- 3. Reward pending en chargement -->
-          <section v-else-if="runStore.shouldShowRewardPanel" class="run-grid__transition panel">
-            <p class="system-label">Récompense</p>
-            <h3>Une résonance demeure.</h3>
-            <p>Le Palais rassemble ce que tu peux emporter.</p>
-          </section>
-
-          <!-- 4. Interlude hub -->
-          <InterludePanel
-            v-else-if="runStore.gameplayPhase === 'Interlude' && runStore.currentInterlude"
-            :interlude="runStore.currentInterlude"
-            :is-loading="runStore.isEnteringNextRoom"
-            :is-saving-and-exiting="runStore.isSavingAndExiting"
-            :is-abandoning-run="runStore.isAbandoningRun"
-            :run-action-error="runStore.runActionError"
-            @enter-next-room="runStore.enterNextRoom"
-            @save-and-exit="handleSaveAndExit"
-            @abandon="handleAbandon"
-          />
-
-          <!-- 5. Transition RoomCleared -->
-          <RoomClearedPanel
-            v-else-if="runStore.gameplayPhase === 'RoomCleared'"
-            :room="runStore.currentRun.currentRoom"
-            :current-room-index="runStore.currentRun.currentRoomIndex"
-            :is-loading="runStore.isEnteringInterlude"
-            @enter-interlude="runStore.enterInterlude"
-          />
-
-          <!-- 6. Event outcome -->
-          <EventOutcomePanel
-            v-else-if="runStore.gameplayPhase === 'EventOutcome' && runStore.lastOutcome"
-            :outcome="runStore.lastOutcome"
-            :is-loading="runStore.isLoading"
-            @continue="runStore.continueAfterOutcome"
-            @select-choice="runStore.selectCurrentEventChoice"
-          />
-
-          <!-- 7. Event choice result -->
-          <EventChoiceResultPanel
-            v-else-if="runStore.gameplayPhase === 'EventChoiceResult' && runStore.lastChoiceResult"
-            :result="runStore.lastChoiceResult"
-            :is-loading="runStore.isLoading"
-            @continue="runStore.continueAfterChoiceResult"
-          />
-
-          <!-- 8. Map -->
-          <template v-else-if="runStore.shouldShowRunMap && runStore.gameplayPhase === 'Map'">
+      <!-- ── Map phase: map dominates ── -->
+      <template v-if="isMapPhase">
+        <div class="phase-map">
+          <!-- Map canvas -->
+          <div class="phase-map__canvas">
             <PalaceMapPlaceholder
               :nodes="runStore.allNodes"
               :available-nodes="runStore.availableNodes"
@@ -194,81 +110,189 @@ watch(
               :layout-template-version="runStore.currentRun.currentRoom.layoutTemplateVersion"
               @choose-node="runStore.previewNode"
             />
-            <EliseOverlay :message="runStore.lastOutcome?.description" />
-          </template>
+          </div>
 
-          <!-- 9. Run suspendue (chargée directement via URL) -->
-          <section
-            v-else-if="runStore.gameplayPhase === 'Suspended'"
-            class="run-suspended panel"
-          >
-            <p class="system-label">Run suspendue · seed {{ runStore.currentRun.seed }}</p>
-            <h3>Run sauvegardée</h3>
-            <p>
-              La reprise de partie est prévue dans une prochaine version du Palais.
-              Pour l'instant, tu peux démarrer une seed inédite.
-            </p>
-            <div class="run-suspended__actions">
-              <button
-                class="ghost-button run-suspended__cta"
-                :disabled="runStore.isLoading"
-                @click="startNewRun"
-              >
-                {{ runStore.isLoading ? 'Génération…' : 'Démarrer une nouvelle run →' }}
-              </button>
-            </div>
-          </section>
-
-          <!-- 10. Run terminée -->
-          <section v-else class="run-grid__outcome panel">
-            <p class="system-label">Run terminée</p>
-            <h3>{{ runStore.currentRun.status === 'Failed' ? 'Défaite définitive' : 'Le Tome se referme' }}</h3>
-            <p>
-              {{ runStore.currentRun.status === 'Failed'
-                ? 'Tous les alliés ont été vaincus. Cette run est perdue définitivement.'
-                : 'La traversée est terminée. Le bilan détaillé sera intégré dans une prochaine version.' }}
-            </p>
-            <button class="ghost-button run-grid__outcome-button" @click="handleLeaveRun">
-              Quitter la run
-            </button>
-          </section>
-
-        </section>
-
-        <aside v-if="shouldDisplayRightPanel" class="run-grid__right">
-          <NodeDetailPanel
-            :node="runStore.selectedNode"
-            :is-loading="runStore.isLoading"
-            :has-active-combat="Boolean(runStore.currentRun.activeCombatId)"
-            :has-pending-reward="Boolean(runStore.pendingRewardOffer || runStore.currentRun.pendingRewardOfferId)"
-            @resolve-current-event="runStore.confirmAndResolveNode"
-            @generate-next-nodes="runStore.progressRun"
+          <!-- Bottom ribbon -->
+          <RunStatusRibbon
+            :run="runStore.currentRun"
+            :is-safe-point="isSafePoint"
+            @save-and-exit="handleSaveAndExit"
+            @abandon="requestAbandon"
+            @exit-mid-room="handleExitMidRoom"
+            @open-besace="uiStore.toggleBesace"
           />
-        </aside>
-      </section>
+
+          <!-- Elise overlay -->
+          <EliseOverlay :message="runStore.lastOutcome?.description" />
+
+          <!-- Node drawer (right, absolute positioned) -->
+          <Transition name="slide">
+            <PalaceNodeDrawer
+              v-if="showNodeDrawer"
+              :node="runStore.selectedNode"
+              :is-loading="runStore.isLoading"
+              :has-active-combat="Boolean(runStore.currentRun.activeCombatId)"
+              :has-pending-reward="Boolean(runStore.pendingRewardOffer || runStore.currentRun.pendingRewardOfferId)"
+              @resolve-current-event="runStore.confirmAndResolveNode"
+              @generate-next-nodes="runStore.progressRun"
+              @choose-and-resolve="runStore.confirmAndResolveNode"
+              @close="runStore.resetPreviewedNode"
+            />
+          </Transition>
+
+          <!-- Inventory drawer (right, absolute positioned) -->
+          <Transition name="slide">
+            <InventoryDrawer
+              v-if="showInventoryDrawer"
+              :items="runStore.currentRun.inventoryItems ?? []"
+              :run-id="runStore.currentRun.id"
+              @close="uiStore.closeDrawer"
+            />
+          </Transition>
+
+          <!-- Laws popover (right, absolute positioned) -->
+          <Transition name="slide">
+            <LawsPopover
+              v-if="showLaws"
+              :laws="runStore.currentRun.activePalaceLaws"
+              @close="uiStore.toggleLaws"
+            />
+          </Transition>
+        </div>
+      </template>
+
+      <!-- ── Combat phase ── -->
+      <template v-else-if="isCombatPhase && runStore.currentRun.activeCombatId">
+        <CombatScene
+          :run-id="runStore.currentRun.id"
+          :combat-id="runStore.currentRun.activeCombatId"
+          @combat-completed="runStore.handleCombatCompleted"
+          @combat-failed="runStore.handleCombatFailed"
+          @leave-run="handleLeaveRun"
+        />
+      </template>
+
+      <!-- ── Reward phase ── -->
+      <template v-else-if="runStore.gameplayPhase === 'Reward'">
+        <RewardOfferPanel
+          v-if="runStore.pendingRewardOffer"
+          :offer="runStore.pendingRewardOffer"
+          :is-loading="runStore.isLoading"
+          @select-reward="runStore.selectReward"
+        />
+        <section v-else class="phase-center">
+          <p class="es-kicker">Récompense</p>
+          <h3 class="es-h2">Une résonance demeure.</h3>
+          <p class="es-lede es-dim">Le Palais rassemble ce que tu peux emporter.</p>
+        </section>
+      </template>
+
+      <!-- ── Interlude phase ── -->
+      <template v-else-if="runStore.gameplayPhase === 'Interlude' && runStore.currentInterlude">
+        <InterludePanel
+          :interlude="runStore.currentInterlude"
+          :is-loading="runStore.isEnteringNextRoom"
+          :is-saving-and-exiting="runStore.isSavingAndExiting"
+          :is-abandoning-run="runStore.isAbandoningRun"
+          :run-action-error="runStore.runActionError"
+          @enter-next-room="runStore.enterNextRoom"
+          @save-and-exit="handleSaveAndExit"
+          @abandon="requestAbandon"
+        />
+      </template>
+
+      <!-- ── Room cleared transition ── -->
+      <template v-else-if="runStore.gameplayPhase === 'RoomCleared'">
+        <RoomClearedPanel
+          :room="runStore.currentRun.currentRoom"
+          :current-room-index="runStore.currentRun.currentRoomIndex"
+          :is-loading="runStore.isEnteringInterlude"
+          @enter-interlude="runStore.enterInterlude"
+        />
+      </template>
+
+      <!-- ── Event outcome ── -->
+      <template v-else-if="runStore.gameplayPhase === 'EventOutcome' && runStore.lastOutcome">
+        <EventOutcomePanel
+          :outcome="runStore.lastOutcome"
+          :is-loading="runStore.isLoading"
+          @continue="runStore.continueAfterOutcome"
+          @select-choice="runStore.selectCurrentEventChoice"
+        />
+      </template>
+
+      <!-- ── Event choice result ── -->
+      <template v-else-if="runStore.gameplayPhase === 'EventChoiceResult' && runStore.lastChoiceResult">
+        <EventChoiceResultPanel
+          :result="runStore.lastChoiceResult"
+          :is-loading="runStore.isLoading"
+          @continue="runStore.continueAfterChoiceResult"
+        />
+      </template>
+
+      <!-- ── Suspended ── -->
+      <template v-else-if="runStore.gameplayPhase === 'Suspended'">
+        <section class="phase-center">
+          <p class="es-kicker">Run suspendue · seed {{ runStore.currentRun.seed }}</p>
+          <h3 class="es-h2">Run sauvegardée</h3>
+          <p class="es-lede es-dim">
+            La reprise de partie est prévue dans une prochaine version du Palais.
+            Pour l'instant, tu peux démarrer une seed inédite.
+          </p>
+          <button
+            class="es-btn es-btn--gold es-btn--lg"
+            :disabled="runStore.isLoading"
+            @click="startNewRun"
+          >
+            {{ runStore.isLoading ? 'Génération…' : 'Démarrer une nouvelle run →' }}
+          </button>
+        </section>
+      </template>
+
+      <!-- ── Completed / Failed ── -->
+      <template v-else>
+        <section class="phase-center">
+          <p class="es-kicker">Run terminée</p>
+          <h3 class="es-h2">{{ runStore.currentRun.status === 'Failed' ? 'Défaite définitive' : 'Le Tome se referme' }}</h3>
+          <p class="es-lede es-dim">
+            {{ runStore.currentRun.status === 'Failed'
+              ? 'Tous les alliés ont été vaincus. Cette run est perdue définitivement.'
+              : 'La traversée est terminée. Le bilan détaillé sera intégré dans une prochaine version.' }}
+          </p>
+          <button class="es-btn es-btn--blood" @click="handleLeaveRun">
+            Quitter la run
+          </button>
+        </section>
+      </template>
+
+      <!-- ── Abandon confirmation diptych ── -->
+      <DecisionDiptych
+        v-model="showConfirmAbandon"
+        title="Abandonner la run ?"
+        description="Ta progression actuelle sera perdue. Le Tome gardera trace de ce qui a été vécu."
+        confirm-label="Abandonner"
+        cancel-label="Rester"
+        danger
+        @confirm="confirmAbandon"
+      />
     </template>
 
+    <!-- ── Loading / Error ── -->
     <template v-else>
-      <section class="run-loading panel">
-        <p class="system-label">Chargement run</p>
-
+      <section class="phase-center">
         <template v-if="runStore.isLoading">
-          <h2>Le Palais recompose la pièce...</h2>
-          <p>Le backend reconstitue l'état de la run.</p>
+          <p class="es-kicker">Chargement</p>
+          <h3 class="es-h2">Le Palais recompose la pièce…</h3>
         </template>
-
         <template v-else-if="runStore.error">
-          <h2>Run introuvable ou indisponible</h2>
-          <p>{{ runStore.error }}</p>
-          <p class="run-loading__hint">
-            En environnement local, les runs sont encore stockées en mémoire.
-            Si le backend a redémarré, l'identifiant présent dans l'URL n'existe plus.
-          </p>
+          <p class="es-kicker">Erreur</p>
+          <h3 class="es-h2">Run introuvable</h3>
+          <p class="es-lede es-dim">{{ runStore.error }}</p>
         </template>
-
         <template v-else>
-          <h2>Aucune run chargée</h2>
-          <p>Vérifie l'identifiant dans l'URL ou génère une nouvelle run depuis le seuil.</p>
+          <p class="es-kicker">Aucune run</p>
+          <h3 class="es-h2">Aucune run chargée</h3>
+          <p class="es-lede es-dim">Vérifie l'identifiant dans l'URL ou génère une nouvelle run depuis le seuil.</p>
         </template>
       </section>
     </template>
@@ -276,138 +300,28 @@ watch(
 </template>
 
 <style scoped>
-.run-grid {
-  display: grid;
-  grid-template-columns: 17rem minmax(36rem, 1fr) 20rem;
-  gap: var(--space-4);
-  height: calc(100vh - 7rem);
-}
-
-.run-grid--wide-center {
-  grid-template-columns: 17rem minmax(42rem, 1fr);
-}
-
-.run-grid--wide-center .run-grid__center {
-  grid-column: 2 / 3;
-}
-
-.run-grid__left,
-.run-grid__right {
-  display: grid;
-  gap: var(--space-4);
-  align-content: start;
-}
-
-.run-grid__center {
+.phase-map {
   position: relative;
+  height: 100%;
+}
+
+.phase-map__canvas {
+  height: 100%;
   overflow: hidden;
-  padding: var(--space-6);
 }
 
-.run-grid__outcome {
-  position: absolute;
-  right: var(--space-6);
-  bottom: var(--space-6);
-  width: min(28rem, 45%);
-  padding: var(--space-4);
-}
-
-.run-grid__outcome h3 {
-  margin: var(--space-2) 0;
-  color: var(--color-frost);
-}
-
-.run-grid__outcome p {
-  color: var(--color-muted);
-  line-height: 1.55;
-}
-
-.run-grid__transition {
-  display: grid;
-  gap: var(--space-3);
-  align-content: center;
-  min-height: 100%;
-  padding: var(--space-6);
-}
-
-.run-grid__transition h3 {
-  margin: 0;
-  color: var(--color-gold);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
-.run-grid__transition p:last-child {
-  color: var(--color-muted);
-}
-
-.run-grid__outcome-button {
-  margin-top: var(--space-4);
-  border-color: var(--color-blood);
-  color: var(--color-blood);
-}
-
-.run-loading {
-  margin: var(--space-4);
-  padding: var(--space-6);
-}
-
-.run-loading h2 {
-  margin: var(--space-2) 0;
-  color: var(--color-frost);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
-.run-loading p {
-  color: var(--color-muted);
-  line-height: 1.55;
-}
-
-.run-loading__hint {
-  margin-top: var(--space-4);
-  color: var(--color-gold);
-  font-family: var(--font-mono);
-  font-size: 0.8rem;
-}
-
-
-.run-suspended {
-  display: grid;
-  gap: var(--space-4);
-  padding: var(--space-6);
-  align-content: start;
-}
-
-.run-suspended h3 {
-  margin: 0;
-  color: var(--color-frost);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
-.run-suspended p {
-  color: var(--color-muted);
-  line-height: 1.55;
-  margin: 0;
-}
-
-.run-suspended__actions {
+.phase-center {
   display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   gap: var(--space-3);
+  height: 100%;
+  padding: var(--space-8);
+  text-align: center;
 }
 
-.run-suspended__cta {
-  border-color: var(--color-gold);
-  color: var(--color-gold);
-}
-
-.run-suspended__cta:hover:not(:disabled) {
-  background: color-mix(in oklch, var(--color-gold), transparent 88%);
-}
-
-.run-suspended__cta:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
+.phase-center .es-btn {
+  margin-top: var(--space-4);
 }
 </style>

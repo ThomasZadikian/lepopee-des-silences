@@ -20,295 +20,214 @@ const emit = defineEmits<{
 }>();
 
 const selectedChoiceId = ref<string | null>(null);
-
 const choices = computed(() => getOutcomeChoices(props.outcome));
-
-const outcomeFamily = computed(() => getOutcomeFamily(
-  props.outcome.resolutionKind,
-));
-
+const outcomeFamily = computed(() => getOutcomeFamily(props.outcome.resolutionKind));
 const requiresChoice = computed(() => isChoiceOutcome(props.outcome));
 
-const isRewardLike = computed(() => isRewardLikeOutcome(
-  props.outcome.resolutionKind,
-));
-
-watch(
-  () => props.outcome.nodeId,
-  () => {
-    selectedChoiceId.value = null;
-  },
-);
+watch(() => props.outcome.nodeId, () => { selectedChoiceId.value = null; });
 
 function selectChoice(choiceId: string) {
-  if (!choiceId || props.isLoading) {
-    return;
-  }
-
+  if (!choiceId || props.isLoading) return;
   selectedChoiceId.value = choiceId;
   emit('selectChoice', choiceId);
 }
 </script>
 
 <template>
-  <section class="event-outcome">
-    <header class="event-outcome__header">
-      <p class="system-label">
-        {{ outcomeFamily }} · {{ outcome.resolutionKind }}
-      </p>
+  <section class="event-scene">
+    <div class="es-atmos">
+      <div class="es-vignette" />
+      <div class="es-grain" />
+    </div>
 
-      <h2>{{ outcome.title }}</h2>
+    <div class="event-scene__card">
+      <!-- Header -->
+      <header class="event-scene__header">
+        <span class="es-kicker">{{ outcomeFamily }}</span>
+        <h2 class="es-h2">{{ outcome.title }}</h2>
+        <p class="es-lede es-dim">{{ outcome.description }}</p>
+      </header>
 
-      <p>
-        {{ outcome.description }}
-      </p>
-    </header>
-
-    <section
-      v-if="outcome.narrativeFragments && outcome.narrativeFragments.length > 0"
-      class="event-outcome__fragments"
-    >
-      <article
-        v-for="fragment in outcome.narrativeFragments"
-        :key="`${fragment.speaker}-${fragment.text}`"
-        class="event-outcome__fragment"
-      >
-        <span class="system-label">{{ fragment.speaker }}</span>
-        <p>{{ fragment.text }}</p>
-      </article>
-    </section>
-
-    <section class="event-outcome__meta">
-      <div>
-        <span class="system-label">RISK_LEVEL</span>
-        <strong>{{ outcome.riskLevel }}</strong>
-      </div>
-
-      <div>
-        <span class="system-label">REWARD</span>
-        <strong>{{ outcome.rewardProfile }}</strong>
-      </div>
-
-      <div>
-        <span class="system-label">NODE_EVENT_STATE</span>
-        <strong>
-          {{ requiresChoice ? 'Choix requis' : 'Résolu' }}
-        </strong>
-      </div>
-    </section>
-
-    <section
-      v-if="requiresChoice"
-      class="event-outcome__choices"
-    >
-      <p class="system-label">PLAYER_CHOICE_REQUIRED</p>
-
-      <div
-        v-if="choices.length > 0"
-        class="event-outcome__choice-list"
-      >
-        <button
-          v-for="choice in choices"
-          :key="choice.id"
-          class="event-outcome__choice"
-          :class="{
-            'event-outcome__choice--disabled': !choice.isEnabled,
-            'event-outcome__choice--selected': selectedChoiceId === choice.id,
-          }"
-          :disabled="isLoading || !choice.isEnabled"
-          @click="selectChoice(choice.id)"
+      <!-- Narrative fragments -->
+      <div v-if="outcome.narrativeFragments?.length" class="event-scene__fragments">
+        <article
+          v-for="fragment in outcome.narrativeFragments"
+          :key="`${fragment.speaker}-${fragment.text}`"
+          class="event-scene__fragment"
         >
-          <strong>{{ choice.label }}</strong>
-          <p>{{ choice.description }}</p>
-          <small>{{ choice.id }}</small>
+          <span class="es-label">{{ fragment.speaker }}</span>
+          <p class="es-body">{{ fragment.text }}</p>
+        </article>
+      </div>
 
-          <span
-            v-if="selectedChoiceId === choice.id"
-            class="event-outcome__selected-label"
+      <hr class="es-rule" />
+
+      <!-- Choices -->
+      <div v-if="requiresChoice && choices.length > 0" class="event-scene__choices">
+        <span class="es-kicker">Choix requis</span>
+        <div class="event-scene__choice-list">
+          <button
+            v-for="choice in choices"
+            :key="choice.id"
+            class="event-choice"
+            :class="{ 'event-choice--selected': selectedChoiceId === choice.id }"
+            :disabled="isLoading || !choice.isEnabled"
+            @click="selectChoice(choice.id)"
           >
-            ◎ Choisi
-          </span>
+            <template v-if="selectedChoiceId === choice.id">
+              <div class="es-corner es-corner--frost tl" />
+              <div class="es-corner es-corner--frost tr" />
+              <div class="es-corner es-corner--frost bl" />
+              <div class="es-corner es-corner--frost br" />
+            </template>
+            <h3 class="es-h3">{{ choice.label }}</h3>
+            <p class="es-body">{{ choice.description }}</p>
+            <span v-if="selectedChoiceId === choice.id" class="event-choice__picked">❦ Choisi</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Continue -->
+      <div v-else class="event-scene__actions">
+        <button class="es-btn es-btn--frost es-btn--lg" :disabled="isLoading" @click="$emit('continue')">
+          {{ isLoading ? 'Résolution…' : 'Continuer →' }}
         </button>
       </div>
-
-      <p
-        v-else
-        class="event-outcome__warning"
-      >
-        ERROR_PLACEHOLDER_MESSAGE_LOADING_CHOICES
-      </p>
-    </section>
-
-    <section
-      v-else
-      class="event-outcome__actions"
-    >
-      <p
-        v-if="isRewardLike"
-        class="event-outcome__note"
-      >
-        REWARD_LIKE_OUTCOME_NOTE  
-      </p>
-
-      <button
-        class="ghost-button event-outcome__continue"
-        :disabled="isLoading"
-        @click="$emit('continue')"
-      >
-        Continuer →
-      </button>
-    </section>
+    </div>
   </section>
 </template>
 
 <style scoped>
-.event-outcome {
-  display: grid;
-  gap: var(--space-6);
+.event-scene {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   height: 100%;
-  align-content: center;
+  padding: var(--space-6);
 }
 
-.event-outcome__header {
-  max-width: 52rem;
+.event-scene__card {
+  position: relative;
+  z-index: 1;
+  width: min(720px, 90vw);
+  background: oklch(0.20 0.04 272 / 0.85);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  box-shadow:
+    oklch(1 0 0 / 0.03) 0 0 0 1px inset,
+    oklch(0.12 0.03 272 / 0.7) 0 0 30px -8px inset,
+    var(--wash-frost) 0 0 40px -20px;
+  backdrop-filter: blur(12px);
+  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-height: 85vh;
+  overflow-y: auto;
 }
 
-.event-outcome__header h2 {
-  margin: var(--space-2) 0;
-  color: var(--color-frost);
-  font-size: clamp(2rem, 4vw, 4rem);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+.event-scene__header {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
 }
 
-.event-outcome__header p:last-child {
-  color: var(--color-muted);
-  line-height: 1.65;
+.event-scene__header h2 {
+  margin: 0;
+  color: var(--ink);
 }
 
-.event-outcome__fragments {
-  display: grid;
+.event-scene__fragments {
+  display: flex;
+  flex-direction: column;
   gap: var(--space-3);
-  max-width: 52rem;
 }
 
-.event-outcome__fragment {
-  padding: var(--space-4);
-  border: 1px solid color-mix(in oklch, var(--color-line), transparent 35%);
-  background: color-mix(in oklch, var(--color-panel), transparent 8%);
+.event-scene__fragment {
+  padding: var(--space-3) var(--space-4);
+  background: var(--card-soft);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-sm);
 }
 
-.event-outcome__fragment p {
-  margin-bottom: 0;
-  color: var(--color-ink);
+.event-scene__fragment .es-body {
+  margin: var(--space-1) 0 0;
+  color: var(--ink);
   line-height: 1.6;
 }
 
-.event-outcome__meta {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 12rem));
+.event-scene__choices {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   gap: var(--space-3);
 }
 
-.event-outcome__meta div {
-  padding-top: var(--space-2);
-  border-top: 1px solid var(--color-line);
-}
-
-.event-outcome__meta strong {
-  display: block;
-  margin-top: var(--space-1);
-  color: var(--color-gold);
-  font-family: var(--font-mono);
-  font-size: 0.85rem;
-}
-
-.event-outcome__choices {
-  display: grid;
+.event-scene__choice-list {
+  display: flex;
   gap: var(--space-4);
+  justify-content: center;
+  flex-wrap: wrap;
 }
 
-.event-outcome__choice-list {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-4);
-}
-
-.event-outcome__choice {
+.event-choice {
   position: relative;
-  min-height: 12rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  width: 200px;
   padding: var(--space-4);
-  color: var(--color-ink);
-  border: 1px solid color-mix(in oklch, var(--color-line), transparent 25%);
-  background: color-mix(in oklch, var(--color-panel), transparent 4%);
-  text-align: left;
+  text-align: center;
+  background: var(--card-soft);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
   cursor: pointer;
+  font-family: inherit;
+  color: var(--ink);
+  transition: border-color 0.2s ease;
 }
 
-.event-outcome__choice:hover:not(:disabled) {
-  border-color: var(--color-gold);
-  box-shadow: 0 0 30px color-mix(in oklch, var(--color-gold), transparent 78%);
+.event-choice:hover:not(:disabled) {
+  border-color: var(--edge-frost);
 }
 
-.event-outcome__choice--disabled {
-  opacity: 0.55;
+.event-choice--selected {
+  border-color: var(--frost) !important;
+  box-shadow: 0 0 16px oklch(0.846 0.100 276 / 0.2);
+}
+
+.event-choice:disabled {
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
-.event-outcome__choice--selected {
-  border-color: var(--color-gold);
-  box-shadow: 0 0 34px color-mix(in oklch, var(--color-gold), transparent 72%);
+.event-choice h3 {
+  margin: 0;
+  color: var(--ink);
 }
 
-.event-outcome__choice strong {
-  color: var(--color-ink);
-  font-size: 1.1rem;
+.event-choice .es-body {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--ink-3);
+  line-height: 1.5;
 }
 
-.event-outcome__choice p {
-  color: var(--color-muted);
-  line-height: 1.55;
-}
-
-.event-outcome__choice small {
-  color: var(--color-dim);
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
-}
-
-.event-outcome__selected-label {
-  position: absolute;
-  right: var(--space-4);
-  bottom: var(--space-4);
-  color: var(--color-gold);
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  letter-spacing: 0.18em;
+.event-choice__picked {
+  color: var(--frost);
+  font-family: var(--font-caps);
+  font-size: 0.56rem;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
+  margin-top: var(--space-1);
 }
 
-.event-outcome__warning {
-  max-width: 48rem;
-  color: var(--color-gold);
-  font-family: var(--font-mono);
-  font-size: 0.8rem;
-  line-height: 1.6;
-}
-
-.event-outcome__actions {
-  display: grid;
-  gap: var(--space-4);
-  justify-items: start;
-}
-
-.event-outcome__note {
-  max-width: 46rem;
-  color: var(--color-muted);
-  line-height: 1.6;
-}
-
-.event-outcome__continue {
-  border-color: var(--color-frost);
-  color: var(--color-frost);
+.event-scene__actions {
+  display: flex;
+  justify-content: center;
 }
 </style>

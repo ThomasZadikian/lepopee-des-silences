@@ -44,14 +44,14 @@
   grid-template-columns: 2.5rem 1fr auto;
   gap: var(--space-3);
   padding: var(--space-3) 0;
-  border-top: 1px solid color-mix(in oklch, var(--color-line), transparent 45%);
+  border-top: 1px solid color-mix(in oklch, var(--line), transparent 45%);
 }
 
 .party__portrait {
   width: 2.5rem;
   height: 2.5rem;
-  background: radial-gradient(circle, var(--color-panel-soft), var(--color-void));
-  border: 1px solid var(--color-line);
+  background: radial-gradient(circle, var(--panel-2), var(--void));
+  border: 1px solid var(--line);
 }
 
 .party__member strong,
@@ -63,11 +63,11 @@
 
 .party__member span,
 .party__member small {
-  color: var(--color-muted);
+  color: var(--ink-3);
 }
 
 .party__member em {
-  color: var(--color-blood);
+  color: var(--blood);
   font-family: var(--font-mono);
   font-size: 0.7rem;
   font-style: normal;
@@ -75,6 +75,6 @@
 }
 
 .party__tag--frost {
-  color: var(--color-frost) !important;
+  color: var(--frost) !important;
 }
 </style>

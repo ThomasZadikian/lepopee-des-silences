@@ -39,20 +39,20 @@ defineProps<{
 
 .laws article {
   padding: var(--space-3) 0;
-  border-top: 1px solid color-mix(in oklch, var(--color-line), transparent 45%);
+  border-top: 1px solid color-mix(in oklch, var(--line), transparent 45%);
 }
 
 .laws strong {
-  color: var(--color-gold);
+  color: var(--gold);
 }
 
 .laws p {
-  color: var(--color-muted);
+  color: var(--ink-3);
   font-size: 0.9rem;
 }
 
 .laws small {
-  color: var(--color-dim);
+  color: var(--ink-4);
   font-family: var(--font-mono);
   text-transform: uppercase;
 }

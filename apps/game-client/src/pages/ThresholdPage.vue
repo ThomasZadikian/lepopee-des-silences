@@ -9,239 +9,247 @@ const runStore = useRunStore();
 
 const resumableRun = computed(() => runStore.resumableRun);
 
-onMounted(() => {
-  runStore.loadResumableRun();
-});
+onMounted(() => { runStore.loadResumableRun(); });
 
 async function resumeRun() {
   const run = resumableRun.value;
   if (!run) return;
   await runStore.loadRun(run.id);
-  if (runStore.currentRun?.id) {
-    await router.push(`/run/${run.id}`);
-  }
+  if (runStore.currentRun?.id) await router.push(`/run/${run.id}`);
 }
 
 async function startRun() {
   await runStore.startRun();
   const runId = runStore.currentRun?.id;
-  if (!runId) {
-    console.error('[game-client] Unable to navigate: run id is missing.', {
-      currentRun: runStore.currentRun,
-    });
-    return;
-  }
+  if (!runId) return;
   await router.push(`/run/${runId}`);
 }
 
 function formatSavedAt(savedAt: string): string {
   try {
     return new Intl.DateTimeFormat('fr-FR', {
-      day: '2-digit',
-      month: 'short',
-      hour: '2-digit',
-      minute: '2-digit',
+      day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
     }).format(new Date(savedAt));
-  } catch {
-    return '—';
-  }
+  } catch { return '—'; }
 }
 </script>
 
 <template>
   <main class="threshold">
-    <section class="threshold__hero">
-      <p class="system-label">Seuil du Palais</p>
-      <h1>L'Épopée des silences</h1>
-      <p class="threshold__subtitle">
-        Chaque traversée du Palais s'écrit dans ton Tome — puis se tait.
-      </p>
-    </section>
+    <div class="es-atmos">
+      <div class="es-vignette" />
+      <div class="es-grain" />
+    </div>
 
-    <section class="threshold__grid">
+    <div class="threshold__card">
+      <!-- Top: icon + title -->
+      <header class="threshold__header">
+        <div class="threshold__icon">◈</div>
+        <div>
+          <h1 class="threshold__title">Seuil du Palais</h1>
+          <p class="threshold__tagline">Chaque traversée s'écrit dans ton Tome — puis se tait.</p>
+        </div>
+      </header>
 
-      <!-- Run en cours / reprise -->
-      <article class="panel threshold-card">
-        <!-- Loading -->
+      <hr class="es-rule" />
+
+      <!-- Description -->
+      <div class="threshold__body">
+        <p class="threshold__description">
+          Le Palais se souvient de chaque pas. Les murs changent, les lois se renouvellent,
+          les souvenirs se transforment — mais le Tome, lui, garde trace.
+        </p>
+      </div>
+
+      <hr class="es-rule" />
+
+      <!-- Actions -->
+      <div class="threshold__actions">
+        <!-- Resumable run -->
         <template v-if="runStore.isLoadingResumableRun">
-          <p class="system-label">Run en cours · vérification</p>
-          <h2>Recherche d'une run suspendue…</h2>
+          <span class="es-label">Vérification…</span>
         </template>
 
-        <!-- Live resumable run -->
         <template v-else-if="resumableRun">
-          <p class="system-label">Run en cours · reprise</p>
-          <h2>Reprendre la descente</h2>
-
-          <dl>
-            <div>
-              <dt>Seed</dt>
-              <dd>{{ resumableRun.seed }}</dd>
+          <div class="threshold__run-stats">
+            <div class="threshold__stat">
+              <span class="es-label">Seed</span>
+              <span class="threshold__stat-value">{{ resumableRun.seed }}</span>
             </div>
-            <div>
-              <dt>Salle</dt>
-              <dd>{{ resumableRun.currentRoomNumber }}</dd>
+            <div class="threshold__stat">
+              <span class="es-label">Salle</span>
+              <span class="threshold__stat-value">{{ resumableRun.currentRoomNumber }}</span>
             </div>
-            <div>
-              <dt>Sauvegardée le</dt>
-              <dd>{{ formatSavedAt(resumableRun.savedAt) }}</dd>
+            <div class="threshold__stat">
+              <span class="es-label">Sauvegardée</span>
+              <span class="threshold__stat-value">{{ formatSavedAt(resumableRun.savedAt) }}</span>
             </div>
-            <div>
-              <dt>Compagnon</dt>
-              <dd>Neige</dd>
-            </div>
-          </dl>
-
-          <button
-            class="ghost-button"
-            :disabled="runStore.isLoading"
-            @click="resumeRun"
-          >
+          </div>
+          <button class="es-btn es-btn--frost es-btn--lg" :disabled="runStore.isLoading" @click="resumeRun">
             {{ runStore.isLoading ? 'Chargement…' : 'Reprendre →' }}
           </button>
-
-          <p v-if="runStore.error" class="threshold-card__error">
-            {{ runStore.error }}
-          </p>
         </template>
 
-        <!-- No resumable run -->
         <template v-else>
-          <p class="system-label">Run en cours · aucune</p>
-          <h2>Aucune run suspendue</h2>
-          <p>
-            Sauvegarde ta progression depuis le Repli du Palais ou la fin
-            d'une pièce pour pouvoir reprendre ici.
-          </p>
-          <button class="ghost-button" disabled>
-            Reprendre →
-          </button>
+          <span class="es-label">Aucune run suspendue</span>
+          <button class="es-btn es-btn--lg" disabled>Reprendre →</button>
         </template>
-      </article>
 
-      <!-- Nouvelle seed -->
-      <article class="panel threshold-card threshold-card--primary">
-        <p class="system-label">Nouveau seuil · seed inédite</p>
-        <h2>Franchir un nouveau seuil</h2>
-        <p>
-          Une seed inédite réécrit l'architecture du Palais : pièces, lois,
-          ennemis. Tu n'emportes que ce que le Tome a déjà retenu.
-        </p>
+        <!-- Divider -->
+        <div class="threshold__divider" />
 
-        <button
-          class="ghost-button"
-          :disabled="runStore.isLoading"
-          @click="startRun"
-        >
+        <!-- New run -->
+        <div class="threshold__stat">
+          <span class="es-label">Nouveau seuil</span>
+          <span class="threshold__stat-value">Seed inédite</span>
+        </div>
+        <button class="es-btn es-btn--gold es-btn--lg" :disabled="runStore.isLoading" @click="startRun">
           {{ runStore.isLoading ? 'Génération…' : 'Générer une run →' }}
         </button>
+      </div>
 
-        <p v-if="runStore.error" class="threshold-card__error">
-          {{ runStore.error }}
-        </p>
-      </article>
-    </section>
+      <!-- Elise -->
+      <div class="threshold__elise">
+        <div class="es-corner es-corner--frost tl" />
+        <div class="es-corner es-corner--frost tr" />
+        <div class="es-corner es-corner--frost bl" />
+        <div class="es-corner es-corner--frost br" />
+        <span class="es-label">Élise · au seuil</span>
+        <p>Te revoilà. Le Palais n'a rien oublié de la dernière fois — moi non plus.</p>
+      </div>
 
-    <aside class="panel threshold__elise">
-      <p class="system-label">Élise · au seuil</p>
-      <p>
-        Te revoilà. Le Palais n'a rien oublié de la dernière fois — moi non plus.
-      </p>
-    </aside>
+      <p v-if="runStore.error" class="threshold__error">{{ runStore.error }}</p>
+    </div>
   </main>
 </template>
 
 <style scoped>
 .threshold {
-  min-height: 100vh;
-  display: grid;
-  align-content: center;
-  gap: var(--space-8);
-  padding: min(8vh, 5rem) clamp(1rem, 5vw, 6rem);
-}
-
-.threshold__hero {
-  max-width: 56rem;
-}
-
-.threshold-card__error {
-  margin-top: var(--space-4);
-  color: var(--color-blood);
-  font-family: var(--font-mono);
-  font-size: 0.8rem;
-}
-
-.threshold__hero h1 {
-  margin: var(--space-2) 0;
-  font-size: clamp(2.5rem, 7vw, 6.5rem);
-  line-height: 0.9;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.threshold__subtitle {
-  max-width: 42rem;
-  color: var(--color-muted);
-  font-size: 1.15rem;
-}
-
-.threshold__grid {
-  display: grid;
-  grid-template-columns: 1fr 1.1fr;
-  gap: var(--space-4);
-}
-
-.threshold-card {
-  padding: var(--space-6);
-}
-
-.threshold-card--primary {
-  border-color: color-mix(in oklch, var(--color-gold), transparent 40%);
-}
-
-.threshold-card h2 {
-  margin: var(--space-2) 0 var(--space-4);
-  font-size: 1.6rem;
-}
-
-.threshold-card p,
-.threshold-card dd {
-  color: var(--color-muted);
-}
-
-.threshold-card dl {
-  display: grid;
-  gap: var(--space-3);
-  margin: var(--space-6) 0;
-}
-
-.threshold-card div {
+  position: relative;
   display: flex;
-  justify-content: space-between;
+  align-items: center;
+  justify-content: center;
+  min-height: 100dvh;
+  padding: var(--space-4);
+}
+
+.threshold__card {
+  position: relative;
+  z-index: 1;
+  width: min(780px, 92vw);
+  background: oklch(0.20 0.04 272 / 0.85);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  box-shadow:
+    oklch(1 0 0 / 0.03) 0 0 0 1px inset,
+    oklch(0.12 0.03 272 / 0.7) 0 0 30px -8px inset,
+    oklch(0.1 0.03 272 / 0.7) 0 18px 44px -26px,
+    var(--wash-frost) 0 0 56px -22px;
+  backdrop-filter: blur(12px);
+  padding: var(--space-4) var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.threshold__header {
+  display: flex;
+  align-items: center;
   gap: var(--space-4);
-  border-bottom: 1px solid color-mix(in oklch, var(--color-line), transparent 50%);
-  padding-bottom: var(--space-2);
 }
 
-.threshold-card dt,
-.threshold-card dd {
+.threshold__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  font-size: 1.5rem;
+  color: var(--frost);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.threshold__title {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--ink-2);
   margin: 0;
-  font-family: var(--font-mono);
-  font-size: 0.8rem;
 }
 
-.threshold-card dt {
-  color: var(--color-dim);
-  text-transform: uppercase;
+.threshold__tagline {
+  font-family: var(--font);
+  font-size: 0.82rem;
+  color: var(--frost);
+  margin: var(--space-1) 0 0;
+}
+
+.threshold__body {
+  padding: 0 var(--space-2);
+}
+
+.threshold__description {
+  font-family: var(--font);
+  font-size: 0.92rem;
+  line-height: 1.6;
+  color: var(--ink-2);
+  max-width: 52ch;
+  margin: 0;
+}
+
+.threshold__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.threshold__run-stats {
+  display: flex;
+  gap: var(--space-4);
+}
+
+.threshold__stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.threshold__stat-value {
+  font-family: var(--font);
+  font-size: 0.82rem;
+  color: var(--frost);
+}
+
+.threshold__divider {
+  width: 1px;
+  height: 32px;
+  background: var(--line);
 }
 
 .threshold__elise {
-  max-width: 48rem;
-  padding: var(--space-4) var(--space-6);
-  border-color: color-mix(in oklch, var(--color-frost), transparent 35%);
+  position: relative;
+  padding: var(--space-3) var(--space-4);
+  background: var(--card-soft);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-sm);
 }
 
-.threshold__elise p:last-child {
-  color: var(--color-ink);
+.threshold__elise p {
+  font-family: var(--font);
+  font-size: 0.88rem;
+  color: var(--ink-2);
+  margin: var(--space-1) 0 0;
+  line-height: 1.5;
+}
+
+.threshold__error {
+  color: var(--blood);
+  font-size: 0.78rem;
+  margin: 0;
 }
 </style>

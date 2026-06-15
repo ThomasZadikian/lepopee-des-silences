@@ -49,20 +49,20 @@ defineEmits<{
 
 .event-choice-result h2 {
   margin: var(--space-2) 0;
-  color: var(--color-gold);
+  color: var(--gold);
   font-size: clamp(2rem, 4vw, 4rem);
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
 
 .event-choice-result p:last-child {
-  color: var(--color-muted);
+  color: var(--ink-3);
   line-height: 1.65;
 }
 
 .event-choice-result__continue {
   justify-self: start;
-  border-color: var(--color-frost);
-  color: var(--color-frost);
+  border-color: var(--frost);
+  color: var(--frost);
 }
 </style>

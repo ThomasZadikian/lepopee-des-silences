@@ -80,12 +80,12 @@ defineProps<{
 }
 
 .side-panel__header-info {
-  color: var(--color-dim);
+  color: var(--ink-4);
 }
 
 .side-panel__name {
   margin: 0;
-  color: var(--color-ink);
+  color: var(--ink);
   letter-spacing: 0.04em;
 }
 
@@ -103,13 +103,13 @@ defineProps<{
 .side-panel__stat-label {
   font-size: 0.65rem;
   letter-spacing: 0.12em;
-  color: var(--color-dim);
+  color: var(--ink-4);
 }
 
 .side-panel__stat-value {
   font-family: var(--font-mono);
   font-size: 0.9rem;
-  color: var(--color-ink);
+  color: var(--ink);
 }
 
 .side-panel__section {
@@ -126,7 +126,7 @@ defineProps<{
 }
 
 .side-panel__skill {
-  border: 1px solid var(--color-line);
+  border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   padding: var(--space-2);
 }
@@ -144,22 +144,22 @@ defineProps<{
 
 .side-panel__skill-cost {
   font-size: 0.7rem;
-  color: var(--color-muted);
+  color: var(--ink-3);
   font-family: var(--font-mono);
 }
 
 .side-panel__skill-meta {
   font-size: 0.7rem;
-  color: var(--color-dim);
+  color: var(--ink-4);
   margin-top: var(--space-1);
 }
 
 .side-panel__status {
   font-size: 0.8rem;
-  color: var(--color-muted);
+  color: var(--ink-3);
 }
 
 .side-panel__empty {
-  color: var(--color-dim);
+  color: var(--ink-4);
 }
 </style>

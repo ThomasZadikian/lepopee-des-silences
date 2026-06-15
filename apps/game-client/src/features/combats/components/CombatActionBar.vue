@@ -44,9 +44,9 @@ defineEmits<{
   display: grid;
   gap: var(--space-1);
   padding: var(--space-3);
-  color: var(--color-ink);
-  background: color-mix(in oklch, var(--color-panel), transparent 8%);
-  border: 1px solid color-mix(in oklch, var(--color-line), transparent 25%);
+  color: var(--ink);
+  background: color-mix(in oklch, var(--panel), transparent 8%);
+  border: 1px solid color-mix(in oklch, var(--line), transparent 25%);
   text-align: left;
   cursor: pointer;
 }
@@ -57,17 +57,17 @@ defineEmits<{
 }
 
 .combat-actions__button:not(:disabled):hover {
-  border-color: var(--color-frost);
+  border-color: var(--frost);
 }
 
 .combat-actions__button strong {
-  color: var(--color-frost);
+  color: var(--frost);
   font-family: var(--font-mono);
   text-transform: uppercase;
 }
 
 .combat-actions__button span {
-  color: var(--color-muted);
+  color: var(--ink-3);
   font-size: 0.85rem;
 }
 </style>

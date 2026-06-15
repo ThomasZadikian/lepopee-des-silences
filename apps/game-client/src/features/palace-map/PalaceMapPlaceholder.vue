@@ -333,13 +333,8 @@ function getRiskLabel(node: NodeDto): string {
 
 <template>
   <section class="map">
-    <header>
-      <div>
-        <p class="system-label">{{ layoutTemplateKey ?? 'CARTE' }}</p>
-        <p v-if="layoutTemplateVersion" class="system-dim">{{ layoutTemplateVersion }}</p>
-      </div>
-
-      <span class="system-value">{{ nodes.length }} NŒUDS · ROW {{ currentRow ?? 0 }}/{{ Math.max(...nodes.map(n => n.row), 0) }}</span>
+    <header class="map__header">
+      <span class="es-kicker">Carte du Palais</span>
     </header>
 
     <div class="map__canvas" aria-label="Carte roguelite">
@@ -391,17 +386,23 @@ function getRiskLabel(node: NodeDto): string {
 <style scoped>
 .map {
   height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-3) var(--space-4);
 }
 
-.map header {
+.map__header {
   display: flex;
-  justify-content: space-between;
-  gap: var(--space-4);
+  align-items: center;
+  gap: var(--space-3);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--line-soft);
+  margin-bottom: var(--space-3);
 }
 
 .map h2 {
   margin: var(--space-1) 0 0;
-  color: var(--color-muted);
+  color: var(--ink-3);
   font-family: var(--font-mono);
   font-size: 0.8rem;
   letter-spacing: 0.18em;
@@ -413,7 +414,7 @@ function getRiskLabel(node: NodeDto): string {
   height: calc(100% - 4rem);
   margin-top: var(--space-6);
   overflow: hidden;
-  border: 1px solid color-mix(in oklch, var(--color-line), transparent 60%);
+  border: 1px solid color-mix(in oklch, var(--line), transparent 60%);
   background:
     radial-gradient(circle at 20% 50%, rgb(120 180 220 / 8%), transparent 18%),
     radial-gradient(circle at 88% 50%, rgb(180 40 60 / 9%), transparent 12%);
@@ -423,7 +424,7 @@ function getRiskLabel(node: NodeDto): string {
   content: '';
   position: absolute;
   inset: 12%;
-  border-top: 1px dashed color-mix(in oklch, var(--color-line), transparent 35%);
+  border-top: 1px dashed color-mix(in oklch, var(--line), transparent 35%);
   transform: skewY(-10deg);
   z-index: 0;
 }
@@ -444,19 +445,19 @@ function getRiskLabel(node: NodeDto): string {
 }
 
 .map__edge--locked {
-  stroke: color-mix(in oklch, var(--color-line), var(--color-frost) 20%);
+  stroke: color-mix(in oklch, var(--line), var(--frost) 20%);
   stroke-dasharray: 4 5;
   opacity: 0.13;
 }
 
 .map__edge--available {
-  stroke: var(--color-frost);
+  stroke: var(--frost);
   opacity: 0.8;
   stroke-width: 0.42;
 }
 
 .map__edge--selected {
-  stroke: var(--color-gold);
+  stroke: var(--gold);
   opacity: 0.75;
   stroke-width: 0.48;
 }
@@ -468,20 +469,20 @@ function getRiskLabel(node: NodeDto): string {
 }
 
 .map__edge--danger {
-  stroke: color-mix(in oklch, var(--color-blood), var(--color-gold) 25%);
+  stroke: color-mix(in oklch, var(--blood), var(--gold) 25%);
   opacity: 0.75;
   stroke-width: 0.45;
 }
 
 .map__edge--selected-route {
-  stroke: var(--color-gold);
+  stroke: var(--gold);
   opacity: 0.88;
   stroke-width: 0.62;
   filter: drop-shadow(0 0 5px currentColor);
 }
 
 .map__edge--unselected-route {
-  stroke: color-mix(in oklch, var(--color-line), white 15%);
+  stroke: color-mix(in oklch, var(--line), white 15%);
   stroke-dasharray: 4 6;
   opacity: 0.05;
   stroke-width: 0.25;
@@ -496,9 +497,9 @@ function getRiskLabel(node: NodeDto): string {
   gap: 0.1rem;
   translate: -50% -50%;
   border-radius: 50%;
-  background: var(--color-panel);
-  border: 1px solid var(--color-line);
-  color: var(--color-muted);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  color: var(--ink-3);
   font-family: var(--font-mono);
   box-shadow: 0 0 14px rgb(0 0 0 / 45%);
   cursor: pointer;
@@ -514,7 +515,7 @@ function getRiskLabel(node: NodeDto): string {
 .map__node small {
   position: absolute;
   top: calc(100% + 0.35rem);
-  color: var(--color-dim);
+  color: var(--ink-4);
   font-size: 0.55rem;
   white-space: nowrap;
   text-transform: uppercase;
@@ -522,13 +523,13 @@ function getRiskLabel(node: NodeDto): string {
 
 .map__node--available,
 .map__node--frost {
-  color: var(--color-frost);
-  border-color: var(--color-frost);
+  color: var(--frost);
+  border-color: var(--frost);
 }
 
 .map__node--danger {
-  color: var(--color-blood);
-  border-color: var(--color-blood);
+  color: var(--blood);
+  border-color: var(--blood);
 }
 
 .map__node--resolved {
@@ -551,7 +552,7 @@ function getRiskLabel(node: NodeDto): string {
 }
 
 .map__node--past-unchosen {
-  color: color-mix(in oklch, white, var(--color-muted) 55%);
+  color: color-mix(in oklch, white, var(--ink-3) 55%);
   border-color: color-mix(in oklch, white, transparent 78%);
   opacity: 0.08;
   filter: grayscale(1);
@@ -609,28 +610,28 @@ function getRiskLabel(node: NodeDto): string {
    ─────────────────────────────────────────────────────────────────────────── */
 
 .map__node--risk-low {
-  color: var(--color-frost);
-  border-color: var(--color-frost);
+  color: var(--frost);
+  border-color: var(--frost);
 }
 
 .map__node--risk-moderate {
-  color: color-mix(in oklch, var(--color-frost), var(--color-gold) 35%);
-  border-color: color-mix(in oklch, var(--color-frost), var(--color-gold) 35%);
+  color: color-mix(in oklch, var(--frost), var(--gold) 35%);
+  border-color: color-mix(in oklch, var(--frost), var(--gold) 35%);
 }
 
 .map__node--risk-high {
-  color: var(--color-gold);
-  border-color: var(--color-gold);
+  color: var(--gold);
+  border-color: var(--gold);
 }
 
 .map__node--risk-critical {
-  color: color-mix(in oklch, var(--color-blood), var(--color-gold) 20%);
-  border-color: color-mix(in oklch, var(--color-blood), var(--color-gold) 20%);
+  color: color-mix(in oklch, var(--blood), var(--gold) 20%);
+  border-color: color-mix(in oklch, var(--blood), var(--gold) 20%);
 }
 
 .map__node--risk-boss {
-  color: var(--color-blood);
-  border-color: var(--color-blood);
+  color: var(--blood);
+  border-color: var(--blood);
 }
 
 /* ─── Availability emphasis ───────────────────────────────────────────────────
@@ -641,7 +642,7 @@ function getRiskLabel(node: NodeDto): string {
 .map__node.map__node--available {
   opacity: 1;
   border-width: 1.6px;
-  background: var(--color-panel);
+  background: var(--panel);
   box-shadow:
     0 0 10px rgb(0 0 0 / 45%),
     inset 0 0 10px color-mix(in oklch, currentColor, transparent 88%);
@@ -655,7 +656,7 @@ function getRiskLabel(node: NodeDto): string {
 
 .map__node.map__node--locked:disabled {
   opacity: 0.22;
-  background: color-mix(in oklch, var(--color-panel), black 8%);
+  background: color-mix(in oklch, var(--panel), black 8%);
   border-color: color-mix(in oklch, currentColor, transparent 78%);
   box-shadow: 0 0 8px rgb(0 0 0 / 35%);
   filter: grayscale(0.55) saturate(0.55) brightness(0.82);
@@ -673,7 +674,7 @@ function getRiskLabel(node: NodeDto): string {
 .map__node.map__node--selected-route {
   opacity: 1;
   border-width: 1.6px;
-  background: var(--color-panel);
+  background: var(--panel);
   filter: saturate(1.14) brightness(1.12);
   box-shadow:
     0 0 10px rgb(0 0 0 / 45%),
@@ -711,9 +712,9 @@ function getRiskLabel(node: NodeDto): string {
   filter: saturate(1.25) brightness(1.16);
   box-shadow:
     0 0 14px color-mix(in oklch, currentColor, transparent 72%),
-    0 0 10px color-mix(in oklch, var(--color-gold), transparent 60%),
+    0 0 10px color-mix(in oklch, var(--gold), transparent 60%),
     0 0 8px rgb(0 0 0 / 45%);
-  outline: 1px solid color-mix(in oklch, var(--color-gold), transparent 36%);
+  outline: 1px solid color-mix(in oklch, var(--gold), transparent 36%);
   outline-offset: 2px;
 }
 

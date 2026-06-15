@@ -100,7 +100,7 @@ function dangerClass(dangerHint: string): string {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  border-color: color-mix(in oklch, var(--color-frost), transparent 65%);
+  border-color: color-mix(in oklch, var(--frost), transparent 65%);
 }
 
 /* --- Main block --- */
@@ -130,7 +130,7 @@ function dangerClass(dangerHint: string): string {
 
 .hud__value {
   font-size: 0.85rem;
-  color: var(--color-frost);
+  color: var(--frost);
   font-family: var(--font-mono);
   letter-spacing: 0.03em;
   white-space: nowrap;
@@ -147,7 +147,7 @@ function dangerClass(dangerHint: string): string {
 
 .hud__progress-bar {
   height: 2px;
-  background: var(--color-frost);
+  background: var(--frost);
   border-radius: 1px;
   transition: width 0.3s ease;
   opacity: 0.55;
@@ -156,7 +156,7 @@ function dangerClass(dangerHint: string): string {
 /* --- Boss block --- */
 
 .hud__boss {
-  border-top: 1px solid color-mix(in oklch, var(--color-line), transparent 35%);
+  border-top: 1px solid color-mix(in oklch, var(--line), transparent 35%);
   padding-top: var(--space-2);
   display: flex;
   flex-direction: column;
@@ -181,15 +181,15 @@ function dangerClass(dangerHint: string): string {
   white-space: nowrap;
 }
 
-.danger--low      { color: var(--color-frost); }
-.danger--moderate { color: color-mix(in oklch, var(--color-frost), var(--color-gold) 35%); }
-.danger--high     { color: var(--color-gold); }
-.danger--critical { color: var(--color-blood); }
+.danger--low      { color: var(--frost); }
+.danger--moderate { color: color-mix(in oklch, var(--frost), var(--gold) 35%); }
+.danger--high     { color: var(--gold); }
+.danger--critical { color: var(--blood); }
 
 /* --- Debug block --- */
 
 .hud__debug {
-  border-top: 1px solid color-mix(in oklch, var(--color-line), transparent 35%);
+  border-top: 1px solid color-mix(in oklch, var(--line), transparent 35%);
   padding-top: var(--space-2);
 }
 
@@ -220,13 +220,13 @@ function dangerClass(dangerHint: string): string {
 }
 
 .hud__debug-row dt {
-  color: var(--color-dim);
+  color: var(--ink-4);
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
 
 .hud__debug-row dd {
-  color: var(--color-muted);
+  color: var(--ink-3);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

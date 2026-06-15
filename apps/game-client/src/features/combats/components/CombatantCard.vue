@@ -59,8 +59,8 @@ function healthPercent(combatant: CombatantSnapshotDto) {
 <style scoped>
 .combatant-card {
   padding: var(--space-4);
-  border: 1px solid color-mix(in oklch, var(--color-line), transparent 30%);
-  background: color-mix(in oklch, var(--color-panel), transparent 5%);
+  border: 1px solid color-mix(in oklch, var(--line), transparent 30%);
+  background: color-mix(in oklch, var(--panel), transparent 5%);
   cursor: default;
 }
 
@@ -69,16 +69,16 @@ function healthPercent(combatant: CombatantSnapshotDto) {
 }
 
 .combatant-card--selectable:hover {
-  border-color: var(--color-frost);
+  border-color: var(--frost);
 }
 
 .combatant-card--current {
-  border-color: color-mix(in oklch, var(--color-gold), transparent 20%);
+  border-color: color-mix(in oklch, var(--gold), transparent 20%);
 }
 
 .combatant-card--target {
-  border-color: var(--color-blood);
-  box-shadow: 0 0 24px color-mix(in oklch, var(--color-blood), transparent 70%);
+  border-color: var(--blood);
+  box-shadow: 0 0 24px color-mix(in oklch, var(--blood), transparent 70%);
 }
 
 .combatant-card--defeated {
@@ -94,7 +94,7 @@ function healthPercent(combatant: CombatantSnapshotDto) {
 
 .combatant-card h3 {
   margin: var(--space-1) 0;
-  color: var(--color-ink);
+  color: var(--ink);
 }
 
 .combatant-card__turn,
@@ -106,11 +106,11 @@ function healthPercent(combatant: CombatantSnapshotDto) {
 }
 
 .combatant-card__turn {
-  color: var(--color-gold);
+  color: var(--gold);
 }
 
 .combatant-card__target {
-  color: var(--color-blood);
+  color: var(--blood);
 }
 
 .combatant-card__portrait {
@@ -118,9 +118,9 @@ function healthPercent(combatant: CombatantSnapshotDto) {
   display: grid;
   place-items: center;
   margin: var(--space-4) 0;
-  color: var(--color-dim);
-  border: 1px solid color-mix(in oklch, var(--color-line), transparent 45%);
-  background: radial-gradient(circle, var(--color-panel-soft), var(--color-void));
+  color: var(--ink-4);
+  border: 1px solid color-mix(in oklch, var(--line), transparent 45%);
+  background: radial-gradient(circle, var(--panel-2), var(--void));
   font-family: var(--font-mono);
   font-size: 0.65rem;
   text-transform: uppercase;
@@ -128,20 +128,20 @@ function healthPercent(combatant: CombatantSnapshotDto) {
 
 .combatant-card__health {
   height: 0.45rem;
-  background: var(--color-void);
-  border: 1px solid color-mix(in oklch, var(--color-line), transparent 30%);
+  background: var(--void);
+  border: 1px solid color-mix(in oklch, var(--line), transparent 30%);
 }
 
 .combatant-card__health-fill {
   height: 100%;
-  background: var(--color-blood);
+  background: var(--blood);
 }
 
 .combatant-card footer {
   display: grid;
   gap: var(--space-1);
   margin-top: var(--space-3);
-  color: var(--color-muted);
+  color: var(--ink-3);
   font-family: var(--font-mono);
   font-size: 0.7rem;
 }

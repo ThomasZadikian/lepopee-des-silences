@@ -33,13 +33,13 @@ defineProps<{
 }
 
 .combat-log p:last-child {
-  color: var(--color-muted);
+  color: var(--ink-3);
   font-family: var(--font-mono);
   font-size: 0.8rem;
   line-height: 1.5;
 }
 
 .combat-log__error {
-  color: var(--color-blood) !important;
+  color: var(--blood) !important;
 }
 </style>

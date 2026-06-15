@@ -4,7 +4,6 @@ import { computed, nextTick, onMounted, watch } from 'vue';
 import { useRunStore } from '../../runs/stores/runStore';
 import { useCombatStore } from '../stores/useCombatStore';
 import CombatantCard from './CombatantCard.vue';
-import CombatantSidePanel from './CombatantSidePanel.vue';
 import CombatLogPanel from './CombatLogPanel.vue';
 import CombatOutcomePanel from './CombatOutcomePanel.vue';
 import SkillBar from './SkillBar.vue';
@@ -24,128 +23,77 @@ const combatStore = useCombatStore();
 const runStore = useRunStore();
 
 const activeCombatant = computed(() => combatStore.currentActor);
-
-const selectedCombatant = computed(() => {
-  const targetId = combatStore.selectedTargetIds[0];
-  if (!targetId) return null;
-  return combatStore.findCombatantById(targetId);
-});
-
 const isPlayerTurn = computed(() => combatStore.isPlayerTurn);
 const hasSelectedSkill = computed(() => Boolean(combatStore.selectedSkill));
 
 function canSelect(combatantId: string): boolean {
   if (combatStore.isLoading) return false;
-
-  // Item SingleAlly en attente de cible : seuls les alliés valides sont sélectionnables
   if (combatStore.selectedItem?.targetingType === 'SingleAlly') {
     return combatStore.itemValidTargets.some((t) => t.id === combatantId);
   }
-
   if (!combatStore.selectedSkill || !isPlayerTurn.value) return false;
   return combatStore.validTargets.some((t) => t.id === combatantId);
 }
 
 function isInvalidTarget(combatantId: string): boolean {
-  // Pas de rouge quand un item est sélectionné
   if (combatStore.selectedItem) return false;
   if (!hasSelectedSkill.value || combatStore.isLoading || combatStore.isSelectedTarget(combatantId)) return false;
   return !combatStore.validTargets.some((t) => t.id === combatantId);
 }
 
 function isVisuallyActive(combatantId: string): boolean {
-  if (combatStore.thinkingCombatantId) {
-    return combatStore.thinkingCombatantId === combatantId;
-  }
+  if (combatStore.thinkingCombatantId) return combatStore.thinkingCombatantId === combatantId;
   return combatStore.isCurrentActor(combatantId);
 }
 
 function handleSelect(combatantId: string) {
-  // Sélection de cible pour un item SingleAlly
   if (combatStore.selectedItem?.targetingType === 'SingleAlly') {
     const isValid = combatStore.itemValidTargets.some((t) => t.id === combatantId);
-    if (isValid) {
-      combatStore.selectedTargetIds = [combatantId]; // ← remplacement, pas push
-    }
+    if (isValid) combatStore.selectedTargetIds = [combatantId];
     return;
   }
-
-  // Sélection de cible pour un skill
   const validIds = combatStore.validTargets.map((t) => t.id);
-  if (validIds.includes(combatantId)) {
-    combatStore.selectTarget(combatantId);
-  }
+  if (validIds.includes(combatantId)) combatStore.selectTarget(combatantId);
 }
 
-async function handleSubmit() {
-  await combatStore.submitAction(props.runId);
+async function handleSubmit() { await combatStore.submitAction(props.runId); }
+async function handleSubmitItem() { await combatStore.submitItemAction(props.runId); }
+function handleClearSelection() { combatStore.clearSelection(); combatStore.clearItemSelection(); }
+function handleSelectItem(itemId: string) { combatStore.selectItem(itemId); }
+function handleContinue() { combatStore.clearCombat(); emit('combatCompleted'); }
+
+function getEnemyJitter(index: number): string {
+  const offsets = [
+    'translate(4px, -6px) rotate(-0.5deg)',
+    'translate(-3px, 8px) rotate(0.3deg)',
+    'translate(6px, 2px) rotate(-0.8deg)',
+    'translate(-5px, -4px) rotate(0.6deg)',
+    'translate(2px, 10px) rotate(-0.2deg)',
+    'translate(-7px, -3px) rotate(0.4deg)',
+  ];
+  return offsets[index % offsets.length];
 }
 
-async function handleSubmitItem() {
-  await combatStore.submitItemAction(props.runId);
-}
+watch(() => combatStore.terminalEvent, (event) => {
+  if (event?.kind === 'defeat') emit('combatFailed');
+});
 
-function handleClearSelection() {
-  combatStore.clearSelection();
-  combatStore.clearItemSelection();
-}
+watch(() => combatStore.canSubmit, async (isReady) => {
+  if (isReady && !combatStore.isResolvingAction) { await nextTick(); await handleSubmit(); }
+});
 
-function handleSelectItem(itemId: string) {
-  combatStore.selectItem(itemId);
-}
+watch(() => combatStore.canSubmitItem, async (isReady) => {
+  const item = combatStore.selectedItem;
+  if (isReady && item?.targetingType === 'Self' && !combatStore.isResolvingAction) { await nextTick(); await handleSubmitItem(); }
+});
 
-function handleContinue() {
-  combatStore.clearCombat();
-  emit('combatCompleted');
-}
-
-watch(
-  () => combatStore.terminalEvent,
-  (event) => {
-    if (event?.kind === 'defeat') {
-      emit('combatFailed');
-    }
-  },
-);
-
-// Auto-submit skill quand skill + cible sont sélectionnés
-watch(
-  () => combatStore.canSubmit,
-  async (isReady) => {
-    if (isReady && !combatStore.isResolvingAction) {
-      await nextTick();
-      await handleSubmit();
-    }
-  },
-);
-
-// Auto-submit item Self dès la sélection (aucune cible à choisir)
-watch(
-  () => combatStore.canSubmitItem,
-  async (isReady) => {
-    const item = combatStore.selectedItem;
-    if (isReady && item?.targetingType === 'Self' && !combatStore.isResolvingAction) {
-      await nextTick();
-      await handleSubmitItem();
-    }
-  },
-);
-
-// Auto-submit item SingleAlly dès qu'une cible alliée est choisie
-watch(
-  () => combatStore.selectedTargetIds,
-  async (ids) => {
-    const item = combatStore.selectedItem;
-    if (item && item.targetingType === 'SingleAlly' && ids.length > 0 && !combatStore.isResolvingAction) {
-      await nextTick();
-      await handleSubmitItem();
-    }
-  },
-);
+watch(() => combatStore.selectedTargetIds, async (ids) => {
+  const item = combatStore.selectedItem;
+  if (item && item.targetingType === 'SingleAlly' && ids.length > 0 && !combatStore.isResolvingAction) { await nextTick(); await handleSubmitItem(); }
+});
 
 onMounted(() => {
   if (combatStore.combat?.id === props.combatId) return;
-
   if (runStore.combatRuntime?.id && runStore.combatRuntime.status === 'Active') {
     combatStore.initCombat(runStore.combatRuntime);
   } else {
@@ -153,21 +101,13 @@ onMounted(() => {
   }
 });
 
-watch(
-  () => props.combatId,
-  (newId) => {
-    if (!newId) return;
-    if (combatStore.combat?.id === newId) return;
-
-    combatStore.clearCombat();
-
-    if (runStore.combatRuntime?.id === newId) {
-      combatStore.initCombat(runStore.combatRuntime);
-    } else {
-      combatStore.loadCurrentCombat(props.runId);
-    }
-  },
-);
+watch(() => props.combatId, (newId) => {
+  if (!newId) return;
+  if (combatStore.combat?.id === newId) return;
+  combatStore.clearCombat();
+  if (runStore.combatRuntime?.id === newId) combatStore.initCombat(runStore.combatRuntime);
+  else combatStore.loadCurrentCombat(props.runId);
+});
 </script>
 
 <template>
@@ -176,35 +116,25 @@ watch(
     <!-- Loading / absent -->
     <template v-if="!combatStore.combat">
       <div class="combat-scene__placeholder">
-        <template v-if="combatStore.isLoading">
-          <p class="system-label">COMBAT</p>
-          <h2>Le combat se met en place...</h2>
-        </template>
-        <template v-else>
-          <p class="system-label">COMBAT</p>
-          <h2>Combat indisponible</h2>
-          <p>Les données de combat runtime ne sont pas disponibles pour cette run.</p>
-        </template>
+        <p class="es-kicker">Confrontation</p>
+        <h3 class="es-h2" v-if="combatStore.isLoading">Le seuil s'ouvre…</h3>
+        <h3 class="es-h2" v-else>Confrontation indisponible</h3>
       </div>
     </template>
 
     <!-- Combat actif -->
     <template v-else>
+      <!-- Top: turn indicator -->
       <header class="combat-scene__header">
-        <div>
-          <p class="system-label">COMBAT</p>
-          <h2>Tour {{ combatStore.combat?.turnNumber ?? '?' }}</h2>
-        </div>
-
-        <span class="system-value combat-scene__combat-id">
-          {{ combatId }}
-        </span>
+        <span class="es-kicker">Confrontation</span>
+        <span class="es-chip es-chip--blood">Tour {{ combatStore.combat?.turnNumber ?? '?' }}</span>
       </header>
 
-      <section class="combat-scene__board">
-        <div class="combat-scene__side combat-scene__side--allies">
-          <p class="system-label combat-scene__side-label">ALLIÉS</p>
-
+      <!-- Main: face-à-face -->
+      <div class="combat-scene__arena">
+        <!-- Les Voix (allies) -->
+        <div class="combat-scene__side combat-scene__side--voix">
+          <p class="combat-scene__side-title">Les Voix</p>
           <CombatantCard
             v-for="combatant in combatStore.allies"
             :key="combatant.id"
@@ -222,13 +152,42 @@ watch(
             :is-acting="combatStore.recentlyActingId === combatant.id"
             @select="handleSelect"
           />
+
+          <!-- Actions inline -->
+          <div class="combat-scene__inline-actions">
+            <SkillBar
+              :combatant="activeCombatant"
+              :selected-skill-key="combatStore.selectedSkillKey"
+              :is-player-turn="isPlayerTurn"
+              :is-loading="combatStore.isResolvingAction"
+              :usable-battle-items="combatStore.combat?.usableBattleItems ?? []"
+              :selected-item-id="combatStore.selectedItemId"
+              @select-skill="combatStore.selectSkill"
+              @select-item="handleSelectItem"
+            />
+            <button
+              v-if="combatStore.selectedSkillKey || combatStore.selectedItemId || combatStore.selectedTargetIds.length > 0"
+              class="es-btn es-btn--ghost"
+              :disabled="combatStore.isResolvingAction"
+              @click="handleClearSelection"
+            >
+              Annuler
+            </button>
+          </div>
         </div>
 
-        <div class="combat-scene__side combat-scene__side--enemies">
-          <p class="system-label combat-scene__side-label">ENNEMIS</p>
+        <!-- Seuil (central divider) -->
+        <div class="combat-scene__seuil">
+          <div class="seuil-line" />
+          <span class="seuil-glyph">◈</span>
+          <div class="seuil-line" />
+        </div>
 
+        <!-- Les Manifestations (enemies) -->
+        <div class="combat-scene__side combat-scene__side--manifestations">
+          <p class="combat-scene__side-title">Les Manifestations</p>
           <CombatantCard
-            v-for="combatant in combatStore.enemies"
+            v-for="(combatant, idx) in combatStore.enemies"
             :key="combatant.id"
             :combatant="combatant"
             :is-current-actor="isVisuallyActive(combatant.id)"
@@ -242,45 +201,15 @@ watch(
             :is-guarded="combatStore.recentlyGuardedIds.includes(combatant.id)"
             :is-just-defeated="combatStore.recentlyDefeatedIds.includes(combatant.id)"
             :is-acting="combatStore.recentlyActingId === combatant.id"
+            :style="{ '--enemy-jitter': getEnemyJitter(idx) }"
             @select="handleSelect"
           />
         </div>
-      </section>
+      </div>
 
-      <section class="combat-scene__footer">
-        <SkillBar
-          :combatant="activeCombatant"
-          :selected-skill-key="combatStore.selectedSkillKey"
-          :is-player-turn="isPlayerTurn"
-          :is-loading="combatStore.isResolvingAction"
-          :usable-battle-items="combatStore.combat?.usableBattleItems ?? []"
-          :selected-item-id="combatStore.selectedItemId"
-          @select-skill="combatStore.selectSkill"
-          @select-item="handleSelectItem"
-        />
+      <CombatLogPanel :entries="combatStore.logEntries" />
 
-        <CombatLogPanel :entries="combatStore.logEntries" />
-
-        <div v-if="combatStore.error" class="combat-scene__error">
-          {{ combatStore.error }}
-        </div>
-      </section>
-
-      <section class="combat-scene__action-bar">
-        <button
-          class="ghost-button"
-          :disabled="(!combatStore.selectedSkillKey && !combatStore.selectedItemId && combatStore.selectedTargetIds.length === 0) || combatStore.isResolvingAction"
-          @click="handleClearSelection"
-        >
-          ANNULER
-        </button>
-      </section>
-
-      <CombatantSidePanel
-        class="combat-scene__side-panel"
-        :combatant="selectedCombatant ?? activeCombatant"
-      />
-
+      <!-- Outcome overlay -->
       <CombatOutcomePanel
         v-if="combatStore.isVictory || combatStore.isDefeat"
         :is-victory="combatStore.isVictory"
@@ -289,8 +218,13 @@ watch(
         @leave-run="$emit('leaveRun')"
       />
 
+      <!-- Resolving indicator -->
       <div v-if="combatStore.isResolvingAction" class="combat-scene__resolving" aria-live="polite">
-        Résolution...
+        Résolution…
+      </div>
+
+      <div v-if="combatStore.error" class="combat-scene__error">
+        {{ combatStore.error }}
       </div>
     </template>
   </section>
@@ -299,155 +233,173 @@ watch(
 <style scoped>
 .combat-scene {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) minmax(10rem, 14rem) auto;
-  grid-template-columns: minmax(0, 1fr) minmax(14rem, 16rem);
-  gap: var(--space-4);
+  grid-template-rows: auto 1fr auto;
+  grid-template-columns: 1fr;
+  gap: 0;
   height: 100%;
   min-height: 0;
   position: relative;
 }
 
 .combat-scene__header {
-  grid-column: 1 / -1;
   display: flex;
-  justify-content: space-between;
-  gap: var(--space-4);
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--line-soft);
 }
 
-.combat-scene__header h2 {
-  margin: var(--space-1) 0 0;
-  color: var(--color-blood);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
-.combat-scene__combat-id {
-  color: var(--color-dim);
-}
-
-.combat-scene__board {
-  grid-column: 1;
+.combat-scene__arena {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-4);
+  grid-template-columns: 1fr auto 3fr;
+  gap: 0;
   min-height: 0;
   overflow-y: auto;
-  overflow-x: hidden;
+  padding: var(--space-4);
 }
 
 .combat-scene__side {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: var(--space-3);
-  align-content: start;
+  padding: var(--space-2);
   min-width: 0;
 }
 
-.combat-scene__side-label {
-  color: var(--color-dim);
+.combat-scene__side-title {
+  font-family: var(--font-caps);
+  font-size: 0.6rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+  margin: 0 0 var(--space-2);
 }
 
-.combat-scene__footer {
-  grid-column: 1;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(18rem, 1fr);
-  gap: var(--space-4);
+.combat-scene__side--voix {
   align-items: stretch;
-  min-height: 0;
-  max-height: 14rem;
 }
 
-.combat-scene__action-bar {
-  grid-column: 1;
+.combat-scene__inline-actions {
   display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+  border-top: 1px solid var(--line-soft);
+  margin-top: var(--space-2);
+}
+
+.combat-scene__side--manifestations {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: var(--space-3);
+  align-content: start;
+}
+
+.combat-scene__seuil {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-3);
+  align-self: stretch;
+}
+
+.seuil-line {
+  flex: 1;
+  width: 1px;
+  background: linear-gradient(to bottom, transparent, var(--line-strong), transparent);
+}
+
+.seuil-glyph {
+  font-size: 1.2rem;
+  color: var(--ink-4);
+  opacity: 0.5;
 }
 
 .combat-scene__placeholder {
-  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
   text-align: center;
-  padding: var(--space-8) var(--space-4);
-}
-
-.combat-scene__placeholder h2 {
-  margin: var(--space-2) 0;
-  color: var(--color-dim);
-}
-
-.combat-scene__placeholder p {
-  color: var(--color-dim);
+  padding: var(--space-8);
 }
 
 .combat-scene__error {
-  color: var(--color-blood);
-  font-size: 0.75rem;
-  padding: var(--space-2);
-  border: 1px solid var(--color-blood);
+  position: absolute;
+  bottom: var(--space-2);
+  left: 50%;
+  transform: translateX(-50%);
+  color: var(--blood);
+  font-size: 0.78rem;
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid color-mix(in oklch, var(--blood), transparent 50%);
   border-radius: var(--radius-sm);
-  background: color-mix(in oklch, var(--color-blood), transparent 92%);
-}
-
-.combat-scene__side-panel {
-  grid-column: 2;
-  grid-row: 2 / 5;
-  min-height: 0;
-  height: 100%;
-  overflow-y: auto;
+  background: oklch(0.20 0.04 13 / 0.8);
+  z-index: var(--z-popover);
 }
 
 .combat-scene__resolving {
   position: absolute;
   left: 50%;
-  bottom: var(--space-4);
+  bottom: var(--space-6);
   transform: translateX(-50%);
   padding: var(--space-2) var(--space-4);
-  border: 1px solid color-mix(in oklch, var(--color-gold), transparent 45%);
+  border: 1px solid var(--edge-gold);
   border-radius: var(--radius-sm);
-  background: color-mix(in oklch, var(--color-void), transparent 12%);
-  color: var(--color-gold);
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  letter-spacing: 0.12em;
+  background: oklch(0.20 0.04 272 / 0.85);
+  color: var(--gold);
+  font-family: var(--font-caps);
+  font-size: 0.68rem;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-  z-index: 8;
-  animation: resolving-breathe 1.4s ease-in-out infinite;
+  z-index: var(--z-popover);
+  animation: breathe 1.4s ease-in-out infinite;
 }
 
-@keyframes resolving-breathe {
+@keyframes breathe {
   0%, 100% { opacity: 0.65; }
   50% { opacity: 1; }
 }
 
 @media (max-width: 900px) {
   .combat-scene {
-    grid-template-rows: auto minmax(16rem, 1fr) auto auto auto;
-    grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto 1fr auto;
+    grid-template-columns: 1fr;
   }
 
-  .combat-scene__board,
-  .combat-scene__footer,
-  .combat-scene__action-bar,
+  .combat-scene__arena {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto;
+  }
+
+  .combat-scene__seuil {
+    flex-direction: row;
+    padding: var(--space-2) 0;
+  }
+
+  .combat-scene__side--manifestations {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  }
+
+  .seuil-line {
+    height: 1px;
+    width: auto;
+    flex: 1;
+    background: linear-gradient(to right, transparent, var(--line-strong), transparent);
+  }
+
   .combat-scene__side-panel {
     grid-column: 1;
-  }
-
-  .combat-scene__board {
-    grid-template-columns: 1fr;
-  }
-
-  .combat-scene__footer {
-    grid-template-columns: 1fr;
-    max-height: none;
-  }
-
-  .combat-scene__side-panel {
     grid-row: auto;
+    border-left: none;
+    border-top: 1px solid var(--line-soft);
     max-height: 16rem;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .combat-scene__resolving {
-    animation: none;
-  }
+  .combat-scene__resolving { animation: none; }
 }
 </style>

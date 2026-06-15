@@ -69,7 +69,7 @@ function confirm() {
   z-index: 200;
   display: grid;
   place-items: center;
-  background: color-mix(in oklch, var(--color-void), transparent 30%);
+  background: color-mix(in oklch, var(--void), transparent 30%);
   backdrop-filter: blur(2px);
 }
 
@@ -83,13 +83,13 @@ function confirm() {
 .dialog__title {
   margin: 0;
   font-size: 1.3rem;
-  color: var(--color-frost);
+  color: var(--frost);
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
 
 .dialog__message {
-  color: var(--color-muted);
+  color: var(--ink-3);
   line-height: 1.6;
   margin: 0;
 }
@@ -99,34 +99,34 @@ function confirm() {
   justify-content: flex-end;
   gap: var(--space-3);
   padding-top: var(--space-2);
-  border-top: 1px solid color-mix(in oklch, var(--color-line), transparent 40%);
+  border-top: 1px solid color-mix(in oklch, var(--line), transparent 40%);
 }
 
 .dialog__cancel {
-  color: var(--color-dim);
-  border-color: color-mix(in oklch, var(--color-line), transparent 20%);
+  color: var(--ink-4);
+  border-color: color-mix(in oklch, var(--line), transparent 20%);
 }
 
 .dialog__cancel:hover:not(:disabled) {
-  color: var(--color-ink);
+  color: var(--ink);
 }
 
 .dialog__confirm {
-  border-color: var(--color-gold);
-  color: var(--color-gold);
+  border-color: var(--gold);
+  color: var(--gold);
 }
 
 .dialog__confirm--danger {
-  border-color: var(--color-blood);
-  color: var(--color-blood);
+  border-color: var(--blood);
+  color: var(--blood);
 }
 
 .dialog__confirm:hover:not(:disabled) {
-  background: color-mix(in oklch, var(--color-gold), transparent 88%);
+  background: color-mix(in oklch, var(--gold), transparent 88%);
 }
 
 .dialog__confirm--danger:hover:not(:disabled) {
-  background: color-mix(in oklch, var(--color-blood), transparent 88%);
+  background: color-mix(in oklch, var(--blood), transparent 88%);
 }
 
 .dialog__confirm:disabled,

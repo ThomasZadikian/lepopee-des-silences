@@ -72,34 +72,34 @@ function getRoomTypeLabel(roomType: string): string {
 
 .room-cleared__title {
   margin: 0;
-  color: var(--color-frost);
+  color: var(--frost);
   font-size: clamp(1.8rem, 3.5vw, 3rem);
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
 
 .room-cleared__sub {
-  color: var(--color-muted);
+  color: var(--ink-3);
   font-size: 1.05rem;
   line-height: 1.6;
   margin: 0;
 }
 
 .room-cleared__boss-summary {
-  border-top: 1px solid var(--color-line);
+  border-top: 1px solid var(--line);
   padding-top: var(--space-4);
 }
 
 .room-cleared__boss-summary strong {
   display: block;
   margin-top: var(--space-1);
-  color: var(--color-gold);
+  color: var(--gold);
   font-size: 1.1rem;
 }
 
 .room-cleared__divider {
   height: 1px;
-  background: var(--color-line);
+  background: var(--line);
 }
 
 .room-cleared__actions {
@@ -108,14 +108,14 @@ function getRoomTypeLabel(roomType: string): string {
 }
 
 .room-cleared__cta {
-  border-color: var(--color-frost);
-  color: var(--color-frost);
+  border-color: var(--frost);
+  color: var(--frost);
   padding: var(--space-3) var(--space-6);
   font-size: 1rem;
 }
 
 .room-cleared__cta:hover:not(:disabled) {
-  background: color-mix(in oklch, var(--color-frost), transparent 88%);
+  background: color-mix(in oklch, var(--frost), transparent 88%);
 }
 
 .room-cleared__cta:disabled {

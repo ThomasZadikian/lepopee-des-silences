@@ -29,8 +29,8 @@ function getName(combatantId: string) {
 
 <style scoped>
 .turn-order {
-  border-top: 1px solid color-mix(in oklch, var(--color-line), transparent 35%);
-  border-bottom: 1px solid color-mix(in oklch, var(--color-line), transparent 35%);
+  border-top: 1px solid color-mix(in oklch, var(--line), transparent 35%);
+  border-bottom: 1px solid color-mix(in oklch, var(--line), transparent 35%);
   padding: var(--space-3) 0;
 }
 
@@ -44,7 +44,7 @@ function getName(combatantId: string) {
 }
 
 .turn-order li {
-  color: var(--color-muted);
+  color: var(--ink-3);
   font-family: var(--font-mono);
   font-size: 0.72rem;
   text-transform: uppercase;
@@ -53,7 +53,7 @@ function getName(combatantId: string) {
 .turn-order li::after {
   content: '›';
   margin-left: var(--space-2);
-  color: var(--color-dim);
+  color: var(--ink-4);
 }
 
 .turn-order li:last-child::after {
@@ -61,6 +61,6 @@ function getName(combatantId: string) {
 }
 
 .turn-order__current {
-  color: var(--color-gold) !important;
+  color: var(--gold) !important;
 }
 </style>

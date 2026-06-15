@@ -69,16 +69,16 @@ defineEmits<{
 .outcome-panel__backdrop {
   position: absolute;
   inset: 0;
-  background: color-mix(in oklch, var(--color-void), transparent 25%);
+  background: color-mix(in oklch, var(--void), transparent 25%);
   animation: outcome-backdrop-in 280ms ease-out;
 }
 
 .outcome-panel--victory .outcome-panel__backdrop {
-  background: color-mix(in oklch, var(--color-gold), transparent 88%);
+  background: color-mix(in oklch, var(--gold), transparent 88%);
 }
 
 .outcome-panel--defeat .outcome-panel__backdrop {
-  background: color-mix(in oklch, var(--color-blood), transparent 82%);
+  background: color-mix(in oklch, var(--blood), transparent 82%);
 }
 
 .outcome-panel__content {
@@ -97,26 +97,26 @@ defineEmits<{
 }
 
 .outcome-panel__title--victory {
-  color: var(--color-gold);
+  color: var(--gold);
 }
 
 .outcome-panel__title--defeat {
-  color: var(--color-blood);
+  color: var(--blood);
 }
 
 .outcome-panel__desc {
-  color: var(--color-muted);
+  color: var(--ink-3);
 }
 
 .outcome-panel__button {
   justify-self: center;
-  border-color: var(--color-gold);
-  color: var(--color-gold);
+  border-color: var(--gold);
+  color: var(--gold);
 }
 
 .outcome-panel__button--defeat {
-  border-color: var(--color-blood);
-  color: var(--color-blood);
+  border-color: var(--blood);
+  color: var(--blood);
 }
 
 @keyframes outcome-backdrop-in {

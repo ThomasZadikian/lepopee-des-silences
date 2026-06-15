@@ -94,14 +94,14 @@ function onAbandonConfirm() {
 .danger-actions__hint {
   font-family: var(--font-mono);
   font-size: 0.75rem;
-  color: var(--color-dim);
+  color: var(--ink-4);
   margin: 0;
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
 
 .danger-actions__error {
-  color: var(--color-blood);
+  color: var(--blood);
   font-family: var(--font-mono);
   font-size: 0.78rem;
   margin: 0;
@@ -115,44 +115,44 @@ function onAbandonConfirm() {
 .danger-actions__save {
   width: 100%;
   justify-content: flex-start;
-  color: var(--color-muted);
-  border-color: color-mix(in oklch, var(--color-line), transparent 20%);
+  color: var(--ink-3);
+  border-color: color-mix(in oklch, var(--line), transparent 20%);
   font-size: 0.82rem;
   text-align: left;
 }
 
 .danger-actions__save:hover:not(:disabled) {
-  color: var(--color-ink);
-  border-color: var(--color-frost);
+  color: var(--ink);
+  border-color: var(--frost);
 }
 
 .danger-actions__abandon {
   width: 100%;
   justify-content: flex-start;
-  color: var(--color-blood);
-  border-color: color-mix(in oklch, var(--color-blood), transparent 60%);
+  color: var(--blood);
+  border-color: color-mix(in oklch, var(--blood), transparent 60%);
   font-size: 0.82rem;
   text-align: left;
 }
 
 .danger-actions__abandon:hover:not(:disabled) {
-  background: color-mix(in oklch, var(--color-blood), transparent 92%);
-  border-color: var(--color-blood);
+  background: color-mix(in oklch, var(--blood), transparent 92%);
+  border-color: var(--blood);
 }
 
 .danger-actions__exit-room {
   width: 100%;
   justify-content: flex-start;
-  color: var(--color-gold);
-  border-color: color-mix(in oklch, var(--color-gold), transparent 55%);
+  color: var(--gold);
+  border-color: color-mix(in oklch, var(--gold), transparent 55%);
   font-size: 0.82rem;
   text-align: left;
   margin-bottom: var(--space-2);
 }
 
 .danger-actions__exit-room:hover:not(:disabled) {
-  background: color-mix(in oklch, var(--color-gold), transparent 88%);
-  border-color: var(--color-gold);
+  background: color-mix(in oklch, var(--gold), transparent 88%);
+  border-color: var(--gold);
 }
 
 .danger-actions__exit-room:disabled {

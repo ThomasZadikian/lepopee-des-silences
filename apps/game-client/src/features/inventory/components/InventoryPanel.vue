@@ -183,14 +183,14 @@ async function confirmUseItem(targetCombatantId?: string) {
 }
 
 .inventory-panel h3 {
-  color: var(--color-gold);
+  color: var(--gold);
   font-size: 1.4rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
 
 .inventory-panel__empty p {
-  color: var(--color-muted);
+  color: var(--ink-3);
   font-size: 0.9rem;
 }
 
@@ -219,8 +219,8 @@ async function confirmUseItem(targetCombatantId?: string) {
   margin-bottom: var(--space-1);
 }
 
-.inventory-item__qty  { color: var(--color-muted); font-size: 0.85rem; }
-.inventory-item__type { color: var(--color-muted); font-size: 0.75rem; text-transform: uppercase; }
+.inventory-item__qty  { color: var(--ink-3); font-size: 0.85rem; }
+.inventory-item__type { color: var(--ink-3); font-size: 0.75rem; text-transform: uppercase; }
 
 .inventory-item__desc {
   color: var(--color-text-secondary);
@@ -252,8 +252,8 @@ async function confirmUseItem(targetCombatantId?: string) {
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
 .btn--use {
-  background: var(--color-gold, #c9a84c);
-  color: var(--color-bg, #0a0a0a);
+  background: var(--gold, #c9a84c);
+  color: var(--bg, #0a0a0a);
   width: 100%;
 }
 
@@ -273,16 +273,16 @@ async function confirmUseItem(targetCombatantId?: string) {
 }
 
 .btn--ally:hover:not(:disabled) {
-  border-color: var(--color-gold, #c9a84c);
+  border-color: var(--gold, #c9a84c);
   background: var(--color-surface-hover, #242424);
 }
 
 .ally-name { font-weight: 600; }
-.ally-hp   { color: var(--color-muted); font-size: 0.75rem; }
+.ally-hp   { color: var(--ink-3); font-size: 0.75rem; }
 
 .btn--cancel {
   background: transparent;
-  color: var(--color-muted);
+  color: var(--ink-3);
   border: 1px solid var(--color-border);
   width: 100%;
 }
@@ -297,7 +297,7 @@ async function confirmUseItem(targetCombatantId?: string) {
 
 .ally-picker__label {
   font-size: 0.8rem;
-  color: var(--color-muted);
+  color: var(--ink-3);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin-bottom: var(--space-1);

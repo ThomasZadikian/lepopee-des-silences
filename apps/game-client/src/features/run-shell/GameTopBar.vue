@@ -1,78 +1,110 @@
 <template>
-  <header class="topbar panel">
-    <section class="topbar__brand">
-      <span class="system-label">PALACE</span>
-      <strong>{{ currentRoom?.theme ?? '—' }}</strong>
-    </section>
+  <header class="runbar">
+    <div class="runbar__seg">
+      <span class="runbar__k">Palais</span>
+      <span class="runbar__v">{{ currentRoom?.theme ?? '—' }}</span>
+    </div>
 
-    <section class="topbar__item">
-      <span class="system-label">SEED</span>
-      <span class="system-value">{{ currentRun?.seed ?? '—' }}</span>
-    </section>
+    <div class="runbar__seg">
+      <span class="runbar__k">Salle</span>
+      <span class="runbar__v runbar__v--gold">{{ currentRun != null ? currentRun.currentRoomIndex + 1 : '—' }}</span>
+    </div>
 
-    <section class="topbar__item">
-      <span class="system-label">SALLE</span>
-      <span class="system-value">{{ currentRun != null ? currentRun.currentRoomIndex + 1 : '—' }}</span>
-    </section>
+    <div class="runbar__seg">
+      <span class="runbar__k">Seed</span>
+      <span class="runbar__v runbar__v--mono">{{ currentRun?.seed ?? '—' }}</span>
+    </div>
 
-    <section class="topbar__item">
-      <span class="system-label">ACTIVE LAWS</span>
-      <span class="system-value">{{ currentRun?.activePalaceLaws?.length ?? 0 }}</span>
-    </section>
+    <div v-if="(currentRun?.activePalaceLaws?.length ?? 0) > 0" class="runbar__seg runbar__seg--clickable" @click="uiStore.toggleLaws">
+      <span class="runbar__k">Lois</span>
+      <span class="runbar__v runbar__v--frost">{{ currentRun!.activePalaceLaws!.length }}</span>
+    </div>
 
-    <section class="topbar__item topbar__score">
-      <span class="system-label">SCORE</span>
-      <span class="system-value">—</span>
-    </section>
+    <div class="runbar__seg runbar__seg--grow" />
 
-    <section class="topbar__state">
-      <span class="system-label">STATUS</span>
-      <span class="topbar__active">{{ currentRun?.status ?? '—' }}</span>
-    </section>
+    <div class="runbar__seg">
+      <span class="runbar__v runbar__v--dim">{{ statusLabel }}</span>
+    </div>
   </header>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useRunStore } from '../../features/runs/stores/runStore';
+import { useGameUiStore } from '../../shared/stores/useGameUiStore';
 
 const runStore = useRunStore();
+const uiStore = useGameUiStore();
 const currentRun = computed(() => runStore.currentRun);
 const currentRoom = computed(() => runStore.currentRun?.currentRoom ?? null);
+
+const statusLabel = computed(() => {
+  const s = currentRun.value?.status;
+  if (!s) return '—';
+  const map: Record<string, string> = {
+    Active: 'Exploration',
+    RoomResolved: 'Salle résolue',
+    Interlude: 'Repli',
+    BossReached: 'Boss',
+    Completed: 'Achèvement',
+    Failed: 'Défaite',
+    Abandoned: 'Abandonnée',
+    Suspended: 'Suspendue',
+  };
+  return map[s] ?? s;
+});
 </script>
 
 <style scoped>
-.topbar {
-  display: grid;
-  grid-template-columns: 1.6fr repeat(4, 1fr) auto;
-  min-height: 4.5rem;
-  margin: var(--space-4);
+.runbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--line-soft);
+  background: oklch(0.20 0.04 272 / 0.6);
+  backdrop-filter: blur(8px);
+  z-index: var(--z-panel);
+  flex-shrink: 0;
 }
 
-.topbar__brand,
-.topbar__item,
-.topbar__state {
+.runbar__seg {
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  gap: var(--space-1);
-  padding: 0 var(--space-4);
-  border-right: 1px solid color-mix(in oklch, var(--color-line), transparent 45%);
+  gap: 1px;
 }
 
-.topbar__brand strong {
-  font-size: 0.95rem;
-  letter-spacing: 0.06em;
+.runbar__seg--grow {
+  flex: 1;
+}
+
+.runbar__k {
+  font-family: var(--font-caps);
+  font-size: 0.56rem;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
+  color: var(--ink-4);
 }
 
-.topbar__score {
-  text-align: right;
+.runbar__v {
+  font-family: var(--font);
+  font-size: 0.82rem;
+  color: var(--ink-2);
 }
 
-.topbar__active {
-  color: var(--color-frost);
-  font-family: var(--font-mono);
-  text-transform: uppercase;
+.runbar__v--gold { color: var(--gold); }
+.runbar__v--frost { color: var(--frost); }
+.runbar__v--dim { color: var(--ink-4); font-size: 0.72rem; }
+.runbar__v--mono { font-family: var(--font-mono); font-size: 0.72rem; color: var(--ink-3); }
+
+.runbar__seg--clickable {
+  cursor: pointer;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  transition: background 0.2s ease;
+}
+
+.runbar__seg--clickable:hover {
+  background: var(--card-soft);
 }
 </style>

@@ -129,15 +129,15 @@ watch(
 
 .combat-runtime__header h2 {
   margin: var(--space-1) 0 0;
-  color: var(--color-blood);
+  color: var(--blood);
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
 
 .combat-runtime__continue {
   justify-self: start;
-  border-color: var(--color-gold);
-  color: var(--color-gold);
+  border-color: var(--gold);
+  color: var(--gold);
 }
 
 .combat-runtime__board {

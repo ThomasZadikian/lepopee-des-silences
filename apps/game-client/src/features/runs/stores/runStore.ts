@@ -753,5 +753,6 @@ export const useRunStore = defineStore('run', () => {
     exitMidRoom,
     abandonCurrentRun,
     clearCurrentRun,
+    resetPreviewedNode,
   };
 });

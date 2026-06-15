@@ -17,79 +17,65 @@ defineEmits<{
 
 function isSkillDisabled(combatant: CombatantRuntimeDto | null): boolean {
   if (!combatant) return true;
-  if (combatant.status === 'Defeated') return true;
-  return false;
+  return combatant.status === 'Defeated';
 }
 
 function getEffectLabel(effectType: string, effectAmount: number): string {
   switch (effectType) {
-    case 'Heal':          return `+${effectAmount} PV`;
-    case 'Guard':         return `+${effectAmount} Garde`;
-    case 'ManaRestore':   return `+${effectAmount} Mana`;
+    case 'Heal': return `+${effectAmount} PV`;
+    case 'Guard': return `+${effectAmount} Garde`;
+    case 'ManaRestore': return `+${effectAmount} Mana`;
     case 'ChargeRestore': return `+${effectAmount} Charge`;
-    default:              return `+${effectAmount}`;
+    default: return `+${effectAmount}`;
   }
 }
 </script>
 
 <template>
-  <section class="skill-bar panel">
+  <section class="skill-bar">
     <template v-if="combatant">
-      <!-- Compétences -->
-      <p class="system-label skill-bar__header">
-        ACTIONS · {{ combatant.displayName }}
-      </p>
+      <span class="es-label">Gestes · {{ combatant.displayName }}</span>
 
       <div class="skill-bar__grid">
         <button
           v-for="skill in combatant.skills"
           :key="skill.key"
-          class="skill-bar__button skill-card"
+          class="skill-card"
           :class="{
-            'skill-bar__button--selected': selectedSkillKey === skill.key,
             'skill-card--selected': selectedSkillKey === skill.key,
             'skill-card--disabled': !isPlayerTurn || isLoading || isSkillDisabled(combatant),
-            'skill-card--usable': isPlayerTurn && !isLoading && !isSkillDisabled(combatant),
           }"
           :disabled="!isPlayerTurn || isLoading || isSkillDisabled(combatant)"
           @click="$emit('selectSkill', skill.key)"
         >
-          <span class="skill-bar__button-name">{{ skill.displayName }}</span>
-          <span class="skill-bar__button-meta">
+          <span class="skill-card__name">{{ skill.displayName }}</span>
+          <span class="skill-card__meta">
             {{ skill.skillType }}
-            <template v-if="skill.manaCost > 0"> · {{ skill.manaCost }} MANA</template>
-            <template v-if="skill.chargeCost > 0"> · {{ skill.chargeCost }} CHG</template>
+            <template v-if="skill.manaCost > 0"> · {{ skill.manaCost }} mana</template>
+            <template v-if="skill.chargeCost > 0"> · {{ skill.chargeCost }} charge</template>
           </span>
-          <span class="skill-bar__button-target">Cible : {{ skill.targetingType }}</span>
         </button>
       </div>
 
-      <!-- Objets utilisables en combat -->
       <template v-if="usableBattleItems.length > 0">
-        <p class="system-label skill-bar__header skill-bar__header--items">
-          OBJETS
-        </p>
+        <hr class="es-rule" />
+        <span class="es-label">Objets de combat</span>
 
         <div class="skill-bar__grid">
           <button
             v-for="item in usableBattleItems"
             :key="item.itemId"
-            class="skill-bar__button skill-card skill-card--item"
+            class="skill-card skill-card--item"
             :class="{
-              'skill-bar__button--selected': selectedItemId === item.itemId,
               'skill-card--selected': selectedItemId === item.itemId,
               'skill-card--disabled': !isPlayerTurn || isLoading,
-              'skill-card--usable': isPlayerTurn && !isLoading,
             }"
             :disabled="!isPlayerTurn || isLoading"
             @click="$emit('selectItem', item.itemId)"
           >
-            <span class="skill-bar__button-name">{{ item.displayName }}</span>
-            <span class="skill-bar__button-meta">
-              {{ getEffectLabel(item.effectType, item.effectAmount) }}
-            </span>
-            <span class="skill-bar__button-target">
-              ×{{ item.quantity }} · {{ item.targetingType === 'Self' ? 'Soi-même' : 'Allié' }}
+            <span class="skill-card__name">{{ item.displayName }}</span>
+            <span class="skill-card__meta">
+              {{ getEffectLabel(item.effectType, item.effectAmount) }} · ×{{ item.quantity }}
             </span>
           </button>
         </div>
@@ -97,112 +83,86 @@ function getEffectLabel(effectType: string, effectAmount: number): string {
     </template>
 
     <template v-else>
-      <p class="skill-bar__empty system-label">Aucun combattant actif</p>
+      <span class="es-label">Aucun combattant actif</span>
     </template>
   </section>
 </template>
 
 <style scoped>
 .skill-bar {
-  display: grid;
-  gap: var(--space-3);
-  padding: var(--space-4);
-  align-content: start;
-  min-height: 0;
-  overflow-y: auto;
-}
-
-.skill-bar__header {
-  color: var(--color-dim);
-}
-
-.skill-bar__header--items {
-  margin-top: var(--space-2);
-  padding-top: var(--space-3);
-  border-top: 1px solid var(--color-line);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  flex: 1;
+  min-width: 0;
 }
 
 .skill-bar__grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+  display: flex;
   gap: var(--space-2);
+  flex-wrap: wrap;
 }
 
-.skill-bar__button {
-  display: grid;
-  gap: 2px;
+.skill-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
   text-align: left;
-  border: 1px solid var(--color-line);
+  border: 1px solid var(--line);
   border-radius: var(--radius-sm);
-  background: var(--color-panel);
-  padding: var(--space-2) var(--space-3);
+  background: var(--panel);
+  padding: var(--space-1) var(--space-3);
   cursor: pointer;
-  transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
   font-family: inherit;
-  color: var(--color-ink);
+  color: var(--ink);
+  transition: border-color 0.18s ease, background 0.18s ease;
 }
 
-.skill-bar__button:hover:not(:disabled),
-.skill-card--usable:hover {
-  border-color: var(--color-gold);
-  background: color-mix(in oklch, var(--color-gold), transparent 92%);
+.skill-card:hover:not(:disabled) {
+  border-color: var(--edge-gold);
+  background: var(--wash-gold);
 }
 
-.skill-bar__button--selected,
 .skill-card--selected {
-  border-color: var(--color-gold) !important;
-  background: color-mix(in oklch, var(--color-gold), transparent 85%) !important;
-  box-shadow: 0 0 16px color-mix(in oklch, var(--color-gold), transparent 82%);
+  border-color: var(--gold) !important;
+  background: oklch(0.862 0.098 86 / 0.12) !important;
 }
 
-.skill-bar__button:disabled,
 .skill-card--disabled {
   opacity: 0.35;
   cursor: not-allowed;
 }
 
-.skill-card--usable {
-  cursor: pointer;
-}
-
-/* Teinte légèrement différente pour distinguer visuellement items vs skills */
 .skill-card--item {
-  border-color: color-mix(in oklch, var(--color-green, #4ade80), transparent 60%);
+  border-color: color-mix(in oklch, var(--sap), transparent 60%);
 }
 
 .skill-card--item:hover:not(:disabled) {
-  border-color: var(--color-green, #4ade80);
-  background: color-mix(in oklch, var(--color-green, #4ade80), transparent 92%);
+  border-color: var(--sap);
+  background: var(--wash-sap);
 }
 
 .skill-card--item.skill-card--selected {
-  border-color: var(--color-green, #4ade80) !important;
-  background: color-mix(in oklch, var(--color-green, #4ade80), transparent 85%) !important;
-  box-shadow: 0 0 16px color-mix(in oklch, var(--color-green, #4ade80), transparent 82%);
+  border-color: var(--sap) !important;
+  background: oklch(0.840 0.092 162 / 0.12) !important;
 }
 
-.skill-bar__button-name {
-  font-weight: 600;
-  font-size: 0.85rem;
+.skill-card__name {
+  font-family: var(--font);
+  font-size: 0.82rem;
+  color: var(--ink-2);
 }
 
-.skill-bar__button-meta {
-  font-size: 0.7rem;
-  color: var(--color-muted);
-}
-
-.skill-bar__button-target {
-  font-size: 0.65rem;
-  color: var(--color-dim);
-}
-
-.skill-bar__empty {
-  color: var(--color-dim);
+.skill-card__meta {
+  font-family: var(--font-caps);
+  font-size: 0.52rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-4);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .skill-bar__button {
-    transition: none;
-  }
+  .skill-card { transition: none; }
 }
 </style>

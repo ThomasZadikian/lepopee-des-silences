@@ -177,7 +177,7 @@ function isComingSoon(node: InterludeNodeDto): boolean {
 
 .interlude__title {
   margin: 0;
-  color: var(--color-frost);
+  color: var(--frost);
   font-size: clamp(1.5rem, 3vw, 2.4rem);
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -212,21 +212,21 @@ function isComingSoon(node: InterludeNodeDto): boolean {
   place-items: center;
   gap: var(--space-2);
   padding: var(--space-4);
-  background: color-mix(in oklch, var(--color-panel), transparent 10%);
-  border: 1px solid var(--color-line);
+  background: color-mix(in oklch, var(--panel), transparent 10%);
+  border: 1px solid var(--line);
   cursor: pointer;
   user-select: none;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .interlude__node:hover:not(.interlude__node--disabled) {
-  border-color: var(--color-frost);
-  box-shadow: 0 0 20px color-mix(in oklch, var(--color-frost), transparent 82%);
+  border-color: var(--frost);
+  box-shadow: 0 0 20px color-mix(in oklch, var(--frost), transparent 82%);
 }
 
 .interlude__node--active {
-  border-color: var(--color-frost);
-  box-shadow: 0 0 28px color-mix(in oklch, var(--color-frost), transparent 75%);
+  border-color: var(--frost);
+  box-shadow: 0 0 28px color-mix(in oklch, var(--frost), transparent 75%);
 }
 
 .interlude__node--disabled {
@@ -237,7 +237,7 @@ function isComingSoon(node: InterludeNodeDto): boolean {
 
 .interlude__node-glyph {
   font-size: 1.8rem;
-  color: var(--color-frost);
+  color: var(--frost);
   line-height: 1;
 }
 
@@ -246,7 +246,7 @@ function isComingSoon(node: InterludeNodeDto): boolean {
 }
 
 .interlude__node--disabled .interlude__node-glyph {
-  color: var(--color-dim);
+  color: var(--ink-4);
 }
 
 .interlude__node-label {
@@ -254,11 +254,11 @@ function isComingSoon(node: InterludeNodeDto): boolean {
   font-family: var(--font-mono);
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: var(--color-muted);
+  color: var(--ink-3);
 }
 
 .interlude__node--active .interlude__node-label {
-  color: var(--color-frost);
+  color: var(--frost);
 }
 
 /* Node detail */
@@ -268,7 +268,7 @@ function isComingSoon(node: InterludeNodeDto): boolean {
 }
 
 .interlude__node-desc {
-  color: var(--color-muted);
+  color: var(--ink-3);
   line-height: 1.6;
   margin: var(--space-2) 0 0;
 }
@@ -278,7 +278,7 @@ function isComingSoon(node: InterludeNodeDto): boolean {
   display: grid;
   gap: var(--space-3);
   padding-top: var(--space-4);
-  border-top: 1px solid var(--color-line);
+  border-top: 1px solid var(--line);
 }
 
 .interlude__secondary-actions {
@@ -288,31 +288,31 @@ function isComingSoon(node: InterludeNodeDto): boolean {
 }
 
 .interlude__action-secondary {
-  color: var(--color-dim);
-  border-color: color-mix(in oklch, var(--color-line), transparent 20%);
+  color: var(--ink-4);
+  border-color: color-mix(in oklch, var(--line), transparent 20%);
   font-size: 0.82rem;
   padding: var(--space-2) var(--space-4);
 }
 
 .interlude__action-secondary:hover:not(:disabled) {
-  color: var(--color-muted);
-  border-color: var(--color-frost);
+  color: var(--ink-3);
+  border-color: var(--frost);
 }
 
 .interlude__action-abandon {
-  color: var(--color-blood);
-  border-color: color-mix(in oklch, var(--color-blood), transparent 55%);
+  color: var(--blood);
+  border-color: color-mix(in oklch, var(--blood), transparent 55%);
   font-size: 0.82rem;
   padding: var(--space-2) var(--space-4);
 }
 
 .interlude__action-abandon:hover:not(:disabled) {
-  background: color-mix(in oklch, var(--color-blood), transparent 92%);
-  border-color: var(--color-blood);
+  background: color-mix(in oklch, var(--blood), transparent 92%);
+  border-color: var(--blood);
 }
 
 .interlude__action-error {
-  color: var(--color-blood);
+  color: var(--blood);
   font-family: var(--font-mono);
   font-size: 0.78rem;
   margin: 0;
@@ -324,14 +324,14 @@ function isComingSoon(node: InterludeNodeDto): boolean {
 }
 
 .interlude__cta {
-  border-color: var(--color-gold);
-  color: var(--color-gold);
+  border-color: var(--gold);
+  color: var(--gold);
   padding: var(--space-3) var(--space-6);
   font-size: 1rem;
 }
 
 .interlude__cta:hover:not(:disabled) {
-  background: color-mix(in oklch, var(--color-gold), transparent 88%);
+  background: color-mix(in oklch, var(--gold), transparent 88%);
 }
 
 .interlude__cta:disabled {
