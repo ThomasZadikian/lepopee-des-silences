@@ -1,5 +1,9 @@
 <script setup lang="ts">
 import GameTopBar from '../../features/run-shell/GameTopBar.vue';
+
+defineProps<{
+  hideTopBar?: boolean;
+}>();
 </script>
 
 <template>
@@ -9,7 +13,7 @@ import GameTopBar from '../../features/run-shell/GameTopBar.vue';
       <div class="es-grain" />
     </div>
 
-    <GameTopBar />
+    <GameTopBar v-if="!hideTopBar" />
 
     <main class="game-shell__main">
       <slot />

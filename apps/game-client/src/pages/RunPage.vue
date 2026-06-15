@@ -94,7 +94,7 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
 </script>
 
 <template>
-  <GameShellLayout>
+  <GameShellLayout :hide-top-bar="isCombatPhase">
     <template v-if="runStore.currentRun && runStore.currentRun.currentRoom">
       <!-- ── Map phase: map dominates ── -->
       <template v-if="isMapPhase">

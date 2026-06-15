@@ -62,6 +62,7 @@ function createCombat(status: CombatRuntimeDto['status'] = 'Active'): CombatRunt
         skills: [],
       },
     ],
+    usableBattleItems: [],
   };
 }
 

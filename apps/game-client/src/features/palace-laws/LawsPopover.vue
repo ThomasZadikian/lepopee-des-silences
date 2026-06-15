@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ActivePalaceLawDto } from '../../runs/types/runTypes';
+import type { ActivePalaceLawDto } from '../runs/types/runTypes';
 
 defineProps<{
   laws?: ActivePalaceLawDto[] | null;
@@ -28,7 +28,7 @@ const emit = defineEmits<{
         <strong class="laws-popover__law-name">{{ law.displayName }}</strong>
         <p v-if="law.description" class="laws-popover__law-desc">{{ law.description }}</p>
         <div class="laws-popover__law-meta">
-          <span v-for="domain in law.domains" :key="domain" class="es-chip">{{ domain }}</span>
+          <span class="es-chip">{{ law.domain }}</span>
         </div>
       </article>
     </div>

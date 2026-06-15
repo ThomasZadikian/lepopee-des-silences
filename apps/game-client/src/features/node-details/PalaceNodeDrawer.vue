@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { NodeDto } from '../../runs/types/runTypes';
+import type { NodeDto } from '../runs/types/runTypes';
 
 const props = defineProps<{
   node: NodeDto | null;

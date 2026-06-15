@@ -58,7 +58,7 @@ function cancelUseItem() {
   error.value = null;
 }
 
-async function confirmUseItem(targetCombatantId?: string) {
+async function confirmUseItem(_targetCombatantId?: string) {
   if (!pendingItemId.value) return;
   isLoading.value = true;
   error.value = null;

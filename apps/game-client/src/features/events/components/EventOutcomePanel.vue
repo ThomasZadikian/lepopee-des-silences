@@ -5,7 +5,6 @@ import {
   getOutcomeChoices,
   getOutcomeFamily,
   isChoiceOutcome,
-  isRewardLikeOutcome,
   type EventOutcomeDto,
 } from '../types/eventTypes';
 

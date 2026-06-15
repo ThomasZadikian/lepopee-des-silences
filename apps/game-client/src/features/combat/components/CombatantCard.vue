@@ -41,43 +41,55 @@ function hpRatio(c: CombatantRuntimeDto): number {
       'presence--just-defeated': isJustDefeated,
       'presence--ally': combatant.side === 'Player',
       'presence--enemy': combatant.side === 'Enemy',
+      'presence--active-player': isActivePlayer,
     }"
     :disabled="combatant.status === 'Defeated' || !isSelectable"
     @click="$emit('select', combatant.id)"
   >
-    <span class="presence__archetype">{{ combatant.archetype }}</span>
+    <span class="presence__portrait" aria-hidden="true" />
+
+    <div class="presence__topline">
+      <span class="presence__archetype">{{ combatant.archetype }}</span>
+      <span v-if="isActivePlayer" class="presence__state presence__state--ready">PRÊT</span>
+      <span v-else-if="isSelectedTarget" class="presence__state presence__state--target">cible</span>
+      <span v-else-if="combatant.status === 'Defeated'" class="presence__state presence__state--dead">abattu</span>
+    </div>
+
     <span class="presence__name">{{ combatant.displayName }}</span>
 
-    <!-- Subtle HP gauge -->
+    <div class="presence__tags" aria-hidden="true">
+      <span v-if="combatant.guard > 0" class="presence__tag presence__tag--guard">Garde</span>
+    </div>
+
     <div class="presence__gauge">
       <div class="presence__gauge-fill" :style="{ width: hpRatio(combatant) * 100 + '%' }" />
     </div>
 
+    <div class="presence__atb" aria-hidden="true">
+      <span />
+    </div>
+
     <div class="presence__stats">
-      <span class="presence__stat presence__stat--hp">{{ combatant.currentVitality }}/{{ combatant.maxVitality }}</span>
-      <span v-if="combatant.guard > 0" class="presence__stat presence__stat--guard">🛡 {{ combatant.guard }}</span>
+      <span class="presence__stat presence__stat--hp">PV {{ combatant.currentVitality }} / {{ combatant.maxVitality }}</span>
+      <span v-if="combatant.guard > 0" class="presence__stat presence__stat--guard">{{ combatant.guard }}</span>
+      <span v-if="combatant.side === 'Player'" class="presence__stat presence__stat--breath">{{ combatant.mana }} souffle</span>
     </div>
 
-    <!-- Defeated overlay -->
-    <div v-if="combatant.status === 'Defeated'" class="presence__defeated">
-      <span>Abattu</span>
-    </div>
-
-    <!-- Actor/thinking indicators -->
-    <span v-if="isCurrentActor && combatant.side === 'Player'" class="presence__badge presence__badge--frost">Tour</span>
-    <span v-if="isThinking" class="presence__badge presence__badge--gold">…</span>
+    <slot />
   </button>
 </template>
 
 <style scoped>
 .presence {
   position: relative;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 3.5rem minmax(0, 1fr);
+  align-items: center;
   gap: var(--space-1);
   width: 100%;
-  min-width: 140px;
-  padding: var(--space-2) var(--space-3);
+  min-width: 18rem;
+  min-height: 4.7rem;
+  padding: var(--space-2);
   text-align: left;
   background: var(--card-soft);
   border: 1px solid var(--line-soft);
@@ -90,7 +102,19 @@ function hpRatio(c: CombatantRuntimeDto): number {
 
 .presence--ally {
   border-left: 2px solid var(--edge-frost);
-  min-height: 80px;
+}
+
+.presence__portrait {
+  grid-row: 1 / span 5;
+  width: 3.2rem;
+  height: 3.2rem;
+  border: 1px solid var(--edge-frost);
+  border-radius: 4px;
+  background:
+    radial-gradient(circle at 65% 20%, var(--gold), transparent 8%),
+    radial-gradient(circle at 45% 36%, oklch(0.5 0.06 272 / 0.38), transparent 48%),
+    linear-gradient(145deg, oklch(0.11 0.03 272), oklch(0.24 0.04 272));
+  box-shadow: inset 0 0 20px oklch(0 0 0 / 0.45);
 }
 
 .presence--enemy {
@@ -103,13 +127,14 @@ function hpRatio(c: CombatantRuntimeDto): number {
 
 .presence--selected {
   border-color: var(--gold) !important;
-  box-shadow: 0 0 12px oklch(0.862 0.098 86 / 0.25);
+  background: var(--wash-gold);
+  box-shadow: 0 0 10px oklch(0.862 0.098 86 / 0.2);
 }
 
 .presence--active {
   border-color: var(--edge-frost) !important;
-  box-shadow: 0 0 16px oklch(0.846 0.100 276 / 0.2);
-  transform: translateX(12px) scale(1.04);
+  box-shadow: 0 0 12px oklch(0.846 0.100 276 / 0.16);
+  transform: translateX(5px);
   z-index: 2;
 }
 
@@ -130,27 +155,79 @@ function hpRatio(c: CombatantRuntimeDto): number {
 .presence--guarded { animation: flare 700ms ease-out; }
 .presence--just-defeated { animation: defeat-fade 900ms ease-out; }
 
+.presence__topline {
+  grid-column: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
 .presence__archetype {
   font-family: var(--font-caps);
-  font-size: 0.52rem;
+  font-size: 0.48rem;
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--ink-4);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
+.presence__state {
+  flex: 0 0 auto;
+  font-family: var(--font-caps);
+  font-size: 0.42rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 1px 4px;
+  border: 1px solid var(--line-soft);
+  border-radius: 999px;
+}
+
+.presence__state--ready { color: var(--frost); border-color: var(--edge-frost); }
+.presence__state--target { color: var(--gold); border-color: var(--edge-gold); }
+.presence__state--dead { color: var(--blood); border-color: color-mix(in oklch, var(--blood), transparent 50%); }
+
 .presence__name {
+  grid-column: 2;
   font-family: var(--font);
-  font-size: 0.88rem;
+  font-size: 0.82rem;
   color: var(--ink-2);
   line-height: 1.2;
 }
 
+.presence__tags {
+  grid-column: 2;
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 3px;
+  min-height: 0.75rem;
+}
+
+.presence__tag {
+  font-family: var(--font-caps);
+  font-size: 0.44rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+  border: 1px solid var(--line-soft);
+  border-radius: 999px;
+  padding: 0 4px;
+}
+
+.presence__tag--guard { color: var(--frost-dim); border-color: color-mix(in oklch, var(--frost), transparent 62%); }
+.presence__tag--blood { color: var(--blood); border-color: color-mix(in oklch, var(--blood), transparent 58%); }
+.presence__tag--gold { color: var(--gold); border-color: color-mix(in oklch, var(--gold), transparent 58%); }
+
 .presence__gauge {
+  grid-column: 2;
   height: 3px;
   background: var(--panel);
   border-radius: 2px;
   overflow: hidden;
-  margin-top: var(--space-1);
 }
 
 .presence__gauge-fill {
@@ -162,8 +239,28 @@ function hpRatio(c: CombatantRuntimeDto): number {
 
 .presence--ally .presence__gauge-fill { background: var(--frost-dim); }
 
+.presence__atb {
+  grid-column: 2;
+  height: 2px;
+  background: oklch(0.16 0.03 272);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.presence__atb span {
+  display: block;
+  width: 56%;
+  height: 100%;
+  background: linear-gradient(90deg, var(--gold-dim), var(--gold));
+  border-radius: inherit;
+  animation: atb-drift 2.8s ease-in-out infinite alternate;
+}
+
 .presence__stats {
+  grid-column: 2;
   display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
   gap: var(--space-2);
   align-items: center;
 }
@@ -175,40 +272,12 @@ function hpRatio(c: CombatantRuntimeDto): number {
 }
 
 .presence__stat--guard { color: var(--frost-dim); }
+.presence__stat--breath { color: var(--ink-5); }
 
-.presence__defeated {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: oklch(0.15 0.03 272 / 0.7);
-  border-radius: inherit;
+@keyframes atb-drift {
+  0% { width: 32%; opacity: 0.45; }
+  100% { width: 72%; opacity: 1; }
 }
-
-.presence__defeated span {
-  font-family: var(--font-caps);
-  font-size: 0.6rem;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--ink-4);
-}
-
-.presence__badge {
-  position: absolute;
-  top: var(--space-1);
-  right: var(--space-1);
-  font-family: var(--font-caps);
-  font-size: 0.5rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  padding: 1px 4px;
-  border: 1px solid;
-  border-radius: 2px;
-}
-
-.presence__badge--frost { color: var(--frost); border-color: var(--edge-frost); }
-.presence__badge--gold { color: var(--gold); border-color: var(--edge-gold); }
 
 @keyframes think-pulse {
   0%, 100% { filter: brightness(1); }

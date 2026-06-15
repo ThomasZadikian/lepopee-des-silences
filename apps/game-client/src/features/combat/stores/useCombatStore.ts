@@ -16,6 +16,13 @@ export type CombatTerminalEvent =
   | { kind: 'defeat' }
   | null;
 
+export type CombatFeedbackEvent = {
+  id: string;
+  combatantId: string;
+  type: 'damage' | 'heal' | 'guard';
+  amount: number;
+};
+
 export const useCombatStore = defineStore('combatRuntime', () => {
   const combat = ref<CombatRuntimeDto | null>(null);
   const logEntries = ref<CombatLogEntryDto[]>([]);
@@ -30,6 +37,7 @@ export const useCombatStore = defineStore('combatRuntime', () => {
   const recentlyGuardedIds = ref<string[]>([]);
   const recentlyDefeatedIds = ref<string[]>([]);
   const recentlyActingId = ref<string | null>(null);
+  const feedbackEvents = ref<CombatFeedbackEvent[]>([]);
   const animationTimers: ReturnType<typeof globalThis.setTimeout>[] = [];
 
   // ── Skill selection ─────────────────────────────────────────────────────
@@ -116,7 +124,7 @@ export const useCombatStore = defineStore('combatRuntime', () => {
     selectedTargetIds.value = [];
   }
 
-  async function submitItemAction(runId: string) {
+  async function submitItemAction(runId: string, onCombatApplied?: (combat: CombatRuntimeDto) => void) {
     const item = selectedItem.value;
     const combatId = combat.value?.id;
     if (!item || !combatId) return;
@@ -136,6 +144,7 @@ export const useCombatStore = defineStore('combatRuntime', () => {
       selectedTargetIds.value = [];
       await playCombatLogs(response.logEntries);
       finishCombatResponse(response.combat);
+      onCombatApplied?.(response.combat);
 
       if (response.combatCompleted) terminalEvent.value = { kind: 'victory' };
       else if (response.combatFailed) terminalEvent.value = { kind: 'defeat' };
@@ -247,12 +256,58 @@ export const useCombatStore = defineStore('combatRuntime', () => {
         thinkingCombatantId.value = null;
         await delay(250);
       } else if (entry.targetIds.length > 0 && shouldHighlightTarget(entry)) {
+        applyLogDelta(entry);
         applyLogEffect(entry);
         markFeedbackFromLog(entry);
         await delay(550);
         await delay(150);
       }
     }
+  }
+
+  function parseLogAmount(message: string): number {
+    const matches = message.match(/\d+/g);
+    if (!matches?.length) return 0;
+    return Number(matches[matches.length - 1]) || 0;
+  }
+
+  function applyLogDelta(entry: CombatLogEntryDto) {
+    if (!combat.value) return;
+    const amount = parseLogAmount(entry.message);
+    if (amount <= 0) return;
+
+    for (const targetId of entry.targetIds) {
+      const target = findCombatantById(targetId);
+      if (!target) continue;
+
+      if (entry.type === 'DamageApplied') {
+        const blocked = Math.min(target.guard, amount);
+        const remaining = Math.max(0, amount - blocked);
+        target.guard = Math.max(0, target.guard - blocked);
+        target.currentVitality = Math.max(0, target.currentVitality - remaining);
+        if (blocked > 0) pushFeedbackEvent(target.id, 'guard', blocked);
+        if (remaining > 0) pushFeedbackEvent(target.id, 'damage', remaining);
+      } else if (entry.type === 'HealApplied') {
+        target.currentVitality = Math.min(target.maxVitality, target.currentVitality + amount);
+        pushFeedbackEvent(target.id, 'heal', amount);
+      } else if (entry.type === 'GuardGained') {
+        target.guard += amount;
+        pushFeedbackEvent(target.id, 'guard', amount);
+      }
+    }
+  }
+
+  function pushFeedbackEvent(combatantId: string, type: CombatFeedbackEvent['type'], amount: number) {
+    const event = {
+      id: `${combatantId}-${type}-${Date.now()}-${feedbackEvents.value.length}`,
+      combatantId,
+      type,
+      amount,
+    };
+    feedbackEvents.value = [...feedbackEvents.value, event];
+    schedule(() => {
+      feedbackEvents.value = feedbackEvents.value.filter((item) => item.id !== event.id);
+    }, 1200);
   }
 
   function markFeedbackFromLog(entry: CombatLogEntryDto) {
@@ -314,6 +369,7 @@ export const useCombatStore = defineStore('combatRuntime', () => {
     recentlyGuardedIds.value = [];
     recentlyDefeatedIds.value = [];
     recentlyActingId.value = null;
+    feedbackEvents.value = [];
   }
 
   function shouldHighlightTarget(entry: CombatLogEntryDto): boolean {
@@ -438,7 +494,7 @@ function applyEntryToCombatant(
     }
   }
 
-  async function submitAction(runId: string) {
+  async function submitAction(runId: string, onCombatApplied?: (combat: CombatRuntimeDto) => void) {
     const actor = currentActor.value;
     const skill = selectedSkill.value;
     const combatId = combat.value?.id;
@@ -457,6 +513,7 @@ function applyEntryToCombatant(
       selectedTargetIds.value = [];
       await playCombatLogs(response.logEntries);
       finishCombatResponse(response.combat);
+      onCombatApplied?.(response.combat);
 
       if (response.combatCompleted) {
         terminalEvent.value = { kind: 'victory' };
@@ -486,6 +543,7 @@ function applyEntryToCombatant(
     recentlyGuardedIds,
     recentlyDefeatedIds,
     recentlyActingId,
+    feedbackEvents,
     allies,
     enemies,
     allCombatants,

@@ -29,12 +29,19 @@ function getEffectLabel(effectType: string, effectAmount: number): string {
     default: return `+${effectAmount}`;
   }
 }
+
+function getSkillCost(skill: CombatantRuntimeDto['skills'][number]): number {
+  return skill.manaCost || skill.chargeCost;
+}
 </script>
 
 <template>
   <section class="skill-bar">
     <template v-if="combatant">
-      <span class="es-label">Gestes · {{ combatant.displayName }}</span>
+      <div class="skill-bar__head">
+        <span class="skill-bar__verb">Dire</span>
+        <span class="skill-bar__pp">{{ combatant.mana }} PP disponibles</span>
+      </div>
 
       <div class="skill-bar__grid">
         <button
@@ -49,19 +56,13 @@ function getEffectLabel(effectType: string, effectAmount: number): string {
           @click="$emit('selectSkill', skill.key)"
         >
           <span class="skill-card__name">{{ skill.displayName }}</span>
-          <span class="skill-card__meta">
-            {{ skill.skillType }}
-            <template v-if="skill.manaCost > 0"> · {{ skill.manaCost }} mana</template>
-            <template v-if="skill.chargeCost > 0"> · {{ skill.chargeCost }} charge</template>
-          </span>
+          <span class="skill-card__meta">{{ getSkillCost(skill) }} PP</span>
         </button>
       </div>
 
       <template v-if="usableBattleItems.length > 0">
-        <hr class="es-rule" />
-        <span class="es-label">Objets de combat</span>
-
-        <div class="skill-bar__grid">
+        <div class="skill-bar__items">
+          <span class="skill-bar__items-label">Besace</span>
           <button
             v-for="item in usableBattleItems"
             :key="item.itemId"
@@ -90,18 +91,58 @@ function getEffectLabel(effectType: string, effectAmount: number): string {
 
 <style scoped>
 .skill-bar {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: var(--space-2) var(--space-3);
+  gap: var(--space-2);
   flex: 1;
   min-width: 0;
 }
 
+.skill-bar__head {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding-right: var(--space-2);
+}
+
+.skill-bar__verb {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.skill-bar__pp {
+  font-family: var(--font-caps);
+  font-size: 0.5rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+  white-space: nowrap;
+}
+
 .skill-bar__grid {
   display: flex;
-  gap: var(--space-2);
   flex-wrap: wrap;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.skill-bar__items {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding-left: var(--space-2);
+  border-left: 1px solid var(--line-soft);
+}
+
+.skill-bar__items-label {
+  font-family: var(--font-caps);
+  font-size: 0.5rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-4);
 }
 
 .skill-card {
@@ -112,11 +153,12 @@ function getEffectLabel(effectType: string, effectAmount: number): string {
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   background: var(--panel);
-  padding: var(--space-1) var(--space-3);
+  padding: 3px var(--space-2);
   cursor: pointer;
   font-family: inherit;
   color: var(--ink);
   transition: border-color 0.18s ease, background 0.18s ease;
+  min-width: 4.2rem;
 }
 
 .skill-card:hover:not(:disabled) {
@@ -150,16 +192,27 @@ function getEffectLabel(effectType: string, effectAmount: number): string {
 
 .skill-card__name {
   font-family: var(--font);
-  font-size: 0.82rem;
+  font-size: 0.76rem;
   color: var(--ink-2);
 }
 
 .skill-card__meta {
   font-family: var(--font-caps);
-  font-size: 0.52rem;
+  font-size: 0.48rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--ink-4);
+}
+
+@media (max-width: 900px) {
+  .skill-bar {
+    grid-template-columns: 1fr;
+  }
+
+  .skill-bar__items {
+    padding-left: 0;
+    border-left: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
