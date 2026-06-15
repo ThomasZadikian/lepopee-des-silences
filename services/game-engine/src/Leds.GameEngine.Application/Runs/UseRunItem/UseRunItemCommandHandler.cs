@@ -1,6 +1,11 @@
 ﻿using Leds.GameEngine.Application.Abstractions;
+using Leds.GameEngine.Application.Combats;
+using Leds.GameEngine.Application.Combats.Actions;
+using Leds.GameEngine.Application.Combats.Dtos;
+using Leds.GameEngine.Application.Combats.EnemyTurns;
 using Leds.GameEngine.Application.Common.Exceptions;
 using Leds.GameEngine.Application.Runs.Dtos;
+using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Runs;
 using MediatR;
 
@@ -10,10 +15,14 @@ public sealed class UseRunItemCommandHandler
     : IRequestHandler<UseRunItemCommand, UseRunItemResponse>
 {
     private readonly IRunRepository _runRepository;
+    private readonly IEnemyCombatTurnResolver _enemyTurnResolver;
 
-    public UseRunItemCommandHandler(IRunRepository runRepository)
+    public UseRunItemCommandHandler(
+        IRunRepository runRepository,
+        IEnemyCombatTurnResolver enemyTurnResolver)
     {
         _runRepository = runRepository;
+        _enemyTurnResolver = enemyTurnResolver;
     }
 
     public async Task<UseRunItemResponse> Handle(
@@ -30,6 +39,28 @@ public sealed class UseRunItemCommandHandler
 
         var (effectType, amount, depleted) = run.UseItem(itemId);
 
+        // En combat, l'utilisation d'un objet compte comme l'action du joueur :
+        // avance le tour et résout les tours ennemis automatiquement.
+        IReadOnlyCollection<CombatLogEntryDto>? logEntries = null;
+        CombatRuntimeDto? combatDto = null;
+
+        if (wasInCombat && run.ActiveCombat is not null)
+        {
+            var combat = run.ActiveCombat;
+            var logs = new List<CombatLogEntryDto>();
+
+            logs.AddRange(AdvanceCombat(combat));
+
+            if (combat.Status == CombatStatus.Active)
+                logs.AddRange(ResolveEnemyTurns(combat));
+
+            SyncPlayerStateFromCombat(run, combat);
+
+            logEntries = logs;
+            CombatRuntimeDto.FromDomain(combat, CombatItemHelper.GetUsableBattleItems(run));
+
+        }
+
         await _runRepository.UpdateAsync(run, cancellationToken);
 
         return new UseRunItemResponse(
@@ -39,6 +70,53 @@ public sealed class UseRunItemCommandHandler
             EffectAmount: amount,
             ItemDepleted: depleted,
             UsedInCombat: wasInCombat,
-            PlayerState: PlayerRuntimeStateDto.FromDomain(run.PlayerState));
+            PlayerState: PlayerRuntimeStateDto.FromDomain(run.PlayerState),
+            Combat: combatDto,
+            LogEntries: logEntries);
+    }
+
+    private static IReadOnlyCollection<CombatLogEntryDto> AdvanceCombat(Combat combat)
+    {
+        combat.CompleteIfAllEnemiesDefeated();
+        combat.FailIfAllAlliesDefeated();
+
+        if (combat.Status != CombatStatus.Active)
+            return [];
+
+        combat.AdvanceTurn();
+        return [];
+    }
+
+    private IReadOnlyCollection<CombatLogEntryDto> ResolveEnemyTurns(Combat combat)
+    {
+        var logs = new List<CombatLogEntryDto>();
+        var maxAutoTurns = combat.Allies.Concat(combat.Enemies).Count(c => !c.IsDefeated) + 1;
+        var count = 0;
+
+        while (combat.Status == CombatStatus.Active)
+        {
+            var active = combat.GetActiveCombatant();
+            if (active is null || active.Side != CombatantSide.Enemy) break;
+            if (count++ >= maxAutoTurns) break;
+
+            var resolution = _enemyTurnResolver.Resolve(combat);
+            logs.AddRange(resolution.LogEntries);
+
+            if (!resolution.WasResolved) break;
+        }
+
+        return logs;
+    }
+
+    private static void SyncPlayerStateFromCombat(Run run, Combat combat)
+    {
+        var player = combat.Allies.FirstOrDefault(a => a.Side == CombatantSide.Player);
+        if (player is null) return;
+
+        run.PlayerState.SyncFromCombat(
+            player.CurrentVitality,
+            player.Guard,
+            player.Mana,
+            player.Charge);
     }
 }

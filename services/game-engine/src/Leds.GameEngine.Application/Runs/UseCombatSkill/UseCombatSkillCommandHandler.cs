@@ -1,4 +1,5 @@
 using Leds.GameEngine.Application.Abstractions;
+using Leds.GameEngine.Application.Combats;
 using Leds.GameEngine.Application.Combats.Actions;
 using Leds.GameEngine.Application.Combats.Dtos;
 using Leds.GameEngine.Application.Combats.Effects;
@@ -151,7 +152,7 @@ public sealed class UseCombatSkillCommandHandler
             TargetIds: resolvedTargetIds,
             Accepted: true,
             Message: null,
-            Combat: CombatRuntimeDto.FromDomain(finalCombat),
+            Combat: CombatRuntimeDto.FromDomain(finalCombat, CombatItemHelper.GetUsableBattleItems(run)),
             LogEntries: logEntries,
             CombatCompleted: combatCompleted,
             CombatFailed: combatFailed,

@@ -8,9 +8,12 @@ public sealed record CombatRuntimeDto(
     int TurnNumber,
     Guid? ActiveCombatantId,
     IReadOnlyCollection<CombatantRuntimeDto> Allies,
-    IReadOnlyCollection<CombatantRuntimeDto> Enemies)
+    IReadOnlyCollection<CombatantRuntimeDto> Enemies,
+    IReadOnlyCollection<CombatUsableItemDto> UsableBattleItems)
 {
-    public static CombatRuntimeDto FromDomain(Combat combat)
+    public static CombatRuntimeDto FromDomain(
+        Combat combat,
+        IReadOnlyCollection<CombatUsableItemDto>? usableItems = null)
     {
         return new CombatRuntimeDto(
             Id: combat.Id.Value,
@@ -22,6 +25,7 @@ public sealed record CombatRuntimeDto(
                 .ToArray(),
             Enemies: combat.Enemies
                 .Select(CombatantRuntimeDto.FromDomain)
-                .ToArray());
+                .ToArray(),
+            UsableBattleItems: usableItems ?? []);
     }
 }

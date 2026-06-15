@@ -1,6 +1,8 @@
 using Leds.GameEngine.Application.Abstractions;
+using Leds.GameEngine.Application.Combats;
 using Leds.GameEngine.Application.Combats.Dtos;
 using Leds.GameEngine.Application.Common.Exceptions;
+using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Runs;
 using MediatR;
 
@@ -34,6 +36,6 @@ public sealed class GetCurrentCombatQueryHandler
             throw new NotFoundException($"No active combat was found for run '{request.RunId}'.");
         }
 
-        return CombatRuntimeDto.FromDomain(run.ActiveCombat);
+        return CombatRuntimeDto.FromDomain(run.ActiveCombat, CombatItemHelper.GetUsableBattleItems(run));
     }
 }

@@ -1,5 +1,10 @@
 import { HttpError, httpRequest } from '../../../shared/api/httpClient';
-import type { CombatRuntimeDto, UseCombatSkillRequest, UseCombatSkillResponse } from '../types/combatContracts';
+import type {
+  CombatRuntimeDto,
+  UseCombatSkillRequest,
+  UseCombatSkillResponse,
+  UseItemInCombatResponse,
+} from '../types/combatContracts';
 
 export const combatApi = {
   async getCurrentCombat(runId: string): Promise<CombatRuntimeDto | null> {
@@ -22,6 +27,20 @@ export const combatApi = {
   ) {
     return httpRequest<UseCombatSkillResponse>(
       `/api/v2/runs/${runId}/combats/${combatId}/skill-actions`,
+      {
+        method: 'POST',
+        body: JSON.stringify(body),
+      },
+    );
+  },
+
+  useItemAction(
+    runId: string,
+    combatId: string,
+    body: { itemId: string; targetIds: string[] },
+  ) {
+    return httpRequest<UseItemInCombatResponse>(
+      `/api/v2/runs/${runId}/combats/${combatId}/item-actions`,
       {
         method: 'POST',
         body: JSON.stringify(body),

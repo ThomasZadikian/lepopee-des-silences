@@ -104,4 +104,30 @@ public sealed class RunItem
 
         Quantity--;
     }
+
+    /// <summary>
+    /// Vrai pour les effets activables pendant un combat (soins, garde, mana, charge).
+    /// Faux pour les effets passifs, narratifs ou hors-combat.
+    /// </summary>
+    public bool IsBattleItem => EffectType is
+      RunItemEffectType.Heal
+      or RunItemEffectType.ManaRestore
+      or RunItemEffectType.ChargeRestore;
+
+    /// <summary>
+    /// Type de ciblage attendu par le frontend pour cet effet en combat.
+    /// Heal → SingleAlly (guérit un allié choisi).
+    /// Autres → Self (s'applique toujours au joueur).
+    /// </summary>
+    public string BattleTargetingType => EffectType == RunItemEffectType.Heal
+        ? "SingleAlly"
+        : "Self";
+
+    /// <summary>
+    /// Vrai si l'objet peut être utilisé manuellement (consommable, quantité > 0, effet activable).
+    /// </summary>
+    public bool IsUsable =>
+        Type == RunItemType.Consumable
+        && Quantity > 0
+        && IsBattleItem;
 }

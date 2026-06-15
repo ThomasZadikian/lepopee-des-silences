@@ -14,6 +14,7 @@ using Leds.GameEngine.Application.Runs.ResumeRun;
 using Leds.GameEngine.Application.Runs.SaveAndExitRun;
 using Leds.GameEngine.Application.Runs.StartRun;
 using Leds.GameEngine.Application.Runs.UseCombatSkill;
+using Leds.GameEngine.Application.Runs.UseItemInCombat;
 using Leds.GameEngine.Application.Runs.UseRunItem;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -241,6 +242,26 @@ public sealed class RunsController : ControllerBase
         var response = await _sender.Send(command, cancellationToken);
         return Ok(response);
     }
+
+    [HttpPost("{runId:guid}/combats/{combatId:guid}/item-actions")]
+    [ProducesResponseType(typeof(CombatSkillActionResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<CombatSkillActionResult>> UseItemInCombat(
+    Guid runId,
+    Guid combatId,
+    [FromBody] UseItemInCombatRequest body,
+    CancellationToken cancellationToken)
+    {
+        var command = new UseItemInCombatCommand(
+            runId, combatId, body.ItemId, body.TargetIds ?? []);
+        var result = await _sender.Send(command, cancellationToken);
+        return Ok(result);
+    }
+
+    public sealed record UseItemInCombatRequest(
+        Guid ItemId,
+        IReadOnlyCollection<Guid>? TargetIds);
 
 }
 

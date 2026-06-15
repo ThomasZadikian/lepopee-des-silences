@@ -100,17 +100,24 @@ public sealed class Combat
         ActiveCombatantId = null;
     }
 
-    public Combatant GetActiveCombatant()
+    public Combatant? GetActiveCombatant()
     {
         if (Status != CombatStatus.Active)
-            throw new DomainException("Combat is not active.");
+            return null;
 
-        if (ActiveCombatantId is null)
-            throw new DomainException("Combat has no active combatant.");
+        var livingCombatants = GetTurnOrder()
+            .Where(c => !c.IsDefeated)
+            .ToArray();
 
-        return GetTurnOrder()
-            .FirstOrDefault(c => c.Id == ActiveCombatantId)
-            ?? throw new DomainException("Active combatant does not exist in this combat.");
+        if (livingCombatants.Length == 0)
+            return null;
+
+        var currentIndex = Array.FindIndex(livingCombatants, c => c.Id == ActiveCombatantId);
+
+        if (currentIndex < 0)
+            return livingCombatants[0];
+
+        return livingCombatants[currentIndex];
     }
 
     public void EnsureActorCanAct(Guid actorId)

@@ -7,6 +7,7 @@ import type {
   CombatantSkillRuntimeDto,
   CombatLogEntryDto,
   CombatRuntimeDto,
+  CombatUsableItemDto,
   TargetingType,
 } from '../types/combatContracts';
 
@@ -30,6 +31,8 @@ export const useCombatStore = defineStore('combatRuntime', () => {
   const recentlyDefeatedIds = ref<string[]>([]);
   const recentlyActingId = ref<string | null>(null);
   const animationTimers: ReturnType<typeof globalThis.setTimeout>[] = [];
+
+  // ── Skill selection ─────────────────────────────────────────────────────
 
   const allies = computed<CombatantRuntimeDto[]>(() => combat.value?.allies ?? []);
   const enemies = computed<CombatantRuntimeDto[]>(() => combat.value?.enemies ?? []);
@@ -68,6 +71,84 @@ export const useCombatStore = defineStore('combatRuntime', () => {
   const isDefeat = computed<boolean>(() => combat.value?.status === 'Failed');
   const isResolvingAction = computed<boolean>(() => isLoading.value);
 
+  // ── Item selection ───────────────────────────────────────────────────────
+
+  const selectedItemId = ref<string | null>(null);
+
+  const selectedItem = computed<CombatUsableItemDto | null>(() => {
+    if (!selectedItemId.value || !combat.value) return null;
+    return (
+      combat.value.usableBattleItems.find((i) => i.itemId === selectedItemId.value) ?? null
+    );
+  });
+
+  const itemValidTargets = computed<CombatantRuntimeDto[]>(() => {
+    const item = selectedItem.value;
+    if (!item) return [];
+    if (item.targetingType === 'Self') {
+      return allies.value.filter((a) => a.status !== 'Defeated');
+    }
+    return allies.value.filter((a) => a.status !== 'Defeated');
+  });
+
+  const canSubmitItem = computed<boolean>(() => {
+    if (!selectedItem.value) return false;
+    if (!isPlayerTurn.value) return false;
+    // Self : aucune cible explicite requise
+    if (selectedItem.value.targetingType === 'Self') return true;
+    // SingleAlly : une cible requise
+    return selectedTargetIds.value.length > 0;
+  });
+
+  function selectItem(itemId: string) {
+    if (selectedItemId.value === itemId) {
+      selectedItemId.value = null;
+      selectedTargetIds.value = [];
+      return;
+    }
+    selectedItemId.value = itemId;
+    selectedSkillKey.value = null;
+    selectedTargetIds.value = [];
+  }
+
+  function clearItemSelection() {
+    selectedItemId.value = null;
+    selectedTargetIds.value = [];
+  }
+
+  async function submitItemAction(runId: string) {
+    const item = selectedItem.value;
+    const combatId = combat.value?.id;
+    if (!item || !combatId) return;
+
+    const targetIds =
+      item.targetingType === 'Self' ? [] : [...selectedTargetIds.value];
+
+    isLoading.value = true;
+    error.value = null;
+    try {
+      const response = await combatApi.useItemAction(runId, combatId, {
+        itemId: item.itemId,
+        targetIds,
+      });
+
+      selectedItemId.value = null;
+      selectedTargetIds.value = [];
+      await playCombatLogs(response.logEntries);
+      finishCombatResponse(response.combat);
+
+      if (response.combatCompleted) terminalEvent.value = { kind: 'victory' };
+      else if (response.combatFailed) terminalEvent.value = { kind: 'defeat' };
+    } catch (caught) {
+      error.value =
+        caught instanceof Error ? caught.message : "L'utilisation a échoué.";
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  // ── Helpers ──────────────────────────────────────────────────────────────
+
   function getValidTargets(
     targetingType: TargetingType,
     actor: CombatantRuntimeDto | null,
@@ -93,12 +174,15 @@ export const useCombatStore = defineStore('combatRuntime', () => {
     return allCombatants.value.find((c) => c.id === id) ?? null;
   }
 
+  // ── State management ─────────────────────────────────────────────────────
+
   function initCombat(combatData: CombatRuntimeDto) {
     resetAnimationState();
     combat.value = combatData;
     hasRuntimeCombat.value = true;
     logEntries.value = [];
     selectedSkillKey.value = null;
+    selectedItemId.value = null;
     selectedTargetIds.value = [];
     error.value = null;
     terminalEvent.value = null;
@@ -109,6 +193,7 @@ export const useCombatStore = defineStore('combatRuntime', () => {
     hasRuntimeCombat.value = true;
     logEntries.value = [...logEntries.value, ...newLogs];
     selectedSkillKey.value = null;
+    selectedItemId.value = null;
     selectedTargetIds.value = [];
     error.value = null;
   }
@@ -117,9 +202,24 @@ export const useCombatStore = defineStore('combatRuntime', () => {
     combat.value = combatData;
     hasRuntimeCombat.value = true;
     selectedSkillKey.value = null;
+    selectedItemId.value = null;
     selectedTargetIds.value = [];
     error.value = null;
   }
+
+  function clearCombat() {
+    resetAnimationState();
+    combat.value = null;
+    hasRuntimeCombat.value = false;
+    logEntries.value = [];
+    selectedSkillKey.value = null;
+    selectedItemId.value = null;
+    selectedTargetIds.value = [];
+    error.value = null;
+    terminalEvent.value = null;
+  }
+
+  // ── Animations ───────────────────────────────────────────────────────────
 
   function delay(milliseconds: number): Promise<void> {
     return new Promise((resolve) => {
@@ -136,7 +236,7 @@ export const useCombatStore = defineStore('combatRuntime', () => {
     for (const entry of entries) {
       logEntries.value = [...logEntries.value, entry];
 
-      if (entry.actorId && entry.type === 'SkillUsed') {
+      if (entry.actorId && (entry.type === 'SkillUsed' || entry.type === 'ItemUsed')) {
         markActing(entry.actorId);
       }
 
@@ -160,6 +260,8 @@ export const useCombatStore = defineStore('combatRuntime', () => {
       markDamaged(entry.targetIds);
     } else if (entry.type === 'GuardGained') {
       markGuarded(entry.targetIds);
+    } else if (entry.type === 'HealApplied') {
+    markGuarded(entry.targetIds, 900);
     } else if (entry.type === 'TargetDefeated') {
       markDefeated(entry.targetIds);
     }
@@ -189,7 +291,6 @@ export const useCombatStore = defineStore('combatRuntime', () => {
   function flashIds(state: { value: string[] }, ids: string[], duration: number) {
     const nextIds = ids.filter((id) => !state.value.includes(id));
     state.value = [...state.value, ...nextIds];
-
     schedule(() => {
       state.value = state.value.filter((id) => !ids.includes(id));
     }, duration);
@@ -208,7 +309,6 @@ export const useCombatStore = defineStore('combatRuntime', () => {
     for (const timerId of animationTimers.splice(0)) {
       globalThis.clearTimeout(timerId);
     }
-
     thinkingCombatantId.value = null;
     recentlyDamagedIds.value = [];
     recentlyGuardedIds.value = [];
@@ -217,9 +317,12 @@ export const useCombatStore = defineStore('combatRuntime', () => {
   }
 
   function shouldHighlightTarget(entry: CombatLogEntryDto): boolean {
-    return entry.type === 'DamageApplied'
-      || entry.type === 'GuardGained'
-      || entry.type === 'TargetDefeated';
+    return (
+      entry.type === 'DamageApplied' ||
+      entry.type === 'GuardGained' ||
+      entry.type === 'HealApplied' ||
+      entry.type === 'TargetDefeated'
+    );
   }
 
   function applyLogEffect(entry: CombatLogEntryDto) {
@@ -232,49 +335,47 @@ export const useCombatStore = defineStore('combatRuntime', () => {
     };
   }
 
-  function applyEntryToCombatant(
-    combatant: CombatantRuntimeDto,
-    entry: CombatLogEntryDto,
-  ): CombatantRuntimeDto {
-    if (!entry.targetIds.includes(combatant.id)) return combatant;
+function applyEntryToCombatant(
+  combatant: CombatantRuntimeDto,
+  entry: CombatLogEntryDto,
+): CombatantRuntimeDto {
+  if (!entry.targetIds.includes(combatant.id)) return combatant;
 
-    if (entry.type === 'TargetDefeated') {
-      return { ...combatant, currentVitality: 0, status: 'Defeated' };
-    }
-
-    const amount = extractFirstNumber(entry.message);
-    if (amount === null) return combatant;
-
-    if (entry.type === 'GuardGained') {
-      return { ...combatant, guard: combatant.guard + amount };
-    }
-
-    if (entry.type === 'DamageApplied' && entry.message.includes('guard absorbs')) {
-      return { ...combatant, guard: Math.max(0, combatant.guard - amount) };
-    }
-
-    if (entry.type === 'DamageApplied') {
-      return { ...combatant, currentVitality: Math.max(0, combatant.currentVitality - amount) };
-    }
-
-    return combatant;
+  if (entry.type === 'TargetDefeated') {
+    return { ...combatant, currentVitality: 0, status: 'Defeated' };
   }
+
+  const amount = extractFirstNumber(entry.message);
+  if (amount === null) return combatant;
+
+  if (entry.type === 'HealApplied') {
+    return {
+      ...combatant,
+      currentVitality: Math.min(combatant.maxVitality, combatant.currentVitality + amount),
+    };
+  }
+
+  if (entry.type === 'GuardGained') {
+    return { ...combatant, guard: combatant.guard + amount };
+  }
+
+  if (entry.type === 'DamageApplied' && entry.message.includes('guard absorbs')) {
+    return { ...combatant, guard: Math.max(0, combatant.guard - amount) };
+  }
+
+  if (entry.type === 'DamageApplied') {
+    return { ...combatant, currentVitality: Math.max(0, combatant.currentVitality - amount) };
+  }
+
+  return combatant;
+}
 
   function extractFirstNumber(message: string): number | null {
     const match = message.match(/\d+/);
     return match ? Number(match[0]) : null;
   }
 
-  function clearCombat() {
-    resetAnimationState();
-    combat.value = null;
-    hasRuntimeCombat.value = false;
-    logEntries.value = [];
-    selectedSkillKey.value = null;
-    selectedTargetIds.value = [];
-    error.value = null;
-    terminalEvent.value = null;
-  }
+  // ── Skill actions ────────────────────────────────────────────────────────
 
   function selectSkill(skillKey: string) {
     if (selectedSkillKey.value === skillKey) {
@@ -283,6 +384,7 @@ export const useCombatStore = defineStore('combatRuntime', () => {
       return;
     }
     selectedSkillKey.value = skillKey;
+    selectedItemId.value = null;
     selectedTargetIds.value = [];
   }
 
@@ -290,7 +392,11 @@ export const useCombatStore = defineStore('combatRuntime', () => {
     const skill = selectedSkill.value;
     if (!skill) return;
 
-    if (skill.targetingType === 'SingleEnemy' || skill.targetingType === 'SingleAlly' || skill.targetingType === 'Self') {
+    if (
+      skill.targetingType === 'SingleEnemy' ||
+      skill.targetingType === 'SingleAlly' ||
+      skill.targetingType === 'Self'
+    ) {
       if (selectedTargetIds.value[0] === targetId) {
         selectedTargetIds.value = [];
       } else {
@@ -324,7 +430,8 @@ export const useCombatStore = defineStore('combatRuntime', () => {
         initCombat(result);
       }
     } catch (caught) {
-      error.value = caught instanceof Error ? caught.message : 'Impossible de charger le combat.';
+      error.value =
+        caught instanceof Error ? caught.message : 'Impossible de charger le combat.';
       combat.value = null;
     } finally {
       isLoading.value = false;
@@ -357,11 +464,14 @@ export const useCombatStore = defineStore('combatRuntime', () => {
         terminalEvent.value = { kind: 'defeat' };
       }
     } catch (caught) {
-      error.value = caught instanceof Error ? caught.message : 'L\'action a échoué.';
+      error.value =
+        caught instanceof Error ? caught.message : "L'action a échoué.";
     } finally {
       isLoading.value = false;
     }
   }
+
+  // ── Return ───────────────────────────────────────────────────────────────
 
   return {
     combat,
@@ -388,9 +498,22 @@ export const useCombatStore = defineStore('combatRuntime', () => {
     isResolvingAction,
     isVictory,
     isDefeat,
+    hasRuntimeCombat,
+    // Items
+    selectedItemId,
+    selectedItem,
+    itemValidTargets,
+    canSubmitItem,
+    selectItem,
+    clearItemSelection,
+    submitItemAction,
+    // Combat state
     initCombat,
     setCombatFromResponse,
+    finishCombatResponse,
+    playCombatLogs,
     clearCombat,
+    // Skills
     selectSkill,
     selectTarget,
     clearSelection,
@@ -399,7 +522,7 @@ export const useCombatStore = defineStore('combatRuntime', () => {
     loadCurrentCombat,
     submitAction,
     findCombatantById,
-    hasRuntimeCombat,
+    // Animations
     markDamaged,
     markGuarded,
     markDefeated,

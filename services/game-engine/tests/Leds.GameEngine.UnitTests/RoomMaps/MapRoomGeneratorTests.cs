@@ -481,6 +481,7 @@ public sealed class MapRoomGeneratorTests
 
         var supportCount = types.Count(t =>
             t == NodeEventType.Npc ||
+            t == NodeEventType.Law ||
             t == NodeEventType.Rest ||
             t == NodeEventType.Item);
 
@@ -677,6 +678,7 @@ public sealed class MapRoomGeneratorTests
 
         var supportCount = types.Count(t =>
             t == NodeEventType.Npc  ||
+            t == NodeEventType.Law  ||
             t == NodeEventType.Rest ||
             t == NodeEventType.Item);
 
@@ -887,22 +889,6 @@ public sealed class MapRoomGeneratorTests
         restNodes.Should().AllSatisfy(n =>
             n.RewardProfile.Should().StartWith("rest",
                 "Rest nodes must use a 'rest-*' reward profile."));
-    }
-
-    [Fact]
-    public async Task GenerateLawNode_ShouldNotAppear_UntilRunModifierIsImplemented()
-    {
-        var sut = CreateSut();
-
-        var lawNodeLists = await Task.WhenAll(
-            new[] { RoomType.Threshold, RoomType.Silence, RoomType.Memory }
-                .Select(rt => GenerateManyMapNodes(sut, rt)));
-        var lawNodes = lawNodeLists.SelectMany(x => x)
-            .Where(n => n.EventType == NodeEventType.Law)
-            .ToList();
-
-        lawNodes.Should().BeEmpty(
-            because: "Law is excluded from all profiles until a gameplay-effective RunModifier implementation exists.");
     }
 
     [Fact]

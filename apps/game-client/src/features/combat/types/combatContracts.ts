@@ -38,6 +38,16 @@ export type CombatantRuntimeDto = {
   skills: CombatantSkillRuntimeDto[];
 };
 
+export type CombatUsableItemDto = {
+  itemId: string;
+  definitionKey: string;
+  displayName: string;
+  effectType: string;
+  effectAmount: number;
+  quantity: number;
+  targetingType: 'Self' | 'SingleAlly';
+};
+
 export type CombatStatus = 'Active' | 'Completed' | 'Failed';
 
 export type CombatRuntimeDto = {
@@ -47,6 +57,7 @@ export type CombatRuntimeDto = {
   activeCombatantId: string | null;
   allies: CombatantRuntimeDto[];
   enemies: CombatantRuntimeDto[];
+  usableBattleItems: CombatUsableItemDto[];
 };
 
 export type CombatEncounterDraftDto = {
@@ -57,8 +68,10 @@ export type CombatEncounterDraftDto = {
 
 export type LogEntryType =
   | 'SkillUsed'
+  | 'ItemUsed'
   | 'DamageApplied'
   | 'GuardGained'
+  | 'HealApplied' 
   | 'TargetDefeated'
   | 'TurnAdvanced'
   | 'EnemyTurnResolved'
@@ -93,4 +106,19 @@ export type UseCombatSkillResponse = {
   combatFailed: boolean;
   canProgressRun: boolean;
   runStatus: 'Active' | 'Failed';
+};
+
+export type UseItemInCombatResponse = {
+  combatId: string;
+  actorId: string;
+  skillKey: string;
+  targetIds: string[];
+  accepted: boolean;
+  message: string | null;
+  combat: CombatRuntimeDto;
+  logEntries: CombatLogEntryDto[];
+  combatCompleted: boolean;
+  combatFailed: boolean;
+  canProgressRun: boolean;
+  runStatus: string;
 };

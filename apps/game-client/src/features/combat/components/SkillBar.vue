@@ -1,15 +1,18 @@
 <script setup lang="ts">
-import type { CombatantRuntimeDto } from '../types/combatContracts';
+import type { CombatUsableItemDto, CombatantRuntimeDto } from '../types/combatContracts';
 
 defineProps<{
   combatant: CombatantRuntimeDto | null;
   selectedSkillKey: string | null;
   isPlayerTurn: boolean;
   isLoading: boolean;
+  usableBattleItems: CombatUsableItemDto[];
+  selectedItemId: string | null;
 }>();
 
 defineEmits<{
   selectSkill: [skillKey: string];
+  selectItem: [itemId: string];
 }>();
 
 function isSkillDisabled(combatant: CombatantRuntimeDto | null): boolean {
@@ -17,11 +20,22 @@ function isSkillDisabled(combatant: CombatantRuntimeDto | null): boolean {
   if (combatant.status === 'Defeated') return true;
   return false;
 }
+
+function getEffectLabel(effectType: string, effectAmount: number): string {
+  switch (effectType) {
+    case 'Heal':          return `+${effectAmount} PV`;
+    case 'Guard':         return `+${effectAmount} Garde`;
+    case 'ManaRestore':   return `+${effectAmount} Mana`;
+    case 'ChargeRestore': return `+${effectAmount} Charge`;
+    default:              return `+${effectAmount}`;
+  }
+}
 </script>
 
 <template>
   <section class="skill-bar panel">
     <template v-if="combatant">
+      <!-- Compétences -->
       <p class="system-label skill-bar__header">
         ACTIONS · {{ combatant.displayName }}
       </p>
@@ -49,6 +63,37 @@ function isSkillDisabled(combatant: CombatantRuntimeDto | null): boolean {
           <span class="skill-bar__button-target">Cible : {{ skill.targetingType }}</span>
         </button>
       </div>
+
+      <!-- Objets utilisables en combat -->
+      <template v-if="usableBattleItems.length > 0">
+        <p class="system-label skill-bar__header skill-bar__header--items">
+          OBJETS
+        </p>
+
+        <div class="skill-bar__grid">
+          <button
+            v-for="item in usableBattleItems"
+            :key="item.itemId"
+            class="skill-bar__button skill-card skill-card--item"
+            :class="{
+              'skill-bar__button--selected': selectedItemId === item.itemId,
+              'skill-card--selected': selectedItemId === item.itemId,
+              'skill-card--disabled': !isPlayerTurn || isLoading,
+              'skill-card--usable': isPlayerTurn && !isLoading,
+            }"
+            :disabled="!isPlayerTurn || isLoading"
+            @click="$emit('selectItem', item.itemId)"
+          >
+            <span class="skill-bar__button-name">{{ item.displayName }}</span>
+            <span class="skill-bar__button-meta">
+              {{ getEffectLabel(item.effectType, item.effectAmount) }}
+            </span>
+            <span class="skill-bar__button-target">
+              ×{{ item.quantity }} · {{ item.targetingType === 'Self' ? 'Soi-même' : 'Allié' }}
+            </span>
+          </button>
+        </div>
+      </template>
     </template>
 
     <template v-else>
@@ -69,6 +114,12 @@ function isSkillDisabled(combatant: CombatantRuntimeDto | null): boolean {
 
 .skill-bar__header {
   color: var(--color-dim);
+}
+
+.skill-bar__header--items {
+  margin-top: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-line);
 }
 
 .skill-bar__grid {
@@ -112,6 +163,22 @@ function isSkillDisabled(combatant: CombatantRuntimeDto | null): boolean {
 
 .skill-card--usable {
   cursor: pointer;
+}
+
+/* Teinte légèrement différente pour distinguer visuellement items vs skills */
+.skill-card--item {
+  border-color: color-mix(in oklch, var(--color-green, #4ade80), transparent 60%);
+}
+
+.skill-card--item:hover:not(:disabled) {
+  border-color: var(--color-green, #4ade80);
+  background: color-mix(in oklch, var(--color-green, #4ade80), transparent 92%);
+}
+
+.skill-card--item.skill-card--selected {
+  border-color: var(--color-green, #4ade80) !important;
+  background: color-mix(in oklch, var(--color-green, #4ade80), transparent 85%) !important;
+  box-shadow: 0 0 16px color-mix(in oklch, var(--color-green, #4ade80), transparent 82%);
 }
 
 .skill-bar__button-name {

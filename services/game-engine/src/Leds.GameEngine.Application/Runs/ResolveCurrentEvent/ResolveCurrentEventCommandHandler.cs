@@ -165,7 +165,7 @@ public sealed class ResolveCurrentEventCommandHandler
             encounterDraftDto = CombatEncounterDraftDto.FromDomain(draft);
             var combatRuntime = _combatFactory.CreateFromDraft(draft, run.PlayerState, run.RunModifiers);
             run.StartCombat(combatRuntime);
-            combatRuntimeDto = CombatRuntimeDto.FromDomain(combatRuntime);
+            CombatRuntimeDto.FromDomain(combatRuntime, CombatItemHelper.GetUsableBattleItems(run)); 
         }
         else if (selectedNode.EventType == NodeEventType.Item)
         {
