@@ -3,8 +3,10 @@ import { computed, nextTick, onMounted, watch } from 'vue';
 
 import { useRunStore } from '../../runs/stores/runStore';
 import { useCombatStore } from '../stores/useCombatStore';
+import { useCombatMetrics } from '../composables/useCombatMetrics';
 import CombatantCard from './CombatantCard.vue';
 import CombatLogPanel from './CombatLogPanel.vue';
+import CombatMetersPanel from './CombatMetersPanel.vue';
 import CombatOutcomePanel from './CombatOutcomePanel.vue';
 import SkillBar from './SkillBar.vue';
 
@@ -21,6 +23,7 @@ const emit = defineEmits<{
 
 const combatStore = useCombatStore();
 const runStore = useRunStore();
+const { state: metricsState, snapshotBeforeAction, processAfterAction, reset: resetMetrics } = useCombatMetrics();
 
 const activeCombatant = computed(() => combatStore.currentActor);
 const isPlayerTurn = computed(() => combatStore.isPlayerTurn);
@@ -56,11 +59,24 @@ function handleSelect(combatantId: string) {
   if (validIds.includes(combatantId)) combatStore.selectTarget(combatantId);
 }
 
-async function handleSubmit() { await combatStore.submitAction(props.runId); }
-async function handleSubmitItem() { await combatStore.submitItemAction(props.runId); }
+async function handleSubmit() {
+  snapshotBeforeAction(combatStore.combat);
+  await combatStore.submitAction(props.runId);
+  processAfterAction(combatStore.combat);
+}
+
+async function handleSubmitItem() {
+  snapshotBeforeAction(combatStore.combat);
+  await combatStore.submitItemAction(props.runId);
+  processAfterAction(combatStore.combat);
+}
 function handleClearSelection() { combatStore.clearSelection(); combatStore.clearItemSelection(); }
 function handleSelectItem(itemId: string) { combatStore.selectItem(itemId); }
-function handleContinue() { combatStore.clearCombat(); emit('combatCompleted'); }
+function handleContinue() {
+  resetMetrics();
+  combatStore.clearCombat();
+  emit('combatCompleted');
+}
 
 function getEnemyJitter(index: number): string {
   const offsets = [
@@ -93,6 +109,7 @@ watch(() => combatStore.selectedTargetIds, async (ids) => {
 });
 
 onMounted(() => {
+  resetMetrics();
   if (combatStore.combat?.id === props.combatId) return;
   if (runStore.combatRuntime?.id && runStore.combatRuntime.status === 'Active') {
     combatStore.initCombat(runStore.combatRuntime);
@@ -105,6 +122,7 @@ watch(() => props.combatId, (newId) => {
   if (!newId) return;
   if (combatStore.combat?.id === newId) return;
   combatStore.clearCombat();
+  resetMetrics();
   if (runStore.combatRuntime?.id === newId) combatStore.initCombat(runStore.combatRuntime);
   else combatStore.loadCurrentCombat(props.runId);
 });
@@ -124,11 +142,13 @@ watch(() => props.combatId, (newId) => {
 
     <!-- Combat actif -->
     <template v-else>
-      <!-- Top: turn indicator -->
+      <!-- Top: turn indicator + meters -->
       <header class="combat-scene__header">
         <span class="es-kicker">Confrontation</span>
         <span class="es-chip es-chip--blood">Tour {{ combatStore.combat?.turnNumber ?? '?' }}</span>
       </header>
+
+      <CombatMetersPanel :metrics="metricsState" />
 
       <!-- Main: face-à-face -->
       <div class="combat-scene__arena">
@@ -233,7 +253,7 @@ watch(() => props.combatId, (newId) => {
 <style scoped>
 .combat-scene {
   display: grid;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: auto auto 1fr auto;
   grid-template-columns: 1fr;
   gap: 0;
   height: 100%;
@@ -365,7 +385,7 @@ watch(() => props.combatId, (newId) => {
 
 @media (max-width: 900px) {
   .combat-scene {
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: auto auto 1fr auto;
     grid-template-columns: 1fr;
   }
 
