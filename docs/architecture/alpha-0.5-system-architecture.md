@@ -10,6 +10,8 @@ Ce document sert de référence complète pour comprendre le projet sans avoir �
 
 Il est destiné au porteur du projet, aux développeurs qui reprennent le code et aux outils d'automatisation qui doivent naviguer le codebase de manière déterministe.
 
+Pour le modèle de données gameplay officiel (entités, stats, schémas relationnels, ownership), voir [docs/data-model/00-data-model-0.1-overview.md](../data-model/00-data-model-0.1-overview.md).
+
 ---
 
 ## 2. Vue d'ensemble du projet

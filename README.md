@@ -439,6 +439,10 @@ See [docs/development/local-dev-environment.md](docs/development/local-dev-envir
 
 See [docs/architecture/alpha-0.5-system-architecture.md](docs/architecture/alpha-0.5-system-architecture.md).
 
+## Gameplay Data Model
+
+See [docs/data-model/00-data-model-0.1-overview.md](docs/data-model/00-data-model-0.1-overview.md).
+
 ---
 
 ## Commandes utiles
