@@ -30,9 +30,6 @@ const hoveredEnemyId = ref<string | null>(null);
 const activeCombatant = computed(() => combatStore.currentActor);
 const isPlayerTurn = computed(() => combatStore.isPlayerTurn);
 const hasSelectedSkill = computed(() => Boolean(combatStore.selectedSkill));
-const currentRun = computed(() => runStore.currentRun);
-const maxDepth = computed(() => currentRun.value?.currentRoom?.maxNodeDepth || 10);
-const activeLawCount = computed(() => currentRun.value?.activePalaceLaws?.length ?? 0);
 const selectedTarget = computed(() => {
   const id = combatStore.selectedTargetIds[0];
   if (!id) return null;
@@ -229,37 +226,6 @@ watch(() => props.combatId, (newId) => {
 
     <!-- Combat actif -->
     <template v-else>
-      <header class="combat-scene__header">
-        <div class="combat-scene__stat-block">
-          <span>Palais</span>
-          <strong>L'ÉPOPÉE DES SILENCES</strong>
-        </div>
-        <div class="combat-scene__stat-block">
-          <span>Seed</span>
-          <strong>{{ currentRun?.seed ?? '—' }}</strong>
-        </div>
-        <div class="combat-scene__stat-block">
-          <span>Profondeur</span>
-          <strong>{{ currentRun?.currentDepth ?? '—' }} / {{ maxDepth }}</strong>
-        </div>
-        <div class="combat-scene__stat-block">
-          <span>Lois actives</span>
-          <strong>{{ activeLawCount.toString().padStart(2, '0') }}</strong>
-        </div>
-        <div class="combat-scene__stat-block combat-scene__stat-block--right">
-          <span>Score projeté</span>
-          <strong>12 480</strong>
-        </div>
-        <div class="combat-scene__stat-block">
-          <span>État</span>
-          <strong>• {{ currentRun?.status ?? combatStore.combat.status }}</strong>
-        </div>
-        <div class="combat-scene__stat-block">
-          <span>Affrontement</span>
-          <strong>• Tour {{ combatStore.combat?.turnNumber ?? '?' }}</strong>
-        </div>
-      </header>
-
       <div class="combat-scene__initiative es-plate">
         <span class="combat-scene__initiative-title">Marée d'initiative</span>
         <div class="combat-scene__initiative-list">
@@ -457,55 +423,12 @@ watch(() => props.combatId, (newId) => {
 <style scoped>
 .combat-scene {
   display: grid;
-  grid-template-rows: auto auto 1fr auto auto;
+  grid-template-rows: auto 1fr auto auto;
   grid-template-columns: 1fr;
   gap: 0;
   height: 100%;
   min-height: 0;
   position: relative;
-}
-
-.combat-scene__header {
-  display: grid;
-  grid-template-columns: 1.8fr 1.1fr 1fr 1fr 3fr 0.9fr 1fr;
-  align-items: center;
-  gap: 0;
-  border-bottom: 1px solid var(--line-soft);
-  background: linear-gradient(180deg, oklch(0.23 0.04 272 / 0.92), oklch(0.18 0.04 272 / 0.88));
-}
-
-.combat-scene__stat-block {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-height: 2.65rem;
-  padding: 5px var(--space-4);
-  border-right: 1px solid var(--line-soft);
-  justify-content: center;
-  min-width: 0;
-}
-
-.combat-scene__stat-block--right {
-  align-items: flex-end;
-}
-
-.combat-scene__stat-block span {
-  font-family: var(--font-caps);
-  font-size: 0.48rem;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: var(--ink-5);
-}
-
-.combat-scene__stat-block strong {
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  letter-spacing: 0.08em;
-  color: var(--ink-1);
-  text-transform: uppercase;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .combat-scene__initiative {
@@ -1030,12 +953,8 @@ watch(() => props.combatId, (newId) => {
 
 @media (max-width: 900px) {
   .combat-scene {
-    grid-template-rows: auto auto 1fr auto auto;
+    grid-template-rows: auto 1fr auto auto;
     grid-template-columns: 1fr;
-  }
-
-  .combat-scene__header {
-    grid-template-columns: repeat(2, 1fr);
   }
 
   .combat-scene__arena {

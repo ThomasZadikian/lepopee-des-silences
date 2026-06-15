@@ -131,7 +131,7 @@ function handleAction() {
   position: absolute;
   top: 0;
   right: 0;
-  bottom: 40px;
+  bottom: 45px;
   width: 280px;
   display: flex;
   flex-direction: column;
