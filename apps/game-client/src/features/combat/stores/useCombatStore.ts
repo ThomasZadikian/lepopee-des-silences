@@ -23,6 +23,8 @@ export type CombatFeedbackEvent = {
   amount: number;
 };
 
+type CombatantStateOverride = Pick<CombatantRuntimeDto, 'currentVitality' | 'guard' | 'status'>;
+
 export const useCombatStore = defineStore('combatRuntime', () => {
   const combat = ref<CombatRuntimeDto | null>(null);
   const logEntries = ref<CombatLogEntryDto[]>([]);
@@ -38,6 +40,8 @@ export const useCombatStore = defineStore('combatRuntime', () => {
   const recentlyDefeatedIds = ref<string[]>([]);
   const recentlyActingId = ref<string | null>(null);
   const feedbackEvents = ref<CombatFeedbackEvent[]>([]);
+  const combatantStateOverrides = ref<Record<string, CombatantStateOverride>>({});
+  const processedLogKeys = ref<Set<string>>(new Set());
   const animationTimers: ReturnType<typeof globalThis.setTimeout>[] = [];
 
   // ── Skill selection ─────────────────────────────────────────────────────
@@ -69,6 +73,7 @@ export const useCombatStore = defineStore('combatRuntime', () => {
   });
 
   const canSubmit = computed<boolean>(() => {
+    if (isLoading.value) return false;
     if (!selectedSkill.value) return false;
     if (selectedTargetIds.value.length === 0) return false;
     if (!isPlayerTurn.value) return false;
@@ -100,6 +105,7 @@ export const useCombatStore = defineStore('combatRuntime', () => {
   });
 
   const canSubmitItem = computed<boolean>(() => {
+    if (isLoading.value) return false;
     if (!selectedItem.value) return false;
     if (!isPlayerTurn.value) return false;
     // Self : aucune cible explicite requise
@@ -125,6 +131,7 @@ export const useCombatStore = defineStore('combatRuntime', () => {
   }
 
   async function submitItemAction(runId: string, onCombatApplied?: (combat: CombatRuntimeDto) => void) {
+    if (isLoading.value) return;
     const item = selectedItem.value;
     const combatId = combat.value?.id;
     if (!item || !combatId) return;
@@ -187,7 +194,11 @@ export const useCombatStore = defineStore('combatRuntime', () => {
 
   function initCombat(combatData: CombatRuntimeDto) {
     resetAnimationState();
-    combat.value = combatData;
+    if (combat.value?.id !== combatData.id) {
+      combatantStateOverrides.value = {};
+      processedLogKeys.value = new Set();
+    }
+    combat.value = mergeCombatResponseWithAnimatedState(combatData);
     hasRuntimeCombat.value = true;
     logEntries.value = [];
     selectedSkillKey.value = null;
@@ -198,7 +209,9 @@ export const useCombatStore = defineStore('combatRuntime', () => {
   }
 
   function setCombatFromResponse(combatData: CombatRuntimeDto, newLogs: CombatLogEntryDto[]) {
+    if (combat.value?.id !== combatData.id) processedLogKeys.value = new Set();
     combat.value = combatData;
+    rememberCombatState(combatData);
     hasRuntimeCombat.value = true;
     logEntries.value = [...logEntries.value, ...newLogs];
     selectedSkillKey.value = null;
@@ -209,6 +222,7 @@ export const useCombatStore = defineStore('combatRuntime', () => {
 
   function finishCombatResponse(combatData: CombatRuntimeDto) {
     combat.value = combatData;
+    rememberCombatState(combatData);
     hasRuntimeCombat.value = true;
     selectedSkillKey.value = null;
     selectedItemId.value = null;
@@ -216,10 +230,39 @@ export const useCombatStore = defineStore('combatRuntime', () => {
     error.value = null;
   }
 
+  function mergeCombatResponseWithAnimatedState(combatData: CombatRuntimeDto): CombatRuntimeDto {
+    if (!combat.value || combat.value.id !== combatData.id) return combatData;
+
+    return {
+      ...combatData,
+      allies: mergeCombatants(combatData.allies),
+      enemies: mergeCombatants(combatData.enemies),
+    };
+  }
+
+  function mergeCombatants(combatants: CombatantRuntimeDto[]): CombatantRuntimeDto[] {
+    return combatants.map((combatant) => {
+      const override = combatantStateOverrides.value[combatant.id];
+      if (override) return { ...combatant, ...override };
+
+      const animated = findCombatantById(combatant.id);
+      if (!animated) return combatant;
+
+      return {
+        ...combatant,
+        currentVitality: Math.min(combatant.currentVitality, animated.currentVitality),
+        guard: Math.min(combatant.guard, animated.guard),
+        status: animated.status === 'Defeated' ? 'Defeated' : combatant.status,
+      };
+    });
+  }
+
   function clearCombat() {
     resetAnimationState();
     combat.value = null;
     hasRuntimeCombat.value = false;
+    combatantStateOverrides.value = {};
+    processedLogKeys.value = new Set();
     logEntries.value = [];
     selectedSkillKey.value = null;
     selectedItemId.value = null;
@@ -243,6 +286,10 @@ export const useCombatStore = defineStore('combatRuntime', () => {
 
   async function playCombatLogs(entries: CombatLogEntryDto[]) {
     for (const entry of entries) {
+      const logKey = createLogKey(entry);
+      if (processedLogKeys.value.has(logKey)) continue;
+      processedLogKeys.value = new Set([...processedLogKeys.value, logKey]);
+
       logEntries.value = [...logEntries.value, entry];
 
       if (entry.actorId && (entry.type === 'SkillUsed' || entry.type === 'ItemUsed')) {
@@ -257,7 +304,6 @@ export const useCombatStore = defineStore('combatRuntime', () => {
         await delay(250);
       } else if (entry.targetIds.length > 0 && shouldHighlightTarget(entry)) {
         applyLogDelta(entry);
-        applyLogEffect(entry);
         markFeedbackFromLog(entry);
         await delay(550);
         await delay(150);
@@ -273,20 +319,29 @@ export const useCombatStore = defineStore('combatRuntime', () => {
 
   function applyLogDelta(entry: CombatLogEntryDto) {
     if (!combat.value) return;
-    const amount = parseLogAmount(entry.message);
-    if (amount <= 0) return;
 
     for (const targetId of entry.targetIds) {
       const target = findCombatantById(targetId);
       if (!target) continue;
 
+      if (entry.type === 'TargetDefeated') {
+        target.currentVitality = 0;
+        target.status = 'Defeated';
+        rememberCombatantState(target);
+        continue;
+      }
+
+      const amount = parseLogAmount(entry.message);
+      if (amount <= 0) continue;
+
       if (entry.type === 'DamageApplied') {
-        const blocked = Math.min(target.guard, amount);
-        const remaining = Math.max(0, amount - blocked);
-        target.guard = Math.max(0, target.guard - blocked);
-        target.currentVitality = Math.max(0, target.currentVitality - remaining);
-        if (blocked > 0) pushFeedbackEvent(target.id, 'guard', blocked);
-        if (remaining > 0) pushFeedbackEvent(target.id, 'damage', remaining);
+        if (isGuardAbsorbLog(entry)) {
+          target.guard = Math.max(0, target.guard - amount);
+          pushFeedbackEvent(target.id, 'guard', amount);
+        } else {
+          target.currentVitality = Math.max(0, target.currentVitality - amount);
+          pushFeedbackEvent(target.id, 'damage', amount);
+        }
       } else if (entry.type === 'HealApplied') {
         target.currentVitality = Math.min(target.maxVitality, target.currentVitality + amount);
         pushFeedbackEvent(target.id, 'heal', amount);
@@ -294,7 +349,45 @@ export const useCombatStore = defineStore('combatRuntime', () => {
         target.guard += amount;
         pushFeedbackEvent(target.id, 'guard', amount);
       }
+
+      rememberCombatantState(target);
     }
+  }
+
+  function rememberCombatantState(combatant: CombatantRuntimeDto) {
+    combatantStateOverrides.value = {
+      ...combatantStateOverrides.value,
+      [combatant.id]: {
+        currentVitality: combatant.currentVitality,
+        guard: combatant.guard,
+        status: combatant.status,
+      },
+    };
+  }
+
+  function rememberCombatState(combatData: CombatRuntimeDto) {
+    combatantStateOverrides.value = Object.fromEntries(
+      [...combatData.allies, ...combatData.enemies].map((combatant) => [
+        combatant.id,
+        {
+          currentVitality: combatant.currentVitality,
+          guard: combatant.guard,
+          status: combatant.status,
+        },
+      ]),
+    );
+  }
+
+  function createLogKey(entry: CombatLogEntryDto): string {
+    return [
+      combat.value?.id ?? '',
+      combat.value?.turnNumber ?? '',
+      entry.type,
+      entry.actorId ?? '',
+      entry.skillKey ?? '',
+      entry.targetIds.join(','),
+      entry.message,
+    ].join('|');
   }
 
   function pushFeedbackEvent(combatantId: string, type: CombatFeedbackEvent['type'], amount: number) {
@@ -311,7 +404,9 @@ export const useCombatStore = defineStore('combatRuntime', () => {
   }
 
   function markFeedbackFromLog(entry: CombatLogEntryDto) {
-    if (entry.type === 'DamageApplied') {
+    if (entry.type === 'DamageApplied' && isGuardAbsorbLog(entry)) {
+      markGuarded(entry.targetIds);
+    } else if (entry.type === 'DamageApplied') {
       markDamaged(entry.targetIds);
     } else if (entry.type === 'GuardGained') {
       markGuarded(entry.targetIds);
@@ -381,54 +476,8 @@ export const useCombatStore = defineStore('combatRuntime', () => {
     );
   }
 
-  function applyLogEffect(entry: CombatLogEntryDto) {
-    if (!combat.value || entry.targetIds.length === 0) return;
-
-    combat.value = {
-      ...combat.value,
-      allies: combat.value.allies.map((c) => applyEntryToCombatant(c, entry)),
-      enemies: combat.value.enemies.map((c) => applyEntryToCombatant(c, entry)),
-    };
-  }
-
-function applyEntryToCombatant(
-  combatant: CombatantRuntimeDto,
-  entry: CombatLogEntryDto,
-): CombatantRuntimeDto {
-  if (!entry.targetIds.includes(combatant.id)) return combatant;
-
-  if (entry.type === 'TargetDefeated') {
-    return { ...combatant, currentVitality: 0, status: 'Defeated' };
-  }
-
-  const amount = extractFirstNumber(entry.message);
-  if (amount === null) return combatant;
-
-  if (entry.type === 'HealApplied') {
-    return {
-      ...combatant,
-      currentVitality: Math.min(combatant.maxVitality, combatant.currentVitality + amount),
-    };
-  }
-
-  if (entry.type === 'GuardGained') {
-    return { ...combatant, guard: combatant.guard + amount };
-  }
-
-  if (entry.type === 'DamageApplied' && entry.message.includes('guard absorbs')) {
-    return { ...combatant, guard: Math.max(0, combatant.guard - amount) };
-  }
-
-  if (entry.type === 'DamageApplied') {
-    return { ...combatant, currentVitality: Math.max(0, combatant.currentVitality - amount) };
-  }
-
-  return combatant;
-}
-
-  function extractFirstNumber(message: string): number | null {
-    const match = message.match(/\d+/);
-    return match ? Number(match[0]) : null;
+  function isGuardAbsorbLog(entry: CombatLogEntryDto): boolean {
+    return entry.type === 'DamageApplied' && entry.message.toLowerCase().includes('guard absorbs');
   }
 
   // ── Skill actions ────────────────────────────────────────────────────────
@@ -495,6 +544,7 @@ function applyEntryToCombatant(
   }
 
   async function submitAction(runId: string, onCombatApplied?: (combat: CombatRuntimeDto) => void) {
+    if (isLoading.value) return;
     const actor = currentActor.value;
     const skill = selectedSkill.value;
     const combatId = combat.value?.id;

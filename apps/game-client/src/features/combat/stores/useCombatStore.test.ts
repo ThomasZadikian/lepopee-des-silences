@@ -9,6 +9,7 @@ vi.mock('../api/combatApi', () => ({
   combatApi: {
     getCurrentCombat: vi.fn(),
     useSkillAction: vi.fn(),
+    useItemAction: vi.fn(),
   },
 }));
 
@@ -182,5 +183,168 @@ describe('useCombatStore visual feedback state', () => {
 
     expect(store.combat).toBeNull();
     expect(store.error).toBeNull();
+  });
+
+  it('applies damage log once during playback', async () => {
+    const store = useCombatStore();
+    store.initCombat(createCombat());
+
+    const playback = store.playCombatLogs([
+      {
+        occurredAtUtc: new Date().toISOString(),
+        type: 'DamageApplied',
+        message: 'Enemy deals 15 damage.',
+        actorId: 'enemy-1',
+        skillKey: null,
+        targetIds: ['ally-1'],
+      },
+    ]);
+
+    await vi.advanceTimersByTimeAsync(700);
+    await playback;
+
+    expect(store.combat?.allies[0].currentVitality).toBe(85);
+  });
+
+  it('applies guard absorb and vitality damage logs without recomputing total damage', async () => {
+    const combat = createCombat();
+    combat.enemies[0].guard = 10;
+
+    const store = useCombatStore();
+    store.initCombat(combat);
+
+    const playback = store.playCombatLogs([
+      {
+        occurredAtUtc: new Date().toISOString(),
+        type: 'SkillUsed',
+        message: 'Hero uses Frappe on Enemy for 14 damage.',
+        actorId: 'ally-1',
+        skillKey: 'skill.basic.strike',
+        targetIds: ['enemy-1'],
+      },
+      {
+        occurredAtUtc: new Date().toISOString(),
+        type: 'DamageApplied',
+        message: "Enemy's guard absorbs 10 damage.",
+        actorId: 'ally-1',
+        skillKey: 'skill.basic.strike',
+        targetIds: ['enemy-1'],
+      },
+      {
+        occurredAtUtc: new Date().toISOString(),
+        type: 'DamageApplied',
+        message: 'Enemy takes 4 damage.',
+        actorId: 'ally-1',
+        skillKey: 'skill.basic.strike',
+        targetIds: ['enemy-1'],
+      },
+    ]);
+
+    expect(store.combat?.enemies[0].guard).toBe(0);
+    expect(store.combat?.enemies[0].currentVitality).toBe(30);
+    expect(store.feedbackEvents).toEqual([
+      expect.objectContaining({ combatantId: 'enemy-1', type: 'guard', amount: 10 }),
+    ]);
+
+    await vi.advanceTimersByTimeAsync(700);
+
+    expect(store.combat?.enemies[0].guard).toBe(0);
+    expect(store.combat?.enemies[0].currentVitality).toBe(26);
+    expect(store.feedbackEvents).toEqual([
+      expect.objectContaining({ combatantId: 'enemy-1', type: 'guard', amount: 10 }),
+      expect.objectContaining({ combatantId: 'enemy-1', type: 'damage', amount: 4 }),
+    ]);
+    expect(store.feedbackEvents).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ type: 'damage', amount: 14 })]),
+    );
+
+    await vi.advanceTimersByTimeAsync(700);
+    await playback;
+  });
+
+  it('uses final response vitality as authoritative after playback', async () => {
+    const store = useCombatStore();
+    store.initCombat(createCombat());
+
+    const playback = store.playCombatLogs([
+      {
+        occurredAtUtc: new Date().toISOString(),
+        type: 'DamageApplied',
+        message: 'Enemy deals 30 damage.',
+        actorId: 'enemy-1',
+        skillKey: null,
+        targetIds: ['ally-1'],
+      },
+    ]);
+
+    await vi.advanceTimersByTimeAsync(700);
+    await playback;
+
+    const responseCombat = createCombat();
+    responseCombat.turnNumber = 2;
+    responseCombat.activeCombatantId = 'ally-1';
+    responseCombat.allies[0].currentVitality = 80;
+
+    store.finishCombatResponse(responseCombat);
+
+    expect(store.combat?.turnNumber).toBe(2);
+    expect(store.combat?.allies[0].currentVitality).toBe(80);
+  });
+
+  it('does not apply duplicate damage logs with different timestamps twice', async () => {
+    const store = useCombatStore();
+    store.initCombat(createCombat());
+
+    const firstEntry = {
+      occurredAtUtc: '2026-01-01T00:00:00.000Z',
+      type: 'DamageApplied' as const,
+      message: 'Enemy takes 10 damage.',
+      actorId: 'ally-1',
+      skillKey: 'skill.basic.strike',
+      targetIds: ['enemy-1'],
+    };
+    const secondEntry = {
+      ...firstEntry,
+      occurredAtUtc: '2026-01-01T00:00:01.000Z',
+    };
+
+    const playback = store.playCombatLogs([firstEntry, secondEntry]);
+
+    await vi.advanceTimersByTimeAsync(700);
+    await playback;
+
+    expect(store.combat?.enemies[0].currentVitality).toBe(20);
+    expect(store.feedbackEvents).toHaveLength(1);
+    expect(store.feedbackEvents[0]).toEqual(
+      expect.objectContaining({ combatantId: 'enemy-1', type: 'damage', amount: 10 }),
+    );
+  });
+
+  it('keeps animated enemy vitality when same combat is re-initialized', async () => {
+    const store = useCombatStore();
+    store.initCombat(createCombat());
+
+    const playback = store.playCombatLogs([
+      {
+        occurredAtUtc: new Date().toISOString(),
+        type: 'DamageApplied',
+        message: 'Hero deals 20 damage.',
+        actorId: 'ally-1',
+        skillKey: 'skill.basic.strike',
+        targetIds: ['enemy-1'],
+      },
+    ]);
+
+    await vi.advanceTimersByTimeAsync(700);
+    await playback;
+
+    const staleRuntime = createCombat();
+    staleRuntime.activeCombatantId = 'enemy-1';
+    staleRuntime.enemies[0].currentVitality = 20;
+
+    store.initCombat(staleRuntime);
+
+    expect(store.combat?.activeCombatantId).toBe('enemy-1');
+    expect(store.combat?.enemies[0].currentVitality).toBe(10);
   });
 });

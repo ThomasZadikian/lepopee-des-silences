@@ -287,17 +287,11 @@ watch(() => props.combatId, (newId) => {
           v-if="targetThreadPath"
           class="combat-scene__target-thread"
           :class="{ 'combat-scene__target-thread--hover': hoveredTarget }"
-          viewBox="0 0 100 70"
+          viewBox="-1.1 5 100 120"
           preserveAspectRatio="none"
           aria-hidden="true"
         >
           <path :d="targetThreadPath" />
-          <circle
-            v-if="targetThreadEnd"
-            :cx="targetThreadEnd.x"
-            :cy="targetThreadEnd.y"
-            r="0.65"
-          />
         </svg>
 
         <!-- Les Voix (allies) -->
