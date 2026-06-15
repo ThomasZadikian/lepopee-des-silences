@@ -5,7 +5,6 @@ using Leds.GameEngine.Application.Combats.Dtos;
 using Leds.GameEngine.Application.Combats.EnemyTurns;
 using Leds.GameEngine.Application.Common.Exceptions;
 using Leds.GameEngine.Domain.Combats;
-using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Runs;
 using MediatR;
 
@@ -196,12 +195,15 @@ public sealed class UseItemInCombatCommandHandler
                 case RunItemEffectType.Heal:
                     target.ApplyHeal(item.EffectAmount);
                     break;
+
                 case RunItemEffectType.Guard:
                     target.GainGuard(item.EffectAmount);
                     break;
+
                 case RunItemEffectType.ManaRestore:
                     target.GainMana(item.EffectAmount);
                     break;
+
                 case RunItemEffectType.ChargeRestore:
                     target.GainCharge(item.EffectAmount);
                     break;

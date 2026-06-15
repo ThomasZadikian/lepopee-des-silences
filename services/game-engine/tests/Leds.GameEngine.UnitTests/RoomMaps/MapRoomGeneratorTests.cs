@@ -662,8 +662,8 @@ public sealed class MapRoomGeneratorTests
             "Threshold Combat weight is 30 %; sample ratio should exceed 20 %.");
 
         // No single risky type should dominate: Elite, Curse each ≤ 10% sample
-        var eliteRatio  = types.Count(t => t == NodeEventType.Elite)  / (double)types.Count;
-        var curseRatio  = types.Count(t => t == NodeEventType.Curse)  / (double)types.Count;
+        var eliteRatio = types.Count(t => t == NodeEventType.Elite) / (double)types.Count;
+        var curseRatio = types.Count(t => t == NodeEventType.Curse) / (double)types.Count;
 
         eliteRatio.Should().BeLessThan(0.15,
             "Elite weight is 5 % in Threshold — sample ratio should stay well below 15 %.");
@@ -677,8 +677,8 @@ public sealed class MapRoomGeneratorTests
         var types = await GenerateManyNodes(sut, RoomType.Forest);
 
         var supportCount = types.Count(t =>
-            t == NodeEventType.Npc  ||
-            t == NodeEventType.Law  ||
+            t == NodeEventType.Npc ||
+            t == NodeEventType.Law ||
             t == NodeEventType.Rest ||
             t == NodeEventType.Item);
 
@@ -695,8 +695,8 @@ public sealed class MapRoomGeneratorTests
 
         var riskyCount = types.Count(t =>
             t == NodeEventType.Combat ||
-            t == NodeEventType.Elite  ||
-            t == NodeEventType.Rare   ||
+            t == NodeEventType.Elite ||
+            t == NodeEventType.Rare ||
             t == NodeEventType.Curse);
 
         (riskyCount / (double)types.Count).Should().BeGreaterThan(0.60);
@@ -709,8 +709,8 @@ public sealed class MapRoomGeneratorTests
         var types = await GenerateManyNodes(sut, RoomType.Silence);
 
         var systemicCount = types.Count(t =>
-            t == NodeEventType.Law      ||
-            t == NodeEventType.Npc      ||
+            t == NodeEventType.Law ||
+            t == NodeEventType.Npc ||
             t == NodeEventType.Merchant);
 
         (systemicCount / (double)types.Count).Should().BeGreaterThan(0.55,
@@ -729,8 +729,8 @@ public sealed class MapRoomGeneratorTests
 
         // Npc+Law+Item+Rest must dominate
         var likeMemory = types.Count(t =>
-            t == NodeEventType.Npc  ||
-            t == NodeEventType.Law  ||
+            t == NodeEventType.Npc ||
+            t == NodeEventType.Law ||
             t == NodeEventType.Item ||
             t == NodeEventType.Rest);
 
@@ -764,7 +764,7 @@ public sealed class MapRoomGeneratorTests
         var sut = CreateSut();
 
         var thresholdRisk = await AverageNonBossRisk(sut, RoomType.Threshold);
-        var ruptureRisk   = await AverageNonBossRisk(sut, RoomType.Rupture);
+        var ruptureRisk = await AverageNonBossRisk(sut, RoomType.Rupture);
 
         ruptureRisk.Should().BeGreaterThan(thresholdRisk,
             "Rupture riskMin=25 versus Threshold riskMin=5 must yield a higher average risk.");
@@ -775,7 +775,7 @@ public sealed class MapRoomGeneratorTests
     {
         var sut = CreateSut();
 
-        var forestRisk  = await AverageNonBossRisk(sut, RoomType.Forest);
+        var forestRisk = await AverageNonBossRisk(sut, RoomType.Forest);
         var ruptureRisk = await AverageNonBossRisk(sut, RoomType.Rupture);
 
         forestRisk.Should().BeLessThan(ruptureRisk,

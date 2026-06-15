@@ -6,9 +6,9 @@ namespace Leds.GameEngine.Domain.Combats;
 /// </summary>
 public enum CombatTier
 {
-    Normal    = 0,
-    Rare      = 1,
-    Elite     = 2,
-    RoomBoss  = 3,
+    Normal = 0,
+    Rare = 1,
+    Elite = 2,
+    RoomBoss = 3,
     FinalBoss = 4
 }

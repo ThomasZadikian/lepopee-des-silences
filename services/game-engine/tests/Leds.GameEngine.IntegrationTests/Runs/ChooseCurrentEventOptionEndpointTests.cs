@@ -1,9 +1,8 @@
-﻿using System.Net;
-using System.Net.Http.Json;
-using FluentAssertions;
-using Leds.GameEngine.Application.Events.ChooseEventOption;
+﻿using FluentAssertions;
 using Leds.GameEngine.Application.Runs.StartRun;
 using Microsoft.AspNetCore.Mvc.Testing;
+using System.Net;
+using System.Net.Http.Json;
 
 namespace Leds.GameEngine.IntegrationTests.Runs;
 

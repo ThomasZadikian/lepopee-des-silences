@@ -42,11 +42,13 @@ public sealed class Combatant
     public int MaxVitality { get; }
     public int CurrentVitality { get; private set; }
     public int Guard { get; private set; }
+
     /// <summary>
     /// The passive guard floor restored at the start of each new round.
     /// Set from StartingGuardBonus run modifiers at combat creation.
     /// </summary>
     public int BaseGuard { get; private set; }
+
     public int Mana { get; private set; }
     public int Charge { get; private set; }
     public CombatantStatus Status { get; private set; }
@@ -239,6 +241,7 @@ public sealed class Combatant
     {
         return new Combatant(id, sourceKey, displayName, side, archetype, maxVitality, currentVitality, guard, baseGuard, mana, charge, status, skills);
     }
+
     public void ApplyHeal(int amount)
     {
         if (amount <= 0)

@@ -1,4 +1,3 @@
-using Leds.GameEngine.Application.Interlude.Dtos;
 using MediatR;
 
 namespace Leds.GameEngine.Application.Interlude.GetInterlude;

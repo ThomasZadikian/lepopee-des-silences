@@ -197,7 +197,7 @@ public sealed class RoomTypeGenerationProfileProviderTests
         var total = profile.TotalWeight;
         var risky = profile.NodeTypeWeights
             .Where(w => w.NodeType is NodeEventType.Combat or NodeEventType.Elite
-                                   or NodeEventType.Rare   or NodeEventType.Curse)
+                                   or NodeEventType.Rare or NodeEventType.Curse)
             .Sum(w => w.Weight);
 
         ((double)risky / total).Should().BeGreaterThan(0.60,

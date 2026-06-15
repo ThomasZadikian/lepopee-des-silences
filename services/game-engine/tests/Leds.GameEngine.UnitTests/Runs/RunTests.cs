@@ -1,6 +1,5 @@
 using FluentAssertions;
 using Leds.GameEngine.Domain.Common;
-using Leds.GameEngine.Domain.NodeEvents;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.PalaceLaws;
 using Leds.GameEngine.Domain.Rewards;
@@ -305,6 +304,7 @@ public sealed class RunTests
             "High",
             "boss-threshold-guardian-v1");
     }
+
     private static bool IsReachableFrom(
     NodeId ancestorNodeId,
     MapNode node,
@@ -327,6 +327,7 @@ public sealed class RunTests
 
         return false;
     }
+
     [Fact]
     public void ActivatePalaceLaw_ShouldAddActiveLaw_WhenRunIsActive()
     {

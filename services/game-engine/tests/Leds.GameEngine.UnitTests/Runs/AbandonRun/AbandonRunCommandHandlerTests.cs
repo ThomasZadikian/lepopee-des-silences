@@ -132,5 +132,4 @@ public sealed class AbandonRunCommandHandlerTests
                 It.IsAny<CancellationToken>()),
             Times.Never);
     }
-
 }

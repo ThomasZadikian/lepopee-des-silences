@@ -1,7 +1,6 @@
 using FluentAssertions;
 using Leds.GameEngine.Application.Abstractions;
 using Leds.GameEngine.Application.Combats;
-using Leds.GameEngine.Application.Combats.Dtos;
 using Leds.GameEngine.Application.Combats.Ports;
 using Leds.GameEngine.Application.Combats.SubmitCombatAction;
 using Leds.GameEngine.Application.Common.Exceptions;

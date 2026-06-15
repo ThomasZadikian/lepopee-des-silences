@@ -39,15 +39,14 @@ public sealed class HardcodedRoomTypeGenerationProfileProvider : IRoomTypeGenera
                 riskMax: 61,
                 rewardProfilesByNodeType: new Dictionary<NodeEventType, IReadOnlyList<string>>
                 {
-
-                    [NodeEventType.Combat]   = ["combat-common"],
-                    [NodeEventType.Elite]    = ["elite-low"],
-                    [NodeEventType.Rest]     = ["rest-safe"],
-                    [NodeEventType.Item]     = ["item-common"],
-                    [NodeEventType.Npc]      = ["npc-basic"],
+                    [NodeEventType.Combat] = ["combat-common"],
+                    [NodeEventType.Elite] = ["elite-low"],
+                    [NodeEventType.Rest] = ["rest-safe"],
+                    [NodeEventType.Item] = ["item-common"],
+                    [NodeEventType.Npc] = ["npc-basic"],
                     [NodeEventType.Merchant] = ["merchant"],
-                    [NodeEventType.Curse]    = ["curse-minor"],
-                    [NodeEventType.Rare]     = ["rare-low"],
+                    [NodeEventType.Curse] = ["curse-minor"],
+                    [NodeEventType.Rare] = ["rare-low"],
                 }),
 
             // ----------------------------------------------------------------
@@ -75,15 +74,14 @@ public sealed class HardcodedRoomTypeGenerationProfileProvider : IRoomTypeGenera
                 riskMax: 51,
                 rewardProfilesByNodeType: new Dictionary<NodeEventType, IReadOnlyList<string>>
                 {
-
-                    [NodeEventType.Combat]   = ["combat-common"],
-                    [NodeEventType.Elite]    = ["elite-low"],
-                    [NodeEventType.Rest]     = ["rest-safe", "rest-enhanced"],
-                    [NodeEventType.Item]     = ["item-common", "item-uncommon"],
-                    [NodeEventType.Npc]      = ["narrative", "npc-basic"],
+                    [NodeEventType.Combat] = ["combat-common"],
+                    [NodeEventType.Elite] = ["elite-low"],
+                    [NodeEventType.Rest] = ["rest-safe", "rest-enhanced"],
+                    [NodeEventType.Item] = ["item-common", "item-uncommon"],
+                    [NodeEventType.Npc] = ["narrative", "npc-basic"],
                     [NodeEventType.Merchant] = ["merchant"],
-                    [NodeEventType.Curse]    = ["curse-minor"],
-                    [NodeEventType.Rare]     = ["rare-low"],
+                    [NodeEventType.Curse] = ["curse-minor"],
+                    [NodeEventType.Rare] = ["rare-low"],
                 }),
 
             // ----------------------------------------------------------------
@@ -110,14 +108,14 @@ public sealed class HardcodedRoomTypeGenerationProfileProvider : IRoomTypeGenera
                 riskMax: 86,
                 rewardProfilesByNodeType: new Dictionary<NodeEventType, IReadOnlyList<string>>
                 {
-                    [NodeEventType.Combat]   = ["combat-common", "combat-uncommon"],
-                    [NodeEventType.Elite]    = ["elite", "elite-risk"],
-                    [NodeEventType.Rest]     = ["rest-minimal"],
-                    [NodeEventType.Item]     = ["item-uncommon", "item-rare"],
-                    [NodeEventType.Npc]      = ["narrative"],
+                    [NodeEventType.Combat] = ["combat-common", "combat-uncommon"],
+                    [NodeEventType.Elite] = ["elite", "elite-risk"],
+                    [NodeEventType.Rest] = ["rest-minimal"],
+                    [NodeEventType.Item] = ["item-uncommon", "item-rare"],
+                    [NodeEventType.Npc] = ["narrative"],
                     [NodeEventType.Merchant] = ["merchant"],
-                    [NodeEventType.Curse]    = ["curse-risk"],
-                    [NodeEventType.Rare]     = ["rare", "rare-high"],
+                    [NodeEventType.Curse] = ["curse-risk"],
+                    [NodeEventType.Rare] = ["rare", "rare-high"],
                 }),
 
             // ----------------------------------------------------------------
@@ -145,14 +143,14 @@ public sealed class HardcodedRoomTypeGenerationProfileProvider : IRoomTypeGenera
                 riskMax: 56,
                 rewardProfilesByNodeType: new Dictionary<NodeEventType, IReadOnlyList<string>>
                 {
-                    [NodeEventType.Combat]   = ["combat-common"],
-                    [NodeEventType.Elite]    = ["elite-low"],
-                    [NodeEventType.Rest]     = ["rest-safe"],
-                    [NodeEventType.Item]     = ["item-common"],
-                    [NodeEventType.Npc]      = ["narrative"],
+                    [NodeEventType.Combat] = ["combat-common"],
+                    [NodeEventType.Elite] = ["elite-low"],
+                    [NodeEventType.Rest] = ["rest-safe"],
+                    [NodeEventType.Item] = ["item-common"],
+                    [NodeEventType.Npc] = ["narrative"],
                     [NodeEventType.Merchant] = ["merchant", "merchant-special"],
-                    [NodeEventType.Curse]    = ["curse-modifier"],
-                    [NodeEventType.Rare]     = ["rare-low"],
+                    [NodeEventType.Curse] = ["curse-modifier"],
+                    [NodeEventType.Rare] = ["rare-low"],
                 }),
 
             // ----------------------------------------------------------------
@@ -182,13 +180,13 @@ public sealed class HardcodedRoomTypeGenerationProfileProvider : IRoomTypeGenera
                 riskMax: 46,
                 rewardProfilesByNodeType: new Dictionary<NodeEventType, IReadOnlyList<string>>
                 {
-                    [NodeEventType.Combat]   = ["combat-common"],
-                    [NodeEventType.Elite]    = ["elite-low"],
-                    [NodeEventType.Rest]     = ["rest-safe"],
-                    [NodeEventType.Item]     = ["item-common", "memory-fragment"],
-                    [NodeEventType.Npc]      = ["narrative", "npc-tome"],
+                    [NodeEventType.Combat] = ["combat-common"],
+                    [NodeEventType.Elite] = ["elite-low"],
+                    [NodeEventType.Rest] = ["rest-safe"],
+                    [NodeEventType.Item] = ["item-common", "memory-fragment"],
+                    [NodeEventType.Npc] = ["narrative", "npc-tome"],
                     [NodeEventType.Merchant] = ["merchant"],
-                    [NodeEventType.Rare]     = ["rare-low"],
+                    [NodeEventType.Rare] = ["rare-low"],
                 }),
         };
 

@@ -24,15 +24,19 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
             case "Damage":
                 ResolveDamage(actor, skill, targets, logEntries);
                 break;
+
             case "Guard":
                 ResolveGuard(actor, skill, targets, logEntries);
                 break;
+
             case "Weaken":
                 ResolveTextEffect(actor, skill, targets, "EffectApplied", "weakens", logEntries);
                 break;
+
             case "Disrupt":
                 ResolveTextEffect(actor, skill, targets, "EffectApplied", "disrupts", logEntries);
                 break;
+
             default:
                 throw new DomainException($"Unsupported skill effect type: {skill.EffectType}");
         }

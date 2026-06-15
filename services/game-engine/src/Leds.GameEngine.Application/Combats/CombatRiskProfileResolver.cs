@@ -31,10 +31,10 @@ public sealed class CombatRiskProfileResolver : ICombatRiskProfileResolver
     private static readonly IReadOnlyDictionary<CombatTier, int> BaseRisks =
         new Dictionary<CombatTier, int>
         {
-            [CombatTier.Normal]    = 20,
-            [CombatTier.Rare]      = 30,
-            [CombatTier.Elite]     = 35,
-            [CombatTier.RoomBoss]  = 50,
+            [CombatTier.Normal] = 20,
+            [CombatTier.Rare] = 30,
+            [CombatTier.Elite] = 35,
+            [CombatTier.RoomBoss] = 50,
             [CombatTier.FinalBoss] = 70,
         };
 
@@ -60,28 +60,28 @@ public sealed class CombatRiskProfileResolver : ICombatRiskProfileResolver
 
     private static CombatTier ToCombatTier(NodeEventType eventType) => eventType switch
     {
-        NodeEventType.Rare      => CombatTier.Rare,
-        NodeEventType.Elite     => CombatTier.Elite,
-        NodeEventType.RoomBoss  => CombatTier.RoomBoss,
+        NodeEventType.Rare => CombatTier.Rare,
+        NodeEventType.Elite => CombatTier.Elite,
+        NodeEventType.RoomBoss => CombatTier.RoomBoss,
         NodeEventType.FinalBoss => CombatTier.FinalBoss,
-        _                       => CombatTier.Normal
+        _ => CombatTier.Normal
     };
 
     private static CombatRiskProfile BuildProfile(CombatTier tier, int actualRiskLevel)
     {
-        var baseRisk   = BaseRisks[tier];
-        var riskDelta  = Math.Max(0, actualRiskLevel - baseRisk);
+        var baseRisk = BaseRisks[tier];
+        var riskDelta = Math.Max(0, actualRiskLevel - baseRisk);
         var multiplier = Math.Min(MaxMultiplier, 1.0 + riskDelta / 100.0);
-        var band       = ToRiskBand(actualRiskLevel);
+        var band = ToRiskBand(actualRiskLevel);
 
         return new CombatRiskProfile(
-            Tier:                  tier,
-            BaseRisk:              baseRisk,
-            ActualRisk:            actualRiskLevel,
-            RiskDelta:             riskDelta,
-            DifficultyMultiplier:  multiplier,
+            Tier: tier,
+            BaseRisk: baseRisk,
+            ActualRisk: actualRiskLevel,
+            RiskDelta: riskDelta,
+            DifficultyMultiplier: multiplier,
             RewardPowerMultiplier: multiplier,
-            RiskBand:              band);
+            RiskBand: band);
     }
 
     private static RiskBand ToRiskBand(int actualRiskLevel) => actualRiskLevel switch
@@ -89,6 +89,6 @@ public sealed class CombatRiskProfileResolver : ICombatRiskProfileResolver
         < 25 => RiskBand.Low,
         < 50 => RiskBand.Moderate,
         < 75 => RiskBand.High,
-        _    => RiskBand.Critical
+        _ => RiskBand.Critical
     };
 }

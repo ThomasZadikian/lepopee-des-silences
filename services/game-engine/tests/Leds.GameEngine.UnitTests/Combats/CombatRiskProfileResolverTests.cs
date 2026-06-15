@@ -171,7 +171,7 @@ public sealed class CombatRiskProfileResolverTests
     // -----------------------------------------------------------------------
 
     [Theory]
-    [InlineData(0,  RiskBand.Low)]
+    [InlineData(0, RiskBand.Low)]
     [InlineData(10, RiskBand.Low)]
     [InlineData(24, RiskBand.Low)]
     public void Resolve_ShouldReturnLowRiskBand(int actualRisk, RiskBand expected)
@@ -201,8 +201,8 @@ public sealed class CombatRiskProfileResolverTests
     }
 
     [Theory]
-    [InlineData(75,  RiskBand.Critical)]
-    [InlineData(90,  RiskBand.Critical)]
+    [InlineData(75, RiskBand.Critical)]
+    [InlineData(90, RiskBand.Critical)]
     [InlineData(100, RiskBand.Critical)]
     public void Resolve_ShouldReturnCriticalRiskBand(int actualRisk, RiskBand expected)
     {
@@ -242,18 +242,18 @@ public sealed class CombatRiskProfileResolverTests
     }
 
     [Theory]
-    [InlineData(NodeEventType.Combat,   true)]
-    [InlineData(NodeEventType.Rare,     true)]
-    [InlineData(NodeEventType.Elite,    true)]
+    [InlineData(NodeEventType.Combat, true)]
+    [InlineData(NodeEventType.Rare, true)]
+    [InlineData(NodeEventType.Elite, true)]
     [InlineData(NodeEventType.RoomBoss, true)]
-    [InlineData(NodeEventType.FinalBoss,true)]
-    [InlineData(NodeEventType.Item,     false)]
-    [InlineData(NodeEventType.Rest,     false)]
-    [InlineData(NodeEventType.Npc,      false)]
-    [InlineData(NodeEventType.Law,      false)]
+    [InlineData(NodeEventType.FinalBoss, true)]
+    [InlineData(NodeEventType.Item, false)]
+    [InlineData(NodeEventType.Rest, false)]
+    [InlineData(NodeEventType.Npc, false)]
+    [InlineData(NodeEventType.Law, false)]
     [InlineData(NodeEventType.Merchant, false)]
-    [InlineData(NodeEventType.Curse,    false)]
-    [InlineData(NodeEventType.Memory,   false)]
+    [InlineData(NodeEventType.Curse, false)]
+    [InlineData(NodeEventType.Memory, false)]
     public void IsCombatNodeType_ShouldReturnExpectedResult(NodeEventType eventType, bool expected)
     {
         var sut = CreateSut();

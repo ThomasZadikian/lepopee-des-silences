@@ -46,13 +46,13 @@ public sealed record RewardChoiceDto(
 /// Useful for future item-generation pipelines and for test assertions.
 /// </summary>
 public sealed record CombatScalingDto(
-    string   CombatTier,
-    int      BaseRisk,
-    int      ActualRisk,
-    int      RiskDelta,
-    double   DifficultyMultiplier,
-    double   RewardPowerMultiplier,
-    string   RiskBand)
+    string CombatTier,
+    int BaseRisk,
+    int ActualRisk,
+    int RiskDelta,
+    double DifficultyMultiplier,
+    double RewardPowerMultiplier,
+    string RiskBand)
 {
     public static CombatScalingDto FromDomain(CombatRiskProfile profile) =>
         new(

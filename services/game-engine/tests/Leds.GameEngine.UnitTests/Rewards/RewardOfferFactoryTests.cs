@@ -195,9 +195,9 @@ public sealed class RewardOfferFactoryTests
     [Fact]
     public void CreateRewardOffer_ShouldIncludeCorrectRiskBand_InScaling()
     {
-        var lowOffer      = CreateFactory().CreateCombatRewardOffer(RewardSource.Combat, NodeEventType.Combat, 10);
+        var lowOffer = CreateFactory().CreateCombatRewardOffer(RewardSource.Combat, NodeEventType.Combat, 10);
         var moderateOffer = CreateFactory().CreateCombatRewardOffer(RewardSource.Combat, NodeEventType.Combat, 35);
-        var highOffer     = CreateFactory().CreateCombatRewardOffer(RewardSource.Combat, NodeEventType.Combat, 60);
+        var highOffer = CreateFactory().CreateCombatRewardOffer(RewardSource.Combat, NodeEventType.Combat, 60);
         var criticalOffer = CreateFactory().CreateCombatRewardOffer(RewardSource.Combat, NodeEventType.Combat, 80);
 
         lowOffer.CombatScaling!.RiskBand.Should().Be(RiskBand.Low);

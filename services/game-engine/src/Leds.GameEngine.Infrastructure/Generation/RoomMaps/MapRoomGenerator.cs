@@ -1,5 +1,4 @@
 using Leds.GameEngine.Application.RoomMaps;
-using Leds.GameEngine.Domain.NodeEvents;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.RoomMapLayouts;
 using Leds.GameEngine.Domain.Rooms;
@@ -193,16 +192,16 @@ public sealed class MapRoomGenerator : IMapRoomGenerator
 
         return type switch
         {
-            NodeEventType.Combat   => "combat-common",
-            NodeEventType.Elite    => "elite",
-            NodeEventType.Rest     => "rest-safe",
-            NodeEventType.Item     => "item-common",
-            NodeEventType.Npc      => "narrative",
+            NodeEventType.Combat => "combat-common",
+            NodeEventType.Elite => "elite",
+            NodeEventType.Rest => "rest-safe",
+            NodeEventType.Item => "item-common",
+            NodeEventType.Npc => "narrative",
             NodeEventType.Merchant => "merchant",
-            NodeEventType.Law      => "law",
-            NodeEventType.Curse    => "curse",
-            NodeEventType.Rare     => "rare",
-            _                      => "standard"
+            NodeEventType.Law => "law",
+            NodeEventType.Curse => "curse",
+            NodeEventType.Rare => "rare",
+            _ => "standard"
         };
     }
 }

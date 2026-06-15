@@ -1,5 +1,4 @@
 using Leds.GameEngine.Application.Abstractions;
-using Leds.GameEngine.Application.Common.Exceptions;
 using Leds.GameEngine.Application.Rewards.Dtos;
 using Leds.GameEngine.Application.Rewards.Ports;
 using Leds.GameEngine.Application.Rewards.SelectReward;

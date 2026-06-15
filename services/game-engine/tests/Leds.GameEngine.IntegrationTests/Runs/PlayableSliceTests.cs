@@ -1,12 +1,10 @@
+using FluentAssertions;
+using Leds.GameEngine.Application.Runs.GetRunById;
+using Leds.GameEngine.Application.Runs.MoveToNextRoom;
+using Leds.GameEngine.Application.Runs.ProgressRun;
+using Microsoft.AspNetCore.Mvc.Testing;
 using System.Net;
 using System.Net.Http.Json;
-using FluentAssertions;
-using Leds.GameEngine.Application.Runs.MoveToNextRoom;
-using Leds.GameEngine.Application.Runs.GetRunById;
-using Leds.GameEngine.Application.Runs.ProgressRun;
-using Leds.GameEngine.Application.Runs.ResolveCurrentEvent;
-using Leds.GameEngine.Application.Runs.StartRun;
-using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace Leds.GameEngine.IntegrationTests.Runs;
 

@@ -119,5 +119,4 @@ public sealed class ExitMidRoomCommandHandlerTests
             .ThrowAsync<DomainException>()
             .WithMessage("*must be active*");
     }
-
 }

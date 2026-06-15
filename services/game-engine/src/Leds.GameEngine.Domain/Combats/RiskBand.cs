@@ -6,8 +6,8 @@ namespace Leds.GameEngine.Domain.Combats;
 /// </summary>
 public enum RiskBand
 {
-    Low      = 0,
+    Low = 0,
     Moderate = 1,
-    High     = 2,
+    High = 2,
     Critical = 3
 }

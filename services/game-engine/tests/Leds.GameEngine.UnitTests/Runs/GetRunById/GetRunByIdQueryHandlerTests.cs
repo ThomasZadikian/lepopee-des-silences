@@ -72,5 +72,4 @@ public sealed class GetRunByIdQueryHandlerTests
             .ThrowAsync<NotFoundException>()
             .WithMessage($"Run with id '{runId}' was not found.");
     }
-
 }

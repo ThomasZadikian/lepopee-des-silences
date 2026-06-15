@@ -3,7 +3,6 @@ using Leds.GameEngine.Application.Catalog;
 using Leds.GameEngine.Application.Combats.EncounterComposition;
 using Leds.GameEngine.Domain.PalaceLaws;
 using Leds.GameEngine.Infrastructure.Combats.EncounterComposition;
-using Leds.GameEngine.UnitTests.Common.Factories;
 
 namespace Leds.GameEngine.UnitTests.Combats;
 

@@ -1,5 +1,4 @@
 ﻿using Leds.GameEngine.Application.Events.Dtos;
-using Leds.GameEngine.Application.Events.ChooseEventOption;
 
 namespace Leds.GameEngine.Application.Events.ChooseEventOption;
 

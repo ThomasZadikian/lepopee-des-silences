@@ -131,4 +131,3 @@ public sealed class CombatFactory : ICombatFactory
         ];
     }
 }
-

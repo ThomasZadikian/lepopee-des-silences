@@ -5,8 +5,8 @@ using Leds.GameEngine.Application.Common.Exceptions;
 using Leds.GameEngine.Application.Rewards.Ports;
 using Leds.GameEngine.Application.Rewards.RewardOfferFactory;
 using Leds.GameEngine.Application.Runs.Dtos;
-using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Combats;
+using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rewards;
 using Leds.GameEngine.Domain.Runs;
@@ -122,11 +122,11 @@ public sealed class SubmitCombatActionCommandHandler
 
                 var source = combatNode?.EventType switch
                 {
-                    NodeEventType.Rare      => RewardSource.Rare,
-                    NodeEventType.Elite     => RewardSource.Elite,
-                    NodeEventType.RoomBoss  => RewardSource.RoomBoss,
+                    NodeEventType.Rare => RewardSource.Rare,
+                    NodeEventType.Elite => RewardSource.Elite,
+                    NodeEventType.RoomBoss => RewardSource.RoomBoss,
                     NodeEventType.FinalBoss => RewardSource.RoomBoss,
-                    _                       => RewardSource.Combat
+                    _ => RewardSource.Combat
                 };
 
                 var riskLevel = combatNode?.RiskLevel ?? 25;

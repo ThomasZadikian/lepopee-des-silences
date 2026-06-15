@@ -1,11 +1,9 @@
-using System.Net;
-using System.Net.Http.Json;
-using System.Text.Json;
 using FluentAssertions;
-using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Infrastructure.Catalog;
 using Moq;
 using Moq.Protected;
+using System.Net;
+using System.Text.Json;
 
 namespace Leds.GameEngine.UnitTests.Catalog;
 

@@ -164,11 +164,11 @@ public sealed class UseCombatSkillCommandHandler
     {
         var source = combatNode?.EventType switch
         {
-            NodeEventType.Rare      => RewardSource.Rare,
-            NodeEventType.Elite     => RewardSource.Elite,
-            NodeEventType.RoomBoss  => RewardSource.RoomBoss,
+            NodeEventType.Rare => RewardSource.Rare,
+            NodeEventType.Elite => RewardSource.Elite,
+            NodeEventType.RoomBoss => RewardSource.RoomBoss,
             NodeEventType.FinalBoss => RewardSource.RoomBoss,
-            _                       => RewardSource.Combat
+            _ => RewardSource.Combat
         };
 
         return _rewardOfferFactory.CreateCombatRewardOffer(

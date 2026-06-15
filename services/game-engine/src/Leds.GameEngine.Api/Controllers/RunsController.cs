@@ -13,7 +13,6 @@ using Leds.GameEngine.Application.Runs.ResolveCurrentEvent;
 using Leds.GameEngine.Application.Runs.ResumeRun;
 using Leds.GameEngine.Application.Runs.SaveAndExitRun;
 using Leds.GameEngine.Application.Runs.StartRun;
-using Leds.GameEngine.Application.Runs.UseCombatSkill;
 using Leds.GameEngine.Application.Runs.UseItemInCombat;
 using Leds.GameEngine.Application.Runs.UseRunItem;
 using MediatR;
@@ -107,6 +106,7 @@ public sealed class RunsController : ControllerBase
 
         return Ok(response);
     }
+
     [HttpPost("{runId:guid}/progress")]
     [ProducesResponseType(typeof(ProgressRunResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -262,7 +262,6 @@ public sealed class RunsController : ControllerBase
     public sealed record UseItemInCombatRequest(
         Guid ItemId,
         IReadOnlyCollection<Guid>? TargetIds);
-
 }
 
 public sealed record StartRunRequest(Guid PlayerId);

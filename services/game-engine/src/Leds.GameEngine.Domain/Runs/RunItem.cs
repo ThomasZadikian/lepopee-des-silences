@@ -92,6 +92,7 @@ public sealed class RunItem
             throw new DomainException("Quantity to add must be positive.");
         Quantity += amount;
     }
+
     public void ConsumeOne()
     {
         if (Type != RunItemType.Consumable)

@@ -19,9 +19,9 @@ namespace Leds.GameEngine.Domain.Combats;
 /// <param name="RiskBand">Qualitative band of the actual risk level.</param>
 public sealed record CombatRiskProfile(
     CombatTier Tier,
-    int        BaseRisk,
-    int        ActualRisk,
-    int        RiskDelta,
-    double     DifficultyMultiplier,
-    double     RewardPowerMultiplier,
-    RiskBand   RiskBand);
+    int BaseRisk,
+    int ActualRisk,
+    int RiskDelta,
+    double DifficultyMultiplier,
+    double RewardPowerMultiplier,
+    RiskBand RiskBand);

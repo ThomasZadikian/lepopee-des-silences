@@ -1,5 +1,3 @@
-using Leds.GameEngine.Domain.Common;
-
 namespace Leds.GameEngine.Domain.Rewards;
 
 /// <summary>

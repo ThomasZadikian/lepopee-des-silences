@@ -89,5 +89,4 @@ public sealed class StartRunCommandHandlerTests
                 CancellationToken.None),
             Times.Once);
     }
-
 }

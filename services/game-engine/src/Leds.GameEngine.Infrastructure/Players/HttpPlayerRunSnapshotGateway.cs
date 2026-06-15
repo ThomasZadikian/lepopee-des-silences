@@ -1,6 +1,6 @@
-using System.Net.Http.Json;
 using Leds.GameEngine.Application.Common.Exceptions;
 using Leds.GameEngine.Application.Players.Ports;
+using System.Net.Http.Json;
 
 namespace Leds.GameEngine.Infrastructure.Players;
 

@@ -1,13 +1,12 @@
-using System.Net;
-using System.Net.Http.Json;
 using FluentAssertions;
 using Leds.GameEngine.Application.Combats.Actions;
 using Leds.GameEngine.Application.Combats.Dtos;
 using Leds.GameEngine.Application.Rewards.Dtos;
 using Leds.GameEngine.Application.Runs.GetRunById;
 using Leds.GameEngine.Application.Runs.ResolveCurrentEvent;
-using Leds.GameEngine.Domain.Combats;
 using Microsoft.AspNetCore.Mvc.Testing;
+using System.Net;
+using System.Net.Http.Json;
 
 namespace Leds.GameEngine.IntegrationTests.Runs;
 

@@ -1,7 +1,6 @@
 using Leds.GameEngine.Application.Combats;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rewards;
-using Leds.GameEngine.Domain.Runs;
 
 namespace Leds.GameEngine.Application.Rewards.RewardOfferFactory;
 
@@ -31,9 +30,9 @@ public sealed class RewardOfferFactory
         var choices = source switch
         {
             RewardSource.RoomBoss => CreateBossRewardChoices(riskLevel, scaling.RewardPowerMultiplier),
-            RewardSource.Elite    => CreateEliteRewardChoices(riskLevel, scaling.RewardPowerMultiplier),
-            RewardSource.Rare     => CreateRareRewardChoices(riskLevel, scaling.RewardPowerMultiplier),
-            _                     => CreateCombatRewardChoices(riskLevel, scaling.RewardPowerMultiplier)
+            RewardSource.Elite => CreateEliteRewardChoices(riskLevel, scaling.RewardPowerMultiplier),
+            RewardSource.Rare => CreateRareRewardChoices(riskLevel, scaling.RewardPowerMultiplier),
+            _ => CreateCombatRewardChoices(riskLevel, scaling.RewardPowerMultiplier)
         };
 
         return RewardOffer.Create(source, choices, scaling);

@@ -58,7 +58,6 @@ public sealed class UseRunItemCommandHandler
 
             logEntries = logs;
             CombatRuntimeDto.FromDomain(combat, CombatItemHelper.GetUsableBattleItems(run));
-
         }
 
         await _runRepository.UpdateAsync(run, cancellationToken);

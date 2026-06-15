@@ -4,7 +4,6 @@ using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Application.Combats;
 using Leds.GameEngine.Application.Combats.EncounterComposition;
 using Leds.GameEngine.Application.Combats.EncounterDrafts;
-using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Infrastructure.Combats.EncounterDrafts;
 using Moq;
 

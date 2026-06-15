@@ -4,7 +4,6 @@ using Leds.GameEngine.Application.Catalog;
 using Leds.GameEngine.Application.Catalog.Contracts;
 using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Application.Combats;
-using Leds.GameEngine.Application.Combats.Dtos;
 using Leds.GameEngine.Application.Combats.EncounterDrafts;
 using Leds.GameEngine.Application.Combats.Ports;
 using Leds.GameEngine.Application.Common.Exceptions;
@@ -356,16 +355,12 @@ public sealed class ResolveCurrentEventCommandHandlerTests
             new ResolveCurrentEventCommand(run.Id.Value),
             CancellationToken.None);
 
-        // Handle_ShouldIncludeEncounterDraft_ForCombatEvent
-        // Remplace les assertions sur Combat par :
         response.EncounterDraft.Should().NotBeNull();
         response.EncounterDraft!.EncounterType.Should().Be("Combat");
         response.EncounterDraft.Enemies.Should().NotBeEmpty();
         response.EncounterDraft.Allies.Should().NotBeEmpty();
         response.EncounterDraft.Enemies.Should().Contain(e =>
             e.EnemyKey == "enemy.threshold.doubt-fragment");
-        // Supprimer les assertions response.Combat.* 
-        // (elles testent le runtime combat qui nécessite Run.StartCombat — testé séparément)
     }
 
     [Fact]
@@ -463,14 +458,10 @@ public sealed class ResolveCurrentEventCommandHandlerTests
             new ResolveCurrentEventCommand(run.Id.Value),
             CancellationToken.None);
 
-        // Handle_ShouldIncludePersistedCombat_ForCombatEvent
-        // Ce test est redondant avec Handle_ShouldIncludeEncounterDraft.
-        // Simplifier à :
         response.EncounterDraft.Should().NotBeNull();
         response.EncounterDraft!.EncounterType.Should().Be("Combat");
         response.EncounterDraft.Enemies.Should().Contain(e =>
             e.EnemyKey == "enemy.threshold.doubt-fragment");
-        // TurnNumber et Status sont mieux testés en intégration où Run.StartCombat peut fonctionner end-to-end
     }
 
     [Fact]

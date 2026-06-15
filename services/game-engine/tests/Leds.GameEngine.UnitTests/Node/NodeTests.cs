@@ -1,6 +1,5 @@
 ﻿using FluentAssertions;
 using Leds.GameEngine.Domain.Common;
-using Leds.GameEngine.Domain.NodeEvents;
 using Leds.GameEngine.Domain.Nodes;
 
 namespace Leds.GameEngine.UnitTests.Nodes;

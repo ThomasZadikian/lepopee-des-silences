@@ -1,8 +1,6 @@
 using FluentAssertions;
-using Leds.GameEngine.Application.Combats.Actions;
 using Leds.GameEngine.Application.Combats.Targeting;
 using Leds.GameEngine.Domain.Combats;
-using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;

@@ -654,16 +654,20 @@ public sealed class Run
             case "attack":
                 Attack += value;
                 break;
+
             case "defense":
                 Defense += value;
                 break;
+
             case "speed":
                 Speed += value;
                 break;
+
             case "all":
                 Attack += value;
                 Defense += value;
                 break;
+
             default:
                 throw new DomainException($"Unknown stat: '{stat}'.");
         }
@@ -919,6 +923,7 @@ public sealed class Run
             throw new DomainException("Run must be active.");
         }
     }
+
     /// <summary>
     /// Exits the current room, rolling back all resources (HP, stats, memory
     /// fragments, active palace laws) to the state they were in when the room
@@ -997,6 +1002,7 @@ public sealed class Run
                 sourceKey: law.Key));
         }
     }
+
     /// <summary>
     /// Uses a consumable item from the run inventory.
     /// Applies its effect to <see cref="PlayerState"/> and, if a combat is active,

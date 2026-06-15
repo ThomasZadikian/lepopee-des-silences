@@ -1,5 +1,4 @@
-﻿using Leds.GameEngine.Application.Catalog;
-using Leds.GameEngine.Application.Catalog.Contracts;
+﻿using Leds.GameEngine.Application.Catalog.Contracts;
 using Leds.SharedBuildingBlocks.Results;
 
 namespace Leds.GameEngine.Application.Catalog.Ports;
