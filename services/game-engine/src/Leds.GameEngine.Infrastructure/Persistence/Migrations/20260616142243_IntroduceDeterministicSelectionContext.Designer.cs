@@ -3,6 +3,7 @@ using System;
 using Leds.GameEngine.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Leds.GameEngine.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(GameEngineDbContext))]
-    partial class GameEngineDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260616142243_IntroduceDeterministicSelectionContext")]
+    partial class IntroduceDeterministicSelectionContext
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -108,77 +111,6 @@ namespace Leds.GameEngine.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("IX_run_active_curses_run_id");
 
                     b.ToTable("run_active_curses", (string)null);
-                });
-
-            modelBuilder.Entity("Leds.GameEngine.Infrastructure.Persistence.Entities.AdaptiveInfluenceEntity", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<DateTime?>("ConsumedAtUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("consumed_at_utc");
-
-                    b.Property<DateTime>("CreatedAtUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at_utc");
-
-                    b.Property<string>("Duration")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
-                        .HasColumnName("duration");
-
-                    b.Property<string>("InfluenceTag")
-                        .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)")
-                        .HasColumnName("influence_tag");
-
-                    b.Property<string>("InfluenceType")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
-                        .HasColumnName("influence_type");
-
-                    b.Property<Guid>("RunId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("run_id");
-
-                    b.Property<string>("SourceKey")
-                        .IsRequired()
-                        .HasMaxLength(160)
-                        .HasColumnType("character varying(160)")
-                        .HasColumnName("source_key");
-
-                    b.Property<string>("SourceType")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
-                        .HasColumnName("source_type");
-
-                    b.Property<decimal?>("Value")
-                        .HasColumnType("numeric(10,4)")
-                        .HasColumnName("value");
-
-                    b.Property<string>("ValueMode")
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)")
-                        .HasColumnName("value_mode");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("InfluenceTag")
-                        .HasDatabaseName("IX_run_adaptive_influences_influence_tag");
-
-                    b.HasIndex("RunId")
-                        .HasDatabaseName("IX_run_adaptive_influences_run_id");
-
-                    b.HasIndex("SourceType")
-                        .HasDatabaseName("IX_run_adaptive_influences_source_type");
-
-                    b.ToTable("run_adaptive_influences", (string)null);
                 });
 
             modelBuilder.Entity("Leds.GameEngine.Infrastructure.Persistence.Entities.CombatActionRecordEntity", b =>
@@ -774,62 +706,6 @@ namespace Leds.GameEngine.Infrastructure.Persistence.Migrations
                     b.HasIndex("Type");
 
                     b.ToTable("game_engine_outbox_messages", (string)null);
-                });
-
-            modelBuilder.Entity("Leds.GameEngine.Infrastructure.Persistence.Entities.PalaceIndicatorEntity", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<DateTime>("CreatedAtUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at_utc");
-
-                    b.Property<string>("DisplayLabel")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)")
-                        .HasColumnName("display_label");
-
-                    b.Property<DateTime?>("ExpiresAtUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("expires_at_utc");
-
-                    b.Property<string>("IndicatorKey")
-                        .IsRequired()
-                        .HasMaxLength(160)
-                        .HasColumnType("character varying(160)")
-                        .HasColumnName("indicator_key");
-
-                    b.Property<string>("Intensity")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
-                        .HasColumnName("intensity");
-
-                    b.Property<string>("NarrativeText")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("narrative_text");
-
-                    b.Property<Guid>("RunId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("run_id");
-
-                    b.Property<Guid?>("SourceDecisionId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("source_decision_id");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("IndicatorKey")
-                        .HasDatabaseName("IX_run_palace_indicator_snapshots_indicator_key");
-
-                    b.HasIndex("RunId")
-                        .HasDatabaseName("IX_run_palace_indicator_snapshots_run_id");
-
-                    b.ToTable("run_palace_indicator_snapshots", (string)null);
                 });
 
             modelBuilder.Entity("Leds.GameEngine.Infrastructure.Persistence.Entities.PlayerRuntimeSkillEntity", b =>
@@ -1800,16 +1676,6 @@ namespace Leds.GameEngine.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(64)")
                         .HasColumnName("decision_type");
 
-                    b.Property<string>("InfluenceSummaryKey")
-                        .HasMaxLength(160)
-                        .HasColumnType("character varying(160)")
-                        .HasColumnName("influence_summary_key");
-
-                    b.Property<string>("MatrixVersion")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
-                        .HasColumnName("matrix_version");
-
                     b.Property<Guid>("RunId")
                         .HasColumnType("uuid")
                         .HasColumnName("run_id");
@@ -1851,17 +1717,6 @@ namespace Leds.GameEngine.Infrastructure.Persistence.Migrations
                         .WithMany("ActiveCurses")
                         .HasForeignKey("RunEntityId");
 
-                    b.HasOne("Leds.GameEngine.Infrastructure.Persistence.Entities.RunEntity", "Run")
-                        .WithMany()
-                        .HasForeignKey("RunId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Run");
-                });
-
-            modelBuilder.Entity("Leds.GameEngine.Infrastructure.Persistence.Entities.AdaptiveInfluenceEntity", b =>
-                {
                     b.HasOne("Leds.GameEngine.Infrastructure.Persistence.Entities.RunEntity", "Run")
                         .WithMany()
                         .HasForeignKey("RunId")
@@ -1946,17 +1801,6 @@ namespace Leds.GameEngine.Infrastructure.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("MapNode");
-                });
-
-            modelBuilder.Entity("Leds.GameEngine.Infrastructure.Persistence.Entities.PalaceIndicatorEntity", b =>
-                {
-                    b.HasOne("Leds.GameEngine.Infrastructure.Persistence.Entities.RunEntity", "Run")
-                        .WithMany()
-                        .HasForeignKey("RunId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Run");
                 });
 
             modelBuilder.Entity("Leds.GameEngine.Infrastructure.Persistence.Entities.PlayerRuntimeSkillEntity", b =>

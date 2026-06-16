@@ -1,5 +1,6 @@
 using Leds.GameEngine.Application.Catalog.Contracts;
 using Leds.GameEngine.Application.Combats.EncounterDrafts;
+using Leds.GameEngine.Domain.Selection;
 
 namespace Leds.GameEngine.Infrastructure.Combats.EncounterDrafts;
 
@@ -9,6 +10,13 @@ public sealed class DeterministicEncounterEnemySelector : IEncounterEnemySelecto
     {
         [1] = 1, [2] = 1, [3] = 2, [4] = 2, [5] = 3,
     };
+
+    private readonly DeterministicWeightedSelector _weightedSelector;
+
+    public DeterministicEncounterEnemySelector(DeterministicWeightedSelector weightedSelector)
+    {
+        _weightedSelector = weightedSelector;
+    }
 
     public IReadOnlyCollection<SelectedEnemyDefinition> SelectEnemies(
         EncounterEnemySelectionContext context,
@@ -22,40 +30,31 @@ public sealed class DeterministicEncounterEnemySelector : IEncounterEnemySelecto
             filtered = candidates.ToList();
 
         var maxCount = GetMaxEnemyCount(context.NodeEventType, context.RiskLevel);
-        var seedHash = ComputeSeedHash(context.Seed, context.RunId, context.NodeId);
-        var rng = new Random(seedHash);
 
-        var weighted = filtered
-            .Select(e => (Enemy: e, Weight: Math.Max(1, e.EncounterWeight)))
+        var selectionCandidates = filtered
+            .Select(e => new SelectionCandidate(
+                e.Key,
+                e.EncounterWeight <= 0 ? 1 : e.EncounterWeight,
+                e.Rank))
             .ToList();
 
-        var selected = new List<SelectedEnemyDefinition>();
+        var selectionContext = new SelectionContext(
+            context.RunId,
+            context.RoomId,
+            context.NodeId,
+            context.Seed,
+            "EnemySelection",
+            $"{context.RoomType}:{context.NodeEventType}:{context.RiskLevel}");
 
-        for (var i = 0; i < maxCount && weighted.Count > 0; i++)
-        {
-            var totalWeight = weighted.Sum(w => w.Weight);
-            var roll = rng.Next(totalWeight);
-            var cumulative = 0;
-            var pickedIndex = 0;
+        var result = _weightedSelector.Select(selectionContext, selectionCandidates, maxCount);
 
-            for (var j = 0; j < weighted.Count; j++)
-            {
-                cumulative += weighted[j].Weight;
-                if (roll < cumulative)
-                {
-                    pickedIndex = j;
-                    break;
-                }
-            }
+        var enemyLookup = filtered.ToDictionary(e => e.Key, StringComparer.OrdinalIgnoreCase);
 
-            var picked = weighted[pickedIndex];
-            selected.Add(new SelectedEnemyDefinition(
-                picked.Enemy, context.DifficultyMultiplier));
-
-            weighted.RemoveAt(pickedIndex);
-        }
-
-        return selected;
+        return result.Selected
+            .Where(c => enemyLookup.ContainsKey(c.Key))
+            .Select(c => new SelectedEnemyDefinition(
+                enemyLookup[c.Key], context.DifficultyMultiplier))
+            .ToList();
     }
 
     private static IReadOnlyList<CatalogEnemyDefinitionSnapshot> FilterByNodeType(
@@ -79,16 +78,5 @@ public sealed class DeterministicEncounterEnemySelector : IEncounterEnemySelecto
             "Rare" => 1,
             _ => MaxEnemyCountByRiskLevel.GetValueOrDefault(Math.Clamp(riskLevel, 1, 5), 1),
         };
-    }
-
-    private static int ComputeSeedHash(string seed, Guid runId, Guid nodeId)
-    {
-        unchecked
-        {
-            var hash = seed.GetHashCode();
-            hash = hash * 397 ^ runId.GetHashCode();
-            hash = hash * 397 ^ nodeId.GetHashCode();
-            return hash;
-        }
     }
 }

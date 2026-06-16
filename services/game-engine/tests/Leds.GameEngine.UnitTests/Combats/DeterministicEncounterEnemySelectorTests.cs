@@ -1,12 +1,16 @@
 using FluentAssertions;
 using Leds.GameEngine.Application.Catalog.Contracts;
 using Leds.GameEngine.Application.Combats.EncounterDrafts;
+using Leds.GameEngine.Domain.Selection;
 using Leds.GameEngine.Infrastructure.Combats.EncounterDrafts;
 
 namespace Leds.GameEngine.UnitTests.Combats;
 
 public sealed class DeterministicEncounterEnemySelectorTests
 {
+    private static DeterministicEncounterEnemySelector CreateSelector() =>
+        new(new DeterministicWeightedSelector());
+
     private static CatalogEnemyDefinitionSnapshot CreateEnemy(
         string key, string rank = "Common", bool isBoss = false, bool isElite = false,
         int weight = 10, int minDepth = 0, int maxDepth = 99, string archetype = "Fragile") =>
@@ -23,7 +27,7 @@ public sealed class DeterministicEncounterEnemySelectorTests
     [Fact]
     public void SelectEnemies_ShouldReturnEmpty_WhenNoCandidates()
     {
-        var selector = new DeterministicEncounterEnemySelector();
+        var selector = CreateSelector();
         var result = selector.SelectEnemies(CreateContext(), []);
         result.Should().BeEmpty();
     }
@@ -31,7 +35,7 @@ public sealed class DeterministicEncounterEnemySelectorTests
     [Fact]
     public void SelectEnemies_ShouldFilterOutBosses_ForCombatNode()
     {
-        var selector = new DeterministicEncounterEnemySelector();
+        var selector = CreateSelector();
         var candidates = new[]
         {
             CreateEnemy("common1"),
@@ -46,7 +50,7 @@ public sealed class DeterministicEncounterEnemySelectorTests
     [Fact]
     public void SelectEnemies_ShouldFilterOutElites_ForCombatNode()
     {
-        var selector = new DeterministicEncounterEnemySelector();
+        var selector = CreateSelector();
         var candidates = new[]
         {
             CreateEnemy("common1"),
@@ -61,7 +65,7 @@ public sealed class DeterministicEncounterEnemySelectorTests
     [Fact]
     public void SelectEnemies_ShouldPreferElite_ForEliteNode()
     {
-        var selector = new DeterministicEncounterEnemySelector();
+        var selector = CreateSelector();
         var candidates = new[]
         {
             CreateEnemy("common1"),
@@ -77,7 +81,7 @@ public sealed class DeterministicEncounterEnemySelectorTests
     [Fact]
     public void SelectEnemies_ShouldPreferBoss_ForBossNode()
     {
-        var selector = new DeterministicEncounterEnemySelector();
+        var selector = CreateSelector();
         var candidates = new[]
         {
             CreateEnemy("common1"),
@@ -93,7 +97,7 @@ public sealed class DeterministicEncounterEnemySelectorTests
     [Fact]
     public void SelectEnemies_ShouldBeDeterministic_ForSameSeed()
     {
-        var selector = new DeterministicEncounterEnemySelector();
+        var selector = CreateSelector();
         var candidates = new[]
         {
             CreateEnemy("enemy1", weight: 10),
@@ -111,7 +115,7 @@ public sealed class DeterministicEncounterEnemySelectorTests
     [Fact]
     public void SelectEnemies_ShouldUseDifficultyMultiplier()
     {
-        var selector = new DeterministicEncounterEnemySelector();
+        var selector = CreateSelector();
         var candidates = new[] { CreateEnemy("enemy1") };
         var context = CreateContext() with { DifficultyMultiplier = 1.5m };
 
@@ -124,7 +128,7 @@ public sealed class DeterministicEncounterEnemySelectorTests
     [Fact]
     public void SelectEnemies_ShouldRespectMaxEnemyCount_ForHighRisk()
     {
-        var selector = new DeterministicEncounterEnemySelector();
+        var selector = CreateSelector();
         var candidates = Enumerable.Range(0, 10)
             .Select(i => CreateEnemy($"enemy{i}"))
             .ToArray();
@@ -138,7 +142,7 @@ public sealed class DeterministicEncounterEnemySelectorTests
     [Fact]
     public void SelectEnemies_ShouldReturnSingle_ForEliteNode()
     {
-        var selector = new DeterministicEncounterEnemySelector();
+        var selector = CreateSelector();
         var candidates = new[]
         {
             CreateEnemy("elite1", isElite: true, rank: "Elite"),
@@ -154,7 +158,7 @@ public sealed class DeterministicEncounterEnemySelectorTests
     [Fact]
     public void SelectEnemies_ShouldFallbackToAll_WhenNoMatchForNodeType()
     {
-        var selector = new DeterministicEncounterEnemySelector();
+        var selector = CreateSelector();
         var candidates = new[]
         {
             CreateEnemy("common1"),
@@ -170,7 +174,7 @@ public sealed class DeterministicEncounterEnemySelectorTests
     [Fact]
     public void SelectEnemies_ShouldSetDifficultyMultiplier_OnSelectedEnemies()
     {
-        var selector = new DeterministicEncounterEnemySelector();
+        var selector = CreateSelector();
         var candidates = new[] { CreateEnemy("enemy1") };
         var context = CreateContext() with { DifficultyMultiplier = 2.0m };
 
@@ -182,7 +186,7 @@ public sealed class DeterministicEncounterEnemySelectorTests
     [Fact]
     public void SelectEnemies_ShouldNotExceedCandidateCount()
     {
-        var selector = new DeterministicEncounterEnemySelector();
+        var selector = CreateSelector();
         var candidates = new[] { CreateEnemy("only-one") };
         var context = CreateContext(riskLevel: 5);
 

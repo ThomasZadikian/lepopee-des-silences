@@ -9,10 +9,13 @@ using Leds.GameEngine.Application.Combats.Ports;
 using Leds.GameEngine.Application.Combats.Targeting;
 using Leds.GameEngine.Application.Events.Ports;
 using Leds.GameEngine.Application.Events.Resolution;
+using Leds.GameEngine.Application.PalaceLaws.Ports;
 using Leds.GameEngine.Application.Players.Ports;
 using Leds.GameEngine.Application.Rewards.Ports;
 using Leds.GameEngine.Application.RoomMaps;
+using Leds.GameEngine.Application.Selection.Ports;
 using Leds.GameEngine.Domain.Markov;
+using Leds.GameEngine.Domain.Selection;
 using Leds.GameEngine.Application.Effects;
 using Leds.GameEngine.Infrastructure.Catalog;
 using Leds.GameEngine.Infrastructure.Clock;
@@ -29,10 +32,12 @@ using Leds.GameEngine.Infrastructure.Generation.Rooms.Bosses;
 using Leds.GameEngine.Infrastructure.Generation.Rooms.Themes;
 using Leds.GameEngine.Infrastructure.Generation.Rooms.Types;
 using Leds.GameEngine.Infrastructure.Outbox;
+using Leds.GameEngine.Infrastructure.PalaceLaws;
 using Leds.GameEngine.Infrastructure.Persistence;
 using Leds.GameEngine.Infrastructure.Persistence.Repositories;
 using Leds.GameEngine.Infrastructure.Players;
 using Leds.GameEngine.Infrastructure.Rewards;
+using Leds.GameEngine.Infrastructure.Selection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -94,6 +99,10 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<ICombatEncounterDraftGenerator, CombatEncounterDraftGenerator>();
 
         services.AddSingleton<IRewardOfferRepository, InMemoryRewardOfferRepository>();
+        services.AddSingleton<ISelectionDecisionRepository, InMemorySelectionDecisionRepository>();
+        services.AddSingleton<IAdaptiveInfluenceRepository, InMemoryAdaptiveInfluenceRepository>();
+        services.AddSingleton<IPalaceIndicatorRepository, InMemoryPalaceIndicatorRepository>();
+        services.AddSingleton<DeterministicWeightedSelector>();
 
         services.AddSingleton<ICatalogEffectSetProvider, InMemoryCatalogEffectSetProvider>();
         services.AddSingleton<IRuntimeEffectResolver, RuntimeEffectResolver>();
@@ -120,6 +129,9 @@ public static class InfrastructureServiceCollectionExtensions
 
             services.AddScoped<IRunRepository, EfRunRepository>();
             services.AddScoped<IRewardOfferRepository, EfRewardOfferRepository>();
+            services.AddScoped<ISelectionDecisionRepository, EfSelectionDecisionRepository>();
+            services.AddScoped<IAdaptiveInfluenceRepository, EfAdaptiveInfluenceRepository>();
+            services.AddScoped<IPalaceIndicatorRepository, EfPalaceIndicatorRepository>();
             services.AddScoped<ICombatActionRecordRepository, EfCombatActionRecordRepository>();
         }
     }

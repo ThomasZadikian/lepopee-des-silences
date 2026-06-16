@@ -34,6 +34,9 @@ public sealed class GameEngineDbContext : DbContext
     public DbSet<CombatActionRecordEntity> CombatActionRecords => Set<CombatActionRecordEntity>();
     public DbSet<RewardOfferEntity> RewardOffers => Set<RewardOfferEntity>();
     public DbSet<RewardOptionEntity> RewardOptions => Set<RewardOptionEntity>();
+    public DbSet<SelectionDecisionEntity> SelectionDecisions => Set<SelectionDecisionEntity>();
+    public DbSet<AdaptiveInfluenceEntity> AdaptiveInfluences => Set<AdaptiveInfluenceEntity>();
+    public DbSet<PalaceIndicatorEntity> PalaceIndicators => Set<PalaceIndicatorEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
