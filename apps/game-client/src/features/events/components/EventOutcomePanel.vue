@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
-import type { EventOutcomeDto } from '../types/eventTypes';
-import { getOutcomeChoices, getOutcomeFamily, isChoiceOutcome } from '../types/eventTypes';
+import { computed, ref, watch } from 'vue'
+import type { EventOutcomeDto } from '../types/eventTypes'
+import { getOutcomeChoices, getOutcomeFamily, isChoiceOutcome } from '../types/eventTypes'
 
 const props = defineProps<{ outcome: EventOutcomeDto; isLoading: boolean }>()
 const emit = defineEmits<{ continue: []; selectChoice: [choiceId: string] }>()
@@ -23,7 +23,6 @@ function familyTone(): 'frost' | 'gold' | 'blood' | '' {
 
 function selectChoice(id: string) {
   selectedChoiceId.value = id
-  emit('selectChoice', id)
 }
 </script>
 
