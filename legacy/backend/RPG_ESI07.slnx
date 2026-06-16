@@ -1,7 +1,0 @@
-<Solution>
-  <Project Path="RPG_ESI07.API/RPG_ESI07.API.csproj" />
-  <Project Path="RPG_ESI07.Application/RPG_ESI07.Application.csproj" Id="7cbd6d07-f91e-4d26-b1de-1e3c77aa822f" />
-  <Project Path="RPG_ESI07.Domain/RPG_ESI07.Domain.csproj" />
-  <Project Path="RPG_ESI07.Infrastructure/RPG_ESI07.Infrastructure.csproj" />
-  <Project Path="RPG_ESI07.Tests/RPG_ESI07.Tests.csproj" />
-</Solution>
