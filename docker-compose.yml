@@ -12,5 +12,5 @@ services:
     volumes:
       - game_engine_postgres_data:/var/lib/postgresql/data
 
-volumes:
-  game_engine_postgres_data:
+  player-postgres:
+    image: postgres

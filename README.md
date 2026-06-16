@@ -1,5 +1,5 @@
 # L’épopée des silences
-game-engine-alpha-0.7.14
+game-engine-alpha-0.7.15-stabilization
 catalog-alpha-0.7.2
 player-service-alpha-0.1.0
 data-model-alpha-0.0.1
@@ -437,6 +437,26 @@ web-alpha-0.1.0 → afficher la première boucle backend jouable
 
 See [docs/development/local-dev-environment.md](docs/development/local-dev-environment.md).
 
+### Bases de données locales
+
+`docker-compose.dev.yml` (et `docker-compose.yml`) provisionnent les trois bases Postgres :
+
+| Service      | Conteneur                   | Port hôte | Base              |
+|--------------|-----------------------------|-----------|-------------------|
+| Game Engine  | `leds-game-engine-postgres` | `5432`    | `leds_game_engine`|
+| Player       | `leds-player-postgres`      | `5433`    | `leds_player`     |
+| Catalog      | `leds-catalog-postgres`     | `5434`    | `leds_catalog`    |
+
+```powershell
+docker compose -f docker-compose.dev.yml up -d
+.\scripts\dev\apply-migrations.ps1
+```
+
+Copier `.env.example` (racine) et `apps/game-client/.env.example` fournit des valeurs
+cohérentes (le client web vise le Game Engine sur `http://localhost:5187`). Les services
+backend tournent en `Persistence:Mode=InMemory` par défaut ; passer une base en Postgres se
+fait via la chaîne de connexion correspondante (ex. `CATALOG_DB_CONNECTION_STRING`).
+
 ## Architecture
 
 See [docs/architecture/alpha-0.5-system-architecture.md](docs/architecture/alpha-0.5-system-architecture.md).
@@ -549,39 +569,4 @@ docs(v2): add versioning roadmap
 chore(repo): move v1 backend and web portal to legacy
 ```
 
----
-
-## Licence et propriété intellectuelle
-
-Le code source a vocation à être open source selon la licence définie dans le dépôt.
-
-Cependant, l’univers narratif de **L’épopée des silences** reste protégé :
-
-* nom du projet ;
-* Tome des silences ;
-* personnages ;
-* textes ;
-* fragments narratifs ;
-* lore ;
-* visuels ;
-* logos ;
-* assets ;
-* concepts d’univers ;
-* contenu littéraire associé.
-
-La licence du code ne vaut pas abandon des droits d’auteur sur l’univers, les textes, les noms, les personnages ou les assets narratifs.
-
----
-
-## Statut
-
-Projet en développement actif.
-
-## Licence
-
-Le code source de ce dépôt est distribué sous licence GNU Affero General Public License v3.0.
-
-SPDX-License-Identifier: AGPL-3.0-only
-
-Cette licence concerne le code source uniquement.  
-L’univers narratif, les textes, personnages, noms, fragments, assets, logos et éléments du Tome des silences restent protégés par droit d’auteur et ne sont pas placés sous AGPL.
+-

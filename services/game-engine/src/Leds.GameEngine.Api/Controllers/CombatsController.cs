@@ -55,6 +55,17 @@ public sealed class CombatsController : ControllerBase
         return Ok(CombatInstanceDto.FromDomain(combat));
     }
 
+    /// <summary>
+    /// LEGACY combat action endpoint (single target, <c>ActionType</c> based).
+    /// Superseded by the canonical combat flow:
+    /// <c>POST .../combats/{combatId}/skill-actions</c> and
+    /// <c>POST .../combats/{combatId}/item-actions</c> (skill key + multi-target),
+    /// which is the flow consumed by the live game client.
+    /// Kept as a compatibility facade for existing integration tests.
+    /// Planned for removal in alpha-0.8.x once tests are migrated to the
+    /// canonical flow. See docs/audits/alpha-0.7-stabilization-audit-remediation.md.
+    /// </summary>
+    [Obsolete("Legacy combat path. Use /skill-actions and /item-actions. Removal targeted for alpha-0.8.x.")]
     [HttpPost("{combatId:guid}/actions")]
     [ProducesResponseType(typeof(SubmitCombatActionResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -82,30 +93,4 @@ public sealed class CombatsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<CombatSkillActionResult>> UseCombatSkill(
-        Guid runId,
-        Guid combatId,
-        [FromBody] UseCombatSkillRequest request,
-        CancellationToken cancellationToken)
-    {
-        var command = new UseCombatSkillCommand(
-            RunId: runId,
-            CombatId: combatId,
-            ActorId: request.ActorId,
-            SkillKey: request.SkillKey,
-            TargetIds: request.TargetIds);
-
-        var response = await _sender.Send(command, cancellationToken);
-
-        return Ok(response);
-    }
-}
-
-public sealed record UseCombatSkillRequest(
-    Guid ActorId,
-    string SkillKey,
-    IReadOnlyCollection<Guid> TargetIds);
-
-public sealed record SubmitCombatActionRequest(
-    Guid ActorId,
-    Guid TargetId,
-    string ActionType);
+     

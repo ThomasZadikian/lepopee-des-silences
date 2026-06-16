@@ -33,6 +33,7 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host "  PostgreSQL containers started." -ForegroundColor Green
 Write-Host "    - Game Engine DB: localhost:5432" -ForegroundColor DarkGray
 Write-Host "    - Player DB:      localhost:5433" -ForegroundColor DarkGray
+Write-Host "    - Catalog DB:     localhost:5434" -ForegroundColor DarkGray
 
 # 3. Start Game Engine API
 Write-Host "[3/5] Starting Game Engine API..." -ForegroundColor Yellow
@@ -64,4 +65,4 @@ Write-Host "  Player API      : http://localhost:5189/swagger" -ForegroundColor 
 Write-Host "  Web Client      : http://localhost:5173" -ForegroundColor DarkGray
 Write-Host ""
 Write-Host "To stop: .\scripts\dev\stop-dev.ps1" -ForegroundColor Yellow
-Write-Host "To reset DB: .\scripts\dev\reset-dev-db.ps1" -ForegroundColor Yellow
+Write
