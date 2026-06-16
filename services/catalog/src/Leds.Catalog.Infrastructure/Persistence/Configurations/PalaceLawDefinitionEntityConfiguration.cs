@@ -13,18 +13,30 @@ public sealed class PalaceLawDefinitionEntityConfiguration : IEntityTypeConfigur
         builder.HasKey(e => e.Id);
 
         builder.Property(e => e.Id).HasColumnName("id");
-        builder.Property(e => e.Key).HasColumnName("key").HasMaxLength(128).IsRequired();
+        builder.Property(e => e.Key).HasColumnName("key").HasMaxLength(160).IsRequired();
         builder.Property(e => e.Name).HasColumnName("name").HasMaxLength(256).IsRequired();
-        builder.Property(e => e.Description).HasColumnName("description").HasMaxLength(1024).IsRequired();
+        builder.Property(e => e.DisplayName).HasColumnName("display_name").HasMaxLength(256).IsRequired();
+        builder.Property(e => e.Description).HasColumnName("description").IsRequired();
+        builder.Property(e => e.NarrativeText).HasColumnName("narrative_text");
         builder.Property(e => e.Version).HasColumnName("version").HasMaxLength(64).IsRequired();
         builder.Property(e => e.Status).HasColumnName("status").HasMaxLength(32).IsRequired();
+        builder.Property(e => e.Scope).HasColumnName("scope").HasMaxLength(64).HasDefaultValue("Run").IsRequired();
+        builder.Property(e => e.Duration).HasColumnName("duration").HasMaxLength(64).HasDefaultValue("UntilRunEnds").IsRequired();
+        builder.Property(e => e.Trigger).HasColumnName("trigger").HasMaxLength(64);
+        builder.Property(e => e.Severity).HasColumnName("severity").HasDefaultValue(1);
         builder.Property(e => e.Visibility).HasColumnName("visibility").HasMaxLength(32).IsRequired();
         builder.Property(e => e.Priority).HasColumnName("priority");
-        builder.Property(e => e.ImpactDomainsJson).HasColumnName("impact_domains_json");
+        builder.Property(e => e.EffectSetId).HasColumnName("effect_set_id");
+        builder.Property(e => e.BaseWeight).HasColumnName("base_weight").HasDefaultValue(1);
+        builder.Property(e => e.MinDepth).HasColumnName("min_depth");
+        builder.Property(e => e.MaxDepth).HasColumnName("max_depth");
+        builder.Property(e => e.SelectionGroup).HasColumnName("selection_group").HasMaxLength(64);
+        builder.Property(e => e.ImpactDomainsJson).HasColumnName("impact_domains_json").HasComment("Legacy JSON compatibility column. Structured effects/tags are relational in data-model-0.1.");
         builder.Property(e => e.CreatedAtUtc).HasColumnName("created_at_utc");
         builder.Property(e => e.UpdatedAtUtc).HasColumnName("updated_at_utc");
 
         builder.HasIndex(e => e.Key).IsUnique();
         builder.HasIndex(e => e.Status);
+        builder.HasOne(e => e.EffectSet).WithMany().HasForeignKey(e => e.EffectSetId).OnDelete(DeleteBehavior.SetNull);
     }
 }

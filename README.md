@@ -1,8 +1,9 @@
 # L’épopée des silences
-game-engine-alpha-0.6.6
+game-engine-alpha-0.7.1
 web-alpha-0.6.3
 player-service-alpha-0.1.0
-data-model-alpha-0.0.1-rc2
+catalog-alpha-0.7.1
+data-model-alpha-0.0.1
 
 > RPG roguelite narratif full web — Palais mental — Runs procédurales — Backend serveur-autoritaire.
 
