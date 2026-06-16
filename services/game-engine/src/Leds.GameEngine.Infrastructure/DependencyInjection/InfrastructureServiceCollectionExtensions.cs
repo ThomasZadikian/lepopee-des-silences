@@ -90,6 +90,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<ICombatSkillEffectResolver, CombatSkillEffectResolver>();
         services.AddSingleton<IEnemyCombatTurnResolver, EnemyCombatTurnResolver>();
         services.AddSingleton<IEncounterCompositionPolicy, EncounterCompositionPolicy>();
+        services.AddSingleton<IEncounterEnemySelector, DeterministicEncounterEnemySelector>();
         services.AddSingleton<ICombatEncounterDraftGenerator, CombatEncounterDraftGenerator>();
 
         services.AddSingleton<IRewardOfferRepository, InMemoryRewardOfferRepository>();
@@ -100,6 +101,8 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<ICatalogItemDefinitionProvider, InMemoryCatalogItemDefinitionProvider>();
         services.AddSingleton<ICatalogPalaceLawDefinitionProvider, InMemoryCatalogPalaceLawDefinitionProvider>();
         services.AddSingleton<ICatalogCurseDefinitionProvider, InMemoryCatalogCurseDefinitionProvider>();
+        services.AddSingleton<ICatalogEnemyDefinitionProvider, InMemoryCatalogEnemyDefinitionProvider>();
+        services.AddSingleton<ICatalogRoomEnemyPoolProvider, InMemoryCatalogRoomEnemyPoolProvider>();
 
         return services;
     }
