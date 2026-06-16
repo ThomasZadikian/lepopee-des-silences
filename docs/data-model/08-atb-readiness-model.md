@@ -1,119 +1,85 @@
 # 08 — ATB readiness model
 
+Version: `data-model-0.1-rc2`
+
 ## Purpose
 
-This document defines the data fields and conceptual formulas required for a future Active Time Battle (ATB) system. **ATB is not implemented in this PR.** This document only specifies what the data model must support.
+This document defines schema readiness for a future Active Time Battle system. ATB is not implemented by data-model-0.1. The fields are target schema fields only and must not be treated as behaviorally active until a later implementation PR.
 
-## Why prepare for ATB now
+## Current combat mode
 
-The current combat system uses simple round-robin turn order: allies act first, then enemies, in a fixed sequence. This works but is mechanically flat. A future ATB system will add:
+The current combat system remains turn-based/round-robin. The schema prepares ATB without changing combat behavior.
 
-- **Speed-based turn frequency.** Faster combatants act more often.
-- **Action commitment.** Using a skill consumes time (recovery), creating vulnerability windows.
-- **Interruptibility.** Long cast times can be interrupted.
-- **Tactical depth.** Players must consider when to act, not just what to do.
+## Catalog fields
 
-By including ATB-ready fields in the schema now, we avoid a costly migration later.
+### SkillDefinition
 
-## Current fields (already exist)
+```text
+action_cost INT NOT NULL DEFAULT 10
+cast_time INT NOT NULL DEFAULT 0
+recovery_time INT NOT NULL DEFAULT 0
+```
 
-These fields exist in the current domain model and are already in the schema:
+These fields are snapshotted into `run_combatant_skills` at combat creation.
 
-| Field | Entity | Current use | ATB use |
-|-------|--------|------------|---------|
-| `speed` | `Combatant`, `Run`, `PlayerCharacter` | Round-robin ordering (DESC) | `atb_fill_rate` input |
-| `attack_power` | `Combatant`, `Run` | Damage calculation | Unchanged |
-| `defense` | `Combatant`, `Run` | Damage mitigation | Unchanged |
-| `current_guard` | `Combatant` | Guard absorption | Reset timing tied to ATB rounds |
-| `current_vitality` | `Combatant` | HP tracking | Unchanged |
-| `max_vitality` | `Combatant` | HP cap | Unchanged |
+## Player and Catalog stat fields
 
-## New fields required (schema-only in this PR)
+`initiative` and `recovery` exist on:
 
-### On Catalog (SkillDefinition)
+- `catalog_enemy_stat_blocks`;
+- `player_character_stat_blocks`;
+- `run_character_stat_snapshots`;
+- `run_combatant_base_stat_snapshots`.
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `action_cost` | INT | 10 | Ticks consumed from ATB gauge when skill is used |
-| `cast_time` | INT | 0 | Ticks before skill resolves (0 = instant) |
-| `recovery_time` | INT | 0 | Ticks added to combatant recovery after skill use |
+They are immutable base/snapshot values during a combat.
 
-### On Game Engine (run_combatant_stat_snapshots)
+## Game Engine combatant split
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `initiative` | INT | 0 | Starting position in ATB timeline |
-| `recovery` | INT | 0 | Base recovery modifier (added to skill recovery_time) |
-| `atb_gauge_value` | INT | NULL | Current position in ATB timeline |
-| `atb_ready_threshold` | INT | NULL | Threshold to act (typically 1000) |
-| `action_recovery_until_tick` | INT | NULL | Tick when combatant can act again |
+ATB fields follow the identity/base/runtime split.
 
-### On Game Engine (run_combatant_effects)
+```text
+run_combatants
+-> identity only.
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `created_at_tick` | INT | NULL | ATB tick when effect was created |
-| `expires_at_tick` | INT | NULL | ATB tick when effect expires |
+run_combatant_base_stat_snapshots
+-> initiative, recovery, atb_ready_threshold.
 
-## Conceptual ATB formulas
+run_combatant_runtime_states
+-> atb_gauge_value, action_recovery_until_tick.
+```
 
-### ATB fill rate
+`atb_gauge_value` and `action_recovery_until_tick` are mutable runtime fields and must not live in a snapshot table.
+
+## Conceptual formulas
+
+These formulas are illustrative, not accepted behavior.
 
 ```text
 atb_fill_rate = base_rate + (speed * speed_factor) + modifiers
 ```
 
-Where:
-- `base_rate` is a design constant (e.g., 100)
-- `speed_factor` is a tuning constant (e.g., 10)
-- `modifiers` = SUM of `ModifySpeed` RunModifiers applied to fill rate
-
-### ATB tick advancement
-
-```text
-Each game tick:
-  for each combatant:
-    if combatant.action_recovery_until_tick > current_tick:
-      skip (still recovering)
-    else:
-      combatant.atb_gauge_value += atb_fill_rate
-      if combatant.atb_gauge_value >= atb_ready_threshold:
-        combatant is ready to act
-```
-
-### Action resolution
-
 ```text
 When combatant acts:
-  1. Select skill
-  2. Deduct action_cost from atb_gauge_value
-  3. Begin cast_time countdown (if > 0)
-  4. Resolve skill effects
-  5. Compute action_recovery = skill.recovery_time + combatant.recovery + modifiers
-  6. Set action_recovery_until_tick = current_tick + action_recovery
+  deduct action_cost from atb_gauge_value
+  wait cast_time if non-zero
+  resolve skill
+  action_recovery = skill.recovery_time + combatant.recovery + modifiers
+  action_recovery_until_tick = current_tick + action_recovery
 ```
 
-### Guard reset timing
+## Guard timing
 
-```text
-Current: reset at start of each "round" (all combatants acted once)
-ATB: reset at fixed tick intervals (e.g., every 1000 ticks) or per "round" defined as
-     a full cycle of all combatants acting
-```
+Current guard behavior remains round-based. Future ATB can define guard reset by tick interval, action cycle, or explicit effect duration. That decision is out of scope for data-model-0.1.
 
-## Design notes
+## Migration positioning
 
-- The exact formulas will be decided in a future ADR dedicated to combat system v2.
-- `atb_ready_threshold` is a constant (e.g., 1000) rather than a per-combatant stat. It can be made per-combatant later if needed.
-- `action_recovery_until_tick` replaces the current "next actor" model. The combatant with the lowest `action_recovery_until_tick` whose gauge is full acts next.
-- Cast time creates a window where the combatant can be interrupted. Interruption mechanics are out of scope for this document.
-- The current round-robin system can coexist with ATB during migration. A feature flag can switch between the two.
+- alpha-0.7.x adds data-driven schemas and ATB-ready columns where needed.
+- alpha-0.8.x may implement ATB after the data-driven backend is stable.
+- alpha-0.9.x is not the ATB foundation phase; it is reserved for security, gateway, observability, externalization, and alpha-1 readiness.
 
-## Migration path
+## Rules
 
-1. **alpha-0.7.x:** Add `initiative`, `recovery` columns to `catalog_enemy_stat_blocks` and `player_character_stat_blocks`. Default to 0. No behavioral change.
-2. **alpha-0.7.x:** Add `action_cost`, `cast_time`, `recovery_time` columns to `catalog_skill_definitions`. Default to current implicit values.
-3. **alpha-0.7.x:** Add `atb_gauge_value`, `atb_ready_threshold`, `action_recovery_until_tick` columns to `run_combatant_stat_snapshots`. Nullable, no behavioral change.
-4. **alpha-0.8.x:** Implement ATB tick loop alongside round-robin. Feature flag selects which system is active.
-5. **alpha-0.8.x:** Add `created_at_tick`, `expires_at_tick` to `run_combatant_effects`. Nullable.
-6. **alpha-0.9.x:** Remove round-robin code path once ATB is stable.
+- ATB fields may be nullable or defaulted while inactive.
+- No ATB behavior should be implemented as part of data-model-0.1.
+- Current round-robin combat can coexist with ATB-ready schema fields.
+- Future official ATB behavior requires a dedicated ADR or combat system document.

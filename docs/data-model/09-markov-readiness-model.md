@@ -1,133 +1,220 @@
 # 09 — Markov readiness model
 
+Version: `data-model-0.1-rc2`
+
 ## Purpose
 
-This document defines the data fields required for future Markov-driven adaptive selection. **Markov algorithms are not implemented in this PR.** This document only specifies what the data model must support.
+This document defines schema readiness for future Markov/adaptive selection. It does not document internal matrices, raw probabilities, or confidential algorithms, and it does not implement Markov.
 
-## Why Markov readiness matters
+Markov readiness belongs to alpha-0.7.x after data-model and core data-driven schemas are accepted. It must not be deferred to alpha-0.9.x.
 
-Markov chains and adaptive selection will influence many game systems:
+## Non-disclosure rules
 
-- **Room generation.** Transition probabilities between room types based on current state.
-- **Enemy selection.** Choosing enemies based on room type, depth, risk, and recent encounters.
-- **Item/reward selection.** Offering rewards that complement the player's current build.
-- **Law/Curse appearance.** Timing and probability of law and curse events.
-- **Narrative tone.** Adapting story elements based on player behavior patterns.
-- **Difficulty adaptation.** Adjusting challenge based on player performance.
-- **Boss selection.** Choosing bosses that create appropriate thematic and mechanical contrast.
+- Do not document internal matrices.
+- Do not expose raw probabilities.
+- Do not describe confidential transition algorithms.
+- Do not expose matrix internals to frontend.
+- Store and expose only selected keys, versions, seeds, qualitative influences, and narrative indicators.
 
-By including Markov-ready metadata fields in Catalog definitions now, we ensure future adaptive systems can query candidates efficiently without schema changes.
+## Catalog adaptive metadata
 
-## Fields required on Catalog definitions
+Catalog provides candidates and stable metadata. Game Engine owns selection context and decisions.
 
-These fields must be present on all Catalog entities that participate in adaptive selection:
-
-### Common metadata fields
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `key` | VARCHAR(160) | YES | Unique definition identifier (already exists) |
-| `tags` | relational table | YES | Classification tags (already exists as JSON, needs relational migration) |
-| `archetype` | VARCHAR(64) | varies | Entity archetype (already exists on enemies) |
-| `family` | VARCHAR(64) | NO | Entity family/group (new) |
-| `role` | VARCHAR(64) | NO | Functional role (new for enemies) |
-| `base_weight` | INT | YES | Base selection weight (new) |
-| `min_depth` | INT | NO | Minimum room depth for appearance (new) |
-| `max_depth` | INT | NO | Maximum room depth for appearance (new) |
-| `selection_group` | VARCHAR(64) | NO | Logical grouping for selection (new) |
-| `compatibility_tags` | relational table | NO | Tags that enable compatibility with other entities (new) |
-| `exclusion_tags` | relational table | NO | Tags that prevent co-appearance (new) |
-
-### Per-entity field mapping
-
-| Entity | `key` | `tags` | `archetype` | `family` | `role` | `base_weight` | `min_depth` | `max_depth` | `selection_group` |
-|--------|-------|--------|-------------|----------|--------|---------------|-------------|-------------|-------------------|
-| `EnemyDefinition` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `SkillDefinition` | ✅ | ✅ | — | — | — | ✅ | — | — | ✅ |
-| `ItemDefinition` | ✅ | ✅ | — | — | — | ✅ | ✅ | ✅ | ✅ |
-| `PalaceLawDefinition` | ✅ | ✅ | — | — | — | ✅ | ✅ | ✅ | ✅ |
-| `CurseDefinition` | ✅ | ✅ | — | — | — | ✅ | ✅ | ✅ | ✅ |
-| `RewardTemplate` | ✅ | ✅ | — | — | — | ✅ | ✅ | ✅ | ✅ |
-| `RoomBossDefinition` | ✅ | ✅ | — | — | — | ✅ | — | — | ✅ |
-| `EventTemplate` | ✅ | ✅ | — | — | — | ✅ | ✅ | ✅ | ✅ |
-
-## How Markov/adaptive selection works
-
-### Input: candidates + context
+Common fields on selectable Catalog definitions:
 
 ```text
-Catalog provides:
-  - List of eligible candidates (filtered by depth, room type, risk level)
-  - Each candidate has: key, tags, archetype, family, role, base_weight, compatibility/exclusion tags
-
-Game Engine provides:
-  - Current run state (depth, room type, active laws, active curses, inventory)
-  - Recent encounter history (last N enemies, last N items)
-  - Current difficulty profile (risk level, difficulty multiplier)
-  - Player behavior patterns (aggressive, defensive, exploratory)
+key
+tags via relational tables
+base_weight
+min_depth
+max_depth
+selection_group
+family / role where relevant
+theme / room_family / room_rarity where relevant
 ```
 
-### Selection algorithm (conceptual)
+Participating entities:
+
+- EnemyDefinition;
+- SkillDefinition where selection is needed;
+- ItemDefinition;
+- PalaceLawDefinition;
+- CurseDefinition;
+- RewardTemplate and RewardTemplateOption;
+- RoomDefinition;
+- RoomTypeDefinition;
+- RoomEnemyPool;
+- RoomRewardPool;
+- RoomLawPool;
+- RoomCursePool;
+- RoomSpecialMechanic;
+- RoomBossDefinition.
+
+## Catalog room readiness
+
+Room definitions are first-class Markov/adaptive candidates. The Catalog schema includes:
 
 ```text
-1. Filter candidates by hard constraints:
-   - min_depth <= current_depth <= max_depth
-   - compatible with current room type
-   - not excluded by active tags
-
-2. Compute adaptive weights:
-   - base_weight from Catalog
-   - × depth_factor (based on current depth vs candidate depth range)
-   - × recency_factor (reduce weight if recently encountered)
-   - × synergy_factor (increase weight if synergistic with current build)
-   - × narrative_factor (increase weight if narratively appropriate)
-   - × difficulty_factor (adjust based on player performance)
-
-3. Normalize weights to probabilities
-
-4. Sample using deterministic seeded random (for reproducibility)
+catalog_room_definitions
+catalog_room_type_definitions
+catalog_room_enemy_pools
+catalog_room_enemy_pool_entries
+catalog_room_reward_pools
+catalog_room_reward_pool_entries
+catalog_room_law_pools
+catalog_room_law_pool_entries
+catalog_room_curse_pools
+catalog_room_curse_pool_entries
+catalog_room_special_mechanics
+catalog_room_tags
+catalog_room_boss_definitions
 ```
 
-### Output: snapshot
+RoomDefinition fields relevant to Markov/adaptive selection:
 
-The selected candidate's `key` is stored in the Game Engine runtime. The selection result is deterministic given the same seed and context.
+```text
+room_family
+room_rarity
+theme
+min_depth
+max_depth
+base_weight
+selection_group
+enemy_pool_key
+reward_pool_key
+law_pool_key
+curse_pool_key
+special_mechanic_key
+boss_definition_key
+is_unique
+is_cultural_echo
+```
 
-## Rules
+## Rare rooms and cultural echo rooms
 
-1. **Catalog provides candidates and metadata.** It does not run selection algorithms.
-2. **Game Engine provides context and runs selection.** It does not store Catalog metadata permanently.
-3. **Selection results are snapshoted.** The chosen `key` is stored, not the probability matrix.
-4. **No service depends on Markov internals.** The selection algorithm can be changed without schema changes.
-5. **Metadata fields are relational or tagged stably.** No hardcoded conditions in scattered code.
-6. **Tags are relational tables, not JSON columns.** This enables efficient filtering and joining.
+Rare rooms may evoke cultural, mythological, literary, or symbolic archetypes. They must not copy protected intellectual property.
 
-## Current state and gaps
+Allowed:
 
-| Field | Current state | Gap |
-|-------|--------------|-----|
-| `key` | Exists on all definitions | None |
-| `tags` | JSON columns on some entities | Need relational migration |
-| `archetype` | Exists on EnemyDefinition (string) | Need on other entities |
-| `family` | Does not exist | New field |
-| `role` | Does not exist | New field |
-| `base_weight` | Does not exist (implicit via `base_difficulty`) | New field |
-| `min_depth` | Does not exist on most entities | New field |
-| `max_depth` | Does not exist on most entities | New field |
-| `selection_group` | Does not exist | New field |
-| `compatibility_tags` | Does not exist | New relational table |
-| `exclusion_tags` | Does not exist | New relational table |
+- abstract inspiration;
+- broad symbolic theme;
+- public-domain archetypes;
+- generic alchemical, mythological, literary, or philosophical motifs.
 
-## Tables affected
+Forbidden:
 
-| Table | New columns | New tables |
-|-------|------------|------------|
-| `catalog_enemy_definitions` | `family`, `role`, `base_weight`, `min_depth`, `max_depth`, `selection_group` | `catalog_enemy_tags` (relational) |
-| `catalog_skill_definitions` | `base_weight`, `selection_group` | `catalog_skill_tags` (relational) |
-| `catalog_item_definitions` | `base_weight`, `min_depth`, `max_depth`, `selection_group` | `catalog_item_tags` (relational) |
-| `catalog_palace_law_definitions` | `base_weight`, `min_depth`, `max_depth`, `selection_group` | `catalog_law_tags` (relational) |
-| `catalog_curse_definitions` | `base_weight`, `min_depth`, `max_depth`, `selection_group` | `catalog_curse_tags` (relational) |
-| `catalog_reward_templates` | `base_weight`, `min_depth`, `max_depth`, `selection_group` | `catalog_reward_tags` (relational) |
-| `catalog_room_boss_definitions` | `base_weight`, `selection_group` | `catalog_boss_tags` (relational) |
-| `catalog_event_templates` | `base_weight`, `min_depth`, `max_depth`, `selection_group` | `catalog_event_tags` (relational) |
+- protected work names;
+- character names;
+- organization names;
+- recognizable symbols;
+- protected terminology;
+- direct one-to-one recreation of existing fictional rooms.
 
-New tables: `catalog_compatibility_tags`, `catalog_exclusion_tags` (junction tables linking definitions).
+Example:
+
+```text
+Room key: room.rare.creuset-equivalences
+Display name: Le Creuset des Equivalences
+RoomFamily: CulturalEcho
+RoomRarity: Rare
+Theme: Alchemical
+Special mechanic: equivalent_exchange
+Design intent: Une salle ou chaque puissance offerte exige une dette.
+Allowed inspiration: alchemy, equivalent exchange, body debt, artificial life, guilt.
+Forbidden: direct references to protected works, character names, organization names, recognizable symbols.
+```
+
+## Runtime adaptive projections
+
+Game Engine stores runtime traces and projections, not raw matrix internals.
+
+### run_adaptive_influences
+
+```text
+id UUID PK
+run_id UUID NOT NULL FK
+source_type VARCHAR(64) NOT NULL
+source_key VARCHAR(160) NOT NULL
+influence_type VARCHAR(64) NOT NULL
+influence_tag VARCHAR(128) NOT NULL
+value DECIMAL(10,4) NULL
+value_mode VARCHAR(32) NULL
+duration VARCHAR(64) NOT NULL
+created_at_utc TIMESTAMPTZ NOT NULL
+consumed_at_utc TIMESTAMPTZ NULL
+```
+
+Examples:
+
+- `behavior.paranoid`;
+- `generation.alchemical`;
+- `pressure.hostile`;
+- `reward.defensive_bias`;
+- `enemy.echo_bias`.
+
+### run_selection_decisions
+
+```text
+id UUID PK
+run_id UUID NOT NULL FK
+decision_type VARCHAR(64) NOT NULL
+context_key VARCHAR(160) NULL
+selected_key VARCHAR(160) NOT NULL
+selection_group VARCHAR(64) NULL
+matrix_version VARCHAR(64) NULL
+seed VARCHAR(128) NOT NULL
+created_at_utc TIMESTAMPTZ NOT NULL
+```
+
+Do not store raw probabilities by default.
+
+### run_palace_pressure_snapshots
+
+Future qualitative pressure snapshot for backend and frontend-safe summaries. It may store pressure key, intensity, dominant tag, display label, narrative text, and expiration.
+
+### run_palace_indicator_snapshots
+
+```text
+id UUID PK
+run_id UUID NOT NULL FK
+indicator_key VARCHAR(160) NOT NULL
+display_label VARCHAR(256) NOT NULL
+narrative_text TEXT NOT NULL
+intensity VARCHAR(64) NOT NULL
+source_decision_id UUID NULL
+created_at_utc TIMESTAMPTZ NOT NULL
+expires_at_utc TIMESTAMPTZ NULL
+```
+
+Frontend examples:
+
+- Le Palais se crispe.
+- Les echos deviennent mefiants.
+- Une salle instable approche.
+- La Loi pese sur les choix du Palais.
+
+## Behavioral/generation effects
+
+EffectDefinitions may create adaptive influences through:
+
+```text
+ModifyEnemyBehavior
+ModifyTargetingBias
+ModifyGenerationWeight
+ModifyRoomSelectionBias
+ModifyEnemySelectionBias
+ModifyRewardSelectionBias
+ModifyLawSelectionBias
+ModifyCurseSelectionBias
+ApplyBehaviorTag
+ApplyNarrativePressure
+```
+
+Tags that influence selection must be explicit columns or relational tags, not hidden JSON.
+
+## Alpha positioning
+
+- alpha-0.7.5: Markov foundation, versioned and deterministic.
+- alpha-0.7.6: adaptive selection integration for rooms, nodes, enemies, rewards, laws/curses.
+- alpha-0.7.7: frontend-safe Markov/Palace projections.
+- alpha-0.9.x: security, gateway, externalization, observability, alpha-1 readiness.

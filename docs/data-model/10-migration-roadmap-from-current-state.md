@@ -1,222 +1,204 @@
 # 10 — Migration roadmap from current state
 
+Version: `data-model-0.1-rc2`
+
 ## Overview
 
-This document defines the step-by-step migration from the current codebase to the `data-model-0.1` target schema. Each step is designed to be non-breaking and backward-compatible.
+This roadmap describes documentation and future implementation sequencing. This PR is documentation-only and must not create migrations or modify code.
 
-## Current state summary
+## Product/version strategy
 
-### Catalog
+```text
+0.6.x
+→ gameplay stabilization: items, combat, rewards, modifiers, merchant, boss, laws/curses MVP.
 
-| Entity | Current EF table | Current state |
-|--------|-----------------|---------------|
-| `EnemyDefinition` | `catalog_enemy_definitions` | EF-persisted. Uses `CompatibleRoomTypesJson`, `TagsJson`, `SkillKeysJson` (JSON columns). Missing: `family`, `role`, `rank`, `encounter_weight`, `min_depth`, `max_depth`, `is_boss`, `is_elite`, `stat_block_id`, `narrative_text`. |
-| `SkillDefinition` | `catalog_skill_definitions` | EF-persisted. Missing: `cost_type`, `accuracy`, `action_cost`, `cast_time`, `recovery_time`, `cooldown`, `effect_set_id`, `narrative_text`. |
-| `ItemDefinition` | `catalog_item_definitions` | EF-persisted. Missing: `item_type`, `usage_mode`, `lifecycle`, `stack_policy`, `max_stack`, `is_usable_in_combat`, `is_usable_outside_combat`, `effect_set_id`, `min_depth`, `max_depth`, `base_weight`, `narrative_text`. |
-| `PalaceLawDefinition` | `catalog_palace_law_definitions` | EF-persisted. Uses `ImpactDomainsJson` (JSON). Missing: `scope`, `duration`, `trigger`, `severity`, `effect_set_id`, `base_weight`, `min_depth`, `max_depth`, `narrative_text`. |
-| `EnemyTemplate` | None (InMemory) | In-memory only. Not a migration target. |
-| `SkillTemplate` | None (InMemory) | In-memory only. Not a migration target. |
-| `ItemTemplate` | None (InMemory) | In-memory only. Not a migration target. |
-| `EventTemplate` | None (InMemory) | In-memory only. Needs EF persistence. |
-| `RoomBossDefinition` | None (InMemory) | In-memory only. Needs EF persistence. |
-| `CurseDefinition` | None | Does not exist. Needs creation. |
-| `RewardTemplate` | None | Does not exist. Needs creation. |
-| `EffectSet` | None | Does not exist. Needs creation. |
-| `EffectDefinition` | None | Does not exist. Needs creation. |
+data-model-0.1.x
+→ official gameplay data model.
 
-### Player
+web-client-0.5.x
+→ UI direction, combat scene, map, besace, rewards, responsive layout.
 
-| Entity | Current EF table | Current state |
-|--------|-----------------|---------------|
-| `PlayerProfile` | `player_profiles` | EF-persisted. Progression stats embedded as columns. |
-| `PlayerCharacter` | `player_characters` | EF-persisted. Missing: `character_type`, `status`, `updated_at_utc`. Stats (`max_vitality`, `base_mana`, `base_charge`) embedded. Skills as JSON. |
-| `PlayerCharacterStatBlock` | None | Does not exist. Need to extract from `player_characters`. |
-| `PlayerCharacterSkill` | None | Skills in `skill_keys_json`. Need relational table. |
-| `PermanentUnlock` | None | Does not exist. Future feature. |
-| `RunStatistics` | None | Does not exist. Future feature. |
+game-engine/catalog/player 0.7.x
+→ data-driven backend implementation + Markov system foundation.
 
-### Game Engine
+0.8.x
+→ ATB, Interlude, Him'Lit, long narrative loop depending on readiness.
 
-| Entity | Current EF table | Current state |
-|--------|-----------------|---------------|
-| `Run` | `runs` | EF-persisted. Stats embedded (`max_hp`, `current_hp`, `attack`, `defense`, `speed`). Missing snapshot tables. |
-| `Room` | `run_rooms` | EF-persisted. |
-| `MapNode` | `run_nodes` | EF-persisted. |
-| `Combat` | `run_active_combats` | EF-persisted. |
-| `Combatant` | `run_combatants` | EF-persisted. Missing: `attack_power` (uses generic stats). |
-| `CombatantSkill` | `run_combatant_skills` | EF-persisted. |
-| `PlayerRuntimeState` | `run_player_states` | EF-persisted. Missing: `attack_power`, `defense`, `starting_guard`, `speed`, `initiative`, `recovery`, `focus`. |
-| `RunItem` | `run_items` | EF-persisted. |
-| `RunModifier` | `run_modifiers` | EF-persisted. Missing: `value_mode`, `stack_policy`, `expires_at_room_id`, `expires_at_combat_id`. |
-| `ActivePalaceLaw` | `run_active_palace_laws` | EF-persisted. Missing: `duration`, `expires_at_room_id`, `consumed_at_utc`. |
-| `ActiveCurse` | None (domain only) | Exists as domain entity on Run, not persisted as separate table. |
-| `RewardOffer` | None (InMemory) | In-memory only. Needs EF persistence. |
-| `RunCharacterSnapshot` | None | Does not exist. Needs creation. |
-| `RunCombatantStatSnapshot` | None | Does not exist. Needs creation. |
-| `RunCombatantEffect` | None | Does not exist. Needs creation. |
-| `RunCombatAction` | None | Does not exist. Needs creation. |
+0.9.x
+→ identity, gateway, security, observability, external alpha readiness.
+```
 
-## Migration phases
+Markov readiness must not be treated as alpha-0.9.x. Security/exposure belongs to alpha-0.9.x. Markov belongs to alpha-0.7.x after data-model and core data-driven schemas are accepted.
 
-### Phase 1: data-model-0.1 (this PR)
+## Backend roadmap
 
-**Scope:** Documentation only. No code changes.
+```text
+data-model-0.1
+→ documentation and decisions.
 
-**Deliverables:**
-- ADR-006
-- All `docs/data-model/*` documents
-- README link update
+alpha-0.7.1
+→ Catalog relational schema aligned with data-model.
 
-**Risk:** None (documentation only).
+alpha-0.7.2
+→ Player character stats and permanent progression aligned with data-model.
 
----
+alpha-0.7.3
+→ Game Engine run/combat snapshots aligned with data-model.
 
-### Phase 2: alpha-0.7.1 — Catalog schema alignment
+alpha-0.7.4
+→ Official effects, items, rewards, laws, curses, modifiers.
 
-**Scope:** Align Catalog EF schema with target relational model.
+alpha-0.7.5
+→ Markov system foundation, versioned and deterministic.
 
-**Changes:**
-1. Add columns to `catalog_enemy_definitions`: `family`, `role`, `rank`, `encounter_weight`, `min_depth`, `max_depth`, `is_boss`, `is_elite`, `narrative_text`.
-2. Create `catalog_enemy_stat_blocks` table with all combat stats.
-3. Create `catalog_enemy_skill_links` relational table (replaces `skill_keys_json`).
-4. Create `catalog_enemy_tags` relational table (replaces `tags_json`).
-5. Add columns to `catalog_skill_definitions`: `cost_type`, `accuracy`, `action_cost`, `cast_time`, `recovery_time`, `cooldown`, `narrative_text`.
-6. Create `catalog_skill_effects` table.
-7. Add columns to `catalog_item_definitions`: `item_type`, `usage_mode`, `lifecycle`, `stack_policy`, `max_stack`, `is_usable_in_combat`, `is_usable_outside_combat`, `min_depth`, `max_depth`, `base_weight`, `narrative_text`.
-8. Create `catalog_item_effects` and `catalog_item_tags` tables.
-9. Add columns to `catalog_palace_law_definitions`: `scope`, `duration`, `trigger`, `severity`, `base_weight`, `min_depth`, `max_depth`, `narrative_text`. Replace `ImpactDomainsJson` with relational table.
-10. Create `catalog_palace_law_effects` table.
-11. Create `catalog_curse_definitions` and `catalog_curse_effects` tables.
-12. Create `catalog_effect_sets` and `catalog_effect_definitions` tables.
-13. Create `catalog_reward_templates` and `catalog_reward_template_options` tables.
-14. Create `catalog_tags` table.
-15. Update `CatalogSeedRunner` with new seed data.
-16. Update InMemory stores to match new schema.
+alpha-0.7.6
+→ Markov/adaptive selection integration for rooms, nodes, enemies, rewards, laws/curses.
 
-**Backward compatibility:** Additive only. New columns have defaults. Old columns preserved until data migration.
+alpha-0.7.7
+→ Backend projections for Markov/Palace indicators usable by frontend.
 
-**Risk:** Low. New tables and columns do not affect existing gameplay.
+alpha-0.8.x
+→ ATB and narrative systems after the data-driven backend is stable.
 
----
+alpha-0.9.x
+→ security, gateway, externalization, observability, alpha-1 readiness.
+```
 
-### Phase 3: alpha-0.7.2 — Player schema alignment
+## data-model-0.1 — documentation and decisions
 
-**Scope:** Align Player EF schema with target relational model.
+Scope:
 
-**Changes:**
-1. Create `player_character_stat_blocks` table with all permanent stats.
-2. Create `player_character_skills` relational table (replaces `skill_keys_json`).
-3. Add columns to `player_characters`: `character_type`, `status`, `updated_at_utc`.
-4. Create `player_permanent_unlocks` table (empty, ready for future use).
-5. Create `player_run_statistics` table (empty, ready for future use).
-6. Migrate data from `player_characters.max_vitality`/`base_mana`/`base_charge` to `player_character_stat_blocks`.
-7. Migrate data from `skill_keys_json` to `player_character_skills`.
-8. Update `EfPlayerProfileRepository` to use new tables.
-9. Update domain entities to match new schema.
+- harden data-model docs;
+- update ADR-006;
+- no code;
+- no migration;
+- no endpoint changes.
 
-**Backward compatibility:** New tables created alongside old. Data migrated. Old columns deprecated but preserved.
+Gate: no Game Engine alpha-0.7.x implementation starts before data-model-0.1 is accepted.
 
-**Risk:** Medium. Requires data migration. Test with existing player data.
+## alpha-0.7.1 — Catalog relational schema
 
----
+Target:
 
-### Phase 4: alpha-0.7.3 — Game Engine runtime stat snapshots
+- enemy definitions and child stat blocks without circular 1:1 references;
+- skill definitions with `effect_set_id`;
+- item definitions with `effect_set_id`;
+- law and curse definitions with `effect_set_id`;
+- reward templates/options;
+- EffectSet and EffectDefinition as the single source of effects;
+- Catalog room definitions, room types, rare/cultural echo rooms, anomaly rooms, pools, mechanics, boss definitions;
+- relational tag tables for Markov/adaptive filtering.
 
-**Scope:** Add runtime stat snapshot tables to Game Engine.
+Do not create `catalog_skill_effects`, `catalog_item_effects`, `catalog_palace_law_effects`, or `catalog_curse_effects` as official target tables.
 
-**Changes:**
-1. Create `run_player_snapshots` table.
-2. Create `run_character_snapshots` table.
-3. Create `run_character_stat_snapshots` table with all combat stats.
-4. Create `run_character_skill_snapshots` table.
-5. Create `run_combatant_stat_snapshots` table.
-6. Create `run_combatant_effects` table.
-7. Create `run_combat_actions` table.
-8. Create `run_active_curses` table.
-9. Create `run_reward_offers` and `run_reward_options` tables.
-10. Add columns to `run_modifiers`: `value_mode`, `stack_policy`, `expires_at_room_id`, `expires_at_combat_id`.
-11. Add columns to `run_active_palace_laws`: `duration`, `expires_at_room_id`, `consumed_at_utc`.
-12. Update `EfRunRepository` to persist new tables.
-13. Update `DeterministicRunGenerator` to create snapshots at run start.
-14. Update combat creation to create stat snapshots.
+## alpha-0.7.2 — Player schema
 
-**Backward compatibility:** Additive only. New tables do not affect existing gameplay flow.
+Target:
 
-**Risk:** Medium. Requires careful integration with existing run/combat lifecycle.
+- `auth_subject_id` as the Identity link;
+- `player_character_stat_blocks` as 1:1 child rows;
+- `player_character_skills` relational table;
+- `player_permanent_unlocks`;
+- future `player_run_statistics` including official metrics projected from Game Engine.
 
----
+Player must not foreign-key to Identity.
 
-### Phase 5: alpha-0.7.4 — Items/effects/modifiers migration
+## alpha-0.7.3 — Game Engine snapshots/runtime state
 
-**Scope:** Migrate item and effect application to the official model.
+Target:
 
-**Changes:**
-1. Update `RunItem` to use new `EffectType` enum values.
-2. Update `RunModifier` to use new `StackPolicy` and `ValueMode` fields.
-3. Update item use handlers to read effects from `catalog_item_effects` or snapshot.
-4. Update law/curse application to create proper `RunModifier` entries with all fields.
-5. Update `RewardOfferFactory` to use `catalog_reward_templates`.
-6. Migrate hardcoded effect logic to use `EffectDefinition` + `EffectSet`.
+- run player and character snapshots;
+- run inventory item snapshots with definition version and effect summary/key;
+- combatant identity separated from base stat snapshots and runtime state;
+- no `current_vitality` or `current_guard` in snapshot tables;
+- reward offers/options persisted;
+- active curses persisted;
+- outbox remains integration boundary.
 
-**Backward compatibility:** RunModifiers gain new fields with defaults. Existing modifiers continue to work.
+Target combat split:
 
-**Risk:** Medium. Requires updating multiple application handlers.
+```text
+run_combatants
+run_combatant_base_stat_snapshots
+run_combatant_runtime_states
+```
 
----
+## alpha-0.7.4 — Effects, items, rewards, laws, curses, modifiers
 
-### Phase 6: alpha-0.8.x — ATB preparation
+Target:
 
-**Scope:** Add ATB fields and implement ATB alongside round-robin.
+- runtime effect resolution from EffectSet/EffectDefinition;
+- RunModifier value mode and stack policy;
+- item usage from RunItem snapshot;
+- law and curse application from snapshotted definitions;
+- official combat metrics fields on `run_combat_actions`;
+- backend-authoritative data for future recaps and analytics.
 
-**Changes:**
-1. Add `initiative`, `recovery` to `catalog_enemy_stat_blocks` and `player_character_stat_blocks` (default 0).
-2. Add `action_cost`, `cast_time`, `recovery_time` to `catalog_skill_definitions` (default values).
-3. Add `atb_gauge_value`, `atb_ready_threshold`, `action_recovery_until_tick` to `run_combatant_stat_snapshots` (nullable).
-4. Add `created_at_tick`, `expires_at_tick` to `run_combatant_effects` (nullable).
-5. Implement ATB tick loop alongside round-robin (feature flag).
-6. Update `SubmitCombatAction` to use ATB timing.
+## alpha-0.7.5 — Markov foundation
 
-**Backward compatibility:** All new columns are nullable or have defaults. Round-robin continues to work.
+Target:
 
-**Risk:** High. Core combat system change. Requires extensive testing.
+- versioned deterministic Markov/adaptive foundation;
+- internal matrices remain confidential;
+- seed/version tracking;
+- no frontend raw probability exposure.
 
----
+## alpha-0.7.6 — Adaptive selection integration
 
-### Phase 7: alpha-0.9.x — Markov readiness
+Target:
 
-**Scope:** Add Markov-ready metadata fields.
+- room selection using Catalog room definitions and pools;
+- node, enemy, reward, law, curse adaptive selection;
+- runtime adaptive influences;
+- selection decision traces without raw probabilities.
 
-**Changes:**
-1. Add `family`, `role`, `base_weight`, `min_depth`, `max_depth`, `selection_group` to Catalog tables.
-2. Create relational tag tables for all entities.
-3. Create `catalog_compatibility_tags` and `catalog_exclusion_tags` tables.
-4. Update seed data with Markov metadata.
-5. Implement Markov-based selection in Game Engine (optional, feature flag).
+## alpha-0.7.7 — Palace projections
 
-**Backward compatibility:** Additive only.
+Target:
 
-**Risk:** Low. New fields with defaults.
+- `run_palace_pressure_snapshots`;
+- `run_palace_indicator_snapshots`;
+- frontend-safe narrative indicators.
 
----
+## alpha-0.8.x — ATB and narrative systems
 
-## What can be migrated without breaking gameplay
+Target after data-driven backend is stable:
 
-| Change | Breaking? | Notes |
-|--------|-----------|-------|
-| Adding new columns with defaults | No | EF additive migration |
-| Adding new tables | No | New tables not queried by existing code |
-| Adding nullable columns | No | Existing code ignores null |
-| Renaming columns | Yes | Requires data migration + code update |
-| Changing column types | Yes | Requires data migration |
-| Removing columns | Yes | Requires code update first |
-| Adding new enum values | No | Existing code handles unknown values |
+- ATB behavior from schema-ready fields;
+- Interlude;
+- Him'Lit;
+- long narrative loop depending on readiness.
 
-## Risks and mitigations
+## alpha-0.9.x — External alpha readiness
 
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| JSON → relational migration loses data | High | Write migration script, verify data integrity |
-| New columns conflict with existing queries | Medium | Use additive migrations, test thoroughly |
-| Snapshot creation adds latency to run start | Low | Snapshots are small, creation is fast |
-| ATB breaks existing combat flow | High | Feature flag, keep round-robin as fallback |
-| Markov selection produces poor encounters | Medium | Keep base_weight as fallback, tune over time |
+Target:
+
+- identity hardening;
+- gateway/security;
+- observability;
+- externalization;
+- alpha-1 readiness.
+
+## Acceptance criteria for data-model-0.1
+
+The correction is acceptable if:
+
+- the roadmap indicates Markov in 0.7.x and not 0.9.x;
+- Catalog rooms are modeled;
+- rare rooms and cultural echo rooms are prepared;
+- rare rooms do not use protected intellectual property;
+- EffectSet is clearly the single source of Catalog effects;
+- per-entity effect tables are removed or rejected;
+- circular 1:1 stat block relations are removed;
+- combatants separate identity, base snapshots, and mutable runtime values;
+- `current_vitality` and `current_guard` are not in snapshot tables;
+- RunItem snapshot is clarified;
+- future official combat metrics are prepared;
+- runtime Markov/Palace projections are prepared without exposing matrices;
+- behavioral/generation effects are included;
+- Identity ↔ Player is documented;
+- naming inconsistencies are corrected;
+- ADR-006 reflects the decisions;
+- no code is modified;
+- no migration is created;
+- documents are coherent enough to serve as implementation references.

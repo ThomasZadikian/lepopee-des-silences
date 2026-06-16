@@ -1,124 +1,190 @@
 # data-model-0.1 — Gameplay Data Model Overview
 
+Version: `data-model-0.1-rc2`
+
+## Current status
+
+This document set is the implementation reference candidate for data-model-0.1.
+It must be reviewed and accepted before Game Engine alpha-0.7.x begins.
+
+No Game Engine alpha-0.7.x implementation should start before data-model-0.1 is accepted.
+
+This version is not final and is not accepted yet. It hardens the data model so the next implementation PRs can rely on a coherent target.
+
 ## Purpose
 
-This document defines the official gameplay data model for L'épopée des silences. It serves as the single source of truth for entity definitions, stat taxonomy, service ownership, relational schema, and design decisions before any new implementation.
+This document set defines the target gameplay data model for L'epopee des silences. It is the reference candidate for entity ownership, lifecycle, relational schemas, effects, modifiers, rewards, items, laws, curses, rare rooms, Markov readiness, ATB readiness, and future combat metrics.
+
+## Core ownership rule
+
+```text
+Catalog owns stable definitions.
+Player owns permanent player progression.
+Game Engine owns runtime snapshots and combat state.
+Frontend displays state and never owns gameplay truth.
+```
+
+Primary gameplay statistics are relational columns, not JSON. Runtime snapshots avoid cross-service reads and prevent Catalog or Player changes from unexpectedly changing an active run or combat. Cross-service links use stable keys, not cross-database foreign keys.
 
 ## Why data-model-0.1 exists
 
-The project has reached a functional alpha with playable runs, combat, skills, items, rewards, laws, curses, and a player service. The data model has grown organically. This specification formalizes what exists, resolves inconsistencies, and prepares for future systems (ATB, Markov-driven adaptive selection).
+The project has playable runs, combat, skills, items, rewards, laws, curses, merchant flows, boss flows, and a player service. The data model grew organically and now needs a formal contract before the data-driven backend work starts.
 
-## The problem today
+This rc2 pass resolves the main ambiguities:
 
-- Stats are scattered across domain entities with inconsistent naming (`Attack` vs `Strength` vs `Power`).
-- No formal effect/modifier taxonomy exists.
-- Primary collections are stored as JSON text rather than relational tables.
-- No clear distinction between Catalog definitions, Player permanent state, and Game Engine runtime state.
-- ATB and Markov readiness require fields that do not yet exist in the schema.
+- EffectSet is the canonical Catalog effect source.
+- Catalog room definitions are first-class, including rare rooms and cultural echo rooms.
+- Combatants separate identity, immutable base stat snapshots, and mutable runtime state.
+- RunItems snapshot enough Catalog data to remain stable during a run.
+- Markov belongs to alpha-0.7.x readiness and integration, not alpha-0.9.x.
+- Runtime Markov/Palace projections are qualitative and do not expose internal matrices.
+- Official combat metrics are prepared as relational backend data, while current frontend meters remain non-authoritative.
 
-## Objectives
+## Non-goals
 
-- Define all gameplay entities and their ownership by service.
-- Define the official combat stat taxonomy with types, ranges, and ownership.
-- Define the effect/modifier/duration model.
-- Define relational schemas for Catalog, Player, and Game Engine.
-- Prepare ATB-ready fields in the schema.
-- Prepare Markov/adaptive-selection-ready metadata fields.
-- Provide a migration roadmap from the current state.
-
-## Non-objectifs
-
-- This PR does not implement any code changes.
-- This PR does not create EF migrations.
-- This PR does not modify domain entities.
-- This PR does not modify services.
-- This PR does not modify the frontend.
+- No backend code changes.
+- No frontend code changes.
+- No EF migrations.
+- No Domain entity changes.
+- No DTO changes.
+- No service changes.
+- No new feature implementation.
+- No Markov implementation.
+- No ATB implementation.
+- No rare room implementation.
+- No endpoint changes.
 
 ## Service separation
 
 ```mermaid
 flowchart LR
-    Catalog[Catalog Service<br/>Definitions] -->|definition_key + version| GameEngine[Game Engine Service<br/>Runtime snapshots]
-    Player[Player Service<br/>Permanent progression] -->|run snapshot| GameEngine
+    Catalog[Catalog Service<br/>Stable definitions] -->|definition_key + version| GameEngine[Game Engine Service<br/>Runtime snapshots and combat state]
+    Player[Player Service<br/>Permanent progression] -->|player_id + character snapshot input| GameEngine
+    Identity[Identity Service<br/>credentials and sessions] -->|auth_subject_id only| Player
     GameEngine -->|outbox events| Player
     GameEngine --> Frontend[web-client<br/>Display only]
 ```
 
-### Catalog = definitions
+### Catalog owns definitions
 
-Durable, versioned, stable, global. Catalog owns:
+Catalog owns durable, versioned, stable gameplay definitions:
 
-- Enemy definitions (stats, archetypes, skills, room compatibility)
-- Skill definitions (type, targeting, cost, power)
-- Item definitions (category, rarity, effects, usage mode)
-- Palace law definitions (scope, effects, visibility)
-- Curse definitions (severity, effects, trigger)
-- Reward templates (options, scaling)
-- Effect definitions (type, target scope, duration, value mode)
-- Room boss definitions (room type, difficulty, tags)
+- enemy definitions and stat blocks;
+- skill definitions;
+- item definitions;
+- EffectSets and EffectDefinitions;
+- palace law definitions;
+- curse definitions;
+- reward templates and options;
+- room definitions, rare rooms, cultural echo rooms, anomaly rooms, boss definitions;
+- enemy, reward, law, curse, and room pools;
+- Markov/adaptive metadata.
 
-### Player = permanent progression
+Catalog never owns runtime state.
 
-Durable, per-player, evolves between runs. Player owns:
+### Player owns permanent progression
 
-- Player profile (display name, creation date)
-- Player characters (definition key, permanent stats, skill keys)
-- Player progression (run statistics: started, completed, failed, abandoned)
-- Permanent unlock candidates (future: items/skills unlocked during runs, projected via outbox)
+Player owns durable per-player data:
 
-### Game Engine = runtime
+- player profile;
+- optional auth subject link;
+- player characters;
+- permanent stat blocks;
+- unlocked skills;
+- permanent unlocks;
+- projected run statistics.
 
-Durable during run, snapshot-based, archivable after run. Game Engine owns:
+Player never owns active combat runtime state.
 
-- Run state (seed, status, current room, inventory, modifiers, laws, curses)
-- Room state (type, theme, map nodes, boss profile)
-- Combat state (combatants, turn order, actions, effects)
-- Reward offers (choices, selection)
-- Runtime snapshots (player stats, enemy stats, skill stats frozen at creation)
-- Outbox messages (integration events to Player)
+### Game Engine owns runtime
+
+Game Engine owns run-scoped and combat-scoped state:
+
+- run state;
+- room instances and map nodes;
+- run player/character snapshots;
+- run inventory item snapshots;
+- run modifiers, active laws, active curses;
+- combat identity, immutable combatant base snapshots, mutable combatant runtime states;
+- combat actions and future official combat metrics;
+- runtime Markov/adaptive influence traces and Palace indicator snapshots;
+- reward offers and reward options;
+- outbox messages.
+
+Game Engine snapshots what it needs. It does not rely on live Catalog or Player reads while resolving active gameplay.
+
+### Frontend displays state only
+
+The frontend can compute temporary display affordances such as local meters or animation feedback, but it never owns gameplay truth. Backend snapshots, actions, and future metrics are authoritative.
 
 ## Lifecycle concepts
 
 | Concept | Owner | Lifecycle | Example |
 |---------|-------|-----------|---------|
-| Definition | Catalog | Durable, versioned, stable, global | `enemy.threshold.doubt-fragment` |
-| Permanent state | Player | Durable, per-player, evolves between runs | PlayerCharacter.MaxVitality |
-| Run snapshot | Game Engine | Durable during run, archivable after | RunCharacterStatSnapshot |
-| Combat runtime | Game Engine | Ephemeral within combat, mutable | Combatant.CurrentVitality |
-| Permanent unlock candidate | Player (via outbox) | Obtained during run, projected if validated | `player_permanent_unlocks` row |
+| Definition | Catalog | Durable, versioned, global | `enemy.threshold.doubt-fragment` |
+| Permanent state | Player | Durable, per-player | `PlayerCharacterStatBlock.max_vitality` |
+| Run snapshot | Game Engine | Durable during run | `run_character_stat_snapshots` |
+| Combat base snapshot | Game Engine | Immutable during combat | `run_combatant_base_stat_snapshots` |
+| Combat runtime state | Game Engine | Mutable during combat | `run_combatant_runtime_states.current_vitality` |
+| Runtime item snapshot | Game Engine | Stable during run | `run_inventory_items.definition_version` |
+| Display-only state | Frontend | Ephemeral | local hover target, local meter animation |
 
-## Key rules
+## Naming conventions
 
-1. **Catalog owns base definitions.** Player owns permanent player progression. Game Engine owns runtime snapshots and combat state.
-
-2. **Primary stats are explicit columns.** Never JSON blobs for `max_vitality`, `attack_power`, `defense`, `speed`, etc.
-
-3. **Snapshots freeze values at creation.** When combat starts, enemy stats are computed and stored. Catalog changes after combat creation do not affect the active combat.
-
-4. **Inter-service references use keys.** `definition_key`, `player_id`, `character_id`, `run_id`. No cross-database foreign keys.
-
-5. **Same concept, different lifecycle.** An `EnemyDefinition` in Catalog and a `RunCombatantStatSnapshot` in Game Engine represent the same enemy, but with different lifecycles and owners.
+- Catalog definition tables use `*_definitions`.
+- Runtime Game Engine tables use `run_*`.
+- Keys use dot notation in domain examples, for example `item.consumable.eclat-de-garde`.
+- SQL table names use snake_case.
+- DTO and type names use PascalCase.
+- Enum values use PascalCase.
+- Use `targeting_mode` consistently for Catalog definitions.
+- Use `targeting_type` only when matching current DTO/contract names during migration.
+- Use `RewardOption` for options within a reward offer; avoid mixing with `RewardChoice` except for legacy code references.
+- Use `run_inventory_items` as the target table name; `run_items` is legacy/current-state naming.
+- Use `starting_guard` for immutable/base start-of-combat guard and `current_guard` for mutable combat guard.
+- Use `base_guard` only as legacy/current implementation terminology.
+- Use `eclat-de-garde`, not `ecart-de-garde`.
 
 ## Document index
 
 | Document | Content |
 |----------|---------|
-| [ADR-006](../adr/ADR-006-gameplay-entity-ownership-and-relational-schema.md) | Decision record for entity ownership and relational schema |
-| [01 — Service ownership and lifecycle](01-service-ownership-and-lifecycle.md) | Entity ownership, lifecycle rules, snapshot rules |
-| [02 — Combat stat taxonomy](02-combat-stat-taxonomy.md) | Official stat definitions, types, ranges, ownership |
-| [03 — Effect, modifier, and duration model](03-effect-modifier-and-duration-model.md) | EffectType, EffectTargetScope, EffectDuration, StackPolicy, ValueMode |
-| [04 — Catalog relational schema](04-catalog-relational-schema.md) | Tables, columns, types, indexes, relations for Catalog |
-| [05 — Player relational schema](05-player-relational-schema.md) | Tables, columns, types, indexes, relations for Player |
-| [06 — Game Engine runtime schema](06-game-engine-runtime-schema.md) | Tables, columns, types, indexes, relations for Game Engine |
-| [07 — Reward, item, law, curse model](07-reward-item-law-curse-model.md) | Reward→item→modifier→combat flow with narrative examples |
-| [08 — ATB readiness model](08-atb-readiness-model.md) | Fields and formulas for future Active Time Battle |
-| [09 — Markov readiness model](09-markov-readiness-model.md) | Fields for future Markov/adaptive selection |
-| [10 — Migration roadmap](10-migration-roadmap-from-current-state.md) | Step-by-step migration from current state to data-model-0.1 |
+| [ADR-006](../adr/ADR-006-gameplay-entity-ownership-and-relational-schema.md) | Decision record for gameplay ownership and relational schema |
+| [01 — Service ownership and lifecycle](01-service-ownership-and-lifecycle.md) | Ownership, lifecycle, snapshots, Identity relationship, RunItem snapshot rules |
+| [02 — Combat stat taxonomy](02-combat-stat-taxonomy.md) | Canonical stats and lifecycle ownership |
+| [03 — Effect, modifier, and duration model](03-effect-modifier-and-duration-model.md) | EffectSet, EffectDefinition, durations, behavior/generation effects |
+| [04 — Catalog relational schema](04-catalog-relational-schema.md) | Catalog definitions, rooms, pools, EffectSet source of truth |
+| [05 — Player relational schema](05-player-relational-schema.md) | Player profile, Identity link, permanent progression |
+| [06 — Game Engine runtime schema](06-game-engine-runtime-schema.md) | Run/combat snapshots, runtime state, metrics, Markov projections |
+| [07 — Reward, item, law, curse model](07-reward-item-law-curse-model.md) | Reward/item/law/curse flow and RunItem snapshot behavior |
+| [08 — ATB readiness model](08-atb-readiness-model.md) | Schema-ready ATB fields, not behaviorally active |
+| [09 — Markov readiness model](09-markov-readiness-model.md) | Catalog metadata and runtime qualitative projections |
+| [10 — Migration roadmap](10-migration-roadmap-from-current-state.md) | Migration sequence from current state to data-model-0.1 |
 
-## What must be implemented after this PR
+## Target release positioning
 
-- Catalog: new tables for `catalog_enemy_stat_blocks`, `catalog_skill_effects`, `catalog_item_effects`, `catalog_curse_definitions`, `catalog_effect_sets`, `catalog_effect_definitions`, `catalog_reward_templates`.
-- Player: new tables for `player_character_stat_blocks`, `player_character_skills`, `player_permanent_unlocks`.
-- Game Engine: new tables for `run_character_stat_snapshots`, `run_combatant_stat_snapshots`, `run_combatant_effects`, `run_combat_actions`, `run_active_curses`, `run_reward_options`.
-- Migration of JSON columns to relational tables where specified.
-- Alignment of enum values between Templates (strongly-typed) and Definitions (string-based).
+```text
+0.6.x
+→ gameplay stabilization: items, combat, rewards, modifiers, merchant, boss, laws/curses MVP.
+
+data-model-0.1.x
+→ official gameplay data model.
+
+web-client-0.5.x
+→ UI direction, combat scene, map, besace, rewards, responsive layout.
+
+game-engine/catalog/player 0.7.x
+→ data-driven backend implementation + Markov system foundation.
+
+0.8.x
+→ ATB, Interlude, Him'Lit, long narrative loop depending on readiness.
+
+0.9.x
+→ identity, gateway, security, observability, external alpha readiness.
+```
+
+Markov readiness and Markov/adaptive selection integration belong to alpha-0.7.x after the data model and core data-driven schemas are accepted. Security, exposure, gateway, and external alpha readiness belong to alpha-0.9.x.
+
+## Acceptance gate
+
+data-model-0.1 can move from rc2 to Accepted only when all documents are internally consistent and the acceptance criteria in `10-migration-roadmap-from-current-state.md` are satisfied.

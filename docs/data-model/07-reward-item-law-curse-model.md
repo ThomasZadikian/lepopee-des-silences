@@ -1,221 +1,182 @@
 # 07 — Reward, item, law, curse model
 
+Version: `data-model-0.1-rc2`
+
 ## Overview
 
-This document defines how rewards, items, laws, and curses flow through the system, from Catalog definition to runtime effect.
+Rewards, items, laws, and curses are defined in Catalog, materialized as runtime state in Game Engine, and may project permanent consequences to Player through outbox events.
+
+## Effect source
+
+EffectSet is the canonical Catalog source of effects. Reward options, item definitions, law definitions, curse definitions, and room special mechanics reference `effect_set_id` when they need gameplay effects. Per-entity effect tables are not part of data-model-0.1.
 
 ## Entity definitions
 
 ### RewardOffer
 
-**Owner:** Game Engine
-**Lifecycle:** Created after combat victory or event resolution; expires after selection or room exit.
+Owner: Game Engine. Created after combat victory, event resolution, merchant interaction, or other reward-producing events. Contains immutable `RewardOption` rows once offered.
 
-A `RewardOffer` presents the player with a set of `RewardChoice` options. Created by `RewardOfferFactory` based on the event source and optional `CombatRiskProfile` scaling.
+### RewardOption
 
-### RewardChoice
-
-**Owner:** Game Engine
-**Lifecycle:** Part of a RewardOffer; immutable after creation.
-
-A single option within a RewardOffer. Contains `RewardType`, `Label`, `Description`, and `PayloadKey`.
+Owner: Game Engine runtime snapshot. Target term for choices inside an offer. Avoid `RewardChoice` in new schema except when referring to legacy/current code.
 
 ### RunItem
 
-**Owner:** Game Engine
-**Lifecycle:** Created when player acquires an item during a run; persists until consumed or run ends.
-
-A runtime instance of an item. Snapshots display info from Catalog at acquisition time. Contains `EffectType` and `EffectAmount` for immediate application.
+Owner: Game Engine. Runtime item snapshot acquired during a run. It is not a permanent inventory item.
 
 ### RunModifier
 
-**Owner:** Game Engine
-**Lifecycle:** Created by items, laws, curses, or rewards; persists until duration expires or is consumed.
-
-A persistent modifier on the run. Applies its effect at the appropriate lifecycle point (combat start, round start, reward calculation).
+Owner: Game Engine. Runtime modifier created from EffectDefinitions. Applies to combat creation, reward generation, room selection, adaptive influence, or other runtime contexts.
 
 ### ActivePalaceLaw
 
-**Owner:** Game Engine
-**Lifecycle:** Created when player accepts a law; persists until run ends or law-specific duration expires.
-
-Records which palace law is active on the run. Associated `RunModifier`s are created simultaneously.
+Owner: Game Engine. Snapshot of an accepted Catalog law plus runtime expiration/consumption state.
 
 ### ActiveCurse
 
-**Owner:** Game Engine
-**Lifecycle:** Created when player encounters a curse node; persists until consumed or run ends.
+Owner: Game Engine. Snapshot of an applied Catalog curse plus runtime expiration/consumption state.
 
-Records which curse is active on the run. Associated `RunModifier`s are created simultaneously.
+## RunItem snapshot
+
+Catalog owns ItemDefinition. Game Engine owns the runtime item snapshot. A RunItem must remain stable even if Catalog changes after acquisition.
+
+Minimum RunItem snapshot:
+
+```text
+definition_key
+definition_version
+narrative_text
+item_type
+category
+rarity
+usage_mode
+lifecycle
+quantity
+max_stack
+effect_set_key or effect_summary
+is_usable_in_combat
+is_usable_outside_combat
+source_reward_option_id
+acquired_at_utc
+```
+
+Permanent inventory and permanent unlocks belong to Player or a future dedicated service if that domain grows.
 
 ## Flow diagrams
 
-### Reward → Item → Modifier → Combat effect
+### Reward -> Item/Modifier -> Runtime effect
 
 ```mermaid
 flowchart TD
-    A[Combat Victory] --> B[RewardOfferFactory creates RewardOffer]
-    B --> C[Player selects RewardChoice]
-    C --> D{RewardType?}
-    D -->|Heal| E[Apply HealVitality immediately]
-    D -->|TemporaryItem| F[Create RunItem in inventory]
-    D -->|StatBonus| G[Create RunModifier]
-    D -->|MemoryFragment| H[Add to Run.MemoryFragments]
-    F --> I[Player uses RunItem]
-    I --> J{EffectType?}
-    J -->|Heal| E
-    J -->|Guard| G
-    J -->|ManaRestore| K[Restore mana immediately]
-    J -->|ChargeRestore| L[Restore charge immediately]
-    G --> M[RunModifier persists on run]
-    M --> N[Next combat starts]
-    N --> O[RunModifier applied to combatant starting stats]
+    A[Reward-producing event] --> B[Game Engine creates RewardOffer]
+    B --> C[RewardOptions snapshotted]
+    C --> D{Selected option type}
+    D -->|TemporaryItem| E[Create RunItem snapshot]
+    D -->|Immediate effect| F[Apply runtime state change]
+    D -->|Modifier effect| G[Create RunModifier]
+    D -->|PermanentCandidate| H[Create outbox event on valid completion]
+    E --> I[Use item]
+    I --> J[Resolve snapshotted effect_set_key or effect_summary]
+    J --> F
+    J --> G
 ```
 
-### Law/Curse → Modifier → Combat/Reward effect
+### Law/Curse -> Modifier/Adaptive influence
 
 ```mermaid
 flowchart TD
-    A[Law/Curse Node Event] --> B{Event Type?}
-    B -->|Law| C[Player sees law description + preview]
-    C --> D{Player accepts?}
-    D -->|Yes| E[Create ActivePalaceLaw on run]
-    D -->|No| F[Event closed, no effect]
-    E --> G[Create RunModifier for each law effect]
-    B -->|Curse| H[Curse applied automatically]
-    H --> I[Create ActiveCurse on run]
-    I --> J[Create RunModifier for curse effect]
-    G --> K[Modifiers persist on run]
-    J --> K
-    K --> L{Modifier duration?}
-    L -->|UntilRunEnds| M[Persists until run ends]
-    L -->|NextCombatOnly| N[Applied to next combat, then consumed]
-    L -->|UntilRoomEnds| O[Applied until room completes]
+    A[Law or Curse event] --> B[Catalog definition key + version]
+    B --> C[Game Engine snapshots ActiveLaw/ActiveCurse]
+    C --> D[Resolve EffectSet]
+    D --> E{Effect type}
+    E -->|Numeric/stat| F[Create RunModifier]
+    E -->|Behavior/generation| G[Create AdaptiveInfluence]
+    F --> H[Combat/reward/runtime systems consume]
+    G --> I[Markov/adaptive context consumes]
 ```
 
-## Narrative examples
+## Examples
 
-### Éclat de garde (Guard Shard)
+### Eclat de garde
 
 ```text
-Source:     RewardOption after combat victory
-Definition: item.consumable.ecart-de-garde (Catalog, future)
-Flow:
-  1. Player defeats Fragment de Doute → RewardOffer created
-  2. RewardOffer includes "Éclat de garde" (RewardType = TemporaryItem)
-  3. Player selects → RunItem created:
-     - definition_key = "item.consumable.ecart-de-garde"
-     - effect_type = AddStartingGuard
-     - effect_amount = 8
-  4. Player uses item outside combat → RunModifier created:
-     - type = StartingGuardBonus
-     - value = 8
-     - value_mode = Flat
-     - duration = UntilRunEnds
-     - stack_policy = Additive
-  5. Next combat: effective_starting_guard = 0 + 8 = 8
-  6. Second Éclat: +8 more → effective_starting_guard = 16
-  7. Capped at MaxStartingGuardBonus = 30
+Catalog key:
+item.consumable.eclat-de-garde
+
+EffectSet:
+AddStartingGuard +8, Flat, Additive, UntilRunEnds
+
+Runtime:
+RunItem snapshots display and effect summary at acquisition.
+When used, Game Engine creates a RunModifier.
+Next combat computes starting_guard from immutable character snapshot + active modifiers.
 ```
 
-### Baume de mémoire (Memory Balm)
+### Baume de memoire
 
 ```text
-Source:     Merchant event or item node
-Definition: item.consumable.baume-de-memoire (Catalog, future)
-Flow:
-  1. Player acquires item → RunItem created:
-     - definition_key = "item.consumable.baume-de-memoire"
-     - effect_type = HealVitality
-     - effect_amount = 25
-  2. Player uses in combat → current_vitality += 25 (capped at max_vitality)
-  3. Quantity decremented by 1
-  4. No RunModifier created (Immediate effect)
+Catalog key:
+item.consumable.baume-de-memoire
+
+EffectSet:
+HealVitality +25, Flat, Immediate
+
+Runtime:
+RunItem snapshots the item. When used in combat, Game Engine applies healing to runtime state and records future metrics.
 ```
 
-### Souffle Lourd (Heavy Breath — Curse)
+### La Mefiance des Echos
 
 ```text
-Source:     Curse node event
-Definition: curse.threshold.souffle-lourd (Catalog, future)
-Flow:
-  1. Player encounters curse node → ResolveCurrentEvent
-  2. CurseDefinition: severity=1, effects=[ModifyDifficultyMultiplier +0.10]
-  3. ActiveCurse created:
-     - key = "curse.threshold.souffle-lourd"
-     - display_name = "Souffle Lourd"
-     - difficulty_delta = +0.10
-  4. RunModifier created:
-     - type = NextCombatDifficultyMultiplier
-     - value = 0.10
-     - duration = NextCombatOnly
-     - source_type = Curse
-  5. Next combat: difficulty_multiplier = 1.0 + 0.10 = 1.10
-  6. Enemy stats scaled by ×1.10
-  7. After combat: modifier consumed, ActiveCurse cleared
+Catalog key:
+law.threshold.mefiance-des-echos
+
+EffectSet:
+ModifyEnemyBehavior, BehaviorTag=behavior.paranoid, Value=0.15, UntilRoomEnds
+
+Runtime:
+ActivePalaceLaw is snapshotted.
+Game Engine creates a runtime adaptive influence.
+Future enemy AI and Markov/adaptive selection may consume the influence without exposing matrices.
 ```
 
-### Le Poids du Silence (The Weight of Silence — Law)
+### Souffle Lourd
 
 ```text
-Source:     Law node event
-Definition: law.threshold.silence-weight (Catalog)
-Flow:
-  1. Player encounters law node → sees description + effect preview
-  2. Player accepts → ActivePalaceLaw created:
-     - key = "law.threshold.silence-weight"
-     - display_name = "Le Poids du Silence"
-  3. Two RunModifiers created:
-     a. StartingGuardBonus +5, UntilRunEnds, Additive
-     b. PermanentCombatDifficultyBonus +0.05, UntilRunEnds, Additive
-  4. All subsequent combats:
-     - starting_guard += 5
-     - difficulty_multiplier += 0.05
-  5. Persists until run ends (completed/failed/abandoned)
-```
+Catalog key:
+curse.threshold.souffle-lourd
 
-### Don Terni (Tarnished Gift — NPC reward)
+EffectSet:
+ModifyDifficultyMultiplier +0.10, Flat, NextCombatOnly
 
-```text
-Source:     NPC event with reward
-Definition: npc reward (Catalog, future)
-Flow:
-  1. Player meets NPC → interaction resolved
-  2. NPC offers "Don Terni" as reward
-  3. RewardType = TemporaryItem, payload = "item.consumable.don-terni"
-  4. RunItem created with HealVitality +15
-  5. Usable in or out of combat
-```
-
-### Éclat retrouvé (Rediscovered Shard — Rest event)
-
-```text
-Source:     Rest node event
-Flow:
-  1. Player selects rest node → ResolveCurrentEvent
-  2. Rest event resolves: recovery_ratio = 30 (percent of max_vitality)
-  3. HealVitality applied: current_vitality += max_vitality * 0.30
-  4. No RunModifier created (Immediate effect)
+Runtime:
+ActiveCurse is snapshotted.
+RunModifier is consumed after the next combat.
 ```
 
 ## Duration expiration rules
 
 | Duration | Expires when | Behavior |
-|----------|-------------|----------|
-| `Immediate` | Applied once | No persistence |
-| `CurrentCombat` | Combat ends | Cleared when combat completes/fails |
-| `NextCombatOnly` | Next combat ends | Consumed after next combat |
-| `NextRewardOnly` | Next reward selected | Consumed after next reward selection |
-| `UntilRoomEnds` | Current room completes | Cleared when room state = Completed |
-| `UntilRunEnds` | Run ends | Cleared when run = Completed/Failed/Abandoned |
-| `PermanentCandidate` | Run completes successfully | Projected to Player via outbox |
+|----------|--------------|----------|
+| `Immediate` | immediately after application | no persisted modifier |
+| `CurrentCombat` | combat ends | combat effect removed |
+| `NextCombatOnly` | next combat resolves | modifier consumed |
+| `NextRewardOnly` | next reward offer resolves | modifier consumed |
+| `UntilRoomEnds` | current room resolves | modifier consumed |
+| `UntilRunEnds` | run terminal state | modifier archived with run |
+| `PermanentCandidate` | successful run completion | outbox projection to Player |
 
 ## Stack policy rules
 
-| Policy | Behavior | Example |
-|--------|----------|---------|
-| `None` | New instance rejected if one exists | Unique curse |
-| `Additive` | Values summed | +8 guard + +5 guard = +13 guard |
-| `HighestOnly` | Only highest value active | Multiple speed buffs |
-| `RefreshDuration` | New instance refreshes timer | Temporary buff re-application |
-| `Replace` | New instance replaces old | Curse replacement |
+| Policy | Behavior |
+|--------|----------|
+| `None` | reject duplicate active instance |
+| `Additive` | sum values |
+| `HighestOnly` | keep highest value |
+| `RefreshDuration` | keep value and refresh duration |
+| `Replace` | replace active instance |
+| `UniqueBySource` | one active instance per source key |
+
+## Frontend note
+
+Frontend may display local reward/item/law/curse feedback. It does not own effect truth. Backend runtime state and future official metrics are authoritative.

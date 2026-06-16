@@ -2,7 +2,7 @@
 game-engine-alpha-0.6.6
 web-alpha-0.6.3
 player-service-alpha-0.1.0
-data-model-alpha-0.0.0
+data-model-alpha-0.0.1-rc2
 
 > RPG roguelite narratif full web — Palais mental — Runs procédurales — Backend serveur-autoritaire.
 

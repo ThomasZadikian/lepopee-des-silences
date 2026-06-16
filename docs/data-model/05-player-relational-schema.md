@@ -1,211 +1,155 @@
 # 05 — Player relational schema
 
+Version: `data-model-0.1-rc2`
+
 ## Overview
 
-The Player service owns permanent player progression. This document defines the target relational schema for all Player tables.
+Player owns permanent gameplay progression. It does not own runtime combat state and does not own Catalog definitions. Player links to Identity only through a stable subject id, without cross-database foreign keys.
+
+## Identity relationship
+
+Target optional field on `player_profiles`:
+
+```text
+auth_subject_id VARCHAR(160) NULL
+```
+
+Rules:
+
+- Player does not foreign-key to Identity.
+- Player stores only the stable authentication subject id.
+- Identity owns credentials, MFA, sessions, security, and account lifecycle.
+- Player owns gameplay profile, characters, permanent progression, unlocks, and run statistics.
+- `auth_subject_id` is the target field name for data-model-0.1.
 
 ## player_profiles
 
-Core player identity and progression statistics.
-
-| Column | Type | Nullable | Default | Description |
-|--------|------|----------|---------|-------------|
-| `id` | UUID | NOT NULL | gen_random_uuid() | Primary key |
-| `display_name` | VARCHAR(128) | NOT NULL | — | Player display name |
-| `total_runs_started` | INT | NOT NULL | 0 | Lifetime runs started |
-| `total_runs_completed` | INT | NOT NULL | 0 | Lifetime runs completed |
-| `total_runs_failed` | INT | NOT NULL | 0 | Lifetime runs failed |
-| `total_runs_abandoned` | INT | NOT NULL | 0 | Lifetime runs abandoned |
-| `created_at_utc` | TIMESTAMPTZ | NOT NULL | now() | Profile creation timestamp |
-| `updated_at_utc` | TIMESTAMPTZ | NOT NULL | now() | Last update timestamp |
-
-**Primary key:** `id`
-**Unique constraints:** none (id is sufficient)
-**Indexes:** `created_at_utc`
-**Relations:** 1:N → `player_characters`
-
-**Current state:** Implemented. Progression stats are embedded directly in `player_profiles` rather than in a separate `player_progression` table. This is acceptable for the current scope.
-
----
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | UUID PK | player profile id |
+| `auth_subject_id` | VARCHAR(160) NULL | stable Identity subject id, no FK |
+| `display_name` | VARCHAR(128) NOT NULL | display name |
+| `total_runs_started` | INT NOT NULL DEFAULT 0 | lifetime counter |
+| `total_runs_completed` | INT NOT NULL DEFAULT 0 | lifetime counter |
+| `total_runs_failed` | INT NOT NULL DEFAULT 0 | lifetime counter |
+| `total_runs_abandoned` | INT NOT NULL DEFAULT 0 | lifetime counter |
+| `created_at_utc` | TIMESTAMPTZ NOT NULL | creation timestamp |
+| `updated_at_utc` | TIMESTAMPTZ NOT NULL | update timestamp |
 
 ## player_characters
 
-Characters owned by a player. Each character has permanent base stats.
+Character identity/display data only. Permanent stats live in `player_character_stat_blocks`.
 
-| Column | Type | Nullable | Default | Description |
-|--------|------|----------|---------|-------------|
-| `id` | UUID | NOT NULL | gen_random_uuid() | Primary key |
-| `player_profile_id` | UUID | NOT NULL | — | FK → `player_profiles.id` (CASCADE) |
-| `definition_key` | VARCHAR(160) | NOT NULL | — | Character definition key (e.g., `character.player.self`) |
-| `display_name` | VARCHAR(256) | NOT NULL | — | Character display name |
-| `character_type` | VARCHAR(64) | NOT NULL | 'standard' | Character type classification |
-| `status` | VARCHAR(32) | NOT NULL | 'active' | Character status |
-| `created_at_utc` | TIMESTAMPTZ | NOT NULL | now() | Creation timestamp |
-| `updated_at_utc` | TIMESTAMPTZ | NOT NULL | now() | Last update timestamp |
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | UUID PK | character id |
+| `player_profile_id` | UUID NOT NULL FK | owning profile |
+| `definition_key` | VARCHAR(160) NOT NULL | e.g. `character.player.self` |
+| `display_name` | VARCHAR(256) NOT NULL | display name |
+| `character_type` | VARCHAR(64) NOT NULL DEFAULT 'Standard' | character type |
+| `status` | VARCHAR(32) NOT NULL DEFAULT 'Active' | Active, Disabled, Retired |
+| `created_at_utc` | TIMESTAMPTZ NOT NULL | creation timestamp |
+| `updated_at_utc` | TIMESTAMPTZ NOT NULL | update timestamp |
 
-**Primary key:** `id`
-**Unique constraints:** `(player_profile_id, definition_key)` — one character per definition per player
-**Indexes:** `player_profile_id`, `definition_key`
-**Relations:** FK → `player_profiles.id` (N:1, CASCADE); 1:1 → `player_character_stat_blocks`; 1:N → `player_character_skills`
-
-**Current state:** Partially implemented. Missing `character_type`, `status`, `updated_at_utc`. `SkillKeys` stored as JSON column (`skill_keys_json`) rather than relational table.
-
----
+Unique: `(player_profile_id, definition_key)`.
 
 ## player_character_stat_blocks
 
-Permanent base stats for player characters. Separated from `player_characters` to follow the same pattern as `catalog_enemy_stat_blocks`.
+One-to-one child of `player_characters`. The parent does not carry `stat_block_id`.
 
-| Column | Type | Nullable | Default | Description |
-|--------|------|----------|---------|-------------|
-| `id` | UUID | NOT NULL | gen_random_uuid() | Primary key |
-| `player_character_id` | UUID | NOT NULL | — | FK → `player_characters.id` (UNIQUE, CASCADE) |
-| `max_vitality` | INT | NOT NULL | 100 | Permanent max vitality |
-| `attack_power` | INT | NOT NULL | 12 | Permanent attack power |
-| `defense` | INT | NOT NULL | 6 | Permanent defense |
-| `starting_guard` | INT | NOT NULL | 0 | Permanent starting guard |
-| `speed` | INT | NOT NULL | 10 | Permanent speed |
-| `initiative` | INT | NOT NULL | 10 | Permanent initiative (ATB-ready) |
-| `recovery` | INT | NOT NULL | 5 | Permanent recovery (ATB-ready) |
-| `focus` | INT | NOT NULL | 0 | Permanent focus |
-| `mana` | INT | NOT NULL | 0 | Permanent base mana |
-| `charge` | INT | NOT NULL | 0 | Permanent base charge |
-
-**Primary key:** `id`
-**Unique constraints:** `player_character_id`
-**Indexes:** none additional
-**Relations:** FK → `player_characters.id` (1:1, CASCADE)
-
-**Current state:** Not yet exists. Stats are currently embedded in `player_characters` as `MaxVitality`, `BaseMana`, `BaseCharge`. Missing `attack_power`, `defense`, `starting_guard`, `speed`, `initiative`, `recovery`, `focus`.
-
-**Default values for "Le Porteur" (character.player.self):**
-- `max_vitality` = 100
-- `attack_power` = 12
-- `defense` = 6
-- `starting_guard` = 0
-- `speed` = 10
-- `initiative` = 10
-- `recovery` = 5
-- `focus` = 0
-- `mana` = 0
-- `charge` = 0
-
----
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | UUID PK | stat block id |
+| `player_character_id` | UUID UNIQUE NOT NULL FK | parent character |
+| `max_vitality` | INT NOT NULL DEFAULT 100 | permanent max vitality |
+| `attack_power` | INT NOT NULL DEFAULT 12 | permanent attack |
+| `defense` | INT NOT NULL DEFAULT 6 | permanent defense |
+| `starting_guard` | INT NOT NULL DEFAULT 0 | permanent starting guard |
+| `speed` | INT NOT NULL DEFAULT 10 | permanent speed |
+| `initiative` | INT NOT NULL DEFAULT 10 | ATB-ready |
+| `recovery` | INT NOT NULL DEFAULT 5 | ATB-ready |
+| `focus` | INT NOT NULL DEFAULT 0 | base focus |
+| `mana` | INT NOT NULL DEFAULT 0 | base mana |
+| `charge` | INT NOT NULL DEFAULT 0 | base charge |
 
 ## player_character_skills
 
-Skills unlocked on a player character. Replaces the current `skill_keys_json` JSON column.
+Relational replacement for `skill_keys_json`.
 
-| Column | Type | Nullable | Default | Description |
-|--------|------|----------|---------|-------------|
-| `id` | UUID | NOT NULL | gen_random_uuid() | Primary key |
-| `player_character_id` | UUID | NOT NULL | — | FK → `player_characters.id` (CASCADE) |
-| `skill_definition_key` | VARCHAR(160) | NOT NULL | — | Reference to `catalog_skill_definitions.key` |
-| `unlocked_at_utc` | TIMESTAMPTZ | NOT NULL | now() | When skill was unlocked |
-| `source` | VARCHAR(64) | NULL | NULL | How skill was unlocked (default, run_reward, permanent_unlock) |
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | UUID PK | row id |
+| `player_character_id` | UUID NOT NULL FK | parent character |
+| `skill_definition_key` | VARCHAR(160) NOT NULL | Catalog skill key |
+| `unlocked_at_utc` | TIMESTAMPTZ NOT NULL | unlock time |
+| `source` | VARCHAR(64) NULL | Default, Reward, PermanentUnlock, etc. |
 
-**Primary key:** `id`
-**Unique constraints:** `(player_character_id, skill_definition_key)`
-**Indexes:** `player_character_id`, `skill_definition_key`
-**Relations:** FK → `player_characters.id` (N:1, CASCADE)
-
-**Current state:** Not yet exists. Skills stored as JSON array in `skill_keys_json`.
-
----
-
-## player_progression
-
-Run statistics per player. Currently embedded in `player_profiles` as direct columns.
-
-**Decision:** Keep embedded in `player_profiles` for now. The current 4 counters (`total_runs_started`, `total_runs_completed`, `total_runs_failed`, `total_runs_abandoned`) do not warrant a separate table. If additional progression stats are added (e.g., total combats won, total damage dealt, best depth reached), consider extracting to a separate table.
-
----
+Unique: `(player_character_id, skill_definition_key)`.
 
 ## player_permanent_unlocks
 
-Permanent unlocks obtained during runs, projected via outbox from Game Engine.
+Permanent unlocks projected by Game Engine outbox after accepted gameplay events.
 
-| Column | Type | Nullable | Default | Description |
-|--------|------|----------|---------|-------------|
-| `id` | UUID | NOT NULL | gen_random_uuid() | Primary key |
-| `player_profile_id` | UUID | NOT NULL | — | FK → `player_profiles.id` (CASCADE) |
-| `unlock_key` | VARCHAR(160) | NOT NULL | — | Unlock identifier (e.g., `unlock.skill.advanced-strike`) |
-| `unlock_type` | VARCHAR(64) | NOT NULL | — | Type (skill, item, law, character, cosmetic) |
-| `source_run_id` | UUID | NULL | NULL | Run ID that granted this unlock |
-| `unlocked_at_utc` | TIMESTAMPTZ | NOT NULL | now() | When unlock was granted |
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | UUID PK | unlock row id |
+| `player_profile_id` | UUID NOT NULL FK | owning profile |
+| `unlock_key` | VARCHAR(160) NOT NULL | stable unlock key |
+| `unlock_type` | VARCHAR(64) NOT NULL | Skill, Item, Law, Character, Cosmetic, etc. |
+| `source_run_id` | UUID NULL | Game Engine run id, no FK |
+| `unlocked_at_utc` | TIMESTAMPTZ NOT NULL | unlock time |
 
-**Primary key:** `id`
-**Unique constraints:** `(player_profile_id, unlock_key)`
-**Indexes:** `player_profile_id`, `unlock_type`
-**Relations:** FK → `player_profiles.id` (N:1, CASCADE)
-
-**Current state:** Not yet exists. Future implementation via Game Engine outbox → Player integration event.
-
----
+Unique: `(player_profile_id, unlock_key)`.
 
 ## player_run_statistics
 
-Detailed per-run statistics. Future table for richer run history.
+Future per-run statistics projected from Game Engine. This is not the source for active runs.
 
-| Column | Type | Nullable | Default | Description |
-|--------|------|----------|---------|-------------|
-| `id` | UUID | NOT NULL | gen_random_uuid() | Primary key |
-| `player_profile_id` | UUID | NOT NULL | — | FK → `player_profiles.id` (CASCADE) |
-| `run_id` | UUID | NOT NULL | — | Game Engine run ID |
-| `seed` | VARCHAR(128) | NOT NULL | — | Run seed |
-| `final_depth` | INT | NOT NULL | — | Final room depth reached |
-| `outcome` | VARCHAR(32) | NOT NULL | — | completed / failed / abandoned |
-| `generator_version` | VARCHAR(64) | NOT NULL | — | Generator version used |
-| `started_at_utc` | TIMESTAMPTZ | NULL | NULL | Run start time |
-| `ended_at_utc` | TIMESTAMPTZ | NULL | NULL | Run end time |
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | UUID PK | statistic row id |
+| `player_profile_id` | UUID NOT NULL FK | owning profile |
+| `run_id` | UUID UNIQUE NOT NULL | Game Engine run id, no FK |
+| `seed` | VARCHAR(128) NOT NULL | run seed |
+| `final_depth` | INT NOT NULL | final depth |
+| `outcome` | VARCHAR(32) NOT NULL | Completed, Failed, Abandoned |
+| `generator_version` | VARCHAR(64) NOT NULL | generator version |
+| `started_at_utc` | TIMESTAMPTZ NULL | start time |
+| `ended_at_utc` | TIMESTAMPTZ NULL | end time |
+| `combats_won` | INT NOT NULL DEFAULT 0 | future metric |
+| `combats_lost` | INT NOT NULL DEFAULT 0 | future metric |
+| `total_vitality_damage_dealt` | INT NOT NULL DEFAULT 0 | future metric |
+| `total_vitality_damage_taken` | INT NOT NULL DEFAULT 0 | future metric |
+| `total_guard_absorbed` | INT NOT NULL DEFAULT 0 | future metric |
+| `total_healing_done` | INT NOT NULL DEFAULT 0 | future metric |
+| `total_items_used` | INT NOT NULL DEFAULT 0 | future metric |
 
-**Primary key:** `id`
-**Unique constraints:** `run_id`
-**Indexes:** `player_profile_id`, `outcome`, `ended_at_utc`
-**Relations:** FK → `player_profiles.id` (N:1, CASCADE)
-
-**Current state:** Not yet exists. Currently only progression counters exist. Run details are ephemeral in Game Engine and not projected to Player.
-
----
+These metrics are projected from backend-authoritative Game Engine data, not frontend meters.
 
 ## player_processed_integration_events
 
-Idempotency tracking for integration events consumed from Game Engine outbox.
+Idempotency table for consumed outbox events.
 
-| Column | Type | Nullable | Default | Description |
-|--------|------|----------|---------|-------------|
-| `event_id` | UUID | NOT NULL | — | Primary key (event ID) |
-| `type` | VARCHAR(128) | NOT NULL | — | Event type string |
-| `processed_at_utc` | TIMESTAMPTZ | NOT NULL | — | When event was processed |
+| Column | Type | Notes |
+|--------|------|-------|
+| `event_id` | UUID PK | integration event id |
+| `type` | VARCHAR(128) NOT NULL | event type |
+| `processed_at_utc` | TIMESTAMPTZ NOT NULL | processing timestamp |
 
-**Primary key:** `event_id`
-**Unique constraints:** none additional
-**Indexes:** `processed_at_utc`
-**Relations:** none
-
-**Current state:** Implemented.
-
----
-
-## ERD (Player)
+## ERD
 
 ```mermaid
 erDiagram
     player_profiles ||--o{ player_characters : "owns"
     player_profiles ||--o{ player_permanent_unlocks : "owns"
-    player_profiles ||--o{ player_run_statistics : "owns"
+    player_profiles ||--o{ player_run_statistics : "receives"
     player_characters ||--|| player_character_stat_blocks : "has"
     player_characters ||--o{ player_character_skills : "has"
 
     player_profiles {
         uuid id PK
+        varchar auth_subject_id
         varchar display_name
-        int total_runs_started
-        int total_runs_completed
-        int total_runs_failed
-        int total_runs_abandoned
-        timestamptz created_at_utc
-        timestamptz updated_at_utc
     }
 
     player_characters {
@@ -213,10 +157,6 @@ erDiagram
         uuid player_profile_id FK
         varchar definition_key
         varchar display_name
-        varchar character_type
-        varchar status
-        timestamptz created_at_utc
-        timestamptz updated_at_utc
     }
 
     player_character_stat_blocks {
@@ -232,28 +172,5 @@ erDiagram
         int focus
         int mana
         int charge
-    }
-
-    player_character_skills {
-        uuid id PK
-        uuid player_character_id FK
-        varchar skill_definition_key
-        timestamptz unlocked_at_utc
-        varchar source
-    }
-
-    player_permanent_unlocks {
-        uuid id PK
-        uuid player_profile_id FK
-        varchar unlock_key
-        varchar unlock_type
-        uuid source_run_id
-        timestamptz unlocked_at_utc
-    }
-
-    player_processed_integration_events {
-        uuid event_id PK
-        varchar type
-        timestamptz processed_at_utc
     }
 ```
