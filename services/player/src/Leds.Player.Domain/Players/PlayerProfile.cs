@@ -50,10 +50,12 @@ public sealed class PlayerProfile
         var defaultCharacter = PlayerCharacter.Create(
             definitionKey: "character.player.self",
             displayName: "Le Porteur",
-            maxVitality: 100,
-            baseMana: 0,
-            baseCharge: 0,
-            skillKeys: ["skill.basic.strike", "skill.basic.guard"]);
+            statBlock: PlayerCharacterStatBlock.CreateDefaultPorteur(),
+            skills:
+            [
+                PlayerCharacterSkill.Create("skill.basic.strike", CreatedAtUtc, "default"),
+                PlayerCharacterSkill.Create("skill.basic.guard", CreatedAtUtc, "default")
+            ]);
 
         Roster.AddCharacter(defaultCharacter);
     }

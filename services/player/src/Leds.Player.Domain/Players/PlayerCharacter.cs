@@ -4,33 +4,37 @@ namespace Leds.Player.Domain.Players;
 
 public sealed class PlayerCharacter
 {
-    private readonly List<string> _skillKeys;
+    private readonly List<PlayerCharacterSkill> _skills;
 
     private PlayerCharacter(
         PlayerCharacterId id,
         string definitionKey,
         string displayName,
-        int maxVitality,
-        int baseMana,
-        int baseCharge,
-        IReadOnlyCollection<string> skillKeys)
+        string characterType,
+        string status,
+        PlayerCharacterStatBlock statBlock,
+        IReadOnlyCollection<PlayerCharacterSkill> skills)
     {
         Id = id;
         DefinitionKey = definitionKey;
         DisplayName = displayName;
-        MaxVitality = maxVitality;
-        BaseMana = baseMana;
-        BaseCharge = baseCharge;
-        _skillKeys = skillKeys.ToList();
+        CharacterType = characterType;
+        Status = status;
+        StatBlock = statBlock;
+        _skills = skills.ToList();
     }
 
     public PlayerCharacterId Id { get; }
     public string DefinitionKey { get; }
     public string DisplayName { get; }
-    public int MaxVitality { get; }
-    public int BaseMana { get; }
-    public int BaseCharge { get; }
-    public IReadOnlyCollection<string> SkillKeys => _skillKeys.AsReadOnly();
+    public string CharacterType { get; }
+    public string Status { get; }
+    public PlayerCharacterStatBlock StatBlock { get; }
+    public int MaxVitality => StatBlock.MaxVitality;
+    public int BaseMana => StatBlock.Mana;
+    public int BaseCharge => StatBlock.Charge;
+    public IReadOnlyCollection<PlayerCharacterSkill> Skills => _skills.AsReadOnly();
+    public IReadOnlyCollection<string> SkillKeys => _skills.Select(s => s.SkillDefinitionKey).ToArray();
 
     public static PlayerCharacter Create(
         string definitionKey,
@@ -46,14 +50,17 @@ public sealed class PlayerCharacter
         if (string.IsNullOrWhiteSpace(displayName))
             throw new DomainException("Character display name is required.");
 
-        if (maxVitality <= 0)
-            throw new DomainException("Max vitality must be greater than zero.");
-
-        if (baseMana < 0)
-            throw new DomainException("Base mana cannot be negative.");
-
-        if (baseCharge < 0)
-            throw new DomainException("Base charge cannot be negative.");
+        var statBlock = PlayerCharacterStatBlock.Create(
+            maxVitality,
+            attackPower: 12,
+            defense: 6,
+            startingGuard: 0,
+            speed: 10,
+            initiative: 10,
+            recovery: 5,
+            focus: 0,
+            mana: baseMana,
+            charge: baseCharge);
 
         if (skillKeys is null || skillKeys.Count == 0)
             throw new DomainException("Character must have at least one skill.");
@@ -61,14 +68,62 @@ public sealed class PlayerCharacter
         if (skillKeys.Any(string.IsNullOrWhiteSpace))
             throw new DomainException("Skill keys cannot be empty.");
 
+        var now = DateTimeOffset.UtcNow;
+        var skills = skillKeys
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Select(key => PlayerCharacterSkill.Create(key, now, "default"))
+            .ToArray();
+
         return new PlayerCharacter(
             PlayerCharacterId.New(),
             definitionKey.Trim(),
             displayName.Trim(),
-            maxVitality,
-            baseMana,
-            baseCharge,
-            skillKeys);
+            "Standard",
+            "Active",
+            statBlock,
+            skills);
+    }
+
+    public static PlayerCharacter Create(
+        string definitionKey,
+        string displayName,
+        PlayerCharacterStatBlock statBlock,
+        IReadOnlyCollection<PlayerCharacterSkill> skills,
+        string characterType = "Standard",
+        string status = "Active")
+    {
+        if (string.IsNullOrWhiteSpace(definitionKey))
+            throw new DomainException("Character definition key is required.");
+
+        if (string.IsNullOrWhiteSpace(displayName))
+            throw new DomainException("Character display name is required.");
+
+        ArgumentNullException.ThrowIfNull(statBlock);
+
+        if (skills is null || skills.Count == 0)
+            throw new DomainException("Character must have at least one skill.");
+
+        if (skills.Select(s => s.SkillDefinitionKey).Distinct(StringComparer.OrdinalIgnoreCase).Count() != skills.Count)
+            throw new DomainException("Character cannot contain duplicate skills.");
+
+        return new PlayerCharacter(
+            PlayerCharacterId.New(),
+            definitionKey.Trim(),
+            displayName.Trim(),
+            string.IsNullOrWhiteSpace(characterType) ? "Standard" : characterType.Trim(),
+            string.IsNullOrWhiteSpace(status) ? "Active" : status.Trim(),
+            statBlock,
+            skills);
+    }
+
+    public void AddSkill(PlayerCharacterSkill skill)
+    {
+        ArgumentNullException.ThrowIfNull(skill);
+
+        if (_skills.Any(s => string.Equals(s.SkillDefinitionKey, skill.SkillDefinitionKey, StringComparison.OrdinalIgnoreCase)))
+            return;
+
+        _skills.Add(skill);
     }
 
     /// <summary>
@@ -84,6 +139,43 @@ public sealed class PlayerCharacter
         int baseCharge,
         IReadOnlyCollection<string> skillKeys)
     {
-        return new PlayerCharacter(id, definitionKey, displayName, maxVitality, baseMana, baseCharge, skillKeys);
+        var statBlock = PlayerCharacterStatBlock.Create(
+            maxVitality,
+            attackPower: 12,
+            defense: 6,
+            startingGuard: 0,
+            speed: 10,
+            initiative: 10,
+            recovery: 5,
+            focus: 0,
+            mana: baseMana,
+            charge: baseCharge);
+
+        var now = DateTimeOffset.UtcNow;
+        var skills = skillKeys
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Select(key => PlayerCharacterSkill.Create(key, now, "legacy_migration"))
+            .ToArray();
+
+        return Rehydrate(id, definitionKey, displayName, "Standard", "Active", statBlock, skills);
+    }
+
+    public static PlayerCharacter Rehydrate(
+        PlayerCharacterId id,
+        string definitionKey,
+        string displayName,
+        string characterType,
+        string status,
+        PlayerCharacterStatBlock statBlock,
+        IReadOnlyCollection<PlayerCharacterSkill> skills)
+    {
+        return new PlayerCharacter(
+            id,
+            definitionKey,
+            displayName,
+            string.IsNullOrWhiteSpace(characterType) ? "Standard" : characterType,
+            string.IsNullOrWhiteSpace(status) ? "Active" : status,
+            statBlock,
+            skills);
     }
 }

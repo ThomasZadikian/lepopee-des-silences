@@ -19,6 +19,9 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
     {
         var entity = await _context.PlayerProfiles
             .Include(p => p.Characters)
+                .ThenInclude(c => c.StatBlock)
+            .Include(p => p.Characters)
+                .ThenInclude(c => c.Skills)
             .FirstOrDefaultAsync(p => p.Id == id.Value, cancellationToken);
 
         return entity is null ? null : ToDomain(entity);
@@ -28,6 +31,9 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
     {
         var existing = await _context.PlayerProfiles
             .Include(p => p.Characters)
+                .ThenInclude(c => c.StatBlock)
+            .Include(p => p.Characters)
+                .ThenInclude(c => c.Skills)
             .FirstOrDefaultAsync(p => p.Id == profile.Id.Value, cancellationToken);
 
         if (existing is null)
@@ -64,7 +70,12 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
                 BaseMana = c.BaseMana,
                 BaseCharge = c.BaseCharge,
                 SkillKeysJson = JsonSerializer.Serialize(c.SkillKeys),
-                CreatedAtUtc = profile.CreatedAtUtc
+                CharacterType = c.CharacterType,
+                Status = c.Status,
+                CreatedAtUtc = profile.CreatedAtUtc,
+                UpdatedAtUtc = profile.UpdatedAtUtc,
+                StatBlock = ToStatBlockEntity(c),
+                Skills = c.Skills.Select(ToSkillEntity).ToList()
             }).ToList()
         };
     }
@@ -89,7 +100,12 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
                 BaseMana = c.BaseMana,
                 BaseCharge = c.BaseCharge,
                 SkillKeysJson = JsonSerializer.Serialize(c.SkillKeys),
-                CreatedAtUtc = incoming.CreatedAtUtc
+                CharacterType = c.CharacterType,
+                Status = c.Status,
+                CreatedAtUtc = incoming.CreatedAtUtc,
+                UpdatedAtUtc = incoming.UpdatedAtUtc,
+                StatBlock = ToStatBlockEntity(c),
+                Skills = c.Skills.Select(ToSkillEntity).ToList()
             })
             .ToList();
 
@@ -101,15 +117,47 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
     {
         var characters = entity.Characters.Select(c =>
         {
-            var skillKeys = JsonSerializer.Deserialize<List<string>>(c.SkillKeysJson) ?? [];
+            var statBlock = c.StatBlock is null
+                ? PlayerCharacterStatBlock.Create(
+                    c.MaxVitality,
+                    attackPower: 12,
+                    defense: 6,
+                    startingGuard: 0,
+                    speed: 10,
+                    initiative: 10,
+                    recovery: 5,
+                    focus: 0,
+                    mana: c.BaseMana,
+                    charge: c.BaseCharge)
+                : PlayerCharacterStatBlock.Create(
+                    c.StatBlock.MaxVitality,
+                    c.StatBlock.AttackPower,
+                    c.StatBlock.Defense,
+                    c.StatBlock.StartingGuard,
+                    c.StatBlock.Speed,
+                    c.StatBlock.Initiative,
+                    c.StatBlock.Recovery,
+                    c.StatBlock.Focus,
+                    c.StatBlock.Mana,
+                    c.StatBlock.Charge);
+
+            var skills = c.Skills.Count == 0
+                ? (JsonSerializer.Deserialize<List<string>>(c.SkillKeysJson) ?? [])
+                    .Select(key => PlayerCharacterSkill.Create(key, c.CreatedAtUtc, "legacy_migration"))
+                    .ToArray()
+                : c.Skills
+                    .OrderBy(s => s.UnlockedAtUtc)
+                    .Select(s => PlayerCharacterSkill.Create(s.SkillDefinitionKey, s.UnlockedAtUtc, s.Source))
+                    .ToArray();
+
             return PlayerCharacter.Rehydrate(
                 new PlayerCharacterId(c.Id),
                 c.DefinitionKey,
                 c.DisplayName,
-                c.MaxVitality,
-                c.BaseMana,
-                c.BaseCharge,
-                skillKeys);
+                c.CharacterType,
+                c.Status,
+                statBlock,
+                skills);
         }).ToList();
 
         var roster = PlayerRoster.Rehydrate(characters);
@@ -127,5 +175,35 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
             progression,
             entity.CreatedAtUtc,
             entity.UpdatedAtUtc);
+    }
+
+    private static PlayerCharacterStatBlockEntity ToStatBlockEntity(PlayerCharacter character)
+    {
+        return new PlayerCharacterStatBlockEntity
+        {
+            Id = Guid.NewGuid(),
+            PlayerCharacterId = character.Id.Value,
+            MaxVitality = character.StatBlock.MaxVitality,
+            AttackPower = character.StatBlock.AttackPower,
+            Defense = character.StatBlock.Defense,
+            StartingGuard = character.StatBlock.StartingGuard,
+            Speed = character.StatBlock.Speed,
+            Initiative = character.StatBlock.Initiative,
+            Recovery = character.StatBlock.Recovery,
+            Focus = character.StatBlock.Focus,
+            Mana = character.StatBlock.Mana,
+            Charge = character.StatBlock.Charge
+        };
+    }
+
+    private static PlayerCharacterSkillEntity ToSkillEntity(PlayerCharacterSkill skill)
+    {
+        return new PlayerCharacterSkillEntity
+        {
+            Id = Guid.NewGuid(),
+            SkillDefinitionKey = skill.SkillDefinitionKey,
+            UnlockedAtUtc = skill.UnlockedAtUtc,
+            Source = skill.Source
+        };
     }
 }

@@ -1,0 +1,101 @@
+using Leds.Player.Infrastructure.Persistence.Entities;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
+namespace Leds.Player.Infrastructure.Persistence.Configurations;
+
+public sealed class PlayerCharacterStatBlockEntityConfiguration : IEntityTypeConfiguration<PlayerCharacterStatBlockEntity>
+{
+    public void Configure(EntityTypeBuilder<PlayerCharacterStatBlockEntity> builder)
+    {
+        builder.ToTable("player_character_stat_blocks");
+        builder.HasKey(s => s.Id);
+        builder.Property(s => s.Id).HasColumnName("id");
+        builder.Property(s => s.PlayerCharacterId).HasColumnName("player_character_id");
+        builder.Property(s => s.MaxVitality).HasColumnName("max_vitality").HasDefaultValue(100);
+        builder.Property(s => s.AttackPower).HasColumnName("attack_power").HasDefaultValue(12);
+        builder.Property(s => s.Defense).HasColumnName("defense").HasDefaultValue(6);
+        builder.Property(s => s.StartingGuard).HasColumnName("starting_guard").HasDefaultValue(0);
+        builder.Property(s => s.Speed).HasColumnName("speed").HasDefaultValue(10);
+        builder.Property(s => s.Initiative).HasColumnName("initiative").HasDefaultValue(10);
+        builder.Property(s => s.Recovery).HasColumnName("recovery").HasDefaultValue(5);
+        builder.Property(s => s.Focus).HasColumnName("focus").HasDefaultValue(0);
+        builder.Property(s => s.Mana).HasColumnName("mana").HasDefaultValue(0);
+        builder.Property(s => s.Charge).HasColumnName("charge").HasDefaultValue(0);
+        builder.HasIndex(s => s.PlayerCharacterId).IsUnique();
+        builder.HasOne(s => s.PlayerCharacter)
+            .WithOne(c => c.StatBlock)
+            .HasForeignKey<PlayerCharacterStatBlockEntity>(s => s.PlayerCharacterId)
+            .OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public sealed class PlayerCharacterSkillEntityConfiguration : IEntityTypeConfiguration<PlayerCharacterSkillEntity>
+{
+    public void Configure(EntityTypeBuilder<PlayerCharacterSkillEntity> builder)
+    {
+        builder.ToTable("player_character_skills");
+        builder.HasKey(s => s.Id);
+        builder.Property(s => s.Id).HasColumnName("id");
+        builder.Property(s => s.PlayerCharacterId).HasColumnName("player_character_id");
+        builder.Property(s => s.SkillDefinitionKey).HasColumnName("skill_definition_key").HasMaxLength(160).IsRequired();
+        builder.Property(s => s.UnlockedAtUtc).HasColumnName("unlocked_at_utc");
+        builder.Property(s => s.Source).HasColumnName("source").HasMaxLength(64);
+        builder.HasIndex(s => new { s.PlayerCharacterId, s.SkillDefinitionKey }).IsUnique();
+        builder.HasOne(s => s.PlayerCharacter)
+            .WithMany(c => c.Skills)
+            .HasForeignKey(s => s.PlayerCharacterId)
+            .OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public sealed class PlayerPermanentUnlockEntityConfiguration : IEntityTypeConfiguration<PlayerPermanentUnlockEntity>
+{
+    public void Configure(EntityTypeBuilder<PlayerPermanentUnlockEntity> builder)
+    {
+        builder.ToTable("player_permanent_unlocks");
+        builder.HasKey(u => u.Id);
+        builder.Property(u => u.Id).HasColumnName("id");
+        builder.Property(u => u.PlayerProfileId).HasColumnName("player_profile_id");
+        builder.Property(u => u.UnlockKey).HasColumnName("unlock_key").HasMaxLength(160).IsRequired();
+        builder.Property(u => u.UnlockType).HasColumnName("unlock_type").HasMaxLength(64).IsRequired();
+        builder.Property(u => u.SourceRunId).HasColumnName("source_run_id");
+        builder.Property(u => u.UnlockedAtUtc).HasColumnName("unlocked_at_utc");
+        builder.HasIndex(u => new { u.PlayerProfileId, u.UnlockKey }).IsUnique();
+        builder.HasOne(u => u.PlayerProfile)
+            .WithMany(p => p.PermanentUnlocks)
+            .HasForeignKey(u => u.PlayerProfileId)
+            .OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public sealed class PlayerRunStatisticEntityConfiguration : IEntityTypeConfiguration<PlayerRunStatisticEntity>
+{
+    public void Configure(EntityTypeBuilder<PlayerRunStatisticEntity> builder)
+    {
+        builder.ToTable("player_run_statistics");
+        builder.HasKey(s => s.Id);
+        builder.Property(s => s.Id).HasColumnName("id");
+        builder.Property(s => s.PlayerProfileId).HasColumnName("player_profile_id");
+        builder.Property(s => s.RunId).HasColumnName("run_id");
+        builder.Property(s => s.Seed).HasColumnName("seed").HasMaxLength(128).IsRequired();
+        builder.Property(s => s.FinalDepth).HasColumnName("final_depth");
+        builder.Property(s => s.Outcome).HasColumnName("outcome").HasMaxLength(32).IsRequired();
+        builder.Property(s => s.GeneratorVersion).HasColumnName("generator_version").HasMaxLength(64).IsRequired();
+        builder.Property(s => s.StartedAtUtc).HasColumnName("started_at_utc");
+        builder.Property(s => s.EndedAtUtc).HasColumnName("ended_at_utc");
+        builder.Property(s => s.TotalDamageDealt).HasColumnName("total_damage_dealt").HasDefaultValue(0);
+        builder.Property(s => s.TotalDamageTaken).HasColumnName("total_damage_taken").HasDefaultValue(0);
+        builder.Property(s => s.TotalGuardAbsorbed).HasColumnName("total_guard_absorbed").HasDefaultValue(0);
+        builder.Property(s => s.TotalHealingDone).HasColumnName("total_healing_done").HasDefaultValue(0);
+        builder.Property(s => s.CombatsWon).HasColumnName("combats_won").HasDefaultValue(0);
+        builder.Property(s => s.CombatsLost).HasColumnName("combats_lost").HasDefaultValue(0);
+        builder.Property(s => s.RewardsSelected).HasColumnName("rewards_selected").HasDefaultValue(0);
+        builder.Property(s => s.TotalItemsUsed).HasColumnName("total_items_used").HasDefaultValue(0);
+        builder.HasIndex(s => s.RunId).IsUnique();
+        builder.HasOne(s => s.PlayerProfile)
+            .WithMany(p => p.RunStatistics)
+            .HasForeignKey(s => s.PlayerProfileId)
+            .OnDelete(DeleteBehavior.Cascade);
+    }
+}
