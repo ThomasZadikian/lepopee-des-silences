@@ -49,7 +49,47 @@ public static class CombatPersistenceMapper
             Mana = combatant.Mana,
             Charge = combatant.Charge,
             Status = combatant.Status.ToString(),
-            Skills = combatant.Skills.Select(s => ToEntity(s, combatant.Id.Value)).ToList()
+            Skills = combatant.Skills.Select(s => ToEntity(s, combatant.Id.Value)).ToList(),
+            BaseStatSnapshot = ToBaseStatSnapshotEntity(combatant.BaseStatSnapshot, combatant.Id.Value),
+            RuntimeState = ToRuntimeStateEntity(combatant.RuntimeState, combatant.Id.Value)
+        };
+    }
+
+    public static CombatantBaseStatSnapshotEntity ToBaseStatSnapshotEntity(CombatantBaseStatSnapshot snapshot, Guid combatantId)
+    {
+        return new CombatantBaseStatSnapshotEntity
+        {
+            Id = snapshot.Id,
+            CombatantId = combatantId,
+            MaxVitality = snapshot.MaxVitality,
+            AttackPower = snapshot.AttackPower,
+            Defense = snapshot.Defense,
+            StartingGuard = snapshot.StartingGuard,
+            Speed = snapshot.Speed,
+            Initiative = snapshot.Initiative,
+            Recovery = snapshot.Recovery,
+            Focus = snapshot.Focus,
+            Mana = snapshot.Mana,
+            Charge = snapshot.Charge,
+            AtbReadyThreshold = snapshot.AtbReadyThreshold,
+            CreatedAtUtc = snapshot.CreatedAtUtc
+        };
+    }
+
+    public static CombatantRuntimeStateEntity ToRuntimeStateEntity(CombatantRuntimeState state, Guid combatantId)
+    {
+        return new CombatantRuntimeStateEntity
+        {
+            Id = state.Id,
+            CombatantId = combatantId,
+            CurrentVitality = state.CurrentVitality,
+            CurrentGuard = state.CurrentGuard,
+            CurrentFocus = state.CurrentFocus,
+            CurrentMana = state.CurrentMana,
+            CurrentCharge = state.CurrentCharge,
+            AtbGaugeValue = state.AtbGaugeValue,
+            ActionRecoveryUntilTick = state.ActionRecoveryUntilTick,
+            UpdatedAtUtc = state.UpdatedAtUtc
         };
     }
 
@@ -96,6 +136,14 @@ public static class CombatPersistenceMapper
 
     public static Combatant ToDomain(CombatantEntity entity)
     {
+        var baseStatSnapshot = entity.BaseStatSnapshot is not null
+            ? ToDomainBaseStatSnapshot(entity.BaseStatSnapshot)
+            : null;
+
+        var runtimeState = entity.RuntimeState is not null
+            ? ToDomainRuntimeState(entity.RuntimeState)
+            : null;
+
         return Combatant.Rehydrate(
             new CombatantId(entity.Id),
             entity.SourceKey,
@@ -109,7 +157,41 @@ public static class CombatPersistenceMapper
             entity.Mana,
             entity.Charge,
             Enum.Parse<CombatantStatus>(entity.Status),
-            entity.Skills.Select(ToDomain).ToList());
+            entity.Skills.Select(ToDomain).ToList(),
+            baseStatSnapshot: baseStatSnapshot,
+            runtimeState: runtimeState);
+    }
+
+    public static CombatantBaseStatSnapshot ToDomainBaseStatSnapshot(CombatantBaseStatSnapshotEntity entity)
+    {
+        return CombatantBaseStatSnapshot.Rehydrate(
+            entity.Id,
+            entity.MaxVitality,
+            entity.AttackPower,
+            entity.Defense,
+            entity.StartingGuard,
+            entity.Speed,
+            entity.Initiative,
+            entity.Recovery,
+            entity.Focus,
+            entity.Mana,
+            entity.Charge,
+            entity.AtbReadyThreshold,
+            entity.CreatedAtUtc);
+    }
+
+    public static CombatantRuntimeState ToDomainRuntimeState(CombatantRuntimeStateEntity entity)
+    {
+        return CombatantRuntimeState.Rehydrate(
+            entity.Id,
+            entity.CurrentVitality,
+            entity.CurrentGuard,
+            entity.CurrentFocus,
+            entity.CurrentMana,
+            entity.CurrentCharge,
+            entity.AtbGaugeValue,
+            entity.ActionRecoveryUntilTick,
+            entity.UpdatedAtUtc);
     }
 
     public static CombatantSkill ToDomain(CombatantSkillEntity entity)

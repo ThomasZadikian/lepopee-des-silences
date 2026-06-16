@@ -163,7 +163,13 @@ public sealed class ResolveCurrentEventCommandHandler
             }
 
             encounterDraftDto = CombatEncounterDraftDto.FromDomain(draft);
-            var combatRuntime = _combatFactory.CreateFromDraft(draft, run.PlayerState, run.RunModifiers);
+            var combatRuntime = _combatFactory.CreateFromDraft(
+                draft,
+                run.PlayerState,
+                run.RunModifiers,
+                attackPower: run.Attack,
+                defense: run.Defense,
+                speed: run.Speed);
             run.StartCombat(combatRuntime);
             CombatRuntimeDto.FromDomain(combatRuntime, CombatItemHelper.GetUsableBattleItems(run));
         }

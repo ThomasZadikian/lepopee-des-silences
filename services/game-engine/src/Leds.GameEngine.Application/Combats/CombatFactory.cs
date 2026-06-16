@@ -16,7 +16,10 @@ public sealed class CombatFactory : ICombatFactory
     public Combat CreateFromDraft(
         CombatEncounterDraft draft,
         PlayerRuntimeState? playerState = null,
-        IReadOnlyCollection<RunModifier>? runModifiers = null)
+        IReadOnlyCollection<RunModifier>? runModifiers = null,
+        int attackPower = 0,
+        int defense = 0,
+        int speed = 10)
     {
         // Sum all unconsumed StartingGuardBonus modifiers (e.g. Éclat de garde: +8 garde).
         var guardBonus = runModifiers?
@@ -54,10 +57,13 @@ public sealed class CombatFactory : ICombatFactory
                     maxVitality,
                     currentVitality,
                     guard,
-                    baseGuard: guardBonus,  // passive floor restored at round start
+                    baseGuard: guardBonus,
                     mana,
                     charge,
-                    skills);
+                    skills,
+                    attackPower: attackPower,
+                    defense: defense,
+                    speed: speed);
             })
             .ToArray();
 

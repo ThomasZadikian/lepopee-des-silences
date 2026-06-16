@@ -18,4 +18,6 @@ public sealed class CombatantEntity
 
     public CombatEntity? Combat { get; set; }
     public List<CombatantSkillEntity> Skills { get; set; } = [];
+    public CombatantBaseStatSnapshotEntity? BaseStatSnapshot { get; set; }
+    public CombatantRuntimeStateEntity? RuntimeState { get; set; }
 }

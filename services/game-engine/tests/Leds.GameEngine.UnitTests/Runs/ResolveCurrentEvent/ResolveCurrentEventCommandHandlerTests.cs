@@ -336,7 +336,10 @@ public sealed class ResolveCurrentEventCommandHandlerTests
             .Setup(f => f.CreateFromDraft(
                 It.IsAny<CombatEncounterDraft>(),
                 It.IsAny<PlayerRuntimeState?>(),
-                It.IsAny<IReadOnlyCollection<RunModifier>?>()))
+                It.IsAny<IReadOnlyCollection<RunModifier>?>(),
+                It.IsAny<int>(),
+                It.IsAny<int>(),
+                It.IsAny<int>()))
             .Returns(runtimeCombat);
 
         var handler = new ResolveCurrentEventCommandHandler(
@@ -439,7 +442,10 @@ public sealed class ResolveCurrentEventCommandHandlerTests
             .Setup(f => f.CreateFromDraft(
                 It.IsAny<CombatEncounterDraft>(),
                 It.IsAny<PlayerRuntimeState?>(),
-                It.IsAny<IReadOnlyCollection<RunModifier>?>()))
+                It.IsAny<IReadOnlyCollection<RunModifier>?>(),
+                It.IsAny<int>(),
+                It.IsAny<int>(),
+                It.IsAny<int>()))
             .Returns(runtimeCombat);
 
         var handler = new ResolveCurrentEventCommandHandler(

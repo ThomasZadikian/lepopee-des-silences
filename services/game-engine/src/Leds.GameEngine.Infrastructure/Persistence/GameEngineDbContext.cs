@@ -28,6 +28,8 @@ public sealed class GameEngineDbContext : DbContext
     public DbSet<RunCharacterSnapshotEntity> RunCharacterSnapshots => Set<RunCharacterSnapshotEntity>();
     public DbSet<RunCharacterStatSnapshotEntity> RunCharacterStatSnapshots => Set<RunCharacterStatSnapshotEntity>();
     public DbSet<RunCharacterSkillSnapshotEntity> RunCharacterSkillSnapshots => Set<RunCharacterSkillSnapshotEntity>();
+    public DbSet<CombatantBaseStatSnapshotEntity> CombatantBaseStatSnapshots => Set<CombatantBaseStatSnapshotEntity>();
+    public DbSet<CombatantRuntimeStateEntity> CombatantRuntimeStates => Set<CombatantRuntimeStateEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

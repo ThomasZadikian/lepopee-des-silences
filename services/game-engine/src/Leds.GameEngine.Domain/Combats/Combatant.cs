@@ -17,7 +17,9 @@ public sealed class Combatant
         int mana,
         int charge,
         CombatantStatus status,
-        IReadOnlyCollection<CombatantSkill> skills)
+        IReadOnlyCollection<CombatantSkill> skills,
+        CombatantBaseStatSnapshot baseStatSnapshot,
+        CombatantRuntimeState runtimeState)
     {
         Id = id;
         SourceKey = sourceKey;
@@ -32,6 +34,8 @@ public sealed class Combatant
         Charge = charge;
         Status = status;
         Skills = skills;
+        BaseStatSnapshot = baseStatSnapshot;
+        RuntimeState = runtimeState;
     }
 
     public CombatantId Id { get; }
@@ -56,6 +60,18 @@ public sealed class Combatant
 
     public bool IsDefeated => Status == CombatantStatus.Defeated;
 
+    /// <summary>
+    /// Immutable stat values frozen at combat creation.
+    /// Canonical source for base/max/starting values.
+    /// </summary>
+    public CombatantBaseStatSnapshot BaseStatSnapshot { get; }
+
+    /// <summary>
+    /// Mutable runtime state during combat.
+    /// Canonical source for current vitality, guard, mana, charge.
+    /// </summary>
+    public CombatantRuntimeState RuntimeState { get; }
+
     public static Combatant CreateAlly(
         string sourceKey,
         string displayName,
@@ -64,8 +80,25 @@ public sealed class Combatant
         int baseGuard = 0,
         IReadOnlyCollection<CombatantSkill>? skills = null)
     {
-        return Create(
-            CombatantId.New(),
+        var id = CombatantId.New();
+        var snapshot = CombatantBaseStatSnapshot.Create(
+            maxVitality: maxVitality,
+            attackPower: 0,
+            defense: 0,
+            startingGuard: baseGuard,
+            speed: 10,
+            initiative: 0,
+            recovery: 0,
+            focus: 0,
+            mana: 0,
+            charge: 0);
+
+        var runtimeState = CombatantRuntimeState.Create(
+            currentVitality: maxVitality,
+            currentGuard: baseGuard);
+
+        return new Combatant(
+            id,
             sourceKey,
             displayName,
             CombatantSide.Player,
@@ -76,7 +109,10 @@ public sealed class Combatant
             baseGuard: baseGuard,
             mana: 0,
             charge: 0,
-            skills);
+            CombatantStatus.Active,
+            skills?.ToArray() ?? Array.Empty<CombatantSkill>(),
+            snapshot,
+            runtimeState);
     }
 
     public static Combatant CreateEnemy(
@@ -86,8 +122,25 @@ public sealed class Combatant
         int maxVitality,
         IReadOnlyCollection<CombatantSkill>? skills = null)
     {
-        return Create(
-            CombatantId.New(),
+        var id = CombatantId.New();
+        var snapshot = CombatantBaseStatSnapshot.Create(
+            maxVitality: maxVitality,
+            attackPower: 0,
+            defense: 0,
+            startingGuard: 0,
+            speed: 10,
+            initiative: 0,
+            recovery: 0,
+            focus: 0,
+            mana: 0,
+            charge: 0);
+
+        var runtimeState = CombatantRuntimeState.Create(
+            currentVitality: maxVitality,
+            currentGuard: 0);
+
+        return new Combatant(
+            id,
             sourceKey,
             displayName,
             CombatantSide.Enemy,
@@ -98,7 +151,10 @@ public sealed class Combatant
             baseGuard: 0,
             mana: 0,
             charge: 0,
-            skills);
+            CombatantStatus.Active,
+            skills?.ToArray() ?? Array.Empty<CombatantSkill>(),
+            snapshot,
+            runtimeState);
     }
 
     public static Combatant Create(
@@ -113,7 +169,10 @@ public sealed class Combatant
         int baseGuard,
         int mana,
         int charge,
-        IReadOnlyCollection<CombatantSkill>? skills = null)
+        IReadOnlyCollection<CombatantSkill>? skills = null,
+        int attackPower = 0,
+        int defense = 0,
+        int speed = 10)
     {
         if (id.Value == Guid.Empty)
             throw new DomainException("Combatant id is required.");
@@ -142,6 +201,24 @@ public sealed class Combatant
         if (charge < 0)
             throw new DomainException("Combatant charge must be non-negative.");
 
+        var snapshot = CombatantBaseStatSnapshot.Create(
+            maxVitality: maxVitality,
+            attackPower: attackPower,
+            defense: defense,
+            startingGuard: baseGuard,
+            speed: speed,
+            initiative: 0,
+            recovery: 0,
+            focus: 0,
+            mana: mana,
+            charge: charge);
+
+        var runtimeState = CombatantRuntimeState.Create(
+            currentVitality: currentVitality,
+            currentGuard: guard,
+            currentMana: mana,
+            currentCharge: charge);
+
         return new Combatant(
             id,
             sourceKey.Trim(),
@@ -155,7 +232,9 @@ public sealed class Combatant
             mana,
             charge,
             CombatantStatus.Active,
-            skills?.ToArray() ?? Array.Empty<CombatantSkill>());
+            skills?.ToArray() ?? Array.Empty<CombatantSkill>(),
+            snapshot,
+            runtimeState);
     }
 
     public void MarkDefeated()
@@ -165,6 +244,7 @@ public sealed class Combatant
 
         Status = CombatantStatus.Defeated;
         CurrentVitality = 0;
+        RuntimeState.MarkDefeated();
     }
 
     public void ApplyDamage(int amount)
@@ -175,21 +255,10 @@ public sealed class Combatant
         if (IsDefeated)
             throw new DomainException("Defeated combatants cannot receive damage.");
 
-        var remainingDamage = amount;
+        RuntimeState.ApplyDamage(amount);
 
-        if (Guard > 0)
-        {
-            var absorbed = Math.Min(Guard, remainingDamage);
-            Guard -= absorbed;
-            remainingDamage -= absorbed;
-        }
-
-        if (remainingDamage <= 0)
-        {
-            return;
-        }
-
-        CurrentVitality = Math.Max(0, CurrentVitality - remainingDamage);
+        Guard = RuntimeState.CurrentGuard;
+        CurrentVitality = RuntimeState.CurrentVitality;
 
         if (CurrentVitality == 0)
         {
@@ -205,7 +274,8 @@ public sealed class Combatant
         if (IsDefeated)
             throw new DomainException("Defeated combatants cannot gain guard.");
 
-        Guard += amount;
+        RuntimeState.GainGuard(amount);
+        Guard = RuntimeState.CurrentGuard;
     }
 
     /// <summary>
@@ -216,8 +286,9 @@ public sealed class Combatant
     public void ResetGuardToBase()
     {
         if (IsDefeated) return;
-        if (Guard < BaseGuard)
-            Guard = BaseGuard;
+
+        RuntimeState.ResetGuardToBase(BaseGuard);
+        Guard = RuntimeState.CurrentGuard;
     }
 
     /// <summary>
@@ -237,9 +308,37 @@ public sealed class Combatant
         int mana,
         int charge,
         CombatantStatus status,
-        IReadOnlyCollection<CombatantSkill> skills)
+        IReadOnlyCollection<CombatantSkill> skills,
+        CombatantBaseStatSnapshot? baseStatSnapshot = null,
+        CombatantRuntimeState? runtimeState = null)
     {
-        return new Combatant(id, sourceKey, displayName, side, archetype, maxVitality, currentVitality, guard, baseGuard, mana, charge, status, skills);
+        var snapshot = baseStatSnapshot ?? CombatantBaseStatSnapshot.Rehydrate(
+            Guid.NewGuid(),
+            maxVitality,
+            0,
+            0,
+            baseGuard,
+            10,
+            0,
+            0,
+            0,
+            mana,
+            charge,
+            null,
+            DateTime.UtcNow);
+
+        var state = runtimeState ?? CombatantRuntimeState.Rehydrate(
+            Guid.NewGuid(),
+            currentVitality,
+            guard,
+            0,
+            mana,
+            charge,
+            null,
+            null,
+            DateTime.UtcNow);
+
+        return new Combatant(id, sourceKey, displayName, side, archetype, maxVitality, currentVitality, guard, baseGuard, mana, charge, status, skills, snapshot, state);
     }
 
     public void ApplyHeal(int amount)
@@ -250,7 +349,8 @@ public sealed class Combatant
         if (IsDefeated)
             throw new DomainException("Defeated combatant cannot be healed.");
 
-        CurrentVitality = Math.Min(MaxVitality, CurrentVitality + amount);
+        RuntimeState.ApplyHeal(MaxVitality, amount);
+        CurrentVitality = RuntimeState.CurrentVitality;
     }
 
     public void GainMana(int amount)
@@ -259,6 +359,7 @@ public sealed class Combatant
             throw new DomainException("Mana gain amount cannot be negative.");
 
         Mana += amount;
+        RuntimeState.GainMana(amount);
     }
 
     public void GainCharge(int amount)
@@ -267,5 +368,6 @@ public sealed class Combatant
             throw new DomainException("Charge gain amount cannot be negative.");
 
         Charge += amount;
+        RuntimeState.GainCharge(amount);
     }
 }

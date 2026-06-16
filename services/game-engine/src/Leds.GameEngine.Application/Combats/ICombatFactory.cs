@@ -9,5 +9,8 @@ public interface ICombatFactory
     Combat CreateFromDraft(
         CombatEncounterDraft draft,
         PlayerRuntimeState? playerState = null,
-        IReadOnlyCollection<RunModifier>? runModifiers = null);
+        IReadOnlyCollection<RunModifier>? runModifiers = null,
+        int attackPower = 0,
+        int defense = 0,
+        int speed = 10);
 }
