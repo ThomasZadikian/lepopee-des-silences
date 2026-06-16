@@ -164,6 +164,7 @@ public sealed class ResolveCurrentEventCommandHandler
 
             encounterDraftDto = CombatEncounterDraftDto.FromDomain(draft);
             var combatRuntime = _combatFactory.CreateFromDraft(
+                combatInstance.Id,
                 draft,
                 run.PlayerState,
                 run.RunModifiers,
@@ -171,7 +172,7 @@ public sealed class ResolveCurrentEventCommandHandler
                 defense: run.Defense,
                 speed: run.Speed);
             run.StartCombat(combatRuntime);
-            CombatRuntimeDto.FromDomain(combatRuntime, CombatItemHelper.GetUsableBattleItems(run));
+            combatRuntimeDto = CombatRuntimeDto.FromDomain(combatRuntime, CombatItemHelper.GetUsableBattleItems(run));
         }
         else if (selectedNode.EventType == NodeEventType.Item)
         {

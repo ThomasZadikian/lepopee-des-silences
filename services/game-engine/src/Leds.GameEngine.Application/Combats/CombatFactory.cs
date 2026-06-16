@@ -21,6 +21,25 @@ public sealed class CombatFactory : ICombatFactory
         int defense = 0,
         int speed = 10)
     {
+        return CreateFromDraft(
+            CombatId.New(),
+            draft,
+            playerState,
+            runModifiers,
+            attackPower,
+            defense,
+            speed);
+    }
+
+    public Combat CreateFromDraft(
+        CombatId combatId,
+        CombatEncounterDraft draft,
+        PlayerRuntimeState? playerState = null,
+        IReadOnlyCollection<RunModifier>? runModifiers = null,
+        int attackPower = 0,
+        int defense = 0,
+        int speed = 10)
+    {
         // Sum all unconsumed StartingGuardBonus modifiers (e.g. Éclat de garde: +8 garde).
         var guardBonus = runModifiers?
             .Where(m => m.Type == RunModifierType.StartingGuardBonus && !m.IsConsumed)
@@ -104,7 +123,7 @@ public sealed class CombatFactory : ICombatFactory
             .ToArray();
 
         return Combat.Create(
-            CombatId.New(),
+            combatId,
             new RunId(draft.RunId),
             new RoomId(draft.RoomId),
             new NodeId(draft.NodeId),

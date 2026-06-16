@@ -38,4 +38,6 @@ public sealed class SaveAndExitRunCommandHandler
 
         await _runRepository.UpdateAsync(run, cancellationToken);
 
-        return new SaveAndExitRunRes
+        return new SaveAndExitRunResponse(RunDto.FromDomain(run));
+    }
+}

@@ -20,6 +20,16 @@ public sealed record CombatInstanceDto(
                 ? combat.CurrentActorId.Value
                 : null);
     }
+
+    public static CombatInstanceDto FromDomain(Combat combat)
+    {
+        return new CombatInstanceDto(
+            combat.Id.Value,
+            combat.Status == CombatStatus.Active ? CombatState.InProgress.ToString() : CombatState.Completed.ToString(),
+            combat.TurnNumber,
+            combat.Allies.Concat(combat.Enemies).Select(CombatantDto.FromDomain).ToArray(),
+            combat.ActiveCombatantId?.Value);
+    }
 }
 
 public sealed record CombatantDto(
@@ -46,6 +56,21 @@ public sealed record CombatantDto(
             combatant.Attack,
             combatant.Defense,
             combatant.Speed,
+            combatant.IsDefeated);
+    }
+
+    public static CombatantDto FromDomain(Combatant combatant)
+    {
+        return new CombatantDto(
+            combatant.Id.Value,
+            combatant.SourceKey,
+            combatant.DisplayName,
+            combatant.Side.ToString(),
+            combatant.MaxVitality,
+            combatant.CurrentVitality,
+            combatant.BaseStatSnapshot.AttackPower,
+            combatant.BaseStatSnapshot.Defense,
+            combatant.BaseStatSnapshot.Speed,
             combatant.IsDefeated);
     }
 }

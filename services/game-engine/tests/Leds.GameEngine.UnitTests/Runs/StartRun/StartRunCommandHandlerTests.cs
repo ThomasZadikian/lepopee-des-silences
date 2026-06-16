@@ -117,4 +117,7 @@ public sealed class StartRunCommandHandlerTests
                     run.PlayerId == playerId &&
                     run.Seed == "seed-test-001" &&
                     run.Status == RunStatus.Active),
-                CancellationToken.N
+                CancellationToken.None),
+            Times.Once);
+    }
+}

@@ -45,4 +45,6 @@ public sealed class AbandonRunCommandHandler
 
         await _runRepository.UpdateAsync(run, cancellationToken);
 
-        return new AbandonRunRes
+        return new AbandonRunResponse(RunDto.FromDomain(run));
+    }
+}

@@ -1,7 +1,6 @@
 using Leds.GameEngine.Application.Abstractions;
 using Leds.GameEngine.Application.Combats.Actions;
 using Leds.GameEngine.Application.Combats.Dtos;
-using Leds.GameEngine.Application.Combats.Ports;
 using Leds.GameEngine.Application.Combats.SubmitCombatAction;
 using Leds.GameEngine.Application.Runs.UseCombatSkill;
 using Leds.GameEngine.Application.Runs.UseItemInCombat;
@@ -17,16 +16,13 @@ namespace Leds.GameEngine.Api.Controllers;
 public sealed class CombatsController : ControllerBase
 {
     private readonly ISender _sender;
-    private readonly ICombatInstanceRepository _combatInstanceRepository;
     private readonly IRunRepository _runRepository;
 
     public CombatsController(
         ISender sender,
-        ICombatInstanceRepository combatInstanceRepository,
         IRunRepository runRepository)
     {
         _sender = sender;
-        _combatInstanceRepository = combatInstanceRepository;
         _runRepository = runRepository;
     }
 
@@ -45,15 +41,14 @@ public sealed class CombatsController : ControllerBase
             return NotFound(new { message = $"Run with id '{runId}' was not found." });
         }
 
-        var combat = await _combatInstanceRepository.GetByIdAsync(
-            new CombatId(combatId), cancellationToken);
+        var requestedCombatId = new CombatId(combatId);
 
-        if (combat is null)
+        if (run.ActiveCombat is null || run.ActiveCombat.Id != requestedCombatId)
         {
             return NotFound(new { message = $"Combat with id '{combatId}' was not found." });
         }
 
-        return Ok(CombatInstanceDto.FromDomain(combat));
+        return Ok(CombatInstanceDto.FromDomain(run.ActiveCombat));
     }
 
     /// <summary>

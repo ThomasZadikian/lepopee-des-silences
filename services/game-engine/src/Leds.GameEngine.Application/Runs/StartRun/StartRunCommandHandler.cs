@@ -110,4 +110,6 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
 
         await _runRepository.AddAsync(run, cancellationToken);
 
-        return new StartRunResp
+        return new StartRunResponse(RunDto.FromDomain(run));
+    }
+}

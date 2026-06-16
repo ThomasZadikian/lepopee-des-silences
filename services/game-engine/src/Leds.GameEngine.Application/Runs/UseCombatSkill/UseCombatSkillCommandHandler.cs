@@ -344,4 +344,6 @@ public sealed class UseCombatSkillCommandHandler
             playerCombatant.CurrentVitality,
             playerCombatant.Guard,
             playerCombatant.Mana,
-      
+            playerCombatant.Charge);
+    }
+}

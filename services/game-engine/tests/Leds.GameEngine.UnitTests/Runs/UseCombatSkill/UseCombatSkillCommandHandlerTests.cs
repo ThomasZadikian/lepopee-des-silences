@@ -835,4 +835,6 @@ public sealed class UseCombatSkillCommandHandlerTests
             effectType: effectType,
             manaCost: 0,
             chargeCost: 0,
-    
+            basePower: basePower);
+    }
+}

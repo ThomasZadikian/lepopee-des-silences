@@ -118,4 +118,6 @@ public sealed class ExitMidRoomCommandHandlerTests
 
         await act.Should()
             .ThrowAsync<DomainException>()
-            .Wi
+            .WithMessage("*must be active*");
+    }
+}

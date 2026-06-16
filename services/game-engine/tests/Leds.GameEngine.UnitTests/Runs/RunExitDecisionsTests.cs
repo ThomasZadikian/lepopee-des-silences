@@ -538,4 +538,7 @@ public sealed class RunExitDecisionsTests
                 It.Is<Run>(candidate =>
                     candidate.Id == run.Id &&
                     candidate.Status == RunStatus.Suspended),
-                CancellationToken.N
+                CancellationToken.None),
+            Times.Once);
+    }
+}

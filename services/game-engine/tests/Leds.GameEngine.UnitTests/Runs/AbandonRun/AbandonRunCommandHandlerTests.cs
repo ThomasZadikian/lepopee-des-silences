@@ -130,4 +130,7 @@ public sealed class AbandonRunCommandHandlerTests
         repository.Verify(
             repo => repo.UpdateAsync(
                 It.IsAny<Run>(),
-                It.IsAny<CancellationToken>
+                It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+}

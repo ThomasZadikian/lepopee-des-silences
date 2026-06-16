@@ -253,4 +253,7 @@ public sealed class UseItemInCombatCommandHandler
         run.PlayerState.SyncFromCombat(
             player.CurrentVitality,
             player.Guard,
-            player.Man
+            player.Mana,
+            player.Charge);
+    }
+}

@@ -36,4 +36,6 @@ public sealed class ExitMidRoomCommandHandler
 
         await _runRepository.UpdateAsync(run, cancellationToken);
 
-        return new ExitMidRoomRes
+        return new ExitMidRoomResponse(RunDto.FromDomain(run));
+    }
+}

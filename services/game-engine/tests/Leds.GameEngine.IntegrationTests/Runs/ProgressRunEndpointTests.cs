@@ -219,14 +219,26 @@ public sealed class ProgressRunEndpointTests : RunIntegrationTestBase, IClassFix
 
         combat.Should().NotBeNull();
 
-        var playerId = combat!.Combatants.Single(c => c.Side == "Player").Id;
-        var enemyId = combat.Combatants.Single(c => c.Side == "Enemy").Id;
-
         while (true)
         {
+            var activeActor = combat!.Combatants.FirstOrDefault(c =>
+                c.Id == combat.CurrentActorId &&
+                c.Side == "Player" &&
+                !c.IsDefeated);
+
+            activeActor.Should().NotBeNull(
+                because: "the legacy facade should expose the canonical active player combatant");
+
+            var enemy = combat.Combatants.FirstOrDefault(c =>
+                c.Side == "Enemy" &&
+                !c.IsDefeated);
+
+            enemy.Should().NotBeNull(
+                because: "an in-progress combat should have at least one living enemy target");
+
             var actionResponse = await Client.PostAsJsonAsync(
                 $"/api/v2/runs/{runId}/combats/{combatId}/actions",
-                new { ActorId = playerId, TargetId = enemyId, ActionType = "BasicAttack" });
+                new { ActorId = activeActor!.Id, TargetId = enemy!.Id, ActionType = "BasicAttack" });
 
             var actionBody = await actionResponse.Content.ReadAsStringAsync();
 
@@ -239,10 +251,24 @@ public sealed class ProgressRunEndpointTests : RunIntegrationTestBase, IClassFix
 
             actionResult.Should().NotBeNull();
 
-            if (actionResult!.Result.CombatState == "Completed")
+            if (actionResult!.Result.CombatState == "Completed" || actionResult.Run.ActiveCombatId is null)
             {
                 break;
             }
+
+            combatResponse = await Client.GetAsync(
+                $"/api/v2/runs/{runId}/combats/{combatId}");
+
+            var combatBody = await combatResponse.Content.ReadAsStringAsync();
+
+            combatResponse.StatusCode.Should().Be(
+                HttpStatusCode.OK,
+                because: combatBody);
+
+            combat = await combatResponse.Content
+                .ReadFromJsonAsync<CombatInstanceDto>();
+
+            combat.Should().NotBeNull();
         }
     }
 
