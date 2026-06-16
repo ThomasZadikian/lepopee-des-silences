@@ -5,19 +5,21 @@ import { useRoute, useRouter } from 'vue-router';
 import GameShellLayout from '../app/layouts/GameShellLayout.vue';
 import CombatScene from '../features/combat/components/CombatScene.vue';
 import { useCombatStore } from '../features/combat/stores/useCombatStore';
-import DecisionDiptych from '../shared/components/DecisionDiptych.vue';
 import EliseOverlay from '../features/elise/EliseOverlay.vue';
 import EventChoiceResultPanel from '../features/events/components/EventChoiceResultPanel.vue';
 import EventOutcomePanel from '../features/events/components/EventOutcomePanel.vue';
+import MerchantPanel from '../features/events/components/MerchantPanel.vue';
 import InterludePanel from '../features/interlude/InterludePanel.vue';
 import RoomClearedPanel from '../features/interlude/RoomClearedPanel.vue';
 import InventoryDrawer from '../features/inventory/components/InventoryDrawer.vue';
-import LawsPopover from '../features/palace-laws/LawsPopover.vue';
 import PalaceNodeDrawer from '../features/node-details/PalaceNodeDrawer.vue';
+import LawResolutionPanel from '../features/palace-laws/LawResolutionPanel.vue';
+import LawsPopover from '../features/palace-laws/LawsPopover.vue';
 import PalaceMapPlaceholder from '../features/palace-map/PalaceMapPlaceholder.vue';
 import RewardOfferPanel from '../features/rewards/components/RewardOfferPanel.vue';
 import RunStatusRibbon from '../features/runs/components/RunStatusRibbon.vue';
 import { useRunStore } from '../features/runs/stores/runStore';
+import DecisionDiptych from '../shared/components/DecisionDiptych.vue';
 import { useGameUiStore } from '../shared/stores/useGameUiStore';
 
 const route = useRoute();
@@ -213,7 +215,22 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
 
       <!-- ── Event outcome ── -->
       <template v-else-if="runStore.gameplayPhase === 'EventOutcome' && runStore.lastOutcome">
+        <LawResolutionPanel
+          v-if="runStore.lastOutcome.resolutionKind === 'PalaceLawOffered'"
+          :outcome="runStore.lastOutcome"
+          :is-loading="runStore.isLoading"
+          @continue="runStore.continueAfterOutcome"
+          @select-choice="runStore.selectCurrentEventChoice"
+        />
+        <MerchantPanel
+          v-else-if="runStore.lastOutcome.resolutionKind === 'TradeOffered'"
+          :outcome="runStore.lastOutcome"
+          :is-loading="runStore.isLoading"
+          @continue="runStore.continueAfterOutcome"
+          @select-choice="runStore.selectCurrentEventChoice"
+        />
         <EventOutcomePanel
+          v-else
           :outcome="runStore.lastOutcome"
           :is-loading="runStore.isLoading"
           @continue="runStore.continueAfterOutcome"

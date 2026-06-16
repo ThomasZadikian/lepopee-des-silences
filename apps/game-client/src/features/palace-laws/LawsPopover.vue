@@ -1,15 +1,14 @@
 <script setup lang="ts">
 import type { ActivePalaceLawDto } from '../runs/types/runTypes';
+defineProps<{ laws?: ActivePalaceLawDto[] | null }>()
+const emit = defineEmits<{ close: [] }>()
 
-defineProps<{ laws?: ActivePalaceLawDto[] | null }>();
-const emit = defineEmits<{ close: [] }>();
-
-function domainTone(domain: string): string {
-  const d = domain?.toLowerCase() ?? '';
-  if (d.includes('combat') || d.includes('confron')) return 'blood';
-  if (d.includes('mem') || d.includes('récit') || d.includes('recit') || d.includes('narr')) return 'frost';
-  if (d.includes('loi') || d.includes('édit') || d.includes('edit')) return 'gold';
-  return '';
+function domainTone(domain: string): 'blood' | 'frost' | 'gold' | '' {
+  const d = domain?.toLowerCase() ?? ''
+  if (d.includes('combat') || d.includes('confron')) return 'blood'
+  if (d.includes('mem') || d.includes('récit') || d.includes('recit') || d.includes('narr')) return 'frost'
+  if (d.includes('loi') || d.includes('édit') || d.includes('edit')) return 'gold'
+  return ''
 }
 </script>
 
@@ -19,61 +18,103 @@ function domainTone(domain: string): string {
     role="dialog"
     aria-modal="true"
     aria-label="Lois du Palais"
-    @keydown.escape="emit('close')"
     tabindex="-1"
+    @keydown.escape="emit('close')"
   >
-    <!-- En-tête -->
+    <!-- Header -->
     <header class="lp-head">
       <div class="lp-head__left">
-        <!-- Loi sigil inline -->
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-          stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
-          aria-hidden="true" style="color:var(--gold); flex:0 0 auto;">
+        <!-- Shield SVG 16x16 gold -->
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+          style="color: var(--gold); flex: 0 0 auto;"
+        >
           <path d="M12 3L4 7v5c0 5 3.5 9.74 8 11 4.5-1.26 8-6 8-11V7l-8-4z"/>
           <line x1="12" y1="9" x2="12" y2="15"/>
           <line x1="9" y1="12" x2="15" y2="12"/>
         </svg>
         <div>
-          <span class="es-kicker lp-kicker">Registre du Palais</span>
-          <h3 class="es-h3 lp-title">Lois du Palais</h3>
+          <span class="es-kicker" style="color: oklch(.65 .09 84 / .7); display: block; margin-bottom: 3px;">
+            Registre du Palais
+          </span>
+          <h3 style="font-size: 22px; font-family: var(--display); color: var(--ink); margin: 0;">
+            Lois du Palais
+          </h3>
         </div>
       </div>
+      <!-- Close button -->
       <button class="lp-close" @click="emit('close')" aria-label="Fermer">
-        <!-- ✕ inline SVG -->
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"
-          stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          aria-hidden="true"
+        >
           <line x1="3" y1="3" x2="13" y2="13"/>
           <line x1="13" y1="3" x2="3" y2="13"/>
         </svg>
       </button>
     </header>
 
-    <div class="es-divider lp-divider" />
+    <!-- Divider -->
+    <div class="lp-divider" />
 
-    <!-- Liste de lois -->
-    <div class="lp-list" v-if="laws && laws.length">
+    <!-- Law list -->
+    <div v-if="laws && laws.length" class="lp-list">
       <div
         v-for="(law, i) in laws"
         :key="law.key"
         class="lp-law"
-        :class="{ 'lp-law--last': i === (laws?.length ?? 0) - 1 }"
       >
-        <!-- Icône loi -->
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-          stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
-          aria-hidden="true" style="color:var(--gold-dim, oklch(.65 .09 84 / .6)); flex:0 0 auto; margin-top:2px;">
+        <!-- Left: shield icon colored by domain tone -->
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+          :style="{
+            color: domainTone(law.domain ?? '') === 'gold'  ? 'var(--gold)'
+                 : domainTone(law.domain ?? '') === 'blood' ? 'var(--blood)'
+                 : domainTone(law.domain ?? '') === 'frost' ? 'var(--frost)'
+                 : 'var(--gold-dim, oklch(.65 .09 84 / .6))',
+            flex: '0 0 auto',
+            marginTop: '2px',
+          }"
+        >
           <path d="M12 3L4 7v5c0 5 3.5 9.74 8 11 4.5-1.26 8-6 8-11V7l-8-4z"/>
         </svg>
 
+        <!-- Right: body -->
         <div class="lp-law__body">
-          <!-- Nom + version -->
-          <div class="lp-law__top">
-            <span class="lp-law__name">{{ law.displayName }}</span>
-            <span class="es-mono lp-law__ver">{{ law.version }}</span>
+          <!-- Name + version row -->
+          <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 6px;">
+            <span style="font-family: var(--display); font-size: 15.5px; font-weight: 600; color: var(--gold);">
+              {{ law.displayName }}
+            </span>
+            <span class="es-mono" style="font-size: 10px; color: var(--ink-4); flex: 0 0 auto;">
+              {{ law.version }}
+            </span>
           </div>
 
-          <!-- Domaine -->
-          <div class="lp-law__chips" v-if="law.domain">
+          <!-- Domain chip row -->
+          <div v-if="law.domain" style="margin-bottom: 7px;">
             <span
               class="es-chip"
               :class="{
@@ -85,23 +126,39 @@ function domainTone(domain: string): string {
           </div>
 
           <!-- Description -->
-          <p class="lp-law__desc es-body" v-if="law.description">{{ law.description }}</p>
+          <p class="es-body" style="font-size: 12.5px; color: var(--ink-3); margin: 0;">
+            {{ law.description }}
+          </p>
         </div>
       </div>
     </div>
 
-    <!-- Vide -->
-    <div class="lp-empty" v-else>
-      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"
-        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:var(--ink-4); margin-bottom:8px;">
+    <!-- Empty state -->
+    <div v-else class="lp-empty">
+      <svg
+        width="32"
+        height="32"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+        style="color: var(--ink-4);"
+      >
         <path d="M12 3L4 7v5c0 5 3.5 9.74 8 11 4.5-1.26 8-6 8-11V7l-8-4z"/>
       </svg>
-      <span class="es-label" style="color:var(--ink-4)">Aucune loi active.</span>
+      <span class="es-label" style="color: var(--ink-4);">Aucune loi active.</span>
     </div>
 
-    <!-- Pied de panneau -->
+    <!-- Footer -->
     <footer class="lp-foot">
-      <button class="es-btn es-btn--ghost lp-foot__btn" @click="emit('close')">
+      <button
+        class="es-btn es-btn--ghost"
+        style="font-size: 12px; padding: 8px 18px;"
+        @click="emit('close')"
+      >
         Fermer
       </button>
     </footer>
@@ -109,33 +166,23 @@ function domainTone(domain: string): string {
 </template>
 
 <style scoped>
-/* ── Panneau latéral ── */
 .lp-root {
   position: absolute;
   top: 0;
   right: 0;
   height: 100%;
-  width: 380px;
+  width: 400px;
   display: flex;
   flex-direction: column;
   z-index: 40;
-
   background: oklch(.20 .028 268 / .82);
   backdrop-filter: blur(18px) saturate(1.4);
   -webkit-backdrop-filter: blur(18px) saturate(1.4);
-
-  border-left: 1px solid var(--line-strong, oklch(.38 .03 268 / .7));
-  border-top: 1px solid oklch(.55 .08 84 / .25);
-
-  /* Encadrement frost haut-gauche */
-  box-shadow:
-    -6px 0 60px -10px oklch(.2 .03 268 / .9),
-    inset 1px 0 0 oklch(.6 .07 232 / .08);
-
+  border-left: 1px solid var(--frost, oklch(.70 .07 232));
   outline: none;
 }
 
-/* Coin frost haut-gauche */
+/* Frost pseudo-corners */
 .lp-root::before {
   content: '';
   position: absolute;
@@ -149,7 +196,6 @@ function domainTone(domain: string): string {
   pointer-events: none;
 }
 
-/* Coin frost bas-gauche */
 .lp-root::after {
   content: '';
   position: absolute;
@@ -163,32 +209,18 @@ function domainTone(domain: string): string {
   pointer-events: none;
 }
 
-/* ── En-tête ── */
 .lp-head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
-  padding: 22px 20px 16px;
+  padding: 22px 22px 14px;
   flex: 0 0 auto;
 }
 
 .lp-head__left {
   display: flex;
   align-items: flex-start;
-  gap: 11px;
-}
-
-.lp-kicker {
-  display: block;
-  color: var(--gold-dim, oklch(.65 .09 84 / .7));
-  margin-bottom: 4px;
-}
-
-.lp-title {
-  font-size: 22px;
-  line-height: 1.1;
-  margin: 0;
+  gap: 10px;
 }
 
 .lp-close {
@@ -219,28 +251,28 @@ function domainTone(domain: string): string {
 
 .lp-divider {
   flex: 0 0 auto;
-  margin: 0 20px 0;
+  height: 1px;
+  background: var(--line);
+  margin: 0 22px;
 }
 
-/* ── Liste ── */
 .lp-list {
   flex: 1;
   overflow-y: auto;
-  padding: 10px 20px 0;
+  padding: 10px 22px 0;
   display: flex;
   flex-direction: column;
 }
 
-/* ── Loi individuelle ── */
 .lp-law {
   display: flex;
   align-items: flex-start;
-  gap: 11px;
+  gap: 12px;
   padding: 14px 0;
   border-bottom: 1px solid var(--line-soft, oklch(.32 .022 268 / .5));
 }
 
-.lp-law--last {
+.lp-law:last-child {
   border-bottom: none;
 }
 
@@ -249,46 +281,6 @@ function domainTone(domain: string): string {
   min-width: 0;
 }
 
-.lp-law__top {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 6px;
-}
-
-.lp-law__name {
-  font-family: var(--font-display, var(--display));
-  font-size: 15.5px;
-  font-weight: 600;
-  color: var(--gold);
-  line-height: 1.2;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.lp-law__ver {
-  font-size: 10px;
-  color: var(--ink-4);
-  flex: 0 0 auto;
-}
-
-.lp-law__chips {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  margin-bottom: 7px;
-}
-
-.lp-law__desc {
-  font-size: 12.5px;
-  line-height: 1.5;
-  color: var(--ink-3);
-  margin: 0;
-}
-
-/* ── État vide ── */
 .lp-empty {
   flex: 1;
   display: flex;
@@ -299,17 +291,11 @@ function domainTone(domain: string): string {
   gap: 4px;
 }
 
-/* ── Pied ── */
 .lp-foot {
   flex: 0 0 auto;
-  padding: 14px 20px 18px;
+  padding: 14px 22px 18px;
   border-top: 1px solid var(--line-soft, oklch(.32 .022 268 / .5));
   display: flex;
   justify-content: flex-end;
-}
-
-.lp-foot__btn {
-  font-size: 12px;
-  padding: 8px 18px;
 }
 </style>
