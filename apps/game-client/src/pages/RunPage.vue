@@ -5,28 +5,72 @@ import { useRoute, useRouter } from 'vue-router';
 import GameShellLayout from '../app/layouts/GameShellLayout.vue';
 import CombatScene from '../features/combat/components/CombatScene.vue';
 import { useCombatStore } from '../features/combat/stores/useCombatStore';
+import DecisionDiptych from '../shared/components/DecisionDiptych.vue';
 import EliseOverlay from '../features/elise/EliseOverlay.vue';
 import EventChoiceResultPanel from '../features/events/components/EventChoiceResultPanel.vue';
-import EventOutcomePanel from '../features/events/components/EventOutcomePanel.vue';
-import MerchantPanel from '../features/events/components/MerchantPanel.vue';
+import EventOutcomePanel from '../features/events/components/EventOutcomePanel.vue'
+import MerchantPanel from '../features/events/components/MerchantPanel.vue'
+import LawResolutionPanel from '../features/palace-laws/LawResolutionPanel.vue';
 import InterludePanel from '../features/interlude/InterludePanel.vue';
 import RoomClearedPanel from '../features/interlude/RoomClearedPanel.vue';
 import InventoryDrawer from '../features/inventory/components/InventoryDrawer.vue';
-import PalaceNodeDrawer from '../features/node-details/PalaceNodeDrawer.vue';
-import LawResolutionPanel from '../features/palace-laws/LawResolutionPanel.vue';
 import LawsPopover from '../features/palace-laws/LawsPopover.vue';
+import PalaceNodeDrawer from '../features/node-details/PalaceNodeDrawer.vue';
 import PalaceMapPlaceholder from '../features/palace-map/PalaceMapPlaceholder.vue';
 import RewardOfferPanel from '../features/rewards/components/RewardOfferPanel.vue';
 import RunStatusRibbon from '../features/runs/components/RunStatusRibbon.vue';
 import { useRunStore } from '../features/runs/stores/runStore';
-import DecisionDiptych from '../shared/components/DecisionDiptych.vue';
 import { useGameUiStore } from '../shared/stores/useGameUiStore';
+import type { CurrentEventChoiceResultDto } from '../features/events/types/eventTypes';
 
 const route = useRoute();
 const router = useRouter();
 const runStore = useRunStore();
 const combatStore = useCombatStore();
 const uiStore = useGameUiStore();
+
+// ── Synthetic "Choix accompli" transition ──────────────────────────────────
+const showingTransition = ref(false);
+const transitionResult = ref<CurrentEventChoiceResultDto | null>(null);
+const transitionAfterChoice = ref(false);
+
+async function handleEventContinue() {
+  const outcome = runStore.lastOutcome;
+  transitionResult.value = {
+    title: outcome?.title ?? 'Résolu',
+    description: outcome?.description ?? undefined,
+    outcomeKind: outcome?.resolutionKind ?? undefined,
+    state: 'Résolu',
+  };
+  showingTransition.value = true;
+  transitionAfterChoice.value = false;
+}
+
+async function handleSelectChoice(choiceId: string) {
+  const outcome = runStore.lastOutcome;
+  await runStore.selectCurrentEventChoice(choiceId);
+  if (!runStore.lastChoiceResult) {
+    transitionResult.value = {
+      title: outcome?.title ?? 'Choix effectué',
+      description: outcome?.description ?? undefined,
+      outcomeKind: outcome?.resolutionKind ?? undefined,
+      state: 'Choix effectué',
+    };
+    showingTransition.value = true;
+    transitionAfterChoice.value = true;
+  }
+}
+
+async function handleTransitionContinue() {
+  showingTransition.value = false;
+  transitionResult.value = null;
+  if (transitionAfterChoice.value) {
+    await runStore.progressRun();
+  } else {
+    await runStore.continueAfterOutcome();
+  }
+  transitionAfterChoice.value = false;
+}
 
 const isSafePoint = computed(() =>
   runStore.currentRun?.status === 'RoomResolved' ||
@@ -213,32 +257,41 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
         />
       </template>
 
+      <!-- ── Synthetic "Choix accompli" transition ── -->
+      <template v-else-if="showingTransition && transitionResult">
+        <EventChoiceResultPanel
+          :result="transitionResult"
+          :is-loading="runStore.isLoading"
+          @continue="handleTransitionContinue"
+        />
+      </template>
+
       <!-- ── Event outcome ── -->
       <template v-else-if="runStore.gameplayPhase === 'EventOutcome' && runStore.lastOutcome">
         <LawResolutionPanel
           v-if="runStore.lastOutcome.resolutionKind === 'PalaceLawOffered'"
           :outcome="runStore.lastOutcome"
           :is-loading="runStore.isLoading"
-          @continue="runStore.continueAfterOutcome"
-          @select-choice="runStore.selectCurrentEventChoice"
+          @continue="handleEventContinue"
+          @select-choice="handleSelectChoice"
         />
         <MerchantPanel
           v-else-if="runStore.lastOutcome.resolutionKind === 'TradeOffered'"
           :outcome="runStore.lastOutcome"
           :is-loading="runStore.isLoading"
-          @continue="runStore.continueAfterOutcome"
-          @select-choice="runStore.selectCurrentEventChoice"
+          @continue="handleEventContinue"
+          @select-choice="handleSelectChoice"
         />
         <EventOutcomePanel
           v-else
           :outcome="runStore.lastOutcome"
           :is-loading="runStore.isLoading"
-          @continue="runStore.continueAfterOutcome"
-          @select-choice="runStore.selectCurrentEventChoice"
+          @continue="handleEventContinue"
+          @select-choice="handleSelectChoice"
         />
       </template>
 
-      <!-- ── Event choice result ── -->
+      <!-- ── Event choice result (real backend result) ── -->
       <template v-else-if="runStore.gameplayPhase === 'EventChoiceResult' && runStore.lastChoiceResult">
         <EventChoiceResultPanel
           :result="runStore.lastChoiceResult"
