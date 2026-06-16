@@ -93,4 +93,30 @@ public sealed class CombatsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<CombatSkillActionResult>> UseCombatSkill(
-     
+        Guid runId,
+        Guid combatId,
+        [FromBody] UseCombatSkillRequest request,
+        CancellationToken cancellationToken)
+    {
+        var command = new UseCombatSkillCommand(
+            RunId: runId,
+            CombatId: combatId,
+            ActorId: request.ActorId,
+            SkillKey: request.SkillKey,
+            TargetIds: request.TargetIds);
+
+        var response = await _sender.Send(command, cancellationToken);
+
+        return Ok(response);
+    }
+}
+
+public sealed record UseCombatSkillRequest(
+    Guid ActorId,
+    string SkillKey,
+    IReadOnlyCollection<Guid> TargetIds);
+
+public sealed record SubmitCombatActionRequest(
+    Guid ActorId,
+    Guid TargetId,
+    string ActionType);

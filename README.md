@@ -569,4 +569,39 @@ docs(v2): add versioning roadmap
 chore(repo): move v1 backend and web portal to legacy
 ```
 
--
+---
+
+## Licence et propriété intellectuelle
+
+Le code source a vocation à être open source selon la licence définie dans le dépôt.
+
+Cependant, l’univers narratif de **L’épopée des silences** reste protégé :
+
+* nom du projet ;
+* Tome des silences ;
+* personnages ;
+* textes ;
+* fragments narratifs ;
+* lore ;
+* visuels ;
+* logos ;
+* assets ;
+* concepts d’univers ;
+* contenu littéraire associé.
+
+La licence du code ne vaut pas abandon des droits d’auteur sur l’univers, les textes, les noms, les personnages ou les assets narratifs.
+
+---
+
+## Statut
+
+Projet en développement actif.
+
+## Licence
+
+Le code source de ce dépôt est distribué sous licence GNU Affero General Public License v3.0.
+
+SPDX-License-Identifier: AGPL-3.0-only
+
+Cette licence concerne le code source uniquement.  
+L’univers narratif, les textes, personnages, noms, fragments, assets, logos et éléments du Tome des silences restent protégés par droit d’auteur et ne sont pas placés sous AGPL.

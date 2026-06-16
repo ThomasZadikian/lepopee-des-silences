@@ -12,4 +12,14 @@ public sealed class CatalogDbContextFactory : IDesignTimeDbContextFactory<Catalo
     {
         var optionsBuilder = new DbContextOptionsBuilder<CatalogDbContext>();
 
-        // Design-time connection string. Allow an env ov
+        // Design-time connection string. Allow an env override so the local port
+        // (5434) is not hardcoded; falls back to the documented dev default.
+        var connectionString =
+            Environment.GetEnvironmentVariable("CATALOG_DB_CONNECTION_STRING")
+            ?? DefaultConnectionString;
+
+        optionsBuilder.UseNpgsql(connectionString);
+
+        return new CatalogDbContext(optionsBuilder.Options);
+    }
+}

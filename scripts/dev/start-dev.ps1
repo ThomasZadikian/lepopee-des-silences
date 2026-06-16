@@ -65,4 +65,4 @@ Write-Host "  Player API      : http://localhost:5189/swagger" -ForegroundColor 
 Write-Host "  Web Client      : http://localhost:5173" -ForegroundColor DarkGray
 Write-Host ""
 Write-Host "To stop: .\scripts\dev\stop-dev.ps1" -ForegroundColor Yellow
-Write
+Write-Host "To reset DB: .\scripts\dev\reset-dev-db.ps1" -ForegroundColor Yellow

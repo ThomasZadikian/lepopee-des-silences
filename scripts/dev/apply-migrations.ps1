@@ -50,4 +50,29 @@ if (Test-Path "$repoRoot\services\catalog\src\Leds.Catalog.Infrastructure\Persis
         Pop-Location
     }
 } else {
-    Write-Host "  Catalog Service has no EF migra
+    Write-Host "  Catalog Service has no EF migrations yet. Skipping." -ForegroundColor DarkGray
+}
+
+# Player (when EF is added)
+Write-Host "[3/3] Player Service..." -ForegroundColor Yellow
+if (Test-Path "$repoRoot\services\player\src\Leds.Player.Infrastructure\Persistence\Migrations") {
+    Push-Location "$repoRoot\services\player"
+    try {
+        dotnet ef database update `
+            --project src\Leds.Player.Infrastructure `
+            --startup-project src\Leds.Player.Api `
+            --context PlayerDbContext
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "  ERROR: Player migration failed." -ForegroundColor Red
+            exit 1
+        }
+        Write-Host "  Player database updated." -ForegroundColor Green
+    } finally {
+        Pop-Location
+    }
+} else {
+    Write-Host "  Player Service has no EF migrations yet. Skipping." -ForegroundColor DarkGray
+}
+
+Write-Host ""
+Write-Host "=== Migrations applied ===" -ForegroundColor Cyan

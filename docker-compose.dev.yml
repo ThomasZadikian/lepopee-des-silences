@@ -27,4 +27,18 @@ services:
 
   catalog-postgres:
     image: postgres:16
-    container_name:
+    container_name: leds-catalog-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: leds_catalog
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5434:5432"
+    volumes:
+      - catalog_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  game_engine_postgres_data:
+  player_postgres_data:
+  catalog_postgres_data:

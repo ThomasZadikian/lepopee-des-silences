@@ -160,4 +160,5 @@ docker compose -f docker-compose.dev.yml up -d
 ## 10. Recommendation for the next PR
 
 1. `chore(repo): remove legacy v1 sources` — delete `legacy/`, resolving the heavy tree and the broken LFS at once.
-2. A small backend PR applying §5 (IClock dedup + combat HTTP consolidation + legacy combat retirement) behind a working `dotn
+2. A small backend PR applying §5 (IClock dedup + combat HTTP consolidation + legacy combat retirement) behind a working `dotnet build/test`.
+3. Fix the `tsconfig.app.json` `baseUrl`/`ignoreDeprecations` issue to restore a green frontend build.
