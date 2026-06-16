@@ -194,30 +194,6 @@ public sealed class ResolveCurrentEventCommandHandler
             run.ResolveCurrentEvent();
             selectedNode.ChooseEventOption("trade");
         }
-        else if (selectedNode.EventType == NodeEventType.Curse)
-        {
-            var curseKey = $"curse.{selectedNode.Id.Value.ToString()[..8]}";
-
-            var curse = ActiveCurse.Create(
-                curseKey,
-                resolutionResult.Title,
-                resolutionResult.Description,
-                0.10,
-                DateTime.UtcNow);
-
-            run.ApplyCurse(curse);
-
-            // Add a mechanical RunModifier: +10% enemy difficulty for the next combat.
-            var curseModifier = RunModifier.Create(
-                RunModifierType.NextCombatDifficultyMultiplier,
-                0.10,
-                RunModifierDuration.NextCombatOnly,
-                "Curse",
-                curseKey);
-            run.AddRunModifier(curseModifier);
-
-            run.ResolveCurrentEvent();
-        }
         else
         {
             run.ResolveCurrentEvent();

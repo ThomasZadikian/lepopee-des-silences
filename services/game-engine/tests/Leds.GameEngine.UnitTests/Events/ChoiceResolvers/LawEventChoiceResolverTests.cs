@@ -1,4 +1,5 @@
 ﻿using FluentAssertions;
+using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Application.Events.ChoiceResolvers;
 using Leds.GameEngine.Application.Events.ChooseEventOption;
 using Leds.GameEngine.Application.PalaceLaws;
@@ -6,6 +7,7 @@ using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.PalaceLaws;
 using Leds.GameEngine.UnitTests.Common.Factories;
+using Moq;
 
 namespace Leds.GameEngine.UnitTests.Events.ChoiceResolvers;
 
@@ -21,7 +23,7 @@ public sealed class LawEventChoiceResolverTests
             runWithNode.TargetNode,
             "accept-law");
 
-        var sut = new LawEventChoiceResolver(new StaticPalaceLawCatalog());
+        var sut = new LawEventChoiceResolver(new StaticPalaceLawCatalog(), Mock.Of<ICatalogPalaceLawDefinitionProvider>(), Mock.Of<ICatalogEffectSetProvider>());
 
         var result = sut.Resolve(context);
 
@@ -51,7 +53,7 @@ public sealed class LawEventChoiceResolverTests
             runWithNode.TargetNode,
             "reject-law");
 
-        var sut = new LawEventChoiceResolver(new StaticPalaceLawCatalog());
+        var sut = new LawEventChoiceResolver(new StaticPalaceLawCatalog(), Mock.Of<ICatalogPalaceLawDefinitionProvider>(), Mock.Of<ICatalogEffectSetProvider>());
 
         var result = sut.Resolve(context);
 
@@ -71,7 +73,7 @@ public sealed class LawEventChoiceResolverTests
             runWithNode.TargetNode,
             "unknown-choice");
 
-        var sut = new LawEventChoiceResolver(new StaticPalaceLawCatalog());
+        var sut = new LawEventChoiceResolver(new StaticPalaceLawCatalog(), Mock.Of<ICatalogPalaceLawDefinitionProvider>(), Mock.Of<ICatalogEffectSetProvider>());
 
         var act = () => sut.Resolve(context);
 

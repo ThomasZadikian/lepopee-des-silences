@@ -9,6 +9,12 @@ public sealed class RunActivePalaceLawEntity
     public string Name { get; set; } = string.Empty;
     public string Version { get; set; } = string.Empty;
     public string Domains { get; set; } = string.Empty;
+    public string? DisplayName { get; set; }
+    public string? Description { get; set; }
+    public string? Duration { get; set; }
+    public DateTime? AppliedAtUtc { get; set; }
+    public Guid? ExpiresAtRoomId { get; set; }
+    public DateTime? ConsumedAtUtc { get; set; }
 
     public RunEntity? Run { get; set; }
 }

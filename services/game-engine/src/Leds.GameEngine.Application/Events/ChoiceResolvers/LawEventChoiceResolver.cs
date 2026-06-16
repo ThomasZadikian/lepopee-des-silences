@@ -1,18 +1,28 @@
-﻿using Leds.GameEngine.Application.Events.ChooseEventOption;
+﻿using Leds.GameEngine.Application.Catalog.Ports;
+using Leds.GameEngine.Application.Events.ChooseEventOption;
 using Leds.GameEngine.Application.Events.Dtos;
 using Leds.GameEngine.Application.PalaceLaws;
 using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Nodes;
+using Leds.GameEngine.Domain.PalaceLaws;
+using Leds.GameEngine.Domain.Runs;
 
 namespace Leds.GameEngine.Application.Events.ChoiceResolvers;
 
 public sealed class LawEventChoiceResolver : ICurrentEventChoiceResolver
 {
     private readonly IPalaceLawCatalog _palaceLawCatalog;
+    private readonly ICatalogPalaceLawDefinitionProvider _lawDefinitionProvider;
+    private readonly ICatalogEffectSetProvider _effectSetProvider;
 
-    public LawEventChoiceResolver(IPalaceLawCatalog palaceLawCatalog)
+    public LawEventChoiceResolver(
+        IPalaceLawCatalog palaceLawCatalog,
+        ICatalogPalaceLawDefinitionProvider lawDefinitionProvider,
+        ICatalogEffectSetProvider effectSetProvider)
     {
         _palaceLawCatalog = palaceLawCatalog;
+        _lawDefinitionProvider = lawDefinitionProvider;
+        _effectSetProvider = effectSetProvider;
     }
 
     public NodeEventType EventType => NodeEventType.Law;
@@ -32,10 +42,6 @@ public sealed class LawEventChoiceResolver : ICurrentEventChoiceResolver
     private CurrentEventChoiceResolutionResult AcceptLaw(
         CurrentEventChoiceResolutionContext context)
     {
-        // Guard: if no law engine is available, treat acceptance as a narrative-only outcome
-        // rather than activating a law with no real effect. The static catalog always provides
-        // a placeholder, so this guard is currently a safety net for future engine evolution.
-        // (Spec constraint: Ne pas faire un Palace Law Engine complet.)
         var law = _palaceLawCatalog.GetDefaultLawFor(context);
         if (law is null)
         {
@@ -66,12 +72,12 @@ public sealed class LawEventChoiceResolver : ICurrentEventChoiceResolver
         return CurrentEventChoiceResolutionResult.Create(
             context.ChoiceId,
             accepted: true,
-            "La Loi est rejetée. Le Palais reste stable pour l’instant.",
+            "La Loi est rejetée. Le Palais reste stable pour l'instant.",
             new[]
             {
                 new NarrativeFragmentDto(
                     "Elise",
-                    "Refuser une Loi ne l’efface pas. Cela l’éloigne seulement.")
+                    "Refuser une Loi ne l'efface pas. Cela l'éloigne seulement.")
             });
     }
 }

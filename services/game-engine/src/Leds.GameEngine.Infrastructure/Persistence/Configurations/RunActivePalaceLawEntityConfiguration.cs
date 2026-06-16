@@ -20,11 +20,36 @@ public sealed class RunActivePalaceLawEntityConfiguration : IEntityTypeConfigura
         builder.Property(law => law.Version).HasColumnName("version").HasMaxLength(64).IsRequired();
         builder.Property(law => law.Domains).HasColumnName("domains").HasMaxLength(512).IsRequired();
 
+        builder.Property(law => law.DisplayName)
+            .HasColumnName("display_name")
+            .HasMaxLength(256);
+
+        builder.Property(law => law.Description)
+            .HasColumnName("description")
+            .HasMaxLength(1024);
+
+        builder.Property(law => law.Duration)
+            .HasColumnName("duration")
+            .HasMaxLength(64);
+
+        builder.Property(law => law.AppliedAtUtc)
+            .HasColumnName("applied_at_utc");
+
+        builder.Property(law => law.ExpiresAtRoomId)
+            .HasColumnName("expires_at_room_id");
+
+        builder.Property(law => law.ConsumedAtUtc)
+            .HasColumnName("consumed_at_utc");
+
         builder.HasOne(law => law.Run)
             .WithMany(run => run.ActivePalaceLaws)
             .HasForeignKey(law => law.RunId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasIndex(law => law.RunId);
+        builder.HasIndex(law => law.RunId)
+            .HasDatabaseName("IX_run_active_palace_laws_run_id");
+
+        builder.HasIndex(law => law.Key)
+            .HasDatabaseName("IX_run_active_palace_laws_key");
     }
 }

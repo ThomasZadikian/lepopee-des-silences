@@ -98,6 +98,8 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IRuntimeEffectResolver, RuntimeEffectResolver>();
         services.AddSingleton<ICatalogRewardTemplateProvider, InMemoryCatalogRewardTemplateProvider>();
         services.AddSingleton<ICatalogItemDefinitionProvider, InMemoryCatalogItemDefinitionProvider>();
+        services.AddSingleton<ICatalogPalaceLawDefinitionProvider, InMemoryCatalogPalaceLawDefinitionProvider>();
+        services.AddSingleton<ICatalogCurseDefinitionProvider, InMemoryCatalogCurseDefinitionProvider>();
 
         return services;
     }

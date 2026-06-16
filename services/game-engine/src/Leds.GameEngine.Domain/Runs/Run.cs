@@ -1206,7 +1206,8 @@ public sealed class Run
         PlayerRuntimeState? playerState = null,
         IEnumerable<RunItem>? runItems = null,
         IEnumerable<RunModifier>? runModifiers = null,
-        RunPlayerSnapshot? playerSnapshot = null)
+        RunPlayerSnapshot? playerSnapshot = null,
+        ActiveCurse? activeCurse = null)
     {
         var firstRoom = rooms.First();
 
@@ -1223,6 +1224,7 @@ public sealed class Run
         run._preSuspendStatus = preSuspendStatus;
         run._memoryFragments.AddRange(memoryFragments);
         run._activePalaceLaws.AddRange(activePalaceLaws);
+        run._activeCurse = activeCurse;
 
         if (snapshot is not null)
         {

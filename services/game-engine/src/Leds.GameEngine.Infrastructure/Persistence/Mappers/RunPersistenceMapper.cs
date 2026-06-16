@@ -53,15 +53,24 @@ public static class RunPersistenceMapper
             ActivePalaceLaws = run.ActivePalaceLaws
                 .Select(law => new RunActivePalaceLawEntity
                 {
-                    Id = Guid.NewGuid(),
+                    Id = law.LawId.Value,
                     RunId = run.Id.Value,
                     LawId = law.LawId.Value,
                     Key = law.Key,
                     Name = law.Name,
                     Version = law.Version,
-                    Domains = string.Join(",", law.Domains.Select(d => d.ToString()))
+                    Domains = string.Join(",", law.Domains.Select(d => d.ToString())),
+                    DisplayName = law.DisplayName,
+                    Description = law.Description,
+                    Duration = law.Duration,
+                    AppliedAtUtc = law.AppliedAtUtc,
+                    ExpiresAtRoomId = law.ExpiresAtRoomId,
+                    ConsumedAtUtc = law.ConsumedAtUtc
                 })
                 .ToList(),
+            ActiveCurses = run.ActiveCurse is not null
+                ? [ToActiveCurseEntity(run.ActiveCurse, run.Id.Value)]
+                : [],
             ActiveCombat = run.ActiveCombat is not null
                 ? CombatPersistenceMapper.ToEntity(run.ActiveCombat, run.Id.Value)
                 : null,
@@ -356,7 +365,8 @@ public static class RunPersistenceMapper
             playerState,
             runItems,
             runModifiers,
-            playerSnapshot: playerSnapshot);
+            playerSnapshot: playerSnapshot,
+            activeCurse: entity.ActiveCurses.FirstOrDefault() is { } curseEntity ? ToDomain(curseEntity) : null);
     }
 
     public static Room ToDomain(RoomEntity entity)
@@ -414,7 +424,50 @@ public static class RunPersistenceMapper
             entity.Key,
             entity.Name,
             entity.Version,
-            domains);
+            domains,
+            entity.DisplayName,
+            entity.Description,
+            entity.Duration,
+            entity.AppliedAtUtc,
+            entity.ExpiresAtRoomId,
+            entity.ConsumedAtUtc);
+    }
+
+    public static ActiveCurse ToDomain(ActiveCurseEntity entity)
+    {
+        return ActiveCurse.Rehydrate(
+            entity.Id,
+            entity.Key,
+            entity.DisplayName,
+            entity.Description,
+            entity.DifficultyDelta,
+            entity.AppliedAtUtc,
+            entity.CurseDefinitionKey,
+            entity.Severity,
+            entity.Duration,
+            entity.ExpiresAtRoomId,
+            entity.ConsumedAtUtc,
+            entity.EffectSetKey);
+    }
+
+    public static ActiveCurseEntity ToActiveCurseEntity(ActiveCurse curse, Guid runId)
+    {
+        return new ActiveCurseEntity
+        {
+            Id = curse.Id,
+            RunId = runId,
+            Key = curse.Key,
+            DisplayName = curse.DisplayName,
+            Description = curse.Description,
+            DifficultyDelta = curse.DifficultyDelta,
+            AppliedAtUtc = curse.AppliedAtUtc,
+            CurseDefinitionKey = curse.CurseDefinitionKey,
+            Severity = curse.Severity,
+            Duration = curse.Duration,
+            ExpiresAtRoomId = curse.ExpiresAtRoomId,
+            ConsumedAtUtc = curse.ConsumedAtUtc,
+            EffectSetKey = curse.EffectSetKey
+        };
     }
 
     private static ActivePalaceLaw[] DeserializeSnapshotLaws(string json)
