@@ -1,0 +1,33 @@
+using Leds.GameEngine.Infrastructure.Persistence.Entities;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
+namespace Leds.GameEngine.Infrastructure.Persistence.Configurations;
+
+public sealed class RunCharacterSnapshotEntityConfiguration : IEntityTypeConfiguration<RunCharacterSnapshotEntity>
+{
+    public void Configure(EntityTypeBuilder<RunCharacterSnapshotEntity> builder)
+    {
+        builder.ToTable("run_character_snapshots");
+
+        builder.HasKey(e => e.Id);
+
+        builder.Property(e => e.Id).HasColumnName("id");
+        builder.Property(e => e.PlayerSnapshotId).HasColumnName("player_snapshot_id");
+        builder.Property(e => e.CharacterId).HasColumnName("character_id");
+        builder.Property(e => e.DefinitionKey).HasColumnName("definition_key").HasMaxLength(160).IsRequired();
+        builder.Property(e => e.DisplayName).HasColumnName("display_name").HasMaxLength(256).IsRequired();
+
+        builder.HasIndex(e => e.PlayerSnapshotId);
+
+        builder.HasOne(e => e.StatBlock)
+            .WithOne(e => e.CharacterSnapshot)
+            .HasForeignKey<RunCharacterStatSnapshotEntity>(e => e.CharacterSnapshotId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasMany(e => e.Skills)
+            .WithOne(e => e.CharacterSnapshot)
+            .HasForeignKey(e => e.CharacterSnapshotId)
+            .OnDelete(DeleteBehavior.Cascade);
+    }
+}

@@ -37,16 +37,16 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
         var mainCharacter = snapshot.Characters.FirstOrDefault()
             ?? throw new InvalidOperationException("Player snapshot has no available characters.");
 
-        var playerSkills = mainCharacter.SkillKeys
-            .Select(key => PlayerRuntimeSkill.Create(
-                key: key,
-                displayName: key,
-                skillType: "Damage",
-                targetingType: key.Contains("guard", StringComparison.OrdinalIgnoreCase) ? "Self" : "SingleEnemy",
-                effectType: key.Contains("guard", StringComparison.OrdinalIgnoreCase) ? "Guard" : "Damage",
-                manaCost: 0,
-                chargeCost: 0,
-                basePower: key.Contains("guard", StringComparison.OrdinalIgnoreCase) ? 5 : 10))
+        var playerSkills = mainCharacter.Skills
+            .Select(s => PlayerRuntimeSkill.Create(
+                key: s.SkillDefinitionKey,
+                displayName: s.DisplayName,
+                skillType: s.SkillType,
+                targetingType: s.TargetingMode,
+                effectType: s.EffectType,
+                manaCost: s.ManaCost,
+                chargeCost: s.ChargeCost,
+                basePower: s.BasePower))
             .ToArray();
 
         var run = Run.StartNew(
@@ -56,9 +56,56 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
             _runGenerator.MarkovMatrixVersion,
             initialRoom,
             _clock.UtcNow,
-            maxHp: mainCharacter.MaxVitality,
-            currentHp: mainCharacter.MaxVitality,
+            maxHp: mainCharacter.Stats.MaxVitality,
+            currentHp: mainCharacter.Stats.MaxVitality,
+            attack: mainCharacter.Stats.AttackPower,
+            defense: mainCharacter.Stats.Defense,
+            speed: mainCharacter.Stats.Speed,
             playerSkills: playerSkills);
+
+        var characterSnapshots = snapshot.Characters
+            .Select(c =>
+            {
+                var statSnapshot = RunCharacterStatSnapshot.Create(
+                    maxVitality: c.Stats.MaxVitality,
+                    attackPower: c.Stats.AttackPower,
+                    defense: c.Stats.Defense,
+                    startingGuard: c.Stats.StartingGuard,
+                    speed: c.Stats.Speed,
+                    initiative: c.Stats.Initiative,
+                    recovery: c.Stats.Recovery,
+                    focus: c.Stats.Focus,
+                    mana: c.Stats.Mana,
+                    charge: c.Stats.Charge);
+
+                var skillSnapshots = c.Skills
+                    .Select(s => RunCharacterSkillSnapshot.Create(
+                        skillDefinitionKey: s.SkillDefinitionKey,
+                        displayName: s.DisplayName,
+                        skillType: s.SkillType,
+                        targetingMode: s.TargetingMode,
+                        effectType: s.EffectType,
+                        manaCost: s.ManaCost,
+                        chargeCost: s.ChargeCost,
+                        basePower: s.BasePower))
+                    .ToArray();
+
+                return RunCharacterSnapshot.Create(
+                    characterId: c.CharacterId,
+                    definitionKey: c.DefinitionKey,
+                    displayName: c.DisplayName,
+                    statBlock: statSnapshot,
+                    skills: skillSnapshots);
+            })
+            .ToArray();
+
+        var playerSnapshot = RunPlayerSnapshot.Create(
+            playerId: snapshot.PlayerId,
+            displayName: snapshot.DisplayName,
+            characters: characterSnapshots,
+            createdAtUtc: _clock.UtcNow);
+
+        run.AttachPlayerSnapshot(playerSnapshot);
 
         await _runRepository.AddAsync(run, cancellationToken);
 

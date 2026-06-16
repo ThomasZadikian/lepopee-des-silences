@@ -91,7 +91,10 @@ public static class RunPersistenceMapper
                 SourceKey = m.SourceKey,
                 CreatedAtUtc = m.CreatedAtUtc,
                 ConsumedAtUtc = m.ConsumedAtUtc
-            }).ToList()
+            }).ToList(),
+            PlayerSnapshot = run.PlayerSnapshot is not null
+                ? ToPlayerSnapshotEntity(run.PlayerSnapshot, run.Id.Value)
+                : null
         };
 
         var snapshot = run.SnapshotData;
@@ -153,6 +156,76 @@ public static class RunPersistenceMapper
                     ParentNodeId = parentId.Value
                 })
                 .ToList()
+        };
+    }
+
+    public static RunPlayerSnapshotEntity ToPlayerSnapshotEntity(RunPlayerSnapshot snapshot, Guid runId)
+    {
+        var entity = new RunPlayerSnapshotEntity
+        {
+            Id = Guid.NewGuid(),
+            RunId = runId,
+            PlayerId = snapshot.PlayerId,
+            DisplayName = snapshot.DisplayName,
+            CreatedAtUtc = snapshot.CreatedAtUtc.UtcDateTime,
+            Characters = snapshot.Characters.Select(c => ToCharacterSnapshotEntity(c)).ToList()
+        };
+
+        return entity;
+    }
+
+    public static RunCharacterSnapshotEntity ToCharacterSnapshotEntity(RunCharacterSnapshot snapshot)
+    {
+        var entityId = Guid.NewGuid();
+
+        var entity = new RunCharacterSnapshotEntity
+        {
+            Id = entityId,
+            CharacterId = snapshot.CharacterId,
+            DefinitionKey = snapshot.DefinitionKey,
+            DisplayName = snapshot.DisplayName,
+            StatBlock = snapshot.StatBlock is not null
+                ? ToStatSnapshotEntity(snapshot.StatBlock, entityId)
+                : null,
+            Skills = snapshot.Skills.Select(s => ToSkillSnapshotEntity(s, entityId)).ToList()
+        };
+
+        return entity;
+    }
+
+    public static RunCharacterStatSnapshotEntity ToStatSnapshotEntity(RunCharacterStatSnapshot stat, Guid characterSnapshotId)
+    {
+        return new RunCharacterStatSnapshotEntity
+        {
+            Id = Guid.NewGuid(),
+            CharacterSnapshotId = characterSnapshotId,
+            MaxVitality = stat.MaxVitality,
+            AttackPower = stat.AttackPower,
+            Defense = stat.Defense,
+            StartingGuard = stat.StartingGuard,
+            Speed = stat.Speed,
+            Initiative = stat.Initiative,
+            Recovery = stat.Recovery,
+            Focus = stat.Focus,
+            Mana = stat.Mana,
+            Charge = stat.Charge
+        };
+    }
+
+    public static RunCharacterSkillSnapshotEntity ToSkillSnapshotEntity(RunCharacterSkillSnapshot skill, Guid characterSnapshotId)
+    {
+        return new RunCharacterSkillSnapshotEntity
+        {
+            Id = Guid.NewGuid(),
+            CharacterSnapshotId = characterSnapshotId,
+            SkillDefinitionKey = skill.SkillDefinitionKey,
+            DisplayName = skill.DisplayName,
+            SkillType = skill.SkillType,
+            TargetingMode = skill.TargetingMode,
+            EffectType = skill.EffectType,
+            ManaCost = skill.ManaCost,
+            ChargeCost = skill.ChargeCost,
+            BasePower = skill.BasePower
         };
     }
 
@@ -221,6 +294,10 @@ public static class RunPersistenceMapper
             m.CreatedAtUtc,
             m.ConsumedAtUtc)).ToList();
 
+        var playerSnapshot = entity.PlayerSnapshot is not null
+            ? ToDomainPlayerSnapshot(entity.PlayerSnapshot)
+            : null;
+
         return Run.Rehydrate(
             new RunId(entity.Id),
             entity.PlayerId,
@@ -248,7 +325,8 @@ public static class RunPersistenceMapper
             activeCombat,
             playerState,
             runItems,
-            runModifiers);
+            runModifiers,
+            playerSnapshot: playerSnapshot);
     }
 
     public static Room ToDomain(RoomEntity entity)
@@ -321,6 +399,69 @@ public static class RunPersistenceMapper
             l.Version,
             l.Domains.Select(d => Enum.Parse<PalaceLawDomain>(d.Trim())).ToArray()
         )).ToArray();
+    }
+
+    private static RunPlayerSnapshot ToDomainPlayerSnapshot(RunPlayerSnapshotEntity entity)
+    {
+        var characters = entity.Characters
+            .Select(ToDomainCharacterSnapshot)
+            .ToList();
+
+        return RunPlayerSnapshot.Rehydrate(
+            entity.Id,
+            entity.PlayerId,
+            entity.DisplayName,
+            new DateTimeOffset(entity.CreatedAtUtc, TimeSpan.Zero),
+            characters);
+    }
+
+    private static RunCharacterSnapshot ToDomainCharacterSnapshot(RunCharacterSnapshotEntity entity)
+    {
+        var statBlock = entity.StatBlock is not null
+            ? ToDomainCharacterStatSnapshot(entity.StatBlock)
+            : null;
+
+        var skills = entity.Skills
+            .Select(ToDomainCharacterSkillSnapshot)
+            .ToList();
+
+        return RunCharacterSnapshot.Rehydrate(
+            entity.Id,
+            entity.CharacterId,
+            entity.DefinitionKey,
+            entity.DisplayName,
+            statBlock,
+            skills);
+    }
+
+    private static RunCharacterStatSnapshot ToDomainCharacterStatSnapshot(RunCharacterStatSnapshotEntity entity)
+    {
+        return RunCharacterStatSnapshot.Rehydrate(
+            entity.Id,
+            entity.MaxVitality,
+            entity.AttackPower,
+            entity.Defense,
+            entity.StartingGuard,
+            entity.Speed,
+            entity.Initiative,
+            entity.Recovery,
+            entity.Focus,
+            entity.Mana,
+            entity.Charge);
+    }
+
+    private static RunCharacterSkillSnapshot ToDomainCharacterSkillSnapshot(RunCharacterSkillSnapshotEntity entity)
+    {
+        return RunCharacterSkillSnapshot.Rehydrate(
+            entity.Id,
+            entity.SkillDefinitionKey,
+            entity.DisplayName,
+            entity.SkillType,
+            entity.TargetingMode,
+            entity.EffectType,
+            entity.ManaCost,
+            entity.ChargeCost,
+            entity.BasePower);
     }
 
     private sealed record SnapshotLawDto(

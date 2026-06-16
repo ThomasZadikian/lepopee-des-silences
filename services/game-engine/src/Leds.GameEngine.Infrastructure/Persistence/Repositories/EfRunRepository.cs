@@ -30,6 +30,12 @@ public sealed class EfRunRepository : IRunRepository
                 .ThenInclude(ps => ps!.Skills)
             .Include(run => run.RunModifiers)
             .Include(run => run.InventoryItems)
+            .Include(run => run.PlayerSnapshot)
+                .ThenInclude(snapshot => snapshot!.Characters)
+                    .ThenInclude(c => c.StatBlock)
+            .Include(run => run.PlayerSnapshot)
+                .ThenInclude(snapshot => snapshot!.Characters)
+                    .ThenInclude(c => c.Skills)
             .FirstOrDefaultAsync(run => run.Id == runId.Value, cancellationToken);
 
         return entity is null ? null : RunPersistenceMapper.ToDomain(entity);
@@ -60,6 +66,12 @@ public sealed class EfRunRepository : IRunRepository
                 .ThenInclude(ps => ps!.Skills)
             .Include(r => r.RunModifiers)
             .Include(r => r.InventoryItems)
+            .Include(r => r.PlayerSnapshot)
+                .ThenInclude(snapshot => snapshot!.Characters)
+                    .ThenInclude(c => c.StatBlock)
+            .Include(r => r.PlayerSnapshot)
+                .ThenInclude(snapshot => snapshot!.Characters)
+                    .ThenInclude(c => c.Skills)
             .FirstOrDefaultAsync(r => r.Id == runId, cancellationToken);
 
         if (existing is null)

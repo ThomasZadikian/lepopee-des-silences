@@ -24,6 +24,10 @@ public sealed class GameEngineDbContext : DbContext
     public DbSet<PlayerRuntimeStateEntity> PlayerRuntimeStates => Set<PlayerRuntimeStateEntity>();
     public DbSet<PlayerRuntimeSkillEntity> PlayerRuntimeSkills => Set<PlayerRuntimeSkillEntity>();
     public DbSet<OutboxMessageEntity> OutboxMessages => Set<OutboxMessageEntity>();
+    public DbSet<RunPlayerSnapshotEntity> RunPlayerSnapshots => Set<RunPlayerSnapshotEntity>();
+    public DbSet<RunCharacterSnapshotEntity> RunCharacterSnapshots => Set<RunCharacterSnapshotEntity>();
+    public DbSet<RunCharacterStatSnapshotEntity> RunCharacterStatSnapshots => Set<RunCharacterStatSnapshotEntity>();
+    public DbSet<RunCharacterSkillSnapshotEntity> RunCharacterSkillSnapshots => Set<RunCharacterSkillSnapshotEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

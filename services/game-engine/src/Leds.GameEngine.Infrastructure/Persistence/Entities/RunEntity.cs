@@ -37,4 +37,5 @@ public sealed class RunEntity
     public List<RunModifierEntity> RunModifiers { get; set; } = [];
     public CombatEntity? ActiveCombat { get; set; }
     public PlayerRuntimeStateEntity? PlayerState { get; set; }
+    public RunPlayerSnapshotEntity? PlayerSnapshot { get; set; }
 }

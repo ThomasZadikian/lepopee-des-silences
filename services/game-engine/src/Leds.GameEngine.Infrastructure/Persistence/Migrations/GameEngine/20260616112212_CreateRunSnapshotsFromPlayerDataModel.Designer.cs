@@ -3,17 +3,20 @@ using System;
 using Leds.GameEngine.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace Leds.GameEngine.Infrastructure.Persistence.Migrations
+namespace Leds.GameEngine.Infrastructure.Persistence.Migrations.GameEngine
 {
     [DbContext(typeof(GameEngineDbContext))]
-    partial class GameEngineDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260616112212_CreateRunSnapshotsFromPlayerDataModel")]
+    partial class CreateRunSnapshotsFromPlayerDataModel
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

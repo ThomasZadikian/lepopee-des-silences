@@ -17,6 +17,7 @@ public sealed class Run
     private Combat? _activeCombat;
     private ActiveCurse? _activeCurse;
     private RunSnapshot? _roomSnapshot;
+    private RunPlayerSnapshot? _playerSnapshot;
     private RunStatus? _preSuspendStatus;
 
     private sealed record RunSnapshot(
@@ -111,6 +112,28 @@ public sealed class Run
     /// The active curse applied to the run, if any.
     /// </summary>
     public ActiveCurse? ActiveCurse => _activeCurse;
+
+    /// <summary>
+    /// Immutable player snapshot captured at run creation.
+    /// Null only for runs created before data-model-0.1 migration.
+    /// </summary>
+    public RunPlayerSnapshot? PlayerSnapshot => _playerSnapshot;
+
+    /// <summary>
+    /// Attaches a player snapshot to this run.
+    /// Called once at run creation; will throw if already set.
+    /// </summary>
+    public void AttachPlayerSnapshot(RunPlayerSnapshot snapshot)
+    {
+        ArgumentNullException.ThrowIfNull(snapshot);
+
+        if (_playerSnapshot is not null)
+        {
+            throw new DomainException("Player snapshot is already attached to this run.");
+        }
+
+        _playerSnapshot = snapshot;
+    }
 
     public PlayerRuntimeState PlayerState { get; private set; } = null!;
 
@@ -1137,7 +1160,8 @@ public sealed class Run
         Combat? activeCombat = null,
         PlayerRuntimeState? playerState = null,
         IEnumerable<RunItem>? runItems = null,
-        IEnumerable<RunModifier>? runModifiers = null)
+        IEnumerable<RunModifier>? runModifiers = null,
+        RunPlayerSnapshot? playerSnapshot = null)
     {
         var firstRoom = rooms.First();
 
@@ -1177,6 +1201,8 @@ public sealed class Run
         {
             run._runModifiers.AddRange(runModifiers);
         }
+
+        run._playerSnapshot = playerSnapshot;
 
         run.PlayerState = playerState ?? PlayerRuntimeState.Create(
             maxVitality: maxHp,
