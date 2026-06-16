@@ -31,6 +31,8 @@ public sealed class GameEngineDbContext : DbContext
     public DbSet<CombatantBaseStatSnapshotEntity> CombatantBaseStatSnapshots => Set<CombatantBaseStatSnapshotEntity>();
     public DbSet<CombatantRuntimeStateEntity> CombatantRuntimeStates => Set<CombatantRuntimeStateEntity>();
     public DbSet<CombatActionRecordEntity> CombatActionRecords => Set<CombatActionRecordEntity>();
+    public DbSet<RewardOfferEntity> RewardOffers => Set<RewardOfferEntity>();
+    public DbSet<RewardOptionEntity> RewardOptions => Set<RewardOptionEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

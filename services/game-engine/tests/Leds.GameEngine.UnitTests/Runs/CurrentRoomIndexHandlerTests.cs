@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Leds.GameEngine.Application.Abstractions;
+using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Application.Combats;
 using Leds.GameEngine.Application.Events.ChooseEventOption;
 using Leds.GameEngine.Application.Rewards.Ports;
@@ -137,7 +138,7 @@ public sealed class CurrentRoomIndexHandlerTests
     {
         var run = TestGameEngineFactory.CreateRun();
 
-        var factory = new RewardOfferFactory(new CombatRiskProfileResolver());
+        var factory = new RewardOfferFactory(new CombatRiskProfileResolver(), Mock.Of<ICatalogRewardTemplateProvider>());
         var offer = factory.CreateCombatRewardOffer(
             RewardSource.Combat,
             NodeEventType.Combat,
@@ -157,7 +158,8 @@ public sealed class CurrentRoomIndexHandlerTests
 
         var handler = new SelectRewardCommandHandler(
             runRepository.Object,
-            rewardRepository.Object);
+            rewardRepository.Object,
+            Mock.Of<ICatalogItemDefinitionProvider>());
 
         var choiceId = offer.Choices.First().Id;
 

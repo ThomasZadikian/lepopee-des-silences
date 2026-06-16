@@ -96,6 +96,8 @@ public static class InfrastructureServiceCollectionExtensions
 
         services.AddSingleton<ICatalogEffectSetProvider, InMemoryCatalogEffectSetProvider>();
         services.AddSingleton<IRuntimeEffectResolver, RuntimeEffectResolver>();
+        services.AddSingleton<ICatalogRewardTemplateProvider, InMemoryCatalogRewardTemplateProvider>();
+        services.AddSingleton<ICatalogItemDefinitionProvider, InMemoryCatalogItemDefinitionProvider>();
 
         return services;
     }
@@ -112,6 +114,7 @@ public static class InfrastructureServiceCollectionExtensions
                 options.UseNpgsql(configuration.GetConnectionString("GameEngineDb")));
 
             services.AddScoped<IRunRepository, EfRunRepository>();
+            services.AddScoped<IRewardOfferRepository, EfRewardOfferRepository>();
             services.AddScoped<ICombatActionRecordRepository, EfCombatActionRecordRepository>();
         }
     }

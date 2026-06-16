@@ -1,3 +1,4 @@
+using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Application.Combats;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rewards;
@@ -7,11 +8,15 @@ namespace Leds.GameEngine.Application.Rewards.RewardOfferFactory;
 public sealed class RewardOfferFactory
 {
     private readonly ICombatRiskProfileResolver _riskProfileResolver;
+    private readonly ICatalogRewardTemplateProvider _catalogRewardTemplateProvider;
     private readonly RewardPowerScaler _rewardPowerScaler = new();
 
-    public RewardOfferFactory(ICombatRiskProfileResolver riskProfileResolver)
+    public RewardOfferFactory(
+        ICombatRiskProfileResolver riskProfileResolver,
+        ICatalogRewardTemplateProvider catalogRewardTemplateProvider)
     {
         _riskProfileResolver = riskProfileResolver;
+        _catalogRewardTemplateProvider = catalogRewardTemplateProvider;
     }
 
     /// <summary>
@@ -36,6 +41,35 @@ public sealed class RewardOfferFactory
         };
 
         return RewardOffer.Create(source, choices, scaling);
+    }
+
+    public async Task<RewardOffer?> CreateFromTemplateKeyAsync(
+        string templateKey,
+        int riskLevel,
+        CancellationToken cancellationToken = default)
+    {
+        var template = await _catalogRewardTemplateProvider.GetRewardTemplateAsync(templateKey, cancellationToken);
+        if (template is null) return null;
+
+        var choices = template.Options.Select(opt =>
+        {
+            var rewardType = Enum.Parse<RewardType>(opt.RewardType);
+            var payloadKey = opt.PayloadType switch
+            {
+                "Item" when opt.PayloadKey is not null => $"item:{opt.PayloadKey}:{opt.Label}:{opt.Description}:Consumable:Common:Heal:{opt.BaseAmount}",
+                _ when opt.PayloadKey is not null => opt.PayloadKey,
+                _ => $"heal:{opt.BaseAmount}"
+            };
+            return RewardChoice.Create(
+                rewardType,
+                opt.Label,
+                opt.Description,
+                payloadKey);
+        }).ToList();
+
+        return RewardOffer.Create(
+            Enum.TryParse<RewardSource>(template.SourceType, ignoreCase: true, out var source) ? source : RewardSource.Combat,
+            choices);
     }
 
     public RewardOffer CreateMerchantRewardOffer(int riskLevel)

@@ -1,4 +1,5 @@
 using Leds.GameEngine.Application.Abstractions;
+using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Application.Common.Exceptions;
 using Leds.GameEngine.Application.Rewards.Dtos;
 using Leds.GameEngine.Application.Rewards.Ports;
@@ -15,13 +16,16 @@ public sealed class SelectRewardCommandHandler
 {
     private readonly IRunRepository _runRepository;
     private readonly IRewardOfferRepository _rewardOfferRepository;
+    private readonly ICatalogItemDefinitionProvider _itemDefinitionProvider;
 
     public SelectRewardCommandHandler(
         IRunRepository runRepository,
-        IRewardOfferRepository rewardOfferRepository)
+        IRewardOfferRepository rewardOfferRepository,
+        ICatalogItemDefinitionProvider itemDefinitionProvider)
     {
         _runRepository = runRepository;
         _rewardOfferRepository = rewardOfferRepository;
+        _itemDefinitionProvider = itemDefinitionProvider;
     }
 
     public async Task<SelectRewardResponse> Handle(
@@ -66,6 +70,30 @@ public sealed class SelectRewardCommandHandler
         // so a failed ApplyRewardEffect does not corrupt the in-memory offer state.
         run.ApplyReward(selectedChoice);
 
+        // Enrich items with catalog snapshot data when an item reward is selected.
+        if (selectedChoice.RewardType == RewardType.TemporaryItem)
+        {
+            var defKey = ParseItemDefinitionKey(selectedChoice.PayloadKey);
+            if (defKey is not null)
+            {
+                var def = await _itemDefinitionProvider.GetItemDefinitionAsync(defKey, cancellationToken);
+                if (def is not null)
+                {
+                    run.EnrichLastAddedItem(
+                        definitionVersion: def.Version,
+                        narrativeText: def.NarrativeText,
+                        category: def.Category,
+                        usageMode: def.UsageMode,
+                        lifecycle: def.Lifecycle,
+                        maxStack: def.MaxStack,
+                        effectSetKey: def.EffectSetKey,
+                        isUsableInCombat: def.IsUsableInCombat,
+                        isUsableOutsideCombat: def.IsUsableOutsideCombat,
+                        sourceRewardOptionId: selectedChoice.Id.Value);
+                }
+            }
+        }
+
         rewardOffer.SelectChoice(choiceId);
 
         run.ClearPendingRewardOffer();
@@ -76,5 +104,14 @@ public sealed class SelectRewardCommandHandler
         return new SelectRewardResponse(
             RunDto.FromDomain(run),
             RewardOfferDto.FromDomain(rewardOffer));
+    }
+
+    private static string? ParseItemDefinitionKey(string payloadKey)
+    {
+        // Payload format: "item:<definitionKey>:..."
+        var parts = payloadKey.Split(':', StringSplitOptions.TrimEntries);
+        return parts.Length >= 2 && string.Equals(parts[0], "item", StringComparison.OrdinalIgnoreCase)
+            ? parts[1]
+            : null;
     }
 }

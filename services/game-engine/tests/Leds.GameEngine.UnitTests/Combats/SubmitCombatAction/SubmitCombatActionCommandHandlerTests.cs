@@ -12,6 +12,7 @@ using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rewards;
 using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
+using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.UnitTests.Common.Factories;
 using Moq;
 
@@ -32,7 +33,7 @@ public sealed class SubmitCombatActionCommandHandlerTests
     }
 
     private static RewardOfferFactory CreateRewardOfferFactory() =>
-        new(new CombatRiskProfileResolver());
+        new(new CombatRiskProfileResolver(), Mock.Of<ICatalogRewardTemplateProvider>());
 
     [Fact]
     public async Task Handle_ShouldSubmitBasicAttack_WhenCombatIsActive()

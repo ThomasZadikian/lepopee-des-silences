@@ -14,29 +14,62 @@ public sealed class RunItem
         int quantity,
         RunItemEffectType effectType,
         int effectAmount,
-        DateTime createdAtUtc)
+        DateTime createdAtUtc,
+        string? definitionVersion,
+        string? narrativeText,
+        string? category,
+        string? usageMode,
+        string? lifecycle,
+        int? maxStack,
+        string? effectSetKey,
+        string? effectSummary,
+        bool? isUsableInCombat,
+        bool? isUsableOutsideCombat,
+        Guid? sourceRewardOptionId)
     {
         Id = id;
         DefinitionKey = definitionKey;
+        DefinitionVersion = definitionVersion;
         DisplayName = displayName;
         Description = description;
+        NarrativeText = narrativeText;
         Type = type;
         Rarity = rarity;
+        Category = category;
+        UsageMode = usageMode;
+        Lifecycle = lifecycle;
         Quantity = quantity;
+        MaxStack = maxStack;
         EffectType = effectType;
         EffectAmount = effectAmount;
+        EffectSetKey = effectSetKey;
+        EffectSummary = effectSummary;
+        IsUsableInCombat = isUsableInCombat ?? (effectType is RunItemEffectType.Heal or RunItemEffectType.ManaRestore or RunItemEffectType.ChargeRestore);
+        IsUsableOutsideCombat = isUsableOutsideCombat ?? true;
+        SourceRewardOptionId = sourceRewardOptionId;
         CreatedAtUtc = createdAtUtc;
     }
 
     public RunItemId Id { get; }
     public string DefinitionKey { get; }
+    public string? DefinitionVersion { get; }
     public string DisplayName { get; }
     public string Description { get; }
+    public string? NarrativeText { get; }
     public RunItemType Type { get; }
     public RunItemRarity Rarity { get; }
+    public string? Category { get; }
+    public string? UsageMode { get; }
+    public string? Lifecycle { get; }
     public int Quantity { get; private set; }
+    public int? MaxStack { get; }
     public RunItemEffectType EffectType { get; }
     public int EffectAmount { get; }
+    public string? EffectSetKey { get; }
+    public string? EffectSummary { get; }
+    public bool IsUsableInCombat { get; }
+    public bool IsUsableOutsideCombat { get; }
+    public Guid? SourceRewardOptionId { get; }
     public DateTime CreatedAtUtc { get; }
 
     public static RunItem Create(
@@ -66,7 +99,18 @@ public sealed class RunItem
             quantity,
             effectType,
             effectAmount,
-            DateTime.UtcNow);
+            DateTime.UtcNow,
+            definitionVersion: null,
+            narrativeText: null,
+            category: null,
+            usageMode: null,
+            lifecycle: null,
+            maxStack: null,
+            effectSetKey: null,
+            effectSummary: null,
+            isUsableInCombat: null,
+            isUsableOutsideCombat: null,
+            sourceRewardOptionId: null);
     }
 
     public static RunItem Rehydrate(
@@ -79,11 +123,25 @@ public sealed class RunItem
         int quantity,
         RunItemEffectType effectType,
         int effectAmount,
-        DateTime createdAtUtc)
+        DateTime createdAtUtc,
+        string? definitionVersion = null,
+        string? narrativeText = null,
+        string? category = null,
+        string? usageMode = null,
+        string? lifecycle = null,
+        int? maxStack = null,
+        string? effectSetKey = null,
+        string? effectSummary = null,
+        bool? isUsableInCombat = null,
+        bool? isUsableOutsideCombat = null,
+        Guid? sourceRewardOptionId = null)
     {
         return new RunItem(
             id, definitionKey, displayName, description,
-            type, rarity, quantity, effectType, effectAmount, createdAtUtc);
+            type, rarity, quantity, effectType, effectAmount, createdAtUtc,
+            definitionVersion, narrativeText, category, usageMode, lifecycle,
+            maxStack, effectSetKey, effectSummary, isUsableInCombat, isUsableOutsideCombat,
+            sourceRewardOptionId);
     }
 
     public void AddQuantity(int amount)
@@ -106,27 +164,15 @@ public sealed class RunItem
         Quantity--;
     }
 
-    /// <summary>
-    /// Vrai pour les effets activables pendant un combat (soins, garde, mana, charge).
-    /// Faux pour les effets passifs, narratifs ou hors-combat.
-    /// </summary>
     public bool IsBattleItem => EffectType is
       RunItemEffectType.Heal
       or RunItemEffectType.ManaRestore
       or RunItemEffectType.ChargeRestore;
 
-    /// <summary>
-    /// Type de ciblage attendu par le frontend pour cet effet en combat.
-    /// Heal → SingleAlly (guérit un allié choisi).
-    /// Autres → Self (s'applique toujours au joueur).
-    /// </summary>
     public string BattleTargetingType => EffectType == RunItemEffectType.Heal
         ? "SingleAlly"
         : "Self";
 
-    /// <summary>
-    /// Vrai si l'objet peut être utilisé manuellement (consommable, quantité > 0, effet activable).
-    /// </summary>
     public bool IsUsable =>
         Type == RunItemType.Consumable
         && Quantity > 0

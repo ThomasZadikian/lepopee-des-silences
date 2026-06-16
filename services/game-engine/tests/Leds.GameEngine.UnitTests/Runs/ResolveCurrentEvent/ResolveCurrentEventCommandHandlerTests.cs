@@ -87,7 +87,7 @@ public sealed class ResolveCurrentEventCommandHandlerTests
             CreateEncounterDraftGeneratorMock().Object,
             combatFactory?.Object ?? new Mock<ICombatFactory>().Object,
             new Mock<IRewardOfferRepository>().Object,
-            new RewardOfferFactory(new Mock<Leds.GameEngine.Application.Combats.ICombatRiskProfileResolver>().Object));
+            new RewardOfferFactory(new Mock<Leds.GameEngine.Application.Combats.ICombatRiskProfileResolver>().Object, Mock.Of<ICatalogRewardTemplateProvider>()));
     }
 
     [Fact]
@@ -352,7 +352,7 @@ public sealed class ResolveCurrentEventCommandHandlerTests
             draftGenerator.Object,
             runtimeFactoryMock.Object,
             new Mock<IRewardOfferRepository>().Object,
-            new RewardOfferFactory(new Mock<Leds.GameEngine.Application.Combats.ICombatRiskProfileResolver>().Object));
+            new RewardOfferFactory(new Mock<Leds.GameEngine.Application.Combats.ICombatRiskProfileResolver>().Object, Mock.Of<ICatalogRewardTemplateProvider>()));
 
         var response = await handler.Handle(
             new ResolveCurrentEventCommand(run.Id.Value),
@@ -458,7 +458,7 @@ public sealed class ResolveCurrentEventCommandHandlerTests
             draftGenerator.Object,
             runtimeFactoryMock.Object,
             new Mock<IRewardOfferRepository>().Object,
-            new RewardOfferFactory(new Mock<Leds.GameEngine.Application.Combats.ICombatRiskProfileResolver>().Object));
+            new RewardOfferFactory(new Mock<Leds.GameEngine.Application.Combats.ICombatRiskProfileResolver>().Object, Mock.Of<ICatalogRewardTemplateProvider>()));
 
         var response = await handler.Handle(
             new ResolveCurrentEventCommand(run.Id.Value),

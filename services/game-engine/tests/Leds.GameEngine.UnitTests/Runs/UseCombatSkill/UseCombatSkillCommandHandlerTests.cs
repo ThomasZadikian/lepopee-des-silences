@@ -17,6 +17,7 @@ using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
 using Leds.GameEngine.Infrastructure.Combats.Actions;
 using Leds.GameEngine.Infrastructure.Combats.Targeting;
+using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.UnitTests.Common.Factories;
 using Moq;
 
@@ -718,7 +719,7 @@ public sealed class UseCombatSkillCommandHandlerTests
 
     private static RewardOfferFactory CreateRewardOfferFactory()
     {
-        return new RewardOfferFactory(new CombatRiskProfileResolver());
+        return new RewardOfferFactory(new CombatRiskProfileResolver(), Mock.Of<ICatalogRewardTemplateProvider>());
     }
 
     private static Mock<IEnemyCombatTurnResolver> CreateNoOpEnemyTurnResolver()

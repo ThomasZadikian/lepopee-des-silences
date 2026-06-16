@@ -1,9 +1,11 @@
 ﻿using Leds.GameEngine.Application.Abstractions;
+using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Application.Combats;
 using Leds.GameEngine.Application.Combats.Actions;
 using Leds.GameEngine.Application.Combats.Dtos;
 using Leds.GameEngine.Application.Combats.EnemyTurns;
 using Leds.GameEngine.Application.Common.Exceptions;
+using Leds.GameEngine.Application.Effects;
 using Leds.GameEngine.Application.Runs.Dtos;
 using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Runs;
@@ -16,13 +18,22 @@ public sealed class UseRunItemCommandHandler
 {
     private readonly IRunRepository _runRepository;
     private readonly IEnemyCombatTurnResolver _enemyTurnResolver;
+    private readonly IRuntimeEffectResolver _runtimeEffectResolver;
+    private readonly ICatalogEffectSetProvider _catalogEffectSetProvider;
+    private readonly ICatalogItemDefinitionProvider _catalogItemDefinitionProvider;
 
     public UseRunItemCommandHandler(
         IRunRepository runRepository,
-        IEnemyCombatTurnResolver enemyTurnResolver)
+        IEnemyCombatTurnResolver enemyTurnResolver,
+        IRuntimeEffectResolver runtimeEffectResolver,
+        ICatalogEffectSetProvider catalogEffectSetProvider,
+        ICatalogItemDefinitionProvider catalogItemDefinitionProvider)
     {
         _runRepository = runRepository;
         _enemyTurnResolver = enemyTurnResolver;
+        _runtimeEffectResolver = runtimeEffectResolver;
+        _catalogEffectSetProvider = catalogEffectSetProvider;
+        _catalogItemDefinitionProvider = catalogItemDefinitionProvider;
     }
 
     public async Task<UseRunItemResponse> Handle(

@@ -9,6 +9,7 @@ using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rewards;
 using Leds.GameEngine.Domain.Runs;
+using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.UnitTests.Common.Factories;
 using Moq;
 
@@ -17,7 +18,7 @@ namespace Leds.GameEngine.UnitTests.Rewards.SelectReward;
 public sealed class SelectRewardCommandHandlerTests
 {
     private static RewardOfferFactory CreateFactory() =>
-        new(new CombatRiskProfileResolver());
+        new(new CombatRiskProfileResolver(), Mock.Of<ICatalogRewardTemplateProvider>());
 
     private static (Run run, RewardOffer offer) CreateRunWithPendingReward()
     {
@@ -48,7 +49,8 @@ public sealed class SelectRewardCommandHandlerTests
 
         var handler = new SelectRewardCommandHandler(
             runRepository.Object,
-            rewardRepository.Object);
+            rewardRepository.Object,
+            Mock.Of<ICatalogItemDefinitionProvider>());
 
         var choiceId = offer.Choices.First().Id;
 
@@ -78,7 +80,8 @@ public sealed class SelectRewardCommandHandlerTests
 
         var handler = new SelectRewardCommandHandler(
             runRepository.Object,
-            rewardRepository.Object);
+            rewardRepository.Object,
+            Mock.Of<ICatalogItemDefinitionProvider>());
 
         var choiceId = offer.Choices.First().Id;
 
@@ -124,7 +127,8 @@ public sealed class SelectRewardCommandHandlerTests
 
         var handler = new SelectRewardCommandHandler(
             runRepository.Object,
-            rewardRepository.Object);
+            rewardRepository.Object,
+            Mock.Of<ICatalogItemDefinitionProvider>());
 
         var healChoice = offer.Choices.First(c => c.RewardType == RewardType.Heal);
 
@@ -149,7 +153,8 @@ public sealed class SelectRewardCommandHandlerTests
 
         var handler = new SelectRewardCommandHandler(
             runRepository.Object,
-            rewardRepository.Object);
+            rewardRepository.Object,
+            Mock.Of<ICatalogItemDefinitionProvider>());
 
         var act = () => handler.Handle(
             new SelectRewardCommand(run.Id.Value, Guid.NewGuid()),
@@ -177,7 +182,8 @@ public sealed class SelectRewardCommandHandlerTests
 
         var handler = new SelectRewardCommandHandler(
             runRepository.Object,
-            rewardRepository.Object);
+            rewardRepository.Object,
+            Mock.Of<ICatalogItemDefinitionProvider>());
 
         var act = () => handler.Handle(
             new SelectRewardCommand(run.Id.Value, Guid.NewGuid()),
@@ -207,7 +213,8 @@ public sealed class SelectRewardCommandHandlerTests
 
         var handler = new SelectRewardCommandHandler(
             runRepository.Object,
-            rewardRepository.Object);
+            rewardRepository.Object,
+            Mock.Of<ICatalogItemDefinitionProvider>());
 
         var act = () => handler.Handle(
             new SelectRewardCommand(run.Id.Value, choiceId.Value),
@@ -232,7 +239,8 @@ public sealed class SelectRewardCommandHandlerTests
 
         var handler = new SelectRewardCommandHandler(
             runRepository.Object,
-            rewardRepository.Object);
+            rewardRepository.Object,
+            Mock.Of<ICatalogItemDefinitionProvider>());
 
         var act = () => handler.Handle(
             new SelectRewardCommand(runId, Guid.NewGuid()),
@@ -271,7 +279,8 @@ public sealed class SelectRewardCommandHandlerTests
 
         var handler = new SelectRewardCommandHandler(
             runRepository.Object,
-            rewardRepository.Object);
+            rewardRepository.Object,
+            Mock.Of<ICatalogItemDefinitionProvider>());
 
         var choiceId = offer.Choices.First().Id;
 
@@ -312,7 +321,8 @@ public sealed class SelectRewardCommandHandlerTests
 
         var handler = new SelectRewardCommandHandler(
             runRepository.Object,
-            rewardRepository.Object);
+            rewardRepository.Object,
+            Mock.Of<ICatalogItemDefinitionProvider>());
 
         var act = () => handler.Handle(
             new SelectRewardCommand(run.Id.Value, Guid.NewGuid()),

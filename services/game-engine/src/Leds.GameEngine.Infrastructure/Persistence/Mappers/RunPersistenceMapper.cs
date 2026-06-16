@@ -71,13 +71,24 @@ public static class RunPersistenceMapper
                 Id = item.Id.Value,
                 RunId = run.Id.Value,
                 DefinitionKey = item.DefinitionKey,
+                DefinitionVersion = item.DefinitionVersion,
                 DisplayName = item.DisplayName,
                 Description = item.Description,
+                NarrativeText = item.NarrativeText,
                 Type = item.Type.ToString(),
                 Rarity = item.Rarity.ToString(),
+                Category = item.Category,
                 Quantity = item.Quantity,
+                MaxStack = item.MaxStack,
+                UsageMode = item.UsageMode,
+                Lifecycle = item.Lifecycle,
                 EffectType = item.EffectType.ToString(),
                 EffectAmount = item.EffectAmount,
+                EffectSetKey = item.EffectSetKey,
+                EffectSummary = item.EffectSummary,
+                IsUsableInCombat = item.IsUsableInCombat,
+                IsUsableOutsideCombat = item.IsUsableOutsideCombat,
+                SourceRewardOptionId = item.SourceRewardOptionId,
                 CreatedAtUtc = item.CreatedAtUtc
             }).ToList(),
             RunModifiers = run.RunModifiers.Select(m => new RunModifierEntity
@@ -286,7 +297,18 @@ public static class RunPersistenceMapper
             item.Quantity,
             Enum.Parse<RunItemEffectType>(item.EffectType),
             item.EffectAmount,
-            item.CreatedAtUtc)).ToList();
+            item.CreatedAtUtc,
+            definitionVersion: item.DefinitionVersion,
+            narrativeText: item.NarrativeText,
+            category: item.Category,
+            usageMode: item.UsageMode,
+            lifecycle: item.Lifecycle,
+            maxStack: item.MaxStack,
+            effectSetKey: item.EffectSetKey,
+            effectSummary: item.EffectSummary,
+            isUsableInCombat: item.IsUsableInCombat,
+            isUsableOutsideCombat: item.IsUsableOutsideCombat,
+            sourceRewardOptionId: item.SourceRewardOptionId)).ToList();
 
         var runModifiers = entity.RunModifiers.Select(m => RunModifier.Rehydrate(
             new RunModifierId(m.Id),
@@ -470,6 +492,68 @@ public static class RunPersistenceMapper
             entity.ManaCost,
             entity.ChargeCost,
             entity.BasePower);
+    }
+
+    // -----------------------------------------------------------------------
+    // RewardOffer / RewardOption mapping
+    // -----------------------------------------------------------------------
+
+    public static RewardOfferEntity ToRewardOfferEntity(
+        Domain.Rewards.RewardOffer offer, Guid runId)
+    {
+        return new RewardOfferEntity
+        {
+            Id = offer.Id.Value,
+            RunId = runId,
+            Source = offer.Source.ToString(),
+            State = offer.State.ToString(),
+            CreatedAtUtc = DateTime.UtcNow,
+            SelectedAtUtc = null,
+            Options = offer.Choices.Select((choice, index) => new RewardOptionEntity
+            {
+                Id = choice.Id.Value,
+                RewardOfferId = offer.Id.Value,
+                RewardType = choice.RewardType.ToString(),
+                Label = choice.Label,
+                Description = choice.Description,
+                PayloadKey = choice.PayloadKey,
+                IsSelected = false,
+                SelectionOrder = index
+            }).ToList()
+        };
+    }
+
+    public static Domain.Rewards.RewardOffer ToRewardOfferDomain(RewardOfferEntity entity)
+    {
+        var choices = entity.Options
+            .OrderBy(o => o.SelectionOrder)
+            .Select(ToRewardChoiceDomain)
+            .ToList();
+
+        var source = Enum.Parse<RewardSource>(entity.Source);
+        var state = Enum.Parse<RewardOfferState>(entity.State);
+        var selectedChoiceId = entity.Options
+            .FirstOrDefault(o => o.IsSelected)
+            ?.Id is Guid selectedId
+            ? new RewardChoiceId(selectedId)
+            : (RewardChoiceId?)null;
+
+        return Domain.Rewards.RewardOffer.Rehydrate(
+            new RewardOfferId(entity.Id),
+            source,
+            choices,
+            state,
+            selectedChoiceId);
+    }
+
+    public static RewardChoice ToRewardChoiceDomain(RewardOptionEntity entity)
+    {
+        return RewardChoice.Rehydrate(
+            new RewardChoiceId(entity.Id),
+            Enum.Parse<RewardType>(entity.RewardType),
+            entity.Label,
+            entity.Description,
+            entity.PayloadKey ?? string.Empty);
     }
 
     private sealed record SnapshotLawDto(

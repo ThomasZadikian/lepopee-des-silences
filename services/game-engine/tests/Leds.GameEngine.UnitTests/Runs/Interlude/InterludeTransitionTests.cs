@@ -595,7 +595,8 @@ public sealed class InterludeTransitionTests
             new Mock<ICombatFactory>().Object,
             new Mock<IRewardOfferRepository>().Object,
             new Leds.GameEngine.Application.Rewards.RewardOfferFactory.RewardOfferFactory(
-                new Mock<Leds.GameEngine.Application.Combats.ICombatRiskProfileResolver>().Object));
+                new Mock<Leds.GameEngine.Application.Combats.ICombatRiskProfileResolver>().Object,
+                Mock.Of<ICatalogRewardTemplateProvider>()));
 
         var act = () => handler.Handle(
             new ResolveCurrentEventCommand(run.Id.Value),

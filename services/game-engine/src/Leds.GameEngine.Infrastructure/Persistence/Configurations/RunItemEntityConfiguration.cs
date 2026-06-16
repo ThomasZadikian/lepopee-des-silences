@@ -15,13 +15,24 @@ public sealed class RunItemEntityConfiguration : IEntityTypeConfiguration<RunIte
         builder.Property(item => item.Id).HasColumnName("id");
         builder.Property(item => item.RunId).HasColumnName("run_id");
         builder.Property(item => item.DefinitionKey).HasColumnName("definition_key").HasMaxLength(256).IsRequired();
+        builder.Property(item => item.DefinitionVersion).HasColumnName("definition_version").HasMaxLength(32);
         builder.Property(item => item.DisplayName).HasColumnName("display_name").HasMaxLength(256).IsRequired();
         builder.Property(item => item.Description).HasColumnName("description").HasMaxLength(1024);
+        builder.Property(item => item.NarrativeText).HasColumnName("narrative_text");
         builder.Property(item => item.Type).HasColumnName("type").HasMaxLength(64).IsRequired();
         builder.Property(item => item.Rarity).HasColumnName("rarity").HasMaxLength(64).IsRequired();
+        builder.Property(item => item.Category).HasColumnName("category").HasMaxLength(64);
         builder.Property(item => item.Quantity).HasColumnName("quantity");
+        builder.Property(item => item.MaxStack).HasColumnName("max_stack");
+        builder.Property(item => item.UsageMode).HasColumnName("usage_mode").HasMaxLength(64);
+        builder.Property(item => item.Lifecycle).HasColumnName("lifecycle").HasMaxLength(64);
         builder.Property(item => item.EffectType).HasColumnName("effect_type").HasMaxLength(64).IsRequired();
         builder.Property(item => item.EffectAmount).HasColumnName("effect_amount");
+        builder.Property(item => item.EffectSetKey).HasColumnName("effect_set_key").HasMaxLength(160);
+        builder.Property(item => item.EffectSummary).HasColumnName("effect_summary");
+        builder.Property(item => item.IsUsableInCombat).HasColumnName("is_usable_in_combat");
+        builder.Property(item => item.IsUsableOutsideCombat).HasColumnName("is_usable_outside_combat");
+        builder.Property(item => item.SourceRewardOptionId).HasColumnName("source_reward_option_id");
         builder.Property(item => item.CreatedAtUtc).HasColumnName("created_at_utc");
 
         builder.HasOne(item => item.Run)
@@ -30,5 +41,7 @@ public sealed class RunItemEntityConfiguration : IEntityTypeConfiguration<RunIte
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasIndex(item => item.RunId);
+        builder.HasIndex(item => item.DefinitionKey);
+        builder.HasIndex(item => item.SourceRewardOptionId);
     }
 }

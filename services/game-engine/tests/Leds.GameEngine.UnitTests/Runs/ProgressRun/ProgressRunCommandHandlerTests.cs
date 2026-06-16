@@ -9,6 +9,7 @@ using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rewards;
 using Leds.GameEngine.Domain.Runs;
+using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.UnitTests.Common.Factories;
 using Moq;
 
@@ -107,7 +108,7 @@ public sealed class ProgressRunCommandHandlerTests
     public async Task ProgressRun_ShouldThrow_WhenPendingRewardExists()
     {
         var run = TestGameEngineFactory.CreateRun();
-        var offer = new RewardOfferFactory(new CombatRiskProfileResolver())
+        var offer = new RewardOfferFactory(new CombatRiskProfileResolver(), Mock.Of<ICatalogRewardTemplateProvider>())
             .CreateCombatRewardOffer(RewardSource.Combat, NodeEventType.Combat, riskLevel: 25);
         run.SetPendingRewardOffer(offer.Id);
 

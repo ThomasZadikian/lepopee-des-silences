@@ -1,16 +1,18 @@
 using FluentAssertions;
+using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Application.Combats;
 using Leds.GameEngine.Application.Rewards.RewardOfferFactory;
 using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rewards;
+using Moq;
 
 namespace Leds.GameEngine.UnitTests.Rewards;
 
 public sealed class RewardOfferFactoryTests
 {
     private static RewardOfferFactory CreateFactory() =>
-        new(new CombatRiskProfileResolver());
+        new(new CombatRiskProfileResolver(), Mock.Of<ICatalogRewardTemplateProvider>());
 
     // -----------------------------------------------------------------------
     // Basic structural tests (pre-existing, updated for new signature)

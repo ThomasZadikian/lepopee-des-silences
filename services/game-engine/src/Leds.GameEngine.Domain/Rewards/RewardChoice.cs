@@ -28,6 +28,16 @@ public sealed class RewardChoice
 
     public string PayloadKey { get; }
 
+    public static RewardChoice Rehydrate(
+        RewardChoiceId id,
+        RewardType rewardType,
+        string label,
+        string description,
+        string payloadKey)
+    {
+        return new RewardChoice(id, rewardType, label, description, payloadKey);
+    }
+
     public static RewardChoice Create(
         RewardType rewardType,
         string label,

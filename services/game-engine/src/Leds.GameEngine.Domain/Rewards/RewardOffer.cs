@@ -41,6 +41,16 @@ public sealed class RewardOffer
 
     public bool IsPending => State == RewardOfferState.Pending;
 
+    public static RewardOffer Rehydrate(
+        RewardOfferId id,
+        RewardSource source,
+        IReadOnlyCollection<RewardChoice> choices,
+        RewardOfferState state,
+        RewardChoiceId? selectedChoiceId = null)
+    {
+        return new RewardOffer(id, source, choices, state, combatScaling: null, selectedChoiceId);
+    }
+
     public static RewardOffer Create(
         RewardSource source,
         IReadOnlyCollection<RewardChoice> choices,

@@ -765,6 +765,51 @@ public sealed class Run
         }
     }
 
+    public void EnrichLastAddedItem(
+        string definitionVersion,
+        string? narrativeText,
+        string category,
+        string usageMode,
+        string lifecycle,
+        int maxStack,
+        string? effectSetKey,
+        bool isUsableInCombat,
+        bool isUsableOutsideCombat,
+        Guid sourceRewardOptionId)
+    {
+        var lastItem = _runItems.LastOrDefault();
+        if (lastItem is null) return;
+
+        var enriched = RunItem.Rehydrate(
+            lastItem.Id,
+            lastItem.DefinitionKey,
+            lastItem.DisplayName,
+            lastItem.Description,
+            lastItem.Type,
+            lastItem.Rarity,
+            lastItem.Quantity,
+            lastItem.EffectType,
+            lastItem.EffectAmount,
+            lastItem.CreatedAtUtc,
+            definitionVersion: definitionVersion,
+            narrativeText: narrativeText,
+            category: category,
+            usageMode: usageMode,
+            lifecycle: lifecycle,
+            maxStack: maxStack,
+            effectSetKey: effectSetKey,
+            effectSummary: lastItem.EffectSummary,
+            isUsableInCombat: isUsableInCombat,
+            isUsableOutsideCombat: isUsableOutsideCombat,
+            sourceRewardOptionId: sourceRewardOptionId);
+
+        var index = _runItems.FindIndex(i => i.Id == lastItem.Id);
+        if (index >= 0)
+        {
+            _runItems[index] = enriched;
+        }
+    }
+
     /// <summary>
     /// Adds a new modifier to the run. Duplicate (unconsumed) modifiers of the same type
     /// are allowed — they stack.
