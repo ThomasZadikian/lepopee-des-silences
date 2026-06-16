@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Leds.GameEngine.Application.Abstractions;
+using Leds.SharedBuildingBlocks.Time;
 using Leds.GameEngine.Application.Combats;
 using Leds.GameEngine.Application.Combats.Ports;
 using Leds.GameEngine.Application.Combats.SubmitCombatAction;
@@ -684,6 +685,4 @@ public sealed class SubmitCombatActionCommandHandlerTests
         var run = TestGameEngineFactory.CreateRun();
         run.SetActiveCombat(combat.Id);
 
-        return (run, combat, player.Id);
-    }
-}
+        re

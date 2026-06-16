@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Leds.GameEngine.Application.Abstractions;
+using Leds.SharedBuildingBlocks.Time;
 using Leds.GameEngine.Application.Combats;
 using Leds.GameEngine.Application.Combats.Actions;
 using Leds.GameEngine.Application.Combats.Dtos;
@@ -834,6 +835,4 @@ public sealed class UseCombatSkillCommandHandlerTests
             effectType: effectType,
             manaCost: 0,
             chargeCost: 0,
-            basePower: basePower);
-    }
-}
+    

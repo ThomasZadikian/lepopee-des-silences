@@ -1,4 +1,5 @@
 ﻿using Leds.GameEngine.Application.Abstractions;
+using Leds.SharedBuildingBlocks.Time;
 using Leds.GameEngine.Application.Common.Exceptions;
 using Leds.GameEngine.Application.Runs.Dtos;
 using Leds.GameEngine.Domain.Common;
@@ -44,6 +45,4 @@ public sealed class AbandonRunCommandHandler
 
         await _runRepository.UpdateAsync(run, cancellationToken);
 
-        return new AbandonRunResponse(RunDto.FromDomain(run));
-    }
-}
+        return new AbandonRunRes

@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Leds.GameEngine.Application.Abstractions;
+using Leds.SharedBuildingBlocks.Time;
 using Leds.GameEngine.Application.Common.Exceptions;
 using Leds.GameEngine.Application.Runs.ExitMidRoom;
 using Leds.GameEngine.Domain.Combats;
@@ -117,6 +118,4 @@ public sealed class ExitMidRoomCommandHandlerTests
 
         await act.Should()
             .ThrowAsync<DomainException>()
-            .WithMessage("*must be active*");
-    }
-}
+            .Wi

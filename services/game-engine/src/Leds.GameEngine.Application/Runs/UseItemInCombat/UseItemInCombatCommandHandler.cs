@@ -1,4 +1,5 @@
 ﻿using Leds.GameEngine.Application.Abstractions;
+using Leds.SharedBuildingBlocks.Time;
 using Leds.GameEngine.Application.Combats;
 using Leds.GameEngine.Application.Combats.Actions;
 using Leds.GameEngine.Application.Combats.Dtos;
@@ -252,7 +253,4 @@ public sealed class UseItemInCombatCommandHandler
         run.PlayerState.SyncFromCombat(
             player.CurrentVitality,
             player.Guard,
-            player.Mana,
-            player.Charge);
-    }
-}
+            player.Man

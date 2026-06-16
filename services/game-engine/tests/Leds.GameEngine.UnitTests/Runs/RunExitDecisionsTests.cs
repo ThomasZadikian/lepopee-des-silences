@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Leds.GameEngine.Application.Abstractions;
+using Leds.SharedBuildingBlocks.Time;
 using Leds.GameEngine.Application.Events.ChooseEventOption;
 using Leds.GameEngine.Application.Interlude;
 using Leds.GameEngine.Application.Interlude.Dtos;
@@ -537,7 +538,4 @@ public sealed class RunExitDecisionsTests
                 It.Is<Run>(candidate =>
                     candidate.Id == run.Id &&
                     candidate.Status == RunStatus.Suspended),
-                CancellationToken.None),
-            Times.Once);
-    }
-}
+                CancellationToken.N

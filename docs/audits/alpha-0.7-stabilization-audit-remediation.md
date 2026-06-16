@@ -3,26 +3,26 @@
 - **PR**: `refactor(repo): stabilize alpha 0.7 architecture after audit`
 - **Target version**: `alpha-0.7.15-stabilization`
 - **Branch**: `refactor/stabilize-alpha-0.7-architecture`
-- **Date**: 2026-06-16
+- **Last updated**: 2026-06-16 (second pass)
 - **Scope**: stabilization, cleanup and architecture clarification only. **No gameplay feature.** No Markov / ATB / new rewards / new rooms / new combat logic. No UX change.
+
+## 0. FINAL VERDICT — NOT MERGEABLE (yet)
+
+This branch is **not mergeable into `v2/develop`** from the current pass. Frontend is fully fixed and validated. Backend code changes are complete but **two blocking gates remain**:
+
+1. **Backend build/test not executed.** The working environment has no .NET SDK and the package proxy blocks installing one; the services target `net10.0`. Every backend change below (IClock dedup, `item-actions` move) is code-complete and reasoned-correct but **unverified by compiler/tests**. They MUST pass `dotnet build` + `dotnet test` locally before merge (commands in §8).
+2. **Divergent legacy combat resolution path (Blocking before alpha-0.8).** The old `/actions` path and the canonical `skill-actions`/`item-actions` path use two genuinely different resolution engines (see item #3). Reconciling them (delegate or delete+migrate-tests) needs a working build/test loop and was therefore **not done**; it is flagged blocking, not "done".
+
+Merge only once both gates are cleared.
 
 ## 1. Source of the audit
 
-Static analysis of the repository dated 2026-06-16, recorded in
+Static analysis of 2026-06-16, recorded in
 [`docs/follow-up/analyse-incoherences-2026-06-16.md`](../follow-up/analyse-incoherences-2026-06-16.md).
-It reported: backend/frontend dual combat system, dead frontend folder `features/combats`,
-combat store collision, duplicated `IClock/SystemClock`, under-used `shared-building-blocks`,
-contradictory frontend API ports, Catalog not provisioned in Docker/env, incomplete
-docker-compose files, split combat HTTP surface, EF migrations spread across two folders,
-heavy legacy tree with broken Git LFS, and structural placeholders.
 
 ## 2. Status legend
 
-`Fixed` — corrected and (where possible) validated in this PR.
-`Mitigated` — risk materially reduced; a residual remains, tracked below.
-`Documented` — intentionally not changed; rationale + remediation path recorded.
-`Deferred` — postponed to a follow-up PR with a concrete plan.
-`Not reproduced` — claim did not hold on closer inspection.
+`Fixed` — corrected and validated here. `Fixed (code, unverified)` — code complete but not compiled/tested in this environment. `Blocking before alpha-0.8` — must be resolved before the next milestone. `Deferred (dedicated PR)` — intentionally handled by a separate PR. `Documented` — intentionally unchanged, rationale recorded.
 
 ## 3. Item-by-item remediation
 
@@ -30,135 +30,101 @@ heavy legacy tree with broken Git LFS, and structural placeholders.
 
 | # | Item | Status | Detail |
 |---|------|--------|--------|
-| 1 | Contradictory API ports | **Fixed** | `apps/game-client/.env.example` corrected from `http://localhost:5000` to `http://localhost:5187`. The code fallback (`src/shared/config/environment.ts`) and the root `.env.example` were already on `5187` and are now consistent. Env override (`VITE_GAME_ENGINE_API_URL`) is preserved. |
-| 2 | Catalog not provisionable | **Fixed** | Added `catalog-postgres` (5434→5432, db `leds_catalog`) to `docker-compose.dev.yml` and `docker-compose.yml`. Added `CATALOG_DB_*` and `CATALOG_DB_CONNECTION_STRING` to root `.env.example`. `CatalogDbContextFactory` (design-time) now reads `CATALOG_DB_CONNECTION_STRING` with a documented localhost fallback instead of a hardcoded string, so `dotnet ef` targets the provisioned DB. `scripts/dev/apply-migrations.ps1` now applies Catalog migrations; `scripts/dev/start-dev.ps1` lists the Catalog DB. **Note:** `**/appsettings.json` is gitignored repo-wide (line 462) — game-engine's own `appsettings.json` is untracked too — so no Catalog `appsettings.json` is committed. Runtime stays `InMemory` by default; Postgres mode is opt-in via env (`Persistence__Mode=Postgres`, `ConnectionStrings__CatalogDb=…`), which the runtime DI already reads (`configuration.GetConnectionString("CatalogDb")`). |
-| 3 | Dual combat system (backend/frontend) | **Mitigated** | Canonical flow declared = `skill-actions` + `item-actions` (`UseCombatSkill` / `UseItemInCombat`), the flow the live client consumes. The legacy `POST .../combats/{combatId}/actions` (`SubmitCombatAction`) endpoint is marked `[Obsolete]` with an XML doc pointing to the canonical endpoints and an alpha-0.8.x removal target; it is kept as a compatibility facade because integration/unit tests still exercise it. The frontend half of the duplication was removed (see #4). **Residual (Deferred):** physically deleting or delegating the legacy handler, and removing any divergence between the two damage paths, is **not** done here — it touches combat business logic (out of scope for a no-gameplay PR) and could not be compile-verified in this environment (no .NET SDK). |
-| 4 | Dead frontend `features/combats` | **Fixed** | Verified 0 references, then deleted `apps/game-client/src/features/combats/` entirely. Only `features/combat/` remains; `useCombatStore` now resolves to a single definition. |
+| 1 | Contradictory API ports | **Fixed** | `apps/game-client/.env.example` 5000 → 5187; code fallback and root `.env.example` already 5187. Env override preserved. |
+| 2 | Catalog not provisionable | **Fixed (config) / build unverified** | `catalog-postgres` (5434) added to both compose files; `CATALOG_DB_*` + `CATALOG_DB_CONNECTION_STRING` in root `.env.example`; `CatalogDbContextFactory` reads `CATALOG_DB_CONNECTION_STRING` with localhost fallback; `apply-migrations.ps1` applies Catalog; `start-dev.ps1` lists Catalog DB. `**/appsettings.json` is gitignored repo-wide (so none committed); runtime default stays InMemory, Postgres is opt-in via env (`Persistence__Mode=Postgres`, `ConnectionStrings__CatalogDb`). `dotnet build/test` for Catalog **could not be run here** — validate locally. |
+| 3 | Dual combat system | **Blocking before alpha-0.8** | The frontend half is gone (#4) and all combat HTTP is consolidated (#6), but the two **backend resolution engines still diverge**: old `SubmitCombatActionCommandHandler` resolves through the Domain (`combat.SubmitAction(CombatAction.BasicAttack(...))`, `CombatState`, single-target, BasicAttack only); canonical `UseCombatSkillCommandHandler` resolves through an Application pipeline (`ICombatSkillActionValidator` + `ICombatSkillEffectResolver` + `IEnemyCombatTurnResolver`, `CombatStatus`, metrics, action records, player-state sync, multi-target). These are **two separate damage calculators**, not a thin wrapper. Option A (delegate `/actions`→canonical) and Option B (migrate tests then delete `SubmitCombatAction`) both require iterating against a green build/test loop, which is unavailable here. Per the brief's Option C, this is recorded as **blocking**: see §5. |
+| 4 | Dead frontend `features/combats` | **Fixed** | Deleted; `useCombatStore` resolves to a single definition. Verified by `vue-tsc` + `vitest` green. |
 
 ### P1
 
 | # | Item | Status | Detail |
 |---|------|--------|--------|
-| 5 | Non-uniform frontend HTTP access | **Fixed** | `features/combat/api/combatApi.ts` now goes through the shared `gameEngineApi` wrapper (like `runs`/`events`/`inventory`/`rewards`) instead of calling `httpRequest` directly. Routes and DTOs unchanged. Type-checked clean (`vue-tsc`). |
-| 6 | Split combat HTTP surface | **Deferred** | `item-actions` still lives in `RunsController` while `GET`/`actions`/`skill-actions` live in `CombatsController`, under the same `api/v2/runs/{runId}/combats/{combatId}` prefix. Moving the action (route-preserving) is mechanically simple but moves handler wiring/usings across controllers and **cannot be compile-verified here** (no .NET SDK). Plan in §5. Public routes unchanged regardless. |
-| 7 | `shared-building-blocks` under-used / duplicated `IClock` | **Partially Fixed / Deferred** | **Fixed:** test file typo `SystemCloclTests.cs` → `SystemClockTests.cs` (class was already `SystemClockTests`). **Deferred:** removing the local `Leds.GameEngine.Application.Abstractions.IClock` + `Infrastructure/Clock/SystemClock` in favor of the shared `Leds.SharedBuildingBlocks.Time` versions is a ~16-file cross-project change (7 handlers, DI, ~6 test files, 2 deletions) that cannot be compiled/verified in this environment. Plan in §5. `shared-building-blocks` kept as a minimal technical kernel (`Result`/`Error`/`IClock`/`SystemClock`); no gameplay domain added. Catalog/Player were **not** forced onto the shared package (would be a large refactor; see #9 of the original audit). |
-| 8 | Incomplete docker-compose | **Fixed** | `docker-compose.yml` now contains `game-engine-postgres` (5432), `player-postgres` (5433) and `catalog-postgres` (5434) with matching volumes. `docker-compose.dev.yml` now contains all three as well. The two files are consistent and self-sufficient for local DBs. |
+| 5 | Non-uniform frontend HTTP access | **Fixed** | `features/combat/api/combatApi.ts` uses `gameEngineApi`. Validated by green build + tests. |
+| 6 | Split combat HTTP surface | **Fixed (code, unverified)** | `UseItemInCombat` action + `UseItemInCombatRequest` record moved from `RunsController` to `CombatsController` as `[HttpPost("{combatId:guid}/item-actions")]`. Public route unchanged (`api/v2/runs/{runId}/combats/{combatId}/item-actions`); DTO, command and handler unchanged. Now `GET`, `actions` (legacy), `skill-actions`, `item-actions` all live in `CombatsController`; `RunsController` keeps runs/nodes/rooms/progression and its now-unused `Combats.Actions`/`UseItemInCombat` usings were removed. Needs local `dotnet build`. |
+| 7 | Duplicated `IClock` / under-used shared kernel | **Fixed (code, unverified)** | Deleted `Application/Abstractions/IClock.cs` and `Infrastructure/Clock/SystemClock.cs`. Added `using Leds.SharedBuildingBlocks.Time;` to the 7 handlers + 6 unit-test files referencing `IClock`; DI now imports the shared `Time` namespace so `AddSingleton<IClock, SystemClock>()` binds the shared types. No local `IClock`/`SystemClock` remain; no references to the old `Infrastructure.Clock` namespace. Test-file typo `SystemCloclTests.cs` → `SystemClockTests.cs`. Shared kernel kept technical-only (`Result`/`Error`/`IClock`/`SystemClock`); Catalog/Player not forced onto it. Needs local `dotnet build`/`dotnet test`. |
+| 8 | Incomplete docker-compose | **Fixed** | `docker-compose.yml` and `docker-compose.dev.yml` both define `game-engine-postgres` (5432), `player-postgres` (5433), `catalog-postgres` (5434) with volumes. |
 
 ### P2 / P3
 
 | # | Item | Status | Detail |
 |---|------|--------|--------|
-| 9 | EF migrations output-dir incoherent | **Documented** | game-engine has one `GameEngineDbContext` but migrations sit in both `Migrations/` (canonical) and `Migrations/GameEngine/` (one migration). Not moved — relocating applied migrations risks EF model-snapshot drift. Future migrations must target the canonical folder: see §6. |
-| 10 | Placeholders / HelloWorld | **Fixed / Documented** | `HelloWorld.vue` deleted (unreferenced). `PalaceMapPlaceholder.vue` **kept** — it is still imported by `RunPage.vue`; only its name is misleading, rename deferred (§5). Empty service/app placeholders documented in §7. |
-| 11 | Heavy legacy tree | **Deferred** | `legacy/` ≈ 3160 files / ~37 MB (full `unity-v1`, old `RPG_ESI07` backend, old frontend). Archive already exists: branch `legacy/v1` and tag `v1-final-archive` (both local and origin), plus a dedicated branch `chore/remove-legacy-v1-sources`. Removal is therefore handled by that dedicated PR, not bundled into this stabilization PR (keeps the diff reviewable). Strategy in §6. |
-| 12 | Broken Git LFS on legacy | **Documented** | `.gitattributes` declares `*.jpg filter=lfs`, but legacy jpgs are committed as 131-byte LFS pointers while the working tree holds the real ~127 KB images, so they show as permanently modified. `git-lfs` is also absent from the toolchain used here. Becomes moot once `legacy/` is removed (#11); interim steps in §6. Not touched in this PR to avoid mixing binary/LFS churn into a code-stabilization diff. |
-| 13 | Migration churn | **Documented** | 17 migrations all dated 2026-06-16 (`Align…`, `Resolve…PendingModelChanges`) indicate a still-moving data model. Process note, not a code change. Recommend a model freeze before alpha-0.8.x. |
-| 14 | Service/app placeholders | **Documented** | `apps/admin-portal`, `apps/player-portal`, `services/api-gateway`, `services/audit-gdpr` contain only `.gitkeep`. Kept (on roadmap) but must be labeled "planned", not "implemented". README already marks several as `futur`; see §7. |
+| 9 | EF migrations output-dir incoherent | **Documented** | Not relocated (EF snapshot risk). Future migrations must target `Persistence/Migrations` (§6). |
+| 10 | Placeholders / HelloWorld | **Fixed / Documented** | `HelloWorld.vue` deleted. `PalaceMapPlaceholder.vue` kept (used by `RunPage.vue`); rename deferred (§5). Empty service/app placeholders documented (§7). |
+| 11 | Heavy legacy tree | **Deferred (dedicated PR)** | Archive in place: branch `legacy/v1`, tag `v1-final-archive`, working branch `chore/remove-legacy-v1-sources`. Removal handled by `chore(repo): remove legacy v1 sources`, not bundled here. |
+| 12 | Broken Git LFS on legacy | **Documented** | Moot once `legacy/` is removed (#11). `git-lfs` is also absent from the local hook chain. Interim steps in §6. |
 
-### Discovered during validation (not in original audit)
+### Discovered during validation
 
 | Item | Status | Detail |
 |------|--------|--------|
-| Frontend build blocked by `tsconfig.app.json` | **Documented (pre-existing)** | `vue-tsc` fails with `TS5101: Option 'baseUrl' is deprecated` (TypeScript ~6.0.2). This exists independently of this PR (tsconfig untouched) and would already break `npm run build`. Fix is a one-liner (`"ignoreDeprecations": "6.0"` or drop `baseUrl`) but is outside the audit scope; flagged here so it is fixed before relying on CI green. |
+| Frontend build red (`tsconfig.app.json` `baseUrl`) | **Fixed** | Removed deprecated `baseUrl` (TS5101); `paths` rewritten to `@/* → ./src/*` (resolved relative to the config since TS 5+). |
+| Frontend unused-var errors | **Fixed** | `noUnusedLocals`/`noUnusedParameters` flagged an unused `i` index in `LawsPopover.vue` and `PalaceLawPanel.vue` (`v-for="(law, i)"`). Changed to `v-for="law"` (key already `law.key`; render identical). |
+| `npm run typecheck` / `npm run lint` | **Documented** | These scripts **do not exist** in `package.json`. Available scripts: `dev`, `build` (`vue-tsc -b && vite build` = typecheck + bundle), `preview`, `test` (`vitest run`), `test:watch`. Validation used `build` + `test`. |
 
-## 4. Files touched
+## 4. Files touched (second pass cumulative)
 
-**Created**
-- `packages/shared-building-blocks/tests/Leds.SharedBuildingBlocks.UnitTests/Clock/SystemClockTests.cs`
-- `docs/audits/alpha-0.7-stabilization-audit-remediation.md` (this file)
+**Created**: `packages/shared-building-blocks/tests/.../Clock/SystemClockTests.cs`, `docs/audits/alpha-0.7-stabilization-audit-remediation.md`, `docs/follow-up/analyse-incoherences-2026-06-16.md`.
 
-**Modified**
-- `apps/game-client/.env.example` (port 5000 → 5187)
-- `apps/game-client/src/features/combat/api/combatApi.ts` (uses `gameEngineApi`)
-- `docker-compose.yml` (+ player + catalog DBs)
-- `docker-compose.dev.yml` (+ catalog DB)
-- `.env.example` (+ Catalog DB vars)
-- `services/catalog/src/Leds.Catalog.Infrastructure/Persistence/CatalogDbContextFactory.cs` (env-driven connection string)
-- `services/game-engine/src/Leds.GameEngine.Api/Controllers/CombatsController.cs` (legacy `actions` endpoint marked `[Obsolete]` + doc)
-- `scripts/dev/apply-migrations.ps1` (+ Catalog step)
-- `scripts/dev/start-dev.ps1` (+ Catalog DB line)
-- `README.md` (local databases section)
+**Modified**: `.env.example`, `README.md`, `apps/game-client/.env.example`, `apps/game-client/tsconfig.app.json`, `apps/game-client/src/features/combat/api/combatApi.ts`, `apps/game-client/src/features/palace-laws/LawsPopover.vue`, `apps/game-client/src/features/palace-laws/PalaceLawPanel.vue`, `docker-compose.yml`, `docker-compose.dev.yml`, `scripts/dev/apply-migrations.ps1`, `scripts/dev/start-dev.ps1`, `services/catalog/.../CatalogDbContextFactory.cs`, `services/game-engine/.../Controllers/CombatsController.cs`, `services/game-engine/.../Controllers/RunsController.cs`, `services/game-engine/.../Infrastructure/DependencyInjection/InfrastructureServiceCollectionExtensions.cs`, the 7 game-engine command handlers and 6 unit-test files that reference `IClock`.
 
-**Deleted**
-- `apps/game-client/src/features/combats/` (whole dead feature)
-- `apps/game-client/src/shared/components/HelloWorld.vue`
-- `packages/shared-building-blocks/tests/Leds.SharedBuildingBlocks.UnitTests/Clock/SystemCloclTests.cs` (renamed)
+**Deleted**: `apps/game-client/src/features/combats/` (whole), `apps/game-client/src/shared/components/HelloWorld.vue`, `services/game-engine/.../Application/Abstractions/IClock.cs`, `services/game-engine/.../Infrastructure/Clock/SystemClock.cs`, `packages/.../Clock/SystemCloclTests.cs` (renamed).
 
-## 5. Deferred work — concrete plans for alpha-0.8.x
+## 5. Blocking issue before alpha-0.8 — legacy combat resolution path
 
-**(7) Deduplicate `IClock` onto the shared kernel**
-1. Delete `services/game-engine/src/Leds.GameEngine.Application/Abstractions/IClock.cs`.
-2. Delete `services/game-engine/src/Leds.GameEngine.Infrastructure/Clock/SystemClock.cs`.
-3. Add `using Leds.SharedBuildingBlocks.Time;` to every file resolving `IClock`: the ~7 handlers (`SubmitCombatAction`, `AbandonRun`, `ExitMidRoom`, `SaveAndExitRun`, `StartRun`, `UseCombatSkill`, `UseItemInCombat`), the Infrastructure DI extension, and the ~6 unit-test files that reference `IClock`.
-4. In `InfrastructureServiceCollectionExtensions`, register the shared clock: `services.AddSingleton<IClock, SystemClock>();` now resolving `Leds.SharedBuildingBlocks.Time.*`; remove the now-empty `using Leds.GameEngine.Infrastructure.Clock;`.
-5. `dotnet build` + `dotnet test` the game-engine solution to confirm.
+```
+Blocking issue before alpha-0.8:
+legacy combat resolution path (POST /api/v2/runs/{runId}/combats/{combatId}/actions,
+SubmitCombatActionCommandHandler) still exists and DIVERGES from the canonical
+skill-actions / item-actions path (UseCombatSkillCommandHandler):
+  - legacy: Domain combat.SubmitAction + CombatState, single-target, BasicAttack only.
+  - canonical: ICombatSkillEffectResolver pipeline + CombatStatus + metrics + records.
+Two separate damage calculators. The endpoint is marked [Obsolete] but not delegated.
+```
 
-**(6) Consolidate combat HTTP surface**
-- Move the `UseItemInCombat` action from `RunsController` to `CombatsController` as `[HttpPost("{combatId:guid}/item-actions")]` (controller route already supplies `runId`), moving the `UseItemInCombatRequest` record and the `Leds.GameEngine.Application.Runs.UseItemInCombat` using along with it. Public route stays `api/v2/runs/{runId}/combats/{combatId}/item-actions`. Verify with a build + the existing integration tests.
+Resolution (next backend PR, with a working build/test loop):
+- **Option A (preferred):** rewrite `SubmitCombatActionCommandHandler` to map `ActionType=BasicAttack` to the canonical basic-attack `SkillKey` and call the same validator/effect-resolver pipeline, adapting the result back to `SubmitCombatActionResponse`. Keep `/actions` as a thin compat facade.
+- **Option B:** migrate `ProgressRunEndpointTests` / `RunIntegrationTestBase` and the `SubmitCombatAction` unit tests to `skill-actions`, then delete `Combats/SubmitCombatAction/*`, the `/actions` endpoint and `SubmitCombatActionRequest`/`Response`.
 
-**(3) Retire the legacy combat path**
-- Once tests are migrated to `skill-actions`/`item-actions`, delete `Combats/SubmitCombatAction/*`, the `actions` endpoint, and `SubmitCombatActionRequest`/`Response`. Confirm a single damage/resolution path remains.
-
-**(10) Rename `PalaceMapPlaceholder.vue`**
-- Rename to a non-placeholder name (e.g. `PalaceMapPanel.vue`) and update the import in `RunPage.vue`.
+Other deferred cleanups: `IClock` dedup verification (build), `item-actions` move verification (build), rename `PalaceMapPlaceholder.vue` → `PalaceMapPanel.vue` (+ update `RunPage.vue` import).
 
 ## 6. Operational notes
 
-**Canonical EF migrations folder (game-engine)** — generate into the canonical directory:
+Canonical EF migrations dir (game-engine):
 ```
-dotnet ef migrations add <Name> \
-  --project src/Leds.GameEngine.Infrastructure \
-  --startup-project src/Leds.GameEngine.Api \
-  --context GameEngineDbContext \
+dotnet ef migrations add <Name> --project src/Leds.GameEngine.Infrastructure \
+  --startup-project src/Leds.GameEngine.Api --context GameEngineDbContext \
   --output-dir Persistence/Migrations
 ```
-Do not let EF default to `Persistence/Migrations/GameEngine`.
-
-**Legacy removal (#11/#12)** — archive already in place:
-- branch `legacy/v1`, tag `v1-final-archive`, working branch `chore/remove-legacy-v1-sources`.
-- Final step: `git rm -r legacy/` on the dedicated chore PR (`chore(repo): remove legacy v1 sources`), keeping it out of this stabilization diff. This also removes the broken-LFS jpgs, making the LFS issue moot. If legacy must stay temporarily, install `git-lfs` and re-track the binaries (`git lfs migrate import --include="*.jpg,*.mp3,*.wav,*.fbx"`).
+Legacy removal (#11/#12): on the dedicated chore PR, `git rm -r legacy/` (archive branch `legacy/v1` + tag `v1-final-archive` already exist); this also clears the broken-LFS jpgs. If legacy must stay temporarily, install `git-lfs` and `git lfs migrate import --include="*.jpg,*.mp3,*.wav,*.fbx"`.
 
 ## 7. Microservice boundaries (compliance check)
 
-This PR respects the mandated boundaries. No cross-service foreign key, no direct `CatalogDbContext`/`PlayerDbContext` reference from Game Engine, and no Catalog/Player domain entity used inside Game Engine were introduced or removed. Game Engine keeps consuming Catalog content through its existing `ICatalogContentGateway` port (HTTP/in-memory), not through Catalog persistence. The shared kernel stays technical-only (`Result`/`Error`/`IClock`); no volatile gameplay domain was added to it. Placeholder services (`api-gateway`, `audit-gdpr`, `admin-portal`, `player-portal`) remain empty and should be presented as planned, not implemented.
+No cross-service FK, no `CatalogDbContext`/`PlayerDbContext` reference from Game Engine, no Catalog/Player domain entity used inside Game Engine — none introduced. Game Engine still consumes Catalog content through its `ICatalogContentGateway` port. Shared kernel stays technical-only (`Result`/`Error`/`IClock`/`SystemClock`). Placeholder services (`api-gateway`, `audit-gdpr`, `admin-portal`, `player-portal`) remain empty `.gitkeep` and should be presented as planned, not implemented.
 
-## 8. Validation performed (this environment)
+## 8. Validation
 
 | Check | Result |
 |-------|--------|
-| `vue-tsc -b` (frontend typecheck) | Passes for all PR changes. Only failure is the **pre-existing** `tsconfig.app.json` `baseUrl` deprecation (TS5101), unrelated to this PR. No dangling imports from the `combats`/`HelloWorld` deletions; `combatApi.ts` refactor is type-clean. |
-| `vitest` (frontend unit) | Could not run — installed `node_modules` lacks the Linux native `rolldown` binary (deps were installed on another OS). Re-run on the dev machine. |
-| `dotnet build` / `dotnet test` (all services) | Could not run — no .NET SDK in this environment. **Must be run on the dev machine before merge**, especially the game-engine solution (controller `[Obsolete]` attribute) and catalog solution (factory change + new appsettings). |
+| `npm install` (game-client) | OK (fetched the Linux native binaries missing from the committed install). |
+| `npm run build` (`vue-tsc -b && vite build`) | **PASS** (exit 0; 134 modules; `dist/` produced). |
+| `npm run test` (`vitest run`) | **PASS** (13/13, incl. combat store). |
+| `dotnet build/test` game-engine, catalog, shared | **NOT RUN** — no .NET SDK in this environment, proxy blocks installing one, targets `net10.0`. **Blocking gate** — must be run locally. |
+| `docker compose ... up` + `apply-migrations.ps1` | **NOT RUN** — no Docker in this environment. Run locally to confirm Catalog provisioning. |
 
-### Required validation before merge (dev machine)
+### Required before merge (dev machine)
 ```powershell
-# Frontend
-cd apps/game-client
-npm install
-npm run build            # fix the pre-existing tsconfig baseUrl error first
-
-# Backend (touched services)
+cd apps/game-client; npm install; npm run build; npm run test
 dotnet build services/game-engine/Leds.GameEngine.slnx
 dotnet test  services/game-engine/Leds.GameEngine.slnx
 dotnet build services/catalog/Leds.Catalog.slnx
 dotnet test  services/catalog/Leds.Catalog.slnx
 dotnet test  packages/shared-building-blocks/Leds.SharedBuildingBlocks.slnx
-
-# DB provisioning smoke test
 docker compose -f docker-compose.dev.yml up -d
 ./scripts/dev/apply-migrations.ps1
 ```
 
-## 9. Remaining risks before alpha-0.8.x
+## 9. Recommendation for the next PR
 
-- Legacy combat endpoint still live (compat facade). Two resolution paths exist until the deferred retirement.
-- `IClock` duplication still present in code (only the test typo fixed); harmless at runtime, to be deduped per §5.
-- Frontend `npm run build` is red until the pre-existing `tsconfig.app.json` `baseUrl` error is fixed.
-- Backend build/test not executed here; the C# edits (additive: `[Obsolete]`, factory env read, new appsettings) are low-risk but unverified — run the commands in §8.
-- Data model still churning (17 same-day migrations); recommend a freeze before alpha-0.8.x.
-
-## 10. Recommendation for the next PR
-
-1. `chore(repo): remove legacy v1 sources` — delete `legacy/`, resolving the heavy tree and the broken LFS at once.
-2. A small backend PR applying §5 (IClock dedup + combat HTTP consolidation + legacy combat retirement) behind a working `dotnet build/test`.
-3. Fix the `tsconfig.app.json` `baseUrl`/`ignoreDeprecations` issue to restore a green frontend build.
+1. Run the §8 backend commands; fix any compile fallout from the IClock dedup / `item-actions` move (mechanical edits, not compiler-verified here).
+2. Resolve the blocking combat path via Option A or B (§5).
+3. `chore(repo): remove legacy v1 sources` — delete `legacy/`, clearing the heavy tree and broken LFS.

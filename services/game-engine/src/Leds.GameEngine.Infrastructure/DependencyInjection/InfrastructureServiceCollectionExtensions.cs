@@ -18,7 +18,7 @@ using Leds.GameEngine.Domain.Markov;
 using Leds.GameEngine.Domain.Selection;
 using Leds.GameEngine.Application.Effects;
 using Leds.GameEngine.Infrastructure.Catalog;
-using Leds.GameEngine.Infrastructure.Clock;
+using Leds.SharedBuildingBlocks.Time;
 using Leds.GameEngine.Infrastructure.Combats;
 using Leds.GameEngine.Infrastructure.Combats.Actions;
 using Leds.GameEngine.Infrastructure.Combats.EncounterComposition;

@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Leds.GameEngine.Application.Abstractions;
+using Leds.SharedBuildingBlocks.Time;
 using Leds.GameEngine.Application.Players.Ports;
 using Leds.GameEngine.Application.Runs.StartRun;
 using Leds.GameEngine.Domain.Runs;
@@ -116,7 +117,4 @@ public sealed class StartRunCommandHandlerTests
                     run.PlayerId == playerId &&
                     run.Seed == "seed-test-001" &&
                     run.Status == RunStatus.Active),
-                CancellationToken.None),
-            Times.Once);
-    }
-}
+                CancellationToken.N

@@ -1,4 +1,5 @@
 using Leds.GameEngine.Application.Abstractions;
+using Leds.SharedBuildingBlocks.Time;
 using Leds.GameEngine.Application.Combats.Dtos;
 using Leds.GameEngine.Application.Combats.Ports;
 using Leds.GameEngine.Application.Common.Exceptions;
@@ -149,6 +150,4 @@ public sealed class SubmitCombatActionCommandHandler
 
         return new SubmitCombatActionResponse(
             RunDto.FromDomain(run),
-            CombatActionResultDto.FromDomain(result));
-    }
-}
+            CombatAction
