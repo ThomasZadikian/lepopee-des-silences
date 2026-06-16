@@ -5,6 +5,7 @@ using Leds.GameEngine.Application.Combats.Actions;
 using Leds.GameEngine.Application.Combats.Dtos;
 using Leds.GameEngine.Application.Combats.Effects;
 using Leds.GameEngine.Application.Combats.EnemyTurns;
+using Leds.GameEngine.Application.Combats.Ports;
 using Leds.GameEngine.Application.Common.Exceptions;
 using Leds.GameEngine.Application.Rewards.Ports;
 using Leds.GameEngine.Application.Rewards.RewardOfferFactory;
@@ -66,7 +67,8 @@ public sealed class UseCombatSkillCommandHandlerTests
             new Mock<IEnemyCombatTurnResolver>().Object,
             new Mock<IRewardOfferRepository>().Object,
             CreateRewardOfferFactory(),
-            new Mock<IClock>().Object);
+            new Mock<IClock>().Object,
+            new Mock<ICombatActionRecordRepository>().Object);
 
         var act = () => handler.Handle(
             new UseCombatSkillCommand(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "skill.basic.strike", [Guid.NewGuid()]),
@@ -88,7 +90,8 @@ public sealed class UseCombatSkillCommandHandlerTests
             new Mock<IEnemyCombatTurnResolver>().Object,
             new Mock<IRewardOfferRepository>().Object,
             CreateRewardOfferFactory(),
-            new Mock<IClock>().Object);
+            new Mock<IClock>().Object,
+            new Mock<ICombatActionRecordRepository>().Object);
 
         var act = () => handler.Handle(
             new UseCombatSkillCommand(run.Id.Value, Guid.NewGuid(), Guid.NewGuid(), "skill.basic.strike", [Guid.NewGuid()]),
@@ -615,7 +618,8 @@ public sealed class UseCombatSkillCommandHandlerTests
             enemyResolver.Object,
             new Mock<IRewardOfferRepository>().Object,
             CreateRewardOfferFactory(),
-            clock.Object);
+            clock.Object,
+            new Mock<ICombatActionRecordRepository>().Object);
 
         var act = () => handler.Handle(CreateCommand(setup, _strikeSkill, [setup.Enemy]), CancellationToken.None);
 
@@ -659,7 +663,8 @@ public sealed class UseCombatSkillCommandHandlerTests
             CreateNoOpEnemyTurnResolver().Object,
             new Mock<IRewardOfferRepository>().Object,
             CreateRewardOfferFactory(),
-            clock.Object);
+            clock.Object,
+            new Mock<ICombatActionRecordRepository>().Object);
     }
 
     private static UseCombatSkillCommandHandler CreateHandlerWithRealEnemyResolver(
@@ -690,7 +695,8 @@ public sealed class UseCombatSkillCommandHandlerTests
             new EnemyCombatTurnResolver(realActionValidator, effectResolver),
             new Mock<IRewardOfferRepository>().Object,
             CreateRewardOfferFactory(),
-            clock.Object);
+            clock.Object,
+            new Mock<ICombatActionRecordRepository>().Object);
     }
 
     private static UseCombatSkillCommandHandler CreateHandler(
@@ -706,7 +712,8 @@ public sealed class UseCombatSkillCommandHandlerTests
             CreateNoOpEnemyTurnResolver().Object,
             new Mock<IRewardOfferRepository>().Object,
             CreateRewardOfferFactory(),
-            clock.Object);
+            clock.Object,
+            new Mock<ICombatActionRecordRepository>().Object);
     }
 
     private static RewardOfferFactory CreateRewardOfferFactory()

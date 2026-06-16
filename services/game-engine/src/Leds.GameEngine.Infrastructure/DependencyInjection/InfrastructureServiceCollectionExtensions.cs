@@ -47,6 +47,7 @@ public static class InfrastructureServiceCollectionExtensions
     {
         services.AddSingleton<IClock, SystemClock>();
         services.AddSingleton<IRunRepository, InMemoryRunRepository>();
+        services.AddSingleton<ICombatActionRecordRepository, InMemoryCombatActionRecordRepository>();
 
         RegisterPersistence(services, configuration);
 
@@ -107,6 +108,7 @@ public static class InfrastructureServiceCollectionExtensions
                 options.UseNpgsql(configuration.GetConnectionString("GameEngineDb")));
 
             services.AddScoped<IRunRepository, EfRunRepository>();
+            services.AddScoped<ICombatActionRecordRepository, EfCombatActionRecordRepository>();
         }
     }
 

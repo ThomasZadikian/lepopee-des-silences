@@ -4,6 +4,8 @@ using Leds.GameEngine.Application.Combats.Actions;
 using Leds.GameEngine.Application.Combats.Dtos;
 using Leds.GameEngine.Application.Combats.Effects;
 using Leds.GameEngine.Application.Combats.EnemyTurns;
+using Leds.GameEngine.Application.Combats.Metrics;
+using Leds.GameEngine.Application.Combats.Ports;
 using Leds.GameEngine.Application.Common.Exceptions;
 using Leds.GameEngine.Application.Rewards.Ports;
 using Leds.GameEngine.Application.Rewards.RewardOfferFactory;
@@ -25,6 +27,7 @@ public sealed class UseCombatSkillCommandHandler
     private readonly IRewardOfferRepository _rewardOfferRepository;
     private readonly RewardOfferFactory _rewardOfferFactory;
     private readonly IClock _clock;
+    private readonly ICombatActionRecordRepository _actionRecordRepository;
 
     public UseCombatSkillCommandHandler(
         IRunRepository runRepository,
@@ -33,7 +36,8 @@ public sealed class UseCombatSkillCommandHandler
         IEnemyCombatTurnResolver enemyTurnResolver,
         IRewardOfferRepository rewardOfferRepository,
         RewardOfferFactory rewardOfferFactory,
-        IClock clock)
+        IClock clock,
+        ICombatActionRecordRepository actionRecordRepository)
     {
         _runRepository = runRepository;
         _validator = validator;
@@ -42,6 +46,7 @@ public sealed class UseCombatSkillCommandHandler
         _rewardOfferRepository = rewardOfferRepository;
         _rewardOfferFactory = rewardOfferFactory;
         _clock = clock;
+        _actionRecordRepository = actionRecordRepository;
     }
 
     public async Task<CombatSkillActionResult> Handle(
@@ -105,6 +110,8 @@ public sealed class UseCombatSkillCommandHandler
             SkillKey: request.SkillKey,
             TargetIds: resolvedTargetIds);
 
+        var beforeSnapshots = CombatMetricsCalculator.SnapshotTargets(validationResult.Targets);
+
         var effectResolution = _effectResolver.Resolve(
             run.ActiveCombat,
             validationResult.Actor!,
@@ -112,7 +119,19 @@ public sealed class UseCombatSkillCommandHandler
             validationResult.Targets);
 
         var progressionLogEntries = AdvanceCombat(effectResolution.Combat, now.DateTime);
-        var enemyTurnLogEntries = ResolveEnemyTurns(effectResolution.Combat);
+
+        var allActionRecords = new List<CombatActionRecord>();
+        var playerActionRecords = CombatMetricsCalculator.CalculateActionRecords(
+            run.ActiveCombat.Id.Value,
+            run.ActiveCombat.TurnNumber,
+            validationResult.Actor!,
+            validationResult.Skill!,
+            validationResult.Targets,
+            beforeSnapshots,
+            now.DateTime);
+        allActionRecords.AddRange(playerActionRecords);
+
+        var enemyTurnLogEntries = ResolveEnemyTurns(effectResolution.Combat, allActionRecords, run.ActiveCombat.Id.Value, now.DateTime);
         var finalCombat = effectResolution.Combat;
         var combatCompleted = finalCombat.Status == CombatStatus.Completed;
         var combatFailed = finalCombat.Status == CombatStatus.Failed;
@@ -137,6 +156,7 @@ public sealed class UseCombatSkillCommandHandler
             run.FailActiveCombat(now);
         }
 
+        await _actionRecordRepository.AddRangeAsync(allActionRecords, cancellationToken);
         await _runRepository.UpdateAsync(run, cancellationToken);
 
         var logEntries = new[] { logEntry }
@@ -177,7 +197,11 @@ public sealed class UseCombatSkillCommandHandler
             combatNode?.RiskLevel ?? 25);
     }
 
-    private IReadOnlyCollection<CombatLogEntryDto> ResolveEnemyTurns(Combat combat)
+    private IReadOnlyCollection<CombatLogEntryDto> ResolveEnemyTurns(
+        Combat combat,
+        List<CombatActionRecord> actionRecords,
+        Guid combatId,
+        DateTimeOffset now)
     {
         var logEntries = new List<CombatLogEntryDto>();
         var maxAutoTurns = combat.Allies.Concat(combat.Enemies).Count(c => !c.IsDefeated) + 1;
@@ -197,9 +221,41 @@ public sealed class UseCombatSkillCommandHandler
                 throw new ConflictException("Automatic enemy turn resolution exceeded the safety limit.");
             }
 
+            var allLiving = combat.Allies.Concat(combat.Enemies).Where(c => !c.IsDefeated).ToArray();
+            var beforeSnapshots = CombatMetricsCalculator.SnapshotTargets(allLiving);
+
             var enemyResolution = _enemyTurnResolver.Resolve(combat);
             logEntries.AddRange(enemyResolution.LogEntries);
             resolvedTurnCount++;
+
+            if (enemyResolution.WasResolved && enemyResolution.ActorId.HasValue)
+            {
+                var enemyActor = allLiving.FirstOrDefault(c => c.Id.Value == enemyResolution.ActorId.Value);
+                var enemySkillKey = enemyResolution.SkillKey;
+
+                if (enemyActor is not null && enemySkillKey is not null)
+                {
+                    var affectedTargets = allLiving
+                        .Where(c => c.Id.Value != enemyActor.Id.Value)
+                        .ToArray();
+
+                    var enemySkill = enemyActor.Skills.FirstOrDefault(s =>
+                        string.Equals(s.Key, enemySkillKey, StringComparison.OrdinalIgnoreCase));
+
+                    if (enemySkill is not null && affectedTargets.Length > 0)
+                    {
+                        var enemyRecords = CombatMetricsCalculator.CalculateActionRecords(
+                            combatId,
+                            combat.TurnNumber,
+                            enemyActor,
+                            enemySkill,
+                            affectedTargets,
+                            beforeSnapshots,
+                            now.DateTime);
+                        actionRecords.AddRange(enemyRecords);
+                    }
+                }
+            }
 
             if (!enemyResolution.WasResolved)
             {
