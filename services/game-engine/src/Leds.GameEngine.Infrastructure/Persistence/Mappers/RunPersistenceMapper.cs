@@ -90,7 +90,11 @@ public static class RunPersistenceMapper
                 SourceType = m.SourceType,
                 SourceKey = m.SourceKey,
                 CreatedAtUtc = m.CreatedAtUtc,
-                ConsumedAtUtc = m.ConsumedAtUtc
+                ConsumedAtUtc = m.ConsumedAtUtc,
+                ValueMode = m.ValueMode,
+                StackPolicy = m.StackPolicy,
+                ExpiresAtRoomId = m.ExpiresAtRoomId,
+                ExpiresAtCombatId = m.ExpiresAtCombatId
             }).ToList(),
             PlayerSnapshot = run.PlayerSnapshot is not null
                 ? ToPlayerSnapshotEntity(run.PlayerSnapshot, run.Id.Value)
@@ -292,7 +296,11 @@ public static class RunPersistenceMapper
             m.SourceType,
             m.SourceKey,
             m.CreatedAtUtc,
-            m.ConsumedAtUtc)).ToList();
+            m.ConsumedAtUtc,
+            m.ValueMode ?? "Flat",
+            m.StackPolicy ?? "Additive",
+            m.ExpiresAtRoomId,
+            m.ExpiresAtCombatId)).ToList();
 
         var playerSnapshot = entity.PlayerSnapshot is not null
             ? ToDomainPlayerSnapshot(entity.PlayerSnapshot)

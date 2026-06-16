@@ -11,6 +11,10 @@ public sealed class RunModifierEntity
     public string SourceKey { get; set; } = string.Empty;
     public DateTime CreatedAtUtc { get; set; }
     public DateTime? ConsumedAtUtc { get; set; }
+    public string ValueMode { get; set; } = "Flat";
+    public string StackPolicy { get; set; } = "Additive";
+    public Guid? ExpiresAtRoomId { get; set; }
+    public Guid? ExpiresAtCombatId { get; set; }
 
     public RunEntity? Run { get; set; }
 }

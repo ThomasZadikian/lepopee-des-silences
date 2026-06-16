@@ -1,11 +1,8 @@
 using Leds.GameEngine.Domain.Common;
+using Leds.GameEngine.Domain.Effects;
 
 namespace Leds.GameEngine.Domain.Runs;
 
-/// <summary>
-/// A transient run-scoped modifier that affects combat or reward calculations.
-/// Examples: guard shard (+8 starting guard), curse (+10% enemy difficulty for next combat).
-/// </summary>
 public sealed class RunModifier
 {
     private RunModifier(
@@ -16,7 +13,11 @@ public sealed class RunModifier
         string sourceType,
         string sourceKey,
         DateTime createdAtUtc,
-        DateTime? consumedAtUtc)
+        DateTime? consumedAtUtc,
+        string valueMode,
+        string stackPolicy,
+        Guid? expiresAtRoomId,
+        Guid? expiresAtCombatId)
     {
         Id = id;
         Type = type;
@@ -26,43 +27,48 @@ public sealed class RunModifier
         SourceKey = sourceKey;
         CreatedAtUtc = createdAtUtc;
         ConsumedAtUtc = consumedAtUtc;
+        ValueMode = valueMode;
+        StackPolicy = stackPolicy;
+        ExpiresAtRoomId = expiresAtRoomId;
+        ExpiresAtCombatId = expiresAtCombatId;
     }
 
     public RunModifierId Id { get; }
 
-    /// <summary>The mechanical effect category of this modifier.</summary>
     public RunModifierType Type { get; }
 
-    /// <summary>
-    /// The magnitude of the modifier. Interpretation depends on <see cref="Type"/>.
-    /// For <see cref="RunModifierType.StartingGuardBonus"/>, this is the raw guard points added.
-    /// For multiplier types, this is the delta (0.10 = +10%).
-    /// </summary>
     public double Value { get; }
 
     public RunModifierDuration Duration { get; }
 
-    /// <summary>
-    /// Category of the source that created this modifier (e.g., "RunItem", "Curse", "PalaceLaw").
-    /// </summary>
     public string SourceType { get; }
 
-    /// <summary>The definition key of the source (e.g., "item.guard-shard-v1").</summary>
     public string SourceKey { get; }
 
     public DateTime CreatedAtUtc { get; }
 
-    /// <summary>Timestamp at which this modifier was consumed. Null while still active.</summary>
     public DateTime? ConsumedAtUtc { get; private set; }
 
     public bool IsConsumed => ConsumedAtUtc.HasValue;
+
+    public string ValueMode { get; }
+
+    public string StackPolicy { get; }
+
+    public Guid? ExpiresAtRoomId { get; }
+
+    public Guid? ExpiresAtCombatId { get; }
 
     public static RunModifier Create(
         RunModifierType type,
         double value,
         RunModifierDuration duration,
         string sourceType,
-        string sourceKey)
+        string sourceKey,
+        string valueMode = "Flat",
+        string stackPolicy = "Additive",
+        Guid? expiresAtRoomId = null,
+        Guid? expiresAtCombatId = null)
     {
         if (string.IsNullOrWhiteSpace(sourceType))
             throw new DomainException("RunModifier source type is required.");
@@ -78,7 +84,11 @@ public sealed class RunModifier
             sourceType.Trim(),
             sourceKey.Trim(),
             DateTime.UtcNow,
-            consumedAtUtc: null);
+            consumedAtUtc: null,
+            valueMode,
+            stackPolicy,
+            expiresAtRoomId,
+            expiresAtCombatId);
     }
 
     public static RunModifier Rehydrate(
@@ -89,21 +99,23 @@ public sealed class RunModifier
         string sourceType,
         string sourceKey,
         DateTime createdAtUtc,
-        DateTime? consumedAtUtc)
+        DateTime? consumedAtUtc,
+        string valueMode = "Flat",
+        string stackPolicy = "Additive",
+        Guid? expiresAtRoomId = null,
+        Guid? expiresAtCombatId = null)
     {
-        return new RunModifier(id, type, value, duration, sourceType, sourceKey, createdAtUtc, consumedAtUtc);
+        return new RunModifier(
+            id, type, value, duration, sourceType, sourceKey,
+            createdAtUtc, consumedAtUtc,
+            valueMode, stackPolicy,
+            expiresAtRoomId, expiresAtCombatId);
     }
 
-    /// <summary>
-    /// Marks this modifier as consumed at the given timestamp.
-    /// Idempotent — calling it on an already-consumed modifier is a no-op.
-    /// </summary>
     public void Consume(DateTime consumedAt)
     {
         if (IsConsumed)
-        {
             return;
-        }
 
         ConsumedAtUtc = consumedAt;
     }

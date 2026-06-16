@@ -13,6 +13,7 @@ using Leds.GameEngine.Application.Players.Ports;
 using Leds.GameEngine.Application.Rewards.Ports;
 using Leds.GameEngine.Application.RoomMaps;
 using Leds.GameEngine.Domain.Markov;
+using Leds.GameEngine.Application.Effects;
 using Leds.GameEngine.Infrastructure.Catalog;
 using Leds.GameEngine.Infrastructure.Clock;
 using Leds.GameEngine.Infrastructure.Combats;
@@ -92,6 +93,9 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<ICombatEncounterDraftGenerator, CombatEncounterDraftGenerator>();
 
         services.AddSingleton<IRewardOfferRepository, InMemoryRewardOfferRepository>();
+
+        services.AddSingleton<ICatalogEffectSetProvider, InMemoryCatalogEffectSetProvider>();
+        services.AddSingleton<IRuntimeEffectResolver, RuntimeEffectResolver>();
 
         return services;
     }

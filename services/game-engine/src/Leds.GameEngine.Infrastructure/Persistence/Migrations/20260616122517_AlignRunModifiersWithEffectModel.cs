@@ -1,3 +1,4 @@
+﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -5,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Leds.GameEngine.Infrastructure.Persistence.Migrations
 {
     /// <inheritdoc />
-    public partial class AddRunModifiersPersistence : Migration
+    public partial class AlignRunModifiersWithEffectModel : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -39,6 +40,34 @@ namespace Leds.GameEngine.Infrastructure.Persistence.Migrations
                 name: "IX_run_modifiers_run_id",
                 table: "run_modifiers",
                 column: "run_id");
+
+            migrationBuilder.AddColumn<Guid>(
+                name: "expires_at_combat_id",
+                table: "run_modifiers",
+                type: "uuid",
+                nullable: true);
+
+            migrationBuilder.AddColumn<Guid>(
+                name: "expires_at_room_id",
+                table: "run_modifiers",
+                type: "uuid",
+                nullable: true);
+
+            migrationBuilder.AddColumn<string>(
+                name: "stack_policy",
+                table: "run_modifiers",
+                type: "character varying(32)",
+                maxLength: 32,
+                nullable: false,
+                defaultValue: "Additive");
+
+            migrationBuilder.AddColumn<string>(
+                name: "value_mode",
+                table: "run_modifiers",
+                type: "character varying(32)",
+                maxLength: 32,
+                nullable: false,
+                defaultValue: "Flat");
         }
 
         /// <inheritdoc />

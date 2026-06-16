@@ -21,6 +21,10 @@ public sealed class RunModifierEntityConfiguration : IEntityTypeConfiguration<Ru
         builder.Property(m => m.SourceKey).HasColumnName("source_key").HasMaxLength(256).IsRequired();
         builder.Property(m => m.CreatedAtUtc).HasColumnName("created_at_utc");
         builder.Property(m => m.ConsumedAtUtc).HasColumnName("consumed_at_utc");
+        builder.Property(m => m.ValueMode).HasColumnName("value_mode").HasMaxLength(32).IsRequired().HasDefaultValue("Flat");
+        builder.Property(m => m.StackPolicy).HasColumnName("stack_policy").HasMaxLength(32).IsRequired().HasDefaultValue("Additive");
+        builder.Property(m => m.ExpiresAtRoomId).HasColumnName("expires_at_room_id");
+        builder.Property(m => m.ExpiresAtCombatId).HasColumnName("expires_at_combat_id");
 
         builder.HasOne(m => m.Run)
             .WithMany(run => run.RunModifiers)
