@@ -39,8 +39,7 @@ function getSkillCost(skill: CombatantRuntimeDto['skills'][number]): number {
   <section class="skill-bar">
     <template v-if="combatant">
       <div class="skill-bar__head">
-        <span class="skill-bar__verb">Dire</span>
-        <span class="skill-bar__pp">{{ combatant.mana }} PP disponibles</span>
+        <span class="skill-bar__verb">{{ combatant.mana }} PP disponibles</span>
       </div>
 
       <div class="skill-bar__grid">

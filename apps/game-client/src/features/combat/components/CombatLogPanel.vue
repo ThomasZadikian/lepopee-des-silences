@@ -102,6 +102,7 @@ function toggle() {
 }
 
 .combat-log__msg {
+  margin-left: 5rem;
   color: var(--ink-3);
   word-break: break-word;
 }

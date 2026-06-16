@@ -2,8 +2,8 @@
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 
 import { useRunStore } from '../../runs/stores/runStore';
-import { useCombatStore } from '../stores/useCombatStore';
 import { useCombatMetrics } from '../composables/useCombatMetrics';
+import { useCombatStore } from '../stores/useCombatStore';
 import CombatantCard from './CombatantCard.vue';
 import CombatLogPanel from './CombatLogPanel.vue';
 import CombatMetersPanel from './CombatMetersPanel.vue';
@@ -227,7 +227,7 @@ watch(() => props.combatId, (newId) => {
     <!-- Combat actif -->
     <template v-else>
       <div class="combat-scene__initiative es-plate">
-        <span class="combat-scene__initiative-title">Marée d'initiative</span>
+        <span class="combat-scene__initiative-title">MARKOV_STYLE_FIGHT</span>
         <div class="combat-scene__initiative-list">
           <span
             v-for="combatant in [...combatStore.enemies, ...combatStore.allies]"
@@ -262,7 +262,7 @@ watch(() => props.combatId, (newId) => {
 
         <!-- Les Voix (allies) -->
         <div class="combat-scene__side combat-scene__side--voix">
-          <p class="combat-scene__side-title">Les Voix · {{ combatStore.allies.length }}</p>
+          <p class="combat-scene__side-title">Alliés · {{ combatStore.allies.length }}</p>
           <CombatantCard
             v-for="combatant in combatStore.allies"
             :key="combatant.id"
@@ -301,7 +301,7 @@ watch(() => props.combatId, (newId) => {
 
         <!-- Les Manifestations (enemies) -->
         <div class="combat-scene__side combat-scene__side--manifestations">
-          <p class="combat-scene__side-title combat-scene__side-title--foe">Les Manifestations · {{ combatStore.enemies.length }}</p>
+          <p class="combat-scene__side-title combat-scene__side-title--foe">PLACEHOLDER_ENEMIES_GROUP_TYPE · {{ combatStore.enemies.length }}</p>
           <button
             v-for="(combatant, idx) in combatStore.enemies"
             :key="combatant.id"

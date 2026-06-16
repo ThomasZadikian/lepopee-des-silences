@@ -49,7 +49,6 @@ function hpRatio(c: CombatantRuntimeDto): number {
     <span class="presence__portrait" aria-hidden="true" />
 
     <div class="presence__topline">
-      <span class="presence__archetype">{{ combatant.archetype }}</span>
       <span v-if="isActivePlayer" class="presence__state presence__state--ready">PRÊT</span>
       <span v-else-if="isSelectedTarget" class="presence__state presence__state--target">cible</span>
       <span v-else-if="combatant.status === 'Defeated'" class="presence__state presence__state--dead">abattu</span>

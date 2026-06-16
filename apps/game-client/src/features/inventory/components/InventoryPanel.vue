@@ -14,37 +14,55 @@ const props = defineProps<{
 const combatStore = useCombatStore();
 const runStore = useRunStore();
 
-// État local : item en cours d'utilisation + sélection d'allié
 const pendingItemId = ref<string | null>(null);
 const isLoading = ref(false);
 const error = ref<string | null>(null);
 
-function getRarityClass(rarity: string): string {
+function getRarityTone(rarity: string): string {
   switch (rarity) {
-    case 'Uncommon': return 'item--uncommon';
-    case 'Rare':     return 'item--rare';
-    case 'Epic':     return 'item--epic';
-    default:         return 'item--common';
+    case 'Uncommon': return 'sap';
+    case 'Rare':     return 'frost';
+    case 'Epic':     return 'gold';
+    default:         return '';
+  }
+}
+
+function getRarityLabel(rarity: string): string {
+  switch (rarity) {
+    case 'Uncommon': return 'Peu commun';
+    case 'Rare':     return 'Rare';
+    case 'Epic':     return 'Épique';
+    default:         return 'Commun';
   }
 }
 
 function getEffectLabel(effectType: string, effectAmount: number): string {
   switch (effectType) {
-    case 'Heal':          return `+${effectAmount} PV`;
-    case 'Guard':         return `+${effectAmount} Garde`;
-    case 'ManaRestore':   return `+${effectAmount} Mana`;
-    case 'ChargeRestore': return `+${effectAmount} Charge`;
+    case 'Heal':              return `+${effectAmount} Vitalité`;
+    case 'Guard':             return `+${effectAmount} Garde`;
+    case 'ManaRestore':       return `+${effectAmount} Mana`;
+    case 'ChargeRestore':     return `+${effectAmount} Charge`;
     case 'NextCombatGuard':   return `+${effectAmount} Garde (prochain combat)`;
     case 'NarrativeFragment': return 'Fragment narratif';
-    default: return '';
+    default:                  return '';
   }
 }
 
-// Les alliés disponibles viennent du store de combat (en combat)
-// ou se réduisent au seul joueur hors combat.
+function getEffectTone(effectType: string): 'sap' | 'frost' | 'blood' | 'gold' | '' {
+  switch (effectType) {
+    case 'Heal':
+    case 'ManaRestore':
+    case 'ChargeRestore':
+    case 'NextCombatGuard':   return 'sap';
+    case 'Guard':             return 'frost';
+    case 'NarrativeFragment': return 'gold';
+    case 'Damage':            return 'blood';
+    default:                  return '';
+  }
+}
+
 const availableAllies = (): CombatantRuntimeDto[] => {
-  const inCombat = Boolean(combatStore.allies.length);
-  if (inCombat) return combatStore.allies.filter(a => a.status !== 'Defeated');
+  if (combatStore.allies.length) return combatStore.allies.filter(a => a.status !== 'Defeated');
   return [];
 };
 
@@ -62,21 +80,13 @@ async function confirmUseItem(_targetCombatantId?: string) {
   if (!pendingItemId.value) return;
   isLoading.value = true;
   error.value = null;
-
   try {
     const response = await inventoryApi.useItem(props.runId, pendingItemId.value);
-
-    // Si en combat : mettre à jour le store de combat avec le résultat
     if (response.usedInCombat && response.combat) {
-      if (response.logEntries?.length) {
-        await combatStore.playCombatLogs(response.logEntries);
-      }
+      if (response.logEntries?.length) await combatStore.playCombatLogs(response.logEntries);
       combatStore.finishCombatResponse(response.combat);
     }
-
-    // Toujours rafraîchir les données de run (PV, inventaire, etc.)
     await runStore.loadRun(props.runId);
-
     pendingItemId.value = null;
   } catch (err) {
     error.value = err instanceof Error ? err.message : "L'utilisation a échoué.";
@@ -87,224 +97,407 @@ async function confirmUseItem(_targetCombatantId?: string) {
 </script>
 
 <template>
-  <section class="inventory-panel">
-    <header>
-      <p class="system-label">Inventaire de run</p>
-      <h3>Sac à dos</h3>
+  <section class="inv-root es-panel">
+    <!-- Header -->
+    <header class="inv-head">
+      <span class="inv-kicker">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+          <line x1="3" y1="6" x2="21" y2="6"/>
+          <path d="M16 10a4 4 0 0 1-8 0"/>
+        </svg>
+        Inventaire de run
+      </span>
+      <h2 class="inv-title">Sac à dos</h2>
     </header>
 
-    <div v-if="items.length === 0" class="inventory-panel__empty">
-      <p class="system-label">INVENTAIRE_VIDE</p>
-      <p>Ton sac est vide. Les objets que tu trouveras apparaîtront ici.</p>
+    <div class="inv-divider" />
+
+    <!-- Empty state -->
+    <div v-if="items.length === 0" class="inv-empty">
+      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+        aria-hidden="true" style="color:var(--ink-4, oklch(.45 .015 275)); margin-bottom:10px;">
+        <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+        <line x1="3" y1="6" x2="21" y2="6"/>
+      </svg>
+      <p class="inv-empty__text">Ton sac est vide. Les objets trouvés apparaîtront ici.</p>
     </div>
 
-    <div v-else class="inventory-panel__items">
-      <div
+    <!-- Item list -->
+    <div v-else class="inv-list">
+      <article
         v-for="item in items"
         :key="item.id"
-        class="inventory-item"
-        :class="getRarityClass(item.rarity)"
+        class="inv-item"
+        :class="`inv-item--${getRarityTone(item.rarity) || 'common'}`"
       >
-        <div class="inventory-item__header">
-          <strong>{{ item.displayName }}</strong>
-          <span v-if="item.quantity > 1" class="inventory-item__qty">
-            ×{{ item.quantity }}
+        <!-- Item header row -->
+        <div class="inv-item__head">
+          <div class="inv-item__left">
+            <span class="inv-item__name">{{ item.displayName }}</span>
+            <span v-if="item.quantity > 1" class="inv-item__qty">×{{ item.quantity }}</span>
+          </div>
+          <span
+            class="inv-chip"
+            :class="getRarityTone(item.rarity) ? `inv-chip--${getRarityTone(item.rarity)}` : ''"
+          >
+            {{ getRarityLabel(item.rarity) }}
           </span>
         </div>
 
-        <small class="inventory-item__type">{{ item.type }}</small>
-        <p class="inventory-item__desc">{{ item.description }}</p>
+        <!-- Type kicker -->
+        <p class="inv-item__type">{{ item.type }}</p>
 
-        <span v-if="item.effectAmount > 0" class="inventory-item__effect">
-          {{ getEffectLabel(item.effectType, item.effectAmount) }}
-        </span>
+        <!-- Description -->
+        <p class="inv-item__desc">{{ item.description }}</p>
 
-        <!-- Bouton Utiliser (items consommables uniquement) -->
-        <div v-if="item.isUsable" class="inventory-item__actions">
+        <!-- Effect badge -->
+        <div v-if="item.effectAmount > 0" class="inv-item__effect">
+          <span
+            class="inv-effect-badge"
+            :class="getEffectTone(item.effectType) ? `inv-effect-badge--${getEffectTone(item.effectType)}` : ''"
+          >
+            {{ getEffectLabel(item.effectType, item.effectAmount) }}
+          </span>
+        </div>
+
+        <!-- Actions -->
+        <div v-if="item.isUsable" class="inv-item__actions">
+          <!-- Use button -->
           <button
             v-if="pendingItemId !== item.id"
-            class="btn btn--use"
+            class="inv-btn inv-btn--use"
             :disabled="isLoading || pendingItemId !== null"
             @click="startUseItem(item.id)"
           >
             Utiliser
           </button>
 
-          <!-- Sélection d'allié -->
-          <div v-else class="ally-picker">
-            <p class="ally-picker__label">Qui bénéficie de cet objet ?</p>
+          <!-- Ally picker -->
+          <div v-else class="inv-picker">
+            <p class="inv-picker__label">Qui bénéficie de cet objet ?</p>
 
-            <!-- En combat : liste des alliés vivants -->
             <template v-if="availableAllies().length > 0">
               <button
                 v-for="ally in availableAllies()"
                 :key="ally.id"
-                class="btn btn--ally"
+                class="inv-ally-btn"
                 :disabled="isLoading"
                 @click="confirmUseItem(ally.id)"
               >
-                <span class="ally-name">{{ ally.displayName }}</span>
-                <span class="ally-hp">{{ ally.currentVitality }} / {{ ally.maxVitality }} PV</span>
+                <span class="inv-ally-btn__name">{{ ally.displayName }}</span>
+                <span class="inv-ally-btn__hp">{{ ally.currentVitality }} / {{ ally.maxVitality }} PV</span>
               </button>
             </template>
 
-            <!-- Hors combat : confirmation simple sur le joueur -->
             <template v-else>
               <button
-                class="btn btn--ally"
+                class="inv-ally-btn"
                 :disabled="isLoading"
                 @click="confirmUseItem()"
               >
-                <span class="ally-name">Joueur</span>
+                <span class="inv-ally-btn__name">Joueur</span>
               </button>
             </template>
 
             <button
-              class="btn btn--cancel"
+              class="inv-btn inv-btn--cancel"
               :disabled="isLoading"
               @click="cancelUseItem"
             >
               Annuler
             </button>
 
-            <p v-if="error" class="ally-picker__error">{{ error }}</p>
+            <p v-if="error" class="inv-error">{{ error }}</p>
           </div>
         </div>
-      </div>
+      </article>
     </div>
   </section>
 </template>
 
 <style scoped>
-/* —— Panel ————————————————————————————————————————— */
-.inventory-panel {
-  display: grid;
-  gap: var(--space-4);
-}
-
-.inventory-panel h3 {
-  color: var(--gold);
-  font-size: 1.4rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-.inventory-panel__empty p {
-  color: var(--ink-3);
-  font-size: 0.9rem;
-}
-
-.inventory-panel__items {
-  display: grid;
-  gap: var(--space-3);
-}
-
-/* —— Items ————————————————————————————————————————— */
-.inventory-item {
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  padding: var(--space-3);
-  background: var(--color-surface);
-}
-
-.inventory-item--common   { border-color: var(--color-border); }
-.inventory-item--uncommon { border-color: var(--color-green, #4ade80); }
-.inventory-item--rare     { border-color: var(--color-blue, #60a5fa); }
-.inventory-item--epic     { border-color: var(--color-purple, #c084fc); }
-
-.inventory-item__header {
+/* ── Root ── */
+.inv-root {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: var(--space-1);
-}
-
-.inventory-item__qty  { color: var(--ink-3); font-size: 0.85rem; }
-.inventory-item__type { color: var(--ink-3); font-size: 0.75rem; text-transform: uppercase; }
-
-.inventory-item__desc {
-  color: var(--color-text-secondary);
-  font-size: 0.85rem;
-  margin: var(--space-1) 0;
-}
-
-.inventory-item__effect {
-  color: var(--color-green, #4ade80);
-  font-size: 0.8rem;
-  font-weight: 600;
-}
-
-.inventory-item__actions {
-  margin-top: var(--space-3);
-}
-
-/* —— Boutons ——————————————————————————————————————— */
-.btn {
-  border: none;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--line, oklch(.35 .025 268 / .6));
   border-radius: 6px;
-  padding: var(--space-1) var(--space-3);
-  font-size: 0.8rem;
+  background: linear-gradient(180deg, oklch(.28 .034 268 / .55), oklch(.22 .025 268 / .45));
+}
+
+/* ── Header ── */
+.inv-head {
+  padding: 20px 22px 14px;
+  flex: 0 0 auto;
+}
+
+.inv-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--font-caps, var(--font));
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: oklch(.65 .09 84 / .7);
+  margin-bottom: 8px;
+}
+
+.inv-title {
+  font-family: var(--font-display, var(--font));
+  font-size: 24px;
+  font-weight: 500;
+  color: var(--gold, oklch(.72 .1 85));
+  line-height: 1.1;
+  margin: 0;
+}
+
+.inv-divider {
+  flex: 0 0 auto;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--line, oklch(.35 .025 268 / .6)), transparent);
+  margin: 0 22px 6px;
+}
+
+/* ── Empty ── */
+.inv-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  gap: 4px;
+}
+
+.inv-empty__text {
+  font-family: var(--font-caps, var(--font));
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-4, oklch(.45 .015 275));
+  text-align: center;
+  max-width: 260px;
+}
+
+/* ── List ── */
+.inv-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px 14px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ── Item card ── */
+.inv-item {
+  border: 1px solid var(--line, oklch(.35 .025 268 / .6));
+  border-radius: 5px;
+  background: linear-gradient(180deg, oklch(.30 .034 268 / .38), oklch(.24 .028 268 / .30));
+  padding: 13px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.inv-item--sap   { border-left: 2px solid var(--sap, oklch(.70 .09 162 / .7)); }
+.inv-item--frost { border-left: 2px solid var(--frost, oklch(.70 .07 232 / .7)); }
+.inv-item--gold  { border-left: 2px solid var(--gold, oklch(.72 .1 85 / .7)); }
+
+/* ── Item head ── */
+.inv-item__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.inv-item__left {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  min-width: 0;
+}
+
+.inv-item__name {
+  font-family: var(--font-display, var(--font));
+  font-size: 16px;
   font-weight: 600;
-  cursor: pointer;
-  transition: opacity 0.15s;
+  color: var(--ink, oklch(.88 .015 70));
+  line-height: 1.2;
 }
 
-.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.inv-item__qty {
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+  color: var(--ink-4, oklch(.45 .015 275));
+  flex: 0 0 auto;
+}
 
-.btn--use {
-  background: var(--gold, #c9a84c);
-  color: var(--bg, #0a0a0a);
+/* ── Rarity chip ── */
+.inv-chip {
+  flex: 0 0 auto;
+  font-family: var(--font-caps, var(--font));
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 3px;
+  border: 1px solid var(--line, oklch(.35 .025 268 / .6));
+  color: var(--ink-4, oklch(.45 .015 275));
+  background: oklch(.26 .025 268 / .5);
+}
+
+.inv-chip--sap   { border-color: oklch(.70 .09 162 / .45); color: var(--sap, oklch(.70 .09 162)); background: oklch(.50 .07 162 / .12); }
+.inv-chip--frost { border-color: oklch(.70 .07 232 / .45); color: var(--frost, oklch(.70 .07 232)); background: oklch(.50 .06 232 / .12); }
+.inv-chip--gold  { border-color: oklch(.72 .1 85 / .45); color: var(--gold, oklch(.72 .1 85)); background: oklch(.55 .08 85 / .12); }
+
+/* ── Type ── */
+.inv-item__type {
+  font-family: var(--font-caps, var(--font));
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-4, oklch(.45 .015 275));
+  margin: 0;
+}
+
+/* ── Description ── */
+.inv-item__desc {
+  font-family: var(--font, serif);
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ink-3, oklch(.65 .02 275));
+  margin: 0;
+}
+
+/* ── Effect ── */
+.inv-item__effect {
+  display: flex;
+}
+
+.inv-effect-badge {
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  padding: 3px 9px;
+  border-radius: 3px;
+  border: 1px solid var(--line, oklch(.35 .025 268 / .6));
+  color: var(--ink-3);
+  background: oklch(.24 .025 268 / .5);
+}
+
+.inv-effect-badge--sap   { border-color: oklch(.70 .09 162 / .4); color: var(--sap, oklch(.70 .09 162)); background: oklch(.50 .07 162 / .1); }
+.inv-effect-badge--frost { border-color: oklch(.70 .07 232 / .4); color: var(--frost, oklch(.70 .07 232)); background: oklch(.50 .06 232 / .1); }
+.inv-effect-badge--gold  { border-color: oklch(.72 .1 85 / .4); color: var(--gold, oklch(.72 .1 85)); background: oklch(.55 .08 85 / .1); }
+.inv-effect-badge--blood { border-color: oklch(.52 .15 20 / .4); color: var(--blood, oklch(.52 .15 20)); background: oklch(.38 .1 20 / .1); }
+
+/* ── Actions ── */
+.inv-item__actions {
+  margin-top: 2px;
+}
+
+/* ── Buttons ── */
+.inv-btn {
   width: 100%;
+  padding: 9px 16px;
+  border-radius: 4px;
+  font-family: var(--font-caps, var(--font));
+  font-size: 10.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: opacity 0.15s, box-shadow 0.15s;
 }
 
-.btn--use:hover:not(:disabled) { opacity: 0.85; }
+.inv-btn:disabled { opacity: .38; cursor: not-allowed; }
 
-.btn--ally {
+.inv-btn--use {
+  border: 1px solid var(--gold, oklch(.72 .1 85));
+  background: oklch(.55 .08 85 / .15);
+  color: var(--gold, oklch(.72 .1 85));
+  box-shadow: 0 0 18px -6px oklch(.72 .1 85 / .4);
+}
+
+.inv-btn--use:not(:disabled):hover {
+  background: oklch(.55 .08 85 / .25);
+  box-shadow: 0 0 26px -6px oklch(.72 .1 85 / .55);
+}
+
+.inv-btn--cancel {
+  border: 1px solid var(--line, oklch(.35 .025 268 / .6));
+  background: oklch(.24 .025 268 / .5);
+  color: var(--ink-3, oklch(.65 .02 275));
+}
+
+.inv-btn--cancel:not(:disabled):hover {
+  border-color: var(--line-strong, oklch(.42 .03 268 / .7));
+  color: var(--ink-2);
+}
+
+/* ── Picker ── */
+.inv-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.inv-picker__label {
+  font-family: var(--font-caps, var(--font));
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-4, oklch(.45 .015 275));
+  margin: 0 0 2px;
+}
+
+/* ── Ally button ── */
+.inv-ally-btn {
   display: flex;
   justify-content: space-between;
   align-items: center;
   width: 100%;
-  background: var(--color-surface-raised, #1c1c1c);
-  color: var(--color-text, #e8e0d0);
-  border: 1px solid var(--color-border);
-  margin-bottom: var(--space-2);
+  padding: 9px 14px;
+  border: 1px solid var(--line-soft, oklch(.32 .022 268 / .5));
+  border-radius: 4px;
+  background: linear-gradient(180deg, oklch(.30 .034 268 / .4), oklch(.26 .03 268 / .35));
+  color: var(--ink, oklch(.88 .015 70));
+  font-family: inherit;
+  cursor: pointer;
   text-align: left;
-  padding: var(--space-2) var(--space-3);
+  transition: border-color 0.15s, background 0.15s, transform 0.12s;
 }
 
-.btn--ally:hover:not(:disabled) {
-  border-color: var(--gold, #c9a84c);
-  background: var(--color-surface-hover, #242424);
+.inv-ally-btn:not(:disabled):hover {
+  border-color: var(--frost, oklch(.70 .07 232));
+  background: linear-gradient(180deg, oklch(.34 .045 268 / .45), oklch(.28 .035 268 / .4));
+  transform: translateX(2px);
 }
 
-.ally-name { font-weight: 600; }
-.ally-hp   { color: var(--ink-3); font-size: 0.75rem; }
+.inv-ally-btn:disabled { opacity: .38; cursor: not-allowed; }
 
-.btn--cancel {
-  background: transparent;
-  color: var(--ink-3);
-  border: 1px solid var(--color-border);
-  width: 100%;
+.inv-ally-btn__name {
+  font-family: var(--font, serif);
+  font-size: 13.5px;
+  color: var(--ink-2, oklch(.78 .02 275));
 }
 
-.btn--cancel:hover:not(:disabled) { color: var(--color-text); }
-
-/* —— Ally picker ——————————————————————————————————— */
-.ally-picker {
-  display: grid;
-  gap: var(--space-2);
+.inv-ally-btn__hp {
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+  color: var(--ink-4, oklch(.45 .015 275));
 }
 
-.ally-picker__label {
-  font-size: 0.8rem;
-  color: var(--ink-3);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: var(--space-1);
-}
-
-.ally-picker__error {
-  color: var(--color-red, #f87171);
-  font-size: 0.8rem;
+/* ── Error ── */
+.inv-error {
+  font-family: var(--font-mono, monospace);
+  font-size: 11.5px;
+  color: var(--blood, oklch(.52 .15 20));
+  margin: 2px 0 0;
 }
 </style>
