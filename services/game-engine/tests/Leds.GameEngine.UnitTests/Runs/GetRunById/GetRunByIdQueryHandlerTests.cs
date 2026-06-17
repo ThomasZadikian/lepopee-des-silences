@@ -1,7 +1,9 @@
 using FluentAssertions;
 using Leds.GameEngine.Application.Abstractions;
 using Leds.GameEngine.Application.Common.Exceptions;
+using Leds.GameEngine.Application.PalaceLaws.Ports;
 using Leds.GameEngine.Application.Runs.GetRunById;
+using Leds.GameEngine.Domain.PalaceLaws;
 using Leds.GameEngine.Domain.Runs;
 using Leds.GameEngine.UnitTests.Common.Factories;
 using Moq;
@@ -20,7 +22,8 @@ public sealed class GetRunByIdQueryHandlerTests
             .Setup(repo => repo.GetByIdAsync(run.Id, CancellationToken.None))
             .ReturnsAsync(run);
 
-        var handler = new GetRunByIdQueryHandler(repository.Object);
+        var palaceIndicatorRepository = CreatePalaceIndicatorRepository();
+        var handler = new GetRunByIdQueryHandler(repository.Object, palaceIndicatorRepository.Object);
 
         var response = await handler.Handle(
             new GetRunByIdQuery(run.Id.Value),
@@ -62,7 +65,8 @@ public sealed class GetRunByIdQueryHandlerTests
             .Setup(repo => repo.GetByIdAsync(run.Id, CancellationToken.None))
             .ReturnsAsync(run);
 
-        var handler = new GetRunByIdQueryHandler(repository.Object);
+        var palaceIndicatorRepository = CreatePalaceIndicatorRepository();
+        var handler = new GetRunByIdQueryHandler(repository.Object, palaceIndicatorRepository.Object);
 
         var response = await handler.Handle(
             new GetRunByIdQuery(run.Id.Value),
@@ -91,7 +95,8 @@ public sealed class GetRunByIdQueryHandlerTests
             .Setup(repo => repo.GetByIdAsync(run.Id, CancellationToken.None))
             .ReturnsAsync(run);
 
-        var handler = new GetRunByIdQueryHandler(repository.Object);
+        var palaceIndicatorRepository = CreatePalaceIndicatorRepository();
+        var handler = new GetRunByIdQueryHandler(repository.Object, palaceIndicatorRepository.Object);
 
         var response = await handler.Handle(
             new GetRunByIdQuery(run.Id.Value),
@@ -111,7 +116,8 @@ public sealed class GetRunByIdQueryHandlerTests
             .Setup(repo => repo.GetByIdAsync(run.Id, CancellationToken.None))
             .ReturnsAsync(run);
 
-        var handler = new GetRunByIdQueryHandler(repository.Object);
+        var palaceIndicatorRepository = CreatePalaceIndicatorRepository();
+        var handler = new GetRunByIdQueryHandler(repository.Object, palaceIndicatorRepository.Object);
 
         var response = await handler.Handle(
             new GetRunByIdQuery(run.Id.Value),
@@ -130,7 +136,8 @@ public sealed class GetRunByIdQueryHandlerTests
             .Setup(repo => repo.GetByIdAsync(new RunId(runId), CancellationToken.None))
             .ReturnsAsync((Run?)null);
 
-        var handler = new GetRunByIdQueryHandler(repository.Object);
+        var palaceIndicatorRepository = CreatePalaceIndicatorRepository();
+        var handler = new GetRunByIdQueryHandler(repository.Object, palaceIndicatorRepository.Object);
 
         var act = () => handler.Handle(
             new GetRunByIdQuery(runId),
@@ -139,5 +146,49 @@ public sealed class GetRunByIdQueryHandlerTests
         await act.Should()
             .ThrowAsync<NotFoundException>()
             .WithMessage($"Run with id '{runId}' was not found.");
+    }
+
+    [Fact]
+    public async Task Handle_ShouldReturnPublicPalaceIndicators_WhenIndicatorsExist()
+    {
+        var run = TestGameEngineFactory.CreateRun();
+        var indicator = PalaceIndicator.Create(
+            run.Id.Value,
+            "palace.whispers",
+            "Murmures du Palais",
+            "Le Palais observe la traversée.",
+            "high",
+            sourceDecisionId: Guid.NewGuid());
+
+        var repository = new Mock<IRunRepository>();
+        repository
+            .Setup(repo => repo.GetByIdAsync(run.Id, CancellationToken.None))
+            .ReturnsAsync(run);
+
+        var palaceIndicatorRepository = CreatePalaceIndicatorRepository([indicator]);
+        var handler = new GetRunByIdQueryHandler(repository.Object, palaceIndicatorRepository.Object);
+
+        var response = await handler.Handle(
+            new GetRunByIdQuery(run.Id.Value),
+            CancellationToken.None);
+
+        response.Run.PalaceIndicators.Should().ContainSingle();
+        var publicIndicator = response.Run.PalaceIndicators!.Single();
+        publicIndicator.Key.Should().Be("palace.whispers");
+        publicIndicator.Label.Should().Be("Murmures du Palais");
+        publicIndicator.Description.Should().Be("Le Palais observe la traversée.");
+        publicIndicator.Level.Should().Be("high");
+        publicIndicator.Source.Should().Be("run");
+    }
+
+    private static Mock<IPalaceIndicatorRepository> CreatePalaceIndicatorRepository(
+        IReadOnlyCollection<PalaceIndicator>? indicators = null)
+    {
+        var repository = new Mock<IPalaceIndicatorRepository>();
+        repository
+            .Setup(repo => repo.GetByRunIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(indicators ?? []);
+
+        return repository;
     }
 }

@@ -3,6 +3,7 @@ using Leds.GameEngine.Application.Abstractions;
 using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Application.Combats;
 using Leds.GameEngine.Application.Events.ChooseEventOption;
+using Leds.GameEngine.Application.PalaceLaws.Ports;
 using Leds.GameEngine.Application.Rewards.Ports;
 using Leds.GameEngine.Application.Rewards.RewardOfferFactory;
 using Leds.GameEngine.Application.Rewards.SelectReward;
@@ -40,7 +41,12 @@ public sealed class CurrentRoomIndexHandlerTests
             .Setup(r => r.GetByIdAsync(run.Id, CancellationToken.None))
             .ReturnsAsync(run);
 
-        var handler = new GetRunByIdQueryHandler(repository.Object);
+        var palaceIndicatorRepository = new Mock<IPalaceIndicatorRepository>();
+        palaceIndicatorRepository
+            .Setup(r => r.GetByRunIdAsync(run.Id.Value, CancellationToken.None))
+            .ReturnsAsync([]);
+
+        var handler = new GetRunByIdQueryHandler(repository.Object, palaceIndicatorRepository.Object);
 
         var response = await handler.Handle(
             new GetRunByIdQuery(run.Id.Value),

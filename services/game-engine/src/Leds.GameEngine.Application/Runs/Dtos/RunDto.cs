@@ -1,4 +1,5 @@
-﻿using Leds.GameEngine.Domain.Runs;
+﻿using Leds.GameEngine.Domain.PalaceLaws;
+using Leds.GameEngine.Domain.Runs;
 
 namespace Leds.GameEngine.Application.Runs.Dtos;
 
@@ -41,13 +42,21 @@ public sealed record RunDto(
     DateTimeOffset? AbandonedAt,
     PlayerRuntimeStateDto? PlayerState,
     IReadOnlyCollection<RunModifierDto>? ActiveModifiers = null,
-    RunPartySnapshotDto? Party = null)
+    RunPartySnapshotDto? Party = null,
+    IReadOnlyCollection<PalacePublicIndicatorDto>? PalaceIndicators = null)
 {
-    public static RunDto FromDomain(Run run)
+    public static RunDto FromDomain(
+        Run run,
+        IReadOnlyCollection<PalaceIndicator>? palaceIndicators = null)
     {
         var activeModifiers = run.RunModifiers
             .Where(m => !m.IsConsumed)
             .Select(RunModifierDto.FromDomain)
+            .ToArray();
+
+        var publicIndicators = (palaceIndicators ?? [])
+            .Where(indicator => !indicator.IsExpired)
+            .Select(PalacePublicIndicatorDto.FromDomain)
             .ToArray();
 
         return new RunDto(
@@ -71,7 +80,49 @@ public sealed record RunDto(
             AbandonedAt: run.Status == RunStatus.Abandoned ? run.EndedAt : null,
             PlayerState: PlayerRuntimeStateDto.FromDomain(run.PlayerState),
             ActiveModifiers: activeModifiers.Length > 0 ? activeModifiers : null,
-            Party: RunPartySnapshotDto.FromDomain(run.PlayerSnapshot, run.PlayerState));
+            Party: RunPartySnapshotDto.FromDomain(run.PlayerSnapshot, run.PlayerState),
+            PalaceIndicators: publicIndicators);
+    }
+}
+
+public sealed record PalacePublicIndicatorDto(
+    string Key,
+    string Label,
+    string? Description,
+    string? Category,
+    string? Level,
+    string? Tone,
+    string? Source)
+{
+    public static PalacePublicIndicatorDto FromDomain(PalaceIndicator indicator)
+    {
+        ArgumentNullException.ThrowIfNull(indicator);
+
+        var publicIntensity = NormalizePublicIntensity(indicator.Intensity);
+
+        return new PalacePublicIndicatorDto(
+            indicator.IndicatorKey,
+            indicator.DisplayLabel,
+            indicator.NarrativeText,
+            Category: null,
+            Level: publicIntensity.Level,
+            Tone: publicIntensity.Tone,
+            Source: "run");
+    }
+
+    private static (string? Level, string? Tone) NormalizePublicIntensity(string intensity)
+    {
+        var normalized = intensity.Trim().ToLowerInvariant();
+
+        return normalized switch
+        {
+            "low" or "medium" or "high" or "critical" => (normalized, null),
+            "calm" or "stable" => (null, "calm"),
+            "unstable" or "tense" => (null, "unstable"),
+            "danger" or "dangerous" => (null, "danger"),
+            "mystery" or "unknown" => (null, "mystery"),
+            _ => (null, null)
+        };
     }
 }
 
