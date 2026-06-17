@@ -1,6 +1,11 @@
 <script setup lang="ts">
-import type { ActivePalaceLawDto } from '../runs/types/runTypes';
-defineProps<{ laws?: ActivePalaceLawDto[] | null }>()
+import type { ActivePalaceLawDto, ActiveCurseDto } from '../runs/types/runTypes';
+
+defineProps<{
+  laws?: ActivePalaceLawDto[] | null;
+  curses?: ActiveCurseDto[] | null;
+}>()
+
 const emit = defineEmits<{ close: [] }>()
 
 function domainTone(domain: string): 'blood' | 'frost' | 'gold' | '' {
@@ -10,6 +15,18 @@ function domainTone(domain: string): 'blood' | 'frost' | 'gold' | '' {
   if (d.includes('loi') || d.includes('édit') || d.includes('edit')) return 'gold'
   return ''
 }
+
+const DURATION_LABELS: Record<string, string> = {
+  UntilRunEnds:   'run entière',
+  Permanent:      'permanent',
+  UntilRoomEnd:   'fin de salle',
+  UntilCombatEnd: 'fin de combat',
+}
+
+function durationLabel(d: string | null | undefined): string {
+  if (!d) return ''
+  return DURATION_LABELS[d] ?? d
+}
 </script>
 
 <template>
@@ -17,14 +34,13 @@ function domainTone(domain: string): 'blood' | 'frost' | 'gold' | '' {
     class="lp-root"
     role="dialog"
     aria-modal="true"
-    aria-label="Lois du Palais"
+    aria-label="Influences actives"
     tabindex="-1"
     @keydown.escape="emit('close')"
   >
     <!-- Header -->
     <header class="lp-head">
       <div class="lp-head__left">
-        <!-- Shield SVG 16x16 gold -->
         <svg
           width="16"
           height="16"
@@ -38,19 +54,16 @@ function domainTone(domain: string): 'blood' | 'frost' | 'gold' | '' {
           style="color: var(--gold); flex: 0 0 auto;"
         >
           <path d="M12 3L4 7v5c0 5 3.5 9.74 8 11 4.5-1.26 8-6 8-11V7l-8-4z"/>
-          <line x1="12" y1="9" x2="12" y2="15"/>
-          <line x1="9" y1="12" x2="15" y2="12"/>
         </svg>
         <div>
           <span class="es-kicker" style="color: oklch(.65 .09 84 / .7); display: block; margin-bottom: 3px;">
             Registre du Palais
           </span>
-          <h3 style="font-size: 22px; font-family: var(--display); color: var(--ink); margin: 0;">
-            Lois du Palais
+          <h3 style="font-size: 22px; font-family: var(--font-display); color: var(--ink); margin: 0;">
+            Influences actives
           </h3>
         </div>
       </div>
-      <!-- Close button -->
       <button class="lp-close" @click="emit('close')" aria-label="Fermer">
         <svg
           width="16"
@@ -68,69 +81,115 @@ function domainTone(domain: string): 'blood' | 'frost' | 'gold' | '' {
       </button>
     </header>
 
-    <!-- Divider -->
     <div class="lp-divider" />
 
-    <!-- Law list -->
-    <div v-if="laws && laws.length" class="lp-list">
-      <div
-        v-for="law in laws"
-        :key="law.key"
-        class="lp-law"
-      >
-        <!-- Left: shield icon colored by domain tone -->
-        <svg
-          width="14"
-          height="14"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.5"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          aria-hidden="true"
-          :style="{
-            color: domainTone(law.domain ?? '') === 'gold'  ? 'var(--gold)'
-                 : domainTone(law.domain ?? '') === 'blood' ? 'var(--blood)'
-                 : domainTone(law.domain ?? '') === 'frost' ? 'var(--frost)'
-                 : 'var(--gold-dim, oklch(.65 .09 84 / .6))',
-            flex: '0 0 auto',
-            marginTop: '2px',
-          }"
+    <!-- Content -->
+    <div v-if="laws?.length || curses?.length" class="lp-body">
+
+      <!-- ── Lois du Palais ── -->
+      <section v-if="laws && laws.length" class="lp-section">
+        <h4 class="lp-section__title">
+          Lois du Palais
+          <span class="lp-section__count">{{ laws.length }}</span>
+        </h4>
+        <div
+          v-for="law in laws"
+          :key="law.key"
+          class="lp-law"
         >
-          <path d="M12 3L4 7v5c0 5 3.5 9.74 8 11 4.5-1.26 8-6 8-11V7l-8-4z"/>
-        </svg>
-
-        <!-- Right: body -->
-        <div class="lp-law__body">
-          <!-- Name + version row -->
-          <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 6px;">
-            <span style="font-family: var(--display); font-size: 15.5px; font-weight: 600; color: var(--gold);">
-              {{ law.displayName }}
-            </span>
-            <span class="es-mono" style="font-size: 10px; color: var(--ink-4); flex: 0 0 auto;">
-              {{ law.version }}
-            </span>
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+            :style="{
+              color: domainTone(law.domain ?? '') === 'gold'  ? 'var(--gold)'
+                   : domainTone(law.domain ?? '') === 'blood' ? 'var(--blood)'
+                   : domainTone(law.domain ?? '') === 'frost' ? 'var(--frost)'
+                   : 'var(--gold-dim, oklch(.65 .09 84 / .6))',
+              flex: '0 0 auto',
+              marginTop: '2px',
+            }"
+          >
+            <path d="M12 3L4 7v5c0 5 3.5 9.74 8 11 4.5-1.26 8-6 8-11V7l-8-4z"/>
+          </svg>
+          <div class="lp-law__body">
+            <div class="lp-law__head">
+              <span class="lp-law__name">{{ law.displayName || law.key }}</span>
+              <span class="es-mono" style="font-size: 10px; color: var(--ink-4); flex: 0 0 auto;">
+                {{ law.version }}
+              </span>
+            </div>
+            <div v-if="law.domain" style="margin-bottom: 7px;">
+              <span
+                class="es-chip"
+                :class="{
+                  'es-chip--gold':  domainTone(law.domain) === 'gold',
+                  'es-chip--frost': domainTone(law.domain) === 'frost',
+                  'es-chip--blood': domainTone(law.domain) === 'blood',
+                }"
+              >{{ law.domain }}</span>
+            </div>
+            <p class="lp-law__desc">{{ law.description }}</p>
           </div>
-
-          <!-- Domain chip row -->
-          <div v-if="law.domain" style="margin-bottom: 7px;">
-            <span
-              class="es-chip"
-              :class="{
-                'es-chip--gold':  domainTone(law.domain) === 'gold',
-                'es-chip--frost': domainTone(law.domain) === 'frost',
-                'es-chip--blood': domainTone(law.domain) === 'blood',
-              }"
-            >{{ law.domain }}</span>
-          </div>
-
-          <!-- Description -->
-          <p class="es-body" style="font-size: 12.5px; color: var(--ink-3); margin: 0;">
-            {{ law.description }}
-          </p>
         </div>
-      </div>
+      </section>
+
+      <!-- ── Malédictions ── -->
+      <section v-if="curses && curses.length" class="lp-section">
+        <h4 class="lp-section__title lp-section__title--blood">
+          Malédictions
+          <span class="lp-section__count lp-section__count--blood">{{ curses.length }}</span>
+        </h4>
+        <div
+          v-for="curse in curses"
+          :key="curse.id"
+          class="lp-curse"
+          :class="{ 'lp-curse--consumed': !!curse.consumedAtUtc }"
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+            style="color: var(--blood); flex: 0 0 auto; margin-top: 2px;"
+          >
+            <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <div class="lp-curse__body">
+            <div class="lp-curse__head">
+              <span class="lp-curse__name">
+                {{ curse.displayName ?? curse.curseDefinitionKey }}
+              </span>
+              <div class="lp-curse__badges">
+                <span v-if="curse.severity" class="es-chip es-chip--blood" style="font-size: 9px; padding: 1px 6px;">
+                  {{ curse.severity }}
+                </span>
+                <span v-if="curse.consumedAtUtc" class="es-chip" style="font-size: 9px; padding: 1px 6px; opacity: .6;">
+                  Consommée
+                </span>
+              </div>
+            </div>
+            <p v-if="curse.description" class="lp-curse__desc">{{ curse.description }}</p>
+            <span v-if="curse.duration" class="lp-curse__duration">
+              {{ durationLabel(curse.duration) }}
+            </span>
+          </div>
+        </div>
+      </section>
+
     </div>
 
     <!-- Empty state -->
@@ -149,7 +208,7 @@ function domainTone(domain: string): 'blood' | 'frost' | 'gold' | '' {
       >
         <path d="M12 3L4 7v5c0 5 3.5 9.74 8 11 4.5-1.26 8-6 8-11V7l-8-4z"/>
       </svg>
-      <span class="es-label" style="color: var(--ink-4);">Aucune loi active.</span>
+      <span class="es-label" style="color: var(--ink-4);">Aucune influence active.</span>
     </div>
 
     <!-- Footer -->
@@ -182,7 +241,6 @@ function domainTone(domain: string): 'blood' | 'frost' | 'gold' | '' {
   outline: none;
 }
 
-/* Frost pseudo-corners */
 .lp-root::before {
   content: '';
   position: absolute;
@@ -256,31 +314,147 @@ function domainTone(domain: string): 'blood' | 'frost' | 'gold' | '' {
   margin: 0 22px;
 }
 
-.lp-list {
+.lp-body {
   flex: 1;
   overflow-y: auto;
-  padding: 10px 22px 0;
+  padding: 16px 22px;
   display: flex;
   flex-direction: column;
+  gap: 20px;
 }
 
+/* ── Sections ── */
+.lp-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lp-section__title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-caps, var(--font));
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line-soft);
+  margin: 0;
+}
+
+.lp-section__title--blood { color: oklch(.62 .14 20 / .7); border-bottom-color: oklch(.52 .15 20 / .3); }
+
+.lp-section__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: oklch(.28 .02 268 / .6);
+  border: 1px solid var(--line-soft);
+  font-size: 9px;
+  letter-spacing: 0;
+  color: var(--ink-3);
+}
+
+.lp-section__count--blood {
+  background: oklch(.38 .10 20 / .15);
+  border-color: oklch(.52 .15 20 / .3);
+  color: var(--blood);
+}
+
+/* ── Law entries ── */
 .lp-law {
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  padding: 14px 0;
+  padding: 12px 0;
   border-bottom: 1px solid var(--line-soft, oklch(.32 .022 268 / .5));
 }
 
-.lp-law:last-child {
-  border-bottom: none;
+.lp-law:last-child { border-bottom: none; }
+
+.lp-law__body { flex: 1; min-width: 0; }
+
+.lp-law__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 6px;
 }
 
-.lp-law__body {
-  flex: 1;
-  min-width: 0;
+.lp-law__name {
+  font-family: var(--font-display);
+  font-size: 15.5px;
+  font-weight: 600;
+  color: var(--gold);
 }
 
+.lp-law__desc {
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--ink-3);
+  margin: 0;
+}
+
+/* ── Curse entries ── */
+.lp-curse {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid oklch(.32 .022 268 / .5);
+  transition: opacity .2s;
+}
+
+.lp-curse:last-child { border-bottom: none; }
+
+.lp-curse--consumed { opacity: .55; }
+
+.lp-curse__body { flex: 1; min-width: 0; }
+
+.lp-curse__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 5px;
+}
+
+.lp-curse__name {
+  font-family: var(--font-display);
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--blood);
+}
+
+.lp-curse__badges {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.lp-curse__desc {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink-3);
+  margin: 0 0 4px;
+}
+
+.lp-curse__duration {
+  font-family: var(--font-caps, var(--font));
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-5, oklch(.42 .018 268));
+}
+
+/* ── Empty state ── */
 .lp-empty {
   flex: 1;
   display: flex;

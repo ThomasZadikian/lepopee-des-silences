@@ -5,25 +5,25 @@ import { useRoute, useRouter } from 'vue-router';
 import GameShellLayout from '../app/layouts/GameShellLayout.vue';
 import CombatScene from '../features/combat/components/CombatScene.vue';
 import { useCombatStore } from '../features/combat/stores/useCombatStore';
+import DecisionDiptych from '../shared/components/DecisionDiptych.vue';
 import EliseOverlay from '../features/elise/EliseOverlay.vue';
 import EventChoiceResultPanel from '../features/events/components/EventChoiceResultPanel.vue';
-import EventOutcomePanel from '../features/events/components/EventOutcomePanel.vue';
-import MerchantPanel from '../features/events/components/MerchantPanel.vue';
-import type { CurrentEventChoiceResultDto } from '../features/events/types/eventTypes';
+import EventOutcomePanel from '../features/events/components/EventOutcomePanel.vue'
+import MerchantPanel from '../features/events/components/MerchantPanel.vue'
+import LawResolutionPanel from '../features/palace-laws/LawResolutionPanel.vue';
 import InterludePanel from '../features/interlude/InterludePanel.vue';
 import RoomClearedPanel from '../features/interlude/RoomClearedPanel.vue';
 import InventoryDrawer from '../features/inventory/components/InventoryDrawer.vue';
-import PalaceNodeDrawer from '../features/node-details/PalaceNodeDrawer.vue';
-import LawResolutionPanel from '../features/palace-laws/LawResolutionPanel.vue';
 import LawsPopover from '../features/palace-laws/LawsPopover.vue';
+import PalaceNodeDrawer from '../features/node-details/PalaceNodeDrawer.vue';
 import PalaceMapPlaceholder from '../features/palace-map/PalaceMapPlaceholder.vue';
 import RewardOfferPanel from '../features/rewards/components/RewardOfferPanel.vue';
-import PartyDrawer from '../features/runs/components/PartyDrawer.vue';
 import RunStatusRibbon from '../features/runs/components/RunStatusRibbon.vue';
-import { useRunStore } from '../features/runs/stores/runStore';
-import DecisionDiptych from '../shared/components/DecisionDiptych.vue';
+import PartyDrawer from '../features/runs/components/PartyDrawer.vue';
 import RuntimeDebugPanel from '../shared/components/RuntimeDebugPanel.vue';
+import { useRunStore } from '../features/runs/stores/runStore';
 import { useGameUiStore } from '../shared/stores/useGameUiStore';
+import type { CurrentEventChoiceResultDto } from '../features/events/types/eventTypes';
 
 const route = useRoute();
 const router = useRouter();
@@ -163,7 +163,7 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
               :layout-template-key="runStore.currentRun.currentRoom.layoutTemplateKey"
               :layout-template-version="runStore.currentRun.currentRoom.layoutTemplateVersion"
               @choose-node="runStore.previewNode"
-              @deselect-node="clearAllUi"
+            @deselect-node="clearAllUi"
             />
           </div>
 
@@ -176,6 +176,7 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
             @exit-mid-room="handleExitMidRoom"
             @open-besace="uiStore.toggleBesace"
             @open-party="uiStore.toggleParty"
+            @open-influences="uiStore.toggleLaws"
           />
 
           <!-- Elise overlay -->
@@ -206,11 +207,13 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
             />
           </Transition>
 
-          <!-- Laws popover (right, absolute positioned) -->
+          <!-- Laws / influences popover (right, absolute positioned) -->
           <Transition name="slide">
             <LawsPopover
               v-if="showLaws"
               :laws="runStore.currentRun.activePalaceLaws"
+              :curses="runStore.currentRun.activeCurses"
+              :modifiers="runStore.currentRun.activeModifiers"
               @close="uiStore.toggleLaws"
             />
           </Transition>
@@ -295,6 +298,9 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
           v-if="runStore.lastOutcome.resolutionKind === 'PalaceLawOffered'"
           :outcome="runStore.lastOutcome"
           :is-loading="runStore.isLoading"
+          :active-laws="runStore.currentRun.activePalaceLaws"
+          :active-curses="runStore.currentRun.activeCurses"
+          :active-modifiers="runStore.currentRun.activeModifiers"
           @continue="handleEventContinue"
           @select-choice="handleSelectChoice"
         />

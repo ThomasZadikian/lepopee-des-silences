@@ -1,6 +1,6 @@
 # L’épopée des silences
 game-engine-alpha-0.8.2
-web-alpha-0.7.3.1
+web-alpha-0.7.4
 catalog-alpha-0.9.0
 player-service-alpha-1.0.0
 data-model-alpha-1.0.0

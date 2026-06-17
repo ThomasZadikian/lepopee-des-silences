@@ -3,14 +3,18 @@ import ChipBadge from '@/shared/components/ChipBadge.vue'
 import EliseComment from '@/shared/components/EliseComment.vue'
 import RuleOrnament from '@/shared/components/RuleOrnament.vue'
 import SigilIcon from '@/shared/components/SigilIcon.vue'
+import LawsPopover from './LawsPopover.vue'
 import { computed, ref } from 'vue'
 import type { EventOutcomeDto } from '../events/types/eventTypes'
 import { getOutcomeChoices, isChoiceOutcome } from '../events/types/eventTypes'
+import type { ActivePalaceLawDto, ActiveCurseDto } from '../runs/types/runTypes'
 
 // ── Props & Emits ─────────────────────────────────────────────────────────
 const props = defineProps<{
   outcome: EventOutcomeDto
   isLoading: boolean
+  activeLaws?: ActivePalaceLawDto[] | null
+  activeCurses?: ActiveCurseDto[] | null
 }>()
 
 const emit = defineEmits<{
@@ -70,6 +74,16 @@ function proceed() {
     <div class="es-atmos" />
     <div class="es-vignette" />
     <div class="es-grain" />
+
+    <!-- Influences drawer (opens when "Lois en vigueur" is clicked) -->
+    <Transition name="slide">
+      <LawsPopover
+        v-if="showDrawer"
+        :laws="activeLaws"
+        :curses="activeCurses"
+        @close="showDrawer = false"
+      />
+    </Transition>
 
     <div class="vlo-layout">
 

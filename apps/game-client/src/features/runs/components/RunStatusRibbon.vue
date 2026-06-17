@@ -12,6 +12,7 @@ const emit = defineEmits<{
   exitMidRoom: [];
   openBesace: [];
   openParty: [];
+  openInfluences: [];
 }>();
 </script>
 
@@ -20,17 +21,26 @@ const emit = defineEmits<{
     <div class="status-ribbon__info">
       <span class="es-chip es-chip--gold">Salle {{ run.currentRoomNumber }}</span>
       <span class="es-chip">{{ run.currentRoom?.roomType ?? '—' }}</span>
-      <span
+      <button
         v-if="run.activePalaceLaws?.length"
-        class="es-chip es-chip--frost"
-        :title="`${run.activePalaceLaws.length} loi(s) active(s)`"
+        class="es-chip es-chip--frost sr-chip-btn"
+        :title="`${run.activePalaceLaws.length} loi(s) active(s) — cliquer pour voir`"
+        @click="emit('openInfluences')"
       >
         {{ run.activePalaceLaws.length }} loi{{ run.activePalaceLaws.length > 1 ? 's' : '' }}
-      </span>
+      </button>
+      <button
+        v-if="run.activeCurses?.length"
+        class="es-chip es-chip--blood sr-chip-btn"
+        :title="`${run.activeCurses.length} malédiction(s) active(s) — cliquer pour voir`"
+        @click="emit('openInfluences')"
+      >
+        {{ run.activeCurses.length }} malédiction{{ run.activeCurses.length > 1 ? 's' : '' }}
+      </button>
       <span
         v-if="run.activeModifiers?.length"
         class="es-chip"
-        :title="`${run.activeModifiers.length} modificateur(s) actif(s)`"
+        :title="`${run.activeModifiers.length} modificateur(s) actif(s) — visible dans l'écran Équipe`"
       >
         {{ run.activeModifiers.length }} mod.
       </span>
@@ -80,7 +90,7 @@ const emit = defineEmits<{
   right: 0;
   display: flex;
   align-items: center;
-  justify-content: space-between; 
+  justify-content: space-between;
   flex-wrap: nowrap;
   gap: var(--space-3);
   padding: var(--space-1) var(--space-3);
@@ -97,7 +107,7 @@ const emit = defineEmits<{
   align-items: center;
   flex-shrink: 0;
   flex-wrap: nowrap;
-  margin-left: 45%;
+  margin-left:45%; 
 }
 
 .status-ribbon__actions {
@@ -113,4 +123,14 @@ const emit = defineEmits<{
   font-size: 11px;
   height: auto;
 }
+
+.sr-chip-btn {
+  cursor: pointer;
+  border: none;
+  background: inherit;
+  font: inherit;
+  transition: opacity .15s;
+}
+
+.sr-chip-btn:hover { opacity: .8; }
 </style>
