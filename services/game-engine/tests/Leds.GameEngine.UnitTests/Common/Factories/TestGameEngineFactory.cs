@@ -144,6 +144,54 @@ public static class TestGameEngineFactory
             startedAt: DateTimeOffset.UtcNow);
     }
 
+    public static Run CreateRunWithPlayerSnapshot(
+        NodeEventType targetInitialEventType = NodeEventType.Combat)
+    {
+        var run = CreateRun(targetInitialEventType);
+
+        var statBlock = RunCharacterStatSnapshot.Create(
+            maxVitality: 100,
+            attackPower: 12,
+            defense: 6,
+            startingGuard: 0,
+            speed: 10,
+            initiative: 10,
+            recovery: 5,
+            focus: 0,
+            mana: 0,
+            charge: 0);
+
+        var skills = new[]
+        {
+            RunCharacterSkillSnapshot.Create(
+                skillDefinitionKey: "skill.basic.strike",
+                displayName: "Frappe",
+                skillType: "Damage",
+                targetingMode: "SingleEnemy",
+                effectType: "Damage",
+                manaCost: 0,
+                chargeCost: 0,
+                basePower: 10)
+        };
+
+        var character = RunCharacterSnapshot.Create(
+            characterId: Guid.NewGuid(),
+            definitionKey: "character.player.self",
+            displayName: "Le Porteur",
+            statBlock: statBlock,
+            skills: skills);
+
+        var snapshot = RunPlayerSnapshot.Create(
+            playerId: run.PlayerId,
+            displayName: "Joueur",
+            characters: [character],
+            createdAtUtc: DateTimeOffset.UtcNow);
+
+        run.AttachPlayerSnapshot(snapshot);
+
+        return run;
+    }
+
     public static TestRunWithTargetNode CreateRunWithTargetInitialNode(
         NodeEventType targetInitialEventType)
     {

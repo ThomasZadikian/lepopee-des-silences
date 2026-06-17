@@ -53,6 +53,74 @@ public sealed class GetRunByIdQueryHandlerTests
     }
 
     [Fact]
+    public async Task Handle_ShouldReturnPartySnapshot_WhenRunHasPlayerSnapshot()
+    {
+        var run = TestGameEngineFactory.CreateRunWithPlayerSnapshot();
+
+        var repository = new Mock<IRunRepository>();
+        repository
+            .Setup(repo => repo.GetByIdAsync(run.Id, CancellationToken.None))
+            .ReturnsAsync(run);
+
+        var handler = new GetRunByIdQueryHandler(repository.Object);
+
+        var response = await handler.Handle(
+            new GetRunByIdQuery(run.Id.Value),
+            CancellationToken.None);
+
+        response.Run.Party.Should().NotBeNull();
+        response.Run.Party!.Members.Should().HaveCount(1);
+
+        var member = response.Run.Party.Members.First();
+        member.DisplayName.Should().Be("Le Porteur");
+        member.DefinitionKey.Should().Be("character.player.self");
+        member.MaxVitality.Should().Be(100);
+        member.CurrentVitality.Should().BeGreaterThan(0);
+        member.IsActive.Should().BeTrue();
+        member.IsDefeated.Should().BeFalse();
+        member.Skills.Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public async Task Handle_PartySnapshot_ShouldNotDependOnActiveCombat()
+    {
+        var run = TestGameEngineFactory.CreateRunWithPlayerSnapshot();
+
+        var repository = new Mock<IRunRepository>();
+        repository
+            .Setup(repo => repo.GetByIdAsync(run.Id, CancellationToken.None))
+            .ReturnsAsync(run);
+
+        var handler = new GetRunByIdQueryHandler(repository.Object);
+
+        var response = await handler.Handle(
+            new GetRunByIdQuery(run.Id.Value),
+            CancellationToken.None);
+
+        response.Run.ActiveCombatId.Should().BeNull();
+        response.Run.Party.Should().NotBeNull("party snapshot must be available outside of combat");
+    }
+
+    [Fact]
+    public async Task Handle_ShouldReturnNullParty_WhenRunHasNoPlayerSnapshot()
+    {
+        var run = TestGameEngineFactory.CreateRun();
+
+        var repository = new Mock<IRunRepository>();
+        repository
+            .Setup(repo => repo.GetByIdAsync(run.Id, CancellationToken.None))
+            .ReturnsAsync(run);
+
+        var handler = new GetRunByIdQueryHandler(repository.Object);
+
+        var response = await handler.Handle(
+            new GetRunByIdQuery(run.Id.Value),
+            CancellationToken.None);
+
+        response.Run.Party.Should().BeNull();
+    }
+
+    [Fact]
     public async Task Handle_ShouldThrowNotFoundException_WhenRunDoesNotExist()
     {
         var runId = Guid.NewGuid();

@@ -40,7 +40,8 @@ public sealed record RunDto(
     DateTimeOffset? SavedAt,
     DateTimeOffset? AbandonedAt,
     PlayerRuntimeStateDto? PlayerState,
-    IReadOnlyCollection<RunModifierDto>? ActiveModifiers = null)
+    IReadOnlyCollection<RunModifierDto>? ActiveModifiers = null,
+    RunPartySnapshotDto? Party = null)
 {
     public static RunDto FromDomain(Run run)
     {
@@ -69,7 +70,8 @@ public sealed record RunDto(
             SavedAt: run.SavedAt,
             AbandonedAt: run.Status == RunStatus.Abandoned ? run.EndedAt : null,
             PlayerState: PlayerRuntimeStateDto.FromDomain(run.PlayerState),
-            ActiveModifiers: activeModifiers.Length > 0 ? activeModifiers : null);
+            ActiveModifiers: activeModifiers.Length > 0 ? activeModifiers : null,
+            Party: RunPartySnapshotDto.FromDomain(run.PlayerSnapshot, run.PlayerState));
     }
 }
 

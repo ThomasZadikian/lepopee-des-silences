@@ -66,6 +66,65 @@ public sealed class GetRunByIdEndpointTests : IClassFixture<WebApplicationFactor
         body.Should().Contain($"Run with id '{unknownRunId}' was not found.");
     }
 
+    [Fact]
+    public async Task GetRunById_ShouldReturnPartySnapshot_AfterRunStart()
+    {
+        var startRunResponse = await StartRunAsync();
+
+        var response = await _client.GetAsync($"/api/v2/runs/{startRunResponse.Run.Id}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var payload = await response.Content.ReadFromJsonAsync<GetRunByIdResponse>();
+
+        payload.Should().NotBeNull();
+        payload!.Run.Party.Should().NotBeNull("party snapshot must be present after run creation");
+        payload.Run.Party!.Members.Should().NotBeEmpty();
+
+        var member = payload.Run.Party.Members.First();
+        member.DisplayName.Should().NotBeNullOrWhiteSpace();
+        member.MaxVitality.Should().BeGreaterThan(0);
+        member.CurrentVitality.Should().BeGreaterThan(0);
+        member.CurrentVitality.Should().BeLessThanOrEqualTo(member.MaxVitality);
+        member.IsActive.Should().BeTrue();
+        member.Skills.Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public async Task GetRunById_ShouldReturnPartySnapshot_AfterNodeChoice()
+    {
+        var startRunResponse = await StartRunAsync();
+        var runId = startRunResponse.Run.Id;
+
+        var firstNode = startRunResponse.Run.CurrentRoom.AvailableNodes.First();
+
+        var chooseResponse = await _client.PostAsJsonAsync(
+            $"/api/v2/runs/{runId}/nodes/{firstNode.Id}/choose",
+            new { });
+
+        chooseResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var response = await _client.GetAsync($"/api/v2/runs/{runId}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var payload = await response.Content.ReadFromJsonAsync<GetRunByIdResponse>();
+
+        payload.Should().NotBeNull();
+        payload!.Run.Party.Should().NotBeNull(
+            "party snapshot must remain available after node choice, independent of combat state");
+    }
+
+    [Fact]
+    public async Task StartRun_ShouldReturnPartySnapshotInInitialResponse()
+    {
+        var startRunResponse = await StartRunAsync();
+
+        startRunResponse.Run.Party.Should().NotBeNull(
+            "party snapshot must be available immediately after POST /api/v2/runs");
+        startRunResponse.Run.Party!.Members.Should().NotBeEmpty();
+    }
+
     private async Task<StartRunResponse> StartRunAsync()
     {
         var response = await _client.PostAsJsonAsync(
