@@ -41,6 +41,31 @@ public sealed class RunCombatTests
     }
 
     [Fact]
+    public void StartCombat_ShouldSetActiveCombatIdToCombatId()
+    {
+        var run = CreateRun();
+        var combat = CreateActiveCombat(run.Id);
+
+        run.StartCombat(combat);
+
+        run.ActiveCombatId.Should().Be(combat.Id);
+    }
+
+    [Fact]
+    public void StartCombat_ShouldThrow_WhenReservedCombatIdDoesNotMatchCombatId()
+    {
+        var run = CreateRun();
+        var reservedCombatId = CombatId.New();
+        var combat = CreateActiveCombat(run.Id);
+
+        run.SetActiveCombat(reservedCombatId);
+
+        var act = () => run.StartCombat(combat);
+
+        act.Should().Throw<DomainException>().WithMessage("Combat does not match the active run combat.");
+    }
+
+    [Fact]
     public void StartCombat_ShouldSetHasActiveCombat()
     {
         var run = CreateRun();

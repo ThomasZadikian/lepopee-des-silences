@@ -71,6 +71,18 @@ public sealed class CombatFactoryTests
     }
 
     [Fact]
+    public void CreateFromDraft_ShouldUseProvidedCombatId()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft();
+        var combatId = CombatId.New();
+
+        var combat = factory.CreateFromDraft(combatId, draft);
+
+        combat.Id.Should().Be(combatId);
+    }
+
+    [Fact]
     public void CreateFromDraft_ShouldCreateAlliesFromDraft()
     {
         var factory = new CombatFactory();

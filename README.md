@@ -1,5 +1,5 @@
 # L’épopée des silences
-game-engine-alpha-0.7.14
+game-engine-alpha-0.7.15-stabilization
 catalog-alpha-0.7.2
 player-service-alpha-0.1.0
 data-model-alpha-0.0.1
@@ -436,6 +436,26 @@ web-alpha-0.1.0 → afficher la première boucle backend jouable
 ```
 
 See [docs/development/local-dev-environment.md](docs/development/local-dev-environment.md).
+
+### Bases de données locales
+
+`docker-compose.dev.yml` (et `docker-compose.yml`) provisionnent les trois bases Postgres :
+
+| Service      | Conteneur                   | Port hôte | Base              |
+|--------------|-----------------------------|-----------|-------------------|
+| Game Engine  | `leds-game-engine-postgres` | `5432`    | `leds_game_engine`|
+| Player       | `leds-player-postgres`      | `5433`    | `leds_player`     |
+| Catalog      | `leds-catalog-postgres`     | `5434`    | `leds_catalog`    |
+
+```powershell
+docker compose -f docker-compose.dev.yml up -d
+.\scripts\dev\apply-migrations.ps1
+```
+
+Copier `.env.example` (racine) et `apps/game-client/.env.example` fournit des valeurs
+cohérentes (le client web vise le Game Engine sur `http://localhost:5187`). Les services
+backend tournent en `Persistence:Mode=InMemory` par défaut ; passer une base en Postgres se
+fait via la chaîne de connexion correspondante (ex. `CATALOG_DB_CONNECTION_STRING`).
 
 ## Architecture
 

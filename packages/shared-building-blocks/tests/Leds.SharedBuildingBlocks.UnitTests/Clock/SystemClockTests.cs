@@ -1,4 +1,4 @@
-﻿using FluentAssertions;
+using FluentAssertions;
 using Leds.SharedBuildingBlocks.Time;
 using Xunit;
 

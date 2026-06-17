@@ -326,21 +326,25 @@ public sealed class ResolveCurrentEventCommandHandlerTests
             CombatantSnapshot.Create("player.self", "Player", CombatantSide.Player, 100, 10, 5, 7),
             CombatantSnapshot.Create("enemy-shadow-v1", "Shadow", CombatantSide.Enemy, 30, 8, 4, 6)
         };
+        var combatInstance = CombatInstance.Create(combatants);
         combatFactory
             .Setup(f => f.CreateFromEnemyTemplate(It.IsAny<EnemyTemplateSnapshot>()))
-            .Returns(CombatInstance.Create(combatants));
+            .Returns(combatInstance);
 
-        var runtimeCombat = new CombatFactory().CreateFromDraft(expectedDraft);
         var runtimeFactoryMock = new Mock<ICombatFactory>();
         runtimeFactoryMock
             .Setup(f => f.CreateFromDraft(
+                It.IsAny<CombatId>(),
                 It.IsAny<CombatEncounterDraft>(),
                 It.IsAny<PlayerRuntimeState?>(),
                 It.IsAny<IReadOnlyCollection<RunModifier>?>(),
                 It.IsAny<int>(),
                 It.IsAny<int>(),
                 It.IsAny<int>()))
-            .Returns(runtimeCombat);
+            .Returns((CombatId combatId, CombatEncounterDraft draft, PlayerRuntimeState? playerState,
+                IReadOnlyCollection<RunModifier>? runModifiers, int attackPower, int defense, int speed) =>
+                new CombatFactory().CreateFromDraft(
+                    combatId, draft, playerState, runModifiers, attackPower, defense, speed));
 
         var handler = new ResolveCurrentEventCommandHandler(
             repository.Object,
@@ -432,21 +436,25 @@ public sealed class ResolveCurrentEventCommandHandlerTests
             CombatantSnapshot.Create("player.self", "Player", CombatantSide.Player, 100, 10, 5, 7),
             CombatantSnapshot.Create("enemy-shadow-v1", "Shadow", CombatantSide.Enemy, 30, 8, 4, 6)
         };
+        var combatInstance = CombatInstance.Create(combatants);
         combatFactory
             .Setup(f => f.CreateFromEnemyTemplate(It.IsAny<EnemyTemplateSnapshot>()))
-            .Returns(CombatInstance.Create(combatants));
+            .Returns(combatInstance);
 
-        var runtimeCombat = new CombatFactory().CreateFromDraft(expectedDraft);
         var runtimeFactoryMock = new Mock<ICombatFactory>();
         runtimeFactoryMock
             .Setup(f => f.CreateFromDraft(
+                It.IsAny<CombatId>(),
                 It.IsAny<CombatEncounterDraft>(),
                 It.IsAny<PlayerRuntimeState?>(),
                 It.IsAny<IReadOnlyCollection<RunModifier>?>(),
                 It.IsAny<int>(),
                 It.IsAny<int>(),
                 It.IsAny<int>()))
-            .Returns(runtimeCombat);
+            .Returns((CombatId combatId, CombatEncounterDraft draft, PlayerRuntimeState? playerState,
+                IReadOnlyCollection<RunModifier>? runModifiers, int attackPower, int defense, int speed) =>
+                new CombatFactory().CreateFromDraft(
+                    combatId, draft, playerState, runModifiers, attackPower, defense, speed));
 
         var handler = new ResolveCurrentEventCommandHandler(
             repository.Object,
@@ -468,6 +476,11 @@ public sealed class ResolveCurrentEventCommandHandlerTests
         response.EncounterDraft!.EncounterType.Should().Be("Combat");
         response.EncounterDraft.Enemies.Should().Contain(e =>
             e.EnemyKey == "enemy.threshold.doubt-fragment");
+        response.Combat.Should().NotBeNull();
+        response.Run.ActiveCombatId.Should().Be(combatInstance.Id.Value);
+        response.Combat!.Id.Should().Be(combatInstance.Id.Value);
+        run.ActiveCombat.Should().NotBeNull();
+        run.ActiveCombat!.Id.Should().Be(combatInstance.Id);
     }
 
     [Fact]

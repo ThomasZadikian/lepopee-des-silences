@@ -568,6 +568,12 @@ public sealed class Run
             throw new DomainException("Run already has an active combat.");
         }
 
+        if (ActiveCombatId.HasValue && ActiveCombatId.Value != combat.Id)
+        {
+            throw new DomainException("Combat does not match the active run combat.");
+        }
+
+        ActiveCombatId = combat.Id;
         _activeCombat = combat;
     }
 

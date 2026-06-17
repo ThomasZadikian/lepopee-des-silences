@@ -13,4 +13,13 @@ public interface ICombatFactory
         int attackPower = 0,
         int defense = 0,
         int speed = 10);
+
+    Combat CreateFromDraft(
+        CombatId combatId,
+        CombatEncounterDraft draft,
+        PlayerRuntimeState? playerState = null,
+        IReadOnlyCollection<RunModifier>? runModifiers = null,
+        int attackPower = 0,
+        int defense = 0,
+        int speed = 10);
 }

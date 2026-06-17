@@ -74,7 +74,7 @@ function domainTone(domain: string): 'blood' | 'frost' | 'gold' | '' {
     <!-- Law list -->
     <div v-if="laws && laws.length" class="lp-list">
       <div
-        v-for="(law, i) in laws"
+        v-for="law in laws"
         :key="law.key"
         class="lp-law"
       >

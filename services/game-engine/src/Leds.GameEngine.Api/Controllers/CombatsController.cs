@@ -1,9 +1,9 @@
 using Leds.GameEngine.Application.Abstractions;
 using Leds.GameEngine.Application.Combats.Actions;
 using Leds.GameEngine.Application.Combats.Dtos;
-using Leds.GameEngine.Application.Combats.Ports;
 using Leds.GameEngine.Application.Combats.SubmitCombatAction;
 using Leds.GameEngine.Application.Runs.UseCombatSkill;
+using Leds.GameEngine.Application.Runs.UseItemInCombat;
 using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Runs;
 using MediatR;
@@ -16,16 +16,13 @@ namespace Leds.GameEngine.Api.Controllers;
 public sealed class CombatsController : ControllerBase
 {
     private readonly ISender _sender;
-    private readonly ICombatInstanceRepository _combatInstanceRepository;
     private readonly IRunRepository _runRepository;
 
     public CombatsController(
         ISender sender,
-        ICombatInstanceRepository combatInstanceRepository,
         IRunRepository runRepository)
     {
         _sender = sender;
-        _combatInstanceRepository = combatInstanceRepository;
         _runRepository = runRepository;
     }
 
@@ -44,17 +41,27 @@ public sealed class CombatsController : ControllerBase
             return NotFound(new { message = $"Run with id '{runId}' was not found." });
         }
 
-        var combat = await _combatInstanceRepository.GetByIdAsync(
-            new CombatId(combatId), cancellationToken);
+        var requestedCombatId = new CombatId(combatId);
 
-        if (combat is null)
+        if (run.ActiveCombat is null || run.ActiveCombat.Id != requestedCombatId)
         {
             return NotFound(new { message = $"Combat with id '{combatId}' was not found." });
         }
 
-        return Ok(CombatInstanceDto.FromDomain(combat));
+        return Ok(CombatInstanceDto.FromDomain(run.ActiveCombat));
     }
 
+    /// <summary>
+    /// LEGACY combat action endpoint (single target, <c>ActionType</c> based).
+    /// Superseded by the canonical combat flow:
+    /// <c>POST .../combats/{combatId}/skill-actions</c> and
+    /// <c>POST .../combats/{combatId}/item-actions</c> (skill key + multi-target),
+    /// which is the flow consumed by the live game client.
+    /// Kept as a compatibility facade for existing integration tests.
+    /// Planned for removal in alpha-0.8.x once tests are migrated to the
+    /// canonical flow. See docs/audits/alpha-0.7-stabilization-audit-remediation.md.
+    /// </summary>
+    [Obsolete("Legacy combat path. Use /skill-actions and /item-actions. Removal targeted for alpha-0.8.x.")]
     [HttpPost("{combatId:guid}/actions")]
     [ProducesResponseType(typeof(SubmitCombatActionResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -98,6 +105,24 @@ public sealed class CombatsController : ControllerBase
 
         return Ok(response);
     }
+
+    [HttpPost("{combatId:guid}/item-actions")]
+    [ProducesResponseType(typeof(CombatSkillActionResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<CombatSkillActionResult>> UseItemInCombat(
+        Guid runId,
+        Guid combatId,
+        [FromBody] UseItemInCombatRequest body,
+        CancellationToken cancellationToken)
+    {
+        var command = new UseItemInCombatCommand(
+            runId, combatId, body.ItemId, body.TargetIds ?? []);
+
+        var result = await _sender.Send(command, cancellationToken);
+
+        return Ok(result);
+    }
 }
 
 public sealed record UseCombatSkillRequest(
@@ -109,3 +134,7 @@ public sealed record SubmitCombatActionRequest(
     Guid ActorId,
     Guid TargetId,
     string ActionType);
+
+public sealed record UseItemInCombatRequest(
+    Guid ItemId,
+    IReadOnlyCollection<Guid>? TargetIds);

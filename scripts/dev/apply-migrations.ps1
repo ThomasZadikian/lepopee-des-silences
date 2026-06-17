@@ -3,7 +3,9 @@
 .SYNOPSIS
     Applies EF Core migrations for all services with databases.
 .DESCRIPTION
-    Updates Game Engine and Player databases to the latest migration.
+    Updates Game Engine, Catalog and Player databases to the latest migration.
+    Requires the matching Postgres containers to be running
+    (docker compose -f docker-compose.dev.yml up -d).
 #>
 
 $ErrorActionPreference = "Stop"
@@ -14,7 +16,7 @@ Write-Host "=== Applying EF Core Migrations ===" -ForegroundColor Cyan
 Write-Host ""
 
 # Game Engine
-Write-Host "[1/2] Applying Game Engine migrations..." -ForegroundColor Yellow
+Write-Host "[1/3] Applying Game Engine migrations..." -ForegroundColor Yellow
 Push-Location "$repoRoot\services\game-engine"
 try {
     dotnet ef database update `
@@ -30,8 +32,29 @@ try {
     Pop-Location
 }
 
+# Catalog
+Write-Host "[2/3] Applying Catalog migrations..." -ForegroundColor Yellow
+if (Test-Path "$repoRoot\services\catalog\src\Leds.Catalog.Infrastructure\Persistence\Migrations") {
+    Push-Location "$repoRoot\services\catalog"
+    try {
+        dotnet ef database update `
+            --project src\Leds.Catalog.Infrastructure `
+            --startup-project src\Leds.Catalog.Api `
+            --context CatalogDbContext
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "  ERROR: Catalog migration failed." -ForegroundColor Red
+            exit 1
+        }
+        Write-Host "  Catalog database updated." -ForegroundColor Green
+    } finally {
+        Pop-Location
+    }
+} else {
+    Write-Host "  Catalog Service has no EF migrations yet. Skipping." -ForegroundColor DarkGray
+}
+
 # Player (when EF is added)
-Write-Host "[2/2] Player Service..." -ForegroundColor Yellow
+Write-Host "[3/3] Player Service..." -ForegroundColor Yellow
 if (Test-Path "$repoRoot\services\player\src\Leds.Player.Infrastructure\Persistence\Migrations") {
     Push-Location "$repoRoot\services\player"
     try {

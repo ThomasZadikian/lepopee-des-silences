@@ -33,6 +33,7 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host "  PostgreSQL containers started." -ForegroundColor Green
 Write-Host "    - Game Engine DB: localhost:5432" -ForegroundColor DarkGray
 Write-Host "    - Player DB:      localhost:5433" -ForegroundColor DarkGray
+Write-Host "    - Catalog DB:     localhost:5434" -ForegroundColor DarkGray
 
 # 3. Start Game Engine API
 Write-Host "[3/5] Starting Game Engine API..." -ForegroundColor Yellow
