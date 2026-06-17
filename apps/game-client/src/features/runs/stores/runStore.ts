@@ -4,6 +4,7 @@ import { computed, ref } from 'vue';
 import { rewardApi } from '../../rewards/api/rewardApi';
 import {
   unwrapRewardOffer,
+  unwrapRunFromSelectRewardResponse,
   type RewardOfferDto,
 } from '../../rewards/types/rewardTypes';
 
@@ -415,18 +416,19 @@ export const useRunStore = defineStore('run', () => {
     if (!currentRun.value || !pendingRewardOffer.value) return;
 
     await execute(async () => {
-      await rewardApi.selectReward(currentRun.value!.id, {
-        rewardOfferId: pendingRewardOffer.value!.id,
-        rewardChoiceId: optionId,
+      const selectResponse = await rewardApi.selectReward(currentRun.value!.id, {
         choiceId: optionId,
-        rewardOptionId: optionId,
-        optionId,
       });
 
       pendingRewardOffer.value = null;
 
-      const response = await runApi.getRun(currentRun.value!.id);
-      currentRun.value = unwrapRunResponse(response);
+      const runFromResponse = unwrapRunFromSelectRewardResponse(selectResponse);
+      if (runFromResponse) {
+        currentRun.value = runFromResponse;
+      } else {
+        const runResponse = await runApi.getRun(currentRun.value!.id);
+        currentRun.value = unwrapRunResponse(runResponse);
+      }
 
       lastChoiceResult.value = null;
       lastOutcome.value = null;

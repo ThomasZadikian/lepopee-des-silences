@@ -85,7 +85,7 @@ export type RunItemDto = {
   quantity: number;
   effectType: string;
   effectAmount: number;
-  isUsable: boolean;   // ← ajouter
+  isUsable?: boolean;
 };
 
 export type RunPartyMemberSkillDto = {

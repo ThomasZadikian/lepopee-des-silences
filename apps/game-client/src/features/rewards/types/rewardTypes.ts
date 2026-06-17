@@ -1,5 +1,15 @@
 import type { RunDto } from '../../runs/types/runTypes';
 
+export type CombatScalingDto = {
+  combatTier: string;
+  baseRisk: number;
+  actualRisk: number;
+  riskDelta: number;
+  difficultyMultiplier: number;
+  rewardPowerMultiplier: number;
+  riskBand: string;
+};
+
 export type RewardChoiceDto = {
   id: string;
   rewardType: string;
@@ -27,15 +37,16 @@ export type RewardOptionDto = {
 
 export type RewardOfferDto = {
   id: string;
-  runId?: string;
   source?: string;
   state?: string;
+  choices?: RewardChoiceDto[];
+  selectedChoiceId?: string | null;
+  combatScaling?: CombatScalingDto | null;
+  runId?: string;
   status?: string;
   title?: string;
   description?: string;
-  choices?: RewardChoiceDto[];
   options?: RewardOptionDto[];
-  selectedChoiceId?: string | null;
   selectedOptionId?: string | null;
 };
 
@@ -45,30 +56,33 @@ export type PendingRewardOfferResponse =
   | { offer: RewardOfferDto };
 
 export type SelectRewardRequest = {
-  rewardOfferId?: string;
-  rewardChoiceId?: string;
-  rewardOptionId?: string;
-  choiceId?: string;
-  optionId?: string;
+  choiceId: string;
 };
 
 export type SelectRewardResponse =
-  | RunDto
+  | { run: RunDto; rewardOffer: RewardOfferDto }
   | { run: RunDto }
-  | { rewardOffer: RewardOfferDto }
-  | { offer: RewardOfferDto }
+  | RunDto
   | unknown;
 
-export function unwrapRewardOffer(
-  response: PendingRewardOfferResponse,
-): RewardOfferDto {
-  if ('rewardOffer' in response) {
-    return response.rewardOffer;
+export function unwrapRewardOffer(response: PendingRewardOfferResponse): RewardOfferDto {
+  if (typeof response === 'object' && response !== null && 'rewardOffer' in response) {
+    return (response as { rewardOffer: RewardOfferDto }).rewardOffer;
   }
-
-  if ('offer' in response) {
-    return response.offer;
+  if (typeof response === 'object' && response !== null && 'offer' in response) {
+    return (response as { offer: RewardOfferDto }).offer;
   }
+  return response as RewardOfferDto;
+}
 
-  return response;
+export function unwrapRunFromSelectRewardResponse(response: SelectRewardResponse): RunDto | null {
+  if (!response || typeof response !== 'object') return null;
+  const r = response as Record<string, unknown>;
+  if ('run' in r && typeof r['run'] === 'object' && r['run'] !== null && 'id' in (r['run'] as object)) {
+    return r['run'] as RunDto;
+  }
+  if ('id' in r && 'currentRoom' in r) {
+    return response as RunDto;
+  }
+  return null;
 }

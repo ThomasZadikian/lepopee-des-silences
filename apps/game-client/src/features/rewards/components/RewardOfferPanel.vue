@@ -4,17 +4,40 @@ import EliseComment from '@/shared/components/EliseComment.vue'
 import RuleOrnament from '@/shared/components/RuleOrnament.vue'
 import SigilIcon from '@/shared/components/SigilIcon.vue'
 import { computed, ref } from 'vue'
-import type { RewardOfferDto } from '../../rewards/types/rewardTypes'
+import type { RewardOfferDto } from '../types/rewardTypes'
 
-// ── Props & Emits ─────────────────────────────────────────────────────────
 const props = defineProps<{
   offer: RewardOfferDto
   isLoading?: boolean
 }>()
 
 const emit = defineEmits<{
-  selectReward: [optionId: string]
+  selectReward: [choiceId: string]
 }>()
+
+// ── Source / state labels ─────────────────────────────────────────────────
+const SOURCE_LABELS: Record<string, string> = {
+  NodeEvent:  'Événement',
+  Combat:     'Combat',
+  Elite:      'Élite',
+  RoomBoss:   'Boss de salle',
+  Rare:       'Rencontre rare',
+}
+
+const REWARD_TYPE_LABELS: Record<string, string> = {
+  Heal:             'Soin',
+  TemporaryItem:    'Objet temporaire',
+  StatBonus:        'Bonus de stat',
+  MemoryFragment:   'Fragment mémoriel',
+}
+
+const sourceLabel = computed(() =>
+  props.offer.source ? (SOURCE_LABELS[props.offer.source] ?? props.offer.source) : null,
+)
+
+const isExpiredOrSelected = computed(() =>
+  props.offer.state === 'Selected' || props.offer.state === 'Expired',
+)
 
 // ── Normalized card type ──────────────────────────────────────────────────
 type NormalizedCard = {
@@ -30,7 +53,9 @@ function getTone(rarity?: string, rewardType?: string): 'gold' | 'frost' | null 
   const r = (rarity ?? '').toLowerCase()
   const t = (rewardType ?? '').toLowerCase()
   if (r.includes('relique') || r.includes('epic') || r.includes('épique')) return 'gold'
-  if (r.includes('rare') || r.includes('mémoire') || t.includes('memory')) return 'frost'
+  if (r.includes('rare') || r.includes('mémoire')) return 'frost'
+  if (t === 'memoryfragment') return 'frost'
+  if (t === 'statbonus' || t === 'temporaryitem') return 'gold'
   return null
 }
 
@@ -48,6 +73,7 @@ const normalizedCards = computed<NormalizedCard[]>(() => {
     })
   }
 
+  // defensive: handle legacy `options` field
   for (const o of props.offer.options ?? []) {
     const id = o.id ?? o.key ?? o.rewardId ?? ''
     if (!id) continue
@@ -75,14 +101,19 @@ const chosen = computed<NormalizedCard | null>(() =>
 )
 
 function selectCard(id: string) {
+  if (isExpiredOrSelected.value) return
   selectedId.value = id
   taken.value = false
 }
 
 function confirmChoice() {
-  if (chosen.value == null) return
+  if (chosen.value == null || isExpiredOrSelected.value) return
   taken.value = true
   emit('selectReward', chosen.value.id)
+}
+
+function rewardTypeLabel(rewardType?: string): string {
+  return rewardType ? (REWARD_TYPE_LABELS[rewardType] ?? rewardType) : 'Faveur'
 }
 
 function sigilKind(tone: 'gold' | 'frost' | null): string {
@@ -111,16 +142,20 @@ const confirmBtnClass = computed(() =>
 
 <template>
   <div class="rop-screen">
-    <!-- Atmosphère -->
     <div class="es-atmos" />
     <div class="es-vignette" />
     <div class="es-grain" />
 
-    <!-- ── Contenu ── -->
     <div class="rop-content">
 
       <!-- Header -->
       <div style="flex: 0 0 auto; text-align: center; padding-top: 12px">
+        <div class="rop-meta">
+          <span v-if="sourceLabel" class="rop-source-chip">{{ sourceLabel }}</span>
+          <span v-if="isExpiredOrSelected" class="rop-state-chip">
+            {{ offer.state === 'Selected' ? 'Sélectionné' : 'Expiré' }}
+          </span>
+        </div>
         <span class="es-kicker">Une faveur, une seule</span>
         <RuleOrnament :frost="true" style="width: 150px; margin: 12px auto 10px" />
         <h2 class="es-h2" style="font-size: 33px">
@@ -151,11 +186,11 @@ const confirmBtnClass = computed(() =>
               'rop-card',
               selectedId === card.id && 'rop-card--sel',
               selectedId === card.id && card.tone === 'gold' && 'rop-card--gold',
+              isExpiredOrSelected && 'rop-card--frozen',
             ]"
             :style="{ boxShadow: cardShadow(card, selectedId === card.id) }"
             @click="selectCard(card.id)"
           >
-            <!-- Corner decorations when selected -->
             <template v-if="selectedId === card.id">
               <span class="es-corner tl" />
               <span class="es-corner tr" />
@@ -163,7 +198,6 @@ const confirmBtnClass = computed(() =>
               <span class="es-corner br" />
             </template>
 
-            <!-- Selection indicator -->
             <div
               class="rop-card__pick"
               :style="selectedId === card.id
@@ -173,14 +207,12 @@ const confirmBtnClass = computed(() =>
                 : {}"
             >{{ selectedId === card.id ? '✦' : '' }}</div>
 
-            <!-- Rarity chip -->
             <div class="es-row" style="margin-bottom: 18px">
               <ChipBadge :tone="card.tone">
-                {{ card.rarity ?? card.rewardType ?? 'Faveur' }}
+                {{ rewardTypeLabel(card.rewardType) }}
               </ChipBadge>
             </div>
 
-            <!-- Icon circle -->
             <div style="display: flex; justify-content: center; margin: 4px 0 20px">
               <div
                 class="rop-card__icon"
@@ -200,7 +232,6 @@ const confirmBtnClass = computed(() =>
               </div>
             </div>
 
-            <!-- Title -->
             <h3
               class="es-h3"
               :style="{
@@ -211,14 +242,12 @@ const confirmBtnClass = computed(() =>
               {{ card.label }}
             </h3>
 
-            <!-- Type label -->
             <div class="es-label" style="text-align: center; margin-top: 6px; color: var(--ink-4)">
-              {{ card.rewardType ?? 'Récompense' }}
+              {{ rewardTypeLabel(card.rewardType) }}
             </div>
 
             <div class="es-divider" style="margin: 18px 0" />
 
-            <!-- Description -->
             <p class="es-body" style="font-size: 13.5px; text-align: center; flex: 1">
               {{ card.description }}
             </p>
@@ -227,7 +256,7 @@ const confirmBtnClass = computed(() =>
       </div>
 
       <!-- Footer actions -->
-      <div class="es-row" style="justify-content: center; gap: 14px; flex: 0 0 auto; margin-top: 8px">
+      <div v-if="!isExpiredOrSelected" class="es-row" style="justify-content: center; gap: 14px; flex: 0 0 auto; margin-top: 8px">
         <button
           :class="['es-btn', 'es-btn--lg', confirmBtnClass]"
           :disabled="selectedId == null || isLoading"
@@ -240,6 +269,9 @@ const confirmBtnClass = computed(() =>
         >
           {{ taken ? '✓ ' : '' }}Emporter « {{ chosen?.label ?? '—' }} » {{ taken ? '' : '→' }}
         </button>
+      </div>
+      <div v-else class="es-row" style="justify-content: center; flex: 0 0 auto; margin-top: 8px">
+        <span class="rop-resolved-note">Cette récompense a déjà été résolue.</span>
       </div>
 
       <!-- Elise -->
@@ -281,6 +313,39 @@ const confirmBtnClass = computed(() =>
   gap: 8px;
 }
 
+/* ── Meta row (source + state) ── */
+.rop-meta {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  min-height: 22px;
+}
+
+.rop-source-chip {
+  font-family: var(--font-caps);
+  font-size: 0.6rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+  border: 1px solid var(--line-soft);
+  border-radius: 3px;
+  padding: 2px 8px;
+  background: oklch(0.22 0.03 272 / 0.6);
+}
+
+.rop-state-chip {
+  font-family: var(--font-caps);
+  font-size: 0.6rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gold);
+  border: 1px solid oklch(0.72 0.09 82 / 0.4);
+  border-radius: 3px;
+  padding: 2px 8px;
+  background: oklch(0.55 0.08 85 / 0.1);
+}
+
 /* ── Reward card ── */
 .rop-card {
   position: relative;
@@ -295,7 +360,7 @@ const confirmBtnClass = computed(() =>
   transition: border-color 0.24s, transform 0.24s, box-shadow 0.24s, background 0.24s;
 }
 
-.rop-card:hover {
+.rop-card:hover:not(.rop-card--frozen) {
   transform: translateY(-5px);
   border-color: var(--frost-dim);
   box-shadow: 0 22px 44px -26px oklch(0.1 0.03 272 / 0.85);
@@ -309,6 +374,11 @@ const confirmBtnClass = computed(() =>
 
 .rop-card--sel.rop-card--gold {
   border-color: var(--gold);
+}
+
+.rop-card--frozen {
+  cursor: default;
+  opacity: 0.75;
 }
 
 /* Selection indicator dot */
@@ -337,5 +407,13 @@ const confirmBtnClass = computed(() =>
   align-items: center;
   justify-content: center;
   transition: border-color 0.24s, box-shadow 0.24s;
+}
+
+.rop-resolved-note {
+  font-family: var(--font-caps);
+  font-size: 0.6rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-5);
 }
 </style>
