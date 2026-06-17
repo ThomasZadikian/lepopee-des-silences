@@ -33,6 +33,7 @@ export interface CombatantContribution {
   healingDone: number;
   guardGained: number;
   turnsTaken: number;
+  damageToGuard: number;
 }
 
 export interface CombatFloatEvent {
@@ -73,6 +74,7 @@ function createContribution(snapshot: CombatantSnapshot): CombatantContribution 
     healingDone: 0,
     guardGained: 0,
     turnsTaken: 0,
+    damageToGuard: 0,
   };
 }
 
@@ -242,6 +244,7 @@ export function useCombatMetrics() {
         healingDone: 0,
         guardGained: 0,
         turnsTaken: 0,
+        damageToGuard: 0,
       };
 
       state.value.contributions[contribution.id] = {
@@ -269,6 +272,7 @@ export function useCombatMetrics() {
           healingDone: 0,
           guardGained: 0,
           turnsTaken: 0,
+          damageToGuard: 0,
         };
 
         const actorDamageDealt = actor.side === 'Player' ? deltas.enemies.damageTaken : deltas.allies.damageTaken;

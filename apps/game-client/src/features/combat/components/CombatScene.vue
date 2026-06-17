@@ -2,7 +2,7 @@
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 
 import { useRunStore } from '../../runs/stores/runStore';
-import { useCombatMetrics } from '../composables/useCombatMetrics';
+import { useCombatLogMetrics } from '../composables/useCombatLogMetrics';
 import { useCombatStore } from '../stores/useCombatStore';
 import CombatantCard from './CombatantCard.vue';
 import CombatLogPanel from './CombatLogPanel.vue';
@@ -23,7 +23,10 @@ const emit = defineEmits<{
 
 const combatStore = useCombatStore();
 const runStore = useRunStore();
-const { state: metricsState, snapshotBeforeAction, processAfterAction, reset: resetMetrics } = useCombatMetrics();
+const { state: metricsState } = useCombatLogMetrics(
+  () => combatStore.logEntries,
+  () => combatStore.combat,
+);
 const isDamageDrawerOpen = ref(false);
 const hoveredEnemyId = ref<string | null>(null);
 
@@ -128,18 +131,15 @@ function handleSelect(combatantId: string) {
 }
 
 async function handleSubmit() {
-  snapshotBeforeAction(combatStore.combat);
-  await combatStore.submitAction(props.runId, processAfterAction);
+  await combatStore.submitAction(props.runId);
 }
 
 async function handleSubmitItem() {
-  snapshotBeforeAction(combatStore.combat);
-  await combatStore.submitItemAction(props.runId, processAfterAction);
+  await combatStore.submitItemAction(props.runId);
 }
 function handleClearSelection() { combatStore.clearSelection(); combatStore.clearItemSelection(); }
 function handleSelectItem(itemId: string) { combatStore.selectItem(itemId); }
 function handleContinue() {
-  resetMetrics();
   combatStore.clearCombat();
   emit('combatCompleted');
 }
@@ -193,7 +193,6 @@ watch(() => combatStore.selectedTargetIds, async (ids) => {
 });
 
 onMounted(() => {
-  resetMetrics();
   if (combatStore.combat?.id === props.combatId) return;
   if (runStore.combatRuntime?.id && runStore.combatRuntime.status === 'Active') {
     combatStore.initCombat(runStore.combatRuntime);
@@ -206,7 +205,6 @@ watch(() => props.combatId, (newId) => {
   if (!newId) return;
   if (combatStore.combat?.id === newId) return;
   combatStore.clearCombat();
-  resetMetrics();
   if (runStore.combatRuntime?.id === newId) combatStore.initCombat(runStore.combatRuntime);
   else combatStore.loadCurrentCombat(props.runId);
 });
