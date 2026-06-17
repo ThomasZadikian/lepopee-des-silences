@@ -14,6 +14,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   chooseNode: [nodeId: string];
+  deselectNode: [];
 }>();
 
 type NodeCoordinates = {
@@ -337,7 +338,7 @@ function getRiskLabel(node: NodeDto): string {
       <span class="es-kicker">Carte du Palais</span>
     </header>
 
-    <div class="map__canvas" aria-label="Carte roguelite">
+    <div class="map__canvas" aria-label="Carte roguelite" @click.self="emit('deselectNode')">
       <svg
         class="map__edges"
         viewBox="0 0 100 100"

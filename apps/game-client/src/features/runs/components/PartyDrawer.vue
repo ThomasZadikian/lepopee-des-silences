@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import type { CombatantRuntimeDto } from '../../combat/types/combatContracts';
-import type { ActiveCurseDto, ActivePalaceLawDto, RunItemDto, RunModifierDto } from '../types/runTypes';
+import type { ActiveCurseDto, ActivePalaceLawDto, RunItemDto, RunModifierDto, RunPartyMemberDto } from '../types/runTypes';
 
 defineProps<{
-  allies: CombatantRuntimeDto[] | null;
+  allies: RunPartyMemberDto[] | null;
   modifiers: RunModifierDto[] | null;
   laws: ActivePalaceLawDto[] | null;
   curses: ActiveCurseDto[] | null;
@@ -12,9 +11,9 @@ defineProps<{
 
 defineEmits<{ close: [] }>();
 
-function vitalityPct(c: CombatantRuntimeDto): number {
-  if (!c.maxVitality) return 0;
-  return Math.max(0, Math.min(100, (c.currentVitality / c.maxVitality) * 100));
+function vitalityPct(m: RunPartyMemberDto): number {
+  if (!m.maxVitality) return 0;
+  return Math.max(0, Math.min(100, (m.currentVitality / m.maxVitality) * 100));
 }
 
 function vitalityColor(pct: number): string {
@@ -95,40 +94,40 @@ function rarityTone(rarity: string): string {
 
         <template v-if="allies && allies.length">
           <article
-            v-for="ally in allies"
-            :key="ally.id"
+            v-for="member in allies"
+            :key="member.id"
             class="party-card"
-            :class="{ 'party-card--defeated': ally.status === 'Defeated' }"
+            :class="{ 'party-card--defeated': member.isDefeated }"
           >
             <div class="party-card__top">
               <div class="party-card__name">
-                <span class="party-card__displayname">{{ ally.displayName }}</span>
+                <span class="party-card__displayname">{{ member.displayName }}</span>
                 <span
-                  v-if="ally.status === 'Defeated'"
+                  v-if="member.isDefeated"
                   class="es-chip es-chip--blood"
                   style="font-size: 9px; padding: 1px 6px;"
                 >KO</span>
-                <span v-else class="es-chip" style="font-size: 9px; padding: 1px 6px;">{{ ally.archetype }}</span>
+                <span v-else-if="!member.isActive" class="es-chip" style="font-size: 9px; padding: 1px 6px;">Allié</span>
               </div>
 
               <div class="party-card__stats">
                 <span class="party-card__stat">
                   <span class="party-card__stat-k">VIT</span>
-                  <span class="party-card__stat-v" :style="{ color: vitalityColor(vitalityPct(ally)) }">
-                    {{ ally.currentVitality }} / {{ ally.maxVitality }}
+                  <span class="party-card__stat-v" :style="{ color: vitalityColor(vitalityPct(member)) }">
+                    {{ member.currentVitality }} / {{ member.maxVitality }}
                   </span>
                 </span>
-                <span v-if="ally.guard > 0" class="party-card__stat">
+                <span v-if="member.guard > 0" class="party-card__stat">
                   <span class="party-card__stat-k">GARDE</span>
-                  <span class="party-card__stat-v" style="color: var(--frost)">{{ ally.guard }}</span>
+                  <span class="party-card__stat-v" style="color: var(--frost)">{{ member.guard }}</span>
                 </span>
-                <span v-if="ally.mana > 0" class="party-card__stat">
+                <span v-if="member.mana > 0" class="party-card__stat">
                   <span class="party-card__stat-k">MANA</span>
-                  <span class="party-card__stat-v">{{ ally.mana }}</span>
+                  <span class="party-card__stat-v">{{ member.mana }}</span>
                 </span>
-                <span v-if="ally.charge > 0" class="party-card__stat">
+                <span v-if="member.charge > 0" class="party-card__stat">
                   <span class="party-card__stat-k">CHARGE</span>
-                  <span class="party-card__stat-v">{{ ally.charge }}</span>
+                  <span class="party-card__stat-v">{{ member.charge }}</span>
                 </span>
               </div>
             </div>
@@ -138,19 +137,19 @@ function rarityTone(rarity: string): string {
               <div
                 class="party-card__bar-fill"
                 :style="{
-                  width: vitalityPct(ally) + '%',
-                  background: vitalityColor(vitalityPct(ally)),
+                  width: vitalityPct(member) + '%',
+                  background: vitalityColor(vitalityPct(member)),
                 }"
               />
             </div>
 
             <!-- Skills -->
-            <div v-if="ally.skills?.length" class="party-card__skills">
+            <div v-if="member.skills?.length" class="party-card__skills">
               <span
-                v-for="skill in ally.skills"
+                v-for="skill in member.skills"
                 :key="skill.key"
                 class="party-card__skill"
-                :title="`${skill.displayName} · ${skill.skillType} · ${skill.targetingType}`"
+                :title="`${skill.displayName} · ${skill.skillType} · ${skill.targetingMode}`"
               >
                 {{ skill.displayName }}
               </span>
@@ -222,7 +221,7 @@ function rarityTone(rarity: string): string {
         </ul>
       </section>
 
-      <p v-if="!allies && !modifiers?.length && !laws?.length && !items?.length" class="party-drawer__empty">
+      <p v-if="!allies?.length && !modifiers?.length && !laws?.length && !items?.length" class="party-drawer__empty">
         Aucune donnée d'équipe disponible.
       </p>
     </div>

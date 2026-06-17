@@ -71,6 +71,8 @@ export type RunDto = {
   activeModifiers?: RunModifierDto[] | null;
   /** Active curses on this run (alpha-0.7.8+). Null/absent when none are active. */
   activeCurses?: ActiveCurseDto[] | null;
+  /** Party snapshot — available hors combat depuis alpha-0.8.1. Null pour les runs antérieures. */
+  party?: RunPartySnapshotDto | null;
 };
 
 export type RunItemDto = {
@@ -84,6 +86,35 @@ export type RunItemDto = {
   effectType: string;
   effectAmount: number;
   isUsable: boolean;   // ← ajouter
+};
+
+export type RunPartyMemberSkillDto = {
+  key: string;
+  displayName: string;
+  skillType: string;
+  targetingMode: string;
+  effectType: string;
+  manaCost: number;
+  chargeCost: number;
+  basePower: number;
+};
+
+export type RunPartyMemberDto = {
+  id: string;
+  definitionKey: string;
+  displayName: string;
+  maxVitality: number;
+  currentVitality: number;
+  guard: number;
+  mana: number;
+  charge: number;
+  isActive: boolean;
+  isDefeated: boolean;
+  skills: RunPartyMemberSkillDto[];
+};
+
+export type RunPartySnapshotDto = {
+  members: RunPartyMemberDto[];
 };
 
 export type RunModifierDto = {

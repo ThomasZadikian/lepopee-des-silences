@@ -38,6 +38,11 @@ export const useGameUiStore = defineStore('gameUi', () => {
     else openDrawer('party');
   }
 
+  function closeAll() {
+    activeDrawer.value = null;
+    isLawsOpen.value = false;
+  }
+
   return {
     isBesaceOpen,
     isJournalOpen,
@@ -46,6 +51,7 @@ export const useGameUiStore = defineStore('gameUi', () => {
     activeDrawer,
     openDrawer,
     closeDrawer,
+    closeAll,
     toggleBesace,
     toggleJournal,
     toggleLaws,

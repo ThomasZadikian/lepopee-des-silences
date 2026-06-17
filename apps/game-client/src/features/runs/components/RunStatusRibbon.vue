@@ -82,12 +82,13 @@ const emit = defineEmits<{
   align-items: center;
   justify-content: space-between;
   flex-wrap: nowrap;
-  gap: var(--space-4);
-  padding: var(--space-2) var(--space-4);
-  background: oklch(0.20 0.04 272 / 0.7);
+  gap: var(--space-3);
+  padding: var(--space-1) var(--space-3);
+  background: oklch(0.20 0.04 272 / 0.85);
   backdrop-filter: blur(8px);
   border-top: 1px solid var(--line-soft);
   z-index: var(--z-panel);
+  min-height: 0;
 }
 
 .status-ribbon__info {
@@ -95,12 +96,20 @@ const emit = defineEmits<{
   gap: var(--space-2);
   align-items: center;
   flex-shrink: 0;
+  flex-wrap: nowrap;
 }
 
 .status-ribbon__actions {
   display: flex;
-  gap: var(--space-2);
+  gap: var(--space-1);
   align-items: center;
   flex-shrink: 0;
+  flex-wrap: nowrap;
+}
+
+.status-ribbon__actions .es-btn {
+  padding: 3px 10px;
+  font-size: 11px;
+  height: auto;
 }
 </style>

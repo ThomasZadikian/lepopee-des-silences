@@ -101,6 +101,11 @@ async function handleExitMidRoom() {
   if (ok) await router.replace('/');
 }
 
+function clearAllUi() {
+  runStore.resetPreviewedNode();
+  uiStore.closeAll();
+}
+
 async function handleLeaveRun() {
   combatStore.clearCombat();
   runStore.clearCurrentRun();
@@ -158,6 +163,7 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
               :layout-template-key="runStore.currentRun.currentRoom.layoutTemplateKey"
               :layout-template-version="runStore.currentRun.currentRoom.layoutTemplateVersion"
               @choose-node="runStore.previewNode"
+            @deselect-node="clearAllUi"
             />
           </div>
 
@@ -213,7 +219,7 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
           <Transition name="slide">
             <PartyDrawer
               v-if="showPartyDrawer"
-              :allies="runStore.combatRuntime?.allies ?? null"
+              :allies="runStore.currentRun.party?.members ?? null"
               :modifiers="runStore.currentRun.activeModifiers ?? null"
               :laws="runStore.currentRun.activePalaceLaws ?? null"
               :curses="runStore.currentRun.activeCurses ?? null"
