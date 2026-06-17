@@ -2,6 +2,7 @@
 
 public interface ICurrentEventChoiceResolverDispatcher
 {
-    CurrentEventChoiceResolutionResult Resolve(
-        CurrentEventChoiceResolutionContext context);
+    Task<CurrentEventChoiceResolutionResult> ResolveAsync(
+        CurrentEventChoiceResolutionContext context,
+        CancellationToken cancellationToken = default);
 }

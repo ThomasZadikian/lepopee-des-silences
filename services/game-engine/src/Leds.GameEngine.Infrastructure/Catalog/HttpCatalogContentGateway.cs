@@ -1,6 +1,7 @@
 using Leds.GameEngine.Application.Catalog;
 using Leds.GameEngine.Application.Catalog.Contracts;
 using Leds.GameEngine.Application.Catalog.Ports;
+using Leds.SharedBuildingBlocks.Errors;
 using Leds.SharedBuildingBlocks.Results;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -62,7 +63,49 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
         string key,
         CancellationToken cancellationToken = default)
     {
-        throw NotAvailableYet("Palace law definitions");
+        return GetPalaceLawDefinitionByKeyCoreAsync(key, cancellationToken);
+    }
+
+    public async Task<IReadOnlyCollection<PalaceLawDefinitionSnapshot>> ListActivePalaceLawDefinitionsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        const string url = "/api/v2/catalog/palace-laws";
+
+        var wrapper = await GetJsonOrNullAsync<ListPalaceLawDefinitionsHttpResponse>(url, cancellationToken);
+
+        return wrapper?.Definitions?
+            .Select(MapToPalaceLawDefinitionSnapshot)
+            .Where(definition => string.Equals(definition.Status, "Active", StringComparison.OrdinalIgnoreCase))
+            .OrderBy(definition => definition.Priority)
+            .ThenBy(definition => definition.Key, StringComparer.OrdinalIgnoreCase)
+            .ToArray()
+            ?? [];
+    }
+
+    private async Task<Result<PalaceLawDefinitionSnapshot>> GetPalaceLawDefinitionByKeyCoreAsync(
+        string key,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            return Result<PalaceLawDefinitionSnapshot>.Failure(Error.Create(
+                "catalog.palace_law_key_required",
+                "Palace law definition key is required."));
+        }
+
+        var encodedKey = Uri.EscapeDataString(key.Trim());
+        var url = $"/api/v2/catalog/palace-laws/{encodedKey}";
+        var wrapper = await GetJsonOrNullAsync<GetPalaceLawDefinitionByKeyHttpResponse>(url, cancellationToken);
+
+        if (wrapper?.Definition is null)
+        {
+            return Result<PalaceLawDefinitionSnapshot>.Failure(Error.Create(
+                "catalog.palace_law_definition_not_found",
+                $"Palace law definition '{key}' was not found."));
+        }
+
+        return Result<PalaceLawDefinitionSnapshot>.Success(
+            MapToPalaceLawDefinitionSnapshot(wrapper.Definition));
     }
 
     public async Task<CatalogRoomBossProfile?> GetRoomBossProfileAsync(
@@ -583,11 +626,92 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
             SkillKeys: source.SkillKeys);
     }
 
+    private static PalaceLawDefinitionSnapshot MapToPalaceLawDefinitionSnapshot(
+        CatalogPalaceLawDefinitionHttpResponse source)
+    {
+        return new PalaceLawDefinitionSnapshot(
+            Key: source.Key,
+            Name: source.Name,
+            Description: source.Description,
+            Version: source.Version,
+            Status: source.Status,
+            Visibility: source.Visibility,
+            Priority: source.Priority,
+            ImpactDomains: source.ImpactDomains ?? [],
+            EffectSetKey: source.EffectSetKey,
+            Effects: source.Effects?.Select(MapToCatalogEffectDefinitionSnapshot).ToArray() ?? []);
+    }
+
+    private static CatalogEffectDefinitionSnapshot MapToCatalogEffectDefinitionSnapshot(
+        CatalogEffectDefinitionHttpResponse source)
+    {
+        return new CatalogEffectDefinitionSnapshot(
+            source.EffectType,
+            source.TargetScope,
+            source.Value,
+            source.ValueMode,
+            source.Duration,
+            source.StackPolicy,
+            source.Condition,
+            source.Order,
+            source.BehaviorTag,
+            source.GenerationTag,
+            source.SelectionGroup);
+    }
+
     private static CatalogGatewayException NotAvailableYet(string contentType)
     {
         return new CatalogGatewayException(
             $"{contentType} are not available via the HTTP catalog gateway yet. " +
             "Use CatalogGateway:Mode = InMemory for the complete playable flow.");
+    }
+
+    private async Task<T?> GetJsonOrNullAsync<T>(
+        string url,
+        CancellationToken cancellationToken)
+    {
+        HttpResponseMessage response;
+        try
+        {
+            response = await _httpClient.GetAsync(url, cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            throw new CatalogGatewayException(
+                $"Failed to call Catalog Service at '{url}': {ex.Message}", ex);
+        }
+
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound ||
+            response.StatusCode == System.Net.HttpStatusCode.BadRequest)
+        {
+            return default;
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var body = await response.Content.ReadAsStringAsync(cancellationToken);
+            throw new CatalogGatewayException(
+                $"Catalog Service returned {(int)response.StatusCode} for '{url}': {body}");
+        }
+
+        var options = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        };
+
+        try
+        {
+            return await response.Content.ReadFromJsonAsync<T>(options, cancellationToken);
+        }
+        catch (JsonException ex)
+        {
+            throw new CatalogGatewayException(
+                $"Failed to deserialize Catalog Service response from '{url}': {ex.Message}", ex);
+        }
     }
 
     private sealed record GetRoomBossDefinitionByRoomTypeHttpResponse(
@@ -604,4 +728,35 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
 
     private sealed record ListSkillDefinitionsHttpResponse(
         IReadOnlyCollection<CatalogSkillDefinitionHttpResponse>? Definitions);
+
+    private sealed record GetPalaceLawDefinitionByKeyHttpResponse(
+        CatalogPalaceLawDefinitionHttpResponse? Definition);
+
+    private sealed record ListPalaceLawDefinitionsHttpResponse(
+        IReadOnlyCollection<CatalogPalaceLawDefinitionHttpResponse>? Definitions);
+
+    private sealed record CatalogPalaceLawDefinitionHttpResponse(
+        string Key,
+        string Name,
+        string Description,
+        string Version,
+        string Status,
+        string Visibility,
+        int Priority,
+        IReadOnlyCollection<string>? ImpactDomains,
+        string? EffectSetKey,
+        IReadOnlyCollection<CatalogEffectDefinitionHttpResponse>? Effects);
+
+    private sealed record CatalogEffectDefinitionHttpResponse(
+        string EffectType,
+        string TargetScope,
+        decimal Value,
+        string ValueMode,
+        string Duration,
+        string StackPolicy,
+        string? Condition,
+        int Order,
+        string? BehaviorTag,
+        string? GenerationTag,
+        string? SelectionGroup);
 }

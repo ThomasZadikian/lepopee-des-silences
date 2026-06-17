@@ -29,6 +29,9 @@ public interface ICatalogContentGateway
         string key,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyCollection<PalaceLawDefinitionSnapshot>> ListActivePalaceLawDefinitionsAsync(
+        CancellationToken cancellationToken = default);
+
     Task<CatalogRoomBossProfile?> GetRoomBossProfileAsync(
         string roomType,
         CancellationToken cancellationToken = default);

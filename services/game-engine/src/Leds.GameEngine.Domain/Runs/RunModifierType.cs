@@ -16,4 +16,5 @@ public enum RunModifierType
     FocusBonus = 11,
     ManaBonus = 12,
     ChargeBonus = 13,
+    RoomClimate = 14,
 }

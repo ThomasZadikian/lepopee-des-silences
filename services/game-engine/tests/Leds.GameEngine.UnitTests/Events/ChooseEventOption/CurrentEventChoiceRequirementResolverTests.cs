@@ -69,13 +69,14 @@ public sealed class CurrentEventChoiceRequirementResolverTests
 
         public NodeEventType EventType { get; }
 
-        public CurrentEventChoiceResolutionResult Resolve(
-            CurrentEventChoiceResolutionContext context)
+        public Task<CurrentEventChoiceResolutionResult> ResolveAsync(
+            CurrentEventChoiceResolutionContext context,
+            CancellationToken cancellationToken = default)
         {
-            return CurrentEventChoiceResolutionResult.Create(
+            return Task.FromResult(CurrentEventChoiceResolutionResult.Create(
                 context.ChoiceId,
                 accepted: true,
-                "Choice resolved.");
+                "Choice resolved."));
         }
     }
 }

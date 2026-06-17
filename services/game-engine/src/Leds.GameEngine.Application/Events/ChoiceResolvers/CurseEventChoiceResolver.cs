@@ -23,16 +23,19 @@ public sealed class CurseEventChoiceResolver : ICurrentEventChoiceResolver
 
     public NodeEventType EventType => NodeEventType.Curse;
 
-    public CurrentEventChoiceResolutionResult Resolve(
-        CurrentEventChoiceResolutionContext context)
+    public Task<CurrentEventChoiceResolutionResult> ResolveAsync(
+        CurrentEventChoiceResolutionContext context,
+        CancellationToken cancellationToken = default)
     {
-        return context.ChoiceId switch
+        var result = context.ChoiceId switch
         {
             "accept-curse" => AcceptCurse(context),
             "reject-curse" => RejectCurse(context),
             _ => throw new DomainException(
                 $"Choice '{context.ChoiceId}' is not valid for event type '{EventType}'.")
         };
+
+        return Task.FromResult(result);
     }
 
     private CurrentEventChoiceResolutionResult AcceptCurse(

@@ -30,26 +30,26 @@ public sealed class CurseEventChoiceResolverCatalogTests
     }
 
     [Fact]
-    public void AcceptCurse_ShouldCreateActiveCurse()
+    public async Task AcceptCurse_ShouldCreateActiveCurse()
     {
         var run = TestGameEngineFactory.CreateRun(NodeEventType.Curse);
         var resolver = CreateResolver();
         var context = CreateCurseContext(run);
 
-        resolver.Resolve(context);
+        await resolver.ResolveAsync(context);
 
         run.ActiveCurse.Should().NotBeNull();
         run.ActiveCurse!.Key.Should().StartWith("curse.");
     }
 
     [Fact]
-    public void AcceptCurse_ShouldCreateRunModifierWithSourceTypeCurse()
+    public async Task AcceptCurse_ShouldCreateRunModifierWithSourceTypeCurse()
     {
         var run = TestGameEngineFactory.CreateRun(NodeEventType.Curse);
         var resolver = CreateResolver();
         var context = CreateCurseContext(run);
 
-        resolver.Resolve(context);
+        await resolver.ResolveAsync(context);
 
         var curseModifiers = run.RunModifiers
             .Where(m => m.SourceType == "Curse")
@@ -60,13 +60,13 @@ public sealed class CurseEventChoiceResolverCatalogTests
     }
 
     [Fact]
-    public void AcceptCurse_ShouldSnapshotCurseDisplayData()
+    public async Task AcceptCurse_ShouldSnapshotCurseDisplayData()
     {
         var run = TestGameEngineFactory.CreateRun(NodeEventType.Curse);
         var resolver = CreateResolver();
         var context = CreateCurseContext(run);
 
-        resolver.Resolve(context);
+        await resolver.ResolveAsync(context);
 
         var curse = run.ActiveCurse!;
         curse.DisplayName.Should().NotBeNullOrEmpty();
@@ -75,13 +75,13 @@ public sealed class CurseEventChoiceResolverCatalogTests
     }
 
     [Fact]
-    public void AcceptCurse_ShouldApplyNextCombatOnlyDuration()
+    public async Task AcceptCurse_ShouldApplyNextCombatOnlyDuration()
     {
         var run = TestGameEngineFactory.CreateRun(NodeEventType.Curse);
         var resolver = CreateResolver();
         var context = CreateCurseContext(run);
 
-        resolver.Resolve(context);
+        await resolver.ResolveAsync(context);
 
         var curseModifiers = run.RunModifiers
             .Where(m => m.SourceType == "Curse")
@@ -91,51 +91,51 @@ public sealed class CurseEventChoiceResolverCatalogTests
     }
 
     [Fact]
-    public void AcceptCurse_ShouldReturnAcceptanceNarrative()
+    public async Task AcceptCurse_ShouldReturnAcceptanceNarrative()
     {
         var run = TestGameEngineFactory.CreateRun(NodeEventType.Curse);
         var resolver = CreateResolver();
         var context = CreateCurseContext(run);
 
-        var result = resolver.Resolve(context);
+        var result = await resolver.ResolveAsync(context);
 
         result.Accepted.Should().BeTrue();
         result.NarrativeFragments.Should().NotBeEmpty();
     }
 
     [Fact]
-    public void RejectCurse_ShouldNotCreateActiveCurse()
+    public async Task RejectCurse_ShouldNotCreateActiveCurse()
     {
         var run = TestGameEngineFactory.CreateRun(NodeEventType.Curse);
         var resolver = CreateResolver();
         var context = CreateCurseContext(run, "reject-curse");
 
-        resolver.Resolve(context);
+        await resolver.ResolveAsync(context);
 
         run.ActiveCurse.Should().BeNull();
     }
 
     [Fact]
-    public void RejectCurse_ShouldReturnRejectionNarrative()
+    public async Task RejectCurse_ShouldReturnRejectionNarrative()
     {
         var run = TestGameEngineFactory.CreateRun(NodeEventType.Curse);
         var resolver = CreateResolver();
         var context = CreateCurseContext(run, "reject-curse");
 
-        var result = resolver.Resolve(context);
+        var result = await resolver.ResolveAsync(context);
 
         result.Accepted.Should().BeTrue();
         result.NarrativeFragments.Should().NotBeEmpty();
     }
 
     [Fact]
-    public void DifficultyCurse_ShouldAffectNextCombatDifficultyMultiplier()
+    public async Task DifficultyCurse_ShouldAffectNextCombatDifficultyMultiplier()
     {
         var run = TestGameEngineFactory.CreateRun(NodeEventType.Curse);
         var resolver = CreateResolver();
         var context = CreateCurseContext(run);
 
-        resolver.Resolve(context);
+        await resolver.ResolveAsync(context);
 
         var difficultyModifiers = run.GetActiveModifiers(RunModifierType.NextCombatDifficultyMultiplier);
         difficultyModifiers.Should().NotBeEmpty();

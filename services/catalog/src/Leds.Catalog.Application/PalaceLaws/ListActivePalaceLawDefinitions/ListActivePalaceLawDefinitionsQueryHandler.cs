@@ -19,6 +19,12 @@ public sealed class ListActivePalaceLawDefinitionsQueryHandler
         ListActivePalaceLawDefinitionsQuery request,
         CancellationToken cancellationToken)
     {
+        if (_readStore is IPalaceLawDefinitionDtoReadStore dtoReadStore)
+        {
+            var dtoDefinitions = await dtoReadStore.ListActiveDtosAsync(cancellationToken);
+            return new ListActivePalaceLawDefinitionsResponse(dtoDefinitions.ToArray());
+        }
+
         var definitions = await _readStore.ListActiveAsync(cancellationToken);
 
         return new ListActivePalaceLawDefinitionsResponse(

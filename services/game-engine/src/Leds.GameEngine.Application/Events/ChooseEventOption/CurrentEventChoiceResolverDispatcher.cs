@@ -16,8 +16,9 @@ public sealed class CurrentEventChoiceResolverDispatcher
             resolver => resolver);
     }
 
-    public CurrentEventChoiceResolutionResult Resolve(
-        CurrentEventChoiceResolutionContext context)
+    public Task<CurrentEventChoiceResolutionResult> ResolveAsync(
+        CurrentEventChoiceResolutionContext context,
+        CancellationToken cancellationToken = default)
     {
         var primaryEventType = context.Node.EventType;
 
@@ -27,6 +28,6 @@ public sealed class CurrentEventChoiceResolverDispatcher
                 $"Current event type '{primaryEventType}' does not accept player choices.");
         }
 
-        return resolver.Resolve(context);
+        return resolver.ResolveAsync(context, cancellationToken);
     }
 }

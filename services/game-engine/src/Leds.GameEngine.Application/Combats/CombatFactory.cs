@@ -44,6 +44,12 @@ public sealed class CombatFactory : ICombatFactory
         var guardBonus = runModifiers?
             .Where(m => m.Type == RunModifierType.StartingGuardBonus && !m.IsConsumed)
             .Sum(m => (int)m.Value) ?? 0;
+        var activeClimate = ResolveActiveClimate(draft.RoomId, runModifiers ?? []);
+
+        if (activeClimate == RoomClimate.Rain)
+        {
+            guardBonus += 5;
+        }
 
         var allies = draft.Allies
             .Select(ally =>
@@ -54,7 +60,7 @@ public sealed class CombatFactory : ICombatFactory
                         s.DisplayName,
                         s.SkillType,
                         s.TargetingType,
-                        s.EffectType,
+                        NormalizeCombatEffectType(s.Key, s.EffectType),
                         s.ManaCost,
                         s.ChargeCost,
                         s.BasePower))
@@ -95,20 +101,27 @@ public sealed class CombatFactory : ICombatFactory
                     : 0;
 
                 var scaled = _enemyStatScaler.Scale(baseVitality, representativePower, draft.DifficultyMultiplier);
+                var enemyPowerMultiplier = activeClimate switch
+                {
+                    RoomClimate.Grey => 0.90,
+                    RoomClimate.Heatwave => 1.10,
+                    _ => 1.0
+                };
 
                 var skills = enemy.Skills
                     .Select(s =>
                     {
                         var scaledSkill = _enemyStatScaler.Scale(baseVitality, s.BasePower, draft.DifficultyMultiplier);
+                        var power = Math.Max(1, (int)Math.Round(scaledSkill.Power * enemyPowerMultiplier));
                         return CombatantSkill.Create(
                             s.Key,
                             s.DisplayName,
                             s.SkillType,
                             s.TargetingType,
-                            s.EffectType,
+                            NormalizeCombatEffectType(s.Key, s.EffectType),
                             s.ManaCost,
                             s.ChargeCost,
-                            scaledSkill.Power,
+                            power,
                             s.Tags);
                     })
                     .ToArray();
@@ -129,6 +142,47 @@ public sealed class CombatFactory : ICombatFactory
             new NodeId(draft.NodeId),
             allies,
             enemies);
+    }
+
+    private static RoomClimate? ResolveActiveClimate(
+        Guid roomId,
+        IReadOnlyCollection<RunModifier> runModifiers)
+    {
+        var modifier = runModifiers
+            .Where(modifier =>
+                modifier.Type == RunModifierType.RoomClimate &&
+                !modifier.IsConsumed &&
+                modifier.ExpiresAtRoomId == roomId)
+            .OrderByDescending(modifier => modifier.CreatedAtUtc)
+            .FirstOrDefault();
+
+        return modifier?.Value switch
+        {
+            1 => RoomClimate.Grey,
+            2 => RoomClimate.Rain,
+            3 => RoomClimate.Heatwave,
+            4 => RoomClimate.Hail,
+            _ => null
+        };
+    }
+
+    private enum RoomClimate
+    {
+        Grey,
+        Rain,
+        Heatwave,
+        Hail
+    }
+
+    private static string NormalizeCombatEffectType(string skillKey, string effectType)
+    {
+        if (string.Equals(skillKey, "skill.basic.guard", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(effectType, "AddCurrentGuard", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Guard";
+        }
+
+        return effectType;
     }
 
     private static IReadOnlyCollection<CombatantSkill> GetDefaultAllySkills()

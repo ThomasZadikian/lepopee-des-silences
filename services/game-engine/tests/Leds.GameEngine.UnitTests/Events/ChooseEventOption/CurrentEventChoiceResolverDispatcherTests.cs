@@ -9,7 +9,7 @@ namespace Leds.GameEngine.UnitTests.Events.ChooseEventOption;
 public sealed class CurrentEventChoiceResolverDispatcherTests
 {
     [Fact]
-    public void Resolve_ShouldUseResolverMatchingPrimaryEventType()
+    public async Task ResolveAsync_ShouldUseResolverMatchingPrimaryEventType()
     {
         var runWithNode = TestGameEngineFactory.CreateRunWithResolvedCurrentEvent(NodeEventType.Npc);
         var context = new CurrentEventChoiceResolutionContext(
@@ -24,13 +24,13 @@ public sealed class CurrentEventChoiceResolverDispatcherTests
             new StubCurrentEventChoiceResolver(NodeEventType.Law, "law-choice-resolved")
         });
 
-        var result = dispatcher.Resolve(context);
+        var result = await dispatcher.ResolveAsync(context);
 
         result.Message.Should().Be("npc-choice-resolved");
     }
 
     [Fact]
-    public void Resolve_ShouldThrowDomainException_WhenNoResolverIsRegistered()
+    public async Task ResolveAsync_ShouldThrowDomainException_WhenNoResolverIsRegistered()
     {
         var runWithNode = TestGameEngineFactory.CreateRunWithResolvedCurrentEvent(NodeEventType.Combat);
         var context = new CurrentEventChoiceResolutionContext(
@@ -44,10 +44,10 @@ public sealed class CurrentEventChoiceResolverDispatcherTests
             new StubCurrentEventChoiceResolver(NodeEventType.Npc, "npc-choice-resolved")
         });
 
-        var act = () => dispatcher.Resolve(context);
+        var act = async () => await dispatcher.ResolveAsync(context);
 
-        act.Should()
-            .Throw<DomainException>()
+        await act.Should()
+            .ThrowAsync<DomainException>()
             .WithMessage("Current event type 'Combat' does not accept player choices.");
     }
 
@@ -65,13 +65,14 @@ public sealed class CurrentEventChoiceResolverDispatcherTests
 
         public NodeEventType EventType { get; }
 
-        public CurrentEventChoiceResolutionResult Resolve(
-            CurrentEventChoiceResolutionContext context)
+        public Task<CurrentEventChoiceResolutionResult> ResolveAsync(
+            CurrentEventChoiceResolutionContext context,
+            CancellationToken cancellationToken = default)
         {
-            return CurrentEventChoiceResolutionResult.Create(
+            return Task.FromResult(CurrentEventChoiceResolutionResult.Create(
                 context.ChoiceId,
                 accepted: true,
-                _message);
+                _message));
         }
     }
 }

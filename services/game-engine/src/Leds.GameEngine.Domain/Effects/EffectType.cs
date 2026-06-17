@@ -34,4 +34,5 @@ public enum EffectType
     ModifyCurseSelectionBias,
     ApplyBehaviorTag,
     ApplyNarrativePressure,
+    ApplyRoomClimate,
 }

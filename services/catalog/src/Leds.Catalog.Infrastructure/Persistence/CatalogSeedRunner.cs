@@ -9,7 +9,7 @@ public sealed class CatalogSeedRunner
 {
     private const string SeedKey = "base-catalog";
     private const string LegacyVersion = "alpha-0.5.5";
-    private const string DataModelVersion = "alpha-0.7.1";
+    private const string DataModelVersion = "alpha-0.8.1";
 
     private readonly CatalogDbContext _context;
     private readonly ILogger<CatalogSeedRunner> _logger;
@@ -339,6 +339,13 @@ public sealed class CatalogSeedRunner
         await AddEffectSetAsync("effect.item.eclat-de-garde", "Eclat de garde", "Renforce la garde initiale du prochain combat.", "AddStartingGuard", "NextCombat", 8, "UntilRunEnds", "Additive", now, cancellationToken);
         await AddEffectSetAsync("effect.law.silence-weight", "Poids du silence", "Influence de generation silencieuse.", "ModifyGenerationWeight", "SelectionContext", 0.10m, "UntilRunEnds", "Additive", now, cancellationToken, generationTag: "generation.silence");
         await AddEffectSetAsync("effect.law.mefiance-des-echos", "La Mefiance des Echos", "Influence comportementale paranoiaque.", "ModifyEnemyBehavior", "AllEnemies", 0.15m, "UntilRoomEnds", "Additive", now, cancellationToken, behaviorTag: "behavior.paranoid");
+        await AddEffectSetAsync("effect.law.aegis", "Loi de l'Egide", "Renforce la garde initiale.", "AddStartingGuard", "Run", 8m, "UntilRunEnds", "Additive", now, cancellationToken);
+        await AddEffectSetAsync("effect.law.siege", "Loi du Siege", "Augmente la pression des combats.", "ModifyDifficultyMultiplier", "Run", 0.10m, "UntilRunEnds", "Additive", now, cancellationToken);
+        await AddEffectSetAsync("effect.law.carnage", "Loi du Carnage", "Augmente la puissance d'attaque.", "ModifyAttackPower", "Run", 0.10m, "UntilRunEnds", "Additive", now, cancellationToken);
+        await AddEffectSetAsync("effect.law.climate-rain", "Climat Pluie", "Applique la Pluie a la Room actuelle.", "ApplyRoomClimate", "CurrentRoom", null, "UntilRoomEnds", "UniqueBySource", now, cancellationToken, condition: "Rain");
+        await AddEffectSetAsync("effect.law.climate-hail", "Climat Grele", "Applique la Grele a la Room actuelle.", "ApplyRoomClimate", "CurrentRoom", null, "UntilRoomEnds", "UniqueBySource", now, cancellationToken, condition: "Hail");
+        await AddEffectSetAsync("effect.law.climate-heatwave", "Climat Canicule", "Applique la Canicule a la Room actuelle.", "ApplyRoomClimate", "CurrentRoom", null, "UntilRoomEnds", "UniqueBySource", now, cancellationToken, condition: "Heatwave");
+        await AddEffectSetAsync("effect.law.climate-grey", "Climat Grisaille", "Applique la Grisaille a la Room actuelle.", "ApplyRoomClimate", "CurrentRoom", null, "UntilRoomEnds", "UniqueBySource", now, cancellationToken, condition: "Grey");
         await AddEffectSetAsync("effect.curse.souffle-lourd", "Souffle lourd", "Augmente la pression du prochain combat.", "ModifyDifficultyMultiplier", "NextCombat", 0.10m, "NextCombatOnly", "UniqueBySource", now, cancellationToken);
         await AddEffectSetAsync("effect.mechanic.equivalent-exchange", "Echange equivalent", "Chaque puissance offerte exige une dette.", "ApplyNarrativePressure", "Room", null, "UntilRoomEnds", "UniqueBySource", now, cancellationToken, generationTag: "generation.alchemical");
     }
@@ -354,6 +361,7 @@ public sealed class CatalogSeedRunner
         string stackPolicy,
         DateTime now,
         CancellationToken cancellationToken,
+        string? condition = null,
         string? behaviorTag = null,
         string? generationTag = null)
     {
@@ -383,6 +391,7 @@ public sealed class CatalogSeedRunner
                     ValueMode = value.HasValue ? "Flat" : "TagOnly",
                     Duration = duration,
                     StackPolicy = stackPolicy,
+                    Condition = condition,
                     Order = 0,
                     BehaviorTag = behaviorTag,
                     GenerationTag = generationTag
@@ -612,6 +621,15 @@ public sealed class CatalogSeedRunner
             });
         }
 
+        await AddPalaceLawAsync("law-silence-v1", "Loi du Silence", "Le silence deforme la generation.", "Run", "UntilRunEnds", "Visible", 10, "[\"Generation\",\"Narrative\"]", "effect.law.silence-weight", effectIds, now, cancellationToken);
+        await AddPalaceLawAsync("law-aegis-v1", "Loi de l'Egide", "La premiere garde du heros se renforce.", "Run", "UntilRunEnds", "Visible", 20, "[\"Combat\"]", "effect.law.aegis", effectIds, now, cancellationToken);
+        await AddPalaceLawAsync("law-siege-v1", "Loi du Siege", "Les prochains affrontements gagnent en pression.", "Run", "UntilRunEnds", "Visible", 30, "[\"Combat\"]", "effect.law.siege", effectIds, now, cancellationToken);
+        await AddPalaceLawAsync("law-carnage-v1", "Loi du Carnage", "La puissance d'attaque du heros augmente.", "Run", "UntilRunEnds", "Visible", 40, "[\"Combat\"]", "effect.law.carnage", effectIds, now, cancellationToken);
+        await AddPalaceLawAsync("law-tempest-v1", "Loi de la Pluie", "La Room actuelle est traversee par la Pluie.", "Room", "UntilRoomEnds", "Visible", 50, "[\"Combat\"]", "effect.law.climate-rain", effectIds, now, cancellationToken);
+        await AddPalaceLawAsync("law-hail-v1", "Loi de la Grele", "La Room actuelle est traversee par la Grele.", "Room", "UntilRoomEnds", "Visible", 60, "[\"Combat\"]", "effect.law.climate-hail", effectIds, now, cancellationToken);
+        await AddPalaceLawAsync("law-drought-v1", "Loi de la Canicule", "La Room actuelle est ecrasee par la Canicule.", "Room", "UntilRoomEnds", "Visible", 70, "[\"Combat\"]", "effect.law.climate-heatwave", effectIds, now, cancellationToken);
+        await AddPalaceLawAsync("law-grey-v1", "Loi de la Grisaille", "La Room actuelle est recouverte de Grisaille.", "Room", "UntilRoomEnds", "Visible", 80, "[\"Combat\"]", "effect.law.climate-grey", effectIds, now, cancellationToken);
+
         if (!await _context.CurseDefinitions.AnyAsync(c => c.Key == "curse.threshold.souffle-lourd", cancellationToken))
         {
             _context.CurseDefinitions.Add(new CurseDefinitionEntity
@@ -633,6 +651,49 @@ public sealed class CatalogSeedRunner
                 UpdatedAtUtc = now
             });
         }
+    }
+
+    private async Task AddPalaceLawAsync(
+        string key,
+        string displayName,
+        string description,
+        string scope,
+        string duration,
+        string visibility,
+        int priority,
+        string impactDomainsJson,
+        string effectSetKey,
+        Dictionary<string, Guid> effectIds,
+        DateTime now,
+        CancellationToken cancellationToken)
+    {
+        if (await _context.PalaceLawDefinitions.AnyAsync(l => l.Key == key, cancellationToken))
+        {
+            return;
+        }
+
+        _context.PalaceLawDefinitions.Add(new PalaceLawDefinitionEntity
+        {
+            Id = Guid.NewGuid(),
+            Key = key,
+            Name = displayName,
+            DisplayName = displayName,
+            Description = description,
+            Version = DataModelVersion,
+            Status = "Active",
+            Scope = scope,
+            Duration = duration,
+            Severity = 1,
+            EffectSetId = effectIds[effectSetKey],
+            BaseWeight = 1,
+            MinDepth = 1,
+            SelectionGroup = "law.runtime",
+            Visibility = visibility,
+            Priority = priority,
+            ImpactDomainsJson = impactDomainsJson,
+            CreatedAtUtc = now,
+            UpdatedAtUtc = now
+        });
     }
 
     private async Task SeedRewardTemplatesAsync(DateTime now, CancellationToken cancellationToken)

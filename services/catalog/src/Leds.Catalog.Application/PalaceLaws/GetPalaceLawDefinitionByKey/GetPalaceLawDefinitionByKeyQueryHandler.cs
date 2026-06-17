@@ -19,6 +19,12 @@ public sealed class GetPalaceLawDefinitionByKeyQueryHandler
         GetPalaceLawDefinitionByKeyQuery request,
         CancellationToken cancellationToken)
     {
+        if (_readStore is IPalaceLawDefinitionDtoReadStore dtoReadStore)
+        {
+            return new GetPalaceLawDefinitionByKeyResponse(
+                await dtoReadStore.GetDtoByKeyAsync(request.Key, cancellationToken));
+        }
+
         var definition = await _readStore.GetByKeyAsync(
             request.Key,
             cancellationToken);

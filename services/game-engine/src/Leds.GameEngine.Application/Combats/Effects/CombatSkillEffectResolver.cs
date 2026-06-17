@@ -154,6 +154,11 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
             return "Guard";
         }
 
+        if (string.Equals(skill.EffectType, "AddCurrentGuard", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Guard";
+        }
+
         return skill.EffectType;
     }
 

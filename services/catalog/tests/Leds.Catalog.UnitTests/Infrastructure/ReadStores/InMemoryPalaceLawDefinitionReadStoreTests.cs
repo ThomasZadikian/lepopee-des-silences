@@ -69,4 +69,21 @@ public sealed class InMemoryPalaceLawDefinitionReadStoreTests
                 "law-silence-v1",
                 "law-rupture-v1");
     }
+
+    [Fact]
+    public async Task GetDtoByKeyAsync_ShouldExposeEffectDefinitions()
+    {
+        var readStore = new InMemoryPalaceLawDefinitionReadStore();
+
+        var definition = await readStore.GetDtoByKeyAsync(
+            "law-aegis-v1",
+            CancellationToken.None);
+
+        definition.Should().NotBeNull();
+        definition!.EffectSetKey.Should().Be("effect.law.aegis");
+        definition.Effects.Should().ContainSingle(effect =>
+            effect.EffectType == "AddStartingGuard" &&
+            effect.Value == 8m &&
+            effect.Duration == "UntilRunEnds");
+    }
 }

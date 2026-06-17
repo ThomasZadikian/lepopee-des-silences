@@ -61,7 +61,7 @@ public sealed class PalaceLawDefinitionEndpointTests
         payload.Definition!.Key.Should().Be("law-silence-v1");
         payload.Definition.Name.Should().Be("Loi du Silence");
         payload.Definition.Status.Should().Be("Active");
-        payload.Definition.Visibility.Should().Be("PartiallyVisible");
+        payload.Definition.Visibility.Should().Be("Visible");
         payload.Definition.ImpactDomains.Should().Contain("Generation");
         payload.Definition.ImpactDomains.Should().Contain("Narrative");
     }

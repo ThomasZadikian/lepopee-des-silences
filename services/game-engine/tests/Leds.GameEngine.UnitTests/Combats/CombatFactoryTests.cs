@@ -13,7 +13,8 @@ public sealed class CombatFactoryTests
         int allyCount = 1,
         int enemyCount = 1,
         int enemyBaseDifficulty = 3,
-        bool includeSkills = false)
+        bool includeSkills = false,
+        IReadOnlyCollection<CombatEncounterDraftSkill>? enemySkills = null)
     {
         var allies = Enumerable.Range(0, allyCount).Select(i =>
             new CombatEncounterDraftAlly(
@@ -24,14 +25,14 @@ public sealed class CombatFactoryTests
 
         var enemies = Enumerable.Range(0, enemyCount).Select(i =>
         {
-            var skills = includeSkills
+            var skills = enemySkills ?? (includeSkills
                 ? new[]
                 {
                     new CombatEncounterDraftSkill(
                         "skill.basic.strike", "Frappe", "Attack.", "Damage", "SingleEnemy", "Damage", 5, 0, 10,
                         Array.Empty<string>())
                 }
-                : Array.Empty<CombatEncounterDraftSkill>();
+                : Array.Empty<CombatEncounterDraftSkill>());
 
             return new CombatEncounterDraftEnemy(
                 $"enemy.{i}",
@@ -123,6 +124,22 @@ public sealed class CombatFactoryTests
     }
 
     [Fact]
+    public void CreateFromDraft_ShouldNormalizeEnemyCurrentGuardSkill()
+    {
+        var factory = new CombatFactory();
+        var guardSkill = new CombatEncounterDraftSkill(
+            "skill.basic.guard", "Garde", "Guard.", "Defense", "Self", "AddCurrentGuard", 0, 0, 5,
+            Array.Empty<string>());
+        var draft = CreateDraft(enemySkills: [guardSkill]);
+
+        var combat = factory.CreateFromDraft(draft);
+
+        var skill = combat.Enemies.Single().Skills.Single();
+        skill.EffectType.Should().Be("Guard");
+        skill.BasePower.Should().Be(5);
+    }
+
+    [Fact]
     public void CreateFromDraft_ShouldInitializeEnemyVitalityFromBaseDifficulty()
     {
         var factory = new CombatFactory();
@@ -160,6 +177,37 @@ public sealed class CombatFactoryTests
         ally.Skills.Select(s => s.Key).Should()
             .Contain("skill.basic.strike")
             .And.Contain("skill.basic.guard");
+    }
+
+    [Fact]
+    public void CreateFromDraft_ShouldApplyRainClimateStartingGuardBonus()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft();
+
+        var combat = factory.CreateFromDraft(
+            draft,
+            runModifiers: [CreateClimateModifier(draft.RoomId, 2)]);
+
+        var ally = combat.Allies.Single();
+        ally.Guard.Should().Be(5);
+        ally.BaseGuard.Should().Be(5);
+    }
+
+    [Fact]
+    public void CreateFromDraft_ShouldApplyHeatwaveClimateEnemyPowerBonus()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft(includeSkills: true);
+
+        var baseline = factory.CreateFromDraft(draft);
+        var heatwave = factory.CreateFromDraft(
+            draft,
+            runModifiers: [CreateClimateModifier(draft.RoomId, 3)]);
+
+        var baselinePower = baseline.Enemies.Single().Skills.Single().BasePower;
+        var heatwavePower = heatwave.Enemies.Single().Skills.Single().BasePower;
+        heatwavePower.Should().BeGreaterThan(baselinePower);
     }
 
     [Fact]
@@ -308,5 +356,16 @@ public sealed class CombatFactoryTests
         var ally = combat.Allies.Single();
         ally.Guard.Should().Be(0,
             because: "Without any RunModifiers the starting guard defaults to 0.");
+    }
+
+    private static RunModifier CreateClimateModifier(Guid roomId, double value)
+    {
+        return RunModifier.Create(
+            RunModifierType.RoomClimate,
+            value,
+            RunModifierDuration.UntilRoomEnds,
+            "PalaceLaw",
+            "law-climate-test",
+            expiresAtRoomId: roomId);
     }
 }

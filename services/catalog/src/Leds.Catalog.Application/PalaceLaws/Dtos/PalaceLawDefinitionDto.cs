@@ -11,7 +11,9 @@ public sealed record PalaceLawDefinitionDto(
     string Status,
     string Visibility,
     int Priority,
-    IReadOnlyCollection<string> ImpactDomains)
+    IReadOnlyCollection<string> ImpactDomains,
+    string? EffectSetKey = null,
+    IReadOnlyCollection<PalaceLawEffectDefinitionDto>? Effects = null)
 {
     public static PalaceLawDefinitionDto FromDomain(
         IPalaceLawDefinition palaceLaw)
@@ -27,6 +29,21 @@ public sealed record PalaceLawDefinitionDto(
             palaceLaw.Priority,
             palaceLaw.ImpactDomains
                 .Select(domain => domain.ToString())
-                .ToArray());
+                .ToArray(),
+            EffectSetKey: null,
+            Effects: []);
     }
 }
+
+public sealed record PalaceLawEffectDefinitionDto(
+    string EffectType,
+    string TargetScope,
+    decimal Value,
+    string ValueMode,
+    string Duration,
+    string StackPolicy,
+    string? Condition,
+    int Order,
+    string? BehaviorTag,
+    string? GenerationTag,
+    string? SelectionGroup);

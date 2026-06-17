@@ -11,4 +11,6 @@ public sealed record PalaceLawDefinitionSnapshot(
     string Status,
     string Visibility,
     int Priority,
-    IReadOnlyCollection<string> ImpactDomains);
+    IReadOnlyCollection<string> ImpactDomains,
+    string? EffectSetKey = null,
+    IReadOnlyCollection<CatalogEffectDefinitionSnapshot>? Effects = null);

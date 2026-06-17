@@ -353,7 +353,110 @@ public sealed class InMemoryCatalogContentGateway : ICatalogContentGateway
                 Status: "Active",
                 Visibility: "Visible",
                 Priority: 10,
-                ImpactDomains: ["Generation", "Events", "Narrative"])
+                ImpactDomains: ["Generation", "Events", "Narrative"],
+                EffectSetKey: "effect.law.silence-weight",
+                Effects:
+                [
+                    new CatalogEffectDefinitionSnapshot("ModifyGenerationWeight", "SelectionContext", 0.10m, "Flat", "UntilRunEnds", "Additive", null, 0, null, "generation.silence", null)
+                ]),
+            ["law-aegis-v1"] = new PalaceLawDefinitionSnapshot(
+                Key: "law-aegis-v1",
+                Name: "Loi de l'Égide",
+                Description: "La première garde du héros se renforce.",
+                Version: "1.0.0",
+                Status: "Active",
+                Visibility: "Visible",
+                Priority: 20,
+                ImpactDomains: ["Combat"],
+                EffectSetKey: "effect.law.aegis",
+                Effects:
+                [
+                    new CatalogEffectDefinitionSnapshot("AddStartingGuard", "Run", 8m, "Flat", "UntilRunEnds", "Additive", null, 0, null, null, null)
+                ]),
+            ["law-siege-v1"] = new PalaceLawDefinitionSnapshot(
+                Key: "law-siege-v1",
+                Name: "Loi du Siège",
+                Description: "Les prochains affrontements gagnent en pression.",
+                Version: "1.0.0",
+                Status: "Active",
+                Visibility: "Visible",
+                Priority: 30,
+                ImpactDomains: ["Combat"],
+                EffectSetKey: "effect.law.siege",
+                Effects:
+                [
+                    new CatalogEffectDefinitionSnapshot("ModifyDifficultyMultiplier", "Run", 0.10m, "Flat", "UntilRunEnds", "Additive", null, 0, null, null, null)
+                ]),
+            ["law-carnage-v1"] = new PalaceLawDefinitionSnapshot(
+                Key: "law-carnage-v1",
+                Name: "Loi du Carnage",
+                Description: "La puissance d'attaque du héros augmente.",
+                Version: "1.0.0",
+                Status: "Active",
+                Visibility: "Visible",
+                Priority: 40,
+                ImpactDomains: ["Combat"],
+                EffectSetKey: "effect.law.carnage",
+                Effects:
+                [
+                    new CatalogEffectDefinitionSnapshot("ModifyAttackPower", "Run", 0.10m, "Flat", "UntilRunEnds", "Additive", null, 0, null, null, null)
+                ]),
+            ["law-tempest-v1"] = new PalaceLawDefinitionSnapshot(
+                Key: "law-tempest-v1",
+                Name: "Loi de la Pluie",
+                Description: "La Room actuelle est traversée par la Pluie.",
+                Version: "1.0.0",
+                Status: "Active",
+                Visibility: "Visible",
+                Priority: 50,
+                ImpactDomains: ["Combat"],
+                EffectSetKey: "effect.law.climate-rain",
+                Effects:
+                [
+                    new CatalogEffectDefinitionSnapshot("ApplyRoomClimate", "CurrentRoom", 0m, "TagOnly", "UntilRoomEnds", "UniqueBySource", "Rain", 0, null, null, null)
+                ]),
+            ["law-hail-v1"] = new PalaceLawDefinitionSnapshot(
+                Key: "law-hail-v1",
+                Name: "Loi de la Grêle",
+                Description: "La Room actuelle est traversée par la Grêle.",
+                Version: "1.0.0",
+                Status: "Active",
+                Visibility: "Visible",
+                Priority: 60,
+                ImpactDomains: ["Combat"],
+                EffectSetKey: "effect.law.climate-hail",
+                Effects:
+                [
+                    new CatalogEffectDefinitionSnapshot("ApplyRoomClimate", "CurrentRoom", 0m, "TagOnly", "UntilRoomEnds", "UniqueBySource", "Hail", 0, null, null, null)
+                ]),
+            ["law-drought-v1"] = new PalaceLawDefinitionSnapshot(
+                Key: "law-drought-v1",
+                Name: "Loi de la Canicule",
+                Description: "La Room actuelle est écrasée par la Canicule.",
+                Version: "1.0.0",
+                Status: "Active",
+                Visibility: "Visible",
+                Priority: 70,
+                ImpactDomains: ["Combat"],
+                EffectSetKey: "effect.law.climate-heatwave",
+                Effects:
+                [
+                    new CatalogEffectDefinitionSnapshot("ApplyRoomClimate", "CurrentRoom", 0m, "TagOnly", "UntilRoomEnds", "UniqueBySource", "Heatwave", 0, null, null, null)
+                ]),
+            ["law-grey-v1"] = new PalaceLawDefinitionSnapshot(
+                Key: "law-grey-v1",
+                Name: "Loi de la Grisaille",
+                Description: "La Room actuelle est recouverte de Grisaille.",
+                Version: "1.0.0",
+                Status: "Active",
+                Visibility: "Visible",
+                Priority: 80,
+                ImpactDomains: ["Combat"],
+                EffectSetKey: "effect.law.climate-grey",
+                Effects:
+                [
+                    new CatalogEffectDefinitionSnapshot("ApplyRoomClimate", "CurrentRoom", 0m, "TagOnly", "UntilRoomEnds", "UniqueBySource", "Grey", 0, null, null, null)
+                ])
         };
 
     public Task<Result<EnemyTemplateSnapshot>> GetEnemyTemplateByKeyAsync(
@@ -409,6 +512,17 @@ public sealed class InMemoryCatalogContentGateway : ICatalogContentGateway
             key,
             "catalog.palace_law_definition_not_found",
             "Palace law definition was not found."));
+    }
+
+    public Task<IReadOnlyCollection<PalaceLawDefinitionSnapshot>> ListActivePalaceLawDefinitionsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult<IReadOnlyCollection<PalaceLawDefinitionSnapshot>>(
+            PalaceLawDefinitions.Values
+                .Where(definition => string.Equals(definition.Status, "Active", StringComparison.OrdinalIgnoreCase))
+                .OrderBy(definition => definition.Priority)
+                .ThenBy(definition => definition.Key, StringComparer.OrdinalIgnoreCase)
+                .ToArray());
     }
 
     private static readonly IReadOnlyDictionary<string, CatalogRoomBossProfile> RoomBossProfiles =
@@ -790,10 +904,10 @@ public sealed class InMemoryCatalogContentGateway : ICatalogContentGateway
                 Description: "Une posture defensive qui reduit les degats subis pendant un tour.",
                 SkillType: "Defense",
                 TargetingType: "Self",
-                EffectType: "Buff",
-                ManaCost: 3,
-                ChargeCost: 1,
-                BasePower: 0,
+                EffectType: "Guard",
+                ManaCost: 0,
+                ChargeCost: 0,
+                BasePower: 5,
                 Tags: ["basic", "defense"]),
             ["skill.basic.weaken"] = new CatalogSkillDefinition(
                 Key: "skill.basic.weaken",
@@ -834,10 +948,10 @@ public sealed class InMemoryCatalogContentGateway : ICatalogContentGateway
                 Description: "Un bouclier qui absorbe les degats pendant un tour.",
                 SkillType: "Defense",
                 TargetingType: "Self",
-                EffectType: "Buff",
-                ManaCost: 4,
+                EffectType: "Guard",
+                ManaCost: 0,
                 ChargeCost: 0,
-                BasePower: 0,
+                BasePower: 5,
                 Tags: ["basic", "shield"]),
             ["skill.basic.heal"] = new CatalogSkillDefinition(
                 Key: "skill.basic.heal",

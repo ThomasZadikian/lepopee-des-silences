@@ -60,7 +60,7 @@ public sealed class ChooseCurrentEventOptionCommandHandler
             resolvedNode,
             request.ChoiceId);
 
-        var result = _choiceResolverDispatcher.Resolve(context);
+        var result = await _choiceResolverDispatcher.ResolveAsync(context, cancellationToken);
 
         if (result.Accepted)
         {

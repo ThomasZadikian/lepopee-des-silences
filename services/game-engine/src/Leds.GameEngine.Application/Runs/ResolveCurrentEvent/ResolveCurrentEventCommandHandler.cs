@@ -100,29 +100,13 @@ public sealed class ResolveCurrentEventCommandHandler
 
         CombatEncounterDraftDto? encounterDraftDto = null;
         CombatRuntimeDto? combatRuntimeDto = null;
+        ResolvedNodeEventContent? resolvedContent = null;
 
         if (isCombat)
         {
-            var contentContext = new EventContentResolutionContext(
-                Seed: run.Seed,
-                RoomType: room.RoomType,
-                RoomDepth: room.Depth,
-                NodeDepth: selectedNode.Row,
-                EventOrder: 1,
-                EventType: selectedNode.EventType,
-                RiskLevel: selectedNode.RiskLevel,
-                RewardProfile: selectedNode.RewardProfile);
+            resolvedContent = await ResolveEventContentAsync(run, room, selectedNode, cancellationToken);
 
-            var contentResult = await _eventContentResolver.ResolveAsync(
-                contentContext, cancellationToken);
-
-            if (contentResult.IsFailure)
-            {
-                throw new DomainException(
-                    $"Failed to resolve event content: {contentResult.Error.Message}");
-            }
-
-            var (enemyTemplateKey, _) = contentResult.Value switch
+            var (enemyTemplateKey, _) = resolvedContent switch
             {
                 ResolvedCombatEventContent c => (c.EnemyTemplateKey, c.RiskLevel),
                 ResolvedEliteEventContent e => (e.EnemyTemplateKey, e.RiskLevel),
@@ -195,6 +179,12 @@ public sealed class ResolveCurrentEventCommandHandler
             run.ResolveCurrentEvent();
             selectedNode.ChooseEventOption("trade");
         }
+        else if (selectedNode.EventType == NodeEventType.Law)
+        {
+            resolvedContent = await ResolveEventContentAsync(run, room, selectedNode, cancellationToken);
+            resolutionResult = ApplyPalaceLawContent(resolutionResult, (ResolvedPalaceLawEventContent)resolvedContent);
+            run.ResolveCurrentEvent();
+        }
         else
         {
             run.ResolveCurrentEvent();
@@ -253,5 +243,51 @@ public sealed class ResolveCurrentEventCommandHandler
 
         return await _encounterDraftGenerator.GenerateAsync(
             draftContext, cancellationToken);
+    }
+
+    private async Task<ResolvedNodeEventContent> ResolveEventContentAsync(
+        Run run,
+        Room room,
+        MapNode selectedNode,
+        CancellationToken cancellationToken)
+    {
+        var contentContext = new EventContentResolutionContext(
+            Seed: run.Seed,
+            RoomType: room.RoomType,
+            RoomDepth: room.Depth,
+            NodeDepth: selectedNode.Row,
+            EventOrder: 1,
+            EventType: selectedNode.EventType,
+            RiskLevel: selectedNode.RiskLevel,
+            RewardProfile: selectedNode.RewardProfile,
+            ActivePalaceLawKeys: run.ActivePalaceLaws.Select(law => law.Key).ToArray());
+
+        var contentResult = await _eventContentResolver.ResolveAsync(
+            contentContext, cancellationToken);
+
+        if (contentResult.IsFailure)
+        {
+            throw new DomainException(
+                $"Failed to resolve event content: {contentResult.Error.Message}");
+        }
+
+        return contentResult.Value;
+    }
+
+    private static NodeEventResolutionResult ApplyPalaceLawContent(
+        NodeEventResolutionResult result,
+        ResolvedPalaceLawEventContent content)
+    {
+        return result with
+        {
+            Title = content.PalaceLawName,
+            Description = content.PalaceLawDescription,
+            Choices = result.Choices.Select(choice => choice.ChoiceId switch
+            {
+                "accept-law" => choice with { ChoiceId = $"accept-law:{content.PalaceLawDefinitionKey}" },
+                "reject-law" => choice with { ChoiceId = $"reject-law:{content.PalaceLawDefinitionKey}" },
+                _ => choice
+            }).ToArray()
+        };
     }
 }

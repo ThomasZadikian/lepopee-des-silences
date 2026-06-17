@@ -235,19 +235,54 @@ public sealed class HttpCatalogContentGatewayTests
     }
 
     [Fact]
-    public async Task GetPalaceLawDefinitionByKeyAsync_ShouldThrowCatalogGatewayException_WhenUsingHttpGateway()
+    public async Task GetPalaceLawDefinitionByKeyAsync_ShouldReturnDefinition_WhenCatalogReturns200()
     {
-        var handler = CreateMockHandler("", HttpStatusCode.OK);
+        var httpResponse = new
+        {
+            Definition = new
+            {
+                Key = "law-aegis-v1",
+                Name = "Loi de l'Egide",
+                Description = "Renforce la garde initiale.",
+                Version = "1.0.0",
+                Status = "Active",
+                Visibility = "Visible",
+                Priority = 20,
+                ImpactDomains = new[] { "Combat" },
+                EffectSetKey = "effect.law.aegis",
+                Effects = new[]
+                {
+                    new
+                    {
+                        EffectType = "AddStartingGuard",
+                        TargetScope = "Run",
+                        Value = 8m,
+                        ValueMode = "Flat",
+                        Duration = "UntilRunEnds",
+                        StackPolicy = "Additive",
+                        Condition = (string?)null,
+                        Order = 0,
+                        BehaviorTag = (string?)null,
+                        GenerationTag = (string?)null,
+                        SelectionGroup = (string?)null
+                    }
+                }
+            }
+        };
+
+        var json = JsonSerializer.Serialize(httpResponse, JsonOptions);
+        var handler = CreateMockHandler(json, HttpStatusCode.OK);
         var client = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost:5193") };
         var gateway = new HttpCatalogContentGateway(client);
 
-        var act = async () => await gateway.GetPalaceLawDefinitionByKeyAsync("law-silence-v1");
+        var result = await gateway.GetPalaceLawDefinitionByKeyAsync("law-aegis-v1");
 
-        var exception = await act.Should()
-            .ThrowAsync<CatalogGatewayException>();
-
-        exception.Which.Message.Should().Contain("not available via the HTTP catalog gateway yet");
-        exception.Which.Message.Should().Contain("Use CatalogGateway:Mode = InMemory");
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Key.Should().Be("law-aegis-v1");
+        result.Value.EffectSetKey.Should().Be("effect.law.aegis");
+        result.Value.Effects.Should().ContainSingle(effect =>
+            effect.EffectType == "AddStartingGuard" &&
+            effect.Value == 8m);
     }
 
     [Fact]

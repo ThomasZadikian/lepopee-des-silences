@@ -97,10 +97,10 @@ public sealed class InMemorySkillDefinitionReadStore : ISkillDefinitionReadStore
             "1.0.0",
             "Defense",
             "Self",
-            "Buff",
-            manaCost: 3,
-            chargeCost: 1,
-            basePower: 0,
+            "AddCurrentGuard",
+            manaCost: 0,
+            chargeCost: 0,
+            basePower: 5,
             status: CatalogContentStatus.Draft);
 
         def.Activate();

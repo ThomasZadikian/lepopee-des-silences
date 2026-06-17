@@ -94,6 +94,22 @@ public sealed class EnemyCombatTurnResolverTests
     }
 
     [Fact]
+    public void Resolve_ShouldApplyGuardSkillToEnemy()
+    {
+        var combat = CreateCombat(enemySkills: [CreateSkill("skill.basic.guard", "AddCurrentGuard", "Self", 5)]);
+        combat.AdvanceTurn();
+        var enemy = combat.Enemies.Single();
+
+        var result = _resolver.Resolve(combat);
+
+        result.WasResolved.Should().BeTrue();
+        result.SkillKey.Should().Be("skill.basic.guard");
+        enemy.Guard.Should().Be(5);
+        result.Combat.Enemies.Single().Guard.Should().Be(5);
+        result.LogEntries.Should().Contain(entry => entry.Type == "GuardGained");
+    }
+
+    [Fact]
     public void Resolve_ShouldAdvanceTurnAfterEnemyAction()
     {
         var combat = CreateCombat(enemySkills: [CreateSkill("skill.basic.strike", "Damage", "SingleEnemy", 10)]);

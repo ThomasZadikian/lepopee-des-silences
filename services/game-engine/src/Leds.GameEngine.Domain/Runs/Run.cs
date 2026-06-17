@@ -1078,12 +1078,17 @@ public sealed class Run
         // Apply each mechanical effect of the law as a RunModifier.
         foreach (var effect in law.Effects)
         {
+            var expiresAtRoomId = effect.Duration == RunModifierDuration.UntilRoomEnds
+                ? CurrentRoomId.Value
+                : (Guid?)null;
+
             AddRunModifier(RunModifier.Create(
                 effect.ModifierType,
                 effect.Value,
                 effect.Duration,
                 sourceType: "PalaceLaw",
-                sourceKey: law.Key));
+                sourceKey: law.Key,
+                expiresAtRoomId: expiresAtRoomId));
         }
     }
 

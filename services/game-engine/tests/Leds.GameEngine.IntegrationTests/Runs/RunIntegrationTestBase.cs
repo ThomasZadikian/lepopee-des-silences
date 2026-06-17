@@ -42,7 +42,7 @@ public abstract class RunIntegrationTestBase
             await CompleteActiveCombatAsync(runId, resolvePayload.Run.ActiveCombatId.Value);
         }
 
-        await ResolveEventChoiceIfRequiredAsync(runId);
+        await ResolveEventChoiceIfRequiredAsync(runId, resolvePayload.Outcome);
         await SelectPendingRewardIfAnyAsync(runId);
 
         var getResponse = await Client.GetAsync($"/api/v2/runs/{runId}");
@@ -148,44 +148,13 @@ public abstract class RunIntegrationTestBase
         }
     }
 
-    private async Task ResolveEventChoiceIfRequiredAsync(Guid runId)
+    private async Task ResolveEventChoiceIfRequiredAsync(
+        Guid runId,
+        ResolvedNodeEventOutcomeDto outcome)
     {
-        var getResponse = await Client.GetAsync($"/api/v2/runs/{runId}");
-
-        if (getResponse.StatusCode != HttpStatusCode.OK)
-        {
-            return;
-        }
-
-        var getPayload = await getResponse.Content
-            .ReadFromJsonAsync<GetRunByIdResponse>();
-
-        if (getPayload is null)
-        {
-            return;
-        }
-
-        var currentDepth = getPayload.Run.CurrentRoom.CurrentNodeDepth;
-
-        var resolvedNode = getPayload.Run.CurrentRoom.Nodes
-            .FirstOrDefault(node =>
-                node.Row == currentDepth &&
-                node.State == "Resolved" &&
-                !node.HasChosenEventOption);
-
-        if (resolvedNode is null)
-        {
-            return;
-        }
-
-        var choiceId = resolvedNode.Type switch
-        {
-            "Npc" => "listen",
-            "Merchant" => "trade",
-            "Law" => "accept-law",
-            "Curse" => "accept-curse",
-            _ => null
-        };
+        var choiceId = outcome.RequiresPlayerChoice
+            ? outcome.Choices.FirstOrDefault()?.ChoiceId
+            : null;
 
         if (choiceId is null)
         {

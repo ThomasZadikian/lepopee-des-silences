@@ -9,10 +9,11 @@ public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver
 {
     public NodeEventType EventType => NodeEventType.Npc;
 
-    public CurrentEventChoiceResolutionResult Resolve(
-        CurrentEventChoiceResolutionContext context)
+    public Task<CurrentEventChoiceResolutionResult> ResolveAsync(
+        CurrentEventChoiceResolutionContext context,
+        CancellationToken cancellationToken = default)
     {
-        return context.ChoiceId switch
+        var result = context.ChoiceId switch
         {
             "listen" => CurrentEventChoiceResolutionResult.Create(
                 context.ChoiceId,
@@ -39,5 +40,7 @@ public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver
             _ => throw new DomainException(
                 $"Choice '{context.ChoiceId}' is not valid for event type '{EventType}'.")
         };
+
+        return Task.FromResult(result);
     }
 }

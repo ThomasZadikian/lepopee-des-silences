@@ -28,6 +28,17 @@ public sealed class SkillDefinitionReadStoreTests
     }
 
     [Fact]
+    public async Task GetByKeyAsync_ShouldReturnGuardSkillWithCurrentGuardEffect()
+    {
+        var result = await _store.GetByKeyAsync(
+            "skill.basic.guard", CancellationToken.None);
+
+        result.Should().NotBeNull();
+        result!.EffectType.Should().Be("AddCurrentGuard");
+        result.BasePower.Should().Be(5);
+    }
+
+    [Fact]
     public async Task GetByKeyAsync_ShouldReturnNull_WhenNotExists()
     {
         var result = await _store.GetByKeyAsync(

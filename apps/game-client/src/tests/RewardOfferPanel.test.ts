@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { mount } from '@vue/test-utils';
-import RewardOfferPanel from '..features/reward-offer/RewardOfferPanel.vue';
-import type { RewardOfferDto } from '../types/rewardTypes';
+import RewardOfferPanel from '../features/rewards/components/RewardOfferPanel.vue';
+import type { RewardOfferDto } from '../features/rewards/types/rewardTypes';
 
 const baseOffer: RewardOfferDto = {
   id: 'offer-1',

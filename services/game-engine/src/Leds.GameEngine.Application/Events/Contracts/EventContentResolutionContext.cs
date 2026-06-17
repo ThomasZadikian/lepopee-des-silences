@@ -11,4 +11,5 @@ public sealed record EventContentResolutionContext(
     int EventOrder,
     NodeEventType EventType,
     int RiskLevel,
-    string RewardProfile);
+    string RewardProfile,
+    IReadOnlyCollection<string>? ActivePalaceLawKeys = null);

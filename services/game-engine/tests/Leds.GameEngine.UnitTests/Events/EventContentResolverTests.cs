@@ -88,7 +88,35 @@ public sealed class EventContentResolverTests
             .BeOfType<ResolvedPalaceLawEventContent>()
             .Subject;
 
-        content.PalaceLawDefinitionKey.Should().Be("law-silence-v1");
+        content.PalaceLawDefinitionKey.Should().NotBeNullOrWhiteSpace();
+        content.PalaceLawName.Should().NotBeNullOrWhiteSpace();
+    }
+
+    [Fact]
+    public async Task ResolveAsync_ShouldFilterAlreadyActivePalaceLaws()
+    {
+        var context = CreateContext(NodeEventType.Law) with
+        {
+            ActivePalaceLawKeys =
+            [
+                "law-silence-v1",
+                "law-siege-v1",
+                "law-carnage-v1",
+                "law-tempest-v1",
+                "law-hail-v1",
+                "law-drought-v1",
+                "law-grey-v1"
+            ]
+        };
+
+        var result = await _resolver.ResolveAsync(context);
+
+        result.IsSuccess.Should().BeTrue();
+        var content = result.Value.Should()
+            .BeOfType<ResolvedPalaceLawEventContent>()
+            .Subject;
+
+        content.PalaceLawDefinitionKey.Should().Be("law-aegis-v1");
     }
 
     [Fact]
@@ -103,7 +131,7 @@ public sealed class EventContentResolverTests
             .Subject;
 
         content.Kind.Should().Be(ResolvedEventContentKind.Curse);
-        content.PalaceLawDefinitionKey.Should().Be("law-silence-v1");
+        content.PalaceLawDefinitionKey.Should().NotBeNullOrWhiteSpace();
     }
 
     [Fact]

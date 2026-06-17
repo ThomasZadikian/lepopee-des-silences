@@ -132,6 +132,7 @@ export const useCombatStore = defineStore('combatRuntime', () => {
 
   async function submitItemAction(runId: string, onCombatApplied?: (combat: CombatRuntimeDto) => void) {
     if (isLoading.value) return;
+    if (!canSubmitItem.value) return;
     const item = selectedItem.value;
     const combatId = combat.value?.id;
     if (!item || !combatId) return;
@@ -545,6 +546,7 @@ export const useCombatStore = defineStore('combatRuntime', () => {
 
   async function submitAction(runId: string, onCombatApplied?: (combat: CombatRuntimeDto) => void) {
     if (isLoading.value) return;
+    if (!canSubmit.value) return;
     const actor = currentActor.value;
     const skill = selectedSkill.value;
     const combatId = combat.value?.id;

@@ -15,7 +15,7 @@ public sealed class CatalogSeedRunnerTests
 
         await runner.ApplyBaseSeedAsync(CancellationToken.None);
 
-        (await context.CatalogSeedVersions.AnyAsync(v => v.Version == "alpha-0.7.1")).Should().BeTrue();
+        (await context.CatalogSeedVersions.AnyAsync(v => v.Version == "alpha-0.8.1")).Should().BeTrue();
         (await context.EnemyStatBlocks.AnyAsync()).Should().BeTrue();
         (await context.EffectSets.Include(e => e.Effects).AnyAsync(e => e.Effects.Any())).Should().BeTrue();
         (await context.CurseDefinitions.AnyAsync(c => c.Key == "curse.threshold.souffle-lourd")).Should().BeTrue();

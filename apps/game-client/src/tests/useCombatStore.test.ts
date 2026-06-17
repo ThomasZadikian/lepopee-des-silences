@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 
-import { combatApi } from '../api/combatApi';
-import type { CombatRuntimeDto } from '../types/combatContracts';
-import { useCombatStore } from './useCombatStore';
+import { combatApi } from '../features/combat/api/combatApi';
+import type { CombatRuntimeDto } from '../features/combat/types/combatContracts';
+import { useCombatStore } from '../features/combat/stores/useCombatStore';
 
-vi.mock('../api/combatApi', () => ({
+vi.mock('../features/combat/api/combatApi', () => ({
   combatApi: {
     getCurrentCombat: vi.fn(),
     useSkillAction: vi.fn(),
@@ -70,6 +70,7 @@ function createCombat(status: CombatRuntimeDto['status'] = 'Active'): CombatRunt
 describe('useCombatStore visual feedback state', () => {
   beforeEach(() => {
     vi.useFakeTimers();
+    vi.clearAllMocks();
     setActivePinia(createPinia());
   });
 
@@ -183,6 +184,21 @@ describe('useCombatStore visual feedback state', () => {
 
     expect(store.combat).toBeNull();
     expect(store.error).toBeNull();
+  });
+
+  it('does not submit a skill when the active combatant is not a player', async () => {
+    const combat = createCombat();
+    combat.activeCombatantId = 'enemy-1';
+    combat.enemies[0].skills = [combat.allies[0].skills[0]];
+
+    const store = useCombatStore();
+    store.initCombat(combat);
+    store.selectSkill('skill.basic.strike');
+    store.selectedTargetIds = ['ally-1'];
+
+    await store.submitAction('run-1');
+
+    expect(combatApi.useSkillAction).not.toHaveBeenCalled();
   });
 
   it('applies damage log once during playback', async () => {

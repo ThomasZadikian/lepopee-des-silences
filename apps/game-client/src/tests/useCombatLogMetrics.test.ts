@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import type { CombatLogEntryDto, CombatRuntimeDto } from '../types/combatContracts';
-import { buildMetricsFromLogs } from './useCombatLogMetrics';
+import type { CombatLogEntryDto, CombatRuntimeDto } from '../features/combat/types/combatContracts';
+import { buildMetricsFromLogs } from '../features/combat/composables/useCombatLogMetrics';
 
 const baseCombat: CombatRuntimeDto = {
   id: 'combat-1',

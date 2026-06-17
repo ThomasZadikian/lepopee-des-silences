@@ -25,8 +25,8 @@ public sealed class ChooseCurrentEventOptionCommandHandlerTests
 
         var dispatcher = new Mock<ICurrentEventChoiceResolverDispatcher>();
         dispatcher
-            .Setup(service => service.Resolve(It.IsAny<CurrentEventChoiceResolutionContext>()))
-            .Returns(CurrentEventChoiceResolutionResult.Create(
+            .Setup(service => service.ResolveAsync(It.IsAny<CurrentEventChoiceResolutionContext>(), CancellationToken.None))
+            .ReturnsAsync(CurrentEventChoiceResolutionResult.Create(
                 "listen",
                 accepted: true,
                 "Choice resolved.",
@@ -52,11 +52,12 @@ public sealed class ChooseCurrentEventOptionCommandHandlerTests
         runWithNode.TargetNode.HasChosenEventOption.Should().BeTrue();
 
         dispatcher.Verify(
-            service => service.Resolve(
+            service => service.ResolveAsync(
                 It.Is<CurrentEventChoiceResolutionContext>(context =>
                     context.Run == runWithNode.Run &&
                     context.Node.Id == runWithNode.TargetNode.Id &&
-                    context.ChoiceId == "listen")),
+                    context.ChoiceId == "listen"),
+                CancellationToken.None),
             Times.Once);
 
         repository.Verify(
@@ -87,7 +88,7 @@ public sealed class ChooseCurrentEventOptionCommandHandlerTests
         await act.Should().ThrowAsync<NotFoundException>();
 
         dispatcher.Verify(
-            service => service.Resolve(It.IsAny<CurrentEventChoiceResolutionContext>()),
+            service => service.ResolveAsync(It.IsAny<CurrentEventChoiceResolutionContext>(), It.IsAny<CancellationToken>()),
             Times.Never);
 
         repository.Verify(
@@ -120,7 +121,7 @@ public sealed class ChooseCurrentEventOptionCommandHandlerTests
             .WithMessage("Current event must be resolved before choosing an event option.");
 
         dispatcher.Verify(
-            service => service.Resolve(It.IsAny<CurrentEventChoiceResolutionContext>()),
+            service => service.ResolveAsync(It.IsAny<CurrentEventChoiceResolutionContext>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
@@ -139,8 +140,8 @@ public sealed class ChooseCurrentEventOptionCommandHandlerTests
 
         var dispatcher = new Mock<ICurrentEventChoiceResolverDispatcher>();
         dispatcher
-            .Setup(service => service.Resolve(It.IsAny<CurrentEventChoiceResolutionContext>()))
-            .Returns(CurrentEventChoiceResolutionResult.Create(
+            .Setup(service => service.ResolveAsync(It.IsAny<CurrentEventChoiceResolutionContext>(), CancellationToken.None))
+            .ReturnsAsync(CurrentEventChoiceResolutionResult.Create(
                 "leave",
                 accepted: true,
                 "Choice resolved."));

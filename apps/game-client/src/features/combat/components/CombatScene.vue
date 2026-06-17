@@ -131,11 +131,15 @@ function handleSelect(combatantId: string) {
 }
 
 async function handleSubmit() {
-  await combatStore.submitAction(props.runId);
+  await combatStore.submitAction(props.runId, (combat) => {
+    runStore.combatRuntime = combat;
+  });
 }
 
 async function handleSubmitItem() {
-  await combatStore.submitItemAction(props.runId);
+  await combatStore.submitItemAction(props.runId, (combat) => {
+    runStore.combatRuntime = combat;
+  });
 }
 function handleClearSelection() { combatStore.clearSelection(); combatStore.clearItemSelection(); }
 function handleSelectItem(itemId: string) { combatStore.selectItem(itemId); }
@@ -334,13 +338,14 @@ watch(() => props.combatId, (newId) => {
             <span class="enemy-figure__name">{{ combatant.displayName }}</span>
             <span class="enemy-figure__archetype">{{ combatant.archetype }}</span>
             <span class="enemy-figure__tags">
-              <span v-if="combatant.guard > 0">Mur</span>
+              <span v-if="combatant.guard > 0">Garde</span>
             </span>
             <span class="enemy-figure__hp">
               <span class="enemy-figure__hp-chip" />
               <span class="enemy-figure__hp-bar">
                 <span :style="{ width: hpRatio(combatant.currentVitality, combatant.maxVitality) * 100 + '%' }" />
               </span>
+              <span v-if="combatant.guard > 0" class="enemy-figure__guard-value">◇ {{ combatant.guard }}</span>
               <span class="enemy-figure__hp-value">{{ combatant.currentVitality }} / {{ combatant.maxVitality }}</span>
             </span>
           </button>
@@ -723,10 +728,17 @@ watch(() => props.combatId, (newId) => {
 
 .enemy-figure__hp {
   display: grid;
-  grid-template-columns: 2.2rem minmax(3.2rem, 1fr) auto;
+  grid-template-columns: 2.2rem minmax(3.2rem, 1fr) auto auto;
   gap: 7px;
   align-items: center;
   margin-top: 4px;
+}
+
+.enemy-figure__guard-value {
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  color: var(--frost-dim);
+  white-space: nowrap;
 }
 
 .enemy-figure__hp-chip,

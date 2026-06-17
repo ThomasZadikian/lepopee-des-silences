@@ -5,6 +5,8 @@ public sealed record ResolvedCurseEventContent(
     string EventTemplateVersion,
     IReadOnlyCollection<string> Tags,
     string PalaceLawDefinitionKey,
+    string PalaceLawName,
+    string PalaceLawDescription,
     string PalaceLawDefinitionVersion)
     : ResolvedNodeEventContent(
         ResolvedEventContentKind.Curse,

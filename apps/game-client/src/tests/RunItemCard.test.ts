@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { mount } from '@vue/test-utils';
-import RunItemCard from './RunItemCard.vue';
-import type { RunItemDto } from '../../runs/types/runTypes';
+import RunItemCard from '../features/rewards/components/RunItemCard.vue';
+import type { RunItemDto } from '../features/runs/types/runTypes';
 
 const baseItem: RunItemDto = {
   id: 'item-1',

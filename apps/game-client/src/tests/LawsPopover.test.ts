@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { mount } from '@vue/test-utils';
-import LawsPopover from './LawsPopover.vue';
+import LawsPopover from '../features/palace-laws/LawsPopover.vue';
 import type { ActivePalaceLawDto, ActiveCurseDto, RunModifierDto } from '../features/runs/types/runTypes.ts';
 
 const baseLaw: ActivePalaceLawDto = {
@@ -144,7 +144,7 @@ describe('LawsPopover', () => {
   });
 
   it('displays the modifier type', () => {
-    expect(mountPanel(null, null, [baseMod]).text()).toContain('AttackBonus');
+    expect(mountPanel(null, null, [baseMod]).text()).toContain('Attack Bonus');
   });
 
   it('displays the modifier value with + prefix for positive values', () => {
