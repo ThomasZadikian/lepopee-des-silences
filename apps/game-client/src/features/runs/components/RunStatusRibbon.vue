@@ -81,6 +81,7 @@ const emit = defineEmits<{
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: nowrap;
   gap: var(--space-4);
   padding: var(--space-2) var(--space-4);
   background: oklch(0.20 0.04 272 / 0.7);
@@ -93,11 +94,13 @@ const emit = defineEmits<{
   display: flex;
   gap: var(--space-2);
   align-items: center;
+  flex-shrink: 0;
 }
 
 .status-ribbon__actions {
   display: flex;
   gap: var(--space-2);
   align-items: center;
+  flex-shrink: 0;
 }
 </style>

@@ -23,10 +23,42 @@ function vitalityColor(pct: number): string {
   return 'var(--frost)';
 }
 
+const modifierTypeLabels: Record<string, string> = {
+  AddStartingGuard:         'Garde initiale',
+  ModifyDifficultyMultiplier: 'Difficulté ×',
+  ModifyRewardPowerMultiplier: 'Puissance récompense ×',
+  ModifyAttackPower:        'Attaque',
+  ModifyDefense:            'Défense',
+  ModifySpeed:              'Vitesse',
+  ModifyInitiative:         'Initiative',
+  ModifyRecovery:           'Récupération',
+};
+
 function modifierLabel(mod: RunModifierDto): string {
-  const label = mod.type.replace(/([A-Z])/g, ' $1').trim();
+  const label = modifierTypeLabels[mod.type]
+    ?? mod.type.replace(/([A-Z])/g, ' $1').trim();
   const sign = mod.value >= 0 ? '+' : '';
-  return `${label} ${sign}${mod.value}`
+  return `${label} ${sign}${mod.value}`;
+}
+
+function durationLabel(d: string): string {
+  const map: Record<string, string> = {
+    UntilRunEnds: 'run entière',
+    Permanent:    'permanent',
+    UntilRoomEnd: 'fin de salle',
+    UntilCombatEnd: 'fin de combat',
+  };
+  return map[d] ?? d;
+}
+
+function sourceLabel(s: string): string {
+  const map: Record<string, string> = {
+    PalaceLaw: 'Loi du Palais',
+    Curse:     'Malédiction',
+    Item:      'Objet',
+    Event:     'Événement',
+  };
+  return map[s] ?? s;
 }
 
 function rarityTone(rarity: string): string {
@@ -138,7 +170,7 @@ function rarityTone(rarity: string): string {
           <li v-for="mod in modifiers" :key="mod.id" class="party-drawer__mod">
             <span class="party-drawer__mod-label">{{ modifierLabel(mod) }}</span>
             <span class="es-label" style="color: var(--ink-4);">
-              {{ mod.duration }} · {{ mod.sourceType }}
+              {{ durationLabel(mod.duration) }} · {{ sourceLabel(mod.sourceType) }}
             </span>
           </li>
         </ul>
