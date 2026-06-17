@@ -457,6 +457,7 @@ dist-ssr/
 # Frontend — garder .env de base mais ignorer les .env locaux sensibles
 .env
 frontend/.env
+*.patch
 
 #backend
 **/appsettings.json
