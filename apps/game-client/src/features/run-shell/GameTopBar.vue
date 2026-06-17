@@ -1,32 +1,34 @@
 <script setup lang="ts">
-
 import { computed } from 'vue';
+import { useRunStore } from '../runs/stores/runStore';
 
-const props = withDefaults(defineProps<{
-  seed?:      string
-  roomName?:  string
-  depth?:     number
-  maxDepth?:  number
-  activeLaws?: number
-  score?:     string
-  phase?:     string
-  status?:    string
-}>(), {
-  seed:       'SIL-7F3A-29D',
-  roomName:   'Galerie des Aveux',
-  depth:      4,
-  maxDepth:   10,
-  activeLaws: 3,
-  score:      '12 480',
-  phase:      'EXPLORATION',
-  status:     'ACTIVE',
-})
+const runStore = useRunStore();
+
+const run    = computed(() => runStore.currentRun);
+const room   = computed(() => run.value?.currentRoom);
+
+const seed       = computed(() => run.value?.seed ?? '—');
+const roomName   = computed(() => room.value?.theme || room.value?.roomType || '—');
+const depth      = computed(() => (room.value?.currentNodeDepth ?? 0) + 1);
+const maxDepth   = computed(() => (room.value?.maxNodeDepth ?? 0) + 1);
+const activeLaws = computed(() => run.value?.activePalaceLaws?.length ?? 0);
+const phase      = computed(() => {
+  const p = runStore.gameplayPhase;
+  const map: Record<string, string> = {
+    Map: 'EXPLORATION', Combat: 'COMBAT', Reward: 'RÉCOMPENSE',
+    EventOutcome: 'ÉVÉNEMENT', EventChoiceResult: 'RÉSOLUTION',
+    Interlude: 'INTERLUDE', RoomCleared: 'SALLE LIBÉRÉE',
+    Suspended: 'SUSPENDU', Completed: 'TERMINÉ', Loading: 'CHARGEMENT',
+  };
+  return map[p] ?? p.toUpperCase();
+});
+const status = computed(() => run.value?.status ?? '—');
 
 const depthLabel  = computed(() =>
-  `${String(props.depth).padStart(2, '0')} / ${String(props.maxDepth).padStart(2, '0')}`)
-const lawsLabel   = computed(() => String(props.activeLaws).padStart(2, '0'))
+  `${String(depth.value).padStart(2, '0')} / ${String(maxDepth.value).padStart(2, '0')}`)
+const lawsLabel   = computed(() => String(activeLaws.value).padStart(2, '0'))
 const statusColor = computed(() =>
-  props.status === 'ÉCHEC' ? 'var(--blood)' : 'var(--frost)')
+  status.value === 'Failed' ? 'var(--blood)' : 'var(--frost)')
 </script>
 
 <template>
@@ -65,12 +67,6 @@ const statusColor = computed(() =>
 
     <!-- spacer -->
     <div class="es-seg es-seg--grow" />
-
-    <!-- Score -->
-    <div class="es-seg" style="align-items: flex-end">
-      <span class="es-seg__k">Score projeté</span>
-      <span class="es-seg__v">{{ score }}</span>
-    </div>
 
     <!-- Phase -->
     <div class="es-seg" style="align-items: flex-end">

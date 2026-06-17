@@ -5,23 +5,25 @@ import { useRoute, useRouter } from 'vue-router';
 import GameShellLayout from '../app/layouts/GameShellLayout.vue';
 import CombatScene from '../features/combat/components/CombatScene.vue';
 import { useCombatStore } from '../features/combat/stores/useCombatStore';
-import DecisionDiptych from '../shared/components/DecisionDiptych.vue';
 import EliseOverlay from '../features/elise/EliseOverlay.vue';
 import EventChoiceResultPanel from '../features/events/components/EventChoiceResultPanel.vue';
-import EventOutcomePanel from '../features/events/components/EventOutcomePanel.vue'
-import MerchantPanel from '../features/events/components/MerchantPanel.vue'
-import LawResolutionPanel from '../features/palace-laws/LawResolutionPanel.vue';
+import EventOutcomePanel from '../features/events/components/EventOutcomePanel.vue';
+import MerchantPanel from '../features/events/components/MerchantPanel.vue';
+import type { CurrentEventChoiceResultDto } from '../features/events/types/eventTypes';
 import InterludePanel from '../features/interlude/InterludePanel.vue';
 import RoomClearedPanel from '../features/interlude/RoomClearedPanel.vue';
 import InventoryDrawer from '../features/inventory/components/InventoryDrawer.vue';
-import LawsPopover from '../features/palace-laws/LawsPopover.vue';
 import PalaceNodeDrawer from '../features/node-details/PalaceNodeDrawer.vue';
+import LawResolutionPanel from '../features/palace-laws/LawResolutionPanel.vue';
+import LawsPopover from '../features/palace-laws/LawsPopover.vue';
 import PalaceMapPlaceholder from '../features/palace-map/PalaceMapPlaceholder.vue';
 import RewardOfferPanel from '../features/rewards/components/RewardOfferPanel.vue';
+import PartyDrawer from '../features/runs/components/PartyDrawer.vue';
 import RunStatusRibbon from '../features/runs/components/RunStatusRibbon.vue';
 import { useRunStore } from '../features/runs/stores/runStore';
+import DecisionDiptych from '../shared/components/DecisionDiptych.vue';
+import RuntimeDebugPanel from '../shared/components/RuntimeDebugPanel.vue';
 import { useGameUiStore } from '../shared/stores/useGameUiStore';
-import type { CurrentEventChoiceResultDto } from '../features/events/types/eventTypes';
 
 const route = useRoute();
 const router = useRouter();
@@ -115,6 +117,7 @@ const isMapPhase = computed(() => runStore.gameplayPhase === 'Map');
 const isCombatPhase = computed(() => runStore.gameplayPhase === 'Combat');
 const showNodeDrawer = computed(() => isMapPhase.value && runStore.selectedNode);
 const showInventoryDrawer = computed(() => uiStore.activeDrawer === 'besace');
+const showPartyDrawer = computed(() => uiStore.activeDrawer === 'party' && !isCombatPhase.value);
 const showLaws = computed(() => uiStore.isLawsOpen);
 
 function getRouteRunId(): string | null {
@@ -166,6 +169,7 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
             @abandon="requestAbandon"
             @exit-mid-room="handleExitMidRoom"
             @open-besace="uiStore.toggleBesace"
+            @open-party="uiStore.toggleParty"
           />
 
           <!-- Elise overlay -->
@@ -202,6 +206,19 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
               v-if="showLaws"
               :laws="runStore.currentRun.activePalaceLaws"
               @close="uiStore.toggleLaws"
+            />
+          </Transition>
+
+          <!-- Party drawer (right, absolute positioned) -->
+          <Transition name="slide">
+            <PartyDrawer
+              v-if="showPartyDrawer"
+              :allies="runStore.combatRuntime?.allies ?? null"
+              :modifiers="runStore.currentRun.activeModifiers ?? null"
+              :laws="runStore.currentRun.activePalaceLaws ?? null"
+              :curses="runStore.currentRun.activeCurses ?? null"
+              :items="runStore.currentRun.inventoryItems ?? null"
+              @close="uiStore.closeDrawer"
             />
           </Transition>
         </div>
@@ -335,6 +352,22 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
         </section>
       </template>
 
+      <!-- ── Runtime debug (all non-combat phases) ── -->
+      <Teleport to="body">
+        <div v-if="!isCombatPhase" class="rdp-float">
+          <RuntimeDebugPanel
+            :data="{
+              run: runStore.currentRun,
+              phase: runStore.gameplayPhase,
+              combatRuntime: runStore.combatRuntime,
+              lastOutcome: runStore.lastOutcome,
+              pendingReward: runStore.pendingRewardOffer,
+            }"
+            label="Run state"
+          />
+        </div>
+      </Teleport>
+
       <!-- ── Abandon confirmation diptych ── -->
       <DecisionDiptych
         v-model="showConfirmAbandon"
@@ -393,5 +426,15 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
 
 .phase-center .es-btn {
   margin-top: var(--space-4);
+}
+
+.rdp-float {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 480px;
+  max-width: 100vw;
+  z-index: 9000;
+  pointer-events: auto;
 }
 </style>

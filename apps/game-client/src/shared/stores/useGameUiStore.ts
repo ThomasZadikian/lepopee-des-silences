@@ -5,9 +5,10 @@ export const useGameUiStore = defineStore('gameUi', () => {
   const isBesaceOpen = ref(false);
   const isJournalOpen = ref(false);
   const isLawsOpen = ref(false);
-  const activeDrawer = ref<'node' | 'besace' | 'journal' | null>(null);
+  const isPartyOpen = ref(false);
+  const activeDrawer = ref<'node' | 'besace' | 'journal' | 'party' | null>(null);
 
-  function openDrawer(name: 'node' | 'besace' | 'journal') {
+  function openDrawer(name: 'node' | 'besace' | 'journal' | 'party') {
     activeDrawer.value = name;
   }
 
@@ -31,15 +32,23 @@ export const useGameUiStore = defineStore('gameUi', () => {
     isLawsOpen.value = !isLawsOpen.value;
   }
 
+  function toggleParty() {
+    isLawsOpen.value = false;
+    if (activeDrawer.value === 'party') closeDrawer();
+    else openDrawer('party');
+  }
+
   return {
     isBesaceOpen,
     isJournalOpen,
     isLawsOpen,
+    isPartyOpen,
     activeDrawer,
     openDrawer,
     closeDrawer,
     toggleBesace,
     toggleJournal,
     toggleLaws,
+    toggleParty,
   };
 });

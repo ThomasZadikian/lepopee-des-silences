@@ -69,6 +69,8 @@ export type RunDto = {
   abandonedAt?: string | null;
   /** Active (unconsumed) RunModifiers on this run. Null/absent when none are active. */
   activeModifiers?: RunModifierDto[] | null;
+  /** Active curses on this run (alpha-0.7.8+). Null/absent when none are active. */
+  activeCurses?: ActiveCurseDto[] | null;
 };
 
 export type RunItemDto = {
@@ -91,6 +93,16 @@ export type RunModifierDto = {
   duration: string;
   sourceType: string;
   sourceKey: string;
+};
+
+export type ActiveCurseDto = {
+  id: string;
+  curseDefinitionKey: string;
+  displayName?: string | null;
+  description?: string | null;
+  severity?: string | null;
+  duration?: string | null;
+  consumedAtUtc?: string | null;
 };
 
 /**

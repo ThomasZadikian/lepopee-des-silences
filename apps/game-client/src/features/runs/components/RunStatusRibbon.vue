@@ -11,17 +11,36 @@ const emit = defineEmits<{
   abandon: [];
   exitMidRoom: [];
   openBesace: [];
+  openParty: [];
 }>();
 </script>
 
 <template>
   <div class="status-ribbon">
     <div class="status-ribbon__info">
-      <span class="es-chip es-chip--gold">Salle {{ run.currentRoomIndex + 1 }}</span>
+      <span class="es-chip es-chip--gold">Salle {{ run.currentRoomNumber }}</span>
       <span class="es-chip">{{ run.currentRoom?.roomType ?? '—' }}</span>
+      <span
+        v-if="run.activePalaceLaws?.length"
+        class="es-chip es-chip--frost"
+        :title="`${run.activePalaceLaws.length} loi(s) active(s)`"
+      >
+        {{ run.activePalaceLaws.length }} loi{{ run.activePalaceLaws.length > 1 ? 's' : '' }}
+      </span>
+      <span
+        v-if="run.activeModifiers?.length"
+        class="es-chip"
+        :title="`${run.activeModifiers.length} modificateur(s) actif(s)`"
+      >
+        {{ run.activeModifiers.length }} mod.
+      </span>
     </div>
 
     <div class="status-ribbon__actions">
+      <button class="es-btn es-btn--ghost" @click="emit('openParty')">
+        Équipe
+      </button>
+
       <button class="es-btn es-btn--ghost" @click="emit('openBesace')">
         La Besace
       </button>
