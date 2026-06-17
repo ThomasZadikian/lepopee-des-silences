@@ -37,13 +37,14 @@ const emit = defineEmits<{
       >
         {{ run.activeCurses.length }} malédiction{{ run.activeCurses.length > 1 ? 's' : '' }}
       </button>
-      <span
+      <button
         v-if="run.activeModifiers?.length"
-        class="es-chip"
-        :title="`${run.activeModifiers.length} modificateur(s) actif(s) — visible dans l'écran Équipe`"
+        class="es-chip sr-chip-btn"
+        :title="`${run.activeModifiers.length} modificateur(s) actif(s) — cliquer pour voir`"
+        @click="emit('openInfluences')"
       >
         {{ run.activeModifiers.length }} mod.
-      </span>
+      </button>
     </div>
 
     <div class="status-ribbon__actions">

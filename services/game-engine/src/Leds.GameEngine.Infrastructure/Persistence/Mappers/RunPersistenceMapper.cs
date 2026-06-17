@@ -131,6 +131,12 @@ public static class RunPersistenceMapper
             entity.SnapshotMemoryFragments = JsonSerializer.Serialize(snapshot.MemoryFragments);
             entity.SnapshotActivePalaceLaws = JsonSerializer.Serialize(
                 snapshot.ActivePalaceLaws.Select(l => new { l.LawId.Value, l.Key, l.Name, l.Version, Domains = l.Domains.Select(d => d.ToString()) }));
+            entity.SnapshotRunItemIds = snapshot.RunItemIds is not null
+                ? JsonSerializer.Serialize(snapshot.RunItemIds)
+                : null;
+            entity.SnapshotRunModifierIds = snapshot.RunModifierIds is not null
+                ? JsonSerializer.Serialize(snapshot.RunModifierIds)
+                : null;
         }
 
         return entity;
@@ -279,13 +285,23 @@ public static class RunPersistenceMapper
                 ? []
                 : DeserializeSnapshotLaws(entity.SnapshotActivePalaceLaws);
 
+            var snapshotRunItemIds = string.IsNullOrEmpty(entity.SnapshotRunItemIds)
+                ? null
+                : JsonSerializer.Deserialize<Guid[]>(entity.SnapshotRunItemIds);
+
+            var snapshotRunModifierIds = string.IsNullOrEmpty(entity.SnapshotRunModifierIds)
+                ? null
+                : JsonSerializer.Deserialize<Guid[]>(entity.SnapshotRunModifierIds);
+
             snapshot = new Run.RunSnapshotData(
                 entity.SnapshotCurrentHp.Value,
                 entity.SnapshotAttack ?? 0,
                 entity.SnapshotDefense ?? 0,
                 entity.SnapshotSpeed ?? 0,
                 snapshotMemoryFragments,
-                snapshotLaws);
+                snapshotLaws,
+                snapshotRunItemIds,
+                snapshotRunModifierIds);
         }
 
         var activeCombat = entity.ActiveCombat is not null

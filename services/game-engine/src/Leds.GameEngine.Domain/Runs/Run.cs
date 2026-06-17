@@ -26,7 +26,9 @@ public sealed class Run
         int Defense,
         int Speed,
         string[] MemoryFragments,
-        ActivePalaceLaw[] ActivePalaceLaws);
+        ActivePalaceLaw[] ActivePalaceLaws,
+        Guid[] RunItemIds,
+        Guid[] RunModifierIds);
 
     public IReadOnlyCollection<ActivePalaceLaw> ActivePalaceLaws =>
     _activePalaceLaws.AsReadOnly();
@@ -946,7 +948,9 @@ public sealed class Run
         Defense,
         Speed,
         [.. _memoryFragments],
-        [.. _activePalaceLaws]);
+        [.. _activePalaceLaws],
+        [.. _runItems.Select(i => i.Id.Value)],
+        [.. _runModifiers.Select(m => m.Id.Value)]);
 
     public CombatantSnapshot CreatePlayerSnapshot()
     {
@@ -1044,6 +1048,12 @@ public sealed class Run
 
         _activePalaceLaws.Clear();
         _activePalaceLaws.AddRange(snapshot.ActivePalaceLaws);
+
+        var snapshotItemIds = snapshot.RunItemIds.ToHashSet();
+        _runItems.RemoveAll(item => !snapshotItemIds.Contains(item.Id.Value));
+
+        var snapshotModifierIds = snapshot.RunModifierIds.ToHashSet();
+        _runModifiers.RemoveAll(mod => !snapshotModifierIds.Contains(mod.Id.Value));
 
         CurrentRoom.ResetProgress();
 
@@ -1180,7 +1190,9 @@ public sealed class Run
             _roomSnapshot.Defense,
             _roomSnapshot.Speed,
             _roomSnapshot.MemoryFragments,
-            _roomSnapshot.ActivePalaceLaws);
+            _roomSnapshot.ActivePalaceLaws,
+            _roomSnapshot.RunItemIds,
+            _roomSnapshot.RunModifierIds);
 
     public RunStatus? PreSuspendStatus => _preSuspendStatus;
 
@@ -1240,7 +1252,9 @@ public sealed class Run
                 snapshot.Defense,
                 snapshot.Speed,
                 snapshot.MemoryFragments,
-                snapshot.ActivePalaceLaws);
+                snapshot.ActivePalaceLaws,
+                snapshot.RunItemIds ?? [],
+                snapshot.RunModifierIds ?? []);
         }
 
         run._activeCombat = activeCombat;
@@ -1271,5 +1285,7 @@ public sealed class Run
         int Defense,
         int Speed,
         string[] MemoryFragments,
-        ActivePalaceLaw[] ActivePalaceLaws);
+        ActivePalaceLaw[] ActivePalaceLaws,
+        Guid[]? RunItemIds = null,
+        Guid[]? RunModifierIds = null);
 }

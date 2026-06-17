@@ -458,6 +458,8 @@ dist-ssr/
 .env
 frontend/.env
 *.patch
+*.gz
+*.zip
 
 #backend
 **/appsettings.json

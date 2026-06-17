@@ -243,27 +243,6 @@ function proceed() {
               </div>
             </div>
           </div>
-
-          <!-- Choices / réécriture section -->
-          <div v-if="choices.length > 0" class="vlo-rewrite">
-            <div class="es-row" style="align-items: center; gap: 10px; margin-bottom: 14px">
-              <RuleOrnament style="flex: 1" />
-              <span class="es-kicker" style="color: var(--ink-4)">Réécriture</span>
-              <RuleOrnament style="flex: 1" />
-            </div>
-            <div
-              v-for="choice in choices"
-              :key="choice.id"
-              class="vlo-choice"
-            >
-              <div class="es-row" style="gap: 10px; align-items: center; margin-bottom: 4px">
-                <span class="es-chip es-chip--blood" style="font-size: 9px">Effacé</span>
-                <span class="es-chip es-chip--gold" style="font-size: 9px">Gravé</span>
-              </div>
-              <div class="es-h3" style="font-size: 16px; margin-bottom: 4px; color: var(--ink-2)">{{ choice.label }}</div>
-              <p class="es-body" style="font-size: 12.5px; color: var(--ink-4); margin: 0">{{ choice.description }}</p>
-            </div>
-          </div>
         </div>
 
         <!-- Footer -->

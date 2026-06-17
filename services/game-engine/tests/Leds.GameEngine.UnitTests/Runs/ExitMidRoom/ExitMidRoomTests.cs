@@ -142,6 +142,41 @@ public sealed class ExitMidRoomTests
     }
 
     [Fact]
+    public void ExitMidRoom_ShouldRollbackRunItems()
+    {
+        // Run creation snapshot has 0 items.
+        var run = CreateRunWithSomeProgression();
+
+        var item = RunItem.Create(
+            "item.consumable.minor-heal", "Baume", "",
+            RunItemType.Consumable, RunItemRarity.Common, 1,
+            RunItemEffectType.Heal, 15);
+        run.AddRunItem(item);
+        run.RunItems.Should().ContainSingle();
+
+        run.ExitMidRoom(DateTimeOffset.UtcNow);
+
+        run.RunItems.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ExitMidRoom_ShouldRollbackRunModifiers()
+    {
+        // Run creation snapshot has 0 modifiers.
+        var run = CreateRunWithSomeProgression();
+
+        var mod = RunModifier.Create(
+            RunModifierType.AttackPowerBonus, 3,
+            RunModifierDuration.UntilRunEnds, "PalaceLaw", "law-test");
+        run.AddRunModifier(mod);
+        run.RunModifiers.Should().ContainSingle();
+
+        run.ExitMidRoom(DateTimeOffset.UtcNow);
+
+        run.RunModifiers.Should().BeEmpty();
+    }
+
+    [Fact]
     public void ExitMidRoom_ShouldBeResumableFromActive()
     {
         var run = CreateRunWithSomeProgression();

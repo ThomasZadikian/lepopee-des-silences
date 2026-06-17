@@ -213,7 +213,7 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
               v-if="showLaws"
               :laws="runStore.currentRun.activePalaceLaws"
               :curses="runStore.currentRun.activeCurses"
-              :modifiers="runStore.currentRun.activeModifiers"
+              :modifiers="runStore.currentRun.activeModifiers ?? null"
               @close="uiStore.toggleLaws"
             />
           </Transition>
@@ -300,7 +300,6 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
           :is-loading="runStore.isLoading"
           :active-laws="runStore.currentRun.activePalaceLaws"
           :active-curses="runStore.currentRun.activeCurses"
-          :active-modifiers="runStore.currentRun.activeModifiers"
           @continue="handleEventContinue"
           @select-choice="handleSelectChoice"
         />

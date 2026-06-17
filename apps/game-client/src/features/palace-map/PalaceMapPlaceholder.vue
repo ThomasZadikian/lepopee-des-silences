@@ -1,15 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { useGameUiStore } from '../../shared/stores/useGameUiStore';
-
 
 import type { NodeDto } from '../runs/types/runTypes';
-
-const uiStore = useGameUiStore();
-
-function clearAllUi() {
-  uiStore.closeAll();
-}
 
 const props = defineProps<{
   nodes: NodeDto[];
@@ -383,7 +375,7 @@ function getRiskLabel(node: NodeDto): string {
         }"
         :title="`${node.type} — ${getRiskLabel(node)} (${node.riskLevel}) — ${node.rewardProfile}`"
         :disabled="node.state !== 'Available'"
-        @click="chooseNode(node); clearAllUi()"
+        @click="chooseNode(node)"
       >
         <span>{{ getNodeGlyph(node) }}</span>
         <small>{{ node.type }}</small>

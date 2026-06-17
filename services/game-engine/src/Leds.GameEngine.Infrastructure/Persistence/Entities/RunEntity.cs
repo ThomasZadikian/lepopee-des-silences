@@ -27,6 +27,8 @@ public sealed class RunEntity
     public int? SnapshotSpeed { get; set; }
     public string? SnapshotMemoryFragments { get; set; }
     public string? SnapshotActivePalaceLaws { get; set; }
+    public string? SnapshotRunItemIds { get; set; }
+    public string? SnapshotRunModifierIds { get; set; }
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
 

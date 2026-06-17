@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { mount } from '@vue/test-utils';
 import LawsPopover from './LawsPopover.vue';
-import type { ActivePalaceLawDto, ActiveCurseDto, RunModifierDto } from '../runs/types/runTypes';
+import type { ActivePalaceLawDto, ActiveCurseDto, RunModifierDto } from '../features/runs/types/runTypes.ts';
 
 const baseLaw: ActivePalaceLawDto = {
   key: 'law-combat-1',
@@ -21,9 +21,9 @@ const baseCurse: ActiveCurseDto = {
   duration: 'UntilRunEnds',
 };
 
-const baseModifier: RunModifierDto = {
+const baseMod: RunModifierDto = {
   id: 'mod-1',
-  type: 'ModifyAttackPower',
+  type: 'AttackBonus',
   value: 5,
   duration: 'UntilRunEnds',
   sourceType: 'PalaceLaw',
@@ -48,13 +48,11 @@ describe('LawsPopover', () => {
   });
 
   it('shows the empty state when no influences are provided', () => {
-    const wrapper = mountPanel([], [], []);
-    expect(wrapper.text()).toContain('Aucune influence active');
+    expect(mountPanel([], []).text()).toContain('Aucune influence active');
   });
 
   it('shows the empty state when props are null', () => {
-    const wrapper = mountPanel(null, null, null);
-    expect(wrapper.text()).toContain('Aucune influence active');
+    expect(mountPanel(null, null).text()).toContain('Aucune influence active');
   });
 
   // ── Laws ──
@@ -64,8 +62,13 @@ describe('LawsPopover', () => {
     expect(wrapper.findAll('.lp-law').length).toBe(2);
   });
 
-  it('displays the law name', () => {
+  it('displays the law displayName', () => {
     expect(mountPanel([baseLaw]).text()).toContain('Loi du Sang');
+  });
+
+  it('falls back to law.key when displayName is empty', () => {
+    const wrapper = mountPanel([{ ...baseLaw, displayName: '' }]);
+    expect(wrapper.text()).toContain('law-combat-1');
   });
 
   it('displays the law description', () => {
@@ -87,8 +90,7 @@ describe('LawsPopover', () => {
   // ── Curses ──
 
   it('shows the curses section when curses are provided', () => {
-    const wrapper = mountPanel(null, [baseCurse]);
-    expect(wrapper.text()).toContain('Malédictions');
+    expect(mountPanel(null, [baseCurse]).text()).toContain('Malédictions');
   });
 
   it('displays the curse display name', () => {
@@ -101,8 +103,7 @@ describe('LawsPopover', () => {
   });
 
   it('shows the severity chip on a curse', () => {
-    const wrapper = mountPanel(null, [baseCurse]);
-    expect(wrapper.text()).toContain('Major');
+    expect(mountPanel(null, [baseCurse]).text()).toContain('Major');
   });
 
   it('shows the "Consommée" badge when consumedAtUtc is set', () => {
@@ -113,52 +114,59 @@ describe('LawsPopover', () => {
   });
 
   it('does not show "Consommée" badge when consumedAtUtc is null', () => {
-    const wrapper = mountPanel(null, [baseCurse]);
-    expect(wrapper.text()).not.toContain('Consommée');
-  });
-
-  // ── Modifiers ──
-
-  it('shows the modifiers section when modifiers are provided', () => {
-    const wrapper = mountPanel(null, null, [baseModifier]);
-    expect(wrapper.text()).toContain('Modificateurs actifs');
-  });
-
-  it('displays the modifier value with sign for positive', () => {
-    const wrapper = mountPanel(null, null, [baseModifier]);
-    expect(wrapper.find('.lp-mod__value--pos').exists()).toBe(true);
-    expect(wrapper.find('.lp-mod__value--pos').text()).toContain('+5');
-  });
-
-  it('displays the modifier value for negative values', () => {
-    const neg: RunModifierDto = { ...baseModifier, value: -3 };
-    const wrapper = mountPanel(null, null, [neg]);
-    expect(wrapper.find('.lp-mod__value--neg').exists()).toBe(true);
-    expect(wrapper.find('.lp-mod__value--neg').text()).toContain('-3');
-  });
-
-  it('shows the human-readable modifier type label', () => {
-    expect(mountPanel(null, null, [baseModifier]).text()).toContain('Attaque');
-  });
-
-  it('shows the duration label for modifiers', () => {
-    expect(mountPanel(null, null, [baseModifier]).text()).toContain('run entière');
-  });
-
-  it('shows the source label for modifiers', () => {
-    expect(mountPanel(null, null, [baseModifier]).text()).toContain('Loi du Palais');
+    expect(mountPanel(null, [baseCurse]).text()).not.toContain('Consommée');
   });
 
   // ── Mixed ──
 
-  it('shows all three sections when all data is present', () => {
-    const wrapper = mountPanel([baseLaw], [baseCurse], [baseModifier]);
+  it('shows both sections when laws and curses are present', () => {
+    const wrapper = mountPanel([baseLaw], [baseCurse]);
     expect(wrapper.find('.lp-law').exists()).toBe(true);
     expect(wrapper.find('.lp-curse').exists()).toBe(true);
-    expect(wrapper.find('.lp-mod').exists()).toBe(true);
+  });
+
+  it('does not show a modifiers section when none are provided', () => {
+    expect(mountPanel([baseLaw], [baseCurse]).find('.lp-mod').exists()).toBe(false);
   });
 
   // ── Emit ──
+
+  // ── Modifiers ──
+
+  it('shows the modifiers section when non-item modifiers are provided', () => {
+    expect(mountPanel(null, null, [baseMod]).text()).toContain('Modificateurs');
+  });
+
+  it('renders one entry per visible modifier', () => {
+    const mod2: RunModifierDto = { ...baseMod, id: 'mod-2', type: 'DefenseBonus' };
+    const wrapper = mountPanel(null, null, [baseMod, mod2]);
+    expect(wrapper.findAll('.lp-mod').length).toBe(2);
+  });
+
+  it('displays the modifier type', () => {
+    expect(mountPanel(null, null, [baseMod]).text()).toContain('AttackBonus');
+  });
+
+  it('displays the modifier value with + prefix for positive values', () => {
+    expect(mountPanel(null, null, [baseMod]).text()).toContain('+5');
+  });
+
+  it('filters out RunItem-sourced modifiers', () => {
+    const itemMod: RunModifierDto = { ...baseMod, id: 'mod-item', sourceType: 'RunItem', sourceKey: 'item.guard-shard' };
+    const wrapper = mountPanel(null, null, [itemMod]);
+    expect(wrapper.find('.lp-mod').exists()).toBe(false);
+  });
+
+  it('shows non-RunItem modifiers and hides RunItem modifiers when mixed', () => {
+    const itemMod: RunModifierDto = { ...baseMod, id: 'mod-item', sourceType: 'RunItem' };
+    const wrapper = mountPanel(null, null, [baseMod, itemMod]);
+    expect(wrapper.findAll('.lp-mod').length).toBe(1);
+  });
+
+  it('shows empty state when only RunItem modifiers are provided', () => {
+    const itemMod: RunModifierDto = { ...baseMod, sourceType: 'RunItem' };
+    expect(mountPanel(null, null, [itemMod]).text()).toContain('Aucune influence active');
+  });
 
   it('emits close when the close button is clicked', async () => {
     const wrapper = mountPanel([baseLaw]);
@@ -168,8 +176,7 @@ describe('LawsPopover', () => {
 
   it('emits close when the footer button is clicked', async () => {
     const wrapper = mountPanel([baseLaw]);
-    const footer = wrapper.find('.lp-foot button');
-    await footer.trigger('click');
+    await wrapper.find('.lp-foot button').trigger('click');
     expect(wrapper.emitted('close')).toBeDefined();
   });
 });

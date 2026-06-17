@@ -37,6 +37,8 @@ public sealed class RunEntityConfiguration : IEntityTypeConfiguration<RunEntity>
         builder.Property(run => run.SnapshotSpeed).HasColumnName("snapshot_speed");
         builder.Property(run => run.SnapshotMemoryFragments).HasColumnName("snapshot_memory_fragments");
         builder.Property(run => run.SnapshotActivePalaceLaws).HasColumnName("snapshot_active_palace_laws");
+        builder.Property(run => run.SnapshotRunItemIds).HasColumnName("snapshot_run_item_ids");
+        builder.Property(run => run.SnapshotRunModifierIds).HasColumnName("snapshot_run_modifier_ids");
         builder.Property(run => run.CreatedAtUtc).HasColumnName("created_at_utc");
         builder.Property(run => run.UpdatedAtUtc).HasColumnName("updated_at_utc");
 
