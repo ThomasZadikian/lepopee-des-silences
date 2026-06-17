@@ -34,8 +34,17 @@ function mountPanel(
   laws?: ActivePalaceLawDto[] | null,
   curses?: ActiveCurseDto[] | null,
   modifiers?: RunModifierDto[] | null,
+  roomClimate?: string | null,
 ) {
-  return mount(LawsPopover, { props: { laws, curses, modifiers } });
+  return mount(LawsPopover, {
+    props: {
+      laws,
+      curses,
+      modifiers,
+      roomClimate,
+      showRoomClimate: roomClimate !== undefined,
+    },
+  });
 }
 
 describe('LawsPopover', () => {
@@ -166,6 +175,19 @@ describe('LawsPopover', () => {
   it('shows empty state when only RunItem modifiers are provided', () => {
     const itemMod: RunModifierDto = { ...baseMod, sourceType: 'RunItem' };
     expect(mountPanel(null, null, [itemMod]).text()).toContain('Aucune influence active');
+  });
+
+  it('renders the Room climate panel when requested', () => {
+    const wrapper = mountPanel(null, null, null, 'Rain');
+
+    expect(wrapper.text()).toContain('Climat de Room');
+    expect(wrapper.text()).toContain('Pluie');
+  });
+
+  it('renders the Room climate empty state when requested without active climate', () => {
+    const wrapper = mountPanel(null, null, null, null);
+
+    expect(wrapper.text()).toContain('Aucun climat actif dans cette Room.');
   });
 
   it('emits close when the close button is clicked', async () => {

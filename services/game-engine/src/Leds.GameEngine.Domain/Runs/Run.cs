@@ -1073,6 +1073,11 @@ public sealed class Run
         if (_activePalaceLaws.Any(activeLaw => activeLaw.Key == law.Key))
             return;
 
+        if (law.Effects.Any(effect => effect.ModifierType == RunModifierType.RoomClimate))
+        {
+            ReplaceActiveRoomClimateLaws();
+        }
+
         _activePalaceLaws.Add(ActivePalaceLaw.From(law));
 
         // Apply each mechanical effect of the law as a RunModifier.
@@ -1090,6 +1095,34 @@ public sealed class Run
                 sourceKey: law.Key,
                 expiresAtRoomId: expiresAtRoomId));
         }
+    }
+
+    private void ReplaceActiveRoomClimateLaws()
+    {
+        var replacedLawKeys = _runModifiers
+            .Where(modifier =>
+                modifier.Type == RunModifierType.RoomClimate &&
+                modifier.SourceType == "PalaceLaw" &&
+                !modifier.IsConsumed)
+            .Select(modifier => modifier.SourceKey)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+
+        if (replacedLawKeys.Length == 0)
+            return;
+
+        var replacedLawKeySet = replacedLawKeys.ToHashSet(StringComparer.Ordinal);
+        var now = DateTime.UtcNow;
+
+        foreach (var modifier in _runModifiers.Where(modifier =>
+            modifier.SourceType == "PalaceLaw" &&
+            replacedLawKeySet.Contains(modifier.SourceKey) &&
+            !modifier.IsConsumed))
+        {
+            modifier.Consume(now);
+        }
+
+        _activePalaceLaws.RemoveAll(activeLaw => replacedLawKeySet.Contains(activeLaw.Key));
     }
 
     /// <summary>

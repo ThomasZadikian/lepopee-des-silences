@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { ActivePalaceLawDto, ActiveCurseDto, RunModifierDto } from '../runs/types/runTypes';
+import RoomClimatePanel from '../room-climate/RoomClimatePanel.vue';
+import type { ActivePalaceLawDto, ActiveCurseDto, RoomClimateStateDto, RunModifierDto } from '../runs/types/runTypes';
 
 const props = defineProps<{
   laws?: ActivePalaceLawDto[] | null;
   curses?: ActiveCurseDto[] | null;
   modifiers?: RunModifierDto[] | null;
+  roomClimate?: RoomClimateStateDto | null;
+  showRoomClimate?: boolean;
 }>()
 
 const visibleModifiers = computed(() =>
@@ -96,6 +99,8 @@ function modifierValueLabel(value: number): string {
     </header>
 
     <div class="lp-divider" />
+
+    <RoomClimatePanel v-if="showRoomClimate" class="lp-climate" :climate="roomClimate" />
 
     <!-- Content -->
     <div v-if="laws?.length || curses?.length || visibleModifiers.length" class="lp-body">

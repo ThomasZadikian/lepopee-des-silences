@@ -183,8 +183,9 @@ public sealed class NodeEventResolverTests
         dto.Title.Should().NotBeNullOrWhiteSpace();
         dto.Description.Should().NotBeNullOrWhiteSpace();
         dto.RequiresPlayerChoice.Should().BeTrue();
-        dto.Choices.Should().HaveCountGreaterThanOrEqualTo(2,
-            because: "Law must offer at least an accept and a reject option.");
+        dto.Choices.Should().ContainSingle(
+            because: "a Palace Law cannot be refused once offered.");
+        dto.Choices.Single().ChoiceId.Should().Be("accept-law");
         dto.Choices.Should().AllSatisfy(choice =>
         {
             choice.ChoiceId.Should().NotBeNullOrWhiteSpace();

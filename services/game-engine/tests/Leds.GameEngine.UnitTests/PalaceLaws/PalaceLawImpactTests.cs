@@ -1,4 +1,5 @@
 ﻿using FluentAssertions;
+using Leds.GameEngine.Application.Runs.Dtos;
 using Leds.GameEngine.Domain.PalaceLaws;
 using Leds.GameEngine.Domain.Runs;
 using Leds.GameEngine.UnitTests.Common.Factories;
@@ -117,5 +118,61 @@ public sealed class RunPalaceLawImpactTests
         run.ActivePalaceLaws.Should().HaveCount(2);
         run.GetActiveModifiers(RunModifierType.PermanentCombatDifficultyBonus)
             .Should().HaveCount(2); // les deux stackent
+    }
+
+    [Fact]
+    public void ActivatePalaceLaw_ShouldReplacePreviousRoomClimateLaw()
+    {
+        var run = TestGameEngineFactory.CreateRun();
+
+        var heatwaveLaw = PalaceLaw.Create(
+            "law-drought-v1",
+            "Loi de la Canicule",
+            "1.0.0",
+            domains: [PalaceLawDomain.Combat],
+            effects:
+            [
+                PalaceLawEffect.Create(
+                    RunModifierType.RoomClimate,
+                    value: 3,
+                    RunModifierDuration.UntilRoomEnds),
+                PalaceLawEffect.Create(
+                    RunModifierType.AttackPowerBonus,
+                    value: 0.20,
+                    RunModifierDuration.UntilRoomEnds),
+            ]);
+
+        var hailLaw = PalaceLaw.Create(
+            "law-hail-v1",
+            "Loi de la Grêle",
+            "1.0.0",
+            domains: [PalaceLawDomain.Combat],
+            effects:
+            [
+                PalaceLawEffect.Create(
+                    RunModifierType.RoomClimate,
+                    value: 4,
+                    RunModifierDuration.UntilRoomEnds),
+            ]);
+
+        run.ActivatePalaceLaw(heatwaveLaw);
+        run.ActivatePalaceLaw(hailLaw);
+
+        run.ActivePalaceLaws.Should().ContainSingle();
+        run.ActivePalaceLaws.Single().Key.Should().Be("law-hail-v1");
+
+        run.GetActiveModifiers(RunModifierType.RoomClimate).Should().ContainSingle();
+        run.GetActiveModifiers(RunModifierType.RoomClimate).Single().Value.Should().Be(4);
+        run.GetActiveModifiers(RunModifierType.AttackPowerBonus).Should().BeEmpty();
+
+        run.RunModifiers
+            .Where(modifier => modifier.SourceKey == "law-drought-v1")
+            .Should().OnlyContain(modifier => modifier.IsConsumed);
+
+        var dto = RunDto.FromDomain(run);
+        dto.ActivePalaceLaws.Should().ContainSingle(law => law.Key == "law-hail-v1");
+        dto.CurrentRoom.ActiveClimate.Should().Be("Hail");
+        dto.ActiveModifiers.Should().NotBeNull();
+        dto.ActiveModifiers!.Should().OnlyContain(modifier => modifier.SourceKey != "law-drought-v1");
     }
 }

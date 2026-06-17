@@ -27,6 +27,19 @@ export type BossPreviewDto = {
   dangerHint: string;
 };
 
+export type RoomClimateDto = {
+  key?: string | null;
+  type?: string | null;
+  displayName?: string | null;
+  description?: string | null;
+  source?: string | null;
+  expiresAt?: string | null;
+  expiresWhen?: string | null;
+  roomId?: string | null;
+};
+
+export type RoomClimateStateDto = string | RoomClimateDto;
+
 export type RoomDto = {
   id: string;
   depth: number;
@@ -41,6 +54,8 @@ export type RoomDto = {
   availableNodes: NodeDto[];
   layoutTemplateKey: string | null;
   layoutTemplateVersion: string | null;
+  activeClimate?: RoomClimateStateDto | null;
+  climate?: RoomClimateStateDto | null;
 };
 
 export type RunDto = {

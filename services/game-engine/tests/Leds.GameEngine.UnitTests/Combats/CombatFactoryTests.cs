@@ -180,6 +180,25 @@ public sealed class CombatFactoryTests
     }
 
     [Fact]
+    public void CreateFromDraft_ShouldApplyAttackPowerBonusToPlayerDamageSkills()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft();
+        var modifier = RunModifier.Create(
+            RunModifierType.AttackPowerBonus,
+            0.10,
+            RunModifierDuration.UntilRunEnds,
+            "PalaceLaw",
+            "law-carnage-v1");
+
+        var combat = factory.CreateFromDraft(draft, runModifiers: [modifier]);
+
+        var ally = combat.Allies.Single();
+        ally.Skills.Single(skill => skill.Key == "skill.basic.strike").BasePower.Should().Be(11);
+        ally.Skills.Single(skill => skill.Key == "skill.basic.guard").BasePower.Should().Be(5);
+    }
+
+    [Fact]
     public void CreateFromDraft_ShouldApplyRainClimateStartingGuardBonus()
     {
         var factory = new CombatFactory();

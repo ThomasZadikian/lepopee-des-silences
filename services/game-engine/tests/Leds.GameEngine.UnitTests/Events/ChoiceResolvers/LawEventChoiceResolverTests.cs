@@ -42,7 +42,7 @@ public sealed class LawEventChoiceResolverTests
     }
 
     [Fact]
-    public async Task ResolveAsync_ShouldNotActivatePalaceLaw_WhenChoiceIsRejectLaw()
+    public async Task ResolveAsync_ShouldThrowDomainException_WhenChoiceIsRejectLaw()
     {
         var runWithNode = TestGameEngineFactory.CreateRunWithResolvedCurrentEvent(NodeEventType.Law);
         var context = new CurrentEventChoiceResolutionContext(
@@ -53,12 +53,11 @@ public sealed class LawEventChoiceResolverTests
 
         var sut = new LawEventChoiceResolver(new InMemoryCatalogContentGateway());
 
-        var result = await sut.ResolveAsync(context);
+        var act = async () => await sut.ResolveAsync(context);
 
-        result.Accepted.Should().BeTrue();
-        result.ChoiceId.Should().Be("reject-law:law-aegis-v1");
-
-        context.Run.ActivePalaceLaws.Should().BeEmpty();
+        await act.Should()
+            .ThrowAsync<DomainException>()
+            .WithMessage("Choice 'reject-law:law-aegis-v1' is not valid for event type 'Law'.");
     }
 
     [Fact]
@@ -82,6 +81,35 @@ public sealed class LawEventChoiceResolverTests
 
         var dto = RunDto.FromDomain(context.Run);
         dto.CurrentRoom.ActiveClimate.Should().Be("Rain");
+    }
+
+    [Fact]
+    public async Task ResolveAsync_ShouldReplaceExistingRoomClimateLaw_WhenAcceptingAnotherClimateLaw()
+    {
+        var runWithNode = TestGameEngineFactory.CreateRunWithResolvedCurrentEvent(NodeEventType.Law);
+        var sut = new LawEventChoiceResolver(new InMemoryCatalogContentGateway());
+
+        await sut.ResolveAsync(new CurrentEventChoiceResolutionContext(
+            runWithNode.Run,
+            runWithNode.Run.CurrentRoom,
+            runWithNode.TargetNode,
+            "accept-law:law-drought-v1"));
+
+        await sut.ResolveAsync(new CurrentEventChoiceResolutionContext(
+            runWithNode.Run,
+            runWithNode.Run.CurrentRoom,
+            runWithNode.TargetNode,
+            "accept-law:law-hail-v1"));
+
+        runWithNode.Run.ActivePalaceLaws.Should().ContainSingle();
+        runWithNode.Run.ActivePalaceLaws.Single().Key.Should().Be("law-hail-v1");
+
+        runWithNode.Run.GetActiveModifiers(RunModifierType.RoomClimate).Should().ContainSingle();
+        runWithNode.Run.GetActiveModifiers(RunModifierType.RoomClimate).Single().Value.Should().Be(4);
+
+        var dto = RunDto.FromDomain(runWithNode.Run);
+        dto.ActivePalaceLaws.Should().ContainSingle(law => law.Key == "law-hail-v1");
+        dto.CurrentRoom.ActiveClimate.Should().Be("Hail");
     }
 
     [Fact]

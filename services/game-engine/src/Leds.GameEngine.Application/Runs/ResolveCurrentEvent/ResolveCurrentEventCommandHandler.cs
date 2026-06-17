@@ -135,9 +135,12 @@ public sealed class ResolveCurrentEventCommandHandler
             var draft = await GenerateEncounterDraft(
                 run, room, selectedNode, resolutionResult, cancellationToken);
 
-            // Apply NextCombatDifficultyMultiplier modifiers (e.g. from curses).
-            var difficultyModifiers = run.GetActiveModifiers(RunModifierType.NextCombatDifficultyMultiplier);
-            if (difficultyModifiers.Count > 0)
+            // Apply combat difficulty modifiers from curses and Palace Laws.
+            var difficultyModifiers = run.GetActiveModifiers(RunModifierType.NextCombatDifficultyMultiplier)
+                .Concat(run.GetActiveModifiers(RunModifierType.CombatDifficultyMultiplier))
+                .Concat(run.GetActiveModifiers(RunModifierType.PermanentCombatDifficultyBonus))
+                .ToArray();
+            if (difficultyModifiers.Length > 0)
             {
                 var additionalMultiplier = difficultyModifiers.Sum(m => m.Value);
                 draft = draft with
@@ -260,7 +263,10 @@ public sealed class ResolveCurrentEventCommandHandler
             EventType: selectedNode.EventType,
             RiskLevel: selectedNode.RiskLevel,
             RewardProfile: selectedNode.RewardProfile,
-            ActivePalaceLawKeys: run.ActivePalaceLaws.Select(law => law.Key).ToArray());
+            ActivePalaceLawKeys: run.ActivePalaceLaws
+                .Where(law => !law.IsConsumed)
+                .Select(law => law.Key)
+                .ToArray());
 
         var contentResult = await _eventContentResolver.ResolveAsync(
             contentContext, cancellationToken);
@@ -285,7 +291,6 @@ public sealed class ResolveCurrentEventCommandHandler
             Choices = result.Choices.Select(choice => choice.ChoiceId switch
             {
                 "accept-law" => choice with { ChoiceId = $"accept-law:{content.PalaceLawDefinitionKey}" },
-                "reject-law" => choice with { ChoiceId = $"reject-law:{content.PalaceLawDefinitionKey}" },
                 _ => choice
             }).ToArray()
         };

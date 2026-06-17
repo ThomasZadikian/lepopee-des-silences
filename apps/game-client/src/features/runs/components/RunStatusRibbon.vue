@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import RoomClimateBadge from '../../room-climate/RoomClimateBadge.vue';
 import type { RunDto } from '../../runs/types/runTypes';
 
 defineProps<{
@@ -21,6 +22,10 @@ const emit = defineEmits<{
     <div class="status-ribbon__info">
       <span class="es-chip es-chip--gold">Salle {{ run.currentRoomNumber }}</span>
       <span class="es-chip">{{ run.currentRoom?.roomType ?? '—' }}</span>
+      <RoomClimateBadge
+        :climate="run.currentRoom?.activeClimate ?? run.currentRoom?.climate ?? null"
+        @open="emit('openInfluences')"
+      />
       <button
         v-if="run.activePalaceLaws?.length"
         class="es-chip es-chip--frost sr-chip-btn"

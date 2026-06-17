@@ -19,12 +19,8 @@ public sealed class LawNodeEventResolver : INodeEventResolver
             {
                 new NodeEventChoiceDto(
                     "accept-law",
-                    "Accepter la Loi",
-                    "Altère durablement plusieurs systèmes de la run."),
-                new NodeEventChoiceDto(
-                    "reject-law",
-                    "Refuser la Loi",
-                    "Conserve la stabilité actuelle.")
+                    "Inscrire la Loi",
+                    "La Loi entre en vigueur et altère durablement plusieurs systèmes de la run.")
             },
             narrativeFragments: new[]
             {

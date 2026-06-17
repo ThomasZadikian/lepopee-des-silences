@@ -18,6 +18,7 @@ import LawsPopover from '../features/palace-laws/LawsPopover.vue';
 import PalaceNodeDrawer from '../features/node-details/PalaceNodeDrawer.vue';
 import PalaceMapPlaceholder from '../features/palace-map/PalaceMapPlaceholder.vue';
 import RewardOfferPanel from '../features/rewards/components/RewardOfferPanel.vue';
+import RoomClimateEffects from '../features/room-climate/RoomClimateEffects.vue';
 import RunStatusRibbon from '../features/runs/components/RunStatusRibbon.vue';
 import PartyDrawer from '../features/runs/components/PartyDrawer.vue';
 import RuntimeDebugPanel from '../shared/components/RuntimeDebugPanel.vue';
@@ -124,6 +125,11 @@ const showNodeDrawer = computed(() => isMapPhase.value && runStore.selectedNode)
 const showInventoryDrawer = computed(() => uiStore.activeDrawer === 'besace');
 const showPartyDrawer = computed(() => uiStore.activeDrawer === 'party' && !isCombatPhase.value);
 const showLaws = computed(() => uiStore.isLawsOpen);
+const activeRoomClimate = computed(() =>
+  runStore.currentRun?.currentRoom?.activeClimate
+  ?? runStore.currentRun?.currentRoom?.climate
+  ?? null,
+);
 
 function getRouteRunId(): string | null {
   const rawRunId = route.params.runId;
@@ -150,6 +156,8 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
 <template>
   <GameShellLayout :hide-top-bar="isCombatPhase">
     <template v-if="runStore.currentRun && runStore.currentRun.currentRoom">
+      <RoomClimateEffects :climate="activeRoomClimate" />
+
       <!-- ── Map phase: map dominates ── -->
       <template v-if="isMapPhase">
         <div class="phase-map">
@@ -209,13 +217,15 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
 
           <!-- Laws / influences popover (right, absolute positioned) -->
           <Transition name="slide">
-            <LawsPopover
-              v-if="showLaws"
-              :laws="runStore.currentRun.activePalaceLaws"
-              :curses="runStore.currentRun.activeCurses"
-              :modifiers="runStore.currentRun.activeModifiers ?? null"
-              @close="uiStore.toggleLaws"
-            />
+              <LawsPopover
+                v-if="showLaws"
+                :laws="runStore.currentRun.activePalaceLaws"
+                :curses="runStore.currentRun.activeCurses"
+                :modifiers="runStore.currentRun.activeModifiers ?? null"
+                :room-climate="runStore.currentRun.currentRoom.activeClimate ?? runStore.currentRun.currentRoom.climate ?? null"
+                show-room-climate
+                @close="uiStore.toggleLaws"
+              />
           </Transition>
 
           <!-- Party drawer (right, absolute positioned) -->

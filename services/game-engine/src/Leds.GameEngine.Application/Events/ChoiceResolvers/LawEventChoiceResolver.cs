@@ -30,7 +30,6 @@ public sealed class LawEventChoiceResolver : ICurrentEventChoiceResolver
         return action switch
         {
             "accept-law" => await AcceptLaw(context, lawKey, cancellationToken),
-            "reject-law" => RejectLaw(context),
             _ => throw new DomainException(
                 $"Choice '{context.ChoiceId}' is not valid for event type '{EventType}'.")
         };
@@ -64,21 +63,6 @@ public sealed class LawEventChoiceResolver : ICurrentEventChoiceResolver
                 new NarrativeFragmentDto(
                     "Elise",
                     "Une Loi acceptée devient une cicatrice avec des règles.")
-            });
-    }
-
-    private static CurrentEventChoiceResolutionResult RejectLaw(
-        CurrentEventChoiceResolutionContext context)
-    {
-        return CurrentEventChoiceResolutionResult.Create(
-            context.ChoiceId,
-            accepted: true,
-            "La Loi est rejetée. Le Palais reste stable pour l'instant.",
-            new[]
-            {
-                new NarrativeFragmentDto(
-                    "Elise",
-                    "Refuser une Loi ne l'efface pas. Cela l'éloigne seulement.")
             });
     }
 

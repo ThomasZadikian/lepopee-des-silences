@@ -44,7 +44,11 @@ public sealed class CombatFactory : ICombatFactory
         var guardBonus = runModifiers?
             .Where(m => m.Type == RunModifierType.StartingGuardBonus && !m.IsConsumed)
             .Sum(m => (int)m.Value) ?? 0;
-        var activeClimate = ResolveActiveClimate(draft.RoomId, runModifiers ?? []);
+        var activeModifiers = runModifiers ?? [];
+        var attackPowerMultiplier = 1.0 + activeModifiers
+            .Where(m => m.Type == RunModifierType.AttackPowerBonus && !m.IsConsumed)
+            .Sum(m => m.Value);
+        var activeClimate = ResolveActiveClimate(draft.RoomId, activeModifiers);
 
         if (activeClimate == RoomClimate.Rain)
         {
@@ -63,9 +67,9 @@ public sealed class CombatFactory : ICombatFactory
                         NormalizeCombatEffectType(s.Key, s.EffectType),
                         s.ManaCost,
                         s.ChargeCost,
-                        s.BasePower))
+                        ScalePlayerSkillPower(s.EffectType, s.BasePower, attackPowerMultiplier)))
                     .ToArray()
-                    ?? GetDefaultAllySkills();
+                    ?? GetDefaultAllySkills(attackPowerMultiplier);
 
                 var maxVitality = playerState?.MaxVitality ?? 100;
                 var currentVitality = playerState?.CurrentVitality ?? maxVitality;
@@ -185,7 +189,18 @@ public sealed class CombatFactory : ICombatFactory
         return effectType;
     }
 
-    private static IReadOnlyCollection<CombatantSkill> GetDefaultAllySkills()
+    private static int ScalePlayerSkillPower(string effectType, int basePower, double attackPowerMultiplier)
+    {
+        if (!string.Equals(effectType, "Damage", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(effectType, "DamageVitality", StringComparison.OrdinalIgnoreCase))
+        {
+            return basePower;
+        }
+
+        return Math.Max(1, (int)Math.Round(basePower * attackPowerMultiplier));
+    }
+
+    private static IReadOnlyCollection<CombatantSkill> GetDefaultAllySkills(double attackPowerMultiplier)
     {
         return
         [
@@ -197,7 +212,7 @@ public sealed class CombatFactory : ICombatFactory
                 effectType: "Damage",
                 manaCost: 0,
                 chargeCost: 0,
-                basePower: 10),
+                basePower: ScalePlayerSkillPower("Damage", 10, attackPowerMultiplier)),
             CombatantSkill.Create(
                 key: "skill.basic.guard",
                 displayName: "Garde",

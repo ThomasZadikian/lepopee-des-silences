@@ -30,6 +30,20 @@ const showDrawer = ref(false)
 // ── Computed ──────────────────────────────────────────────────────────────
 const choices = computed(() => getOutcomeChoices(props.outcome))
 const requiresChoice = computed(() => isChoiceOutcome(props.outcome))
+const lawApplicationChoice = computed(() =>
+  choices.value.find((choice) => choice.id.toLowerCase().startsWith('accept-law') && choice.isEnabled) ?? null,
+)
+const canSealDecision = computed(() =>
+  !props.isLoading && !stamping.value && (!requiresChoice.value || lawApplicationChoice.value !== null),
+)
+const missingLawApplicationChoice = computed(() =>
+  requiresChoice.value && lawApplicationChoice.value === null,
+)
+const sealButtonText = computed(() => {
+  if (stamping.value) return 'Scellage…'
+  if (!requiresChoice.value || lawApplicationChoice.value) return 'Apposer le sceau & inscrire au Tome'
+  return 'Loi indisponible'
+})
 
 const openFragments = ref<Set<number>>(new Set([0]))
 function toggleFragment(i: number) {
@@ -49,6 +63,8 @@ function domainTone(type: string): 'gold' | 'frost' | 'blood' | null {
 
 // ── Actions ───────────────────────────────────────────────────────────────
 function applySeal() {
+  if (!canSealDecision.value) return
+
   if (sealed.value) {
     proceed()
     return
@@ -61,8 +77,8 @@ function applySeal() {
 }
 
 function proceed() {
-  if (requiresChoice.value && choices.value[0]) {
-    emit('selectChoice', choices.value[0].id)
+  if (requiresChoice.value && lawApplicationChoice.value) {
+    emit('selectChoice', lawApplicationChoice.value.id)
   } else {
     emit('continue')
   }
@@ -90,7 +106,7 @@ function proceed() {
       <!-- ── LEFT COLUMN ── -->
       <div class="vlo-left">
         <span class="es-kicker" style="color: var(--gold-dim); margin-bottom: 24px">
-          {{ sealed ? '◆ Promulguée · scellée au Tome' : '◆ Loi acceptée · à inscrire' }}
+          {{ sealed ? '◆ Promulguée · scellée au Tome' : '◆ Loi proposée · à inscrire' }}
         </span>
 
         <!-- Seal circle -->
@@ -179,9 +195,9 @@ function proceed() {
         <div class="es-row" style="align-items: center; justify-content: space-between; margin-bottom: 24px; flex: 0 0 auto">
           <div class="es-row" style="align-items: center; gap: 10px">
             <SigilIcon kind="loi" :size="18" :stroke-width="1.4" style="color: var(--gold)" />
-            <span class="es-kicker" style="color: var(--gold-dim)">Édit du Palais · article gravé</span>
+            <span class="es-kicker" style="color: var(--gold-dim)">Édit du Palais · loi proposée</span>
           </div>
-          <span class="es-label" style="color: var(--ink-4)">LawEnacted</span>
+          <span class="es-label" style="color: var(--ink-4)">PalaceLawOffered</span>
         </div>
 
         <!-- Plate content -->
@@ -207,6 +223,22 @@ function proceed() {
 
           <!-- Decorative rule -->
           <RuleOrnament :frost="true" style="margin: 8px 0 24px" />
+
+          <!-- Explicit law detail block -->
+          <section class="vlo-law-detail" aria-labelledby="law-detail-title">
+            <span class="es-kicker vlo-law-detail__kicker">Loi proposée</span>
+            <h2 id="law-detail-title" class="vlo-law-detail__title">{{ outcome.title }}</h2>
+            <p v-if="outcome.description" class="vlo-law-detail__description">
+              {{ outcome.description }}
+            </p>
+            <p class="vlo-law-detail__note">
+              Cette Loi ne peut pas être refusée. Elle sera appliquée par le serveur après apposition du sceau.
+            </p>
+          </section>
+
+          <p v-if="missingLawApplicationChoice" class="vlo-choice-empty">
+            Aucune instruction d'application de loi n'a été fournie par le serveur.
+          </p>
 
           <!-- Narrative fragments accordion -->
           <div
@@ -262,10 +294,10 @@ function proceed() {
           <button
             v-if="!sealed"
             class="es-btn es-btn--gold es-btn--lg"
-            :disabled="isLoading || stamping"
+            :disabled="!canSealDecision"
             @click="applySeal"
           >
-            {{ stamping ? 'Scellage…' : 'Apposer le sceau & inscrire au Tome' }}
+            {{ sealButtonText }}
           </button>
           <button
             v-else
@@ -445,6 +477,49 @@ function proceed() {
 }
 
 /* ── Narrative fragments ── */
+.vlo-law-detail {
+  margin-bottom: 22px;
+  padding: 18px 20px;
+  border: 1px solid oklch(0.72 0.12 84 / 0.28);
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, oklch(0.72 0.12 84 / 0.09), transparent 52%),
+    oklch(0.18 0.035 265 / 0.42);
+}
+
+.vlo-law-detail__kicker {
+  display: block;
+  color: var(--gold-dim);
+  margin-bottom: 9px;
+}
+
+.vlo-law-detail__title {
+  margin: 0 0 10px;
+  font-family: var(--display);
+  font-size: 24px;
+  color: var(--gold);
+}
+
+.vlo-law-detail__description {
+  margin: 0;
+  color: var(--ink-2);
+  font-size: 15px;
+  line-height: 1.65;
+}
+
+.vlo-law-detail__note {
+  margin: 14px 0 0;
+  color: var(--ink-4);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.vlo-choice-empty {
+  margin: 0 0 24px;
+  color: var(--ink-4);
+  font-size: 13px;
+}
+
 .vlo-fragments {
   display: flex;
   flex-direction: column;

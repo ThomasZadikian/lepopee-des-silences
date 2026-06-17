@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Leds.GameEngine.Application.Events.ChoiceResolvers;
 using Leds.GameEngine.Application.Events.ChooseEventOption;
+using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Runs;
 using Leds.GameEngine.Infrastructure.Catalog;
@@ -109,27 +110,16 @@ public sealed class LawEventChoiceResolverCatalogTests
     }
 
     [Fact]
-    public async Task RejectLaw_ShouldNotCreateActivePalaceLaw()
+    public async Task RejectLaw_ShouldBeRejected()
     {
         var run = TestGameEngineFactory.CreateRun(NodeEventType.Law);
         var resolver = CreateResolver();
         var context = CreateLawContext(run, "reject-law:law-aegis-v1");
 
-        await resolver.ResolveAsync(context);
+        var act = async () => await resolver.ResolveAsync(context);
 
-        run.ActivePalaceLaws.Should().BeEmpty();
-    }
-
-    [Fact]
-    public async Task RejectLaw_ShouldReturnRejectionNarrative()
-    {
-        var run = TestGameEngineFactory.CreateRun(NodeEventType.Law);
-        var resolver = CreateResolver();
-        var context = CreateLawContext(run, "reject-law:law-aegis-v1");
-
-        var result = await resolver.ResolveAsync(context);
-
-        result.Accepted.Should().BeTrue();
-        result.NarrativeFragments.Should().NotBeEmpty();
+        await act.Should()
+            .ThrowAsync<DomainException>()
+            .WithMessage("Choice 'reject-law:law-aegis-v1' is not valid for event type 'Law'.");
     }
 }

@@ -62,7 +62,7 @@ public sealed record RunDto(
             run.PendingRewardOfferId?.Value,
             RoomDto.FromDomain(run.CurrentRoom, run.RunModifiers),
             run.Rooms.Select(room => RoomDto.FromDomain(room, run.RunModifiers)).ToArray(),
-            run.ActivePalaceLaws.Select(ActivePalaceLawDto.FromDomain).ToArray(),
+            run.ActivePalaceLaws.Where(law => !law.IsConsumed).Select(ActivePalaceLawDto.FromDomain).ToArray(),
             run.RunItems.Select(RunItemDto.FromDomain).ToArray(),
             run.CurrentRoomIndex,
             run.CurrentRoomIndex + 1,
