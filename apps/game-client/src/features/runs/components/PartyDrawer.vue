@@ -232,7 +232,7 @@ function rarityTone(rarity: string): string {
 .party-drawer {
   position: absolute;
   top: 0;
-  right: 0;
+  left: 0;
   bottom: 0;
   width: 360px;
   display: flex;

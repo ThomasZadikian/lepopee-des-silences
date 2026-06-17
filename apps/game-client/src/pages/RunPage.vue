@@ -163,7 +163,7 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
               :layout-template-key="runStore.currentRun.currentRoom.layoutTemplateKey"
               :layout-template-version="runStore.currentRun.currentRoom.layoutTemplateVersion"
               @choose-node="runStore.previewNode"
-            @deselect-node="clearAllUi"
+              @deselect-node="clearAllUi"
             />
           </div>
 
