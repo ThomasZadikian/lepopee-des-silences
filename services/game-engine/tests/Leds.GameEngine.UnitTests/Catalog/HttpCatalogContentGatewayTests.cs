@@ -702,6 +702,283 @@ public sealed class HttpCatalogContentGatewayTests
             .WithMessage("*500*");
     }
 
+    // ── NPC Definitions ────────────────────────────────────────────────
+
+    [Fact]
+    public async Task ListNpcDefinitionsAsync_ShouldReturnNpcs_WhenCatalogReturns200()
+    {
+        var httpResponse = new
+        {
+            Definitions = new[]
+            {
+                new
+                {
+                    Key = "npc-neutral-traveler",
+                    Name = "Voyageur neutre",
+                    Description = "Un voyageur sans attache.",
+                    Tags = new[] { "npc", "generic" },
+                    CompatibleRoomTypes = Array.Empty<string>(),
+                    CompatiblePalaceRoomStates = Array.Empty<string>(),
+                    CompatibleRoomClimates = Array.Empty<string>(),
+                    MinDepth = (int?)null,
+                    MaxDepth = (int?)null
+                },
+                new
+                {
+                    Key = "npc-silent-witness",
+                    Name = "Témoin silencieux",
+                    Description = "Une silhouette figée.",
+                    Tags = new[] { "silence", "witness" },
+                    CompatibleRoomTypes = Array.Empty<string>(),
+                    CompatiblePalaceRoomStates = new[] { "Silent" },
+                    CompatibleRoomClimates = Array.Empty<string>(),
+                    MinDepth = (int?)null,
+                    MaxDepth = (int?)null
+                }
+            }
+        };
+
+        var json = JsonSerializer.Serialize(httpResponse, JsonOptions);
+        var handler = CreateMockHandler(json, HttpStatusCode.OK);
+        var client = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost:5193") };
+        var gateway = new HttpCatalogContentGateway(client);
+
+        var npcs = await gateway.ListNpcDefinitionsAsync();
+
+        npcs.Should().HaveCount(2);
+        npcs.Select(n => n.Key).Should()
+            .BeEquivalentTo("npc-neutral-traveler", "npc-silent-witness");
+    }
+
+    [Fact]
+    public async Task ListNpcDefinitionsAsync_ShouldMapPalaceRoomStates_WhenPresent()
+    {
+        var httpResponse = new
+        {
+            Definitions = new[]
+            {
+                new
+                {
+                    Key = "npc-silent-witness",
+                    Name = "Témoin silencieux",
+                    Description = "Une silhouette figée.",
+                    Tags = Array.Empty<string>(),
+                    CompatibleRoomTypes = Array.Empty<string>(),
+                    CompatiblePalaceRoomStates = new[] { "Silent" },
+                    CompatibleRoomClimates = Array.Empty<string>(),
+                    MinDepth = (int?)null,
+                    MaxDepth = (int?)null
+                },
+                new
+                {
+                    Key = "npc-rage-beggar",
+                    Name = "Mendiant de rage",
+                    Description = "Une créature en colère.",
+                    Tags = Array.Empty<string>(),
+                    CompatibleRoomTypes = Array.Empty<string>(),
+                    CompatiblePalaceRoomStates = new[] { "Enraged" },
+                    CompatibleRoomClimates = Array.Empty<string>(),
+                    MinDepth = (int?)null,
+                    MaxDepth = (int?)null
+                }
+            }
+        };
+
+        var json = JsonSerializer.Serialize(httpResponse, JsonOptions);
+        var handler = CreateMockHandler(json, HttpStatusCode.OK);
+        var client = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost:5193") };
+        var gateway = new HttpCatalogContentGateway(client);
+
+        var npcs = await gateway.ListNpcDefinitionsAsync();
+
+        var silentWitness = npcs.Single(n => n.Key == "npc-silent-witness");
+        silentWitness.CompatiblePalaceRoomStates.Should()
+            .BeEquivalentTo(new[] { Leds.GameEngine.Domain.Rooms.PalaceRoomState.Silent });
+
+        var rageBeggar = npcs.Single(n => n.Key == "npc-rage-beggar");
+        rageBeggar.CompatiblePalaceRoomStates.Should()
+            .BeEquivalentTo(new[] { Leds.GameEngine.Domain.Rooms.PalaceRoomState.Enraged });
+    }
+
+    [Fact]
+    public async Task ListNpcDefinitionsAsync_ShouldMapRoomClimates_WhenPresent()
+    {
+        var httpResponse = new
+        {
+            Definitions = new[]
+            {
+                new
+                {
+                    Key = "npc-desert-exile",
+                    Name = "Exilé du désert",
+                    Description = "Brûlé par la chaleur.",
+                    Tags = Array.Empty<string>(),
+                    CompatibleRoomTypes = Array.Empty<string>(),
+                    CompatiblePalaceRoomStates = Array.Empty<string>(),
+                    CompatibleRoomClimates = new[] { "Heatwave" },
+                    MinDepth = (int?)null,
+                    MaxDepth = (int?)null
+                },
+                new
+                {
+                    Key = "npc-rain-memory-keeper",
+                    Name = "Gardien des mémoires de pluie",
+                    Description = "Un archiviste.",
+                    Tags = Array.Empty<string>(),
+                    CompatibleRoomTypes = Array.Empty<string>(),
+                    CompatiblePalaceRoomStates = Array.Empty<string>(),
+                    CompatibleRoomClimates = new[] { "Rain" },
+                    MinDepth = (int?)null,
+                    MaxDepth = (int?)null
+                }
+            }
+        };
+
+        var json = JsonSerializer.Serialize(httpResponse, JsonOptions);
+        var handler = CreateMockHandler(json, HttpStatusCode.OK);
+        var client = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost:5193") };
+        var gateway = new HttpCatalogContentGateway(client);
+
+        var npcs = await gateway.ListNpcDefinitionsAsync();
+
+        var desertExile = npcs.Single(n => n.Key == "npc-desert-exile");
+        desertExile.CompatibleRoomClimates.Should().BeEquivalentTo("Heatwave");
+
+        var rainKeeper = npcs.Single(n => n.Key == "npc-rain-memory-keeper");
+        rainKeeper.CompatibleRoomClimates.Should().BeEquivalentTo("Rain");
+    }
+
+    [Fact]
+    public async Task ListNpcDefinitionsAsync_ShouldMapMinMaxDepth_WhenPresent()
+    {
+        var httpResponse = new
+        {
+            Definitions = new[]
+            {
+                new
+                {
+                    Key = "npc-depth-limited",
+                    Name = "Limitée",
+                    Description = "Test.",
+                    Tags = Array.Empty<string>(),
+                    CompatibleRoomTypes = Array.Empty<string>(),
+                    CompatiblePalaceRoomStates = Array.Empty<string>(),
+                    CompatibleRoomClimates = Array.Empty<string>(),
+                    MinDepth = 1,
+                    MaxDepth = 5
+                }
+            }
+        };
+
+        var json = JsonSerializer.Serialize(httpResponse, JsonOptions);
+        var handler = CreateMockHandler(json, HttpStatusCode.OK);
+        var client = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost:5193") };
+        var gateway = new HttpCatalogContentGateway(client);
+
+        var npcs = await gateway.ListNpcDefinitionsAsync();
+
+        var depthLimited = npcs.Single();
+        depthLimited.MinDepth.Should().Be(1);
+        depthLimited.MaxDepth.Should().Be(5);
+    }
+
+    [Fact]
+    public async Task ListNpcDefinitionsAsync_ShouldUseDefaults_WhenMinMaxDepthAreNull()
+    {
+        var httpResponse = new
+        {
+            Definitions = new[]
+            {
+                new
+                {
+                    Key = "npc-no-depth",
+                    Name = "Sans limite",
+                    Description = "Test.",
+                    Tags = Array.Empty<string>(),
+                    CompatibleRoomTypes = Array.Empty<string>(),
+                    CompatiblePalaceRoomStates = Array.Empty<string>(),
+                    CompatibleRoomClimates = Array.Empty<string>(),
+                    MinDepth = (int?)null,
+                    MaxDepth = (int?)null
+                }
+            }
+        };
+
+        var json = JsonSerializer.Serialize(httpResponse, JsonOptions);
+        var handler = CreateMockHandler(json, HttpStatusCode.OK);
+        var client = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost:5193") };
+        var gateway = new HttpCatalogContentGateway(client);
+
+        var npcs = await gateway.ListNpcDefinitionsAsync();
+
+        var noDepth = npcs.Single();
+        noDepth.MinDepth.Should().Be(0);
+        noDepth.MaxDepth.Should().Be(int.MaxValue);
+    }
+
+    [Fact]
+    public async Task ListNpcDefinitionsAsync_ShouldReturnEmpty_WhenCatalogReturns404()
+    {
+        var handler = CreateMockHandler("", HttpStatusCode.NotFound);
+        var client = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost:5193") };
+        var gateway = new HttpCatalogContentGateway(client);
+
+        var npcs = await gateway.ListNpcDefinitionsAsync();
+
+        npcs.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ListNpcDefinitionsAsync_ShouldReturnEmpty_WhenCatalogReturns400()
+    {
+        var handler = CreateMockHandler("", HttpStatusCode.BadRequest);
+        var client = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost:5193") };
+        var gateway = new HttpCatalogContentGateway(client);
+
+        var npcs = await gateway.ListNpcDefinitionsAsync();
+
+        npcs.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ListNpcDefinitionsAsync_ShouldCallExpectedEndpoint()
+    {
+        HttpRequestMessage? capturedRequest = null;
+
+        var handler = new Mock<HttpMessageHandler>();
+        handler
+            .Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .Callback<HttpRequestMessage, CancellationToken>((req, _) => capturedRequest = req)
+            .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.NotFound));
+
+        var client = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost:5193") };
+        var gateway = new HttpCatalogContentGateway(client);
+
+        await gateway.ListNpcDefinitionsAsync();
+
+        capturedRequest.Should().NotBeNull();
+        capturedRequest!.RequestUri!.AbsolutePath.Should().Be(
+            "/api/v2/catalog/npc-definitions");
+    }
+
+    [Fact]
+    public async Task ListNpcDefinitionsAsync_ShouldThrowCatalogGatewayException_WhenCatalogReturns500()
+    {
+        var handler = CreateMockHandler("Internal Server Error", HttpStatusCode.InternalServerError);
+        var client = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost:5193") };
+        var gateway = new HttpCatalogContentGateway(client);
+
+        var act = async () => await gateway.ListNpcDefinitionsAsync();
+
+        await act.Should()
+            .ThrowAsync<CatalogGatewayException>()
+            .WithMessage("*500*");
+    }
+
     // ── Skill Definitions ─────────────────────────────────────────────
 
     [Fact]

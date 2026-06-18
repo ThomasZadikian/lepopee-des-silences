@@ -2,6 +2,7 @@ using Leds.Catalog.Application.Enemies.Definitions.Ports;
 using Leds.Catalog.Application.Enemies.Ports;
 using Leds.Catalog.Application.EventTemplates.Ports;
 using Leds.Catalog.Application.Items.Ports;
+using Leds.Catalog.Application.Npcs.Definitions.Ports;
 using Leds.Catalog.Application.PalaceLaws.Ports;
 using Leds.Catalog.Application.RoomBosses.Ports;
 using Leds.Catalog.Application.Skills.Definitions.Ports;
@@ -33,6 +34,7 @@ public static class InfrastructureServiceCollectionExtensions
             services.AddScoped<IEnemyDefinitionReadStore, EfEnemyDefinitionReadStore>();
             services.AddScoped<IItemTemplateReadStore, EfItemDefinitionReadStore>();
             services.AddScoped<IPalaceLawDefinitionReadStore, EfPalaceLawDefinitionReadStore>();
+            services.AddScoped<INpcDefinitionReadStore, EfNpcDefinitionReadStore>();
         }
         else
         {
@@ -40,6 +42,7 @@ public static class InfrastructureServiceCollectionExtensions
             services.AddSingleton<IEnemyDefinitionReadStore, InMemoryEnemyDefinitionReadStore>();
             services.AddSingleton<IItemTemplateReadStore, InMemoryItemTemplateReadStore>();
             services.AddSingleton<IPalaceLawDefinitionReadStore, InMemoryPalaceLawDefinitionReadStore>();
+            services.AddSingleton<INpcDefinitionReadStore, InMemoryNpcDefinitionReadStore>();
         }
 
         services.AddSingleton<IEnemyTemplateReadStore, InMemoryEnemyTemplateReadStore>();

@@ -35,6 +35,7 @@ public sealed class CatalogDbContext : DbContext
     public DbSet<RoomCursePoolEntryEntity> RoomCursePoolEntries => Set<RoomCursePoolEntryEntity>();
     public DbSet<CatalogTagEntity> CatalogTags => Set<CatalogTagEntity>();
     public DbSet<CatalogSeedVersionEntity> CatalogSeedVersions => Set<CatalogSeedVersionEntity>();
+    public DbSet<NpcDefinitionEntity> NpcDefinitions => Set<NpcDefinitionEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

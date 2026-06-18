@@ -1,6 +1,7 @@
 using Leds.GameEngine.Application.Catalog;
 using Leds.GameEngine.Application.Catalog.Contracts;
 using Leds.GameEngine.Application.Catalog.Ports;
+using Leds.GameEngine.Domain.Rooms;
 using Leds.SharedBuildingBlocks.Errors;
 using Leds.SharedBuildingBlocks.Results;
 using System.Net.Http.Json;
@@ -642,6 +643,36 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
             Effects: source.Effects?.Select(MapToCatalogEffectDefinitionSnapshot).ToArray() ?? []);
     }
 
+    public async Task<IReadOnlyCollection<CatalogNpcDefinition>> ListNpcDefinitionsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        const string url = "/api/v2/catalog/npc-definitions";
+
+        var wrapper = await GetJsonOrNullAsync<ListNpcDefinitionsHttpResponse>(url, cancellationToken);
+
+        return wrapper?.Definitions?
+            .Select(MapToCatalogNpcDefinition)
+            .ToArray()
+            ?? [];
+    }
+
+    private static CatalogNpcDefinition MapToCatalogNpcDefinition(
+        CatalogNpcDefinitionHttpResponse source)
+    {
+        return new CatalogNpcDefinition(
+            Key: source.Key,
+            DisplayName: source.Name,
+            Description: source.Description,
+            Tags: source.Tags ?? [],
+            CompatibleRoomTypes: source.CompatibleRoomTypes ?? [],
+            CompatiblePalaceRoomStates: (source.CompatiblePalaceRoomStates ?? [])
+                .Select(s => Enum.Parse<PalaceRoomState>(s, ignoreCase: true))
+                .ToArray(),
+            CompatibleRoomClimates: source.CompatibleRoomClimates ?? [],
+            MinDepth: source.MinDepth ?? 0,
+            MaxDepth: source.MaxDepth ?? int.MaxValue);
+    }
+
     private static CatalogEffectDefinitionSnapshot MapToCatalogEffectDefinitionSnapshot(
         CatalogEffectDefinitionHttpResponse source)
     {
@@ -759,4 +790,18 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
         string? BehaviorTag,
         string? GenerationTag,
         string? SelectionGroup);
+
+    private sealed record ListNpcDefinitionsHttpResponse(
+        IReadOnlyCollection<CatalogNpcDefinitionHttpResponse>? Definitions);
+
+    private sealed record CatalogNpcDefinitionHttpResponse(
+        string Key,
+        string Name,
+        string Description,
+        IReadOnlyCollection<string>? Tags,
+        IReadOnlyCollection<string>? CompatibleRoomTypes,
+        IReadOnlyCollection<string>? CompatiblePalaceRoomStates,
+        IReadOnlyCollection<string>? CompatibleRoomClimates,
+        int? MinDepth,
+        int? MaxDepth);
 }

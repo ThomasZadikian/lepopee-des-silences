@@ -1,6 +1,7 @@
 ﻿using Leds.GameEngine.Application.Catalog;
 using Leds.GameEngine.Application.Catalog.Contracts;
 using Leds.GameEngine.Application.Catalog.Ports;
+using Leds.GameEngine.Domain.Rooms;
 using Leds.SharedBuildingBlocks.Errors;
 using Leds.SharedBuildingBlocks.Results;
 
@@ -884,6 +885,54 @@ public sealed class InMemoryCatalogContentGateway : ICatalogContentGateway
                 SkillKeys: ["skill-boss-void-slam-v1"])
         };
 
+    private static readonly IReadOnlyDictionary<string, CatalogNpcDefinition> NpcDefinitions =
+        new Dictionary<string, CatalogNpcDefinition>(StringComparer.OrdinalIgnoreCase)
+        // DEV/TEST FALLBACK ONLY — Catalog Service is the source of truth for NPC definitions.
+        // These seeds exist for local dev and unit testing when Persistence:Mode != Postgres.
+        // In production/staging, the HttpCatalogContentGateway queries the Catalog API.
+        {
+            ["npc-neutral-traveler"] = new CatalogNpcDefinition(
+                Key: "npc-neutral-traveler",
+                DisplayName: "Voyageur Neutre",
+                Description: "Un vagabond sans attache qui traverse les couloirs du Palais.",
+                Tags: ["generic", "neutral"],
+                CompatibleRoomTypes: [],
+                CompatiblePalaceRoomStates: [],
+                CompatibleRoomClimates: []),
+            ["npc-silent-witness"] = new CatalogNpcDefinition(
+                Key: "npc-silent-witness",
+                DisplayName: "Témoin Silencieux",
+                Description: "Une silhouette figée dans le silence, observatrice immuable.",
+                Tags: ["silence", "witness"],
+                CompatibleRoomTypes: [],
+                CompatiblePalaceRoomStates: [PalaceRoomState.Silent],
+                CompatibleRoomClimates: []),
+            ["npc-desert-exile"] = new CatalogNpcDefinition(
+                Key: "npc-desert-exile",
+                DisplayName: "Exilé du Désert",
+                Description: "Un habitant des sables brûlants, marqué par la chaleur éternelle.",
+                Tags: ["desert", "exile"],
+                CompatibleRoomTypes: [],
+                CompatiblePalaceRoomStates: [],
+                CompatibleRoomClimates: ["Heatwave"]),
+            ["npc-rage-beggar"] = new CatalogNpcDefinition(
+                Key: "npc-rage-beggar",
+                DisplayName: "Mendiant de Rage",
+                Description: "Un être consumé par une colère ancienne, prêt à exploser.",
+                Tags: ["rage", "aggressive"],
+                CompatibleRoomTypes: [],
+                CompatiblePalaceRoomStates: [PalaceRoomState.Enraged],
+                CompatibleRoomClimates: []),
+            ["npc-rain-memory-keeper"] = new CatalogNpcDefinition(
+                Key: "npc-rain-memory-keeper",
+                DisplayName: "Gardien des Mémoires de Pluie",
+                Description: "Un archiviste dont les souvenirs s'écoulent comme la pluie.",
+                Tags: ["rain", "memory"],
+                CompatibleRoomTypes: [],
+                CompatiblePalaceRoomStates: [],
+                CompatibleRoomClimates: ["Rain"]),
+        };
+
     private static readonly IReadOnlyDictionary<string, CatalogSkillDefinition> SkillDefinitions =
         new Dictionary<string, CatalogSkillDefinition>(StringComparer.OrdinalIgnoreCase)
         {
@@ -1140,6 +1189,13 @@ public sealed class InMemoryCatalogContentGateway : ICatalogContentGateway
             .ToArray();
 
         return Task.FromResult<IReadOnlyCollection<CatalogEnemyDefinition>>(results);
+    }
+
+    public Task<IReadOnlyCollection<CatalogNpcDefinition>> ListNpcDefinitionsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var results = NpcDefinitions.Values.ToArray();
+        return Task.FromResult<IReadOnlyCollection<CatalogNpcDefinition>>(results);
     }
 
     private static Result<TSnapshot> GetByKey<TSnapshot>(

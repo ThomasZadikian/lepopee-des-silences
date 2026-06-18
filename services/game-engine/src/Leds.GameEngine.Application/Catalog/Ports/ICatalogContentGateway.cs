@@ -60,4 +60,7 @@ public interface ICatalogContentGateway
     Task<IReadOnlyCollection<CatalogSkillDefinition>> ListSkillDefinitionsByTypeAsync(
         string skillType,
         CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyCollection<CatalogNpcDefinition>> ListNpcDefinitionsAsync(
+        CancellationToken cancellationToken = default);
 }
