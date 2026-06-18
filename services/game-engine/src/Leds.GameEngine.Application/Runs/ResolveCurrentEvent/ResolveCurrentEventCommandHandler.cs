@@ -243,7 +243,9 @@ public sealed class ResolveCurrentEventCommandHandler
             EncounterType: encounterType,
             EnemyCount: enemyCount,
             NodeDepth: selectedNode.Row,
-            ActivePalaceLaws: run.ActivePalaceLaws);
+            ActivePalaceLaws: run.ActivePalaceLaws,
+            PalaceRoomState: room.PalaceState,
+            RoomClimate: ResolveActiveClimate(run, room));
 
         return await _encounterDraftGenerator.GenerateAsync(
             draftContext, cancellationToken);
@@ -294,6 +296,26 @@ public sealed class ResolveCurrentEventCommandHandler
                 "accept-law" => choice with { ChoiceId = $"accept-law:{content.PalaceLawDefinitionKey}" },
                 _ => choice
             }).ToArray()
+        };
+    }
+
+    private static string? ResolveActiveClimate(Run run, Room room)
+    {
+        var modifier = run.RunModifiers
+            .Where(modifier =>
+                modifier.Type == RunModifierType.RoomClimate &&
+                !modifier.IsConsumed &&
+                modifier.ExpiresAtRoomId == room.Id.Value)
+            .OrderByDescending(modifier => modifier.CreatedAtUtc)
+            .FirstOrDefault();
+
+        return modifier?.Value switch
+        {
+            1 => "Grey",
+            2 => "Rain",
+            3 => "Heatwave",
+            4 => "Hail",
+            _ => null
         };
     }
 }

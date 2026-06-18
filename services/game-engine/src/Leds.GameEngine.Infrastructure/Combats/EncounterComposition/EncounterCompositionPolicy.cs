@@ -2,6 +2,7 @@ using Leds.GameEngine.Application.Catalog;
 using Leds.GameEngine.Application.Combats.EncounterComposition;
 using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.PalaceLaws;
+using Leds.GameEngine.Domain.Rooms;
 
 namespace Leds.GameEngine.Infrastructure.Combats.EncounterComposition;
 
@@ -28,6 +29,15 @@ public sealed class EncounterCompositionPolicy : IEncounterCompositionPolicy
     };
 
     private const int UnknownArchetypeCost = 2;
+
+    private static readonly IReadOnlyDictionary<PalaceRoomState, string[]> ArchetypePreferenceByState =
+        new Dictionary<PalaceRoomState, string[]>
+        {
+            [PalaceRoomState.Silent] = ["Guard", "Support"],
+            [PalaceRoomState.Painful] = ["Disruptor"],
+            [PalaceRoomState.Enraged] = ["Bruiser", "Skirmisher"],
+            [PalaceRoomState.Violent] = ["Bruiser", "Fragile"],
+        };
 
     public EncounterCompositionResult Compose(EncounterCompositionContext context)
     {
@@ -101,9 +111,13 @@ public sealed class EncounterCompositionPolicy : IEncounterCompositionPolicy
 
     private static List<CatalogEnemyDefinition> FilterEligibleEnemies(EncounterCompositionContext context)
     {
+        var preferredArchetypes = ArchetypePreferenceByState.GetValueOrDefault(
+            context.PalaceRoomState, []);
+
         return context.AvailableEnemies
             .Where(e => e.MinRiskLevel <= context.RiskLevel && context.RiskLevel <= e.MaxRiskLevel)
             .OrderBy(e => GetArchetypeCost(e.Archetype))
+            .ThenBy(e => preferredArchetypes.Contains(e.Archetype, StringComparer.OrdinalIgnoreCase) ? 0 : 1)
             .ThenByDescending(e => e.BaseDifficulty)
             .ThenBy(e => e.Key, StringComparer.Ordinal)
             .ToList();
