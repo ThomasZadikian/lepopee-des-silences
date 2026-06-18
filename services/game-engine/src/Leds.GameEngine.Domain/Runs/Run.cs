@@ -1125,6 +1125,48 @@ public sealed class Run
         _activePalaceLaws.RemoveAll(activeLaw => replacedLawKeySet.Contains(activeLaw.Key));
     }
 
+    public void DebugPrepareForNextRoom()
+    {
+        if (Status is RunStatus.Completed or RunStatus.Failed or RunStatus.Abandoned or RunStatus.Suspended)
+            throw new DomainException("Run is closed.");
+
+        if (Status == RunStatus.Interlude)
+            return;
+
+        ActiveCombatId = null;
+        _activeCombat = null;
+        PendingRewardOfferId = null;
+        Status = RunStatus.Interlude;
+    }
+
+    public void DebugClearActivePalaceLaws()
+    {
+        var now = DateTime.UtcNow;
+
+        foreach (var modifier in _runModifiers.Where(modifier =>
+            modifier.SourceType == "PalaceLaw" &&
+            !modifier.IsConsumed))
+        {
+            modifier.Consume(now);
+        }
+
+        _activePalaceLaws.Clear();
+    }
+
+    public void DebugClearActiveCurse()
+    {
+        var now = DateTime.UtcNow;
+
+        foreach (var modifier in _runModifiers.Where(modifier =>
+            modifier.SourceType == "Curse" &&
+            !modifier.IsConsumed))
+        {
+            modifier.Consume(now);
+        }
+
+        _activeCurse = null;
+    }
+
     /// <summary>
     /// Uses a consumable item from the run inventory.
     /// Applies its effect to <see cref="PlayerState"/> and, if a combat is active,

@@ -1,4 +1,5 @@
 using Leds.GameEngine.Api.Middleware;
+using Leds.GameEngine.Api.DevTools;
 using Leds.GameEngine.Application.DependencyInjection;
 using Leds.GameEngine.Infrastructure.DependencyInjection;
 
@@ -46,5 +47,6 @@ app.UseHttpsRedirection();
 app.UseCors(CorsPolicyName);
 
 app.MapControllers();
+app.MapGameEngineDevTools();
 
 app.Run();

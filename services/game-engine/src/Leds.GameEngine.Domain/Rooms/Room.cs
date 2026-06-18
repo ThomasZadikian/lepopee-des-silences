@@ -39,7 +39,7 @@ public sealed class Room
 
     public RoomType RoomType { get; }
 
-    public PalaceRoomState PalaceState { get; }
+    public PalaceRoomState PalaceState { get; private set; }
 
     public string Theme { get; }
 
@@ -468,6 +468,11 @@ public sealed class Room
         var room = new Room(id, depth, roomType, palaceState, theme, bossProfile, state, nodes, layoutTemplateKey, layoutTemplateVersion);
         room.CurrentNodeDepth = currentNodeDepth;
         return room;
+    }
+
+    public void DebugSetPalaceState(PalaceRoomState palaceState)
+    {
+        PalaceState = palaceState;
     }
 
     public static Room Create(

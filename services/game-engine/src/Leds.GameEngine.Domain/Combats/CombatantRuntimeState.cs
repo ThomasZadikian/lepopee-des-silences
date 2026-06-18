@@ -157,6 +157,19 @@ public sealed class CombatantRuntimeState
         Touch();
     }
 
+    public void DebugSetVitals(int maxVitality, int vitality, int guard)
+    {
+        if (vitality < 0 || vitality > maxVitality)
+            throw new DomainException("Vitality must be between zero and max vitality.");
+
+        if (guard < 0)
+            throw new DomainException("Guard cannot be negative.");
+
+        CurrentVitality = vitality;
+        CurrentGuard = vitality == 0 ? 0 : guard;
+        Touch();
+    }
+
     private void Touch()
     {
         UpdatedAtUtc = DateTime.UtcNow;

@@ -1,6 +1,7 @@
 using FluentValidation;
 using Leds.GameEngine.Application.Combats;
 using Leds.GameEngine.Application.Common.Behaviors;
+using Leds.GameEngine.Application.DevTools;
 using Leds.GameEngine.Application.Events.ChoiceResolvers;
 using Leds.GameEngine.Application.Events.ChooseEventOption;
 using Leds.GameEngine.Application.Events.Npcs;
@@ -56,6 +57,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<IInterludeNodeProvider, DefaultInterludeNodeProvider>();
         services.AddSingleton<ICombatFactory, CombatFactory>();
         services.AddScoped<IPalacePublicIndicatorProjectionService, PalacePublicIndicatorProjectionService>();
+        services.AddScoped<IDevToolsRunDebugService, DevToolsRunDebugService>();
 
         return services;
     }

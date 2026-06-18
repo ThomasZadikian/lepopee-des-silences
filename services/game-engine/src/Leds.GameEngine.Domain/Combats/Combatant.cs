@@ -357,6 +357,16 @@ public sealed class Combatant
         CurrentVitality = RuntimeState.CurrentVitality;
     }
 
+    public void DebugSetVitals(int vitality, int guard)
+    {
+        RuntimeState.DebugSetVitals(MaxVitality, vitality, guard);
+        CurrentVitality = RuntimeState.CurrentVitality;
+        Guard = RuntimeState.CurrentGuard;
+        Status = CurrentVitality == 0
+            ? CombatantStatus.Defeated
+            : CombatantStatus.Active;
+    }
+
     public void GainMana(int amount)
     {
         if (amount < 0)
