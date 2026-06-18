@@ -5,7 +5,9 @@ public sealed record ResolvedNpcEventContent(
     string EventTemplateVersion,
     IReadOnlyCollection<string> Tags,
     string NpcProfileKey,
-    string InteractionProfileKey)
+    string InteractionProfileKey,
+    string NpcDisplayName = "",
+    string NpcDescription = "")
     : ResolvedNodeEventContent(
         ResolvedEventContentKind.Npc,
         EventTemplateKey,

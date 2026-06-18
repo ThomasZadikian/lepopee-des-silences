@@ -189,6 +189,12 @@ public sealed class ResolveCurrentEventCommandHandler
             resolutionResult = ApplyPalaceLawContent(resolutionResult, (ResolvedPalaceLawEventContent)resolvedContent);
             run.ResolveCurrentEvent();
         }
+        else if (selectedNode.EventType == NodeEventType.Npc)
+        {
+            resolvedContent = await ResolveEventContentAsync(run, room, selectedNode, cancellationToken);
+            resolutionResult = ApplyNpcContent(resolutionResult, (ResolvedNpcEventContent)resolvedContent);
+            run.ResolveCurrentEvent();
+        }
         else
         {
             run.ResolveCurrentEvent();
@@ -269,7 +275,9 @@ public sealed class ResolveCurrentEventCommandHandler
             ActivePalaceLawKeys: run.ActivePalaceLaws
                 .Where(law => !law.IsConsumed)
                 .Select(law => law.Key)
-                .ToArray());
+                .ToArray(),
+            PalaceRoomState: room.PalaceState,
+            RoomClimate: ResolveActiveClimate(run, room));
 
         var contentResult = await _eventContentResolver.ResolveAsync(
             contentContext, cancellationToken);
@@ -281,6 +289,20 @@ public sealed class ResolveCurrentEventCommandHandler
         }
 
         return contentResult.Value;
+    }
+
+    private static NodeEventResolutionResult ApplyNpcContent(
+        NodeEventResolutionResult result,
+        ResolvedNpcEventContent content)
+    {
+        if (string.IsNullOrWhiteSpace(content.NpcDisplayName))
+            return result;
+
+        return result with
+        {
+            Title = content.NpcDisplayName,
+            Description = content.NpcDescription
+        };
     }
 
     private static NodeEventResolutionResult ApplyPalaceLawContent(

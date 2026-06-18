@@ -3,6 +3,7 @@ using Leds.GameEngine.Application.Combats;
 using Leds.GameEngine.Application.Common.Behaviors;
 using Leds.GameEngine.Application.Events.ChoiceResolvers;
 using Leds.GameEngine.Application.Events.ChooseEventOption;
+using Leds.GameEngine.Application.Events.Npcs;
 using Leds.GameEngine.Application.Events.ResolveNodeEvent;
 using Leds.GameEngine.Application.Events.Resolvers;
 using Leds.GameEngine.Application.Interlude;
@@ -49,6 +50,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<ICurrentEventChoiceResolver, MerchantEventChoiceResolver>();
         services.AddScoped<ICurrentEventChoiceResolver, CurseEventChoiceResolver>();
         services.AddScoped<ICurrentEventChoiceRequirementResolver, CurrentEventChoiceRequirementResolver>();
+        services.AddSingleton<INpcEncounterSelector, NpcEncounterSelector>();
         services.AddSingleton<ICombatRiskProfileResolver, CombatRiskProfileResolver>();
         services.AddScoped<RewardOfferFactory>();
         services.AddScoped<IInterludeNodeProvider, DefaultInterludeNodeProvider>();

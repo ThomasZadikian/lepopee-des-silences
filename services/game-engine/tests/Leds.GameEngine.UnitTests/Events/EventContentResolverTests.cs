@@ -1,5 +1,6 @@
 ﻿using FluentAssertions;
 using Leds.GameEngine.Application.Events.Contracts;
+using Leds.GameEngine.Application.Events.Npcs;
 using Leds.GameEngine.Application.Events.Ports;
 using Leds.GameEngine.Application.Events.Resolution;
 using Leds.GameEngine.Domain.Nodes;
@@ -24,7 +25,7 @@ public sealed class EventContentResolverTests
                 new RoomBossEventContentResolutionStrategy(catalogGateway, new Leds.GameEngine.Infrastructure.Generation.Rooms.Bosses.RoomBossProfileResolver(catalogGateway)),
                 new ItemEventContentResolutionStrategy(catalogGateway),
                 new PalaceLawEventContentResolutionStrategy(catalogGateway),
-                new NpcEventContentResolutionStrategy(catalogGateway),
+                new NpcEventContentResolutionStrategy(catalogGateway, new NpcEncounterSelector()),
                 new RestEventContentResolutionStrategy(catalogGateway),
                 new MerchantEventContentResolutionStrategy(catalogGateway),
                 new RareEventContentResolutionStrategy(catalogGateway)
@@ -145,8 +146,8 @@ public sealed class EventContentResolverTests
             .BeOfType<ResolvedNpcEventContent>()
             .Subject;
 
-        content.NpcProfileKey.Should().Be("npc-placeholder-v1");
-        content.InteractionProfileKey.Should().Be("npc-interaction-placeholder-v1");
+        content.NpcProfileKey.Should().Be("npc-neutral-traveler");
+        content.NpcDisplayName.Should().Be("Voyageur Neutre");
     }
 
     [Fact]
