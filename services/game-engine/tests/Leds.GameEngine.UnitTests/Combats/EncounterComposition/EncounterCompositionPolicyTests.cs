@@ -2,6 +2,7 @@ using FluentAssertions;
 using Leds.GameEngine.Application.Catalog;
 using Leds.GameEngine.Application.Combats.EncounterComposition;
 using Leds.GameEngine.Domain.Common;
+using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Infrastructure.Combats.EncounterComposition;
 
 namespace Leds.GameEngine.UnitTests.Combats.EncounterComposition;
@@ -122,14 +123,16 @@ public sealed class EncounterCompositionPolicyTests
         int riskLevel,
         string encounterType = "Combat",
         int roomIndex = 0,
-        IReadOnlyCollection<CatalogEnemyDefinition>? enemies = null)
+        IReadOnlyCollection<CatalogEnemyDefinition>? enemies = null,
+        PalaceRoomState palaceRoomState = PalaceRoomState.Neutral)
     {
         return new EncounterCompositionContext(
             RoomType: "Threshold",
             RoomIndex: roomIndex,
             RiskLevel: riskLevel,
             EncounterType: encounterType,
-            AvailableEnemies: enemies ?? new[] { FragileEnemy, SupportEnemy, GuardEnemy });
+            AvailableEnemies: enemies ?? new[] { FragileEnemy, SupportEnemy, GuardEnemy },
+            PalaceRoomState: palaceRoomState);
     }
 
     // --- Validation ---
@@ -459,5 +462,101 @@ public sealed class EncounterCompositionPolicyTests
 
         midResult.DifficultyBudget.Should().Be(earlyResult.DifficultyBudget + 1);
         lateResult.DifficultyBudget.Should().Be(earlyResult.DifficultyBudget + 2);
+    }
+
+    // --- PalaceRoomState archetype preference ---
+
+    [Fact]
+    public void Compose_WithSilent_ShouldPreferGuardOverSkirmisher()
+    {
+        var guard = GuardEnemy with { BaseDifficulty = 2 };
+        var skirmisher = SkirmisherEnemy with { BaseDifficulty = 4 };
+        var enemies = new[] { skirmisher, guard };
+
+        var neutral = CreateContext(riskLevel: 4, enemies: enemies);
+        var silent = CreateContext(riskLevel: 4, enemies: enemies, palaceRoomState: PalaceRoomState.Silent);
+
+        var neutralResult = Policy.Compose(neutral);
+        var silentResult = Policy.Compose(silent);
+
+        neutralResult.SelectedEnemies.First().Archetype.Should().Be("Skirmisher");
+        silentResult.SelectedEnemies.First().Archetype.Should().Be("Guard");
+    }
+
+    [Fact]
+    public void Compose_WithSilent_ShouldSupportFallback_WhenNoPreferredArchetypeAvailable()
+    {
+        var enemies = new[] { SkirmisherEnemy, FragileEnemy };
+
+        var context = CreateContext(riskLevel: 3, enemies: enemies, palaceRoomState: PalaceRoomState.Silent);
+
+        var act = () => Policy.Compose(context);
+
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void Compose_WithPainful_ShouldPreferDisruptorOverGuard()
+    {
+        var disruptor = DisruptorEnemy with { BaseDifficulty = 2 };
+        var guard = GuardEnemy with { BaseDifficulty = 4 };
+        var enemies = new[] { guard, disruptor };
+
+        var neutral = CreateContext(riskLevel: 4, enemies: enemies);
+        var painful = CreateContext(riskLevel: 4, enemies: enemies, palaceRoomState: PalaceRoomState.Painful);
+
+        var neutralResult = Policy.Compose(neutral);
+        var painfulResult = Policy.Compose(painful);
+
+        neutralResult.SelectedEnemies.First().Archetype.Should().Be("Guard");
+        painfulResult.SelectedEnemies.First().Archetype.Should().Be("Disruptor");
+    }
+
+    [Fact]
+    public void Compose_WithEnraged_ShouldPreferSkirmisherOverGuard()
+    {
+        var skirmisher = SkirmisherEnemy with { BaseDifficulty = 2 };
+        var guard = GuardEnemy with { BaseDifficulty = 4 };
+        var enemies = new[] { guard, skirmisher };
+
+        var neutral = CreateContext(riskLevel: 4, enemies: enemies);
+        var enraged = CreateContext(riskLevel: 4, enemies: enemies, palaceRoomState: PalaceRoomState.Enraged);
+
+        var neutralResult = Policy.Compose(neutral);
+        var enragedResult = Policy.Compose(enraged);
+
+        neutralResult.SelectedEnemies.First().Archetype.Should().Be("Guard");
+        enragedResult.SelectedEnemies.First().Archetype.Should().Be("Skirmisher");
+    }
+
+    [Fact]
+    public void Compose_WithViolent_ShouldPreferFragileOverSupport()
+    {
+        var fragile = FragileEnemy with { BaseDifficulty = 2 };
+        var support = SupportEnemy with { BaseDifficulty = 4 };
+        var enemies = new[] { support, fragile };
+
+        var neutral = CreateContext(riskLevel: 4, enemies: enemies);
+        var violent = CreateContext(riskLevel: 4, enemies: enemies, palaceRoomState: PalaceRoomState.Violent);
+
+        var neutralResult = Policy.Compose(neutral);
+        var violentResult = Policy.Compose(violent);
+
+        neutralResult.SelectedEnemies.First().Archetype.Should().Be("Support");
+        violentResult.SelectedEnemies.First().Archetype.Should().Be("Fragile");
+    }
+
+    [Fact]
+    public void Compose_WithPalaceRoomState_ShouldPreserveDeterminism()
+    {
+        var enemies = new[] { GuardEnemy, SkirmisherEnemy, DisruptorEnemy };
+
+        var context = CreateContext(riskLevel: 4, enemies: enemies, palaceRoomState: PalaceRoomState.Silent);
+
+        var result1 = Policy.Compose(context);
+        var result2 = Policy.Compose(context);
+
+        result1.SelectedEnemies.Select(e => e.Key)
+            .Should().Equal(result2.SelectedEnemies.Select(e => e.Key));
     }
 }
