@@ -3,6 +3,7 @@ using Leds.GameEngine.Application.Abstractions;
 using Leds.GameEngine.Application.Common.Exceptions;
 using Leds.GameEngine.Application.PalaceLaws.Ports;
 using Leds.GameEngine.Application.Runs.GetRunById;
+using Leds.GameEngine.Application.Runs.PalaceIndicators;
 using Leds.GameEngine.Domain.PalaceLaws;
 using Leds.GameEngine.Domain.Runs;
 using Leds.GameEngine.UnitTests.Common.Factories;
@@ -23,7 +24,7 @@ public sealed class GetRunByIdQueryHandlerTests
             .ReturnsAsync(run);
 
         var palaceIndicatorRepository = CreatePalaceIndicatorRepository();
-        var handler = new GetRunByIdQueryHandler(repository.Object, palaceIndicatorRepository.Object);
+        var handler = CreateHandler(repository.Object, palaceIndicatorRepository.Object);
 
         var response = await handler.Handle(
             new GetRunByIdQuery(run.Id.Value),
@@ -66,7 +67,7 @@ public sealed class GetRunByIdQueryHandlerTests
             .ReturnsAsync(run);
 
         var palaceIndicatorRepository = CreatePalaceIndicatorRepository();
-        var handler = new GetRunByIdQueryHandler(repository.Object, palaceIndicatorRepository.Object);
+        var handler = CreateHandler(repository.Object, palaceIndicatorRepository.Object);
 
         var response = await handler.Handle(
             new GetRunByIdQuery(run.Id.Value),
@@ -96,7 +97,7 @@ public sealed class GetRunByIdQueryHandlerTests
             .ReturnsAsync(run);
 
         var palaceIndicatorRepository = CreatePalaceIndicatorRepository();
-        var handler = new GetRunByIdQueryHandler(repository.Object, palaceIndicatorRepository.Object);
+        var handler = CreateHandler(repository.Object, palaceIndicatorRepository.Object);
 
         var response = await handler.Handle(
             new GetRunByIdQuery(run.Id.Value),
@@ -117,7 +118,7 @@ public sealed class GetRunByIdQueryHandlerTests
             .ReturnsAsync(run);
 
         var palaceIndicatorRepository = CreatePalaceIndicatorRepository();
-        var handler = new GetRunByIdQueryHandler(repository.Object, palaceIndicatorRepository.Object);
+        var handler = CreateHandler(repository.Object, palaceIndicatorRepository.Object);
 
         var response = await handler.Handle(
             new GetRunByIdQuery(run.Id.Value),
@@ -137,7 +138,7 @@ public sealed class GetRunByIdQueryHandlerTests
             .ReturnsAsync((Run?)null);
 
         var palaceIndicatorRepository = CreatePalaceIndicatorRepository();
-        var handler = new GetRunByIdQueryHandler(repository.Object, palaceIndicatorRepository.Object);
+        var handler = CreateHandler(repository.Object, palaceIndicatorRepository.Object);
 
         var act = () => handler.Handle(
             new GetRunByIdQuery(runId),
@@ -166,7 +167,7 @@ public sealed class GetRunByIdQueryHandlerTests
             .ReturnsAsync(run);
 
         var palaceIndicatorRepository = CreatePalaceIndicatorRepository([indicator]);
-        var handler = new GetRunByIdQueryHandler(repository.Object, palaceIndicatorRepository.Object);
+        var handler = CreateHandler(repository.Object, palaceIndicatorRepository.Object);
 
         var response = await handler.Handle(
             new GetRunByIdQuery(run.Id.Value),
@@ -179,6 +180,44 @@ public sealed class GetRunByIdQueryHandlerTests
         publicIndicator.Description.Should().Be("Le Palais observe la traversée.");
         publicIndicator.Level.Should().Be("high");
         publicIndicator.Source.Should().Be("run");
+    }
+
+    [Fact]
+    public async Task Handle_ShouldReturnProjectedPublicPalaceIndicators_FromRunState()
+    {
+        var run = TestGameEngineFactory.CreateRun();
+        run.ActivatePalaceLaw(PalaceLaw.Create(
+            "law-silence-v1",
+            "Loi du Silence",
+            "v1",
+            [PalaceLawDomain.Narrative]));
+
+        var repository = new Mock<IRunRepository>();
+        repository
+            .Setup(repo => repo.GetByIdAsync(run.Id, CancellationToken.None))
+            .ReturnsAsync(run);
+
+        var palaceIndicatorRepository = CreatePalaceIndicatorRepository();
+        var handler = CreateHandler(repository.Object, palaceIndicatorRepository.Object);
+
+        var response = await handler.Handle(
+            new GetRunByIdQuery(run.Id.Value),
+            CancellationToken.None);
+
+        response.Run.PalaceIndicators.Should().ContainSingle(indicator =>
+            indicator.Key == "law:law-silence-v1" &&
+            indicator.Category == "law" &&
+            indicator.Source == "law");
+    }
+
+    private static GetRunByIdQueryHandler CreateHandler(
+        IRunRepository runRepository,
+        IPalaceIndicatorRepository palaceIndicatorRepository)
+    {
+        return new GetRunByIdQueryHandler(
+            runRepository,
+            palaceIndicatorRepository,
+            new PalacePublicIndicatorProjectionService());
     }
 
     private static Mock<IPalaceIndicatorRepository> CreatePalaceIndicatorRepository(

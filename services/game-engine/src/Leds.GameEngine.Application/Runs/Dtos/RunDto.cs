@@ -47,17 +47,19 @@ public sealed record RunDto(
 {
     public static RunDto FromDomain(
         Run run,
-        IReadOnlyCollection<PalaceIndicator>? palaceIndicators = null)
+        IReadOnlyCollection<PalaceIndicator>? palaceIndicators = null,
+        IReadOnlyCollection<PalacePublicIndicatorDto>? projectedPalaceIndicators = null)
     {
         var activeModifiers = run.RunModifiers
             .Where(m => !m.IsConsumed)
             .Select(RunModifierDto.FromDomain)
             .ToArray();
 
-        var publicIndicators = (palaceIndicators ?? [])
-            .Where(indicator => !indicator.IsExpired)
-            .Select(PalacePublicIndicatorDto.FromDomain)
-            .ToArray();
+        var publicIndicators = projectedPalaceIndicators?.ToArray()
+            ?? (palaceIndicators ?? [])
+                .Where(indicator => !indicator.IsExpired)
+                .Select(PalacePublicIndicatorDto.FromDomain)
+                .ToArray();
 
         return new RunDto(
             run.Id.Value,

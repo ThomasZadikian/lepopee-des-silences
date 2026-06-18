@@ -2,6 +2,7 @@
 using Leds.GameEngine.Application.Common.Exceptions;
 using Leds.GameEngine.Application.PalaceLaws.Ports;
 using Leds.GameEngine.Application.Runs.Dtos;
+using Leds.GameEngine.Application.Runs.PalaceIndicators;
 using Leds.GameEngine.Domain.Runs;
 using MediatR;
 
@@ -11,13 +12,16 @@ public sealed class GetRunByIdQueryHandler : IRequestHandler<GetRunByIdQuery, Ge
 {
     private readonly IRunRepository _runRepository;
     private readonly IPalaceIndicatorRepository _palaceIndicatorRepository;
+    private readonly IPalacePublicIndicatorProjectionService _palacePublicIndicatorProjectionService;
 
     public GetRunByIdQueryHandler(
         IRunRepository runRepository,
-        IPalaceIndicatorRepository palaceIndicatorRepository)
+        IPalaceIndicatorRepository palaceIndicatorRepository,
+        IPalacePublicIndicatorProjectionService palacePublicIndicatorProjectionService)
     {
         _runRepository = runRepository;
         _palaceIndicatorRepository = palaceIndicatorRepository;
+        _palacePublicIndicatorProjectionService = palacePublicIndicatorProjectionService;
     }
 
     public async Task<GetRunByIdResponse> Handle(
@@ -37,6 +41,12 @@ public sealed class GetRunByIdQueryHandler : IRequestHandler<GetRunByIdQuery, Ge
             request.RunId,
             cancellationToken);
 
-        return new GetRunByIdResponse(RunDto.FromDomain(run, palaceIndicators));
+        var publicIndicators = _palacePublicIndicatorProjectionService.Project(
+            run,
+            palaceIndicators);
+
+        return new GetRunByIdResponse(RunDto.FromDomain(
+            run,
+            projectedPalaceIndicators: publicIndicators));
     }
 }

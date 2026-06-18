@@ -7,6 +7,7 @@ using Leds.GameEngine.Application.Events.ResolveNodeEvent;
 using Leds.GameEngine.Application.Events.Resolvers;
 using Leds.GameEngine.Application.Interlude;
 using Leds.GameEngine.Application.Rewards.RewardOfferFactory;
+using Leds.GameEngine.Application.Runs.PalaceIndicators;
 using Leds.GameEngine.Application.Runs.StartRun;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
@@ -52,6 +53,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<RewardOfferFactory>();
         services.AddScoped<IInterludeNodeProvider, DefaultInterludeNodeProvider>();
         services.AddSingleton<ICombatFactory, CombatFactory>();
+        services.AddScoped<IPalacePublicIndicatorProjectionService, PalacePublicIndicatorProjectionService>();
 
         return services;
     }

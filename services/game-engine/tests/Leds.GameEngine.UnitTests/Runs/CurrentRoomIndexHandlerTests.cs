@@ -10,6 +10,7 @@ using Leds.GameEngine.Application.Rewards.SelectReward;
 using Leds.GameEngine.Application.Runs.ChooseNode;
 using Leds.GameEngine.Application.Runs.Dtos;
 using Leds.GameEngine.Application.Runs.GetRunById;
+using Leds.GameEngine.Application.Runs.PalaceIndicators;
 using Leds.GameEngine.Application.Runs.ProgressRun;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rewards;
@@ -46,7 +47,10 @@ public sealed class CurrentRoomIndexHandlerTests
             .Setup(r => r.GetByRunIdAsync(run.Id.Value, CancellationToken.None))
             .ReturnsAsync([]);
 
-        var handler = new GetRunByIdQueryHandler(repository.Object, palaceIndicatorRepository.Object);
+        var handler = new GetRunByIdQueryHandler(
+            repository.Object,
+            palaceIndicatorRepository.Object,
+            new PalacePublicIndicatorProjectionService());
 
         var response = await handler.Handle(
             new GetRunByIdQuery(run.Id.Value),
