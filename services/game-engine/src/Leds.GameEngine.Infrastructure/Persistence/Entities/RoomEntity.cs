@@ -6,6 +6,7 @@ public sealed class RoomEntity
     public Guid RunId { get; set; }
     public int Depth { get; set; }
     public string RoomType { get; set; } = string.Empty;
+    public string PalaceState { get; set; } = "Neutral";
     public string Theme { get; set; } = string.Empty;
     public string BossId { get; set; } = string.Empty;
     public string BossName { get; set; } = string.Empty;

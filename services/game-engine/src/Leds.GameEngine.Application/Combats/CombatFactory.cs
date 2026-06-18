@@ -19,7 +19,8 @@ public sealed class CombatFactory : ICombatFactory
         IReadOnlyCollection<RunModifier>? runModifiers = null,
         int attackPower = 0,
         int defense = 0,
-        int speed = 10)
+        int speed = 10,
+        PalaceRoomState palaceRoomState = PalaceRoomState.Neutral)
     {
         return CreateFromDraft(
             CombatId.New(),
@@ -28,7 +29,8 @@ public sealed class CombatFactory : ICombatFactory
             runModifiers,
             attackPower,
             defense,
-            speed);
+            speed,
+            palaceRoomState);
     }
 
     public Combat CreateFromDraft(
@@ -38,7 +40,8 @@ public sealed class CombatFactory : ICombatFactory
         IReadOnlyCollection<RunModifier>? runModifiers = null,
         int attackPower = 0,
         int defense = 0,
-        int speed = 10)
+        int speed = 10,
+        PalaceRoomState palaceRoomState = PalaceRoomState.Neutral)
     {
         // Sum all unconsumed StartingGuardBonus modifiers (e.g. Éclat de garde: +8 garde).
         var guardBonus = runModifiers?
@@ -111,12 +114,17 @@ public sealed class CombatFactory : ICombatFactory
                     RoomClimate.Heatwave => 1.10,
                     _ => 1.0
                 };
+                var enemyStartingGuard = palaceRoomState == PalaceRoomState.Silent ? 8 : 0;
 
                 var skills = enemy.Skills
                     .Select(s =>
                     {
                         var scaledSkill = _enemyStatScaler.Scale(baseVitality, s.BasePower, draft.DifficultyMultiplier);
-                        var power = Math.Max(1, (int)Math.Round(scaledSkill.Power * enemyPowerMultiplier));
+                        var power = ScaleEnemySkillPower(
+                            s.EffectType,
+                            scaledSkill.Power,
+                            enemyPowerMultiplier,
+                            palaceRoomState);
                         return CombatantSkill.Create(
                             s.Key,
                             s.DisplayName,
@@ -135,7 +143,8 @@ public sealed class CombatFactory : ICombatFactory
                     displayName: enemy.DisplayName,
                     archetype: enemy.Archetype,
                     maxVitality: scaled.Vitality,
-                    skills: skills);
+                    skills: skills,
+                    startingGuard: enemyStartingGuard);
             })
             .ToArray();
 
@@ -198,6 +207,27 @@ public sealed class CombatFactory : ICombatFactory
         }
 
         return Math.Max(1, (int)Math.Round(basePower * attackPowerMultiplier));
+    }
+
+    private static int ScaleEnemySkillPower(
+        string effectType,
+        int basePower,
+        double climateMultiplier,
+        PalaceRoomState palaceRoomState)
+    {
+        var multiplier = climateMultiplier;
+        if (palaceRoomState == PalaceRoomState.Painful && IsDamageEffect(effectType))
+        {
+            multiplier *= 0.90;
+        }
+
+        return Math.Max(1, (int)Math.Round(basePower * multiplier));
+    }
+
+    private static bool IsDamageEffect(string effectType)
+    {
+        return string.Equals(effectType, "Damage", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(effectType, "DamageVitality", StringComparison.OrdinalIgnoreCase);
     }
 
     private static IReadOnlyCollection<CombatantSkill> GetDefaultAllySkills(double attackPowerMultiplier)

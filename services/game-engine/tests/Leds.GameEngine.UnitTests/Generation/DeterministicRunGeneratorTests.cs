@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rooms;
+using Leds.GameEngine.Domain.Runs;
 using Leds.GameEngine.UnitTests.Common.Factories;
 
 namespace Leds.GameEngine.UnitTests.Generation;
@@ -198,6 +199,62 @@ public sealed class DeterministicRunGeneratorTests
         room.AvailableNodes.Should().HaveCount(2);
         room.AvailableNodes.Should().OnlyContain(node => node.Row == 0);
         room.AvailableNodes.Should().OnlyContain(node => node.State == NodeState.Available);
+    }
+
+    [Fact]
+    public async Task GenerateInitialRoom_ShouldHaveNeutralPalaceState()
+    {
+        var generator = TestGeneratorFactory.CreateDeterministicRunGenerator();
+
+        var room = await generator.GenerateInitialRoomAsync("seed-palace-test");
+
+        room.PalaceState.Should().Be(PalaceRoomState.Neutral,
+            because: "The initial Threshold room at depth 0 always has Neutral state.");
+    }
+
+    [Fact]
+    public async Task GenerateNextRoom_ShouldResolvePalaceState()
+    {
+        var generator = TestGeneratorFactory.CreateDeterministicRunGenerator();
+        var initialRoom = await generator.GenerateInitialRoomAsync("seed-palace-next");
+        var run = Run.StartNew(
+            Guid.NewGuid(),
+            "seed-palace-next",
+            generator.GeneratorVersion,
+            generator.MarkovMatrixVersion,
+            initialRoom,
+            DateTimeOffset.UtcNow);
+
+        var nextRoom = await generator.GenerateNextRoomAsync(run);
+
+        nextRoom.PalaceState.Should().NotBe(PalaceRoomState.Enraged,
+            because: "Enraged is defined but not yet a candidate state.");
+        nextRoom.PalaceState.Should().NotBe(PalaceRoomState.Violent,
+            because: "Violent is defined but not yet a candidate state.");
+        nextRoom.PalaceState.Should().BeOneOf(
+            PalaceRoomState.Neutral,
+            PalaceRoomState.Silent,
+            PalaceRoomState.Painful);
+    }
+
+    [Fact]
+    public async Task GenerateNextRoom_ShouldBeDeterministic_ForPalaceState()
+    {
+        var generator = TestGeneratorFactory.CreateDeterministicRunGenerator();
+        var initialRoom = await generator.GenerateInitialRoomAsync("seed-palace-det");
+        var run = Run.StartNew(
+            Guid.NewGuid(),
+            "seed-palace-det",
+            generator.GeneratorVersion,
+            generator.MarkovMatrixVersion,
+            initialRoom,
+            DateTimeOffset.UtcNow);
+
+        var nextRoomA = await generator.GenerateNextRoomAsync(run);
+        var nextRoomB = await generator.GenerateNextRoomAsync(run);
+
+        nextRoomA.PalaceState.Should().Be(nextRoomB.PalaceState,
+            because: "Same run seed and context must produce the same PalaceState deterministically.");
     }
 
     [Fact]

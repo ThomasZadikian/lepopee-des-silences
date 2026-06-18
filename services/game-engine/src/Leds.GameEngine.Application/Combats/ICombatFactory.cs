@@ -1,5 +1,6 @@
 using Leds.GameEngine.Application.Combats.EncounterDrafts;
 using Leds.GameEngine.Domain.Combats;
+using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
 
 namespace Leds.GameEngine.Application.Combats;
@@ -12,7 +13,8 @@ public interface ICombatFactory
         IReadOnlyCollection<RunModifier>? runModifiers = null,
         int attackPower = 0,
         int defense = 0,
-        int speed = 10);
+        int speed = 10,
+        PalaceRoomState palaceRoomState = PalaceRoomState.Neutral);
 
     Combat CreateFromDraft(
         CombatId combatId,
@@ -21,5 +23,6 @@ public interface ICombatFactory
         IReadOnlyCollection<RunModifier>? runModifiers = null,
         int attackPower = 0,
         int defense = 0,
-        int speed = 10);
+        int speed = 10,
+        PalaceRoomState palaceRoomState = PalaceRoomState.Neutral);
 }

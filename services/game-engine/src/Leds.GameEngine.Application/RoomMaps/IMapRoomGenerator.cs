@@ -10,5 +10,6 @@ public interface IMapRoomGenerator
         int roomDepth,
         RoomType roomType,
         Random random,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        PalaceRoomState palaceState = PalaceRoomState.Neutral);
 }

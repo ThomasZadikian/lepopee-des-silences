@@ -29,6 +29,7 @@ using Leds.GameEngine.Infrastructure.Generation;
 using Leds.GameEngine.Infrastructure.Generation.Randomness;
 using Leds.GameEngine.Infrastructure.Generation.RoomMaps;
 using Leds.GameEngine.Infrastructure.Generation.Rooms.Bosses;
+using Leds.GameEngine.Infrastructure.Generation.Rooms.States;
 using Leds.GameEngine.Infrastructure.Generation.Rooms.Themes;
 using Leds.GameEngine.Infrastructure.Generation.Rooms.Types;
 using Leds.GameEngine.Infrastructure.Outbox;
@@ -64,6 +65,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<MarkovTransitionResolver>();
         services.AddSingleton<IRoomTypeMarkovMatrixProvider, StaticRoomTypeMarkovMatrixProvider>();
         services.AddSingleton<IRoomTypeResolver, MarkovRoomTypeResolver>();
+        services.AddSingleton<IPalaceRoomStateResolver, MarkovPalaceRoomStateResolver>();
         services.AddSingleton<IRoomThemeResolver, RoomThemeResolver>();
         services.AddSingleton<IRoomBossProfileResolver, RoomBossProfileResolver>();
 

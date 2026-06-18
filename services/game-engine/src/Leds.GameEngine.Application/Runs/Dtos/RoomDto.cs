@@ -17,7 +17,8 @@ public sealed record RoomDto(
     IReadOnlyCollection<MapNodeDto> AvailableNodes,
     string? LayoutTemplateKey,
     string? LayoutTemplateVersion,
-    string? ActiveClimate = null)
+    string? ActiveClimate = null,
+    PalaceRoomStateDto? PalaceState = null)
 {
     public static RoomDto FromDomain(Room room, IReadOnlyCollection<RunModifier>? runModifiers = null)
     {
@@ -37,7 +38,8 @@ public sealed record RoomDto(
             room.AvailableNodes.Select(MapNodeDto.FromDomain).ToArray(),
             room.LayoutTemplateKey,
             room.LayoutTemplateVersion,
-            activeClimate);
+            activeClimate,
+            PalaceRoomStateDto.FromDomain(room.PalaceState));
     }
 
     private static string? ResolveActiveClimate(
@@ -59,6 +61,45 @@ public sealed record RoomDto(
             3 => "Heatwave",
             4 => "Hail",
             _ => null
+        };
+    }
+}
+
+public sealed record PalaceRoomStateDto(
+    string Key,
+    string Label,
+    string Description,
+    string Tone)
+{
+    public static PalaceRoomStateDto FromDomain(PalaceRoomState state)
+    {
+        return state switch
+        {
+            PalaceRoomState.Silent => new(
+                "silent",
+                "Silencieuse",
+                "La salle retient son souffle et pousse les ennemis a se retrancher.",
+                "silent"),
+            PalaceRoomState.Painful => new(
+                "painful",
+                "Douloureuse",
+                "La salle transforme la violence directe en douleur persistante.",
+                "painful"),
+            PalaceRoomState.Enraged => new(
+                "enraged",
+                "Enragee",
+                "La salle nourrit une agressivite instable.",
+                "danger"),
+            PalaceRoomState.Violent => new(
+                "violent",
+                "Violente",
+                "La salle favorise les affrontements brutaux.",
+                "danger"),
+            _ => new(
+                "neutral",
+                "Neutre",
+                "La salle ne manifeste pas d'etat adaptatif notable.",
+                "neutral")
         };
     }
 }

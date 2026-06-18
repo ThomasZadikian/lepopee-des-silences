@@ -340,11 +340,13 @@ public sealed class ResolveCurrentEventCommandHandlerTests
                 It.IsAny<IReadOnlyCollection<RunModifier>?>(),
                 It.IsAny<int>(),
                 It.IsAny<int>(),
-                It.IsAny<int>()))
+                It.IsAny<int>(),
+                It.IsAny<PalaceRoomState>()))
             .Returns((CombatId combatId, CombatEncounterDraft draft, PlayerRuntimeState? playerState,
-                IReadOnlyCollection<RunModifier>? runModifiers, int attackPower, int defense, int speed) =>
+                IReadOnlyCollection<RunModifier>? runModifiers, int attackPower, int defense, int speed,
+                PalaceRoomState palaceRoomState) =>
                 new CombatFactory().CreateFromDraft(
-                    combatId, draft, playerState, runModifiers, attackPower, defense, speed));
+                    combatId, draft, playerState, runModifiers, attackPower, defense, speed, palaceRoomState));
 
         var handler = new ResolveCurrentEventCommandHandler(
             repository.Object,
@@ -450,11 +452,13 @@ public sealed class ResolveCurrentEventCommandHandlerTests
                 It.IsAny<IReadOnlyCollection<RunModifier>?>(),
                 It.IsAny<int>(),
                 It.IsAny<int>(),
-                It.IsAny<int>()))
+                It.IsAny<int>(),
+                It.IsAny<PalaceRoomState>()))
             .Returns((CombatId combatId, CombatEncounterDraft draft, PlayerRuntimeState? playerState,
-                IReadOnlyCollection<RunModifier>? runModifiers, int attackPower, int defense, int speed) =>
+                IReadOnlyCollection<RunModifier>? runModifiers, int attackPower, int defense, int speed,
+                PalaceRoomState palaceRoomState) =>
                 new CombatFactory().CreateFromDraft(
-                    combatId, draft, playerState, runModifiers, attackPower, defense, speed));
+                    combatId, draft, playerState, runModifiers, attackPower, defense, speed, palaceRoomState));
 
         var handler = new ResolveCurrentEventCommandHandler(
             repository.Object,

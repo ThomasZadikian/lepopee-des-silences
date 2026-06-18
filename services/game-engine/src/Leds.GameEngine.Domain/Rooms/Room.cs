@@ -11,6 +11,7 @@ public sealed class Room
         RoomId id,
         int depth,
         RoomType roomType,
+        PalaceRoomState palaceState,
         string theme,
         RoomBossProfile bossProfile,
         RoomState state,
@@ -21,6 +22,7 @@ public sealed class Room
         Id = id;
         Depth = depth;
         RoomType = roomType;
+        PalaceState = palaceState;
         Theme = theme;
         BossProfile = bossProfile;
         State = state;
@@ -36,6 +38,8 @@ public sealed class Room
     public int Depth { get; }
 
     public RoomType RoomType { get; }
+
+    public PalaceRoomState PalaceState { get; }
 
     public string Theme { get; }
 
@@ -62,6 +66,7 @@ public sealed class Room
     public static Room Create(
         int depth,
         RoomType roomType,
+        PalaceRoomState palaceState,
         string theme,
         RoomBossProfile bossProfile,
         IEnumerable<MapNode> nodes)
@@ -143,6 +148,7 @@ public sealed class Room
             RoomId.New(),
             depth,
             roomType,
+            palaceState,
             theme.Trim(),
             bossProfile,
             RoomState.Active,
@@ -154,13 +160,14 @@ public sealed class Room
     public static Room CreateFromTemplate(
         int depth,
         RoomType roomType,
+        PalaceRoomState palaceState,
         string theme,
         RoomBossProfile bossProfile,
         IEnumerable<MapNode> nodes,
         string layoutTemplateKey,
         string layoutTemplateVersion)
     {
-        var room = Create(depth, roomType, theme, bossProfile, nodes);
+        var room = Create(depth, roomType, palaceState, theme, bossProfile, nodes);
 
         if (string.IsNullOrWhiteSpace(layoutTemplateKey))
         {
@@ -176,6 +183,7 @@ public sealed class Room
             room.Id,
             room.Depth,
             room.RoomType,
+            room.PalaceState,
             room.Theme,
             room.BossProfile,
             room.State,
@@ -448,6 +456,7 @@ public sealed class Room
         RoomId id,
         int depth,
         RoomType roomType,
+        PalaceRoomState palaceState,
         string theme,
         RoomBossProfile bossProfile,
         RoomState state,
@@ -456,8 +465,64 @@ public sealed class Room
         string? layoutTemplateKey,
         string? layoutTemplateVersion)
     {
-        var room = new Room(id, depth, roomType, theme, bossProfile, state, nodes, layoutTemplateKey, layoutTemplateVersion);
+        var room = new Room(id, depth, roomType, palaceState, theme, bossProfile, state, nodes, layoutTemplateKey, layoutTemplateVersion);
         room.CurrentNodeDepth = currentNodeDepth;
         return room;
+    }
+
+    public static Room Create(
+        int depth,
+        RoomType roomType,
+        string theme,
+        RoomBossProfile bossProfile,
+        IEnumerable<MapNode> nodes)
+    {
+        return Create(depth, roomType, PalaceRoomState.Neutral, theme, bossProfile, nodes);
+    }
+
+    public static Room CreateFromTemplate(
+        int depth,
+        RoomType roomType,
+        string theme,
+        RoomBossProfile bossProfile,
+        IEnumerable<MapNode> nodes,
+        string layoutTemplateKey,
+        string layoutTemplateVersion)
+    {
+        return CreateFromTemplate(
+            depth,
+            roomType,
+            PalaceRoomState.Neutral,
+            theme,
+            bossProfile,
+            nodes,
+            layoutTemplateKey,
+            layoutTemplateVersion);
+    }
+
+    public static Room Rehydrate(
+        RoomId id,
+        int depth,
+        RoomType roomType,
+        string theme,
+        RoomBossProfile bossProfile,
+        RoomState state,
+        int currentNodeDepth,
+        IEnumerable<MapNode> nodes,
+        string? layoutTemplateKey,
+        string? layoutTemplateVersion)
+    {
+        return Rehydrate(
+            id,
+            depth,
+            roomType,
+            PalaceRoomState.Neutral,
+            theme,
+            bossProfile,
+            state,
+            currentNodeDepth,
+            nodes,
+            layoutTemplateKey,
+            layoutTemplateVersion);
     }
 }

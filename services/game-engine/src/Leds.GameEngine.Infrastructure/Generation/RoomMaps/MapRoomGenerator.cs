@@ -32,7 +32,8 @@ public sealed class MapRoomGenerator : IMapRoomGenerator
         int roomDepth,
         RoomType roomType,
         Random random,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        PalaceRoomState palaceState = PalaceRoomState.Neutral)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(seed);
         ArgumentException.ThrowIfNullOrWhiteSpace(generatorVersion);
@@ -49,6 +50,7 @@ public sealed class MapRoomGenerator : IMapRoomGenerator
         var room = Room.Create(
             roomDepth,
             roomType,
+            palaceState,
             _themeResolver.Resolve(roomType),
             bossProfile,
             nodes);
@@ -56,6 +58,7 @@ public sealed class MapRoomGenerator : IMapRoomGenerator
         return Room.CreateFromTemplate(
             room.Depth,
             room.RoomType,
+            room.PalaceState,
             room.Theme,
             room.BossProfile,
             room.Nodes,

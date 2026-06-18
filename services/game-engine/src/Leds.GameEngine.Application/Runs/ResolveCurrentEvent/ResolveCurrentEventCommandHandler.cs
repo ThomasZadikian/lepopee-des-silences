@@ -157,7 +157,8 @@ public sealed class ResolveCurrentEventCommandHandler
                 run.RunModifiers,
                 attackPower: run.Attack,
                 defense: run.Defense,
-                speed: run.Speed);
+                speed: run.Speed,
+                palaceRoomState: room.PalaceState);
             run.StartCombat(combatRuntime);
             combatRuntimeDto = CombatRuntimeDto.FromDomain(combatRuntime, CombatItemHelper.GetUsableBattleItems(run));
         }

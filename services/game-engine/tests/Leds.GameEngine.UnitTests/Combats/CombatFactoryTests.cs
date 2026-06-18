@@ -3,6 +3,7 @@ using Leds.GameEngine.Application.Combats;
 using Leds.GameEngine.Application.Combats.EncounterDrafts;
 using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Common;
+using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
 
 namespace Leds.GameEngine.UnitTests.Combats;
@@ -375,6 +376,110 @@ public sealed class CombatFactoryTests
         var ally = combat.Allies.Single();
         ally.Guard.Should().Be(0,
             because: "Without any RunModifiers the starting guard defaults to 0.");
+    }
+
+    // -----------------------------------------------------------------------
+    // PalaceRoomState effects
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public void CreateFromDraft_ShouldNotApplyPalaceGuard_WhenNeutral()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft(includeSkills: true);
+
+        var combat = factory.CreateFromDraft(draft, palaceRoomState: PalaceRoomState.Neutral);
+
+        var enemy = combat.Enemies.Single();
+        enemy.Guard.Should().Be(0,
+            because: "Neutral PalaceRoomState should not grant any guard bonus.");
+    }
+
+    [Fact]
+    public void CreateFromDraft_ShouldApplySilentGuard_WhenSilent()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft(includeSkills: true);
+
+        var combat = factory.CreateFromDraft(draft, palaceRoomState: PalaceRoomState.Silent);
+
+        var enemy = combat.Enemies.Single();
+        enemy.Guard.Should().Be(8,
+            because: "Silent PalaceRoomState should grant 8 starting guard to enemies.");
+        enemy.BaseGuard.Should().Be(8,
+            because: "Silent PalaceRoomState should set base guard to 8 for round resets.");
+    }
+
+    [Fact]
+    public void CreateFromDraft_ShouldNotApplyAnyGuard_WhenSilent_AllySide()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft(includeSkills: true);
+
+        var combat = factory.CreateFromDraft(draft, palaceRoomState: PalaceRoomState.Silent);
+
+        var ally = combat.Allies.Single();
+        ally.Guard.Should().Be(0,
+            because: "Silent PalaceRoomState should only affect enemy guard, not allies.");
+    }
+
+    [Fact]
+    public void CreateFromDraft_ShouldReduceEnemyDamageSkill_WhenPainful()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft(includeSkills: true);
+
+        var baseline = factory.CreateFromDraft(draft, palaceRoomState: PalaceRoomState.Neutral);
+        var painful = factory.CreateFromDraft(draft, palaceRoomState: PalaceRoomState.Painful);
+
+        var baselinePower = baseline.Enemies.Single().Skills.Single(s => s.EffectType == "Damage").BasePower;
+        var painfulPower = painful.Enemies.Single().Skills.Single(s => s.EffectType == "Damage").BasePower;
+
+        painfulPower.Should().BeLessThan(baselinePower,
+            because: "Painful PalaceRoomState should reduce enemy damage skill power by 10%.");
+        painfulPower.Should().Be((int)Math.Round(baselinePower * 0.90),
+            because: "Painful PalaceRoomState applies a 0.90 multiplier to enemy damage skills.");
+    }
+
+    [Fact]
+    public void CreateFromDraft_ShouldNotReduceEnemyGuardSkill_WhenPainful()
+    {
+        var factory = new CombatFactory();
+        var guardSkill = new CombatEncounterDraftSkill(
+            "skill.basic.guard", "Garde", "Guard.", "Defense", "Self", "AddCurrentGuard", 0, 0, 10,
+            Array.Empty<string>());
+        var draft = CreateDraft(enemySkills: [guardSkill]);
+
+        var baseline = factory.CreateFromDraft(draft, palaceRoomState: PalaceRoomState.Neutral);
+        var painful = factory.CreateFromDraft(draft, palaceRoomState: PalaceRoomState.Painful);
+
+        var baselinePower = baseline.Enemies.Single().Skills.Single().BasePower;
+        var painfulPower = painful.Enemies.Single().Skills.Single().BasePower;
+
+        painfulPower.Should().Be(baselinePower,
+            because: "Painful PalaceRoomState should only reduce damage-type skills, not guard skills.");
+    }
+
+    [Fact]
+    public void CreateFromDraft_ShouldApplyPainfulOverClimateMultiplier()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft(includeSkills: true);
+
+        var heatwaveOnly = factory.CreateFromDraft(
+            draft,
+            runModifiers: [CreateClimateModifier(draft.RoomId, 3)],
+            palaceRoomState: PalaceRoomState.Neutral);
+        var heatwaveAndPainful = factory.CreateFromDraft(
+            draft,
+            runModifiers: [CreateClimateModifier(draft.RoomId, 3)],
+            palaceRoomState: PalaceRoomState.Painful);
+
+        var heatwavePower = heatwaveOnly.Enemies.Single().Skills.Single(s => s.EffectType == "Damage").BasePower;
+        var combinedPower = heatwaveAndPainful.Enemies.Single().Skills.Single(s => s.EffectType == "Damage").BasePower;
+
+        combinedPower.Should().BeLessThan(heatwavePower,
+            because: "Painful state should compound with Heatwave climate to further reduce enemy damage.");
     }
 
     private static RunModifier CreateClimateModifier(Guid roomId, double value)

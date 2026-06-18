@@ -16,6 +16,7 @@ public sealed class RoomEntityConfiguration : IEntityTypeConfiguration<RoomEntit
         builder.Property(room => room.RunId).HasColumnName("run_id");
         builder.Property(room => room.Depth).HasColumnName("depth");
         builder.Property(room => room.RoomType).HasColumnName("room_type").HasMaxLength(64).IsRequired();
+        builder.Property(room => room.PalaceState).HasColumnName("palace_state").HasMaxLength(64).HasDefaultValue("Neutral").IsRequired();
         builder.Property(room => room.Theme).HasColumnName("theme").HasMaxLength(128).IsRequired();
         builder.Property(room => room.BossId).HasColumnName("boss_id").HasMaxLength(128).IsRequired();
         builder.Property(room => room.BossName).HasColumnName("boss_name").HasMaxLength(256).IsRequired();
@@ -35,5 +36,6 @@ public sealed class RoomEntityConfiguration : IEntityTypeConfiguration<RoomEntit
 
         builder.HasIndex(room => room.RunId);
         builder.HasIndex(room => room.State);
+        builder.HasIndex(room => room.PalaceState);
     }
 }

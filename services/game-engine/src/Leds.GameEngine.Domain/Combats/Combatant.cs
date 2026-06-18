@@ -120,15 +120,19 @@ public sealed class Combatant
         string displayName,
         string archetype,
         int maxVitality,
-        IReadOnlyCollection<CombatantSkill>? skills = null)
+        IReadOnlyCollection<CombatantSkill>? skills = null,
+        int startingGuard = 0,
+        int attackPower = 0,
+        int defense = 0,
+        int speed = 10)
     {
         var id = CombatantId.New();
         var snapshot = CombatantBaseStatSnapshot.Create(
             maxVitality: maxVitality,
-            attackPower: 0,
-            defense: 0,
-            startingGuard: 0,
-            speed: 10,
+            attackPower: attackPower,
+            defense: defense,
+            startingGuard: startingGuard,
+            speed: speed,
             initiative: 0,
             recovery: 0,
             focus: 0,
@@ -137,7 +141,7 @@ public sealed class Combatant
 
         var runtimeState = CombatantRuntimeState.Create(
             currentVitality: maxVitality,
-            currentGuard: 0);
+            currentGuard: startingGuard);
 
         return new Combatant(
             id,
@@ -147,8 +151,8 @@ public sealed class Combatant
             archetype,
             maxVitality,
             currentVitality: maxVitality,
-            guard: 0,
-            baseGuard: 0,
+            guard: startingGuard,
+            baseGuard: startingGuard,
             mana: 0,
             charge: 0,
             CombatantStatus.Active,

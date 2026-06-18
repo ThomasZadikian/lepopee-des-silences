@@ -150,6 +150,7 @@ public static class RunPersistenceMapper
             RunId = runId,
             Depth = room.Depth,
             RoomType = room.RoomType.ToString(),
+            PalaceState = room.PalaceState.ToString(),
             Theme = room.Theme,
             BossId = room.BossProfile.BossId,
             BossName = room.BossProfile.Name,
@@ -400,6 +401,9 @@ public static class RunPersistenceMapper
             new RoomId(entity.Id),
             entity.Depth,
             Enum.Parse<RoomType>(entity.RoomType),
+            string.IsNullOrWhiteSpace(entity.PalaceState)
+                ? PalaceRoomState.Neutral
+                : Enum.Parse<PalaceRoomState>(entity.PalaceState),
             entity.Theme,
             bossProfile,
             Enum.Parse<RoomState>(entity.State),

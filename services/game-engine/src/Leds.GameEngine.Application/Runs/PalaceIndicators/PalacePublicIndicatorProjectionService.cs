@@ -1,5 +1,6 @@
 using Leds.GameEngine.Application.Runs.Dtos;
 using Leds.GameEngine.Domain.PalaceLaws;
+using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
 
 namespace Leds.GameEngine.Application.Runs.PalaceIndicators;
@@ -29,6 +30,11 @@ public sealed class PalacePublicIndicatorProjectionService : IPalacePublicIndica
         if (!string.IsNullOrWhiteSpace(activeClimate))
         {
             indicators.Add(ProjectActiveClimate(activeClimate));
+        }
+
+        if (run.CurrentRoom.PalaceState != PalaceRoomState.Neutral)
+        {
+            indicators.Add(ProjectPalaceRoomState(run.CurrentRoom.PalaceState));
         }
 
         return indicators
@@ -83,6 +89,20 @@ public sealed class PalacePublicIndicatorProjectionService : IPalacePublicIndica
             Category: "climate",
             Level: null,
             Tone: publicClimate.Tone,
+            Source: "room");
+    }
+
+    private static PalacePublicIndicatorDto ProjectPalaceRoomState(PalaceRoomState state)
+    {
+        var display = PalaceRoomStateDto.FromDomain(state);
+
+        return new PalacePublicIndicatorDto(
+            Key: $"room-state-{display.Key}",
+            Label: display.Label,
+            Description: display.Description,
+            Category: "room-state",
+            Level: state == PalaceRoomState.Silent ? "warning" : "medium",
+            Tone: display.Tone,
             Source: "room");
     }
 
