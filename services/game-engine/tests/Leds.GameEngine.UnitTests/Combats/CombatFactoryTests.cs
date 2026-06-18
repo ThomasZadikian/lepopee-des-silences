@@ -265,6 +265,18 @@ public sealed class CombatFactoryTests
     }
 
     [Fact]
+    public void CreateFromDraft_ShouldIgnoreSpeed_ForInitialActiveCombatant()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft();
+
+        var combat = factory.CreateFromDraft(draft, speed: 1);
+
+        combat.ActiveCombatantId.Should().Be(combat.Allies.First().Id,
+            because: "combat initiative is not stat-based yet; the first ally must start.");
+    }
+
+    [Fact]
     public void CreateFromDraft_ShouldBeDeterministic_ForSameDraft()
     {
         var factory = new CombatFactory();

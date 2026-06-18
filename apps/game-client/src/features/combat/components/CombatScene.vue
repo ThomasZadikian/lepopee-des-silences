@@ -198,7 +198,7 @@ watch(() => combatStore.selectedTargetIds, async (ids) => {
 
 onMounted(() => {
   if (combatStore.combat?.id === props.combatId) return;
-  if (runStore.combatRuntime?.id && runStore.combatRuntime.status === 'Active') {
+  if (runStore.combatRuntime?.id === props.combatId && runStore.combatRuntime.status === 'Active') {
     combatStore.initCombat(runStore.combatRuntime);
   } else {
     combatStore.loadCurrentCombat(props.runId);
