@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import PalacePublicIndicatorsPanel from '../palace-indicators/PalacePublicIndicatorsPanel.vue';
 import RoomClimatePanel from '../room-climate/RoomClimatePanel.vue';
-import type { ActivePalaceLawDto, ActiveCurseDto, RoomClimateStateDto, RunModifierDto } from '../runs/types/runTypes';
+import type { ActivePalaceLawDto, ActiveCurseDto, PalacePublicIndicatorDto, RoomClimateStateDto, RunModifierDto } from '../runs/types/runTypes';
 
 const props = defineProps<{
   laws?: ActivePalaceLawDto[] | null;
   curses?: ActiveCurseDto[] | null;
   modifiers?: RunModifierDto[] | null;
+  palaceIndicators?: PalacePublicIndicatorDto[] | null;
   roomClimate?: RoomClimateStateDto | null;
   showRoomClimate?: boolean;
 }>()
@@ -14,6 +16,8 @@ const props = defineProps<{
 const visibleModifiers = computed(() =>
   (props.modifiers ?? []).filter(m => m.sourceType !== 'RunItem')
 )
+
+const showPalaceIndicators = computed(() => props.palaceIndicators !== undefined)
 
 const emit = defineEmits<{ close: [] }>()
 
@@ -103,7 +107,12 @@ function modifierValueLabel(value: number): string {
     <RoomClimatePanel v-if="showRoomClimate" class="lp-climate" :climate="roomClimate" />
 
     <!-- Content -->
-    <div v-if="laws?.length || curses?.length || visibleModifiers.length" class="lp-body">
+    <div v-if="showPalaceIndicators || laws?.length || curses?.length || visibleModifiers.length" class="lp-body">
+
+      <PalacePublicIndicatorsPanel
+        v-if="showPalaceIndicators"
+        :indicators="palaceIndicators"
+      />
 
       <!-- ── Lois du Palais ── -->
       <section v-if="laws && laws.length" class="lp-section">

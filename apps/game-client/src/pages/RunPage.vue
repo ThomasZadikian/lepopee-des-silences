@@ -222,6 +222,7 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
                 :laws="runStore.currentRun.activePalaceLaws"
                 :curses="runStore.currentRun.activeCurses"
                 :modifiers="runStore.currentRun.activeModifiers ?? null"
+                :palace-indicators="runStore.currentRun.palaceIndicators ?? null"
                 :room-climate="runStore.currentRun.currentRoom.activeClimate ?? runStore.currentRun.currentRoom.climate ?? null"
                 show-room-climate
                 @close="uiStore.toggleLaws"

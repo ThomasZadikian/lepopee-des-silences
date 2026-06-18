@@ -20,6 +20,16 @@ export type ActivePalaceLawDto = {
   domain: string;
 };
 
+export type PalacePublicIndicatorDto = {
+  key: string;
+  label: string;
+  description?: string | null;
+  category?: string | null;
+  level?: string | null;
+  tone?: string | null;
+  source?: string | null;
+};
+
 export type BossPreviewDto = {
   bossId: string;
   name: string;
@@ -86,6 +96,8 @@ export type RunDto = {
   activeModifiers?: RunModifierDto[] | null;
   /** Active curses on this run (alpha-0.7.8+). Null/absent when none are active. */
   activeCurses?: ActiveCurseDto[] | null;
+  /** Public Palace indicators exposed by the server. Empty/absent when none are available. */
+  palaceIndicators?: PalacePublicIndicatorDto[] | null;
   /** Party snapshot — available hors combat depuis alpha-0.8.1. Null pour les runs antérieures. */
   party?: RunPartySnapshotDto | null;
 };

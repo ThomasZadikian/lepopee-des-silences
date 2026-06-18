@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { mount } from '@vue/test-utils';
 import LawsPopover from '../features/palace-laws/LawsPopover.vue';
-import type { ActivePalaceLawDto, ActiveCurseDto, RunModifierDto } from '../features/runs/types/runTypes.ts';
+import type { ActivePalaceLawDto, ActiveCurseDto, PalacePublicIndicatorDto, RunModifierDto } from '../features/runs/types/runTypes.ts';
 
 const baseLaw: ActivePalaceLawDto = {
   key: 'law-combat-1',
@@ -30,17 +30,29 @@ const baseMod: RunModifierDto = {
   sourceKey: 'law-combat-1',
 };
 
+const baseIndicator: PalacePublicIndicatorDto = {
+  key: 'palace.whispers',
+  label: 'Murmures du Palais',
+  description: 'Le Palais observe la traversée.',
+  category: 'run',
+  level: 'high',
+  tone: 'mystery',
+  source: 'run',
+};
+
 function mountPanel(
   laws?: ActivePalaceLawDto[] | null,
   curses?: ActiveCurseDto[] | null,
   modifiers?: RunModifierDto[] | null,
   roomClimate?: string | null,
+  palaceIndicators?: PalacePublicIndicatorDto[] | null,
 ) {
   return mount(LawsPopover, {
     props: {
       laws,
       curses,
       modifiers,
+      palaceIndicators,
       roomClimate,
       showRoomClimate: roomClimate !== undefined,
     },
@@ -188,6 +200,27 @@ describe('LawsPopover', () => {
     const wrapper = mountPanel(null, null, null, null);
 
     expect(wrapper.text()).toContain('Aucun climat actif dans cette Room.');
+  });
+
+  it('renders palace public indicators when provided', () => {
+    const wrapper = mountPanel(null, null, null, undefined, [baseIndicator]);
+
+    expect(wrapper.text()).toContain('Indicateurs du Palais');
+    expect(wrapper.text()).toContain('Murmures du Palais');
+    expect(wrapper.text()).toContain('Le Palais observe la traversée.');
+  });
+
+  it('renders palace indicator empty state when the run has no public indicators', () => {
+    const wrapper = mountPanel(null, null, null, undefined, []);
+
+    expect(wrapper.text()).toContain('Aucun indicateur public du Palais disponible.');
+  });
+
+  it('does not use activeModifiers as palace indicator source', () => {
+    const wrapper = mountPanel(null, null, [baseMod], undefined, []);
+
+    expect(wrapper.text()).toContain('Aucun indicateur public du Palais disponible.');
+    expect(wrapper.findAll('.pic-root').length).toBe(0);
   });
 
   it('emits close when the close button is clicked', async () => {
