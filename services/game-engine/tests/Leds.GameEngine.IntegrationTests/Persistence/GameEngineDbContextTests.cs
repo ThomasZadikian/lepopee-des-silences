@@ -1,24 +1,20 @@
 using FluentAssertions;
 using Leds.GameEngine.Infrastructure.Persistence;
 using Leds.GameEngine.Infrastructure.Persistence.Entities;
-using Microsoft.EntityFrameworkCore;
 
 namespace Leds.GameEngine.IntegrationTests.Persistence;
 
+[Collection("GameEnginePostgres")]
 public sealed class GameEngineDbContextTests : IDisposable
 {
-    private readonly string _databaseName;
+    private readonly string _connStr;
     private readonly GameEngineDbContext _context;
+    private readonly GameEnginePostgresFixture _fixture;
 
-    public GameEngineDbContextTests()
+    public GameEngineDbContextTests(GameEnginePostgresFixture fixture)
     {
-        _databaseName = Guid.NewGuid().ToString();
-        var options = new DbContextOptionsBuilder<GameEngineDbContext>()
-            .UseInMemoryDatabase(databaseName: _databaseName)
-            .Options;
-
-        _context = new GameEngineDbContext(options);
-        _context.Database.EnsureCreated();
+        _fixture = fixture;
+        (_context, _connStr) = fixture.CreateContext();
     }
 
     [Fact]
@@ -52,10 +48,7 @@ public sealed class GameEngineDbContextTests : IDisposable
         _context.Runs.Add(entity);
         await _context.SaveChangesAsync();
 
-        using var verifyContext = new GameEngineDbContext(
-            new DbContextOptionsBuilder<GameEngineDbContext>()
-                .UseInMemoryDatabase(databaseName: _databaseName)
-                .Options);
+        using var verifyContext = _fixture.CreateContext(_connStr);
 
         var loaded = await verifyContext.Runs.FindAsync(runId);
 
@@ -75,8 +68,8 @@ public sealed class GameEngineDbContextTests : IDisposable
         loaded.Speed.Should().Be(10);
         loaded.ActiveCombatId.Should().BeNull();
         loaded.PendingRewardOfferId.Should().BeNull();
-        loaded.CreatedAtUtc.Should().Be(now);
-        loaded.UpdatedAtUtc.Should().Be(now);
+        loaded.CreatedAtUtc.Should().BeCloseTo(now, TimeSpan.FromMilliseconds(1));
+        loaded.UpdatedAtUtc.Should().BeCloseTo(now, TimeSpan.FromMilliseconds(1));
     }
 
     [Fact]

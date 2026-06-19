@@ -5,12 +5,21 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Leds.Catalog.UnitTests.Infrastructure.Persistence;
 
+[Collection("CatalogPostgres")]
 public sealed class CatalogSeedRunnerTests
 {
+    private readonly CatalogPostgresFixture _fixture;
+
+    public CatalogSeedRunnerTests(CatalogPostgresFixture fixture)
+    {
+        _fixture = fixture;
+    }
+
     [Fact]
     public async Task ApplyBaseSeedAsync_ShouldSeedDataModelCatalogDefinitions()
     {
-        await using var context = CreateContext();
+        var (context, _) = _fixture.CreateContext();
+        await using var _ = context;
         var runner = new CatalogSeedRunner(context, NullLogger<CatalogSeedRunner>.Instance);
 
         await runner.ApplyBaseSeedAsync(CancellationToken.None);
@@ -28,7 +37,8 @@ public sealed class CatalogSeedRunnerTests
     [Fact]
     public async Task ApplyBaseSeedAsync_ShouldPersistEnemyWithStatBlockAndSkillLinks()
     {
-        await using var context = CreateContext();
+        var (context, _) = _fixture.CreateContext();
+        await using var _ = context;
         var runner = new CatalogSeedRunner(context, NullLogger<CatalogSeedRunner>.Instance);
 
         await runner.ApplyBaseSeedAsync(CancellationToken.None);
@@ -41,14 +51,5 @@ public sealed class CatalogSeedRunnerTests
         enemy.StatBlock.Should().NotBeNull();
         enemy.StatBlock!.MaxVitality.Should().BeGreaterThan(0);
         enemy.SkillLinks.Should().Contain(l => l.SkillDefinitionKey == "skill.basic.strike");
-    }
-
-    private static CatalogDbContext CreateContext()
-    {
-        var options = new DbContextOptionsBuilder<CatalogDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-
-        return new CatalogDbContext(options);
     }
 }

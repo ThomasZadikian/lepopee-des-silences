@@ -5,12 +5,20 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Leds.Catalog.UnitTests.Infrastructure.Persistence;
 
+[Collection("CatalogPostgres")]
 public sealed class CatalogDbContextModelTests
 {
+    private readonly CatalogPostgresFixture _fixture;
+
+    public CatalogDbContextModelTests(CatalogPostgresFixture fixture)
+    {
+        _fixture = fixture;
+    }
+
     [Fact]
     public void Model_ShouldExposeDataModelCatalogTables()
     {
-        using var context = CreateContext();
+        using var context = _fixture.CreateContext().Context;
         var model = context.Model;
 
         model.FindEntityType(typeof(EnemyStatBlockEntity))!.GetTableName().Should().Be("catalog_enemy_stat_blocks");
@@ -26,7 +34,7 @@ public sealed class CatalogDbContextModelTests
     [Fact]
     public void Model_ShouldKeepEnemyStatBlockAsChildOneToOne()
     {
-        using var context = CreateContext();
+        using var context = _fixture.CreateContext().Context;
         var enemy = context.Model.FindEntityType(typeof(EnemyDefinitionEntity))!;
         var statBlock = context.Model.FindEntityType(typeof(EnemyStatBlockEntity))!;
 
@@ -40,7 +48,7 @@ public sealed class CatalogDbContextModelTests
     [Fact]
     public void Model_ShouldUseEffectSetAsCanonicalEffectSource()
     {
-        using var context = CreateContext();
+        using var context = _fixture.CreateContext().Context;
         var tableNames = context.Model.GetEntityTypes().Select(t => t.GetTableName()).ToArray();
 
         tableNames.Should().Contain("catalog_effect_sets");
@@ -49,14 +57,5 @@ public sealed class CatalogDbContextModelTests
         tableNames.Should().NotContain("catalog_item_effects");
         tableNames.Should().NotContain("catalog_palace_law_effects");
         tableNames.Should().NotContain("catalog_curse_effects");
-    }
-
-    private static CatalogDbContext CreateContext()
-    {
-        var options = new DbContextOptionsBuilder<CatalogDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-
-        return new CatalogDbContext(options);
     }
 }

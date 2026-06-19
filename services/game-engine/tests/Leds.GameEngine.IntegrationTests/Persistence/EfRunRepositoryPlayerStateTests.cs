@@ -4,25 +4,21 @@ using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
 using Leds.GameEngine.Infrastructure.Persistence;
 using Leds.GameEngine.Infrastructure.Persistence.Repositories;
-using Microsoft.EntityFrameworkCore;
 
 namespace Leds.GameEngine.IntegrationTests.Persistence;
 
+[Collection("GameEnginePostgres")]
 public sealed class EfRunRepositoryPlayerStateTests : IDisposable
 {
-    private readonly string _databaseName;
+    private readonly string _connStr;
     private readonly GameEngineDbContext _context;
     private readonly EfRunRepository _repository;
+    private readonly GameEnginePostgresFixture _fixture;
 
-    public EfRunRepositoryPlayerStateTests()
+    public EfRunRepositoryPlayerStateTests(GameEnginePostgresFixture fixture)
     {
-        _databaseName = Guid.NewGuid().ToString();
-        var options = new DbContextOptionsBuilder<GameEngineDbContext>()
-            .UseInMemoryDatabase(databaseName: _databaseName)
-            .Options;
-
-        _context = new GameEngineDbContext(options);
-        _context.Database.EnsureCreated();
+        _fixture = fixture;
+        (_context, _connStr) = fixture.CreateContext();
         _repository = new EfRunRepository(_context);
     }
 
@@ -33,10 +29,7 @@ public sealed class EfRunRepositoryPlayerStateTests : IDisposable
 
         await _repository.AddAsync(run, CancellationToken.None);
 
-        using var verifyContext = new GameEngineDbContext(
-            new DbContextOptionsBuilder<GameEngineDbContext>()
-                .UseInMemoryDatabase(databaseName: _databaseName)
-                .Options);
+        using var verifyContext = _fixture.CreateContext(_connStr);
 
         var verifyRepository = new EfRunRepository(verifyContext);
         var loaded = await verifyRepository.GetByIdAsync(run.Id, CancellationToken.None);
@@ -75,10 +68,7 @@ public sealed class EfRunRepositoryPlayerStateTests : IDisposable
 
         await _repository.AddAsync(run, CancellationToken.None);
 
-        using var verifyContext = new GameEngineDbContext(
-            new DbContextOptionsBuilder<GameEngineDbContext>()
-                .UseInMemoryDatabase(databaseName: _databaseName)
-                .Options);
+        using var verifyContext = _fixture.CreateContext(_connStr);
 
         var verifyRepository = new EfRunRepository(verifyContext);
         var loaded = await verifyRepository.GetByIdAsync(run.Id, CancellationToken.None);
@@ -97,10 +87,7 @@ public sealed class EfRunRepositoryPlayerStateTests : IDisposable
 
         await _repository.UpdateAsync(run, CancellationToken.None);
 
-        using var verifyContext = new GameEngineDbContext(
-            new DbContextOptionsBuilder<GameEngineDbContext>()
-                .UseInMemoryDatabase(databaseName: _databaseName)
-                .Options);
+        using var verifyContext = _fixture.CreateContext(_connStr);
 
         var verifyRepository = new EfRunRepository(verifyContext);
         var loaded = await verifyRepository.GetByIdAsync(run.Id, CancellationToken.None);

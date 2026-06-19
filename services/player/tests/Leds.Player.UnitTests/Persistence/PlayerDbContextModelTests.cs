@@ -5,12 +5,20 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Leds.Player.UnitTests.Persistence;
 
+[Collection("PlayerPostgres")]
 public sealed class PlayerDbContextModelTests
 {
+    private readonly PlayerPostgresFixture _fixture;
+
+    public PlayerDbContextModelTests(PlayerPostgresFixture fixture)
+    {
+        _fixture = fixture;
+    }
+
     [Fact]
     public void Model_ShouldExposeDataModelPlayerTables()
     {
-        using var context = CreateContext();
+        using var context = _fixture.CreateContext().Context;
 
         context.Model.FindEntityType(typeof(PlayerCharacterStatBlockEntity))!.GetTableName().Should().Be("player_character_stat_blocks");
         context.Model.FindEntityType(typeof(PlayerCharacterSkillEntity))!.GetTableName().Should().Be("player_character_skills");
@@ -22,7 +30,7 @@ public sealed class PlayerDbContextModelTests
     [Fact]
     public void Model_ShouldKeepStatBlockAsChildOneToOne()
     {
-        using var context = CreateContext();
+        using var context = _fixture.CreateContext().Context;
         var character = context.Model.FindEntityType(typeof(PlayerCharacterEntity))!;
         var statBlock = context.Model.FindEntityType(typeof(PlayerCharacterStatBlockEntity))!;
 
@@ -36,7 +44,8 @@ public sealed class PlayerDbContextModelTests
     [Fact]
     public async Task Context_ShouldPersistPermanentProgressionRows()
     {
-        await using var context = CreateContext();
+        var (context, _) = _fixture.CreateContext();
+        await using var _ = context;
         var profileId = Guid.NewGuid();
         var characterId = Guid.NewGuid();
         var runId = Guid.NewGuid();
@@ -82,14 +91,5 @@ public sealed class PlayerDbContextModelTests
         (await context.PlayerCharacterSkills.CountAsync()).Should().Be(1);
         (await context.PlayerPermanentUnlocks.CountAsync()).Should().Be(1);
         (await context.PlayerRunStatistics.CountAsync()).Should().Be(1);
-    }
-
-    private static PlayerDbContext CreateContext()
-    {
-        var options = new DbContextOptionsBuilder<PlayerDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-
-        return new PlayerDbContext(options);
     }
 }

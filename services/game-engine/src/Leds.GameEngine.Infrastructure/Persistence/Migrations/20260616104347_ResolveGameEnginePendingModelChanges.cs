@@ -10,12 +10,22 @@ namespace Leds.GameEngine.Infrastructure.Persistence.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            // Snapshot-only migration: 20260612160000_AddCombatantBaseGuard already adds this column.
+            // AddCombatantBaseGuard was originally a separate migration without a Designer.cs,
+            // which made it invisible to EF Core discovery. Merge its operation here.
+            migrationBuilder.AddColumn<int>(
+                name: "base_guard",
+                table: "run_combatants",
+                type: "integer",
+                nullable: false,
+                defaultValue: 0);
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropColumn(
+                name: "base_guard",
+                table: "run_combatants");
         }
     }
 }
