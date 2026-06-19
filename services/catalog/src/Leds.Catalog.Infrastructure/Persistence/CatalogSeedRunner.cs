@@ -10,6 +10,7 @@ public sealed class CatalogSeedRunner
     private const string SeedKey = "base-catalog";
     private const string LegacyVersion = "alpha-0.5.5";
     private const string DataModelVersion = "alpha-0.8.1";
+    private const string CatalogGatewayContentVersion = "alpha-0.8.1-catalog-content-gateway";
 
     private readonly CatalogDbContext _context;
     private readonly ILogger<CatalogSeedRunner> _logger;
@@ -24,6 +25,7 @@ public sealed class CatalogSeedRunner
     {
         await ApplyLegacySeedAsync(cancellationToken);
         await ApplyDataModelSeedAsync(cancellationToken);
+        await ApplyCatalogGatewayContentSeedAsync(cancellationToken);
     }
 
     private async Task ApplyLegacySeedAsync(CancellationToken cancellationToken)
@@ -71,6 +73,54 @@ public sealed class CatalogSeedRunner
 
         await _context.SaveChangesAsync(cancellationToken);
         _logger.LogInformation("Seed {SeedKey} version {Version} applied successfully.", SeedKey, DataModelVersion);
+    }
+
+    private async Task ApplyCatalogGatewayContentSeedAsync(CancellationToken cancellationToken)
+    {
+        if (await HasSeedVersionAsync(CatalogGatewayContentVersion, cancellationToken))
+        {
+            _logger.LogInformation("Seed {SeedKey} version {Version} already applied. Skipping.", SeedKey, CatalogGatewayContentVersion);
+            return;
+        }
+
+        _logger.LogInformation("Applying seed {SeedKey} version {Version}...", SeedKey, CatalogGatewayContentVersion);
+
+        var now = DateTime.UtcNow;
+        await AddCatalogGatewayItemDefinitionsAsync(now, cancellationToken);
+        await AddEffectSetAsync("effectset.curse-old-wound", "Vieille blessure", "Une blessure ancienne se rouvre.", "ModifyDifficultyMultiplier", "NextCombat", 0.10m, "NextCombatOnly", "UniqueBySource", now, cancellationToken);
+        await AddEffectSetAsync("effectset.curse-weight-of-silence", "Poids du silence", "Le silence augmente la pression du prochain combat.", "ModifyDifficultyMultiplier", "NextCombat", 0.20m, "NextCombatOnly", "UniqueBySource", now, cancellationToken);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        var effectIds = await EffectSetIdsAsync(cancellationToken);
+        await AddCurseAsync(
+            "curse.old-wound",
+            "Vieille blessure",
+            "Une blessure ancienne qui se rouvre au plus mauvais moment.",
+            "Le corps porte ses propres souvenirs.",
+            3,
+            "NextCombatOnly",
+            null,
+            "effectset.curse-old-wound",
+            effectIds,
+            now,
+            cancellationToken);
+        await AddCurseAsync(
+            "curse.weight-of-silence",
+            "Poids du silence",
+            "Le silence devient une charge mentale supplémentaire.",
+            null,
+            5,
+            "NextCombatOnly",
+            null,
+            "effectset.curse-weight-of-silence",
+            effectIds,
+            now,
+            cancellationToken);
+        await AddCatalogGatewayRewardTemplatesAsync(now, cancellationToken);
+
+        AddSeedVersion(CatalogGatewayContentVersion);
+        await _context.SaveChangesAsync(cancellationToken);
+        _logger.LogInformation("Seed {SeedKey} version {Version} applied successfully.", SeedKey, CatalogGatewayContentVersion);
     }
 
     private Task<bool> HasSeedVersionAsync(string version, CancellationToken cancellationToken)
@@ -694,6 +744,157 @@ public sealed class CatalogSeedRunner
             CreatedAtUtc = now,
             UpdatedAtUtc = now
         });
+    }
+
+    private async Task AddCurseAsync(
+        string key,
+        string displayName,
+        string description,
+        string? narrativeText,
+        int severity,
+        string duration,
+        string? trigger,
+        string effectSetKey,
+        Dictionary<string, Guid> effectIds,
+        DateTime now,
+        CancellationToken cancellationToken)
+    {
+        if (await _context.CurseDefinitions.AnyAsync(c => c.Key == key, cancellationToken))
+        {
+            return;
+        }
+
+        _context.CurseDefinitions.Add(new CurseDefinitionEntity
+        {
+            Id = Guid.NewGuid(),
+            Key = key,
+            DisplayName = displayName,
+            Description = description,
+            NarrativeText = narrativeText,
+            Severity = severity,
+            Duration = duration,
+            Trigger = trigger,
+            EffectSetId = effectIds[effectSetKey],
+            BaseWeight = 1,
+            MinDepth = 1,
+            SelectionGroup = "curse.gateway",
+            Version = "1.0.0",
+            Status = "Active",
+            CreatedAtUtc = now,
+            UpdatedAtUtc = now
+        });
+    }
+
+    private async Task AddCatalogGatewayItemDefinitionsAsync(DateTime now, CancellationToken cancellationToken)
+    {
+        if (!await _context.ItemDefinitions.AnyAsync(i => i.Key == "item.consumable.guard-shard", cancellationToken))
+        {
+            _context.ItemDefinitions.Add(new ItemDefinitionEntity
+            {
+                Id = Guid.NewGuid(),
+                Key = "item.consumable.guard-shard",
+                Name = "Eclat de garde",
+                DisplayName = "Eclat de garde",
+                Description = "Offre une protection permanente pendant la run.",
+                Version = "1.0",
+                Status = "Active",
+                Category = "Consumable",
+                ItemType = "Guard",
+                Rarity = "Uncommon",
+                UsageMode = "UseInCombat",
+                Lifecycle = "RuntimeRunOnly",
+                StackPolicy = "Additive",
+                MaxStack = 99,
+                IsUsableInCombat = true,
+                IsUsableOutsideCombat = false,
+                Duration = "RunOnly",
+                EffectValue = 0,
+                Price = 0,
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
+            });
+        }
+    }
+
+    private async Task AddCatalogGatewayRewardTemplatesAsync(DateTime now, CancellationToken cancellationToken)
+    {
+        await AddRewardTemplateAsync("reward.combat.default", "Récompense de combat", "Récompense standard après un combat.", "Combat", now, cancellationToken,
+            RewardOption("Heal", "Soin léger", "Soin léger", null, 10),
+            RewardOption("Heal", "Souffle retrouvé", "Souffle retrouvé", null, 14),
+            RewardOption("TemporaryItem", "Baume de mémoire", "Baume de mémoire", "item.consumable.minor-heal", 15));
+        await AddRewardTemplateAsync("reward.combat.rare", "Récompense rare", "Récompense pour un combat rare.", "Rare", now, cancellationToken,
+            RewardOption("Heal", "Soin rare", "Soin rare", null, 15),
+            RewardOption("Heal", "Répit lucide", "Répit lucide", null, 20),
+            RewardOption("Heal", "Soin substantiel", "Soin substantiel", null, 25));
+        await AddRewardTemplateAsync("reward.combat.elite", "Récompense élite", "Récompense pour un combat élite.", "Elite", now, cancellationToken,
+            RewardOption("Heal", "Soin important", "Soin important", null, 20),
+            RewardOption("Heal", "Volonté restaurée", "Volonté restaurée", null, 28),
+            RewardOption("Heal", "Suture mentale", "Suture mentale", null, 36));
+        await AddRewardTemplateAsync("reward.combat.boss", "Récompense de boss", "Récompense pour avoir vaincu un boss.", "RoomBoss", now, cancellationToken,
+            RewardOption("Heal", "Soin majeur", "Soin majeur", null, 30),
+            RewardOption("Heal", "Souffle du Gardien", "Souffle du Gardien", null, 42),
+            RewardOption("Heal", "Silence recomposé", "Silence recomposé", null, 54));
+        await AddRewardTemplateAsync("reward.item.default", "Récompense d'objet", "Récompense d'un noeud objet.", "NodeEvent", now, cancellationToken,
+            RewardOption("TemporaryItem", "Éclat de garde", "Éclat de garde", "item.consumable.guard-shard", 8),
+            RewardOption("TemporaryItem", "Baume de mémoire", "Baume de mémoire", "item.consumable.minor-heal", 15),
+            RewardOption("Heal", "Souffle du passé", "Souffle du passé", null, 10));
+        await AddRewardTemplateAsync("reward.merchant.default", "Offre du marchand", "Récompense proposée par un marchand.", "NodeEvent", now, cancellationToken,
+            RewardOption("TemporaryItem", "Baume de mémoire", "Baume de mémoire", "item.consumable.minor-heal", 15),
+            RewardOption("TemporaryItem", "Éclat de garde", "Éclat de garde", "item.consumable.guard-shard", 8),
+            RewardOption("Heal", "Soin du marchand", "Soin du marchand", null, 12));
+    }
+
+    private async Task AddRewardTemplateAsync(
+        string key,
+        string displayName,
+        string description,
+        string sourceType,
+        DateTime now,
+        CancellationToken cancellationToken,
+        params RewardTemplateOptionEntity[] options)
+    {
+        if (await _context.RewardTemplates.AnyAsync(template => template.Key == key, cancellationToken))
+        {
+            return;
+        }
+
+        _context.RewardTemplates.Add(new RewardTemplateEntity
+        {
+            Id = Guid.NewGuid(),
+            Key = key,
+            DisplayName = displayName,
+            Description = description,
+            SourceType = sourceType,
+            MinOptions = 2,
+            MaxOptions = 3,
+            BaseWeight = 1,
+            SelectionGroup = key,
+            Version = "1.0",
+            Status = "Active",
+            CreatedAtUtc = now,
+            UpdatedAtUtc = now,
+            Options = options.ToList()
+        });
+    }
+
+    private static RewardTemplateOptionEntity RewardOption(
+        string rewardType,
+        string label,
+        string description,
+        string? payloadKey,
+        int baseAmount)
+    {
+        return new RewardTemplateOptionEntity
+        {
+            Id = Guid.NewGuid(),
+            RewardType = rewardType,
+            Label = label,
+            Description = description,
+            PayloadKey = payloadKey,
+            BaseAmount = baseAmount,
+            ScalingMode = "Flat",
+            Weight = 1
+        };
     }
 
     private async Task SeedRewardTemplatesAsync(DateTime now, CancellationToken cancellationToken)

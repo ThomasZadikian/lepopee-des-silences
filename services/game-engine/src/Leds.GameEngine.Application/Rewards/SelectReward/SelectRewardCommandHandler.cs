@@ -16,16 +16,16 @@ public sealed class SelectRewardCommandHandler
 {
     private readonly IRunRepository _runRepository;
     private readonly IRewardOfferRepository _rewardOfferRepository;
-    private readonly ICatalogItemDefinitionProvider _itemDefinitionProvider;
+    private readonly ICatalogContentGateway _catalogContentGateway;
 
     public SelectRewardCommandHandler(
         IRunRepository runRepository,
         IRewardOfferRepository rewardOfferRepository,
-        ICatalogItemDefinitionProvider itemDefinitionProvider)
+        ICatalogContentGateway catalogContentGateway)
     {
         _runRepository = runRepository;
         _rewardOfferRepository = rewardOfferRepository;
-        _itemDefinitionProvider = itemDefinitionProvider;
+        _catalogContentGateway = catalogContentGateway;
     }
 
     public async Task<SelectRewardResponse> Handle(
@@ -76,9 +76,10 @@ public sealed class SelectRewardCommandHandler
             var defKey = ParseItemDefinitionKey(selectedChoice.PayloadKey);
             if (defKey is not null)
             {
-                var def = await _itemDefinitionProvider.GetItemDefinitionAsync(defKey, cancellationToken);
-                if (def is not null)
+                var definitionResult = await _catalogContentGateway.GetItemDefinitionByKeyAsync(defKey, cancellationToken);
+                if (definitionResult.IsSuccess)
                 {
+                    var def = definitionResult.Value;
                     run.EnrichLastAddedItem(
                         definitionVersion: def.Version,
                         narrativeText: def.NarrativeText,

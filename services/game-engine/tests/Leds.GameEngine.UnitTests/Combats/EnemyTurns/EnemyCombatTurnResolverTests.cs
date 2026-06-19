@@ -130,8 +130,10 @@ public sealed class EnemyCombatTurnResolverTests
         var enemy = Combatant.CreateEnemy("enemy.1", "Enemy", "Guard", 80, [skill]);
         var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally1, ally2], [enemy]);
         ally1.MarkDefeated();
-        combat.AdvanceTurn();
-        combat.AdvanceTurn();
+        while (combat.ActiveCombatantId != enemy.Id)
+        {
+            combat.AdvanceTurn();
+        }
 
         var result = _resolver.Resolve(combat);
 

@@ -1,6 +1,4 @@
 using FluentAssertions;
-using Leds.GameEngine.Application.Catalog.Contracts;
-using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Infrastructure.Catalog;
 
 namespace Leds.GameEngine.UnitTests.Catalog;
@@ -10,23 +8,21 @@ public sealed class CatalogLawCurseProviderTests
     [Fact]
     public async Task PalaceLawProvider_ShouldReturnSeedLaw()
     {
-        var provider = new InMemoryCatalogPalaceLawDefinitionProvider();
+        var gateway = new InMemoryCatalogContentGateway();
 
-        var law = await provider.GetByKeyAsync("law-silence-v1");
+        var law = await gateway.GetPalaceLawDefinitionByKeyAsync("law-silence-v1");
 
-        law.Should().NotBeNull();
-        law!.Key.Should().Be("law-silence-v1");
-        law.DisplayName.Should().Be("Loi du Silence");
-        law.Duration.Should().Be("UntilRunEnds");
-        law.EffectSetKey.Should().NotBeNullOrEmpty();
+        law.IsSuccess.Should().BeTrue();
+        law.Value.Key.Should().Be("law-silence-v1");
+        law.Value.EffectSetKey.Should().NotBeNullOrEmpty();
     }
 
     [Fact]
     public async Task PalaceLawProvider_ShouldListAvailableLaws()
     {
-        var provider = new InMemoryCatalogPalaceLawDefinitionProvider();
+        var gateway = new InMemoryCatalogContentGateway();
 
-        var laws = await provider.ListAvailableAsync();
+        var laws = await gateway.ListActivePalaceLawDefinitionsAsync();
 
         laws.Should().NotBeEmpty();
         laws.Should().Contain(l => l.Key == "law-silence-v1");
@@ -35,23 +31,23 @@ public sealed class CatalogLawCurseProviderTests
     [Fact]
     public async Task CurseProvider_ShouldReturnSeedCurse()
     {
-        var provider = new InMemoryCatalogCurseDefinitionProvider();
+        var gateway = new InMemoryCatalogContentGateway();
 
-        var curse = await provider.GetByKeyAsync("curse.old-wound");
+        var curse = await gateway.GetCurseDefinitionByKeyAsync("curse.old-wound");
 
-        curse.Should().NotBeNull();
-        curse!.Key.Should().Be("curse.old-wound");
-        curse.DisplayName.Should().Be("Vieille blessure");
-        curse.Duration.Should().Be("NextCombatOnly");
-        curse.EffectSetKey.Should().NotBeNullOrEmpty();
+        curse.IsSuccess.Should().BeTrue();
+        curse.Value.Key.Should().Be("curse.old-wound");
+        curse.Value.DisplayName.Should().Be("Vieille blessure");
+        curse.Value.Duration.Should().Be("NextCombatOnly");
+        curse.Value.EffectSetKey.Should().NotBeNullOrEmpty();
     }
 
     [Fact]
     public async Task CurseProvider_ShouldListAvailableCurses()
     {
-        var provider = new InMemoryCatalogCurseDefinitionProvider();
+        var gateway = new InMemoryCatalogContentGateway();
 
-        var curses = await provider.ListAvailableAsync();
+        var curses = await gateway.ListAvailableCurseDefinitionsAsync();
 
         curses.Should().NotBeEmpty();
         curses.Should().Contain(c => c.Key == "curse.old-wound");
@@ -60,26 +56,26 @@ public sealed class CatalogLawCurseProviderTests
     [Fact]
     public async Task EffectSetProvider_ShouldReturnLawEffectSet()
     {
-        var provider = new InMemoryCatalogEffectSetProvider();
+        var gateway = new InMemoryCatalogContentGateway();
 
-        var effectSet = await provider.GetEffectSetAsync("effectset.law-silence-v1");
+        var effectSet = await gateway.GetEffectSetByKeyAsync("effectset.law-silence-v1");
 
-        effectSet.Should().NotBeNull();
-        effectSet!.Effects.Should().HaveCount(2);
-        effectSet.Effects.Should().Contain(e => e.EffectType == "ModifyDifficultyMultiplier");
-        effectSet.Effects.Should().Contain(e => e.EffectType == "ModifyRewardPowerMultiplier");
+        effectSet.IsSuccess.Should().BeTrue();
+        effectSet.Value.Effects.Should().HaveCount(2);
+        effectSet.Value.Effects.Should().Contain(e => e.EffectType == "ModifyDifficultyMultiplier");
+        effectSet.Value.Effects.Should().Contain(e => e.EffectType == "ModifyRewardPowerMultiplier");
     }
 
     [Fact]
     public async Task EffectSetProvider_ShouldReturnCurseEffectSet()
     {
-        var provider = new InMemoryCatalogEffectSetProvider();
+        var gateway = new InMemoryCatalogContentGateway();
 
-        var effectSet = await provider.GetEffectSetAsync("effectset.curse-old-wound");
+        var effectSet = await gateway.GetEffectSetByKeyAsync("effectset.curse-old-wound");
 
-        effectSet.Should().NotBeNull();
-        effectSet!.Effects.Should().HaveCount(1);
-        effectSet.Effects.Single().EffectType.Should().Be("ModifyDifficultyMultiplier");
-        effectSet.Effects.Single().Duration.Should().Be("NextCombatOnly");
+        effectSet.IsSuccess.Should().BeTrue();
+        effectSet.Value.Effects.Should().HaveCount(1);
+        effectSet.Value.Effects.Single().EffectType.Should().Be("ModifyDifficultyMultiplier");
+        effectSet.Value.Effects.Single().Duration.Should().Be("NextCombatOnly");
     }
 }

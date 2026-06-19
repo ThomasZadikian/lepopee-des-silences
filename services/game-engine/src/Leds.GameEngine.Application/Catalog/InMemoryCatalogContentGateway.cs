@@ -460,6 +460,131 @@ public sealed class InMemoryCatalogContentGateway : ICatalogContentGateway
                 ])
         };
 
+    private static readonly IReadOnlyDictionary<string, CatalogCurseDefinitionSnapshot> CurseDefinitions =
+        new Dictionary<string, CatalogCurseDefinitionSnapshot>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["curse.old-wound"] = new CatalogCurseDefinitionSnapshot(
+                "curse.old-wound",
+                "1.0.0",
+                "Vieille blessure",
+                "Une blessure ancienne qui se rouvre au plus mauvais moment.",
+                "Le corps porte ses propres souvenirs.",
+                3,
+                "NextCombatOnly",
+                null,
+                "effectset.curse-old-wound"),
+            ["curse.weight-of-silence"] = new CatalogCurseDefinitionSnapshot(
+                "curse.weight-of-silence",
+                "1.0.0",
+                "Poids du silence",
+                "Le silence devient une charge mentale supplémentaire.",
+                null,
+                5,
+                "NextCombatOnly",
+                null,
+                "effectset.curse-weight-of-silence")
+        };
+
+    private static readonly IReadOnlyDictionary<string, CatalogItemDefinitionSnapshot> ItemDefinitions =
+        new Dictionary<string, CatalogItemDefinitionSnapshot>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["item.consumable.minor-heal"] = new CatalogItemDefinitionSnapshot(
+                "item.consumable.minor-heal",
+                "1.0",
+                "Baume de mémoire",
+                "Restaure une partie de la vitalité.",
+                null,
+                "Consumable",
+                "Heal",
+                "Common",
+                "UseInCombat",
+                "RuntimeRunOnly",
+                "Additive",
+                99,
+                true,
+                true,
+                null),
+            ["item.consumable.guard-shard"] = new CatalogItemDefinitionSnapshot(
+                "item.consumable.guard-shard",
+                "1.0",
+                "Éclat de garde",
+                "Offre une protection permanente pendant la run.",
+                null,
+                "Consumable",
+                "Guard",
+                "Uncommon",
+                "UseInCombat",
+                "RuntimeRunOnly",
+                "Additive",
+                99,
+                true,
+                false,
+                null),
+            ["item.consumable.eclat-de-garde"] = new CatalogItemDefinitionSnapshot(
+                "item.consumable.eclat-de-garde",
+                "alpha-0.8.1",
+                "Eclat de garde",
+                "Renforce la garde initiale du prochain combat.",
+                null,
+                "Consumable",
+                "Guard",
+                "Common",
+                "UseOnNode",
+                "RuntimeRunOnly",
+                "Additive",
+                3,
+                false,
+                true,
+                "effect.item.eclat-de-garde")
+        };
+
+    private static readonly IReadOnlyDictionary<string, CatalogEffectSetSnapshot> EffectSets =
+        new Dictionary<string, CatalogEffectSetSnapshot>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["effectset.law-silence-v1"] = EffectSet("effectset.law-silence-v1",
+                Effect("ModifyDifficultyMultiplier", "Run", 0.10m, "UntilRunEnds", order: 1),
+                Effect("ModifyRewardPowerMultiplier", "Run", 0.15m, "UntilRunEnds", order: 2)),
+            ["effectset.law-fracture-v1"] = EffectSet("effectset.law-fracture-v1",
+                Effect("AddStartingGuard", "Run", 15m, "UntilRunEnds")),
+            ["effectset.curse-old-wound"] = EffectSet("effectset.curse-old-wound",
+                Effect("ModifyDifficultyMultiplier", "NextCombat", 0.10m, "NextCombatOnly")),
+            ["effectset.curse-weight-of-silence"] = EffectSet("effectset.curse-weight-of-silence",
+                Effect("ModifyDifficultyMultiplier", "NextCombat", 0.20m, "NextCombatOnly")),
+            ["effect.item.minor-heal"] = EffectSet("effect.item.minor-heal",
+                Effect("HealVitality", "Self", 15m, "Immediate", stackPolicy: "None")),
+            ["effect.item.eclat-de-garde"] = EffectSet("effect.item.eclat-de-garde",
+                Effect("AddStartingGuard", "NextCombat", 8m, "UntilRunEnds"))
+        };
+
+    private static readonly IReadOnlyDictionary<string, CatalogRewardTemplateSnapshot> RewardTemplates =
+        new Dictionary<string, CatalogRewardTemplateSnapshot>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["reward.combat.default"] = RewardTemplate("reward.combat.default", "Récompense de combat", "Récompense standard après un combat.", "Combat", [
+                RewardOption("Heal", "Soin léger", "Soin léger", null, null, 10),
+                RewardOption("Heal", "Souffle retrouvé", "Souffle retrouvé", null, null, 14),
+                RewardOption("TemporaryItem", "Baume de mémoire", "Baume de mémoire", "item.consumable.minor-heal", "Item", 15)]),
+            ["reward.combat.rare"] = RewardTemplate("reward.combat.rare", "Récompense rare", "Récompense pour un combat rare.", "Rare", [
+                RewardOption("Heal", "Soin rare", "Soin rare", null, null, 15),
+                RewardOption("Heal", "Répit lucide", "Répit lucide", null, null, 20),
+                RewardOption("Heal", "Soin substantiel", "Soin substantiel", null, null, 25)]),
+            ["reward.combat.elite"] = RewardTemplate("reward.combat.elite", "Récompense élite", "Récompense pour un combat élite.", "Elite", [
+                RewardOption("Heal", "Soin important", "Soin important", null, null, 20),
+                RewardOption("Heal", "Volonté restaurée", "Volonté restaurée", null, null, 28),
+                RewardOption("Heal", "Suture mentale", "Suture mentale", null, null, 36)]),
+            ["reward.combat.boss"] = RewardTemplate("reward.combat.boss", "Récompense de boss", "Récompense pour avoir vaincu un boss.", "RoomBoss", [
+                RewardOption("Heal", "Soin majeur", "Soin majeur", null, null, 30),
+                RewardOption("Heal", "Souffle du Gardien", "Souffle du Gardien", null, null, 42),
+                RewardOption("Heal", "Silence recomposé", "Silence recomposé", null, null, 54)]),
+            ["reward.item.default"] = RewardTemplate("reward.item.default", "Récompense d'objet", "Récompense d'un noeud objet.", "NodeEvent", [
+                RewardOption("TemporaryItem", "Éclat de garde", "Éclat de garde", "item.consumable.guard-shard", "Item", 8),
+                RewardOption("TemporaryItem", "Baume de mémoire", "Baume de mémoire", "item.consumable.minor-heal", "Item", 15),
+                RewardOption("Heal", "Souffle du passé", "Souffle du passé", null, null, 10)]),
+            ["reward.merchant.default"] = RewardTemplate("reward.merchant.default", "Offre du marchand", "Récompense proposée par un marchand.", "NodeEvent", [
+                RewardOption("TemporaryItem", "Baume de mémoire", "Baume de mémoire", "item.consumable.minor-heal", "Item", 15),
+                RewardOption("TemporaryItem", "Éclat de garde", "Éclat de garde", "item.consumable.guard-shard", "Item", 8),
+                RewardOption("Heal", "Soin du marchand", "Soin du marchand", null, null, 12)])
+        };
+
     public Task<Result<EnemyTemplateSnapshot>> GetEnemyTemplateByKeyAsync(
         string key,
         CancellationToken cancellationToken = default)
@@ -524,6 +649,70 @@ public sealed class InMemoryCatalogContentGateway : ICatalogContentGateway
                 .OrderBy(definition => definition.Priority)
                 .ThenBy(definition => definition.Key, StringComparer.OrdinalIgnoreCase)
                 .ToArray());
+    }
+
+    public Task<Result<CatalogCurseDefinitionSnapshot>> GetCurseDefinitionByKeyAsync(
+        string key,
+        CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult(GetByKey(
+            CurseDefinitions,
+            key,
+            "catalog.curse_definition_not_found",
+            "Curse definition was not found."));
+    }
+
+    public Task<IReadOnlyCollection<CatalogCurseDefinitionSnapshot>> ListAvailableCurseDefinitionsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult<IReadOnlyCollection<CatalogCurseDefinitionSnapshot>>(
+            CurseDefinitions.Values
+                .OrderBy(definition => definition.Key, StringComparer.OrdinalIgnoreCase)
+                .ToArray());
+    }
+
+    public Task<Result<CatalogItemDefinitionSnapshot>> GetItemDefinitionByKeyAsync(
+        string key,
+        CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult(GetByKey(
+            ItemDefinitions,
+            key,
+            "catalog.item_definition_not_found",
+            "Item definition was not found."));
+    }
+
+    public Task<Result<CatalogEffectSetSnapshot>> GetEffectSetByKeyAsync(
+        string key,
+        CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult(GetByKey(
+            EffectSets,
+            key,
+            "catalog.effect_set_not_found",
+            "Effect set was not found."));
+    }
+
+    public Task<Result<CatalogRewardTemplateSnapshot>> GetRewardTemplateByKeyAsync(
+        string key,
+        CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult(GetByKey(
+            RewardTemplates,
+            key,
+            "catalog.reward_template_not_found",
+            "Reward template was not found."));
+    }
+
+    public Task<IReadOnlyCollection<CatalogRewardTemplateSnapshot>> ListEligibleRewardTemplatesAsync(
+        RewardTemplateEligibilityContext context,
+        CancellationToken cancellationToken = default)
+    {
+        var eligible = RewardTemplates.Values
+            .Where(template => template.SourceType == context.SourceType)
+            .ToArray();
+
+        return Task.FromResult<IReadOnlyCollection<CatalogRewardTemplateSnapshot>>(eligible);
     }
 
     private static readonly IReadOnlyDictionary<string, CatalogRoomBossProfile> RoomBossProfiles =
@@ -1214,5 +1403,69 @@ public sealed class InMemoryCatalogContentGateway : ICatalogContentGateway
         return source.TryGetValue(key.Trim(), out var snapshot)
             ? Result<TSnapshot>.Success(snapshot)
             : Result<TSnapshot>.Failure(Error.Create(errorCode, errorMessage));
+    }
+
+    private static CatalogEffectSetSnapshot EffectSet(
+        string key,
+        params CatalogEffectDefinitionSnapshot[] effects)
+    {
+        return new CatalogEffectSetSnapshot(key, "1.0.0", effects);
+    }
+
+    private static CatalogEffectDefinitionSnapshot Effect(
+        string effectType,
+        string targetScope,
+        decimal value,
+        string duration,
+        string valueMode = "Flat",
+        string stackPolicy = "Additive",
+        string? condition = null,
+        int order = 0,
+        string? behaviorTag = null,
+        string? generationTag = null,
+        string? selectionGroup = null)
+    {
+        return new CatalogEffectDefinitionSnapshot(
+            effectType,
+            targetScope,
+            value,
+            valueMode,
+            duration,
+            stackPolicy,
+            condition,
+            order,
+            behaviorTag,
+            generationTag,
+            selectionGroup);
+    }
+
+    private static CatalogRewardTemplateSnapshot RewardTemplate(
+        string key,
+        string displayName,
+        string description,
+        string sourceType,
+        IReadOnlyCollection<CatalogRewardTemplateOptionSnapshot> options)
+    {
+        return new CatalogRewardTemplateSnapshot(key, "1.0", displayName, description, sourceType, 2, 3, options);
+    }
+
+    private static CatalogRewardTemplateOptionSnapshot RewardOption(
+        string rewardType,
+        string label,
+        string description,
+        string? payloadKey,
+        string? payloadType,
+        int baseAmount)
+    {
+        return new CatalogRewardTemplateOptionSnapshot(
+            rewardType,
+            label,
+            description,
+            payloadKey,
+            payloadType,
+            null,
+            baseAmount,
+            "Flat",
+            1);
     }
 }

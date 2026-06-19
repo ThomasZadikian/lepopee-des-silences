@@ -1,9 +1,13 @@
 using Leds.Catalog.Application.Enemies.Definitions.Ports;
 using Leds.Catalog.Application.Enemies.Ports;
 using Leds.Catalog.Application.EventTemplates.Ports;
+using Leds.Catalog.Application.Curses.Ports;
+using Leds.Catalog.Application.EffectSets.Ports;
+using Leds.Catalog.Application.Items.Definitions.Ports;
 using Leds.Catalog.Application.Items.Ports;
 using Leds.Catalog.Application.Npcs.Definitions.Ports;
 using Leds.Catalog.Application.PalaceLaws.Ports;
+using Leds.Catalog.Application.RewardTemplates.Ports;
 using Leds.Catalog.Application.RoomBosses.Ports;
 using Leds.Catalog.Application.Skills.Definitions.Ports;
 using Leds.Catalog.Application.Skills.Ports;
@@ -33,7 +37,11 @@ public static class InfrastructureServiceCollectionExtensions
             services.AddScoped<ISkillDefinitionReadStore, EfSkillDefinitionReadStore>();
             services.AddScoped<IEnemyDefinitionReadStore, EfEnemyDefinitionReadStore>();
             services.AddScoped<IItemTemplateReadStore, EfItemDefinitionReadStore>();
+            services.AddScoped<IItemDefinitionReadStore, EfItemDefinitionReadStore>();
+            services.AddScoped<IEffectSetReadStore, EfEffectSetReadStore>();
+            services.AddScoped<IRewardTemplateReadStore, EfRewardTemplateReadStore>();
             services.AddScoped<IPalaceLawDefinitionReadStore, EfPalaceLawDefinitionReadStore>();
+            services.AddScoped<ICurseDefinitionReadStore, EfCurseDefinitionReadStore>();
             services.AddScoped<INpcDefinitionReadStore, EfNpcDefinitionReadStore>();
         }
         else
@@ -41,7 +49,11 @@ public static class InfrastructureServiceCollectionExtensions
             services.AddSingleton<ISkillDefinitionReadStore, InMemorySkillDefinitionReadStore>();
             services.AddSingleton<IEnemyDefinitionReadStore, InMemoryEnemyDefinitionReadStore>();
             services.AddSingleton<IItemTemplateReadStore, InMemoryItemTemplateReadStore>();
+            services.AddSingleton<IItemDefinitionReadStore, InMemoryItemDefinitionReadStore>();
+            services.AddSingleton<IEffectSetReadStore, InMemoryEffectSetReadStore>();
+            services.AddSingleton<IRewardTemplateReadStore, InMemoryRewardTemplateReadStore>();
             services.AddSingleton<IPalaceLawDefinitionReadStore, InMemoryPalaceLawDefinitionReadStore>();
+            services.AddSingleton<ICurseDefinitionReadStore, InMemoryCurseDefinitionReadStore>();
             services.AddSingleton<INpcDefinitionReadStore, InMemoryNpcDefinitionReadStore>();
         }
 

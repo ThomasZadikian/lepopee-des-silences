@@ -18,7 +18,7 @@ namespace Leds.GameEngine.UnitTests.Rewards.SelectReward;
 public sealed class SelectRewardCommandHandlerTests
 {
     private static RewardOfferFactory CreateFactory() =>
-        new(new CombatRiskProfileResolver(), Mock.Of<ICatalogRewardTemplateProvider>());
+        new(new CombatRiskProfileResolver(), Mock.Of<ICatalogContentGateway>());
 
     private static (Run run, RewardOffer offer) CreateRunWithPendingReward()
     {
@@ -50,7 +50,7 @@ public sealed class SelectRewardCommandHandlerTests
         var handler = new SelectRewardCommandHandler(
             runRepository.Object,
             rewardRepository.Object,
-            Mock.Of<ICatalogItemDefinitionProvider>());
+            Mock.Of<ICatalogContentGateway>());
 
         var choiceId = offer.Choices.First().Id;
 
@@ -81,7 +81,7 @@ public sealed class SelectRewardCommandHandlerTests
         var handler = new SelectRewardCommandHandler(
             runRepository.Object,
             rewardRepository.Object,
-            Mock.Of<ICatalogItemDefinitionProvider>());
+            Mock.Of<ICatalogContentGateway>());
 
         var choiceId = offer.Choices.First().Id;
 
@@ -128,7 +128,7 @@ public sealed class SelectRewardCommandHandlerTests
         var handler = new SelectRewardCommandHandler(
             runRepository.Object,
             rewardRepository.Object,
-            Mock.Of<ICatalogItemDefinitionProvider>());
+            Mock.Of<ICatalogContentGateway>());
 
         var healChoice = offer.Choices.First(c => c.RewardType == RewardType.Heal);
 
@@ -154,7 +154,7 @@ public sealed class SelectRewardCommandHandlerTests
         var handler = new SelectRewardCommandHandler(
             runRepository.Object,
             rewardRepository.Object,
-            Mock.Of<ICatalogItemDefinitionProvider>());
+            Mock.Of<ICatalogContentGateway>());
 
         var act = () => handler.Handle(
             new SelectRewardCommand(run.Id.Value, Guid.NewGuid()),
@@ -183,7 +183,7 @@ public sealed class SelectRewardCommandHandlerTests
         var handler = new SelectRewardCommandHandler(
             runRepository.Object,
             rewardRepository.Object,
-            Mock.Of<ICatalogItemDefinitionProvider>());
+            Mock.Of<ICatalogContentGateway>());
 
         var act = () => handler.Handle(
             new SelectRewardCommand(run.Id.Value, Guid.NewGuid()),
@@ -214,7 +214,7 @@ public sealed class SelectRewardCommandHandlerTests
         var handler = new SelectRewardCommandHandler(
             runRepository.Object,
             rewardRepository.Object,
-            Mock.Of<ICatalogItemDefinitionProvider>());
+            Mock.Of<ICatalogContentGateway>());
 
         var act = () => handler.Handle(
             new SelectRewardCommand(run.Id.Value, choiceId.Value),
@@ -240,7 +240,7 @@ public sealed class SelectRewardCommandHandlerTests
         var handler = new SelectRewardCommandHandler(
             runRepository.Object,
             rewardRepository.Object,
-            Mock.Of<ICatalogItemDefinitionProvider>());
+            Mock.Of<ICatalogContentGateway>());
 
         var act = () => handler.Handle(
             new SelectRewardCommand(runId, Guid.NewGuid()),
@@ -280,7 +280,7 @@ public sealed class SelectRewardCommandHandlerTests
         var handler = new SelectRewardCommandHandler(
             runRepository.Object,
             rewardRepository.Object,
-            Mock.Of<ICatalogItemDefinitionProvider>());
+            Mock.Of<ICatalogContentGateway>());
 
         var choiceId = offer.Choices.First().Id;
 
@@ -322,7 +322,7 @@ public sealed class SelectRewardCommandHandlerTests
         var handler = new SelectRewardCommandHandler(
             runRepository.Object,
             rewardRepository.Object,
-            Mock.Of<ICatalogItemDefinitionProvider>());
+            Mock.Of<ICatalogContentGateway>());
 
         var act = () => handler.Handle(
             new SelectRewardCommand(run.Id.Value, Guid.NewGuid()),

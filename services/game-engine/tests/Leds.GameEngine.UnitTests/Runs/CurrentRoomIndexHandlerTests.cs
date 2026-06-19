@@ -148,7 +148,7 @@ public sealed class CurrentRoomIndexHandlerTests
     {
         var run = TestGameEngineFactory.CreateRun();
 
-        var factory = new RewardOfferFactory(new CombatRiskProfileResolver(), Mock.Of<ICatalogRewardTemplateProvider>());
+        var factory = new RewardOfferFactory(new CombatRiskProfileResolver(), Mock.Of<ICatalogContentGateway>());
         var offer = factory.CreateCombatRewardOffer(
             RewardSource.Combat,
             NodeEventType.Combat,
@@ -169,7 +169,7 @@ public sealed class CurrentRoomIndexHandlerTests
         var handler = new SelectRewardCommandHandler(
             runRepository.Object,
             rewardRepository.Object,
-            Mock.Of<ICatalogItemDefinitionProvider>());
+            Mock.Of<ICatalogContentGateway>());
 
         var choiceId = offer.Choices.First().Id;
 

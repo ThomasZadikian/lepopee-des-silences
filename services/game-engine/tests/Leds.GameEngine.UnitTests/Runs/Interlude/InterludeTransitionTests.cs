@@ -3,7 +3,9 @@ using Leds.GameEngine.Application.Abstractions;
 using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Application.Combats;
 using Leds.GameEngine.Application.Combats.EncounterDrafts;
+using Leds.GameEngine.Application.Combats.EnemyTurns;
 using Leds.GameEngine.Application.Combats.Ports;
+using Leds.GameEngine.Application.Combats.Resolution;
 using Leds.GameEngine.Application.Events.ChooseEventOption;
 using Leds.GameEngine.Application.Events.Ports;
 using Leds.GameEngine.Application.Events.ResolveNodeEvent;
@@ -19,6 +21,7 @@ using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Interlude;
 using Leds.GameEngine.Domain.Rewards;
 using Leds.GameEngine.Domain.Runs;
+using Leds.SharedBuildingBlocks.Time;
 using Leds.GameEngine.UnitTests.Common.Factories;
 using Moq;
 
@@ -582,7 +585,6 @@ public sealed class InterludeTransitionTests
         var eventContentResolver = new Mock<IEventContentResolver>();
         var catalogGateway = new Mock<ICatalogContentGateway>();
         var combatFactory = new Mock<ICombatInstanceFactory>();
-        var combatRepo = new Mock<ICombatInstanceRepository>();
 
         var handler = new ResolveCurrentEventCommandHandler(
             repo.Object,
@@ -590,13 +592,15 @@ public sealed class InterludeTransitionTests
             eventContentResolver.Object,
             catalogGateway.Object,
             combatFactory.Object,
-            combatRepo.Object,
             new Mock<ICombatEncounterDraftGenerator>().Object,
             new Mock<ICombatFactory>().Object,
             new Mock<IRewardOfferRepository>().Object,
             new Leds.GameEngine.Application.Rewards.RewardOfferFactory.RewardOfferFactory(
                 new Mock<Leds.GameEngine.Application.Combats.ICombatRiskProfileResolver>().Object,
-                Mock.Of<ICatalogRewardTemplateProvider>()));
+                Mock.Of<ICatalogContentGateway>()),
+            Mock.Of<IEnemyCombatTurnResolver>(),
+            Mock.Of<ICombatResolutionService>(),
+            Mock.Of<IClock>());
 
         var act = () => handler.Handle(
             new ResolveCurrentEventCommand(run.Id.Value),

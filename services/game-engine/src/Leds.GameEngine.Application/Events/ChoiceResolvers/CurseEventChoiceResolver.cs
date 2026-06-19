@@ -10,54 +10,58 @@ namespace Leds.GameEngine.Application.Events.ChoiceResolvers;
 
 public sealed class CurseEventChoiceResolver : ICurrentEventChoiceResolver
 {
-    private readonly ICatalogCurseDefinitionProvider _curseDefinitionProvider;
-    private readonly ICatalogEffectSetProvider _effectSetProvider;
+    private readonly ICatalogContentGateway _catalogContentGateway;
 
-    public CurseEventChoiceResolver(
-        ICatalogCurseDefinitionProvider curseDefinitionProvider,
-        ICatalogEffectSetProvider effectSetProvider)
+    public CurseEventChoiceResolver(ICatalogContentGateway catalogContentGateway)
     {
-        _curseDefinitionProvider = curseDefinitionProvider;
-        _effectSetProvider = effectSetProvider;
+        _catalogContentGateway = catalogContentGateway;
     }
 
     public NodeEventType EventType => NodeEventType.Curse;
 
-    public Task<CurrentEventChoiceResolutionResult> ResolveAsync(
+    public async Task<CurrentEventChoiceResolutionResult> ResolveAsync(
         CurrentEventChoiceResolutionContext context,
         CancellationToken cancellationToken = default)
     {
-        var result = context.ChoiceId switch
+        return context.ChoiceId switch
         {
-            "accept-curse" => AcceptCurse(context),
+            "accept-curse" => await AcceptCurseAsync(context, cancellationToken),
             "reject-curse" => RejectCurse(context),
             _ => throw new DomainException(
                 $"Choice '{context.ChoiceId}' is not valid for event type '{EventType}'.")
         };
-
-        return Task.FromResult(result);
     }
 
-    private CurrentEventChoiceResolutionResult AcceptCurse(
-        CurrentEventChoiceResolutionContext context)
+    private async Task<CurrentEventChoiceResolutionResult> AcceptCurseAsync(
+        CurrentEventChoiceResolutionContext context,
+        CancellationToken cancellationToken)
     {
-        var curseKey = $"curse.{context.Node.Id.Value.ToString()[..8]}";
+        var definition = (await _catalogContentGateway.ListAvailableCurseDefinitionsAsync(cancellationToken))
+            .OrderBy(curse => curse.Key, StringComparer.OrdinalIgnoreCase)
+            .FirstOrDefault()
+            ?? throw new DomainException("No available curse definition was found in Catalog.");
+
+        var difficultyDelta = Math.Clamp(definition.Severity / 100.0, 0.01, 0.5);
 
         var curse = ActiveCurse.Create(
-            curseKey,
-            "Malédiction acceptée",
-            "Le coût sera résolu au prochain combat.",
-            0.10,
-            DateTime.UtcNow);
+            definition.Key,
+            definition.DisplayName,
+            definition.Description,
+            difficultyDelta,
+            DateTime.UtcNow,
+            curseDefinitionKey: definition.Key,
+            severity: definition.Severity,
+            duration: definition.Duration,
+            effectSetKey: definition.EffectSetKey);
 
         context.Run.ApplyCurse(curse);
 
         var curseModifier = RunModifier.Create(
             RunModifierType.NextCombatDifficultyMultiplier,
-            0.10,
+            difficultyDelta,
             RunModifierDuration.NextCombatOnly,
             "Curse",
-            curseKey);
+            definition.Key);
         context.Run.AddRunModifier(curseModifier);
 
         return CurrentEventChoiceResolutionResult.Create(

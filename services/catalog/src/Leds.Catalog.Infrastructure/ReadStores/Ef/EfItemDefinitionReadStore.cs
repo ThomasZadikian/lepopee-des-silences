@@ -1,3 +1,5 @@
+using Leds.Catalog.Application.Items.Definitions.Dtos;
+using Leds.Catalog.Application.Items.Definitions.Ports;
 using Leds.Catalog.Application.Items.Ports;
 using Leds.Catalog.Domain.CatalogContent;
 using Leds.Catalog.Domain.Items;
@@ -7,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Leds.Catalog.Infrastructure.ReadStores.Ef;
 
-public sealed class EfItemDefinitionReadStore : IItemTemplateReadStore
+public sealed class EfItemDefinitionReadStore : IItemTemplateReadStore, IItemDefinitionReadStore
 {
     private readonly CatalogDbContext _context;
 
@@ -33,6 +35,15 @@ public sealed class EfItemDefinitionReadStore : IItemTemplateReadStore
         return entity is null ? null : MapToDomain(entity);
     }
 
+    public async Task<ItemDefinitionDto?> GetDtoByKeyAsync(string key, CancellationToken cancellationToken)
+    {
+        var entity = await _context.ItemDefinitions
+            .Include(e => e.EffectSet)
+            .FirstOrDefaultAsync(e => e.Key == key, cancellationToken);
+
+        return entity is null ? null : MapToDto(entity);
+    }
+
     private static IItemTemplate MapToDomain(ItemDefinitionEntity entity)
     {
         return ItemTemplate.Create(
@@ -46,5 +57,27 @@ public sealed class EfItemDefinitionReadStore : IItemTemplateReadStore
             entity.EffectValue,
             entity.Price,
             Enum.Parse<CatalogContentStatus>(entity.Status));
+    }
+
+    private static ItemDefinitionDto MapToDto(ItemDefinitionEntity entity)
+    {
+        return new ItemDefinitionDto(
+            entity.Id,
+            entity.Key,
+            entity.Version,
+            string.IsNullOrWhiteSpace(entity.DisplayName) ? entity.Name : entity.DisplayName,
+            entity.Description,
+            entity.NarrativeText,
+            entity.Category,
+            entity.ItemType,
+            entity.Rarity,
+            entity.UsageMode,
+            entity.Lifecycle,
+            entity.StackPolicy,
+            entity.MaxStack,
+            entity.IsUsableInCombat,
+            entity.IsUsableOutsideCombat,
+            entity.EffectSet?.Key,
+            entity.Status);
     }
 }

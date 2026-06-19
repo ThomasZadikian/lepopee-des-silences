@@ -32,6 +32,29 @@ public interface ICatalogContentGateway
     Task<IReadOnlyCollection<PalaceLawDefinitionSnapshot>> ListActivePalaceLawDefinitionsAsync(
         CancellationToken cancellationToken = default);
 
+    Task<Result<CatalogCurseDefinitionSnapshot>> GetCurseDefinitionByKeyAsync(
+        string key,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyCollection<CatalogCurseDefinitionSnapshot>> ListAvailableCurseDefinitionsAsync(
+        CancellationToken cancellationToken = default);
+
+    Task<Result<CatalogItemDefinitionSnapshot>> GetItemDefinitionByKeyAsync(
+        string key,
+        CancellationToken cancellationToken = default);
+
+    Task<Result<CatalogEffectSetSnapshot>> GetEffectSetByKeyAsync(
+        string key,
+        CancellationToken cancellationToken = default);
+
+    Task<Result<CatalogRewardTemplateSnapshot>> GetRewardTemplateByKeyAsync(
+        string key,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyCollection<CatalogRewardTemplateSnapshot>> ListEligibleRewardTemplatesAsync(
+        RewardTemplateEligibilityContext context,
+        CancellationToken cancellationToken = default);
+
     Task<CatalogRoomBossProfile?> GetRoomBossProfileAsync(
         string roomType,
         CancellationToken cancellationToken = default);

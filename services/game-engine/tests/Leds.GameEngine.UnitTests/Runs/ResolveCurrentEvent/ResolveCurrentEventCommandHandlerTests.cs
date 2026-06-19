@@ -5,7 +5,9 @@ using Leds.GameEngine.Application.Catalog.Contracts;
 using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Application.Combats;
 using Leds.GameEngine.Application.Combats.EncounterDrafts;
+using Leds.GameEngine.Application.Combats.EnemyTurns;
 using Leds.GameEngine.Application.Combats.Ports;
+using Leds.GameEngine.Application.Combats.Resolution;
 using Leds.GameEngine.Application.Common.Exceptions;
 using Leds.GameEngine.Application.Events.Contracts;
 using Leds.GameEngine.Application.Events.Dtos;
@@ -20,6 +22,7 @@ using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
 using Leds.GameEngine.UnitTests.Common.Factories;
 using Leds.SharedBuildingBlocks.Results;
+using Leds.SharedBuildingBlocks.Time;
 using Moq;
 
 namespace Leds.GameEngine.UnitTests.Runs.ResolveCurrentEvent;
@@ -62,11 +65,6 @@ public sealed class ResolveCurrentEventCommandHandlerTests
         return new Mock<ICombatInstanceFactory>();
     }
 
-    private static Mock<ICombatInstanceRepository> CreateCombatRepositoryMock()
-    {
-        return new Mock<ICombatInstanceRepository>();
-    }
-
     private static Mock<ICombatEncounterDraftGenerator> CreateEncounterDraftGeneratorMock()
     {
         return new Mock<ICombatEncounterDraftGenerator>();
@@ -83,11 +81,13 @@ public sealed class ResolveCurrentEventCommandHandlerTests
             CreateContentResolverMock().Object,
             CreateCatalogGatewayMock().Object,
             CreateCombatFactoryMock().Object,
-            CreateCombatRepositoryMock().Object,
             CreateEncounterDraftGeneratorMock().Object,
             combatFactory?.Object ?? new Mock<ICombatFactory>().Object,
             new Mock<IRewardOfferRepository>().Object,
-            new RewardOfferFactory(new Mock<Leds.GameEngine.Application.Combats.ICombatRiskProfileResolver>().Object, Mock.Of<ICatalogRewardTemplateProvider>()));
+            new RewardOfferFactory(new Mock<Leds.GameEngine.Application.Combats.ICombatRiskProfileResolver>().Object, Mock.Of<ICatalogContentGateway>()),
+            Mock.Of<IEnemyCombatTurnResolver>(),
+            Mock.Of<ICombatResolutionService>(),
+            Mock.Of<IClock>());
     }
 
     [Fact]
@@ -354,11 +354,13 @@ public sealed class ResolveCurrentEventCommandHandlerTests
             contentResolver.Object,
             catalogGateway.Object,
             combatFactory.Object,
-            new Mock<ICombatInstanceRepository>().Object,
             draftGenerator.Object,
             runtimeFactoryMock.Object,
             new Mock<IRewardOfferRepository>().Object,
-            new RewardOfferFactory(new Mock<Leds.GameEngine.Application.Combats.ICombatRiskProfileResolver>().Object, Mock.Of<ICatalogRewardTemplateProvider>()));
+            new RewardOfferFactory(new Mock<Leds.GameEngine.Application.Combats.ICombatRiskProfileResolver>().Object, Mock.Of<ICatalogContentGateway>()),
+            Mock.Of<IEnemyCombatTurnResolver>(),
+            Mock.Of<ICombatResolutionService>(),
+            Mock.Of<IClock>());
 
         var response = await handler.Handle(
             new ResolveCurrentEventCommand(run.Id.Value),
@@ -466,11 +468,13 @@ public sealed class ResolveCurrentEventCommandHandlerTests
             contentResolver.Object,
             catalogGateway.Object,
             combatFactory.Object,
-            new Mock<ICombatInstanceRepository>().Object,
             draftGenerator.Object,
             runtimeFactoryMock.Object,
             new Mock<IRewardOfferRepository>().Object,
-            new RewardOfferFactory(new Mock<Leds.GameEngine.Application.Combats.ICombatRiskProfileResolver>().Object, Mock.Of<ICatalogRewardTemplateProvider>()));
+            new RewardOfferFactory(new Mock<Leds.GameEngine.Application.Combats.ICombatRiskProfileResolver>().Object, Mock.Of<ICatalogContentGateway>()),
+            Mock.Of<IEnemyCombatTurnResolver>(),
+            Mock.Of<ICombatResolutionService>(),
+            Mock.Of<IClock>());
 
         var response = await handler.Handle(
             new ResolveCurrentEventCommand(run.Id.Value),

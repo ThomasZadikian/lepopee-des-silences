@@ -4,23 +4,25 @@ using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Application.Combats;
 using Leds.GameEngine.Application.Rewards.RewardOfferFactory;
 using Leds.GameEngine.Domain.Rewards;
+using Leds.SharedBuildingBlocks.Errors;
+using Leds.SharedBuildingBlocks.Results;
 using Moq;
 
 namespace Leds.GameEngine.UnitTests.Catalog;
 
 public sealed class CatalogRewardTemplateFactoryTests
 {
-    private readonly Mock<ICatalogRewardTemplateProvider> _providerMock = new();
+    private readonly Mock<ICatalogContentGateway> _gatewayMock = new();
 
     private RewardOfferFactory CreateFactory() =>
-        new(new CombatRiskProfileResolver(), _providerMock.Object);
+        new(new CombatRiskProfileResolver(), _gatewayMock.Object);
 
     [Fact]
     public async Task CreateFromTemplateKeyAsync_ShouldReturnNull_WhenTemplateNotFound()
     {
-        _providerMock
-            .Setup(p => p.GetRewardTemplateAsync("reward.nonexistent", default))
-            .ReturnsAsync((CatalogRewardTemplateSnapshot?)null);
+        _gatewayMock
+            .Setup(p => p.GetRewardTemplateByKeyAsync("reward.nonexistent", default))
+            .ReturnsAsync(Result<CatalogRewardTemplateSnapshot>.Failure(Error.Create("catalog.reward_template_not_found", "not found")));
 
         var result = await CreateFactory().CreateFromTemplateKeyAsync("reward.nonexistent", 25);
 
@@ -38,9 +40,9 @@ public sealed class CatalogRewardTemplateFactoryTests
                 new CatalogRewardTemplateOptionSnapshot("TemporaryItem", "Objet test", "Objet test", "item.test", "Item", null, 5, "Flat", 1),
             ]);
 
-        _providerMock
-            .Setup(p => p.GetRewardTemplateAsync("reward.combat.test", default))
-            .ReturnsAsync(template);
+        _gatewayMock
+            .Setup(p => p.GetRewardTemplateByKeyAsync("reward.combat.test", default))
+            .ReturnsAsync(Result<CatalogRewardTemplateSnapshot>.Success(template));
 
         var offer = await CreateFactory().CreateFromTemplateKeyAsync("reward.combat.test", 25);
 
@@ -60,9 +62,9 @@ public sealed class CatalogRewardTemplateFactoryTests
                 new CatalogRewardTemplateOptionSnapshot("Heal", "Soin", "Soin", null, null, null, 10, "Flat", 1),
             ]);
 
-        _providerMock
-            .Setup(p => p.GetRewardTemplateAsync("reward.item.test", default))
-            .ReturnsAsync(template);
+        _gatewayMock
+            .Setup(p => p.GetRewardTemplateByKeyAsync("reward.item.test", default))
+            .ReturnsAsync(Result<CatalogRewardTemplateSnapshot>.Success(template));
 
         var offer = await CreateFactory().CreateFromTemplateKeyAsync("reward.item.test", 15);
 
@@ -80,9 +82,9 @@ public sealed class CatalogRewardTemplateFactoryTests
                 new CatalogRewardTemplateOptionSnapshot("TemporaryItem", "Baume", "Soin", "item.consumable.minor-heal", "Item", null, 15, "Flat", 1),
             ]);
 
-        _providerMock
-            .Setup(p => p.GetRewardTemplateAsync("reward.combat.test", default))
-            .ReturnsAsync(template);
+        _gatewayMock
+            .Setup(p => p.GetRewardTemplateByKeyAsync("reward.combat.test", default))
+            .ReturnsAsync(Result<CatalogRewardTemplateSnapshot>.Success(template));
 
         var offer = await CreateFactory().CreateFromTemplateKeyAsync("reward.combat.test", 25);
 
@@ -102,9 +104,9 @@ public sealed class CatalogRewardTemplateFactoryTests
                 new CatalogRewardTemplateOptionSnapshot("Heal", "Soin", "Soin", null, null, null, 10, "Flat", 1),
             ]);
 
-        _providerMock
-            .Setup(p => p.GetRewardTemplateAsync("reward.combat.test", default))
-            .ReturnsAsync(template);
+        _gatewayMock
+            .Setup(p => p.GetRewardTemplateByKeyAsync("reward.combat.test", default))
+            .ReturnsAsync(Result<CatalogRewardTemplateSnapshot>.Success(template));
 
         var offer = await CreateFactory().CreateFromTemplateKeyAsync("reward.combat.test", 25);
 
@@ -123,9 +125,9 @@ public sealed class CatalogRewardTemplateFactoryTests
                 new CatalogRewardTemplateOptionSnapshot("Heal", "Soin", "Soin", null, null, null, 10, "Flat", 1),
             ]);
 
-        _providerMock
-            .Setup(p => p.GetRewardTemplateAsync("reward.combat.test", default))
-            .ReturnsAsync(template);
+        _gatewayMock
+            .Setup(p => p.GetRewardTemplateByKeyAsync("reward.combat.test", default))
+            .ReturnsAsync(Result<CatalogRewardTemplateSnapshot>.Success(template));
 
         var offer = await CreateFactory().CreateFromTemplateKeyAsync("reward.combat.test", 25);
 
@@ -143,9 +145,9 @@ public sealed class CatalogRewardTemplateFactoryTests
                 new CatalogRewardTemplateOptionSnapshot("Heal", "Soin", "Soin", null, null, null, 10, "Flat", 1),
             ]);
 
-        _providerMock
-            .Setup(p => p.GetRewardTemplateAsync("reward.merchant.test", default))
-            .ReturnsAsync(template);
+        _gatewayMock
+            .Setup(p => p.GetRewardTemplateByKeyAsync("reward.merchant.test", default))
+            .ReturnsAsync(Result<CatalogRewardTemplateSnapshot>.Success(template));
 
         var offer = await CreateFactory().CreateFromTemplateKeyAsync("reward.merchant.test", 20);
 

@@ -8,15 +8,15 @@ namespace Leds.GameEngine.Application.Rewards.RewardOfferFactory;
 public sealed class RewardOfferFactory
 {
     private readonly ICombatRiskProfileResolver _riskProfileResolver;
-    private readonly ICatalogRewardTemplateProvider _catalogRewardTemplateProvider;
+    private readonly ICatalogContentGateway _catalogContentGateway;
     private readonly RewardPowerScaler _rewardPowerScaler = new();
 
     public RewardOfferFactory(
         ICombatRiskProfileResolver riskProfileResolver,
-        ICatalogRewardTemplateProvider catalogRewardTemplateProvider)
+        ICatalogContentGateway catalogContentGateway)
     {
         _riskProfileResolver = riskProfileResolver;
-        _catalogRewardTemplateProvider = catalogRewardTemplateProvider;
+        _catalogContentGateway = catalogContentGateway;
     }
 
     /// <summary>
@@ -48,8 +48,10 @@ public sealed class RewardOfferFactory
         int riskLevel,
         CancellationToken cancellationToken = default)
     {
-        var template = await _catalogRewardTemplateProvider.GetRewardTemplateAsync(templateKey, cancellationToken);
-        if (template is null) return null;
+        var templateResult = await _catalogContentGateway.GetRewardTemplateByKeyAsync(templateKey, cancellationToken);
+        if (templateResult.IsFailure) return null;
+
+        var template = templateResult.Value;
 
         var choices = template.Options.Select(opt =>
         {
