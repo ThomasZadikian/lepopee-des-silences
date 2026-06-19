@@ -1,12 +1,13 @@
 ﻿using Leds.GameEngine.Application.Abstractions;
-using Leds.SharedBuildingBlocks.Time;
 using Leds.GameEngine.Application.Combats;
 using Leds.GameEngine.Application.Combats.Actions;
 using Leds.GameEngine.Application.Combats.Dtos;
 using Leds.GameEngine.Application.Combats.EnemyTurns;
+using Leds.GameEngine.Application.Combats.Resolution;
 using Leds.GameEngine.Application.Common.Exceptions;
 using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Runs;
+using Leds.SharedBuildingBlocks.Time;
 using MediatR;
 
 namespace Leds.GameEngine.Application.Runs.UseItemInCombat;
@@ -17,15 +18,18 @@ public sealed class UseItemInCombatCommandHandler
     private readonly IRunRepository _runRepository;
     private readonly IEnemyCombatTurnResolver _enemyTurnResolver;
     private readonly IClock _clock;
+    private readonly ICombatResolutionService _combatResolution; 
 
     public UseItemInCombatCommandHandler(
         IRunRepository runRepository,
         IEnemyCombatTurnResolver enemyTurnResolver,
-        IClock clock)
+        IClock clock, 
+        ICombatResolutionService combatResolution)
     {
         _runRepository = runRepository;
         _enemyTurnResolver = enemyTurnResolver;
         _clock = clock;
+        _combatResolution = combatResolution;
     }
 
     public async Task<CombatSkillActionResult> Handle(
@@ -143,8 +147,7 @@ public sealed class UseItemInCombatCommandHandler
         var combatCompleted = combat.Status == CombatStatus.Completed;
         var combatFailed = combat.Status == CombatStatus.Failed;
 
-        if (combatCompleted) run.CompleteActiveCombat();
-        else if (combatFailed) run.FailActiveCombat(now);
+        await _combatResolution.ApplyOutcomeAsync(run, combat, now, cancellationToken);
 
         await _runRepository.UpdateAsync(run, cancellationToken);
 

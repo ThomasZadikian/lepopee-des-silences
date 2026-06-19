@@ -1,5 +1,6 @@
 using FluentValidation;
 using Leds.GameEngine.Application.Combats;
+using Leds.GameEngine.Application.Combats.Resolution;
 using Leds.GameEngine.Application.Common.Behaviors;
 using Leds.GameEngine.Application.DevTools;
 using Leds.GameEngine.Application.Events.ChoiceResolvers;
@@ -59,6 +60,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<IPalacePublicIndicatorProjectionService, PalacePublicIndicatorProjectionService>();
         services.AddScoped<IDevToolsRunDebugService, DevToolsRunDebugService>();
         services.AddScoped<IDevToolsPsycheService, DevToolsPsycheService>();
+        services.AddScoped<ICombatResolutionService, CombatResolutionService>()
 
         return services;
     }

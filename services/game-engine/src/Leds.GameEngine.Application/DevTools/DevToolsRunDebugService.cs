@@ -2,6 +2,7 @@ using Leds.GameEngine.Application.Abstractions;
 using Leds.GameEngine.Application.Catalog.Contracts;
 using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Application.Combats.Dtos;
+using Leds.GameEngine.Application.Combats.Resolution;
 using Leds.GameEngine.Application.Common.Exceptions;
 using Leds.GameEngine.Application.Runs.Dtos;
 using Leds.GameEngine.Domain.Combats;
@@ -23,17 +24,20 @@ public sealed class DevToolsRunDebugService : IDevToolsRunDebugService
     private readonly IRunGenerator _runGenerator;
     private readonly ICatalogContentGateway _catalogContentGateway;
     private readonly ICatalogCurseDefinitionProvider _curseDefinitionProvider;
+    private readonly ICombatResolutionService _combatResolution; 
 
     public DevToolsRunDebugService(
         IRunRepository runRepository,
         IRunGenerator runGenerator,
         ICatalogContentGateway catalogContentGateway,
-        ICatalogCurseDefinitionProvider curseDefinitionProvider)
+        ICatalogCurseDefinitionProvider curseDefinitionProvider, 
+        ICombatResolutionService combatResolution)
     {
         _runRepository = runRepository;
         _runGenerator = runGenerator;
         _catalogContentGateway = catalogContentGateway;
         _curseDefinitionProvider = curseDefinitionProvider;
+        _combatResolution = combatResolution;
     }
 
     public async Task<DevToolsRunDebugResult> AdvanceRoomAsync(
@@ -207,7 +211,7 @@ public sealed class DevToolsRunDebugService : IDevToolsRunDebugService
         }
 
         combat.CompleteIfAllEnemiesDefeated();
-
+        await _combatResolution.ApplyOutcomeAsync(run, combat, DateTimeOffset.UtcNow, cancellationToken);
         await _runRepository.UpdateAsync(run, cancellationToken);
         return new DevToolsCombatDebugResult("Enemies killed.", CombatRuntimeDto.FromDomain(combat));
     }
@@ -226,9 +230,9 @@ public sealed class DevToolsRunDebugService : IDevToolsRunDebugService
             enemy.MarkDefeated();
 
         combat.CompleteIfAllEnemiesDefeated();
-
+        await _combatResolution.ApplyOutcomeAsync(run, combat, DateTimeOffset.UtcNow, cancellationToken);
         await _runRepository.UpdateAsync(run, cancellationToken);
-        return new DevToolsCombatDebugResult("Enemy killed.", CombatRuntimeDto.FromDomain(combat));
+        return new DevToolsCombatDebugResult("Enemies killed.", CombatRuntimeDto.FromDomain(combat));
     }
 
     public async Task<DevToolsCombatDebugResult> SetCurrentCombatantVitalsAsync(

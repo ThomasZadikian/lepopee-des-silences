@@ -1,5 +1,4 @@
 using Leds.GameEngine.Application.Abstractions;
-using Leds.SharedBuildingBlocks.Time;
 using Leds.GameEngine.Application.Combats;
 using Leds.GameEngine.Application.Combats.Actions;
 using Leds.GameEngine.Application.Combats.Dtos;
@@ -7,6 +6,7 @@ using Leds.GameEngine.Application.Combats.Effects;
 using Leds.GameEngine.Application.Combats.EnemyTurns;
 using Leds.GameEngine.Application.Combats.Metrics;
 using Leds.GameEngine.Application.Combats.Ports;
+using Leds.GameEngine.Application.Combats.Resolution;
 using Leds.GameEngine.Application.Common.Exceptions;
 using Leds.GameEngine.Application.Rewards.Ports;
 using Leds.GameEngine.Application.Rewards.RewardOfferFactory;
@@ -14,6 +14,7 @@ using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rewards;
 using Leds.GameEngine.Domain.Runs;
+using Leds.SharedBuildingBlocks.Time;
 using MediatR;
 
 namespace Leds.GameEngine.Application.Runs.UseCombatSkill;
@@ -25,29 +26,26 @@ public sealed class UseCombatSkillCommandHandler
     private readonly ICombatSkillActionValidator _validator;
     private readonly ICombatSkillEffectResolver _effectResolver;
     private readonly IEnemyCombatTurnResolver _enemyTurnResolver;
-    private readonly IRewardOfferRepository _rewardOfferRepository;
-    private readonly RewardOfferFactory _rewardOfferFactory;
     private readonly IClock _clock;
     private readonly ICombatActionRecordRepository _actionRecordRepository;
+    private readonly ICombatResolutionService _combatResolution; 
 
     public UseCombatSkillCommandHandler(
         IRunRepository runRepository,
         ICombatSkillActionValidator validator,
         ICombatSkillEffectResolver effectResolver,
         IEnemyCombatTurnResolver enemyTurnResolver,
-        IRewardOfferRepository rewardOfferRepository,
-        RewardOfferFactory rewardOfferFactory,
         IClock clock,
-        ICombatActionRecordRepository actionRecordRepository)
+        ICombatActionRecordRepository actionRecordRepository,
+        ICombatResolutionService combatResolution)
     {
         _runRepository = runRepository;
         _validator = validator;
         _effectResolver = effectResolver;
         _enemyTurnResolver = enemyTurnResolver;
-        _rewardOfferRepository = rewardOfferRepository;
-        _rewardOfferFactory = rewardOfferFactory;
         _clock = clock;
         _actionRecordRepository = actionRecordRepository;
+        _combatResolution = combatResolution;
     }
 
     public async Task<CombatSkillActionResult> Handle(
@@ -139,23 +137,7 @@ public sealed class UseCombatSkillCommandHandler
 
         SyncPlayerStateFromCombat(run, finalCombat);
 
-        if (combatCompleted)
-        {
-            var combatNode = run.CurrentRoom.Nodes.SingleOrDefault(n =>
-                n.State == NodeState.Selected &&
-                n.Row == run.CurrentRoom.CurrentNodeDepth);
-
-            run.CompleteActiveCombat();
-            run.ConsumeNextCombatModifiers();
-
-            var rewardOffer = CreateRewardOffer(combatNode);
-            await _rewardOfferRepository.AddAsync(rewardOffer, cancellationToken);
-            run.SetPendingRewardOffer(rewardOffer.Id);
-        }
-        else if (combatFailed)
-        {
-            run.FailActiveCombat(now);
-        }
+        await _combatResolution.ApplyOutcomeAsync(run, finalCombat, now, cancellationToken);
 
         await _actionRecordRepository.AddRangeAsync(allActionRecords, cancellationToken);
         await _runRepository.UpdateAsync(run, cancellationToken);
@@ -179,23 +161,6 @@ public sealed class UseCombatSkillCommandHandler
             CombatFailed: combatFailed,
             CanProgressRun: combatCompleted,
             RunStatus: run.Status.ToString());
-    }
-
-    private RewardOffer CreateRewardOffer(MapNode? combatNode)
-    {
-        var source = combatNode?.EventType switch
-        {
-            NodeEventType.Rare => RewardSource.Rare,
-            NodeEventType.Elite => RewardSource.Elite,
-            NodeEventType.RoomBoss => RewardSource.RoomBoss,
-            NodeEventType.FinalBoss => RewardSource.RoomBoss,
-            _ => RewardSource.Combat
-        };
-
-        return _rewardOfferFactory.CreateCombatRewardOffer(
-            source,
-            combatNode?.EventType ?? NodeEventType.Combat,
-            combatNode?.RiskLevel ?? 25);
     }
 
     private IReadOnlyCollection<CombatLogEntryDto> ResolveEnemyTurns(
