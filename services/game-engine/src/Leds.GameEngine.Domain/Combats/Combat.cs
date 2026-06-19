@@ -41,7 +41,6 @@ public sealed class Combat
     public CombatantId? ActiveCombatantId { get; private set; }
     public int TurnNumber { get; private set; }
     public DateTime CreatedAtUtc { get; }
-
     public bool HasLivingAllies => Allies.Any(a => !a.IsDefeated);
 
     public bool HasLivingEnemies => Enemies.Any(e => !e.IsDefeated);
@@ -54,6 +53,8 @@ public sealed class Combat
         IReadOnlyCollection<Combatant> allies,
         IReadOnlyCollection<Combatant> enemies)
     {
+        var openingOrder = OrderByInitiative(allies.Concat(enemies)); 
+
         if (id.Value == Guid.Empty)
             throw new DomainException("Combat id is required.");
 
@@ -77,7 +78,7 @@ public sealed class Combat
             CombatStatus.Active,
             allies.ToArray(),
             enemies.ToArray(),
-            activeCombatantId: allies.First().Id,
+            activeCombatantId: openingOrder[0].Id,
             turnNumber: 1,
             createdAtUtc: DateTime.UtcNow);
     }
@@ -160,36 +161,40 @@ public sealed class Combat
         FailIfAllAlliesDefeated();
 
         if (Status != CombatStatus.Active)
-        {
             return;
-        }
 
-        var livingCombatants = GetTurnOrder()
-            .Where(c => !c.IsDefeated)
-            .ToArray();
-
-        if (livingCombatants.Length == 0)
+        var order = GetTurnOrder();
+        if (order.Length == 0)
         {
             Status = CombatStatus.Failed;
             ActiveCombatantId = null;
             return;
         }
 
-        var currentIndex = Array.FindIndex(livingCombatants, c => c.Id == ActiveCombatantId);
-        var nextIndex = currentIndex < 0 ? 0 : (currentIndex + 1) % livingCombatants.Length;
+        var currentIndex = Array.FindIndex(order, c => c.Id == ActiveCombatantId);
+        if (currentIndex < 0)
+            currentIndex = 0;
 
-        ActiveCombatantId = livingCombatants[nextIndex].Id;
-
-        if (currentIndex >= 0 && nextIndex <= currentIndex)
+        for (var step = 1; step <= order.Length; step++)
         {
-            TurnNumber++;
+            var index = (currentIndex + step) % order.Length;
+            if (order[index].IsDefeated)
+                continue;
 
-            // Restore passive guard floor (from StartingGuardBonus items) at the
-            // start of every new round. Active guard gained via skill.basic.guard
-            // is NOT capped — ResetGuardToBase only raises guard if it dropped below BaseGuard.
-            foreach (var combatant in livingCombatants)
-                combatant.ResetGuardToBase();
+            var startedNewRound = currentIndex + step >= order.Length;
+            if (startedNewRound)
+            {
+                TurnNumber++;
+                foreach (var combatant in order.Where(c => !c.IsDefeated))
+                    combatant.ResetGuardToBase();
+            }
+
+            ActiveCombatantId = order[index].Id;
+            return;
         }
+
+        Status = CombatStatus.Failed;
+        ActiveCombatantId = null;
     }
 
     public Combatant? GetNextActiveCombatant()
@@ -214,10 +219,8 @@ public sealed class Combat
         return livingCombatants[nextIndex];
     }
 
-    private Combatant[] GetTurnOrder()
-    {
-        return Allies.Concat(Enemies).ToArray();
-    }
+    private Combatant[] GetTurnOrder() => OrderByInitiative(Allies.Concat(Enemies));
+
 
     /// <summary>
     /// Rehydrates a combat from a trusted persistence snapshot.
@@ -236,5 +239,16 @@ public sealed class Combat
         DateTime createdAtUtc)
     {
         return new Combat(id, runId, roomId, nodeId, status, allies, enemies, activeCombatantId, turnNumber, createdAtUtc);
+    }
+    private static Combatant[] OrderByInitiative(IEnumerable<Combatant> combatants)
+    {
+        // Déterministe et STABLE (les stats ne changent pas en combat) :
+        // vitesse desc, puis initiative desc, puis side, puis id.
+        return combatants
+            .OrderByDescending(c => c.BaseStatSnapshot.Speed)
+            .ThenByDescending(c => c.BaseStatSnapshot.Initiative)
+            .ThenBy(c => c.Side)
+            .ThenBy(c => c.Id.Value)
+            .ToArray();
     }
 }

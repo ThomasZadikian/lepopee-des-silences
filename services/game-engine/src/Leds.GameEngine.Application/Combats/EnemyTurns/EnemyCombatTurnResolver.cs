@@ -182,4 +182,26 @@ public sealed class EnemyCombatTurnResolver : IEnemyCombatTurnResolver
             SkillKey: skillKey,
             TargetIds: targetIds ?? []);
     }
+    public IReadOnlyCollection<CombatLogEntryDto> ResolveLeadingEnemyTurns(Combat combat)
+    {
+        var logs = new List<CombatLogEntryDto>();
+        var safety = combat.Allies.Concat(combat.Enemies).Count() + 1;
+        var iterations = 0;
+
+        while (combat.Status == CombatStatus.Active)
+        {
+            var active = combat.GetActiveCombatant();
+            if (active is null || active.Side != CombatantSide.Enemy)
+                break;
+            if (++iterations > safety)
+                break;
+
+            var resolution = Resolve(combat);
+            logs.AddRange(resolution.LogEntries);
+            if (!resolution.WasResolved)
+                break;
+        }
+
+        return logs;
+    }
 }

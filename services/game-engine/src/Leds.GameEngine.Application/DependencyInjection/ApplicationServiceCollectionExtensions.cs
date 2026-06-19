@@ -60,7 +60,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<IPalacePublicIndicatorProjectionService, PalacePublicIndicatorProjectionService>();
         services.AddScoped<IDevToolsRunDebugService, DevToolsRunDebugService>();
         services.AddScoped<IDevToolsPsycheService, DevToolsPsycheService>();
-        services.AddScoped<ICombatResolutionService, CombatResolutionService>()
+        services.AddScoped<ICombatResolutionService, CombatResolutionService>(); 
 
         return services;
     }

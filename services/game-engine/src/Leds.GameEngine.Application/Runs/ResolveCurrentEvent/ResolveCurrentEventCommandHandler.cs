@@ -3,7 +3,9 @@ using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Application.Combats;
 using Leds.GameEngine.Application.Combats.Dtos;
 using Leds.GameEngine.Application.Combats.EncounterDrafts;
+using Leds.GameEngine.Application.Combats.EnemyTurns;
 using Leds.GameEngine.Application.Combats.Ports;
+using Leds.GameEngine.Application.Combats.Resolution;
 using Leds.GameEngine.Application.Common.Exceptions;
 using Leds.GameEngine.Application.Events.Contracts;
 using Leds.GameEngine.Application.Events.Dtos;
@@ -11,10 +13,12 @@ using Leds.GameEngine.Application.Events.Ports;
 using Leds.GameEngine.Application.Events.ResolveNodeEvent;
 using Leds.GameEngine.Application.Rewards.Ports;
 using Leds.GameEngine.Application.Runs.Dtos;
+using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
+using Leds.SharedBuildingBlocks.Time;
 using MediatR;
 
 namespace Leds.GameEngine.Application.Runs.ResolveCurrentEvent;
@@ -32,6 +36,9 @@ public sealed class ResolveCurrentEventCommandHandler
     private readonly ICombatFactory _combatFactory;
     private readonly IRewardOfferRepository _rewardOfferRepository;
     private readonly Leds.GameEngine.Application.Rewards.RewardOfferFactory.RewardOfferFactory _rewardOfferFactory;
+    private readonly IEnemyCombatTurnResolver _enemyTurnResolver;
+    private readonly ICombatResolutionService _combatResolution; 
+    private readonly IClock _clock; 
 
     public ResolveCurrentEventCommandHandler(
         IRunRepository runRepository,
@@ -43,7 +50,10 @@ public sealed class ResolveCurrentEventCommandHandler
         ICombatEncounterDraftGenerator encounterDraftGenerator,
         ICombatFactory combatFactory,
         IRewardOfferRepository rewardOfferRepository,
-        Leds.GameEngine.Application.Rewards.RewardOfferFactory.RewardOfferFactory rewardOfferFactory)
+        Leds.GameEngine.Application.Rewards.RewardOfferFactory.RewardOfferFactory rewardOfferFactory,
+        IEnemyCombatTurnResolver enemyTurnResolver,
+        ICombatResolutionService combatResolution,
+        IClock clock)
     {
         _runRepository = runRepository;
         _nodeEventResolverDispatcher = nodeEventResolverDispatcher;
@@ -55,6 +65,9 @@ public sealed class ResolveCurrentEventCommandHandler
         _combatFactory = combatFactory;
         _rewardOfferRepository = rewardOfferRepository;
         _rewardOfferFactory = rewardOfferFactory;
+        _enemyTurnResolver = enemyTurnResolver;
+        _combatResolution = combatResolution; 
+        _clock = clock;
     }
 
     public async Task<ResolveCurrentEventResponse> Handle(
@@ -160,7 +173,13 @@ public sealed class ResolveCurrentEventCommandHandler
                 speed: run.Speed,
                 palaceRoomState: room.PalaceState);
             run.StartCombat(combatRuntime);
-            combatRuntimeDto = CombatRuntimeDto.FromDomain(combatRuntime, CombatItemHelper.GetUsableBattleItems(run));
+            // Ouverture : si un ennemi est plus rapide, il agit avant de rendre la main au joueur.
+            _enemyTurnResolver.ResolveLeadingEnemyTurns(combatRuntime);
+            if (combatRuntime.Status != CombatStatus.Active)
+                await _combatResolution.ApplyOutcomeAsync(run, combatRuntime, _clock.UtcNow, cancellationToken);
+
+            combatRuntimeDto = CombatRuntimeDto.FromDomain(
+                combatRuntime, CombatItemHelper.GetUsableBattleItems(run));
         }
         else if (selectedNode.EventType == NodeEventType.Item)
         {
