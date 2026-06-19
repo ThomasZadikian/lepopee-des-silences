@@ -1,34 +1,27 @@
 using Leds.GameEngine.Application.Abstractions;
 using Leds.GameEngine.Domain.Runs;
 
-namespace Leds.GameEngine.Infrastructure.Persistence;
+namespace Leds.GameEngine.UnitTests.Common;
 
-public sealed class InMemoryRunRepository : IRunRepository
+public sealed class StubRunRepository : IRunRepository
 {
-    private readonly Dictionary<RunId, Run> _runs = [];
+    private readonly Dictionary<Guid, Run> _runs = new();
 
     public Task AddAsync(Run run, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(run);
-
-        _runs.Add(run.Id, run);
-
+        _runs[run.Id.Value] = run;
         return Task.CompletedTask;
     }
 
     public Task<Run?> GetByIdAsync(RunId runId, CancellationToken cancellationToken)
     {
-        _runs.TryGetValue(runId, out var run);
-
+        _runs.TryGetValue(runId.Value, out var run);
         return Task.FromResult(run);
     }
 
     public Task UpdateAsync(Run run, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(run);
-
-        _runs[run.Id] = run;
-
+        _runs[run.Id.Value] = run;
         return Task.CompletedTask;
     }
 }

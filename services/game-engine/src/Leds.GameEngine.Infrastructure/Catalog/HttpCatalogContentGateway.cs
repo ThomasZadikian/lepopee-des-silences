@@ -13,15 +13,12 @@ namespace Leds.GameEngine.Infrastructure.Catalog;
 /// HTTP implementation of <see cref="ICatalogContentGateway"/>.
 /// </summary>
 /// <remarks>
-/// Room Boss Profiles, Enemy Definitions and Skill Definitions are available
-/// through the Catalog Service HTTP API.
+/// Room Boss Profiles, Palace Laws, Curses, Enemy Definitions,
+/// Skill Definitions, and NPC definitions have full HTTP endpoint support.
 ///
-/// Other content lookups still require the InMemory gateway and deliberately
-/// throw <see cref="CatalogGatewayException"/> when this gateway is used.
-///
-/// Use <c>CatalogGateway:Mode = InMemory</c> for the complete playable local flow.
-/// Use <c>CatalogGateway:Mode = Http</c> to validate the Room Boss Definition,
-/// Enemy Definition and Skill Definition integration with the Catalog Service.
+/// Enemy templates, Skill templates, Item templates and Event templates
+/// throw <see cref="CatalogGatewayException"/> — their Catalog API endpoints
+/// are not yet implemented.
 /// </remarks>
 public sealed class HttpCatalogContentGateway : ICatalogContentGateway
 {
@@ -941,8 +938,7 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
     private static CatalogGatewayException NotAvailableYet(string contentType)
     {
         return new CatalogGatewayException(
-            $"{contentType} are not available via the HTTP catalog gateway yet. " +
-            "Use CatalogGateway:Mode = InMemory for the complete playable flow.");
+            $"{contentType} are not available via the HTTP catalog gateway yet.");
     }
 
     private async Task<T?> GetJsonOrNullAsync<T>(

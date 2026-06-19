@@ -183,7 +183,6 @@ public sealed class HttpCatalogContentGatewayTests
             .ThrowAsync<CatalogGatewayException>();
 
         exception.Which.Message.Should().Contain("not available via the HTTP catalog gateway yet");
-        exception.Which.Message.Should().Contain("Use CatalogGateway:Mode = InMemory");
     }
 
     [Fact]
@@ -199,7 +198,6 @@ public sealed class HttpCatalogContentGatewayTests
             .ThrowAsync<CatalogGatewayException>();
 
         exception.Which.Message.Should().Contain("not available via the HTTP catalog gateway yet");
-        exception.Which.Message.Should().Contain("Use CatalogGateway:Mode = InMemory");
     }
 
     [Fact]
@@ -215,7 +213,6 @@ public sealed class HttpCatalogContentGatewayTests
             .ThrowAsync<CatalogGatewayException>();
 
         exception.Which.Message.Should().Contain("not available via the HTTP catalog gateway yet");
-        exception.Which.Message.Should().Contain("Use CatalogGateway:Mode = InMemory");
     }
 
     [Fact]
@@ -231,7 +228,6 @@ public sealed class HttpCatalogContentGatewayTests
             .ThrowAsync<CatalogGatewayException>();
 
         exception.Which.Message.Should().Contain("not available via the HTTP catalog gateway yet");
-        exception.Which.Message.Should().Contain("Use CatalogGateway:Mode = InMemory");
     }
 
     [Fact]
@@ -1434,7 +1430,6 @@ public sealed class HttpCatalogContentGatewayTests
             .ThrowAsync<CatalogGatewayException>();
 
         exception.Which.Message.Should().Contain("not available via the HTTP catalog gateway yet");
-        exception.Which.Message.Should().Contain("Use CatalogGateway:Mode = InMemory");
     }
 
     private static Mock<HttpMessageHandler> CreateMockHandler(string content, HttpStatusCode statusCode)

@@ -267,12 +267,17 @@ public sealed class RoomBossDefinitionEntityConfiguration : IEntityTypeConfigura
         builder.Property(e => e.DisplayName).HasColumnName("display_name").HasMaxLength(256).IsRequired();
         builder.Property(e => e.Description).HasColumnName("description").IsRequired();
         builder.Property(e => e.RoomType).HasColumnName("room_type").HasMaxLength(64).IsRequired();
-        builder.Property(e => e.EnemyDefinitionKey).HasColumnName("enemy_definition_key").HasMaxLength(160).IsRequired();
+        builder.Property(e => e.EnemyDefinitionKey).HasColumnName("enemy_definition_key").HasMaxLength(160);
         builder.Property(e => e.DangerHint).HasColumnName("danger_hint").HasMaxLength(512);
+        builder.Property(e => e.BaseDifficulty).HasColumnName("base_difficulty");
         builder.Property(e => e.BaseWeight).HasColumnName("base_weight");
         builder.Property(e => e.SelectionGroup).HasColumnName("selection_group").HasMaxLength(64);
         builder.Property(e => e.Version).HasColumnName("version").HasMaxLength(32).IsRequired();
         builder.Property(e => e.Status).HasColumnName("status").HasMaxLength(32).IsRequired();
+        builder.Property(e => e.TagsJson).HasColumnName("tags_json");
+        builder.Property(e => e.CreatedAtUtc).HasColumnName("created_at_utc");
+        builder.Property(e => e.UpdatedAtUtc).HasColumnName("updated_at_utc");
         builder.HasIndex(e => e.Key).IsUnique();
+        builder.HasIndex(e => e.Status);
     }
 }

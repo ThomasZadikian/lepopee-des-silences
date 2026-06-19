@@ -1,6 +1,8 @@
 using Leds.Player.Api.Middleware;
 using Leds.Player.Application.DependencyInjection;
 using Leds.Player.Infrastructure.DependencyInjection;
+using Leds.Player.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -19,6 +21,13 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
+
+    using var scope = app.Services.CreateScope();
+    var dbContext = scope.ServiceProvider.GetRequiredService<PlayerDbContext>();
+    await dbContext.Database.MigrateAsync();
+
+    var seedRunner = scope.ServiceProvider.GetRequiredService<PlayerSeedRunner>();
+    await seedRunner.ApplyDemoPlayerSeedAsync();
 }
 
 app.UseHttpsRedirection();

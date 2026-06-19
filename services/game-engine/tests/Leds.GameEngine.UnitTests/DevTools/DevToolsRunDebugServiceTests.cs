@@ -8,7 +8,7 @@ using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
-using Leds.GameEngine.Infrastructure.Persistence;
+using Leds.GameEngine.UnitTests.Common;
 using Leds.GameEngine.UnitTests.Common.Factories;
 using Moq;
 
@@ -80,7 +80,7 @@ public sealed class DevToolsRunDebugServiceTests
 
     private static async Task<DevToolsRunDebugService> CreateServiceAsync(Run run)
     {
-        var runRepository = new InMemoryRunRepository();
+        var runRepository = new StubRunRepository();
         await runRepository.AddAsync(run, CancellationToken.None);
 
         return new DevToolsRunDebugService(

@@ -12,7 +12,6 @@ using Leds.Catalog.Application.RoomBosses.Ports;
 using Leds.Catalog.Application.Skills.Definitions.Ports;
 using Leds.Catalog.Application.Skills.Ports;
 using Leds.Catalog.Infrastructure.Persistence;
-using Leds.Catalog.Infrastructure.ReadStores;
 using Leds.Catalog.Infrastructure.ReadStores.Ef;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -26,41 +25,23 @@ public static class InfrastructureServiceCollectionExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        var persistenceMode = configuration["Persistence:Mode"];
+        services.AddDbContext<CatalogDbContext>(options =>
+            options.UseNpgsql(configuration.GetConnectionString("CatalogDb")));
 
-        if (string.Equals(persistenceMode, "Postgres", StringComparison.OrdinalIgnoreCase))
-        {
-            services.AddDbContext<CatalogDbContext>(options =>
-                options.UseNpgsql(configuration.GetConnectionString("CatalogDb")));
-
-            services.AddScoped<CatalogSeedRunner>();
-            services.AddScoped<ISkillDefinitionReadStore, EfSkillDefinitionReadStore>();
-            services.AddScoped<IEnemyDefinitionReadStore, EfEnemyDefinitionReadStore>();
-            services.AddScoped<IItemTemplateReadStore, EfItemDefinitionReadStore>();
-            services.AddScoped<IItemDefinitionReadStore, EfItemDefinitionReadStore>();
-            services.AddScoped<IEffectSetReadStore, EfEffectSetReadStore>();
-            services.AddScoped<IRewardTemplateReadStore, EfRewardTemplateReadStore>();
-            services.AddScoped<IPalaceLawDefinitionReadStore, EfPalaceLawDefinitionReadStore>();
-            services.AddScoped<ICurseDefinitionReadStore, EfCurseDefinitionReadStore>();
-            services.AddScoped<INpcDefinitionReadStore, EfNpcDefinitionReadStore>();
-        }
-        else
-        {
-            services.AddSingleton<ISkillDefinitionReadStore, InMemorySkillDefinitionReadStore>();
-            services.AddSingleton<IEnemyDefinitionReadStore, InMemoryEnemyDefinitionReadStore>();
-            services.AddSingleton<IItemTemplateReadStore, InMemoryItemTemplateReadStore>();
-            services.AddSingleton<IItemDefinitionReadStore, InMemoryItemDefinitionReadStore>();
-            services.AddSingleton<IEffectSetReadStore, InMemoryEffectSetReadStore>();
-            services.AddSingleton<IRewardTemplateReadStore, InMemoryRewardTemplateReadStore>();
-            services.AddSingleton<IPalaceLawDefinitionReadStore, InMemoryPalaceLawDefinitionReadStore>();
-            services.AddSingleton<ICurseDefinitionReadStore, InMemoryCurseDefinitionReadStore>();
-            services.AddSingleton<INpcDefinitionReadStore, InMemoryNpcDefinitionReadStore>();
-        }
-
-        services.AddSingleton<IEnemyTemplateReadStore, InMemoryEnemyTemplateReadStore>();
-        services.AddSingleton<ISkillTemplateReadStore, InMemorySkillTemplateReadStore>();
-        services.AddSingleton<IEventTemplateReadStore, InMemoryEventTemplateReadStore>();
-        services.AddSingleton<IRoomBossDefinitionReadStore, InMemoryRoomBossDefinitionReadStore>();
+        services.AddScoped<CatalogSeedRunner>();
+        services.AddScoped<ISkillDefinitionReadStore, EfSkillDefinitionReadStore>();
+        services.AddScoped<IEnemyDefinitionReadStore, EfEnemyDefinitionReadStore>();
+        services.AddScoped<IItemTemplateReadStore, EfItemDefinitionReadStore>();
+        services.AddScoped<IItemDefinitionReadStore, EfItemDefinitionReadStore>();
+        services.AddScoped<IEffectSetReadStore, EfEffectSetReadStore>();
+        services.AddScoped<IRewardTemplateReadStore, EfRewardTemplateReadStore>();
+        services.AddScoped<IPalaceLawDefinitionReadStore, EfPalaceLawDefinitionReadStore>();
+        services.AddScoped<ICurseDefinitionReadStore, EfCurseDefinitionReadStore>();
+        services.AddScoped<INpcDefinitionReadStore, EfNpcDefinitionReadStore>();
+        services.AddScoped<IEnemyTemplateReadStore, EfEnemyTemplateReadStore>();
+        services.AddScoped<ISkillTemplateReadStore, EfSkillTemplateReadStore>();
+        services.AddScoped<IEventTemplateReadStore, EfEventTemplateReadStore>();
+        services.AddScoped<IRoomBossDefinitionReadStore, EfRoomBossDefinitionReadStore>();
 
         return services;
     }

@@ -1,5 +1,4 @@
 ﻿using Leds.GameEngine.Domain.Markov;
-using Leds.GameEngine.Infrastructure.Catalog;
 using Leds.GameEngine.Infrastructure.Generation;
 using Leds.GameEngine.Infrastructure.Generation.Psyche;
 using Leds.GameEngine.Infrastructure.Generation.Randomness;
@@ -9,6 +8,7 @@ using Leds.GameEngine.Infrastructure.Generation.Rooms.States;
 using Leds.GameEngine.Infrastructure.Generation.Rooms.Themes;
 using Leds.GameEngine.Infrastructure.Generation.Rooms.Types;
 using Leds.GameEngine.Infrastructure.Markov;
+using Leds.GameEngine.UnitTests.Common;
 
 namespace Leds.GameEngine.UnitTests.Common.Factories;
 
@@ -19,7 +19,7 @@ public static class TestGeneratorFactory
         var mapRoomGenerator = new MapRoomGenerator(
             new RoomMapLayoutTemplateProvider(),
             new RoomThemeResolver(),
-            new RoomBossProfileResolver(new InMemoryCatalogContentGateway()),
+            new RoomBossProfileResolver(new StubCatalogContentGateway()),
             new HardcodedRoomTypeGenerationProfileProvider());
 
         var traceSink = new NullMarkovTransitionTraceSink();

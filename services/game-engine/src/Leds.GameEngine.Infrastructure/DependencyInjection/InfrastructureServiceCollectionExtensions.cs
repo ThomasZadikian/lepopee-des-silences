@@ -56,12 +56,16 @@ public static class InfrastructureServiceCollectionExtensions
         IConfiguration configuration)
     {
         services.AddSingleton<IClock, SystemClock>();
-        services.AddSingleton<IRunRepository, InMemoryRunRepository>();
-        services.AddSingleton<ICombatActionRecordRepository, InMemoryCombatActionRecordRepository>();
 
-        RegisterPersistence(services, configuration);
+        services.AddDbContext<GameEngineDbContext>(options =>
+            options.UseNpgsql(configuration.GetConnectionString("GameEngineDb")));
 
-        // Génération
+        services.AddScoped<IRunRepository, EfRunRepository>();
+        services.AddScoped<ICombatActionRecordRepository, EfCombatActionRecordRepository>();
+        services.AddScoped<IRewardOfferRepository, EfRewardOfferRepository>();
+        services.AddScoped<ISelectionDecisionRepository, EfSelectionDecisionRepository>();
+        services.AddScoped<IPalaceIndicatorRepository, EfPalaceIndicatorRepository>();
+
         services.AddSingleton<ISeededRandomFactory, SeededRandomFactory>();
 
         services.AddSingleton<EmotionalCalibration>();
@@ -80,8 +84,35 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IRoomMapLayoutTemplateProvider, RoomMapLayoutTemplateProvider>();
         services.AddSingleton<IRoomTypeGenerationProfileProvider, HardcodedRoomTypeGenerationProfileProvider>();
         services.AddSingleton<IMapRoomGenerator, MapRoomGenerator>();
-        RegisterCatalogGateway(services, configuration);
-        RegisterPlayerGateway(services, configuration);
+
+        services.Configure<CatalogGatewayOptions>(
+            configuration.GetSection(CatalogGatewayOptions.SectionName));
+
+        services.AddHttpClient<ICatalogContentGateway, HttpCatalogContentGateway>(
+            (serviceProvider, client) =>
+            {
+                var options = serviceProvider
+                    .GetRequiredService<IOptions<CatalogGatewayOptions>>()
+                    .Value;
+
+                client.BaseAddress = new Uri(options.BaseUrl);
+                client.Timeout = options.Timeout;
+            });
+
+        services.Configure<PlayerGatewayOptions>(
+            configuration.GetSection(PlayerGatewayOptions.SectionName));
+
+        services.AddHttpClient<IPlayerRunSnapshotGateway, HttpPlayerRunSnapshotGateway>(
+            (serviceProvider, client) =>
+            {
+                var options = serviceProvider
+                    .GetRequiredService<IOptions<PlayerGatewayOptions>>()
+                    .Value;
+
+                client.BaseAddress = new Uri(options.BaseUrl);
+                client.Timeout = options.Timeout;
+            });
+
         RegisterOutbox(services, configuration);
 
         services.AddSingleton<IEventContentResolver, EventContentResolver>();
@@ -105,95 +136,11 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IEncounterEnemySelector, DeterministicEncounterEnemySelector>();
         services.AddSingleton<ICombatEncounterDraftGenerator, CombatEncounterDraftGenerator>();
 
-        services.AddSingleton<IRewardOfferRepository, InMemoryRewardOfferRepository>();
-        services.AddSingleton<ISelectionDecisionRepository, InMemorySelectionDecisionRepository>();
-        services.AddSingleton<IAdaptiveInfluenceRepository, InMemoryAdaptiveInfluenceRepository>();
-        services.AddSingleton<IPalaceIndicatorRepository, InMemoryPalaceIndicatorRepository>();
         services.AddSingleton<DeterministicWeightedSelector>();
 
         services.AddSingleton<IRuntimeEffectResolver, RuntimeEffectResolver>();
 
         return services;
-    }
-
-    private static void RegisterPersistence(
-        IServiceCollection services,
-        IConfiguration configuration)
-    {
-        var persistenceMode = configuration["Persistence:Mode"];
-
-        if (string.Equals(persistenceMode, "Postgres", StringComparison.OrdinalIgnoreCase))
-        {
-            services.AddDbContext<GameEngineDbContext>(options =>
-                options.UseNpgsql(configuration.GetConnectionString("GameEngineDb")));
-
-            services.AddScoped<IRunRepository, EfRunRepository>();
-            services.AddScoped<IRewardOfferRepository, EfRewardOfferRepository>();
-            services.AddScoped<ISelectionDecisionRepository, EfSelectionDecisionRepository>();
-            services.AddScoped<IAdaptiveInfluenceRepository, EfAdaptiveInfluenceRepository>();
-            services.AddScoped<IPalaceIndicatorRepository, EfPalaceIndicatorRepository>();
-            services.AddScoped<ICombatActionRecordRepository, EfCombatActionRecordRepository>();
-        }
-    }
-
-    private static void RegisterCatalogGateway(
-        IServiceCollection services,
-        IConfiguration configuration)
-    {
-        services.Configure<CatalogGatewayOptions>(
-            configuration.GetSection(CatalogGatewayOptions.SectionName));
-
-        var options = configuration
-            .GetSection(CatalogGatewayOptions.SectionName)
-            .Get<CatalogGatewayOptions>() ?? new CatalogGatewayOptions();
-
-        if (string.Equals(options.Mode, "Http", StringComparison.OrdinalIgnoreCase))
-        {
-            services.AddHttpClient<ICatalogContentGateway, HttpCatalogContentGateway>(
-                (serviceProvider, client) =>
-                {
-                    var gatewayOptions = serviceProvider
-                        .GetRequiredService<IOptions<CatalogGatewayOptions>>()
-                        .Value;
-
-                    client.BaseAddress = new Uri(gatewayOptions.BaseUrl);
-                    client.Timeout = gatewayOptions.Timeout;
-                });
-        }
-        else
-        {
-            services.AddSingleton<ICatalogContentGateway, InMemoryCatalogContentGateway>();
-        }
-    }
-
-    private static void RegisterPlayerGateway(
-        IServiceCollection services,
-        IConfiguration configuration)
-    {
-        services.Configure<PlayerGatewayOptions>(
-            configuration.GetSection(PlayerGatewayOptions.SectionName));
-
-        var options = configuration
-            .GetSection(PlayerGatewayOptions.SectionName)
-            .Get<PlayerGatewayOptions>() ?? new PlayerGatewayOptions();
-
-        if (string.Equals(options.Mode, "Http", StringComparison.OrdinalIgnoreCase))
-        {
-            services.AddHttpClient<IPlayerRunSnapshotGateway, HttpPlayerRunSnapshotGateway>(
-                (serviceProvider, client) =>
-                {
-                    var gatewayOptions = serviceProvider
-                        .GetRequiredService<IOptions<PlayerGatewayOptions>>()
-                        .Value;
-
-                    client.BaseAddress = new Uri(gatewayOptions.BaseUrl);
-                    client.Timeout = gatewayOptions.Timeout;
-                });
-        }
-        else
-        {
-            services.AddSingleton<IPlayerRunSnapshotGateway, InMemoryPlayerRunSnapshotGateway>();
-        }
     }
 
     private static void RegisterOutbox(IServiceCollection services, IConfiguration configuration)

@@ -2,6 +2,8 @@ using Leds.GameEngine.Api.Middleware;
 using Leds.GameEngine.Api.DevTools;
 using Leds.GameEngine.Application.DependencyInjection;
 using Leds.GameEngine.Infrastructure.DependencyInjection;
+using Leds.GameEngine.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 
 const string CorsPolicyName = "LedsCorsPolicy";
 var builder = WebApplication.CreateBuilder(args);
@@ -40,6 +42,10 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
+
+    using var scope = app.Services.CreateScope();
+    var dbContext = scope.ServiceProvider.GetRequiredService<GameEngineDbContext>();
+    await dbContext.Database.MigrateAsync();
 }
 
 app.UseHttpsRedirection();

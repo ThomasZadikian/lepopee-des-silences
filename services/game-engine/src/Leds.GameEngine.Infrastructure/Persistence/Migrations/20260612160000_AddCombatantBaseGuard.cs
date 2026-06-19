@@ -4,10 +4,9 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace Leds.GameEngine.Infrastructure.Persistence.Migrations;
 
-/// <inheritdoc />
+[Migration("20260612160000_AddCombatantBaseGuard")]
 public partial class AddCombatantBaseGuard : Migration
 {
-    /// <inheritdoc />
     protected override void Up(MigrationBuilder migrationBuilder)
     {
         migrationBuilder.AddColumn<int>(
@@ -18,7 +17,6 @@ public partial class AddCombatantBaseGuard : Migration
             defaultValue: 0);
     }
 
-    /// <inheritdoc />
     protected override void Down(MigrationBuilder migrationBuilder)
     {
         migrationBuilder.DropColumn(

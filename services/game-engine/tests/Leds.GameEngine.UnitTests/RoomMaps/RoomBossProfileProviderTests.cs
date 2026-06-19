@@ -1,14 +1,14 @@
 using FluentAssertions;
 using Leds.GameEngine.Domain.Rooms;
-using Leds.GameEngine.Infrastructure.Catalog;
 using Leds.GameEngine.Infrastructure.Generation.Rooms.Bosses;
+using Leds.GameEngine.UnitTests.Common;
 
 namespace Leds.GameEngine.UnitTests.RoomMaps;
 
 public sealed class RoomBossProfileProviderTests
 {
     private static IRoomBossProfileResolver CreateSut() =>
-        new RoomBossProfileResolver(new InMemoryCatalogContentGateway());
+        new RoomBossProfileResolver(new StubCatalogContentGateway());
 
     // -----------------------------------------------------------------------
     // Profile existence + correctness per RoomType
