@@ -63,27 +63,30 @@ public sealed class CombatMultiEnemyFlowTests
             CreateEnemy("enemy.b", "Enemy B", enemySkill)
         };
         var combat = CreateCombat(allies, enemies);
+        var turnOrder = GetTurnOrder(combat);
+        var orderedAllies = turnOrder.Where(c => c.Side == CombatantSide.Player).ToArray();
+        var orderedEnemies = turnOrder.Where(c => c.Side == CombatantSide.Enemy).ToArray();
 
-        // Active combatant is first ally. Advance past ally1 and ally2 to reach enemy1.
+        // Advance past the ally turns to reach the first enemy in deterministic initiative order.
         combat.AdvanceTurn();
-        combat.ActiveCombatantId.Should().Be(allies[1].Id);
+        combat.ActiveCombatantId.Should().Be(orderedAllies[1].Id);
         combat.AdvanceTurn();
-        combat.ActiveCombatantId.Should().Be(enemies[0].Id);
+        combat.ActiveCombatantId.Should().Be(orderedEnemies[0].Id);
 
         // Enemy A acts
-        var targetA = allies[0];
+        var targetA = orderedAllies[0];
         targetA.ApplyDamage(5);
         combat.AdvanceTurn();
 
         // Active should now be enemy B
-        combat.ActiveCombatantId.Should().Be(enemies[1].Id);
+        combat.ActiveCombatantId.Should().Be(orderedEnemies[1].Id);
 
         // Enemy B acts
         targetA.ApplyDamage(5);
         combat.AdvanceTurn();
 
         // Now back to ally1
-        combat.ActiveCombatantId.Should().Be(allies[0].Id);
+        combat.ActiveCombatantId.Should().Be(orderedAllies[0].Id);
     }
 
     [Fact]
@@ -143,16 +146,19 @@ public sealed class CombatMultiEnemyFlowTests
             CreateEnemy("enemy.c", "Enemy C")
         };
         var combat = CreateCombat(allies, enemies);
+        var orderedEnemies = GetTurnOrder(combat)
+            .Where(c => c.Side == CombatantSide.Enemy)
+            .ToArray();
 
         // Defeat enemy A before its turn
-        enemies[0].ApplyDamage(80);
+        orderedEnemies[0].ApplyDamage(80);
 
         // Turn order: ally, enemy A (defeated - skip), enemy B, enemy C, ally...
         combat.AdvanceTurn();
-        combat.ActiveCombatantId.Should().Be(enemies[1].Id);
+        combat.ActiveCombatantId.Should().Be(orderedEnemies[1].Id);
 
         combat.AdvanceTurn();
-        combat.ActiveCombatantId.Should().Be(enemies[2].Id);
+        combat.ActiveCombatantId.Should().Be(orderedEnemies[2].Id);
 
         combat.AdvanceTurn();
         combat.ActiveCombatantId.Should().Be(allies[0].Id);
@@ -258,5 +264,15 @@ public sealed class CombatMultiEnemyFlowTests
     {
         return Combatant.CreateEnemy(sourceKey, displayName, "Guard", 80,
             skills.Length > 0 ? skills : Array.Empty<CombatantSkill>());
+    }
+
+    private static Combatant[] GetTurnOrder(Combat combat)
+    {
+        return combat.Allies.Concat(combat.Enemies)
+            .OrderByDescending(c => c.BaseStatSnapshot.Speed)
+            .ThenByDescending(c => c.BaseStatSnapshot.Initiative)
+            .ThenBy(c => c.Side)
+            .ThenBy(c => c.Id.Value)
+            .ToArray();
     }
 }

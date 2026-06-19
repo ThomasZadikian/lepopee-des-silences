@@ -23,20 +23,17 @@ public sealed class DevToolsRunDebugService : IDevToolsRunDebugService
     private readonly IRunRepository _runRepository;
     private readonly IRunGenerator _runGenerator;
     private readonly ICatalogContentGateway _catalogContentGateway;
-    private readonly ICatalogCurseDefinitionProvider _curseDefinitionProvider;
     private readonly ICombatResolutionService _combatResolution; 
 
     public DevToolsRunDebugService(
         IRunRepository runRepository,
         IRunGenerator runGenerator,
         ICatalogContentGateway catalogContentGateway,
-        ICatalogCurseDefinitionProvider curseDefinitionProvider, 
         ICombatResolutionService combatResolution)
     {
         _runRepository = runRepository;
         _runGenerator = runGenerator;
         _catalogContentGateway = catalogContentGateway;
-        _curseDefinitionProvider = curseDefinitionProvider;
         _combatResolution = combatResolution;
     }
 
@@ -160,8 +157,13 @@ public sealed class DevToolsRunDebugService : IDevToolsRunDebugService
             throw new DomainException("Curse key is required.");
 
         var run = await GetRunAsync(runId, cancellationToken);
-        var definition = await _curseDefinitionProvider.GetByKeyAsync(curseKey.Trim(), cancellationToken)
-            ?? throw new NotFoundException($"Curse definition '{curseKey}' was not found.");
+        var definitionResult = await _catalogContentGateway.GetCurseDefinitionByKeyAsync(
+            curseKey.Trim(), cancellationToken);
+
+        if (definitionResult.IsFailure)
+            throw new NotFoundException($"Curse definition '{curseKey}' was not found.");
+
+        var definition = definitionResult.Value;
 
         var difficultyDelta = Math.Clamp(definition.Severity / 100.0, 0.01, 0.5);
         var curse = ActiveCurse.Create(

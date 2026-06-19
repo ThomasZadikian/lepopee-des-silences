@@ -83,6 +83,76 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
             ?? [];
     }
 
+    public Task<Result<CatalogCurseDefinitionSnapshot>> GetCurseDefinitionByKeyAsync(
+        string key,
+        CancellationToken cancellationToken = default)
+    {
+        return GetCurseDefinitionByKeyCoreAsync(key, cancellationToken);
+    }
+
+    public async Task<IReadOnlyCollection<CatalogCurseDefinitionSnapshot>> ListAvailableCurseDefinitionsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        const string url = "/api/v2/catalog/curses";
+
+        var wrapper = await GetJsonOrNullAsync<ListCurseDefinitionsHttpResponse>(url, cancellationToken);
+
+        return wrapper?.Definitions?
+            .Select(MapToCatalogCurseDefinitionSnapshot)
+            .OrderBy(definition => definition.Key, StringComparer.OrdinalIgnoreCase)
+            .ToArray()
+            ?? [];
+    }
+
+    public Task<Result<CatalogItemDefinitionSnapshot>> GetItemDefinitionByKeyAsync(
+        string key,
+        CancellationToken cancellationToken = default)
+    {
+        return GetItemDefinitionByKeyCoreAsync(key, cancellationToken);
+    }
+
+    public Task<Result<CatalogEffectSetSnapshot>> GetEffectSetByKeyAsync(
+        string key,
+        CancellationToken cancellationToken = default)
+    {
+        return GetEffectSetByKeyCoreAsync(key, cancellationToken);
+    }
+
+    public Task<Result<CatalogRewardTemplateSnapshot>> GetRewardTemplateByKeyAsync(
+        string key,
+        CancellationToken cancellationToken = default)
+    {
+        return GetRewardTemplateByKeyCoreAsync(key, cancellationToken);
+    }
+
+    public async Task<IReadOnlyCollection<CatalogRewardTemplateSnapshot>> ListEligibleRewardTemplatesAsync(
+        RewardTemplateEligibilityContext context,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(context.SourceType))
+        {
+            return [];
+        }
+
+        var query = new List<string>
+        {
+            $"sourceType={Uri.EscapeDataString(context.SourceType.Trim())}"
+        };
+
+        if (context.Depth.HasValue) query.Add($"depth={context.Depth.Value}");
+        if (!string.IsNullOrWhiteSpace(context.CombatTier)) query.Add($"combatTier={Uri.EscapeDataString(context.CombatTier.Trim())}");
+        if (context.DifficultyMultiplier.HasValue) query.Add($"difficultyMultiplier={context.DifficultyMultiplier.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)}");
+        if (context.RewardPowerMultiplier.HasValue) query.Add($"rewardPowerMultiplier={context.RewardPowerMultiplier.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)}");
+
+        var url = $"/api/v2/catalog/reward-templates/eligible?{string.Join('&', query)}";
+        var wrapper = await GetJsonOrNullAsync<ListRewardTemplatesHttpResponse>(url, cancellationToken);
+
+        return wrapper?.Definitions?
+            .Select(MapToCatalogRewardTemplateSnapshot)
+            .ToArray()
+            ?? [];
+    }
+
     private async Task<Result<PalaceLawDefinitionSnapshot>> GetPalaceLawDefinitionByKeyCoreAsync(
         string key,
         CancellationToken cancellationToken)
@@ -107,6 +177,110 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
 
         return Result<PalaceLawDefinitionSnapshot>.Success(
             MapToPalaceLawDefinitionSnapshot(wrapper.Definition));
+    }
+
+    private async Task<Result<CatalogCurseDefinitionSnapshot>> GetCurseDefinitionByKeyCoreAsync(
+        string key,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            return Result<CatalogCurseDefinitionSnapshot>.Failure(Error.Create(
+                "catalog.curse_key_required",
+                "Curse definition key is required."));
+        }
+
+        var encodedKey = Uri.EscapeDataString(key.Trim());
+        var url = $"/api/v2/catalog/curses/{encodedKey}";
+        var wrapper = await GetJsonOrNullAsync<GetCurseDefinitionByKeyHttpResponse>(url, cancellationToken);
+
+        if (wrapper?.Definition is null)
+        {
+            return Result<CatalogCurseDefinitionSnapshot>.Failure(Error.Create(
+                "catalog.curse_definition_not_found",
+                $"Curse definition '{key}' was not found."));
+        }
+
+        return Result<CatalogCurseDefinitionSnapshot>.Success(
+            MapToCatalogCurseDefinitionSnapshot(wrapper.Definition));
+    }
+
+    private async Task<Result<CatalogItemDefinitionSnapshot>> GetItemDefinitionByKeyCoreAsync(
+        string key,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            return Result<CatalogItemDefinitionSnapshot>.Failure(Error.Create(
+                "catalog.item_definition_key_required",
+                "Item definition key is required."));
+        }
+
+        var encodedKey = Uri.EscapeDataString(key.Trim());
+        var url = $"/api/v2/catalog/item-definitions/{encodedKey}";
+        var wrapper = await GetJsonOrNullAsync<GetItemDefinitionByKeyHttpResponse>(url, cancellationToken);
+
+        if (wrapper?.Definition is null)
+        {
+            return Result<CatalogItemDefinitionSnapshot>.Failure(Error.Create(
+                "catalog.item_definition_not_found",
+                $"Item definition '{key}' was not found."));
+        }
+
+        return Result<CatalogItemDefinitionSnapshot>.Success(
+            MapToCatalogItemDefinitionSnapshot(wrapper.Definition));
+    }
+
+    private async Task<Result<CatalogEffectSetSnapshot>> GetEffectSetByKeyCoreAsync(
+        string key,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            return Result<CatalogEffectSetSnapshot>.Failure(Error.Create(
+                "catalog.effect_set_key_required",
+                "Effect set key is required."));
+        }
+
+        var encodedKey = Uri.EscapeDataString(key.Trim());
+        var url = $"/api/v2/catalog/effect-sets/{encodedKey}";
+        var wrapper = await GetJsonOrNullAsync<GetEffectSetByKeyHttpResponse>(url, cancellationToken);
+
+        if (wrapper?.Definition is null)
+        {
+            return Result<CatalogEffectSetSnapshot>.Failure(Error.Create(
+                "catalog.effect_set_not_found",
+                $"Effect set '{key}' was not found."));
+        }
+
+        return Result<CatalogEffectSetSnapshot>.Success(
+            MapToCatalogEffectSetSnapshot(wrapper.Definition));
+    }
+
+    private async Task<Result<CatalogRewardTemplateSnapshot>> GetRewardTemplateByKeyCoreAsync(
+        string key,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            return Result<CatalogRewardTemplateSnapshot>.Failure(Error.Create(
+                "catalog.reward_template_key_required",
+                "Reward template key is required."));
+        }
+
+        var encodedKey = Uri.EscapeDataString(key.Trim());
+        var url = $"/api/v2/catalog/reward-templates/{encodedKey}";
+        var wrapper = await GetJsonOrNullAsync<GetRewardTemplateByKeyHttpResponse>(url, cancellationToken);
+
+        if (wrapper?.Definition is null)
+        {
+            return Result<CatalogRewardTemplateSnapshot>.Failure(Error.Create(
+                "catalog.reward_template_not_found",
+                $"Reward template '{key}' was not found."));
+        }
+
+        return Result<CatalogRewardTemplateSnapshot>.Success(
+            MapToCatalogRewardTemplateSnapshot(wrapper.Definition));
     }
 
     public async Task<CatalogRoomBossProfile?> GetRoomBossProfileAsync(
@@ -643,6 +817,80 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
             Effects: source.Effects?.Select(MapToCatalogEffectDefinitionSnapshot).ToArray() ?? []);
     }
 
+    private static CatalogCurseDefinitionSnapshot MapToCatalogCurseDefinitionSnapshot(
+        CatalogCurseDefinitionHttpResponse source)
+    {
+        return new CatalogCurseDefinitionSnapshot(
+            source.Key,
+            source.Version,
+            source.DisplayName,
+            source.Description,
+            source.NarrativeText,
+            source.Severity,
+            source.Duration,
+            source.Trigger,
+            source.EffectSetKey);
+    }
+
+    private static CatalogItemDefinitionSnapshot MapToCatalogItemDefinitionSnapshot(
+        CatalogItemDefinitionHttpResponse source)
+    {
+        return new CatalogItemDefinitionSnapshot(
+            source.Key,
+            source.Version,
+            source.DisplayName,
+            source.Description,
+            source.NarrativeText,
+            source.Category,
+            source.ItemType,
+            source.Rarity,
+            source.UsageMode,
+            source.Lifecycle,
+            source.StackPolicy,
+            source.MaxStack,
+            source.IsUsableInCombat,
+            source.IsUsableOutsideCombat,
+            source.EffectSetKey);
+    }
+
+    private static CatalogEffectSetSnapshot MapToCatalogEffectSetSnapshot(
+        CatalogEffectSetHttpResponse source)
+    {
+        return new CatalogEffectSetSnapshot(
+            source.Key,
+            source.Version,
+            source.Effects?.Select(MapToCatalogEffectDefinitionSnapshot).ToArray() ?? []);
+    }
+
+    private static CatalogRewardTemplateSnapshot MapToCatalogRewardTemplateSnapshot(
+        CatalogRewardTemplateHttpResponse source)
+    {
+        return new CatalogRewardTemplateSnapshot(
+            source.Key,
+            source.Version,
+            source.DisplayName,
+            source.Description,
+            source.SourceType,
+            source.MinChoices,
+            source.MaxChoices,
+            source.Options?.Select(MapToCatalogRewardTemplateOptionSnapshot).ToArray() ?? []);
+    }
+
+    private static CatalogRewardTemplateOptionSnapshot MapToCatalogRewardTemplateOptionSnapshot(
+        CatalogRewardTemplateOptionHttpResponse source)
+    {
+        return new CatalogRewardTemplateOptionSnapshot(
+            source.RewardType,
+            source.Label,
+            source.Description,
+            source.PayloadKey,
+            source.PayloadType,
+            source.EffectSetKey,
+            source.BaseAmount,
+            source.ScalingMode,
+            source.Weight);
+    }
+
     public async Task<IReadOnlyCollection<CatalogNpcDefinition>> ListNpcDefinitionsAsync(
         CancellationToken cancellationToken = default)
     {
@@ -765,6 +1013,80 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
 
     private sealed record ListPalaceLawDefinitionsHttpResponse(
         IReadOnlyCollection<CatalogPalaceLawDefinitionHttpResponse>? Definitions);
+
+    private sealed record GetCurseDefinitionByKeyHttpResponse(
+        CatalogCurseDefinitionHttpResponse? Definition);
+
+    private sealed record ListCurseDefinitionsHttpResponse(
+        IReadOnlyCollection<CatalogCurseDefinitionHttpResponse>? Definitions);
+
+    private sealed record CatalogCurseDefinitionHttpResponse(
+        string Key,
+        string Version,
+        string DisplayName,
+        string Description,
+        string? NarrativeText,
+        int Severity,
+        string Duration,
+        string? Trigger,
+        string? EffectSetKey);
+
+    private sealed record GetItemDefinitionByKeyHttpResponse(
+        CatalogItemDefinitionHttpResponse? Definition);
+
+    private sealed record CatalogItemDefinitionHttpResponse(
+        string Key,
+        string Version,
+        string DisplayName,
+        string Description,
+        string? NarrativeText,
+        string Category,
+        string ItemType,
+        string Rarity,
+        string UsageMode,
+        string Lifecycle,
+        string StackPolicy,
+        int MaxStack,
+        bool IsUsableInCombat,
+        bool IsUsableOutsideCombat,
+        string? EffectSetKey);
+
+    private sealed record GetEffectSetByKeyHttpResponse(
+        CatalogEffectSetHttpResponse? Definition);
+
+    private sealed record CatalogEffectSetHttpResponse(
+        string Key,
+        string Version,
+        string Status,
+        IReadOnlyCollection<CatalogEffectDefinitionHttpResponse>? Effects);
+
+    private sealed record GetRewardTemplateByKeyHttpResponse(
+        CatalogRewardTemplateHttpResponse? Definition);
+
+    private sealed record ListRewardTemplatesHttpResponse(
+        IReadOnlyCollection<CatalogRewardTemplateHttpResponse>? Definitions);
+
+    private sealed record CatalogRewardTemplateHttpResponse(
+        string Key,
+        string Version,
+        string DisplayName,
+        string Description,
+        string SourceType,
+        int MinChoices,
+        int MaxChoices,
+        string Status,
+        IReadOnlyCollection<CatalogRewardTemplateOptionHttpResponse>? Options);
+
+    private sealed record CatalogRewardTemplateOptionHttpResponse(
+        string RewardType,
+        string Label,
+        string Description,
+        string? PayloadKey,
+        string? PayloadType,
+        string? EffectSetKey,
+        int BaseAmount,
+        string ScalingMode,
+        int Weight);
 
     private sealed record CatalogPalaceLawDefinitionHttpResponse(
         string Key,

@@ -1,5 +1,4 @@
 using FluentAssertions;
-using Leds.GameEngine.Application.Catalog.Contracts;
 using Leds.GameEngine.Infrastructure.Catalog;
 
 namespace Leds.GameEngine.UnitTests.Catalog;
@@ -7,121 +6,112 @@ namespace Leds.GameEngine.UnitTests.Catalog;
 public sealed class CatalogEnemyProviderTests
 {
     [Fact]
-    public async Task EnemyProvider_ShouldReturnSeedEnemy()
+    public async Task CatalogGateway_ShouldReturnSeedEnemy()
     {
-        var provider = new InMemoryCatalogEnemyDefinitionProvider();
+        var gateway = new InMemoryCatalogContentGateway();
 
-        var enemy = await provider.GetEnemyByKeyAsync("enemy-shadow-v1");
+        var enemy = await gateway.GetEnemyDefinitionByKeyAsync("enemy.threshold.echo");
 
         enemy.Should().NotBeNull();
-        enemy!.Key.Should().Be("enemy-shadow-v1");
-        enemy.DisplayName.Should().Be("Ombre");
+        enemy!.Key.Should().Be("enemy.threshold.echo");
+        enemy.DisplayName.Should().Be("Écho");
         enemy.Archetype.Should().Be("Fragile");
-        enemy.Rank.Should().Be("Common");
+        enemy.CompatibleRoomTypes.Should().Contain("Threshold");
     }
 
     [Fact]
-    public async Task EnemyProvider_ShouldReturnNull_ForUnknownKey()
+    public async Task CatalogGateway_ShouldReturnNull_ForUnknownKey()
     {
-        var provider = new InMemoryCatalogEnemyDefinitionProvider();
+        var gateway = new InMemoryCatalogContentGateway();
 
-        var enemy = await provider.GetEnemyByKeyAsync("enemy-nonexistent");
+        var enemy = await gateway.GetEnemyDefinitionByKeyAsync("enemy-nonexistent");
 
         enemy.Should().BeNull();
     }
 
     [Fact]
-    public async Task EnemyProvider_ShouldReturnStatBlock()
+    public async Task CatalogGateway_ShouldReturnDifficultyRange()
     {
-        var provider = new InMemoryCatalogEnemyDefinitionProvider();
+        var gateway = new InMemoryCatalogContentGateway();
 
-        var enemy = await provider.GetEnemyByKeyAsync("enemy-shadow-v1");
+        var enemy = await gateway.GetEnemyDefinitionByKeyAsync("enemy.threshold.echo");
 
-        enemy!.StatBlock.Should().NotBeNull();
-        enemy.StatBlock.MaxVitality.Should().Be(30);
-        enemy.StatBlock.AttackPower.Should().Be(8);
-        enemy.StatBlock.Defense.Should().Be(3);
-        enemy.StatBlock.Speed.Should().Be(10);
+        enemy!.BaseDifficulty.Should().Be(1);
+        enemy.MinRiskLevel.Should().Be(1);
+        enemy.MaxRiskLevel.Should().Be(2);
     }
 
     [Fact]
-    public async Task EnemyProvider_ShouldReturnSkills()
+    public async Task CatalogGateway_ShouldReturnSkills()
     {
-        var provider = new InMemoryCatalogEnemyDefinitionProvider();
+        var gateway = new InMemoryCatalogContentGateway();
 
-        var enemy = await provider.GetEnemyByKeyAsync("enemy-shadow-v1");
+        var enemy = await gateway.GetEnemyDefinitionByKeyAsync("enemy.threshold.echo");
 
-        enemy!.Skills.Should().HaveCount(1);
-        enemy.Skills.First().SkillDefinitionKey.Should().Be("skill.shadow.slash");
+        enemy!.SkillKeys.Should().ContainSingle("skill.basic.strike");
     }
 
     [Fact]
-    public async Task EnemyProvider_ShouldListEligibleEnemies()
+    public async Task CatalogGateway_ShouldListCompatibleEnemies()
     {
-        var provider = new InMemoryCatalogEnemyDefinitionProvider();
-        var context = new EnemyEligibilityContext(
-            "Threshold", null, 1, "Combat", 3, null, [], [], [], []);
+        var gateway = new InMemoryCatalogContentGateway();
 
-        var enemies = await provider.ListEligibleEnemiesAsync(context);
+        var enemies = await gateway.ListCompatibleEnemyDefinitionsAsync("Threshold", 3);
 
         enemies.Should().NotBeEmpty();
-        enemies.Should().AllSatisfy(e => e.IsBoss.Should().BeFalse());
+        enemies.Should().OnlyContain(e => e.CompatibleRoomTypes.Contains("Threshold"));
+        enemies.Should().OnlyContain(e => e.MinRiskLevel <= 3 && 3 <= e.MaxRiskLevel);
     }
 
     [Fact]
-    public async Task EnemyProvider_ShouldIncludeElite_ForEliteNodeType()
+    public async Task CatalogGateway_ShouldIncludeElite_ForFinalHighRisk()
     {
-        var provider = new InMemoryCatalogEnemyDefinitionProvider();
-        var context = new EnemyEligibilityContext(
-            "Threshold", null, 2, "Elite", 5, null, [], [], [], []);
+        var gateway = new InMemoryCatalogContentGateway();
 
-        var enemies = await provider.ListEligibleEnemiesAsync(context);
+        var enemies = await gateway.ListCompatibleEnemyDefinitionsAsync("Final", 5);
 
-        enemies.Should().Contain(e => e.IsElite);
+        enemies.Should().Contain(e => e.Archetype == "Elite");
     }
 
     [Fact]
-    public async Task EnemyProvider_ShouldIncludeBoss_ForRoomBossNodeType()
+    public async Task CatalogGateway_ShouldIncludeBoss_ForRoomBossRisk()
     {
-        var provider = new InMemoryCatalogEnemyDefinitionProvider();
-        var context = new EnemyEligibilityContext(
-            "Threshold", null, 0, "RoomBoss", 5, null, [], [], [], []);
+        var gateway = new InMemoryCatalogContentGateway();
 
-        var enemies = await provider.ListEligibleEnemiesAsync(context);
+        var enemies = await gateway.ListCompatibleEnemyDefinitionsAsync("Threshold", 5);
 
-        enemies.Should().Contain(e => e.IsBoss);
+        enemies.Should().Contain(e => e.Archetype == "Boss");
     }
 
     [Fact]
-    public async Task RoomEnemyPoolProvider_ShouldReturnSeedPool()
+    public async Task CatalogGateway_ShouldListEnemiesByRoomType()
     {
-        var provider = new InMemoryCatalogRoomEnemyPoolProvider();
+        var gateway = new InMemoryCatalogContentGateway();
 
-        var pool = await provider.GetEnemyPoolAsync("pool.threshold.default");
+        var enemies = await gateway.ListEnemyDefinitionsByRoomTypeAsync("Threshold");
 
-        pool.Should().NotBeNull();
-        pool!.Key.Should().Be("pool.threshold.default");
-        pool.Entries.Should().HaveCount(3);
+        enemies.Should().NotBeEmpty();
+        enemies.Should().Contain(e => e.Key == "enemy.threshold.doubt-fragment");
     }
 
     [Fact]
-    public async Task RoomEnemyPoolProvider_ShouldReturnPoolForRoom()
+    public async Task CatalogGateway_ShouldReturnRoomBossProfile()
     {
-        var provider = new InMemoryCatalogRoomEnemyPoolProvider();
-        var context = new RoomEnemyPoolEligibilityContext("Threshold", null, 1, "Combat", 3);
+        var gateway = new InMemoryCatalogContentGateway();
 
-        var pool = await provider.GetEnemyPoolForRoomAsync(context);
+        var boss = await gateway.GetRoomBossProfileAsync("Threshold");
 
-        pool.Should().NotBeNull();
+        boss.Should().NotBeNull();
+        boss!.Key.Should().Be("boss.threshold.warden");
     }
 
     [Fact]
-    public async Task RoomEnemyPoolProvider_ShouldReturnNull_ForUnknownPool()
+    public async Task CatalogGateway_ShouldReturnNull_ForUnknownRoomBossProfile()
     {
-        var provider = new InMemoryCatalogRoomEnemyPoolProvider();
+        var gateway = new InMemoryCatalogContentGateway();
 
-        var pool = await provider.GetEnemyPoolAsync("pool.nonexistent");
+        var boss = await gateway.GetRoomBossProfileAsync("Unknown");
 
-        pool.Should().BeNull();
+        boss.Should().BeNull();
     }
 }

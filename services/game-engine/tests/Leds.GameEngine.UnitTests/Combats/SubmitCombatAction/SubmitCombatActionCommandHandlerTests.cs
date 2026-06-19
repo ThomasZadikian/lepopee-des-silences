@@ -38,7 +38,7 @@ public sealed class SubmitCombatActionCommandHandlerTests
     }
 
     private static RewardOfferFactory CreateRewardOfferFactory() =>
-        new(new CombatRiskProfileResolver(), Mock.Of<ICatalogRewardTemplateProvider>());
+        new(new CombatRiskProfileResolver(), Mock.Of<ICatalogContentGateway>());
 
     private static SubmitCombatActionCommandHandler CreateHandler(
         Mock<IRunRepository> runRepo,

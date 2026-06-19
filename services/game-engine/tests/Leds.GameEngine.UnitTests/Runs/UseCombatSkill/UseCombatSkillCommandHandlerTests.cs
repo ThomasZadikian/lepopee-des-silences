@@ -7,6 +7,7 @@ using Leds.GameEngine.Application.Combats.Dtos;
 using Leds.GameEngine.Application.Combats.Effects;
 using Leds.GameEngine.Application.Combats.EnemyTurns;
 using Leds.GameEngine.Application.Combats.Ports;
+using Leds.GameEngine.Application.Combats.Resolution;
 using Leds.GameEngine.Application.Common.Exceptions;
 using Leds.GameEngine.Application.Rewards.Ports;
 using Leds.GameEngine.Application.Rewards.RewardOfferFactory;
@@ -67,10 +68,9 @@ public sealed class UseCombatSkillCommandHandlerTests
             new Mock<ICombatSkillActionValidator>().Object,
             new Mock<ICombatSkillEffectResolver>().Object,
             new Mock<IEnemyCombatTurnResolver>().Object,
-            new Mock<IRewardOfferRepository>().Object,
-            CreateRewardOfferFactory(),
             new Mock<IClock>().Object,
-            new Mock<ICombatActionRecordRepository>().Object);
+            new Mock<ICombatActionRecordRepository>().Object,
+            Mock.Of<ICombatResolutionService>());
 
         var act = () => handler.Handle(
             new UseCombatSkillCommand(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "skill.basic.strike", [Guid.NewGuid()]),
@@ -90,10 +90,9 @@ public sealed class UseCombatSkillCommandHandlerTests
             new Mock<ICombatSkillActionValidator>().Object,
             new Mock<ICombatSkillEffectResolver>().Object,
             new Mock<IEnemyCombatTurnResolver>().Object,
-            new Mock<IRewardOfferRepository>().Object,
-            CreateRewardOfferFactory(),
             new Mock<IClock>().Object,
-            new Mock<ICombatActionRecordRepository>().Object);
+            new Mock<ICombatActionRecordRepository>().Object,
+            Mock.Of<ICombatResolutionService>());
 
         var act = () => handler.Handle(
             new UseCombatSkillCommand(run.Id.Value, Guid.NewGuid(), Guid.NewGuid(), "skill.basic.strike", [Guid.NewGuid()]),
@@ -596,11 +595,13 @@ public sealed class UseCombatSkillCommandHandlerTests
         var ally2 = Combatant.CreateAlly("player.2", "Hero2", "Fighter", 100, 0, [_strikeSkill]);
         var enemy = Combatant.CreateEnemy("enemy.1", "Enemy1", "Guard", 80, [_strikeSkill]);
         var setup = CreateRunWithActiveCombat([ally1, ally2], [enemy]);
-        var handler = CreateHandlerWithRealEnemyResolver(setup, ally1, _strikeSkill, [enemy], out _);
+        var activeAlly = setup.Combat.Allies.Single(a => a.Id == setup.Combat.ActiveCombatantId);
+        var nextAlly = setup.Combat.Allies.Single(a => a.Id != activeAlly.Id);
+        var handler = CreateHandlerWithRealEnemyResolver(setup, activeAlly, _strikeSkill, [enemy], out _);
 
-        var result = await handler.Handle(CreateCommand(setup, ally1, _strikeSkill, [enemy]), CancellationToken.None);
+        var result = await handler.Handle(CreateCommand(setup, activeAlly, _strikeSkill, [enemy]), CancellationToken.None);
 
-        result.Combat.ActiveCombatantId.Should().Be(ally2.Id.Value);
+        result.Combat.ActiveCombatantId.Should().Be(nextAlly.Id.Value);
         result.LogEntries.Should().NotContain(e => e.Type == "EnemyTurnResolved");
     }
 
@@ -618,10 +619,9 @@ public sealed class UseCombatSkillCommandHandlerTests
             validator.Object,
             effectResolver.Object,
             enemyResolver.Object,
-            new Mock<IRewardOfferRepository>().Object,
-            CreateRewardOfferFactory(),
             clock.Object,
-            new Mock<ICombatActionRecordRepository>().Object);
+            new Mock<ICombatActionRecordRepository>().Object,
+            Mock.Of<ICombatResolutionService>());
 
         var act = () => handler.Handle(CreateCommand(setup, _strikeSkill, [setup.Enemy]), CancellationToken.None);
 
@@ -663,10 +663,9 @@ public sealed class UseCombatSkillCommandHandlerTests
             validator.Object,
             new CombatSkillEffectResolver(),
             CreateNoOpEnemyTurnResolver().Object,
-            new Mock<IRewardOfferRepository>().Object,
-            CreateRewardOfferFactory(),
             clock.Object,
-            new Mock<ICombatActionRecordRepository>().Object);
+            new Mock<ICombatActionRecordRepository>().Object,
+            CreateCombatResolutionService());
     }
 
     private static UseCombatSkillCommandHandler CreateHandlerWithRealEnemyResolver(
@@ -695,10 +694,9 @@ public sealed class UseCombatSkillCommandHandlerTests
             validator.Object,
             effectResolver,
             new EnemyCombatTurnResolver(realActionValidator, effectResolver),
-            new Mock<IRewardOfferRepository>().Object,
-            CreateRewardOfferFactory(),
             clock.Object,
-            new Mock<ICombatActionRecordRepository>().Object);
+            new Mock<ICombatActionRecordRepository>().Object,
+            CreateCombatResolutionService());
     }
 
     private static UseCombatSkillCommandHandler CreateHandler(
@@ -712,15 +710,21 @@ public sealed class UseCombatSkillCommandHandlerTests
             validator.Object,
             effectResolver.Object,
             CreateNoOpEnemyTurnResolver().Object,
-            new Mock<IRewardOfferRepository>().Object,
-            CreateRewardOfferFactory(),
             clock.Object,
-            new Mock<ICombatActionRecordRepository>().Object);
+            new Mock<ICombatActionRecordRepository>().Object,
+            Mock.Of<ICombatResolutionService>());
+    }
+
+    private static ICombatResolutionService CreateCombatResolutionService()
+    {
+        return new CombatResolutionService(
+            new Mock<IRewardOfferRepository>().Object,
+            CreateRewardOfferFactory());
     }
 
     private static RewardOfferFactory CreateRewardOfferFactory()
     {
-        return new RewardOfferFactory(new CombatRiskProfileResolver(), Mock.Of<ICatalogRewardTemplateProvider>());
+        return new RewardOfferFactory(new CombatRiskProfileResolver(), Mock.Of<ICatalogContentGateway>());
     }
 
     private static Mock<IEnemyCombatTurnResolver> CreateNoOpEnemyTurnResolver()

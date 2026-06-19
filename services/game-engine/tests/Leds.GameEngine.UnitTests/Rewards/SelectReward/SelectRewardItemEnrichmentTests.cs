@@ -9,6 +9,8 @@ using Leds.GameEngine.Application.Rewards.SelectReward;
 using Leds.GameEngine.Domain.Rewards;
 using Leds.GameEngine.Domain.Runs;
 using Leds.GameEngine.UnitTests.Common.Factories;
+using Leds.SharedBuildingBlocks.Errors;
+using Leds.SharedBuildingBlocks.Results;
 using Moq;
 
 namespace Leds.GameEngine.UnitTests.Rewards.SelectReward;
@@ -16,7 +18,7 @@ namespace Leds.GameEngine.UnitTests.Rewards.SelectReward;
 public sealed class SelectRewardItemEnrichmentTests
 {
     private static RewardOfferFactory CreateFactory() =>
-        new(new CombatRiskProfileResolver(), Mock.Of<ICatalogRewardTemplateProvider>());
+        new(new CombatRiskProfileResolver(), Mock.Of<ICatalogContentGateway>());
 
     [Fact]
     public async Task Handle_ShouldEnrichItemWithCatalog_WhenItemRewardSelected()
@@ -39,16 +41,16 @@ public sealed class SelectRewardItemEnrichmentTests
         var rewardRepo = new Mock<IRewardOfferRepository>();
         rewardRepo.Setup(r => r.GetByIdAsync(offer.Id, default)).ReturnsAsync(offer);
 
-        var itemDefProvider = new Mock<ICatalogItemDefinitionProvider>();
-        itemDefProvider
-            .Setup(p => p.GetItemDefinitionAsync("item.consumable.minor-heal", default))
-            .ReturnsAsync(new CatalogItemDefinitionSnapshot(
+        var catalogGateway = new Mock<ICatalogContentGateway>();
+        catalogGateway
+            .Setup(p => p.GetItemDefinitionByKeyAsync("item.consumable.minor-heal", default))
+            .ReturnsAsync(Result<CatalogItemDefinitionSnapshot>.Success(new CatalogItemDefinitionSnapshot(
                 "item.consumable.minor-heal", "1.0", "Baume", "Soin", null,
                 "Consumable", "Heal", "Common", "UseInCombat", "RuntimeRunOnly",
-                "Additive", 99, true, true, null));
+                "Additive", 99, true, true, null)));
 
         var handler = new SelectRewardCommandHandler(
-            runRepo.Object, rewardRepo.Object, itemDefProvider.Object);
+            runRepo.Object, rewardRepo.Object, catalogGateway.Object);
 
         var itemChoice = offer.Choices.First(c => c.RewardType == RewardType.TemporaryItem);
 
@@ -86,13 +88,13 @@ public sealed class SelectRewardItemEnrichmentTests
         var rewardRepo = new Mock<IRewardOfferRepository>();
         rewardRepo.Setup(r => r.GetByIdAsync(offer.Id, default)).ReturnsAsync(offer);
 
-        var itemDefProvider = new Mock<ICatalogItemDefinitionProvider>();
-        itemDefProvider
-            .Setup(p => p.GetItemDefinitionAsync(It.IsAny<string>(), default))
-            .ReturnsAsync((CatalogItemDefinitionSnapshot?)null);
+        var catalogGateway = new Mock<ICatalogContentGateway>();
+        catalogGateway
+            .Setup(p => p.GetItemDefinitionByKeyAsync(It.IsAny<string>(), default))
+            .ReturnsAsync(Result<CatalogItemDefinitionSnapshot>.Failure(Error.Create("catalog.item_definition_not_found", "not found")));
 
         var handler = new SelectRewardCommandHandler(
-            runRepo.Object, rewardRepo.Object, itemDefProvider.Object);
+            runRepo.Object, rewardRepo.Object, catalogGateway.Object);
 
         var itemChoice = offer.Choices.First(c => c.RewardType == RewardType.TemporaryItem);
 
@@ -125,10 +127,10 @@ public sealed class SelectRewardItemEnrichmentTests
         var rewardRepo = new Mock<IRewardOfferRepository>();
         rewardRepo.Setup(r => r.GetByIdAsync(offer.Id, default)).ReturnsAsync(offer);
 
-        var itemDefProvider = new Mock<ICatalogItemDefinitionProvider>();
+        var catalogGateway = new Mock<ICatalogContentGateway>();
 
         var handler = new SelectRewardCommandHandler(
-            runRepo.Object, rewardRepo.Object, itemDefProvider.Object);
+            runRepo.Object, rewardRepo.Object, catalogGateway.Object);
 
         var healChoice = offer.Choices.First(c => c.RewardType == RewardType.Heal);
 
@@ -137,8 +139,8 @@ public sealed class SelectRewardItemEnrichmentTests
             default);
 
         await act.Should().NotThrowAsync();
-        itemDefProvider.Verify(
-            p => p.GetItemDefinitionAsync(It.IsAny<string>(), default),
+        catalogGateway.Verify(
+            p => p.GetItemDefinitionByKeyAsync(It.IsAny<string>(), default),
             Times.Never);
     }
 }

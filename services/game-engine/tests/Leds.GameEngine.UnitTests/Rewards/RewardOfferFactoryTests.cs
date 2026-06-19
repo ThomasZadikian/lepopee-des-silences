@@ -12,7 +12,7 @@ namespace Leds.GameEngine.UnitTests.Rewards;
 public sealed class RewardOfferFactoryTests
 {
     private static RewardOfferFactory CreateFactory() =>
-        new(new CombatRiskProfileResolver(), Mock.Of<ICatalogRewardTemplateProvider>());
+        new(new CombatRiskProfileResolver(), Mock.Of<ICatalogContentGateway>());
 
     // -----------------------------------------------------------------------
     // Basic structural tests (pre-existing, updated for new signature)

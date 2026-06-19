@@ -108,7 +108,7 @@ public sealed class ProgressRunCommandHandlerTests
     public async Task ProgressRun_ShouldThrow_WhenPendingRewardExists()
     {
         var run = TestGameEngineFactory.CreateRun();
-        var offer = new RewardOfferFactory(new CombatRiskProfileResolver(), Mock.Of<ICatalogRewardTemplateProvider>())
+        var offer = new RewardOfferFactory(new CombatRiskProfileResolver(), Mock.Of<ICatalogContentGateway>())
             .CreateCombatRewardOffer(RewardSource.Combat, NodeEventType.Combat, riskLevel: 25);
         run.SetPendingRewardOffer(offer.Id);
 

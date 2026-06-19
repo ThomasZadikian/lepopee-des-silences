@@ -43,7 +43,7 @@ public sealed class RoomClearedTests
     {
         var run = TestGameEngineFactory.CreateRunWithCompletedCurrentRoom();
 
-        var factory = new RewardOfferFactory(new CombatRiskProfileResolver(), Mock.Of<ICatalogRewardTemplateProvider>());
+        var factory = new RewardOfferFactory(new CombatRiskProfileResolver(), Mock.Of<ICatalogContentGateway>());
         var offer = factory.CreateCombatRewardOffer(
             RewardSource.RoomBoss,
             NodeEventType.RoomBoss,
@@ -73,7 +73,7 @@ public sealed class RoomClearedTests
             .Setup(r => r.GetByIdAsync(offer.Id, CancellationToken.None))
             .ReturnsAsync(offer);
 
-        var handler = new SelectRewardCommandHandler(runRepository.Object, rewardRepository.Object, Mock.Of<ICatalogItemDefinitionProvider>());
+        var handler = new SelectRewardCommandHandler(runRepository.Object, rewardRepository.Object, Mock.Of<ICatalogContentGateway>());
         var choiceId = offer.Choices.First().Id;
 
         await handler.Handle(
@@ -99,7 +99,7 @@ public sealed class RoomClearedTests
             .Setup(r => r.GetByIdAsync(offer.Id, CancellationToken.None))
             .ReturnsAsync(offer);
 
-        var handler = new SelectRewardCommandHandler(runRepository.Object, rewardRepository.Object, Mock.Of<ICatalogItemDefinitionProvider>());
+        var handler = new SelectRewardCommandHandler(runRepository.Object, rewardRepository.Object, Mock.Of<ICatalogContentGateway>());
         var choiceId = offer.Choices.First().Id;
 
         await handler.Handle(
@@ -126,7 +126,7 @@ public sealed class RoomClearedTests
             .Setup(r => r.GetByIdAsync(offer.Id, CancellationToken.None))
             .ReturnsAsync(offer);
 
-        var handler = new SelectRewardCommandHandler(runRepository.Object, rewardRepository.Object, Mock.Of<ICatalogItemDefinitionProvider>());
+        var handler = new SelectRewardCommandHandler(runRepository.Object, rewardRepository.Object, Mock.Of<ICatalogContentGateway>());
         var choiceId = offer.Choices.First().Id;
 
         await handler.Handle(
@@ -152,7 +152,7 @@ public sealed class RoomClearedTests
             .Setup(r => r.GetByIdAsync(offer.Id, CancellationToken.None))
             .ReturnsAsync(offer);
 
-        var handler = new SelectRewardCommandHandler(runRepository.Object, rewardRepository.Object, Mock.Of<ICatalogItemDefinitionProvider>());
+        var handler = new SelectRewardCommandHandler(runRepository.Object, rewardRepository.Object, Mock.Of<ICatalogContentGateway>());
         var choiceId = offer.Choices.First().Id;
 
         var response = await handler.Handle(
@@ -178,7 +178,7 @@ public sealed class RoomClearedTests
             .Setup(r => r.GetByIdAsync(offer.Id, CancellationToken.None))
             .ReturnsAsync(offer);
 
-        var handler = new SelectRewardCommandHandler(runRepository.Object, rewardRepository.Object, Mock.Of<ICatalogItemDefinitionProvider>());
+        var handler = new SelectRewardCommandHandler(runRepository.Object, rewardRepository.Object, Mock.Of<ICatalogContentGateway>());
         var choiceId = offer.Choices.First().Id;
 
         await handler.Handle(
@@ -230,7 +230,7 @@ public sealed class RoomClearedTests
         // Simulate the post-boss-combat state that SubmitCombatActionCommandHandler produces
         var run = TestGameEngineFactory.CreateRunWithCompletedCurrentRoom();
 
-        var factory = new RewardOfferFactory(new CombatRiskProfileResolver(), Mock.Of<ICatalogRewardTemplateProvider>());
+        var factory = new RewardOfferFactory(new CombatRiskProfileResolver(), Mock.Of<ICatalogContentGateway>());
         var offer = factory.CreateCombatRewardOffer(
             RewardSource.RoomBoss,
             NodeEventType.RoomBoss,
@@ -255,7 +255,7 @@ public sealed class RoomClearedTests
     {
         var run = TestGameEngineFactory.CreateRun();
 
-        var factory = new RewardOfferFactory(new CombatRiskProfileResolver(), Mock.Of<ICatalogRewardTemplateProvider>());
+        var factory = new RewardOfferFactory(new CombatRiskProfileResolver(), Mock.Of<ICatalogContentGateway>());
         var offer = factory.CreateCombatRewardOffer(
             RewardSource.Combat,
             NodeEventType.Combat,
@@ -273,7 +273,7 @@ public sealed class RoomClearedTests
             .Setup(r => r.GetByIdAsync(offer.Id, CancellationToken.None))
             .ReturnsAsync(offer);
 
-        var handler = new SelectRewardCommandHandler(runRepository.Object, rewardRepository.Object, Mock.Of<ICatalogItemDefinitionProvider>());
+        var handler = new SelectRewardCommandHandler(runRepository.Object, rewardRepository.Object, Mock.Of<ICatalogContentGateway>());
         var choiceId = offer.Choices.First().Id;
 
         var response = await handler.Handle(
@@ -289,7 +289,7 @@ public sealed class RoomClearedTests
     {
         var run = TestGameEngineFactory.CreateRun();
 
-        var factory = new RewardOfferFactory(new CombatRiskProfileResolver(), Mock.Of<ICatalogRewardTemplateProvider>());
+        var factory = new RewardOfferFactory(new CombatRiskProfileResolver(), Mock.Of<ICatalogContentGateway>());
         var offer = factory.CreateCombatRewardOffer(
             RewardSource.Combat,
             NodeEventType.Combat,
@@ -307,7 +307,7 @@ public sealed class RoomClearedTests
             .Setup(r => r.GetByIdAsync(offer.Id, CancellationToken.None))
             .ReturnsAsync(offer);
 
-        var handler = new SelectRewardCommandHandler(runRepository.Object, rewardRepository.Object, Mock.Of<ICatalogItemDefinitionProvider>());
+        var handler = new SelectRewardCommandHandler(runRepository.Object, rewardRepository.Object, Mock.Of<ICatalogContentGateway>());
         var choiceId = offer.Choices.First().Id;
 
         await handler.Handle(

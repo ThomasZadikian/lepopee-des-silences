@@ -111,11 +111,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IPalaceIndicatorRepository, InMemoryPalaceIndicatorRepository>();
         services.AddSingleton<DeterministicWeightedSelector>();
 
-        services.AddSingleton<ICatalogEffectSetProvider, InMemoryCatalogEffectSetProvider>();
         services.AddSingleton<IRuntimeEffectResolver, RuntimeEffectResolver>();
-        services.AddSingleton<ICatalogRewardTemplateProvider, InMemoryCatalogRewardTemplateProvider>();
-        services.AddSingleton<ICatalogItemDefinitionProvider, InMemoryCatalogItemDefinitionProvider>();
-        services.AddSingleton<ICatalogCurseDefinitionProvider, InMemoryCatalogCurseDefinitionProvider>();
 
         return services;
     }
