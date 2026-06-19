@@ -1,4 +1,4 @@
-ï»¿using FluentAssertions;
+using FluentAssertions;
 using Leds.GameEngine.Application.Abstractions;
 using Leds.GameEngine.Application.PalaceLaws.Ports;
 using Leds.GameEngine.Application.Runs.GetRunById;
@@ -73,7 +73,7 @@ public sealed class GetRunByIdEndpointTests : IClassFixture<WebApplicationFactor
                 startRunResponse.Run.Id,
                 "palace.whispers",
                 "Murmures du Palais",
-                "Le Palais observe la traversÃ©e.",
+                "Le Palais observe la traversée.",
                 "high",
                 sourceDecisionId));
         }
@@ -90,7 +90,7 @@ public sealed class GetRunByIdEndpointTests : IClassFixture<WebApplicationFactor
         var indicator = payload.Run.PalaceIndicators!.Single();
         indicator.Key.Should().Be("palace.whispers");
         indicator.Label.Should().Be("Murmures du Palais");
-        indicator.Description.Should().Be("Le Palais observe la traversÃ©e.");
+        indicator.Description.Should().Be("Le Palais observe la traversée.");
         indicator.Level.Should().Be("high");
         indicator.Source.Should().Be("run");
 

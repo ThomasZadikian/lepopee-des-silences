@@ -3,20 +3,17 @@ using System;
 using Leds.GameEngine.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace Leds.GameEngine.Infrastructure.Persistence.Migrations
+namespace Leds.GameEngine.Infrastructure.Migrations
 {
     [DbContext(typeof(GameEngineDbContext))]
-    [Migration("20260616161015_AddPalaceAdaptiveInfluenceProjections")]
-    partial class AddPalaceAdaptiveInfluenceProjections
+    partial class GameEngineDbContextModelSnapshot : ModelSnapshot
     {
-        /// <inheritdoc />
-        protected override void BuildTargetModel(ModelBuilder modelBuilder)
+        protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1115,6 +1112,14 @@ namespace Leds.GameEngine.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("max_node_depth");
 
+                    b.Property<string>("PalaceState")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasDefaultValue("Neutral")
+                        .HasColumnName("palace_state");
+
                     b.Property<string>("RoomType")
                         .IsRequired()
                         .HasMaxLength(64)
@@ -1138,6 +1143,8 @@ namespace Leds.GameEngine.Infrastructure.Persistence.Migrations
                         .HasColumnName("theme");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("PalaceState");
 
                     b.HasIndex("RunId");
 
@@ -1481,6 +1488,14 @@ namespace Leds.GameEngine.Infrastructure.Persistence.Migrations
                     b.Property<string>("SnapshotMemoryFragments")
                         .HasColumnType("text")
                         .HasColumnName("snapshot_memory_fragments");
+
+                    b.Property<string>("SnapshotRunItemIds")
+                        .HasColumnType("text")
+                        .HasColumnName("snapshot_run_item_ids");
+
+                    b.Property<string>("SnapshotRunModifierIds")
+                        .HasColumnType("text")
+                        .HasColumnName("snapshot_run_modifier_ids");
 
                     b.Property<int?>("SnapshotSpeed")
                         .HasColumnType("integer")

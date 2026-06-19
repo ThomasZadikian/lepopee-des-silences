@@ -1,4 +1,4 @@
-﻿using FluentAssertions;
+using FluentAssertions;
 using Leds.GameEngine.Application.Combats.Dtos;
 using Leds.GameEngine.Application.Combats.SubmitCombatAction;
 using Leds.GameEngine.Application.Runs.ProgressRun;

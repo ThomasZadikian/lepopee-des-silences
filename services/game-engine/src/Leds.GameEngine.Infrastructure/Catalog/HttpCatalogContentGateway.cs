@@ -13,12 +13,10 @@ namespace Leds.GameEngine.Infrastructure.Catalog;
 /// HTTP implementation of <see cref="ICatalogContentGateway"/>.
 /// </summary>
 /// <remarks>
-/// Room Boss Profiles, Palace Laws, Curses, Enemy Definitions,
-/// Skill Definitions, and NPC definitions have full HTTP endpoint support.
-///
-/// Enemy templates, Skill templates, Item templates and Event templates
-/// throw <see cref="CatalogGatewayException"/> — their Catalog API endpoints
-/// are not yet implemented.
+/// All Catalog content families have full HTTP endpoint support:
+/// room boss profiles, palace laws, curses, item definitions, effect sets,
+/// reward templates, enemy/skill definitions, NPC definitions,
+/// and enemy/skill/item/event templates.
 /// </remarks>
 public sealed class HttpCatalogContentGateway : ICatalogContentGateway
 {
@@ -33,28 +31,28 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
         string key,
         CancellationToken cancellationToken = default)
     {
-        throw NotAvailableYet("Enemy templates");
+        return GetEnemyTemplateByKeyCoreAsync(key, cancellationToken);
     }
 
     public Task<Result<SkillTemplateSnapshot>> GetSkillTemplateByKeyAsync(
         string key,
         CancellationToken cancellationToken = default)
     {
-        throw NotAvailableYet("Skill templates");
+        return GetSkillTemplateByKeyCoreAsync(key, cancellationToken);
     }
 
     public Task<Result<ItemTemplateSnapshot>> GetItemTemplateByKeyAsync(
         string key,
         CancellationToken cancellationToken = default)
     {
-        throw NotAvailableYet("Item templates");
+        return GetItemTemplateByKeyCoreAsync(key, cancellationToken);
     }
 
     public Task<Result<EventTemplateSnapshot>> GetEventTemplateByKeyAsync(
         string key,
         CancellationToken cancellationToken = default)
     {
-        throw NotAvailableYet("Event templates");
+        return GetEventTemplateByKeyCoreAsync(key, cancellationToken);
     }
 
     public Task<Result<PalaceLawDefinitionSnapshot>> GetPalaceLawDefinitionByKeyAsync(
@@ -278,6 +276,118 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
 
         return Result<CatalogRewardTemplateSnapshot>.Success(
             MapToCatalogRewardTemplateSnapshot(wrapper.Definition));
+    }
+
+    // ── Enemy Templates ───────────────────────────────────────────────
+
+    private async Task<Result<EnemyTemplateSnapshot>> GetEnemyTemplateByKeyCoreAsync(
+        string key,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            return Result<EnemyTemplateSnapshot>.Failure(Error.Create(
+                "catalog.enemy_template_key_required",
+                "Enemy template key is required."));
+        }
+
+        var encodedKey = Uri.EscapeDataString(key.Trim());
+        var url = $"/api/v2/catalog/enemies/{encodedKey}";
+        var wrapper = await GetJsonOrNullAsync<GetEnemyTemplateByKeyHttpResponse>(url, cancellationToken);
+
+        if (wrapper?.Template is null)
+        {
+            return Result<EnemyTemplateSnapshot>.Failure(Error.Create(
+                "catalog.enemy_template_not_found",
+                $"Enemy template '{key}' was not found."));
+        }
+
+        return Result<EnemyTemplateSnapshot>.Success(
+            MapToEnemyTemplateSnapshot(wrapper.Template));
+    }
+
+    // ── Skill Templates ───────────────────────────────────────────────
+
+    private async Task<Result<SkillTemplateSnapshot>> GetSkillTemplateByKeyCoreAsync(
+        string key,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            return Result<SkillTemplateSnapshot>.Failure(Error.Create(
+                "catalog.skill_template_key_required",
+                "Skill template key is required."));
+        }
+
+        var encodedKey = Uri.EscapeDataString(key.Trim());
+        var url = $"/api/v2/catalog/skills/{encodedKey}";
+        var wrapper = await GetJsonOrNullAsync<GetSkillTemplateByKeyHttpResponse>(url, cancellationToken);
+
+        if (wrapper?.Template is null)
+        {
+            return Result<SkillTemplateSnapshot>.Failure(Error.Create(
+                "catalog.skill_template_not_found",
+                $"Skill template '{key}' was not found."));
+        }
+
+        return Result<SkillTemplateSnapshot>.Success(
+            MapToSkillTemplateSnapshot(wrapper.Template));
+    }
+
+    // ── Item Templates ────────────────────────────────────────────────
+
+    private async Task<Result<ItemTemplateSnapshot>> GetItemTemplateByKeyCoreAsync(
+        string key,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            return Result<ItemTemplateSnapshot>.Failure(Error.Create(
+                "catalog.item_template_key_required",
+                "Item template key is required."));
+        }
+
+        var encodedKey = Uri.EscapeDataString(key.Trim());
+        var url = $"/api/v2/catalog/items/{encodedKey}";
+        var wrapper = await GetJsonOrNullAsync<GetItemTemplateByKeyHttpResponse>(url, cancellationToken);
+
+        if (wrapper?.Template is null)
+        {
+            return Result<ItemTemplateSnapshot>.Failure(Error.Create(
+                "catalog.item_template_not_found",
+                $"Item template '{key}' was not found."));
+        }
+
+        return Result<ItemTemplateSnapshot>.Success(
+            MapToItemTemplateSnapshot(wrapper.Template));
+    }
+
+    // ── Event Templates ───────────────────────────────────────────────
+
+    private async Task<Result<EventTemplateSnapshot>> GetEventTemplateByKeyCoreAsync(
+        string key,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            return Result<EventTemplateSnapshot>.Failure(Error.Create(
+                "catalog.event_template_key_required",
+                "Event template key is required."));
+        }
+
+        var encodedKey = Uri.EscapeDataString(key.Trim());
+        var url = $"/api/v2/catalog/event-templates/{encodedKey}";
+        var wrapper = await GetJsonOrNullAsync<GetEventTemplateByKeyHttpResponse>(url, cancellationToken);
+
+        if (wrapper?.Template is null)
+        {
+            return Result<EventTemplateSnapshot>.Failure(Error.Create(
+                "catalog.event_template_not_found",
+                $"Event template '{key}' was not found."));
+        }
+
+        return Result<EventTemplateSnapshot>.Success(
+            MapToEventTemplateSnapshot(wrapper.Template));
     }
 
     public async Task<CatalogRoomBossProfile?> GetRoomBossProfileAsync(
@@ -888,6 +998,75 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
             source.Weight);
     }
 
+    private static EnemyTemplateSnapshot MapToEnemyTemplateSnapshot(
+        EnemyTemplateHttpResponse source)
+    {
+        return new EnemyTemplateSnapshot(
+            Key: source.Key,
+            Name: source.Name,
+            Description: source.Description,
+            Version: source.Version,
+            Status: source.Status,
+            BaseHealth: source.MaxHealth,
+            BaseAttack: source.Strength,
+            BaseDefense: source.PhysicalResistance,
+            BaseSpeed: source.Speed,
+            Affinity: source.Element,
+            SkillKeys: source.SkillKeys ?? []);
+    }
+
+    private static SkillTemplateSnapshot MapToSkillTemplateSnapshot(
+        SkillTemplateHttpResponse source)
+    {
+        var cost = source.ManaCost > 0 ? source.ManaCost : source.ChargeCost;
+        var costType = source.ManaCost > 0 ? "Mana" : "Charge";
+
+        return new SkillTemplateSnapshot(
+            Key: source.Key,
+            Name: source.Name,
+            Description: source.Description,
+            Version: source.Version,
+            Status: source.Status,
+            SkillType: source.EffectType,
+            Power: source.BasePower,
+            Cost: cost,
+            CostType: costType,
+            TargetingMode: source.TargetType,
+            EffectTags: []);
+    }
+
+    private static ItemTemplateSnapshot MapToItemTemplateSnapshot(
+        ItemTemplateHttpResponse source)
+    {
+        return new ItemTemplateSnapshot(
+            Key: source.Key,
+            Name: source.Name,
+            Description: source.Description,
+            Version: source.Version,
+            Status: source.Status,
+            ItemType: source.Category,
+            Rarity: source.Rarity,
+            IsTemporary: false,
+            EffectTags: []);
+    }
+
+    private static EventTemplateSnapshot MapToEventTemplateSnapshot(
+        EventTemplateHttpResponse source)
+    {
+        return new EventTemplateSnapshot(
+            Key: source.Key,
+            Name: source.Name,
+            Description: source.Description,
+            Version: source.Version,
+            Status: source.Status,
+            Type: source.Type,
+            DefaultOutcomeKind: source.DefaultOutcomeKind,
+            MinRiskLevel: source.MinRiskLevel,
+            MaxRiskLevel: source.MaxRiskLevel,
+            RequiresPlayerChoice: source.RequiresPlayerChoice,
+            NarrativeTags: source.NarrativeTags ?? []);
+    }
+
     public async Task<IReadOnlyCollection<CatalogNpcDefinition>> ListNpcDefinitionsAsync(
         CancellationToken cancellationToken = default)
     {
@@ -933,12 +1112,6 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
             source.BehaviorTag,
             source.GenerationTag,
             source.SelectionGroup);
-    }
-
-    private static CatalogGatewayException NotAvailableYet(string contentType)
-    {
-        return new CatalogGatewayException(
-            $"{contentType} are not available via the HTTP catalog gateway yet.");
     }
 
     private async Task<T?> GetJsonOrNullAsync<T>(
@@ -1122,4 +1295,79 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
         IReadOnlyCollection<string>? CompatibleRoomClimates,
         int? MinDepth,
         int? MaxDepth);
+
+    // ── Template HTTP responses ───────────────────────────────────────
+
+    private sealed record GetEnemyTemplateByKeyHttpResponse(
+        EnemyTemplateHttpResponse? Template);
+
+    private sealed record EnemyTemplateHttpResponse(
+        Guid Id,
+        string Key,
+        string Name,
+        string Description,
+        string Version,
+        string Status,
+        string Archetype,
+        string Element,
+        int MaxHealth,
+        int Strength,
+        int Intelligence,
+        int Speed,
+        int PhysicalResistance,
+        int MagicalResistance,
+        int ExperienceReward,
+        int GoldReward,
+        IReadOnlyCollection<string>? SkillKeys);
+
+    private sealed record GetSkillTemplateByKeyHttpResponse(
+        SkillTemplateHttpResponse? Template);
+
+    private sealed record SkillTemplateHttpResponse(
+        Guid Id,
+        string Key,
+        string Name,
+        string Description,
+        string Version,
+        string Status,
+        string Element,
+        string EffectType,
+        string TargetType,
+        int ManaCost,
+        int ChargeCost,
+        int BasePower,
+        int HealPower);
+
+    private sealed record GetItemTemplateByKeyHttpResponse(
+        ItemTemplateHttpResponse? Template);
+
+    private sealed record ItemTemplateHttpResponse(
+        Guid Id,
+        string Key,
+        string Name,
+        string Description,
+        string Version,
+        string Status,
+        string Category,
+        string Rarity,
+        string Duration,
+        int EffectValue,
+        int Price);
+
+    private sealed record GetEventTemplateByKeyHttpResponse(
+        EventTemplateHttpResponse? Template);
+
+    private sealed record EventTemplateHttpResponse(
+        Guid Id,
+        string Key,
+        string Name,
+        string Description,
+        string Version,
+        string Status,
+        string Type,
+        string DefaultOutcomeKind,
+        int MinRiskLevel,
+        int MaxRiskLevel,
+        bool RequiresPlayerChoice,
+        IReadOnlyCollection<string>? NarrativeTags);
 }

@@ -1,4 +1,4 @@
-﻿using FluentAssertions;
+using FluentAssertions;
 using Leds.GameEngine.Application.Runs.ResolveCurrentEvent;
 using Microsoft.AspNetCore.Mvc.Testing;
 using System.Net;
