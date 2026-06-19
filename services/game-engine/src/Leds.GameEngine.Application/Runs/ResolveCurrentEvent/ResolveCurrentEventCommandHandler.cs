@@ -31,7 +31,6 @@ public sealed class ResolveCurrentEventCommandHandler
     private readonly IEventContentResolver _eventContentResolver;
     private readonly ICatalogContentGateway _catalogContentGateway;
     private readonly ICombatInstanceFactory _combatInstanceFactory;
-    private readonly ICombatInstanceRepository _combatInstanceRepository;
     private readonly ICombatEncounterDraftGenerator _encounterDraftGenerator;
     private readonly ICombatFactory _combatFactory;
     private readonly IRewardOfferRepository _rewardOfferRepository;
@@ -46,7 +45,6 @@ public sealed class ResolveCurrentEventCommandHandler
         IEventContentResolver eventContentResolver,
         ICatalogContentGateway catalogContentGateway,
         ICombatInstanceFactory combatInstanceFactory,
-        ICombatInstanceRepository combatInstanceRepository,
         ICombatEncounterDraftGenerator encounterDraftGenerator,
         ICombatFactory combatFactory,
         IRewardOfferRepository rewardOfferRepository,
@@ -60,7 +58,6 @@ public sealed class ResolveCurrentEventCommandHandler
         _eventContentResolver = eventContentResolver;
         _catalogContentGateway = catalogContentGateway;
         _combatInstanceFactory = combatInstanceFactory;
-        _combatInstanceRepository = combatInstanceRepository;
         _encounterDraftGenerator = encounterDraftGenerator;
         _combatFactory = combatFactory;
         _rewardOfferRepository = rewardOfferRepository;
@@ -140,8 +137,6 @@ public sealed class ResolveCurrentEventCommandHandler
 
             var combatInstance = _combatInstanceFactory.CreateFromEnemyTemplate(
                 enemyTemplateResult.Value);
-
-            await _combatInstanceRepository.AddAsync(combatInstance, cancellationToken);
 
             run.SetActiveCombat(combatInstance.Id);
 

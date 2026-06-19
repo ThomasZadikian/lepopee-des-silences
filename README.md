@@ -1,5 +1,5 @@
 # L’épopée des silences
-game-engine-alpha-0.8.10-fix-battle-system
+game-engine-alpha-0.8.10.1-InMemory-cleaning
 web-alpha-0.7.6.1-fix-battle-system
 catalog-alpha-0.9.0
 player-service-alpha-1.0.0

@@ -95,7 +95,6 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IEventContentResolutionStrategy, MerchantEventContentResolutionStrategy>();
         services.AddSingleton<IEventContentResolutionStrategy, RareEventContentResolutionStrategy>();
 
-        services.AddSingleton<ICombatInstanceRepository, InMemoryCombatInstanceRepository>();
         services.AddSingleton<ICombatInstanceFactory, CombatInstanceFactory>();
 
         services.AddSingleton<ICombatTargetingRuleValidator, CombatTargetingRuleValidator>();
@@ -116,10 +115,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IRuntimeEffectResolver, RuntimeEffectResolver>();
         services.AddSingleton<ICatalogRewardTemplateProvider, InMemoryCatalogRewardTemplateProvider>();
         services.AddSingleton<ICatalogItemDefinitionProvider, InMemoryCatalogItemDefinitionProvider>();
-        services.AddSingleton<ICatalogPalaceLawDefinitionProvider, InMemoryCatalogPalaceLawDefinitionProvider>();
         services.AddSingleton<ICatalogCurseDefinitionProvider, InMemoryCatalogCurseDefinitionProvider>();
-        services.AddSingleton<ICatalogEnemyDefinitionProvider, InMemoryCatalogEnemyDefinitionProvider>();
-        services.AddSingleton<ICatalogRoomEnemyPoolProvider, InMemoryCatalogRoomEnemyPoolProvider>();
 
         return services;
     }
