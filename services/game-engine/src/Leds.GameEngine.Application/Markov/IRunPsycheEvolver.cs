@@ -5,6 +5,8 @@ namespace Leds.GameEngine.Application.Markov;
 
 public interface IRunPsycheEvolver
 {
-    /// <summary>Calcule la psyché courante par repli déterministe sur l'historique de salles.</summary>
     RunPsyche Evolve(Run run);
+
+    /// <summary>Trajectoire complète de la psyché (un point par salle traversée).</summary>
+    IReadOnlyList<RunPsycheStep> EvolveTrajectory(Run run);
 }

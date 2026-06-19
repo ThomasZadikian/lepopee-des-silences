@@ -1,5 +1,6 @@
 ﻿using Leds.GameEngine.Domain.Markov;
 using Leds.GameEngine.Domain.Markov.Psyche;
+using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rooms;
 
 namespace Leds.GameEngine.Infrastructure.Generation.Psyche;
@@ -16,6 +17,12 @@ public sealed class EmotionalCalibration
     public const decimal RoomTypeBiasAlpha = 0.35m;   // poids de la psyché sur le TYPE de salle
     public const decimal PalaceStateBiasAlpha = 0.35m; // poids de la psyché sur l'ÉTAT de salle
     public const decimal NudgeStrengthBeta = 0.25m;    // force du "nudge" d'une salle traversée
+    // Poids relatif de chaque signal dans le nudge agrégé (À CALIBRER).
+    public const decimal PalaceStateSignalWeight = 1.0m;
+    public const decimal RoomTypeSignalWeight = 0.5m;
+    public const decimal ChoiceSignalWeight = 0.8m;
+    public const decimal EventOptionSignalWeight = 1.0m;
+    public const decimal ClimateSignalWeight = 0.4m;
 
     public const string TendencyMatrixKey = "emotional-tendency";
     public const string TendencyMatrixVersion = "markov-emotional-tendency-0.1.0";
@@ -55,41 +62,110 @@ public sealed class EmotionalCalibration
 
     // ── 2) Nudge : comment une salle TRAVERSÉE pousse la psyché (accumulation) ───
     // À CALIBRER. (Extension possible : tenir compte aussi de room.RoomType / des choix / des Lois.)
+    // Compat : nudge par le seul état de salle (utilisé par les tests existants).
     public MarkovStateDistribution Nudge(MarkovStateDistribution current, PalaceRoomState roomState)
+        => Nudge(current, new RoomPsycheSignal(roomState));
+
+    /// <summary>
+    /// Nudge agrégé : chaque signal actif vote pour une cible émotionnelle (pondérée),
+    /// on agrège, on normalise, puis on mélange la psyché courante vers cette cible par β.
+    /// </summary>
+    public MarkovStateDistribution Nudge(MarkovStateDistribution current, RoomPsycheSignal signal)
     {
-        var target = NudgeTargetFor(roomState);
+        var target = RunPsyche.MarkovStates.ToDictionary(s => s, _ => 0m);
+        var totalWeight = 0m;
+
+        void Vote(IReadOnlyDictionary<MarkovState, decimal> emotion, decimal weight)
+        {
+            if (weight <= 0m) return;
+            foreach (var s in RunPsyche.MarkovStates)
+                target[s] += weight * (emotion.TryGetValue(s, out var v) ? v : 0m);
+            totalWeight += weight;
+        }
+
+        Vote(PalaceStateEmotion(signal.PalaceState), PalaceStateSignalWeight);
+
+        if (signal.RoomType is { } roomType)
+            Vote(RoomTypeEmotion(roomType), RoomTypeSignalWeight);
+
+        foreach (var choice in signal.ResolvedChoices ?? [])
+            Vote(ChoiceEmotion(choice), ChoiceSignalWeight);
+
+        foreach (var optionId in signal.ChosenEventOptionIds ?? [])
+            if (EventOptionEmotion.TryGetValue(optionId, out var emotion))
+                Vote(emotion, EventOptionSignalWeight);
+
+        if (!string.IsNullOrWhiteSpace(signal.Climate))
+            Vote(ClimateEmotion(signal.Climate!), ClimateSignalWeight);
+
+        if (totalWeight <= 0m)
+            return current; // aucun signal exploitable → psyché inchangée
+
         var mixed = new Dictionary<MarkovState, decimal>();
         var sum = 0m;
-
         foreach (var s in RunPsyche.MarkovStates)
         {
-            var c = current[s];
-            var t = target.TryGetValue(s, out var tv) ? tv : 0m;
-            var v = (1m - NudgeStrengthBeta) * c + NudgeStrengthBeta * t;
+            var normalizedTarget = target[s] / totalWeight;
+            var v = (1m - NudgeStrengthBeta) * current[s] + NudgeStrengthBeta * normalizedTarget;
             mixed[s] = v;
             sum += v;
         }
-
         foreach (var s in RunPsyche.MarkovStates)
-            mixed[s] = mixed[s] / sum;
+            mixed[s] /= sum;
 
         return MarkovStateDistribution.Create(mixed);
     }
 
-    private static IReadOnlyDictionary<MarkovState, decimal> NudgeTargetFor(PalaceRoomState state)
+    // ── Tables signal → cible émotionnelle (chacune somme à 1). À CALIBRER. ──────
+    private static IReadOnlyDictionary<MarkovState, decimal> PalaceStateEmotion(PalaceRoomState s) => s switch
     {
-        MarkovState E(EmotionalState e) => MarkovState.Create(e.ToString());
+        PalaceRoomState.Silent => Emo((EmotionalState.Withdrawn, .5m), (EmotionalState.Dissociated, .5m)),
+        PalaceRoomState.Painful => Emo((EmotionalState.Fragmented, .6m), (EmotionalState.Dissociated, .4m)),
+        _ => Emo((EmotionalState.Calm, .6m), (EmotionalState.Lucid, .4m)),
+    };
 
-        return state switch
-        {
-            PalaceRoomState.Silent => new Dictionary<MarkovState, decimal>
-            { [E(EmotionalState.Withdrawn)] = .5m, [E(EmotionalState.Dissociated)] = .5m },
-            PalaceRoomState.Painful => new Dictionary<MarkovState, decimal>
-            { [E(EmotionalState.Fragmented)] = .6m, [E(EmotionalState.Dissociated)] = .4m },
-            _ => new Dictionary<MarkovState, decimal>
-            { [E(EmotionalState.Calm)] = .6m, [E(EmotionalState.Lucid)] = .4m },
-        };
-    }
+    private static IReadOnlyDictionary<MarkovState, decimal> RoomTypeEmotion(RoomType t) => t switch
+    {
+        RoomType.Memory => Emo((EmotionalState.Lucid, .6m), (EmotionalState.Calm, .4m)),
+        RoomType.Forest => Emo((EmotionalState.Calm, .6m), (EmotionalState.Lucid, .4m)),
+        RoomType.Rupture => Emo((EmotionalState.Fragmented, .7m), (EmotionalState.Dissociated, .3m)),
+        RoomType.Silence => Emo((EmotionalState.Withdrawn, .6m), (EmotionalState.Dissociated, .4m)),
+        RoomType.Antechamber => Emo((EmotionalState.Wary, .6m), (EmotionalState.Calm, .4m)),
+        RoomType.Final => Emo((EmotionalState.Lucid, 1m)),
+        _ => Emo((EmotionalState.Calm, 1m)),
+    };
+
+    private static IReadOnlyDictionary<MarkovState, decimal> ChoiceEmotion(NodeEventType e) => e switch
+    {
+        NodeEventType.Combat => Emo((EmotionalState.Wary, .6m), (EmotionalState.Fragmented, .4m)),
+        NodeEventType.Elite => Emo((EmotionalState.Wary, .5m), (EmotionalState.Fragmented, .5m)),
+        NodeEventType.RoomBoss => Emo((EmotionalState.Fragmented, .6m), (EmotionalState.Dissociated, .4m)),
+        NodeEventType.FinalBoss => Emo((EmotionalState.Fragmented, .5m), (EmotionalState.Lucid, .5m)),
+        NodeEventType.Item => Emo((EmotionalState.Calm, .7m), (EmotionalState.Lucid, .3m)),
+        NodeEventType.Npc => Emo((EmotionalState.Calm, .5m), (EmotionalState.Lucid, .5m)),
+        NodeEventType.Memory => Emo((EmotionalState.Lucid, .6m), (EmotionalState.Withdrawn, .4m)),
+        NodeEventType.Rest => Emo((EmotionalState.Calm, .8m), (EmotionalState.Lucid, .2m)),
+        NodeEventType.Merchant => Emo((EmotionalState.Calm, .7m), (EmotionalState.Wary, .3m)),
+        NodeEventType.Law => Emo((EmotionalState.Wary, .6m), (EmotionalState.Dissociated, .4m)),
+        _ => Emo((EmotionalState.Calm, 1m)),
+    };
+
+    private static IReadOnlyDictionary<MarkovState, decimal> ClimateEmotion(string climate) => climate switch
+    {
+        "Grey" => Emo((EmotionalState.Withdrawn, .6m), (EmotionalState.Calm, .4m)),
+        "Rain" => Emo((EmotionalState.Withdrawn, .5m), (EmotionalState.Dissociated, .5m)),
+        "Heatwave" => Emo((EmotionalState.Wary, .6m), (EmotionalState.Fragmented, .4m)),
+        "Hail" => Emo((EmotionalState.Fragmented, .6m), (EmotionalState.Wary, .4m)),
+        _ => Emo((EmotionalState.Calm, 1m)),
+    };
+
+    // Mapping fin option d'événement → émotion. À TOI de le remplir au fil du contenu.
+    // Exemple : ["npc.gardien.reveler"] = Emo((EmotionalState.Lucid, 1m)),
+    private static readonly IReadOnlyDictionary<string, IReadOnlyDictionary<MarkovState, decimal>> EventOptionEmotion
+        = new Dictionary<string, IReadOnlyDictionary<MarkovState, decimal>>(StringComparer.OrdinalIgnoreCase);
+
+    private static IReadOnlyDictionary<MarkovState, decimal> Emo(params (EmotionalState State, decimal Weight)[] entries)
+        => entries.ToDictionary(e => MarkovState.Create(e.State.ToString()), e => e.Weight);
 
     // ── 3) Projection psyché → préférence sur les TYPES de salle (biais α) ───────
     public IReadOnlyDictionary<MarkovState, decimal> ProjectToRoomTypes(RunPsyche psyche)

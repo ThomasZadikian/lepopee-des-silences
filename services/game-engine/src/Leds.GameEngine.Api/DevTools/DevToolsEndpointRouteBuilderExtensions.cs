@@ -145,6 +145,15 @@ public static class DevToolsEndpointRouteBuilderExtensions
             return TypedResults.Ok(result);
         });
 
+        group.MapGet("/runs/{runId:guid}/psyche", async Task<Ok<DevToolsRunPsycheResult>> (
+    Guid runId,
+    IDevToolsPsycheService service,
+    CancellationToken cancellationToken) =>
+        {
+            var result = await service.GetPsycheAsync(runId, cancellationToken);
+            return TypedResults.Ok(result);
+        });
+
         return endpoints;
     }
 }

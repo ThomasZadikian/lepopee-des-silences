@@ -1,5 +1,7 @@
 ﻿using FluentAssertions;
+using Leds.GameEngine.Domain.Markov;
 using Leds.GameEngine.Domain.Markov.Psyche;
+using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Infrastructure.Generation.Psyche;
 
@@ -44,5 +46,21 @@ public sealed class RunPsycheEvolutionTests
     public void Initial_psyche_is_a_dirac_on_baseline()
     {
         RunPsyche.Initial(EmotionalState.Calm).ProbabilityOf(EmotionalState.Calm).Should().Be(1m);
+    }
+
+    [Fact]
+    public void Different_resolved_choices_push_the_psyche_differently()
+    {
+        var calibration = new EmotionalCalibration();
+        var start = RunPsyche.Initial().Distribution;
+
+        var afterCombat = calibration.Nudge(
+            start, new RoomPsycheSignal(PalaceRoomState.Neutral, ResolvedChoices: new[] { NodeEventType.Combat }));
+        var afterRest = calibration.Nudge(
+            start, new RoomPsycheSignal(PalaceRoomState.Neutral, ResolvedChoices: new[] { NodeEventType.Rest }));
+
+        var wary = MarkovState.Create(EmotionalState.Wary.ToString());
+        // Combattre tend vers Wary ; se reposer vers Calm → le choix change bien la psyché.
+        afterCombat.Probabilities[wary].Should().BeGreaterThan(afterRest.Probabilities[wary]);
     }
 }

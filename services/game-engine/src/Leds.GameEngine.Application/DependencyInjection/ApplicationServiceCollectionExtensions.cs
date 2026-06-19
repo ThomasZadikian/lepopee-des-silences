@@ -58,6 +58,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddSingleton<ICombatFactory, CombatFactory>();
         services.AddScoped<IPalacePublicIndicatorProjectionService, PalacePublicIndicatorProjectionService>();
         services.AddScoped<IDevToolsRunDebugService, DevToolsRunDebugService>();
+        services.AddScoped<IDevToolsPsycheService, DevToolsPsycheService>();
 
         return services;
     }
