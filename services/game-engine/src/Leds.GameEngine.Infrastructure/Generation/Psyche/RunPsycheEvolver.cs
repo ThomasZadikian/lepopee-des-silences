@@ -21,7 +21,7 @@ public sealed class RunPsycheEvolver : IRunPsycheEvolver
         foreach (var room in run.Rooms.OrderBy(r => r.Depth))
         {
             var advanced = tendency.Advance(psyche.Distribution); // π(t+1)=π(t)×P  (auto-influence)
-            var nudged = _calibration.Nudge(advanced, room);      // accumulation de la tonalité
+            var nudged = _calibration.Nudge(advanced, room.PalaceState);      // accumulation de la tonalité
             psyche = RunPsyche.From(nudged);
         }
 

@@ -55,9 +55,9 @@ public sealed class EmotionalCalibration
 
     // ── 2) Nudge : comment une salle TRAVERSÉE pousse la psyché (accumulation) ───
     // À CALIBRER. (Extension possible : tenir compte aussi de room.RoomType / des choix / des Lois.)
-    public MarkovStateDistribution Nudge(MarkovStateDistribution current, Room room)
+    public MarkovStateDistribution Nudge(MarkovStateDistribution current, PalaceRoomState roomState)
     {
-        var target = NudgeTargetFor(room.PalaceState);
+        var target = NudgeTargetFor(roomState);
         var mixed = new Dictionary<MarkovState, decimal>();
         var sum = 0m;
 

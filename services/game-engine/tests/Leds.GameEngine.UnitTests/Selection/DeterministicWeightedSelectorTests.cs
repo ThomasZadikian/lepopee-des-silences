@@ -153,7 +153,7 @@ public sealed class DeterministicWeightedSelectorTests
         decision.SelectedKey.Should().Be("a");
         decision.RunId.Should().Be(context.RunId);
         decision.Seed.Should().Be(context.Seed);
-        decision.AlgorithmVersion.Should().Be("deterministic-v1");
+        decision.AlgorithmVersion.Should().Be("deterministic-v2");
     }
 
     [Fact]
