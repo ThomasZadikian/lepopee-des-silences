@@ -1,5 +1,5 @@
 using FluentAssertions;
-using Leds.GameEngine.Infrastructure.Catalog;
+using Leds.GameEngine.UnitTests.Common;
 
 namespace Leds.GameEngine.UnitTests.Catalog;
 
@@ -8,7 +8,7 @@ public sealed class CatalogEnemyProviderTests
     [Fact]
     public async Task CatalogGateway_ShouldReturnSeedEnemy()
     {
-        var gateway = new InMemoryCatalogContentGateway();
+        var gateway = new StubCatalogContentGateway();
 
         var enemy = await gateway.GetEnemyDefinitionByKeyAsync("enemy.threshold.echo");
 
@@ -22,7 +22,7 @@ public sealed class CatalogEnemyProviderTests
     [Fact]
     public async Task CatalogGateway_ShouldReturnNull_ForUnknownKey()
     {
-        var gateway = new InMemoryCatalogContentGateway();
+        var gateway = new StubCatalogContentGateway();
 
         var enemy = await gateway.GetEnemyDefinitionByKeyAsync("enemy-nonexistent");
 
@@ -32,7 +32,7 @@ public sealed class CatalogEnemyProviderTests
     [Fact]
     public async Task CatalogGateway_ShouldReturnDifficultyRange()
     {
-        var gateway = new InMemoryCatalogContentGateway();
+        var gateway = new StubCatalogContentGateway();
 
         var enemy = await gateway.GetEnemyDefinitionByKeyAsync("enemy.threshold.echo");
 
@@ -44,7 +44,7 @@ public sealed class CatalogEnemyProviderTests
     [Fact]
     public async Task CatalogGateway_ShouldReturnSkills()
     {
-        var gateway = new InMemoryCatalogContentGateway();
+        var gateway = new StubCatalogContentGateway();
 
         var enemy = await gateway.GetEnemyDefinitionByKeyAsync("enemy.threshold.echo");
 
@@ -54,7 +54,7 @@ public sealed class CatalogEnemyProviderTests
     [Fact]
     public async Task CatalogGateway_ShouldListCompatibleEnemies()
     {
-        var gateway = new InMemoryCatalogContentGateway();
+        var gateway = new StubCatalogContentGateway();
 
         var enemies = await gateway.ListCompatibleEnemyDefinitionsAsync("Threshold", 3);
 
@@ -66,7 +66,7 @@ public sealed class CatalogEnemyProviderTests
     [Fact]
     public async Task CatalogGateway_ShouldIncludeElite_ForFinalHighRisk()
     {
-        var gateway = new InMemoryCatalogContentGateway();
+        var gateway = new StubCatalogContentGateway();
 
         var enemies = await gateway.ListCompatibleEnemyDefinitionsAsync("Final", 5);
 
@@ -76,7 +76,7 @@ public sealed class CatalogEnemyProviderTests
     [Fact]
     public async Task CatalogGateway_ShouldIncludeBoss_ForRoomBossRisk()
     {
-        var gateway = new InMemoryCatalogContentGateway();
+        var gateway = new StubCatalogContentGateway();
 
         var enemies = await gateway.ListCompatibleEnemyDefinitionsAsync("Threshold", 5);
 
@@ -86,7 +86,7 @@ public sealed class CatalogEnemyProviderTests
     [Fact]
     public async Task CatalogGateway_ShouldListEnemiesByRoomType()
     {
-        var gateway = new InMemoryCatalogContentGateway();
+        var gateway = new StubCatalogContentGateway();
 
         var enemies = await gateway.ListEnemyDefinitionsByRoomTypeAsync("Threshold");
 
@@ -97,7 +97,7 @@ public sealed class CatalogEnemyProviderTests
     [Fact]
     public async Task CatalogGateway_ShouldReturnRoomBossProfile()
     {
-        var gateway = new InMemoryCatalogContentGateway();
+        var gateway = new StubCatalogContentGateway();
 
         var boss = await gateway.GetRoomBossProfileAsync("Threshold");
 
@@ -108,7 +108,7 @@ public sealed class CatalogEnemyProviderTests
     [Fact]
     public async Task CatalogGateway_ShouldReturnNull_ForUnknownRoomBossProfile()
     {
-        var gateway = new InMemoryCatalogContentGateway();
+        var gateway = new StubCatalogContentGateway();
 
         var boss = await gateway.GetRoomBossProfileAsync("Unknown");
 

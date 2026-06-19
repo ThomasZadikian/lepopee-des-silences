@@ -4,7 +4,7 @@ using Leds.GameEngine.Application.Events.ChooseEventOption;
 using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Runs;
-using Leds.GameEngine.Infrastructure.Catalog;
+using Leds.GameEngine.UnitTests.Common;
 using Leds.GameEngine.UnitTests.Common.Factories;
 
 namespace Leds.GameEngine.UnitTests.Events.ChoiceResolvers;
@@ -13,7 +13,7 @@ public sealed class LawEventChoiceResolverCatalogTests
 {
     private static LawEventChoiceResolver CreateResolver()
     {
-        return new LawEventChoiceResolver(new InMemoryCatalogContentGateway());
+        return new LawEventChoiceResolver(new StubCatalogContentGateway());
     }
 
     private static CurrentEventChoiceResolutionContext CreateLawContext(

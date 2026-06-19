@@ -5,8 +5,8 @@ using Leds.GameEngine.Application.Events.Ports;
 using Leds.GameEngine.Application.Events.Resolution;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rooms;
-using Leds.GameEngine.Infrastructure.Catalog;
 using Leds.GameEngine.Infrastructure.Events.Resolution;
+using Leds.GameEngine.UnitTests.Common;
 
 namespace Leds.GameEngine.UnitTests.Events;
 
@@ -16,7 +16,7 @@ public sealed class EventContentResolverTests
 
     public EventContentResolverTests()
     {
-        var catalogGateway = new InMemoryCatalogContentGateway();
+        var catalogGateway = new StubCatalogContentGateway();
 
         _resolver = new EventContentResolver(
             new IEventContentResolutionStrategy[]

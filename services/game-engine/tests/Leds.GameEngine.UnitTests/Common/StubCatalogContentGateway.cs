@@ -1,218 +1,142 @@
-﻿using Leds.GameEngine.Application.Catalog;
+using Leds.GameEngine.Application.Catalog;
 using Leds.GameEngine.Application.Catalog.Contracts;
 using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Domain.Rooms;
 using Leds.SharedBuildingBlocks.Errors;
 using Leds.SharedBuildingBlocks.Results;
 
-namespace Leds.GameEngine.Infrastructure.Catalog;
+namespace Leds.GameEngine.UnitTests.Common;
 
-/// <summary>
-/// Temporary in-memory implementation of the Catalog gateway.
-/// It validates the Game Engine ↔ Catalog boundary before HTTP integration.
-/// </summary>
-public sealed class InMemoryCatalogContentGateway : ICatalogContentGateway
+public sealed class StubCatalogContentGateway : ICatalogContentGateway
 {
     private static readonly IReadOnlyDictionary<string, EnemyTemplateSnapshot> EnemyTemplates =
         new Dictionary<string, EnemyTemplateSnapshot>(StringComparer.OrdinalIgnoreCase)
         {
             ["enemy-shadow-v1"] = new EnemyTemplateSnapshot(
                 Key: "enemy-shadow-v1",
-                Name: "Shadow Test Enemy",
-                Description: "Neutral test enemy used by the Game Engine catalog gateway.",
+                Name: "Shadow",
+                Description: "A basic shadow enemy",
                 Version: "1.0.0",
                 Status: "Active",
                 BaseHealth: 30,
                 BaseAttack: 8,
-                BaseDefense: 4,
-                BaseSpeed: 6,
-                Affinity: "Shadow",
-                SkillKeys: ["skill-shadow-strike-v1"]),
+                BaseDefense: 3,
+                BaseSpeed: 5,
+                Affinity: "Neutral",
+                SkillKeys: ["skill.basic.strike"]),
+            ["enemy-void-walker-v1"] = new EnemyTemplateSnapshot(
+                Key: "enemy-void-walker-v1",
+                Name: "Void Walker",
+                Description: "A void-infused walker",
+                Version: "1.0.0",
+                Status: "Active",
+                BaseHealth: 45,
+                BaseAttack: 12,
+                BaseDefense: 5,
+                BaseSpeed: 4,
+                Affinity: "Void",
+                SkillKeys: ["skill.basic.strike", "skill.basic.shield"]),
             ["boss.threshold.warden-v1"] = new EnemyTemplateSnapshot(
                 Key: "boss.threshold.warden-v1",
                 Name: "Gardien du Seuil",
-                Description: "Boss de la Room Threshold. Premier gardien de run.",
+                Description: "Premier gardien de la run. Veille sur le seuil du Palais des Silences.",
                 Version: "1.0.0",
                 Status: "Active",
-                BaseHealth: 50,
-                BaseAttack: 10,
-                BaseDefense: 6,
-                BaseSpeed: 8,
-                Affinity: "Void",
+                BaseHealth: 120,
+                BaseAttack: 18,
+                BaseDefense: 10,
+                BaseSpeed: 6,
+                Affinity: "Neutral",
                 SkillKeys: ["skill-boss-void-slam-v1"]),
             ["boss.forest.rootbound-memory-v1"] = new EnemyTemplateSnapshot(
                 Key: "boss.forest.rootbound-memory-v1",
                 Name: "Gardien des Racines",
-                Description: "Boss de la Room Forest. Mémoire organique du Palais.",
+                Description: "Mémoire organique du Palais. Ses racines plongent dans les silences oubliés.",
                 Version: "1.0.0",
                 Status: "Active",
-                BaseHealth: 55,
-                BaseAttack: 9,
-                BaseDefense: 6,
-                BaseSpeed: 7,
+                BaseHealth: 100,
+                BaseAttack: 14,
+                BaseDefense: 8,
+                BaseSpeed: 5,
                 Affinity: "Nature",
                 SkillKeys: ["skill-boss-void-slam-v1"]),
             ["boss.rupture.fractured-echo-v1"] = new EnemyTemplateSnapshot(
                 Key: "boss.rupture.fractured-echo-v1",
                 Name: "Fragment de Rupture",
-                Description: "Boss de la Room Rupture. Instable et agressif.",
+                Description: "Instable et agressif. Une brèche dans la cohérence du Palais.",
                 Version: "1.0.0",
                 Status: "Active",
-                BaseHealth: 55,
-                BaseAttack: 11,
-                BaseDefense: 4,
-                BaseSpeed: 9,
+                BaseHealth: 110,
+                BaseAttack: 20,
+                BaseDefense: 6,
+                BaseSpeed: 8,
                 Affinity: "Chaos",
                 SkillKeys: ["skill-boss-void-slam-v1"]),
             ["boss.silence.mute-herald-v1"] = new EnemyTemplateSnapshot(
                 Key: "boss.silence.mute-herald-v1",
                 Name: "Voix Éteinte",
-                Description: "Boss de la Room Silence. Systémique, mutique, altère les règles.",
+                Description: "Systémique, mutique. Altère les règles de la pièce par sa seule présence.",
                 Version: "1.0.0",
                 Status: "Active",
-                BaseHealth: 45,
-                BaseAttack: 10,
-                BaseDefense: 5,
-                BaseSpeed: 9,
-                Affinity: "Silence",
+                BaseHealth: 90,
+                BaseAttack: 16,
+                BaseDefense: 12,
+                BaseSpeed: 4,
+                Affinity: "Void",
                 SkillKeys: ["skill-boss-void-slam-v1"]),
             ["boss.memory.archivist-v1"] = new EnemyTemplateSnapshot(
                 Key: "boss.memory.archivist-v1",
                 Name: "Archiviste des Échos",
-                Description: "Boss de la Room Memory. Lié au Tome et aux fragments.",
+                Description: "Lié au Tome et aux fragments de mémoire. Connaît chaque silence.",
                 Version: "1.0.0",
                 Status: "Active",
-                BaseHealth: 50,
-                BaseAttack: 9,
-                BaseDefense: 6,
-                BaseSpeed: 8,
-                Affinity: "Memory",
+                BaseHealth: 95,
+                BaseAttack: 15,
+                BaseDefense: 9,
+                BaseSpeed: 6,
+                Affinity: "Neutral",
                 SkillKeys: ["skill-boss-void-slam-v1"]),
             ["boss.antechamber.last-door-v1"] = new EnemyTemplateSnapshot(
                 Key: "boss.antechamber.last-door-v1",
                 Name: "Gardien de l'Antichambre",
-                Description: "Boss de la Room Antechamber. Avant-poste du Final.",
+                Description: "Avant-poste du Final. Aucun pèlerin n'a franchi cette porte.",
                 Version: "1.0.0",
                 Status: "Active",
-                BaseHealth: 52,
-                BaseAttack: 10,
-                BaseDefense: 5,
-                BaseSpeed: 9,
-                Affinity: "Void",
+                BaseHealth: 140,
+                BaseAttack: 22,
+                BaseDefense: 14,
+                BaseSpeed: 5,
+                Affinity: "Neutral",
                 SkillKeys: ["skill-boss-void-slam-v1"]),
             ["boss.final.himlit-v1"] = new EnemyTemplateSnapshot(
                 Key: "boss.final.himlit-v1",
                 Name: "Him'Lit",
-                Description: "Boss de la Room Final. Le silence originel.",
+                Description: "Le silence originel. La source du Palais.",
                 Version: "1.0.0",
                 Status: "Active",
-                BaseHealth: 60,
-                BaseAttack: 14,
-                BaseDefense: 8,
-                BaseSpeed: 10,
-                Affinity: "Void",
-                SkillKeys: ["skill-boss-void-slam-v1"]),
-            ["enemy-rare-v1"] = new EnemyTemplateSnapshot(
-                Key: "enemy-rare-v1",
-                Name: "Rare Entity",
-                Description: "Rare enemy used by the Game Engine for rare combat encounters.",
-                Version: "1.0.0",
-                Status: "Active",
-                BaseHealth: 40,
-                BaseAttack: 9,
-                BaseDefense: 5,
+                BaseHealth: 200,
+                BaseAttack: 28,
+                BaseDefense: 18,
                 BaseSpeed: 7,
                 Affinity: "Void",
-                SkillKeys: ["skill-shadow-strike-v1"]),
-            ["enemy.threshold.echo"] = new EnemyTemplateSnapshot(
-                Key: "enemy.threshold.echo",
-                Name: "Écho",
-                Description: "Un souvenir affaibli qui refuse de s'effacer.",
-                Version: "1.0.0",
-                Status: "Active",
-                BaseHealth: 18,
-                BaseAttack: 6,
-                BaseDefense: 2,
-                BaseSpeed: 5,
-                Affinity: "Memory",
-                SkillKeys: ["skill.basic.strike"]),
-            ["enemy.threshold.splinter"] = new EnemyTemplateSnapshot(
-                Key: "enemy.threshold.splinter",
-                Name: "Éclat",
-                Description: "Un fragment durci par le silence. Résistant mais lent.",
-                Version: "1.0.0",
-                Status: "Active",
-                BaseHealth: 28,
-                BaseAttack: 5,
-                BaseDefense: 6,
-                BaseSpeed: 3,
-                Affinity: "Silence",
-                SkillKeys: ["skill.basic.shield", "skill.basic.strike"]),
-            ["enemy.threshold.whisper"] = new EnemyTemplateSnapshot(
-                Key: "enemy.threshold.whisper",
-                Name: "Murmure",
-                Description: "Un souffle agressif qui transperce le silence.",
-                Version: "1.0.0",
-                Status: "Active",
-                BaseHealth: 15,
-                BaseAttack: 9,
-                BaseDefense: 2,
-                BaseSpeed: 7,
-                Affinity: "Shadow",
-                SkillKeys: ["skill.basic.strike", "skill.basic.swift"]),
-            ["enemy.threshold.guardian-fragment"] = new EnemyTemplateSnapshot(
-                Key: "enemy.threshold.guardian-fragment",
-                Name: "Fragment Gardien",
-                Description: "Un éclat protégé par une volonté persistante. Rare et résistant.",
-                Version: "1.0.0",
-                Status: "Active",
-                BaseHealth: 35,
-                BaseAttack: 6,
-                BaseDefense: 7,
-                BaseSpeed: 4,
-                Affinity: "Void",
-                SkillKeys: ["skill.basic.shield", "skill.basic.strike", "skill.basic.taunt"]),
-            ["enemy.threshold.fracture"] = new EnemyTemplateSnapshot(
-                Key: "enemy.threshold.fracture",
-                Name: "Fracture",
-                Description: "Une brèche dans la cohérence du seuil. Dangereuse et instable.",
-                Version: "1.0.0",
-                Status: "Active",
-                BaseHealth: 22,
-                BaseAttack: 8,
-                BaseDefense: 4,
-                BaseSpeed: 6,
-                Affinity: "Chaos",
-                SkillKeys: ["skill.basic.strike", "skill.basic.charge"])
+                SkillKeys: ["skill-boss-void-slam-v1"])
         };
 
     private static readonly IReadOnlyDictionary<string, SkillTemplateSnapshot> SkillTemplates =
         new Dictionary<string, SkillTemplateSnapshot>(StringComparer.OrdinalIgnoreCase)
         {
-            ["skill-shadow-strike-v1"] = new SkillTemplateSnapshot(
-                Key: "skill-shadow-strike-v1",
-                Name: "Shadow Strike",
-                Description: "Neutral test skill used by the Game Engine catalog gateway.",
-                Version: "1.0.0",
-                Status: "Active",
-                SkillType: "Shadow",
-                Power: 10,
-                Cost: 1,
-                CostType: "Charge",
-                TargetingMode: "SingleEnemy",
-                EffectTags: ["damage"]),
             ["skill-boss-void-slam-v1"] = new SkillTemplateSnapshot(
                 Key: "skill-boss-void-slam-v1",
                 Name: "Void Slam",
-                Description: "Boss skill used by the Game Engine for boss encounters.",
+                Description: "Frappe du vide. Puissante attaque de boss.",
                 Version: "1.0.0",
                 Status: "Active",
-                SkillType: "Void",
+                SkillType: "Damage",
                 Power: 14,
                 Cost: 1,
                 CostType: "Charge",
                 TargetingMode: "SingleEnemy",
-                EffectTags: ["damage"])
+                EffectTags: ["boss", "damage", "void"])
         };
 
     private static readonly IReadOnlyDictionary<string, ItemTemplateSnapshot> ItemTemplates =
@@ -220,14 +144,14 @@ public sealed class InMemoryCatalogContentGateway : ICatalogContentGateway
         {
             ["item-memory-fragment-v1"] = new ItemTemplateSnapshot(
                 Key: "item-memory-fragment-v1",
-                Name: "Memory Fragment",
-                Description: "Neutral test item used by the Game Engine catalog gateway.",
+                Name: "Fragment de Mémoire",
+                Description: "Un éclat de souvenir. Peut être utilisé pour restaurer un peu de vitalité.",
                 Version: "1.0.0",
                 Status: "Active",
-                ItemType: "RunResource",
+                ItemType: "Consumable",
                 Rarity: "Common",
                 IsTemporary: true,
-                EffectTags: ["resource"])
+                EffectTags: ["heal", "memory"])
         };
 
     private static readonly IReadOnlyDictionary<string, EventTemplateSnapshot> EventTemplates =
@@ -235,112 +159,16 @@ public sealed class InMemoryCatalogContentGateway : ICatalogContentGateway
         {
             ["event-combat-shadow-v1"] = new EventTemplateSnapshot(
                 Key: "event-combat-shadow-v1",
-                Name: "Shadow Combat Event",
-                Description: "Neutral test event used by the Game Engine catalog gateway.",
+                Name: "Combat Shadow",
+                Description: "A basic shadow combat encounter",
                 Version: "1.0.0",
                 Status: "Active",
                 Type: "Combat",
-                DefaultOutcomeKind: "CombatStarted",
-                MinRiskLevel: 5,
-                MaxRiskLevel: 25,
+                DefaultOutcomeKind: "Combat",
+                MinRiskLevel: 1,
+                MaxRiskLevel: 3,
                 RequiresPlayerChoice: false,
-                NarrativeTags: ["test", "combat"]),
-            ["event-boss.threshold.warden-v1"] = new EventTemplateSnapshot(
-                Key: "event-boss.threshold.warden-v1",
-                Name: "Rencontre — Gardien du Seuil",
-                Description: "Événement boss de la Room Threshold.",
-                Version: "1.0.0",
-                Status: "Active",
-                Type: "RoomBoss",
-                DefaultOutcomeKind: "BossEncounterStarted",
-                MinRiskLevel: 10,
-                MaxRiskLevel: 90,
-                RequiresPlayerChoice: false,
-                NarrativeTags: ["boss", "threshold"]),
-            ["event-boss.forest.rootbound-memory-v1"] = new EventTemplateSnapshot(
-                Key: "event-boss.forest.rootbound-memory-v1",
-                Name: "Rencontre — Gardien des Racines",
-                Description: "Événement boss de la Room Forest.",
-                Version: "1.0.0",
-                Status: "Active",
-                Type: "RoomBoss",
-                DefaultOutcomeKind: "BossEncounterStarted",
-                MinRiskLevel: 10,
-                MaxRiskLevel: 90,
-                RequiresPlayerChoice: false,
-                NarrativeTags: ["boss", "forest"]),
-            ["event-boss.rupture.fractured-echo-v1"] = new EventTemplateSnapshot(
-                Key: "event-boss.rupture.fractured-echo-v1",
-                Name: "Rencontre — Fragment de Rupture",
-                Description: "Événement boss de la Room Rupture.",
-                Version: "1.0.0",
-                Status: "Active",
-                Type: "RoomBoss",
-                DefaultOutcomeKind: "BossEncounterStarted",
-                MinRiskLevel: 25,
-                MaxRiskLevel: 90,
-                RequiresPlayerChoice: false,
-                NarrativeTags: ["boss", "rupture"]),
-            ["event-boss.silence.mute-herald-v1"] = new EventTemplateSnapshot(
-                Key: "event-boss.silence.mute-herald-v1",
-                Name: "Rencontre — Voix Éteinte",
-                Description: "Événement boss de la Room Silence.",
-                Version: "1.0.0",
-                Status: "Active",
-                Type: "RoomBoss",
-                DefaultOutcomeKind: "BossEncounterStarted",
-                MinRiskLevel: 10,
-                MaxRiskLevel: 90,
-                RequiresPlayerChoice: false,
-                NarrativeTags: ["boss", "silence"]),
-            ["event-boss.memory.archivist-v1"] = new EventTemplateSnapshot(
-                Key: "event-boss.memory.archivist-v1",
-                Name: "Rencontre — Archiviste des Échos",
-                Description: "Événement boss de la Room Memory.",
-                Version: "1.0.0",
-                Status: "Active",
-                Type: "RoomBoss",
-                DefaultOutcomeKind: "BossEncounterStarted",
-                MinRiskLevel: 10,
-                MaxRiskLevel: 90,
-                RequiresPlayerChoice: false,
-                NarrativeTags: ["boss", "memory"]),
-            ["event-boss.antechamber.last-door-v1"] = new EventTemplateSnapshot(
-                Key: "event-boss.antechamber.last-door-v1",
-                Name: "Rencontre — Gardien de l'Antichambre",
-                Description: "Événement boss de la Room Antechamber.",
-                Version: "1.0.0",
-                Status: "Active",
-                Type: "RoomBoss",
-                DefaultOutcomeKind: "BossEncounterStarted",
-                MinRiskLevel: 10,
-                MaxRiskLevel: 90,
-                RequiresPlayerChoice: false,
-                NarrativeTags: ["boss", "antechamber"]),
-            ["event-boss.final.himlit-v1"] = new EventTemplateSnapshot(
-                Key: "event-boss.final.himlit-v1",
-                Name: "Rencontre — Him'Lit",
-                Description: "Événement boss de la Room Final. Le silence originel.",
-                Version: "1.0.0",
-                Status: "Active",
-                Type: "RoomBoss",
-                DefaultOutcomeKind: "BossEncounterStarted",
-                MinRiskLevel: 30,
-                MaxRiskLevel: 100,
-                RequiresPlayerChoice: false,
-                NarrativeTags: ["boss", "final"]),
-            ["event-rare-encounter-v1"] = new EventTemplateSnapshot(
-                Key: "event-rare-encounter-v1",
-                Name: "Rare Encounter Event",
-                Description: "Rare encounter event used by the Game Engine for rare combat encounters.",
-                Version: "1.0.0",
-                Status: "Active",
-                Type: "Rare",
-                DefaultOutcomeKind: "RareCombatStarted",
-                MinRiskLevel: 10,
-                MaxRiskLevel: 40,
-                RequiresPlayerChoice: false,
-                NarrativeTags: ["test", "rare"])
+                NarrativeTags: ["combat", "shadow"])
         };
 
     private static readonly IReadOnlyDictionary<string, PalaceLawDefinitionSnapshot> PalaceLawDefinitions =
@@ -348,17 +176,18 @@ public sealed class InMemoryCatalogContentGateway : ICatalogContentGateway
         {
             ["law-silence-v1"] = new PalaceLawDefinitionSnapshot(
                 Key: "law-silence-v1",
-                Name: "Silence Law",
-                Description: "Neutral test law used by the Game Engine catalog gateway.",
+                Name: "Loi du Silence",
+                Description: "Le silence alourdit chaque action.",
                 Version: "1.0.0",
                 Status: "Active",
                 Visibility: "Visible",
                 Priority: 10,
-                ImpactDomains: ["Generation", "Events", "Narrative"],
-                EffectSetKey: "effect.law.silence-weight",
+                ImpactDomains: ["Combat"],
+                EffectSetKey: "effectset.law-silence-v1",
                 Effects:
                 [
-                    new CatalogEffectDefinitionSnapshot("ModifyGenerationWeight", "SelectionContext", 0.10m, "Flat", "UntilRunEnds", "Additive", null, 0, null, "generation.silence", null)
+                    new CatalogEffectDefinitionSnapshot("ModifyDifficultyMultiplier", "Run", 0.10m, "Flat", "UntilRunEnds", "Additive", null, 0, null, null, null),
+                    new CatalogEffectDefinitionSnapshot("ModifyRewardPowerMultiplier", "Run", 0.15m, "Flat", "UntilRunEnds", "Additive", null, 0, null, null, null)
                 ]),
             ["law-aegis-v1"] = new PalaceLawDefinitionSnapshot(
                 Key: "law-aegis-v1",
@@ -991,10 +820,6 @@ public sealed class InMemoryCatalogContentGateway : ICatalogContentGateway
                 MaxRiskLevel: 5,
                 Tags: ["final", "elite", "echo"],
                 SkillKeys: ["skill.basic.strike", "skill.basic.heal", "skill.basic.buff"]),
-
-            // ── Boss enemy definitions (MinRiskLevel = MaxRiskLevel = 5) ──────────────
-            // Used by EncounterCompositionPolicy.SelectRoomBossEnemies for RoomBoss encounters.
-            // Each has a high BaseDifficulty to ensure unambiguous selection.
             ["boss.threshold.warden"] = new CatalogEnemyDefinition(
                 Key: "boss.threshold.warden",
                 DisplayName: "Gardien du Seuil",
@@ -1076,9 +901,6 @@ public sealed class InMemoryCatalogContentGateway : ICatalogContentGateway
 
     private static readonly IReadOnlyDictionary<string, CatalogNpcDefinition> NpcDefinitions =
         new Dictionary<string, CatalogNpcDefinition>(StringComparer.OrdinalIgnoreCase)
-        // DEV/TEST FALLBACK ONLY — Catalog Service is the source of truth for NPC definitions.
-        // These seeds exist for local dev and unit testing when Persistence:Mode != Postgres.
-        // In production/staging, the HttpCatalogContentGateway queries the Catalog API.
         {
             ["npc-neutral-traveler"] = new CatalogNpcDefinition(
                 Key: "npc-neutral-traveler",

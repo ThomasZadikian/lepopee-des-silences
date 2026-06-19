@@ -11,6 +11,7 @@ public sealed class CatalogSeedRunner
     private const string LegacyVersion = "alpha-0.5.5";
     private const string DataModelVersion = "alpha-0.8.1";
     private const string CatalogGatewayContentVersion = "alpha-0.8.1-catalog-content-gateway";
+    private const string CatalogTemplatesVersion = "alpha-0.8.2-catalog-templates";
 
     private readonly CatalogDbContext _context;
     private readonly ILogger<CatalogSeedRunner> _logger;
@@ -26,6 +27,7 @@ public sealed class CatalogSeedRunner
         await ApplyLegacySeedAsync(cancellationToken);
         await ApplyDataModelSeedAsync(cancellationToken);
         await ApplyCatalogGatewayContentSeedAsync(cancellationToken);
+        await ApplyCatalogTemplatesSeedAsync(cancellationToken);
     }
 
     private async Task ApplyLegacySeedAsync(CancellationToken cancellationToken)
@@ -1051,6 +1053,7 @@ public sealed class CatalogSeedRunner
     {
         if (!await _context.RoomBossDefinitions.AnyAsync(r => r.Key == key, cancellationToken))
         {
+            var now = DateTime.UtcNow;
             _context.RoomBossDefinitions.Add(new RoomBossDefinitionEntity
             {
                 Id = Guid.NewGuid(),
@@ -1060,10 +1063,13 @@ public sealed class CatalogSeedRunner
                 RoomType = roomType,
                 EnemyDefinitionKey = enemyKey,
                 DangerHint = "Rupture instable",
+                BaseDifficulty = 1,
                 BaseWeight = 1,
                 SelectionGroup = "boss.threshold",
                 Version = DataModelVersion,
-                Status = "Active"
+                Status = "Active",
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
             });
         }
     }
@@ -1147,6 +1153,273 @@ public sealed class CatalogSeedRunner
                 ]
             });
         }
+    }
+
+    private async Task ApplyCatalogTemplatesSeedAsync(CancellationToken cancellationToken)
+    {
+        if (await HasSeedVersionAsync(CatalogTemplatesVersion, cancellationToken))
+        {
+            _logger.LogInformation("Seed {SeedKey} version {Version} already applied. Skipping.", SeedKey, CatalogTemplatesVersion);
+            return;
+        }
+
+        _logger.LogInformation("Applying seed {SeedKey} version {Version}...", SeedKey, CatalogTemplatesVersion);
+
+        var now = DateTime.UtcNow;
+
+        await SeedEnemyTemplatesAsync(now, cancellationToken);
+        await SeedSkillTemplatesAsync(now, cancellationToken);
+        await SeedEventTemplatesAsync(now, cancellationToken);
+        await SeedRoomBossCatalogAsync(now, cancellationToken);
+
+        AddSeedVersion(CatalogTemplatesVersion);
+        await _context.SaveChangesAsync(cancellationToken);
+        _logger.LogInformation("Seed {SeedKey} version {Version} applied successfully.", SeedKey, CatalogTemplatesVersion);
+    }
+
+    private async Task SeedEnemyTemplatesAsync(DateTime now, CancellationToken cancellationToken)
+    {
+        if (await _context.EnemyTemplates.AnyAsync(e => e.Key == "enemy-shadow-wolf", cancellationToken))
+        {
+            return;
+        }
+
+        _context.EnemyTemplates.Add(new EnemyTemplateEntity
+        {
+            Id = Guid.NewGuid(),
+            Key = "enemy-shadow-wolf",
+            Name = "Loup d'Ombre",
+            Description = "Une entité née dans un couloir du Palais.",
+            Version = "catalog-0.1.0",
+            Status = "Active",
+            Archetype = "Trauma",
+            Element = "Shadow",
+            MaxHealth = 120,
+            Strength = 18,
+            Intelligence = 8,
+            Speed = 14,
+            PhysicalResistance = 10,
+            MagicalResistance = 5,
+            ExperienceReward = 25,
+            GoldReward = 12,
+            CreatedAtUtc = now,
+            UpdatedAtUtc = now
+        });
+    }
+
+    private async Task SeedSkillTemplatesAsync(DateTime now, CancellationToken cancellationToken)
+    {
+        if (await _context.SkillTemplates.AnyAsync(s => s.Key == "skill-shadow-bite", cancellationToken))
+        {
+            return;
+        }
+
+        _context.SkillTemplates.AddRange(
+            new SkillTemplateEntity
+            {
+                Id = Guid.NewGuid(),
+                Key = "skill-shadow-bite",
+                Name = "Morsure d'Ombre",
+                Description = "Une attaque de rupture silencieuse.",
+                Version = "catalog-0.1.0",
+                Status = "Active",
+                Element = "Shadow",
+                EffectType = "Damage",
+                TargetType = "SingleEnemy",
+                ManaCost = 3,
+                ChargeCost = 1,
+                BasePower = 35,
+                HealPower = 0,
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
+            },
+            new SkillTemplateEntity
+            {
+                Id = Guid.NewGuid(),
+                Key = "skill-memory-mend",
+                Name = "Suture de Mémoire",
+                Description = "Restaure une partie de soi.",
+                Version = "catalog-0.1.0",
+                Status = "Active",
+                Element = "Memory",
+                EffectType = "Heal",
+                TargetType = "SingleAlly",
+                ManaCost = 4,
+                ChargeCost = 1,
+                BasePower = 0,
+                HealPower = 25,
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
+            });
+    }
+
+    private async Task SeedEventTemplatesAsync(DateTime now, CancellationToken cancellationToken)
+    {
+        if (await _context.EventTemplates.AnyAsync(e => e.Key == "event-memory-threshold-v1", cancellationToken))
+        {
+            return;
+        }
+
+        _context.EventTemplates.AddRange(
+            new EventTemplateEntity
+            {
+                Id = Guid.NewGuid(),
+                Key = "event-memory-threshold-v1",
+                Name = "Mémoire du seuil",
+                Description = "Une mémoire apparaît à l'entrée du Palais.",
+                Version = "event-1.0.0",
+                Status = "Active",
+                Type = "Memory",
+                DefaultOutcomeKind = "TomePageUnlocked",
+                MinRiskLevel = 5,
+                MaxRiskLevel = 20,
+                RequiresPlayerChoice = true,
+                NarrativeTagsJson = "[\"memory\",\"threshold\",\"elise\"]",
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
+            },
+            new EventTemplateEntity
+            {
+                Id = Guid.NewGuid(),
+                Key = "event-law-silence-v1",
+                Name = "Écho du Silence",
+                Description = "Une Loi du Palais se manifeste dans la pièce.",
+                Version = "event-1.0.0",
+                Status = "Active",
+                Type = "Law",
+                DefaultOutcomeKind = "PalaceLawApplied",
+                MinRiskLevel = 10,
+                MaxRiskLevel = 35,
+                RequiresPlayerChoice = true,
+                NarrativeTagsJson = "[\"law\",\"silence\",\"palace\"]",
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
+            },
+            new EventTemplateEntity
+            {
+                Id = Guid.NewGuid(),
+                Key = "event-combat-shadow-v1",
+                Name = "Combat d'ombre",
+                Description = "Une ombre du Palais bloque le chemin.",
+                Version = "event-1.0.0",
+                Status = "Active",
+                Type = "Combat",
+                DefaultOutcomeKind = "CombatStarted",
+                MinRiskLevel = 15,
+                MaxRiskLevel = 45,
+                RequiresPlayerChoice = false,
+                NarrativeTagsJson = "[\"combat\",\"shadow\"]",
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
+            });
+    }
+
+    private async Task SeedRoomBossCatalogAsync(DateTime now, CancellationToken cancellationToken)
+    {
+        if (await _context.RoomBossDefinitions.AnyAsync(r => r.Key == "boss.threshold.warden", cancellationToken))
+        {
+            return;
+        }
+
+        _context.RoomBossDefinitions.AddRange(
+            new RoomBossDefinitionEntity
+            {
+                Id = Guid.NewGuid(),
+                Key = "boss.threshold.warden",
+                DisplayName = "Warden of the Threshold",
+                Description = "The first sentinel guarding the entrance to the Memory Palace, a being of pure vigilance.",
+                RoomType = "Threshold",
+                BaseDifficulty = 1,
+                TagsJson = "[\"sentinel\",\"guardian\",\"threshold\"]",
+                Version = "1.0.0",
+                Status = "Active",
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
+            },
+            new RoomBossDefinitionEntity
+            {
+                Id = Guid.NewGuid(),
+                Key = "boss.forest.rootbound-memory",
+                DisplayName = "Rootbound Memory",
+                Description = "An ancient entity whose roots dig deep into forgotten epochs, anchoring the forest's will.",
+                RoomType = "Forest",
+                BaseDifficulty = 2,
+                TagsJson = "[\"ancient\",\"forest\",\"roots\"]",
+                Version = "1.0.0",
+                Status = "Active",
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
+            },
+            new RoomBossDefinitionEntity
+            {
+                Id = Guid.NewGuid(),
+                Key = "boss.rupture.fractured-echo",
+                DisplayName = "Fractured Echo",
+                Description = "A shattered remnant of a once-coherent thought, now a cacophony of broken memories.",
+                RoomType = "Rupture",
+                BaseDifficulty = 3,
+                TagsJson = "[\"shattered\",\"echo\",\"rupture\"]",
+                Version = "1.0.0",
+                Status = "Active",
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
+            },
+            new RoomBossDefinitionEntity
+            {
+                Id = Guid.NewGuid(),
+                Key = "boss.silence.mute-herald",
+                DisplayName = "Mute Herald",
+                Description = "A silent messenger whose presence absorbs all sound, leaving only dread in the void.",
+                RoomType = "Silence",
+                BaseDifficulty = 4,
+                TagsJson = "[\"silent\",\"herald\",\"void\"]",
+                Version = "1.0.0",
+                Status = "Active",
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
+            },
+            new RoomBossDefinitionEntity
+            {
+                Id = Guid.NewGuid(),
+                Key = "boss.antechamber.last-door",
+                DisplayName = "The Last Door",
+                Description = "The final barrier before the deepest memories, an immovable ward of immense presence.",
+                RoomType = "Antechamber",
+                BaseDifficulty = 5,
+                TagsJson = "[\"barrier\",\"ward\",\"antechamber\"]",
+                Version = "1.0.0",
+                Status = "Active",
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
+            },
+            new RoomBossDefinitionEntity
+            {
+                Id = Guid.NewGuid(),
+                Key = "boss.memory.archivist",
+                DisplayName = "Archivist of Lost Moments",
+                Description = "The keeper of forgotten memories, cataloging every experience that slips through the cracks of time.",
+                RoomType = "Memory",
+                BaseDifficulty = 4,
+                TagsJson = "[\"archivist\",\"memory\",\"keeper\"]",
+                Version = "1.0.0",
+                Status = "Active",
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
+            },
+            new RoomBossDefinitionEntity
+            {
+                Id = Guid.NewGuid(),
+                Key = "boss.final.himlit",
+                DisplayName = "Himlit",
+                Description = "The final, eldritch entity at the heart of the Memory Palace. Its true name is a whisper lost in the abyss of ultimate remembrance.",
+                RoomType = "Final",
+                BaseDifficulty = 10,
+                TagsJson = "[\"final\",\"eldritch\",\"heart\"]",
+                Version = "1.0.0",
+                Status = "Active",
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
+            });
     }
 
     private static string ToTagKey(string tag)

@@ -5,8 +5,8 @@ using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.PalaceLaws;
 using Leds.GameEngine.Domain.Runs;
-using Leds.GameEngine.Infrastructure.Catalog;
 using Leds.GameEngine.Application.Runs.Dtos;
+using Leds.GameEngine.UnitTests.Common;
 using Leds.GameEngine.UnitTests.Common.Factories;
 
 namespace Leds.GameEngine.UnitTests.Events.ChoiceResolvers;
@@ -23,7 +23,7 @@ public sealed class LawEventChoiceResolverTests
             runWithNode.TargetNode,
             "accept-law:law-aegis-v1");
 
-        var sut = new LawEventChoiceResolver(new InMemoryCatalogContentGateway());
+        var sut = new LawEventChoiceResolver(new StubCatalogContentGateway());
 
         var result = await sut.ResolveAsync(context);
 
@@ -51,7 +51,7 @@ public sealed class LawEventChoiceResolverTests
             runWithNode.TargetNode,
             "reject-law:law-aegis-v1");
 
-        var sut = new LawEventChoiceResolver(new InMemoryCatalogContentGateway());
+        var sut = new LawEventChoiceResolver(new StubCatalogContentGateway());
 
         var act = async () => await sut.ResolveAsync(context);
 
@@ -70,7 +70,7 @@ public sealed class LawEventChoiceResolverTests
             runWithNode.TargetNode,
             "accept-law:law-tempest-v1");
 
-        var sut = new LawEventChoiceResolver(new InMemoryCatalogContentGateway());
+        var sut = new LawEventChoiceResolver(new StubCatalogContentGateway());
 
         await sut.ResolveAsync(context);
 
@@ -87,7 +87,7 @@ public sealed class LawEventChoiceResolverTests
     public async Task ResolveAsync_ShouldReplaceExistingRoomClimateLaw_WhenAcceptingAnotherClimateLaw()
     {
         var runWithNode = TestGameEngineFactory.CreateRunWithResolvedCurrentEvent(NodeEventType.Law);
-        var sut = new LawEventChoiceResolver(new InMemoryCatalogContentGateway());
+        var sut = new LawEventChoiceResolver(new StubCatalogContentGateway());
 
         await sut.ResolveAsync(new CurrentEventChoiceResolutionContext(
             runWithNode.Run,
@@ -122,7 +122,7 @@ public sealed class LawEventChoiceResolverTests
             runWithNode.TargetNode,
             "unknown-choice");
 
-        var sut = new LawEventChoiceResolver(new InMemoryCatalogContentGateway());
+        var sut = new LawEventChoiceResolver(new StubCatalogContentGateway());
 
         var act = async () => await sut.ResolveAsync(context);
 

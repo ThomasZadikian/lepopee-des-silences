@@ -23,15 +23,15 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 
+    using var scope = app.Services.CreateScope();
+
+    var dbContext = scope.ServiceProvider.GetRequiredService<CatalogDbContext>();
+    await dbContext.Database.MigrateAsync();
+
     if (app.Configuration.GetValue<bool>("CatalogSeed:ApplyOnStartup"))
     {
-        var persistenceMode = app.Configuration["Persistence:Mode"];
-        if (string.Equals(persistenceMode, "Postgres", StringComparison.OrdinalIgnoreCase))
-        {
-            using var scope = app.Services.CreateScope();
-            var seedRunner = scope.ServiceProvider.GetRequiredService<CatalogSeedRunner>();
-            await seedRunner.ApplyBaseSeedAsync();
-        }
+        var seedRunner = scope.ServiceProvider.GetRequiredService<CatalogSeedRunner>();
+        await seedRunner.ApplyBaseSeedAsync();
     }
 }
 

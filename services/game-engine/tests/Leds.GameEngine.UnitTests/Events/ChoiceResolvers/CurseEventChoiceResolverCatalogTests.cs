@@ -4,8 +4,8 @@ using Leds.GameEngine.Application.Events.ChoiceResolvers;
 using Leds.GameEngine.Application.Events.ChooseEventOption;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Runs;
+using Leds.GameEngine.UnitTests.Common;
 using Leds.GameEngine.UnitTests.Common.Factories;
-using Leds.GameEngine.Infrastructure.Catalog;
 
 namespace Leds.GameEngine.UnitTests.Events.ChoiceResolvers;
 
@@ -13,7 +13,7 @@ public sealed class CurseEventChoiceResolverCatalogTests
 {
     private static CurseEventChoiceResolver CreateResolver()
     {
-        return new CurseEventChoiceResolver(new InMemoryCatalogContentGateway());
+        return new CurseEventChoiceResolver(new StubCatalogContentGateway());
     }
 
     private static CurrentEventChoiceResolutionContext CreateCurseContext(

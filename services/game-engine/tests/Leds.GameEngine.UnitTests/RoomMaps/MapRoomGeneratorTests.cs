@@ -2,10 +2,10 @@ using FluentAssertions;
 using Leds.GameEngine.Application.RoomMaps;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rooms;
-using Leds.GameEngine.Infrastructure.Catalog;
 using Leds.GameEngine.Infrastructure.Generation.RoomMaps;
 using Leds.GameEngine.Infrastructure.Generation.Rooms.Bosses;
 using Leds.GameEngine.Infrastructure.Generation.Rooms.Themes;
+using Leds.GameEngine.UnitTests.Common;
 
 namespace Leds.GameEngine.UnitTests.RoomMaps;
 
@@ -19,7 +19,7 @@ public sealed class MapRoomGeneratorTests
         return new MapRoomGenerator(
             new RoomMapLayoutTemplateProvider(),
             new RoomThemeResolver(),
-            new RoomBossProfileResolver(new InMemoryCatalogContentGateway()),
+            new RoomBossProfileResolver(new StubCatalogContentGateway()),
             new HardcodedRoomTypeGenerationProfileProvider());
     }
 

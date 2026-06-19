@@ -1,5 +1,5 @@
 using FluentAssertions;
-using Leds.GameEngine.Infrastructure.Catalog;
+using Leds.GameEngine.UnitTests.Common;
 
 namespace Leds.GameEngine.UnitTests.Catalog;
 
@@ -8,7 +8,7 @@ public sealed class CatalogLawCurseProviderTests
     [Fact]
     public async Task PalaceLawProvider_ShouldReturnSeedLaw()
     {
-        var gateway = new InMemoryCatalogContentGateway();
+        var gateway = new StubCatalogContentGateway();
 
         var law = await gateway.GetPalaceLawDefinitionByKeyAsync("law-silence-v1");
 
@@ -20,7 +20,7 @@ public sealed class CatalogLawCurseProviderTests
     [Fact]
     public async Task PalaceLawProvider_ShouldListAvailableLaws()
     {
-        var gateway = new InMemoryCatalogContentGateway();
+        var gateway = new StubCatalogContentGateway();
 
         var laws = await gateway.ListActivePalaceLawDefinitionsAsync();
 
@@ -31,7 +31,7 @@ public sealed class CatalogLawCurseProviderTests
     [Fact]
     public async Task CurseProvider_ShouldReturnSeedCurse()
     {
-        var gateway = new InMemoryCatalogContentGateway();
+        var gateway = new StubCatalogContentGateway();
 
         var curse = await gateway.GetCurseDefinitionByKeyAsync("curse.old-wound");
 
@@ -45,7 +45,7 @@ public sealed class CatalogLawCurseProviderTests
     [Fact]
     public async Task CurseProvider_ShouldListAvailableCurses()
     {
-        var gateway = new InMemoryCatalogContentGateway();
+        var gateway = new StubCatalogContentGateway();
 
         var curses = await gateway.ListAvailableCurseDefinitionsAsync();
 
@@ -56,7 +56,7 @@ public sealed class CatalogLawCurseProviderTests
     [Fact]
     public async Task EffectSetProvider_ShouldReturnLawEffectSet()
     {
-        var gateway = new InMemoryCatalogContentGateway();
+        var gateway = new StubCatalogContentGateway();
 
         var effectSet = await gateway.GetEffectSetByKeyAsync("effectset.law-silence-v1");
 
@@ -69,7 +69,7 @@ public sealed class CatalogLawCurseProviderTests
     [Fact]
     public async Task EffectSetProvider_ShouldReturnCurseEffectSet()
     {
-        var gateway = new InMemoryCatalogContentGateway();
+        var gateway = new StubCatalogContentGateway();
 
         var effectSet = await gateway.GetEffectSetByKeyAsync("effectset.curse-old-wound");
 

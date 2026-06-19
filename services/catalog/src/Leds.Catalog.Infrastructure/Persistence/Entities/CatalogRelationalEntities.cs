@@ -259,12 +259,16 @@ public sealed class RoomBossDefinitionEntity
     public string DisplayName { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public string RoomType { get; set; } = string.Empty;
-    public string EnemyDefinitionKey { get; set; } = string.Empty;
+    public string? EnemyDefinitionKey { get; set; }
     public string? DangerHint { get; set; }
+    public int BaseDifficulty { get; set; } = 1;
     public int BaseWeight { get; set; } = 1;
     public string? SelectionGroup { get; set; }
     public string Version { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
+    public string TagsJson { get; set; } = "[]";
+    public DateTime CreatedAtUtc { get; set; }
+    public DateTime UpdatedAtUtc { get; set; }
 
     public ICollection<RoomBossTagEntity> Tags { get; set; } = [];
 }
