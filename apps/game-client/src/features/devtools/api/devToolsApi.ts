@@ -1,6 +1,7 @@
 import { HttpError, httpRequest } from '../../../shared/api/httpClient';
 import type {
   DevToolsCombatResponse,
+  DevToolsRunPsycheResponse,
   DevToolsRunResponse,
   DevToolsStatusResponse,
   PalaceRoomStateKey,
@@ -108,6 +109,14 @@ export const devToolsApi = {
       token,
       `/api/dev/v2/runs/${runId}/combats/current/combatants/${combatantId}/set-vitals`,
       { vitality, guard },
+    );
+  },
+
+    getPsyche(token: string, runId: string) {
+    return request<DevToolsRunPsycheResponse>(
+      token,
+      `/api/dev/v2/runs/${runId}/psyche`,
+      { method: 'GET' },
     );
   },
 

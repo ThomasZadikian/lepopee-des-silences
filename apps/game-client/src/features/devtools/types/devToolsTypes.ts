@@ -16,6 +16,19 @@ export type DevToolsCombatResponse = {
   combat: CombatRuntimeDto;
 };
 
+export type DevToolsPsycheStep = {
+  depth: number;
+  dominant: string;
+  distribution: Record<string, number>;
+};
+
+export type DevToolsRunPsycheResponse = {
+  runId: string;
+  dominant: string;
+  current: Record<string, number>;
+  trajectory: DevToolsPsycheStep[];
+};
+
 export type PalaceRoomStateKey = 'Neutral' | 'Silent' | 'Painful' | 'Enraged' | 'Violent';
 
 export type RoomClimateKey = 'None' | 'Grey' | 'Rain' | 'Heatwave' | 'Hail';

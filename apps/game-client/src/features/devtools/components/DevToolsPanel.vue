@@ -1,14 +1,15 @@
 <script setup lang="ts">
-import { onMounted } from 'vue';
+import { onMounted, ref } from 'vue';
 
 import { useCombatStore } from '../../combat/stores/useCombatStore';
 import type { CombatRuntimeDto } from '../../combat/types/combatContracts';
 import { useRunStore } from '../../runs/stores/runStore';
 import { devToolsApi } from '../api/devToolsApi';
 import { useDevTools } from '../composables/useDevTools';
-import type { PalaceRoomStateKey, RoomClimateKey } from '../types/devToolsTypes';
+import type { DevToolsRunPsycheResponse, PalaceRoomStateKey, RoomClimateKey } from '../types/devToolsTypes';
 import CombatDevToolsSection from './CombatDevToolsSection.vue';
 import DevToolsTokenGate from './DevToolsTokenGate.vue';
+import PsycheDevToolsSection from './PsycheDevToolsSection.vue';
 import RunDevToolsSection from './RunDevToolsSection.vue';
 
 const props = defineProps<{
@@ -23,9 +24,13 @@ const emit = defineEmits<{
 const runStore = useRunStore();
 const combatStore = useCombatStore();
 const devTools = useDevTools();
+const psyche = ref<DevToolsRunPsycheResponse | null>(null);
 
 onMounted(() => {
-  if (devTools.hasToken.value) void devTools.checkStatus();
+  if (devTools.hasToken.value) {
+    void devTools.checkStatus();
+    void reloadPsyche();
+  }
 });
 
 async function refreshServerState() {
@@ -36,6 +41,23 @@ async function refreshServerState() {
   } else {
     combatStore.clearCombat();
   }
+
+  await reloadPsyche(); // garde la vue psyché synchro après chaque action (ex. advance rooms)
+}
+
+async function reloadPsyche() {
+  if (!devTools.hasToken.value) return;
+  try {
+    psyche.value = await devToolsApi.getPsyche(devTools.token.value, props.runId);
+  } catch {
+    // best-effort : le bouton « Rafraîchir » fait remonter les erreurs explicitement
+  }
+}
+
+function refreshPsyche() {
+  void devTools.runAction(async (token) => {
+    psyche.value = await devToolsApi.getPsyche(token, props.runId);
+  }, 'Psyché chargée.');
 }
 
 async function execute(action: (token: string) => Promise<unknown>, successMessage: string) {
@@ -147,6 +169,13 @@ function applyStatus(combatantId: string, statusKey: string, stacks: number, dur
       @clear-laws="clearLaws"
       @activate-curse="activateCurse"
       @clear-curses="clearCurses"
+    />
+
+    <PsycheDevToolsSection
+      :psyche="psyche"
+      :disabled="!devTools.hasToken.value"
+      :is-loading="devTools.isLoading.value"
+      @refresh="refreshPsyche"
     />
 
     <CombatDevToolsSection
