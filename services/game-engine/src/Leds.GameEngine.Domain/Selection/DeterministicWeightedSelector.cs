@@ -1,3 +1,7 @@
+using System.Buffers.Binary;
+using System.Security.Cryptography;
+using System.Text;
+
 namespace Leds.GameEngine.Domain.Selection;
 
 public sealed class DeterministicWeightedSelector
@@ -11,9 +15,6 @@ public sealed class DeterministicWeightedSelector
         if (candidates.Count == 0)
             return new SelectionResult([], []);
 
-        var seedHash = ComputeSeedHash(context.Seed, context.RunId, context.NodeId);
-        var rng = new Random(seedHash);
-
         var eligible = candidates.Where(c => c.Weight > 0).ToList();
         if (eligible.Count == 0)
             return new SelectionResult([], []);
@@ -26,13 +27,19 @@ public sealed class DeterministicWeightedSelector
         var selected = new List<SelectionCandidate>();
         var available = weighted.ToList();
 
-        for (var i = 0; i < maxSelections && available.Count > 0; i++)
+        for (var step = 0; step < maxSelections && available.Count > 0; step++)
         {
-            var totalWeight = available.Sum(w => w.AdjustedWeight);
-            var roll = rng.Next((int)totalWeight);
-            var cumulative = 0;
-            var pickedIndex = 0;
+            var totalWeight = available.Sum(w => (long)w.AdjustedWeight);
 
+            // Échantillon déterministe dans [0, totalWeight), stable entre processus,
+            // machines et versions de .NET (SPEC §3 interdit new Random / §6 reproductibilité).
+            var sample = NextUnitInterval(context.Seed, context.RunId, context.NodeId, step);
+            var roll = (long)(sample * totalWeight);
+            if (roll >= totalWeight)
+                roll = totalWeight - 1; // garde-fou contre un arrondi en limite haute
+
+            long cumulative = 0;
+            var pickedIndex = 0;
             for (var j = 0; j < available.Count; j++)
             {
                 cumulative += available[j].AdjustedWeight;
@@ -68,19 +75,27 @@ public sealed class DeterministicWeightedSelector
             return candidate.Weight;
 
         var modifier = influence.GetModifier(candidate.Key);
-        var adjusted = (int)Math.Round(candidate.Weight * modifier);
+        var adjusted = (int)Math.Round(candidate.Weight * modifier, MidpointRounding.AwayFromZero);
         return Math.Max(0, adjusted);
     }
 
-    private static int ComputeSeedHash(string seed, Guid runId, Guid nodeId)
+    /// <summary>
+    /// Réel pseudo-aléatoire déterministe dans [0, 1) (SHA-256, même modèle que
+    /// DeterministicMarkovSampler). Aucun System.Random, aucun string.GetHashCode.
+    /// </summary>
+    private static decimal NextUnitInterval(string seed, Guid runId, Guid nodeId, int step)
     {
-        unchecked
-        {
-            var hash = seed.GetHashCode();
-            hash = hash * 397 ^ runId.GetHashCode();
-            hash = hash * 397 ^ nodeId.GetHashCode();
-            return hash;
-        }
+        var input = string.Join(
+            '|',
+            (seed ?? string.Empty).Trim(),
+            runId.ToString("N"),
+            nodeId.ToString("N"),
+            step.ToString());
+
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(input));
+        var value = BinaryPrimitives.ReadUInt64BigEndian(hash.AsSpan(0, sizeof(ulong)));
+
+        return (decimal)(value / ((double)ulong.MaxValue + 1d));
     }
 }
 

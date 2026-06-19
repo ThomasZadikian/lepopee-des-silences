@@ -1,3 +1,4 @@
+using Leds.GameEngine.Domain.Markov.Psyche;
 using Leds.GameEngine.Domain.Rooms;
 
 namespace Leds.GameEngine.Infrastructure.Generation.Rooms.States;
@@ -16,4 +17,5 @@ public sealed record PalaceRoomStateResolutionContext(
     int NextRoomDepth,
     IReadOnlyCollection<string> ActiveLawKeys,
     IReadOnlyCollection<string> ActiveCurseKeys,
-    string? ActiveClimate);
+    string? ActiveClimate,
+    RunPsyche? Psyche = null);

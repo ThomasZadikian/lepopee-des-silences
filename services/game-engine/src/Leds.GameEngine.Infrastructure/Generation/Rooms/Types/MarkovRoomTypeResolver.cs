@@ -1,5 +1,8 @@
-﻿using Leds.GameEngine.Domain.Markov;
+﻿using Leds.GameEngine.Application.Markov;
+using Leds.GameEngine.Domain.Markov;
+using Leds.GameEngine.Domain.Markov.Psyche;
 using Leds.GameEngine.Domain.Rooms;
+using Leds.GameEngine.Infrastructure.Generation.Psyche;
 
 namespace Leds.GameEngine.Infrastructure.Generation.Rooms.Types;
 
@@ -10,20 +13,27 @@ public sealed class MarkovRoomTypeResolver : IRoomTypeResolver
 
     private readonly IRoomTypeMarkovMatrixProvider _matrixProvider;
     private readonly MarkovTransitionResolver _transitionResolver;
+    private readonly IMarkovTransitionTraceSink _traceSink;
+    private readonly EmotionalCalibration _calibration;
 
     public MarkovRoomTypeResolver(
         IRoomTypeMarkovMatrixProvider matrixProvider,
-        MarkovTransitionResolver transitionResolver)
+        MarkovTransitionResolver transitionResolver,
+        IMarkovTransitionTraceSink traceSink, 
+        EmotionalCalibration calibration)
     {
         _matrixProvider = matrixProvider;
         _transitionResolver = transitionResolver;
+        _traceSink = traceSink;
+        _calibration = calibration;
     }
 
     public RoomType ResolveNextRoomType(
         string seed,
         int nextRoomDepth,
         RoomType currentRoomType,
-        string matrixVersion)
+        string matrixVersion, 
+        RunPsyche? psyche)
     {
         if (string.IsNullOrWhiteSpace(seed))
         {
@@ -58,16 +68,17 @@ public sealed class MarkovRoomTypeResolver : IRoomTypeResolver
         }
 
         var matrix = _matrixProvider.GetMatrix(matrixVersion);
+        var scope = Scope;
+        if (psyche is not null)
+        {
+            matrix = EmotionalBias.ApplyPreference(
+                matrix, _calibration.ProjectToRoomTypes(psyche), EmotionalCalibration.RoomTypeBiasAlpha);
+            scope = $"{Scope}|psyche:{psyche.Dominant()}";   // levier "scope" du biais combiné
+        }
         var currentState = MarkovState.Create(currentRoomType.ToString());
-
-        var nextState = _transitionResolver.ResolveNextState(
-            matrix,
-            currentState,
-            seed,
-            Scope,
-            nextRoomDepth);
-
-        return ParseRoomType(nextState);
+        var resolution = _transitionResolver.ResolveWithTrace(matrix, currentState, seed, scope, nextRoomDepth);
+        _traceSink.Record(resolution.Trace);
+        return ParseRoomType(resolution.NextState);
     }
 
     private static RoomType ParseRoomType(MarkovState state)

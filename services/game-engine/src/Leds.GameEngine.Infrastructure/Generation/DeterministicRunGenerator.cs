@@ -1,4 +1,5 @@
 using Leds.GameEngine.Application.Abstractions;
+using Leds.GameEngine.Application.Markov;
 using Leds.GameEngine.Application.RoomMaps;
 using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
@@ -15,17 +16,20 @@ public sealed class DeterministicRunGenerator : IRunGenerator
     private readonly IRoomTypeResolver _roomTypeResolver;
     private readonly IPalaceRoomStateResolver _palaceRoomStateResolver;
     private readonly IMapRoomGenerator _mapRoomGenerator;
+    private readonly IRunPsycheEvolver _psycheEvolver;
 
     public DeterministicRunGenerator(
         ISeededRandomFactory randomFactory,
         IRoomTypeResolver roomTypeResolver,
         IPalaceRoomStateResolver palaceRoomStateResolver,
-        IMapRoomGenerator mapRoomGenerator)
+        IMapRoomGenerator mapRoomGenerator,
+        IRunPsycheEvolver psycheEvolver)
     {
         _randomFactory = randomFactory;
         _roomTypeResolver = roomTypeResolver;
         _palaceRoomStateResolver = palaceRoomStateResolver;
         _mapRoomGenerator = mapRoomGenerator;
+        _psycheEvolver = psycheEvolver;
     }
 
     public string GeneratorVersion => DefaultRoomMapLayoutTemplates.GeneratorVersion;
@@ -66,11 +70,16 @@ public sealed class DeterministicRunGenerator : IRunGenerator
             ? MarkovMatrixVersion
             : run.MarkovMatrixVersion;
 
+        // Inconscient du Palais : distribution latente dérivée de l'historique de salles
+        // (déterministe). Persiste (Advance), accumule (nudge) et biaise la génération.
+        var psyche = _psycheEvolver.Evolve(run);
+
         var roomType = _roomTypeResolver.ResolveNextRoomType(
             run.Seed,
             nextRoomDepth,
             run.CurrentRoom.RoomType,
-            matrixVersion);
+            matrixVersion,
+            psyche);
 
         var palaceState = _palaceRoomStateResolver.ResolveNextState(
             new PalaceRoomStateResolutionContext(
@@ -87,7 +96,8 @@ public sealed class DeterministicRunGenerator : IRunGenerator
                 ActiveCurseKeys: run.ActiveCurse is { IsConsumed: false } activeCurse
                     ? [activeCurse.Key]
                     : [],
-                ActiveClimate: ResolveActiveClimate(run)));
+                ActiveClimate: ResolveActiveClimate(run),
+                Psyche: psyche));
 
         var random = _randomFactory.CreateForRoom(
             run.Seed,

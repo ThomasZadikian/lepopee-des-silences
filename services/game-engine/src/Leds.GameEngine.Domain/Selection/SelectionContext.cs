@@ -7,4 +7,4 @@ public sealed record SelectionContext(
     string Seed,
     string DecisionType,
     string? ContextKey,
-    string AlgorithmVersion = "deterministic-v1");
+    string AlgorithmVersion = "deterministic-v2");

@@ -19,6 +19,20 @@ public sealed class MarkovTransitionResolver
         string scope,
         int step)
     {
+        return ResolveWithTrace(matrix, currentState, seed, scope, step).NextState;
+    }
+
+    /// <summary>
+    /// Comme <see cref="ResolveNextState(MarkovTransitionMatrix, MarkovState, string, string, int)"/>,
+    /// mais renvoie aussi la trace auditable (sample, source, cible, version) — SPEC §11.
+    /// </summary>
+    public MarkovTransitionResolution ResolveWithTrace(
+        MarkovTransitionMatrix matrix,
+        MarkovState currentState,
+        string seed,
+        string scope,
+        int step)
+    {
         ArgumentNullException.ThrowIfNull(matrix);
         ArgumentNullException.ThrowIfNull(currentState);
 
@@ -36,7 +50,19 @@ public sealed class MarkovTransitionResolver
             currentState.Value,
             step);
 
-        return ResolveNextState(matrix, currentState, sample);
+        var nextState = ResolveNextState(matrix, currentState, sample);
+
+        var trace = new MarkovTransitionTrace(
+            matrix.Key,
+            matrix.Version,
+            scope.Trim(),
+            seed.Trim(),
+            step,
+            currentState.Value,
+            nextState.Value,
+            sample);
+
+        return new MarkovTransitionResolution(nextState, trace);
     }
 
     public MarkovState ResolveNextState(

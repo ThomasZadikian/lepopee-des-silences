@@ -1,5 +1,8 @@
+using Leds.GameEngine.Application.Markov;
 using Leds.GameEngine.Domain.Markov;
+using Leds.GameEngine.Domain.Markov.Psyche;
 using Leds.GameEngine.Domain.Rooms;
+using Leds.GameEngine.Infrastructure.Generation.Psyche;
 using Leds.GameEngine.Infrastructure.Generation.Rooms.Types;
 
 namespace Leds.GameEngine.Infrastructure.Generation.Rooms.States;
@@ -10,10 +13,17 @@ public sealed class MarkovPalaceRoomStateResolver : IPalaceRoomStateResolver
     private const string Scope = "palace-room-state-generation";
 
     private readonly MarkovTransitionResolver _transitionResolver;
+    private readonly IMarkovTransitionTraceSink _traceSink;
+    private readonly EmotionalCalibration _calibration;
 
-    public MarkovPalaceRoomStateResolver(MarkovTransitionResolver transitionResolver)
+    public MarkovPalaceRoomStateResolver(
+        MarkovTransitionResolver transitionResolver,
+        IMarkovTransitionTraceSink traceSink, 
+        EmotionalCalibration calibration)
     {
         _transitionResolver = transitionResolver;
+        _traceSink = traceSink;
+        _calibration = calibration;
     }
 
     public PalaceRoomState ResolveNextState(PalaceRoomStateResolutionContext context)
@@ -53,14 +63,16 @@ public sealed class MarkovPalaceRoomStateResolver : IPalaceRoomStateResolver
         var currentState = ToCandidateState(context.PreviousRoomState);
         var scope = BuildScope(context);
 
-        var nextState = _transitionResolver.ResolveNextState(
-            matrix,
-            MarkovState.Create(currentState.ToString()),
-            context.Seed,
-            scope,
-            context.NextRoomDepth);
-
-        return Enum.Parse<PalaceRoomState>(nextState.Value);
+        if (context.Psyche is not null)
+        {
+            matrix = EmotionalBias.ApplyPreference(
+                matrix, _calibration.ProjectToPalaceStates(context.Psyche), EmotionalCalibration.PalaceStateBiasAlpha);
+            scope = $"{scope}|psyche:{context.Psyche.Dominant()}";
+        }
+        var resolution = _transitionResolver.ResolveWithTrace(
+            matrix, MarkovState.Create(currentState.ToString()), context.Seed, scope, context.NextRoomDepth);
+        _traceSink.Record(resolution.Trace);
+        return Enum.Parse<PalaceRoomState>(resolution.NextState.Value);
     }
 
     private static PalaceRoomState ToCandidateState(PalaceRoomState state)
