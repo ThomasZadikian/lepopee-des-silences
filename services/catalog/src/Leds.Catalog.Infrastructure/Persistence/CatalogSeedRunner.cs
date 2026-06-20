@@ -12,6 +12,7 @@ public sealed class CatalogSeedRunner
     private const string DataModelVersion = "alpha-0.8.1";
     private const string CatalogGatewayContentVersion = "alpha-0.8.1-catalog-content-gateway";
     private const string CatalogTemplatesVersion = "alpha-0.9.2-catalog-templates";
+    private const string CatalogAntechamberFixVersion = "alpha-1.0.1-antechamber-boss-fix";
 
     private readonly CatalogDbContext _context;
     private readonly ILogger<CatalogSeedRunner> _logger;
@@ -28,6 +29,7 @@ public sealed class CatalogSeedRunner
         await ApplyDataModelSeedAsync(cancellationToken);
         await ApplyCatalogGatewayContentSeedAsync(cancellationToken);
         await ApplyCatalogTemplatesSeedAsync(cancellationToken);
+        await ApplyCatalogAntechamberBossFixSeedAsync(cancellationToken);
     }
 
     private async Task ApplyLegacySeedAsync(CancellationToken cancellationToken)
@@ -1449,6 +1451,215 @@ public sealed class CatalogSeedRunner
         AddSeedVersion(CatalogTemplatesVersion);
         await _context.SaveChangesAsync(cancellationToken);
         _logger.LogInformation("Seed {SeedKey} version {Version} applied successfully.", SeedKey, CatalogTemplatesVersion);
+    }
+
+    private async Task ApplyCatalogAntechamberBossFixSeedAsync(CancellationToken cancellationToken)
+    {
+        if (await HasSeedVersionAsync(CatalogAntechamberFixVersion, cancellationToken))
+        {
+            _logger.LogInformation("Seed {SeedKey} version {Version} already applied. Skipping.", SeedKey, CatalogAntechamberFixVersion);
+            return;
+        }
+
+        _logger.LogInformation("Applying seed {SeedKey} version {Version}...", SeedKey, CatalogAntechamberFixVersion);
+
+        var now = DateTime.UtcNow;
+
+        await SeedAntechamberSkillsAsync(now, cancellationToken);
+        await SeedAntechamberEnemiesAsync(now, cancellationToken);
+
+        await AddRoomBossAsync("room-boss.memory.archivist", "Archiviste des Échos", "Memory", "enemy.threshold.echo", cancellationToken);
+        await AddRoomBossAsync("room-boss.forest.rootbound-memory", "Gardien des Racines", "Forest", "enemy.threshold.fracture", cancellationToken);
+        await AddRoomBossAsync("room-boss.rupture.fractured-echo", "Fragment de Rupture", "Rupture", "enemy.threshold.fracture", cancellationToken);
+        await AddRoomBossAsync("room-boss.silence.mute-herald", "Voix Éteinte", "Silence", "enemy.silence.mute-witness", cancellationToken);
+        await AddRoomBossAsync("room-boss.antechamber.last-door", "Gardien de l'Antichambre", "Antechamber", "enemy.antechamber.door-keeper", cancellationToken);
+        await AddRoomBossAsync("room-boss.final.himlit", "Him'Lit", "Final", "enemy.final.silent-double", cancellationToken);
+
+        AddSeedVersion(CatalogAntechamberFixVersion);
+        await _context.SaveChangesAsync(cancellationToken);
+        _logger.LogInformation("Seed {SeedKey} version {Version} applied successfully.", SeedKey, CatalogAntechamberFixVersion);
+    }
+
+    private async Task SeedAntechamberSkillsAsync(DateTime now, CancellationToken cancellationToken)
+    {
+        var skills = new[]
+        {
+            new SkillDefinitionEntity
+            {
+                Id = Guid.NewGuid(),
+                Key = "skill.basic.shield",
+                Name = "Bouclier",
+                DisplayName = "Bouclier",
+                Description = "Un bouclier qui absorbe les degats pendant un tour.",
+                Version = CatalogAntechamberFixVersion,
+                Status = "Active",
+                SkillType = "Defense",
+                TargetingType = "Self",
+                TargetingMode = "Self",
+                EffectType = "Guard",
+                CostType = "None",
+                ManaCost = 0,
+                ChargeCost = 0,
+                BasePower = 5,
+                Power = 5,
+                Accuracy = 100,
+                ActionCost = 10,
+                BaseWeight = 1,
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
+            },
+            new SkillDefinitionEntity
+            {
+                Id = Guid.NewGuid(),
+                Key = "skill.basic.taunt",
+                Name = "Provocation",
+                DisplayName = "Provocation",
+                Description = "Force l'ennemi à cibler le lanceur.",
+                Version = CatalogAntechamberFixVersion,
+                Status = "Active",
+                SkillType = "Utility",
+                TargetingType = "SingleEnemy",
+                TargetingMode = "SingleEnemy",
+                EffectType = "Utility",
+                CostType = "Mana",
+                ManaCost = 3,
+                ChargeCost = 0,
+                BasePower = 0,
+                Power = 0,
+                Accuracy = 100,
+                ActionCost = 10,
+                BaseWeight = 1,
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
+            },
+            new SkillDefinitionEntity
+            {
+                Id = Guid.NewGuid(),
+                Key = "skill.basic.charge",
+                Name = "Charge",
+                DisplayName = "Charge",
+                Description = "Une charge puissante qui inflige des degats supplémentaires.",
+                Version = CatalogAntechamberFixVersion,
+                Status = "Active",
+                SkillType = "Damage",
+                TargetingType = "SingleEnemy",
+                TargetingMode = "SingleEnemy",
+                EffectType = "Damage",
+                CostType = "Mana",
+                ManaCost = 7,
+                ChargeCost = 1,
+                BasePower = 18,
+                Power = 18,
+                Accuracy = 100,
+                ActionCost = 10,
+                BaseWeight = 1,
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
+            },
+            new SkillDefinitionEntity
+            {
+                Id = Guid.NewGuid(),
+                Key = "skill.basic.enrage",
+                Name = "Enragement",
+                DisplayName = "Enragement",
+                Description = "Augmente la puissance d'attaque au prix de la défense.",
+                Version = CatalogAntechamberFixVersion,
+                Status = "Active",
+                SkillType = "Buff",
+                TargetingType = "Self",
+                TargetingMode = "Self",
+                EffectType = "Buff",
+                CostType = "Mana",
+                ManaCost = 5,
+                ChargeCost = 1,
+                BasePower = 0,
+                Power = 0,
+                Accuracy = 100,
+                ActionCost = 10,
+                BaseWeight = 1,
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
+            }
+        };
+
+        foreach (var skill in skills)
+        {
+            var existing = await _context.SkillDefinitions
+                .FirstOrDefaultAsync(s => s.Key == skill.Key, cancellationToken);
+            if (existing is null)
+            {
+                _context.SkillDefinitions.Add(skill);
+            }
+        }
+    }
+
+    private async Task SeedAntechamberEnemiesAsync(DateTime now, CancellationToken cancellationToken)
+    {
+        var enemies = new[]
+        {
+            new EnemyDefinitionEntity
+            {
+                Id = Guid.NewGuid(),
+                Key = "enemy.antechamber.door-keeper",
+                Name = "Gardien de Porte",
+                DisplayName = "Gardien de Porte",
+                Description = "Il garde l'entr\u00e9e de l'Antichambre. Il ne laisse passer personne.",
+                Version = CatalogAntechamberFixVersion,
+                Status = "Active",
+                Archetype = "Guard",
+                Family = "Antechamber",
+                Rank = "Common",
+                Role = "Tank",
+                BaseDifficulty = 5,
+                EncounterWeight = 1,
+                MinRiskLevel = 1,
+                MaxRiskLevel = 5,
+                MinDepth = 1,
+                MaxDepth = 5,
+                BaseWeight = 1,
+                CompatibleRoomTypesJson = "[\"Antechamber\"]",
+                TagsJson = "[\"antechamber\",\"guard\",\"door\"]",
+                SkillKeysJson = "[\"skill.basic.shield\",\"skill.basic.strike\",\"skill.basic.taunt\"]",
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
+            },
+            new EnemyDefinitionEntity
+            {
+                Id = Guid.NewGuid(),
+                Key = "enemy.antechamber.last-refusal",
+                Name = "Dernier Refus",
+                DisplayName = "Dernier Refus",
+                Description = "Le dernier obstacle avant le Final. Il ne c\u00e9dera pas.",
+                Version = CatalogAntechamberFixVersion,
+                Status = "Active",
+                Archetype = "Bruiser",
+                Family = "Antechamber",
+                Rank = "Common",
+                Role = "DPS",
+                BaseDifficulty = 5,
+                EncounterWeight = 1,
+                MinRiskLevel = 1,
+                MaxRiskLevel = 5,
+                MinDepth = 1,
+                MaxDepth = 5,
+                BaseWeight = 1,
+                CompatibleRoomTypesJson = "[\"Antechamber\"]",
+                TagsJson = "[\"antechamber\",\"bruiser\",\"final-stand\"]",
+                SkillKeysJson = "[\"skill.basic.strike\",\"skill.basic.charge\",\"skill.basic.enrage\"]",
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
+            }
+        };
+
+        foreach (var enemy in enemies)
+        {
+            var existing = await _context.EnemyDefinitions
+                .FirstOrDefaultAsync(e => e.Key == enemy.Key, cancellationToken);
+            if (existing is null)
+            {
+                _context.EnemyDefinitions.Add(enemy);
+            }
+        }
     }
 
     private async Task CleanupInvalidEnumEntitiesAsync(CancellationToken cancellationToken)
