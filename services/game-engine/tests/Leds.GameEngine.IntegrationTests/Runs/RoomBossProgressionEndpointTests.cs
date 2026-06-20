@@ -6,9 +6,9 @@ using System.Net.Http.Json;
 
 namespace Leds.GameEngine.IntegrationTests.Runs;
 
-public sealed class RoomBossProgressionEndpointTests : RunIntegrationTestBase, IClassFixture<WebApplicationFactory<Program>>
+public sealed class RoomBossProgressionEndpointTests : RunIntegrationTestBase, IClassFixture<GameEngineApiFactory>
 {
-    public RoomBossProgressionEndpointTests(WebApplicationFactory<Program> factory)
+    public RoomBossProgressionEndpointTests(GameEngineApiFactory factory)
         : base(factory.CreateClient())
     {
     }

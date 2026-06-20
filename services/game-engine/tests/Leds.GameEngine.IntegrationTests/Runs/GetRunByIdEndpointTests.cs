@@ -13,12 +13,12 @@ using System.Text.Json;
 
 namespace Leds.GameEngine.IntegrationTests.Runs;
 
-public sealed class GetRunByIdEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class GetRunByIdEndpointTests : IClassFixture<GameEngineApiFactory>
 {
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly GameEngineApiFactory _factory;
     private readonly HttpClient _client;
 
-    public GetRunByIdEndpointTests(WebApplicationFactory<Program> factory)
+    public GetRunByIdEndpointTests(GameEngineApiFactory factory)
     {
         _factory = factory;
         _client = factory.CreateClient();
@@ -73,7 +73,7 @@ public sealed class GetRunByIdEndpointTests : IClassFixture<WebApplicationFactor
                 startRunResponse.Run.Id,
                 "palace.whispers",
                 "Murmures du Palais",
-                "Le Palais observe la traversée.",
+                "Le Palais observe la traversï¿½e.",
                 "high",
                 sourceDecisionId));
         }
@@ -90,7 +90,7 @@ public sealed class GetRunByIdEndpointTests : IClassFixture<WebApplicationFactor
         var indicator = payload.Run.PalaceIndicators!.Single();
         indicator.Key.Should().Be("palace.whispers");
         indicator.Label.Should().Be("Murmures du Palais");
-        indicator.Description.Should().Be("Le Palais observe la traversée.");
+        indicator.Description.Should().Be("Le Palais observe la traversï¿½e.");
         indicator.Level.Should().Be("high");
         indicator.Source.Should().Be("run");
 

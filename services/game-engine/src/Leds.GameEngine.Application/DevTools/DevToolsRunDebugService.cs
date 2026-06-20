@@ -4,6 +4,7 @@ using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Application.Combats.Dtos;
 using Leds.GameEngine.Application.Combats.Resolution;
 using Leds.GameEngine.Application.Common.Exceptions;
+using Leds.GameEngine.Application.Rewards.Ports;
 using Leds.GameEngine.Application.Runs.Dtos;
 using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Common;
@@ -23,18 +24,21 @@ public sealed class DevToolsRunDebugService : IDevToolsRunDebugService
     private readonly IRunRepository _runRepository;
     private readonly IRunGenerator _runGenerator;
     private readonly ICatalogContentGateway _catalogContentGateway;
-    private readonly ICombatResolutionService _combatResolution; 
+    private readonly ICombatResolutionService _combatResolution;
+    private readonly IRewardOfferRepository _rewardOfferRepository;
 
     public DevToolsRunDebugService(
         IRunRepository runRepository,
         IRunGenerator runGenerator,
         ICatalogContentGateway catalogContentGateway,
-        ICombatResolutionService combatResolution)
+        ICombatResolutionService combatResolution,
+        IRewardOfferRepository rewardOfferRepository)
     {
         _runRepository = runRepository;
         _runGenerator = runGenerator;
         _catalogContentGateway = catalogContentGateway;
         _combatResolution = combatResolution;
+        _rewardOfferRepository = rewardOfferRepository;
     }
 
     public async Task<DevToolsRunDebugResult> AdvanceRoomAsync(
@@ -213,8 +217,13 @@ public sealed class DevToolsRunDebugService : IDevToolsRunDebugService
         }
 
         combat.CompleteIfAllEnemiesDefeated();
-        await _combatResolution.ApplyOutcomeAsync(run, combat, DateTimeOffset.UtcNow, cancellationToken);
+        var rewardOffer = _combatResolution.ApplyOutcome(run, combat, DateTimeOffset.UtcNow);
         await _runRepository.UpdateAsync(run, cancellationToken);
+        if (rewardOffer is not null)
+        {
+            await _rewardOfferRepository.AddAsync(run.Id, rewardOffer, cancellationToken);
+        }
+
         return new DevToolsCombatDebugResult("Enemies killed.", CombatRuntimeDto.FromDomain(combat));
     }
 
@@ -232,8 +241,13 @@ public sealed class DevToolsRunDebugService : IDevToolsRunDebugService
             enemy.MarkDefeated();
 
         combat.CompleteIfAllEnemiesDefeated();
-        await _combatResolution.ApplyOutcomeAsync(run, combat, DateTimeOffset.UtcNow, cancellationToken);
+        var rewardOffer = _combatResolution.ApplyOutcome(run, combat, DateTimeOffset.UtcNow);
         await _runRepository.UpdateAsync(run, cancellationToken);
+        if (rewardOffer is not null)
+        {
+            await _rewardOfferRepository.AddAsync(run.Id, rewardOffer, cancellationToken);
+        }
+
         return new DevToolsCombatDebugResult("Enemies killed.", CombatRuntimeDto.FromDomain(combat));
     }
 

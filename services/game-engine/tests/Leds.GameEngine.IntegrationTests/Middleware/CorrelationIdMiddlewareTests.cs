@@ -3,11 +3,11 @@ using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace Leds.GameEngine.IntegrationTests.Middleware;
 
-public sealed class CorrelationIdMiddlewareTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class CorrelationIdMiddlewareTests : IClassFixture<GameEngineApiFactory>
 {
     private readonly HttpClient _client;
 
-    public CorrelationIdMiddlewareTests(WebApplicationFactory<Program> factory)
+    public CorrelationIdMiddlewareTests(GameEngineApiFactory factory)
     {
         _client = factory.CreateClient();
     }

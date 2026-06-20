@@ -28,7 +28,8 @@ public sealed class UseCombatSkillCommandHandler
     private readonly IEnemyCombatTurnResolver _enemyTurnResolver;
     private readonly IClock _clock;
     private readonly ICombatActionRecordRepository _actionRecordRepository;
-    private readonly ICombatResolutionService _combatResolution; 
+    private readonly ICombatResolutionService _combatResolution;
+    private readonly IRewardOfferRepository _rewardOfferRepository;
 
     public UseCombatSkillCommandHandler(
         IRunRepository runRepository,
@@ -37,7 +38,8 @@ public sealed class UseCombatSkillCommandHandler
         IEnemyCombatTurnResolver enemyTurnResolver,
         IClock clock,
         ICombatActionRecordRepository actionRecordRepository,
-        ICombatResolutionService combatResolution)
+        ICombatResolutionService combatResolution,
+        IRewardOfferRepository rewardOfferRepository)
     {
         _runRepository = runRepository;
         _validator = validator;
@@ -46,6 +48,7 @@ public sealed class UseCombatSkillCommandHandler
         _clock = clock;
         _actionRecordRepository = actionRecordRepository;
         _combatResolution = combatResolution;
+        _rewardOfferRepository = rewardOfferRepository;
     }
 
     public async Task<CombatSkillActionResult> Handle(
@@ -102,7 +105,7 @@ public sealed class UseCombatSkillCommandHandler
             .ToArray();
 
         var logEntry = new CombatLogEntryDto(
-            OccurredAtUtc: now.DateTime,
+            OccurredAtUtc: now.UtcDateTime,
             Type: "ActionAccepted",
             Message: $"Skill '{request.SkillKey}' used by actor '{request.ActorId}'.",
             ActorId: request.ActorId,
@@ -117,7 +120,7 @@ public sealed class UseCombatSkillCommandHandler
             validationResult.Skill!,
             validationResult.Targets);
 
-        var progressionLogEntries = AdvanceCombat(effectResolution.Combat, now.DateTime);
+        var progressionLogEntries = AdvanceCombat(effectResolution.Combat, now.UtcDateTime);
 
         var allActionRecords = new List<CombatActionRecord>();
         var playerActionRecords = CombatMetricsCalculator.CalculateActionRecords(
@@ -127,20 +130,25 @@ public sealed class UseCombatSkillCommandHandler
             validationResult.Skill!,
             validationResult.Targets,
             beforeSnapshots,
-            now.DateTime);
+            now.UtcDateTime);
         allActionRecords.AddRange(playerActionRecords);
 
-        var enemyTurnLogEntries = ResolveEnemyTurns(effectResolution.Combat, allActionRecords, run.ActiveCombat.Id.Value, now.DateTime);
+        var enemyTurnLogEntries = ResolveEnemyTurns(effectResolution.Combat, allActionRecords, run.ActiveCombat.Id.Value, now.UtcDateTime);
         var finalCombat = effectResolution.Combat;
         var combatCompleted = finalCombat.Status == CombatStatus.Completed;
         var combatFailed = finalCombat.Status == CombatStatus.Failed;
 
         SyncPlayerStateFromCombat(run, finalCombat);
 
-        await _combatResolution.ApplyOutcomeAsync(run, finalCombat, now, cancellationToken);
+        var rewardOffer = _combatResolution.ApplyOutcome(run, finalCombat, now);
+
+        await _runRepository.UpdateAsync(run, cancellationToken);
+        if (rewardOffer is not null)
+        {
+            await _rewardOfferRepository.AddAsync(run.Id, rewardOffer, cancellationToken);
+        }
 
         await _actionRecordRepository.AddRangeAsync(allActionRecords, cancellationToken);
-        await _runRepository.UpdateAsync(run, cancellationToken);
 
         var logEntries = new[] { logEntry }
             .Concat(effectResolution.LogEntries)
@@ -217,7 +225,7 @@ public sealed class UseCombatSkillCommandHandler
                             enemySkill,
                             affectedTargets,
                             beforeSnapshots,
-                            now.DateTime);
+                            now.UtcDateTime);
                         actionRecords.AddRange(enemyRecords);
                     }
                 }

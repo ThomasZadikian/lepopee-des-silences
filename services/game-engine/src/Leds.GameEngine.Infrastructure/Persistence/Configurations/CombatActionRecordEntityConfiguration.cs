@@ -116,11 +116,6 @@ public sealed class CombatActionRecordEntityConfiguration : IEntityTypeConfigura
             .HasColumnName("occurred_at_utc")
             .IsRequired();
 
-        builder.HasOne(x => x.Combat)
-            .WithMany()
-            .HasForeignKey(x => x.CombatId)
-            .OnDelete(DeleteBehavior.Cascade);
-
         builder.HasIndex(x => x.CombatId);
         builder.HasIndex(x => x.TurnNumber);
         builder.HasIndex(x => x.ActorId);

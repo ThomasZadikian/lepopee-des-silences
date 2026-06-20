@@ -159,6 +159,11 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
             return "Guard";
         }
 
+        if (string.Equals(skill.EffectType, "DamageVitality", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Damage";
+        }
+
         return skill.EffectType;
     }
 

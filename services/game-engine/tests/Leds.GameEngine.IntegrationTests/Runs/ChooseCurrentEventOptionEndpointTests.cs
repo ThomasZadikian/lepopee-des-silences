@@ -7,12 +7,12 @@ using System.Net.Http.Json;
 namespace Leds.GameEngine.IntegrationTests.Runs;
 
 public sealed class ChooseCurrentEventOptionEndpointTests
-    : IClassFixture<WebApplicationFactory<Program>>
+    : IClassFixture<GameEngineApiFactory>
 {
     private readonly HttpClient _client;
 
     public ChooseCurrentEventOptionEndpointTests(
-        WebApplicationFactory<Program> factory)
+        GameEngineApiFactory factory)
     {
         _client = factory.CreateClient();
     }

@@ -1,5 +1,4 @@
-﻿using Leds.GameEngine.Application.Rewards.Ports;
-using Leds.GameEngine.Application.Rewards.RewardOfferFactory;
+﻿using Leds.GameEngine.Application.Rewards.RewardOfferFactory;
 using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rewards;
@@ -13,27 +12,22 @@ public interface ICombatResolutionService
     /// Applique LA conséquence métier d'une fin de combat (victoire ou défaite),
     /// quel que soit le point d'entrée. Source unique de vérité.
     /// </summary>
-    Task ApplyOutcomeAsync(Run run, Combat combat, DateTimeOffset now, CancellationToken cancellationToken = default);
+    RewardOffer? ApplyOutcome(Run run, Combat combat, DateTimeOffset now);
 }
 
 public sealed class CombatResolutionService : ICombatResolutionService
 {
-    private readonly IRewardOfferRepository _rewardOfferRepository;
     private readonly RewardOfferFactory _rewardOfferFactory;
 
-    public CombatResolutionService(
-        IRewardOfferRepository rewardOfferRepository,
-        RewardOfferFactory rewardOfferFactory)
+    public CombatResolutionService(RewardOfferFactory rewardOfferFactory)
     {
-        _rewardOfferRepository = rewardOfferRepository;
         _rewardOfferFactory = rewardOfferFactory;
     }
 
-    public async Task ApplyOutcomeAsync(
+    public RewardOffer? ApplyOutcome(
         Run run,
         Combat combat,
-        DateTimeOffset now,
-        CancellationToken cancellationToken = default)
+        DateTimeOffset now)
     {
         switch (combat.Status)
         {
@@ -47,13 +41,15 @@ public sealed class CombatResolutionService : ICombatResolutionService
                 run.ConsumeNextCombatModifiers();
 
                 var rewardOffer = CreateRewardOffer(combatNode);
-                await _rewardOfferRepository.AddAsync(rewardOffer, cancellationToken);
                 run.SetPendingRewardOffer(rewardOffer.Id);
-                break;
+                return rewardOffer;
 
             case CombatStatus.Failed:
                 run.FailActiveCombat(now);
-                break;
+                return null;
+
+            default:
+                return null;
         }
     }
 

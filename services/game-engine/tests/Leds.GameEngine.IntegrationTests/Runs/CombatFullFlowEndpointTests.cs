@@ -8,9 +8,9 @@ using System.Net.Http.Json;
 
 namespace Leds.GameEngine.IntegrationTests.Runs;
 
-public sealed class CombatFullFlowEndpointTests : RunIntegrationTestBase, IClassFixture<WebApplicationFactory<Program>>
+public sealed class CombatFullFlowEndpointTests : RunIntegrationTestBase, IClassFixture<GameEngineApiFactory>
 {
-    public CombatFullFlowEndpointTests(WebApplicationFactory<Program> factory)
+    public CombatFullFlowEndpointTests(GameEngineApiFactory factory)
         : base(factory.CreateClient())
     {
     }

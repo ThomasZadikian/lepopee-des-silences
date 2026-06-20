@@ -36,6 +36,18 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 BaseSpeed: 4,
                 Affinity: "Void",
                 SkillKeys: ["skill.basic.strike", "skill.basic.shield"]),
+            ["enemy-rare-v1"] = new EnemyTemplateSnapshot(
+                Key: "enemy-rare-v1",
+                Name: "Rare Echo",
+                Description: "A rare combat apparition",
+                Version: "1.0.0",
+                Status: "Active",
+                BaseHealth: 55,
+                BaseAttack: 14,
+                BaseDefense: 5,
+                BaseSpeed: 6,
+                Affinity: "Neutral",
+                SkillKeys: ["skill.basic.strike"]),
             ["boss.threshold.warden-v1"] = new EnemyTemplateSnapshot(
                 Key: "boss.threshold.warden-v1",
                 Name: "Gardien du Seuil",
@@ -168,8 +180,32 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 MinRiskLevel: 1,
                 MaxRiskLevel: 3,
                 RequiresPlayerChoice: false,
-                NarrativeTags: ["combat", "shadow"])
+                NarrativeTags: ["combat", "shadow"]),
+            ["event-rare-encounter-v1"] = EventTemplate("event-rare-encounter-v1", "Rare Encounter", "Rare"),
+            ["event-boss.threshold.warden-v1"] = EventTemplate("event-boss.threshold.warden-v1", "Threshold Warden", "RoomBoss"),
+            ["event-boss.forest.rootbound-memory-v1"] = EventTemplate("event-boss.forest.rootbound-memory-v1", "Rootbound Memory", "RoomBoss"),
+            ["event-boss.rupture.fractured-echo-v1"] = EventTemplate("event-boss.rupture.fractured-echo-v1", "Fractured Echo", "RoomBoss"),
+            ["event-boss.silence.mute-herald-v1"] = EventTemplate("event-boss.silence.mute-herald-v1", "Mute Herald", "RoomBoss"),
+            ["event-boss.memory.archivist-v1"] = EventTemplate("event-boss.memory.archivist-v1", "Archivist", "RoomBoss"),
+            ["event-boss.antechamber.last-door-v1"] = EventTemplate("event-boss.antechamber.last-door-v1", "Last Door", "RoomBoss"),
+            ["event-boss.final.himlit-v1"] = EventTemplate("event-boss.final.himlit-v1", "Him'Lit", "RoomBoss")
         };
+
+    private static EventTemplateSnapshot EventTemplate(string key, string name, string type)
+    {
+        return new EventTemplateSnapshot(
+            Key: key,
+            Name: name,
+            Description: name,
+            Version: "1.0.0",
+            Status: "Active",
+            Type: type,
+            DefaultOutcomeKind: type,
+            MinRiskLevel: 1,
+            MaxRiskLevel: 5,
+            RequiresPlayerChoice: false,
+            NarrativeTags: [type.ToLowerInvariant()]);
+    }
 
     private static readonly IReadOnlyDictionary<string, PalaceLawDefinitionSnapshot> PalaceLawDefinitions =
         new Dictionary<string, PalaceLawDefinitionSnapshot>(StringComparer.OrdinalIgnoreCase)

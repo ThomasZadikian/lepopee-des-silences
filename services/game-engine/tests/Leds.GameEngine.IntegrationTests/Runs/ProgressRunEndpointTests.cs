@@ -9,9 +9,9 @@ using System.Net.Http.Json;
 
 namespace Leds.GameEngine.IntegrationTests.Runs;
 
-public sealed class ProgressRunEndpointTests : RunIntegrationTestBase, IClassFixture<WebApplicationFactory<Program>>
+public sealed class ProgressRunEndpointTests : RunIntegrationTestBase, IClassFixture<GameEngineApiFactory>
 {
-    public ProgressRunEndpointTests(WebApplicationFactory<Program> factory)
+    public ProgressRunEndpointTests(GameEngineApiFactory factory)
         : base(factory.CreateClient())
     {
     }

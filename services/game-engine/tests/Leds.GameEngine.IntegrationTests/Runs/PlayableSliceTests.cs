@@ -8,9 +8,9 @@ using System.Net.Http.Json;
 
 namespace Leds.GameEngine.IntegrationTests.Runs;
 
-public sealed class PlayableSliceTests : RunIntegrationTestBase, IClassFixture<WebApplicationFactory<Program>>
+public sealed class PlayableSliceTests : RunIntegrationTestBase, IClassFixture<GameEngineApiFactory>
 {
-    public PlayableSliceTests(WebApplicationFactory<Program> factory)
+    public PlayableSliceTests(GameEngineApiFactory factory)
         : base(factory.CreateClient())
     {
     }

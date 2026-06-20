@@ -28,5 +28,4 @@ public sealed class CombatActionRecordEntity
     public string EffectsApplied { get; set; } = "[]";
     public DateTime OccurredAtUtc { get; set; }
 
-    public CombatEntity? Combat { get; set; }
 }

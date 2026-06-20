@@ -6,9 +6,9 @@ using System.Net.Http.Json;
 
 namespace Leds.GameEngine.IntegrationTests.Runs;
 
-public sealed class AbandonRunEndpointTests : RunIntegrationTestBase, IClassFixture<WebApplicationFactory<Program>>
+public sealed class AbandonRunEndpointTests : RunIntegrationTestBase, IClassFixture<GameEngineApiFactory>
 {
-    public AbandonRunEndpointTests(WebApplicationFactory<Program> factory)
+    public AbandonRunEndpointTests(GameEngineApiFactory factory)
         : base(factory.CreateClient())
     {
     }

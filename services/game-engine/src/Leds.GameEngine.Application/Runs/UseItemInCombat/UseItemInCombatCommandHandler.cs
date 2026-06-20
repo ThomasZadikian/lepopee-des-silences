@@ -5,6 +5,7 @@ using Leds.GameEngine.Application.Combats.Dtos;
 using Leds.GameEngine.Application.Combats.EnemyTurns;
 using Leds.GameEngine.Application.Combats.Resolution;
 using Leds.GameEngine.Application.Common.Exceptions;
+using Leds.GameEngine.Application.Rewards.Ports;
 using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Runs;
 using Leds.SharedBuildingBlocks.Time;
@@ -18,18 +19,21 @@ public sealed class UseItemInCombatCommandHandler
     private readonly IRunRepository _runRepository;
     private readonly IEnemyCombatTurnResolver _enemyTurnResolver;
     private readonly IClock _clock;
-    private readonly ICombatResolutionService _combatResolution; 
+    private readonly ICombatResolutionService _combatResolution;
+    private readonly IRewardOfferRepository _rewardOfferRepository;
 
     public UseItemInCombatCommandHandler(
         IRunRepository runRepository,
         IEnemyCombatTurnResolver enemyTurnResolver,
         IClock clock, 
-        ICombatResolutionService combatResolution)
+        ICombatResolutionService combatResolution,
+        IRewardOfferRepository rewardOfferRepository)
     {
         _runRepository = runRepository;
         _enemyTurnResolver = enemyTurnResolver;
         _clock = clock;
         _combatResolution = combatResolution;
+        _rewardOfferRepository = rewardOfferRepository;
     }
 
     public async Task<CombatSkillActionResult> Handle(
@@ -84,7 +88,7 @@ public sealed class UseItemInCombatCommandHandler
 
         // Entry d'utilisation
         logs.Add(new CombatLogEntryDto(
-            OccurredAtUtc: now.DateTime,
+            OccurredAtUtc: now.UtcDateTime,
             Type: "ItemUsed",
             Message: $"{playerCombatant.DisplayName} utilise {item.DisplayName}.",
             ActorId: playerCombatant.Id.Value,
@@ -98,7 +102,7 @@ public sealed class UseItemInCombatCommandHandler
             var effectEntry = item.EffectType switch
             {
                 RunItemEffectType.Heal => new CombatLogEntryDto(
-                    OccurredAtUtc: now.DateTime,
+                    OccurredAtUtc: now.UtcDateTime,
                     Type: "HealApplied",
                     Message: $"{target.DisplayName} récupère {item.EffectAmount} PV.",
                     ActorId: playerCombatant.Id.Value,
@@ -106,7 +110,7 @@ public sealed class UseItemInCombatCommandHandler
                     TargetIds: [target.Id.Value]),
 
                 RunItemEffectType.Guard => new CombatLogEntryDto(
-                    OccurredAtUtc: now.DateTime,
+                    OccurredAtUtc: now.UtcDateTime,
                     Type: "GuardGained",
                     Message: $"{target.DisplayName} gagne {item.EffectAmount} points de garde.",
                     ActorId: playerCombatant.Id.Value,
@@ -114,7 +118,7 @@ public sealed class UseItemInCombatCommandHandler
                     TargetIds: [target.Id.Value]),
 
                 RunItemEffectType.ManaRestore => new CombatLogEntryDto(
-                    OccurredAtUtc: now.DateTime,
+                    OccurredAtUtc: now.UtcDateTime,
                     Type: "ManaRestored",
                     Message: $"{target.DisplayName} récupère {item.EffectAmount} points de mana.",
                     ActorId: playerCombatant.Id.Value,
@@ -122,7 +126,7 @@ public sealed class UseItemInCombatCommandHandler
                     TargetIds: [target.Id.Value]),
 
                 RunItemEffectType.ChargeRestore => new CombatLogEntryDto(
-                    OccurredAtUtc: now.DateTime,
+                    OccurredAtUtc: now.UtcDateTime,
                     Type: "ChargeRestored",
                     Message: $"{target.DisplayName} récupère {item.EffectAmount} points de charge.",
                     ActorId: playerCombatant.Id.Value,
@@ -139,7 +143,7 @@ public sealed class UseItemInCombatCommandHandler
         // ── Avance de tour + tours ennemis ─────────────────────────────────
 
         var combat = run.ActiveCombat;
-        logs.AddRange(AdvanceCombat(combat, now.DateTime));
+        logs.AddRange(AdvanceCombat(combat, now.UtcDateTime));
         logs.AddRange(ResolveEnemyTurns(combat));
 
         SyncPlayerStateFromCombat(run, combat);
@@ -147,9 +151,13 @@ public sealed class UseItemInCombatCommandHandler
         var combatCompleted = combat.Status == CombatStatus.Completed;
         var combatFailed = combat.Status == CombatStatus.Failed;
 
-        await _combatResolution.ApplyOutcomeAsync(run, combat, now, cancellationToken);
+        var rewardOffer = _combatResolution.ApplyOutcome(run, combat, now);
 
         await _runRepository.UpdateAsync(run, cancellationToken);
+        if (rewardOffer is not null)
+        {
+            await _rewardOfferRepository.AddAsync(run.Id, rewardOffer, cancellationToken);
+        }
 
         return new CombatSkillActionResult(
             CombatId: combat.Id.Value,

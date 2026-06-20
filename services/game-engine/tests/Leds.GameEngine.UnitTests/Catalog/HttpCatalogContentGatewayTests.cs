@@ -182,7 +182,7 @@ public sealed class HttpCatalogContentGatewayTests
         var exception = await act.Should()
             .ThrowAsync<CatalogGatewayException>();
 
-        exception.Which.Message.Should().Contain("not available via the HTTP catalog gateway yet");
+        exception.Which.Message.Should().Contain("Failed to deserialize Catalog Service response");
     }
 
     [Fact]
@@ -197,7 +197,7 @@ public sealed class HttpCatalogContentGatewayTests
         var exception = await act.Should()
             .ThrowAsync<CatalogGatewayException>();
 
-        exception.Which.Message.Should().Contain("not available via the HTTP catalog gateway yet");
+        exception.Which.Message.Should().Contain("Failed to deserialize Catalog Service response");
     }
 
     [Fact]
@@ -212,7 +212,7 @@ public sealed class HttpCatalogContentGatewayTests
         var exception = await act.Should()
             .ThrowAsync<CatalogGatewayException>();
 
-        exception.Which.Message.Should().Contain("not available via the HTTP catalog gateway yet");
+        exception.Which.Message.Should().Contain("Failed to deserialize Catalog Service response");
     }
 
     [Fact]
@@ -227,7 +227,7 @@ public sealed class HttpCatalogContentGatewayTests
         var exception = await act.Should()
             .ThrowAsync<CatalogGatewayException>();
 
-        exception.Which.Message.Should().Contain("not available via the HTTP catalog gateway yet");
+        exception.Which.Message.Should().Contain("Failed to deserialize Catalog Service response");
     }
 
     [Fact]
@@ -1415,7 +1415,7 @@ public sealed class HttpCatalogContentGatewayTests
             .WithMessage("*500*");
     }
 
-    // ── Legacy template methods remain unavailable ─────────────────────
+    // ── Template methods use the HTTP catalog gateway ─────────────────────
 
     [Fact]
     public async Task GetSkillTemplateByKeyAsync_ShouldStillThrow_WhenUsingHttpGateway()
@@ -1429,7 +1429,7 @@ public sealed class HttpCatalogContentGatewayTests
         var exception = await act.Should()
             .ThrowAsync<CatalogGatewayException>();
 
-        exception.Which.Message.Should().Contain("not available via the HTTP catalog gateway yet");
+        exception.Which.Message.Should().Contain("Failed to deserialize Catalog Service response");
     }
 
     private static Mock<HttpMessageHandler> CreateMockHandler(string content, HttpStatusCode statusCode)

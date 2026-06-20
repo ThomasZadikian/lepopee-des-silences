@@ -6,11 +6,11 @@ using System.Net.Http.Json;
 
 namespace Leds.GameEngine.IntegrationTests.Runs;
 
-public sealed class StartRunEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class StartRunEndpointTests : IClassFixture<GameEngineApiFactory>
 {
     private readonly HttpClient _client;
 
-    public StartRunEndpointTests(WebApplicationFactory<Program> factory)
+    public StartRunEndpointTests(GameEngineApiFactory factory)
     {
         _client = factory.CreateClient();
     }

@@ -16,6 +16,7 @@ using Leds.GameEngine.Application.Runs.Dtos;
 using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Nodes;
+using Leds.GameEngine.Domain.Rewards;
 using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
 using Leds.SharedBuildingBlocks.Time;
@@ -111,6 +112,7 @@ public sealed class ResolveCurrentEventCommandHandler
         CombatEncounterDraftDto? encounterDraftDto = null;
         CombatRuntimeDto? combatRuntimeDto = null;
         ResolvedNodeEventContent? resolvedContent = null;
+        RewardOffer? pendingRewardOffer = null;
 
         if (isCombat)
         {
@@ -171,7 +173,7 @@ public sealed class ResolveCurrentEventCommandHandler
             // Ouverture : si un ennemi est plus rapide, il agit avant de rendre la main au joueur.
             _enemyTurnResolver.ResolveLeadingEnemyTurns(combatRuntime);
             if (combatRuntime.Status != CombatStatus.Active)
-                await _combatResolution.ApplyOutcomeAsync(run, combatRuntime, _clock.UtcNow, cancellationToken);
+                pendingRewardOffer = _combatResolution.ApplyOutcome(run, combatRuntime, _clock.UtcNow);
 
             combatRuntimeDto = CombatRuntimeDto.FromDomain(
                 combatRuntime, CombatItemHelper.GetUsableBattleItems(run));
@@ -182,8 +184,8 @@ public sealed class ResolveCurrentEventCommandHandler
                 selectedNode.RewardProfile,
                 selectedNode.RiskLevel);
 
-            await _rewardOfferRepository.AddAsync(itemRewardOffer, cancellationToken);
             run.SetPendingRewardOffer(itemRewardOffer.Id);
+            pendingRewardOffer = itemRewardOffer;
             run.ResolveCurrentEvent();
             selectedNode.ChooseEventOption("item");
         }
@@ -192,8 +194,8 @@ public sealed class ResolveCurrentEventCommandHandler
             var merchantRewardOffer = _rewardOfferFactory.CreateMerchantRewardOffer(
                 selectedNode.RiskLevel);
 
-            await _rewardOfferRepository.AddAsync(merchantRewardOffer, cancellationToken);
             run.SetPendingRewardOffer(merchantRewardOffer.Id);
+            pendingRewardOffer = merchantRewardOffer;
             run.ResolveCurrentEvent();
             selectedNode.ChooseEventOption("trade");
         }
@@ -215,6 +217,10 @@ public sealed class ResolveCurrentEventCommandHandler
         }
 
         await _runRepository.UpdateAsync(run, cancellationToken);
+        if (pendingRewardOffer is not null)
+        {
+            await _rewardOfferRepository.AddAsync(run.Id, pendingRewardOffer, cancellationToken);
+        }
 
         var outcome = ResolvedNodeEventOutcomeDto.FromResult(
             selectedNode,

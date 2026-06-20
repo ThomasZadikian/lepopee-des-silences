@@ -22,10 +22,16 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\catalog\src\Leds.Catalog.Api\Leds.Catalog.Api.csproj" />
+    <ProjectReference Include="..\..\..\catalog\src\Leds.Catalog.Api\Leds.Catalog.Api.csproj">
+      <Aliases>CatalogApi</Aliases>
+    </ProjectReference>
     <ProjectReference Include="..\..\src\Leds.GameEngine.Api\Leds.GameEngine.Api.csproj" />
     <ProjectReference Include="..\..\src\Leds.GameEngine.Infrastructure\Leds.GameEngine.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\Leds.GameEngine.Application\Leds.GameEngine.Application.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\Leds.GameEngine.UnitTests\Common\StubCatalogContentGateway.cs" Link="Common\StubCatalogContentGateway.cs" />
   </ItemGroup>
 
 </Project>

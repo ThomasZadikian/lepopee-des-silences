@@ -25,6 +25,18 @@ public sealed class CombatSkillEffectResolverTests
     }
 
     [Fact]
+    public void Resolve_ShouldApplyDamage_WhenEffectTypeIsDamageVitality()
+    {
+        var (combat, ally, enemy) = CreateCombat();
+        var skill = CreateSkill("skill.basic.strike", "DamageVitality", 10);
+
+        var result = _resolver.Resolve(combat, ally, skill, [enemy]);
+
+        result.Applied.Should().BeTrue();
+        enemy.CurrentVitality.Should().Be(70);
+    }
+
+    [Fact]
     public void Resolve_ShouldConsumeGuardBeforeVitality_WhenDamageIsApplied()
     {
         var (combat, ally, enemy) = CreateCombat();

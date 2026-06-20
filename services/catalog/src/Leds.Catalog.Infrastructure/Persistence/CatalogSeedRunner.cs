@@ -11,7 +11,7 @@ public sealed class CatalogSeedRunner
     private const string LegacyVersion = "alpha-0.5.5";
     private const string DataModelVersion = "alpha-0.8.1";
     private const string CatalogGatewayContentVersion = "alpha-0.8.1-catalog-content-gateway";
-    private const string CatalogTemplatesVersion = "alpha-0.8.2-catalog-templates";
+    private const string CatalogTemplatesVersion = "alpha-0.9.2-catalog-templates";
 
     private readonly CatalogDbContext _context;
     private readonly ILogger<CatalogSeedRunner> _logger;
@@ -159,9 +159,9 @@ public sealed class CatalogSeedRunner
                 SkillType = "Damage",
                 TargetingType = "SingleEnemy",
                 TargetingMode = "SingleEnemy",
-                EffectType = "DamageVitality",
+                EffectType = "Damage",
                 CostType = "None",
-                ManaCost = 0,
+                ManaCost = 5,
                 ChargeCost = 0,
                 BasePower = 10,
                 Power = 10,
@@ -194,12 +194,106 @@ public sealed class CatalogSeedRunner
                 BaseWeight = 1,
                 CreatedAtUtc = now,
                 UpdatedAtUtc = now
+            },
+            new SkillDefinitionEntity
+            {
+                Id = Guid.Parse("d3e4f5a6-b7c8-4d9e-0f1a-2b3c4d5e6f7a"),
+                Key = "skill.basic.weaken",
+                Name = "Affaiblissement",
+                DisplayName = "Affaiblissement",
+                Description = "Une mal\u00e9diction qui r\u00e9duit la puissance d'un ennemi.",
+                Version = LegacyVersion,
+                Status = "Active",
+                SkillType = "Debuff",
+                TargetingType = "SingleEnemy",
+                TargetingMode = "SingleEnemy",
+                EffectType = "Debuff",
+                CostType = "None",
+                ManaCost = 4,
+                ChargeCost = 0,
+                BasePower = 0,
+                Power = 0,
+                Accuracy = 100,
+                ActionCost = 10,
+                BaseWeight = 1,
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
+            },
+            new SkillDefinitionEntity
+            {
+                Id = Guid.Parse("e4f5a6b7-c8d9-4e0f-1a2b-3c4d5e6f7a8b"),
+                Key = "skill.basic.disrupt",
+                Name = "Perturbation",
+                DisplayName = "Perturbation",
+                Description = "Une interf\u00e9rence qui d\u00e9sorganise les comp\u00e9tences ennemies.",
+                Version = LegacyVersion,
+                Status = "Active",
+                SkillType = "Debuff",
+                TargetingType = "SingleEnemy",
+                TargetingMode = "SingleEnemy",
+                EffectType = "Debuff",
+                CostType = "None",
+                ManaCost = 6,
+                ChargeCost = 1,
+                BasePower = 0,
+                Power = 0,
+                Accuracy = 100,
+                ActionCost = 10,
+                BaseWeight = 1,
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
+            },
+            new SkillDefinitionEntity
+            {
+                Id = Guid.Parse("f5a6b7c8-d9e0-4f1a-2b3c-4d5e6f7a8b9c"),
+                Key = "skill.basic.focus",
+                Name = "Concentration",
+                DisplayName = "Concentration",
+                Description = "Un \u00e9tat de focalisation qui augmente la puissance du prochain sort.",
+                Version = LegacyVersion,
+                Status = "Active",
+                SkillType = "Buff",
+                TargetingType = "Self",
+                TargetingMode = "Self",
+                EffectType = "Buff",
+                CostType = "None",
+                ManaCost = 2,
+                ChargeCost = 0,
+                BasePower = 0,
+                Power = 0,
+                Accuracy = 100,
+                ActionCost = 10,
+                BaseWeight = 1,
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
             }
         };
 
         foreach (var skill in skills)
         {
-            if (!await _context.SkillDefinitions.AnyAsync(s => s.Key == skill.Key, cancellationToken))
+            var existing = await _context.SkillDefinitions
+                .FirstOrDefaultAsync(s => s.Key == skill.Key, cancellationToken);
+
+            if (existing is not null)
+            {
+                existing.Name = skill.Name;
+                existing.DisplayName = skill.DisplayName;
+                existing.Description = skill.Description;
+                existing.SkillType = skill.SkillType;
+                existing.TargetingType = skill.TargetingType;
+                existing.TargetingMode = skill.TargetingMode;
+                existing.EffectType = skill.EffectType;
+                existing.CostType = skill.CostType;
+                existing.ManaCost = skill.ManaCost;
+                existing.ChargeCost = skill.ChargeCost;
+                existing.BasePower = skill.BasePower;
+                existing.Power = skill.Power;
+                existing.Accuracy = skill.Accuracy;
+                existing.ActionCost = skill.ActionCost;
+                existing.BaseWeight = skill.BaseWeight;
+                existing.UpdatedAtUtc = now;
+            }
+            else
             {
                 _context.SkillDefinitions.Add(skill);
             }
@@ -264,12 +358,161 @@ public sealed class CatalogSeedRunner
                 SkillKeysJson = "[\"skill.basic.strike\"]",
                 CreatedAtUtc = now,
                 UpdatedAtUtc = now
+            },
+            new EnemyDefinitionEntity
+            {
+                Id = Guid.Parse("e7f8a9b0-c1d2-4e3f-4a5b-6c7d8e9f0a1b"),
+                Key = "enemy.threshold.doubt-fragment",
+                Name = "Fragment de Doute",
+                DisplayName = "Fragment de Doute",
+                Description = "Un eclat de doute emanant du seuil.",
+                Version = LegacyVersion,
+                Status = "Active",
+                Archetype = "Fragile",
+                Family = "Threshold",
+                Rank = "Common",
+                Role = "DPS",
+                BaseDifficulty = 1,
+                EncounterWeight = 1,
+                MinRiskLevel = 1,
+                MaxRiskLevel = 2,
+                MinDepth = 1,
+                MaxDepth = 1,
+                BaseWeight = 1,
+                CompatibleRoomTypesJson = "[\"Threshold\"]",
+                TagsJson = "[\"threshold\"]",
+                SkillKeysJson = "[\"skill.basic.strike\"]",
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
+            },
+            new EnemyDefinitionEntity
+            {
+                Id = Guid.Parse("f8a9b0c1-d2e3-4f4a-5b6c-7d8e9f0a1b2c"),
+                Key = "enemy.silence.mute-witness",
+                Name = "Temoin Muet",
+                DisplayName = "Temoin Muet",
+                Description = "Un temoin silencieux du palais.",
+                Version = LegacyVersion,
+                Status = "Active",
+                Archetype = "Shadow",
+                Family = "Silence",
+                Rank = "Common",
+                Role = "DPS",
+                BaseDifficulty = 1,
+                EncounterWeight = 1,
+                MinRiskLevel = 1,
+                MaxRiskLevel = 20,
+                MinDepth = 1,
+                MaxDepth = 3,
+                BaseWeight = 1,
+                CompatibleRoomTypesJson = "[\"Silence\"]",
+                TagsJson = "[\"silence\"]",
+                SkillKeysJson = "[\"skill.basic.strike\"]",
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
+            },
+            new EnemyDefinitionEntity
+            {
+                Id = Guid.Parse("a9b0c1d2-e3f4-4f5a-6b7c-8d9e0f1a2b3c"),
+                Key = "enemy.silence.absent-voice",
+                Name = "Voix Absente",
+                DisplayName = "Voix Absente",
+                Description = "Une presence privee de voix.",
+                Version = LegacyVersion,
+                Status = "Active",
+                Archetype = "Trauma",
+                Family = "Silence",
+                Rank = "Common",
+                Role = "Disruptor",
+                BaseDifficulty = 1,
+                EncounterWeight = 1,
+                MinRiskLevel = 1,
+                MaxRiskLevel = 25,
+                MinDepth = 1,
+                MaxDepth = 4,
+                BaseWeight = 1,
+                CompatibleRoomTypesJson = "[\"Silence\"]",
+                TagsJson = "[\"silence\"]",
+                SkillKeysJson = "[\"skill.basic.strike\"]",
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
+            },
+            new EnemyDefinitionEntity
+            {
+                Id = Guid.Parse("b0c1d2e3-f4a5-4f6b-7c8d-9e0f1a2b3c4d"),
+                Key = "enemy.final.silent-double",
+                Name = "Double Silencieux",
+                DisplayName = "Double Silencieux",
+                Description = "Un reflet du silence dans la salle finale.",
+                Version = LegacyVersion,
+                Status = "Active",
+                Archetype = "Shadow",
+                Family = "Final",
+                Rank = "Elite",
+                Role = "DPS",
+                BaseDifficulty = 3,
+                EncounterWeight = 1,
+                MinRiskLevel = 40,
+                MaxRiskLevel = 80,
+                MinDepth = 8,
+                MaxDepth = 12,
+                IsElite = true,
+                BaseWeight = 1,
+                CompatibleRoomTypesJson = "[\"Final\"]",
+                TagsJson = "[\"final\",\"elite\"]",
+                SkillKeysJson = "[\"skill.basic.strike\"]",
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
+            },
+            new EnemyDefinitionEntity
+            {
+                Id = Guid.Parse("c1d2e3f4-a5b6-4f7c-8d9e-0f1a2b3c4d5e"),
+                Key = "enemy.final.last-echo",
+                Name = "Dernier Echo",
+                DisplayName = "Dernier Echo",
+                Description = "Le dernier echo avant l'oubli.",
+                Version = LegacyVersion,
+                Status = "Active",
+                Archetype = "Trauma",
+                Family = "Final",
+                Rank = "Elite",
+                Role = "Disruptor",
+                BaseDifficulty = 3,
+                EncounterWeight = 1,
+                MinRiskLevel = 35,
+                MaxRiskLevel = 75,
+                MinDepth = 7,
+                MaxDepth = 12,
+                IsElite = true,
+                BaseWeight = 1,
+                CompatibleRoomTypesJson = "[\"Final\"]",
+                TagsJson = "[\"final\",\"elite\"]",
+                SkillKeysJson = "[\"skill.basic.strike\"]",
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
             }
         };
 
         foreach (var enemy in enemies)
         {
-            if (!await _context.EnemyDefinitions.AnyAsync(e => e.Key == enemy.Key, cancellationToken))
+            var existing = await _context.EnemyDefinitions
+                .FirstOrDefaultAsync(e => e.Key == enemy.Key, cancellationToken);
+
+            if (existing is not null)
+            {
+                existing.Name = enemy.Name;
+                existing.DisplayName = enemy.DisplayName;
+                existing.Description = enemy.Description;
+                existing.Archetype = enemy.Archetype;
+                existing.BaseDifficulty = enemy.BaseDifficulty;
+                existing.MinRiskLevel = enemy.MinRiskLevel;
+                existing.MaxRiskLevel = enemy.MaxRiskLevel;
+                existing.CompatibleRoomTypesJson = enemy.CompatibleRoomTypesJson;
+                existing.TagsJson = enemy.TagsJson;
+                existing.SkillKeysJson = enemy.SkillKeysJson;
+                existing.UpdatedAtUtc = now;
+            }
+            else
             {
                 _context.EnemyDefinitions.Add(enemy);
             }
@@ -816,6 +1059,34 @@ public sealed class CatalogSeedRunner
                 UpdatedAtUtc = now
             });
         }
+
+        if (!await _context.ItemDefinitions.AnyAsync(i => i.Key == "item-memory-potion", cancellationToken))
+        {
+            _context.ItemDefinitions.Add(new ItemDefinitionEntity
+            {
+                Id = Guid.NewGuid(),
+                Key = "item-memory-potion",
+                Name = "Potion de M\u00e9moire",
+                DisplayName = "Potion de M\u00e9moire",
+                Description = "Restaure une ressource mentale pendant la run.",
+                Version = "1.0",
+                Status = "Active",
+                Category = "Consumable",
+                ItemType = "Memory",
+                Rarity = "Common",
+                UsageMode = "UseOutsideCombat",
+                Lifecycle = "RuntimeRunOnly",
+                StackPolicy = "Additive",
+                MaxStack = 3,
+                IsUsableInCombat = false,
+                IsUsableOutsideCombat = true,
+                Duration = "RunOnly",
+                EffectValue = 25,
+                Price = 10,
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
+            });
+        }
     }
 
     private async Task AddCatalogGatewayRewardTemplatesAsync(DateTime now, CancellationToken cancellationToken)
@@ -1167,155 +1438,256 @@ public sealed class CatalogSeedRunner
 
         var now = DateTime.UtcNow;
 
+        await SeedSkillDefinitionsAsync(cancellationToken);
+        await SeedEnemyDefinitionsAsync(cancellationToken);
         await SeedEnemyTemplatesAsync(now, cancellationToken);
         await SeedSkillTemplatesAsync(now, cancellationToken);
         await SeedEventTemplatesAsync(now, cancellationToken);
         await SeedRoomBossCatalogAsync(now, cancellationToken);
+        await AddCatalogGatewayItemDefinitionsAsync(now, cancellationToken);
 
         AddSeedVersion(CatalogTemplatesVersion);
         await _context.SaveChangesAsync(cancellationToken);
         _logger.LogInformation("Seed {SeedKey} version {Version} applied successfully.", SeedKey, CatalogTemplatesVersion);
     }
 
+    private async Task CleanupInvalidEnumEntitiesAsync(CancellationToken cancellationToken)
+    {
+        var invalidEnemyElements = new[] { "Nature", "Chaos", "Void" };
+        var badEnemies = await _context.EnemyTemplates
+            .Where(e => invalidEnemyElements.Contains(e.Element))
+            .ToListAsync(cancellationToken);
+        if (badEnemies.Count > 0)
+        {
+            _context.EnemyTemplates.RemoveRange(badEnemies);
+        }
+
+        var invalidEventOutcomes = new[] { "RoomBossEncounterStarted", "RareCombatStarted" };
+        var badEvents = await _context.EventTemplates
+            .Where(e => invalidEventOutcomes.Contains(e.DefaultOutcomeKind))
+            .ToListAsync(cancellationToken);
+        if (badEvents.Count > 0)
+        {
+            _context.EventTemplates.RemoveRange(badEvents);
+        }
+
+        if (badEnemies.Count > 0 || badEvents.Count > 0)
+        {
+            await _context.SaveChangesAsync(cancellationToken);
+        }
+    }
+
     private async Task SeedEnemyTemplatesAsync(DateTime now, CancellationToken cancellationToken)
     {
-        if (await _context.EnemyTemplates.AnyAsync(e => e.Key == "enemy-shadow-wolf", cancellationToken))
+        await AddEnemyTemplateAsync("enemy-shadow-wolf", "Loup d\u2019Ombre", "Une entité née dans un couloir du Palais.", "Trauma", "Shadow", 120, 18, 8, 14, 10, 5, 25, 12, now, cancellationToken);
+        await AddEnemyTemplateAsync("enemy-shadow-v1", "Ombre du Palais", "Une ombre du Palais bloque le chemin.", "Trauma", "Shadow", 80, 14, 6, 12, 6, 3, 20, 8, now, cancellationToken);
+        await AddEnemyTemplateAsync("enemy-rare-v1", "Écho rare", "Une apparition rare du Palais.", "Memory", "Shadow", 100, 18, 8, 14, 8, 5, 35, 16, now, cancellationToken);
+        await AddEnemyTemplateAsync("boss.threshold.warden-v1", "Warden of the Threshold", "The first sentinel guarding the entrance to the Memory Palace.", "Boss", "Neutral", 160, 24, 10, 10, 12, 8, 75, 30, now, cancellationToken);
+        await AddEnemyTemplateAsync("boss.forest.rootbound-memory-v1", "Rootbound Memory", "An ancient entity whose roots dig deep into forgotten epochs.", "Boss", "Memory", 180, 22, 12, 8, 14, 10, 85, 35, now, cancellationToken);
+        await AddEnemyTemplateAsync("boss.rupture.fractured-echo-v1", "Fractured Echo", "A shattered remnant of a once-coherent thought.", "Boss", "Rupture", 170, 28, 8, 14, 8, 8, 90, 40, now, cancellationToken);
+        await AddEnemyTemplateAsync("boss.silence.mute-herald-v1", "Mute Herald", "A silent messenger whose presence absorbs all sound.", "Boss", "Silence", 190, 24, 14, 8, 16, 12, 95, 45, now, cancellationToken);
+        await AddEnemyTemplateAsync("boss.antechamber.last-door-v1", "The Last Door", "The final barrier before the deepest memories.", "Boss", "Neutral", 220, 30, 16, 10, 18, 14, 120, 55, now, cancellationToken);
+        await AddEnemyTemplateAsync("boss.memory.archivist-v1", "Archivist of Lost Moments", "The keeper of forgotten memories.", "Boss", "Memory", 200, 26, 12, 12, 14, 16, 105, 50, now, cancellationToken);
+        await AddEnemyTemplateAsync("boss.final.himlit-v1", "Himlit", "The final entity at the heart of the Memory Palace.", "Boss", "Neutral", 260, 34, 18, 12, 20, 18, 200, 80, now, cancellationToken);
+    }
+
+    private async Task SeedSkillTemplatesAsync(DateTime now, CancellationToken cancellationToken)
+    {
+        await AddOrUpdateSkillTemplateAsync("skill-shadow-bite", "Morsure d\u2019Ombre", "Une attaque de rupture silencieuse.", "Shadow", "Damage", "SingleEnemy", 3, 1, 35, 0, now, cancellationToken);
+        await AddOrUpdateSkillTemplateAsync("skill-memory-mend", "Suture de Mémoire", "Restaure une partie de soi.", "Memory", "Heal", "SingleAlly", 4, 1, 0, 25, now, cancellationToken);
+    }
+
+    private async Task AddOrUpdateSkillTemplateAsync(
+        string key,
+        string name,
+        string description,
+        string element,
+        string effectType,
+        string targetType,
+        int manaCost,
+        int chargeCost,
+        int basePower,
+        int healPower,
+        DateTime now,
+        CancellationToken cancellationToken)
+    {
+        var existing = await _context.SkillTemplates
+            .FirstOrDefaultAsync(s => s.Key == key, cancellationToken);
+
+        if (existing is not null)
         {
+            existing.Name = name;
+            existing.Description = description;
+            existing.Element = element;
+            existing.EffectType = effectType;
+            existing.TargetType = targetType;
+            existing.ManaCost = manaCost;
+            existing.ChargeCost = chargeCost;
+            existing.BasePower = basePower;
+            existing.HealPower = healPower;
+            existing.UpdatedAtUtc = now;
+            return;
+        }
+
+        _context.SkillTemplates.Add(new SkillTemplateEntity
+        {
+            Id = Guid.NewGuid(),
+            Key = key,
+            Name = name,
+            Description = description,
+            Version = "catalog-0.1.0",
+            Status = "Active",
+            Element = element,
+            EffectType = effectType,
+            TargetType = targetType,
+            ManaCost = manaCost,
+            ChargeCost = chargeCost,
+            BasePower = basePower,
+            HealPower = healPower,
+            CreatedAtUtc = now,
+            UpdatedAtUtc = now
+        });
+    }
+
+    private async Task SeedEventTemplatesAsync(DateTime now, CancellationToken cancellationToken)
+    {
+        await AddEventTemplateAsync("event-memory-threshold-v1", "Mémoire du seuil", "Une mémoire apparaît à l'entrée du Palais.", "Memory", "TomePageUnlocked", 5, 20, true, "[\"memory\",\"threshold\",\"elise\"]", now, cancellationToken);
+        await AddEventTemplateAsync("event-law-silence-v1", "Écho du Silence", "Une Loi du Palais se manifeste dans la pièce.", "Law", "PalaceLawApplied", 10, 35, true, "[\"law\",\"silence\",\"palace\"]", now, cancellationToken);
+        await AddEventTemplateAsync("event-combat-shadow-v1", "Combat d'ombre", "Une ombre du Palais bloque le chemin.", "Combat", "CombatStarted", 15, 45, false, "[\"combat\",\"shadow\"]", now, cancellationToken);
+        await AddEventTemplateAsync("event-rare-encounter-v1", "Rencontre rare", "Une présence inhabituelle traverse le Palais.", "Rare", "RareEventResolved", 20, 60, false, "[\"rare\",\"combat\"]", now, cancellationToken);
+        await AddEventTemplateAsync("event-boss.threshold.warden-v1", "Warden of the Threshold", "Le gardien du seuil se manifeste.", "RoomBoss", "RoomBossStarted", 40, 90, false, "[\"boss\",\"threshold\"]", now, cancellationToken);
+        await AddEventTemplateAsync("event-boss.forest.rootbound-memory-v1", "Rootbound Memory", "La mémoire enracinée ferme le passage.", "RoomBoss", "RoomBossStarted", 40, 90, false, "[\"boss\",\"forest\"]", now, cancellationToken);
+        await AddEventTemplateAsync("event-boss.rupture.fractured-echo-v1", "Fractured Echo", "Un écho fracturé rompt le silence.", "RoomBoss", "RoomBossStarted", 40, 90, false, "[\"boss\",\"rupture\"]", now, cancellationToken);
+        await AddEventTemplateAsync("event-boss.silence.mute-herald-v1", "Mute Herald", "Le héraut muet impose sa loi.", "RoomBoss", "RoomBossStarted", 40, 90, false, "[\"boss\",\"silence\"]", now, cancellationToken);
+        await AddEventTemplateAsync("event-boss.antechamber.last-door-v1", "The Last Door", "La dernière porte refuse de s'ouvrir.", "RoomBoss", "RoomBossStarted", 40, 90, false, "[\"boss\",\"antechamber\"]", now, cancellationToken);
+        await AddEventTemplateAsync("event-boss.memory.archivist-v1", "Archivist of Lost Moments", "L'archiviste réclame les souvenirs perdus.", "RoomBoss", "RoomBossStarted", 40, 90, false, "[\"boss\",\"memory\"]", now, cancellationToken);
+        await AddEventTemplateAsync("event-boss.final.himlit-v1", "Himlit", "Le coeur du Palais répond enfin.", "RoomBoss", "RoomBossStarted", 80, 100, false, "[\"boss\",\"final\"]", now, cancellationToken);
+    }
+
+    private async Task AddEnemyTemplateAsync(
+        string key,
+        string name,
+        string description,
+        string archetype,
+        string element,
+        int maxHealth,
+        int strength,
+        int intelligence,
+        int speed,
+        int physicalResistance,
+        int magicalResistance,
+        int experienceReward,
+        int goldReward,
+        DateTime now,
+        CancellationToken cancellationToken)
+    {
+        var existing = await _context.EnemyTemplates
+            .FirstOrDefaultAsync(e => e.Key == key, cancellationToken);
+
+        if (existing is not null)
+        {
+            existing.Name = name;
+            existing.Description = description;
+            existing.Archetype = archetype;
+            existing.Element = element;
+            existing.MaxHealth = maxHealth;
+            existing.Strength = strength;
+            existing.Intelligence = intelligence;
+            existing.Speed = speed;
+            existing.PhysicalResistance = physicalResistance;
+            existing.MagicalResistance = magicalResistance;
+            existing.ExperienceReward = experienceReward;
+            existing.GoldReward = goldReward;
+            existing.UpdatedAtUtc = now;
             return;
         }
 
         _context.EnemyTemplates.Add(new EnemyTemplateEntity
         {
             Id = Guid.NewGuid(),
-            Key = "enemy-shadow-wolf",
-            Name = "Loup d'Ombre",
-            Description = "Une entité née dans un couloir du Palais.",
+            Key = key,
+            Name = name,
+            Description = description,
             Version = "catalog-0.1.0",
             Status = "Active",
-            Archetype = "Trauma",
-            Element = "Shadow",
-            MaxHealth = 120,
-            Strength = 18,
-            Intelligence = 8,
-            Speed = 14,
-            PhysicalResistance = 10,
-            MagicalResistance = 5,
-            ExperienceReward = 25,
-            GoldReward = 12,
+            Archetype = archetype,
+            Element = element,
+            MaxHealth = maxHealth,
+            Strength = strength,
+            Intelligence = intelligence,
+            Speed = speed,
+            PhysicalResistance = physicalResistance,
+            MagicalResistance = magicalResistance,
+            ExperienceReward = experienceReward,
+            GoldReward = goldReward,
             CreatedAtUtc = now,
             UpdatedAtUtc = now
         });
     }
 
-    private async Task SeedSkillTemplatesAsync(DateTime now, CancellationToken cancellationToken)
+    private async Task AddEventTemplateAsync(
+        string key,
+        string name,
+        string description,
+        string type,
+        string defaultOutcomeKind,
+        int minRiskLevel,
+        int maxRiskLevel,
+        bool requiresPlayerChoice,
+        string narrativeTagsJson,
+        DateTime now,
+        CancellationToken cancellationToken)
     {
-        if (await _context.SkillTemplates.AnyAsync(s => s.Key == "skill-shadow-bite", cancellationToken))
+        var existing = await _context.EventTemplates
+            .FirstOrDefaultAsync(e => e.Key == key, cancellationToken);
+
+        if (existing is not null)
         {
+            existing.Name = name;
+            existing.Description = description;
+            existing.Type = type;
+            existing.DefaultOutcomeKind = defaultOutcomeKind;
+            existing.MinRiskLevel = minRiskLevel;
+            existing.MaxRiskLevel = maxRiskLevel;
+            existing.RequiresPlayerChoice = requiresPlayerChoice;
+            existing.NarrativeTagsJson = narrativeTagsJson;
+            existing.UpdatedAtUtc = now;
             return;
         }
 
-        _context.SkillTemplates.AddRange(
-            new SkillTemplateEntity
-            {
-                Id = Guid.NewGuid(),
-                Key = "skill-shadow-bite",
-                Name = "Morsure d'Ombre",
-                Description = "Une attaque de rupture silencieuse.",
-                Version = "catalog-0.1.0",
-                Status = "Active",
-                Element = "Shadow",
-                EffectType = "Damage",
-                TargetType = "SingleEnemy",
-                ManaCost = 3,
-                ChargeCost = 1,
-                BasePower = 35,
-                HealPower = 0,
-                CreatedAtUtc = now,
-                UpdatedAtUtc = now
-            },
-            new SkillTemplateEntity
-            {
-                Id = Guid.NewGuid(),
-                Key = "skill-memory-mend",
-                Name = "Suture de Mémoire",
-                Description = "Restaure une partie de soi.",
-                Version = "catalog-0.1.0",
-                Status = "Active",
-                Element = "Memory",
-                EffectType = "Heal",
-                TargetType = "SingleAlly",
-                ManaCost = 4,
-                ChargeCost = 1,
-                BasePower = 0,
-                HealPower = 25,
-                CreatedAtUtc = now,
-                UpdatedAtUtc = now
-            });
-    }
-
-    private async Task SeedEventTemplatesAsync(DateTime now, CancellationToken cancellationToken)
-    {
-        if (await _context.EventTemplates.AnyAsync(e => e.Key == "event-memory-threshold-v1", cancellationToken))
+        _context.EventTemplates.Add(new EventTemplateEntity
         {
-            return;
-        }
-
-        _context.EventTemplates.AddRange(
-            new EventTemplateEntity
-            {
-                Id = Guid.NewGuid(),
-                Key = "event-memory-threshold-v1",
-                Name = "Mémoire du seuil",
-                Description = "Une mémoire apparaît à l'entrée du Palais.",
-                Version = "event-1.0.0",
-                Status = "Active",
-                Type = "Memory",
-                DefaultOutcomeKind = "TomePageUnlocked",
-                MinRiskLevel = 5,
-                MaxRiskLevel = 20,
-                RequiresPlayerChoice = true,
-                NarrativeTagsJson = "[\"memory\",\"threshold\",\"elise\"]",
-                CreatedAtUtc = now,
-                UpdatedAtUtc = now
-            },
-            new EventTemplateEntity
-            {
-                Id = Guid.NewGuid(),
-                Key = "event-law-silence-v1",
-                Name = "Écho du Silence",
-                Description = "Une Loi du Palais se manifeste dans la pièce.",
-                Version = "event-1.0.0",
-                Status = "Active",
-                Type = "Law",
-                DefaultOutcomeKind = "PalaceLawApplied",
-                MinRiskLevel = 10,
-                MaxRiskLevel = 35,
-                RequiresPlayerChoice = true,
-                NarrativeTagsJson = "[\"law\",\"silence\",\"palace\"]",
-                CreatedAtUtc = now,
-                UpdatedAtUtc = now
-            },
-            new EventTemplateEntity
-            {
-                Id = Guid.NewGuid(),
-                Key = "event-combat-shadow-v1",
-                Name = "Combat d'ombre",
-                Description = "Une ombre du Palais bloque le chemin.",
-                Version = "event-1.0.0",
-                Status = "Active",
-                Type = "Combat",
-                DefaultOutcomeKind = "CombatStarted",
-                MinRiskLevel = 15,
-                MaxRiskLevel = 45,
-                RequiresPlayerChoice = false,
-                NarrativeTagsJson = "[\"combat\",\"shadow\"]",
-                CreatedAtUtc = now,
-                UpdatedAtUtc = now
-            });
+            Id = Guid.NewGuid(),
+            Key = key,
+            Name = name,
+            Description = description,
+            Version = "event-1.0.0",
+            Status = "Active",
+            Type = type,
+            DefaultOutcomeKind = defaultOutcomeKind,
+            MinRiskLevel = minRiskLevel,
+            MaxRiskLevel = maxRiskLevel,
+            RequiresPlayerChoice = requiresPlayerChoice,
+            NarrativeTagsJson = narrativeTagsJson,
+            CreatedAtUtc = now,
+            UpdatedAtUtc = now
+        });
     }
 
     private async Task SeedRoomBossCatalogAsync(DateTime now, CancellationToken cancellationToken)
     {
+        // Remove old-style duplicates (from DataModelSeed alpha-0.8.1) that conflict by RoomType.
+        // This runs every time to clean up existing databases, not just on first seed.
+        var oldRoomTypes = new[] { "Threshold", "Forest", "Rupture", "Silence", "Antechamber", "Memory", "Final" };
+        var oldEntries = await _context.RoomBossDefinitions
+            .Where(r => oldRoomTypes.Contains(r.RoomType) && !r.Key.StartsWith("boss."))
+            .ToListAsync(cancellationToken);
+        if (oldEntries.Count > 0)
+        {
+            _context.RoomBossDefinitions.RemoveRange(oldEntries);
+            await _context.SaveChangesAsync(cancellationToken);
+        }
+
         if (await _context.RoomBossDefinitions.AnyAsync(r => r.Key == "boss.threshold.warden", cancellationToken))
         {
             return;

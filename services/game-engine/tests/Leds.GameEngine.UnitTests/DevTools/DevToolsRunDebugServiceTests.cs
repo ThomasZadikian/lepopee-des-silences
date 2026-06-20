@@ -3,6 +3,7 @@ using Leds.GameEngine.Application.Abstractions;
 using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Application.Combats.Resolution;
 using Leds.GameEngine.Application.DevTools;
+using Leds.GameEngine.Application.Rewards.Ports;
 using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Nodes;
@@ -87,7 +88,8 @@ public sealed class DevToolsRunDebugServiceTests
             runRepository,
             Mock.Of<IRunGenerator>(),
             Mock.Of<ICatalogContentGateway>(),
-            Mock.Of<ICombatResolutionService>());
+            Mock.Of<ICombatResolutionService>(),
+            Mock.Of<IRewardOfferRepository>());
     }
 
     private static (Run Run, Combat Combat) CreateRunWithActiveCombat(int enemyCount)

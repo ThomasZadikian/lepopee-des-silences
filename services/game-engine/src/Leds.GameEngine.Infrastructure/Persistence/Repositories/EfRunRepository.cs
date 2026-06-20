@@ -23,6 +23,7 @@ public sealed class EfRunRepository : IRunRepository
                     .ThenInclude(node => node.ParentNodeLinks)
             .Include(run => run.MemoryFragments)
             .Include(run => run.ActivePalaceLaws)
+            .Include(run => run.ActiveCurses)
             .Include(run => run.ActiveCombat)
                 .ThenInclude(combat => combat!.Combatants)
                     .ThenInclude(combatant => combatant.Skills)
@@ -65,6 +66,7 @@ public sealed class EfRunRepository : IRunRepository
                     .ThenInclude(node => node.ParentNodeLinks)
             .Include(r => r.MemoryFragments)
             .Include(r => r.ActivePalaceLaws)
+            .Include(r => r.ActiveCurses)
             .Include(r => r.ActiveCombat)
                 .ThenInclude(combat => combat!.Combatants)
                     .ThenInclude(combatant => combatant.Skills)
@@ -93,6 +95,11 @@ public sealed class EfRunRepository : IRunRepository
 
         _dbContext.Runs.Remove(existing);
         await _dbContext.SaveChangesAsync(cancellationToken);
+        _dbContext.ChangeTracker.Clear();
+        await _dbContext.Combats
+            .Where(combat => combat.RunId == runId)
+            .ExecuteDeleteAsync(cancellationToken);
+        _dbContext.ChangeTracker.Clear();
 
         // Add fresh entity graph.
         var entity = RunPersistenceMapper.ToEntity(run);

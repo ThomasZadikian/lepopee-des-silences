@@ -9,12 +9,12 @@ using System.Net.Http.Json;
 
 namespace Leds.GameEngine.IntegrationTests.DevTools;
 
-public sealed class DevToolsEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class DevToolsEndpointTests : IClassFixture<GameEngineApiFactory>
 {
     private const string Token = "local-devtools-token";
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly GameEngineApiFactory _factory;
 
-    public DevToolsEndpointTests(WebApplicationFactory<Program> factory)
+    public DevToolsEndpointTests(GameEngineApiFactory factory)
     {
         _factory = factory;
     }

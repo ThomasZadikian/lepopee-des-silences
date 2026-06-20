@@ -115,7 +115,7 @@ public sealed class SubmitCombatActionCommandHandler
         var playerActionRecords = CombatMetricsCalculator.CalculateActionRecords(
             combat.Id.Value, combat.TurnNumber,
             validationResult.Actor!, validationResult.Skill!,
-            validationResult.Targets, beforeSnapshots, now.DateTime);
+            validationResult.Targets, beforeSnapshots, now.UtcDateTime);
 
         var allActionRecords = new List<CombatActionRecord>();
         allActionRecords.AddRange(playerActionRecords);
@@ -125,6 +125,7 @@ public sealed class SubmitCombatActionCommandHandler
         var finalCombat = effectResolution.Combat;
         var combatCompleted = finalCombat.Status == CombatStatus.Completed;
         var combatFailed = finalCombat.Status == CombatStatus.Failed;
+        RewardOffer? rewardOffer = null;
 
         SyncPlayerStateFromCombat(run, finalCombat);
 
@@ -146,11 +147,10 @@ public sealed class SubmitCombatActionCommandHandler
                 _ => RewardSource.Combat
             };
 
-            var rewardOffer = _rewardOfferFactory.CreateCombatRewardOffer(
+            rewardOffer = _rewardOfferFactory.CreateCombatRewardOffer(
                 source,
                 combatNode?.EventType ?? NodeEventType.Combat,
                 combatNode?.RiskLevel ?? 25);
-            await _rewardOfferRepository.AddAsync(rewardOffer, cancellationToken);
             run.SetPendingRewardOffer(rewardOffer.Id);
         }
         else if (combatFailed)
@@ -158,8 +158,13 @@ public sealed class SubmitCombatActionCommandHandler
             run.FailActiveCombat(now);
         }
 
-        await _actionRecordRepository.AddRangeAsync(allActionRecords, cancellationToken);
         await _runRepository.UpdateAsync(run, cancellationToken);
+        if (rewardOffer is not null)
+        {
+            await _rewardOfferRepository.AddAsync(run.Id, rewardOffer, cancellationToken);
+        }
+
+        await _actionRecordRepository.AddRangeAsync(allActionRecords, cancellationToken);
 
         var target = finalCombat.Enemies
             .FirstOrDefault(e => e.Id.Value == request.TargetId);

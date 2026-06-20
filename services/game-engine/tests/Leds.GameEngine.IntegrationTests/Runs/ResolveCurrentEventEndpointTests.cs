@@ -6,9 +6,9 @@ using System.Net.Http.Json;
 
 namespace Leds.GameEngine.IntegrationTests.Runs;
 
-public sealed class ResolveCurrentEventEndpointTests : RunIntegrationTestBase, IClassFixture<WebApplicationFactory<Program>>
+public sealed class ResolveCurrentEventEndpointTests : RunIntegrationTestBase, IClassFixture<GameEngineApiFactory>
 {
-    public ResolveCurrentEventEndpointTests(WebApplicationFactory<Program> factory)
+    public ResolveCurrentEventEndpointTests(GameEngineApiFactory factory)
         : base(factory.CreateClient())
     {
     }

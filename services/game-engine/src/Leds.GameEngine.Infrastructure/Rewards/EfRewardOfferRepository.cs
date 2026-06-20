@@ -1,5 +1,6 @@
 using Leds.GameEngine.Application.Rewards.Ports;
 using Leds.GameEngine.Domain.Rewards;
+using Leds.GameEngine.Domain.Runs;
 using Leds.GameEngine.Infrastructure.Persistence;
 using Leds.GameEngine.Infrastructure.Persistence.Mappers;
 using Microsoft.EntityFrameworkCore;
@@ -15,9 +16,9 @@ public sealed class EfRewardOfferRepository : IRewardOfferRepository
         _dbContext = dbContext;
     }
 
-    public async Task AddAsync(RewardOffer rewardOffer, CancellationToken cancellationToken = default)
+    public async Task AddAsync(RunId runId, RewardOffer rewardOffer, CancellationToken cancellationToken = default)
     {
-        var entity = RunPersistenceMapper.ToRewardOfferEntity(rewardOffer, rewardOffer.Id.Value);
+        var entity = RunPersistenceMapper.ToRewardOfferEntity(rewardOffer, runId.Value);
         _dbContext.RewardOffers.Add(entity);
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
