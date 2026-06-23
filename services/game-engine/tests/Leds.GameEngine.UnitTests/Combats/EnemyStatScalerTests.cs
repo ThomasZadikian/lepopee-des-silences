@@ -57,11 +57,11 @@ public sealed class EnemyStatScalerTests
     [Fact]
     public void Scale_ShouldClampMultiplier_WhenTooHigh()
     {
-        var result = _scaler.Scale(100, 10, 5.0);
+        var result = _scaler.Scale(100, 10, 1500.0);
 
-        result.AppliedMultiplier.Should().Be(3.0);
-        result.Vitality.Should().Be(300);
-        result.Power.Should().Be(30);
+        result.AppliedMultiplier.Should().Be(1000.0);
+        result.Vitality.Should().Be(100000);
+        result.Power.Should().Be(10000);
     }
 
     [Fact]

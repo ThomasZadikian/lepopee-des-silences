@@ -17,6 +17,23 @@ public sealed class EmotionalTypeProfileProvider : ICombatantTypeProfileProvider
 {
     private const string TypeTagPrefix = "emotype:";
 
+    /// <summary>
+    /// Intrinsic emotional type of a spell, keyed by skill key. A spell's type
+    /// belongs to the spell itself, not to the caster, so it is resolved here
+    /// regardless of who casts it.
+    /// <para>
+    /// Basic / default attacks (e.g. <c>skill.basic.strike</c>) are intentionally
+    /// ABSENT: they follow the caster's character/archetype type and stay
+    /// modifiable by items. Only declare entries here for true spells.
+    /// </para>
+    /// </summary>
+    private static readonly IReadOnlyDictionary<string, EmotionalType> SkillTypesByKey =
+        new Dictionary<string, EmotionalType>(StringComparer.OrdinalIgnoreCase)
+        {
+            // Example (reward skill, not yet equippable) — tune the type freely.
+            ["skill-shadow-bite"] = EmotionalType.Silence,
+        };
+
     private static readonly IReadOnlyDictionary<string, CombatantTypeProfile> ProfilesByKey =
         new Dictionary<string, CombatantTypeProfile>(StringComparer.OrdinalIgnoreCase)
         {
@@ -95,8 +112,14 @@ public sealed class EmotionalTypeProfileProvider : ICombatantTypeProfileProvider
                 }
             }
         }
+        // 2) Intrinsic spell type (belongs to the spell, not the caster).
+        if (skill is not null && SkillTypesByKey.TryGetValue(skill.Key, out var spellType))
+        {
+            return spellType;
+        }
 
-        // 2) Otherwise the attacker's profile attack type.
+        // 3) Default / basic attacks follow the caster's character/archetype type
+        //    (and can be modified by items).
         return Resolve(attacker).AttackType;
     }
 

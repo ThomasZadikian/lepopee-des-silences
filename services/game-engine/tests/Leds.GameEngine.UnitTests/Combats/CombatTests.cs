@@ -306,7 +306,13 @@ public sealed class CombatTests
     public void AdvanceTurn_ShouldBeDeterministic()
     {
         var combat = CreateSut(allyCount: 2, enemyCount: 2);
-        var expectedOrder = combat.Allies.Concat(combat.Enemies).Select(c => c.Id).ToArray();
+        var expectedOrder = combat.Allies.Concat(combat.Enemies)
+            .OrderByDescending(c => c.BaseStatSnapshot.Speed)
+            .ThenByDescending(c => c.BaseStatSnapshot.Initiative)
+            .ThenBy(c => c.Side)
+            .ThenBy(c => c.Id.Value)
+            .Select(c => c.Id)
+            .ToArray();
 
         combat.ActiveCombatantId.Should().Be(expectedOrder[0]);
         combat.AdvanceTurn();

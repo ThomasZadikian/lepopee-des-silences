@@ -260,8 +260,13 @@ public sealed class CombatFactoryTests
 
         var combat = factory.CreateFromDraft(draft);
 
-        var firstAllyId = combat.Allies.First().Id;
-        combat.ActiveCombatantId.Should().Be(firstAllyId);
+        var expectedActiveCombatantId = combat.Allies.Concat(combat.Enemies)
+            .OrderByDescending(c => c.BaseStatSnapshot.Speed)
+            .ThenByDescending(c => c.BaseStatSnapshot.Initiative)
+            .ThenBy(c => c.Side)
+            .ThenBy(c => c.Id.Value)
+            .First().Id;
+        combat.ActiveCombatantId.Should().Be(expectedActiveCombatantId);
     }
 
     [Fact]

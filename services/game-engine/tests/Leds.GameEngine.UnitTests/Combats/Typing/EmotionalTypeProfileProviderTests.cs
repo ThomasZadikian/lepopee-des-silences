@@ -65,4 +65,25 @@ public sealed class EmotionalTypeProfileProviderTests
 
         _provider.ResolveAttackType(attacker, skill).Should().Be(EmotionalType.Neutral);
     }
+
+    [Fact]
+    public void Spell_uses_its_intrinsic_type_regardless_of_caster()
+    {
+        // skill-shadow-bite is registered as an intrinsic spell type (Silence).
+        // Cast by a hero whose character type is Memoire, it still deals Silence.
+        var hero = Combatant.CreateAlly("character.player.self", "Hero", "AnyRole", 100);
+        var spell = CombatantSkill.Create("skill-shadow-bite", "Morsure d'Ombre", "Damage", "SingleEnemy", "Damage", 0, 0, 35);
+
+        _provider.ResolveAttackType(hero, spell).Should().Be(EmotionalType.Silence);
+    }
+
+    [Fact]
+    public void Skill_tag_overrides_intrinsic_spell_type()
+    {
+        // A tag, if ever present, wins over the registry entry.
+        var hero = Combatant.CreateAlly("character.player.self", "Hero", "AnyRole", 100);
+        var spell = CombatantSkill.Create("skill-shadow-bite", "Morsure d'Ombre", "Damage", "SingleEnemy", "Damage", 0, 0, 35, ["emotype:rupture"]);
+
+        _provider.ResolveAttackType(hero, spell).Should().Be(EmotionalType.Rupture);
+    }
 }
