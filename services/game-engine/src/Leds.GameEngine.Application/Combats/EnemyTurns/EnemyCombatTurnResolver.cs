@@ -1,6 +1,7 @@
 using Leds.GameEngine.Application.Combats.Actions;
 using Leds.GameEngine.Application.Combats.Dtos;
 using Leds.GameEngine.Application.Combats.Effects;
+using Leds.GameEngine.Application.Combats.EnemyTurns.Bossing;
 using Leds.GameEngine.Domain.Combats;
 
 namespace Leds.GameEngine.Application.Combats.EnemyTurns;
@@ -9,13 +10,18 @@ public sealed class EnemyCombatTurnResolver : IEnemyCombatTurnResolver
 {
     private readonly ICombatSkillActionValidator _actionValidator;
     private readonly ICombatSkillEffectResolver _effectResolver;
+    private readonly IReadOnlyDictionary<string, IBossBehavior> _bossBehaviors;
 
     public EnemyCombatTurnResolver(
         ICombatSkillActionValidator actionValidator,
-        ICombatSkillEffectResolver effectResolver)
+        ICombatSkillEffectResolver effectResolver,
+        IEnumerable<IBossBehavior>? bossBehaviors = null)
     {
         _actionValidator = actionValidator;
         _effectResolver = effectResolver;
+        _bossBehaviors = (bossBehaviors ?? Enumerable.Empty<IBossBehavior>())
+            .GroupBy(behavior => behavior.BossKey, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
     }
 
     public EnemyCombatTurnResolution Resolve(Combat combat)
@@ -48,7 +54,8 @@ public sealed class EnemyCombatTurnResolver : IEnemyCombatTurnResolver
             return new EnemyCombatTurnResolution(false, actor.Id.Value, null, [], logEntries, CombatRuntimeDto.FromDomain(combat));
         }
 
-        var skill = SelectSkill(actor);
+        var scriptedAction = TryResolveScriptedAction(combat, actor);
+        var skill = scriptedAction?.Skill ?? SelectSkill(actor);
 
         if (skill is null)
         {
@@ -57,7 +64,7 @@ public sealed class EnemyCombatTurnResolver : IEnemyCombatTurnResolver
             return new EnemyCombatTurnResolution(true, actor.Id.Value, null, [], logEntries, CombatRuntimeDto.FromDomain(combat));
         }
 
-        var targetIds = SelectTargetIds(combat, actor, skill);
+        var targetIds = scriptedAction?.TargetIds ?? SelectTargetIds(combat, actor, skill);
 
         if (targetIds.Count == 0)
         {
@@ -94,6 +101,40 @@ public sealed class EnemyCombatTurnResolver : IEnemyCombatTurnResolver
             targetIds,
             logEntries,
             CombatRuntimeDto.FromDomain(combat));
+    }
+
+    /// <summary>
+    /// If a scripted <see cref="IBossBehavior"/> is registered for the active
+    /// combatant's source key and it commits to an action this turn, resolve its
+    /// chosen skill against the boss's own skill set. Returns <c>null</c> to defer
+    /// to the generic enemy AI — when no behavior is registered, the behavior
+    /// declines this turn, or the chosen skill key is not one the boss owns.
+    /// </summary>
+    private (CombatantSkill Skill, IReadOnlyCollection<Guid> TargetIds)? TryResolveScriptedAction(
+        Combat combat,
+        Combatant actor)
+    {
+        if (!_bossBehaviors.TryGetValue(actor.SourceKey, out var behavior))
+        {
+            return null;
+        }
+
+        var decision = behavior.DecideAction(new BossDecisionContext(combat, actor));
+
+        if (decision is null)
+        {
+            return null;
+        }
+
+        var skill = actor.Skills.FirstOrDefault(
+            s => string.Equals(s.Key, decision.SkillKey, StringComparison.OrdinalIgnoreCase));
+
+        if (skill is null)
+        {
+            return null;
+        }
+
+        return (skill, decision.TargetIds);
     }
 
     private static CombatantSkill? SelectSkill(Combatant actor)

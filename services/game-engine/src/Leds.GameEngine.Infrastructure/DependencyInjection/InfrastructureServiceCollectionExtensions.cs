@@ -46,6 +46,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using Leds.GameEngine.Application.Combats.EnemyTurns.Bossing;
 
 namespace Leds.GameEngine.Infrastructure.DependencyInjection;
 
@@ -132,6 +133,9 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<ICombatSkillActionValidator, CombatSkillActionValidator>();
         services.AddSingleton<ICombatSkillEffectResolver, CombatSkillEffectResolver>();
         services.AddSingleton<IEnemyCombatTurnResolver, EnemyCombatTurnResolver>();
+        // Scripted room bosses: register one IBossBehavior per boss SourceKey.
+        // Any enemy without a registered behavior uses the generic enemy AI.
+        // e.g. services.AddSingleton<IBossBehavior, ArchivistBossBehavior>();
         services.AddSingleton<IEncounterCompositionPolicy, EncounterCompositionPolicy>();
         services.AddSingleton<IEncounterEnemySelector, DeterministicEncounterEnemySelector>();
         services.AddSingleton<ICombatEncounterDraftGenerator, CombatEncounterDraftGenerator>();
