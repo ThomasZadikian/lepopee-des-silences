@@ -8,8 +8,14 @@ namespace Leds.GameEngine.Infrastructure.Generation.Rooms.Types;
 
 public sealed class MarkovRoomTypeResolver : IRoomTypeResolver
 {
-    private const int FinalRoomDepth = 10;
+    // Endless run: a Him'Lit boss room (RoomType.Final) recurs every BossInterval rooms.
+    public const int BossInterval = 10;
+
     private const string Scope = "room-type-generation";
+
+    // Source state substitute used to keep the Markov chain valid when leaving a
+    // boss room (Final is rule-based and is not part of the transition matrix).
+    private const RoomType PostBossSourceType = RoomType.Antechamber;
 
     private readonly IRoomTypeMarkovMatrixProvider _matrixProvider;
     private readonly MarkovTransitionResolver _transitionResolver;
@@ -19,7 +25,7 @@ public sealed class MarkovRoomTypeResolver : IRoomTypeResolver
     public MarkovRoomTypeResolver(
         IRoomTypeMarkovMatrixProvider matrixProvider,
         MarkovTransitionResolver transitionResolver,
-        IMarkovTransitionTraceSink traceSink, 
+        IMarkovTransitionTraceSink traceSink,
         EmotionalCalibration calibration)
     {
         _matrixProvider = matrixProvider;
@@ -32,7 +38,7 @@ public sealed class MarkovRoomTypeResolver : IRoomTypeResolver
         string seed,
         int nextRoomDepth,
         RoomType currentRoomType,
-        string matrixVersion, 
+        string matrixVersion,
         RunPsyche? psyche)
     {
         if (string.IsNullOrWhiteSpace(seed))
@@ -52,20 +58,22 @@ public sealed class MarkovRoomTypeResolver : IRoomTypeResolver
                 "Next room depth must be non-negative.");
         }
 
+        // Depth 0 is always the Threshold (run entrance).
         if (nextRoomDepth == 0)
         {
             return RoomType.Threshold;
         }
 
-        if (nextRoomDepth >= FinalRoomDepth)
+        // Him'Lit boss room recurs every BossInterval rooms (10, 20, 30, ...).
+        // The run is endless: there is no maximum depth.
+        if (nextRoomDepth % BossInterval == 0)
         {
             return RoomType.Final;
         }
 
-        if (currentRoomType == RoomType.Final)
-        {
-            throw new InvalidOperationException("Cannot resolve a next room type from the final room.");
-        }
+        // Normal room: resolve via Markov. When leaving a boss room, substitute a
+        // valid matrix source state (Final is not part of the matrix).
+        var sourceType = currentRoomType == RoomType.Final ? PostBossSourceType : currentRoomType;
 
         var matrix = _matrixProvider.GetMatrix(matrixVersion);
         var scope = Scope;
@@ -73,9 +81,10 @@ public sealed class MarkovRoomTypeResolver : IRoomTypeResolver
         {
             matrix = EmotionalBias.ApplyPreference(
                 matrix, _calibration.ProjectToRoomTypes(psyche), EmotionalCalibration.RoomTypeBiasAlpha);
-            scope = $"{Scope}|psyche:{psyche.Dominant()}";   // levier "scope" du biais combiné
+            scope = $"{Scope}|psyche:{psyche.Dominant()}";
         }
-        var currentState = MarkovState.Create(currentRoomType.ToString());
+
+        var currentState = MarkovState.Create(sourceType.ToString());
         var resolution = _transitionResolver.ResolveWithTrace(matrix, currentState, seed, scope, nextRoomDepth);
         _traceSink.Record(resolution.Trace);
         return ParseRoomType(resolution.NextState);

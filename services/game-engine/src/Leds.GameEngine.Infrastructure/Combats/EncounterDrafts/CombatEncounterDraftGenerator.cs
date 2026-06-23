@@ -2,6 +2,7 @@ using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Application.Combats;
 using Leds.GameEngine.Application.Combats.EncounterComposition;
 using Leds.GameEngine.Application.Combats.EncounterDrafts;
+using Leds.GameEngine.Domain.Combats;
 
 namespace Leds.GameEngine.Infrastructure.Combats.EncounterDrafts;
 
@@ -123,6 +124,6 @@ public sealed class CombatEncounterDraftGenerator : ICombatEncounterDraftGenerat
             EncounterType: context.EncounterType,
             Enemies: enemies,
             Allies: allies,
-            DifficultyMultiplier: riskProfile.DifficultyMultiplier);
+            DifficultyMultiplier: riskProfile.DifficultyMultiplier * EnemyStatScaler.DepthMultiplier(context.RoomIndex));
     }
 }

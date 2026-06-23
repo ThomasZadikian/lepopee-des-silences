@@ -155,7 +155,7 @@ public sealed class ResolveCurrentEventCommandHandler
                 var additionalMultiplier = difficultyModifiers.Sum(m => m.Value);
                 draft = draft with
                 {
-                    DifficultyMultiplier = Math.Min(draft.DifficultyMultiplier * (1.0 + additionalMultiplier), 2.0)
+                    DifficultyMultiplier = draft.DifficultyMultiplier * (1.0 + additionalMultiplier)
                 };
             }
 

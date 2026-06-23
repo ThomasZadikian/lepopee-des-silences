@@ -408,15 +408,12 @@ public sealed class Run
             throw new DomainException("Next room depth must be current depth + 1.");
         }
 
-        if (nextRoom.Depth > 10)
-        {
-            throw new DomainException("Run maximum depth is 10.");
-        }
-
+        // Run sans fin : aucune profondeur maximale. La room boss (Him'Lit) est portee
+        // par son type de room, que le generateur produit tous les 10 rooms.
         _rooms.Add(nextRoom);
         CurrentRoomId = nextRoom.Id;
         CurrentRoomIndex++;
-        Status = nextRoom.Depth == 10
+        Status = nextRoom.RoomType == RoomType.Final
             ? RunStatus.BossReached
             : RunStatus.Active;
     }
