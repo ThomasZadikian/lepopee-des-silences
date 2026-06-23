@@ -154,6 +154,7 @@ public sealed class LawEventChoiceResolver : ICurrentEventChoiceResolver
                 MapClimate(effect.Condition ?? effect.BehaviorTag),
                 RunModifierDuration.UntilRoomEnds),
             EffectType.ModifyGenerationWeight => null,
+            EffectType.ModifyEnemyBehavior => null,
             _ => throw new DomainException($"Palace law effect type '{effect.EffectType}' is not supported by the runtime.")
         };
     }
