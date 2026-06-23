@@ -47,6 +47,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Leds.GameEngine.Application.Combats.EnemyTurns.Bossing;
+using Leds.GameEngine.Application.Combats.Typing;
 
 namespace Leds.GameEngine.Infrastructure.DependencyInjection;
 
@@ -131,6 +132,8 @@ public static class InfrastructureServiceCollectionExtensions
 
         services.AddSingleton<ICombatTargetingRuleValidator, CombatTargetingRuleValidator>();
         services.AddSingleton<ICombatSkillActionValidator, CombatSkillActionValidator>();
+        // Emotional type / weakness affinities (single tuning surface; promotable to catalog later).
+        services.AddSingleton<ICombatantTypeProfileProvider, EmotionalTypeProfileProvider>();
         services.AddSingleton<ICombatSkillEffectResolver, CombatSkillEffectResolver>();
         services.AddSingleton<IEnemyCombatTurnResolver, EnemyCombatTurnResolver>();
         // Scripted room bosses: register one IBossBehavior per boss SourceKey.

@@ -1,0 +1,115 @@
+﻿using Leds.GameEngine.Domain.Combats;
+using Leds.GameEngine.Domain.Combats.Typing;
+
+namespace Leds.GameEngine.Application.Combats.Typing;
+
+/// <summary>
+/// Default emotional type provider, backed by an in-engine affinity table keyed
+/// by <see cref="Combatant.SourceKey"/> first, then <see cref="Combatant.Archetype"/>.
+/// Unknown combatants resolve to <see cref="CombatantTypeProfile.Neutral"/>, so the
+/// type system is inert for anything not yet declared.
+/// <para>
+/// This table is the single place to tune type/weakness data for the beta; it is
+/// promotable to catalog/seed without touching the combat math.
+/// </para>
+/// </summary>
+public sealed class EmotionalTypeProfileProvider : ICombatantTypeProfileProvider
+{
+    private const string TypeTagPrefix = "emotype:";
+
+    private static readonly IReadOnlyDictionary<string, CombatantTypeProfile> ProfilesByKey =
+        new Dictionary<string, CombatantTypeProfile>(StringComparer.OrdinalIgnoreCase)
+        {
+            // ── Hero (by SourceKey) ───────────────────────────────────────────
+            ["character.player.self"] = Profile(
+                EmotionalType.Memoire,
+                weak: [EmotionalType.Effroi],
+                resist: [EmotionalType.Silence]),
+
+            // ── Enemy archetypes ──────────────────────────────────────────────
+            ["Trauma"] = Profile(
+                EmotionalType.Memoire,
+                weak: [EmotionalType.Memoire],
+                resist: [EmotionalType.Effroi]),
+
+            ["Shadow"] = Profile(
+                EmotionalType.Effroi,
+                weak: [EmotionalType.Silence],
+                resist: [EmotionalType.Deni]),
+
+            ["Fragile"] = Profile(
+                EmotionalType.Melancolie,
+                weak: [EmotionalType.Rupture],
+                resist: [EmotionalType.Melancolie]),
+
+            ["Guard"] = Profile(
+                EmotionalType.Rupture,
+                weak: [EmotionalType.Deni],
+                resist: [EmotionalType.Rupture]),
+
+            ["Bruiser"] = Profile(
+                EmotionalType.Rupture,
+                weak: [EmotionalType.Melancolie],
+                resist: [EmotionalType.Effroi]),
+        };
+
+    public CombatantTypeProfile Resolve(Combatant combatant)
+    {
+        if (combatant is null)
+        {
+            return CombatantTypeProfile.Neutral;
+        }
+
+        if (!string.IsNullOrWhiteSpace(combatant.SourceKey)
+            && ProfilesByKey.TryGetValue(combatant.SourceKey, out var bySource))
+        {
+            return bySource;
+        }
+
+        if (!string.IsNullOrWhiteSpace(combatant.Archetype)
+            && ProfilesByKey.TryGetValue(combatant.Archetype, out var byArchetype))
+        {
+            return byArchetype;
+        }
+
+        return CombatantTypeProfile.Neutral;
+    }
+
+    public EmotionalType ResolveAttackType(Combatant attacker, CombatantSkill skill)
+    {
+        // 1) Explicit per-skill override via a tag, e.g. "emotype:rupture".
+        if (skill?.Tags is { Count: > 0 })
+        {
+            foreach (var tag in skill.Tags)
+            {
+                if (string.IsNullOrWhiteSpace(tag))
+                {
+                    continue;
+                }
+
+                var trimmed = tag.Trim();
+                if (trimmed.StartsWith(TypeTagPrefix, StringComparison.OrdinalIgnoreCase)
+                    && Enum.TryParse<EmotionalType>(trimmed[TypeTagPrefix.Length..], ignoreCase: true, out var parsed))
+                {
+                    return parsed;
+                }
+            }
+        }
+
+        // 2) Otherwise the attacker's profile attack type.
+        return Resolve(attacker).AttackType;
+    }
+
+    private static CombatantTypeProfile Profile(
+        EmotionalType attack,
+        EmotionalType[]? weak = null,
+        EmotionalType[]? resist = null,
+        EmotionalType[]? immune = null)
+    {
+        return new CombatantTypeProfile(
+            attack,
+            new HashSet<EmotionalType>(weak ?? []),
+            new HashSet<EmotionalType>(resist ?? []),
+            new HashSet<EmotionalType>(immune ?? []));
+    }
+}

@@ -1,11 +1,20 @@
 using Leds.GameEngine.Application.Combats.Actions;
+using Leds.GameEngine.Application.Combats.Typing;
 using Leds.GameEngine.Domain.Combats;
+using Leds.GameEngine.Domain.Combats.Typing;
 using Leds.GameEngine.Domain.Common;
 
 namespace Leds.GameEngine.Application.Combats.Effects;
 
 public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
 {
+    private readonly ICombatantTypeProfileProvider _typeProfileProvider;
+
+    public CombatSkillEffectResolver(ICombatantTypeProfileProvider? typeProfileProvider = null)
+    {
+        _typeProfileProvider = typeProfileProvider ?? new EmotionalTypeProfileProvider();
+    }
+
     public CombatSkillEffectResolution Resolve(
         Combat combat,
         Combatant actor,
@@ -22,7 +31,7 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
         switch (ResolveEffectType(skill))
         {
             case "Damage":
-                ResolveDamage(actor, skill, targets, logEntries);
+                ResolveDamage(combat, actor, skill, targets, logEntries);
                 break;
 
             case "Guard":
@@ -44,28 +53,60 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
         return new CombatSkillEffectResolution(true, logEntries, combat);
     }
 
-    private static void ResolveDamage(
+    private void ResolveDamage(
+        Combat combat,
         Combatant actor,
         CombatantSkill skill,
         IReadOnlyCollection<Combatant> targets,
         List<CombatLogEntryDto> logEntries)
     {
+        var attackType = _typeProfileProvider.ResolveAttackType(actor, skill);
+        var critChance = CriticalHitCalibration.CritChanceFromFocus(actor.BaseStatSnapshot.Focus);
+
         foreach (var target in targets)
         {
-            var guardBefore = target.Guard;
-            var vitalityBefore = target.CurrentVitality;
+            var defenderProfile = _typeProfileProvider.Resolve(target);
+            var critRoll = DeterministicCombatRoll.UnitInterval(BuildCritSeed(combat, actor, target, skill));
 
-            target.ApplyDamage(skill.BasePower);
-
-            var absorbed = guardBefore - target.Guard;
-            var vitalityDamage = vitalityBefore - target.CurrentVitality;
+            var outcome = DamageCalculator.Calculate(
+                skill.BasePower,
+                attackType,
+                defenderProfile,
+                critChance,
+                critRoll);
 
             logEntries.Add(CreateLog(
                 "SkillUsed",
-                $"{actor.DisplayName} uses {skill.DisplayName} on {target.DisplayName} for {skill.BasePower} damage.",
+                $"{actor.DisplayName} uses {skill.DisplayName} on {target.DisplayName} for {outcome.FinalAmount} damage{DescribeOutcome(outcome)}.",
                 actor,
                 skill,
                 [target]));
+
+            if (outcome.IsCritical)
+            {
+                logEntries.Add(CreateLog(
+                    "CriticalHit",
+                    $"Critical hit on {target.DisplayName}!",
+                    actor,
+                    skill,
+                    [target]));
+            }
+
+            AddEffectivenessLog(actor, skill, target, outcome.Effectiveness, logEntries);
+
+            if (outcome.Effectiveness == DamageEffectiveness.Immune || outcome.FinalAmount <= 0)
+            {
+                // Immune or no damage: nothing to apply, but the encounter still logged the attempt.
+                continue;
+            }
+
+            var guardBefore = target.Guard;
+            var vitalityBefore = target.CurrentVitality;
+
+            target.ApplyDamage(outcome.FinalAmount);
+
+            var absorbed = guardBefore - target.Guard;
+            var vitalityDamage = vitalityBefore - target.CurrentVitality;
 
             if (absorbed > 0)
             {
@@ -97,6 +138,66 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
                     [target]));
             }
         }
+    }
+
+    private static string DescribeOutcome(DamageOutcome outcome)
+    {
+        var parts = new List<string>();
+
+        if (outcome.IsCritical)
+        {
+            parts.Add("critical");
+        }
+
+        switch (outcome.Effectiveness)
+        {
+            case DamageEffectiveness.Weak:
+                parts.Add("weakness");
+                break;
+            case DamageEffectiveness.Resistant:
+                parts.Add("resisted");
+                break;
+            case DamageEffectiveness.Immune:
+                parts.Add("immune");
+                break;
+        }
+
+        return parts.Count == 0 ? string.Empty : $" ({string.Join(", ", parts)})";
+    }
+
+    private static void AddEffectivenessLog(
+        Combatant actor,
+        CombatantSkill skill,
+        Combatant target,
+        DamageEffectiveness effectiveness,
+        List<CombatLogEntryDto> logEntries)
+    {
+        var (type, message) = effectiveness switch
+        {
+            DamageEffectiveness.Weak => ("WeaknessHit", $"{target.DisplayName} is weak to this — damage amplified."),
+            DamageEffectiveness.Resistant => ("ResistedHit", $"{target.DisplayName} resists — damage reduced."),
+            DamageEffectiveness.Immune => ("ImmuneHit", $"{target.DisplayName} is immune — no damage."),
+            _ => (string.Empty, string.Empty)
+        };
+
+        if (type.Length == 0)
+        {
+            return;
+        }
+
+        logEntries.Add(CreateLog(type, message, actor, skill, [target]));
+    }
+
+    private static string BuildCritSeed(Combat combat, Combatant actor, Combatant target, CombatantSkill skill)
+    {
+        return string.Join(
+            '|',
+            "crit",
+            combat.Id.Value.ToString("N"),
+            combat.TurnNumber.ToString(),
+            actor.Id.Value.ToString("N"),
+            target.Id.Value.ToString("N"),
+            skill.Key);
     }
 
     private static void ResolveGuard(
