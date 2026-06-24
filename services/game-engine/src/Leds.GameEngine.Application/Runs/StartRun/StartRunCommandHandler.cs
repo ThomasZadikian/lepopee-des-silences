@@ -62,6 +62,7 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
             attack: mainCharacter.Stats.AttackPower,
             defense: mainCharacter.Stats.Defense,
             speed: mainCharacter.Stats.Speed,
+            focus: mainCharacter.Stats.Focus,
             playerSkills: playerSkills);
 
         var characterSnapshots = snapshot.Characters

@@ -14,7 +14,8 @@ public interface ICombatFactory
         int attackPower = 0,
         int defense = 0,
         int speed = 10,
-        PalaceRoomState palaceRoomState = PalaceRoomState.Neutral);
+        PalaceRoomState palaceRoomState = PalaceRoomState.Neutral,
+        int focus = 0);
 
     Combat CreateFromDraft(
         CombatId combatId,
@@ -24,5 +25,6 @@ public interface ICombatFactory
         int attackPower = 0,
         int defense = 0,
         int speed = 10,
-        PalaceRoomState palaceRoomState = PalaceRoomState.Neutral);
+        PalaceRoomState palaceRoomState = PalaceRoomState.Neutral,
+        int focus = 0);
 }

@@ -21,7 +21,8 @@ public sealed class CombatFactory : ICombatFactory
         int attackPower = 0,
         int defense = 0,
         int speed = 10,
-        PalaceRoomState palaceRoomState = PalaceRoomState.Neutral)
+        PalaceRoomState palaceRoomState = PalaceRoomState.Neutral,
+        int focus = 0)
     {
         return CreateFromDraft(
             CombatId.New(),
@@ -31,7 +32,8 @@ public sealed class CombatFactory : ICombatFactory
             attackPower,
             defense,
             speed,
-            palaceRoomState);
+            palaceRoomState,
+            focus);
     }
 
     public Combat CreateFromDraft(
@@ -42,7 +44,8 @@ public sealed class CombatFactory : ICombatFactory
         int attackPower = 0,
         int defense = 0,
         int speed = 10,
-        PalaceRoomState palaceRoomState = PalaceRoomState.Neutral)
+        PalaceRoomState palaceRoomState = PalaceRoomState.Neutral,
+        int focus = 0)
     {
         // Sum all unconsumed StartingGuardBonus modifiers (e.g. Éclat de garde: +8 garde).
         var guardBonus = runModifiers?
@@ -100,7 +103,8 @@ public sealed class CombatFactory : ICombatFactory
                     skills,
                     attackPower: attackPower,
                     defense: defense,
-                    speed: speed);
+                    speed: speed,
+                    focus: focus);
 
                 // The attack-type item retypes the player character only; party
                 // companions keep their own emotional type.

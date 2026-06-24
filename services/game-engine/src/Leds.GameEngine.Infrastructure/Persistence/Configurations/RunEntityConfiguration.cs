@@ -27,6 +27,7 @@ public sealed class RunEntityConfiguration : IEntityTypeConfiguration<RunEntity>
         builder.Property(run => run.Attack).HasColumnName("attack");
         builder.Property(run => run.Defense).HasColumnName("defense");
         builder.Property(run => run.Speed).HasColumnName("speed");
+        builder.Property(run => run.Focus).HasColumnName("focus");
         builder.Property(run => run.StartedAtUtc).HasColumnName("started_at_utc");
         builder.Property(run => run.EndedAtUtc).HasColumnName("ended_at_utc");
         builder.Property(run => run.SavedAtUtc).HasColumnName("saved_at_utc");

@@ -1,6 +1,6 @@
 # L’épopée des silences
-services-alpha-0.9.0.1
-web-alpha-0.7.6.2
+services-alpha-0.9.1
+web-alpha-0.7.7
 HTTP-alpha-1.0.0
 
 > RPG roguelite narratif full web — Palais mental — Runs procédurales — Backend serveur-autoritaire.

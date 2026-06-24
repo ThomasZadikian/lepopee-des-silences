@@ -38,6 +38,12 @@ public sealed class EmotionalTypeProfileProvider : ICombatantTypeProfileProvider
         new Dictionary<string, CombatantTypeProfile>(StringComparer.OrdinalIgnoreCase)
         {
             // ── Hero (by SourceKey) ───────────────────────────────────────────
+            // In combat the hero's SourceKey is the draft AllyKey "player.self";
+            // "character.player.self" is the catalog/definition key. Both map here.
+            ["player.self"] = Profile(
+                EmotionalType.Memoire,
+                weak: [EmotionalType.Effroi],
+                resist: [EmotionalType.Silence]),
             ["character.player.self"] = Profile(
                 EmotionalType.Memoire,
                 weak: [EmotionalType.Effroi],

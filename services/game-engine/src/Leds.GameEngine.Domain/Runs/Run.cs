@@ -58,6 +58,7 @@ public sealed class Run
         int attack,
         int defense,
         int speed,
+        int focus, 
         int currentRoomIndex = 0,
         CombatId? activeCombatId = null,
         RewardOfferId? pendingRewardOfferId = null)
@@ -75,6 +76,7 @@ public sealed class Run
         Attack = attack;
         Defense = defense;
         Speed = speed;
+        Focus = focus; 
         CurrentRoomIndex = currentRoomIndex;
         ActiveCombatId = activeCombatId;
         PendingRewardOfferId = pendingRewardOfferId;
@@ -149,6 +151,12 @@ public sealed class Run
 
     public int Speed { get; private set; }
 
+    /// <summary>
+    /// Character Focus stat (drives critical-hit chance in combat). Immutable for
+    /// the run; sourced from the main character at run start.
+    /// </summary>
+    public int Focus { get; }
+
     public DateTimeOffset StartedAt { get; }
 
     public DateTimeOffset? EndedAt { get; private set; }
@@ -199,7 +207,8 @@ public sealed class Run
         int attack = 12,
         int defense = 6,
         int speed = 10,
-        IReadOnlyCollection<PlayerRuntimeSkill>? playerSkills = null)
+        IReadOnlyCollection<PlayerRuntimeSkill>? playerSkills = null,
+        int focus = 0)
     {
         if (playerId == Guid.Empty)
         {
@@ -288,7 +297,8 @@ public sealed class Run
             currentHp,
             attack,
             defense,
-            speed);
+            speed,
+            focus);
 
         run.PlayerState = PlayerRuntimeState.Create(
             maxVitality: maxHp,
@@ -1301,6 +1311,7 @@ public sealed class Run
         int attack,
         int defense,
         int speed,
+        int focus,
         DateTimeOffset startedAt,
         DateTimeOffset? endedAt,
         DateTimeOffset? savedAt,
@@ -1319,8 +1330,7 @@ public sealed class Run
     {
         var firstRoom = rooms.First();
 
-        var run = new Run(id, playerId, seed, generatorVersion, markovMatrixVersion, status, firstRoom, startedAt, maxHp, currentHp, attack, defense, speed, currentRoomIndex, activeCombatId, pendingRewardOfferId);
-
+        var run = new Run(id, playerId, seed, generatorVersion, markovMatrixVersion, status, firstRoom, startedAt, maxHp, currentHp, attack, defense, speed, focus, currentRoomIndex, activeCombatId, pendingRewardOfferId);
         foreach (var room in rooms.Skip(1))
         {
             run._rooms.Add(room);

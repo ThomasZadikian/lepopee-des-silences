@@ -73,7 +73,7 @@ public sealed class PlayerSeedRunner
                         Speed = 10,
                         Initiative = 10,
                         Recovery = 5,
-                        Focus = 0,
+                        Focus = 15,
                         Mana = 0,
                         Charge = 0
                     },

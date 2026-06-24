@@ -168,7 +168,9 @@ public sealed class ResolveCurrentEventCommandHandler
                 attackPower: run.Attack,
                 defense: run.Defense,
                 speed: run.Speed,
-                palaceRoomState: room.PalaceState);
+                palaceRoomState: room.PalaceState,
+                focus: run.Focus);
+
             run.StartCombat(combatRuntime);
             // Ouverture : si un ennemi est plus rapide, il agit avant de rendre la main au joueur.
             _enemyTurnResolver.ResolveLeadingEnemyTurns(combatRuntime);

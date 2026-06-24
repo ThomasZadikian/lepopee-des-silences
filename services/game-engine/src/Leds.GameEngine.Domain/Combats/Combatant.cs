@@ -192,7 +192,8 @@ public sealed class Combatant
         IReadOnlyCollection<CombatantSkill>? skills = null,
         int attackPower = 0,
         int defense = 0,
-        int speed = 10)
+        int speed = 10, 
+        int focus = 0)
     {
         if (id.Value == Guid.Empty)
             throw new DomainException("Combatant id is required.");
@@ -229,7 +230,7 @@ public sealed class Combatant
             speed: speed,
             initiative: 0,
             recovery: 0,
-            focus: 0,
+            focus: focus,
             mana: mana,
             charge: charge);
 
