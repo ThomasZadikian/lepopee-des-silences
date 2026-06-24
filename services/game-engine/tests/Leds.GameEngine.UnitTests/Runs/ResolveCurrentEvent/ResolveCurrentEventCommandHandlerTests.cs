@@ -341,12 +341,13 @@ public sealed class ResolveCurrentEventCommandHandlerTests
                 It.IsAny<int>(),
                 It.IsAny<int>(),
                 It.IsAny<int>(),
-                It.IsAny<PalaceRoomState>()))
+                It.IsAny<PalaceRoomState>(),
+                It.IsAny<int>()))
             .Returns((CombatId combatId, CombatEncounterDraft draft, PlayerRuntimeState? playerState,
                 IReadOnlyCollection<RunModifier>? runModifiers, int attackPower, int defense, int speed,
-                PalaceRoomState palaceRoomState) =>
+                PalaceRoomState palaceRoomState, int focus) =>
                 new CombatFactory().CreateFromDraft(
-                    combatId, draft, playerState, runModifiers, attackPower, defense, speed, palaceRoomState));
+                    combatId, draft, playerState, runModifiers, attackPower, defense, speed, palaceRoomState, focus));
 
         var handler = new ResolveCurrentEventCommandHandler(
             repository.Object,
@@ -455,12 +456,13 @@ public sealed class ResolveCurrentEventCommandHandlerTests
                 It.IsAny<int>(),
                 It.IsAny<int>(),
                 It.IsAny<int>(),
-                It.IsAny<PalaceRoomState>()))
+                It.IsAny<PalaceRoomState>(),
+                It.IsAny<int>()))
             .Returns((CombatId combatId, CombatEncounterDraft draft, PlayerRuntimeState? playerState,
                 IReadOnlyCollection<RunModifier>? runModifiers, int attackPower, int defense, int speed,
-                PalaceRoomState palaceRoomState) =>
+                PalaceRoomState palaceRoomState, int focus) =>
                 new CombatFactory().CreateFromDraft(
-                    combatId, draft, playerState, runModifiers, attackPower, defense, speed, palaceRoomState));
+                    combatId, draft, playerState, runModifiers, attackPower, defense, speed, palaceRoomState, focus));
 
         var handler = new ResolveCurrentEventCommandHandler(
             repository.Object,

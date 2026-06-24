@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { CombatantRuntimeDto } from '../types/combatContracts';
+import EmotionalTypeBadge from './EmotionalTypeBadge.vue';
 
 defineProps<{
   combatant: CombatantRuntimeDto;
@@ -49,6 +50,7 @@ function hpRatio(c: CombatantRuntimeDto): number {
     <span class="presence__portrait" aria-hidden="true" />
 
     <div class="presence__topline">
+      <EmotionalTypeBadge :type="combatant.attackType ?? 'Neutral'" />
       <span v-if="isActivePlayer" class="presence__state presence__state--ready">PRÊT</span>
       <span v-else-if="isSelectedTarget" class="presence__state presence__state--target">cible</span>
       <span v-else-if="combatant.status === 'Defeated'" class="presence__state presence__state--dead">abattu</span>
@@ -72,6 +74,13 @@ function hpRatio(c: CombatantRuntimeDto): number {
       <span class="presence__stat presence__stat--hp">PV {{ combatant.currentVitality }} / {{ combatant.maxVitality }}</span>
       <span v-if="combatant.guard > 0" class="presence__stat presence__stat--guard">{{ combatant.guard }}</span>
       <span v-if="combatant.side === 'Player'" class="presence__stat presence__stat--breath">{{ combatant.mana }} souffle</span>
+    </div>
+
+    <div class="presence__substats">
+      <span title="Attaque">⚔ {{ combatant.attackPower ?? 0 }}</span>
+      <span title="Défense">⛨ {{ combatant.defense ?? 0 }}</span>
+      <span title="Vitesse">⚡ {{ combatant.speed ?? 0 }}</span>
+      <span title="Focus (chance de critique)">◎ {{ combatant.focus ?? 0 }}</span>
     </div>
 
     <slot />
@@ -183,6 +192,16 @@ function hpRatio(c: CombatantRuntimeDto): number {
   padding: 1px 4px;
   border: 1px solid var(--line-soft);
   border-radius: 999px;
+}
+
+.presence__substats {
+  grid-column: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  color: var(--ink-5);
 }
 
 .presence__state--ready { color: var(--frost); border-color: var(--edge-frost); }

@@ -112,6 +112,10 @@ function toggle() {
 .combat-log__entry--targetdefeated .combat-log__msg { color: var(--gold); }
 .combat-log__entry--combatcompleted .combat-log__msg { color: var(--gold); font-weight: 600; }
 .combat-log__entry--combatfailed .combat-log__msg { color: var(--blood); font-weight: 600; }
+.combat-log__entry--criticalhit .combat-log__msg { color: var(--gold); font-weight: 700; letter-spacing: 0.02em; }
+.combat-log__entry--weaknesshit .combat-log__msg { color: var(--sap); font-weight: 600; }
+.combat-log__entry--resistedhit .combat-log__msg { color: var(--ink-5); }
+.combat-log__entry--immunehit  .combat-log__msg { color: var(--ink-5); font-style: italic; }
 
 .combat-log__empty {
   color: var(--ink-4);

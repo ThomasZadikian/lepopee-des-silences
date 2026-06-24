@@ -9,6 +9,7 @@ import CombatLogPanel from './CombatLogPanel.vue';
 import CombatMetersPanel from './CombatMetersPanel.vue';
 import CombatOutcomePanel from './CombatOutcomePanel.vue';
 import SkillBar from './SkillBar.vue';
+import EmotionalTypeBadge from './EmotionalTypeBadge.vue';
 
 const props = defineProps<{
   runId: string;
@@ -337,6 +338,12 @@ watch(() => props.combatId, (newId) => {
             <span v-if="combatStore.isSelectedTarget(combatant.id) || hoveredEnemyId === combatant.id" class="enemy-figure__target">◎ cible</span>
             <span class="enemy-figure__name">{{ combatant.displayName }}</span>
             <span class="enemy-figure__archetype">{{ combatant.archetype }}</span>
+            <span class="enemy-figure__type">
+              <EmotionalTypeBadge :type="combatant.attackType ?? 'Neutral'" />
+            </span>
+            <span class="enemy-figure__substats">
+              ⚔ {{ combatant.attackPower ?? 0 }} · ⛨ {{ combatant.defense ?? 0 }} · ⚡ {{ combatant.speed ?? 0 }} · ◎ {{ combatant.focus ?? 0 }}
+            </span>
             <span class="enemy-figure__tags">
               <span v-if="combatant.guard > 0">Garde</span>
             </span>
@@ -704,6 +711,21 @@ watch(() => props.combatId, (newId) => {
   font-size: 0.6rem;
   letter-spacing: 0.18em;
   text-transform: uppercase;
+  color: var(--ink-5);
+}
+
+.enemy-figure__type {
+  display: flex;
+  justify-content: center;
+  margin-top: 3px;
+}
+
+.enemy-figure__substats {
+  display: block;
+  margin-top: 3px;
+  font-family: var(--font-mono);
+  font-size: 0.54rem;
+  letter-spacing: 0.04em;
   color: var(--ink-5);
 }
 

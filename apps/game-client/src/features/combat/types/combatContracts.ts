@@ -4,6 +4,9 @@ export type CombatSide = 'Player' | 'Enemy';
 
 export type SkillType = 'Damage' | 'Guard' | 'Weaken' | 'Disrupt';
 
+export type EmotionalType =
+  | 'Neutral' | 'Effroi' | 'Deni' | 'Melancolie' | 'Rupture' | 'Memoire' | 'Silence';
+
 export type TargetingType =
   | 'Self'
   | 'SingleEnemy'
@@ -35,6 +38,14 @@ export type CombatantRuntimeDto = {
   mana: number;
   charge: number;
   status: CombatantStatus;
+  attackType?: EmotionalType;
+  weakTo?: EmotionalType[];
+  resistantTo?: EmotionalType[];
+  immuneTo?: EmotionalType[];
+  attackPower?: number;
+  defense?: number;
+  speed?: number;
+  focus?: number;
   skills: CombatantSkillRuntimeDto[];
 };
 
@@ -71,12 +82,16 @@ export type LogEntryType =
   | 'ItemUsed'
   | 'DamageApplied'
   | 'GuardGained'
-  | 'HealApplied' 
+  | 'HealApplied'
   | 'TargetDefeated'
   | 'TurnAdvanced'
   | 'EnemyTurnResolved'
   | 'CombatCompleted'
-  | 'CombatFailed';
+  | 'CombatFailed'
+  | 'CriticalHit'
+  | 'WeaknessHit'
+  | 'ResistedHit'
+  | 'ImmuneHit';
 
 export type CombatLogEntryDto = {
   occurredAtUtc: string;

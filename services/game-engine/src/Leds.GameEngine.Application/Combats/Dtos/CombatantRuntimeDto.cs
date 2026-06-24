@@ -1,3 +1,4 @@
+using Leds.GameEngine.Application.Combats.Typing;
 using Leds.GameEngine.Domain.Combats;
 
 namespace Leds.GameEngine.Application.Combats.Dtos;
@@ -14,10 +15,25 @@ public sealed record CombatantRuntimeDto(
     int Mana,
     int Charge,
     string Status,
+    string AttackType,
+    IReadOnlyCollection<string> WeakTo,
+    IReadOnlyCollection<string> ResistantTo,
+    IReadOnlyCollection<string> ImmuneTo,
+    int AttackPower,
+    int Defense,
+    int Speed,
+    int Focus,
     IReadOnlyCollection<CombatantSkillRuntimeDto> Skills)
 {
+    // Stateless pure provider; safe to share. Resolves the emotional type and
+    // affinities (honours an item-driven AttackTypeOverride on the combatant).
+    private static readonly EmotionalTypeProfileProvider TypeProvider = new();
+
     public static CombatantRuntimeDto FromDomain(Combatant combatant)
     {
+        var profile = TypeProvider.Resolve(combatant);
+        var stats = combatant.BaseStatSnapshot;
+
         return new CombatantRuntimeDto(
             Id: combatant.Id.Value,
             SourceKey: combatant.SourceKey,
@@ -30,6 +46,14 @@ public sealed record CombatantRuntimeDto(
             Mana: combatant.Mana,
             Charge: combatant.Charge,
             Status: combatant.Status.ToString(),
+            AttackType: profile.AttackType.ToString(),
+            WeakTo: profile.WeakTo.Select(t => t.ToString()).ToArray(),
+            ResistantTo: profile.ResistantTo.Select(t => t.ToString()).ToArray(),
+            ImmuneTo: profile.ImmuneTo.Select(t => t.ToString()).ToArray(),
+            AttackPower: stats.AttackPower,
+            Defense: stats.Defense,
+            Speed: stats.Speed,
+            Focus: stats.Focus,
             Skills: combatant.Skills
                 .Select(CombatantSkillRuntimeDto.FromDomain)
                 .ToArray());
