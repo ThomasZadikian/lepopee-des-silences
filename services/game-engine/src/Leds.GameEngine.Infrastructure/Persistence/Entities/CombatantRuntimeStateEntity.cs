@@ -11,6 +11,7 @@ public sealed class CombatantRuntimeStateEntity
     public int CurrentCharge { get; set; }
     public int? AtbGaugeValue { get; set; }
     public int? ActionRecoveryUntilTick { get; set; }
+    public int? AtbFillPerTick { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
 
     public CombatantEntity? Combatant { get; set; }

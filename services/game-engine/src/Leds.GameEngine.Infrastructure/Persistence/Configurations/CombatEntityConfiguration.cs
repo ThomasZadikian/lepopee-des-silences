@@ -18,6 +18,7 @@ public sealed class CombatEntityConfiguration : IEntityTypeConfiguration<CombatE
         builder.Property(c => c.NodeId).HasColumnName("node_id");
         builder.Property(c => c.Status).HasColumnName("status").HasMaxLength(64).IsRequired();
         builder.Property(c => c.TurnNumber).HasColumnName("turn_number");
+        builder.Property(c => c.CurrentTick).HasColumnName("current_tick");
         builder.Property(c => c.ActiveCombatantId).HasColumnName("active_combatant_id");
         builder.Property(c => c.CreatedAtUtc).HasColumnName("created_at_utc");
         builder.Property(c => c.UpdatedAtUtc).HasColumnName("updated_at_utc");

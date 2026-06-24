@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { CombatantRuntimeDto } from '../types/combatContracts';
 import EmotionalTypeBadge from './EmotionalTypeBadge.vue';
+import AtbGauge from './AtbGauge.vue';
 
 defineProps<{
   combatant: CombatantRuntimeDto;
@@ -67,7 +68,7 @@ function hpRatio(c: CombatantRuntimeDto): number {
     </div>
 
     <div class="presence__atb" aria-hidden="true">
-      <span />
+      <AtbGauge :gauge="combatant.atbGauge ?? 0" :active="isCurrentActor" />
     </div>
 
     <div class="presence__stats">
@@ -259,19 +260,6 @@ function hpRatio(c: CombatantRuntimeDto): number {
 
 .presence__atb {
   grid-column: 2;
-  height: 2px;
-  background: oklch(0.16 0.03 272);
-  border-radius: 999px;
-  overflow: hidden;
-}
-
-.presence__atb span {
-  display: block;
-  width: 56%;
-  height: 100%;
-  background: linear-gradient(90deg, var(--gold-dim), var(--gold));
-  border-radius: inherit;
-  animation: atb-drift 2.8s ease-in-out infinite alternate;
 }
 
 .presence__stats {
@@ -291,11 +279,6 @@ function hpRatio(c: CombatantRuntimeDto): number {
 
 .presence__stat--guard { color: var(--frost-dim); }
 .presence__stat--breath { color: var(--ink-5); }
-
-@keyframes atb-drift {
-  0% { width: 32%; opacity: 0.45; }
-  100% { width: 72%; opacity: 1; }
-}
 
 @keyframes think-pulse {
   0%, 100% { filter: brightness(1); }

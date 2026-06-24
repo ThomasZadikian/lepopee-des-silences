@@ -13,6 +13,7 @@ public sealed class CombatantRuntimeState
         int currentCharge,
         int? atbGaugeValue,
         int? actionRecoveryUntilTick,
+        int? atbFillPerTick,
         DateTime updatedAtUtc)
     {
         Id = id;
@@ -23,6 +24,7 @@ public sealed class CombatantRuntimeState
         CurrentCharge = currentCharge;
         AtbGaugeValue = atbGaugeValue;
         ActionRecoveryUntilTick = actionRecoveryUntilTick;
+        AtbFillPerTick = atbFillPerTick;
         UpdatedAtUtc = updatedAtUtc;
     }
 
@@ -34,6 +36,12 @@ public sealed class CombatantRuntimeState
     public int CurrentCharge { get; private set; }
     public int? AtbGaugeValue { get; private set; }
     public int? ActionRecoveryUntilTick { get; private set; }
+
+    /// <summary>
+    /// Baked ATB fill rate (Markov tempo) for this combat. Set once at combat
+    /// preparation; persisted so the schedule survives reloads.
+    /// </summary>
+    public int? AtbFillPerTick { get; private set; }
     public DateTime UpdatedAtUtc { get; private set; }
 
     public bool IsDefeated => CurrentVitality <= 0;
@@ -45,7 +53,8 @@ public sealed class CombatantRuntimeState
         int currentMana = 0,
         int currentCharge = 0,
         int? atbGaugeValue = null,
-        int? actionRecoveryUntilTick = null)
+        int? actionRecoveryUntilTick = null,
+        int? atbFillPerTick = null)    
     {
         if (currentVitality < 0)
             throw new DomainException("Current vitality cannot be negative.");
@@ -71,6 +80,7 @@ public sealed class CombatantRuntimeState
             currentCharge,
             atbGaugeValue,
             actionRecoveryUntilTick,
+            atbFillPerTick,
             DateTime.UtcNow);
     }
 
@@ -157,6 +167,27 @@ public sealed class CombatantRuntimeState
         Touch();
     }
 
+    /// <summary>Sets the ATB gauge value (clamped ≥ 0). Used by the ATB scheduler.</summary>
+    public void SetAtbGauge(int value)
+    {
+        AtbGaugeValue = Math.Max(0, value);
+        Touch();
+    }
+
+    /// <summary>Sets the tick before which this combatant cannot fill (post-action recovery), or null to clear.</summary>
+    public void SetActionRecovery(int? untilTick)
+    {
+        ActionRecoveryUntilTick = untilTick.HasValue ? Math.Max(0, untilTick.Value) : null;
+        Touch();
+    }
+
+    /// <summary>Sets the baked ATB fill rate (clamped ≥ 1). Set once at combat preparation.</summary>
+    public void SetAtbFillPerTick(int fillPerTick)
+    {
+        AtbFillPerTick = Math.Max(1, fillPerTick);
+        Touch();
+    }
+
     public void DebugSetVitals(int maxVitality, int vitality, int guard)
     {
         if (vitality < 0 || vitality > maxVitality)
@@ -184,7 +215,8 @@ public sealed class CombatantRuntimeState
         int currentCharge,
         int? atbGaugeValue,
         int? actionRecoveryUntilTick,
-        DateTime updatedAtUtc)
+        DateTime updatedAtUtc,
+        int? atbFillPerTick = null)
     {
         return new CombatantRuntimeState(
             id,
@@ -195,6 +227,7 @@ public sealed class CombatantRuntimeState
             currentCharge,
             atbGaugeValue,
             actionRecoveryUntilTick,
+            atbFillPerTick,
             updatedAtUtc);
     }
 }

@@ -3,6 +3,7 @@ using Leds.GameEngine.Application.Combats.Typing;
 using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Combats.Typing;
 using Leds.GameEngine.Domain.Common;
+using Leds.GameEngine.Domain.Combats.Atb;
 
 namespace Leds.GameEngine.Application.Combats.Effects;
 
@@ -62,6 +63,9 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
     {
         var attackType = _typeProfileProvider.ResolveAttackType(actor, skill);
         var critChance = CriticalHitCalibration.CritChanceFromFocus(actor.BaseStatSnapshot.Focus);
+        // ATB charge: a held/overflowed gauge amplifies the whole hit (cap ×1.5).
+        var chargeMultiplier = AtbActionMath.ChargeDamageMultiplier(actor.AtbGauge);
+        var staggers = IsStaggerSkill(skill);
 
         foreach (var target in targets)
         {
@@ -69,7 +73,7 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
             var critRoll = DeterministicCombatRoll.UnitInterval(BuildCritSeed(combat, actor, target, skill));
 
             var outcome = DamageCalculator.Calculate(
-                skill.BasePower,
+                ApplyCharge(skill.BasePower, chargeMultiplier),
                 attackType,
                 defenderProfile,
                 critChance,
@@ -137,7 +141,34 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
                     skill,
                     [target]));
             }
+            else if (staggers)
+            {
+                // Interruption: push the target's ATB gauge back (bigger if it was charging).
+                combat.ApplyAtbInterruption(target.Id.Value);
+                logEntries.Add(CreateLog(
+                    "AtbStagger",
+                    $"{target.DisplayName}'s momentum is broken.",
+                    actor,
+                    skill,
+                    [target]));
+            }
         }
+    }
+
+    private static int ApplyCharge(int basePower, double chargeMultiplier)
+    {
+        if (chargeMultiplier <= 1.0 || basePower <= 0)
+        {
+            return basePower;
+        }
+
+        return Math.Max(1, (int)Math.Round(basePower * chargeMultiplier, MidpointRounding.AwayFromZero));
+    }
+
+    private static bool IsStaggerSkill(CombatantSkill skill)
+    {
+        return skill.Tags is { Count: > 0 }
+            && skill.Tags.Any(tag => string.Equals(tag?.Trim(), "stagger", StringComparison.OrdinalIgnoreCase));
     }
 
     private static string DescribeOutcome(DamageOutcome outcome)

@@ -8,6 +8,7 @@ public sealed class CombatEntity
     public Guid NodeId { get; set; }
     public string Status { get; set; } = string.Empty;
     public int TurnNumber { get; set; }
+    public int CurrentTick { get; set; }
     public Guid? ActiveCombatantId { get; set; }
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }

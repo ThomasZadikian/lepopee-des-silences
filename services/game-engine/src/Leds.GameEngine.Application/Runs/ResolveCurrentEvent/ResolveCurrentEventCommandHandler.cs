@@ -20,6 +20,7 @@ using Leds.GameEngine.Domain.Rewards;
 using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
 using Leds.SharedBuildingBlocks.Time;
+using Leds.GameEngine.Application.Combats.Atb;
 using MediatR;
 
 namespace Leds.GameEngine.Application.Runs.ResolveCurrentEvent;
@@ -37,8 +38,9 @@ public sealed class ResolveCurrentEventCommandHandler
     private readonly IRewardOfferRepository _rewardOfferRepository;
     private readonly Leds.GameEngine.Application.Rewards.RewardOfferFactory.RewardOfferFactory _rewardOfferFactory;
     private readonly IEnemyCombatTurnResolver _enemyTurnResolver;
-    private readonly ICombatResolutionService _combatResolution; 
-    private readonly IClock _clock; 
+    private readonly ICombatResolutionService _combatResolution;
+    private readonly IAtbCombatPreparer _atbPreparer;
+    private readonly IClock _clock;
 
     public ResolveCurrentEventCommandHandler(
         IRunRepository runRepository,
@@ -52,6 +54,7 @@ public sealed class ResolveCurrentEventCommandHandler
         Leds.GameEngine.Application.Rewards.RewardOfferFactory.RewardOfferFactory rewardOfferFactory,
         IEnemyCombatTurnResolver enemyTurnResolver,
         ICombatResolutionService combatResolution,
+        IAtbCombatPreparer atbPreparer,
         IClock clock)
     {
         _runRepository = runRepository;
@@ -64,7 +67,8 @@ public sealed class ResolveCurrentEventCommandHandler
         _rewardOfferRepository = rewardOfferRepository;
         _rewardOfferFactory = rewardOfferFactory;
         _enemyTurnResolver = enemyTurnResolver;
-        _combatResolution = combatResolution; 
+        _combatResolution = combatResolution;
+        _atbPreparer = atbPreparer;
         _clock = clock;
     }
 
@@ -170,8 +174,10 @@ public sealed class ResolveCurrentEventCommandHandler
                 speed: run.Speed,
                 palaceRoomState: room.PalaceState,
                 focus: run.Focus);
-
+            // ATB: bake Markov tempo + opening gauges, then elect the opener.
+            _atbPreparer.PrepareNewCombat(combatRuntime, run);
             run.StartCombat(combatRuntime);
+
             // Ouverture : si un ennemi est plus rapide, il agit avant de rendre la main au joueur.
             _enemyTurnResolver.ResolveLeadingEnemyTurns(combatRuntime);
             if (combatRuntime.Status != CombatStatus.Active)

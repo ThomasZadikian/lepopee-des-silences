@@ -23,6 +23,8 @@ public sealed record CombatantRuntimeDto(
     int Defense,
     int Speed,
     int Focus,
+    int AtbGauge,
+    int AtbFillPerTick,
     IReadOnlyCollection<CombatantSkillRuntimeDto> Skills)
 {
     // Stateless pure provider; safe to share. Resolves the emotional type and
@@ -54,6 +56,8 @@ public sealed record CombatantRuntimeDto(
             Defense: stats.Defense,
             Speed: stats.Speed,
             Focus: stats.Focus,
+            AtbGauge: combatant.AtbGauge,
+            AtbFillPerTick: combatant.AtbFillPerTick,
             Skills: combatant.Skills
                 .Select(CombatantSkillRuntimeDto.FromDomain)
                 .ToArray());

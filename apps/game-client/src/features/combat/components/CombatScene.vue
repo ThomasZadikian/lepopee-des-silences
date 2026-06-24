@@ -22,6 +22,15 @@ const emit = defineEmits<{
   leaveRun: [];
 }>();
 
+const nextCombatantId = computed<string | null>(() => {
+  const activeId = activeCombatant.value?.id;
+  const candidates = combatStore.allCombatants.filter(
+    (c) => c.status !== 'Defeated' && c.id !== activeId,
+  );
+  if (candidates.length === 0) return null;
+  return candidates.reduce((top, c) => ((c.atbGauge ?? 0) > (top.atbGauge ?? 0) ? c : top)).id;
+});
+
 const combatStore = useCombatStore();
 const runStore = useRunStore();
 const { state: metricsState } = useCombatLogMetrics(
@@ -239,6 +248,7 @@ watch(() => props.combatId, (newId) => {
             :class="{
               'initiative-pill--active': combatant.id === activeCombatant?.id,
               'initiative-pill--enemy': combatant.side === 'Enemy',
+              'initiative-pill--next': combatant.id === nextCombatantId,
             }"
           >
             <span class="initiative-pill__dot" />
@@ -344,11 +354,11 @@ watch(() => props.combatId, (newId) => {
             <span class="enemy-figure__substats">
               ⚔ {{ combatant.attackPower ?? 0 }} · ⛨ {{ combatant.defense ?? 0 }} · ⚡ {{ combatant.speed ?? 0 }} · ◎ {{ combatant.focus ?? 0 }}
             </span>
+            <AtbGauge class="enemy-figure__atb" :gauge="combatant.atbGauge ?? 0" :active="isVisuallyActive(combatant.id)" />
             <span class="enemy-figure__tags">
               <span v-if="combatant.guard > 0">Garde</span>
             </span>
             <span class="enemy-figure__hp">
-              <span class="enemy-figure__hp-chip" />
               <span class="enemy-figure__hp-bar">
                 <span :style="{ width: hpRatio(combatant.currentVitality, combatant.maxVitality) * 100 + '%' }" />
               </span>
@@ -431,6 +441,22 @@ watch(() => props.combatId, (newId) => {
 </template>
 
 <style scoped>
+
+.enemy-figure__atb {
+  margin: 5px auto 0;
+  width: 70%;
+}
+
+.initiative-pill--next {
+  border-color: var(--edge-frost);
+  color: var(--frost);
+}
+.initiative-pill--next::after {
+  content: '▸';
+  margin-left: 4px;
+  opacity: 0.8;
+}
+
 .combat-scene {
   display: grid;
   grid-template-rows: auto 1fr auto auto;

@@ -21,6 +21,8 @@ public sealed class CombatantRuntimeStateEntityConfiguration : IEntityTypeConfig
         builder.Property(e => e.CurrentCharge).HasColumnName("current_charge").IsRequired();
         builder.Property(e => e.AtbGaugeValue).HasColumnName("atb_gauge_value");
         builder.Property(e => e.ActionRecoveryUntilTick).HasColumnName("action_recovery_until_tick");
+        builder.Property(e => e.AtbFillPerTick).HasColumnName("atb_fill_per_tick");
+        builder.Property(e => e.UpdatedAtUtc).HasColumnName("updated_at_utc");
         builder.Property(e => e.UpdatedAtUtc).HasColumnName("updated_at_utc");
 
         builder.HasIndex(e => e.CombatantId).IsUnique();

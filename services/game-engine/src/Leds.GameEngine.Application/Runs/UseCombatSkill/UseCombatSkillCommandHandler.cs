@@ -15,6 +15,7 @@ using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rewards;
 using Leds.GameEngine.Domain.Runs;
 using Leds.SharedBuildingBlocks.Time;
+using Leds.GameEngine.Domain.Combats.Atb;
 using MediatR;
 
 namespace Leds.GameEngine.Application.Runs.UseCombatSkill;
@@ -119,6 +120,11 @@ public sealed class UseCombatSkillCommandHandler
             validationResult.Actor!,
             validationResult.Skill!,
             validationResult.Targets);
+
+        // ATB: the actor spends its gauge and enters recovery (heavier skills recover slower).
+        effectResolution.Combat.RegisterActionTaken(
+            validationResult.Actor!.Id.Value,
+            AtbActionMath.RecoveryTicks(validationResult.Skill!.BasePower, validationResult.Actor!.BaseStatSnapshot.Recovery));
 
         var progressionLogEntries = AdvanceCombat(effectResolution.Combat, now.UtcDateTime);
 

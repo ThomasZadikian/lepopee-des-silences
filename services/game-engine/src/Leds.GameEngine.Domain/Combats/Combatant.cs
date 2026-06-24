@@ -76,6 +76,34 @@ public sealed class Combatant
         AttackTypeOverride = attackType;
     }
 
+    // ── ATB (Active Time Battle) ──────────────────────────────────────────────
+
+    /// <summary>Current ATB gauge (0 = empty). Sourced from runtime state (persisted).</summary>
+    public int AtbGauge => RuntimeState.AtbGaugeValue ?? 0;
+
+    /// <summary>Absolute tick before which this combatant cannot fill its gauge (post-action recovery).</summary>
+    public int AtbRecoveryUntilTick => RuntimeState.ActionRecoveryUntilTick ?? 0;
+
+    /// <summary>
+    /// Effective gauge gained per tick (Markov tempo, baked at combat preparation).
+    /// Sourced from runtime state (persisted); defaults to a neutral 10 until baked.
+    /// </summary>
+    public int AtbFillPerTick => RuntimeState.AtbFillPerTick ?? 10;
+
+    public void SetAtbFillPerTick(int fillPerTick) => RuntimeState.SetAtbFillPerTick(fillPerTick);
+
+    public void SetAtbGauge(int value) => RuntimeState.SetAtbGauge(value);
+
+    /// <summary>
+    /// Records that this combatant just acted: its gauge is consumed and it enters
+    /// recovery until <paramref name="currentTick"/> + <paramref name="recoveryTicks"/>.
+    /// </summary>
+    public void RegisterAtbAction(int currentTick, int recoveryTicks)
+    {
+        RuntimeState.SetAtbGauge(0);
+        RuntimeState.SetActionRecovery(recoveryTicks > 0 ? currentTick + recoveryTicks : null);
+    }
+
     /// <summary>
     /// Immutable stat values frozen at combat creation.
     /// Canonical source for base/max/starting values.

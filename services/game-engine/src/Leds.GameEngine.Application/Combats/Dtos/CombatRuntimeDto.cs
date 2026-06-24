@@ -6,6 +6,7 @@ public sealed record CombatRuntimeDto(
     Guid Id,
     string Status,
     int TurnNumber,
+    int CurrentTick,
     Guid? ActiveCombatantId,
     IReadOnlyCollection<CombatantRuntimeDto> Allies,
     IReadOnlyCollection<CombatantRuntimeDto> Enemies,
@@ -19,6 +20,7 @@ public sealed record CombatRuntimeDto(
             Id: combat.Id.Value,
             Status: combat.Status.ToString(),
             TurnNumber: combat.TurnNumber,
+            CurrentTick: combat.CurrentTick,
             ActiveCombatantId: combat.ActiveCombatantId?.Value,
             Allies: combat.Allies
                 .Select(CombatantRuntimeDto.FromDomain)

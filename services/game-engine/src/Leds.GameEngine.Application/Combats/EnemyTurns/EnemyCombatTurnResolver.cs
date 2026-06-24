@@ -3,6 +3,7 @@ using Leds.GameEngine.Application.Combats.Dtos;
 using Leds.GameEngine.Application.Combats.Effects;
 using Leds.GameEngine.Application.Combats.EnemyTurns.Bossing;
 using Leds.GameEngine.Domain.Combats;
+using Leds.GameEngine.Domain.Combats.Atb;
 
 namespace Leds.GameEngine.Application.Combats.EnemyTurns;
 
@@ -92,6 +93,10 @@ public sealed class EnemyCombatTurnResolver : IEnemyCombatTurnResolver
 
         var effectResolution = _effectResolver.Resolve(combat, actor, skill, validationResult.Targets);
         logEntries.AddRange(effectResolution.LogEntries);
+
+        // ATB: the enemy spends its gauge and enters recovery (heavier skills recover slower).
+        combat.RegisterActionTaken(actor.Id.Value, AtbActionMath.RecoveryTicks(skill.BasePower, actor.BaseStatSnapshot.Recovery));
+
         logEntries.AddRange(AdvanceCombat(combat));
 
         return new EnemyCombatTurnResolution(

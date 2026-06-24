@@ -4,6 +4,7 @@ using Leds.GameEngine.Application.Catalog;
 using Leds.GameEngine.Application.Catalog.Contracts;
 using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Application.Combats;
+using Leds.GameEngine.Application.Combats.Atb;
 using Leds.GameEngine.Application.Combats.EncounterDrafts;
 using Leds.GameEngine.Application.Combats.EnemyTurns;
 using Leds.GameEngine.Application.Combats.Ports;
@@ -87,6 +88,7 @@ public sealed class ResolveCurrentEventCommandHandlerTests
             new RewardOfferFactory(new Mock<Leds.GameEngine.Application.Combats.ICombatRiskProfileResolver>().Object, Mock.Of<ICatalogContentGateway>()),
             Mock.Of<IEnemyCombatTurnResolver>(),
             Mock.Of<ICombatResolutionService>(),
+            Mock.Of<IAtbCombatPreparer>(),
             Mock.Of<IClock>());
     }
 
@@ -361,6 +363,7 @@ public sealed class ResolveCurrentEventCommandHandlerTests
             new RewardOfferFactory(new Mock<Leds.GameEngine.Application.Combats.ICombatRiskProfileResolver>().Object, Mock.Of<ICatalogContentGateway>()),
             Mock.Of<IEnemyCombatTurnResolver>(),
             Mock.Of<ICombatResolutionService>(),
+            Mock.Of<IAtbCombatPreparer>(),
             Mock.Of<IClock>());
 
         var response = await handler.Handle(
@@ -476,6 +479,7 @@ public sealed class ResolveCurrentEventCommandHandlerTests
             new RewardOfferFactory(new Mock<Leds.GameEngine.Application.Combats.ICombatRiskProfileResolver>().Object, Mock.Of<ICatalogContentGateway>()),
             Mock.Of<IEnemyCombatTurnResolver>(),
             Mock.Of<ICombatResolutionService>(),
+            Mock.Of<IAtbCombatPreparer>(),
             Mock.Of<IClock>());
 
         var response = await handler.Handle(

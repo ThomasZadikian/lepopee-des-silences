@@ -48,6 +48,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Leds.GameEngine.Application.Combats.EnemyTurns.Bossing;
 using Leds.GameEngine.Application.Combats.Typing;
+using Leds.GameEngine.Application.Combats.Atb;
 
 namespace Leds.GameEngine.Infrastructure.DependencyInjection;
 
@@ -134,6 +135,9 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<ICombatSkillActionValidator, CombatSkillActionValidator>();
         // Emotional type / weakness affinities (single tuning surface; promotable to catalog later).
         services.AddSingleton<ICombatantTypeProfileProvider, EmotionalTypeProfileProvider>();
+        // ATB (Active Time Battle): Markov-driven tempo + combat preparation.
+        services.AddSingleton<IAtbTempoProvider, MarkovAtbTempoProvider>();
+        services.AddScoped<IAtbCombatPreparer, AtbCombatPreparer>();
         services.AddSingleton<ICombatSkillEffectResolver, CombatSkillEffectResolver>();
         services.AddSingleton<IEnemyCombatTurnResolver, EnemyCombatTurnResolver>();
         // Scripted room bosses: register one IBossBehavior per boss SourceKey.

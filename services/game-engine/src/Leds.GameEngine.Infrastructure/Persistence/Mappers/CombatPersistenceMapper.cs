@@ -26,6 +26,7 @@ public static class CombatPersistenceMapper
             NodeId = combat.NodeId.Value,
             Status = combat.Status.ToString(),
             TurnNumber = combat.TurnNumber,
+            CurrentTick = combat.CurrentTick,
             ActiveCombatantId = combat.ActiveCombatantId?.Value,
             CreatedAtUtc = combat.CreatedAtUtc,
             UpdatedAtUtc = DateTime.UtcNow,
@@ -91,6 +92,7 @@ public static class CombatPersistenceMapper
             CurrentCharge = state.CurrentCharge,
             AtbGaugeValue = state.AtbGaugeValue,
             ActionRecoveryUntilTick = state.ActionRecoveryUntilTick,
+            AtbFillPerTick = state.AtbFillPerTick,
             UpdatedAtUtc = state.UpdatedAtUtc
         };
     }
@@ -133,7 +135,9 @@ public static class CombatPersistenceMapper
             enemies,
             entity.ActiveCombatantId.HasValue ? new CombatantId(entity.ActiveCombatantId.Value) : null,
             entity.TurnNumber,
-            entity.CreatedAtUtc);
+            entity.CreatedAtUtc, 
+            entity.CurrentTick            
+            );
     }
 
     public static Combatant ToDomain(CombatantEntity entity)
@@ -194,7 +198,8 @@ public static class CombatPersistenceMapper
             entity.CurrentCharge,
             entity.AtbGaugeValue,
             entity.ActionRecoveryUntilTick,
-            entity.UpdatedAtUtc);
+            entity.UpdatedAtUtc,
+            entity.AtbFillPerTick);
     }
 
     public static CombatantSkill ToDomain(CombatantSkillEntity entity)

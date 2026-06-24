@@ -1,3 +1,4 @@
+using Leds.GameEngine.Domain.Combats.Atb;
 using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rooms;
@@ -17,6 +18,7 @@ public sealed class Combat
         IReadOnlyCollection<Combatant> enemies,
         CombatantId? activeCombatantId,
         int turnNumber,
+        int currentTick,
         DateTime createdAtUtc)
     {
         Id = id;
@@ -28,6 +30,7 @@ public sealed class Combat
         Enemies = enemies;
         ActiveCombatantId = activeCombatantId;
         TurnNumber = turnNumber;
+        CurrentTick = currentTick;
         CreatedAtUtc = createdAtUtc;
     }
 
@@ -40,10 +43,16 @@ public sealed class Combat
     public IReadOnlyCollection<Combatant> Enemies { get; }
     public CombatantId? ActiveCombatantId { get; private set; }
     public int TurnNumber { get; private set; }
+
+    /// <summary>The ATB clock for this combat (advances in deterministic ticks).</summary>
+    public int CurrentTick { get; private set; }
+
     public DateTime CreatedAtUtc { get; }
     public bool HasLivingAllies => Allies.Any(a => !a.IsDefeated);
 
     public bool HasLivingEnemies => Enemies.Any(e => !e.IsDefeated);
+
+    private IEnumerable<Combatant> AllCombatants => Allies.Concat(Enemies);
 
     public static Combat Create(
         CombatId id,
@@ -53,8 +62,6 @@ public sealed class Combat
         IReadOnlyCollection<Combatant> allies,
         IReadOnlyCollection<Combatant> enemies)
     {
-        var openingOrder = OrderByInitiative(allies.Concat(enemies)); 
-
         if (id.Value == Guid.Empty)
             throw new DomainException("Combat id is required.");
 
@@ -70,6 +77,10 @@ public sealed class Combat
         if (enemies.Any(e => e.IsDefeated))
             throw new DomainException("Combat cannot start with a defeated enemy.");
 
+        // A valid opening actor (initiative order). The ATB preparer re-runs the
+        // scheduler once fill rates/opening gauges are baked to set the real opener.
+        var openingOrder = OrderByInitiative(allies.Concat(enemies));
+
         return new Combat(
             id,
             runId,
@@ -80,6 +91,7 @@ public sealed class Combat
             enemies.ToArray(),
             activeCombatantId: openingOrder[0].Id,
             turnNumber: 1,
+            currentTick: 0,
             createdAtUtc: DateTime.UtcNow);
     }
 
@@ -103,22 +115,10 @@ public sealed class Combat
 
     public Combatant? GetActiveCombatant()
     {
-        if (Status != CombatStatus.Active)
+        if (Status != CombatStatus.Active || ActiveCombatantId is null)
             return null;
 
-        var livingCombatants = GetTurnOrder()
-            .Where(c => !c.IsDefeated)
-            .ToArray();
-
-        if (livingCombatants.Length == 0)
-            return null;
-
-        var currentIndex = Array.FindIndex(livingCombatants, c => c.Id == ActiveCombatantId);
-
-        if (currentIndex < 0)
-            return livingCombatants[0];
-
-        return livingCombatants[currentIndex];
+        return AllCombatants.FirstOrDefault(c => c.Id == ActiveCombatantId && !c.IsDefeated);
     }
 
     public void EnsureActorCanAct(Guid actorId)
@@ -126,8 +126,7 @@ public sealed class Combat
         if (Status != CombatStatus.Active)
             throw new DomainException("Combat is not active.");
 
-        var actor = GetTurnOrder()
-            .FirstOrDefault(c => c.Id.Value == actorId)
+        var actor = AllCombatants.FirstOrDefault(c => c.Id.Value == actorId)
             ?? throw new DomainException("Actor does not exist in this combat.");
 
         if (actor.IsDefeated)
@@ -155,72 +154,102 @@ public sealed class Combat
         }
     }
 
+    /// <summary>
+    /// Advances the ATB clock to the next ready combatant and makes it active.
+    /// Call <see cref="RegisterActionTaken"/> first (after an action resolves) so the
+    /// actor's gauge is consumed and its recovery is set before the clock advances.
+    /// </summary>
     public void AdvanceTurn()
     {
         CompleteIfAllEnemiesDefeated();
         FailIfAllAlliesDefeated();
-
         if (Status != CombatStatus.Active)
             return;
 
-        var order = GetTurnOrder();
-        if (order.Length == 0)
+        // The combatant that just had its turn spends its gauge before the clock
+        // advances, so the scheduler elects the NEXT ready combatant rather than
+        // re-selecting the one that just acted.
+        var outgoing = AllCombatants.FirstOrDefault(c => c.Id == ActiveCombatantId);
+        if (outgoing is not null && !outgoing.IsDefeated && outgoing.AtbGauge >= AtbConstants.ReadyThreshold)
+            outgoing.SetAtbGauge(0);
+
+        var combatants = AllCombatants.ToArray();
+
+        var participants = combatants
+            .Select(c => new AtbParticipant(
+                CombatantId: c.Id.Value,
+                Gauge: c.AtbGauge,
+                FillPerTick: c.AtbFillPerTick,
+                RecoveryUntilTick: c.AtbRecoveryUntilTick,
+                Initiative: c.BaseStatSnapshot.Initiative,
+                IsActive: !c.IsDefeated))
+            .ToArray();
+
+        var result = AtbScheduler.Advance(participants, CurrentTick);
+
+        foreach (var participant in result.Participants)
+        {
+            var combatant = combatants.First(c => c.Id.Value == participant.CombatantId);
+            if (!combatant.IsDefeated)
+                combatant.SetAtbGauge(participant.Gauge);
+        }
+
+        CurrentTick = (int)Math.Min(result.CurrentTick, int.MaxValue);
+
+        if (result.NextActorId is null)
         {
             Status = CombatStatus.Failed;
             ActiveCombatantId = null;
             return;
         }
 
-        var currentIndex = Array.FindIndex(order, c => c.Id == ActiveCombatantId);
-        if (currentIndex < 0)
-            currentIndex = 0;
+        ActiveCombatantId = new CombatantId(result.NextActorId.Value);
+        TurnNumber++;
 
-        for (var step = 1; step <= order.Length; step++)
-        {
-            var index = (currentIndex + step) % order.Length;
-            if (order[index].IsDefeated)
-                continue;
+        GetActiveCombatant()?.ResetGuardToBase();
+    }
 
-            var startedNewRound = currentIndex + step >= order.Length;
-            if (startedNewRound)
-            {
-                TurnNumber++;
-                foreach (var combatant in order.Where(c => !c.IsDefeated))
-                    combatant.ResetGuardToBase();
-            }
+    /// <summary>
+    /// Records that the active actor just took an action: its gauge is consumed and
+    /// it enters recovery for <paramref name="recoveryTicks"/> ticks.
+    /// </summary>
+    public void RegisterActionTaken(Guid actorId, int recoveryTicks)
+    {
+        AllCombatants.FirstOrDefault(c => c.Id.Value == actorId)
+            ?.RegisterAtbAction(CurrentTick, recoveryTicks);
+    }
 
-            ActiveCombatantId = order[index].Id;
+    /// <summary>
+    /// Interruption / stagger: pushes the target's ATB gauge back (larger push and
+    /// charge loss if the target was charging).
+    /// </summary>
+    public void ApplyAtbInterruption(Guid targetId)
+    {
+        var target = AllCombatants.FirstOrDefault(c => c.Id.Value == targetId);
+        if (target is null || target.IsDefeated)
             return;
-        }
 
-        Status = CombatStatus.Failed;
-        ActiveCombatantId = null;
+        target.SetAtbGauge(AtbActionMath.Interrupt(target.AtbGauge));
     }
 
     public Combatant? GetNextActiveCombatant()
     {
         if (Status != CombatStatus.Active)
-        {
             return null;
-        }
 
-        var livingCombatants = GetTurnOrder()
-            .Where(c => !c.IsDefeated)
+        var combatants = AllCombatants.ToArray();
+        var participants = combatants
+            .Select(c => new AtbParticipant(
+                c.Id.Value, c.AtbGauge, c.AtbFillPerTick, c.AtbRecoveryUntilTick,
+                c.BaseStatSnapshot.Initiative, !c.IsDefeated))
             .ToArray();
 
-        if (livingCombatants.Length == 0)
-        {
+        var result = AtbScheduler.Advance(participants, CurrentTick);
+        if (result.NextActorId is null)
             return null;
-        }
 
-        var currentIndex = Array.FindIndex(livingCombatants, c => c.Id == ActiveCombatantId);
-        var nextIndex = currentIndex < 0 ? 0 : (currentIndex + 1) % livingCombatants.Length;
-
-        return livingCombatants[nextIndex];
+        return combatants.FirstOrDefault(c => c.Id.Value == result.NextActorId.Value);
     }
-
-    private Combatant[] GetTurnOrder() => OrderByInitiative(Allies.Concat(Enemies));
-
 
     /// <summary>
     /// Rehydrates a combat from a trusted persistence snapshot.
@@ -236,14 +265,14 @@ public sealed class Combat
         IReadOnlyCollection<Combatant> enemies,
         CombatantId? activeCombatantId,
         int turnNumber,
-        DateTime createdAtUtc)
+        DateTime createdAtUtc,
+        int currentTick = 0)
     {
-        return new Combat(id, runId, roomId, nodeId, status, allies, enemies, activeCombatantId, turnNumber, createdAtUtc);
+        return new Combat(id, runId, roomId, nodeId, status, allies, enemies, activeCombatantId, turnNumber, currentTick, createdAtUtc);
     }
+
     private static Combatant[] OrderByInitiative(IEnumerable<Combatant> combatants)
     {
-        // Déterministe et STABLE (les stats ne changent pas en combat) :
-        // vitesse desc, puis initiative desc, puis side, puis id.
         return combatants
             .OrderByDescending(c => c.BaseStatSnapshot.Speed)
             .ThenByDescending(c => c.BaseStatSnapshot.Initiative)

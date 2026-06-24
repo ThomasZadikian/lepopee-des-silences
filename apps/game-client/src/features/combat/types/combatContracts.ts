@@ -46,6 +46,8 @@ export type CombatantRuntimeDto = {
   defense?: number;
   speed?: number;
   focus?: number;
+  atbGauge?: number;
+  atbFillPerTick?: number;
   skills: CombatantSkillRuntimeDto[];
 };
 
@@ -65,6 +67,7 @@ export type CombatRuntimeDto = {
   id: string;
   status: CombatStatus;
   turnNumber: number;
+  currentTick?: number;
   activeCombatantId: string | null;
   allies: CombatantRuntimeDto[];
   enemies: CombatantRuntimeDto[];
@@ -91,7 +94,8 @@ export type LogEntryType =
   | 'CriticalHit'
   | 'WeaknessHit'
   | 'ResistedHit'
-  | 'ImmuneHit';
+  | 'ImmuneHit'
+  | 'AtbStagger';
 
 export type CombatLogEntryDto = {
   occurredAtUtc: string;
