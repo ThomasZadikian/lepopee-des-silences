@@ -25,6 +25,7 @@ public sealed class CombatantEntityConfiguration : IEntityTypeConfiguration<Comb
         builder.Property(c => c.Mana).HasColumnName("mana");
         builder.Property(c => c.Charge).HasColumnName("charge");
         builder.Property(c => c.Status).HasColumnName("status").HasMaxLength(32).IsRequired();
+        builder.Property(c => c.AttackTypeOverride).HasColumnName("attack_type_override");
 
         builder.HasOne(c => c.Combat)
             .WithMany(combat => combat.Combatants)

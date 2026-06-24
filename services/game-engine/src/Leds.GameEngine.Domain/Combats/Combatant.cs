@@ -1,4 +1,5 @@
 using Leds.GameEngine.Domain.Common;
+using Leds.GameEngine.Domain.Combats.Typing;
 
 namespace Leds.GameEngine.Domain.Combats;
 
@@ -59,6 +60,21 @@ public sealed class Combatant
     public IReadOnlyCollection<CombatantSkill> Skills { get; }
 
     public bool IsDefeated => Status == CombatantStatus.Defeated;
+    /// <summary>
+    /// Optional emotional attack type override, set from an AttackTypeOverride run
+    /// modifier at combat creation (e.g. an item that changes the hero's type).
+    /// When null, the combatant's attack type comes from its default type profile.
+    /// </summary>
+    public EmotionalType? AttackTypeOverride { get; private set; }
+
+    /// <summary>
+    /// Sets (or clears) the emotional attack type override. Applied at combat
+    /// creation and restored on rehydration; never mutated mid-turn.
+    /// </summary>
+    public void ApplyAttackTypeOverride(EmotionalType? attackType)
+    {
+        AttackTypeOverride = attackType;
+    }
 
     /// <summary>
     /// Immutable stat values frozen at combat creation.
@@ -314,7 +330,8 @@ public sealed class Combatant
         CombatantStatus status,
         IReadOnlyCollection<CombatantSkill> skills,
         CombatantBaseStatSnapshot? baseStatSnapshot = null,
-        CombatantRuntimeState? runtimeState = null)
+        CombatantRuntimeState? runtimeState = null,
+        EmotionalType? attackTypeOverride = null)
     {
         var snapshot = baseStatSnapshot ?? CombatantBaseStatSnapshot.Rehydrate(
             Guid.NewGuid(),
@@ -342,7 +359,9 @@ public sealed class Combatant
             null,
             DateTime.UtcNow);
 
-        return new Combatant(id, sourceKey, displayName, side, archetype, maxVitality, currentVitality, guard, baseGuard, mana, charge, status, skills, snapshot, state);
+        var combatant = new Combatant(id, sourceKey, displayName, side, archetype, maxVitality, currentVitality, guard, baseGuard, mana, charge, status, skills, snapshot, state);
+        combatant.AttackTypeOverride = attackTypeOverride;
+        return combatant;
     }
 
     public void ApplyHeal(int amount)

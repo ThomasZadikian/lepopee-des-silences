@@ -2,6 +2,7 @@ using FluentAssertions;
 using Leds.GameEngine.Application.Combats;
 using Leds.GameEngine.Application.Combats.EncounterDrafts;
 using Leds.GameEngine.Domain.Combats;
+using Leds.GameEngine.Domain.Combats.Typing;
 using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
@@ -15,14 +16,15 @@ public sealed class CombatFactoryTests
         int enemyCount = 1,
         int enemyBaseDifficulty = 3,
         bool includeSkills = false,
-        IReadOnlyCollection<CombatEncounterDraftSkill>? enemySkills = null)
+        IReadOnlyCollection<CombatEncounterDraftSkill>? enemySkills = null,
+        IReadOnlyCollection<string>? allyTags = null)
     {
         var allies = Enumerable.Range(0, allyCount).Select(i =>
             new CombatEncounterDraftAlly(
                 $"player.{i}",
                 $"Hero{i}",
                 "Fighter",
-                Array.Empty<string>())).ToArray();
+                allyTags ?? Array.Empty<string>())).ToArray();
 
         var enemies = Enumerable.Range(0, enemyCount).Select(i =>
         {
@@ -58,6 +60,24 @@ public sealed class CombatFactoryTests
             EncounterType: "Combat",
             Enemies: enemies,
             Allies: allies);
+    }
+
+    [Fact]
+    public void CreateFromDraft_ShouldApplyAttackTypeOverride_WhenModifierProvided()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft(allyTags: new[] { "player" });
+
+        var modifier = RunModifier.Create(
+            RunModifierType.AttackTypeOverride,
+            (int)EmotionalType.Rupture,
+            RunModifierDuration.UntilRunEnds,
+            "RunItem",
+            "item.relic.rupture-mask");
+
+        var combat = factory.CreateFromDraft(draft, runModifiers: new[] { modifier });
+
+        combat.Allies.Single().AttackTypeOverride.Should().Be(EmotionalType.Rupture);
     }
 
     [Fact]
@@ -184,7 +204,8 @@ public sealed class CombatFactoryTests
     public void CreateFromDraft_ShouldApplyAttackPowerBonusToPlayerDamageSkills()
     {
         var factory = new CombatFactory();
-        var draft = CreateDraft();
+        var draft = CreateDraft(allyTags: new[] { "player" });
+
         var modifier = RunModifier.Create(
             RunModifierType.AttackPowerBonus,
             0.10,

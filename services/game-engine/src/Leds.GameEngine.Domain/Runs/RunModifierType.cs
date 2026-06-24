@@ -17,4 +17,5 @@ public enum RunModifierType
     ManaBonus = 12,
     ChargeBonus = 13,
     RoomClimate = 14,
+    AttackTypeOverride = 15,
 }

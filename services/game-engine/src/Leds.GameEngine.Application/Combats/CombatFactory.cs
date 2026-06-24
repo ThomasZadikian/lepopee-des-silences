@@ -3,6 +3,7 @@ using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
+using Leds.GameEngine.Domain.Combats.Typing;
 
 namespace Leds.GameEngine.Application.Combats;
 
@@ -58,6 +59,10 @@ public sealed class CombatFactory : ICombatFactory
             guardBonus += 5;
         }
 
+        // Item-driven emotional attack type for the player character (e.g. a mask
+        // that turns the hero's attacks to Rupture). Null when no override is active.
+        var attackTypeOverride = ResolveAttackTypeOverride(activeModifiers);
+
         var allies = draft.Allies
             .Select(ally =>
             {
@@ -80,7 +85,7 @@ public sealed class CombatFactory : ICombatFactory
                 var mana = playerState?.Mana ?? 0;
                 var charge = playerState?.Charge ?? 0;
 
-                return Combatant.Create(
+                var combatant = Combatant.Create(
                     CombatantId.New(),
                     ally.AllyKey,
                     ally.DisplayName,
@@ -96,6 +101,13 @@ public sealed class CombatFactory : ICombatFactory
                     attackPower: attackPower,
                     defense: defense,
                     speed: speed);
+
+                // The attack-type item retypes the player character only; party
+                // companions keep their own emotional type.
+                var isPlayerCharacter = ally.Tags.Any(tag => string.Equals(tag, "player", StringComparison.OrdinalIgnoreCase));
+                combatant.ApplyAttackTypeOverride(isPlayerCharacter ? attackTypeOverride : null);
+
+                return combatant;
             })
             .ToArray();
 
@@ -155,6 +167,25 @@ public sealed class CombatFactory : ICombatFactory
             new NodeId(draft.NodeId),
             allies,
             enemies);
+    }
+
+    private static EmotionalType? ResolveAttackTypeOverride(IReadOnlyCollection<RunModifier> runModifiers)
+    {
+        var modifier = runModifiers
+            .Where(m => m.Type == RunModifierType.AttackTypeOverride && !m.IsConsumed)
+            .OrderByDescending(m => m.CreatedAtUtc)
+            .FirstOrDefault();
+
+        if (modifier is null)
+        {
+            return null;
+        }
+
+        var value = (int)Math.Round(modifier.Value);
+
+        return Enum.IsDefined(typeof(EmotionalType), value) && value != (int)EmotionalType.Neutral
+            ? (EmotionalType)value
+            : null;
     }
 
     private static RoomClimate? ResolveActiveClimate(

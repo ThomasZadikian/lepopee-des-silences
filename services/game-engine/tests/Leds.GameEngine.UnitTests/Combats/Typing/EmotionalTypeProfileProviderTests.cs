@@ -86,4 +86,36 @@ public sealed class EmotionalTypeProfileProviderTests
 
         _provider.ResolveAttackType(hero, spell).Should().Be(EmotionalType.Rupture);
     }
+
+    [Fact]
+    public void Attack_type_override_replaces_basic_attack_type()
+    {
+        var hero = Combatant.CreateAlly("character.player.self", "Hero", "AnyRole", 100);
+        hero.ApplyAttackTypeOverride(EmotionalType.Rupture);
+        var basicAttack = CombatantSkill.Create("skill.basic.strike", "Frappe", "Damage", "SingleEnemy", "Damage", 0, 0, 10);
+
+        _provider.ResolveAttackType(hero, basicAttack).Should().Be(EmotionalType.Rupture);
+    }
+
+    [Fact]
+    public void Attack_type_override_keeps_innate_weaknesses()
+    {
+        var hero = Combatant.CreateAlly("character.player.self", "Hero", "AnyRole", 100);
+        hero.ApplyAttackTypeOverride(EmotionalType.Rupture);
+
+        var profile = _provider.Resolve(hero);
+
+        profile.AttackType.Should().Be(EmotionalType.Rupture);
+        profile.WeakTo.Should().Contain(EmotionalType.Effroi);
+    }
+
+    [Fact]
+    public void Attack_type_override_does_not_affect_intrinsic_spell_type()
+    {
+        var hero = Combatant.CreateAlly("character.player.self", "Hero", "AnyRole", 100);
+        hero.ApplyAttackTypeOverride(EmotionalType.Rupture);
+        var spell = CombatantSkill.Create("skill-shadow-bite", "Morsure d'Ombre", "Damage", "SingleEnemy", "Damage", 0, 0, 35);
+
+        _provider.ResolveAttackType(hero, spell).Should().Be(EmotionalType.Silence);
+    }
 }

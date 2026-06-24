@@ -4,6 +4,7 @@ using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
 using Leds.GameEngine.Infrastructure.Persistence.Entities;
 using System.Text.Json;
+using Leds.GameEngine.Domain.Combats.Typing;
 
 namespace Leds.GameEngine.Infrastructure.Persistence.Mappers;
 
@@ -49,6 +50,7 @@ public static class CombatPersistenceMapper
             Mana = combatant.Mana,
             Charge = combatant.Charge,
             Status = combatant.Status.ToString(),
+            AttackTypeOverride = combatant.AttackTypeOverride.HasValue ? (int)combatant.AttackTypeOverride.Value : null,
             Skills = combatant.Skills.Select(s => ToEntity(s, combatant.Id.Value)).ToList(),
             BaseStatSnapshot = ToBaseStatSnapshotEntity(combatant.BaseStatSnapshot, combatant.Id.Value),
             RuntimeState = ToRuntimeStateEntity(combatant.RuntimeState, combatant.Id.Value)
@@ -159,7 +161,8 @@ public static class CombatPersistenceMapper
             Enum.Parse<CombatantStatus>(entity.Status),
             entity.Skills.Select(ToDomain).ToList(),
             baseStatSnapshot: baseStatSnapshot,
-            runtimeState: runtimeState);
+            runtimeState: runtimeState,
+            attackTypeOverride: entity.AttackTypeOverride.HasValue ? (EmotionalType)entity.AttackTypeOverride.Value : null);
     }
 
     public static CombatantBaseStatSnapshot ToDomainBaseStatSnapshot(CombatantBaseStatSnapshotEntity entity)

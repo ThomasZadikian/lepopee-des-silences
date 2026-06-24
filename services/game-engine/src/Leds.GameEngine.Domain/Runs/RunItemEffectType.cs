@@ -8,5 +8,6 @@ public enum RunItemEffectType
     ManaRestore = 3,
     ChargeRestore = 4,
     NextCombatGuard = 5,
-    NarrativeFragment = 6
+    NarrativeFragment = 6,
+    AttackTypeOverride = 7
 }

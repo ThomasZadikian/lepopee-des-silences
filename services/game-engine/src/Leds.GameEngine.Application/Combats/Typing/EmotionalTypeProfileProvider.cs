@@ -77,6 +77,24 @@ public sealed class EmotionalTypeProfileProvider : ICombatantTypeProfileProvider
             return CombatantTypeProfile.Neutral;
         }
 
+        var baseProfile = ResolveBaseProfile(combatant);
+
+        // An item-driven attack type override changes the offensive type only;
+        // the combatant keeps its innate weaknesses / resistances / immunities.
+        if (combatant.AttackTypeOverride is { } overrideType && overrideType != baseProfile.AttackType)
+        {
+            return new CombatantTypeProfile(
+                overrideType,
+                baseProfile.WeakTo,
+                baseProfile.ResistantTo,
+                baseProfile.ImmuneTo);
+        }
+
+        return baseProfile;
+    }
+
+    private static CombatantTypeProfile ResolveBaseProfile(Combatant combatant)
+    {
         if (!string.IsNullOrWhiteSpace(combatant.SourceKey)
             && ProfilesByKey.TryGetValue(combatant.SourceKey, out var bySource))
         {

@@ -16,6 +16,12 @@ public sealed class CombatantEntity
     public int Charge { get; set; }
     public string Status { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Optional emotional attack type override (int value of EmotionalType), set
+    /// from an AttackTypeOverride run modifier at combat creation. Null = no override.
+    /// </summary>
+    public int? AttackTypeOverride { get; set; }
+
     public CombatEntity? Combat { get; set; }
     public List<CombatantSkillEntity> Skills { get; set; } = [];
     public CombatantBaseStatSnapshotEntity? BaseStatSnapshot { get; set; }

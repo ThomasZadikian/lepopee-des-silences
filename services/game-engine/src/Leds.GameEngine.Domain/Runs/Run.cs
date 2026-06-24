@@ -902,6 +902,19 @@ public sealed class Run
                     definitionKey));
             }
         }
+
+        // Attack-type items override the hero's emotional attack type for the rest
+        // of the run (effectAmount = int value of EmotionalType). Latest wins:
+        // CombatFactory reads the most recent unconsumed override at combat creation.
+        if (effectType == RunItemEffectType.AttackTypeOverride && effectAmount > 0)
+        {
+            AddRunModifier(RunModifier.Create(
+                RunModifierType.AttackTypeOverride,
+                effectAmount,
+                RunModifierDuration.UntilRunEnds,
+                "RunItem",
+                definitionKey));
+        }
     }
 
     /// <summary>

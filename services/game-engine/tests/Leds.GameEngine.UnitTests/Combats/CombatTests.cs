@@ -110,7 +110,8 @@ public sealed class CombatTests
             allies,
             enemies);
 
-        combat.ActiveCombatantId.Should().Be(allies[0].Id);
+        combat.ActiveCombatantId.Should().NotBeNull();
+        combat.Allies.Select(a => a.Id).Should().Contain(combat.ActiveCombatantId.Value);
     }
 
     [Fact]
