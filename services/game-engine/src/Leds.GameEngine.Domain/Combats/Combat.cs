@@ -262,8 +262,19 @@ public sealed class Combat
 
         var cap = AtbConstants.ReadyThreshold + AtbConstants.MaxChargeOverflow;
 
+        // While an ally holds the selection (an ally is active AND ready), ALL ally
+        // gauges freeze: the active one stops auto-charging (so the power/charge
+        // system isn't permanently building during selection) and other allies stop
+        // filling. Enemies keep filling — time still flows for them.
+        var active = GetActiveCombatant();
+        var allyHoldsSelection = active is { Side: CombatantSide.Player }
+            && active.AtbGauge >= AtbConstants.ReadyThreshold;
+
         foreach (var combatant in AllCombatants.Where(c => !c.IsDefeated))
         {
+            if (allyHoldsSelection && combatant.Side == CombatantSide.Player)
+                continue; // frozen during selection
+
             var recoveryWait = Math.Max(0, combatant.AtbRecoveryUntilTick - CurrentTick);
             var fillTicks = Math.Max(0, deltaTicks - recoveryWait);
             if (fillTicks <= 0)
@@ -274,7 +285,6 @@ public sealed class Combat
         }
 
         CurrentTick += deltaTicks;
-
         return Enemies
             .Where(e => !e.IsDefeated && e.AtbGauge >= AtbConstants.ReadyThreshold)
             .OrderByDescending(e => e.AtbGauge)

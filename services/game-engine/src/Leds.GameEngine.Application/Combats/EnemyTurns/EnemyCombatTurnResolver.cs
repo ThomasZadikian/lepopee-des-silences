@@ -4,6 +4,7 @@ using Leds.GameEngine.Application.Combats.Effects;
 using Leds.GameEngine.Application.Combats.EnemyTurns.Bossing;
 using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Combats.Atb;
+using Leds.GameEngine.Domain.Combats.Typing;
 
 namespace Leds.GameEngine.Application.Combats.EnemyTurns;
 
@@ -168,12 +169,35 @@ public sealed class EnemyCombatTurnResolver : IEnemyCombatTurnResolver
         return skill.TargetingType switch
         {
             "Self" => [actor.Id.Value],
-            "SingleEnemy" => combat.Allies.Where(a => !a.IsDefeated).Take(1).Select(a => a.Id.Value).ToArray(),
+            "SingleEnemy" => PickRandomSingle(combat, actor, combat.Allies.Where(a => !a.IsDefeated).ToArray()),
             "AllEnemies" => combat.Allies.Where(a => !a.IsDefeated).Select(a => a.Id.Value).ToArray(),
-            "SingleAlly" => combat.Enemies.Where(e => !e.IsDefeated).Take(1).Select(e => e.Id.Value).ToArray(),
+            "SingleAlly" => PickRandomSingle(combat, actor, combat.Enemies.Where(e => !e.IsDefeated).ToArray()),
             "AllAllies" => combat.Enemies.Where(e => !e.IsDefeated).Select(e => e.Id.Value).ToArray(),
             _ => []
         };
+    }
+
+    /// <summary>
+    /// Deterministic-random single-target pick among living candidates. Reproducible
+    /// (SHA-256 over combat/actor/turn state — never <c>new Random()</c>), so a combat
+    /// replays identically. For now the enemy AI simply spreads its hits randomly
+    /// instead of always striking the first ally in the list.
+    /// </summary>
+    private static IReadOnlyCollection<Guid> PickRandomSingle(
+        Combat combat,
+        Combatant actor,
+        IReadOnlyList<Combatant> candidates)
+    {
+        if (candidates.Count == 0)
+            return [];
+
+        if (candidates.Count == 1)
+            return [candidates[0].Id.Value];
+
+        var seed = $"enemy-target:{combat.Id.Value}:{actor.Id.Value}:{combat.TurnNumber}:{combat.CurrentTick}";
+        var roll = DeterministicCombatRoll.UnitInterval(seed);
+        var index = Math.Min(candidates.Count - 1, (int)(roll * candidates.Count));
+        return [candidates[index].Id.Value];
     }
 
     private static IReadOnlyCollection<CombatLogEntryDto> AdvanceCombat(Combat combat)
