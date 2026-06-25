@@ -139,7 +139,9 @@ public sealed class UseCombatSkillCommandHandler
             now.UtcDateTime);
         allActionRecords.AddRange(playerActionRecords);
 
-        var enemyTurnLogEntries = ResolveEnemyTurns(effectResolution.Combat, allActionRecords, run.ActiveCombat.Id.Value, now.UtcDateTime);
+        // ATB: the player's action resolves the player's turn only. Enemy turns are
+        // driven by the client in real time via AdvanceCombatTurnCommand as gauges fill.
+        var enemyTurnLogEntries = Array.Empty<CombatLogEntryDto>();
         var finalCombat = effectResolution.Combat;
         var combatCompleted = finalCombat.Status == CombatStatus.Completed;
         var combatFailed = finalCombat.Status == CombatStatus.Failed;

@@ -8,6 +8,7 @@ using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Runs;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using Leds.GameEngine.Application.Runs.AdvanceCombatTurn;
 
 namespace Leds.GameEngine.Api.Controllers;
 
@@ -49,6 +50,27 @@ public sealed class CombatsController : ControllerBase
         }
 
         return Ok(CombatInstanceDto.FromDomain(run.ActiveCombat));
+    }
+
+    /// <summary>
+    /// Advances the ATB clock by one turn. If an enemy is up it resolves that single
+    /// enemy turn; if the player is up it is a no-op. The client calls this in real
+    /// time as gauges fill, instead of the server cascading every enemy turn.
+    /// </summary>
+    [HttpPost("{combatId:guid}/advance")]
+    [ProducesResponseType(typeof(CombatSkillActionResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<CombatSkillActionResult>> AdvanceCombatTurn(
+        Guid runId,
+        Guid combatId,
+        CancellationToken cancellationToken)
+    {
+        var command = new AdvanceCombatTurnCommand(runId, combatId);
+
+        var result = await _sender.Send(command, cancellationToken);
+
+        return Ok(result);
     }
 
     /// <summary>

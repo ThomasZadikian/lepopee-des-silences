@@ -214,6 +214,8 @@ onMounted(() => {
   } else {
     combatStore.loadCurrentCombat(props.runId);
   }
+  // ATB: if an enemy opens, drive its turn in real time.
+  void combatStore.driveEnemyTurns(props.runId, (c) => { runStore.combatRuntime = c; });
 });
 
 watch(() => props.combatId, (newId) => {

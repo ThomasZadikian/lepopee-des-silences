@@ -8,10 +8,10 @@ const props = withDefaults(
 
 const READY = 10_000;
 const MAX_OVERFLOW = 10_000;
-// Visual pacing: how many ATB ticks elapse per real second on the client.
-const VISUAL_TICKS_PER_SEC = 25;
+// Visual fill rate (gauge units / second). Decoupled from the tiny server
+// fillPerTick so the bar reads well; relative speed shows via turn frequency.
+const FILL_RATE = 6_500;
 
-// Animated display value, reconciled with the server truth on each update.
 const displayed = ref(props.gauge);
 
 const baseRatio = computed(() => Math.min(displayed.value, READY) / READY);
@@ -33,22 +33,21 @@ function flash(target: { value: boolean }, ms = 600) {
 let raf = 0;
 let last = 0;
 function frame(now: number) {
-  const dt = last ? (now - last) / 1000 : 0;
+  const dt = last ? Math.min(0.1, (now - last) / 1000) : 0;
   last = now;
-  if (props.active) {
-    // Active combatant: show the server truth (ready / charging).
-    displayed.value = props.gauge;
-  } else if (displayed.value < READY) {
-    // Pseudo real-time: fill toward ready while the player ponders.
-    displayed.value = Math.min(READY, displayed.value + props.fillPerTick * dt * VISUAL_TICKS_PER_SEC);
+  const target = props.gauge;
+  if (displayed.value < target) {
+    displayed.value = Math.min(target, displayed.value + FILL_RATE * dt); // animate up
+  } else if (displayed.value > target) {
+    displayed.value = target; // snap down (acted / interrupted)
   }
   raf = requestAnimationFrame(frame);
 }
 
-watch(() => props.gauge, (next, prev) => {
-  if (next < displayed.value - 800) flash(staggered);   // interrupted / acted → recede
-  if (prev < READY && next >= READY) flash(justReady);
-  displayed.value = next;                                 // reconcile with server
+watch(() => props.gauge, (next) => {
+  if (next < displayed.value - 800) flash(staggered);                 // big drop → interrupted
+  if (displayed.value < READY && next >= READY) flash(justReady);     // about to be ready
+  if (next < displayed.value) displayed.value = next;                 // snap down only
 });
 
 onMounted(() => { last = 0; raf = requestAnimationFrame(frame); });

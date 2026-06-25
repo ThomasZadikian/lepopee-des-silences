@@ -176,10 +176,10 @@ public sealed class ResolveCurrentEventCommandHandler
                 focus: run.Focus);
             // ATB: bake Markov tempo + opening gauges, then elect the opener.
             _atbPreparer.PrepareNewCombat(combatRuntime, run);
-            run.StartCombat(combatRuntime);
 
-            // Ouverture : si un ennemi est plus rapide, il agit avant de rendre la main au joueur.
-            _enemyTurnResolver.ResolveLeadingEnemyTurns(combatRuntime);
+            run.StartCombat(combatRuntime);
+            // ATB: enemy turns (including the opening, if an enemy is up first) are
+            // driven by the client in real time via AdvanceCombatTurnCommand.
             if (combatRuntime.Status != CombatStatus.Active)
                 pendingRewardOffer = _combatResolution.ApplyOutcome(run, combatRuntime, _clock.UtcNow);
 

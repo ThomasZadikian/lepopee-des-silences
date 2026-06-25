@@ -28,6 +28,13 @@ export const combatApi = {
     );
   },
 
+    advanceCombat(runId: string, combatId: string) {
+    return gameEngineApi.post<UseCombatSkillResponse>(
+      `/api/v2/runs/${runId}/combats/${combatId}/advance`,
+      {},
+    );
+  },
+
   useItemAction(
     runId: string,
     combatId: string,

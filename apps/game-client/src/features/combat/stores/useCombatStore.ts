@@ -156,6 +156,7 @@ export const useCombatStore = defineStore('combatRuntime', () => {
 
       if (response.combatCompleted) terminalEvent.value = { kind: 'victory' };
       else if (response.combatFailed) terminalEvent.value = { kind: 'defeat' };
+      else { await driveEnemyTurns(runId, onCombatApplied); }
     } catch (caught) {
       error.value =
         caught instanceof Error ? caught.message : "L'utilisation a échoué.";
@@ -544,6 +545,41 @@ export const useCombatStore = defineStore('combatRuntime', () => {
     }
   }
 
+    function activeIsEnemy(): boolean {
+    const id = combat.value?.activeCombatantId;
+    if (!id) return false;
+    const c = allCombatants.value.find((x) => x.id === id);
+    return c?.side === 'Enemy' && c.status !== 'Defeated';
+  }
+
+  let drivingEnemies = false;
+  async function driveEnemyTurns(runId: string, onCombatApplied?: (combat: CombatRuntimeDto) => void) {
+    if (drivingEnemies) return;
+    drivingEnemies = true;
+    const ENEMY_TURN_DELAY = 850; // ms — lets the bar visibly fill before the enemy acts
+    const wasLoading = isLoading.value;
+    isLoading.value = true;
+    try {
+      let guard = allCombatants.value.length * 4 + 4; // safety bound
+      while (combat.value?.status === 'Active' && activeIsEnemy() && guard-- > 0) {
+        await delay(ENEMY_TURN_DELAY);
+        if (!(combat.value?.status === 'Active' && activeIsEnemy())) break;
+        const combatId = combat.value.id;
+        const response = await combatApi.advanceCombat(runId, combatId);
+        await playCombatLogs(response.logEntries);
+        finishCombatResponse(response.combat);
+        onCombatApplied?.(response.combat);
+        if (response.combatCompleted) { terminalEvent.value = { kind: 'victory' }; break; }
+        if (response.combatFailed) { terminalEvent.value = { kind: 'defeat' }; break; }
+      }
+    } catch (caught) {
+      error.value = caught instanceof Error ? caught.message : "L'avancement du combat a échoué.";
+    } finally {
+      isLoading.value = wasLoading;
+      drivingEnemies = false;
+    }
+  }
+
   async function submitAction(runId: string, onCombatApplied?: (combat: CombatRuntimeDto) => void) {
     if (isLoading.value) return;
     if (!canSubmit.value) return;
@@ -571,6 +607,8 @@ export const useCombatStore = defineStore('combatRuntime', () => {
         terminalEvent.value = { kind: 'victory' };
       } else if (response.combatFailed) {
         terminalEvent.value = { kind: 'defeat' };
+      } else {
+        await driveEnemyTurns(runId, onCombatApplied);
       }
     } catch (caught) {
       error.value =
@@ -623,6 +661,7 @@ export const useCombatStore = defineStore('combatRuntime', () => {
     finishCombatResponse,
     playCombatLogs,
     clearCombat,
+    driveEnemyTurns,
     // Skills
     selectSkill,
     selectTarget,
