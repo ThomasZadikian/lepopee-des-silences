@@ -569,12 +569,13 @@ export const useCombatStore = defineStore('combatRuntime', () => {
     const c = allCombatants.value.find((x) => x.id === id);
     return c?.side === 'Enemy' && c.status !== 'Defeated';
   }
+
   let combatClockRunning = false;
   async function runCombatClock(runId: string, onCombatApplied?: (combat: CombatRuntimeDto) => void) {
     if (combatClockRunning) return;
     combatClockRunning = true;
-    const TICK_INTERVAL = 280; // ms between real-time ticks
-    const TICK_DELTA = 200;    // ATB ticks advanced per call ("time keeps flowing")
+    const TICK_INTERVAL = 480; // ms between real-time ticks
+    const TICK_DELTA = 340;    // ATB ticks advanced per call ("time keeps flowing")
     try {
       while (combat.value?.status === 'Active' && terminalEvent.value === null) {
         await delay(TICK_INTERVAL);
@@ -676,6 +677,7 @@ export const useCombatStore = defineStore('combatRuntime', () => {
     clearItemSelection,
     submitItemAction,
     // Combat state
+    activeIsEnemy,
     initCombat,
     setCombatFromResponse,
     finishCombatResponse,

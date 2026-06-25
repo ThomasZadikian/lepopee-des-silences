@@ -121,15 +121,21 @@ public sealed class AdvanceCombatTurnCommandHandler
 
         var rewardOffer = _combatResolution.ApplyOutcome(run, finalCombat, now);
 
-        await _runRepository.UpdateAsync(run, cancellationToken);
+        // Hot path on a normal tick (combat still active, no run-level change);
+        // fall back to the full run write only when the combat ends or a reward
+        // offer was produced.
+        if (combatCompleted || combatFailed || rewardOffer is not null)
+        {
+            await _runRepository.UpdateAsync(run, cancellationToken);
+        }
+        else
+        {
+            await _runRepository.UpdateActiveCombatStateAsync(run, cancellationToken);
+        }
+
         if (rewardOffer is not null)
         {
             await _rewardOfferRepository.AddAsync(run.Id, rewardOffer, cancellationToken);
-        }
-
-        if (actionRecords.Count > 0)
-        {
-            await _actionRecordRepository.AddRangeAsync(actionRecords, cancellationToken);
         }
 
         return new CombatSkillActionResult(

@@ -18,6 +18,8 @@ public sealed class EfRunRepository : IRunRepository
     public async Task<Run?> GetByIdAsync(RunId runId, CancellationToken cancellationToken)
     {
         var entity = await _dbContext.Runs
+            .AsNoTracking()
+            .AsSplitQuery()
             .Include(run => run.Rooms)
                 .ThenInclude(room => room.Nodes)
                     .ThenInclude(node => node.ParentNodeLinks)
@@ -61,6 +63,7 @@ public sealed class EfRunRepository : IRunRepository
 
         // Delete existing entity graph first to avoid EF tracking conflicts.
         var existing = await _dbContext.Runs
+            .AsSplitQuery()
             .Include(r => r.Rooms)
                 .ThenInclude(room => room.Nodes)
                     .ThenInclude(node => node.ParentNodeLinks)
@@ -104,6 +107,63 @@ public sealed class EfRunRepository : IRunRepository
         // Add fresh entity graph.
         var entity = RunPersistenceMapper.ToEntity(run);
         _dbContext.Runs.Add(entity);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task UpdateActiveCombatStateAsync(Run run, CancellationToken cancellationToken)
+    {
+        var combat = run.ActiveCombat;
+        if (combat is null)
+        {
+            return;
+        }
+
+        var combatId = combat.Id.Value;
+
+        // Load ONLY the small combat subtree (not the run/map). Cost is constant
+        // per tick and does NOT grow with run progress (kills the "Room 3" curve).
+        var existingCombat = await _dbContext.Combats
+            .AsSplitQuery()
+            .Include(c => c.Combatants)
+                .ThenInclude(cb => cb.RuntimeState)
+            .FirstOrDefaultAsync(c => c.Id == combatId, cancellationToken);
+
+        if (existingCombat is null)
+        {
+            // Combat row already gone (completed/removed on the full path) — the
+            // authoritative state was persisted there, nothing hot to save.
+            return;
+        }
+
+        var incomingCombat = CombatPersistenceMapper.ToEntity(combat, run.Id.Value);
+
+        // Combat scalars: Status, TurnNumber, CurrentTick, ActiveCombatantId, …
+        // SetValues copies every mapped scalar by name, so new columns (e.g. ATB)
+        // are covered automatically — no field-by-field maintenance.
+        _dbContext.Entry(existingCombat).CurrentValues.SetValues(incomingCombat);
+
+        var incomingById = incomingCombat.Combatants.ToDictionary(c => c.Id);
+
+        foreach (var existingCombatant in existingCombat.Combatants)
+        {
+            if (!incomingById.TryGetValue(existingCombatant.Id, out var incomingCombatant))
+            {
+                continue; // combatant membership is fixed during a fight
+            }
+
+            // Combatant scalars: CurrentVitality, Guard, Mana, Charge, Status,
+            // AttackTypeOverride, … (skills & base stats are immutable mid-combat).
+            _dbContext.Entry(existingCombatant).CurrentValues.SetValues(incomingCombatant);
+
+            if (existingCombatant.RuntimeState is not null && incomingCombatant.RuntimeState is not null)
+            {
+                // Runtime ATB state: AtbGaugeValue, ActionRecoveryUntilTick,
+                // AtbFillPerTick, CurrentGuard, CurrentVitality, … all via SetValues.
+                _dbContext.Entry(existingCombatant.RuntimeState)
+                    .CurrentValues.SetValues(incomingCombatant.RuntimeState);
+            }
+        }
+
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
