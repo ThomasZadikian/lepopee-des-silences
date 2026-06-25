@@ -143,10 +143,10 @@ export const useCombatStore = defineStore('combatRuntime', () => {
     isLoading.value = true;
     error.value = null;
     try {
-      const response = await combatApi.useItemAction(runId, combatId, {
+      const response = await runExclusive(() => combatApi.useItemAction(runId, combatId, {
         itemId: item.itemId,
         targetIds,
-      });
+      }));
 
       selectedItemId.value = null;
       selectedTargetIds.value = [];
@@ -248,6 +248,16 @@ export const useCombatStore = defineStore('combatRuntime', () => {
       allies: mergeCombatants(combatData.allies),
       enemies: mergeCombatants(combatData.enemies),
     };
+  }
+
+    // Serialise every combat-mutating server call so the real-time clock and the
+  // player's own actions never write the run concurrently (which could resurrect
+  // a just-killed combat).
+  let mutationGate: Promise<unknown> = Promise.resolve();
+  function runExclusive<T>(task: () => Promise<T>): Promise<T> {
+    const result = mutationGate.then(task, task);
+    mutationGate = result.then(() => undefined, () => undefined);
+    return result;
   }
 
   function mergeCombatants(combatants: CombatantRuntimeDto[]): CombatantRuntimeDto[] {
@@ -574,11 +584,13 @@ export const useCombatStore = defineStore('combatRuntime', () => {
         if (isLoading.value) continue;
 
         const combatId = combat.value.id;
-        const response = await combatApi.hold(runId, combatId, TICK_DELTA).catch(() => null);
-        if (!response) break; // combat ended server-side — stop (no 409 spam)
+        const response = await runExclusive(() => combatApi.hold(runId, combatId, TICK_DELTA))
+          .catch(() => null);
+        if (!response) break;                    // combat gone server-side — stop the clock
+        if (terminalEvent.value !== null) break; // player ended combat meanwhile — discard tick
 
         await playCombatLogs(response.logEntries);
-        if (isLoading.value) continue; // player acted mid-flight — let their response win
+        if (isLoading.value || terminalEvent.value !== null) break;
 
         applyClockCombat(response.combat);
         onCombatApplied?.(response.combat);
@@ -602,11 +614,11 @@ export const useCombatStore = defineStore('combatRuntime', () => {
     isLoading.value = true;
     error.value = null;
     try {
-      const response = await combatApi.useSkillAction(runId, combatId, {
+      const response = await runExclusive(() => combatApi.useSkillAction(runId, combatId, {
         actorId: actor.id,
         skillKey: skill.key,
         targetIds: selectedTargetIds.value,
-      });
+      }));
 
       selectedSkillKey.value = null;
       selectedTargetIds.value = [];
