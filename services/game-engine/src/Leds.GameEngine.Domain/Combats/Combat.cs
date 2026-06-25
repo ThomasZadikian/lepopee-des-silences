@@ -232,6 +232,53 @@ public sealed class Combat
         target.SetAtbGauge(AtbActionMath.Interrupt(target.AtbGauge));
     }
 
+    /// <summary>
+    /// "Time flows" while the player holds: advances the clock by a fixed delta,
+    /// filling every combatant (the player charges past the threshold up to the
+    /// overflow cap; enemies fill toward readiness). Does not change the active
+    /// combatant. Returns the ids of enemies that have become ready to act,
+    /// readiest first — the caller resolves them while the player keeps holding.
+    /// </summary>
+    public IReadOnlyCollection<Guid> HoldTick(int deltaTicks)
+    {
+        if (Status != CombatStatus.Active || deltaTicks <= 0)
+            return [];
+
+        var cap = AtbConstants.ReadyThreshold + AtbConstants.MaxChargeOverflow;
+
+        foreach (var combatant in AllCombatants.Where(c => !c.IsDefeated))
+        {
+            var recoveryWait = Math.Max(0, combatant.AtbRecoveryUntilTick - CurrentTick);
+            var fillTicks = Math.Max(0, deltaTicks - recoveryWait);
+            if (fillTicks <= 0)
+                continue;
+
+            var raw = (long)combatant.AtbGauge + (long)combatant.AtbFillPerTick * fillTicks;
+            combatant.SetAtbGauge((int)Math.Min(raw, cap));
+        }
+
+        CurrentTick += deltaTicks;
+
+        return Enemies
+            .Where(e => !e.IsDefeated && e.AtbGauge >= AtbConstants.ReadyThreshold)
+            .OrderByDescending(e => e.AtbGauge)
+            .ThenByDescending(e => e.BaseStatSnapshot.Initiative)
+            .ThenBy(e => e.Id.Value)
+            .Select(e => e.Id.Value)
+            .ToArray();
+    }
+
+    /// <summary>
+    /// Forces a living combatant to be the active one. Used by the hold loop to
+    /// resolve a specific ready enemy's turn while the player is holding.
+    /// </summary>
+    public void MakeActiveCombatant(Guid combatantId)
+    {
+        var target = AllCombatants.FirstOrDefault(c => c.Id.Value == combatantId && !c.IsDefeated);
+        if (target is not null)
+            ActiveCombatantId = target.Id;
+    }
+
     public Combatant? GetNextActiveCombatant()
     {
         if (Status != CombatStatus.Active)

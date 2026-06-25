@@ -2,13 +2,15 @@ using Leds.GameEngine.Application.Abstractions;
 using Leds.GameEngine.Application.Combats.Actions;
 using Leds.GameEngine.Application.Combats.Dtos;
 using Leds.GameEngine.Application.Combats.SubmitCombatAction;
+using Leds.GameEngine.Application.Runs.AdvanceCombatTurn;
+using Leds.GameEngine.Application.Runs.HoldCombatTurn;
 using Leds.GameEngine.Application.Runs.UseCombatSkill;
 using Leds.GameEngine.Application.Runs.UseItemInCombat;
 using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Runs;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
-using Leds.GameEngine.Application.Runs.AdvanceCombatTurn;
+using Leds.GameEngine.Application.Runs.HoldCombatTurn;
 
 namespace Leds.GameEngine.Api.Controllers;
 
@@ -67,6 +69,27 @@ public sealed class CombatsController : ControllerBase
         CancellationToken cancellationToken)
     {
         var command = new AdvanceCombatTurnCommand(runId, combatId);
+
+        var result = await _sender.Send(command, cancellationToken);
+
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// "Time flows" while the player holds: advances the ATB clock by a delta,
+    /// charging the player and letting any newly-ready enemy act.
+    /// </summary>
+    [HttpPost("{combatId:guid}/hold")]
+    [ProducesResponseType(typeof(CombatSkillActionResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<CombatSkillActionResult>> HoldCombatTurn(
+        Guid runId,
+        Guid combatId,
+        [FromBody] HoldCombatTurnRequest? body,
+        CancellationToken cancellationToken)
+    {
+        var command = new HoldCombatTurnCommand(runId, combatId, body?.DeltaTicks ?? 180);
 
         var result = await _sender.Send(command, cancellationToken);
 
@@ -160,3 +183,5 @@ public sealed record SubmitCombatActionRequest(
 public sealed record UseItemInCombatRequest(
     Guid ItemId,
     IReadOnlyCollection<Guid>? TargetIds);
+
+public sealed record HoldCombatTurnRequest(int DeltaTicks);
