@@ -60,6 +60,7 @@ public sealed record RunDto(
                 .Where(indicator => !indicator.IsExpired)
                 .Select(PalacePublicIndicatorDto.FromDomain)
                 .ToArray();
+        var currentRoomDto = RoomDto.FromDomain(run.CurrentRoom, run.RunModifiers);
 
         return new RunDto(
             run.Id.Value,
@@ -71,8 +72,8 @@ public sealed record RunDto(
             run.CurrentDepth,
             run.ActiveCombatId?.Value,
             run.PendingRewardOfferId?.Value,
-            RoomDto.FromDomain(run.CurrentRoom, run.RunModifiers),
-            run.Rooms.Select(room => RoomDto.FromDomain(room, run.RunModifiers)).ToArray(),
+            currentRoomDto,
+            new[] { currentRoomDto },
             run.ActivePalaceLaws.Where(law => !law.IsConsumed).Select(ActivePalaceLawDto.FromDomain).ToArray(),
             run.RunItems.Select(RunItemDto.FromDomain).ToArray(),
             run.CurrentRoomIndex,

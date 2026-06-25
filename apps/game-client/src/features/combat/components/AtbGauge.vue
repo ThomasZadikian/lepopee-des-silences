@@ -6,8 +6,8 @@ const props = withDefaults(
   { gauge: 0, fillPerTick: 10, active: false },
 );
 
-const READY = 10_000;
-const MAX_OVERFLOW = 10_000;
+const READY = 50_000;
+const MAX_OVERFLOW = 50_000;
 // Visual fill rate (gauge units / second). Decoupled from the tiny server
 // fillPerTick so the bar reads well; relative speed shows via turn frequency.
 const FILL_RATE = 6_500;

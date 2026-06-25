@@ -8,7 +8,7 @@
 public static class AtbConstants
 {
     /// <summary>Gauge value a combatant must reach to be allowed to act.</summary>
-    public const int ReadyThreshold = 10_000;
+    public const int ReadyThreshold = 50_000;
 
     /// <summary>
     /// How far past <see cref="ReadyThreshold"/> a held gauge may bank (charge

@@ -1,6 +1,5 @@
 import { defineStore } from 'pinia';
-import { computed, ref } from 'vue';
-
+import { computed, ref, shallowRef } from 'vue';
 import { rewardApi } from '../../rewards/api/rewardApi';
 import {
   unwrapRewardOffer,
@@ -57,11 +56,11 @@ export const useRunStore = defineStore('run', () => {
   // State
   // -------------------------------------------------------------------------
 
-  const currentRun = ref<RunDto | null>(null);
+  const currentRun = shallowRef<RunDto | null>(null);
   const pendingRewardOffer = ref<RewardOfferDto | null>(null);
   const lastOutcome = ref<ResolveCurrentEventResponse['outcome'] | null>(null);
   const activeCombat = ref<CombatInstanceDto | null>(null);
-  const combatRuntime = ref<CombatRuntimeDto | null>(null);
+  const combatRuntime = shallowRef<CombatRuntimeDto | null>(null);
   const previewedNodeId = ref<string | null>(null);
   const lastChoiceResult = ref<CurrentEventChoiceResultDto | null>(null);
 
@@ -69,7 +68,7 @@ export const useRunStore = defineStore('run', () => {
   const isEnteringInterlude = ref(false);
   const isEnteringNextRoom = ref(false);
 
-  const resumableRun = ref<ResumableRunDto | null>(null);
+  const resumableRun = shallowRef<ResumableRunDto | null>(null);
   const isLoadingResumableRun = ref(false);
   const isSavingAndExiting = ref(false);
   const isExitingMidRoom = ref(false);
