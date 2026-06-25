@@ -122,8 +122,21 @@ public static class CombatPersistenceMapper
     public static Combat ToDomain(CombatEntity entity)
     {
         var combatants = entity.Combatants.Select(ToDomain).ToList();
-        var allies = combatants.Where(c => c.Side == CombatantSide.Player).ToList();
-        var enemies = combatants.Where(c => c.Side == CombatantSide.Enemy).ToList();
+
+        // Deterministic, protagonist-first ordering so the player is ALWAYS first in
+        // combat — and stays first across persistence reloads (which happen every
+        // tick). Companions/enemies keep a stable order too.
+        var allies = combatants
+            .Where(c => c.Side == CombatantSide.Player)
+            .OrderBy(c => string.Equals(c.SourceKey, "player.self", StringComparison.OrdinalIgnoreCase) ? 0 : 1)
+            .ThenBy(c => c.SourceKey, StringComparer.Ordinal)
+            .ThenBy(c => c.Id.Value)
+            .ToList();
+        var enemies = combatants
+            .Where(c => c.Side == CombatantSide.Enemy)
+            .OrderBy(c => c.SourceKey, StringComparer.Ordinal)
+            .ThenBy(c => c.Id.Value)
+            .ToList();
 
         return Combat.Rehydrate(
             new CombatId(entity.Id),

@@ -354,8 +354,14 @@ public sealed class Combat
         TurnNumber++; // each resolved action is its own "turn" (unique client log keys)
     }
 
-    /// Re-elects the active combatant by CURRENT readiness only — no time advance.
-    public void ElectActiveByReadiness()
+    /// <summary>
+    /// Re-elects the active combatant by CURRENT readiness — no time advance.
+    /// Ally selection is STICKY: a living ally that already holds the active slot
+    /// keeps it until it acts, so a faster companion's bar filling later cannot
+    /// steal the selection. A fresh election prefers allies in party order
+    /// (protagonist first), then enemies — never by gauge.
+    /// </summary>
+    public void ElectActiveByReadiness(Guid? preferredAllyId = null)
     {
         CompleteIfAllEnemiesDefeated();
         FailIfAllAlliesDefeated();
@@ -366,19 +372,39 @@ public sealed class Combat
             return;
         }
 
-        var ready = AllCombatants
-            .Where(c => !c.IsDefeated && c.AtbGauge >= AtbConstants.ReadyThreshold)
-            .OrderByDescending(c => c.AtbGauge)
-            .ThenByDescending(c => c.BaseStatSnapshot.Initiative)
-            .ThenBy(c => c.Side)
-            .ThenBy(c => c.Id.Value)
-            .FirstOrDefault();
+        // Restore a still-ready HELD ally first. Enemy turns resolved within a tick
+        // use the active slot as scratch space (MakeActiveCombatant) and must not
+        // steal the player's selection: the caller passes the ally that held the
+        // slot before the enemies acted so it is handed back.
+        if (preferredAllyId is Guid preferredId)
+        {
+            var preferred = AllCombatants.FirstOrDefault(c => c.Id.Value == preferredId);
+            if (preferred is { IsDefeated: false, Side: CombatantSide.Player }
+                && preferred.AtbGauge >= AtbConstants.ReadyThreshold)
+            {
+                ActiveCombatantId = preferred.Id;
+                return;
+            }
+        }
+
+        // Sticky: a living ALLY that already holds the active slot keeps it until it
+        // acts. A companion whose bar fills later cannot steal the selection.
+        var current = AllCombatants.FirstOrDefault(c => c.Id == ActiveCombatantId);
+        if (current is { IsDefeated: false, Side: CombatantSide.Player }
+            && current.AtbGauge >= AtbConstants.ReadyThreshold)
+        {
+            return;
+        }
+
+        // Fresh election: first READY combatant in party order — allies first
+        // (protagonist, then companions), then enemies. Never by gauge.
+        var elected = AllCombatants
+            .FirstOrDefault(c => !c.IsDefeated && c.AtbGauge >= AtbConstants.ReadyThreshold);
 
         var previousActiveId = ActiveCombatantId;
-        ActiveCombatantId = ready?.Id;
+        ActiveCombatantId = elected?.Id;
 
-        if (ready is not null && ready.Id != previousActiveId)
-            ready.ResetGuardToBase(); // start-of-turn guard refresh, only on a NEW holder
+        if (elected is not null && elected.Id != previousActiveId)
+            elected.ResetGuardToBase();
     }
-
 }

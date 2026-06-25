@@ -25,7 +25,7 @@ const justReady = ref(false);
 const staggered = ref(false);
 const timers: number[] = [];
 // in <script setup>, alongside the other computeds
-const READY_T = 10_000;
+const READY_T = 50_000;
 const MAX_OVER = 10_000;
 const chargeMult = computed(() => {
   const over = Math.min(Math.max(displayed.value - READY_T, 0), MAX_OVER);

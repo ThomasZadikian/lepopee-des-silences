@@ -76,6 +76,13 @@ public sealed class HoldCombatTurnCommandHandler
 
         if (combat.Status == CombatStatus.Active)
         {
+            // The ally that holds the selection before enemies act — restored after
+            // the enemy loop so an enemy turn within this tick can't steal it.
+            var heldActive = combat.GetActiveCombatant();
+            Guid? heldAllyId = heldActive is { Side: CombatantSide.Player }
+                ? heldActive.Id.Value
+                : null;
+
             var readyEnemyIds = combat.HoldTick(request.DeltaTicks);
             var resolved = 0;
 
@@ -119,9 +126,9 @@ public sealed class HoldCombatTurnCommandHandler
                 }
             }
 
-            // After any ready enemies have acted, hand the active slot to the player
-            // if their gauge is now full (else leave it empty for the clock to fill).
-            combat.ElectActiveByReadiness();
+            // After any ready enemies have acted, restore the ally that held the
+            // selection (if still ready), else hand the slot to the next ready ally.
+            combat.ElectActiveByReadiness(heldAllyId);
         }
 
         var finalCombat = combat;
