@@ -24,6 +24,16 @@ const isMax = computed(() => displayed.value >= READY + MAX_OVERFLOW);
 const justReady = ref(false);
 const staggered = ref(false);
 const timers: number[] = [];
+// in <script setup>, alongside the other computeds
+const READY_T = 10_000;
+const MAX_OVER = 10_000;
+const chargeMult = computed(() => {
+  const over = Math.min(Math.max(displayed.value - READY_T, 0), MAX_OVER);
+  if (over <= 0) return null;
+  const r = over / MAX_OVER;
+  return r < 0.34 ? '×1.15' : r < 0.67 ? '×1.30' : '×1.5';
+});
+
 function flash(target: { value: boolean }, ms = 600) {
   target.value = true;
   const id = window.setTimeout(() => { target.value = false; }, ms);
@@ -71,6 +81,8 @@ onBeforeUnmount(() => {
     aria-hidden="true"
   >
     <div class="atb__fill" :style="{ width: baseRatio * 100 + '%' }" />
+    <!-- inside the gauge template, e.g. after the bar element -->
+    <span v-if="chargeMult" class="atb-gauge__charge">⚡ {{ chargeMult }}</span>
     <div v-if="overflow > 0" class="atb__charge" :style="{ width: chargeRatio * 100 + '%' }" />
     <span v-if="isReady" class="atb__spark" />
   </div>
@@ -84,6 +96,12 @@ onBeforeUnmount(() => {
   background: oklch(0.14 0.03 272 / 0.9);
   overflow: hidden;
   isolation: isolate;
+}
+
+.atb-gauge__charge {
+  position: absolute; right: 4px; top: -2px;
+  font-family: var(--font-mono); font-size: 0.58rem;
+  color: var(--gold); text-shadow: 0 0 8px color-mix(in oklch, var(--gold), transparent 40%);
 }
 
 .atb__fill {

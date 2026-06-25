@@ -232,7 +232,9 @@ public sealed class UseItemInCombatCommandHandler
 
         if (combat.Status != CombatStatus.Active) return [];
 
-        combat.AdvanceTurn();
+        // Real-time ATB: elect by readiness, never fast-forward (the clock moves time).
+        // Using an item keeps the player active; ready enemies are handled by the clock.
+        combat.ElectActiveByReadiness();
         return [];
     }
 

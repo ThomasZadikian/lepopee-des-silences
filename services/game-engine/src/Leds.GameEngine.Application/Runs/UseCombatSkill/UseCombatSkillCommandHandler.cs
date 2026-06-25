@@ -271,7 +271,9 @@ public sealed class UseCombatSkillCommandHandler
             ];
         }
 
-        combat.AdvanceTurn();
+        // Real-time ATB: do NOT fast-forward the clock here. Consume-and-elect by
+        // readiness; time is advanced only by the client-driven hold clock.
+        combat.ElectActiveByReadiness();
 
         if (combat.Status == CombatStatus.Completed)
         {
@@ -296,7 +298,9 @@ public sealed class UseCombatSkillCommandHandler
             CreateSystemLog(
                 occurredAtUtc,
                 "TurnAdvanced",
-                $"Turn advanced to {activeCombatant.DisplayName}.",
+                activeCombatant is null
+                    ? "Time flows…"
+                    : $"Turn advanced to {activeCombatant.DisplayName}.",
                 combat)
         ];
     }

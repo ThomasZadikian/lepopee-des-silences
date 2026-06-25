@@ -210,16 +210,6 @@ public sealed class Combat
     }
 
     /// <summary>
-    /// Records that the active actor just took an action: its gauge is consumed and
-    /// it enters recovery for <paramref name="recoveryTicks"/> ticks.
-    /// </summary>
-    public void RegisterActionTaken(Guid actorId, int recoveryTicks)
-    {
-        AllCombatants.FirstOrDefault(c => c.Id.Value == actorId)
-            ?.RegisterAtbAction(CurrentTick, recoveryTicks);
-    }
-
-    /// <summary>
     /// Interruption / stagger: pushes the target's ATB gauge back (larger push and
     /// charge loss if the target was charging).
     /// </summary>
@@ -327,4 +317,42 @@ public sealed class Combat
             .ThenBy(c => c.Id.Value)
             .ToArray();
     }
+
+    public void RegisterActionTaken(Guid actorId, int recoveryTicks)
+    {
+        var actor = AllCombatants.FirstOrDefault(c => c.Id.Value == actorId);
+        if (actor is null)
+            return;
+
+        actor.RegisterAtbAction(CurrentTick, recoveryTicks);
+        TurnNumber++; // each resolved action is its own "turn" (unique client log keys)
+    }
+
+    /// Re-elects the active combatant by CURRENT readiness only — no time advance.
+    public void ElectActiveByReadiness()
+    {
+        CompleteIfAllEnemiesDefeated();
+        FailIfAllAlliesDefeated();
+
+        if (Status != CombatStatus.Active)
+        {
+            ActiveCombatantId = null;
+            return;
+        }
+
+        var ready = AllCombatants
+            .Where(c => !c.IsDefeated && c.AtbGauge >= AtbConstants.ReadyThreshold)
+            .OrderByDescending(c => c.AtbGauge)
+            .ThenByDescending(c => c.BaseStatSnapshot.Initiative)
+            .ThenBy(c => c.Side)
+            .ThenBy(c => c.Id.Value)
+            .FirstOrDefault();
+
+        var previousActiveId = ActiveCombatantId;
+        ActiveCombatantId = ready?.Id;
+
+        if (ready is not null && ready.Id != previousActiveId)
+            ready.ResetGuardToBase(); // start-of-turn guard refresh, only on a NEW holder
+    }
+
 }

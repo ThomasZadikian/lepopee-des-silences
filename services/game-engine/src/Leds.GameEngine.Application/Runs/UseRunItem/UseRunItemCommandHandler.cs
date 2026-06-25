@@ -82,7 +82,8 @@ public sealed class UseRunItemCommandHandler
         if (combat.Status != CombatStatus.Active)
             return [];
 
-        combat.AdvanceTurn();
+        // Real-time ATB: elect by readiness, never fast-forward (the clock moves time).
+        combat.ElectActiveByReadiness();
         return [];
     }
 

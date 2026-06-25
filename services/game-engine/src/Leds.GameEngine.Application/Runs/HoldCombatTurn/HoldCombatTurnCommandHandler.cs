@@ -118,6 +118,10 @@ public sealed class HoldCombatTurnCommandHandler
                     }
                 }
             }
+
+            // After any ready enemies have acted, hand the active slot to the player
+            // if their gauge is now full (else leave it empty for the clock to fill).
+            combat.ElectActiveByReadiness();
         }
 
         var finalCombat = combat;

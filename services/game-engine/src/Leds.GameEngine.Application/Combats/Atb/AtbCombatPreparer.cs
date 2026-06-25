@@ -48,6 +48,10 @@ public sealed class AtbCombatPreparer : IAtbCombatPreparer
             combatant.SetAtbGauge(tempo.OpeningGauge);
         }
 
-        combat.AdvanceTurn();
+        // Fills and opening gauges are set. Elect an opener only if someone is
+        // already ready; otherwise combat opens with partial bars and the real-time
+        // clock fills them from the opening spread (no fast-forward — time only ever
+        // moves through the hold clock).
+        combat.ElectActiveByReadiness();
     }
 }

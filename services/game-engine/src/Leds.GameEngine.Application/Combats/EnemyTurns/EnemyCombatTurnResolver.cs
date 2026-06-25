@@ -43,8 +43,9 @@ public sealed class EnemyCombatTurnResolver : IEnemyCombatTurnResolver
 
         if (actor.IsDefeated)
         {
-            combat.AdvanceTurn();
-            logEntries.Add(CreateSystemLog("TurnAdvanced", $"Turn advanced to {combat.GetActiveCombatant().DisplayName}.", combat));
+            combat.ElectActiveByReadiness();
+            var nextAfterDefeated = combat.GetActiveCombatant();
+            logEntries.Add(CreateSystemLog("TurnAdvanced", nextAfterDefeated is null ? "Time flows…" : $"Turn advanced to {nextAfterDefeated.DisplayName}.", combat));
             return new EnemyCombatTurnResolution(false, actor.Id.Value, null, [], logEntries, CombatRuntimeDto.FromDomain(combat));
         }
 
@@ -190,7 +191,8 @@ public sealed class EnemyCombatTurnResolver : IEnemyCombatTurnResolver
             return [CreateSystemLog("CombatFailed", "Combat failed.", combat)];
         }
 
-        combat.AdvanceTurn();
+        // Real-time ATB: elect by readiness, never fast-forward the clock.
+        combat.ElectActiveByReadiness();
 
         if (combat.Status == CombatStatus.Completed)
         {
@@ -202,7 +204,8 @@ public sealed class EnemyCombatTurnResolver : IEnemyCombatTurnResolver
             return [CreateSystemLog("CombatFailed", "Combat failed.", combat)];
         }
 
-        return [CreateSystemLog("TurnAdvanced", $"Turn advanced to {combat.GetActiveCombatant().DisplayName}.", combat)];
+        var next = combat.GetActiveCombatant();
+        return [CreateSystemLog("TurnAdvanced", next is null ? "Time flows…" : $"Turn advanced to {next.DisplayName}.", combat)];
     }
 
     private static EnemyCombatTurnResolution NotResolved(

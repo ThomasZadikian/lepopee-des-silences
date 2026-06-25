@@ -156,7 +156,7 @@ export const useCombatStore = defineStore('combatRuntime', () => {
 
       if (response.combatCompleted) terminalEvent.value = { kind: 'victory' };
       else if (response.combatFailed) terminalEvent.value = { kind: 'defeat' };
-      else { await driveEnemyTurns(runId, onCombatApplied); }
+      // enemy turns are handled by the always-running real-time clock
     } catch (caught) {
       error.value =
         caught instanceof Error ? caught.message : "L'utilisation a échoué.";
@@ -559,75 +559,35 @@ export const useCombatStore = defineStore('combatRuntime', () => {
     const c = allCombatants.value.find((x) => x.id === id);
     return c?.side === 'Enemy' && c.status !== 'Defeated';
   }
-
-  let drivingEnemies = false;
-  async function driveEnemyTurns(runId: string, onCombatApplied?: (combat: CombatRuntimeDto) => void) {
-    if (drivingEnemies) return;
-    drivingEnemies = true;
-    const ENEMY_TURN_DELAY = 850; // ms — lets the bar visibly fill before the enemy acts
-    const wasLoading = isLoading.value;
-    isLoading.value = true;
+  let combatClockRunning = false;
+  async function runCombatClock(runId: string, onCombatApplied?: (combat: CombatRuntimeDto) => void) {
+    if (combatClockRunning) return;
+    combatClockRunning = true;
+    const TICK_INTERVAL = 280; // ms between real-time ticks
+    const TICK_DELTA = 200;    // ATB ticks advanced per call ("time keeps flowing")
     try {
-      let guard = allCombatants.value.length * 4 + 4; // safety bound
-      while (combat.value?.status === 'Active' && activeIsEnemy() && guard-- > 0) {
-        await delay(ENEMY_TURN_DELAY);
-        if (!(combat.value?.status === 'Active' && activeIsEnemy())) break;
-        const combatId = combat.value.id;
-        const response = await combatApi.advanceCombat(runId, combatId);
-        await playCombatLogs(response.logEntries);
-        finishCombatResponse(response.combat);
-        onCombatApplied?.(response.combat);
-        if (response.combatCompleted) { terminalEvent.value = { kind: 'victory' }; break; }
-        if (response.combatFailed) { terminalEvent.value = { kind: 'defeat' }; break; }
-      }
-    } catch (caught) {
-      error.value = caught instanceof Error ? caught.message : "L'avancement du combat a échoué.";
-    } finally {
-      isLoading.value = wasLoading;
-      drivingEnemies = false;
-    }
-  }
+      while (combat.value?.status === 'Active' && terminalEvent.value === null) {
+        await delay(TICK_INTERVAL);
+        if (combat.value?.status !== 'Active' || terminalEvent.value !== null) break;
 
-    let holdingTurn = false;
-  async function holdPlayerTurn(runId: string, onCombatApplied?: (combat: CombatRuntimeDto) => void) {
-    if (holdingTurn) return;
-    holdingTurn = true;
-    const HOLD_INTERVAL = 300; // ms between clock ticks while the player decides
-    const HOLD_DELTA = 200;    // ATB ticks advanced per call ("time keeps flowing")
-    try {
-      while (
-        combat.value?.status === 'Active' &&
-        !activeIsEnemy() &&
-        !drivingEnemies &&
-        !isLoading.value &&
-        terminalEvent.value === null
-      ) {
-        await delay(HOLD_INTERVAL);
-        // The player may have acted, an enemy may now be up, or combat ended.
-        if (combat.value?.status !== 'Active' || activeIsEnemy()) break;
-        if (drivingEnemies || isLoading.value || terminalEvent.value !== null) break;
+        // The world pauses only while the player's OWN action resolves/animates.
+        if (isLoading.value) continue;
 
         const combatId = combat.value.id;
-        const response = await combatApi.hold(runId, combatId, HOLD_DELTA);
+        const response = await combatApi.hold(runId, combatId, TICK_DELTA).catch(() => null);
+        if (!response) break; // combat ended server-side — stop (no 409 spam)
 
         await playCombatLogs(response.logEntries);
-        // If the player started acting while this hold was in flight, let THEIR
-        // action response set the authoritative state — don't clobber it.
-        if (isLoading.value || drivingEnemies) break;
+        if (isLoading.value) continue; // player acted mid-flight — let their response win
 
         applyClockCombat(response.combat);
         onCombatApplied?.(response.combat);
 
         if (response.combatCompleted) { terminalEvent.value = { kind: 'victory' }; break; }
-        if (response.combatFailed) { terminalEvent.value = { kind: 'defeat' }; break; }
-
-        // An enemy charged past the threshold and got elected — hand off.
-        if (activeIsEnemy()) { await driveEnemyTurns(runId, onCombatApplied); }
+        if (response.combatFailed)    { terminalEvent.value = { kind: 'defeat' };  break; }
       }
-    } catch (caught) {
-      error.value = caught instanceof Error ? caught.message : 'Le combat a échoué.';
     } finally {
-      holdingTurn = false;
+      combatClockRunning = false;
     }
   }
 
@@ -654,13 +614,10 @@ export const useCombatStore = defineStore('combatRuntime', () => {
       finishCombatResponse(response.combat);
       onCombatApplied?.(response.combat);
 
-      if (response.combatCompleted) {
-        terminalEvent.value = { kind: 'victory' };
-      } else if (response.combatFailed) {
-        terminalEvent.value = { kind: 'defeat' };
-      } else {
-        await driveEnemyTurns(runId, onCombatApplied);
-      }
+      if (response.combatCompleted) terminalEvent.value = { kind: 'victory' };
+      else if (response.combatFailed) terminalEvent.value = { kind: 'defeat' };
+      // enemy turns are handled by the always-running real-time clock
+
     } catch (caught) {
       error.value =
         caught instanceof Error ? caught.message : "L'action a échoué.";
@@ -712,8 +669,7 @@ export const useCombatStore = defineStore('combatRuntime', () => {
     finishCombatResponse,
     playCombatLogs,
     clearCombat,
-    driveEnemyTurns,
-    holdPlayerTurn,    // Skills
+    runCombatClock,
     selectSkill,
     selectTarget,
     clearSelection,

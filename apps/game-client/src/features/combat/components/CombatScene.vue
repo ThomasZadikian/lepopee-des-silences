@@ -224,17 +224,13 @@ watch(() => props.combatId, (newId) => {
   else combatStore.loadCurrentCombat(props.runId);
 });
 
-// ATB real-time clock — drives whichever side is up:
-//   • enemy up  → resolve its turn (bar fills, then it acts)
-//   • player up → "hold": time flows, you charge, any ready enemy acts mid-turn
+// One real-time clock for the whole fight. It keeps ticking while combat is
+// Active; the player acts whenever their bar is full (isPlayerTurn).
 watch(
-  () => [combatStore.activeCombatantId, combatStore.combat?.status, combatStore.isLoading] as const,
+  () => [combatStore.combat?.status, combatStore.combat?.id] as const,
   () => {
-    if (combatStore.combat?.status !== 'Active') return;
-    if (combatStore.isPlayerTurn) {
-      void combatStore.holdPlayerTurn(props.runId, (c) => { runStore.combatRuntime = c; });
-    } else {
-      void combatStore.driveEnemyTurns(props.runId, (c) => { runStore.combatRuntime = c; });
+    if (combatStore.combat?.status === 'Active') {
+      void combatStore.runCombatClock(props.runId, (c) => { runStore.combatRuntime = c; });
     }
   },
   { immediate: true },
