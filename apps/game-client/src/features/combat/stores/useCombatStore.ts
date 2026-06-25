@@ -232,6 +232,14 @@ export const useCombatStore = defineStore('combatRuntime', () => {
     error.value = null;
   }
 
+    // Apply a combat snapshot from the real-time clock WITHOUT touching the
+  // player's current skill/target selection (the player is mid-decision).
+  function applyClockCombat(combatData: CombatRuntimeDto) {
+    combat.value = combatData;
+    rememberCombatState(combatData);
+    hasRuntimeCombat.value = true;
+  }
+
   function mergeCombatResponseWithAnimatedState(combatData: CombatRuntimeDto): CombatRuntimeDto {
     if (!combat.value || combat.value.id !== combatData.id) return combatData;
 
@@ -580,6 +588,49 @@ export const useCombatStore = defineStore('combatRuntime', () => {
     }
   }
 
+    let holdingTurn = false;
+  async function holdPlayerTurn(runId: string, onCombatApplied?: (combat: CombatRuntimeDto) => void) {
+    if (holdingTurn) return;
+    holdingTurn = true;
+    const HOLD_INTERVAL = 300; // ms between clock ticks while the player decides
+    const HOLD_DELTA = 200;    // ATB ticks advanced per call ("time keeps flowing")
+    try {
+      while (
+        combat.value?.status === 'Active' &&
+        !activeIsEnemy() &&
+        !drivingEnemies &&
+        !isLoading.value &&
+        terminalEvent.value === null
+      ) {
+        await delay(HOLD_INTERVAL);
+        // The player may have acted, an enemy may now be up, or combat ended.
+        if (combat.value?.status !== 'Active' || activeIsEnemy()) break;
+        if (drivingEnemies || isLoading.value || terminalEvent.value !== null) break;
+
+        const combatId = combat.value.id;
+        const response = await combatApi.hold(runId, combatId, HOLD_DELTA);
+
+        await playCombatLogs(response.logEntries);
+        // If the player started acting while this hold was in flight, let THEIR
+        // action response set the authoritative state — don't clobber it.
+        if (isLoading.value || drivingEnemies) break;
+
+        applyClockCombat(response.combat);
+        onCombatApplied?.(response.combat);
+
+        if (response.combatCompleted) { terminalEvent.value = { kind: 'victory' }; break; }
+        if (response.combatFailed) { terminalEvent.value = { kind: 'defeat' }; break; }
+
+        // An enemy charged past the threshold and got elected — hand off.
+        if (activeIsEnemy()) { await driveEnemyTurns(runId, onCombatApplied); }
+      }
+    } catch (caught) {
+      error.value = caught instanceof Error ? caught.message : 'Le combat a échoué.';
+    } finally {
+      holdingTurn = false;
+    }
+  }
+
   async function submitAction(runId: string, onCombatApplied?: (combat: CombatRuntimeDto) => void) {
     if (isLoading.value) return;
     if (!canSubmit.value) return;
@@ -662,7 +713,7 @@ export const useCombatStore = defineStore('combatRuntime', () => {
     playCombatLogs,
     clearCombat,
     driveEnemyTurns,
-    // Skills
+    holdPlayerTurn,    // Skills
     selectSkill,
     selectTarget,
     clearSelection,

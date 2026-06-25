@@ -4,13 +4,13 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { useRunStore } from '../../runs/stores/runStore';
 import { useCombatLogMetrics } from '../composables/useCombatLogMetrics';
 import { useCombatStore } from '../stores/useCombatStore';
+import AtbGauge from './AtbGauge.vue';
 import CombatantCard from './CombatantCard.vue';
 import CombatLogPanel from './CombatLogPanel.vue';
 import CombatMetersPanel from './CombatMetersPanel.vue';
 import CombatOutcomePanel from './CombatOutcomePanel.vue';
-import SkillBar from './SkillBar.vue';
 import EmotionalTypeBadge from './EmotionalTypeBadge.vue';
-import AtbGauge from './AtbGauge.vue';
+import SkillBar from './SkillBar.vue';
 
 const props = defineProps<{
   runId: string;
@@ -214,8 +214,6 @@ onMounted(() => {
   } else {
     combatStore.loadCurrentCombat(props.runId);
   }
-  // ATB: if an enemy opens, drive its turn in real time.
-  void combatStore.driveEnemyTurns(props.runId, (c) => { runStore.combatRuntime = c; });
 });
 
 watch(() => props.combatId, (newId) => {
@@ -225,6 +223,23 @@ watch(() => props.combatId, (newId) => {
   if (runStore.combatRuntime?.id === newId) combatStore.initCombat(runStore.combatRuntime);
   else combatStore.loadCurrentCombat(props.runId);
 });
+
+// ATB real-time clock — drives whichever side is up:
+//   • enemy up  → resolve its turn (bar fills, then it acts)
+//   • player up → "hold": time flows, you charge, any ready enemy acts mid-turn
+watch(
+  () => [combatStore.activeCombatantId, combatStore.combat?.status, combatStore.isLoading] as const,
+  () => {
+    if (combatStore.combat?.status !== 'Active') return;
+    if (combatStore.isPlayerTurn) {
+      void combatStore.holdPlayerTurn(props.runId, (c) => { runStore.combatRuntime = c; });
+    } else {
+      void combatStore.driveEnemyTurns(props.runId, (c) => { runStore.combatRuntime = c; });
+    }
+  },
+  { immediate: true },
+);
+
 </script>
 
 <template>

@@ -28,6 +28,13 @@ export const combatApi = {
     );
   },
 
+    hold(runId: string, combatId: string, deltaTicks = 200) {
+    return gameEngineApi.post<UseCombatSkillResponse, { deltaTicks: number }>(
+      `/api/v2/runs/${runId}/combats/${combatId}/hold`,
+      { deltaTicks },
+    );
+  },
+
     advanceCombat(runId: string, combatId: string) {
     return gameEngineApi.post<UseCombatSkillResponse>(
       `/api/v2/runs/${runId}/combats/${combatId}/advance`,
