@@ -10,6 +10,7 @@ import CombatMetersPanel from './CombatMetersPanel.vue';
 import CombatOutcomePanel from './CombatOutcomePanel.vue';
 import SkillBar from './SkillBar.vue';
 import EmotionalTypeBadge from './EmotionalTypeBadge.vue';
+import AtbGauge from './AtbGauge.vue';
 
 const props = defineProps<{
   runId: string;
@@ -354,11 +355,11 @@ watch(() => props.combatId, (newId) => {
             <span class="enemy-figure__substats">
               ⚔ {{ combatant.attackPower ?? 0 }} · ⛨ {{ combatant.defense ?? 0 }} · ⚡ {{ combatant.speed ?? 0 }} · ◎ {{ combatant.focus ?? 0 }}
             </span>
-            <AtbGauge class="enemy-figure__atb" :gauge="combatant.atbGauge ?? 0" :active="isVisuallyActive(combatant.id)" />
+            <span v-if="combatant.guard > 0">Garde</span>
             <span class="enemy-figure__tags">
-              <span v-if="combatant.guard > 0">Garde</span>
             </span>
-            <span class="enemy-figure__hp">
+            <AtbGauge class="enemy-figure__atb" :gauge="combatant.atbGauge ?? 0" :fill-per-tick="combatant.atbFillPerTick ?? 10" :active="isVisuallyActive(combatant.id)" />            
+          <span class="enemy-figure__hp">
               <span class="enemy-figure__hp-bar">
                 <span :style="{ width: hpRatio(combatant.currentVitality, combatant.maxVitality) * 100 + '%' }" />
               </span>

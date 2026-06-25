@@ -68,9 +68,8 @@ function hpRatio(c: CombatantRuntimeDto): number {
     </div>
 
     <div class="presence__atb" aria-hidden="true">
-      <AtbGauge :gauge="combatant.atbGauge ?? 0" :active="isCurrentActor" />
+      <AtbGauge :gauge="combatant.atbGauge ?? 0" :fill-per-tick="combatant.atbFillPerTick ?? 10" :active="isCurrentActor" />    
     </div>
-
     <div class="presence__stats">
       <span class="presence__stat presence__stat--hp">PV {{ combatant.currentVitality }} / {{ combatant.maxVitality }}</span>
       <span v-if="combatant.guard > 0" class="presence__stat presence__stat--guard">{{ combatant.guard }}</span>

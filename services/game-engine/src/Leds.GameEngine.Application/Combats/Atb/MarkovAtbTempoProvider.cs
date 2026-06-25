@@ -31,7 +31,13 @@ public sealed class MarkovAtbTempoProvider : IAtbTempoProvider
         var fill = (int)Math.Max(1, (long)context.Speed * roomFactor * combatantFactor / 1_000_000);
 
         var openingBias = AtbTempoCalibration.OpeningBias(context.Side, dominant);
-        var openingGauge = AtbActionMath.InitialGauge(context.Initiative, openingBias);
+
+        // Deterministic per-combatant opening spread so equal-speed combatants don't
+        // all reach the threshold on the same tick — readable, staggered ATB bars.
+        var openingSpread = DeterministicAtbJitter.FactorPerMille(
+            context.Seed, 0, "atb-open:" + context.CombatantKey, 0, AtbConstants.ReadyThreshold / 2);
+
+        var openingGauge = AtbActionMath.InitialGauge(context.Initiative, openingBias + openingSpread);
 
         return new AtbTempoResult(fill, openingGauge);
     }

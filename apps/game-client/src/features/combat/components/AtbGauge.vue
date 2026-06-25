@@ -1,39 +1,61 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 const props = withDefaults(
-  defineProps<{ gauge?: number; active?: boolean }>(),
-  { gauge: 0, active: false },
+  defineProps<{ gauge?: number; fillPerTick?: number; active?: boolean }>(),
+  { gauge: 0, fillPerTick: 10, active: false },
 );
 
-// Mirror of the backend AtbConstants.
 const READY = 10_000;
 const MAX_OVERFLOW = 10_000;
+// Visual pacing: how many ATB ticks elapse per real second on the client.
+const VISUAL_TICKS_PER_SEC = 25;
 
-const baseRatio = computed(() => Math.min(props.gauge, READY) / READY);
-const overflow = computed(() => Math.max(0, props.gauge - READY));
+// Animated display value, reconciled with the server truth on each update.
+const displayed = ref(props.gauge);
+
+const baseRatio = computed(() => Math.min(displayed.value, READY) / READY);
+const overflow = computed(() => Math.max(0, displayed.value - READY));
 const chargeRatio = computed(() => Math.min(overflow.value, MAX_OVERFLOW) / MAX_OVERFLOW);
-
-const isReady = computed(() => props.gauge >= READY);
-const isCharging = computed(() => overflow.value > 0 && props.gauge < READY + MAX_OVERFLOW);
-const isMax = computed(() => props.gauge >= READY + MAX_OVERFLOW);
+const isReady = computed(() => displayed.value >= READY);
+const isCharging = computed(() => overflow.value > 0 && displayed.value < READY + MAX_OVERFLOW);
+const isMax = computed(() => displayed.value >= READY + MAX_OVERFLOW);
 
 const justReady = ref(false);
 const staggered = ref(false);
 const timers: number[] = [];
-
 function flash(target: { value: boolean }, ms = 600) {
   target.value = true;
   const id = window.setTimeout(() => { target.value = false; }, ms);
   timers.push(id);
 }
 
+let raf = 0;
+let last = 0;
+function frame(now: number) {
+  const dt = last ? (now - last) / 1000 : 0;
+  last = now;
+  if (props.active) {
+    // Active combatant: show the server truth (ready / charging).
+    displayed.value = props.gauge;
+  } else if (displayed.value < READY) {
+    // Pseudo real-time: fill toward ready while the player ponders.
+    displayed.value = Math.min(READY, displayed.value + props.fillPerTick * dt * VISUAL_TICKS_PER_SEC);
+  }
+  raf = requestAnimationFrame(frame);
+}
+
 watch(() => props.gauge, (next, prev) => {
-  if (prev < READY && next >= READY) flash(justReady); // crossed into ready
-  if (next < prev - 800) flash(staggered);             // interrupted
+  if (next < displayed.value - 800) flash(staggered);   // interrupted / acted → recede
+  if (prev < READY && next >= READY) flash(justReady);
+  displayed.value = next;                                 // reconcile with server
 });
 
-onBeforeUnmount(() => { for (const id of timers) window.clearTimeout(id); });
+onMounted(() => { last = 0; raf = requestAnimationFrame(frame); });
+onBeforeUnmount(() => {
+  cancelAnimationFrame(raf);
+  for (const id of timers) window.clearTimeout(id);
+});
 </script>
 
 <template>
