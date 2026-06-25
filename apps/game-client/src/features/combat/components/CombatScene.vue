@@ -68,12 +68,10 @@ const visualEnemyIndex = computed(() => {
 const targetThreadEnd = computed(() => {
   if (visualEnemyIndex.value < 0) return null;
   const targets = [
-    { x: 57.9, y: 15.8 },
-    { x: 43.4, y: 41.8 },
-    { x: 68.8, y: 24.8 },
-    { x: 78.8, y: 35.3 },
-    { x: 84.8, y: 24.1 },
-    { x: 73.2, y: 53.4 },
+    { x: 56.0, y: 30.0 }, // 1 — front gauche
+    { x: 76.0, y: 30.0 }, // 2 — front droite
+    { x: 50.0, y: 18.0 }, // 3 — arrière gauche
+    { x: 84.0, y: 18.0 }, // 4 — arrière droite
   ];
   return targets[visualEnemyIndex.value % targets.length];
 });
@@ -88,13 +86,12 @@ const targetThreadPath = computed(() => {
     { x: 30.9, y: 51.4 },
   ];
   const controls = [
-    { lift: 8.2, bend: 0.52 },
-    { lift: 5.4, bend: 0.5 },
+    { lift: 7.0, bend: 0.52 },
     { lift: 6.2, bend: 0.55 },
-    { lift: 5.8, bend: 0.54 },
-    { lift: 6.8, bend: 0.56 },
-    { lift: 4.4, bend: 0.52 },
+    { lift: 8.0, bend: 0.52 },
+    { lift: 6.6, bend: 0.56 },
   ];
+
   const start = starts[Math.min(activeAllyIndex.value, starts.length - 1)];
   const end = targetThreadEnd.value;
   if (!end) return '';
@@ -176,7 +173,7 @@ function hpRatio(current: number, max: number): number {
 }
 
 function enemyPositionClass(index: number): string {
-  return `enemy-figure--${(index % 6) + 1}`;
+  return `enemy-figure--${(index % 4) + 1}`;
 }
 
 function floatEventsFor(combatantId: string) {
@@ -834,12 +831,10 @@ watch(
   white-space: nowrap;
 }
 
-.enemy-figure--1 { --enemy-x: 42%; --enemy-y: 3.2rem; --enemy-width: 9.2rem; --enemy-height: 17rem; }
-.enemy-figure--2 { --enemy-x: 18%; --enemy-y: 15rem; --enemy-width: 6.7rem; --enemy-height: 12rem; }
-.enemy-figure--3 { --enemy-x: 60%; --enemy-y: 8.6rem; --enemy-width: 8.4rem; --enemy-height: 15rem; }
-.enemy-figure--4 { --enemy-x: 78%; --enemy-y: 11.2rem; --enemy-width: 7.2rem; --enemy-height: 13rem; }
-.enemy-figure--5 { --enemy-x: 91%; --enemy-y: 6.8rem; --enemy-width: 7.9rem; --enemy-height: 14rem; }
-.enemy-figure--6 { --enemy-x: 70%; --enemy-y: 20rem; --enemy-width: 5.6rem; --enemy-height: 9.8rem; }
+.enemy-figure--1 { --enemy-x: 32%; --enemy-y: 9rem;   --enemy-width: 9.4rem; --enemy-height: 16.5rem; }
+.enemy-figure--2 { --enemy-x: 66%; --enemy-y: 9rem;   --enemy-width: 9.4rem; --enemy-height: 16.5rem; }
+.enemy-figure--3 { --enemy-x: 18%; --enemy-y: 2.5rem; --enemy-width: 7.6rem; --enemy-height: 13.5rem; }
+.enemy-figure--4 { --enemy-x: 82%; --enemy-y: 2.5rem; --enemy-width: 7.6rem; --enemy-height: 13.5rem; }
 
 .damage-drawer {
   position: absolute;

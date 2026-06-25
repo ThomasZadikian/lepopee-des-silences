@@ -18,6 +18,8 @@ namespace Leds.GameEngine.Application.DevTools;
 public sealed class DevToolsRunDebugService : IDevToolsRunDebugService
 {
     private const int MaxAdvanceRoomCount = 10;
+    private const int MaxPartySize = 5;
+    private static readonly string[] DebugCompanionNames = { "Loup", "Renard", "Corbeau", "Lynx" };
     private const int MaxDebugVitality = 999;
     private const int MaxDebugGuard = 999;
 
@@ -202,6 +204,77 @@ public sealed class DevToolsRunDebugService : IDevToolsRunDebugService
 
         await _runRepository.UpdateAsync(run, cancellationToken);
         return new DevToolsRunDebugResult("Active curses cleared.", RunDto.FromDomain(run));
+    }
+
+    public async Task<DevToolsRunDebugResult> AddDebugAllyAsync(
+    Guid runId,
+    CancellationToken cancellationToken = default)
+    {
+        var run = await GetRunAsync(runId, cancellationToken);
+        var snapshot = run.PlayerSnapshot
+            ?? throw new DomainException("Run has no player snapshot to add a companion to.");
+
+        if (snapshot.Characters.Count >= MaxPartySize)
+            throw new DomainException($"Party is already at the maximum of {MaxPartySize} characters.");
+
+        var companionIndex = snapshot.Characters.Count - 1; // 0 = protagonist
+        var name = DebugCompanionNames[Math.Clamp(companionIndex, 0, DebugCompanionNames.Length - 1)];
+
+        var statBlock = RunCharacterStatSnapshot.Create(
+            maxVitality: 30,
+            attackPower: 10,
+            defense: 4,
+            startingGuard: 0,
+            speed: 11,
+            initiative: 8,
+            recovery: 5,
+            focus: 6,
+            mana: 0,
+            charge: 0);
+
+        var skills = new[]
+        {
+            RunCharacterSkillSnapshot.Create(
+                skillDefinitionKey: "skill.basic.strike",
+                displayName: "Morsure",
+                skillType: "Damage",
+                targetingMode: "SingleEnemy",
+                effectType: "Damage",
+                manaCost: 0,
+                chargeCost: 0,
+                basePower: 9)
+        };
+
+        var character = RunCharacterSnapshot.Create(
+            characterId: Guid.NewGuid(),
+            definitionKey: $"devtools.companion.{name.ToLowerInvariant()}",
+            displayName: name,
+            statBlock: statBlock,
+            skills: skills);
+
+        snapshot.DebugAddCharacter(character);
+
+        await _runRepository.UpdateAsync(run, cancellationToken);
+        return new DevToolsRunDebugResult(
+            $"Companion '{name}' added to the roster (effective next combat).",
+            RunDto.FromDomain(run));
+    }
+
+    public async Task<DevToolsRunDebugResult> RemoveDebugAllyAsync(
+        Guid runId,
+        CancellationToken cancellationToken = default)
+    {
+        var run = await GetRunAsync(runId, cancellationToken);
+        var snapshot = run.PlayerSnapshot
+            ?? throw new DomainException("Run has no player snapshot.");
+
+        if (!snapshot.DebugRemoveLastCompanion())
+            throw new DomainException("No companion to remove (the protagonist cannot be removed).");
+
+        await _runRepository.UpdateAsync(run, cancellationToken);
+        return new DevToolsRunDebugResult(
+            "Last companion removed from the roster (effective next combat).",
+            RunDto.FromDomain(run));
     }
 
     public async Task<DevToolsCombatDebugResult> KillAllCurrentCombatEnemiesAsync(

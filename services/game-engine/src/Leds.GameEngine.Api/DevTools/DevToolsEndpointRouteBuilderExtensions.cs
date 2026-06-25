@@ -154,6 +154,24 @@ public static class DevToolsEndpointRouteBuilderExtensions
             return TypedResults.Ok(result);
         });
 
+        group.MapPost("/runs/{runId:guid}/party/add-ally", async Task<Ok<DevToolsRunDebugResult>> (
+    Guid runId,
+    IDevToolsRunDebugService service,
+    CancellationToken cancellationToken) =>
+        {
+            var result = await service.AddDebugAllyAsync(runId, cancellationToken);
+            return TypedResults.Ok(result);
+        });
+
+        group.MapPost("/runs/{runId:guid}/party/remove-ally", async Task<Ok<DevToolsRunDebugResult>> (
+            Guid runId,
+            IDevToolsRunDebugService service,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await service.RemoveDebugAllyAsync(runId, cancellationToken);
+            return TypedResults.Ok(result);
+        });
+
         return endpoints;
     }
 }

@@ -112,12 +112,20 @@ export const devToolsApi = {
     );
   },
 
-    getPsyche(token: string, runId: string) {
+  getPsyche(token: string, runId: string) {
     return request<DevToolsRunPsycheResponse>(
       token,
       `/api/dev/v2/runs/${runId}/psyche`,
       { method: 'GET' },
     );
+  },
+
+    addAlly(token: string, runId: string) {
+    return post<DevToolsRunResponse>(token, `/api/dev/v2/runs/${runId}/party/add-ally`);
+  },
+
+  removeAlly(token: string, runId: string) {
+    return post<DevToolsRunResponse>(token, `/api/dev/v2/runs/${runId}/party/remove-ally`);
   },
 
   applyStatus(

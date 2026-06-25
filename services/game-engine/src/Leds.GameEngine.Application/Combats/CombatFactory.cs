@@ -67,53 +67,93 @@ public sealed class CombatFactory : ICombatFactory
         var attackTypeOverride = ResolveAttackTypeOverride(activeModifiers);
 
         var allies = draft.Allies
-            .Select(ally =>
-            {
-                var skills = playerState?.Skills
-                    .Select(s => CombatantSkill.Create(
-                        s.Key,
-                        s.DisplayName,
-                        s.SkillType,
-                        s.TargetingType,
-                        NormalizeCombatEffectType(s.Key, s.EffectType),
-                        s.ManaCost,
-                        s.ChargeCost,
-                        ScalePlayerSkillPower(s.EffectType, s.BasePower, attackPowerMultiplier)))
-                    .ToArray()
-                    ?? GetDefaultAllySkills(attackPowerMultiplier);
+    .Select(ally =>
+    {
+        if (ally.IsProtagonist)
+        {
+            // Protagonist: current HP/mana/charge from PlayerState, run stats,
+            // PlayerState skills, and the item-driven attack-type override.
+            var protagonistSkills = playerState?.Skills
+                .Select(s => CombatantSkill.Create(
+                    s.Key,
+                    s.DisplayName,
+                    s.SkillType,
+                    s.TargetingType,
+                    NormalizeCombatEffectType(s.Key, s.EffectType),
+                    s.ManaCost,
+                    s.ChargeCost,
+                    ScalePlayerSkillPower(s.EffectType, s.BasePower, attackPowerMultiplier)))
+                .ToArray()
+                ?? GetDefaultAllySkills(attackPowerMultiplier);
 
-                var maxVitality = playerState?.MaxVitality ?? 100;
-                var currentVitality = playerState?.CurrentVitality ?? maxVitality;
-                var guard = (playerState?.Guard ?? 0) + guardBonus;
-                var mana = playerState?.Mana ?? 0;
-                var charge = playerState?.Charge ?? 0;
+            var maxVitality = playerState?.MaxVitality ?? 100;
+            var currentVitality = playerState?.CurrentVitality ?? maxVitality;
+            var guard = (playerState?.Guard ?? 0) + guardBonus;
+            var mana = playerState?.Mana ?? 0;
+            var charge = playerState?.Charge ?? 0;
 
-                var combatant = Combatant.Create(
-                    CombatantId.New(),
-                    ally.AllyKey,
-                    ally.DisplayName,
-                    CombatantSide.Player,
-                    ally.Role,
-                    maxVitality,
-                    currentVitality,
-                    guard,
-                    baseGuard: guardBonus,
-                    mana,
-                    charge,
-                    skills,
-                    attackPower: attackPower,
-                    defense: defense,
-                    speed: speed,
-                    focus: focus);
+            var protagonist = Combatant.Create(
+                CombatantId.New(),
+                ally.AllyKey,
+                ally.DisplayName,
+                CombatantSide.Player,
+                ally.Role,
+                maxVitality,
+                currentVitality,
+                guard,
+                baseGuard: guardBonus,
+                mana,
+                charge,
+                protagonistSkills,
+                attackPower: attackPower,
+                defense: defense,
+                speed: speed,
+                focus: focus);
 
-                // The attack-type item retypes the player character only; party
-                // companions keep their own emotional type.
-                var isPlayerCharacter = ally.Tags.Any(tag => string.Equals(tag, "player", StringComparison.OrdinalIgnoreCase));
-                combatant.ApplyAttackTypeOverride(isPlayerCharacter ? attackTypeOverride : null);
+            protagonist.ApplyAttackTypeOverride(attackTypeOverride);
+            return protagonist;
+        }
 
-                return combatant;
-            })
-            .ToArray();
+        // Companion: its OWN kit and stats; starts the fight at full vitality.
+        var companionSkills = ally.Skills is { Count: > 0 }
+            ? ally.Skills
+                .Select(s => CombatantSkill.Create(
+                    s.Key,
+                    s.DisplayName,
+                    s.SkillType,
+                    s.TargetingType,
+                    NormalizeCombatEffectType(s.Key, s.EffectType),
+                    s.ManaCost,
+                    s.ChargeCost,
+                    ScalePlayerSkillPower(s.EffectType, s.BasePower, attackPowerMultiplier)))
+                .ToArray()
+            : GetDefaultAllySkills(attackPowerMultiplier);
+
+        var companionMaxVitality = ally.MaxVitality > 0 ? ally.MaxVitality : 100;
+
+        var companion = Combatant.Create(
+            CombatantId.New(),
+            ally.AllyKey,
+            ally.DisplayName,
+            CombatantSide.Player,
+            ally.Role,
+            companionMaxVitality,
+            currentVitality: companionMaxVitality,
+            guard: ally.StartingGuard + guardBonus,
+            baseGuard: guardBonus,
+            mana: ally.Mana,
+            charge: ally.Charge,
+            companionSkills,
+            attackPower: ally.AttackPower,
+            defense: ally.Defense,
+            speed: ally.Speed,
+            focus: ally.Focus);
+
+        // Companions keep their own emotional type (no item override).
+        companion.ApplyAttackTypeOverride(null);
+        return companion;
+    })
+    .ToArray();
 
         var enemies = draft.Enemies
             .Select(enemy =>

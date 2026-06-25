@@ -279,10 +279,84 @@ public sealed class ResolveCurrentEventCommandHandler
             NodeDepth: selectedNode.Row,
             ActivePalaceLaws: run.ActivePalaceLaws,
             PalaceRoomState: room.PalaceState,
-            RoomClimate: ResolveActiveClimate(run, room));
+            RoomClimate: ResolveActiveClimate(run, room),
+            PartyAllies: BuildPartyAllies(run));
 
         return await _encounterDraftGenerator.GenerateAsync(
             draftContext, cancellationToken);
+    }
+
+    // Builds the combat party from the run roster: Characters[0] is the protagonist
+    // (its stats already drive PlayerState/run stats), the rest are companions
+    // (up to 4), each with its own kit. Total party is capped at 5.
+    private static IReadOnlyCollection<CombatEncounterDraftAlly> BuildPartyAllies(Run run)
+    {
+        var characters = run.PlayerSnapshot?.Characters.ToArray() ?? [];
+        if (characters.Length == 0)
+        {
+            return []; // generator falls back to the default protagonist
+        }
+
+        var allies = new List<CombatEncounterDraftAlly>(capacity: 5);
+
+        var protagonist = characters[0];
+        allies.Add(new CombatEncounterDraftAlly(
+            AllyKey: "player.self",
+            DisplayName: protagonist.DisplayName,
+            Role: "Protagonist",
+            Tags: new[] { "player", "protagonist" },
+            IsProtagonist: true,
+            MaxVitality: protagonist.StatBlock.MaxVitality,
+            AttackPower: protagonist.StatBlock.AttackPower,
+            Defense: protagonist.StatBlock.Defense,
+            StartingGuard: protagonist.StatBlock.StartingGuard,
+            Speed: protagonist.StatBlock.Speed,
+            Initiative: protagonist.StatBlock.Initiative,
+            Recovery: protagonist.StatBlock.Recovery,
+            Focus: protagonist.StatBlock.Focus,
+            Mana: protagonist.StatBlock.Mana,
+            Charge: protagonist.StatBlock.Charge,
+            Skills: MapCharacterSkills(protagonist)));
+
+        foreach (var companion in characters.Skip(1).Take(4))
+        {
+            allies.Add(new CombatEncounterDraftAlly(
+                AllyKey: $"companion.{companion.CharacterId:N}",
+                DisplayName: companion.DisplayName,
+                Role: "Companion",
+                Tags: new[] { "companion" },
+                IsProtagonist: false,
+                MaxVitality: companion.StatBlock.MaxVitality,
+                AttackPower: companion.StatBlock.AttackPower,
+                Defense: companion.StatBlock.Defense,
+                StartingGuard: companion.StatBlock.StartingGuard,
+                Speed: companion.StatBlock.Speed,
+                Initiative: companion.StatBlock.Initiative,
+                Recovery: companion.StatBlock.Recovery,
+                Focus: companion.StatBlock.Focus,
+                Mana: companion.StatBlock.Mana,
+                Charge: companion.StatBlock.Charge,
+                Skills: MapCharacterSkills(companion)));
+        }
+
+        return allies;
+    }
+
+    private static IReadOnlyCollection<CombatEncounterDraftSkill> MapCharacterSkills(RunCharacterSnapshot character)
+    {
+        return character.Skills
+            .Select(s => new CombatEncounterDraftSkill(
+                Key: s.SkillDefinitionKey,
+                DisplayName: s.DisplayName,
+                Description: string.Empty,
+                SkillType: s.SkillType,
+                TargetingType: s.TargetingMode,
+                EffectType: s.EffectType,
+                ManaCost: s.ManaCost,
+                ChargeCost: s.ChargeCost,
+                BasePower: s.BasePower,
+                Tags: Array.Empty<string>()))
+            .ToArray();
     }
 
     private async Task<ResolvedNodeEventContent> ResolveEventContentAsync(

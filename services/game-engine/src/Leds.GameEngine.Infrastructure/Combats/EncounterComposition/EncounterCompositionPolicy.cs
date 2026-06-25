@@ -74,6 +74,12 @@ public sealed class EncounterCompositionPolicy : IEncounterCompositionPolicy
             _ => SelectCombatEnemies(eligible, budget, context),
         };
 
+        // Hard cap: never field more than 4 enemies at once.
+        if (selected.Count > 4)
+        {
+            selected = selected.Take(4).ToList();
+        }
+
         return new EncounterCompositionResult(
             DifficultyBudget: budget,
             EnemyCount: selected.Count,
@@ -169,12 +175,12 @@ public sealed class EncounterCompositionPolicy : IEncounterCompositionPolicy
         if (context.RiskLevel <= 2)
             return 2;
 
-        // Medium risk (3): max 2 enemies
+        // Medium risk (3): max 3 enemies
         if (context.RiskLevel <= 3)
-            return 2;
+            return 3;
 
         // High risk (4-5): up to 3 enemies
-        return 3;
+        return 4;
     }
 
     private static IReadOnlyCollection<CatalogEnemyDefinition> SelectEliteEnemies(

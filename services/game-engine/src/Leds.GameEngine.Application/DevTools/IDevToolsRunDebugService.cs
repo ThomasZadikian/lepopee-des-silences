@@ -45,4 +45,8 @@ public interface IDevToolsRunDebugService
         int vitality,
         int guard,
         CancellationToken cancellationToken = default);
+
+    Task<DevToolsRunDebugResult> AddDebugAllyAsync(Guid runId, CancellationToken cancellationToken = default);
+
+    Task<DevToolsRunDebugResult> RemoveDebugAllyAsync(Guid runId, CancellationToken cancellationToken = default);
 }

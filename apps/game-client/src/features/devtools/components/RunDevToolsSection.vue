@@ -17,6 +17,8 @@ const emit = defineEmits<{
   clearLaws: [];
   activateCurse: [curseKey: string];
   clearCurses: [];
+  addAlly: [];
+  removeAlly: [];
 }>();
 
 const roomCount = ref(3);
@@ -54,6 +56,17 @@ function confirmAndClearCurses() {
           Advance N rooms
         </button>
       </div>
+    </div>
+
+    <div class="devtools-card">
+      <h3>Party</h3>
+      <button class="devtools-btn" :disabled="props.disabled || props.isLoading" @click="emit('addAlly')">
+        + Ajouter un allié
+      </button>
+      <button class="devtools-btn devtools-btn--danger" :disabled="props.disabled || props.isLoading" @click="emit('removeAlly')">
+        − Retirer un allié
+      </button>
+      <p class="devtools-muted">Effet au prochain combat (roster, max 5).</p>
     </div>
 
     <div class="devtools-card">

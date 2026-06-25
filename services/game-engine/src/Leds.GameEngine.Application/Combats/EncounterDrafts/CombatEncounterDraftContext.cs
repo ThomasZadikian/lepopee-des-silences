@@ -1,7 +1,6 @@
+using Leds.GameEngine.Application.Combats.EncounterDrafts;
 using Leds.GameEngine.Domain.PalaceLaws;
 using Leds.GameEngine.Domain.Rooms;
-
-namespace Leds.GameEngine.Application.Combats.EncounterDrafts;
 
 public sealed record CombatEncounterDraftContext(
     Guid RunId,
@@ -15,4 +14,5 @@ public sealed record CombatEncounterDraftContext(
     int NodeDepth = 0,
     IReadOnlyCollection<ActivePalaceLaw>? ActivePalaceLaws = null,
     PalaceRoomState PalaceRoomState = PalaceRoomState.Neutral,
-    string? RoomClimate = null);
+    string? RoomClimate = null,
+    IReadOnlyCollection<CombatEncounterDraftAlly>? PartyAllies = null);

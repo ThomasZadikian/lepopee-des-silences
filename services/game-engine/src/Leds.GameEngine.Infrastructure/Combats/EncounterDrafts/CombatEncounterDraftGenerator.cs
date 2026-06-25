@@ -101,14 +101,17 @@ public sealed class CombatEncounterDraftGenerator : ICombatEncounterDraftGenerat
                     .ToArray()))
             .ToArray();
 
-        var allies = new[]
-        {
-            new CombatEncounterDraftAlly(
-                AllyKey: PlayerAllyKey,
-                DisplayName: PlayerDisplayName,
-                Role: PlayerRole,
-                Tags: PlayerTags)
-        };
+        var allies = context.PartyAllies is { Count: > 0 }
+            ? context.PartyAllies.ToArray()
+            : new[]
+            {
+                new CombatEncounterDraftAlly(
+                    AllyKey: PlayerAllyKey,
+                    DisplayName: PlayerDisplayName,
+                    Role: PlayerRole,
+                    Tags: PlayerTags,
+                    IsProtagonist: true)
+            };
 
         var riskProfile = _riskProfileResolver.Resolve(
             Enum.Parse<Leds.GameEngine.Domain.Nodes.NodeEventType>(context.EncounterType),

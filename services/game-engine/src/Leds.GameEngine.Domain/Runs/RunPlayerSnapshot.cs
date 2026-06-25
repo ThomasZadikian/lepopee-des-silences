@@ -58,4 +58,24 @@ public sealed class RunPlayerSnapshot
     {
         return new RunPlayerSnapshot(id, playerId, displayName, createdAtUtc, characters);
     }
+
+    /// <summary>DevTools/testing only: appends a companion character to the roster.</summary>
+    public void DebugAddCharacter(RunCharacterSnapshot character)
+    {
+        ArgumentNullException.ThrowIfNull(character);
+        _characters.Add(character);
+    }
+
+    /// <summary>
+    /// DevTools/testing only: removes the last companion. The protagonist (index 0)
+    /// is never removed. Returns false when only the protagonist remains.
+    /// </summary>
+    public bool DebugRemoveLastCompanion()
+    {
+        if (_characters.Count <= 1)
+            return false;
+
+        _characters.RemoveAt(_characters.Count - 1);
+        return true;
+    }
 }

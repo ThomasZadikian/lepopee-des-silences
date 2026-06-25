@@ -145,9 +145,35 @@ public sealed class Combat
         }
     }
 
+    private const string PlayerSourceKey = "player.self";
+
+    /// <summary>
+    /// The protagonist — the only combatant whose death ends the run. Other
+    /// Player-side allies are companions. Identified by source key, with a fallback
+    /// to the first Player-side ally (always the protagonist, built first).
+    /// </summary>
+    public Combatant? GetPlayerCombatant()
+        => Allies.FirstOrDefault(a => string.Equals(a.SourceKey, PlayerSourceKey, StringComparison.OrdinalIgnoreCase))
+           ?? Allies.FirstOrDefault(a => a.Side == CombatantSide.Player);
+
+    /// <summary>True when the protagonist is defeated (or absent).</summary>
+    public bool IsPlayerDefeated
+    {
+        get
+        {
+            var player = GetPlayerCombatant();
+            return player is null || player.IsDefeated;
+        }
+    }
+
+    /// <summary>
+    /// Ends the combat as a loss when the PLAYER (protagonist) is defeated.
+    /// Companions dying does NOT end the run — only the player's death is a game
+    /// over, even with allies still standing. (Name kept for call-site stability.)
+    /// </summary>
     public void FailIfAllAlliesDefeated()
     {
-        if (Status == CombatStatus.Active && !HasLivingAllies)
+        if (Status == CombatStatus.Active && IsPlayerDefeated)
         {
             Status = CombatStatus.Failed;
             ActiveCombatantId = null;

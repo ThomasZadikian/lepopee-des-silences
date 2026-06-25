@@ -78,6 +78,14 @@ function advanceRoom() {
   void execute((token) => devToolsApi.advanceRoom(token, props.runId), 'Room avancee.');
 }
 
+function addAlly() {
+  void execute((token) => devToolsApi.addAlly(token, props.runId), 'Allié ajouté (prochain combat).');
+}
+
+function removeAlly() {
+  void execute((token) => devToolsApi.removeAlly(token, props.runId), 'Allié retiré (prochain combat).');
+}
+
 function advanceRooms(count: number) {
   void execute((token) => devToolsApi.advanceRooms(token, props.runId, count), `${count} rooms avancees.`);
 }
@@ -169,6 +177,8 @@ function applyStatus(combatantId: string, statusKey: string, stacks: number, dur
       @clear-laws="clearLaws"
       @activate-curse="activateCurse"
       @clear-curses="clearCurses"
+      @add-ally="addAlly"
+      @remove-ally="removeAlly"
     />
 
     <PsycheDevToolsSection
