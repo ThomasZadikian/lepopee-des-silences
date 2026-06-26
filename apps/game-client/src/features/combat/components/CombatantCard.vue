@@ -1,7 +1,31 @@
 <script setup lang="ts">
-import type { CombatantRuntimeDto } from '../types/combatContracts';
-import EmotionalTypeBadge from './EmotionalTypeBadge.vue';
+import type { CombatantRuntimeDto, CombatantStatusEffectDto } from '../types/combatContracts';
 import AtbGauge from './AtbGauge.vue';
+import EmotionalTypeBadge from './EmotionalTypeBadge.vue';
+
+function statusIcon(kind: string, magnitude: number): string {
+  switch (kind) {
+    case 'DamageOverTime': return '☠';
+    case 'HealOverTime': return '✚';
+    case 'StatModifier': return magnitude >= 0 ? '▲' : '▼';
+    case 'Stun': return '✦';
+    case 'Silence': return '∅';
+    case 'AtbLock': return '⏸';
+    default: return '•';
+  }
+}
+
+function statusClass(kind: string, magnitude: number): string {
+  if (kind === 'DamageOverTime') return 'presence__fx-badge--dot';
+  if (kind === 'HealOverTime') return 'presence__fx-badge--hot';
+  if (kind === 'StatModifier') return magnitude >= 0 ? 'presence__fx-badge--buff' : 'presence__fx-badge--debuff';
+  return 'presence__fx-badge--control';
+}
+
+function fxTitle(fx: CombatantStatusEffectDto): string {
+  return fx.stacks > 1 ? `${fx.displayName} ×${fx.stacks}` : fx.displayName;
+}
+
 
 defineProps<{
   combatant: CombatantRuntimeDto;
@@ -61,6 +85,18 @@ function hpRatio(c: CombatantRuntimeDto): number {
 
     <div class="presence__tags" aria-hidden="true">
       <span v-if="combatant.guard > 0" class="presence__tag presence__tag--guard">Garde</span>
+    </div>
+
+     <div v-if="(combatant.statusEffects?.length ?? 0) > 0" class="presence__fx">
+      <span
+        v-for="fx in combatant.statusEffects"
+        :key="fx.key"
+        class="presence__fx-badge"
+        :class="statusClass(fx.kind, fx.magnitude)"
+        :title="fxTitle(fx)"
+      >
+        {{ statusIcon(fx.kind, fx.magnitude) }}<small v-if="fx.stacks > 1">{{ fx.stacks }}</small>
+      </span>
     </div>
 
     <div class="presence__gauge">
@@ -309,4 +345,37 @@ function hpRatio(c: CombatantRuntimeDto): number {
     transition: none;
   }
 }
+
+/* ── Status effect badges ───────────────────────────────────────────────── */
+.presence__fx {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  justify-content: center;
+  min-height: 1.1rem;
+  margin-top: 2px;
+}
+
+.presence__fx-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  padding: 1px 5px;
+  border-radius: 999px;
+  border: 1px solid var(--line, oklch(0.5 0.02 272 / 0.4));
+  font-size: 0.62rem;
+  line-height: 1.3;
+  background: oklch(0.18 0.03 272 / 0.7);
+}
+
+.presence__fx-badge small {
+  font-size: 0.5rem;
+  opacity: 0.85;
+}
+
+.presence__fx-badge--dot     { color: oklch(0.78 0.16 145); border-color: oklch(0.78 0.16 145 / 0.5); }
+.presence__fx-badge--hot     { color: oklch(0.82 0.13 200); border-color: oklch(0.82 0.13 200 / 0.5); }
+.presence__fx-badge--buff    { color: var(--gold, oklch(0.86 0.10 86)); border-color: oklch(0.86 0.10 86 / 0.5); }
+.presence__fx-badge--debuff  { color: oklch(0.78 0.16 25); border-color: oklch(0.78 0.16 25 / 0.5); }
+.presence__fx-badge--control { color: oklch(0.80 0.13 300); border-color: oklch(0.80 0.13 300 / 0.5); }
 </style>

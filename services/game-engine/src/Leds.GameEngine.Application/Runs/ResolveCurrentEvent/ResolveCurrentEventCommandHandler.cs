@@ -1,6 +1,7 @@
 ﻿using Leds.GameEngine.Application.Abstractions;
 using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Application.Combats;
+using Leds.GameEngine.Application.Combats.Atb;
 using Leds.GameEngine.Application.Combats.Dtos;
 using Leds.GameEngine.Application.Combats.EncounterDrafts;
 using Leds.GameEngine.Application.Combats.EnemyTurns;
@@ -14,13 +15,13 @@ using Leds.GameEngine.Application.Events.ResolveNodeEvent;
 using Leds.GameEngine.Application.Rewards.Ports;
 using Leds.GameEngine.Application.Runs.Dtos;
 using Leds.GameEngine.Domain.Combats;
+using Leds.GameEngine.Domain.Combats.StatusEffects;
 using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rewards;
 using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
 using Leds.SharedBuildingBlocks.Time;
-using Leds.GameEngine.Application.Combats.Atb;
 using MediatR;
 
 namespace Leds.GameEngine.Application.Runs.ResolveCurrentEvent;
@@ -164,16 +165,14 @@ public sealed class ResolveCurrentEventCommandHandler
             }
 
             encounterDraftDto = CombatEncounterDraftDto.FromDomain(draft);
+            var skillEffects = await BuildSkillEffectsAsync(run, draft, cancellationToken);
+
             var combatRuntime = _combatFactory.CreateFromDraft(
-                combatInstance.Id,
-                draft,
-                run.PlayerState,
-                run.RunModifiers,
-                attackPower: run.Attack,
-                defense: run.Defense,
-                speed: run.Speed,
-                palaceRoomState: room.PalaceState,
-                focus: run.Focus);
+                combatInstance.Id, draft, run.PlayerState, run.RunModifiers,
+                attackPower: run.Attack, defense: run.Defense, speed: run.Speed,
+                palaceRoomState: room.PalaceState, focus: run.Focus,
+                skillEffects: skillEffects);
+
             // ATB: bake Markov tempo + opening gauges, then elect the opener.
             _atbPreparer.PrepareNewCombat(combatRuntime, run);
 
@@ -340,6 +339,46 @@ public sealed class ResolveCurrentEventCommandHandler
         }
 
         return allies;
+    }
+
+    private async Task<IReadOnlyDictionary<string, SkillStatusEffectSpec>> BuildSkillEffectsAsync(
+    Run run, CombatEncounterDraft draft, CancellationToken ct)
+    {
+        var keys = draft.Enemies.SelectMany(e => e.SkillKeys)
+            .Concat(run.PlayerState?.Skills.Select(s => s.Key) ?? Enumerable.Empty<string>())
+            .Concat(run.PlayerSnapshot?.Characters.SelectMany(c => c.Skills.Select(s => s.SkillDefinitionKey))
+                    ?? Enumerable.Empty<string>())
+            .Where(k => !string.IsNullOrWhiteSpace(k))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        var dict = new Dictionary<string, SkillStatusEffectSpec>(StringComparer.OrdinalIgnoreCase);
+        if (keys.Length == 0) return dict;
+
+        var defs = await _catalogContentGateway.ListSkillDefinitionsByKeysAsync(keys, ct);
+        foreach (var d in defs)
+        {
+            var spec = ToStatusSpec(d);
+            if (spec is not null) dict[d.Key] = spec;
+        }
+        return dict;
+    }
+
+    private static SkillStatusEffectSpec? ToStatusSpec(CatalogSkillDefinition d)
+    {
+        if (string.IsNullOrWhiteSpace(d.EffectKind)
+            || !Enum.TryParse<StatusEffectKind>(d.EffectKind, true, out var kind))
+            return null;
+
+        var stat = CombatStat.None;
+        if (!string.IsNullOrWhiteSpace(d.EffectStat))
+            Enum.TryParse(d.EffectStat, true, out stat);
+
+        var key = string.IsNullOrWhiteSpace(d.EffectStatusKey) ? d.Key : d.EffectStatusKey;
+        return new SkillStatusEffectSpec(
+            Key: key, DisplayName: key, Kind: kind,
+            Magnitude: d.EffectMagnitude, DurationTicks: d.EffectDurationTicks,
+            TickInterval: d.EffectTickInterval, Stat: stat, EmotionalType: null, Stacks: 1);
     }
 
     private static IReadOnlyCollection<CombatEncounterDraftSkill> MapCharacterSkills(RunCharacterSnapshot character)

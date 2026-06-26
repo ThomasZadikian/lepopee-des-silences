@@ -25,6 +25,7 @@ public sealed record CombatantRuntimeDto(
     int Focus,
     int AtbGauge,
     int AtbFillPerTick,
+    IReadOnlyCollection<CombatantStatusEffectDto> StatusEffects,
     IReadOnlyCollection<CombatantSkillRuntimeDto> Skills)
 {
     // Stateless pure provider; safe to share. Resolves the emotional type and
@@ -34,7 +35,6 @@ public sealed record CombatantRuntimeDto(
     public static CombatantRuntimeDto FromDomain(Combatant combatant)
     {
         var profile = TypeProvider.Resolve(combatant);
-        var stats = combatant.BaseStatSnapshot;
 
         return new CombatantRuntimeDto(
             Id: combatant.Id.Value,
@@ -52,12 +52,22 @@ public sealed record CombatantRuntimeDto(
             WeakTo: profile.WeakTo.Select(t => t.ToString()).ToArray(),
             ResistantTo: profile.ResistantTo.Select(t => t.ToString()).ToArray(),
             ImmuneTo: profile.ImmuneTo.Select(t => t.ToString()).ToArray(),
-            AttackPower: stats.AttackPower,
-            Defense: stats.Defense,
-            Speed: stats.Speed,
-            Focus: stats.Focus,
+            // Effective values so active buffs/debuffs are visible in the UI.
+            AttackPower: combatant.EffectiveAttackPower,
+            Defense: combatant.EffectiveDefense,
+            Speed: combatant.EffectiveSpeed,
+            Focus: combatant.EffectiveFocus,
             AtbGauge: combatant.AtbGauge,
             AtbFillPerTick: combatant.AtbFillPerTick,
+            StatusEffects: combatant.StatusEffects
+                .Select(e => new CombatantStatusEffectDto(
+                    e.Key,
+                    e.DisplayName,
+                    e.Kind.ToString(),
+                    e.Stat.ToString(),
+                    e.Magnitude,
+                    e.Stacks))
+                .ToArray(),
             Skills: combatant.Skills
                 .Select(CombatantSkillRuntimeDto.FromDomain)
                 .ToArray());

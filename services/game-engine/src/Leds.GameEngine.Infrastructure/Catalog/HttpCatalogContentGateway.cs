@@ -880,16 +880,13 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
         CatalogSkillDefinitionHttpResponse source)
     {
         return new CatalogSkillDefinition(
-            Key: source.Key,
-            DisplayName: source.Name,
-            Description: source.Description,
-            SkillType: source.SkillType,
-            TargetingType: source.TargetingType,
-            EffectType: source.EffectType,
-            ManaCost: source.ManaCost,
-            ChargeCost: source.ChargeCost,
-            BasePower: source.BasePower,
-            Tags: source.Tags ?? []);
+            Key: source.Key, DisplayName: source.Name, Description: source.Description,
+            SkillType: source.SkillType, TargetingType: source.TargetingType, EffectType: source.EffectType,
+            ManaCost: source.ManaCost, ChargeCost: source.ChargeCost, BasePower: source.BasePower,
+            Tags: source.Tags ?? [],
+            EffectKind: source.EffectKind, EffectStatusKey: source.EffectStatusKey,
+            EffectMagnitude: source.EffectMagnitude, EffectDurationTicks: source.EffectDurationTicks,
+            EffectTickInterval: source.EffectTickInterval, EffectStat: source.EffectStat);
     }
 
     private static CatalogEnemyDefinition MapToCatalogEnemyDefinition(

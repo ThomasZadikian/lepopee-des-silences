@@ -48,7 +48,25 @@ export type CombatantRuntimeDto = {
   focus?: number;
   atbGauge?: number;
   atbFillPerTick?: number;
+  statusEffects?: CombatantStatusEffectDto[];
   skills: CombatantSkillRuntimeDto[];
+};
+
+export type StatusEffectKind =
+  | 'DamageOverTime'
+  | 'HealOverTime'
+  | 'StatModifier'
+  | 'Stun'
+  | 'Silence'
+  | 'AtbLock';
+
+export type CombatantStatusEffectDto = {
+  key: string;
+  displayName: string;
+  kind: StatusEffectKind;
+  stat: string;
+  magnitude: number;
+  stacks: number;
 };
 
 export type CombatUsableItemDto = {

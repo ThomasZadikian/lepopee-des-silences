@@ -1,6 +1,7 @@
 using Leds.Catalog.Domain.Abstractions;
 using Leds.Catalog.Domain.CatalogContent;
 using Leds.Catalog.Domain.Errors;
+using Leds.Catalog.Domain.Gameplay;
 
 namespace Leds.Catalog.Domain.Skills.Definitions;
 
@@ -18,7 +19,13 @@ public sealed class SkillDefinition : CatalogContentBase, ISkillDefinition
         string effectType,
         int manaCost,
         int chargeCost,
-        int basePower)
+        int basePower,
+        string? effectKind,
+        string? effectStatusKey,
+        int effectMagnitude,
+        int effectDurationTicks,
+        int effectTickInterval,
+        string? effectStat)
         : base(id, key, name, description, version, status)
     {
         SkillType = skillType;
@@ -27,6 +34,12 @@ public sealed class SkillDefinition : CatalogContentBase, ISkillDefinition
         ManaCost = manaCost;
         ChargeCost = chargeCost;
         BasePower = basePower;
+        EffectKind = effectKind;
+        EffectStatusKey = effectStatusKey;
+        EffectMagnitude = effectMagnitude;
+        EffectDurationTicks = effectDurationTicks;
+        EffectTickInterval = effectTickInterval;
+        EffectStat = effectStat;
     }
 
     public string SkillType { get; }
@@ -40,6 +53,12 @@ public sealed class SkillDefinition : CatalogContentBase, ISkillDefinition
     public int ChargeCost { get; }
 
     public int BasePower { get; }
+    public string? EffectKind { get; }
+    public string? EffectStatusKey { get; }
+    public int EffectMagnitude { get; }
+    public int EffectDurationTicks { get; }
+    public int EffectTickInterval { get; }
+    public string? EffectStat { get; }
 
     public static SkillDefinition Create(
         string key,
@@ -52,7 +71,13 @@ public sealed class SkillDefinition : CatalogContentBase, ISkillDefinition
         int manaCost,
         int chargeCost,
         int basePower,
-        CatalogContentStatus status = CatalogContentStatus.Draft)
+        CatalogContentStatus status = CatalogContentStatus.Draft,
+        string? effectKind = null,
+        string? effectStatusKey = null,
+        int effectMagnitude = 0,
+        int effectDurationTicks = 0,
+        int effectTickInterval = 0,
+        string? effectStat = null)
     {
         if (string.IsNullOrWhiteSpace(skillType))
         {
@@ -103,6 +128,12 @@ public sealed class SkillDefinition : CatalogContentBase, ISkillDefinition
             effectType.Trim(),
             manaCost,
             chargeCost,
-            basePower);
+            basePower,
+            string.IsNullOrWhiteSpace(effectKind) ? null : effectKind.Trim(),
+            string.IsNullOrWhiteSpace(effectStatusKey) ? null : effectStatusKey.Trim(),
+            effectMagnitude,
+            effectDurationTicks,
+            effectTickInterval,
+            string.IsNullOrWhiteSpace(effectStat) ? null : effectStat.Trim());
     }
 }

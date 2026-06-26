@@ -55,16 +55,11 @@ public sealed class EfSkillDefinitionReadStore : ISkillDefinitionReadStore
     private static ISkillDefinition MapToDomain(SkillDefinitionEntity entity)
     {
         return SkillDefinition.Create(
-            entity.Key,
-            entity.Name,
-            entity.Description,
-            entity.Version,
-            entity.SkillType,
-            entity.TargetingType,
-            entity.EffectType,
-            entity.ManaCost,
-            entity.ChargeCost,
-            entity.BasePower,
-            Enum.Parse<CatalogContentStatus>(entity.Status));
+            entity.Key, entity.Name, entity.Description, entity.Version,
+            entity.SkillType, entity.TargetingType, entity.EffectType,
+            entity.ManaCost, entity.ChargeCost, entity.BasePower,
+            Enum.Parse<CatalogContentStatus>(entity.Status),
+            entity.EffectKind, entity.EffectStatusKey, entity.EffectMagnitude,
+            entity.EffectDurationTicks, entity.EffectTickInterval, entity.EffectStat);
     }
 }

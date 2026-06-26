@@ -22,7 +22,8 @@ public sealed class CombatFactory : ICombatFactory
         int defense = 0,
         int speed = 10,
         PalaceRoomState palaceRoomState = PalaceRoomState.Neutral,
-        int focus = 0)
+        int focus = 0,
+        IReadOnlyDictionary<string, SkillStatusEffectSpec>? skillEffects = null)
     {
         return CreateFromDraft(
             CombatId.New(),
@@ -33,7 +34,8 @@ public sealed class CombatFactory : ICombatFactory
             defense,
             speed,
             palaceRoomState,
-            focus);
+            focus,
+            skillEffects);
     }
 
     public Combat CreateFromDraft(
@@ -45,7 +47,8 @@ public sealed class CombatFactory : ICombatFactory
         int defense = 0,
         int speed = 10,
         PalaceRoomState palaceRoomState = PalaceRoomState.Neutral,
-        int focus = 0)
+        int focus = 0,
+        IReadOnlyDictionary<string, SkillStatusEffectSpec>? skillEffects = null)
     {
         // Sum all unconsumed StartingGuardBonus modifiers (e.g. Éclat de garde: +8 garde).
         var guardBonus = runModifiers?
@@ -67,93 +70,95 @@ public sealed class CombatFactory : ICombatFactory
         var attackTypeOverride = ResolveAttackTypeOverride(activeModifiers);
 
         var allies = draft.Allies
-    .Select(ally =>
-    {
-        if (ally.IsProtagonist)
-        {
-            // Protagonist: current HP/mana/charge from PlayerState, run stats,
-            // PlayerState skills, and the item-driven attack-type override.
-            var protagonistSkills = playerState?.Skills
-                .Select(s => CombatantSkill.Create(
-                    s.Key,
-                    s.DisplayName,
-                    s.SkillType,
-                    s.TargetingType,
-                    NormalizeCombatEffectType(s.Key, s.EffectType),
-                    s.ManaCost,
-                    s.ChargeCost,
-                    ScalePlayerSkillPower(s.EffectType, s.BasePower, attackPowerMultiplier)))
-                .ToArray()
-                ?? GetDefaultAllySkills(attackPowerMultiplier);
+            .Select(ally =>
+            {
+                if (ally.IsProtagonist)
+                {
+                    // Protagonist: current HP/mana/charge from PlayerState, run stats,
+                    // PlayerState skills, and the item-driven attack-type override.
+                    var protagonistSkills = playerState?.Skills
+                        .Select(s => CombatantSkill.Create(
+                            s.Key,
+                            s.DisplayName,
+                            s.SkillType,
+                            s.TargetingType,
+                            NormalizeCombatEffectType(s.Key, s.EffectType),
+                            s.ManaCost,
+                            s.ChargeCost,
+                            ScalePlayerSkillPower(s.EffectType, s.BasePower, attackPowerMultiplier),
+                            statusEffect: EffectFor(skillEffects, s.Key)))
+                        .ToArray()
+                        ?? GetDefaultAllySkills(attackPowerMultiplier, skillEffects);
 
-            var maxVitality = playerState?.MaxVitality ?? 100;
-            var currentVitality = playerState?.CurrentVitality ?? maxVitality;
-            var guard = (playerState?.Guard ?? 0) + guardBonus;
-            var mana = playerState?.Mana ?? 0;
-            var charge = playerState?.Charge ?? 0;
+                    var maxVitality = playerState?.MaxVitality ?? 100;
+                    var currentVitality = playerState?.CurrentVitality ?? maxVitality;
+                    var guard = (playerState?.Guard ?? 0) + guardBonus;
+                    var mana = playerState?.Mana ?? 0;
+                    var charge = playerState?.Charge ?? 0;
 
-            var protagonist = Combatant.Create(
-                CombatantId.New(),
-                ally.AllyKey,
-                ally.DisplayName,
-                CombatantSide.Player,
-                ally.Role,
-                maxVitality,
-                currentVitality,
-                guard,
-                baseGuard: guardBonus,
-                mana,
-                charge,
-                protagonistSkills,
-                attackPower: attackPower,
-                defense: defense,
-                speed: speed,
-                focus: focus);
+                    var protagonist = Combatant.Create(
+                        CombatantId.New(),
+                        ally.AllyKey,
+                        ally.DisplayName,
+                        CombatantSide.Player,
+                        ally.Role,
+                        maxVitality,
+                        currentVitality,
+                        guard,
+                        baseGuard: guardBonus,
+                        mana,
+                        charge,
+                        protagonistSkills,
+                        attackPower: attackPower,
+                        defense: defense,
+                        speed: speed,
+                        focus: focus);
 
-            protagonist.ApplyAttackTypeOverride(attackTypeOverride);
-            return protagonist;
-        }
+                    protagonist.ApplyAttackTypeOverride(attackTypeOverride);
+                    return protagonist;
+                }
 
-        // Companion: its OWN kit and stats; starts the fight at full vitality.
-        var companionSkills = ally.Skills is { Count: > 0 }
-            ? ally.Skills
-                .Select(s => CombatantSkill.Create(
-                    s.Key,
-                    s.DisplayName,
-                    s.SkillType,
-                    s.TargetingType,
-                    NormalizeCombatEffectType(s.Key, s.EffectType),
-                    s.ManaCost,
-                    s.ChargeCost,
-                    ScalePlayerSkillPower(s.EffectType, s.BasePower, attackPowerMultiplier)))
-                .ToArray()
-            : GetDefaultAllySkills(attackPowerMultiplier);
+                // Companion: its OWN kit and stats; starts the fight at full vitality.
+                var companionSkills = ally.Skills is { Count: > 0 }
+                    ? ally.Skills
+                        .Select(s => CombatantSkill.Create(
+                            s.Key,
+                            s.DisplayName,
+                            s.SkillType,
+                            s.TargetingType,
+                            NormalizeCombatEffectType(s.Key, s.EffectType),
+                            s.ManaCost,
+                            s.ChargeCost,
+                            ScalePlayerSkillPower(s.EffectType, s.BasePower, attackPowerMultiplier),
+                            statusEffect: EffectFor(skillEffects, s.Key)))
+                        .ToArray()
+                    : GetDefaultAllySkills(attackPowerMultiplier, skillEffects);
 
-        var companionMaxVitality = ally.MaxVitality > 0 ? ally.MaxVitality : 100;
+                var companionMaxVitality = ally.MaxVitality > 0 ? ally.MaxVitality : 100;
 
-        var companion = Combatant.Create(
-            CombatantId.New(),
-            ally.AllyKey,
-            ally.DisplayName,
-            CombatantSide.Player,
-            ally.Role,
-            companionMaxVitality,
-            currentVitality: companionMaxVitality,
-            guard: ally.StartingGuard + guardBonus,
-            baseGuard: guardBonus,
-            mana: ally.Mana,
-            charge: ally.Charge,
-            companionSkills,
-            attackPower: ally.AttackPower,
-            defense: ally.Defense,
-            speed: ally.Speed,
-            focus: ally.Focus);
+                var companion = Combatant.Create(
+                    CombatantId.New(),
+                    ally.AllyKey,
+                    ally.DisplayName,
+                    CombatantSide.Player,
+                    ally.Role,
+                    companionMaxVitality,
+                    currentVitality: companionMaxVitality,
+                    guard: ally.StartingGuard + guardBonus,
+                    baseGuard: guardBonus,
+                    mana: ally.Mana,
+                    charge: ally.Charge,
+                    companionSkills,
+                    attackPower: ally.AttackPower,
+                    defense: ally.Defense,
+                    speed: ally.Speed,
+                    focus: ally.Focus);
 
-        // Companions keep their own emotional type (no item override).
-        companion.ApplyAttackTypeOverride(null);
-        return companion;
-    })
-    .ToArray();
+                // Companions keep their own emotional type (no item override).
+                companion.ApplyAttackTypeOverride(null);
+                return companion;
+            })
+            .ToArray();
 
         var enemies = draft.Enemies
             .Select(enemy =>
@@ -190,7 +195,8 @@ public sealed class CombatFactory : ICombatFactory
                             s.ManaCost,
                             s.ChargeCost,
                             power,
-                            s.Tags);
+                            s.Tags,
+                            EffectFor(skillEffects, s.Key));
                     })
                     .ToArray();
 
@@ -212,6 +218,12 @@ public sealed class CombatFactory : ICombatFactory
             allies,
             enemies);
     }
+
+    // Looks up the durable status a skill applies, by skill key (catalog-sourced).
+    private static SkillStatusEffectSpec? EffectFor(
+        IReadOnlyDictionary<string, SkillStatusEffectSpec>? effects,
+        string key)
+        => effects is not null && effects.TryGetValue(key, out var spec) ? spec : null;
 
     private static EmotionalType? ResolveAttackTypeOverride(IReadOnlyCollection<RunModifier> runModifiers)
     {
@@ -305,7 +317,9 @@ public sealed class CombatFactory : ICombatFactory
             string.Equals(effectType, "DamageVitality", StringComparison.OrdinalIgnoreCase);
     }
 
-    private static IReadOnlyCollection<CombatantSkill> GetDefaultAllySkills(double attackPowerMultiplier)
+    private static IReadOnlyCollection<CombatantSkill> GetDefaultAllySkills(
+        double attackPowerMultiplier,
+        IReadOnlyDictionary<string, SkillStatusEffectSpec>? skillEffects)
     {
         return
         [
@@ -317,7 +331,8 @@ public sealed class CombatFactory : ICombatFactory
                 effectType: "Damage",
                 manaCost: 0,
                 chargeCost: 0,
-                basePower: ScalePlayerSkillPower("Damage", 10, attackPowerMultiplier)),
+                basePower: ScalePlayerSkillPower("Damage", 10, attackPowerMultiplier),
+                statusEffect: EffectFor(skillEffects, "skill.basic.strike")),
             CombatantSkill.Create(
                 key: "skill.basic.guard",
                 displayName: "Garde",
@@ -326,7 +341,8 @@ public sealed class CombatFactory : ICombatFactory
                 effectType: "Guard",
                 manaCost: 0,
                 chargeCost: 0,
-                basePower: 5)
+                basePower: 5,
+                statusEffect: EffectFor(skillEffects, "skill.basic.guard"))
         ];
     }
 }

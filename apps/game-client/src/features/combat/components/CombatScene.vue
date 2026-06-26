@@ -186,6 +186,30 @@ function floatLabel(type: string, amount: number): string {
   return `-${amount}`;
 }
 
+function fxIcon(kind: string, magnitude: number): string {
+  switch (kind) {
+    case 'DamageOverTime': return '☠';
+    case 'HealOverTime': return '✚';
+    case 'StatModifier': return magnitude >= 0 ? '▲' : '▼';
+    case 'Stun': return '✦';
+    case 'Silence': return '∅';
+    case 'AtbLock': return '⏸';
+    default: return '•';
+  }
+}
+
+function fxClass(kind: string, magnitude: number): string {
+  if (kind === 'DamageOverTime') return 'enemy-figure__fx-badge--dot';
+  if (kind === 'HealOverTime') return 'enemy-figure__fx-badge--hot';
+  if (kind === 'StatModifier') return magnitude >= 0 ? 'enemy-figure__fx-badge--buff' : 'enemy-figure__fx-badge--debuff';
+  return 'enemy-figure__fx-badge--control';
+}
+
+function fxTitle(fx: { displayName: string; stacks: number }): string {
+  return fx.stacks > 1 ? `${fx.displayName} ×${fx.stacks}` : fx.displayName;
+}
+
+
 watch(() => combatStore.terminalEvent, (event) => {
   if (event?.kind === 'defeat') emit('combatFailed');
 });
@@ -364,6 +388,15 @@ watch(
             </span>
             <span class="enemy-figure__substats">
               ⚔ {{ combatant.attackPower ?? 0 }} · ⛨ {{ combatant.defense ?? 0 }} · ⚡ {{ combatant.speed ?? 0 }} · ◎ {{ combatant.focus ?? 0 }}
+            </span>
+            <span v-if="(combatant.statusEffects?.length ?? 0) > 0" class="enemy-figure__fx">
+              <span
+                v-for="fx in combatant.statusEffects"
+                :key="fx.key"
+                class="enemy-figure__fx-badge"
+                :class="fxClass(fx.kind, fx.magnitude)"
+                :title="fxTitle(fx)"
+              >{{ fxIcon(fx.kind, fx.magnitude) }}<small v-if="fx.stacks > 1">{{ fx.stacks }}</small></span>
             </span>
             <span v-if="combatant.guard > 0">Garde</span>
             <span class="enemy-figure__tags">
