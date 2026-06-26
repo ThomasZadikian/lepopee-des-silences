@@ -11,6 +11,7 @@ using Leds.GameEngine.Application.Rewards.Ports;
 using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Runs;
 using Leds.SharedBuildingBlocks.Time;
+using Leds.GameEngine.Domain.Combats.StatusEffects;
 using MediatR;
 
 namespace Leds.GameEngine.Application.Runs.HoldCombatTurn;
@@ -84,6 +85,13 @@ public sealed class HoldCombatTurnCommandHandler
                 : null;
 
             var readyEnemyIds = combat.HoldTick(request.DeltaTicks);
+
+            // Durable effects (poison/regen/buff expiry) resolve as time passed.
+            foreach (var statusTick in combat.TickAllStatusEffects())
+            {
+                logEntries.Add(BuildStatusLogEntry(statusTick, now.UtcDateTime));
+            }
+
             var resolved = 0;
 
             foreach (var enemyId in readyEnemyIds)
@@ -169,6 +177,25 @@ public sealed class HoldCombatTurnCommandHandler
             CombatFailed: combatFailed,
             CanProgressRun: combatCompleted,
             RunStatus: run.Status.ToString());
+    }
+
+    private static CombatLogEntryDto BuildStatusLogEntry(CombatantStatusTick tick, DateTime occurredAtUtc)
+    {
+        var (type, message) = tick.Event switch
+        {
+            { Expired: true } e => ("StatusExpired", $"{tick.CombatantName}: {e.DisplayName} fades."),
+            { Kind: StatusEffectKind.DamageOverTime } e => ("DamageApplied", $"{tick.CombatantName} suffers {e.Amount} from {e.DisplayName}."),
+            { Kind: StatusEffectKind.HealOverTime } e => ("HealApplied", $"{tick.CombatantName} regenerates {e.Amount} from {e.DisplayName}."),
+            var e => ("StatusTick", $"{tick.CombatantName}: {e.DisplayName}.")
+        };
+
+        return new CombatLogEntryDto(
+            OccurredAtUtc: occurredAtUtc,
+            Type: type,
+            Message: message,
+            ActorId: tick.CombatantId,
+            SkillKey: null,
+            TargetIds: new[] { tick.CombatantId });
     }
 
     private static void SyncPlayerStateFromCombat(Run run, Combat combat)

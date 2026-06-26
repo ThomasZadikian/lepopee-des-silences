@@ -1,5 +1,6 @@
-using Leds.GameEngine.Domain.Common;
+using Leds.GameEngine.Domain.Combats.StatusEffects;
 using Leds.GameEngine.Domain.Combats.Typing;
+using Leds.GameEngine.Domain.Common;
 
 namespace Leds.GameEngine.Domain.Combats;
 
@@ -315,6 +316,24 @@ public sealed class Combatant
         }
     }
 
+    /// <summary>Direct vitality damage bypassing guard — used by DoT (poison/burn).</summary>
+    public void ApplyVitalityDamage(int amount)
+    {
+        if (amount <= 0)
+            throw new DomainException("Damage amount must be greater than zero.");
+
+        if (IsDefeated)
+            throw new DomainException("Defeated combatants cannot receive damage.");
+
+        RuntimeState.ApplyVitalityDamage(amount);
+        CurrentVitality = RuntimeState.CurrentVitality;
+
+        if (CurrentVitality == 0)
+        {
+            Status = CombatantStatus.Defeated;
+        }
+    }
+
     public void GainGuard(int amount)
     {
         if (amount <= 0)
@@ -432,4 +451,110 @@ public sealed class Combatant
         Charge += amount;
         RuntimeState.GainCharge(amount);
     }
+
+    public void SpendMana(int amount)
+    {
+        if (amount <= 0)
+            return;
+
+        Mana = Math.Max(0, Mana - amount);
+        RuntimeState.SpendMana(amount);
+    }
+
+    public void SpendCharge(int amount)
+    {
+        if (amount <= 0)
+            return;
+
+        Charge = Math.Max(0, Charge - amount);
+        RuntimeState.SpendCharge(amount);
+    }
+
+    // ── Durable status effects (DoT/HoT, buffs/debuffs, control) ──────────────
+
+    private readonly List<CombatStatusEffect> _statusEffects = new();
+
+    /// <summary>Active durable effects (poison, regen, buffs/debuffs, stun…).</summary>
+    public IReadOnlyCollection<CombatStatusEffect> StatusEffects => _statusEffects.AsReadOnly();
+
+    /// <summary>
+    /// Applies a status effect. Re-applying the same key refreshes duration and
+    /// adds stacks; a fresh key is added. No-op on a defeated combatant.
+    /// </summary>
+    public void ApplyStatusEffect(CombatStatusEffect effect)
+    {
+        if (effect is null)
+            throw new DomainException("Status effect is required.");
+
+        if (IsDefeated)
+            return;
+
+        var existing = _statusEffects.FirstOrDefault(
+            e => string.Equals(e.Key, effect.Key, StringComparison.OrdinalIgnoreCase));
+
+        if (existing is not null)
+            existing.Reinforce(effect.Stacks, effect.ExpiresAtTick);
+        else
+            _statusEffects.Add(effect);
+    }
+
+    /// <summary>Rehydration only: re-attaches a persisted effect without stacking.</summary>
+    public void RehydrateStatusEffect(CombatStatusEffect effect) => _statusEffects.Add(effect);
+
+    /// <summary>
+    /// Advances all durable effects to <paramref name="currentTick"/>: applies any due
+    /// DoT/HoT and removes expired effects. Returns what happened (for combat logs).
+    /// </summary>
+    public IReadOnlyCollection<StatusTickEvent> TickStatusEffects(int currentTick)
+    {
+        if (_statusEffects.Count == 0)
+            return Array.Empty<StatusTickEvent>();
+
+        var events = new List<StatusTickEvent>();
+
+        foreach (var effect in _statusEffects.ToArray())
+        {
+            if (!IsDefeated && effect.IsPeriodic)
+            {
+                var amount = effect.ConsumeDueTicks(currentTick);
+                if (amount > 0)
+                {
+                    if (effect.Kind == StatusEffectKind.DamageOverTime)
+                    {
+                        ApplyVitalityDamage(amount); // DoT bypasses guard
+                        events.Add(new StatusTickEvent(effect.Key, effect.DisplayName, effect.Kind, amount, false));
+                    }
+                    else if (effect.Kind == StatusEffectKind.HealOverTime && CurrentVitality < MaxVitality)
+                    {
+                        ApplyHeal(amount);
+                        events.Add(new StatusTickEvent(effect.Key, effect.DisplayName, effect.Kind, amount, false));
+                    }
+                }
+            }
+
+            if (effect.IsExpired(currentTick))
+            {
+                _statusEffects.Remove(effect);
+                events.Add(new StatusTickEvent(effect.Key, effect.DisplayName, effect.Kind, 0, true));
+            }
+        }
+
+        return events;
+    }
+
+    private int StatModifierSum(CombatStat stat)
+        => _statusEffects
+            .Where(e => e.Kind == StatusEffectKind.StatModifier && e.Stat == stat)
+            .Sum(e => e.Magnitude * e.Stacks);
+
+    // Effective stats = base snapshot + active StatModifier effects (debuffs are negative).
+    public int EffectiveAttackPower => Math.Max(0, BaseStatSnapshot.AttackPower + StatModifierSum(CombatStat.AttackPower));
+    public int EffectiveDefense => Math.Max(0, BaseStatSnapshot.Defense + StatModifierSum(CombatStat.Defense));
+    public int EffectiveSpeed => Math.Max(1, BaseStatSnapshot.Speed + StatModifierSum(CombatStat.Speed));
+    public int EffectiveFocus => Math.Max(0, BaseStatSnapshot.Focus + StatModifierSum(CombatStat.Focus));
+
+    // Control flags consumed by the ATB scheduler / action validation (tranche 3+).
+    public bool IsStunned => _statusEffects.Any(e => e.Kind == StatusEffectKind.Stun);
+    public bool IsSilenced => _statusEffects.Any(e => e.Kind == StatusEffectKind.Silence);
+    public bool IsAtbLocked => IsStunned || _statusEffects.Any(e => e.Kind == StatusEffectKind.AtbLock);
 }

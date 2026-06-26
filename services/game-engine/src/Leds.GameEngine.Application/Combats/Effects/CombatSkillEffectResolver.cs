@@ -1,9 +1,10 @@
 using Leds.GameEngine.Application.Combats.Actions;
 using Leds.GameEngine.Application.Combats.Typing;
 using Leds.GameEngine.Domain.Combats;
+using Leds.GameEngine.Domain.Combats.Atb;
+using Leds.GameEngine.Domain.Combats.StatusEffects;
 using Leds.GameEngine.Domain.Combats.Typing;
 using Leds.GameEngine.Domain.Common;
-using Leds.GameEngine.Domain.Combats.Atb;
 
 namespace Leds.GameEngine.Application.Combats.Effects;
 
@@ -29,6 +30,10 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
 
         var logEntries = new List<CombatLogEntryDto>();
 
+        // Players pay mana/charge to cast (enemies cast freely); affordability was
+        // already validated for player-side actors.
+        ConsumeResources(actor, skill);
+
         switch (ResolveEffectType(skill))
         {
             case "Damage":
@@ -43,15 +48,98 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
                 ResolveTextEffect(actor, skill, targets, "EffectApplied", "weakens", logEntries);
                 break;
 
+            case "Heal":
+                ResolveHeal(actor, skill, targets, logEntries);
+                break;
+
             case "Disrupt":
                 ResolveTextEffect(actor, skill, targets, "EffectApplied", "disrupts", logEntries);
                 break;
 
             default:
-                throw new DomainException($"Unsupported skill effect type: {skill.EffectType}");
+                // Status-only spell (pure buff/debuff/control): no instant effect —
+                // the durable status below does the work.
+                if (skill.StatusEffect is null)
+                    throw new DomainException($"Unsupported skill effect type: {skill.EffectType}");
+                break;
         }
 
+        // Apply the durable status (poison/regen/buff/control) on top, if declared.
+        ApplySkillStatus(combat, actor, skill, targets, logEntries);
         return new CombatSkillEffectResolution(true, logEntries, combat);
+    }
+
+    private static void ConsumeResources(Combatant actor, CombatantSkill skill)
+    {
+        if (actor.Side != CombatantSide.Player)
+            return; // enemies cast freely
+
+        actor.SpendMana(skill.ManaCost);
+        actor.SpendCharge(skill.ChargeCost);
+    }
+
+    private static void ResolveHeal(
+        Combatant actor,
+        CombatantSkill skill,
+        IReadOnlyCollection<Combatant> targets,
+        List<CombatLogEntryDto> logEntries)
+    {
+        foreach (var target in targets)
+        {
+            if (target.IsDefeated || target.CurrentVitality >= target.MaxVitality)
+                continue;
+
+            var before = target.CurrentVitality;
+            target.ApplyHeal(skill.BasePower);
+            var healed = target.CurrentVitality - before;
+
+            if (healed > 0)
+            {
+                logEntries.Add(CreateLog(
+                    "HealApplied",
+                    $"{target.DisplayName} recovers {healed} vitality.",
+                    actor,
+                    skill,
+                    [target]));
+            }
+        }
+    }
+
+    private static void ApplySkillStatus(
+        Combat combat,
+        Combatant actor,
+        CombatantSkill skill,
+        IReadOnlyCollection<Combatant> targets,
+        List<CombatLogEntryDto> logEntries)
+    {
+        var spec = skill.StatusEffect;
+        if (spec is null)
+            return;
+
+        foreach (var target in targets)
+        {
+            if (target.IsDefeated)
+                continue;
+
+            target.ApplyStatusEffect(CombatStatusEffect.Create(
+                key: spec.Key,
+                displayName: spec.DisplayName,
+                kind: spec.Kind,
+                currentTick: combat.CurrentTick,
+                durationTicks: spec.DurationTicks,
+                magnitude: spec.Magnitude,
+                stacks: spec.Stacks,
+                tickInterval: spec.TickInterval,
+                stat: spec.Stat,
+                emotionalType: spec.EmotionalType));
+
+            logEntries.Add(CreateLog(
+                "StatusApplied",
+                $"{target.DisplayName} is afflicted by {spec.DisplayName}.",
+                actor,
+                skill,
+                [target]));
+        }
     }
 
     private void ResolveDamage(
@@ -62,8 +150,8 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
         List<CombatLogEntryDto> logEntries)
     {
         var attackType = _typeProfileProvider.ResolveAttackType(actor, skill);
-        var critChance = CriticalHitCalibration.CritChanceFromFocus(actor.BaseStatSnapshot.Focus);
-        // ATB charge: a held/overflowed gauge amplifies the whole hit (cap ×1.5).
+        // Effective Focus = base + active Focus buffs/debuffs.
+        var critChance = CriticalHitCalibration.CritChanceFromFocus(actor.EffectiveFocus);        // ATB charge: a held/overflowed gauge amplifies the whole hit (cap ×1.5).
         var chargeMultiplier = AtbActionMath.ChargeDamageMultiplier(actor.AtbGauge);
         var staggers = IsStaggerSkill(skill);
 
@@ -72,8 +160,14 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
             var defenderProfile = _typeProfileProvider.Resolve(target);
             var critRoll = DeterministicCombatRoll.UnitInterval(BuildCritSeed(combat, actor, target, skill));
 
-            var outcome = DamageCalculator.Calculate(
+            // Attack buffs (actor) and defense buffs (target) shift the hit before
+            // type/crit are applied; charge amplifies it too.
+            var basePower = ApplyStatMultiplier(
                 ApplyCharge(skill.BasePower, chargeMultiplier),
+                StatModifierDamageMultiplier(actor, target));
+
+            var outcome = DamageCalculator.Calculate(
+                basePower,
                 attackType,
                 defenderProfile,
                 critChance,
@@ -170,6 +264,33 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
         return skill.Tags is { Count: > 0 }
             && skill.Tags.Any(tag => string.Equals(tag?.Trim(), "stagger", StringComparison.OrdinalIgnoreCase));
     }
+
+    // Each point of attack/defense buff or debuff shifts damage by this fraction
+    // (tunable). Computed from MODIFIER deltas only, so it's 1.0 with no active
+    // buff/debuff and works even when base attack/defense is 0 (e.g. enemies).
+    private const double StatPointDamageFactor = 0.03;
+
+    private static double StatModifierDamageMultiplier(Combatant actor, Combatant target)
+    {
+        var attackDelta = actor.EffectiveAttackPower - actor.BaseStatSnapshot.AttackPower;
+        var defenseDelta = target.EffectiveDefense - target.BaseStatSnapshot.Defense;
+
+        var multiplier = (1.0 + attackDelta * StatPointDamageFactor)
+            * (1.0 - defenseDelta * StatPointDamageFactor);
+
+        return Math.Clamp(multiplier, 0.25, 3.0);
+    }
+
+    private static int ApplyStatMultiplier(int basePower, double statMultiplier)
+    {
+        if (basePower <= 0 || statMultiplier == 1.0)
+        {
+            return basePower;
+        }
+
+        return Math.Max(1, (int)Math.Round(basePower * statMultiplier, MidpointRounding.AwayFromZero));
+    }
+
 
     private static string DescribeOutcome(DamageOutcome outcome)
     {
@@ -294,6 +415,12 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
         if (string.Equals(skill.EffectType, "DamageVitality", StringComparison.OrdinalIgnoreCase))
         {
             return "Damage";
+        }
+
+        if (string.Equals(skill.EffectType, "Heal", StringComparison.OrdinalIgnoreCase) ||
+    string.Equals(skill.EffectType, "RestoreVitality", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Heal";
         }
 
         return skill.EffectType;

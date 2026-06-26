@@ -13,7 +13,8 @@ public sealed record CombatantSkill
         int manaCost,
         int chargeCost,
         int basePower,
-        IReadOnlyCollection<string> tags)
+        IReadOnlyCollection<string> tags,
+        SkillStatusEffectSpec? statusEffect)
     {
         Key = key;
         DisplayName = displayName;
@@ -24,6 +25,7 @@ public sealed record CombatantSkill
         ChargeCost = chargeCost;
         BasePower = basePower;
         Tags = tags;
+        StatusEffect = statusEffect;
     }
 
     public string Key { get; }
@@ -35,6 +37,8 @@ public sealed record CombatantSkill
     public int ChargeCost { get; }
     public int BasePower { get; }
     public IReadOnlyCollection<string> Tags { get; }
+    /// <summary>Optional durable status this skill applies to its targets (null = none).</summary>
+    public SkillStatusEffectSpec? StatusEffect { get; }
 
     public static CombatantSkill Create(
         string key,
@@ -45,7 +49,8 @@ public sealed record CombatantSkill
         int manaCost,
         int chargeCost,
         int basePower,
-        IReadOnlyCollection<string>? tags = null)
+        IReadOnlyCollection<string>? tags = null,
+        SkillStatusEffectSpec? statusEffect = null)
     {
         if (string.IsNullOrWhiteSpace(key))
             throw new DomainException("Combatant skill key is required.");
@@ -71,7 +76,8 @@ public sealed record CombatantSkill
             manaCost,
             chargeCost,
             basePower,
-            tags?.ToArray() ?? Array.Empty<string>());
+            tags?.ToArray() ?? Array.Empty<string>(),
+            statusEffect);
     }
 
     /// <summary>
@@ -87,8 +93,9 @@ public sealed record CombatantSkill
         int manaCost,
         int chargeCost,
         int basePower,
-        IReadOnlyCollection<string> tags)
+        IReadOnlyCollection<string> tags,
+        SkillStatusEffectSpec? statusEffect = null)
     {
-        return new CombatantSkill(key, displayName, skillType, targetingType, effectType, manaCost, chargeCost, basePower, tags);
+        return new CombatantSkill(key, displayName, skillType, targetingType, effectType, manaCost, chargeCost, basePower, tags, statusEffect);
     }
 }

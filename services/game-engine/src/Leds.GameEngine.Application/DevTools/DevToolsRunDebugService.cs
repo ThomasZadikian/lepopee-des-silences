@@ -7,6 +7,7 @@ using Leds.GameEngine.Application.Common.Exceptions;
 using Leds.GameEngine.Application.Rewards.Ports;
 using Leds.GameEngine.Application.Runs.Dtos;
 using Leds.GameEngine.Domain.Combats;
+using Leds.GameEngine.Domain.Combats.StatusEffects;
 using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Effects;
 using Leds.GameEngine.Domain.PalaceLaws;
@@ -49,6 +50,7 @@ public sealed class DevToolsRunDebugService : IDevToolsRunDebugService
     {
         return await AdvanceRoomsAsync(runId, 1, cancellationToken);
     }
+
 
     public async Task<DevToolsRunDebugResult> AdvanceRoomsAsync(
         Guid runId,
@@ -349,6 +351,58 @@ public sealed class DevToolsRunDebugService : IDevToolsRunDebugService
 
         await _runRepository.UpdateAsync(run, cancellationToken);
         return new DevToolsCombatDebugResult("Combatant vitals updated.", CombatRuntimeDto.FromDomain(combat));
+    }
+
+    public async Task<DevToolsCombatDebugResult> ApplyCombatantStatusAsync(
+        Guid runId,
+        Guid combatantId,
+        string statusKey,
+        int stacks,
+        int durationTicks,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(statusKey))
+            throw new DomainException("Status key is required.");
+
+        var run = await GetRunAsync(runId, cancellationToken);
+        var combat = GetActiveCombat(run);
+        var combatant = combat.Allies.Concat(combat.Enemies)
+            .SingleOrDefault(c => c.Id.Value == combatantId)
+            ?? throw new NotFoundException("Combatant", combatantId);
+
+        combatant.ApplyStatusEffect(BuildDebugStatus(statusKey, stacks, durationTicks, combat.CurrentTick));
+        combat.CompleteIfAllEnemiesDefeated();
+        combat.FailIfAllAlliesDefeated();
+
+        await _runRepository.UpdateAsync(run, cancellationToken);
+        return new DevToolsCombatDebugResult($"Status '{statusKey}' applied.", CombatRuntimeDto.FromDomain(combat));
+    }
+
+    // Presets keyed by statusKey so devtools can apply realistic effects by name.
+    // Durations/intervals are in ATB ticks (threshold = 50000; ~200-340 ticks/clock).
+    private static CombatStatusEffect BuildDebugStatus(string statusKey, int stacks, int durationTicks, int currentTick)
+    {
+        var key = statusKey.Trim().ToLowerInvariant();
+        // The devtools UI sends a coarse 1-99 "duration"; scale each unit to ~1000
+        // ATB ticks so effects last a meaningful amount of real time.
+        var dur = durationTicks > 0 ? durationTicks * 1000 : 6000;
+        var s = Math.Max(1, stacks);
+
+        return key switch
+        {
+            "poison" => CombatStatusEffect.Create("poison", "Poison", StatusEffectKind.DamageOverTime, currentTick, dur, magnitude: 8, stacks: s, tickInterval: 500),
+            "burn" => CombatStatusEffect.Create("burn", "Brûlure", StatusEffectKind.DamageOverTime, currentTick, dur, magnitude: 12, stacks: s, tickInterval: 700),
+            "regen" => CombatStatusEffect.Create("regen", "Régénération", StatusEffectKind.HealOverTime, currentTick, dur, magnitude: 10, stacks: s, tickInterval: 600),
+            "atk-up" => CombatStatusEffect.Create("atk-up", "Attaque +", StatusEffectKind.StatModifier, currentTick, dur, magnitude: 8, stacks: s, stat: CombatStat.AttackPower),
+            "atk-down" => CombatStatusEffect.Create("atk-down", "Attaque −", StatusEffectKind.StatModifier, currentTick, dur, magnitude: -8, stacks: s, stat: CombatStat.AttackPower),
+            "def-up" => CombatStatusEffect.Create("def-up", "Défense +", StatusEffectKind.StatModifier, currentTick, dur, magnitude: 8, stacks: s, stat: CombatStat.Defense),
+            "def-down" => CombatStatusEffect.Create("def-down", "Défense −", StatusEffectKind.StatModifier, currentTick, dur, magnitude: -8, stacks: s, stat: CombatStat.Defense),
+            "stun" => CombatStatusEffect.Create("stun", "Étourdi", StatusEffectKind.Stun, currentTick, dur, stacks: s),
+            "silence" => CombatStatusEffect.Create("silence", "Silence", StatusEffectKind.Silence, currentTick, dur, stacks: s),
+            "atb-lock" => CombatStatusEffect.Create("atb-lock", "Jauge bloquée", StatusEffectKind.AtbLock, currentTick, dur, stacks: s),
+            _ => throw new DomainException(
+                $"Unknown debug status '{statusKey}'. Try: poison, burn, regen, atk-up, atk-down, def-up, def-down, stun, silence, atb-lock.")
+        };
     }
 
     private async Task<Run> GetRunAsync(Guid runId, CancellationToken cancellationToken)

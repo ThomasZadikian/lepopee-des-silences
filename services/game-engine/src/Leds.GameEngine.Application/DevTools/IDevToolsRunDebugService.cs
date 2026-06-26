@@ -49,4 +49,12 @@ public interface IDevToolsRunDebugService
     Task<DevToolsRunDebugResult> AddDebugAllyAsync(Guid runId, CancellationToken cancellationToken = default);
 
     Task<DevToolsRunDebugResult> RemoveDebugAllyAsync(Guid runId, CancellationToken cancellationToken = default);
+
+    Task<DevToolsCombatDebugResult> ApplyCombatantStatusAsync(
+        Guid runId,
+        Guid combatantId,
+        string statusKey,
+        int stacks,
+        int durationTicks,
+        CancellationToken cancellationToken = default);
 }

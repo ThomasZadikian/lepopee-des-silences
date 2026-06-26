@@ -109,6 +109,19 @@ public sealed class CombatantRuntimeState
         Touch();
     }
 
+    /// <summary>Direct vitality damage that bypasses guard (poison/burn DoT).</summary>
+    public void ApplyVitalityDamage(int amount)
+    {
+        if (amount <= 0)
+            throw new DomainException("Damage amount must be greater than zero.");
+
+        if (IsDefeated)
+            throw new DomainException("Defeated combatants cannot receive damage.");
+
+        CurrentVitality = Math.Max(0, CurrentVitality - amount);
+        Touch();
+    }
+
     public void GainGuard(int amount)
     {
         if (amount <= 0)
@@ -149,6 +162,24 @@ public sealed class CombatantRuntimeState
             throw new DomainException("Mana gain amount cannot be negative.");
 
         CurrentMana += amount;
+        Touch();
+    }
+
+    public void SpendMana(int amount)
+    {
+        if (amount <= 0)
+            return;
+
+        CurrentMana = Math.Max(0, CurrentMana - amount);
+        Touch();
+    }
+
+    public void SpendCharge(int amount)
+    {
+        if (amount <= 0)
+            return;
+
+        CurrentCharge = Math.Max(0, CurrentCharge - amount);
         Touch();
     }
 

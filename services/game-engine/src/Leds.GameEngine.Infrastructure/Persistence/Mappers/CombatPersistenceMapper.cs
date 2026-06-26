@@ -1,10 +1,11 @@
 using Leds.GameEngine.Domain.Combats;
+using Leds.GameEngine.Domain.Combats.StatusEffects;
+using Leds.GameEngine.Domain.Combats.Typing;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
 using Leds.GameEngine.Infrastructure.Persistence.Entities;
 using System.Text.Json;
-using Leds.GameEngine.Domain.Combats.Typing;
 
 namespace Leds.GameEngine.Infrastructure.Persistence.Mappers;
 
@@ -52,10 +53,68 @@ public static class CombatPersistenceMapper
             Charge = combatant.Charge,
             Status = combatant.Status.ToString(),
             AttackTypeOverride = combatant.AttackTypeOverride.HasValue ? (int)combatant.AttackTypeOverride.Value : null,
+            StatusEffectsJson = SerializeStatusEffects(combatant.StatusEffects),
             Skills = combatant.Skills.Select(s => ToEntity(s, combatant.Id.Value)).ToList(),
             BaseStatSnapshot = ToBaseStatSnapshotEntity(combatant.BaseStatSnapshot, combatant.Id.Value),
             RuntimeState = ToRuntimeStateEntity(combatant.RuntimeState, combatant.Id.Value)
         };
+    }
+
+    private sealed record StatusEffectSnapshot(
+        string Key,
+        string DisplayName,
+        int Kind,
+        int? EmotionalType,
+        int Stat,
+        int Magnitude,
+        int Stacks,
+        int TickInterval,
+        int NextTickAtTick,
+        int ExpiresAtTick);
+
+    private static string? SerializeStatusEffects(IReadOnlyCollection<CombatStatusEffect> effects)
+    {
+        if (effects.Count == 0)
+            return null;
+
+        var snapshots = effects.Select(e => new StatusEffectSnapshot(
+            e.Key,
+            e.DisplayName,
+            (int)e.Kind,
+            e.EmotionalType.HasValue ? (int)e.EmotionalType.Value : null,
+            (int)e.Stat,
+            e.Magnitude,
+            e.Stacks,
+            e.TickInterval,
+            e.NextTickAtTick,
+            e.ExpiresAtTick)).ToArray();
+
+        return JsonSerializer.Serialize(snapshots);
+    }
+
+    private static IEnumerable<CombatStatusEffect> DeserializeStatusEffects(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+            yield break;
+
+        var snapshots = JsonSerializer.Deserialize<StatusEffectSnapshot[]>(json);
+        if (snapshots is null)
+            yield break;
+
+        foreach (var s in snapshots)
+        {
+            yield return CombatStatusEffect.Rehydrate(
+                s.Key,
+                s.DisplayName,
+                (StatusEffectKind)s.Kind,
+                s.EmotionalType.HasValue ? (EmotionalType)s.EmotionalType.Value : null,
+                (CombatStat)s.Stat,
+                s.Magnitude,
+                s.Stacks,
+                s.TickInterval,
+                s.NextTickAtTick,
+                s.ExpiresAtTick);
+        }
     }
 
     public static CombatantBaseStatSnapshotEntity ToBaseStatSnapshotEntity(CombatantBaseStatSnapshot snapshot, Guid combatantId)
@@ -163,7 +222,7 @@ public static class CombatPersistenceMapper
             ? ToDomainRuntimeState(entity.RuntimeState)
             : null;
 
-        return Combatant.Rehydrate(
+        var combatant = Combatant.Rehydrate(
             new CombatantId(entity.Id),
             entity.SourceKey,
             entity.DisplayName,
@@ -180,6 +239,10 @@ public static class CombatPersistenceMapper
             baseStatSnapshot: baseStatSnapshot,
             runtimeState: runtimeState,
             attackTypeOverride: entity.AttackTypeOverride.HasValue ? (EmotionalType)entity.AttackTypeOverride.Value : null);
+        foreach (var effect in DeserializeStatusEffects(entity.StatusEffectsJson))
+            combatant.RehydrateStatusEffect(effect);
+
+        return combatant;
     }
 
     public static CombatantBaseStatSnapshot ToDomainBaseStatSnapshot(CombatantBaseStatSnapshotEntity entity)

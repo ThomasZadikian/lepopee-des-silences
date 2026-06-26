@@ -1,4 +1,5 @@
 using Leds.GameEngine.Domain.Combats.Atb;
+using Leds.GameEngine.Domain.Combats.StatusEffects;
 using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rooms;
@@ -275,6 +276,9 @@ public sealed class Combat
             if (allyHoldsSelection && combatant.Side == CombatantSide.Player)
                 continue; // frozen during selection
 
+            if (combatant.IsAtbLocked)
+                continue; // stun / ATB-lock freezes the gauge
+
             var recoveryWait = Math.Max(0, combatant.AtbRecoveryUntilTick - CurrentTick);
             var fillTicks = Math.Max(0, deltaTicks - recoveryWait);
             if (fillTicks <= 0)
@@ -286,13 +290,36 @@ public sealed class Combat
 
         CurrentTick += deltaTicks;
         return Enemies
-            .Where(e => !e.IsDefeated && e.AtbGauge >= AtbConstants.ReadyThreshold)
+            .Where(e => !e.IsDefeated && !e.IsStunned && e.AtbGauge >= AtbConstants.ReadyThreshold)
             .OrderByDescending(e => e.AtbGauge)
             .ThenByDescending(e => e.BaseStatSnapshot.Initiative)
             .ThenBy(e => e.Id.Value)
             .Select(e => e.Id.Value)
             .ToArray();
     }
+
+    /// <summary>
+    /// Advances every combatant's durable status effects to the current tick: applies
+    /// due DoT/HoT and removes expired effects. Returns what happened (for combat logs).
+    /// Call right after <see cref="HoldTick"/> so effects resolve as time passes.
+    /// </summary>
+    public IReadOnlyCollection<CombatantStatusTick> TickAllStatusEffects()
+    {
+        var ticks = new List<CombatantStatusTick>();
+
+        foreach (var combatant in AllCombatants.ToArray())
+        {
+            foreach (var ev in combatant.TickStatusEffects(CurrentTick))
+                ticks.Add(new CombatantStatusTick(combatant.Id.Value, combatant.DisplayName, ev));
+        }
+
+        // DoT may have defeated someone — re-evaluate combat end.
+        CompleteIfAllEnemiesDefeated();
+        FailIfAllAlliesDefeated();
+
+        return ticks;
+    }
+
 
     /// <summary>
     /// Forces a living combatant to be the active one. Used by the hold loop to
@@ -390,6 +417,7 @@ public sealed class Combat
         {
             var preferred = AllCombatants.FirstOrDefault(c => c.Id.Value == preferredId);
             if (preferred is { IsDefeated: false, Side: CombatantSide.Player }
+                && !preferred.IsStunned
                 && preferred.AtbGauge >= AtbConstants.ReadyThreshold)
             {
                 ActiveCombatantId = preferred.Id;
@@ -401,15 +429,17 @@ public sealed class Combat
         // acts. A companion whose bar fills later cannot steal the selection.
         var current = AllCombatants.FirstOrDefault(c => c.Id == ActiveCombatantId);
         if (current is { IsDefeated: false, Side: CombatantSide.Player }
+            && !current.IsStunned
             && current.AtbGauge >= AtbConstants.ReadyThreshold)
         {
             return;
         }
 
         // Fresh election: first READY combatant in party order — allies first
-        // (protagonist, then companions), then enemies. Never by gauge.
+        // (protagonist, then companions), then enemies. Never by gauge. Stunned
+        // combatants are skipped (they cannot act)..
         var elected = AllCombatants
-            .FirstOrDefault(c => !c.IsDefeated && c.AtbGauge >= AtbConstants.ReadyThreshold);
+            .FirstOrDefault(c => !c.IsDefeated && !c.IsStunned && c.AtbGauge >= AtbConstants.ReadyThreshold);
 
         var previousActiveId = ActiveCombatantId;
         ActiveCombatantId = elected?.Id;

@@ -1,0 +1,125 @@
+﻿using Leds.GameEngine.Domain.Combats.Typing;
+using Leds.GameEngine.Domain.Common;
+
+namespace Leds.GameEngine.Domain.Combats.StatusEffects;
+
+/// <summary>
+/// A durable effect on a combatant that ticks with the ATB clock. Periodic effects
+/// (DoT/HoT) apply <see cref="Magnitude"/> × <see cref="Stacks"/> every
+/// <see cref="TickInterval"/> ticks; all effects end at <see cref="ExpiresAtTick"/>.
+/// Stat modifiers and control effects have <see cref="TickInterval"/> = 0.
+/// </summary>
+public sealed class CombatStatusEffect
+{
+    private CombatStatusEffect(
+        string key,
+        string displayName,
+        StatusEffectKind kind,
+        EmotionalType? emotionalType,
+        CombatStat stat,
+        int magnitude,
+        int stacks,
+        int tickInterval,
+        int nextTickAtTick,
+        int expiresAtTick)
+    {
+        Key = key;
+        DisplayName = displayName;
+        Kind = kind;
+        EmotionalType = emotionalType;
+        Stat = stat;
+        Magnitude = magnitude;
+        Stacks = stacks;
+        TickInterval = tickInterval;
+        NextTickAtTick = nextTickAtTick;
+        ExpiresAtTick = expiresAtTick;
+    }
+
+    public string Key { get; }
+    public string DisplayName { get; }
+    public StatusEffectKind Kind { get; }
+    public EmotionalType? EmotionalType { get; }
+    public CombatStat Stat { get; }
+    public int Magnitude { get; }
+    public int Stacks { get; private set; }
+    public int TickInterval { get; }
+    public int NextTickAtTick { get; private set; }
+    public int ExpiresAtTick { get; private set; }
+
+    public bool IsPeriodic => TickInterval > 0
+        && (Kind is StatusEffectKind.DamageOverTime or StatusEffectKind.HealOverTime);
+
+    /// <summary>
+    /// Creates a new effect anchored to the current ATB tick. <paramref name="durationTicks"/>
+    /// is how long it lasts; <paramref name="tickInterval"/> = 0 for non-periodic effects.
+    /// </summary>
+    public static CombatStatusEffect Create(
+        string key,
+        string displayName,
+        StatusEffectKind kind,
+        int currentTick,
+        int durationTicks,
+        int magnitude = 0,
+        int stacks = 1,
+        int tickInterval = 0,
+        CombatStat stat = CombatStat.None,
+        EmotionalType? emotionalType = null)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+            throw new DomainException("Status effect key is required.");
+        if (durationTicks <= 0)
+            throw new DomainException("Status effect duration must be positive.");
+        if (stacks < 1)
+            throw new DomainException("Status effect must have at least one stack.");
+
+        var interval = tickInterval < 0 ? 0 : tickInterval;
+        var nextTick = interval > 0 ? currentTick + interval : int.MaxValue;
+
+        return new CombatStatusEffect(
+            key.Trim(),
+            string.IsNullOrWhiteSpace(displayName) ? key.Trim() : displayName.Trim(),
+            kind,
+            emotionalType,
+            stat,
+            magnitude,
+            stacks,
+            interval,
+            nextTick,
+            currentTick + durationTicks);
+    }
+
+    public static CombatStatusEffect Rehydrate(
+        string key, string displayName, StatusEffectKind kind, EmotionalType? emotionalType,
+        CombatStat stat, int magnitude, int stacks, int tickInterval, int nextTickAtTick, int expiresAtTick)
+        => new(key, displayName, kind, emotionalType, stat, magnitude, stacks, tickInterval, nextTickAtTick, expiresAtTick);
+
+    public bool IsExpired(int currentTick) => currentTick >= ExpiresAtTick;
+
+    /// <summary>Re-applying the same effect refreshes its duration and adds stacks (capped).</summary>
+    public void Reinforce(int additionalStacks, int newExpiresAtTick, int maxStacks = 99)
+    {
+        Stacks = System.Math.Clamp(Stacks + System.Math.Max(0, additionalStacks), 1, maxStacks);
+        if (newExpiresAtTick > ExpiresAtTick)
+            ExpiresAtTick = newExpiresAtTick;
+    }
+
+    /// <summary>
+    /// For periodic effects: returns the total magnitude due since the last tick up to
+    /// <paramref name="currentTick"/> (and not past expiry), advancing the schedule.
+    /// Returns 0 for non-periodic effects.
+    /// </summary>
+    public int ConsumeDueTicks(int currentTick)
+    {
+        if (!IsPeriodic)
+            return 0;
+
+        var total = 0;
+        while (NextTickAtTick <= currentTick && NextTickAtTick <= ExpiresAtTick)
+        {
+            total += Magnitude * Stacks;
+            NextTickAtTick += TickInterval;
+        }
+
+        return total < 0 ? 0 : total;
+    }
+}

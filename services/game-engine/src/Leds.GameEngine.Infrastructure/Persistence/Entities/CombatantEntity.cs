@@ -22,6 +22,13 @@ public sealed class CombatantEntity
     /// </summary>
     public int? AttackTypeOverride { get; set; }
 
+    /// <summary>
+    /// Active durable status effects (poison/regen/buffs/control) serialized as JSON.
+    /// In-combat only and small, so a JSON column avoids a child table and is copied
+    /// automatically by the hot-path persistence (a scalar via CurrentValues.SetValues).
+    /// </summary>
+    public string? StatusEffectsJson { get; set; }
+
     public CombatEntity? Combat { get; set; }
     public List<CombatantSkillEntity> Skills { get; set; } = [];
     public CombatantBaseStatSnapshotEntity? BaseStatSnapshot { get; set; }
