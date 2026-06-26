@@ -34,6 +34,7 @@ public sealed class CombatStatusEffect
         NextTickAtTick = nextTickAtTick;
         ExpiresAtTick = expiresAtTick;
     }
+    private const int MinTickInterval = 1400;
 
     public string Key { get; }
     public string DisplayName { get; }
@@ -72,7 +73,8 @@ public sealed class CombatStatusEffect
         if (stacks < 1)
             throw new DomainException("Status effect must have at least one stack.");
 
-        var interval = tickInterval < 0 ? 0 : tickInterval;
+        // Floor so nothing ticks faster than ~once every 2s, whatever the data says.
+        var interval = tickInterval <= 0 ? 0 : Math.Max(tickInterval, MinTickInterval); 
         var nextTick = interval > 0 ? currentTick + interval : int.MaxValue;
 
         return new CombatStatusEffect(

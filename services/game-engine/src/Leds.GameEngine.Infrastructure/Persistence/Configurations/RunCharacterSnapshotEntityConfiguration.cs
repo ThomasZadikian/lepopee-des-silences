@@ -17,6 +17,7 @@ public sealed class RunCharacterSnapshotEntityConfiguration : IEntityTypeConfigu
         builder.Property(e => e.CharacterId).HasColumnName("character_id");
         builder.Property(e => e.DefinitionKey).HasColumnName("definition_key").HasMaxLength(160).IsRequired();
         builder.Property(e => e.DisplayName).HasColumnName("display_name").HasMaxLength(256).IsRequired();
+        builder.Property(e => e.SnapshotOrder).HasColumnName("snapshot_order").HasDefaultValue(0);
 
         builder.HasIndex(e => e.PlayerSnapshotId);
 

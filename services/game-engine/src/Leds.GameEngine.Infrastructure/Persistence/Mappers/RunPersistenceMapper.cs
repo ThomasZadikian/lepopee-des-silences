@@ -200,13 +200,15 @@ public static class RunPersistenceMapper
             PlayerId = snapshot.PlayerId,
             DisplayName = snapshot.DisplayName,
             CreatedAtUtc = snapshot.CreatedAtUtc.UtcDateTime,
-            Characters = snapshot.Characters.Select(c => ToCharacterSnapshotEntity(c)).ToList()
+            Characters = snapshot.Characters
+                .Select((c, index) => ToCharacterSnapshotEntity(c, index))
+                .ToList()
         };
 
         return entity;
     }
 
-    public static RunCharacterSnapshotEntity ToCharacterSnapshotEntity(RunCharacterSnapshot snapshot)
+    public static RunCharacterSnapshotEntity ToCharacterSnapshotEntity(RunCharacterSnapshot snapshot, int order)
     {
         var entityId = Guid.NewGuid();
 
@@ -216,6 +218,7 @@ public static class RunPersistenceMapper
             CharacterId = snapshot.CharacterId,
             DefinitionKey = snapshot.DefinitionKey,
             DisplayName = snapshot.DisplayName,
+            SnapshotOrder = order,
             StatBlock = snapshot.StatBlock is not null
                 ? ToStatSnapshotEntity(snapshot.StatBlock, entityId)
                 : null,
@@ -509,8 +512,9 @@ public static class RunPersistenceMapper
     private static RunPlayerSnapshot ToDomainPlayerSnapshot(RunPlayerSnapshotEntity entity)
     {
         var characters = entity.Characters
-            .Select(ToDomainCharacterSnapshot)
-            .ToList();
+           .OrderBy(c => c.SnapshotOrder)
+           .Select(ToDomainCharacterSnapshot)
+           .ToList(); ;
 
         return RunPlayerSnapshot.Rehydrate(
             entity.Id,

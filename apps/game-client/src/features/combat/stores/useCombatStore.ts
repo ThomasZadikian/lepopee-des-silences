@@ -293,14 +293,20 @@ export const useCombatStore = defineStore('combatRuntime', () => {
 
   // ── Animations ───────────────────────────────────────────────────────────
 
+  const pendingDelays = new Set<() => void>();
+
   function delay(milliseconds: number): Promise<void> {
     return new Promise((resolve) => {
-      const timerId = globalThis.setTimeout(() => {
+      let timerId: ReturnType<typeof globalThis.setTimeout>;
+      const done = () => {
+        pendingDelays.delete(done);
         const index = animationTimers.indexOf(timerId);
         if (index >= 0) animationTimers.splice(index, 1);
         resolve();
-      }, milliseconds);
+      };
+      timerId = globalThis.setTimeout(done, milliseconds);
       animationTimers.push(timerId);
+      pendingDelays.add(done);
     });
   }
 
@@ -479,6 +485,8 @@ export const useCombatStore = defineStore('combatRuntime', () => {
     for (const timerId of animationTimers.splice(0)) {
       globalThis.clearTimeout(timerId);
     }
+    for (const resolveDelay of [...pendingDelays]) resolveDelay(); // unblock awaited delays
+    pendingDelays.clear();
     thinkingCombatantId.value = null;
     recentlyDamagedIds.value = [];
     recentlyGuardedIds.value = [];
@@ -587,7 +595,7 @@ export const useCombatStore = defineStore('combatRuntime', () => {
         const combatId = combat.value.id;
         const response = await runExclusive(() => combatApi.hold(runId, combatId, TICK_DELTA))
           .catch(() => null);
-        if (!response) break;                    // combat gone server-side — stop the clock
+        if (!response) continue;                 // (était: break) retry next tick
         if (terminalEvent.value !== null) break; // player ended combat meanwhile — discard tick
 
         await playCombatLogs(response.logEntries);
