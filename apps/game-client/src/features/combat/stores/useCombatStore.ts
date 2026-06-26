@@ -1,7 +1,9 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 
+import { HttpError } from '../../../shared/api/httpClient';
 import { combatApi } from '../api/combatApi';
+
 import type {
   CombatantRuntimeDto,
   CombatantSkillRuntimeDto,
@@ -593,9 +595,27 @@ export const useCombatStore = defineStore('combatRuntime', () => {
         if (isLoading.value) continue;
 
         const combatId = combat.value.id;
-        const response = await runExclusive(() => combatApi.hold(runId, combatId, TICK_DELTA))
-          .catch(() => null);
-        if (!response) continue;                 // (était: break) retry next tick
+        let response: Awaited<ReturnType<typeof combatApi.hold>> | null = null;
+        try {
+          response = await runExclusive(() => combatApi.hold(runId, combatId, TICK_DELTA));
+        } catch (caught) {
+          // A 409/404 means the server has no active combat for this hold. That can be
+          // a transient persistence race during a live fight (atomic-write gap) OR a
+          // genuinely finished/cleared combat that left a stale Active snapshot here —
+          // in which case the clock would otherwise poll /hold forever on the map.
+          // Confirm with current-combat before tearing down so we never kill a live fight.
+          if (caught instanceof HttpError && (caught.status === 409 || caught.status === 404)) {
+            const current = await combatApi.getCurrentCombat(runId).catch(() => undefined);
+            if (current === null) {
+              // Server confirms: no active combat anymore. Stop the clock for good.
+              combat.value = null;
+              hasRuntimeCombat.value = false;
+              break;
+            }
+          }
+          continue; // transient — retry next tick
+        }
+        if (!response) continue; 
         if (terminalEvent.value !== null) break; // player ended combat meanwhile — discard tick
 
         await playCombatLogs(response.logEntries);
