@@ -1127,7 +1127,8 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
             s.NextNodeKey);
 
     private static CatalogNpcDialogueNode MapDialogueNode(CatalogNpcDialogueNodeHttpResponse s) =>
-        new(s.Key, s.Speaker, s.Lines ?? [], (s.Choices ?? []).Select(MapDialogueChoice).ToArray());
+        new(s.Key, s.Speaker, s.Lines ?? [], (s.Choices ?? []).Select(MapDialogueChoice).ToArray(),
+            s.TenseLines, s.RupturedLines);
 
     private static CatalogNpcDialogueGraph MapNpcDialogueGraph(CatalogNpcDialogueGraphHttpResponse s) =>
         new(s.Key, s.Version, s.EntryNodeKey,
@@ -1435,7 +1436,9 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
         string Key,
         string Speaker,
         IReadOnlyCollection<string>? Lines,
-        IReadOnlyCollection<CatalogNpcDialogueChoiceHttpResponse>? Choices);
+        IReadOnlyCollection<CatalogNpcDialogueChoiceHttpResponse>? Choices,
+        IReadOnlyCollection<string>? TenseLines,
+        IReadOnlyCollection<string>? RupturedLines);
 
     private sealed record CatalogNpcDialogueGraphHttpResponse(
         string Key,

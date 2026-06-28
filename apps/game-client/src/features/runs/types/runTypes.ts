@@ -202,6 +202,22 @@ export type NarrativeFragmentDto = {
   text: string;
 };
 
+export type NpcDialogueChoiceDto = {
+  choiceId: string;
+  label: string;
+  consequencePreview: string;
+};
+
+export type NpcDialogueViewDto = {
+  npcKey: string;
+  speaker: string;
+  nodeKey: string;
+  lines: string[];
+  choices: NpcDialogueChoiceDto[];
+  aggregateState: string;
+  encounterActive: boolean;
+};
+
 export type ResolvedNodeEventOutcomeDto = {
   nodeId: string;
   eventTypes: string[];
@@ -222,6 +238,7 @@ export type ResolveCurrentEventResponse = {
   startedCombat?: CombatInstanceDto | null;
   encounterDraft?: import('../../combat/types/combatContracts').CombatEncounterDraftDto | null;
   combat?: import('../../combat/types/combatContracts').CombatRuntimeDto | null;
+  npcDialogue?: NpcDialogueViewDto | null;
 };
 
 export type RunResponse =

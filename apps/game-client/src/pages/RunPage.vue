@@ -25,6 +25,7 @@ import RuntimeDebugPanel from '../shared/components/RuntimeDebugPanel.vue';
 import { useRunStore } from '../features/runs/stores/runStore';
 import { useGameUiStore } from '../shared/stores/useGameUiStore';
 import type { CurrentEventChoiceResultDto } from '../features/events/types/eventTypes';
+import NpcDialoguePanel from '../features/events/components/NpcDialoguePanel.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -307,6 +308,18 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
           :result="transitionResult"
           :is-loading="runStore.isLoading"
           @continue="handleTransitionContinue"
+        />
+      </template>
+
+            <!-- ── NPC dialogue ── -->
+      <template v-else-if="runStore.gameplayPhase === 'NpcDialogue'">
+        <NpcDialoguePanel
+          :dialogue="runStore.npcDialogue"
+          :echoes="runStore.npcDialogueEchoes"
+          :ended="runStore.npcDialogueEnded"
+          :is-loading="runStore.isLoading"
+          @select-choice="runStore.selectNpcDialogueChoice"
+          @continue="runStore.continueAfterNpcDialogue"
         />
       </template>
 

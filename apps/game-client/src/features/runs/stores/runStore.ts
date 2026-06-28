@@ -11,7 +11,9 @@ import { runApi } from '../api/runApi';
 import {
   unwrapRunResponse,
   type CombatInstanceDto,
+  type NarrativeFragmentDto,
   type NodeDto,
+  type NpcDialogueViewDto,
   type ResolveCurrentEventResponse,
   type ResumableRunDto,
   type RunDto,
@@ -22,6 +24,7 @@ import type { CombatRuntimeDto } from '../../combat/types/combatContracts';
 import { eventChoiceApi } from '../../events/api/eventChoiceApi';
 import {
   unwrapChoiceResultFromEventChoiceResponse,
+  unwrapNpcDialogueFromEventChoiceResponse,
   unwrapRunFromEventChoiceResponse,
   type CurrentEventChoiceResultDto,
 } from '../../events/types/eventTypes';
@@ -59,6 +62,9 @@ export const useRunStore = defineStore('run', () => {
   const currentRun = shallowRef<RunDto | null>(null);
   const pendingRewardOffer = ref<RewardOfferDto | null>(null);
   const lastOutcome = ref<ResolveCurrentEventResponse['outcome'] | null>(null);
+  const npcDialogue = ref<NpcDialogueViewDto | null>(null);
+  const npcDialogueEchoes = ref<NarrativeFragmentDto[]>([]);
+  const npcDialogueEnded = ref(false);
   const activeCombat = ref<CombatInstanceDto | null>(null);
   const combatRuntime = shallowRef<CombatRuntimeDto | null>(null);
   const previewedNodeId = ref<string | null>(null);
@@ -161,6 +167,7 @@ export const useRunStore = defineStore('run', () => {
       return 'RoomCleared';
     }
 
+    if (npcDialogue.value || npcDialogueEnded.value) return 'NpcDialogue';
     if (lastChoiceResult.value) return 'EventChoiceResult';
     if (lastOutcome.value) return 'EventOutcome';
 
@@ -173,6 +180,12 @@ export const useRunStore = defineStore('run', () => {
 
   function resetPreviewedNode() {
     previewedNodeId.value = null;
+  }
+
+  function resetNpcDialogue() {
+    npcDialogue.value = null;
+    npcDialogueEchoes.value = [];
+    npcDialogueEnded.value = false;
   }
 
   function previewNode(nodeId: string) {
@@ -235,6 +248,7 @@ export const useRunStore = defineStore('run', () => {
       currentRun.value = run;
       pendingRewardOffer.value = null;
       lastOutcome.value = null;
+      resetNpcDialogue();
       activeCombat.value = null;
       combatRuntime.value = null;
       currentInterlude.value = null;
@@ -260,6 +274,7 @@ export const useRunStore = defineStore('run', () => {
       lastChoiceResult.value = null;
       currentRun.value = run;
       currentInterlude.value = null;
+      resetNpcDialogue();
       resetPreviewedNode();
 
       if (!run.activeCombatId) {
@@ -309,6 +324,9 @@ export const useRunStore = defineStore('run', () => {
       const resolveResponse = await runApi.resolveCurrentEvent(currentRun.value!.id);
       currentRun.value = resolveResponse.run;
       lastOutcome.value = resolveResponse.outcome;
+      npcDialogue.value = resolveResponse.npcDialogue ?? null;
+      npcDialogueEchoes.value = [];
+      npcDialogueEnded.value = false;
       activeCombat.value = resolveResponse.startedCombat ?? null;
       combatRuntime.value = resolveResponse.combat ?? null;
 
@@ -325,6 +343,9 @@ export const useRunStore = defineStore('run', () => {
       lastChoiceResult.value = null;
       currentRun.value = response.run;
       lastOutcome.value = response.outcome;
+      npcDialogue.value = response.npcDialogue ?? null;
+      npcDialogueEchoes.value = [];
+      npcDialogueEnded.value = false;
       activeCombat.value = response.startedCombat ?? null;
       combatRuntime.value = response.combat ?? null;
       resetPreviewedNode();
@@ -348,6 +369,7 @@ export const useRunStore = defineStore('run', () => {
       lastChoiceResult.value = null;
       currentRun.value = unwrapRunResponse(response);
       lastOutcome.value = null;
+      resetNpcDialogue();
       activeCombat.value = null;
       resetPreviewedNode();
 
@@ -362,6 +384,7 @@ export const useRunStore = defineStore('run', () => {
       const response = await runApi.generateNextNodes(currentRun.value!.id);
       currentRun.value = unwrapRunResponse(response);
       lastOutcome.value = null;
+      resetNpcDialogue();
       resetPreviewedNode();
       await refreshPendingRewardIfNeeded();
     });
@@ -492,6 +515,7 @@ export const useRunStore = defineStore('run', () => {
       currentRun.value = run;
       currentInterlude.value = null;
       lastOutcome.value = null;
+      resetNpcDialogue();
       activeCombat.value = null;
       lastChoiceResult.value = null;
       resetPreviewedNode();
@@ -634,6 +658,7 @@ export const useRunStore = defineStore('run', () => {
     currentRun.value = null;
     pendingRewardOffer.value = null;
     lastOutcome.value = null;
+    resetNpcDialogue();
     activeCombat.value = null;
     combatRuntime.value = null;
     previewedNodeId.value = null;
@@ -685,6 +710,49 @@ export const useRunStore = defineStore('run', () => {
   }
 
   // -------------------------------------------------------------------------
+  // NPC dialogue
+  // -------------------------------------------------------------------------
+
+  async function selectNpcDialogueChoice(choiceId: string) {
+    if (!currentRun.value) return;
+
+    await execute(async () => {
+      const response = await eventChoiceApi.chooseCurrentEventOption(
+        currentRun.value!.id,
+        { choiceId, optionId: choiceId, eventChoiceId: choiceId },
+      );
+
+      const run = unwrapRunFromEventChoiceResponse(response);
+      const choiceResult = unwrapChoiceResultFromEventChoiceResponse(response);
+      const dialogue = unwrapNpcDialogueFromEventChoiceResponse(response);
+
+      if (run) {
+        currentRun.value = run;
+      } else {
+        const runResponse = await runApi.getRun(currentRun.value!.id);
+        currentRun.value = unwrapRunResponse(runResponse);
+      }
+
+      npcDialogueEchoes.value = choiceResult?.narrativeFragments ?? [];
+
+      if (dialogue) {
+        npcDialogue.value = dialogue;
+        npcDialogueEnded.value = false;
+      } else {
+        npcDialogue.value = null;
+        npcDialogueEnded.value = true;
+      }
+
+      await refreshPendingRewardIfNeeded();
+    });
+  }
+
+  async function continueAfterNpcDialogue() {
+    resetNpcDialogue();
+    await progressRun();
+  }
+
+  // -------------------------------------------------------------------------
   // Loads
   // -------------------------------------------------------------------------
 
@@ -708,6 +776,9 @@ export const useRunStore = defineStore('run', () => {
     previewedNodeId,
     lastOutcome,
     lastChoiceResult,
+    npcDialogue,
+    npcDialogueEchoes,
+    npcDialogueEnded,
     activeCombat,
     combatRuntime,
     pendingRewardOffer,
@@ -739,6 +810,8 @@ export const useRunStore = defineStore('run', () => {
     continueAfterOutcome,
     continueAfterChoiceResult,
     selectCurrentEventChoice,
+    selectNpcDialogueChoice,
+    continueAfterNpcDialogue,
     enterInterlude,
     loadInterlude,
     enterNextRoom,

@@ -2,6 +2,7 @@ import type {
     ResolveCurrentEventResponse,
     RunDto,
 } from '../../runs/types/runTypes';
+import type { NarrativeFragmentDto, NpcDialogueViewDto } from '../../runs/types/runTypes';
 
 export type EventOutcomeDto = ResolveCurrentEventResponse['outcome'];
 
@@ -36,6 +37,7 @@ export type CurrentEventChoiceResultDto = {
   outcomeKind?: string;
   state?: string;
   message?: string;
+  narrativeFragments?: NarrativeFragmentDto[];
 };
 
 export type ChooseCurrentEventOptionResponse =
@@ -99,6 +101,15 @@ export function unwrapChoiceResultFromEventChoiceResponse(
     return response.result;
   }
 
+  return null;
+}
+
+export function unwrapNpcDialogueFromEventChoiceResponse(
+  response: ChooseCurrentEventOptionResponse,
+): NpcDialogueViewDto | null {
+  if (typeof response === 'object' && response !== null && 'npcDialogue' in response) {
+    return (response as { npcDialogue?: NpcDialogueViewDto | null }).npcDialogue ?? null;
+  }
   return null;
 }
 

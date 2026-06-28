@@ -30,11 +30,19 @@ public static class NpcDialogueViewFactory
             .Select(c => new NodeEventChoiceDto(c.Key, c.Label, string.Empty))
             .ToArray();
 
+        // The same node reads differently depending on the fracture state (Q6b: felt, not named).
+        var lines = relationship.AggregateState switch
+        {
+            WoundState.Rompu => node.RupturedLines ?? node.Lines,
+            WoundState.Tendu => node.TenseLines ?? node.Lines,
+            _ => node.Lines
+        };
+
         return new NpcDialogueViewDto(
             npc.Key,
             node.Speaker,
             nodeKey,
-            node.Lines.ToArray(),
+            lines.ToArray(),
             choices,
             relationship.AggregateState.ToString(),
             EncounterActive: true);
