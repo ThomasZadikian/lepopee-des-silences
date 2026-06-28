@@ -99,7 +99,7 @@ function react() {
   setTimeout(() => { flashKind.value = 'none'; }, 620);
 }
 
-watch(() => props.dialogue?.nodeKey, () => { startNode(); }, { immediate: true });
+watch(() => props.dialogue, () => { startNode(); }, { immediate: true });
 watch(() => props.echoes, (e) => { if (e && e.length) react(); });
 watch(() => props.ended, (v) => { if (v) showChoices.value = false; });
 
