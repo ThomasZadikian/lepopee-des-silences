@@ -45,4 +45,64 @@ public sealed class ErrorTests
         act.Should().Throw<ArgumentException>()
             .WithMessage("Error message is required.*");
     }
+
+    [Fact]
+    public void Create_ShouldThrow_WhenCodeIsNull()
+    {
+        var act = () => Error.Create(null!, "Message");
+
+        act.Should().Throw<ArgumentException>()
+            .WithMessage("Error code is required.*");
+    }
+
+    [Fact]
+    public void Create_ShouldThrow_WhenMessageIsNull()
+    {
+        var act = () => Error.Create("error.code", null!);
+
+        act.Should().Throw<ArgumentException>()
+            .WithMessage("Error message is required.*");
+    }
+
+    [Fact]
+    public void ErrorsWithSameCodeAndMessage_ShouldBeEqual()
+    {
+        var error1 = Error.Create("validation.required", "Value is required.");
+        var error2 = Error.Create("validation.required", "Value is required.");
+
+        error1.Should().Be(error2);
+        error1.Should().NotBeSameAs(error2);
+    }
+
+    [Fact]
+    public void ErrorsWithDifferentCode_ShouldNotBeEqual()
+    {
+        var error1 = Error.Create("validation.required", "Value is required.");
+        var error2 = Error.Create("validation.missing", "Value is required.");
+
+        error1.Should().NotBe(error2);
+    }
+
+    [Fact]
+    public void ErrorsWithDifferentMessage_ShouldNotBeEqual()
+    {
+        var error1 = Error.Create("validation.required", "Value is required.");
+        var error2 = Error.Create("validation.required", "Field is required.");
+
+        error1.Should().NotBe(error2);
+    }
+
+    [Fact]
+    public void None_ShouldEqualItself()
+    {
+        Error.None.Should().Be(Error.None);
+    }
+
+    [Fact]
+    public void None_ShouldNotEqualCreatedError()
+    {
+        var error = Error.Create("some.code", "Some message.");
+
+        Error.None.Should().NotBe(error);
+    }
 }

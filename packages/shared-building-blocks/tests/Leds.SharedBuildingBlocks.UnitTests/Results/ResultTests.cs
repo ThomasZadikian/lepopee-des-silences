@@ -37,4 +37,21 @@ public sealed class ResultTests
         act.Should().Throw<InvalidOperationException>()
             .WithMessage("A failed result must contain an error.");
     }
+
+    [Fact]
+    public void IsFailure_ShouldBeTrue_WhenResultIsFailed()
+    {
+        var error = Error.Create("validation.required", "Value is required.");
+        var result = Result.Failure(error);
+
+        result.IsFailure.Should().BeTrue();
+    }
+
+    [Fact]
+    public void IsFailure_ShouldBeFalse_WhenResultIsSuccessful()
+    {
+        var result = Result.Success();
+
+        result.IsFailure.Should().BeFalse();
+    }
 }

@@ -1,0 +1,113 @@
+// @vitest-environment jsdom
+import { describe, expect, it } from 'vitest';
+import { mount } from '@vue/test-utils';
+import EmotionalTypeBadge from './EmotionalTypeBadge.vue';
+
+function mountBadge(type: string, compact = false) {
+  return mount(EmotionalTypeBadge, { props: { type, compact } });
+}
+
+describe('EmotionalTypeBadge', () => {
+  it('renders without crashing', () => {
+    const wrapper = mountBadge('Effroi');
+    expect(wrapper.exists()).toBe(true);
+  });
+
+  it('does not render for Neutral type', () => {
+    const wrapper = mountBadge('Neutral');
+    expect(wrapper.find('.type-badge').exists()).toBe(false);
+  });
+
+  it('renders for Effroi type', () => {
+    const wrapper = mountBadge('Effroi');
+    expect(wrapper.find('.type-badge').exists()).toBe(true);
+    expect(wrapper.find('.type-badge__label').text()).toBe('Effroi');
+  });
+
+  it('renders for Deni type', () => {
+    const wrapper = mountBadge('Deni');
+    expect(wrapper.find('.type-badge__label').text()).toBe('Déni');
+  });
+
+  it('renders for Melancolie type', () => {
+    const wrapper = mountBadge('Melancolie');
+    expect(wrapper.find('.type-badge__label').text()).toBe('Mélancolie');
+  });
+
+  it('renders for Rupture type', () => {
+    const wrapper = mountBadge('Rupture');
+    expect(wrapper.find('.type-badge__label').text()).toBe('Rupture');
+  });
+
+  it('renders for Memoire type', () => {
+    const wrapper = mountBadge('Memoire');
+    expect(wrapper.find('.type-badge__label').text()).toBe('Mémoire');
+  });
+
+  it('renders for Silence type', () => {
+    const wrapper = mountBadge('Silence');
+    expect(wrapper.find('.type-badge__label').text()).toBe('Silence');
+  });
+
+  it('falls back to Neutral for unknown type', () => {
+    const wrapper = mountBadge('UnknownType');
+    expect(wrapper.find('.type-badge').exists()).toBe(true);
+    expect(wrapper.find('.type-badge__label').text()).toBe('Neutre');
+  });
+
+  it('displays the glyph', () => {
+    const wrapper = mountBadge('Effroi');
+    expect(wrapper.find('.type-badge__glyph').text()).toBe('✶');
+  });
+
+  it('displays label in non-compact mode', () => {
+    const wrapper = mountBadge('Effroi', false);
+    expect(wrapper.find('.type-badge__label').exists()).toBe(true);
+  });
+
+  it('hides label in compact mode', () => {
+    const wrapper = mountBadge('Effroi', true);
+    expect(wrapper.find('.type-badge__label').exists()).toBe(false);
+  });
+
+  it('applies compact class when compact is true', () => {
+    const wrapper = mountBadge('Effroi', true);
+    expect(wrapper.find('.type-badge').classes()).toContain('type-badge--compact');
+  });
+
+  it('does not apply compact class when compact is false', () => {
+    const wrapper = mountBadge('Effroi', false);
+    expect(wrapper.find('.type-badge').classes()).not.toContain('type-badge--compact');
+  });
+
+  it('sets title attribute with type label', () => {
+    const wrapper = mountBadge('Effroi');
+    expect(wrapper.find('.type-badge').attributes('title')).toContain('Effroi');
+  });
+
+  it('sets CSS custom property for color', () => {
+    const wrapper = mountBadge('Effroi');
+    const style = wrapper.find('.type-badge').attributes('style');
+    expect(style).toContain('--type-color');
+  });
+
+  it('shows correct glyph for Deni', () => {
+    const wrapper = mountBadge('Deni');
+    expect(wrapper.find('.type-badge__glyph').text()).toBe('◇');
+  });
+
+  it('shows correct glyph for Melancolie', () => {
+    const wrapper = mountBadge('Melancolie');
+    expect(wrapper.find('.type-badge__glyph').text()).toBe('❍');
+  });
+
+  it('shows correct glyph for Memoire', () => {
+    const wrapper = mountBadge('Memoire');
+    expect(wrapper.find('.type-badge__glyph').text()).toBe('◈');
+  });
+
+  it('shows correct glyph for Silence', () => {
+    const wrapper = mountBadge('Silence');
+    expect(wrapper.find('.type-badge__glyph').text()).toBe('○');
+  });
+});
