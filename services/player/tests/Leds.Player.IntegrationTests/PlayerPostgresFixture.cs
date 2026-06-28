@@ -1,12 +1,11 @@
-using Leds.Catalog.Infrastructure.Persistence;
+using Leds.Player.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging.Abstractions;
 using Npgsql;
 using Testcontainers.PostgreSql;
 
-namespace Leds.Catalog.UnitTests;
+namespace Leds.Player.IntegrationTests;
 
-public sealed class CatalogPostgresFixture : IAsyncLifetime
+public sealed class PlayerPostgresFixture : IAsyncLifetime
 {
     private PostgreSqlContainer _container = null!;
 
@@ -23,24 +22,24 @@ public sealed class CatalogPostgresFixture : IAsyncLifetime
         await _container.DisposeAsync();
     }
 
-    public (CatalogDbContext Context, string ConnectionString) CreateContext()
+    public (PlayerDbContext Context, string ConnectionString) CreateContext()
     {
         var dbName = $"test_{Guid.NewGuid():N}";
         var connStr = CreateDatabase(_container.GetConnectionString(), dbName);
-        var options = new DbContextOptionsBuilder<CatalogDbContext>()
+        var options = new DbContextOptionsBuilder<PlayerDbContext>()
             .UseNpgsql(connStr)
             .Options;
-        var context = new CatalogDbContext(options);
+        var context = new PlayerDbContext(options);
         context.Database.Migrate();
         return (context, connStr);
     }
 
-    public CatalogDbContext CreateContext(string connectionString)
+    public PlayerDbContext CreateContext(string connectionString)
     {
-        var options = new DbContextOptionsBuilder<CatalogDbContext>()
+        var options = new DbContextOptionsBuilder<PlayerDbContext>()
             .UseNpgsql(connectionString)
             .Options;
-        return new CatalogDbContext(options);
+        return new PlayerDbContext(options);
     }
 
     private static string CreateDatabase(string baseConnStr, string dbName)
@@ -54,5 +53,5 @@ public sealed class CatalogPostgresFixture : IAsyncLifetime
     }
 }
 
-[CollectionDefinition("CatalogPostgres")]
-public class CatalogPostgresCollection : ICollectionFixture<CatalogPostgresFixture>;
+[CollectionDefinition("PlayerPostgres")]
+public class PlayerPostgresCollection : ICollectionFixture<PlayerPostgresFixture>;

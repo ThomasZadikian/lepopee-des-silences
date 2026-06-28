@@ -117,25 +117,25 @@ describe('InventoryPanel', () => {
     const item = { ...baseItem, rarity: 'Rare' };
     const wrapper = mountPanel([item]);
     expect(wrapper.text()).toContain('Rare');
-    expect(wrapper.text()).toContain('frost');
+    expect(wrapper.find('[class*="frost"]').exists()).toBe(true);
   });
 
   it('applies rarity tone for epic items', () => {
     const item = { ...baseItem, rarity: 'Epic' };
     const wrapper = mountPanel([item]);
     expect(wrapper.text()).toContain('Épique');
-    expect(wrapper.text()).toContain('gold');
+    expect(wrapper.find('[class*="gold"]').exists()).toBe(true);
   });
 
   it('applies rarity tone for uncommon items', () => {
     const item = { ...baseItem, rarity: 'Uncommon' };
     const wrapper = mountPanel([item]);
     expect(wrapper.text()).toContain('Peu commun');
-    expect(wrapper.text()).toContain('sap');
+    expect(wrapper.find('[class*="sap"]').exists()).toBe(true);
   });
 
   it('shows error message when useItem fails', async () => {
-    const { inventoryApi } = await import('./inventoryApi');
+    const { inventoryApi } = await import('../api/inventoryApi');
     vi.mocked(inventoryApi.useItem).mockRejectedValueOnce(new Error('Échec'));
 
     const wrapper = mountPanel([baseItem]);
@@ -156,7 +156,7 @@ describe('InventoryPanel', () => {
   it('handles Damage effect type', () => {
     const item = { ...baseItem, effectType: 'Damage', effectAmount: 10 };
     const wrapper = mountPanel([item]);
-    expect(wrapper.text()).toContain('blood');
+    expect(wrapper.find('[class*="blood"]').exists()).toBe(true);
   });
 
   it('displays item type', () => {

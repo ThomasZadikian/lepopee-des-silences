@@ -113,25 +113,25 @@ describe('InventoryDrawer', () => {
     const item = { ...baseItem, rarity: 'Rare' };
     const wrapper = mountDrawer([item]);
     expect(wrapper.text()).toContain('Rare');
-    expect(wrapper.text()).toContain('frost');
+    expect(wrapper.find('[class*="frost"]').exists()).toBe(true);
   });
 
   it('applies epic rarity tone', () => {
     const item = { ...baseItem, rarity: 'Epic' };
     const wrapper = mountDrawer([item]);
     expect(wrapper.text()).toContain('Épique');
-    expect(wrapper.text()).toContain('gold');
+    expect(wrapper.find('[class*="gold"]').exists()).toBe(true);
   });
 
   it('applies uncommon rarity tone', () => {
     const item = { ...baseItem, rarity: 'Uncommon' };
     const wrapper = mountDrawer([item]);
     expect(wrapper.text()).toContain('Peu commun');
-    expect(wrapper.text()).toContain('sap');
+    expect(wrapper.find('[class*="sap"]').exists()).toBe(true);
   });
 
   it('shows error message when useItem fails', async () => {
-    const { inventoryApi } = await import('./inventoryApi');
+    const { inventoryApi } = await import('../api/inventoryApi');
     vi.mocked(inventoryApi.useItem).mockRejectedValueOnce(new Error('Échec'));
 
     const wrapper = mountDrawer([baseItem]);

@@ -3,7 +3,7 @@ using Leds.Catalog.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 
-namespace Leds.Catalog.UnitTests.Infrastructure.Persistence;
+namespace Leds.Catalog.IntegrationTests.Persistence;
 
 [Collection("CatalogPostgres")]
 public sealed class CatalogSeedRunnerTests

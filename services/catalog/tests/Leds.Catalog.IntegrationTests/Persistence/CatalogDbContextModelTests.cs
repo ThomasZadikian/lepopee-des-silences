@@ -3,7 +3,7 @@ using Leds.Catalog.Infrastructure.Persistence;
 using Leds.Catalog.Infrastructure.Persistence.Entities;
 using Microsoft.EntityFrameworkCore;
 
-namespace Leds.Catalog.UnitTests.Infrastructure.Persistence;
+namespace Leds.Catalog.IntegrationTests.Persistence;
 
 [Collection("CatalogPostgres")]
 public sealed class CatalogDbContextModelTests

@@ -3,7 +3,7 @@ using Leds.Player.Infrastructure.Persistence;
 using Leds.Player.Infrastructure.Persistence.Entities;
 using Microsoft.EntityFrameworkCore;
 
-namespace Leds.Player.UnitTests.Persistence;
+namespace Leds.Player.IntegrationTests.Persistence;
 
 [Collection("PlayerPostgres")]
 public sealed class PlayerDbContextModelTests

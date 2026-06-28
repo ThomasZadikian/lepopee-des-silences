@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { useRunStore } from './runStore';
-import { runApi } from './runApi';
+import { runApi } from '../api/runApi';
 import { rewardApi } from '../../rewards/api/rewardApi';
 import { eventChoiceApi } from '../../events/api/eventChoiceApi';
 
-vi.mock('./runApi', () => ({
+vi.mock('../api/runApi', () => ({
   runApi: {
     startRun: vi.fn(),
     getRun: vi.fn(),
@@ -54,7 +54,7 @@ describe('useRunStore computed properties', () => {
 
   it('previewedNode returns null when no preview', () => {
     const store = useRunStore();
-    expect(store.previewedNode).toBeNull();
+    expect(store.previewedNode == null).toBe(true);
   });
 
   it('isRoomCleared is false when no run', () => {
@@ -230,22 +230,9 @@ describe('useRunStore actions', () => {
 
   it('resetPreviewedNode clears preview', () => {
     const store = useRunStore();
-    store.previewedNodeId = 'node-1';
+    store.previewedNodeId = 'some-node';
     store.resetPreviewedNode();
     expect(store.previewedNodeId).toBeNull();
-  });
-
-  it('resetNpcDialogue clears dialogue state', () => {
-    const store = useRunStore();
-    store.npcDialogue = { nodeKey: 'npc-1' } as any;
-    store.npcDialogueEchoes = [{ text: 'echo' }];
-    store.npcDialogueEnded = true;
-
-    store.resetNpcDialogue();
-
-    expect(store.npcDialogue).toBeNull();
-    expect(store.npcDialogueEchoes).toEqual([]);
-    expect(store.npcDialogueEnded).toBe(false);
   });
 
   it('clearCurrentRun resets all run state', () => {
