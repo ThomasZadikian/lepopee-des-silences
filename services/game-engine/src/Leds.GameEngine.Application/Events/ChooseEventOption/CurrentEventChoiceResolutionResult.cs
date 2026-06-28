@@ -7,20 +7,23 @@ public sealed record CurrentEventChoiceResolutionResult(
     bool Accepted,
     string Message,
     IReadOnlyCollection<NarrativeFragmentDto> NarrativeFragments,
-    bool EncounterCompleted = true)
+    bool EncounterCompleted = true,
+    IReadOnlyCollection<AppliedConsequenceEffect>? AppliedEffects = null)
 {
     public static CurrentEventChoiceResolutionResult Create(
         string choiceId,
         bool accepted,
         string message,
         IReadOnlyCollection<NarrativeFragmentDto>? narrativeFragments = null,
-        bool encounterCompleted = true)
+        bool encounterCompleted = true,
+        IReadOnlyCollection<AppliedConsequenceEffect>? appliedEffects = null)
     {
         return new CurrentEventChoiceResolutionResult(
             choiceId,
             accepted,
             message,
             narrativeFragments ?? Array.Empty<NarrativeFragmentDto>(),
-            encounterCompleted);
+            encounterCompleted,
+            appliedEffects ?? Array.Empty<AppliedConsequenceEffect>());
     }
 }

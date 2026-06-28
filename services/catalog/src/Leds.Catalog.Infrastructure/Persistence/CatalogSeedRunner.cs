@@ -18,6 +18,7 @@ public sealed class CatalogSeedRunner
     private const string CatalogTemplatesVersion = "alpha-0.9.2-catalog-templates";
     private const string CatalogAntechamberFixVersion = "alpha-1.0.1-antechamber-boss-fix";
     private const string NpcSystemReactVersion = "npc-system-0.2-majordome-react";
+    private const string NpcSystemPoisonVersion = "npc-system-0.3-majordome-poison";
 
     private readonly CatalogDbContext _context;
     private readonly ILogger<CatalogSeedRunner> _logger;
@@ -86,14 +87,15 @@ public sealed class CatalogSeedRunner
                     },
                     NextNodeKey: "seuil"),
 
-                new NpcDialogueChoice(
+                                new NpcDialogueChoice(
                     "boire", "Boire l'eau",
                     Array.Empty<DialogueRequirement>(),
                     new[]
                     {
                         new DialogueConsequence(ConsequenceKind.RewardOrCurseRoll, WhenWoundState: WoundState.Latent, RewardCursePoolKey: "pool.majordome.eau-benigne"),
                         new DialogueConsequence(ConsequenceKind.Narrative, WhenWoundState: WoundState.Rompu, NarrativeFragmentKey: "Le thé a un goût d'amertume que vous ne sauriez nommer."),
-                        new DialogueConsequence(ConsequenceKind.RewardOrCurseRoll, WhenWoundState: WoundState.Rompu, RewardCursePoolKey: "pool.majordome.eau-poison")
+                        new DialogueConsequence(ConsequenceKind.RewardOrCurseRoll, WhenWoundState: WoundState.Rompu, RewardCursePoolKey: "pool.majordome.eau-poison-degats"),
+                        new DialogueConsequence(ConsequenceKind.RewardOrCurseRoll, WhenWoundState: WoundState.Rompu, RewardCursePoolKey: "pool.majordome.eau-poison-malediction")
                     },
                     NextNodeKey: null),
 
@@ -160,6 +162,66 @@ public sealed class CatalogSeedRunner
                 ["seuil"] = seuil,
                 ["confidence"] = confidence
             });
+    }
+
+    private async Task ApplyNpcPoisonSeedAsync(CancellationToken cancellationToken)
+    {
+        if (await HasSeedVersionAsync(NpcSystemPoisonVersion, cancellationToken))
+        {
+            _logger.LogInformation("Seed {SeedKey} version {Version} already applied. Skipping.", SeedKey, NpcSystemPoisonVersion);
+            return;
+        }
+
+        _logger.LogInformation("Applying seed {SeedKey} version {Version}...", SeedKey, NpcSystemPoisonVersion);
+        var now = DateTime.UtcNow;
+
+        if (!await _context.RewardCursePools.AnyAsync(p => p.Key == "pool.majordome.eau-poison-degats", cancellationToken))
+        {
+            _context.RewardCursePools.Add(new RewardCursePoolEntity
+            {
+                Id = Guid.NewGuid(),
+                Key = "pool.majordome.eau-poison-degats",
+                Name = "Eau du Majordome — poison",
+                Description = "Le poison qui ronge celui qui a souillé le seuil.",
+                Version = "1.0",
+                Status = "Active",
+                EntriesJson = JsonSerializer.Serialize(
+                    new List<RewardCurseEntry> { new(RewardCurseEntryKind.Curse, "Damage", null, 14, null) },
+                    NpcSeedJsonOptions),
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
+            });
+        }
+
+        if (!await _context.RewardCursePools.AnyAsync(p => p.Key == "pool.majordome.eau-poison-malediction", cancellationToken))
+        {
+            _context.RewardCursePools.Add(new RewardCursePoolEntity
+            {
+                Id = Guid.NewGuid(),
+                Key = "pool.majordome.eau-poison-malediction",
+                Name = "Eau du Majordome — malédiction",
+                Description = "L'ombre que laisse le seuil souillé.",
+                Version = "1.0",
+                Status = "Active",
+                EntriesJson = JsonSerializer.Serialize(
+                    new List<RewardCurseEntry> { new(RewardCurseEntryKind.Curse, "GrantCurse", "curse.old-wound", 0, null) },
+                    NpcSeedJsonOptions),
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
+            });
+        }
+
+        var majordome = await _context.NpcDefinitions
+            .FirstOrDefaultAsync(n => n.Key == "npc.majordome", cancellationToken);
+        if (majordome is not null)
+        {
+            majordome.DialogueGraphJson = JsonSerializer.Serialize(BuildMajordomeDialogueGraph(), NpcSeedJsonOptions);
+            majordome.UpdatedAtUtc = now;
+        }
+
+        AddSeedVersion(NpcSystemPoisonVersion);
+        await _context.SaveChangesAsync(cancellationToken);
+        _logger.LogInformation("Seed {SeedKey} version {Version} applied successfully.", SeedKey, NpcSystemPoisonVersion);
     }
 
     private async Task ApplyNpcReactiveSeedAsync(CancellationToken cancellationToken)

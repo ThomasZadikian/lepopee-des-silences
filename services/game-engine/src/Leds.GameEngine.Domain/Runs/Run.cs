@@ -732,6 +732,21 @@ public sealed class Run
         CurrentHp = Math.Min(MaxHp, CurrentHp + amount);
     }
 
+    /// <summary>
+    /// Out-of-combat vitality loss (e.g. an NPC consequence). Clamped to a minimum of 1
+    /// so a map encounter never kills the player directly.
+    /// </summary>
+    public void ApplyVitalityLoss(int amount)
+    {
+        if (amount <= 0)
+        {
+            return;
+        }
+
+        CurrentHp = Math.Max(1, CurrentHp - amount);
+        PlayerState?.LoseVitality(amount, floor: 1);
+    }
+
     public void ApplyStatBonus(string stat, int value)
     {
         if (string.IsNullOrWhiteSpace(stat))

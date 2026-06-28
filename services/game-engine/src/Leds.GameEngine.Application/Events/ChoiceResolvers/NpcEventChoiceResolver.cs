@@ -13,8 +13,8 @@ namespace Leds.GameEngine.Application.Events.ChoiceResolvers;
 /// Resolves a player's choice in an NPC encounter against the NPC's authored dialogue
 /// graph: applies the chosen choice's consequences (state-conditioned by the NPC's
 /// fracture), evaluates transgressions, refreshes wound states, advances the graph,
-/// and performs deterministic reward/curse rolls. Unique combat is deferred to a
-/// dedicated wave (needs a catalog Encounter type + the combat-start pipeline).
+/// and performs deterministic reward/curse rolls with real effect application.
+/// Unique combat remains deferred to a dedicated wave.
 /// </summary>
 public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver
 {
@@ -64,8 +64,7 @@ public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver
         if (choice is null)
         {
             return CurrentEventChoiceResolutionResult.Create(
-                context.ChoiceId,
-                accepted: false,
+                context.ChoiceId, accepted: false,
                 $"Choice '{context.ChoiceId}' is not available right now.",
                 encounterCompleted: false);
         }
@@ -73,16 +72,13 @@ public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver
         if (!RequirementsMet(choice.Requirements, relationship))
         {
             return CurrentEventChoiceResolutionResult.Create(
-                context.ChoiceId,
-                accepted: false,
+                context.ChoiceId, accepted: false,
                 "This path is closed to you.",
                 encounterCompleted: false);
         }
 
         var fragments = new List<NarrativeFragmentDto>();
-
-        // State captured BEFORE applying consequences — conditions the flip
-        // ("drink the water": Latent → reward, Rompu → poison).
+        var effects = new List<AppliedConsequenceEffect>();
         var conditioningState = relationship.AggregateState;
 
         var applicable = choice.Consequences
@@ -90,7 +86,6 @@ public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver
                         string.Equals(c.WhenWoundState, conditioningState.ToString(), StringComparison.OrdinalIgnoreCase))
             .ToArray();
 
-        // Reward/curse pools are only fetched when a roll is actually due.
         IReadOnlyCollection<CatalogRewardCursePool> pools =
             applicable.Any(c => c.Kind == "RewardOrCurseRoll")
                 ? await _catalogContentGateway.ListRewardCursePoolsAsync(cancellationToken)
@@ -98,7 +93,7 @@ public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver
 
         foreach (var consequence in applicable)
         {
-            ApplyConsequence(consequence, npc, run, context.Node, relationship, pools, fragments);
+            await ApplyConsequenceAsync(consequence, npc, run, context.Node, relationship, pools, fragments, effects, cancellationToken);
         }
 
         EvaluateTransgressions(npc, relationship);
@@ -112,28 +107,27 @@ public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver
         }
 
         return CurrentEventChoiceResolutionResult.Create(
-            context.ChoiceId,
-            accepted: true,
+            context.ChoiceId, accepted: true,
             encounterCompleted ? "La rencontre se referme." : "La conversation se poursuit.",
-            fragments,
-            encounterCompleted);
+            fragments, encounterCompleted, effects);
     }
 
-    private void ApplyConsequence(
-        CatalogDialogueConsequence consequence,
-        CatalogNpcDefinition npc,
-        Run run,
-        MapNode node,
-        NpcRelationship relationship,
-        IReadOnlyCollection<CatalogRewardCursePool> pools,
-        List<NarrativeFragmentDto> fragments)
+    private async Task ApplyConsequenceAsync(
+       CatalogDialogueConsequence consequence,
+       CatalogNpcDefinition npc,
+       Run run,
+       MapNode node,
+       NpcRelationship relationship,
+       IReadOnlyCollection<CatalogRewardCursePool> pools,
+       List<NarrativeFragmentDto> fragments,
+       List<AppliedConsequenceEffect> effects,
+       CancellationToken cancellationToken)
     {
         switch (consequence.Kind)
         {
             case "Narrative":
                 if (!string.IsNullOrWhiteSpace(consequence.NarrativeFragmentKey))
                 {
-                    // L1: the fragment key doubles as display text until a narrative store exists.
                     fragments.Add(new NarrativeFragmentDto(npc.DisplayName, consequence.NarrativeFragmentKey));
                 }
                 break;
@@ -168,29 +162,29 @@ public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver
                 break;
 
             case "RewardOrCurseRoll":
-                fragments.Add(RollRewardOrCurse(consequence, npc, run, node, relationship, pools));
+                fragments.Add(await RollRewardOrCurseAsync(consequence, npc, run, node, relationship, pools, effects, cancellationToken));
                 break;
 
             case "TriggerUniqueCombat":
-                // Deferred: needs a catalog Encounter type + combat-start pipeline.
                 fragments.Add(new NarrativeFragmentDto(npc.DisplayName, "L'air se tend — une confrontation s'ouvre."));
                 break;
 
             default:
-                // PalaceAttitudeShift / MarkovShift / EnqueueEvent are L2/L3. Ignored in L1.
                 break;
         }
     }
 
-    // ── Reward / curse roll (deterministic) ──────────────────────────────────
+    // ── Reward / curse roll (deterministic) + real application ───────────────
 
-    private static NarrativeFragmentDto RollRewardOrCurse(
-        CatalogDialogueConsequence consequence,
-        CatalogNpcDefinition npc,
-        Run run,
-        MapNode node,
-        NpcRelationship relationship,
-        IReadOnlyCollection<CatalogRewardCursePool> pools)
+    private async Task<NarrativeFragmentDto> RollRewardOrCurseAsync(
+    CatalogDialogueConsequence consequence,
+    CatalogNpcDefinition npc,
+    Run run,
+    MapNode node,
+    NpcRelationship relationship,
+    IReadOnlyCollection<CatalogRewardCursePool> pools,
+    List<AppliedConsequenceEffect> effects,
+    CancellationToken cancellationToken)
     {
         var poolKey = consequence.RewardCursePoolKey;
         var pool = poolKey is null
@@ -202,33 +196,72 @@ public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver
             return new NarrativeFragmentDto(npc.DisplayName, "Rien ne se produit.");
         }
 
-        // 1) Contextual pool filtering (decision Q16a).
         var eligible = pool.Entries.Where(e => IsAvailable(e, run, node)).ToArray();
         if (eligible.Length == 0)
         {
             return new NarrativeFragmentDto(npc.DisplayName, "Rien ne se produit.");
         }
 
-        // 2) Equiprobable deterministic draw (decision Q5b), seeded & replayable.
         var seed = string.Join('|',
-            run.Seed,
-            "npc-reward-curse",
-            relationship.NpcKey,
-            poolKey,
-            consequence.WhenWoundState ?? "any",
-            relationship.TimesMet.ToString());
+            run.Seed, "npc-reward-curse", relationship.NpcKey, poolKey,
+            consequence.WhenWoundState ?? "any", relationship.TimesMet.ToString());
         var roll = DeterministicCombatRoll.UnitInterval(seed);
         var index = Math.Min(eligible.Length - 1, (int)(roll * eligible.Length));
         var entry = eligible[index];
 
-        // 3) Apply the drawn effect (L1: Heal applied; others surfaced narratively).
-        ApplyRewardCurseEffect(entry, run);
+        var effect = await ApplyRewardCurseEffectAsync(entry, run, cancellationToken);
+        if (effect is null)
+        {
+            return new NarrativeFragmentDto(npc.DisplayName, "Rien ne se produit.");
+        }
 
-        var label = string.Equals(entry.Kind, "Curse", StringComparison.OrdinalIgnoreCase)
-            ? "Une ombre s'installe"
-            : "Une faveur t'effleure";
-        var amount = entry.Amount != 0 ? $" {entry.Amount}" : string.Empty;
-        return new NarrativeFragmentDto(npc.DisplayName, $"{label}. ({entry.ResultKind}{amount})");
+        effects.Add(effect);
+
+        var text = effect.Kind switch
+        {
+            "heal" => $"Une chaleur t'apaise. +{effect.Amount} vitalité.",
+            "damage" => $"Le poison te ronge. −{effect.Amount} vitalité.",
+            "curse" => $"Une ombre s'installe — {effect.Label}.",
+            "law" => $"Une Loi s'inscrit dans le Palais — {effect.Label}.",
+            _ => "Quelque chose change en toi."
+        };
+        return new NarrativeFragmentDto(npc.DisplayName, text);
+    }
+
+    private async Task<AppliedConsequenceEffect?> ApplyRewardCurseEffectAsync(
+    CatalogRewardCurseEntry entry,
+    Run run,
+    CancellationToken cancellationToken)
+    {
+        switch (entry.ResultKind)
+        {
+            case "Heal":
+                if (entry.Amount <= 0) return null;
+                run.ApplyHeal(entry.Amount);
+                return new AppliedConsequenceEffect("heal", entry.Amount, "Vitalité");
+
+            case "Damage":
+                if (entry.Amount <= 0) return null;
+                NpcConsequenceApplier.ApplyDamage(run, entry.Amount);
+                return new AppliedConsequenceEffect("damage", entry.Amount, "Poison");
+
+            case "GrantCurse":
+                if (string.IsNullOrWhiteSpace(entry.TargetKey)) return null;
+                var curseResult = await _catalogContentGateway.GetCurseDefinitionByKeyAsync(entry.TargetKey, cancellationToken);
+                if (curseResult.IsFailure) return null;
+                NpcConsequenceApplier.ApplyCurse(run, curseResult.Value);
+                return new AppliedConsequenceEffect("curse", 0, curseResult.Value.DisplayName);
+
+            case "GrantLaw":
+                if (string.IsNullOrWhiteSpace(entry.TargetKey)) return null;
+                var lawResult = await _catalogContentGateway.GetPalaceLawDefinitionByKeyAsync(entry.TargetKey, cancellationToken);
+                if (lawResult.IsFailure) return null;
+                NpcConsequenceApplier.ApplyLaw(run, lawResult.Value);
+                return new AppliedConsequenceEffect("law", 0, lawResult.Value.Name);
+
+            default:
+                return null;
+        }
     }
 
     private static bool IsAvailable(CatalogRewardCurseEntry entry, Run run, MapNode node)
@@ -260,24 +293,6 @@ public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver
         return true;
     }
 
-    private static void ApplyRewardCurseEffect(CatalogRewardCurseEntry entry, Run run)
-    {
-        switch (entry.ResultKind)
-        {
-            case "Heal":
-                if (entry.Amount > 0)
-                {
-                    run.ApplyHeal(entry.Amount);
-                }
-                break;
-
-            // L1: Damage / GrantCurse / GrantLaw / Guard / Mana require run-damage and
-            // curse/law construction subsystems — applied in a dedicated follow-on wave.
-            default:
-                break;
-        }
-    }
-
     // ── Fracture / requirements ──────────────────────────────────────────────
 
     private static bool RequirementsMet(
@@ -291,11 +306,9 @@ public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver
                 case "FlagPresent":
                     if (requirement.FlagKey is null || !relationship.HasFlag(requirement.FlagKey)) return false;
                     break;
-
                 case "FlagAbsent":
                     if (requirement.FlagKey is not null && relationship.HasFlag(requirement.FlagKey)) return false;
                     break;
-
                 case "WoundStateAtLeast":
                     if (requirement.WoundKey is null ||
                         !Enum.TryParse<WoundState>(requirement.RequiredWoundState, ignoreCase: true, out var required) ||
@@ -312,10 +325,7 @@ public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver
 
     private static void EvaluateTransgressions(CatalogNpcDefinition npc, NpcRelationship relationship)
     {
-        if (npc.Wounds is null)
-        {
-            return;
-        }
+        if (npc.Wounds is null) return;
 
         foreach (var wound in npc.Wounds)
         {
@@ -334,10 +344,7 @@ public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver
 
     private static void RefreshWounds(CatalogNpcDefinition npc, NpcRelationship relationship)
     {
-        if (npc.Wounds is null)
-        {
-            return;
-        }
+        if (npc.Wounds is null) return;
 
         foreach (var wound in npc.Wounds)
         {
@@ -349,8 +356,7 @@ public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver
     private static CurrentEventChoiceResolutionResult Fade(string choiceId)
     {
         return CurrentEventChoiceResolutionResult.Create(
-            choiceId,
-            accepted: true,
+            choiceId, accepted: true,
             "La figure s'efface.",
             new[] { new NarrativeFragmentDto("Elise", "Certaines présences ne font que passer.") },
             encounterCompleted: true);

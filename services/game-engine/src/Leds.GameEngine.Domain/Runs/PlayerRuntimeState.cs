@@ -76,6 +76,20 @@ public sealed class PlayerRuntimeState
         CurrentVitality = Math.Max(0, CurrentVitality - remainingDamage);
     }
 
+    /// <summary>
+    /// Direct vitality loss that bypasses guard (e.g. NPC poison), clamped to a floor
+    /// (1 out of combat so a map encounter never defeats the player).
+    /// </summary>
+    public void LoseVitality(int amount, int floor = 0)
+    {
+        if (amount <= 0)
+        {
+            return;
+        }
+
+        CurrentVitality = Math.Max(floor, CurrentVitality - amount);
+    }
+
     public void Heal(int amount)
     {
         if (amount <= 0)
