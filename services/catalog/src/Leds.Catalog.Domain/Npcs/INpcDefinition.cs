@@ -15,4 +15,16 @@ public interface INpcDefinition : ICatalogContent
     int? MinDepth { get; }
 
     int? MaxDepth { get; }
+
+    EmotionalRegister EmotionalAffinity { get; }
+
+    NpcPersona? Persona { get; }
+
+    NpcDialogueGraph? DialogueGraph { get; }
+
+    IReadOnlyCollection<NpcWound> Wounds { get; }
+
+    IReadOnlyCollection<string> EncounterKeys { get; }
+
+    bool IsRecurring { get; }
 }

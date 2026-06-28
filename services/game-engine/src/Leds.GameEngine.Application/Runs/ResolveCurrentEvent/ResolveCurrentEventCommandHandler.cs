@@ -118,6 +118,7 @@ public sealed class ResolveCurrentEventCommandHandler
         CombatRuntimeDto? combatRuntimeDto = null;
         ResolvedNodeEventContent? resolvedContent = null;
         RewardOffer? pendingRewardOffer = null;
+        NpcDialogueViewDto? npcDialogue = null;
 
         if (isCombat)
         {
@@ -215,7 +216,25 @@ public sealed class ResolveCurrentEventCommandHandler
         else if (selectedNode.EventType == NodeEventType.Npc)
         {
             resolvedContent = await ResolveEventContentAsync(run, room, selectedNode, cancellationToken);
-            resolutionResult = ApplyNpcContent(resolutionResult, (ResolvedNpcEventContent)resolvedContent);
+            var npcContent = (ResolvedNpcEventContent)resolvedContent;
+            resolutionResult = ApplyNpcContent(resolutionResult, npcContent);
+
+            var npcRelationship = run.BeginOrResumeNpcEncounter(npcContent.NpcProfileKey);
+            npcDialogue = await BuildNpcDialogueAsync(npcContent.NpcProfileKey, npcRelationship, cancellationToken);
+
+            if (npcDialogue is not null)
+            {
+                resolutionResult = resolutionResult with
+                {
+                    Title = npcDialogue.Speaker,
+                    RequiresPlayerChoice = npcDialogue.Choices.Count > 0,
+                    Choices = npcDialogue.Choices,
+                    NarrativeFragments = npcDialogue.Lines
+                        .Select(line => new NarrativeFragmentDto(npcDialogue.Speaker, line))
+                        .ToArray()
+                };
+            }
+
             run.ResolveCurrentEvent();
         }
         else
@@ -237,7 +256,18 @@ public sealed class ResolveCurrentEventCommandHandler
             RunDto.FromDomain(run),
             outcome,
             encounterDraftDto,
-            combatRuntimeDto);
+            combatRuntimeDto,
+            npcDialogue);
+    }
+
+    private async Task<NpcDialogueViewDto?> BuildNpcDialogueAsync(
+    string npcKey,
+    Leds.GameEngine.Domain.Npcs.NpcRelationship relationship,
+    CancellationToken cancellationToken)
+    {
+        var npcs = await _catalogContentGateway.ListNpcDefinitionsAsync(cancellationToken);
+        var npc = npcs.FirstOrDefault(n => string.Equals(n.Key, npcKey, StringComparison.OrdinalIgnoreCase));
+        return npc is null ? null : Leds.GameEngine.Application.Events.NpcDialogueViewFactory.Build(npc, relationship);
     }
 
     private async Task<CombatEncounterDraft> GenerateEncounterDraft(

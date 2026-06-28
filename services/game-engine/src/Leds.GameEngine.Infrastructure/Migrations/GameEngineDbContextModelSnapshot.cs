@@ -1424,6 +1424,11 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("active_combat_id");
 
+                    b.Property<string>("ActiveNpcKey")
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("active_npc_key");
+
                     b.Property<int>("Attack")
                         .HasColumnType("integer")
                         .HasColumnName("attack");
@@ -1471,6 +1476,10 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                     b.Property<int>("MaxHp")
                         .HasColumnType("integer")
                         .HasColumnName("max_hp");
+
+                    b.Property<string>("NpcRelationshipsJson")
+                        .HasColumnType("text")
+                        .HasColumnName("npc_relationships_json");
 
                     b.Property<Guid?>("PendingRewardOfferId")
                         .HasColumnType("uuid")

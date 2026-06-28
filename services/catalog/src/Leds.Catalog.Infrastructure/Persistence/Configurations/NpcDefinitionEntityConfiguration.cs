@@ -25,6 +25,21 @@ public sealed class NpcDefinitionEntityConfiguration : IEntityTypeConfiguration<
         builder.Property(e => e.CompatiblePalaceRoomStatesJson).HasColumnName("compatible_palace_room_states_json");
         builder.Property(e => e.CompatibleRoomClimatesJson).HasColumnName("compatible_room_climates_json");
         builder.Property(e => e.TagsJson).HasColumnName("tags_json");
+
+        // NPC system fields
+        builder.Property(e => e.EmotionalAffinity)
+            .HasColumnName("emotional_affinity").HasMaxLength(32).IsRequired().HasDefaultValue("Neutral");
+        builder.Property(e => e.IsRecurring)
+            .HasColumnName("is_recurring").IsRequired().HasDefaultValue(false);
+        builder.Property(e => e.PersonaJson)
+            .HasColumnName("persona_json").HasColumnType("jsonb");
+        builder.Property(e => e.WoundsJson)
+            .HasColumnName("wounds_json").HasColumnType("jsonb").IsRequired().HasDefaultValue("[]");
+        builder.Property(e => e.DialogueGraphJson)
+            .HasColumnName("dialogue_graph_json").HasColumnType("jsonb");
+        builder.Property(e => e.EncounterKeysJson)
+            .HasColumnName("encounter_keys_json").HasColumnType("jsonb").IsRequired().HasDefaultValue("[]");
+
         builder.Property(e => e.CreatedAtUtc).HasColumnName("created_at_utc");
         builder.Property(e => e.UpdatedAtUtc).HasColumnName("updated_at_utc");
 

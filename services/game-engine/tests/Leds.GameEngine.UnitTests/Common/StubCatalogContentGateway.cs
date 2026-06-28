@@ -2,6 +2,7 @@ using Leds.GameEngine.Application.Catalog;
 using Leds.GameEngine.Application.Catalog.Contracts;
 using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Domain.Rooms;
+using Leds.GameEngine.Domain.Runs;
 using Leds.SharedBuildingBlocks.Errors;
 using Leds.SharedBuildingBlocks.Results;
 
@@ -1245,6 +1246,12 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
         return Task.FromResult<IReadOnlyCollection<CatalogNpcDefinition>>(results);
     }
 
+    public Task<IReadOnlyCollection<CatalogRewardCursePool>> ListRewardCursePoolsAsync(
+    CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult<IReadOnlyCollection<CatalogRewardCursePool>>([]);
+    }
+
     private static Result<TSnapshot> GetByKey<TSnapshot>(
         IReadOnlyDictionary<string, TSnapshot> source,
         string key,
@@ -1306,6 +1313,7 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
     {
         return new CatalogRewardTemplateSnapshot(key, "1.0", displayName, description, sourceType, 2, 3, options);
     }
+
 
     private static CatalogRewardTemplateOptionSnapshot RewardOption(
         string rewardType,

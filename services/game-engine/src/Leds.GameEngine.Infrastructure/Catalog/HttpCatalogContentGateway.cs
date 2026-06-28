@@ -1091,8 +1091,72 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
                 .ToArray(),
             CompatibleRoomClimates: source.CompatibleRoomClimates ?? [],
             MinDepth: source.MinDepth ?? 0,
-            MaxDepth: source.MaxDepth ?? int.MaxValue);
+            MaxDepth: source.MaxDepth ?? int.MaxValue,
+            EmotionalAffinity: source.EmotionalAffinity ?? "Neutral",
+            IsRecurring: source.IsRecurring,
+            Persona: source.Persona is null ? null : MapNpcPersona(source.Persona),
+            DialogueGraph: source.DialogueGraph is null ? null : MapNpcDialogueGraph(source.DialogueGraph),
+            Wounds: (source.Wounds ?? []).Select(MapNpcWound).ToArray(),
+            EncounterKeys: source.EncounterKeys ?? []);
     }
+
+    private static CatalogNpcPersona MapNpcPersona(CatalogNpcPersonaHttpResponse s) =>
+        new(s.Tone, s.Register, s.Needs ?? [], s.Offerings ?? []);
+
+    private static CatalogNpcTransgression MapNpcTransgression(CatalogNpcTransgressionHttpResponse s) =>
+        new(s.WoundKey, s.TriggerFlag, s.RelationshipPenalty);
+
+    private static CatalogNpcWound MapNpcWound(CatalogNpcWoundHttpResponse s) =>
+        new(s.Key, s.WoundRegister, s.Reversibility, s.TenseThreshold, s.RuptureThreshold,
+            (s.Transgressions ?? []).Select(MapNpcTransgression).ToArray(), s.RupturedNarrativeKey);
+
+    private static CatalogDialogueRequirement MapDialogueRequirement(CatalogDialogueRequirementHttpResponse s) =>
+        new(s.Kind, s.FlagKey, s.WoundKey, s.RequiredWoundState);
+
+    private static CatalogDialogueConsequence MapDialogueConsequence(CatalogDialogueConsequenceHttpResponse s) =>
+        new(s.Kind, s.WhenWoundState, s.NarrativeFragmentKey, s.RewardCursePoolKey, s.EncounterKey,
+            s.RelationshipDelta, s.MemoryFlag, s.WoundKey,
+            s.OnWin?.Select(MapDialogueConsequence).ToArray(),
+            s.OnFlee?.Select(MapDialogueConsequence).ToArray(),
+            s.OnLose?.Select(MapDialogueConsequence).ToArray());
+
+    private static CatalogNpcDialogueChoice MapDialogueChoice(CatalogNpcDialogueChoiceHttpResponse s) =>
+        new(s.Key, s.Label,
+            (s.Requirements ?? []).Select(MapDialogueRequirement).ToArray(),
+            (s.Consequences ?? []).Select(MapDialogueConsequence).ToArray(),
+            s.NextNodeKey);
+
+    private static CatalogNpcDialogueNode MapDialogueNode(CatalogNpcDialogueNodeHttpResponse s) =>
+        new(s.Key, s.Speaker, s.Lines ?? [], (s.Choices ?? []).Select(MapDialogueChoice).ToArray());
+
+    private static CatalogNpcDialogueGraph MapNpcDialogueGraph(CatalogNpcDialogueGraphHttpResponse s) =>
+        new(s.Key, s.Version, s.EntryNodeKey,
+            (s.Nodes ?? new Dictionary<string, CatalogNpcDialogueNodeHttpResponse>())
+                .ToDictionary(kv => kv.Key, kv => MapDialogueNode(kv.Value)));
+
+    public async Task<IReadOnlyCollection<CatalogRewardCursePool>> ListRewardCursePoolsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        const string url = "/api/v2/catalog/reward-curse-pools";
+
+        var wrapper = await GetJsonOrNullAsync<ListRewardCursePoolsHttpResponse>(url, cancellationToken);
+
+        return wrapper?.Pools?
+            .Select(MapRewardCursePool)
+            .ToArray()
+            ?? [];
+    }
+
+    private static CatalogRewardCursePool MapRewardCursePool(CatalogRewardCursePoolHttpResponse s) =>
+        new(s.Key, s.Name, s.Description, s.Version,
+            (s.Entries ?? []).Select(MapRewardCurseEntry).ToArray());
+
+    private static CatalogRewardCurseEntry MapRewardCurseEntry(CatalogRewardCurseEntryHttpResponse s) =>
+        new(s.Kind, s.ResultKind, s.TargetKey, s.Amount,
+            (s.Availability ?? []).Select(MapRewardCurseAvailability).ToArray());
+
+    private static CatalogRewardCurseAvailability MapRewardCurseAvailability(CatalogRewardCurseAvailabilityHttpResponse s) =>
+        new(s.Kind, s.Value);
 
     private static CatalogEffectDefinitionSnapshot MapToCatalogEffectDefinitionSnapshot(
         CatalogEffectDefinitionHttpResponse source)
@@ -1282,6 +1346,28 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
     private sealed record ListNpcDefinitionsHttpResponse(
         IReadOnlyCollection<CatalogNpcDefinitionHttpResponse>? Definitions);
 
+    private sealed record ListRewardCursePoolsHttpResponse(
+    IReadOnlyCollection<CatalogRewardCursePoolHttpResponse>? Pools);
+
+    private sealed record CatalogRewardCursePoolHttpResponse(
+        string Key,
+        string Name,
+        string Description,
+        string Version,
+        string Status,
+        IReadOnlyCollection<CatalogRewardCurseEntryHttpResponse>? Entries);
+
+    private sealed record CatalogRewardCurseEntryHttpResponse(
+        string Kind,
+        string ResultKind,
+        string? TargetKey,
+        int Amount,
+        IReadOnlyCollection<CatalogRewardCurseAvailabilityHttpResponse>? Availability);
+
+    private sealed record CatalogRewardCurseAvailabilityHttpResponse(
+        string Kind,
+        int Value);
+
     private sealed record CatalogNpcDefinitionHttpResponse(
         string Key,
         string Name,
@@ -1291,7 +1377,71 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
         IReadOnlyCollection<string>? CompatiblePalaceRoomStates,
         IReadOnlyCollection<string>? CompatibleRoomClimates,
         int? MinDepth,
-        int? MaxDepth);
+        int? MaxDepth,
+        string? EmotionalAffinity,
+        bool IsRecurring,
+        CatalogNpcPersonaHttpResponse? Persona,
+        CatalogNpcDialogueGraphHttpResponse? DialogueGraph,
+        IReadOnlyCollection<CatalogNpcWoundHttpResponse>? Wounds,
+        IReadOnlyCollection<string>? EncounterKeys);
+
+    private sealed record CatalogNpcPersonaHttpResponse(
+        string Tone,
+        string Register,
+        IReadOnlyCollection<string>? Needs,
+        IReadOnlyCollection<string>? Offerings);
+
+    private sealed record CatalogNpcTransgressionHttpResponse(
+        string WoundKey,
+        string TriggerFlag,
+        int RelationshipPenalty);
+
+    private sealed record CatalogNpcWoundHttpResponse(
+        string Key,
+        string WoundRegister,
+        string Reversibility,
+        int TenseThreshold,
+        int RuptureThreshold,
+        IReadOnlyCollection<CatalogNpcTransgressionHttpResponse>? Transgressions,
+        string? RupturedNarrativeKey);
+
+    private sealed record CatalogDialogueRequirementHttpResponse(
+        string Kind,
+        string? FlagKey,
+        string? WoundKey,
+        string? RequiredWoundState);
+
+    private sealed record CatalogDialogueConsequenceHttpResponse(
+        string Kind,
+        string? WhenWoundState,
+        string? NarrativeFragmentKey,
+        string? RewardCursePoolKey,
+        string? EncounterKey,
+        int RelationshipDelta,
+        string? MemoryFlag,
+        string? WoundKey,
+        IReadOnlyCollection<CatalogDialogueConsequenceHttpResponse>? OnWin,
+        IReadOnlyCollection<CatalogDialogueConsequenceHttpResponse>? OnFlee,
+        IReadOnlyCollection<CatalogDialogueConsequenceHttpResponse>? OnLose);
+
+    private sealed record CatalogNpcDialogueChoiceHttpResponse(
+        string Key,
+        string Label,
+        IReadOnlyCollection<CatalogDialogueRequirementHttpResponse>? Requirements,
+        IReadOnlyCollection<CatalogDialogueConsequenceHttpResponse>? Consequences,
+        string? NextNodeKey);
+
+    private sealed record CatalogNpcDialogueNodeHttpResponse(
+        string Key,
+        string Speaker,
+        IReadOnlyCollection<string>? Lines,
+        IReadOnlyCollection<CatalogNpcDialogueChoiceHttpResponse>? Choices);
+
+    private sealed record CatalogNpcDialogueGraphHttpResponse(
+        string Key,
+        string Version,
+        string EntryNodeKey,
+        IReadOnlyDictionary<string, CatalogNpcDialogueNodeHttpResponse>? Nodes);
 
     // ── Template HTTP responses ───────────────────────────────────────
 

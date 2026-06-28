@@ -24,4 +24,10 @@ public sealed class StubRunRepository : IRunRepository
         _runs[run.Id.Value] = run;
         return Task.CompletedTask;
     }
+
+    public Task UpdateActiveCombatStateAsync(Run run, CancellationToken cancellationToken)
+    {
+        _runs[run.Id.Value] = run;
+        return Task.CompletedTask;
+    }
 }

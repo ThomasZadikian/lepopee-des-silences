@@ -7,6 +7,7 @@ using Leds.Catalog.Application.Items.Definitions.Ports;
 using Leds.Catalog.Application.Items.Ports;
 using Leds.Catalog.Application.Npcs.Definitions.Ports;
 using Leds.Catalog.Application.PalaceLaws.Ports;
+using Leds.Catalog.Application.RewardCursePools.Ports;
 using Leds.Catalog.Application.RewardTemplates.Ports;
 using Leds.Catalog.Application.RoomBosses.Ports;
 using Leds.Catalog.Application.Skills.Definitions.Ports;
@@ -38,6 +39,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IPalaceLawDefinitionReadStore, EfPalaceLawDefinitionReadStore>();
         services.AddScoped<ICurseDefinitionReadStore, EfCurseDefinitionReadStore>();
         services.AddScoped<INpcDefinitionReadStore, EfNpcDefinitionReadStore>();
+        services.AddScoped<IRewardCursePoolReadStore, EfRewardCursePoolReadStore>();
         services.AddScoped<IEnemyTemplateReadStore, EfEnemyTemplateReadStore>();
         services.AddScoped<ISkillTemplateReadStore, EfSkillTemplateReadStore>();
         services.AddScoped<IEventTemplateReadStore, EfEventTemplateReadStore>();

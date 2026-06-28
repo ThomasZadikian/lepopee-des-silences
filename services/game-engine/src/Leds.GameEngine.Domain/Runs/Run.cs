@@ -1,6 +1,7 @@
 ﻿using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Nodes;
+using Leds.GameEngine.Domain.Npcs;
 using Leds.GameEngine.Domain.PalaceLaws;
 using Leds.GameEngine.Domain.Rewards;
 using Leds.GameEngine.Domain.Rooms;
@@ -19,6 +20,8 @@ public sealed class Run
     private RunSnapshot? _roomSnapshot;
     private RunPlayerSnapshot? _playerSnapshot;
     private RunStatus? _preSuspendStatus;
+    private readonly Dictionary<string, NpcRelationship> _npcRelationships = new(StringComparer.OrdinalIgnoreCase);
+    private string? _activeNpcKey;
 
     private sealed record RunSnapshot(
         int CurrentHp,
@@ -121,6 +124,55 @@ public sealed class Run
     /// Immutable player snapshot captured at run creation.
     /// Null only for runs created before data-model-0.1 migration.
     /// </summary>
+    /// 
+        // ── NPC encounters (npc-system-sfd-0.1) ──────────────────────────────────
+
+    /// <summary>Key of the NPC currently being talked to, if any.</summary>
+    public string? ActiveNpcKey => _activeNpcKey;
+
+    /// <summary>All NPC relationships met during this run (L2 memory; L1 uses the active one).</summary>
+    public IReadOnlyCollection<NpcRelationship> NpcRelationships =>
+        _npcRelationships.Values.ToArray();
+
+    public NpcRelationship? ActiveNpcRelationship =>
+        _activeNpcKey is null ? null : GetNpcRelationship(_activeNpcKey);
+
+    public NpcRelationship? GetNpcRelationship(string npcKey) =>
+        _npcRelationships.TryGetValue(npcKey, out var relationship) ? relationship : null;
+
+    /// <summary>
+    /// Marks an NPC encounter active. A recurring NPC (already met) resumes its existing
+    /// relationship and registers a new meeting; otherwise a fresh relationship begins.
+    /// The active dialogue node is initialised lazily by the resolver from the NPC graph.
+    /// </summary>
+    public NpcRelationship BeginOrResumeNpcEncounter(string npcKey)
+    {
+        _activeNpcKey = npcKey;
+
+        if (_npcRelationships.TryGetValue(npcKey, out var existing))
+        {
+            existing.RegisterNewMeeting();
+            return existing;
+        }
+
+        var relationship = NpcRelationship.Begin(npcKey, entryNodeKey: null);
+        _npcRelationships[npcKey] = relationship;
+        return relationship;
+    }
+
+    public void EndNpcEncounter() => _activeNpcKey = null;
+
+    /// <summary>Rehydration hook for persistence (Wave 5).</summary>
+    public void RehydrateNpcRelationship(NpcRelationship relationship)
+    {
+        _npcRelationships[relationship.NpcKey] = relationship;
+    }
+
+    /// <summary>Rehydration hook for persistence (Wave 5).</summary>
+    public void RehydrateActiveNpcKey(string? activeNpcKey)
+    {
+        _activeNpcKey = activeNpcKey;
+    }
     public RunPlayerSnapshot? PlayerSnapshot => _playerSnapshot;
 
     /// <summary>

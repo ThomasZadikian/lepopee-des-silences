@@ -599,7 +599,8 @@ public sealed class InterludeTransitionTests
                 new Mock<Leds.GameEngine.Application.Combats.ICombatRiskProfileResolver>().Object,
                 Mock.Of<ICatalogContentGateway>()),
             Mock.Of<IEnemyCombatTurnResolver>(),
-            Mock.Of<ICombatResolutionService>(),
+             Mock.Of<ICombatResolutionService>(),
+            Mock.Of<Leds.GameEngine.Application.Combats.Atb.IAtbCombatPreparer>(),
             Mock.Of<IClock>());
 
         var act = () => handler.Handle(

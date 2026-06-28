@@ -37,7 +37,8 @@ public sealed class ChooseCurrentEventOptionCommandHandlerTests
 
         var handler = new ChooseCurrentEventOptionCommandHandler(
             repository.Object,
-            dispatcher.Object);
+            dispatcher.Object,
+            Mock.Of<Leds.GameEngine.Application.Catalog.Ports.ICatalogContentGateway>());
 
         var response = await handler.Handle(
             new ChooseCurrentEventOptionCommand(runWithNode.Run.Id.Value, "listen"),
@@ -79,7 +80,8 @@ public sealed class ChooseCurrentEventOptionCommandHandlerTests
 
         var handler = new ChooseCurrentEventOptionCommandHandler(
             repository.Object,
-            dispatcher.Object);
+            dispatcher.Object,
+            Mock.Of<Leds.GameEngine.Application.Catalog.Ports.ICatalogContentGateway>());
 
         var act = async () => await handler.Handle(
             new ChooseCurrentEventOptionCommand(runId, "listen"),
@@ -110,7 +112,8 @@ public sealed class ChooseCurrentEventOptionCommandHandlerTests
 
         var handler = new ChooseCurrentEventOptionCommandHandler(
             repository.Object,
-            dispatcher.Object);
+            dispatcher.Object,
+            Mock.Of<Leds.GameEngine.Application.Catalog.Ports.ICatalogContentGateway>());
 
         var act = async () => await handler.Handle(
             new ChooseCurrentEventOptionCommand(runWithNode.Run.Id.Value, "listen"),
@@ -148,7 +151,8 @@ public sealed class ChooseCurrentEventOptionCommandHandlerTests
 
         var handler = new ChooseCurrentEventOptionCommandHandler(
             repository.Object,
-            dispatcher.Object);
+            dispatcher.Object,
+            Mock.Of<Leds.GameEngine.Application.Catalog.Ports.ICatalogContentGateway>());
 
         // Act
         var act = async () => await handler.Handle(

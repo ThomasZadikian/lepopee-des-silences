@@ -40,6 +40,8 @@ public sealed class RunEntityConfiguration : IEntityTypeConfiguration<RunEntity>
         builder.Property(run => run.SnapshotActivePalaceLaws).HasColumnName("snapshot_active_palace_laws");
         builder.Property(run => run.SnapshotRunItemIds).HasColumnName("snapshot_run_item_ids");
         builder.Property(run => run.SnapshotRunModifierIds).HasColumnName("snapshot_run_modifier_ids");
+        builder.Property(run => run.ActiveNpcKey).HasColumnName("active_npc_key").HasMaxLength(160);
+        builder.Property(run => run.NpcRelationshipsJson).HasColumnName("npc_relationships_json");
         builder.Property(run => run.CreatedAtUtc).HasColumnName("created_at_utc");
         builder.Property(run => run.UpdatedAtUtc).HasColumnName("updated_at_utc");
 

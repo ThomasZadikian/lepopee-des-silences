@@ -9,6 +9,8 @@ public sealed class NpcDefinition : CatalogContentBase, INpcDefinition
     private readonly List<string> _compatibleRoomTypes;
     private readonly List<string> _compatiblePalaceRoomStates;
     private readonly List<string> _compatibleRoomClimates;
+    private readonly List<NpcWound> _wounds;
+    private readonly List<string> _encounterKeys;
 
     private NpcDefinition(
         CatalogContentId id,
@@ -22,15 +24,27 @@ public sealed class NpcDefinition : CatalogContentBase, INpcDefinition
         IReadOnlyCollection<string> compatiblePalaceRoomStates,
         IReadOnlyCollection<string> compatibleRoomClimates,
         int? minDepth,
-        int? maxDepth)
+        int? maxDepth,
+        EmotionalRegister emotionalAffinity,
+        NpcPersona? persona,
+        NpcDialogueGraph? dialogueGraph,
+        IReadOnlyCollection<NpcWound> wounds,
+        IReadOnlyCollection<string> encounterKeys,
+        bool isRecurring)
         : base(id, key, name, description, version, status)
     {
         _tags = tags.ToList();
         _compatibleRoomTypes = compatibleRoomTypes.ToList();
         _compatiblePalaceRoomStates = compatiblePalaceRoomStates.ToList();
         _compatibleRoomClimates = compatibleRoomClimates.ToList();
+        _wounds = wounds.ToList();
+        _encounterKeys = encounterKeys.ToList();
         MinDepth = minDepth;
         MaxDepth = maxDepth;
+        EmotionalAffinity = emotionalAffinity;
+        Persona = persona;
+        DialogueGraph = dialogueGraph;
+        IsRecurring = isRecurring;
     }
 
     public IReadOnlyCollection<string> Tags => _tags.AsReadOnly();
@@ -45,6 +59,18 @@ public sealed class NpcDefinition : CatalogContentBase, INpcDefinition
 
     public int? MaxDepth { get; }
 
+    public EmotionalRegister EmotionalAffinity { get; }
+
+    public NpcPersona? Persona { get; }
+
+    public NpcDialogueGraph? DialogueGraph { get; }
+
+    public IReadOnlyCollection<NpcWound> Wounds => _wounds.AsReadOnly();
+
+    public IReadOnlyCollection<string> EncounterKeys => _encounterKeys.AsReadOnly();
+
+    public bool IsRecurring { get; }
+
     public static NpcDefinition Create(
         string key,
         string name,
@@ -56,7 +82,13 @@ public sealed class NpcDefinition : CatalogContentBase, INpcDefinition
         IReadOnlyCollection<string>? compatibleRoomClimates,
         int? minDepth = null,
         int? maxDepth = null,
-        CatalogContentStatus status = CatalogContentStatus.Draft)
+        CatalogContentStatus status = CatalogContentStatus.Draft,
+        EmotionalRegister emotionalAffinity = EmotionalRegister.Neutral,
+        NpcPersona? persona = null,
+        NpcDialogueGraph? dialogueGraph = null,
+        IReadOnlyCollection<NpcWound>? wounds = null,
+        IReadOnlyCollection<string>? encounterKeys = null,
+        bool isRecurring = false)
     {
         var desc = CatalogContentDescription.From(description);
 
@@ -72,6 +104,12 @@ public sealed class NpcDefinition : CatalogContentBase, INpcDefinition
             compatiblePalaceRoomStates?.Distinct(StringComparer.OrdinalIgnoreCase).ToArray() ?? [],
             compatibleRoomClimates?.Distinct(StringComparer.OrdinalIgnoreCase).ToArray() ?? [],
             minDepth,
-            maxDepth);
+            maxDepth,
+            emotionalAffinity,
+            persona,
+            dialogueGraph,
+            wounds?.ToArray() ?? [],
+            encounterKeys?.Distinct(StringComparer.OrdinalIgnoreCase).ToArray() ?? [],
+            isRecurring);
     }
 }

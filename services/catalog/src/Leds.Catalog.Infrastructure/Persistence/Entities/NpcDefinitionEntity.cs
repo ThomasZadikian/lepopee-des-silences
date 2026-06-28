@@ -15,6 +15,15 @@ public sealed class NpcDefinitionEntity
     public string CompatiblePalaceRoomStatesJson { get; set; } = "[]";
     public string CompatibleRoomClimatesJson { get; set; } = "[]";
     public string TagsJson { get; set; } = "[]";
+
+    // ── NPC system (npc-system-sfd-0.1) ──────────────────────────────────────
+    public string EmotionalAffinity { get; set; } = "Neutral";
+    public bool IsRecurring { get; set; }
+    public string? PersonaJson { get; set; }
+    public string WoundsJson { get; set; } = "[]";
+    public string? DialogueGraphJson { get; set; }
+    public string EncounterKeysJson { get; set; } = "[]";
+
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
 }

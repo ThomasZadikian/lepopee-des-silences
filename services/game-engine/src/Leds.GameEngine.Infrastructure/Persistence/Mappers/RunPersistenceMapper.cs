@@ -6,6 +6,8 @@ using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
 using Leds.GameEngine.Infrastructure.Persistence.Entities;
 using System.Text.Json;
+using System.Text.Json.Serialization;
+using Leds.GameEngine.Domain.Npcs;
 
 namespace Leds.GameEngine.Infrastructure.Persistence.Mappers;
 
@@ -39,6 +41,8 @@ public static class RunPersistenceMapper
             EndedAtUtc = run.EndedAt?.UtcDateTime,
             SavedAtUtc = run.SavedAt?.UtcDateTime,
             PreSuspendStatus = run.PreSuspendStatus?.ToString(),
+            ActiveNpcKey = run.ActiveNpcKey,
+            NpcRelationshipsJson = SerializeNpcRelationships(run.NpcRelationships),
             CreatedAtUtc = run.StartedAt.UtcDateTime,
             UpdatedAtUtc = DateTime.UtcNow,
             Rooms = run.Rooms.Select(room => ToEntity(room, run.Id.Value)).ToList(),
@@ -358,7 +362,7 @@ public static class RunPersistenceMapper
             ? ToDomainPlayerSnapshot(entity.PlayerSnapshot)
             : null;
 
-        return Run.Rehydrate(
+       var run = Run.Rehydrate(
             new RunId(entity.Id),
             entity.PlayerId,
             entity.Seed,
@@ -389,6 +393,9 @@ public static class RunPersistenceMapper
             runModifiers,
             playerSnapshot: playerSnapshot,
             activeCurse: entity.ActiveCurses.FirstOrDefault() is { } curseEntity ? ToDomain(curseEntity) : null);
+
+        RehydrateNpcEncounters(run, entity);
+        return run;
     }
 
     public static Room ToDomain(RoomEntity entity)
@@ -633,6 +640,53 @@ public static class RunPersistenceMapper
             entity.Label,
             entity.Description,
             entity.PayloadKey ?? string.Empty);
+    }
+    private static readonly JsonSerializerOptions NpcJsonOptions = new()
+    {
+        Converters = { new JsonStringEnumConverter() }
+    };
+
+    private sealed record NpcRelationshipSnapshot(
+        string NpcKey,
+        int RelationshipScore,
+        Dictionary<string, WoundState> WoundStates,
+        List<string> Flags,
+        int TimesMet,
+        string? CurrentDialogueNodeKey);
+
+    private static string SerializeNpcRelationships(IReadOnlyCollection<NpcRelationship> relationships)
+    {
+        var snapshots = relationships.Select(r => new NpcRelationshipSnapshot(
+            r.NpcKey,
+            r.RelationshipScore,
+            r.WoundStates.ToDictionary(kv => kv.Key, kv => kv.Value),
+            r.Flags.ToList(),
+            r.TimesMet,
+            r.CurrentDialogueNodeKey)).ToList();
+
+        return JsonSerializer.Serialize(snapshots, NpcJsonOptions);
+    }
+
+    private static void RehydrateNpcEncounters(Run run, RunEntity entity)
+    {
+        if (!string.IsNullOrWhiteSpace(entity.NpcRelationshipsJson))
+        {
+            var snapshots = JsonSerializer.Deserialize<List<NpcRelationshipSnapshot>>(
+                entity.NpcRelationshipsJson, NpcJsonOptions) ?? [];
+
+            foreach (var snapshot in snapshots)
+            {
+                run.RehydrateNpcRelationship(NpcRelationship.Rehydrate(
+                    snapshot.NpcKey,
+                    snapshot.RelationshipScore,
+                    snapshot.WoundStates,
+                    snapshot.Flags,
+                    snapshot.TimesMet,
+                    snapshot.CurrentDialogueNodeKey));
+            }
+        }
+
+        run.RehydrateActiveNpcKey(entity.ActiveNpcKey);
     }
 
     private sealed record SnapshotLawDto(

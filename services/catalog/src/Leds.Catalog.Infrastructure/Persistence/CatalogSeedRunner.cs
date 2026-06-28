@@ -2,6 +2,10 @@ using System.Text.Json;
 using Leds.Catalog.Infrastructure.Persistence.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using Leds.Catalog.Domain.Npcs;
+using Leds.Catalog.Domain.RewardCursePools;
 
 namespace Leds.Catalog.Infrastructure.Persistence;
 
@@ -13,6 +17,7 @@ public sealed class CatalogSeedRunner
     private const string CatalogGatewayContentVersion = "alpha-0.8.1-catalog-content-gateway";
     private const string CatalogTemplatesVersion = "alpha-0.9.2-catalog-templates";
     private const string CatalogAntechamberFixVersion = "alpha-1.0.1-antechamber-boss-fix";
+    private const string NpcSystemVersion = "npc-system-0.1-majordome";
 
     private readonly CatalogDbContext _context;
     private readonly ILogger<CatalogSeedRunner> _logger;
@@ -30,6 +35,7 @@ public sealed class CatalogSeedRunner
         await ApplyCatalogGatewayContentSeedAsync(cancellationToken);
         await ApplyCatalogTemplatesSeedAsync(cancellationToken);
         await ApplyCatalogAntechamberBossFixSeedAsync(cancellationToken);
+        await ApplyNpcSystemSeedAsync(cancellationToken);
     }
 
     private async Task ApplyLegacySeedAsync(CancellationToken cancellationToken)
@@ -50,6 +56,205 @@ public sealed class CatalogSeedRunner
 
         await _context.SaveChangesAsync(cancellationToken);
         _logger.LogInformation("Seed {SeedKey} version {Version} applied successfully.", SeedKey, LegacyVersion);
+    }
+
+    private static readonly JsonSerializerOptions NpcSeedJsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        Converters = { new JsonStringEnumConverter() }
+    };
+
+    private async Task ApplyNpcSystemSeedAsync(CancellationToken cancellationToken)
+    {
+        if (await HasSeedVersionAsync(NpcSystemVersion, cancellationToken))
+        {
+            _logger.LogInformation("Seed {SeedKey} version {Version} already applied. Skipping.", SeedKey, NpcSystemVersion);
+            return;
+        }
+
+        _logger.LogInformation("Applying seed {SeedKey} version {Version}...", SeedKey, NpcSystemVersion);
+
+        var now = DateTime.UtcNow;
+        await SeedMajordomeAsync(now, cancellationToken);
+
+        AddSeedVersion(NpcSystemVersion);
+        await _context.SaveChangesAsync(cancellationToken);
+        _logger.LogInformation("Seed {SeedKey} version {Version} applied successfully.", SeedKey, NpcSystemVersion);
+    }
+
+    private async Task SeedMajordomeAsync(DateTime now, CancellationToken cancellationToken)
+    {
+        if (!await _context.RewardCursePools.AnyAsync(p => p.Key == "pool.majordome.eau-benigne", cancellationToken))
+        {
+            var benign = new List<RewardCurseEntry>
+            {
+                new(RewardCurseEntryKind.Reward, "Heal", null, 15, null),
+                new(RewardCurseEntryKind.Reward, "Heal", null, 9, null)
+            };
+            _context.RewardCursePools.Add(new RewardCursePoolEntity
+            {
+                Id = Guid.NewGuid(),
+                Key = "pool.majordome.eau-benigne",
+                Name = "Eau du Majordome — bienveillante",
+                Description = "Ce que l'eau offre quand le seuil est respecté.",
+                Version = "1.0",
+                Status = "Active",
+                EntriesJson = JsonSerializer.Serialize(benign, NpcSeedJsonOptions),
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
+            });
+        }
+
+        if (!await _context.RewardCursePools.AnyAsync(p => p.Key == "pool.majordome.eau-poison", cancellationToken))
+        {
+            var poison = new List<RewardCurseEntry>
+            {
+                new(RewardCurseEntryKind.Curse, "GrantCurse", "curse.old-wound", 0, null),
+                new(RewardCurseEntryKind.Curse, "Damage", null, 12, null)
+            };
+            _context.RewardCursePools.Add(new RewardCursePoolEntity
+            {
+                Id = Guid.NewGuid(),
+                Key = "pool.majordome.eau-poison",
+                Name = "Eau du Majordome — empoisonnée",
+                Description = "Ce que l'offrande devient quand le seuil est souillé.",
+                Version = "1.0",
+                Status = "Active",
+                EntriesJson = JsonSerializer.Serialize(poison, NpcSeedJsonOptions),
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
+            });
+        }
+
+        if (await _context.NpcDefinitions.AnyAsync(n => n.Key == "npc.majordome", cancellationToken))
+        {
+            return;
+        }
+
+        var persona = new NpcPersona(
+            "Courtois, attentif, d'une politesse glaçante",
+            EmotionalRegister.Silence,
+            new[] { "le respect du seuil", "la propreté du tapis" },
+            new[] { "thé", "eau", "attention" });
+
+        var wounds = new List<NpcWound>
+        {
+            new(
+                "w-tapis",
+                EmotionalRegister.Rupture,
+                NpcWoundReversibility.Irreversible,
+                TenseThreshold: -2,
+                RuptureThreshold: -4,
+                new[] { new NpcTransgression("w-tapis", "tapis-souille", -5) },
+                "Le seuil a été souillé. Cela ne se pardonne pas.")
+        };
+
+        var seuil = new NpcDialogueNode(
+            "seuil",
+            "Le Majordome",
+            new[]
+            {
+                "Entrez. Le thé est encore chaud.",
+                "Veillez à vos pas — ce tapis a connu des hôtes moins soigneux."
+            },
+            new[]
+            {
+                new NpcDialogueChoice(
+                    "salir", "Entrer sans essuyer vos pieds",
+                    Array.Empty<DialogueRequirement>(),
+                    new[]
+                    {
+                        new DialogueConsequence(ConsequenceKind.SetMemoryFlag, MemoryFlag: "tapis-souille"),
+                        new DialogueConsequence(ConsequenceKind.Narrative, NarrativeFragmentKey: "Vos semelles laissent une trace sombre sur le tapis. Le Majordome ne dit rien.")
+                    },
+                    NextNodeKey: "seuil"),
+
+                new NpcDialogueChoice(
+                    "boire", "Boire l'eau",
+                    Array.Empty<DialogueRequirement>(),
+                    new[]
+                    {
+                        new DialogueConsequence(ConsequenceKind.RewardOrCurseRoll, WhenWoundState: WoundState.Latent, RewardCursePoolKey: "pool.majordome.eau-benigne"),
+                        new DialogueConsequence(ConsequenceKind.Narrative, WhenWoundState: WoundState.Rompu, NarrativeFragmentKey: "Le thé a un goût d'amertume que vous ne sauriez nommer."),
+                        new DialogueConsequence(ConsequenceKind.RewardOrCurseRoll, WhenWoundState: WoundState.Rompu, RewardCursePoolKey: "pool.majordome.eau-poison")
+                    },
+                    NextNodeKey: null),
+
+                new NpcDialogueChoice(
+                    "questionner", "L'interroger sur le tapis",
+                    Array.Empty<DialogueRequirement>(),
+                    new[]
+                    {
+                        new DialogueConsequence(ConsequenceKind.Narrative, NarrativeFragmentKey: "Il sourit. Ses mains, elles, se crispent.")
+                    },
+                    NextNodeKey: "confidence"),
+
+                new NpcDialogueChoice(
+                    "partir", "S'éloigner",
+                    Array.Empty<DialogueRequirement>(),
+                    new[]
+                    {
+                        new DialogueConsequence(ConsequenceKind.Narrative, NarrativeFragmentKey: "Vous reculez. Le Majordome incline la tête, impeccable.")
+                    },
+                    NextNodeKey: null)
+            });
+
+        var confidence = new NpcDialogueNode(
+            "confidence",
+            "Le Majordome",
+            new[] { "« Le seuil se respecte. Toujours. Ceux qui l'oublient… ne reviennent pas. »" },
+            new[]
+            {
+                new NpcDialogueChoice(
+                    "comprendre", "Hocher la tête",
+                    Array.Empty<DialogueRequirement>(),
+                    new[]
+                    {
+                        new DialogueConsequence(ConsequenceKind.AdjustRelationship, RelationshipDelta: 1),
+                        new DialogueConsequence(ConsequenceKind.Narrative, NarrativeFragmentKey: "Quelque chose dans son regard s'apaise, à peine.")
+                    },
+                    NextNodeKey: "seuil"),
+
+                new NpcDialogueChoice(
+                    "partir", "S'éloigner",
+                    Array.Empty<DialogueRequirement>(),
+                    new[] { new DialogueConsequence(ConsequenceKind.Narrative, NarrativeFragmentKey: "Vous le laissez à son seuil.") },
+                    NextNodeKey: null)
+            });
+
+        var graph = new NpcDialogueGraph(
+            "npc.majordome.dialogue",
+            "1.0",
+            "seuil",
+            new Dictionary<string, NpcDialogueNode>
+            {
+                ["seuil"] = seuil,
+                ["confidence"] = confidence
+            });
+
+        _context.NpcDefinitions.Add(new NpcDefinitionEntity
+        {
+            Id = Guid.NewGuid(),
+            Key = "npc.majordome",
+            Name = "Le Majordome",
+            DisplayName = "Le Majordome",
+            Description = "Une présence du seuil : il accueille, il sert, il veille. Et il n'oublie rien.",
+            Version = "1.0",
+            Status = "Active",
+            MinDepth = null,
+            MaxDepth = null,
+            CompatibleRoomTypesJson = "[]",
+            CompatiblePalaceRoomStatesJson = "[]",
+            CompatibleRoomClimatesJson = "[]",
+            TagsJson = "[]",
+            EmotionalAffinity = "Silence",
+            IsRecurring = true,
+            PersonaJson = JsonSerializer.Serialize(persona, NpcSeedJsonOptions),
+            WoundsJson = JsonSerializer.Serialize(wounds, NpcSeedJsonOptions),
+            DialogueGraphJson = JsonSerializer.Serialize(graph, NpcSeedJsonOptions),
+            EncounterKeysJson = "[]",
+            CreatedAtUtc = now,
+            UpdatedAtUtc = now
+        });
     }
 
     private async Task ApplyDataModelSeedAsync(CancellationToken cancellationToken)

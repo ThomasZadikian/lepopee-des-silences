@@ -11,4 +11,10 @@ public sealed record CatalogNpcDefinition(
     IReadOnlyCollection<PalaceRoomState> CompatiblePalaceRoomStates,
     IReadOnlyCollection<string> CompatibleRoomClimates,
     int MinDepth = 0,
-    int MaxDepth = int.MaxValue);
+    int MaxDepth = int.MaxValue,
+    string EmotionalAffinity = "Neutral",
+    bool IsRecurring = false,
+    CatalogNpcPersona? Persona = null,
+    CatalogNpcDialogueGraph? DialogueGraph = null,
+    IReadOnlyCollection<CatalogNpcWound>? Wounds = null,
+    IReadOnlyCollection<string>? EncounterKeys = null);

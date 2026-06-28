@@ -6,18 +6,21 @@ public sealed record CurrentEventChoiceResolutionResult(
     string ChoiceId,
     bool Accepted,
     string Message,
-    IReadOnlyCollection<NarrativeFragmentDto> NarrativeFragments)
+    IReadOnlyCollection<NarrativeFragmentDto> NarrativeFragments,
+    bool EncounterCompleted = true)
 {
     public static CurrentEventChoiceResolutionResult Create(
         string choiceId,
         bool accepted,
         string message,
-        IReadOnlyCollection<NarrativeFragmentDto>? narrativeFragments = null)
+        IReadOnlyCollection<NarrativeFragmentDto>? narrativeFragments = null,
+        bool encounterCompleted = true)
     {
         return new CurrentEventChoiceResolutionResult(
             choiceId,
             accepted,
             message,
-            narrativeFragments ?? Array.Empty<NarrativeFragmentDto>());
+            narrativeFragments ?? Array.Empty<NarrativeFragmentDto>(),
+            encounterCompleted);
     }
 }

@@ -86,4 +86,6 @@ public interface ICatalogContentGateway
 
     Task<IReadOnlyCollection<CatalogNpcDefinition>> ListNpcDefinitionsAsync(
         CancellationToken cancellationToken = default);
+    Task<IReadOnlyCollection<CatalogRewardCursePool>> ListRewardCursePoolsAsync(
+    CancellationToken cancellationToken = default);
 }

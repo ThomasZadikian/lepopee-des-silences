@@ -1,5 +1,7 @@
 ﻿using Leds.GameEngine.Application.Abstractions;
+using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Application.Common.Exceptions;
+using Leds.GameEngine.Application.Events.Dtos;
 using Leds.GameEngine.Application.Runs.Dtos;
 using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Nodes;
@@ -14,13 +16,16 @@ public sealed class ChooseCurrentEventOptionCommandHandler
 {
     private readonly IRunRepository _runRepository;
     private readonly ICurrentEventChoiceResolverDispatcher _choiceResolverDispatcher;
+    private readonly ICatalogContentGateway _catalogContentGateway;
 
     public ChooseCurrentEventOptionCommandHandler(
         IRunRepository runRepository,
-        ICurrentEventChoiceResolverDispatcher choiceResolverDispatcher)
+        ICurrentEventChoiceResolverDispatcher choiceResolverDispatcher,
+        ICatalogContentGateway catalogContentGateway)
     {
         _runRepository = runRepository;
         _choiceResolverDispatcher = choiceResolverDispatcher;
+        _catalogContentGateway = catalogContentGateway;
     }
 
     public async Task<ChooseCurrentEventOptionResponse> Handle(
@@ -62,15 +67,43 @@ public sealed class ChooseCurrentEventOptionCommandHandler
 
         var result = await _choiceResolverDispatcher.ResolveAsync(context, cancellationToken);
 
-        if (result.Accepted)
+        // Only finalise the node when the encounter is truly over. A multi-step NPC
+        // dialogue keeps the node "resolved" (awaiting choice) until the graph ends.
+        if (result.Accepted && result.EncounterCompleted)
         {
             resolvedNode.ChooseEventOption(result.ChoiceId);
         }
 
         await _runRepository.UpdateAsync(run, cancellationToken);
 
+        // If the NPC dialogue continues, surface the next node (lines + eligible choices).
+        var npcDialogue = await BuildOngoingNpcDialogueAsync(run, cancellationToken);
+
         return new ChooseCurrentEventOptionResponse(
             RunDto.FromDomain(run),
-            ChosenEventOptionResultDto.FromResult(result));
+            ChosenEventOptionResultDto.FromResult(result),
+            npcDialogue);
+    }
+
+    private async Task<NpcDialogueViewDto?> BuildOngoingNpcDialogueAsync(
+        Run run,
+        CancellationToken cancellationToken)
+    {
+        var activeNpcKey = run.ActiveNpcKey;
+        if (string.IsNullOrWhiteSpace(activeNpcKey))
+        {
+            return null;
+        }
+
+        var relationship = run.GetNpcRelationship(activeNpcKey);
+        if (relationship is null)
+        {
+            return null;
+        }
+
+        var npcs = await _catalogContentGateway.ListNpcDefinitionsAsync(cancellationToken);
+        var npc = npcs.FirstOrDefault(n => string.Equals(n.Key, activeNpcKey, StringComparison.OrdinalIgnoreCase));
+
+        return npc is null ? null : NpcDialogueViewFactory.Build(npc, relationship);
     }
 }

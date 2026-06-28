@@ -30,6 +30,8 @@ public sealed class RunEntity
     public string? SnapshotActivePalaceLaws { get; set; }
     public string? SnapshotRunItemIds { get; set; }
     public string? SnapshotRunModifierIds { get; set; }
+    public string? ActiveNpcKey { get; set; }
+    public string? NpcRelationshipsJson { get; set; }
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
 
