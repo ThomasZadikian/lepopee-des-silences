@@ -45,6 +45,15 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IEventTemplateReadStore, EfEventTemplateReadStore>();
         services.AddScoped<IRoomBossDefinitionReadStore, EfRoomBossDefinitionReadStore>();
 
+        // Canon content seeders (git-ignored, local-only) — discovered by scan so the
+        // build never depends on a concrete type that may be absent on a fresh clone.
+        foreach (var canonType in typeof(CatalogDbContext).Assembly.GetTypes()
+            .Where(t => typeof(Leds.Catalog.Infrastructure.Persistence.Canon.ICanonContentSeeder).IsAssignableFrom(t)
+                        && t is { IsAbstract: false, IsInterface: false }))
+        {
+            services.AddScoped(typeof(Leds.Catalog.Infrastructure.Persistence.Canon.ICanonContentSeeder), canonType);
+        }
+
         return services;
     }
 }
