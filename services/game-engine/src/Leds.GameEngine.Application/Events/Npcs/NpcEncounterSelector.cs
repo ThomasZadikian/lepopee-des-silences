@@ -1,4 +1,5 @@
 using Leds.GameEngine.Application.Catalog;
+using Leds.GameEngine.Domain.Combats.Typing;
 using Leds.GameEngine.Domain.Rooms;
 
 namespace Leds.GameEngine.Application.Events.Npcs;
@@ -85,14 +86,12 @@ public sealed class NpcEncounterSelector : INpcEncounterSelector
 
     private static int ComputeDeterministicIndex(NpcEligibilityContext context, int count)
     {
-        unchecked
-        {
-            var hash = context.Seed.GetHashCode();
-            hash = hash * 397 ^ context.RunId.GetHashCode();
-            hash = hash * 397 ^ context.RoomId.GetHashCode();
-            hash = hash * 397 ^ context.NodeId.GetHashCode();
-            hash = hash * 397 ^ "NpcSelection".GetHashCode();
-            return Math.Abs(hash % count);
-        }
+        var rollSeed = string.Join(
+            context.Seed, "npc-selection",
+            context.RoomDepth, context.NodeDepth,
+            context.RoomType, context.PalaceRoomState);
+
+        var roll = DeterministicCombatRoll.UnitInterval(rollSeed);
+        return Math.Min(count - 1, (int)(roll * count));
     }
 }

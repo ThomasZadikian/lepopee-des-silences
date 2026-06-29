@@ -51,7 +51,8 @@ public sealed class NpcEventContentResolutionStrategy : IEventContentResolutionS
             PalaceRoomState: context.PalaceRoomState ?? Domain.Rooms.PalaceRoomState.Neutral,
             RoomClimate: context.RoomClimate,
             RoomType: context.RoomType,
-            NodeDepth: context.NodeDepth);
+            NodeDepth: context.NodeDepth,
+            RoomDepth: context.RoomDepth); 
 
         var selectedNpc = _npcEncounterSelector.SelectEligibleNpc(eligibilityContext, allNpcs);
 

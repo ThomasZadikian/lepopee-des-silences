@@ -14,7 +14,7 @@ public sealed class EnemyStatScaler
 
     // Endless difficulty ramp: room 1 = base difficulty, +DepthDifficultyStep per room.
     // BALANCE KNOB: tune this to set how fast the run gets harder with depth.
-    public const double DepthDifficultyStep = 0.10;
+    public const double DepthDifficultyStep = 0.5;
 
     /// <summary>
     /// Difficulty multiplier derived from the run depth (room number).

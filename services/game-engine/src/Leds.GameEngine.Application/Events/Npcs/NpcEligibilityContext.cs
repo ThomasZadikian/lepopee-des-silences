@@ -10,4 +10,5 @@ public sealed record NpcEligibilityContext(
     PalaceRoomState PalaceRoomState,
     string? RoomClimate,
     RoomType RoomType,
-    int NodeDepth);
+    int NodeDepth,
+    int RoomDepth = 0);

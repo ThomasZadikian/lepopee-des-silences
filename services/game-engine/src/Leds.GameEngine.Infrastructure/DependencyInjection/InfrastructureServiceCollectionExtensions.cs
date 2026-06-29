@@ -1,12 +1,15 @@
 using Leds.GameEngine.Application.Abstractions;
 using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Application.Combats.Actions;
+using Leds.GameEngine.Application.Combats.Atb;
 using Leds.GameEngine.Application.Combats.Effects;
 using Leds.GameEngine.Application.Combats.EncounterComposition;
 using Leds.GameEngine.Application.Combats.EncounterDrafts;
 using Leds.GameEngine.Application.Combats.EnemyTurns;
+using Leds.GameEngine.Application.Combats.EnemyTurns.Bossing;
 using Leds.GameEngine.Application.Combats.Ports;
 using Leds.GameEngine.Application.Combats.Targeting;
+using Leds.GameEngine.Application.Combats.Typing;
 using Leds.GameEngine.Application.Effects;
 using Leds.GameEngine.Application.Events.Ports;
 using Leds.GameEngine.Application.Events.Resolution;
@@ -46,9 +49,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using Leds.GameEngine.Application.Combats.EnemyTurns.Bossing;
-using Leds.GameEngine.Application.Combats.Typing;
-using Leds.GameEngine.Application.Combats.Atb;
 
 namespace Leds.GameEngine.Infrastructure.DependencyInjection;
 
@@ -133,16 +133,14 @@ public static class InfrastructureServiceCollectionExtensions
 
         services.AddSingleton<ICombatTargetingRuleValidator, CombatTargetingRuleValidator>();
         services.AddSingleton<ICombatSkillActionValidator, CombatSkillActionValidator>();
-        // Emotional type / weakness affinities (single tuning surface; promotable to catalog later).
         services.AddSingleton<ICombatantTypeProfileProvider, EmotionalTypeProfileProvider>();
-        // ATB (Active Time Battle): Markov-driven tempo + combat preparation.
         services.AddSingleton<IAtbTempoProvider, MarkovAtbTempoProvider>();
         services.AddScoped<IAtbCombatPreparer, AtbCombatPreparer>();
         services.AddSingleton<ICombatSkillEffectResolver, CombatSkillEffectResolver>();
+        services.AddSingleton<Leds.GameEngine.Application.Combats.EnemyTurns.Ai.IEnemyActionPlanner,
+            Leds.GameEngine.Application.Combats.EnemyTurns.Ai.UtilityEnemyActionPlanner>();
         services.AddSingleton<IEnemyCombatTurnResolver, EnemyCombatTurnResolver>();
-        // Scripted room bosses: register one IBossBehavior per boss SourceKey.
-        // Any enemy without a registered behavior uses the generic enemy AI.
-        // e.g. services.AddSingleton<IBossBehavior, ArchivistBossBehavior>();
+        RegisterCanonBossBehaviors(services);
         services.AddSingleton<IEncounterCompositionPolicy, EncounterCompositionPolicy>();
         services.AddSingleton<IEncounterEnemySelector, DeterministicEncounterEnemySelector>();
         services.AddSingleton<ICombatEncounterDraftGenerator, CombatEncounterDraftGenerator>();
@@ -162,5 +160,16 @@ public static class InfrastructureServiceCollectionExtensions
         {
             services.AddHostedService<GameEngineOutboxDispatcherHostedService>();
         }
+    }
+
+    // Scripted phases for the canon room bosses. Each is matched against the boss
+    // combatant's SourceKey; an enemy with no registered behavior uses the generic AI.
+    private static void RegisterCanonBossBehaviors(IServiceCollection services)
+    {
+        services.AddSingleton<IBossBehavior, Leds.GameEngine.Application.Combats.EnemyTurns.Bossing.Canon.ImperatriceVipereBossBehavior>();
+        services.AddSingleton<IBossBehavior, Leds.GameEngine.Application.Combats.EnemyTurns.Bossing.Canon.PapeLouisXviiBossBehavior>();
+        services.AddSingleton<IBossBehavior, Leds.GameEngine.Application.Combats.EnemyTurns.Bossing.Canon.HomonculeRoiBossBehavior>();
+        services.AddSingleton<IBossBehavior, Leds.GameEngine.Application.Combats.EnemyTurns.Bossing.Canon.GrandCardinalBossBehavior>();
+        services.AddSingleton<IBossBehavior, Leds.GameEngine.Application.Combats.EnemyTurns.Bossing.Canon.HimLitBossBehavior>();
     }
 }

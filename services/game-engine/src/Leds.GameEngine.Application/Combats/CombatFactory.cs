@@ -10,7 +10,7 @@ namespace Leds.GameEngine.Application.Combats;
 public sealed class CombatFactory : ICombatFactory
 {
     private const int EnemyVitalityBase = 40;
-    private const int VitalityPerDifficulty = 10;
+    private const int VitalityPerDifficulty = 50;
 
     private readonly EnemyStatScaler _enemyStatScaler = new();
 
@@ -37,6 +37,17 @@ public sealed class CombatFactory : ICombatFactory
             focus,
             skillEffects);
     }
+    private static (double VitalityMultiplier, double PowerMultiplier, int GuardBonus) EncounterBonus(string encounterType)
+    {
+        return encounterType switch
+        {
+            "RoomBoss" => (2.6, 1.6, 18),
+            "Elite" => (1.7, 1.3, 8),
+            "Rare" => (1.4, 1.25, 4),
+            _ => (1.0, 1.0, 0)
+        };
+    }
+
 
     public Combat CreateFromDraft(
         CombatId combatId,
@@ -160,22 +171,24 @@ public sealed class CombatFactory : ICombatFactory
             })
             .ToArray();
 
+        var (bossVitalityMultiplier, bossPowerMultiplier, bossGuardBonus) = EncounterBonus(draft.EncounterType);
+
         var enemies = draft.Enemies
             .Select(enemy =>
             {
-                var baseVitality = EnemyVitalityBase + enemy.BaseDifficulty * VitalityPerDifficulty;
-                var representativePower = enemy.Skills.Count > 0
+                var baseVitality = (int)Math.Ceiling(
+                    (EnemyVitalityBase + enemy.BaseDifficulty * VitalityPerDifficulty) * bossVitalityMultiplier); var representativePower = enemy.Skills.Count > 0
                     ? enemy.Skills.Max(s => s.BasePower)
                     : 0;
 
                 var scaled = _enemyStatScaler.Scale(baseVitality, representativePower, draft.DifficultyMultiplier);
-                var enemyPowerMultiplier = activeClimate switch
+                var enemyPowerMultiplier = (activeClimate switch
                 {
                     RoomClimate.Grey => 0.90,
                     RoomClimate.Heatwave => 1.10,
                     _ => 1.0
-                };
-                var enemyStartingGuard = palaceRoomState == PalaceRoomState.Silent ? 8 : 0;
+                }) * bossPowerMultiplier;
+                var enemyStartingGuard = (palaceRoomState == PalaceRoomState.Silent ? 8 : 0) + bossGuardBonus;
 
                 var skills = enemy.Skills
                     .Select(s =>

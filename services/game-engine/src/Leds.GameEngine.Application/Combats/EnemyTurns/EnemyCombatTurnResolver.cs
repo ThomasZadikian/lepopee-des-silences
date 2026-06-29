@@ -1,6 +1,7 @@
 using Leds.GameEngine.Application.Combats.Actions;
 using Leds.GameEngine.Application.Combats.Dtos;
 using Leds.GameEngine.Application.Combats.Effects;
+using Leds.GameEngine.Application.Combats.EnemyTurns.Ai;
 using Leds.GameEngine.Application.Combats.EnemyTurns.Bossing;
 using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Combats.Atb;
@@ -13,14 +14,17 @@ public sealed class EnemyCombatTurnResolver : IEnemyCombatTurnResolver
     private readonly ICombatSkillActionValidator _actionValidator;
     private readonly ICombatSkillEffectResolver _effectResolver;
     private readonly IReadOnlyDictionary<string, IBossBehavior> _bossBehaviors;
+    private readonly IEnemyActionPlanner _planner;
 
     public EnemyCombatTurnResolver(
         ICombatSkillActionValidator actionValidator,
         ICombatSkillEffectResolver effectResolver,
-        IEnumerable<IBossBehavior>? bossBehaviors = null)
+        IEnumerable<IBossBehavior>? bossBehaviors = null,
+        IEnemyActionPlanner? planner = null)
     {
         _actionValidator = actionValidator;
         _effectResolver = effectResolver;
+        _planner = planner ?? new UtilityEnemyActionPlanner();
         _bossBehaviors = (bossBehaviors ?? Enumerable.Empty<IBossBehavior>())
             .GroupBy(behavior => behavior.BossKey, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
@@ -58,7 +62,20 @@ public sealed class EnemyCombatTurnResolver : IEnemyCombatTurnResolver
         }
 
         var scriptedAction = TryResolveScriptedAction(combat, actor);
-        var skill = scriptedAction?.Skill ?? SelectSkill(actor);
+
+        CombatantSkill? skill;
+        IReadOnlyCollection<Guid> targetIds;
+        if (scriptedAction is not null)
+        {
+            skill = scriptedAction.Value.Skill;
+            targetIds = scriptedAction.Value.TargetIds;
+        }
+        else
+        {
+            var plan = _planner.Plan(combat, actor);
+            skill = plan?.Skill;
+            targetIds = plan?.TargetIds ?? Array.Empty<Guid>();
+        }
 
         if (skill is null)
         {
@@ -66,8 +83,6 @@ public sealed class EnemyCombatTurnResolver : IEnemyCombatTurnResolver
             logEntries.AddRange(AdvanceCombat(combat));
             return new EnemyCombatTurnResolution(true, actor.Id.Value, null, [], logEntries, CombatRuntimeDto.FromDomain(combat));
         }
-
-        var targetIds = scriptedAction?.TargetIds ?? SelectTargetIds(combat, actor, skill);
 
         if (targetIds.Count == 0)
         {
@@ -142,62 +157,6 @@ public sealed class EnemyCombatTurnResolver : IEnemyCombatTurnResolver
         }
 
         return (skill, decision.TargetIds);
-    }
-
-    private static CombatantSkill? SelectSkill(Combatant actor)
-    {
-        var skills = actor.Skills
-            .OrderBy(s => s.Key, StringComparer.OrdinalIgnoreCase)
-            .ToArray();
-
-        return skills.FirstOrDefault(IsOffensive)
-            ?? skills.FirstOrDefault(s => string.Equals(s.EffectType, "Damage", StringComparison.OrdinalIgnoreCase))
-            ?? skills.FirstOrDefault();
-    }
-
-    private static bool IsOffensive(CombatantSkill skill)
-    {
-        return string.Equals(skill.TargetingType, "SingleEnemy", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(skill.TargetingType, "AllEnemies", StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static IReadOnlyCollection<Guid> SelectTargetIds(
-        Combat combat,
-        Combatant actor,
-        CombatantSkill skill)
-    {
-        return skill.TargetingType switch
-        {
-            "Self" => [actor.Id.Value],
-            "SingleEnemy" => PickRandomSingle(combat, actor, combat.Allies.Where(a => !a.IsDefeated).ToArray()),
-            "AllEnemies" => combat.Allies.Where(a => !a.IsDefeated).Select(a => a.Id.Value).ToArray(),
-            "SingleAlly" => PickRandomSingle(combat, actor, combat.Enemies.Where(e => !e.IsDefeated).ToArray()),
-            "AllAllies" => combat.Enemies.Where(e => !e.IsDefeated).Select(e => e.Id.Value).ToArray(),
-            _ => []
-        };
-    }
-
-    /// <summary>
-    /// Deterministic-random single-target pick among living candidates. Reproducible
-    /// (SHA-256 over combat/actor/turn state — never <c>new Random()</c>), so a combat
-    /// replays identically. For now the enemy AI simply spreads its hits randomly
-    /// instead of always striking the first ally in the list.
-    /// </summary>
-    private static IReadOnlyCollection<Guid> PickRandomSingle(
-        Combat combat,
-        Combatant actor,
-        IReadOnlyList<Combatant> candidates)
-    {
-        if (candidates.Count == 0)
-            return [];
-
-        if (candidates.Count == 1)
-            return [candidates[0].Id.Value];
-
-        var seed = $"enemy-target:{combat.Id.Value}:{actor.Id.Value}:{combat.TurnNumber}:{combat.CurrentTick}";
-        var roll = DeterministicCombatRoll.UnitInterval(seed);
-        var index = Math.Min(candidates.Count - 1, (int)(roll * candidates.Count));
-        return [candidates[index].Id.Value];
     }
 
     private static IReadOnlyCollection<CombatLogEntryDto> AdvanceCombat(Combat combat)

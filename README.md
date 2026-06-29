@@ -1,5 +1,5 @@
 # L’épopée des silences
-services-alpha-0.9.6
+services-alpha-0.9.7.3
 web-alpha-0.8.1
 HTTP-alpha-1.0.0
 
