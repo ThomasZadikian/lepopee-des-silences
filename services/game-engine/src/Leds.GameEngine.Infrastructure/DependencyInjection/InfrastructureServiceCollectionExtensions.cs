@@ -78,6 +78,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<MarkovTransitionResolver>();
         services.AddSingleton<IRoomTypeMarkovMatrixProvider, StaticRoomTypeMarkovMatrixProvider>();
         services.AddSingleton<IRoomTypeResolver, MarkovRoomTypeResolver>();
+        services.AddSingleton<ICatalogRoomTypeResolver, CatalogMarkovRoomTypeResolver>();
         services.AddSingleton<IPalaceRoomStateResolver, MarkovPalaceRoomStateResolver>();
         services.AddSingleton<IRoomThemeResolver, RoomThemeResolver>();
         services.AddSingleton<IRoomBossProfileResolver, RoomBossProfileResolver>();

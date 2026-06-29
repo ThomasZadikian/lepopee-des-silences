@@ -90,4 +90,7 @@ public interface ICatalogContentGateway
     CancellationToken cancellationToken = default);
     Task<IReadOnlyCollection<CatalogRoomDefinition>> ListRoomDefinitionsAsync(
     CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyCollection<CatalogRoomTypeDefinition>> ListRoomTypeDefinitionsAsync(
+    CancellationToken cancellationToken = default);
 }

@@ -1103,6 +1103,33 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
         string? EnemyPoolKey, string? RewardPoolKey, string? LawPoolKey, string? CursePoolKey,
         string? BossDefinitionKey, bool IsUnique);
 
+    public async Task<IReadOnlyCollection<CatalogRoomTypeDefinition>> ListRoomTypeDefinitionsAsync(
+    CancellationToken cancellationToken = default)
+    {
+        const string url = "/api/v2/catalog/room-type-definitions";
+
+        var wrapper = await GetJsonOrNullAsync<ListRoomTypeDefinitionsHttpResponse>(url, cancellationToken);
+
+        return wrapper?.Definitions?
+            .Select(d => new CatalogRoomTypeDefinition(
+                d.Key,
+                d.DisplayName,
+                d.Theme,
+                d.MinDepth ?? 0,
+                d.MaxDepth ?? int.MaxValue))
+            .ToArray()
+            ?? [];
+    }
+    private sealed record ListRoomTypeDefinitionsHttpResponse(
+        IReadOnlyCollection<CatalogRoomTypeDefinitionHttpResponse>? Definitions);
+
+    private sealed record CatalogRoomTypeDefinitionHttpResponse(
+        string Key,
+        string DisplayName,
+        string Theme,
+        int? MinDepth,
+        int? MaxDepth);
+
     private static CatalogNpcDefinition MapToCatalogNpcDefinition(
         CatalogNpcDefinitionHttpResponse source)
     {

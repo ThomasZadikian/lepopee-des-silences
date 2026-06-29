@@ -25,12 +25,6 @@ public static class TestGeneratorFactory
         var traceSink = new NullMarkovTransitionTraceSink();
         var calibration = new EmotionalCalibration();
 
-        var roomTypeResolver = new MarkovRoomTypeResolver(
-            new StaticRoomTypeMarkovMatrixProvider(),
-            new MarkovTransitionResolver(new DeterministicMarkovSampler()),
-            traceSink,
-            calibration);
-
         var stateResolver = new MarkovPalaceRoomStateResolver(
             new MarkovTransitionResolver(new DeterministicMarkovSampler()),
             traceSink,
@@ -38,7 +32,7 @@ public static class TestGeneratorFactory
 
         return new DeterministicRunGenerator(
             new SeededRandomFactory(),
-            roomTypeResolver,
+            new CatalogMarkovRoomTypeResolver(new StubCatalogContentGateway()),
             stateResolver,
             mapRoomGenerator,
             new RunPsycheEvolver(calibration),

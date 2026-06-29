@@ -1255,6 +1255,20 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
     CancellationToken cancellationToken = default)
     => Task.FromResult<IReadOnlyCollection<CatalogRoomDefinition>>([]);
 
+    public Task<IReadOnlyCollection<CatalogRoomTypeDefinition>> ListRoomTypeDefinitionsAsync(
+    CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult<IReadOnlyCollection<CatalogRoomTypeDefinition>>(
+[
+    new CatalogRoomTypeDefinition("room-type.threshold", "Seuil", "Threshold", 0, int.MaxValue),
+            new CatalogRoomTypeDefinition("room-type.memory", "Mémoire", "Memory", 1, int.MaxValue),
+            new CatalogRoomTypeDefinition("room-type.forest", "Forêt", "Forest", 1, int.MaxValue),
+            new CatalogRoomTypeDefinition("room-type.rupture", "Rupture", "Rupture", 1, int.MaxValue),
+            new CatalogRoomTypeDefinition("room-type.silence", "Silence", "Silence", 1, int.MaxValue),
+            new CatalogRoomTypeDefinition("room-type.antechamber", "Antichambre", "Antechamber", 1, int.MaxValue),
+        ]);
+    }
+
     private static Result<TSnapshot> GetByKey<TSnapshot>(
         IReadOnlyDictionary<string, TSnapshot> source,
         string key,
