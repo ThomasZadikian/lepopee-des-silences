@@ -1077,6 +1077,32 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
             ?? [];
     }
 
+    public async Task<IReadOnlyCollection<CatalogRoomDefinition>> ListRoomDefinitionsAsync(
+    CancellationToken cancellationToken = default)
+    {
+        const string url = "/api/v2/catalog/room-definitions";
+        var wrapper = await GetJsonOrNullAsync<ListRoomDefinitionsHttpResponse>(url, cancellationToken);
+        return wrapper?.Definitions?.Select(MapToCatalogRoomDefinition).ToArray() ?? [];
+    }
+
+    private static CatalogRoomDefinition MapToCatalogRoomDefinition(CatalogRoomDefinitionHttpResponse source)
+        => new(
+            source.Key, source.DisplayName, source.Description, source.NarrativeText,
+            source.RoomFamily, source.RoomRarity, source.Theme,
+            source.MinDepth ?? 0, source.MaxDepth ?? int.MaxValue, source.BaseWeight,
+            source.EnemyPoolKey, source.RewardPoolKey, source.LawPoolKey, source.CursePoolKey,
+            source.BossDefinitionKey, source.IsUnique);
+
+    private sealed record ListRoomDefinitionsHttpResponse(
+        IReadOnlyCollection<CatalogRoomDefinitionHttpResponse>? Definitions);
+
+    private sealed record CatalogRoomDefinitionHttpResponse(
+        string Key, string DisplayName, string Description, string? NarrativeText,
+        string RoomFamily, string RoomRarity, string Theme,
+        int? MinDepth, int? MaxDepth, int BaseWeight,
+        string? EnemyPoolKey, string? RewardPoolKey, string? LawPoolKey, string? CursePoolKey,
+        string? BossDefinitionKey, bool IsUnique);
+
     private static CatalogNpcDefinition MapToCatalogNpcDefinition(
         CatalogNpcDefinitionHttpResponse source)
     {

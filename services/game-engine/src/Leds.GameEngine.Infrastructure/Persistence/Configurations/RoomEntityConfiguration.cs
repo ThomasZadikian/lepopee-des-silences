@@ -28,6 +28,14 @@ public sealed class RoomEntityConfiguration : IEntityTypeConfiguration<RoomEntit
         builder.Property(room => room.MaxNodeDepth).HasColumnName("max_node_depth");
         builder.Property(room => room.LayoutTemplateKey).HasColumnName("layout_template_key").HasMaxLength(128);
         builder.Property(room => room.LayoutTemplateVersion).HasColumnName("layout_template_version").HasMaxLength(64);
+        builder.Property(room => room.CatalogRoomKey).HasColumnName("catalog_room_key").HasMaxLength(160);
+        builder.Property(room => room.CatalogDisplayName).HasColumnName("catalog_display_name").HasMaxLength(256);
+        builder.Property(room => room.CatalogNarrativeText).HasColumnName("catalog_narrative_text");
+        builder.Property(room => room.EnemyPoolKey).HasColumnName("enemy_pool_key").HasMaxLength(160);
+        builder.Property(room => room.RewardPoolKey).HasColumnName("reward_pool_key").HasMaxLength(160);
+        builder.Property(room => room.LawPoolKey).HasColumnName("law_pool_key").HasMaxLength(160);
+        builder.Property(room => room.CursePoolKey).HasColumnName("curse_pool_key").HasMaxLength(160);
+        builder.Property(room => room.CatalogIsUnique).HasColumnName("catalog_is_unique").HasDefaultValue(false);
 
         builder.HasOne(room => room.Run)
             .WithMany(run => run.Rooms)

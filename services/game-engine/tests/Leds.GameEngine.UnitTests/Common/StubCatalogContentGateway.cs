@@ -1251,6 +1251,9 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
     {
         return Task.FromResult<IReadOnlyCollection<CatalogRewardCursePool>>([]);
     }
+    public Task<IReadOnlyCollection<CatalogRoomDefinition>> ListRoomDefinitionsAsync(
+    CancellationToken cancellationToken = default)
+    => Task.FromResult<IReadOnlyCollection<CatalogRoomDefinition>>([]);
 
     private static Result<TSnapshot> GetByKey<TSnapshot>(
         IReadOnlyDictionary<string, TSnapshot> source,

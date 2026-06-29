@@ -167,6 +167,14 @@ public static class RunPersistenceMapper
             MaxNodeDepth = room.MaxNodeDepth,
             LayoutTemplateKey = room.LayoutTemplateKey,
             LayoutTemplateVersion = room.LayoutTemplateVersion,
+            CatalogRoomKey = room.CatalogBinding?.Key,
+            CatalogDisplayName = room.CatalogBinding?.DisplayName,
+            CatalogNarrativeText = room.CatalogBinding?.NarrativeText,
+            EnemyPoolKey = room.CatalogBinding?.EnemyPoolKey,
+            RewardPoolKey = room.CatalogBinding?.RewardPoolKey,
+            LawPoolKey = room.CatalogBinding?.LawPoolKey,
+            CursePoolKey = room.CatalogBinding?.CursePoolKey,
+            CatalogIsUnique = room.CatalogBinding?.IsUnique ?? false,
             Nodes = room.Nodes.Select(node => ToEntity(node, room.Id.Value)).ToList()
         };
     }
@@ -409,7 +417,7 @@ public static class RunPersistenceMapper
             entity.BossDangerHint,
             entity.BossEnemyTemplateKey);
 
-        return Room.Rehydrate(
+        var room = Room.Rehydrate(
             new RoomId(entity.Id),
             entity.Depth,
             Enum.Parse<RoomType>(entity.RoomType),
@@ -423,6 +431,21 @@ public static class RunPersistenceMapper
             nodes,
             entity.LayoutTemplateKey,
             entity.LayoutTemplateVersion);
+
+        if (!string.IsNullOrWhiteSpace(entity.CatalogRoomKey))
+        {
+            room.AttachCatalogBinding(new CatalogRoomBinding(
+                entity.CatalogRoomKey,
+                entity.CatalogDisplayName ?? entity.CatalogRoomKey,
+                entity.CatalogNarrativeText,
+                entity.EnemyPoolKey,
+                entity.RewardPoolKey,
+                entity.LawPoolKey,
+                entity.CursePoolKey,
+                entity.CatalogIsUnique));
+        }
+
+        return room;
     }
 
     public static MapNode ToDomain(MapNodeEntity entity)

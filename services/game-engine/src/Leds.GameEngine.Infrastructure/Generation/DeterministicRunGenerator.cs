@@ -1,6 +1,9 @@
 using Leds.GameEngine.Application.Abstractions;
+using Leds.GameEngine.Application.Catalog;
+using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Application.Markov;
 using Leds.GameEngine.Application.RoomMaps;
+using Leds.GameEngine.Domain.Combats.Typing;
 using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
 using Leds.GameEngine.Infrastructure.Generation.Randomness;
@@ -17,19 +20,22 @@ public sealed class DeterministicRunGenerator : IRunGenerator
     private readonly IPalaceRoomStateResolver _palaceRoomStateResolver;
     private readonly IMapRoomGenerator _mapRoomGenerator;
     private readonly IRunPsycheEvolver _psycheEvolver;
+    private readonly ICatalogContentGateway _catalogContentGateway;
 
     public DeterministicRunGenerator(
         ISeededRandomFactory randomFactory,
         IRoomTypeResolver roomTypeResolver,
         IPalaceRoomStateResolver palaceRoomStateResolver,
         IMapRoomGenerator mapRoomGenerator,
-        IRunPsycheEvolver psycheEvolver)
+        IRunPsycheEvolver psycheEvolver,
+        ICatalogContentGateway catalogContentGateway)
     {
         _randomFactory = randomFactory;
         _roomTypeResolver = roomTypeResolver;
         _palaceRoomStateResolver = palaceRoomStateResolver;
         _mapRoomGenerator = mapRoomGenerator;
         _psycheEvolver = psycheEvolver;
+        _catalogContentGateway = catalogContentGateway;
     }
 
     public string GeneratorVersion => DefaultRoomMapLayoutTemplates.GeneratorVersion;
@@ -50,13 +56,17 @@ public sealed class DeterministicRunGenerator : IRunGenerator
             roomDepth: 0,
             GeneratorVersion);
 
-        return await _mapRoomGenerator.GenerateAsync(
-            seed,
-            GeneratorVersion,
-            roomDepth: 0,
-            roomType: RoomType.Threshold,
-            random,
-            cancellationToken);
+        var room = await _mapRoomGenerator.GenerateAsync(
+                    seed,
+                    GeneratorVersion,
+                    roomDepth: 0,
+                    roomType: RoomType.Threshold,
+                    random,
+                    cancellationToken);
+
+        await AttachCatalogRoomAsync(room, RoomType.Threshold, seed, roomDepth: 0, cancellationToken);
+
+        return room;
     }
 
     public async Task<Room> GenerateNextRoomAsync(
@@ -104,7 +114,7 @@ public sealed class DeterministicRunGenerator : IRunGenerator
             nextRoomDepth,
             GeneratorVersion);
 
-        return await _mapRoomGenerator.GenerateAsync(
+        var room = await _mapRoomGenerator.GenerateAsync(
             run.Seed,
             GeneratorVersion,
             nextRoomDepth,
@@ -112,6 +122,74 @@ public sealed class DeterministicRunGenerator : IRunGenerator
             random,
             cancellationToken,
             palaceState);
+        await AttachCatalogRoomAsync(room, roomType, run.Seed, nextRoomDepth, cancellationToken);
+
+        return room;
+    }
+
+    // SAL-2: bind the generated room to a catalog RoomDefinition (Pistburg, etc.)
+    // whose theme matches the resolved room type, within the depth window, picked
+    // deterministically by weight. No match → the room stays purely procedural.
+    private async Task AttachCatalogRoomAsync(
+        Room room,
+        RoomType roomType,
+        string seed,
+        int roomDepth,
+        CancellationToken cancellationToken)
+    {
+        var definitions = await _catalogContentGateway.ListRoomDefinitionsAsync(cancellationToken);
+        var selected = SelectRoomDefinition(definitions, roomType, roomDepth, seed);
+
+        if (selected is null)
+        {
+            return;
+        }
+
+        room.AttachCatalogBinding(new CatalogRoomBinding(
+            selected.Key,
+            selected.DisplayName,
+            selected.NarrativeText,
+            selected.EnemyPoolKey,
+            selected.RewardPoolKey,
+            selected.LawPoolKey,
+            selected.CursePoolKey,
+            selected.IsUnique));
+    }
+
+    private static CatalogRoomDefinition? SelectRoomDefinition(
+        IReadOnlyCollection<CatalogRoomDefinition> definitions,
+        RoomType roomType,
+        int roomDepth,
+        string seed)
+    {
+        var typeName = roomType.ToString();
+
+        var eligible = definitions
+            .Where(d => string.Equals(d.Theme, typeName, StringComparison.OrdinalIgnoreCase))
+            .Where(d => roomDepth >= d.MinDepth && roomDepth <= d.MaxDepth)
+            .OrderBy(d => d.Key, StringComparer.Ordinal)
+            .ToArray();
+
+        if (eligible.Length == 0)
+        {
+            return null;
+        }
+
+        var totalWeight = eligible.Sum(d => Math.Max(1, d.BaseWeight));
+        var roll = DeterministicCombatRoll.UnitInterval($"{seed}|room-def|{roomDepth}|{typeName}");
+        var target = roll * totalWeight;
+
+        var cumulative = 0.0;
+        foreach (var definition in eligible)
+        {
+            cumulative += Math.Max(1, definition.BaseWeight);
+            if (target < cumulative)
+            {
+                return definition;
+            }
+        }
+
+        return eligible[^1];
     }
 
     private static string? ResolveActiveClimate(Run run)

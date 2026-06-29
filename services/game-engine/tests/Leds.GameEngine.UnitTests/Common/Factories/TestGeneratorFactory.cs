@@ -41,6 +41,7 @@ public static class TestGeneratorFactory
             roomTypeResolver,
             stateResolver,
             mapRoomGenerator,
-            new RunPsycheEvolver(calibration));
+            new RunPsycheEvolver(calibration),
+            new StubCatalogContentGateway());
     }
 }

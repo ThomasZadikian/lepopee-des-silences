@@ -88,4 +88,6 @@ public interface ICatalogContentGateway
         CancellationToken cancellationToken = default);
     Task<IReadOnlyCollection<CatalogRewardCursePool>> ListRewardCursePoolsAsync(
     CancellationToken cancellationToken = default);
+    Task<IReadOnlyCollection<CatalogRoomDefinition>> ListRoomDefinitionsAsync(
+    CancellationToken cancellationToken = default);
 }

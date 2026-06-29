@@ -33,6 +33,7 @@ public sealed class Room
         LayoutTemplateVersion = layoutTemplateVersion;
     }
 
+
     public RoomId Id { get; }
 
     public int Depth { get; }
@@ -58,6 +59,15 @@ public sealed class Room
     public string? LayoutTemplateKey { get; }
 
     public string? LayoutTemplateVersion { get; }
+
+
+    public CatalogRoomBinding? CatalogBinding { get; private set; }
+
+    public void AttachCatalogBinding(CatalogRoomBinding binding)
+    {
+        ArgumentNullException.ThrowIfNull(binding);
+        CatalogBinding = binding;
+    }
 
     public IReadOnlyCollection<MapNode> AvailableNodes => _nodes
         .Where(n => n.Row == CurrentNodeDepth && n.State == NodeState.Available)
