@@ -18,7 +18,10 @@ public sealed record RoomDto(
     string? LayoutTemplateKey,
     string? LayoutTemplateVersion,
     string? ActiveClimate = null,
-    PalaceRoomStateDto? PalaceState = null)
+    PalaceRoomStateDto? PalaceState = null,
+    string? CatalogRoomKey = null,
+    string? CatalogName = null,
+    string? CatalogNarrative = null)
 {
     public static RoomDto FromDomain(Room room, IReadOnlyCollection<RunModifier>? runModifiers = null)
     {
@@ -39,7 +42,10 @@ public sealed record RoomDto(
             room.LayoutTemplateKey,
             room.LayoutTemplateVersion,
             activeClimate,
-            PalaceRoomStateDto.FromDomain(room.PalaceState));
+            PalaceRoomStateDto.FromDomain(room.PalaceState),
+            room.CatalogBinding?.Key,
+            room.CatalogBinding?.DisplayName,
+            room.CatalogBinding?.NarrativeText);
     }
 
     private static string? ResolveActiveClimate(

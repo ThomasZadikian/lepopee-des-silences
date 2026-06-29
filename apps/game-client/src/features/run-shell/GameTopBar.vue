@@ -8,7 +8,11 @@ const run    = computed(() => runStore.currentRun);
 const room   = computed(() => run.value?.currentRoom);
 
 const seed       = computed(() => run.value?.seed ?? '—');
-const roomName   = computed(() => room.value?.theme || room.value?.roomType || '—');
+// Prefer the canon room name (e.g. "Le temple de Mounkaanêt") over the abstract theme.
+const roomName    = computed(() =>
+  room.value?.catalogName || room.value?.theme || room.value?.roomType || '—');
+const isCanonRoom = computed(() => Boolean(room.value?.catalogName));
+const roomNarrative = computed(() => room.value?.catalogNarrative ?? '');
 const depth      = computed(() => (room.value?.currentNodeDepth ?? 0) + 1);
 const maxDepth   = computed(() => (room.value?.maxNodeDepth ?? 0) + 1);
 const activeLaws = computed(() => run.value?.activePalaceLaws?.length ?? 0);
@@ -44,7 +48,13 @@ const statusColor = computed(() =>
     <!-- Salle -->
     <div class="es-seg">
       <span class="es-seg__k">Salle</span>
-      <span class="es-seg__v">{{ roomName }}</span>
+            <span
+        class="es-seg__v"
+        :class="{ 'es-room--canon': isCanonRoom }"
+        :title="roomNarrative"
+      >
+        <span v-if="isCanonRoom" class="es-room__sigil" aria-hidden="true">✦</span>{{ roomName }}
+      </span>
     </div>
 
     <!-- Seed -->

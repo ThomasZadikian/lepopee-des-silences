@@ -66,6 +66,12 @@ export type RoomDto = {
   layoutTemplateVersion: string | null;
   activeClimate?: RoomClimateStateDto | null;
   climate?: RoomClimateStateDto | null;
+    /** Catalog room this room was drawn from (e.g. "canon.room.mounkaanet"). Null = procedural. */
+  catalogRoomKey?: string | null;
+  /** Canon room name to display (e.g. "Le temple de Mounkaanêt"). Null = procedural. */
+  catalogName?: string | null;
+  /** Canon room narrative/flavour text. */
+  catalogNarrative?: string | null;
 };
 
 export type RunDto = {
