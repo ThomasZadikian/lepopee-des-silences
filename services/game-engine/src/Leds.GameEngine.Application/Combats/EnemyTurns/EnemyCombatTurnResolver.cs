@@ -80,6 +80,7 @@ public sealed class EnemyCombatTurnResolver : IEnemyCombatTurnResolver
         if (skill is null)
         {
             logEntries.Add(CreateSystemLog("EnemyTurnResolved", $"{actor.DisplayName} has no usable skill.", combat, actor.Id.Value));
+            SpendWastedTurn(combat, actor);
             logEntries.AddRange(AdvanceCombat(combat));
             return new EnemyCombatTurnResolution(true, actor.Id.Value, null, [], logEntries, CombatRuntimeDto.FromDomain(combat));
         }
@@ -87,6 +88,7 @@ public sealed class EnemyCombatTurnResolver : IEnemyCombatTurnResolver
         if (targetIds.Count == 0)
         {
             logEntries.Add(CreateSystemLog("EnemyTurnResolved", $"{actor.DisplayName} has no valid target.", combat, actor.Id.Value));
+            SpendWastedTurn(combat, actor);
             logEntries.AddRange(AdvanceCombat(combat));
             return new EnemyCombatTurnResolution(true, actor.Id.Value, skill.Key, [], logEntries, CombatRuntimeDto.FromDomain(combat));
         }
@@ -96,6 +98,7 @@ public sealed class EnemyCombatTurnResolver : IEnemyCombatTurnResolver
         if (!validationResult.IsValid)
         {
             logEntries.Add(CreateSystemLog("EnemyTurnResolved", validationResult.ErrorMessage!, combat, actor.Id.Value));
+            SpendWastedTurn(combat, actor);
             logEntries.AddRange(AdvanceCombat(combat));
             return new EnemyCombatTurnResolution(true, actor.Id.Value, skill.Key, targetIds, logEntries, CombatRuntimeDto.FromDomain(combat));
         }
@@ -123,6 +126,15 @@ public sealed class EnemyCombatTurnResolver : IEnemyCombatTurnResolver
             targetIds,
             logEntries,
             CombatRuntimeDto.FromDomain(combat));
+    }
+    // A turn that produced no executable action (no usable skill, no valid target, or a
+    // failed validation) still consumes the actor's ATB gauge — otherwise the actor stays
+    // "ready" forever, freezing its gauge full and looping the same failed turn.
+    private static void SpendWastedTurn(Combat combat, Combatant actor)
+    {
+        combat.RegisterActionTaken(
+            actor.Id.Value,
+            AtbActionMath.RecoveryTicks(0, actor.BaseStatSnapshot.Recovery));
     }
 
     /// <summary>
