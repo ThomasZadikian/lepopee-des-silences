@@ -121,6 +121,26 @@ describe('CombatantCard', () => {
     expect(wrapper.find('.presence').classes()).toContain('presence--guarded');
   });
 
+  it('shows a hit effect when isDamaged is true', () => {
+    const wrapper = mountCard(undefined, { isDamaged: true });
+    expect(wrapper.find('.presence__hit-fx').exists()).toBe(true);
+  });
+
+  it('does not show a hit effect when isDamaged is false', () => {
+    const wrapper = mountCard(undefined, { isDamaged: false });
+    expect(wrapper.find('.presence__hit-fx').exists()).toBe(false);
+  });
+
+  it('shows a guard effect when isGuarded is true', () => {
+    const wrapper = mountCard(undefined, { isGuarded: true });
+    expect(wrapper.find('.presence__guard-fx').exists()).toBe(true);
+  });
+
+  it('does not show a guard effect when isGuarded is false', () => {
+    const wrapper = mountCard(undefined, { isGuarded: false });
+    expect(wrapper.find('.presence__guard-fx').exists()).toBe(false);
+  });
+
   it('applies presence--defeated class when status is Defeated', () => {
     const wrapper = mountCard(makeCombatant({ status: 'Defeated' }));
     expect(wrapper.find('.presence').classes()).toContain('presence--defeated');
@@ -161,9 +181,32 @@ describe('CombatantCard', () => {
     expect(wrapper.find('.presence__state--dead').text()).toBe('abattu');
   });
 
-  it('shows guard tag when guard > 0', () => {
+  it('shows the guard number prominently when guard > 0', () => {
     const wrapper = mountCard(makeCombatant({ guard: 20 }));
-    expect(wrapper.find('.presence__tag--guard').text()).toBe('Garde');
+    expect(wrapper.find('.presence__stat--guard').text()).toBe('⛨ 20');
+  });
+
+  it('does not show a guard readout when guard is 0', () => {
+    const wrapper = mountCard(makeCombatant({ guard: 0 }));
+    expect(wrapper.find('.presence__stat--guard').exists()).toBe(false);
+  });
+
+  it('renders a guard segment on the HP bar sized to guard/maxVitality', () => {
+    const wrapper = mountCard(makeCombatant({ currentVitality: 80, maxVitality: 100, guard: 10 }));
+    const guardFill = wrapper.find('.presence__gauge-guard');
+    expect(guardFill.exists()).toBe(true);
+    expect(guardFill.attributes('style')).toContain('10%');
+  });
+
+  it('clamps the guard segment so it never overflows the bar', () => {
+    const wrapper = mountCard(makeCombatant({ currentVitality: 100, maxVitality: 100, guard: 30 }));
+    const guardFill = wrapper.find('.presence__gauge-guard');
+    expect(guardFill.attributes('style')).toContain('0%');
+  });
+
+  it('does not render a guard segment when guard is 0', () => {
+    const wrapper = mountCard(makeCombatant({ guard: 0 }));
+    expect(wrapper.find('.presence__gauge-guard').exists()).toBe(false);
   });
 
   it('disables button when defeated', () => {
@@ -249,6 +292,42 @@ describe('CombatantCard', () => {
     const wrapper = mountCard(makeCombatant({ id: 'combatant-99' }));
     await wrapper.find('.presence__details-trigger').trigger('click');
     expect(wrapper.emitted('select')).toBeUndefined();
+  });
+
+  it('closes the details popover on an outside mousedown', async () => {
+    const c = makeCombatant();
+    const wrapper = mount(CombatantCard, {
+      attachTo: document.body,
+      props: {
+        combatant: c,
+        isCurrentActor: false,
+        isSelectedTarget: false,
+        isSelectable: true,
+        isTargetable: true,
+        isInvalidTarget: false,
+        isActivePlayer: false,
+        isThinking: false,
+        isDamaged: false,
+        isGuarded: false,
+        isJustDefeated: false,
+        isActing: false,
+      },
+      global: {
+        stubs: {
+          AtbGauge: { template: '<div class="atb" />' },
+          EmotionalTypeBadge: { template: '<span class="type-badge" />' },
+        },
+      },
+    });
+
+    await wrapper.find('.presence__details-trigger').trigger('click');
+    expect(wrapper.find('.presence__details-popover').exists()).toBe(true);
+
+    document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('.presence__details-popover').exists()).toBe(false);
+
+    wrapper.unmount();
   });
 
   it('handles zero maxVitality without crashing', () => {

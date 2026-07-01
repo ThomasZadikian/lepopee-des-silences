@@ -22,6 +22,7 @@ import RoomClimateEffects from '../features/room-climate/RoomClimateEffects.vue'
 import RunStatusRibbon from '../features/runs/components/RunStatusRibbon.vue';
 import PartyDrawer from '../features/runs/components/PartyDrawer.vue';
 import RuntimeDebugPanel from '../shared/components/RuntimeDebugPanel.vue';
+import { useClickOutside } from '../shared/composables/useClickOutside';
 import { useRunStore } from '../features/runs/stores/runStore';
 import { useGameUiStore } from '../shared/stores/useGameUiStore';
 import type { CurrentEventChoiceResultDto } from '../features/events/types/eventTypes';
@@ -115,6 +116,16 @@ function clearAllUi() {
   uiStore.closeAll();
 }
 
+// Clicking anywhere outside the open drawers closes them — except on the
+// map itself (its own click handling for choosing/deselecting nodes stays
+// authoritative) and on the status ribbon (whose buttons already toggle
+// their own drawer; letting this listener also fire there would reopen a
+// drawer the same click just closed).
+const drawersRef = ref<HTMLElement | null>(null);
+useClickOutside(drawersRef, clearAllUi, {
+  ignoreSelectors: ['.phase-map__canvas', '.status-ribbon'],
+});
+
 async function handleLeaveRun() {
   combatStore.clearCombat();
   runStore.clearCurrentRun();
@@ -198,57 +209,60 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
           <!-- Elise overlay -->
           <EliseOverlay :message="runStore.lastOutcome?.description" />
 
-          <!-- Node drawer (right, absolute positioned) -->
-          <Transition name="slide">
-            <PalaceNodeDrawer
-              v-if="showNodeDrawer"
-              :node="runStore.selectedNode"
-              :is-loading="runStore.isLoading"
-              :has-active-combat="Boolean(runStore.currentRun.activeCombatId)"
-              :has-pending-reward="Boolean(runStore.pendingRewardOffer || runStore.currentRun.pendingRewardOfferId)"
-              @resolve-current-event="runStore.confirmAndResolveNode"
-              @generate-next-nodes="runStore.progressRun"
-              @choose-and-resolve="runStore.confirmAndResolveNode"
-              @close="runStore.resetPreviewedNode"
-            />
-          </Transition>
-
-          <!-- Inventory drawer (right, absolute positioned) -->
-          <Transition name="slide">
-            <InventoryDrawer
-              v-if="showInventoryDrawer"
-              :items="runStore.currentRun.inventoryItems ?? []"
-              :run-id="runStore.currentRun.id"
-              @close="uiStore.closeDrawer"
-            />
-          </Transition>
-
-          <!-- Laws / influences popover (right, absolute positioned) -->
-          <Transition name="slide">
-              <LawsPopover
-                v-if="showLaws"
-                :laws="runStore.currentRun.activePalaceLaws"
-                :curses="runStore.currentRun.activeCurses"
-                :modifiers="runStore.currentRun.activeModifiers ?? null"
-                :palace-indicators="runStore.currentRun.palaceIndicators ?? null"
-                :room-climate="runStore.currentRun.currentRoom.activeClimate ?? runStore.currentRun.currentRoom.climate ?? null"
-                show-room-climate
-                @close="uiStore.toggleLaws"
+          <!-- Drawers (right, absolute positioned) — a click outside all of them closes whichever is open -->
+          <div ref="drawersRef">
+            <!-- Node drawer -->
+            <Transition name="slide">
+              <PalaceNodeDrawer
+                v-if="showNodeDrawer"
+                :node="runStore.selectedNode"
+                :is-loading="runStore.isLoading"
+                :has-active-combat="Boolean(runStore.currentRun.activeCombatId)"
+                :has-pending-reward="Boolean(runStore.pendingRewardOffer || runStore.currentRun.pendingRewardOfferId)"
+                @resolve-current-event="runStore.confirmAndResolveNode"
+                @generate-next-nodes="runStore.progressRun"
+                @choose-and-resolve="runStore.confirmAndResolveNode"
+                @close="runStore.resetPreviewedNode"
               />
-          </Transition>
+            </Transition>
 
-          <!-- Party drawer (right, absolute positioned) -->
-          <Transition name="slide">
-            <PartyDrawer
-              v-if="showPartyDrawer"
-              :allies="runStore.currentRun.party?.members ?? null"
-              :modifiers="runStore.currentRun.activeModifiers ?? null"
-              :laws="runStore.currentRun.activePalaceLaws ?? null"
-              :curses="runStore.currentRun.activeCurses ?? null"
-              :items="runStore.currentRun.inventoryItems ?? null"
-              @close="uiStore.closeDrawer"
-            />
-          </Transition>
+            <!-- Inventory drawer -->
+            <Transition name="slide">
+              <InventoryDrawer
+                v-if="showInventoryDrawer"
+                :items="runStore.currentRun.inventoryItems ?? []"
+                :run-id="runStore.currentRun.id"
+                @close="uiStore.closeDrawer"
+              />
+            </Transition>
+
+            <!-- Laws / influences popover -->
+            <Transition name="slide">
+                <LawsPopover
+                  v-if="showLaws"
+                  :laws="runStore.currentRun.activePalaceLaws"
+                  :curses="runStore.currentRun.activeCurses"
+                  :modifiers="runStore.currentRun.activeModifiers ?? null"
+                  :palace-indicators="runStore.currentRun.palaceIndicators ?? null"
+                  :room-climate="runStore.currentRun.currentRoom.activeClimate ?? runStore.currentRun.currentRoom.climate ?? null"
+                  show-room-climate
+                  @close="uiStore.toggleLaws"
+                />
+            </Transition>
+
+            <!-- Party drawer -->
+            <Transition name="slide">
+              <PartyDrawer
+                v-if="showPartyDrawer"
+                :allies="runStore.currentRun.party?.members ?? null"
+                :modifiers="runStore.currentRun.activeModifiers ?? null"
+                :laws="runStore.currentRun.activePalaceLaws ?? null"
+                :curses="runStore.currentRun.activeCurses ?? null"
+                :items="runStore.currentRun.inventoryItems ?? null"
+                @close="uiStore.closeDrawer"
+              />
+            </Transition>
+          </div>
         </div>
       </template>
 
