@@ -732,6 +732,13 @@ public sealed class CatalogSeedRunner
     private async Task SeedCanonSkillsAsync(CancellationToken cancellationToken)
     {
         // key, name, desc, skillType, targeting, effectType, mana, power
+        // Referenced by every enemy/boss's skillKeys as their default attack — was
+        // never actually seeded, causing "Missing skill definitions for keys:
+        // skill.basic.strike" to throw as soon as any encounter tried to draft an enemy.
+        await UpsertSkillAsync("skill.basic.strike", "Frappe",
+            "Un coup simple, sans fioriture. Ce que tout ce qui a des poings ou des crocs sait faire.",
+            "Damage", "SingleEnemy", "Damage", mana: 0, power: 10, cancellationToken);
+
         await UpsertSkillAsync("canon.skill.flamme-froide", "Flamme froide",
             "Bleu-violet, elle ne brûle pas la peau mais la chair, et le givre transperce l'os. Le sort de l'apothicaire.",
             "Damage", "SingleEnemy", "Damage", mana: 8, power: 22, cancellationToken);
@@ -1357,7 +1364,7 @@ public sealed class CatalogSeedRunner
                 BaseWeight = 1,
                 CompatibleRoomTypesJson = JsonSerializer.Serialize(roomTypes),
                 TagsJson = JsonSerializer.Serialize(new[] { "canon", "boss" }),
-                SkillKeysJson = JsonSerializer.Serialize(new[] { "skill.basic.strike" }),
+                SkillKeysJson = JsonSerializer.Serialize(skillKeys),
                 CreatedAtUtc = now,
                 UpdatedAtUtc = now
             };
@@ -1372,7 +1379,10 @@ public sealed class CatalogSeedRunner
                 Speed = speed,
                 Focus = 2
             };
-            enemy.SkillLinks.Add(new EnemySkillLinkEntity { EnemyDefinitionId = enemy.Id, SkillDefinitionKey = "skill.basic.strike" });
+            foreach (var skillKey in skillKeys.Distinct(StringComparer.OrdinalIgnoreCase))
+            {
+                enemy.SkillLinks.Add(new EnemySkillLinkEntity { EnemyDefinitionId = enemy.Id, SkillDefinitionKey = skillKey });
+            }
             _ctx.EnemyDefinitions.Add(enemy);
         }
         else
@@ -1383,11 +1393,23 @@ public sealed class CatalogSeedRunner
             enemy.Archetype = "Boss"; enemy.Rank = "Boss"; enemy.Role = "Boss";
             enemy.BaseDifficulty = difficulty; enemy.IsBoss = true; enemy.IsElite = true;
             enemy.CompatibleRoomTypesJson = JsonSerializer.Serialize(roomTypes);
+            enemy.TagsJson = JsonSerializer.Serialize(new[] { "canon", "boss" });
+            enemy.SkillKeysJson = JsonSerializer.Serialize(skillKeys);
             enemy.UpdatedAtUtc = now;
             enemy.StatBlock ??= new EnemyStatBlockEntity { Id = Guid.NewGuid(), EnemyDefinitionId = enemy.Id };
             enemy.StatBlock.MaxVitality = vit; enemy.StatBlock.AttackPower = atk;
             enemy.StatBlock.Defense = def; enemy.StatBlock.StartingGuard = guard;
             enemy.StatBlock.Speed = speed; enemy.StatBlock.Focus = 2;
+
+            var desired = skillKeys.Distinct(StringComparer.OrdinalIgnoreCase).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            foreach (var skillKey in desired.Where(k => enemy.SkillLinks.All(l => !string.Equals(l.SkillDefinitionKey, k, StringComparison.OrdinalIgnoreCase))))
+            {
+                enemy.SkillLinks.Add(new EnemySkillLinkEntity
+                {
+                    EnemyDefinitionId = enemy.Id,
+                    SkillDefinitionKey = skillKey
+                });
+            }
         }
 
         // 2) une RoomBossDefinition par room type couvert. Le premier roomType garde la clé
