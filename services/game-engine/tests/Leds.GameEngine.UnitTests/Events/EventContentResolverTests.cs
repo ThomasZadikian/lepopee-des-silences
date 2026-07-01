@@ -21,14 +21,14 @@ public sealed class EventContentResolverTests
         _resolver = new EventContentResolver(
             new IEventContentResolutionStrategy[]
             {
-                new CombatEventContentResolutionStrategy(catalogGateway),
-                new RoomBossEventContentResolutionStrategy(catalogGateway, new Leds.GameEngine.Infrastructure.Generation.Rooms.Bosses.RoomBossProfileResolver(catalogGateway)),
+                new CombatEventContentResolutionStrategy(),
+                new RoomBossEventContentResolutionStrategy(new Leds.GameEngine.Infrastructure.Generation.Rooms.Bosses.RoomBossProfileResolver(catalogGateway)),
                 new ItemEventContentResolutionStrategy(catalogGateway),
                 new PalaceLawEventContentResolutionStrategy(catalogGateway),
                 new NpcEventContentResolutionStrategy(catalogGateway, new NpcEncounterSelector()),
                 new RestEventContentResolutionStrategy(catalogGateway),
                 new MerchantEventContentResolutionStrategy(catalogGateway),
-                new RareEventContentResolutionStrategy(catalogGateway)
+                new RareEventContentResolutionStrategy()
             });
     }
 
