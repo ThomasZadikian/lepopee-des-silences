@@ -297,7 +297,7 @@ const confirmBtnClass = computed(() =>
     radial-gradient(64% 56% at 86% 80%, var(--wash-blood), transparent 58%),
     radial-gradient(58% 50% at 60% 26%, var(--wash-sap),   transparent 60%),
     radial-gradient(56% 50% at 12% 92%, var(--wash-gold),  transparent 60%),
-    radial-gradient(150% 130% at 50% -10%, oklch(0.310 0.058 272) 0%, var(--bg) 48%, var(--void) 100%);
+    radial-gradient(150% 130% at 50% -10%, oklch(0.310 0.058 60) 0%, var(--bg) 48%, var(--void) 100%);
   color: var(--ink);
   font-family: var(--font);
   -webkit-font-smoothing: antialiased;
@@ -331,7 +331,7 @@ const confirmBtnClass = computed(() =>
   border: 1px solid var(--line-soft);
   border-radius: 3px;
   padding: 2px 8px;
-  background: oklch(0.22 0.03 272 / 0.6);
+  background: oklch(0.22 0.03 60 / 0.6);
 }
 
 .rop-state-chip {
@@ -356,20 +356,20 @@ const confirmBtnClass = computed(() =>
   flex-direction: column;
   cursor: pointer;
   border: 1px solid var(--line);
-  background: linear-gradient(180deg, var(--panel-2, oklch(0.28 0.03 268 / 0.6)), var(--panel, oklch(0.24 0.025 270)));
+  background: linear-gradient(180deg, var(--panel-2, oklch(0.28 0.03 60 / 0.6)), var(--panel, oklch(0.24 0.025 60)));
   transition: border-color 0.24s, transform 0.24s, box-shadow 0.24s, background 0.24s;
 }
 
 .rop-card:hover:not(.rop-card--frozen) {
   transform: translateY(-5px);
   border-color: var(--frost-dim);
-  box-shadow: 0 22px 44px -26px oklch(0.1 0.03 272 / 0.85);
+  box-shadow: 0 22px 44px -26px oklch(0.1 0.03 60 / 0.85);
 }
 
 .rop-card--sel {
   transform: translateY(-7px);
   border-color: var(--frost);
-  background: linear-gradient(180deg, var(--raise, oklch(0.32 0.04 268 / 0.7)), var(--panel, oklch(0.24 0.025 270)));
+  background: linear-gradient(180deg, var(--raise, oklch(0.32 0.04 60 / 0.7)), var(--panel, oklch(0.24 0.025 60)));
 }
 
 .rop-card--sel.rop-card--gold {

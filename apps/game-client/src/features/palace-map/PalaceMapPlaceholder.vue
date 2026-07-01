@@ -417,8 +417,8 @@ function getRiskLabel(node: NodeDto): string {
   overflow: hidden;
   border: 1px solid color-mix(in oklch, var(--line), transparent 60%);
   background:
-    radial-gradient(circle at 20% 50%, rgb(120 180 220 / 8%), transparent 18%),
-    radial-gradient(circle at 88% 50%, rgb(180 40 60 / 9%), transparent 12%);
+    radial-gradient(circle at 20% 50%, var(--wash-gold), transparent 18%),
+    radial-gradient(circle at 88% 50%, var(--wash-blood), transparent 12%);
 }
 
 .map__canvas::before {

@@ -1,31 +1,8 @@
 <script setup lang="ts">
-import type { CombatantRuntimeDto, CombatantStatusEffectDto } from '../types/combatContracts';
+import type { CombatantRuntimeDto } from '../types/combatContracts';
 import AtbGauge from './AtbGauge.vue';
 import EmotionalTypeBadge from './EmotionalTypeBadge.vue';
-
-function statusIcon(kind: string, magnitude: number): string {
-  switch (kind) {
-    case 'DamageOverTime': return '☠';
-    case 'HealOverTime': return '✚';
-    case 'StatModifier': return magnitude >= 0 ? '▲' : '▼';
-    case 'Stun': return '✦';
-    case 'Silence': return '∅';
-    case 'AtbLock': return '⏸';
-    default: return '•';
-  }
-}
-
-function statusClass(kind: string, magnitude: number): string {
-  if (kind === 'DamageOverTime') return 'presence__fx-badge--dot';
-  if (kind === 'HealOverTime') return 'presence__fx-badge--hot';
-  if (kind === 'StatModifier') return magnitude >= 0 ? 'presence__fx-badge--buff' : 'presence__fx-badge--debuff';
-  return 'presence__fx-badge--control';
-}
-
-function fxTitle(fx: CombatantStatusEffectDto): string {
-  return fx.stacks > 1 ? `${fx.displayName} ×${fx.stacks}` : fx.displayName;
-}
-
+import StatusEffectToken from '../../../shared/components/StatusEffectToken.vue';
 
 defineProps<{
   combatant: CombatantRuntimeDto;
@@ -72,6 +49,10 @@ function hpRatio(c: CombatantRuntimeDto): number {
     :disabled="combatant.status === 'Defeated' || !isSelectable"
     @click="$emit('select', combatant.id)"
   >
+    <div class="presence__atb-tube" aria-hidden="true">
+      <AtbGauge :gauge="combatant.atbGauge ?? 0" :fill-per-tick="combatant.atbFillPerTick ?? 10" :active="isCurrentActor" />
+    </div>
+
     <span class="presence__portrait" aria-hidden="true" />
 
     <div class="presence__topline">
@@ -88,24 +69,21 @@ function hpRatio(c: CombatantRuntimeDto): number {
     </div>
 
      <div v-if="(combatant.statusEffects?.length ?? 0) > 0" class="presence__fx">
-      <span
+      <StatusEffectToken
         v-for="fx in combatant.statusEffects"
         :key="fx.key"
         class="presence__fx-badge"
-        :class="statusClass(fx.kind, fx.magnitude)"
-        :title="fxTitle(fx)"
-      >
-        {{ statusIcon(fx.kind, fx.magnitude) }}<small v-if="fx.stacks > 1">{{ fx.stacks }}</small>
-      </span>
+        :kind="fx.kind"
+        :magnitude="fx.magnitude"
+        :stacks="fx.stacks"
+        :px="26"
+      />
     </div>
 
     <div class="presence__gauge">
       <div class="presence__gauge-fill" :style="{ width: hpRatio(combatant) * 100 + '%' }" />
     </div>
 
-    <div class="presence__atb" aria-hidden="true">
-      <AtbGauge :gauge="combatant.atbGauge ?? 0" :fill-per-tick="combatant.atbFillPerTick ?? 10" :active="isCurrentActor" />    
-    </div>
     <div class="presence__stats">
       <span class="presence__stat presence__stat--hp">PV {{ combatant.currentVitality }} / {{ combatant.maxVitality }}</span>
       <span v-if="combatant.guard > 0" class="presence__stat presence__stat--guard">{{ combatant.guard }}</span>
@@ -127,7 +105,7 @@ function hpRatio(c: CombatantRuntimeDto): number {
 .presence {
   position: relative;
   display: grid;
-  grid-template-columns: 3.5rem minmax(0, 1fr);
+  grid-template-columns: 18px 3.5rem minmax(0, 1fr);
   align-items: center;
   gap: var(--space-1);
   width: 100%;
@@ -148,16 +126,24 @@ function hpRatio(c: CombatantRuntimeDto): number {
   border-left: 2px solid var(--edge-frost);
 }
 
+.presence__atb-tube {
+  grid-row: 1 / span 6;
+  grid-column: 1;
+  align-self: stretch;
+  min-height: 5.6rem;
+}
+
 .presence__portrait {
   grid-row: 1 / span 5;
+  grid-column: 2;
   width: 3.2rem;
   height: 3.2rem;
   border: 1px solid var(--edge-frost);
   border-radius: 4px;
   background:
     radial-gradient(circle at 65% 20%, var(--gold), transparent 8%),
-    radial-gradient(circle at 45% 36%, oklch(0.5 0.06 272 / 0.38), transparent 48%),
-    linear-gradient(145deg, oklch(0.11 0.03 272), oklch(0.24 0.04 272));
+    radial-gradient(circle at 45% 36%, oklch(0.5 0.06 252 / 0.38), transparent 48%),
+    linear-gradient(145deg, var(--void), var(--raise));
   box-shadow: inset 0 0 20px oklch(0 0 0 / 0.45);
 }
 
@@ -200,7 +186,7 @@ function hpRatio(c: CombatantRuntimeDto): number {
 .presence--just-defeated { animation: defeat-fade 900ms ease-out; }
 
 .presence__topline {
-  grid-column: 2;
+  grid-column: 3;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -231,7 +217,7 @@ function hpRatio(c: CombatantRuntimeDto): number {
 }
 
 .presence__substats {
-  grid-column: 2;
+  grid-column: 3;
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
@@ -245,7 +231,7 @@ function hpRatio(c: CombatantRuntimeDto): number {
 .presence__state--dead { color: var(--blood); border-color: color-mix(in oklch, var(--blood), transparent 50%); }
 
 .presence__name {
-  grid-column: 2;
+  grid-column: 3;
   font-family: var(--font);
   font-size: 0.82rem;
   color: var(--ink-2);
@@ -253,7 +239,7 @@ function hpRatio(c: CombatantRuntimeDto): number {
 }
 
 .presence__tags {
-  grid-column: 2;
+  grid-column: 3;
   display: flex;
   justify-content: flex-end;
   flex-wrap: wrap;
@@ -277,7 +263,7 @@ function hpRatio(c: CombatantRuntimeDto): number {
 .presence__tag--gold { color: var(--gold); border-color: color-mix(in oklch, var(--gold), transparent 58%); }
 
 .presence__gauge {
-  grid-column: 2;
+  grid-column: 3;
   height: 3px;
   background: var(--panel);
   border-radius: 2px;
@@ -293,12 +279,8 @@ function hpRatio(c: CombatantRuntimeDto): number {
 
 .presence--ally .presence__gauge-fill { background: var(--frost-dim); }
 
-.presence__atb {
-  grid-column: 2;
-}
-
 .presence__stats {
-  grid-column: 2;
+  grid-column: 3;
   display: flex;
   justify-content: space-between;
   flex-wrap: wrap;
@@ -357,25 +339,6 @@ function hpRatio(c: CombatantRuntimeDto): number {
 }
 
 .presence__fx-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 1px;
-  padding: 1px 5px;
-  border-radius: 999px;
-  border: 1px solid var(--line, oklch(0.5 0.02 272 / 0.4));
-  font-size: 0.62rem;
-  line-height: 1.3;
-  background: oklch(0.18 0.03 272 / 0.7);
+  flex: 0 0 auto;
 }
-
-.presence__fx-badge small {
-  font-size: 0.5rem;
-  opacity: 0.85;
-}
-
-.presence__fx-badge--dot     { color: oklch(0.78 0.16 145); border-color: oklch(0.78 0.16 145 / 0.5); }
-.presence__fx-badge--hot     { color: oklch(0.82 0.13 200); border-color: oklch(0.82 0.13 200 / 0.5); }
-.presence__fx-badge--buff    { color: var(--gold, oklch(0.86 0.10 86)); border-color: oklch(0.86 0.10 86 / 0.5); }
-.presence__fx-badge--debuff  { color: oklch(0.78 0.16 25); border-color: oklch(0.78 0.16 25 / 0.5); }
-.presence__fx-badge--control { color: oklch(0.80 0.13 300); border-color: oklch(0.80 0.13 300 / 0.5); }
 </style>

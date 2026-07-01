@@ -311,8 +311,8 @@ button {
 .es-runbar {
   display: flex; align-items: stretch; height: 62px; position: relative;
   border-bottom: 1px solid var(--line);
-  background: linear-gradient(180deg, oklch(0.30 0.030 268 / 0.7), oklch(0.22 0.028 270 / 0.5));
-  box-shadow: 0 12px 28px -18px oklch(0.10 0.03 272 / 0.7);
+  background: linear-gradient(180deg, var(--panel-2), var(--bg-2));
+  box-shadow: 0 12px 28px -18px oklch(0.10 0.03 60 / 0.7);
 }
 .es-runbar::after {
   content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; filter: blur(0.5px);

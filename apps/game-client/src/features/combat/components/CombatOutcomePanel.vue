@@ -130,7 +130,7 @@ defineEmits<{
 .cop-root--victory .cop-backdrop {
   background:
     radial-gradient(ellipse 80% 60% at 50% 40%, oklch(.50 .12 84 / .22) 0%, transparent 65%),
-    oklch(.14 .03 272 / .88);
+    oklch(.14 .03 60 / .88);
 }
 
 .cop-root--defeat .cop-backdrop {

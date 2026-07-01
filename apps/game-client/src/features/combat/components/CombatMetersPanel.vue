@@ -199,7 +199,7 @@ const enemyOption = computed(() => optionFor(enemyMetric.value));
 <style scoped>
 .damage-report {
   border: 1px solid var(--line-soft);
-  background: linear-gradient(180deg, oklch(0.2 0.04 272 / 0.98), oklch(0.17 0.04 272 / 0.98));
+  background: linear-gradient(180deg, oklch(0.2 0.04 60 / 0.98), oklch(0.17 0.04 60 / 0.98));
 }
 
 .damage-report__header {
@@ -277,7 +277,7 @@ const enemyOption = computed(() => optionFor(enemyMetric.value));
   min-height: 1.6rem;
   border: 1px solid var(--line-soft);
   border-radius: 3px;
-  background: oklch(0.18 0.035 272 / 0.65);
+  background: oklch(0.18 0.035 60 / 0.65);
   color: var(--ink-4);
   font: inherit;
   letter-spacing: inherit;
@@ -319,7 +319,7 @@ const enemyOption = computed(() => optionFor(enemyMetric.value));
   min-width: 15rem;
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
-  background: oklch(0.20 0.040 272 / 0.98);
+  background: oklch(0.20 0.040 60 / 0.98);
   backdrop-filter: blur(8px);
   box-shadow: var(--shadow-deep);
   overflow: hidden;
@@ -344,7 +344,7 @@ const enemyOption = computed(() => optionFor(enemyMetric.value));
 }
 
 .ms__option:hover {
-  background: oklch(0.26 0.045 272 / 0.8);
+  background: oklch(0.26 0.045 60 / 0.8);
   color: var(--ink-2);
 }
 
@@ -432,7 +432,7 @@ const enemyOption = computed(() => optionFor(enemyMetric.value));
 .damage-row__bar {
   display: flex;
   height: 10px;
-  background: oklch(0.08 0.02 272 / 0.9);
+  background: oklch(0.08 0.02 60 / 0.9);
   border-radius: 1px;
   overflow: hidden;
 }

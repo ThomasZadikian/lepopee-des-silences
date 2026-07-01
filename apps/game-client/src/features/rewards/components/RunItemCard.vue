@@ -107,7 +107,7 @@ function effectTone(effectType: string): 'sap' | 'frost' | 'gold' | 'blood' | ''
 .ric {
   border: 1px solid var(--line-soft);
   border-radius: 5px;
-  background: linear-gradient(180deg, oklch(0.30 0.034 268 / 0.38), oklch(0.24 0.028 268 / 0.30));
+  background: linear-gradient(180deg, oklch(0.30 0.034 60 / 0.38), oklch(0.24 0.028 60 / 0.30));
   padding: 13px 14px;
   display: flex;
   flex-direction: column;
@@ -160,7 +160,7 @@ function effectTone(effectType: string): 'sap' | 'frost' | 'gold' | 'blood' | ''
   border-radius: 3px;
   border: 1px solid var(--line);
   color: var(--ink-4);
-  background: oklch(0.26 0.025 268 / 0.5);
+  background: oklch(0.26 0.025 60 / 0.5);
 }
 
 .ric__rarity--sap   { border-color: oklch(0.70 0.09 162 / 0.45); color: var(--sap);   background: oklch(0.50 0.07 162 / 0.12); }
@@ -194,7 +194,7 @@ function effectTone(effectType: string): 'sap' | 'frost' | 'gold' | 'blood' | ''
   border-radius: 3px;
   border: 1px solid var(--line);
   color: var(--ink-3);
-  background: oklch(0.24 0.025 268 / 0.5);
+  background: oklch(0.24 0.025 60 / 0.5);
 }
 
 .ric__effect-badge--sap   { border-color: oklch(0.70 0.09 162 / 0.4); color: var(--sap);   background: oklch(0.50 0.07 162 / 0.1); }

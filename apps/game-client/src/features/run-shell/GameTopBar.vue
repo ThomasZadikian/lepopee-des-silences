@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import { RouterLink } from 'vue-router';
 import { useRunStore } from '../runs/stores/runStore';
 
 const runStore = useRunStore();
@@ -85,12 +86,40 @@ const statusColor = computed(() =>
     </div>
 
     <!-- État -->
-    <div class="es-seg" style="padding-right: 30px; border-right: none; align-items: flex-end">
+    <div class="es-seg" style="align-items: flex-end">
       <span class="es-seg__k">État</span>
       <span class="es-seg__v" :style="{ color: statusColor }">● {{ status }}</span>
+    </div>
+
+    <!-- Références : statuts & bestiaire -->
+    <div class="es-seg es-runbar__refs" style="padding-right: 30px; border-right: none">
+      <RouterLink class="es-runbar__ref-link" to="/statuts">Statuts</RouterLink>
+      <RouterLink class="es-runbar__ref-link" to="/manifestations">Manifestations</RouterLink>
     </div>
 
     <!-- Slot pour actions supplémentaires (boutons Sauvegarder, Lois, etc.) -->
     <slot />
   </header>
 </template>
+
+<style scoped>
+.es-runbar__refs {
+  flex-direction: row;
+  align-items: center;
+  gap: 14px;
+}
+
+.es-runbar__ref-link {
+  font-family: var(--font-caps);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.es-runbar__ref-link:hover {
+  color: var(--gold);
+}
+</style>

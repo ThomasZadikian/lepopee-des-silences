@@ -205,7 +205,7 @@ describe('CombatantCard', () => {
         { key: 'buff-1', displayName: 'Power Up', kind: 'StatModifier', stat: 'attack', magnitude: 10, stacks: 3 },
       ],
     }));
-    expect(wrapper.find('.presence__fx-badge small').text()).toBe('3');
+    expect(wrapper.find('.presence__fx-badge .sigil__stacks').text()).toBe('3');
   });
 
   it('does not render status effects section when no effects', () => {

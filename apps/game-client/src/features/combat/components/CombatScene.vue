@@ -11,6 +11,7 @@ import CombatMetersPanel from './CombatMetersPanel.vue';
 import CombatOutcomePanel from './CombatOutcomePanel.vue';
 import EmotionalTypeBadge from './EmotionalTypeBadge.vue';
 import SkillBar from './SkillBar.vue';
+import StatusEffectToken from '../../../shared/components/StatusEffectToken.vue';
 
 const props = defineProps<{
   runId: string;
@@ -186,30 +187,6 @@ function floatLabel(type: string, amount: number): string {
   return `-${amount}`;
 }
 
-function fxIcon(kind: string, magnitude: number): string {
-  switch (kind) {
-    case 'DamageOverTime': return '☠';
-    case 'HealOverTime': return '✚';
-    case 'StatModifier': return magnitude >= 0 ? '▲' : '▼';
-    case 'Stun': return '✦';
-    case 'Silence': return '∅';
-    case 'AtbLock': return '⏸';
-    default: return '•';
-  }
-}
-
-function fxClass(kind: string, magnitude: number): string {
-  if (kind === 'DamageOverTime') return 'enemy-figure__fx-badge--dot';
-  if (kind === 'HealOverTime') return 'enemy-figure__fx-badge--hot';
-  if (kind === 'StatModifier') return magnitude >= 0 ? 'enemy-figure__fx-badge--buff' : 'enemy-figure__fx-badge--debuff';
-  return 'enemy-figure__fx-badge--control';
-}
-
-function fxTitle(fx: { displayName: string; stacks: number }): string {
-  return fx.stacks > 1 ? `${fx.displayName} ×${fx.stacks}` : fx.displayName;
-}
-
-
 watch(() => combatStore.terminalEvent, (event) => {
   if (event?.kind === 'defeat') emit('combatFailed');
 });
@@ -340,10 +317,15 @@ watch(
 
         </div>
 
-        <!-- Seuil (central divider) -->
+        <!-- Seuil (central divider) : manomètre de la pression du Palais -->
         <div class="combat-scene__seuil">
           <div class="seuil-line" />
-          <span class="seuil-glyph">◈</span>
+          <div class="seuil-manometer" aria-hidden="true">
+            <div class="seuil-manometer__ticks" />
+            <div class="seuil-manometer__needle" />
+            <div class="seuil-manometer__hub" />
+            <span class="seuil-manometer__label">pression</span>
+          </div>
           <div class="seuil-line" />
         </div>
 
@@ -390,18 +372,19 @@ watch(
               ⚔ {{ combatant.attackPower ?? 0 }} · ⛨ {{ combatant.defense ?? 0 }} · ⚡ {{ combatant.speed ?? 0 }} · ◎ {{ combatant.focus ?? 0 }}
             </span>
             <span v-if="(combatant.statusEffects?.length ?? 0) > 0" class="enemy-figure__fx">
-              <span
+              <StatusEffectToken
                 v-for="fx in combatant.statusEffects"
                 :key="fx.key"
-                class="enemy-figure__fx-badge"
-                :class="fxClass(fx.kind, fx.magnitude)"
-                :title="fxTitle(fx)"
-              >{{ fxIcon(fx.kind, fx.magnitude) }}<small v-if="fx.stacks > 1">{{ fx.stacks }}</small></span>
+                :kind="fx.kind"
+                :magnitude="fx.magnitude"
+                :stacks="fx.stacks"
+                :px="26"
+              />
             </span>
             <span v-if="combatant.guard > 0">Garde</span>
             <span class="enemy-figure__tags">
             </span>
-            <AtbGauge class="enemy-figure__atb" :gauge="combatant.atbGauge ?? 0" :fill-per-tick="combatant.atbFillPerTick ?? 10" :active="isVisuallyActive(combatant.id)" />            
+            <AtbGauge class="enemy-figure__atb" :gauge="combatant.atbGauge ?? 0" :fill-per-tick="combatant.atbFillPerTick ?? 10" :active="isVisuallyActive(combatant.id)" :vertical="false" />
           <span class="enemy-figure__hp">
               <span class="enemy-figure__hp-bar">
                 <span :style="{ width: hpRatio(combatant.currentVitality, combatant.maxVitality) * 100 + '%' }" />
@@ -519,7 +502,7 @@ watch(
   margin: 10px var(--space-4) 0;
   padding: 6px var(--space-3);
   min-height: 2.7rem;
-  background: linear-gradient(180deg, oklch(0.22 0.045 272 / 0.88), oklch(0.17 0.04 272 / 0.9));
+  background: linear-gradient(180deg, oklch(0.22 0.045 60 / 0.88), oklch(0.17 0.04 60 / 0.9));
 }
 
 .combat-scene__initiative-title {
@@ -553,7 +536,7 @@ watch(
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--ink-3);
-  background: oklch(0.18 0.035 272 / 0.68);
+  background: oklch(0.18 0.035 60 / 0.68);
 }
 
 .initiative-pill--active {
@@ -579,7 +562,7 @@ watch(
   height: 100%;
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
-  background: oklch(0.17 0.035 272 / 0.55);
+  background: oklch(0.17 0.035 60 / 0.55);
   color: var(--ink-4);
   font-family: var(--font-caps);
   font-size: 0.68rem;
@@ -688,10 +671,68 @@ watch(
   background: linear-gradient(to bottom, transparent, var(--line-strong), transparent);
 }
 
-.seuil-glyph {
-  font-size: 1.2rem;
-  color: var(--ink-4);
-  opacity: 0.5;
+.seuil-manometer {
+  position: relative;
+  flex: 0 0 auto;
+  width: 4.6rem;
+  height: 4.6rem;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: radial-gradient(circle at 50% 40%, var(--panel), var(--void));
+  box-shadow: inset 0 2px 10px oklch(0.08 0.015 48 / 0.75), 0 0 22px oklch(0.74 0.15 60 / 0.1);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.seuil-manometer__ticks {
+  position: absolute;
+  inset: 7px;
+  border-radius: 50%;
+  opacity: 0.32;
+  background: repeating-conic-gradient(from 215deg, var(--ink-5) 0deg 1.2deg, transparent 1.2deg 18deg);
+  -webkit-mask: radial-gradient(circle, transparent 60%, #000 61%);
+  mask: radial-gradient(circle, transparent 60%, #000 61%);
+}
+
+.seuil-manometer__needle {
+  position: absolute;
+  left: 50%;
+  bottom: 50%;
+  width: 2px;
+  height: 1.55rem;
+  background: linear-gradient(var(--gold-hi), var(--gold-dim));
+  transform-origin: bottom center;
+  box-shadow: 0 0 6px var(--gold);
+  animation: seuil-sweep 9s ease-in-out infinite;
+}
+
+.seuil-manometer__hub {
+  position: absolute;
+  left: 50%;
+  bottom: 50%;
+  width: 7px;
+  height: 7px;
+  transform: translate(-50%, 50%);
+  border-radius: 50%;
+  background: var(--gold);
+  box-shadow: 0 0 8px var(--gold);
+}
+
+.seuil-manometer__label {
+  position: relative;
+  margin-bottom: 8px;
+  font-family: var(--font-caps);
+  font-size: 0.5rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-5);
+}
+
+@keyframes seuil-sweep {
+  0% { transform: translateX(-50%) rotate(-44deg); }
+  50% { transform: translateX(-50%) rotate(40deg); }
+  100% { transform: translateX(-50%) rotate(-44deg); }
 }
 
 .enemy-figure {
@@ -724,11 +765,11 @@ watch(
   margin: 0 auto var(--space-1);
   border-radius: 46% 46% 54% 54% / 14% 14% 88% 88%;
   background:
-    radial-gradient(circle at 38% 20%, oklch(0.48 0.04 272 / 0.28), transparent 30%),
-    linear-gradient(180deg, oklch(0.25 0.045 272 / 0.9), oklch(0.08 0.025 272 / 0.92));
-  border: 1px solid oklch(0.55 0.07 272 / 0.18);
+    radial-gradient(circle at 38% 20%, oklch(0.48 0.04 60 / 0.28), transparent 30%),
+    linear-gradient(180deg, oklch(0.25 0.045 60 / 0.9), oklch(0.08 0.025 60 / 0.92));
+  border: 1px solid oklch(0.55 0.07 60 / 0.18);
   box-shadow:
-    inset 0 20px 35px oklch(0.65 0.07 272 / 0.08),
+    inset 0 20px 35px oklch(0.65 0.07 60 / 0.08),
     0 18px 40px oklch(0 0 0 / 0.36);
 }
 
@@ -736,7 +777,7 @@ watch(
 .enemy-figure:hover .enemy-figure__shape {
   border-color: var(--frost);
   box-shadow:
-    inset 0 20px 35px oklch(0.65 0.07 272 / 0.14),
+    inset 0 20px 35px oklch(0.65 0.07 60 / 0.14),
     0 0 0 1px color-mix(in oklch, var(--frost), transparent 20%),
     0 0 45px color-mix(in oklch, var(--frost), transparent 78%);
 }
@@ -747,7 +788,7 @@ watch(
   outline: 1px solid color-mix(in oklch, var(--gold), transparent 28%);
   outline-offset: 7px;
   box-shadow:
-    inset 0 20px 35px oklch(0.65 0.07 272 / 0.12),
+    inset 0 20px 35px oklch(0.65 0.07 60 / 0.12),
     0 0 0 1px color-mix(in oklch, var(--gold), transparent 28%),
     0 0 54px color-mix(in oklch, var(--gold), transparent 76%);
   animation: enemy-thinking-frame 1.4s ease-in-out infinite;
@@ -836,7 +877,7 @@ watch(
 .enemy-figure__hp-chip,
 .enemy-figure__hp-bar {
   height: 3px;
-  background: oklch(0.05 0.01 272 / 0.92);
+  background: oklch(0.05 0.01 60 / 0.92);
   border-radius: 999px;
   overflow: hidden;
 }
@@ -876,7 +917,7 @@ watch(
   bottom: 6.6rem;
   z-index: var(--z-popover);
   padding: var(--space-3);
-  background: oklch(0.15 0.04 272 / 0.96);
+  background: oklch(0.15 0.04 60 / 0.96);
   box-shadow: var(--shadow-deep);
 }
 
@@ -1036,7 +1077,7 @@ watch(
   padding: var(--space-2) var(--space-4);
   border: 1px solid var(--edge-gold);
   border-radius: var(--radius-sm);
-  background: oklch(0.20 0.04 272 / 0.85);
+  background: oklch(0.20 0.04 60 / 0.85);
   color: var(--gold);
   font-family: var(--font-caps);
   font-size: 0.68rem;
@@ -1113,7 +1154,8 @@ watch(
   .combat-scene__resolving,
   .combat-float,
   .enemy-figure--thinking .enemy-figure__shape,
-  .enemy-figure__hp-chip::before {
+  .enemy-figure__hp-chip::before,
+  .seuil-manometer__needle {
     animation: none;
   }
 }
