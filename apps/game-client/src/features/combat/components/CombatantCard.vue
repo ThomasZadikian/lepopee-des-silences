@@ -1,8 +1,16 @@
 <script setup lang="ts">
+import { ref } from 'vue';
 import type { CombatantRuntimeDto } from '../types/combatContracts';
 import AtbGauge from './AtbGauge.vue';
 import EmotionalTypeBadge from './EmotionalTypeBadge.vue';
 import StatusEffectToken from '../../../shared/components/StatusEffectToken.vue';
+
+const showDetails = ref(false);
+
+function toggleDetails(event: Event) {
+  event.stopPropagation();
+  showDetails.value = !showDetails.value;
+}
 
 defineProps<{
   combatant: CombatantRuntimeDto;
@@ -53,7 +61,25 @@ function hpRatio(c: CombatantRuntimeDto): number {
       <AtbGauge :gauge="combatant.atbGauge ?? 0" :fill-per-tick="combatant.atbFillPerTick ?? 10" :active="isCurrentActor" />
     </div>
 
-    <span class="presence__portrait" aria-hidden="true" />
+    <span class="presence__portrait" aria-hidden="true">
+      <span
+        class="presence__details-trigger"
+        role="button"
+        tabindex="0"
+        title="Détails des statistiques"
+        @click="toggleDetails"
+        @keydown.enter="toggleDetails"
+        @keydown.space.prevent="toggleDetails"
+      >◎</span>
+
+      <div v-if="showDetails" class="presence__details-popover" @click.stop>
+        <button class="presence__details-close" @click="toggleDetails" aria-label="Fermer">✕</button>
+        <div class="presence__details-row"><span>⚔</span><b>{{ combatant.attackPower ?? 0 }}</b><small>Attaque</small></div>
+        <div class="presence__details-row"><span>⛨</span><b>{{ combatant.defense ?? 0 }}</b><small>Défense</small></div>
+        <div class="presence__details-row"><span>⚡</span><b>{{ combatant.speed ?? 0 }}</b><small>Vitesse</small></div>
+        <div class="presence__details-row"><span>◎</span><b>{{ combatant.focus ?? 0 }}</b><small>Focus</small></div>
+      </div>
+    </span>
 
     <div class="presence__topline">
       <EmotionalTypeBadge :type="combatant.attackType ?? 'Neutral'" />
@@ -88,13 +114,6 @@ function hpRatio(c: CombatantRuntimeDto): number {
       <span class="presence__stat presence__stat--hp">PV {{ combatant.currentVitality }} / {{ combatant.maxVitality }}</span>
       <span v-if="combatant.guard > 0" class="presence__stat presence__stat--guard">{{ combatant.guard }}</span>
       <span v-if="combatant.side === 'Player'" class="presence__stat presence__stat--breath">{{ combatant.mana }} souffle</span>
-    </div>
-
-    <div class="presence__substats">
-      <span title="Attaque">⚔ {{ combatant.attackPower ?? 0 }}</span>
-      <span title="Défense">⛨ {{ combatant.defense ?? 0 }}</span>
-      <span title="Vitesse">⚡ {{ combatant.speed ?? 0 }}</span>
-      <span title="Focus (chance de critique)">◎ {{ combatant.focus ?? 0 }}</span>
     </div>
 
     <slot />
@@ -134,6 +153,7 @@ function hpRatio(c: CombatantRuntimeDto): number {
 }
 
 .presence__portrait {
+  position: relative;
   grid-row: 1 / span 5;
   grid-column: 2;
   width: 3.2rem;
@@ -145,6 +165,90 @@ function hpRatio(c: CombatantRuntimeDto): number {
     radial-gradient(circle at 45% 36%, oklch(0.5 0.06 252 / 0.38), transparent 48%),
     linear-gradient(145deg, var(--void), var(--raise));
   box-shadow: inset 0 0 20px oklch(0 0 0 / 0.45);
+}
+
+.presence__details-trigger {
+  position: absolute;
+  right: -5px;
+  bottom: -5px;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid var(--edge-gold);
+  background: var(--raise);
+  color: var(--gold);
+  font-size: 9px;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 3;
+}
+
+.presence__details-trigger:hover,
+.presence__details-trigger:focus-visible {
+  background: var(--wash-gold);
+  color: var(--gold-hi);
+  outline: none;
+}
+
+.presence__details-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 8rem;
+  padding: 10px 12px;
+  border: 1px solid var(--edge-gold);
+  border-radius: var(--radius-sm);
+  background: linear-gradient(150deg, var(--raise), var(--void));
+  box-shadow: var(--shadow-deep);
+  cursor: default;
+}
+
+.presence__details-close {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  border: none;
+  background: none;
+  color: var(--ink-4);
+  font-size: 10px;
+  cursor: pointer;
+  padding: 2px;
+}
+
+.presence__details-close:hover { color: var(--ink); }
+
+.presence__details-row {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}
+
+.presence__details-row span {
+  color: var(--gold);
+  font-size: 0.85rem;
+  width: 1rem;
+}
+
+.presence__details-row b {
+  color: var(--ink);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.presence__details-row small {
+  color: var(--ink-4);
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .presence--enemy {
@@ -216,16 +320,6 @@ function hpRatio(c: CombatantRuntimeDto): number {
   border-radius: 999px;
 }
 
-.presence__substats {
-  grid-column: 3;
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  font-family: var(--font-mono);
-  font-size: 0.58rem;
-  color: var(--ink-5);
-}
-
 .presence__state--ready { color: var(--frost); border-color: var(--edge-frost); }
 .presence__state--target { color: var(--gold); border-color: var(--edge-gold); }
 .presence__state--dead { color: var(--blood); border-color: color-mix(in oklch, var(--blood), transparent 50%); }
@@ -264,9 +358,9 @@ function hpRatio(c: CombatantRuntimeDto): number {
 
 .presence__gauge {
   grid-column: 3;
-  height: 3px;
+  height: 7px;
   background: var(--panel);
-  border-radius: 2px;
+  border-radius: 3px;
   overflow: hidden;
 }
 

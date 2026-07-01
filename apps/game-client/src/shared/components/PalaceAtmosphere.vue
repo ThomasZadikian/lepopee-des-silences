@@ -121,7 +121,8 @@ const embers = computed<Ember[]>(() => {
 
 .palace-atmos__gear {
   position: absolute;
-  border-radius: 50%;
+  border-radius: 46% 54% 51% 49% / 53% 47% 53% 47%;
+  filter: blur(2px);
 }
 .palace-atmos__gear--lg {
   left: -130px;
@@ -129,10 +130,22 @@ const embers = computed<Ember[]>(() => {
   width: 380px;
   height: 380px;
   opacity: 0.085;
-  animation: palace-spin 90s linear infinite;
+  animation: palace-spin 140s linear infinite;
   background:
-    radial-gradient(circle, transparent 28%, var(--gold-deep) 29% 31%, transparent 32% 52%, var(--gold-deep) 53% 55%, transparent 56%),
-    repeating-conic-gradient(var(--gold-deep) 0deg 5deg, transparent 5deg 11deg);
+    radial-gradient(circle, transparent 30%, var(--gold-deep) 34% 38%, transparent 44% 52%, var(--gold-deep) 57% 60%, transparent 65%),
+    conic-gradient(
+      var(--gold-deep) 0deg 6deg, transparent 6deg 24deg,
+      var(--gold-deep) 24deg 27deg, transparent 27deg 52deg,
+      var(--gold-deep) 52deg 63deg, transparent 63deg 79deg,
+      var(--gold-deep) 79deg 84deg, transparent 84deg 121deg,
+      var(--gold-deep) 121deg 129deg, transparent 129deg 150deg,
+      var(--gold-deep) 150deg 154deg, transparent 154deg 187deg,
+      var(--gold-deep) 187deg 199deg, transparent 199deg 214deg,
+      var(--gold-deep) 214deg 219deg, transparent 219deg 253deg,
+      var(--gold-deep) 253deg 263deg, transparent 263deg 288deg,
+      var(--gold-deep) 288deg 292deg, transparent 292deg 331deg,
+      var(--gold-deep) 331deg 340deg, transparent 340deg 360deg
+    );
 }
 .palace-atmos__gear--md {
   right: -90px;
@@ -140,10 +153,21 @@ const embers = computed<Ember[]>(() => {
   width: 280px;
   height: 280px;
   opacity: 0.07;
-  animation: palace-spin-rev 70s linear infinite;
+  animation: palace-spin-rev 115s linear infinite;
   background:
-    radial-gradient(circle, transparent 30%, oklch(0.58 0.06 60) 31% 33%, transparent 34% 56%, oklch(0.58 0.06 60) 57% 59%, transparent 60%),
-    repeating-conic-gradient(oklch(0.55 0.05 58) 0deg 6deg, transparent 6deg 13deg);
+    radial-gradient(circle, transparent 32%, oklch(0.58 0.06 60) 36% 39%, transparent 45% 55%, oklch(0.58 0.06 60) 59% 62%, transparent 67%),
+    conic-gradient(
+      oklch(0.55 0.05 58) 0deg 9deg, transparent 9deg 21deg,
+      oklch(0.55 0.05 58) 21deg 25deg, transparent 25deg 58deg,
+      oklch(0.55 0.05 58) 58deg 68deg, transparent 68deg 83deg,
+      oklch(0.55 0.05 58) 83deg 87deg, transparent 87deg 116deg,
+      oklch(0.55 0.05 58) 116deg 128deg, transparent 128deg 143deg,
+      oklch(0.55 0.05 58) 143deg 146deg, transparent 146deg 182deg,
+      oklch(0.55 0.05 58) 182deg 190deg, transparent 190deg 211deg,
+      oklch(0.55 0.05 58) 211deg 214deg, transparent 214deg 248deg,
+      oklch(0.55 0.05 58) 248deg 260deg, transparent 260deg 277deg,
+      oklch(0.55 0.05 58) 277deg 281deg, transparent 281deg 360deg
+    );
 }
 .palace-atmos__gear--sm {
   right: 16%;
@@ -151,10 +175,19 @@ const embers = computed<Ember[]>(() => {
   width: 120px;
   height: 120px;
   opacity: 0.06;
-  animation: palace-spin 48s linear infinite;
+  animation: palace-spin 78s linear infinite;
   background:
-    radial-gradient(circle, transparent 32%, var(--gold-deep) 33% 56%, transparent 57%),
-    repeating-conic-gradient(var(--gold-deep) 0deg 7deg, transparent 7deg 16deg);
+    radial-gradient(circle, transparent 34%, var(--gold-deep) 40% 58%, transparent 63%),
+    conic-gradient(
+      var(--gold-deep) 0deg 11deg, transparent 11deg 33deg,
+      var(--gold-deep) 33deg 39deg, transparent 39deg 70deg,
+      var(--gold-deep) 70deg 76deg, transparent 76deg 101deg,
+      var(--gold-deep) 101deg 112deg, transparent 112deg 149deg,
+      var(--gold-deep) 149deg 154deg, transparent 154deg 189deg,
+      var(--gold-deep) 189deg 201deg, transparent 201deg 226deg,
+      var(--gold-deep) 226deg 231deg, transparent 231deg 267deg,
+      var(--gold-deep) 267deg 279deg, transparent 279deg 360deg
+    );
 }
 
 .palace-atmos__crystal {

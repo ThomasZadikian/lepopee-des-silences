@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 
 import { useRunStore } from '../../runs/stores/runStore';
 import { useCombatLogMetrics } from '../composables/useCombatLogMetrics';
@@ -36,6 +36,8 @@ const { state: metricsState } = useCombatLogMetrics(
   () => combatStore.logEntries,
   () => combatStore.combat,
 );
+
+const isDamageModalOpen = ref(false);
 
 const activeCombatant = computed(() => combatStore.currentActor);
 const isPlayerTurn = computed(() => combatStore.isPlayerTurn);
@@ -280,7 +282,7 @@ watch(
           </CombatantCard>
         </div>
 
-        <!-- Barre de skills + Damage Meter -->
+        <!-- Barre de skills -->
         <div class="combat-scene__compose">
           <div class="combat-scene__skills-panel es-plate">
             <div class="compose__header">
@@ -291,6 +293,9 @@ watch(
                 </template>
                 <template v-else>{{ actionPreview }}</template>
               </span>
+              <button class="es-btn es-btn--ghost compose__meter-toggle" @click="isDamageModalOpen = true">
+                △ Relevé des dégâts
+              </button>
             </div>
 
             <SkillBar
@@ -313,12 +318,20 @@ watch(
               Annuler
             </button>
           </div>
-
-          <CombatMetersPanel :metrics="metricsState" :combat="combatStore.combat" />
         </div>
       </div>
 
       <CombatLogPanel :entries="combatStore.logEntries" />
+
+      <!-- Damage meter modal -->
+      <Teleport to="body">
+        <div v-if="isDamageModalOpen" class="damage-modal-backdrop" @click.self="isDamageModalOpen = false">
+          <div class="damage-modal">
+            <button class="damage-modal__close" @click="isDamageModalOpen = false" aria-label="Fermer">✕</button>
+            <CombatMetersPanel :metrics="metricsState" :combat="combatStore.combat" />
+          </div>
+        </div>
+      </Teleport>
 
       <!-- Outcome overlay -->
       <CombatOutcomePanel
@@ -469,9 +482,15 @@ watch(
 .combat-scene__side-title--allies { color: var(--frost); }
 
 .combat-scene__grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 14px;
+}
+
+.combat-scene__grid > * {
+  flex: 1 1 320px;
+  max-width: 380px;
 }
 
 .combat-scene__seuil {
@@ -596,10 +615,6 @@ watch(
 
 .combat-scene__compose {
   position: relative;
-  display: grid;
-  grid-template-columns: 1.6fr 1fr;
-  gap: 14px;
-  align-items: start;
   margin-top: 22px;
 }
 
@@ -612,8 +627,54 @@ watch(
   display: flex;
   align-items: baseline;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: var(--space-3);
   margin-bottom: 13px;
+}
+
+.compose__meter-toggle {
+  margin-left: auto;
+  font-size: 0.62rem;
+}
+
+.damage-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: oklch(0.08 0.02 60 / 0.72);
+  backdrop-filter: blur(4px);
+  padding: var(--space-4);
+}
+
+.damage-modal {
+  position: relative;
+  width: min(960px, 100%);
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-deep);
+}
+
+.damage-modal__close {
+  position: absolute;
+  top: -14px;
+  right: -14px;
+  z-index: 1;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid var(--edge-gold);
+  background: var(--panel);
+  color: var(--ink-2);
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.damage-modal__close:hover {
+  border-color: var(--gold);
+  color: var(--gold);
 }
 
 .compose__speaker-name {
@@ -684,12 +745,9 @@ watch(
 }
 
 @media (max-width: 900px) {
-  .combat-scene__grid {
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  }
-
-  .combat-scene__compose {
-    grid-template-columns: 1fr;
+  .combat-scene__grid > * {
+    flex-basis: 100%;
+    max-width: 100%;
   }
 }
 

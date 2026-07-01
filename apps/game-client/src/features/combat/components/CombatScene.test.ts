@@ -248,7 +248,7 @@ describe('CombatScene', () => {
     expect(wrapper.find('.combat-scene__compose').exists()).toBe(true);
   });
 
-  it('shows the damage meter panel', () => {
+  it('opens the damage meter modal from its toggle button', async () => {
     const ally = makeCombatant('ally-1', 'Hero', 'Player');
     const wrapper = mountScene('run-1', 'combat-1', {
       combat: {
@@ -264,7 +264,10 @@ describe('CombatScene', () => {
       enemies: [],
       allCombatants: [ally],
     });
-    expect(wrapper.find('.damage-report').exists()).toBe(true);
+    expect(document.body.querySelector('.damage-report')).toBeNull();
+    await wrapper.find('.compose__meter-toggle').trigger('click');
+    expect(document.body.querySelector('.damage-report')).not.toBeNull();
+    wrapper.unmount();
   });
 
   it('shows resolving indicator when resolving action', () => {

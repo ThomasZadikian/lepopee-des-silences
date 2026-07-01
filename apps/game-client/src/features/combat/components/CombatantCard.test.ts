@@ -219,17 +219,36 @@ describe('CombatantCard', () => {
     expect(fill.attributes('style')).toContain('50%');
   });
 
-  it('renders substats', () => {
+  it('hides substats behind a details trigger by default', () => {
     const wrapper = mountCard(makeCombatant({
       attackPower: 25,
       defense: 15,
       speed: 20,
       focus: 10,
     }));
+    expect(wrapper.find('.presence__details-popover').exists()).toBe(false);
+    expect(wrapper.find('.presence__details-trigger').exists()).toBe(true);
+  });
+
+  it('reveals substats when the details trigger is clicked', async () => {
+    const wrapper = mountCard(makeCombatant({
+      attackPower: 25,
+      defense: 15,
+      speed: 20,
+      focus: 10,
+    }));
+    await wrapper.find('.presence__details-trigger').trigger('click');
+    expect(wrapper.find('.presence__details-popover').exists()).toBe(true);
     expect(wrapper.text()).toContain('25');
     expect(wrapper.text()).toContain('15');
     expect(wrapper.text()).toContain('20');
     expect(wrapper.text()).toContain('10');
+  });
+
+  it('does not emit select when the details trigger is clicked', async () => {
+    const wrapper = mountCard(makeCombatant({ id: 'combatant-99' }));
+    await wrapper.find('.presence__details-trigger').trigger('click');
+    expect(wrapper.emitted('select')).toBeUndefined();
   });
 
   it('handles zero maxVitality without crashing', () => {
