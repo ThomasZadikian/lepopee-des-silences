@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Leds.Catalog.Domain.Npcs;
 using Leds.Catalog.Domain.RewardCursePools;
+using Leds.Catalog.Domain.Rewards.Loot;
 using Leds.Catalog.Infrastructure.Persistence.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -47,6 +48,7 @@ public sealed class CatalogSeedRunner
         await SeedCanonRoomsAsync(cancellationToken);
         await SeedCanonBossesAsync(cancellationToken);
         await SeedCanonRoomTypesAsync(cancellationToken);
+        await SeedCanonLootAsync(cancellationToken);
 
         // Sauvegarde inconditionnelle : les SeedCanon*Async ajoutent au change-tracker
         // EF mais ne renvoient pas de compteur ; gater le SaveChanges sur les seuls PNJ
@@ -528,6 +530,84 @@ public sealed class CatalogSeedRunner
             skillKeys: new[] { "skill.basic.strike", "canon.skill.flamme-froide", "canon.skill.priere-aspiration", "canon.skill.transmutation", "canon.skill.brume", "canon.skill.flamme-seraphine", "canon.skill.se-taire" },
             vitality: 52, attack: 13, defense: 5, guard: 6, speed: 7, focus: 0,
             cancellationToken);
+
+        // ── Ennemis canon additionnels (renfort du bestiaire, mêmes familles/thèmes) ──
+        await UpsertEnemyAsync(
+            "canon.enemy.chien-de-priere", "Chien de prière",
+            "Dressé par les prêtres pour flairer le doute. Il mord ceux qui hésitent au seuil.",
+            "Shadow", "Lituisme", "Common", "Skirmisher", isElite: false,
+            depthMin: 1, depthMax: 5, riskMin: 1, riskMax: 40,
+            roomTypes: new[] { "Threshold", "Fear" },
+            tags: new[] { "canon", "lituisme", "chien", "meute" },
+            skillKeys: new[] { "skill.basic.strike", "canon.skill.flamme-froide" },
+            vitality: 14, attack: 6, defense: 0, guard: 0, speed: 15, focus: 0,
+            cancellationToken);
+
+        await UpsertEnemyAsync(
+            "canon.enemy.penitent-muet", "Le Pénitent muet",
+            "Il a fait vœu de silence après avoir trop prié. Sa présence pèse, mais son corps refuse de céder.",
+            "Silence", "Lituisme", "Common", "Guard", isElite: false,
+            depthMin: 1, depthMax: 6, riskMin: 1, riskMax: 45,
+            roomTypes: new[] { "Silence", "Threshold" },
+            tags: new[] { "canon", "lituisme", "silence", "penitence" },
+            skillKeys: new[] { "skill.basic.strike", "canon.skill.se-taire" },
+            vitality: 24, attack: 5, defense: 3, guard: 4, speed: 8, focus: 0,
+            cancellationToken);
+
+        await UpsertEnemyAsync(
+            "canon.enemy.racine-amere", "La Racine amère",
+            "Une racine qui a bu trop de larmes. Elle se souvient à ta place — et t'en vole le prix.",
+            "Forest", "Nature", "Common", "Support", isElite: false,
+            depthMin: 1, depthMax: 6, riskMin: 1, riskMax: 40,
+            roomTypes: new[] { "Forest", "Memory" },
+            tags: new[] { "canon", "nature", "memoire", "racine" },
+            skillKeys: new[] { "skill.basic.strike", "canon.skill.priere-aspiration" },
+            vitality: 20, attack: 4, defense: 1, guard: 0, speed: 6, focus: 1,
+            cancellationToken);
+
+        await UpsertEnemyAsync(
+            "canon.enemy.fossoyeur-pale", "Le Fossoyeur pâle",
+            "Il creuse avant même que tu sois tombé. Rapide, silencieux, jamais las.",
+            "Rupture", "Predateurs", "Common", "Skirmisher", isElite: false,
+            depthMin: 2, depthMax: 7, riskMin: 10, riskMax: 55,
+            roomTypes: new[] { "Rupture", "Threshold" },
+            tags: new[] { "canon", "predateur", "fossoyeur" },
+            skillKeys: new[] { "skill.basic.strike", "canon.skill.brume" },
+            vitality: 18, attack: 7, defense: 1, guard: 0, speed: 14, focus: 0,
+            cancellationToken);
+
+        await UpsertEnemyAsync(
+            "canon.enemy.enfant-argile", "L'Enfant d'argile",
+            "Un essai raté de l'Homoncule, abandonné avant l'achèvement. Il soigne encore, par réflexe.",
+            "Rupture", "Alchimie", "Common", "Support", isElite: false,
+            depthMin: 2, depthMax: 6, riskMin: 5, riskMax: 45,
+            roomTypes: new[] { "Rupture", "Memory" },
+            tags: new[] { "canon", "alchimie", "argile", "enfant" },
+            skillKeys: new[] { "skill.basic.strike", "canon.skill.transmutation" },
+            vitality: 16, attack: 4, defense: 2, guard: 2, speed: 9, focus: 1,
+            cancellationToken);
+
+        await UpsertEnemyAsync(
+            "canon.enemy.prieure-carmine", "La Prieure carmine",
+            "Elle mène la prière quand les autres n'osent plus. Sa voix seule referme les blessures — et en rouvre d'autres.",
+            "Shadow", "Lituisme", "Elite", "Support", isElite: true,
+            depthMin: 3, depthMax: 8, riskMin: 30, riskMax: 80,
+            roomTypes: new[] { "Fear", "Silence" },
+            tags: new[] { "canon", "lituisme", "elite", "prieure" },
+            skillKeys: new[] { "skill.basic.strike", "canon.skill.priere-aspiration", "canon.skill.se-taire", "canon.skill.flamme-seraphine" },
+            vitality: 36, attack: 8, defense: 3, guard: 4, speed: 10, focus: 2,
+            cancellationToken);
+
+        await UpsertEnemyAsync(
+            "canon.enemy.veilleur-ombre", "Le Veilleur d'ombre",
+            "Il ne dort jamais, ne parle jamais. Il regarde, et ce qu'il regarde s'égare.",
+            "Shadow", "Brume", "Elite", "Disruptor", isElite: true,
+            depthMin: 3, depthMax: 9, riskMin: 30, riskMax: 85,
+            roomTypes: new[] { "Rupture", "Shadow" },
+            tags: new[] { "canon", "brume", "elite", "veilleur" },
+            skillKeys: new[] { "skill.basic.strike", "canon.skill.brume", "canon.skill.flamme-froide" },
+            vitality: 42, attack: 10, defense: 4, guard: 5, speed: 13, focus: 0,
+            cancellationToken);
     }
 
     private async Task UpsertEnemyAsync(
@@ -791,6 +871,48 @@ public sealed class CatalogSeedRunner
         await UpsertItemAsync("canon.item.flamme-seraphine", "La Flamme Séraphine",
             "Une flamme à recueillir, jamais à posséder. Elle accorde le seul feu qui fasse hurler l'Homoncule.",
             "Relic", "Flame", "Legendary", "Permanent", true, 0, cancellationToken);
+
+        // ── Butin canon (loot d'ennemis) — consommables/matériaux ordinaires,
+        //    distincts des reliques ci-dessus qui restent uniques/de quête.
+        await UpsertItemAsync("canon.item.cendre-benite", "Cendre bénite",
+            "Un peu de cendre récupérée d'un cierge d'abbaye. Elle protège, faiblement, ceux qui la portent.",
+            "Consumable", "Ward", "Common", "RunOnly", false, 5, cancellationToken);
+
+        await UpsertItemAsync("canon.item.dent-vorace", "Dent vorace",
+            "Arrachée à une créature affamée. Encore chaude, encore vivante d'une certaine manière.",
+            "Material", "Trophy", "Uncommon", "RunOnly", false, 0, cancellationToken);
+
+        await UpsertItemAsync("canon.item.filament-de-brume", "Filament de brume",
+            "Un fragment de brouillard qui refuse de se dissiper. Utile pour brouiller à son tour.",
+            "Consumable", "Utility", "Uncommon", "RunOnly", true, 8, cancellationToken);
+
+        await UpsertItemAsync("canon.item.larme-de-racine", "Larme de racine",
+            "Une sève amère, presque une larme. Elle apaise la chair comme elle apaisait autrefois la mémoire.",
+            "Consumable", "Heal", "Common", "RunOnly", true, 12, cancellationToken);
+
+        await UpsertItemAsync("canon.item.sel-alchimique", "Sel alchimique",
+            "Un sel instable, encore tiède de la cornue. Les alchimistes du Palais s'en disputent le dernier grain.",
+            "Material", "Reagent", "Uncommon", "Permanent", false, 0, cancellationToken);
+
+        await UpsertItemAsync("canon.item.poussiere-de-tombe", "Poussière de tombe",
+            "Une poussière banale, ramassée là où l'on ne devrait pas fouiller.",
+            "Consumable", "Narrative", "Common", "RunOnly", false, 0, cancellationToken);
+
+        await UpsertItemAsync("canon.item.onguent-anxiete", "Onguent d'apaisement",
+            "Un baume lourd, presque suffocant, qui étouffe la panique avant qu'elle n'étouffe toi.",
+            "Consumable", "Heal", "Rare", "RunOnly", true, 20, cancellationToken);
+
+        await UpsertItemAsync("canon.item.eclat-de-vipere", "Éclat de vipère",
+            "Une écaille tombée de l'Impératrice. Elle garde, longtemps après, un éclat venimeux.",
+            "Material", "Trophy", "Rare", "Permanent", false, 0, cancellationToken);
+
+        await UpsertItemAsync("canon.item.parchemin-cardinal", "Parchemin scellé",
+            "Un décret inachevé, encore scellé de cire rouge. Son contenu n'a plus d'importance — le sceau, si.",
+            "Consumable", "Lore", "Uncommon", "RunOnly", false, 0, cancellationToken);
+
+        await UpsertItemAsync("canon.item.ecaille-himlit", "Écaille d'Him'Lit",
+            "Une écaille arrachée au maître des lieux. Elle pèse plus lourd qu'elle ne devrait.",
+            "Material", "Trophy", "Epic", "Permanent", false, 0, cancellationToken);
     }
 
     private async Task UpsertItemAsync(
@@ -1289,5 +1411,271 @@ public sealed class CatalogSeedRunner
         boss.RoomType = roomType; boss.EnemyDefinitionKey = enemyKey; boss.DangerHint = danger;
         boss.BaseDifficulty = difficulty; boss.Version = version; boss.Status = "Active";
         boss.UpdatedAtUtc = now;
+    }
+
+    // ── BUTIN CANON (tables de loot par ennemi + pool générique de secours) ────
+    private async Task SeedCanonLootAsync(CancellationToken cancellationToken)
+    {
+        // enemyKey, entries (itemKey, dropPercent)
+        await UpsertEnemyLootTableAsync("canon.enemy.chimeres-serpentaires",
+            "Butin des Chimères serpentaires", "Ce que laisse une chimère serpentaire vaincue.",
+            new[]
+            {
+                new LootEntry("canon.item.datura", 30),
+                new LootEntry("canon.item.cendre-benite", 40),
+                new LootEntry("canon.item.lanterne", 20),
+                new LootEntry("canon.item.khamsa", 6),
+            }, cancellationToken);
+
+        await UpsertEnemyLootTableAsync("canon.enemy.lamiz",
+            "Butin des Lamiz", "Ce que laisse une Lamiz vaincue.",
+            new[]
+            {
+                new LootEntry("canon.item.dent-vorace", 45),
+                new LootEntry("canon.item.lanterne", 25),
+                new LootEntry("canon.item.filament-de-brume", 15),
+            }, cancellationToken);
+
+        await UpsertEnemyLootTableAsync("canon.enemy.ombres-tentaculaires",
+            "Butin des Ombres tentaculaires", "Ce que laisse une ombre tentaculaire vaincue.",
+            new[]
+            {
+                new LootEntry("canon.item.filament-de-brume", 45),
+                new LootEntry("canon.item.lanterne", 25),
+                new LootEntry("canon.item.larme-de-racine", 15),
+            }, cancellationToken);
+
+        await UpsertEnemyLootTableAsync("canon.enemy.chien-de-priere",
+            "Butin du Chien de prière", "Ce que laisse un chien de prière vaincu.",
+            new[]
+            {
+                new LootEntry("canon.item.dent-vorace", 35),
+                new LootEntry("canon.item.cendre-benite", 30),
+                new LootEntry("canon.item.lanterne", 20),
+            }, cancellationToken);
+
+        await UpsertEnemyLootTableAsync("canon.enemy.penitent-muet",
+            "Butin du Pénitent muet", "Ce que laisse un pénitent muet vaincu.",
+            new[]
+            {
+                new LootEntry("canon.item.cendre-benite", 45),
+                new LootEntry("canon.item.parchemin-cardinal", 20),
+                new LootEntry("canon.item.lanterne", 20),
+            }, cancellationToken);
+
+        await UpsertEnemyLootTableAsync("canon.enemy.racine-amere",
+            "Butin de la Racine amère", "Ce que laisse une racine amère vaincue.",
+            new[]
+            {
+                new LootEntry("canon.item.larme-de-racine", 50),
+                new LootEntry("canon.item.sel-alchimique", 20),
+                new LootEntry("canon.item.lanterne", 15),
+            }, cancellationToken);
+
+        await UpsertEnemyLootTableAsync("canon.enemy.fossoyeur-pale",
+            "Butin du Fossoyeur pâle", "Ce que laisse un fossoyeur pâle vaincu.",
+            new[]
+            {
+                new LootEntry("canon.item.poussiere-de-tombe", 50),
+                new LootEntry("canon.item.dent-vorace", 25),
+                new LootEntry("canon.item.filament-de-brume", 15),
+            }, cancellationToken);
+
+        await UpsertEnemyLootTableAsync("canon.enemy.enfant-argile",
+            "Butin de l'Enfant d'argile", "Ce que laisse un enfant d'argile vaincu.",
+            new[]
+            {
+                new LootEntry("canon.item.sel-alchimique", 45),
+                new LootEntry("canon.item.larme-de-racine", 25),
+                new LootEntry("canon.item.poussiere-de-tombe", 20),
+            }, cancellationToken);
+
+        await UpsertEnemyLootTableAsync("canon.enemy.voraces",
+            "Butin des Voraces", "Ce que laisse un Vorace vaincu.",
+            new[]
+            {
+                new LootEntry("canon.item.dent-vorace", 50),
+                new LootEntry("canon.item.onguent-anxiete", 20),
+                new LootEntry("canon.item.datura", 15),
+                new LootEntry("canon.item.masque-bec-oiseau", 8),
+            }, cancellationToken);
+
+        await UpsertEnemyLootTableAsync("canon.enemy.uguiro",
+            "Butin d'Uguiro", "Ce que laisse Uguiro vaincu.",
+            new[]
+            {
+                new LootEntry("canon.item.dent-vorace", 45),
+                new LootEntry("canon.item.datura", 20),
+                new LootEntry("canon.item.masque-bec-oiseau", 10),
+                new LootEntry("canon.item.sel-alchimique", 8),
+            }, cancellationToken);
+
+        await UpsertEnemyLootTableAsync("canon.enemy.oeil-du-visionnaire",
+            "Butin de l'Œil du Visionnaire animé", "Ce que laisse l'Œil du Visionnaire animé vaincu.",
+            new[]
+            {
+                new LootEntry("canon.item.filament-de-brume", 40),
+                new LootEntry("canon.item.parchemin-cardinal", 20),
+                new LootEntry("canon.item.datura", 15),
+                new LootEntry("canon.item.oeil-visionnaire", 5),
+            }, cancellationToken);
+
+        await UpsertEnemyLootTableAsync("canon.enemy.goule-anxiete",
+            "Butin de la Goule", "Ce que laisse la Goule vaincue.",
+            new[]
+            {
+                new LootEntry("canon.item.onguent-anxiete", 45),
+                new LootEntry("canon.item.cendre-benite", 20),
+                new LootEntry("canon.item.datura", 15),
+                new LootEntry("canon.item.khamsa", 6),
+            }, cancellationToken);
+
+        await UpsertEnemyLootTableAsync("canon.enemy.homoncule",
+            "Butin de l'Homoncule", "Ce que laisse l'Homoncule vaincu.",
+            new[]
+            {
+                new LootEntry("canon.item.sel-alchimique", 45),
+                new LootEntry("canon.item.onguent-anxiete", 20),
+                new LootEntry("canon.item.masque-bec-oiseau", 10),
+                new LootEntry("canon.item.khamsa", 6),
+            }, cancellationToken);
+
+        await UpsertEnemyLootTableAsync("canon.enemy.prieure-carmine",
+            "Butin de la Prieure carmine", "Ce que laisse la Prieure carmine vaincue.",
+            new[]
+            {
+                new LootEntry("canon.item.cendre-benite", 40),
+                new LootEntry("canon.item.onguent-anxiete", 25),
+                new LootEntry("canon.item.khamsa", 8),
+            }, cancellationToken);
+
+        await UpsertEnemyLootTableAsync("canon.enemy.veilleur-ombre",
+            "Butin du Veilleur d'ombre", "Ce que laisse le Veilleur d'ombre vaincu.",
+            new[]
+            {
+                new LootEntry("canon.item.filament-de-brume", 45),
+                new LootEntry("canon.item.masque-bec-oiseau", 20),
+                new LootEntry("canon.item.datura", 12),
+            }, cancellationToken);
+
+        await UpsertEnemyLootTableAsync("canon.enemy.grand-cardinal",
+            "Butin du Grand Cardinal", "Ce que laisse le Grand Cardinal vaincu.",
+            new[]
+            {
+                new LootEntry("canon.item.parchemin-cardinal", 50),
+                new LootEntry("canon.item.cendre-benite", 30),
+                new LootEntry("canon.item.khamsa", 10),
+            }, cancellationToken);
+
+        await UpsertEnemyLootTableAsync("canon.enemy.imperatrice-vipere",
+            "Butin de l'Impératrice — la Vipère", "Ce que laisse l'Impératrice vaincue.",
+            new[]
+            {
+                new LootEntry("canon.item.eclat-de-vipere", 40),
+                new LootEntry("canon.item.onguent-anxiete", 25),
+                new LootEntry("canon.item.khamsa", 12),
+            }, cancellationToken);
+
+        await UpsertEnemyLootTableAsync("canon.enemy.homoncule-roi",
+            "Butin de l'Homoncule — le Vieillard", "Ce que laisse le roi Homoncule vaincu.",
+            new[]
+            {
+                new LootEntry("canon.item.sel-alchimique", 45),
+                new LootEntry("canon.item.onguent-anxiete", 25),
+                new LootEntry("canon.item.flamme-seraphine", 4),
+            }, cancellationToken);
+
+        await UpsertEnemyLootTableAsync("canon.enemy.pape-louis-xvii",
+            "Butin du Pape Louis XVII", "Ce que laisse le Pape vaincu.",
+            new[]
+            {
+                new LootEntry("canon.item.parchemin-cardinal", 45),
+                new LootEntry("canon.item.cendre-benite", 25),
+                new LootEntry("canon.item.khamsa", 10),
+            }, cancellationToken);
+
+        await UpsertEnemyLootTableAsync("canon.enemy.himlit",
+            "Butin de Him'Lit", "Ce que laisse Him'Lit vaincu.",
+            new[]
+            {
+                new LootEntry("canon.item.onguent-anxiete", 30),
+                new LootEntry("canon.item.sel-alchimique", 25),
+                new LootEntry("canon.item.ecaille-himlit", 3),
+            }, cancellationToken);
+
+        await UpsertGenericLootPoolAsync(
+            "Trouvailles du Palais", "Ce que le Palais offre quand le butin d'un ennemi ne suffit pas.",
+            new[]
+            {
+                new LootEntry("canon.item.lanterne", 55),
+                new LootEntry("canon.item.cendre-benite", 35),
+                new LootEntry("canon.item.poussiere-de-tombe", 25),
+            }, cancellationToken);
+    }
+
+    private async Task UpsertEnemyLootTableAsync(
+        string enemyDefinitionKey, string name, string description,
+        IReadOnlyCollection<LootEntry> entries, CancellationToken cancellationToken)
+    {
+        const string version = "canon-1.0.0";
+        var now = DateTime.UtcNow;
+        var key = $"loot.enemy.{enemyDefinitionKey.Replace("canon.enemy.", string.Empty)}";
+
+        var existing = await _ctx.EnemyLootTables.FirstOrDefaultAsync(t => t.Key == key, cancellationToken);
+        if (existing is null)
+        {
+            _ctx.EnemyLootTables.Add(new EnemyLootTableEntity
+            {
+                Id = Guid.NewGuid(),
+                Key = key,
+                EnemyDefinitionKey = enemyDefinitionKey,
+                Name = name,
+                Description = description,
+                Version = version,
+                Status = "Active",
+                EntriesJson = JsonSerializer.Serialize(entries, J),
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
+            });
+            return;
+        }
+
+        existing.EnemyDefinitionKey = enemyDefinitionKey;
+        existing.Name = name; existing.Description = description;
+        existing.Version = version; existing.Status = "Active";
+        existing.EntriesJson = JsonSerializer.Serialize(entries, J);
+        existing.UpdatedAtUtc = now;
+    }
+
+    private async Task UpsertGenericLootPoolAsync(
+        string name, string description,
+        IReadOnlyCollection<LootEntry> entries, CancellationToken cancellationToken)
+    {
+        const string key = "loot.generic.fallback";
+        const string version = "canon-1.0.0";
+        var now = DateTime.UtcNow;
+
+        var existing = await _ctx.GenericLootPools.FirstOrDefaultAsync(p => p.Key == key, cancellationToken);
+        if (existing is null)
+        {
+            _ctx.GenericLootPools.Add(new GenericLootPoolEntity
+            {
+                Id = Guid.NewGuid(),
+                Key = key,
+                Name = name,
+                Description = description,
+                Version = version,
+                Status = "Active",
+                EntriesJson = JsonSerializer.Serialize(entries, J),
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
+            });
+            return;
+        }
+
+        existing.Name = name; existing.Description = description;
+        existing.Version = version; existing.Status = "Active";
+        existing.EntriesJson = JsonSerializer.Serialize(entries, J);
+        existing.UpdatedAtUtc = now;
     }
 }
