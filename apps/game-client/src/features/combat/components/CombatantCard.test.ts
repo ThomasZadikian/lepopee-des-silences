@@ -198,10 +198,14 @@ describe('CombatantCard', () => {
     expect(guardFill.attributes('style')).toContain('10%');
   });
 
-  it('clamps the guard segment so it never overflows the bar', () => {
-    const wrapper = mountCard(makeCombatant({ currentVitality: 100, maxVitality: 100, guard: 30 }));
+  it('scales both segments down proportionally instead of hiding guard when HP is full', () => {
+    // hp=100%, guard=25% of maxVitality → sum is 125%, so both scale by 1/1.25=0.8:
+    // hp shows as 80%, guard as 20%. Guard must stay clearly visible, not clamped to 0.
+    const wrapper = mountCard(makeCombatant({ currentVitality: 100, maxVitality: 100, guard: 25 }));
+    const hpFill = wrapper.find('.presence__gauge-fill');
     const guardFill = wrapper.find('.presence__gauge-guard');
-    expect(guardFill.attributes('style')).toContain('0%');
+    expect(hpFill.attributes('style')).toContain('width: 80%');
+    expect(guardFill.attributes('style')).toContain('width: 20%');
   });
 
   it('does not render a guard segment when guard is 0', () => {

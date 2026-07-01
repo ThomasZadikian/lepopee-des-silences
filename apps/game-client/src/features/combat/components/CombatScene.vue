@@ -3,6 +3,7 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue';
 
 import { useRunStore } from '../../runs/stores/runStore';
 import { useCombatLogMetrics } from '../composables/useCombatLogMetrics';
+import { useTurnForecast } from '../composables/useTurnForecast';
 import { useCombatStore } from '../stores/useCombatStore';
 import CombatantCard from './CombatantCard.vue';
 import CombatLogPanel from './CombatLogPanel.vue';
@@ -21,16 +22,11 @@ const emit = defineEmits<{
   leaveRun: [];
 }>();
 
-const nextCombatantId = computed<string | null>(() => {
-  const activeId = activeCombatant.value?.id;
-  const candidates = combatStore.allCombatants.filter(
-    (c) => c.status !== 'Defeated' && c.id !== activeId,
-  );
-  if (candidates.length === 0) return null;
-  return candidates.reduce((top, c) => ((c.atbGauge ?? 0) > (top.atbGauge ?? 0) ? c : top)).id;
-});
-
 const combatStore = useCombatStore();
+
+// Predictive ATB queue: re-simulated from live gauge/speed data on every
+// render, so a speed buff/debuff immediately reshuffles the forecast.
+const turnForecast = useTurnForecast(() => combatStore.allCombatants);
 const runStore = useRunStore();
 const { state: metricsState } = useCombatLogMetrics(
   () => combatStore.logEntries,
@@ -184,20 +180,21 @@ watch(
     <!-- Combat actif -->
     <template v-else>
       <div class="combat-scene__initiative es-plate">
-        <span class="combat-scene__initiative-title">MARKOV_STYLE_FIGHT</span>
+        <span class="combat-scene__initiative-title">Ordre prévisionnel</span>
         <div class="combat-scene__initiative-list">
           <span
-            v-for="combatant in [...combatStore.enemies, ...combatStore.allies]"
-            :key="combatant.id"
+            v-for="(entry, i) in turnForecast"
+            :key="entry.slot + '-' + entry.combatantId"
             class="initiative-pill"
             :class="{
-              'initiative-pill--active': combatant.id === activeCombatant?.id,
-              'initiative-pill--enemy': combatant.side === 'Enemy',
-              'initiative-pill--next': combatant.id === nextCombatantId,
+              'initiative-pill--active': i === 0 && entry.combatantId === activeCombatant?.id,
+              'initiative-pill--enemy': entry.side === 'Enemy',
+              'initiative-pill--next': i === 0,
             }"
           >
+            <span class="initiative-pill__slot">{{ i + 1 }}</span>
             <span class="initiative-pill__dot" />
-            {{ combatant.displayName }}
+            {{ entry.displayName }}
           </span>
         </div>
       </div>
@@ -425,6 +422,16 @@ watch(
   color: var(--gold);
   border-color: var(--edge-gold);
   box-shadow: 0 0 22px oklch(0.862 0.098 86 / 0.18);
+}
+
+.initiative-pill__slot {
+  font-family: var(--font-mono);
+  font-size: 0.54rem;
+  color: var(--ink-5);
+}
+
+.initiative-pill--next .initiative-pill__slot {
+  color: var(--gold);
 }
 
 .initiative-pill__dot {

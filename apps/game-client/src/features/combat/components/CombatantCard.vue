@@ -41,12 +41,17 @@ function hpRatio(c: CombatantRuntimeDto): number {
   return c.maxVitality > 0 ? c.currentVitality / c.maxVitality : 0;
 }
 
-// The guard segment sits right after the HP fill, sized guard/maxVitality —
-// clamped so the two segments never overflow the bar when HP is near full.
-function guardRatio(c: CombatantRuntimeDto): number {
-  if (c.maxVitality <= 0 || c.guard <= 0) return 0;
-  const remaining = 1 - hpRatio(c);
-  return Math.max(0, Math.min(c.guard / c.maxVitality, remaining));
+// The guard segment sits right after the HP fill, both sized relative to
+// maxVitality. When their sum would exceed 100% (e.g. a combatant at or
+// near full HP still carrying guard), scale both down proportionally
+// instead of clamping guard alone — clamping guard alone made it vanish
+// visually any time HP was already full, even with a large guard value.
+function barSegments(c: CombatantRuntimeDto): { hp: number; guard: number } {
+  const hp = hpRatio(c);
+  const guard = c.maxVitality > 0 ? c.guard / c.maxVitality : 0;
+  const total = hp + guard;
+  const scale = total > 1 ? 1 / total : 1;
+  return { hp: hp * scale * 100, guard: guard * scale * 100 };
 }
 </script>
 
@@ -120,8 +125,8 @@ function guardRatio(c: CombatantRuntimeDto): number {
     </div>
 
     <div class="presence__gauge">
-      <div class="presence__gauge-fill" :style="{ width: hpRatio(combatant) * 100 + '%' }" />
-      <div v-if="combatant.guard > 0" class="presence__gauge-guard" :style="{ width: guardRatio(combatant) * 100 + '%' }" />
+      <div class="presence__gauge-fill" :style="{ width: barSegments(combatant).hp + '%' }" />
+      <div v-if="combatant.guard > 0" class="presence__gauge-guard" :style="{ width: barSegments(combatant).guard + '%' }" />
     </div>
 
     <div class="presence__stats">
