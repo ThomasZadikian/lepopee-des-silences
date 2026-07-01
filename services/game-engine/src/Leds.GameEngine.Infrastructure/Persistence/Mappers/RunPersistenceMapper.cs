@@ -626,6 +626,8 @@ public static class RunPersistenceMapper
                 Label = choice.Label,
                 Description = choice.Description,
                 PayloadKey = choice.PayloadKey,
+                SourceEnemyKey = choice.SourceEnemyKey,
+                SourceEnemyDisplayName = choice.SourceEnemyDisplayName,
                 IsSelected = false,
                 SelectionOrder = index
             }).ToList()
@@ -662,7 +664,9 @@ public static class RunPersistenceMapper
             Enum.Parse<RewardType>(entity.RewardType),
             entity.Label,
             entity.Description,
-            entity.PayloadKey ?? string.Empty);
+            entity.PayloadKey ?? string.Empty,
+            entity.SourceEnemyKey,
+            entity.SourceEnemyDisplayName);
     }
     private static readonly JsonSerializerOptions NpcJsonOptions = new()
     {

@@ -15,6 +15,7 @@ using Leds.GameEngine.Application.Events.Dtos;
 using Leds.GameEngine.Application.Events.Ports;
 using Leds.GameEngine.Application.Events.ResolveNodeEvent;
 using Leds.GameEngine.Application.Rewards.Ports;
+using Leds.GameEngine.Application.Rewards.Loot;
 using Leds.GameEngine.Application.Rewards.RewardOfferFactory;
 using Leds.GameEngine.Application.Runs.ResolveCurrentEvent;
 using Leds.GameEngine.Domain.Combats;
@@ -85,7 +86,7 @@ public sealed class ResolveCurrentEventCommandHandlerTests
             CreateEncounterDraftGeneratorMock().Object,
             combatFactory?.Object ?? new Mock<ICombatFactory>().Object,
             new Mock<IRewardOfferRepository>().Object,
-            new RewardOfferFactory(new Mock<Leds.GameEngine.Application.Combats.ICombatRiskProfileResolver>().Object, Mock.Of<ICatalogContentGateway>()),
+            new RewardOfferFactory(new Mock<Leds.GameEngine.Application.Combats.ICombatRiskProfileResolver>().Object, Mock.Of<ICatalogContentGateway>(), new EnemyLootRewardBuilder(Mock.Of<ICatalogContentGateway>())),
             Mock.Of<IEnemyCombatTurnResolver>(),
             Mock.Of<ICombatResolutionService>(),
             Mock.Of<IAtbCombatPreparer>(),
@@ -360,7 +361,7 @@ public sealed class ResolveCurrentEventCommandHandlerTests
             draftGenerator.Object,
             runtimeFactoryMock.Object,
             new Mock<IRewardOfferRepository>().Object,
-            new RewardOfferFactory(new Mock<Leds.GameEngine.Application.Combats.ICombatRiskProfileResolver>().Object, Mock.Of<ICatalogContentGateway>()),
+            new RewardOfferFactory(new Mock<Leds.GameEngine.Application.Combats.ICombatRiskProfileResolver>().Object, Mock.Of<ICatalogContentGateway>(), new EnemyLootRewardBuilder(Mock.Of<ICatalogContentGateway>())),
             Mock.Of<IEnemyCombatTurnResolver>(),
             Mock.Of<ICombatResolutionService>(),
             Mock.Of<IAtbCombatPreparer>(),
@@ -476,7 +477,7 @@ public sealed class ResolveCurrentEventCommandHandlerTests
             draftGenerator.Object,
             runtimeFactoryMock.Object,
             new Mock<IRewardOfferRepository>().Object,
-            new RewardOfferFactory(new Mock<Leds.GameEngine.Application.Combats.ICombatRiskProfileResolver>().Object, Mock.Of<ICatalogContentGateway>()),
+            new RewardOfferFactory(new Mock<Leds.GameEngine.Application.Combats.ICombatRiskProfileResolver>().Object, Mock.Of<ICatalogContentGateway>(), new EnemyLootRewardBuilder(Mock.Of<ICatalogContentGateway>())),
             Mock.Of<IEnemyCombatTurnResolver>(),
             Mock.Of<ICombatResolutionService>(),
             Mock.Of<IAtbCombatPreparer>(),

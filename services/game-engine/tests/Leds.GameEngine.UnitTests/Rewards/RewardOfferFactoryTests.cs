@@ -1,18 +1,26 @@
 using FluentAssertions;
 using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Application.Combats;
+using Leds.GameEngine.Application.Rewards.Loot;
 using Leds.GameEngine.Application.Rewards.RewardOfferFactory;
 using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rewards;
+using Leds.GameEngine.UnitTests.Common;
 using Moq;
 
 namespace Leds.GameEngine.UnitTests.Rewards;
 
 public sealed class RewardOfferFactoryTests
 {
-    private static RewardOfferFactory CreateFactory() =>
-        new(new CombatRiskProfileResolver(), Mock.Of<ICatalogContentGateway>());
+    private static RewardOfferFactory CreateFactory(ICatalogContentGateway? catalogContentGateway = null)
+    {
+        var gateway = catalogContentGateway ?? Mock.Of<ICatalogContentGateway>();
+        return new RewardOfferFactory(
+            new CombatRiskProfileResolver(),
+            gateway,
+            new EnemyLootRewardBuilder(gateway));
+    }
 
     // -----------------------------------------------------------------------
     // Basic structural tests (pre-existing, updated for new signature)
@@ -206,5 +214,96 @@ public sealed class RewardOfferFactoryTests
         moderateOffer.CombatScaling!.RiskBand.Should().Be(RiskBand.Moderate);
         highOffer.CombatScaling!.RiskBand.Should().Be(RiskBand.High);
         criticalOffer.CombatScaling!.RiskBand.Should().Be(RiskBand.Critical);
+    }
+
+    // -----------------------------------------------------------------------
+    // CreateCombatRewardOfferAsync — enemy loot tables
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public async Task CreateCombatRewardOfferAsync_ShouldRollLootFromEnemyTable_AndTagItsSource()
+    {
+        var gateway = new StubCatalogContentGateway();
+        var factory = CreateFactory(gateway);
+        var enemy = Combatant.CreateEnemy("enemy.forest.chimere-serpentaire", "Chimere Serpentaire", "Beast", 20);
+
+        var offer = await factory.CreateCombatRewardOfferAsync(
+            RewardSource.Combat, NodeEventType.Combat, riskLevel: 25,
+            enemies: [enemy], runSeed: "seed-a", runId: Guid.NewGuid(), combatId: Guid.NewGuid());
+
+        offer.Choices.Should().NotBeEmpty();
+        offer.Choices.Should().OnlyContain(c => c.RewardType == RewardType.TemporaryItem);
+        offer.Choices.Should().Contain(c => c.SourceEnemyDisplayName == "Chimere Serpentaire");
+    }
+
+    [Fact]
+    public async Task CreateCombatRewardOfferAsync_ShouldStayWithinFloorAndCap()
+    {
+        var gateway = new StubCatalogContentGateway();
+        var factory = CreateFactory(gateway);
+        var enemies = new[]
+        {
+            Combatant.CreateEnemy("enemy.forest.chimere-serpentaire", "Chimere Serpentaire", "Beast", 20),
+            Combatant.CreateEnemy("enemy.silence.mute-witness", "Temoin Muet", "Guard", 30),
+            Combatant.CreateEnemy("enemy.threshold.fracture", "Fracture", "Bruiser", 32),
+        };
+
+        var offer = await factory.CreateCombatRewardOfferAsync(
+            RewardSource.Combat, NodeEventType.Combat, riskLevel: 25,
+            enemies: enemies, runSeed: "seed-b", runId: Guid.NewGuid(), combatId: Guid.NewGuid());
+
+        offer.Choices.Count.Should().BeInRange(3, 6);
+    }
+
+    [Fact]
+    public async Task CreateCombatRewardOfferAsync_ShouldPadFromFallback_WhenNoEnemyHasALootTable()
+    {
+        var gateway = new StubCatalogContentGateway();
+        var factory = CreateFactory(gateway);
+        var enemy = Combatant.CreateEnemy("enemy.threshold.echo", "Echo", "Fragile", 20);
+
+        var offer = await factory.CreateCombatRewardOfferAsync(
+            RewardSource.Combat, NodeEventType.Combat, riskLevel: 25,
+            enemies: [enemy], runSeed: "seed-c", runId: Guid.NewGuid(), combatId: Guid.NewGuid());
+
+        offer.Choices.Count.Should().BeGreaterOrEqualTo(3);
+        offer.Choices.Should().OnlyContain(c => c.SourceEnemyDisplayName is null,
+            because: "the enemy has no loot table, so every item comes from the generic fallback pool.");
+    }
+
+    [Fact]
+    public async Task CreateCombatRewardOfferAsync_ShouldBeDeterministic_ForTheSameSeedRunAndCombat()
+    {
+        var enemies = new[]
+        {
+            Combatant.CreateEnemy("enemy.forest.chimere-serpentaire", "Chimere Serpentaire", "Beast", 20),
+            Combatant.CreateEnemy("enemy.silence.mute-witness", "Temoin Muet", "Guard", 30),
+        };
+        var runId = Guid.NewGuid();
+        var combatId = Guid.NewGuid();
+
+        var first = await CreateFactory(new StubCatalogContentGateway()).CreateCombatRewardOfferAsync(
+            RewardSource.Combat, NodeEventType.Combat, riskLevel: 25,
+            enemies: enemies, runSeed: "seed-d", runId: runId, combatId: combatId);
+
+        var second = await CreateFactory(new StubCatalogContentGateway()).CreateCombatRewardOfferAsync(
+            RewardSource.Combat, NodeEventType.Combat, riskLevel: 25,
+            enemies: enemies, runSeed: "seed-d", runId: runId, combatId: combatId);
+
+        first.Choices.Select(c => c.PayloadKey).Should().Equal(second.Choices.Select(c => c.PayloadKey));
+    }
+
+    [Fact]
+    public async Task CreateCombatRewardOfferAsync_ShouldFallBackToHardcodedChoices_WhenNoLootIsAvailableAtAll()
+    {
+        var gateway = Mock.Of<ICatalogContentGateway>();
+        var factory = CreateFactory(gateway);
+
+        var offer = await factory.CreateCombatRewardOfferAsync(
+            RewardSource.Combat, NodeEventType.Combat, riskLevel: 25,
+            enemies: [], runSeed: "seed-e", runId: Guid.NewGuid(), combatId: Guid.NewGuid());
+
+        offer.Choices.Should().HaveCount(3,
+            because: "with no enemies and no fallback pool configured, the factory falls back to the hardcoded tier choices.");
     }
 }

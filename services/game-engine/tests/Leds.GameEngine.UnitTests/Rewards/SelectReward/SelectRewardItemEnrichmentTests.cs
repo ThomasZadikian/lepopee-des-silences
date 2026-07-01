@@ -4,6 +4,7 @@ using Leds.GameEngine.Application.Catalog.Contracts;
 using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Application.Combats;
 using Leds.GameEngine.Application.Rewards.Ports;
+using Leds.GameEngine.Application.Rewards.Loot;
 using Leds.GameEngine.Application.Rewards.RewardOfferFactory;
 using Leds.GameEngine.Application.Rewards.SelectReward;
 using Leds.GameEngine.Domain.Rewards;
@@ -18,7 +19,7 @@ namespace Leds.GameEngine.UnitTests.Rewards.SelectReward;
 public sealed class SelectRewardItemEnrichmentTests
 {
     private static RewardOfferFactory CreateFactory() =>
-        new(new CombatRiskProfileResolver(), Mock.Of<ICatalogContentGateway>());
+        new(new CombatRiskProfileResolver(), Mock.Of<ICatalogContentGateway>(), new EnemyLootRewardBuilder(Mock.Of<ICatalogContentGateway>()));
 
     [Fact]
     public async Task Handle_ShouldEnrichItemWithCatalog_WhenItemRewardSelected()

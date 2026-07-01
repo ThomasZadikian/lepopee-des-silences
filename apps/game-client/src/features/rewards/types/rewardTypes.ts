@@ -18,6 +18,8 @@ export type RewardChoiceDto = {
   payloadKey?: string;
   rarity?: string;
   isSelected?: boolean;
+  /** Which enemy this loot came from; null/absent means it came from the generic fallback pool. */
+  sourceEnemyDisplayName?: string | null;
 };
 
 export type RewardOptionDto = {

@@ -131,4 +131,53 @@ describe('RewardOfferPanel', () => {
       expect((btn.element as HTMLButtonElement).disabled).toBe(true);
     }
   });
+
+  it('shows a source-enemy tag on a card whose loot came from an enemy', () => {
+    const wrapper = mountPanel({
+      ...baseOffer,
+      choices: [
+        {
+          id: 'c1',
+          rewardType: 'TemporaryItem',
+          label: 'Peau de serpent',
+          description: 'Une mue encore souple.',
+          sourceEnemyDisplayName: 'Chimere Serpentaire',
+        },
+      ],
+    });
+    const source = wrapper.find('.rop-card__source');
+    expect(source.exists()).toBe(true);
+    expect(source.text()).toBe('Chimere Serpentaire');
+  });
+
+  it('does not show a source-enemy tag for a fallback/generic item', () => {
+    const wrapper = mountPanel({
+      ...baseOffer,
+      choices: [
+        {
+          id: 'c1',
+          rewardType: 'TemporaryItem',
+          label: 'Baume de mémoire',
+          description: 'Restaure une partie de la vitalité.',
+          sourceEnemyDisplayName: null,
+        },
+      ],
+    });
+    expect(wrapper.find('.rop-card__source').exists()).toBe(false);
+  });
+
+  it('renders up to six cards in the wrapping grid without crashing', () => {
+    const wrapper = mountPanel({
+      ...baseOffer,
+      choices: Array.from({ length: 6 }, (_, i) => ({
+        id: `c${i}`,
+        rewardType: 'TemporaryItem',
+        label: `Objet ${i}`,
+        description: 'Un butin de combat.',
+        sourceEnemyDisplayName: i % 2 === 0 ? 'Chimere Serpentaire' : null,
+      })),
+    });
+    expect(wrapper.findAll('.rop-card').length).toBe(6);
+    expect(wrapper.findAll('.rop-card__source').length).toBe(3);
+  });
 });

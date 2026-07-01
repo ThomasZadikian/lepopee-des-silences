@@ -181,7 +181,7 @@ public sealed class ResolveCurrentEventCommandHandler
             // ATB: enemy turns (including the opening, if an enemy is up first) are
             // driven by the client in real time via AdvanceCombatTurnCommand.
             if (combatRuntime.Status != CombatStatus.Active)
-                pendingRewardOffer = _combatResolution.ApplyOutcome(run, combatRuntime, _clock.UtcNow);
+                pendingRewardOffer = await _combatResolution.ApplyOutcomeAsync(run, combatRuntime, _clock.UtcNow, cancellationToken);
 
             combatRuntimeDto = CombatRuntimeDto.FromDomain(
                 combatRuntime, CombatItemHelper.GetUsableBattleItems(run));

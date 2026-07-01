@@ -9,6 +9,7 @@ using Leds.GameEngine.Application.Events.Npcs;
 using Leds.GameEngine.Application.Events.ResolveNodeEvent;
 using Leds.GameEngine.Application.Events.Resolvers;
 using Leds.GameEngine.Application.Interlude;
+using Leds.GameEngine.Application.Rewards.Loot;
 using Leds.GameEngine.Application.Rewards.RewardOfferFactory;
 using Leds.GameEngine.Application.Runs.PalaceIndicators;
 using Leds.GameEngine.Application.Runs.StartRun;
@@ -54,6 +55,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<ICurrentEventChoiceRequirementResolver, CurrentEventChoiceRequirementResolver>();
         services.AddSingleton<INpcEncounterSelector, NpcEncounterSelector>();
         services.AddSingleton<ICombatRiskProfileResolver, CombatRiskProfileResolver>();
+        services.AddScoped<EnemyLootRewardBuilder>();
         services.AddScoped<RewardOfferFactory>();
         services.AddScoped<IInterludeNodeProvider, DefaultInterludeNodeProvider>();
         services.AddSingleton<ICombatFactory, CombatFactory>();

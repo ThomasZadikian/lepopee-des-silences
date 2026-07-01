@@ -10,6 +10,7 @@ using Leds.GameEngine.Application.Combats.Ports;
 using Leds.GameEngine.Application.Combats.Resolution;
 using Leds.GameEngine.Application.Common.Exceptions;
 using Leds.GameEngine.Application.Rewards.Ports;
+using Leds.GameEngine.Application.Rewards.Loot;
 using Leds.GameEngine.Application.Rewards.RewardOfferFactory;
 using Leds.GameEngine.Application.Runs.UseCombatSkill;
 using Leds.GameEngine.Domain.Combats;
@@ -728,7 +729,7 @@ public sealed class UseCombatSkillCommandHandlerTests
 
     private static RewardOfferFactory CreateRewardOfferFactory()
     {
-        return new RewardOfferFactory(new CombatRiskProfileResolver(), Mock.Of<ICatalogContentGateway>());
+        return new RewardOfferFactory(new CombatRiskProfileResolver(), Mock.Of<ICatalogContentGateway>(), new EnemyLootRewardBuilder(Mock.Of<ICatalogContentGateway>()));
     }
 
     private static Mock<IEnemyCombatTurnResolver> CreateNoOpEnemyTurnResolver()

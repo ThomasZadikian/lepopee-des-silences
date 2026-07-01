@@ -28,7 +28,8 @@ public sealed record RewardChoiceDto(
     string RewardType,
     string Label,
     string Description,
-    string PayloadKey)
+    string PayloadKey,
+    string? SourceEnemyDisplayName)
 {
     public static RewardChoiceDto FromDomain(RewardChoice choice)
     {
@@ -37,7 +38,8 @@ public sealed record RewardChoiceDto(
             choice.RewardType.ToString(),
             choice.Label,
             choice.Description,
-            choice.PayloadKey);
+            choice.PayloadKey,
+            choice.SourceEnemyDisplayName);
     }
 }
 

@@ -27,6 +27,8 @@ public sealed class RewardOptionEntity
     public string Description { get; set; } = string.Empty;
     public string? PayloadKey { get; set; }
     public string? PayloadType { get; set; }
+    public string? SourceEnemyKey { get; set; }
+    public string? SourceEnemyDisplayName { get; set; }
     public string? EffectSetKey { get; set; }
     public string? EffectSetVersion { get; set; }
     public int? BaseAmount { get; set; }

@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Leds.Catalog.Domain.Npcs;
 using Leds.Catalog.Domain.RewardCursePools;
+using Leds.Catalog.Domain.Rewards.Loot;
 
 namespace Leds.Catalog.Infrastructure.Persistence;
 
@@ -19,6 +20,7 @@ public sealed class CatalogSeedRunner
     private const string CatalogAntechamberFixVersion = "alpha-1.0.1-antechamber-boss-fix";
     private const string NpcSystemReactVersion = "npc-system-0.2-majordome-react";
     private const string NpcSystemPoisonVersion = "npc-system-0.3-majordome-poison";
+    private const string EnemyLootTablesVersion = "loot-system-0.1-enemy-loot-tables";
 
     private readonly CatalogDbContext _context;
     private readonly ILogger<CatalogSeedRunner> _logger;
@@ -38,6 +40,7 @@ public sealed class CatalogSeedRunner
         await ApplyCatalogAntechamberBossFixSeedAsync(cancellationToken);
         //await ApplyNpcSystemSeedAsync(cancellationToken);
         await ApplyNpcReactiveSeedAsync(cancellationToken);
+        await ApplyEnemyLootTablesSeedAsync(cancellationToken);
     }
 
     private async Task ApplyLegacySeedAsync(CancellationToken cancellationToken)
@@ -1769,6 +1772,397 @@ public sealed class CatalogSeedRunner
         AddSeedVersion(CatalogAntechamberFixVersion);
         await _context.SaveChangesAsync(cancellationToken);
         _logger.LogInformation("Seed {SeedKey} version {Version} applied successfully.", SeedKey, CatalogAntechamberFixVersion);
+    }
+
+    private async Task ApplyEnemyLootTablesSeedAsync(CancellationToken cancellationToken)
+    {
+        if (await HasSeedVersionAsync(EnemyLootTablesVersion, cancellationToken))
+        {
+            _logger.LogInformation("Seed {SeedKey} version {Version} already applied. Skipping.", SeedKey, EnemyLootTablesVersion);
+            return;
+        }
+
+        _logger.LogInformation("Applying seed {SeedKey} version {Version}...", SeedKey, EnemyLootTablesVersion);
+
+        var now = DateTime.UtcNow;
+
+        await SeedChimereSerpentaireEnemyAsync(now, cancellationToken);
+        await SeedLootItemDefinitionsAsync(now, cancellationToken);
+        await SeedEnemyLootTablesAsync(now, cancellationToken);
+        await SeedGenericLootPoolAsync(now, cancellationToken);
+
+        AddSeedVersion(EnemyLootTablesVersion);
+        await _context.SaveChangesAsync(cancellationToken);
+        _logger.LogInformation("Seed {SeedKey} version {Version} applied successfully.", SeedKey, EnemyLootTablesVersion);
+    }
+
+    private async Task SeedChimereSerpentaireEnemyAsync(DateTime now, CancellationToken cancellationToken)
+    {
+        const string key = "enemy.forest.chimere-serpentaire";
+
+        if (await _context.EnemyDefinitions.AnyAsync(e => e.Key == key, cancellationToken))
+        {
+            return;
+        }
+
+        var enemy = new EnemyDefinitionEntity
+        {
+            Id = Guid.NewGuid(),
+            Key = key,
+            Name = "Chimere Serpentaire",
+            DisplayName = "Chimere Serpentaire",
+            Description = "Une creature composite qui rampe entre les racines de la foret.",
+            Version = EnemyLootTablesVersion,
+            Status = "Active",
+            Archetype = "Beast",
+            Family = "Forest",
+            Rank = "Common",
+            Role = "DPS",
+            BaseDifficulty = 1,
+            EncounterWeight = 1,
+            MinRiskLevel = 1,
+            MaxRiskLevel = 30,
+            MinDepth = 1,
+            MaxDepth = 4,
+            BaseWeight = 1,
+            CompatibleRoomTypesJson = "[\"Forest\",\"Threshold\"]",
+            TagsJson = "[\"forest\",\"beast\"]",
+            SkillKeysJson = "[\"skill.basic.strike\"]",
+            CreatedAtUtc = now,
+            UpdatedAtUtc = now
+        };
+
+        _context.EnemyDefinitions.Add(enemy);
+
+        if (!await _context.EnemyStatBlocks.AnyAsync(s => s.EnemyDefinitionId == enemy.Id, cancellationToken))
+        {
+            _context.EnemyStatBlocks.Add(new EnemyStatBlockEntity
+            {
+                Id = Guid.NewGuid(),
+                EnemyDefinitionId = enemy.Id,
+                MaxVitality = 20,
+                AttackPower = 5,
+                Defense = 1,
+                StartingGuard = 0,
+                Speed = 10,
+                Initiative = 0,
+                Recovery = 0,
+                Focus = 0
+            });
+        }
+    }
+
+    private async Task SeedLootItemDefinitionsAsync(DateTime now, CancellationToken cancellationToken)
+    {
+        var items = new[]
+        {
+            new ItemDefinitionEntity
+            {
+                Id = Guid.NewGuid(),
+                Key = "item.consumable.peau-de-serpent",
+                Name = "Peau de serpent",
+                DisplayName = "Peau de serpent",
+                Description = "Une mue encore souple, qui renforce la garde du prochain combat.",
+                Version = EnemyLootTablesVersion,
+                Status = "Active",
+                Category = "Consumable",
+                ItemType = "Guard",
+                Rarity = "Common",
+                UsageMode = "UseOnNode",
+                Lifecycle = "RuntimeRunOnly",
+                StackPolicy = "Additive",
+                MaxStack = 3,
+                IsUsableInCombat = false,
+                IsUsableOutsideCombat = true,
+                Duration = "RunOnly",
+                EffectValue = 6,
+                Price = 0,
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
+            },
+            new ItemDefinitionEntity
+            {
+                Id = Guid.NewGuid(),
+                Key = "item.consumable.crocs-figes",
+                Name = "Crocs figes",
+                DisplayName = "Crocs figes",
+                Description = "Des crocs durcis, encore charges de venin residuel.",
+                Version = EnemyLootTablesVersion,
+                Status = "Active",
+                Category = "Consumable",
+                ItemType = "Damage",
+                Rarity = "Uncommon",
+                UsageMode = "UseInCombat",
+                Lifecycle = "RuntimeRunOnly",
+                StackPolicy = "Additive",
+                MaxStack = 3,
+                IsUsableInCombat = true,
+                IsUsableOutsideCombat = false,
+                Duration = "RunOnly",
+                EffectValue = 10,
+                Price = 0,
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
+            },
+            new ItemDefinitionEntity
+            {
+                Id = Guid.NewGuid(),
+                Key = "item.consumable.venin-cristallise",
+                Name = "Venin cristallise",
+                DisplayName = "Venin cristallise",
+                Description = "Un venin fige en cristal, rare et instable.",
+                Version = EnemyLootTablesVersion,
+                Status = "Active",
+                Category = "Consumable",
+                ItemType = "Damage",
+                Rarity = "Rare",
+                UsageMode = "UseInCombat",
+                Lifecycle = "RuntimeRunOnly",
+                StackPolicy = "Additive",
+                MaxStack = 2,
+                IsUsableInCombat = true,
+                IsUsableOutsideCombat = false,
+                Duration = "RunOnly",
+                EffectValue = 18,
+                Price = 0,
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
+            },
+            new ItemDefinitionEntity
+            {
+                Id = Guid.NewGuid(),
+                Key = "item.consumable.fragment-de-silence",
+                Name = "Fragment de silence",
+                DisplayName = "Fragment de silence",
+                Description = "Un eclat muet, souvenir d'un temoin qui n'a jamais parle.",
+                Version = EnemyLootTablesVersion,
+                Status = "Active",
+                Category = "Consumable",
+                ItemType = "Memory",
+                Rarity = "Uncommon",
+                UsageMode = "NotUsable",
+                Lifecycle = "RuntimeRunOnly",
+                StackPolicy = "Additive",
+                MaxStack = 3,
+                IsUsableInCombat = false,
+                IsUsableOutsideCombat = false,
+                Duration = "RunOnly",
+                EffectValue = 0,
+                Price = 0,
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
+            },
+            new ItemDefinitionEntity
+            {
+                Id = Guid.NewGuid(),
+                Key = "item.consumable.oeil-de-verre",
+                Name = "Oeil de verre",
+                DisplayName = "Oeil de verre",
+                Description = "Un oeil fige qui semble encore observer.",
+                Version = EnemyLootTablesVersion,
+                Status = "Active",
+                Category = "Consumable",
+                ItemType = "Focus",
+                Rarity = "Rare",
+                UsageMode = "UseOnNode",
+                Lifecycle = "RuntimeRunOnly",
+                StackPolicy = "Additive",
+                MaxStack = 2,
+                IsUsableInCombat = false,
+                IsUsableOutsideCombat = true,
+                Duration = "RunOnly",
+                EffectValue = 12,
+                Price = 0,
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
+            },
+            new ItemDefinitionEntity
+            {
+                Id = Guid.NewGuid(),
+                Key = "item.consumable.eclat-instable",
+                Name = "Eclat instable",
+                DisplayName = "Eclat instable",
+                Description = "Un fragment de la Fracture, encore charge d'energie.",
+                Version = EnemyLootTablesVersion,
+                Status = "Active",
+                Category = "Consumable",
+                ItemType = "Damage",
+                Rarity = "Uncommon",
+                UsageMode = "UseInCombat",
+                Lifecycle = "RuntimeRunOnly",
+                StackPolicy = "Additive",
+                MaxStack = 3,
+                IsUsableInCombat = true,
+                IsUsableOutsideCombat = false,
+                Duration = "RunOnly",
+                EffectValue = 10,
+                Price = 0,
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
+            },
+            new ItemDefinitionEntity
+            {
+                Id = Guid.NewGuid(),
+                Key = "item.consumable.reliquaire-fele",
+                Name = "Reliquaire fele",
+                DisplayName = "Reliquaire fele",
+                Description = "Un reliquaire fendu qui protege malgre tout.",
+                Version = EnemyLootTablesVersion,
+                Status = "Active",
+                Category = "Consumable",
+                ItemType = "Guard",
+                Rarity = "Epic",
+                UsageMode = "UseOnNode",
+                Lifecycle = "RuntimeRunOnly",
+                StackPolicy = "Additive",
+                MaxStack = 1,
+                IsUsableInCombat = false,
+                IsUsableOutsideCombat = true,
+                Duration = "RunOnly",
+                EffectValue = 25,
+                Price = 0,
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
+            },
+            new ItemDefinitionEntity
+            {
+                Id = Guid.NewGuid(),
+                Key = "item.consumable.poussiere-de-couloir",
+                Name = "Poussiere de couloir",
+                DisplayName = "Poussiere de couloir",
+                Description = "Une poussiere banale, sans valeur particuliere.",
+                Version = EnemyLootTablesVersion,
+                Status = "Active",
+                Category = "Consumable",
+                ItemType = "Narrative",
+                Rarity = "Common",
+                UsageMode = "NotUsable",
+                Lifecycle = "RuntimeRunOnly",
+                StackPolicy = "Additive",
+                MaxStack = 5,
+                IsUsableInCombat = false,
+                IsUsableOutsideCombat = false,
+                Duration = "RunOnly",
+                EffectValue = 0,
+                Price = 0,
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
+            }
+        };
+
+        foreach (var item in items)
+        {
+            if (!await _context.ItemDefinitions.AnyAsync(i => i.Key == item.Key, cancellationToken))
+            {
+                _context.ItemDefinitions.Add(item);
+            }
+        }
+    }
+
+    private async Task SeedEnemyLootTablesAsync(DateTime now, CancellationToken cancellationToken)
+    {
+        await AddEnemyLootTableAsync(
+            "loot.enemy.forest.chimere-serpentaire",
+            "enemy.forest.chimere-serpentaire",
+            "Butin de la Chimere Serpentaire",
+            "Ce que laisse une chimere serpentaire vaincue.",
+            new List<LootEntry>
+            {
+                new("item.consumable.peau-de-serpent", 45),
+                new("item.consumable.crocs-figes", 25),
+                new("item.consumable.minor-heal", 30),
+                new("item.consumable.venin-cristallise", 8)
+            },
+            now,
+            cancellationToken);
+
+        await AddEnemyLootTableAsync(
+            "loot.enemy.silence.mute-witness",
+            "enemy.silence.mute-witness",
+            "Butin du Temoin Muet",
+            "Ce que laisse un temoin muet vaincu.",
+            new List<LootEntry>
+            {
+                new("item.consumable.eclat-de-garde", 40),
+                new("item.consumable.fragment-de-silence", 35),
+                new("item.consumable.minor-heal", 20),
+                new("item.consumable.oeil-de-verre", 10)
+            },
+            now,
+            cancellationToken);
+
+        await AddEnemyLootTableAsync(
+            "loot.enemy.threshold.fracture",
+            "enemy.threshold.fracture",
+            "Butin de Fracture",
+            "Ce que laisse une Fracture vaincue.",
+            new List<LootEntry>
+            {
+                new("item.consumable.eclat-instable", 50),
+                new("item.consumable.eclat-de-garde", 30),
+                new("item.consumable.reliquaire-fele", 12)
+            },
+            now,
+            cancellationToken);
+    }
+
+    private async Task AddEnemyLootTableAsync(
+        string key,
+        string enemyDefinitionKey,
+        string name,
+        string description,
+        List<LootEntry> entries,
+        DateTime now,
+        CancellationToken cancellationToken)
+    {
+        if (await _context.EnemyLootTables.AnyAsync(t => t.Key == key, cancellationToken))
+        {
+            return;
+        }
+
+        _context.EnemyLootTables.Add(new EnemyLootTableEntity
+        {
+            Id = Guid.NewGuid(),
+            Key = key,
+            EnemyDefinitionKey = enemyDefinitionKey,
+            Name = name,
+            Description = description,
+            Version = EnemyLootTablesVersion,
+            Status = "Active",
+            EntriesJson = JsonSerializer.Serialize(entries, NpcSeedJsonOptions),
+            CreatedAtUtc = now,
+            UpdatedAtUtc = now
+        });
+    }
+
+    private async Task SeedGenericLootPoolAsync(DateTime now, CancellationToken cancellationToken)
+    {
+        const string key = "loot.generic.fallback";
+
+        if (await _context.GenericLootPools.AnyAsync(p => p.Key == key, cancellationToken))
+        {
+            return;
+        }
+
+        var entries = new List<LootEntry>
+        {
+            new("item.consumable.minor-heal", 60),
+            new("item.consumable.eclat-de-garde", 40),
+            new("item.consumable.poussiere-de-couloir", 25)
+        };
+
+        _context.GenericLootPools.Add(new GenericLootPoolEntity
+        {
+            Id = Guid.NewGuid(),
+            Key = key,
+            Name = "Trouvailles du Palais",
+            Description = "Ce que le Palais offre quand le butin d'un ennemi ne suffit pas.",
+            Version = EnemyLootTablesVersion,
+            Status = "Active",
+            EntriesJson = JsonSerializer.Serialize(entries, NpcSeedJsonOptions),
+            CreatedAtUtc = now,
+            UpdatedAtUtc = now
+        });
     }
 
     private async Task SeedAntechamberSkillsAsync(DateTime now, CancellationToken cancellationToken)

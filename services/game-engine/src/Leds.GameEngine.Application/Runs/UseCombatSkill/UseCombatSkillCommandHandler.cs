@@ -148,7 +148,7 @@ public sealed class UseCombatSkillCommandHandler
 
         SyncPlayerStateFromCombat(run, finalCombat);
 
-        var rewardOffer = _combatResolution.ApplyOutcome(run, finalCombat, now);
+        var rewardOffer = await _combatResolution.ApplyOutcomeAsync(run, finalCombat, now, cancellationToken);
 
         await _runRepository.UpdateAsync(run, cancellationToken);
         if (rewardOffer is not null)

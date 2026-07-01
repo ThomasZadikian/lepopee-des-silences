@@ -12,7 +12,7 @@ public interface ICombatResolutionService
     /// Applique LA conséquence métier d'une fin de combat (victoire ou défaite),
     /// quel que soit le point d'entrée. Source unique de vérité.
     /// </summary>
-    RewardOffer? ApplyOutcome(Run run, Combat combat, DateTimeOffset now);
+    Task<RewardOffer?> ApplyOutcomeAsync(Run run, Combat combat, DateTimeOffset now, CancellationToken cancellationToken = default);
 }
 
 public sealed class CombatResolutionService : ICombatResolutionService
@@ -24,10 +24,11 @@ public sealed class CombatResolutionService : ICombatResolutionService
         _rewardOfferFactory = rewardOfferFactory;
     }
 
-    public RewardOffer? ApplyOutcome(
+    public async Task<RewardOffer?> ApplyOutcomeAsync(
         Run run,
         Combat combat,
-        DateTimeOffset now)
+        DateTimeOffset now,
+        CancellationToken cancellationToken = default)
     {
         switch (combat.Status)
         {
@@ -40,7 +41,7 @@ public sealed class CombatResolutionService : ICombatResolutionService
                 run.CompleteActiveCombat();
                 run.ConsumeNextCombatModifiers();
 
-                var rewardOffer = CreateRewardOffer(combatNode);
+                var rewardOffer = await CreateRewardOfferAsync(run, combat, combatNode, cancellationToken);
                 run.SetPendingRewardOffer(rewardOffer.Id);
                 return rewardOffer;
 
@@ -53,7 +54,7 @@ public sealed class CombatResolutionService : ICombatResolutionService
         }
     }
 
-    private RewardOffer CreateRewardOffer(MapNode? combatNode)
+    private async Task<RewardOffer> CreateRewardOfferAsync(Run run, Combat combat, MapNode? combatNode, CancellationToken cancellationToken)
     {
         var source = combatNode?.EventType switch
         {
@@ -64,9 +65,14 @@ public sealed class CombatResolutionService : ICombatResolutionService
             _ => RewardSource.Combat
         };
 
-        return _rewardOfferFactory.CreateCombatRewardOffer(
+        return await _rewardOfferFactory.CreateCombatRewardOfferAsync(
             source,
             combatNode?.EventType ?? NodeEventType.Combat,
-            combatNode?.RiskLevel ?? 25);
+            combatNode?.RiskLevel ?? 25,
+            combat.Enemies,
+            run.Seed,
+            run.Id.Value,
+            combat.Id.Value,
+            cancellationToken);
     }
 }

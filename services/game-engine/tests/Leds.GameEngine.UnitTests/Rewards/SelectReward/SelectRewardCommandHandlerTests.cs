@@ -3,6 +3,7 @@ using Leds.GameEngine.Application.Abstractions;
 using Leds.GameEngine.Application.Combats;
 using Leds.GameEngine.Application.Common.Exceptions;
 using Leds.GameEngine.Application.Rewards.Ports;
+using Leds.GameEngine.Application.Rewards.Loot;
 using Leds.GameEngine.Application.Rewards.RewardOfferFactory;
 using Leds.GameEngine.Application.Rewards.SelectReward;
 using Leds.GameEngine.Domain.Common;
@@ -18,7 +19,7 @@ namespace Leds.GameEngine.UnitTests.Rewards.SelectReward;
 public sealed class SelectRewardCommandHandlerTests
 {
     private static RewardOfferFactory CreateFactory() =>
-        new(new CombatRiskProfileResolver(), Mock.Of<ICatalogContentGateway>());
+        new(new CombatRiskProfileResolver(), Mock.Of<ICatalogContentGateway>(), new EnemyLootRewardBuilder(Mock.Of<ICatalogContentGateway>()));
 
     private static (Run run, RewardOffer offer) CreateRunWithPendingReward()
     {

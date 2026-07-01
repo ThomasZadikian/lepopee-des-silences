@@ -119,7 +119,7 @@ public sealed class AdvanceCombatTurnCommandHandler
 
         SyncPlayerStateFromCombat(run, finalCombat);
 
-        var rewardOffer = _combatResolution.ApplyOutcome(run, finalCombat, now);
+        var rewardOffer = await _combatResolution.ApplyOutcomeAsync(run, finalCombat, now, cancellationToken);
 
         // Hot path on a normal tick (combat still active, no run-level change);
         // fall back to the full run write only when the combat ends or a reward

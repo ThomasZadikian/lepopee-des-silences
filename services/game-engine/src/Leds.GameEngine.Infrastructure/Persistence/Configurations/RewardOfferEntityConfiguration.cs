@@ -49,6 +49,8 @@ public sealed class RewardOptionEntityConfiguration : IEntityTypeConfiguration<R
         builder.Property(o => o.Description).HasColumnName("description").IsRequired();
         builder.Property(o => o.PayloadKey).HasColumnName("payload_key").HasMaxLength(256);
         builder.Property(o => o.PayloadType).HasColumnName("payload_type").HasMaxLength(64);
+        builder.Property(o => o.SourceEnemyKey).HasColumnName("source_enemy_key").HasMaxLength(160);
+        builder.Property(o => o.SourceEnemyDisplayName).HasColumnName("source_enemy_display_name").HasMaxLength(256);
         builder.Property(o => o.EffectSetKey).HasColumnName("effect_set_key").HasMaxLength(160);
         builder.Property(o => o.EffectSetVersion).HasColumnName("effect_set_version").HasMaxLength(32);
         builder.Property(o => o.BaseAmount).HasColumnName("base_amount");

@@ -47,6 +47,7 @@ type NormalizedCard = {
   rarity: string | undefined
   rewardType: string | undefined
   tone: 'gold' | 'frost' | null
+  sourceEnemyDisplayName: string | null | undefined
 }
 
 function getTone(rarity?: string, rewardType?: string): 'gold' | 'frost' | null {
@@ -70,6 +71,7 @@ const normalizedCards = computed<NormalizedCard[]>(() => {
       rarity: c.rarity,
       rewardType: c.rewardType,
       tone: getTone(c.rarity, c.rewardType),
+      sourceEnemyDisplayName: c.sourceEnemyDisplayName,
     })
   }
 
@@ -84,6 +86,7 @@ const normalizedCards = computed<NormalizedCard[]>(() => {
       rarity: o.rarity,
       rewardType: o.rewardType ?? o.type,
       tone: getTone(o.rarity, o.rewardType ?? o.type),
+      sourceEnemyDisplayName: null,
     })
   }
 
@@ -178,7 +181,7 @@ const confirmBtnClass = computed(() =>
           <span class="es-body">Aucune récompense disponible.</span>
         </div>
 
-        <div v-else style="display: flex; gap: 22px; justify-content: center; align-items: stretch">
+        <div v-else class="rop-cards__grid">
           <div
             v-for="card in normalizedCards"
             :key="card.id"
@@ -207,10 +210,13 @@ const confirmBtnClass = computed(() =>
                 : {}"
             >{{ selectedId === card.id ? '✦' : '' }}</div>
 
-            <div class="es-row" style="margin-bottom: 18px">
+            <div class="es-row" style="margin-bottom: 18px; flex-wrap: wrap; row-gap: 6px">
               <ChipBadge :tone="card.tone">
                 {{ rewardTypeLabel(card.rewardType) }}
               </ChipBadge>
+              <span v-if="card.sourceEnemyDisplayName" class="rop-card__source">
+                {{ card.sourceEnemyDisplayName }}
+              </span>
             </div>
 
             <div style="display: flex; justify-content: center; margin: 4px 0 20px">
@@ -346,10 +352,20 @@ const confirmBtnClass = computed(() =>
   background: oklch(0.55 0.08 85 / 0.1);
 }
 
+/* ── Cards grid (wraps for 4-6 loot cards, single row for 3 or fewer) ── */
+.rop-cards__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 260px));
+  gap: 20px;
+  justify-content: center;
+  align-items: stretch;
+  max-width: 900px;
+}
+
 /* ── Reward card ── */
 .rop-card {
   position: relative;
-  width: 312px;
+  width: 100%;
   border-radius: 6px;
   padding: 26px 24px;
   display: flex;
@@ -379,6 +395,24 @@ const confirmBtnClass = computed(() =>
 .rop-card--frozen {
   cursor: default;
   opacity: 0.75;
+}
+
+/* Source-enemy tag: which enemy this loot dropped from (absent = generic/fallback) */
+.rop-card__source {
+  display: inline-block;
+  font-family: var(--font-caps);
+  font-size: 0.55rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+  border: 1px solid var(--line-soft);
+  border-radius: 3px;
+  padding: 2px 7px;
+  background: oklch(0.22 0.03 60 / 0.6);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Selection indicator dot */

@@ -40,6 +40,8 @@ public sealed class CatalogDbContext : DbContext
     public DbSet<EnemyTemplateEntity> EnemyTemplates => Set<EnemyTemplateEntity>();
     public DbSet<SkillTemplateEntity> SkillTemplates => Set<SkillTemplateEntity>();
     public DbSet<EventTemplateEntity> EventTemplates => Set<EventTemplateEntity>();
+    public DbSet<EnemyLootTableEntity> EnemyLootTables => Set<EnemyLootTableEntity>();
+    public DbSet<GenericLootPoolEntity> GenericLootPools => Set<GenericLootPoolEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

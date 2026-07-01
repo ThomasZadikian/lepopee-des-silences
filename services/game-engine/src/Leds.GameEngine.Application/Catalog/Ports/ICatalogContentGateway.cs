@@ -93,4 +93,11 @@ public interface ICatalogContentGateway
 
     Task<IReadOnlyCollection<CatalogRoomTypeDefinition>> ListRoomTypeDefinitionsAsync(
     CancellationToken cancellationToken = default);
+
+    Task<CatalogEnemyLootTable?> GetEnemyLootTableByKeyAsync(
+        string enemyKey,
+        CancellationToken cancellationToken = default);
+
+    Task<CatalogGenericLootPool?> GetActiveGenericLootPoolAsync(
+        CancellationToken cancellationToken = default);
 }
