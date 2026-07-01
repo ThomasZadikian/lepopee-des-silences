@@ -1280,13 +1280,20 @@ public sealed class CatalogSeedRunner
     // Crée à la fois l'EnemyDefinition (IsBoss) + StatBlock + le RoomBossDefinition.
     private async Task SeedCanonBossesAsync(CancellationToken cancellationToken)
     {
-        // enemyKey, bossKey, name, desc, roomType, danger, difficulty, vit, atk, def, guard, speed, skillKey
+        // Every room type generates a RoomBoss node in its final row (see MapRoomGenerator),
+        // so every room type MUST have a RoomBossDefinition or run/room generation throws
+        // ("No boss profile found for room type '<X>'"). Only Antechamber/Rupture had canon
+        // bosses assigned; Threshold/Memory/Silence/Fear/Forest had none at all, which broke
+        // room generation for those types outright. Each existing boss now also covers one of
+        // the previously-uncovered room types (first entry in `roomTypes` is the original,
+        // unchanged assignment — kept first so its RoomBossDefinition key stays stable).
+        // enemyKey, bossKey, name, desc, roomTypes, danger, difficulty, vit, atk, def, guard, speed, skillKey
         await UpsertBossAsync(
             "canon.enemy.grand-cardinal",
             "canon.boss.grand-cardinal",
             "Le Grand Cardinal",
             "Le grand cardinal du Palais",
-            "Antechamber",
+            new[] { "Antechamber", "Threshold" },
             "75",
             2, 90, 14, 6, 6, 12,
             new[]
@@ -1294,32 +1301,32 @@ public sealed class CatalogSeedRunner
             cancellationToken);
 
         await UpsertBossAsync("canon.enemy.imperatrice-vipere", "canon.boss.imperatrice-vipere", "L'Impératrice — la Vipère", "L'impératrice du Palais",
-            "Rupture", "75", 3, 140, 20, 8, 8, 14,
+            new[] { "Rupture", "Memory" }, "75", 3, 140, 20, 8, 8, 14,
             new[] { "canon.skill.priere-aspiration", "canon.skill.flamme-froide", "skill.basic.strike" }, cancellationToken);
 
         await UpsertBossAsync("canon.enemy.homoncule-roi", "canon.boss.homoncule-roi", "L'Homoncule — le Vieillard", "Le roi, l'Homoncule, bien des nom lui furent donné",
-            "Rupture", "75", 3, 160, 22, 9, 10, 8,
+            new[] { "Rupture", "Silence" }, "75", 3, 160, 22, 9, 10, 8,
             new[] { "canon.skill.transmutation", "canon.skill.flamme-froide", "skill.basic.strike" }, cancellationToken);
 
         await UpsertBossAsync("canon.enemy.pape-louis-xvii", "canon.boss.pape-louis-xvii", "Le Pape Louis XVII", "Le pape",
-            "Antechamber", "75", 4, 200, 24, 12, 12, 11,
+            new[] { "Antechamber", "Fear" }, "75", 4, 200, 24, 12, 12, 11,
             new[] { "canon.skill.brume", "canon.skill.flamme-froide", "skill.basic.strike" }, cancellationToken);
 
         await UpsertBossAsync("canon.enemy.himlit", "canon.boss.himlit", "Him'Lit", "Le maître des lieux, souverain du Palais",
-            "Rupture", "100", 5, 280, 32, 16, 16, 13,
+            new[] { "Rupture", "Forest" }, "100", 5, 280, 32, 16, 16, 13,
             new[] { "canon.skill.brume", "canon.skill.priere-aspiration", "canon.skill.flamme-seraphine", "canon.skill.flamme-froide", "skill.basic.strike" }, cancellationToken);
     }
 
     private async Task UpsertBossAsync(
         string enemyKey, string bossKey, string name, string description,
-        string roomType, string danger, int difficulty,
+        string[] roomTypes, string danger, int difficulty,
         int vit, int atk, int def, int guard, int speed,
         string[] skillKeys, CancellationToken cancellationToken)
     {
         const string version = "canon-1.0.0";
         var now = DateTime.UtcNow;
 
-        // 1) l'EnemyDefinition + StatBlock du boss
+        // 1) l'EnemyDefinition + StatBlock du boss (compatible avec tous ses roomTypes)
         var enemy = await _ctx.EnemyDefinitions
             .Include(e => e.StatBlock).Include(e => e.SkillLinks)
             .FirstOrDefaultAsync(e => e.Key == enemyKey, cancellationToken);
@@ -1348,7 +1355,7 @@ public sealed class CatalogSeedRunner
                 IsBoss = true,
                 IsElite = true,
                 BaseWeight = 1,
-                CompatibleRoomTypesJson = JsonSerializer.Serialize(new[] { roomType }),
+                CompatibleRoomTypesJson = JsonSerializer.Serialize(roomTypes),
                 TagsJson = JsonSerializer.Serialize(new[] { "canon", "boss" }),
                 SkillKeysJson = JsonSerializer.Serialize(new[] { "skill.basic.strike" }),
                 CreatedAtUtc = now,
@@ -1375,7 +1382,7 @@ public sealed class CatalogSeedRunner
             enemy.Version = version; enemy.Status = "Active";
             enemy.Archetype = "Boss"; enemy.Rank = "Boss"; enemy.Role = "Boss";
             enemy.BaseDifficulty = difficulty; enemy.IsBoss = true; enemy.IsElite = true;
-            enemy.CompatibleRoomTypesJson = JsonSerializer.Serialize(new[] { roomType });
+            enemy.CompatibleRoomTypesJson = JsonSerializer.Serialize(roomTypes);
             enemy.UpdatedAtUtc = now;
             enemy.StatBlock ??= new EnemyStatBlockEntity { Id = Guid.NewGuid(), EnemyDefinitionId = enemy.Id };
             enemy.StatBlock.MaxVitality = vit; enemy.StatBlock.AttackPower = atk;
@@ -1383,34 +1390,41 @@ public sealed class CatalogSeedRunner
             enemy.StatBlock.Speed = speed; enemy.StatBlock.Focus = 2;
         }
 
-        // 2) le RoomBossDefinition qui pointe vers cet ennemi
-        var boss = await _ctx.RoomBossDefinitions.FirstOrDefaultAsync(b => b.Key == bossKey, cancellationToken);
-        if (boss is null)
+        // 2) une RoomBossDefinition par room type couvert. Le premier roomType garde la clé
+        // d'origine (bossKey) pour rester rétrocompatible ; les suivants sont suffixés.
+        for (var i = 0; i < roomTypes.Length; i++)
         {
-            _ctx.RoomBossDefinitions.Add(new RoomBossDefinitionEntity
+            var roomType = roomTypes[i];
+            var key = i == 0 ? bossKey : $"{bossKey}.{roomType.ToLowerInvariant()}";
+
+            var boss = await _ctx.RoomBossDefinitions.FirstOrDefaultAsync(b => b.Key == key, cancellationToken);
+            if (boss is null)
             {
-                Id = Guid.NewGuid(),
-                Key = bossKey,
-                DisplayName = name,
-                Description = description,
-                RoomType = roomType,
-                EnemyDefinitionKey = enemyKey,
-                DangerHint = danger,
-                BaseDifficulty = difficulty,
-                BaseWeight = 1,
-                SelectionGroup = "boss.canon",
-                Version = version,
-                Status = "Active",
-                TagsJson = JsonSerializer.Serialize(new[] { "canon", "boss" }),
-                CreatedAtUtc = now,
-                UpdatedAtUtc = now
-            });
-            return;
+                _ctx.RoomBossDefinitions.Add(new RoomBossDefinitionEntity
+                {
+                    Id = Guid.NewGuid(),
+                    Key = key,
+                    DisplayName = name,
+                    Description = description,
+                    RoomType = roomType,
+                    EnemyDefinitionKey = enemyKey,
+                    DangerHint = danger,
+                    BaseDifficulty = difficulty,
+                    BaseWeight = 1,
+                    SelectionGroup = "boss.canon",
+                    Version = version,
+                    Status = "Active",
+                    TagsJson = JsonSerializer.Serialize(new[] { "canon", "boss" }),
+                    CreatedAtUtc = now,
+                    UpdatedAtUtc = now
+                });
+                continue;
+            }
+            boss.DisplayName = name; boss.Description = description;
+            boss.RoomType = roomType; boss.EnemyDefinitionKey = enemyKey; boss.DangerHint = danger;
+            boss.BaseDifficulty = difficulty; boss.Version = version; boss.Status = "Active";
+            boss.UpdatedAtUtc = now;
         }
-        boss.DisplayName = name; boss.Description = description;
-        boss.RoomType = roomType; boss.EnemyDefinitionKey = enemyKey; boss.DangerHint = danger;
-        boss.BaseDifficulty = difficulty; boss.Version = version; boss.Status = "Active";
-        boss.UpdatedAtUtc = now;
     }
 
     // ── BUTIN CANON (tables de loot par ennemi + pool générique de secours) ────
