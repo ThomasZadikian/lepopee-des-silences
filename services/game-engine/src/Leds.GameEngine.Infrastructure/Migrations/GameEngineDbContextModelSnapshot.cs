@@ -1062,6 +1062,16 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasDefaultValue(0)
                         .HasColumnName("selection_order");
 
+                    b.Property<string>("SourceEnemyDisplayName")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("source_enemy_display_name");
+
+                    b.Property<string>("SourceEnemyKey")
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("source_enemy_key");
+
                     b.HasKey("Id");
 
                     b.HasIndex("RewardOfferId");

@@ -1,5 +1,4 @@
-using System;
-using Microsoft.EntityFrameworkCore.Infrastructure;
+﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -7,8 +6,6 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Leds.Catalog.Infrastructure.Persistence.Migrations
 {
     /// <inheritdoc />
-    [DbContext(typeof(CatalogDbContext))]
-    [Migration("20260701090000_AddEnemyLootTablesAndGenericLootPool")]
     public partial class AddEnemyLootTablesAndGenericLootPool : Migration
     {
         /// <inheritdoc />
@@ -54,15 +51,15 @@ namespace Leds.Catalog.Infrastructure.Persistence.Migrations
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_catalog_enemy_loot_tables_key",
-                table: "catalog_enemy_loot_tables",
-                column: "key",
-                unique: true);
-
-            migrationBuilder.CreateIndex(
                 name: "IX_catalog_enemy_loot_tables_enemy_definition_key",
                 table: "catalog_enemy_loot_tables",
                 column: "enemy_definition_key",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_catalog_enemy_loot_tables_key",
+                table: "catalog_enemy_loot_tables",
+                column: "key",
                 unique: true);
 
             migrationBuilder.CreateIndex(

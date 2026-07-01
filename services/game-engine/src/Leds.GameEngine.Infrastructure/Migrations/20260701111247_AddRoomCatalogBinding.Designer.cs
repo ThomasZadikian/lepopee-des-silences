@@ -9,10 +9,10 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace Leds.GameEngine.Infrastructure.Persistence.Migrations
+namespace Leds.GameEngine.Infrastructure.Migrations
 {
     [DbContext(typeof(GameEngineDbContext))]
-    [Migration("20260629132357_AddRoomCatalogBinding")]
+    [Migration("20260701111247_AddRoomCatalogBinding")]
     partial class AddRoomCatalogBinding
     {
         /// <inheritdoc />
@@ -1064,6 +1064,16 @@ namespace Leds.GameEngine.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasDefaultValue(0)
                         .HasColumnName("selection_order");
+
+                    b.Property<string>("SourceEnemyDisplayName")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("source_enemy_display_name");
+
+                    b.Property<string>("SourceEnemyKey")
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("source_enemy_key");
 
                     b.HasKey("Id");
 

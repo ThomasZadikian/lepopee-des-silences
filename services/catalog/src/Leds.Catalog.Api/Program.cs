@@ -31,7 +31,7 @@ if (app.Environment.IsDevelopment())
     if (app.Configuration.GetValue<bool>("CatalogSeed:ApplyOnStartup"))
     {
         var seedRunner = scope.ServiceProvider.GetRequiredService<CatalogSeedRunner>();
-        await seedRunner.ApplyBaseSeedAsync();
+        await seedRunner.SeedAsync();
 
         foreach (var canon in scope.ServiceProvider
                      .GetServices<Leds.Catalog.Infrastructure.Persistence.Canon.ICanonContentSeeder>())
