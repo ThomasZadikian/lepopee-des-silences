@@ -48,10 +48,15 @@ function flash(target: { value: boolean }, ms = 600) {
 
 // Visual fill rate (gauge units / second), derived from the combatant's real
 // AtbFillPerTick so fast vs. slow combatants visibly animate at different
-// speeds instead of all tracking the ~480ms server snapshot uniformly. Floor
-// keeps slow combatants from crawling; the multiplier keeps fast ones
-// visibly faster without racing too far ahead of the next real snapshot.
-const fillRate = computed(() => Math.max(2_000, props.fillPerTick * 220));
+// speeds. Must be fast enough to fully close the gap to a new server target
+// before the NEXT snapshot arrives, or the bar permanently lags behind the
+// real gauge that actually gates the turn (useCombatStore's runCombatClock
+// advances TICK_DELTA=340 ticks every TICK_INTERVAL=480ms, i.e. the real
+// average rate is fillPerTick * 340 / 0.48 ≈ fillPerTick * 708/s — the old
+// ×220 multiplier was ~3x too slow and could leave the bar visibly "not
+// full yet" long after the real gauge — and the turn — had already moved
+// on). ×900 gives headroom to always catch up within one tick interval.
+const fillRate = computed(() => Math.max(2_000, props.fillPerTick * 900));
 
 let raf = 0;
 let last = 0;
