@@ -163,6 +163,42 @@ public sealed class CombatSkillEffectResolverTests
         act.Should().Throw<DomainException>().WithMessage("At least one target is required to resolve a skill effect.");
     }
 
+    [Fact]
+    public void Resolve_ShouldAccrueThreatOnActor_WhenPlayerDamagesEnemy()
+    {
+        var (combat, ally, enemy) = CreateCombat();
+        var skill = CreateSkill("skill.basic.strike", "Damage", 10);
+
+        _resolver.Resolve(combat, ally, skill, [enemy]);
+
+        ally.ThreatValue.Should().BeGreaterThan(0);
+        enemy.LastAttackerId.Should().Be(ally.Id.Value);
+    }
+
+    [Fact]
+    public void Resolve_ShouldNotAccrueThreat_WhenEnemyDamagesPlayer()
+    {
+        var (combat, ally, enemy) = CreateCombat();
+        var skill = CreateSkill("skill.basic.strike", "Damage", 10);
+
+        _resolver.Resolve(combat, enemy, skill, [ally]);
+
+        enemy.ThreatValue.Should().Be(0);
+        ally.LastAttackerId.Should().Be(enemy.Id.Value);
+    }
+
+    [Fact]
+    public void Resolve_ShouldAccrueThreatOnActor_WhenPlayerHealsAlly()
+    {
+        var (combat, ally, _) = CreateCombat();
+        ally.ApplyDamage(30);
+        var skill = CreateSkill("skill.heal", "Heal", 15);
+
+        _resolver.Resolve(combat, ally, skill, [ally]);
+
+        ally.ThreatValue.Should().BeGreaterThan(0);
+    }
+
     private static (Combat Combat, Combatant Ally, Combatant Enemy) CreateCombat()
     {
         var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);

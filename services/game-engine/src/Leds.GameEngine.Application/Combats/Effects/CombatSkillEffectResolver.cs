@@ -1,4 +1,5 @@
 using Leds.GameEngine.Application.Combats.Actions;
+using Leds.GameEngine.Application.Combats.EnemyTurns.Ai;
 using Leds.GameEngine.Application.Combats.Typing;
 using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Combats.Atb;
@@ -98,6 +99,9 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
 
             if (healed > 0)
             {
+                if (actor.Side == CombatantSide.Player)
+                    actor.AccrueThreat(healed * ThreatTuning.ThreatPerHealing);
+
                 logEntries.Add(CreateLog(
                     "HealApplied",
                     $"{target.DisplayName} recovers {healed} vitality.",
@@ -208,6 +212,15 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
 
             var absorbed = guardBefore - target.Guard;
             var vitalityDamage = vitalityBefore - target.CurrentVitality;
+
+            target.RecordLastAttacker(actor.Id.Value);
+
+            if (actor.Side == CombatantSide.Player)
+            {
+                actor.AccrueThreat(
+                    vitalityDamage * ThreatTuning.ThreatPerVitalityDamage
+                    + absorbed * ThreatTuning.ThreatPerGuardAbsorbed);
+            }
 
             if (absorbed > 0)
             {
@@ -364,6 +377,9 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
         foreach (var target in targets)
         {
             target.GainGuard(skill.BasePower);
+
+            if (actor.Side == CombatantSide.Player)
+                actor.AccrueThreat(skill.BasePower * ThreatTuning.ThreatPerGuardGranted);
 
             logEntries.Add(CreateLog(
                 "GuardGained",

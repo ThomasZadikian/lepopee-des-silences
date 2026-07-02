@@ -95,6 +95,18 @@ public sealed class Combatant
 
     public void SetAtbGauge(int value) => RuntimeState.SetAtbGauge(value);
 
+    // ── Threat (enemy targeting) ────────────────────────────────────────────
+
+    /// <summary>Accumulated threat this combatant has drawn over the fight so far.</summary>
+    public double ThreatValue => RuntimeState.ThreatValue;
+
+    /// <summary>Id of whoever most recently damaged this combatant, if any.</summary>
+    public Guid? LastAttackerId => RuntimeState.LastAttackerId;
+
+    public void AccrueThreat(double amount) => RuntimeState.AccrueThreat(amount);
+
+    public void RecordLastAttacker(Guid attackerId) => RuntimeState.RecordLastAttacker(attackerId);
+
     /// <summary>
     /// Records that this combatant just acted: its gauge is consumed and it enters
     /// recovery until <paramref name="currentTick"/> + <paramref name="recoveryTicks"/>.

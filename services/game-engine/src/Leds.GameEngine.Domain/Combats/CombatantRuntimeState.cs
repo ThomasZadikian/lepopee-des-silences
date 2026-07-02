@@ -14,7 +14,9 @@ public sealed class CombatantRuntimeState
         int? atbGaugeValue,
         int? actionRecoveryUntilTick,
         int? atbFillPerTick,
-        DateTime updatedAtUtc)
+        DateTime updatedAtUtc,
+        double threatValue,
+        Guid? lastAttackerId)
     {
         Id = id;
         CurrentVitality = currentVitality;
@@ -26,6 +28,8 @@ public sealed class CombatantRuntimeState
         ActionRecoveryUntilTick = actionRecoveryUntilTick;
         AtbFillPerTick = atbFillPerTick;
         UpdatedAtUtc = updatedAtUtc;
+        ThreatValue = threatValue;
+        LastAttackerId = lastAttackerId;
     }
 
     public Guid Id { get; }
@@ -44,6 +48,16 @@ public sealed class CombatantRuntimeState
     public int? AtbFillPerTick { get; private set; }
     public DateTime UpdatedAtUtc { get; private set; }
 
+    /// <summary>
+    /// Accumulated threat this combatant has drawn over the course of the fight
+    /// (damage dealt, healing, guard gained — see ThreatTuning). Meaningful on
+    /// the player side; enemies weigh candidate targets by this value.
+    /// </summary>
+    public double ThreatValue { get; private set; }
+
+    /// <summary>Id of the combatant who most recently damaged this one, if any.</summary>
+    public Guid? LastAttackerId { get; private set; }
+
     public bool IsDefeated => CurrentVitality <= 0;
 
     public static CombatantRuntimeState Create(
@@ -54,7 +68,9 @@ public sealed class CombatantRuntimeState
         int currentCharge = 0,
         int? atbGaugeValue = null,
         int? actionRecoveryUntilTick = null,
-        int? atbFillPerTick = null)    
+        int? atbFillPerTick = null,
+        double threatValue = 0,
+        Guid? lastAttackerId = null)
     {
         if (currentVitality < 0)
             throw new DomainException("Current vitality cannot be negative.");
@@ -81,7 +97,9 @@ public sealed class CombatantRuntimeState
             atbGaugeValue,
             actionRecoveryUntilTick,
             atbFillPerTick,
-            DateTime.UtcNow);
+            DateTime.UtcNow,
+            threatValue,
+            lastAttackerId);
     }
 
     public void ApplyDamage(int amount)
@@ -219,6 +237,22 @@ public sealed class CombatantRuntimeState
         Touch();
     }
 
+    /// <summary>Adds to accumulated threat (floored at 0). No-op for non-positive amounts.</summary>
+    public void AccrueThreat(double amount)
+    {
+        if (amount <= 0) return;
+
+        ThreatValue += amount;
+        Touch();
+    }
+
+    /// <summary>Records who most recently damaged this combatant.</summary>
+    public void RecordLastAttacker(Guid attackerId)
+    {
+        LastAttackerId = attackerId;
+        Touch();
+    }
+
     public void DebugSetVitals(int maxVitality, int vitality, int guard)
     {
         if (vitality < 0 || vitality > maxVitality)
@@ -247,7 +281,9 @@ public sealed class CombatantRuntimeState
         int? atbGaugeValue,
         int? actionRecoveryUntilTick,
         DateTime updatedAtUtc,
-        int? atbFillPerTick = null)
+        int? atbFillPerTick = null,
+        double threatValue = 0,
+        Guid? lastAttackerId = null)
     {
         return new CombatantRuntimeState(
             id,
@@ -259,6 +295,8 @@ public sealed class CombatantRuntimeState
             atbGaugeValue,
             actionRecoveryUntilTick,
             atbFillPerTick,
-            updatedAtUtc);
+            updatedAtUtc,
+            threatValue,
+            lastAttackerId);
     }
 }

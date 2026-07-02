@@ -1,4 +1,5 @@
 ﻿using Leds.GameEngine.Domain.Combats;
+using Leds.GameEngine.Domain.Combats.Typing;
 
 namespace Leds.GameEngine.Application.Combats.EnemyTurns.Bossing.Canon;
 
@@ -21,13 +22,31 @@ public abstract class CanonBossBehaviorBase : IBossBehavior
     protected static IReadOnlyList<Combatant> LivingPlayers(Combat combat)
         => combat.Allies.Where(a => !a.IsDefeated).ToArray();
 
-    /// <summary>The weakest living player (focus-fire / finisher target). Null if none.</summary>
-    protected static Combatant? LowestHpPlayer(Combat combat)
-        => LivingPlayers(combat).OrderBy(a => a.CurrentVitality).FirstOrDefault();
+    /// <summary>The weakest living player (focus-fire / finisher target). Null if none.
+    /// Ties (equal current vitality — e.g. nobody's been hit yet) are broken by a
+    /// deterministic per-candidate hash, never by array position, so this doesn't
+    /// silently default to the protagonist every time.</summary>
+    protected static Combatant? LowestHpPlayer(Combat combat, Combatant boss)
+        => LivingPlayers(combat)
+            .OrderBy(a => a.CurrentVitality)
+            .ThenBy(a => DeterministicTieKey(combat, boss, a))
+            .FirstOrDefault();
 
-    /// <summary>The healthiest living player (best target for control / drain). Null if none.</summary>
-    protected static Combatant? HighestHpPlayer(Combat combat)
-        => LivingPlayers(combat).OrderByDescending(a => a.CurrentVitality).FirstOrDefault();
+    /// <summary>The healthiest living player (best target for control / drain). Null if none.
+    /// Same deterministic tie-break as <see cref="LowestHpPlayer"/>.</summary>
+    protected static Combatant? HighestHpPlayer(Combat combat, Combatant boss)
+        => LivingPlayers(combat)
+            .OrderByDescending(a => a.CurrentVitality)
+            .ThenBy(a => DeterministicTieKey(combat, boss, a))
+            .FirstOrDefault();
+
+    /// <summary>
+    /// A reproducible-but-not-array-order hash used to break exact ties in HP-based
+    /// target selection (turn 1, nobody hurt yet, etc.).
+    /// </summary>
+    private static double DeterministicTieKey(Combat combat, Combatant actor, Combatant candidate)
+        => DeterministicCombatRoll.UnitInterval(
+            $"boss-target:{combat.Id.Value}:{combat.TurnNumber}:{actor.Id.Value}:{candidate.Id.Value}");
 
     protected static bool Owns(Combatant boss, string skillKey)
         => boss.Skills.Any(s => string.Equals(s.Key, skillKey, StringComparison.OrdinalIgnoreCase));
@@ -63,13 +82,13 @@ public sealed class ImperatriceVipereBossBehavior : CanonBossBehaviorBase
 
         // Phase enragée : curée sur le plus faible, chaque tour.
         if (HpFraction(boss) <= 0.50)
-            return Strike(boss, "canon.skill.flamme-froide", LowestHpPlayer(combat));
+            return Strike(boss, "canon.skill.flamme-froide", LowestHpPlayer(combat, boss));
 
         // Phase venin : un tour sur deux, empoisonne la cible la plus saine.
         return combat.TurnNumber % 2 == 0
-            ? Strike(boss, "canon.skill.priere-aspiration", HighestHpPlayer(combat))
-                ?? Strike(boss, "canon.skill.flamme-froide", LowestHpPlayer(combat))
-            : Strike(boss, "canon.skill.flamme-froide", LowestHpPlayer(combat));
+            ? Strike(boss, "canon.skill.priere-aspiration", HighestHpPlayer(combat, boss))
+                ?? Strike(boss, "canon.skill.flamme-froide", LowestHpPlayer(combat, boss))
+            : Strike(boss, "canon.skill.flamme-froide", LowestHpPlayer(combat, boss));
     }
 }
 
@@ -91,7 +110,7 @@ public sealed class PapeLouisXviiBossBehavior : CanonBossBehaviorBase
             return new BossActionDecision("canon.skill.brume",
                 LivingPlayers(combat).Select(p => p.Id.Value).ToArray());
 
-        return Strike(boss, "canon.skill.flamme-froide", LowestHpPlayer(combat));
+        return Strike(boss, "canon.skill.flamme-froide", LowestHpPlayer(combat, boss));
     }
 }
 
@@ -109,13 +128,13 @@ public sealed class HomonculeRoiBossBehavior : CanonBossBehaviorBase
         var combat = context.Combat;
 
         if (HpFraction(boss) <= 0.40)
-            return Strike(boss, "canon.skill.flamme-froide", LowestHpPlayer(combat));
+            return Strike(boss, "canon.skill.flamme-froide", LowestHpPlayer(combat, boss));
 
         if (combat.TurnNumber == 1)
             return OnSelf(boss, "canon.skill.transmutation")
-                ?? Strike(boss, "canon.skill.flamme-froide", LowestHpPlayer(combat));
+                ?? Strike(boss, "canon.skill.flamme-froide", LowestHpPlayer(combat, boss));
 
-        return Strike(boss, "canon.skill.flamme-froide", LowestHpPlayer(combat));
+        return Strike(boss, "canon.skill.flamme-froide", LowestHpPlayer(combat, boss));
     }
 }
 
@@ -132,9 +151,9 @@ public sealed class GrandCardinalBossBehavior : CanonBossBehaviorBase
         var combat = context.Combat;
 
         return combat.TurnNumber % 2 == 0
-            ? Strike(boss, "canon.skill.priere-aspiration", HighestHpPlayer(combat))
-                ?? Strike(boss, "canon.skill.flamme-froide", LowestHpPlayer(combat))
-            : Strike(boss, "canon.skill.flamme-froide", LowestHpPlayer(combat));
+            ? Strike(boss, "canon.skill.priere-aspiration", HighestHpPlayer(combat, boss))
+                ?? Strike(boss, "canon.skill.flamme-froide", LowestHpPlayer(combat, boss))
+            : Strike(boss, "canon.skill.flamme-froide", LowestHpPlayer(combat, boss));
     }
 }
 
@@ -153,17 +172,17 @@ public sealed class HimLitBossBehavior : CanonBossBehaviorBase
 
         // Apogée : sous 33 % PV, flamme séraphine sur le plus faible, sans répit.
         if (HpFraction(boss) <= 0.33)
-            return Strike(boss, "canon.skill.flamme-seraphine", LowestHpPlayer(combat))
-                ?? Strike(boss, "canon.skill.flamme-froide", LowestHpPlayer(combat));
+            return Strike(boss, "canon.skill.flamme-seraphine", LowestHpPlayer(combat, boss))
+                ?? Strike(boss, "canon.skill.flamme-froide", LowestHpPlayer(combat, boss));
 
         return (combat.TurnNumber % 3) switch
         {
             0 when Owns(boss, "canon.skill.brume") => new BossActionDecision(
                 "canon.skill.brume", LivingPlayers(combat).Select(p => p.Id.Value).ToArray()),
-            1 => Strike(boss, "canon.skill.priere-aspiration", HighestHpPlayer(combat))
-                ?? Strike(boss, "canon.skill.flamme-froide", LowestHpPlayer(combat)),
-            _ => Strike(boss, "canon.skill.flamme-seraphine", LowestHpPlayer(combat))
-                ?? Strike(boss, "canon.skill.flamme-froide", LowestHpPlayer(combat))
+            1 => Strike(boss, "canon.skill.priere-aspiration", HighestHpPlayer(combat, boss))
+                ?? Strike(boss, "canon.skill.flamme-froide", LowestHpPlayer(combat, boss)),
+            _ => Strike(boss, "canon.skill.flamme-seraphine", LowestHpPlayer(combat, boss))
+                ?? Strike(boss, "canon.skill.flamme-froide", LowestHpPlayer(combat, boss))
         };
     }
 }

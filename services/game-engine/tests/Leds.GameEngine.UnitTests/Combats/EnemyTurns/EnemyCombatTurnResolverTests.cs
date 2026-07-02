@@ -195,6 +195,49 @@ public sealed class EnemyCombatTurnResolverTests
         result.LogEntries.Should().Contain(e => e.Type == "TurnAdvanced");
     }
 
+    // Regression test for the reported bug: with several equally-healthy, equally
+    // untouched allies, enemies used to always hit the first ally (the protagonist,
+    // by construction) because ties resolved by array position. They should now
+    // spread across candidates via the deterministic per-target jitter.
+    [Fact]
+    public void Resolve_ShouldNotAlwaysTargetTheFirstAlly_WhenAlliesAreTiedAtFullHealth()
+    {
+        var distinctTargets = new HashSet<Guid>();
+
+        for (var tick = 0; tick < 20; tick++)
+        {
+            var skill = CreateSkill("skill.basic.strike", "Damage", "SingleEnemy", 10);
+            var ally1 = Combatant.CreateAlly("player.1", "Hero1", "Fighter", 100);
+            var ally2 = Combatant.CreateAlly("player.2", "Hero2", "Fighter", 100);
+            var ally3 = Combatant.CreateAlly("player.3", "Hero3", "Fighter", 100);
+            var enemy = Combatant.CreateEnemy("enemy.1", "Enemy", "Guard", 200, [skill]);
+            var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally1, ally2, ally3], [enemy]);
+            combat.AdvanceTurn();
+
+            var result = _resolver.Resolve(combat);
+            distinctTargets.Add(result.TargetIds.Single());
+        }
+
+        distinctTargets.Should().HaveCountGreaterThan(1,
+            "ties between equally-untouched allies must not always resolve to the same combatant");
+    }
+
+    [Fact]
+    public void Resolve_ShouldPreferHigherThreatAlly_OverEquallyHealthyAlly()
+    {
+        var skill = CreateSkill("skill.basic.strike", "Damage", "SingleEnemy", 10);
+        var lowThreat = Combatant.CreateAlly("player.1", "Hero1", "Fighter", 100);
+        var highThreat = Combatant.CreateAlly("player.2", "Hero2", "Fighter", 100);
+        highThreat.AccrueThreat(1000);
+        var enemy = Combatant.CreateEnemy("enemy.1", "Enemy", "Guard", 200, [skill]);
+        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [lowThreat, highThreat], [enemy]);
+        combat.AdvanceTurn();
+
+        var result = _resolver.Resolve(combat);
+
+        result.TargetIds.Should().ContainSingle(id => id == highThreat.Id.Value);
+    }
+
     private static Combat CreateCombat(IReadOnlyCollection<CombatantSkill> enemySkills)
     {
         var ally = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
