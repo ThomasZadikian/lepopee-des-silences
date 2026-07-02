@@ -1,7 +1,8 @@
 <script setup lang="ts">
+import { ref } from 'vue';
 import type { RunPartyMemberDto, ActivePalaceLawDto, ActiveCurseDto, RunModifierDto, RunItemDto } from '../types/runTypes';
 import { usePlayerStore } from '../../party/stores/playerStore';
-import type { PlayerCharacterStatsView, PlayerStatKind } from '../../party/types/playerTypes';
+import TeamManagementModal from './TeamManagementModal.vue';
 
 defineProps<{
   allies: RunPartyMemberDto[] | null;
@@ -14,56 +15,7 @@ defineProps<{
 defineEmits<{ close: [] }>();
 
 const playerStore = usePlayerStore();
-
-const statLabels: Record<PlayerStatKind, string> = {
-  MaxVitality:   'Vitalité max',
-  AttackPower:   'Attaque',
-  Defense:       'Défense',
-  StartingGuard: 'Garde initiale',
-  Speed:         'Vitesse',
-  Initiative:    'Initiative',
-  Recovery:      'Récupération',
-  Focus:         'Focus',
-  Mana:          'Mana',
-  Charge:        'Charge',
-};
-
-const statOrder = Object.keys(statLabels) as PlayerStatKind[];
-
-function toggleSkill(skillKey: string, isEquipped: boolean) {
-  const character = playerStore.mainCharacter;
-  if (!character || playerStore.isLoading) return;
-  if (isEquipped) {
-    playerStore.unequipSkill(character.id, skillKey);
-  } else {
-    if (playerStore.isLoadoutFull) return;
-    playerStore.equipSkill(character.id, skillKey);
-  }
-}
-
-function spendPoint(stat: PlayerStatKind) {
-  const character = playerStore.mainCharacter;
-  if (!character || playerStore.isLoading || playerStore.unspentStatPoints <= 0) return;
-  playerStore.spendStatPoint(character.id, stat);
-}
-
-const statValueKeys: Record<PlayerStatKind, keyof PlayerCharacterStatsView> = {
-  MaxVitality:   'maxVitality',
-  AttackPower:   'attackPower',
-  Defense:       'defense',
-  StartingGuard: 'startingGuard',
-  Speed:         'speed',
-  Initiative:    'initiative',
-  Recovery:      'recovery',
-  Focus:         'focus',
-  Mana:          'mana',
-  Charge:        'charge',
-};
-
-function statValue(stat: PlayerStatKind): number {
-  const stats = playerStore.mainCharacter?.stats;
-  return stats ? stats[statValueKeys[stat]] : 0;
-}
+const isManageModalOpen = ref(false);
 
 function vitalityPct(m: RunPartyMemberDto): number {
   if (!m.maxVitality) return 0;
@@ -216,64 +168,11 @@ function rarityTone(rarity: string): string {
         </p>
       </section>
 
-      <!-- ── Sorts (known vs équipés) ── -->
+      <!-- ── Gestion de l'équipe ── -->
       <section v-if="playerStore.mainCharacter" class="party-drawer__section">
-        <h4 class="party-drawer__section-title">
-          Sorts
-          <span class="party-drawer__section-count">
-            {{ playerStore.equippedCount }} / {{ playerStore.mainCharacter.maxEquippedSkills }}
-          </span>
-        </h4>
-
-        <p class="party-drawer__hint">Frappe de base toujours disponible, en plus des sorts équipés.</p>
-
-        <ul class="party-drawer__list">
-          <li
-            v-for="skill in playerStore.mainCharacter.skills"
-            :key="skill.skillKey"
-            class="party-drawer__skill-row"
-          >
-            <span class="party-drawer__skill-name">{{ skill.skillKey }}</span>
-            <button
-              type="button"
-              class="party-drawer__skill-toggle"
-              :class="{ 'party-drawer__skill-toggle--active': skill.isEquipped }"
-              :disabled="playerStore.isLoading || (!skill.isEquipped && playerStore.isLoadoutFull)"
-              @click="toggleSkill(skill.skillKey, skill.isEquipped)"
-            >
-              {{ skill.isEquipped ? 'Équipé' : 'Équiper' }}
-            </button>
-          </li>
-        </ul>
-
-        <p v-if="playerStore.error" class="party-drawer__error">{{ playerStore.error }}</p>
-      </section>
-
-      <!-- ── Points de statistique ── -->
-      <section v-if="playerStore.mainCharacter" class="party-drawer__section">
-        <h4 class="party-drawer__section-title">
-          Points de statistique
-          <span class="party-drawer__section-count">{{ playerStore.unspentStatPoints }}</span>
-        </h4>
-
-        <ul class="party-drawer__list">
-          <li
-            v-for="stat in statOrder"
-            :key="stat"
-            class="party-drawer__stat-row"
-          >
-            <span class="party-drawer__stat-name">{{ statLabels[stat] }}</span>
-            <span class="party-drawer__stat-value">{{ statValue(stat) }}</span>
-            <button
-              type="button"
-              class="party-drawer__stat-add"
-              :disabled="playerStore.isLoading || playerStore.unspentStatPoints <= 0"
-              @click="spendPoint(stat)"
-            >
-              +1
-            </button>
-          </li>
-        </ul>
+        <button type="button" class="party-drawer__manage-btn" @click="isManageModalOpen = true">
+          Gérer l'équipe
+        </button>
       </section>
 
       <!-- ── Modificateurs actifs ── -->
@@ -339,6 +238,10 @@ function rarityTone(rarity: string): string {
         Aucune donnée d'équipe disponible.
       </p>
     </div>
+
+    <Teleport to="body">
+      <TeamManagementModal v-if="isManageModalOpen" @close="isManageModalOpen = false" />
+    </Teleport>
   </aside>
 </template>
 
@@ -418,116 +321,24 @@ function rarityTone(rarity: string): string {
   font-style: italic;
 }
 
-.party-drawer__section-count {
-  float: right;
-  font-family: var(--mono, monospace);
-  color: var(--gold, oklch(.72 .1 85));
-}
-
-.party-drawer__error {
-  font-family: var(--mono, monospace);
-  font-size: 11px;
-  color: var(--blood);
-  margin: 0;
-}
-
-.party-drawer__hint {
-  font-size: 11px;
-  font-style: italic;
-  color: var(--ink-4);
-  margin: 0 0 4px;
-}
-
-/* ── Skills ── */
-.party-drawer__skill-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 5px 0;
-  border-bottom: 1px solid var(--line-soft);
-  font-size: 12px;
-}
-
-.party-drawer__skill-name {
-  color: var(--ink-2);
-  flex: 1;
-}
-
-.party-drawer__skill-toggle {
-  flex-shrink: 0;
-  font-family: var(--caps, var(--font));
-  font-size: 9.5px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  padding: 3px 10px;
-  border-radius: 3px;
-  border: 1px solid var(--line-soft);
-  background: transparent;
-  color: var(--ink-4);
-  cursor: pointer;
-  transition: opacity .15s, border-color .15s, color .15s;
-}
-
-.party-drawer__skill-toggle:disabled {
-  opacity: .38;
-  cursor: not-allowed;
-}
-
-.party-drawer__skill-toggle:not(:disabled):hover {
-  border-color: var(--ink-3);
-  color: var(--ink-2);
-}
-
-.party-drawer__skill-toggle--active {
-  border-color: var(--gold, oklch(.72 .1 85));
-  color: var(--gold, oklch(.72 .1 85));
+.party-drawer__manage-btn {
+  width: 100%;
+  padding: 9px 14px;
+  border-radius: 4px;
+  border: 1px solid var(--edge-gold, oklch(.72 .09 82 / .70));
   background: oklch(.55 .08 85 / .12);
-}
-
-/* ── Stat points ── */
-.party-drawer__stat-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 5px 0;
-  border-bottom: 1px solid var(--line-soft);
-  font-size: 12px;
-}
-
-.party-drawer__stat-name {
-  color: var(--ink-2);
-  flex: 1;
-}
-
-.party-drawer__stat-value {
-  font-family: var(--mono, monospace);
-  font-size: 11px;
-  color: var(--ink-3);
-}
-
-.party-drawer__stat-add {
-  flex-shrink: 0;
-  width: 22px;
-  height: 22px;
-  border-radius: 3px;
-  border: 1px solid var(--frost, oklch(.70 .07 232));
-  background: oklch(.50 .06 232 / .12);
-  color: var(--frost, oklch(.70 .07 232));
-  font-family: var(--mono, monospace);
-  font-size: 12px;
-  line-height: 1;
+  color: var(--gold, oklch(.72 .1 85));
+  font-family: var(--caps, var(--font));
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
   cursor: pointer;
-  transition: opacity .15s, background .15s;
+  transition: background .15s, box-shadow .15s;
 }
 
-.party-drawer__stat-add:disabled {
-  opacity: .3;
-  cursor: not-allowed;
-}
-
-.party-drawer__stat-add:not(:disabled):hover {
-  background: oklch(.50 .06 232 / .22);
+.party-drawer__manage-btn:hover {
+  background: oklch(.55 .08 85 / .22);
+  box-shadow: 0 0 18px -6px oklch(.72 .1 85 / .4);
 }
 
 .party-drawer__list {

@@ -1415,6 +1415,93 @@ public sealed class HttpCatalogContentGatewayTests
             .WithMessage("*500*");
     }
 
+    // ── ListActiveSkillDefinitionsAsync ────────────────────────────────
+
+    [Fact]
+    public async Task ListActiveSkillDefinitionsAsync_ShouldReturnSkills_WhenCatalogReturns200()
+    {
+        var httpResponse = new
+        {
+            Definitions = new[]
+            {
+                new
+                {
+                    Key = "skill.basic.strike",
+                    Name = "Frappe",
+                    Description = "Une attaque.",
+                    SkillType = "Damage",
+                    TargetingType = "SingleEnemy",
+                    EffectType = "Damage",
+                    ManaCost = 0,
+                    ChargeCost = 0,
+                    BasePower = 10,
+                    Tags = new[] { "basic" }
+                }
+            }
+        };
+
+        var json = JsonSerializer.Serialize(httpResponse, JsonOptions);
+        var handler = CreateMockHandler(json, HttpStatusCode.OK);
+        var client = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost:5193") };
+        var gateway = new HttpCatalogContentGateway(client);
+
+        var skills = await gateway.ListActiveSkillDefinitionsAsync();
+
+        skills.Should().ContainSingle();
+        skills.Single().Key.Should().Be("skill.basic.strike");
+    }
+
+    [Fact]
+    public async Task ListActiveSkillDefinitionsAsync_ShouldCallExpectedEndpoint()
+    {
+        HttpRequestMessage? capturedRequest = null;
+
+        var handler = new Mock<HttpMessageHandler>();
+        handler
+            .Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .Callback<HttpRequestMessage, CancellationToken>((req, _) => capturedRequest = req)
+            .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.NotFound));
+
+        var client = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost:5193") };
+        var gateway = new HttpCatalogContentGateway(client);
+
+        await gateway.ListActiveSkillDefinitionsAsync();
+
+        capturedRequest.Should().NotBeNull();
+        capturedRequest!.RequestUri!.AbsolutePath.Should().Be(
+            "/api/v2/catalog/skill-definitions");
+    }
+
+    [Fact]
+    public async Task ListActiveSkillDefinitionsAsync_ShouldReturnEmpty_WhenCatalogReturns404()
+    {
+        var handler = CreateMockHandler("", HttpStatusCode.NotFound);
+        var client = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost:5193") };
+        var gateway = new HttpCatalogContentGateway(client);
+
+        var skills = await gateway.ListActiveSkillDefinitionsAsync();
+
+        skills.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ListActiveSkillDefinitionsAsync_ShouldThrowCatalogGatewayException_WhenCatalogReturns500()
+    {
+        var handler = CreateMockHandler("Internal Server Error", HttpStatusCode.InternalServerError);
+        var client = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost:5193") };
+        var gateway = new HttpCatalogContentGateway(client);
+
+        var act = async () => await gateway.ListActiveSkillDefinitionsAsync();
+
+        await act.Should()
+            .ThrowAsync<CatalogGatewayException>()
+            .WithMessage("*500*");
+    }
+
     // ── Template methods use the HTTP catalog gateway ─────────────────────
 
     [Fact]

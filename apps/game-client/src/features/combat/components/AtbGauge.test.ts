@@ -98,6 +98,34 @@ describe('AtbGauge', () => {
     expect(wrapper.find('.atb-gauge__charge').text()).toContain('×1.5');
   });
 
+  it('is atb--charging, not atb--max, just below the 10,000 overflow cap', () => {
+    const wrapper = mountGauge(59999);
+    expect(wrapper.find('.atb').classes()).toContain('atb--charging');
+    expect(wrapper.find('.atb').classes()).not.toContain('atb--max');
+  });
+
+  it('is atb--max exactly at the 10,000 overflow cap (READY + MaxChargeOverflow)', () => {
+    const wrapper = mountGauge(60000);
+    expect(wrapper.find('.atb').classes()).toContain('atb--max');
+  });
+
+  it('renders a title attribute on the charge label describing the damage bonus', () => {
+    const wrapper = mountGauge(55000);
+    const label = wrapper.find('.atb-gauge__charge');
+    expect(label.attributes('title')).toContain('×1.30');
+    expect(label.attributes('title')).toContain('Surcharge');
+  });
+
+  it('applies the --max modifier class to the charge label at ×1.5', () => {
+    const wrapper = mountGauge(65000);
+    expect(wrapper.find('.atb-gauge__charge').classes()).toContain('atb-gauge__charge--max');
+  });
+
+  it('does not apply the --max modifier class to the charge label below ×1.5', () => {
+    const wrapper = mountGauge(51000);
+    expect(wrapper.find('.atb-gauge__charge').classes()).not.toContain('atb-gauge__charge--max');
+  });
+
   it('cleans up animation frame on unmount', () => {
     const wrapper = mountGauge();
     const cancelSpy = vi.spyOn(window, 'cancelAnimationFrame');
