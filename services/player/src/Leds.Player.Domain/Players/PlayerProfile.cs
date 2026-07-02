@@ -47,13 +47,15 @@ public sealed class PlayerProfile
 
     private void AddDefaultCharacter()
     {
+        // skill.basic.strike is NOT listed here: it's the universal basic
+        // attack (PlayerCharacter.BasicSkillKey), always usable regardless
+        // of loadout, so it isn't part of the learnable/equippable pool.
         var defaultCharacter = PlayerCharacter.Create(
             definitionKey: "character.player.self",
             displayName: "Le Porteur",
             statBlock: PlayerCharacterStatBlock.CreateDefaultPorteur(),
             skills:
             [
-                PlayerCharacterSkill.Create("skill.basic.strike", CreatedAtUtc, "default", isEquipped: true),
                 PlayerCharacterSkill.Create("skill.basic.guard", CreatedAtUtc, "default", isEquipped: true)
             ]);
 

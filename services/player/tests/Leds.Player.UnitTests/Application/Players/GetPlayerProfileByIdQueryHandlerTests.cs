@@ -133,8 +133,8 @@ public sealed class GetPlayerProfileByIdQueryHandlerTests
         var result = await _handler.Handle(query, CancellationToken.None);
 
         result.Should().NotBeNull();
-        result!.Characters.Single().SkillKeys.Should().Contain("skill.basic.strike");
-        result.Characters.Single().SkillKeys.Should().Contain("skill.basic.guard");
+        result!.Characters.Single().SkillKeys.Should().Contain("skill.basic.guard");
+        result.Characters.Single().SkillKeys.Should().NotContain("skill.basic.strike");
     }
 
     [Fact]

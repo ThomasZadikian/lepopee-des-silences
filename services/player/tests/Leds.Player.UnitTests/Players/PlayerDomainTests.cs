@@ -152,7 +152,8 @@ public sealed class PlayerCharacterTests
         character.EquipSkill("skill.a");
 
         character.Skills.Single().IsEquipped.Should().BeTrue();
-        character.EquippedSkillKeys.Should().ContainSingle().Which.Should().Be("skill.a");
+        character.EquippedSkillKeys.Should().Contain("skill.a");
+        character.EquippedSkillKeys.Should().Contain(PlayerCharacter.BasicSkillKey);
     }
 
     [Fact]

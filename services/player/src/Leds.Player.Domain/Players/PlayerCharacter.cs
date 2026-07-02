@@ -6,6 +6,14 @@ public sealed class PlayerCharacter
 {
     public const int MaxEquippedSkills = 4;
 
+    /// <summary>
+    /// The universal basic attack. Always usable in combat in addition to
+    /// the equipped loadout — never counts against MaxEquippedSkills and
+    /// never needs to be equipped/known. Guarantees a character can never
+    /// end up with zero usable skills.
+    /// </summary>
+    public const string BasicSkillKey = "skill.basic.strike";
+
     private readonly List<PlayerCharacterSkill> _skills;
 
     private PlayerCharacter(
@@ -37,8 +45,14 @@ public sealed class PlayerCharacter
     public int BaseCharge => StatBlock.Charge;
     public IReadOnlyCollection<PlayerCharacterSkill> Skills => _skills.AsReadOnly();
     public IReadOnlyCollection<string> SkillKeys => _skills.Select(s => s.SkillDefinitionKey).ToArray();
-    public IReadOnlyCollection<string> EquippedSkillKeys => _skills.Where(s => s.IsEquipped).Select(s => s.SkillDefinitionKey).ToArray();
-    public int EquippedCount => _skills.Count(s => s.IsEquipped);
+    public IReadOnlyCollection<string> EquippedSkillKeys => _skills
+        .Where(s => s.IsEquipped)
+        .Select(s => s.SkillDefinitionKey)
+        .Append(BasicSkillKey)
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .ToArray();
+    public int EquippedCount => _skills.Count(s =>
+        s.IsEquipped && !string.Equals(s.SkillDefinitionKey, BasicSkillKey, StringComparison.OrdinalIgnoreCase));
 
     public static PlayerCharacter Create(
         string definitionKey,

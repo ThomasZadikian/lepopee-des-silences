@@ -198,7 +198,7 @@ public sealed class GetPlayerRunSnapshotQueryHandlerTests
         charResponse.MaxVitality.Should().Be(200);
         charResponse.BaseMana.Should().Be(50);
         charResponse.BaseCharge.Should().Be(10);
-        charResponse.SkillKeys.Should().HaveCount(2);
+        charResponse.SkillKeys.Should().BeEquivalentTo(["skill.custom.attack", "skill.custom.defend", "skill.basic.strike"]);
     }
 
     [Fact]
@@ -224,7 +224,8 @@ public sealed class GetPlayerRunSnapshotQueryHandlerTests
         var result = await _handler.Handle(new GetPlayerRunSnapshotQuery(id.Value), CancellationToken.None);
 
         var charResponse = result.Characters.Single();
-        charResponse.SkillKeys.Should().BeEquivalentTo(["skill.equipped.a", "skill.equipped.b"]);
+        charResponse.SkillKeys.Should().BeEquivalentTo(["skill.equipped.a", "skill.equipped.b", "skill.basic.strike"]);
+        charResponse.SkillKeys.Should().NotContain("skill.known.but.unequipped");
     }
 
     [Fact]

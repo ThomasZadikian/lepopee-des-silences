@@ -225,6 +225,8 @@ function rarityTone(rarity: string): string {
           </span>
         </h4>
 
+        <p class="party-drawer__hint">Frappe de base toujours disponible, en plus des sorts équipés.</p>
+
         <ul class="party-drawer__list">
           <li
             v-for="skill in playerStore.mainCharacter.skills"
@@ -427,6 +429,13 @@ function rarityTone(rarity: string): string {
   font-size: 11px;
   color: var(--blood);
   margin: 0;
+}
+
+.party-drawer__hint {
+  font-size: 11px;
+  font-style: italic;
+  color: var(--ink-4);
+  margin: 0 0 4px;
 }
 
 /* ── Skills ── */
