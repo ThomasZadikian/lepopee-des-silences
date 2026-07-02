@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { usePlayerStore } from '../../party/stores/playerStore';
-import TeamOverviewTab from './team-management/TeamOverviewTab.vue';
-import StatManagementTab from './team-management/StatManagementTab.vue';
 import SkillManagementTab from './team-management/SkillManagementTab.vue';
+import StatManagementTab from './team-management/StatManagementTab.vue';
+import TeamOverviewTab from './team-management/TeamOverviewTab.vue';
 
 defineEmits<{ close: [] }>();
 

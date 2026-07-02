@@ -6,12 +6,12 @@ const props = withDefaults(
   { gauge: 0, fillPerTick: 10, active: false, vertical: true },
 );
 
-const READY = 50_000;
+const READY = 21_500;
 // Matches the backend's AtbConstants.MaxChargeOverflow — the single source of
 // truth for how far a gauge can bank past READY. (Previously this file had
 // two disagreeing copies: a 50_000 used by the bar's own overflow ratio and
 // a correct 10_000 used only by the charge-multiplier label — unified here.)
-const MAX_OVERFLOW = 10_000;
+const MAX_OVERFLOW = 25_000;
 
 const displayed = ref(props.gauge);
 

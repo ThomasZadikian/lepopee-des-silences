@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import type { RunPartyMemberDto, ActivePalaceLawDto, ActiveCurseDto, RunModifierDto, RunItemDto } from '../types/runTypes';
 import { usePlayerStore } from '../../party/stores/playerStore';
+import type { ActiveCurseDto, ActivePalaceLawDto, RunItemDto, RunModifierDto, RunPartyMemberDto } from '../types/runTypes';
 import TeamManagementModal from './TeamManagementModal.vue';
 
 defineProps<{
@@ -176,7 +176,7 @@ function rarityTone(rarity: string): string {
       </section>
 
       <!-- ── Modificateurs actifs ── -->
-      <section v-if="modifiers && modifiers.length" class="party-drawer__section">
+      <section v-if="modifiers && modifiers.length" class="party-drawer__section"> 
         <h4 class="party-drawer__section-title">Modificateurs actifs</h4>
         <ul class="party-drawer__list">
           <li v-for="mod in modifiers" :key="mod.id" class="party-drawer__mod">
