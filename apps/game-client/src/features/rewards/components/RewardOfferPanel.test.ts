@@ -38,6 +38,22 @@ function mountPanel(offer: RewardOfferDto, isLoading = false) {
   });
 }
 
+const defeatedEnemyOffer: RewardOfferDto = {
+  ...baseOffer,
+  defeatedEnemies: [
+    {
+      enemyKey: 'canon.enemy.chimeres-serpentaires',
+      displayName: 'Chimères serpentaires',
+      description: 'Ce qui reste quand plusieurs serpents partagent une seule volonté.',
+      count: 2,
+      lootEntries: [
+        { itemKey: 'canon.item.datura', itemDisplayName: 'Datura stramonium', rarity: 'Rare', dropPercent: 30 },
+        { itemKey: 'canon.item.cendre-benite', itemDisplayName: 'Cendre bénite', rarity: 'Common', dropPercent: 40 },
+      ],
+    },
+  ],
+};
+
 describe('RewardOfferPanel', () => {
   it('renders without crashing', () => {
     const wrapper = mountPanel(baseOffer);
@@ -179,5 +195,29 @@ describe('RewardOfferPanel', () => {
     });
     expect(wrapper.findAll('.rop-card').length).toBe(6);
     expect(wrapper.findAll('.rop-card__source').length).toBe(3);
+  });
+
+  it('does not show the defeated-enemies sidebar when defeatedEnemies is absent', () => {
+    const wrapper = mountPanel(baseOffer);
+    expect(wrapper.find('.del').exists()).toBe(false);
+  });
+
+  it('shows the defeated-enemies sidebar with a count badge for grouped duplicates', () => {
+    const wrapper = mountPanel(defeatedEnemyOffer);
+    expect(wrapper.find('.del').exists()).toBe(true);
+    expect(wrapper.text()).toContain('Chimères serpentaires');
+    expect(wrapper.text()).toContain('×2');
+  });
+
+  it('opens the loot popover with description and full loot table on click', async () => {
+    const wrapper = mountPanel(defeatedEnemyOffer);
+    await wrapper.find('.del-row__trigger').trigger('click');
+    const popover = wrapper.find('.del-row__popover');
+    expect(popover.exists()).toBe(true);
+    expect(popover.text()).toContain('Ce qui reste quand plusieurs serpents partagent une seule volonté.');
+    expect(popover.text()).toContain('Datura stramonium');
+    expect(popover.text()).toContain('30%');
+    expect(popover.text()).toContain('Cendre bénite');
+    expect(popover.text()).toContain('40%');
   });
 });

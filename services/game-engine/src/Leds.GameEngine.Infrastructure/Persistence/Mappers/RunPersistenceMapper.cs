@@ -616,6 +616,7 @@ public static class RunPersistenceMapper
             RunId = runId,
             Source = offer.Source.ToString(),
             State = offer.State.ToString(),
+            DefeatedEnemiesJson = SerializeDefeatedEnemies(offer.DefeatedEnemies),
             CreatedAtUtc = DateTime.UtcNow,
             SelectedAtUtc = null,
             Options = offer.Choices.Select((choice, index) => new RewardOptionEntity
@@ -654,7 +655,55 @@ public static class RunPersistenceMapper
             source,
             choices,
             state,
-            selectedChoiceId);
+            selectedChoiceId,
+            DeserializeDefeatedEnemies(entity.DefeatedEnemiesJson));
+    }
+
+    private sealed record DefeatedEnemyLootEntrySnapshot(
+        string ItemKey,
+        string ItemDisplayName,
+        string Rarity,
+        int DropPercent);
+
+    private sealed record DefeatedEnemySummarySnapshot(
+        string EnemyKey,
+        string DisplayName,
+        string Description,
+        int Count,
+        List<DefeatedEnemyLootEntrySnapshot> LootEntries);
+
+    private static string? SerializeDefeatedEnemies(IReadOnlyCollection<Domain.Rewards.DefeatedEnemySummary> defeatedEnemies)
+    {
+        if (defeatedEnemies.Count == 0)
+        {
+            return null;
+        }
+
+        var snapshots = defeatedEnemies.Select(e => new DefeatedEnemySummarySnapshot(
+            e.EnemyKey,
+            e.DisplayName,
+            e.Description,
+            e.Count,
+            e.LootEntries.Select(l => new DefeatedEnemyLootEntrySnapshot(l.ItemKey, l.ItemDisplayName, l.Rarity, l.DropPercent)).ToList())).ToList();
+
+        return JsonSerializer.Serialize(snapshots);
+    }
+
+    private static List<Domain.Rewards.DefeatedEnemySummary> DeserializeDefeatedEnemies(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return [];
+        }
+
+        var snapshots = JsonSerializer.Deserialize<List<DefeatedEnemySummarySnapshot>>(json) ?? [];
+
+        return snapshots.Select(s => new Domain.Rewards.DefeatedEnemySummary(
+            s.EnemyKey,
+            s.DisplayName,
+            s.Description,
+            s.Count,
+            s.LootEntries.Select(l => new Domain.Rewards.DefeatedEnemyLootEntry(l.ItemKey, l.ItemDisplayName, l.Rarity, l.DropPercent)).ToList())).ToList();
     }
 
     public static RewardChoice ToRewardChoiceDomain(RewardOptionEntity entity)

@@ -11,6 +11,7 @@ public sealed class RewardOfferEntity
     public decimal? RewardPowerMultiplier { get; set; }
     public string? CatalogRewardTemplateKey { get; set; }
     public string? CatalogRewardTemplateVersion { get; set; }
+    public string? DefeatedEnemiesJson { get; set; }
     public DateTime CreatedAtUtc { get; set; }
     public DateTime? SelectedAtUtc { get; set; }
 

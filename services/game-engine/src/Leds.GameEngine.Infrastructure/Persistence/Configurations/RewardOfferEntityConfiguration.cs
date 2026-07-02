@@ -21,6 +21,7 @@ public sealed class RewardOfferEntityConfiguration : IEntityTypeConfiguration<Re
         builder.Property(o => o.RewardPowerMultiplier).HasColumnName("reward_power_multiplier").HasColumnType("decimal(10,4)");
         builder.Property(o => o.CatalogRewardTemplateKey).HasColumnName("catalog_reward_template_key").HasMaxLength(160);
         builder.Property(o => o.CatalogRewardTemplateVersion).HasColumnName("catalog_reward_template_version").HasMaxLength(32);
+        builder.Property(o => o.DefeatedEnemiesJson).HasColumnName("defeated_enemies_json");
         builder.Property(o => o.CreatedAtUtc).HasColumnName("created_at_utc").IsRequired();
         builder.Property(o => o.SelectedAtUtc).HasColumnName("selected_at_utc");
 

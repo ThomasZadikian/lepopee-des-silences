@@ -4,12 +4,15 @@ import EliseComment from '@/shared/components/EliseComment.vue'
 import RuleOrnament from '@/shared/components/RuleOrnament.vue'
 import SigilIcon from '@/shared/components/SigilIcon.vue'
 import { computed, ref } from 'vue'
+import DefeatedEnemyList from './DefeatedEnemyList.vue'
 import type { RewardOfferDto } from '../types/rewardTypes'
 
 const props = defineProps<{
   offer: RewardOfferDto
   isLoading?: boolean
 }>()
+
+const defeatedEnemies = computed(() => props.offer.defeatedEnemies ?? [])
 
 const emit = defineEmits<{
   selectReward: [choiceId: string]
@@ -149,7 +152,14 @@ const confirmBtnClass = computed(() =>
     <div class="es-vignette" />
     <div class="es-grain" />
 
-    <div class="rop-content">
+    <div class="rop-content" :class="{ 'rop-content--with-sidebar': defeatedEnemies.length > 0 }">
+
+      <DefeatedEnemyList
+        v-if="defeatedEnemies.length > 0"
+        :enemies="defeatedEnemies"
+      />
+
+      <div class="rop-main">
 
       <!-- Header -->
       <div style="flex: 0 0 auto; text-align: center; padding-top: 12px">
@@ -288,6 +298,7 @@ const confirmBtnClass = computed(() =>
         Une relique porte toujours le nom de ce qu'on a tu.
         <em>Tu es sûr de vouloir l'emporter avec toi&nbsp;?</em>
       </EliseComment>
+      </div>
     </div>
   </div>
 </template>
@@ -316,6 +327,23 @@ const confirmBtnClass = computed(() =>
   display: flex;
   flex-direction: column;
   padding: 24px 60px 80px;
+  gap: 8px;
+}
+
+/* When enemies were defeated (combat rewards), lay the sidebar and the
+   existing centered content side by side instead of stacking everything
+   in a single centered column. */
+.rop-content--with-sidebar {
+  flex-direction: row;
+  align-items: stretch;
+  gap: 32px;
+}
+
+.rop-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
   gap: 8px;
 }
 

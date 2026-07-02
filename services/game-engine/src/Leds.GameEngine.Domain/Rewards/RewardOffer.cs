@@ -13,7 +13,8 @@ public sealed class RewardOffer
         IReadOnlyCollection<RewardChoice> choices,
         RewardOfferState state,
         CombatRiskProfile? combatScaling = null,
-        RewardChoiceId? selectedChoiceId = null)
+        RewardChoiceId? selectedChoiceId = null,
+        IReadOnlyCollection<DefeatedEnemySummary>? defeatedEnemies = null)
     {
         Id = id;
         Source = source;
@@ -21,6 +22,7 @@ public sealed class RewardOffer
         State = state;
         CombatScaling = combatScaling;
         SelectedChoiceId = selectedChoiceId;
+        DefeatedEnemies = defeatedEnemies ?? [];
     }
 
     public RewardOfferId Id { get; }
@@ -39,6 +41,13 @@ public sealed class RewardOffer
     /// </summary>
     public CombatRiskProfile? CombatScaling { get; }
 
+    /// <summary>
+    /// Flavor + full loot-table summary for each enemy defeated in the combat this
+    /// offer came from. Empty for non-combat reward offers (Item, Law, Npc, Rest,
+    /// Merchant) and for combat offers whose enemies had no catalog content to resolve.
+    /// </summary>
+    public IReadOnlyCollection<DefeatedEnemySummary> DefeatedEnemies { get; }
+
     public bool IsPending => State == RewardOfferState.Pending;
 
     public static RewardOffer Rehydrate(
@@ -46,15 +55,17 @@ public sealed class RewardOffer
         RewardSource source,
         IReadOnlyCollection<RewardChoice> choices,
         RewardOfferState state,
-        RewardChoiceId? selectedChoiceId = null)
+        RewardChoiceId? selectedChoiceId = null,
+        IReadOnlyCollection<DefeatedEnemySummary>? defeatedEnemies = null)
     {
-        return new RewardOffer(id, source, choices, state, combatScaling: null, selectedChoiceId);
+        return new RewardOffer(id, source, choices, state, combatScaling: null, selectedChoiceId, defeatedEnemies);
     }
 
     public static RewardOffer Create(
         RewardSource source,
         IReadOnlyCollection<RewardChoice> choices,
-        CombatRiskProfile? combatScaling = null)
+        CombatRiskProfile? combatScaling = null,
+        IReadOnlyCollection<DefeatedEnemySummary>? defeatedEnemies = null)
     {
         var choiceList = choices?.ToList()
             ?? throw new DomainException("Reward choices are required.");
@@ -74,7 +85,9 @@ public sealed class RewardOffer
             source,
             choiceList,
             RewardOfferState.Pending,
-            combatScaling);
+            combatScaling,
+            selectedChoiceId: null,
+            defeatedEnemies);
     }
 
     public void SelectChoice(RewardChoiceId choiceId)

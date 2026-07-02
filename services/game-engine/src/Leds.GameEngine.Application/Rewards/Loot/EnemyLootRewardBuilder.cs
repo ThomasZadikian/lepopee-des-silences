@@ -1,4 +1,5 @@
 using Leds.GameEngine.Application.Catalog;
+using Leds.GameEngine.Application.Catalog.Contracts;
 using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Rewards;
@@ -97,6 +98,56 @@ public sealed class EnemyLootRewardBuilder
         "Common" or "Uncommon" or "Rare" or "Epic" => catalogRarity,
         _ => "Epic"
     };
+
+    /// <summary>
+    /// Builds a display-only summary of every enemy defeated in the fight — description
+    /// plus the *full* loot table each could have dropped, not just what actually rolled
+    /// in <see cref="BuildAsync"/>. Identical enemies (same catalog key) are grouped into
+    /// one summary with a count, rather than one card per combatant instance.
+    /// </summary>
+    public async Task<IReadOnlyCollection<DefeatedEnemySummary>> BuildDefeatedEnemySummariesAsync(
+        IReadOnlyCollection<Combatant> enemies,
+        CancellationToken cancellationToken = default)
+    {
+        var summaries = new List<DefeatedEnemySummary>();
+        var itemCache = new Dictionary<string, CatalogItemDefinitionSnapshot?>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var group in enemies.Where(e => e.IsDefeated).GroupBy(e => e.SourceKey, StringComparer.OrdinalIgnoreCase))
+        {
+            var enemyKey = group.Key;
+            var displayName = group.First().DisplayName;
+
+            var enemyDefinition = await _catalogContentGateway.GetEnemyDefinitionByKeyAsync(enemyKey, cancellationToken);
+            var lootTable = await _catalogContentGateway.GetEnemyLootTableByKeyAsync(enemyKey, cancellationToken);
+
+            var lootEntries = new List<DefeatedEnemyLootEntry>();
+            foreach (var entry in lootTable?.Entries ?? [])
+            {
+                if (!itemCache.TryGetValue(entry.ItemDefinitionKey, out var item))
+                {
+                    var itemResult = await _catalogContentGateway.GetItemDefinitionByKeyAsync(entry.ItemDefinitionKey, cancellationToken);
+                    item = itemResult.IsSuccess ? itemResult.Value : null;
+                    itemCache[entry.ItemDefinitionKey] = item;
+                }
+
+                if (item is null)
+                {
+                    continue; // Item key referenced by a loot table but not (yet) defined in the catalog.
+                }
+
+                lootEntries.Add(new DefeatedEnemyLootEntry(item.Key, item.DisplayName, item.Rarity, entry.DropPercent));
+            }
+
+            summaries.Add(new DefeatedEnemySummary(
+                enemyKey,
+                displayName,
+                enemyDefinition?.Description ?? string.Empty,
+                group.Count(),
+                lootEntries));
+        }
+
+        return summaries;
+    }
 
     private async Task<List<RolledLoot>> PadFromFallbackAsync(
         List<RolledLoot> rolled,

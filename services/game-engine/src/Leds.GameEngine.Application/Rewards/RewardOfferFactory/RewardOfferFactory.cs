@@ -82,7 +82,9 @@ public sealed class RewardOfferFactory
             };
         }
 
-        return RewardOffer.Create(source, choices, scaling);
+        var defeatedEnemies = await _enemyLootRewardBuilder.BuildDefeatedEnemySummariesAsync(enemies, cancellationToken);
+
+        return RewardOffer.Create(source, choices, scaling, defeatedEnemies);
     }
 
     public async Task<RewardOffer?> CreateFromTemplateKeyAsync(
