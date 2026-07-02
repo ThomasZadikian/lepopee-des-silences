@@ -84,6 +84,9 @@ public interface ICatalogContentGateway
         string skillType,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyCollection<CatalogSkillDefinition>> ListActiveSkillDefinitionsAsync(
+        CancellationToken cancellationToken = default);
+
     Task<IReadOnlyCollection<CatalogNpcDefinition>> ListNpcDefinitionsAsync(
         CancellationToken cancellationToken = default);
     Task<IReadOnlyCollection<CatalogRewardCursePool>> ListRewardCursePoolsAsync(

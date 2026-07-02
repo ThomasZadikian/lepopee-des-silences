@@ -7,10 +7,11 @@ const props = withDefaults(
 );
 
 const READY = 50_000;
-const MAX_OVERFLOW = 50_000;
-// Visual fill rate (gauge units / second). Decoupled from the tiny server
-// fillPerTick so the bar reads well; relative speed shows via turn frequency.
-const FILL_RATE = 6_500;
+// Matches the backend's AtbConstants.MaxChargeOverflow — the single source of
+// truth for how far a gauge can bank past READY. (Previously this file had
+// two disagreeing copies: a 50_000 used by the bar's own overflow ratio and
+// a correct 10_000 used only by the charge-multiplier label — unified here.)
+const MAX_OVERFLOW = 10_000;
 
 const displayed = ref(props.gauge);
 
@@ -27,21 +28,30 @@ const chargeStyle = computed(() => (props.vertical ? { height: chargeRatio.value
 const justReady = ref(false);
 const staggered = ref(false);
 const timers: number[] = [];
-// in <script setup>, alongside the other computeds
-const READY_T = 50_000;
-const MAX_OVER = 10_000;
+
 const chargeMult = computed(() => {
-  const over = Math.min(Math.max(displayed.value - READY_T, 0), MAX_OVER);
+  const over = Math.min(Math.max(displayed.value - READY, 0), MAX_OVERFLOW);
   if (over <= 0) return null;
-  const r = over / MAX_OVER;
+  const r = over / MAX_OVERFLOW;
   return r < 0.34 ? '×1.15' : r < 0.67 ? '×1.30' : '×1.5';
 });
+
+const chargeMultLabel = computed(() =>
+  chargeMult.value ? `Surcharge : dégâts ${chargeMult.value} tant que la jauge reste chargée` : '',
+);
 
 function flash(target: { value: boolean }, ms = 600) {
   target.value = true;
   const id = window.setTimeout(() => { target.value = false; }, ms);
   timers.push(id);
 }
+
+// Visual fill rate (gauge units / second), derived from the combatant's real
+// AtbFillPerTick so fast vs. slow combatants visibly animate at different
+// speeds instead of all tracking the ~480ms server snapshot uniformly. Floor
+// keeps slow combatants from crawling; the multiplier keeps fast ones
+// visibly faster without racing too far ahead of the next real snapshot.
+const fillRate = computed(() => Math.max(2_000, props.fillPerTick * 220));
 
 let raf = 0;
 let last = 0;
@@ -50,7 +60,7 @@ function frame(now: number) {
   last = now;
   const target = props.gauge;
   if (displayed.value < target) {
-    displayed.value = Math.min(target, displayed.value + FILL_RATE * dt); // animate up
+    displayed.value = Math.min(target, displayed.value + fillRate.value * dt); // animate up
   } else if (displayed.value > target) {
     displayed.value = target; // snap down (acted / interrupted)
   }
@@ -91,8 +101,12 @@ onBeforeUnmount(() => {
       <span class="atb__tick" style="top: 72%" />
     </template>
     <div class="atb__fill" :style="fillStyle" />
-    <!-- inside the gauge template, e.g. after the bar element -->
-    <span v-if="chargeMult" class="atb-gauge__charge">⚡ {{ chargeMult }}</span>
+    <span
+      v-if="chargeMult"
+      class="atb-gauge__charge"
+      :class="{ 'atb-gauge__charge--max': chargeMult === '×1.5' }"
+      :title="chargeMultLabel"
+    >⚡ {{ chargeMult }}</span>
     <div v-if="overflow > 0" class="atb__charge" :style="chargeStyle" />
     <span v-if="isReady" class="atb__spark" />
   </div>
@@ -134,7 +148,12 @@ onBeforeUnmount(() => {
 .atb-gauge__charge {
   position: absolute; right: 4px; top: -2px;
   font-family: var(--font-mono); font-size: 0.58rem;
-  color: var(--gold); text-shadow: 0 0 8px color-mix(in oklch, var(--gold), transparent 40%);
+  color: var(--surge); text-shadow: 0 0 8px color-mix(in oklch, var(--surge), transparent 40%);
+  cursor: help;
+}
+
+.atb-gauge__charge--max {
+  animation: atb-charge-label-pulse 0.6s ease-in-out infinite;
 }
 
 .atb--vertical .atb-gauge__charge {
@@ -157,14 +176,14 @@ onBeforeUnmount(() => {
 .atb__charge {
   position: absolute;
   border-radius: inherit;
-  background: linear-gradient(90deg, var(--gold-dim), var(--gold));
-  box-shadow: 0 0 8px color-mix(in oklch, var(--gold), transparent 50%);
+  background: linear-gradient(90deg, var(--surge-dim), var(--surge));
+  box-shadow: 0 0 8px color-mix(in oklch, var(--surge), transparent 50%);
   transition: width 0.18s linear, height 0.18s linear;
   mix-blend-mode: screen;
 }
 
 .atb--horizontal .atb__charge { inset: 0 auto 0 0; }
-.atb--vertical .atb__charge { inset: auto 0 0 0; background: linear-gradient(0deg, var(--ember), var(--gold) 50%, var(--gold-hi)); }
+.atb--vertical .atb__charge { inset: auto 0 0 0; background: linear-gradient(0deg, var(--surge-dim), var(--surge) 50%, var(--surge-hi)); }
 
 .atb--ready .atb__fill {
   background: linear-gradient(90deg, var(--gold-dim), var(--gold));
@@ -180,14 +199,14 @@ onBeforeUnmount(() => {
 .atb--charging .atb__charge {
   animation: atb-charge-shimmer 0.9s linear infinite;
   background-size: 200% 100%;
-  background-image: linear-gradient(90deg, var(--gold-dim), var(--gold), var(--gold-dim));
+  background-image: linear-gradient(90deg, var(--surge-dim), var(--surge), var(--surge-dim));
 }
 
 .atb--max .atb__charge {
   animation: atb-max-pulse 0.6s ease-in-out infinite;
-  box-shadow: 0 0 14px color-mix(in oklch, var(--gold), transparent 25%);
+  box-shadow: 0 0 18px color-mix(in oklch, var(--surge-hi), transparent 15%);
 }
-.atb--max { box-shadow: inset 0 0 7px oklch(0.08 0.015 48 / 0.85), 0 0 18px color-mix(in oklch, var(--gold), transparent 30%); }
+.atb--max { box-shadow: inset 0 0 7px oklch(0.08 0.015 48 / 0.85), 0 0 20px color-mix(in oklch, var(--surge), transparent 22%); }
 
 .atb__spark {
   position: absolute;
@@ -215,6 +234,7 @@ onBeforeUnmount(() => {
 @keyframes atb-ready-pulse { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.35); } }
 @keyframes atb-charge-shimmer { 0% { background-position: 0% 0; } 100% { background-position: 200% 0; } }
 @keyframes atb-max-pulse { 0%, 100% { filter: brightness(1.1); } 50% { filter: brightness(1.6); } }
+@keyframes atb-charge-label-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.18); } }
 @keyframes atb-spark { 0%, 100% { opacity: 0.6; transform: translateY(-50%) scale(0.85); } 50% { opacity: 1; transform: translateY(-50%) scale(1.2); } }
 @keyframes atb-flash {
   0% { box-shadow: 0 0 0 color-mix(in oklch, var(--gold), transparent 0%); }
@@ -231,6 +251,6 @@ onBeforeUnmount(() => {
 @media (prefers-reduced-motion: reduce) {
   .atb__fill, .atb__charge, .atb__spark,
   .atb--ready .atb__fill, .atb--charging .atb__charge, .atb--max .atb__charge,
-  .atb--just-ready, .atb--staggered { animation: none; transition: none; }
+  .atb--just-ready, .atb--staggered, .atb-gauge__charge--max { animation: none; transition: none; }
 }
 </style>

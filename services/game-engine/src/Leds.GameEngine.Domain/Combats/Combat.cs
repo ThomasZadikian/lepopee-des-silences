@@ -251,8 +251,12 @@ public sealed class Combat
 
     /// <summary>
     /// "Time flows" while the player holds: advances the clock by a fixed delta,
-    /// filling every combatant (the player charges past the threshold up to the
-    /// overflow cap; enemies fill toward readiness). Does not change the active
+    /// filling every combatant. Once the active ally holds a ready selection,
+    /// every OTHER ally's gauge freezes (so they can't "steal" the next turn
+    /// while waiting) — but the active ally itself keeps charging into the
+    /// overflow band, up to the cap, so AtbActionMath.ChargeDamageMultiplier
+    /// has something to reward on the hit it's about to land. Enemies always
+    /// keep filling — time still flows for them. Does not change the active
     /// combatant. Returns the ids of enemies that have become ready to act,
     /// readiest first — the caller resolves them while the player keeps holding.
     /// </summary>
@@ -263,17 +267,17 @@ public sealed class Combat
 
         var cap = AtbConstants.ReadyThreshold + AtbConstants.MaxChargeOverflow;
 
-        // While an ally holds the selection (an ally is active AND ready), ALL ally
-        // gauges freeze: the active one stops auto-charging (so the power/charge
-        // system isn't permanently building during selection) and other allies stop
-        // filling. Enemies keep filling — time still flows for them.
+        // While an ally holds the selection (an ally is active AND ready), every
+        // OTHER ally's gauge freezes. The active ally itself is exempt so it can
+        // accumulate overflow (the "boost") while the player decides.
         var active = GetActiveCombatant();
+        var activeId = active?.Id;
         var allyHoldsSelection = active is { Side: CombatantSide.Player }
             && active.AtbGauge >= AtbConstants.ReadyThreshold;
 
         foreach (var combatant in AllCombatants.Where(c => !c.IsDefeated))
         {
-            if (allyHoldsSelection && combatant.Side == CombatantSide.Player)
+            if (allyHoldsSelection && combatant.Side == CombatantSide.Player && combatant.Id != activeId)
                 continue; // frozen during selection
 
             if (combatant.IsAtbLocked)

@@ -162,6 +162,11 @@ export const useCombatStore = defineStore('combatRuntime', () => {
     } catch (caught) {
       error.value =
         caught instanceof Error ? caught.message : "L'utilisation a échoué.";
+      // Same stale-selection retry-loop guard as submitAction (see comment there).
+      selectedItemId.value = null;
+      selectedTargetIds.value = [];
+      const current = await combatApi.getCurrentCombat(runId).catch(() => undefined);
+      if (current) applyClockCombat(current);
     } finally {
       isLoading.value = false;
     }
@@ -662,6 +667,15 @@ export const useCombatStore = defineStore('combatRuntime', () => {
     } catch (caught) {
       error.value =
         caught instanceof Error ? caught.message : "L'action a échoué.";
+      // Clear the stale selection and resync from the server so the auto-submit
+      // watcher in CombatScene.vue can't immediately retry the same now-invalid
+      // action (e.g. after a "not this combatant's turn" rejection) — without
+      // this, isLoading flipping back to false re-satisfies canSubmit with the
+      // exact same stale actor/skill/targets, producing a retry loop.
+      selectedSkillKey.value = null;
+      selectedTargetIds.value = [];
+      const current = await combatApi.getCurrentCombat(runId).catch(() => undefined);
+      if (current) applyClockCombat(current);
     } finally {
       isLoading.value = false;
     }
