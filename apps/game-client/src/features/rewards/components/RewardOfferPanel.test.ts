@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { mount } from '@vue/test-utils';
+import { flushPromises, mount } from '@vue/test-utils';
 import RewardOfferPanel from './RewardOfferPanel.vue';
 import type { RewardOfferDto } from '../types/rewardTypes';
 
@@ -212,12 +212,15 @@ describe('RewardOfferPanel', () => {
   it('opens the loot popover with description and full loot table on click', async () => {
     const wrapper = mountPanel(defeatedEnemyOffer);
     await wrapper.find('.del-row__trigger').trigger('click');
-    const popover = wrapper.find('.del-row__popover');
-    expect(popover.exists()).toBe(true);
-    expect(popover.text()).toContain('Ce qui reste quand plusieurs serpents partagent une seule volonté.');
-    expect(popover.text()).toContain('Datura stramonium');
-    expect(popover.text()).toContain('30%');
-    expect(popover.text()).toContain('Cendre bénite');
-    expect(popover.text()).toContain('40%');
+    await flushPromises();
+    // Teleported to <body>, so it lives outside the mounted wrapper's own root.
+    const popover = document.body.querySelector('.del-pop');
+    expect(popover).not.toBeNull();
+    const popoverText = popover?.textContent ?? '';
+    expect(popoverText).toContain('Ce qui reste quand plusieurs serpents partagent une seule volonté.');
+    expect(popoverText).toContain('Datura stramonium');
+    expect(popoverText).toContain('30%');
+    expect(popoverText).toContain('Cendre bénite');
+    expect(popoverText).toContain('40%');
   });
 });
