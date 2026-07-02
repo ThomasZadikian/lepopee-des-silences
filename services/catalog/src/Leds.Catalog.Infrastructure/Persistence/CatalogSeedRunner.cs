@@ -745,15 +745,27 @@ public sealed class CatalogSeedRunner
 
         await UpsertSkillAsync("canon.skill.priere-aspiration", "Prière",
             "Une prière lituique aspire la conscience. Elle restaure — mais nourrit ce qui rôde, et gonfle l'Égo.",
-            "Drain", "SingleEnemy", "Debuff", mana: 4, power: 12, cancellationToken);
+            "Drain", "SingleEnemy", "Debuff", mana: 4, power: 12, cancellationToken,
+            effectKind: "StatModifier",
+            effectStat: "Defense",
+            effectMagnitude: -4,
+            effectDurationTicks: 3);
 
         await UpsertSkillAsync("canon.skill.transmutation", "Transmutation",
             "Plomb, or, mercure, soufre, sel. L'art alchimique réordonne la matière de l'instant.",
-            "Buff", "Self", "Buff", mana: 6, power: 0, cancellationToken);
+            "Buff", "Self", "Buff", mana: 6, power: 0, cancellationToken,
+            effectKind: "StatModifier",
+            effectStat: "AttackPower",
+            effectMagnitude: 4,
+            effectDurationTicks: 3);
 
         await UpsertSkillAsync("canon.skill.brume", "Brume",
             "Le brouillard non-naturel se lève. Portée et précision s'effondrent — pour tous.",
-            "Debuff", "AllEnemies", "Debuff", mana: 7, power: 0, cancellationToken);
+            "Debuff", "AllEnemies", "Debuff", mana: 7, power: 0, cancellationToken,
+            effectKind: "StatModifier",
+            effectStat: "Focus",
+            effectMagnitude: -4,
+            effectDurationTicks: 3);
 
         await UpsertSkillAsync("canon.skill.flamme-seraphine", "Flamme Séraphine",
             "Le feu, le vrai. La seule terreur de l'Homoncule. Pure, dévorante, sans gel.",

@@ -60,7 +60,10 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
                 // Status-only spell (pure buff/debuff/control): no instant effect —
                 // the durable status below does the work.
                 if (skill.StatusEffect is null)
-                    throw new DomainException($"Unsupported skill effect type: {skill.EffectType}");
+                    throw new DomainException(
+                        $"Unsupported skill effect type: {skill.EffectType} (skill '{skill.Key}'). " +
+                        "A skill with a non-instant EffectType (e.g. Debuff/Buff/Status) must have an " +
+                        "EffectKind set in the catalog so it resolves to a durable status effect.");
                 break;
         }
 
