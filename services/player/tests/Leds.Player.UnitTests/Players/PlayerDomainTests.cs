@@ -33,6 +33,88 @@ public sealed class PlayerProfileTests
         profile.Progression.TotalRunsCompleted.Should().Be(0);
         profile.Progression.TotalRunsFailed.Should().Be(0);
     }
+
+    [Fact]
+    public void Create_ShouldStartDefaultCharacterWithStarterSkillsEquipped()
+    {
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+        var character = profile.Roster.Characters.Single();
+
+        character.EquippedSkillKeys.Should().BeEquivalentTo(["skill.basic.strike", "skill.basic.guard"]);
+    }
+
+    [Fact]
+    public void AwardStatPoint_ShouldIncrementProgressionAndTouchProfile()
+    {
+        var createdAt = DateTimeOffset.UtcNow;
+        var profile = PlayerProfile.Create("Test", createdAt);
+        var awardedAt = createdAt.AddMinutes(5);
+
+        profile.AwardStatPoint(awardedAt);
+
+        profile.Progression.UnspentStatPoints.Should().Be(1);
+        profile.UpdatedAtUtc.Should().Be(awardedAt);
+    }
+
+    [Fact]
+    public void SpendStatPoint_ShouldRejectWhenNoPointsAvailable()
+    {
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+        var characterId = profile.Roster.Characters.Single().Id;
+
+        var act = () => profile.SpendStatPoint(characterId, PlayerStatKind.AttackPower, DateTimeOffset.UtcNow);
+
+        act.Should().Throw<DomainException>().WithMessage("*No stat points*");
+    }
+
+    [Fact]
+    public void SpendStatPoint_ShouldRejectUnknownCharacterWithoutConsumingThePoint()
+    {
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+        profile.AwardStatPoint(DateTimeOffset.UtcNow);
+
+        var act = () => profile.SpendStatPoint(PlayerCharacterId.New(), PlayerStatKind.AttackPower, DateTimeOffset.UtcNow);
+
+        act.Should().Throw<DomainException>().WithMessage("*not found*");
+        profile.Progression.UnspentStatPoints.Should().Be(1);
+    }
+
+    [Fact]
+    public void SpendStatPoint_ShouldApplyIncrementAndDecrementUnspentPoints()
+    {
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+        var character = profile.Roster.Characters.Single();
+        profile.AwardStatPoint(DateTimeOffset.UtcNow);
+        var originalAttackPower = character.StatBlock.AttackPower;
+
+        profile.SpendStatPoint(character.Id, PlayerStatKind.AttackPower, DateTimeOffset.UtcNow);
+
+        character.StatBlock.AttackPower.Should().Be(originalAttackPower + 1);
+        profile.Progression.UnspentStatPoints.Should().Be(0);
+        profile.Progression.TotalStatPointsEarned.Should().Be(1);
+    }
+
+    [Fact]
+    public void EquipSkill_ShouldDelegateToTheCharacter()
+    {
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+        var character = profile.Roster.Characters.Single();
+        character.LearnSkill(PlayerCharacterSkill.Create("skill.new", DateTimeOffset.UtcNow));
+
+        profile.EquipSkill(character.Id, "skill.new", DateTimeOffset.UtcNow);
+
+        character.EquippedSkillKeys.Should().Contain("skill.new");
+    }
+
+    [Fact]
+    public void EquipSkill_ShouldRejectUnknownCharacter()
+    {
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+
+        var act = () => profile.EquipSkill(PlayerCharacterId.New(), "skill.basic.strike", DateTimeOffset.UtcNow);
+
+        act.Should().Throw<DomainException>().WithMessage("*not found*");
+    }
 }
 
 public sealed class PlayerCharacterTests
@@ -51,6 +133,111 @@ public sealed class PlayerCharacterTests
         var act = () => PlayerCharacter.Create("key", "Name", 100, 0, 0, []);
 
         act.Should().Throw<DomainException>().WithMessage("*at least one skill*");
+    }
+
+    private static PlayerCharacter CreateCharacterWithSkills(params string[] skillKeys)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var skills = skillKeys.Select(key => PlayerCharacterSkill.Create(key, now)).ToArray();
+
+        return PlayerCharacter.Create(
+            "key", "Name", PlayerCharacterStatBlock.CreateDefaultPorteur(), skills);
+    }
+
+    [Fact]
+    public void EquipSkill_ShouldMarkSkillAsEquipped()
+    {
+        var character = CreateCharacterWithSkills("skill.a");
+
+        character.EquipSkill("skill.a");
+
+        character.Skills.Single().IsEquipped.Should().BeTrue();
+        character.EquippedSkillKeys.Should().ContainSingle().Which.Should().Be("skill.a");
+    }
+
+    [Fact]
+    public void EquipSkill_ShouldBeIdempotentWhenAlreadyEquipped()
+    {
+        var character = CreateCharacterWithSkills("skill.a");
+        character.EquipSkill("skill.a");
+
+        var act = () => character.EquipSkill("skill.a");
+
+        act.Should().NotThrow();
+        character.EquippedCount.Should().Be(1);
+    }
+
+    [Fact]
+    public void EquipSkill_ShouldRejectUnknownSkill()
+    {
+        var character = CreateCharacterWithSkills("skill.a");
+
+        var act = () => character.EquipSkill("skill.unknown");
+
+        act.Should().Throw<DomainException>().WithMessage("*not known*");
+    }
+
+    [Fact]
+    public void EquipSkill_ShouldRejectExceedingMaxEquippedSkills()
+    {
+        var character = CreateCharacterWithSkills("skill.a", "skill.b", "skill.c", "skill.d", "skill.e");
+        character.EquipSkill("skill.a");
+        character.EquipSkill("skill.b");
+        character.EquipSkill("skill.c");
+        character.EquipSkill("skill.d");
+
+        var act = () => character.EquipSkill("skill.e");
+
+        act.Should().Throw<DomainException>().WithMessage("*Cannot equip more than*");
+        character.EquippedCount.Should().Be(4);
+    }
+
+    [Fact]
+    public void UnequipSkill_ShouldFreeUpASlot()
+    {
+        var character = CreateCharacterWithSkills("skill.a", "skill.b", "skill.c", "skill.d", "skill.e");
+        character.EquipSkill("skill.a");
+        character.EquipSkill("skill.b");
+        character.EquipSkill("skill.c");
+        character.EquipSkill("skill.d");
+
+        character.UnequipSkill("skill.a");
+        var act = () => character.EquipSkill("skill.e");
+
+        act.Should().NotThrow();
+        character.EquippedCount.Should().Be(4);
+        character.EquippedSkillKeys.Should().NotContain("skill.a");
+    }
+
+    [Fact]
+    public void UnequipSkill_ShouldRejectUnknownSkill()
+    {
+        var character = CreateCharacterWithSkills("skill.a");
+
+        var act = () => character.UnequipSkill("skill.unknown");
+
+        act.Should().Throw<DomainException>().WithMessage("*not known*");
+    }
+
+    [Fact]
+    public void ApplyStatIncrement_ShouldReplaceStatBlockWithIncrementedValue()
+    {
+        var character = CreateCharacterWithSkills("skill.a");
+        var originalAttackPower = character.StatBlock.AttackPower;
+
+        character.ApplyStatIncrement(PlayerStatKind.AttackPower);
+
+        character.StatBlock.AttackPower.Should().Be(originalAttackPower + 1);
+    }
+
+    [Fact]
+    public void LearnSkill_ShouldDedupeLikeAddSkill()
+    {
+        var character = CreateCharacterWithSkills("skill.a");
+
+        character.LearnSkill(PlayerCharacterSkill.Create("skill.a", DateTimeOffset.UtcNow));
+
+        character.Skills.Should().HaveCount(1);
     }
 }
 
@@ -92,6 +279,43 @@ public sealed class PlayerProgressionTests
         progression.TotalRunsStarted.Should().Be(0);
         progression.TotalRunsCompleted.Should().Be(0);
         progression.TotalRunsFailed.Should().Be(0);
+        progression.UnspentStatPoints.Should().Be(0);
+        progression.TotalStatPointsEarned.Should().Be(0);
+    }
+
+    [Fact]
+    public void AwardStatPoint_ShouldIncrementBothUnspentAndTotalEarned()
+    {
+        var progression = PlayerProgression.CreateDefault();
+
+        progression.AwardStatPoint();
+        progression.AwardStatPoint();
+
+        progression.UnspentStatPoints.Should().Be(2);
+        progression.TotalStatPointsEarned.Should().Be(2);
+    }
+
+    [Fact]
+    public void SpendStatPoint_ShouldDecrementOnlyUnspent()
+    {
+        var progression = PlayerProgression.CreateDefault();
+        progression.AwardStatPoint();
+        progression.AwardStatPoint();
+
+        progression.SpendStatPoint();
+
+        progression.UnspentStatPoints.Should().Be(1);
+        progression.TotalStatPointsEarned.Should().Be(2);
+    }
+
+    [Fact]
+    public void SpendStatPoint_ShouldRejectWhenNoPointsAvailable()
+    {
+        var progression = PlayerProgression.CreateDefault();
+
+        var act = () => progression.SpendStatPoint();
+
+        act.Should().Throw<DomainException>().WithMessage("*No stat points*");
     }
 }
 

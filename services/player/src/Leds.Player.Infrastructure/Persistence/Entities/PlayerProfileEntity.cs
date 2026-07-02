@@ -9,6 +9,8 @@ public sealed class PlayerProfileEntity
     public int TotalRunsCompleted { get; set; }
     public int TotalRunsFailed { get; set; }
     public int TotalRunsAbandoned { get; set; }
+    public int UnspentStatPoints { get; set; }
+    public int TotalStatPointsEarned { get; set; }
     public DateTimeOffset CreatedAtUtc { get; set; }
     public DateTimeOffset UpdatedAtUtc { get; set; }
 

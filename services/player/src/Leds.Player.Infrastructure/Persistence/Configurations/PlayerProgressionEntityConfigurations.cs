@@ -41,6 +41,7 @@ public sealed class PlayerCharacterSkillEntityConfiguration : IEntityTypeConfigu
         builder.Property(s => s.SkillDefinitionKey).HasColumnName("skill_definition_key").HasMaxLength(160).IsRequired();
         builder.Property(s => s.UnlockedAtUtc).HasColumnName("unlocked_at_utc");
         builder.Property(s => s.Source).HasColumnName("source").HasMaxLength(64);
+        builder.Property(s => s.IsEquipped).HasColumnName("is_equipped").HasDefaultValue(false);
         builder.HasIndex(s => new { s.PlayerCharacterId, s.SkillDefinitionKey }).IsUnique();
         builder.HasOne(s => s.PlayerCharacter)
             .WithMany(c => c.Skills)

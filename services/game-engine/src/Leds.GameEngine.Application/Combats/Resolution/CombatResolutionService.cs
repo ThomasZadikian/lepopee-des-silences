@@ -1,8 +1,10 @@
-﻿using Leds.GameEngine.Application.Rewards.RewardOfferFactory;
+﻿using Leds.GameEngine.Application.Players.Ports;
+using Leds.GameEngine.Application.Rewards.RewardOfferFactory;
 using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rewards;
 using Leds.GameEngine.Domain.Runs;
+using Microsoft.Extensions.Logging;
 
 namespace Leds.GameEngine.Application.Combats.Resolution;
 
@@ -18,10 +20,17 @@ public interface ICombatResolutionService
 public sealed class CombatResolutionService : ICombatResolutionService
 {
     private readonly RewardOfferFactory _rewardOfferFactory;
+    private readonly IPlayerProfileGateway _playerProfileGateway;
+    private readonly ILogger<CombatResolutionService> _logger;
 
-    public CombatResolutionService(RewardOfferFactory rewardOfferFactory)
+    public CombatResolutionService(
+        RewardOfferFactory rewardOfferFactory,
+        IPlayerProfileGateway playerProfileGateway,
+        ILogger<CombatResolutionService> logger)
     {
         _rewardOfferFactory = rewardOfferFactory;
+        _playerProfileGateway = playerProfileGateway;
+        _logger = logger;
     }
 
     public async Task<RewardOffer?> ApplyOutcomeAsync(
@@ -64,6 +73,20 @@ public sealed class CombatResolutionService : ICombatResolutionService
             NodeEventType.FinalBoss => RewardSource.RoomBoss,
             _ => RewardSource.Combat
         };
+
+        if (source == RewardSource.RoomBoss)
+        {
+            // Must never block or fail combat resolution: the reward offer
+            // always ships even if the Player Service is unreachable.
+            try
+            {
+                await _playerProfileGateway.AwardStatPointAsync(run.PlayerId, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to award stat point for player {PlayerId}", run.PlayerId);
+            }
+        }
 
         return await _rewardOfferFactory.CreateCombatRewardOfferAsync(
             source,

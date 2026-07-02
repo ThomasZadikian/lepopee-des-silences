@@ -1,8 +1,13 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { mount } from '@vue/test-utils';
+import { createPinia, setActivePinia } from 'pinia';
 import PartyDrawer from './PartyDrawer.vue';
 import type { RunPartyMemberDto, RunModifierDto, ActivePalaceLawDto, ActiveCurseDto, RunItemDto } from '../types/runTypes';
+
+beforeEach(() => {
+  setActivePinia(createPinia());
+});
 
 function mountDrawer(
   allies: RunPartyMemberDto[] | null = null,

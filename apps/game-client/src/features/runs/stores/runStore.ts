@@ -34,7 +34,7 @@ import {
   type InterludeDto,
 } from '../../interlude/interludeTypes';
 
-const demoPlayerId = '00000000-0000-0000-0000-000000000001';
+export const demoPlayerId = '00000000-0000-0000-0000-000000000001';
 
 // ---------------------------------------------------------------------------
 // localStorage — suspended run persistence

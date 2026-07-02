@@ -53,8 +53,8 @@ public sealed class PlayerProfile
             statBlock: PlayerCharacterStatBlock.CreateDefaultPorteur(),
             skills:
             [
-                PlayerCharacterSkill.Create("skill.basic.strike", CreatedAtUtc, "default"),
-                PlayerCharacterSkill.Create("skill.basic.guard", CreatedAtUtc, "default")
+                PlayerCharacterSkill.Create("skill.basic.strike", CreatedAtUtc, "default", isEquipped: true),
+                PlayerCharacterSkill.Create("skill.basic.guard", CreatedAtUtc, "default", isEquipped: true)
             ]);
 
         Roster.AddCharacter(defaultCharacter);
@@ -63,6 +63,48 @@ public sealed class PlayerProfile
     public void Touch(DateTimeOffset updatedAtUtc)
     {
         UpdatedAtUtc = updatedAtUtc;
+    }
+
+    public void LearnSkill(PlayerCharacterId characterId, string skillKey, string? source, DateTimeOffset now)
+    {
+        Roster.GetRequired(characterId).LearnSkill(PlayerCharacterSkill.Create(skillKey, now, source));
+        Touch(now);
+    }
+
+    public void EquipSkill(PlayerCharacterId characterId, string skillKey, DateTimeOffset now)
+    {
+        Roster.GetRequired(characterId).EquipSkill(skillKey);
+        Touch(now);
+    }
+
+    public void UnequipSkill(PlayerCharacterId characterId, string skillKey, DateTimeOffset now)
+    {
+        Roster.GetRequired(characterId).UnequipSkill(skillKey);
+        Touch(now);
+    }
+
+    /// <summary>
+    /// Awards a permanent stat point. Profile-level (not character-scoped) —
+    /// points aren't earned per-character.
+    /// </summary>
+    public void AwardStatPoint(DateTimeOffset now)
+    {
+        Progression.AwardStatPoint();
+        Touch(now);
+    }
+
+    public void SpendStatPoint(PlayerCharacterId characterId, PlayerStatKind kind, DateTimeOffset now)
+    {
+        if (Progression.UnspentStatPoints <= 0)
+            throw new DomainException("No stat points available to spend.");
+
+        // Resolve the character before decrementing so an invalid characterId
+        // never burns a point.
+        var character = Roster.GetRequired(characterId);
+
+        character.ApplyStatIncrement(kind);
+        Progression.SpendStatPoint();
+        Touch(now);
     }
 
     /// <summary>

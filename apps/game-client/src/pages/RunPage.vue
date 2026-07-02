@@ -24,6 +24,7 @@ import PartyDrawer from '../features/runs/components/PartyDrawer.vue';
 import RuntimeDebugPanel from '../shared/components/RuntimeDebugPanel.vue';
 import { useClickOutside } from '../shared/composables/useClickOutside';
 import { useRunStore } from '../features/runs/stores/runStore';
+import { usePlayerStore } from '../features/party/stores/playerStore';
 import { useGameUiStore } from '../shared/stores/useGameUiStore';
 import type { CurrentEventChoiceResultDto } from '../features/events/types/eventTypes';
 import NpcDialoguePanel from '../features/events/components/NpcDialoguePanel.vue';
@@ -33,6 +34,7 @@ const router = useRouter();
 const runStore = useRunStore();
 const combatStore = useCombatStore();
 const uiStore = useGameUiStore();
+const playerStore = usePlayerStore();
 const devToolsEnabled = import.meta.env.DEV === true &&
   import.meta.env.VITE_GAME_CLIENT_DEVTOOLS_ENABLED === 'true';
 const showRuntimeDebugPanel = import.meta.env.DEV === true;
@@ -143,6 +145,10 @@ const isCombatPhase = computed(() => runStore.gameplayPhase === 'Combat');
 const showNodeDrawer = computed(() => isMapPhase.value && runStore.selectedNode);
 const showInventoryDrawer = computed(() => uiStore.activeDrawer === 'besace');
 const showPartyDrawer = computed(() => uiStore.activeDrawer === 'party' && !isCombatPhase.value);
+
+watch(showPartyDrawer, (isOpen) => {
+  if (isOpen) void playerStore.loadProfile();
+});
 const showLaws = computed(() => uiStore.isLawsOpen);
 const activeRoomClimate = computed(() =>
   runStore.currentRun?.currentRoom?.activeClimate

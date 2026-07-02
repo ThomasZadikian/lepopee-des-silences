@@ -12,4 +12,17 @@ public sealed record PlayerRunSnapshotCharacterResponse(
     int MaxVitality,
     int BaseMana,
     int BaseCharge,
-    IReadOnlyCollection<string> SkillKeys);
+    IReadOnlyCollection<string> SkillKeys,
+    PlayerRunSnapshotCharacterStatsResponse? Stats = null);
+
+public sealed record PlayerRunSnapshotCharacterStatsResponse(
+    int MaxVitality,
+    int AttackPower,
+    int Defense,
+    int StartingGuard,
+    int Speed,
+    int Initiative,
+    int Recovery,
+    int Focus,
+    int Mana,
+    int Charge);
