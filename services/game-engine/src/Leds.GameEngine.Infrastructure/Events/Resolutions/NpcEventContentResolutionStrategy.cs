@@ -9,7 +9,11 @@ namespace Leds.GameEngine.Infrastructure.Events.Resolution;
 
 public sealed class NpcEventContentResolutionStrategy : IEventContentResolutionStrategy
 {
-    private const string DefaultEventTemplateKey = "event-combat-shadow-v1";
+    // See CombatEventContentResolutionStrategy — same reasoning: this used to fetch a
+    // catalog EventTemplate purely to fill EventTemplateKey/Version/Tags below, but that
+    // legacy table isn't seeded, so it's synthesized locally instead.
+    private const string DefaultEventTemplateKey = "event-npc-encounter-v1";
+    private const string TemplateVersion = "1.0";
     private const string DefaultInteractionProfileKey = "npc-interaction-placeholder-v1";
 
     private readonly ICatalogContentGateway _catalogContentGateway;
@@ -30,17 +34,6 @@ public sealed class NpcEventContentResolutionStrategy : IEventContentResolutionS
         EventContentResolutionContext context,
         CancellationToken cancellationToken = default)
     {
-        var eventTemplateResult = await _catalogContentGateway.GetEventTemplateByKeyAsync(
-            DefaultEventTemplateKey,
-            cancellationToken);
-
-        if (eventTemplateResult.IsFailure)
-        {
-            return Result<ResolvedNodeEventContent>.Failure(eventTemplateResult.Error);
-        }
-
-        var eventTemplate = eventTemplateResult.Value;
-
         var allNpcs = await _catalogContentGateway.ListNpcDefinitionsAsync(cancellationToken);
 
         var eligibilityContext = new NpcEligibilityContext(
@@ -60,9 +53,9 @@ public sealed class NpcEventContentResolutionStrategy : IEventContentResolutionS
         {
             return Result<ResolvedNodeEventContent>.Success(
                 new ResolvedNpcEventContent(
-                    EventTemplateKey: eventTemplate.Key,
-                    EventTemplateVersion: eventTemplate.Version,
-                    Tags: eventTemplate.NarrativeTags,
+                    EventTemplateKey: DefaultEventTemplateKey,
+                    EventTemplateVersion: TemplateVersion,
+                    Tags: [],
                     NpcProfileKey: "npc-placeholder-v1",
                     InteractionProfileKey: DefaultInteractionProfileKey,
                     NpcDisplayName: "Figure du Palais",
@@ -71,9 +64,9 @@ public sealed class NpcEventContentResolutionStrategy : IEventContentResolutionS
 
         return Result<ResolvedNodeEventContent>.Success(
             new ResolvedNpcEventContent(
-                EventTemplateKey: eventTemplate.Key,
-                EventTemplateVersion: eventTemplate.Version,
-                Tags: eventTemplate.NarrativeTags,
+                EventTemplateKey: DefaultEventTemplateKey,
+                EventTemplateVersion: TemplateVersion,
+                Tags: [],
                 NpcProfileKey: selectedNpc.Key,
                 InteractionProfileKey: DefaultInteractionProfileKey,
                 NpcDisplayName: selectedNpc.DisplayName,

@@ -164,7 +164,17 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 ItemType: "Consumable",
                 Rarity: "Common",
                 IsTemporary: true,
-                EffectTags: ["heal", "memory"])
+                EffectTags: ["heal", "memory"]),
+            ["canon.item.lanterne"] = new ItemTemplateSnapshot(
+                Key: "canon.item.lanterne",
+                Name: "Lanterne à huile",
+                Description: "Seules les chaumières éclairées ne furent pas touchées. La lumière est un abri.",
+                Version: "canon-1.0.0",
+                Status: "Active",
+                ItemType: "Consumable",
+                Rarity: "Common",
+                IsTemporary: true,
+                EffectTags: ["light"])
         };
 
     private static readonly IReadOnlyDictionary<string, EventTemplateSnapshot> EventTemplates =

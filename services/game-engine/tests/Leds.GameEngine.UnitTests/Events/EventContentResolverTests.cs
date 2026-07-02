@@ -74,7 +74,7 @@ public sealed class EventContentResolverTests
             .BeOfType<ResolvedItemEventContent>()
             .Subject;
 
-        content.ItemTemplateKey.Should().Be("item-memory-fragment-v1");
+        content.ItemTemplateKey.Should().Be("canon.item.lanterne");
         content.RewardProfile.Should().Be("standard");
     }
 

@@ -75,17 +75,28 @@ public sealed class EnemyLootRewardBuilder
             }
 
             var item = itemResult.Value;
+            var runItemRarity = MapToRunItemRarity(item.Rarity);
+            var runItemEffectType = item.IsUsableInCombat ? "Heal" : "None";
             choices.Add(RewardChoice.Create(
                 RewardType.TemporaryItem,
                 item.DisplayName,
                 item.Description,
-                $"item:{item.Key}:{item.DisplayName}:{item.Description}:{item.Category}:{item.Rarity}:{item.ItemType}:0",
+                $"item:{item.Key}:{item.DisplayName}:{item.Description}:Consumable:{runItemRarity}:{runItemEffectType}:0",
                 loot.SourceEnemyKey,
                 loot.SourceEnemyDisplayName));
         }
 
         return choices;
     }
+
+    // Catalog rarities (Common/Uncommon/Rare/Epic/Legendary/Unique) are a superset of
+    // RunItemRarity (Common/Uncommon/Rare/Epic only) — anything above Epic collapses to
+    // Epic rather than throwing when a run item is materialized from catalog loot.
+    private static string MapToRunItemRarity(string catalogRarity) => catalogRarity switch
+    {
+        "Common" or "Uncommon" or "Rare" or "Epic" => catalogRarity,
+        _ => "Epic"
+    };
 
     private async Task<List<RolledLoot>> PadFromFallbackAsync(
         List<RolledLoot> rolled,
