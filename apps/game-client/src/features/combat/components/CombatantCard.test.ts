@@ -338,4 +338,32 @@ describe('CombatantCard', () => {
     const wrapper = mountCard(makeCombatant({ maxVitality: 0, currentVitality: 0 }));
     expect(wrapper.exists()).toBe(true);
   });
+
+  it('does not show a threat bar when maxThreat is zero or absent', () => {
+    const wrapper = mountCard(makeCombatant({ side: 'Player', threatValue: 0 }));
+    expect(wrapper.find('.presence__threat').exists()).toBe(false);
+  });
+
+  it('does not show a threat bar for enemy-side combatants', () => {
+    const wrapper = mountCard(makeCombatant({ side: 'Enemy', threatValue: 5 }), { maxThreat: 10 });
+    expect(wrapper.find('.presence__threat').exists()).toBe(false);
+  });
+
+  it('shows a threat bar sized relative to maxThreat for player-side combatants', () => {
+    const wrapper = mountCard(makeCombatant({ side: 'Player', threatValue: 5 }), { maxThreat: 10 });
+    const fill = wrapper.find('.presence__threat-fill');
+    expect(fill.exists()).toBe(true);
+    expect((fill.element as HTMLElement).style.width).toBe('50%');
+  });
+
+  it('flags the combatant holding the highest threat with the aggro indicator', () => {
+    const wrapper = mountCard(makeCombatant({ side: 'Player', threatValue: 10 }), { maxThreat: 10 });
+    expect(wrapper.find('.presence__state--aggro').exists()).toBe(true);
+    expect(wrapper.find('.presence__threat--aggro').exists()).toBe(true);
+  });
+
+  it('does not flag a lower-threat ally as holding aggro', () => {
+    const wrapper = mountCard(makeCombatant({ side: 'Player', threatValue: 3 }), { maxThreat: 10 });
+    expect(wrapper.find('.presence__state--aggro').exists()).toBe(false);
+  });
 });

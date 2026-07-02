@@ -57,6 +57,12 @@ const actionPreview = computed(() => {
   return 'Frappe ciblée. +50 % si la cible saigne.';
 });
 
+// Highest threat among living allies — the ally bar renders relative to this,
+// and whoever holds it gets the "menace" indicator (most likely enemy target).
+const maxAllyThreat = computed(() =>
+  Math.max(0, ...combatStore.allies.map((a) => a.threatValue ?? 0)),
+);
+
 function canSelect(combatantId: string): boolean {
   if (combatStore.isLoading) return false;
   if (combatStore.selectedItem?.targetingType === 'SingleAlly') {
@@ -266,6 +272,7 @@ watch(
             :is-guarded="combatStore.recentlyGuardedIds.includes(combatant.id)"
             :is-just-defeated="combatStore.recentlyDefeatedIds.includes(combatant.id)"
             :is-acting="combatStore.recentlyActingId === combatant.id"
+            :max-threat="maxAllyThreat"
             @select="handleSelect"
           >
             <span

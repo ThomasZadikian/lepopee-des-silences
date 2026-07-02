@@ -25,6 +25,7 @@ public sealed record CombatantRuntimeDto(
     int Focus,
     int AtbGauge,
     int AtbFillPerTick,
+    double ThreatValue,
     IReadOnlyCollection<CombatantStatusEffectDto> StatusEffects,
     IReadOnlyCollection<CombatantSkillRuntimeDto> Skills)
 {
@@ -59,6 +60,7 @@ public sealed record CombatantRuntimeDto(
             Focus: combatant.EffectiveFocus,
             AtbGauge: combatant.AtbGauge,
             AtbFillPerTick: combatant.AtbFillPerTick,
+            ThreatValue: combatant.ThreatValue,
             StatusEffects: combatant.StatusEffects
                 .Select(e => new CombatantStatusEffectDto(
                     e.Key,

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import type { CombatantRuntimeDto } from '../types/combatContracts';
 import { useClickOutside } from '../../../shared/composables/useClickOutside';
 import AtbGauge from './AtbGauge.vue';
@@ -18,7 +18,7 @@ useClickOutside(detailsPopoverRef, () => { showDetails.value = false; }, {
   ignoreSelectors: ['.presence__details-trigger'],
 });
 
-defineProps<{
+const props = defineProps<{
   combatant: CombatantRuntimeDto;
   isCurrentActor: boolean;
   isSelectedTarget: boolean;
@@ -31,6 +31,8 @@ defineProps<{
   isGuarded: boolean;
   isJustDefeated: boolean;
   isActing: boolean;
+  /** Highest threat value among living allies — this card's bar renders relative to it. */
+  maxThreat?: number;
 }>();
 
 defineEmits<{
@@ -53,6 +55,24 @@ function barSegments(c: CombatantRuntimeDto): { hp: number; guard: number } {
   const scale = total > 1 ? 1 / total : 1;
   return { hp: hp * scale * 100, guard: guard * scale * 100 };
 }
+
+// Threat only means anything on the player side (enemies never accrue it —
+// only player actions build aggro). Bar fills relative to the highest threat
+// currently held among living allies; the ally holding it gets flagged as the
+// most likely enemy target.
+const showThreat = computed(() =>
+  props.combatant.side === 'Player' && (props.maxThreat ?? 0) > 0,
+);
+
+const threatRatio = computed(() => {
+  const max = props.maxThreat ?? 0;
+  if (max <= 0) return 0;
+  return Math.min(1, (props.combatant.threatValue ?? 0) / max);
+});
+
+const hasAggro = computed(() =>
+  showThreat.value && (props.combatant.threatValue ?? 0) >= (props.maxThreat ?? 0),
+);
 </script>
 
 <template>
@@ -105,6 +125,11 @@ function barSegments(c: CombatantRuntimeDto): { hp: number; guard: number } {
 
     <div class="presence__topline">
       <EmotionalTypeBadge :type="combatant.attackType ?? 'Neutral'" />
+      <span
+        v-if="hasAggro"
+        class="presence__state presence__state--aggro"
+        title="Cible la plus menacée : les ennemis viseront probablement ici"
+      >⚠ menace</span>
       <span v-if="isActivePlayer" class="presence__state presence__state--ready">PRÊT</span>
       <span v-else-if="isSelectedTarget" class="presence__state presence__state--target">cible</span>
       <span v-else-if="combatant.status === 'Defeated'" class="presence__state presence__state--dead">abattu</span>
@@ -133,6 +158,15 @@ function barSegments(c: CombatantRuntimeDto): { hp: number; guard: number } {
       <span class="presence__stat presence__stat--hp">PV {{ combatant.currentVitality }} / {{ combatant.maxVitality }}</span>
       <span v-if="combatant.guard > 0" class="presence__stat presence__stat--guard">⛨ {{ combatant.guard }}</span>
       <span v-if="combatant.side === 'Player'" class="presence__stat presence__stat--breath">{{ combatant.mana }} souffle</span>
+    </div>
+
+    <div
+      v-if="showThreat"
+      class="presence__threat"
+      :class="{ 'presence__threat--aggro': hasAggro }"
+      :title="`Menace : ${Math.round(combatant.threatValue ?? 0)}`"
+    >
+      <div class="presence__threat-fill" :style="{ width: (threatRatio * 100) + '%' }" />
     </div>
 
     <slot />
@@ -399,6 +433,33 @@ function barSegments(c: CombatantRuntimeDto): { hp: number; guard: number } {
   text-shadow: 0 0 8px color-mix(in oklch, var(--gold), transparent 60%);
 }
 .presence__stat--breath { color: var(--ink-5); }
+
+/* ── Threat / aggro ──────────────────────────────────────────────────────── */
+.presence__state--aggro {
+  color: var(--blood);
+  border-color: color-mix(in oklch, var(--blood), transparent 40%);
+  background: color-mix(in oklch, var(--blood), transparent 88%);
+}
+
+.presence__threat {
+  grid-column: 3;
+  height: 4px;
+  margin-top: 2px;
+  background: var(--panel);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.presence__threat-fill {
+  height: 100%;
+  background: color-mix(in oklch, var(--blood), var(--ink-4) 35%);
+  transition: width 0.35s ease, background 0.25s ease;
+}
+
+.presence__threat--aggro .presence__threat-fill {
+  background: var(--blood);
+  box-shadow: 0 0 6px color-mix(in oklch, var(--blood), transparent 40%);
+}
 
 @keyframes think-pulse {
   0%, 100% { filter: brightness(1); }
