@@ -216,12 +216,74 @@ public sealed class RoomDefinitionEntity
     public string? BossDefinitionKey { get; set; }
     public bool IsUnique { get; set; }
     public bool IsCulturalEcho { get; set; }
+    public Guid? WorldDefinitionId { get; set; }
+    public string ReachabilityMode { get; set; } = "Explicit";
+    public bool TriggersStrictChain { get; set; }
+    /// <summary>
+    /// True for rooms that must only ever be reached through an explicit strict-chain
+    /// edge (e.g. the Enfers floors, the Château cell). Excluded from any "AllExceptListed"
+    /// deny-list resolution even though they belong to the same World, so a connector room
+    /// like room.couloirs can never accidentally route into the middle of a chain.
+    /// </summary>
+    public bool ExcludeFromOpenPool { get; set; }
     public string Version { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
 
+    public WorldDefinitionEntity? WorldDefinition { get; set; }
     public ICollection<RoomTagEntity> Tags { get; set; } = [];
+    public ICollection<RoomReachabilityEntity> ReachableTo { get; set; } = [];
+    public ICollection<RoomReachabilityEntity> ReachableFrom { get; set; } = [];
+}
+
+/// <summary>
+/// A grouping of rooms sharing a narrative universe (e.g. "Palais"). Each World declares
+/// exactly one entry/fallback room, used both as the return point after a strict chain
+/// ends and as the fallback when reachability generation finds no eligible candidate.
+/// </summary>
+public sealed class WorldDefinitionEntity
+{
+    public Guid Id { get; set; }
+    public string Key { get; set; } = string.Empty;
+    public string DisplayName { get; set; } = string.Empty;
+    public Guid EntryRoomDefinitionId { get; set; }
+    public string Version { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
+    public DateTime CreatedAtUtc { get; set; }
+    public DateTime UpdatedAtUtc { get; set; }
+
+    public RoomDefinitionEntity EntryRoomDefinition { get; set; } = null!;
+}
+
+/// <summary>
+/// An explicit reachability edge: FromRoomDefinition can transition directly to
+/// ToRoomDefinition. When the source room's ReachabilityMode is "AllExceptListed",
+/// these rows are interpreted as exclusions instead of inclusions and resolved into
+/// an effective allow-list at read time (see EfRoomDefinitionReadStore).
+/// </summary>
+public sealed class RoomReachabilityEntity
+{
+    public Guid FromRoomDefinitionId { get; set; }
+    public Guid ToRoomDefinitionId { get; set; }
+
+    public RoomDefinitionEntity FromRoomDefinition { get; set; } = null!;
+    public RoomDefinitionEntity ToRoomDefinition { get; set; } = null!;
+}
+
+/// <summary>
+/// Sparse editorial override of the transition weight between two room themes. Any
+/// theme pair without an explicit row uses the configured default weight, so adding a
+/// new theme in content never requires a matching engine or matrix change.
+/// </summary>
+public sealed class RoomThemeAffinityEntity
+{
+    public Guid Id { get; set; }
+    public string ThemeFrom { get; set; } = string.Empty;
+    public string ThemeTo { get; set; } = string.Empty;
+    public decimal Weight { get; set; } = 1.0m;
+    public DateTime CreatedAtUtc { get; set; }
+    public DateTime UpdatedAtUtc { get; set; }
 }
 
 public sealed class RoomTypeDefinitionEntity

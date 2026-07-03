@@ -208,12 +208,80 @@ public sealed class RoomDefinitionEntityConfiguration : IEntityTypeConfiguration
         builder.Property(e => e.BossDefinitionKey).HasColumnName("boss_definition_key").HasMaxLength(160);
         builder.Property(e => e.IsUnique).HasColumnName("is_unique");
         builder.Property(e => e.IsCulturalEcho).HasColumnName("is_cultural_echo");
+        builder.Property(e => e.WorldDefinitionId).HasColumnName("world_definition_id");
+        builder.Property(e => e.ReachabilityMode).HasColumnName("reachability_mode").HasMaxLength(32).IsRequired();
+        builder.Property(e => e.TriggersStrictChain).HasColumnName("triggers_strict_chain");
+        builder.Property(e => e.ExcludeFromOpenPool).HasColumnName("exclude_from_open_pool");
         builder.Property(e => e.Version).HasColumnName("version").HasMaxLength(32).IsRequired();
         builder.Property(e => e.Status).HasColumnName("status").HasMaxLength(32).IsRequired();
         builder.Property(e => e.CreatedAtUtc).HasColumnName("created_at_utc");
         builder.Property(e => e.UpdatedAtUtc).HasColumnName("updated_at_utc");
         builder.HasIndex(e => e.Key).IsUnique();
         builder.HasIndex(e => e.Status);
+        builder.HasIndex(e => e.WorldDefinitionId);
+        builder.HasOne(e => e.WorldDefinition)
+            .WithMany()
+            .HasForeignKey(e => e.WorldDefinitionId)
+            .OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+public sealed class WorldDefinitionEntityConfiguration : IEntityTypeConfiguration<WorldDefinitionEntity>
+{
+    public void Configure(EntityTypeBuilder<WorldDefinitionEntity> builder)
+    {
+        builder.ToTable("catalog_world_definitions");
+        builder.HasKey(e => e.Id);
+        builder.Property(e => e.Id).HasColumnName("id");
+        builder.Property(e => e.Key).HasColumnName("key").HasMaxLength(160).IsRequired();
+        builder.Property(e => e.DisplayName).HasColumnName("display_name").HasMaxLength(256).IsRequired();
+        builder.Property(e => e.EntryRoomDefinitionId).HasColumnName("entry_room_definition_id");
+        builder.Property(e => e.Version).HasColumnName("version").HasMaxLength(32).IsRequired();
+        builder.Property(e => e.Status).HasColumnName("status").HasMaxLength(32).IsRequired();
+        builder.Property(e => e.CreatedAtUtc).HasColumnName("created_at_utc");
+        builder.Property(e => e.UpdatedAtUtc).HasColumnName("updated_at_utc");
+        builder.HasIndex(e => e.Key).IsUnique();
+        // Restrict (not Cascade): the entry room and its World reference each other,
+        // and a cascade cycle between the two tables is rejected by the database.
+        builder.HasOne(e => e.EntryRoomDefinition)
+            .WithMany()
+            .HasForeignKey(e => e.EntryRoomDefinitionId)
+            .OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+public sealed class RoomReachabilityEntityConfiguration : IEntityTypeConfiguration<RoomReachabilityEntity>
+{
+    public void Configure(EntityTypeBuilder<RoomReachabilityEntity> builder)
+    {
+        builder.ToTable("catalog_room_reachability");
+        builder.HasKey(e => new { e.FromRoomDefinitionId, e.ToRoomDefinitionId });
+        builder.Property(e => e.FromRoomDefinitionId).HasColumnName("from_room_definition_id");
+        builder.Property(e => e.ToRoomDefinitionId).HasColumnName("to_room_definition_id");
+        builder.HasOne(e => e.FromRoomDefinition)
+            .WithMany(e => e.ReachableTo)
+            .HasForeignKey(e => e.FromRoomDefinitionId)
+            .OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne(e => e.ToRoomDefinition)
+            .WithMany(e => e.ReachableFrom)
+            .HasForeignKey(e => e.ToRoomDefinitionId)
+            .OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+public sealed class RoomThemeAffinityEntityConfiguration : IEntityTypeConfiguration<RoomThemeAffinityEntity>
+{
+    public void Configure(EntityTypeBuilder<RoomThemeAffinityEntity> builder)
+    {
+        builder.ToTable("catalog_room_theme_affinities");
+        builder.HasKey(e => e.Id);
+        builder.Property(e => e.Id).HasColumnName("id");
+        builder.Property(e => e.ThemeFrom).HasColumnName("theme_from").HasMaxLength(128).IsRequired();
+        builder.Property(e => e.ThemeTo).HasColumnName("theme_to").HasMaxLength(128).IsRequired();
+        builder.Property(e => e.Weight).HasColumnName("weight").HasColumnType("numeric(6,3)");
+        builder.Property(e => e.CreatedAtUtc).HasColumnName("created_at_utc");
+        builder.Property(e => e.UpdatedAtUtc).HasColumnName("updated_at_utc");
+        builder.HasIndex(e => new { e.ThemeFrom, e.ThemeTo }).IsUnique();
     }
 }
 

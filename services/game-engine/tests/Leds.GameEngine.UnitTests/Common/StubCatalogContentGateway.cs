@@ -1455,6 +1455,14 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
     CancellationToken cancellationToken = default)
     => Task.FromResult<IReadOnlyCollection<CatalogRoomDefinition>>([]);
 
+    public Task<IReadOnlyCollection<CatalogWorldDefinition>> ListWorldDefinitionsAsync(
+    CancellationToken cancellationToken = default)
+    => Task.FromResult<IReadOnlyCollection<CatalogWorldDefinition>>([]);
+
+    public Task<IReadOnlyCollection<CatalogRoomThemeAffinity>> ListRoomThemeAffinitiesAsync(
+    CancellationToken cancellationToken = default)
+    => Task.FromResult<IReadOnlyCollection<CatalogRoomThemeAffinity>>([]);
+
     public Task<IReadOnlyCollection<CatalogRoomTypeDefinition>> ListRoomTypeDefinitionsAsync(
     CancellationToken cancellationToken = default)
     {

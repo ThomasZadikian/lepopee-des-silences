@@ -23,6 +23,9 @@ public sealed class CatalogDbContext : DbContext
     public DbSet<RewardTemplateOptionEntity> RewardTemplateOptions => Set<RewardTemplateOptionEntity>();
     public DbSet<RoomDefinitionEntity> RoomDefinitions => Set<RoomDefinitionEntity>();
     public DbSet<RoomTypeDefinitionEntity> RoomTypeDefinitions => Set<RoomTypeDefinitionEntity>();
+    public DbSet<WorldDefinitionEntity> WorldDefinitions => Set<WorldDefinitionEntity>();
+    public DbSet<RoomReachabilityEntity> RoomReachability => Set<RoomReachabilityEntity>();
+    public DbSet<RoomThemeAffinityEntity> RoomThemeAffinities => Set<RoomThemeAffinityEntity>();
     public DbSet<RoomBossDefinitionEntity> RoomBossDefinitions => Set<RoomBossDefinitionEntity>();
     public DbSet<RoomSpecialMechanicEntity> RoomSpecialMechanics => Set<RoomSpecialMechanicEntity>();
     public DbSet<RoomEnemyPoolEntity> RoomEnemyPools => Set<RoomEnemyPoolEntity>();

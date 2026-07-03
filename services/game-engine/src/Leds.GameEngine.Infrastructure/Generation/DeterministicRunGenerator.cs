@@ -8,6 +8,7 @@ using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
 using Leds.GameEngine.Infrastructure.Generation.Randomness;
 using Leds.GameEngine.Infrastructure.Generation.RoomMaps;
+using Leds.GameEngine.Infrastructure.Generation.Rooms.Reachability;
 using Leds.GameEngine.Infrastructure.Generation.Rooms.States;
 using Leds.GameEngine.Infrastructure.Generation.Rooms.Types;
 
@@ -17,6 +18,7 @@ public sealed class DeterministicRunGenerator : IRunGenerator
 {
     private readonly ISeededRandomFactory _randomFactory;
     private readonly ICatalogRoomTypeResolver _catalogRoomTypeResolver;
+    private readonly IRoomReachabilitySelector _roomReachabilitySelector;
     private readonly IPalaceRoomStateResolver _palaceRoomStateResolver;
     private readonly IMapRoomGenerator _mapRoomGenerator;
     private readonly IRunPsycheEvolver _psycheEvolver;
@@ -25,6 +27,7 @@ public sealed class DeterministicRunGenerator : IRunGenerator
     public DeterministicRunGenerator(
         ISeededRandomFactory randomFactory,
         ICatalogRoomTypeResolver catalogRoomTypeResolver,
+        IRoomReachabilitySelector roomReachabilitySelector,
         IPalaceRoomStateResolver palaceRoomStateResolver,
         IMapRoomGenerator mapRoomGenerator,
         IRunPsycheEvolver psycheEvolver,
@@ -32,6 +35,7 @@ public sealed class DeterministicRunGenerator : IRunGenerator
     {
         _randomFactory = randomFactory;
         _catalogRoomTypeResolver = catalogRoomTypeResolver;
+        _roomReachabilitySelector = roomReachabilitySelector;
         _palaceRoomStateResolver = palaceRoomStateResolver;
         _mapRoomGenerator = mapRoomGenerator;
         _psycheEvolver = psycheEvolver;
@@ -56,6 +60,31 @@ public sealed class DeterministicRunGenerator : IRunGenerator
             roomDepth: 0,
             GeneratorVersion);
 
+        // Refonte des Rooms : si un Monde est configuré au catalogue (ex. "Palais"), un
+        // nouveau run démarre directement sur sa salle de niveau 0. Un seul Monde existe
+        // pour la bêta ; l'ordre alphabétique des clés sert de désambiguïsation stable en
+        // attendant qu'un vrai concept de sélection de monde de départ existe.
+        var worlds = await _catalogContentGateway.ListWorldDefinitionsAsync(cancellationToken);
+        var startingWorld = worlds.OrderBy(w => w.Key, StringComparer.Ordinal).FirstOrDefault();
+
+        if (startingWorld is not null)
+        {
+            var definitions = await _catalogContentGateway.ListRoomDefinitionsAsync(cancellationToken);
+            var entryRoom = definitions.FirstOrDefault(d =>
+                string.Equals(d.Key, startingWorld.EntryRoomKey, StringComparison.OrdinalIgnoreCase));
+
+            if (entryRoom is not null)
+            {
+                var entryRoomType = MapThemeToScaffold(entryRoom.Theme);
+                var entryScaffold = await _mapRoomGenerator.GenerateAsync(
+                    seed, GeneratorVersion, roomDepth: 0, entryRoomType, random, cancellationToken);
+                AttachCatalogRoom(entryScaffold, entryRoom);
+                return entryScaffold;
+            }
+        }
+
+        // Legacy path (SAL-2/SAL-4): no World configured, or its entry room can't be
+        // resolved in the catalog — start on the procedural Threshold scaffold, unchanged.
         var room = await _mapRoomGenerator.GenerateAsync(
                     seed,
                     GeneratorVersion,
@@ -83,16 +112,7 @@ public sealed class DeterministicRunGenerator : IRunGenerator
         // (déterministe). Persiste (Advance), accumule (nudge) et biaise la génération.
         var psyche = _psycheEvolver.Evolve(run);
 
-        // SAL-4: the room-type vocabulary + rotation come from the catalog. The resolver
-        // returns a theme key (e.g. "Fear"); we map it to a procedural scaffold enum only
-        // for the template/profile/boss machinery, and keep the key for room selection.
-        var nextRoomTypeKey = await _catalogRoomTypeResolver.ResolveNextRoomTypeKeyAsync(
-            run.Seed,
-            nextRoomDepth,
-            run.CurrentRoom.RoomType.ToString(),
-            cancellationToken);
-
-        var roomType = MapThemeToScaffold(nextRoomTypeKey);
+        var (roomType, themeKey, preResolvedDefinition) = await ResolveNextRoomAsync(run, nextRoomDepth, cancellationToken);
 
         var palaceState = _palaceRoomStateResolver.ResolveNextState(
             new PalaceRoomStateResolutionContext(
@@ -125,8 +145,66 @@ public sealed class DeterministicRunGenerator : IRunGenerator
             random,
             cancellationToken,
             palaceState);
-        await AttachCatalogRoomAsync(room, nextRoomTypeKey, run.Seed, nextRoomDepth, cancellationToken);
+
+        if (preResolvedDefinition is not null)
+        {
+            AttachCatalogRoom(room, preResolvedDefinition);
+        }
+        else
+        {
+            await AttachCatalogRoomAsync(room, themeKey, run.Seed, nextRoomDepth, cancellationToken);
+        }
+
         return room;
+    }
+
+    /// <summary>
+    /// Refonte des Rooms (SFD § 5) : quand la salle courante est liée à une RoomDefinition
+    /// appartenant à un Monde, la salle suivante vient de son graphe de réachabilité
+    /// explicite plutôt que du tirage par thème. Le contenu sans Monde assigné (ex. les
+    /// salles canon Pittsburgh / L'épopée des Échos, hors périmètre bêta) continue d'utiliser
+    /// exactement le chemin historique (SAL-4) — aucun changement de comportement pour lui.
+    /// </summary>
+    private async Task<(RoomType RoomType, string ThemeKey, CatalogRoomDefinition? PreResolvedDefinition)> ResolveNextRoomAsync(
+        Run run, int nextRoomDepth, CancellationToken cancellationToken)
+    {
+        var currentBinding = run.CurrentRoom.CatalogBinding;
+        if (currentBinding is not null)
+        {
+            var definitions = await _catalogContentGateway.ListRoomDefinitionsAsync(cancellationToken);
+            var currentDefinition = definitions.FirstOrDefault(d =>
+                string.Equals(d.Key, currentBinding.Key, StringComparison.OrdinalIgnoreCase));
+
+            if (currentDefinition is not null && !string.IsNullOrWhiteSpace(currentDefinition.WorldKey))
+            {
+                var worlds = await _catalogContentGateway.ListWorldDefinitionsAsync(cancellationToken);
+                var themeAffinities = await _catalogContentGateway.ListRoomThemeAffinitiesAsync(cancellationToken);
+                var visitedKeys = run.Rooms
+                    .Select(r => r.CatalogBinding?.Key)
+                    .Where(key => key is not null)
+                    .Select(key => key!)
+                    .ToArray();
+
+                var selected = _roomReachabilitySelector.SelectNextRoom(
+                    currentDefinition, definitions, worlds, themeAffinities, nextRoomDepth, visitedKeys, run.Seed);
+
+                if (selected is not null)
+                {
+                    return (MapThemeToScaffold(selected.Theme), selected.Theme, selected);
+                }
+            }
+        }
+
+        // SAL-4: the room-type vocabulary + rotation come from the catalog. The resolver
+        // returns a theme key (e.g. "Fear"); we map it to a procedural scaffold enum only
+        // for the template/profile/boss machinery, and keep the key for room selection.
+        var nextRoomTypeKey = await _catalogRoomTypeResolver.ResolveNextRoomTypeKeyAsync(
+            run.Seed,
+            nextRoomDepth,
+            run.CurrentRoom.RoomType.ToString(),
+            cancellationToken);
+
+        return (MapThemeToScaffold(nextRoomTypeKey), nextRoomTypeKey, null);
     }
 
     // SAL-2: bind the generated room to a catalog RoomDefinition (Pistburg, etc.)
@@ -155,6 +233,11 @@ public sealed class DeterministicRunGenerator : IRunGenerator
             return;
         }
 
+        AttachCatalogRoom(room, selected);
+    }
+
+    private static void AttachCatalogRoom(Room room, CatalogRoomDefinition selected)
+    {
         room.AttachCatalogBinding(new CatalogRoomBinding(
             selected.Key,
             selected.DisplayName,

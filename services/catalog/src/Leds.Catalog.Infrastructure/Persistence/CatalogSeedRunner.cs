@@ -46,6 +46,7 @@ public sealed class CatalogSeedRunner
         await SeedCanonLawsAsync(cancellationToken);
         await AttachCanonLawEffectsAsync(cancellationToken);
         await SeedCanonRoomsAsync(cancellationToken);
+        await SeedPalaisWorldAsync(cancellationToken);
         await SeedCanonBossesAsync(cancellationToken);
         await SeedCanonRoomTypesAsync(cancellationToken);
         await SeedCanonLootAsync(cancellationToken);
@@ -1256,7 +1257,11 @@ public sealed class CatalogSeedRunner
     private async Task UpsertRoomAsync(
         string key, string name, string description,
         string family, string rarity, string theme,
-        int depthMin, int depthMax, CancellationToken cancellationToken)
+        int depthMin, int depthMax, CancellationToken cancellationToken,
+        bool triggersStrictChain = false,
+        bool excludeFromOpenPool = false,
+        string reachabilityMode = "Explicit",
+        bool isCulturalEcho = true)
     {
         const string version = "canon-1.0.0";
         var now = DateTime.UtcNow;
@@ -1282,7 +1287,10 @@ public sealed class CatalogSeedRunner
                 LawPoolKey = null,
                 CursePoolKey = null,
                 IsUnique = rarity == "Epic",
-                IsCulturalEcho = true,
+                IsCulturalEcho = isCulturalEcho,
+                TriggersStrictChain = triggersStrictChain,
+                ExcludeFromOpenPool = excludeFromOpenPool,
+                ReachabilityMode = reachabilityMode,
                 Version = version,
                 Status = "Active",
                 CreatedAtUtc = now,
@@ -1293,6 +1301,262 @@ public sealed class CatalogSeedRunner
         existing.DisplayName = name; existing.Description = description; existing.NarrativeText = description;
         existing.RoomFamily = family; existing.RoomRarity = rarity; existing.Theme = theme;
         existing.MinDepth = depthMin; existing.MaxDepth = depthMax;
+        existing.TriggersStrictChain = triggersStrictChain;
+        existing.ExcludeFromOpenPool = excludeFromOpenPool;
+        existing.ReachabilityMode = reachabilityMode;
+        existing.Version = version; existing.Status = "Active"; existing.UpdatedAtUtc = now;
+    }
+
+    /// <summary>
+    /// Monde "Palais" (contenu bêta). Contrairement à SeedCanonRoomsAsync (Pittsburgh /
+    /// L'épopée des Échos, hors périmètre de la bêta), ces salles portent le graphe de
+    /// réachabilité explicite décrit dans la SFD "Refonte des Rooms".
+    /// Seules les trois chaînes strictes confirmées sont câblées ici (Falaise→Enfers,
+    /// Soleil→Château, Hôpital→Cellule) : les listes niveau 1 ↔ niveau 1 et la liste
+    /// d'exclusion de room.couloirs restent des TODO éditoriaux (SFD Annexe B, #2 et #3)
+    /// — ne pas inventer ce contenu narratif ici.
+    /// </summary>
+    private static readonly string[] PalaisRoomKeys =
+    [
+        "room.halldentree", "room.palier", "room.couloirs", "room.feelings", "room.turtle",
+        "room.enfermement", "room.meditation", "room.room08", "room.labyrinthe", "room.chambredelise",
+        "room.jardin", "room.faille",
+        "room.falaise", "room.enfer1", "room.enfer2", "room.enfer3", "room.enfer4",
+        "room.soleil", "room.chateau", "room.cellule",
+        "room.hopital", "room.cellulehopital"
+    ];
+
+    private async Task SeedPalaisWorldAsync(CancellationToken cancellationToken)
+    {
+        await UpsertRoomAsync("room.halldentree", "Hall d'entrée",
+            "Depuis toujours le Palais a su accueillir ses invités. Couvert d'un grand tapis rouges et habillé de " +
+            "quatres merveilleux pilier de marbre, le Hall d'entrée du Palais n'est que la représentation de " +
+            "l'arrogance de son propriétaire. Une fois traversé, rares sont les personnes qui ont eu l'occasion " +
+            "de le revoir.",
+            "Palais intérieur", "Epic", "Welcome", 0, 9, cancellationToken, isCulturalEcho: false);
+
+        await UpsertRoomAsync("room.palier", "Palier",
+            "Situé juste après le hall d'entrée, le palier n'est accessible qu'à ceux qui auront su gravir les 8 " +
+            "marches qui séparent les deux pièces. 8 marches qui semblent une éternité pour ceux qui empruntent " +
+            "cette voie, se retrouvant finalement face à un immense livre s'écrivant seul.",
+            "Palais intérieur", "Rare", "Memory", 1, 9, cancellationToken, isCulturalEcho: false);
+
+        await UpsertRoomAsync("room.couloirs", "Couloirs",
+            "Distordue, parfois suintant, parfois envahi d'entités monstrueuses, les couloirs sont les chemins à " +
+            "suivre pour espérer pouvoir pénétrer dans une pièce. Le tapis bordeaux qui habille le sol n'est pas " +
+            "sans rappeler que vous êtes proche du Hall, sans pouvoir l'atteindre.",
+            "Palais intérieur", "Common", "Silence", 1, 9, cancellationToken,
+            reachabilityMode: "AllExceptListed", isCulturalEcho: false);
+
+        await UpsertRoomAsync("room.feelings", "Pièce des émotions",
+            "Autrefois une simple chambre accueillant les invités, l'Architecte a, lors de la seconde " +
+            "reconstruction du Palais, adapté cette pièce pour qu'elle n'accueille qu'un seul type d'invité : " +
+            "les émotions, et ceux, dans le maigre espoir qu'elles puissent se sentir chez elle dans le Palais. " +
+            "Aujourd'hui, cette pièce n'est plus remplie que par quelques échos d'émotions, ou quelques objets " +
+            "laissés ici et là par les anciens locataires.",
+            "Palais intérieur", "Uncommon", "Feelings", 2, 9, cancellationToken, isCulturalEcho: false);
+
+        await UpsertRoomAsync("room.turtle", "Passage brisé, vers la tortue",
+            "Dans des temps anciens, bien avant la seconde reconstruction, il semblait exister un lien entre le " +
+            "Palais et une autre entité tout aussi grande et imposante. Désormais brisé, le lien qui permettait " +
+            "autrefois aux habitants de chaque côté de se rejoindre n'est plus qu'une faille dans l'immensité du " +
+            "Palais. Peu sont les invités ayant pu contempler cette faille violacée.",
+            "Palais intérieur", "Epic", "Collapse", 2, 9, cancellationToken, isCulturalEcho: false);
+
+        await UpsertRoomAsync("room.enfermement", "Pièce camisolée",
+            "Alors qu'il devenait fou, l'architecte a bâti un système de sécurité archaïque, dans l'urgence " +
+            "d'une mort proche. Bâtie de murs renforcés, une simple porte d'acier que seule Elise peut ouvrir de " +
+            "l'extérieur, cette pièce existe pour isoler tous ceux qui oseront y pénétrer.",
+            "Palais intérieur", "Rare", "Confinement", 2, 9, cancellationToken, isCulturalEcho: false);
+
+        await UpsertRoomAsync("room.meditation", "Salle de méditation",
+            "Située au sommet du Palais, côtoyant les cieux, cette pièce apaise les êtres qui y entrent.",
+            "Palais intérieur", "Uncommon", "Meditation", 2, 9, cancellationToken, isCulturalEcho: false);
+
+        await UpsertRoomAsync("room.room08", "Chambre 08",
+            "Parmi l'infinité de pièces que contient le Palais, la chambre 08 a une histoire toute particulière, " +
+            "et une habitante tout aussi unique : Hitomi. Longuement maintenue close pour laisser le temps à " +
+            "cette femme de se soigner après les brûlures qu'elle a subies, cette pièce est aujourd'hui ouverte " +
+            "et y croiser Hitomi relève de la chance.",
+            "Palais intérieur", "Common", "Peace", 2, 9, cancellationToken, isCulturalEcho: false);
+
+        await UpsertRoomAsync("room.labyrinthe", "Labyrinthe",
+            "Maintenu enfermé, protégé par les sinueux couloirs, le labyrinthe abrite le premier livre, celui qui " +
+            "a permis au Palais de devenir infini et d'écrire l'histoire des habitants d'origine. Y rentrer n'est " +
+            "pas le plus difficile, mais en sortir sans le fil d'Ariane relève du défi.",
+            "Palais intérieur", "Rare", "Memory", 3, 9, cancellationToken, isCulturalEcho: false);
+
+        await UpsertRoomAsync("room.chambredelise", "Chambre d'Elise",
+            "En dehors des couloirs, loin de l'entrée du Palais, la chambre d'Elise date d'avant la construction " +
+            "du Palais. Bâtie au début dans le cœur de l'architecte, cette chambre ne servait qu'à contenir " +
+            "avidement une créature aussi belle qu'essentielle au fonctionnement de ce dernier. Lors de la " +
+            "seconde reconstruction, la décision du conseil fut prise de la libérer et de la laisser vivre " +
+            "librement. Même si Elise n'est presque jamais dans sa chambre, bien des évènements peuvent y " +
+            "survenir, et des créatures y apparaître.",
+            "Palais intérieur", "Epic", "Feelings", 2, 9, cancellationToken, isCulturalEcho: false);
+
+        await UpsertRoomAsync("room.jardin", "Le jardin",
+            "Entourant le Palais, le jardin ressemble à tout ce dont toute personne pourrait rêver : des fleurs " +
+            "merveilleuses, une ambiance calme et sereine et des habitants qui s'y promènent, sifflotant et " +
+            "discutant tranquillement.",
+            "Palais intérieur", "Common", "Peace", 2, 9, cancellationToken, isCulturalEcho: false);
+
+        await UpsertRoomAsync("room.faille", "La faille",
+            "Centre de l'univers du Palais, la faille est le point névralgique de toutes les dimensions que le " +
+            "Palais a su accueillir. Lors de la seconde reconstruction, une implosion a eu lieu dans le cœur du " +
+            "Palais. Lorsque l'architecte et le conservateur allèrent vérifier, le cœur avait disparu et une " +
+            "faille violacée le remplaçait. C'est à cet instant que fut créé l'aventurier, n'ayant pour seule " +
+            "mission que de pénétrer dans cette faille et explorer les différents univers qui s'offrent à lui.",
+            "Palais intérieur", "Common", "Silence", 6, 9, cancellationToken, isCulturalEcho: false);
+
+        // Chaîne stricte : Falaise → Enfer1 → Enfer2 → Enfer3 → Enfer4 → (repli niveau 0)
+        await UpsertRoomAsync("room.falaise", "La falaise",
+            "Seul passage vers les enfers, cette falaise surplombe la mer violacée qui sépare le Palais des " +
+            "enfers. Malheureux sont ceux qui croiseront l'impératrice dans ce lieu.",
+            "Palais intérieur", "Common", "Fear", 2, 9, cancellationToken,
+            triggersStrictChain: true, isCulturalEcho: false);
+
+        await UpsertRoomAsync("room.enfer1", "Les enfers - La calamité",
+            "La calamité, le premier étage des Enfers. Composé d'une terre dévastée, hantée par les squelettes " +
+            "des souvenirs morts, ce lieu est aussi cruel par son hostilité que par le silence pesant qui y règne.",
+            "Palais intérieur", "Uncommon", "Silence", 3, 9, cancellationToken,
+            excludeFromOpenPool: true, isCulturalEcho: false);
+
+        await UpsertRoomAsync("room.enfer2", "Les enfers - la plaine",
+            "Calme, silencieuse, habitée d'animaux et autres chimères, les plaines sont le reflet des créations " +
+            "de l'architecte. Mais le calme apparent laisse rapidement place à des ordres qui ne demandent qu'une " +
+            "seule chose : se nourrir.",
+            "Palais intérieur", "Uncommon", "Madness", 3, 9, cancellationToken,
+            excludeFromOpenPool: true, isCulturalEcho: false);
+
+        await UpsertRoomAsync("room.enfer3", "Les enfers - la forge",
+            "Des marteaux qui hurlent, une forge qui recrache de la fumée et des créations inachevées qui errent " +
+            "sans but sur les plaques d'acier et les piliers de fer qui décorent cet étage. Le forgeron guette, " +
+            "crée et rejette ses propres créations.",
+            "Palais intérieur", "Uncommon", "Terrifying", 3, 9, cancellationToken,
+            excludeFromOpenPool: true, isCulturalEcho: false);
+
+        await UpsertRoomAsync("room.enfer4", "Les enfers - Le chateau",
+            "Dernier étage connu des enfers, le chateau fut longtemps la résidence de l'Homoncule. Son sol, " +
+            "souillé par les milliers de soldats morts pour sauver l'enfant prisonnier, hurle encore de désespoir " +
+            "et de souffrance.",
+            "Palais intérieur", "Uncommon", "Collapse", 3, 9, cancellationToken,
+            excludeFromOpenPool: true, isCulturalEcho: false);
+
+        // Chaîne stricte : Soleil → Château → Cellule → (repli niveau 0)
+        await UpsertRoomAsync("room.soleil", "Le soleil",
+            "Un astre cosmique et, en son centre, un chateau. Le soleil n'est, comme tout ce qui habite le " +
+            "Palais, qu'une simple pièce aux dimensions immenses.",
+            "Palais intérieur", "Rare", "Feelings", 4, 9, cancellationToken,
+            triggersStrictChain: true, isCulturalEcho: false);
+
+        await UpsertRoomAsync("room.chateau", "Le chateau",
+            "Autrefois situé dans le quatrième étage des enfers, le chateau se trouve désormais au centre du " +
+            "soleil, alimentant le plasma et le rayonnement de cet astre qui réchauffe le Palais.",
+            "Palais intérieur", "Rare", "Peace", 4, 9, cancellationToken,
+            excludeFromOpenPool: true, isCulturalEcho: false);
+
+        await UpsertRoomAsync("room.cellule", "Le chateau - La cellule",
+            "Une pièce, une seule et unique pièce de ce chateau porte toute l'histoire du Palais. À l'intérieur, " +
+            "des jeux d'enfants, des coloriages et des dessins sur le mur, un simple lit et le souvenir d'un " +
+            "petit être qui créa la première version du Palais, bien avant que l'Architecte ne vienne imposer " +
+            "ses plans.",
+            "Palais intérieur", "Epic", "Memory", 5, 9, cancellationToken,
+            excludeFromOpenPool: true, isCulturalEcho: false);
+
+        // Chaîne stricte : Hôpital → Cellule de l'hôpital → (repli niveau 0)
+        await UpsertRoomAsync("room.hopital", "L'hopital",
+            "Blanc, vide d'émotions, une odeur de produit ménager et uniquement habité de souvenirs et de " +
+            "regrets, l'hopital du Palais a longtemps accueilli les âmes errantes et les avatars mourants. " +
+            "Aujourd'hui, il existe encore même si y pénétrer n'est que peu enviable.",
+            "Palais intérieur", "Rare", "Madness", 4, 9, cancellationToken,
+            triggersStrictChain: true, isCulturalEcho: false);
+
+        await UpsertRoomAsync("room.cellulehopital", "L'hopital - la cellule",
+            "Au même titre que la chambre du chateau a longtemps accueilli l'enfant, la cellule de l'hopital fut " +
+            "construite sur mesure pour l'Architecte, juste avant la seconde reconstruction du Palais. Plongé " +
+            "dans une folie sans nom, submergé par les émotions et les échos, il fut interné après avoir voulu " +
+            "détruire le livre situé dans le Labyrinthe.",
+            "Palais intérieur", "Epic", "Madness", 5, 9, cancellationToken,
+            excludeFromOpenPool: true, isCulturalEcho: false);
+
+        // Les salles doivent être persistées avant de résoudre leurs Id par clé pour le
+        // câblage du graphe et du Monde ci-dessous (les requêtes suivantes touchent la
+        // base, elles ne voient pas les Add() en attente sur le change tracker).
+        await _ctx.SaveChangesAsync(cancellationToken);
+
+        await LinkStrictChainAsync(cancellationToken,
+            "room.falaise", "room.enfer1", "room.enfer2", "room.enfer3", "room.enfer4");
+        await LinkStrictChainAsync(cancellationToken,
+            "room.soleil", "room.chateau", "room.cellule");
+        await LinkStrictChainAsync(cancellationToken,
+            "room.hopital", "room.cellulehopital");
+
+        await UpsertWorldAsync("palais", "Palais", "room.halldentree", cancellationToken);
+        await _ctx.SaveChangesAsync(cancellationToken);
+
+        var worldId = await _ctx.WorldDefinitions
+            .Where(w => w.Key == "palais")
+            .Select(w => w.Id)
+            .FirstAsync(cancellationToken);
+        var palaisRooms = await _ctx.RoomDefinitions
+            .Where(r => PalaisRoomKeys.Contains(r.Key))
+            .ToListAsync(cancellationToken);
+        foreach (var room in palaisRooms)
+        {
+            room.WorldDefinitionId = worldId;
+        }
+    }
+
+    /// <summary>
+    /// Câble une chaîne stricte : chaque salle listée n'a que la suivante pour seul enfant
+    /// valide. La dernière salle de la liste n'a volontairement aucun enfant déclaré — ce
+    /// qui déclenche le repli vers la salle de niveau 0 du Monde (SFD § 5.4).
+    /// </summary>
+    private async Task LinkStrictChainAsync(CancellationToken cancellationToken, params string[] roomKeysInOrder)
+    {
+        for (var i = 0; i < roomKeysInOrder.Length - 1; i++)
+        {
+            await LinkReachabilityAsync(roomKeysInOrder[i], roomKeysInOrder[i + 1], cancellationToken);
+        }
+    }
+
+    private async Task LinkReachabilityAsync(string fromKey, string toKey, CancellationToken cancellationToken)
+    {
+        var fromId = await _ctx.RoomDefinitions.Where(r => r.Key == fromKey).Select(r => r.Id).FirstAsync(cancellationToken);
+        var toId = await _ctx.RoomDefinitions.Where(r => r.Key == toKey).Select(r => r.Id).FirstAsync(cancellationToken);
+
+        var exists = await _ctx.RoomReachability.AnyAsync(
+            r => r.FromRoomDefinitionId == fromId && r.ToRoomDefinitionId == toId, cancellationToken);
+        if (!exists)
+        {
+            _ctx.RoomReachability.Add(new RoomReachabilityEntity { FromRoomDefinitionId = fromId, ToRoomDefinitionId = toId });
+        }
+    }
+
+    private async Task UpsertWorldAsync(string key, string displayName, string entryRoomKey, CancellationToken cancellationToken)
+    {
+        const string version = "canon-1.0.0";
+        var now = DateTime.UtcNow;
+        var entryRoomId = await _ctx.RoomDefinitions.Where(r => r.Key == entryRoomKey).Select(r => r.Id).FirstAsync(cancellationToken);
+
+        var existing = await _ctx.WorldDefinitions.FirstOrDefaultAsync(w => w.Key == key, cancellationToken);
+        if (existing is null)
+        {
+            _ctx.WorldDefinitions.Add(new WorldDefinitionEntity
+            {
+                Id = Guid.NewGuid(),
+                Key = key,
+                DisplayName = displayName,
+                EntryRoomDefinitionId = entryRoomId,
+                Version = version,
+                Status = "Active",
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
+            });
+            return;
+        }
+        existing.DisplayName = displayName; existing.EntryRoomDefinitionId = entryRoomId;
         existing.Version = version; existing.Status = "Active"; existing.UpdatedAtUtc = now;
     }
     // ── BOSS CANON ────────────────────────────────────────────────────────────

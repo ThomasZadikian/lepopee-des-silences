@@ -1150,7 +1150,9 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
             source.RoomFamily, source.RoomRarity, source.Theme,
             source.MinDepth ?? 0, source.MaxDepth ?? int.MaxValue, source.BaseWeight,
             source.EnemyPoolKey, source.RewardPoolKey, source.LawPoolKey, source.CursePoolKey,
-            source.BossDefinitionKey, source.IsUnique);
+            source.BossDefinitionKey, source.IsUnique,
+            source.WorldKey, source.IsWorldEntryRoom, source.TriggersStrictChain,
+            source.ReachableRoomKeys ?? []);
 
     private sealed record ListRoomDefinitionsHttpResponse(
         IReadOnlyCollection<CatalogRoomDefinitionHttpResponse>? Definitions);
@@ -1160,7 +1162,41 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
         string RoomFamily, string RoomRarity, string Theme,
         int? MinDepth, int? MaxDepth, int BaseWeight,
         string? EnemyPoolKey, string? RewardPoolKey, string? LawPoolKey, string? CursePoolKey,
-        string? BossDefinitionKey, bool IsUnique);
+        string? BossDefinitionKey, bool IsUnique,
+        string? WorldKey, bool IsWorldEntryRoom, bool TriggersStrictChain,
+        IReadOnlyCollection<string>? ReachableRoomKeys);
+
+    public async Task<IReadOnlyCollection<CatalogWorldDefinition>> ListWorldDefinitionsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        const string url = "/api/v2/catalog/worlds";
+        var wrapper = await GetJsonOrNullAsync<ListWorldDefinitionsHttpResponse>(url, cancellationToken);
+        return wrapper?.Definitions?
+            .Select(d => new CatalogWorldDefinition(d.Key, d.DisplayName, d.EntryRoomKey))
+            .ToArray() ?? [];
+    }
+
+    private sealed record ListWorldDefinitionsHttpResponse(
+        IReadOnlyCollection<CatalogWorldDefinitionHttpResponse>? Definitions);
+
+    private sealed record CatalogWorldDefinitionHttpResponse(
+        Guid Id, string Key, string DisplayName, string EntryRoomKey, string Version, string Status);
+
+    public async Task<IReadOnlyCollection<CatalogRoomThemeAffinity>> ListRoomThemeAffinitiesAsync(
+        CancellationToken cancellationToken = default)
+    {
+        const string url = "/api/v2/catalog/room-theme-affinities";
+        var wrapper = await GetJsonOrNullAsync<ListRoomThemeAffinitiesHttpResponse>(url, cancellationToken);
+        return wrapper?.Affinities?
+            .Select(a => new CatalogRoomThemeAffinity(a.ThemeFrom, a.ThemeTo, a.Weight))
+            .ToArray() ?? [];
+    }
+
+    private sealed record ListRoomThemeAffinitiesHttpResponse(
+        IReadOnlyCollection<CatalogRoomThemeAffinityHttpResponse>? Affinities);
+
+    private sealed record CatalogRoomThemeAffinityHttpResponse(
+        Guid Id, string ThemeFrom, string ThemeTo, decimal Weight);
 
     public async Task<IReadOnlyCollection<CatalogRoomTypeDefinition>> ListRoomTypeDefinitionsAsync(
     CancellationToken cancellationToken = default)

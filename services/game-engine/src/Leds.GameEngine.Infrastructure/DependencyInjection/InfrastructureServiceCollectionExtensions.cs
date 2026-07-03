@@ -33,6 +33,7 @@ using Leds.GameEngine.Infrastructure.Generation.Psyche;
 using Leds.GameEngine.Infrastructure.Generation.Randomness;
 using Leds.GameEngine.Infrastructure.Generation.RoomMaps;
 using Leds.GameEngine.Infrastructure.Generation.Rooms.Bosses;
+using Leds.GameEngine.Infrastructure.Generation.Rooms.Reachability;
 using Leds.GameEngine.Infrastructure.Generation.Rooms.States;
 using Leds.GameEngine.Infrastructure.Generation.Rooms.Themes;
 using Leds.GameEngine.Infrastructure.Generation.Rooms.Types;
@@ -79,6 +80,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IRoomTypeMarkovMatrixProvider, StaticRoomTypeMarkovMatrixProvider>();
         services.AddSingleton<IRoomTypeResolver, MarkovRoomTypeResolver>();
         services.AddSingleton<ICatalogRoomTypeResolver, CatalogMarkovRoomTypeResolver>();
+        services.AddSingleton<IRoomReachabilitySelector, RoomReachabilitySelector>();
         services.AddSingleton<IPalaceRoomStateResolver, MarkovPalaceRoomStateResolver>();
         services.AddSingleton<IRoomThemeResolver, RoomThemeResolver>();
         services.AddSingleton<IRoomBossProfileResolver, RoomBossProfileResolver>();

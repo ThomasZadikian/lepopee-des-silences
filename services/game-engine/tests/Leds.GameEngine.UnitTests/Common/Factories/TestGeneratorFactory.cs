@@ -4,6 +4,7 @@ using Leds.GameEngine.Infrastructure.Generation.Psyche;
 using Leds.GameEngine.Infrastructure.Generation.Randomness;
 using Leds.GameEngine.Infrastructure.Generation.RoomMaps;
 using Leds.GameEngine.Infrastructure.Generation.Rooms.Bosses;
+using Leds.GameEngine.Infrastructure.Generation.Rooms.Reachability;
 using Leds.GameEngine.Infrastructure.Generation.Rooms.States;
 using Leds.GameEngine.Infrastructure.Generation.Rooms.Themes;
 using Leds.GameEngine.Infrastructure.Generation.Rooms.Types;
@@ -33,6 +34,7 @@ public static class TestGeneratorFactory
         return new DeterministicRunGenerator(
             new SeededRandomFactory(),
             new CatalogMarkovRoomTypeResolver(new StubCatalogContentGateway()),
+            new RoomReachabilitySelector(),
             stateResolver,
             mapRoomGenerator,
             new RunPsycheEvolver(calibration),

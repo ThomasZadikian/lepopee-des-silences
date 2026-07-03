@@ -20,7 +20,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Leds.Catalog.Application.Rooms.Ports;
+using Leds.Catalog.Application.RoomThemeAffinities.Ports;
 using Leds.Catalog.Application.RoomTypes.Ports;
+using Leds.Catalog.Application.Worlds.Ports;
 
 namespace Leds.Catalog.Infrastructure.DependencyInjection;
 
@@ -45,6 +47,8 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<INpcDefinitionReadStore, EfNpcDefinitionReadStore>();
         services.AddScoped<IRoomDefinitionReadStore, EfRoomDefinitionReadStore>();
         services.AddScoped<IRoomTypeDefinitionReadStore, EfRoomTypeDefinitionReadStore>();
+        services.AddScoped<IWorldDefinitionReadStore, EfWorldDefinitionReadStore>();
+        services.AddScoped<IRoomThemeAffinityReadStore, EfRoomThemeAffinityReadStore>();
         services.AddScoped<IRewardCursePoolReadStore, EfRewardCursePoolReadStore>();
         services.AddScoped<IEnemyTemplateReadStore, EfEnemyTemplateReadStore>();
         services.AddScoped<ISkillTemplateReadStore, EfSkillTemplateReadStore>();

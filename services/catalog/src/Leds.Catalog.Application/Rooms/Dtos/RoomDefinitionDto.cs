@@ -6,4 +6,7 @@ public sealed record RoomDefinitionDto(
     int? MinDepth, int? MaxDepth, int BaseWeight, string? SelectionGroup,
     string? EnemyPoolKey, string? RewardPoolKey, string? LawPoolKey, string? CursePoolKey,
     string? SpecialMechanicKey, string? BossDefinitionKey,
-    bool IsUnique, bool IsCulturalEcho, string Version, string Status);
+    bool IsUnique, bool IsCulturalEcho,
+    string? WorldKey, bool IsWorldEntryRoom, bool TriggersStrictChain,
+    IReadOnlyCollection<string> ReachableRoomKeys,
+    string Version, string Status);
