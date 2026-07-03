@@ -7,14 +7,8 @@
 /// </summary>
 public static class AtbConstants
 {
-    /// <summary>Gauge value a combatant must reach to be allowed to act.</summary>
+    /// <summary>Gauge value a combatant must reach to be allowed to act. Also the cap — a ready gauge does not climb further.</summary>
     public const int ReadyThreshold = 50_000;
-
-    /// <summary>
-    /// How far past <see cref="ReadyThreshold"/> a held gauge may bank (charge
-    /// mechanic). A gauge is capped at ReadyThreshold + MaxChargeOverflow.
-    /// </summary>
-    public const int MaxChargeOverflow = 10_000;
 
     /// <summary>Initiative stat → starting gauge units (opening stagger).</summary>
     public const int InitiativeScale = 100;

@@ -3,7 +3,6 @@ using Leds.GameEngine.Application.Combats;
 using Leds.GameEngine.Application.Combats.Actions;
 using Leds.GameEngine.Application.Combats.Dtos;
 using Leds.GameEngine.Application.Combats.EnemyTurns;
-using Leds.GameEngine.Application.Combats.EnemyTurns.Ai;
 using Leds.GameEngine.Application.Combats.Metrics;
 using Leds.GameEngine.Application.Combats.Ports;
 using Leds.GameEngine.Application.Combats.Resolution;
@@ -100,12 +99,6 @@ public sealed class HoldCombatTurnCommandHandler
                 if (combat.Status != CombatStatus.Active || resolved >= MaxEnemyTurnsPerHold)
                 {
                     break;
-                }
-
-                var candidate = combat.Enemies.FirstOrDefault(e => e.Id.Value == enemyId);
-                if (candidate is not null && EnemyBoostHeuristic.ShouldHoldForMoreCharge(candidate, combat.Id.Value))
-                {
-                    continue; // still banking overflow — its gauge keeps climbing via HoldTick, revisited next hold call
                 }
 
                 combat.MakeActiveCombatant(enemyId);

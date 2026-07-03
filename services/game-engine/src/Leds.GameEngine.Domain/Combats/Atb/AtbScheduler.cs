@@ -11,9 +11,9 @@
 /// discrete and reproducible.
 /// </para>
 /// <para>
-/// Charge (holding past the threshold) and interruption (pushing a gauge back) are
-/// expressed as gauge mutations applied between <see cref="Advance"/> calls by the
-/// combat layer; the scheduler only honours the resulting gauges.
+/// Interruption (pushing a gauge back) is expressed as a gauge mutation applied
+/// between <see cref="Advance"/> calls by the combat layer; the scheduler only
+/// honours the resulting gauges.
 /// </para>
 /// </summary>
 public static class AtbScheduler
@@ -101,8 +101,7 @@ public static class AtbScheduler
         }
 
         var raw = participant.Gauge + (long)participant.FillPerTick * fillTicks;
-        var cap = (long)AtbConstants.ReadyThreshold + AtbConstants.MaxChargeOverflow;
-        var clamped = (int)Math.Min(raw, cap);
+        var clamped = (int)Math.Min(raw, AtbConstants.ReadyThreshold);
         return participant with { Gauge = clamped };
     }
 

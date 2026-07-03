@@ -6,22 +6,6 @@ namespace Leds.GameEngine.UnitTests.Combats.Atb;
 public sealed class AtbActionMathTests
 {
     [Fact]
-    public void ChargeDamageMultiplier_ShouldBeOne_WhenNoOverflow()
-    {
-        AtbActionMath.ChargeDamageMultiplier(AtbConstants.ReadyThreshold).Should().Be(1.0);
-        AtbActionMath.ChargeDamageMultiplier(5000).Should().Be(1.0);
-    }
-
-    [Fact]
-    public void ChargeDamageMultiplier_ShouldStepUpWithOverflow_CappedAt1_5()
-    {
-        AtbActionMath.ChargeDamageMultiplier(AtbConstants.ReadyThreshold + 2_000).Should().Be(1.15);
-        AtbActionMath.ChargeDamageMultiplier(AtbConstants.ReadyThreshold + 5_000).Should().Be(1.30);
-        AtbActionMath.ChargeDamageMultiplier(AtbConstants.ReadyThreshold + AtbConstants.MaxChargeOverflow)
-            .Should().Be(1.5);
-    }
-
-    [Fact]
     public void RecoveryTicks_ShouldScaleWithPower_AndBeMitigatedByRecoveryStat()
     {
         AtbActionMath.RecoveryTicks(basePower: 10, recoveryStat: 5).Should().Be(40);

@@ -2,7 +2,6 @@ using Leds.GameEngine.Application.Combats.Actions;
 using Leds.GameEngine.Application.Combats.EnemyTurns.Ai;
 using Leds.GameEngine.Application.Combats.Typing;
 using Leds.GameEngine.Domain.Combats;
-using Leds.GameEngine.Domain.Combats.Atb;
 using Leds.GameEngine.Domain.Combats.StatusEffects;
 using Leds.GameEngine.Domain.Combats.Typing;
 using Leds.GameEngine.Domain.Common;
@@ -158,8 +157,7 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
     {
         var attackType = _typeProfileProvider.ResolveAttackType(actor, skill);
         // Effective Focus = base + active Focus buffs/debuffs.
-        var critChance = CriticalHitCalibration.CritChanceFromFocus(actor.EffectiveFocus);        // ATB charge: a held/overflowed gauge amplifies the whole hit (cap ×1.5).
-        var chargeMultiplier = AtbActionMath.ChargeDamageMultiplier(actor.AtbGauge);
+        var critChance = CriticalHitCalibration.CritChanceFromFocus(actor.EffectiveFocus);
         var staggers = IsStaggerSkill(skill);
 
         foreach (var target in targets)
@@ -168,9 +166,9 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
             var critRoll = DeterministicCombatRoll.UnitInterval(BuildCritSeed(combat, actor, target, skill));
 
             // Attack buffs (actor) and defense buffs (target) shift the hit before
-            // type/crit are applied; charge amplifies it too.
+            // type/crit are applied.
             var basePower = ApplyStatMultiplier(
-                ApplyCharge(skill.BasePower, chargeMultiplier),
+                skill.BasePower,
                 StatModifierDamageMultiplier(actor, target));
 
             var outcome = DamageCalculator.Calculate(
@@ -263,16 +261,6 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
                     [target]));
             }
         }
-    }
-
-    private static int ApplyCharge(int basePower, double chargeMultiplier)
-    {
-        if (chargeMultiplier <= 1.0 || basePower <= 0)
-        {
-            return basePower;
-        }
-
-        return Math.Max(1, (int)Math.Round(basePower * chargeMultiplier, MidpointRounding.AwayFromZero));
     }
 
     private static bool IsStaggerSkill(CombatantSkill skill)

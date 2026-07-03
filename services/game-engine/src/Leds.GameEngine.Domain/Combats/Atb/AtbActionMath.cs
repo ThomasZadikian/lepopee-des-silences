@@ -7,33 +7,6 @@
 public static class AtbActionMath
 {
     /// <summary>
-    /// Incremental charge damage multiplier from a (possibly overflowed) gauge,
-    /// in [1.0, <see cref="AtbCalibration.ChargeMaxMultiplier"/>]. Three light tiers,
-    /// capped at ×1.5.
-    /// </summary>
-    public static double ChargeDamageMultiplier(int gauge)
-    {
-        var overflow = Math.Clamp(gauge - AtbConstants.ReadyThreshold, 0, AtbConstants.MaxChargeOverflow);
-        if (overflow <= 0)
-        {
-            return 1.0;
-        }
-
-        var ratio = (double)overflow / AtbConstants.MaxChargeOverflow;
-        if (ratio < 0.34)
-        {
-            return 1.15;
-        }
-
-        if (ratio < 0.67)
-        {
-            return 1.30;
-        }
-
-        return AtbCalibration.ChargeMaxMultiplier;
-    }
-
-    /// <summary>
     /// Post-action recovery in ticks: heavier skills (higher base power) cost more,
     /// a higher Recovery stat mitigates it. Always ≥ 0.
     /// </summary>

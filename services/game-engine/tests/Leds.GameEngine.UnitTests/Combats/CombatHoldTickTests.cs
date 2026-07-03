@@ -27,7 +27,7 @@ public sealed class CombatHoldTickTests
     }
 
     [Fact]
-    public void HoldTick_ShouldKeepFillingActiveAllyGauge_PastReadyThreshold_WhenItHoldsSelection()
+    public void HoldTick_ShouldFreezeActiveAllyGauge_AtReadyThreshold_WhenItHoldsSelection()
     {
         var combat = CreateSut();
         var active = combat.Allies.First();
@@ -37,7 +37,7 @@ public sealed class CombatHoldTickTests
 
         combat.HoldTick(100);
 
-        active.AtbGauge.Should().BeGreaterThan(AtbConstants.ReadyThreshold);
+        active.AtbGauge.Should().Be(AtbConstants.ReadyThreshold);
     }
 
     [Fact]
@@ -57,17 +57,16 @@ public sealed class CombatHoldTickTests
     }
 
     [Fact]
-    public void HoldTick_ShouldCapActiveAllyGauge_AtReadyThresholdPlusMaxOverflow()
+    public void HoldTick_ShouldCapGaugeAtReadyThreshold_OnLargeFill()
     {
         var combat = CreateSut();
-        var active = combat.Allies.First();
-        active.SetAtbGauge(AtbConstants.ReadyThreshold);
-        active.SetAtbFillPerTick(1_000_000);
-        combat.MakeActiveCombatant(active.Id.Value);
+        var enemy = combat.Enemies.First();
+        enemy.SetAtbGauge(0);
+        enemy.SetAtbFillPerTick(1_000_000);
 
         combat.HoldTick(100);
 
-        active.AtbGauge.Should().Be(AtbConstants.ReadyThreshold + AtbConstants.MaxChargeOverflow);
+        enemy.AtbGauge.Should().Be(AtbConstants.ReadyThreshold);
     }
 
     [Fact]

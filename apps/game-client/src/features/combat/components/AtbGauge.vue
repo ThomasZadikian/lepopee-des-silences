@@ -7,38 +7,17 @@ const props = withDefaults(
 );
 
 const READY = 50_000;
-// Matches the backend's AtbConstants.MaxChargeOverflow — the single source of
-// truth for how far a gauge can bank past READY. (Previously this file had
-// two disagreeing copies: a 50_000 used by the bar's own overflow ratio and
-// a correct 10_000 used only by the charge-multiplier label — unified here.)
-const MAX_OVERFLOW = 10_000;
 
 const displayed = ref(props.gauge);
 
-const baseRatio = computed(() => Math.min(displayed.value, READY) / READY);
-const overflow = computed(() => Math.max(0, displayed.value - READY));
-const chargeRatio = computed(() => Math.min(overflow.value, MAX_OVERFLOW) / MAX_OVERFLOW);
+const fillRatio = computed(() => Math.min(displayed.value, READY) / READY);
 const isReady = computed(() => displayed.value >= READY);
-const isCharging = computed(() => overflow.value > 0 && displayed.value < READY + MAX_OVERFLOW);
-const isMax = computed(() => displayed.value >= READY + MAX_OVERFLOW);
 
-const fillStyle = computed(() => (props.vertical ? { height: baseRatio.value * 100 + '%' } : { width: baseRatio.value * 100 + '%' }));
-const chargeStyle = computed(() => (props.vertical ? { height: chargeRatio.value * 100 + '%' } : { width: chargeRatio.value * 100 + '%' }));
+const fillStyle = computed(() => (props.vertical ? { height: fillRatio.value * 100 + '%' } : { width: fillRatio.value * 100 + '%' }));
 
 const justReady = ref(false);
 const staggered = ref(false);
 const timers: number[] = [];
-
-const chargeMult = computed(() => {
-  const over = Math.min(Math.max(displayed.value - READY, 0), MAX_OVERFLOW);
-  if (over <= 0) return null;
-  const r = over / MAX_OVERFLOW;
-  return r < 0.34 ? '×1.15' : r < 0.67 ? '×1.30' : '×1.5';
-});
-
-const chargeMultLabel = computed(() =>
-  chargeMult.value ? `Surcharge : dégâts ${chargeMult.value} tant que la jauge reste chargée` : '',
-);
 
 function flash(target: { value: boolean }, ms = 600) {
   target.value = true;
@@ -52,10 +31,8 @@ function flash(target: { value: boolean }, ms = 600) {
 // before the NEXT snapshot arrives, or the bar permanently lags behind the
 // real gauge that actually gates the turn (useCombatStore's runCombatClock
 // advances TICK_DELTA=340 ticks every TICK_INTERVAL=480ms, i.e. the real
-// average rate is fillPerTick * 340 / 0.48 ≈ fillPerTick * 708/s — the old
-// ×220 multiplier was ~3x too slow and could leave the bar visibly "not
-// full yet" long after the real gauge — and the turn — had already moved
-// on). ×900 gives headroom to always catch up within one tick interval.
+// average rate is fillPerTick * 340 / 0.48 ≈ fillPerTick * 708/s). ×900 gives
+// headroom to always catch up within one tick interval.
 const fillRate = computed(() => Math.max(2_000, props.fillPerTick * 900));
 
 let raf = 0;
@@ -90,8 +67,6 @@ onBeforeUnmount(() => {
     class="atb"
     :class="{
       'atb--ready': isReady,
-      'atb--charging': isCharging,
-      'atb--max': isMax,
       'atb--active': active,
       'atb--just-ready': justReady,
       'atb--staggered': staggered,
@@ -106,13 +81,6 @@ onBeforeUnmount(() => {
       <span class="atb__tick" style="top: 72%" />
     </template>
     <div class="atb__fill" :style="fillStyle" />
-    <span
-      v-if="chargeMult"
-      class="atb-gauge__charge"
-      :class="{ 'atb-gauge__charge--max': chargeMult === '×1.5' }"
-      :title="chargeMultLabel"
-    >⚡ {{ chargeMult }}</span>
-    <div v-if="overflow > 0" class="atb__charge" :style="chargeStyle" />
     <span v-if="isReady" class="atb__spark" />
   </div>
 </template>
@@ -150,24 +118,6 @@ onBeforeUnmount(() => {
   background: oklch(1 0 0 / 0.06);
 }
 
-.atb-gauge__charge {
-  position: absolute; right: 4px; top: -2px;
-  font-family: var(--font-mono); font-size: 0.58rem;
-  color: var(--surge); text-shadow: 0 0 8px color-mix(in oklch, var(--surge), transparent 40%);
-  cursor: help;
-}
-
-.atb-gauge__charge--max {
-  animation: atb-charge-label-pulse 0.6s ease-in-out infinite;
-}
-
-.atb--vertical .atb-gauge__charge {
-  top: -16px;
-  right: 50%;
-  transform: translateX(50%);
-  white-space: nowrap;
-}
-
 .atb__fill {
   position: absolute;
   border-radius: inherit;
@@ -177,18 +127,6 @@ onBeforeUnmount(() => {
 
 .atb--horizontal .atb__fill { inset: 0 auto 0 0; }
 .atb--vertical .atb__fill { inset: auto 0 0 0; background: linear-gradient(0deg, var(--frost-deep), var(--frost-dim) 50%, var(--frost)); }
-
-.atb__charge {
-  position: absolute;
-  border-radius: inherit;
-  background: linear-gradient(90deg, var(--surge-dim), var(--surge));
-  box-shadow: 0 0 8px color-mix(in oklch, var(--surge), transparent 50%);
-  transition: width 0.18s linear, height 0.18s linear;
-  mix-blend-mode: screen;
-}
-
-.atb--horizontal .atb__charge { inset: 0 auto 0 0; }
-.atb--vertical .atb__charge { inset: auto 0 0 0; background: linear-gradient(0deg, var(--surge-dim), var(--surge) 50%, var(--surge-hi)); }
 
 .atb--ready .atb__fill {
   background: linear-gradient(90deg, var(--gold-dim), var(--gold));
@@ -200,18 +138,6 @@ onBeforeUnmount(() => {
 }
 .atb--ready { box-shadow: inset 0 0 7px oklch(0.08 0.015 48 / 0.85), 0 0 10px color-mix(in oklch, var(--gold), transparent 62%); }
 .atb--active.atb--ready { box-shadow: inset 0 0 7px oklch(0.08 0.015 48 / 0.85), 0 0 16px color-mix(in oklch, var(--gold), transparent 42%); }
-
-.atb--charging .atb__charge {
-  animation: atb-charge-shimmer 0.9s linear infinite;
-  background-size: 200% 100%;
-  background-image: linear-gradient(90deg, var(--surge-dim), var(--surge), var(--surge-dim));
-}
-
-.atb--max .atb__charge {
-  animation: atb-max-pulse 0.6s ease-in-out infinite;
-  box-shadow: 0 0 18px color-mix(in oklch, var(--surge-hi), transparent 15%);
-}
-.atb--max { box-shadow: inset 0 0 7px oklch(0.08 0.015 48 / 0.85), 0 0 20px color-mix(in oklch, var(--surge), transparent 22%); }
 
 .atb__spark {
   position: absolute;
@@ -237,9 +163,6 @@ onBeforeUnmount(() => {
 }
 
 @keyframes atb-ready-pulse { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.35); } }
-@keyframes atb-charge-shimmer { 0% { background-position: 0% 0; } 100% { background-position: 200% 0; } }
-@keyframes atb-max-pulse { 0%, 100% { filter: brightness(1.1); } 50% { filter: brightness(1.6); } }
-@keyframes atb-charge-label-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.18); } }
 @keyframes atb-spark { 0%, 100% { opacity: 0.6; transform: translateY(-50%) scale(0.85); } 50% { opacity: 1; transform: translateY(-50%) scale(1.2); } }
 @keyframes atb-flash {
   0% { box-shadow: 0 0 0 color-mix(in oklch, var(--gold), transparent 0%); }
@@ -254,8 +177,8 @@ onBeforeUnmount(() => {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .atb__fill, .atb__charge, .atb__spark,
-  .atb--ready .atb__fill, .atb--charging .atb__charge, .atb--max .atb__charge,
-  .atb--just-ready, .atb--staggered, .atb-gauge__charge--max { animation: none; transition: none; }
+  .atb__fill, .atb__spark,
+  .atb--ready .atb__fill,
+  .atb--just-ready, .atb--staggered { animation: none; transition: none; }
 }
 </style>
