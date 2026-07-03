@@ -43,6 +43,7 @@ function frame(now: number) {
   const target = props.gauge;
   if (displayed.value < target) {
     displayed.value = Math.min(target, displayed.value + fillRate.value * dt); // animate up
+    displayed.value = Math.min(target, displayed.value + fillRate.value * dt); // animate up
   } else if (displayed.value > target) {
     displayed.value = target; // snap down (acted / interrupted)
   }

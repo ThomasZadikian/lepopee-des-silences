@@ -14,5 +14,5 @@ public static class AtbConstants
     public const int InitiativeScale = 100;
 
     /// <summary>Safety bound so a degenerate state (all fills 0) cannot loop forever.</summary>
-    public const long MaxTicksPerAdvance = 1_000_000;
+    public const long MaxTicksPerAdvance = 75000;
 }

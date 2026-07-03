@@ -16,6 +16,7 @@ defineEmits<{ close: [] }>();
 
 const playerStore = usePlayerStore();
 const isManageModalOpen = ref(false);
+const isManageModalOpen = ref(false);
 
 function vitalityPct(m: RunPartyMemberDto): number {
   if (!m.maxVitality) return 0;
@@ -169,14 +170,18 @@ function rarityTone(rarity: string): string {
       </section>
 
       <!-- ── Gestion de l'équipe ── -->
+      <!-- ── Gestion de l'équipe ── -->
       <section v-if="playerStore.mainCharacter" class="party-drawer__section">
+        <button type="button" class="party-drawer__manage-btn" @click="isManageModalOpen = true">
+          Gérer l'équipe
+        </button>
         <button type="button" class="party-drawer__manage-btn" @click="isManageModalOpen = true">
           Gérer l'équipe
         </button>
       </section>
 
       <!-- ── Modificateurs actifs ── -->
-      <section v-if="modifiers && modifiers.length" class="party-drawer__section">
+      <section v-if="modifiers && modifiers.length" class="party-drawer__section"> 
         <h4 class="party-drawer__section-title">Modificateurs actifs</h4>
         <ul class="party-drawer__list">
           <li v-for="mod in modifiers" :key="mod.id" class="party-drawer__mod">
@@ -238,6 +243,10 @@ function rarityTone(rarity: string): string {
         Aucune donnée d'équipe disponible.
       </p>
     </div>
+
+    <Teleport to="body">
+      <TeamManagementModal v-if="isManageModalOpen" @close="isManageModalOpen = false" />
+    </Teleport>
 
     <Teleport to="body">
       <TeamManagementModal v-if="isManageModalOpen" @close="isManageModalOpen = false" />
@@ -327,15 +336,27 @@ function rarityTone(rarity: string): string {
   border-radius: 4px;
   border: 1px solid var(--edge-gold, oklch(.72 .09 82 / .70));
   background: oklch(.55 .08 85 / .12);
+.party-drawer__manage-btn {
+  width: 100%;
+  padding: 9px 14px;
+  border-radius: 4px;
+  border: 1px solid var(--edge-gold, oklch(.72 .09 82 / .70));
+  background: oklch(.55 .08 85 / .12);
   color: var(--gold, oklch(.72 .1 85));
   font-family: var(--caps, var(--font));
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
   font-size: 10.5px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   cursor: pointer;
   transition: background .15s, box-shadow .15s;
+  transition: background .15s, box-shadow .15s;
 }
 
+.party-drawer__manage-btn:hover {
+  background: oklch(.55 .08 85 / .22);
+  box-shadow: 0 0 18px -6px oklch(.72 .1 85 / .4);
 .party-drawer__manage-btn:hover {
   background: oklch(.55 .08 85 / .22);
   box-shadow: 0 0 18px -6px oklch(.72 .1 85 / .4);
