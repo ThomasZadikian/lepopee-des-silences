@@ -57,6 +57,17 @@ public sealed class PlayerProfileTests
     }
 
     [Fact]
+    public void AwardStatPoint_ShouldAwardTheGivenAmount()
+    {
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+
+        profile.AwardStatPoint(DateTimeOffset.UtcNow, amount: 5);
+
+        profile.Progression.UnspentStatPoints.Should().Be(5);
+        profile.Progression.TotalStatPointsEarned.Should().Be(5);
+    }
+
+    [Fact]
     public void SpendStatPoint_ShouldRejectWhenNoPointsAvailable()
     {
         var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
@@ -92,6 +103,31 @@ public sealed class PlayerProfileTests
         character.StatBlock.AttackPower.Should().Be(originalAttackPower + 1);
         profile.Progression.UnspentStatPoints.Should().Be(0);
         profile.Progression.TotalStatPointsEarned.Should().Be(1);
+    }
+
+    [Fact]
+    public void LearnSkill_ShouldAddTheSkillToTheCharacterWithTheGivenSource()
+    {
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+        var character = profile.Roster.Characters.Single();
+        var now = DateTimeOffset.UtcNow;
+
+        profile.LearnSkill(character.Id, "skill.new", "devtools", now);
+
+        var learned = character.Skills.Single(s => s.SkillDefinitionKey == "skill.new");
+        learned.Source.Should().Be("devtools");
+        learned.IsEquipped.Should().BeFalse();
+        profile.UpdatedAtUtc.Should().Be(now);
+    }
+
+    [Fact]
+    public void LearnSkill_ShouldRejectUnknownCharacter()
+    {
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+
+        var act = () => profile.LearnSkill(PlayerCharacterId.New(), "skill.new", "devtools", DateTimeOffset.UtcNow);
+
+        act.Should().Throw<DomainException>().WithMessage("*not found*");
     }
 
     [Fact]

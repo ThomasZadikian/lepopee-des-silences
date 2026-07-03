@@ -38,13 +38,16 @@ public sealed class PlayerProgression
     public void IncrementRunsAbandoned() => TotalRunsAbandoned++;
 
     /// <summary>
-    /// Awards a permanent stat point. Generic on purpose: any future trigger
+    /// Awards permanent stat points. Generic on purpose: any future trigger
     /// (events, other victories, etc.) can call this same entry point.
     /// </summary>
-    public void AwardStatPoint()
+    public void AwardStatPoint(int amount = 1)
     {
-        UnspentStatPoints++;
-        TotalStatPointsEarned++;
+        if (amount <= 0)
+            throw new DomainException("Stat point amount must be positive.");
+
+        UnspentStatPoints += amount;
+        TotalStatPointsEarned += amount;
     }
 
     /// <summary>

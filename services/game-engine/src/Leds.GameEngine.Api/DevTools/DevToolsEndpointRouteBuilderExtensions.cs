@@ -184,6 +184,27 @@ public static class DevToolsEndpointRouteBuilderExtensions
             return TypedResults.Ok(result);
         });
 
+        group.MapPost("/players/{playerId:guid}/characters/{characterId:guid}/skills/{skillKey}/unlock", async Task<Ok<DevToolsPlayerDebugResult>> (
+            Guid playerId,
+            Guid characterId,
+            string skillKey,
+            IDevToolsPlayerDebugService service,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await service.UnlockSkillAsync(playerId, characterId, skillKey, cancellationToken);
+            return TypedResults.Ok(result);
+        });
+
+        group.MapPost("/players/{playerId:guid}/stat-points/award", async Task<Ok<DevToolsPlayerDebugResult>> (
+            Guid playerId,
+            DevToolsAwardStatPointsRequest request,
+            IDevToolsPlayerDebugService service,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await service.AwardStatPointsAsync(playerId, request.Amount, cancellationToken);
+            return TypedResults.Ok(result);
+        });
+
         return endpoints;
     }
 }
@@ -203,3 +224,5 @@ public sealed record DevToolsActivateCurseRequest(string CurseKey);
 public sealed record DevToolsSetVitalsRequest(int Vitality, int Guard);
 
 public sealed record DevToolsApplyStatusRequest(string StatusKey, int Stacks, int Duration);
+
+public sealed record DevToolsAwardStatPointsRequest(int Amount);

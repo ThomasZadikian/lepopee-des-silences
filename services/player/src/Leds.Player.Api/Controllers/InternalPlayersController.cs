@@ -1,5 +1,6 @@
 using Leds.Player.Application.Players;
 using Leds.Player.Application.Players.AwardStatPoint;
+using Leds.Player.Application.Players.UnlockSkill;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -21,11 +22,29 @@ public sealed class InternalPlayersController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<PlayerProfileDto>> AwardStatPoint(
         Guid playerId,
+        [FromBody] AwardStatPointsRequest? request,
         CancellationToken cancellationToken)
     {
-        var command = new AwardStatPointCommand(playerId);
+        var command = new AwardStatPointCommand(playerId, request?.Amount ?? 1);
+        var response = await _sender.Send(command, cancellationToken);
+
+        return Ok(response);
+    }
+
+    [HttpPost("{playerId:guid}/characters/{characterId:guid}/skills/{skillKey}/unlock")]
+    [ProducesResponseType(typeof(PlayerProfileDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<PlayerProfileDto>> UnlockSkill(
+        Guid playerId,
+        Guid characterId,
+        string skillKey,
+        CancellationToken cancellationToken)
+    {
+        var command = new UnlockSkillCommand(playerId, characterId, skillKey, "devtools");
         var response = await _sender.Send(command, cancellationToken);
 
         return Ok(response);
     }
 }
+
+public sealed record AwardStatPointsRequest(int Amount);

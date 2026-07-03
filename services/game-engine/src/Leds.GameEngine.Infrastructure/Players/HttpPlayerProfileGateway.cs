@@ -54,6 +54,22 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
         return await ReadProfileAsync(response, playerId, cancellationToken);
     }
 
+    public async Task<PlayerProfileView> UnlockSkillAsync(Guid playerId, Guid characterId, string skillKey, CancellationToken cancellationToken)
+    {
+        var response = await _httpClient.PostAsync(
+            $"/api/v2/internal/players/{playerId}/characters/{characterId}/skills/{skillKey}/unlock", content: null, cancellationToken);
+
+        return await ReadProfileAsync(response, playerId, cancellationToken);
+    }
+
+    public async Task<PlayerProfileView> AwardStatPointsAsync(Guid playerId, int amount, CancellationToken cancellationToken)
+    {
+        var response = await _httpClient.PostAsJsonAsync(
+            $"/api/v2/internal/players/{playerId}/stat-points/award", new AwardStatPointsRequestBody(amount), cancellationToken);
+
+        return await ReadProfileAsync(response, playerId, cancellationToken);
+    }
+
     private static void EnsureSuccess(HttpResponseMessage response, Guid playerId)
     {
         if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
@@ -120,6 +136,8 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
                 dto.Progression.UnspentStatPoints,
                 dto.Progression.TotalStatPointsEarned));
     }
+
+    private sealed record AwardStatPointsRequestBody(int Amount);
 
     private sealed record PlayerProfileResponse(
         Guid Id,

@@ -86,12 +86,12 @@ public sealed class PlayerProfile
     }
 
     /// <summary>
-    /// Awards a permanent stat point. Profile-level (not character-scoped) —
+    /// Awards permanent stat points. Profile-level (not character-scoped) —
     /// points aren't earned per-character.
     /// </summary>
-    public void AwardStatPoint(DateTimeOffset now)
+    public void AwardStatPoint(DateTimeOffset now, int amount = 1)
     {
-        Progression.AwardStatPoint();
+        Progression.AwardStatPoint(amount);
         Touch(now);
     }
 

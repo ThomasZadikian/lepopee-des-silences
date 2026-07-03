@@ -1,5 +1,6 @@
 import type { CombatRuntimeDto } from '../../combat/types/combatContracts';
 import type { RunDto } from '../../runs/types/runTypes';
+import type { PlayerProfileView } from '../../party/types/playerTypes';
 
 export type DevToolsStatusResponse = {
   enabled: boolean;
@@ -34,3 +35,8 @@ export type PalaceRoomStateKey = 'Neutral' | 'Silent' | 'Painful' | 'Enraged' | 
 export type RoomClimateKey = 'None' | 'Grey' | 'Rain' | 'Heatwave' | 'Hail';
 
 export type DevToolsStatusKey = 'unknown' | 'available' | 'unavailable';
+
+export type DevToolsPlayerDebugResponse = {
+  message: string;
+  profile: PlayerProfileView;
+};

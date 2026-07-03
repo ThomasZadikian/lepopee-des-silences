@@ -34,6 +34,19 @@ vi.mock('../../combat/stores/useCombatStore', () => ({
   })),
 }));
 
+vi.mock('../../party/stores/playerStore', () => ({
+  usePlayerStore: vi.fn(() => ({
+    profile: null,
+    loadProfile: vi.fn().mockResolvedValue(undefined),
+  })),
+}));
+
+vi.mock('../../party/api/skillsApi', () => ({
+  skillsApi: {
+    listActive: vi.fn().mockResolvedValue({ skills: [] }),
+  },
+}));
+
 vi.mock('../api/devToolsApi', () => ({
   devToolsApi: {
     getPsyche: vi.fn(),
@@ -79,6 +92,11 @@ function mountPanel(runId = 'run-1', combat: CombatRuntimeDto | null = null) {
           props: ['combat', 'disabled', 'isLoading'],
           emits: ['killEnemies', 'killEnemy', 'setVitals', 'applyStatus'],
         },
+        PlayerDevToolsSection: {
+          template: '<div class="player-section-stub" />',
+          props: ['disabled', 'isLoading', 'characters', 'allSkills'],
+          emits: ['unlockSkill', 'awardStatPoints'],
+        },
       },
     },
   });
@@ -118,6 +136,11 @@ describe('DevToolsPanel', () => {
   it('renders combat devtools section', () => {
     const wrapper = mountPanel();
     expect(wrapper.find('.combat-section-stub').exists()).toBe(true);
+  });
+
+  it('renders player devtools section', () => {
+    const wrapper = mountPanel();
+    expect(wrapper.find('.player-section-stub').exists()).toBe(true);
   });
 
   it('passes disabled prop to sections when no token', () => {

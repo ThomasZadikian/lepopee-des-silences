@@ -3,25 +3,25 @@ using Leds.Player.Application.Common.Exceptions;
 using Leds.Player.Domain.Players;
 using MediatR;
 
-namespace Leds.Player.Application.Players.AwardStatPoint;
+namespace Leds.Player.Application.Players.UnlockSkill;
 
-public sealed class AwardStatPointCommandHandler : IRequestHandler<AwardStatPointCommand, PlayerProfileDto>
+public sealed class UnlockSkillCommandHandler : IRequestHandler<UnlockSkillCommand, PlayerProfileDto>
 {
     private readonly IPlayerProfileRepository _repository;
     private readonly TimeProvider _timeProvider;
 
-    public AwardStatPointCommandHandler(IPlayerProfileRepository repository, TimeProvider timeProvider)
+    public UnlockSkillCommandHandler(IPlayerProfileRepository repository, TimeProvider timeProvider)
     {
         _repository = repository;
         _timeProvider = timeProvider;
     }
 
-    public async Task<PlayerProfileDto> Handle(AwardStatPointCommand request, CancellationToken cancellationToken)
+    public async Task<PlayerProfileDto> Handle(UnlockSkillCommand request, CancellationToken cancellationToken)
     {
         var profile = await _repository.GetByIdAsync(new PlayerId(request.PlayerId), cancellationToken)
             ?? throw new NotFoundException("Player", request.PlayerId);
 
-        profile.AwardStatPoint(_timeProvider.GetUtcNow(), request.Amount);
+        profile.LearnSkill(new PlayerCharacterId(request.CharacterId), request.SkillKey, request.Source, _timeProvider.GetUtcNow());
 
         await _repository.SaveAsync(profile, cancellationToken);
 
