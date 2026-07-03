@@ -9,7 +9,9 @@ using Leds.GameEngine.Application.Combats.EnemyTurns;
 using Leds.GameEngine.Application.Combats.Ports;
 using Leds.GameEngine.Application.Combats.Resolution;
 using Leds.GameEngine.Application.Common.Exceptions;
+using Leds.GameEngine.Application.Players.Ports;
 using Leds.GameEngine.Application.Rewards.Ports;
+using Leds.GameEngine.Application.Rewards.Loot;
 using Leds.GameEngine.Application.Rewards.RewardOfferFactory;
 using Leds.GameEngine.Application.Runs.UseCombatSkill;
 using Leds.GameEngine.Domain.Combats;
@@ -21,6 +23,7 @@ using Leds.GameEngine.Infrastructure.Combats.Actions;
 using Leds.GameEngine.Infrastructure.Combats.Targeting;
 using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.UnitTests.Common.Factories;
+using Microsoft.Extensions.Logging;
 using Moq;
 
 namespace Leds.GameEngine.UnitTests.Runs.UseCombatSkill;
@@ -723,12 +726,15 @@ public sealed class UseCombatSkillCommandHandlerTests
 
     private static ICombatResolutionService CreateCombatResolutionService()
     {
-        return new CombatResolutionService(CreateRewardOfferFactory());
+        return new CombatResolutionService(
+            CreateRewardOfferFactory(),
+            Mock.Of<IPlayerProfileGateway>(),
+            Mock.Of<ILogger<CombatResolutionService>>());
     }
 
     private static RewardOfferFactory CreateRewardOfferFactory()
     {
-        return new RewardOfferFactory(new CombatRiskProfileResolver(), Mock.Of<ICatalogContentGateway>());
+        return new RewardOfferFactory(new CombatRiskProfileResolver(), Mock.Of<ICatalogContentGateway>(), new EnemyLootRewardBuilder(Mock.Of<ICatalogContentGateway>()));
     }
 
     private static Mock<IEnemyCombatTurnResolver> CreateNoOpEnemyTurnResolver()

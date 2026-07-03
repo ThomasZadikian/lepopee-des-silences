@@ -7,9 +7,6 @@
 /// </summary>
 public static class AtbCalibration
 {
-    /// <summary>Hard cap on the charge/overflow damage multiplier.</summary>
-    public const double ChargeMaxMultiplier = 1.5;
-
     /// <summary>Recovery ticks per point of skill power, before stat mitigation.</summary>
     public const int BaseRecoveryPerPower = 4;
 

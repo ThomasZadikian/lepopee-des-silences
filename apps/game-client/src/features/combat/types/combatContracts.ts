@@ -48,6 +48,7 @@ export type CombatantRuntimeDto = {
   focus?: number;
   atbGauge?: number;
   atbFillPerTick?: number;
+  threatValue?: number;
   statusEffects?: CombatantStatusEffectDto[];
   skills: CombatantSkillRuntimeDto[];
 };

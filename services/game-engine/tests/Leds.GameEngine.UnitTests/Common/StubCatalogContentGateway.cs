@@ -164,7 +164,17 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 ItemType: "Consumable",
                 Rarity: "Common",
                 IsTemporary: true,
-                EffectTags: ["heal", "memory"])
+                EffectTags: ["heal", "memory"]),
+            ["canon.item.lanterne"] = new ItemTemplateSnapshot(
+                Key: "canon.item.lanterne",
+                Name: "Lanterne à huile",
+                Description: "Seules les chaumières éclairées ne furent pas touchées. La lumière est un abri.",
+                Version: "canon-1.0.0",
+                Status: "Active",
+                ItemType: "Consumable",
+                Rarity: "Common",
+                IsTemporary: true,
+                EffectTags: ["light"])
         };
 
     private static readonly IReadOnlyDictionary<string, EventTemplateSnapshot> EventTemplates =
@@ -401,7 +411,135 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 3,
                 false,
                 true,
-                "effect.item.eclat-de-garde")
+                "effect.item.eclat-de-garde"),
+            ["item.consumable.peau-de-serpent"] = new CatalogItemDefinitionSnapshot(
+                "item.consumable.peau-de-serpent",
+                "1.0",
+                "Peau de serpent",
+                "Une mue encore souple, qui renforce la garde du prochain combat.",
+                null,
+                "Consumable",
+                "Guard",
+                "Common",
+                "UseOnNode",
+                "RuntimeRunOnly",
+                "Additive",
+                3,
+                false,
+                true,
+                null),
+            ["item.consumable.crocs-figes"] = new CatalogItemDefinitionSnapshot(
+                "item.consumable.crocs-figes",
+                "1.0",
+                "Crocs figes",
+                "Des crocs durcis, encore charges de venin residuel.",
+                null,
+                "Consumable",
+                "Damage",
+                "Uncommon",
+                "UseInCombat",
+                "RuntimeRunOnly",
+                "Additive",
+                3,
+                true,
+                false,
+                null),
+            ["item.consumable.venin-cristallise"] = new CatalogItemDefinitionSnapshot(
+                "item.consumable.venin-cristallise",
+                "1.0",
+                "Venin cristallise",
+                "Un venin fige en cristal, rare et instable.",
+                null,
+                "Consumable",
+                "Damage",
+                "Rare",
+                "UseInCombat",
+                "RuntimeRunOnly",
+                "Additive",
+                2,
+                true,
+                false,
+                null),
+            ["item.consumable.fragment-de-silence"] = new CatalogItemDefinitionSnapshot(
+                "item.consumable.fragment-de-silence",
+                "1.0",
+                "Fragment de silence",
+                "Un eclat muet, souvenir d'un temoin qui n'a jamais parle.",
+                null,
+                "Consumable",
+                "Memory",
+                "Uncommon",
+                "NotUsable",
+                "RuntimeRunOnly",
+                "Additive",
+                3,
+                false,
+                false,
+                null),
+            ["item.consumable.oeil-de-verre"] = new CatalogItemDefinitionSnapshot(
+                "item.consumable.oeil-de-verre",
+                "1.0",
+                "Oeil de verre",
+                "Un oeil fige qui semble encore observer.",
+                null,
+                "Consumable",
+                "Focus",
+                "Rare",
+                "UseOnNode",
+                "RuntimeRunOnly",
+                "Additive",
+                2,
+                false,
+                true,
+                null),
+            ["item.consumable.eclat-instable"] = new CatalogItemDefinitionSnapshot(
+                "item.consumable.eclat-instable",
+                "1.0",
+                "Eclat instable",
+                "Un fragment de la Fracture, encore charge d'energie.",
+                null,
+                "Consumable",
+                "Damage",
+                "Uncommon",
+                "UseInCombat",
+                "RuntimeRunOnly",
+                "Additive",
+                3,
+                true,
+                false,
+                null),
+            ["item.consumable.reliquaire-fele"] = new CatalogItemDefinitionSnapshot(
+                "item.consumable.reliquaire-fele",
+                "1.0",
+                "Reliquaire fele",
+                "Un reliquaire fendu qui protege malgre tout.",
+                null,
+                "Consumable",
+                "Guard",
+                "Epic",
+                "UseOnNode",
+                "RuntimeRunOnly",
+                "Additive",
+                1,
+                false,
+                true,
+                null),
+            ["item.consumable.poussiere-de-couloir"] = new CatalogItemDefinitionSnapshot(
+                "item.consumable.poussiere-de-couloir",
+                "1.0",
+                "Poussiere de couloir",
+                "Une poussiere banale, sans valeur particuliere.",
+                null,
+                "Consumable",
+                "Narrative",
+                "Common",
+                "NotUsable",
+                "RuntimeRunOnly",
+                "Additive",
+                5,
+                false,
+                false,
+                null)
         };
 
     private static readonly IReadOnlyDictionary<string, CatalogEffectSetSnapshot> EffectSets =
@@ -933,8 +1071,70 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 MinRiskLevel: 5,
                 MaxRiskLevel: 5,
                 Tags: ["boss", "final"],
-                SkillKeys: ["skill-boss-void-slam-v1"])
+                SkillKeys: ["skill-boss-void-slam-v1"]),
+            ["enemy.forest.chimere-serpentaire"] = new CatalogEnemyDefinition(
+                Key: "enemy.forest.chimere-serpentaire",
+                DisplayName: "Chimere Serpentaire",
+                Description: "Une creature composite qui rampe entre les racines de la foret.",
+                Archetype: "Beast",
+                CompatibleRoomTypes: ["Forest", "Threshold"],
+                BaseDifficulty: 1,
+                MinRiskLevel: 1,
+                MaxRiskLevel: 30,
+                Tags: ["forest", "beast"],
+                SkillKeys: ["skill.basic.strike"])
         };
+
+    private static readonly IReadOnlyDictionary<string, CatalogEnemyLootTable> EnemyLootTables =
+        new Dictionary<string, CatalogEnemyLootTable>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["enemy.forest.chimere-serpentaire"] = new CatalogEnemyLootTable(
+                "loot.enemy.forest.chimere-serpentaire",
+                "enemy.forest.chimere-serpentaire",
+                "Butin de la Chimere Serpentaire",
+                "Ce que laisse une chimere serpentaire vaincue.",
+                "1.0",
+                [
+                    new CatalogLootEntry("item.consumable.peau-de-serpent", 45),
+                    new CatalogLootEntry("item.consumable.crocs-figes", 25),
+                    new CatalogLootEntry("item.consumable.minor-heal", 30),
+                    new CatalogLootEntry("item.consumable.venin-cristallise", 8)
+                ]),
+            ["enemy.silence.mute-witness"] = new CatalogEnemyLootTable(
+                "loot.enemy.silence.mute-witness",
+                "enemy.silence.mute-witness",
+                "Butin du Temoin Muet",
+                "Ce que laisse un temoin muet vaincu.",
+                "1.0",
+                [
+                    new CatalogLootEntry("item.consumable.eclat-de-garde", 40),
+                    new CatalogLootEntry("item.consumable.fragment-de-silence", 35),
+                    new CatalogLootEntry("item.consumable.minor-heal", 20),
+                    new CatalogLootEntry("item.consumable.oeil-de-verre", 10)
+                ]),
+            ["enemy.threshold.fracture"] = new CatalogEnemyLootTable(
+                "loot.enemy.threshold.fracture",
+                "enemy.threshold.fracture",
+                "Butin de Fracture",
+                "Ce que laisse une Fracture vaincue.",
+                "1.0",
+                [
+                    new CatalogLootEntry("item.consumable.eclat-instable", 50),
+                    new CatalogLootEntry("item.consumable.eclat-de-garde", 30),
+                    new CatalogLootEntry("item.consumable.reliquaire-fele", 12)
+                ])
+        };
+
+    private static readonly CatalogGenericLootPool GenericLootPool = new(
+        "loot.generic.fallback",
+        "Trouvailles du Palais",
+        "Ce que le Palais offre quand le butin d'un ennemi ne suffit pas.",
+        "1.0",
+        [
+            new CatalogLootEntry("item.consumable.minor-heal", 60),
+            new CatalogLootEntry("item.consumable.eclat-de-garde", 40),
+            new CatalogLootEntry("item.consumable.poussiere-de-couloir", 25)
+        ]);
 
     private static readonly IReadOnlyDictionary<string, CatalogNpcDefinition> NpcDefinitions =
         new Dictionary<string, CatalogNpcDefinition>(StringComparer.OrdinalIgnoreCase)
@@ -1267,6 +1467,25 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
             new CatalogRoomTypeDefinition("room-type.silence", "Silence", "Silence", 1, int.MaxValue),
             new CatalogRoomTypeDefinition("room-type.antechamber", "Antichambre", "Antechamber", 1, int.MaxValue),
         ]);
+    }
+
+    public Task<CatalogEnemyLootTable?> GetEnemyLootTableByKeyAsync(
+        string enemyKey,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(enemyKey))
+        {
+            return Task.FromResult<CatalogEnemyLootTable?>(null);
+        }
+
+        var table = EnemyLootTables.GetValueOrDefault(enemyKey.Trim());
+        return Task.FromResult(table);
+    }
+
+    public Task<CatalogGenericLootPool?> GetActiveGenericLootPoolAsync(
+        CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult<CatalogGenericLootPool?>(GenericLootPool);
     }
 
     private static Result<TSnapshot> GetByKey<TSnapshot>(

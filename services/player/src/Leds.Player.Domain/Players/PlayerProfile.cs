@@ -47,14 +47,16 @@ public sealed class PlayerProfile
 
     private void AddDefaultCharacter()
     {
+        // skill.basic.strike is NOT listed here: it's the universal basic
+        // attack (PlayerCharacter.BasicSkillKey), always usable regardless
+        // of loadout, so it isn't part of the learnable/equippable pool.
         var defaultCharacter = PlayerCharacter.Create(
             definitionKey: "character.player.self",
             displayName: "Le Porteur",
             statBlock: PlayerCharacterStatBlock.CreateDefaultPorteur(),
             skills:
             [
-                PlayerCharacterSkill.Create("skill.basic.strike", CreatedAtUtc, "default"),
-                PlayerCharacterSkill.Create("skill.basic.guard", CreatedAtUtc, "default")
+                PlayerCharacterSkill.Create("skill.basic.guard", CreatedAtUtc, "default", isEquipped: true)
             ]);
 
         Roster.AddCharacter(defaultCharacter);
@@ -63,6 +65,48 @@ public sealed class PlayerProfile
     public void Touch(DateTimeOffset updatedAtUtc)
     {
         UpdatedAtUtc = updatedAtUtc;
+    }
+
+    public void LearnSkill(PlayerCharacterId characterId, string skillKey, string? source, DateTimeOffset now)
+    {
+        Roster.GetRequired(characterId).LearnSkill(PlayerCharacterSkill.Create(skillKey, now, source));
+        Touch(now);
+    }
+
+    public void EquipSkill(PlayerCharacterId characterId, string skillKey, DateTimeOffset now)
+    {
+        Roster.GetRequired(characterId).EquipSkill(skillKey);
+        Touch(now);
+    }
+
+    public void UnequipSkill(PlayerCharacterId characterId, string skillKey, DateTimeOffset now)
+    {
+        Roster.GetRequired(characterId).UnequipSkill(skillKey);
+        Touch(now);
+    }
+
+    /// <summary>
+    /// Awards permanent stat points. Profile-level (not character-scoped) —
+    /// points aren't earned per-character.
+    /// </summary>
+    public void AwardStatPoint(DateTimeOffset now, int amount = 1)
+    {
+        Progression.AwardStatPoint(amount);
+        Touch(now);
+    }
+
+    public void SpendStatPoint(PlayerCharacterId characterId, PlayerStatKind kind, DateTimeOffset now)
+    {
+        if (Progression.UnspentStatPoints <= 0)
+            throw new DomainException("No stat points available to spend.");
+
+        // Resolve the character before decrementing so an invalid characterId
+        // never burns a point.
+        var character = Roster.GetRequired(characterId);
+
+        character.ApplyStatIncrement(kind);
+        Progression.SpendStatPoint();
+        Touch(now);
     }
 
     /// <summary>

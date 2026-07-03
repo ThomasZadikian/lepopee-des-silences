@@ -3,13 +3,12 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue';
 
 import { useRunStore } from '../../runs/stores/runStore';
 import { useCombatLogMetrics } from '../composables/useCombatLogMetrics';
+import { useTurnForecast } from '../composables/useTurnForecast';
 import { useCombatStore } from '../stores/useCombatStore';
-import AtbGauge from './AtbGauge.vue';
 import CombatantCard from './CombatantCard.vue';
 import CombatLogPanel from './CombatLogPanel.vue';
 import CombatMetersPanel from './CombatMetersPanel.vue';
 import CombatOutcomePanel from './CombatOutcomePanel.vue';
-import EmotionalTypeBadge from './EmotionalTypeBadge.vue';
 import SkillBar from './SkillBar.vue';
 
 const props = defineProps<{
@@ -23,23 +22,18 @@ const emit = defineEmits<{
   leaveRun: [];
 }>();
 
-const nextCombatantId = computed<string | null>(() => {
-  const activeId = activeCombatant.value?.id;
-  const candidates = combatStore.allCombatants.filter(
-    (c) => c.status !== 'Defeated' && c.id !== activeId,
-  );
-  if (candidates.length === 0) return null;
-  return candidates.reduce((top, c) => ((c.atbGauge ?? 0) > (top.atbGauge ?? 0) ? c : top)).id;
-});
-
 const combatStore = useCombatStore();
+
+// Predictive ATB queue: re-simulated from live gauge/speed data on every
+// render, so a speed buff/debuff immediately reshuffles the forecast.
+const turnForecast = useTurnForecast(() => combatStore.allCombatants);
 const runStore = useRunStore();
 const { state: metricsState } = useCombatLogMetrics(
   () => combatStore.logEntries,
   () => combatStore.combat,
 );
-const isDamageDrawerOpen = ref(false);
-const hoveredEnemyId = ref<string | null>(null);
+
+const isDamageModalOpen = ref(false);
 
 const activeCombatant = computed(() => combatStore.currentActor);
 const isPlayerTurn = computed(() => combatStore.isPlayerTurn);
@@ -49,56 +43,12 @@ const selectedTarget = computed(() => {
   if (!id) return null;
   return combatStore.findCombatantById(id);
 });
-const hoveredTarget = computed(() => {
-  if (!hoveredEnemyId.value) return null;
-  return combatStore.findCombatantById(hoveredEnemyId.value);
-});
-const visualTarget = computed(() => hoveredTarget.value ?? selectedTarget.value);
-const activeAllyIndex = computed(() => {
-  const id = activeCombatant.value?.id;
-  if (!id) return 0;
-  return Math.max(0, combatStore.allies.findIndex((combatant) => combatant.id === id));
-});
-const visualEnemyIndex = computed(() => {
-  const id = visualTarget.value?.id;
-  if (!id) return -1;
-  return combatStore.enemies.findIndex((combatant) => combatant.id === id);
-});
 
-const targetThreadEnd = computed(() => {
-  if (visualEnemyIndex.value < 0) return null;
-  const targets = [
-    { x: 56.0, y: 30.0 }, // 1 — front gauche
-    { x: 76.0, y: 30.0 }, // 2 — front droite
-    { x: 50.0, y: 18.0 }, // 3 — arrière gauche
-    { x: 84.0, y: 18.0 }, // 4 — arrière droite
-  ];
-  return targets[visualEnemyIndex.value % targets.length];
-});
-
-const targetThreadPath = computed(() => {
-  if (visualEnemyIndex.value < 0) return '';
-  const starts = [
-    { x: 30.9, y: 11.3 },
-    { x: 30.9, y: 21.2 },
-    { x: 30.9, y: 31.3 },
-    { x: 30.9, y: 41.4 },
-    { x: 30.9, y: 51.4 },
-  ];
-  const controls = [
-    { lift: 7.0, bend: 0.52 },
-    { lift: 6.2, bend: 0.55 },
-    { lift: 8.0, bend: 0.52 },
-    { lift: 6.6, bend: 0.56 },
-  ];
-
-  const start = starts[Math.min(activeAllyIndex.value, starts.length - 1)];
-  const end = targetThreadEnd.value;
-  if (!end) return '';
-  const control = controls[visualEnemyIndex.value % controls.length];
-  const cx = start.x + (end.x - start.x) * control.bend;
-  const cy = Math.min(start.y, end.y) - control.lift;
-  return `M ${start.x} ${start.y} Q ${cx} ${cy} ${end.x} ${end.y}`;
+const roomLabel = computed(() => {
+  const room = runStore.currentRoom;
+  if (!room) return 'Affrontement';
+  const depth = (room.currentNodeDepth ?? 0) + 1;
+  return `${room.theme ?? room.roomType} · salle ${depth} — affrontement`;
 });
 
 const actionPreview = computed(() => {
@@ -106,6 +56,12 @@ const actionPreview = computed(() => {
   if (combatStore.selectedItem) return combatStore.selectedItem.displayName;
   return 'Frappe ciblée. +50 % si la cible saigne.';
 });
+
+// Highest threat among living allies — the ally bar renders relative to this,
+// and whoever holds it gets the "menace" indicator (most likely enemy target).
+const maxAllyThreat = computed(() =>
+  Math.max(0, ...combatStore.allies.map((a) => a.threatValue ?? 0)),
+);
 
 function canSelect(combatantId: string): boolean {
   if (combatStore.isLoading) return false;
@@ -156,26 +112,6 @@ function handleContinue() {
   emit('combatCompleted');
 }
 
-function getEnemyJitter(index: number): string {
-  const offsets = [
-    'translate(4px, -6px) rotate(-0.5deg)',
-    'translate(-3px, 8px) rotate(0.3deg)',
-    'translate(6px, 2px) rotate(-0.8deg)',
-    'translate(-5px, -4px) rotate(0.6deg)',
-    'translate(2px, 10px) rotate(-0.2deg)',
-    'translate(-7px, -3px) rotate(0.4deg)',
-  ];
-  return offsets[index % offsets.length];
-}
-
-function hpRatio(current: number, max: number): number {
-  return max > 0 ? current / max : 0;
-}
-
-function enemyPositionClass(index: number): string {
-  return `enemy-figure--${(index % 4) + 1}`;
-}
-
 function floatEventsFor(combatantId: string) {
   return combatStore.feedbackEvents.filter((event) => event.combatantId === combatantId);
 }
@@ -185,30 +121,6 @@ function floatLabel(type: string, amount: number): string {
   if (type === 'guard') return `◇ ${amount}`;
   return `-${amount}`;
 }
-
-function fxIcon(kind: string, magnitude: number): string {
-  switch (kind) {
-    case 'DamageOverTime': return '☠';
-    case 'HealOverTime': return '✚';
-    case 'StatModifier': return magnitude >= 0 ? '▲' : '▼';
-    case 'Stun': return '✦';
-    case 'Silence': return '∅';
-    case 'AtbLock': return '⏸';
-    default: return '•';
-  }
-}
-
-function fxClass(kind: string, magnitude: number): string {
-  if (kind === 'DamageOverTime') return 'enemy-figure__fx-badge--dot';
-  if (kind === 'HealOverTime') return 'enemy-figure__fx-badge--hot';
-  if (kind === 'StatModifier') return magnitude >= 0 ? 'enemy-figure__fx-badge--buff' : 'enemy-figure__fx-badge--debuff';
-  return 'enemy-figure__fx-badge--control';
-}
-
-function fxTitle(fx: { displayName: string; stacks: number }): string {
-  return fx.stacks > 1 ? `${fx.displayName} ×${fx.stacks}` : fx.displayName;
-}
-
 
 watch(() => combatStore.terminalEvent, (event) => {
   if (event?.kind === 'defeat') emit('combatFailed');
@@ -274,45 +186,36 @@ watch(
     <!-- Combat actif -->
     <template v-else>
       <div class="combat-scene__initiative es-plate">
-        <span class="combat-scene__initiative-title">MARKOV_STYLE_FIGHT</span>
+        <span class="combat-scene__initiative-title">Ordre prévisionnel</span>
         <div class="combat-scene__initiative-list">
           <span
-            v-for="combatant in [...combatStore.enemies, ...combatStore.allies]"
-            :key="combatant.id"
+            v-for="(entry, i) in turnForecast"
+            :key="entry.slot + '-' + entry.combatantId"
             class="initiative-pill"
             :class="{
-              'initiative-pill--active': combatant.id === activeCombatant?.id,
-              'initiative-pill--enemy': combatant.side === 'Enemy',
-              'initiative-pill--next': combatant.id === nextCombatantId,
+              'initiative-pill--active': i === 0 && entry.combatantId === activeCombatant?.id,
+              'initiative-pill--enemy': entry.side === 'Enemy',
+              'initiative-pill--next': i === 0,
             }"
           >
+            <span class="initiative-pill__slot">{{ i + 1 }}</span>
             <span class="initiative-pill__dot" />
-            {{ combatant.displayName }}
+            {{ entry.displayName }}
           </span>
         </div>
-        <button class="damage-toggle" @click="isDamageDrawerOpen = !isDamageDrawerOpen">
-          △ Relevé des dégâts ▸
-        </button>
       </div>
 
-      <!-- Main: face-à-face -->
       <div class="combat-scene__arena">
-        <svg
-          v-if="targetThreadPath"
-          class="combat-scene__target-thread"
-          :class="{ 'combat-scene__target-thread--hover': hoveredTarget }"
-          viewBox="-1.1 5 100 120"
-          preserveAspectRatio="none"
-          aria-hidden="true"
-        >
-          <path :d="targetThreadPath" />
-        </svg>
+        <div class="combat-scene__header">
+          <span class="combat-scene__header-room">{{ roomLabel }}</span>
+          <span class="combat-scene__header-turn">tour {{ combatStore.combat.turnNumber }} · temps réel · les jauges ne s'arrêtent pas</span>
+        </div>
 
-        <!-- Les Voix (allies) -->
-        <div class="combat-scene__side combat-scene__side--voix">
-          <p class="combat-scene__side-title">Alliés · {{ combatStore.allies.length }}</p>
+        <!-- Les Manifestations (enemies) -->
+        <p class="combat-scene__side-title combat-scene__side-title--foe">◆ Les Manifestations · {{ combatStore.enemies.length }}</p>
+        <div class="combat-scene__grid">
           <CombatantCard
-            v-for="combatant in combatStore.allies"
+            v-for="combatant in combatStore.enemies"
             :key="combatant.id"
             :combatant="combatant"
             :is-current-actor="isVisuallyActive(combatant.id)"
@@ -320,7 +223,7 @@ watch(
             :is-selectable="canSelect(combatant.id)"
             :is-targetable="canSelect(combatant.id)"
             :is-invalid-target="isInvalidTarget(combatant.id)"
-            :is-active-player="combatant.side === 'Player' && isPlayerTurn"
+            :is-active-player="false"
             :is-thinking="combatStore.thinkingCombatantId === combatant.id"
             :is-damaged="combatStore.recentlyDamagedIds.includes(combatant.id)"
             :is-guarded="combatStore.recentlyGuardedIds.includes(combatant.id)"
@@ -337,131 +240,102 @@ watch(
               {{ floatLabel(event.type, event.amount) }}
             </span>
           </CombatantCard>
-
         </div>
 
-        <!-- Seuil (central divider) -->
+        <!-- Manomètre (pression du Palais) -->
         <div class="combat-scene__seuil">
           <div class="seuil-line" />
-          <span class="seuil-glyph">◈</span>
+          <div class="seuil-manometer" aria-hidden="true">
+            <div class="seuil-manometer__ticks" />
+            <div class="seuil-manometer__needle" />
+            <div class="seuil-manometer__hub" />
+            <span class="seuil-manometer__label">pression</span>
+          </div>
           <div class="seuil-line" />
         </div>
 
-        <!-- Les Manifestations (enemies) -->
-        <div class="combat-scene__side combat-scene__side--manifestations">
-          <p class="combat-scene__side-title combat-scene__side-title--foe">PLACEHOLDER_ENEMIES_GROUP_TYPE · {{ combatStore.enemies.length }}</p>
-          <button
-            v-for="(combatant, idx) in combatStore.enemies"
+        <!-- Alliés -->
+        <p class="combat-scene__side-title combat-scene__side-title--allies">◆ Alliés · {{ combatStore.allies.length }}</p>
+        <div class="combat-scene__grid">
+          <CombatantCard
+            v-for="combatant in combatStore.allies"
             :key="combatant.id"
-            class="enemy-figure"
-            :class="[
-              enemyPositionClass(idx),
-              {
-                'enemy-figure--selected': combatStore.isSelectedTarget(combatant.id),
-                'enemy-figure--selectable': canSelect(combatant.id),
-                'enemy-figure--invalid': isInvalidTarget(combatant.id),
-                'enemy-figure--active': isVisuallyActive(combatant.id),
-                'enemy-figure--thinking': combatStore.thinkingCombatantId === combatant.id,
-                'enemy-figure--defeated': combatant.status === 'Defeated',
-              },
-            ]"
-            :style="{ '--enemy-jitter': getEnemyJitter(idx) }"
-            :disabled="combatant.status === 'Defeated' || !canSelect(combatant.id)"
-            @mouseenter="hoveredEnemyId = combatant.id"
-            @mouseleave="hoveredEnemyId = null"
-            @click="handleSelect(combatant.id)"
+            :combatant="combatant"
+            :is-current-actor="isVisuallyActive(combatant.id)"
+            :is-selected-target="combatStore.isSelectedTarget(combatant.id)"
+            :is-selectable="canSelect(combatant.id)"
+            :is-targetable="canSelect(combatant.id)"
+            :is-invalid-target="isInvalidTarget(combatant.id)"
+            :is-active-player="combatant.side === 'Player' && isPlayerTurn"
+            :is-thinking="combatStore.thinkingCombatantId === combatant.id"
+            :is-damaged="combatStore.recentlyDamagedIds.includes(combatant.id)"
+            :is-guarded="combatStore.recentlyGuardedIds.includes(combatant.id)"
+            :is-just-defeated="combatStore.recentlyDefeatedIds.includes(combatant.id)"
+            :is-acting="combatStore.recentlyActingId === combatant.id"
+            :max-threat="maxAllyThreat"
+            @select="handleSelect"
           >
-            <span class="enemy-figure__shape" />
             <span
               v-for="event in floatEventsFor(combatant.id)"
               :key="event.id"
-              class="combat-float combat-float--enemy"
+              class="combat-float"
               :class="`combat-float--${event.type}`"
             >
               {{ floatLabel(event.type, event.amount) }}
             </span>
-            <span v-if="combatStore.isSelectedTarget(combatant.id) || hoveredEnemyId === combatant.id" class="enemy-figure__target">◎ cible</span>
-            <span class="enemy-figure__name">{{ combatant.displayName }}</span>
-            <span class="enemy-figure__archetype">{{ combatant.archetype }}</span>
-            <span class="enemy-figure__type">
-              <EmotionalTypeBadge :type="combatant.attackType ?? 'Neutral'" />
-            </span>
-            <span class="enemy-figure__substats">
-              ⚔ {{ combatant.attackPower ?? 0 }} · ⛨ {{ combatant.defense ?? 0 }} · ⚡ {{ combatant.speed ?? 0 }} · ◎ {{ combatant.focus ?? 0 }}
-            </span>
-            <span v-if="(combatant.statusEffects?.length ?? 0) > 0" class="enemy-figure__fx">
-              <span
-                v-for="fx in combatant.statusEffects"
-                :key="fx.key"
-                class="enemy-figure__fx-badge"
-                :class="fxClass(fx.kind, fx.magnitude)"
-                :title="fxTitle(fx)"
-              >{{ fxIcon(fx.kind, fx.magnitude) }}<small v-if="fx.stacks > 1">{{ fx.stacks }}</small></span>
-            </span>
-            <span v-if="combatant.guard > 0">Garde</span>
-            <span class="enemy-figure__tags">
-            </span>
-            <AtbGauge class="enemy-figure__atb" :gauge="combatant.atbGauge ?? 0" :fill-per-tick="combatant.atbFillPerTick ?? 10" :active="isVisuallyActive(combatant.id)" />            
-          <span class="enemy-figure__hp">
-              <span class="enemy-figure__hp-bar">
-                <span :style="{ width: hpRatio(combatant.currentVitality, combatant.maxVitality) * 100 + '%' }" />
+          </CombatantCard>
+        </div>
+
+        <!-- Barre de skills -->
+        <div class="combat-scene__compose">
+          <div class="combat-scene__skills-panel es-plate">
+            <div class="compose__header">
+              <span class="compose__speaker-name">{{ activeCombatant?.displayName ?? '—' }} agit</span>
+              <span class="compose__through">
+                <template v-if="combatStore.selectedSkillKey || combatStore.selectedItemId">
+                  {{ selectedTarget?.displayName ?? 'Choisir une cible' }} · {{ actionPreview }}
+                </template>
+                <template v-else>{{ actionPreview }}</template>
               </span>
-              <span v-if="combatant.guard > 0" class="enemy-figure__guard-value">◇ {{ combatant.guard }}</span>
-              <span class="enemy-figure__hp-value">{{ combatant.currentVitality }} / {{ combatant.maxVitality }}</span>
-            </span>
-          </button>
-        </div>
-      </div>
+              <button class="es-btn es-btn--ghost compose__meter-toggle" @click="isDamageModalOpen = true">
+                △ Relevé des dégâts
+              </button>
+            </div>
 
-      <div v-if="isDamageDrawerOpen" class="damage-drawer es-plate">
-        <div class="damage-drawer__header">
-          <span class="es-kicker">Relevé des dégâts</span>
-          <button class="es-btn es-btn--ghost" @click="isDamageDrawerOpen = false">Fermer</button>
-        </div>
-        <CombatMetersPanel :metrics="metricsState" :combat="combatStore.combat" />
-      </div>
+            <SkillBar
+              :combatant="activeCombatant"
+              :selected-skill-key="combatStore.selectedSkillKey"
+              :is-player-turn="isPlayerTurn"
+              :is-loading="combatStore.isResolvingAction"
+              :usable-battle-items="combatStore.combat?.usableBattleItems ?? []"
+              :selected-item-id="combatStore.selectedItemId"
+              @select-skill="combatStore.selectSkill"
+              @select-item="handleSelectItem"
+            />
 
-      <div class="combat-scene__compose es-plate">
-        <span class="es-corner es-corner--frost tl" />
-        <span class="es-corner es-corner--frost tr" />
-        <span class="es-corner es-corner--frost bl" />
-        <span class="es-corner es-corner--frost br" />
-
-        <div class="compose__speaker">
-          <span class="es-label">La voix qui parle</span>
-          <span class="compose__speaker-name">{{ activeCombatant?.displayName ?? '—' }}</span>
-        </div>
-
-        <div class="compose__main">
-          <SkillBar
-            :combatant="activeCombatant"
-            :selected-skill-key="combatStore.selectedSkillKey"
-            :is-player-turn="isPlayerTurn"
-            :is-loading="combatStore.isResolvingAction"
-            :usable-battle-items="combatStore.combat?.usableBattleItems ?? []"
-            :selected-item-id="combatStore.selectedItemId"
-            @select-skill="combatStore.selectSkill"
-            @select-item="handleSelectItem"
-          />
-
-          <div class="compose__through">
-            <span class="es-label">À travers la faille</span>
-            <strong>{{ selectedTarget?.displayName ?? 'Choisir une cible' }}</strong>
-            <span>{{ actionPreview }}</span>
+            <button
+              v-if="combatStore.selectedSkillKey || combatStore.selectedItemId || combatStore.selectedTargetIds.length > 0"
+              class="es-btn es-btn--ghost compose__cancel"
+              :disabled="combatStore.isResolvingAction"
+              @click="handleClearSelection"
+            >
+              Annuler
+            </button>
           </div>
         </div>
-
-        <button
-          v-if="combatStore.selectedSkillKey || combatStore.selectedItemId || combatStore.selectedTargetIds.length > 0"
-          class="es-btn es-btn--ghost compose__cancel"
-          :disabled="combatStore.isResolvingAction"
-          @click="handleClearSelection"
-        >
-          Annuler
-        </button>
       </div>
 
       <CombatLogPanel :entries="combatStore.logEntries" />
+
+      <!-- Damage meter modal -->
+      <Teleport to="body">
+        <div v-if="isDamageModalOpen" class="damage-modal-backdrop" @click.self="isDamageModalOpen = false">
+          <div class="damage-modal">
+            <button class="damage-modal__close" @click="isDamageModalOpen = false" aria-label="Fermer">✕</button>
+            <CombatMetersPanel :metrics="metricsState" :combat="combatStore.combat" />
+          </div>
+        </div>
+      </Teleport>
 
       <!-- Outcome overlay -->
       <CombatOutcomePanel
@@ -486,11 +360,6 @@ watch(
 
 <style scoped>
 
-.enemy-figure__atb {
-  margin: 5px auto 0;
-  width: 70%;
-}
-
 .initiative-pill--next {
   border-color: var(--edge-frost);
   color: var(--frost);
@@ -513,13 +382,13 @@ watch(
 
 .combat-scene__initiative {
   display: grid;
-  grid-template-columns: auto 1fr minmax(14rem, 0.22fr);
+  grid-template-columns: auto 1fr;
   align-items: center;
   gap: var(--space-3);
   margin: 10px var(--space-4) 0;
   padding: 6px var(--space-3);
   min-height: 2.7rem;
-  background: linear-gradient(180deg, oklch(0.22 0.045 272 / 0.88), oklch(0.17 0.04 272 / 0.9));
+  background: linear-gradient(180deg, oklch(0.22 0.045 60 / 0.88), oklch(0.17 0.04 60 / 0.9));
 }
 
 .combat-scene__initiative-title {
@@ -553,13 +422,23 @@ watch(
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--ink-3);
-  background: oklch(0.18 0.035 272 / 0.68);
+  background: oklch(0.18 0.035 60 / 0.68);
 }
 
 .initiative-pill--active {
   color: var(--gold);
   border-color: var(--edge-gold);
   box-shadow: 0 0 22px oklch(0.862 0.098 86 / 0.18);
+}
+
+.initiative-pill__slot {
+  font-family: var(--font-mono);
+  font-size: 0.54rem;
+  color: var(--ink-5);
+}
+
+.initiative-pill--next .initiative-pill__slot {
+  color: var(--gold);
 }
 
 .initiative-pill__dot {
@@ -575,317 +454,136 @@ watch(
   box-shadow: 0 0 10px color-mix(in oklch, var(--blood), transparent 40%);
 }
 
-.damage-toggle {
-  height: 100%;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  background: oklch(0.17 0.035 272 / 0.55);
-  color: var(--ink-4);
-  font-family: var(--font-caps);
-  font-size: 0.68rem;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  cursor: pointer;
-}
-
-.damage-toggle:hover {
-  color: var(--ink-2);
-  border-color: var(--edge-frost);
-}
-
 .combat-scene__arena {
   position: relative;
-  display: grid;
-  grid-template-columns: minmax(20rem, 0.78fr) auto minmax(32rem, 1.72fr);
-  gap: 0;
   min-height: 0;
-  overflow: hidden;
-  padding: var(--space-2) var(--space-4) var(--space-3);
+  overflow-y: auto;
+  padding: var(--space-3) var(--space-4);
 }
 
-.combat-scene__target-thread {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 3;
-  filter: drop-shadow(0 0 5px color-mix(in oklch, var(--frost), transparent 56%));
-  opacity: 0.5;
-  pointer-events: none;
-  transition: opacity 0.18s ease, filter 0.18s ease, border-color 0.18s ease;
-}
-
-.combat-scene__target-thread path {
-  fill: none;
-  stroke: color-mix(in oklch, var(--frost), transparent 28%);
-  stroke-width: 0.18;
-  stroke-dasharray: 0.75 1.15;
-  stroke-linecap: round;
-}
-
-.combat-scene__target-thread circle {
-  fill: var(--frost);
-  opacity: 0.75;
-  filter: drop-shadow(0 0 4px color-mix(in oklch, var(--frost), transparent 20%));
-}
-
-.combat-scene__target-thread--hover {
-  opacity: 1;
-  filter: drop-shadow(0 0 14px color-mix(in oklch, var(--frost), transparent 18%));
-}
-
-.combat-scene__target-thread--hover path {
-  stroke: var(--frost);
-  stroke-width: 0.24;
-}
-
-.combat-scene__side {
+.combat-scene__header {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-1);
-  min-width: 0;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: 14px;
+}
+
+.combat-scene__header-room {
+  font-family: var(--font);
+  font-size: 0.75rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+}
+
+.combat-scene__header-turn {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  color: var(--ink-5);
 }
 
 .combat-scene__side-title {
-  font-family: var(--font-caps);
-  font-size: 0.6rem;
-  letter-spacing: 0.22em;
+  font-family: var(--font);
+  font-size: 0.68rem;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--ink-4);
-  margin: 0 0 var(--space-1);
+  margin: 0 0 10px;
 }
 
-.combat-scene__side-title--foe {
-  grid-column: 1 / -1;
-  text-align: right;
-  color: var(--blood-dim);
+.combat-scene__side-title--foe { color: var(--blood); }
+.combat-scene__side-title--allies { color: var(--frost); }
+
+.combat-scene__grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 14px;
 }
 
-.combat-scene__side--voix {
-  align-items: stretch;
-}
-
-.combat-scene__side--manifestations {
-  position: relative;
-  display: block;
-  min-height: 29rem;
-  overflow: hidden;
+.combat-scene__grid > * {
+  flex: 1 1 320px;
+  max-width: 380px;
 }
 
 .combat-scene__seuil {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: var(--space-2);
-  padding: 0 var(--space-4);
-  align-self: stretch;
+  justify-content: center;
+  gap: 22px;
+  margin: 26px 0 22px;
 }
 
 .seuil-line {
   flex: 1;
-  width: 1px;
-  background: linear-gradient(to bottom, transparent, var(--line-strong), transparent);
+  height: 2px;
+  filter: blur(0.4px);
+  background: linear-gradient(90deg, transparent, var(--frost-dim));
 }
 
-.seuil-glyph {
-  font-size: 1.2rem;
-  color: var(--ink-4);
-  opacity: 0.5;
+.seuil-manometer {
+  position: relative;
+  flex: 0 0 auto;
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: radial-gradient(circle at 50% 40%, var(--panel), var(--void));
+  box-shadow: inset 0 2px 10px oklch(0.08 0.015 48 / 0.75), 0 0 22px oklch(0.74 0.15 60 / 0.1);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
 }
 
-.enemy-figure {
-  --enemy-width: 8.5rem;
-  --enemy-height: 15rem;
+.seuil-manometer__ticks {
   position: absolute;
-  left: var(--enemy-x);
-  top: var(--enemy-y);
-  width: var(--enemy-width);
-  min-height: calc(var(--enemy-height) + 5.8rem);
-  transform: translate(-50%, 0) var(--enemy-jitter, none);
-  border: none;
-  background: transparent;
-  color: var(--ink-3);
-  font-family: inherit;
-  text-align: center;
-  cursor: default;
-  padding: 0;
-  transition: opacity 0.18s ease, filter 0.18s ease;
+  inset: 7px;
+  border-radius: 50%;
+  opacity: 0.32;
+  background: repeating-conic-gradient(from 215deg, var(--ink-5) 0deg 1.2deg, transparent 1.2deg 18deg);
+  -webkit-mask: radial-gradient(circle, transparent 60%, #000 61%);
+  mask: radial-gradient(circle, transparent 60%, #000 61%);
 }
 
-.enemy-figure--selectable { cursor: pointer; }
-.enemy-figure--invalid { opacity: 0.36; }
-.enemy-figure--defeated { opacity: 0.2; filter: grayscale(1); }
-
-.enemy-figure__shape {
-  display: block;
-  width: var(--enemy-width);
-  height: var(--enemy-height);
-  margin: 0 auto var(--space-1);
-  border-radius: 46% 46% 54% 54% / 14% 14% 88% 88%;
-  background:
-    radial-gradient(circle at 38% 20%, oklch(0.48 0.04 272 / 0.28), transparent 30%),
-    linear-gradient(180deg, oklch(0.25 0.045 272 / 0.9), oklch(0.08 0.025 272 / 0.92));
-  border: 1px solid oklch(0.55 0.07 272 / 0.18);
-  box-shadow:
-    inset 0 20px 35px oklch(0.65 0.07 272 / 0.08),
-    0 18px 40px oklch(0 0 0 / 0.36);
-}
-
-.enemy-figure--selected .enemy-figure__shape,
-.enemy-figure:hover .enemy-figure__shape {
-  border-color: var(--frost);
-  box-shadow:
-    inset 0 20px 35px oklch(0.65 0.07 272 / 0.14),
-    0 0 0 1px color-mix(in oklch, var(--frost), transparent 20%),
-    0 0 45px color-mix(in oklch, var(--frost), transparent 78%);
-}
-
-.enemy-figure--thinking .enemy-figure__shape,
-.enemy-figure--active .enemy-figure__shape {
-  border-color: var(--gold);
-  outline: 1px solid color-mix(in oklch, var(--gold), transparent 28%);
-  outline-offset: 7px;
-  box-shadow:
-    inset 0 20px 35px oklch(0.65 0.07 272 / 0.12),
-    0 0 0 1px color-mix(in oklch, var(--gold), transparent 28%),
-    0 0 54px color-mix(in oklch, var(--gold), transparent 76%);
-  animation: enemy-thinking-frame 1.4s ease-in-out infinite;
-}
-
-.enemy-figure__target {
+.seuil-manometer__needle {
   position: absolute;
-  top: -1rem;
   left: 50%;
-  transform: translateX(-50%);
-  font-family: var(--font-caps);
-  font-size: 0.54rem;
+  bottom: 50%;
+  width: 2px;
+  height: 34px;
+  background: linear-gradient(var(--gold-hi), var(--gold-dim));
+  transform-origin: bottom center;
+  box-shadow: 0 0 6px var(--gold);
+  animation: seuil-sweep 9s ease-in-out infinite;
+}
+
+.seuil-manometer__hub {
+  position: absolute;
+  left: 50%;
+  bottom: 50%;
+  width: 7px;
+  height: 7px;
+  transform: translate(-50%, 50%);
+  border-radius: 50%;
+  background: var(--gold);
+  box-shadow: 0 0 8px var(--gold);
+}
+
+.seuil-manometer__label {
+  position: relative;
+  margin-bottom: 14px;
+  font-family: var(--font);
+  font-size: 0.5rem;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--frost);
-}
-
-.enemy-figure__name {
-  display: block;
-  font-family: var(--font-display);
-  font-size: clamp(1rem, 1.7vw, 1.45rem);
-  color: var(--ink-2);
-  line-height: 1.05;
-  text-shadow: 0 2px 10px oklch(0 0 0 / 0.4);
-}
-
-.enemy-figure__archetype {
-  display: block;
-  margin-top: 2px;
-  font-family: var(--font-caps);
-  font-size: 0.6rem;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
   color: var(--ink-5);
 }
 
-.enemy-figure__type {
-  display: flex;
-  justify-content: center;
-  margin-top: 3px;
-}
-
-.enemy-figure__substats {
-  display: block;
-  margin-top: 3px;
-  font-family: var(--font-mono);
-  font-size: 0.54rem;
-  letter-spacing: 0.04em;
-  color: var(--ink-5);
-}
-
-.enemy-figure__tags {
-  display: flex;
-  justify-content: center;
-  gap: 4px;
-  min-height: 1.1rem;
-  margin-top: 2px;
-}
-
-.enemy-figure__tags span {
-  border: 1px solid var(--edge-gold);
-  border-radius: 3px;
-  padding: 1px 7px;
-  font-family: var(--font-caps);
-  font-size: 0.56rem;
-  letter-spacing: 0.12em;
-  color: var(--gold);
-  background: oklch(0.862 0.098 86 / 0.08);
-}
-
-.enemy-figure__hp {
-  display: grid;
-  grid-template-columns: 2.2rem minmax(3.2rem, 1fr) auto auto;
-  gap: 7px;
-  align-items: center;
-  margin-top: 4px;
-}
-
-.enemy-figure__guard-value {
-  font-family: var(--font-mono);
-  font-size: 0.58rem;
-  color: var(--frost-dim);
-  white-space: nowrap;
-}
-
-.enemy-figure__hp-chip,
-.enemy-figure__hp-bar {
-  height: 3px;
-  background: oklch(0.05 0.01 272 / 0.92);
-  border-radius: 999px;
-  overflow: hidden;
-}
-
-.enemy-figure__hp-chip::before,
-.enemy-figure__hp-bar span {
-  content: '';
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-}
-
-.enemy-figure__hp-bar span { background: var(--blood); }
-
-.enemy-figure__hp-chip::before {
-  width: 48%;
-  background: linear-gradient(90deg, var(--gold-dim), var(--gold));
-  animation: enemy-atb 2.8s ease-in-out infinite alternate;
-}
-
-.enemy-figure__hp-value {
-  font-family: var(--font-mono);
-  font-size: 0.58rem;
-  color: var(--ink-5);
-  white-space: nowrap;
-}
-
-.enemy-figure--1 { --enemy-x: 32%; --enemy-y: 9rem;   --enemy-width: 9.4rem; --enemy-height: 16.5rem; }
-.enemy-figure--2 { --enemy-x: 66%; --enemy-y: 9rem;   --enemy-width: 9.4rem; --enemy-height: 16.5rem; }
-.enemy-figure--3 { --enemy-x: 18%; --enemy-y: 2.5rem; --enemy-width: 7.6rem; --enemy-height: 13.5rem; }
-.enemy-figure--4 { --enemy-x: 82%; --enemy-y: 2.5rem; --enemy-width: 7.6rem; --enemy-height: 13.5rem; }
-
-.damage-drawer {
-  position: absolute;
-  left: var(--space-4);
-  right: var(--space-4);
-  bottom: 6.6rem;
-  z-index: var(--z-popover);
-  padding: var(--space-3);
-  background: oklch(0.15 0.04 272 / 0.96);
-  box-shadow: var(--shadow-deep);
-}
-
-.damage-drawer__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  margin-bottom: var(--space-2);
+@keyframes seuil-sweep {
+  0% { transform: translateX(-50%) rotate(-44deg); }
+  50% { transform: translateX(-50%) rotate(40deg); }
+  100% { transform: translateX(-50%) rotate(-44deg); }
 }
 
 .combat-float {
@@ -904,10 +602,6 @@ watch(
     0 0 10px color-mix(in oklch, var(--blood), transparent 45%),
     0 2px 0 oklch(0 0 0 / 0.55);
   animation: combat-float-rise 1200ms ease-out forwards;
-}
-
-.combat-float--enemy {
-  top: 42%;
 }
 
 .combat-float--heal {
@@ -933,75 +627,88 @@ watch(
   100% { opacity: 0; transform: translate(-50%, -58px) scale(0.94); }
 }
 
-@keyframes enemy-thinking-frame {
-  0%, 100% { outline-offset: 6px; filter: brightness(1); }
-  50% { outline-offset: 11px; filter: brightness(1.1); }
-}
-
-@keyframes enemy-atb {
-  0% { width: 24%; opacity: 0.55; }
-  100% { width: 78%; opacity: 1; }
-}
-
 .combat-scene__compose {
   position: relative;
-  display: grid;
-  grid-template-columns: minmax(7rem, auto) 1fr auto;
-  gap: var(--space-3);
-  align-items: stretch;
-  margin: 0 var(--space-4) var(--space-2);
-  padding: var(--space-2) var(--space-3);
+  margin-top: 22px;
 }
 
-.compose__speaker {
+.combat-scene__skills-panel {
+  border: 1px solid var(--edge-gold);
+  background: linear-gradient(150deg, oklch(0.28 0.04 64 / 0.88), oklch(0.18 0.022 56 / 0.9));
+}
+
+.compose__header {
   display: flex;
-  flex-direction: column;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-bottom: 13px;
+}
+
+.compose__meter-toggle {
+  margin-left: auto;
+  font-size: 0.62rem;
+}
+
+.damage-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  align-items: center;
   justify-content: center;
-  gap: 2px;
-  min-width: 0;
+  background: oklch(0.08 0.02 60 / 0.72);
+  backdrop-filter: blur(4px);
+  padding: var(--space-4);
+}
+
+.damage-modal {
+  position: relative;
+  width: min(960px, 100%);
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-deep);
+}
+
+.damage-modal__close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 1;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid var(--edge-gold);
+  background: var(--panel);
+  color: var(--ink-2);
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.damage-modal__close:hover {
+  border-color: var(--gold);
+  color: var(--gold);
 }
 
 .compose__speaker-name {
   font-family: var(--font-display);
   font-size: 1.05rem;
   font-weight: 600;
-  color: var(--ink);
-}
-
-.compose__main {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(12rem, 0.65fr);
-  gap: var(--space-3);
-  min-width: 0;
+  color: var(--ink-2);
 }
 
 .compose__through {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 2px;
-  min-width: 0;
-  padding-left: var(--space-3);
-  border-left: 1px solid var(--line-soft);
-}
-
-.compose__through strong {
-  font-family: var(--font);
-  font-size: 0.86rem;
-  color: var(--ink-2);
-  font-weight: 500;
-}
-
-.compose__through span:last-child {
+  font-family: var(--font-mono);
   font-size: 0.7rem;
-  color: var(--ink-4);
+  color: var(--gold);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .compose__cancel {
-  align-self: center;
+  margin-top: 14px;
 }
 
 .combat-scene__placeholder {
@@ -1036,7 +743,7 @@ watch(
   padding: var(--space-2) var(--space-4);
   border: 1px solid var(--edge-gold);
   border-radius: var(--radius-sm);
-  background: oklch(0.20 0.04 272 / 0.85);
+  background: oklch(0.20 0.04 60 / 0.85);
   color: var(--gold);
   font-family: var(--font-caps);
   font-size: 0.68rem;
@@ -1052,68 +759,16 @@ watch(
 }
 
 @media (max-width: 900px) {
-  .combat-scene {
-    grid-template-rows: auto 1fr auto auto;
-    grid-template-columns: 1fr;
-  }
-
-  .combat-scene__arena {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto auto auto;
-  }
-
-  .combat-scene__seuil {
-    flex-direction: row;
-    padding: var(--space-2) 0;
-  }
-
-  .combat-scene__side--manifestations {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: var(--space-3);
-    min-height: auto;
-    overflow: visible;
-  }
-
-  .enemy-figure {
-    position: relative;
-    left: auto;
-    top: auto;
-    width: 100%;
-    min-height: auto;
-    transform: none;
-  }
-
-  .enemy-figure__shape {
-    max-width: 8rem;
-    height: 11rem;
-  }
-
-  .combat-scene__compose,
-  .compose__main {
-    grid-template-columns: 1fr;
-  }
-
-  .compose__through {
-    padding-left: 0;
-    border-left: none;
-    border-top: 1px solid var(--line-soft);
-    padding-top: var(--space-2);
-  }
-
-  .seuil-line {
-    height: 1px;
-    width: auto;
-    flex: 1;
-    background: linear-gradient(to right, transparent, var(--line-strong), transparent);
+  .combat-scene__grid > * {
+    flex-basis: 100%;
+    max-width: 100%;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .combat-scene__resolving,
   .combat-float,
-  .enemy-figure--thinking .enemy-figure__shape,
-  .enemy-figure__hp-chip::before {
+  .seuil-manometer__needle {
     animation: none;
   }
 }

@@ -2,6 +2,7 @@ using FluentAssertions;
 using Leds.GameEngine.Application.Abstractions;
 using Leds.GameEngine.Application.Combats;
 using Leds.GameEngine.Application.Events.ChooseEventOption;
+using Leds.GameEngine.Application.Rewards.Loot;
 using Leds.GameEngine.Application.Rewards.RewardOfferFactory;
 using Leds.GameEngine.Application.Runs.ProgressRun;
 using Leds.GameEngine.Domain.Combats;
@@ -108,7 +109,7 @@ public sealed class ProgressRunCommandHandlerTests
     public async Task ProgressRun_ShouldThrow_WhenPendingRewardExists()
     {
         var run = TestGameEngineFactory.CreateRun();
-        var offer = new RewardOfferFactory(new CombatRiskProfileResolver(), Mock.Of<ICatalogContentGateway>())
+        var offer = new RewardOfferFactory(new CombatRiskProfileResolver(), Mock.Of<ICatalogContentGateway>(), new EnemyLootRewardBuilder(Mock.Of<ICatalogContentGateway>()))
             .CreateCombatRewardOffer(RewardSource.Combat, NodeEventType.Combat, riskLevel: 25);
         run.SetPendingRewardOffer(offer.Id);
 

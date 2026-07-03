@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import type { CombatRuntimeDto } from '../types/combatContracts';
 import type { CombatMetricsState } from '../composables/useCombatMetrics';
 
@@ -35,6 +35,53 @@ const enemyOpen   = ref(false);
 function selectAlly(key: ReportMetric)  { allyMetric.value  = key; allyOpen.value  = false; }
 function selectEnemy(key: ReportMetric) { enemyMetric.value = key; enemyOpen.value = false; }
 function closeAll() { allyOpen.value = false; enemyOpen.value = false; }
+
+// These panels render inside a scrollable modal (overflow-y: auto), which
+// would clip an absolutely-positioned popover the instant it needs to
+// extend past the modal's edge. Fixed positioning computed from the
+// trigger's own viewport rect escapes that clipping (a position:fixed
+// descendant is not bounded by an ancestor's overflow, only by whichever
+// ancestor establishes its containing block — here that's the modal
+// backdrop's own `backdrop-filter`, which already spans the full viewport).
+const allyTriggerRef  = ref<HTMLElement | null>(null);
+const enemyTriggerRef = ref<HTMLElement | null>(null);
+const allyPanelStyle  = ref<Record<string, string>>({});
+const enemyPanelStyle = ref<Record<string, string>>({});
+
+function panelStyleFor(trigger: HTMLElement | null): Record<string, string> {
+  if (!trigger) return {};
+  const rect = trigger.getBoundingClientRect();
+  return {
+    position: 'fixed',
+    right: `${window.innerWidth - rect.right}px`,
+    bottom: `${window.innerHeight - rect.top + 4}px`,
+  };
+}
+
+function toggleAlly() {
+  enemyOpen.value = false;
+  allyOpen.value = !allyOpen.value;
+  if (allyOpen.value) allyPanelStyle.value = panelStyleFor(allyTriggerRef.value);
+}
+
+function toggleEnemy() {
+  allyOpen.value = false;
+  enemyOpen.value = !enemyOpen.value;
+  if (enemyOpen.value) enemyPanelStyle.value = panelStyleFor(enemyTriggerRef.value);
+}
+
+// A fixed-position popover doesn't move with the modal it was anchored to,
+// so it would visually detach from its trigger if the modal scrolls while
+// open — close it instead of leaving it floating in the wrong place.
+watch([allyOpen, enemyOpen], ([ally, enemy], [wasAlly, wasEnemy]) => {
+  const isOpen = ally || enemy;
+  const wasOpen = wasAlly || wasEnemy;
+  if (isOpen && !wasOpen) {
+    window.addEventListener('scroll', closeAll, true);
+  } else if (!isOpen && wasOpen) {
+    window.removeEventListener('scroll', closeAll, true);
+  }
+});
 
 function optionFor(metric: ReportMetric) {
   return metricOptions.find((o) => o.key === metric) ?? metricOptions[0];
@@ -92,12 +139,12 @@ const enemyOption = computed(() => optionFor(enemyMetric.value));
         <div class="damage-report__side-head">
           <span>◆ Alliés · {{ combat?.allies.length ?? 0 }}</span>
           <div class="ms" :class="{ 'ms--open': allyOpen }">
-            <button class="ms__trigger" @click.stop="allyOpen = !allyOpen; enemyOpen = false">
+            <button ref="allyTriggerRef" class="ms__trigger" @click.stop="toggleAlly">
               <span class="ms__icon">{{ allyOption.icon }}</span>
               <span class="ms__label">{{ allyOption.label }}</span>
               <span class="ms__caret">▾</span>
             </button>
-            <div v-if="allyOpen" class="ms__panel">
+            <div v-if="allyOpen" class="ms__panel" :style="allyPanelStyle">
               <button
                 v-for="o in metricOptions" :key="o.key"
                 class="ms__option" :class="{ 'ms__option--active': allyMetric === o.key }"
@@ -145,12 +192,12 @@ const enemyOption = computed(() => optionFor(enemyMetric.value));
         <div class="damage-report__side-head">
           <span>◆ Les Manifestations · {{ combat?.enemies.length ?? 0 }}</span>
           <div class="ms" :class="{ 'ms--open': enemyOpen }">
-            <button class="ms__trigger" @click.stop="enemyOpen = !enemyOpen; allyOpen = false">
+            <button ref="enemyTriggerRef" class="ms__trigger" @click.stop="toggleEnemy">
               <span class="ms__icon">{{ enemyOption.icon }}</span>
               <span class="ms__label">{{ enemyOption.label }}</span>
               <span class="ms__caret">▾</span>
             </button>
-            <div v-if="enemyOpen" class="ms__panel">
+            <div v-if="enemyOpen" class="ms__panel" :style="enemyPanelStyle">
               <button
                 v-for="o in metricOptions" :key="o.key"
                 class="ms__option" :class="{ 'ms__option--active': enemyMetric === o.key }"
@@ -199,7 +246,7 @@ const enemyOption = computed(() => optionFor(enemyMetric.value));
 <style scoped>
 .damage-report {
   border: 1px solid var(--line-soft);
-  background: linear-gradient(180deg, oklch(0.2 0.04 272 / 0.98), oklch(0.17 0.04 272 / 0.98));
+  background: linear-gradient(180deg, oklch(0.2 0.04 60 / 0.98), oklch(0.17 0.04 60 / 0.98));
 }
 
 .damage-report__header {
@@ -277,7 +324,7 @@ const enemyOption = computed(() => optionFor(enemyMetric.value));
   min-height: 1.6rem;
   border: 1px solid var(--line-soft);
   border-radius: 3px;
-  background: oklch(0.18 0.035 272 / 0.65);
+  background: oklch(0.18 0.035 60 / 0.65);
   color: var(--ink-4);
   font: inherit;
   letter-spacing: inherit;
@@ -312,14 +359,13 @@ const enemyOption = computed(() => optionFor(enemyMetric.value));
 }
 
 .ms__panel {
-  position: absolute;
-  bottom: calc(100% + 4px);
-  right: 0;
+  /* position/right/bottom are set inline (see panelStyleFor) — fixed instead
+     of absolute so it isn't clipped by the modal's overflow-y: auto. */
   z-index: var(--z-popover);
   min-width: 15rem;
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
-  background: oklch(0.20 0.040 272 / 0.98);
+  background: oklch(0.20 0.040 60 / 0.98);
   backdrop-filter: blur(8px);
   box-shadow: var(--shadow-deep);
   overflow: hidden;
@@ -344,7 +390,7 @@ const enemyOption = computed(() => optionFor(enemyMetric.value));
 }
 
 .ms__option:hover {
-  background: oklch(0.26 0.045 272 / 0.8);
+  background: oklch(0.26 0.045 60 / 0.8);
   color: var(--ink-2);
 }
 
@@ -432,7 +478,7 @@ const enemyOption = computed(() => optionFor(enemyMetric.value));
 .damage-row__bar {
   display: flex;
   height: 10px;
-  background: oklch(0.08 0.02 272 / 0.9);
+  background: oklch(0.08 0.02 60 / 0.9);
   border-radius: 1px;
   overflow: hidden;
 }

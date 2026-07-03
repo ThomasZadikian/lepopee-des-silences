@@ -12,13 +12,17 @@ vi.mock('../runs/stores/runStore', () => ({
   useRunStore: vi.fn(() => mockStore),
 }));
 
+const routerLinkStub = { template: '<a><slot /></a>', props: ['to'] };
+
 function mountTopBar(storeOverrides: Record<string, any> = {}) {
   Object.assign(mockStore, {
     currentRun: null,
     gameplayPhase: 'Loading',
   }, storeOverrides);
 
-  return mount(GameTopBar);
+  return mount(GameTopBar, {
+    global: { stubs: { RouterLink: routerLinkStub } },
+  });
 }
 
 describe('GameTopBar', () => {
@@ -146,6 +150,7 @@ describe('GameTopBar', () => {
   it('renders slot content', () => {
     const wrapper = mount(GameTopBar, {
       slots: { default: '<span class="custom-slot">Custom</span>' },
+      global: { stubs: { RouterLink: routerLinkStub } },
     });
     expect(wrapper.text()).toContain('Custom');
   });

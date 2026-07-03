@@ -43,6 +43,17 @@ public sealed class GetPlayerRunSnapshotQueryHandler
                 c.MaxVitality,
                 c.BaseMana,
                 c.BaseCharge,
-                c.SkillKeys.ToArray())).ToArray());
+                c.EquippedSkillKeys.ToArray(),
+                new PlayerRunSnapshotCharacterStatsResponse(
+                    c.StatBlock.MaxVitality,
+                    c.StatBlock.AttackPower,
+                    c.StatBlock.Defense,
+                    c.StatBlock.StartingGuard,
+                    c.StatBlock.Speed,
+                    c.StatBlock.Initiative,
+                    c.StatBlock.Recovery,
+                    c.StatBlock.Focus,
+                    c.StatBlock.Mana,
+                    c.StatBlock.Charge))).ToArray());
     }
 }

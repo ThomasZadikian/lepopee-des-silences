@@ -5,33 +5,35 @@ import { useRoute, useRouter } from 'vue-router';
 import GameShellLayout from '../app/layouts/GameShellLayout.vue';
 import CombatScene from '../features/combat/components/CombatScene.vue';
 import { useCombatStore } from '../features/combat/stores/useCombatStore';
-import DecisionDiptych from '../shared/components/DecisionDiptych.vue';
 import EliseOverlay from '../features/elise/EliseOverlay.vue';
 import EventChoiceResultPanel from '../features/events/components/EventChoiceResultPanel.vue';
-import EventOutcomePanel from '../features/events/components/EventOutcomePanel.vue'
-import MerchantPanel from '../features/events/components/MerchantPanel.vue'
-import LawResolutionPanel from '../features/palace-laws/LawResolutionPanel.vue';
+import EventOutcomePanel from '../features/events/components/EventOutcomePanel.vue';
+import MerchantPanel from '../features/events/components/MerchantPanel.vue';
+import NpcDialoguePanel from '../features/events/components/NpcDialoguePanel.vue';
+import type { CurrentEventChoiceResultDto } from '../features/events/types/eventTypes';
 import InterludePanel from '../features/interlude/InterludePanel.vue';
 import RoomClearedPanel from '../features/interlude/RoomClearedPanel.vue';
 import InventoryDrawer from '../features/inventory/components/InventoryDrawer.vue';
-import LawsPopover from '../features/palace-laws/LawsPopover.vue';
 import PalaceNodeDrawer from '../features/node-details/PalaceNodeDrawer.vue';
+import LawResolutionPanel from '../features/palace-laws/LawResolutionPanel.vue';
+import LawsPopover from '../features/palace-laws/LawsPopover.vue';
 import PalaceMapPlaceholder from '../features/palace-map/PalaceMapPlaceholder.vue';
+import { usePlayerStore } from '../features/party/stores/playerStore';
 import RewardOfferPanel from '../features/rewards/components/RewardOfferPanel.vue';
 import RoomClimateEffects from '../features/room-climate/RoomClimateEffects.vue';
-import RunStatusRibbon from '../features/runs/components/RunStatusRibbon.vue';
 import PartyDrawer from '../features/runs/components/PartyDrawer.vue';
-import RuntimeDebugPanel from '../shared/components/RuntimeDebugPanel.vue';
+import RunStatusRibbon from '../features/runs/components/RunStatusRibbon.vue';
 import { useRunStore } from '../features/runs/stores/runStore';
+import DecisionDiptych from '../shared/components/DecisionDiptych.vue';
+import RuntimeDebugPanel from '../shared/components/RuntimeDebugPanel.vue';
 import { useGameUiStore } from '../shared/stores/useGameUiStore';
-import type { CurrentEventChoiceResultDto } from '../features/events/types/eventTypes';
-import NpcDialoguePanel from '../features/events/components/NpcDialoguePanel.vue';
 
 const route = useRoute();
 const router = useRouter();
 const runStore = useRunStore();
 const combatStore = useCombatStore();
 const uiStore = useGameUiStore();
+const playerStore = usePlayerStore();
 const devToolsEnabled = import.meta.env.DEV === true &&
   import.meta.env.VITE_GAME_CLIENT_DEVTOOLS_ENABLED === 'true';
 const showRuntimeDebugPanel = import.meta.env.DEV === true;
@@ -115,6 +117,17 @@ function clearAllUi() {
   uiStore.closeAll();
 }
 
+// Clicking anywhere outside the open drawers closes them — except on the
+// map itself (its own click handling for choosing/deselecting nodes stays
+// authoritative) and on the status ribbon (whose buttons already toggle
+// their own drawer; letting this listener also fire there would reopen a
+// drawer the same click just closed).
+const drawersRef = ref<HTMLElement | null>(null);
+  
+// useClickOutside(drawersRef, clearAllUi, {
+//   ignoreSelectors: ['.phase-map__canvas', '.status-ribbon'],
+// });
+
 async function handleLeaveRun() {
   combatStore.clearCombat();
   runStore.clearCurrentRun();
@@ -132,6 +145,10 @@ const isCombatPhase = computed(() => runStore.gameplayPhase === 'Combat');
 const showNodeDrawer = computed(() => isMapPhase.value && runStore.selectedNode);
 const showInventoryDrawer = computed(() => uiStore.activeDrawer === 'besace');
 const showPartyDrawer = computed(() => uiStore.activeDrawer === 'party' && !isCombatPhase.value);
+
+watch(showPartyDrawer, (isOpen) => {
+  if (isOpen) void playerStore.loadProfile();
+});
 const showLaws = computed(() => uiStore.isLawsOpen);
 const activeRoomClimate = computed(() =>
   runStore.currentRun?.currentRoom?.activeClimate
@@ -198,57 +215,60 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
           <!-- Elise overlay -->
           <EliseOverlay :message="runStore.lastOutcome?.description" />
 
-          <!-- Node drawer (right, absolute positioned) -->
-          <Transition name="slide">
-            <PalaceNodeDrawer
-              v-if="showNodeDrawer"
-              :node="runStore.selectedNode"
-              :is-loading="runStore.isLoading"
-              :has-active-combat="Boolean(runStore.currentRun.activeCombatId)"
-              :has-pending-reward="Boolean(runStore.pendingRewardOffer || runStore.currentRun.pendingRewardOfferId)"
-              @resolve-current-event="runStore.confirmAndResolveNode"
-              @generate-next-nodes="runStore.progressRun"
-              @choose-and-resolve="runStore.confirmAndResolveNode"
-              @close="runStore.resetPreviewedNode"
-            />
-          </Transition>
-
-          <!-- Inventory drawer (right, absolute positioned) -->
-          <Transition name="slide">
-            <InventoryDrawer
-              v-if="showInventoryDrawer"
-              :items="runStore.currentRun.inventoryItems ?? []"
-              :run-id="runStore.currentRun.id"
-              @close="uiStore.closeDrawer"
-            />
-          </Transition>
-
-          <!-- Laws / influences popover (right, absolute positioned) -->
-          <Transition name="slide">
-              <LawsPopover
-                v-if="showLaws"
-                :laws="runStore.currentRun.activePalaceLaws"
-                :curses="runStore.currentRun.activeCurses"
-                :modifiers="runStore.currentRun.activeModifiers ?? null"
-                :palace-indicators="runStore.currentRun.palaceIndicators ?? null"
-                :room-climate="runStore.currentRun.currentRoom.activeClimate ?? runStore.currentRun.currentRoom.climate ?? null"
-                show-room-climate
-                @close="uiStore.toggleLaws"
+          <!-- Drawers (right, absolute positioned) — a click outside all of them closes whichever is open -->
+          <div ref="drawersRef">
+            <!-- Node drawer -->
+            <Transition name="slide">
+              <PalaceNodeDrawer
+                v-if="showNodeDrawer"
+                :node="runStore.selectedNode"
+                :is-loading="runStore.isLoading"
+                :has-active-combat="Boolean(runStore.currentRun.activeCombatId)"
+                :has-pending-reward="Boolean(runStore.pendingRewardOffer || runStore.currentRun.pendingRewardOfferId)"
+                @resolve-current-event="runStore.confirmAndResolveNode"
+                @generate-next-nodes="runStore.progressRun"
+                @choose-and-resolve="runStore.confirmAndResolveNode"
+                @close="runStore.resetPreviewedNode"
               />
-          </Transition>
+            </Transition>
 
-          <!-- Party drawer (right, absolute positioned) -->
-          <Transition name="slide">
-            <PartyDrawer
-              v-if="showPartyDrawer"
-              :allies="runStore.currentRun.party?.members ?? null"
-              :modifiers="runStore.currentRun.activeModifiers ?? null"
-              :laws="runStore.currentRun.activePalaceLaws ?? null"
-              :curses="runStore.currentRun.activeCurses ?? null"
-              :items="runStore.currentRun.inventoryItems ?? null"
-              @close="uiStore.closeDrawer"
-            />
-          </Transition>
+            <!-- Inventory drawer -->
+            <Transition name="slide">
+              <InventoryDrawer
+                v-if="showInventoryDrawer"
+                :items="runStore.currentRun.inventoryItems ?? []"
+                :run-id="runStore.currentRun.id"
+                @close="uiStore.closeDrawer"
+              />
+            </Transition>
+
+            <!-- Laws / influences popover -->
+            <Transition name="slide">
+                <LawsPopover
+                  v-if="showLaws"
+                  :laws="runStore.currentRun.activePalaceLaws"
+                  :curses="runStore.currentRun.activeCurses"
+                  :modifiers="runStore.currentRun.activeModifiers ?? null"
+                  :palace-indicators="runStore.currentRun.palaceIndicators ?? null"
+                  :room-climate="runStore.currentRun.currentRoom.activeClimate ?? runStore.currentRun.currentRoom.climate ?? null"
+                  show-room-climate
+                  @close="uiStore.toggleLaws"
+                />
+            </Transition>
+
+            <!-- Party drawer -->
+            <Transition name="slide">
+              <PartyDrawer
+                v-if="showPartyDrawer"
+                :allies="runStore.currentRun.party?.members ?? null"
+                :modifiers="runStore.currentRun.activeModifiers ?? null"
+                :laws="runStore.currentRun.activePalaceLaws ?? null"
+                :curses="runStore.currentRun.activeCurses ?? null"
+                :items="runStore.currentRun.inventoryItems ?? null"
+                @close="uiStore.closeDrawer"
+              />
+            </Transition>
+          </div>
         </div>
       </template>
 

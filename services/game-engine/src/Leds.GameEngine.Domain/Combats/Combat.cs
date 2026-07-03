@@ -251,8 +251,10 @@ public sealed class Combat
 
     /// <summary>
     /// "Time flows" while the player holds: advances the clock by a fixed delta,
-    /// filling every combatant (the player charges past the threshold up to the
-    /// overflow cap; enemies fill toward readiness). Does not change the active
+    /// filling every combatant. Once an ally holds a ready selection, every
+    /// ally's gauge freezes there (a ready gauge does not climb further, so
+    /// they can't "steal" the next turn while waiting). Enemies always keep
+    /// filling — time still flows for them. Does not change the active
     /// combatant. Returns the ids of enemies that have become ready to act,
     /// readiest first — the caller resolves them while the player keeps holding.
     /// </summary>
@@ -261,12 +263,8 @@ public sealed class Combat
         if (Status != CombatStatus.Active || deltaTicks <= 0)
             return [];
 
-        var cap = AtbConstants.ReadyThreshold + AtbConstants.MaxChargeOverflow;
-
-        // While an ally holds the selection (an ally is active AND ready), ALL ally
-        // gauges freeze: the active one stops auto-charging (so the power/charge
-        // system isn't permanently building during selection) and other allies stop
-        // filling. Enemies keep filling — time still flows for them.
+        // While an ally holds the selection (an ally is active AND ready), every
+        // ally's gauge freezes — none can climb further or "steal" the next turn.
         var active = GetActiveCombatant();
         var allyHoldsSelection = active is { Side: CombatantSide.Player }
             && active.AtbGauge >= AtbConstants.ReadyThreshold;
@@ -285,7 +283,7 @@ public sealed class Combat
                 continue;
 
             var raw = (long)combatant.AtbGauge + (long)combatant.AtbFillPerTick * fillTicks;
-            combatant.SetAtbGauge((int)Math.Min(raw, cap));
+            combatant.SetAtbGauge((int)Math.Min(raw, AtbConstants.ReadyThreshold));
         }
 
         CurrentTick += deltaTicks;

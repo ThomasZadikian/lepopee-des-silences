@@ -3,6 +3,7 @@ using Leds.GameEngine.Application.Abstractions;
 using Leds.GameEngine.Application.Combats;
 using Leds.GameEngine.Application.Events.ChooseEventOption;
 using Leds.GameEngine.Application.Rewards.Ports;
+using Leds.GameEngine.Application.Rewards.Loot;
 using Leds.GameEngine.Application.Rewards.RewardOfferFactory;
 using Leds.GameEngine.Application.Rewards.SelectReward;
 using Leds.GameEngine.Application.Runs.ProgressRun;
@@ -43,7 +44,7 @@ public sealed class RoomClearedTests
     {
         var run = TestGameEngineFactory.CreateRunWithCompletedCurrentRoom();
 
-        var factory = new RewardOfferFactory(new CombatRiskProfileResolver(), Mock.Of<ICatalogContentGateway>());
+        var factory = new RewardOfferFactory(new CombatRiskProfileResolver(), Mock.Of<ICatalogContentGateway>(), new EnemyLootRewardBuilder(Mock.Of<ICatalogContentGateway>()));
         var offer = factory.CreateCombatRewardOffer(
             RewardSource.RoomBoss,
             NodeEventType.RoomBoss,
@@ -230,7 +231,7 @@ public sealed class RoomClearedTests
         // Simulate the post-boss-combat state that SubmitCombatActionCommandHandler produces
         var run = TestGameEngineFactory.CreateRunWithCompletedCurrentRoom();
 
-        var factory = new RewardOfferFactory(new CombatRiskProfileResolver(), Mock.Of<ICatalogContentGateway>());
+        var factory = new RewardOfferFactory(new CombatRiskProfileResolver(), Mock.Of<ICatalogContentGateway>(), new EnemyLootRewardBuilder(Mock.Of<ICatalogContentGateway>()));
         var offer = factory.CreateCombatRewardOffer(
             RewardSource.RoomBoss,
             NodeEventType.RoomBoss,
@@ -255,7 +256,7 @@ public sealed class RoomClearedTests
     {
         var run = TestGameEngineFactory.CreateRun();
 
-        var factory = new RewardOfferFactory(new CombatRiskProfileResolver(), Mock.Of<ICatalogContentGateway>());
+        var factory = new RewardOfferFactory(new CombatRiskProfileResolver(), Mock.Of<ICatalogContentGateway>(), new EnemyLootRewardBuilder(Mock.Of<ICatalogContentGateway>()));
         var offer = factory.CreateCombatRewardOffer(
             RewardSource.Combat,
             NodeEventType.Combat,
@@ -289,7 +290,7 @@ public sealed class RoomClearedTests
     {
         var run = TestGameEngineFactory.CreateRun();
 
-        var factory = new RewardOfferFactory(new CombatRiskProfileResolver(), Mock.Of<ICatalogContentGateway>());
+        var factory = new RewardOfferFactory(new CombatRiskProfileResolver(), Mock.Of<ICatalogContentGateway>(), new EnemyLootRewardBuilder(Mock.Of<ICatalogContentGateway>()));
         var offer = factory.CreateCombatRewardOffer(
             RewardSource.Combat,
             NodeEventType.Combat,

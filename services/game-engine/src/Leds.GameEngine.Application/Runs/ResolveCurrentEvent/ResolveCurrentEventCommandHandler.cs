@@ -124,29 +124,22 @@ public sealed class ResolveCurrentEventCommandHandler
         {
             resolvedContent = await ResolveEventContentAsync(run, room, selectedNode, cancellationToken);
 
-            var (enemyTemplateKey, _) = resolvedContent switch
-            {
-                ResolvedCombatEventContent c => (c.EnemyTemplateKey, c.RiskLevel),
-                ResolvedEliteEventContent e => (e.EnemyTemplateKey, e.RiskLevel),
-                ResolvedRoomBossEventContent b => (b.EnemyTemplateKey, b.RiskLevel),
-                ResolvedRareCombatEventContent r => (r.EnemyTemplateKey, r.RiskLevel),
-                _ => throw new DomainException(
-                    "Expected combat, elite, room boss, or rare combat event content but got a different type.")
-            };
-
-            var enemyTemplateResult = await _catalogContentGateway.GetEnemyTemplateByKeyAsync(
-                enemyTemplateKey, cancellationToken);
-
-            if (enemyTemplateResult.IsFailure)
+            // Combat/Elite/RoomBoss/RareCombat content carries a legacy EnemyTemplateKey that
+            // used to seed a throwaway single-enemy CombatInstance just to mint a CombatId —
+            // the real encounter (enemies, stats, skills) always comes from the draft generated
+            // below via ListCompatibleEnemyDefinitionsAsync, so that legacy catalog round-trip
+            // was pure overhead (and broke entirely once the legacy EnemyTemplate content
+            // stopped being seeded). Mint the id directly instead.
+            if (resolvedContent is not (ResolvedCombatEventContent or ResolvedEliteEventContent
+                or ResolvedRoomBossEventContent or ResolvedRareCombatEventContent))
             {
                 throw new DomainException(
-                    $"Failed to retrieve enemy template: {enemyTemplateResult.Error.Message}");
+                    "Expected combat, elite, room boss, or rare combat event content but got a different type.");
             }
 
-            var combatInstance = _combatInstanceFactory.CreateFromEnemyTemplate(
-                enemyTemplateResult.Value);
+            var combatId = CombatId.New();
 
-            run.SetActiveCombat(combatInstance.Id);
+            run.SetActiveCombat(combatId);
 
             var draft = await GenerateEncounterDraft(
                 run, room, selectedNode, resolutionResult, cancellationToken);
@@ -169,7 +162,7 @@ public sealed class ResolveCurrentEventCommandHandler
             var skillEffects = await BuildSkillEffectsAsync(run, draft, cancellationToken);
 
             var combatRuntime = _combatFactory.CreateFromDraft(
-                combatInstance.Id, draft, run.PlayerState, run.RunModifiers,
+                combatId, draft, run.PlayerState, run.RunModifiers,
                 attackPower: run.Attack, defense: run.Defense, speed: run.Speed,
                 palaceRoomState: room.PalaceState, focus: run.Focus,
                 skillEffects: skillEffects);
@@ -181,7 +174,7 @@ public sealed class ResolveCurrentEventCommandHandler
             // ATB: enemy turns (including the opening, if an enemy is up first) are
             // driven by the client in real time via AdvanceCombatTurnCommand.
             if (combatRuntime.Status != CombatStatus.Active)
-                pendingRewardOffer = _combatResolution.ApplyOutcome(run, combatRuntime, _clock.UtcNow);
+                pendingRewardOffer = await _combatResolution.ApplyOutcomeAsync(run, combatRuntime, _clock.UtcNow, cancellationToken);
 
             combatRuntimeDto = CombatRuntimeDto.FromDomain(
                 combatRuntime, CombatItemHelper.GetUsableBattleItems(run));

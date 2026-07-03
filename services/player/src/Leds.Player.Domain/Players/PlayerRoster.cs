@@ -36,6 +36,16 @@ public sealed class PlayerRoster
         return _characters.AsReadOnly();
     }
 
+    public PlayerCharacter? FindById(PlayerCharacterId id)
+    {
+        return _characters.FirstOrDefault(c => c.Id == id);
+    }
+
+    public PlayerCharacter GetRequired(PlayerCharacterId id)
+    {
+        return FindById(id) ?? throw new DomainException($"Character '{id}' not found in roster.");
+    }
+
     /// <summary>
     /// Rehydrates a player roster from a trusted persistence snapshot.
     /// This method must not be used to create a new gameplay roster.

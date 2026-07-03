@@ -3,12 +3,16 @@ import { onMounted, ref } from 'vue';
 
 import { useCombatStore } from '../../combat/stores/useCombatStore';
 import type { CombatRuntimeDto } from '../../combat/types/combatContracts';
-import { useRunStore } from '../../runs/stores/runStore';
+import { demoPlayerId, useRunStore } from '../../runs/stores/runStore';
+import { skillsApi } from '../../party/api/skillsApi';
+import { usePlayerStore } from '../../party/stores/playerStore';
+import type { SkillDefinitionView } from '../../party/types/skillTypes';
 import { devToolsApi } from '../api/devToolsApi';
 import { useDevTools } from '../composables/useDevTools';
 import type { DevToolsRunPsycheResponse, PalaceRoomStateKey, RoomClimateKey } from '../types/devToolsTypes';
 import CombatDevToolsSection from './CombatDevToolsSection.vue';
 import DevToolsTokenGate from './DevToolsTokenGate.vue';
+import PlayerDevToolsSection from './PlayerDevToolsSection.vue';
 import PsycheDevToolsSection from './PsycheDevToolsSection.vue';
 import RunDevToolsSection from './RunDevToolsSection.vue';
 
@@ -23,15 +27,28 @@ const emit = defineEmits<{
 
 const runStore = useRunStore();
 const combatStore = useCombatStore();
+const playerStore = usePlayerStore();
 const devTools = useDevTools();
 const psyche = ref<DevToolsRunPsycheResponse | null>(null);
+const allSkills = ref<SkillDefinitionView[]>([]);
 
 onMounted(() => {
   if (devTools.hasToken.value) {
     void devTools.checkStatus();
     void reloadPsyche();
   }
+  void playerStore.loadProfile();
+  void loadAllSkills();
 });
+
+async function loadAllSkills() {
+  try {
+    const response = await skillsApi.listActive();
+    allSkills.value = response.skills;
+  } catch {
+    // best-effort : la section joueur affiche juste une liste vide en cas d'échec
+  }
+}
 
 async function refreshServerState() {
   await runStore.loadRun(props.runId);
@@ -42,6 +59,7 @@ async function refreshServerState() {
     combatStore.clearCombat();
   }
 
+  await playerStore.loadProfile(); // garde le profil joueur synchro après chaque action (sorts / points)
   await reloadPsyche(); // garde la vue psyché synchro après chaque action (ex. advance rooms)
 }
 
@@ -135,6 +153,20 @@ function applyStatus(combatantId: string, statusKey: string, stacks: number, dur
     'Status applique.',
   );
 }
+
+function unlockSkill(characterId: string, skillKey: string) {
+  void execute(
+    (token) => devToolsApi.unlockSkill(token, demoPlayerId, characterId, skillKey),
+    'Sort debloque.',
+  );
+}
+
+function awardStatPoints(amount: number) {
+  void execute(
+    (token) => devToolsApi.awardStatPoints(token, demoPlayerId, amount),
+    `${amount} point(s) de competence accorde(s).`,
+  );
+}
 </script>
 
 <template>
@@ -196,6 +228,15 @@ function applyStatus(combatantId: string, statusKey: string, stacks: number, dur
       @kill-enemy="killEnemy"
       @set-vitals="setVitals"
       @apply-status="applyStatus"
+    />
+
+    <PlayerDevToolsSection
+      :disabled="!devTools.hasToken.value"
+      :is-loading="devTools.isLoading.value"
+      :characters="playerStore.profile?.characters ?? []"
+      :all-skills="allSkills"
+      @unlock-skill="unlockSkill"
+      @award-stat-points="awardStatPoints"
     />
   </aside>
 </template>

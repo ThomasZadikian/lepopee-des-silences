@@ -43,12 +43,12 @@ public sealed class AtbSchedulerTests
     }
 
     [Fact]
-    public void Advance_ShouldCapGaugeAtChargeOverflow()
+    public void Advance_ShouldCapGaugeAtReadyThreshold()
     {
         var result = AtbScheduler.Advance([P(A, fill: 100_000, gauge: 9000)], currentTick: 0);
 
         result.NextActorId.Should().Be(A);
-        result.Participants.Single().Gauge.Should().Be(AtbConstants.ReadyThreshold + AtbConstants.MaxChargeOverflow);
+        result.Participants.Single().Gauge.Should().Be(AtbConstants.ReadyThreshold);
     }
 
     [Fact]

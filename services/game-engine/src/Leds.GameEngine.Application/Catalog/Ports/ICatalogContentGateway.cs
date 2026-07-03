@@ -84,6 +84,9 @@ public interface ICatalogContentGateway
         string skillType,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyCollection<CatalogSkillDefinition>> ListActiveSkillDefinitionsAsync(
+        CancellationToken cancellationToken = default);
+
     Task<IReadOnlyCollection<CatalogNpcDefinition>> ListNpcDefinitionsAsync(
         CancellationToken cancellationToken = default);
     Task<IReadOnlyCollection<CatalogRewardCursePool>> ListRewardCursePoolsAsync(
@@ -93,4 +96,11 @@ public interface ICatalogContentGateway
 
     Task<IReadOnlyCollection<CatalogRoomTypeDefinition>> ListRoomTypeDefinitionsAsync(
     CancellationToken cancellationToken = default);
+
+    Task<CatalogEnemyLootTable?> GetEnemyLootTableByKeyAsync(
+        string enemyKey,
+        CancellationToken cancellationToken = default);
+
+    Task<CatalogGenericLootPool?> GetActiveGenericLootPoolAsync(
+        CancellationToken cancellationToken = default);
 }

@@ -117,6 +117,17 @@ public static class InfrastructureServiceCollectionExtensions
                 client.Timeout = options.Timeout;
             });
 
+        services.AddHttpClient<IPlayerProfileGateway, HttpPlayerProfileGateway>(
+            (serviceProvider, client) =>
+            {
+                var options = serviceProvider
+                    .GetRequiredService<IOptions<PlayerGatewayOptions>>()
+                    .Value;
+
+                client.BaseAddress = new Uri(options.BaseUrl);
+                client.Timeout = options.Timeout;
+            });
+
         RegisterOutbox(services, configuration);
 
         services.AddSingleton<IEventContentResolver, EventContentResolver>();

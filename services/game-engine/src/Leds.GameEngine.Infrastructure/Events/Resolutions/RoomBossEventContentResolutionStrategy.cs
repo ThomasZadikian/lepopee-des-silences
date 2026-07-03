@@ -1,4 +1,3 @@
-using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Application.Events.Contracts;
 using Leds.GameEngine.Application.Events.Resolution;
 using Leds.GameEngine.Domain.Nodes;
@@ -7,16 +6,20 @@ using Leds.SharedBuildingBlocks.Results;
 
 namespace Leds.GameEngine.Infrastructure.Events.Resolution;
 
+// See CombatEventContentResolutionStrategy — same reasoning: EventTemplateKey/
+// EnemyTemplateKey below are vestigial (the real boss encounter is built from
+// EnemyDefinition/RoomBossDefinition content via ICombatEncounterDraftGenerator's
+// EncounterCompositionPolicy.SelectRoomBossEnemies), so this no longer depends on
+// catalog EventTemplate/EnemyTemplate content that isn't seeded. IRoomBossProfileResolver
+// (which IS real, backed by RoomBossDefinition) still determines which boss this is.
 public sealed class RoomBossEventContentResolutionStrategy : IEventContentResolutionStrategy
 {
-    private readonly ICatalogContentGateway _catalogContentGateway;
+    private const string TemplateVersion = "1.0";
+
     private readonly IRoomBossProfileResolver _bossProfileResolver;
 
-    public RoomBossEventContentResolutionStrategy(
-        ICatalogContentGateway catalogContentGateway,
-        IRoomBossProfileResolver bossProfileResolver)
+    public RoomBossEventContentResolutionStrategy(IRoomBossProfileResolver bossProfileResolver)
     {
-        _catalogContentGateway = catalogContentGateway;
         _bossProfileResolver = bossProfileResolver;
     }
 
@@ -29,38 +32,14 @@ public sealed class RoomBossEventContentResolutionStrategy : IEventContentResolu
     {
         var bossProfile = await _bossProfileResolver.ResolveAsync(context.RoomType, cancellationToken);
 
-        // Convention : event template key = "event-" + enemyTemplateKey
-        // e.g. "boss-threshold-guardian-v1" → "event-boss-threshold-guardian-v1"
-        var eventTemplateKey = $"event-{bossProfile.EnemyTemplateKey}";
+        ResolvedNodeEventContent content = new ResolvedRoomBossEventContent(
+            EventTemplateKey: $"event-{bossProfile.EnemyTemplateKey}",
+            EventTemplateVersion: TemplateVersion,
+            Tags: [],
+            EnemyTemplateKey: bossProfile.EnemyTemplateKey,
+            EnemyTemplateVersion: TemplateVersion,
+            RiskLevel: context.RiskLevel);
 
-        var eventTemplateResult = await _catalogContentGateway.GetEventTemplateByKeyAsync(
-            eventTemplateKey,
-            cancellationToken);
-
-        if (eventTemplateResult.IsFailure)
-        {
-            return Result<ResolvedNodeEventContent>.Failure(eventTemplateResult.Error);
-        }
-
-        var enemyTemplateResult = await _catalogContentGateway.GetEnemyTemplateByKeyAsync(
-            bossProfile.EnemyTemplateKey,
-            cancellationToken);
-
-        if (enemyTemplateResult.IsFailure)
-        {
-            return Result<ResolvedNodeEventContent>.Failure(enemyTemplateResult.Error);
-        }
-
-        var eventTemplate = eventTemplateResult.Value;
-        var enemyTemplate = enemyTemplateResult.Value;
-
-        return Result<ResolvedNodeEventContent>.Success(
-            new ResolvedRoomBossEventContent(
-                EventTemplateKey: eventTemplate.Key,
-                EventTemplateVersion: eventTemplate.Version,
-                Tags: eventTemplate.NarrativeTags,
-                EnemyTemplateKey: enemyTemplate.Key,
-                EnemyTemplateVersion: enemyTemplate.Version,
-                RiskLevel: context.RiskLevel));
+        return Result<ResolvedNodeEventContent>.Success(content);
     }
 }

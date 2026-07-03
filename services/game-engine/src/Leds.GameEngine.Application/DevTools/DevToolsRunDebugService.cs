@@ -292,7 +292,7 @@ public sealed class DevToolsRunDebugService : IDevToolsRunDebugService
         }
 
         combat.CompleteIfAllEnemiesDefeated();
-        var rewardOffer = _combatResolution.ApplyOutcome(run, combat, DateTimeOffset.UtcNow);
+        var rewardOffer = await _combatResolution.ApplyOutcomeAsync(run, combat, DateTimeOffset.UtcNow, cancellationToken);
         await _runRepository.UpdateAsync(run, cancellationToken);
         if (rewardOffer is not null)
         {
@@ -316,7 +316,7 @@ public sealed class DevToolsRunDebugService : IDevToolsRunDebugService
             enemy.MarkDefeated();
 
         combat.CompleteIfAllEnemiesDefeated();
-        var rewardOffer = _combatResolution.ApplyOutcome(run, combat, DateTimeOffset.UtcNow);
+        var rewardOffer = await _combatResolution.ApplyOutcomeAsync(run, combat, DateTimeOffset.UtcNow, cancellationToken);
         await _runRepository.UpdateAsync(run, cancellationToken);
         if (rewardOffer is not null)
         {

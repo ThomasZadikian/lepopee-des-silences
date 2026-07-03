@@ -58,6 +58,8 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
             TotalRunsCompleted = profile.Progression.TotalRunsCompleted,
             TotalRunsFailed = profile.Progression.TotalRunsFailed,
             TotalRunsAbandoned = profile.Progression.TotalRunsAbandoned,
+            UnspentStatPoints = profile.Progression.UnspentStatPoints,
+            TotalStatPointsEarned = profile.Progression.TotalStatPointsEarned,
             CreatedAtUtc = profile.CreatedAtUtc,
             UpdatedAtUtc = profile.UpdatedAtUtc,
             Characters = profile.Roster.Characters.Select(c => new PlayerCharacterEntity
@@ -87,6 +89,8 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
         existing.TotalRunsCompleted = incoming.Progression.TotalRunsCompleted;
         existing.TotalRunsFailed = incoming.Progression.TotalRunsFailed;
         existing.TotalRunsAbandoned = incoming.Progression.TotalRunsAbandoned;
+        existing.UnspentStatPoints = incoming.Progression.UnspentStatPoints;
+        existing.TotalStatPointsEarned = incoming.Progression.TotalStatPointsEarned;
         existing.UpdatedAtUtc = incoming.UpdatedAtUtc;
 
         var incomingCharacters = incoming.Roster.Characters
@@ -143,11 +147,11 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
 
             var skills = c.Skills.Count == 0
                 ? (JsonSerializer.Deserialize<List<string>>(c.SkillKeysJson) ?? [])
-                    .Select(key => PlayerCharacterSkill.Create(key, c.CreatedAtUtc, "legacy_migration"))
+                    .Select(key => PlayerCharacterSkill.Create(key, c.CreatedAtUtc, "legacy_migration", isEquipped: true))
                     .ToArray()
                 : c.Skills
                     .OrderBy(s => s.UnlockedAtUtc)
-                    .Select(s => PlayerCharacterSkill.Create(s.SkillDefinitionKey, s.UnlockedAtUtc, s.Source))
+                    .Select(s => PlayerCharacterSkill.Create(s.SkillDefinitionKey, s.UnlockedAtUtc, s.Source, s.IsEquipped))
                     .ToArray();
 
             return PlayerCharacter.Rehydrate(
@@ -166,7 +170,9 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
             entity.TotalRunsStarted,
             entity.TotalRunsCompleted,
             entity.TotalRunsFailed,
-            entity.TotalRunsAbandoned);
+            entity.TotalRunsAbandoned,
+            entity.UnspentStatPoints,
+            entity.TotalStatPointsEarned);
 
         return PlayerProfile.Rehydrate(
             new PlayerId(entity.Id),
@@ -203,7 +209,8 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
             Id = Guid.NewGuid(),
             SkillDefinitionKey = skill.SkillDefinitionKey,
             UnlockedAtUtc = skill.UnlockedAtUtc,
-            Source = skill.Source
+            Source = skill.Source,
+            IsEquipped = skill.IsEquipped
         };
     }
 }

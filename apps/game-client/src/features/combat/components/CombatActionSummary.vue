@@ -51,7 +51,7 @@ function entryClass(type: LogEntryType): string {
   gap: 2px;
   margin: 0 var(--space-4) var(--space-1);
   padding: var(--space-2) var(--space-3);
-  background: oklch(0.16 0.035 272 / 0.72);
+  background: oklch(0.16 0.035 60 / 0.72);
   border: 1px solid var(--line-soft);
   border-radius: var(--radius-sm);
   animation: cas-in 180ms ease-out;

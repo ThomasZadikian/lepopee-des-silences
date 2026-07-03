@@ -1,8 +1,10 @@
-﻿using Leds.GameEngine.Application.Rewards.RewardOfferFactory;
+﻿using Leds.GameEngine.Application.Players.Ports;
+using Leds.GameEngine.Application.Rewards.RewardOfferFactory;
 using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rewards;
 using Leds.GameEngine.Domain.Runs;
+using Microsoft.Extensions.Logging;
 
 namespace Leds.GameEngine.Application.Combats.Resolution;
 
@@ -12,22 +14,30 @@ public interface ICombatResolutionService
     /// Applique LA conséquence métier d'une fin de combat (victoire ou défaite),
     /// quel que soit le point d'entrée. Source unique de vérité.
     /// </summary>
-    RewardOffer? ApplyOutcome(Run run, Combat combat, DateTimeOffset now);
+    Task<RewardOffer?> ApplyOutcomeAsync(Run run, Combat combat, DateTimeOffset now, CancellationToken cancellationToken = default);
 }
 
 public sealed class CombatResolutionService : ICombatResolutionService
 {
     private readonly RewardOfferFactory _rewardOfferFactory;
+    private readonly IPlayerProfileGateway _playerProfileGateway;
+    private readonly ILogger<CombatResolutionService> _logger;
 
-    public CombatResolutionService(RewardOfferFactory rewardOfferFactory)
+    public CombatResolutionService(
+        RewardOfferFactory rewardOfferFactory,
+        IPlayerProfileGateway playerProfileGateway,
+        ILogger<CombatResolutionService> logger)
     {
         _rewardOfferFactory = rewardOfferFactory;
+        _playerProfileGateway = playerProfileGateway;
+        _logger = logger;
     }
 
-    public RewardOffer? ApplyOutcome(
+    public async Task<RewardOffer?> ApplyOutcomeAsync(
         Run run,
         Combat combat,
-        DateTimeOffset now)
+        DateTimeOffset now,
+        CancellationToken cancellationToken = default)
     {
         switch (combat.Status)
         {
@@ -40,7 +50,7 @@ public sealed class CombatResolutionService : ICombatResolutionService
                 run.CompleteActiveCombat();
                 run.ConsumeNextCombatModifiers();
 
-                var rewardOffer = CreateRewardOffer(combatNode);
+                var rewardOffer = await CreateRewardOfferAsync(run, combat, combatNode, cancellationToken);
                 run.SetPendingRewardOffer(rewardOffer.Id);
                 return rewardOffer;
 
@@ -53,7 +63,7 @@ public sealed class CombatResolutionService : ICombatResolutionService
         }
     }
 
-    private RewardOffer CreateRewardOffer(MapNode? combatNode)
+    private async Task<RewardOffer> CreateRewardOfferAsync(Run run, Combat combat, MapNode? combatNode, CancellationToken cancellationToken)
     {
         var source = combatNode?.EventType switch
         {
@@ -64,9 +74,28 @@ public sealed class CombatResolutionService : ICombatResolutionService
             _ => RewardSource.Combat
         };
 
-        return _rewardOfferFactory.CreateCombatRewardOffer(
+        if (source == RewardSource.RoomBoss)
+        {
+            // Must never block or fail combat resolution: the reward offer
+            // always ships even if the Player Service is unreachable.
+            try
+            {
+                await _playerProfileGateway.AwardStatPointAsync(run.PlayerId, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to award stat point for player {PlayerId}", run.PlayerId);
+            }
+        }
+
+        return await _rewardOfferFactory.CreateCombatRewardOfferAsync(
             source,
             combatNode?.EventType ?? NodeEventType.Combat,
-            combatNode?.RiskLevel ?? 25);
+            combatNode?.RiskLevel ?? 25,
+            combat.Enemies,
+            run.Seed,
+            run.Id.Value,
+            combat.Id.Value,
+            cancellationToken);
     }
 }

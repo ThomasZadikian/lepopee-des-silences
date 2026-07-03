@@ -151,7 +151,7 @@ public sealed class UseItemInCombatCommandHandler
         var combatCompleted = combat.Status == CombatStatus.Completed;
         var combatFailed = combat.Status == CombatStatus.Failed;
 
-        var rewardOffer = _combatResolution.ApplyOutcome(run, combat, now);
+        var rewardOffer = await _combatResolution.ApplyOutcomeAsync(run, combat, now, cancellationToken);
 
         await _runRepository.UpdateAsync(run, cancellationToken);
         if (rewardOffer is not null)

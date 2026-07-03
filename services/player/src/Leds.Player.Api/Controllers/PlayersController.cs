@@ -1,5 +1,9 @@
 using Leds.Player.Application.Players;
 using Leds.Player.Application.Players.CreatePlayerProfile;
+using Leds.Player.Application.Players.EquipSkill;
+using Leds.Player.Application.Players.SpendStatPoint;
+using Leds.Player.Application.Players.UnequipSkill;
+using Leds.Player.Domain.Players;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -55,6 +59,54 @@ public sealed class PlayersController : ControllerBase
     {
         var query = new GetPlayerRunSnapshotQuery(playerId);
         var response = await _sender.Send(query, cancellationToken);
+
+        return Ok(response);
+    }
+
+    [HttpPost("{playerId:guid}/characters/{characterId:guid}/skills/{skillKey}/equip")]
+    [ProducesResponseType(typeof(PlayerProfileDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<PlayerProfileDto>> EquipSkill(
+        Guid playerId,
+        Guid characterId,
+        string skillKey,
+        CancellationToken cancellationToken)
+    {
+        var command = new EquipSkillCommand(playerId, characterId, skillKey);
+        var response = await _sender.Send(command, cancellationToken);
+
+        return Ok(response);
+    }
+
+    [HttpPost("{playerId:guid}/characters/{characterId:guid}/skills/{skillKey}/unequip")]
+    [ProducesResponseType(typeof(PlayerProfileDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<PlayerProfileDto>> UnequipSkill(
+        Guid playerId,
+        Guid characterId,
+        string skillKey,
+        CancellationToken cancellationToken)
+    {
+        var command = new UnequipSkillCommand(playerId, characterId, skillKey);
+        var response = await _sender.Send(command, cancellationToken);
+
+        return Ok(response);
+    }
+
+    [HttpPost("{playerId:guid}/characters/{characterId:guid}/stats/{stat}/spend-point")]
+    [ProducesResponseType(typeof(PlayerProfileDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<PlayerProfileDto>> SpendStatPoint(
+        Guid playerId,
+        Guid characterId,
+        PlayerStatKind stat,
+        CancellationToken cancellationToken)
+    {
+        var command = new SpendStatPointCommand(playerId, characterId, stat);
+        var response = await _sender.Send(command, cancellationToken);
 
         return Ok(response);
     }

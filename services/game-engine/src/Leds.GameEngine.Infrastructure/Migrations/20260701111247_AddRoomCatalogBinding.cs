@@ -2,7 +2,7 @@
 
 #nullable disable
 
-namespace Leds.GameEngine.Infrastructure.Persistence.Migrations
+namespace Leds.GameEngine.Infrastructure.Migrations
 {
     /// <inheritdoc />
     public partial class AddRoomCatalogBinding : Migration
@@ -64,6 +64,20 @@ namespace Leds.GameEngine.Infrastructure.Persistence.Migrations
                 type: "character varying(160)",
                 maxLength: 160,
                 nullable: true);
+
+            migrationBuilder.AddColumn<string>(
+                name: "source_enemy_display_name",
+                table: "run_reward_options",
+                type: "character varying(256)",
+                maxLength: 256,
+                nullable: true);
+
+            migrationBuilder.AddColumn<string>(
+                name: "source_enemy_key",
+                table: "run_reward_options",
+                type: "character varying(160)",
+                maxLength: 160,
+                nullable: true);
         }
 
         /// <inheritdoc />
@@ -100,6 +114,14 @@ namespace Leds.GameEngine.Infrastructure.Persistence.Migrations
             migrationBuilder.DropColumn(
                 name: "reward_pool_key",
                 table: "run_rooms");
+
+            migrationBuilder.DropColumn(
+                name: "source_enemy_display_name",
+                table: "run_reward_options");
+
+            migrationBuilder.DropColumn(
+                name: "source_enemy_key",
+                table: "run_reward_options");
         }
     }
 }

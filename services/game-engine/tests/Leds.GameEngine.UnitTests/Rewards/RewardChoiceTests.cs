@@ -93,4 +93,28 @@ public sealed class RewardChoiceTests
 
         choice1.Id.Should().NotBe(choice2.Id);
     }
+
+    [Fact]
+    public void Create_ShouldDefaultSourceEnemyFields_ToNull()
+    {
+        var choice = RewardChoice.Create(RewardType.Heal, "Soin", "Restaure 15 PV.", "heal:15");
+
+        choice.SourceEnemyKey.Should().BeNull();
+        choice.SourceEnemyDisplayName.Should().BeNull();
+    }
+
+    [Fact]
+    public void Create_ShouldCarrySourceEnemyFields_WhenProvided()
+    {
+        var choice = RewardChoice.Create(
+            RewardType.TemporaryItem,
+            "Peau de serpent",
+            "Une mue encore souple.",
+            "item:item.consumable.peau-de-serpent:...",
+            sourceEnemyKey: "enemy.forest.chimere-serpentaire",
+            sourceEnemyDisplayName: "Chimere Serpentaire");
+
+        choice.SourceEnemyKey.Should().Be("enemy.forest.chimere-serpentaire");
+        choice.SourceEnemyDisplayName.Should().Be("Chimere Serpentaire");
+    }
 }

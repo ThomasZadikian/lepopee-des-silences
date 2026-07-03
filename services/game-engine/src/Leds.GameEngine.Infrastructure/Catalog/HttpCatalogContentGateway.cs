@@ -876,6 +876,65 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
             .ToArray() ?? [];
     }
 
+    public async Task<IReadOnlyCollection<CatalogSkillDefinition>> ListActiveSkillDefinitionsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        const string url = "/api/v2/catalog/skill-definitions";
+
+        HttpResponseMessage response;
+        try
+        {
+            response = await _httpClient.GetAsync(url, cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            throw new CatalogGatewayException(
+                $"Failed to call Catalog Service at '{url}': {ex.Message}", ex);
+        }
+
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return [];
+        }
+
+        if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
+        {
+            return [];
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var body = await response.Content.ReadAsStringAsync(cancellationToken);
+            throw new CatalogGatewayException(
+                $"Catalog Service returned {(int)response.StatusCode} for '{url}': {body}");
+        }
+
+        var options = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        };
+
+        ListSkillDefinitionsHttpResponse? wrapper;
+        try
+        {
+            wrapper = await response.Content
+                .ReadFromJsonAsync<ListSkillDefinitionsHttpResponse>(options, cancellationToken);
+        }
+        catch (JsonException ex)
+        {
+            throw new CatalogGatewayException(
+                $"Failed to deserialize Catalog Service response from '{url}': {ex.Message}", ex);
+        }
+
+        return wrapper?.Definitions?
+            .Select(MapToCatalogSkillDefinition)
+            .ToArray() ?? [];
+    }
+
     private static CatalogSkillDefinition MapToCatalogSkillDefinition(
         CatalogSkillDefinitionHttpResponse source)
     {
@@ -1201,6 +1260,44 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
             ?? [];
     }
 
+    public async Task<CatalogEnemyLootTable?> GetEnemyLootTableByKeyAsync(
+        string enemyKey,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(enemyKey))
+        {
+            return null;
+        }
+
+        var encodedKey = Uri.EscapeDataString(enemyKey.Trim());
+        var url = $"/api/v2/catalog/enemy-loot-tables/{encodedKey}";
+
+        var wrapper = await GetJsonOrNullAsync<GetEnemyLootTableByKeyHttpResponse>(url, cancellationToken);
+
+        return wrapper?.LootTable is null ? null : MapEnemyLootTable(wrapper.LootTable);
+    }
+
+    public async Task<CatalogGenericLootPool?> GetActiveGenericLootPoolAsync(
+        CancellationToken cancellationToken = default)
+    {
+        const string url = "/api/v2/catalog/generic-loot-pool";
+
+        var wrapper = await GetJsonOrNullAsync<GetActiveGenericLootPoolHttpResponse>(url, cancellationToken);
+
+        return wrapper?.Pool is null ? null : MapGenericLootPool(wrapper.Pool);
+    }
+
+    private static CatalogEnemyLootTable MapEnemyLootTable(CatalogEnemyLootTableHttpResponse s) =>
+        new(s.Key, s.EnemyDefinitionKey, s.Name, s.Description, s.Version,
+            (s.Entries ?? []).Select(MapLootEntry).ToArray());
+
+    private static CatalogGenericLootPool MapGenericLootPool(CatalogGenericLootPoolHttpResponse s) =>
+        new(s.Key, s.Name, s.Description, s.Version,
+            (s.Entries ?? []).Select(MapLootEntry).ToArray());
+
+    private static CatalogLootEntry MapLootEntry(CatalogLootEntryHttpResponse s) =>
+        new(s.ItemDefinitionKey, s.DropPercent);
+
     private static CatalogRewardCursePool MapRewardCursePool(CatalogRewardCursePoolHttpResponse s) =>
         new(s.Key, s.Name, s.Description, s.Version,
             (s.Entries ?? []).Select(MapRewardCurseEntry).ToArray());
@@ -1402,6 +1499,33 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
 
     private sealed record ListRewardCursePoolsHttpResponse(
     IReadOnlyCollection<CatalogRewardCursePoolHttpResponse>? Pools);
+
+    private sealed record GetEnemyLootTableByKeyHttpResponse(
+        CatalogEnemyLootTableHttpResponse? LootTable);
+
+    private sealed record CatalogEnemyLootTableHttpResponse(
+        string Key,
+        string EnemyDefinitionKey,
+        string Name,
+        string Description,
+        string Version,
+        string Status,
+        IReadOnlyCollection<CatalogLootEntryHttpResponse>? Entries);
+
+    private sealed record GetActiveGenericLootPoolHttpResponse(
+        CatalogGenericLootPoolHttpResponse? Pool);
+
+    private sealed record CatalogGenericLootPoolHttpResponse(
+        string Key,
+        string Name,
+        string Description,
+        string Version,
+        string Status,
+        IReadOnlyCollection<CatalogLootEntryHttpResponse>? Entries);
+
+    private sealed record CatalogLootEntryHttpResponse(
+        string ItemDefinitionKey,
+        int DropPercent);
 
     private sealed record CatalogRewardCursePoolHttpResponse(
         string Key,

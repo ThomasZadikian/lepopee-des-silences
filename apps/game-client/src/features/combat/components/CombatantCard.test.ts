@@ -121,6 +121,26 @@ describe('CombatantCard', () => {
     expect(wrapper.find('.presence').classes()).toContain('presence--guarded');
   });
 
+  it('shows a hit effect when isDamaged is true', () => {
+    const wrapper = mountCard(undefined, { isDamaged: true });
+    expect(wrapper.find('.presence__hit-fx').exists()).toBe(true);
+  });
+
+  it('does not show a hit effect when isDamaged is false', () => {
+    const wrapper = mountCard(undefined, { isDamaged: false });
+    expect(wrapper.find('.presence__hit-fx').exists()).toBe(false);
+  });
+
+  it('shows a guard effect when isGuarded is true', () => {
+    const wrapper = mountCard(undefined, { isGuarded: true });
+    expect(wrapper.find('.presence__guard-fx').exists()).toBe(true);
+  });
+
+  it('does not show a guard effect when isGuarded is false', () => {
+    const wrapper = mountCard(undefined, { isGuarded: false });
+    expect(wrapper.find('.presence__guard-fx').exists()).toBe(false);
+  });
+
   it('applies presence--defeated class when status is Defeated', () => {
     const wrapper = mountCard(makeCombatant({ status: 'Defeated' }));
     expect(wrapper.find('.presence').classes()).toContain('presence--defeated');
@@ -161,9 +181,36 @@ describe('CombatantCard', () => {
     expect(wrapper.find('.presence__state--dead').text()).toBe('abattu');
   });
 
-  it('shows guard tag when guard > 0', () => {
+  it('shows the guard number prominently when guard > 0', () => {
     const wrapper = mountCard(makeCombatant({ guard: 20 }));
-    expect(wrapper.find('.presence__tag--guard').text()).toBe('Garde');
+    expect(wrapper.find('.presence__stat--guard').text()).toBe('⛨ 20');
+  });
+
+  it('does not show a guard readout when guard is 0', () => {
+    const wrapper = mountCard(makeCombatant({ guard: 0 }));
+    expect(wrapper.find('.presence__stat--guard').exists()).toBe(false);
+  });
+
+  it('renders a guard segment on the HP bar sized to guard/maxVitality', () => {
+    const wrapper = mountCard(makeCombatant({ currentVitality: 80, maxVitality: 100, guard: 10 }));
+    const guardFill = wrapper.find('.presence__gauge-guard');
+    expect(guardFill.exists()).toBe(true);
+    expect(guardFill.attributes('style')).toContain('10%');
+  });
+
+  it('scales both segments down proportionally instead of hiding guard when HP is full', () => {
+    // hp=100%, guard=25% of maxVitality → sum is 125%, so both scale by 1/1.25=0.8:
+    // hp shows as 80%, guard as 20%. Guard must stay clearly visible, not clamped to 0.
+    const wrapper = mountCard(makeCombatant({ currentVitality: 100, maxVitality: 100, guard: 25 }));
+    const hpFill = wrapper.find('.presence__gauge-fill');
+    const guardFill = wrapper.find('.presence__gauge-guard');
+    expect(hpFill.attributes('style')).toContain('width: 80%');
+    expect(guardFill.attributes('style')).toContain('width: 20%');
+  });
+
+  it('does not render a guard segment when guard is 0', () => {
+    const wrapper = mountCard(makeCombatant({ guard: 0 }));
+    expect(wrapper.find('.presence__gauge-guard').exists()).toBe(false);
   });
 
   it('disables button when defeated', () => {
@@ -205,7 +252,7 @@ describe('CombatantCard', () => {
         { key: 'buff-1', displayName: 'Power Up', kind: 'StatModifier', stat: 'attack', magnitude: 10, stacks: 3 },
       ],
     }));
-    expect(wrapper.find('.presence__fx-badge small').text()).toBe('3');
+    expect(wrapper.find('.presence__fx-badge .sigil__stacks').text()).toBe('3');
   });
 
   it('does not render status effects section when no effects', () => {
@@ -219,21 +266,104 @@ describe('CombatantCard', () => {
     expect(fill.attributes('style')).toContain('50%');
   });
 
-  it('renders substats', () => {
+  it('hides substats behind a details trigger by default', () => {
     const wrapper = mountCard(makeCombatant({
       attackPower: 25,
       defense: 15,
       speed: 20,
       focus: 10,
     }));
+    expect(wrapper.find('.presence__details-popover').exists()).toBe(false);
+    expect(wrapper.find('.presence__details-trigger').exists()).toBe(true);
+  });
+
+  it('reveals substats when the details trigger is clicked', async () => {
+    const wrapper = mountCard(makeCombatant({
+      attackPower: 25,
+      defense: 15,
+      speed: 20,
+      focus: 10,
+    }));
+    await wrapper.find('.presence__details-trigger').trigger('click');
+    expect(wrapper.find('.presence__details-popover').exists()).toBe(true);
     expect(wrapper.text()).toContain('25');
     expect(wrapper.text()).toContain('15');
     expect(wrapper.text()).toContain('20');
     expect(wrapper.text()).toContain('10');
   });
 
+  it('does not emit select when the details trigger is clicked', async () => {
+    const wrapper = mountCard(makeCombatant({ id: 'combatant-99' }));
+    await wrapper.find('.presence__details-trigger').trigger('click');
+    expect(wrapper.emitted('select')).toBeUndefined();
+  });
+
+  it('closes the details popover on an outside mousedown', async () => {
+    const c = makeCombatant();
+    const wrapper = mount(CombatantCard, {
+      attachTo: document.body,
+      props: {
+        combatant: c,
+        isCurrentActor: false,
+        isSelectedTarget: false,
+        isSelectable: true,
+        isTargetable: true,
+        isInvalidTarget: false,
+        isActivePlayer: false,
+        isThinking: false,
+        isDamaged: false,
+        isGuarded: false,
+        isJustDefeated: false,
+        isActing: false,
+      },
+      global: {
+        stubs: {
+          AtbGauge: { template: '<div class="atb" />' },
+          EmotionalTypeBadge: { template: '<span class="type-badge" />' },
+        },
+      },
+    });
+
+    await wrapper.find('.presence__details-trigger').trigger('click');
+    expect(wrapper.find('.presence__details-popover').exists()).toBe(true);
+
+    document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('.presence__details-popover').exists()).toBe(false);
+
+    wrapper.unmount();
+  });
+
   it('handles zero maxVitality without crashing', () => {
     const wrapper = mountCard(makeCombatant({ maxVitality: 0, currentVitality: 0 }));
     expect(wrapper.exists()).toBe(true);
+  });
+
+  it('does not show a threat bar when maxThreat is zero or absent', () => {
+    const wrapper = mountCard(makeCombatant({ side: 'Player', threatValue: 0 }));
+    expect(wrapper.find('.presence__threat').exists()).toBe(false);
+  });
+
+  it('does not show a threat bar for enemy-side combatants', () => {
+    const wrapper = mountCard(makeCombatant({ side: 'Enemy', threatValue: 5 }), { maxThreat: 10 });
+    expect(wrapper.find('.presence__threat').exists()).toBe(false);
+  });
+
+  it('shows a threat bar sized relative to maxThreat for player-side combatants', () => {
+    const wrapper = mountCard(makeCombatant({ side: 'Player', threatValue: 5 }), { maxThreat: 10 });
+    const fill = wrapper.find('.presence__threat-fill');
+    expect(fill.exists()).toBe(true);
+    expect((fill.element as HTMLElement).style.width).toBe('50%');
+  });
+
+  it('flags the combatant holding the highest threat with the aggro indicator', () => {
+    const wrapper = mountCard(makeCombatant({ side: 'Player', threatValue: 10 }), { maxThreat: 10 });
+    expect(wrapper.find('.presence__state--aggro').exists()).toBe(true);
+    expect(wrapper.find('.presence__threat--aggro').exists()).toBe(true);
+  });
+
+  it('does not flag a lower-threat ally as holding aggro', () => {
+    const wrapper = mountCard(makeCombatant({ side: 'Player', threatValue: 3 }), { maxThreat: 10 });
+    expect(wrapper.find('.presence__state--aggro').exists()).toBe(false);
   });
 });

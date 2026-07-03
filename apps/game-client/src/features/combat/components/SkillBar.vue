@@ -55,7 +55,6 @@ function getSkillCost(skill: CombatantRuntimeDto['skills'][number]): number {
           @click="$emit('selectSkill', skill.key)"
         >
           <span class="skill-card__name">{{ skill.displayName }}</span>
-          <span class="skill-card__meta">{{ getSkillCost(skill) }} PP</span>
         </button>
       </div>
 

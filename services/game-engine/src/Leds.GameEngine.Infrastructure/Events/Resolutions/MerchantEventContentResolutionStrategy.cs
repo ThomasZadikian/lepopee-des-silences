@@ -8,7 +8,11 @@ namespace Leds.GameEngine.Infrastructure.Events.Resolution;
 
 public sealed class MerchantEventContentResolutionStrategy : IEventContentResolutionStrategy
 {
-    private const string DefaultEventTemplateKey = "event-combat-shadow-v1";
+    // See CombatEventContentResolutionStrategy — same reasoning: this used to fetch a
+    // catalog EventTemplate purely to fill EventTemplateKey/Version/Tags below, but that
+    // legacy table isn't seeded, so it's synthesized locally instead.
+    private const string DefaultEventTemplateKey = "event-merchant-v1";
+    private const string TemplateVersion = "1.0";
 
     private readonly ICatalogContentGateway _catalogContentGateway;
 
@@ -20,26 +24,16 @@ public sealed class MerchantEventContentResolutionStrategy : IEventContentResolu
     public IReadOnlyCollection<NodeEventType> SupportedEventTypes { get; } =
         new[] { NodeEventType.Merchant };
 
-    public async Task<Result<ResolvedNodeEventContent>> ResolveAsync(
+    public Task<Result<ResolvedNodeEventContent>> ResolveAsync(
         EventContentResolutionContext context,
         CancellationToken cancellationToken = default)
     {
-        var eventTemplateResult = await _catalogContentGateway.GetEventTemplateByKeyAsync(
-            DefaultEventTemplateKey,
-            cancellationToken);
+        ResolvedNodeEventContent content = new ResolvedMerchantEventContent(
+            EventTemplateKey: DefaultEventTemplateKey,
+            EventTemplateVersion: TemplateVersion,
+            Tags: [],
+            MerchantProfileKey: "merchant-placeholder-v1");
 
-        if (eventTemplateResult.IsFailure)
-        {
-            return Result<ResolvedNodeEventContent>.Failure(eventTemplateResult.Error);
-        }
-
-        var eventTemplate = eventTemplateResult.Value;
-
-        return Result<ResolvedNodeEventContent>.Success(
-            new ResolvedMerchantEventContent(
-                EventTemplateKey: eventTemplate.Key,
-                EventTemplateVersion: eventTemplate.Version,
-                Tags: eventTemplate.NarrativeTags,
-                MerchantProfileKey: "merchant-placeholder-v1"));
+        return Task.FromResult(Result<ResolvedNodeEventContent>.Success(content));
     }
 }

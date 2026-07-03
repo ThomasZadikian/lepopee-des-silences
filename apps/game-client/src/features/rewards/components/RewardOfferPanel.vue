@@ -4,12 +4,15 @@ import EliseComment from '@/shared/components/EliseComment.vue'
 import RuleOrnament from '@/shared/components/RuleOrnament.vue'
 import SigilIcon from '@/shared/components/SigilIcon.vue'
 import { computed, ref } from 'vue'
+import DefeatedEnemyList from './DefeatedEnemyList.vue'
 import type { RewardOfferDto } from '../types/rewardTypes'
 
 const props = defineProps<{
   offer: RewardOfferDto
   isLoading?: boolean
 }>()
+
+const defeatedEnemies = computed(() => props.offer.defeatedEnemies ?? [])
 
 const emit = defineEmits<{
   selectReward: [choiceId: string]
@@ -47,6 +50,7 @@ type NormalizedCard = {
   rarity: string | undefined
   rewardType: string | undefined
   tone: 'gold' | 'frost' | null
+  sourceEnemyDisplayName: string | null | undefined
 }
 
 function getTone(rarity?: string, rewardType?: string): 'gold' | 'frost' | null {
@@ -70,6 +74,7 @@ const normalizedCards = computed<NormalizedCard[]>(() => {
       rarity: c.rarity,
       rewardType: c.rewardType,
       tone: getTone(c.rarity, c.rewardType),
+      sourceEnemyDisplayName: c.sourceEnemyDisplayName,
     })
   }
 
@@ -84,6 +89,7 @@ const normalizedCards = computed<NormalizedCard[]>(() => {
       rarity: o.rarity,
       rewardType: o.rewardType ?? o.type,
       tone: getTone(o.rarity, o.rewardType ?? o.type),
+      sourceEnemyDisplayName: null,
     })
   }
 
@@ -146,7 +152,14 @@ const confirmBtnClass = computed(() =>
     <div class="es-vignette" />
     <div class="es-grain" />
 
-    <div class="rop-content">
+    <div class="rop-content" :class="{ 'rop-content--with-sidebar': defeatedEnemies.length > 0 }">
+
+      <DefeatedEnemyList
+        v-if="defeatedEnemies.length > 0"
+        :enemies="defeatedEnemies"
+      />
+
+      <div class="rop-main">
 
       <!-- Header -->
       <div style="flex: 0 0 auto; text-align: center; padding-top: 12px">
@@ -178,7 +191,7 @@ const confirmBtnClass = computed(() =>
           <span class="es-body">Aucune récompense disponible.</span>
         </div>
 
-        <div v-else style="display: flex; gap: 22px; justify-content: center; align-items: stretch">
+        <div v-else class="rop-cards__grid">
           <div
             v-for="card in normalizedCards"
             :key="card.id"
@@ -207,10 +220,13 @@ const confirmBtnClass = computed(() =>
                 : {}"
             >{{ selectedId === card.id ? '✦' : '' }}</div>
 
-            <div class="es-row" style="margin-bottom: 18px">
+            <div class="es-row" style="margin-bottom: 18px; flex-wrap: wrap; row-gap: 6px">
               <ChipBadge :tone="card.tone">
                 {{ rewardTypeLabel(card.rewardType) }}
               </ChipBadge>
+              <span v-if="card.sourceEnemyDisplayName" class="rop-card__source">
+                {{ card.sourceEnemyDisplayName }}
+              </span>
             </div>
 
             <div style="display: flex; justify-content: center; margin: 4px 0 20px">
@@ -282,6 +298,7 @@ const confirmBtnClass = computed(() =>
         Une relique porte toujours le nom de ce qu'on a tu.
         <em>Tu es sûr de vouloir l'emporter avec toi&nbsp;?</em>
       </EliseComment>
+      </div>
     </div>
   </div>
 </template>
@@ -297,7 +314,7 @@ const confirmBtnClass = computed(() =>
     radial-gradient(64% 56% at 86% 80%, var(--wash-blood), transparent 58%),
     radial-gradient(58% 50% at 60% 26%, var(--wash-sap),   transparent 60%),
     radial-gradient(56% 50% at 12% 92%, var(--wash-gold),  transparent 60%),
-    radial-gradient(150% 130% at 50% -10%, oklch(0.310 0.058 272) 0%, var(--bg) 48%, var(--void) 100%);
+    radial-gradient(150% 130% at 50% -10%, oklch(0.310 0.058 60) 0%, var(--bg) 48%, var(--void) 100%);
   color: var(--ink);
   font-family: var(--font);
   -webkit-font-smoothing: antialiased;
@@ -310,6 +327,23 @@ const confirmBtnClass = computed(() =>
   display: flex;
   flex-direction: column;
   padding: 24px 60px 80px;
+  gap: 8px;
+}
+
+/* When enemies were defeated (combat rewards), lay the sidebar and the
+   existing centered content side by side instead of stacking everything
+   in a single centered column. */
+.rop-content--with-sidebar {
+  flex-direction: row;
+  align-items: stretch;
+  gap: 32px;
+}
+
+.rop-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
   gap: 8px;
 }
 
@@ -331,7 +365,7 @@ const confirmBtnClass = computed(() =>
   border: 1px solid var(--line-soft);
   border-radius: 3px;
   padding: 2px 8px;
-  background: oklch(0.22 0.03 272 / 0.6);
+  background: oklch(0.22 0.03 60 / 0.6);
 }
 
 .rop-state-chip {
@@ -346,30 +380,40 @@ const confirmBtnClass = computed(() =>
   background: oklch(0.55 0.08 85 / 0.1);
 }
 
+/* ── Cards grid (wraps for 4-6 loot cards, single row for 3 or fewer) ── */
+.rop-cards__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 260px));
+  gap: 20px;
+  justify-content: center;
+  align-items: stretch;
+  max-width: 900px;
+}
+
 /* ── Reward card ── */
 .rop-card {
   position: relative;
-  width: 312px;
+  width: 100%;
   border-radius: 6px;
   padding: 26px 24px;
   display: flex;
   flex-direction: column;
   cursor: pointer;
   border: 1px solid var(--line);
-  background: linear-gradient(180deg, var(--panel-2, oklch(0.28 0.03 268 / 0.6)), var(--panel, oklch(0.24 0.025 270)));
+  background: linear-gradient(180deg, var(--panel-2, oklch(0.28 0.03 60 / 0.6)), var(--panel, oklch(0.24 0.025 60)));
   transition: border-color 0.24s, transform 0.24s, box-shadow 0.24s, background 0.24s;
 }
 
 .rop-card:hover:not(.rop-card--frozen) {
   transform: translateY(-5px);
   border-color: var(--frost-dim);
-  box-shadow: 0 22px 44px -26px oklch(0.1 0.03 272 / 0.85);
+  box-shadow: 0 22px 44px -26px oklch(0.1 0.03 60 / 0.85);
 }
 
 .rop-card--sel {
   transform: translateY(-7px);
   border-color: var(--frost);
-  background: linear-gradient(180deg, var(--raise, oklch(0.32 0.04 268 / 0.7)), var(--panel, oklch(0.24 0.025 270)));
+  background: linear-gradient(180deg, var(--raise, oklch(0.32 0.04 60 / 0.7)), var(--panel, oklch(0.24 0.025 60)));
 }
 
 .rop-card--sel.rop-card--gold {
@@ -379,6 +423,24 @@ const confirmBtnClass = computed(() =>
 .rop-card--frozen {
   cursor: default;
   opacity: 0.75;
+}
+
+/* Source-enemy tag: which enemy this loot dropped from (absent = generic/fallback) */
+.rop-card__source {
+  display: inline-block;
+  font-family: var(--font-caps);
+  font-size: 0.55rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+  border: 1px solid var(--line-soft);
+  border-radius: 3px;
+  padding: 2px 7px;
+  background: oklch(0.22 0.03 60 / 0.6);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Selection indicator dot */

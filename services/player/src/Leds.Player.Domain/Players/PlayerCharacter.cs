@@ -4,6 +4,16 @@ namespace Leds.Player.Domain.Players;
 
 public sealed class PlayerCharacter
 {
+    public const int MaxEquippedSkills = 4;
+
+    /// <summary>
+    /// The universal basic attack. Always usable in combat in addition to
+    /// the equipped loadout — never counts against MaxEquippedSkills and
+    /// never needs to be equipped/known. Guarantees a character can never
+    /// end up with zero usable skills.
+    /// </summary>
+    public const string BasicSkillKey = "skill.basic.strike";
+
     private readonly List<PlayerCharacterSkill> _skills;
 
     private PlayerCharacter(
@@ -29,12 +39,20 @@ public sealed class PlayerCharacter
     public string DisplayName { get; }
     public string CharacterType { get; }
     public string Status { get; }
-    public PlayerCharacterStatBlock StatBlock { get; }
+    public PlayerCharacterStatBlock StatBlock { get; private set; }
     public int MaxVitality => StatBlock.MaxVitality;
     public int BaseMana => StatBlock.Mana;
     public int BaseCharge => StatBlock.Charge;
     public IReadOnlyCollection<PlayerCharacterSkill> Skills => _skills.AsReadOnly();
     public IReadOnlyCollection<string> SkillKeys => _skills.Select(s => s.SkillDefinitionKey).ToArray();
+    public IReadOnlyCollection<string> EquippedSkillKeys => _skills
+        .Where(s => s.IsEquipped)
+        .Select(s => s.SkillDefinitionKey)
+        .Append(BasicSkillKey)
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .ToArray();
+    public int EquippedCount => _skills.Count(s =>
+        s.IsEquipped && !string.Equals(s.SkillDefinitionKey, BasicSkillKey, StringComparison.OrdinalIgnoreCase));
 
     public static PlayerCharacter Create(
         string definitionKey,
@@ -127,6 +145,43 @@ public sealed class PlayerCharacter
     }
 
     /// <summary>
+    /// Semantic entry point for learning a new skill (event/combat/talent
+    /// unlocks will call this once those triggers exist). Wraps the
+    /// existing dedupe-by-key AddSkill.
+    /// </summary>
+    public void LearnSkill(PlayerCharacterSkill skill) => AddSkill(skill);
+
+    public void EquipSkill(string skillKey)
+    {
+        var skill = FindSkill(skillKey);
+
+        if (skill.IsEquipped)
+            return;
+
+        if (EquippedCount >= MaxEquippedSkills)
+            throw new DomainException($"Cannot equip more than {MaxEquippedSkills} skills.");
+
+        skill.Equip();
+    }
+
+    public void UnequipSkill(string skillKey)
+    {
+        FindSkill(skillKey).Unequip();
+    }
+
+    public void ApplyStatIncrement(PlayerStatKind kind)
+    {
+        StatBlock = StatBlock.WithIncrementedStat(kind);
+    }
+
+    private PlayerCharacterSkill FindSkill(string skillKey)
+    {
+        var skill = _skills.FirstOrDefault(s => string.Equals(s.SkillDefinitionKey, skillKey, StringComparison.OrdinalIgnoreCase));
+
+        return skill ?? throw new DomainException($"Skill '{skillKey}' is not known by this character.");
+    }
+
+    /// <summary>
     /// Rehydrates a player character from a trusted persistence snapshot.
     /// This method must not be used to create a new gameplay character.
     /// </summary>
@@ -154,7 +209,7 @@ public sealed class PlayerCharacter
         var now = DateTimeOffset.UtcNow;
         var skills = skillKeys
             .Distinct(StringComparer.OrdinalIgnoreCase)
-            .Select(key => PlayerCharacterSkill.Create(key, now, "legacy_migration"))
+            .Select(key => PlayerCharacterSkill.Create(key, now, "legacy_migration", isEquipped: true))
             .ToArray();
 
         return Rehydrate(id, definitionKey, displayName, "Standard", "Active", statBlock, skills);

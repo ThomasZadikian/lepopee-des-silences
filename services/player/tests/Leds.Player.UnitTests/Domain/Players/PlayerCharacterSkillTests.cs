@@ -136,4 +136,20 @@ public sealed class PlayerCharacterSkillTests
 
         skill.UnlockedAtUtc.Should().Be(specificTime);
     }
+
+    [Fact]
+    public void Create_ShouldDefaultIsEquippedToFalse()
+    {
+        var skill = PlayerCharacterSkill.Create("skill.basic.strike", DateTimeOffset.UtcNow, "default");
+
+        skill.IsEquipped.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Create_ShouldAcceptExplicitIsEquipped()
+    {
+        var skill = PlayerCharacterSkill.Create("skill.basic.strike", DateTimeOffset.UtcNow, "default", isEquipped: true);
+
+        skill.IsEquipped.Should().BeTrue();
+    }
 }

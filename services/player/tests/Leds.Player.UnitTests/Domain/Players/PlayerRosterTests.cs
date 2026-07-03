@@ -139,4 +139,48 @@ public sealed class PlayerRosterTests
         roster.Characters.Single().DisplayName.Should().Be("Name");
         roster.Characters.Single().MaxVitality.Should().Be(100);
     }
+
+    [Fact]
+    public void FindById_ShouldReturnMatchingCharacter()
+    {
+        var roster = PlayerRoster.Create();
+        var character = PlayerCharacter.Create("key", "Name", 100, 0, 0, ["skill"]);
+        roster.AddCharacter(character);
+
+        var found = roster.FindById(character.Id);
+
+        found.Should().Be(character);
+    }
+
+    [Fact]
+    public void FindById_ShouldReturnNull_WhenCharacterDoesNotExist()
+    {
+        var roster = PlayerRoster.Create();
+
+        var found = roster.FindById(PlayerCharacterId.New());
+
+        found.Should().BeNull();
+    }
+
+    [Fact]
+    public void GetRequired_ShouldReturnMatchingCharacter()
+    {
+        var roster = PlayerRoster.Create();
+        var character = PlayerCharacter.Create("key", "Name", 100, 0, 0, ["skill"]);
+        roster.AddCharacter(character);
+
+        var found = roster.GetRequired(character.Id);
+
+        found.Should().Be(character);
+    }
+
+    [Fact]
+    public void GetRequired_ShouldThrow_WhenCharacterDoesNotExist()
+    {
+        var roster = PlayerRoster.Create();
+
+        var act = () => roster.GetRequired(PlayerCharacterId.New());
+
+        act.Should().Throw<DomainException>().WithMessage("*not found*");
+    }
 }

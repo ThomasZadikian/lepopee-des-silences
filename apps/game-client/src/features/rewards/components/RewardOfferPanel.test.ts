@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { mount } from '@vue/test-utils';
+import { flushPromises, mount } from '@vue/test-utils';
 import RewardOfferPanel from './RewardOfferPanel.vue';
 import type { RewardOfferDto } from '../types/rewardTypes';
 
@@ -37,6 +37,22 @@ function mountPanel(offer: RewardOfferDto, isLoading = false) {
     },
   });
 }
+
+const defeatedEnemyOffer: RewardOfferDto = {
+  ...baseOffer,
+  defeatedEnemies: [
+    {
+      enemyKey: 'canon.enemy.chimeres-serpentaires',
+      displayName: 'Chimères serpentaires',
+      description: 'Ce qui reste quand plusieurs serpents partagent une seule volonté.',
+      count: 2,
+      lootEntries: [
+        { itemKey: 'canon.item.datura', itemDisplayName: 'Datura stramonium', rarity: 'Rare', dropPercent: 30 },
+        { itemKey: 'canon.item.cendre-benite', itemDisplayName: 'Cendre bénite', rarity: 'Common', dropPercent: 40 },
+      ],
+    },
+  ],
+};
 
 describe('RewardOfferPanel', () => {
   it('renders without crashing', () => {
@@ -130,5 +146,81 @@ describe('RewardOfferPanel', () => {
     if (btn.exists()) {
       expect((btn.element as HTMLButtonElement).disabled).toBe(true);
     }
+  });
+
+  it('shows a source-enemy tag on a card whose loot came from an enemy', () => {
+    const wrapper = mountPanel({
+      ...baseOffer,
+      choices: [
+        {
+          id: 'c1',
+          rewardType: 'TemporaryItem',
+          label: 'Peau de serpent',
+          description: 'Une mue encore souple.',
+          sourceEnemyDisplayName: 'Chimere Serpentaire',
+        },
+      ],
+    });
+    const source = wrapper.find('.rop-card__source');
+    expect(source.exists()).toBe(true);
+    expect(source.text()).toBe('Chimere Serpentaire');
+  });
+
+  it('does not show a source-enemy tag for a fallback/generic item', () => {
+    const wrapper = mountPanel({
+      ...baseOffer,
+      choices: [
+        {
+          id: 'c1',
+          rewardType: 'TemporaryItem',
+          label: 'Baume de mémoire',
+          description: 'Restaure une partie de la vitalité.',
+          sourceEnemyDisplayName: null,
+        },
+      ],
+    });
+    expect(wrapper.find('.rop-card__source').exists()).toBe(false);
+  });
+
+  it('renders up to six cards in the wrapping grid without crashing', () => {
+    const wrapper = mountPanel({
+      ...baseOffer,
+      choices: Array.from({ length: 6 }, (_, i) => ({
+        id: `c${i}`,
+        rewardType: 'TemporaryItem',
+        label: `Objet ${i}`,
+        description: 'Un butin de combat.',
+        sourceEnemyDisplayName: i % 2 === 0 ? 'Chimere Serpentaire' : null,
+      })),
+    });
+    expect(wrapper.findAll('.rop-card').length).toBe(6);
+    expect(wrapper.findAll('.rop-card__source').length).toBe(3);
+  });
+
+  it('does not show the defeated-enemies sidebar when defeatedEnemies is absent', () => {
+    const wrapper = mountPanel(baseOffer);
+    expect(wrapper.find('.del').exists()).toBe(false);
+  });
+
+  it('shows the defeated-enemies sidebar with a count badge for grouped duplicates', () => {
+    const wrapper = mountPanel(defeatedEnemyOffer);
+    expect(wrapper.find('.del').exists()).toBe(true);
+    expect(wrapper.text()).toContain('Chimères serpentaires');
+    expect(wrapper.text()).toContain('×2');
+  });
+
+  it('opens the loot popover with description and full loot table on click', async () => {
+    const wrapper = mountPanel(defeatedEnemyOffer);
+    await wrapper.find('.del-row__trigger').trigger('click');
+    await flushPromises();
+    // Teleported to <body>, so it lives outside the mounted wrapper's own root.
+    const popover = document.body.querySelector('.del-pop');
+    expect(popover).not.toBeNull();
+    const popoverText = popover?.textContent ?? '';
+    expect(popoverText).toContain('Ce qui reste quand plusieurs serpents partagent une seule volonté.');
+    expect(popoverText).toContain('Datura stramonium');
+    expect(popoverText).toContain('30%');
+    expect(popoverText).toContain('Cendre bénite');
+    expect(popoverText).toContain('40%');
   });
 });

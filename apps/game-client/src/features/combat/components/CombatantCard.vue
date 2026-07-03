@@ -1,33 +1,24 @@
 <script setup lang="ts">
-import type { CombatantRuntimeDto, CombatantStatusEffectDto } from '../types/combatContracts';
+import { computed, ref } from 'vue';
+import type { CombatantRuntimeDto } from '../types/combatContracts';
+import { useClickOutside } from '../../../shared/composables/useClickOutside';
 import AtbGauge from './AtbGauge.vue';
 import EmotionalTypeBadge from './EmotionalTypeBadge.vue';
+import StatusEffectToken from '../../../shared/components/StatusEffectToken.vue';
 
-function statusIcon(kind: string, magnitude: number): string {
-  switch (kind) {
-    case 'DamageOverTime': return '☠';
-    case 'HealOverTime': return '✚';
-    case 'StatModifier': return magnitude >= 0 ? '▲' : '▼';
-    case 'Stun': return '✦';
-    case 'Silence': return '∅';
-    case 'AtbLock': return '⏸';
-    default: return '•';
-  }
+const showDetails = ref(false);
+const detailsPopoverRef = ref<HTMLElement | null>(null);
+
+function toggleDetails(event: Event) {
+  event.stopPropagation();
+  showDetails.value = !showDetails.value;
 }
 
-function statusClass(kind: string, magnitude: number): string {
-  if (kind === 'DamageOverTime') return 'presence__fx-badge--dot';
-  if (kind === 'HealOverTime') return 'presence__fx-badge--hot';
-  if (kind === 'StatModifier') return magnitude >= 0 ? 'presence__fx-badge--buff' : 'presence__fx-badge--debuff';
-  return 'presence__fx-badge--control';
-}
+useClickOutside(detailsPopoverRef, () => { showDetails.value = false; }, {
+  ignoreSelectors: ['.presence__details-trigger'],
+});
 
-function fxTitle(fx: CombatantStatusEffectDto): string {
-  return fx.stacks > 1 ? `${fx.displayName} ×${fx.stacks}` : fx.displayName;
-}
-
-
-defineProps<{
+const props = defineProps<{
   combatant: CombatantRuntimeDto;
   isCurrentActor: boolean;
   isSelectedTarget: boolean;
@@ -40,6 +31,8 @@ defineProps<{
   isGuarded: boolean;
   isJustDefeated: boolean;
   isActing: boolean;
+  /** Highest threat value among living allies — this card's bar renders relative to it. */
+  maxThreat?: number;
 }>();
 
 defineEmits<{
@@ -49,6 +42,37 @@ defineEmits<{
 function hpRatio(c: CombatantRuntimeDto): number {
   return c.maxVitality > 0 ? c.currentVitality / c.maxVitality : 0;
 }
+
+// The guard segment sits right after the HP fill, both sized relative to
+// maxVitality. When their sum would exceed 100% (e.g. a combatant at or
+// near full HP still carrying guard), scale both down proportionally
+// instead of clamping guard alone — clamping guard alone made it vanish
+// visually any time HP was already full, even with a large guard value.
+function barSegments(c: CombatantRuntimeDto): { hp: number; guard: number } {
+  const hp = hpRatio(c);
+  const guard = c.maxVitality > 0 ? c.guard / c.maxVitality : 0;
+  const total = hp + guard;
+  const scale = total > 1 ? 1 / total : 1;
+  return { hp: hp * scale * 100, guard: guard * scale * 100 };
+}
+
+// Threat only means anything on the player side (enemies never accrue it —
+// only player actions build aggro). Bar fills relative to the highest threat
+// currently held among living allies; the ally holding it gets flagged as the
+// most likely enemy target.
+const showThreat = computed(() =>
+  props.combatant.side === 'Player' && (props.maxThreat ?? 0) > 0,
+);
+
+const threatRatio = computed(() => {
+  const max = props.maxThreat ?? 0;
+  if (max <= 0) return 0;
+  return Math.min(1, (props.combatant.threatValue ?? 0) / max);
+});
+
+const hasAggro = computed(() =>
+  showThreat.value && (props.combatant.threatValue ?? 0) >= (props.maxThreat ?? 0),
+);
 </script>
 
 <template>
@@ -72,10 +96,40 @@ function hpRatio(c: CombatantRuntimeDto): number {
     :disabled="combatant.status === 'Defeated' || !isSelectable"
     @click="$emit('select', combatant.id)"
   >
-    <span class="presence__portrait" aria-hidden="true" />
+    <span v-if="isDamaged" class="presence__hit-fx" aria-hidden="true">⚔</span>
+    <span v-if="isGuarded" class="presence__guard-fx" aria-hidden="true">⛨</span>
+
+    <div class="presence__atb-tube" aria-hidden="true">
+      <AtbGauge :gauge="combatant.atbGauge ?? 0" :fill-per-tick="combatant.atbFillPerTick ?? 10" :active="isCurrentActor" />
+    </div>
+
+    <span class="presence__portrait" aria-hidden="true">
+      <span
+        class="presence__details-trigger"
+        role="button"
+        tabindex="0"
+        title="Détails des statistiques"
+        @click="toggleDetails"
+        @keydown.enter="toggleDetails"
+        @keydown.space.prevent="toggleDetails"
+      >◎</span>
+
+      <div v-if="showDetails" ref="detailsPopoverRef" class="presence__details-popover" @click.stop>
+        <button class="presence__details-close" @click="toggleDetails" aria-label="Fermer">✕</button>
+        <div class="presence__details-row"><span>⚔</span><b>{{ combatant.attackPower ?? 0 }}</b><small>Attaque</small></div>
+        <div class="presence__details-row"><span>⛨</span><b>{{ combatant.defense ?? 0 }}</b><small>Défense</small></div>
+        <div class="presence__details-row"><span>⚡</span><b>{{ combatant.speed ?? 0 }}</b><small>Vitesse</small></div>
+        <div class="presence__details-row"><span>◎</span><b>{{ combatant.focus ?? 0 }}</b><small>Focus</small></div>
+      </div>
+    </span>
 
     <div class="presence__topline">
       <EmotionalTypeBadge :type="combatant.attackType ?? 'Neutral'" />
+      <span
+        v-if="hasAggro"
+        class="presence__state presence__state--aggro"
+        title="Cible la plus menacée : les ennemis viseront probablement ici"
+      >⚠ menace</span>
       <span v-if="isActivePlayer" class="presence__state presence__state--ready">PRÊT</span>
       <span v-else-if="isSelectedTarget" class="presence__state presence__state--target">cible</span>
       <span v-else-if="combatant.status === 'Defeated'" class="presence__state presence__state--dead">abattu</span>
@@ -83,40 +137,36 @@ function hpRatio(c: CombatantRuntimeDto): number {
 
     <span class="presence__name">{{ combatant.displayName }}</span>
 
-    <div class="presence__tags" aria-hidden="true">
-      <span v-if="combatant.guard > 0" class="presence__tag presence__tag--guard">Garde</span>
-    </div>
-
      <div v-if="(combatant.statusEffects?.length ?? 0) > 0" class="presence__fx">
-      <span
+      <StatusEffectToken
         v-for="fx in combatant.statusEffects"
         :key="fx.key"
         class="presence__fx-badge"
-        :class="statusClass(fx.kind, fx.magnitude)"
-        :title="fxTitle(fx)"
-      >
-        {{ statusIcon(fx.kind, fx.magnitude) }}<small v-if="fx.stacks > 1">{{ fx.stacks }}</small>
-      </span>
+        :kind="fx.kind"
+        :magnitude="fx.magnitude"
+        :stacks="fx.stacks"
+        :px="26"
+      />
     </div>
 
     <div class="presence__gauge">
-      <div class="presence__gauge-fill" :style="{ width: hpRatio(combatant) * 100 + '%' }" />
+      <div class="presence__gauge-fill" :style="{ width: barSegments(combatant).hp + '%' }" />
+      <div v-if="combatant.guard > 0" class="presence__gauge-guard" :style="{ width: barSegments(combatant).guard + '%' }" />
     </div>
 
-    <div class="presence__atb" aria-hidden="true">
-      <AtbGauge :gauge="combatant.atbGauge ?? 0" :fill-per-tick="combatant.atbFillPerTick ?? 10" :active="isCurrentActor" />    
-    </div>
     <div class="presence__stats">
       <span class="presence__stat presence__stat--hp">PV {{ combatant.currentVitality }} / {{ combatant.maxVitality }}</span>
-      <span v-if="combatant.guard > 0" class="presence__stat presence__stat--guard">{{ combatant.guard }}</span>
+      <span v-if="combatant.guard > 0" class="presence__stat presence__stat--guard">⛨ {{ combatant.guard }}</span>
       <span v-if="combatant.side === 'Player'" class="presence__stat presence__stat--breath">{{ combatant.mana }} souffle</span>
     </div>
 
-    <div class="presence__substats">
-      <span title="Attaque">⚔ {{ combatant.attackPower ?? 0 }}</span>
-      <span title="Défense">⛨ {{ combatant.defense ?? 0 }}</span>
-      <span title="Vitesse">⚡ {{ combatant.speed ?? 0 }}</span>
-      <span title="Focus (chance de critique)">◎ {{ combatant.focus ?? 0 }}</span>
+    <div
+      v-if="showThreat"
+      class="presence__threat"
+      :class="{ 'presence__threat--aggro': hasAggro }"
+      :title="`Menace : ${Math.round(combatant.threatValue ?? 0)}`"
+    >
+      <div class="presence__threat-fill" :style="{ width: (threatRatio * 100) + '%' }" />
     </div>
 
     <slot />
@@ -127,7 +177,7 @@ function hpRatio(c: CombatantRuntimeDto): number {
 .presence {
   position: relative;
   display: grid;
-  grid-template-columns: 3.5rem minmax(0, 1fr);
+  grid-template-columns: 18px 3.5rem minmax(0, 1fr);
   align-items: center;
   gap: var(--space-1);
   width: 100%;
@@ -148,17 +198,110 @@ function hpRatio(c: CombatantRuntimeDto): number {
   border-left: 2px solid var(--edge-frost);
 }
 
+.presence__atb-tube {
+  grid-row: 1 / span 6;
+  grid-column: 1;
+  align-self: stretch;
+  min-height: 5.6rem;
+}
+
 .presence__portrait {
+  position: relative;
   grid-row: 1 / span 5;
+  grid-column: 2;
   width: 3.2rem;
   height: 3.2rem;
   border: 1px solid var(--edge-frost);
   border-radius: 4px;
   background:
     radial-gradient(circle at 65% 20%, var(--gold), transparent 8%),
-    radial-gradient(circle at 45% 36%, oklch(0.5 0.06 272 / 0.38), transparent 48%),
-    linear-gradient(145deg, oklch(0.11 0.03 272), oklch(0.24 0.04 272));
+    radial-gradient(circle at 45% 36%, oklch(0.5 0.06 252 / 0.38), transparent 48%),
+    linear-gradient(145deg, var(--void), var(--raise));
   box-shadow: inset 0 0 20px oklch(0 0 0 / 0.45);
+}
+
+.presence__details-trigger {
+  position: absolute;
+  right: -5px;
+  bottom: -5px;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid var(--edge-gold);
+  background: var(--raise);
+  color: var(--gold);
+  font-size: 9px;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 3;
+}
+
+.presence__details-trigger:hover,
+.presence__details-trigger:focus-visible {
+  background: var(--wash-gold);
+  color: var(--gold-hi);
+  outline: none;
+}
+
+.presence__details-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 8rem;
+  padding: 10px 12px;
+  border: 1px solid var(--edge-gold);
+  border-radius: var(--radius-sm);
+  background: linear-gradient(150deg, var(--raise), var(--void));
+  box-shadow: var(--shadow-deep);
+  cursor: default;
+}
+
+.presence__details-close {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  border: none;
+  background: none;
+  color: var(--ink-4);
+  font-size: 10px;
+  cursor: pointer;
+  padding: 2px;
+}
+
+.presence__details-close:hover { color: var(--ink); }
+
+.presence__details-row {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}
+
+.presence__details-row span {
+  color: var(--gold);
+  font-size: 0.85rem;
+  width: 1rem;
+}
+
+.presence__details-row b {
+  color: var(--ink);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.presence__details-row small {
+  color: var(--ink-4);
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .presence--enemy {
@@ -200,7 +343,7 @@ function hpRatio(c: CombatantRuntimeDto): number {
 .presence--just-defeated { animation: defeat-fade 900ms ease-out; }
 
 .presence__topline {
-  grid-column: 2;
+  grid-column: 3;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -230,75 +373,46 @@ function hpRatio(c: CombatantRuntimeDto): number {
   border-radius: 999px;
 }
 
-.presence__substats {
-  grid-column: 2;
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  font-family: var(--font-mono);
-  font-size: 0.58rem;
-  color: var(--ink-5);
-}
-
 .presence__state--ready { color: var(--frost); border-color: var(--edge-frost); }
 .presence__state--target { color: var(--gold); border-color: var(--edge-gold); }
 .presence__state--dead { color: var(--blood); border-color: color-mix(in oklch, var(--blood), transparent 50%); }
 
 .presence__name {
-  grid-column: 2;
+  grid-column: 3;
   font-family: var(--font);
   font-size: 0.82rem;
   color: var(--ink-2);
   line-height: 1.2;
 }
 
-.presence__tags {
-  grid-column: 2;
-  display: flex;
-  justify-content: flex-end;
-  flex-wrap: wrap;
-  gap: 3px;
-  min-height: 0.75rem;
-}
-
-.presence__tag {
-  font-family: var(--font-caps);
-  font-size: 0.44rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--ink-4);
-  border: 1px solid var(--line-soft);
-  border-radius: 999px;
-  padding: 0 4px;
-}
-
-.presence__tag--guard { color: var(--frost-dim); border-color: color-mix(in oklch, var(--frost), transparent 62%); }
-.presence__tag--blood { color: var(--blood); border-color: color-mix(in oklch, var(--blood), transparent 58%); }
-.presence__tag--gold { color: var(--gold); border-color: color-mix(in oklch, var(--gold), transparent 58%); }
-
 .presence__gauge {
-  grid-column: 2;
-  height: 3px;
+  grid-column: 3;
+  display: flex;
+  height: 7px;
   background: var(--panel);
-  border-radius: 2px;
+  border-radius: 3px;
   overflow: hidden;
 }
 
 .presence__gauge-fill {
+  flex: 0 0 auto;
   height: 100%;
   background: var(--blood);
-  border-radius: 2px;
   transition: width 0.35s ease;
 }
 
 .presence--ally .presence__gauge-fill { background: var(--frost-dim); }
 
-.presence__atb {
-  grid-column: 2;
+.presence__gauge-guard {
+  flex: 0 0 auto;
+  height: 100%;
+  background: var(--gold);
+  box-shadow: inset 0 0 4px oklch(0.08 0.015 48 / 0.4);
+  transition: width 0.35s ease;
 }
 
 .presence__stats {
-  grid-column: 2;
+  grid-column: 3;
   display: flex;
   justify-content: space-between;
   flex-wrap: wrap;
@@ -312,8 +426,40 @@ function hpRatio(c: CombatantRuntimeDto): number {
   color: var(--ink-4);
 }
 
-.presence__stat--guard { color: var(--frost-dim); }
+.presence__stat--guard {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--gold);
+  text-shadow: 0 0 8px color-mix(in oklch, var(--gold), transparent 60%);
+}
 .presence__stat--breath { color: var(--ink-5); }
+
+/* ── Threat / aggro ──────────────────────────────────────────────────────── */
+.presence__state--aggro {
+  color: var(--blood);
+  border-color: color-mix(in oklch, var(--blood), transparent 40%);
+  background: color-mix(in oklch, var(--blood), transparent 88%);
+}
+
+.presence__threat {
+  grid-column: 3;
+  height: 4px;
+  margin-top: 2px;
+  background: var(--panel);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.presence__threat-fill {
+  height: 100%;
+  background: color-mix(in oklch, var(--blood), var(--ink-4) 35%);
+  transition: width 0.35s ease, background 0.25s ease;
+}
+
+.presence__threat--aggro .presence__threat-fill {
+  background: var(--blood);
+  box-shadow: 0 0 6px color-mix(in oklch, var(--blood), transparent 40%);
+}
 
 @keyframes think-pulse {
   0%, 100% { filter: brightness(1); }
@@ -339,10 +485,50 @@ function hpRatio(c: CombatantRuntimeDto): number {
   100% { opacity: 0.35; filter: grayscale(0.8); }
 }
 
+/* ── Hit / guard strike effects ──────────────────────────────────────────── */
+.presence__hit-fx,
+.presence__guard-fx {
+  position: absolute;
+  top: 45%;
+  left: 62%;
+  transform: translate(-50%, -50%);
+  z-index: 7;
+  font-size: 1.7rem;
+  pointer-events: none;
+}
+
+.presence__hit-fx {
+  color: var(--blood);
+  text-shadow: 0 0 14px color-mix(in oklch, var(--blood), transparent 30%);
+  animation: hit-pop 450ms ease-out forwards;
+}
+
+.presence__guard-fx {
+  color: var(--gold);
+  text-shadow: 0 0 14px color-mix(in oklch, var(--gold), transparent 30%);
+  animation: guard-pop 550ms ease-out forwards;
+}
+
+@keyframes hit-pop {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.4) rotate(-18deg); }
+  30% { opacity: 1; transform: translate(-50%, -50%) scale(1.2) rotate(10deg); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.35) rotate(10deg); }
+}
+
+@keyframes guard-pop {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+  35% { opacity: 1; transform: translate(-50%, -50%) scale(1.3); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.05); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .presence, .presence--selected, .presence--damaged, .presence--guarded, .presence--just-defeated, .presence--thinking {
     animation: none;
     transition: none;
+  }
+
+  .presence__hit-fx, .presence__guard-fx {
+    display: none;
   }
 }
 
@@ -357,25 +543,6 @@ function hpRatio(c: CombatantRuntimeDto): number {
 }
 
 .presence__fx-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 1px;
-  padding: 1px 5px;
-  border-radius: 999px;
-  border: 1px solid var(--line, oklch(0.5 0.02 272 / 0.4));
-  font-size: 0.62rem;
-  line-height: 1.3;
-  background: oklch(0.18 0.03 272 / 0.7);
+  flex: 0 0 auto;
 }
-
-.presence__fx-badge small {
-  font-size: 0.5rem;
-  opacity: 0.85;
-}
-
-.presence__fx-badge--dot     { color: oklch(0.78 0.16 145); border-color: oklch(0.78 0.16 145 / 0.5); }
-.presence__fx-badge--hot     { color: oklch(0.82 0.13 200); border-color: oklch(0.82 0.13 200 / 0.5); }
-.presence__fx-badge--buff    { color: var(--gold, oklch(0.86 0.10 86)); border-color: oklch(0.86 0.10 86 / 0.5); }
-.presence__fx-badge--debuff  { color: oklch(0.78 0.16 25); border-color: oklch(0.78 0.16 25 / 0.5); }
-.presence__fx-badge--control { color: oklch(0.80 0.13 300); border-color: oklch(0.80 0.13 300 / 0.5); }
 </style>

@@ -1,6 +1,7 @@
 import { HttpError, httpRequest } from '../../../shared/api/httpClient';
 import type {
   DevToolsCombatResponse,
+  DevToolsPlayerDebugResponse,
   DevToolsRunPsycheResponse,
   DevToolsRunResponse,
   DevToolsStatusResponse,
@@ -140,6 +141,21 @@ export const devToolsApi = {
       token,
       `/api/dev/v2/runs/${runId}/combats/current/combatants/${combatantId}/status`,
       { statusKey, stacks, duration },
+    );
+  },
+
+  unlockSkill(token: string, playerId: string, characterId: string, skillKey: string) {
+    return post<DevToolsPlayerDebugResponse>(
+      token,
+      `/api/dev/v2/players/${playerId}/characters/${characterId}/skills/${skillKey}/unlock`,
+    );
+  },
+
+  awardStatPoints(token: string, playerId: string, amount: number) {
+    return post<DevToolsPlayerDebugResponse>(
+      token,
+      `/api/dev/v2/players/${playerId}/stat-points/award`,
+      { amount },
     );
   },
 };

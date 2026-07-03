@@ -8,8 +8,14 @@ namespace Leds.GameEngine.Infrastructure.Events.Resolution;
 
 public sealed class ItemEventContentResolutionStrategy : IEventContentResolutionStrategy
 {
-    private const string DefaultEventTemplateKey = "event-combat-shadow-v1";
-    private const string DefaultItemTemplateKey = "item-memory-fragment-v1";
+    // See CombatEventContentResolutionStrategy — same reasoning: this used to fetch a
+    // catalog EventTemplate purely to fill EventTemplateKey/Version/Tags below, but that
+    // legacy table isn't seeded, so it's synthesized locally instead. ItemTemplateKey used
+    // to point at an equally unseeded placeholder ("item-memory-fragment-v1"); it now points
+    // at a real canon item so a lookup against the catalog actually resolves.
+    private const string DefaultEventTemplateKey = "event-item-v1";
+    private const string TemplateVersion = "1.0";
+    private const string DefaultItemTemplateKey = "canon.item.lanterne";
 
     private readonly ICatalogContentGateway _catalogContentGateway;
 
@@ -25,15 +31,6 @@ public sealed class ItemEventContentResolutionStrategy : IEventContentResolution
         EventContentResolutionContext context,
         CancellationToken cancellationToken = default)
     {
-        var eventTemplateResult = await _catalogContentGateway.GetEventTemplateByKeyAsync(
-            DefaultEventTemplateKey,
-            cancellationToken);
-
-        if (eventTemplateResult.IsFailure)
-        {
-            return Result<ResolvedNodeEventContent>.Failure(eventTemplateResult.Error);
-        }
-
         var itemTemplateResult = await _catalogContentGateway.GetItemTemplateByKeyAsync(
             DefaultItemTemplateKey,
             cancellationToken);
@@ -43,14 +40,13 @@ public sealed class ItemEventContentResolutionStrategy : IEventContentResolution
             return Result<ResolvedNodeEventContent>.Failure(itemTemplateResult.Error);
         }
 
-        var eventTemplate = eventTemplateResult.Value;
         var itemTemplate = itemTemplateResult.Value;
 
         return Result<ResolvedNodeEventContent>.Success(
             new ResolvedItemEventContent(
-                EventTemplateKey: eventTemplate.Key,
-                EventTemplateVersion: eventTemplate.Version,
-                Tags: eventTemplate.NarrativeTags,
+                EventTemplateKey: DefaultEventTemplateKey,
+                EventTemplateVersion: TemplateVersion,
+                Tags: [],
                 ItemTemplateKey: itemTemplate.Key,
                 ItemTemplateVersion: itemTemplate.Version,
                 RewardProfile: context.RewardProfile));

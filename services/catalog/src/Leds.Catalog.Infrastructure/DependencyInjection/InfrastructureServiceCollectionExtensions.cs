@@ -1,5 +1,7 @@
 using Leds.Catalog.Application.Enemies.Definitions.Ports;
+using Leds.Catalog.Application.Enemies.Loot.Ports;
 using Leds.Catalog.Application.Enemies.Ports;
+using Leds.Catalog.Application.Rewards.GenericLoot.Ports;
 using Leds.Catalog.Application.EventTemplates.Ports;
 using Leds.Catalog.Application.Curses.Ports;
 using Leds.Catalog.Application.EffectSets.Ports;
@@ -48,6 +50,8 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<ISkillTemplateReadStore, EfSkillTemplateReadStore>();
         services.AddScoped<IEventTemplateReadStore, EfEventTemplateReadStore>();
         services.AddScoped<IRoomBossDefinitionReadStore, EfRoomBossDefinitionReadStore>();
+        services.AddScoped<IEnemyLootTableReadStore, EfEnemyLootTableReadStore>();
+        services.AddScoped<IGenericLootPoolReadStore, EfGenericLootPoolReadStore>();
 
         // Canon content seeders (git-ignored, local-only) — discovered by scan so the
         // build never depends on a concrete type that may be absent on a fresh clone.

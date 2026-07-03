@@ -2,43 +2,38 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 const props = withDefaults(
-  defineProps<{ gauge?: number; fillPerTick?: number; active?: boolean }>(),
-  { gauge: 0, fillPerTick: 10, active: false },
+  defineProps<{ gauge?: number; fillPerTick?: number; active?: boolean; vertical?: boolean }>(),
+  { gauge: 0, fillPerTick: 10, active: false, vertical: true },
 );
 
 const READY = 50_000;
-const MAX_OVERFLOW = 50_000;
-// Visual fill rate (gauge units / second). Decoupled from the tiny server
-// fillPerTick so the bar reads well; relative speed shows via turn frequency.
-const FILL_RATE = 6_500;
 
 const displayed = ref(props.gauge);
 
-const baseRatio = computed(() => Math.min(displayed.value, READY) / READY);
-const overflow = computed(() => Math.max(0, displayed.value - READY));
-const chargeRatio = computed(() => Math.min(overflow.value, MAX_OVERFLOW) / MAX_OVERFLOW);
+const fillRatio = computed(() => Math.min(displayed.value, READY) / READY);
 const isReady = computed(() => displayed.value >= READY);
-const isCharging = computed(() => overflow.value > 0 && displayed.value < READY + MAX_OVERFLOW);
-const isMax = computed(() => displayed.value >= READY + MAX_OVERFLOW);
+
+const fillStyle = computed(() => (props.vertical ? { height: fillRatio.value * 100 + '%' } : { width: fillRatio.value * 100 + '%' }));
 
 const justReady = ref(false);
 const staggered = ref(false);
 const timers: number[] = [];
-// in <script setup>, alongside the other computeds
-const READY_T = 50_000;
-const MAX_OVER = 10_000;
-const chargeMult = computed(() => {
-  const over = Math.min(Math.max(displayed.value - READY_T, 0), MAX_OVER);
-  if (over <= 0) return null;
-  const r = over / MAX_OVER;
-  return r < 0.34 ? '×1.15' : r < 0.67 ? '×1.30' : '×1.5';
-});
 
 function flash(target: { value: boolean }, ms = 600) {
   target.value = true;
   const id = window.setTimeout(() => { target.value = false; }, ms);
   timers.push(id);
 }
+
+// Visual fill rate (gauge units / second), derived from the combatant's real
+// AtbFillPerTick so fast vs. slow combatants visibly animate at different
+// speeds. Must be fast enough to fully close the gap to a new server target
+// before the NEXT snapshot arrives, or the bar permanently lags behind the
+// real gauge that actually gates the turn (useCombatStore's runCombatClock
+// advances TICK_DELTA=340 ticks every TICK_INTERVAL=480ms, i.e. the real
+// average rate is fillPerTick * 340 / 0.48 ≈ fillPerTick * 708/s). ×900 gives
+// headroom to always catch up within one tick interval.
+const fillRate = computed(() => Math.max(2_000, props.fillPerTick * 900));
 
 let raf = 0;
 let last = 0;
@@ -47,7 +42,8 @@ function frame(now: number) {
   last = now;
   const target = props.gauge;
   if (displayed.value < target) {
-    displayed.value = Math.min(target, displayed.value + FILL_RATE * dt); // animate up
+    displayed.value = Math.min(target, displayed.value + fillRate.value * dt); // animate up
+    displayed.value = Math.min(target, displayed.value + fillRate.value * dt); // animate up
   } else if (displayed.value > target) {
     displayed.value = target; // snap down (acted / interrupted)
   }
@@ -72,18 +68,20 @@ onBeforeUnmount(() => {
     class="atb"
     :class="{
       'atb--ready': isReady,
-      'atb--charging': isCharging,
-      'atb--max': isMax,
       'atb--active': active,
       'atb--just-ready': justReady,
       'atb--staggered': staggered,
+      'atb--vertical': vertical,
+      'atb--horizontal': !vertical,
     }"
     aria-hidden="true"
   >
-    <div class="atb__fill" :style="{ width: baseRatio * 100 + '%' }" />
-    <!-- inside the gauge template, e.g. after the bar element -->
-    <span v-if="chargeMult" class="atb-gauge__charge">⚡ {{ chargeMult }}</span>
-    <div v-if="overflow > 0" class="atb__charge" :style="{ width: chargeRatio * 100 + '%' }" />
+    <template v-if="vertical">
+      <span class="atb__tick" style="top: 10%" />
+      <span class="atb__tick" style="top: 42%" />
+      <span class="atb__tick" style="top: 72%" />
+    </template>
+    <div class="atb__fill" :style="fillStyle" />
     <span v-if="isReady" class="atb__spark" />
   </div>
 </template>
@@ -91,57 +89,56 @@ onBeforeUnmount(() => {
 <style scoped>
 .atb {
   position: relative;
-  height: 4px;
   border-radius: 999px;
-  background: oklch(0.14 0.03 272 / 0.9);
+  background: linear-gradient(var(--void), oklch(0.13 0.016 52));
   overflow: hidden;
   isolation: isolate;
+  box-shadow: inset 0 0 7px oklch(0.08 0.015 48 / 0.85);
 }
 
-.atb-gauge__charge {
-  position: absolute; right: 4px; top: -2px;
-  font-family: var(--font-mono); font-size: 0.58rem;
-  color: var(--gold); text-shadow: 0 0 8px color-mix(in oklch, var(--gold), transparent 40%);
+.atb--horizontal {
+  height: 4px;
+  border-radius: 999px;
+}
+
+.atb--vertical {
+  width: 100%;
+  height: 100%;
+  min-height: 3.6rem;
+  border-radius: 9px;
+  border: 1px solid var(--edge-frost);
+}
+
+.atb--vertical.atb--ready { border-color: var(--edge-gold); }
+
+.atb__tick {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: oklch(1 0 0 / 0.06);
 }
 
 .atb__fill {
   position: absolute;
-  inset: 0 auto 0 0;
-  height: 100%;
   border-radius: inherit;
   background: linear-gradient(90deg, var(--frost-dim), var(--frost));
-  transition: width 0.18s linear, background 0.25s ease;
+  transition: width 0.18s linear, height 0.18s linear, background 0.25s ease;
 }
 
-.atb__charge {
-  position: absolute;
-  inset: 0 auto 0 0;
-  height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, var(--gold-dim), var(--gold));
-  box-shadow: 0 0 8px color-mix(in oklch, var(--gold), transparent 50%);
-  transition: width 0.18s linear;
-  mix-blend-mode: screen;
-}
+.atb--horizontal .atb__fill { inset: 0 auto 0 0; }
+.atb--vertical .atb__fill { inset: auto 0 0 0; background: linear-gradient(0deg, var(--frost-deep), var(--frost-dim) 50%, var(--frost)); }
 
 .atb--ready .atb__fill {
   background: linear-gradient(90deg, var(--gold-dim), var(--gold));
   animation: atb-ready-pulse 1.1s ease-in-out infinite;
 }
-.atb--ready { box-shadow: 0 0 10px color-mix(in oklch, var(--gold), transparent 62%); }
-.atb--active.atb--ready { box-shadow: 0 0 16px color-mix(in oklch, var(--gold), transparent 42%); }
-
-.atb--charging .atb__charge {
-  animation: atb-charge-shimmer 0.9s linear infinite;
-  background-size: 200% 100%;
-  background-image: linear-gradient(90deg, var(--gold-dim), var(--gold), var(--gold-dim));
+.atb--vertical.atb--ready .atb__fill {
+  background: linear-gradient(0deg, var(--gold-deep), var(--gold) 45%, var(--gold-hi));
+  box-shadow: 0 0 12px oklch(0.74 0.14 60 / 0.7);
 }
-
-.atb--max .atb__charge {
-  animation: atb-max-pulse 0.6s ease-in-out infinite;
-  box-shadow: 0 0 14px color-mix(in oklch, var(--gold), transparent 25%);
-}
-.atb--max { box-shadow: 0 0 18px color-mix(in oklch, var(--gold), transparent 30%); }
+.atb--ready { box-shadow: inset 0 0 7px oklch(0.08 0.015 48 / 0.85), 0 0 10px color-mix(in oklch, var(--gold), transparent 62%); }
+.atb--active.atb--ready { box-shadow: inset 0 0 7px oklch(0.08 0.015 48 / 0.85), 0 0 16px color-mix(in oklch, var(--gold), transparent 42%); }
 
 .atb__spark {
   position: absolute;
@@ -155,16 +152,18 @@ onBeforeUnmount(() => {
   box-shadow: 0 0 8px var(--gold);
   animation: atb-spark 1.1s ease-in-out infinite;
 }
+.atb--vertical .atb__spark { top: auto; bottom: 2px; right: 50%; transform: translateX(50%); }
 
 .atb--just-ready { animation: atb-flash 0.5s ease-out; }
 .atb--staggered { animation: atb-stagger 0.55s ease-out; }
 .atb--staggered .atb__fill {
   background: linear-gradient(90deg, var(--blood), color-mix(in oklch, var(--blood), transparent 40%));
 }
+.atb--vertical.atb--staggered .atb__fill {
+  background: linear-gradient(0deg, color-mix(in oklch, var(--blood), transparent 40%), var(--blood));
+}
 
 @keyframes atb-ready-pulse { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.35); } }
-@keyframes atb-charge-shimmer { 0% { background-position: 0% 0; } 100% { background-position: 200% 0; } }
-@keyframes atb-max-pulse { 0%, 100% { filter: brightness(1.1); } 50% { filter: brightness(1.6); } }
 @keyframes atb-spark { 0%, 100% { opacity: 0.6; transform: translateY(-50%) scale(0.85); } 50% { opacity: 1; transform: translateY(-50%) scale(1.2); } }
 @keyframes atb-flash {
   0% { box-shadow: 0 0 0 color-mix(in oklch, var(--gold), transparent 0%); }
@@ -179,8 +178,8 @@ onBeforeUnmount(() => {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .atb__fill, .atb__charge, .atb__spark,
-  .atb--ready .atb__fill, .atb--charging .atb__charge, .atb--max .atb__charge,
+  .atb__fill, .atb__spark,
+  .atb--ready .atb__fill,
   .atb--just-ready, .atb--staggered { animation: none; transition: none; }
 }
 </style>

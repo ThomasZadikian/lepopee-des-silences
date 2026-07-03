@@ -13,7 +13,11 @@ namespace Leds.GameEngine.Infrastructure.Events.Resolution;
 
 public sealed class PalaceLawEventContentResolutionStrategy : IEventContentResolutionStrategy
 {
-    private const string DefaultEventTemplateKey = "event-combat-shadow-v1";
+    // See CombatEventContentResolutionStrategy — same reasoning: this used to fetch a
+    // catalog EventTemplate purely to fill EventTemplateKey/Version/Tags below, but that
+    // legacy table isn't seeded, so it's synthesized locally instead.
+    private const string DefaultEventTemplateKey = "event-palace-law-v1";
+    private const string TemplateVersion = "1.0";
 
     private readonly ICatalogContentGateway _catalogContentGateway;
 
@@ -29,15 +33,6 @@ public sealed class PalaceLawEventContentResolutionStrategy : IEventContentResol
         EventContentResolutionContext context,
         CancellationToken cancellationToken = default)
     {
-        var eventTemplateResult = await _catalogContentGateway.GetEventTemplateByKeyAsync(
-            DefaultEventTemplateKey,
-            cancellationToken);
-
-        if (eventTemplateResult.IsFailure)
-        {
-            return Result<ResolvedNodeEventContent>.Failure(eventTemplateResult.Error);
-        }
-
         var activeLawKeys = (context.ActivePalaceLawKeys ?? [])
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
         var eligiblePalaceLaws = (await _catalogContentGateway.ListActivePalaceLawDefinitionsAsync(cancellationToken))
@@ -53,16 +48,15 @@ public sealed class PalaceLawEventContentResolutionStrategy : IEventContentResol
                 "No eligible palace law definition is available for this event."));
         }
 
-        var eventTemplate = eventTemplateResult.Value;
         var palaceLaw = SelectDeterministically(context, eligiblePalaceLaws);
 
         if (context.EventType == NodeEventType.Curse)
         {
             return Result<ResolvedNodeEventContent>.Success(
                 new ResolvedCurseEventContent(
-                    EventTemplateKey: eventTemplate.Key,
-                    EventTemplateVersion: eventTemplate.Version,
-                    Tags: eventTemplate.NarrativeTags,
+                    EventTemplateKey: DefaultEventTemplateKey,
+                    EventTemplateVersion: TemplateVersion,
+                    Tags: [],
                     PalaceLawDefinitionKey: palaceLaw.Key,
                     PalaceLawName: palaceLaw.Name,
                     PalaceLawDescription: palaceLaw.Description,
@@ -71,9 +65,9 @@ public sealed class PalaceLawEventContentResolutionStrategy : IEventContentResol
 
         return Result<ResolvedNodeEventContent>.Success(
             new ResolvedPalaceLawEventContent(
-                EventTemplateKey: eventTemplate.Key,
-                EventTemplateVersion: eventTemplate.Version,
-                Tags: eventTemplate.NarrativeTags,
+                EventTemplateKey: DefaultEventTemplateKey,
+                EventTemplateVersion: TemplateVersion,
+                Tags: [],
                 PalaceLawDefinitionKey: palaceLaw.Key,
                 PalaceLawName: palaceLaw.Name,
                 PalaceLawDescription: palaceLaw.Description,

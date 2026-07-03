@@ -25,6 +25,7 @@ public sealed class PlayerCharacterSkillEntity
     public string SkillDefinitionKey { get; set; } = string.Empty;
     public DateTimeOffset UnlockedAtUtc { get; set; }
     public string? Source { get; set; }
+    public bool IsEquipped { get; set; }
 
     public PlayerCharacterEntity PlayerCharacter { get; set; } = null!;
 }

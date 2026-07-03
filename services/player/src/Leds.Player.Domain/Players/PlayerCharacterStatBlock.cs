@@ -89,4 +89,22 @@ public sealed class PlayerCharacterStatBlock
             mana: 0,
             charge: 0);
     }
+
+    public PlayerCharacterStatBlock WithIncrementedStat(PlayerStatKind kind)
+    {
+        return kind switch
+        {
+            PlayerStatKind.MaxVitality => Create(MaxVitality + 1, AttackPower, Defense, StartingGuard, Speed, Initiative, Recovery, Focus, Mana, Charge),
+            PlayerStatKind.AttackPower => Create(MaxVitality, AttackPower + 1, Defense, StartingGuard, Speed, Initiative, Recovery, Focus, Mana, Charge),
+            PlayerStatKind.Defense => Create(MaxVitality, AttackPower, Defense + 1, StartingGuard, Speed, Initiative, Recovery, Focus, Mana, Charge),
+            PlayerStatKind.StartingGuard => Create(MaxVitality, AttackPower, Defense, StartingGuard + 1, Speed, Initiative, Recovery, Focus, Mana, Charge),
+            PlayerStatKind.Speed => Create(MaxVitality, AttackPower, Defense, StartingGuard, Speed + 1, Initiative, Recovery, Focus, Mana, Charge),
+            PlayerStatKind.Initiative => Create(MaxVitality, AttackPower, Defense, StartingGuard, Speed, Initiative + 1, Recovery, Focus, Mana, Charge),
+            PlayerStatKind.Recovery => Create(MaxVitality, AttackPower, Defense, StartingGuard, Speed, Initiative, Recovery + 1, Focus, Mana, Charge),
+            PlayerStatKind.Focus => Create(MaxVitality, AttackPower, Defense, StartingGuard, Speed, Initiative, Recovery, Focus + 1, Mana, Charge),
+            PlayerStatKind.Mana => Create(MaxVitality, AttackPower, Defense, StartingGuard, Speed, Initiative, Recovery, Focus, Mana + 1, Charge),
+            PlayerStatKind.Charge => Create(MaxVitality, AttackPower, Defense, StartingGuard, Speed, Initiative, Recovery, Focus, Mana, Charge + 1),
+            _ => throw new DomainException($"Unknown stat kind '{kind}'.")
+        };
+    }
 }

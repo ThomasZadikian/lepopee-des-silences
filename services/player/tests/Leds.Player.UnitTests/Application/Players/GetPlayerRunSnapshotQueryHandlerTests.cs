@@ -198,6 +198,66 @@ public sealed class GetPlayerRunSnapshotQueryHandlerTests
         charResponse.MaxVitality.Should().Be(200);
         charResponse.BaseMana.Should().Be(50);
         charResponse.BaseCharge.Should().Be(10);
-        charResponse.SkillKeys.Should().HaveCount(2);
+        charResponse.SkillKeys.Should().BeEquivalentTo(["skill.custom.attack", "skill.custom.defend", "skill.basic.strike"]);
+    }
+
+    [Fact]
+    public async Task Handle_ShouldOnlyReturnEquippedSkillKeys()
+    {
+        var id = PlayerId.New();
+        var now = DateTimeOffset.UtcNow;
+        var skills = new[]
+        {
+            PlayerCharacterSkill.Create("skill.equipped.a", now, isEquipped: true),
+            PlayerCharacterSkill.Create("skill.equipped.b", now, isEquipped: true),
+            PlayerCharacterSkill.Create("skill.known.but.unequipped", now, isEquipped: false),
+        };
+        var character = PlayerCharacter.Create(
+            "key", "Name", PlayerCharacterStatBlock.CreateDefaultPorteur(), skills);
+        var roster = PlayerRoster.Rehydrate([character]);
+        var progression = PlayerProgression.CreateDefault();
+        var profile = PlayerProfile.Rehydrate(id, "Test", roster, progression, now, now);
+
+        _repository.Setup(r => r.GetByIdAsync(id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(profile);
+
+        var result = await _handler.Handle(new GetPlayerRunSnapshotQuery(id.Value), CancellationToken.None);
+
+        var charResponse = result.Characters.Single();
+        charResponse.SkillKeys.Should().BeEquivalentTo(["skill.equipped.a", "skill.equipped.b", "skill.basic.strike"]);
+        charResponse.SkillKeys.Should().NotContain("skill.known.but.unequipped");
+    }
+
+    [Fact]
+    public async Task Handle_ShouldPopulateFullStatBlock()
+    {
+        var profile = PlayerProfile.Create("Test Player", DateTimeOffset.UtcNow);
+        _repository.Setup(r => r.GetByIdAsync(profile.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(profile);
+
+        var result = await _handler.Handle(new GetPlayerRunSnapshotQuery(profile.Id.Value), CancellationToken.None);
+
+        var character = result.Characters.Single();
+        character.Stats.Should().NotBeNull();
+        character.Stats!.MaxVitality.Should().Be(100);
+        character.Stats.AttackPower.Should().Be(12);
+        character.Stats.Defense.Should().Be(6);
+        character.Stats.Speed.Should().Be(10);
+    }
+
+    [Fact]
+    public async Task Handle_ShouldReflectSpentStatPointsInStatBlock()
+    {
+        var profile = PlayerProfile.Create("Test Player", DateTimeOffset.UtcNow);
+        var characterId = profile.Roster.Characters.Single().Id;
+        profile.AwardStatPoint(DateTimeOffset.UtcNow);
+        profile.SpendStatPoint(characterId, PlayerStatKind.AttackPower, DateTimeOffset.UtcNow);
+
+        _repository.Setup(r => r.GetByIdAsync(profile.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(profile);
+
+        var result = await _handler.Handle(new GetPlayerRunSnapshotQuery(profile.Id.Value), CancellationToken.None);
+
+        result.Characters.Single().Stats!.AttackPower.Should().Be(13);
     }
 }

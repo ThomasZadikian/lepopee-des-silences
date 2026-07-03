@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import GameTopBar from '../../features/run-shell/GameTopBar.vue';
+import PalaceAtmosphere from '../../shared/components/PalaceAtmosphere.vue';
 
 defineProps<{
   hideTopBar?: boolean;
@@ -7,11 +8,8 @@ defineProps<{
 </script>
 
 <template>
-  <div class="game-shell">
-    <div class="es-atmos">
-      <div class="es-vignette" />
-      <div class="es-grain" />
-    </div>
+  <div class="game-shell" data-mood="palais">
+    <PalaceAtmosphere />
 
     <GameTopBar v-if="!hideTopBar" />
 

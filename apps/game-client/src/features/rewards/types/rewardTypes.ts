@@ -18,6 +18,8 @@ export type RewardChoiceDto = {
   payloadKey?: string;
   rarity?: string;
   isSelected?: boolean;
+  /** Which enemy this loot came from; null/absent means it came from the generic fallback pool. */
+  sourceEnemyDisplayName?: string | null;
 };
 
 export type RewardOptionDto = {
@@ -35,6 +37,21 @@ export type RewardOptionDto = {
   isSelected?: boolean;
 };
 
+export type DefeatedEnemyLootEntryDto = {
+  itemKey: string;
+  itemDisplayName: string;
+  rarity: string;
+  dropPercent: number;
+};
+
+export type DefeatedEnemySummaryDto = {
+  enemyKey: string;
+  displayName: string;
+  description: string;
+  count: number;
+  lootEntries: DefeatedEnemyLootEntryDto[];
+};
+
 export type RewardOfferDto = {
   id: string;
   source?: string;
@@ -42,6 +59,7 @@ export type RewardOfferDto = {
   choices?: RewardChoiceDto[];
   selectedChoiceId?: string | null;
   combatScaling?: CombatScalingDto | null;
+  defeatedEnemies?: DefeatedEnemySummaryDto[];
   runId?: string;
   status?: string;
   title?: string;

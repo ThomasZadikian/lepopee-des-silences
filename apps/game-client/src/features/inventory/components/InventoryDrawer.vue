@@ -221,14 +221,14 @@ async function useItem() {
   z-index: var(--z-drawer, 30);
   overflow: hidden;
 
-  background: oklch(.20 .028 268 / .88);
+  background: oklch(.20 .028 60 / .88);
   backdrop-filter: blur(20px) saturate(1.3);
   -webkit-backdrop-filter: blur(20px) saturate(1.3);
 
-  border-left: 1px solid var(--line-strong, oklch(.38 .03 268 / .7));
+  border-left: 1px solid var(--line-strong, oklch(.38 .03 60 / .7));
   border-top: 1px solid oklch(.55 .08 84 / .2);
   box-shadow:
-    -8px 0 60px -12px oklch(.15 .03 268 / .92),
+    -8px 0 60px -12px oklch(.15 .03 60 / .92),
     inset 1px 0 0 oklch(.6 .07 232 / .06);
 
   outline: none;
@@ -297,8 +297,8 @@ async function useItem() {
   width: 28px;
   height: 28px;
   border-radius: 4px;
-  border: 1px solid var(--line, oklch(.35 .025 268 / .6));
-  background: oklch(.26 .02 268 / .55);
+  border: 1px solid var(--line, oklch(.35 .025 60 / .6));
+  background: oklch(.26 .02 60 / .55);
   color: var(--ink-3);
   cursor: pointer;
   flex: 0 0 auto;
@@ -308,7 +308,7 @@ async function useItem() {
 .bsd-close:hover {
   border-color: var(--line-strong);
   color: var(--ink);
-  background: oklch(.30 .025 268 / .65);
+  background: oklch(.30 .025 60 / .65);
 }
 
 .bsd-close:focus-visible {
@@ -320,7 +320,7 @@ async function useItem() {
 .bsd-divider {
   flex: 0 0 auto;
   height: 1px;
-  background: linear-gradient(90deg, transparent, var(--line, oklch(.35 .025 268 / .6)), transparent);
+  background: linear-gradient(90deg, transparent, var(--line, oklch(.35 .025 60 / .6)), transparent);
   margin: 0 18px 2px;
 }
 
@@ -358,16 +358,16 @@ async function useItem() {
   flex-direction: column;
   gap: 6px;
   padding: 10px 11px;
-  border: 1px solid var(--line-soft, oklch(.32 .022 268 / .5));
+  border: 1px solid var(--line-soft, oklch(.32 .022 60 / .5));
   border-radius: 5px;
-  background: linear-gradient(180deg, oklch(.30 .034 268 / .38), oklch(.25 .028 268 / .30));
+  background: linear-gradient(180deg, oklch(.30 .034 60 / .38), oklch(.25 .028 60 / .30));
   cursor: pointer;
   text-align: left;
   transition: border-color .16s, background .16s, transform .12s;
 }
 
 .bsd-cell:hover {
-  border-color: var(--line-strong, oklch(.42 .03 268 / .7));
+  border-color: var(--line-strong, oklch(.42 .03 60 / .7));
   transform: translateY(-1px);
 }
 
@@ -415,11 +415,11 @@ async function useItem() {
 
 /* ── Item sheet ── */
 .bsd-sheet {
-  border-top: 1px solid var(--line-soft, oklch(.32 .022 268 / .5));
+  border-top: 1px solid var(--line-soft, oklch(.32 .022 60 / .5));
   margin-top: auto;
   flex: 0 0 auto;
   padding: 16px 18px 18px;
-  background: linear-gradient(180deg, oklch(.24 .034 268 / .55), oklch(.20 .028 268 / .45));
+  background: linear-gradient(180deg, oklch(.24 .034 60 / .55), oklch(.20 .028 60 / .45));
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -454,9 +454,9 @@ async function useItem() {
   text-transform: uppercase;
   padding: 2px 6px;
   border-radius: 3px;
-  border: 1px solid var(--line, oklch(.35 .025 268 / .6));
+  border: 1px solid var(--line, oklch(.35 .025 60 / .6));
   color: var(--ink-4, oklch(.45 .015 275));
-  background: oklch(.26 .025 268 / .6);
+  background: oklch(.26 .025 60 / .6);
 }
 
 .bsd-badge--sap   { border-color: oklch(.70 .09 162 / .45); color: var(--sap, oklch(.70 .09 162)); background: oklch(.50 .07 162 / .12); }

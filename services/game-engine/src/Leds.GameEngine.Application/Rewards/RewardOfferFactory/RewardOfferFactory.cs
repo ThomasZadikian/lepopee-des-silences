@@ -1,5 +1,7 @@
 using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Application.Combats;
+using Leds.GameEngine.Application.Rewards.Loot;
+using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rewards;
 
@@ -9,14 +11,17 @@ public sealed class RewardOfferFactory
 {
     private readonly ICombatRiskProfileResolver _riskProfileResolver;
     private readonly ICatalogContentGateway _catalogContentGateway;
+    private readonly EnemyLootRewardBuilder _enemyLootRewardBuilder;
     private readonly RewardPowerScaler _rewardPowerScaler = new();
 
     public RewardOfferFactory(
         ICombatRiskProfileResolver riskProfileResolver,
-        ICatalogContentGateway catalogContentGateway)
+        ICatalogContentGateway catalogContentGateway,
+        EnemyLootRewardBuilder enemyLootRewardBuilder)
     {
         _riskProfileResolver = riskProfileResolver;
         _catalogContentGateway = catalogContentGateway;
+        _enemyLootRewardBuilder = enemyLootRewardBuilder;
     }
 
     /// <summary>
@@ -41,6 +46,45 @@ public sealed class RewardOfferFactory
         };
 
         return RewardOffer.Create(source, choices, scaling);
+    }
+
+    /// <summary>
+    /// Combat-flavoured reward offer whose candidate choices are rolled from the loot
+    /// tables of the enemies actually present in the fight (see <see cref="EnemyLootRewardBuilder"/>),
+    /// instead of the hardcoded per-tier heal choices <see cref="CreateCombatRewardOffer"/> uses.
+    /// The player still picks exactly one choice from the offer, same as any other reward —
+    /// only how the candidate pool is generated changes. Falls back to the hardcoded tier
+    /// choices if the enemies present yielded no loot at all (e.g. catalog unreachable, or
+    /// none of them have a loot table configured yet).
+    /// </summary>
+    public async Task<RewardOffer> CreateCombatRewardOfferAsync(
+        RewardSource source,
+        NodeEventType eventType,
+        int riskLevel,
+        IReadOnlyCollection<Combatant> enemies,
+        string runSeed,
+        Guid runId,
+        Guid combatId,
+        CancellationToken cancellationToken = default)
+    {
+        var scaling = _riskProfileResolver.Resolve(eventType, riskLevel);
+
+        var choices = await _enemyLootRewardBuilder.BuildAsync(runSeed, runId, combatId, enemies, cancellationToken);
+
+        if (choices.Count == 0)
+        {
+            choices = source switch
+            {
+                RewardSource.RoomBoss => CreateBossRewardChoices(riskLevel, scaling.RewardPowerMultiplier),
+                RewardSource.Elite => CreateEliteRewardChoices(riskLevel, scaling.RewardPowerMultiplier),
+                RewardSource.Rare => CreateRareRewardChoices(riskLevel, scaling.RewardPowerMultiplier),
+                _ => CreateCombatRewardChoices(riskLevel, scaling.RewardPowerMultiplier)
+            };
+        }
+
+        var defeatedEnemies = await _enemyLootRewardBuilder.BuildDefeatedEnemySummariesAsync(enemies, cancellationToken);
+
+        return RewardOffer.Create(source, choices, scaling, defeatedEnemies);
     }
 
     public async Task<RewardOffer?> CreateFromTemplateKeyAsync(

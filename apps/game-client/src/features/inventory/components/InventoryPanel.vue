@@ -225,9 +225,9 @@ async function confirmUseItem(_targetCombatantId?: string) {
   flex-direction: column;
   min-height: 0;
   overflow: hidden;
-  border: 1px solid var(--line, oklch(.35 .025 268 / .6));
+  border: 1px solid var(--line, oklch(.35 .025 60 / .6));
   border-radius: 6px;
-  background: linear-gradient(180deg, oklch(.28 .034 268 / .55), oklch(.22 .025 268 / .45));
+  background: linear-gradient(180deg, oklch(.28 .034 60 / .55), oklch(.22 .025 60 / .45));
 }
 
 /* ── Header ── */
@@ -260,7 +260,7 @@ async function confirmUseItem(_targetCombatantId?: string) {
 .inv-divider {
   flex: 0 0 auto;
   height: 1px;
-  background: linear-gradient(90deg, transparent, var(--line, oklch(.35 .025 268 / .6)), transparent);
+  background: linear-gradient(90deg, transparent, var(--line, oklch(.35 .025 60 / .6)), transparent);
   margin: 0 22px 6px;
 }
 
@@ -296,9 +296,9 @@ async function confirmUseItem(_targetCombatantId?: string) {
 
 /* ── Item card ── */
 .inv-item {
-  border: 1px solid var(--line, oklch(.35 .025 268 / .6));
+  border: 1px solid var(--line, oklch(.35 .025 60 / .6));
   border-radius: 5px;
-  background: linear-gradient(180deg, oklch(.30 .034 268 / .38), oklch(.24 .028 268 / .30));
+  background: linear-gradient(180deg, oklch(.30 .034 60 / .38), oklch(.24 .028 60 / .30));
   padding: 13px 14px;
   display: flex;
   flex-direction: column;
@@ -348,9 +348,9 @@ async function confirmUseItem(_targetCombatantId?: string) {
   text-transform: uppercase;
   padding: 2px 7px;
   border-radius: 3px;
-  border: 1px solid var(--line, oklch(.35 .025 268 / .6));
+  border: 1px solid var(--line, oklch(.35 .025 60 / .6));
   color: var(--ink-4, oklch(.45 .015 275));
-  background: oklch(.26 .025 268 / .5);
+  background: oklch(.26 .025 60 / .5);
 }
 
 .inv-chip--sap   { border-color: oklch(.70 .09 162 / .45); color: var(--sap, oklch(.70 .09 162)); background: oklch(.50 .07 162 / .12); }
@@ -387,9 +387,9 @@ async function confirmUseItem(_targetCombatantId?: string) {
   letter-spacing: 0.06em;
   padding: 3px 9px;
   border-radius: 3px;
-  border: 1px solid var(--line, oklch(.35 .025 268 / .6));
+  border: 1px solid var(--line, oklch(.35 .025 60 / .6));
   color: var(--ink-3);
-  background: oklch(.24 .025 268 / .5);
+  background: oklch(.24 .025 60 / .5);
 }
 
 .inv-effect-badge--sap   { border-color: oklch(.70 .09 162 / .4); color: var(--sap, oklch(.70 .09 162)); background: oklch(.50 .07 162 / .1); }
@@ -430,13 +430,13 @@ async function confirmUseItem(_targetCombatantId?: string) {
 }
 
 .inv-btn--cancel {
-  border: 1px solid var(--line, oklch(.35 .025 268 / .6));
-  background: oklch(.24 .025 268 / .5);
+  border: 1px solid var(--line, oklch(.35 .025 60 / .6));
+  background: oklch(.24 .025 60 / .5);
   color: var(--ink-3, oklch(.65 .02 275));
 }
 
 .inv-btn--cancel:not(:disabled):hover {
-  border-color: var(--line-strong, oklch(.42 .03 268 / .7));
+  border-color: var(--line-strong, oklch(.42 .03 60 / .7));
   color: var(--ink-2);
 }
 
@@ -463,9 +463,9 @@ async function confirmUseItem(_targetCombatantId?: string) {
   align-items: center;
   width: 100%;
   padding: 9px 14px;
-  border: 1px solid var(--line-soft, oklch(.32 .022 268 / .5));
+  border: 1px solid var(--line-soft, oklch(.32 .022 60 / .5));
   border-radius: 4px;
-  background: linear-gradient(180deg, oklch(.30 .034 268 / .4), oklch(.26 .03 268 / .35));
+  background: linear-gradient(180deg, oklch(.30 .034 60 / .4), oklch(.26 .03 60 / .35));
   color: var(--ink, oklch(.88 .015 70));
   font-family: inherit;
   cursor: pointer;
@@ -475,7 +475,7 @@ async function confirmUseItem(_targetCombatantId?: string) {
 
 .inv-ally-btn:not(:disabled):hover {
   border-color: var(--frost, oklch(.70 .07 232));
-  background: linear-gradient(180deg, oklch(.34 .045 268 / .45), oklch(.28 .035 268 / .4));
+  background: linear-gradient(180deg, oklch(.34 .045 60 / .45), oklch(.28 .035 60 / .4));
   transform: translateX(2px);
 }
 

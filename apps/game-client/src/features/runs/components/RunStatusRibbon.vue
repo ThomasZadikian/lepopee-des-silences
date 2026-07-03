@@ -100,7 +100,7 @@ const emit = defineEmits<{
   flex-wrap: nowrap;
   gap: var(--space-3);
   padding: var(--space-1) var(--space-3);
-  background: oklch(0.20 0.04 272 / 0.85);
+  background: oklch(0.20 0.04 60 / 0.85);
   backdrop-filter: blur(8px);
   border-top: 1px solid var(--line-soft);
   z-index: var(--z-panel);

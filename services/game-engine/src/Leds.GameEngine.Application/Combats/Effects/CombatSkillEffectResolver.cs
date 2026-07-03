@@ -1,7 +1,7 @@
 using Leds.GameEngine.Application.Combats.Actions;
+using Leds.GameEngine.Application.Combats.EnemyTurns.Ai;
 using Leds.GameEngine.Application.Combats.Typing;
 using Leds.GameEngine.Domain.Combats;
-using Leds.GameEngine.Domain.Combats.Atb;
 using Leds.GameEngine.Domain.Combats.StatusEffects;
 using Leds.GameEngine.Domain.Combats.Typing;
 using Leds.GameEngine.Domain.Common;
@@ -60,7 +60,10 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
                 // Status-only spell (pure buff/debuff/control): no instant effect —
                 // the durable status below does the work.
                 if (skill.StatusEffect is null)
-                    throw new DomainException($"Unsupported skill effect type: {skill.EffectType}");
+                    throw new DomainException(
+                        $"Unsupported skill effect type: {skill.EffectType} (skill '{skill.Key}'). " +
+                        "A skill with a non-instant EffectType (e.g. Debuff/Buff/Status) must have an " +
+                        "EffectKind set in the catalog so it resolves to a durable status effect.");
                 break;
         }
 
@@ -95,6 +98,9 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
 
             if (healed > 0)
             {
+                if (actor.Side == CombatantSide.Player)
+                    actor.AccrueThreat(healed * ThreatTuning.ThreatPerHealing);
+
                 logEntries.Add(CreateLog(
                     "HealApplied",
                     $"{target.DisplayName} recovers {healed} vitality.",
@@ -151,8 +157,7 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
     {
         var attackType = _typeProfileProvider.ResolveAttackType(actor, skill);
         // Effective Focus = base + active Focus buffs/debuffs.
-        var critChance = CriticalHitCalibration.CritChanceFromFocus(actor.EffectiveFocus);        // ATB charge: a held/overflowed gauge amplifies the whole hit (cap ×1.5).
-        var chargeMultiplier = AtbActionMath.ChargeDamageMultiplier(actor.AtbGauge);
+        var critChance = CriticalHitCalibration.CritChanceFromFocus(actor.EffectiveFocus);
         var staggers = IsStaggerSkill(skill);
 
         foreach (var target in targets)
@@ -161,9 +166,9 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
             var critRoll = DeterministicCombatRoll.UnitInterval(BuildCritSeed(combat, actor, target, skill));
 
             // Attack buffs (actor) and defense buffs (target) shift the hit before
-            // type/crit are applied; charge amplifies it too.
+            // type/crit are applied.
             var basePower = ApplyStatMultiplier(
-                ApplyCharge(skill.BasePower, chargeMultiplier),
+                skill.BasePower,
                 StatModifierDamageMultiplier(actor, target));
 
             var outcome = DamageCalculator.Calculate(
@@ -206,6 +211,15 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
             var absorbed = guardBefore - target.Guard;
             var vitalityDamage = vitalityBefore - target.CurrentVitality;
 
+            target.RecordLastAttacker(actor.Id.Value);
+
+            if (actor.Side == CombatantSide.Player)
+            {
+                actor.AccrueThreat(
+                    vitalityDamage * ThreatTuning.ThreatPerVitalityDamage
+                    + absorbed * ThreatTuning.ThreatPerGuardAbsorbed);
+            }
+
             if (absorbed > 0)
             {
                 logEntries.Add(CreateLog(
@@ -247,16 +261,6 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
                     [target]));
             }
         }
-    }
-
-    private static int ApplyCharge(int basePower, double chargeMultiplier)
-    {
-        if (chargeMultiplier <= 1.0 || basePower <= 0)
-        {
-            return basePower;
-        }
-
-        return Math.Max(1, (int)Math.Round(basePower * chargeMultiplier, MidpointRounding.AwayFromZero));
     }
 
     private static bool IsStaggerSkill(CombatantSkill skill)
@@ -361,6 +365,9 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
         foreach (var target in targets)
         {
             target.GainGuard(skill.BasePower);
+
+            if (actor.Side == CombatantSide.Player)
+                actor.AccrueThreat(skill.BasePower * ThreatTuning.ThreatPerGuardGranted);
 
             logEntries.Add(CreateLog(
                 "GuardGained",

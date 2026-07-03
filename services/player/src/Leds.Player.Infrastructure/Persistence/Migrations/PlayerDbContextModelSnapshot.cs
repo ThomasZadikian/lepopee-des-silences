@@ -117,6 +117,12 @@ namespace Leds.Player.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(160)")
                         .HasColumnName("skill_definition_key");
 
+                    b.Property<bool>("IsEquipped")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_equipped");
+
                     b.Property<string>("Source")
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)")
@@ -297,6 +303,18 @@ namespace Leds.Player.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasDefaultValue(0)
                         .HasColumnName("total_runs_started");
+
+                    b.Property<int>("TotalStatPointsEarned")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("total_stat_points_earned");
+
+                    b.Property<int>("UnspentStatPoints")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("unspent_stat_points");
 
                     b.Property<DateTimeOffset>("UpdatedAtUtc")
                         .HasColumnType("timestamp with time zone")

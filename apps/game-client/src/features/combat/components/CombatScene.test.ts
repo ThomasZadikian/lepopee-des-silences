@@ -191,7 +191,7 @@ describe('CombatScene', () => {
     expect(wrapper.find('.combat-scene__initiative').exists()).toBe(true);
   });
 
-  it('shows ally side panel when combat is active', () => {
+  it('shows ally section when combat is active', () => {
     const ally = makeCombatant('ally-1', 'Hero', 'Player');
     const wrapper = mountScene('run-1', 'combat-1', {
       combat: {
@@ -207,10 +207,10 @@ describe('CombatScene', () => {
       enemies: [],
       allCombatants: [ally],
     });
-    expect(wrapper.find('.combat-scene__side--voix').exists()).toBe(true);
+    expect(wrapper.find('.combat-scene__side-title--allies').exists()).toBe(true);
   });
 
-  it('shows enemy side panel when combat is active', () => {
+  it('shows enemy section when combat is active', () => {
     const enemy = makeCombatant('enemy-1', 'Beast', 'Enemy');
     const wrapper = mountScene('run-1', 'combat-1', {
       combat: {
@@ -226,7 +226,7 @@ describe('CombatScene', () => {
       enemies: [enemy],
       allCombatants: [enemy],
     });
-    expect(wrapper.find('.combat-scene__side--manifestations').exists()).toBe(true);
+    expect(wrapper.find('.combat-scene__side-title--foe').exists()).toBe(true);
   });
 
   it('shows compose section when combat is active', () => {
@@ -248,7 +248,7 @@ describe('CombatScene', () => {
     expect(wrapper.find('.combat-scene__compose').exists()).toBe(true);
   });
 
-  it('shows damage drawer toggle', () => {
+  it('opens the damage meter modal from its toggle button', async () => {
     const ally = makeCombatant('ally-1', 'Hero', 'Player');
     const wrapper = mountScene('run-1', 'combat-1', {
       combat: {
@@ -264,7 +264,10 @@ describe('CombatScene', () => {
       enemies: [],
       allCombatants: [ally],
     });
-    expect(wrapper.find('.damage-toggle').exists()).toBe(true);
+    expect(document.body.querySelector('.damage-report')).toBeNull();
+    await wrapper.find('.compose__meter-toggle').trigger('click');
+    expect(document.body.querySelector('.damage-report')).not.toBeNull();
+    wrapper.unmount();
   });
 
   it('shows resolving indicator when resolving action', () => {

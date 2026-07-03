@@ -292,4 +292,60 @@ public sealed class PlayerCharacterStatBlockTests
         statBlock.Mana.Should().Be(0);
         statBlock.Charge.Should().Be(0);
     }
+
+    [Theory]
+    [InlineData(PlayerStatKind.MaxVitality)]
+    [InlineData(PlayerStatKind.AttackPower)]
+    [InlineData(PlayerStatKind.Defense)]
+    [InlineData(PlayerStatKind.StartingGuard)]
+    [InlineData(PlayerStatKind.Speed)]
+    [InlineData(PlayerStatKind.Initiative)]
+    [InlineData(PlayerStatKind.Recovery)]
+    [InlineData(PlayerStatKind.Focus)]
+    [InlineData(PlayerStatKind.Mana)]
+    [InlineData(PlayerStatKind.Charge)]
+    public void WithIncrementedStat_ShouldIncrementOnlyTheSelectedStat(PlayerStatKind kind)
+    {
+        var original = PlayerCharacterStatBlock.CreateDefaultPorteur();
+
+        var incremented = original.WithIncrementedStat(kind);
+
+        incremented.Should().NotBeSameAs(original);
+
+        var expected = new Dictionary<PlayerStatKind, int>
+        {
+            [PlayerStatKind.MaxVitality] = original.MaxVitality,
+            [PlayerStatKind.AttackPower] = original.AttackPower,
+            [PlayerStatKind.Defense] = original.Defense,
+            [PlayerStatKind.StartingGuard] = original.StartingGuard,
+            [PlayerStatKind.Speed] = original.Speed,
+            [PlayerStatKind.Initiative] = original.Initiative,
+            [PlayerStatKind.Recovery] = original.Recovery,
+            [PlayerStatKind.Focus] = original.Focus,
+            [PlayerStatKind.Mana] = original.Mana,
+            [PlayerStatKind.Charge] = original.Charge,
+        };
+        expected[kind] += 1;
+
+        incremented.MaxVitality.Should().Be(expected[PlayerStatKind.MaxVitality]);
+        incremented.AttackPower.Should().Be(expected[PlayerStatKind.AttackPower]);
+        incremented.Defense.Should().Be(expected[PlayerStatKind.Defense]);
+        incremented.StartingGuard.Should().Be(expected[PlayerStatKind.StartingGuard]);
+        incremented.Speed.Should().Be(expected[PlayerStatKind.Speed]);
+        incremented.Initiative.Should().Be(expected[PlayerStatKind.Initiative]);
+        incremented.Recovery.Should().Be(expected[PlayerStatKind.Recovery]);
+        incremented.Focus.Should().Be(expected[PlayerStatKind.Focus]);
+        incremented.Mana.Should().Be(expected[PlayerStatKind.Mana]);
+        incremented.Charge.Should().Be(expected[PlayerStatKind.Charge]);
+    }
+
+    [Fact]
+    public void WithIncrementedStat_ShouldRejectUnknownKind()
+    {
+        var statBlock = PlayerCharacterStatBlock.CreateDefaultPorteur();
+
+        var act = () => statBlock.WithIncrementedStat((PlayerStatKind)999);
+
+        act.Should().Throw<DomainException>();
+    }
 }
