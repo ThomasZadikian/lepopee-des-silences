@@ -27,11 +27,6 @@
   /* ── Ember (vitality / living heart) ── */
   --ember: oklch(0.700 0.150 45);
 
-  /* ── Surge (ATB charge/boost overflow) ── */
-  --surge: oklch(0.760 0.150 320);
-  --surge-dim: oklch(0.660 0.140 320);
-  --surge-hi: oklch(0.860 0.120 322);
-
   /* ── Frost ── */
   --frost: oklch(0.846 0.100 276);
   --frost-dim: oklch(0.758 0.096 274);

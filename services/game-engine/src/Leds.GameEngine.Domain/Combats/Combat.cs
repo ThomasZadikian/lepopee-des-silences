@@ -266,13 +266,12 @@ public sealed class Combat
         // While an ally holds the selection (an ally is active AND ready), every
         // ally's gauge freezes — none can climb further or "steal" the next turn.
         var active = GetActiveCombatant();
-        var activeId = active?.Id;
         var allyHoldsSelection = active is { Side: CombatantSide.Player }
             && active.AtbGauge >= AtbConstants.ReadyThreshold;
 
         foreach (var combatant in AllCombatants.Where(c => !c.IsDefeated))
         {
-            if (allyHoldsSelection && combatant.Side == CombatantSide.Player && combatant.Id != activeId)
+            if (allyHoldsSelection && combatant.Side == CombatantSide.Player)
                 continue; // frozen during selection
 
             if (combatant.IsAtbLocked)
