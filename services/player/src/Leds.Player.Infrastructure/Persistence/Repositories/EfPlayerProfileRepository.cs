@@ -93,28 +93,70 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
         existing.TotalStatPointsEarned = incoming.Progression.TotalStatPointsEarned;
         existing.UpdatedAtUtc = incoming.UpdatedAtUtc;
 
-        var incomingCharacters = incoming.Roster.Characters
-            .Select(c => new PlayerCharacterEntity
-            {
-                Id = c.Id.Value,
-                PlayerProfileId = incoming.Id.Value,
-                DefinitionKey = c.DefinitionKey,
-                DisplayName = c.DisplayName,
-                MaxVitality = c.MaxVitality,
-                BaseMana = c.BaseMana,
-                BaseCharge = c.BaseCharge,
-                SkillKeysJson = JsonSerializer.Serialize(c.SkillKeys),
-                CharacterType = c.CharacterType,
-                Status = c.Status,
-                CreatedAtUtc = incoming.CreatedAtUtc,
-                UpdatedAtUtc = incoming.UpdatedAtUtc,
-                StatBlock = ToStatBlockEntity(c),
-                Skills = c.Skills.Select(ToSkillEntity).ToList()
-            })
-            .ToList();
+        var incomingCharacterIds = incoming.Roster.Characters.Select(c => c.Id.Value).ToHashSet();
+        existing.Characters.RemoveAll(c => !incomingCharacterIds.Contains(c.Id));
 
-        existing.Characters.Clear();
-        existing.Characters.AddRange(incomingCharacters);
+        foreach (var character in incoming.Roster.Characters)
+        {
+            var existingCharacter = existing.Characters.FirstOrDefault(c => c.Id == character.Id.Value);
+            if (existingCharacter is null)
+            {
+                existing.Characters.Add(new PlayerCharacterEntity
+                {
+                    Id = character.Id.Value,
+                    PlayerProfileId = incoming.Id.Value,
+                    DefinitionKey = character.DefinitionKey,
+                    DisplayName = character.DisplayName,
+                    MaxVitality = character.MaxVitality,
+                    BaseMana = character.BaseMana,
+                    BaseCharge = character.BaseCharge,
+                    SkillKeysJson = JsonSerializer.Serialize(character.SkillKeys),
+                    CharacterType = character.CharacterType,
+                    Status = character.Status,
+                    CreatedAtUtc = incoming.CreatedAtUtc,
+                    UpdatedAtUtc = incoming.UpdatedAtUtc,
+                    StatBlock = ToStatBlockEntity(character),
+                    Skills = character.Skills.Select(ToSkillEntity).ToList()
+                });
+                continue;
+            }
+
+            existingCharacter.DefinitionKey = character.DefinitionKey;
+            existingCharacter.DisplayName = character.DisplayName;
+            existingCharacter.MaxVitality = character.MaxVitality;
+            existingCharacter.BaseMana = character.BaseMana;
+            existingCharacter.BaseCharge = character.BaseCharge;
+            existingCharacter.SkillKeysJson = JsonSerializer.Serialize(character.SkillKeys);
+            existingCharacter.CharacterType = character.CharacterType;
+            existingCharacter.Status = character.Status;
+            existingCharacter.UpdatedAtUtc = incoming.UpdatedAtUtc;
+
+            UpdateStatBlock(existingCharacter, character);
+
+            existingCharacter.Skills.Clear();
+            existingCharacter.Skills.AddRange(character.Skills.Select(ToSkillEntity));
+        }
+    }
+
+    private static void UpdateStatBlock(PlayerCharacterEntity existingCharacter, PlayerCharacter character)
+    {
+        if (existingCharacter.StatBlock is null)
+        {
+            existingCharacter.StatBlock = ToStatBlockEntity(character);
+            return;
+        }
+
+        var statBlock = existingCharacter.StatBlock;
+        statBlock.MaxVitality = character.StatBlock.MaxVitality;
+        statBlock.AttackPower = character.StatBlock.AttackPower;
+        statBlock.Defense = character.StatBlock.Defense;
+        statBlock.StartingGuard = character.StatBlock.StartingGuard;
+        statBlock.Speed = character.StatBlock.Speed;
+        statBlock.Initiative = character.StatBlock.Initiative;
+        statBlock.Recovery = character.StatBlock.Recovery;
+        statBlock.Focus = character.StatBlock.Focus;
+        statBlock.Mana = character.StatBlock.Mana;
+        statBlock.Charge = character.StatBlock.Charge;
     }
 
     private static PlayerProfile ToDomain(PlayerProfileEntity entity)
