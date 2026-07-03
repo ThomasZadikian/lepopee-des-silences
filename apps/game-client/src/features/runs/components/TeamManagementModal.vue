@@ -108,8 +108,8 @@ onMounted(async () => {
 
 .tmm-close {
   position: absolute;
-  top: -14px;
-  right: -14px;
+  top: 14px;
+  right: 14px;
   z-index: 1;
   width: 30px;
   height: 30px;
