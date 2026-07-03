@@ -30,9 +30,10 @@ function getEffectLabel(effectType: string, effectAmount: number): string {
   }
 }
 
-function getSkillCost(skill: CombatantRuntimeDto['skills'][number]): number {
-  return skill.manaCost || skill.chargeCost;
-}
+// function getSkillCost(skill: CombatantRuntimeDto['skills'][number]): number {
+//   return skill.manaCost || skill.chargeCost;
+// }
+
 </script>
 
 <template>

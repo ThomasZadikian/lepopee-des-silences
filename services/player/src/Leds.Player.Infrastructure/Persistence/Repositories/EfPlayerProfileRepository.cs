@@ -82,7 +82,7 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
         };
     }
 
-    private static void UpdateEntity(PlayerProfileEntity existing, PlayerProfile incoming)
+    private void UpdateEntity(PlayerProfileEntity existing, PlayerProfile incoming)
     {
         existing.DisplayName = incoming.DisplayName;
         existing.TotalRunsStarted = incoming.Progression.TotalRunsStarted;
@@ -101,7 +101,7 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
             var existingCharacter = existing.Characters.FirstOrDefault(c => c.Id == character.Id.Value);
             if (existingCharacter is null)
             {
-                existing.Characters.Add(new PlayerCharacterEntity
+                var newCharacter = new PlayerCharacterEntity
                 {
                     Id = character.Id.Value,
                     PlayerProfileId = incoming.Id.Value,
@@ -117,7 +117,9 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
                     UpdatedAtUtc = incoming.UpdatedAtUtc,
                     StatBlock = ToStatBlockEntity(character),
                     Skills = character.Skills.Select(ToSkillEntity).ToList()
-                });
+                };
+                existing.Characters.Add(newCharacter);
+                _context.Add(newCharacter);
                 continue;
             }
 
@@ -132,17 +134,44 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
             existingCharacter.UpdatedAtUtc = incoming.UpdatedAtUtc;
 
             UpdateStatBlock(existingCharacter, character);
-
-            existingCharacter.Skills.Clear();
-            existingCharacter.Skills.AddRange(character.Skills.Select(ToSkillEntity));
+            UpdateSkills(existingCharacter, character);
         }
     }
 
-    private static void UpdateStatBlock(PlayerCharacterEntity existingCharacter, PlayerCharacter character)
+    private void UpdateSkills(PlayerCharacterEntity existingCharacter, PlayerCharacter character)
+    {
+        var incomingSkillKeys = character.Skills
+            .Select(s => s.SkillDefinitionKey)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        existingCharacter.Skills.RemoveAll(s => !incomingSkillKeys.Contains(s.SkillDefinitionKey));
+
+        foreach (var skill in character.Skills)
+        {
+            var existingSkill = existingCharacter.Skills.FirstOrDefault(s =>
+                string.Equals(s.SkillDefinitionKey, skill.SkillDefinitionKey, StringComparison.OrdinalIgnoreCase));
+
+            if (existingSkill is null)
+            {
+                var newSkill = ToSkillEntity(skill);
+                newSkill.PlayerCharacterId = existingCharacter.Id;
+                existingCharacter.Skills.Add(newSkill);
+                _context.Add(newSkill);
+                continue;
+            }
+
+            existingSkill.UnlockedAtUtc = skill.UnlockedAtUtc;
+            existingSkill.Source = skill.Source;
+            existingSkill.IsEquipped = skill.IsEquipped;
+        }
+    }
+
+    private void UpdateStatBlock(PlayerCharacterEntity existingCharacter, PlayerCharacter character)
     {
         if (existingCharacter.StatBlock is null)
         {
-            existingCharacter.StatBlock = ToStatBlockEntity(character);
+            var newStatBlock = ToStatBlockEntity(character);
+            existingCharacter.StatBlock = newStatBlock;
+            _context.Add(newStatBlock);
             return;
         }
 

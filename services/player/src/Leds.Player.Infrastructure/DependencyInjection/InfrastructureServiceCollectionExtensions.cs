@@ -12,7 +12,9 @@ public static class InfrastructureServiceCollectionExtensions
     public static IServiceCollection AddPlayerInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddDbContext<PlayerDbContext>(options =>
-            options.UseNpgsql(configuration.GetConnectionString("PlayerDb")));
+            options.UseNpgsql(configuration.GetConnectionString("PlayerDb"))
+                   .EnableSensitiveDataLogging()
+                   .LogTo(Console.WriteLine, Microsoft.Extensions.Logging.LogLevel.Information));
 
         services.AddScoped<IPlayerProfileRepository, EfPlayerProfileRepository>();
         services.AddScoped<IProcessedIntegrationEventRepository, EfProcessedIntegrationEventRepository>();
