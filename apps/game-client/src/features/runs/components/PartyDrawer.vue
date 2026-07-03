@@ -1,21 +1,20 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import type { RunPartyMemberDto, ActivePalaceLawDto, ActiveCurseDto, RunModifierDto, RunItemDto } from '../types/runTypes';
 import { usePlayerStore } from '../../party/stores/playerStore';
+import type { ActiveCurseDto, ActivePalaceLawDto, RunItemDto, RunModifierDto, RunPartyMemberDto } from '../types/runTypes';
 import TeamManagementModal from './TeamManagementModal.vue';
 
 defineProps<{
   allies: RunPartyMemberDto[] | null;
   modifiers: RunModifierDto[] | null;
   laws: ActivePalaceLawDto[] | null;
-  curses: ActiveCurseDto[] | null;
+  curses: ActiveCurseDto[] | null; 
   items: RunItemDto[] | null;
 }>();
 
 defineEmits<{ close: [] }>();
 
 const playerStore = usePlayerStore();
-const isManageModalOpen = ref(false);
 const isManageModalOpen = ref(false);
 
 function vitalityPct(m: RunPartyMemberDto): number {
@@ -172,9 +171,6 @@ function rarityTone(rarity: string): string {
       <!-- ── Gestion de l'équipe ── -->
       <!-- ── Gestion de l'équipe ── -->
       <section v-if="playerStore.mainCharacter" class="party-drawer__section">
-        <button type="button" class="party-drawer__manage-btn" @click="isManageModalOpen = true">
-          Gérer l'équipe
-        </button>
         <button type="button" class="party-drawer__manage-btn" @click="isManageModalOpen = true">
           Gérer l'équipe
         </button>
@@ -336,6 +332,7 @@ function rarityTone(rarity: string): string {
   border-radius: 4px;
   border: 1px solid var(--edge-gold, oklch(.72 .09 82 / .70));
   background: oklch(.55 .08 85 / .12);
+}
 .party-drawer__manage-btn {
   width: 100%;
   padding: 9px 14px;
@@ -357,6 +354,8 @@ function rarityTone(rarity: string): string {
 .party-drawer__manage-btn:hover {
   background: oklch(.55 .08 85 / .22);
   box-shadow: 0 0 18px -6px oklch(.72 .1 85 / .4);
+}
+
 .party-drawer__manage-btn:hover {
   background: oklch(.55 .08 85 / .22);
   box-shadow: 0 0 18px -6px oklch(.72 .1 85 / .4);
@@ -544,4 +543,5 @@ function rarityTone(rarity: string): string {
   margin: 0;
   padding-left: 4px;
 }
+
 </style>
