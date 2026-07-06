@@ -220,7 +220,7 @@ public sealed class RoomDefinitionEntityConfiguration : IEntityTypeConfiguration
         builder.HasIndex(e => e.Status);
         builder.HasIndex(e => e.WorldDefinitionId);
         builder.HasOne(e => e.WorldDefinition)
-            .WithMany()
+            .WithMany(w => w.Rooms)
             .HasForeignKey(e => e.WorldDefinitionId)
             .OnDelete(DeleteBehavior.Restrict);
     }

@@ -254,6 +254,16 @@ public sealed class WorldDefinitionEntity
     public DateTime UpdatedAtUtc { get; set; }
 
     public RoomDefinitionEntity EntryRoomDefinition { get; set; } = null!;
+
+    /// <summary>
+    /// Every room assigned to this World. Declared explicitly (rather than left as a bare
+    /// WithMany()) so EF Core can never conflate this one-to-many relationship with the
+    /// unrelated World -&gt; EntryRoomDefinition reference above — without an explicit
+    /// collection on both sides, EF's navigation-pairing convention has been observed to
+    /// merge two distinct FK relationships between the same two entity types into one,
+    /// incorrectly marking RoomDefinitionEntity.WorldDefinitionId as unique.
+    /// </summary>
+    public ICollection<RoomDefinitionEntity> Rooms { get; set; } = [];
 }
 
 /// <summary>
