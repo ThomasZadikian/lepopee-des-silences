@@ -1334,7 +1334,8 @@ public sealed class CatalogSeedRunner
             "quatres merveilleux pilier de marbre, le Hall d'entrée du Palais n'est que la représentation de " +
             "l'arrogance de son propriétaire. Une fois traversé, rares sont les personnes qui ont eu l'occasion " +
             "de le revoir.",
-            "Palais intérieur", "Epic", "Welcome", 0, 9, cancellationToken, isCulturalEcho: false);
+            "Palais intérieur", "Epic", "Welcome", 0, 9, cancellationToken,
+            excludeFromOpenPool: true, isCulturalEcho: false);
 
         await UpsertRoomAsync("room.palier", "Palier",
             "Situé juste après le hall d'entrée, le palier n'est accessible qu'à ceux qui auront su gravir les 8 " +
