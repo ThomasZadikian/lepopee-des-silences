@@ -20,7 +20,9 @@ public sealed record NpcDefinitionDto(
     NpcPersonaDto? Persona,
     NpcDialogueGraphDto? DialogueGraph,
     IReadOnlyCollection<NpcWoundDto> Wounds,
-    IReadOnlyCollection<string> EncounterKeys)
+    IReadOnlyCollection<string> EncounterKeys,
+    IReadOnlyCollection<string> BoundRoomKeys,
+    IReadOnlyCollection<NpcOfferingDto> Offerings)
 {
     public static NpcDefinitionDto FromDomain(INpcDefinition definition)
     {
@@ -42,6 +44,8 @@ public sealed record NpcDefinitionDto(
             definition.Persona is null ? null : NpcPersonaDto.FromDomain(definition.Persona),
             definition.DialogueGraph is null ? null : NpcDialogueGraphDto.FromDomain(definition.DialogueGraph),
             definition.Wounds.Select(NpcWoundDto.FromDomain).ToArray(),
-            definition.EncounterKeys.ToArray());
+            definition.EncounterKeys.ToArray(),
+            definition.BoundRoomKeys.ToArray(),
+            definition.Offerings.Select(NpcOfferingDto.FromDomain).ToArray());
     }
 }

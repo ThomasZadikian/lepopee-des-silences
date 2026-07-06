@@ -2,6 +2,7 @@
 using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Application.Events.ChooseEventOption;
 using Leds.GameEngine.Application.Events.Dtos;
+using Leds.GameEngine.Application.Players.Ports;
 using Leds.GameEngine.Domain.Combats.Typing;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Npcs;
@@ -19,10 +20,12 @@ namespace Leds.GameEngine.Application.Events.ChoiceResolvers;
 public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver
 {
     private readonly ICatalogContentGateway _catalogContentGateway;
+    private readonly IPlayerProfileGateway _playerProfileGateway;
 
-    public NpcEventChoiceResolver(ICatalogContentGateway catalogContentGateway)
+    public NpcEventChoiceResolver(ICatalogContentGateway catalogContentGateway, IPlayerProfileGateway playerProfileGateway)
     {
         _catalogContentGateway = catalogContentGateway;
+        _playerProfileGateway = playerProfileGateway;
     }
 
     public NodeEventType EventType => NodeEventType.Npc;
@@ -169,8 +172,111 @@ public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver
                 fragments.Add(new NarrativeFragmentDto(npc.DisplayName, "L'air se tend — une confrontation s'ouvre."));
                 break;
 
+            case "GrantOffering":
+                fragments.Add(await GrantOfferingAsync(consequence, npc, run, relationship, cancellationToken));
+                break;
+
+            case "PersistReputationMilestone":
+                if (!string.IsNullOrWhiteSpace(consequence.MemoryFlag))
+                {
+                    relationship.SetFlag(consequence.MemoryFlag);
+                    await _playerProfileGateway.GrantReputationMilestoneAsync(
+                        run.PlayerId, npc.Key, consequence.MemoryFlag, run.Id.Value, cancellationToken);
+                }
+                break;
+
             default:
                 break;
+        }
+    }
+
+    // ── Offres (compétence / objet / point de compétence) ────────────────────
+
+    private async Task<NarrativeFragmentDto> GrantOfferingAsync(
+        CatalogDialogueConsequence consequence,
+        CatalogNpcDefinition npc,
+        Run run,
+        NpcRelationship relationship,
+        CancellationToken cancellationToken)
+    {
+        var offering = npc.Offerings?.FirstOrDefault(o =>
+            string.Equals(o.Key, consequence.OfferingKey, StringComparison.OrdinalIgnoreCase));
+
+        if (offering is null || !RequirementsMet(offering.UnlockConditions, relationship))
+        {
+            return new NarrativeFragmentDto(npc.DisplayName, "Rien ne se produit.");
+        }
+
+        if (offering.IsMajor)
+        {
+            var alreadyClaimed = await _playerProfileGateway.HasClaimedNpcOfferingAsync(
+                run.PlayerId, npc.Key, offering.Key, cancellationToken);
+            if (alreadyClaimed)
+            {
+                return new NarrativeFragmentDto(npc.DisplayName, "« Je t'ai déjà donné ce que j'avais à donner. »");
+            }
+        }
+
+        var text = await ApplyOfferingAsync(offering, npc, run, cancellationToken);
+
+        if (offering.IsMajor)
+        {
+            await _playerProfileGateway.ClaimNpcOfferingAsync(
+                run.PlayerId, npc.Key, offering.Key, run.Id.Value, cancellationToken);
+        }
+
+        return new NarrativeFragmentDto(npc.DisplayName, text);
+    }
+
+    private async Task<string> ApplyOfferingAsync(
+        CatalogNpcOffering offering, CatalogNpcDefinition npc, Run run, CancellationToken cancellationToken)
+    {
+        switch (offering.Kind)
+        {
+            case "Skill":
+                if (string.IsNullOrWhiteSpace(offering.TargetKey) || run.PlayerSnapshot is null)
+                {
+                    return "Rien ne se produit.";
+                }
+
+                var protagonistId = run.PlayerSnapshot.Characters.First().CharacterId;
+                await _playerProfileGateway.UnlockSkillAsync(
+                    run.PlayerId, protagonistId, offering.TargetKey, cancellationToken, source: $"npc:{npc.Key}");
+                return $"Une nouvelle compétence s'inscrit en toi — {offering.TargetKey}.";
+
+            case "StatPoint":
+                var amount = offering.Amount > 0 ? offering.Amount : 1;
+                await _playerProfileGateway.AwardStatPointsAsync(run.PlayerId, amount, cancellationToken);
+                return $"Tu sens ta détermination grandir. +{amount} point de compétence.";
+
+            case "Item":
+                if (string.IsNullOrWhiteSpace(offering.TargetKey))
+                {
+                    return "Rien ne se produit.";
+                }
+
+                var itemResult = await _catalogContentGateway.GetItemDefinitionByKeyAsync(offering.TargetKey, cancellationToken);
+                if (itemResult.IsFailure)
+                {
+                    return "Rien ne se produit.";
+                }
+
+                var itemDef = itemResult.Value;
+                // Effet intrinsèque non résolu ici : contrairement aux RewardOption des templates
+                // de récompense, CatalogItemDefinitionSnapshot ne porte pas de type/montant d'effet
+                // exploitable par RunItem — l'objet est bien accordé (nom/description/type/rareté
+                // réels) mais reste neutre à l'usage tant que ce n'est pas câblé séparément.
+                run.AddRunItem(RunItem.Create(
+                    itemDef.Key, itemDef.DisplayName, itemDef.Description,
+                    Enum.Parse<RunItemType>(itemDef.ItemType, ignoreCase: true),
+                    Enum.Parse<RunItemRarity>(itemDef.Rarity, ignoreCase: true),
+                    quantity: offering.Amount > 0 ? offering.Amount : 1,
+                    RunItemEffectType.None,
+                    effectAmount: 0));
+                return $"{npc.DisplayName} te tend {itemDef.DisplayName}.";
+
+            default:
+                return "Rien ne se produit.";
         }
     }
 

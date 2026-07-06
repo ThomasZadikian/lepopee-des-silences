@@ -1099,6 +1099,13 @@ namespace Leds.Catalog.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<string>("BoundRoomKeysJson")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text")
+                        .HasDefaultValue("[]")
+                        .HasColumnName("bound_room_keys_json");
+
                     b.Property<string>("CompatiblePalaceRoomStatesJson")
                         .IsRequired()
                         .HasColumnType("text")
@@ -1174,6 +1181,10 @@ namespace Leds.Catalog.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(256)")
                         .HasColumnName("name");
 
+                    b.Property<string>("OfferingsJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("offerings_json");
+
                     b.Property<string>("PersonaJson")
                         .HasColumnType("jsonb")
                         .HasColumnName("persona_json");
@@ -1214,6 +1225,45 @@ namespace Leds.Catalog.Infrastructure.Persistence.Migrations
                     b.HasIndex("Status");
 
                     b.ToTable("catalog_npc_definitions", (string)null);
+                });
+
+            modelBuilder.Entity("Leds.Catalog.Infrastructure.Persistence.Entities.NpcReputationAffinityEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<string>("NpcKeyFrom")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("npc_key_from");
+
+                    b.Property<string>("NpcKeyTo")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("npc_key_to");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at_utc");
+
+                    b.Property<decimal>("Weight")
+                        .HasColumnType("numeric(6,3)")
+                        .HasColumnName("weight");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NpcKeyFrom", "NpcKeyTo")
+                        .IsUnique();
+
+                    b.ToTable("catalog_npc_reputation_affinities", (string)null);
                 });
 
             modelBuilder.Entity("Leds.Catalog.Infrastructure.Persistence.Entities.PalaceLawDefinitionEntity", b =>

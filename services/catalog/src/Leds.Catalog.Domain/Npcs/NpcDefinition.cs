@@ -11,6 +11,8 @@ public sealed class NpcDefinition : CatalogContentBase, INpcDefinition
     private readonly List<string> _compatibleRoomClimates;
     private readonly List<NpcWound> _wounds;
     private readonly List<string> _encounterKeys;
+    private readonly List<string> _boundRoomKeys;
+    private readonly List<NpcOffering> _offerings;
 
     private NpcDefinition(
         CatalogContentId id,
@@ -30,7 +32,9 @@ public sealed class NpcDefinition : CatalogContentBase, INpcDefinition
         NpcDialogueGraph? dialogueGraph,
         IReadOnlyCollection<NpcWound> wounds,
         IReadOnlyCollection<string> encounterKeys,
-        bool isRecurring)
+        bool isRecurring,
+        IReadOnlyCollection<string> boundRoomKeys,
+        IReadOnlyCollection<NpcOffering> offerings)
         : base(id, key, name, description, version, status)
     {
         _tags = tags.ToList();
@@ -39,6 +43,8 @@ public sealed class NpcDefinition : CatalogContentBase, INpcDefinition
         _compatibleRoomClimates = compatibleRoomClimates.ToList();
         _wounds = wounds.ToList();
         _encounterKeys = encounterKeys.ToList();
+        _boundRoomKeys = boundRoomKeys.ToList();
+        _offerings = offerings.ToList();
         MinDepth = minDepth;
         MaxDepth = maxDepth;
         EmotionalAffinity = emotionalAffinity;
@@ -71,6 +77,10 @@ public sealed class NpcDefinition : CatalogContentBase, INpcDefinition
 
     public bool IsRecurring { get; }
 
+    public IReadOnlyCollection<string> BoundRoomKeys => _boundRoomKeys.AsReadOnly();
+
+    public IReadOnlyCollection<NpcOffering> Offerings => _offerings.AsReadOnly();
+
     public static NpcDefinition Create(
         string key,
         string name,
@@ -88,7 +98,9 @@ public sealed class NpcDefinition : CatalogContentBase, INpcDefinition
         NpcDialogueGraph? dialogueGraph = null,
         IReadOnlyCollection<NpcWound>? wounds = null,
         IReadOnlyCollection<string>? encounterKeys = null,
-        bool isRecurring = false)
+        bool isRecurring = false,
+        IReadOnlyCollection<string>? boundRoomKeys = null,
+        IReadOnlyCollection<NpcOffering>? offerings = null)
     {
         var desc = CatalogContentDescription.From(description);
 
@@ -110,6 +122,8 @@ public sealed class NpcDefinition : CatalogContentBase, INpcDefinition
             dialogueGraph,
             wounds?.ToArray() ?? [],
             encounterKeys?.Distinct(StringComparer.OrdinalIgnoreCase).ToArray() ?? [],
-            isRecurring);
+            isRecurring,
+            boundRoomKeys?.Distinct(StringComparer.OrdinalIgnoreCase).ToArray() ?? [],
+            offerings?.ToArray() ?? []);
     }
 }

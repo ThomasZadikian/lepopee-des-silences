@@ -56,7 +56,8 @@ public sealed class NpcEncounterSelectorTests
         PalaceRoomState palaceState = PalaceRoomState.Neutral,
         string? climate = null,
         RoomType roomType = RoomType.Threshold,
-        int nodeDepth = 1) =>
+        int nodeDepth = 1,
+        string? roomKey = null) =>
         new(
             RunId: Guid.NewGuid(),
             RoomId: Guid.NewGuid(),
@@ -65,7 +66,8 @@ public sealed class NpcEncounterSelectorTests
             PalaceRoomState: palaceState,
             RoomClimate: climate,
             RoomType: roomType,
-            NodeDepth: nodeDepth);
+            NodeDepth: nodeDepth,
+            RoomKey: roomKey);
 
     [Fact]
     public void SelectEligibleNpc_ShouldReturnNull_WhenNoNpcs()
@@ -315,5 +317,64 @@ public sealed class NpcEncounterSelectorTests
             CreateContext(palaceState: PalaceRoomState.Silent), npcs);
         result.Should().NotBeNull();
         result!.Key.Should().Be("silent-specific");
+    }
+
+    [Fact]
+    public void SelectEligibleNpc_ShouldExcludeBoundNpc_WhenOutsideItsBoundRoom()
+    {
+        var npcs = new[]
+        {
+            new CatalogNpcDefinition(
+                Key: "npc.hitomi",
+                DisplayName: "Hitomi",
+                Description: "Liée à room.room08.",
+                Tags: [],
+                CompatibleRoomTypes: [],
+                CompatiblePalaceRoomStates: [],
+                CompatibleRoomClimates: [],
+                BoundRoomKeys: ["room.room08"])
+        };
+
+        var selector = new NpcEncounterSelector();
+
+        var result = selector.SelectEligibleNpc(
+            CreateContext(roomKey: "room.palier"), npcs);
+
+        result.Should().BeNull();
+    }
+
+    [Fact]
+    public void SelectEligibleNpc_ShouldIncludeBoundNpc_WhenInsideItsBoundRoom()
+    {
+        var npcs = new[]
+        {
+            new CatalogNpcDefinition(
+                Key: "npc.hitomi",
+                DisplayName: "Hitomi",
+                Description: "Liée à room.room08.",
+                Tags: [],
+                CompatibleRoomTypes: [],
+                CompatiblePalaceRoomStates: [],
+                CompatibleRoomClimates: [],
+                BoundRoomKeys: ["room.room08"])
+        };
+
+        var selector = new NpcEncounterSelector();
+
+        var result = selector.SelectEligibleNpc(
+            CreateContext(roomKey: "room.room08"), npcs);
+
+        result.Should().NotBeNull();
+        result!.Key.Should().Be("npc.hitomi");
+    }
+
+    [Fact]
+    public void SelectEligibleNpc_ShouldNotAffectGenericNpc_WhenRoomKeyIsUnrelated()
+    {
+        var result = new NpcEncounterSelector().SelectEligibleNpc(
+            CreateContext(roomKey: "room.couloirs"), SeedNpcs);
+
+        result.Should().NotBeNull();
+        result!.Key.Should().Be("npc-neutral-traveler");
     }
 }

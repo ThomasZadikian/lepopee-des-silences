@@ -9,5 +9,7 @@ public enum ConsequenceKind
     AdjustRelationship = 3,
     SetMemoryFlag = 4,
     ArmWound = 5,
-    SootheWound = 6
+    SootheWound = 6,
+    GrantOffering = 7,
+    PersistReputationMilestone = 8
 }

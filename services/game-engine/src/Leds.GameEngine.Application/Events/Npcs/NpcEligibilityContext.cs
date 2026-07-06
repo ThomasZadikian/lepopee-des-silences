@@ -11,4 +11,5 @@ public sealed record NpcEligibilityContext(
     string? RoomClimate,
     RoomType RoomType,
     int NodeDepth,
-    int RoomDepth = 0);
+    int RoomDepth = 0,
+    string? RoomKey = null);

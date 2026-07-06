@@ -24,6 +24,10 @@ public sealed class NpcDefinitionEntity
     public string? DialogueGraphJson { get; set; }
     public string EncounterKeysJson { get; set; } = "[]";
 
+    // ── PNJ/Réputation refonte (npc-reputation-sfd-0.1) ──────────────────────
+    public string BoundRoomKeysJson { get; set; } = "[]";
+    public string? OfferingsJson { get; set; }
+
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
 }

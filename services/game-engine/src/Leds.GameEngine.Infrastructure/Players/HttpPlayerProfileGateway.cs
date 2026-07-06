@@ -54,10 +54,11 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
         return await ReadProfileAsync(response, playerId, cancellationToken);
     }
 
-    public async Task<PlayerProfileView> UnlockSkillAsync(Guid playerId, Guid characterId, string skillKey, CancellationToken cancellationToken)
+    public async Task<PlayerProfileView> UnlockSkillAsync(Guid playerId, Guid characterId, string skillKey, CancellationToken cancellationToken, string source = "devtools")
     {
-        var response = await _httpClient.PostAsync(
-            $"/api/v2/internal/players/{playerId}/characters/{characterId}/skills/{skillKey}/unlock", content: null, cancellationToken);
+        var response = await _httpClient.PostAsJsonAsync(
+            $"/api/v2/internal/players/{playerId}/characters/{characterId}/skills/{skillKey}/unlock",
+            new UnlockSkillRequestBody(source), cancellationToken);
 
         return await ReadProfileAsync(response, playerId, cancellationToken);
     }
@@ -68,6 +69,40 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
             $"/api/v2/internal/players/{playerId}/stat-points/award", new AwardStatPointsRequestBody(amount), cancellationToken);
 
         return await ReadProfileAsync(response, playerId, cancellationToken);
+    }
+
+    public async Task<bool> HasClaimedNpcOfferingAsync(Guid playerId, string npcKey, string offeringKey, CancellationToken cancellationToken)
+    {
+        var response = await _httpClient.GetAsync(
+            $"/api/v2/internal/players/{playerId}/npcs/{npcKey}/offerings/{offeringKey}/claimed", cancellationToken);
+
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            throw new NotFoundException("Player", playerId);
+        }
+
+        response.EnsureSuccessStatusCode();
+
+        var dto = await response.Content.ReadFromJsonAsync<HasClaimedNpcOfferingResponse>(cancellationToken);
+        return dto?.Claimed ?? false;
+    }
+
+    public async Task ClaimNpcOfferingAsync(Guid playerId, string npcKey, string offeringKey, Guid? sourceRunId, CancellationToken cancellationToken)
+    {
+        var response = await _httpClient.PostAsJsonAsync(
+            $"/api/v2/internal/players/{playerId}/npcs/{npcKey}/offerings/{offeringKey}/claim",
+            new SourceRunRequestBody(sourceRunId), cancellationToken);
+
+        EnsureSuccess(response, playerId);
+    }
+
+    public async Task GrantReputationMilestoneAsync(Guid playerId, string npcKey, string milestoneKey, Guid? sourceRunId, CancellationToken cancellationToken)
+    {
+        var response = await _httpClient.PostAsJsonAsync(
+            $"/api/v2/internal/players/{playerId}/npcs/{npcKey}/reputation-milestones/{milestoneKey}",
+            new SourceRunRequestBody(sourceRunId), cancellationToken);
+
+        EnsureSuccess(response, playerId);
     }
 
     private static void EnsureSuccess(HttpResponseMessage response, Guid playerId)
@@ -138,6 +173,12 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
     }
 
     private sealed record AwardStatPointsRequestBody(int Amount);
+
+    private sealed record UnlockSkillRequestBody(string Source);
+
+    private sealed record SourceRunRequestBody(Guid? SourceRunId);
+
+    private sealed record HasClaimedNpcOfferingResponse(bool Claimed);
 
     private sealed record PlayerProfileResponse(
         Guid Id,

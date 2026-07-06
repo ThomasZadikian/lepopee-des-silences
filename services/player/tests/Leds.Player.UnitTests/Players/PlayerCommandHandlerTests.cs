@@ -1,7 +1,10 @@
 using FluentAssertions;
 using Leds.Player.Application.Abstractions;
 using Leds.Player.Application.Players;
+using Leds.Player.Application.Players.ClaimNpcOffering;
 using Leds.Player.Application.Players.CreatePlayerProfile;
+using Leds.Player.Application.Players.GrantNpcReputationMilestone;
+using Leds.Player.Application.Players.HasClaimedNpcOffering;
 using Leds.Player.Domain.Players;
 using Moq;
 
@@ -71,5 +74,77 @@ public sealed class PlayerCommandHandlerTests
 
         result.Characters.Should().HaveCount(1);
         result.Characters.Single().SkillKeys.Should().Contain("skill.basic.strike");
+    }
+
+    [Fact]
+    public async Task ClaimNpcOffering_ShouldGrantPermanentUnlockAndPersist()
+    {
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+        var repository = new Mock<IPlayerProfileRepository>();
+        repository.Setup(r => r.GetByIdAsync(profile.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(profile);
+
+        var handler = new ClaimNpcOfferingCommandHandler(repository.Object, TimeProvider.System);
+        var sourceRunId = Guid.NewGuid();
+
+        var response = await handler.Handle(
+            new ClaimNpcOfferingCommand(profile.Id.Value, "npc.hitomi", "offer.skill", sourceRunId),
+            CancellationToken.None);
+
+        response.PermanentUnlocks.Should().ContainSingle(u => u.UnlockKey == "npc.hitomi:offer.skill" && u.UnlockType == "npc-offering");
+        repository.Verify(r => r.SaveAsync(It.IsAny<PlayerProfile>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GrantNpcReputationMilestone_ShouldGrantPermanentUnlockAndPersist()
+    {
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+        var repository = new Mock<IPlayerProfileRepository>();
+        repository.Setup(r => r.GetByIdAsync(profile.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(profile);
+
+        var handler = new GrantNpcReputationMilestoneCommandHandler(repository.Object, TimeProvider.System);
+
+        var response = await handler.Handle(
+            new GrantNpcReputationMilestoneCommand(profile.Id.Value, "npc.hitomi", "trust-earned", null),
+            CancellationToken.None);
+
+        response.PermanentUnlocks.Should().ContainSingle(
+            u => u.UnlockKey == "npc.hitomi:trust-earned" && u.UnlockType == "npc-reputation-milestone");
+    }
+
+    [Fact]
+    public async Task HasClaimedNpcOffering_ShouldReturnFalse_WhenNeverClaimed()
+    {
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+        var repository = new Mock<IPlayerProfileRepository>();
+        repository.Setup(r => r.GetByIdAsync(profile.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(profile);
+
+        var handler = new HasClaimedNpcOfferingQueryHandler(repository.Object);
+
+        var result = await handler.Handle(
+            new HasClaimedNpcOfferingQuery(profile.Id.Value, "npc.hitomi", "offer.skill"),
+            CancellationToken.None);
+
+        result.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task HasClaimedNpcOffering_ShouldReturnTrue_AfterClaiming()
+    {
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+        profile.GrantPermanentUnlock("npc.hitomi:offer.skill", "npc-offering", null, DateTimeOffset.UtcNow);
+        var repository = new Mock<IPlayerProfileRepository>();
+        repository.Setup(r => r.GetByIdAsync(profile.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(profile);
+
+        var handler = new HasClaimedNpcOfferingQueryHandler(repository.Object);
+
+        var result = await handler.Handle(
+            new HasClaimedNpcOfferingQuery(profile.Id.Value, "npc.hitomi", "offer.skill"),
+            CancellationToken.None);
+
+        result.Should().BeTrue();
     }
 }

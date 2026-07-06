@@ -40,6 +40,12 @@ public sealed class NpcDefinitionEntityConfiguration : IEntityTypeConfiguration<
         builder.Property(e => e.EncounterKeysJson)
             .HasColumnName("encounter_keys_json").HasColumnType("jsonb").IsRequired().HasDefaultValue("[]");
 
+        // PNJ/Réputation refonte fields
+        builder.Property(e => e.BoundRoomKeysJson)
+            .HasColumnName("bound_room_keys_json").IsRequired().HasDefaultValue("[]");
+        builder.Property(e => e.OfferingsJson)
+            .HasColumnName("offerings_json").HasColumnType("jsonb");
+
         builder.Property(e => e.CreatedAtUtc).HasColumnName("created_at_utc");
         builder.Property(e => e.UpdatedAtUtc).HasColumnName("updated_at_utc");
 

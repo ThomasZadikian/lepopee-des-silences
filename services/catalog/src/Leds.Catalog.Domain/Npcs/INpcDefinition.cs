@@ -27,4 +27,8 @@ public interface INpcDefinition : ICatalogContent
     IReadOnlyCollection<string> EncounterKeys { get; }
 
     bool IsRecurring { get; }
+
+    IReadOnlyCollection<string> BoundRoomKeys { get; }
+
+    IReadOnlyCollection<NpcOffering> Offerings { get; }
 }

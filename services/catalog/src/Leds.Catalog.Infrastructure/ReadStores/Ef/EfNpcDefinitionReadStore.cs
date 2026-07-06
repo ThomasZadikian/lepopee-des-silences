@@ -47,6 +47,8 @@ public sealed class EfNpcDefinitionReadStore : INpcDefinitionReadStore
         var dialogueGraph = DeserializeOrNull<NpcDialogueGraph>(entity.DialogueGraphJson);
         var wounds = JsonSerializer.Deserialize<List<NpcWound>>(entity.WoundsJson, JsonOptions) ?? [];
         var encounterKeys = JsonSerializer.Deserialize<List<string>>(entity.EncounterKeysJson, JsonOptions) ?? [];
+        var boundRoomKeys = JsonSerializer.Deserialize<List<string>>(entity.BoundRoomKeysJson, JsonOptions) ?? [];
+        var offerings = JsonSerializer.Deserialize<List<NpcOffering>>(entity.OfferingsJson ?? "[]", JsonOptions) ?? [];
 
         return NpcDefinition.Create(
             entity.Key,
@@ -65,7 +67,9 @@ public sealed class EfNpcDefinitionReadStore : INpcDefinitionReadStore
             dialogueGraph,
             wounds,
             encounterKeys,
-            entity.IsRecurring);
+            entity.IsRecurring,
+            boundRoomKeys,
+            offerings);
     }
 
     private static T? DeserializeOrNull<T>(string? json) where T : class

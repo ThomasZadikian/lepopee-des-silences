@@ -39,6 +39,7 @@ public sealed class CatalogDbContext : DbContext
     public DbSet<CatalogTagEntity> CatalogTags => Set<CatalogTagEntity>();
     public DbSet<CatalogSeedVersionEntity> CatalogSeedVersions => Set<CatalogSeedVersionEntity>();
     public DbSet<NpcDefinitionEntity> NpcDefinitions => Set<NpcDefinitionEntity>();
+    public DbSet<NpcReputationAffinityEntity> NpcReputationAffinities => Set<NpcReputationAffinityEntity>();
     public DbSet<RewardCursePoolEntity> RewardCursePools => Set<RewardCursePoolEntity>();
     public DbSet<EnemyTemplateEntity> EnemyTemplates => Set<EnemyTemplateEntity>();
     public DbSet<SkillTemplateEntity> SkillTemplates => Set<SkillTemplateEntity>();

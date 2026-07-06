@@ -285,6 +285,22 @@ public sealed class RoomThemeAffinityEntityConfiguration : IEntityTypeConfigurat
     }
 }
 
+public sealed class NpcReputationAffinityEntityConfiguration : IEntityTypeConfiguration<NpcReputationAffinityEntity>
+{
+    public void Configure(EntityTypeBuilder<NpcReputationAffinityEntity> builder)
+    {
+        builder.ToTable("catalog_npc_reputation_affinities");
+        builder.HasKey(e => e.Id);
+        builder.Property(e => e.Id).HasColumnName("id");
+        builder.Property(e => e.NpcKeyFrom).HasColumnName("npc_key_from").HasMaxLength(160).IsRequired();
+        builder.Property(e => e.NpcKeyTo).HasColumnName("npc_key_to").HasMaxLength(160).IsRequired();
+        builder.Property(e => e.Weight).HasColumnName("weight").HasColumnType("numeric(6,3)");
+        builder.Property(e => e.CreatedAtUtc).HasColumnName("created_at_utc");
+        builder.Property(e => e.UpdatedAtUtc).HasColumnName("updated_at_utc");
+        builder.HasIndex(e => new { e.NpcKeyFrom, e.NpcKeyTo }).IsUnique();
+    }
+}
+
 public sealed class RoomTypeDefinitionEntityConfiguration : IEntityTypeConfiguration<RoomTypeDefinitionEntity>
 {
     public void Configure(EntityTypeBuilder<RoomTypeDefinitionEntity> builder)

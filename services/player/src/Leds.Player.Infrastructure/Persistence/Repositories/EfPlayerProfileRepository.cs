@@ -22,6 +22,7 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
                 .ThenInclude(c => c.StatBlock)
             .Include(p => p.Characters)
                 .ThenInclude(c => c.Skills)
+            .Include(p => p.PermanentUnlocks)
             .FirstOrDefaultAsync(p => p.Id == id.Value, cancellationToken);
 
         return entity is null ? null : ToDomain(entity);
@@ -34,6 +35,7 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
                 .ThenInclude(c => c.StatBlock)
             .Include(p => p.Characters)
                 .ThenInclude(c => c.Skills)
+            .Include(p => p.PermanentUnlocks)
             .FirstOrDefaultAsync(p => p.Id == profile.Id.Value, cancellationToken);
 
         if (existing is null)
@@ -78,7 +80,8 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
                 UpdatedAtUtc = profile.UpdatedAtUtc,
                 StatBlock = ToStatBlockEntity(c),
                 Skills = c.Skills.Select(ToSkillEntity).ToList()
-            }).ToList()
+            }).ToList(),
+            PermanentUnlocks = profile.PermanentUnlocks.Select(u => ToPermanentUnlockEntity(u, profile.Id.Value)).ToList()
         };
     }
 
@@ -135,6 +138,27 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
 
             UpdateStatBlock(existingCharacter, character);
             UpdateSkills(existingCharacter, character);
+        }
+
+        UpdatePermanentUnlocks(existing, incoming);
+    }
+
+    // Append-only: permanent unlocks are never modified or removed once granted (they're
+    // lifetime, not run-scoped) — only append entries not already present by UnlockKey.
+    private void UpdatePermanentUnlocks(PlayerProfileEntity existing, PlayerProfile incoming)
+    {
+        var existingKeys = existing.PermanentUnlocks
+            .Select(u => u.UnlockKey)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var unlock in incoming.PermanentUnlocks)
+        {
+            if (existingKeys.Contains(unlock.UnlockKey))
+                continue;
+
+            var newUnlock = ToPermanentUnlockEntity(unlock, incoming.Id.Value);
+            existing.PermanentUnlocks.Add(newUnlock);
+            _context.Add(newUnlock);
         }
     }
 
@@ -245,13 +269,18 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
             entity.UnspentStatPoints,
             entity.TotalStatPointsEarned);
 
+        var permanentUnlocks = entity.PermanentUnlocks
+            .Select(u => PlayerPermanentUnlock.Create(u.UnlockKey, u.UnlockType, u.SourceRunId, u.UnlockedAtUtc))
+            .ToList();
+
         return PlayerProfile.Rehydrate(
             new PlayerId(entity.Id),
             entity.DisplayName,
             roster,
             progression,
             entity.CreatedAtUtc,
-            entity.UpdatedAtUtc);
+            entity.UpdatedAtUtc,
+            permanentUnlocks);
     }
 
     private static PlayerCharacterStatBlockEntity ToStatBlockEntity(PlayerCharacter character)
@@ -270,6 +299,19 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
             Focus = character.StatBlock.Focus,
             Mana = character.StatBlock.Mana,
             Charge = character.StatBlock.Charge
+        };
+    }
+
+    private static PlayerPermanentUnlockEntity ToPermanentUnlockEntity(PlayerPermanentUnlock unlock, Guid playerProfileId)
+    {
+        return new PlayerPermanentUnlockEntity
+        {
+            Id = Guid.NewGuid(),
+            PlayerProfileId = playerProfileId,
+            UnlockKey = unlock.UnlockKey,
+            UnlockType = unlock.UnlockType,
+            SourceRunId = unlock.SourceRunId,
+            UnlockedAtUtc = unlock.UnlockedAtUtc
         };
     }
 

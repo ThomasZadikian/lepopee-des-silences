@@ -8,7 +8,8 @@ public sealed record PlayerProfileDto(
     IReadOnlyCollection<PlayerCharacterDto> Characters,
     PlayerProgressionDto Progression,
     DateTimeOffset CreatedAtUtc,
-    DateTimeOffset UpdatedAtUtc)
+    DateTimeOffset UpdatedAtUtc,
+    IReadOnlyCollection<PlayerPermanentUnlockDto> PermanentUnlocks)
 {
     public static PlayerProfileDto FromDomain(PlayerProfile profile)
     {
@@ -18,8 +19,19 @@ public sealed record PlayerProfileDto(
             profile.Roster.Characters.Select(PlayerCharacterDto.FromDomain).ToArray(),
             PlayerProgressionDto.FromDomain(profile.Progression),
             profile.CreatedAtUtc,
-            profile.UpdatedAtUtc);
+            profile.UpdatedAtUtc,
+            profile.PermanentUnlocks.Select(PlayerPermanentUnlockDto.FromDomain).ToArray());
     }
+}
+
+public sealed record PlayerPermanentUnlockDto(
+    string UnlockKey,
+    string UnlockType,
+    Guid? SourceRunId,
+    DateTimeOffset UnlockedAtUtc)
+{
+    public static PlayerPermanentUnlockDto FromDomain(PlayerPermanentUnlock unlock) => new(
+        unlock.UnlockKey, unlock.UnlockType, unlock.SourceRunId, unlock.UnlockedAtUtc);
 }
 
 public sealed record PlayerCharacterDto(

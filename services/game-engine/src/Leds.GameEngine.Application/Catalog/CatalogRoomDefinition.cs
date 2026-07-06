@@ -12,3 +12,5 @@ public sealed record CatalogRoomDefinition(
 public sealed record CatalogWorldDefinition(string Key, string DisplayName, string EntryRoomKey);
 
 public sealed record CatalogRoomThemeAffinity(string ThemeFrom, string ThemeTo, decimal Weight);
+
+public sealed record CatalogNpcReputationAffinity(string NpcKeyFrom, string NpcKeyTo, decimal Weight);

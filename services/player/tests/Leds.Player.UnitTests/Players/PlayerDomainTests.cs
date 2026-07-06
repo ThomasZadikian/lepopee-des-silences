@@ -151,6 +151,45 @@ public sealed class PlayerProfileTests
 
         act.Should().Throw<DomainException>().WithMessage("*not found*");
     }
+
+    [Fact]
+    public void GrantPermanentUnlock_ShouldAddUnlock_WhenNotAlreadyGranted()
+    {
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+        var now = DateTimeOffset.UtcNow;
+
+        profile.GrantPermanentUnlock("npc.hitomi:offer.skill", "npc-offering", sourceRunId: null, now);
+
+        profile.PermanentUnlocks.Should().ContainSingle();
+        profile.HasPermanentUnlock("npc.hitomi:offer.skill").Should().BeTrue();
+    }
+
+    [Fact]
+    public void GrantPermanentUnlock_ShouldBeIdempotent_WhenCalledTwiceWithSameKey()
+    {
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+        var now = DateTimeOffset.UtcNow;
+
+        profile.GrantPermanentUnlock("npc.hitomi:offer.skill", "npc-offering", sourceRunId: null, now);
+        profile.GrantPermanentUnlock("npc.hitomi:offer.skill", "npc-offering", sourceRunId: null, now);
+
+        profile.PermanentUnlocks.Should().ContainSingle();
+    }
+
+    [Fact]
+    public void GrantPermanentUnlock_ShouldTrackMultipleNpcsIndependently()
+    {
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+        var now = DateTimeOffset.UtcNow;
+
+        profile.GrantPermanentUnlock("npc.hitomi:offer.skill", "npc-offering", sourceRunId: null, now);
+        profile.GrantPermanentUnlock("npc.elyas:milestone.trust", "npc-reputation-milestone", sourceRunId: null, now);
+
+        profile.PermanentUnlocks.Should().HaveCount(2);
+        profile.HasPermanentUnlock("npc.hitomi:offer.skill").Should().BeTrue();
+        profile.HasPermanentUnlock("npc.elyas:milestone.trust").Should().BeTrue();
+        profile.HasPermanentUnlock("npc.owen:milestone.trust").Should().BeFalse();
+    }
 }
 
 public sealed class PlayerCharacterTests

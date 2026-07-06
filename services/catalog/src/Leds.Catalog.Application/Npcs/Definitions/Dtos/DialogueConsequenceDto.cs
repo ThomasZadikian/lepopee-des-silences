@@ -11,6 +11,7 @@ public sealed record DialogueConsequenceDto(
     int RelationshipDelta,
     string? MemoryFlag,
     string? WoundKey,
+    string? OfferingKey,
     IReadOnlyCollection<DialogueConsequenceDto>? OnWin,
     IReadOnlyCollection<DialogueConsequenceDto>? OnFlee,
     IReadOnlyCollection<DialogueConsequenceDto>? OnLose)
@@ -24,6 +25,7 @@ public sealed record DialogueConsequenceDto(
         c.RelationshipDelta,
         c.MemoryFlag,
         c.WoundKey,
+        c.OfferingKey,
         c.OnWin?.Select(FromDomain).ToArray(),
         c.OnFlee?.Select(FromDomain).ToArray(),
         c.OnLose?.Select(FromDomain).ToArray());

@@ -1198,6 +1198,22 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
     private sealed record CatalogRoomThemeAffinityHttpResponse(
         Guid Id, string ThemeFrom, string ThemeTo, decimal Weight);
 
+    public async Task<IReadOnlyCollection<CatalogNpcReputationAffinity>> ListNpcReputationAffinitiesAsync(
+        CancellationToken cancellationToken = default)
+    {
+        const string url = "/api/v2/catalog/npc-reputation-affinities";
+        var wrapper = await GetJsonOrNullAsync<ListNpcReputationAffinitiesHttpResponse>(url, cancellationToken);
+        return wrapper?.Affinities?
+            .Select(a => new CatalogNpcReputationAffinity(a.NpcKeyFrom, a.NpcKeyTo, a.Weight))
+            .ToArray() ?? [];
+    }
+
+    private sealed record ListNpcReputationAffinitiesHttpResponse(
+        IReadOnlyCollection<CatalogNpcReputationAffinityHttpResponse>? Affinities);
+
+    private sealed record CatalogNpcReputationAffinityHttpResponse(
+        Guid Id, string NpcKeyFrom, string NpcKeyTo, decimal Weight);
+
     public async Task<IReadOnlyCollection<CatalogRoomTypeDefinition>> ListRoomTypeDefinitionsAsync(
     CancellationToken cancellationToken = default)
     {
@@ -1245,8 +1261,14 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
             Persona: source.Persona is null ? null : MapNpcPersona(source.Persona),
             DialogueGraph: source.DialogueGraph is null ? null : MapNpcDialogueGraph(source.DialogueGraph),
             Wounds: (source.Wounds ?? []).Select(MapNpcWound).ToArray(),
-            EncounterKeys: source.EncounterKeys ?? []);
+            EncounterKeys: source.EncounterKeys ?? [],
+            BoundRoomKeys: source.BoundRoomKeys ?? [],
+            Offerings: (source.Offerings ?? []).Select(MapNpcOffering).ToArray());
     }
+
+    private static CatalogNpcOffering MapNpcOffering(CatalogNpcOfferingHttpResponse s) =>
+        new(s.Key, s.Kind, s.TargetKey, s.Amount, s.IsMajor,
+            (s.UnlockConditions ?? []).Select(MapDialogueRequirement).ToArray());
 
     private static CatalogNpcPersona MapNpcPersona(CatalogNpcPersonaHttpResponse s) =>
         new(s.Tone, s.Register, s.Needs ?? [], s.Offerings ?? []);
@@ -1263,7 +1285,7 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
 
     private static CatalogDialogueConsequence MapDialogueConsequence(CatalogDialogueConsequenceHttpResponse s) =>
         new(s.Kind, s.WhenWoundState, s.NarrativeFragmentKey, s.RewardCursePoolKey, s.EncounterKey,
-            s.RelationshipDelta, s.MemoryFlag, s.WoundKey,
+            s.RelationshipDelta, s.MemoryFlag, s.WoundKey, s.OfferingKey,
             s.OnWin?.Select(MapDialogueConsequence).ToArray(),
             s.OnFlee?.Select(MapDialogueConsequence).ToArray(),
             s.OnLose?.Select(MapDialogueConsequence).ToArray());
@@ -1597,7 +1619,17 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
         CatalogNpcPersonaHttpResponse? Persona,
         CatalogNpcDialogueGraphHttpResponse? DialogueGraph,
         IReadOnlyCollection<CatalogNpcWoundHttpResponse>? Wounds,
-        IReadOnlyCollection<string>? EncounterKeys);
+        IReadOnlyCollection<string>? EncounterKeys,
+        IReadOnlyCollection<string>? BoundRoomKeys,
+        IReadOnlyCollection<CatalogNpcOfferingHttpResponse>? Offerings);
+
+    private sealed record CatalogNpcOfferingHttpResponse(
+        string Key,
+        string Kind,
+        string? TargetKey,
+        int Amount,
+        bool IsMajor,
+        IReadOnlyCollection<CatalogDialogueRequirementHttpResponse>? UnlockConditions);
 
     private sealed record CatalogNpcPersonaHttpResponse(
         string Tone,
@@ -1634,6 +1666,7 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
         int RelationshipDelta,
         string? MemoryFlag,
         string? WoundKey,
+        string? OfferingKey,
         IReadOnlyCollection<CatalogDialogueConsequenceHttpResponse>? OnWin,
         IReadOnlyCollection<CatalogDialogueConsequenceHttpResponse>? OnFlee,
         IReadOnlyCollection<CatalogDialogueConsequenceHttpResponse>? OnLose);

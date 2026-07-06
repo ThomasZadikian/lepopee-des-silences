@@ -1,5 +1,8 @@
 using Leds.Player.Application.Players;
 using Leds.Player.Application.Players.AwardStatPoint;
+using Leds.Player.Application.Players.ClaimNpcOffering;
+using Leds.Player.Application.Players.GrantNpcReputationMilestone;
+using Leds.Player.Application.Players.HasClaimedNpcOffering;
 using Leds.Player.Application.Players.UnlockSkill;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -38,9 +41,56 @@ public sealed class InternalPlayersController : ControllerBase
         Guid playerId,
         Guid characterId,
         string skillKey,
+        [FromBody] UnlockSkillRequest? request,
         CancellationToken cancellationToken)
     {
-        var command = new UnlockSkillCommand(playerId, characterId, skillKey, "devtools");
+        var command = new UnlockSkillCommand(playerId, characterId, skillKey, request?.Source ?? "devtools");
+        var response = await _sender.Send(command, cancellationToken);
+
+        return Ok(response);
+    }
+
+    [HttpGet("{playerId:guid}/npcs/{npcKey}/offerings/{offeringKey}/claimed")]
+    [ProducesResponseType(typeof(HasClaimedNpcOfferingResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<HasClaimedNpcOfferingResponse>> HasClaimedNpcOffering(
+        Guid playerId,
+        string npcKey,
+        string offeringKey,
+        CancellationToken cancellationToken)
+    {
+        var claimed = await _sender.Send(new HasClaimedNpcOfferingQuery(playerId, npcKey, offeringKey), cancellationToken);
+
+        return Ok(new HasClaimedNpcOfferingResponse(claimed));
+    }
+
+    [HttpPost("{playerId:guid}/npcs/{npcKey}/offerings/{offeringKey}/claim")]
+    [ProducesResponseType(typeof(PlayerProfileDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<PlayerProfileDto>> ClaimNpcOffering(
+        Guid playerId,
+        string npcKey,
+        string offeringKey,
+        [FromBody] SourceRunRequest? request,
+        CancellationToken cancellationToken)
+    {
+        var command = new ClaimNpcOfferingCommand(playerId, npcKey, offeringKey, request?.SourceRunId);
+        var response = await _sender.Send(command, cancellationToken);
+
+        return Ok(response);
+    }
+
+    [HttpPost("{playerId:guid}/npcs/{npcKey}/reputation-milestones/{milestoneKey}")]
+    [ProducesResponseType(typeof(PlayerProfileDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<PlayerProfileDto>> GrantReputationMilestone(
+        Guid playerId,
+        string npcKey,
+        string milestoneKey,
+        [FromBody] SourceRunRequest? request,
+        CancellationToken cancellationToken)
+    {
+        var command = new GrantNpcReputationMilestoneCommand(playerId, npcKey, milestoneKey, request?.SourceRunId);
         var response = await _sender.Send(command, cancellationToken);
 
         return Ok(response);
@@ -48,3 +98,9 @@ public sealed class InternalPlayersController : ControllerBase
 }
 
 public sealed record AwardStatPointsRequest(int Amount);
+
+public sealed record UnlockSkillRequest(string? Source);
+
+public sealed record SourceRunRequest(Guid? SourceRunId);
+
+public sealed record HasClaimedNpcOfferingResponse(bool Claimed);

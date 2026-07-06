@@ -4,13 +4,16 @@ namespace Leds.Player.Domain.Players;
 
 public sealed class PlayerProfile
 {
+    private readonly List<PlayerPermanentUnlock> _permanentUnlocks;
+
     private PlayerProfile(
         PlayerId id,
         string displayName,
         PlayerRoster roster,
         PlayerProgression progression,
         DateTimeOffset createdAtUtc,
-        DateTimeOffset updatedAtUtc)
+        DateTimeOffset updatedAtUtc,
+        IReadOnlyCollection<PlayerPermanentUnlock>? permanentUnlocks = null)
     {
         Id = id;
         DisplayName = displayName;
@@ -18,6 +21,7 @@ public sealed class PlayerProfile
         Progression = progression;
         CreatedAtUtc = createdAtUtc;
         UpdatedAtUtc = updatedAtUtc;
+        _permanentUnlocks = permanentUnlocks?.ToList() ?? [];
     }
 
     public PlayerId Id { get; }
@@ -26,6 +30,7 @@ public sealed class PlayerProfile
     public PlayerProgression Progression { get; }
     public DateTimeOffset CreatedAtUtc { get; }
     public DateTimeOffset UpdatedAtUtc { get; private set; }
+    public IReadOnlyCollection<PlayerPermanentUnlock> PermanentUnlocks => _permanentUnlocks.AsReadOnly();
 
     public static PlayerProfile Create(string displayName, DateTimeOffset createdAtUtc)
     {
@@ -43,6 +48,23 @@ public sealed class PlayerProfile
         profile.AddDefaultCharacter();
 
         return profile;
+    }
+
+    public bool HasPermanentUnlock(string unlockKey) =>
+        _permanentUnlocks.Any(u => string.Equals(u.UnlockKey, unlockKey, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>
+    /// Grants a permanent, lifetime unlock (an NPC offering claimed, or a reputation
+    /// milestone reached). No-op if already granted — permanent unlocks are never
+    /// revoked or re-granted (decision: "jamais redonné, pour toute la vie du joueur").
+    /// </summary>
+    public void GrantPermanentUnlock(string unlockKey, string unlockType, Guid? sourceRunId, DateTimeOffset now)
+    {
+        if (HasPermanentUnlock(unlockKey))
+            return;
+
+        _permanentUnlocks.Add(PlayerPermanentUnlock.Create(unlockKey, unlockType, sourceRunId, now));
+        Touch(now);
     }
 
     private void AddDefaultCharacter()
@@ -119,8 +141,9 @@ public sealed class PlayerProfile
         PlayerRoster roster,
         PlayerProgression progression,
         DateTimeOffset createdAtUtc,
-        DateTimeOffset updatedAtUtc)
+        DateTimeOffset updatedAtUtc,
+        IReadOnlyCollection<PlayerPermanentUnlock>? permanentUnlocks = null)
     {
-        return new PlayerProfile(id, displayName, roster, progression, createdAtUtc, updatedAtUtc);
+        return new PlayerProfile(id, displayName, roster, progression, createdAtUtc, updatedAtUtc, permanentUnlocks);
     }
 }

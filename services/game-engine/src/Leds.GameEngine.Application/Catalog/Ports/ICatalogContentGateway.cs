@@ -103,6 +103,9 @@ public interface ICatalogContentGateway
     Task<IReadOnlyCollection<CatalogRoomThemeAffinity>> ListRoomThemeAffinitiesAsync(
     CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyCollection<CatalogNpcReputationAffinity>> ListNpcReputationAffinitiesAsync(
+    CancellationToken cancellationToken = default);
+
     Task<CatalogEnemyLootTable?> GetEnemyLootTableByKeyAsync(
         string enemyKey,
         CancellationToken cancellationToken = default);

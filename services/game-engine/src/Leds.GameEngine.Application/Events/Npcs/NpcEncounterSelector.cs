@@ -16,6 +16,7 @@ public sealed class NpcEncounterSelector : INpcEncounterSelector
         var eligible = allNpcs
             .Where(npc => IsDepthCompatible(npc, context.NodeDepth))
             .Where(npc => IsRoomTypeCompatible(npc, context.RoomType))
+            .Where(npc => IsBoundRoomCompatible(npc, context.RoomKey))
             .ToArray();
 
         var constrained = eligible
@@ -58,6 +59,17 @@ public sealed class NpcEncounterSelector : INpcEncounterSelector
             return true;
         var typeName = roomType.ToString();
         return npc.CompatibleRoomTypes.Contains(typeName, StringComparer.OrdinalIgnoreCase);
+    }
+
+    // A PNJ lié (BoundRoomKeys non vide) n'est éligible que dans sa/ses Room précises —
+    // contrairement aux filtres "Compatible*" ci-dessus, ce n'est pas une préférence
+    // parmi d'autres mais une exigence stricte. Un PNJ générique (BoundRoomKeys vide)
+    // n'est pas affecté par ce filtre.
+    private static bool IsBoundRoomCompatible(CatalogNpcDefinition npc, string? roomKey)
+    {
+        if (npc.BoundRoomKeys.Count == 0)
+            return true;
+        return roomKey != null && npc.BoundRoomKeys.Contains(roomKey, StringComparer.OrdinalIgnoreCase);
     }
 
     private static bool MatchesPalaceState(CatalogNpcDefinition npc, PalaceRoomState state)

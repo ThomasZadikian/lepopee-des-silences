@@ -296,6 +296,16 @@ public sealed class RoomThemeAffinityEntity
     public DateTime UpdatedAtUtc { get; set; }
 }
 
+public sealed class NpcReputationAffinityEntity
+{
+    public Guid Id { get; set; }
+    public string NpcKeyFrom { get; set; } = string.Empty;
+    public string NpcKeyTo { get; set; } = string.Empty;
+    public decimal Weight { get; set; }
+    public DateTime CreatedAtUtc { get; set; }
+    public DateTime UpdatedAtUtc { get; set; }
+}
+
 public sealed class RoomTypeDefinitionEntity
 {
     public Guid Id { get; set; }

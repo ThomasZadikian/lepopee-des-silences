@@ -1179,6 +1179,51 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 CompatibleRoomTypes: [],
                 CompatiblePalaceRoomStates: [],
                 CompatibleRoomClimates: ["Rain"]),
+            ["npc.test.offering-giver"] = new CatalogNpcDefinition(
+                Key: "npc.test.offering-giver",
+                DisplayName: "Donneuse de Test",
+                Description: "PNJ de test portant des offres mécaniques.",
+                Tags: [],
+                CompatibleRoomTypes: [],
+                CompatiblePalaceRoomStates: [],
+                CompatibleRoomClimates: [],
+                BoundRoomKeys: ["room.room08"],
+                Offerings:
+                [
+                    new CatalogNpcOffering("offer.skill", "Skill", "skill.basic.strike", 0, IsMajor: true, UnlockConditions: []),
+                    new CatalogNpcOffering("offer.stat", "StatPoint", null, 1, IsMajor: false, UnlockConditions: []),
+                    new CatalogNpcOffering("offer.item", "Item", "item.consumable.minor-heal", 1, IsMajor: false, UnlockConditions: [])
+                ],
+                DialogueGraph: new CatalogNpcDialogueGraph(
+                    "npc.test.offering-giver.dialogue", "1.0", "start",
+                    new Dictionary<string, CatalogNpcDialogueNode>
+                    {
+                        ["start"] = new CatalogNpcDialogueNode(
+                            "start", "Donneuse de Test",
+                            ["Que veux-tu ?"],
+                            [
+                                new CatalogNpcDialogueChoice(
+                                    "take-skill", "Prendre la compétence",
+                                    [], [new CatalogDialogueConsequence(
+                                        "GrantOffering", null, null, null, null, 0, null, null, "offer.skill", null, null, null)],
+                                    null),
+                                new CatalogNpcDialogueChoice(
+                                    "take-stat", "Prendre le point de compétence",
+                                    [], [new CatalogDialogueConsequence(
+                                        "GrantOffering", null, null, null, null, 0, null, null, "offer.stat", null, null, null)],
+                                    null),
+                                new CatalogNpcDialogueChoice(
+                                    "take-item", "Prendre l'objet",
+                                    [], [new CatalogDialogueConsequence(
+                                        "GrantOffering", null, null, null, null, 0, null, null, "offer.item", null, null, null)],
+                                    null),
+                                new CatalogNpcDialogueChoice(
+                                    "take-milestone", "Sceller un souvenir",
+                                    [], [new CatalogDialogueConsequence(
+                                        "PersistReputationMilestone", null, null, null, null, 0, "trust-earned", null, null, null, null, null)],
+                                    null)
+                            ])
+                    })),
         };
 
     private static readonly IReadOnlyDictionary<string, CatalogSkillDefinition> SkillDefinitions =
@@ -1462,6 +1507,10 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
     public Task<IReadOnlyCollection<CatalogRoomThemeAffinity>> ListRoomThemeAffinitiesAsync(
     CancellationToken cancellationToken = default)
     => Task.FromResult<IReadOnlyCollection<CatalogRoomThemeAffinity>>([]);
+
+    public Task<IReadOnlyCollection<CatalogNpcReputationAffinity>> ListNpcReputationAffinitiesAsync(
+    CancellationToken cancellationToken = default)
+    => Task.FromResult<IReadOnlyCollection<CatalogNpcReputationAffinity>>([]);
 
     public Task<IReadOnlyCollection<CatalogRoomTypeDefinition>> ListRoomTypeDefinitionsAsync(
     CancellationToken cancellationToken = default)

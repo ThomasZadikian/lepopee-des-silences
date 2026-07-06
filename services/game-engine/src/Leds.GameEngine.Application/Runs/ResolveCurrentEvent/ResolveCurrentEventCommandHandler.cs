@@ -441,7 +441,8 @@ public sealed class ResolveCurrentEventCommandHandler
                 .Select(law => law.Key)
                 .ToArray(),
             PalaceRoomState: room.PalaceState,
-            RoomClimate: ResolveActiveClimate(run, room));
+            RoomClimate: ResolveActiveClimate(run, room),
+            RoomKey: room.CatalogBinding?.Key);
 
         var contentResult = await _eventContentResolver.ResolveAsync(
             contentContext, cancellationToken);

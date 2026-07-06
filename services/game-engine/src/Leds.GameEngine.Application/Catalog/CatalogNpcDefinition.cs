@@ -17,4 +17,6 @@ public sealed record CatalogNpcDefinition(
     CatalogNpcPersona? Persona = null,
     CatalogNpcDialogueGraph? DialogueGraph = null,
     IReadOnlyCollection<CatalogNpcWound>? Wounds = null,
-    IReadOnlyCollection<string>? EncounterKeys = null);
+    IReadOnlyCollection<string>? EncounterKeys = null,
+    IReadOnlyCollection<string>? BoundRoomKeys = null,
+    IReadOnlyCollection<CatalogNpcOffering>? Offerings = null);

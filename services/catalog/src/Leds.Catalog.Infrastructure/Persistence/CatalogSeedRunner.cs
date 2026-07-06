@@ -48,6 +48,7 @@ public sealed class CatalogSeedRunner
         await SeedCanonRoomsAsync(cancellationToken);
         await SeedPalaisWorldAsync(cancellationToken);
         await SeedRoomThemeAffinitiesAsync(cancellationToken);
+        await SeedNpcReputationAffinitiesAsync(cancellationToken);
         await SeedCanonBossesAsync(cancellationToken);
         await SeedCanonRoomTypesAsync(cancellationToken);
         await SeedCanonLootAsync(cancellationToken);
@@ -66,7 +67,9 @@ public sealed class CatalogSeedRunner
         string key, string name, string description, string version,
         EmotionalRegister affinity, bool recurring,
         NpcPersona persona, IReadOnlyList<NpcWound> wounds, NpcDialogueGraph graph,
-        CancellationToken ct)
+        CancellationToken ct,
+        IReadOnlyList<string>? boundRoomKeys = null,
+        IReadOnlyList<NpcOffering>? offerings = null)
     {
         var existing = await _ctx.NpcDefinitions.FirstOrDefaultAsync(n => n.Key == key, ct);
         if (existing is not null && string.Equals(existing.Version, version, StringComparison.Ordinal))
@@ -93,6 +96,8 @@ public sealed class CatalogSeedRunner
         e.WoundsJson = JsonSerializer.Serialize(wounds, J);
         e.DialogueGraphJson = JsonSerializer.Serialize(graph, J);
         e.EncounterKeysJson = "[]";
+        e.BoundRoomKeysJson = JsonSerializer.Serialize(boundRoomKeys ?? [], J);
+        e.OfferingsJson = JsonSerializer.Serialize(offerings ?? [], J);
         e.UpdatedAtUtc = _now;
 
         if (existing is null)
@@ -101,6 +106,40 @@ public sealed class CatalogSeedRunner
         }
 
         return 1;
+    }
+
+    private async Task<int> UpsertNpcReputationAffinityAsync(
+        string npcKeyFrom, string npcKeyTo, decimal weight, CancellationToken ct)
+    {
+        var existing = await _ctx.NpcReputationAffinities
+            .FirstOrDefaultAsync(a => a.NpcKeyFrom == npcKeyFrom && a.NpcKeyTo == npcKeyTo, ct);
+
+        if (existing is not null)
+        {
+            existing.Weight = weight;
+            existing.UpdatedAtUtc = _now;
+            return 0;
+        }
+
+        _ctx.NpcReputationAffinities.Add(new NpcReputationAffinityEntity
+        {
+            Id = Guid.NewGuid(),
+            NpcKeyFrom = npcKeyFrom,
+            NpcKeyTo = npcKeyTo,
+            Weight = weight,
+            CreatedAtUtc = _now,
+            UpdatedAtUtc = _now
+        });
+
+        return 1;
+    }
+
+    // TODO(utilisateur) : aucune paire d'affinité de réputation inter-PNJ n'a été fournie
+    // à ce stade — contrairement aux affinités de thème des Rooms, celles-ci n'ont pas de
+    // justification déjà validée. Ne rien inventer ; compléter ici une fois le contenu reçu.
+    private async Task SeedNpcReputationAffinitiesAsync(CancellationToken ct)
+    {
+        await Task.CompletedTask;
     }
 
     private async Task<int> UpsertPoolAsync(
@@ -133,7 +172,7 @@ public sealed class CatalogSeedRunner
     private static DialogueConsequence C(
         ConsequenceKind kind, WoundState? when = null, string? frag = null, string? pool = null,
         int rel = 0, string? flag = null, string? wound = null) =>
-        new(kind, when, frag, pool, null, rel, flag, wound, null, null, null);
+        new(kind, when, frag, pool, null, rel, flag, wound, null, null, null, null);
 
     // ── Le Majordome (Silence, irréversible) ─────────────────────────────────
 
@@ -185,6 +224,8 @@ public sealed class CatalogSeedRunner
         var graph = new NpcDialogueGraph("npc.majordome.dialogue", "1.2", "seuil",
             new Dictionary<string, NpcDialogueNode> { ["seuil"] = seuil, ["confidence"] = confidence });
 
+        // TODO(utilisateur) : liaison à une Room précise et offres concrètes non fournies
+        // à ce stade — ne pas inventer, compléter une fois le contenu reçu.
         var n = await UpsertNpcAsync("npc.majordome", "Le Majordome",
             "Une présence du seuil : il accueille, il sert, il veille. Et il n'oublie rien.", "1.2",
             EmotionalRegister.Silence, true, persona, wounds, graph, ct);
@@ -252,9 +293,12 @@ public sealed class CatalogSeedRunner
         var graph = new NpcDialogueGraph("npc.hitomi.dialogue", "1.0", "rive",
             new Dictionary<string, NpcDialogueNode> { ["rive"] = rive, ["partage"] = partage });
 
+        // TODO(utilisateur) : offres concrètes (compétence/sort/objet, majeure/générique)
+        // non fournies à ce stade — ne pas inventer, compléter une fois le contenu reçu.
         var n = await UpsertNpcAsync("npc.hitomi", "Hitomi",
-            "Une présence douce, rencontrée sur un chemin de montagne. Son regard porte un vide ancien.", "1.0",
-            EmotionalRegister.Memoire, true, persona, wounds, graph, ct);
+            "Une présence douce, rencontrée sur un chemin de montagne. Son regard porte un vide ancien.", "1.1",
+            EmotionalRegister.Memoire, true, persona, wounds, graph, ct,
+            boundRoomKeys: new[] { "room.room08" });
         n += await UpsertPoolAsync("pool.hitomi.tendresse", "Hitomi — tendresse", "La chaleur d'une présence sincère.", "1.0",
             new[] { new RewardCurseEntry(RewardCurseEntryKind.Reward, "Heal", null, 20),
                     new RewardCurseEntry(RewardCurseEntryKind.Reward, "Heal", null, 14) }, ct);
@@ -301,6 +345,8 @@ public sealed class CatalogSeedRunner
         var graph = new NpcDialogueGraph("npc.chapelier.dialogue", "1.0", "atelier",
             new Dictionary<string, NpcDialogueNode> { ["atelier"] = atelier });
 
+        // TODO(utilisateur) : liaison à une Room précise et offres concrètes non fournies
+        // à ce stade — ne pas inventer, compléter une fois le contenu reçu.
         var n = await UpsertNpcAsync("npc.chapelier", "Le Chapelier",
             "Maître artisan fier de sa modernité. Quelque chose, sous le vacarme des machines, refuse d'être nommé.", "1.0",
             EmotionalRegister.Deni, true, persona, wounds, graph, ct);
@@ -357,6 +403,8 @@ public sealed class CatalogSeedRunner
         var graph = new NpcDialogueGraph("npc.elyas.dialogue", "1.0", "seuil-ancien",
             new Dictionary<string, NpcDialogueNode> { ["seuil-ancien"] = seuilAncien, ["savoir"] = savoir });
 
+        // TODO(utilisateur) : liaison à une Room précise et offres concrètes non fournies
+        // à ce stade — ne pas inventer, compléter une fois le contenu reçu.
         var n = await UpsertNpcAsync("npc.elyas", "Elyas",
             "Un ancien habitant du Palais, là bien avant toi. Il t'appelle « le concierge ».", "1.0",
             EmotionalRegister.Memoire, true, persona, wounds, graph, ct);
@@ -405,6 +453,8 @@ public sealed class CatalogSeedRunner
         var graph = new NpcDialogueGraph("npc.owen.dialogue", "1.0", "abbaye",
             new Dictionary<string, NpcDialogueNode> { ["abbaye"] = abbaye });
 
+        // TODO(utilisateur) : liaison à une Room précise et offres concrètes non fournies
+        // à ce stade — ne pas inventer, compléter une fois le contenu reçu.
         var n = await UpsertNpcAsync("npc.owen", "Le Père Owen",
             "Le veilleur de la tour. Regard jaune et vitreux, prières nocturnes que nul ne devrait entendre.", "1.0",
             EmotionalRegister.Effroi, true, persona, wounds, graph, ct);

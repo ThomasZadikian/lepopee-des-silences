@@ -9,6 +9,7 @@ public sealed record CatalogDialogueConsequence(
     int RelationshipDelta,
     string? MemoryFlag,
     string? WoundKey,
+    string? OfferingKey,
     IReadOnlyCollection<CatalogDialogueConsequence>? OnWin,
     IReadOnlyCollection<CatalogDialogueConsequence>? OnFlee,
     IReadOnlyCollection<CatalogDialogueConsequence>? OnLose);

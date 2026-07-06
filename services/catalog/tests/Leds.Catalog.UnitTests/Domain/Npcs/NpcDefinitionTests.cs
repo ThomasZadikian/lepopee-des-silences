@@ -92,4 +92,44 @@ public sealed class NpcDefinitionTests
         npc.IsActive.Should().BeTrue();
         npc.IsDraft.Should().BeFalse();
     }
+
+    [Fact]
+    public void Create_ShouldDefaultBoundRoomKeysAndOfferingsToEmpty()
+    {
+        var npc = NpcDefinition.Create(
+            "npc-test",
+            "Test",
+            null,
+            "1.0.0",
+            tags: null,
+            compatibleRoomTypes: null,
+            compatiblePalaceRoomStates: null,
+            compatibleRoomClimates: null);
+
+        npc.BoundRoomKeys.Should().BeEmpty();
+        npc.Offerings.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Create_ShouldStoreBoundRoomKeysAndOfferings()
+    {
+        var offering = new NpcOffering(
+            "offering.test.skill", NpcOfferingKind.Skill, "skill.basic.strike", 0, IsMajor: true,
+            UnlockConditions: [new DialogueRequirement(DialogueRequirementKind.FlagPresent, FlagKey: "met-once")]);
+
+        var npc = NpcDefinition.Create(
+            "npc-bound-test",
+            "Test lié",
+            null,
+            "1.0.0",
+            tags: null,
+            compatibleRoomTypes: null,
+            compatiblePalaceRoomStates: null,
+            compatibleRoomClimates: null,
+            boundRoomKeys: ["room.room08"],
+            offerings: [offering]);
+
+        npc.BoundRoomKeys.Should().BeEquivalentTo("room.room08");
+        npc.Offerings.Should().ContainSingle().Which.Should().BeEquivalentTo(offering);
+    }
 }

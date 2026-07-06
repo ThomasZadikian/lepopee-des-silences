@@ -8,6 +8,7 @@ using Leds.Catalog.Application.EffectSets.Ports;
 using Leds.Catalog.Application.Items.Definitions.Ports;
 using Leds.Catalog.Application.Items.Ports;
 using Leds.Catalog.Application.Npcs.Definitions.Ports;
+using Leds.Catalog.Application.NpcReputationAffinities.Ports;
 using Leds.Catalog.Application.PalaceLaws.Ports;
 using Leds.Catalog.Application.RewardCursePools.Ports;
 using Leds.Catalog.Application.RewardTemplates.Ports;
@@ -45,6 +46,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IPalaceLawDefinitionReadStore, EfPalaceLawDefinitionReadStore>();
         services.AddScoped<ICurseDefinitionReadStore, EfCurseDefinitionReadStore>();
         services.AddScoped<INpcDefinitionReadStore, EfNpcDefinitionReadStore>();
+        services.AddScoped<INpcReputationAffinityReadStore, EfNpcReputationAffinityReadStore>();
         services.AddScoped<IRoomDefinitionReadStore, EfRoomDefinitionReadStore>();
         services.AddScoped<IRoomTypeDefinitionReadStore, EfRoomTypeDefinitionReadStore>();
         services.AddScoped<IWorldDefinitionReadStore, EfWorldDefinitionReadStore>();

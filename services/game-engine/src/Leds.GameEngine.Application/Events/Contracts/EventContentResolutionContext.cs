@@ -14,4 +14,5 @@ public sealed record EventContentResolutionContext(
     string RewardProfile,
     IReadOnlyCollection<string>? ActivePalaceLawKeys = null,
     PalaceRoomState? PalaceRoomState = null,
-    string? RoomClimate = null);
+    string? RoomClimate = null,
+    string? RoomKey = null);
