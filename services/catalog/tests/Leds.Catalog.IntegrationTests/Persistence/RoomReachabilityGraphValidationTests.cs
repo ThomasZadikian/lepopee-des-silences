@@ -73,7 +73,7 @@ public sealed class RoomReachabilityGraphValidationTests
     [Theory]
     [InlineData("room.falaise", "room.enfer1", "room.enfer2", "room.enfer3", "room.enfer4")]
     [InlineData("room.soleil", "room.chateau", "room.cellule")]
-    [InlineData("room.hopital", "room.cellulehopital")]
+    [InlineData("room.hopital", "room.cellulehopital", "room.faille")]
     public async Task StrictChain_ShouldBeLinearAndConvergeToAnEmptyChildList(params string[] chainKeysInOrder)
     {
         var (context, _) = _fixture.CreateContext();

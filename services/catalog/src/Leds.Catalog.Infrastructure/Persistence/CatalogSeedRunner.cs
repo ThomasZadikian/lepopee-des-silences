@@ -1490,8 +1490,43 @@ public sealed class CatalogSeedRunner
             "room.falaise", "room.enfer1", "room.enfer2", "room.enfer3", "room.enfer4");
         await LinkStrictChainAsync(cancellationToken,
             "room.soleil", "room.chateau", "room.cellule");
+        // L'hôpital ne s'arrête pas à sa cellule : elle mène ensuite à la faille (seule
+        // salle niveau 1 qui referme cette chaîne plutôt que de retomber sur le hall).
         await LinkStrictChainAsync(cancellationToken,
-            "room.hopital", "room.cellulehopital");
+            "room.hopital", "room.cellulehopital", "room.faille");
+
+        // Enchaînements niveau 1 ↔ niveau 2 (source : tableau "Room" fourni, colonne
+        // "Pièce suivante" faisant foi salle par salle — cf. discussion sur les quelques
+        // incohérences mineures du tableau source, ex. room.palier ne liste pas
+        // room.room08 alors que room08 le cite comme prédécesseur : room08 reste
+        // atteignable via room.couloirs de toute façon).
+        //
+        // room.halldentree : toutes les salles de niveau 1, + l'exception explicite
+        // room.hopital (niveau 2) que le tableau source rattache directement au hall.
+        await LinkReachabilityAsync("room.halldentree", "room.palier", cancellationToken);
+        await LinkReachabilityAsync("room.halldentree", "room.couloirs", cancellationToken);
+        await LinkReachabilityAsync("room.halldentree", "room.feelings", cancellationToken);
+        await LinkReachabilityAsync("room.halldentree", "room.turtle", cancellationToken);
+        await LinkReachabilityAsync("room.halldentree", "room.enfermement", cancellationToken);
+        await LinkReachabilityAsync("room.halldentree", "room.jardin", cancellationToken);
+        await LinkReachabilityAsync("room.halldentree", "room.hopital", cancellationToken);
+
+        // room.couloirs reste en liste noire (ReachabilityMode = AllExceptListed, déjà
+        // configuré) : comme toutes les salles niveau 3+ sont déjà marquées
+        // ExcludeFromOpenPool, la résolution automatique donne exactement "toutes les
+        // salles de niveau 1 et 2" sans qu'aucune exclusion explicite soit nécessaire ici.
+
+        await LinkReachabilityAsync("room.palier", "room.couloirs", cancellationToken);
+        await LinkReachabilityAsync("room.palier", "room.meditation", cancellationToken);
+
+        await LinkReachabilityAsync("room.labyrinthe", "room.falaise", cancellationToken);
+        await LinkReachabilityAsync("room.labyrinthe", "room.faille", cancellationToken);
+
+        await LinkReachabilityAsync("room.jardin", "room.soleil", cancellationToken);
+
+        // room.feelings, room.turtle, room.enfermement, room.meditation, room.room08 et
+        // room.chambredelise n'ont volontairement aucun enfant déclaré dans le tableau
+        // source : ce sont des culs-de-sac qui renvoient au hall d'entrée (SFD § 5.4).
 
         await UpsertWorldAsync("palais", "Palais", "room.halldentree", cancellationToken);
         await _ctx.SaveChangesAsync(cancellationToken);
