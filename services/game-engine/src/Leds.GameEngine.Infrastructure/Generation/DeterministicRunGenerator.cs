@@ -171,14 +171,20 @@ public sealed class DeterministicRunGenerator : IRunGenerator
         var currentBinding = run.CurrentRoom.CatalogBinding;
         if (currentBinding is not null)
         {
-            var definitions = await _catalogContentGateway.ListRoomDefinitionsAsync(cancellationToken);
+            // The three catalog reads are independent of one another — fetched
+            // concurrently instead of one-after-another to keep per-room generation
+            // latency down to a single round-trip instead of three.
+            var definitionsTask = _catalogContentGateway.ListRoomDefinitionsAsync(cancellationToken);
+            var worldsTask = _catalogContentGateway.ListWorldDefinitionsAsync(cancellationToken);
+            var themeAffinitiesTask = _catalogContentGateway.ListRoomThemeAffinitiesAsync(cancellationToken);
+            await Task.WhenAll(definitionsTask, worldsTask, themeAffinitiesTask);
+
+            var definitions = definitionsTask.Result;
             var currentDefinition = definitions.FirstOrDefault(d =>
                 string.Equals(d.Key, currentBinding.Key, StringComparison.OrdinalIgnoreCase));
 
             if (currentDefinition is not null && !string.IsNullOrWhiteSpace(currentDefinition.WorldKey))
             {
-                var worlds = await _catalogContentGateway.ListWorldDefinitionsAsync(cancellationToken);
-                var themeAffinities = await _catalogContentGateway.ListRoomThemeAffinitiesAsync(cancellationToken);
                 var visitedKeys = run.Rooms
                     .Select(r => r.CatalogBinding?.Key)
                     .Where(key => key is not null)
@@ -186,7 +192,8 @@ public sealed class DeterministicRunGenerator : IRunGenerator
                     .ToArray();
 
                 var selected = _roomReachabilitySelector.SelectNextRoom(
-                    currentDefinition, definitions, worlds, themeAffinities, nextRoomDepth, visitedKeys, run.Seed);
+                    currentDefinition, definitions, worldsTask.Result, themeAffinitiesTask.Result,
+                    nextRoomDepth, visitedKeys, run.Seed);
 
                 if (selected is not null)
                 {
