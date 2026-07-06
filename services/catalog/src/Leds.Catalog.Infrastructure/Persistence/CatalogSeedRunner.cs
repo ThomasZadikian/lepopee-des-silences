@@ -47,6 +47,7 @@ public sealed class CatalogSeedRunner
         await AttachCanonLawEffectsAsync(cancellationToken);
         await SeedCanonRoomsAsync(cancellationToken);
         await SeedPalaisWorldAsync(cancellationToken);
+        await SeedRoomThemeAffinitiesAsync(cancellationToken);
         await SeedCanonBossesAsync(cancellationToken);
         await SeedCanonRoomTypesAsync(cancellationToken);
         await SeedCanonLootAsync(cancellationToken);
@@ -1433,7 +1434,7 @@ public sealed class CatalogSeedRunner
             "Des marteaux qui hurlent, une forge qui recrache de la fumée et des créations inachevées qui errent " +
             "sans but sur les plaques d'acier et les piliers de fer qui décorent cet étage. Le forgeron guette, " +
             "crée et rejette ses propres créations.",
-            "Palais intérieur", "Uncommon", "Terrifying", 3, 9, cancellationToken,
+            "Palais intérieur", "Uncommon", "Terrify", 3, 9, cancellationToken,
             excludeFromOpenPool: true, isCulturalEcho: false);
 
         await UpsertRoomAsync("room.enfer4", "Les enfers - Le chateau",
@@ -1558,6 +1559,77 @@ public sealed class CatalogSeedRunner
         }
         existing.DisplayName = displayName; existing.EntryRoomDefinitionId = entryRoomId;
         existing.Version = version; existing.Status = "Active"; existing.UpdatedAtUtc = now;
+    }
+
+    /// <summary>
+    /// Sparse editorial overrides for the theme-affinity matrix (SFD § 5.3): only the
+    /// pairs listed here deviate from the default weight applied to every other theme
+    /// combination — no need to fill the full N×N grid for the 18-theme canon vocabulary
+    /// (Welcome, Religion, Feelings, Fear, Terrify, Peace, Meditation, Silence,
+    /// Underground, Madness, Collapse, Garden, Forest, Confinement, Corridors, Hell,
+    /// Heaven, Memory). Adding a new theme later needs zero entries here to work; add a
+    /// row only when a specific transition should be reinforced or avoided narratively.
+    /// </summary>
+    private async Task SeedRoomThemeAffinitiesAsync(CancellationToken cancellationToken)
+    {
+        // Escalation toward dread.
+        await UpsertRoomThemeAffinityAsync("Fear", "Terrify", 2.5m, cancellationToken);
+        await UpsertRoomThemeAffinityAsync("Terrify", "Madness", 2.5m, cancellationToken);
+        await UpsertRoomThemeAffinityAsync("Madness", "Collapse", 2.0m, cancellationToken);
+        await UpsertRoomThemeAffinityAsync("Collapse", "Hell", 2.0m, cancellationToken);
+        await UpsertRoomThemeAffinityAsync("Confinement", "Madness", 2.0m, cancellationToken);
+
+        // Calm / introspective chain.
+        await UpsertRoomThemeAffinityAsync("Peace", "Meditation", 2.5m, cancellationToken);
+        await UpsertRoomThemeAffinityAsync("Meditation", "Silence", 2.0m, cancellationToken);
+        await UpsertRoomThemeAffinityAsync("Garden", "Peace", 2.5m, cancellationToken);
+        await UpsertRoomThemeAffinityAsync("Heaven", "Peace", 2.0m, cancellationToken);
+
+        // Entering the Palais and settling into its memory/emotion register.
+        await UpsertRoomThemeAffinityAsync("Welcome", "Memory", 2.0m, cancellationToken);
+        await UpsertRoomThemeAffinityAsync("Memory", "Feelings", 2.0m, cancellationToken);
+
+        // Natural / liminal descent.
+        await UpsertRoomThemeAffinityAsync("Forest", "Underground", 2.0m, cancellationToken);
+        await UpsertRoomThemeAffinityAsync("Underground", "Confinement", 2.0m, cancellationToken);
+        await UpsertRoomThemeAffinityAsync("Corridors", "Silence", 1.5m, cancellationToken);
+        await UpsertRoomThemeAffinityAsync("Silence", "Corridors", 1.5m, cancellationToken);
+
+        // Religion bridges toward either extreme, tilted slightly toward Heaven.
+        await UpsertRoomThemeAffinityAsync("Religion", "Heaven", 2.0m, cancellationToken);
+        await UpsertRoomThemeAffinityAsync("Religion", "Hell", 1.5m, cancellationToken);
+
+        // Tonal opposites: rarely follow one another directly, never impossible.
+        await UpsertRoomThemeAffinityAsync("Peace", "Hell", 0.2m, cancellationToken);
+        await UpsertRoomThemeAffinityAsync("Heaven", "Hell", 0.15m, cancellationToken);
+        await UpsertRoomThemeAffinityAsync("Welcome", "Hell", 0.2m, cancellationToken);
+        await UpsertRoomThemeAffinityAsync("Garden", "Confinement", 0.3m, cancellationToken);
+        await UpsertRoomThemeAffinityAsync("Meditation", "Madness", 0.2m, cancellationToken);
+    }
+
+    private async Task UpsertRoomThemeAffinityAsync(
+        string themeFrom, string themeTo, decimal weight, CancellationToken cancellationToken)
+    {
+        var now = DateTime.UtcNow;
+        var existing = await _ctx.RoomThemeAffinities.FirstOrDefaultAsync(
+            a => a.ThemeFrom == themeFrom && a.ThemeTo == themeTo, cancellationToken);
+
+        if (existing is null)
+        {
+            _ctx.RoomThemeAffinities.Add(new RoomThemeAffinityEntity
+            {
+                Id = Guid.NewGuid(),
+                ThemeFrom = themeFrom,
+                ThemeTo = themeTo,
+                Weight = weight,
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
+            });
+            return;
+        }
+
+        existing.Weight = weight;
+        existing.UpdatedAtUtc = now;
     }
     // ── BOSS CANON ────────────────────────────────────────────────────────────
     // Crée à la fois l'EnemyDefinition (IsBoss) + StatBlock + le RoomBossDefinition.
