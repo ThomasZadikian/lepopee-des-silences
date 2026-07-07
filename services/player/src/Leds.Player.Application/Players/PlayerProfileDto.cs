@@ -9,7 +9,8 @@ public sealed record PlayerProfileDto(
     PlayerProgressionDto Progression,
     DateTimeOffset CreatedAtUtc,
     DateTimeOffset UpdatedAtUtc,
-    IReadOnlyCollection<PlayerPermanentUnlockDto> PermanentUnlocks)
+    IReadOnlyCollection<PlayerPermanentUnlockDto> PermanentUnlocks,
+    IReadOnlyCollection<PlayerPermanentItemDto> PermanentItems)
 {
     public static PlayerProfileDto FromDomain(PlayerProfile profile)
     {
@@ -20,7 +21,8 @@ public sealed record PlayerProfileDto(
             PlayerProgressionDto.FromDomain(profile.Progression),
             profile.CreatedAtUtc,
             profile.UpdatedAtUtc,
-            profile.PermanentUnlocks.Select(PlayerPermanentUnlockDto.FromDomain).ToArray());
+            profile.PermanentUnlocks.Select(PlayerPermanentUnlockDto.FromDomain).ToArray(),
+            profile.PermanentItems.Select(PlayerPermanentItemDto.FromDomain).ToArray());
     }
 }
 
@@ -34,6 +36,15 @@ public sealed record PlayerPermanentUnlockDto(
         unlock.UnlockKey, unlock.UnlockType, unlock.SourceRunId, unlock.UnlockedAtUtc);
 }
 
+public sealed record PlayerPermanentItemDto(
+    string ItemDefinitionKey,
+    Guid? SourceRunId,
+    DateTimeOffset AcquiredAtUtc)
+{
+    public static PlayerPermanentItemDto FromDomain(PlayerPermanentItem item) => new(
+        item.ItemDefinitionKey, item.SourceRunId, item.AcquiredAtUtc);
+}
+
 public sealed record PlayerCharacterDto(
     Guid Id,
     string DefinitionKey,
@@ -44,7 +55,10 @@ public sealed record PlayerCharacterDto(
     IReadOnlyCollection<string> SkillKeys,
     IReadOnlyCollection<PlayerCharacterSkillDto> Skills,
     PlayerCharacterStatsDto Stats,
-    int MaxEquippedSkills)
+    int MaxEquippedSkills,
+    IReadOnlyCollection<string> ItemKeys,
+    IReadOnlyCollection<PlayerCharacterItemDto> Items,
+    int MaxEquippedItems)
 {
     public static PlayerCharacterDto FromDomain(PlayerCharacter character)
     {
@@ -64,7 +78,26 @@ public sealed record PlayerCharacterDto(
             manageableSkills.Select(s => s.SkillDefinitionKey).ToArray(),
             manageableSkills.Select(PlayerCharacterSkillDto.FromDomain).ToArray(),
             PlayerCharacterStatsDto.FromDomain(character.StatBlock),
-            PlayerCharacter.MaxEquippedSkills);
+            PlayerCharacter.MaxEquippedSkills,
+            character.ItemKeys.ToArray(),
+            character.Items.Select(PlayerCharacterItemDto.FromDomain).ToArray(),
+            PlayerCharacter.MaxEquippedItems);
+    }
+}
+
+public sealed record PlayerCharacterItemDto(
+    string ItemKey,
+    DateTimeOffset AcquiredAtUtc,
+    string? Source,
+    bool IsEquipped)
+{
+    public static PlayerCharacterItemDto FromDomain(PlayerCharacterItem item)
+    {
+        return new PlayerCharacterItemDto(
+            item.ItemDefinitionKey,
+            item.AcquiredAtUtc,
+            item.Source,
+            item.IsEquipped);
     }
 }
 

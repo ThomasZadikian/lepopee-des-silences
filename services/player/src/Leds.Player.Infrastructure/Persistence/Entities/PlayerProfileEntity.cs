@@ -16,5 +16,6 @@ public sealed class PlayerProfileEntity
 
     public List<PlayerCharacterEntity> Characters { get; set; } = [];
     public List<PlayerPermanentUnlockEntity> PermanentUnlocks { get; set; } = [];
+    public List<PlayerPermanentItemEntity> PermanentItems { get; set; } = [];
     public List<PlayerRunStatisticEntity> RunStatistics { get; set; } = [];
 }

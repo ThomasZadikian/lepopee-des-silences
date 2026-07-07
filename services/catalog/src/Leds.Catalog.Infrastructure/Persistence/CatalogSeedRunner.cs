@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Leds.Catalog.Domain.Items;
 using Leds.Catalog.Domain.Npcs;
 using Leds.Catalog.Domain.RewardCursePools;
 using Leds.Catalog.Domain.Rewards.Loot;
@@ -895,6 +896,10 @@ public sealed class CatalogSeedRunner
     private async Task SeedCanonItemsAsync(CancellationToken cancellationToken)
     {
         // key, name, desc, category, itemType, rarity, lifecycle, usableInCombat, effectValue
+        // TODO(utilisateur) : les objets ci-dessous avec Duration="Permanent" sont désormais
+        // automatiquement éligibles au sac permanent (SFD "Équipement et sac permanent" § 4) —
+        // mais aucun n'a d'effet d'équipement assigné (equipmentEffects reste vide). Ne rien
+        // inventer ; compléter au cas par cas une fois le contenu (bonus, sorts, affinités) reçu.
         await UpsertItemAsync("canon.item.tome-38", "Le Tome 38",
             "« L'épopée du Silence ». Les notes du 38ᵉ écho, reliées dans une peau humaine. Celui qui le lit n'est jamais tout à fait seul.",
             "Relic", "Lore", "Unique", "Permanent", false, 0, cancellationToken);
@@ -989,12 +994,14 @@ public sealed class CatalogSeedRunner
     private async Task UpsertItemAsync(
         string key, string name, string description,
         string category, string itemType, string rarity, string durability,
-        bool usableInCombat, int effectValue, CancellationToken cancellationToken)
+        bool usableInCombat, int effectValue, CancellationToken cancellationToken,
+        IReadOnlyList<ItemEquipmentEffect>? equipmentEffects = null)
     {
         const string version = "canon-1.0.0";
         var now = DateTime.UtcNow;
         var lifecycle = durability == "Permanent" ? "PersistentMeta" : "RuntimeRunOnly";
         var duration = durability == "Permanent" ? "Permanent" : "RunOnly";
+        var equipmentEffectsJson = JsonSerializer.Serialize(equipmentEffects ?? [], J);
         var existing = await _ctx.ItemDefinitions.FirstOrDefaultAsync(i => i.Key == key, cancellationToken);
         if (existing is null)
         {
@@ -1019,6 +1026,7 @@ public sealed class CatalogSeedRunner
                 IsUsableOutsideCombat = false,
                 Duration = duration,
                 EffectValue = effectValue,
+                EquipmentEffectsJson = equipmentEffectsJson,
                 Price = 0,
                 BaseWeight = 1,
                 CreatedAtUtc = now,
@@ -1033,6 +1041,7 @@ public sealed class CatalogSeedRunner
         existing.UsageMode = usableInCombat ? "UseInCombat" : "NotUsable";
         existing.Lifecycle = lifecycle; existing.Duration = duration;
         existing.IsUsableInCombat = usableInCombat; existing.EffectValue = effectValue;
+        existing.EquipmentEffectsJson = equipmentEffectsJson;
         existing.UpdatedAtUtc = now;
     }
     // ── MALÉDICTIONS CANON ────────────────────────────────────────────────────

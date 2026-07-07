@@ -100,6 +100,46 @@ namespace Leds.Player.Infrastructure.Persistence.Migrations
                     b.ToTable("player_characters", (string)null);
                 });
 
+            modelBuilder.Entity("Leds.Player.Infrastructure.Persistence.Entities.PlayerCharacterItemEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("AcquiredAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("acquired_at_utc");
+
+                    b.Property<string>("ItemDefinitionKey")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("item_definition_key");
+
+                    b.Property<bool>("IsEquipped")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_equipped");
+
+                    b.Property<Guid>("PlayerCharacterId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("player_character_id");
+
+                    b.Property<string>("Source")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("source");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PlayerCharacterId", "ItemDefinitionKey")
+                        .IsUnique();
+
+                    b.ToTable("player_character_items", (string)null);
+                });
+
             modelBuilder.Entity("Leds.Player.Infrastructure.Persistence.Entities.PlayerCharacterSkillEntity", b =>
                 {
                     b.Property<Guid>("Id")
@@ -217,6 +257,39 @@ namespace Leds.Player.Infrastructure.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("player_character_stat_blocks", (string)null);
+                });
+
+            modelBuilder.Entity("Leds.Player.Infrastructure.Persistence.Entities.PlayerPermanentItemEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("AcquiredAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("acquired_at_utc");
+
+                    b.Property<string>("ItemDefinitionKey")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("item_definition_key");
+
+                    b.Property<Guid>("PlayerProfileId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("player_profile_id");
+
+                    b.Property<Guid?>("SourceRunId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("source_run_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PlayerProfileId", "ItemDefinitionKey")
+                        .IsUnique();
+
+                    b.ToTable("player_permanent_items", (string)null);
                 });
 
             modelBuilder.Entity("Leds.Player.Infrastructure.Persistence.Entities.PlayerPermanentUnlockEntity", b =>
@@ -465,6 +538,17 @@ namespace Leds.Player.Infrastructure.Persistence.Migrations
                     b.Navigation("PlayerProfile");
                 });
 
+            modelBuilder.Entity("Leds.Player.Infrastructure.Persistence.Entities.PlayerCharacterItemEntity", b =>
+                {
+                    b.HasOne("Leds.Player.Infrastructure.Persistence.Entities.PlayerCharacterEntity", "PlayerCharacter")
+                        .WithMany("Items")
+                        .HasForeignKey("PlayerCharacterId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("PlayerCharacter");
+                });
+
             modelBuilder.Entity("Leds.Player.Infrastructure.Persistence.Entities.PlayerCharacterSkillEntity", b =>
                 {
                     b.HasOne("Leds.Player.Infrastructure.Persistence.Entities.PlayerCharacterEntity", "PlayerCharacter")
@@ -485,6 +569,17 @@ namespace Leds.Player.Infrastructure.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("PlayerCharacter");
+                });
+
+            modelBuilder.Entity("Leds.Player.Infrastructure.Persistence.Entities.PlayerPermanentItemEntity", b =>
+                {
+                    b.HasOne("Leds.Player.Infrastructure.Persistence.Entities.PlayerProfileEntity", "PlayerProfile")
+                        .WithMany("PermanentItems")
+                        .HasForeignKey("PlayerProfileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("PlayerProfile");
                 });
 
             modelBuilder.Entity("Leds.Player.Infrastructure.Persistence.Entities.PlayerPermanentUnlockEntity", b =>
@@ -511,6 +606,8 @@ namespace Leds.Player.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Leds.Player.Infrastructure.Persistence.Entities.PlayerCharacterEntity", b =>
                 {
+                    b.Navigation("Items");
+
                     b.Navigation("Skills");
 
                     b.Navigation("StatBlock");
@@ -519,6 +616,8 @@ namespace Leds.Player.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Leds.Player.Infrastructure.Persistence.Entities.PlayerProfileEntity", b =>
                 {
                     b.Navigation("Characters");
+
+                    b.Navigation("PermanentItems");
 
                     b.Navigation("PermanentUnlocks");
 

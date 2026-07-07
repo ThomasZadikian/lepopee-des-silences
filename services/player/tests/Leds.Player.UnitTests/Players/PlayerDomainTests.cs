@@ -190,6 +190,44 @@ public sealed class PlayerProfileTests
         profile.HasPermanentUnlock("npc.elyas:milestone.trust").Should().BeTrue();
         profile.HasPermanentUnlock("npc.owen:milestone.trust").Should().BeFalse();
     }
+
+    [Fact]
+    public void AddPermanentItems_ShouldAddNewItemsOnly()
+    {
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+        var now = DateTimeOffset.UtcNow;
+
+        profile.AddPermanentItems(["item.sac-a-dos", "item.amulette"], sourceRunId: null, now);
+        profile.AddPermanentItems(["item.sac-a-dos"], sourceRunId: null, now);
+
+        profile.PermanentItems.Should().HaveCount(2);
+        profile.HasPermanentItem("item.sac-a-dos").Should().BeTrue();
+        profile.HasPermanentItem("item.amulette").Should().BeTrue();
+    }
+
+    [Fact]
+    public void EquipItem_ShouldAddItemToCharacterAndEquipIt_WhenOwnedInPermanentBackpack()
+    {
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+        var character = profile.Roster.Characters.Single();
+        var now = DateTimeOffset.UtcNow;
+        profile.AddPermanentItems(["item.sac-a-dos"], sourceRunId: null, now);
+
+        profile.EquipItem(character.Id, "item.sac-a-dos", now);
+
+        character.EquippedItemKeys.Should().Contain("item.sac-a-dos");
+    }
+
+    [Fact]
+    public void EquipItem_ShouldReject_WhenItemNotInPermanentBackpack()
+    {
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+        var character = profile.Roster.Characters.Single();
+
+        var act = () => profile.EquipItem(character.Id, "item.never-owned", DateTimeOffset.UtcNow);
+
+        act.Should().Throw<DomainException>().WithMessage("*not in the permanent backpack*");
+    }
 }
 
 public sealed class PlayerCharacterTests
@@ -293,6 +331,81 @@ public sealed class PlayerCharacterTests
         var act = () => character.UnequipSkill("skill.unknown");
 
         act.Should().Throw<DomainException>().WithMessage("*not known*");
+    }
+
+    [Fact]
+    public void EquipItem_ShouldMarkItemAsEquipped()
+    {
+        var character = CreateCharacterWithSkills("skill.a");
+        character.AddItem(PlayerCharacterItem.Create("item.a", DateTimeOffset.UtcNow));
+
+        character.EquipItem("item.a");
+
+        character.Items.Single().IsEquipped.Should().BeTrue();
+        character.EquippedItemKeys.Should().Contain("item.a");
+    }
+
+    [Fact]
+    public void EquipItem_ShouldBeIdempotentWhenAlreadyEquipped()
+    {
+        var character = CreateCharacterWithSkills("skill.a");
+        character.AddItem(PlayerCharacterItem.Create("item.a", DateTimeOffset.UtcNow));
+        character.EquipItem("item.a");
+
+        var act = () => character.EquipItem("item.a");
+
+        act.Should().NotThrow();
+        character.EquippedItemCount.Should().Be(1);
+    }
+
+    [Fact]
+    public void EquipItem_ShouldRejectUnknownItem()
+    {
+        var character = CreateCharacterWithSkills("skill.a");
+
+        var act = () => character.EquipItem("item.unknown");
+
+        act.Should().Throw<DomainException>().WithMessage("*not owned*");
+    }
+
+    [Fact]
+    public void EquipItem_ShouldRejectExceedingMaxEquippedItems()
+    {
+        var character = CreateCharacterWithSkills("skill.a");
+        var now = DateTimeOffset.UtcNow;
+        character.AddItem(PlayerCharacterItem.Create("item.a", now));
+        character.AddItem(PlayerCharacterItem.Create("item.b", now));
+        character.AddItem(PlayerCharacterItem.Create("item.c", now));
+        character.AddItem(PlayerCharacterItem.Create("item.d", now));
+        character.EquipItem("item.a");
+        character.EquipItem("item.b");
+        character.EquipItem("item.c");
+
+        var act = () => character.EquipItem("item.d");
+
+        act.Should().Throw<DomainException>().WithMessage("*Cannot equip more than*");
+        character.EquippedItemCount.Should().Be(3);
+    }
+
+    [Fact]
+    public void UnequipItem_ShouldFreeUpASlot()
+    {
+        var character = CreateCharacterWithSkills("skill.a");
+        var now = DateTimeOffset.UtcNow;
+        character.AddItem(PlayerCharacterItem.Create("item.a", now));
+        character.AddItem(PlayerCharacterItem.Create("item.b", now));
+        character.AddItem(PlayerCharacterItem.Create("item.c", now));
+        character.AddItem(PlayerCharacterItem.Create("item.d", now));
+        character.EquipItem("item.a");
+        character.EquipItem("item.b");
+        character.EquipItem("item.c");
+
+        character.UnequipItem("item.a");
+        var act = () => character.EquipItem("item.d");
+
+        act.Should().NotThrow();
+        character.EquippedItemCount.Should().Be(3);
+        character.EquippedItemKeys.Should().NotContain("item.a");
     }
 
     [Fact]

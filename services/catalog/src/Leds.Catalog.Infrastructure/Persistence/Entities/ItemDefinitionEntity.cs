@@ -27,6 +27,10 @@ public sealed class ItemDefinitionEntity
     public string Duration { get; set; } = string.Empty;
     public int EffectValue { get; set; }
     public int Price { get; set; }
+
+    // ── Équipement et sac permanent (equipment-sfd-0.1) ──────────────────────
+    public string? EquipmentEffectsJson { get; set; }
+
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
 

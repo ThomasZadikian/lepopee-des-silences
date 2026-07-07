@@ -11,6 +11,8 @@ function baseCharacter(overrides: Partial<PlayerCharacterView> = {}): PlayerChar
     definitionKey: 'character.player.self',
     displayName: 'Le Porteur',
     maxEquippedSkills: 4,
+    items: [],
+    maxEquippedItems: 3,
     skills: [
       { skillKey: 'skill.a', unlockedAtUtc: '2026-01-01T00:00:00Z', source: 'default', isEquipped: true },
     ],

@@ -1,3 +1,5 @@
+using Leds.Catalog.Domain.Items;
+
 namespace Leds.Catalog.Application.Items.Definitions.Dtos;
 
 public sealed record ItemDefinitionDto(
@@ -17,4 +19,17 @@ public sealed record ItemDefinitionDto(
     bool IsUsableInCombat,
     bool IsUsableOutsideCombat,
     string? EffectSetKey,
-    string Status);
+    string Status,
+    bool IsPermanentEligible,
+    IReadOnlyCollection<ItemEquipmentEffectDto> EquipmentEffects);
+
+public sealed record ItemEquipmentEffectDto(
+    string Kind,
+    string? StatKind,
+    int? Amount,
+    string? SkillKey,
+    string? AffinityRegister)
+{
+    public static ItemEquipmentEffectDto FromDomain(ItemEquipmentEffect effect) => new(
+        effect.Kind.ToString(), effect.StatKind, effect.Amount, effect.SkillKey, effect.AffinityRegister?.ToString());
+}

@@ -2,7 +2,9 @@ import { gameEngineApi } from '../../../shared/api/gameEngineApi';
 
 import type {
   ChooseNodeResponse,
+  ConfirmPermanentItemSelectionResponse,
   GenerateNextNodesResponse,
+  GetPermanentItemCandidatesResponse,
   ResolveCurrentEventResponse,
   RunResponse,
   StartRunResponse,
@@ -88,6 +90,19 @@ export const runApi = {
   abandonRun(runId: string) {
     return gameEngineApi.post<RunResponse>(
       `/api/v2/runs/${runId}/abandon`,
+    );
+  },
+
+  getPermanentItemCandidates(runId: string) {
+    return gameEngineApi.get<GetPermanentItemCandidatesResponse>(
+      `/api/v2/runs/${runId}/permanent-item-candidates`,
+    );
+  },
+
+  confirmPermanentItemSelection(runId: string, itemDefinitionKeys: string[]) {
+    return gameEngineApi.post<ConfirmPermanentItemSelectionResponse, { itemDefinitionKeys: string[] }>(
+      `/api/v2/runs/${runId}/permanent-items/confirm`,
+      { itemDefinitionKeys },
     );
   },
 };

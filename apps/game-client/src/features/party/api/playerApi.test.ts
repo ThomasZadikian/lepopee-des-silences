@@ -36,6 +36,22 @@ describe('playerApi', () => {
     );
   });
 
+  it('equipItem sends POST request to the item equip route', async () => {
+    vi.mocked(gameEngineApi.post).mockResolvedValueOnce({});
+    await playerApi.equipItem('player-1', 'char-1', 'item.relic.tome');
+    expect(gameEngineApi.post).toHaveBeenCalledWith(
+      '/api/v2/players/player-1/characters/char-1/items/item.relic.tome/equip',
+    );
+  });
+
+  it('unequipItem sends POST request to the item unequip route', async () => {
+    vi.mocked(gameEngineApi.post).mockResolvedValueOnce({});
+    await playerApi.unequipItem('player-1', 'char-1', 'item.relic.tome');
+    expect(gameEngineApi.post).toHaveBeenCalledWith(
+      '/api/v2/players/player-1/characters/char-1/items/item.relic.tome/unequip',
+    );
+  });
+
   it('spendStatPoint sends POST request to the spend-point route', async () => {
     vi.mocked(gameEngineApi.post).mockResolvedValueOnce({});
     await playerApi.spendStatPoint('player-1', 'char-1', 'AttackPower');

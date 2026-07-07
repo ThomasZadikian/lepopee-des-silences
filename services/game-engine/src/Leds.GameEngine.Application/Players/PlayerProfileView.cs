@@ -4,7 +4,8 @@ public sealed record PlayerProfileView(
     Guid Id,
     string DisplayName,
     IReadOnlyCollection<PlayerCharacterView> Characters,
-    PlayerProgressionView Progression);
+    PlayerProgressionView Progression,
+    IReadOnlyCollection<PlayerPermanentItemView>? PermanentItems = null);
 
 public sealed record PlayerCharacterView(
     Guid Id,
@@ -12,13 +13,26 @@ public sealed record PlayerCharacterView(
     string DisplayName,
     IReadOnlyCollection<PlayerCharacterSkillView> Skills,
     PlayerCharacterStatsView Stats,
-    int MaxEquippedSkills);
+    int MaxEquippedSkills,
+    IReadOnlyCollection<PlayerCharacterItemView>? Items = null,
+    int MaxEquippedItems = 3);
 
 public sealed record PlayerCharacterSkillView(
     string SkillKey,
     DateTimeOffset UnlockedAtUtc,
     string? Source,
     bool IsEquipped);
+
+public sealed record PlayerCharacterItemView(
+    string ItemKey,
+    DateTimeOffset AcquiredAtUtc,
+    string? Source,
+    bool IsEquipped);
+
+public sealed record PlayerPermanentItemView(
+    string ItemDefinitionKey,
+    Guid? SourceRunId,
+    DateTimeOffset AcquiredAtUtc);
 
 public sealed record PlayerCharacterStatsView(
     int MaxVitality,

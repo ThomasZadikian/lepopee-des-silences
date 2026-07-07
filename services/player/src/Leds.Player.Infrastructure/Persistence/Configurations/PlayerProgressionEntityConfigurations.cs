@@ -70,6 +70,45 @@ public sealed class PlayerPermanentUnlockEntityConfiguration : IEntityTypeConfig
     }
 }
 
+public sealed class PlayerCharacterItemEntityConfiguration : IEntityTypeConfiguration<PlayerCharacterItemEntity>
+{
+    public void Configure(EntityTypeBuilder<PlayerCharacterItemEntity> builder)
+    {
+        builder.ToTable("player_character_items");
+        builder.HasKey(i => i.Id);
+        builder.Property(i => i.Id).HasColumnName("id");
+        builder.Property(i => i.PlayerCharacterId).HasColumnName("player_character_id");
+        builder.Property(i => i.ItemDefinitionKey).HasColumnName("item_definition_key").HasMaxLength(160).IsRequired();
+        builder.Property(i => i.AcquiredAtUtc).HasColumnName("acquired_at_utc");
+        builder.Property(i => i.Source).HasColumnName("source").HasMaxLength(64);
+        builder.Property(i => i.IsEquipped).HasColumnName("is_equipped").HasDefaultValue(false);
+        builder.HasIndex(i => new { i.PlayerCharacterId, i.ItemDefinitionKey }).IsUnique();
+        builder.HasOne(i => i.PlayerCharacter)
+            .WithMany(c => c.Items)
+            .HasForeignKey(i => i.PlayerCharacterId)
+            .OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public sealed class PlayerPermanentItemEntityConfiguration : IEntityTypeConfiguration<PlayerPermanentItemEntity>
+{
+    public void Configure(EntityTypeBuilder<PlayerPermanentItemEntity> builder)
+    {
+        builder.ToTable("player_permanent_items");
+        builder.HasKey(i => i.Id);
+        builder.Property(i => i.Id).HasColumnName("id");
+        builder.Property(i => i.PlayerProfileId).HasColumnName("player_profile_id");
+        builder.Property(i => i.ItemDefinitionKey).HasColumnName("item_definition_key").HasMaxLength(160).IsRequired();
+        builder.Property(i => i.SourceRunId).HasColumnName("source_run_id");
+        builder.Property(i => i.AcquiredAtUtc).HasColumnName("acquired_at_utc");
+        builder.HasIndex(i => new { i.PlayerProfileId, i.ItemDefinitionKey }).IsUnique();
+        builder.HasOne(i => i.PlayerProfile)
+            .WithMany(p => p.PermanentItems)
+            .HasForeignKey(i => i.PlayerProfileId)
+            .OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
 public sealed class PlayerRunStatisticEntityConfiguration : IEntityTypeConfiguration<PlayerRunStatisticEntity>
 {
     public void Configure(EntityTypeBuilder<PlayerRunStatisticEntity> builder)

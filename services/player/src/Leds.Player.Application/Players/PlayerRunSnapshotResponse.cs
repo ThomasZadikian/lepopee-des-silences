@@ -13,7 +13,8 @@ public sealed record PlayerRunSnapshotCharacterResponse(
     int BaseMana,
     int BaseCharge,
     IReadOnlyCollection<string> SkillKeys,
-    PlayerRunSnapshotCharacterStatsResponse? Stats = null);
+    PlayerRunSnapshotCharacterStatsResponse? Stats = null,
+    IReadOnlyCollection<string>? EquippedItemKeys = null);
 
 public sealed record PlayerRunSnapshotCharacterStatsResponse(
     int MaxVitality,

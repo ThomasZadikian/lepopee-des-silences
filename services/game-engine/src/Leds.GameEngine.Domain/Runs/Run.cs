@@ -10,6 +10,13 @@ namespace Leds.GameEngine.Domain.Runs;
 
 public sealed class Run
 {
+    /// <summary>
+    /// Base run-bag capacity (SFD "Système d'équipement et sac permanent" § 5) — raised by
+    /// permanent backpacks equipped by the player, computed once at StartNew time and passed
+    /// in like the other flattened starting stats (attack/defense/speed/focus).
+    /// </summary>
+    public const int DefaultRunItemCapacity = 6;
+
     private readonly List<Room> _rooms = [];
     private readonly List<ActivePalaceLaw> _activePalaceLaws = [];
     private readonly List<string> _memoryFragments = [];
@@ -41,6 +48,8 @@ public sealed class Run
 
     public IReadOnlyCollection<RunItem> RunItems => _runItems.AsReadOnly();
 
+    public int RunItemCapacity { get; }
+
     /// <summary>
     /// All run modifiers — both active and already-consumed.
     /// Filter by <see cref="RunModifier.IsConsumed"/> as needed.
@@ -61,10 +70,11 @@ public sealed class Run
         int attack,
         int defense,
         int speed,
-        int focus, 
+        int focus,
         int currentRoomIndex = 0,
         CombatId? activeCombatId = null,
-        RewardOfferId? pendingRewardOfferId = null)
+        RewardOfferId? pendingRewardOfferId = null,
+        int runItemCapacity = DefaultRunItemCapacity)
     {
         Id = id;
         PlayerId = playerId;
@@ -79,10 +89,11 @@ public sealed class Run
         Attack = attack;
         Defense = defense;
         Speed = speed;
-        Focus = focus; 
+        Focus = focus;
         CurrentRoomIndex = currentRoomIndex;
         ActiveCombatId = activeCombatId;
         PendingRewardOfferId = pendingRewardOfferId;
+        RunItemCapacity = runItemCapacity;
 
         _rooms.Add(initialRoom);
     }
@@ -260,7 +271,8 @@ public sealed class Run
         int defense = 6,
         int speed = 10,
         IReadOnlyCollection<PlayerRuntimeSkill>? playerSkills = null,
-        int focus = 0)
+        int focus = 0,
+        int runItemCapacity = DefaultRunItemCapacity)
     {
         if (playerId == Guid.Empty)
         {
@@ -350,7 +362,8 @@ public sealed class Run
             attack,
             defense,
             speed,
-            focus);
+            focus,
+            runItemCapacity: runItemCapacity);
 
         run.PlayerState = PlayerRuntimeState.Create(
             maxVitality: maxHp,
@@ -829,6 +842,11 @@ public sealed class Run
         ApplyReward(choice);
     }
 
+    // Unconditional, unlimited add — used by reward selection (ApplyReward/EnrichLastAddedItem,
+    // which assumes the just-added item is always _runItems.LastOrDefault()) and NPC-granted
+    // offerings. Both are curated, bounded flows (a chosen reward option, an authored offer),
+    // deliberately left outside the run-bag capacity check below — only exploration pickups
+    // (TryAddRunItem) enforce RunItemCapacity (SFD "Équipement et sac permanent" § 5).
     public void AddRunItem(RunItem item)
     {
         ArgumentNullException.ThrowIfNull(item);
@@ -845,6 +863,34 @@ public sealed class Run
         {
             _runItems.Add(item);
         }
+    }
+
+    /// <summary>
+    /// Capacity-aware add for exploration pickups. Merging into an existing stack never
+    /// counts against capacity (it isn't a new distinct entry); a genuinely new item is
+    /// rejected once <see cref="RunItemCapacity"/> distinct entries are already held.
+    /// </summary>
+    public bool TryAddRunItem(RunItem item)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+
+        var existing = _runItems.FirstOrDefault(i =>
+            i.DefinitionKey == item.DefinitionKey &&
+            i.Type == RunItemType.Consumable);
+
+        if (existing is not null)
+        {
+            existing.AddQuantity(item.Quantity);
+            return true;
+        }
+
+        if (_runItems.Count >= RunItemCapacity)
+        {
+            return false;
+        }
+
+        _runItems.Add(item);
+        return true;
     }
 
     public void EnrichLastAddedItem(
@@ -957,7 +1003,10 @@ public sealed class Run
             effectType,
             effectAmount);
 
-        AddRunItem(item);
+        if (!TryAddRunItem(item))
+        {
+            throw new DomainException("Le sac est plein — il n'y a plus de place pour cet objet.");
+        }
 
         // Guard items create a permanent run-scoped StartingGuardBonus modifier.
         // The bonus stacks across multiple guard items but is capped at MaxStartingGuardBonus.
@@ -1393,11 +1442,12 @@ public sealed class Run
         IEnumerable<RunItem>? runItems = null,
         IEnumerable<RunModifier>? runModifiers = null,
         RunPlayerSnapshot? playerSnapshot = null,
-        ActiveCurse? activeCurse = null)
+        ActiveCurse? activeCurse = null,
+        int runItemCapacity = DefaultRunItemCapacity)
     {
         var firstRoom = rooms.First();
 
-        var run = new Run(id, playerId, seed, generatorVersion, markovMatrixVersion, status, firstRoom, startedAt, maxHp, currentHp, attack, defense, speed, focus, currentRoomIndex, activeCombatId, pendingRewardOfferId);
+        var run = new Run(id, playerId, seed, generatorVersion, markovMatrixVersion, status, firstRoom, startedAt, maxHp, currentHp, attack, defense, speed, focus, currentRoomIndex, activeCombatId, pendingRewardOfferId, runItemCapacity);
         foreach (var room in rooms.Skip(1))
         {
             run._rooms.Add(room);

@@ -62,4 +62,51 @@ public sealed class PlayerProfileRepositoryTests
 
         unlockCount.Should().Be(1);
     }
+
+    [Fact]
+    public async Task SaveAsync_ShouldPersistPermanentItemAndEquippedCharacterItem_AndRehydrateThem()
+    {
+        var (context, _) = _fixture.CreateContext();
+        await using var _ = context;
+        var repository = new EfPlayerProfileRepository(context);
+
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+        var character = profile.Roster.Characters.Single();
+        var now = DateTimeOffset.UtcNow;
+        profile.AddPermanentItems(["item.sac-a-dos"], null, now);
+        profile.EquipItem(character.Id, "item.sac-a-dos", now);
+        await repository.SaveAsync(profile, CancellationToken.None);
+
+        var reloaded = await repository.GetByIdAsync(profile.Id, CancellationToken.None);
+
+        reloaded.Should().NotBeNull();
+        reloaded!.PermanentItems.Should().ContainSingle(i => i.ItemDefinitionKey == "item.sac-a-dos");
+        var reloadedCharacter = reloaded.Roster.Characters.Single();
+        reloadedCharacter.EquippedItemKeys.Should().Contain("item.sac-a-dos");
+    }
+
+    [Fact]
+    public async Task SaveAsync_ShouldNotDuplicateOrThrow_WhenSavedTwiceWithSamePermanentItem()
+    {
+        var (context, connectionString) = _fixture.CreateContext();
+        await using var _ = context;
+
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+        profile.AddPermanentItems(["item.sac-a-dos"], null, DateTimeOffset.UtcNow);
+
+        var repository = new EfPlayerProfileRepository(context);
+        await repository.SaveAsync(profile, CancellationToken.None);
+
+        await using var secondContext = _fixture.CreateContext(connectionString);
+        var secondRepository = new EfPlayerProfileRepository(secondContext);
+        var reloaded = await secondRepository.GetByIdAsync(profile.Id, CancellationToken.None);
+        reloaded!.AddPermanentItems(["item.sac-a-dos"], null, DateTimeOffset.UtcNow);
+        await secondRepository.SaveAsync(reloaded, CancellationToken.None);
+
+        await using var verifyContext = _fixture.CreateContext(connectionString);
+        var itemCount = await verifyContext.PlayerPermanentItems
+            .CountAsync(i => i.PlayerProfileId == profile.Id.Value && i.ItemDefinitionKey == "item.sac-a-dos");
+
+        itemCount.Should().Be(1);
+    }
 }

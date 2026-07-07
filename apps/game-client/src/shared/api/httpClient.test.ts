@@ -98,6 +98,22 @@ describe('httpRequest', () => {
     await expect(httpRequest('/api/test')).rejects.toBeInstanceOf(HttpError);
   });
 
+  it('throws HttpError with the specific message from a ProblemDetails errors array, not the generic title', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 400,
+      headers: { get: () => 'application/json' },
+      json: () => Promise.resolve({
+        title: 'Domain rule violated.',
+        errors: ['Le sac est plein — il n\'y a plus de place pour cet objet.'],
+      }),
+    });
+
+    await expect(httpRequest('/api/test')).rejects.toThrow(
+      'Le sac est plein — il n\'y a plus de place pour cet objet.',
+    );
+  });
+
   it('throws HttpError with title field fallback', async () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: false,

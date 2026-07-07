@@ -1,4 +1,5 @@
 using Leds.Player.Application.Players;
+using Leds.Player.Application.Players.AddPermanentItems;
 using Leds.Player.Application.Players.AwardStatPoint;
 using Leds.Player.Application.Players.ClaimNpcOffering;
 using Leds.Player.Application.Players.GrantNpcReputationMilestone;
@@ -95,6 +96,20 @@ public sealed class InternalPlayersController : ControllerBase
 
         return Ok(response);
     }
+
+    [HttpPost("{playerId:guid}/permanent-items")]
+    [ProducesResponseType(typeof(PlayerProfileDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<PlayerProfileDto>> AddPermanentItems(
+        Guid playerId,
+        [FromBody] AddPermanentItemsRequest request,
+        CancellationToken cancellationToken)
+    {
+        var command = new AddPermanentItemsCommand(playerId, request.ItemDefinitionKeys, request.SourceRunId);
+        var response = await _sender.Send(command, cancellationToken);
+
+        return Ok(response);
+    }
 }
 
 public sealed record AwardStatPointsRequest(int Amount);
@@ -104,3 +119,5 @@ public sealed record UnlockSkillRequest(string? Source);
 public sealed record SourceRunRequest(Guid? SourceRunId);
 
 public sealed record HasClaimedNpcOfferingResponse(bool Claimed);
+
+public sealed record AddPermanentItemsRequest(IReadOnlyCollection<string> ItemDefinitionKeys, Guid? SourceRunId);

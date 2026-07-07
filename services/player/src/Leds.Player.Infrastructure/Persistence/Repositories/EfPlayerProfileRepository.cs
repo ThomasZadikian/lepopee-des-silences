@@ -22,7 +22,10 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
                 .ThenInclude(c => c.StatBlock)
             .Include(p => p.Characters)
                 .ThenInclude(c => c.Skills)
+            .Include(p => p.Characters)
+                .ThenInclude(c => c.Items)
             .Include(p => p.PermanentUnlocks)
+            .Include(p => p.PermanentItems)
             .FirstOrDefaultAsync(p => p.Id == id.Value, cancellationToken);
 
         return entity is null ? null : ToDomain(entity);
@@ -35,7 +38,10 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
                 .ThenInclude(c => c.StatBlock)
             .Include(p => p.Characters)
                 .ThenInclude(c => c.Skills)
+            .Include(p => p.Characters)
+                .ThenInclude(c => c.Items)
             .Include(p => p.PermanentUnlocks)
+            .Include(p => p.PermanentItems)
             .FirstOrDefaultAsync(p => p.Id == profile.Id.Value, cancellationToken);
 
         if (existing is null)
@@ -79,9 +85,11 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
                 CreatedAtUtc = profile.CreatedAtUtc,
                 UpdatedAtUtc = profile.UpdatedAtUtc,
                 StatBlock = ToStatBlockEntity(c),
-                Skills = c.Skills.Select(ToSkillEntity).ToList()
+                Skills = c.Skills.Select(ToSkillEntity).ToList(),
+                Items = c.Items.Select(ToItemEntity).ToList()
             }).ToList(),
-            PermanentUnlocks = profile.PermanentUnlocks.Select(u => ToPermanentUnlockEntity(u, profile.Id.Value)).ToList()
+            PermanentUnlocks = profile.PermanentUnlocks.Select(u => ToPermanentUnlockEntity(u, profile.Id.Value)).ToList(),
+            PermanentItems = profile.PermanentItems.Select(i => ToPermanentItemEntity(i, profile.Id.Value)).ToList()
         };
     }
 
@@ -119,7 +127,8 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
                     CreatedAtUtc = incoming.CreatedAtUtc,
                     UpdatedAtUtc = incoming.UpdatedAtUtc,
                     StatBlock = ToStatBlockEntity(character),
-                    Skills = character.Skills.Select(ToSkillEntity).ToList()
+                    Skills = character.Skills.Select(ToSkillEntity).ToList(),
+                    Items = character.Items.Select(ToItemEntity).ToList()
                 };
                 existing.Characters.Add(newCharacter);
                 _context.Add(newCharacter);
@@ -138,9 +147,11 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
 
             UpdateStatBlock(existingCharacter, character);
             UpdateSkills(existingCharacter, character);
+            UpdateItems(existingCharacter, character);
         }
 
         UpdatePermanentUnlocks(existing, incoming);
+        UpdatePermanentItems(existing, incoming);
     }
 
     // Append-only: permanent unlocks are never modified or removed once granted (they're
@@ -159,6 +170,52 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
             var newUnlock = ToPermanentUnlockEntity(unlock, incoming.Id.Value);
             existing.PermanentUnlocks.Add(newUnlock);
             _context.Add(newUnlock);
+        }
+    }
+
+    // Append-only, same reasoning as UpdatePermanentUnlocks: the permanent backpack is
+    // lifetime storage, never modified or removed once an item is in it.
+    private void UpdatePermanentItems(PlayerProfileEntity existing, PlayerProfile incoming)
+    {
+        var existingKeys = existing.PermanentItems
+            .Select(i => i.ItemDefinitionKey)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var item in incoming.PermanentItems)
+        {
+            if (existingKeys.Contains(item.ItemDefinitionKey))
+                continue;
+
+            var newItem = ToPermanentItemEntity(item, incoming.Id.Value);
+            existing.PermanentItems.Add(newItem);
+            _context.Add(newItem);
+        }
+    }
+
+    private void UpdateItems(PlayerCharacterEntity existingCharacter, PlayerCharacter character)
+    {
+        var incomingItemKeys = character.Items
+            .Select(i => i.ItemDefinitionKey)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        existingCharacter.Items.RemoveAll(i => !incomingItemKeys.Contains(i.ItemDefinitionKey));
+
+        foreach (var item in character.Items)
+        {
+            var existingItem = existingCharacter.Items.FirstOrDefault(i =>
+                string.Equals(i.ItemDefinitionKey, item.ItemDefinitionKey, StringComparison.OrdinalIgnoreCase));
+
+            if (existingItem is null)
+            {
+                var newItem = ToItemEntity(item);
+                newItem.PlayerCharacterId = existingCharacter.Id;
+                existingCharacter.Items.Add(newItem);
+                _context.Add(newItem);
+                continue;
+            }
+
+            existingItem.AcquiredAtUtc = item.AcquiredAtUtc;
+            existingItem.Source = item.Source;
+            existingItem.IsEquipped = item.IsEquipped;
         }
     }
 
@@ -249,6 +306,10 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
                     .Select(s => PlayerCharacterSkill.Create(s.SkillDefinitionKey, s.UnlockedAtUtc, s.Source, s.IsEquipped))
                     .ToArray();
 
+            var items = c.Items
+                .Select(i => PlayerCharacterItem.Create(i.ItemDefinitionKey, i.AcquiredAtUtc, i.Source, i.IsEquipped))
+                .ToArray();
+
             return PlayerCharacter.Rehydrate(
                 new PlayerCharacterId(c.Id),
                 c.DefinitionKey,
@@ -256,7 +317,8 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
                 c.CharacterType,
                 c.Status,
                 statBlock,
-                skills);
+                skills,
+                items);
         }).ToList();
 
         var roster = PlayerRoster.Rehydrate(characters);
@@ -273,6 +335,10 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
             .Select(u => PlayerPermanentUnlock.Create(u.UnlockKey, u.UnlockType, u.SourceRunId, u.UnlockedAtUtc))
             .ToList();
 
+        var permanentItems = entity.PermanentItems
+            .Select(i => PlayerPermanentItem.Create(i.ItemDefinitionKey, i.SourceRunId, i.AcquiredAtUtc))
+            .ToList();
+
         return PlayerProfile.Rehydrate(
             new PlayerId(entity.Id),
             entity.DisplayName,
@@ -280,7 +346,8 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
             progression,
             entity.CreatedAtUtc,
             entity.UpdatedAtUtc,
-            permanentUnlocks);
+            permanentUnlocks,
+            permanentItems);
     }
 
     private static PlayerCharacterStatBlockEntity ToStatBlockEntity(PlayerCharacter character)
@@ -324,6 +391,30 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
             UnlockedAtUtc = skill.UnlockedAtUtc,
             Source = skill.Source,
             IsEquipped = skill.IsEquipped
+        };
+    }
+
+    private static PlayerCharacterItemEntity ToItemEntity(PlayerCharacterItem item)
+    {
+        return new PlayerCharacterItemEntity
+        {
+            Id = Guid.NewGuid(),
+            ItemDefinitionKey = item.ItemDefinitionKey,
+            AcquiredAtUtc = item.AcquiredAtUtc,
+            Source = item.Source,
+            IsEquipped = item.IsEquipped
+        };
+    }
+
+    private static PlayerPermanentItemEntity ToPermanentItemEntity(PlayerPermanentItem item, Guid playerProfileId)
+    {
+        return new PlayerPermanentItemEntity
+        {
+            Id = Guid.NewGuid(),
+            PlayerProfileId = playerProfileId,
+            ItemDefinitionKey = item.ItemDefinitionKey,
+            SourceRunId = item.SourceRunId,
+            AcquiredAtUtc = item.AcquiredAtUtc
         };
     }
 }

@@ -5,6 +5,7 @@ namespace Leds.Player.Domain.Players;
 public sealed class PlayerProfile
 {
     private readonly List<PlayerPermanentUnlock> _permanentUnlocks;
+    private readonly List<PlayerPermanentItem> _permanentItems;
 
     private PlayerProfile(
         PlayerId id,
@@ -13,7 +14,8 @@ public sealed class PlayerProfile
         PlayerProgression progression,
         DateTimeOffset createdAtUtc,
         DateTimeOffset updatedAtUtc,
-        IReadOnlyCollection<PlayerPermanentUnlock>? permanentUnlocks = null)
+        IReadOnlyCollection<PlayerPermanentUnlock>? permanentUnlocks = null,
+        IReadOnlyCollection<PlayerPermanentItem>? permanentItems = null)
     {
         Id = id;
         DisplayName = displayName;
@@ -22,6 +24,7 @@ public sealed class PlayerProfile
         CreatedAtUtc = createdAtUtc;
         UpdatedAtUtc = updatedAtUtc;
         _permanentUnlocks = permanentUnlocks?.ToList() ?? [];
+        _permanentItems = permanentItems?.ToList() ?? [];
     }
 
     public PlayerId Id { get; }
@@ -31,6 +34,7 @@ public sealed class PlayerProfile
     public DateTimeOffset CreatedAtUtc { get; }
     public DateTimeOffset UpdatedAtUtc { get; private set; }
     public IReadOnlyCollection<PlayerPermanentUnlock> PermanentUnlocks => _permanentUnlocks.AsReadOnly();
+    public IReadOnlyCollection<PlayerPermanentItem> PermanentItems => _permanentItems.AsReadOnly();
 
     public static PlayerProfile Create(string displayName, DateTimeOffset createdAtUtc)
     {
@@ -64,6 +68,47 @@ public sealed class PlayerProfile
             return;
 
         _permanentUnlocks.Add(PlayerPermanentUnlock.Create(unlockKey, unlockType, sourceRunId, now));
+        Touch(now);
+    }
+
+    public bool HasPermanentItem(string itemDefinitionKey) =>
+        _permanentItems.Any(i => string.Equals(i.ItemDefinitionKey, itemDefinitionKey, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>
+    /// Adds items to the permanent backpack (post-run selection confirmation). No-op per
+    /// already-owned key — idempotent against command retries, mirrors GrantPermanentUnlock.
+    /// </summary>
+    public void AddPermanentItems(IReadOnlyCollection<string> itemDefinitionKeys, Guid? sourceRunId, DateTimeOffset now)
+    {
+        foreach (var itemDefinitionKey in itemDefinitionKeys)
+        {
+            if (HasPermanentItem(itemDefinitionKey))
+                continue;
+
+            _permanentItems.Add(PlayerPermanentItem.Create(itemDefinitionKey, sourceRunId, now));
+        }
+
+        Touch(now);
+    }
+
+    /// <summary>
+    /// Equips a permanent-backpack item on a character. The item must already be owned
+    /// (present in the permanent backpack) — equipping isn't how an item is acquired.
+    /// </summary>
+    public void EquipItem(PlayerCharacterId characterId, string itemKey, DateTimeOffset now)
+    {
+        if (!HasPermanentItem(itemKey))
+            throw new DomainException($"Item '{itemKey}' is not in the permanent backpack.");
+
+        var character = Roster.GetRequired(characterId);
+        character.AddItem(PlayerCharacterItem.Create(itemKey, now));
+        character.EquipItem(itemKey);
+        Touch(now);
+    }
+
+    public void UnequipItem(PlayerCharacterId characterId, string itemKey, DateTimeOffset now)
+    {
+        Roster.GetRequired(characterId).UnequipItem(itemKey);
         Touch(now);
     }
 
@@ -142,8 +187,9 @@ public sealed class PlayerProfile
         PlayerProgression progression,
         DateTimeOffset createdAtUtc,
         DateTimeOffset updatedAtUtc,
-        IReadOnlyCollection<PlayerPermanentUnlock>? permanentUnlocks = null)
+        IReadOnlyCollection<PlayerPermanentUnlock>? permanentUnlocks = null,
+        IReadOnlyCollection<PlayerPermanentItem>? permanentItems = null)
     {
-        return new PlayerProfile(id, displayName, roster, progression, createdAtUtc, updatedAtUtc, permanentUnlocks);
+        return new PlayerProfile(id, displayName, roster, progression, createdAtUtc, updatedAtUtc, permanentUnlocks, permanentItems);
     }
 }

@@ -1,3 +1,4 @@
+using Leds.GameEngine.Domain.Runs;
 using Leds.GameEngine.Infrastructure.Persistence.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -28,6 +29,7 @@ public sealed class RunEntityConfiguration : IEntityTypeConfiguration<RunEntity>
         builder.Property(run => run.Defense).HasColumnName("defense");
         builder.Property(run => run.Speed).HasColumnName("speed");
         builder.Property(run => run.Focus).HasColumnName("focus");
+        builder.Property(run => run.RunItemCapacity).HasColumnName("run_item_capacity").HasDefaultValue(Run.DefaultRunItemCapacity);
         builder.Property(run => run.StartedAtUtc).HasColumnName("started_at_utc");
         builder.Property(run => run.EndedAtUtc).HasColumnName("ended_at_utc");
         builder.Property(run => run.SavedAtUtc).HasColumnName("saved_at_utc");

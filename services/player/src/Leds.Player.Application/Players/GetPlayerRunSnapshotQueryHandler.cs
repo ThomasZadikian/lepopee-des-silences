@@ -54,6 +54,7 @@ public sealed class GetPlayerRunSnapshotQueryHandler
                     c.StatBlock.Recovery,
                     c.StatBlock.Focus,
                     c.StatBlock.Mana,
-                    c.StatBlock.Charge))).ToArray());
+                    c.StatBlock.Charge),
+                c.EquippedItemKeys.ToArray())).ToArray());
     }
 }

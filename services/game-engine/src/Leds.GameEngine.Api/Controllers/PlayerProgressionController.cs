@@ -60,6 +60,38 @@ public sealed class PlayerProgressionController : ControllerBase
         return Ok(response);
     }
 
+    [HttpPost("{playerId:guid}/characters/{characterId:guid}/items/{itemKey}/equip")]
+    [ProducesResponseType(typeof(PlayerProfileView), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<PlayerProfileView>> EquipItem(
+        Guid playerId,
+        Guid characterId,
+        string itemKey,
+        CancellationToken cancellationToken)
+    {
+        var command = new EquipItemCommand(playerId, characterId, itemKey);
+        var response = await _sender.Send(command, cancellationToken);
+
+        return Ok(response);
+    }
+
+    [HttpPost("{playerId:guid}/characters/{characterId:guid}/items/{itemKey}/unequip")]
+    [ProducesResponseType(typeof(PlayerProfileView), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<PlayerProfileView>> UnequipItem(
+        Guid playerId,
+        Guid characterId,
+        string itemKey,
+        CancellationToken cancellationToken)
+    {
+        var command = new UnequipItemCommand(playerId, characterId, itemKey);
+        var response = await _sender.Send(command, cancellationToken);
+
+        return Ok(response);
+    }
+
     [HttpPost("{playerId:guid}/characters/{characterId:guid}/stats/{stat}/spend-point")]
     [ProducesResponseType(typeof(PlayerProfileView), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

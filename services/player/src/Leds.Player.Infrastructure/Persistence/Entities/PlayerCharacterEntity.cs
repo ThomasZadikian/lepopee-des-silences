@@ -18,4 +18,5 @@ public sealed class PlayerCharacterEntity
     public PlayerProfileEntity? PlayerProfile { get; set; }
     public PlayerCharacterStatBlockEntity? StatBlock { get; set; }
     public List<PlayerCharacterSkillEntity> Skills { get; set; } = [];
+    public List<PlayerCharacterItemEntity> Items { get; set; } = [];
 }

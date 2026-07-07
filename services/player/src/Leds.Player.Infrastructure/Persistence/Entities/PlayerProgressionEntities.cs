@@ -42,6 +42,29 @@ public sealed class PlayerPermanentUnlockEntity
     public PlayerProfileEntity PlayerProfile { get; set; } = null!;
 }
 
+public sealed class PlayerCharacterItemEntity
+{
+    public Guid Id { get; set; }
+    public Guid PlayerCharacterId { get; set; }
+    public string ItemDefinitionKey { get; set; } = string.Empty;
+    public DateTimeOffset AcquiredAtUtc { get; set; }
+    public string? Source { get; set; }
+    public bool IsEquipped { get; set; }
+
+    public PlayerCharacterEntity PlayerCharacter { get; set; } = null!;
+}
+
+public sealed class PlayerPermanentItemEntity
+{
+    public Guid Id { get; set; }
+    public Guid PlayerProfileId { get; set; }
+    public string ItemDefinitionKey { get; set; } = string.Empty;
+    public Guid? SourceRunId { get; set; }
+    public DateTimeOffset AcquiredAtUtc { get; set; }
+
+    public PlayerProfileEntity PlayerProfile { get; set; } = null!;
+}
+
 public sealed class PlayerRunStatisticEntity
 {
     public Guid Id { get; set; }

@@ -22,6 +22,20 @@ function getErrorMessage(body: unknown, fallback: string): string {
     return body.message;
   }
 
+  // ASP.NET's ProblemDetails puts the actual domain/validation error text in the
+  // `errors` extension array — `title`/`detail` are generic ("Domain rule violated.")
+  // and would otherwise mask the specific message (e.g. "Le sac est plein…").
+  if (
+    typeof body === 'object' &&
+    body !== null &&
+    'errors' in body &&
+    Array.isArray(body.errors) &&
+    body.errors.length > 0 &&
+    typeof body.errors[0] === 'string'
+  ) {
+    return body.errors.join(' ');
+  }
+
   if (
     typeof body === 'object' &&
     body !== null &&

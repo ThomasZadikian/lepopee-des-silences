@@ -19,6 +19,18 @@ export const playerApi = {
     );
   },
 
+  equipItem(playerId: string, characterId: string, itemKey: string) {
+    return gameEngineApi.post<PlayerProfileView>(
+      `/api/v2/players/${playerId}/characters/${characterId}/items/${itemKey}/equip`,
+    );
+  },
+
+  unequipItem(playerId: string, characterId: string, itemKey: string) {
+    return gameEngineApi.post<PlayerProfileView>(
+      `/api/v2/players/${playerId}/characters/${characterId}/items/${itemKey}/unequip`,
+    );
+  },
+
   spendStatPoint(playerId: string, characterId: string, stat: PlayerStatKind) {
     return gameEngineApi.post<PlayerProfileView>(
       `/api/v2/players/${playerId}/characters/${characterId}/stats/${stat}/spend-point`,

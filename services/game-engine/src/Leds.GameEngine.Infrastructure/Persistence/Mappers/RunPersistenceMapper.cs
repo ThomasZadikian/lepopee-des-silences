@@ -37,6 +37,7 @@ public static class RunPersistenceMapper
             Defense = run.Defense,
             Speed = run.Speed,
             Focus = run.Focus,
+            RunItemCapacity = run.RunItemCapacity,
             StartedAtUtc = run.StartedAt.UtcDateTime,
             EndedAtUtc = run.EndedAt?.UtcDateTime,
             SavedAtUtc = run.SavedAt?.UtcDateTime,
@@ -400,7 +401,8 @@ public static class RunPersistenceMapper
             runItems,
             runModifiers,
             playerSnapshot: playerSnapshot,
-            activeCurse: entity.ActiveCurses.FirstOrDefault() is { } curseEntity ? ToDomain(curseEntity) : null);
+            activeCurse: entity.ActiveCurses.FirstOrDefault() is { } curseEntity ? ToDomain(curseEntity) : null,
+            runItemCapacity: entity.RunItemCapacity > 0 ? entity.RunItemCapacity : Run.DefaultRunItemCapacity);
 
         RehydrateNpcEncounters(run, entity);
         return run;

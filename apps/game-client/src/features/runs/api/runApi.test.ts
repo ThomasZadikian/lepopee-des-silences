@@ -92,6 +92,21 @@ describe('runApi', () => {
     expect(gameEngineApi.post).toHaveBeenCalledWith('/api/v2/runs/run-1/abandon');
   });
 
+  it('getPermanentItemCandidates sends GET request', async () => {
+    vi.mocked(gameEngineApi.get).mockResolvedValueOnce({});
+    await runApi.getPermanentItemCandidates('run-1');
+    expect(gameEngineApi.get).toHaveBeenCalledWith('/api/v2/runs/run-1/permanent-item-candidates');
+  });
+
+  it('confirmPermanentItemSelection sends POST with the selected keys', async () => {
+    vi.mocked(gameEngineApi.post).mockResolvedValueOnce({});
+    await runApi.confirmPermanentItemSelection('run-1', ['item.a', 'item.b']);
+    expect(gameEngineApi.post).toHaveBeenCalledWith(
+      '/api/v2/runs/run-1/permanent-items/confirm',
+      { itemDefinitionKeys: ['item.a', 'item.b'] },
+    );
+  });
+
   it('returns the API response', async () => {
     const mockResponse = { id: 'run-1', status: 'Active' };
     vi.mocked(gameEngineApi.get).mockResolvedValueOnce(mockResponse);

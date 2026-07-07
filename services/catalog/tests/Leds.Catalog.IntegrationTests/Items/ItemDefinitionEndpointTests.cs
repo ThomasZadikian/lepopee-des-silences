@@ -1,0 +1,55 @@
+using System.Net;
+using System.Net.Http.Json;
+using FluentAssertions;
+using Microsoft.AspNetCore.Mvc.Testing;
+
+namespace Leds.Catalog.IntegrationTests.Items;
+
+public sealed class ItemDefinitionEndpointTests
+    : IClassFixture<WebApplicationFactory<Program>>
+{
+    private readonly HttpClient _client;
+
+    public ItemDefinitionEndpointTests(WebApplicationFactory<Program> factory)
+    {
+        _client = factory.CreateClient();
+    }
+
+    [Fact]
+    public async Task GetItemDefinitionByKey_ShouldReportPermanentEligible_ForPermanentDurationItem()
+    {
+        // canon.item.tome-38 is seeded with Duration="Permanent" (a unique lore relic) —
+        // this asserts that flag now genuinely drives IsPermanentEligible end-to-end.
+        var response = await _client.GetAsync("/api/v2/catalog/item-definitions/canon.item.tome-38");
+        var body = await response.Content.ReadAsStringAsync();
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK, because: body);
+
+        var payload = await response.Content.ReadFromJsonAsync<GetItemDefinitionByKeyResponse>();
+
+        payload.Should().NotBeNull();
+        payload!.Definition.Should().NotBeNull();
+        payload.Definition!.IsPermanentEligible.Should().BeTrue();
+        payload.Definition.EquipmentEffects.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task GetItemDefinitionByKey_ShouldReportNotPermanentEligible_ForRunOnlyDurationItem()
+    {
+        // canon.item.lanterne is seeded with Duration="RunOnly".
+        var response = await _client.GetAsync("/api/v2/catalog/item-definitions/canon.item.lanterne");
+        var payload = await response.Content.ReadFromJsonAsync<GetItemDefinitionByKeyResponse>();
+
+        payload.Should().NotBeNull();
+        payload!.Definition.Should().NotBeNull();
+        payload.Definition!.IsPermanentEligible.Should().BeFalse();
+    }
+
+    private sealed record GetItemDefinitionByKeyResponse(ItemDefinitionResponseDto? Definition);
+
+    private sealed record ItemDefinitionResponseDto(
+        Guid Id, string Key, string Version, string DisplayName, string Description, string? NarrativeText,
+        string Category, string ItemType, string Rarity, string UsageMode, string Lifecycle, string StackPolicy,
+        int MaxStack, bool IsUsableInCombat, bool IsUsableOutsideCombat, string? EffectSetKey, string Status,
+        bool IsPermanentEligible, IReadOnlyCollection<object> EquipmentEffects);
+}

@@ -479,4 +479,64 @@ public sealed class RunTests
             .Throw<DomainException>()
             .WithMessage("Reward type 'StatBonus' is not supported.");
     }
+
+    [Fact]
+    public void TryAddRunItem_ShouldAccept_UntilCapacityIsReached()
+    {
+        var initialRoom = TestGameEngineFactory.CreateThresholdRoom();
+        var run = Run.StartNew(
+            Guid.NewGuid(), "seed-cap", "gen-0.4.0", "markov-0.2.0",
+            initialRoom, DateTimeOffset.UtcNow, runItemCapacity: 2);
+
+        var accepted1 = run.TryAddRunItem(CreateDistinctItem("item.a"));
+        var accepted2 = run.TryAddRunItem(CreateDistinctItem("item.b"));
+
+        accepted1.Should().BeTrue();
+        accepted2.Should().BeTrue();
+        run.RunItems.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void TryAddRunItem_ShouldReject_WhenBagIsFull()
+    {
+        var initialRoom = TestGameEngineFactory.CreateThresholdRoom();
+        var run = Run.StartNew(
+            Guid.NewGuid(), "seed-cap", "gen-0.4.0", "markov-0.2.0",
+            initialRoom, DateTimeOffset.UtcNow, runItemCapacity: 2);
+
+        run.TryAddRunItem(CreateDistinctItem("item.a"));
+        run.TryAddRunItem(CreateDistinctItem("item.b"));
+
+        var accepted3 = run.TryAddRunItem(CreateDistinctItem("item.c"));
+
+        accepted3.Should().BeFalse();
+        run.RunItems.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void TryAddRunItem_ShouldStackIntoExistingItem_WithoutCountingAgainstCapacity()
+    {
+        var initialRoom = TestGameEngineFactory.CreateThresholdRoom();
+        var run = Run.StartNew(
+            Guid.NewGuid(), "seed-cap", "gen-0.4.0", "markov-0.2.0",
+            initialRoom, DateTimeOffset.UtcNow, runItemCapacity: 1);
+
+        run.TryAddRunItem(CreateDistinctItem("item.a", quantity: 1));
+        var accepted = run.TryAddRunItem(CreateDistinctItem("item.a", quantity: 1));
+
+        accepted.Should().BeTrue();
+        run.RunItems.Should().ContainSingle();
+        run.RunItems.Single().Quantity.Should().Be(2);
+    }
+
+    private static RunItem CreateDistinctItem(string definitionKey, int quantity = 1) =>
+        RunItem.Create(
+            definitionKey,
+            definitionKey,
+            "Un objet de test.",
+            RunItemType.Consumable,
+            RunItemRarity.Common,
+            quantity,
+            RunItemEffectType.Heal,
+            10);
 }

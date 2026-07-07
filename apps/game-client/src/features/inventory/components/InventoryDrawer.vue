@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useRunStore } from '../../runs/stores/runStore';
 import type { RunItemDto } from '../../runs/types/runTypes';
 import { inventoryApi } from '../api/inventoryApi';
@@ -7,7 +7,13 @@ import { inventoryApi } from '../api/inventoryApi';
 const props = defineProps<{
   items: RunItemDto[];
   runId: string;
+  capacity?: number | null;
 }>();
+
+const distinctItemCount = computed(() => props.items.length);
+const isBagFull = computed(() =>
+  typeof props.capacity === 'number' && distinctItemCount.value >= props.capacity,
+);
 
 const emit = defineEmits<{
   close: [];
@@ -104,6 +110,10 @@ async function useItem() {
           <h3 class="bsd-title">Objets de run</h3>
         </div>
       </div>
+
+      <span v-if="typeof capacity === 'number'" class="bsd-capacity" :class="{ 'bsd-capacity--full': isBagFull }">
+        {{ distinctItemCount }} / {{ capacity }}
+      </span>
 
       <button class="bsd-close" @click="emit('close')" aria-label="Fermer la besace">
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none"
@@ -288,6 +298,19 @@ async function useItem() {
   color: var(--ink, oklch(.88 .015 70));
   line-height: 1.15;
   margin: 0;
+}
+
+.bsd-capacity {
+  flex: 0 0 auto;
+  align-self: center;
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--ink-4, oklch(.45 .015 275));
+}
+
+.bsd-capacity--full {
+  color: var(--blood, oklch(.52 .15 20));
 }
 
 .bsd-close {

@@ -22,6 +22,8 @@ function baseCharacter(): PlayerCharacterView {
     definitionKey: 'character.player.self',
     displayName: 'Le Porteur',
     maxEquippedSkills: 4,
+    items: [],
+    maxEquippedItems: 3,
     skills: [],
     stats: {
       maxVitality: 100, attackPower: 12, defense: 6, startingGuard: 0,
@@ -48,6 +50,7 @@ describe('StatManagementTab', () => {
       displayName: 'Test',
       characters: [baseCharacter()],
       progression: { unspentStatPoints: 3, totalStatPointsEarned: 5 },
+      permanentItems: [],
     };
     const wrapper = mount(StatManagementTab, { props: { character: baseCharacter() } });
     expect(wrapper.find('.smt-points').text()).toBe('3');
@@ -59,6 +62,7 @@ describe('StatManagementTab', () => {
       displayName: 'Test',
       characters: [baseCharacter()],
       progression: { unspentStatPoints: 0, totalStatPointsEarned: 0 },
+      permanentItems: [],
     };
     const wrapper = mount(StatManagementTab, { props: { character: baseCharacter() } });
     const button = wrapper.find('.smt-row__add');

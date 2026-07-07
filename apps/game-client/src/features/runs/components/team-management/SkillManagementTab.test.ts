@@ -31,6 +31,8 @@ function baseCharacter(): PlayerCharacterView {
     definitionKey: 'character.player.self',
     displayName: 'Le Porteur',
     maxEquippedSkills: 4,
+    items: [],
+    maxEquippedItems: 3,
     skills: [
       { skillKey: 'skill.a', unlockedAtUtc: '2026-01-01T00:00:00Z', source: 'default', isEquipped: true },
       { skillKey: 'skill.b', unlockedAtUtc: '2026-01-01T00:00:00Z', source: 'default', isEquipped: false },
@@ -98,6 +100,7 @@ describe('SkillManagementTab', () => {
       displayName: 'Test',
       characters: [baseCharacter()],
       progression: { unspentStatPoints: 0, totalStatPointsEarned: 0 },
+      permanentItems: [],
     });
     const character = baseCharacter();
     usePlayerStore().profile = {
@@ -105,6 +108,7 @@ describe('SkillManagementTab', () => {
       displayName: 'Test',
       characters: [character],
       progression: { unspentStatPoints: 0, totalStatPointsEarned: 0 },
+      permanentItems: [],
     };
     const wrapper = mount(SkillManagementTab, { props: { character } });
     await flushPromises();

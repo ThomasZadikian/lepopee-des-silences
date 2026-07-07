@@ -1,3 +1,5 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Leds.Catalog.Application.Items.Definitions.Dtos;
 using Leds.Catalog.Application.Items.Definitions.Ports;
 using Leds.Catalog.Application.Items.Ports;
@@ -11,6 +13,11 @@ namespace Leds.Catalog.Infrastructure.ReadStores.Ef;
 
 public sealed class EfItemDefinitionReadStore : IItemTemplateReadStore, IItemDefinitionReadStore
 {
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        Converters = { new JsonStringEnumConverter() }
+    };
+
     private readonly CatalogDbContext _context;
 
     public EfItemDefinitionReadStore(CatalogDbContext context)
@@ -61,6 +68,9 @@ public sealed class EfItemDefinitionReadStore : IItemTemplateReadStore, IItemDef
 
     private static ItemDefinitionDto MapToDto(ItemDefinitionEntity entity)
     {
+        var equipmentEffects = JsonSerializer.Deserialize<List<ItemEquipmentEffect>>(
+            entity.EquipmentEffectsJson ?? "[]", JsonOptions) ?? [];
+
         return new ItemDefinitionDto(
             entity.Id,
             entity.Key,
@@ -78,6 +88,8 @@ public sealed class EfItemDefinitionReadStore : IItemTemplateReadStore, IItemDef
             entity.IsUsableInCombat,
             entity.IsUsableOutsideCombat,
             entity.EffectSet?.Key,
-            entity.Status);
+            entity.Status,
+            IsPermanentEligible: string.Equals(entity.Duration, nameof(ItemDuration.Permanent), StringComparison.OrdinalIgnoreCase),
+            EquipmentEffects: equipmentEffects.Select(ItemEquipmentEffectDto.FromDomain).ToArray());
     }
 }

@@ -46,6 +46,31 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
         return await ReadProfileAsync(response, playerId, cancellationToken);
     }
 
+    public async Task<PlayerProfileView> EquipItemAsync(Guid playerId, Guid characterId, string itemKey, CancellationToken cancellationToken)
+    {
+        var response = await _httpClient.PostAsync(
+            $"/api/v2/players/{playerId}/characters/{characterId}/items/{itemKey}/equip", content: null, cancellationToken);
+
+        return await ReadProfileAsync(response, playerId, cancellationToken);
+    }
+
+    public async Task<PlayerProfileView> UnequipItemAsync(Guid playerId, Guid characterId, string itemKey, CancellationToken cancellationToken)
+    {
+        var response = await _httpClient.PostAsync(
+            $"/api/v2/players/{playerId}/characters/{characterId}/items/{itemKey}/unequip", content: null, cancellationToken);
+
+        return await ReadProfileAsync(response, playerId, cancellationToken);
+    }
+
+    public async Task<PlayerProfileView> AddPermanentItemsAsync(Guid playerId, IReadOnlyCollection<string> itemDefinitionKeys, Guid? sourceRunId, CancellationToken cancellationToken)
+    {
+        var response = await _httpClient.PostAsJsonAsync(
+            $"/api/v2/internal/players/{playerId}/permanent-items",
+            new AddPermanentItemsRequestBody(itemDefinitionKeys, sourceRunId), cancellationToken);
+
+        return await ReadProfileAsync(response, playerId, cancellationToken);
+    }
+
     public async Task<PlayerProfileView> SpendStatPointAsync(Guid playerId, Guid characterId, string stat, CancellationToken cancellationToken)
     {
         var response = await _httpClient.PostAsync(
@@ -165,11 +190,18 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
                         c.Stats.Focus,
                         c.Stats.Mana,
                         c.Stats.Charge),
-                    MaxEquippedSkills: c.MaxEquippedSkills))
+                    MaxEquippedSkills: c.MaxEquippedSkills,
+                    Items: (c.Items ?? [])
+                        .Select(i => new PlayerCharacterItemView(i.ItemKey, i.AcquiredAtUtc, i.Source, i.IsEquipped))
+                        .ToArray(),
+                    MaxEquippedItems: c.MaxEquippedItems))
                 .ToArray(),
             Progression: new PlayerProgressionView(
                 dto.Progression.UnspentStatPoints,
-                dto.Progression.TotalStatPointsEarned));
+                dto.Progression.TotalStatPointsEarned),
+            PermanentItems: (dto.PermanentItems ?? [])
+                .Select(i => new PlayerPermanentItemView(i.ItemDefinitionKey, i.SourceRunId, i.AcquiredAtUtc))
+                .ToArray());
     }
 
     private sealed record AwardStatPointsRequestBody(int Amount);
@@ -178,13 +210,16 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
 
     private sealed record SourceRunRequestBody(Guid? SourceRunId);
 
+    private sealed record AddPermanentItemsRequestBody(IReadOnlyCollection<string> ItemDefinitionKeys, Guid? SourceRunId);
+
     private sealed record HasClaimedNpcOfferingResponse(bool Claimed);
 
     private sealed record PlayerProfileResponse(
         Guid Id,
         string DisplayName,
         IReadOnlyCollection<PlayerCharacterResponse> Characters,
-        PlayerProgressionResponse Progression);
+        PlayerProgressionResponse Progression,
+        IReadOnlyCollection<PlayerPermanentItemResponse>? PermanentItems = null);
 
     private sealed record PlayerCharacterResponse(
         Guid Id,
@@ -192,13 +227,26 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
         string DisplayName,
         IReadOnlyCollection<PlayerCharacterSkillResponse> Skills,
         PlayerCharacterStatsResponse Stats,
-        int MaxEquippedSkills);
+        int MaxEquippedSkills,
+        IReadOnlyCollection<PlayerCharacterItemResponse>? Items = null,
+        int MaxEquippedItems = 3);
 
     private sealed record PlayerCharacterSkillResponse(
         string SkillKey,
         DateTimeOffset UnlockedAtUtc,
         string? Source,
         bool IsEquipped);
+
+    private sealed record PlayerCharacterItemResponse(
+        string ItemKey,
+        DateTimeOffset AcquiredAtUtc,
+        string? Source,
+        bool IsEquipped);
+
+    private sealed record PlayerPermanentItemResponse(
+        string ItemDefinitionKey,
+        Guid? SourceRunId,
+        DateTimeOffset AcquiredAtUtc);
 
     private sealed record PlayerCharacterStatsResponse(
         int MaxVitality,

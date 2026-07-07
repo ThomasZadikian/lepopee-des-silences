@@ -947,6 +947,10 @@ namespace Leds.Catalog.Infrastructure.Persistence.Migrations
                         .HasColumnName("effect_value")
                         .HasComment("Legacy compatibility column. Canonical effects live in catalog_effect_sets/catalog_effect_definitions.");
 
+                    b.Property<string>("EquipmentEffectsJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("equipment_effects_json");
+
                     b.Property<bool>("IsUsableInCombat")
                         .HasColumnType("boolean")
                         .HasColumnName("is_usable_in_combat");

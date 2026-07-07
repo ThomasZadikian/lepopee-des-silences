@@ -19,6 +19,14 @@ export const usePlayerStore = defineStore('player', () => {
   );
   const unspentStatPoints = computed(() => profile.value?.progression.unspentStatPoints ?? 0);
 
+  const permanentItems = computed(() => profile.value?.permanentItems ?? []);
+  const equippedItemCount = computed(
+    () => mainCharacter.value?.items.filter((item) => item.isEquipped).length ?? 0,
+  );
+  const isItemLoadoutFull = computed(
+    () => equippedItemCount.value >= (mainCharacter.value?.maxEquippedItems ?? 0),
+  );
+
   async function execute(action: () => Promise<void>) {
     isLoading.value = true;
     error.value = null;
@@ -57,6 +65,18 @@ export const usePlayerStore = defineStore('player', () => {
     });
   }
 
+  async function equipItem(characterId: string, itemKey: string) {
+    await execute(async () => {
+      profile.value = await playerApi.equipItem(demoPlayerId, characterId, itemKey);
+    });
+  }
+
+  async function unequipItem(characterId: string, itemKey: string) {
+    await execute(async () => {
+      profile.value = await playerApi.unequipItem(demoPlayerId, characterId, itemKey);
+    });
+  }
+
   return {
     profile,
     isLoading,
@@ -65,9 +85,14 @@ export const usePlayerStore = defineStore('player', () => {
     equippedCount,
     isLoadoutFull,
     unspentStatPoints,
+    permanentItems,
+    equippedItemCount,
+    isItemLoadoutFull,
     loadProfile,
     equipSkill,
     unequipSkill,
     spendStatPoint,
+    equipItem,
+    unequipItem,
   };
 });

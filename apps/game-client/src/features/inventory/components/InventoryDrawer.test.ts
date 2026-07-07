@@ -16,9 +16,9 @@ vi.mock('../api/inventoryApi', () => ({
   },
 }));
 
-function mountDrawer(items: RunItemDto[], runId = 'run-1') {
+function mountDrawer(items: RunItemDto[], runId = 'run-1', capacity?: number | null) {
   return mount(InventoryDrawer, {
-    props: { items, runId },
+    props: { items, runId, capacity },
     global: {
       stubs: {
         Transition: { template: '<slot />' },
@@ -190,5 +190,21 @@ describe('InventoryDrawer', () => {
     const wrapper = mountDrawer([item]);
     await wrapper.find('.bsd-cell').trigger('click');
     expect(wrapper.text()).toContain('Fragment narratif');
+  });
+
+  it('shows the capacity counter when capacity is provided', () => {
+    const wrapper = mountDrawer([baseItem], 'run-1', 6);
+    expect(wrapper.text()).toContain('1 / 6');
+  });
+
+  it('hides the capacity counter when capacity is not provided', () => {
+    const wrapper = mountDrawer([baseItem]);
+    expect(wrapper.find('.bsd-capacity').exists()).toBe(false);
+  });
+
+  it('flags the capacity counter as full when the bag has reached capacity', () => {
+    const items = [baseItem, { ...baseItem, id: 'item-2' }];
+    const wrapper = mountDrawer(items, 'run-1', 2);
+    expect(wrapper.find('.bsd-capacity--full').exists()).toBe(true);
   });
 });

@@ -10,6 +10,8 @@ const baseCharacter: PlayerCharacterView = {
   definitionKey: 'character.player.self',
   displayName: 'Le Porteur',
   maxEquippedSkills: 4,
+  items: [],
+  maxEquippedItems: 3,
   skills: [],
   stats: {
     maxVitality: 100, attackPower: 12, defense: 6, startingGuard: 0,

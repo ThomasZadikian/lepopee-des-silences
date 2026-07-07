@@ -2,8 +2,10 @@ using Leds.GameEngine.Application.Combats.Dtos;
 using Leds.GameEngine.Application.Events.ChooseEventOption;
 using Leds.GameEngine.Application.Runs.AbandonRun;
 using Leds.GameEngine.Application.Runs.ChooseNode;
+using Leds.GameEngine.Application.Runs.ConfirmPermanentItemSelection;
 using Leds.GameEngine.Application.Runs.ExitMidRoom;
 using Leds.GameEngine.Application.Runs.GetCurrentCombat;
+using Leds.GameEngine.Application.Runs.GetPermanentItemCandidates;
 using Leds.GameEngine.Application.Runs.GetRunById;
 using Leds.GameEngine.Application.Runs.GetRunInventory;
 using Leds.GameEngine.Application.Runs.MoveToNextRoom;
@@ -240,6 +242,36 @@ public sealed class RunsController : ControllerBase
         var response = await _sender.Send(command, cancellationToken);
         return Ok(response);
     }
+
+    [HttpGet("{runId:guid}/permanent-item-candidates")]
+    [ProducesResponseType(typeof(GetPermanentItemCandidatesResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<GetPermanentItemCandidatesResponse>> GetPermanentItemCandidates(
+        Guid runId,
+        CancellationToken cancellationToken)
+    {
+        var query = new GetPermanentItemCandidatesQuery(runId);
+        var response = await _sender.Send(query, cancellationToken);
+
+        return Ok(response);
+    }
+
+    [HttpPost("{runId:guid}/permanent-items/confirm")]
+    [ProducesResponseType(typeof(ConfirmPermanentItemSelectionResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ConfirmPermanentItemSelectionResponse>> ConfirmPermanentItemSelection(
+        Guid runId,
+        [FromBody] ConfirmPermanentItemSelectionRequest request,
+        CancellationToken cancellationToken)
+    {
+        var command = new ConfirmPermanentItemSelectionCommand(runId, request.ItemDefinitionKeys);
+        var response = await _sender.Send(command, cancellationToken);
+
+        return Ok(response);
+    }
 }
 
 public sealed record StartRunRequest(Guid PlayerId);
+
+public sealed record ConfirmPermanentItemSelectionRequest(IReadOnlyCollection<string> ItemDefinitionKeys);

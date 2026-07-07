@@ -1013,7 +1013,11 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
             source.MaxStack,
             source.IsUsableInCombat,
             source.IsUsableOutsideCombat,
-            source.EffectSetKey);
+            source.EffectSetKey,
+            source.IsPermanentEligible,
+            source.EquipmentEffects?
+                .Select(e => new CatalogItemEquipmentEffect(e.Kind, e.StatKind, e.Amount, e.SkillKey, e.AffinityRegister))
+                .ToArray());
     }
 
     private static CatalogEffectSetSnapshot MapToCatalogEffectSetSnapshot(
@@ -1488,7 +1492,16 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
         int MaxStack,
         bool IsUsableInCombat,
         bool IsUsableOutsideCombat,
-        string? EffectSetKey);
+        string? EffectSetKey,
+        bool IsPermanentEligible = false,
+        IReadOnlyCollection<CatalogItemEquipmentEffectHttpResponse>? EquipmentEffects = null);
+
+    private sealed record CatalogItemEquipmentEffectHttpResponse(
+        string Kind,
+        string? StatKind,
+        int? Amount,
+        string? SkillKey,
+        string? AffinityRegister);
 
     private sealed record GetEffectSetByKeyHttpResponse(
         CatalogEffectSetHttpResponse? Definition);

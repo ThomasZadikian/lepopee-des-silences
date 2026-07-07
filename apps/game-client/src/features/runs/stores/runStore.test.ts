@@ -20,6 +20,8 @@ vi.mock('../api/runApi', () => ({
     resumeRun: vi.fn(),
     exitMidRoom: vi.fn(),
     abandonRun: vi.fn(),
+    getPermanentItemCandidates: vi.fn(),
+    confirmPermanentItemSelection: vi.fn(),
   },
 }));
 
@@ -127,6 +129,25 @@ describe('useRunStore computed properties', () => {
   it('gameplayPhase returns Completed when run is Completed', () => {
     const store = useRunStore();
     store.currentRun = { id: 'run-1', status: 'Completed' } as any;
+    expect(store.gameplayPhase).toBe('Completed');
+  });
+
+  it('gameplayPhase returns ItemSelection when the run just ended with unresolved candidates', () => {
+    const store = useRunStore();
+    store.currentRun = { id: 'run-1', status: 'Completed' } as any;
+    store.permanentItemCandidates = [
+      { itemDefinitionKey: 'item.a', displayName: 'A', description: '', rarity: 'Common' },
+    ];
+    expect(store.gameplayPhase).toBe('ItemSelection');
+  });
+
+  it('gameplayPhase falls back to Completed once item selection is resolved', () => {
+    const store = useRunStore();
+    store.currentRun = { id: 'run-1', status: 'Completed' } as any;
+    store.permanentItemCandidates = [
+      { itemDefinitionKey: 'item.a', displayName: 'A', description: '', rarity: 'Common' },
+    ];
+    store.isPermanentItemSelectionResolved = true;
     expect(store.gameplayPhase).toBe('Completed');
   });
 
@@ -325,5 +346,78 @@ describe('useRunStore actions', () => {
     } as any;
 
     expect(store.selectedNode?.id).toBe('node-1');
+  });
+
+  it('selectReward surfaces the specific bag-full message when the run bag is full', async () => {
+    const store = useRunStore();
+    store.currentRun = { id: 'run-1', status: 'RoomResolved' } as any;
+    store.pendingRewardOffer = { id: 'offer-1', choices: [] } as any;
+
+    vi.mocked(rewardApi.selectReward).mockRejectedValue(
+      new Error('Le sac est plein — il n\'y a plus de place pour cet objet.'),
+    );
+
+    await store.selectReward('choice-1');
+
+    expect(store.error).toBe('Le sac est plein — il n\'y a plus de place pour cet objet.');
+    expect(store.pendingRewardOffer).not.toBeNull();
+  });
+
+  it('fetches permanent item candidates once a run action lands on Completed', async () => {
+    const store = useRunStore();
+    store.currentRun = { id: 'run-1', status: 'Active' } as any;
+
+    vi.mocked(runApi.progressRun).mockResolvedValue({
+      id: 'run-1',
+      status: 'Completed',
+      currentRoom: {},
+    } as any);
+    vi.mocked(runApi.getPermanentItemCandidates).mockResolvedValue({
+      runId: 'run-1',
+      candidates: [
+        { itemDefinitionKey: 'item.relic.tome', displayName: 'Tome-38', description: '', rarity: 'Epic' },
+      ],
+    });
+
+    await store.progressRun();
+
+    expect(runApi.getPermanentItemCandidates).toHaveBeenCalledWith('run-1');
+    expect(store.permanentItemCandidates).toHaveLength(1);
+    expect(store.gameplayPhase).toBe('ItemSelection');
+  });
+
+  it('does not fetch permanent item candidates again once already resolved', async () => {
+    const store = useRunStore();
+    store.currentRun = { id: 'run-1', status: 'Active' } as any;
+    store.isPermanentItemSelectionResolved = true;
+
+    vi.mocked(runApi.progressRun).mockResolvedValue({
+      id: 'run-1',
+      status: 'Completed',
+      currentRoom: {},
+    } as any);
+
+    await store.progressRun();
+
+    expect(runApi.getPermanentItemCandidates).not.toHaveBeenCalled();
+  });
+
+  it('confirmPermanentItemSelection sends the choice and marks selection resolved', async () => {
+    const store = useRunStore();
+    store.currentRun = { id: 'run-1', status: 'Completed' } as any;
+    store.permanentItemCandidates = [
+      { itemDefinitionKey: 'item.relic.tome', displayName: 'Tome-38', description: '', rarity: 'Epic' },
+    ];
+
+    vi.mocked(runApi.confirmPermanentItemSelection).mockResolvedValue({
+      runId: 'run-1',
+      confirmedItemDefinitionKeys: ['item.relic.tome'],
+    });
+
+    await store.confirmPermanentItemSelection(['item.relic.tome']);
+
+    expect(runApi.confirmPermanentItemSelection).toHaveBeenCalledWith('run-1', ['item.relic.tome']);
+    expect(store.isPermanentItemSelectionResolved).toBe(true);
+    expect(store.gameplayPhase).toBe('Completed');
   });
 });

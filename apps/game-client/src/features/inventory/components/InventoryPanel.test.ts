@@ -24,8 +24,8 @@ vi.mock('../api/inventoryApi', () => ({
   },
 }));
 
-function mountPanel(items: RunItemDto[], runId = 'run-1') {
-  return mount(InventoryPanel, { props: { items, runId } });
+function mountPanel(items: RunItemDto[], runId = 'run-1', capacity?: number | null) {
+  return mount(InventoryPanel, { props: { items, runId, capacity } });
 }
 
 describe('InventoryPanel', () => {
@@ -167,5 +167,21 @@ describe('InventoryPanel', () => {
   it('displays item description', () => {
     const wrapper = mountPanel([baseItem]);
     expect(wrapper.text()).toContain('Restaure la vitalité.');
+  });
+
+  it('shows the capacity counter when capacity is provided', () => {
+    const wrapper = mountPanel([baseItem], 'run-1', 6);
+    expect(wrapper.text()).toContain('1 / 6');
+  });
+
+  it('hides the capacity counter when capacity is not provided', () => {
+    const wrapper = mountPanel([baseItem]);
+    expect(wrapper.find('.inv-capacity').exists()).toBe(false);
+  });
+
+  it('flags the capacity counter as full when the bag has reached capacity', () => {
+    const items = [baseItem, { ...baseItem, id: 'item-2' }];
+    const wrapper = mountPanel(items, 'run-1', 2);
+    expect(wrapper.find('.inv-capacity--full').exists()).toBe(true);
   });
 });

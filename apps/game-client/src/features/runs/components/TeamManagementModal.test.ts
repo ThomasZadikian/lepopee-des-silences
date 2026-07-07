@@ -14,6 +14,8 @@ vi.mock('../../party/api/playerApi', () => ({
     equipSkill: vi.fn(),
     unequipSkill: vi.fn(),
     spendStatPoint: vi.fn(),
+    equipItem: vi.fn(),
+    unequipItem: vi.fn(),
   },
 }));
 
@@ -33,6 +35,8 @@ function baseProfile(): PlayerProfileView {
         definitionKey: 'character.player.self',
         displayName: 'Le Porteur',
         maxEquippedSkills: 4,
+        items: [],
+        maxEquippedItems: 3,
         skills: [
           { skillKey: 'skill.a', unlockedAtUtc: '2026-01-01T00:00:00Z', source: 'default', isEquipped: true },
         ],
@@ -43,6 +47,7 @@ function baseProfile(): PlayerProfileView {
       },
     ],
     progression: { unspentStatPoints: 2, totalStatPointsEarned: 3 },
+    permanentItems: [],
   };
 }
 
@@ -60,11 +65,11 @@ describe('TeamManagementModal', () => {
     usePlayerStore().profile = baseProfile();
   });
 
-  it('renders the three tabs', async () => {
+  it('renders the four tabs', async () => {
     const wrapper = mountModal();
     await flushPromises();
     const tabs = wrapper.findAll('.tmm-tab');
-    expect(tabs.map((t) => t.text())).toEqual(['Équipe', 'Statistiques', 'Compétences']);
+    expect(tabs.map((t) => t.text())).toEqual(['Équipe', 'Statistiques', 'Compétences', 'Équipement']);
   });
 
   it('shows the overview tab by default', async () => {
@@ -88,6 +93,15 @@ describe('TeamManagementModal', () => {
     await tabs[2].trigger('click');
     await flushPromises();
     expect(wrapper.text()).toContain('Sorts équipés');
+  });
+
+  it('switches to the items tab on click', async () => {
+    const wrapper = mountModal();
+    await flushPromises();
+    const tabs = wrapper.findAll('.tmm-tab');
+    await tabs[3].trigger('click');
+    await flushPromises();
+    expect(wrapper.text()).toContain('Objets équipés');
   });
 
   it('does not show a character picker with only one character', async () => {

@@ -1,7 +1,9 @@
 using Leds.Player.Application.Players;
 using Leds.Player.Application.Players.CreatePlayerProfile;
+using Leds.Player.Application.Players.EquipItem;
 using Leds.Player.Application.Players.EquipSkill;
 using Leds.Player.Application.Players.SpendStatPoint;
+using Leds.Player.Application.Players.UnequipItem;
 using Leds.Player.Application.Players.UnequipSkill;
 using Leds.Player.Domain.Players;
 using MediatR;
@@ -90,6 +92,38 @@ public sealed class PlayersController : ControllerBase
         CancellationToken cancellationToken)
     {
         var command = new UnequipSkillCommand(playerId, characterId, skillKey);
+        var response = await _sender.Send(command, cancellationToken);
+
+        return Ok(response);
+    }
+
+    [HttpPost("{playerId:guid}/characters/{characterId:guid}/items/{itemKey}/equip")]
+    [ProducesResponseType(typeof(PlayerProfileDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<PlayerProfileDto>> EquipItem(
+        Guid playerId,
+        Guid characterId,
+        string itemKey,
+        CancellationToken cancellationToken)
+    {
+        var command = new EquipItemCommand(playerId, characterId, itemKey);
+        var response = await _sender.Send(command, cancellationToken);
+
+        return Ok(response);
+    }
+
+    [HttpPost("{playerId:guid}/characters/{characterId:guid}/items/{itemKey}/unequip")]
+    [ProducesResponseType(typeof(PlayerProfileDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<PlayerProfileDto>> UnequipItem(
+        Guid playerId,
+        Guid characterId,
+        string itemKey,
+        CancellationToken cancellationToken)
+    {
+        var command = new UnequipItemCommand(playerId, characterId, itemKey);
         var response = await _sender.Send(command, cancellationToken);
 
         return Ok(response);

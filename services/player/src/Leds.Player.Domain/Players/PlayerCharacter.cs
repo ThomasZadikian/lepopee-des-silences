@@ -14,7 +14,14 @@ public sealed class PlayerCharacter
     /// </summary>
     public const string BasicSkillKey = "skill.basic.strike";
 
+    /// <summary>
+    /// Base number of active equipment slots (accessories and backpacks share the same pool —
+    /// SFD "Système d'équipement et sac permanent" § 7, Annexe A point 3).
+    /// </summary>
+    public const int MaxEquippedItems = 3;
+
     private readonly List<PlayerCharacterSkill> _skills;
+    private readonly List<PlayerCharacterItem> _items;
 
     private PlayerCharacter(
         PlayerCharacterId id,
@@ -23,7 +30,8 @@ public sealed class PlayerCharacter
         string characterType,
         string status,
         PlayerCharacterStatBlock statBlock,
-        IReadOnlyCollection<PlayerCharacterSkill> skills)
+        IReadOnlyCollection<PlayerCharacterSkill> skills,
+        IReadOnlyCollection<PlayerCharacterItem>? items = null)
     {
         Id = id;
         DefinitionKey = definitionKey;
@@ -32,6 +40,7 @@ public sealed class PlayerCharacter
         Status = status;
         StatBlock = statBlock;
         _skills = skills.ToList();
+        _items = items?.ToList() ?? [];
     }
 
     public PlayerCharacterId Id { get; }
@@ -53,6 +62,14 @@ public sealed class PlayerCharacter
         .ToArray();
     public int EquippedCount => _skills.Count(s =>
         s.IsEquipped && !string.Equals(s.SkillDefinitionKey, BasicSkillKey, StringComparison.OrdinalIgnoreCase));
+
+    public IReadOnlyCollection<PlayerCharacterItem> Items => _items.AsReadOnly();
+    public IReadOnlyCollection<string> ItemKeys => _items.Select(i => i.ItemDefinitionKey).ToArray();
+    public IReadOnlyCollection<string> EquippedItemKeys => _items
+        .Where(i => i.IsEquipped)
+        .Select(i => i.ItemDefinitionKey)
+        .ToArray();
+    public int EquippedItemCount => _items.Count(i => i.IsEquipped);
 
     public static PlayerCharacter Create(
         string definitionKey,
@@ -181,6 +198,41 @@ public sealed class PlayerCharacter
         return skill ?? throw new DomainException($"Skill '{skillKey}' is not known by this character.");
     }
 
+    public void AddItem(PlayerCharacterItem item)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+
+        if (_items.Any(i => string.Equals(i.ItemDefinitionKey, item.ItemDefinitionKey, StringComparison.OrdinalIgnoreCase)))
+            return;
+
+        _items.Add(item);
+    }
+
+    public void EquipItem(string itemKey)
+    {
+        var item = FindItem(itemKey);
+
+        if (item.IsEquipped)
+            return;
+
+        if (EquippedItemCount >= MaxEquippedItems)
+            throw new DomainException($"Cannot equip more than {MaxEquippedItems} items.");
+
+        item.Equip();
+    }
+
+    public void UnequipItem(string itemKey)
+    {
+        FindItem(itemKey).Unequip();
+    }
+
+    private PlayerCharacterItem FindItem(string itemKey)
+    {
+        var item = _items.FirstOrDefault(i => string.Equals(i.ItemDefinitionKey, itemKey, StringComparison.OrdinalIgnoreCase));
+
+        return item ?? throw new DomainException($"Item '{itemKey}' is not owned by this character.");
+    }
+
     /// <summary>
     /// Rehydrates a player character from a trusted persistence snapshot.
     /// This method must not be used to create a new gameplay character.
@@ -222,7 +274,8 @@ public sealed class PlayerCharacter
         string characterType,
         string status,
         PlayerCharacterStatBlock statBlock,
-        IReadOnlyCollection<PlayerCharacterSkill> skills)
+        IReadOnlyCollection<PlayerCharacterSkill> skills,
+        IReadOnlyCollection<PlayerCharacterItem>? items = null)
     {
         return new PlayerCharacter(
             id,
@@ -231,6 +284,7 @@ public sealed class PlayerCharacter
             string.IsNullOrWhiteSpace(characterType) ? "Standard" : characterType,
             string.IsNullOrWhiteSpace(status) ? "Active" : status,
             statBlock,
-            skills);
+            skills,
+            items);
     }
 }

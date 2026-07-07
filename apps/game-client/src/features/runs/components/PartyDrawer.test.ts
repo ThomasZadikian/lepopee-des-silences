@@ -229,6 +229,8 @@ describe('PartyDrawer', () => {
           definitionKey: 'character.player.self',
           displayName: 'Le Porteur',
           maxEquippedSkills: 4,
+          items: [],
+          maxEquippedItems: 3,
           skills: [],
           stats: {
             maxVitality: 100, attackPower: 12, defense: 6, startingGuard: 0,
@@ -237,6 +239,7 @@ describe('PartyDrawer', () => {
         },
       ],
       progression: { unspentStatPoints: 0, totalStatPointsEarned: 0 },
+      permanentItems: [],
     };
     const wrapper = mountDrawer();
     expect(wrapper.find('.party-drawer__manage-btn').exists()).toBe(true);
@@ -257,6 +260,8 @@ describe('PartyDrawer', () => {
           definitionKey: 'character.player.self',
           displayName: 'Le Porteur',
           maxEquippedSkills: 4,
+          items: [],
+          maxEquippedItems: 3,
           skills: [],
           stats: {
             maxVitality: 100, attackPower: 12, defense: 6, startingGuard: 0,
@@ -265,6 +270,7 @@ describe('PartyDrawer', () => {
         },
       ],
       progression: { unspentStatPoints: 0, totalStatPointsEarned: 0 },
+      permanentItems: [],
     };
     const wrapper = mountDrawer();
     expect(document.body.querySelector('.tmm-backdrop')).toBeNull();

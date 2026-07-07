@@ -16,6 +16,9 @@ public sealed class StubPlayerProfileGateway : IPlayerProfileGateway
     public List<(Guid PlayerId, int Amount)> AwardedStatPoints { get; } = [];
     public List<(Guid PlayerId, string NpcKey, string OfferingKey, Guid? SourceRunId)> ClaimedOfferings { get; } = [];
     public List<(Guid PlayerId, string NpcKey, string MilestoneKey, Guid? SourceRunId)> GrantedMilestones { get; } = [];
+    public List<(Guid PlayerId, Guid CharacterId, string ItemKey)> EquippedItems { get; } = [];
+    public List<(Guid PlayerId, Guid CharacterId, string ItemKey)> UnequippedItems { get; } = [];
+    public List<(Guid PlayerId, IReadOnlyCollection<string> ItemDefinitionKeys, Guid? SourceRunId)> AddedPermanentItems { get; } = [];
 
     public void SeedClaimedOffering(Guid playerId, string npcKey, string offeringKey)
         => _claimedOfferings.Add(Key(playerId, npcKey, offeringKey));
@@ -39,6 +42,24 @@ public sealed class StubPlayerProfileGateway : IPlayerProfileGateway
 
     public Task<PlayerProfileView> SpendStatPointAsync(Guid playerId, Guid characterId, string stat, CancellationToken cancellationToken)
         => Task.FromResult(EmptyProfile(playerId));
+
+    public Task<PlayerProfileView> EquipItemAsync(Guid playerId, Guid characterId, string itemKey, CancellationToken cancellationToken)
+    {
+        EquippedItems.Add((playerId, characterId, itemKey));
+        return Task.FromResult(EmptyProfile(playerId));
+    }
+
+    public Task<PlayerProfileView> UnequipItemAsync(Guid playerId, Guid characterId, string itemKey, CancellationToken cancellationToken)
+    {
+        UnequippedItems.Add((playerId, characterId, itemKey));
+        return Task.FromResult(EmptyProfile(playerId));
+    }
+
+    public Task<PlayerProfileView> AddPermanentItemsAsync(Guid playerId, IReadOnlyCollection<string> itemDefinitionKeys, Guid? sourceRunId, CancellationToken cancellationToken)
+    {
+        AddedPermanentItems.Add((playerId, itemDefinitionKeys, sourceRunId));
+        return Task.FromResult(EmptyProfile(playerId));
+    }
 
     public Task<PlayerProfileView> UnlockSkillAsync(Guid playerId, Guid characterId, string skillKey, CancellationToken cancellationToken, string source = "devtools")
     {

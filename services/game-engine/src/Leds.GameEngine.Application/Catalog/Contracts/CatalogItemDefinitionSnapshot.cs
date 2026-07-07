@@ -15,4 +15,13 @@ public sealed record CatalogItemDefinitionSnapshot(
     int MaxStack,
     bool IsUsableInCombat,
     bool IsUsableOutsideCombat,
-    string? EffectSetKey);
+    string? EffectSetKey,
+    bool IsPermanentEligible = false,
+    IReadOnlyCollection<CatalogItemEquipmentEffect>? EquipmentEffects = null);
+
+public sealed record CatalogItemEquipmentEffect(
+    string Kind,
+    string? StatKind,
+    int? Amount,
+    string? SkillKey,
+    string? AffinityRegister);

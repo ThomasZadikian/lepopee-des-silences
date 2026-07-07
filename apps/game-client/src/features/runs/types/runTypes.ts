@@ -92,6 +92,8 @@ export type RunDto = {
   pendingRewardOfferId?: string | null;
   activePalaceLaws: ActivePalaceLawDto[];
   inventoryItems: RunItemDto[];
+  /** Run-bag capacity — distinct item slots (SFD "Système d'équipement et sac permanent" § 5). */
+  runItemCapacity: number;
   /** true when status === 'Suspended' — run paused at a safe point, can be resumed. */
   canResume?: boolean;
   /** ISO timestamp set by SaveAndExit. null if the run was never suspended. */
@@ -245,6 +247,23 @@ export type ResolveCurrentEventResponse = {
   encounterDraft?: import('../../combat/types/combatContracts').CombatEncounterDraftDto | null;
   combat?: import('../../combat/types/combatContracts').CombatRuntimeDto | null;
   npcDialogue?: NpcDialogueViewDto | null;
+};
+
+export type PermanentItemCandidateDto = {
+  itemDefinitionKey: string;
+  displayName: string;
+  description: string;
+  rarity: string;
+};
+
+export type GetPermanentItemCandidatesResponse = {
+  runId: string;
+  candidates: PermanentItemCandidateDto[];
+};
+
+export type ConfirmPermanentItemSelectionResponse = {
+  runId: string;
+  confirmedItemDefinitionKeys: string[];
 };
 
 export type RunResponse =

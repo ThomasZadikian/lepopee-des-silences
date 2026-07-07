@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useCombatStore } from '../../combat/stores/useCombatStore';
 import type { CombatantRuntimeDto } from '../../combat/types/combatContracts';
 import { useRunStore } from '../../runs/stores/runStore';
@@ -9,7 +9,13 @@ import { inventoryApi } from '../api/inventoryApi';
 const props = defineProps<{
   items: RunItemDto[];
   runId: string;
+  capacity?: number | null;
 }>();
+
+const distinctItemCount = computed(() => props.items.length);
+const isBagFull = computed(() =>
+  typeof props.capacity === 'number' && distinctItemCount.value >= props.capacity,
+);
 
 const combatStore = useCombatStore();
 const runStore = useRunStore();
@@ -110,6 +116,9 @@ async function confirmUseItem(_targetCombatantId?: string) {
         Inventaire de run
       </span>
       <h2 class="inv-title">Sac à dos</h2>
+      <span v-if="typeof capacity === 'number'" class="inv-capacity" :class="{ 'inv-capacity--full': isBagFull }">
+        {{ distinctItemCount }} / {{ capacity }}
+      </span>
     </header>
 
     <div class="inv-divider" />
@@ -255,6 +264,19 @@ async function confirmUseItem(_targetCombatantId?: string) {
   color: var(--gold, oklch(.72 .1 85));
   line-height: 1.1;
   margin: 0;
+}
+
+.inv-capacity {
+  display: block;
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--ink-4, oklch(.45 .015 275));
+  margin-top: 4px;
+}
+
+.inv-capacity--full {
+  color: var(--blood, oklch(.52 .15 20));
 }
 
 .inv-divider {

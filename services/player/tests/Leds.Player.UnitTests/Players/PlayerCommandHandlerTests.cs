@@ -1,10 +1,13 @@
 using FluentAssertions;
 using Leds.Player.Application.Abstractions;
 using Leds.Player.Application.Players;
+using Leds.Player.Application.Players.AddPermanentItems;
 using Leds.Player.Application.Players.ClaimNpcOffering;
 using Leds.Player.Application.Players.CreatePlayerProfile;
+using Leds.Player.Application.Players.EquipItem;
 using Leds.Player.Application.Players.GrantNpcReputationMilestone;
 using Leds.Player.Application.Players.HasClaimedNpcOffering;
+using Leds.Player.Application.Players.UnequipItem;
 using Leds.Player.Domain.Players;
 using Moq;
 
@@ -146,5 +149,65 @@ public sealed class PlayerCommandHandlerTests
             CancellationToken.None);
 
         result.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task AddPermanentItems_ShouldAddItemsAndPersist()
+    {
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+        var repository = new Mock<IPlayerProfileRepository>();
+        repository.Setup(r => r.GetByIdAsync(profile.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(profile);
+
+        var handler = new AddPermanentItemsCommandHandler(repository.Object, TimeProvider.System);
+        var sourceRunId = Guid.NewGuid();
+
+        var response = await handler.Handle(
+            new AddPermanentItemsCommand(profile.Id.Value, ["item.sac-a-dos", "item.amulette"], sourceRunId),
+            CancellationToken.None);
+
+        response.PermanentItems.Should().HaveCount(2);
+        response.PermanentItems.Should().Contain(i => i.ItemDefinitionKey == "item.sac-a-dos" && i.SourceRunId == sourceRunId);
+        repository.Verify(r => r.SaveAsync(It.IsAny<PlayerProfile>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task EquipItem_ShouldEquipOwnedItemAndPersist()
+    {
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+        profile.AddPermanentItems(["item.sac-a-dos"], null, DateTimeOffset.UtcNow);
+        var characterId = profile.Roster.Characters.Single().Id.Value;
+        var repository = new Mock<IPlayerProfileRepository>();
+        repository.Setup(r => r.GetByIdAsync(profile.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(profile);
+
+        var handler = new EquipItemCommandHandler(repository.Object, TimeProvider.System);
+
+        var response = await handler.Handle(
+            new EquipItemCommand(profile.Id.Value, characterId, "item.sac-a-dos"),
+            CancellationToken.None);
+
+        response.Characters.Single().ItemKeys.Should().Contain("item.sac-a-dos");
+        response.Characters.Single().Items.Should().ContainSingle(i => i.ItemKey == "item.sac-a-dos" && i.IsEquipped);
+    }
+
+    [Fact]
+    public async Task UnequipItem_ShouldUnequipItemAndPersist()
+    {
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+        profile.AddPermanentItems(["item.sac-a-dos"], null, DateTimeOffset.UtcNow);
+        var character = profile.Roster.Characters.Single();
+        profile.EquipItem(character.Id, "item.sac-a-dos", DateTimeOffset.UtcNow);
+        var repository = new Mock<IPlayerProfileRepository>();
+        repository.Setup(r => r.GetByIdAsync(profile.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(profile);
+
+        var handler = new UnequipItemCommandHandler(repository.Object, TimeProvider.System);
+
+        var response = await handler.Handle(
+            new UnequipItemCommand(profile.Id.Value, character.Id.Value, "item.sac-a-dos"),
+            CancellationToken.None);
+
+        response.Characters.Single().Items.Should().ContainSingle(i => i.ItemKey == "item.sac-a-dos" && !i.IsEquipped);
     }
 }

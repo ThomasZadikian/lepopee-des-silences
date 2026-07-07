@@ -14,6 +14,7 @@ import type { CurrentEventChoiceResultDto } from '../features/events/types/event
 import InterludePanel from '../features/interlude/InterludePanel.vue';
 import RoomClearedPanel from '../features/interlude/RoomClearedPanel.vue';
 import InventoryDrawer from '../features/inventory/components/InventoryDrawer.vue';
+import PermanentItemSelectionPanel from '../features/runs/components/PermanentItemSelectionPanel.vue';
 import PalaceNodeDrawer from '../features/node-details/PalaceNodeDrawer.vue';
 import LawResolutionPanel from '../features/palace-laws/LawResolutionPanel.vue';
 import LawsPopover from '../features/palace-laws/LawsPopover.vue';
@@ -238,6 +239,7 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
                 v-if="showInventoryDrawer"
                 :items="runStore.currentRun.inventoryItems ?? []"
                 :run-id="runStore.currentRun.id"
+                :capacity="runStore.currentRun.runItemCapacity ?? null"
                 @close="uiStore.closeDrawer"
               />
             </Transition>
@@ -396,6 +398,15 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
             {{ runStore.isLoading ? 'Génération…' : 'Démarrer une nouvelle run →' }}
           </button>
         </section>
+      </template>
+
+      <!-- ── End-of-run permanent item selection ── -->
+      <template v-else-if="runStore.gameplayPhase === 'ItemSelection'">
+        <PermanentItemSelectionPanel
+          :candidates="runStore.permanentItemCandidates"
+          :is-loading="runStore.isLoading"
+          @confirm="runStore.confirmPermanentItemSelection"
+        />
       </template>
 
       <!-- ── Completed / Failed ── -->

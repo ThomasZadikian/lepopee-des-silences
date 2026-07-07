@@ -14,6 +14,7 @@ import {
   type NarrativeFragmentDto,
   type NodeDto,
   type NpcDialogueViewDto,
+  type PermanentItemCandidateDto,
   type ResolveCurrentEventResponse,
   type ResumableRunDto,
   type RunDto,
@@ -73,6 +74,10 @@ export const useRunStore = defineStore('run', () => {
   const currentInterlude = ref<InterludeDto | null>(null);
   const isEnteringInterlude = ref(false);
   const isEnteringNextRoom = ref(false);
+
+  const permanentItemCandidates = ref<PermanentItemCandidateDto[]>([]);
+  const isPermanentItemSelectionResolved = ref(false);
+  const isLoadingPermanentItemCandidates = ref(false);
 
   const resumableRun = shallowRef<ResumableRunDto | null>(null);
   const isLoadingResumableRun = ref(false);
@@ -144,6 +149,9 @@ export const useRunStore = defineStore('run', () => {
     if (!currentRun.value) return 'Loading';
 
     if (shouldShowRunFailedPanel.value || currentRun.value.status === 'Completed') {
+      if (permanentItemCandidates.value.length > 0 && !isPermanentItemSelectionResolved.value) {
+        return 'ItemSelection';
+      }
       return 'Completed';
     }
 
@@ -199,6 +207,7 @@ export const useRunStore = defineStore('run', () => {
     error.value = null;
     try {
       await action();
+      await refreshPermanentItemCandidatesIfNeeded();
     } catch (caught) {
       error.value = caught instanceof Error
         ? caught.message
@@ -206,6 +215,38 @@ export const useRunStore = defineStore('run', () => {
     } finally {
       isLoading.value = false;
     }
+  }
+
+  // Fetches permanent-item candidates once a run has actually ended (Completed/Failed).
+  // Guarded so it only fires the network call the first time a terminal state is seen —
+  // every subsequent execute() call after that is a cheap no-op.
+  async function refreshPermanentItemCandidatesIfNeeded() {
+    if (!currentRun.value) return;
+    if (isPermanentItemSelectionResolved.value) return;
+    if (permanentItemCandidates.value.length > 0) return;
+
+    const status = currentRun.value.status;
+    if (status !== 'Completed' && status !== 'Failed') return;
+
+    isLoadingPermanentItemCandidates.value = true;
+    try {
+      const response = await runApi.getPermanentItemCandidates(currentRun.value.id);
+      permanentItemCandidates.value = response.candidates;
+      if (response.candidates.length === 0) {
+        isPermanentItemSelectionResolved.value = true;
+      }
+    } finally {
+      isLoadingPermanentItemCandidates.value = false;
+    }
+  }
+
+  async function confirmPermanentItemSelection(itemDefinitionKeys: string[]) {
+    if (!currentRun.value) return;
+
+    await execute(async () => {
+      await runApi.confirmPermanentItemSelection(currentRun.value!.id, itemDefinitionKeys);
+      isPermanentItemSelectionResolved.value = true;
+    });
   }
 
   async function refreshPendingRewardIfNeeded() {
@@ -253,6 +294,8 @@ export const useRunStore = defineStore('run', () => {
       combatRuntime.value = null;
       currentInterlude.value = null;
       resetPreviewedNode();
+      permanentItemCandidates.value = [];
+      isPermanentItemSelectionResolved.value = false;
 
       await refreshPendingRewardIfNeeded();
     });
@@ -665,6 +708,8 @@ export const useRunStore = defineStore('run', () => {
     lastChoiceResult.value = null;
     currentInterlude.value = null;
     error.value = null;
+    permanentItemCandidates.value = [];
+    isPermanentItemSelectionResolved.value = false;
   }
 
   // -------------------------------------------------------------------------
@@ -793,6 +838,9 @@ export const useRunStore = defineStore('run', () => {
     gameplayPhase,
     isLoading,
     error,
+    permanentItemCandidates,
+    isPermanentItemSelectionResolved,
+    isLoadingPermanentItemCandidates,
 
     startRun,
     loadRun,
@@ -815,6 +863,7 @@ export const useRunStore = defineStore('run', () => {
     enterInterlude,
     loadInterlude,
     enterNextRoom,
+    confirmPermanentItemSelection,
 
     resumableRun,
     isLoadingResumableRun,

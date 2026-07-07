@@ -30,6 +30,13 @@ export type PlayerStatKind =
   | 'Mana'
   | 'Charge';
 
+export type PlayerCharacterItemView = {
+  itemKey: string;
+  acquiredAtUtc: string;
+  source: string | null;
+  isEquipped: boolean;
+};
+
 export type PlayerCharacterView = {
   id: string;
   definitionKey: string;
@@ -37,6 +44,8 @@ export type PlayerCharacterView = {
   skills: PlayerCharacterSkillView[];
   stats: PlayerCharacterStatsView;
   maxEquippedSkills: number;
+  items: PlayerCharacterItemView[];
+  maxEquippedItems: number;
 };
 
 export type PlayerProgressionView = {
@@ -44,9 +53,16 @@ export type PlayerProgressionView = {
   totalStatPointsEarned: number;
 };
 
+export type PlayerPermanentItemView = {
+  itemDefinitionKey: string;
+  sourceRunId: string | null;
+  acquiredAtUtc: string;
+};
+
 export type PlayerProfileView = {
   id: string;
   displayName: string;
   characters: PlayerCharacterView[];
   progression: PlayerProgressionView;
+  permanentItems: PlayerPermanentItemView[];
 };

@@ -12,6 +12,8 @@ vi.mock('../api/playerApi', () => ({
     equipSkill: vi.fn(),
     unequipSkill: vi.fn(),
     spendStatPoint: vi.fn(),
+    equipItem: vi.fn(),
+    unequipItem: vi.fn(),
   },
 }));
 
@@ -25,6 +27,8 @@ function baseProfile(overrides: Partial<PlayerProfileView['characters'][0]> = {}
         definitionKey: 'character.player.self',
         displayName: 'Le Porteur',
         maxEquippedSkills: 4,
+        items: [],
+        maxEquippedItems: 3,
         skills: [
           { skillKey: 'skill.a', unlockedAtUtc: '2026-01-01T00:00:00Z', source: 'default', isEquipped: true },
           { skillKey: 'skill.b', unlockedAtUtc: '2026-01-01T00:00:00Z', source: 'default', isEquipped: false },
@@ -37,6 +41,7 @@ function baseProfile(overrides: Partial<PlayerProfileView['characters'][0]> = {}
       },
     ],
     progression: { unspentStatPoints: 2, totalStatPointsEarned: 3 },
+    permanentItems: [],
   };
 }
 
@@ -133,5 +138,83 @@ describe('usePlayerStore', () => {
 
     expect(store.error).toBe('network down');
     expect(store.profile).toBeNull();
+  });
+
+  it('exposes permanentItems from the profile', async () => {
+    const profile = baseProfile();
+    profile.permanentItems = [
+      { itemDefinitionKey: 'item.relic.tome', sourceRunId: 'run-1', acquiredAtUtc: '2026-01-01T00:00:00Z' },
+    ];
+    vi.mocked(playerApi.getProfile).mockResolvedValue(profile);
+    const store = usePlayerStore();
+
+    await store.loadProfile(demoPlayerId);
+
+    expect(store.permanentItems).toHaveLength(1);
+    expect(store.permanentItems[0].itemDefinitionKey).toBe('item.relic.tome');
+  });
+
+  it('computes equippedItemCount from the main character items', async () => {
+    const profile = baseProfile({
+      items: [
+        { itemKey: 'item.a', acquiredAtUtc: '2026-01-01T00:00:00Z', source: null, isEquipped: true },
+        { itemKey: 'item.b', acquiredAtUtc: '2026-01-01T00:00:00Z', source: null, isEquipped: false },
+      ],
+    });
+    vi.mocked(playerApi.getProfile).mockResolvedValue(profile);
+    const store = usePlayerStore();
+
+    await store.loadProfile(demoPlayerId);
+
+    expect(store.equippedItemCount).toBe(1);
+  });
+
+  it('computes isItemLoadoutFull when equipped item count reaches the cap', async () => {
+    const profile = baseProfile({
+      maxEquippedItems: 2,
+      items: [
+        { itemKey: 'item.a', acquiredAtUtc: '2026-01-01T00:00:00Z', source: null, isEquipped: true },
+        { itemKey: 'item.b', acquiredAtUtc: '2026-01-01T00:00:00Z', source: null, isEquipped: true },
+      ],
+    });
+    vi.mocked(playerApi.getProfile).mockResolvedValue(profile);
+    const store = usePlayerStore();
+
+    await store.loadProfile(demoPlayerId);
+
+    expect(store.isItemLoadoutFull).toBe(true);
+  });
+
+  it('equipItem replaces the profile with the API response', async () => {
+    vi.mocked(playerApi.getProfile).mockResolvedValue(baseProfile());
+    const updated = baseProfile({
+      items: [{ itemKey: 'item.a', acquiredAtUtc: '2026-01-01T00:00:00Z', source: null, isEquipped: true }],
+    });
+    vi.mocked(playerApi.equipItem).mockResolvedValue(updated);
+    const store = usePlayerStore();
+    await store.loadProfile(demoPlayerId);
+
+    await store.equipItem('char-1', 'item.a');
+
+    expect(playerApi.equipItem).toHaveBeenCalledWith(demoPlayerId, 'char-1', 'item.a');
+    expect(store.equippedItemCount).toBe(1);
+  });
+
+  it('unequipItem replaces the profile with the API response', async () => {
+    const initial = baseProfile({
+      items: [{ itemKey: 'item.a', acquiredAtUtc: '2026-01-01T00:00:00Z', source: null, isEquipped: true }],
+    });
+    vi.mocked(playerApi.getProfile).mockResolvedValue(initial);
+    const updated = baseProfile({
+      items: [{ itemKey: 'item.a', acquiredAtUtc: '2026-01-01T00:00:00Z', source: null, isEquipped: false }],
+    });
+    vi.mocked(playerApi.unequipItem).mockResolvedValue(updated);
+    const store = usePlayerStore();
+    await store.loadProfile(demoPlayerId);
+
+    await store.unequipItem('char-1', 'item.a');
+
+    expect(playerApi.unequipItem).toHaveBeenCalledWith(demoPlayerId, 'char-1', 'item.a');
+    expect(store.equippedItemCount).toBe(0);
   });
 });

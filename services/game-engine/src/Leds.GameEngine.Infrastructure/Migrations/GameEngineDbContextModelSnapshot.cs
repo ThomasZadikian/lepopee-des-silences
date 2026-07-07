@@ -1524,6 +1524,12 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("focus");
 
+                    b.Property<int>("RunItemCapacity")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(6)
+                        .HasColumnName("run_item_capacity");
+
                     b.Property<string>("GeneratorVersion")
                         .IsRequired()
                         .HasMaxLength(64)
