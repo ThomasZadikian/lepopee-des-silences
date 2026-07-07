@@ -29,6 +29,12 @@ export type ChooseCurrentEventOptionRequest = {
   eventChoiceId?: string;
 };
 
+export type AppliedConsequenceEffectDto = {
+  kind: string;
+  amount: number;
+  label: string;
+};
+
 export type CurrentEventChoiceResultDto = {
   choiceId?: string;
   selectedChoiceId?: string;
@@ -38,6 +44,7 @@ export type CurrentEventChoiceResultDto = {
   state?: string;
   message?: string;
   narrativeFragments?: NarrativeFragmentDto[];
+  appliedEffects?: AppliedConsequenceEffectDto[];
 };
 
 export type ChooseCurrentEventOptionResponse =

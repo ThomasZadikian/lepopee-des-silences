@@ -137,6 +137,10 @@ public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver
 
             case "AdjustRelationship":
                 relationship.AdjustScore(consequence.RelationshipDelta);
+                if (consequence.RelationshipDelta != 0)
+                {
+                    effects.Add(new AppliedConsequenceEffect("reputation", consequence.RelationshipDelta, npc.DisplayName));
+                }
                 break;
 
             case "SetMemoryFlag":

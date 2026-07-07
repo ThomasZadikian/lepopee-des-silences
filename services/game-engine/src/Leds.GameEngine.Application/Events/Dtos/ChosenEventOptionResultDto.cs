@@ -6,7 +6,8 @@ public sealed record ChosenEventOptionResultDto(
     string ChoiceId,
     bool Accepted,
     string Message,
-    IReadOnlyCollection<NarrativeFragmentDto> NarrativeFragments)
+    IReadOnlyCollection<NarrativeFragmentDto> NarrativeFragments,
+    IReadOnlyCollection<AppliedConsequenceEffect>? AppliedEffects = null)
 {
     public static ChosenEventOptionResultDto FromResult(
         CurrentEventChoiceResolutionResult result)
@@ -15,6 +16,7 @@ public sealed record ChosenEventOptionResultDto(
             result.ChoiceId,
             result.Accepted,
             result.Message,
-            result.NarrativeFragments);
+            result.NarrativeFragments,
+            result.AppliedEffects);
     }
 }
