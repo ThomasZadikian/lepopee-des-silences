@@ -5,4 +5,5 @@ public sealed record DialogueRequirement(
     DialogueRequirementKind Kind,
     string? FlagKey = null,
     string? WoundKey = null,
-    WoundState? RequiredWoundState = null);
+    WoundState? RequiredWoundState = null,
+    int? RequiredRelationshipScore = null);

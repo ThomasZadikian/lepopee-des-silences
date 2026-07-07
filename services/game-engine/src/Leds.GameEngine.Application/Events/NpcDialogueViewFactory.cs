@@ -72,6 +72,14 @@ public static class NpcDialogueViewFactory
                         return false;
                     }
                     break;
+
+                case "RelationshipScoreAtLeast":
+                    if (requirement.RequiredRelationshipScore is not int minScore ||
+                        relationship.RelationshipScore < minScore)
+                    {
+                        return false;
+                    }
+                    break;
             }
         }
 

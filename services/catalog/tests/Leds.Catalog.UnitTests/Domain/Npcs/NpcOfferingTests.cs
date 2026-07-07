@@ -43,6 +43,26 @@ public sealed class NpcOfferingTests
     }
 
     [Fact]
+    public void Create_ShouldSupportRelationshipScoreGatedOffering()
+    {
+        var requirement = new DialogueRequirement(
+            DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 5);
+
+        var offering = new NpcOffering(
+            Key: "offering.hitomi.chaleur-protectrice",
+            Kind: NpcOfferingKind.Skill,
+            TargetKey: "skill.hitomi.chaleur-protectrice",
+            Amount: 0,
+            IsMajor: true,
+            UnlockConditions: [requirement]);
+
+        offering.UnlockConditions.Should().ContainSingle();
+        var unlockCondition = offering.UnlockConditions.Single();
+        unlockCondition.Kind.Should().Be(DialogueRequirementKind.RelationshipScoreAtLeast);
+        unlockCondition.RequiredRelationshipScore.Should().Be(5);
+    }
+
+    [Fact]
     public void RecordEquality_ShouldBeEqual_WhenAllPropertiesMatch()
     {
         var o1 = new NpcOffering("key", NpcOfferingKind.Item, "item.consumable.minor-heal", 1, false, []);

@@ -4,4 +4,5 @@ public sealed record CatalogDialogueRequirement(
     string Kind,
     string? FlagKey,
     string? WoundKey,
-    string? RequiredWoundState);
+    string? RequiredWoundState,
+    int? RequiredRelationshipScore = null);

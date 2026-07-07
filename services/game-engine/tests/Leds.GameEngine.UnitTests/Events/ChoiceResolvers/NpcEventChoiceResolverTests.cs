@@ -157,4 +157,38 @@ public sealed class NpcEventChoiceResolverTests
             m => m.NpcKey == OfferingGiverKey && m.MilestoneKey == "trust-earned");
         run.GetNpcRelationship(OfferingGiverKey)!.HasFlag("trust-earned").Should().BeTrue();
     }
+
+    [Fact]
+    public async Task ResolveAsync_ShouldNotGrantOffering_WhenRelationshipScoreBelowRequiredThreshold()
+    {
+        var (run, node) = CreateRunWithActiveOfferingGiver();
+        var context = new CurrentEventChoiceResolutionContext(run, run.CurrentRoom, node, "take-gated-skill");
+        var playerProfileGateway = new StubPlayerProfileGateway();
+        var sut = new NpcEventChoiceResolver(new StubCatalogContentGateway(), playerProfileGateway);
+
+        var result = await sut.ResolveAsync(context);
+
+        result.Accepted.Should().BeTrue();
+        result.NarrativeFragments.Should().ContainSingle(f => f.Text.Contains("Rien ne se produit"));
+        playerProfileGateway.UnlockedSkills.Should().BeEmpty();
+        playerProfileGateway.ClaimedOfferings.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ResolveAsync_ShouldGrantOffering_WhenRelationshipScoreMeetsRequiredThreshold()
+    {
+        var (run, node) = CreateRunWithActiveOfferingGiver();
+        run.GetNpcRelationship(OfferingGiverKey)!.AdjustScore(5);
+        var context = new CurrentEventChoiceResolutionContext(run, run.CurrentRoom, node, "take-gated-skill");
+        var playerProfileGateway = new StubPlayerProfileGateway();
+        var sut = new NpcEventChoiceResolver(new StubCatalogContentGateway(), playerProfileGateway);
+
+        var result = await sut.ResolveAsync(context);
+
+        result.Accepted.Should().BeTrue();
+        playerProfileGateway.UnlockedSkills.Should().ContainSingle(
+            u => u.PlayerId == run.PlayerId && u.SkillKey == "skill.basic.strike" && u.Source == $"npc:{OfferingGiverKey}");
+        playerProfileGateway.ClaimedOfferings.Should().ContainSingle(
+            c => c.NpcKey == OfferingGiverKey && c.OfferingKey == "offer.skill.gated");
+    }
 }

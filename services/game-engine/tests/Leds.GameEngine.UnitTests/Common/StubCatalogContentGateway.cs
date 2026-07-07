@@ -1192,7 +1192,9 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 [
                     new CatalogNpcOffering("offer.skill", "Skill", "skill.basic.strike", 0, IsMajor: true, UnlockConditions: []),
                     new CatalogNpcOffering("offer.stat", "StatPoint", null, 1, IsMajor: false, UnlockConditions: []),
-                    new CatalogNpcOffering("offer.item", "Item", "item.consumable.minor-heal", 1, IsMajor: false, UnlockConditions: [])
+                    new CatalogNpcOffering("offer.item", "Item", "item.consumable.minor-heal", 1, IsMajor: false, UnlockConditions: []),
+                    new CatalogNpcOffering("offer.skill.gated", "Skill", "skill.basic.strike", 0, IsMajor: true,
+                        UnlockConditions: [new CatalogDialogueRequirement("RelationshipScoreAtLeast", null, null, null, 5)])
                 ],
                 DialogueGraph: new CatalogNpcDialogueGraph(
                     "npc.test.offering-giver.dialogue", "1.0", "start",
@@ -1221,6 +1223,11 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                                     "take-milestone", "Sceller un souvenir",
                                     [], [new CatalogDialogueConsequence(
                                         "PersistReputationMilestone", null, null, null, null, 0, "trust-earned", null, null, null, null, null)],
+                                    null),
+                                new CatalogNpcDialogueChoice(
+                                    "take-gated-skill", "Prendre la compétence réservée à la confiance",
+                                    [], [new CatalogDialogueConsequence(
+                                        "GrantOffering", null, null, null, null, 0, null, null, "offer.skill.gated", null, null, null)],
                                     null)
                             ])
                     })),

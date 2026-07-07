@@ -1285,7 +1285,7 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
             (s.Transgressions ?? []).Select(MapNpcTransgression).ToArray(), s.RupturedNarrativeKey);
 
     private static CatalogDialogueRequirement MapDialogueRequirement(CatalogDialogueRequirementHttpResponse s) =>
-        new(s.Kind, s.FlagKey, s.WoundKey, s.RequiredWoundState);
+        new(s.Kind, s.FlagKey, s.WoundKey, s.RequiredWoundState, s.RequiredRelationshipScore);
 
     private static CatalogDialogueConsequence MapDialogueConsequence(CatalogDialogueConsequenceHttpResponse s) =>
         new(s.Kind, s.WhenWoundState, s.NarrativeFragmentKey, s.RewardCursePoolKey, s.EncounterKey,
@@ -1668,7 +1668,8 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
         string Kind,
         string? FlagKey,
         string? WoundKey,
-        string? RequiredWoundState);
+        string? RequiredWoundState,
+        int? RequiredRelationshipScore = null);
 
     private sealed record CatalogDialogueConsequenceHttpResponse(
         string Kind,

@@ -423,6 +423,13 @@ public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver
                         return false;
                     }
                     break;
+                case "RelationshipScoreAtLeast":
+                    if (requirement.RequiredRelationshipScore is not int minScore ||
+                        relationship.RelationshipScore < minScore)
+                    {
+                        return false;
+                    }
+                    break;
             }
         }
 
