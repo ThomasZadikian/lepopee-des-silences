@@ -281,7 +281,10 @@ public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver
                     MapToRunItemRarity(itemDef.Rarity),
                     quantity: offering.Amount > 0 ? offering.Amount : 1,
                     RunItemEffectType.None,
-                    effectAmount: 0));
+                    effectAmount: 0,
+                    isContainer: itemDef.IsContainer,
+                    containerCapacity: itemDef.ContainerCapacity,
+                    isLiquid: itemDef.IsLiquid));
                 return $"{npc.DisplayName} te tend {itemDef.DisplayName}.";
 
             default:

@@ -157,7 +157,11 @@ public sealed record RunItemDto(
     string Rarity,
     int Quantity,
     string EffectType,
-    int EffectAmount)
+    int EffectAmount,
+    bool IsContainer = false,
+    int? ContainerCapacity = null,
+    bool IsLiquid = false,
+    string? ContainedLiquidDefinitionKey = null)
 {
     public static RunItemDto FromDomain(RunItem item) => new(
         item.Id.Value,
@@ -168,5 +172,9 @@ public sealed record RunItemDto(
         item.Rarity.ToString(),
         item.Quantity,
         item.EffectType.ToString(),
-        item.EffectAmount);
+        item.EffectAmount,
+        item.IsContainer,
+        item.ContainerCapacity,
+        item.IsLiquid,
+        item.ContainedLiquidDefinitionKey);
 }

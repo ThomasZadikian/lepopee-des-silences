@@ -104,7 +104,11 @@ public static class RunPersistenceMapper
                 IsUsableInCombat = item.IsUsableInCombat,
                 IsUsableOutsideCombat = item.IsUsableOutsideCombat,
                 SourceRewardOptionId = item.SourceRewardOptionId,
-                CreatedAtUtc = item.CreatedAtUtc
+                CreatedAtUtc = item.CreatedAtUtc,
+                IsContainer = item.IsContainer,
+                ContainerCapacity = item.ContainerCapacity,
+                IsLiquid = item.IsLiquid,
+                ContainedLiquidDefinitionKey = item.ContainedLiquidDefinitionKey
             }).ToList(),
             RunModifiers = run.RunModifiers.Select(m => new RunModifierEntity
             {
@@ -351,7 +355,11 @@ public static class RunPersistenceMapper
             effectSummary: item.EffectSummary,
             isUsableInCombat: item.IsUsableInCombat,
             isUsableOutsideCombat: item.IsUsableOutsideCombat,
-            sourceRewardOptionId: item.SourceRewardOptionId)).ToList();
+            sourceRewardOptionId: item.SourceRewardOptionId,
+            isContainer: item.IsContainer,
+            containerCapacity: item.ContainerCapacity,
+            isLiquid: item.IsLiquid,
+            containedLiquidDefinitionKey: item.ContainedLiquidDefinitionKey)).ToList();
 
         var runModifiers = entity.RunModifiers.Select(m => RunModifier.Rehydrate(
             new RunModifierId(m.Id),

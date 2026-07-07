@@ -17,7 +17,11 @@ public sealed record RunItemDto(
     string EffectType,
     int EffectAmount,
     bool IsUsable,
-    bool IsBattleItem)
+    bool IsBattleItem,
+    bool IsContainer = false,
+    int? ContainerCapacity = null,
+    bool IsLiquid = false,
+    string? ContainedLiquidDefinitionKey = null)
 {
     public static RunItemDto FromDomain(RunItem item) => new(
         item.Id.Value,
@@ -30,5 +34,9 @@ public sealed record RunItemDto(
         item.EffectType.ToString(),
         item.EffectAmount,
         item.IsUsable,
-        item.IsBattleItem);
+        item.IsBattleItem,
+        item.IsContainer,
+        item.ContainerCapacity,
+        item.IsLiquid,
+        item.ContainedLiquidDefinitionKey);
 }

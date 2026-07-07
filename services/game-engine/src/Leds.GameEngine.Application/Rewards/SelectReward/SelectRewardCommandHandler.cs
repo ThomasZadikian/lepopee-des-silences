@@ -90,7 +90,10 @@ public sealed class SelectRewardCommandHandler
                         effectSetKey: def.EffectSetKey,
                         isUsableInCombat: def.IsUsableInCombat,
                         isUsableOutsideCombat: def.IsUsableOutsideCombat,
-                        sourceRewardOptionId: selectedChoice.Id.Value);
+                        sourceRewardOptionId: selectedChoice.Id.Value,
+                        isContainer: def.IsContainer,
+                        containerCapacity: def.ContainerCapacity,
+                        isLiquid: def.IsLiquid);
                 }
             }
         }

@@ -3,12 +3,14 @@ using Leds.GameEngine.Application.Events.ChooseEventOption;
 using Leds.GameEngine.Application.Runs.AbandonRun;
 using Leds.GameEngine.Application.Runs.ChooseNode;
 using Leds.GameEngine.Application.Runs.ConfirmPermanentItemSelection;
+using Leds.GameEngine.Application.Runs.EmptyRunItemContainer;
 using Leds.GameEngine.Application.Runs.ExitMidRoom;
 using Leds.GameEngine.Application.Runs.GetCurrentCombat;
 using Leds.GameEngine.Application.Runs.GetPermanentItemCandidates;
 using Leds.GameEngine.Application.Runs.GetRunById;
 using Leds.GameEngine.Application.Runs.GetRunInventory;
 using Leds.GameEngine.Application.Runs.MoveToNextRoom;
+using Leds.GameEngine.Application.Runs.PourRunItemLiquid;
 using Leds.GameEngine.Application.Runs.ProgressRun;
 using Leds.GameEngine.Application.Runs.ResolveCurrentEvent;
 using Leds.GameEngine.Application.Runs.ResumeRun;
@@ -243,6 +245,35 @@ public sealed class RunsController : ControllerBase
         return Ok(response);
     }
 
+    [HttpPost("{runId:guid}/inventory/{containerItemId:guid}/pour")]
+    [ProducesResponseType(typeof(PourRunItemLiquidResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<PourRunItemLiquidResponse>> PourRunItemLiquid(
+        Guid runId,
+        Guid containerItemId,
+        [FromBody] PourRunItemLiquidRequest request,
+        CancellationToken cancellationToken)
+    {
+        var command = new PourRunItemLiquidCommand(runId, containerItemId, request.LiquidItemId);
+        var response = await _sender.Send(command, cancellationToken);
+        return Ok(response);
+    }
+
+    [HttpPost("{runId:guid}/inventory/{containerItemId:guid}/empty")]
+    [ProducesResponseType(typeof(EmptyRunItemContainerResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<EmptyRunItemContainerResponse>> EmptyRunItemContainer(
+        Guid runId,
+        Guid containerItemId,
+        CancellationToken cancellationToken)
+    {
+        var command = new EmptyRunItemContainerCommand(runId, containerItemId);
+        var response = await _sender.Send(command, cancellationToken);
+        return Ok(response);
+    }
+
     [HttpGet("{runId:guid}/permanent-item-candidates")]
     [ProducesResponseType(typeof(GetPermanentItemCandidatesResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -275,3 +306,5 @@ public sealed class RunsController : ControllerBase
 public sealed record StartRunRequest(Guid PlayerId);
 
 public sealed record ConfirmPermanentItemSelectionRequest(IReadOnlyCollection<string> ItemDefinitionKeys);
+
+public sealed record PourRunItemLiquidRequest(Guid LiquidItemId);

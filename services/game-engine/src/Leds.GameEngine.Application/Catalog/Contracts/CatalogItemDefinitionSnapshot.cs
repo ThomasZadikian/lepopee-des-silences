@@ -17,7 +17,10 @@ public sealed record CatalogItemDefinitionSnapshot(
     bool IsUsableOutsideCombat,
     string? EffectSetKey,
     bool IsPermanentEligible = false,
-    IReadOnlyCollection<CatalogItemEquipmentEffect>? EquipmentEffects = null);
+    IReadOnlyCollection<CatalogItemEquipmentEffect>? EquipmentEffects = null,
+    bool IsContainer = false,
+    int? ContainerCapacity = null,
+    bool IsLiquid = false);
 
 public sealed record CatalogItemEquipmentEffect(
     string Kind,

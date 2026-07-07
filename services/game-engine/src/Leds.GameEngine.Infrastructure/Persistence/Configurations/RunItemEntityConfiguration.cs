@@ -34,6 +34,10 @@ public sealed class RunItemEntityConfiguration : IEntityTypeConfiguration<RunIte
         builder.Property(item => item.IsUsableOutsideCombat).HasColumnName("is_usable_outside_combat");
         builder.Property(item => item.SourceRewardOptionId).HasColumnName("source_reward_option_id");
         builder.Property(item => item.CreatedAtUtc).HasColumnName("created_at_utc");
+        builder.Property(item => item.IsContainer).HasColumnName("is_container").HasDefaultValue(false);
+        builder.Property(item => item.ContainerCapacity).HasColumnName("container_capacity");
+        builder.Property(item => item.IsLiquid).HasColumnName("is_liquid").HasDefaultValue(false);
+        builder.Property(item => item.ContainedLiquidDefinitionKey).HasColumnName("contained_liquid_definition_key").HasMaxLength(256);
 
         builder.HasOne(item => item.Run)
             .WithMany(run => run.InventoryItems)

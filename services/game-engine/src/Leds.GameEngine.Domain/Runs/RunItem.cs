@@ -25,7 +25,11 @@ public sealed class RunItem
         string? effectSummary,
         bool? isUsableInCombat,
         bool? isUsableOutsideCombat,
-        Guid? sourceRewardOptionId)
+        Guid? sourceRewardOptionId,
+        bool isContainer,
+        int? containerCapacity,
+        bool isLiquid,
+        string? containedLiquidDefinitionKey)
     {
         Id = id;
         DefinitionKey = definitionKey;
@@ -48,6 +52,10 @@ public sealed class RunItem
         IsUsableOutsideCombat = isUsableOutsideCombat ?? true;
         SourceRewardOptionId = sourceRewardOptionId;
         CreatedAtUtc = createdAtUtc;
+        IsContainer = isContainer;
+        ContainerCapacity = containerCapacity;
+        IsLiquid = isLiquid;
+        ContainedLiquidDefinitionKey = containedLiquidDefinitionKey;
     }
 
     public RunItemId Id { get; }
@@ -71,6 +79,10 @@ public sealed class RunItem
     public bool IsUsableOutsideCombat { get; }
     public Guid? SourceRewardOptionId { get; }
     public DateTime CreatedAtUtc { get; }
+    public bool IsContainer { get; }
+    public int? ContainerCapacity { get; }
+    public bool IsLiquid { get; }
+    public string? ContainedLiquidDefinitionKey { get; private set; }
 
     public static RunItem Create(
         string definitionKey,
@@ -80,7 +92,10 @@ public sealed class RunItem
         RunItemRarity rarity,
         int quantity,
         RunItemEffectType effectType,
-        int effectAmount)
+        int effectAmount,
+        bool isContainer = false,
+        int? containerCapacity = null,
+        bool isLiquid = false)
     {
         if (string.IsNullOrWhiteSpace(definitionKey))
             throw new DomainException("Item definition key is required.");
@@ -110,7 +125,11 @@ public sealed class RunItem
             effectSummary: null,
             isUsableInCombat: null,
             isUsableOutsideCombat: null,
-            sourceRewardOptionId: null);
+            sourceRewardOptionId: null,
+            isContainer: isContainer,
+            containerCapacity: containerCapacity,
+            isLiquid: isLiquid,
+            containedLiquidDefinitionKey: null);
     }
 
     public static RunItem Rehydrate(
@@ -134,14 +153,18 @@ public sealed class RunItem
         string? effectSummary = null,
         bool? isUsableInCombat = null,
         bool? isUsableOutsideCombat = null,
-        Guid? sourceRewardOptionId = null)
+        Guid? sourceRewardOptionId = null,
+        bool isContainer = false,
+        int? containerCapacity = null,
+        bool isLiquid = false,
+        string? containedLiquidDefinitionKey = null)
     {
         return new RunItem(
             id, definitionKey, displayName, description,
             type, rarity, quantity, effectType, effectAmount, createdAtUtc,
             definitionVersion, narrativeText, category, usageMode, lifecycle,
             maxStack, effectSetKey, effectSummary, isUsableInCombat, isUsableOutsideCombat,
-            sourceRewardOptionId);
+            sourceRewardOptionId, isContainer, containerCapacity, isLiquid, containedLiquidDefinitionKey);
     }
 
     public void AddQuantity(int amount)
@@ -162,6 +185,28 @@ public sealed class RunItem
                 $"Item '{DefinitionKey}' has no remaining uses.");
 
         Quantity--;
+    }
+
+    public void PourLiquidInto(string liquidDefinitionKey)
+    {
+        if (!IsContainer)
+            throw new DomainException($"Item '{DefinitionKey}' is not a container and cannot hold a liquid.");
+        if (string.IsNullOrWhiteSpace(liquidDefinitionKey))
+            throw new DomainException("Liquid definition key is required.");
+        if (ContainedLiquidDefinitionKey is not null)
+            throw new DomainException($"Item '{DefinitionKey}' already holds a liquid — empty it first.");
+
+        ContainedLiquidDefinitionKey = liquidDefinitionKey.Trim();
+    }
+
+    public void EmptyContents()
+    {
+        if (!IsContainer)
+            throw new DomainException($"Item '{DefinitionKey}' is not a container.");
+        if (ContainedLiquidDefinitionKey is null)
+            throw new DomainException($"Item '{DefinitionKey}' is already empty.");
+
+        ContainedLiquidDefinitionKey = null;
     }
 
     public bool IsBattleItem => EffectType is

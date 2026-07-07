@@ -1017,7 +1017,10 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
             source.IsPermanentEligible,
             source.EquipmentEffects?
                 .Select(e => new CatalogItemEquipmentEffect(e.Kind, e.StatKind, e.Amount, e.SkillKey, e.AffinityRegister))
-                .ToArray());
+                .ToArray(),
+            source.IsContainer,
+            source.ContainerCapacity,
+            source.IsLiquid);
     }
 
     private static CatalogEffectSetSnapshot MapToCatalogEffectSetSnapshot(
@@ -1494,7 +1497,10 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
         bool IsUsableOutsideCombat,
         string? EffectSetKey,
         bool IsPermanentEligible = false,
-        IReadOnlyCollection<CatalogItemEquipmentEffectHttpResponse>? EquipmentEffects = null);
+        IReadOnlyCollection<CatalogItemEquipmentEffectHttpResponse>? EquipmentEffects = null,
+        bool IsContainer = false,
+        int? ContainerCapacity = null,
+        bool IsLiquid = false);
 
     private sealed record CatalogItemEquipmentEffectHttpResponse(
         string Kind,

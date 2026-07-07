@@ -24,6 +24,10 @@ public sealed class RunItemEntity
     public bool? IsUsableOutsideCombat { get; set; }
     public Guid? SourceRewardOptionId { get; set; }
     public DateTime CreatedAtUtc { get; set; }
+    public bool IsContainer { get; set; }
+    public int? ContainerCapacity { get; set; }
+    public bool IsLiquid { get; set; }
+    public string? ContainedLiquidDefinitionKey { get; set; }
 
     public RunEntity? Run { get; set; }
 }

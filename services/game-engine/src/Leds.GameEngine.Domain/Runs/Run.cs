@@ -903,7 +903,10 @@ public sealed class Run
         string? effectSetKey,
         bool isUsableInCombat,
         bool isUsableOutsideCombat,
-        Guid sourceRewardOptionId)
+        Guid sourceRewardOptionId,
+        bool isContainer = false,
+        int? containerCapacity = null,
+        bool isLiquid = false)
     {
         var lastItem = _runItems.LastOrDefault();
         if (lastItem is null) return;
@@ -929,13 +932,53 @@ public sealed class Run
             effectSummary: lastItem.EffectSummary,
             isUsableInCombat: isUsableInCombat,
             isUsableOutsideCombat: isUsableOutsideCombat,
-            sourceRewardOptionId: sourceRewardOptionId);
+            sourceRewardOptionId: sourceRewardOptionId,
+            isContainer: isContainer,
+            containerCapacity: containerCapacity,
+            isLiquid: isLiquid,
+            containedLiquidDefinitionKey: lastItem.ContainedLiquidDefinitionKey);
 
         var index = _runItems.FindIndex(i => i.Id == lastItem.Id);
         if (index >= 0)
         {
             _runItems[index] = enriched;
         }
+    }
+
+    /// <summary>
+    /// Pours a liquid item's contents into an empty container item, consuming one unit of the
+    /// liquid from the run inventory. Both items must already be in the run's inventory.
+    /// </summary>
+    /// <returns>Whether the poured liquid item was fully consumed (quantity reached zero).</returns>
+    public bool PourLiquid(RunItemId containerId, RunItemId liquidItemId)
+    {
+        if (Status is RunStatus.Completed or RunStatus.Failed or RunStatus.Abandoned)
+            throw new DomainException("Cannot use items on a closed run.");
+
+        var container = _runItems.FirstOrDefault(i => i.Id == containerId)
+            ?? throw new DomainException($"Item '{containerId.Value}' not found in run inventory.");
+
+        var liquidItem = _runItems.FirstOrDefault(i => i.Id == liquidItemId)
+            ?? throw new DomainException($"Item '{liquidItemId.Value}' not found in run inventory.");
+
+        if (!liquidItem.IsLiquid)
+            throw new DomainException($"Item '{liquidItem.DefinitionKey}' is not a liquid.");
+
+        container.PourLiquidInto(liquidItem.DefinitionKey);
+        liquidItem.ConsumeOne();
+
+        return liquidItem.Quantity == 0;
+    }
+
+    /// <summary>
+    /// Empties a container item's contents, freeing it to receive a different liquid.
+    /// </summary>
+    public void EmptyContainer(RunItemId containerId)
+    {
+        var container = _runItems.FirstOrDefault(i => i.Id == containerId)
+            ?? throw new DomainException($"Item '{containerId.Value}' not found in run inventory.");
+
+        container.EmptyContents();
     }
 
     /// <summary>
