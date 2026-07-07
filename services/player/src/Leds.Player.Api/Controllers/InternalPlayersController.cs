@@ -2,8 +2,10 @@ using Leds.Player.Application.Players;
 using Leds.Player.Application.Players.AddPermanentItems;
 using Leds.Player.Application.Players.AwardStatPoint;
 using Leds.Player.Application.Players.ClaimNpcOffering;
+using Leds.Player.Application.Players.ClearPermanentItemContent;
 using Leds.Player.Application.Players.GrantNpcReputationMilestone;
 using Leds.Player.Application.Players.HasClaimedNpcOffering;
+using Leds.Player.Application.Players.SetPermanentItemContent;
 using Leds.Player.Application.Players.UnlockSkill;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -110,6 +112,37 @@ public sealed class InternalPlayersController : ControllerBase
 
         return Ok(response);
     }
+
+    [HttpPost("{playerId:guid}/permanent-items/{itemDefinitionKey}/content")]
+    [ProducesResponseType(typeof(PlayerProfileDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<PlayerProfileDto>> SetPermanentItemContent(
+        Guid playerId,
+        string itemDefinitionKey,
+        [FromBody] SetPermanentItemContentRequest request,
+        CancellationToken cancellationToken)
+    {
+        var command = new SetPermanentItemContentCommand(playerId, itemDefinitionKey, request.LiquidDefinitionKey);
+        var response = await _sender.Send(command, cancellationToken);
+
+        return Ok(response);
+    }
+
+    [HttpPost("{playerId:guid}/permanent-items/{itemDefinitionKey}/content/clear")]
+    [ProducesResponseType(typeof(PlayerProfileDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<PlayerProfileDto>> ClearPermanentItemContent(
+        Guid playerId,
+        string itemDefinitionKey,
+        CancellationToken cancellationToken)
+    {
+        var command = new ClearPermanentItemContentCommand(playerId, itemDefinitionKey);
+        var response = await _sender.Send(command, cancellationToken);
+
+        return Ok(response);
+    }
 }
 
 public sealed record AwardStatPointsRequest(int Amount);
@@ -121,3 +154,5 @@ public sealed record SourceRunRequest(Guid? SourceRunId);
 public sealed record HasClaimedNpcOfferingResponse(bool Claimed);
 
 public sealed record AddPermanentItemsRequest(IReadOnlyCollection<string> ItemDefinitionKeys, Guid? SourceRunId);
+
+public sealed record SetPermanentItemContentRequest(string LiquidDefinitionKey);

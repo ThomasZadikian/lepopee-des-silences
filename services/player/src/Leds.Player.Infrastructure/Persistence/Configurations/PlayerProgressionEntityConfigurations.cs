@@ -101,6 +101,7 @@ public sealed class PlayerPermanentItemEntityConfiguration : IEntityTypeConfigur
         builder.Property(i => i.ItemDefinitionKey).HasColumnName("item_definition_key").HasMaxLength(160).IsRequired();
         builder.Property(i => i.SourceRunId).HasColumnName("source_run_id");
         builder.Property(i => i.AcquiredAtUtc).HasColumnName("acquired_at_utc");
+        builder.Property(i => i.ContainedLiquidDefinitionKey).HasColumnName("contained_liquid_definition_key").HasMaxLength(256);
         builder.HasIndex(i => new { i.PlayerProfileId, i.ItemDefinitionKey }).IsUnique();
         builder.HasOne(i => i.PlayerProfile)
             .WithMany(p => p.PermanentItems)

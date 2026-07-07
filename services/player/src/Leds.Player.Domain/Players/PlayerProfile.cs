@@ -92,6 +92,34 @@ public sealed class PlayerProfile
     }
 
     /// <summary>
+    /// Pours a liquid into an owned permanent container item (SFD container/liquid extension).
+    /// Whether <paramref name="itemDefinitionKey"/> is actually a container is a catalog fact —
+    /// the caller (application layer) must validate that before calling.
+    /// </summary>
+    public void SetPermanentItemContent(string itemDefinitionKey, string liquidDefinitionKey, DateTimeOffset now)
+    {
+        var item = _permanentItems.FirstOrDefault(i =>
+            string.Equals(i.ItemDefinitionKey, itemDefinitionKey, StringComparison.OrdinalIgnoreCase))
+            ?? throw new DomainException($"Item '{itemDefinitionKey}' is not in the permanent backpack.");
+
+        item.SetContainedLiquid(liquidDefinitionKey);
+        Touch(now);
+    }
+
+    /// <summary>
+    /// Empties an owned permanent container item, freeing it to receive a different liquid.
+    /// </summary>
+    public void ClearPermanentItemContent(string itemDefinitionKey, DateTimeOffset now)
+    {
+        var item = _permanentItems.FirstOrDefault(i =>
+            string.Equals(i.ItemDefinitionKey, itemDefinitionKey, StringComparison.OrdinalIgnoreCase))
+            ?? throw new DomainException($"Item '{itemDefinitionKey}' is not in the permanent backpack.");
+
+        item.ClearContainedLiquid();
+        Touch(now);
+    }
+
+    /// <summary>
     /// Equips a permanent-backpack item on a character. The item must already be owned
     /// (present in the permanent backpack) — equipping isn't how an item is acquired.
     /// </summary>

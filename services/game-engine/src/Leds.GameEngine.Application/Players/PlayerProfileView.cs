@@ -32,7 +32,8 @@ public sealed record PlayerCharacterItemView(
 public sealed record PlayerPermanentItemView(
     string ItemDefinitionKey,
     Guid? SourceRunId,
-    DateTimeOffset AcquiredAtUtc);
+    DateTimeOffset AcquiredAtUtc,
+    string? ContainedLiquidDefinitionKey = null);
 
 public sealed record PlayerCharacterStatsView(
     int MaxVitality,

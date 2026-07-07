@@ -173,18 +173,21 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
         }
     }
 
-    // Append-only, same reasoning as UpdatePermanentUnlocks: the permanent backpack is
-    // lifetime storage, never modified or removed once an item is in it.
+    // Append-only for the item itself (never removed once owned), same reasoning as
+    // UpdatePermanentUnlocks — but ContainedLiquidDefinitionKey is a mutable field on an
+    // already-owned container (SFD container/liquid extension) and must be synced in place.
     private void UpdatePermanentItems(PlayerProfileEntity existing, PlayerProfile incoming)
     {
-        var existingKeys = existing.PermanentItems
-            .Select(i => i.ItemDefinitionKey)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var existingByKey = existing.PermanentItems
+            .ToDictionary(i => i.ItemDefinitionKey, StringComparer.OrdinalIgnoreCase);
 
         foreach (var item in incoming.PermanentItems)
         {
-            if (existingKeys.Contains(item.ItemDefinitionKey))
+            if (existingByKey.TryGetValue(item.ItemDefinitionKey, out var existingItem))
+            {
+                existingItem.ContainedLiquidDefinitionKey = item.ContainedLiquidDefinitionKey;
                 continue;
+            }
 
             var newItem = ToPermanentItemEntity(item, incoming.Id.Value);
             existing.PermanentItems.Add(newItem);
@@ -336,7 +339,8 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
             .ToList();
 
         var permanentItems = entity.PermanentItems
-            .Select(i => PlayerPermanentItem.Create(i.ItemDefinitionKey, i.SourceRunId, i.AcquiredAtUtc))
+            .Select(i => PlayerPermanentItem.Rehydrate(
+                i.ItemDefinitionKey, i.SourceRunId, i.AcquiredAtUtc, i.ContainedLiquidDefinitionKey))
             .ToList();
 
         return PlayerProfile.Rehydrate(
@@ -414,7 +418,8 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
             PlayerProfileId = playerProfileId,
             ItemDefinitionKey = item.ItemDefinitionKey,
             SourceRunId = item.SourceRunId,
-            AcquiredAtUtc = item.AcquiredAtUtc
+            AcquiredAtUtc = item.AcquiredAtUtc,
+            ContainedLiquidDefinitionKey = item.ContainedLiquidDefinitionKey
         };
     }
 }

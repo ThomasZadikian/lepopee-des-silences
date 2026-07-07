@@ -62,6 +62,22 @@ public sealed class ConfirmPermanentItemSelectionCommandHandler
         await _playerProfileGateway.AddPermanentItemsAsync(
             run.PlayerId, requestedKeys, run.Id.Value, cancellationToken);
 
+        // Carries a container's poured-in liquid over into the permanent backpack — the
+        // permanent item itself was just added above, this only sets its mutable content.
+        foreach (var key in requestedKeys)
+        {
+            var runItem = run.RunItems.FirstOrDefault(item =>
+                string.Equals(item.DefinitionKey, key, StringComparison.OrdinalIgnoreCase)
+                && item.IsContainer
+                && item.ContainedLiquidDefinitionKey is not null);
+
+            if (runItem is not null)
+            {
+                await _playerProfileGateway.SetPermanentItemContentAsync(
+                    run.PlayerId, key, runItem.ContainedLiquidDefinitionKey!, cancellationToken);
+            }
+        }
+
         return new ConfirmPermanentItemSelectionResponse(run.Id.Value, requestedKeys);
     }
 }

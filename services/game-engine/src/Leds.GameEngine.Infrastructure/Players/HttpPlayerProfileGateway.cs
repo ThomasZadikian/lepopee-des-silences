@@ -71,6 +71,23 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
         return await ReadProfileAsync(response, playerId, cancellationToken);
     }
 
+    public async Task<PlayerProfileView> SetPermanentItemContentAsync(Guid playerId, string itemDefinitionKey, string liquidDefinitionKey, CancellationToken cancellationToken)
+    {
+        var response = await _httpClient.PostAsJsonAsync(
+            $"/api/v2/internal/players/{playerId}/permanent-items/{itemDefinitionKey}/content",
+            new SetPermanentItemContentRequestBody(liquidDefinitionKey), cancellationToken);
+
+        return await ReadProfileAsync(response, playerId, cancellationToken);
+    }
+
+    public async Task<PlayerProfileView> ClearPermanentItemContentAsync(Guid playerId, string itemDefinitionKey, CancellationToken cancellationToken)
+    {
+        var response = await _httpClient.PostAsync(
+            $"/api/v2/internal/players/{playerId}/permanent-items/{itemDefinitionKey}/content/clear", content: null, cancellationToken);
+
+        return await ReadProfileAsync(response, playerId, cancellationToken);
+    }
+
     public async Task<PlayerProfileView> SpendStatPointAsync(Guid playerId, Guid characterId, string stat, CancellationToken cancellationToken)
     {
         var response = await _httpClient.PostAsync(
@@ -200,7 +217,7 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
                 dto.Progression.UnspentStatPoints,
                 dto.Progression.TotalStatPointsEarned),
             PermanentItems: (dto.PermanentItems ?? [])
-                .Select(i => new PlayerPermanentItemView(i.ItemDefinitionKey, i.SourceRunId, i.AcquiredAtUtc))
+                .Select(i => new PlayerPermanentItemView(i.ItemDefinitionKey, i.SourceRunId, i.AcquiredAtUtc, i.ContainedLiquidDefinitionKey))
                 .ToArray());
     }
 
@@ -211,6 +228,8 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
     private sealed record SourceRunRequestBody(Guid? SourceRunId);
 
     private sealed record AddPermanentItemsRequestBody(IReadOnlyCollection<string> ItemDefinitionKeys, Guid? SourceRunId);
+
+    private sealed record SetPermanentItemContentRequestBody(string LiquidDefinitionKey);
 
     private sealed record HasClaimedNpcOfferingResponse(bool Claimed);
 
@@ -246,7 +265,8 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
     private sealed record PlayerPermanentItemResponse(
         string ItemDefinitionKey,
         Guid? SourceRunId,
-        DateTimeOffset AcquiredAtUtc);
+        DateTimeOffset AcquiredAtUtc,
+        string? ContainedLiquidDefinitionKey = null);
 
     private sealed record PlayerCharacterStatsResponse(
         int MaxVitality,

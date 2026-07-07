@@ -39,10 +39,11 @@ public sealed record PlayerPermanentUnlockDto(
 public sealed record PlayerPermanentItemDto(
     string ItemDefinitionKey,
     Guid? SourceRunId,
-    DateTimeOffset AcquiredAtUtc)
+    DateTimeOffset AcquiredAtUtc,
+    string? ContainedLiquidDefinitionKey = null)
 {
     public static PlayerPermanentItemDto FromDomain(PlayerPermanentItem item) => new(
-        item.ItemDefinitionKey, item.SourceRunId, item.AcquiredAtUtc);
+        item.ItemDefinitionKey, item.SourceRunId, item.AcquiredAtUtc, item.ContainedLiquidDefinitionKey);
 }
 
 public sealed record PlayerCharacterDto(

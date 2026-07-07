@@ -61,6 +61,7 @@ public sealed class PlayerPermanentItemEntity
     public string ItemDefinitionKey { get; set; } = string.Empty;
     public Guid? SourceRunId { get; set; }
     public DateTimeOffset AcquiredAtUtc { get; set; }
+    public string? ContainedLiquidDefinitionKey { get; set; }
 
     public PlayerProfileEntity PlayerProfile { get; set; } = null!;
 }
