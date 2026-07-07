@@ -942,7 +942,15 @@ public sealed class CatalogSeedRunner
 
         await UpsertItemAsync("canon.item.boite-homoncule", "La boîte de l'Homoncule",
             "Un coffret et sa clé. Ce qui dort dedans n'attend que d'être nommé.",
-            "Key", "Container", "Epic", "Permanent", false, 0, cancellationToken);
+            // TODO(utilisateur): équipement légendaire — transforme le "type" du joueur en on ne sait
+            // encore quoi. EquipmentEffects volontairement vide tant que la mécanique cible n'est pas
+            // définie (GrantAffinity ne convient pas : il ne s'agit pas d'une affinité émotionnelle).
+            "Equipment", "Transmutation", "Legendary", "Permanent", false, 0, cancellationToken);
+
+        await UpsertItemAsync("canon.item.fiole-cristal", "Fiole de cristal",
+            "Un verre trop pur pour être humain. Elle garde ce qu'on y verse, quel qu'en soit le nom.",
+            "Relic", "Container", "Rare", "Permanent", false, 0, cancellationToken,
+            isContainer: true, containerCapacity: 1);
 
         await UpsertItemAsync("canon.item.flamme-seraphine", "La Flamme Séraphine",
             "Une flamme à recueillir, jamais à posséder. Elle accorde le seul feu qui fasse hurler l'Homoncule.",
@@ -995,7 +1003,8 @@ public sealed class CatalogSeedRunner
         string key, string name, string description,
         string category, string itemType, string rarity, string durability,
         bool usableInCombat, int effectValue, CancellationToken cancellationToken,
-        IReadOnlyList<ItemEquipmentEffect>? equipmentEffects = null)
+        IReadOnlyList<ItemEquipmentEffect>? equipmentEffects = null,
+        bool isContainer = false, int? containerCapacity = null, bool isLiquid = false)
     {
         const string version = "canon-1.0.0";
         var now = DateTime.UtcNow;
@@ -1027,6 +1036,9 @@ public sealed class CatalogSeedRunner
                 Duration = duration,
                 EffectValue = effectValue,
                 EquipmentEffectsJson = equipmentEffectsJson,
+                IsContainer = isContainer,
+                ContainerCapacity = containerCapacity,
+                IsLiquid = isLiquid,
                 Price = 0,
                 BaseWeight = 1,
                 CreatedAtUtc = now,
@@ -1042,6 +1054,9 @@ public sealed class CatalogSeedRunner
         existing.Lifecycle = lifecycle; existing.Duration = duration;
         existing.IsUsableInCombat = usableInCombat; existing.EffectValue = effectValue;
         existing.EquipmentEffectsJson = equipmentEffectsJson;
+        existing.IsContainer = isContainer;
+        existing.ContainerCapacity = containerCapacity;
+        existing.IsLiquid = isLiquid;
         existing.UpdatedAtUtc = now;
     }
     // ── MALÉDICTIONS CANON ────────────────────────────────────────────────────

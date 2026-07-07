@@ -21,7 +21,10 @@ public sealed record ItemDefinitionDto(
     string? EffectSetKey,
     string Status,
     bool IsPermanentEligible,
-    IReadOnlyCollection<ItemEquipmentEffectDto> EquipmentEffects);
+    IReadOnlyCollection<ItemEquipmentEffectDto> EquipmentEffects,
+    bool IsContainer = false,
+    int? ContainerCapacity = null,
+    bool IsLiquid = false);
 
 public sealed record ItemEquipmentEffectDto(
     string Kind,

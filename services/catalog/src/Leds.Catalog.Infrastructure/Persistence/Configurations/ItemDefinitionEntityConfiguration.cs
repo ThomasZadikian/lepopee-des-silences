@@ -38,6 +38,9 @@ public sealed class ItemDefinitionEntityConfiguration : IEntityTypeConfiguration
         builder.Property(e => e.EffectValue).HasColumnName("effect_value").HasComment("Legacy compatibility column. Canonical effects live in catalog_effect_sets/catalog_effect_definitions.");
         builder.Property(e => e.Price).HasColumnName("price");
         builder.Property(e => e.EquipmentEffectsJson).HasColumnName("equipment_effects_json").HasColumnType("jsonb");
+        builder.Property(e => e.IsContainer).HasColumnName("is_container").HasDefaultValue(false);
+        builder.Property(e => e.ContainerCapacity).HasColumnName("container_capacity");
+        builder.Property(e => e.IsLiquid).HasColumnName("is_liquid").HasDefaultValue(false);
         builder.Property(e => e.CreatedAtUtc).HasColumnName("created_at_utc");
         builder.Property(e => e.UpdatedAtUtc).HasColumnName("updated_at_utc");
 

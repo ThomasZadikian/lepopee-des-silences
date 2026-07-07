@@ -90,6 +90,9 @@ public sealed class EfItemDefinitionReadStore : IItemTemplateReadStore, IItemDef
             entity.EffectSet?.Key,
             entity.Status,
             IsPermanentEligible: string.Equals(entity.Duration, nameof(ItemDuration.Permanent), StringComparison.OrdinalIgnoreCase),
-            EquipmentEffects: equipmentEffects.Select(ItemEquipmentEffectDto.FromDomain).ToArray());
+            EquipmentEffects: equipmentEffects.Select(ItemEquipmentEffectDto.FromDomain).ToArray(),
+            IsContainer: entity.IsContainer,
+            ContainerCapacity: entity.ContainerCapacity,
+            IsLiquid: entity.IsLiquid);
     }
 }

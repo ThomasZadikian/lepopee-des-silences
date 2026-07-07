@@ -31,6 +31,11 @@ public sealed class ItemDefinitionEntity
     // ── Équipement et sac permanent (equipment-sfd-0.1) ──────────────────────
     public string? EquipmentEffectsJson { get; set; }
 
+    // ── Récipients et liquides ────────────────────────────────────────────
+    public bool IsContainer { get; set; }
+    public int? ContainerCapacity { get; set; }
+    public bool IsLiquid { get; set; }
+
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
 
