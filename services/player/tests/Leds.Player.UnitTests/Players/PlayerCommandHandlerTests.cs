@@ -3,10 +3,12 @@ using Leds.Player.Application.Abstractions;
 using Leds.Player.Application.Players;
 using Leds.Player.Application.Players.AddPermanentItems;
 using Leds.Player.Application.Players.ClaimNpcOffering;
+using Leds.Player.Application.Players.ClearPermanentItemContent;
 using Leds.Player.Application.Players.CreatePlayerProfile;
 using Leds.Player.Application.Players.EquipItem;
 using Leds.Player.Application.Players.GrantNpcReputationMilestone;
 using Leds.Player.Application.Players.HasClaimedNpcOffering;
+using Leds.Player.Application.Players.SetPermanentItemContent;
 using Leds.Player.Application.Players.UnequipItem;
 using Leds.Player.Domain.Players;
 using Moq;
@@ -209,5 +211,45 @@ public sealed class PlayerCommandHandlerTests
             CancellationToken.None);
 
         response.Characters.Single().Items.Should().ContainSingle(i => i.ItemKey == "item.sac-a-dos" && !i.IsEquipped);
+    }
+
+    [Fact]
+    public async Task SetPermanentItemContent_ShouldFillContainerAndPersist()
+    {
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+        profile.AddPermanentItems(["item.fiole-cristal"], null, DateTimeOffset.UtcNow);
+        var repository = new Mock<IPlayerProfileRepository>();
+        repository.Setup(r => r.GetByIdAsync(profile.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(profile);
+
+        var handler = new SetPermanentItemContentCommandHandler(repository.Object, TimeProvider.System);
+
+        var response = await handler.Handle(
+            new SetPermanentItemContentCommand(profile.Id.Value, "item.fiole-cristal", "item.larme-de-racine"),
+            CancellationToken.None);
+
+        response.PermanentItems.Should().ContainSingle(i =>
+            i.ItemDefinitionKey == "item.fiole-cristal" && i.ContainedLiquidDefinitionKey == "item.larme-de-racine");
+        repository.Verify(r => r.SaveAsync(It.IsAny<PlayerProfile>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ClearPermanentItemContent_ShouldEmptyContainerAndPersist()
+    {
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+        profile.AddPermanentItems(["item.fiole-cristal"], null, DateTimeOffset.UtcNow);
+        profile.SetPermanentItemContent("item.fiole-cristal", "item.larme-de-racine", DateTimeOffset.UtcNow);
+        var repository = new Mock<IPlayerProfileRepository>();
+        repository.Setup(r => r.GetByIdAsync(profile.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(profile);
+
+        var handler = new ClearPermanentItemContentCommandHandler(repository.Object, TimeProvider.System);
+
+        var response = await handler.Handle(
+            new ClearPermanentItemContentCommand(profile.Id.Value, "item.fiole-cristal"),
+            CancellationToken.None);
+
+        response.PermanentItems.Should().ContainSingle(i =>
+            i.ItemDefinitionKey == "item.fiole-cristal" && i.ContainedLiquidDefinitionKey == null);
     }
 }

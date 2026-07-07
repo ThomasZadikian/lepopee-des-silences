@@ -109,4 +109,32 @@ public sealed class PlayerProfileRepositoryTests
 
         itemCount.Should().Be(1);
     }
+
+    [Fact]
+    public async Task SaveAsync_ShouldPersistContainedLiquid_OnAnAlreadyOwnedPermanentItem()
+    {
+        var (context, connectionString) = _fixture.CreateContext();
+        await using var _ = context;
+
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+        var now = DateTimeOffset.UtcNow;
+        profile.AddPermanentItems(["item.fiole-cristal"], null, now);
+
+        var repository = new EfPlayerProfileRepository(context);
+        await repository.SaveAsync(profile, CancellationToken.None);
+
+        await using var secondContext = _fixture.CreateContext(connectionString);
+        var secondRepository = new EfPlayerProfileRepository(secondContext);
+        var reloaded = await secondRepository.GetByIdAsync(profile.Id, CancellationToken.None);
+        reloaded!.SetPermanentItemContent("item.fiole-cristal", "item.larme-de-racine", now);
+        await secondRepository.SaveAsync(reloaded, CancellationToken.None);
+
+        await using var verifyContext = _fixture.CreateContext(connectionString);
+        var verifyRepository = new EfPlayerProfileRepository(verifyContext);
+        var reloadedAgain = await verifyRepository.GetByIdAsync(profile.Id, CancellationToken.None);
+
+        reloadedAgain!.PermanentItems.Should().ContainSingle(i =>
+            i.ItemDefinitionKey == "item.fiole-cristal" &&
+            i.ContainedLiquidDefinitionKey == "item.larme-de-racine");
+    }
 }

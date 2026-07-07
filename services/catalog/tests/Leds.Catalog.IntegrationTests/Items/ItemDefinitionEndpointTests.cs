@@ -45,11 +45,42 @@ public sealed class ItemDefinitionEndpointTests
         payload.Definition!.IsPermanentEligible.Should().BeFalse();
     }
 
+    [Fact]
+    public async Task GetItemDefinitionByKey_ShouldReportContainer_ForFioleDeCristal()
+    {
+        // canon.item.fiole-cristal is seeded with IsContainer=true, ContainerCapacity=1.
+        var response = await _client.GetAsync("/api/v2/catalog/item-definitions/canon.item.fiole-cristal");
+        var body = await response.Content.ReadAsStringAsync();
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK, because: body);
+
+        var payload = await response.Content.ReadFromJsonAsync<GetItemDefinitionByKeyResponse>();
+
+        payload.Should().NotBeNull();
+        payload!.Definition.Should().NotBeNull();
+        payload.Definition!.IsContainer.Should().BeTrue();
+        payload.Definition.ContainerCapacity.Should().Be(1);
+        payload.Definition.IsLiquid.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task GetItemDefinitionByKey_ShouldReportNotContainer_ForRegularItem()
+    {
+        var response = await _client.GetAsync("/api/v2/catalog/item-definitions/canon.item.lanterne");
+        var payload = await response.Content.ReadFromJsonAsync<GetItemDefinitionByKeyResponse>();
+
+        payload.Should().NotBeNull();
+        payload!.Definition.Should().NotBeNull();
+        payload.Definition!.IsContainer.Should().BeFalse();
+        payload.Definition.ContainerCapacity.Should().BeNull();
+    }
+
     private sealed record GetItemDefinitionByKeyResponse(ItemDefinitionResponseDto? Definition);
 
     private sealed record ItemDefinitionResponseDto(
         Guid Id, string Key, string Version, string DisplayName, string Description, string? NarrativeText,
         string Category, string ItemType, string Rarity, string UsageMode, string Lifecycle, string StackPolicy,
         int MaxStack, bool IsUsableInCombat, bool IsUsableOutsideCombat, string? EffectSetKey, string Status,
-        bool IsPermanentEligible, IReadOnlyCollection<object> EquipmentEffects);
+        bool IsPermanentEligible, IReadOnlyCollection<object> EquipmentEffects,
+        bool IsContainer, int? ContainerCapacity, bool IsLiquid);
 }

@@ -47,6 +47,45 @@ public sealed class ConfirmPermanentItemSelectionCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_ShouldCarryOverContainerContent_WhenConfirmedItemIsAFilledContainer()
+    {
+        var run = TestGameEngineFactory.CreateRun();
+        var container = RunItem.Create(
+            "item.fiole-cristal", "Fiole de cristal", "",
+            RunItemType.Passive, RunItemRarity.Rare, 1, RunItemEffectType.None, 0,
+            isContainer: true, containerCapacity: 1);
+        var liquid = RunItem.Create(
+            "item.larme-de-racine", "Larme de racine", "",
+            RunItemType.Consumable, RunItemRarity.Common, 1, RunItemEffectType.Heal, 12,
+            isLiquid: true);
+        run.AddRunItem(container);
+        run.AddRunItem(liquid);
+        run.PourLiquid(container.Id, liquid.Id);
+
+        var repository = new Mock<IRunRepository>();
+        repository.Setup(r => r.GetByIdAsync(run.Id, It.IsAny<CancellationToken>())).ReturnsAsync(run);
+
+        var catalogGateway = new Mock<ICatalogContentGateway>();
+        catalogGateway
+            .Setup(g => g.GetItemDefinitionByKeyAsync("item.fiole-cristal", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<CatalogItemDefinitionSnapshot>.Success(CreateSnapshot("item.fiole-cristal", isPermanentEligible: true)));
+
+        var playerProfileGateway = new StubPlayerProfileGateway();
+
+        var handler = new ConfirmPermanentItemSelectionCommandHandler(
+            repository.Object, catalogGateway.Object, playerProfileGateway);
+
+        await handler.Handle(
+            new ConfirmPermanentItemSelectionCommand(run.Id.Value, ["item.fiole-cristal"]),
+            CancellationToken.None);
+
+        playerProfileGateway.SetPermanentItemContents.Should().ContainSingle(call =>
+            call.PlayerId == run.PlayerId &&
+            call.ItemDefinitionKey == "item.fiole-cristal" &&
+            call.LiquidDefinitionKey == "item.larme-de-racine");
+    }
+
+    [Fact]
     public async Task Handle_ShouldThrow_WhenItemWasNotObtainedDuringTheRun()
     {
         var run = TestGameEngineFactory.CreateRun();

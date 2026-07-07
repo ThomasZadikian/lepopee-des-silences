@@ -228,6 +228,54 @@ public sealed class PlayerProfileTests
 
         act.Should().Throw<DomainException>().WithMessage("*not in the permanent backpack*");
     }
+
+    [Fact]
+    public void SetPermanentItemContent_ShouldSetContainedLiquid_WhenItemIsOwned()
+    {
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+        var now = DateTimeOffset.UtcNow;
+        profile.AddPermanentItems(["item.fiole-cristal"], sourceRunId: null, now);
+
+        profile.SetPermanentItemContent("item.fiole-cristal", "item.larme-de-racine", now);
+
+        profile.PermanentItems.Single().ContainedLiquidDefinitionKey.Should().Be("item.larme-de-racine");
+    }
+
+    [Fact]
+    public void SetPermanentItemContent_ShouldReject_WhenItemNotInPermanentBackpack()
+    {
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+
+        var act = () => profile.SetPermanentItemContent("item.never-owned", "item.larme-de-racine", DateTimeOffset.UtcNow);
+
+        act.Should().Throw<DomainException>().WithMessage("*not in the permanent backpack*");
+    }
+
+    [Fact]
+    public void SetPermanentItemContent_ShouldReject_WhenAlreadyFilled()
+    {
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+        var now = DateTimeOffset.UtcNow;
+        profile.AddPermanentItems(["item.fiole-cristal"], sourceRunId: null, now);
+        profile.SetPermanentItemContent("item.fiole-cristal", "item.larme-de-racine", now);
+
+        var act = () => profile.SetPermanentItemContent("item.fiole-cristal", "item.datura", now);
+
+        act.Should().Throw<DomainException>().WithMessage("*already holds a liquid*");
+    }
+
+    [Fact]
+    public void ClearPermanentItemContent_ShouldEmptyContainer()
+    {
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+        var now = DateTimeOffset.UtcNow;
+        profile.AddPermanentItems(["item.fiole-cristal"], sourceRunId: null, now);
+        profile.SetPermanentItemContent("item.fiole-cristal", "item.larme-de-racine", now);
+
+        profile.ClearPermanentItemContent("item.fiole-cristal", now);
+
+        profile.PermanentItems.Single().ContainedLiquidDefinitionKey.Should().BeNull();
+    }
 }
 
 public sealed class PlayerCharacterTests
