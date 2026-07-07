@@ -270,10 +270,15 @@ public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver
                 // de récompense, CatalogItemDefinitionSnapshot ne porte pas de type/montant d'effet
                 // exploitable par RunItem — l'objet est bien accordé (nom/description/type/rareté
                 // réels) mais reste neutre à l'usage tant que ce n'est pas câblé séparément.
+                //
+                // Category/ItemType/Rarity are free-authored strings in the catalog (not enum-backed
+                // at rest) — mapping them straight through Enum.Parse throws for almost any real
+                // catalog value (e.g. ItemType "Container"/"Potion", Rarity "Legendary"/"Unique" has
+                // no RunItemRarity equivalent). Map defensively instead of trusting an exact match.
                 run.AddRunItem(RunItem.Create(
                     itemDef.Key, itemDef.DisplayName, itemDef.Description,
-                    Enum.Parse<RunItemType>(itemDef.ItemType, ignoreCase: true),
-                    Enum.Parse<RunItemRarity>(itemDef.Rarity, ignoreCase: true),
+                    MapCategoryToRunItemType(itemDef.Category),
+                    MapToRunItemRarity(itemDef.Rarity),
                     quantity: offering.Amount > 0 ? offering.Amount : 1,
                     RunItemEffectType.None,
                     effectAmount: 0));
@@ -283,6 +288,16 @@ public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver
                 return "Rien ne se produit.";
         }
     }
+
+    private static RunItemType MapCategoryToRunItemType(string category) =>
+        string.Equals(category, "Consumable", StringComparison.OrdinalIgnoreCase)
+            ? RunItemType.Consumable
+            : RunItemType.Passive;
+
+    private static RunItemRarity MapToRunItemRarity(string rarity) =>
+        Enum.TryParse<RunItemRarity>(rarity, ignoreCase: true, out var parsed)
+            ? parsed
+            : RunItemRarity.Epic;
 
     // ── Reward / curse roll (deterministic) + real application ───────────────
 

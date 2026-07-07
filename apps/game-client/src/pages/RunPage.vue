@@ -10,6 +10,7 @@ import EventChoiceResultPanel from '../features/events/components/EventChoiceRes
 import EventOutcomePanel from '../features/events/components/EventOutcomePanel.vue';
 import MerchantPanel from '../features/events/components/MerchantPanel.vue';
 import NpcDialoguePanel from '../features/events/components/NpcDialoguePanel.vue';
+import ReputationEffectPopup from '../features/events/components/ReputationEffectPopup.vue';
 import type { CurrentEventChoiceResultDto } from '../features/events/types/eventTypes';
 import InterludePanel from '../features/interlude/InterludePanel.vue';
 import RoomClearedPanel from '../features/interlude/RoomClearedPanel.vue';
@@ -183,6 +184,13 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
   <GameShellLayout :hide-top-bar="isCombatPhase">
     <template v-if="runStore.currentRun && runStore.currentRun.currentRoom">
       <RoomClimateEffects :climate="activeRoomClimate" />
+
+      <Teleport to="body">
+        <ReputationEffectPopup
+          :effects="runStore.reputationEffects"
+          @dismiss="runStore.dismissReputationEffect"
+        />
+      </Teleport>
 
       <!-- ── Map phase: map dominates ── -->
       <template v-if="isMapPhase">

@@ -420,4 +420,52 @@ describe('useRunStore actions', () => {
     expect(store.isPermanentItemSelectionResolved).toBe(true);
     expect(store.gameplayPhase).toBe('Completed');
   });
+
+  it('selectNpcDialogueChoice queues a reputation popup from a reputation applied effect', async () => {
+    const store = useRunStore();
+    store.currentRun = { id: 'run-1', status: 'Active' } as any;
+
+    vi.mocked(eventChoiceApi.chooseCurrentEventOption).mockResolvedValue({
+      run: { id: 'run-1', status: 'Active', currentRoom: {} },
+      result: {
+        choiceId: 'choice-1',
+        message: 'ok',
+        narrativeFragments: [],
+        appliedEffects: [{ kind: 'reputation', amount: 2, label: 'Hitomi' }],
+      },
+    } as any);
+
+    await store.selectNpcDialogueChoice('choice-1');
+
+    expect(store.reputationEffects).toHaveLength(1);
+    expect(store.reputationEffects[0]).toMatchObject({ amount: 2, npcName: 'Hitomi' });
+  });
+
+  it('ignores zero-amount reputation effects', async () => {
+    const store = useRunStore();
+    store.currentRun = { id: 'run-1', status: 'Active' } as any;
+
+    vi.mocked(eventChoiceApi.chooseCurrentEventOption).mockResolvedValue({
+      run: { id: 'run-1', status: 'Active', currentRoom: {} },
+      result: {
+        choiceId: 'choice-1',
+        message: 'ok',
+        narrativeFragments: [],
+        appliedEffects: [{ kind: 'reputation', amount: 0, label: 'Hitomi' }],
+      },
+    } as any);
+
+    await store.selectNpcDialogueChoice('choice-1');
+
+    expect(store.reputationEffects).toHaveLength(0);
+  });
+
+  it('dismissReputationEffect removes the effect by id', () => {
+    const store = useRunStore();
+    store.reputationEffects = [{ id: 1, amount: 2, npcName: 'Hitomi' }];
+
+    store.dismissReputationEffect(1);
+
+    expect(store.reputationEffects).toHaveLength(0);
+  });
 });

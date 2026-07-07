@@ -143,6 +143,19 @@ public sealed class NpcEventChoiceResolverTests
     }
 
     [Fact]
+    public async Task ResolveAsync_ShouldGrantItem_WhenCatalogTypeAndRarityHaveNoEngineEquivalent()
+    {
+        var (run, node) = CreateRunWithActiveOfferingGiver();
+        var context = new CurrentEventChoiceResolutionContext(run, run.CurrentRoom, node, "take-nonstandard-item");
+        var sut = new NpcEventChoiceResolver(new StubCatalogContentGateway(), new StubPlayerProfileGateway());
+
+        var result = await sut.ResolveAsync(context);
+
+        result.Accepted.Should().BeTrue();
+        run.RunItems.Should().Contain(i => i.DefinitionKey == "item.equipment.sac-nonstandard");
+    }
+
+    [Fact]
     public async Task ResolveAsync_ShouldPersistReputationMilestone_WhenMilestoneChoiceIsTaken()
     {
         var (run, node) = CreateRunWithActiveOfferingGiver();

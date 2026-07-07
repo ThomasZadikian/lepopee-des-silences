@@ -539,6 +539,25 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 5,
                 false,
                 false,
+                null),
+            // Category/ItemType/Rarity are free-authored strings in the catalog, not enum-backed.
+            // This fixture deliberately uses values with no RunItemType/RunItemRarity equivalent
+            // ("Equipment"/"Container"/"Legendary") to prove the offering-grant mapping is defensive.
+            ["item.equipment.sac-nonstandard"] = new CatalogItemDefinitionSnapshot(
+                "item.equipment.sac-nonstandard",
+                "1.0",
+                "Sac non standard",
+                "Un objet de test au type et à la rareté hors de l'enum du moteur.",
+                null,
+                "Equipment",
+                "Container",
+                "Legendary",
+                "NotUsable",
+                "PersistentMeta",
+                "Additive",
+                1,
+                false,
+                true,
                 null)
         };
 
@@ -1193,6 +1212,7 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                     new CatalogNpcOffering("offer.skill", "Skill", "skill.basic.strike", 0, IsMajor: true, UnlockConditions: []),
                     new CatalogNpcOffering("offer.stat", "StatPoint", null, 1, IsMajor: false, UnlockConditions: []),
                     new CatalogNpcOffering("offer.item", "Item", "item.consumable.minor-heal", 1, IsMajor: false, UnlockConditions: []),
+                    new CatalogNpcOffering("offer.item.nonstandard", "Item", "item.equipment.sac-nonstandard", 1, IsMajor: false, UnlockConditions: []),
                     new CatalogNpcOffering("offer.skill.gated", "Skill", "skill.basic.strike", 0, IsMajor: true,
                         UnlockConditions: [new CatalogDialogueRequirement("RelationshipScoreAtLeast", null, null, null, 5)])
                 ],
@@ -1228,6 +1248,11 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                                     "take-gated-skill", "Prendre la compétence réservée à la confiance",
                                     [], [new CatalogDialogueConsequence(
                                         "GrantOffering", null, null, null, null, 0, null, null, "offer.skill.gated", null, null, null)],
+                                    null),
+                                new CatalogNpcDialogueChoice(
+                                    "take-nonstandard-item", "Prendre l'objet au type non standard",
+                                    [], [new CatalogDialogueConsequence(
+                                        "GrantOffering", null, null, null, null, 0, null, null, "offer.item.nonstandard", null, null, null)],
                                     null)
                             ])
                     })),

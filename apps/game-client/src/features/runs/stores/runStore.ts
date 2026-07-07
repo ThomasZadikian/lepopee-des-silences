@@ -75,6 +75,10 @@ export const useRunStore = defineStore('run', () => {
   const isEnteringInterlude = ref(false);
   const isEnteringNextRoom = ref(false);
 
+  type ReputationEffect = { id: number; amount: number; npcName: string };
+  const reputationEffects = ref<ReputationEffect[]>([]);
+  let reputationEffectSeq = 0;
+
   const permanentItemCandidates = ref<PermanentItemCandidateDto[]>([]);
   const isPermanentItemSelectionResolved = ref(false);
   const isLoadingPermanentItemCandidates = ref(false);
@@ -247,6 +251,21 @@ export const useRunStore = defineStore('run', () => {
       await runApi.confirmPermanentItemSelection(currentRun.value!.id, itemDefinitionKeys);
       isPermanentItemSelectionResolved.value = true;
     });
+  }
+
+  function pushReputationEffects(
+    effects?: { kind: string; amount: number; label: string }[] | null,
+  ) {
+    if (!effects) return;
+    for (const effect of effects) {
+      if (effect.kind !== 'reputation' || effect.amount === 0) continue;
+      reputationEffectSeq += 1;
+      reputationEffects.value.push({ id: reputationEffectSeq, amount: effect.amount, npcName: effect.label });
+    }
+  }
+
+  function dismissReputationEffect(id: number) {
+    reputationEffects.value = reputationEffects.value.filter((e) => e.id !== id);
   }
 
   async function refreshPendingRewardIfNeeded() {
@@ -710,6 +729,7 @@ export const useRunStore = defineStore('run', () => {
     error.value = null;
     permanentItemCandidates.value = [];
     isPermanentItemSelectionResolved.value = false;
+    reputationEffects.value = [];
   }
 
   // -------------------------------------------------------------------------
@@ -749,6 +769,7 @@ export const useRunStore = defineStore('run', () => {
       lastOutcome.value = null;
       activeCombat.value = null;
       resetPreviewedNode();
+      pushReputationEffects(choiceResult?.appliedEffects);
 
       await refreshPendingRewardIfNeeded();
     });
@@ -779,6 +800,7 @@ export const useRunStore = defineStore('run', () => {
       }
 
       npcDialogueEchoes.value = choiceResult?.narrativeFragments ?? [];
+      pushReputationEffects(choiceResult?.appliedEffects);
 
       if (dialogue) {
         npcDialogue.value = dialogue;
@@ -841,6 +863,8 @@ export const useRunStore = defineStore('run', () => {
     permanentItemCandidates,
     isPermanentItemSelectionResolved,
     isLoadingPermanentItemCandidates,
+    reputationEffects,
+    dismissReputationEffect,
 
     startRun,
     loadRun,
