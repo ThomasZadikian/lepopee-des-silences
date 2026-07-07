@@ -40,6 +40,7 @@ public sealed class CatalogSeedRunner
         await SeedChapelierAsync(cancellationToken);
         await SeedElyasAsync(cancellationToken);
         await SeedOwenAsync(cancellationToken);
+        await SeedHomonculeAsync(cancellationToken);
         await SeedCanonEnemiesAsync(cancellationToken);
         await SeedCanonSkillsAsync(cancellationToken);
         await SeedCanonItemsAsync(cancellationToken);
@@ -135,9 +136,11 @@ public sealed class CatalogSeedRunner
         return 1;
     }
 
-    // TODO(utilisateur) : aucune paire d'affinité de réputation inter-PNJ n'a été fournie
-    // à ce stade — contrairement aux affinités de thème des Rooms, celles-ci n'ont pas de
-    // justification déjà validée. Ne rien inventer ; compléter ici une fois le contenu reçu.
+    // TODO(utilisateur) : une seule paire est confirmée narrativement à ce stade —
+    // L'Homoncule et L'enfant se détestent mutuellement — mais aucune convention de valeur
+    // pour Weight n'a encore été établie (le champ n'est d'ailleurs consommé par aucune
+    // logique de gameplay pour l'instant, juste transporté). Ne pas inventer un nombre ;
+    // câbler npc.homoncule <-> npc.enfant une fois npc.enfant écrit ET la valeur confirmée.
     private async Task SeedNpcReputationAffinitiesAsync(CancellationToken ct)
     {
         await Task.CompletedTask;
@@ -172,8 +175,8 @@ public sealed class CatalogSeedRunner
 
     private static DialogueConsequence C(
         ConsequenceKind kind, WoundState? when = null, string? frag = null, string? pool = null,
-        int rel = 0, string? flag = null, string? wound = null) =>
-        new(kind, when, frag, pool, null, rel, flag, wound, null, null, null, null);
+        int rel = 0, string? flag = null, string? wound = null, string? offering = null) =>
+        new(kind, when, frag, pool, null, rel, flag, wound, offering, null, null, null);
 
     // ── Le Majordome (Silence, irréversible) ─────────────────────────────────
 
@@ -463,6 +466,82 @@ public sealed class CatalogSeedRunner
             new[] { new RewardCurseEntry(RewardCurseEntryKind.Reward, "Heal", null, 16) }, ct);
         n += await UpsertPoolAsync("pool.owen.malediction", "Owen — malédiction", "Le poids d'une foi reniée.", "1.0",
             new[] { new RewardCurseEntry(RewardCurseEntryKind.Curse, "GrantCurse", "curse.weight-of-silence") }, ct);
+        return n;
+    }
+
+    // ── L'Homoncule (Rupture, première création du Forgeron) ─────────────────
+
+    private async Task<int> SeedHomonculeAsync(CancellationToken ct)
+    {
+        var persona = new NpcPersona("Émotif, colérique, pas très malin — mais il ressent tout", EmotionalRegister.Rupture,
+            new[] { "être écouté", "être compris" },
+            new[] { "une fiole de cristal", "la boîte qu'il garde" });
+
+        var wounds = new[]
+        {
+            new NpcWound("w-colere-homoncule", EmotionalRegister.Rupture, NpcWoundReversibility.SoothableByAct, -2, -4,
+                new[] { new NpcTransgression("w-colere-homoncule", "homoncule-contredire", -2) },
+                "Il ne t'écoute plus. Il ne fait plus que hurler.")
+        };
+
+        var rencontre = new NpcDialogueNode("rencontre", "L'Homoncule",
+            new[] { "Tu... tu me regardes. Personne ne me regarde.", "Le Forgeron m'a fait. Puis il m'a laissé ici." },
+            new[]
+            {
+                new NpcDialogueChoice("ecouter", "L'écouter", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.AdjustRelationship, rel: 1),
+                            C(ConsequenceKind.SootheWound, wound: "w-colere-homoncule") }, "ecoute"),
+                new NpcDialogueChoice("contredire", "Le contredire", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.SetMemoryFlag, flag: "homoncule-contredire"),
+                            C(ConsequenceKind.Narrative, frag: "Son visage se déforme de rage. « TU NE SAIS RIEN. »") }, null),
+                new NpcDialogueChoice("partir", "Partir", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.Narrative, frag: "Tu t'éloignes. Il continue de fixer le vide que tu laisses derrière toi.") }, null)
+            },
+            TenseLines: new[] { "ARRÊTE de me fixer comme ça !", "Tu es comme les autres. Tu vas me juger, comme l'enfant me juge." },
+            RupturedLines: new[] { "PARS. PARS PARS PARS.", "Tu ne comprends rien. Personne ne comprend rien." });
+
+        var ecoute = new NpcDialogueNode("ecoute", "L'Homoncule",
+            new[] { "Le Forgeron voulait un fils. Il a eu moi. Et l'enfant après. L'enfant... l'enfant est tout ce que je ne suis pas.",
+                    "Je ne suis pas malin. Je le sais. Mais je RESSENS. Ça compte, non ?" },
+            new[]
+            {
+                new NpcDialogueChoice("continuer-ecouter", "Continuer à l'écouter", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.AdjustRelationship, rel: 1) }, "don"),
+                new NpcDialogueChoice("rassurer", "Lui dire qu'il compte", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.SootheWound, wound: "w-colere-homoncule"),
+                            C(ConsequenceKind.AdjustRelationship, rel: 2) }, "don")
+            },
+            TenseLines: new[] { "Pourquoi tu m'écoutes ? Personne ne m'écoute jamais vraiment." },
+            RupturedLines: new[] { "Tu fais semblant. Comme l'enfant faisait semblant." });
+
+        var don = new NpcDialogueNode("don", "L'Homoncule",
+            new[] { "Tu... tu veux quelque chose ? Je peux donner. Je sais donner, même si je ne sais rien faire d'autre." },
+            new[]
+            {
+                new NpcDialogueChoice("prendre-fiole", "Accepter la Fiole de cristal", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.homoncule.fiole") }, null),
+                new NpcDialogueChoice("demander-boite", "Lui demander la Boîte", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.homoncule.boite") }, null)
+            });
+
+        var graph = new NpcDialogueGraph("npc.homoncule.dialogue", "1.0", "rencontre",
+            new Dictionary<string, NpcDialogueNode> { ["rencontre"] = rencontre, ["ecoute"] = ecoute, ["don"] = don });
+
+        var offerings = new[]
+        {
+            new NpcOffering("offer.homoncule.fiole", NpcOfferingKind.Item, "canon.item.fiole-cristal", 1, true,
+                Array.Empty<DialogueRequirement>()),
+            new NpcOffering("offer.homoncule.boite", NpcOfferingKind.Item, "canon.item.boite-homoncule", 1, true,
+                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) })
+        };
+
+        // Rencontré aux 4 étages des enfers (room.enfer1-4) ; réside au château (room.enfer4)
+        // mais BoundRoomKeys ne distingue pas résidence/simple présence — les 4 sont listées.
+        var n = await UpsertNpcAsync("npc.homoncule", "L'Homoncule",
+            "La première création du Forgeron. Émotif, colérique, pas très malin — il incarne la part sombre de l'enfant, qui le déteste autant qu'il le déteste.", "1.0",
+            EmotionalRegister.Rupture, true, persona, wounds, graph, ct,
+            boundRoomKeys: new[] { "room.enfer1", "room.enfer2", "room.enfer3", "room.enfer4" },
+            offerings: offerings);
         return n;
     }
 
