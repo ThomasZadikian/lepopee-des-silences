@@ -32,12 +32,6 @@ if (app.Environment.IsDevelopment())
     {
         var seedRunner = scope.ServiceProvider.GetRequiredService<CatalogSeedRunner>();
         await seedRunner.SeedAsync();
-
-        foreach (var canon in scope.ServiceProvider
-                     .GetServices<Leds.Catalog.Infrastructure.Persistence.Canon.ICanonContentSeeder>())
-        {
-            await canon.SeedAsync();
-        }
     }
 }
 

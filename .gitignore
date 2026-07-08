@@ -480,6 +480,3 @@ TestResults/
 *.vsidx
 *.dtbcache.*
 *.futdcache.*
-
-# Contenu canon confidentiel (IP) — seeders locaux, JAMAIS poussés
-**/Persistence/Canon/CanonContentSeeder*.cs
