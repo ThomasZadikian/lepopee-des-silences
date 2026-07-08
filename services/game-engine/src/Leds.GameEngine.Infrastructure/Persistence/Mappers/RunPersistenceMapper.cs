@@ -38,6 +38,9 @@ public static class RunPersistenceMapper
             Speed = run.Speed,
             Focus = run.Focus,
             RunItemCapacity = run.RunItemCapacity,
+            TypedDamageReductionsJson = run.TypedDamageReductions.Count > 0
+                ? JsonSerializer.Serialize(run.TypedDamageReductions)
+                : null,
             StartedAtUtc = run.StartedAt.UtcDateTime,
             EndedAtUtc = run.EndedAt?.UtcDateTime,
             SavedAtUtc = run.SavedAt?.UtcDateTime,
@@ -410,7 +413,10 @@ public static class RunPersistenceMapper
             runModifiers,
             playerSnapshot: playerSnapshot,
             activeCurse: entity.ActiveCurses.FirstOrDefault() is { } curseEntity ? ToDomain(curseEntity) : null,
-            runItemCapacity: entity.RunItemCapacity > 0 ? entity.RunItemCapacity : Run.DefaultRunItemCapacity);
+            runItemCapacity: entity.RunItemCapacity > 0 ? entity.RunItemCapacity : Run.DefaultRunItemCapacity,
+            typedDamageReductions: string.IsNullOrWhiteSpace(entity.TypedDamageReductionsJson)
+                ? null
+                : JsonSerializer.Deserialize<Dictionary<string, int>>(entity.TypedDamageReductionsJson));
 
         RehydrateNpcEncounters(run, entity);
         return run;

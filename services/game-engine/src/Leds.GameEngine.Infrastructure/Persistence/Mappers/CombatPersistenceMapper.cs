@@ -53,11 +53,33 @@ public static class CombatPersistenceMapper
             Charge = combatant.Charge,
             Status = combatant.Status.ToString(),
             AttackTypeOverride = combatant.AttackTypeOverride.HasValue ? (int)combatant.AttackTypeOverride.Value : null,
+            TypedDamageReductionsJson = SerializeTypedDamageReductions(combatant.TypedDamageReductionPercent),
             StatusEffectsJson = SerializeStatusEffects(combatant.StatusEffects),
             Skills = combatant.Skills.Select(s => ToEntity(s, combatant.Id.Value)).ToList(),
             BaseStatSnapshot = ToBaseStatSnapshotEntity(combatant.BaseStatSnapshot, combatant.Id.Value),
             RuntimeState = ToRuntimeStateEntity(combatant.RuntimeState, combatant.Id.Value)
         };
+    }
+
+    private static string? SerializeTypedDamageReductions(IReadOnlyDictionary<EmotionalType, int> reductions)
+    {
+        if (reductions.Count == 0)
+            return null;
+
+        var snapshot = reductions.ToDictionary(kv => (int)kv.Key, kv => kv.Value);
+        return JsonSerializer.Serialize(snapshot);
+    }
+
+    private static IReadOnlyDictionary<EmotionalType, int> DeserializeTypedDamageReductions(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+            return new Dictionary<EmotionalType, int>();
+
+        var snapshot = JsonSerializer.Deserialize<Dictionary<int, int>>(json);
+        if (snapshot is null)
+            return new Dictionary<EmotionalType, int>();
+
+        return snapshot.ToDictionary(kv => (EmotionalType)kv.Key, kv => kv.Value);
     }
 
     private sealed record StatusEffectSnapshot(
@@ -243,7 +265,8 @@ public static class CombatPersistenceMapper
             entity.Skills.Select(ToDomain).ToList(),
             baseStatSnapshot: baseStatSnapshot,
             runtimeState: runtimeState,
-            attackTypeOverride: entity.AttackTypeOverride.HasValue ? (EmotionalType)entity.AttackTypeOverride.Value : null);
+            attackTypeOverride: entity.AttackTypeOverride.HasValue ? (EmotionalType)entity.AttackTypeOverride.Value : null,
+            typedDamageReductionPercent: DeserializeTypedDamageReductions(entity.TypedDamageReductionsJson));
         foreach (var effect in DeserializeStatusEffects(entity.StatusEffectsJson))
             combatant.RehydrateStatusEffect(effect);
 

@@ -62,6 +62,13 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
         var effectiveFocus = mainCharacter.Stats.Focus + StatBonus("Focus");
         var effectiveRunItemCapacity = Run.DefaultRunItemCapacity + StatBonus("RunItemCapacity");
 
+        var typedDamageReductions = equipmentEffects
+            .Where(e => string.Equals(e.Kind, "DamageReductionByType", StringComparison.OrdinalIgnoreCase)
+                && !string.IsNullOrWhiteSpace(e.AffinityRegister)
+                && e.Amount is not null)
+            .GroupBy(e => e.AffinityRegister!, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => Math.Min(100, g.Sum(e => e.Amount!.Value)), StringComparer.OrdinalIgnoreCase);
+
         var grantedSkillKeys = equipmentEffects
             .Where(e => string.Equals(e.Kind, "GrantSkill", StringComparison.OrdinalIgnoreCase)
                 && !string.IsNullOrWhiteSpace(e.SkillKey))
@@ -108,7 +115,8 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
             speed: effectiveSpeed,
             focus: effectiveFocus,
             playerSkills: playerSkills,
-            runItemCapacity: effectiveRunItemCapacity);
+            runItemCapacity: effectiveRunItemCapacity,
+            typedDamageReductions: typedDamageReductions);
 
         var characterSnapshots = snapshot.Characters
             .Select(c =>

@@ -3,6 +3,7 @@ using System;
 using Leds.GameEngine.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Leds.GameEngine.Infrastructure.Migrations
 {
     [DbContext(typeof(GameEngineDbContext))]
-    partial class GameEngineDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260708100000_AddCombatantTypedDamageReductions")]
+    partial class AddCombatantTypedDamageReductions
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1533,10 +1536,6 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasDefaultValue(6)
                         .HasColumnName("run_item_capacity");
-
-                    b.Property<string>("TypedDamageReductionsJson")
-                        .HasColumnType("text")
-                        .HasColumnName("typed_damage_reductions_json");
 
                     b.Property<string>("GeneratorVersion")
                         .IsRequired()

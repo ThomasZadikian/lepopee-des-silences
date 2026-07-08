@@ -26,6 +26,7 @@ public sealed class CombatantEntityConfiguration : IEntityTypeConfiguration<Comb
         builder.Property(c => c.Charge).HasColumnName("charge");
         builder.Property(c => c.Status).HasColumnName("status").HasMaxLength(32).IsRequired();
         builder.Property(c => c.AttackTypeOverride).HasColumnName("attack_type_override");
+        builder.Property(c => c.TypedDamageReductionsJson).HasColumnName("typed_damage_reductions_json");
         builder.Property(c => c.StatusEffectsJson).HasColumnName("status_effects_json");
 
         builder.HasOne(c => c.Combat)

@@ -16,6 +16,7 @@ using Leds.GameEngine.Application.Rewards.Ports;
 using Leds.GameEngine.Application.Runs.Dtos;
 using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Combats.StatusEffects;
+using Leds.GameEngine.Domain.Combats.Typing;
 using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rewards;
@@ -165,7 +166,8 @@ public sealed class ResolveCurrentEventCommandHandler
                 combatId, draft, run.PlayerState, run.RunModifiers,
                 attackPower: run.Attack, defense: run.Defense, speed: run.Speed,
                 palaceRoomState: room.PalaceState, focus: run.Focus,
-                skillEffects: skillEffects);
+                skillEffects: skillEffects,
+                typedDamageReductions: ToTypedDamageReductions(run.TypedDamageReductions));
 
             // ATB: bake Markov tempo + opening gauges, then elect the opener.
             _atbPreparer.PrepareNewCombat(combatRuntime, run);
@@ -414,6 +416,18 @@ public sealed class ResolveCurrentEventCommandHandler
                 MagnitudeIsPercentOfMax: effect.MagnitudeIsPercentOfMax));
         }
         return specs;
+    }
+
+    private static IReadOnlyDictionary<EmotionalType, int> ToTypedDamageReductions(
+        IReadOnlyDictionary<string, int> reductions)
+    {
+        var result = new Dictionary<EmotionalType, int>();
+        foreach (var (typeName, percent) in reductions)
+        {
+            if (Enum.TryParse<EmotionalType>(typeName, true, out var type))
+                result[type] = percent;
+        }
+        return result;
     }
 
     private static IReadOnlyCollection<CombatEncounterDraftSkill> MapCharacterSkills(RunCharacterSnapshot character)

@@ -23,7 +23,8 @@ public sealed class CombatFactory : ICombatFactory
         int speed = 10,
         PalaceRoomState palaceRoomState = PalaceRoomState.Neutral,
         int focus = 0,
-        IReadOnlyDictionary<string, IReadOnlyList<SkillStatusEffectSpec>>? skillEffects = null)
+        IReadOnlyDictionary<string, IReadOnlyList<SkillStatusEffectSpec>>? skillEffects = null,
+        IReadOnlyDictionary<EmotionalType, int>? typedDamageReductions = null)
     {
         return CreateFromDraft(
             CombatId.New(),
@@ -35,7 +36,8 @@ public sealed class CombatFactory : ICombatFactory
             speed,
             palaceRoomState,
             focus,
-            skillEffects);
+            skillEffects,
+            typedDamageReductions);
     }
     private static (double VitalityMultiplier, double PowerMultiplier, int GuardBonus) EncounterBonus(string encounterType)
     {
@@ -59,7 +61,8 @@ public sealed class CombatFactory : ICombatFactory
         int speed = 10,
         PalaceRoomState palaceRoomState = PalaceRoomState.Neutral,
         int focus = 0,
-        IReadOnlyDictionary<string, IReadOnlyList<SkillStatusEffectSpec>>? skillEffects = null)
+        IReadOnlyDictionary<string, IReadOnlyList<SkillStatusEffectSpec>>? skillEffects = null,
+        IReadOnlyDictionary<EmotionalType, int>? typedDamageReductions = null)
     {
         // Sum all unconsumed StartingGuardBonus modifiers (e.g. Éclat de garde: +8 garde).
         var guardBonus = runModifiers?
@@ -126,6 +129,7 @@ public sealed class CombatFactory : ICombatFactory
                         focus: focus);
 
                     protagonist.ApplyAttackTypeOverride(attackTypeOverride);
+                    protagonist.ApplyTypedDamageReductions(typedDamageReductions);
                     return protagonist;
                 }
 

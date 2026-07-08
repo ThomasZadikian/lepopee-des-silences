@@ -77,6 +77,23 @@ public sealed class Combatant
         AttackTypeOverride = attackType;
     }
 
+    /// <summary>
+    /// Percentage (0-100) reduction to damage of a given incoming <see cref="EmotionalType"/>,
+    /// granted by equipped items (e.g. Craie créatrice: -15% Mémoire). Independent of the
+    /// categorical weak/resist/immune type system. Empty = no reduction.
+    /// </summary>
+    public IReadOnlyDictionary<EmotionalType, int> TypedDamageReductionPercent { get; private set; }
+        = new Dictionary<EmotionalType, int>();
+
+    /// <summary>
+    /// Sets (or clears) the equipment-driven typed damage reductions. Applied at combat
+    /// creation and restored on rehydration; never mutated mid-turn.
+    /// </summary>
+    public void ApplyTypedDamageReductions(IReadOnlyDictionary<EmotionalType, int>? reductions)
+    {
+        TypedDamageReductionPercent = reductions ?? new Dictionary<EmotionalType, int>();
+    }
+
     // ── ATB (Active Time Battle) ──────────────────────────────────────────────
 
     /// <summary>Current ATB gauge (0 = empty). Sourced from runtime state (persisted).</summary>
@@ -391,7 +408,8 @@ public sealed class Combatant
         IReadOnlyCollection<CombatantSkill> skills,
         CombatantBaseStatSnapshot? baseStatSnapshot = null,
         CombatantRuntimeState? runtimeState = null,
-        EmotionalType? attackTypeOverride = null)
+        EmotionalType? attackTypeOverride = null,
+        IReadOnlyDictionary<EmotionalType, int>? typedDamageReductionPercent = null)
     {
         var snapshot = baseStatSnapshot ?? CombatantBaseStatSnapshot.Rehydrate(
             Guid.NewGuid(),
@@ -421,6 +439,7 @@ public sealed class Combatant
 
         var combatant = new Combatant(id, sourceKey, displayName, side, archetype, maxVitality, currentVitality, guard, baseGuard, mana, charge, status, skills, snapshot, state);
         combatant.AttackTypeOverride = attackTypeOverride;
+        combatant.TypedDamageReductionPercent = typedDamageReductionPercent ?? new Dictionary<EmotionalType, int>();
         return combatant;
     }
 

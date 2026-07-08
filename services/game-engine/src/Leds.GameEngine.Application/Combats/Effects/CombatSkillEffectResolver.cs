@@ -181,6 +181,8 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
                 critChance,
                 critRoll);
 
+            outcome = ApplyEquipmentDamageReduction(outcome, target, attackType);
+
             logEntries.Add(CreateLog(
                 "SkillUsed",
                 $"{actor.DisplayName} uses {skill.DisplayName} on {target.DisplayName} for {outcome.FinalAmount} damage{DescribeOutcome(outcome)}.",
@@ -264,6 +266,23 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
                     [target]));
             }
         }
+    }
+
+    // Equipment-driven typed damage reduction (e.g. Craie créatrice: -15% Mémoire),
+    // independent of the categorical weak/resist/immune type system already applied
+    // by DamageCalculator above — a flat percentage taken off whatever it produced.
+    private static DamageOutcome ApplyEquipmentDamageReduction(
+        DamageOutcome outcome, Combatant target, EmotionalType attackType)
+    {
+        if (outcome.FinalAmount <= 0
+            || !target.TypedDamageReductionPercent.TryGetValue(attackType, out var percent)
+            || percent <= 0)
+        {
+            return outcome;
+        }
+
+        var reduced = (int)Math.Round(outcome.FinalAmount * (1.0 - Math.Min(percent, 100) / 100.0));
+        return outcome with { FinalAmount = Math.Max(0, reduced) };
     }
 
     private static bool IsStaggerSkill(CombatantSkill skill)

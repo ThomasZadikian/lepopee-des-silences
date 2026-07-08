@@ -74,7 +74,8 @@ public sealed class Run
         int currentRoomIndex = 0,
         CombatId? activeCombatId = null,
         RewardOfferId? pendingRewardOfferId = null,
-        int runItemCapacity = DefaultRunItemCapacity)
+        int runItemCapacity = DefaultRunItemCapacity,
+        IReadOnlyDictionary<string, int>? typedDamageReductions = null)
     {
         Id = id;
         PlayerId = playerId;
@@ -94,6 +95,7 @@ public sealed class Run
         ActiveCombatId = activeCombatId;
         PendingRewardOfferId = pendingRewardOfferId;
         RunItemCapacity = runItemCapacity;
+        TypedDamageReductions = typedDamageReductions ?? new Dictionary<string, int>();
 
         _rooms.Add(initialRoom);
     }
@@ -220,6 +222,13 @@ public sealed class Run
     /// </summary>
     public int Focus { get; }
 
+    /// <summary>
+    /// Equipment-driven typed damage reductions (EmotionalType name -> percent 0-100),
+    /// computed once at run start from equipped items (SFD equipment §8) and immutable
+    /// for the run's lifetime, same as Attack/Defense/Speed/Focus.
+    /// </summary>
+    public IReadOnlyDictionary<string, int> TypedDamageReductions { get; }
+
     public DateTimeOffset StartedAt { get; }
 
     public DateTimeOffset? EndedAt { get; private set; }
@@ -272,7 +281,8 @@ public sealed class Run
         int speed = 10,
         IReadOnlyCollection<PlayerRuntimeSkill>? playerSkills = null,
         int focus = 0,
-        int runItemCapacity = DefaultRunItemCapacity)
+        int runItemCapacity = DefaultRunItemCapacity,
+        IReadOnlyDictionary<string, int>? typedDamageReductions = null)
     {
         if (playerId == Guid.Empty)
         {
@@ -363,7 +373,8 @@ public sealed class Run
             defense,
             speed,
             focus,
-            runItemCapacity: runItemCapacity);
+            runItemCapacity: runItemCapacity,
+            typedDamageReductions: typedDamageReductions);
 
         run.PlayerState = PlayerRuntimeState.Create(
             maxVitality: maxHp,
@@ -1486,11 +1497,12 @@ public sealed class Run
         IEnumerable<RunModifier>? runModifiers = null,
         RunPlayerSnapshot? playerSnapshot = null,
         ActiveCurse? activeCurse = null,
-        int runItemCapacity = DefaultRunItemCapacity)
+        int runItemCapacity = DefaultRunItemCapacity,
+        IReadOnlyDictionary<string, int>? typedDamageReductions = null)
     {
         var firstRoom = rooms.First();
 
-        var run = new Run(id, playerId, seed, generatorVersion, markovMatrixVersion, status, firstRoom, startedAt, maxHp, currentHp, attack, defense, speed, focus, currentRoomIndex, activeCombatId, pendingRewardOfferId, runItemCapacity);
+        var run = new Run(id, playerId, seed, generatorVersion, markovMatrixVersion, status, firstRoom, startedAt, maxHp, currentHp, attack, defense, speed, focus, currentRoomIndex, activeCombatId, pendingRewardOfferId, runItemCapacity, typedDamageReductions);
         foreach (var room in rooms.Skip(1))
         {
             run._rooms.Add(room);

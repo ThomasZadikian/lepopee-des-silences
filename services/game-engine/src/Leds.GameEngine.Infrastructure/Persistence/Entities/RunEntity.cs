@@ -19,6 +19,7 @@ public sealed class RunEntity
     public int Speed { get; set; }
     public int Focus { get; set; }
     public int RunItemCapacity { get; set; }
+    public string? TypedDamageReductionsJson { get; set; }
     public DateTime StartedAtUtc { get; set; }
     public DateTime? EndedAtUtc { get; set; }
     public DateTime? SavedAtUtc { get; set; }
