@@ -23,7 +23,7 @@ public sealed class CombatFactory : ICombatFactory
         int speed = 10,
         PalaceRoomState palaceRoomState = PalaceRoomState.Neutral,
         int focus = 0,
-        IReadOnlyDictionary<string, SkillStatusEffectSpec>? skillEffects = null)
+        IReadOnlyDictionary<string, IReadOnlyList<SkillStatusEffectSpec>>? skillEffects = null)
     {
         return CreateFromDraft(
             CombatId.New(),
@@ -59,7 +59,7 @@ public sealed class CombatFactory : ICombatFactory
         int speed = 10,
         PalaceRoomState palaceRoomState = PalaceRoomState.Neutral,
         int focus = 0,
-        IReadOnlyDictionary<string, SkillStatusEffectSpec>? skillEffects = null)
+        IReadOnlyDictionary<string, IReadOnlyList<SkillStatusEffectSpec>>? skillEffects = null)
     {
         // Sum all unconsumed StartingGuardBonus modifiers (e.g. Éclat de garde: +8 garde).
         var guardBonus = runModifiers?
@@ -97,7 +97,7 @@ public sealed class CombatFactory : ICombatFactory
                             s.ManaCost,
                             s.ChargeCost,
                             ScalePlayerSkillPower(s.EffectType, s.BasePower, attackPowerMultiplier),
-                            statusEffect: EffectFor(skillEffects, s.Key)))
+                            statusEffects: EffectFor(skillEffects, s.Key)))
                         .ToArray()
                         ?? GetDefaultAllySkills(attackPowerMultiplier, skillEffects);
 
@@ -141,7 +141,7 @@ public sealed class CombatFactory : ICombatFactory
                             s.ManaCost,
                             s.ChargeCost,
                             ScalePlayerSkillPower(s.EffectType, s.BasePower, attackPowerMultiplier),
-                            statusEffect: EffectFor(skillEffects, s.Key)))
+                            statusEffects: EffectFor(skillEffects, s.Key)))
                         .ToArray()
                     : GetDefaultAllySkills(attackPowerMultiplier, skillEffects);
 
@@ -232,11 +232,11 @@ public sealed class CombatFactory : ICombatFactory
             enemies);
     }
 
-    // Looks up the durable status a skill applies, by skill key (catalog-sourced).
-    private static SkillStatusEffectSpec? EffectFor(
-        IReadOnlyDictionary<string, SkillStatusEffectSpec>? effects,
+    // Looks up the durable statuses a skill applies, by skill key (catalog-sourced).
+    private static IReadOnlyList<SkillStatusEffectSpec>? EffectFor(
+        IReadOnlyDictionary<string, IReadOnlyList<SkillStatusEffectSpec>>? effects,
         string key)
-        => effects is not null && effects.TryGetValue(key, out var spec) ? spec : null;
+        => effects is not null && effects.TryGetValue(key, out var specs) ? specs : null;
 
     private static EmotionalType? ResolveAttackTypeOverride(IReadOnlyCollection<RunModifier> runModifiers)
     {
@@ -332,7 +332,7 @@ public sealed class CombatFactory : ICombatFactory
 
     private static IReadOnlyCollection<CombatantSkill> GetDefaultAllySkills(
         double attackPowerMultiplier,
-        IReadOnlyDictionary<string, SkillStatusEffectSpec>? skillEffects)
+        IReadOnlyDictionary<string, IReadOnlyList<SkillStatusEffectSpec>>? skillEffects)
     {
         return
         [
@@ -345,7 +345,7 @@ public sealed class CombatFactory : ICombatFactory
                 manaCost: 0,
                 chargeCost: 0,
                 basePower: ScalePlayerSkillPower("Damage", 10, attackPowerMultiplier),
-                statusEffect: EffectFor(skillEffects, "skill.basic.strike")),
+                statusEffects: EffectFor(skillEffects, "skill.basic.strike")),
             CombatantSkill.Create(
                 key: "skill.basic.guard",
                 displayName: "Garde",
@@ -355,7 +355,7 @@ public sealed class CombatFactory : ICombatFactory
                 manaCost: 0,
                 chargeCost: 0,
                 basePower: 5,
-                statusEffect: EffectFor(skillEffects, "skill.basic.guard"))
+                statusEffects: EffectFor(skillEffects, "skill.basic.guard"))
         ];
     }
 }

@@ -58,16 +58,16 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
 
             default:
                 // Status-only spell (pure buff/debuff/control): no instant effect —
-                // the durable status below does the work.
-                if (skill.StatusEffect is null)
+                // the durable status(es) below do the work.
+                if (skill.StatusEffects.Count == 0)
                     throw new DomainException(
                         $"Unsupported skill effect type: {skill.EffectType} (skill '{skill.Key}'). " +
                         "A skill with a non-instant EffectType (e.g. Debuff/Buff/Status) must have an " +
-                        "EffectKind set in the catalog so it resolves to a durable status effect.");
+                        "effect set in the catalog so it resolves to a durable status effect.");
                 break;
         }
 
-        // Apply the durable status (poison/regen/buff/control) on top, if declared.
+        // Apply the durable status(es) (poison/regen/buff/control) on top, if declared.
         ApplySkillStatus(combat, actor, skill, targets, logEntries);
         return new CombatSkillEffectResolution(true, logEntries, combat);
     }
@@ -118,8 +118,7 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
         IReadOnlyCollection<Combatant> targets,
         List<CombatLogEntryDto> logEntries)
     {
-        var spec = skill.StatusEffect;
-        if (spec is null)
+        if (skill.StatusEffects.Count == 0)
             return;
 
         foreach (var target in targets)
@@ -127,24 +126,28 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
             if (target.IsDefeated)
                 continue;
 
-            target.ApplyStatusEffect(CombatStatusEffect.Create(
-                key: spec.Key,
-                displayName: spec.DisplayName,
-                kind: spec.Kind,
-                currentTick: combat.CurrentTick,
-                durationTicks: spec.DurationTicks,
-                magnitude: spec.Magnitude,
-                stacks: spec.Stacks,
-                tickInterval: spec.TickInterval,
-                stat: spec.Stat,
-                emotionalType: spec.EmotionalType));
+            foreach (var spec in skill.StatusEffects)
+            {
+                target.ApplyStatusEffect(CombatStatusEffect.Create(
+                    key: spec.Key,
+                    displayName: spec.DisplayName,
+                    kind: spec.Kind,
+                    currentTick: combat.CurrentTick,
+                    durationTicks: spec.DurationTicks,
+                    magnitude: spec.Magnitude,
+                    stacks: spec.Stacks,
+                    tickInterval: spec.TickInterval,
+                    stat: spec.Stat,
+                    emotionalType: spec.EmotionalType,
+                    isMagnitudePercentOfMax: spec.MagnitudeIsPercentOfMax));
 
-            logEntries.Add(CreateLog(
-                "StatusApplied",
-                $"{target.DisplayName} is afflicted by {spec.DisplayName}.",
-                actor,
-                skill,
-                [target]));
+                logEntries.Add(CreateLog(
+                    "StatusApplied",
+                    $"{target.DisplayName} is afflicted by {spec.DisplayName}.",
+                    actor,
+                    skill,
+                    [target]));
+            }
         }
     }
 

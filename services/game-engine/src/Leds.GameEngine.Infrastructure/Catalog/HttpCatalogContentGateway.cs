@@ -943,9 +943,10 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
             SkillType: source.SkillType, TargetingType: source.TargetingType, EffectType: source.EffectType,
             ManaCost: source.ManaCost, ChargeCost: source.ChargeCost, BasePower: source.BasePower,
             Tags: source.Tags ?? [],
-            EffectKind: source.EffectKind, EffectStatusKey: source.EffectStatusKey,
-            EffectMagnitude: source.EffectMagnitude, EffectDurationTicks: source.EffectDurationTicks,
-            EffectTickInterval: source.EffectTickInterval, EffectStat: source.EffectStat);
+            Effects: source.Effects?
+                .Select(e => new CatalogSkillEffectSpec(
+                    e.Kind, e.StatusKey, e.Magnitude, e.DurationTicks, e.TickInterval, e.Stat, e.MagnitudeIsPercentOfMax))
+                .ToArray());
     }
 
     private static CatalogEnemyDefinition MapToCatalogEnemyDefinition(

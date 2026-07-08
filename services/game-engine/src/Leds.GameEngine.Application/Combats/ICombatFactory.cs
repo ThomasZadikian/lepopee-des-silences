@@ -16,7 +16,7 @@ public interface ICombatFactory
         int speed = 10,
         PalaceRoomState palaceRoomState = PalaceRoomState.Neutral,
         int focus = 0,
-        IReadOnlyDictionary<string, SkillStatusEffectSpec>? skillEffects = null);
+        IReadOnlyDictionary<string, IReadOnlyList<SkillStatusEffectSpec>>? skillEffects = null);
 
     Combat CreateFromDraft(
         CombatId combatId,
@@ -28,5 +28,5 @@ public interface ICombatFactory
         int speed = 10,
         PalaceRoomState palaceRoomState = PalaceRoomState.Neutral,
         int focus = 0,
-        IReadOnlyDictionary<string, SkillStatusEffectSpec>? skillEffects = null);
+        IReadOnlyDictionary<string, IReadOnlyList<SkillStatusEffectSpec>>? skillEffects = null);
 }

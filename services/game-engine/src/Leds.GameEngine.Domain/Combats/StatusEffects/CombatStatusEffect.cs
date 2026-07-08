@@ -21,7 +21,8 @@ public sealed class CombatStatusEffect
         int stacks,
         int tickInterval,
         int nextTickAtTick,
-        int expiresAtTick)
+        int expiresAtTick,
+        bool isMagnitudePercentOfMax)
     {
         Key = key;
         DisplayName = displayName;
@@ -33,6 +34,7 @@ public sealed class CombatStatusEffect
         TickInterval = tickInterval;
         NextTickAtTick = nextTickAtTick;
         ExpiresAtTick = expiresAtTick;
+        IsMagnitudePercentOfMax = isMagnitudePercentOfMax;
     }
     private const int MinTickInterval = 1400;
 
@@ -46,9 +48,12 @@ public sealed class CombatStatusEffect
     public int TickInterval { get; }
     public int NextTickAtTick { get; private set; }
     public int ExpiresAtTick { get; private set; }
+    /// <summary>When true (HealOverTime only), Magnitude is a percentage of the target's
+    /// MaxVitality rather than a flat amount — see <see cref="ConsumeDueTicks"/>.</summary>
+    public bool IsMagnitudePercentOfMax { get; }
 
     public bool IsPeriodic => TickInterval > 0
-        && (Kind is StatusEffectKind.DamageOverTime or StatusEffectKind.HealOverTime);
+        && (Kind is StatusEffectKind.DamageOverTime or StatusEffectKind.HealOverTime or StatusEffectKind.GuardOverTime);
 
     /// <summary>
     /// Creates a new effect anchored to the current ATB tick. <paramref name="durationTicks"/>
@@ -64,7 +69,8 @@ public sealed class CombatStatusEffect
         int stacks = 1,
         int tickInterval = 0,
         CombatStat stat = CombatStat.None,
-        EmotionalType? emotionalType = null)
+        EmotionalType? emotionalType = null,
+        bool isMagnitudePercentOfMax = false)
     {
         if (string.IsNullOrWhiteSpace(key))
             throw new DomainException("Status effect key is required.");
@@ -87,13 +93,15 @@ public sealed class CombatStatusEffect
             stacks,
             interval,
             nextTick,
-            currentTick + durationTicks);
+            currentTick + durationTicks,
+            isMagnitudePercentOfMax);
     }
 
     public static CombatStatusEffect Rehydrate(
         string key, string displayName, StatusEffectKind kind, EmotionalType? emotionalType,
-        CombatStat stat, int magnitude, int stacks, int tickInterval, int nextTickAtTick, int expiresAtTick)
-        => new(key, displayName, kind, emotionalType, stat, magnitude, stacks, tickInterval, nextTickAtTick, expiresAtTick);
+        CombatStat stat, int magnitude, int stacks, int tickInterval, int nextTickAtTick, int expiresAtTick,
+        bool isMagnitudePercentOfMax = false)
+        => new(key, displayName, kind, emotionalType, stat, magnitude, stacks, tickInterval, nextTickAtTick, expiresAtTick, isMagnitudePercentOfMax);
 
     public bool IsExpired(int currentTick) => currentTick >= ExpiresAtTick;
 
@@ -108,9 +116,11 @@ public sealed class CombatStatusEffect
     /// <summary>
     /// For periodic effects: returns the total magnitude due since the last tick up to
     /// <paramref name="currentTick"/> (and not past expiry), advancing the schedule.
-    /// Returns 0 for non-periodic effects.
+    /// Returns 0 for non-periodic effects. When <see cref="IsMagnitudePercentOfMax"/> is
+    /// set, each tick's amount is computed as a percentage of <paramref name="maxVitalityForPercent"/>
+    /// instead of the flat <see cref="Magnitude"/>.
     /// </summary>
-    public int ConsumeDueTicks(int currentTick)
+    public int ConsumeDueTicks(int currentTick, int maxVitalityForPercent = 0)
     {
         if (!IsPeriodic)
             return 0;
@@ -118,7 +128,10 @@ public sealed class CombatStatusEffect
         var total = 0;
         while (NextTickAtTick <= currentTick && NextTickAtTick <= ExpiresAtTick)
         {
-            total += Magnitude * Stacks;
+            var perTick = IsMagnitudePercentOfMax
+                ? (int)Math.Round(maxVitalityForPercent * (Magnitude / 100.0))
+                : Magnitude;
+            total += perTick * Stacks;
             NextTickAtTick += TickInterval;
         }
 

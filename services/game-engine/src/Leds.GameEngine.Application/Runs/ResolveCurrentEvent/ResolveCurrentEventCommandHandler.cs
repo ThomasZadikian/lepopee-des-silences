@@ -364,7 +364,7 @@ public sealed class ResolveCurrentEventCommandHandler
         return allies;
     }
 
-    private async Task<IReadOnlyDictionary<string, SkillStatusEffectSpec>> BuildSkillEffectsAsync(
+    private async Task<IReadOnlyDictionary<string, IReadOnlyList<SkillStatusEffectSpec>>> BuildSkillEffectsAsync(
     Run run, CombatEncounterDraft draft, CancellationToken ct)
     {
         var keys = draft.Enemies.SelectMany(e => e.SkillKeys)
@@ -375,33 +375,45 @@ public sealed class ResolveCurrentEventCommandHandler
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
-        var dict = new Dictionary<string, SkillStatusEffectSpec>(StringComparer.OrdinalIgnoreCase);
+        var dict = new Dictionary<string, IReadOnlyList<SkillStatusEffectSpec>>(StringComparer.OrdinalIgnoreCase);
         if (keys.Length == 0) return dict;
 
         var defs = await _catalogContentGateway.ListSkillDefinitionsByKeysAsync(keys, ct);
         foreach (var d in defs)
         {
-            var spec = ToStatusSpec(d);
-            if (spec is not null) dict[d.Key] = spec;
+            var specs = ToStatusSpecs(d);
+            if (specs.Count > 0) dict[d.Key] = specs;
         }
         return dict;
     }
 
-    private static SkillStatusEffectSpec? ToStatusSpec(CatalogSkillDefinition d)
+    private static IReadOnlyList<SkillStatusEffectSpec> ToStatusSpecs(CatalogSkillDefinition d)
     {
-        if (string.IsNullOrWhiteSpace(d.EffectKind)
-            || !Enum.TryParse<StatusEffectKind>(d.EffectKind, true, out var kind))
-            return null;
+        if (d.Effects is not { Count: > 0 })
+            return [];
 
-        var stat = CombatStat.None;
-        if (!string.IsNullOrWhiteSpace(d.EffectStat))
-            Enum.TryParse(d.EffectStat, true, out stat);
+        var specs = new List<SkillStatusEffectSpec>();
+        foreach (var effect in d.Effects)
+        {
+            if (string.IsNullOrWhiteSpace(effect.Kind)
+                || !Enum.TryParse<StatusEffectKind>(effect.Kind, true, out var kind))
+                continue;
 
-        var key = string.IsNullOrWhiteSpace(d.EffectStatusKey) ? d.Key : d.EffectStatusKey;
-        return new SkillStatusEffectSpec(
-            Key: key, DisplayName: key, Kind: kind,
-            Magnitude: d.EffectMagnitude, DurationTicks: d.EffectDurationTicks,
-            TickInterval: d.EffectTickInterval, Stat: stat, EmotionalType: null, Stacks: 1);
+            var stat = CombatStat.None;
+            if (!string.IsNullOrWhiteSpace(effect.Stat))
+                Enum.TryParse(effect.Stat, true, out stat);
+
+            // Disambiguate multiple effects on the same skill (e.g. HealOverTime + GuardOverTime
+            // both from "Construction perpétuelle") — a shared key would make the second
+            // Reinforce() the first as if it were the same status instead of a distinct one.
+            var key = string.IsNullOrWhiteSpace(effect.StatusKey) ? $"{d.Key}:{effect.Kind}" : effect.StatusKey;
+            specs.Add(new SkillStatusEffectSpec(
+                Key: key, DisplayName: key, Kind: kind,
+                Magnitude: effect.Magnitude, DurationTicks: effect.DurationTicks,
+                TickInterval: effect.TickInterval, Stat: stat, EmotionalType: null, Stacks: 1,
+                MagnitudeIsPercentOfMax: effect.MagnitudeIsPercentOfMax));
+        }
+        return specs;
     }
 
     private static IReadOnlyCollection<CombatEncounterDraftSkill> MapCharacterSkills(RunCharacterSnapshot character)

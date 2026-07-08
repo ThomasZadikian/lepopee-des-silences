@@ -528,7 +528,7 @@ public sealed class Combatant
         {
             if (!IsDefeated && effect.IsPeriodic)
             {
-                var amount = effect.ConsumeDueTicks(currentTick);
+                var amount = effect.ConsumeDueTicks(currentTick, MaxVitality);
                 if (amount > 0)
                 {
                     if (effect.Kind == StatusEffectKind.DamageOverTime)
@@ -539,6 +539,11 @@ public sealed class Combatant
                     else if (effect.Kind == StatusEffectKind.HealOverTime && CurrentVitality < MaxVitality)
                     {
                         ApplyHeal(amount);
+                        events.Add(new StatusTickEvent(effect.Key, effect.DisplayName, effect.Kind, amount, false));
+                    }
+                    else if (effect.Kind == StatusEffectKind.GuardOverTime)
+                    {
+                        GainGuard(amount);
                         events.Add(new StatusTickEvent(effect.Key, effect.DisplayName, effect.Kind, amount, false));
                     }
                 }
