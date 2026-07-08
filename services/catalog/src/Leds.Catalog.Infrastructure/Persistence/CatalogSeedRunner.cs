@@ -42,6 +42,7 @@ public sealed class CatalogSeedRunner
         await SeedElyasAsync(cancellationToken);
         await SeedOwenAsync(cancellationToken);
         await SeedHomonculeAsync(cancellationToken);
+        await SeedEnfantAsync(cancellationToken);
         await SeedCanonEnemiesAsync(cancellationToken);
         await SeedCanonSkillsAsync(cancellationToken);
         await SeedCanonItemsAsync(cancellationToken);
@@ -137,11 +138,11 @@ public sealed class CatalogSeedRunner
         return 1;
     }
 
-    // TODO(utilisateur) : une seule paire est confirmée narrativement à ce stade —
-    // L'Homoncule et L'enfant se détestent mutuellement — mais aucune convention de valeur
-    // pour Weight n'a encore été établie (le champ n'est d'ailleurs consommé par aucune
-    // logique de gameplay pour l'instant, juste transporté). Ne pas inventer un nombre ;
-    // câbler npc.homoncule <-> npc.enfant une fois npc.enfant écrit ET la valeur confirmée.
+    // TODO(utilisateur) : npc.homoncule et npc.enfant existent tous les deux désormais et se
+    // détestent mutuellement (confirmé narrativement), mais aucune convention de valeur pour
+    // Weight n'a encore été établie (le champ n'est d'ailleurs consommé par aucune logique de
+    // gameplay pour l'instant, juste transporté). Ne pas inventer un nombre ; câbler la paire
+    // une fois la valeur confirmée.
     private async Task SeedNpcReputationAffinitiesAsync(CancellationToken ct)
     {
         await Task.CompletedTask;
@@ -542,6 +543,80 @@ public sealed class CatalogSeedRunner
             "La première création du Forgeron. Émotif, colérique, pas très malin — il incarne la part sombre de l'enfant, qui le déteste autant qu'il le déteste.", "1.0",
             EmotionalRegister.Rupture, true, persona, wounds, graph, ct,
             boundRoomKeys: new[] { "room.enfer1", "room.enfer2", "room.enfer3", "room.enfer4" },
+            offerings: offerings);
+        return n;
+    }
+
+    // ── L'Enfant (Mémoire, créateur originel du premier Palais) ───────────────
+
+    private async Task<int> SeedEnfantAsync(CancellationToken ct)
+    {
+        var persona = new NpcPersona("Un enfant, seul depuis toujours — il dessine ce qu'il a créé", EmotionalRegister.Memoire,
+            new[] { "être écouté", "de la compagnie", "de l'affection" },
+            new[] { "un dessin", "un sort", "une craie" });
+
+        var wounds = new[]
+        {
+            new NpcWound("w-solitude-enfant", EmotionalRegister.Memoire, NpcWoundReversibility.SoothableByAct, -2, -4,
+                new[] { new NpcTransgression("w-solitude-enfant", "enfant-abandon", -2) },
+                "Il ne dessine plus. Il ne fait plus qu'attendre, seul, dans le silence de sa cellule.")
+        };
+
+        var rencontre = new NpcDialogueNode("rencontre", "L'Enfant",
+            new[] { "Tu... tu es venu ? Personne ne vient jamais.", "Regarde, j'ai dessiné une nouvelle pièce. Elle n'existe pas encore, mais elle existera." },
+            new[]
+            {
+                new NpcDialogueChoice("rester", "Rester avec lui", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.AdjustRelationship, rel: 1),
+                            C(ConsequenceKind.SootheWound, wound: "w-solitude-enfant") }, "jeu"),
+                new NpcDialogueChoice("ignorer", "L'ignorer ostensiblement", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.SetMemoryFlag, flag: "enfant-abandon"),
+                            C(ConsequenceKind.Narrative, frag: "Son regard se vide. Il retourne à son dessin sans un mot.") }, null),
+                new NpcDialogueChoice("partir", "Partir", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.Narrative, frag: "Tu t'éloignes. Il continue de dessiner, seul.") }, null)
+            },
+            TenseLines: new[] { "Tu vas repartir, comme les autres ?", "Reste encore un peu. S'il te plaît." },
+            RupturedLines: new[] { "Tu es parti. Tu es toujours parti.", "Je ne dessine plus pour ceux qui partent." });
+
+        var jeu = new NpcDialogueNode("jeu", "L'Enfant",
+            new[] { "« Ça, c'était le premier Palais. Avant que l'Architecte ne vienne tout changer. »" },
+            new[]
+            {
+                new NpcDialogueChoice("jouer", "Jouer avec lui", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.AdjustRelationship, rel: 1) }, "don"),
+                new NpcDialogueChoice("demander-enferme", "Lui demander pourquoi il est enfermé", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.Narrative, frag: "« L'Homoncule veut me dévorer. Pour redevenir l'être ultime. C'est pour ça qu'on m'a caché ici. »"),
+                            C(ConsequenceKind.AdjustRelationship, rel: 1) }, "don")
+            });
+
+        var don = new NpcDialogueNode("don", "L'Enfant",
+            new[] { "Tiens. C'est pour toi. Je crée tout le temps — autant que ça serve à quelqu'un." },
+            new[]
+            {
+                new NpcDialogueChoice("accepter-sort", "Accepter \"Construction perpétuelle\"", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.enfant.sort") }, null),
+                new NpcDialogueChoice("accepter-craie", "Accepter la Craie créatrice", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.enfant.craie") }, null)
+            });
+
+        var graph = new NpcDialogueGraph("npc.enfant.dialogue", "1.0", "rencontre",
+            new Dictionary<string, NpcDialogueNode> { ["rencontre"] = rencontre, ["jeu"] = jeu, ["don"] = don });
+
+        var offerings = new[]
+        {
+            new NpcOffering("offer.enfant.sort", NpcOfferingKind.Skill, "canon.skill.construction-perpetuelle", 1, true,
+                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) }),
+            new NpcOffering("offer.enfant.craie", NpcOfferingKind.Item, "canon.item.craie-creatrice", 1, true,
+                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 250) })
+        };
+
+        // room.cellule ("Le chateau - La cellule") porte déjà la lore exacte : "le souvenir d'un
+        // petit être qui créa la première version du Palais, bien avant que l'Architecte ne
+        // vienne imposer ses plans." — c'est sa cellule.
+        var n = await UpsertNpcAsync("npc.enfant", "L'Enfant",
+            "Le créateur originel du premier Palais — pièces, couloirs, mythes, légendes, tout est né de lui, avant l'Architecte. Enfermé pour le protéger de l'Homoncule, qui voulait le dévorer pour redevenir l'être ultime.", "1.0",
+            EmotionalRegister.Memoire, true, persona, wounds, graph, ct,
+            boundRoomKeys: new[] { "room.cellule" },
             offerings: offerings);
         return n;
     }
@@ -1072,6 +1147,12 @@ public sealed class CatalogSeedRunner
         await UpsertItemAsync("canon.item.ecaille-himlit", "Écaille d'Him'Lit",
             "Une écaille arrachée au maître des lieux. Elle pèse plus lourd qu'elle ne devrait.",
             "Material", "Trophy", "Epic", "Permanent", false, 0, cancellationToken);
+
+        await UpsertItemAsync("canon.item.craie-creatrice", "Craie créatrice",
+            "Un bâton de craie qui n'en finit pas de s'user. Ce qu'elle dessine résiste, un peu, à l'oubli.",
+            "Equipment", "Accessory", "Rare", "Permanent", false, 0, cancellationToken,
+            equipmentEffects: new[] { new ItemEquipmentEffect(
+                ItemEquipmentEffectKind.DamageReductionByType, Amount: 15, AffinityRegister: EmotionalRegister.Memoire) });
     }
 
     private async Task UpsertItemAsync(
