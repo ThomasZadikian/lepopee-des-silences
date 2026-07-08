@@ -43,6 +43,7 @@ public sealed class CatalogSeedRunner
         await SeedOwenAsync(cancellationToken);
         await SeedHomonculeAsync(cancellationToken);
         await SeedEnfantAsync(cancellationToken);
+        await SeedHimLitAsync(cancellationToken);
         await SeedCanonEnemiesAsync(cancellationToken);
         await SeedCanonSkillsAsync(cancellationToken);
         await SeedCanonItemsAsync(cancellationToken);
@@ -619,6 +620,93 @@ public sealed class CatalogSeedRunner
             boundRoomKeys: new[] { "room.cellule" },
             offerings: offerings);
         return n;
+    }
+
+    // Him'Lit — le Seigneur du Palais, boss récurrent (RoomType.Final, tous les
+    // BossInterval=10 étages, cf. canon.enemy.himlit). Pas de réputation, pas
+    // d'offering : sa fiche ne porte que Persona + Blessure + un graphe de
+    // dialogue dont l'entrée est recalculée à chaque rencontre par
+    // HimLitDialogueAttitudeResolver (game-engine), selon le nombre de fois où
+    // on l'a rencontré et l'état de la dernière room Markov traversée avant lui
+    // (sa propre room est toujours Neutral par construction).
+    private async Task<int> SeedHimLitAsync(CancellationToken ct)
+    {
+        var persona = new NpcPersona(
+            "Le Seigneur du Palais — arrogant, cynique, d'une élégance froide ; jamais chaleureux, toujours distant",
+            EmotionalRegister.Silence,
+            new[] { "l'obéissance", "le silence qu'on lui doit", "que rien ne lui échappe" },
+            new[] { "une révérence", "le silence", "une dernière prière" });
+
+        var wounds = new[]
+        {
+            new NpcWound("w-controle-himlit", EmotionalRegister.Silence, NpcWoundReversibility.Irreversible, 0, 0,
+                Array.Empty<NpcTransgression>(),
+                "Il a déjà tout perdu une fois, par la faute de l'Architecte. Il ne laissera plus jamais cela se reproduire.")
+        };
+
+        var p1Calme = new NpcDialogueNode("rencontre-p1-calme", "Him'Lit",
+            new[]
+            {
+                "Tiens. Une neuvième chambre, et vous tenez encore debout.",
+                "On m'annonce toujours les nouveaux venus avant qu'ils n'arrivent. Vous, on ne m'a rien dit.",
+                "Amusant."
+            },
+            Array.Empty<NpcDialogueChoice>());
+
+        var p1Fracture = new NpcDialogueNode("rencontre-p1-fracture", "Him'Lit",
+            new[]
+            {
+                "La Lune est mauvaise, ce soir. Tant pis pour vous — vous arrivez au mauvais moment.",
+                "Ne confondez pas mon silence avec de la patience."
+            },
+            Array.Empty<NpcDialogueChoice>());
+
+        var p2Calme = new NpcDialogueNode("rencontre-p2-calme", "Him'Lit",
+            new[]
+            {
+                "Encore vous. On dirait que le Palais a une mémoire plus courte que la mienne.",
+                "Je commence à retenir votre visage. C'est mauvais signe — pour vous, s'entend."
+            },
+            Array.Empty<NpcDialogueChoice>());
+
+        var p2Fracture = new NpcDialogueNode("rencontre-p2-fracture", "Him'Lit",
+            new[]
+            {
+                "Vous revenez. Vous revenez toujours. Il y a quelque chose d'obscène dans votre insistance.",
+                "Taisez-vous. Le Palais parle assez fort sans vous."
+            },
+            Array.Empty<NpcDialogueChoice>());
+
+        var p3Calme = new NpcDialogueNode("rencontre-p3-calme", "Him'Lit",
+            new[]
+            {
+                "Vous êtes devenu une habitude. Je n'aime pas les habitudes que je n'ai pas choisies.",
+                "Chaque étage que vous forcez m'appartient un peu moins. Je vais corriger cela."
+            },
+            Array.Empty<NpcDialogueChoice>());
+
+        var p3Fracture = new NpcDialogueNode("rencontre-p3-fracture", "Him'Lit",
+            new[]
+            {
+                "Assez. Vous n'êtes rien — une fuite dans les fondations, et je répare les fuites.",
+                "Vous croyez me connaître ? Personne ne me connaît. Pas même l'Architecte, et regardez ce qu'il m'a coûté."
+            },
+            Array.Empty<NpcDialogueChoice>());
+
+        var graph = new NpcDialogueGraph("npc.himlit.dialogue", "1.0", "rencontre-p1-calme",
+            new Dictionary<string, NpcDialogueNode>
+            {
+                ["rencontre-p1-calme"] = p1Calme,
+                ["rencontre-p1-fracture"] = p1Fracture,
+                ["rencontre-p2-calme"] = p2Calme,
+                ["rencontre-p2-fracture"] = p2Fracture,
+                ["rencontre-p3-calme"] = p3Calme,
+                ["rencontre-p3-fracture"] = p3Fracture
+            });
+
+        return await UpsertNpcAsync("npc.himlit", "Him'Lit",
+            "Le Seigneur du Palais. Il ne dirige que le Palais, mais d'une main de fer — arrogant, cynique, d'une élégance distante. Sa blessure : le contrôle absolu, depuis la trahison de l'Architecte.",
+            "1.0", EmotionalRegister.Silence, true, persona, wounds, graph, ct);
     }
 
     // ──────────────────────────────────────────────────────────────────────────
@@ -1933,8 +2021,11 @@ public sealed class CatalogSeedRunner
             new[] { "Antechamber", "Fear" }, "75", 4, 200, 24, 12, 12, 11,
             new[] { "canon.skill.brume", "canon.skill.flamme-froide", "skill.basic.strike" }, cancellationToken);
 
+        // "Final" uniquement : Him'Lit est exclusivement le boss de la room qui recurre
+        // tous les BossInterval (10) étages (cf. MarkovRoomTypeResolver) — il n'apparaît
+        // pas comme rencontre normale dans les rooms Rupture/Forêt.
         await UpsertBossAsync("canon.enemy.himlit", "canon.boss.himlit", "Him'Lit", "Le maître des lieux, souverain du Palais",
-            new[] { "Rupture", "Forest" }, "100", 5, 280, 32, 16, 16, 13,
+            new[] { "Final" }, "100", 5, 280, 32, 16, 16, 13,
             new[] { "canon.skill.brume", "canon.skill.priere-aspiration", "canon.skill.flamme-seraphine", "canon.skill.flamme-froide", "skill.basic.strike" }, cancellationToken);
     }
 

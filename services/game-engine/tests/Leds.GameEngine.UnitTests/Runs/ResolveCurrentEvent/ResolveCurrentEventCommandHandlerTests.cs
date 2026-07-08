@@ -380,6 +380,101 @@ public sealed class ResolveCurrentEventCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_ShouldIncludeHimLitNarrativeFragments_ForFinalBossEvent()
+    {
+        var run = TestGameEngineFactory.CreateRun(NodeEventType.FinalBoss);
+        var selectedNode = run.CurrentRoom.AvailableNodes.First();
+        run.ChooseNode(selectedNode.Id);
+
+        var repository = new Mock<IRunRepository>();
+        repository
+            .Setup(repo => repo.GetByIdAsync(run.Id, CancellationToken.None))
+            .ReturnsAsync(run);
+
+        var dispatcher = CreateDispatcherMock(NodeEventResolutionKind.FinalBossEncounterStarted);
+
+        var himlitNpc = new CatalogNpcDefinition(
+            Key: "npc.himlit",
+            DisplayName: "Him'Lit",
+            Description: "Le Seigneur du Palais.",
+            Tags: [],
+            CompatibleRoomTypes: [],
+            CompatiblePalaceRoomStates: [],
+            CompatibleRoomClimates: [],
+            DialogueGraph: new CatalogNpcDialogueGraph(
+                "npc.himlit.dialogue", "1.0", "rencontre-p1-calme",
+                new Dictionary<string, CatalogNpcDialogueNode>
+                {
+                    ["rencontre-p1-calme"] = new CatalogNpcDialogueNode(
+                        "rencontre-p1-calme", "Him'Lit",
+                        ["Tiens. Une neuvième chambre, et vous tenez encore debout."],
+                        [])
+                }));
+
+        var catalogGateway = new Mock<ICatalogContentGateway>();
+        catalogGateway
+            .Setup(g => g.ListNpcDefinitionsAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[] { himlitNpc });
+
+        var draftGenerator = new Mock<ICombatEncounterDraftGenerator>();
+        var expectedDraft = new CombatEncounterDraft(
+            run.Id.Value, run.CurrentRoom.Id.Value, selectedNode.Id.Value,
+            "Threshold", 0, selectedNode.RiskLevel, "FinalBoss",
+            new[] { new CombatEncounterDraftEnemy(
+                "canon.enemy.himlit", "Him'Lit", "", "Boss",
+                1, 1, 2, new[] { "boss" }, new[] { "skill.basic.strike" }, Skills: []) },
+            new[] { new CombatEncounterDraftAlly("player.self", "Le Joueur", "Protagonist", new[] { "player" }) });
+
+        draftGenerator
+            .Setup(g => g.GenerateAsync(It.IsAny<CombatEncounterDraftContext>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedDraft);
+
+        var runtimeFactoryMock = new Mock<ICombatFactory>();
+        runtimeFactoryMock
+            .Setup(f => f.CreateFromDraft(
+                It.IsAny<CombatId>(),
+                It.IsAny<CombatEncounterDraft>(),
+                It.IsAny<PlayerRuntimeState?>(),
+                It.IsAny<IReadOnlyCollection<RunModifier>?>(),
+                It.IsAny<int>(),
+                It.IsAny<int>(),
+                It.IsAny<int>(),
+                It.IsAny<PalaceRoomState>(),
+                It.IsAny<int>()))
+            .Returns((CombatId combatId, CombatEncounterDraft draft, PlayerRuntimeState? playerState,
+                IReadOnlyCollection<RunModifier>? runModifiers, int attackPower, int defense, int speed,
+                PalaceRoomState palaceRoomState, int focus) =>
+                new CombatFactory().CreateFromDraft(
+                    combatId, draft, playerState, runModifiers, attackPower, defense, speed, palaceRoomState, focus));
+
+        var handler = new ResolveCurrentEventCommandHandler(
+            repository.Object,
+            dispatcher.Object,
+            CreateContentResolverMock().Object,
+            catalogGateway.Object,
+            CreateCombatFactoryMock().Object,
+            draftGenerator.Object,
+            runtimeFactoryMock.Object,
+            new Mock<IRewardOfferRepository>().Object,
+            new RewardOfferFactory(new Mock<Leds.GameEngine.Application.Combats.ICombatRiskProfileResolver>().Object, Mock.Of<ICatalogContentGateway>(), new EnemyLootRewardBuilder(Mock.Of<ICatalogContentGateway>())),
+            Mock.Of<IEnemyCombatTurnResolver>(),
+            Mock.Of<ICombatResolutionService>(),
+            Mock.Of<IAtbCombatPreparer>(),
+            Mock.Of<IClock>());
+
+        var response = await handler.Handle(
+            new ResolveCurrentEventCommand(run.Id.Value),
+            CancellationToken.None);
+
+        response.EncounterDraft.Should().NotBeNull();
+        response.EncounterDraft!.EncounterType.Should().Be("FinalBoss");
+        response.Combat.Should().NotBeNull();
+        response.Outcome.NarrativeFragments.Should().Contain(f =>
+            f.Speaker == "Him'Lit"
+            && f.Text == "Tiens. Une neuvième chambre, et vous tenez encore debout.");
+    }
+
+    [Fact]
     public async Task Handle_ShouldIncludePersistedCombat_ForCombatEvent()
     {
         var run = TestGameEngineFactory.CreateRun(NodeEventType.Combat);

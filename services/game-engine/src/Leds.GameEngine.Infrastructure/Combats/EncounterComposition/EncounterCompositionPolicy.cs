@@ -51,7 +51,7 @@ public sealed class EncounterCompositionPolicy : IEncounterCompositionPolicy
             throw new DomainException($"Invalid risk level: {context.RiskLevel}. Risk level must be between 1 and 5.");
         }
 
-        var knownTypes = new[] { "Combat", "Elite", "Rare", "RoomBoss" };
+        var knownTypes = new[] { "Combat", "Elite", "Rare", "RoomBoss", "FinalBoss" };
         if (!knownTypes.Contains(context.EncounterType, StringComparer.OrdinalIgnoreCase))
         {
             throw new DomainException($"Unknown encounter type: {context.EncounterType}.");
@@ -71,6 +71,7 @@ public sealed class EncounterCompositionPolicy : IEncounterCompositionPolicy
             "Elite" => SelectEliteEnemies(eligible, budget),
             "Rare" => SelectRareEnemies(eligible, budget),
             "RoomBoss" => SelectRoomBossEnemies(eligible),
+            "FinalBoss" => SelectRoomBossEnemies(eligible),
             _ => SelectCombatEnemies(eligible, budget, context),
         };
 

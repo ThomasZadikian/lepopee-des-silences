@@ -345,6 +345,17 @@ public sealed class EncounterCompositionPolicyTests
         result.EnemyCount.Should().Be(1);
     }
 
+    [Fact]
+    public void Compose_ShouldSelectOneEnemy_ForFinalBoss()
+    {
+        var context = CreateContext(riskLevel: 5, encounterType: "FinalBoss", enemies: [HighDifficultyEnemy]);
+
+        var result = Policy.Compose(context);
+
+        result.EnemyCount.Should().Be(1);
+        result.SelectedEnemies.Should().Contain(e => e.Key == HighDifficultyEnemy.Key);
+    }
+
     // --- Archetypes ---
 
     [Fact]

@@ -12,6 +12,7 @@ using Leds.GameEngine.Application.Events.Contracts;
 using Leds.GameEngine.Application.Events.Dtos;
 using Leds.GameEngine.Application.Events.Ports;
 using Leds.GameEngine.Application.Events.ResolveNodeEvent;
+using Leds.GameEngine.Application.Events.Resolvers;
 using Leds.GameEngine.Application.Rewards.Ports;
 using Leds.GameEngine.Application.Runs.Dtos;
 using Leds.GameEngine.Domain.Combats;
@@ -113,7 +114,8 @@ public sealed class ResolveCurrentEventCommandHandler
         var isCombat = resolutionResult.ResolutionKind is NodeEventResolutionKind.CombatStarted
             or NodeEventResolutionKind.EliteEncounterStarted
             or NodeEventResolutionKind.RoomBossEncounterStarted
-            or NodeEventResolutionKind.RareCombatStarted;
+            or NodeEventResolutionKind.RareCombatStarted
+            or NodeEventResolutionKind.FinalBossEncounterStarted;
 
         CombatEncounterDraftDto? encounterDraftDto = null;
         CombatRuntimeDto? combatRuntimeDto = null;
@@ -123,19 +125,45 @@ public sealed class ResolveCurrentEventCommandHandler
 
         if (isCombat)
         {
-            resolvedContent = await ResolveEventContentAsync(run, room, selectedNode, cancellationToken);
+            var isFinalBoss = resolutionResult.ResolutionKind == NodeEventResolutionKind.FinalBossEncounterStarted;
 
-            // Combat/Elite/RoomBoss/RareCombat content carries a legacy EnemyTemplateKey that
-            // used to seed a throwaway single-enemy CombatInstance just to mint a CombatId —
-            // the real encounter (enemies, stats, skills) always comes from the draft generated
-            // below via ListCompatibleEnemyDefinitionsAsync, so that legacy catalog round-trip
-            // was pure overhead (and broke entirely once the legacy EnemyTemplate content
-            // stopped being seeded). Mint the id directly instead.
-            if (resolvedContent is not (ResolvedCombatEventContent or ResolvedEliteEventContent
-                or ResolvedRoomBossEventContent or ResolvedRareCombatEventContent))
+            if (!isFinalBoss)
             {
-                throw new DomainException(
-                    "Expected combat, elite, room boss, or rare combat event content but got a different type.");
+                resolvedContent = await ResolveEventContentAsync(run, room, selectedNode, cancellationToken);
+
+                // Combat/Elite/RoomBoss/RareCombat content carries a legacy EnemyTemplateKey that
+                // used to seed a throwaway single-enemy CombatInstance just to mint a CombatId —
+                // the real encounter (enemies, stats, skills) always comes from the draft generated
+                // below via ListCompatibleEnemyDefinitionsAsync, so that legacy catalog round-trip
+                // was pure overhead (and broke entirely once the legacy EnemyTemplate content
+                // stopped being seeded). Mint the id directly instead.
+                if (resolvedContent is not (ResolvedCombatEventContent or ResolvedEliteEventContent
+                    or ResolvedRoomBossEventContent or ResolvedRareCombatEventContent))
+                {
+                    throw new DomainException(
+                        "Expected combat, elite, room boss, or rare combat event content but got a different type.");
+                }
+            }
+            else
+            {
+                // NodeEventType.FinalBoss is intentionally excluded from the standard content
+                // pipeline (its content is authored directly by FinalBossNodeEventResolver, not
+                // reward-profile-driven like the other combat tiers). Him'Lit speaks here: his
+                // attitude depends on how many times he's already been met and on the state of
+                // the room preceding his (his own room is always Neutral by construction).
+                var himlitRelationship = run.BeginOrResumeNpcEncounter("npc.himlit");
+                var himlitFragments = await BuildHimLitTauntFragmentsAsync(
+                    himlitRelationship, run, room, cancellationToken);
+
+                if (himlitFragments.Count > 0)
+                {
+                    resolutionResult = resolutionResult with
+                    {
+                        NarrativeFragments = resolutionResult.NarrativeFragments
+                            .Concat(himlitFragments)
+                            .ToArray()
+                    };
+                }
             }
 
             var combatId = CombatId.New();
@@ -265,6 +293,32 @@ public sealed class ResolveCurrentEventCommandHandler
         return npc is null ? null : Leds.GameEngine.Application.Events.NpcDialogueViewFactory.Build(npc, relationship);
     }
 
+    private async Task<IReadOnlyCollection<NarrativeFragmentDto>> BuildHimLitTauntFragmentsAsync(
+        Leds.GameEngine.Domain.Npcs.NpcRelationship relationship,
+        Run run,
+        Room room,
+        CancellationToken cancellationToken)
+    {
+        var npcs = await _catalogContentGateway.ListNpcDefinitionsAsync(cancellationToken);
+        var npc = npcs.FirstOrDefault(n => string.Equals(n.Key, "npc.himlit", StringComparison.OrdinalIgnoreCase));
+
+        if (npc?.DialogueGraph is null)
+        {
+            return Array.Empty<NarrativeFragmentDto>();
+        }
+
+        var precedingRoomState = run.Rooms
+            .Where(r => r.Depth == room.Depth - 1)
+            .Select(r => r.PalaceState)
+            .FirstOrDefault();
+
+        var nodeKey = HimLitDialogueAttitudeResolver.ResolveNodeKey(relationship.TimesMet, precedingRoomState);
+
+        return !npc.DialogueGraph.Nodes.TryGetValue(nodeKey, out var node)
+            ? Array.Empty<NarrativeFragmentDto>()
+            : node.Lines.Select(line => new NarrativeFragmentDto(node.Speaker, line)).ToArray();
+    }
+
     private async Task<CombatEncounterDraft> GenerateEncounterDraft(
         Run run,
         Room room,
@@ -278,6 +332,7 @@ public sealed class ResolveCurrentEventCommandHandler
             NodeEventResolutionKind.EliteEncounterStarted => "Elite",
             NodeEventResolutionKind.RoomBossEncounterStarted => "RoomBoss",
             NodeEventResolutionKind.RareCombatStarted => "Rare",
+            NodeEventResolutionKind.FinalBossEncounterStarted => "FinalBoss",
             _ => "Combat"
         };
 
@@ -288,6 +343,7 @@ public sealed class ResolveCurrentEventCommandHandler
             "Elite" => 1,
             "Rare" => 1,
             "RoomBoss" => 1,
+            "FinalBoss" => 1,
             _ => catalogRiskLevel >= 3 ? 2 : 1
         };
 
