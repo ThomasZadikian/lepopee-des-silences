@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Leds.GameEngine.Application.Combats.Effects;
 using Leds.GameEngine.Domain.Combats;
+using Leds.GameEngine.Domain.Combats.Typing;
 using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rooms;
@@ -197,6 +198,22 @@ public sealed class CombatSkillEffectResolverTests
         _resolver.Resolve(combat, ally, skill, [ally]);
 
         ally.ThreatValue.Should().BeGreaterThan(0);
+    }
+
+    [Fact]
+    public void Resolve_ShouldReduceDamage_WhenTargetHasEquipmentDrivenTypedReduction()
+    {
+        var (combat, ally, enemy) = CreateCombat();
+        ally.ApplyTypedDamageReductions(new Dictionary<EmotionalType, int> { [EmotionalType.Memoire] = 15 });
+        var skill = CombatantSkill.Create(
+            "skill.enemy.memoire-strike", "Frappe mémorielle", "Damage", "SingleAlly", "Damage",
+            manaCost: 0, chargeCost: 0, basePower: 20, tags: new[] { "emotype:memoire" });
+
+        _resolver.Resolve(combat, enemy, skill, [ally]);
+
+        // Neutral type match for player.self (no weak/resist to Mémoire) => 20 raw,
+        // then -15% equipment reduction => 17 (rounded).
+        ally.CurrentVitality.Should().Be(83);
     }
 
     private static (Combat Combat, Combatant Ally, Combatant Enemy) CreateCombat()

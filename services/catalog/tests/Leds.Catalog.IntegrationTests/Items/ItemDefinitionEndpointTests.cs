@@ -75,6 +75,22 @@ public sealed class ItemDefinitionEndpointTests
         payload.Definition.ContainerCapacity.Should().BeNull();
     }
 
+    [Fact]
+    public async Task GetItemDefinitionByKey_ShouldExposeDamageReductionEquipmentEffect_ForCraieCreatrice()
+    {
+        // canon.item.craie-creatrice is seeded with a DamageReductionByType equipment effect.
+        var response = await _client.GetAsync("/api/v2/catalog/item-definitions/canon.item.craie-creatrice");
+        var body = await response.Content.ReadAsStringAsync();
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK, because: body);
+
+        var payload = await response.Content.ReadFromJsonAsync<GetItemDefinitionByKeyResponse>();
+
+        payload.Should().NotBeNull();
+        payload!.Definition.Should().NotBeNull();
+        payload.Definition!.EquipmentEffects.Should().ContainSingle();
+    }
+
     private sealed record GetItemDefinitionByKeyResponse(ItemDefinitionResponseDto? Definition);
 
     private sealed record ItemDefinitionResponseDto(

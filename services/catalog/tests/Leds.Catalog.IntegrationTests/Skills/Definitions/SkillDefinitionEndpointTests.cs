@@ -75,6 +75,29 @@ public sealed class SkillDefinitionEndpointTests
     }
 
     [Fact]
+    public async Task GetSkillDefinitionByKey_ShouldExposeMultipleSimultaneousEffects_ForConstructionPerpetuelle()
+    {
+        var response = await _client.GetAsync(
+            "/api/v2/catalog/skill-definitions/canon.skill.construction-perpetuelle");
+
+        var body = await response.Content.ReadAsStringAsync();
+
+        response.StatusCode.Should().Be(
+            HttpStatusCode.OK, because: body);
+
+        var payload = await response.Content
+            .ReadFromJsonAsync<GetSkillDefinitionResponse>();
+
+        payload.Should().NotBeNull();
+        payload!.Definition.Should().NotBeNull();
+        payload.Definition!.Effects.Should().HaveCount(2);
+        payload.Definition.Effects.Should().Contain(e =>
+            e.Kind == "HealOverTime" && e.MagnitudeIsPercentOfMax);
+        payload.Definition.Effects.Should().Contain(e =>
+            e.Kind == "GuardOverTime" && !e.MagnitudeIsPercentOfMax);
+    }
+
+    [Fact]
     public async Task GetSkillDefinitionByKey_ShouldReturn404_WhenUnknown()
     {
         var response = await _client.GetAsync(

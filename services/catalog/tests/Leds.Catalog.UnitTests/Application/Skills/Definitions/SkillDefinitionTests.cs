@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Leds.Catalog.Domain.CatalogContent;
 using Leds.Catalog.Domain.Errors;
+using Leds.Catalog.Domain.Skills;
 using Leds.Catalog.Domain.Skills.Definitions;
 
 namespace Leds.Catalog.UnitTests.Application.Skills.Definitions;
@@ -120,6 +121,33 @@ public sealed class SkillDefinitionTests
         act.Should()
             .Throw<DomainException>()
             .WithMessage("Skill definition base power cannot be negative.");
+    }
+
+    [Fact]
+    public void Create_ShouldDefaultToEmptyEffects_WhenNoneProvided()
+    {
+        var def = SkillDefinition.Create(
+            "skill.test", "Name", "Desc", "1.0.0", "Damage", "SingleEnemy", "Damage", 5, 0, 10);
+
+        def.Effects.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Create_ShouldCarryMultipleSimultaneousEffects()
+    {
+        var effects = new[]
+        {
+            new SkillEffectSpec("HealOverTime", null, 10, 5000, TickInterval: 1000, MagnitudeIsPercentOfMax: true),
+            new SkillEffectSpec("GuardOverTime", null, 8, 5000, TickInterval: 1000)
+        };
+
+        var def = SkillDefinition.Create(
+            "skill.construction-perpetuelle", "Construction perpétuelle", "Desc", "1.0.0",
+            "Buff", "Self", "Buff", 14, 0, 0, effects: effects);
+
+        def.Effects.Should().HaveCount(2);
+        def.Effects.Should().Contain(e => e.Kind == "HealOverTime" && e.MagnitudeIsPercentOfMax);
+        def.Effects.Should().Contain(e => e.Kind == "GuardOverTime" && !e.MagnitudeIsPercentOfMax);
     }
 
     [Fact]

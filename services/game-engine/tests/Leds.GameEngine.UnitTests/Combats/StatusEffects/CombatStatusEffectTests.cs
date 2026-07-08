@@ -222,6 +222,59 @@ public sealed class CombatStatusEffectTests
     }
 
     [Fact]
+    public void IsPeriodic_ShouldBeTrue_ForGuardOverTime()
+    {
+        var effect = CombatStatusEffect.Create(
+            "guard-regen", "Garde continue", StatusEffectKind.GuardOverTime,
+            currentTick: 0, durationTicks: 6000,
+            magnitude: 8, tickInterval: 1400);
+
+        effect.IsPeriodic.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ConsumeDueTicks_ShouldReturnTotalMagnitude_ForGuardOverTime()
+    {
+        var effect = CombatStatusEffect.Create(
+            "guard-regen", "Garde continue", StatusEffectKind.GuardOverTime,
+            currentTick: 0, durationTicks: 6000,
+            magnitude: 8, tickInterval: 1400);
+
+        var result = effect.ConsumeDueTicks(4200);
+
+        result.Should().Be(24);
+    }
+
+    [Fact]
+    public void ConsumeDueTicks_ShouldComputePercentOfMaxVitality_WhenMagnitudeIsPercentOfMax()
+    {
+        var effect = CombatStatusEffect.Create(
+            "construction-perpetuelle", "Construction perpétuelle", StatusEffectKind.HealOverTime,
+            currentTick: 0, durationTicks: 3000,
+            magnitude: 10, tickInterval: 1400,
+            isMagnitudePercentOfMax: true);
+
+        // One tick due (at 1400), 10% of 200 max vitality = 20.
+        var result = effect.ConsumeDueTicks(1400, maxVitalityForPercent: 200);
+
+        result.Should().Be(20);
+    }
+
+    [Fact]
+    public void ConsumeDueTicks_ShouldUseFlatMagnitude_WhenNotPercentOfMax()
+    {
+        var effect = CombatStatusEffect.Create(
+            "regen", "Régénération", StatusEffectKind.HealOverTime,
+            currentTick: 0, durationTicks: 3000,
+            magnitude: 10, tickInterval: 1400);
+
+        // maxVitalityForPercent is ignored when the flag isn't set.
+        var result = effect.ConsumeDueTicks(1400, maxVitalityForPercent: 200);
+
+        result.Should().Be(10);
+    }
+
+    [Fact]
     public void Create_StatModifier_ShouldNotBePeriodic()
     {
         var effect = CombatStatusEffect.Create(
