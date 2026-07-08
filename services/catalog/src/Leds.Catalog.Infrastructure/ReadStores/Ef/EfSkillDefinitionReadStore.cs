@@ -1,6 +1,8 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Leds.Catalog.Application.Skills.Definitions.Ports;
 using Leds.Catalog.Domain.CatalogContent;
+using Leds.Catalog.Domain.Skills;
 using Leds.Catalog.Domain.Skills.Definitions;
 using Leds.Catalog.Infrastructure.Persistence;
 using Leds.Catalog.Infrastructure.Persistence.Entities;
@@ -52,14 +54,21 @@ public sealed class EfSkillDefinitionReadStore : ISkillDefinitionReadStore
         return entities.Select(MapToDomain).ToArray();
     }
 
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        Converters = { new JsonStringEnumConverter() }
+    };
+
     private static ISkillDefinition MapToDomain(SkillDefinitionEntity entity)
     {
+        var effects = JsonSerializer.Deserialize<List<SkillEffectSpec>>(
+            entity.EffectsJson ?? "[]", JsonOptions) ?? [];
+
         return SkillDefinition.Create(
             entity.Key, entity.Name, entity.Description, entity.Version,
             entity.SkillType, entity.TargetingType, entity.EffectType,
             entity.ManaCost, entity.ChargeCost, entity.BasePower,
             Enum.Parse<CatalogContentStatus>(entity.Status),
-            entity.EffectKind, entity.EffectStatusKey, entity.EffectMagnitude,
-            entity.EffectDurationTicks, entity.EffectTickInterval, entity.EffectStat);
+            effects);
     }
 }

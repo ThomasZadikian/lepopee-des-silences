@@ -38,12 +38,7 @@ public sealed class SkillDefinitionEntityConfiguration : IEntityTypeConfiguratio
         builder.Property(e => e.EffectSetId).HasColumnName("effect_set_id");
         builder.Property(e => e.BaseWeight).HasColumnName("base_weight").HasDefaultValue(1);
         builder.Property(e => e.SelectionGroup).HasColumnName("selection_group").HasMaxLength(64);
-        builder.Property(e => e.EffectKind).HasColumnName("effect_kind").HasMaxLength(32);
-        builder.Property(e => e.EffectStatusKey).HasColumnName("effect_status_key").HasMaxLength(64);
-        builder.Property(e => e.EffectMagnitude).HasColumnName("effect_magnitude").HasDefaultValue(0);
-        builder.Property(e => e.EffectDurationTicks).HasColumnName("effect_duration_ticks").HasDefaultValue(0);
-        builder.Property(e => e.EffectTickInterval).HasColumnName("effect_tick_interval").HasDefaultValue(0);
-        builder.Property(e => e.EffectStat).HasColumnName("effect_stat").HasMaxLength(32);
+        builder.Property(e => e.EffectsJson).HasColumnName("effects_json").HasColumnType("jsonb");
         builder.Property(e => e.CreatedAtUtc).HasColumnName("created_at_utc");
         builder.Property(e => e.UpdatedAtUtc).HasColumnName("updated_at_utc");
 

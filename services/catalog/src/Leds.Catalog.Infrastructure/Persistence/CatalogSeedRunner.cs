@@ -4,6 +4,7 @@ using Leds.Catalog.Domain.Items;
 using Leds.Catalog.Domain.Npcs;
 using Leds.Catalog.Domain.RewardCursePools;
 using Leds.Catalog.Domain.Rewards.Loot;
+using Leds.Catalog.Domain.Skills;
 using Leds.Catalog.Infrastructure.Persistence.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -878,26 +879,17 @@ public sealed class CatalogSeedRunner
         await UpsertSkillAsync("canon.skill.priere-aspiration", "Prière",
             "Une prière lituique aspire la conscience. Elle restaure — mais nourrit ce qui rôde, et gonfle l'Égo.",
             "Drain", "SingleEnemy", "Debuff", mana: 4, power: 12, cancellationToken,
-            effectKind: "StatModifier",
-            effectStat: "Defense",
-            effectMagnitude: -4,
-            effectDurationTicks: 3);
+            effects: new[] { new SkillEffectSpec("StatModifier", null, -4, 3, Stat: "Defense") });
 
         await UpsertSkillAsync("canon.skill.transmutation", "Transmutation",
             "Plomb, or, mercure, soufre, sel. L'art alchimique réordonne la matière de l'instant.",
             "Buff", "Self", "Buff", mana: 6, power: 0, cancellationToken,
-            effectKind: "StatModifier",
-            effectStat: "AttackPower",
-            effectMagnitude: 4,
-            effectDurationTicks: 3);
+            effects: new[] { new SkillEffectSpec("StatModifier", null, 4, 3, Stat: "AttackPower") });
 
         await UpsertSkillAsync("canon.skill.brume", "Brume",
             "Le brouillard non-naturel se lève. Portée et précision s'effondrent — pour tous.",
             "Debuff", "AllEnemies", "Debuff", mana: 7, power: 0, cancellationToken,
-            effectKind: "StatModifier",
-            effectStat: "Focus",
-            effectMagnitude: -4,
-            effectDurationTicks: 3);
+            effects: new[] { new SkillEffectSpec("StatModifier", null, -4, 3, Stat: "Focus") });
 
         await UpsertSkillAsync("canon.skill.flamme-seraphine", "Flamme Séraphine",
             "Le feu, le vrai. La seule terreur de l'Homoncule. Pure, dévorante, sans gel.",
@@ -906,20 +898,34 @@ public sealed class CatalogSeedRunner
         await UpsertSkillAsync("canon.skill.se-taire", "Se taire",
             "Ne rien dire. Ne pas prier. L'acte de silence. Inutile contre la chair — dévastateur contre ce qui se nourrit de la voix.",
             "Silence", "Self", "Status", mana: 0, power: 0, cancellationToken,
-            effectKind: "Silence",
-            effectDurationTicks: 3);
+            effects: new[] { new SkillEffectSpec("Silence", null, 0, 3) });
+
+        // "Construction perpétuelle" (L'enfant, sort légendaire) : soin de 10% des PV max
+        // et +8 de garde, tous deux répétés sur 5 tours. Le tick (2500) suit la même
+        // convention que les autres effets périodiques canon (poison/regen) ; 5 tours =
+        // 5 déclenchements, soit une durée de 5 * tickInterval.
+        const int construcionPerpetuelleTickInterval = 2500;
+        await UpsertSkillAsync("canon.skill.construction-perpetuelle", "Construction perpétuelle",
+            "Ce que l'enfant a bâti continue de se construire, tour après tour, tant qu'on le laisse faire.",
+            "Buff", "Self", "Buff", mana: 14, power: 0, cancellationToken,
+            effects: new[]
+            {
+                new SkillEffectSpec("HealOverTime", null, 10, construcionPerpetuelleTickInterval * 5,
+                    TickInterval: construcionPerpetuelleTickInterval, MagnitudeIsPercentOfMax: true),
+                new SkillEffectSpec("GuardOverTime", null, 8, construcionPerpetuelleTickInterval * 5,
+                    TickInterval: construcionPerpetuelleTickInterval)
+            });
     }
 
     private async Task UpsertSkillAsync(
     string key, string name, string description,
     string skillType, string targeting, string effectType,
     int mana, int power, CancellationToken cancellationToken,
-    string? effectKind = null, string? effectStatusKey = null,
-    int effectMagnitude = 0, int effectDurationTicks = 0,
-    int effectTickInterval = 0, string? effectStat = null)
+    IReadOnlyList<SkillEffectSpec>? effects = null)
     {
         const string version = "canon-1.0.0";
         var now = DateTime.UtcNow;
+        var effectsJson = JsonSerializer.Serialize(effects ?? [], J);
         var existing = await _ctx.SkillDefinitions.FirstOrDefaultAsync(s => s.Key == key, cancellationToken);
         if (existing is null)
         {
@@ -945,12 +951,7 @@ public sealed class CatalogSeedRunner
                 Accuracy = 100,
                 ActionCost = 10,
                 BaseWeight = 1,
-                EffectKind = effectKind,
-                EffectStatusKey = effectStatusKey,
-                EffectMagnitude = effectMagnitude,
-                EffectDurationTicks = effectDurationTicks,
-                EffectTickInterval = effectTickInterval,
-                EffectStat = effectStat,
+                EffectsJson = effectsJson,
                 CreatedAtUtc = now,
                 UpdatedAtUtc = now
             });
@@ -962,12 +963,7 @@ public sealed class CatalogSeedRunner
         existing.SkillType = skillType; existing.TargetingType = targeting; existing.TargetingMode = targeting;
         existing.EffectType = effectType; existing.CostType = mana > 0 ? "Mana" : "None";
         existing.ManaCost = mana; existing.BasePower = power; existing.Power = power;
-        existing.EffectKind = effectKind;
-        existing.EffectStatusKey = effectStatusKey;
-        existing.EffectMagnitude = effectMagnitude;
-        existing.EffectDurationTicks = effectDurationTicks;
-        existing.EffectTickInterval = effectTickInterval;
-        existing.EffectStat = effectStat;
+        existing.EffectsJson = effectsJson;
         existing.UpdatedAtUtc = now;
     }
 

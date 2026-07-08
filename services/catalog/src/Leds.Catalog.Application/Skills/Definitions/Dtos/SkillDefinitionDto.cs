@@ -1,3 +1,4 @@
+using Leds.Catalog.Domain.Skills;
 using Leds.Catalog.Domain.Skills.Definitions;
 
 namespace Leds.Catalog.Application.Skills.Definitions.Dtos;
@@ -6,11 +7,24 @@ public sealed record SkillDefinitionDto(
     Guid Id, string Key, string Name, string Description, string Version, string Status,
     string SkillType, string TargetingType, string EffectType,
     int ManaCost, int ChargeCost, int BasePower,
-    string? EffectKind, string? EffectStatusKey,
-    int EffectMagnitude, int EffectDurationTicks, int EffectTickInterval, string? EffectStat)
+    IReadOnlyCollection<SkillEffectSpecDto> Effects)
 {
     public static SkillDefinitionDto FromDomain(ISkillDefinition d) => new(
         d.Id.Value, d.Key.Value, d.Name.Value, d.Description.Value, d.Version.Value, d.Status.ToString(),
         d.SkillType, d.TargetingType, d.EffectType, d.ManaCost, d.ChargeCost, d.BasePower,
-        d.EffectKind, d.EffectStatusKey, d.EffectMagnitude, d.EffectDurationTicks, d.EffectTickInterval, d.EffectStat);
+        d.Effects.Select(SkillEffectSpecDto.FromDomain).ToArray());
+}
+
+public sealed record SkillEffectSpecDto(
+    string Kind,
+    string? StatusKey,
+    int Magnitude,
+    int DurationTicks,
+    int TickInterval,
+    string? Stat,
+    bool MagnitudeIsPercentOfMax)
+{
+    public static SkillEffectSpecDto FromDomain(SkillEffectSpec spec) => new(
+        spec.Kind, spec.StatusKey, spec.Magnitude, spec.DurationTicks,
+        spec.TickInterval, spec.Stat, spec.MagnitudeIsPercentOfMax);
 }

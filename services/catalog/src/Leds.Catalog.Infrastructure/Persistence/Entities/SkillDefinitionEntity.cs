@@ -29,14 +29,9 @@ public sealed class SkillDefinitionEntity
     public int BaseWeight { get; set; } = 1;
     public string? SelectionGroup { get; set; }
 
-    // Status effect this skill applies (null EffectKind = none). Pragmatic flat
-    // fields; canonical home is the EffectSet model, a future refactor.
-    public string? EffectKind { get; set; }
-    public string? EffectStatusKey { get; set; }
-    public int EffectMagnitude { get; set; }
-    public int EffectDurationTicks { get; set; }
-    public int EffectTickInterval { get; set; }
-    public string? EffectStat { get; set; }
+    // Durable effects this skill applies to its targets (empty/null = none). A skill
+    // may carry several simultaneously (e.g. heal-over-time + guard-over-time).
+    public string? EffectsJson { get; set; }
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
 
