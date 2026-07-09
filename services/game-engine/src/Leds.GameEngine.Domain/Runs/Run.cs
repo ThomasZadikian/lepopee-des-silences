@@ -75,7 +75,10 @@ public sealed class Run
         CombatId? activeCombatId = null,
         RewardOfferId? pendingRewardOfferId = null,
         int runItemCapacity = DefaultRunItemCapacity,
-        IReadOnlyDictionary<string, int>? typedDamageReductions = null)
+        IReadOnlyDictionary<string, int>? typedDamageReductions = null,
+        int hitChanceBonusPercent = 0,
+        int dotDurationReductionPercent = 0,
+        int dotDamageReductionPercent = 0)
     {
         Id = id;
         PlayerId = playerId;
@@ -96,6 +99,9 @@ public sealed class Run
         PendingRewardOfferId = pendingRewardOfferId;
         RunItemCapacity = runItemCapacity;
         TypedDamageReductions = typedDamageReductions ?? new Dictionary<string, int>();
+        HitChanceBonusPercent = hitChanceBonusPercent;
+        DotDurationReductionPercent = dotDurationReductionPercent;
+        DotDamageReductionPercent = dotDamageReductionPercent;
 
         _rooms.Add(initialRoom);
     }
@@ -229,6 +235,20 @@ public sealed class Run
     /// </summary>
     public IReadOnlyDictionary<string, int> TypedDamageReductions { get; }
 
+    /// <summary>
+    /// Equipment-driven percentage points added to the protagonist's hit chance
+    /// (e.g. Lunettes d'érudit: +10%). Computed once at run start, immutable for
+    /// the run's lifetime, same as TypedDamageReductions.
+    /// </summary>
+    public int HitChanceBonusPercent { get; }
+
+    /// <summary>
+    /// Equipment-driven percentage (0-100) by which incoming DamageOverTime effects
+    /// have their duration/per-tick damage reduced (e.g. Main de Khasma).
+    /// </summary>
+    public int DotDurationReductionPercent { get; }
+    public int DotDamageReductionPercent { get; }
+
     public DateTimeOffset StartedAt { get; }
 
     public DateTimeOffset? EndedAt { get; private set; }
@@ -282,7 +302,10 @@ public sealed class Run
         IReadOnlyCollection<PlayerRuntimeSkill>? playerSkills = null,
         int focus = 0,
         int runItemCapacity = DefaultRunItemCapacity,
-        IReadOnlyDictionary<string, int>? typedDamageReductions = null)
+        IReadOnlyDictionary<string, int>? typedDamageReductions = null,
+        int hitChanceBonusPercent = 0,
+        int dotDurationReductionPercent = 0,
+        int dotDamageReductionPercent = 0)
     {
         if (playerId == Guid.Empty)
         {
@@ -374,7 +397,10 @@ public sealed class Run
             speed,
             focus,
             runItemCapacity: runItemCapacity,
-            typedDamageReductions: typedDamageReductions);
+            typedDamageReductions: typedDamageReductions,
+            hitChanceBonusPercent: hitChanceBonusPercent,
+            dotDurationReductionPercent: dotDurationReductionPercent,
+            dotDamageReductionPercent: dotDamageReductionPercent);
 
         run.PlayerState = PlayerRuntimeState.Create(
             maxVitality: maxHp,
@@ -1498,11 +1524,14 @@ public sealed class Run
         RunPlayerSnapshot? playerSnapshot = null,
         ActiveCurse? activeCurse = null,
         int runItemCapacity = DefaultRunItemCapacity,
-        IReadOnlyDictionary<string, int>? typedDamageReductions = null)
+        IReadOnlyDictionary<string, int>? typedDamageReductions = null,
+        int hitChanceBonusPercent = 0,
+        int dotDurationReductionPercent = 0,
+        int dotDamageReductionPercent = 0)
     {
         var firstRoom = rooms.First();
 
-        var run = new Run(id, playerId, seed, generatorVersion, markovMatrixVersion, status, firstRoom, startedAt, maxHp, currentHp, attack, defense, speed, focus, currentRoomIndex, activeCombatId, pendingRewardOfferId, runItemCapacity, typedDamageReductions);
+        var run = new Run(id, playerId, seed, generatorVersion, markovMatrixVersion, status, firstRoom, startedAt, maxHp, currentHp, attack, defense, speed, focus, currentRoomIndex, activeCombatId, pendingRewardOfferId, runItemCapacity, typedDamageReductions, hitChanceBonusPercent, dotDurationReductionPercent, dotDamageReductionPercent);
         foreach (var room in rooms.Skip(1))
         {
             run._rooms.Add(room);

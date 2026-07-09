@@ -29,6 +29,15 @@ public sealed class CombatantEntity
     public string? TypedDamageReductionsJson { get; set; }
 
     /// <summary>
+    /// Equipment-driven hit chance bonus (percentage points) and DamageOverTime
+    /// duration/damage reductions. Set at combat creation from the wearer's
+    /// equipped items (e.g. Lunettes d'érudit, Main de Khasma).
+    /// </summary>
+    public int HitChanceBonusPercent { get; set; }
+    public int DotDurationReductionPercent { get; set; }
+    public int DotDamageReductionPercent { get; set; }
+
+    /// <summary>
     /// Active durable status effects (poison/regen/buffs/control) serialized as JSON.
     /// In-combat only and small, so a JSON column avoids a child table and is copied
     /// automatically by the hot-path persistence (a scalar via CurrentValues.SetValues).

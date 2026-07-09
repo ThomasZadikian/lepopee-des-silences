@@ -24,7 +24,10 @@ public sealed class CombatFactory : ICombatFactory
         PalaceRoomState palaceRoomState = PalaceRoomState.Neutral,
         int focus = 0,
         IReadOnlyDictionary<string, IReadOnlyList<SkillStatusEffectSpec>>? skillEffects = null,
-        IReadOnlyDictionary<EmotionalType, int>? typedDamageReductions = null)
+        IReadOnlyDictionary<EmotionalType, int>? typedDamageReductions = null,
+        int hitChanceBonusPercent = 0,
+        int dotDurationReductionPercent = 0,
+        int dotDamageReductionPercent = 0)
     {
         return CreateFromDraft(
             CombatId.New(),
@@ -37,7 +40,10 @@ public sealed class CombatFactory : ICombatFactory
             palaceRoomState,
             focus,
             skillEffects,
-            typedDamageReductions);
+            typedDamageReductions,
+            hitChanceBonusPercent,
+            dotDurationReductionPercent,
+            dotDamageReductionPercent);
     }
     private static (double VitalityMultiplier, double PowerMultiplier, int GuardBonus) EncounterBonus(string encounterType)
     {
@@ -62,7 +68,10 @@ public sealed class CombatFactory : ICombatFactory
         PalaceRoomState palaceRoomState = PalaceRoomState.Neutral,
         int focus = 0,
         IReadOnlyDictionary<string, IReadOnlyList<SkillStatusEffectSpec>>? skillEffects = null,
-        IReadOnlyDictionary<EmotionalType, int>? typedDamageReductions = null)
+        IReadOnlyDictionary<EmotionalType, int>? typedDamageReductions = null,
+        int hitChanceBonusPercent = 0,
+        int dotDurationReductionPercent = 0,
+        int dotDamageReductionPercent = 0)
     {
         // Sum all unconsumed StartingGuardBonus modifiers (e.g. Éclat de garde: +8 garde).
         var guardBonus = runModifiers?
@@ -130,6 +139,8 @@ public sealed class CombatFactory : ICombatFactory
 
                     protagonist.ApplyAttackTypeOverride(attackTypeOverride);
                     protagonist.ApplyTypedDamageReductions(typedDamageReductions);
+                    protagonist.ApplyEquipmentCombatModifiers(
+                        hitChanceBonusPercent, dotDurationReductionPercent, dotDamageReductionPercent);
                     return protagonist;
                 }
 

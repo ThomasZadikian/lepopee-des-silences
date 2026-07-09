@@ -128,12 +128,20 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
 
             foreach (var spec in skill.StatusEffects)
             {
+                // Equipment-driven DOT resistance (e.g. Main de Khasma) shortens the
+                // duration of an incoming DamageOverTime effect; the per-tick damage
+                // reduction itself is applied later, at tick time (Combatant.TickStatusEffects).
+                var durationTicks = spec.Kind == StatusEffectKind.DamageOverTime && target.DotDurationReductionPercent > 0
+                    ? Math.Max(1, (int)Math.Round(
+                        spec.DurationTicks * (1.0 - Math.Min(target.DotDurationReductionPercent, 100) / 100.0)))
+                    : spec.DurationTicks;
+
                 target.ApplyStatusEffect(CombatStatusEffect.Create(
                     key: spec.Key,
                     displayName: spec.DisplayName,
                     kind: spec.Kind,
                     currentTick: combat.CurrentTick,
-                    durationTicks: spec.DurationTicks,
+                    durationTicks: durationTicks,
                     magnitude: spec.Magnitude,
                     stacks: spec.Stacks,
                     tickInterval: spec.TickInterval,
@@ -165,6 +173,20 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
 
         foreach (var target in targets)
         {
+            var hitChance = HitChanceCalibration.HitChanceFromBonus(actor.HitChanceBonusPercent);
+            var hitRoll = DeterministicCombatRoll.UnitInterval(BuildHitSeed(combat, actor, target, skill));
+
+            if (hitRoll >= hitChance)
+            {
+                logEntries.Add(CreateLog(
+                    "AttackMissed",
+                    $"{actor.DisplayName}'s {skill.DisplayName} misses {target.DisplayName}.",
+                    actor,
+                    skill,
+                    [target]));
+                continue;
+            }
+
             var defenderProfile = _typeProfileProvider.Resolve(target);
             var critRoll = DeterministicCombatRoll.UnitInterval(BuildCritSeed(combat, actor, target, skill));
 
@@ -371,6 +393,18 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
         return string.Join(
             '|',
             "crit",
+            combat.Id.Value.ToString("N"),
+            combat.TurnNumber.ToString(),
+            actor.Id.Value.ToString("N"),
+            target.Id.Value.ToString("N"),
+            skill.Key);
+    }
+
+    private static string BuildHitSeed(Combat combat, Combatant actor, Combatant target, CombatantSkill skill)
+    {
+        return string.Join(
+            '|',
+            "hit",
             combat.Id.Value.ToString("N"),
             combat.TurnNumber.ToString(),
             actor.Id.Value.ToString("N"),

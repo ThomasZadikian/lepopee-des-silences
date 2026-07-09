@@ -41,6 +41,9 @@ public static class RunPersistenceMapper
             TypedDamageReductionsJson = run.TypedDamageReductions.Count > 0
                 ? JsonSerializer.Serialize(run.TypedDamageReductions)
                 : null,
+            HitChanceBonusPercent = run.HitChanceBonusPercent,
+            DotDurationReductionPercent = run.DotDurationReductionPercent,
+            DotDamageReductionPercent = run.DotDamageReductionPercent,
             StartedAtUtc = run.StartedAt.UtcDateTime,
             EndedAtUtc = run.EndedAt?.UtcDateTime,
             SavedAtUtc = run.SavedAt?.UtcDateTime,
@@ -416,7 +419,10 @@ public static class RunPersistenceMapper
             runItemCapacity: entity.RunItemCapacity > 0 ? entity.RunItemCapacity : Run.DefaultRunItemCapacity,
             typedDamageReductions: string.IsNullOrWhiteSpace(entity.TypedDamageReductionsJson)
                 ? null
-                : JsonSerializer.Deserialize<Dictionary<string, int>>(entity.TypedDamageReductionsJson));
+                : JsonSerializer.Deserialize<Dictionary<string, int>>(entity.TypedDamageReductionsJson),
+            hitChanceBonusPercent: entity.HitChanceBonusPercent,
+            dotDurationReductionPercent: entity.DotDurationReductionPercent,
+            dotDamageReductionPercent: entity.DotDamageReductionPercent);
 
         RehydrateNpcEncounters(run, entity);
         return run;

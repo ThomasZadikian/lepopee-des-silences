@@ -54,6 +54,9 @@ public static class CombatPersistenceMapper
             Status = combatant.Status.ToString(),
             AttackTypeOverride = combatant.AttackTypeOverride.HasValue ? (int)combatant.AttackTypeOverride.Value : null,
             TypedDamageReductionsJson = SerializeTypedDamageReductions(combatant.TypedDamageReductionPercent),
+            HitChanceBonusPercent = combatant.HitChanceBonusPercent,
+            DotDurationReductionPercent = combatant.DotDurationReductionPercent,
+            DotDamageReductionPercent = combatant.DotDamageReductionPercent,
             StatusEffectsJson = SerializeStatusEffects(combatant.StatusEffects),
             Skills = combatant.Skills.Select(s => ToEntity(s, combatant.Id.Value)).ToList(),
             BaseStatSnapshot = ToBaseStatSnapshotEntity(combatant.BaseStatSnapshot, combatant.Id.Value),
@@ -266,7 +269,10 @@ public static class CombatPersistenceMapper
             baseStatSnapshot: baseStatSnapshot,
             runtimeState: runtimeState,
             attackTypeOverride: entity.AttackTypeOverride.HasValue ? (EmotionalType)entity.AttackTypeOverride.Value : null,
-            typedDamageReductionPercent: DeserializeTypedDamageReductions(entity.TypedDamageReductionsJson));
+            typedDamageReductionPercent: DeserializeTypedDamageReductions(entity.TypedDamageReductionsJson),
+            hitChanceBonusPercent: entity.HitChanceBonusPercent,
+            dotDurationReductionPercent: entity.DotDurationReductionPercent,
+            dotDamageReductionPercent: entity.DotDamageReductionPercent);
         foreach (var effect in DeserializeStatusEffects(entity.StatusEffectsJson))
             combatant.RehydrateStatusEffect(effect);
 

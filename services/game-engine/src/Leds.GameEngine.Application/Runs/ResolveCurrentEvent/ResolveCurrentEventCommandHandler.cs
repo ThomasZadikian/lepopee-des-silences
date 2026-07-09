@@ -195,7 +195,10 @@ public sealed class ResolveCurrentEventCommandHandler
                 attackPower: run.Attack, defense: run.Defense, speed: run.Speed,
                 palaceRoomState: room.PalaceState, focus: run.Focus,
                 skillEffects: skillEffects,
-                typedDamageReductions: ToTypedDamageReductions(run.TypedDamageReductions));
+                typedDamageReductions: ToTypedDamageReductions(run.TypedDamageReductions),
+                hitChanceBonusPercent: run.HitChanceBonusPercent,
+                dotDurationReductionPercent: run.DotDurationReductionPercent,
+                dotDamageReductionPercent: run.DotDamageReductionPercent);
 
             // ATB: bake Markov tempo + opening gauges, then elect the opener.
             _atbPreparer.PrepareNewCombat(combatRuntime, run);

@@ -20,6 +20,9 @@ public sealed class RunEntity
     public int Focus { get; set; }
     public int RunItemCapacity { get; set; }
     public string? TypedDamageReductionsJson { get; set; }
+    public int HitChanceBonusPercent { get; set; }
+    public int DotDurationReductionPercent { get; set; }
+    public int DotDamageReductionPercent { get; set; }
     public DateTime StartedAtUtc { get; set; }
     public DateTime? EndedAtUtc { get; set; }
     public DateTime? SavedAtUtc { get; set; }

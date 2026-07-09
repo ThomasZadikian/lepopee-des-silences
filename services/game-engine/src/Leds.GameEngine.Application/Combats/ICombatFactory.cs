@@ -18,7 +18,10 @@ public interface ICombatFactory
         PalaceRoomState palaceRoomState = PalaceRoomState.Neutral,
         int focus = 0,
         IReadOnlyDictionary<string, IReadOnlyList<SkillStatusEffectSpec>>? skillEffects = null,
-        IReadOnlyDictionary<EmotionalType, int>? typedDamageReductions = null);
+        IReadOnlyDictionary<EmotionalType, int>? typedDamageReductions = null,
+        int hitChanceBonusPercent = 0,
+        int dotDurationReductionPercent = 0,
+        int dotDamageReductionPercent = 0);
 
     Combat CreateFromDraft(
         CombatId combatId,
@@ -31,5 +34,8 @@ public interface ICombatFactory
         PalaceRoomState palaceRoomState = PalaceRoomState.Neutral,
         int focus = 0,
         IReadOnlyDictionary<string, IReadOnlyList<SkillStatusEffectSpec>>? skillEffects = null,
-        IReadOnlyDictionary<EmotionalType, int>? typedDamageReductions = null);
+        IReadOnlyDictionary<EmotionalType, int>? typedDamageReductions = null,
+        int hitChanceBonusPercent = 0,
+        int dotDurationReductionPercent = 0,
+        int dotDamageReductionPercent = 0);
 }

@@ -69,6 +69,21 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
             .GroupBy(e => e.AffinityRegister!, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => Math.Min(100, g.Sum(e => e.Amount!.Value)), StringComparer.OrdinalIgnoreCase);
 
+        var hitChanceBonusPercent = equipmentEffects
+            .Where(e => string.Equals(e.Kind, "HitChanceBonus", StringComparison.OrdinalIgnoreCase)
+                && e.Amount is not null)
+            .Sum(e => e.Amount!.Value);
+
+        var dotDurationReductionPercent = Math.Min(100, equipmentEffects
+            .Where(e => string.Equals(e.Kind, "DotDurationReduction", StringComparison.OrdinalIgnoreCase)
+                && e.Amount is not null)
+            .Sum(e => e.Amount!.Value));
+
+        var dotDamageReductionPercent = Math.Min(100, equipmentEffects
+            .Where(e => string.Equals(e.Kind, "DotDamageReduction", StringComparison.OrdinalIgnoreCase)
+                && e.Amount is not null)
+            .Sum(e => e.Amount!.Value));
+
         var grantedSkillKeys = equipmentEffects
             .Where(e => string.Equals(e.Kind, "GrantSkill", StringComparison.OrdinalIgnoreCase)
                 && !string.IsNullOrWhiteSpace(e.SkillKey))
@@ -116,7 +131,10 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
             focus: effectiveFocus,
             playerSkills: playerSkills,
             runItemCapacity: effectiveRunItemCapacity,
-            typedDamageReductions: typedDamageReductions);
+            typedDamageReductions: typedDamageReductions,
+            hitChanceBonusPercent: hitChanceBonusPercent,
+            dotDurationReductionPercent: dotDurationReductionPercent,
+            dotDamageReductionPercent: dotDamageReductionPercent);
 
         var characterSnapshots = snapshot.Characters
             .Select(c =>

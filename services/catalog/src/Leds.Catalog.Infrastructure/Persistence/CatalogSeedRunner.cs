@@ -1241,6 +1241,20 @@ public sealed class CatalogSeedRunner
             "Equipment", "Accessory", "Rare", "Permanent", false, 0, cancellationToken,
             equipmentEffects: new[] { new ItemEquipmentEffect(
                 ItemEquipmentEffectKind.DamageReductionByType, Amount: 15, AffinityRegister: EmotionalRegister.Memoire) });
+
+        await UpsertItemAsync("canon.item.main-de-khasma", "Main de Khasma",
+            "Une main de bronze gravée de symboles qu'aucun vivant ne sait plus lire. Elle referme ce qui devrait pourrir.",
+            "Equipment", "Accessory", "Legendary", "Permanent", false, 0, cancellationToken,
+            equipmentEffects: new[]
+            {
+                new ItemEquipmentEffect(ItemEquipmentEffectKind.DotDurationReduction, Amount: 25),
+                new ItemEquipmentEffect(ItemEquipmentEffectKind.DotDamageReduction, Amount: 15)
+            });
+
+        await UpsertItemAsync("canon.item.lunettes-erudit", "Lunettes d'érudit",
+            "Des verres taillés pour lire l'invisible. Ce qu'elles regardent, elles ne le manquent plus.",
+            "Equipment", "Accessory", "Rare", "Permanent", false, 0, cancellationToken,
+            equipmentEffects: new[] { new ItemEquipmentEffect(ItemEquipmentEffectKind.HitChanceBonus, Amount: 10) });
     }
 
     private async Task UpsertItemAsync(

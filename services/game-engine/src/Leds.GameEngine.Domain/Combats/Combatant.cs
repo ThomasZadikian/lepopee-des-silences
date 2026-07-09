@@ -94,6 +94,33 @@ public sealed class Combatant
         TypedDamageReductionPercent = reductions ?? new Dictionary<EmotionalType, int>();
     }
 
+    /// <summary>
+    /// Percentage points added to this combatant's hit chance (e.g. Lunettes
+    /// d'érudit: +10%), granted by equipped items. Stacks additively with the
+    /// base hit chance in <see cref="Typing.HitChanceCalibration"/>.
+    /// </summary>
+    public int HitChanceBonusPercent { get; private set; }
+
+    /// <summary>
+    /// Percentage (0-100) by which incoming DamageOverTime effects have their
+    /// duration/per-tick damage reduced, granted by equipped items
+    /// (e.g. Main de Khasma: -25% durée, -15% dégâts).
+    /// </summary>
+    public int DotDurationReductionPercent { get; private set; }
+    public int DotDamageReductionPercent { get; private set; }
+
+    /// <summary>
+    /// Sets (or clears) the equipment-driven hit chance bonus and DOT reductions.
+    /// Applied at combat creation and restored on rehydration; never mutated mid-turn.
+    /// </summary>
+    public void ApplyEquipmentCombatModifiers(
+        int hitChanceBonusPercent, int dotDurationReductionPercent, int dotDamageReductionPercent)
+    {
+        HitChanceBonusPercent = hitChanceBonusPercent;
+        DotDurationReductionPercent = dotDurationReductionPercent;
+        DotDamageReductionPercent = dotDamageReductionPercent;
+    }
+
     // ── ATB (Active Time Battle) ──────────────────────────────────────────────
 
     /// <summary>Current ATB gauge (0 = empty). Sourced from runtime state (persisted).</summary>
@@ -409,7 +436,10 @@ public sealed class Combatant
         CombatantBaseStatSnapshot? baseStatSnapshot = null,
         CombatantRuntimeState? runtimeState = null,
         EmotionalType? attackTypeOverride = null,
-        IReadOnlyDictionary<EmotionalType, int>? typedDamageReductionPercent = null)
+        IReadOnlyDictionary<EmotionalType, int>? typedDamageReductionPercent = null,
+        int hitChanceBonusPercent = 0,
+        int dotDurationReductionPercent = 0,
+        int dotDamageReductionPercent = 0)
     {
         var snapshot = baseStatSnapshot ?? CombatantBaseStatSnapshot.Rehydrate(
             Guid.NewGuid(),
@@ -440,6 +470,8 @@ public sealed class Combatant
         var combatant = new Combatant(id, sourceKey, displayName, side, archetype, maxVitality, currentVitality, guard, baseGuard, mana, charge, status, skills, snapshot, state);
         combatant.AttackTypeOverride = attackTypeOverride;
         combatant.TypedDamageReductionPercent = typedDamageReductionPercent ?? new Dictionary<EmotionalType, int>();
+        combatant.ApplyEquipmentCombatModifiers(
+            hitChanceBonusPercent, dotDurationReductionPercent, dotDamageReductionPercent);
         return combatant;
     }
 
@@ -552,8 +584,11 @@ public sealed class Combatant
                 {
                     if (effect.Kind == StatusEffectKind.DamageOverTime)
                     {
-                        ApplyVitalityDamage(amount); // DoT bypasses guard
-                        events.Add(new StatusTickEvent(effect.Key, effect.DisplayName, effect.Kind, amount, false));
+                        var reduced = DotDamageReductionPercent > 0
+                            ? Math.Max(0, (int)Math.Round(amount * (1.0 - Math.Min(DotDamageReductionPercent, 100) / 100.0)))
+                            : amount;
+                        ApplyVitalityDamage(reduced); // DoT bypasses guard
+                        events.Add(new StatusTickEvent(effect.Key, effect.DisplayName, effect.Kind, reduced, false));
                     }
                     else if (effect.Kind == StatusEffectKind.HealOverTime && CurrentVitality < MaxVitality)
                     {
