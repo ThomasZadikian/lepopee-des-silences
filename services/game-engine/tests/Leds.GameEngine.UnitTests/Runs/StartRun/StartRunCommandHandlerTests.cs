@@ -233,4 +233,92 @@ public sealed class StartRunCommandHandlerTests
         capturedRun.PlayerState!.Skills.Should().Contain(s => s.Key == "skill.granted.shield");
         capturedRun.PlayerState!.Skills.Should().Contain(s => s.Key == "skill.basic.strike");
     }
+
+    [Fact]
+    public async Task Handle_ShouldApplyStatBonusPercent_FromEquippedItem()
+    {
+        var playerId = Guid.NewGuid();
+        var now = new DateTimeOffset(2026, 5, 30, 12, 0, 0, TimeSpan.Zero);
+
+        var initialRoom = TestGameEngineFactory.CreateThresholdRoom();
+
+        var generator = new Mock<IRunGenerator>();
+        generator.SetupGet(service => service.GeneratorVersion).Returns("gen-0.1.0");
+        generator.SetupGet(service => service.MarkovMatrixVersion).Returns("markov-0.1.0");
+        generator.Setup(service => service.GenerateSeed()).Returns("seed-test-002");
+        generator.Setup(service => service.GenerateInitialRoomAsync("seed-test-002", CancellationToken.None)).ReturnsAsync(initialRoom);
+
+        var repository = new Mock<IRunRepository>();
+
+        var playerGateway = new Mock<IPlayerRunSnapshotGateway>();
+        playerGateway
+            .Setup(g => g.GetRunSnapshotAsync(playerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new PlayerRunSnapshot(
+                playerId,
+                "Test Player",
+                [new PlayerRunSnapshotCharacter(
+                    Guid.NewGuid(),
+                    "character.player.self",
+                    "Le Porteur",
+                    Stats: new PlayerRunSnapshotCharacterStats(
+                        MaxVitality: 100,
+                        AttackPower: 12,
+                        Defense: 6,
+                        StartingGuard: 0,
+                        Speed: 10,
+                        Initiative: 10,
+                        Recovery: 5,
+                        Focus: 0,
+                        Mana: 0,
+                        Charge: 0),
+                    Skills: [],
+                    EquippedItemKeys: ["item.equipment.bague-du-courage"])]));
+
+        var clock = new Mock<IClock>();
+        clock.SetupGet(service => service.UtcNow).Returns(now);
+
+        var catalogGateway = new Mock<ICatalogContentGateway>();
+        catalogGateway
+            .Setup(g => g.GetItemDefinitionByKeyAsync("item.equipment.bague-du-courage", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<CatalogItemDefinitionSnapshot>.Success(new CatalogItemDefinitionSnapshot(
+                "item.equipment.bague-du-courage",
+                "1.0",
+                "Bague du courage",
+                "Un anneau simple.",
+                null,
+                "Equipment",
+                "Accessory",
+                "Epic",
+                "PermanentEquip",
+                "Permanent",
+                "None",
+                1,
+                false,
+                false,
+                null,
+                IsPermanentEligible: true,
+                EquipmentEffects:
+                [
+                    new CatalogItemEquipmentEffect("StatBonusPercent", "Speed", 10, null, null),
+                    new CatalogItemEquipmentEffect("StatBonusPercent", "AttackPower", 10, null, null)
+                ])));
+
+        var handler = new StartRunCommandHandler(
+            generator.Object,
+            repository.Object,
+            playerGateway.Object,
+            catalogGateway.Object,
+            clock.Object);
+
+        await handler.Handle(
+            new StartRunCommand(playerId),
+            CancellationToken.None);
+
+        var capturedRun = (Run)repository.Invocations
+            .Single(i => i.Method.Name == nameof(IRunRepository.AddAsync)).Arguments[0];
+
+        // Speed: 10 base + round(10 * 10%) = 11. Attack: 12 base + round(12 * 10%) = 13.
+        capturedRun.Speed.Should().Be(11);
+        capturedRun.Attack.Should().Be(13);
+    }
 }

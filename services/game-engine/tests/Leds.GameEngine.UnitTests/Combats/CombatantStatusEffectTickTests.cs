@@ -63,4 +63,41 @@ public sealed class CombatantStatusEffectTickTests
 
         combatant.TypedDamageReductionPercent.Should().BeEmpty();
     }
+
+    [Fact]
+    public void EffectiveAttackPower_ShouldApplyPercentBasedStatModifier_AgainstBaseValue()
+    {
+        var combatant = Combatant.Create(
+            CombatantId.New(), "player.self", "Hero", CombatantSide.Player, "Fighter",
+            maxVitality: 100, currentVitality: 100, guard: 0, baseGuard: 0, mana: 0, charge: 0,
+            attackPower: 12);
+
+        combatant.ApplyStatusEffect(CombatStatusEffect.Create(
+            "bague-du-courage:attack", "Bague du courage", StatusEffectKind.StatModifier,
+            currentTick: 0, durationTicks: 6000, magnitude: 10, stat: CombatStat.AttackPower,
+            isMagnitudePercentOfBaseStat: true));
+
+        // 12 base + round(12 * 10%) = 13.
+        combatant.EffectiveAttackPower.Should().Be(13);
+    }
+
+    [Fact]
+    public void EffectiveSpeed_ShouldCombineFlatAndPercentStatModifiers_Independently()
+    {
+        var combatant = Combatant.Create(
+            CombatantId.New(), "player.self", "Hero", CombatantSide.Player, "Fighter",
+            maxVitality: 100, currentVitality: 100, guard: 0, baseGuard: 0, mana: 0, charge: 0,
+            speed: 10);
+
+        combatant.ApplyStatusEffect(CombatStatusEffect.Create(
+            "flat-speed-buff", "Flat", StatusEffectKind.StatModifier,
+            currentTick: 0, durationTicks: 6000, magnitude: 2, stat: CombatStat.Speed));
+        combatant.ApplyStatusEffect(CombatStatusEffect.Create(
+            "percent-speed-buff", "Percent", StatusEffectKind.StatModifier,
+            currentTick: 0, durationTicks: 6000, magnitude: 10, stat: CombatStat.Speed,
+            isMagnitudePercentOfBaseStat: true));
+
+        // 10 base + 2 flat + round(10 * 10%) = 13.
+        combatant.EffectiveSpeed.Should().Be(13);
+    }
 }

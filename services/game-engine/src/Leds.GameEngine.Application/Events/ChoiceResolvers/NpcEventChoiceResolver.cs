@@ -72,7 +72,7 @@ public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver
                 encounterCompleted: false);
         }
 
-        if (!RequirementsMet(choice.Requirements, relationship))
+        if (!RequirementsMet(choice.Requirements, relationship, run))
         {
             return CurrentEventChoiceResolutionResult.Create(
                 context.ChoiceId, accepted: false,
@@ -206,7 +206,7 @@ public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver
         var offering = npc.Offerings?.FirstOrDefault(o =>
             string.Equals(o.Key, consequence.OfferingKey, StringComparison.OrdinalIgnoreCase));
 
-        if (offering is null || !RequirementsMet(offering.UnlockConditions, relationship))
+        if (offering is null || !RequirementsMet(offering.UnlockConditions, relationship, run))
         {
             return new NarrativeFragmentDto(npc.DisplayName, "Rien ne se produit.");
         }
@@ -266,11 +266,6 @@ public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver
                 }
 
                 var itemDef = itemResult.Value;
-                // Effet intrinsèque non résolu ici : contrairement aux RewardOption des templates
-                // de récompense, CatalogItemDefinitionSnapshot ne porte pas de type/montant d'effet
-                // exploitable par RunItem — l'objet est bien accordé (nom/description/type/rareté
-                // réels) mais reste neutre à l'usage tant que ce n'est pas câblé séparément.
-                //
                 // Category/ItemType/Rarity are free-authored strings in the catalog (not enum-backed
                 // at rest) — mapping them straight through Enum.Parse throws for almost any real
                 // catalog value (e.g. ItemType "Container"/"Potion", Rarity "Legendary"/"Unique" has
@@ -280,8 +275,8 @@ public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver
                     MapCategoryToRunItemType(itemDef.Category),
                     MapToRunItemRarity(itemDef.Rarity),
                     quantity: offering.Amount > 0 ? offering.Amount : 1,
-                    RunItemEffectType.None,
-                    effectAmount: 0,
+                    MapToRunItemEffectType(itemDef.EffectRunType),
+                    effectAmount: itemDef.EffectValue,
                     isContainer: itemDef.IsContainer,
                     containerCapacity: itemDef.ContainerCapacity,
                     isLiquid: itemDef.IsLiquid));
@@ -301,6 +296,11 @@ public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver
         Enum.TryParse<RunItemRarity>(rarity, ignoreCase: true, out var parsed)
             ? parsed
             : RunItemRarity.Epic;
+
+    private static RunItemEffectType MapToRunItemEffectType(string? effectRunType) =>
+        !string.IsNullOrWhiteSpace(effectRunType) && Enum.TryParse<RunItemEffectType>(effectRunType, ignoreCase: true, out var parsed)
+            ? parsed
+            : RunItemEffectType.None;
 
     // ── Reward / curse roll (deterministic) + real application ───────────────
 
@@ -425,7 +425,8 @@ public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver
 
     private static bool RequirementsMet(
         IReadOnlyCollection<CatalogDialogueRequirement> requirements,
-        NpcRelationship relationship)
+        NpcRelationship relationship,
+        Run run)
     {
         foreach (var requirement in requirements)
         {
@@ -448,6 +449,12 @@ public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver
                 case "RelationshipScoreAtLeast":
                     if (requirement.RequiredRelationshipScore is not int minScore ||
                         relationship.RelationshipScore < minScore)
+                    {
+                        return false;
+                    }
+                    break;
+                case "PlayerHasContainerItem":
+                    if (!run.RunItems.Any(item => item.IsContainer))
                     {
                         return false;
                     }

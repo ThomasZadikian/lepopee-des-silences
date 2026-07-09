@@ -1327,6 +1327,20 @@ public sealed class CatalogSeedRunner
             "Des verres taillés pour lire l'invisible. Ce qu'elles regardent, elles ne le manquent plus.",
             "Equipment", "Accessory", "Rare", "Permanent", false, 0, cancellationToken,
             equipmentEffects: new[] { new ItemEquipmentEffect(ItemEquipmentEffectKind.HitChanceBonus, Amount: 10) });
+
+        await UpsertItemAsync("canon.item.bague-du-courage", "Bague du courage",
+            "Un anneau simple, sans ornement. Ceux qui le portent avancent, tout simplement.",
+            "Equipment", "Accessory", "Epic", "Permanent", false, 0, cancellationToken,
+            equipmentEffects: new[]
+            {
+                new ItemEquipmentEffect(ItemEquipmentEffectKind.StatBonusPercent, StatKind: "Speed", Amount: 10),
+                new ItemEquipmentEffect(ItemEquipmentEffectKind.StatBonusPercent, StatKind: "AttackPower", Amount: 10)
+            });
+
+        await UpsertItemAsync("canon.item.potion-de-vie", "Potion de vie",
+            "Un liquide rouge sombre, épais comme du sang. Il referme ce que le Palais a ouvert.",
+            "Consumable", "Potion", "Common", "RunOnly", true, 25, cancellationToken,
+            effectRunType: "Heal");
     }
 
     private async Task UpsertItemAsync(
@@ -1334,7 +1348,8 @@ public sealed class CatalogSeedRunner
         string category, string itemType, string rarity, string durability,
         bool usableInCombat, int effectValue, CancellationToken cancellationToken,
         IReadOnlyList<ItemEquipmentEffect>? equipmentEffects = null,
-        bool isContainer = false, int? containerCapacity = null, bool isLiquid = false)
+        bool isContainer = false, int? containerCapacity = null, bool isLiquid = false,
+        string? effectRunType = null)
     {
         const string version = "canon-1.0.0";
         var now = DateTime.UtcNow;
@@ -1365,6 +1380,7 @@ public sealed class CatalogSeedRunner
                 IsUsableOutsideCombat = false,
                 Duration = duration,
                 EffectValue = effectValue,
+                EffectRunType = effectRunType,
                 EquipmentEffectsJson = equipmentEffectsJson,
                 IsContainer = isContainer,
                 ContainerCapacity = containerCapacity,
@@ -1383,6 +1399,7 @@ public sealed class CatalogSeedRunner
         existing.UsageMode = usableInCombat ? "UseInCombat" : "NotUsable";
         existing.Lifecycle = lifecycle; existing.Duration = duration;
         existing.IsUsableInCombat = usableInCombat; existing.EffectValue = effectValue;
+        existing.EffectRunType = effectRunType;
         existing.EquipmentEffectsJson = equipmentEffectsJson;
         existing.IsContainer = isContainer;
         existing.ContainerCapacity = containerCapacity;

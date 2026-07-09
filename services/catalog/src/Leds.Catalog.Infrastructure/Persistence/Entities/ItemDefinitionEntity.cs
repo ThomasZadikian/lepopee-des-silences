@@ -26,6 +26,15 @@ public sealed class ItemDefinitionEntity
     public string? SelectionGroup { get; set; }
     public string Duration { get; set; } = string.Empty;
     public int EffectValue { get; set; }
+
+    /// <summary>
+    /// The RunItemEffectType (as a string, e.g. "Heal"/"Guard"/"ManaRestore") this
+    /// item applies when used/granted directly as a consumable — distinct from
+    /// EquipmentEffectsJson, which drives equipped-item passive bonuses. Null/"None"
+    /// for items with no intrinsic instant effect (relics, equipment, etc.).
+    /// </summary>
+    public string? EffectRunType { get; set; }
+
     public int Price { get; set; }
 
     // ── Équipement et sac permanent (equipment-sfd-0.1) ──────────────────────

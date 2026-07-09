@@ -11,4 +11,9 @@ public sealed record SkillEffectSpec(
     int DurationTicks,
     int TickInterval = 0,
     string? Stat = null,
-    bool MagnitudeIsPercentOfMax = false);
+    bool MagnitudeIsPercentOfMax = false,
+    // For StatModifier effects: when true, Magnitude is a percentage of the
+    // combatant's BASE value for Stat (e.g. +10 = +10% AttackPower) rather than a
+    // flat delta. This is now the default way to author stat buffs/debuffs — prefer
+    // this over a flat Magnitude for new skills.
+    bool MagnitudeIsPercentOfBaseStat = false);

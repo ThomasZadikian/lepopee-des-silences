@@ -945,7 +945,8 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
             Tags: source.Tags ?? [],
             Effects: source.Effects?
                 .Select(e => new CatalogSkillEffectSpec(
-                    e.Kind, e.StatusKey, e.Magnitude, e.DurationTicks, e.TickInterval, e.Stat, e.MagnitudeIsPercentOfMax))
+                    e.Kind, e.StatusKey, e.Magnitude, e.DurationTicks, e.TickInterval, e.Stat,
+                    e.MagnitudeIsPercentOfMax, e.MagnitudeIsPercentOfBaseStat))
                 .ToArray());
     }
 
@@ -1021,7 +1022,9 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
                 .ToArray(),
             source.IsContainer,
             source.ContainerCapacity,
-            source.IsLiquid);
+            source.IsLiquid,
+            source.EffectValue,
+            source.EffectRunType);
     }
 
     private static CatalogEffectSetSnapshot MapToCatalogEffectSetSnapshot(
@@ -1501,7 +1504,9 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
         IReadOnlyCollection<CatalogItemEquipmentEffectHttpResponse>? EquipmentEffects = null,
         bool IsContainer = false,
         int? ContainerCapacity = null,
-        bool IsLiquid = false);
+        bool IsLiquid = false,
+        int EffectValue = 0,
+        string? EffectRunType = null);
 
     private sealed record CatalogItemEquipmentEffectHttpResponse(
         string Kind,

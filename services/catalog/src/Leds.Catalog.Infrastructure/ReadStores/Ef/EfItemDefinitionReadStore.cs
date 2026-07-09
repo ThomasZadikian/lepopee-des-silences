@@ -93,6 +93,8 @@ public sealed class EfItemDefinitionReadStore : IItemTemplateReadStore, IItemDef
             EquipmentEffects: equipmentEffects.Select(ItemEquipmentEffectDto.FromDomain).ToArray(),
             IsContainer: entity.IsContainer,
             ContainerCapacity: entity.ContainerCapacity,
-            IsLiquid: entity.IsLiquid);
+            IsLiquid: entity.IsLiquid,
+            EffectValue: entity.EffectValue,
+            EffectRunType: entity.EffectRunType);
     }
 }

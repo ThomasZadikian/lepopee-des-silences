@@ -22,7 +22,8 @@ public sealed class CombatStatusEffect
         int tickInterval,
         int nextTickAtTick,
         int expiresAtTick,
-        bool isMagnitudePercentOfMax)
+        bool isMagnitudePercentOfMax,
+        bool isMagnitudePercentOfBaseStat)
     {
         Key = key;
         DisplayName = displayName;
@@ -35,6 +36,7 @@ public sealed class CombatStatusEffect
         NextTickAtTick = nextTickAtTick;
         ExpiresAtTick = expiresAtTick;
         IsMagnitudePercentOfMax = isMagnitudePercentOfMax;
+        IsMagnitudePercentOfBaseStat = isMagnitudePercentOfBaseStat;
     }
     private const int MinTickInterval = 1400;
 
@@ -51,6 +53,12 @@ public sealed class CombatStatusEffect
     /// <summary>When true (HealOverTime only), Magnitude is a percentage of the target's
     /// MaxVitality rather than a flat amount — see <see cref="ConsumeDueTicks"/>.</summary>
     public bool IsMagnitudePercentOfMax { get; }
+
+    /// <summary>When true (StatModifier only), Magnitude is a percentage of the target's
+    /// BASE value for <see cref="Stat"/> rather than a flat delta — this is now the
+    /// default way to author stat buffs/debuffs. See <see cref="Combatant"/>'s
+    /// Effective* properties for how this is combined with flat modifiers.</summary>
+    public bool IsMagnitudePercentOfBaseStat { get; }
 
     public bool IsPeriodic => TickInterval > 0
         && (Kind is StatusEffectKind.DamageOverTime or StatusEffectKind.HealOverTime or StatusEffectKind.GuardOverTime);
@@ -70,7 +78,8 @@ public sealed class CombatStatusEffect
         int tickInterval = 0,
         CombatStat stat = CombatStat.None,
         EmotionalType? emotionalType = null,
-        bool isMagnitudePercentOfMax = false)
+        bool isMagnitudePercentOfMax = false,
+        bool isMagnitudePercentOfBaseStat = false)
     {
         if (string.IsNullOrWhiteSpace(key))
             throw new DomainException("Status effect key is required.");
@@ -94,14 +103,16 @@ public sealed class CombatStatusEffect
             interval,
             nextTick,
             currentTick + durationTicks,
-            isMagnitudePercentOfMax);
+            isMagnitudePercentOfMax,
+            isMagnitudePercentOfBaseStat);
     }
 
     public static CombatStatusEffect Rehydrate(
         string key, string displayName, StatusEffectKind kind, EmotionalType? emotionalType,
         CombatStat stat, int magnitude, int stacks, int tickInterval, int nextTickAtTick, int expiresAtTick,
-        bool isMagnitudePercentOfMax = false)
-        => new(key, displayName, kind, emotionalType, stat, magnitude, stacks, tickInterval, nextTickAtTick, expiresAtTick, isMagnitudePercentOfMax);
+        bool isMagnitudePercentOfMax = false,
+        bool isMagnitudePercentOfBaseStat = false)
+        => new(key, displayName, kind, emotionalType, stat, magnitude, stacks, tickInterval, nextTickAtTick, expiresAtTick, isMagnitudePercentOfMax, isMagnitudePercentOfBaseStat);
 
     public bool IsExpired(int currentTick) => currentTick >= ExpiresAtTick;
 

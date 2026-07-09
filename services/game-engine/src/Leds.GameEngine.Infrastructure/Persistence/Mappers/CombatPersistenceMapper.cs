@@ -96,7 +96,8 @@ public static class CombatPersistenceMapper
         int TickInterval,
         int NextTickAtTick,
         int ExpiresAtTick,
-        bool IsMagnitudePercentOfMax = false);
+        bool IsMagnitudePercentOfMax = false,
+        bool IsMagnitudePercentOfBaseStat = false);
 
     private static string? SerializeStatusEffects(IReadOnlyCollection<CombatStatusEffect> effects)
     {
@@ -114,7 +115,8 @@ public static class CombatPersistenceMapper
             e.TickInterval,
             e.NextTickAtTick,
             e.ExpiresAtTick,
-            e.IsMagnitudePercentOfMax)).ToArray();
+            e.IsMagnitudePercentOfMax,
+            e.IsMagnitudePercentOfBaseStat)).ToArray();
 
         return JsonSerializer.Serialize(snapshots);
     }
@@ -141,7 +143,8 @@ public static class CombatPersistenceMapper
                 s.TickInterval,
                 s.NextTickAtTick,
                 s.ExpiresAtTick,
-                s.IsMagnitudePercentOfMax);
+                s.IsMagnitudePercentOfMax,
+                s.IsMagnitudePercentOfBaseStat);
         }
     }
 

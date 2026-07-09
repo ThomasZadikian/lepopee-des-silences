@@ -188,6 +188,54 @@ public sealed class NpcEventChoiceResolverTests
     }
 
     [Fact]
+    public async Task ResolveAsync_ShouldApplyIntrinsicEffect_WhenGrantedItemCarriesEffectRunType()
+    {
+        var (run, node) = CreateRunWithActiveOfferingGiver();
+        var context = new CurrentEventChoiceResolutionContext(run, run.CurrentRoom, node, "take-item");
+        var sut = new NpcEventChoiceResolver(new StubCatalogContentGateway(), new StubPlayerProfileGateway());
+
+        var result = await sut.ResolveAsync(context);
+
+        result.Accepted.Should().BeTrue();
+        run.RunItems.Should().Contain(i =>
+            i.DefinitionKey == "item.consumable.minor-heal"
+            && i.EffectType == RunItemEffectType.Heal
+            && i.EffectAmount == 25);
+    }
+
+    [Fact]
+    public async Task ResolveAsync_ShouldNotGrantOffering_WhenPlayerHasNoContainer()
+    {
+        var (run, node) = CreateRunWithActiveOfferingGiver();
+        var context = new CurrentEventChoiceResolutionContext(run, run.CurrentRoom, node, "take-container-gated-item");
+        var sut = new NpcEventChoiceResolver(new StubCatalogContentGateway(), new StubPlayerProfileGateway());
+
+        var result = await sut.ResolveAsync(context);
+
+        result.Accepted.Should().BeTrue();
+        result.NarrativeFragments.Should().ContainSingle(f => f.Text.Contains("Rien ne se produit"));
+    }
+
+    [Fact]
+    public async Task ResolveAsync_ShouldGrantOffering_WhenPlayerHasContainer()
+    {
+        var (run, node) = CreateRunWithActiveOfferingGiver();
+        run.AddRunItem(RunItem.Create(
+            "canon.item.fiole-cristal", "Fiole de cristal", "Un récipient.",
+            RunItemType.Passive, RunItemRarity.Common, quantity: 1,
+            RunItemEffectType.None, effectAmount: 0, isContainer: true, containerCapacity: 1));
+        var context = new CurrentEventChoiceResolutionContext(run, run.CurrentRoom, node, "take-container-gated-item");
+        var sut = new NpcEventChoiceResolver(new StubCatalogContentGateway(), new StubPlayerProfileGateway());
+
+        var result = await sut.ResolveAsync(context);
+
+        result.Accepted.Should().BeTrue();
+        run.RunItems.Should().Contain(i =>
+            i.DefinitionKey == "item.consumable.minor-heal"
+            && i.EffectType == RunItemEffectType.Heal);
+    }
+
+    [Fact]
     public async Task ResolveAsync_ShouldGrantOffering_WhenRelationshipScoreMeetsRequiredThreshold()
     {
         var (run, node) = CreateRunWithActiveOfferingGiver();

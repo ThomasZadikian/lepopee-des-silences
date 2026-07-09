@@ -613,16 +613,31 @@ public sealed class Combatant
         return events;
     }
 
-    private int StatModifierSum(CombatStat stat)
+    private int StatModifierFlatSum(CombatStat stat)
         => _statusEffects
-            .Where(e => e.Kind == StatusEffectKind.StatModifier && e.Stat == stat)
+            .Where(e => e.Kind == StatusEffectKind.StatModifier && e.Stat == stat && !e.IsMagnitudePercentOfBaseStat)
             .Sum(e => e.Magnitude * e.Stacks);
 
-    // Effective stats = base snapshot + active StatModifier effects (debuffs are negative).
-    public int EffectiveAttackPower => Math.Max(0, BaseStatSnapshot.AttackPower + StatModifierSum(CombatStat.AttackPower));
-    public int EffectiveDefense => Math.Max(0, BaseStatSnapshot.Defense + StatModifierSum(CombatStat.Defense));
-    public int EffectiveSpeed => Math.Max(1, BaseStatSnapshot.Speed + StatModifierSum(CombatStat.Speed));
-    public int EffectiveFocus => Math.Max(0, BaseStatSnapshot.Focus + StatModifierSum(CombatStat.Focus));
+    // Percent-based StatModifier effects (the default going forward) are summed
+    // separately, then applied against the combatant's BASE value for that stat —
+    // e.g. two stacked "+10% AttackPower" effects add up to +20% of base, not a
+    // compounding ×1.1×1.1.
+    private int StatModifierPercentSum(CombatStat stat)
+        => _statusEffects
+            .Where(e => e.Kind == StatusEffectKind.StatModifier && e.Stat == stat && e.IsMagnitudePercentOfBaseStat)
+            .Sum(e => e.Magnitude * e.Stacks);
+
+    private int EffectiveStat(CombatStat stat, int baseValue)
+        => baseValue
+            + StatModifierFlatSum(stat)
+            + (int)Math.Round(baseValue * StatModifierPercentSum(stat) / 100.0);
+
+    // Effective stats = base snapshot + active StatModifier effects (flat and/or
+    // percent-of-base; debuffs are negative).
+    public int EffectiveAttackPower => Math.Max(0, EffectiveStat(CombatStat.AttackPower, BaseStatSnapshot.AttackPower));
+    public int EffectiveDefense => Math.Max(0, EffectiveStat(CombatStat.Defense, BaseStatSnapshot.Defense));
+    public int EffectiveSpeed => Math.Max(1, EffectiveStat(CombatStat.Speed, BaseStatSnapshot.Speed));
+    public int EffectiveFocus => Math.Max(0, EffectiveStat(CombatStat.Focus, BaseStatSnapshot.Focus));
 
     // Control flags consumed by the ATB scheduler / action validation (tranche 3+).
     public bool IsStunned => _statusEffects.Any(e => e.Kind == StatusEffectKind.Stun);

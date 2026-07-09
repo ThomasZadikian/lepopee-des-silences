@@ -18,4 +18,5 @@ public sealed record SkillStatusEffectSpec(
     CombatStat Stat = CombatStat.None,
     EmotionalType? EmotionalType = null,
     int Stacks = 1,
-    bool MagnitudeIsPercentOfMax = false);
+    bool MagnitudeIsPercentOfMax = false,
+    bool MagnitudeIsPercentOfBaseStat = false);

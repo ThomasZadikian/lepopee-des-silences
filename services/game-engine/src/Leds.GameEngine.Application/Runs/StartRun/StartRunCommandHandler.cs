@@ -55,12 +55,28 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
 
         int StatBonus(string statKind) => statBonuses.TryGetValue(statKind, out var value) ? value : 0;
 
-        var effectiveMaxHp = mainCharacter.Stats.MaxVitality + StatBonus("MaxVitality");
-        var effectiveAttack = mainCharacter.Stats.AttackPower + StatBonus("AttackPower");
-        var effectiveDefense = mainCharacter.Stats.Defense + StatBonus("Defense");
-        var effectiveSpeed = mainCharacter.Stats.Speed + StatBonus("Speed");
-        var effectiveFocus = mainCharacter.Stats.Focus + StatBonus("Focus");
-        var effectiveRunItemCapacity = Run.DefaultRunItemCapacity + StatBonus("RunItemCapacity");
+        // Percentage bonuses (e.g. Bague du courage: +10% Speed, +10% AttackPower) —
+        // the default way to author stat-boosting equipment going forward. Computed
+        // against the character's raw base stat, independent of any flat StatBonus,
+        // then both are added to the base (see EffectiveStat below).
+        var statBonusPercents = equipmentEffects
+            .Where(e => string.Equals(e.Kind, "StatBonusPercent", StringComparison.OrdinalIgnoreCase)
+                && e.StatKind is not null
+                && e.Amount is not null)
+            .GroupBy(e => e.StatKind!, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.Sum(e => e.Amount!.Value), StringComparer.OrdinalIgnoreCase);
+
+        int StatBonusPercent(string statKind) => statBonusPercents.TryGetValue(statKind, out var value) ? value : 0;
+
+        int EffectiveStat(string statKind, int baseValue) =>
+            baseValue + StatBonus(statKind) + (int)Math.Round(baseValue * StatBonusPercent(statKind) / 100.0);
+
+        var effectiveMaxHp = EffectiveStat("MaxVitality", mainCharacter.Stats.MaxVitality);
+        var effectiveAttack = EffectiveStat("AttackPower", mainCharacter.Stats.AttackPower);
+        var effectiveDefense = EffectiveStat("Defense", mainCharacter.Stats.Defense);
+        var effectiveSpeed = EffectiveStat("Speed", mainCharacter.Stats.Speed);
+        var effectiveFocus = EffectiveStat("Focus", mainCharacter.Stats.Focus);
+        var effectiveRunItemCapacity = EffectiveStat("RunItemCapacity", Run.DefaultRunItemCapacity);
 
         var typedDamageReductions = equipmentEffects
             .Where(e => string.Equals(e.Kind, "DamageReductionByType", StringComparison.OrdinalIgnoreCase)

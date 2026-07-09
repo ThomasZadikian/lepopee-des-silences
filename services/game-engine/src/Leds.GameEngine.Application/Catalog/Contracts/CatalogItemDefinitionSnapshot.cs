@@ -20,7 +20,9 @@ public sealed record CatalogItemDefinitionSnapshot(
     IReadOnlyCollection<CatalogItemEquipmentEffect>? EquipmentEffects = null,
     bool IsContainer = false,
     int? ContainerCapacity = null,
-    bool IsLiquid = false);
+    bool IsLiquid = false,
+    int EffectValue = 0,
+    string? EffectRunType = null);
 
 public sealed record CatalogItemEquipmentEffect(
     string Kind,

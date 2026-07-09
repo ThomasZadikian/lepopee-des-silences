@@ -147,7 +147,8 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
                     tickInterval: spec.TickInterval,
                     stat: spec.Stat,
                     emotionalType: spec.EmotionalType,
-                    isMagnitudePercentOfMax: spec.MagnitudeIsPercentOfMax));
+                    isMagnitudePercentOfMax: spec.MagnitudeIsPercentOfMax,
+                    isMagnitudePercentOfBaseStat: spec.MagnitudeIsPercentOfBaseStat));
 
                 logEntries.Add(CreateLog(
                     "StatusApplied",

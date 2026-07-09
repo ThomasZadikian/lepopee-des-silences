@@ -379,7 +379,9 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 99,
                 true,
                 true,
-                null),
+                null,
+                EffectValue: 25,
+                EffectRunType: "Heal"),
             ["item.consumable.guard-shard"] = new CatalogItemDefinitionSnapshot(
                 "item.consumable.guard-shard",
                 "1.0",
@@ -1214,7 +1216,9 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                     new CatalogNpcOffering("offer.item", "Item", "item.consumable.minor-heal", 1, IsMajor: false, UnlockConditions: []),
                     new CatalogNpcOffering("offer.item.nonstandard", "Item", "item.equipment.sac-nonstandard", 1, IsMajor: false, UnlockConditions: []),
                     new CatalogNpcOffering("offer.skill.gated", "Skill", "skill.basic.strike", 0, IsMajor: true,
-                        UnlockConditions: [new CatalogDialogueRequirement("RelationshipScoreAtLeast", null, null, null, 5)])
+                        UnlockConditions: [new CatalogDialogueRequirement("RelationshipScoreAtLeast", null, null, null, 5)]),
+                    new CatalogNpcOffering("offer.item.container-gated", "Item", "item.consumable.minor-heal", 1, IsMajor: false,
+                        UnlockConditions: [new CatalogDialogueRequirement("PlayerHasContainerItem", null, null, null, null)])
                 ],
                 DialogueGraph: new CatalogNpcDialogueGraph(
                     "npc.test.offering-giver.dialogue", "1.0", "start",
@@ -1253,6 +1257,11 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                                     "take-nonstandard-item", "Prendre l'objet au type non standard",
                                     [], [new CatalogDialogueConsequence(
                                         "GrantOffering", null, null, null, null, 0, null, null, "offer.item.nonstandard", null, null, null)],
+                                    null),
+                                new CatalogNpcDialogueChoice(
+                                    "take-container-gated-item", "Demander la potion de vie",
+                                    [], [new CatalogDialogueConsequence(
+                                        "GrantOffering", null, null, null, null, 0, null, null, "offer.item.container-gated", null, null, null)],
                                     null)
                             ])
                     })),

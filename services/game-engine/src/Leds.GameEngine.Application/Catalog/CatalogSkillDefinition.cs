@@ -11,4 +11,5 @@ public sealed record CatalogSkillEffectSpec(
     int DurationTicks,
     int TickInterval,
     string? Stat,
-    bool MagnitudeIsPercentOfMax);
+    bool MagnitudeIsPercentOfMax,
+    bool MagnitudeIsPercentOfBaseStat = false);
