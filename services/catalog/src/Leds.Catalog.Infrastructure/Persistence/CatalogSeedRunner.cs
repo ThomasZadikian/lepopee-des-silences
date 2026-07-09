@@ -45,6 +45,7 @@ public sealed class CatalogSeedRunner
         await SeedEnfantAsync(cancellationToken);
         await SeedHimLitAsync(cancellationToken);
         await SeedTovmaAsync(cancellationToken);
+        await SeedSathomAsync(cancellationToken);
         await SeedCanonEnemiesAsync(cancellationToken);
         await SeedCanonSkillsAsync(cancellationToken);
         await SeedCanonItemsAsync(cancellationToken);
@@ -777,6 +778,79 @@ public sealed class CatalogSeedRunner
 
         return await UpsertNpcAsync("npc.tovma", "Tovma",
             "Une des projections de l'Architecte — sa part calme et réfléchie. Un érudit occultiste qui croit aux forces obscures et aux symboles occultes, assoiffé de tout savoir.",
+            "1.0", EmotionalRegister.Melancolie, true, persona, wounds, graph, ct,
+            offerings: offerings);
+    }
+
+    private async Task<int> SeedSathomAsync(CancellationToken ct)
+    {
+        var persona = new NpcPersona(
+            "Une projection combative de l'Architecte — volontaire, toujours prêt à avancer et à se battre pour qui le lui demande",
+            EmotionalRegister.Melancolie,
+            new[] { "avancer", "se battre pour les autres", "ne jamais reculer" },
+            new[] { "une demande d'aide", "un adversaire", "quelqu'un en danger" });
+
+        var wounds = new[]
+        {
+            new NpcWound("w-sauver-sathom", EmotionalRegister.Melancolie, NpcWoundReversibility.SoothableByAct, -2, -4,
+                new[] { new NpcTransgression("w-sauver-sathom", "sathom-reproche", -2) },
+                "Il se souvient d'un visage qu'il n'a pas pu sauver. Depuis, chaque combat est une façon de rattraper ça — comme si gagner cette fois-ci effaçait la fois où il a perdu.")
+        };
+
+        var rencontre = new NpcDialogueNode("rencontre", "Sathom",
+            new[]
+            {
+                "Vous avez besoin d'aide ? Demandez. Je ne recule devant rien — pas devant un adversaire, pas devant vous.",
+                "Rester immobile, ça, je ne sais pas faire."
+            },
+            new[]
+            {
+                new NpcDialogueChoice("demander-aide", "Lui demander de l'aide", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.AdjustRelationship, rel: 1) }, "aide"),
+                new NpcDialogueChoice("reproche", "Lui reprocher de ne pas avoir su sauver quelqu'un", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.SetMemoryFlag, flag: "sathom-reproche"),
+                            C(ConsequenceKind.Narrative, frag: "Il se raidit, mais ne répond pas. Quelque chose dans son regard se ferme.") }, null),
+                new NpcDialogueChoice("partir", "Partir", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.Narrative, frag: "Vous partez. Il reste là, prêt, comme toujours, au cas où quelqu'un aurait besoin de lui.") }, null)
+            });
+
+        var aide = new NpcDialogueNode("aide", "Sathom",
+            new[] { "Je ne suis fait que pour ça : avancer, me battre, aider. Le reste, je ne sais pas y faire." },
+            new[]
+            {
+                new NpcDialogueChoice("ecouter-encore", "Écouter encore", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.AdjustRelationship, rel: 1) }, "don")
+            });
+
+        var don = new NpcDialogueNode("don", "Sathom",
+            new[] { "Tenez. Si vous avancez, autant avancer armé." },
+            new[]
+            {
+                new NpcDialogueChoice("accepter-potion", "Accepter une potion de vie", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.sathom.potion") }, null),
+                new NpcDialogueChoice("accepter-bague", "Accepter la Bague du courage", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.sathom.bague") }, null)
+            });
+
+        var graph = new NpcDialogueGraph("npc.sathom.dialogue", "1.0", "rencontre",
+            new Dictionary<string, NpcDialogueNode> { ["rencontre"] = rencontre, ["aide"] = aide, ["don"] = don });
+
+        var offerings = new[]
+        {
+            // Toujours donnée quand la réputation est "rare" (>=250) ET que le joueur possède
+            // un récipient — répétable (IsMajor: false), pas de plafond de dons.
+            new NpcOffering("offer.sathom.potion", NpcOfferingKind.Item, "canon.item.potion-de-vie", 1, false,
+                new[]
+                {
+                    new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 250),
+                    new DialogueRequirement(DialogueRequirementKind.PlayerHasContainerItem)
+                }),
+            new NpcOffering("offer.sathom.bague", NpcOfferingKind.Item, "canon.item.bague-du-courage", 1, true,
+                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 500) })
+        };
+
+        return await UpsertNpcAsync("npc.sathom", "Sathom",
+            "Une des projections de l'Architecte — sa part combative et volontaire. Toujours prêt à avancer, il aide sans hésiter ceux qui le lui demandent.",
             "1.0", EmotionalRegister.Melancolie, true, persona, wounds, graph, ct,
             offerings: offerings);
     }
