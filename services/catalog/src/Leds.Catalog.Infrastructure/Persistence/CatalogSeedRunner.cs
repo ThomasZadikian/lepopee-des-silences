@@ -44,6 +44,7 @@ public sealed class CatalogSeedRunner
         await SeedHomonculeAsync(cancellationToken);
         await SeedEnfantAsync(cancellationToken);
         await SeedHimLitAsync(cancellationToken);
+        await SeedTovmaAsync(cancellationToken);
         await SeedCanonEnemiesAsync(cancellationToken);
         await SeedCanonSkillsAsync(cancellationToken);
         await SeedCanonItemsAsync(cancellationToken);
@@ -707,6 +708,77 @@ public sealed class CatalogSeedRunner
         return await UpsertNpcAsync("npc.himlit", "Him'Lit",
             "Le Seigneur du Palais. Il ne dirige que le Palais, mais d'une main de fer — arrogant, cynique, d'une élégance distante. Sa blessure : le contrôle absolu, depuis la trahison de l'Architecte.",
             "1.0", EmotionalRegister.Silence, true, persona, wounds, graph, ct);
+    }
+
+    // Tovma — une des projections de l'Architecte, sa part calme et réfléchie :
+    // un érudit occultiste assoiffé de tout savoir. Comme toutes les projections
+    // de l'Architecte, il relève du registre Mélancolie.
+    private async Task<int> SeedTovmaAsync(CancellationToken ct)
+    {
+        var persona = new NpcPersona(
+            "Une projection calme de l'Architecte — un érudit occultiste, assoiffé de tout savoir",
+            EmotionalRegister.Melancolie,
+            new[] { "comprendre", "des symboles inconnus", "un savoir qu'on lui refuse" },
+            new[] { "un secret", "un symbole occulte", "une vérité" });
+
+        var wounds = new[]
+        {
+            new NpcWound("w-connaissance-tovma", EmotionalRegister.Melancolie, NpcWoundReversibility.SoothableByAct, -2, -4,
+                new[] { new NpcTransgression("w-connaissance-tovma", "tovma-moquerie", -2) },
+                "Il ne dort plus, ne mange plus. Il ne fait que chercher — un symbole de plus, un fragment de plus, comme si le prochain allait enfin tout expliquer.")
+        };
+
+        var rencontre = new NpcDialogueNode("rencontre", "Tovma",
+            new[]
+            {
+                "Vous marchez ici comme si le Palais n'avait rien à vous apprendre. C'est une erreur — tout, ici, veut être lu.",
+                "Asseyez-vous. Ou ne le faites pas. Le temps ne signifie plus grand-chose, pour moi."
+            },
+            new[]
+            {
+                new NpcDialogueChoice("rester", "Rester l'écouter", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.AdjustRelationship, rel: 1),
+                            C(ConsequenceKind.SootheWound, wound: "w-connaissance-tovma") }, "savoir"),
+                new NpcDialogueChoice("moquerie", "Se moquer de son obsession", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.SetMemoryFlag, flag: "tovma-moquerie"),
+                            C(ConsequenceKind.Narrative, frag: "Il ne relève même pas. Il retourne à ses symboles, comme si vous n'aviez rien dit.") }, null),
+                new NpcDialogueChoice("partir", "Partir", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.Narrative, frag: "Vous vous éloignez. Il ne vous regarde pas partir — trop occupé à chercher.") }, null)
+            });
+
+        var savoir = new NpcDialogueNode("savoir", "Tovma",
+            new[] { "Chaque symbole que je perce m'en révèle dix que je ne comprends pas encore. C'est insupportable. C'est merveilleux." },
+            new[]
+            {
+                new NpcDialogueChoice("ecouter-encore", "Écouter encore", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.AdjustRelationship, rel: 1) }, "don")
+            });
+
+        var don = new NpcDialogueNode("don", "Tovma",
+            new[] { "Tenez. Ce que j'ai trouvé ne me sert à rien si personne ne l'emporte." },
+            new[]
+            {
+                new NpcDialogueChoice("accepter-main", "Accepter la Main de Khasma", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.tovma.main") }, null),
+                new NpcDialogueChoice("accepter-lunettes", "Accepter les Lunettes d'érudit", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.tovma.lunettes") }, null)
+            });
+
+        var graph = new NpcDialogueGraph("npc.tovma.dialogue", "1.0", "rencontre",
+            new Dictionary<string, NpcDialogueNode> { ["rencontre"] = rencontre, ["savoir"] = savoir, ["don"] = don });
+
+        var offerings = new[]
+        {
+            new NpcOffering("offer.tovma.main", NpcOfferingKind.Item, "canon.item.main-de-khasma", 1, true,
+                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) }),
+            new NpcOffering("offer.tovma.lunettes", NpcOfferingKind.Item, "canon.item.lunettes-erudit", 1, true,
+                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 250) })
+        };
+
+        return await UpsertNpcAsync("npc.tovma", "Tovma",
+            "Une des projections de l'Architecte — sa part calme et réfléchie. Un érudit occultiste qui croit aux forces obscures et aux symboles occultes, assoiffé de tout savoir.",
+            "1.0", EmotionalRegister.Melancolie, true, persona, wounds, graph, ct,
+            offerings: offerings);
     }
 
     // ──────────────────────────────────────────────────────────────────────────
