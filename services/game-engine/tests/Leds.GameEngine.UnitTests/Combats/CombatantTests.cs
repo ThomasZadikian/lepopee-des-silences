@@ -39,6 +39,68 @@ public sealed class CombatantTests
     }
 
     [Fact]
+    public void GainTempoMomentum_ShouldAccumulate_UpToTheCap()
+    {
+        var combatant = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+
+        combatant.GainTempoMomentum(300);
+        combatant.GainTempoMomentum(300);
+
+        combatant.TempoMomentumPerMille.Should().Be(500, because: "momentum is capped at 500 per-mille.");
+    }
+
+    [Fact]
+    public void DecayTempoMomentum_ShouldReduceOverElapsedTicks()
+    {
+        var combatant = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+        combatant.GainTempoMomentum(100);
+
+        combatant.DecayTempoMomentum(50); // 50 ticks / 10 ticks-per-point = 5 points lost.
+
+        combatant.TempoMomentumPerMille.Should().Be(95);
+    }
+
+    [Fact]
+    public void DecayTempoMomentum_ShouldNeverGoBelowZero()
+    {
+        var combatant = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+        combatant.GainTempoMomentum(20);
+
+        combatant.DecayTempoMomentum(1000);
+
+        combatant.TempoMomentumPerMille.Should().Be(0);
+    }
+
+    [Fact]
+    public void RegisterAtbAction_ShouldResetTempoMomentum_ToZero()
+    {
+        var combatant = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+        combatant.GainTempoMomentum(200);
+
+        combatant.RegisterAtbAction(currentTick: 0, recoveryTicks: 10);
+
+        combatant.TempoMomentumPerMille.Should().Be(0);
+    }
+
+    [Fact]
+    public void RecalculateAtbFillPerTick_ShouldReactToLiveEffectiveSpeed()
+    {
+        var combatant = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 80, speed: 10);
+
+        combatant.RecalculateAtbFillPerTick(opponentAverageEffectiveSpeed: 10);
+        var before = combatant.AtbFillPerTick;
+
+        combatant.ApplyStatusEffect(Leds.GameEngine.Domain.Combats.StatusEffects.CombatStatusEffect.Create(
+            "speed-buff", "Speed Buff", Leds.GameEngine.Domain.Combats.StatusEffects.StatusEffectKind.StatModifier,
+            currentTick: 0, durationTicks: 6000, magnitude: 10, stat: Leds.GameEngine.Domain.Combats.Typing.CombatStat.Speed));
+
+        combatant.RecalculateAtbFillPerTick(opponentAverageEffectiveSpeed: 10);
+
+        combatant.AtbFillPerTick.Should().BeGreaterThan(before,
+            because: "tempo must react live to a mid-combat Speed buff, not stay frozen at the pre-buff value.");
+    }
+
+    [Fact]
     public void Create_ShouldThrow_WhenSourceKeyIsEmpty()
     {
         var act = () => Combatant.Create(CombatantId.New(), "", "Hero", CombatantSide.Player, "Fighter", 100, 100, 0, 0, 0, 0);

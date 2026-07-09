@@ -1,3 +1,4 @@
+using Leds.GameEngine.Domain.Combats.Atb;
 using Leds.GameEngine.Domain.Combats.StatusEffects;
 using Leds.GameEngine.Domain.Combats.Typing;
 using Leds.GameEngine.Domain.Common;
@@ -139,6 +140,50 @@ public sealed class Combatant
 
     public void SetAtbGauge(int value) => RuntimeState.SetAtbGauge(value);
 
+    /// <summary>Markov room/side tempo factors (per-mille, 1000 = neutral), baked once at combat prep.</summary>
+    public int AtbTempoRoomFactorPerMille => RuntimeState.AtbTempoRoomFactorPerMille ?? 1000;
+    public int AtbTempoCombatantFactorPerMille => RuntimeState.AtbTempoCombatantFactorPerMille ?? 1000;
+
+    public void SetAtbTempoFactors(int roomFactorPerMille, int combatantFactorPerMille)
+        => RuntimeState.SetAtbTempoFactors(roomFactorPerMille, combatantFactorPerMille);
+
+    /// <summary>Current tempo momentum (per-mille bonus) from recent impactful actions.</summary>
+    public int TempoMomentumPerMille => RuntimeState.TempoMomentumPerMille;
+
+    public void GainTempoMomentum(int amountPerMille)
+        => RuntimeState.GainTempoMomentum(amountPerMille, TempoMomentumCalibration.MaxPerMille);
+
+    /// <summary>Decays momentum toward zero as ticks pass without this combatant acting.</summary>
+    public void DecayTempoMomentum(int deltaTicks)
+    {
+        if (deltaTicks <= 0) return;
+
+        var pointsLost = deltaTicks / TempoMomentumCalibration.DecayTicksPerPoint;
+        if (pointsLost > 0)
+            RuntimeState.DecayTempoMomentum((int)Math.Min(pointsLost, int.MaxValue));
+    }
+
+    /// <summary>
+    /// Recomputes the current ATB fill rate from EFFECTIVE stats (Speed, Attack,
+    /// Defense — including any active buff/debuff or equipment %), the opposing
+    /// side's current average Speed, and accumulated momentum. Called by
+    /// <see cref="Combat"/> whenever the clock advances, so tempo always
+    /// reflects the fight's live state rather than a value frozen at creation.
+    /// </summary>
+    public void RecalculateAtbFillPerTick(double opponentAverageEffectiveSpeed)
+    {
+        var fill = AtbTempoFormula.ComputeFillPerTick(
+            EffectiveSpeed,
+            EffectiveAttackPower,
+            EffectiveDefense,
+            opponentAverageEffectiveSpeed,
+            AtbTempoRoomFactorPerMille,
+            AtbTempoCombatantFactorPerMille,
+            TempoMomentumPerMille);
+
+        SetAtbFillPerTick(fill);
+    }
+
     // ── Threat (enemy targeting) ────────────────────────────────────────────
 
     /// <summary>Accumulated threat this combatant has drawn over the fight so far.</summary>
@@ -159,6 +204,8 @@ public sealed class Combatant
     {
         RuntimeState.SetAtbGauge(0);
         RuntimeState.SetActionRecovery(recoveryTicks > 0 ? currentTick + recoveryTicks : null);
+        // Momentum is a burst reward for the NEXT turn — it is spent in full once acted on.
+        RuntimeState.ResetTempoMomentum();
     }
 
     /// <summary>

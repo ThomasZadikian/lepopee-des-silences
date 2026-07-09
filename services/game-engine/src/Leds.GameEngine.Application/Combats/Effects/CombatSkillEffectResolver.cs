@@ -2,6 +2,7 @@ using Leds.GameEngine.Application.Combats.Actions;
 using Leds.GameEngine.Application.Combats.EnemyTurns.Ai;
 using Leds.GameEngine.Application.Combats.Typing;
 using Leds.GameEngine.Domain.Combats;
+using Leds.GameEngine.Domain.Combats.Atb;
 using Leds.GameEngine.Domain.Combats.StatusEffects;
 using Leds.GameEngine.Domain.Combats.Typing;
 using Leds.GameEngine.Domain.Common;
@@ -156,6 +157,12 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
                     actor,
                     skill,
                     [target]));
+
+                if (target.Side != actor.Side)
+                {
+                    // Momentum: landing a debuff on an opponent earns a tempo boost.
+                    actor.GainTempoMomentum(TempoMomentumCalibration.DebuffAppliedGainPerMille);
+                }
             }
         }
     }
@@ -221,6 +228,9 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
                     actor,
                     skill,
                     [target]));
+
+                // Momentum: an aggressive, impactful hit earns the actor a faster follow-up.
+                actor.GainTempoMomentum(TempoMomentumCalibration.CriticalHitGainPerMille);
             }
 
             AddEffectivenessLog(actor, skill, target, outcome.Effectiveness, logEntries);
@@ -256,6 +266,12 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
                     actor,
                     skill,
                     [target]));
+
+                if (guardBefore > 0 && target.Guard == 0)
+                {
+                    // Momentum: breaking through a target's guard entirely earns a tempo boost.
+                    actor.GainTempoMomentum(TempoMomentumCalibration.GuardBreakGainPerMille);
+                }
             }
 
             if (vitalityDamage > 0)

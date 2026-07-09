@@ -3,6 +3,7 @@ using System;
 using Leds.GameEngine.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,10 +12,13 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Leds.GameEngine.Infrastructure.Migrations
 {
     [DbContext(typeof(GameEngineDbContext))]
-    partial class GameEngineDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260709110000_AddAtbTempoFactorsAndMomentum")]
+    partial class AddAtbTempoFactorsAndMomentum
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
+
 #pragma warning disable 612, 618
             modelBuilder
                 .HasAnnotation("ProductVersion", "10.0.8")

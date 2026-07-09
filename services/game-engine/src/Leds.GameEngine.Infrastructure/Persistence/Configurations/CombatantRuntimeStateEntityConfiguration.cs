@@ -22,6 +22,9 @@ public sealed class CombatantRuntimeStateEntityConfiguration : IEntityTypeConfig
         builder.Property(e => e.AtbGaugeValue).HasColumnName("atb_gauge_value");
         builder.Property(e => e.ActionRecoveryUntilTick).HasColumnName("action_recovery_until_tick");
         builder.Property(e => e.AtbFillPerTick).HasColumnName("atb_fill_per_tick");
+        builder.Property(e => e.AtbTempoRoomFactorPerMille).HasColumnName("atb_tempo_room_factor_per_mille");
+        builder.Property(e => e.AtbTempoCombatantFactorPerMille).HasColumnName("atb_tempo_combatant_factor_per_mille");
+        builder.Property(e => e.TempoMomentumPerMille).HasColumnName("tempo_momentum_per_mille").HasDefaultValue(0).IsRequired();
         builder.Property(e => e.ThreatValue).HasColumnName("threat_value").HasDefaultValue(0d).IsRequired();
         builder.Property(e => e.LastAttackerId).HasColumnName("last_attacker_id");
         builder.Property(e => e.UpdatedAtUtc).HasColumnName("updated_at_utc");

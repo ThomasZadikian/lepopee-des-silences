@@ -4,9 +4,11 @@ using Leds.GameEngine.Domain.Markov.Psyche;
 namespace Leds.GameEngine.Application.Combats.Atb;
 
 /// <summary>
-/// Default ATB tempo provider: FillPerTick = Speed × roomFactor × combatantFactor,
-/// both derived from the Palace's dominant emotional state (Markov). Erratic states
-/// use deterministic SHA-256 jitter. Opening gauge = Initiative stagger + Markov bias.
+/// Default ATB tempo provider: bakes the room/side factors (per-mille) derived
+/// from the Palace's dominant emotional state (Markov) once at combat prep.
+/// Erratic states use deterministic SHA-256 jitter. Opening gauge = Initiative
+/// stagger + Markov bias. The final fill rate is computed LIVE from these
+/// factors combined with effective stats — see <see cref="Leds.GameEngine.Domain.Combats.Atb.AtbTempoFormula"/>.
 /// </summary>
 public sealed class MarkovAtbTempoProvider : IAtbTempoProvider
 {
@@ -28,8 +30,6 @@ public sealed class MarkovAtbTempoProvider : IAtbTempoProvider
                 AtbTempoCalibration.JitterMinPerMille, AtbTempoCalibration.JitterMaxPerMille)
             : AtbTempoCalibration.CombatantFactorPerMille(context.Side, dominant);
 
-        var fill = (int)Math.Max(1, (long)context.Speed * roomFactor * combatantFactor / 1_000_000);
-
         var openingBias = AtbTempoCalibration.OpeningBias(context.Side, dominant);
 
         // Deterministic per-combatant opening spread so equal-speed combatants don't
@@ -39,6 +39,6 @@ public sealed class MarkovAtbTempoProvider : IAtbTempoProvider
 
         var openingGauge = AtbActionMath.InitialGauge(context.Initiative, openingBias + openingSpread);
 
-        return new AtbTempoResult(fill, openingGauge);
+        return new AtbTempoResult(roomFactor, combatantFactor, openingGauge);
     }
 }

@@ -183,6 +183,9 @@ public static class CombatPersistenceMapper
             AtbGaugeValue = state.AtbGaugeValue,
             ActionRecoveryUntilTick = state.ActionRecoveryUntilTick,
             AtbFillPerTick = state.AtbFillPerTick,
+            AtbTempoRoomFactorPerMille = state.AtbTempoRoomFactorPerMille,
+            AtbTempoCombatantFactorPerMille = state.AtbTempoCombatantFactorPerMille,
+            TempoMomentumPerMille = state.TempoMomentumPerMille,
             ThreatValue = state.ThreatValue,
             LastAttackerId = state.LastAttackerId,
             UpdatedAtUtc = state.UpdatedAtUtc
@@ -314,7 +317,10 @@ public static class CombatPersistenceMapper
             entity.UpdatedAtUtc,
             entity.AtbFillPerTick,
             entity.ThreatValue,
-            entity.LastAttackerId);
+            entity.LastAttackerId,
+            entity.AtbTempoRoomFactorPerMille,
+            entity.AtbTempoCombatantFactorPerMille,
+            entity.TempoMomentumPerMille);
     }
 
     public static CombatantSkill ToDomain(CombatantSkillEntity entity)

@@ -193,6 +193,8 @@ public sealed class Combat
         if (Status != CombatStatus.Active)
             return;
 
+        RecalculateAllTempo();
+
         // The combatant that just had its turn spends its gauge before the clock
         // advances, so the scheduler elects the NEXT ready combatant rather than
         // re-selecting the one that just acted.
@@ -263,6 +265,8 @@ public sealed class Combat
         if (Status != CombatStatus.Active || deltaTicks <= 0)
             return [];
 
+        RecalculateAllTempo();
+
         // While an ally holds the selection (an ally is active AND ready), every
         // ally's gauge freezes — none can climb further or "steal" the next turn.
         var active = GetActiveCombatant();
@@ -271,6 +275,8 @@ public sealed class Combat
 
         foreach (var combatant in AllCombatants.Where(c => !c.IsDefeated))
         {
+            combatant.DecayTempoMomentum(deltaTicks);
+
             if (allyHoldsSelection && combatant.Side == CombatantSide.Player)
                 continue; // frozen during selection
 
@@ -335,6 +341,8 @@ public sealed class Combat
         if (Status != CombatStatus.Active)
             return null;
 
+        RecalculateAllTempo();
+
         var combatants = AllCombatants.ToArray();
         var participants = combatants
             .Select(c => new AtbParticipant(
@@ -367,6 +375,31 @@ public sealed class Combat
         int currentTick = 0)
     {
         return new Combat(id, runId, roomId, nodeId, status, allies, enemies, activeCombatantId, turnNumber, currentTick, createdAtUtc);
+    }
+
+    /// <summary>
+    /// Recomputes every living combatant's ATB fill rate from current EFFECTIVE
+    /// stats and the opposing side's current average Speed. Called at the top of
+    /// every clock-advancing operation so tempo reacts live to buffs, debuffs,
+    /// equipment, and anything else that shifts Effective* stats mid-fight.
+    /// </summary>
+    public void RecalculateAllTempo()
+    {
+        foreach (var combatant in AllCombatants.Where(c => !c.IsDefeated))
+        {
+            combatant.RecalculateAtbFillPerTick(OpponentAverageEffectiveSpeed(combatant));
+        }
+    }
+
+    private double OpponentAverageEffectiveSpeed(Combatant combatant)
+    {
+        var opposingSide = combatant.Side == CombatantSide.Player ? Enemies : Allies;
+        var livingOpponents = opposingSide.Where(c => !c.IsDefeated).ToArray();
+
+        // No living opponent (shouldn't normally happen mid-fight): neutral relative factor.
+        return livingOpponents.Length > 0
+            ? livingOpponents.Average(c => (double)c.EffectiveSpeed)
+            : combatant.EffectiveSpeed;
     }
 
     private static Combatant[] OrderByInitiative(IEnumerable<Combatant> combatants)

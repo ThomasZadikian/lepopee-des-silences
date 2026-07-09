@@ -12,6 +12,9 @@ public sealed class CombatantRuntimeStateEntity
     public int? AtbGaugeValue { get; set; }
     public int? ActionRecoveryUntilTick { get; set; }
     public int? AtbFillPerTick { get; set; }
+    public int? AtbTempoRoomFactorPerMille { get; set; }
+    public int? AtbTempoCombatantFactorPerMille { get; set; }
+    public int TempoMomentumPerMille { get; set; }
     public double ThreatValue { get; set; }
     public Guid? LastAttackerId { get; set; }
     public DateTime UpdatedAtUtc { get; set; }

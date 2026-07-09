@@ -6,9 +6,10 @@ namespace Leds.GameEngine.Application.Combats.Atb;
 
 /// <summary>
 /// Prepares a freshly created combat for the ATB clock: bakes each combatant's
-/// Markov tempo (fill rate) and opening gauge from the run's psyche, then advances
-/// once to elect the opener. Called only at combat creation — fill rates persist,
-/// the psyche is stable within a single fight.
+/// Markov room/side tempo factors and opening gauge from the run's psyche (stable
+/// for the whole fight), then elects the opener. The actual fill rate is derived
+/// live from these factors plus effective stats — see <see cref="Combat.RecalculateAllTempo"/> —
+/// and is recomputed on every subsequent clock advance, not just at creation.
 /// </summary>
 public interface IAtbCombatPreparer
 {
@@ -36,7 +37,6 @@ public sealed class AtbCombatPreparer : IAtbCombatPreparer
         foreach (var combatant in combat.Allies.Concat(combat.Enemies))
         {
             var tempo = _tempoProvider.Resolve(new AtbTempoContext(
-                Speed: combatant.BaseStatSnapshot.Speed,
                 Initiative: combatant.BaseStatSnapshot.Initiative,
                 Side: combatant.Side,
                 CombatantKey: combatant.SourceKey,
@@ -44,14 +44,17 @@ public sealed class AtbCombatPreparer : IAtbCombatPreparer
                 Seed: run.Seed,
                 Tick: combat.CurrentTick));
 
-            combatant.SetAtbFillPerTick(tempo.FillPerTick);
+            combatant.SetAtbTempoFactors(tempo.RoomFactorPerMille, tempo.CombatantFactorPerMille);
             combatant.SetAtbGauge(tempo.OpeningGauge);
         }
 
-        // Fills and opening gauges are set. Elect an opener only if someone is
-        // already ready; otherwise combat opens with partial bars and the real-time
-        // clock fills them from the opening spread (no fast-forward — time only ever
-        // moves through the hold clock).
+        // Bake the first live fill rates (effective stats + opposing side aggregate)
+        // now that room/side factors and opening gauges are set.
+        combat.RecalculateAllTempo();
+
+        // Elect an opener only if someone is already ready; otherwise combat opens
+        // with partial bars and the real-time clock fills them from the opening
+        // spread (no fast-forward — time only ever moves through the hold clock).
         combat.ElectActiveByReadiness();
     }
 }

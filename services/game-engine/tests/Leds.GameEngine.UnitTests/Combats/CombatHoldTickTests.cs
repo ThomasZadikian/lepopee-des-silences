@@ -9,13 +9,21 @@ namespace Leds.GameEngine.UnitTests.Combats;
 
 public sealed class CombatHoldTickTests
 {
-    private static Combat CreateSut(int allyCount = 2, int enemyCount = 1)
+    // Uniform speed across both sides (and zero Attack/Defense) keeps the live
+    // tempo formula neutral (investment = 1.0, relative = 1.0), so the derived
+    // AtbFillPerTick equals `speed` exactly — letting these tests set an exact
+    // fill rate via stats instead of poking AtbFillPerTick directly (which is
+    // now recomputed live on every HoldTick call, see AtbTempoFormula).
+    private static Combat CreateSut(int allyCount = 2, int enemyCount = 1, int speed = 10)
     {
         var allies = Enumerable.Range(0, allyCount).Select(i =>
-            Combatant.CreateAlly($"player.{i}", $"Hero{i}", "Fighter", 100)).ToArray();
+            Combatant.Create(
+                CombatantId.New(), $"player.{i}", $"Hero{i}", CombatantSide.Player, "Fighter",
+                maxVitality: 100, currentVitality: 100, guard: 0, baseGuard: 0, mana: 0, charge: 0,
+                speed: speed)).ToArray();
 
         var enemies = Enumerable.Range(0, enemyCount).Select(i =>
-            Combatant.CreateEnemy($"enemy.{i}", $"Enemy{i}", "Guard", 80)).ToArray();
+            Combatant.CreateEnemy($"enemy.{i}", $"Enemy{i}", "Guard", 80, speed: speed)).ToArray();
 
         return Combat.Create(
             CombatId.New(),
@@ -32,7 +40,6 @@ public sealed class CombatHoldTickTests
         var combat = CreateSut();
         var active = combat.Allies.First();
         active.SetAtbGauge(AtbConstants.ReadyThreshold);
-        active.SetAtbFillPerTick(1000);
         combat.MakeActiveCombatant(active.Id.Value);
 
         combat.HoldTick(100);
@@ -49,7 +56,6 @@ public sealed class CombatHoldTickTests
         active.SetAtbGauge(AtbConstants.ReadyThreshold);
         combat.MakeActiveCombatant(active.Id.Value);
         other.SetAtbGauge(1000);
-        other.SetAtbFillPerTick(500);
 
         combat.HoldTick(100);
 
@@ -59,10 +65,9 @@ public sealed class CombatHoldTickTests
     [Fact]
     public void HoldTick_ShouldCapGaugeAtReadyThreshold_OnLargeFill()
     {
-        var combat = CreateSut();
+        var combat = CreateSut(speed: 1_000_000);
         var enemy = combat.Enemies.First();
         enemy.SetAtbGauge(0);
-        enemy.SetAtbFillPerTick(1_000_000);
 
         combat.HoldTick(100);
 
@@ -72,13 +77,12 @@ public sealed class CombatHoldTickTests
     [Fact]
     public void HoldTick_ShouldKeepFillingEnemies_WhileAllyHoldsSelection()
     {
-        var combat = CreateSut();
+        var combat = CreateSut(speed: 500);
         var active = combat.Allies.First();
         active.SetAtbGauge(AtbConstants.ReadyThreshold);
         combat.MakeActiveCombatant(active.Id.Value);
         var enemy = combat.Enemies.First();
         enemy.SetAtbGauge(0);
-        enemy.SetAtbFillPerTick(500);
 
         combat.HoldTick(10);
 
@@ -88,13 +92,12 @@ public sealed class CombatHoldTickTests
     [Fact]
     public void HoldTick_ShouldNotFreezeAnyAlly_WhenActiveAllyIsNotYetReady()
     {
-        var combat = CreateSut();
+        var combat = CreateSut(speed: 500);
         var active = combat.Allies.First();
         var other = combat.Allies.Skip(1).First();
         active.SetAtbGauge(0);
         combat.MakeActiveCombatant(active.Id.Value);
         other.SetAtbGauge(0);
-        other.SetAtbFillPerTick(500);
 
         combat.HoldTick(10);
 

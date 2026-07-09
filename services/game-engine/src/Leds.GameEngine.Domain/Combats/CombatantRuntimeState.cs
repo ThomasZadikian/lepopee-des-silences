@@ -16,7 +16,10 @@ public sealed class CombatantRuntimeState
         int? atbFillPerTick,
         DateTime updatedAtUtc,
         double threatValue,
-        Guid? lastAttackerId)
+        Guid? lastAttackerId,
+        int? atbTempoRoomFactorPerMille,
+        int? atbTempoCombatantFactorPerMille,
+        int tempoMomentumPerMille)
     {
         Id = id;
         CurrentVitality = currentVitality;
@@ -30,6 +33,9 @@ public sealed class CombatantRuntimeState
         UpdatedAtUtc = updatedAtUtc;
         ThreatValue = threatValue;
         LastAttackerId = lastAttackerId;
+        AtbTempoRoomFactorPerMille = atbTempoRoomFactorPerMille;
+        AtbTempoCombatantFactorPerMille = atbTempoCombatantFactorPerMille;
+        TempoMomentumPerMille = tempoMomentumPerMille;
     }
 
     public Guid Id { get; }
@@ -46,6 +52,18 @@ public sealed class CombatantRuntimeState
     /// preparation; persisted so the schedule survives reloads.
     /// </summary>
     public int? AtbFillPerTick { get; private set; }
+
+    /// <summary>Markov room/side tempo factors (per-mille, 1000 = neutral), baked once at combat prep.</summary>
+    public int? AtbTempoRoomFactorPerMille { get; private set; }
+    public int? AtbTempoCombatantFactorPerMille { get; private set; }
+
+    /// <summary>
+    /// Temporary tempo boost (per-mille) from recent impactful actions (crit,
+    /// guard break, debuff landed). Decays over time; reset to 0 when this
+    /// combatant acts.
+    /// </summary>
+    public int TempoMomentumPerMille { get; private set; }
+
     public DateTime UpdatedAtUtc { get; private set; }
 
     /// <summary>
@@ -70,7 +88,10 @@ public sealed class CombatantRuntimeState
         int? actionRecoveryUntilTick = null,
         int? atbFillPerTick = null,
         double threatValue = 0,
-        Guid? lastAttackerId = null)
+        Guid? lastAttackerId = null,
+        int? atbTempoRoomFactorPerMille = null,
+        int? atbTempoCombatantFactorPerMille = null,
+        int tempoMomentumPerMille = 0)
     {
         if (currentVitality < 0)
             throw new DomainException("Current vitality cannot be negative.");
@@ -99,7 +120,10 @@ public sealed class CombatantRuntimeState
             atbFillPerTick,
             DateTime.UtcNow,
             threatValue,
-            lastAttackerId);
+            lastAttackerId,
+            atbTempoRoomFactorPerMille,
+            atbTempoCombatantFactorPerMille,
+            tempoMomentumPerMille);
     }
 
     public void ApplyDamage(int amount)
@@ -230,10 +254,43 @@ public sealed class CombatantRuntimeState
         Touch();
     }
 
-    /// <summary>Sets the baked ATB fill rate (clamped ≥ 1). Set once at combat preparation.</summary>
+    /// <summary>Sets the current ATB fill rate (clamped ≥ 1). Recomputed live as stats change.</summary>
     public void SetAtbFillPerTick(int fillPerTick)
     {
         AtbFillPerTick = Math.Max(1, fillPerTick);
+        Touch();
+    }
+
+    /// <summary>Sets the Markov room/side tempo factors. Set once at combat preparation.</summary>
+    public void SetAtbTempoFactors(int roomFactorPerMille, int combatantFactorPerMille)
+    {
+        AtbTempoRoomFactorPerMille = roomFactorPerMille;
+        AtbTempoCombatantFactorPerMille = combatantFactorPerMille;
+        Touch();
+    }
+
+    /// <summary>Adds momentum from an impactful action, clamped to <paramref name="maxPerMille"/>.</summary>
+    public void GainTempoMomentum(int amountPerMille, int maxPerMille)
+    {
+        if (amountPerMille <= 0) return;
+
+        TempoMomentumPerMille = Math.Min(maxPerMille, TempoMomentumPerMille + amountPerMille);
+        Touch();
+    }
+
+    /// <summary>Decays accumulated momentum toward zero as time passes without acting.</summary>
+    public void DecayTempoMomentum(int pointsLost)
+    {
+        if (pointsLost <= 0) return;
+
+        TempoMomentumPerMille = Math.Max(0, TempoMomentumPerMille - pointsLost);
+        Touch();
+    }
+
+    /// <summary>Momentum is spent in full the moment the combatant acts.</summary>
+    public void ResetTempoMomentum()
+    {
+        TempoMomentumPerMille = 0;
         Touch();
     }
 
@@ -283,7 +340,10 @@ public sealed class CombatantRuntimeState
         DateTime updatedAtUtc,
         int? atbFillPerTick = null,
         double threatValue = 0,
-        Guid? lastAttackerId = null)
+        Guid? lastAttackerId = null,
+        int? atbTempoRoomFactorPerMille = null,
+        int? atbTempoCombatantFactorPerMille = null,
+        int tempoMomentumPerMille = 0)
     {
         return new CombatantRuntimeState(
             id,
@@ -297,6 +357,9 @@ public sealed class CombatantRuntimeState
             atbFillPerTick,
             updatedAtUtc,
             threatValue,
-            lastAttackerId);
+            lastAttackerId,
+            atbTempoRoomFactorPerMille,
+            atbTempoCombatantFactorPerMille,
+            tempoMomentumPerMille);
     }
 }
