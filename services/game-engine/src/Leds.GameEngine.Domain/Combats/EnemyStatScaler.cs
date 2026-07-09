@@ -35,6 +35,17 @@ public sealed class EnemyStatScaler
 
         return new ScaledEnemyStats(scaledVitality, scaledPower, clampedMultiplier);
     }
+
+    /// <summary>
+    /// Scales a single authored stat (e.g. Attack, Defense) by the same
+    /// difficulty multiplier applied to Vitality/Power, so enemy stats keep
+    /// pace with run depth.
+    /// </summary>
+    public int ScaleValue(int baseValue, double difficultyMultiplier)
+    {
+        var clampedMultiplier = Math.Clamp(difficultyMultiplier, MinMultiplier, MaxMultiplier);
+        return Math.Max(1, (int)Math.Ceiling(baseValue * clampedMultiplier));
+    }
 }
 
 public sealed record ScaledEnemyStats(int Vitality, int Power, double AppliedMultiplier);

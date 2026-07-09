@@ -20,6 +20,7 @@ public sealed class EfEnemyDefinitionReadStore : IEnemyDefinitionReadStore
     public async Task<IReadOnlyCollection<IEnemyDefinition>> ListActiveAsync(CancellationToken cancellationToken)
     {
         var entities = await _context.EnemyDefinitions
+            .Include(e => e.StatBlock)
             .Where(e => e.Status == "Active")
             .ToListAsync(cancellationToken);
 
@@ -29,6 +30,7 @@ public sealed class EfEnemyDefinitionReadStore : IEnemyDefinitionReadStore
     public async Task<IEnemyDefinition?> GetByKeyAsync(string key, CancellationToken cancellationToken)
     {
         var entity = await _context.EnemyDefinitions
+            .Include(e => e.StatBlock)
             .FirstOrDefaultAsync(e => e.Key == key, cancellationToken);
 
         return entity is null ? null : MapToDomain(entity);
@@ -37,6 +39,7 @@ public sealed class EfEnemyDefinitionReadStore : IEnemyDefinitionReadStore
     public async Task<IReadOnlyCollection<IEnemyDefinition>> ListByRoomTypeAsync(string roomType, CancellationToken cancellationToken)
     {
         var entities = await _context.EnemyDefinitions
+            .Include(e => e.StatBlock)
             .Where(e => e.Status == "Active" && e.CompatibleRoomTypesJson.Contains(roomType))
             .ToListAsync(cancellationToken);
 
@@ -46,6 +49,7 @@ public sealed class EfEnemyDefinitionReadStore : IEnemyDefinitionReadStore
     public async Task<IReadOnlyCollection<IEnemyDefinition>> ListCompatibleAsync(string roomType, int riskLevel, CancellationToken cancellationToken)
     {
         var entities = await _context.EnemyDefinitions
+            .Include(e => e.StatBlock)
             .Where(e => e.Status == "Active"
                 && e.CompatibleRoomTypesJson.Contains(roomType)
                 && e.MinRiskLevel <= riskLevel
@@ -73,6 +77,9 @@ public sealed class EfEnemyDefinitionReadStore : IEnemyDefinitionReadStore
             compatibleRoomTypes,
             tags,
             skillKeys,
-            Enum.Parse<CatalogContentStatus>(entity.Status));
+            Enum.Parse<CatalogContentStatus>(entity.Status),
+            attackPower: entity.StatBlock?.AttackPower ?? 0,
+            defense: entity.StatBlock?.Defense ?? 0,
+            speed: entity.StatBlock?.Speed ?? 10);
     }
 }

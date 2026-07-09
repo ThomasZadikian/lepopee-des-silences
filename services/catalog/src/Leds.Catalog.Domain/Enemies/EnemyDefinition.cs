@@ -21,6 +21,9 @@ public sealed class EnemyDefinition : CatalogContentBase, IEnemyDefinition
         int baseDifficulty,
         int minRiskLevel,
         int maxRiskLevel,
+        int attackPower,
+        int defense,
+        int speed,
         IReadOnlyCollection<string> compatibleRoomTypes,
         IReadOnlyCollection<string> tags,
         IReadOnlyCollection<string> skillKeys)
@@ -30,6 +33,9 @@ public sealed class EnemyDefinition : CatalogContentBase, IEnemyDefinition
         BaseDifficulty = baseDifficulty;
         MinRiskLevel = minRiskLevel;
         MaxRiskLevel = maxRiskLevel;
+        AttackPower = attackPower;
+        Defense = defense;
+        Speed = speed;
         _compatibleRoomTypes = compatibleRoomTypes.ToList();
         _tags = tags.ToList();
         _skillKeys = skillKeys.ToList();
@@ -42,6 +48,12 @@ public sealed class EnemyDefinition : CatalogContentBase, IEnemyDefinition
     public int MinRiskLevel { get; }
 
     public int MaxRiskLevel { get; }
+
+    public int AttackPower { get; }
+
+    public int Defense { get; }
+
+    public int Speed { get; }
 
     public IReadOnlyCollection<string> CompatibleRoomTypes => _compatibleRoomTypes.AsReadOnly();
 
@@ -61,7 +73,10 @@ public sealed class EnemyDefinition : CatalogContentBase, IEnemyDefinition
         IReadOnlyCollection<string>? compatibleRoomTypes,
         IReadOnlyCollection<string>? tags,
         IReadOnlyCollection<string>? skillKeys,
-        CatalogContentStatus status = CatalogContentStatus.Draft)
+        CatalogContentStatus status = CatalogContentStatus.Draft,
+        int attackPower = 0,
+        int defense = 0,
+        int speed = 10)
     {
         var desc = CatalogContentDescription.From(description);
 
@@ -90,6 +105,21 @@ public sealed class EnemyDefinition : CatalogContentBase, IEnemyDefinition
             throw new DomainException("Enemy definition max risk level must be greater than or equal to min risk level.");
         }
 
+        if (attackPower < 0)
+        {
+            throw new DomainException("Enemy definition attack power cannot be negative.");
+        }
+
+        if (defense < 0)
+        {
+            throw new DomainException("Enemy definition defense cannot be negative.");
+        }
+
+        if (speed < 1)
+        {
+            throw new DomainException("Enemy definition speed must be at least 1.");
+        }
+
         var distinctRoomTypes = compatibleRoomTypes is null || compatibleRoomTypes.Count == 0
             ? throw new DomainException("Enemy definition must have at least one compatible room type.")
             : compatibleRoomTypes.Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
@@ -113,6 +143,9 @@ public sealed class EnemyDefinition : CatalogContentBase, IEnemyDefinition
             baseDifficulty,
             minRiskLevel,
             maxRiskLevel,
+            attackPower,
+            defense,
+            speed,
             distinctRoomTypes,
             distinctTags,
             distinctSkillKeys);

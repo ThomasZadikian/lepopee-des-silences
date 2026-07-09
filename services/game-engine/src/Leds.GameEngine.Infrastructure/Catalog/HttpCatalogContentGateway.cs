@@ -963,7 +963,10 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
             MinRiskLevel: source.MinRiskLevel,
             MaxRiskLevel: source.MaxRiskLevel,
             Tags: source.Tags,
-            SkillKeys: source.SkillKeys);
+            SkillKeys: source.SkillKeys,
+            AttackPower: source.AttackPower,
+            Defense: source.Defense,
+            Speed: source.Speed);
     }
 
     private static PalaceLawDefinitionSnapshot MapToPalaceLawDefinitionSnapshot(

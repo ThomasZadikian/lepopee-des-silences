@@ -62,6 +62,40 @@ public sealed class CombatSkillEffectResolverTests
     }
 
     [Fact]
+    public void Resolve_ShouldIncreaseDamage_WhenActorAttackPowerIsAboveBaseline()
+    {
+        var ally = Combatant.Create(
+            CombatantId.New(), "player.self", "Hero", CombatantSide.Player, "Fighter",
+            maxVitality: 100, currentVitality: 100, guard: 0, baseGuard: 0, mana: 0, charge: 0,
+            attackPower: 20);
+        var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 80);
+        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
+        var skill = CreateSkill("skill.basic.strike", "Damage", 10);
+
+        _resolver.Resolve(combat, ally, skill, [enemy]);
+
+        // multiplier = (20 baseline + 20 attack) / (20 baseline + 0 defense) = 2.0.
+        enemy.CurrentVitality.Should().Be(80 - 20);
+    }
+
+    [Fact]
+    public void Resolve_ShouldReduceDamage_WhenTargetDefenseIsAboveBaseline()
+    {
+        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+        var enemy = Combatant.Create(
+            CombatantId.New(), "enemy.sentinel", "Sentinel", CombatantSide.Enemy, "Guard",
+            maxVitality: 80, currentVitality: 80, guard: 0, baseGuard: 0, mana: 0, charge: 0,
+            defense: 20);
+        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
+        var skill = CreateSkill("skill.basic.strike", "Damage", 10);
+
+        _resolver.Resolve(combat, ally, skill, [enemy]);
+
+        // multiplier = (20 baseline + 0 attack) / (20 baseline + 20 defense) = 0.5.
+        enemy.CurrentVitality.Should().Be(80 - 5);
+    }
+
+    [Fact]
     public void Resolve_ShouldCreateDamageLogEntries()
     {
         var (combat, ally, enemy) = CreateCombat();

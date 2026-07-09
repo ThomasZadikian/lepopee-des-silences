@@ -36,6 +36,69 @@ public sealed class EnemyDefinitionTests
         def.CompatibleRoomTypes.Should().BeEquivalentTo("Threshold");
         def.Tags.Should().BeEquivalentTo("threshold", "doubt");
         def.SkillKeys.Should().BeEquivalentTo("skill.basic.strike");
+        def.AttackPower.Should().Be(0);
+        def.Defense.Should().Be(0);
+        def.Speed.Should().Be(10);
+    }
+
+    [Fact]
+    public void Create_ShouldSetAttackDefenseSpeed_WhenProvided()
+    {
+        var def = EnemyDefinition.Create(
+            "enemy.threshold.doubt-fragment",
+            "Fragment de Doute",
+            "Une hesitation cristallisee.",
+            "1.0.0",
+            "Fragile",
+            baseDifficulty: 1,
+            minRiskLevel: 1,
+            maxRiskLevel: 2,
+            compatibleRoomTypes: ["Threshold"],
+            tags: ["threshold", "doubt"],
+            skillKeys: ["skill.basic.strike"],
+            attackPower: 15,
+            defense: 8,
+            speed: 12);
+
+        def.AttackPower.Should().Be(15);
+        def.Defense.Should().Be(8);
+        def.Speed.Should().Be(12);
+    }
+
+    [Fact]
+    public void Create_ShouldThrow_WhenAttackPowerIsNegative()
+    {
+        var act = () => EnemyDefinition.Create(
+            "enemy.test", "Name", "Desc", "1.0.0", "Fragile", 1, 1, 2, ["Threshold"], [], [],
+            attackPower: -1);
+
+        act.Should()
+            .Throw<DomainException>()
+            .WithMessage("Enemy definition attack power cannot be negative.");
+    }
+
+    [Fact]
+    public void Create_ShouldThrow_WhenDefenseIsNegative()
+    {
+        var act = () => EnemyDefinition.Create(
+            "enemy.test", "Name", "Desc", "1.0.0", "Fragile", 1, 1, 2, ["Threshold"], [], [],
+            defense: -1);
+
+        act.Should()
+            .Throw<DomainException>()
+            .WithMessage("Enemy definition defense cannot be negative.");
+    }
+
+    [Fact]
+    public void Create_ShouldThrow_WhenSpeedIsLessThanOne()
+    {
+        var act = () => EnemyDefinition.Create(
+            "enemy.test", "Name", "Desc", "1.0.0", "Fragile", 1, 1, 2, ["Threshold"], [], [],
+            speed: 0);
+
+        act.Should()
+            .Throw<DomainException>()
+            .WithMessage("Enemy definition speed must be at least 1.");
     }
 
     [Fact]

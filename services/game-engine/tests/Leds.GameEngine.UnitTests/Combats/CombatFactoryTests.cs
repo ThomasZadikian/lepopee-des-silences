@@ -17,7 +17,11 @@ public sealed class CombatFactoryTests
         int enemyBaseDifficulty = 3,
         bool includeSkills = false,
         IReadOnlyCollection<CombatEncounterDraftSkill>? enemySkills = null,
-        IReadOnlyCollection<string>? allyTags = null)
+        IReadOnlyCollection<string>? allyTags = null,
+        int enemyAttackPower = 0,
+        int enemyDefense = 0,
+        int enemySpeed = 10,
+        double difficultyMultiplier = 1.0)
     {
         var allies = Enumerable.Range(0, allyCount).Select(i =>
             new CombatEncounterDraftAlly(
@@ -47,7 +51,10 @@ public sealed class CombatFactoryTests
                 5,
                 Array.Empty<string>(),
                 skills.Select(s => s.Key).ToArray(),
-                skills);
+                skills,
+                AttackPower: enemyAttackPower,
+                Defense: enemyDefense,
+                Speed: enemySpeed);
         }).ToArray();
 
         return new CombatEncounterDraft(
@@ -59,7 +66,8 @@ public sealed class CombatFactoryTests
             RiskLevel: 3,
             EncounterType: "Combat",
             Enemies: enemies,
-            Allies: allies);
+            Allies: allies,
+            DifficultyMultiplier: difficultyMultiplier);
     }
 
     [Fact]
@@ -171,6 +179,38 @@ public sealed class CombatFactoryTests
         var enemy = combat.Enemies.Single();
         enemy.MaxVitality.Should().Be(40 + 5 * 10);
         enemy.CurrentVitality.Should().Be(enemy.MaxVitality);
+    }
+
+    [Fact]
+    public void CreateFromDraft_ShouldWireCatalogAttackDefenseSpeed_IntoEnemyCombatant()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft(enemyAttackPower: 15, enemyDefense: 8, enemySpeed: 12);
+
+        var combat = factory.CreateFromDraft(draft);
+
+        var enemy = combat.Enemies.Single();
+        enemy.BaseStatSnapshot.AttackPower.Should().Be(15);
+        enemy.BaseStatSnapshot.Defense.Should().Be(8);
+        enemy.BaseStatSnapshot.Speed.Should().Be(12);
+    }
+
+    [Fact]
+    public void CreateFromDraft_ShouldScaleEnemyAttackAndDefense_WithDifficultyMultiplier_ButNotSpeed()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft(
+            enemyAttackPower: 10, enemyDefense: 10, enemySpeed: 12, difficultyMultiplier: 2.0);
+
+        var combat = factory.CreateFromDraft(draft);
+
+        var enemy = combat.Enemies.Single();
+        enemy.BaseStatSnapshot.AttackPower.Should().Be(20,
+            because: "Attack should keep pace with run depth, same as Vitality.");
+        enemy.BaseStatSnapshot.Defense.Should().Be(20,
+            because: "Defense should keep pace with run depth, same as Vitality.");
+        enemy.BaseStatSnapshot.Speed.Should().Be(12,
+            because: "Speed drives ATB tempo directly and stays as authored, unscaled.");
     }
 
     [Fact]

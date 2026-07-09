@@ -84,6 +84,9 @@ public sealed class CombatEncounterDraftGenerator : ICombatEncounterDraftGenerat
                 MaxRiskLevel: e.MaxRiskLevel,
                 Tags: e.Tags,
                 SkillKeys: e.SkillKeys,
+                AttackPower: e.AttackPower,
+                Defense: e.Defense,
+                Speed: e.Speed,
                 Skills: e.SkillKeys
                     .Select(sk => skillLookup.GetValueOrDefault(sk))
                     .Where(s => s is not null)

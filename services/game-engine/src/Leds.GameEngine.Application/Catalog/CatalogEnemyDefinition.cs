@@ -10,4 +10,7 @@ public sealed record CatalogEnemyDefinition(
     int MinRiskLevel,
     int MaxRiskLevel,
     IReadOnlyCollection<string> Tags,
-    IReadOnlyCollection<string> SkillKeys);
+    IReadOnlyCollection<string> SkillKeys,
+    int AttackPower = 0,
+    int Defense = 0,
+    int Speed = 10);

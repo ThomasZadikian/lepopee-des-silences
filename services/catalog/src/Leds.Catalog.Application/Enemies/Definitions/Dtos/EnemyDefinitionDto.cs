@@ -15,7 +15,10 @@ public sealed record EnemyDefinitionDto(
     int MaxRiskLevel,
     IReadOnlyCollection<string> CompatibleRoomTypes,
     IReadOnlyCollection<string> Tags,
-    IReadOnlyCollection<string> SkillKeys)
+    IReadOnlyCollection<string> SkillKeys,
+    int AttackPower = 0,
+    int Defense = 0,
+    int Speed = 10)
 {
     public static EnemyDefinitionDto FromDomain(IEnemyDefinition definition)
     {
@@ -32,6 +35,9 @@ public sealed record EnemyDefinitionDto(
             definition.MaxRiskLevel,
             definition.CompatibleRoomTypes.ToArray(),
             definition.Tags.ToArray(),
-            definition.SkillKeys.ToArray());
+            definition.SkillKeys.ToArray(),
+            definition.AttackPower,
+            definition.Defense,
+            definition.Speed);
     }
 }

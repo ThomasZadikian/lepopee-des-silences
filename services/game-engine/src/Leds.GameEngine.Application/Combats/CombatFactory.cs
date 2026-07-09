@@ -228,13 +228,22 @@ public sealed class CombatFactory : ICombatFactory
                     })
                     .ToArray();
 
+                // Attack/Defense keep pace with run depth the same way Vitality does;
+                // Speed stays as authored (it drives ATB tempo directly, not damage,
+                // so scaling it by the same unbounded multiplier would break pacing).
+                var scaledAttackPower = _enemyStatScaler.ScaleValue(enemy.AttackPower, draft.DifficultyMultiplier);
+                var scaledDefense = _enemyStatScaler.ScaleValue(enemy.Defense, draft.DifficultyMultiplier);
+
                 return Combatant.CreateEnemy(
                     sourceKey: enemy.EnemyKey,
                     displayName: enemy.DisplayName,
                     archetype: enemy.Archetype,
                     maxVitality: scaled.Vitality,
                     skills: skills,
-                    startingGuard: enemyStartingGuard);
+                    startingGuard: enemyStartingGuard,
+                    attackPower: scaledAttackPower,
+                    defense: scaledDefense,
+                    speed: enemy.Speed);
             })
             .ToArray();
 

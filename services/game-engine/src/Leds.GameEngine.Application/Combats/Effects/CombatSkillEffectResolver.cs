@@ -314,18 +314,17 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
             && skill.Tags.Any(tag => string.Equals(tag?.Trim(), "stagger", StringComparison.OrdinalIgnoreCase));
     }
 
-    // Each point of attack/defense buff or debuff shifts damage by this fraction
-    // (tunable). Computed from MODIFIER deltas only, so it's 1.0 with no active
-    // buff/debuff and works even when base attack/defense is 0 (e.g. enemies).
-    private const double StatPointDamageFactor = 0.03;
+    // Baseline added to both sides of the ratio (tunable). Keeps the multiplier
+    // well-behaved when either stat is 0 (no authored stat block yet), while
+    // making the ABSOLUTE Attack/Defense values matter, not just buff/debuff
+    // deltas — two combatants both sitting at the baseline produce a neutral
+    // 1.0 multiplier, same as the old delta-only formula's no-buff case.
+    private const double AttackDefenseBaseline = 20.0;
 
     private static double StatModifierDamageMultiplier(Combatant actor, Combatant target)
     {
-        var attackDelta = actor.EffectiveAttackPower - actor.BaseStatSnapshot.AttackPower;
-        var defenseDelta = target.EffectiveDefense - target.BaseStatSnapshot.Defense;
-
-        var multiplier = (1.0 + attackDelta * StatPointDamageFactor)
-            * (1.0 - defenseDelta * StatPointDamageFactor);
+        var multiplier = (AttackDefenseBaseline + actor.EffectiveAttackPower)
+            / (AttackDefenseBaseline + target.EffectiveDefense);
 
         return Math.Clamp(multiplier, 0.25, 3.0);
     }
