@@ -51,6 +51,7 @@ public sealed class CatalogSeedRunner
         await SeedOuchianAsync(cancellationToken);
         await SeedIrisAsync(cancellationToken);
         await SeedEthanAsync(cancellationToken);
+        await SeedMargotAsync(cancellationToken);
         await SeedCanonEnemiesAsync(cancellationToken);
         await SeedCanonSkillsAsync(cancellationToken);
         await SeedCanonItemsAsync(cancellationToken);
@@ -1219,6 +1220,76 @@ public sealed class CatalogSeedRunner
         return await UpsertNpcAsync("npc.ethan", "Ethan",
             "Un enfant de 8 ans, la prochaine proie du Palais qui le dévore doucement. Silencieux, presque muet, il reste totalement traumatisé par la vision de sa propre dévoration.",
             "1.0", EmotionalRegister.Silence, true, persona, wounds, graph, ct,
+            offerings: offerings);
+    }
+
+    private async Task<int> SeedMargotAsync(CancellationToken ct)
+    {
+        var persona = new NpcPersona(
+            "Une surveillante de l'orphelinat, d'une violence psychologique implacable sous des dehors maternels — sa mission : border les enfants dans une fausse confiance, pour qu'ils cessent de se méfier du lieu qui les dévore",
+            EmotionalRegister.Deni,
+            new[] { "le confort apparent des enfants", "Ethan", "que l'orphelinat reste un lieu de confiance" },
+            new[] { "qu'on nomme ce qu'elle fait vraiment", "qu'un enfant cesse de lui faire confiance", "qu'on protège Ethan de son influence" });
+
+        var wounds = new[]
+        {
+            new NpcWound("w-cruaute-margot", EmotionalRegister.Deni, NpcWoundReversibility.SoothableByAct, -2, -4,
+                new[] { new NpcTransgression("w-cruaute-margot", "margot-cruaute-nommee", -2) },
+                "Elle appelle ça border, veiller, aimer. Le nommer autrement — cruauté, manipulation — c'est lui retirer le seul mot qui lui permet de continuer.")
+        };
+
+        var rencontre = new NpcDialogueNode("rencontre", "Margot",
+            new[]
+            {
+                "Les enfants sont en sécurité ici. Je veille sur chacun d'eux, vous savez. Surtout sur Ethan.",
+                "Le malheur, dehors, c'est une chose terrible. Ici, au moins, on s'occupe d'eux."
+            },
+            new[]
+            {
+                new NpcDialogueChoice("nommer-cruaute", "Lui dire que ce qu'elle fait aux enfants est de la cruauté, pas de l'affection", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.SetMemoryFlag, flag: "margot-cruaute-nommee"),
+                            C(ConsequenceKind.Narrative, frag: "Son sourire ne bouge pas. Mais quelque chose, dans son regard, se durcit d'un coup.") }, null),
+                new NpcDialogueChoice("jouer-le-jeu", "La laisser parler de son \"dévouement\" sans la contredire", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.AdjustRelationship, rel: 1) }, "devouement"),
+                new NpcDialogueChoice("partir", "Partir", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.Narrative, frag: "Vous partez. Elle vous suit du regard, son sourire déjà revenu vers le prochain enfant.") }, null)
+            });
+
+        var devouement = new NpcDialogueNode("devouement", "Margot",
+            new[] { "Elle parle d'Ethan longuement — de sa fragilité, de son silence, de tout ce qu'elle fait pour « l'aider à s'ouvrir ». Elle ne remarque pas, ou ne veut pas remarquer, à quel point ses mots sonnent faux." },
+            new[]
+            {
+                new NpcDialogueChoice("ecouter-encore", "Écouter encore", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.AdjustRelationship, rel: 1) }, "don")
+            });
+
+        var don = new NpcDialogueNode("don", "Margot",
+            new[] { "Elle sourit. « Vous méritez une récompense, pour votre... compréhension. »" },
+            new[]
+            {
+                new NpcDialogueChoice("accepter-bonus-rare", "Accepter cinq points de compétence",
+                    new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 250) },
+                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.margot.bonus-rare") }, null),
+                new NpcDialogueChoice("accepter-bonus-legendaire", "Accepter dix points de compétence",
+                    new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) },
+                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.margot.bonus-legendaire") }, null)
+            });
+
+        var graph = new NpcDialogueGraph("npc.margot.dialogue", "1.0", "rencontre",
+            new Dictionary<string, NpcDialogueNode> { ["rencontre"] = rencontre, ["devouement"] = devouement, ["don"] = don });
+
+        var offerings = new[]
+        {
+            // IsMajor: true — chaque bonus n'est accordé qu'une seule fois, comme demandé.
+            new NpcOffering("offer.margot.bonus-rare", NpcOfferingKind.StatPoint, null, 5, true,
+                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 250) }),
+            new NpcOffering("offer.margot.bonus-legendaire", NpcOfferingKind.StatPoint, null, 10, true,
+                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) })
+        };
+
+        return await UpsertNpcAsync("npc.margot", "Margot",
+            "Une surveillante de l'orphelinat, d'une violence psychologique implacable sous des dehors maternels. Sa mission : border les enfants dans une fausse confiance. Elle nourrit une affection particulière pour Ethan — et le malheur qui l'accable la ravit, puisqu'il nourrit l'orphelinat, et donc le Palais.",
+            "1.0", EmotionalRegister.Deni, true, persona, wounds, graph, ct,
             offerings: offerings);
     }
 
