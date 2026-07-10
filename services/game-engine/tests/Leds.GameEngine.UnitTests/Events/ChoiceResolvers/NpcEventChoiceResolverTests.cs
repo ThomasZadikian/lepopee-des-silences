@@ -125,8 +125,27 @@ public sealed class NpcEventChoiceResolverTests
         var result = await sut.ResolveAsync(context);
 
         result.Accepted.Should().BeTrue();
-        playerProfileGateway.AwardedStatPoints.Should().ContainSingle(a => a.PlayerId == run.PlayerId && a.Amount == 1);
+        // 2 awards: one from the offering's own StatPoint grant, one from the
+        // unconditional per-interaction stat point every resolved choice now gives.
+        playerProfileGateway.AwardedStatPoints.Where(a => a.PlayerId == run.PlayerId && a.Amount == 1)
+            .Should().HaveCount(2);
         playerProfileGateway.ClaimedOfferings.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ResolveAsync_ShouldAwardStatPoint_OnEveryResolvedChoice_RegardlessOfConsequences()
+    {
+        var (run, node) = CreateRunWithActiveOfferingGiver();
+        var context = new CurrentEventChoiceResolutionContext(run, run.CurrentRoom, node, "take-milestone");
+        var playerProfileGateway = new StubPlayerProfileGateway();
+        var sut = new NpcEventChoiceResolver(new StubCatalogContentGateway(), playerProfileGateway);
+
+        var result = await sut.ResolveAsync(context);
+
+        result.Accepted.Should().BeTrue();
+        playerProfileGateway.AwardedStatPoints.Should().ContainSingle(
+            a => a.PlayerId == run.PlayerId && a.Amount == 1);
+        result.NarrativeFragments.Should().Contain(f => f.Text.Contains("point de compétence"));
     }
 
     [Fact]

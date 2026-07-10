@@ -99,6 +99,12 @@ public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver
             await ApplyConsequenceAsync(consequence, npc, run, context.Node, relationship, pools, fragments, effects, cancellationToken);
         }
 
+        // Every resolved choice, with any PNJ, grants a stat point — uncapped by design:
+        // this is the game's primary, ever-available source of stat point income.
+        await _playerProfileGateway.AwardStatPointsAsync(run.PlayerId, 1, cancellationToken);
+        fragments.Add(new NarrativeFragmentDto(npc.DisplayName, "Cette rencontre t'apprend quelque chose sur toi-même. +1 point de compétence."));
+        effects.Add(new AppliedConsequenceEffect("statPoint", 1, npc.DisplayName));
+
         EvaluateTransgressions(npc, relationship);
         RefreshWounds(npc, relationship);
 
