@@ -32,6 +32,9 @@ public sealed class EmotionalTypeProfileProvider : ICombatantTypeProfileProvider
         {
             // Example (reward skill, not yet equippable) — tune the type freely.
             ["skill-shadow-bite"] = EmotionalType.Silence,
+            // Ethan's "Frayeur organique" (canon.skill.frayeur-organique): the dread
+            // it inflicts is the spell's own nature, independent of who casts it.
+            ["canon.skill.frayeur-organique"] = EmotionalType.Effroi,
         };
 
     private static readonly IReadOnlyDictionary<string, CombatantTypeProfile> ProfilesByKey =

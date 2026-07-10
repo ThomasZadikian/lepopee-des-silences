@@ -30,7 +30,8 @@ public sealed class CombatFactory : ICombatFactory
         int dotDamageReductionPercent = 0,
         int magicDamageBonusPercent = 0,
         int magicDamageReductionPercent = 0,
-        int criticalChanceBonusPercent = 0)
+        int criticalChanceBonusPercent = 0,
+        int guardBonusPercent = 0)
     {
         return CreateFromDraft(
             CombatId.New(),
@@ -49,7 +50,8 @@ public sealed class CombatFactory : ICombatFactory
             dotDamageReductionPercent,
             magicDamageBonusPercent,
             magicDamageReductionPercent,
-            criticalChanceBonusPercent);
+            criticalChanceBonusPercent,
+            guardBonusPercent);
     }
     private static (double VitalityMultiplier, double PowerMultiplier, int GuardBonus) EncounterBonus(string encounterType)
     {
@@ -80,7 +82,8 @@ public sealed class CombatFactory : ICombatFactory
         int dotDamageReductionPercent = 0,
         int magicDamageBonusPercent = 0,
         int magicDamageReductionPercent = 0,
-        int criticalChanceBonusPercent = 0)
+        int criticalChanceBonusPercent = 0,
+        int guardBonusPercent = 0)
     {
         // Sum all unconsumed StartingGuardBonus modifiers (e.g. Éclat de garde: +8 garde).
         var guardBonus = runModifiers?
@@ -102,6 +105,10 @@ public sealed class CombatFactory : ICombatFactory
         {
             guardBonus += 5;
         }
+
+        // Equipment-driven percentage bonus on top of the Law/climate-derived guard
+        // above (e.g. Bague de Iris: +20% — 0 guard stays 0, 100 becomes 120).
+        guardBonus = (int)Math.Round(guardBonus * (1.0 + guardBonusPercent / 100.0));
 
         // Item-driven emotional attack type for the player character (e.g. a mask
         // that turns the hero's attacks to Rupture). Null when no override is active.

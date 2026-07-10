@@ -47,6 +47,7 @@ public static class RunPersistenceMapper
             MagicDamageBonusPercent = run.MagicDamageBonusPercent,
             MagicDamageReductionPercent = run.MagicDamageReductionPercent,
             CriticalChanceBonusPercent = run.CriticalChanceBonusPercent,
+            GuardBonusPercent = run.GuardBonusPercent,
             StartedAtUtc = run.StartedAt.UtcDateTime,
             EndedAtUtc = run.EndedAt?.UtcDateTime,
             SavedAtUtc = run.SavedAt?.UtcDateTime,
@@ -428,7 +429,8 @@ public static class RunPersistenceMapper
             dotDamageReductionPercent: entity.DotDamageReductionPercent,
             magicDamageBonusPercent: entity.MagicDamageBonusPercent,
             magicDamageReductionPercent: entity.MagicDamageReductionPercent,
-            criticalChanceBonusPercent: entity.CriticalChanceBonusPercent);
+            criticalChanceBonusPercent: entity.CriticalChanceBonusPercent,
+            guardBonusPercent: entity.GuardBonusPercent);
 
         RehydrateNpcEncounters(run, entity);
         return run;

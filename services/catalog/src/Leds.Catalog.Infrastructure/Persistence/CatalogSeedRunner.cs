@@ -50,6 +50,7 @@ public sealed class CatalogSeedRunner
         await SeedPomenianAsync(cancellationToken);
         await SeedOuchianAsync(cancellationToken);
         await SeedIrisAsync(cancellationToken);
+        await SeedEthanAsync(cancellationToken);
         await SeedCanonEnemiesAsync(cancellationToken);
         await SeedCanonSkillsAsync(cancellationToken);
         await SeedCanonItemsAsync(cancellationToken);
@@ -1152,6 +1153,75 @@ public sealed class CatalogSeedRunner
             offerings: offerings);
     }
 
+    private async Task<int> SeedEthanAsync(CancellationToken ct)
+    {
+        var persona = new NpcPersona(
+            "Un enfant de 8 ans, la prochaine proie du Palais qui le dévore doucement — silencieux, presque muet, totalement traumatisé par la vision de sa propre dévoration",
+            EmotionalRegister.Silence,
+            new[] { "le silence", "ne pas être vu", "Iris" },
+            new[] { "qu'on le regarde en face", "qu'on lui parle de ce qu'il a vu", "le Palais" });
+
+        var wounds = new[]
+        {
+            new NpcWound("w-devoration-ethan", EmotionalRegister.Silence, NpcWoundReversibility.SoothableByAct, -2, -4,
+                new[] { new NpcTransgression("w-devoration-ethan", "ethan-devoration-evoquee", -2) },
+                "Il a vu le Palais commencer à le dévorer. Ce qu'il a vu ne se dit pas — ça se tait, ou ça se brise.")
+        };
+
+        var rencontre = new NpcDialogueNode("rencontre", "Ethan",
+            new[]
+            {
+                "Il ne dit rien. Ses yeux ne quittent jamais la même direction — comme si quelque chose, quelque part, continuait de le regarder.",
+                "« ...Le Palais... il... » Sa voix se perd avant la fin de la phrase."
+            },
+            new[]
+            {
+                new NpcDialogueChoice("evoquer-devoration", "Lui demander ce qu'il a vu", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.SetMemoryFlag, flag: "ethan-devoration-evoquee"),
+                            C(ConsequenceKind.Narrative, frag: "Il se fige complètement. Plus un mot, plus un geste — comme s'il n'était déjà plus tout à fait là.") }, null),
+                new NpcDialogueChoice("rester-silence", "Rester en silence avec lui, sans rien demander", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.AdjustRelationship, rel: 1) }, "silence"),
+                new NpcDialogueChoice("partir", "Partir", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.Narrative, frag: "Vous partez. Il ne bouge pas. Il ne bouge presque jamais.") }, null)
+            });
+
+        var silence = new NpcDialogueNode("silence", "Ethan",
+            new[] { "Il ne parle toujours pas. Mais quelque chose, dans son regard, se détend un peu — comme si le silence, pour une fois, ne lui faisait pas peur." },
+            new[]
+            {
+                new NpcDialogueChoice("rester-encore", "Rester encore", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.AdjustRelationship, rel: 1) }, "don")
+            });
+
+        var don = new NpcDialogueNode("don", "Ethan",
+            new[] { "Il tend la main. Pas un mot — juste ça." },
+            new[]
+            {
+                new NpcDialogueChoice("accepter-frayeur", "Accepter \"Frayeur organique\"",
+                    new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 250) },
+                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.ethan.frayeur") }, null),
+                new NpcDialogueChoice("accepter-bague", "Accepter la Bague de Iris",
+                    new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) },
+                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.ethan.bague") }, null)
+            });
+
+        var graph = new NpcDialogueGraph("npc.ethan.dialogue", "1.0", "rencontre",
+            new Dictionary<string, NpcDialogueNode> { ["rencontre"] = rencontre, ["silence"] = silence, ["don"] = don });
+
+        var offerings = new[]
+        {
+            new NpcOffering("offer.ethan.frayeur", NpcOfferingKind.Skill, "canon.skill.frayeur-organique", 1, true,
+                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 250) }),
+            new NpcOffering("offer.ethan.bague", NpcOfferingKind.Item, "canon.item.bague-iris", 1, true,
+                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) })
+        };
+
+        return await UpsertNpcAsync("npc.ethan", "Ethan",
+            "Un enfant de 8 ans, la prochaine proie du Palais qui le dévore doucement. Silencieux, presque muet, il reste totalement traumatisé par la vision de sa propre dévoration.",
+            "1.0", EmotionalRegister.Silence, true, persona, wounds, graph, ct,
+            offerings: offerings);
+    }
+
     // ──────────────────────────────────────────────────────────────────────────
     //  ENNEMIS CANON — créatures signature tirées de « L'épopée des silences »
     //  et « Des échos ». Chemin de combat vivant : EnemyDefinition + StatBlock +
@@ -1574,6 +1644,14 @@ public sealed class CatalogSeedRunner
                     Stat: "Speed", MagnitudeIsPercentOfBaseStat: true)
             },
             category: "Magic");
+
+        // "Frayeur organique" (Ethan) : une peur qui vient du corps, pas de la voix —
+        // type Effroi intrinsèque au sort (voir EmotionalTypeProfileProvider.SkillTypesByKey),
+        // indépendant de qui le lance.
+        await UpsertSkillAsync("canon.skill.frayeur-organique", "Frayeur organique",
+            "Une peur qui ne vient pas de la voix — elle sourd de lui, brute, organique, sans qu'il ait besoin de dire un mot.",
+            "Damage", "SingleEnemy", "Damage", mana: 14, power: 16, cancellationToken,
+            category: "Magic");
     }
 
     private async Task UpsertSkillAsync(
@@ -1787,6 +1865,13 @@ public sealed class CatalogSeedRunner
             "Un doudou usé, cousu à la main. Iris ne le donne qu'à ceux qui ont mérité, un peu, sa confiance.",
             "Equipment", "Accessory", "Rare", "Permanent", false, 0, cancellationToken,
             equipmentEffects: new[] { new ItemEquipmentEffect(ItemEquipmentEffectKind.CriticalChanceBonusPercent, Amount: 5) });
+
+        // +20% de la garde de départ du combat (0 reste 0 ; 100 devient 120) — voir
+        // StartRunCommandHandler.guardBonusPercent / CombatFactory.guardBonus.
+        await UpsertItemAsync("canon.item.bague-iris", "Bague de Iris",
+            "Un anneau qu'Iris a un jour retiré de son propre doigt, sans un mot, pour le lui donner. Il ne dit rien non plus, en l'acceptant.",
+            "Equipment", "Accessory", "Legendary", "Permanent", false, 0, cancellationToken,
+            equipmentEffects: new[] { new ItemEquipmentEffect(ItemEquipmentEffectKind.StatBonusPercent, StatKind: "Guard", Amount: 20) });
     }
 
     private async Task UpsertItemAsync(

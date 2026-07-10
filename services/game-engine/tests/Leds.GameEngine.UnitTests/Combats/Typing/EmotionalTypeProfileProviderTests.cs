@@ -78,6 +78,16 @@ public sealed class EmotionalTypeProfileProviderTests
     }
 
     [Fact]
+    public void FrayeurOrganique_uses_Effroi_regardless_of_caster()
+    {
+        var hero = Combatant.CreateAlly("character.player.self", "Hero", "AnyRole", 100);
+        var spell = CombatantSkill.Create(
+            "canon.skill.frayeur-organique", "Frayeur organique", "Damage", "SingleEnemy", "Damage", 0, 0, 20);
+
+        _provider.ResolveAttackType(hero, spell).Should().Be(EmotionalType.Effroi);
+    }
+
+    [Fact]
     public void Skill_tag_overrides_intrinsic_spell_type()
     {
         // A tag, if ever present, wins over the registry entry.

@@ -81,7 +81,8 @@ public sealed class Run
         int dotDamageReductionPercent = 0,
         int magicDamageBonusPercent = 0,
         int magicDamageReductionPercent = 0,
-        int criticalChanceBonusPercent = 0)
+        int criticalChanceBonusPercent = 0,
+        int guardBonusPercent = 0)
     {
         Id = id;
         PlayerId = playerId;
@@ -108,6 +109,7 @@ public sealed class Run
         MagicDamageBonusPercent = magicDamageBonusPercent;
         MagicDamageReductionPercent = magicDamageReductionPercent;
         CriticalChanceBonusPercent = criticalChanceBonusPercent;
+        GuardBonusPercent = guardBonusPercent;
 
         _rooms.Add(initialRoom);
     }
@@ -263,6 +265,7 @@ public sealed class Run
     public int MagicDamageBonusPercent { get; }
     public int MagicDamageReductionPercent { get; }
     public int CriticalChanceBonusPercent { get; }
+    public int GuardBonusPercent { get; }
 
     public DateTimeOffset StartedAt { get; }
 
@@ -323,7 +326,8 @@ public sealed class Run
         int dotDamageReductionPercent = 0,
         int magicDamageBonusPercent = 0,
         int magicDamageReductionPercent = 0,
-        int criticalChanceBonusPercent = 0)
+        int criticalChanceBonusPercent = 0,
+        int guardBonusPercent = 0)
     {
         if (playerId == Guid.Empty)
         {
@@ -421,7 +425,8 @@ public sealed class Run
             dotDamageReductionPercent: dotDamageReductionPercent,
             magicDamageBonusPercent: magicDamageBonusPercent,
             magicDamageReductionPercent: magicDamageReductionPercent,
-            criticalChanceBonusPercent: criticalChanceBonusPercent);
+            criticalChanceBonusPercent: criticalChanceBonusPercent,
+            guardBonusPercent: guardBonusPercent);
 
         run.PlayerState = PlayerRuntimeState.Create(
             maxVitality: maxHp,
@@ -1576,11 +1581,12 @@ public sealed class Run
         int dotDamageReductionPercent = 0,
         int magicDamageBonusPercent = 0,
         int magicDamageReductionPercent = 0,
-        int criticalChanceBonusPercent = 0)
+        int criticalChanceBonusPercent = 0,
+        int guardBonusPercent = 0)
     {
         var firstRoom = rooms.First();
 
-        var run = new Run(id, playerId, seed, generatorVersion, markovMatrixVersion, status, firstRoom, startedAt, maxHp, currentHp, attack, defense, speed, focus, currentRoomIndex, activeCombatId, pendingRewardOfferId, runItemCapacity, typedDamageReductions, hitChanceBonusPercent, dotDurationReductionPercent, dotDamageReductionPercent, magicDamageBonusPercent, magicDamageReductionPercent, criticalChanceBonusPercent);
+        var run = new Run(id, playerId, seed, generatorVersion, markovMatrixVersion, status, firstRoom, startedAt, maxHp, currentHp, attack, defense, speed, focus, currentRoomIndex, activeCombatId, pendingRewardOfferId, runItemCapacity, typedDamageReductions, hitChanceBonusPercent, dotDurationReductionPercent, dotDamageReductionPercent, magicDamageBonusPercent, magicDamageReductionPercent, criticalChanceBonusPercent, guardBonusPercent);
         foreach (var room in rooms.Skip(1))
         {
             run._rooms.Add(room);

@@ -115,6 +115,10 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
                 && e.Amount is not null)
             .Sum(e => e.Amount!.Value);
 
+        // e.g. Bague de Iris: +20% of whatever Guard the protagonist would otherwise
+        // start combat with (Law/climate-derived — see CombatFactory's guardBonus).
+        var guardBonusPercent = StatBonusPercent("Guard");
+
         var grantedSkillKeys = equipmentEffects
             .Where(e => string.Equals(e.Kind, "GrantSkill", StringComparison.OrdinalIgnoreCase)
                 && !string.IsNullOrWhiteSpace(e.SkillKey))
@@ -168,7 +172,8 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
             dotDamageReductionPercent: dotDamageReductionPercent,
             magicDamageBonusPercent: magicDamageBonusPercent,
             magicDamageReductionPercent: magicDamageReductionPercent,
-            criticalChanceBonusPercent: criticalChanceBonusPercent);
+            criticalChanceBonusPercent: criticalChanceBonusPercent,
+            guardBonusPercent: guardBonusPercent);
 
         var characterSnapshots = snapshot.Characters
             .Select(c =>

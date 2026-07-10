@@ -26,6 +26,7 @@ public sealed class RunEntity
     public int MagicDamageBonusPercent { get; set; }
     public int MagicDamageReductionPercent { get; set; }
     public int CriticalChanceBonusPercent { get; set; }
+    public int GuardBonusPercent { get; set; }
     public DateTime StartedAtUtc { get; set; }
     public DateTime? EndedAtUtc { get; set; }
     public DateTime? SavedAtUtc { get; set; }

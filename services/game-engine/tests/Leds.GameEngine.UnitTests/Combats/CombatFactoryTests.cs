@@ -502,6 +502,39 @@ public sealed class CombatFactoryTests
     }
 
     [Fact]
+    public void CreateFromDraft_ShouldApplyGuardBonusPercent_OnTopOfStartingGuardBonus()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft();
+
+        var modifier = RunModifier.Create(
+            RunModifierType.StartingGuardBonus,
+            100,
+            RunModifierDuration.UntilRunEnds,
+            "RunItem",
+            "item.consumable.guard-shard");
+
+        var combat = factory.CreateFromDraft(draft, runModifiers: new[] { modifier }, guardBonusPercent: 20);
+
+        var ally = combat.Allies.Single();
+        ally.Guard.Should().Be(120,
+            because: "Bague de Iris: +20% of whatever starting guard the run would otherwise grant (100 -> 120).");
+    }
+
+    [Fact]
+    public void CreateFromDraft_ShouldLeaveGuardAtZero_WhenGuardBonusPercentAppliesToNoBaseGuard()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft();
+
+        var combat = factory.CreateFromDraft(draft, guardBonusPercent: 20);
+
+        var ally = combat.Allies.Single();
+        ally.Guard.Should().Be(0,
+            because: "20% of zero starting guard is still zero.");
+    }
+
+    [Fact]
     public void CreateFromDraft_ShouldUseZeroGuard_WhenNoRunModifiersProvided()
     {
         var factory = new CombatFactory();
