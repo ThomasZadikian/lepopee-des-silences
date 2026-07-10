@@ -43,6 +43,7 @@ public sealed class CombatantEntity
     /// </summary>
     public int MagicDamageBonusPercent { get; set; }
     public int MagicDamageReductionPercent { get; set; }
+    public int CriticalChanceBonusPercent { get; set; }
 
     /// <summary>
     /// Active durable status effects (poison/regen/buffs/control) serialized as JSON.

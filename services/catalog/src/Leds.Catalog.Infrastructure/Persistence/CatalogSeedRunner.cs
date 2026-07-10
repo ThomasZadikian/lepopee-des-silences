@@ -49,6 +49,7 @@ public sealed class CatalogSeedRunner
         await SeedErinaAsync(cancellationToken);
         await SeedPomenianAsync(cancellationToken);
         await SeedOuchianAsync(cancellationToken);
+        await SeedIrisAsync(cancellationToken);
         await SeedCanonEnemiesAsync(cancellationToken);
         await SeedCanonSkillsAsync(cancellationToken);
         await SeedCanonItemsAsync(cancellationToken);
@@ -1071,6 +1072,86 @@ public sealed class CatalogSeedRunner
             offerings: offerings);
     }
 
+    // TODO(utilisateur) : Iris "juge à travers les yeux d'Ethan" — toute personne
+    // qu'Ethan n'apprécie pas, elle a énormément de mal à l'apprécier. Non modélisé
+    // mécaniquement ici (Ethan n'existe pas encore comme PNJ) ; à envisager plus tard
+    // comme un DialogueRequirement lisant la relation du joueur avec npc.ethan.
+    private async Task<int> SeedIrisAsync(CancellationToken ct)
+    {
+        var persona = new NpcPersona(
+            "Une fillette de 16 ans, imaginée par le Palais à partir des restes de conscience d'une ancienne aventurière perdue — calme et maternelle malgré son âge, d'une tendresse presque déplacée pour quelqu'un de si jeune",
+            EmotionalRegister.Effroi,
+            new[] { "Ethan", "rester près de lui", "veiller sur ceux qu'elle aime" },
+            new[] { "être éloignée d'Ethan", "apprendre qu'Ethan est mort", "le perdre pour de bon" });
+
+        var wounds = new[]
+        {
+            new NpcWound("w-ethan-iris", EmotionalRegister.Effroi, NpcWoundReversibility.SoothableByAct, -2, -4,
+                new[]
+                {
+                    new NpcTransgression("w-ethan-iris", "iris-eloignee-ethan", -2),
+                    new NpcTransgression("w-ethan-iris", "iris-ethan-mort", -2)
+                },
+                "Elle n'existe presque que par lui. L'en éloigner, ou lui apprendre qu'il est mort, c'est menacer la seule chose qui la retient encore d'elle-même.")
+        };
+
+        var rencontre = new NpcDialogueNode("rencontre", "Iris",
+            new[]
+            {
+                "Chut. Ethan dort encore. Il faut du calme, autour de lui — toujours.",
+                "Vous êtes gentil ? Ethan dit qu'on ne peut jamais vraiment savoir, avec les gens d'ici."
+            },
+            new[]
+            {
+                new NpcDialogueChoice("menacer-eloigner", "Suggérer qu'on pourrait bien l'éloigner d'Ethan", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.SetMemoryFlag, flag: "iris-eloignee-ethan"),
+                            C(ConsequenceKind.Narrative, frag: "Elle se recroqueville d'un coup, comme prête à fuir. « Non. Non, vous ne pouvez pas. »") }, null),
+                new NpcDialogueChoice("annoncer-mort", "Lui dire qu'Ethan pourrait bien mourir, un jour", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.SetMemoryFlag, flag: "iris-ethan-mort"),
+                            C(ConsequenceKind.Narrative, frag: "Son calme se brise net. « Non. Il ne peut pas. Pas lui. »") }, null),
+                new NpcDialogueChoice("parler-ethan", "Lui demander qui est Ethan", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.AdjustRelationship, rel: 1) }, "ethan"),
+                new NpcDialogueChoice("partir", "Partir", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.Narrative, frag: "Vous partez. Elle ne vous suit pas des yeux — seulement Ethan, endormi près d'elle.") }, null)
+            });
+
+        var ethan = new NpcDialogueNode("ethan", "Iris",
+            new[] { "Ethan, c'est... tout. Il m'a trouvée quand je n'étais qu'un écho. Depuis, je reste près de lui. Toujours." },
+            new[]
+            {
+                new NpcDialogueChoice("ecouter-encore", "Écouter encore", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.AdjustRelationship, rel: 1) }, "don")
+            });
+
+        var don = new NpcDialogueNode("don", "Iris",
+            new[] { "Tenez. Vous avez été gentil — enfin, gentil comme Ethan l'entendrait. Ça compte, pour moi." },
+            new[]
+            {
+                new NpcDialogueChoice("accepter-doudou", "Accepter le Doudou de Ethan",
+                    new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 250) },
+                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.iris.doudou") }, null),
+                new NpcDialogueChoice("accepter-regard", "Accepter \"Regard infantile\"",
+                    new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) },
+                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.iris.regard") }, null)
+            });
+
+        var graph = new NpcDialogueGraph("npc.iris.dialogue", "1.0", "rencontre",
+            new Dictionary<string, NpcDialogueNode> { ["rencontre"] = rencontre, ["ethan"] = ethan, ["don"] = don });
+
+        var offerings = new[]
+        {
+            new NpcOffering("offer.iris.doudou", NpcOfferingKind.Item, "canon.item.doudou-ethan", 1, true,
+                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 250) }),
+            new NpcOffering("offer.iris.regard", NpcOfferingKind.Skill, "canon.skill.regard-infantile", 1, true,
+                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) })
+        };
+
+        return await UpsertNpcAsync("npc.iris", "Iris",
+            "Une fillette de 16 ans, imaginée par le Palais à partir des restes de conscience d'une ancienne aventurière perdue. Calme et maternelle malgré son âge, elle ne vit que pour rester près d'Ethan.",
+            "1.0", EmotionalRegister.Effroi, true, persona, wounds, graph, ct,
+            offerings: offerings);
+    }
+
     // ──────────────────────────────────────────────────────────────────────────
     //  ENNEMIS CANON — créatures signature tirées de « L'épopée des silences »
     //  et « Des échos ». Chemin de combat vivant : EnemyDefinition + StatBlock +
@@ -1480,6 +1561,19 @@ public sealed class CatalogSeedRunner
                     Stat: "MagicDamageReduction")
             },
             category: "Magic");
+
+        // "Regard infantile" (Iris, sort légendaire) : ralentit la cible de 10% Vitesse
+        // (de base) pendant 5 tours — pas d'AppliesToActor, l'effet reste sur la cible.
+        const int regardInfantileTicksPerTurn = 2500;
+        await UpsertSkillAsync("canon.skill.regard-infantile", "Regard infantile",
+            "Un regard d'enfant, désarmant — de quoi faire hésiter n'importe qui, assez longtemps pour tout ralentir autour de lui.",
+            "Debuff", "SingleEnemy", "Debuff", mana: 18, power: 0, cancellationToken,
+            effects: new[]
+            {
+                new SkillEffectSpec("StatModifier", null, -10, regardInfantileTicksPerTurn * 5,
+                    Stat: "Speed", MagnitudeIsPercentOfBaseStat: true)
+            },
+            category: "Magic");
     }
 
     private async Task UpsertSkillAsync(
@@ -1688,6 +1782,11 @@ public sealed class CatalogSeedRunner
             "Une pierre arrachée aux fondations d'un temple oublié — plus dure que tout ce que le Palais a jamais bâti.",
             "Equipment", "Accessory", "Rare", "Permanent", false, 0, cancellationToken,
             equipmentEffects: new[] { new ItemEquipmentEffect(ItemEquipmentEffectKind.StatBonusPercent, StatKind: "Defense", Amount: 10) });
+
+        await UpsertItemAsync("canon.item.doudou-ethan", "Doudou de Ethan",
+            "Un doudou usé, cousu à la main. Iris ne le donne qu'à ceux qui ont mérité, un peu, sa confiance.",
+            "Equipment", "Accessory", "Rare", "Permanent", false, 0, cancellationToken,
+            equipmentEffects: new[] { new ItemEquipmentEffect(ItemEquipmentEffectKind.CriticalChanceBonusPercent, Amount: 5) });
     }
 
     private async Task UpsertItemAsync(

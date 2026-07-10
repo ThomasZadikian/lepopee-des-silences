@@ -120,19 +120,27 @@ public sealed class Combatant
     public int MagicDamageReductionPercent { get; private set; }
 
     /// <summary>
-    /// Sets (or clears) the equipment-driven hit chance bonus, DOT reductions, and
-    /// Magic damage bonus/reduction. Applied at combat creation and restored on
-    /// rehydration; never mutated mid-turn.
+    /// Percentage points added directly to critical hit chance, granted by equipped
+    /// items (e.g. Iris's Doudou de Ethan: +5%), on top of the chance derived from
+    /// Focus. Permanent for the run.
+    /// </summary>
+    public int CriticalChanceBonusPercent { get; private set; }
+
+    /// <summary>
+    /// Sets (or clears) the equipment-driven hit chance bonus, DOT reductions, Magic
+    /// damage bonus/reduction, and critical chance bonus. Applied at combat creation
+    /// and restored on rehydration; never mutated mid-turn.
     /// </summary>
     public void ApplyEquipmentCombatModifiers(
         int hitChanceBonusPercent, int dotDurationReductionPercent, int dotDamageReductionPercent,
-        int magicDamageBonusPercent = 0, int magicDamageReductionPercent = 0)
+        int magicDamageBonusPercent = 0, int magicDamageReductionPercent = 0, int criticalChanceBonusPercent = 0)
     {
         HitChanceBonusPercent = hitChanceBonusPercent;
         DotDurationReductionPercent = dotDurationReductionPercent;
         DotDamageReductionPercent = dotDamageReductionPercent;
         MagicDamageBonusPercent = magicDamageBonusPercent;
         MagicDamageReductionPercent = magicDamageReductionPercent;
+        CriticalChanceBonusPercent = criticalChanceBonusPercent;
     }
 
     /// <summary>
@@ -150,6 +158,15 @@ public sealed class Combatant
     /// </summary>
     public int EffectiveMagicDamageReductionPercent
         => MagicDamageReductionPercent + EffectiveStat(CombatStat.MagicDamageReduction, 0);
+
+    /// <summary>
+    /// Total flat critical chance bonus (percentage points): permanent equipment
+    /// component plus any active temporary StatModifier(CriticalChanceBonus) status
+    /// effect. Added on top of the Focus-derived chance, still capped overall by
+    /// CriticalHitCalibration.MaxCritChance.
+    /// </summary>
+    public int EffectiveCriticalChanceBonusPercent
+        => CriticalChanceBonusPercent + EffectiveStat(CombatStat.CriticalChanceBonus, 0);
 
     // ── ATB (Active Time Battle) ──────────────────────────────────────────────
 
@@ -518,7 +535,8 @@ public sealed class Combatant
         int dotDurationReductionPercent = 0,
         int dotDamageReductionPercent = 0,
         int magicDamageBonusPercent = 0,
-        int magicDamageReductionPercent = 0)
+        int magicDamageReductionPercent = 0,
+        int criticalChanceBonusPercent = 0)
     {
         var snapshot = baseStatSnapshot ?? CombatantBaseStatSnapshot.Rehydrate(
             Guid.NewGuid(),
@@ -551,7 +569,7 @@ public sealed class Combatant
         combatant.TypedDamageReductionPercent = typedDamageReductionPercent ?? new Dictionary<EmotionalType, int>();
         combatant.ApplyEquipmentCombatModifiers(
             hitChanceBonusPercent, dotDurationReductionPercent, dotDamageReductionPercent,
-            magicDamageBonusPercent, magicDamageReductionPercent);
+            magicDamageBonusPercent, magicDamageReductionPercent, criticalChanceBonusPercent);
         return combatant;
     }
 

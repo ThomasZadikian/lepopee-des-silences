@@ -26,5 +26,9 @@ public enum ItemEquipmentEffectKind
     MagicDamageBonusPercent = 8,
     // Percentage points (Amount, 0-100) by which incoming Magic-category damage is
     // reduced for the wearer.
-    MagicDamageReductionPercent = 9
+    MagicDamageReductionPercent = 9,
+    // Percentage points (Amount) added directly to the wearer's critical hit chance,
+    // on top of the chance derived from Focus (CriticalHitCalibration) — still capped
+    // by CriticalHitCalibration.MaxCritChance overall.
+    CriticalChanceBonusPercent = 10
 }

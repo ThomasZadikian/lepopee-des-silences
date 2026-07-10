@@ -29,7 +29,8 @@ public sealed class CombatFactory : ICombatFactory
         int dotDurationReductionPercent = 0,
         int dotDamageReductionPercent = 0,
         int magicDamageBonusPercent = 0,
-        int magicDamageReductionPercent = 0)
+        int magicDamageReductionPercent = 0,
+        int criticalChanceBonusPercent = 0)
     {
         return CreateFromDraft(
             CombatId.New(),
@@ -47,7 +48,8 @@ public sealed class CombatFactory : ICombatFactory
             dotDurationReductionPercent,
             dotDamageReductionPercent,
             magicDamageBonusPercent,
-            magicDamageReductionPercent);
+            magicDamageReductionPercent,
+            criticalChanceBonusPercent);
     }
     private static (double VitalityMultiplier, double PowerMultiplier, int GuardBonus) EncounterBonus(string encounterType)
     {
@@ -77,7 +79,8 @@ public sealed class CombatFactory : ICombatFactory
         int dotDurationReductionPercent = 0,
         int dotDamageReductionPercent = 0,
         int magicDamageBonusPercent = 0,
-        int magicDamageReductionPercent = 0)
+        int magicDamageReductionPercent = 0,
+        int criticalChanceBonusPercent = 0)
     {
         // Sum all unconsumed StartingGuardBonus modifiers (e.g. Éclat de garde: +8 garde).
         var guardBonus = runModifiers?
@@ -154,7 +157,7 @@ public sealed class CombatFactory : ICombatFactory
                     protagonist.ApplyTypedDamageReductions(typedDamageReductions);
                     protagonist.ApplyEquipmentCombatModifiers(
                         hitChanceBonusPercent, dotDurationReductionPercent, dotDamageReductionPercent,
-                        magicDamageBonusPercent, magicDamageReductionPercent);
+                        magicDamageBonusPercent, magicDamageReductionPercent, criticalChanceBonusPercent);
                     return protagonist;
                 }
 

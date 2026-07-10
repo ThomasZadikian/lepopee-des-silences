@@ -206,8 +206,11 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
         List<CombatLogEntryDto> logEntries)
     {
         var attackType = _typeProfileProvider.ResolveAttackType(actor, skill);
-        // Effective Focus = base + active Focus buffs/debuffs.
-        var critChance = CriticalHitCalibration.CritChanceFromFocus(actor.EffectiveFocus);
+        // Effective Focus = base + active Focus buffs/debuffs; equipment (e.g. Iris's
+        // Doudou de Ethan: +5%) adds a flat bonus on top, still capped by MaxCritChance.
+        var critChance = Math.Min(
+            CriticalHitCalibration.MaxCritChance,
+            CriticalHitCalibration.CritChanceFromFocus(actor.EffectiveFocus) + actor.EffectiveCriticalChanceBonusPercent / 100.0);
         var staggers = IsStaggerSkill(skill);
         var anyHit = false;
 

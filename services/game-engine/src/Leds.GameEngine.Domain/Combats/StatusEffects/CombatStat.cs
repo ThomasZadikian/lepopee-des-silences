@@ -11,5 +11,6 @@ public enum CombatStat
     // StatModifier contributions matter): percentage points added to / subtracted
     // from Magic-category skill damage (see CombatSkillEffectResolver).
     MagicDamageBonus,
-    MagicDamageReduction
+    MagicDamageReduction,
+    CriticalChanceBonus
 }

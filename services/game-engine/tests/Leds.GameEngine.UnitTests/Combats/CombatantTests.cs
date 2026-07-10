@@ -322,6 +322,19 @@ public sealed class CombatantTests
     }
 
     [Fact]
+    public void EffectiveCriticalChanceBonusPercent_ShouldEqualEquipmentValue_WhenNoStatusEffectIsActive()
+    {
+        var combatant = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+
+        combatant.ApplyEquipmentCombatModifiers(
+            hitChanceBonusPercent: 0, dotDurationReductionPercent: 0, dotDamageReductionPercent: 0,
+            criticalChanceBonusPercent: 5);
+
+        combatant.CriticalChanceBonusPercent.Should().Be(5);
+        combatant.EffectiveCriticalChanceBonusPercent.Should().Be(5);
+    }
+
+    [Fact]
     public void EffectiveMagicDamageBonusPercent_ShouldSumEquipmentAndStatModifierStatus()
     {
         var combatant = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
