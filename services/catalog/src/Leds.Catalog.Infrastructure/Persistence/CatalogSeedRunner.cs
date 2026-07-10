@@ -527,7 +527,8 @@ public sealed class CatalogSeedRunner
             {
                 new NpcDialogueChoice("prendre-fiole", "Accepter la Fiole de cristal", Array.Empty<DialogueRequirement>(),
                     new[] { C(ConsequenceKind.GrantOffering, offering: "offer.homoncule.fiole") }, null),
-                new NpcDialogueChoice("demander-boite", "Lui demander la Boîte", Array.Empty<DialogueRequirement>(),
+                new NpcDialogueChoice("demander-boite", "Lui demander la Boîte",
+                    new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) },
                     new[] { C(ConsequenceKind.GrantOffering, offering: "offer.homoncule.boite") }, null)
             });
 
@@ -598,9 +599,11 @@ public sealed class CatalogSeedRunner
             new[] { "Tiens. C'est pour toi. Je crée tout le temps — autant que ça serve à quelqu'un." },
             new[]
             {
-                new NpcDialogueChoice("accepter-sort", "Accepter \"Construction perpétuelle\"", Array.Empty<DialogueRequirement>(),
+                new NpcDialogueChoice("accepter-sort", "Accepter \"Construction perpétuelle\"",
+                    new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) },
                     new[] { C(ConsequenceKind.GrantOffering, offering: "offer.enfant.sort") }, null),
-                new NpcDialogueChoice("accepter-craie", "Accepter la Craie créatrice", Array.Empty<DialogueRequirement>(),
+                new NpcDialogueChoice("accepter-craie", "Accepter la Craie créatrice",
+                    new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 250) },
                     new[] { C(ConsequenceKind.GrantOffering, offering: "offer.enfant.craie") }, null)
             });
 
@@ -761,9 +764,11 @@ public sealed class CatalogSeedRunner
             new[] { "Tenez. Ce que j'ai trouvé ne me sert à rien si personne ne l'emporte." },
             new[]
             {
-                new NpcDialogueChoice("accepter-main", "Accepter la Main de Khasma", Array.Empty<DialogueRequirement>(),
+                new NpcDialogueChoice("accepter-main", "Accepter la Main de Khasma",
+                    new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) },
                     new[] { C(ConsequenceKind.GrantOffering, offering: "offer.tovma.main") }, null),
-                new NpcDialogueChoice("accepter-lunettes", "Accepter les Lunettes d'érudit", Array.Empty<DialogueRequirement>(),
+                new NpcDialogueChoice("accepter-lunettes", "Accepter les Lunettes d'érudit",
+                    new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 250) },
                     new[] { C(ConsequenceKind.GrantOffering, offering: "offer.tovma.lunettes") }, null)
             });
 
@@ -828,9 +833,15 @@ public sealed class CatalogSeedRunner
             new[] { "Tenez. Si vous avancez, autant avancer armé." },
             new[]
             {
-                new NpcDialogueChoice("accepter-potion", "Accepter une potion de vie", Array.Empty<DialogueRequirement>(),
+                new NpcDialogueChoice("accepter-potion", "Accepter une potion de vie",
+                    new[]
+                    {
+                        new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 250),
+                        new DialogueRequirement(DialogueRequirementKind.PlayerHasContainerItem)
+                    },
                     new[] { C(ConsequenceKind.GrantOffering, offering: "offer.sathom.potion") }, null),
-                new NpcDialogueChoice("accepter-bague", "Accepter la Bague du courage", Array.Empty<DialogueRequirement>(),
+                new NpcDialogueChoice("accepter-bague", "Accepter la Bague du courage",
+                    new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 500) },
                     new[] { C(ConsequenceKind.GrantOffering, offering: "offer.sathom.bague") }, null)
             });
 
@@ -901,9 +912,11 @@ public sealed class CatalogSeedRunner
             new[] { "Tenez. Si vous partez, autant partir vite." },
             new[]
             {
-                new NpcDialogueChoice("accepter-reve", "Accepter le Rêve d'Erina", Array.Empty<DialogueRequirement>(),
+                new NpcDialogueChoice("accepter-reve", "Accepter le Rêve d'Erina",
+                    new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 250) },
                     new[] { C(ConsequenceKind.GrantOffering, offering: "offer.erina.reve") }, null),
-                new NpcDialogueChoice("accepter-liberte", "Accepter La liberté retrouvée", Array.Empty<DialogueRequirement>(),
+                new NpcDialogueChoice("accepter-liberte", "Accepter La liberté retrouvée",
+                    new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) },
                     new[] { C(ConsequenceKind.GrantOffering, offering: "offer.erina.liberte") }, null)
             });
 
@@ -968,9 +981,11 @@ public sealed class CatalogSeedRunner
             new[] { "Tenez. Un objet de mon cabinet — et un peu de ce que les livres m'ont enseigné, si vous savez vous en servir." },
             new[]
             {
-                new NpcDialogueChoice("accepter-monocle", "Accepter le monocle de Pomenian", Array.Empty<DialogueRequirement>(),
+                new NpcDialogueChoice("accepter-monocle", "Accepter le monocle de Pomenian",
+                    new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 250) },
                     new[] { C(ConsequenceKind.GrantOffering, offering: "offer.pomenian.monocle") }, null),
-                new NpcDialogueChoice("accepter-connaissance", "Accepter Connaissance académique", Array.Empty<DialogueRequirement>(),
+                new NpcDialogueChoice("accepter-connaissance", "Accepter Connaissance académique",
+                    new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) },
                     new[] { C(ConsequenceKind.GrantOffering, offering: "offer.pomenian.connaissance") }, null)
             });
 
