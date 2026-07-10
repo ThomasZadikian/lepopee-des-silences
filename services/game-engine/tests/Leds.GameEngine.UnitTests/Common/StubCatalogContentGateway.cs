@@ -707,6 +707,15 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
             "Item definition was not found."));
     }
 
+    public Task<IReadOnlyCollection<CatalogItemDefinitionSnapshot>> ListActiveItemDefinitionsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult<IReadOnlyCollection<CatalogItemDefinitionSnapshot>>(
+            ItemDefinitions.Values
+                .OrderBy(definition => definition.Key, StringComparer.OrdinalIgnoreCase)
+                .ToArray());
+    }
+
     public Task<Result<CatalogEffectSetSnapshot>> GetEffectSetByKeyAsync(
         string key,
         CancellationToken cancellationToken = default)

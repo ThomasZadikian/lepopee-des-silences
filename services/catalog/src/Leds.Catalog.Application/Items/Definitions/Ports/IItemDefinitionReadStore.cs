@@ -7,4 +7,7 @@ public interface IItemDefinitionReadStore
     Task<ItemDefinitionDto?> GetDtoByKeyAsync(
         string key,
         CancellationToken cancellationToken);
+
+    Task<IReadOnlyCollection<ItemDefinitionDto>> ListActiveDtosAsync(
+        CancellationToken cancellationToken);
 }

@@ -1,8 +1,27 @@
 <script setup lang="ts">
+import { onMounted, ref } from 'vue';
 import type { PlayerCharacterView } from '../../../party/types/playerTypes';
-import { statLabels, statOrder, statValue } from '../../../party/constants/statDescriptions';
+import type { SkillDefinitionView } from '../../../party/types/skillTypes';
+import { statDescriptions, statLabels, statOrder, statValue } from '../../../party/constants/statDescriptions';
+import { skillsApi } from '../../../party/api/skillsApi';
+import StatTooltip from '../../../../shared/components/StatTooltip.vue';
 
 defineProps<{ characters: PlayerCharacterView[] }>();
+
+const allSkills = ref<SkillDefinitionView[]>([]);
+
+onMounted(async () => {
+  try {
+    const response = await skillsApi.listActive();
+    allSkills.value = response.skills;
+  } catch {
+    // Best-effort: fall back to raw keys below if the catalog lookup fails.
+  }
+});
+
+function skillDisplayName(skillKey: string): string {
+  return allSkills.value.find((s) => s.key === skillKey)?.displayName ?? skillKey;
+}
 </script>
 
 <template>
@@ -15,7 +34,9 @@ defineProps<{ characters: PlayerCharacterView[] }>();
 
       <div class="tov-card__stats">
         <div v-for="stat in statOrder" :key="stat" class="tov-stat">
-          <span class="tov-stat__label">{{ statLabels[stat] }}</span>
+          <StatTooltip :text="statDescriptions[stat]">
+            <span class="tov-stat__label">{{ statLabels[stat] }}</span>
+          </StatTooltip>
           <span class="tov-stat__value">{{ statValue(character.stats, stat) }}</span>
         </div>
       </div>
@@ -28,7 +49,7 @@ defineProps<{ characters: PlayerCharacterView[] }>();
             :key="skill.skillKey"
             class="es-chip"
           >
-            {{ skill.skillKey }}
+            {{ skillDisplayName(skill.skillKey) }}
           </span>
           <span v-if="!character.skills.some((s) => s.isEquipped)" class="tov-empty">
             Aucun sort équipé.

@@ -91,10 +91,12 @@ const statusColor = computed(() =>
       <span class="es-seg__v" :style="{ color: statusColor }">● {{ status }}</span>
     </div>
 
-    <!-- Références : statuts & bestiaire -->
+    <!-- Références : statuts, bestiaire, réputation, tutoriel -->
     <div class="es-seg es-runbar__refs" style="padding-right: 30px; border-right: none">
       <RouterLink class="es-runbar__ref-link" to="/statuts">Statuts</RouterLink>
       <RouterLink class="es-runbar__ref-link" to="/manifestations">Manifestations</RouterLink>
+      <RouterLink v-if="run" class="es-runbar__ref-link" :to="`/reputation/${run.id}`">Réputation</RouterLink>
+      <RouterLink class="es-runbar__ref-link" to="/tutoriel">Tutoriel</RouterLink>
     </div>
 
     <!-- Slot pour actions supplémentaires (boutons Sauvegarder, Lois, etc.) -->

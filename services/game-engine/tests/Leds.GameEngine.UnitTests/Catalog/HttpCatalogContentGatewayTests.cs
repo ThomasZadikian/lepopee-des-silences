@@ -1502,6 +1502,100 @@ public sealed class HttpCatalogContentGatewayTests
             .WithMessage("*500*");
     }
 
+    // ── ListActiveItemDefinitionsAsync ─────────────────────────────────────
+
+    [Fact]
+    public async Task ListActiveItemDefinitionsAsync_ShouldReturnItems_WhenCatalogReturns200()
+    {
+        var httpResponse = new
+        {
+            Definitions = new[]
+            {
+                new
+                {
+                    Key = "canon.item.monocle-pomenian",
+                    Version = "canon-1.0.0",
+                    DisplayName = "Le monocle de Pomenian",
+                    Description = "Une lentille gravée.",
+                    NarrativeText = (string?)null,
+                    Category = "Equipment",
+                    ItemType = "Accessory",
+                    Rarity = "Epic",
+                    UsageMode = "NotUsable",
+                    Lifecycle = "PersistentMeta",
+                    StackPolicy = "Additive",
+                    MaxStack = 1,
+                    IsUsableInCombat = false,
+                    IsUsableOutsideCombat = false,
+                    EffectSetKey = (string?)null,
+                    IsPermanentEligible = true,
+                }
+            }
+        };
+
+        var json = JsonSerializer.Serialize(httpResponse, JsonOptions);
+        var handler = CreateMockHandler(json, HttpStatusCode.OK);
+        var client = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost:5193") };
+        var gateway = new HttpCatalogContentGateway(client);
+
+        var items = await gateway.ListActiveItemDefinitionsAsync();
+
+        items.Should().ContainSingle();
+        items.Single().Key.Should().Be("canon.item.monocle-pomenian");
+        items.Single().DisplayName.Should().Be("Le monocle de Pomenian");
+    }
+
+    [Fact]
+    public async Task ListActiveItemDefinitionsAsync_ShouldCallExpectedEndpoint()
+    {
+        HttpRequestMessage? capturedRequest = null;
+
+        var handler = new Mock<HttpMessageHandler>();
+        handler
+            .Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .Callback<HttpRequestMessage, CancellationToken>((req, _) => capturedRequest = req)
+            .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.NotFound));
+
+        var client = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost:5193") };
+        var gateway = new HttpCatalogContentGateway(client);
+
+        await gateway.ListActiveItemDefinitionsAsync();
+
+        capturedRequest.Should().NotBeNull();
+        capturedRequest!.RequestUri!.AbsolutePath.Should().Be(
+            "/api/v2/catalog/item-definitions");
+    }
+
+    [Fact]
+    public async Task ListActiveItemDefinitionsAsync_ShouldReturnEmpty_WhenCatalogReturns404()
+    {
+        var handler = CreateMockHandler("", HttpStatusCode.NotFound);
+        var client = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost:5193") };
+        var gateway = new HttpCatalogContentGateway(client);
+
+        var items = await gateway.ListActiveItemDefinitionsAsync();
+
+        items.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ListActiveItemDefinitionsAsync_ShouldThrowCatalogGatewayException_WhenCatalogReturns500()
+    {
+        var handler = CreateMockHandler("Internal Server Error", HttpStatusCode.InternalServerError);
+        var client = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost:5193") };
+        var gateway = new HttpCatalogContentGateway(client);
+
+        var act = async () => await gateway.ListActiveItemDefinitionsAsync();
+
+        await act.Should()
+            .ThrowAsync<CatalogGatewayException>()
+            .WithMessage("*500*");
+    }
+
     // ── Template methods use the HTTP catalog gateway ─────────────────────
 
     [Fact]

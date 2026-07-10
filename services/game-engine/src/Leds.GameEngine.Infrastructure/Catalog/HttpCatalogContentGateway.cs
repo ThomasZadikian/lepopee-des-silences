@@ -935,6 +935,65 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
             .ToArray() ?? [];
     }
 
+    public async Task<IReadOnlyCollection<CatalogItemDefinitionSnapshot>> ListActiveItemDefinitionsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        const string url = "/api/v2/catalog/item-definitions";
+
+        HttpResponseMessage response;
+        try
+        {
+            response = await _httpClient.GetAsync(url, cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            throw new CatalogGatewayException(
+                $"Failed to call Catalog Service at '{url}': {ex.Message}", ex);
+        }
+
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return [];
+        }
+
+        if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
+        {
+            return [];
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var body = await response.Content.ReadAsStringAsync(cancellationToken);
+            throw new CatalogGatewayException(
+                $"Catalog Service returned {(int)response.StatusCode} for '{url}': {body}");
+        }
+
+        var options = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        };
+
+        ListItemDefinitionsHttpResponse? wrapper;
+        try
+        {
+            wrapper = await response.Content
+                .ReadFromJsonAsync<ListItemDefinitionsHttpResponse>(options, cancellationToken);
+        }
+        catch (JsonException ex)
+        {
+            throw new CatalogGatewayException(
+                $"Failed to deserialize Catalog Service response from '{url}': {ex.Message}", ex);
+        }
+
+        return wrapper?.Definitions?
+            .Select(MapToCatalogItemDefinitionSnapshot)
+            .ToArray() ?? [];
+    }
+
     private static CatalogSkillDefinition MapToCatalogSkillDefinition(
         CatalogSkillDefinitionHttpResponse source)
     {
@@ -1487,6 +1546,9 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
 
     private sealed record GetItemDefinitionByKeyHttpResponse(
         CatalogItemDefinitionHttpResponse? Definition);
+
+    private sealed record ListItemDefinitionsHttpResponse(
+        IReadOnlyCollection<CatalogItemDefinitionHttpResponse>? Definitions);
 
     private sealed record CatalogItemDefinitionHttpResponse(
         string Key,

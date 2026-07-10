@@ -91,6 +91,23 @@ public sealed class ItemDefinitionEndpointTests
         payload.Definition!.EquipmentEffects.Should().ContainSingle();
     }
 
+    [Fact]
+    public async Task ListActive_ShouldReturnSeededItems_IncludingTome38()
+    {
+        var response = await _client.GetAsync("/api/v2/catalog/item-definitions");
+        var body = await response.Content.ReadAsStringAsync();
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK, because: body);
+
+        var payload = await response.Content.ReadFromJsonAsync<ListActiveItemDefinitionsResponse>();
+
+        payload.Should().NotBeNull();
+        payload!.Definitions.Should().NotBeEmpty();
+        payload.Definitions.Should().Contain(d => d.Key == "canon.item.tome-38");
+    }
+
+    private sealed record ListActiveItemDefinitionsResponse(IReadOnlyCollection<ItemDefinitionResponseDto> Definitions);
+
     private sealed record GetItemDefinitionByKeyResponse(ItemDefinitionResponseDto? Definition);
 
     private sealed record ItemDefinitionResponseDto(

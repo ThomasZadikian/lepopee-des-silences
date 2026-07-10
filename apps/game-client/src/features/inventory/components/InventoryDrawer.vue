@@ -369,6 +369,7 @@ async function useItem() {
 .bsd-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
+  align-content: start;
   gap: 6px;
   padding: 8px 14px 0;
   overflow-y: auto;

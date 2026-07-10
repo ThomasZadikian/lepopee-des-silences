@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { mount } from '@vue/test-utils';
+import { mount, flushPromises } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 
 import ItemManagementTab from './ItemManagementTab.vue';
 import { usePlayerStore } from '../../../party/stores/playerStore';
 import { playerApi } from '../../../party/api/playerApi';
+import { itemsApi } from '../../../party/api/itemsApi';
 import { demoPlayerId } from '../../../runs/stores/runStore';
 import type { PlayerCharacterView, PlayerProfileView } from '../../../party/types/playerTypes';
 
@@ -17,6 +18,12 @@ vi.mock('../../../party/api/playerApi', () => ({
     spendStatPoint: vi.fn(),
     equipItem: vi.fn(),
     unequipItem: vi.fn(),
+  },
+}));
+
+vi.mock('../../../party/api/itemsApi', () => ({
+  itemsApi: {
+    listActive: vi.fn(),
   },
 }));
 
@@ -58,6 +65,26 @@ describe('ItemManagementTab', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
     vi.clearAllMocks();
+    vi.mocked(itemsApi.listActive).mockResolvedValue({ items: [] });
+  });
+
+  it('resolves the catalog display name instead of the raw item key', async () => {
+    vi.mocked(itemsApi.listActive).mockResolvedValue({
+      items: [
+        {
+          key: 'item.relic.tome', displayName: 'Le Tome 38', description: '', category: 'Relic',
+          itemType: 'Lore', rarity: 'Unique', effectRunType: null, effectValue: 0,
+        },
+      ],
+    });
+    const character = baseCharacter();
+    usePlayerStore().profile = baseProfile(character);
+    const wrapper = mount(ItemManagementTab, { props: { character } });
+    await flushPromises();
+
+    const equippedSection = wrapper.findAll('.imk-section')[0];
+    expect(equippedSection.text()).toContain('Le Tome 38');
+    expect(equippedSection.text()).not.toContain('item.relic.tome');
   });
 
   it('shows only equipped items in the first section', () => {

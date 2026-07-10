@@ -43,6 +43,9 @@ public interface ICatalogContentGateway
         string key,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyCollection<CatalogItemDefinitionSnapshot>> ListActiveItemDefinitionsAsync(
+        CancellationToken cancellationToken = default);
+
     Task<Result<CatalogEffectSetSnapshot>> GetEffectSetByKeyAsync(
         string key,
         CancellationToken cancellationToken = default);

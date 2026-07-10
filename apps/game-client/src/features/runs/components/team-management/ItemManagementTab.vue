@@ -1,11 +1,28 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import type { PlayerCharacterView } from '../../../party/types/playerTypes';
+import type { ItemDefinitionView } from '../../../party/types/itemTypes';
 import { usePlayerStore } from '../../../party/stores/playerStore';
+import { itemsApi } from '../../../party/api/itemsApi';
 
 const props = defineProps<{ character: PlayerCharacterView }>();
 
 const playerStore = usePlayerStore();
+
+const allItems = ref<ItemDefinitionView[]>([]);
+
+onMounted(async () => {
+  try {
+    const response = await itemsApi.listActive();
+    allItems.value = response.items;
+  } catch {
+    // Best-effort: fall back to raw keys below if the catalog lookup fails.
+  }
+});
+
+function itemDisplayName(itemKey: string): string {
+  return allItems.value.find((i) => i.key === itemKey)?.displayName ?? itemKey;
+}
 
 const equippedItems = computed(() => props.character.items.filter((i) => i.isEquipped));
 
@@ -37,7 +54,7 @@ function toggleItem(itemKey: string, isEquipped: boolean) {
       <ul v-if="equippedItems.length" class="imk-list">
         <li v-for="item in equippedItems" :key="item.itemKey" class="imk-row">
           <div class="imk-row__info">
-            <span class="imk-row__name">{{ item.itemKey }}</span>
+            <span class="imk-row__name">{{ itemDisplayName(item.itemKey) }}</span>
           </div>
           <button
             type="button"
@@ -62,7 +79,7 @@ function toggleItem(itemKey: string, isEquipped: boolean) {
           class="imk-row"
         >
           <div class="imk-row__info">
-            <span class="imk-row__name">{{ permanentItem.itemDefinitionKey }}</span>
+            <span class="imk-row__name">{{ itemDisplayName(permanentItem.itemDefinitionKey) }}</span>
           </div>
           <button
             type="button"

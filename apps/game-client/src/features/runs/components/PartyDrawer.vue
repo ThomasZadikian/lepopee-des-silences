@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { usePlayerStore } from '../../party/stores/playerStore';
+import { statDescriptions } from '../../party/constants/statDescriptions';
 import type { ActiveCurseDto, ActivePalaceLawDto, RunItemDto, RunModifierDto, RunPartyMemberDto } from '../types/runTypes';
+import StatTooltip from '../../../shared/components/StatTooltip.vue';
 import TeamManagementModal from './TeamManagementModal.vue';
 
 defineProps<{
@@ -128,11 +130,15 @@ function rarityTone(rarity: string): string {
                   <span class="party-card__stat-v" style="color: var(--frost)">{{ member.guard }}</span>
                 </span>
                 <span v-if="member.mana > 0" class="party-card__stat">
-                  <span class="party-card__stat-k">MANA</span>
+                  <StatTooltip :text="statDescriptions.Mana" placement="bottom">
+                    <span class="party-card__stat-k">MANA</span>
+                  </StatTooltip>
                   <span class="party-card__stat-v">{{ member.mana }}</span>
                 </span>
                 <span v-if="member.charge > 0" class="party-card__stat">
-                  <span class="party-card__stat-k">CHARGE</span>
+                  <StatTooltip :text="statDescriptions.Charge" placement="bottom">
+                    <span class="party-card__stat-k">CHARGE</span>
+                  </StatTooltip>
                   <span class="party-card__stat-v">{{ member.charge }}</span>
                 </span>
               </div>

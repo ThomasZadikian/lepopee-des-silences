@@ -170,4 +170,21 @@ describe('GameTopBar', () => {
     });
     expect(wrapper.exists()).toBe(true);
   });
+
+  it('always displays the Tutoriel link', () => {
+    const wrapper = mountTopBar();
+    expect(wrapper.text()).toContain('Tutoriel');
+  });
+
+  it('hides the Réputation link when there is no active run', () => {
+    const wrapper = mountTopBar();
+    expect(wrapper.text()).not.toContain('Réputation');
+  });
+
+  it('shows the Réputation link when a run is active', () => {
+    const wrapper = mountTopBar({
+      currentRun: { id: 'run-1' },
+    });
+    expect(wrapper.text()).toContain('Réputation');
+  });
 });

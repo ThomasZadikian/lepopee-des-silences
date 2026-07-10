@@ -1,9 +1,16 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest';
-import { mount } from '@vue/test-utils';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { mount, flushPromises } from '@vue/test-utils';
 
 import TeamOverviewTab from './TeamOverviewTab.vue';
+import { skillsApi } from '../../../party/api/skillsApi';
 import type { PlayerCharacterView } from '../../../party/types/playerTypes';
+
+vi.mock('../../../party/api/skillsApi', () => ({
+  skillsApi: {
+    listActive: vi.fn(),
+  },
+}));
 
 function baseCharacter(overrides: Partial<PlayerCharacterView> = {}): PlayerCharacterView {
   return {
@@ -25,6 +32,27 @@ function baseCharacter(overrides: Partial<PlayerCharacterView> = {}): PlayerChar
 }
 
 describe('TeamOverviewTab', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(skillsApi.listActive).mockResolvedValue({ skills: [] });
+  });
+
+  it('resolves the catalog display name instead of the raw skill key', async () => {
+    vi.mocked(skillsApi.listActive).mockResolvedValue({
+      skills: [
+        {
+          key: 'skill.a', displayName: 'Frappe', description: '', skillType: 'Damage',
+          targetingType: 'SingleEnemy', effectType: 'Damage', manaCost: 0, chargeCost: 0, basePower: 10,
+        },
+      ],
+    });
+    const wrapper = mount(TeamOverviewTab, { props: { characters: [baseCharacter()] } });
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Frappe');
+    expect(wrapper.text()).not.toContain('skill.a');
+  });
+
   it('renders a card per character', () => {
     const wrapper = mount(TeamOverviewTab, { props: { characters: [baseCharacter()] } });
     expect(wrapper.findAll('.tov-card')).toHaveLength(1);

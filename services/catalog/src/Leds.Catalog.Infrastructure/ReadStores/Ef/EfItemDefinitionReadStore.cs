@@ -51,6 +51,16 @@ public sealed class EfItemDefinitionReadStore : IItemTemplateReadStore, IItemDef
         return entity is null ? null : MapToDto(entity);
     }
 
+    public async Task<IReadOnlyCollection<ItemDefinitionDto>> ListActiveDtosAsync(CancellationToken cancellationToken)
+    {
+        var entities = await _context.ItemDefinitions
+            .Include(e => e.EffectSet)
+            .Where(e => e.Status == "Active")
+            .ToListAsync(cancellationToken);
+
+        return entities.Select(MapToDto).ToArray();
+    }
+
     private static IItemTemplate MapToDomain(ItemDefinitionEntity entity)
     {
         return ItemTemplate.Create(

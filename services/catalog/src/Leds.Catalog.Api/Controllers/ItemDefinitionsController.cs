@@ -1,4 +1,5 @@
 using Leds.Catalog.Application.Items.Definitions.GetItemDefinitionByKey;
+using Leds.Catalog.Application.Items.Definitions.ListActiveItemDefinitions;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -13,6 +14,18 @@ public sealed class ItemDefinitionsController : ControllerBase
     public ItemDefinitionsController(ISender sender)
     {
         _sender = sender;
+    }
+
+    [HttpGet]
+    [ProducesResponseType(typeof(ListActiveItemDefinitionsResponse), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ListActiveItemDefinitionsResponse>> ListActive(
+        CancellationToken cancellationToken)
+    {
+        var response = await _sender.Send(
+            new ListActiveItemDefinitionsQuery(),
+            cancellationToken);
+
+        return Ok(response);
     }
 
     [HttpGet("{key}")]

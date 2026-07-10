@@ -2,8 +2,10 @@
 import { computed, ref } from 'vue';
 import type { CombatantRuntimeDto } from '../types/combatContracts';
 import { useClickOutside } from '../../../shared/composables/useClickOutside';
+import { statDescriptions } from '../../party/constants/statDescriptions';
 import AtbGauge from './AtbGauge.vue';
 import EmotionalTypeBadge from './EmotionalTypeBadge.vue';
+import StatTooltip from '../../../shared/components/StatTooltip.vue';
 import StatusEffectToken from '../../../shared/components/StatusEffectToken.vue';
 
 const showDetails = ref(false);
@@ -116,10 +118,22 @@ const hasAggro = computed(() =>
 
       <div v-if="showDetails" ref="detailsPopoverRef" class="presence__details-popover" @click.stop>
         <button class="presence__details-close" @click="toggleDetails" aria-label="Fermer">✕</button>
-        <div class="presence__details-row"><span>⚔</span><b>{{ combatant.attackPower ?? 0 }}</b><small>Attaque</small></div>
-        <div class="presence__details-row"><span>⛨</span><b>{{ combatant.defense ?? 0 }}</b><small>Défense</small></div>
-        <div class="presence__details-row"><span>⚡</span><b>{{ combatant.speed ?? 0 }}</b><small>Vitesse</small></div>
-        <div class="presence__details-row"><span>◎</span><b>{{ combatant.focus ?? 0 }}</b><small>Focus</small></div>
+        <div class="presence__details-row">
+          <span>⚔</span><b>{{ combatant.attackPower ?? 0 }}</b>
+          <StatTooltip :text="statDescriptions.AttackPower"><small>Attaque</small></StatTooltip>
+        </div>
+        <div class="presence__details-row">
+          <span>⛨</span><b>{{ combatant.defense ?? 0 }}</b>
+          <StatTooltip :text="statDescriptions.Defense"><small>Défense</small></StatTooltip>
+        </div>
+        <div class="presence__details-row">
+          <span>⚡</span><b>{{ combatant.speed ?? 0 }}</b>
+          <StatTooltip :text="statDescriptions.Speed"><small>Vitesse</small></StatTooltip>
+        </div>
+        <div class="presence__details-row">
+          <span>◎</span><b>{{ combatant.focus ?? 0 }}</b>
+          <StatTooltip :text="statDescriptions.Focus"><small>Focus</small></StatTooltip>
+        </div>
       </div>
     </span>
 

@@ -9,6 +9,7 @@ using Leds.GameEngine.Application.Runs.GetCurrentCombat;
 using Leds.GameEngine.Application.Runs.GetPermanentItemCandidates;
 using Leds.GameEngine.Application.Runs.GetRunById;
 using Leds.GameEngine.Application.Runs.GetRunInventory;
+using Leds.GameEngine.Application.Runs.GetRunReputation;
 using Leds.GameEngine.Application.Runs.MoveToNextRoom;
 using Leds.GameEngine.Application.Runs.PourRunItemLiquid;
 using Leds.GameEngine.Application.Runs.ProgressRun;
@@ -271,6 +272,19 @@ public sealed class RunsController : ControllerBase
     {
         var command = new EmptyRunItemContainerCommand(runId, containerItemId);
         var response = await _sender.Send(command, cancellationToken);
+        return Ok(response);
+    }
+
+    [HttpGet("{runId:guid}/reputation")]
+    [ProducesResponseType(typeof(GetRunReputationResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<GetRunReputationResponse>> GetRunReputation(
+        Guid runId,
+        CancellationToken cancellationToken)
+    {
+        var query = new GetRunReputationQuery(runId);
+        var response = await _sender.Send(query, cancellationToken);
+
         return Ok(response);
     }
 
