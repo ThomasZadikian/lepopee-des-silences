@@ -48,6 +48,7 @@ public sealed class CatalogSeedRunner
         await SeedSathomAsync(cancellationToken);
         await SeedErinaAsync(cancellationToken);
         await SeedPomenianAsync(cancellationToken);
+        await SeedOuchianAsync(cancellationToken);
         await SeedCanonEnemiesAsync(cancellationToken);
         await SeedCanonSkillsAsync(cancellationToken);
         await SeedCanonItemsAsync(cancellationToken);
@@ -1006,6 +1007,70 @@ public sealed class CatalogSeedRunner
             offerings: offerings);
     }
 
+    private async Task<int> SeedOuchianAsync(CancellationToken ct)
+    {
+        var persona = new NpcPersona(
+            "Un géologue spécialisé dans les vieux temples — calme, méthodique, tout entier concentré sur sa recherche, presque habité par elle",
+            EmotionalRegister.Memoire,
+            new[] { "les vieux temples", "les vestiges", "la preuve que le passé a existé" },
+            new[] { "qu'on lui dise que les temples anciens ne sont qu'une invention du Palais", "que rien n'ait existé avant le Palais", "que sa vie de recherche n'ait servi à rien" });
+
+        var wounds = new[]
+        {
+            new NpcWound("w-passe-ouchian", EmotionalRegister.Memoire, NpcWoundReversibility.SoothableByAct, -2, -4,
+                new[] { new NpcTransgression("w-passe-ouchian", "ouchian-passe-nie", -2) },
+                "Toute sa vie tient dans une conviction : quelque chose a existé avant le Palais. La lui retirer, c'est lui retirer jusqu'à la raison de creuser.")
+        };
+
+        var rencontre = new NpcDialogueNode("rencontre", "Ouchian",
+            new[]
+            {
+                "Regardez cette strate. Cette pierre a vu des siècles que le Palais ne connaîtra jamais.",
+                "Les vieux temples ne mentent pas. Contrairement à ce qu'on voudrait vous faire croire."
+            },
+            new[]
+            {
+                new NpcDialogueChoice("nier-passe", "Lui dire que les anciens temples ne sont qu'une invention du Palais", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.SetMemoryFlag, flag: "ouchian-passe-nie"),
+                            C(ConsequenceKind.Narrative, frag: "Il ne hausse pas la voix. Il se contente de se taire, et de retourner à sa pierre, seul.") }, null),
+                new NpcDialogueChoice("sinteresser", "Lui demander ce qu'il a trouvé", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.AdjustRelationship, rel: 1) }, "recherche"),
+                new NpcDialogueChoice("partir", "Partir", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.Narrative, frag: "Vous partez. Il ne lève pas les yeux — trop concentré sur sa strate pour remarquer votre départ.") }, null)
+            });
+
+        var recherche = new NpcDialogueNode("recherche", "Ouchian",
+            new[] { "Ici. Une inscription à moitié effacée. Si j'ai raison, elle prouve qu'un peuple a vécu ici bien avant que quiconque n'ait tracé le premier mur du Palais." },
+            new[]
+            {
+                new NpcDialogueChoice("ecouter-encore", "Écouter encore", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.AdjustRelationship, rel: 1) }, "don")
+            });
+
+        var don = new NpcDialogueNode("don", "Ouchian",
+            new[] { "Tenez. Une pierre que j'ai extraite moi-même. Elle a traversé plus de temps que nous deux réunis." },
+            new[]
+            {
+                new NpcDialogueChoice("accepter-pierre", "Accepter la Pierre antique",
+                    new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 250) },
+                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.ouchian.pierre") }, null)
+            });
+
+        var graph = new NpcDialogueGraph("npc.ouchian.dialogue", "1.0", "rencontre",
+            new Dictionary<string, NpcDialogueNode> { ["rencontre"] = rencontre, ["recherche"] = recherche, ["don"] = don });
+
+        var offerings = new[]
+        {
+            new NpcOffering("offer.ouchian.pierre", NpcOfferingKind.Item, "canon.item.pierre-antique", 1, true,
+                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 250) })
+        };
+
+        return await UpsertNpcAsync("npc.ouchian", "Ouchian",
+            "Un géologue spécialisé dans les vieux temples. Calme et méthodique, il consacre sa vie à prouver qu'un passé a existé avant le Palais — et refuse d'entendre que ce passé pourrait n'être qu'une de ses inventions.",
+            "1.0", EmotionalRegister.Memoire, true, persona, wounds, graph, ct,
+            offerings: offerings);
+    }
+
     // ──────────────────────────────────────────────────────────────────────────
     //  ENNEMIS CANON — créatures signature tirées de « L'épopée des silences »
     //  et « Des échos ». Chemin de combat vivant : EnemyDefinition + StatBlock +
@@ -1618,6 +1683,11 @@ public sealed class CatalogSeedRunner
             "Une lentille gravée de formules alchimiques anciennes — celles-là mêmes que Pomenian refuse de considérer comme autre chose que des curiosités d'érudit. Quiconque le chausse voit, malgré lui, un peu plus loin que les livres.",
             "Equipment", "Accessory", "Epic", "Permanent", false, 0, cancellationToken,
             equipmentEffects: new[] { new ItemEquipmentEffect(ItemEquipmentEffectKind.MagicDamageBonusPercent, Amount: 10) });
+
+        await UpsertItemAsync("canon.item.pierre-antique", "Pierre antique",
+            "Une pierre arrachée aux fondations d'un temple oublié — plus dure que tout ce que le Palais a jamais bâti.",
+            "Equipment", "Accessory", "Rare", "Permanent", false, 0, cancellationToken,
+            equipmentEffects: new[] { new ItemEquipmentEffect(ItemEquipmentEffectKind.StatBonusPercent, StatKind: "Defense", Amount: 10) });
     }
 
     private async Task UpsertItemAsync(
