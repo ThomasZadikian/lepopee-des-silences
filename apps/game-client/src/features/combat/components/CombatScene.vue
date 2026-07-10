@@ -52,6 +52,17 @@ const roomLabel = computed(() => {
   return `${room.theme ?? room.roomType} · salle ${depth} — affrontement`;
 });
 
+// Same depth-scaling curve as EnemyStatScaler.DepthMultiplier (game-engine):
+// room 1 = ×1.0, then +0.5 per room past 1. This is a depth-only estimate —
+// active Lois du Palais can push the real in-combat multiplier higher still.
+const ENEMY_DEPTH_DIFFICULTY_STEP = 0.5;
+
+const enemyDepthMultiplier = computed(() => {
+  const depth = runStore.currentRoom?.depth ?? 1;
+  const effectiveDepth = Math.max(0, depth - 1);
+  return 1 + effectiveDepth * ENEMY_DEPTH_DIFFICULTY_STEP;
+});
+
 const actionPreview = computed(() => {
   if (combatStore.selectedSkill) return combatStore.selectedSkill.displayName;
   if (combatStore.selectedItem) return combatStore.selectedItem.displayName;
@@ -222,7 +233,16 @@ watch(
         </div>
 
         <!-- Les Manifestations (enemies) -->
-        <p class="combat-scene__side-title combat-scene__side-title--foe">◆ Les Manifestations · {{ combatStore.enemies.length }}</p>
+        <p class="combat-scene__side-title combat-scene__side-title--foe">
+          ◆ Les Manifestations · {{ combatStore.enemies.length }}
+          <span
+            v-if="enemyDepthMultiplier > 1"
+            class="combat-scene__difficulty-badge"
+            title="Estimation liée à la profondeur de la salle uniquement — les Lois du Palais actives peuvent encore l'augmenter."
+          >
+            stats ≈ ×{{ enemyDepthMultiplier.toFixed(1) }}
+          </span>
+        </p>
         <div class="combat-scene__grid">
           <CombatantCard
             v-for="combatant in combatStore.enemies"
@@ -510,6 +530,18 @@ watch(
 
 .combat-scene__side-title--foe { color: var(--blood); }
 .combat-scene__side-title--allies { color: var(--frost); }
+
+.combat-scene__difficulty-badge {
+  margin-left: 8px;
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: none;
+  color: var(--ink-4);
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  padding: 1px 8px;
+  cursor: help;
+}
 
 .combat-scene__grid {
   display: flex;

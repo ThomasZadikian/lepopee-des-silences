@@ -1021,7 +1021,7 @@ public sealed class CatalogSeedRunner
                 "canon.skill.flamme-seraphine",
                 "canon.skill.se-taire"
             },
-            vitality: 22, attack: 6, defense: 1, guard: 0, speed: 13, focus: 1,
+            vitality: 22, attack: 6, defense: 3, guard: 0, speed: 13, focus: 3,
             cancellationToken);
 
         await UpsertEnemyAsync(
@@ -1032,7 +1032,7 @@ public sealed class CatalogSeedRunner
             roomTypes: new[] { "Rupture", "Fear", "Shadow" },
             tags: new[] { "canon", "predateur", "meute", "elite" },
             skillKeys: new[] { "skill.basic.strike" },
-            vitality: 40, attack: 10, defense: 3, guard: 4, speed: 11, focus: 0,
+            vitality: 40, attack: 10, defense: 9, guard: 4, speed: 11, focus: 0,
             cancellationToken);
 
         await UpsertEnemyAsync(
@@ -1054,7 +1054,7 @@ public sealed class CatalogSeedRunner
             roomTypes: new[] { "Rupture", "Shadow" },
             tags: new[] { "canon", "monstre", "elite" },
             skillKeys: new[] { "skill.basic.strike", "canon.skill.flamme-froide", "canon.skill.priere-aspiration", "canon.skill.transmutation", "canon.skill.brume", "canon.skill.flamme-seraphine", "canon.skill.se-taire" },
-            vitality: 48, attack: 12, defense: 4, guard: 5, speed: 8, focus: 0,
+            vitality: 48, attack: 12, defense: 12, guard: 5, speed: 8, focus: 0,
             cancellationToken);
 
         await UpsertEnemyAsync(
@@ -1065,7 +1065,7 @@ public sealed class CatalogSeedRunner
             roomTypes: new[] { "Threshold", "Fear" },
             tags: new[] { "canon", "ambiance", "brume" },
             skillKeys: new[] { "skill.basic.strike", "canon.skill.flamme-froide", "canon.skill.priere-aspiration", "canon.skill.transmutation", "canon.skill.brume", "canon.skill.flamme-seraphine", "canon.skill.se-taire" },
-            vitality: 18, attack: 5, defense: 1, guard: 0, speed: 12, focus: 0,
+            vitality: 18, attack: 5, defense: 3, guard: 0, speed: 12, focus: 0,
             cancellationToken);
 
         await UpsertEnemyAsync(
@@ -1076,7 +1076,7 @@ public sealed class CatalogSeedRunner
             roomTypes: new[] { "Fear", "Memory" },
             tags: new[] { "canon", "lituisme", "surveillance", "motif" },
             skillKeys: new[] { "skill.basic.strike", "canon.skill.flamme-froide", "canon.skill.priere-aspiration", "canon.skill.transmutation", "canon.skill.brume", "canon.skill.flamme-seraphine", "canon.skill.se-taire" },
-            vitality: 24, attack: 7, defense: 2, guard: 2, speed: 16, focus: 2,
+            vitality: 24, attack: 7, defense: 6, guard: 2, speed: 16, focus: 6,
             cancellationToken);
 
         await UpsertEnemyAsync(
@@ -1095,7 +1095,7 @@ public sealed class CatalogSeedRunner
                 "canon.skill.flamme-seraphine",
                 "canon.skill.se-taire"
             },
-            vitality: 38, attack: 9, defense: 2, guard: 3, speed: 12, focus: 1,
+            vitality: 38, attack: 9, defense: 6, guard: 3, speed: 12, focus: 3,
             cancellationToken);
 
         await UpsertEnemyAsync(
@@ -1106,7 +1106,7 @@ public sealed class CatalogSeedRunner
             roomTypes: new[] { "Rupture", "Memory" },
             tags: new[] { "canon", "alchimie", "homoncule", "elite", "weak.fire" },
             skillKeys: new[] { "skill.basic.strike", "canon.skill.flamme-froide", "canon.skill.priere-aspiration", "canon.skill.transmutation", "canon.skill.brume", "canon.skill.flamme-seraphine", "canon.skill.se-taire" },
-            vitality: 52, attack: 13, defense: 5, guard: 6, speed: 7, focus: 0,
+            vitality: 52, attack: 13, defense: 15, guard: 6, speed: 7, focus: 0,
             cancellationToken);
 
         // ── Ennemis canon additionnels (renfort du bestiaire, mêmes familles/thèmes) ──
@@ -1129,7 +1129,7 @@ public sealed class CatalogSeedRunner
             roomTypes: new[] { "Silence", "Threshold" },
             tags: new[] { "canon", "lituisme", "silence", "penitence" },
             skillKeys: new[] { "skill.basic.strike", "canon.skill.se-taire" },
-            vitality: 24, attack: 5, defense: 3, guard: 4, speed: 8, focus: 0,
+            vitality: 24, attack: 5, defense: 9, guard: 4, speed: 8, focus: 0,
             cancellationToken);
 
         await UpsertEnemyAsync(
@@ -1140,7 +1140,7 @@ public sealed class CatalogSeedRunner
             roomTypes: new[] { "Forest", "Memory" },
             tags: new[] { "canon", "nature", "memoire", "racine" },
             skillKeys: new[] { "skill.basic.strike", "canon.skill.priere-aspiration" },
-            vitality: 20, attack: 4, defense: 1, guard: 0, speed: 6, focus: 1,
+            vitality: 20, attack: 4, defense: 3, guard: 0, speed: 6, focus: 3,
             cancellationToken);
 
         await UpsertEnemyAsync(
@@ -1151,7 +1151,7 @@ public sealed class CatalogSeedRunner
             roomTypes: new[] { "Rupture", "Threshold" },
             tags: new[] { "canon", "predateur", "fossoyeur" },
             skillKeys: new[] { "skill.basic.strike", "canon.skill.brume" },
-            vitality: 18, attack: 7, defense: 1, guard: 0, speed: 14, focus: 0,
+            vitality: 18, attack: 7, defense: 3, guard: 0, speed: 14, focus: 0,
             cancellationToken);
 
         await UpsertEnemyAsync(
@@ -1162,7 +1162,7 @@ public sealed class CatalogSeedRunner
             roomTypes: new[] { "Rupture", "Memory" },
             tags: new[] { "canon", "alchimie", "argile", "enfant" },
             skillKeys: new[] { "skill.basic.strike", "canon.skill.transmutation" },
-            vitality: 16, attack: 4, defense: 2, guard: 2, speed: 9, focus: 1,
+            vitality: 16, attack: 4, defense: 6, guard: 2, speed: 9, focus: 3,
             cancellationToken);
 
         await UpsertEnemyAsync(
@@ -1173,7 +1173,7 @@ public sealed class CatalogSeedRunner
             roomTypes: new[] { "Fear", "Silence" },
             tags: new[] { "canon", "lituisme", "elite", "prieure" },
             skillKeys: new[] { "skill.basic.strike", "canon.skill.priere-aspiration", "canon.skill.se-taire", "canon.skill.flamme-seraphine" },
-            vitality: 36, attack: 8, defense: 3, guard: 4, speed: 10, focus: 2,
+            vitality: 36, attack: 8, defense: 9, guard: 4, speed: 10, focus: 6,
             cancellationToken);
 
         await UpsertEnemyAsync(
@@ -1184,7 +1184,7 @@ public sealed class CatalogSeedRunner
             roomTypes: new[] { "Rupture", "Shadow" },
             tags: new[] { "canon", "brume", "elite", "veilleur" },
             skillKeys: new[] { "skill.basic.strike", "canon.skill.brume", "canon.skill.flamme-froide" },
-            vitality: 42, attack: 10, defense: 4, guard: 5, speed: 13, focus: 0,
+            vitality: 42, attack: 10, defense: 12, guard: 5, speed: 13, focus: 0,
             cancellationToken);
     }
 
@@ -2362,6 +2362,9 @@ public sealed class CatalogSeedRunner
         // the previously-uncovered room types (first entry in `roomTypes` is the original,
         // unchanged assignment — kept first so its RoomBossDefinition key stays stable).
         // enemyKey, bossKey, name, desc, roomTypes, danger, difficulty, vit, atk, def, guard, speed, skillKey
+        // Defense authored at roughly the same order of magnitude as Attack (harmonized
+        // ×3 pass) so it carries real weight in the Attack/Defense damage ratio once both
+        // scale with room depth; boss Focus derives from difficulty (×2) instead of a flat value.
         await UpsertBossAsync(
             "canon.enemy.grand-cardinal",
             "canon.boss.grand-cardinal",
@@ -2369,28 +2372,28 @@ public sealed class CatalogSeedRunner
             "Le grand cardinal du Palais",
             new[] { "Antechamber", "Threshold" },
             "75",
-            2, 90, 14, 6, 6, 12,
+            2, 90, 14, 18, 6, 12,
             new[]
                 { "canon.skill.priere-aspiration", "canon.skill.flamme-froide", "skill.basic.strike" },
             cancellationToken);
 
         await UpsertBossAsync("canon.enemy.imperatrice-vipere", "canon.boss.imperatrice-vipere", "L'Impératrice — la Vipère", "L'impératrice du Palais",
-            new[] { "Rupture", "Memory" }, "75", 3, 140, 20, 8, 8, 14,
+            new[] { "Rupture", "Memory" }, "75", 3, 140, 20, 24, 8, 14,
             new[] { "canon.skill.priere-aspiration", "canon.skill.flamme-froide", "skill.basic.strike" }, cancellationToken);
 
         await UpsertBossAsync("canon.enemy.homoncule-roi", "canon.boss.homoncule-roi", "L'Homoncule — le Vieillard", "Le roi, l'Homoncule, bien des nom lui furent donné",
-            new[] { "Rupture", "Silence" }, "75", 3, 160, 22, 9, 10, 8,
+            new[] { "Rupture", "Silence" }, "75", 3, 160, 22, 27, 10, 8,
             new[] { "canon.skill.transmutation", "canon.skill.flamme-froide", "skill.basic.strike" }, cancellationToken);
 
         await UpsertBossAsync("canon.enemy.pape-louis-xvii", "canon.boss.pape-louis-xvii", "Le Pape Louis XVII", "Le pape",
-            new[] { "Antechamber", "Fear" }, "75", 4, 200, 24, 12, 12, 11,
+            new[] { "Antechamber", "Fear" }, "75", 4, 200, 24, 36, 12, 11,
             new[] { "canon.skill.brume", "canon.skill.flamme-froide", "skill.basic.strike" }, cancellationToken);
 
         // "Final" uniquement : Him'Lit est exclusivement le boss de la room qui recurre
         // tous les BossInterval (10) étages (cf. MarkovRoomTypeResolver) — il n'apparaît
         // pas comme rencontre normale dans les rooms Rupture/Forêt.
         await UpsertBossAsync("canon.enemy.himlit", "canon.boss.himlit", "Him'Lit", "Le maître des lieux, souverain du Palais",
-            new[] { "Final" }, "100", 5, 280, 32, 16, 16, 13,
+            new[] { "Final" }, "100", 5, 280, 32, 48, 16, 13,
             new[] { "canon.skill.brume", "canon.skill.priere-aspiration", "canon.skill.flamme-seraphine", "canon.skill.flamme-froide", "skill.basic.strike" }, cancellationToken);
     }
 
@@ -2447,7 +2450,7 @@ public sealed class CatalogSeedRunner
                 Defense = def,
                 StartingGuard = guard,
                 Speed = speed,
-                Focus = 2
+                Focus = difficulty * 2
             };
             foreach (var skillKey in skillKeys.Distinct(StringComparer.OrdinalIgnoreCase))
             {
@@ -2469,7 +2472,7 @@ public sealed class CatalogSeedRunner
             enemy.StatBlock ??= new EnemyStatBlockEntity { Id = Guid.NewGuid(), EnemyDefinitionId = enemy.Id };
             enemy.StatBlock.MaxVitality = vit; enemy.StatBlock.AttackPower = atk;
             enemy.StatBlock.Defense = def; enemy.StatBlock.StartingGuard = guard;
-            enemy.StatBlock.Speed = speed; enemy.StatBlock.Focus = 2;
+            enemy.StatBlock.Speed = speed; enemy.StatBlock.Focus = difficulty * 2;
 
             var desired = skillKeys.Distinct(StringComparer.OrdinalIgnoreCase).ToHashSet(StringComparer.OrdinalIgnoreCase);
             foreach (var skillKey in desired.Where(k => enemy.SkillLinks.All(l => !string.Equals(l.SkillDefinitionKey, k, StringComparison.OrdinalIgnoreCase))))

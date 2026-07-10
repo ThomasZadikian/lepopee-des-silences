@@ -51,10 +51,13 @@ const mockStore = {
   feedbackEvents: [],
 };
 
+const mockRunStore: { combatRuntime: CombatRuntimeDto | null; currentRoom: { depth: number } | null } = {
+  combatRuntime: null,
+  currentRoom: null,
+};
+
 vi.mock('../../runs/stores/runStore', () => ({
-  useRunStore: vi.fn(() => ({
-    combatRuntime: null,
-  })),
+  useRunStore: vi.fn(() => mockRunStore),
 }));
 
 vi.mock('../stores/useCombatStore', () => ({
@@ -91,6 +94,8 @@ function makeCombatant(id: string, displayName: string, side: 'Player' | 'Enemy'
 }
 
 function resetMockStore() {
+  mockRunStore.combatRuntime = null;
+  mockRunStore.currentRoom = null;
   mockStore.combat = null;
   mockStore.allies = [];
   mockStore.enemies = [];
@@ -129,9 +134,15 @@ function configureMockStore(overrides: Record<string, any> = {}) {
   Object.assign(mockStore, overrides);
 }
 
-function mountScene(runId = 'run-1', combatId = 'combat-1', combatStoreOverrides: Record<string, any> = {}) {
+function mountScene(
+  runId = 'run-1',
+  combatId = 'combat-1',
+  combatStoreOverrides: Record<string, any> = {},
+  runStoreOverrides: Partial<typeof mockRunStore> = {},
+) {
   resetMockStore();
   configureMockStore(combatStoreOverrides);
+  Object.assign(mockRunStore, runStoreOverrides);
 
   return mount(CombatScene, {
     props: { runId, combatId },
@@ -233,6 +244,56 @@ describe('CombatScene', () => {
       allCombatants: [enemy],
     });
     expect(wrapper.find('.combat-scene__side-title--foe').exists()).toBe(true);
+  });
+
+  it('shows the depth-scaling badge when the current room is past depth 1', () => {
+    const enemy = makeCombatant('enemy-1', 'Beast', 'Enemy');
+    const wrapper = mountScene(
+      'run-1',
+      'combat-1',
+      {
+        combat: {
+          id: 'combat-1',
+          status: 'Active',
+          turnNumber: 1,
+          activeCombatantId: 'ally-1',
+          allies: [],
+          enemies: [enemy],
+          usableBattleItems: [],
+        },
+        allies: [],
+        enemies: [enemy],
+        allCombatants: [enemy],
+      },
+      { currentRoom: { depth: 4 } },
+    );
+    const badge = wrapper.find('.combat-scene__difficulty-badge');
+    expect(badge.exists()).toBe(true);
+    expect(badge.text()).toContain('×2.5');
+  });
+
+  it('hides the depth-scaling badge at room depth 1', () => {
+    const enemy = makeCombatant('enemy-1', 'Beast', 'Enemy');
+    const wrapper = mountScene(
+      'run-1',
+      'combat-1',
+      {
+        combat: {
+          id: 'combat-1',
+          status: 'Active',
+          turnNumber: 1,
+          activeCombatantId: 'ally-1',
+          allies: [],
+          enemies: [enemy],
+          usableBattleItems: [],
+        },
+        allies: [],
+        enemies: [enemy],
+        allCombatants: [enemy],
+      },
+      { currentRoom: { depth: 1 } },
+    );
+    expect(wrapper.find('.combat-scene__difficulty-badge').exists()).toBe(false);
   });
 
   it('shows compose section when combat is active', () => {
