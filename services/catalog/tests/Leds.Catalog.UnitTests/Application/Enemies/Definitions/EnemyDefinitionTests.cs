@@ -42,7 +42,7 @@ public sealed class EnemyDefinitionTests
     }
 
     [Fact]
-    public void Create_ShouldSetAttackDefenseSpeed_WhenProvided()
+    public void Create_ShouldSetAttackDefenseSpeedFocus_WhenProvided()
     {
         var def = EnemyDefinition.Create(
             "enemy.threshold.doubt-fragment",
@@ -58,11 +58,25 @@ public sealed class EnemyDefinitionTests
             skillKeys: ["skill.basic.strike"],
             attackPower: 15,
             defense: 8,
-            speed: 12);
+            speed: 12,
+            focus: 6);
 
         def.AttackPower.Should().Be(15);
         def.Defense.Should().Be(8);
         def.Speed.Should().Be(12);
+        def.Focus.Should().Be(6);
+    }
+
+    [Fact]
+    public void Create_ShouldThrow_WhenFocusIsNegative()
+    {
+        var act = () => EnemyDefinition.Create(
+            "enemy.test", "Name", "Desc", "1.0.0", "Fragile", 1, 1, 2, ["Threshold"], [], [],
+            focus: -1);
+
+        act.Should()
+            .Throw<DomainException>()
+            .WithMessage("Enemy definition focus cannot be negative.");
     }
 
     [Fact]

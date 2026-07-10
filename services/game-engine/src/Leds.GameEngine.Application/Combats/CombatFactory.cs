@@ -243,11 +243,13 @@ public sealed class CombatFactory : ICombatFactory
                     })
                     .ToArray();
 
-                // Attack/Defense keep pace with run depth the same way Vitality does;
-                // Speed stays as authored (it drives ATB tempo directly, not damage,
-                // so scaling it by the same unbounded multiplier would break pacing).
+                // Attack/Defense/Focus/Speed all keep pace with run depth and active
+                // Palace Laws the same way Vitality/Power do, via the same difficulty
+                // multiplier, so enemy stats genuinely scale as a percentage increase.
                 var scaledAttackPower = _enemyStatScaler.ScaleValue(enemy.AttackPower, draft.DifficultyMultiplier);
                 var scaledDefense = _enemyStatScaler.ScaleValue(enemy.Defense, draft.DifficultyMultiplier);
+                var scaledFocus = _enemyStatScaler.ScaleValue(enemy.Focus, draft.DifficultyMultiplier);
+                var scaledSpeed = _enemyStatScaler.ScaleValue(enemy.Speed, draft.DifficultyMultiplier);
 
                 return Combatant.CreateEnemy(
                     sourceKey: enemy.EnemyKey,
@@ -258,7 +260,8 @@ public sealed class CombatFactory : ICombatFactory
                     startingGuard: enemyStartingGuard,
                     attackPower: scaledAttackPower,
                     defense: scaledDefense,
-                    speed: enemy.Speed);
+                    speed: scaledSpeed,
+                    focus: scaledFocus);
             })
             .ToArray();
 

@@ -339,7 +339,11 @@ public sealed class HttpCatalogContentGatewayTests
                 MinRiskLevel = 1,
                 MaxRiskLevel = 2,
                 Tags = new[] { "threshold", "fragile" },
-                SkillKeys = new[] { "skill.basic.strike" }
+                SkillKeys = new[] { "skill.basic.strike" },
+                AttackPower = 15,
+                Defense = 8,
+                Speed = 12,
+                Focus = 6
             }
         };
 
@@ -361,6 +365,10 @@ public sealed class HttpCatalogContentGatewayTests
         enemy.CompatibleRoomTypes.Should().BeEquivalentTo("Threshold");
         enemy.Tags.Should().BeEquivalentTo("threshold", "fragile");
         enemy.SkillKeys.Should().BeEquivalentTo("skill.basic.strike");
+        enemy.AttackPower.Should().Be(15);
+        enemy.Defense.Should().Be(8);
+        enemy.Speed.Should().Be(12);
+        enemy.Focus.Should().Be(6);
     }
 
     [Fact]

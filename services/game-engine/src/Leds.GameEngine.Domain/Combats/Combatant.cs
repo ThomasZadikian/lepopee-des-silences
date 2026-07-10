@@ -301,7 +301,8 @@ public sealed class Combatant
         int startingGuard = 0,
         int attackPower = 0,
         int defense = 0,
-        int speed = 10)
+        int speed = 10,
+        int focus = 0)
     {
         var id = CombatantId.New();
         var snapshot = CombatantBaseStatSnapshot.Create(
@@ -312,7 +313,7 @@ public sealed class Combatant
             speed: speed,
             initiative: 0,
             recovery: 0,
-            focus: 0,
+            focus: focus,
             mana: 0,
             charge: 0);
 

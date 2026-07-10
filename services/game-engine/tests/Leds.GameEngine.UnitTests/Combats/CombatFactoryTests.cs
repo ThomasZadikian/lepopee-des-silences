@@ -21,6 +21,7 @@ public sealed class CombatFactoryTests
         int enemyAttackPower = 0,
         int enemyDefense = 0,
         int enemySpeed = 10,
+        int enemyFocus = 0,
         double difficultyMultiplier = 1.0)
     {
         var allies = Enumerable.Range(0, allyCount).Select(i =>
@@ -54,7 +55,8 @@ public sealed class CombatFactoryTests
                 skills,
                 AttackPower: enemyAttackPower,
                 Defense: enemyDefense,
-                Speed: enemySpeed);
+                Speed: enemySpeed,
+                Focus: enemyFocus);
         }).ToArray();
 
         return new CombatEncounterDraft(
@@ -207,10 +209,10 @@ public sealed class CombatFactoryTests
     }
 
     [Fact]
-    public void CreateFromDraft_ShouldWireCatalogAttackDefenseSpeed_IntoEnemyCombatant()
+    public void CreateFromDraft_ShouldWireCatalogAttackDefenseSpeedFocus_IntoEnemyCombatant()
     {
         var factory = new CombatFactory();
-        var draft = CreateDraft(enemyAttackPower: 15, enemyDefense: 8, enemySpeed: 12);
+        var draft = CreateDraft(enemyAttackPower: 15, enemyDefense: 8, enemySpeed: 12, enemyFocus: 6);
 
         var combat = factory.CreateFromDraft(draft);
 
@@ -218,14 +220,15 @@ public sealed class CombatFactoryTests
         enemy.BaseStatSnapshot.AttackPower.Should().Be(15);
         enemy.BaseStatSnapshot.Defense.Should().Be(8);
         enemy.BaseStatSnapshot.Speed.Should().Be(12);
+        enemy.BaseStatSnapshot.Focus.Should().Be(6);
     }
 
     [Fact]
-    public void CreateFromDraft_ShouldScaleEnemyAttackAndDefense_WithDifficultyMultiplier_ButNotSpeed()
+    public void CreateFromDraft_ShouldScaleEnemyAttackDefenseSpeedFocus_WithDifficultyMultiplier()
     {
         var factory = new CombatFactory();
         var draft = CreateDraft(
-            enemyAttackPower: 10, enemyDefense: 10, enemySpeed: 12, difficultyMultiplier: 2.0);
+            enemyAttackPower: 10, enemyDefense: 10, enemySpeed: 12, enemyFocus: 5, difficultyMultiplier: 2.0);
 
         var combat = factory.CreateFromDraft(draft);
 
@@ -234,8 +237,10 @@ public sealed class CombatFactoryTests
             because: "Attack should keep pace with run depth, same as Vitality.");
         enemy.BaseStatSnapshot.Defense.Should().Be(20,
             because: "Defense should keep pace with run depth, same as Vitality.");
-        enemy.BaseStatSnapshot.Speed.Should().Be(12,
-            because: "Speed drives ATB tempo directly and stays as authored, unscaled.");
+        enemy.BaseStatSnapshot.Speed.Should().Be(24,
+            because: "Speed now keeps pace with run depth too, same as the other authored stats.");
+        enemy.BaseStatSnapshot.Focus.Should().Be(10,
+            because: "Focus (crit chance) should keep pace with run depth, same as the other authored stats.");
     }
 
     [Fact]

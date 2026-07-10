@@ -24,6 +24,7 @@ public sealed class EnemyDefinition : CatalogContentBase, IEnemyDefinition
         int attackPower,
         int defense,
         int speed,
+        int focus,
         IReadOnlyCollection<string> compatibleRoomTypes,
         IReadOnlyCollection<string> tags,
         IReadOnlyCollection<string> skillKeys)
@@ -36,6 +37,7 @@ public sealed class EnemyDefinition : CatalogContentBase, IEnemyDefinition
         AttackPower = attackPower;
         Defense = defense;
         Speed = speed;
+        Focus = focus;
         _compatibleRoomTypes = compatibleRoomTypes.ToList();
         _tags = tags.ToList();
         _skillKeys = skillKeys.ToList();
@@ -54,6 +56,8 @@ public sealed class EnemyDefinition : CatalogContentBase, IEnemyDefinition
     public int Defense { get; }
 
     public int Speed { get; }
+
+    public int Focus { get; }
 
     public IReadOnlyCollection<string> CompatibleRoomTypes => _compatibleRoomTypes.AsReadOnly();
 
@@ -76,7 +80,8 @@ public sealed class EnemyDefinition : CatalogContentBase, IEnemyDefinition
         CatalogContentStatus status = CatalogContentStatus.Draft,
         int attackPower = 0,
         int defense = 0,
-        int speed = 10)
+        int speed = 10,
+        int focus = 0)
     {
         var desc = CatalogContentDescription.From(description);
 
@@ -120,6 +125,11 @@ public sealed class EnemyDefinition : CatalogContentBase, IEnemyDefinition
             throw new DomainException("Enemy definition speed must be at least 1.");
         }
 
+        if (focus < 0)
+        {
+            throw new DomainException("Enemy definition focus cannot be negative.");
+        }
+
         var distinctRoomTypes = compatibleRoomTypes is null || compatibleRoomTypes.Count == 0
             ? throw new DomainException("Enemy definition must have at least one compatible room type.")
             : compatibleRoomTypes.Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
@@ -146,6 +156,7 @@ public sealed class EnemyDefinition : CatalogContentBase, IEnemyDefinition
             attackPower,
             defense,
             speed,
+            focus,
             distinctRoomTypes,
             distinctTags,
             distinctSkillKeys);

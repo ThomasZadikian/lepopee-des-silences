@@ -18,7 +18,8 @@ public sealed record EnemyDefinitionDto(
     IReadOnlyCollection<string> SkillKeys,
     int AttackPower = 0,
     int Defense = 0,
-    int Speed = 10)
+    int Speed = 10,
+    int Focus = 0)
 {
     public static EnemyDefinitionDto FromDomain(IEnemyDefinition definition)
     {
@@ -38,6 +39,7 @@ public sealed record EnemyDefinitionDto(
             definition.SkillKeys.ToArray(),
             definition.AttackPower,
             definition.Defense,
-            definition.Speed);
+            definition.Speed,
+            definition.Focus);
     }
 }

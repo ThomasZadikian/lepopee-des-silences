@@ -1026,7 +1026,8 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
             SkillKeys: source.SkillKeys,
             AttackPower: source.AttackPower,
             Defense: source.Defense,
-            Speed: source.Speed);
+            Speed: source.Speed,
+            Focus: source.Focus);
     }
 
     private static PalaceLawDefinitionSnapshot MapToPalaceLawDefinitionSnapshot(

@@ -80,6 +80,7 @@ public sealed class EfEnemyDefinitionReadStore : IEnemyDefinitionReadStore
             Enum.Parse<CatalogContentStatus>(entity.Status),
             attackPower: entity.StatBlock?.AttackPower ?? 0,
             defense: entity.StatBlock?.Defense ?? 0,
-            speed: entity.StatBlock?.Speed ?? 10);
+            speed: entity.StatBlock?.Speed ?? 10,
+            focus: entity.StatBlock?.Focus ?? 0);
     }
 }
