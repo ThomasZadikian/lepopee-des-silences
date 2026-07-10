@@ -46,6 +46,7 @@ public sealed class CatalogSeedRunner
         await SeedHimLitAsync(cancellationToken);
         await SeedTovmaAsync(cancellationToken);
         await SeedSathomAsync(cancellationToken);
+        await SeedErinaAsync(cancellationToken);
         await SeedCanonEnemiesAsync(cancellationToken);
         await SeedCanonSkillsAsync(cancellationToken);
         await SeedCanonItemsAsync(cancellationToken);
@@ -855,6 +856,73 @@ public sealed class CatalogSeedRunner
             offerings: offerings);
     }
 
+    private async Task<int> SeedErinaAsync(CancellationToken ct)
+    {
+        var persona = new NpcPersona(
+            "Une adolescente arrogante, pleine de questions — très aimante mais incapable de le montrer, elle ne rêve que d'être libre d'aller où elle veut",
+            EmotionalRegister.Rupture,
+            new[] { "la liberté", "poser des questions", "aller où elle veut" },
+            new[] { "l'autorité", "qu'on lui donne des ordres", "l'enfermement" });
+
+        var wounds = new[]
+        {
+            new NpcWound("w-enfermement-erina", EmotionalRegister.Rupture, NpcWoundReversibility.SoothableByAct, -2, -4,
+                new[] { new NpcTransgression("w-enfermement-erina", "erina-autorite", -2) },
+                "Elle a été enfermée, longtemps, pour son bien disait-on. Depuis, la moindre voix qui prétend savoir mieux qu'elle ce qui est bon pour elle la fait se refermer comme un poing.")
+        };
+
+        var rencontre = new NpcDialogueNode("rencontre", "Erina",
+            new[]
+            {
+                "Encore quelqu'un qui va me dire quoi faire, c'est ça ? Vous avez cette tête-là.",
+                "Posez vos questions si vous voulez. Moi, j'en ai des centaines."
+            },
+            new[]
+            {
+                new NpcDialogueChoice("questionner", "Lui poser une question, sans rien exiger", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.AdjustRelationship, rel: 1) }, "liberte"),
+                new NpcDialogueChoice("ordonner", "Lui donner un ordre", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.SetMemoryFlag, flag: "erina-autorite"),
+                            C(ConsequenceKind.Narrative, frag: "Elle se ferme d'un coup, comme un mur. Elle ne vous adressera plus la parole aussi facilement.") }, null),
+                new NpcDialogueChoice("partir", "Partir", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.Narrative, frag: "Vous partez. Elle vous regarde à peine — trop occupée à chercher la sortie qu'elle n'a pas encore trouvée.") }, null)
+            });
+
+        var liberte = new NpcDialogueNode("liberte", "Erina",
+            new[] { "Vous voulez savoir pourquoi je pose tant de questions ? Parce que personne ne m'a jamais laissée demander. Alors maintenant, je ne m'arrête plus." },
+            new[]
+            {
+                new NpcDialogueChoice("ecouter-encore", "Écouter encore", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.AdjustRelationship, rel: 1) }, "don")
+            });
+
+        var don = new NpcDialogueNode("don", "Erina",
+            new[] { "Tenez. Si vous partez, autant partir vite." },
+            new[]
+            {
+                new NpcDialogueChoice("accepter-reve", "Accepter le Rêve d'Erina", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.erina.reve") }, null),
+                new NpcDialogueChoice("accepter-liberte", "Accepter La liberté retrouvée", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.erina.liberte") }, null)
+            });
+
+        var graph = new NpcDialogueGraph("npc.erina.dialogue", "1.0", "rencontre",
+            new Dictionary<string, NpcDialogueNode> { ["rencontre"] = rencontre, ["liberte"] = liberte, ["don"] = don });
+
+        var offerings = new[]
+        {
+            new NpcOffering("offer.erina.reve", NpcOfferingKind.Item, "canon.item.reve-erina", 1, true,
+                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 250) }),
+            new NpcOffering("offer.erina.liberte", NpcOfferingKind.Skill, "canon.skill.liberte-retrouvee", 1, true,
+                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) })
+        };
+
+        return await UpsertNpcAsync("npc.erina", "Erina",
+            "Une adolescente arrogante, pleine de questions. Très aimante sans jamais le montrer, elle ne veut qu'une chose : être libre d'aller où elle veut.",
+            "1.0", EmotionalRegister.Rupture, true, persona, wounds, graph, ct,
+            offerings: offerings);
+    }
+
     // ──────────────────────────────────────────────────────────────────────────
     //  ENNEMIS CANON — créatures signature tirées de « L'épopée des silences »
     //  et « Des échos ». Chemin de combat vivant : EnemyDefinition + StatBlock +
@@ -1224,6 +1292,20 @@ public sealed class CatalogSeedRunner
                 new SkillEffectSpec("GuardOverTime", null, 8, construcionPerpetuelleTickInterval * 5,
                     TickInterval: construcionPerpetuelleTickInterval)
             });
+
+        // "La liberté retrouvée" (Erina, sort légendaire) : frappe l'adversaire et
+        // gagne +10% Vitesse (de base) pendant 10 tours. Même convention de tick
+        // (2500/tour) que Construction perpétuelle ; l'effet est marqué AppliesToActor
+        // car il doit revenir sur Erina/le lanceur, pas sur la cible frappée.
+        const int liberteRetrouveeTicksPerTurn = 2500;
+        await UpsertSkillAsync("canon.skill.liberte-retrouvee", "La liberté retrouvée",
+            "Un coup porté comme une évasion — et pour un temps, plus rien ne la retient.",
+            "Damage", "SingleEnemy", "Damage", mana: 20, power: 14, cancellationToken,
+            effects: new[]
+            {
+                new SkillEffectSpec("StatModifier", null, 10, liberteRetrouveeTicksPerTurn * 10,
+                    Stat: "Speed", MagnitudeIsPercentOfBaseStat: true, AppliesToActor: true)
+            });
     }
 
     private async Task UpsertSkillAsync(
@@ -1415,6 +1497,11 @@ public sealed class CatalogSeedRunner
             "Un liquide rouge sombre, épais comme du sang. Il referme ce que le Palais a ouvert.",
             "Consumable", "Potion", "Common", "RunOnly", true, 25, cancellationToken,
             effectRunType: "Heal");
+
+        await UpsertItemAsync("canon.item.reve-erina", "Rêve d'Erina",
+            "Un fragment de ce qu'elle imagine derrière chaque porte fermée. Tant qu'on le garde sur soi, on avance plus vite — comme elle.",
+            "Relic", "Memento", "Rare", "RunOnly", false, 5, cancellationToken,
+            effectRunType: "TeamSpeedBonus");
     }
 
     private async Task UpsertItemAsync(

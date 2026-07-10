@@ -81,6 +81,12 @@ public sealed class CombatFactory : ICombatFactory
         var attackPowerMultiplier = 1.0 + activeModifiers
             .Where(m => m.Type == RunModifierType.AttackPowerBonus && !m.IsConsumed)
             .Sum(m => m.Value);
+        // Team-wide Speed multiplier (e.g. Rêve d'Erina: +5% team Speed while carried) —
+        // applied to every Player-side combatant (protagonist AND companions), unlike
+        // AttackPowerBonus which only scales skill power.
+        var speedMultiplier = 1.0 + activeModifiers
+            .Where(m => m.Type == RunModifierType.SpeedBonus && !m.IsConsumed)
+            .Sum(m => m.Value);
         var activeClimate = ResolveActiveClimate(draft.RoomId, activeModifiers);
 
         if (activeClimate == RoomClimate.Rain)
@@ -134,7 +140,7 @@ public sealed class CombatFactory : ICombatFactory
                         protagonistSkills,
                         attackPower: attackPower,
                         defense: defense,
-                        speed: speed,
+                        speed: ApplySpeedMultiplier(speed, speedMultiplier),
                         focus: focus);
 
                     protagonist.ApplyAttackTypeOverride(attackTypeOverride);
@@ -177,7 +183,7 @@ public sealed class CombatFactory : ICombatFactory
                     companionSkills,
                     attackPower: ally.AttackPower,
                     defense: ally.Defense,
-                    speed: ally.Speed,
+                    speed: ApplySpeedMultiplier(ally.Speed, speedMultiplier),
                     focus: ally.Focus);
 
                 // Companions keep their own emotional type (no item override).
@@ -320,6 +326,11 @@ public sealed class CombatFactory : ICombatFactory
         }
 
         return effectType;
+    }
+
+    private static int ApplySpeedMultiplier(int baseSpeed, double speedMultiplier)
+    {
+        return speedMultiplier == 1.0 ? baseSpeed : Math.Max(1, (int)Math.Round(baseSpeed * speedMultiplier));
     }
 
     private static int ScalePlayerSkillPower(string effectType, int basePower, double attackPowerMultiplier)

@@ -946,7 +946,7 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
             Effects: source.Effects?
                 .Select(e => new CatalogSkillEffectSpec(
                     e.Kind, e.StatusKey, e.Magnitude, e.DurationTicks, e.TickInterval, e.Stat,
-                    e.MagnitudeIsPercentOfMax, e.MagnitudeIsPercentOfBaseStat))
+                    e.MagnitudeIsPercentOfMax, e.MagnitudeIsPercentOfBaseStat, e.AppliesToActor))
                 .ToArray());
     }
 

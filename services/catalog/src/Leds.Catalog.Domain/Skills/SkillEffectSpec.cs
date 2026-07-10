@@ -16,4 +16,7 @@ public sealed record SkillEffectSpec(
     // combatant's BASE value for Stat (e.g. +10 = +10% AttackPower) rather than a
     // flat delta. This is now the default way to author stat buffs/debuffs — prefer
     // this over a flat Magnitude for new skills.
-    bool MagnitudeIsPercentOfBaseStat = false);
+    bool MagnitudeIsPercentOfBaseStat = false,
+    // When true, this effect is applied to the ACTOR casting the skill instead of
+    // its targets — e.g. a damage skill that also buffs its own caster on hit.
+    bool AppliesToActor = false);

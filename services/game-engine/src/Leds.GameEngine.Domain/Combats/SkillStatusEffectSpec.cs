@@ -19,4 +19,6 @@ public sealed record SkillStatusEffectSpec(
     EmotionalType? EmotionalType = null,
     int Stacks = 1,
     bool MagnitudeIsPercentOfMax = false,
-    bool MagnitudeIsPercentOfBaseStat = false);
+    bool MagnitudeIsPercentOfBaseStat = false,
+    // When true, applied to the ACTOR casting the skill instead of its targets.
+    bool AppliesToActor = false);

@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Leds.GameEngine.Application.Combats.Effects;
 using Leds.GameEngine.Domain.Combats;
+using Leds.GameEngine.Domain.Combats.StatusEffects;
 using Leds.GameEngine.Domain.Combats.Typing;
 using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Nodes;
@@ -248,6 +249,61 @@ public sealed class CombatSkillEffectResolverTests
         // Neutral type match for player.self (no weak/resist to Mémoire) => 20 raw,
         // then -15% equipment reduction => 17 (rounded).
         ally.CurrentVitality.Should().Be(83);
+    }
+
+    [Fact]
+    public void Resolve_ShouldApplyAppliesToActorEffect_ToTheCaster_NotTheTarget()
+    {
+        var (combat, ally, enemy) = CreateCombat();
+        var skill = CombatantSkill.Create(
+            "skill.liberte-retrouvee", "La liberté retrouvée", "Damage", "SingleEnemy", "Damage",
+            manaCost: 0, chargeCost: 0, basePower: 10,
+            statusEffects: new[]
+            {
+                new SkillStatusEffectSpec(
+                    "liberte-retrouvee:speed", "Liberté retrouvée", StatusEffectKind.StatModifier,
+                    Magnitude: 10, DurationTicks: 25000, Stat: CombatStat.Speed,
+                    MagnitudeIsPercentOfBaseStat: true, AppliesToActor: true)
+            });
+
+        _resolver.Resolve(combat, ally, skill, [enemy]);
+
+        ally.StatusEffects.Should().ContainSingle(e => e.Key == "liberte-retrouvee:speed");
+        enemy.StatusEffects.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Resolve_ShouldGrantAppliesToActorEffect_OnlyWhenTheAttackActuallyLands()
+    {
+        // The hit roll is deterministic (seeded from combat/actor/target/skill ids)
+        // but effectively unpredictable from the test's point of view since ids are
+        // freshly generated each run — so this asserts the INVARIANT for whichever
+        // outcome occurs, rather than forcing one via a hardcoded seed.
+        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+        var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 80);
+        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
+        var skill = CombatantSkill.Create(
+            "skill.liberte-retrouvee", "La liberté retrouvée", "Damage", "SingleEnemy", "Damage",
+            manaCost: 0, chargeCost: 0, basePower: 10,
+            statusEffects: new[]
+            {
+                new SkillStatusEffectSpec(
+                    "liberte-retrouvee:speed", "Liberté retrouvée", StatusEffectKind.StatModifier,
+                    Magnitude: 10, DurationTicks: 25000, Stat: CombatStat.Speed,
+                    MagnitudeIsPercentOfBaseStat: true, AppliesToActor: true)
+            });
+
+        var result = _resolver.Resolve(combat, ally, skill, [enemy]);
+
+        var missed = result.LogEntries.Any(e => e.Type == "AttackMissed");
+        if (missed)
+        {
+            ally.StatusEffects.Should().BeEmpty(because: "a miss must not grant the self-buff.");
+        }
+        else
+        {
+            ally.StatusEffects.Should().ContainSingle();
+        }
     }
 
     private static (Combat Combat, Combatant Ally, Combatant Enemy) CreateCombat()

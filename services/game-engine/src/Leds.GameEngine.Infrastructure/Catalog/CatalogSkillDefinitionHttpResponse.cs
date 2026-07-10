@@ -12,4 +12,5 @@ public sealed record CatalogSkillEffectSpecHttpResponse(
     int TickInterval,
     string? Stat,
     bool MagnitudeIsPercentOfMax,
-    bool MagnitudeIsPercentOfBaseStat = false);
+    bool MagnitudeIsPercentOfBaseStat = false,
+    bool AppliesToActor = false);

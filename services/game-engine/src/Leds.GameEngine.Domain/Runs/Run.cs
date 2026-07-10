@@ -900,6 +900,8 @@ public sealed class Run
         {
             _runItems.Add(item);
         }
+
+        ApplyItemGrantModifiers(item.EffectType, item.EffectAmount, item.DefinitionKey);
     }
 
     /// <summary>
@@ -1088,6 +1090,16 @@ public sealed class Run
             throw new DomainException("Le sac est plein — il n'y a plus de place pour cet objet.");
         }
 
+        ApplyItemGrantModifiers(effectType, effectAmount, definitionKey);
+    }
+
+    /// <summary>
+    /// Translates certain RunItemEffectTypes into a permanent (until-run-ends)
+    /// RunModifier at the moment the item is granted — whether picked up as loot
+    /// (<see cref="AddRunItemFromPayload"/>) or given by an NPC (<see cref="AddRunItem"/>).
+    /// </summary>
+    private void ApplyItemGrantModifiers(RunItemEffectType effectType, int effectAmount, string definitionKey)
+    {
         // Guard items create a permanent run-scoped StartingGuardBonus modifier.
         // The bonus stacks across multiple guard items but is capped at MaxStartingGuardBonus.
         if (effectType == RunItemEffectType.Guard && effectAmount > 0)
@@ -1117,6 +1129,19 @@ public sealed class Run
             AddRunModifier(RunModifier.Create(
                 RunModifierType.AttackTypeOverride,
                 effectAmount,
+                RunModifierDuration.UntilRunEnds,
+                "RunItem",
+                definitionKey));
+        }
+
+        // Team-wide Speed bonus for as long as the item is held this run (e.g. Rêve
+        // d'Erina: +5% team Speed). effectAmount is a whole percentage; stacks
+        // additively with any other SpeedBonus modifier.
+        if (effectType == RunItemEffectType.TeamSpeedBonus && effectAmount > 0)
+        {
+            AddRunModifier(RunModifier.Create(
+                RunModifierType.SpeedBonus,
+                effectAmount / 100.0,
                 RunModifierDuration.UntilRunEnds,
                 "RunItem",
                 definitionKey));

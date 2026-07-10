@@ -473,7 +473,8 @@ public sealed class ResolveCurrentEventCommandHandler
                 Magnitude: effect.Magnitude, DurationTicks: effect.DurationTicks,
                 TickInterval: effect.TickInterval, Stat: stat, EmotionalType: null, Stacks: 1,
                 MagnitudeIsPercentOfMax: effect.MagnitudeIsPercentOfMax,
-                MagnitudeIsPercentOfBaseStat: effect.MagnitudeIsPercentOfBaseStat));
+                MagnitudeIsPercentOfBaseStat: effect.MagnitudeIsPercentOfBaseStat,
+                AppliesToActor: effect.AppliesToActor));
         }
         return specs;
     }

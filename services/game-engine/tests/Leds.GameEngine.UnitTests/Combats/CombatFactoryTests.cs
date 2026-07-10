@@ -261,6 +261,26 @@ public sealed class CombatFactoryTests
     }
 
     [Fact]
+    public void CreateFromDraft_ShouldApplyTeamSpeedBonusModifier_ToAllyBaseSpeed()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft(allyTags: new[] { "player" });
+
+        var modifier = RunModifier.Create(
+            RunModifierType.SpeedBonus,
+            0.10,
+            RunModifierDuration.UntilRunEnds,
+            "RunItem",
+            "canon.item.reve-erina");
+
+        var combat = factory.CreateFromDraft(draft, runModifiers: [modifier]);
+
+        var ally = combat.Allies.Single();
+        ally.BaseStatSnapshot.Speed.Should().Be(11,
+            because: "Rêve d'Erina grants +10% team Speed while carried (default draft Speed is 10).");
+    }
+
+    [Fact]
     public void CreateFromDraft_ShouldApplyRainClimateStartingGuardBonus()
     {
         var factory = new CombatFactory();

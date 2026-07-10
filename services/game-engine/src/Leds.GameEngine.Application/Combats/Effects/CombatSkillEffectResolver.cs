@@ -35,10 +35,15 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
         // already validated for player-side actors.
         ConsumeResources(actor, skill);
 
+        // Gates AppliesToActor status effects (e.g. a self-buff on hit): only a
+        // Damage skill can actually miss, so every other effect type "connects"
+        // unconditionally.
+        var attackLanded = true;
+
         switch (ResolveEffectType(skill))
         {
             case "Damage":
-                ResolveDamage(combat, actor, skill, targets, logEntries);
+                attackLanded = ResolveDamage(combat, actor, skill, targets, logEntries);
                 break;
 
             case "Guard":
@@ -69,7 +74,7 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
         }
 
         // Apply the durable status(es) (poison/regen/buff/control) on top, if declared.
-        ApplySkillStatus(combat, actor, skill, targets, logEntries);
+        ApplySkillStatus(combat, actor, skill, targets, logEntries, attackLanded);
         return new CombatSkillEffectResolution(true, logEntries, combat);
     }
 
@@ -117,39 +122,39 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
         Combatant actor,
         CombatantSkill skill,
         IReadOnlyCollection<Combatant> targets,
-        List<CombatLogEntryDto> logEntries)
+        List<CombatLogEntryDto> logEntries,
+        bool attackLanded)
     {
         if (skill.StatusEffects.Count == 0)
             return;
+
+        // Effects flagged AppliesToActor land on the CASTER instead of the skill's
+        // targets — e.g. a damage skill that also buffs itself on hit (La liberté
+        // retrouvée: +10% Speed on the caster when it strikes an enemy). Gated on
+        // attackLanded so a miss grants nothing.
+        if (!actor.IsDefeated && attackLanded)
+        {
+            foreach (var spec in skill.StatusEffects.Where(s => s.AppliesToActor))
+            {
+                ApplyStatusEffectSpec(combat, spec, actor);
+
+                logEntries.Add(CreateLog(
+                    "StatusApplied",
+                    $"{actor.DisplayName} gains {spec.DisplayName}.",
+                    actor,
+                    skill,
+                    [actor]));
+            }
+        }
 
         foreach (var target in targets)
         {
             if (target.IsDefeated)
                 continue;
 
-            foreach (var spec in skill.StatusEffects)
+            foreach (var spec in skill.StatusEffects.Where(s => !s.AppliesToActor))
             {
-                // Equipment-driven DOT resistance (e.g. Main de Khasma) shortens the
-                // duration of an incoming DamageOverTime effect; the per-tick damage
-                // reduction itself is applied later, at tick time (Combatant.TickStatusEffects).
-                var durationTicks = spec.Kind == StatusEffectKind.DamageOverTime && target.DotDurationReductionPercent > 0
-                    ? Math.Max(1, (int)Math.Round(
-                        spec.DurationTicks * (1.0 - Math.Min(target.DotDurationReductionPercent, 100) / 100.0)))
-                    : spec.DurationTicks;
-
-                target.ApplyStatusEffect(CombatStatusEffect.Create(
-                    key: spec.Key,
-                    displayName: spec.DisplayName,
-                    kind: spec.Kind,
-                    currentTick: combat.CurrentTick,
-                    durationTicks: durationTicks,
-                    magnitude: spec.Magnitude,
-                    stacks: spec.Stacks,
-                    tickInterval: spec.TickInterval,
-                    stat: spec.Stat,
-                    emotionalType: spec.EmotionalType,
-                    isMagnitudePercentOfMax: spec.MagnitudeIsPercentOfMax,
-                    isMagnitudePercentOfBaseStat: spec.MagnitudeIsPercentOfBaseStat));
+                ApplyStatusEffectSpec(combat, spec, target);
 
                 logEntries.Add(CreateLog(
                     "StatusApplied",
@@ -167,7 +172,33 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
         }
     }
 
-    private void ResolveDamage(
+    private static void ApplyStatusEffectSpec(Combat combat, SkillStatusEffectSpec spec, Combatant recipient)
+    {
+        // Equipment-driven DOT resistance (e.g. Main de Khasma) shortens the
+        // duration of an incoming DamageOverTime effect; the per-tick damage
+        // reduction itself is applied later, at tick time (Combatant.TickStatusEffects).
+        var durationTicks = spec.Kind == StatusEffectKind.DamageOverTime && recipient.DotDurationReductionPercent > 0
+            ? Math.Max(1, (int)Math.Round(
+                spec.DurationTicks * (1.0 - Math.Min(recipient.DotDurationReductionPercent, 100) / 100.0)))
+            : spec.DurationTicks;
+
+        recipient.ApplyStatusEffect(CombatStatusEffect.Create(
+            key: spec.Key,
+            displayName: spec.DisplayName,
+            kind: spec.Kind,
+            currentTick: combat.CurrentTick,
+            durationTicks: durationTicks,
+            magnitude: spec.Magnitude,
+            stacks: spec.Stacks,
+            tickInterval: spec.TickInterval,
+            stat: spec.Stat,
+            emotionalType: spec.EmotionalType,
+            isMagnitudePercentOfMax: spec.MagnitudeIsPercentOfMax,
+            isMagnitudePercentOfBaseStat: spec.MagnitudeIsPercentOfBaseStat));
+    }
+
+    /// <returns>True if at least one target was actually struck (not missed).</returns>
+    private bool ResolveDamage(
         Combat combat,
         Combatant actor,
         CombatantSkill skill,
@@ -178,6 +209,7 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
         // Effective Focus = base + active Focus buffs/debuffs.
         var critChance = CriticalHitCalibration.CritChanceFromFocus(actor.EffectiveFocus);
         var staggers = IsStaggerSkill(skill);
+        var anyHit = false;
 
         foreach (var target in targets)
         {
@@ -194,6 +226,8 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
                     [target]));
                 continue;
             }
+
+            anyHit = true;
 
             var defenderProfile = _typeProfileProvider.Resolve(target);
             var critRoll = DeterministicCombatRoll.UnitInterval(BuildCritSeed(combat, actor, target, skill));
@@ -305,6 +339,8 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
                     [target]));
             }
         }
+
+        return anyHit;
     }
 
     // Equipment-driven typed damage reduction (e.g. Craie créatrice: -15% Mémoire),

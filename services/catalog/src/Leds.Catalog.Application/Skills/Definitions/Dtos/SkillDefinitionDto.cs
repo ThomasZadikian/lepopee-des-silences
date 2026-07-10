@@ -22,9 +22,12 @@ public sealed record SkillEffectSpecDto(
     int DurationTicks,
     int TickInterval,
     string? Stat,
-    bool MagnitudeIsPercentOfMax)
+    bool MagnitudeIsPercentOfMax,
+    bool MagnitudeIsPercentOfBaseStat = false,
+    bool AppliesToActor = false)
 {
     public static SkillEffectSpecDto FromDomain(SkillEffectSpec spec) => new(
         spec.Kind, spec.StatusKey, spec.Magnitude, spec.DurationTicks,
-        spec.TickInterval, spec.Stat, spec.MagnitudeIsPercentOfMax);
+        spec.TickInterval, spec.Stat, spec.MagnitudeIsPercentOfMax,
+        spec.MagnitudeIsPercentOfBaseStat, spec.AppliesToActor);
 }
