@@ -1762,7 +1762,7 @@ public sealed class CatalogSeedRunner
         await UpsertLawEffectAsync("canon.law.creation-vie-heresie", "ModifyDifficultyMultiplier", 0.20m, "UntilRunEnds", null, cancellationToken);
         await UpsertLawEffectAsync("canon.law.prieres-impies-nocturnes", "ModifyDifficultyMultiplier", 0.15m, "UntilRunEnds", null, cancellationToken);
         await UpsertLawEffectAsync("canon.law.interdiction-construire", "ModifyRewardPowerMultiplier", -0.15m, "UntilRunEnds", null, cancellationToken);
-        await UpsertLawEffectAsync("canon.law.arrete-153-2", "ModifySpeed", -2m, "UntilRunEnds", null, cancellationToken);
+        await UpsertLawEffectAsync("canon.law.arrete-153-2", "ModifySpeed", -0.20m, "UntilRunEnds", null, cancellationToken);
     }
 
     private async Task UpsertLawEffectAsync(
