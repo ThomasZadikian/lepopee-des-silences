@@ -11,7 +11,8 @@ public sealed record CombatantSkillRuntimeDto(
     int ManaCost,
     int ChargeCost,
     int BasePower,
-    IReadOnlyCollection<string> Tags)
+    IReadOnlyCollection<string> Tags,
+    string Category = "Physical")
 {
     public static CombatantSkillRuntimeDto FromDomain(CombatantSkill skill)
     {
@@ -24,6 +25,7 @@ public sealed record CombatantSkillRuntimeDto(
             ManaCost: skill.ManaCost,
             ChargeCost: skill.ChargeCost,
             BasePower: skill.BasePower,
-            Tags: skill.Tags);
+            Tags: skill.Tags,
+            Category: skill.Category);
     }
 }

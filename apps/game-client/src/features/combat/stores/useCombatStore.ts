@@ -10,6 +10,7 @@ import type {
   CombatLogEntryDto,
   CombatRuntimeDto,
   CombatUsableItemDto,
+  SkillCategory,
   TargetingType,
 } from '../types/combatContracts';
 
@@ -21,8 +22,10 @@ export type CombatTerminalEvent =
 export type CombatFeedbackEvent = {
   id: string;
   combatantId: string;
-  type: 'damage' | 'heal' | 'guard';
+  type: 'damage' | 'heal' | 'guard' | 'miss';
   amount: number;
+  category?: SkillCategory;
+  isCritical?: boolean;
 };
 
 type CombatantStateOverride = Pick<CombatantRuntimeDto, 'currentVitality' | 'guard' | 'status'>;
@@ -41,10 +44,16 @@ export const useCombatStore = defineStore('combatRuntime', () => {
   const recentlyGuardedIds = ref<string[]>([]);
   const recentlyDefeatedIds = ref<string[]>([]);
   const recentlyActingId = ref<string | null>(null);
+  const recentlyMagicHitIds = ref<string[]>([]);
+  const recentlyCriticalHitIds = ref<string[]>([]);
+  const recentlyMissedIds = ref<string[]>([]);
   const feedbackEvents = ref<CombatFeedbackEvent[]>([]);
   const combatantStateOverrides = ref<Record<string, CombatantStateOverride>>({});
   const processedLogKeys = ref<Set<string>>(new Set());
   const animationTimers: ReturnType<typeof globalThis.setTimeout>[] = [];
+  // Targets flagged by a 'CriticalHit' log entry, consumed by the DamageApplied
+  // entry(ies) that immediately follow it for the same target within one batch.
+  let pendingCriticalTargetIds = new Set<string>();
 
   // ── Skill selection ─────────────────────────────────────────────────────
 
@@ -318,6 +327,8 @@ export const useCombatStore = defineStore('combatRuntime', () => {
   }
 
   async function playCombatLogs(entries: CombatLogEntryDto[]) {
+    pendingCriticalTargetIds = new Set<string>();
+
     for (const entry of entries) {
       const logKey = createLogKey(entry);
       if (processedLogKeys.value.has(logKey)) continue;
@@ -327,6 +338,10 @@ export const useCombatStore = defineStore('combatRuntime', () => {
 
       if (entry.actorId && (entry.type === 'SkillUsed' || entry.type === 'ItemUsed')) {
         markActing(entry.actorId);
+      }
+
+      if (entry.type === 'CriticalHit') {
+        for (const targetId of entry.targetIds) pendingCriticalTargetIds.add(targetId);
       }
 
       if (entry.type === 'EnemyTurnResolved' && entry.actorId) {
@@ -364,16 +379,23 @@ export const useCombatStore = defineStore('combatRuntime', () => {
         continue;
       }
 
+      if (entry.type === 'AttackMissed') {
+        pushFeedbackEvent(target.id, 'miss', 0);
+        continue;
+      }
+
       const amount = parseLogAmount(entry.message);
       if (amount <= 0) continue;
 
       if (entry.type === 'DamageApplied') {
+        const category = resolveSkillCategory(entry);
+        const isCritical = pendingCriticalTargetIds.has(target.id);
         if (isGuardAbsorbLog(entry)) {
           target.guard = Math.max(0, target.guard - amount);
           pushFeedbackEvent(target.id, 'guard', amount);
         } else {
           target.currentVitality = Math.max(0, target.currentVitality - amount);
-          pushFeedbackEvent(target.id, 'damage', amount);
+          pushFeedbackEvent(target.id, 'damage', amount, category, isCritical);
         }
       } else if (entry.type === 'HealApplied') {
         target.currentVitality = Math.min(target.maxVitality, target.currentVitality + amount);
@@ -423,12 +445,30 @@ export const useCombatStore = defineStore('combatRuntime', () => {
     ].join('|');
   }
 
-  function pushFeedbackEvent(combatantId: string, type: CombatFeedbackEvent['type'], amount: number) {
+  // A DamageApplied entry always carries the ActorId/SkillKey of the skill that
+  // produced it (see CombatSkillEffectResolver.CreateLog) — no correlation with
+  // an earlier SkillUsed entry is needed to know whether the hit was Magic or
+  // Physical.
+  function resolveSkillCategory(entry: CombatLogEntryDto): SkillCategory | undefined {
+    if (!entry.actorId || !entry.skillKey) return undefined;
+    const actor = findCombatantById(entry.actorId);
+    return actor?.skills.find((s) => s.key === entry.skillKey)?.category;
+  }
+
+  function pushFeedbackEvent(
+    combatantId: string,
+    type: CombatFeedbackEvent['type'],
+    amount: number,
+    category?: SkillCategory,
+    isCritical?: boolean,
+  ) {
     const event = {
       id: `${combatantId}-${type}-${Date.now()}-${feedbackEvents.value.length}`,
       combatantId,
       type,
       amount,
+      category,
+      isCritical,
     };
     feedbackEvents.value = [...feedbackEvents.value, event];
     schedule(() => {
@@ -437,10 +477,14 @@ export const useCombatStore = defineStore('combatRuntime', () => {
   }
 
   function markFeedbackFromLog(entry: CombatLogEntryDto) {
-    if (entry.type === 'DamageApplied' && isGuardAbsorbLog(entry)) {
+    if (entry.type === 'AttackMissed') {
+      markMissed(entry.targetIds);
+    } else if (entry.type === 'DamageApplied' && isGuardAbsorbLog(entry)) {
       markGuarded(entry.targetIds);
     } else if (entry.type === 'DamageApplied') {
       markDamaged(entry.targetIds);
+      if (resolveSkillCategory(entry) === 'Magic') markMagicHit(entry.targetIds);
+      if (entry.targetIds.some((id) => pendingCriticalTargetIds.has(id))) markCriticalHit(entry.targetIds);
     } else if (entry.type === 'GuardGained') {
       markGuarded(entry.targetIds);
     } else if (entry.type === 'HealApplied') {
@@ -460,6 +504,18 @@ export const useCombatStore = defineStore('combatRuntime', () => {
 
   function markDefeated(targetIds: string[], duration = 900) {
     flashIds(recentlyDefeatedIds, targetIds, duration);
+  }
+
+  function markMagicHit(targetIds: string[], duration = 700) {
+    flashIds(recentlyMagicHitIds, targetIds, duration);
+  }
+
+  function markCriticalHit(targetIds: string[], duration = 700) {
+    flashIds(recentlyCriticalHitIds, targetIds, duration);
+  }
+
+  function markMissed(targetIds: string[], duration = 600) {
+    flashIds(recentlyMissedIds, targetIds, duration);
   }
 
   function markActing(actorId: string, duration = 650) {
@@ -499,7 +555,11 @@ export const useCombatStore = defineStore('combatRuntime', () => {
     recentlyGuardedIds.value = [];
     recentlyDefeatedIds.value = [];
     recentlyActingId.value = null;
+    recentlyMagicHitIds.value = [];
+    recentlyCriticalHitIds.value = [];
+    recentlyMissedIds.value = [];
     feedbackEvents.value = [];
+    pendingCriticalTargetIds = new Set<string>();
   }
 
   function shouldHighlightTarget(entry: CombatLogEntryDto): boolean {
@@ -507,7 +567,8 @@ export const useCombatStore = defineStore('combatRuntime', () => {
       entry.type === 'DamageApplied' ||
       entry.type === 'GuardGained' ||
       entry.type === 'HealApplied' ||
-      entry.type === 'TargetDefeated'
+      entry.type === 'TargetDefeated' ||
+      entry.type === 'AttackMissed'
     );
   }
 
@@ -696,6 +757,9 @@ export const useCombatStore = defineStore('combatRuntime', () => {
     recentlyGuardedIds,
     recentlyDefeatedIds,
     recentlyActingId,
+    recentlyMagicHitIds,
+    recentlyCriticalHitIds,
+    recentlyMissedIds,
     feedbackEvents,
     allies,
     enemies,
@@ -739,6 +803,9 @@ export const useCombatStore = defineStore('combatRuntime', () => {
     markGuarded,
     markDefeated,
     markActing,
+    markMagicHit,
+    markCriticalHit,
+    markMissed,
     resetAnimationState,
   };
 });

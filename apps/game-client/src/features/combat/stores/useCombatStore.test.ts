@@ -3,7 +3,7 @@ import { createPinia, setActivePinia } from 'pinia';
 
 import { combatApi } from '../api/combatApi';
 import { useCombatStore } from './useCombatStore';
-import type { CombatantRuntimeDto, CombatRuntimeDto } from '../types/combatContracts';
+import type { CombatantRuntimeDto, CombatLogEntryDto, CombatRuntimeDto } from '../types/combatContracts';
 
 vi.mock('../api/combatApi', () => ({
   combatApi: {
@@ -29,8 +29,21 @@ function baseCombatant(overrides: Partial<CombatantRuntimeDto> = {}): CombatantR
     charge: 0,
     status: 'Active',
     skills: [
-      { key: 'skill.a', displayName: 'Frappe', skillType: 'Damage', targetingType: 'SingleEnemy', effectType: 'Damage', manaCost: 0, chargeCost: 0, basePower: 10, tags: [] },
+      { key: 'skill.a', displayName: 'Frappe', skillType: 'Damage', targetingType: 'SingleEnemy', effectType: 'Damage', manaCost: 0, chargeCost: 0, basePower: 10, tags: [], category: 'Physical' },
+      { key: 'skill.magic', displayName: 'Flamme froide', skillType: 'Damage', targetingType: 'SingleEnemy', effectType: 'Damage', manaCost: 8, chargeCost: 0, basePower: 22, tags: [], category: 'Magic' },
     ],
+    ...overrides,
+  };
+}
+
+function logEntry(overrides: Partial<CombatLogEntryDto>): CombatLogEntryDto {
+  return {
+    occurredAtUtc: new Date().toISOString(),
+    type: 'DamageApplied',
+    message: '',
+    actorId: null,
+    skillKey: null,
+    targetIds: [],
     ...overrides,
   };
 }
@@ -127,6 +140,94 @@ describe('useCombatStore', () => {
 
       expect(store.selectedItemId).toBeNull();
       expect(store.selectedTargetIds).toEqual([]);
+    });
+  });
+
+  describe('playCombatLogs', () => {
+    // The flash-state arrays (recentlyMissedIds, etc.) are transient: they're
+    // set synchronously (before playCombatLogs' internal per-entry delay) and
+    // auto-clear a few hundred ms later. Assert on them right after invoking
+    // (the synchronous prefix has already run by then) rather than after
+    // awaiting full playback, or the flash will already have cleared —
+    // then await the promise so its real timers drain before the test ends.
+    it('pushes a miss feedback event and flashes recentlyMissedIds, without touching vitality', async () => {
+      const store = useCombatStore();
+      store.initCombat(baseCombat());
+
+      const playback = store.playCombatLogs([
+        logEntry({
+          type: 'AttackMissed', actorId: 'ally-1', skillKey: 'skill.a', targetIds: ['enemy-1'],
+          message: "Le Porteur's Frappe misses Ombre.",
+        }),
+      ]);
+
+      expect(store.feedbackEvents).toContainEqual(expect.objectContaining({ combatantId: 'enemy-1', type: 'miss' }));
+      expect(store.recentlyMissedIds).toContain('enemy-1');
+      expect(store.findCombatantById('enemy-1')?.currentVitality).toBe(100);
+
+      await playback;
+    });
+
+    it('marks a DamageApplied hit as critical when it follows a CriticalHit entry for the same target', async () => {
+      const store = useCombatStore();
+      store.initCombat(baseCombat());
+
+      const playback = store.playCombatLogs([
+        logEntry({ type: 'CriticalHit', actorId: 'ally-1', skillKey: 'skill.a', targetIds: ['enemy-1'], message: 'Critical hit on Ombre!' }),
+        logEntry({ type: 'DamageApplied', actorId: 'ally-1', skillKey: 'skill.a', targetIds: ['enemy-1'], message: 'Ombre takes 15 damage.' }),
+      ]);
+
+      expect(store.recentlyCriticalHitIds).toContain('enemy-1');
+      expect(store.feedbackEvents).toContainEqual(
+        expect.objectContaining({ combatantId: 'enemy-1', type: 'damage', amount: 15, isCritical: true }),
+      );
+
+      await playback;
+    });
+
+    it('does not mark a DamageApplied hit as critical without a preceding CriticalHit entry', async () => {
+      const store = useCombatStore();
+      store.initCombat(baseCombat());
+
+      const playback = store.playCombatLogs([
+        logEntry({ type: 'DamageApplied', actorId: 'ally-1', skillKey: 'skill.a', targetIds: ['enemy-1'], message: 'Ombre takes 10 damage.' }),
+      ]);
+
+      expect(store.recentlyCriticalHitIds).not.toContain('enemy-1');
+      expect(store.feedbackEvents).toContainEqual(
+        expect.objectContaining({ combatantId: 'enemy-1', type: 'damage', isCritical: false }),
+      );
+
+      await playback;
+    });
+
+    it('tags a DamageApplied hit with the Magic category when the actor used a Magic skill', async () => {
+      const store = useCombatStore();
+      store.initCombat(baseCombat());
+
+      const playback = store.playCombatLogs([
+        logEntry({ type: 'DamageApplied', actorId: 'ally-1', skillKey: 'skill.magic', targetIds: ['enemy-1'], message: 'Ombre takes 22 damage.' }),
+      ]);
+
+      expect(store.recentlyMagicHitIds).toContain('enemy-1');
+      expect(store.feedbackEvents).toContainEqual(
+        expect.objectContaining({ combatantId: 'enemy-1', type: 'damage', category: 'Magic' }),
+      );
+
+      await playback;
+    });
+
+    it('does not tag a Physical skill hit with the Magic category', async () => {
+      const store = useCombatStore();
+      store.initCombat(baseCombat());
+
+      const playback = store.playCombatLogs([
+        logEntry({ type: 'DamageApplied', actorId: 'ally-1', skillKey: 'skill.a', targetIds: ['enemy-1'], message: 'Ombre takes 10 damage.' }),
+      ]);
+
+      expect(store.recentlyMagicHitIds).not.toContain('enemy-1');
+
+      await playback;
     });
   });
 });

@@ -144,7 +144,7 @@ onMounted(async () => {
 <style scoped>
 .reputation-page {
   position: relative;
-  min-height: 100dvh;
+  height: 100dvh;
   overflow-y: auto;
   overflow-x: hidden;
   background:

@@ -2,8 +2,15 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 const props = withDefaults(
-  defineProps<{ gauge?: number; fillPerTick?: number; active?: boolean; vertical?: boolean }>(),
-  { gauge: 0, fillPerTick: 10, active: false, vertical: true },
+  defineProps<{
+    gauge?: number;
+    fillPerTick?: number;
+    active?: boolean;
+    vertical?: boolean;
+    /** Net Speed StatModifier currently active — drives the gauge's halo. */
+    speedEffect?: 'boosted' | 'slowed' | null;
+  }>(),
+  { gauge: 0, fillPerTick: 10, active: false, vertical: true, speedEffect: null },
 );
 
 const READY = 50_000;
@@ -73,6 +80,8 @@ onBeforeUnmount(() => {
       'atb--staggered': staggered,
       'atb--vertical': vertical,
       'atb--horizontal': !vertical,
+      'atb--boosted': speedEffect === 'boosted',
+      'atb--slowed': speedEffect === 'slowed',
     }"
     aria-hidden="true"
   >
@@ -140,6 +149,28 @@ onBeforeUnmount(() => {
 .atb--ready { box-shadow: inset 0 0 7px oklch(0.08 0.015 48 / 0.85), 0 0 10px color-mix(in oklch, var(--gold), transparent 62%); }
 .atb--active.atb--ready { box-shadow: inset 0 0 7px oklch(0.08 0.015 48 / 0.85), 0 0 16px color-mix(in oklch, var(--gold), transparent 42%); }
 
+/* Persistent halo while a Speed StatModifier is active — reflects an ongoing
+   state (not a one-shot event), so it loops for as long as the effect lasts.
+   Orange/red = sped up, blue/violet = slowed down. */
+.atb--boosted {
+  border-color: color-mix(in oklch, oklch(0.68 0.19 42), transparent 25%);
+  animation: atb-halo-boosted 1.3s ease-in-out infinite;
+}
+.atb--slowed {
+  border-color: color-mix(in oklch, oklch(0.62 0.17 288), transparent 25%);
+  animation: atb-halo-slowed 1.3s ease-in-out infinite;
+}
+
+@keyframes atb-halo-boosted {
+  0%, 100% { box-shadow: inset 0 0 7px oklch(0.08 0.015 48 / 0.85), 0 0 8px color-mix(in oklch, oklch(0.68 0.19 42), transparent 55%); }
+  50% { box-shadow: inset 0 0 7px oklch(0.08 0.015 48 / 0.85), 0 0 16px color-mix(in oklch, oklch(0.68 0.19 42), transparent 30%); }
+}
+
+@keyframes atb-halo-slowed {
+  0%, 100% { box-shadow: inset 0 0 7px oklch(0.08 0.015 48 / 0.85), 0 0 8px color-mix(in oklch, oklch(0.62 0.17 288), transparent 55%); }
+  50% { box-shadow: inset 0 0 7px oklch(0.08 0.015 48 / 0.85), 0 0 16px color-mix(in oklch, oklch(0.62 0.17 288), transparent 30%); }
+}
+
 .atb__spark {
   position: absolute;
   top: 50%;
@@ -180,6 +211,7 @@ onBeforeUnmount(() => {
 @media (prefers-reduced-motion: reduce) {
   .atb__fill, .atb__spark,
   .atb--ready .atb__fill,
-  .atb--just-ready, .atb--staggered { animation: none; transition: none; }
+  .atb--just-ready, .atb--staggered,
+  .atb--boosted, .atb--slowed { animation: none; transition: none; }
 }
 </style>

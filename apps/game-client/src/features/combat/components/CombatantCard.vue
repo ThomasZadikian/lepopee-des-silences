@@ -33,9 +33,23 @@ const props = defineProps<{
   isGuarded: boolean;
   isJustDefeated: boolean;
   isActing: boolean;
+  isMagicHit: boolean;
+  isCriticalHit: boolean;
+  isMissed: boolean;
   /** Highest threat value among living allies — this card's bar renders relative to it. */
   maxThreat?: number;
 }>();
+
+// Net Speed StatModifier currently active on this combatant — drives the ATB
+// gauge's halo (task: "les effets qui influencent la jauge ATB soient visibles").
+const speedEffect = computed<'boosted' | 'slowed' | null>(() => {
+  const net = (props.combatant.statusEffects ?? [])
+    .filter((effect) => effect.kind === 'StatModifier' && effect.stat === 'Speed')
+    .reduce((sum, effect) => sum + effect.magnitude * effect.stacks, 0);
+  if (net > 0) return 'boosted';
+  if (net < 0) return 'slowed';
+  return null;
+});
 
 defineEmits<{
   select: [combatantId: string];
@@ -91,6 +105,8 @@ const hasAggro = computed(() =>
       'presence--guarded': isGuarded,
       'presence--defeated': combatant.status === 'Defeated',
       'presence--just-defeated': isJustDefeated,
+      'presence--critical-hit': isCriticalHit,
+      'presence--missed': isMissed,
       'presence--ally': combatant.side === 'Player',
       'presence--enemy': combatant.side === 'Enemy',
       'presence--active-player': isActivePlayer,
@@ -98,11 +114,22 @@ const hasAggro = computed(() =>
     :disabled="combatant.status === 'Defeated' || !isSelectable"
     @click="$emit('select', combatant.id)"
   >
-    <span v-if="isDamaged" class="presence__hit-fx" aria-hidden="true">⚔</span>
+    <span
+      v-if="isDamaged"
+      class="presence__hit-fx"
+      :class="{ 'presence__hit-fx--magic': isMagicHit, 'presence__hit-fx--critical': isCriticalHit }"
+      aria-hidden="true"
+    >{{ isMagicHit ? '✦' : '⚔' }}</span>
     <span v-if="isGuarded" class="presence__guard-fx" aria-hidden="true">⛨</span>
+    <span v-if="isMissed" class="presence__miss-fx" aria-hidden="true">Manqué</span>
 
     <div class="presence__atb-tube" aria-hidden="true">
-      <AtbGauge :gauge="combatant.atbGauge ?? 0" :fill-per-tick="combatant.atbFillPerTick ?? 10" :active="isCurrentActor" />
+      <AtbGauge
+        :gauge="combatant.atbGauge ?? 0"
+        :fill-per-tick="combatant.atbFillPerTick ?? 10"
+        :active="isCurrentActor"
+        :speed-effect="speedEffect"
+      />
     </div>
 
     <span class="presence__portrait" aria-hidden="true">
@@ -355,6 +382,8 @@ const hasAggro = computed(() =>
 .presence--damaged { animation: shake 420ms ease-out; }
 .presence--guarded { animation: flare 700ms ease-out; }
 .presence--just-defeated { animation: defeat-fade 900ms ease-out; }
+.presence--critical-hit { animation: shake 420ms ease-out, crit-flare 550ms ease-out; }
+.presence--missed { animation: dodge 500ms ease-out; }
 
 .presence__topline {
   grid-column: 3;
@@ -523,6 +552,37 @@ const hasAggro = computed(() =>
   animation: guard-pop 550ms ease-out forwards;
 }
 
+/* Magic-category hit: frost/violet glyph instead of the physical blade. */
+.presence__hit-fx--magic {
+  color: var(--frost);
+  text-shadow:
+    0 0 14px color-mix(in oklch, var(--frost), transparent 25%),
+    0 0 24px color-mix(in oklch, oklch(0.62 0.19 300), transparent 50%);
+}
+
+/* Critical hit: bigger, hotter glow layered on top of either variant. */
+.presence__hit-fx--critical {
+  font-size: 2.3rem;
+  text-shadow:
+    0 0 16px color-mix(in oklch, var(--gold), transparent 15%),
+    0 0 28px color-mix(in oklch, var(--blood), transparent 40%);
+}
+
+.presence__miss-fx {
+  position: absolute;
+  top: 45%;
+  left: 62%;
+  transform: translate(-50%, -50%);
+  z-index: 7;
+  font-family: var(--font-caps);
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+  pointer-events: none;
+  animation: miss-fade 500ms ease-out forwards;
+}
+
 @keyframes hit-pop {
   0% { opacity: 0; transform: translate(-50%, -50%) scale(0.4) rotate(-18deg); }
   30% { opacity: 1; transform: translate(-50%, -50%) scale(1.2) rotate(10deg); }
@@ -535,13 +595,33 @@ const hasAggro = computed(() =>
   100% { opacity: 0; transform: translate(-50%, -50%) scale(1.05); }
 }
 
+@keyframes miss-fade {
+  0% { opacity: 0; transform: translate(-50%, -50%) translateX(-8px); }
+  30% { opacity: 1; transform: translate(-50%, -50%) translateX(0); }
+  100% { opacity: 0; transform: translate(-50%, -50%) translateX(8px); }
+}
+
+@keyframes crit-flare {
+  0% { box-shadow: 0 0 0 color-mix(in oklch, var(--gold), transparent 100%); }
+  35% { box-shadow: 0 0 22px color-mix(in oklch, var(--gold), transparent 15%); }
+  100% { box-shadow: 0 0 0 color-mix(in oklch, var(--gold), transparent 100%); }
+}
+
+@keyframes dodge {
+  0% { transform: translateX(0); }
+  30% { transform: translateX(8px); }
+  60% { transform: translateX(-4px); }
+  100% { transform: translateX(0); }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .presence, .presence--selected, .presence--damaged, .presence--guarded, .presence--just-defeated, .presence--thinking {
+  .presence, .presence--selected, .presence--damaged, .presence--guarded, .presence--just-defeated, .presence--thinking,
+  .presence--critical-hit, .presence--missed {
     animation: none;
     transition: none;
   }
 
-  .presence__hit-fx, .presence__guard-fx {
+  .presence__hit-fx, .presence__guard-fx, .presence__miss-fx {
     display: none;
   }
 }

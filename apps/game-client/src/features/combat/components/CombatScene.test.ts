@@ -28,6 +28,9 @@ const mockStore = {
   recentlyDamagedIds: [] as string[],
   recentlyGuardedIds: [] as string[],
   recentlyDefeatedIds: [] as string[],
+  recentlyMagicHitIds: [] as string[],
+  recentlyCriticalHitIds: [] as string[],
+  recentlyMissedIds: [] as string[],
   recentlyActingId: null as string | null,
   thinkingCombatantId: null as string | null,
   currentActor: null,
@@ -110,6 +113,9 @@ function resetMockStore() {
   mockStore.recentlyDamagedIds = [];
   mockStore.recentlyGuardedIds = [];
   mockStore.recentlyDefeatedIds = [];
+  mockStore.recentlyMagicHitIds = [];
+  mockStore.recentlyCriticalHitIds = [];
+  mockStore.recentlyMissedIds = [];
   mockStore.recentlyActingId = null;
   mockStore.thinkingCombatantId = null;
   mockStore.currentActor = null;

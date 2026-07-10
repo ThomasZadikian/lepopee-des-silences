@@ -4,6 +4,7 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { useRunStore } from '../../runs/stores/runStore';
 import { useCombatLogMetrics } from '../composables/useCombatLogMetrics';
 import { useTurnForecast } from '../composables/useTurnForecast';
+import type { CombatFeedbackEvent } from '../stores/useCombatStore';
 import { useCombatStore } from '../stores/useCombatStore';
 import CombatantCard from './CombatantCard.vue';
 import CombatLogPanel from './CombatLogPanel.vue';
@@ -116,10 +117,19 @@ function floatEventsFor(combatantId: string) {
   return combatStore.feedbackEvents.filter((event) => event.combatantId === combatantId);
 }
 
-function floatLabel(type: string, amount: number): string {
-  if (type === 'heal') return `+${amount}`;
-  if (type === 'guard') return `◇ ${amount}`;
-  return `-${amount}`;
+function floatLabel(event: CombatFeedbackEvent): string {
+  if (event.type === 'heal') return `+${event.amount}`;
+  if (event.type === 'guard') return `◇ ${event.amount}`;
+  if (event.type === 'miss') return 'Manqué !';
+  return event.isCritical ? `✹ -${event.amount}` : `-${event.amount}`;
+}
+
+function floatClasses(event: CombatFeedbackEvent): Record<string, boolean> {
+  return {
+    [`combat-float--${event.type}`]: true,
+    'combat-float--magic': event.type === 'damage' && event.category === 'Magic',
+    'combat-float--critical': Boolean(event.isCritical),
+  };
 }
 
 watch(() => combatStore.terminalEvent, (event) => {
@@ -228,6 +238,9 @@ watch(
             :is-damaged="combatStore.recentlyDamagedIds.includes(combatant.id)"
             :is-guarded="combatStore.recentlyGuardedIds.includes(combatant.id)"
             :is-just-defeated="combatStore.recentlyDefeatedIds.includes(combatant.id)"
+            :is-magic-hit="combatStore.recentlyMagicHitIds.includes(combatant.id)"
+            :is-critical-hit="combatStore.recentlyCriticalHitIds.includes(combatant.id)"
+            :is-missed="combatStore.recentlyMissedIds.includes(combatant.id)"
             :is-acting="combatStore.recentlyActingId === combatant.id"
             @select="handleSelect"
           >
@@ -235,9 +248,9 @@ watch(
               v-for="event in floatEventsFor(combatant.id)"
               :key="event.id"
               class="combat-float"
-              :class="`combat-float--${event.type}`"
+              :class="floatClasses(event)"
             >
-              {{ floatLabel(event.type, event.amount) }}
+              {{ floatLabel(event) }}
             </span>
           </CombatantCard>
         </div>
@@ -271,6 +284,9 @@ watch(
             :is-damaged="combatStore.recentlyDamagedIds.includes(combatant.id)"
             :is-guarded="combatStore.recentlyGuardedIds.includes(combatant.id)"
             :is-just-defeated="combatStore.recentlyDefeatedIds.includes(combatant.id)"
+            :is-magic-hit="combatStore.recentlyMagicHitIds.includes(combatant.id)"
+            :is-critical-hit="combatStore.recentlyCriticalHitIds.includes(combatant.id)"
+            :is-missed="combatStore.recentlyMissedIds.includes(combatant.id)"
             :is-acting="combatStore.recentlyActingId === combatant.id"
             :max-threat="maxAllyThreat"
             @select="handleSelect"
@@ -279,9 +295,9 @@ watch(
               v-for="event in floatEventsFor(combatant.id)"
               :key="event.id"
               class="combat-float"
-              :class="`combat-float--${event.type}`"
+              :class="floatClasses(event)"
             >
-              {{ floatLabel(event.type, event.amount) }}
+              {{ floatLabel(event) }}
             </span>
           </CombatantCard>
         </div>
@@ -620,11 +636,56 @@ watch(
     0 2px 0 oklch(0 0 0 / 0.55);
 }
 
+/* Magic-category hit: frost/violet tint instead of the default blood-red. */
+.combat-float--magic {
+  color: var(--frost);
+  text-shadow:
+    0 0 12px color-mix(in oklch, var(--frost), transparent 30%),
+    0 0 22px color-mix(in oklch, oklch(0.62 0.19 300), transparent 55%),
+    0 2px 0 oklch(0 0 0 / 0.55);
+}
+
+/* Critical hit: bigger, gold-hot, with its own punchier rise. */
+.combat-float--critical {
+  font-size: clamp(1.6rem, 2.8vw, 2.5rem);
+  color: var(--gold);
+  text-shadow:
+    0 0 14px color-mix(in oklch, var(--gold), transparent 20%),
+    0 0 26px color-mix(in oklch, var(--blood), transparent 45%),
+    0 2px 0 oklch(0 0 0 / 0.55);
+  animation: combat-float-rise 1200ms ease-out forwards, combat-float-crit-pulse 420ms ease-out;
+}
+
+/* Miss: no number, just a fading, sideways-drifting dodge notice. */
+.combat-float--miss {
+  color: var(--ink-4);
+  font-family: var(--font-caps);
+  font-size: clamp(0.7rem, 1.3vw, 0.95rem);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-shadow: 0 2px 0 oklch(0 0 0 / 0.55);
+  animation: combat-float-miss 1000ms ease-out forwards;
+}
+
 @keyframes combat-float-rise {
   0% { opacity: 0; transform: translate(-50%, 10px) scale(0.82); filter: blur(2px); }
   15% { opacity: 1; transform: translate(-50%, -4px) scale(1.08); filter: blur(0); }
   70% { opacity: 1; transform: translate(-50%, -34px) scale(1); }
   100% { opacity: 0; transform: translate(-50%, -58px) scale(0.94); }
+}
+
+@keyframes combat-float-crit-pulse {
+  0% { transform: translate(-50%, 10px) scale(0.6); }
+  40% { transform: translate(-50%, -10px) scale(1.35); }
+  100% { transform: translate(-50%, -4px) scale(1); }
+}
+
+@keyframes combat-float-miss {
+  0% { opacity: 0; transform: translate(-50%, 0) translateX(0); }
+  20% { opacity: 1; transform: translate(-50%, -6px) translateX(-6px); }
+  70% { opacity: 1; transform: translate(-50%, -18px) translateX(10px); }
+  100% { opacity: 0; transform: translate(-50%, -26px) translateX(14px); }
 }
 
 .combat-scene__compose {

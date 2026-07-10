@@ -191,7 +191,7 @@ const selected = computed(() => bosses[selectedIndex.value]);
 <style scoped>
 .manif-page {
   position: relative;
-  min-height: 100dvh;
+  height: 100dvh;
   overflow-y: auto;
   overflow-x: hidden;
   background:

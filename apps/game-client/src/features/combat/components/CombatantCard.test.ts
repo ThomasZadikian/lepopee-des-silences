@@ -39,6 +39,9 @@ function mountCard(combatant?: CombatantRuntimeDto, stateOverrides = {}) {
       isGuarded: false,
       isJustDefeated: false,
       isActing: false,
+      isMagicHit: false,
+      isCriticalHit: false,
+      isMissed: false,
       ...stateOverrides,
     },
     global: {
@@ -139,6 +142,35 @@ describe('CombatantCard', () => {
   it('does not show a guard effect when isGuarded is false', () => {
     const wrapper = mountCard(undefined, { isGuarded: false });
     expect(wrapper.find('.presence__guard-fx').exists()).toBe(false);
+  });
+
+  it('shows the physical hit glyph by default when damaged', () => {
+    const wrapper = mountCard(undefined, { isDamaged: true });
+    expect(wrapper.find('.presence__hit-fx').text()).toBe('⚔');
+  });
+
+  it('shows the magic hit glyph when damaged by a Magic-category skill', () => {
+    const wrapper = mountCard(undefined, { isDamaged: true, isMagicHit: true });
+    const fx = wrapper.find('.presence__hit-fx');
+    expect(fx.text()).toBe('✦');
+    expect(fx.classes()).toContain('presence__hit-fx--magic');
+  });
+
+  it('applies presence--critical-hit class and the critical glyph variant on a crit', () => {
+    const wrapper = mountCard(undefined, { isDamaged: true, isCriticalHit: true });
+    expect(wrapper.find('.presence').classes()).toContain('presence--critical-hit');
+    expect(wrapper.find('.presence__hit-fx').classes()).toContain('presence__hit-fx--critical');
+  });
+
+  it('shows a miss notice when isMissed is true', () => {
+    const wrapper = mountCard(undefined, { isMissed: true });
+    expect(wrapper.find('.presence__miss-fx').exists()).toBe(true);
+    expect(wrapper.find('.presence').classes()).toContain('presence--missed');
+  });
+
+  it('does not show a miss notice when isMissed is false', () => {
+    const wrapper = mountCard(undefined, { isMissed: false });
+    expect(wrapper.find('.presence__miss-fx').exists()).toBe(false);
   });
 
   it('applies presence--defeated class when status is Defeated', () => {
@@ -315,6 +347,9 @@ describe('CombatantCard', () => {
         isGuarded: false,
         isJustDefeated: false,
         isActing: false,
+        isMagicHit: false,
+        isCriticalHit: false,
+        isMissed: false,
       },
       global: {
         stubs: {
@@ -365,5 +400,64 @@ describe('CombatantCard', () => {
   it('does not flag a lower-threat ally as holding aggro', () => {
     const wrapper = mountCard(makeCombatant({ side: 'Player', threatValue: 3 }), { maxThreat: 10 });
     expect(wrapper.find('.presence__state--aggro').exists()).toBe(false);
+  });
+
+  describe('ATB speed halo', () => {
+    function mountWithSpeedProbe(statusEffects: CombatantRuntimeDto['statusEffects']) {
+      return mount(CombatantCard, {
+        props: {
+          combatant: makeCombatant({ statusEffects }),
+          isCurrentActor: false,
+          isSelectedTarget: false,
+          isSelectable: true,
+          isTargetable: true,
+          isInvalidTarget: false,
+          isActivePlayer: false,
+          isThinking: false,
+          isDamaged: false,
+          isGuarded: false,
+          isJustDefeated: false,
+          isActing: false,
+          isMagicHit: false,
+          isCriticalHit: false,
+          isMissed: false,
+        },
+        global: {
+          stubs: {
+            AtbGauge: { props: ['speedEffect'], template: '<div class="atb">{{ speedEffect }}</div>' },
+            EmotionalTypeBadge: { template: '<span class="type-badge" />' },
+          },
+        },
+      });
+    }
+
+    it('passes a "boosted" speedEffect when a positive Speed buff is active', () => {
+      const wrapper = mountWithSpeedProbe([
+        { key: 'buff-speed', displayName: 'Vitesse', kind: 'StatModifier', stat: 'Speed', magnitude: 10, stacks: 1 },
+      ]);
+      expect(wrapper.find('.atb').text()).toBe('boosted');
+    });
+
+    it('passes a "slowed" speedEffect when a negative Speed debuff is active', () => {
+      const wrapper = mountWithSpeedProbe([
+        { key: 'debuff-speed', displayName: 'Lenteur', kind: 'StatModifier', stat: 'Speed', magnitude: -8, stacks: 1 },
+      ]);
+      expect(wrapper.find('.atb').text()).toBe('slowed');
+    });
+
+    it('passes no speedEffect when no Speed StatModifier is active', () => {
+      const wrapper = mountWithSpeedProbe([
+        { key: 'poison', displayName: 'Poison', kind: 'DamageOverTime', stat: '', magnitude: 5, stacks: 1 },
+      ]);
+      expect(wrapper.find('.atb').text()).toBe('');
+    });
+
+    it('nets out stacked opposing Speed modifiers before choosing a direction', () => {
+      const wrapper = mountWithSpeedProbe([
+        { key: 'buff-speed', displayName: 'Vitesse', kind: 'StatModifier', stat: 'Speed', magnitude: 10, stacks: 1 },
+        { key: 'debuff-speed', displayName: 'Lenteur', kind: 'StatModifier', stat: 'Speed', magnitude: -3, stacks: 1 },
+      ]);
+      expect(wrapper.find('.atb').text()).toBe('boosted');
+    });
   });
 });

@@ -59,4 +59,22 @@ describe('AtbGauge', () => {
     wrapper.unmount();
     expect(cancelSpy).toHaveBeenCalled();
   });
+
+  it('applies atb--boosted class when speedEffect is "boosted"', () => {
+    const wrapper = mount(AtbGauge, { props: { gauge: 0, speedEffect: 'boosted' } });
+    expect(wrapper.find('.atb').classes()).toContain('atb--boosted');
+    expect(wrapper.find('.atb').classes()).not.toContain('atb--slowed');
+  });
+
+  it('applies atb--slowed class when speedEffect is "slowed"', () => {
+    const wrapper = mount(AtbGauge, { props: { gauge: 0, speedEffect: 'slowed' } });
+    expect(wrapper.find('.atb').classes()).toContain('atb--slowed');
+    expect(wrapper.find('.atb').classes()).not.toContain('atb--boosted');
+  });
+
+  it('applies neither halo class when speedEffect is null', () => {
+    const wrapper = mountGauge();
+    expect(wrapper.find('.atb').classes()).not.toContain('atb--boosted');
+    expect(wrapper.find('.atb').classes()).not.toContain('atb--slowed');
+  });
 });

@@ -14,6 +14,8 @@ export type TargetingType =
   | 'AllEnemies'
   | 'AllAllies';
 
+export type SkillCategory = 'Physical' | 'Magic';
+
 export type CombatantSkillRuntimeDto = {
   key: string;
   displayName: string;
@@ -24,6 +26,7 @@ export type CombatantSkillRuntimeDto = {
   chargeCost: number;
   basePower: number;
   tags: string[];
+  category: SkillCategory;
 };
 
 export type CombatantRuntimeDto = {
@@ -110,6 +113,7 @@ export type LogEntryType =
   | 'EnemyTurnResolved'
   | 'CombatCompleted'
   | 'CombatFailed'
+  | 'AttackMissed'
   | 'CriticalHit'
   | 'WeaknessHit'
   | 'ResistedHit'
