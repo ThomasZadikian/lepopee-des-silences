@@ -947,7 +947,8 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
                 .Select(e => new CatalogSkillEffectSpec(
                     e.Kind, e.StatusKey, e.Magnitude, e.DurationTicks, e.TickInterval, e.Stat,
                     e.MagnitudeIsPercentOfMax, e.MagnitudeIsPercentOfBaseStat, e.AppliesToActor))
-                .ToArray());
+                .ToArray(),
+            Category: source.Category);
     }
 
     private static CatalogEnemyDefinition MapToCatalogEnemyDefinition(

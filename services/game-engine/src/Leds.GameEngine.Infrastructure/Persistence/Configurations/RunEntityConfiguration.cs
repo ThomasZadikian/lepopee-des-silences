@@ -34,6 +34,8 @@ public sealed class RunEntityConfiguration : IEntityTypeConfiguration<RunEntity>
         builder.Property(run => run.HitChanceBonusPercent).HasColumnName("hit_chance_bonus_percent").HasDefaultValue(0);
         builder.Property(run => run.DotDurationReductionPercent).HasColumnName("dot_duration_reduction_percent").HasDefaultValue(0);
         builder.Property(run => run.DotDamageReductionPercent).HasColumnName("dot_damage_reduction_percent").HasDefaultValue(0);
+        builder.Property(run => run.MagicDamageBonusPercent).HasColumnName("magic_damage_bonus_percent").HasDefaultValue(0);
+        builder.Property(run => run.MagicDamageReductionPercent).HasColumnName("magic_damage_reduction_percent").HasDefaultValue(0);
         builder.Property(run => run.StartedAtUtc).HasColumnName("started_at_utc");
         builder.Property(run => run.EndedAtUtc).HasColumnName("ended_at_utc");
         builder.Property(run => run.SavedAtUtc).HasColumnName("saved_at_utc");

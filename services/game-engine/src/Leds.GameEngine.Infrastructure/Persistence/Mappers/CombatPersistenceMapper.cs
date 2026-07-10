@@ -57,6 +57,8 @@ public static class CombatPersistenceMapper
             HitChanceBonusPercent = combatant.HitChanceBonusPercent,
             DotDurationReductionPercent = combatant.DotDurationReductionPercent,
             DotDamageReductionPercent = combatant.DotDamageReductionPercent,
+            MagicDamageBonusPercent = combatant.MagicDamageBonusPercent,
+            MagicDamageReductionPercent = combatant.MagicDamageReductionPercent,
             StatusEffectsJson = SerializeStatusEffects(combatant.StatusEffects),
             Skills = combatant.Skills.Select(s => ToEntity(s, combatant.Id.Value)).ToList(),
             BaseStatSnapshot = ToBaseStatSnapshotEntity(combatant.BaseStatSnapshot, combatant.Id.Value),
@@ -206,7 +208,8 @@ public static class CombatPersistenceMapper
             ManaCost = skill.ManaCost,
             ChargeCost = skill.ChargeCost,
             BasePower = skill.BasePower,
-            Tags = JsonSerializer.Serialize(skill.Tags)
+            Tags = JsonSerializer.Serialize(skill.Tags),
+            Category = skill.Category
         };
     }
 
@@ -278,7 +281,9 @@ public static class CombatPersistenceMapper
             typedDamageReductionPercent: DeserializeTypedDamageReductions(entity.TypedDamageReductionsJson),
             hitChanceBonusPercent: entity.HitChanceBonusPercent,
             dotDurationReductionPercent: entity.DotDurationReductionPercent,
-            dotDamageReductionPercent: entity.DotDamageReductionPercent);
+            dotDamageReductionPercent: entity.DotDamageReductionPercent,
+            magicDamageBonusPercent: entity.MagicDamageBonusPercent,
+            magicDamageReductionPercent: entity.MagicDamageReductionPercent);
         foreach (var effect in DeserializeStatusEffects(entity.StatusEffectsJson))
             combatant.RehydrateStatusEffect(effect);
 
@@ -338,6 +343,7 @@ public static class CombatPersistenceMapper
             entity.ManaCost,
             entity.ChargeCost,
             entity.BasePower,
-            tags);
+            tags,
+            category: entity.Category);
     }
 }

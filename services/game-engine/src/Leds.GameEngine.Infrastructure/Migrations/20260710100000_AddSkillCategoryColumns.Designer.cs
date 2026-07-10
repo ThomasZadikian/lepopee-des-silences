@@ -3,6 +3,7 @@ using System;
 using Leds.GameEngine.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,10 +12,13 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Leds.GameEngine.Infrastructure.Migrations
 {
     [DbContext(typeof(GameEngineDbContext))]
-    partial class GameEngineDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260710100000_AddSkillCategoryColumns")]
+    partial class AddSkillCategoryColumns
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
+
 #pragma warning disable 612, 618
             modelBuilder
                 .HasAnnotation("ProductVersion", "10.0.8")
@@ -532,18 +536,6 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasDefaultValue(0)
                         .HasColumnName("dot_damage_reduction_percent");
-
-                    b.Property<int>("MagicDamageBonusPercent")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(0)
-                        .HasColumnName("magic_damage_bonus_percent");
-
-                    b.Property<int>("MagicDamageReductionPercent")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(0)
-                        .HasColumnName("magic_damage_reduction_percent");
 
                     b.HasKey("Id");
 
@@ -1614,18 +1606,6 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasDefaultValue(0)
                         .HasColumnName("dot_damage_reduction_percent");
-
-                    b.Property<int>("MagicDamageBonusPercent")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(0)
-                        .HasColumnName("magic_damage_bonus_percent");
-
-                    b.Property<int>("MagicDamageReductionPercent")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(0)
-                        .HasColumnName("magic_damage_reduction_percent");
 
                     b.Property<string>("GeneratorVersion")
                         .IsRequired()

@@ -44,6 +44,8 @@ public static class RunPersistenceMapper
             HitChanceBonusPercent = run.HitChanceBonusPercent,
             DotDurationReductionPercent = run.DotDurationReductionPercent,
             DotDamageReductionPercent = run.DotDamageReductionPercent,
+            MagicDamageBonusPercent = run.MagicDamageBonusPercent,
+            MagicDamageReductionPercent = run.MagicDamageReductionPercent,
             StartedAtUtc = run.StartedAt.UtcDateTime,
             EndedAtUtc = run.EndedAt?.UtcDateTime,
             SavedAtUtc = run.SavedAt?.UtcDateTime,
@@ -422,7 +424,9 @@ public static class RunPersistenceMapper
                 : JsonSerializer.Deserialize<Dictionary<string, int>>(entity.TypedDamageReductionsJson),
             hitChanceBonusPercent: entity.HitChanceBonusPercent,
             dotDurationReductionPercent: entity.DotDurationReductionPercent,
-            dotDamageReductionPercent: entity.DotDamageReductionPercent);
+            dotDamageReductionPercent: entity.DotDamageReductionPercent,
+            magicDamageBonusPercent: entity.MagicDamageBonusPercent,
+            magicDamageReductionPercent: entity.MagicDamageReductionPercent);
 
         RehydrateNpcEncounters(run, entity);
         return run;

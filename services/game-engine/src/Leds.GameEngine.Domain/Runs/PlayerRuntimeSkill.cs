@@ -12,7 +12,8 @@ public sealed class PlayerRuntimeSkill
         string effectType,
         int manaCost,
         int chargeCost,
-        int basePower)
+        int basePower,
+        string category)
     {
         Key = key;
         DisplayName = displayName;
@@ -22,6 +23,7 @@ public sealed class PlayerRuntimeSkill
         ManaCost = manaCost;
         ChargeCost = chargeCost;
         BasePower = basePower;
+        Category = category;
     }
 
     public string Key { get; }
@@ -32,6 +34,7 @@ public sealed class PlayerRuntimeSkill
     public int ManaCost { get; }
     public int ChargeCost { get; }
     public int BasePower { get; }
+    public string Category { get; }
 
     public static PlayerRuntimeSkill Create(
         string key,
@@ -41,7 +44,8 @@ public sealed class PlayerRuntimeSkill
         string effectType,
         int manaCost,
         int chargeCost,
-        int basePower)
+        int basePower,
+        string category = "Physical")
     {
         if (string.IsNullOrWhiteSpace(key))
             throw new DomainException("Player skill key is required.");
@@ -52,7 +56,9 @@ public sealed class PlayerRuntimeSkill
         if (basePower < 0)
             throw new DomainException("Player skill base power must be non-negative.");
 
-        return new PlayerRuntimeSkill(key.Trim(), displayName.Trim(), skillType, targetingType, effectType, manaCost, chargeCost, basePower);
+        return new PlayerRuntimeSkill(
+            key.Trim(), displayName.Trim(), skillType, targetingType, effectType, manaCost, chargeCost, basePower,
+            string.IsNullOrWhiteSpace(category) ? "Physical" : category);
     }
 
     /// <summary>
@@ -67,8 +73,9 @@ public sealed class PlayerRuntimeSkill
         string effectType,
         int manaCost,
         int chargeCost,
-        int basePower)
+        int basePower,
+        string category = "Physical")
     {
-        return new PlayerRuntimeSkill(key, displayName, skillType, targetingType, effectType, manaCost, chargeCost, basePower);
+        return new PlayerRuntimeSkill(key, displayName, skillType, targetingType, effectType, manaCost, chargeCost, basePower, category);
     }
 }

@@ -13,6 +13,7 @@ public sealed class CombatantSkillEntity
     public int ChargeCost { get; set; }
     public int BasePower { get; set; }
     public string Tags { get; set; } = string.Empty;
+    public string Category { get; set; } = "Physical";
 
     public CombatantEntity? Combatant { get; set; }
 }

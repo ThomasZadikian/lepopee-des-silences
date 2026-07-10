@@ -47,6 +47,7 @@ public sealed class CatalogSeedRunner
         await SeedTovmaAsync(cancellationToken);
         await SeedSathomAsync(cancellationToken);
         await SeedErinaAsync(cancellationToken);
+        await SeedPomenianAsync(cancellationToken);
         await SeedCanonEnemiesAsync(cancellationToken);
         await SeedCanonSkillsAsync(cancellationToken);
         await SeedCanonItemsAsync(cancellationToken);
@@ -923,6 +924,73 @@ public sealed class CatalogSeedRunner
             offerings: offerings);
     }
 
+    private async Task<int> SeedPomenianAsync(CancellationToken ct)
+    {
+        var persona = new NpcPersona(
+            "Un professeur archéologue, arrogant et académique, spécialiste des anciennes religions — persuadé que rien de ce qui ne vient pas d'un livre, d'une école ou d'un enseignement officiel ne mérite d'être appelé savoir",
+            EmotionalRegister.Deni,
+            new[] { "les livres", "l'enseignement officiel", "avoir raison" },
+            new[] { "qu'on remette en cause son savoir", "l'idée que le Palais existe réellement", "être pris en défaut" });
+
+        var wounds = new[]
+        {
+            new NpcWound("w-ego-pomenian", EmotionalRegister.Deni, NpcWoundReversibility.SoothableByAct, -2, -4,
+                new[] { new NpcTransgression("w-ego-pomenian", "pomenian-savoir-remis-en-cause", -2) },
+                "Son savoir est toute son armure. La remettre en cause ne le blesse pas — ça le rend méprisant, comme si mépriser suffisait à n'avoir jamais tort.")
+        };
+
+        var rencontre = new NpcDialogueNode("rencontre", "Pomenian",
+            new[]
+            {
+                "Le Palais ? Une fable de plus, comme il en pullule dans les manuscrits mal traduits. Rien de tout cela n'existe — pas au sens où l'entendrait un esprit sérieux.",
+                "J'ai passé une vie à étudier les religions anciennes. Croyez-moi : ce que je ne trouve dans aucun livre n'est pas de la connaissance. Ce n'est qu'une superstition de plus."
+            },
+            new[]
+            {
+                new NpcDialogueChoice("le-contredire", "Lui dire que le Palais est bien réel, qu'il s'y trouve en ce moment même", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.SetMemoryFlag, flag: "pomenian-savoir-remis-en-cause"),
+                            C(ConsequenceKind.Narrative, frag: "Son visage se ferme. L'arrogance, d'un coup, devient mépris — pour vous, et pour l'idée même que vous puissiez savoir quelque chose qu'il ignore.") }, null),
+                new NpcDialogueChoice("ecouter-savoir", "L'écouter développer sa théorie, sans le contredire", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.AdjustRelationship, rel: 1) }, "connaissance"),
+                new NpcDialogueChoice("partir", "Partir", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.Narrative, frag: "Vous partez. Il ne lève pas les yeux de ses notes — trop occupé à avoir raison, seul.") }, null)
+            });
+
+        var connaissance = new NpcDialogueNode("connaissance", "Pomenian",
+            new[] { "Peu importe où nous sommes : la méthode prime sur le lieu. Tant qu'on raisonne comme il faut, le reste s'explique — toujours." },
+            new[]
+            {
+                new NpcDialogueChoice("ecouter-encore", "Écouter encore", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.AdjustRelationship, rel: 1) }, "don")
+            });
+
+        var don = new NpcDialogueNode("don", "Pomenian",
+            new[] { "Tenez. Un objet de mon cabinet — et un peu de ce que les livres m'ont enseigné, si vous savez vous en servir." },
+            new[]
+            {
+                new NpcDialogueChoice("accepter-monocle", "Accepter le monocle de Pomenian", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.pomenian.monocle") }, null),
+                new NpcDialogueChoice("accepter-connaissance", "Accepter Connaissance académique", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.pomenian.connaissance") }, null)
+            });
+
+        var graph = new NpcDialogueGraph("npc.pomenian.dialogue", "1.0", "rencontre",
+            new Dictionary<string, NpcDialogueNode> { ["rencontre"] = rencontre, ["connaissance"] = connaissance, ["don"] = don });
+
+        var offerings = new[]
+        {
+            new NpcOffering("offer.pomenian.monocle", NpcOfferingKind.Item, "canon.item.monocle-pomenian", 1, true,
+                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 250) }),
+            new NpcOffering("offer.pomenian.connaissance", NpcOfferingKind.Skill, "canon.skill.connaissance-academique", 1, true,
+                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) })
+        };
+
+        return await UpsertNpcAsync("npc.pomenian", "Pomenian",
+            "Un professeur archéologue, arrogant et académique, spécialiste des anciennes religions. Persuadé que seul un enseignement officiel produit un vrai savoir, il est dans le déni total de la réalité du Palais.",
+            "1.0", EmotionalRegister.Deni, true, persona, wounds, graph, ct,
+            offerings: offerings);
+    }
+
     // ──────────────────────────────────────────────────────────────────────────
     //  ENNEMIS CANON — créatures signature tirées de « L'épopée des silences »
     //  et « Des échos ». Chemin de combat vivant : EnemyDefinition + StatBlock +
@@ -1247,35 +1315,42 @@ public sealed class CatalogSeedRunner
         // skill.basic.strike" to throw as soon as any encounter tried to draft an enemy.
         await UpsertSkillAsync("skill.basic.strike", "Frappe",
             "Un coup simple, sans fioriture. Ce que tout ce qui a des poings ou des crocs sait faire.",
-            "Damage", "SingleEnemy", "Damage", mana: 0, power: 10, cancellationToken);
+            "Damage", "SingleEnemy", "Damage", mana: 0, power: 10, cancellationToken,
+            category: "Physical");
 
         await UpsertSkillAsync("canon.skill.flamme-froide", "Flamme froide",
             "Bleu-violet, elle ne brûle pas la peau mais la chair, et le givre transperce l'os. Le sort de l'apothicaire.",
-            "Damage", "SingleEnemy", "Damage", mana: 8, power: 22, cancellationToken);
+            "Damage", "SingleEnemy", "Damage", mana: 8, power: 22, cancellationToken,
+            category: "Magic");
 
         await UpsertSkillAsync("canon.skill.priere-aspiration", "Prière",
             "Une prière lituique aspire la conscience. Elle restaure — mais nourrit ce qui rôde, et gonfle l'Égo.",
             "Drain", "SingleEnemy", "Debuff", mana: 4, power: 12, cancellationToken,
-            effects: new[] { new SkillEffectSpec("StatModifier", null, -4, 3, Stat: "Defense") });
+            effects: new[] { new SkillEffectSpec("StatModifier", null, -4, 3, Stat: "Defense") },
+            category: "Magic");
 
         await UpsertSkillAsync("canon.skill.transmutation", "Transmutation",
             "Plomb, or, mercure, soufre, sel. L'art alchimique réordonne la matière de l'instant.",
             "Buff", "Self", "Buff", mana: 6, power: 0, cancellationToken,
-            effects: new[] { new SkillEffectSpec("StatModifier", null, 4, 3, Stat: "AttackPower") });
+            effects: new[] { new SkillEffectSpec("StatModifier", null, 4, 3, Stat: "AttackPower") },
+            category: "Magic");
 
         await UpsertSkillAsync("canon.skill.brume", "Brume",
             "Le brouillard non-naturel se lève. Portée et précision s'effondrent — pour tous.",
             "Debuff", "AllEnemies", "Debuff", mana: 7, power: 0, cancellationToken,
-            effects: new[] { new SkillEffectSpec("StatModifier", null, -4, 3, Stat: "Focus") });
+            effects: new[] { new SkillEffectSpec("StatModifier", null, -4, 3, Stat: "Focus") },
+            category: "Magic");
 
         await UpsertSkillAsync("canon.skill.flamme-seraphine", "Flamme Séraphine",
             "Le feu, le vrai. La seule terreur de l'Homoncule. Pure, dévorante, sans gel.",
-            "Damage", "SingleEnemy", "Damage", mana: 12, power: 34, cancellationToken);
+            "Damage", "SingleEnemy", "Damage", mana: 12, power: 34, cancellationToken,
+            category: "Magic");
 
         await UpsertSkillAsync("canon.skill.se-taire", "Se taire",
             "Ne rien dire. Ne pas prier. L'acte de silence. Inutile contre la chair — dévastateur contre ce qui se nourrit de la voix.",
             "Silence", "Self", "Status", mana: 0, power: 0, cancellationToken,
-            effects: new[] { new SkillEffectSpec("Silence", null, 0, 3) });
+            effects: new[] { new SkillEffectSpec("Silence", null, 0, 3) },
+            category: "Magic");
 
         // "Construction perpétuelle" (L'enfant, sort légendaire) : soin de 10% des PV max
         // et +8 de garde, tous deux répétés sur 5 tours. Le tick (2500) suit la même
@@ -1291,7 +1366,8 @@ public sealed class CatalogSeedRunner
                     TickInterval: construcionPerpetuelleTickInterval, MagnitudeIsPercentOfMax: true),
                 new SkillEffectSpec("GuardOverTime", null, 8, construcionPerpetuelleTickInterval * 5,
                     TickInterval: construcionPerpetuelleTickInterval)
-            });
+            },
+            category: "Magic");
 
         // "La liberté retrouvée" (Erina, sort légendaire) : frappe l'adversaire et
         // gagne +10% Vitesse (de base) pendant 10 tours. Même convention de tick
@@ -1305,14 +1381,33 @@ public sealed class CatalogSeedRunner
             {
                 new SkillEffectSpec("StatModifier", null, 10, liberteRetrouveeTicksPerTurn * 10,
                     Stat: "Speed", MagnitudeIsPercentOfBaseStat: true, AppliesToActor: true)
-            });
+            },
+            category: "Physical");
+
+        // "Connaissance académique" (Pomenian, sort légendaire) : bénit toute l'équipe
+        // de +10% dégâts des sorts (MagicDamageBonus) et -5% dégâts de sorts subis
+        // (MagicDamageReduction). Cible AllAllies : chaque allié reçoit son propre
+        // buff, donc pas d'AppliesToActor (la cible n'est déjà pas le lanceur seul).
+        const int connaissanceAcademiqueTicksPerTurn = 2500;
+        await UpsertSkillAsync("canon.skill.connaissance-academique", "Connaissance académique",
+            "Un savoir cité comme on brandit une preuve — et pour un temps, l'équipe tout entière frappe et résiste comme s'il avait raison.",
+            "Buff", "AllAllies", "Buff", mana: 22, power: 0, cancellationToken,
+            effects: new[]
+            {
+                new SkillEffectSpec("StatModifier", null, 10, connaissanceAcademiqueTicksPerTurn * 5,
+                    Stat: "MagicDamageBonus"),
+                new SkillEffectSpec("StatModifier", null, 5, connaissanceAcademiqueTicksPerTurn * 5,
+                    Stat: "MagicDamageReduction")
+            },
+            category: "Magic");
     }
 
     private async Task UpsertSkillAsync(
     string key, string name, string description,
     string skillType, string targeting, string effectType,
     int mana, int power, CancellationToken cancellationToken,
-    IReadOnlyList<SkillEffectSpec>? effects = null)
+    IReadOnlyList<SkillEffectSpec>? effects = null,
+    string category = "Physical")
     {
         const string version = "canon-1.0.0";
         var now = DateTime.UtcNow;
@@ -1334,6 +1429,7 @@ public sealed class CatalogSeedRunner
                 TargetingType = targeting,
                 TargetingMode = targeting,
                 EffectType = effectType,
+                Category = category,
                 CostType = mana > 0 ? "Mana" : "None",
                 ManaCost = mana,
                 ChargeCost = 0,
@@ -1352,7 +1448,7 @@ public sealed class CatalogSeedRunner
         existing.Description = description; existing.NarrativeText = description;
         existing.Version = version; existing.Status = "Active";
         existing.SkillType = skillType; existing.TargetingType = targeting; existing.TargetingMode = targeting;
-        existing.EffectType = effectType; existing.CostType = mana > 0 ? "Mana" : "None";
+        existing.EffectType = effectType; existing.Category = category; existing.CostType = mana > 0 ? "Mana" : "None";
         existing.ManaCost = mana; existing.BasePower = power; existing.Power = power;
         existing.EffectsJson = effectsJson;
         existing.UpdatedAtUtc = now;
@@ -1502,6 +1598,11 @@ public sealed class CatalogSeedRunner
             "Un fragment de ce qu'elle imagine derrière chaque porte fermée. Tant qu'on le garde sur soi, on avance plus vite — comme elle.",
             "Relic", "Memento", "Rare", "RunOnly", false, 5, cancellationToken,
             effectRunType: "TeamSpeedBonus");
+
+        await UpsertItemAsync("canon.item.monocle-pomenian", "Le monocle de Pomenian",
+            "Une lentille gravée de formules alchimiques anciennes — celles-là mêmes que Pomenian refuse de considérer comme autre chose que des curiosités d'érudit. Quiconque le chausse voit, malgré lui, un peu plus loin que les livres.",
+            "Equipment", "Accessory", "Epic", "Permanent", false, 0, cancellationToken,
+            equipmentEffects: new[] { new ItemEquipmentEffect(ItemEquipmentEffectKind.MagicDamageBonusPercent, Amount: 10) });
     }
 
     private async Task UpsertItemAsync(

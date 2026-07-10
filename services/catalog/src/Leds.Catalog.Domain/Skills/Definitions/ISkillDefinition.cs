@@ -11,6 +11,8 @@ public interface ISkillDefinition : ICatalogContent
 
     string EffectType { get; }
 
+    string Category { get; }
+
     int ManaCost { get; }
 
     int ChargeCost { get; }

@@ -21,6 +21,7 @@ public sealed class PlayerRuntimeSkillEntityConfiguration : IEntityTypeConfigura
         builder.Property(s => s.ManaCost).HasColumnName("mana_cost");
         builder.Property(s => s.ChargeCost).HasColumnName("charge_cost");
         builder.Property(s => s.BasePower).HasColumnName("base_power");
+        builder.Property(s => s.Category).HasColumnName("category").HasMaxLength(16).HasDefaultValue("Physical").IsRequired();
 
         builder.HasOne(s => s.PlayerState)
             .WithMany(ps => ps.Skills)

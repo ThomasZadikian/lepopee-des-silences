@@ -18,6 +18,7 @@ public sealed class SkillDefinition : CatalogContentBase, ISkillDefinition
         string skillType,
         string targetingType,
         string effectType,
+        string category,
         int manaCost,
         int chargeCost,
         int basePower,
@@ -27,6 +28,7 @@ public sealed class SkillDefinition : CatalogContentBase, ISkillDefinition
         SkillType = skillType;
         TargetingType = targetingType;
         EffectType = effectType;
+        Category = category;
         ManaCost = manaCost;
         ChargeCost = chargeCost;
         BasePower = basePower;
@@ -38,6 +40,8 @@ public sealed class SkillDefinition : CatalogContentBase, ISkillDefinition
     public string TargetingType { get; }
 
     public string EffectType { get; }
+
+    public string Category { get; }
 
     public int ManaCost { get; }
 
@@ -58,7 +62,8 @@ public sealed class SkillDefinition : CatalogContentBase, ISkillDefinition
         int chargeCost,
         int basePower,
         CatalogContentStatus status = CatalogContentStatus.Draft,
-        IReadOnlyList<SkillEffectSpec>? effects = null)
+        IReadOnlyList<SkillEffectSpec>? effects = null,
+        string category = "Physical")
     {
         if (string.IsNullOrWhiteSpace(skillType))
         {
@@ -107,6 +112,7 @@ public sealed class SkillDefinition : CatalogContentBase, ISkillDefinition
             skillType.Trim(),
             targetingType.Trim(),
             effectType.Trim(),
+            string.IsNullOrWhiteSpace(category) ? "Physical" : category.Trim(),
             manaCost,
             chargeCost,
             basePower,

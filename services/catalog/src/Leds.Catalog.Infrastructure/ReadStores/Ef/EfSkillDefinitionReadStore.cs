@@ -69,6 +69,7 @@ public sealed class EfSkillDefinitionReadStore : ISkillDefinitionReadStore
             entity.SkillType, entity.TargetingType, entity.EffectType,
             entity.ManaCost, entity.ChargeCost, entity.BasePower,
             Enum.Parse<CatalogContentStatus>(entity.Status),
-            effects);
+            effects,
+            category: entity.Category);
     }
 }

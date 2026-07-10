@@ -236,7 +236,7 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
             // type/crit are applied.
             var basePower = ApplyStatMultiplier(
                 skill.BasePower,
-                StatModifierDamageMultiplier(actor, target));
+                StatModifierDamageMultiplier(actor, target) * MagicCategoryDamageMultiplier(skill, actor, target));
 
             var outcome = DamageCalculator.Calculate(
                 basePower,
@@ -379,6 +379,21 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
             / (AttackDefenseBaseline + target.EffectiveDefense);
 
         return Math.Clamp(multiplier, 0.25, 3.0);
+    }
+
+    // Magic-category skills (e.g. Pomenian's "Connaissance académique") are boosted
+    // by the caster's magic damage bonus and mitigated by the target's magic damage
+    // reduction; Physical-category skills are untouched by either.
+    private static double MagicCategoryDamageMultiplier(CombatantSkill skill, Combatant actor, Combatant target)
+    {
+        if (!string.Equals(skill.Category, "Magic", StringComparison.OrdinalIgnoreCase))
+        {
+            return 1.0;
+        }
+
+        var bonus = 1.0 + actor.EffectiveMagicDamageBonusPercent / 100.0;
+        var reduction = 1.0 - Math.Min(target.EffectiveMagicDamageReductionPercent, 100) / 100.0;
+        return Math.Max(0.0, bonus * reduction);
     }
 
     private static int ApplyStatMultiplier(int basePower, double statMultiplier)

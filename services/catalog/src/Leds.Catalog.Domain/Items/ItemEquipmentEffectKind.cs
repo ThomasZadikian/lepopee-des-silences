@@ -20,5 +20,11 @@ public enum ItemEquipmentEffectKind
     // stat's base value at run start (e.g. Bague du courage: +10% Speed, +10%
     // AttackPower). This is now the default way to author stat-boosting equipment —
     // prefer this over the flat StatBonus for new items.
-    StatBonusPercent = 7
+    StatBonusPercent = 7,
+    // Percentage points (Amount) added to the wearer's damage with Magic-category
+    // skills (e.g. Pomenian's monocle: +10% offensive spell damage).
+    MagicDamageBonusPercent = 8,
+    // Percentage points (Amount, 0-100) by which incoming Magic-category damage is
+    // reduced for the wearer.
+    MagicDamageReductionPercent = 9
 }

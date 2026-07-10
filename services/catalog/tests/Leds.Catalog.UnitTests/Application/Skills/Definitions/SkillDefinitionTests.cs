@@ -151,6 +151,35 @@ public sealed class SkillDefinitionTests
     }
 
     [Fact]
+    public void Create_ShouldDefaultCategoryToPhysical_WhenNoneProvided()
+    {
+        var def = SkillDefinition.Create(
+            "skill.test", "Name", "Desc", "1.0.0", "Damage", "SingleEnemy", "Damage", 5, 0, 10);
+
+        def.Category.Should().Be("Physical");
+    }
+
+    [Fact]
+    public void Create_ShouldCarryExplicitCategory()
+    {
+        var def = SkillDefinition.Create(
+            "canon.skill.flamme-froide", "Flamme froide", "Desc", "1.0.0", "Damage", "SingleEnemy", "Damage",
+            5, 0, 10, category: "Magic");
+
+        def.Category.Should().Be("Magic");
+    }
+
+    [Fact]
+    public void Create_ShouldDefaultCategoryToPhysical_WhenCategoryIsWhitespace()
+    {
+        var def = SkillDefinition.Create(
+            "skill.test", "Name", "Desc", "1.0.0", "Damage", "SingleEnemy", "Damage", 5, 0, 10,
+            category: "   ");
+
+        def.Category.Should().Be("Physical");
+    }
+
+    [Fact]
     public void Activate_ShouldSetStatusToActive()
     {
         var def = SkillDefinition.Create(

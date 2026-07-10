@@ -23,6 +23,8 @@ public sealed class RunEntity
     public int HitChanceBonusPercent { get; set; }
     public int DotDurationReductionPercent { get; set; }
     public int DotDamageReductionPercent { get; set; }
+    public int MagicDamageBonusPercent { get; set; }
+    public int MagicDamageReductionPercent { get; set; }
     public DateTime StartedAtUtc { get; set; }
     public DateTime? EndedAtUtc { get; set; }
     public DateTime? SavedAtUtc { get; set; }

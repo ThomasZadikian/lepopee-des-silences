@@ -306,6 +306,63 @@ public sealed class CombatSkillEffectResolverTests
         }
     }
 
+    [Fact]
+    public void Resolve_ShouldBoostDamage_WhenSkillIsMagicCategory_AndActorHasMagicDamageBonus()
+    {
+        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+        ally.ApplyEquipmentCombatModifiers(
+            hitChanceBonusPercent: 0, dotDurationReductionPercent: 0, dotDamageReductionPercent: 0,
+            magicDamageBonusPercent: 50, magicDamageReductionPercent: 0);
+        var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 200);
+        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
+        var skill = CombatantSkill.Create(
+            "canon.skill.flamme-froide", "Flamme froide", "Damage", "SingleEnemy", "Damage",
+            manaCost: 0, chargeCost: 0, basePower: 10, category: "Magic");
+
+        _resolver.Resolve(combat, ally, skill, [enemy]);
+
+        // baseline multiplier = (20 + 0) / (20 + 0) = 1.0; Magic bonus = +50% => 15 damage.
+        enemy.CurrentVitality.Should().Be(200 - 15);
+    }
+
+    [Fact]
+    public void Resolve_ShouldReduceDamage_WhenSkillIsMagicCategory_AndTargetHasMagicDamageReduction()
+    {
+        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+        var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 200);
+        enemy.ApplyEquipmentCombatModifiers(
+            hitChanceBonusPercent: 0, dotDurationReductionPercent: 0, dotDamageReductionPercent: 0,
+            magicDamageBonusPercent: 0, magicDamageReductionPercent: 20);
+        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
+        var skill = CombatantSkill.Create(
+            "canon.skill.flamme-froide", "Flamme froide", "Damage", "SingleEnemy", "Damage",
+            manaCost: 0, chargeCost: 0, basePower: 10, category: "Magic");
+
+        _resolver.Resolve(combat, ally, skill, [enemy]);
+
+        // baseline multiplier = 1.0; Magic reduction = -20% => 8 damage.
+        enemy.CurrentVitality.Should().Be(200 - 8);
+    }
+
+    [Fact]
+    public void Resolve_ShouldIgnoreMagicDamageBonus_WhenSkillIsPhysicalCategory()
+    {
+        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+        ally.ApplyEquipmentCombatModifiers(
+            hitChanceBonusPercent: 0, dotDurationReductionPercent: 0, dotDamageReductionPercent: 0,
+            magicDamageBonusPercent: 50, magicDamageReductionPercent: 0);
+        var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 200);
+        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
+        var skill = CombatantSkill.Create(
+            "skill.basic.strike", "Frappe", "Damage", "SingleEnemy", "Damage",
+            manaCost: 0, chargeCost: 0, basePower: 10, category: "Physical");
+
+        _resolver.Resolve(combat, ally, skill, [enemy]);
+
+        // Physical skill: the actor's Magic damage bonus must not apply => raw 10 damage.
+        enemy.CurrentVitality.Should().Be(200 - 10);
+    }
+
     private static (Combat Combat, Combatant Ally, Combatant Enemy) CreateCombat()
     {
         var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);

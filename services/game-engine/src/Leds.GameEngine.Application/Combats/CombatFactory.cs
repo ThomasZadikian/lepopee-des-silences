@@ -27,7 +27,9 @@ public sealed class CombatFactory : ICombatFactory
         IReadOnlyDictionary<EmotionalType, int>? typedDamageReductions = null,
         int hitChanceBonusPercent = 0,
         int dotDurationReductionPercent = 0,
-        int dotDamageReductionPercent = 0)
+        int dotDamageReductionPercent = 0,
+        int magicDamageBonusPercent = 0,
+        int magicDamageReductionPercent = 0)
     {
         return CreateFromDraft(
             CombatId.New(),
@@ -43,7 +45,9 @@ public sealed class CombatFactory : ICombatFactory
             typedDamageReductions,
             hitChanceBonusPercent,
             dotDurationReductionPercent,
-            dotDamageReductionPercent);
+            dotDamageReductionPercent,
+            magicDamageBonusPercent,
+            magicDamageReductionPercent);
     }
     private static (double VitalityMultiplier, double PowerMultiplier, int GuardBonus) EncounterBonus(string encounterType)
     {
@@ -71,7 +75,9 @@ public sealed class CombatFactory : ICombatFactory
         IReadOnlyDictionary<EmotionalType, int>? typedDamageReductions = null,
         int hitChanceBonusPercent = 0,
         int dotDurationReductionPercent = 0,
-        int dotDamageReductionPercent = 0)
+        int dotDamageReductionPercent = 0,
+        int magicDamageBonusPercent = 0,
+        int magicDamageReductionPercent = 0)
     {
         // Sum all unconsumed StartingGuardBonus modifiers (e.g. Éclat de garde: +8 garde).
         var guardBonus = runModifiers?
@@ -115,7 +121,8 @@ public sealed class CombatFactory : ICombatFactory
                             s.ManaCost,
                             s.ChargeCost,
                             ScalePlayerSkillPower(s.EffectType, s.BasePower, attackPowerMultiplier),
-                            statusEffects: EffectFor(skillEffects, s.Key)))
+                            statusEffects: EffectFor(skillEffects, s.Key),
+                            category: s.Category))
                         .ToArray()
                         ?? GetDefaultAllySkills(attackPowerMultiplier, skillEffects);
 
@@ -146,7 +153,8 @@ public sealed class CombatFactory : ICombatFactory
                     protagonist.ApplyAttackTypeOverride(attackTypeOverride);
                     protagonist.ApplyTypedDamageReductions(typedDamageReductions);
                     protagonist.ApplyEquipmentCombatModifiers(
-                        hitChanceBonusPercent, dotDurationReductionPercent, dotDamageReductionPercent);
+                        hitChanceBonusPercent, dotDurationReductionPercent, dotDamageReductionPercent,
+                        magicDamageBonusPercent, magicDamageReductionPercent);
                     return protagonist;
                 }
 
@@ -230,7 +238,8 @@ public sealed class CombatFactory : ICombatFactory
                             s.ChargeCost,
                             power,
                             s.Tags,
-                            EffectFor(skillEffects, s.Key));
+                            EffectFor(skillEffects, s.Key),
+                            category: s.Category);
                     })
                     .ToArray();
 

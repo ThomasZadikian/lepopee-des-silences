@@ -24,6 +24,7 @@ public sealed class SkillDefinitionEntityConfiguration : IEntityTypeConfiguratio
         builder.Property(e => e.TargetingType).HasColumnName("targeting_type").HasMaxLength(64).IsRequired();
         builder.Property(e => e.TargetingMode).HasColumnName("targeting_mode").HasMaxLength(64).IsRequired();
         builder.Property(e => e.EffectType).HasColumnName("effect_type").HasMaxLength(64).IsRequired().HasComment("Legacy compatibility summary. Canonical effects live in catalog_effect_sets/catalog_effect_definitions.");
+        builder.Property(e => e.Category).HasColumnName("category").HasMaxLength(16).HasDefaultValue("Physical").IsRequired();
         builder.Property(e => e.CostType).HasColumnName("cost_type").HasMaxLength(32).HasDefaultValue("None").IsRequired();
         builder.Property(e => e.CostAmount).HasColumnName("cost_amount");
         builder.Property(e => e.ManaCost).HasColumnName("mana_cost");

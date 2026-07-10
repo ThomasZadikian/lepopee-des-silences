@@ -31,7 +31,8 @@ public static class PlayerRuntimeStatePersistenceMapper
             EffectType = skill.EffectType,
             ManaCost = skill.ManaCost,
             ChargeCost = skill.ChargeCost,
-            BasePower = skill.BasePower
+            BasePower = skill.BasePower,
+            Category = skill.Category
         };
     }
 
@@ -56,6 +57,7 @@ public static class PlayerRuntimeStatePersistenceMapper
             entity.EffectType,
             entity.ManaCost,
             entity.ChargeCost,
-            entity.BasePower);
+            entity.BasePower,
+            entity.Category);
     }
 }

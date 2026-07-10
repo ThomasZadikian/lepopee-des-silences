@@ -38,6 +38,13 @@ public sealed class CombatantEntity
     public int DotDamageReductionPercent { get; set; }
 
     /// <summary>
+    /// Equipment-driven Magic-category damage bonus/reduction (percentage points).
+    /// Set at combat creation from the wearer's equipped items (e.g. Pomenian's monocle).
+    /// </summary>
+    public int MagicDamageBonusPercent { get; set; }
+    public int MagicDamageReductionPercent { get; set; }
+
+    /// <summary>
     /// Active durable status effects (poison/regen/buffs/control) serialized as JSON.
     /// In-combat only and small, so a JSON column avoids a child table and is copied
     /// automatically by the hot-path persistence (a scalar via CurrentValues.SetValues).

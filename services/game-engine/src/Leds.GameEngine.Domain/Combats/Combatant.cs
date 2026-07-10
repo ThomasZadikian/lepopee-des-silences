@@ -111,16 +111,45 @@ public sealed class Combatant
     public int DotDamageReductionPercent { get; private set; }
 
     /// <summary>
-    /// Sets (or clears) the equipment-driven hit chance bonus and DOT reductions.
-    /// Applied at combat creation and restored on rehydration; never mutated mid-turn.
+    /// Percentage points added to / subtracted from Magic-category skill damage,
+    /// granted by equipped items (e.g. Pomenian's monocle: +10% offensive spell
+    /// damage). Permanent for the run — distinct from the temporary, skill-driven
+    /// component summed in <see cref="EffectiveMagicDamageBonusPercent"/>.
+    /// </summary>
+    public int MagicDamageBonusPercent { get; private set; }
+    public int MagicDamageReductionPercent { get; private set; }
+
+    /// <summary>
+    /// Sets (or clears) the equipment-driven hit chance bonus, DOT reductions, and
+    /// Magic damage bonus/reduction. Applied at combat creation and restored on
+    /// rehydration; never mutated mid-turn.
     /// </summary>
     public void ApplyEquipmentCombatModifiers(
-        int hitChanceBonusPercent, int dotDurationReductionPercent, int dotDamageReductionPercent)
+        int hitChanceBonusPercent, int dotDurationReductionPercent, int dotDamageReductionPercent,
+        int magicDamageBonusPercent = 0, int magicDamageReductionPercent = 0)
     {
         HitChanceBonusPercent = hitChanceBonusPercent;
         DotDurationReductionPercent = dotDurationReductionPercent;
         DotDamageReductionPercent = dotDamageReductionPercent;
+        MagicDamageBonusPercent = magicDamageBonusPercent;
+        MagicDamageReductionPercent = magicDamageReductionPercent;
     }
+
+    /// <summary>
+    /// Total Magic-category damage bonus (%): permanent equipment component plus any
+    /// active temporary StatModifier(MagicDamageBonus) status effect (e.g. Pomenian's
+    /// "Connaissance académique").
+    /// </summary>
+    public int EffectiveMagicDamageBonusPercent
+        => MagicDamageBonusPercent + EffectiveStat(CombatStat.MagicDamageBonus, 0);
+
+    /// <summary>
+    /// Total Magic-category incoming damage reduction (%): permanent equipment
+    /// component plus any active temporary StatModifier(MagicDamageReduction) status
+    /// effect.
+    /// </summary>
+    public int EffectiveMagicDamageReductionPercent
+        => MagicDamageReductionPercent + EffectiveStat(CombatStat.MagicDamageReduction, 0);
 
     // ── ATB (Active Time Battle) ──────────────────────────────────────────────
 
@@ -486,7 +515,9 @@ public sealed class Combatant
         IReadOnlyDictionary<EmotionalType, int>? typedDamageReductionPercent = null,
         int hitChanceBonusPercent = 0,
         int dotDurationReductionPercent = 0,
-        int dotDamageReductionPercent = 0)
+        int dotDamageReductionPercent = 0,
+        int magicDamageBonusPercent = 0,
+        int magicDamageReductionPercent = 0)
     {
         var snapshot = baseStatSnapshot ?? CombatantBaseStatSnapshot.Rehydrate(
             Guid.NewGuid(),
@@ -518,7 +549,8 @@ public sealed class Combatant
         combatant.AttackTypeOverride = attackTypeOverride;
         combatant.TypedDamageReductionPercent = typedDamageReductionPercent ?? new Dictionary<EmotionalType, int>();
         combatant.ApplyEquipmentCombatModifiers(
-            hitChanceBonusPercent, dotDurationReductionPercent, dotDamageReductionPercent);
+            hitChanceBonusPercent, dotDurationReductionPercent, dotDamageReductionPercent,
+            magicDamageBonusPercent, magicDamageReductionPercent);
         return combatant;
     }
 

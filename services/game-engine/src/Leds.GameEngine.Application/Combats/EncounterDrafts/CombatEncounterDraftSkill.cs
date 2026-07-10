@@ -10,4 +10,5 @@ public sealed record CombatEncounterDraftSkill(
     int ManaCost,
     int ChargeCost,
     int BasePower,
-    IReadOnlyCollection<string> Tags);
+    IReadOnlyCollection<string> Tags,
+    string Category = "Physical");

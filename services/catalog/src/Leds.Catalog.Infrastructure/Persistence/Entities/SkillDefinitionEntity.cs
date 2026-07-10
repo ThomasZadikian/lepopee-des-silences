@@ -14,6 +14,9 @@ public sealed class SkillDefinitionEntity
     public string TargetingType { get; set; } = string.Empty;
     public string TargetingMode { get; set; } = string.Empty;
     public string EffectType { get; set; } = string.Empty;
+    // Physical|Magic — determines eligibility for category-scoped combat bonuses
+    // (e.g. Pomenian's "Connaissance académique": +Magic damage / -incoming Magic damage).
+    public string Category { get; set; } = "Physical";
     public string CostType { get; set; } = "None";
     public int CostAmount { get; set; }
     public int ManaCost { get; set; }

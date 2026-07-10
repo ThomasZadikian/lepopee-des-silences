@@ -14,7 +14,8 @@ public sealed record CombatantSkill
         int chargeCost,
         int basePower,
         IReadOnlyCollection<string> tags,
-        IReadOnlyCollection<SkillStatusEffectSpec> statusEffects)
+        IReadOnlyCollection<SkillStatusEffectSpec> statusEffects,
+        string category)
     {
         Key = key;
         DisplayName = displayName;
@@ -26,6 +27,7 @@ public sealed record CombatantSkill
         BasePower = basePower;
         Tags = tags;
         StatusEffects = statusEffects;
+        Category = category;
     }
 
     public string Key { get; }
@@ -40,6 +42,9 @@ public sealed record CombatantSkill
     /// <summary>Durable statuses this skill applies to its targets (empty = none). A skill
     /// may carry several simultaneously (e.g. heal-over-time + guard-over-time).</summary>
     public IReadOnlyCollection<SkillStatusEffectSpec> StatusEffects { get; }
+    /// <summary>Physical|Magic — determines eligibility for category-scoped combat bonuses
+    /// (e.g. Pomenian's "Connaissance académique").</summary>
+    public string Category { get; }
 
     public static CombatantSkill Create(
         string key,
@@ -51,7 +56,8 @@ public sealed record CombatantSkill
         int chargeCost,
         int basePower,
         IReadOnlyCollection<string>? tags = null,
-        IReadOnlyCollection<SkillStatusEffectSpec>? statusEffects = null)
+        IReadOnlyCollection<SkillStatusEffectSpec>? statusEffects = null,
+        string category = "Physical")
     {
         if (string.IsNullOrWhiteSpace(key))
             throw new DomainException("Combatant skill key is required.");
@@ -78,7 +84,8 @@ public sealed record CombatantSkill
             chargeCost,
             basePower,
             tags?.ToArray() ?? Array.Empty<string>(),
-            statusEffects?.ToArray() ?? Array.Empty<SkillStatusEffectSpec>());
+            statusEffects?.ToArray() ?? Array.Empty<SkillStatusEffectSpec>(),
+            string.IsNullOrWhiteSpace(category) ? "Physical" : category);
     }
 
     /// <summary>
@@ -95,8 +102,9 @@ public sealed record CombatantSkill
         int chargeCost,
         int basePower,
         IReadOnlyCollection<string> tags,
-        IReadOnlyCollection<SkillStatusEffectSpec>? statusEffects = null)
+        IReadOnlyCollection<SkillStatusEffectSpec>? statusEffects = null,
+        string category = "Physical")
     {
-        return new CombatantSkill(key, displayName, skillType, targetingType, effectType, manaCost, chargeCost, basePower, tags, statusEffects ?? Array.Empty<SkillStatusEffectSpec>());
+        return new CombatantSkill(key, displayName, skillType, targetingType, effectType, manaCost, chargeCost, basePower, tags, statusEffects ?? Array.Empty<SkillStatusEffectSpec>(), category);
     }
 }

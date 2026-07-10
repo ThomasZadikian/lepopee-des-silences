@@ -11,6 +11,7 @@ public sealed class PlayerRuntimeSkillEntity
     public int ManaCost { get; set; }
     public int ChargeCost { get; set; }
     public int BasePower { get; set; }
+    public string Category { get; set; } = "Physical";
 
     public PlayerRuntimeStateEntity? PlayerState { get; set; }
 }

@@ -153,6 +153,31 @@ public sealed class CombatFactoryTests
     }
 
     [Fact]
+    public void CreateFromDraft_ShouldMapEnemySkillCategory()
+    {
+        var factory = new CombatFactory();
+        var magicSkill = new CombatEncounterDraftSkill(
+            "canon.skill.flamme-froide", "Flamme froide", "Cold flame.", "Damage", "SingleEnemy", "Damage", 8, 0, 22,
+            Array.Empty<string>(), Category: "Magic");
+        var draft = CreateDraft(enemySkills: [magicSkill]);
+
+        var combat = factory.CreateFromDraft(draft);
+
+        combat.Enemies.Single().Skills.Single().Category.Should().Be("Magic");
+    }
+
+    [Fact]
+    public void CreateFromDraft_ShouldDefaultEnemySkillCategoryToPhysical_WhenNotSpecified()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft(includeSkills: true);
+
+        var combat = factory.CreateFromDraft(draft);
+
+        combat.Enemies.Single().Skills.Single().Category.Should().Be("Physical");
+    }
+
+    [Fact]
     public void CreateFromDraft_ShouldNormalizeEnemyCurrentGuardSkill()
     {
         var factory = new CombatFactory();

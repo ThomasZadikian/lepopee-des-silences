@@ -78,7 +78,9 @@ public sealed class Run
         IReadOnlyDictionary<string, int>? typedDamageReductions = null,
         int hitChanceBonusPercent = 0,
         int dotDurationReductionPercent = 0,
-        int dotDamageReductionPercent = 0)
+        int dotDamageReductionPercent = 0,
+        int magicDamageBonusPercent = 0,
+        int magicDamageReductionPercent = 0)
     {
         Id = id;
         PlayerId = playerId;
@@ -102,6 +104,8 @@ public sealed class Run
         HitChanceBonusPercent = hitChanceBonusPercent;
         DotDurationReductionPercent = dotDurationReductionPercent;
         DotDamageReductionPercent = dotDamageReductionPercent;
+        MagicDamageBonusPercent = magicDamageBonusPercent;
+        MagicDamageReductionPercent = magicDamageReductionPercent;
 
         _rooms.Add(initialRoom);
     }
@@ -249,6 +253,14 @@ public sealed class Run
     public int DotDurationReductionPercent { get; }
     public int DotDamageReductionPercent { get; }
 
+    /// <summary>
+    /// Equipment-driven percentage points added to / subtracted from Magic-category
+    /// skill damage (e.g. Pomenian's monocle). Computed once at run start, immutable
+    /// for the run's lifetime, same as HitChanceBonusPercent.
+    /// </summary>
+    public int MagicDamageBonusPercent { get; }
+    public int MagicDamageReductionPercent { get; }
+
     public DateTimeOffset StartedAt { get; }
 
     public DateTimeOffset? EndedAt { get; private set; }
@@ -305,7 +317,9 @@ public sealed class Run
         IReadOnlyDictionary<string, int>? typedDamageReductions = null,
         int hitChanceBonusPercent = 0,
         int dotDurationReductionPercent = 0,
-        int dotDamageReductionPercent = 0)
+        int dotDamageReductionPercent = 0,
+        int magicDamageBonusPercent = 0,
+        int magicDamageReductionPercent = 0)
     {
         if (playerId == Guid.Empty)
         {
@@ -400,7 +414,9 @@ public sealed class Run
             typedDamageReductions: typedDamageReductions,
             hitChanceBonusPercent: hitChanceBonusPercent,
             dotDurationReductionPercent: dotDurationReductionPercent,
-            dotDamageReductionPercent: dotDamageReductionPercent);
+            dotDamageReductionPercent: dotDamageReductionPercent,
+            magicDamageBonusPercent: magicDamageBonusPercent,
+            magicDamageReductionPercent: magicDamageReductionPercent);
 
         run.PlayerState = PlayerRuntimeState.Create(
             maxVitality: maxHp,
@@ -1552,11 +1568,13 @@ public sealed class Run
         IReadOnlyDictionary<string, int>? typedDamageReductions = null,
         int hitChanceBonusPercent = 0,
         int dotDurationReductionPercent = 0,
-        int dotDamageReductionPercent = 0)
+        int dotDamageReductionPercent = 0,
+        int magicDamageBonusPercent = 0,
+        int magicDamageReductionPercent = 0)
     {
         var firstRoom = rooms.First();
 
-        var run = new Run(id, playerId, seed, generatorVersion, markovMatrixVersion, status, firstRoom, startedAt, maxHp, currentHp, attack, defense, speed, focus, currentRoomIndex, activeCombatId, pendingRewardOfferId, runItemCapacity, typedDamageReductions, hitChanceBonusPercent, dotDurationReductionPercent, dotDamageReductionPercent);
+        var run = new Run(id, playerId, seed, generatorVersion, markovMatrixVersion, status, firstRoom, startedAt, maxHp, currentHp, attack, defense, speed, focus, currentRoomIndex, activeCombatId, pendingRewardOfferId, runItemCapacity, typedDamageReductions, hitChanceBonusPercent, dotDurationReductionPercent, dotDamageReductionPercent, magicDamageBonusPercent, magicDamageReductionPercent);
         foreach (var room in rooms.Skip(1))
         {
             run._rooms.Add(room);

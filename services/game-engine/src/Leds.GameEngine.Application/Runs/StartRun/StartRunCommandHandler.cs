@@ -100,6 +100,16 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
                 && e.Amount is not null)
             .Sum(e => e.Amount!.Value));
 
+        var magicDamageBonusPercent = equipmentEffects
+            .Where(e => string.Equals(e.Kind, "MagicDamageBonusPercent", StringComparison.OrdinalIgnoreCase)
+                && e.Amount is not null)
+            .Sum(e => e.Amount!.Value);
+
+        var magicDamageReductionPercent = Math.Min(100, equipmentEffects
+            .Where(e => string.Equals(e.Kind, "MagicDamageReductionPercent", StringComparison.OrdinalIgnoreCase)
+                && e.Amount is not null)
+            .Sum(e => e.Amount!.Value));
+
         var grantedSkillKeys = equipmentEffects
             .Where(e => string.Equals(e.Kind, "GrantSkill", StringComparison.OrdinalIgnoreCase)
                 && !string.IsNullOrWhiteSpace(e.SkillKey))
@@ -150,7 +160,9 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
             typedDamageReductions: typedDamageReductions,
             hitChanceBonusPercent: hitChanceBonusPercent,
             dotDurationReductionPercent: dotDurationReductionPercent,
-            dotDamageReductionPercent: dotDamageReductionPercent);
+            dotDamageReductionPercent: dotDamageReductionPercent,
+            magicDamageBonusPercent: magicDamageBonusPercent,
+            magicDamageReductionPercent: magicDamageReductionPercent);
 
         var characterSnapshots = snapshot.Characters
             .Select(c =>

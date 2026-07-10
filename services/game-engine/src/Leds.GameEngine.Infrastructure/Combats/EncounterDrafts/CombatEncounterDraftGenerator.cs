@@ -100,7 +100,8 @@ public sealed class CombatEncounterDraftGenerator : ICombatEncounterDraftGenerat
                         ManaCost: s.ManaCost,
                         ChargeCost: s.ChargeCost,
                         BasePower: s.BasePower,
-                        Tags: s.Tags))
+                        Tags: s.Tags,
+                        Category: s.Category))
                     .ToArray()))
             .ToArray();
 

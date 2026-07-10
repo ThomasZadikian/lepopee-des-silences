@@ -92,7 +92,7 @@ public sealed class CombatantTests
 
         combatant.ApplyStatusEffect(Leds.GameEngine.Domain.Combats.StatusEffects.CombatStatusEffect.Create(
             "speed-buff", "Speed Buff", Leds.GameEngine.Domain.Combats.StatusEffects.StatusEffectKind.StatModifier,
-            currentTick: 0, durationTicks: 6000, magnitude: 10, stat: Leds.GameEngine.Domain.Combats.Typing.CombatStat.Speed));
+            currentTick: 0, durationTicks: 6000, magnitude: 10, stat: Leds.GameEngine.Domain.Combats.StatusEffects.CombatStat.Speed));
 
         combatant.RecalculateAtbFillPerTick(opponentAverageEffectiveSpeed: 10);
 
@@ -304,5 +304,41 @@ public sealed class CombatantTests
         act.Should().NotThrow();
         combatant.Guard.Should().Be(8,
             because: "MarkDefeated does not reset guard; baseGuard value persists.");
+    }
+
+    [Fact]
+    public void EffectiveMagicDamageBonusPercent_ShouldEqualEquipmentValue_WhenNoStatusEffectIsActive()
+    {
+        var combatant = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+
+        combatant.ApplyEquipmentCombatModifiers(
+            hitChanceBonusPercent: 0, dotDurationReductionPercent: 0, dotDamageReductionPercent: 0,
+            magicDamageBonusPercent: 10, magicDamageReductionPercent: 5);
+
+        combatant.MagicDamageBonusPercent.Should().Be(10);
+        combatant.MagicDamageReductionPercent.Should().Be(5);
+        combatant.EffectiveMagicDamageBonusPercent.Should().Be(10);
+        combatant.EffectiveMagicDamageReductionPercent.Should().Be(5);
+    }
+
+    [Fact]
+    public void EffectiveMagicDamageBonusPercent_ShouldSumEquipmentAndStatModifierStatus()
+    {
+        var combatant = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+        combatant.ApplyEquipmentCombatModifiers(
+            hitChanceBonusPercent: 0, dotDurationReductionPercent: 0, dotDamageReductionPercent: 0,
+            magicDamageBonusPercent: 10, magicDamageReductionPercent: 5);
+
+        combatant.ApplyStatusEffect(Leds.GameEngine.Domain.Combats.StatusEffects.CombatStatusEffect.Create(
+            "connaissance-academique:bonus", "Connaissance académique", Leds.GameEngine.Domain.Combats.StatusEffects.StatusEffectKind.StatModifier,
+            currentTick: 0, durationTicks: 12500, magnitude: 10, stat: Leds.GameEngine.Domain.Combats.StatusEffects.CombatStat.MagicDamageBonus));
+        combatant.ApplyStatusEffect(Leds.GameEngine.Domain.Combats.StatusEffects.CombatStatusEffect.Create(
+            "connaissance-academique:reduction", "Connaissance académique", Leds.GameEngine.Domain.Combats.StatusEffects.StatusEffectKind.StatModifier,
+            currentTick: 0, durationTicks: 12500, magnitude: 5, stat: Leds.GameEngine.Domain.Combats.StatusEffects.CombatStat.MagicDamageReduction));
+
+        combatant.EffectiveMagicDamageBonusPercent.Should().Be(20,
+            because: "equipment (10) + skill-driven StatModifier buff (10) must both contribute.");
+        combatant.EffectiveMagicDamageReductionPercent.Should().Be(10,
+            because: "equipment (5) + skill-driven StatModifier buff (5) must both contribute.");
     }
 }
