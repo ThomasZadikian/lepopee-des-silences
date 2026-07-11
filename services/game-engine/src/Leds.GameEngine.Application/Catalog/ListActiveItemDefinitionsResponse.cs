@@ -8,6 +8,7 @@ public sealed record ItemDefinitionView(
     string ItemType,
     string Rarity,
     string? EffectRunType,
-    int EffectValue);
+    int EffectValue,
+    IReadOnlyCollection<string>? ReadablePages = null);
 
 public sealed record ListActiveItemDefinitionsResponse(IReadOnlyCollection<ItemDefinitionView> Items);

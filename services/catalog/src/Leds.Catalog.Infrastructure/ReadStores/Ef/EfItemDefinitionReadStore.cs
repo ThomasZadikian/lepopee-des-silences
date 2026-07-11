@@ -80,6 +80,8 @@ public sealed class EfItemDefinitionReadStore : IItemTemplateReadStore, IItemDef
     {
         var equipmentEffects = JsonSerializer.Deserialize<List<ItemEquipmentEffect>>(
             entity.EquipmentEffectsJson ?? "[]", JsonOptions) ?? [];
+        var readablePages = JsonSerializer.Deserialize<List<string>>(
+            entity.ReadablePagesJson ?? "[]", JsonOptions) ?? [];
 
         return new ItemDefinitionDto(
             entity.Id,
@@ -105,6 +107,7 @@ public sealed class EfItemDefinitionReadStore : IItemTemplateReadStore, IItemDef
             ContainerCapacity: entity.ContainerCapacity,
             IsLiquid: entity.IsLiquid,
             EffectValue: entity.EffectValue,
-            EffectRunType: entity.EffectRunType);
+            EffectRunType: entity.EffectRunType,
+            ReadablePages: readablePages);
     }
 }

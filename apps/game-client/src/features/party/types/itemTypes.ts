@@ -7,4 +7,5 @@ export type ItemDefinitionView = {
   rarity: string;
   effectRunType: string | null;
   effectValue: number;
+  readablePages?: string[] | null;
 };

@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRunStore } from '../../runs/stores/runStore';
 import type { RunItemDto } from '../../runs/types/runTypes';
 import { inventoryApi } from '../api/inventoryApi';
+import { itemsApi } from '../../party/api/itemsApi';
+import BookReader from '../../../shared/components/BookReader.vue';
 
 const props = defineProps<{
   items: RunItemDto[];
@@ -23,6 +25,27 @@ const runStore = useRunStore();
 const selectedItem = ref<RunItemDto | null>(null);
 const isLoading = ref(false);
 const error = ref<string | null>(null);
+const readablePagesByKey = ref<Record<string, string[]>>({});
+const isReaderOpen = ref(false);
+
+onMounted(async () => {
+  try {
+    const { items: catalogItems } = await itemsApi.listActive();
+    const byKey: Record<string, string[]> = {};
+    for (const item of catalogItems) {
+      if (item.readablePages && item.readablePages.length > 0) {
+        byKey[item.key] = item.readablePages;
+      }
+    }
+    readablePagesByKey.value = byKey;
+  } catch {
+    // Best-effort: a failed catalog fetch just hides the "Lire" affordance.
+  }
+});
+
+const selectedItemPages = computed(() =>
+  selectedItem.value ? readablePagesByKey.value[selectedItem.value.definitionKey] : undefined,
+);
 
 function getRarityTone(rarity: string): string {
   switch (rarity) {
@@ -201,6 +224,13 @@ async function useItem() {
         <!-- Actions -->
         <div class="bsd-sheet__actions">
           <button
+            v-if="selectedItemPages"
+            class="bsd-action-btn bsd-action-btn--read"
+            @click="isReaderOpen = true"
+          >
+            Lire
+          </button>
+          <button
             v-if="selectedItem.isUsable"
             class="bsd-action-btn bsd-action-btn--use"
             :disabled="isLoading"
@@ -208,12 +238,21 @@ async function useItem() {
           >
             {{ isLoading ? 'Utilisation…' : 'Utiliser' }}
           </button>
-          <p v-else class="bsd-sheet__unusable">Cet objet ne peut pas être utilisé actuellement.</p>
+          <p v-if="!selectedItem.isUsable && !selectedItemPages" class="bsd-sheet__unusable">
+            Cet objet ne peut pas être utilisé actuellement.
+          </p>
         </div>
 
         <p v-if="error" class="bsd-sheet__error">{{ error }}</p>
       </div>
     </Transition>
+
+    <BookReader
+      v-if="selectedItem && selectedItemPages"
+      v-model="isReaderOpen"
+      :title="selectedItem.displayName"
+      :pages="selectedItemPages"
+    />
   </aside>
 </template>
 
@@ -531,6 +570,9 @@ async function useItem() {
 
 .bsd-sheet__actions {
   padding-top: 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .bsd-action-btn {
@@ -557,6 +599,18 @@ async function useItem() {
 .bsd-action-btn--use:not(:disabled):hover {
   background: oklch(.55 .08 85 / .24);
   box-shadow: 0 0 26px -6px oklch(.72 .1 85 / .55);
+}
+
+.bsd-action-btn--read {
+  border: 1px solid var(--frost, oklch(.70 .07 232));
+  background: oklch(.50 .06 232 / .15);
+  color: var(--frost, oklch(.70 .07 232));
+  box-shadow: 0 0 18px -6px oklch(.70 .07 232 / .4);
+}
+
+.bsd-action-btn--read:hover {
+  background: oklch(.50 .06 232 / .24);
+  box-shadow: 0 0 26px -6px oklch(.70 .07 232 / .55);
 }
 
 .bsd-sheet__unusable {

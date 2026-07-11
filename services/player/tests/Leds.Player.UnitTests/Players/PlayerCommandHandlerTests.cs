@@ -8,6 +8,7 @@ using Leds.Player.Application.Players.CreatePlayerProfile;
 using Leds.Player.Application.Players.EquipItem;
 using Leds.Player.Application.Players.GrantNpcReputationMilestone;
 using Leds.Player.Application.Players.HasClaimedNpcOffering;
+using Leds.Player.Application.Players.RecruitCompanion;
 using Leds.Player.Application.Players.SetPermanentItemContent;
 using Leds.Player.Application.Players.UnequipItem;
 using Leds.Player.Domain.Players;
@@ -170,6 +171,29 @@ public sealed class PlayerCommandHandlerTests
 
         response.PermanentItems.Should().HaveCount(2);
         response.PermanentItems.Should().Contain(i => i.ItemDefinitionKey == "item.sac-a-dos" && i.SourceRunId == sourceRunId);
+        repository.Verify(r => r.SaveAsync(It.IsAny<PlayerProfile>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task RecruitCompanion_ShouldAddCompanionToRosterAndPersist()
+    {
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+        var repository = new Mock<IPlayerProfileRepository>();
+        repository.Setup(r => r.GetByIdAsync(profile.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(profile);
+
+        var handler = new RecruitCompanionCommandHandler(repository.Object, TimeProvider.System);
+
+        var response = await handler.Handle(
+            new RecruitCompanionCommand(
+                profile.Id.Value, "character.thomas", "Thomas",
+                MaxVitality: 100, AttackPower: 12, Defense: 6, StartingGuard: 0,
+                Speed: 10, Initiative: 10, Recovery: 5, Focus: 0, Mana: 0, Charge: 0,
+                SkillKeys: ["skill.basic.guard"]),
+            CancellationToken.None);
+
+        response.Characters.Should().HaveCount(2);
+        response.Characters.Should().Contain(c => c.DefinitionKey == "character.thomas" && c.DisplayName == "Thomas");
         repository.Verify(r => r.SaveAsync(It.IsAny<PlayerProfile>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 

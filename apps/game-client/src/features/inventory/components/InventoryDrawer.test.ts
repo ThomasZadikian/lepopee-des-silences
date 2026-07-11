@@ -16,6 +16,12 @@ vi.mock('../api/inventoryApi', () => ({
   },
 }));
 
+vi.mock('../../party/api/itemsApi', () => ({
+  itemsApi: {
+    listActive: vi.fn().mockResolvedValue({ items: [] }),
+  },
+}));
+
 function mountDrawer(items: RunItemDto[], runId = 'run-1', capacity?: number | null) {
   return mount(InventoryDrawer, {
     props: { items, runId, capacity },
@@ -100,6 +106,38 @@ describe('InventoryDrawer', () => {
     const wrapper = mountDrawer([baseItem]);
     await wrapper.find('.bsd-cell').trigger('click');
     expect(wrapper.text()).toContain('Utiliser');
+  });
+
+  it('shows the "Lire" button for a readable item', async () => {
+    const { itemsApi } = await import('../../party/api/itemsApi');
+    vi.mocked(itemsApi.listActive).mockResolvedValueOnce({
+      items: [{
+        key: 'canon.item.carnet',
+        displayName: 'Le carnet',
+        description: 'Un carnet.',
+        category: 'Relic',
+        itemType: 'Lore',
+        rarity: 'Unique',
+        effectRunType: null,
+        effectValue: 0,
+        readablePages: ['PLACEHOLDER HISTOIRE 01'],
+      }],
+    });
+
+    const item = { ...baseItem, definitionKey: 'canon.item.carnet', isUsable: false };
+    const wrapper = mountDrawer([item]);
+    await new Promise((r) => setTimeout(r, 0));
+    await wrapper.find('.bsd-cell').trigger('click');
+
+    expect(wrapper.find('.bsd-action-btn--read').exists()).toBe(true);
+  });
+
+  it('does not show the "Lire" button for a non-readable item', async () => {
+    const wrapper = mountDrawer([{ ...baseItem, definitionKey: 'canon.item.potion' }]);
+    await new Promise((r) => setTimeout(r, 0));
+    await wrapper.find('.bsd-cell').trigger('click');
+
+    expect(wrapper.find('.bsd-action-btn--read').exists()).toBe(false);
   });
 
   it('shows unusable message for non-usable items', async () => {

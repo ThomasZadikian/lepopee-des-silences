@@ -1228,7 +1228,8 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                         UnlockConditions: [new CatalogDialogueRequirement("RelationshipScoreAtLeast", null, null, null, 5)]),
                     new CatalogNpcOffering("offer.item.container-gated", "Item", "item.consumable.minor-heal", 1, IsMajor: false,
                         UnlockConditions: [new CatalogDialogueRequirement("PlayerHasContainerItem", null, null, null, null)]),
-                    new CatalogNpcOffering("offer.reputation", "ReputationBoost", "npc.other", 250, IsMajor: true, UnlockConditions: [])
+                    new CatalogNpcOffering("offer.reputation", "ReputationBoost", "npc.other", 250, IsMajor: true, UnlockConditions: []),
+                    new CatalogNpcOffering("offer.companion", "Companion", "character.test-companion", 1, IsMajor: true, UnlockConditions: [])
                 ],
                 DialogueGraph: new CatalogNpcDialogueGraph(
                     "npc.test.offering-giver.dialogue", "1.0", "start",
@@ -1277,6 +1278,11 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                                     "take-reputation", "Accepter la faveur",
                                     [], [new CatalogDialogueConsequence(
                                         "GrantOffering", null, null, null, null, 0, null, null, "offer.reputation", null, null, null)],
+                                    null),
+                                new CatalogNpcDialogueChoice(
+                                    "take-companion", "Accepter le compagnon",
+                                    [], [new CatalogDialogueConsequence(
+                                        "GrantOffering", null, null, null, null, 0, null, null, "offer.companion", null, null, null)],
                                     null)
                             ])
                     })),

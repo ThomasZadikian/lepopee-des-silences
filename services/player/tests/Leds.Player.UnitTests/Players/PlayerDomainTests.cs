@@ -192,6 +192,39 @@ public sealed class PlayerProfileTests
     }
 
     [Fact]
+    public void RecruitCompanion_ShouldAddCharacterToRoster_WhenNotAlreadyRecruited()
+    {
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+        var now = DateTimeOffset.UtcNow;
+        var statBlock = PlayerCharacterStatBlock.Create(
+            maxVitality: 100, attackPower: 12, defense: 6, startingGuard: 0,
+            speed: 10, initiative: 10, recovery: 5, focus: 0, mana: 0, charge: 0);
+
+        profile.RecruitCompanion("character.thomas", "Thomas", statBlock, ["skill.basic.guard"], now);
+
+        profile.Roster.Characters.Should().HaveCount(2);
+        var companion = profile.Roster.Characters.Single(c => c.DefinitionKey == "character.thomas");
+        companion.DisplayName.Should().Be("Thomas");
+        companion.CharacterType.Should().Be("Companion");
+        companion.EquippedSkillKeys.Should().Contain("skill.basic.guard");
+    }
+
+    [Fact]
+    public void RecruitCompanion_ShouldBeIdempotent_WhenCalledTwiceWithSameKey()
+    {
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+        var now = DateTimeOffset.UtcNow;
+        var statBlock = PlayerCharacterStatBlock.Create(
+            maxVitality: 100, attackPower: 12, defense: 6, startingGuard: 0,
+            speed: 10, initiative: 10, recovery: 5, focus: 0, mana: 0, charge: 0);
+
+        profile.RecruitCompanion("character.thomas", "Thomas", statBlock, ["skill.basic.guard"], now);
+        profile.RecruitCompanion("character.thomas", "Thomas", statBlock, ["skill.basic.guard"], now);
+
+        profile.Roster.Characters.Should().HaveCount(2);
+    }
+
+    [Fact]
     public void AddPermanentItems_ShouldAddNewItemsOnly()
     {
         var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);

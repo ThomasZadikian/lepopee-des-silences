@@ -31,4 +31,12 @@ public interface IPlayerProfileGateway
     Task ClaimNpcOfferingAsync(Guid playerId, string npcKey, string offeringKey, Guid? sourceRunId, CancellationToken cancellationToken);
 
     Task GrantReputationMilestoneAsync(Guid playerId, string npcKey, string milestoneKey, Guid? sourceRunId, CancellationToken cancellationToken);
+
+    /// <summary>Recruits an NPC as a permanent companion — added to the player's roster
+    /// for life, fights alongside the protagonist in every future run.</summary>
+    Task<PlayerProfileView> RecruitCompanionAsync(
+        Guid playerId, string companionDefinitionKey, string displayName,
+        int maxVitality, int attackPower, int defense, int startingGuard,
+        int speed, int initiative, int recovery, int focus, int mana, int charge,
+        IReadOnlyCollection<string> skillKeys, CancellationToken cancellationToken);
 }

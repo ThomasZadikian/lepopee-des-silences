@@ -45,6 +45,11 @@ public sealed class ItemDefinitionEntity
     public int? ContainerCapacity { get; set; }
     public bool IsLiquid { get; set; }
 
+    // ── Objet lisible (carnet/journal) ────────────────────────────────────
+    // JSON array of strings, one entry per page — e.g. ["PLACEHOLDER HISTOIRE 01"].
+    // Empty/null = not readable (no "Lire" affordance on the frontend).
+    public string? ReadablePagesJson { get; set; }
+
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
 

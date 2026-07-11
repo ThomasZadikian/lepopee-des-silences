@@ -21,6 +21,7 @@ public sealed class StubPlayerProfileGateway : IPlayerProfileGateway
     public List<(Guid PlayerId, IReadOnlyCollection<string> ItemDefinitionKeys, Guid? SourceRunId)> AddedPermanentItems { get; } = [];
     public List<(Guid PlayerId, string ItemDefinitionKey, string LiquidDefinitionKey)> SetPermanentItemContents { get; } = [];
     public List<(Guid PlayerId, string ItemDefinitionKey)> ClearedPermanentItemContents { get; } = [];
+    public List<(Guid PlayerId, string CompanionDefinitionKey, string DisplayName, IReadOnlyCollection<string> SkillKeys)> RecruitedCompanions { get; } = [];
 
     public void SeedClaimedOffering(Guid playerId, string npcKey, string offeringKey)
         => _claimedOfferings.Add(Key(playerId, npcKey, offeringKey));
@@ -101,6 +102,16 @@ public sealed class StubPlayerProfileGateway : IPlayerProfileGateway
     {
         GrantedMilestones.Add((playerId, npcKey, milestoneKey, sourceRunId));
         return Task.CompletedTask;
+    }
+
+    public Task<PlayerProfileView> RecruitCompanionAsync(
+        Guid playerId, string companionDefinitionKey, string displayName,
+        int maxVitality, int attackPower, int defense, int startingGuard,
+        int speed, int initiative, int recovery, int focus, int mana, int charge,
+        IReadOnlyCollection<string> skillKeys, CancellationToken cancellationToken)
+    {
+        RecruitedCompanions.Add((playerId, companionDefinitionKey, displayName, skillKeys));
+        return Task.FromResult(EmptyProfile(playerId));
     }
 
     private static PlayerProfileView EmptyProfile(Guid playerId) => new(

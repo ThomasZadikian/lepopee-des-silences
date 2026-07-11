@@ -147,6 +147,22 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
         EnsureSuccess(response, playerId);
     }
 
+    public async Task<PlayerProfileView> RecruitCompanionAsync(
+        Guid playerId, string companionDefinitionKey, string displayName,
+        int maxVitality, int attackPower, int defense, int startingGuard,
+        int speed, int initiative, int recovery, int focus, int mana, int charge,
+        IReadOnlyCollection<string> skillKeys, CancellationToken cancellationToken)
+    {
+        var response = await _httpClient.PostAsJsonAsync(
+            $"/api/v2/internal/players/{playerId}/companions/{companionDefinitionKey}/recruit",
+            new RecruitCompanionRequestBody(
+                displayName, maxVitality, attackPower, defense, startingGuard,
+                speed, initiative, recovery, focus, mana, charge, skillKeys),
+            cancellationToken);
+
+        return await ReadProfileAsync(response, playerId, cancellationToken);
+    }
+
     private static void EnsureSuccess(HttpResponseMessage response, Guid playerId)
     {
         if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
@@ -222,6 +238,20 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
     }
 
     private sealed record AwardStatPointsRequestBody(int Amount);
+
+    private sealed record RecruitCompanionRequestBody(
+        string DisplayName,
+        int MaxVitality,
+        int AttackPower,
+        int Defense,
+        int StartingGuard,
+        int Speed,
+        int Initiative,
+        int Recovery,
+        int Focus,
+        int Mana,
+        int Charge,
+        IReadOnlyCollection<string> SkillKeys);
 
     private sealed record UnlockSkillRequestBody(string Source);
 

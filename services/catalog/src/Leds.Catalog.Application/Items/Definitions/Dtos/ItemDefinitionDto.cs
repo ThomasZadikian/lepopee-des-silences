@@ -26,7 +26,8 @@ public sealed record ItemDefinitionDto(
     int? ContainerCapacity = null,
     bool IsLiquid = false,
     int EffectValue = 0,
-    string? EffectRunType = null);
+    string? EffectRunType = null,
+    IReadOnlyCollection<string>? ReadablePages = null);
 
 public sealed record ItemEquipmentEffectDto(
     string Kind,

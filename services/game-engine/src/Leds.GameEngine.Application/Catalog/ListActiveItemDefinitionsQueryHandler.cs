@@ -27,6 +27,7 @@ public sealed class ListActiveItemDefinitionsQueryHandler
                 d.ItemType,
                 d.Rarity,
                 d.EffectRunType,
-                d.EffectValue)).ToArray());
+                d.EffectValue,
+                d.ReadablePages)).ToArray());
     }
 }

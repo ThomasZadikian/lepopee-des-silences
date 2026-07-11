@@ -54,6 +54,7 @@ public sealed class CatalogSeedRunner
         await SeedMargotAsync(cancellationToken);
         await SeedAraranAsync(cancellationToken);
         await SeedManeAsync(cancellationToken);
+        await SeedThomasAsync(cancellationToken);
         await SeedCanonEnemiesAsync(cancellationToken);
         await SeedCanonSkillsAsync(cancellationToken);
         await SeedCanonItemsAsync(cancellationToken);
@@ -1447,6 +1448,76 @@ public sealed class CatalogSeedRunner
             offerings: offerings);
     }
 
+    private async Task<int> SeedThomasAsync(CancellationToken ct)
+    {
+        var persona = new NpcPersona(
+            "La première projection de l'Architecte — et de toutes, celle qui lui ressemble le plus. Calme, très équilibré, il a une conscience parfaite de ce qu'est le Palais et a fait la paix avec son propre statut. Il erre désormais dans l'objectif d'aider les aventuriers qui croisent sa route.",
+            EmotionalRegister.Memoire,
+            new[] { "l'architecture du Palais", "le premier architecte", "aider les aventuriers" },
+            new[] { "qu'on critique l'architecture du Palais" });
+
+        var wounds = new[]
+        {
+            new NpcWound("w-thomas-architecture", EmotionalRegister.Memoire, NpcWoundReversibility.SoothableByAct, -2, -4,
+                new[] { new NpcTransgression("w-thomas-architecture", "thomas-architecture-critique", -2) },
+                "Il est trop proche du premier architecte, trop fier de ce qu'il a bâti à ses côtés, pour entendre calmement qu'on méprise l'architecture du Palais.")
+        };
+
+        var rencontre = new NpcDialogueNode("rencontre", "Thomas",
+            new[]
+            {
+                "Il vous salue avec une tranquillité désarmante — comme quelqu'un qui n'a plus rien à prouver.",
+                "« Le Palais n'est pas mon ennemi. C'est une architecture. La plus belle que je connaisse. »"
+            },
+            new[]
+            {
+                new NpcDialogueChoice("critiquer-architecture", "Critiquer l'architecture du Palais", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.SetMemoryFlag, flag: "thomas-architecture-critique"),
+                            C(ConsequenceKind.Narrative, frag: "Son calme vacille, une fraction de seconde — la première faille que vous lui voyez.") }, null),
+                new NpcDialogueChoice("admirer-architecture", "Lui dire que le Palais est impressionnant", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.AdjustRelationship, rel: 1) }, "conversation"),
+                new NpcDialogueChoice("partir", "Partir", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.Narrative, frag: "Vous partez. Il reste là, parfaitement immobile, à contempler les murs.") }, null)
+            });
+
+        var conversation = new NpcDialogueNode("conversation", "Thomas",
+            new[] { "« Je suis la première projection de l'Architecte. Celle qui lui ressemble le plus. J'ai fait la paix avec ça, depuis longtemps — et maintenant, j'aide ceux qui passent. »" },
+            new[]
+            {
+                new NpcDialogueChoice("continuer", "Continuer à l'écouter", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.AdjustRelationship, rel: 1) }, "don")
+            });
+
+        var don = new NpcDialogueNode("don", "Thomas",
+            new[] { "Il vous tend un carnet usé. « Les notes du premier architecte. Lisez-les — vous comprendrez peut-être ce que je vois, moi. »" },
+            new[]
+            {
+                new NpcDialogueChoice("accepter-carnet", "Accepter le carnet du premier architecte",
+                    new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 250) },
+                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.thomas.carnet") }, null),
+                new NpcDialogueChoice("accepter-compagnon", "Lui demander de vous accompagner",
+                    new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) },
+                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.thomas.compagnon") }, null)
+            });
+
+        var graph = new NpcDialogueGraph("npc.thomas.dialogue", "1.0", "rencontre",
+            new Dictionary<string, NpcDialogueNode> { ["rencontre"] = rencontre, ["conversation"] = conversation, ["don"] = don });
+
+        var offerings = new[]
+        {
+            new NpcOffering("offer.thomas.carnet", NpcOfferingKind.Item, "canon.item.carnet-premier-architecte", 1, true,
+                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 250) }),
+            // IsMajor: true — Thomas ne peut être recruté comme compagnon qu'une fois.
+            new NpcOffering("offer.thomas.compagnon", NpcOfferingKind.Companion, "character.thomas", 1, true,
+                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) })
+        };
+
+        return await UpsertNpcAsync("npc.thomas", "Thomas",
+            "La première projection de l'Architecte, et celle qui lui ressemble le plus. Calme, équilibré, conscient de ce qu'est le Palais — il a fait la paix avec son statut et aide désormais les aventuriers qui croisent sa route.",
+            "1.0", EmotionalRegister.Memoire, true, persona, wounds, graph, ct,
+            offerings: offerings);
+    }
+
     // ──────────────────────────────────────────────────────────────────────────
     //  ENNEMIS CANON — créatures signature tirées de « L'épopée des silences »
     //  et « Des échos ». Chemin de combat vivant : EnemyDefinition + StatBlock +
@@ -2000,6 +2071,16 @@ public sealed class CatalogSeedRunner
             "Des observations méthodiques, une écriture qui se dégrade page après page. Des vérités que l'auteur aurait dû taire.",
             "Relic", "Lore", "Rare", "Permanent", false, 0, cancellationToken);
 
+        // Le carnet du premier architecte (Thomas, objet rare) : un objet "lisible" —
+        // le joueur peut le consulter page par page (voir BookReader côté frontend).
+        // TODO(utilisateur) : contenu réel à venir ; une seule page placeholder pour
+        // l'instant, le mécanisme supporte déjà plusieurs pages (un texte long sera
+        // simplement découpé en plusieurs entrées de ce tableau).
+        await UpsertItemAsync("canon.item.carnet-premier-architecte", "Le carnet du premier architecte",
+            "Les pages sont usées, annotées d'une main assurée. On y devine, plus qu'on y lit, le Palais tel que son premier architecte l'a vécu.",
+            "Relic", "Lore", "Rare", "Permanent", false, 0, cancellationToken,
+            readablePages: new[] { "PLACEHOLDER HISTOIRE 01" });
+
         await UpsertItemAsync("canon.item.masque-bec-oiseau", "Masque à bec d'oiseau",
             "Masque vénitien rempli d'herbes. Contre la peste — et contre l'air vicié des couloirs.",
             "Equipment", "Protection", "Uncommon", "RunOnly", false, 0, cancellationToken);
@@ -2158,13 +2239,14 @@ public sealed class CatalogSeedRunner
         bool usableInCombat, int effectValue, CancellationToken cancellationToken,
         IReadOnlyList<ItemEquipmentEffect>? equipmentEffects = null,
         bool isContainer = false, int? containerCapacity = null, bool isLiquid = false,
-        string? effectRunType = null)
+        string? effectRunType = null, IReadOnlyList<string>? readablePages = null)
     {
         const string version = "canon-1.0.0";
         var now = DateTime.UtcNow;
         var lifecycle = durability == "Permanent" ? "PersistentMeta" : "RuntimeRunOnly";
         var duration = durability == "Permanent" ? "Permanent" : "RunOnly";
         var equipmentEffectsJson = JsonSerializer.Serialize(equipmentEffects ?? [], J);
+        var readablePagesJson = JsonSerializer.Serialize(readablePages ?? [], J);
         var existing = await _ctx.ItemDefinitions.FirstOrDefaultAsync(i => i.Key == key, cancellationToken);
         if (existing is null)
         {
@@ -2194,6 +2276,7 @@ public sealed class CatalogSeedRunner
                 IsContainer = isContainer,
                 ContainerCapacity = containerCapacity,
                 IsLiquid = isLiquid,
+                ReadablePagesJson = readablePagesJson,
                 Price = 0,
                 BaseWeight = 1,
                 CreatedAtUtc = now,
@@ -2213,6 +2296,7 @@ public sealed class CatalogSeedRunner
         existing.IsContainer = isContainer;
         existing.ContainerCapacity = containerCapacity;
         existing.IsLiquid = isLiquid;
+        existing.ReadablePagesJson = readablePagesJson;
         existing.UpdatedAtUtc = now;
     }
     // ── MALÉDICTIONS CANON ────────────────────────────────────────────────────

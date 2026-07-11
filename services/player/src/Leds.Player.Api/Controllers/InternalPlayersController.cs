@@ -5,6 +5,7 @@ using Leds.Player.Application.Players.ClaimNpcOffering;
 using Leds.Player.Application.Players.ClearPermanentItemContent;
 using Leds.Player.Application.Players.GrantNpcReputationMilestone;
 using Leds.Player.Application.Players.HasClaimedNpcOffering;
+using Leds.Player.Application.Players.RecruitCompanion;
 using Leds.Player.Application.Players.SetPermanentItemContent;
 using Leds.Player.Application.Players.UnlockSkill;
 using MediatR;
@@ -48,6 +49,25 @@ public sealed class InternalPlayersController : ControllerBase
         CancellationToken cancellationToken)
     {
         var command = new UnlockSkillCommand(playerId, characterId, skillKey, request?.Source ?? "devtools");
+        var response = await _sender.Send(command, cancellationToken);
+
+        return Ok(response);
+    }
+
+    [HttpPost("{playerId:guid}/companions/{companionKey}/recruit")]
+    [ProducesResponseType(typeof(PlayerProfileDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<PlayerProfileDto>> RecruitCompanion(
+        Guid playerId,
+        string companionKey,
+        [FromBody] RecruitCompanionRequest request,
+        CancellationToken cancellationToken)
+    {
+        var command = new RecruitCompanionCommand(
+            playerId, companionKey, request.DisplayName,
+            request.MaxVitality, request.AttackPower, request.Defense, request.StartingGuard,
+            request.Speed, request.Initiative, request.Recovery, request.Focus, request.Mana, request.Charge,
+            request.SkillKeys);
         var response = await _sender.Send(command, cancellationToken);
 
         return Ok(response);
@@ -148,6 +168,20 @@ public sealed class InternalPlayersController : ControllerBase
 public sealed record AwardStatPointsRequest(int Amount);
 
 public sealed record UnlockSkillRequest(string? Source);
+
+public sealed record RecruitCompanionRequest(
+    string DisplayName,
+    int MaxVitality,
+    int AttackPower,
+    int Defense,
+    int StartingGuard,
+    int Speed,
+    int Initiative,
+    int Recovery,
+    int Focus,
+    int Mana,
+    int Charge,
+    IReadOnlyCollection<string> SkillKeys);
 
 public sealed record SourceRunRequest(Guid? SourceRunId);
 

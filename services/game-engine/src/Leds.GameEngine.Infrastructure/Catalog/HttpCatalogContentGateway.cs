@@ -1089,7 +1089,8 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
             source.ContainerCapacity,
             source.IsLiquid,
             source.EffectValue,
-            source.EffectRunType);
+            source.EffectRunType,
+            source.ReadablePages);
     }
 
     private static CatalogEffectSetSnapshot MapToCatalogEffectSetSnapshot(
@@ -1574,7 +1575,8 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
         int? ContainerCapacity = null,
         bool IsLiquid = false,
         int EffectValue = 0,
-        string? EffectRunType = null);
+        string? EffectRunType = null,
+        IReadOnlyCollection<string>? ReadablePages = null);
 
     private sealed record CatalogItemEquipmentEffectHttpResponse(
         string Kind,

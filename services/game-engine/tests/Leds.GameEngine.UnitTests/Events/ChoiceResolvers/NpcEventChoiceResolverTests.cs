@@ -271,6 +271,23 @@ public sealed class NpcEventChoiceResolverTests
     }
 
     [Fact]
+    public async Task ResolveAsync_ShouldRecruitCompanion_WhenCompanionOfferingIsTaken()
+    {
+        var (run, node) = CreateRunWithActiveOfferingGiver();
+        var context = new CurrentEventChoiceResolutionContext(run, run.CurrentRoom, node, "take-companion");
+        var playerProfileGateway = new StubPlayerProfileGateway();
+        var sut = new NpcEventChoiceResolver(new StubCatalogContentGateway(), playerProfileGateway);
+
+        var result = await sut.ResolveAsync(context);
+
+        result.Accepted.Should().BeTrue();
+        playerProfileGateway.RecruitedCompanions.Should().ContainSingle(
+            c => c.PlayerId == run.PlayerId
+                && c.CompanionDefinitionKey == "character.test-companion"
+                && c.SkillKeys.Contains("skill.basic.guard"));
+    }
+
+    [Fact]
     public async Task ResolveAsync_ShouldGrantOffering_WhenRelationshipScoreMeetsRequiredThreshold()
     {
         var (run, node) = CreateRunWithActiveOfferingGiver();

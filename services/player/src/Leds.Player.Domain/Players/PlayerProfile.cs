@@ -140,6 +140,35 @@ public sealed class PlayerProfile
         Touch(now);
     }
 
+    /// <summary>
+    /// Recruits an NPC as a permanent companion (e.g. Thomas's legendary offering) —
+    /// adds a new character to the roster for life. No-op if already recruited
+    /// (idempotent by DefinitionKey), mirrors GrantPermanentUnlock/AddPermanentItems.
+    /// The companion automatically fights alongside the protagonist in every future
+    /// run (game-engine builds the combat party from the full roster).
+    /// </summary>
+    public void RecruitCompanion(
+        string companionDefinitionKey,
+        string displayName,
+        PlayerCharacterStatBlock statBlock,
+        IReadOnlyCollection<string> skillKeys,
+        DateTimeOffset now)
+    {
+        if (Roster.Characters.Any(c => string.Equals(c.DefinitionKey, companionDefinitionKey, StringComparison.OrdinalIgnoreCase)))
+            return;
+
+        var skills = skillKeys
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Select(key => PlayerCharacterSkill.Create(key, now, "npc-offering", isEquipped: true))
+            .ToArray();
+
+        var companion = PlayerCharacter.Create(
+            companionDefinitionKey, displayName, statBlock, skills, characterType: "Companion");
+
+        Roster.AddCharacter(companion);
+        Touch(now);
+    }
+
     private void AddDefaultCharacter()
     {
         // skill.basic.strike is NOT listed here: it's the universal basic

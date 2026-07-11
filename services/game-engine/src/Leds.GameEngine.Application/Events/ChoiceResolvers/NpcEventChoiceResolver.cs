@@ -259,6 +259,24 @@ public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver
                 await _playerProfileGateway.AwardStatPointsAsync(run.PlayerId, amount, cancellationToken);
                 return $"Tu sens ta détermination grandir. +{amount} point de compétence.";
 
+            case "Companion":
+                if (string.IsNullOrWhiteSpace(offering.TargetKey))
+                {
+                    return "Rien ne se produit.";
+                }
+
+                // No per-companion authored kit exists yet (no catalog concept for it) —
+                // recruited companions start with the same balanced baseline as the
+                // protagonist's own default stats, and only the universal basic skills.
+                // TODO(utilisateur) : remplacer par un kit propre à chaque compagnon
+                // (stats/sorts) une fois le contenu reçu.
+                await _playerProfileGateway.RecruitCompanionAsync(
+                    run.PlayerId, offering.TargetKey, npc.DisplayName,
+                    maxVitality: 100, attackPower: 12, defense: 6, startingGuard: 0,
+                    speed: 10, initiative: 10, recovery: 5, focus: 0, mana: 0, charge: 0,
+                    skillKeys: new[] { "skill.basic.guard" }, cancellationToken);
+                return $"{npc.DisplayName} se joint à vous, désormais — pour de bon.";
+
             case "ReputationBoost":
                 if (string.IsNullOrWhiteSpace(offering.TargetKey))
                 {
