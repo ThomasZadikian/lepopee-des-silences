@@ -52,6 +52,7 @@ public sealed class CatalogSeedRunner
         await SeedIrisAsync(cancellationToken);
         await SeedEthanAsync(cancellationToken);
         await SeedMargotAsync(cancellationToken);
+        await SeedAraranAsync(cancellationToken);
         await SeedCanonEnemiesAsync(cancellationToken);
         await SeedCanonSkillsAsync(cancellationToken);
         await SeedCanonItemsAsync(cancellationToken);
@@ -1293,6 +1294,83 @@ public sealed class CatalogSeedRunner
             offerings: offerings);
     }
 
+    // TODO(utilisateur) : Araran, Tovma et Mané s'apprécient/se méfient en miroir —
+    // qui n'est pas aimé par l'un des trois a du mal à être aimé des deux autres.
+    // Non modélisé mécaniquement ici (Mané n'existe pas encore comme PNJ) ; à envisager
+    // plus tard via des DialogueRequirement croisés une fois les trois fiches en place.
+    private async Task<int> SeedAraranAsync(CancellationToken ct)
+    {
+        var persona = new NpcPersona(
+            "Une des meilleures amies de Tovma — autoritaire, très directe, d'une pertinence redoutable. Elle sait ce qu'est le Palais et devine facilement ses desseins",
+            EmotionalRegister.Effroi,
+            new[] { "Mané", "Tovma", "comprendre les desseins du Palais" },
+            new[] { "que Mané souffre", "qu'on manque de respect à Tovma ou Mané" });
+
+        var wounds = new[]
+        {
+            new NpcWound("w-mane-araran", EmotionalRegister.Effroi, NpcWoundReversibility.SoothableByAct, -2, -4,
+                new[] { new NpcTransgression("w-mane-araran", "araran-mane-menace", -2) },
+                "Sa clairvoyance s'arrête là où commence Mané. Le mettre en danger, même en mots, est la seule chose qui la fasse vraiment trembler.")
+        };
+
+        var rencontre = new NpcDialogueNode("rencontre", "Araran",
+            new[]
+            {
+                "Le Palais ? Je sais ce que c'est. Je devine assez bien ce qu'il veut, même quand il ne le dit pas.",
+                "Tovma me fait confiance. Ça devrait vous rassurer, ou vous inquiéter — à vous de voir."
+            },
+            new[]
+            {
+                new NpcDialogueChoice("menacer-mane", "Suggérer que Mané pourrait être en danger ici", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.SetMemoryFlag, flag: "araran-mane-menace"),
+                            C(ConsequenceKind.Narrative, frag: "Elle se redresse d'un coup. Son ton, déjà direct, devient tranchant.") }, null),
+                new NpcDialogueChoice("parler-palais", "Lui demander ce qu'elle sait du Palais", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.AdjustRelationship, rel: 1) }, "desseins"),
+                new NpcDialogueChoice("partir", "Partir", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.Narrative, frag: "Vous partez. Elle vous regarde partir, déjà en train d'en tirer une conclusion.") }, null)
+            });
+
+        var desseins = new NpcDialogueNode("desseins", "Araran",
+            new[] { "Elle expose, sans détour, ce qu'elle a compris du Palais — méthodique, sans une once de doute dans la voix." },
+            new[]
+            {
+                new NpcDialogueChoice("ecouter-encore", "Écouter encore", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.AdjustRelationship, rel: 1) }, "don")
+            });
+
+        var don = new NpcDialogueNode("don", "Araran",
+            new[] { "Elle vous tend quelque chose. « Pour votre clairvoyance à vous — vous en aurez besoin. »" },
+            new[]
+            {
+                new NpcDialogueChoice("accepter-clairvoyance", "Accepter \"Clairvoyance\"",
+                    new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 250) },
+                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.araran.clairvoyance") }, null),
+                new NpcDialogueChoice("accepter-faveur", "Accepter sa faveur auprès de Tovma et Mané",
+                    new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) },
+                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.araran.faveur-tovma"),
+                            C(ConsequenceKind.GrantOffering, offering: "offer.araran.faveur-mane") }, null)
+            });
+
+        var graph = new NpcDialogueGraph("npc.araran.dialogue", "1.0", "rencontre",
+            new Dictionary<string, NpcDialogueNode> { ["rencontre"] = rencontre, ["desseins"] = desseins, ["don"] = don });
+
+        var offerings = new[]
+        {
+            new NpcOffering("offer.araran.clairvoyance", NpcOfferingKind.Skill, "canon.skill.clairvoyance", 1, true,
+                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 250) }),
+            // IsMajor: true — chaque faveur n'est accordée qu'une seule fois.
+            new NpcOffering("offer.araran.faveur-tovma", NpcOfferingKind.ReputationBoost, "npc.tovma", 250, true,
+                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) }),
+            new NpcOffering("offer.araran.faveur-mane", NpcOfferingKind.ReputationBoost, "npc.mane", 250, true,
+                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) })
+        };
+
+        return await UpsertNpcAsync("npc.araran", "Araran",
+            "Une des meilleures amies de Tovma. Autoritaire, très directe, d'une pertinence redoutable, elle sait ce qu'est le Palais et devine facilement ses desseins.",
+            "1.0", EmotionalRegister.Effroi, true, persona, wounds, graph, ct,
+            offerings: offerings);
+    }
+
     // ──────────────────────────────────────────────────────────────────────────
     //  ENNEMIS CANON — créatures signature tirées de « L'épopée des silences »
     //  et « Des échos ». Chemin de combat vivant : EnemyDefinition + StatBlock +
@@ -1722,6 +1800,20 @@ public sealed class CatalogSeedRunner
         await UpsertSkillAsync("canon.skill.frayeur-organique", "Frayeur organique",
             "Une peur qui ne vient pas de la voix — elle sourd de lui, brute, organique, sans qu'il ait besoin de dire un mot.",
             "Damage", "SingleEnemy", "Damage", mana: 14, power: 16, cancellationToken,
+            category: "Magic");
+
+        // "Clairvoyance" (Araran) : réduit de 5 points la chance de coup critique de
+        // tous les ennemis pendant 5 tours — réutilise le stat virtuel CriticalChanceBonus
+        // (déjà introduit pour le Doudou de Ethan), ici en négatif et sur AllEnemies.
+        const int clairvoyanceTicksPerTurn = 2500;
+        await UpsertSkillAsync("canon.skill.clairvoyance", "Clairvoyance",
+            "Elle voit venir le coup avant qu'il ne parte — assez pour désarmer sa précision, pour un temps.",
+            "Debuff", "AllEnemies", "Debuff", mana: 16, power: 0, cancellationToken,
+            effects: new[]
+            {
+                new SkillEffectSpec("StatModifier", null, -5, clairvoyanceTicksPerTurn * 5,
+                    Stat: "CriticalChanceBonus")
+            },
             category: "Magic");
     }
 

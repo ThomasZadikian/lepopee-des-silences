@@ -255,6 +255,22 @@ public sealed class NpcEventChoiceResolverTests
     }
 
     [Fact]
+    public async Task ResolveAsync_ShouldBoostOtherNpcRelationship_WhenReputationBoostOfferingIsTaken()
+    {
+        var (run, node) = CreateRunWithActiveOfferingGiver();
+        var context = new CurrentEventChoiceResolutionContext(run, run.CurrentRoom, node, "take-reputation");
+        var sut = new NpcEventChoiceResolver(new StubCatalogContentGateway(), new StubPlayerProfileGateway());
+
+        var result = await sut.ResolveAsync(context);
+
+        result.Accepted.Should().BeTrue();
+        run.GetNpcRelationship("npc.other").Should().NotBeNull();
+        run.GetNpcRelationship("npc.other")!.RelationshipScore.Should().Be(250);
+        // The active encounter (with the offering giver) must not be redirected.
+        run.ActiveNpcKey.Should().Be(OfferingGiverKey);
+    }
+
+    [Fact]
     public async Task ResolveAsync_ShouldGrantOffering_WhenRelationshipScoreMeetsRequiredThreshold()
     {
         var (run, node) = CreateRunWithActiveOfferingGiver();

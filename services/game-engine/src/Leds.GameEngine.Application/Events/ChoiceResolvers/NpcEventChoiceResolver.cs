@@ -259,6 +259,16 @@ public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver
                 await _playerProfileGateway.AwardStatPointsAsync(run.PlayerId, amount, cancellationToken);
                 return $"Tu sens ta détermination grandir. +{amount} point de compétence.";
 
+            case "ReputationBoost":
+                if (string.IsNullOrWhiteSpace(offering.TargetKey))
+                {
+                    return "Rien ne se produit.";
+                }
+
+                var boost = offering.Amount > 0 ? offering.Amount : 0;
+                run.AdjustNpcRelationshipScore(offering.TargetKey, boost);
+                return $"Un mot glissé en votre faveur — {offering.TargetKey} vous voit désormais autrement.";
+
             case "Item":
                 if (string.IsNullOrWhiteSpace(offering.TargetKey))
                 {

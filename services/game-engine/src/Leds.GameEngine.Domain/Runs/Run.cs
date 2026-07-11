@@ -189,6 +189,23 @@ public sealed class Run
 
     public void EndNpcEncounter() => _activeNpcKey = null;
 
+    /// <summary>
+    /// Adjusts (creating if needed) the relationship score with an NPC OTHER than the
+    /// one currently active — e.g. Araran's legendary offering vouching for the player
+    /// with Tovma and Mané. Unlike <see cref="BeginOrResumeNpcEncounter"/>, this never
+    /// changes <c>ActiveNpcKey</c> and does not count as a meeting.
+    /// </summary>
+    public void AdjustNpcRelationshipScore(string npcKey, int delta)
+    {
+        if (!_npcRelationships.TryGetValue(npcKey, out var relationship))
+        {
+            relationship = NpcRelationship.Begin(npcKey, entryNodeKey: null);
+            _npcRelationships[npcKey] = relationship;
+        }
+
+        relationship.AdjustScore(delta);
+    }
+
     /// <summary>Rehydration hook for persistence (Wave 5).</summary>
     public void RehydrateNpcRelationship(NpcRelationship relationship)
     {
