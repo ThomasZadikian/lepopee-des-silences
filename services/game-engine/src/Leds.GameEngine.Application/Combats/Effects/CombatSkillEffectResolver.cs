@@ -62,6 +62,10 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
                 ResolveTextEffect(actor, skill, targets, "EffectApplied", "disrupts", logEntries);
                 break;
 
+            case "CopySkills":
+                ResolveCopySkills(combat, actor, skill, targets, logEntries);
+                break;
+
             default:
                 // Status-only spell (pure buff/debuff/control): no instant effect —
                 // the durable status(es) below do the work.
@@ -118,6 +122,44 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
                     skill,
                     [target]));
             }
+        }
+    }
+
+    // "Création" (sort légendaire de l'Architecte) : le lanceur duplique temporairement
+    // les sorts de sa cible. BasePower encode ici le nombre de TOURS (et non une
+    // puissance) — même degré de liberté contextuelle par EffectType que Heal/Guard
+    // ailleurs dans ce résolveur. Limite connue : seuls les sorts eux-mêmes sont
+    // copiés, pas les StatusEffects qu'ils portent (ex. un debuff attaché à un sort
+    // copié ne s'appliquerait pas) — non modélisé pour l'instant.
+    private static void ResolveCopySkills(
+        Combat combat,
+        Combatant actor,
+        CombatantSkill skill,
+        IReadOnlyCollection<Combatant> targets,
+        List<CombatLogEntryDto> logEntries)
+    {
+        const int ticksPerTurn = 2500;
+        var durationTicks = ticksPerTurn * Math.Max(1, skill.BasePower);
+
+        foreach (var target in targets)
+        {
+            if (target.IsDefeated || target.Id == actor.Id || target.Skills.Count == 0)
+                continue;
+
+            actor.ApplyStatusEffect(CombatStatusEffect.Create(
+                key: $"creation:{target.Id.Value:N}",
+                displayName: skill.DisplayName,
+                kind: StatusEffectKind.SkillGrant,
+                currentTick: combat.CurrentTick,
+                durationTicks: durationTicks,
+                grantedSkills: target.Skills));
+
+            logEntries.Add(CreateLog(
+                "StatusApplied",
+                $"{actor.DisplayName} duplicates {target.DisplayName}'s skills.",
+                actor,
+                skill,
+                [target]));
         }
     }
 

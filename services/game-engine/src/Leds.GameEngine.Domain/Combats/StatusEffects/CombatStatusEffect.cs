@@ -1,4 +1,5 @@
-﻿using Leds.GameEngine.Domain.Combats.Typing;
+﻿using Leds.GameEngine.Domain.Combats;
+using Leds.GameEngine.Domain.Combats.Typing;
 using Leds.GameEngine.Domain.Common;
 
 namespace Leds.GameEngine.Domain.Combats.StatusEffects;
@@ -23,7 +24,8 @@ public sealed class CombatStatusEffect
         int nextTickAtTick,
         int expiresAtTick,
         bool isMagnitudePercentOfMax,
-        bool isMagnitudePercentOfBaseStat)
+        bool isMagnitudePercentOfBaseStat,
+        IReadOnlyCollection<CombatantSkill>? grantedSkills)
     {
         Key = key;
         DisplayName = displayName;
@@ -37,6 +39,7 @@ public sealed class CombatStatusEffect
         ExpiresAtTick = expiresAtTick;
         IsMagnitudePercentOfMax = isMagnitudePercentOfMax;
         IsMagnitudePercentOfBaseStat = isMagnitudePercentOfBaseStat;
+        GrantedSkills = grantedSkills ?? Array.Empty<CombatantSkill>();
     }
     private const int MinTickInterval = 1400;
 
@@ -60,6 +63,11 @@ public sealed class CombatStatusEffect
     /// Effective* properties for how this is combined with flat modifiers.</summary>
     public bool IsMagnitudePercentOfBaseStat { get; }
 
+    /// <summary>When Kind is SkillGrant: the target's skill snapshot at cast time,
+    /// temporarily usable by whoever holds this effect until it expires — see
+    /// <see cref="Combatant.Skills"/> (Création, sort légendaire de l'Architecte).</summary>
+    public IReadOnlyCollection<CombatantSkill> GrantedSkills { get; }
+
     public bool IsPeriodic => TickInterval > 0
         && (Kind is StatusEffectKind.DamageOverTime or StatusEffectKind.HealOverTime or StatusEffectKind.GuardOverTime);
 
@@ -79,7 +87,8 @@ public sealed class CombatStatusEffect
         CombatStat stat = CombatStat.None,
         EmotionalType? emotionalType = null,
         bool isMagnitudePercentOfMax = false,
-        bool isMagnitudePercentOfBaseStat = false)
+        bool isMagnitudePercentOfBaseStat = false,
+        IReadOnlyCollection<CombatantSkill>? grantedSkills = null)
     {
         if (string.IsNullOrWhiteSpace(key))
             throw new DomainException("Status effect key is required.");
@@ -89,7 +98,7 @@ public sealed class CombatStatusEffect
             throw new DomainException("Status effect must have at least one stack.");
 
         // Floor so nothing ticks faster than ~once every 2s, whatever the data says.
-        var interval = tickInterval <= 0 ? 0 : Math.Max(tickInterval, MinTickInterval); 
+        var interval = tickInterval <= 0 ? 0 : Math.Max(tickInterval, MinTickInterval);
         var nextTick = interval > 0 ? currentTick + interval : int.MaxValue;
 
         return new CombatStatusEffect(
@@ -104,15 +113,17 @@ public sealed class CombatStatusEffect
             nextTick,
             currentTick + durationTicks,
             isMagnitudePercentOfMax,
-            isMagnitudePercentOfBaseStat);
+            isMagnitudePercentOfBaseStat,
+            grantedSkills);
     }
 
     public static CombatStatusEffect Rehydrate(
         string key, string displayName, StatusEffectKind kind, EmotionalType? emotionalType,
         CombatStat stat, int magnitude, int stacks, int tickInterval, int nextTickAtTick, int expiresAtTick,
         bool isMagnitudePercentOfMax = false,
-        bool isMagnitudePercentOfBaseStat = false)
-        => new(key, displayName, kind, emotionalType, stat, magnitude, stacks, tickInterval, nextTickAtTick, expiresAtTick, isMagnitudePercentOfMax, isMagnitudePercentOfBaseStat);
+        bool isMagnitudePercentOfBaseStat = false,
+        IReadOnlyCollection<CombatantSkill>? grantedSkills = null)
+        => new(key, displayName, kind, emotionalType, stat, magnitude, stacks, tickInterval, nextTickAtTick, expiresAtTick, isMagnitudePercentOfMax, isMagnitudePercentOfBaseStat, grantedSkills);
 
     public bool IsExpired(int currentTick) => currentTick >= ExpiresAtTick;
 

@@ -104,6 +104,6 @@ public sealed class ChooseCurrentEventOptionCommandHandler
         var npcs = await _catalogContentGateway.ListNpcDefinitionsAsync(cancellationToken);
         var npc = npcs.FirstOrDefault(n => string.Equals(n.Key, activeNpcKey, StringComparison.OrdinalIgnoreCase));
 
-        return npc is null ? null : NpcDialogueViewFactory.Build(npc, relationship);
+        return npc is null ? null : NpcDialogueViewFactory.Build(npc, relationship, run);
     }
 }

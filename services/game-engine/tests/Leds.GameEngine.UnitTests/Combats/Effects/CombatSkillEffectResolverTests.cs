@@ -253,6 +253,25 @@ public sealed class CombatSkillEffectResolverTests
     }
 
     [Fact]
+    public void Resolve_ShouldGrantActorTargetsSkills_WhenEffectTypeIsCopySkills()
+    {
+        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+        var enemySkill = CombatantSkill.Create(
+            "canon.skill.flamme-froide", "Flamme froide", "Damage", "SingleEnemy", "Damage",
+            manaCost: 8, chargeCost: 0, basePower: 22);
+        var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 80, skills: [enemySkill]);
+        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
+        var skill = CombatantSkill.Create(
+            "canon.skill.creation", "Création", "Buff", "SingleEnemy", "CopySkills",
+            manaCost: 20, chargeCost: 0, basePower: 10);
+
+        _resolver.Resolve(combat, ally, skill, [enemy]);
+
+        ally.Skills.Should().Contain(s => s.Key == "canon.skill.flamme-froide");
+        ally.PermanentSkills.Should().NotContain(s => s.Key == "canon.skill.flamme-froide");
+    }
+
+    [Fact]
     public void Resolve_ShouldReduceDamage_WhenTargetHasEquipmentDrivenTypedReduction()
     {
         var (combat, ally, enemy) = CreateCombat();

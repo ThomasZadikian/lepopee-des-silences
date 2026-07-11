@@ -1,6 +1,7 @@
 ﻿using Leds.GameEngine.Application.Catalog;
 using Leds.GameEngine.Application.Events.Dtos;
 using Leds.GameEngine.Domain.Npcs;
+using Leds.GameEngine.Domain.Runs;
 
 namespace Leds.GameEngine.Application.Events;
 
@@ -10,7 +11,7 @@ namespace Leds.GameEngine.Application.Events;
 /// </summary>
 public static class NpcDialogueViewFactory
 {
-    public static NpcDialogueViewDto? Build(CatalogNpcDefinition npc, NpcRelationship relationship)
+    public static NpcDialogueViewDto? Build(CatalogNpcDefinition npc, NpcRelationship relationship, Run run)
     {
         if (npc.DialogueGraph is null)
         {
@@ -26,7 +27,7 @@ public static class NpcDialogueViewFactory
         }
 
         var choices = node.Choices
-            .Where(c => RequirementsMet(c.Requirements, relationship))
+            .Where(c => RequirementsMet(c.Requirements, relationship, run))
             .Select(c => new NodeEventChoiceDto(c.Key, c.Label, string.Empty))
             .ToArray();
 
@@ -50,7 +51,8 @@ public static class NpcDialogueViewFactory
 
     private static bool RequirementsMet(
         IReadOnlyCollection<CatalogDialogueRequirement> requirements,
-        NpcRelationship relationship)
+        NpcRelationship relationship,
+        Run run)
     {
         foreach (var requirement in requirements)
         {
@@ -80,9 +82,40 @@ public static class NpcDialogueViewFactory
                         return false;
                     }
                     break;
+
+                case "PlayerStatsBalanced":
+                    if (!IsPlayerStatsBalanced(run)) return false;
+                    break;
+
+                case "PlayerStatsUnbalanced":
+                    if (IsPlayerStatsBalanced(run)) return false;
+                    break;
+
+                case "PlayerHasCompanion":
+                    if (requirement.FlagKey is null || !HasCompanion(run, requirement.FlagKey)) return false;
+                    break;
+
+                case "PlayerLacksCompanion":
+                    if (requirement.FlagKey is not null && HasCompanion(run, requirement.FlagKey)) return false;
+                    break;
             }
         }
 
         return true;
     }
+
+    // Kept in sync with NpcEventChoiceResolver's identically-named/behaved helpers —
+    // this one gates which choices are SHOWN, that one gates whether a selected
+    // choice's consequences are actually ACCEPTED.
+    private static bool IsPlayerStatsBalanced(Run run)
+    {
+        var stats = new[] { run.Attack, run.Defense, run.Speed, run.Focus };
+        var max = stats.Max();
+        var min = stats.Min();
+        return max <= 0 || (max - min) / (double)max <= 0.5;
+    }
+
+    private static bool HasCompanion(Run run, string companionDefinitionKey)
+        => run.PlayerSnapshot?.Characters.Any(c =>
+            string.Equals(c.DefinitionKey, companionDefinitionKey, StringComparison.OrdinalIgnoreCase)) == true;
 }

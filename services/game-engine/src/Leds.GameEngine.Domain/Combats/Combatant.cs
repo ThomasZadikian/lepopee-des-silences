@@ -36,7 +36,7 @@ public sealed class Combatant
         Mana = mana;
         Charge = charge;
         Status = status;
-        Skills = skills;
+        _permanentSkills = skills;
         BaseStatSnapshot = baseStatSnapshot;
         RuntimeState = runtimeState;
     }
@@ -59,7 +59,25 @@ public sealed class Combatant
     public int Mana { get; private set; }
     public int Charge { get; private set; }
     public CombatantStatus Status { get; private set; }
-    public IReadOnlyCollection<CombatantSkill> Skills { get; }
+
+    private readonly IReadOnlyCollection<CombatantSkill> _permanentSkills;
+
+    /// <summary>The combatant's own, permanently-owned skills (what persistence should
+    /// save) — excludes anything temporarily granted via a SkillGrant status effect
+    /// (e.g. "Création"). Use <see cref="Skills"/> for anything gameplay-facing.</summary>
+    public IReadOnlyCollection<CombatantSkill> PermanentSkills => _permanentSkills;
+
+    /// <summary>All skills currently usable by this combatant: its own permanent kit
+    /// plus any not-yet-expired skills temporarily granted by a SkillGrant status
+    /// effect (e.g. "Création", the Architect's legendary skill). This is what action
+    /// validation, the runtime DTO, and enemy AI planning all read.</summary>
+    public IReadOnlyCollection<CombatantSkill> Skills => _statusEffects.Count == 0
+        ? _permanentSkills
+        : _permanentSkills
+            .Concat(_statusEffects
+                .Where(e => e.Kind == StatusEffectKind.SkillGrant)
+                .SelectMany(e => e.GrantedSkills))
+            .ToArray();
 
     public bool IsDefeated => Status == CombatantStatus.Defeated;
     /// <summary>

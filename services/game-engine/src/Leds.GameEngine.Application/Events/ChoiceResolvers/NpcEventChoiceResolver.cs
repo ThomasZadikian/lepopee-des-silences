@@ -493,11 +493,38 @@ public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver
                         return false;
                     }
                     break;
+                case "PlayerStatsBalanced":
+                    if (!IsPlayerStatsBalanced(run)) return false;
+                    break;
+                case "PlayerStatsUnbalanced":
+                    if (IsPlayerStatsBalanced(run)) return false;
+                    break;
+                case "PlayerHasCompanion":
+                    if (requirement.FlagKey is null || !HasCompanion(run, requirement.FlagKey)) return false;
+                    break;
+                case "PlayerLacksCompanion":
+                    if (requirement.FlagKey is not null && HasCompanion(run, requirement.FlagKey)) return false;
+                    break;
             }
         }
 
         return true;
     }
+
+    // "Besoin d'optimisation" (l'Architecte) : au-delà de ~50% d'écart entre la stat
+    // la plus forte et la plus faible (Attaque/Défense/Vitesse/Focus), la progression
+    // du joueur est jugée trop inégale. Seuil authored, ajustable.
+    private static bool IsPlayerStatsBalanced(Run run)
+    {
+        var stats = new[] { run.Attack, run.Defense, run.Speed, run.Focus };
+        var max = stats.Max();
+        var min = stats.Min();
+        return max <= 0 || (max - min) / (double)max <= 0.5;
+    }
+
+    private static bool HasCompanion(Run run, string companionDefinitionKey)
+        => run.PlayerSnapshot?.Characters.Any(c =>
+            string.Equals(c.DefinitionKey, companionDefinitionKey, StringComparison.OrdinalIgnoreCase)) == true;
 
     private static void EvaluateTransgressions(CatalogNpcDefinition npc, NpcRelationship relationship)
     {

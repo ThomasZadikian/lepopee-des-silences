@@ -354,4 +354,39 @@ public sealed class CombatantTests
         combatant.EffectiveMagicDamageReductionPercent.Should().Be(10,
             because: "equipment (5) + skill-driven StatModifier buff (5) must both contribute.");
     }
+
+    [Fact]
+    public void Skills_ShouldIncludeGrantedSkills_WhileASkillGrantStatusEffectIsActive()
+    {
+        var borrowed = CombatantSkill.Create(
+            "canon.skill.flamme-froide", "Flamme froide", "Damage", "SingleEnemy", "Damage",
+            manaCost: 8, chargeCost: 0, basePower: 22);
+        var combatant = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+
+        combatant.PermanentSkills.Should().NotContain(s => s.Key == "canon.skill.flamme-froide");
+
+        combatant.ApplyStatusEffect(Leds.GameEngine.Domain.Combats.StatusEffects.CombatStatusEffect.Create(
+            "creation:target", "Création", Leds.GameEngine.Domain.Combats.StatusEffects.StatusEffectKind.SkillGrant,
+            currentTick: 0, durationTicks: 25000, grantedSkills: [borrowed]));
+
+        combatant.Skills.Should().Contain(s => s.Key == "canon.skill.flamme-froide");
+        combatant.PermanentSkills.Should().NotContain(s => s.Key == "canon.skill.flamme-froide",
+            because: "a temporarily granted skill must never be treated as permanently owned.");
+    }
+
+    [Fact]
+    public void Skills_ShouldStopIncludingGrantedSkills_AfterTheGrantExpires()
+    {
+        var borrowed = CombatantSkill.Create(
+            "canon.skill.flamme-froide", "Flamme froide", "Damage", "SingleEnemy", "Damage",
+            manaCost: 8, chargeCost: 0, basePower: 22);
+        var combatant = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+        combatant.ApplyStatusEffect(Leds.GameEngine.Domain.Combats.StatusEffects.CombatStatusEffect.Create(
+            "creation:target", "Création", Leds.GameEngine.Domain.Combats.StatusEffects.StatusEffectKind.SkillGrant,
+            currentTick: 0, durationTicks: 25000, grantedSkills: [borrowed]));
+
+        combatant.TickStatusEffects(currentTick: 25000);
+
+        combatant.Skills.Should().NotContain(s => s.Key == "canon.skill.flamme-froide");
+    }
 }

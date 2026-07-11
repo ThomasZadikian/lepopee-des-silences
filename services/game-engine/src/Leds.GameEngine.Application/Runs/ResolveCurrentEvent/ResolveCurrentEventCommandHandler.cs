@@ -250,7 +250,7 @@ public sealed class ResolveCurrentEventCommandHandler
             resolutionResult = ApplyNpcContent(resolutionResult, npcContent);
 
             var npcRelationship = run.BeginOrResumeNpcEncounter(npcContent.NpcProfileKey);
-            npcDialogue = await BuildNpcDialogueAsync(npcContent.NpcProfileKey, npcRelationship, cancellationToken);
+            npcDialogue = await BuildNpcDialogueAsync(npcContent.NpcProfileKey, npcRelationship, run, cancellationToken);
 
             if (npcDialogue is not null)
             {
@@ -293,11 +293,12 @@ public sealed class ResolveCurrentEventCommandHandler
     private async Task<NpcDialogueViewDto?> BuildNpcDialogueAsync(
     string npcKey,
     Leds.GameEngine.Domain.Npcs.NpcRelationship relationship,
+    Run run,
     CancellationToken cancellationToken)
     {
         var npcs = await _catalogContentGateway.ListNpcDefinitionsAsync(cancellationToken);
         var npc = npcs.FirstOrDefault(n => string.Equals(n.Key, npcKey, StringComparison.OrdinalIgnoreCase));
-        return npc is null ? null : Leds.GameEngine.Application.Events.NpcDialogueViewFactory.Build(npc, relationship);
+        return npc is null ? null : Leds.GameEngine.Application.Events.NpcDialogueViewFactory.Build(npc, relationship, run);
     }
 
     private async Task<IReadOnlyCollection<NarrativeFragmentDto>> BuildHimLitTauntFragmentsAsync(

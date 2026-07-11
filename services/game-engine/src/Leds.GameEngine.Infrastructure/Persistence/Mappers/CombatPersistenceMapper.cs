@@ -61,7 +61,11 @@ public static class CombatPersistenceMapper
             MagicDamageReductionPercent = combatant.MagicDamageReductionPercent,
             CriticalChanceBonusPercent = combatant.CriticalChanceBonusPercent,
             StatusEffectsJson = SerializeStatusEffects(combatant.StatusEffects),
-            Skills = combatant.Skills.Select(s => ToEntity(s, combatant.Id.Value)).ToList(),
+            // PermanentSkills, not Skills — Skills also includes anything temporarily
+            // granted by a SkillGrant status effect (e.g. "Création"), which must NOT
+            // be persisted as a permanent skill entity; it's carried by the status
+            // effect itself (see StatusEffectSnapshot.GrantedSkills below) instead.
+            Skills = combatant.PermanentSkills.Select(s => ToEntity(s, combatant.Id.Value)).ToList(),
             BaseStatSnapshot = ToBaseStatSnapshotEntity(combatant.BaseStatSnapshot, combatant.Id.Value),
             RuntimeState = ToRuntimeStateEntity(combatant.RuntimeState, combatant.Id.Value)
         };
@@ -100,7 +104,16 @@ public static class CombatPersistenceMapper
         int NextTickAtTick,
         int ExpiresAtTick,
         bool IsMagnitudePercentOfMax = false,
-        bool IsMagnitudePercentOfBaseStat = false);
+        bool IsMagnitudePercentOfBaseStat = false,
+        GrantedSkillSnapshot[]? GrantedSkills = null);
+
+    // Kind == SkillGrant only (e.g. "Création") — a snapshot of the target's skills
+    // at cast time, temporarily usable by whoever holds the status effect. Mirrors
+    // CombatantSkillEntity's field shape so the round-trip is lossless.
+    private sealed record GrantedSkillSnapshot(
+        string Key, string DisplayName, string SkillType, string TargetingType, string EffectType,
+        int ManaCost, int ChargeCost, int BasePower, string[] Tags, string Category,
+        bool BasePowerIsPercentOfMaxVitality);
 
     private static string? SerializeStatusEffects(IReadOnlyCollection<CombatStatusEffect> effects)
     {
@@ -119,7 +132,13 @@ public static class CombatPersistenceMapper
             e.NextTickAtTick,
             e.ExpiresAtTick,
             e.IsMagnitudePercentOfMax,
-            e.IsMagnitudePercentOfBaseStat)).ToArray();
+            e.IsMagnitudePercentOfBaseStat,
+            e.GrantedSkills.Count == 0
+                ? null
+                : e.GrantedSkills.Select(s => new GrantedSkillSnapshot(
+                    s.Key, s.DisplayName, s.SkillType, s.TargetingType, s.EffectType,
+                    s.ManaCost, s.ChargeCost, s.BasePower, s.Tags.ToArray(), s.Category,
+                    s.BasePowerIsPercentOfMaxVitality)).ToArray())).ToArray();
 
         return JsonSerializer.Serialize(snapshots);
     }
@@ -135,6 +154,14 @@ public static class CombatPersistenceMapper
 
         foreach (var s in snapshots)
         {
+            var grantedSkills = s.GrantedSkills?
+                .Select(g => CombatantSkill.Rehydrate(
+                    g.Key, g.DisplayName, g.SkillType, g.TargetingType, g.EffectType,
+                    g.ManaCost, g.ChargeCost, g.BasePower, g.Tags,
+                    category: g.Category,
+                    basePowerIsPercentOfMaxVitality: g.BasePowerIsPercentOfMaxVitality))
+                .ToArray();
+
             yield return CombatStatusEffect.Rehydrate(
                 s.Key,
                 s.DisplayName,
@@ -147,7 +174,8 @@ public static class CombatPersistenceMapper
                 s.NextTickAtTick,
                 s.ExpiresAtTick,
                 s.IsMagnitudePercentOfMax,
-                s.IsMagnitudePercentOfBaseStat);
+                s.IsMagnitudePercentOfBaseStat,
+                grantedSkills);
         }
     }
 

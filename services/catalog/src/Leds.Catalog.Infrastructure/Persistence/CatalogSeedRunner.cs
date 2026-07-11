@@ -55,6 +55,7 @@ public sealed class CatalogSeedRunner
         await SeedAraranAsync(cancellationToken);
         await SeedManeAsync(cancellationToken);
         await SeedThomasAsync(cancellationToken);
+        await SeedArchitecteAsync(cancellationToken);
         await SeedCanonEnemiesAsync(cancellationToken);
         await SeedCanonSkillsAsync(cancellationToken);
         await SeedCanonItemsAsync(cancellationToken);
@@ -1518,6 +1519,106 @@ public sealed class CatalogSeedRunner
             offerings: offerings);
     }
 
+    // NB(auteur) : l'affection de l'Architecte pour Elise ("sa plus grande création")
+    // se traduit mécaniquement par PlayerHasCompanion("character.elise") — mais aucun
+    // mécanisme n'accorde aujourd'hui Elise comme compagnon recrutable (elle est
+    // "compagnon d'office" narrativement, jamais câblée comme telle). Le choix
+    // "elise-presente" ci-dessous est donc correct mais actuellement inatteignable
+    // en jeu tant que ce point n'est pas tranché. TODO(utilisateur).
+    private async Task<int> SeedArchitecteAsync(CancellationToken ct)
+    {
+        var persona = new NpcPersona(
+            "Le créateur de la seconde reconstruction du Palais. Sage, doté d'un esprit de projection exceptionnel : il imagine le Palais dans son esprit avant de l'inscrire dans le livre, sur le palier. Éprouve un besoin constant d'optimisation et une affection particulière pour Elise, qu'il considère comme sa plus grande création.",
+            EmotionalRegister.Memoire,
+            new[] { "l'optimisation", "la proportion", "Elise, sa plus grande création" },
+            new[] { "une architecture — ou un aventurier — trop inégal(e)" });
+
+        var wounds = new[]
+        {
+            new NpcWound("w-architecte-optimisation", EmotionalRegister.Memoire, NpcWoundReversibility.SoothableByScore, -2, -4,
+                new[] { new NpcTransgression("w-architecte-optimisation", "architecte-desequilibre-critique", -2) },
+                "Une structure inégale le trouble profondément — et un aventurier dont les statistiques sont trop disparates n'est, à ses yeux, qu'une architecture ratée de plus.")
+        };
+
+        var rencontre = new NpcDialogueNode("rencontre", "L'Architecte",
+            new[]
+            {
+                "« Je suis celui qui a rêvé la seconde reconstruction. Je la vois d'abord dans mon esprit — parfaite — puis je l'inscris dans le livre, sur le palier. Le reste suit. »",
+                "Son regard s'attarde sur vous une seconde de trop, comme s'il évaluait déjà vos proportions."
+            },
+            new[]
+            {
+                new NpcDialogueChoice("parler-optimisation", "Lui demander ce qu'il pense de votre progression", Array.Empty<DialogueRequirement>(),
+                    Array.Empty<DialogueConsequence>(), "verdict-stats"),
+                new NpcDialogueChoice("parler-elise", "Lui parler d'Elise", Array.Empty<DialogueRequirement>(),
+                    Array.Empty<DialogueConsequence>(), "verdict-elise"),
+                new NpcDialogueChoice("partir", "Partir", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.Narrative, frag: "Vous partez. Il reste là, à corriger d'un doigt une ligne que lui seul voit.") }, null)
+            });
+
+        var verdictStats = new NpcDialogueNode("verdict-stats", "L'Architecte",
+            new[] { "Il vous observe, en silence, comme on lit un plan." },
+            new[]
+            {
+                new NpcDialogueChoice("stats-equilibrees", "Le laisser juger votre équilibre",
+                    new[] { new DialogueRequirement(DialogueRequirementKind.PlayerStatsBalanced) },
+                    new[] { C(ConsequenceKind.AdjustRelationship, rel: 2),
+                            C(ConsequenceKind.Narrative, frag: "Une esquisse de sourire. « Voilà une architecture qui tient. »") }, "don"),
+                new NpcDialogueChoice("stats-desequilibrees", "Le laisser juger votre équilibre",
+                    new[] { new DialogueRequirement(DialogueRequirementKind.PlayerStatsUnbalanced) },
+                    new[] { C(ConsequenceKind.SetMemoryFlag, flag: "architecte-desequilibre-critique"),
+                            C(ConsequenceKind.ArmWound, wound: "w-architecte-optimisation"),
+                            C(ConsequenceKind.Narrative, frag: "Il secoue la tête, presque déçu. « Ça ne tient pas. Une structure inégale finit toujours par céder quelque part. »") }, null)
+            });
+
+        var verdictElise = new NpcDialogueNode("verdict-elise", "L'Architecte",
+            new[] { "Son visage se radoucit, à peine, au nom d'Elise." },
+            new[]
+            {
+                new NpcDialogueChoice("elise-presente", "Lui parler d'Elise",
+                    new[] { new DialogueRequirement(DialogueRequirementKind.PlayerHasCompanion, FlagKey: "character.elise") },
+                    new[] { C(ConsequenceKind.AdjustRelationship, rel: 2),
+                            C(ConsequenceKind.Narrative, frag: "Son visage s'adoucit complètement. « Elise... Ma plus belle réussite. Vous en prenez soin, j'espère. »") }, "don"),
+                new NpcDialogueChoice("elise-absente", "Lui parler d'Elise",
+                    new[] { new DialogueRequirement(DialogueRequirementKind.PlayerLacksCompanion, flagKey: "character.elise") },
+                    new[] { C(ConsequenceKind.Narrative, frag: "« Elise n'est pas avec vous. » Sa voix se fait plus froide, presque déçue.") }, "don")
+            });
+
+        var don = new NpcDialogueNode("don", "L'Architecte",
+            new[] { "Il vous tend quelque chose, avec la précision de qui a déjà tout calculé." },
+            new[]
+            {
+                new NpcDialogueChoice("accepter-marque", "Accepter \"Marque de création\"",
+                    new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 250) },
+                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.architecte.marque") }, null),
+                new NpcDialogueChoice("accepter-creation", "Accepter \"Création\"",
+                    new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) },
+                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.architecte.creation") }, null)
+            });
+
+        var graph = new NpcDialogueGraph("npc.architecte.dialogue", "1.0", "rencontre",
+            new Dictionary<string, NpcDialogueNode>
+            {
+                ["rencontre"] = rencontre,
+                ["verdict-stats"] = verdictStats,
+                ["verdict-elise"] = verdictElise,
+                ["don"] = don
+            });
+
+        var offerings = new[]
+        {
+            new NpcOffering("offer.architecte.marque", NpcOfferingKind.Item, "canon.item.marque-de-creation", 1, true,
+                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 250) }),
+            new NpcOffering("offer.architecte.creation", NpcOfferingKind.Skill, "canon.skill.creation", 1, true,
+                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) })
+        };
+
+        return await UpsertNpcAsync("npc.architecte", "L'Architecte",
+            "Le créateur de la seconde reconstruction du Palais. Sage, doté d'un esprit de projection exceptionnel — il imagine le Palais dans son esprit avant de l'inscrire dans le livre, sur le palier. Éprouve un besoin constant d'optimisation et une affection particulière pour Elise, sa plus grande création.",
+            "1.0", EmotionalRegister.Memoire, true, persona, wounds, graph, ct,
+            offerings: offerings);
+    }
+
     // ──────────────────────────────────────────────────────────────────────────
     //  ENNEMIS CANON — créatures signature tirées de « L'épopée des silences »
     //  et « Des échos ». Chemin de combat vivant : EnemyDefinition + StatBlock +
@@ -1998,6 +2099,16 @@ public sealed class CatalogSeedRunner
             },
             category: "Magic",
             basePowerIsPercentOfMaxVitality: true);
+
+        // "Création" (l'Architecte, sort légendaire) : le lanceur duplique temporairement
+        // les sorts de sa cible pendant 10 tours. EffectType dédié ("CopySkills"),
+        // résolu directement dans CombatSkillEffectResolver.ResolveCopySkills — power
+        // encode ici le nombre de TOURS (et non une puissance), même degré de liberté
+        // contextuelle par EffectType que Heal ("% des PV max")/Guard ailleurs.
+        await UpsertSkillAsync("canon.skill.creation", "Création",
+            "L'Architecte referme les yeux, imagine, et ce qu'il voit devient — pour un temps — vôtre aussi.",
+            "Buff", "SingleEnemy", "CopySkills", mana: 20, power: 10, cancellationToken,
+            category: "Magic");
     }
 
     private async Task UpsertSkillAsync(
@@ -2231,6 +2342,18 @@ public sealed class CatalogSeedRunner
             "Un anneau qu'Iris a un jour retiré de son propre doigt, sans un mot, pour le lui donner. Il ne dit rien non plus, en l'acceptant.",
             "Equipment", "Accessory", "Legendary", "Permanent", false, 0, cancellationToken,
             equipmentEffects: new[] { new ItemEquipmentEffect(ItemEquipmentEffectKind.StatBonusPercent, StatKind: "Guard", Amount: 20) });
+
+        await UpsertItemAsync("canon.item.marque-de-creation", "Marque de création",
+            "Une empreinte laissée par l'Architecte lui-même — la trace d'une proportion qu'il juge, enfin, correcte.",
+            "Equipment", "Accessory", "Rare", "Permanent", false, 0, cancellationToken,
+            equipmentEffects: new[]
+            {
+                new ItemEquipmentEffect(ItemEquipmentEffectKind.StatBonusPercent, StatKind: "MaxVitality", Amount: 5),
+                new ItemEquipmentEffect(ItemEquipmentEffectKind.StatBonusPercent, StatKind: "AttackPower", Amount: 5),
+                new ItemEquipmentEffect(ItemEquipmentEffectKind.StatBonusPercent, StatKind: "Defense", Amount: 5),
+                new ItemEquipmentEffect(ItemEquipmentEffectKind.StatBonusPercent, StatKind: "Speed", Amount: 5),
+                new ItemEquipmentEffect(ItemEquipmentEffectKind.StatBonusPercent, StatKind: "Focus", Amount: 5)
+            });
     }
 
     private async Task UpsertItemAsync(
