@@ -67,6 +67,7 @@ public sealed class CatalogSeedRunner
         await SeedManeAsync(cancellationToken);
         await SeedThomasAsync(cancellationToken);
         await SeedArchitecteAsync(cancellationToken);
+        await SeedEcrivainAsync(cancellationToken);
         await SeedCanonEnemiesAsync(cancellationToken);
         await SeedCanonSkillsAsync(cancellationToken);
         await SeedCanonItemsAsync(cancellationToken);
@@ -1630,6 +1631,85 @@ public sealed class CatalogSeedRunner
             offerings: offerings);
     }
 
+    private async Task<int> SeedEcrivainAsync(CancellationToken ct)
+    {
+        var persona = new NpcPersona(
+            "Une personnalité unique du Palais, enfermée dans la Cabane, aux enfers, niveau 3 — il ne peut pas en sortir. Il existait déjà le jour de la création du Palais et a aidé le premier architecte à bâtir les toutes premières pièces. Très seul, il écrit continuellement pour ne rien oublier de ce qu'il fait ou voit.",
+            EmotionalRegister.Memoire,
+            new[] { "l'encre", "le silence pour écrire", "les premières pièces du Palais" },
+            new[] { "manquer d'encre", "être interrompu en pleine phrase" });
+
+        var wounds = new[]
+        {
+            new NpcWound("w-ecrivain-interruption", EmotionalRegister.Memoire, NpcWoundReversibility.SoothableByScore, -2, -4,
+                new[] { new NpcTransgression("w-ecrivain-interruption", "ecrivain-interrompu", -2) },
+                "Être interrompu, c'est perdre la phrase — et perdre la phrase, c'est risquer d'oublier ce qu'elle portait. Il ne le pardonne pas facilement.")
+        };
+
+        var rencontre = new NpcDialogueNode("rencontre", "L'Écrivain",
+            new[]
+            {
+                "Dans la Cabane, aux enfers, une plume gratte sans relâche. « J'écris. Toujours. Depuis le premier jour du Palais — j'ai aidé à bâtir les premières pièces, avant même que ça ait un nom. Si je m'arrête, j'oublie. »",
+                "Il ne lève pas les yeux de sa page."
+            },
+            new[]
+            {
+                new NpcDialogueChoice("ecouter", "L'écouter en silence", Array.Empty<DialogueRequirement>(),
+                    Array.Empty<DialogueConsequence>(), "recit"),
+                new NpcDialogueChoice("interrompre", "L'interrompre en pleine phrase", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.SetMemoryFlag, flag: "ecrivain-interrompu"),
+                            C(ConsequenceKind.ArmWound, wound: "w-ecrivain-interruption"),
+                            C(ConsequenceKind.Narrative, frag: "Sa plume s'arrête net. Il vous regarde comme si vous veniez de casser quelque chose d'irremplaçable. « Vous venez de me faire perdre la phrase. »") }, null),
+                new NpcDialogueChoice("partir", "Partir sans un bruit", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.Narrative, frag: "Vous repartez. La plume reprend, exactement où elle s'était arrêtée.") }, null)
+            });
+
+        var recit = new NpcDialogueNode("recit", "L'Écrivain",
+            new[]
+            {
+                "« Le premier architecte ne se souvenait de rien tout seul — c'est moi qui notais, pièce après pièce, pour que ça tienne. Tant que j'ai de l'encre et qu'on me laisse écrire, ça continue de tenir. »",
+                "Il tourne enfin une page vers vous, comme un aveu."
+            },
+            new[]
+            {
+                new NpcDialogueChoice("continuer", "Rester encore un peu", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.AdjustRelationship, rel: 2) }, "don")
+            });
+
+        var don = new NpcDialogueNode("don", "L'Écrivain",
+            new[] { "Il détache une page de son carnet, avec un soin presque douloureux, et vous la tend." },
+            new[]
+            {
+                new NpcDialogueChoice("accepter-plume", "Accepter \"Plume d'écrivain\"",
+                    new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 250) },
+                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.ecrivain.plume") }, null),
+                new NpcDialogueChoice("accepter-ecriture", "Accepter \"Écriture continuelle\"",
+                    new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) },
+                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.ecrivain.ecriture") }, null)
+            });
+
+        var graph = new NpcDialogueGraph("npc.ecrivain.dialogue", "1.0", "rencontre",
+            new Dictionary<string, NpcDialogueNode>
+            {
+                ["rencontre"] = rencontre,
+                ["recit"] = recit,
+                ["don"] = don
+            });
+
+        var offerings = new[]
+        {
+            new NpcOffering("offer.ecrivain.plume", NpcOfferingKind.Item, "canon.item.plume-ecrivain", 1, true,
+                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 250) }),
+            new NpcOffering("offer.ecrivain.ecriture", NpcOfferingKind.Skill, "canon.skill.ecriture-continuelle", 1, true,
+                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) })
+        };
+
+        return await UpsertNpcAsync("npc.ecrivain", "L'Écrivain",
+            "Une personnalité unique du Palais, enfermée dans la Cabane, aux enfers, niveau 3. Présent depuis la création du Palais, il a aidé le premier architecte à bâtir les toutes premières pièces. Très seul, il écrit continuellement pour ne rien oublier.",
+            "1.0", EmotionalRegister.Memoire, true, persona, wounds, graph, ct,
+            offerings: offerings);
+    }
+
     // ──────────────────────────────────────────────────────────────────────────
     //  ENNEMIS CANON — créatures signature tirées de « L'épopée des silences »
     //  et « Des échos ». Chemin de combat vivant : EnemyDefinition + StatBlock +
@@ -2112,6 +2192,17 @@ public sealed class CatalogSeedRunner
             "L'Architecte referme les yeux, imagine, et ce qu'il voit devient — pour un temps — vôtre aussi.",
             "Buff", "SingleEnemy", "CopySkills", mana: 20, power: 10, cancellationToken,
             category: "Magic");
+
+        // "Écriture continuelle" (l'Écrivain, sort légendaire) : allonge de 25% le
+        // nombre de ticks RESTANTS de tous les DamageOverTime actifs sur la cible.
+        // EffectType dédié ("ExtendDotDuration"), résolu directement dans
+        // CombatSkillEffectResolver.ResolveExtendDotDuration — power encode ici un
+        // pourcentage (et non une puissance), même degré de liberté contextuelle par
+        // EffectType que Heal ("% des PV max")/Création ("nb de tours").
+        await UpsertSkillAsync("canon.skill.ecriture-continuelle", "Écriture continuelle",
+            "Il n'arrête jamais d'écrire — et ce qu'il décrit continue, un peu plus longtemps que prévu, de se produire.",
+            "Debuff", "SingleEnemy", "ExtendDotDuration", mana: 16, power: 25, cancellationToken,
+            category: "Magic");
     }
 
     private async Task UpsertSkillAsync(
@@ -2356,6 +2447,14 @@ public sealed class CatalogSeedRunner
                 new ItemEquipmentEffect(ItemEquipmentEffectKind.StatBonusPercent, StatKind: "Defense", Amount: 5),
                 new ItemEquipmentEffect(ItemEquipmentEffectKind.StatBonusPercent, StatKind: "Speed", Amount: 5),
                 new ItemEquipmentEffect(ItemEquipmentEffectKind.StatBonusPercent, StatKind: "Focus", Amount: 5)
+            });
+
+        await UpsertItemAsync("canon.item.plume-ecrivain", "Plume d'écrivain",
+            "Une plume usée jusqu'à la corde, trempée dans une encre qui ne sèche jamais tout à fait.",
+            "Equipment", "Accessory", "Rare", "Permanent", false, 0, cancellationToken,
+            equipmentEffects: new[]
+            {
+                new ItemEquipmentEffect(ItemEquipmentEffectKind.DotDamageBonusPercent, Amount: 5)
             });
     }
 

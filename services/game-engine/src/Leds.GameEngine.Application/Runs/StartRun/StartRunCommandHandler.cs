@@ -100,6 +100,11 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
                 && e.Amount is not null)
             .Sum(e => e.Amount!.Value));
 
+        var dotDamageBonusPercent = equipmentEffects
+            .Where(e => string.Equals(e.Kind, "DotDamageBonusPercent", StringComparison.OrdinalIgnoreCase)
+                && e.Amount is not null)
+            .Sum(e => e.Amount!.Value);
+
         var magicDamageBonusPercent = equipmentEffects
             .Where(e => string.Equals(e.Kind, "MagicDamageBonusPercent", StringComparison.OrdinalIgnoreCase)
                 && e.Amount is not null)
@@ -199,6 +204,7 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
             hitChanceBonusPercent: hitChanceBonusPercent,
             dotDurationReductionPercent: dotDurationReductionPercent,
             dotDamageReductionPercent: dotDamageReductionPercent,
+            dotDamageBonusPercent: dotDamageBonusPercent,
             magicDamageBonusPercent: magicDamageBonusPercent,
             magicDamageReductionPercent: magicDamageReductionPercent,
             criticalChanceBonusPercent: criticalChanceBonusPercent,

@@ -129,6 +129,14 @@ public sealed class Combatant
     public int DotDamageReductionPercent { get; private set; }
 
     /// <summary>
+    /// Percentage points added to the DAMAGE DEALT by DamageOverTime effects this
+    /// combatant applies to others, granted by equipped items (e.g. l'Écrivain's
+    /// Plume d'écrivain: +5%). Distinct from <see cref="DotDamageReductionPercent"/>,
+    /// which reduces incoming DoT damage taken. Permanent for the run.
+    /// </summary>
+    public int DotDamageBonusPercent { get; private set; }
+
+    /// <summary>
     /// Percentage points added to / subtracted from Magic-category skill damage,
     /// granted by equipped items (e.g. Pomenian's monocle: +10% offensive spell
     /// damage). Permanent for the run — distinct from the temporary, skill-driven
@@ -145,17 +153,19 @@ public sealed class Combatant
     public int CriticalChanceBonusPercent { get; private set; }
 
     /// <summary>
-    /// Sets (or clears) the equipment-driven hit chance bonus, DOT reductions, Magic
+    /// Sets (or clears) the equipment-driven hit chance bonus, DOT reductions/bonus, Magic
     /// damage bonus/reduction, and critical chance bonus. Applied at combat creation
     /// and restored on rehydration; never mutated mid-turn.
     /// </summary>
     public void ApplyEquipmentCombatModifiers(
         int hitChanceBonusPercent, int dotDurationReductionPercent, int dotDamageReductionPercent,
-        int magicDamageBonusPercent = 0, int magicDamageReductionPercent = 0, int criticalChanceBonusPercent = 0)
+        int magicDamageBonusPercent = 0, int magicDamageReductionPercent = 0, int criticalChanceBonusPercent = 0,
+        int dotDamageBonusPercent = 0)
     {
         HitChanceBonusPercent = hitChanceBonusPercent;
         DotDurationReductionPercent = dotDurationReductionPercent;
         DotDamageReductionPercent = dotDamageReductionPercent;
+        DotDamageBonusPercent = dotDamageBonusPercent;
         MagicDamageBonusPercent = magicDamageBonusPercent;
         MagicDamageReductionPercent = magicDamageReductionPercent;
         CriticalChanceBonusPercent = criticalChanceBonusPercent;
@@ -168,6 +178,15 @@ public sealed class Combatant
     /// </summary>
     public int EffectiveMagicDamageBonusPercent
         => MagicDamageBonusPercent + EffectiveStat(CombatStat.MagicDamageBonus, 0);
+
+    /// <summary>
+    /// Total DoT-damage-dealt bonus (%): permanent equipment component (e.g. Plume
+    /// d'écrivain) plus any active temporary StatModifier(DotDamageBonus) status
+    /// effect. Read by <see cref="Leds.GameEngine.Application.Combats.Effects.CombatSkillEffectResolver"/>
+    /// when this combatant applies a new DamageOverTime effect to a target.
+    /// </summary>
+    public int EffectiveDotDamageBonusPercent
+        => DotDamageBonusPercent + EffectiveStat(CombatStat.DotDamageBonus, 0);
 
     /// <summary>
     /// Total Magic-category incoming damage reduction (%): permanent equipment
@@ -554,7 +573,8 @@ public sealed class Combatant
         int dotDamageReductionPercent = 0,
         int magicDamageBonusPercent = 0,
         int magicDamageReductionPercent = 0,
-        int criticalChanceBonusPercent = 0)
+        int criticalChanceBonusPercent = 0,
+        int dotDamageBonusPercent = 0)
     {
         var snapshot = baseStatSnapshot ?? CombatantBaseStatSnapshot.Rehydrate(
             Guid.NewGuid(),
@@ -587,7 +607,8 @@ public sealed class Combatant
         combatant.TypedDamageReductionPercent = typedDamageReductionPercent ?? new Dictionary<EmotionalType, int>();
         combatant.ApplyEquipmentCombatModifiers(
             hitChanceBonusPercent, dotDurationReductionPercent, dotDamageReductionPercent,
-            magicDamageBonusPercent, magicDamageReductionPercent, criticalChanceBonusPercent);
+            magicDamageBonusPercent, magicDamageReductionPercent, criticalChanceBonusPercent,
+            dotDamageBonusPercent);
         return combatant;
     }
 
@@ -657,8 +678,10 @@ public sealed class Combatant
     public IReadOnlyCollection<CombatStatusEffect> StatusEffects => _statusEffects.AsReadOnly();
 
     /// <summary>
-    /// Applies a status effect. Re-applying the same key refreshes duration and
-    /// adds stacks; a fresh key is added. No-op on a defeated combatant.
+    /// Applies a status effect. Re-applying the same key adds stacks; remaining
+    /// duration is NEVER refreshed by re-applying (see CombatStatusEffect.Reinforce) —
+    /// only an explicit extend-duration mechanic changes it. A fresh key is added.
+    /// No-op on a defeated combatant.
     /// </summary>
     public void ApplyStatusEffect(CombatStatusEffect effect)
     {
@@ -672,7 +695,7 @@ public sealed class Combatant
             e => string.Equals(e.Key, effect.Key, StringComparison.OrdinalIgnoreCase));
 
         if (existing is not null)
-            existing.Reinforce(effect.Stacks, effect.ExpiresAtTick);
+            existing.Reinforce(effect.Stacks);
         else
             _statusEffects.Add(effect);
     }

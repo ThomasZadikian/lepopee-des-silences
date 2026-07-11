@@ -57,6 +57,7 @@ public static class CombatPersistenceMapper
             HitChanceBonusPercent = combatant.HitChanceBonusPercent,
             DotDurationReductionPercent = combatant.DotDurationReductionPercent,
             DotDamageReductionPercent = combatant.DotDamageReductionPercent,
+            DotDamageBonusPercent = combatant.DotDamageBonusPercent,
             MagicDamageBonusPercent = combatant.MagicDamageBonusPercent,
             MagicDamageReductionPercent = combatant.MagicDamageReductionPercent,
             CriticalChanceBonusPercent = combatant.CriticalChanceBonusPercent,
@@ -314,7 +315,8 @@ public static class CombatPersistenceMapper
             dotDamageReductionPercent: entity.DotDamageReductionPercent,
             magicDamageBonusPercent: entity.MagicDamageBonusPercent,
             magicDamageReductionPercent: entity.MagicDamageReductionPercent,
-            criticalChanceBonusPercent: entity.CriticalChanceBonusPercent);
+            criticalChanceBonusPercent: entity.CriticalChanceBonusPercent,
+            dotDamageBonusPercent: entity.DotDamageBonusPercent);
         foreach (var effect in DeserializeStatusEffects(entity.StatusEffectsJson))
             combatant.RehydrateStatusEffect(effect);
 

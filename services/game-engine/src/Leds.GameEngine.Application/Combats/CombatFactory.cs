@@ -28,6 +28,7 @@ public sealed class CombatFactory : ICombatFactory
         int hitChanceBonusPercent = 0,
         int dotDurationReductionPercent = 0,
         int dotDamageReductionPercent = 0,
+        int dotDamageBonusPercent = 0,
         int magicDamageBonusPercent = 0,
         int magicDamageReductionPercent = 0,
         int criticalChanceBonusPercent = 0,
@@ -48,6 +49,7 @@ public sealed class CombatFactory : ICombatFactory
             hitChanceBonusPercent,
             dotDurationReductionPercent,
             dotDamageReductionPercent,
+            dotDamageBonusPercent,
             magicDamageBonusPercent,
             magicDamageReductionPercent,
             criticalChanceBonusPercent,
@@ -80,6 +82,7 @@ public sealed class CombatFactory : ICombatFactory
         int hitChanceBonusPercent = 0,
         int dotDurationReductionPercent = 0,
         int dotDamageReductionPercent = 0,
+        int dotDamageBonusPercent = 0,
         int magicDamageBonusPercent = 0,
         int magicDamageReductionPercent = 0,
         int criticalChanceBonusPercent = 0,
@@ -165,7 +168,8 @@ public sealed class CombatFactory : ICombatFactory
                     protagonist.ApplyTypedDamageReductions(typedDamageReductions);
                     protagonist.ApplyEquipmentCombatModifiers(
                         hitChanceBonusPercent, dotDurationReductionPercent, dotDamageReductionPercent,
-                        magicDamageBonusPercent, magicDamageReductionPercent, criticalChanceBonusPercent);
+                        magicDamageBonusPercent, magicDamageReductionPercent, criticalChanceBonusPercent,
+                        dotDamageBonusPercent);
                     return protagonist;
                 }
 

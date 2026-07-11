@@ -66,6 +66,10 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
                 ResolveCopySkills(combat, actor, skill, targets, logEntries);
                 break;
 
+            case "ExtendDotDuration":
+                ResolveExtendDotDuration(combat, actor, skill, targets, logEntries);
+                break;
+
             default:
                 // Status-only spell (pure buff/debuff/control): no instant effect —
                 // the durable status(es) below do the work.
@@ -162,6 +166,48 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
         }
     }
 
+    // "Écriture continuelle" (l'Écrivain, sort légendaire) : allonge de BasePower% le
+    // nombre de ticks RESTANTS de tous les DamageOverTime actifs sur la cible — pas
+    // la durée d'origine, et pas un nouveau stack (voir CombatStatusEffect.Reinforce :
+    // re-appliquer un DoT n'allonge jamais sa durée ; seul ExtendDuration le fait).
+    // BasePower encode ici un pourcentage (25 = +25%), même degré de liberté
+    // contextuelle par EffectType que Heal ("% des PV max")/Création ("nb de tours").
+    private static void ResolveExtendDotDuration(
+        Combat combat,
+        Combatant actor,
+        CombatantSkill skill,
+        IReadOnlyCollection<Combatant> targets,
+        List<CombatLogEntryDto> logEntries)
+    {
+        foreach (var target in targets)
+        {
+            if (target.IsDefeated)
+                continue;
+
+            var extendedAny = false;
+            foreach (var effect in target.StatusEffects.Where(e => e.Kind == StatusEffectKind.DamageOverTime))
+            {
+                var remaining = effect.ExpiresAtTick - combat.CurrentTick;
+                if (remaining <= 0)
+                    continue;
+
+                var extendedRemaining = (int)Math.Round(remaining * (1.0 + Math.Max(0, skill.BasePower) / 100.0));
+                effect.ExtendDuration(combat.CurrentTick + extendedRemaining);
+                extendedAny = true;
+            }
+
+            if (extendedAny)
+            {
+                logEntries.Add(CreateLog(
+                    "StatusApplied",
+                    $"{target.DisplayName}'s afflictions linger longer.",
+                    actor,
+                    skill,
+                    [target]));
+            }
+        }
+    }
+
     private static void ApplySkillStatus(
         Combat combat,
         Combatant actor,
@@ -181,7 +227,7 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
         {
             foreach (var spec in skill.StatusEffects.Where(s => s.AppliesToActor))
             {
-                ApplyStatusEffectSpec(combat, spec, actor);
+                ApplyStatusEffectSpec(combat, spec, actor, actor);
 
                 logEntries.Add(CreateLog(
                     "StatusApplied",
@@ -199,7 +245,7 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
 
             foreach (var spec in skill.StatusEffects.Where(s => !s.AppliesToActor))
             {
-                ApplyStatusEffectSpec(combat, spec, target);
+                ApplyStatusEffectSpec(combat, spec, target, actor);
 
                 logEntries.Add(CreateLog(
                     "StatusApplied",
@@ -217,7 +263,7 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
         }
     }
 
-    private static void ApplyStatusEffectSpec(Combat combat, SkillStatusEffectSpec spec, Combatant recipient)
+    private static void ApplyStatusEffectSpec(Combat combat, SkillStatusEffectSpec spec, Combatant recipient, Combatant caster)
     {
         // Equipment-driven DOT resistance (e.g. Main de Khasma) shortens the
         // duration of an incoming DamageOverTime effect; the per-tick damage
@@ -227,13 +273,20 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
                 spec.DurationTicks * (1.0 - Math.Min(recipient.DotDurationReductionPercent, 100) / 100.0)))
             : spec.DurationTicks;
 
+        // Equipment/skill-driven DOT damage bonus (e.g. l'Écrivain's Plume d'écrivain)
+        // is baked into the per-tick magnitude at cast time, from the CASTER's stat —
+        // distinct from the recipient-side DotDamageReductionPercent applied at tick time.
+        var magnitude = spec.Kind == StatusEffectKind.DamageOverTime && caster.EffectiveDotDamageBonusPercent > 0
+            ? (int)Math.Round(spec.Magnitude * (1.0 + caster.EffectiveDotDamageBonusPercent / 100.0))
+            : spec.Magnitude;
+
         recipient.ApplyStatusEffect(CombatStatusEffect.Create(
             key: spec.Key,
             displayName: spec.DisplayName,
             kind: spec.Kind,
             currentTick: combat.CurrentTick,
             durationTicks: durationTicks,
-            magnitude: spec.Magnitude,
+            magnitude: magnitude,
             stacks: spec.Stacks,
             tickInterval: spec.TickInterval,
             stat: spec.Stat,

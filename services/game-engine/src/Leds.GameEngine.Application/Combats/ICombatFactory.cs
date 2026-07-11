@@ -22,8 +22,11 @@ public interface ICombatFactory
         int hitChanceBonusPercent = 0,
         int dotDurationReductionPercent = 0,
         int dotDamageReductionPercent = 0,
+        int dotDamageBonusPercent = 0,
         int magicDamageBonusPercent = 0,
-        int magicDamageReductionPercent = 0);
+        int magicDamageReductionPercent = 0,
+        int criticalChanceBonusPercent = 0,
+        int guardBonusPercent = 0);
 
     Combat CreateFromDraft(
         CombatId combatId,
@@ -40,6 +43,9 @@ public interface ICombatFactory
         int hitChanceBonusPercent = 0,
         int dotDurationReductionPercent = 0,
         int dotDamageReductionPercent = 0,
+        int dotDamageBonusPercent = 0,
         int magicDamageBonusPercent = 0,
-        int magicDamageReductionPercent = 0);
+        int magicDamageReductionPercent = 0,
+        int criticalChanceBonusPercent = 0,
+        int guardBonusPercent = 0);
 }

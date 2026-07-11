@@ -272,6 +272,51 @@ public sealed class CombatSkillEffectResolverTests
     }
 
     [Fact]
+    public void Resolve_ShouldBoostDotMagnitude_WhenActorHasDotDamageBonus()
+    {
+        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+        ally.ApplyEquipmentCombatModifiers(
+            hitChanceBonusPercent: 0, dotDurationReductionPercent: 0, dotDamageReductionPercent: 0,
+            magicDamageBonusPercent: 0, magicDamageReductionPercent: 0, criticalChanceBonusPercent: 0,
+            dotDamageBonusPercent: 50);
+        var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 100);
+        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
+        var skill = CombatantSkill.Create(
+            "canon.skill.plume", "Plume empoisonnée", "Debuff", "SingleEnemy", "Debuff",
+            manaCost: 0, chargeCost: 0, basePower: 0,
+            statusEffects: new[]
+            {
+                new SkillStatusEffectSpec(
+                    "poison", "Poison", StatusEffectKind.DamageOverTime,
+                    Magnitude: 10, DurationTicks: 5000, TickInterval: 1400)
+            });
+
+        _resolver.Resolve(combat, ally, skill, [enemy]);
+
+        // +50% DoT damage bonus on the caster => 10 base magnitude becomes 15.
+        enemy.StatusEffects.Should().ContainSingle(e => e.Key == "poison" && e.Magnitude == 15);
+    }
+
+    [Fact]
+    public void Resolve_ShouldExtendRemainingDotDuration_WhenEffectTypeIsExtendDotDuration()
+    {
+        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+        var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 100);
+        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
+        enemy.ApplyStatusEffect(CombatStatusEffect.Create(
+            "poison", "Poison", StatusEffectKind.DamageOverTime,
+            currentTick: combat.CurrentTick, durationTicks: 1000, magnitude: 10, tickInterval: 1400));
+        var skill = CombatantSkill.Create(
+            "canon.skill.ecriture-continuelle", "Écriture continuelle", "Debuff", "SingleEnemy", "ExtendDotDuration",
+            manaCost: 0, chargeCost: 0, basePower: 25);
+
+        _resolver.Resolve(combat, ally, skill, [enemy]);
+
+        // Remaining ticks (1000) extended by +25% => 1250.
+        enemy.StatusEffects.Should().ContainSingle(e => e.Key == "poison" && e.ExpiresAtTick == combat.CurrentTick + 1250);
+    }
+
+    [Fact]
     public void Resolve_ShouldReduceDamage_WhenTargetHasEquipmentDrivenTypedReduction()
     {
         var (combat, ally, enemy) = CreateCombat();

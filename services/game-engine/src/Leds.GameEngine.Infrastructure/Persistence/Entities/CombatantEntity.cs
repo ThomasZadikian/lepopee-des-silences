@@ -38,6 +38,12 @@ public sealed class CombatantEntity
     public int DotDamageReductionPercent { get; set; }
 
     /// <summary>
+    /// Equipment-driven bonus to the DAMAGE DEALT by this combatant's own
+    /// DamageOverTime effects (e.g. l'Écrivain's Plume d'écrivain).
+    /// </summary>
+    public int DotDamageBonusPercent { get; set; }
+
+    /// <summary>
     /// Equipment-driven Magic-category damage bonus/reduction (percentage points).
     /// Set at combat creation from the wearer's equipped items (e.g. Pomenian's monocle).
     /// </summary>

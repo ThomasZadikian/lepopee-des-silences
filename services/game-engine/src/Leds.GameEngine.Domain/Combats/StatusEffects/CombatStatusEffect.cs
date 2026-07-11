@@ -127,10 +127,25 @@ public sealed class CombatStatusEffect
 
     public bool IsExpired(int currentTick) => currentTick >= ExpiresAtTick;
 
-    /// <summary>Re-applying the same effect refreshes its duration and adds stacks (capped).</summary>
-    public void Reinforce(int additionalStacks, int newExpiresAtTick, int maxStacks = 99)
+    /// <summary>
+    /// Re-applying the same effect adds stacks (capped) — remaining duration is
+    /// NEVER touched by stacking (e.g. 2 stacks of poison with 7 ticks left, re-cast
+    /// a 3rd time, stays at 3 stacks / 7 ticks left). The only way to change remaining
+    /// duration is <see cref="ExtendDuration"/>, an explicit skill/effect mechanic
+    /// (e.g. l'Écrivain's "Écriture continuelle").
+    /// </summary>
+    public void Reinforce(int additionalStacks, int maxStacks = 99)
     {
         Stacks = System.Math.Clamp(Stacks + System.Math.Max(0, additionalStacks), 1, maxStacks);
+    }
+
+    /// <summary>
+    /// Directly extends remaining duration to <paramref name="newExpiresAtTick"/> —
+    /// the ONLY way a status effect's duration changes after creation (stacking via
+    /// <see cref="Reinforce"/> never does). No-op if not later than the current expiry.
+    /// </summary>
+    public void ExtendDuration(int newExpiresAtTick)
+    {
         if (newExpiresAtTick > ExpiresAtTick)
             ExpiresAtTick = newExpiresAtTick;
     }

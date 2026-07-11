@@ -356,6 +356,44 @@ public sealed class CombatantTests
     }
 
     [Fact]
+    public void EffectiveDotDamageBonusPercent_ShouldSumEquipmentAndStatModifierStatus()
+    {
+        var combatant = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+        combatant.ApplyEquipmentCombatModifiers(
+            hitChanceBonusPercent: 0, dotDurationReductionPercent: 0, dotDamageReductionPercent: 0,
+            magicDamageBonusPercent: 0, magicDamageReductionPercent: 0, criticalChanceBonusPercent: 0,
+            dotDamageBonusPercent: 5);
+
+        combatant.ApplyStatusEffect(Leds.GameEngine.Domain.Combats.StatusEffects.CombatStatusEffect.Create(
+            "ecriture-continuelle:bonus", "Écriture continuelle", Leds.GameEngine.Domain.Combats.StatusEffects.StatusEffectKind.StatModifier,
+            currentTick: 0, durationTicks: 12500, magnitude: 10, stat: Leds.GameEngine.Domain.Combats.StatusEffects.CombatStat.DotDamageBonus));
+
+        combatant.DotDamageBonusPercent.Should().Be(5);
+        combatant.EffectiveDotDamageBonusPercent.Should().Be(15,
+            because: "equipment (5) + skill-driven StatModifier buff (10) must both contribute.");
+    }
+
+    [Fact]
+    public void ApplyStatusEffect_ShouldAddStacks_ButNeverChangeRemainingDuration_WhenReapplyingTheSameKey()
+    {
+        var combatant = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+        combatant.ApplyStatusEffect(Leds.GameEngine.Domain.Combats.StatusEffects.CombatStatusEffect.Create(
+            "poison", "Poison", Leds.GameEngine.Domain.Combats.StatusEffects.StatusEffectKind.DamageOverTime,
+            currentTick: 0, durationTicks: 7000, magnitude: 5, stacks: 2, tickInterval: 1400));
+
+        // Re-cast the same DoT (fresh full duration from "now") while 2 stacks / 7000
+        // ticks remain — must add a stack WITHOUT touching remaining duration.
+        combatant.ApplyStatusEffect(Leds.GameEngine.Domain.Combats.StatusEffects.CombatStatusEffect.Create(
+            "poison", "Poison", Leds.GameEngine.Domain.Combats.StatusEffects.StatusEffectKind.DamageOverTime,
+            currentTick: 0, durationTicks: 20000, magnitude: 5, stacks: 1, tickInterval: 1400));
+
+        var effect = combatant.StatusEffects.Should().ContainSingle(e => e.Key == "poison").Subject;
+        effect.Stacks.Should().Be(3);
+        effect.ExpiresAtTick.Should().Be(7000,
+            because: "stacking must never refresh/extend remaining duration — only an explicit extend-duration mechanic does.");
+    }
+
+    [Fact]
     public void Skills_ShouldIncludeGrantedSkills_WhileASkillGrantStatusEffectIsActive()
     {
         var borrowed = CombatantSkill.Create(

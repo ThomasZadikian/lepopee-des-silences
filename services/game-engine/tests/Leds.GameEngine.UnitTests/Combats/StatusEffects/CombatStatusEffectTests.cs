@@ -132,14 +132,14 @@ public sealed class CombatStatusEffectTests
     }
 
     [Fact]
-    public void Reinforce_ShouldAddStacks_AndRefreshDuration()
+    public void Reinforce_ShouldAddStacks_AndNeverChangeDuration()
     {
         var effect = CombatStatusEffect.Create("poison", "Poison", StatusEffectKind.DamageOverTime, 0, 5000, stacks: 1);
 
-        effect.Reinforce(2, newExpiresAtTick: 8000);
+        effect.Reinforce(2);
 
         effect.Stacks.Should().Be(3);
-        effect.ExpiresAtTick.Should().Be(8000);
+        effect.ExpiresAtTick.Should().Be(5000);
     }
 
     [Fact]
@@ -147,7 +147,7 @@ public sealed class CombatStatusEffectTests
     {
         var effect = CombatStatusEffect.Create("poison", "Poison", StatusEffectKind.DamageOverTime, 0, 5000, stacks: 50);
 
-        effect.Reinforce(100, newExpiresAtTick: 8000, maxStacks: 99);
+        effect.Reinforce(100, maxStacks: 99);
 
         effect.Stacks.Should().Be(99);
     }
@@ -157,17 +157,27 @@ public sealed class CombatStatusEffectTests
     {
         var effect = CombatStatusEffect.Create("poison", "Poison", StatusEffectKind.DamageOverTime, 0, 5000, stacks: 1);
 
-        effect.Reinforce(-10, newExpiresAtTick: 8000);
+        effect.Reinforce(-10);
 
         effect.Stacks.Should().Be(1);
     }
 
     [Fact]
-    public void Reinforce_ShouldNotRefreshDuration_WhenNewExpiryIsEarlier()
+    public void ExtendDuration_ShouldPushExpiryLater_WhenNewValueIsLater()
     {
         var effect = CombatStatusEffect.Create("poison", "Poison", StatusEffectKind.DamageOverTime, 0, 5000);
 
-        effect.Reinforce(1, newExpiresAtTick: 3000);
+        effect.ExtendDuration(8000);
+
+        effect.ExpiresAtTick.Should().Be(8000);
+    }
+
+    [Fact]
+    public void ExtendDuration_ShouldBeNoOp_WhenNewValueIsNotLater()
+    {
+        var effect = CombatStatusEffect.Create("poison", "Poison", StatusEffectKind.DamageOverTime, 0, 5000);
+
+        effect.ExtendDuration(3000);
 
         effect.ExpiresAtTick.Should().Be(5000);
     }

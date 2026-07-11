@@ -199,6 +199,7 @@ public sealed class ResolveCurrentEventCommandHandler
                 hitChanceBonusPercent: run.HitChanceBonusPercent,
                 dotDurationReductionPercent: run.DotDurationReductionPercent,
                 dotDamageReductionPercent: run.DotDamageReductionPercent,
+                dotDamageBonusPercent: run.DotDamageBonusPercent,
                 magicDamageBonusPercent: run.MagicDamageBonusPercent,
                 magicDamageReductionPercent: run.MagicDamageReductionPercent,
                 criticalChanceBonusPercent: run.CriticalChanceBonusPercent,

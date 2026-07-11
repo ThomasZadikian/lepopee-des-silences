@@ -30,5 +30,9 @@ public enum ItemEquipmentEffectKind
     // Percentage points (Amount) added directly to the wearer's critical hit chance,
     // on top of the chance derived from Focus (CriticalHitCalibration) — still capped
     // by CriticalHitCalibration.MaxCritChance overall.
-    CriticalChanceBonusPercent = 10
+    CriticalChanceBonusPercent = 10,
+    // Percentage points (Amount) added to the DAMAGE DEALT by DamageOverTime effects
+    // the wearer applies to others (e.g. l'Écrivain's Plume d'écrivain: +5%). Distinct
+    // from DotDamageReduction, which reduces incoming DoT damage taken.
+    DotDamageBonusPercent = 11
 }

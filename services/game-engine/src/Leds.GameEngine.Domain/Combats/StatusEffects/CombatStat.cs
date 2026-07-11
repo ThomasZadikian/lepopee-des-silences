@@ -12,5 +12,8 @@ public enum CombatStat
     // from Magic-category skill damage (see CombatSkillEffectResolver).
     MagicDamageBonus,
     MagicDamageReduction,
-    CriticalChanceBonus
+    CriticalChanceBonus,
+    // Percentage points added to the caster's DamageOverTime damage dealt (see
+    // Combatant.EffectiveDotDamageBonusPercent) — l'Écrivain's "Plume d'écrivain".
+    DotDamageBonus
 }

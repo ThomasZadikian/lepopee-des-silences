@@ -30,6 +30,7 @@ public sealed class CombatantEntityConfiguration : IEntityTypeConfiguration<Comb
         builder.Property(c => c.HitChanceBonusPercent).HasColumnName("hit_chance_bonus_percent").HasDefaultValue(0);
         builder.Property(c => c.DotDurationReductionPercent).HasColumnName("dot_duration_reduction_percent").HasDefaultValue(0);
         builder.Property(c => c.DotDamageReductionPercent).HasColumnName("dot_damage_reduction_percent").HasDefaultValue(0);
+        builder.Property(c => c.DotDamageBonusPercent).HasColumnName("dot_damage_bonus_percent").HasDefaultValue(0);
         builder.Property(c => c.MagicDamageBonusPercent).HasColumnName("magic_damage_bonus_percent").HasDefaultValue(0);
         builder.Property(c => c.MagicDamageReductionPercent).HasColumnName("magic_damage_reduction_percent").HasDefaultValue(0);
         builder.Property(c => c.CriticalChanceBonusPercent).HasColumnName("critical_chance_bonus_percent").HasDefaultValue(0);

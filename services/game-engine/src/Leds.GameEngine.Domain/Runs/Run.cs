@@ -79,6 +79,7 @@ public sealed class Run
         int hitChanceBonusPercent = 0,
         int dotDurationReductionPercent = 0,
         int dotDamageReductionPercent = 0,
+        int dotDamageBonusPercent = 0,
         int magicDamageBonusPercent = 0,
         int magicDamageReductionPercent = 0,
         int criticalChanceBonusPercent = 0,
@@ -106,6 +107,7 @@ public sealed class Run
         HitChanceBonusPercent = hitChanceBonusPercent;
         DotDurationReductionPercent = dotDurationReductionPercent;
         DotDamageReductionPercent = dotDamageReductionPercent;
+        DotDamageBonusPercent = dotDamageBonusPercent;
         MagicDamageBonusPercent = magicDamageBonusPercent;
         MagicDamageReductionPercent = magicDamageReductionPercent;
         CriticalChanceBonusPercent = criticalChanceBonusPercent;
@@ -275,6 +277,13 @@ public sealed class Run
     public int DotDamageReductionPercent { get; }
 
     /// <summary>
+    /// Equipment-driven percentage points added to the DAMAGE DEALT by the
+    /// protagonist's DamageOverTime effects (e.g. l'Écrivain's Plume d'écrivain).
+    /// Computed once at run start, immutable for the run's lifetime.
+    /// </summary>
+    public int DotDamageBonusPercent { get; }
+
+    /// <summary>
     /// Equipment-driven percentage points added to / subtracted from Magic-category
     /// skill damage (e.g. Pomenian's monocle). Computed once at run start, immutable
     /// for the run's lifetime, same as HitChanceBonusPercent.
@@ -341,6 +350,7 @@ public sealed class Run
         int hitChanceBonusPercent = 0,
         int dotDurationReductionPercent = 0,
         int dotDamageReductionPercent = 0,
+        int dotDamageBonusPercent = 0,
         int magicDamageBonusPercent = 0,
         int magicDamageReductionPercent = 0,
         int criticalChanceBonusPercent = 0,
@@ -440,6 +450,7 @@ public sealed class Run
             hitChanceBonusPercent: hitChanceBonusPercent,
             dotDurationReductionPercent: dotDurationReductionPercent,
             dotDamageReductionPercent: dotDamageReductionPercent,
+            dotDamageBonusPercent: dotDamageBonusPercent,
             magicDamageBonusPercent: magicDamageBonusPercent,
             magicDamageReductionPercent: magicDamageReductionPercent,
             criticalChanceBonusPercent: criticalChanceBonusPercent,
@@ -1599,11 +1610,12 @@ public sealed class Run
         int magicDamageBonusPercent = 0,
         int magicDamageReductionPercent = 0,
         int criticalChanceBonusPercent = 0,
-        int guardBonusPercent = 0)
+        int guardBonusPercent = 0,
+        int dotDamageBonusPercent = 0)
     {
         var firstRoom = rooms.First();
 
-        var run = new Run(id, playerId, seed, generatorVersion, markovMatrixVersion, status, firstRoom, startedAt, maxHp, currentHp, attack, defense, speed, focus, currentRoomIndex, activeCombatId, pendingRewardOfferId, runItemCapacity, typedDamageReductions, hitChanceBonusPercent, dotDurationReductionPercent, dotDamageReductionPercent, magicDamageBonusPercent, magicDamageReductionPercent, criticalChanceBonusPercent, guardBonusPercent);
+        var run = new Run(id, playerId, seed, generatorVersion, markovMatrixVersion, status, firstRoom, startedAt, maxHp, currentHp, attack, defense, speed, focus, currentRoomIndex, activeCombatId, pendingRewardOfferId, runItemCapacity, typedDamageReductions, hitChanceBonusPercent, dotDurationReductionPercent, dotDamageReductionPercent, dotDamageBonusPercent, magicDamageBonusPercent, magicDamageReductionPercent, criticalChanceBonusPercent, guardBonusPercent);
         foreach (var room in rooms.Skip(1))
         {
             run._rooms.Add(room);
