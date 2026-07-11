@@ -3,7 +3,7 @@
 /// <summary>
 /// Single tuning surface for the ATB rules (charge reward, action recovery,
 /// interruption pushes). Gauge units are relative to
-/// <see cref="AtbConstants.ReadyThreshold"/> (10000).
+/// <see cref="AtbConstants.ReadyThreshold"/> (50000).
 /// </summary>
 public static class AtbCalibration
 {

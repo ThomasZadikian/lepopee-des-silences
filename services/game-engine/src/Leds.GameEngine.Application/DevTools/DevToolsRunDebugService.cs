@@ -7,6 +7,7 @@ using Leds.GameEngine.Application.Common.Exceptions;
 using Leds.GameEngine.Application.Rewards.Ports;
 using Leds.GameEngine.Application.Runs.Dtos;
 using Leds.GameEngine.Domain.Combats;
+using Leds.GameEngine.Domain.Combats.Atb;
 using Leds.GameEngine.Domain.Combats.StatusEffects;
 using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Effects;
@@ -390,9 +391,9 @@ public sealed class DevToolsRunDebugService : IDevToolsRunDebugService
 
         return key switch
         {
-            "poison" => CombatStatusEffect.Create("poison", "Poison", StatusEffectKind.DamageOverTime, currentTick, dur, magnitude: 8, stacks: s, tickInterval: 2500),
+            "poison" => CombatStatusEffect.Create("poison", "Poison", StatusEffectKind.DamageOverTime, currentTick, dur, magnitude: 8, stacks: s, tickInterval: AtbConstants.TicksPerTurn),
             "burn" => CombatStatusEffect.Create("burn", "Brûlure", StatusEffectKind.DamageOverTime, currentTick, dur, magnitude: 12, stacks: s, tickInterval: 3000),
-            "regen" => CombatStatusEffect.Create("regen", "Régénération", StatusEffectKind.HealOverTime, currentTick, dur, magnitude: 10, stacks: s, tickInterval: 2500),
+            "regen" => CombatStatusEffect.Create("regen", "Régénération", StatusEffectKind.HealOverTime, currentTick, dur, magnitude: 10, stacks: s, tickInterval: AtbConstants.TicksPerTurn),
             "atk-up" => CombatStatusEffect.Create("atk-up", "Attaque +", StatusEffectKind.StatModifier, currentTick, dur, magnitude: 8, stacks: s, stat: CombatStat.AttackPower),
             "atk-down" => CombatStatusEffect.Create("atk-down", "Attaque −", StatusEffectKind.StatModifier, currentTick, dur, magnitude: -8, stacks: s, stat: CombatStat.AttackPower),
             "def-up" => CombatStatusEffect.Create("def-up", "Défense +", StatusEffectKind.StatModifier, currentTick, dur, magnitude: 8, stacks: s, stat: CombatStat.Defense),

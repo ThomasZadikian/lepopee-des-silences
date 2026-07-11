@@ -22,6 +22,7 @@ const sections: TutorialSection[] = [
       "Votre vitesse RELATIVE compte aussi : être plus rapide que la moyenne du camp adverse accélère votre jauge (jusqu'à +50%), être plus lent la ralentit d'autant.",
       "Un coup marquant — critique, garde brisée, débuff posé sur l'adversaire — déclenche un Momentum : un accélérateur temporaire qui rapproche votre prochaine action.",
       "L'humeur dominante du Palais influence discrètement le tempo de la salle et de chaque camp ; dans ses états les plus instables (dissocié, fragmenté), une part d'irrégularité déterministe s'ajoute — toujours la même pour une seed donnée, mais imprévisible à l'œil.",
+      "Quand un sort ou un statut dure « X tours » (poison, garde continue, buffs...), cela correspond à une durée fixe de l'horloge — pas à X actions du combattant concerné. Un personnage rapide peut agir plusieurs fois pendant cette fenêtre, un personnage lent une seule fois, voire aucune : la vitesse effective détermine combien d'actions tiennent dans ce même intervalle.",
     ],
   },
   {

@@ -26,6 +26,17 @@ public sealed class CatalogSeedRunner
     private readonly ILogger<CatalogSeedRunner> _logger;
     private DateTime _now;
 
+    /// <summary>
+    /// Authoring convention only, mirrored from the game-engine service's
+    /// AtbConstants.TicksPerTurn (catalog and game-engine are separate deployables
+    /// with no shared assembly for this). "1 tour" in a skill/status duration means
+    /// this many ticks of the ATB clock — NOT "1 action taken": fill-per-tick varies
+    /// per combatant (Speed, investment, relative tempo, momentum), so a fast
+    /// combatant can act many times within "N tours" while a slow one acts once or
+    /// not at all. Keep this value in sync with the game-engine constant by hand.
+    /// </summary>
+    private const int TicksPerTurn = 2500;
+
     public CatalogSeedRunner(CatalogDbContext ctx, ILogger<CatalogSeedRunner> logger)
     {
         _ctx = ctx;
@@ -1981,33 +1992,30 @@ public sealed class CatalogSeedRunner
             category: "Magic");
 
         // "Construction perpétuelle" (L'enfant, sort légendaire) : soin de 10% des PV max
-        // et +8 de garde, tous deux répétés sur 5 tours. Le tick (2500) suit la même
-        // convention que les autres effets périodiques canon (poison/regen) ; 5 tours =
-        // 5 déclenchements, soit une durée de 5 * tickInterval.
-        const int construcionPerpetuelleTickInterval = 2500;
+        // et +8 de garde, tous deux répétés sur 5 tours (5 déclenchements, soit une
+        // durée de 5 * TicksPerTurn).
         await UpsertSkillAsync("canon.skill.construction-perpetuelle", "Construction perpétuelle",
             "Ce que l'enfant a bâti continue de se construire, tour après tour, tant qu'on le laisse faire.",
             "Buff", "Self", "Buff", mana: 14, power: 0, cancellationToken,
             effects: new[]
             {
-                new SkillEffectSpec("HealOverTime", null, 10, construcionPerpetuelleTickInterval * 5,
-                    TickInterval: construcionPerpetuelleTickInterval, MagnitudeIsPercentOfMax: true),
-                new SkillEffectSpec("GuardOverTime", null, 8, construcionPerpetuelleTickInterval * 5,
-                    TickInterval: construcionPerpetuelleTickInterval)
+                new SkillEffectSpec("HealOverTime", null, 10, TicksPerTurn * 5,
+                    TickInterval: TicksPerTurn, MagnitudeIsPercentOfMax: true),
+                new SkillEffectSpec("GuardOverTime", null, 8, TicksPerTurn * 5,
+                    TickInterval: TicksPerTurn)
             },
             category: "Magic");
 
         // "La liberté retrouvée" (Erina, sort légendaire) : frappe l'adversaire et
-        // gagne +10% Vitesse (de base) pendant 10 tours. Même convention de tick
-        // (2500/tour) que Construction perpétuelle ; l'effet est marqué AppliesToActor
-        // car il doit revenir sur Erina/le lanceur, pas sur la cible frappée.
-        const int liberteRetrouveeTicksPerTurn = 2500;
+        // gagne +10% Vitesse (de base) pendant 10 tours ; l'effet est marqué
+        // AppliesToActor car il doit revenir sur Erina/le lanceur, pas sur la cible
+        // frappée.
         await UpsertSkillAsync("canon.skill.liberte-retrouvee", "La liberté retrouvée",
             "Un coup porté comme une évasion — et pour un temps, plus rien ne la retient.",
             "Damage", "SingleEnemy", "Damage", mana: 20, power: 14, cancellationToken,
             effects: new[]
             {
-                new SkillEffectSpec("StatModifier", null, 10, liberteRetrouveeTicksPerTurn * 10,
+                new SkillEffectSpec("StatModifier", null, 10, TicksPerTurn * 10,
                     Stat: "Speed", MagnitudeIsPercentOfBaseStat: true, AppliesToActor: true)
             },
             category: "Physical");
@@ -2016,28 +2024,26 @@ public sealed class CatalogSeedRunner
         // de +10% dégâts des sorts (MagicDamageBonus) et -5% dégâts de sorts subis
         // (MagicDamageReduction). Cible AllAllies : chaque allié reçoit son propre
         // buff, donc pas d'AppliesToActor (la cible n'est déjà pas le lanceur seul).
-        const int connaissanceAcademiqueTicksPerTurn = 2500;
         await UpsertSkillAsync("canon.skill.connaissance-academique", "Connaissance académique",
             "Un savoir cité comme on brandit une preuve — et pour un temps, l'équipe tout entière frappe et résiste comme s'il avait raison.",
             "Buff", "AllAllies", "Buff", mana: 22, power: 0, cancellationToken,
             effects: new[]
             {
-                new SkillEffectSpec("StatModifier", null, 10, connaissanceAcademiqueTicksPerTurn * 5,
+                new SkillEffectSpec("StatModifier", null, 10, TicksPerTurn * 5,
                     Stat: "MagicDamageBonus"),
-                new SkillEffectSpec("StatModifier", null, 5, connaissanceAcademiqueTicksPerTurn * 5,
+                new SkillEffectSpec("StatModifier", null, 5, TicksPerTurn * 5,
                     Stat: "MagicDamageReduction")
             },
             category: "Magic");
 
         // "Regard infantile" (Iris, sort légendaire) : ralentit la cible de 10% Vitesse
         // (de base) pendant 5 tours — pas d'AppliesToActor, l'effet reste sur la cible.
-        const int regardInfantileTicksPerTurn = 2500;
         await UpsertSkillAsync("canon.skill.regard-infantile", "Regard infantile",
             "Un regard d'enfant, désarmant — de quoi faire hésiter n'importe qui, assez longtemps pour tout ralentir autour de lui.",
             "Debuff", "SingleEnemy", "Debuff", mana: 18, power: 0, cancellationToken,
             effects: new[]
             {
-                new SkillEffectSpec("StatModifier", null, -10, regardInfantileTicksPerTurn * 5,
+                new SkillEffectSpec("StatModifier", null, -10, TicksPerTurn * 5,
                     Stat: "Speed", MagnitudeIsPercentOfBaseStat: true)
             },
             category: "Magic");
@@ -2053,13 +2059,12 @@ public sealed class CatalogSeedRunner
         // "Clairvoyance" (Araran) : réduit de 5 points la chance de coup critique de
         // tous les ennemis pendant 5 tours — réutilise le stat virtuel CriticalChanceBonus
         // (déjà introduit pour le Doudou de Ethan), ici en négatif et sur AllEnemies.
-        const int clairvoyanceTicksPerTurn = 2500;
         await UpsertSkillAsync("canon.skill.clairvoyance", "Clairvoyance",
             "Elle voit venir le coup avant qu'il ne parte — assez pour désarmer sa précision, pour un temps.",
             "Debuff", "AllEnemies", "Debuff", mana: 16, power: 0, cancellationToken,
             effects: new[]
             {
-                new SkillEffectSpec("StatModifier", null, -5, clairvoyanceTicksPerTurn * 5,
+                new SkillEffectSpec("StatModifier", null, -5, TicksPerTurn * 5,
                     Stat: "CriticalChanceBonus")
             },
             category: "Magic");
@@ -2067,17 +2072,16 @@ public sealed class CatalogSeedRunner
         // "Impulsivité" (Mané) : +5% vitesse (charge d'ATB), +5% dégâts (attaque), mais
         // -10% défense pendant 5 tours — auto-buff/débuff, donc AppliesToActor sur les
         // trois effets.
-        const int impulsiviteTicksPerTurn = 2500;
         await UpsertSkillAsync("canon.skill.impulsivite", "Impulsivité",
             "Agir avant de réfléchir — plus vite, plus fort, mais à découvert.",
             "Buff", "Self", "Buff", mana: 12, power: 0, cancellationToken,
             effects: new[]
             {
-                new SkillEffectSpec("StatModifier", null, 5, impulsiviteTicksPerTurn * 5,
+                new SkillEffectSpec("StatModifier", null, 5, TicksPerTurn * 5,
                     Stat: "Speed", MagnitudeIsPercentOfBaseStat: true, AppliesToActor: true),
-                new SkillEffectSpec("StatModifier", null, 5, impulsiviteTicksPerTurn * 5,
+                new SkillEffectSpec("StatModifier", null, 5, TicksPerTurn * 5,
                     Stat: "AttackPower", MagnitudeIsPercentOfBaseStat: true, AppliesToActor: true),
-                new SkillEffectSpec("StatModifier", null, -10, impulsiviteTicksPerTurn * 5,
+                new SkillEffectSpec("StatModifier", null, -10, TicksPerTurn * 5,
                     Stat: "Defense", MagnitudeIsPercentOfBaseStat: true, AppliesToActor: true)
             },
             category: "Physical");
@@ -2086,15 +2090,14 @@ public sealed class CatalogSeedRunner
         // (charge d'ATB) pendant 5 tours, et restaure instantanément 15% des PV max —
         // le seul sort canon à combiner un effet instantané (Heal, BasePower en % des
         // PV max) avec des buffs durables sur soi.
-        const int favoriteDeEliseTicksPerTurn = 2500;
         await UpsertSkillAsync("canon.skill.favorite-de-elise", "Favorite de Elise",
             "Elise veille sur ceux qu'elle préfère — une défense qui se referme, un pas plus vif, et ce qui a été perdu qui revient d'un coup.",
             "Buff", "Self", "Heal", mana: 24, power: 15, cancellationToken,
             effects: new[]
             {
-                new SkillEffectSpec("StatModifier", null, 10, favoriteDeEliseTicksPerTurn * 5,
+                new SkillEffectSpec("StatModifier", null, 10, TicksPerTurn * 5,
                     Stat: "Defense", MagnitudeIsPercentOfBaseStat: true, AppliesToActor: true),
-                new SkillEffectSpec("StatModifier", null, 10, favoriteDeEliseTicksPerTurn * 5,
+                new SkillEffectSpec("StatModifier", null, 10, TicksPerTurn * 5,
                     Stat: "Speed", MagnitudeIsPercentOfBaseStat: true, AppliesToActor: true)
             },
             category: "Magic",

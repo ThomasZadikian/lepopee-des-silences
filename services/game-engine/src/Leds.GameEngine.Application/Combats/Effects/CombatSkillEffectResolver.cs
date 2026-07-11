@@ -138,8 +138,7 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
         IReadOnlyCollection<Combatant> targets,
         List<CombatLogEntryDto> logEntries)
     {
-        const int ticksPerTurn = 2500;
-        var durationTicks = ticksPerTurn * Math.Max(1, skill.BasePower);
+        var durationTicks = AtbConstants.TicksPerTurn * Math.Max(1, skill.BasePower);
 
         foreach (var target in targets)
         {
