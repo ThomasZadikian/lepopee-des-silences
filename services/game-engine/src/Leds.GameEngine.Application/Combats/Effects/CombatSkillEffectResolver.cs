@@ -98,8 +98,12 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
             if (target.IsDefeated || target.CurrentVitality >= target.MaxVitality)
                 continue;
 
+            var healAmount = skill.BasePowerIsPercentOfMaxVitality
+                ? (int)Math.Round(target.MaxVitality * (skill.BasePower / 100.0))
+                : skill.BasePower;
+
             var before = target.CurrentVitality;
-            target.ApplyHeal(skill.BasePower);
+            target.ApplyHeal(healAmount);
             var healed = target.CurrentVitality - before;
 
             if (healed > 0)

@@ -22,6 +22,9 @@ public sealed class SkillDefinitionEntity
     public int ManaCost { get; set; }
     public int ChargeCost { get; set; }
     public int BasePower { get; set; }
+    // When true, BasePower is a percentage of the target's MaxVitality (instant heal),
+    // not a flat amount — e.g. Mané's "Favorite de Elise" (+15% PV instantly).
+    public bool BasePowerIsPercentOfMaxVitality { get; set; }
     public int Power { get; set; }
     public int Accuracy { get; set; } = 100;
     public int ActionCost { get; set; } = 10;

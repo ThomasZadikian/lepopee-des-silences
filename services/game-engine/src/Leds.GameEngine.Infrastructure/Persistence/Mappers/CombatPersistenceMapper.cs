@@ -210,7 +210,8 @@ public static class CombatPersistenceMapper
             ChargeCost = skill.ChargeCost,
             BasePower = skill.BasePower,
             Tags = JsonSerializer.Serialize(skill.Tags),
-            Category = skill.Category
+            Category = skill.Category,
+            BasePowerIsPercentOfMaxVitality = skill.BasePowerIsPercentOfMaxVitality
         };
     }
 
@@ -346,6 +347,7 @@ public static class CombatPersistenceMapper
             entity.ChargeCost,
             entity.BasePower,
             tags,
-            category: entity.Category);
+            category: entity.Category,
+            basePowerIsPercentOfMaxVitality: entity.BasePowerIsPercentOfMaxVitality);
     }
 }

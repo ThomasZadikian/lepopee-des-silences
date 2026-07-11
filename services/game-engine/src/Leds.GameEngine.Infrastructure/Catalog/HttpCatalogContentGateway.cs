@@ -1007,7 +1007,8 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
                     e.Kind, e.StatusKey, e.Magnitude, e.DurationTicks, e.TickInterval, e.Stat,
                     e.MagnitudeIsPercentOfMax, e.MagnitudeIsPercentOfBaseStat, e.AppliesToActor))
                 .ToArray(),
-            Category: source.Category);
+            Category: source.Category,
+            BasePowerIsPercentOfMaxVitality: source.BasePowerIsPercentOfMaxVitality);
     }
 
     private static CatalogEnemyDefinition MapToCatalogEnemyDefinition(

@@ -32,7 +32,8 @@ public static class PlayerRuntimeStatePersistenceMapper
             ManaCost = skill.ManaCost,
             ChargeCost = skill.ChargeCost,
             BasePower = skill.BasePower,
-            Category = skill.Category
+            Category = skill.Category,
+            BasePowerIsPercentOfMaxVitality = skill.BasePowerIsPercentOfMaxVitality
         };
     }
 
@@ -58,6 +59,7 @@ public static class PlayerRuntimeStatePersistenceMapper
             entity.ManaCost,
             entity.ChargeCost,
             entity.BasePower,
-            entity.Category);
+            entity.Category,
+            entity.BasePowerIsPercentOfMaxVitality);
     }
 }

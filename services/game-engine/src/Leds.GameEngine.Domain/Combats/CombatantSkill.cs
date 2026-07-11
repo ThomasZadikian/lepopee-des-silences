@@ -15,7 +15,8 @@ public sealed record CombatantSkill
         int basePower,
         IReadOnlyCollection<string> tags,
         IReadOnlyCollection<SkillStatusEffectSpec> statusEffects,
-        string category)
+        string category,
+        bool basePowerIsPercentOfMaxVitality)
     {
         Key = key;
         DisplayName = displayName;
@@ -28,6 +29,7 @@ public sealed record CombatantSkill
         Tags = tags;
         StatusEffects = statusEffects;
         Category = category;
+        BasePowerIsPercentOfMaxVitality = basePowerIsPercentOfMaxVitality;
     }
 
     public string Key { get; }
@@ -45,6 +47,10 @@ public sealed record CombatantSkill
     /// <summary>Physical|Magic — determines eligibility for category-scoped combat bonuses
     /// (e.g. Pomenian's "Connaissance académique").</summary>
     public string Category { get; }
+    /// <summary>When true (EffectType "Heal" only), BasePower is a percentage of the
+    /// target's MaxVitality applied instantly, not a flat amount — e.g. Mané's
+    /// "Favorite de Elise" (+15% PV instantly).</summary>
+    public bool BasePowerIsPercentOfMaxVitality { get; }
 
     public static CombatantSkill Create(
         string key,
@@ -57,7 +63,8 @@ public sealed record CombatantSkill
         int basePower,
         IReadOnlyCollection<string>? tags = null,
         IReadOnlyCollection<SkillStatusEffectSpec>? statusEffects = null,
-        string category = "Physical")
+        string category = "Physical",
+        bool basePowerIsPercentOfMaxVitality = false)
     {
         if (string.IsNullOrWhiteSpace(key))
             throw new DomainException("Combatant skill key is required.");
@@ -85,7 +92,8 @@ public sealed record CombatantSkill
             basePower,
             tags?.ToArray() ?? Array.Empty<string>(),
             statusEffects?.ToArray() ?? Array.Empty<SkillStatusEffectSpec>(),
-            string.IsNullOrWhiteSpace(category) ? "Physical" : category);
+            string.IsNullOrWhiteSpace(category) ? "Physical" : category,
+            basePowerIsPercentOfMaxVitality);
     }
 
     /// <summary>
@@ -103,8 +111,9 @@ public sealed record CombatantSkill
         int basePower,
         IReadOnlyCollection<string> tags,
         IReadOnlyCollection<SkillStatusEffectSpec>? statusEffects = null,
-        string category = "Physical")
+        string category = "Physical",
+        bool basePowerIsPercentOfMaxVitality = false)
     {
-        return new CombatantSkill(key, displayName, skillType, targetingType, effectType, manaCost, chargeCost, basePower, tags, statusEffects ?? Array.Empty<SkillStatusEffectSpec>(), category);
+        return new CombatantSkill(key, displayName, skillType, targetingType, effectType, manaCost, chargeCost, basePower, tags, statusEffects ?? Array.Empty<SkillStatusEffectSpec>(), category, basePowerIsPercentOfMaxVitality);
     }
 }

@@ -235,6 +235,91 @@ public sealed class StartRunCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_ShouldResolveEquippedSkill_FromCatalog_NotFromSnapshotGuess()
+    {
+        var playerId = Guid.NewGuid();
+        var now = new DateTimeOffset(2026, 5, 30, 12, 0, 0, TimeSpan.Zero);
+
+        var initialRoom = TestGameEngineFactory.CreateThresholdRoom();
+
+        var generator = new Mock<IRunGenerator>();
+        generator.SetupGet(service => service.GeneratorVersion).Returns("gen-0.1.0");
+        generator.SetupGet(service => service.MarkovMatrixVersion).Returns("markov-0.1.0");
+        generator.Setup(service => service.GenerateSeed()).Returns("seed-test-003");
+        generator.Setup(service => service.GenerateInitialRoomAsync("seed-test-003", CancellationToken.None)).ReturnsAsync(initialRoom);
+
+        var repository = new Mock<IRunRepository>();
+
+        var playerGateway = new Mock<IPlayerRunSnapshotGateway>();
+        playerGateway
+            .Setup(g => g.GetRunSnapshotAsync(playerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new PlayerRunSnapshot(
+                playerId,
+                "Test Player",
+                [new PlayerRunSnapshotCharacter(
+                    Guid.NewGuid(),
+                    "character.player.self",
+                    "Le Porteur",
+                    Stats: new PlayerRunSnapshotCharacterStats(
+                        MaxVitality: 100,
+                        AttackPower: 12,
+                        Defense: 6,
+                        StartingGuard: 0,
+                        Speed: 10,
+                        Initiative: 10,
+                        Recovery: 5,
+                        Focus: 0,
+                        Mana: 0,
+                        Charge: 0),
+                    // The snapshot's own guess is wrong on purpose (Damage/10, no percent
+                    // heal) — this is what player-service's real run-snapshot endpoint
+                    // sends today when it only knows the equipped skill KEY, not its
+                    // catalog-defined mechanics.
+                    Skills:
+                    [
+                        new PlayerRunSnapshotCharacterSkill(
+                            SkillDefinitionKey: "skill.mane.favorite-de-elise",
+                            DisplayName: "skill.mane.favorite-de-elise",
+                            SkillType: "Damage",
+                            TargetingMode: "SingleEnemy",
+                            EffectType: "Damage",
+                            ManaCost: 0,
+                            ChargeCost: 0,
+                            BasePower: 10)
+                    ])]));
+
+        var clock = new Mock<IClock>();
+        clock.SetupGet(service => service.UtcNow).Returns(now);
+
+        var catalogGateway = new Mock<ICatalogContentGateway>();
+        catalogGateway
+            .Setup(g => g.GetSkillDefinitionByKeyAsync("skill.mane.favorite-de-elise", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CatalogSkillDefinition(
+                "skill.mane.favorite-de-elise", "Favorite de Elise", "Un soin instantané.",
+                "Buff", "Self", "Heal", 0, 0, 15, [],
+                BasePowerIsPercentOfMaxVitality: true));
+
+        var handler = new StartRunCommandHandler(
+            generator.Object,
+            repository.Object,
+            playerGateway.Object,
+            catalogGateway.Object,
+            clock.Object);
+
+        await handler.Handle(
+            new StartRunCommand(playerId),
+            CancellationToken.None);
+
+        var capturedRun = (Run)repository.Invocations
+            .Single(i => i.Method.Name == nameof(IRunRepository.AddAsync)).Arguments[0];
+
+        var resolvedSkill = capturedRun.PlayerState!.Skills.Single(s => s.Key == "skill.mane.favorite-de-elise");
+        resolvedSkill.EffectType.Should().Be("Heal");
+        resolvedSkill.BasePower.Should().Be(15);
+        resolvedSkill.BasePowerIsPercentOfMaxVitality.Should().BeTrue();
+    }
+
+    [Fact]
     public async Task Handle_ShouldApplyStatBonusPercent_FromEquippedItem()
     {
         var playerId = Guid.NewGuid();

@@ -22,7 +22,8 @@ public sealed class SkillDefinition : CatalogContentBase, ISkillDefinition
         int manaCost,
         int chargeCost,
         int basePower,
-        IReadOnlyList<SkillEffectSpec> effects)
+        IReadOnlyList<SkillEffectSpec> effects,
+        bool basePowerIsPercentOfMaxVitality = false)
         : base(id, key, name, description, version, status)
     {
         SkillType = skillType;
@@ -33,6 +34,7 @@ public sealed class SkillDefinition : CatalogContentBase, ISkillDefinition
         ChargeCost = chargeCost;
         BasePower = basePower;
         Effects = effects;
+        BasePowerIsPercentOfMaxVitality = basePowerIsPercentOfMaxVitality;
     }
 
     public string SkillType { get; }
@@ -49,6 +51,9 @@ public sealed class SkillDefinition : CatalogContentBase, ISkillDefinition
 
     public int BasePower { get; }
     public IReadOnlyList<SkillEffectSpec> Effects { get; }
+    /// <summary>When true, BasePower is a percentage of the target's MaxVitality (instant
+    /// heal), not a flat amount — e.g. Mané's "Favorite de Elise" (+15% PV instantly).</summary>
+    public bool BasePowerIsPercentOfMaxVitality { get; }
 
     public static SkillDefinition Create(
         string key,
@@ -63,7 +68,8 @@ public sealed class SkillDefinition : CatalogContentBase, ISkillDefinition
         int basePower,
         CatalogContentStatus status = CatalogContentStatus.Draft,
         IReadOnlyList<SkillEffectSpec>? effects = null,
-        string category = "Physical")
+        string category = "Physical",
+        bool basePowerIsPercentOfMaxVitality = false)
     {
         if (string.IsNullOrWhiteSpace(skillType))
         {
@@ -116,6 +122,7 @@ public sealed class SkillDefinition : CatalogContentBase, ISkillDefinition
             manaCost,
             chargeCost,
             basePower,
-            effects ?? []);
+            effects ?? [],
+            basePowerIsPercentOfMaxVitality);
     }
 }

@@ -236,6 +236,23 @@ public sealed class CombatSkillEffectResolverTests
     }
 
     [Fact]
+    public void Resolve_ShouldHealPercentOfMaxVitality_WhenBasePowerIsPercentOfMaxVitality()
+    {
+        var (combat, ally, _) = CreateCombat();
+        ally.ApplyDamage(50);
+        var skill = CombatantSkill.Create(
+            "skill.favorite-de-elise", "Favorite de Elise", "Heal", "Self", "Heal",
+            manaCost: 0, chargeCost: 0, basePower: 15,
+            basePowerIsPercentOfMaxVitality: true);
+
+        _resolver.Resolve(combat, ally, skill, [ally]);
+
+        // MaxVitality is 100 (see CreateCombat) => 15% instantly restored, regardless
+        // of how much vitality was actually missing.
+        ally.CurrentVitality.Should().Be(65);
+    }
+
+    [Fact]
     public void Resolve_ShouldReduceDamage_WhenTargetHasEquipmentDrivenTypedReduction()
     {
         var (combat, ally, enemy) = CreateCombat();

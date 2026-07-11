@@ -53,6 +53,7 @@ public sealed class CatalogSeedRunner
         await SeedEthanAsync(cancellationToken);
         await SeedMargotAsync(cancellationToken);
         await SeedAraranAsync(cancellationToken);
+        await SeedManeAsync(cancellationToken);
         await SeedCanonEnemiesAsync(cancellationToken);
         await SeedCanonSkillsAsync(cancellationToken);
         await SeedCanonItemsAsync(cancellationToken);
@@ -1296,8 +1297,9 @@ public sealed class CatalogSeedRunner
 
     // TODO(utilisateur) : Araran, Tovma et Mané s'apprécient/se méfient en miroir —
     // qui n'est pas aimé par l'un des trois a du mal à être aimé des deux autres.
-    // Non modélisé mécaniquement ici (Mané n'existe pas encore comme PNJ) ; à envisager
-    // plus tard via des DialogueRequirement croisés une fois les trois fiches en place.
+    // Les trois fiches existent désormais, mais le couplage croisé (DialogueRequirement
+    // basé sur la réputation des deux autres) n'est toujours pas modélisé mécaniquement ;
+    // à construire plus tard si le besoin se confirme.
     private async Task<int> SeedAraranAsync(CancellationToken ct)
     {
         var persona = new NpcPersona(
@@ -1368,6 +1370,80 @@ public sealed class CatalogSeedRunner
         return await UpsertNpcAsync("npc.araran", "Araran",
             "Une des meilleures amies de Tovma. Autoritaire, très directe, d'une pertinence redoutable, elle sait ce qu'est le Palais et devine facilement ses desseins.",
             "1.0", EmotionalRegister.Effroi, true, persona, wounds, graph, ct,
+            offerings: offerings);
+    }
+
+    // NB(auteur) : le déclencheur/la blessure de Mané n'a pas été précisé par
+    // l'utilisateur (contrairement aux PNJ précédents) — inféré ci-dessous à partir
+    // de "très émotive et très impulsive" + son sort "Impulsivité" (dégâts/vitesse
+    // contre défense) : sa blessure est la peur que son impulsivité blesse un jour
+    // ceux qu'elle aime, en écho direct au compromis mécanique du sort.
+    private async Task<int> SeedManeAsync(CancellationToken ct)
+    {
+        var persona = new NpcPersona(
+            "Très émotive et très impulsive — mais aussi intelligente émotionnellement : elle comprend en un regard ce que ressentent ceux qui l'entourent.",
+            EmotionalRegister.Rupture,
+            new[] { "Araran", "Tovma", "lire ce que les autres ressentent avant même qu'ils ne le disent" },
+            new[] { "que son impulsivité blesse un jour Araran ou Tovma", "qu'on la traite comme une enfant incontrôlable" });
+
+        var wounds = new[]
+        {
+            new NpcWound("w-mane-impulsivite", EmotionalRegister.Rupture, NpcWoundReversibility.SoothableByAct, -2, -4,
+                new[] { new NpcTransgression("w-mane-impulsivite", "mane-impulsivite-reproche", -2) },
+                "Elle sent tout, trop vite, trop fort — et agit avant d'avoir fini de sentir. Lui dire qu'elle va finir par blesser quelqu'un qu'elle aime touche exactement là où elle se méfie déjà d'elle-même.")
+        };
+
+        var rencontre = new NpcDialogueNode("rencontre", "Mané",
+            new[]
+            {
+                "Elle vous regarde à peine une seconde, et déjà quelque chose dans son visage a compris ce que vous ressentez.",
+                "« Araran et Tovma me font confiance. Moi, je vous jauge à ma façon — plus rapide, moins polie. »"
+            },
+            new[]
+            {
+                new NpcDialogueChoice("reprocher-impulsivite", "Lui dire qu'elle finira par blesser quelqu'un à agir si vite", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.SetMemoryFlag, flag: "mane-impulsivite-reproche"),
+                            C(ConsequenceKind.Narrative, frag: "Elle se fige, une seconde de trop — puis son sourire revient, plus dur.") }, null),
+                new NpcDialogueChoice("se-laisser-lire", "Se laisser lire sans rien cacher", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.AdjustRelationship, rel: 1) }, "ressenti"),
+                new NpcDialogueChoice("partir", "Partir", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.Narrative, frag: "Vous partez. Elle a déjà deviné pourquoi, avant même que vous ne le sachiez vous-même.") }, null)
+            });
+
+        var ressenti = new NpcDialogueNode("ressenti", "Mané",
+            new[] { "« Vous avez peur, là, non ? Pas de moi — de ce qu'il y a plus loin. C'est déjà ça, de le savoir. »" },
+            new[]
+            {
+                new NpcDialogueChoice("continuer", "Continuer à parler", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.AdjustRelationship, rel: 1) }, "don")
+            });
+
+        var don = new NpcDialogueNode("don", "Mané",
+            new[] { "« Tenez. Ça vous ressemble, je crois — vite, et sans trop réfléchir. »" },
+            new[]
+            {
+                new NpcDialogueChoice("accepter-impulsivite", "Accepter \"Impulsivité\"",
+                    new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 250) },
+                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.mane.impulsivite") }, null),
+                new NpcDialogueChoice("accepter-favorite", "Accepter \"Favorite de Elise\"",
+                    new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) },
+                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.mane.favorite-de-elise") }, null)
+            });
+
+        var graph = new NpcDialogueGraph("npc.mane.dialogue", "1.0", "rencontre",
+            new Dictionary<string, NpcDialogueNode> { ["rencontre"] = rencontre, ["ressenti"] = ressenti, ["don"] = don });
+
+        var offerings = new[]
+        {
+            new NpcOffering("offer.mane.impulsivite", NpcOfferingKind.Skill, "canon.skill.impulsivite", 1, true,
+                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 250) }),
+            new NpcOffering("offer.mane.favorite-de-elise", NpcOfferingKind.Skill, "canon.skill.favorite-de-elise", 1, true,
+                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) })
+        };
+
+        return await UpsertNpcAsync("npc.mane", "Mané",
+            "Très émotive et très impulsive, mais d'une intelligence émotionnelle redoutable — elle comprend vite ceux qui l'entourent. Comme Araran et Tovma, être haïe de l'un des trois a un impact sur sa propre réputation.",
+            "1.0", EmotionalRegister.Rupture, true, persona, wounds, graph, ct,
             offerings: offerings);
     }
 
@@ -1815,6 +1891,42 @@ public sealed class CatalogSeedRunner
                     Stat: "CriticalChanceBonus")
             },
             category: "Magic");
+
+        // "Impulsivité" (Mané) : +5% vitesse (charge d'ATB), +5% dégâts (attaque), mais
+        // -10% défense pendant 5 tours — auto-buff/débuff, donc AppliesToActor sur les
+        // trois effets.
+        const int impulsiviteTicksPerTurn = 2500;
+        await UpsertSkillAsync("canon.skill.impulsivite", "Impulsivité",
+            "Agir avant de réfléchir — plus vite, plus fort, mais à découvert.",
+            "Buff", "Self", "Buff", mana: 12, power: 0, cancellationToken,
+            effects: new[]
+            {
+                new SkillEffectSpec("StatModifier", null, 5, impulsiviteTicksPerTurn * 5,
+                    Stat: "Speed", MagnitudeIsPercentOfBaseStat: true, AppliesToActor: true),
+                new SkillEffectSpec("StatModifier", null, 5, impulsiviteTicksPerTurn * 5,
+                    Stat: "AttackPower", MagnitudeIsPercentOfBaseStat: true, AppliesToActor: true),
+                new SkillEffectSpec("StatModifier", null, -10, impulsiviteTicksPerTurn * 5,
+                    Stat: "Defense", MagnitudeIsPercentOfBaseStat: true, AppliesToActor: true)
+            },
+            category: "Physical");
+
+        // "Favorite de Elise" (Mané, sort légendaire) : +10% défense et +10% vitesse
+        // (charge d'ATB) pendant 5 tours, et restaure instantanément 15% des PV max —
+        // le seul sort canon à combiner un effet instantané (Heal, BasePower en % des
+        // PV max) avec des buffs durables sur soi.
+        const int favoriteDeEliseTicksPerTurn = 2500;
+        await UpsertSkillAsync("canon.skill.favorite-de-elise", "Favorite de Elise",
+            "Elise veille sur ceux qu'elle préfère — une défense qui se referme, un pas plus vif, et ce qui a été perdu qui revient d'un coup.",
+            "Buff", "Self", "Heal", mana: 24, power: 15, cancellationToken,
+            effects: new[]
+            {
+                new SkillEffectSpec("StatModifier", null, 10, favoriteDeEliseTicksPerTurn * 5,
+                    Stat: "Defense", MagnitudeIsPercentOfBaseStat: true, AppliesToActor: true),
+                new SkillEffectSpec("StatModifier", null, 10, favoriteDeEliseTicksPerTurn * 5,
+                    Stat: "Speed", MagnitudeIsPercentOfBaseStat: true, AppliesToActor: true)
+            },
+            category: "Magic",
+            basePowerIsPercentOfMaxVitality: true);
     }
 
     private async Task UpsertSkillAsync(
@@ -1822,7 +1934,8 @@ public sealed class CatalogSeedRunner
     string skillType, string targeting, string effectType,
     int mana, int power, CancellationToken cancellationToken,
     IReadOnlyList<SkillEffectSpec>? effects = null,
-    string category = "Physical")
+    string category = "Physical",
+    bool basePowerIsPercentOfMaxVitality = false)
     {
         const string version = "canon-1.0.0";
         var now = DateTime.UtcNow;
@@ -1849,6 +1962,7 @@ public sealed class CatalogSeedRunner
                 ManaCost = mana,
                 ChargeCost = 0,
                 BasePower = power,
+                BasePowerIsPercentOfMaxVitality = basePowerIsPercentOfMaxVitality,
                 Power = power,
                 Accuracy = 100,
                 ActionCost = 10,
@@ -1865,6 +1979,7 @@ public sealed class CatalogSeedRunner
         existing.SkillType = skillType; existing.TargetingType = targeting; existing.TargetingMode = targeting;
         existing.EffectType = effectType; existing.Category = category; existing.CostType = mana > 0 ? "Mana" : "None";
         existing.ManaCost = mana; existing.BasePower = power; existing.Power = power;
+        existing.BasePowerIsPercentOfMaxVitality = basePowerIsPercentOfMaxVitality;
         existing.EffectsJson = effectsJson;
         existing.UpdatedAtUtc = now;
     }

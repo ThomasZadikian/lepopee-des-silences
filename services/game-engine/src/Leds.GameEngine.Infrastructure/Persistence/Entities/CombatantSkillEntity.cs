@@ -14,6 +14,7 @@ public sealed class CombatantSkillEntity
     public int BasePower { get; set; }
     public string Tags { get; set; } = string.Empty;
     public string Category { get; set; } = "Physical";
+    public bool BasePowerIsPercentOfMaxVitality { get; set; }
 
     public CombatantEntity? Combatant { get; set; }
 }

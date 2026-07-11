@@ -132,7 +132,8 @@ public sealed class CombatFactory : ICombatFactory
                             s.ChargeCost,
                             ScalePlayerSkillPower(s.EffectType, s.BasePower, attackPowerMultiplier),
                             statusEffects: EffectFor(skillEffects, s.Key),
-                            category: s.Category))
+                            category: s.Category,
+                            basePowerIsPercentOfMaxVitality: s.BasePowerIsPercentOfMaxVitality))
                         .ToArray()
                         ?? GetDefaultAllySkills(attackPowerMultiplier, skillEffects);
 
@@ -180,7 +181,8 @@ public sealed class CombatFactory : ICombatFactory
                             s.ManaCost,
                             s.ChargeCost,
                             ScalePlayerSkillPower(s.EffectType, s.BasePower, attackPowerMultiplier),
-                            statusEffects: EffectFor(skillEffects, s.Key)))
+                            statusEffects: EffectFor(skillEffects, s.Key),
+                            basePowerIsPercentOfMaxVitality: s.BasePowerIsPercentOfMaxVitality))
                         .ToArray()
                     : GetDefaultAllySkills(attackPowerMultiplier, skillEffects);
 
@@ -249,7 +251,8 @@ public sealed class CombatFactory : ICombatFactory
                             power,
                             s.Tags,
                             EffectFor(skillEffects, s.Key),
-                            category: s.Category);
+                            category: s.Category,
+                            basePowerIsPercentOfMaxVitality: s.BasePowerIsPercentOfMaxVitality);
                     })
                     .ToArray();
 

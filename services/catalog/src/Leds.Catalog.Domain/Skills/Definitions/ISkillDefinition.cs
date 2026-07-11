@@ -20,4 +20,6 @@ public interface ISkillDefinition : ICatalogContent
     int BasePower { get; }
 
     IReadOnlyList<SkillEffectSpec> Effects { get; }
+
+    bool BasePowerIsPercentOfMaxVitality { get; }
 }

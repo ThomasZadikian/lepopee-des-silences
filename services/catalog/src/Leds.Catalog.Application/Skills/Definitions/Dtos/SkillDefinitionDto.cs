@@ -8,13 +8,15 @@ public sealed record SkillDefinitionDto(
     string SkillType, string TargetingType, string EffectType,
     int ManaCost, int ChargeCost, int BasePower,
     IReadOnlyCollection<SkillEffectSpecDto> Effects,
-    string Category = "Physical")
+    string Category = "Physical",
+    bool BasePowerIsPercentOfMaxVitality = false)
 {
     public static SkillDefinitionDto FromDomain(ISkillDefinition d) => new(
         d.Id.Value, d.Key.Value, d.Name.Value, d.Description.Value, d.Version.Value, d.Status.ToString(),
         d.SkillType, d.TargetingType, d.EffectType, d.ManaCost, d.ChargeCost, d.BasePower,
         d.Effects.Select(SkillEffectSpecDto.FromDomain).ToArray(),
-        d.Category);
+        d.Category,
+        d.BasePowerIsPercentOfMaxVitality);
 }
 
 public sealed record SkillEffectSpecDto(

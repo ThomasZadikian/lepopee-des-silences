@@ -12,6 +12,7 @@ public sealed class PlayerRuntimeSkillEntity
     public int ChargeCost { get; set; }
     public int BasePower { get; set; }
     public string Category { get; set; } = "Physical";
+    public bool BasePowerIsPercentOfMaxVitality { get; set; }
 
     public PlayerRuntimeStateEntity? PlayerState { get; set; }
 }

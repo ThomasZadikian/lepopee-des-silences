@@ -30,6 +30,7 @@ public sealed class SkillDefinitionEntityConfiguration : IEntityTypeConfiguratio
         builder.Property(e => e.ManaCost).HasColumnName("mana_cost");
         builder.Property(e => e.ChargeCost).HasColumnName("charge_cost");
         builder.Property(e => e.BasePower).HasColumnName("base_power");
+        builder.Property(e => e.BasePowerIsPercentOfMaxVitality).HasColumnName("base_power_is_percent_of_max_vitality").HasDefaultValue(false).IsRequired();
         builder.Property(e => e.Power).HasColumnName("power");
         builder.Property(e => e.Accuracy).HasColumnName("accuracy").HasDefaultValue(100);
         builder.Property(e => e.ActionCost).HasColumnName("action_cost").HasDefaultValue(10);

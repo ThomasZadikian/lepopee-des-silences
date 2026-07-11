@@ -13,7 +13,8 @@ public sealed class PlayerRuntimeSkill
         int manaCost,
         int chargeCost,
         int basePower,
-        string category)
+        string category,
+        bool basePowerIsPercentOfMaxVitality)
     {
         Key = key;
         DisplayName = displayName;
@@ -24,6 +25,7 @@ public sealed class PlayerRuntimeSkill
         ChargeCost = chargeCost;
         BasePower = basePower;
         Category = category;
+        BasePowerIsPercentOfMaxVitality = basePowerIsPercentOfMaxVitality;
     }
 
     public string Key { get; }
@@ -35,6 +37,9 @@ public sealed class PlayerRuntimeSkill
     public int ChargeCost { get; }
     public int BasePower { get; }
     public string Category { get; }
+    /// <summary>When true (EffectType "Heal" only), BasePower is a percentage of the
+    /// target's MaxVitality applied instantly — e.g. Mané's "Favorite de Elise".</summary>
+    public bool BasePowerIsPercentOfMaxVitality { get; }
 
     public static PlayerRuntimeSkill Create(
         string key,
@@ -45,7 +50,8 @@ public sealed class PlayerRuntimeSkill
         int manaCost,
         int chargeCost,
         int basePower,
-        string category = "Physical")
+        string category = "Physical",
+        bool basePowerIsPercentOfMaxVitality = false)
     {
         if (string.IsNullOrWhiteSpace(key))
             throw new DomainException("Player skill key is required.");
@@ -58,7 +64,8 @@ public sealed class PlayerRuntimeSkill
 
         return new PlayerRuntimeSkill(
             key.Trim(), displayName.Trim(), skillType, targetingType, effectType, manaCost, chargeCost, basePower,
-            string.IsNullOrWhiteSpace(category) ? "Physical" : category);
+            string.IsNullOrWhiteSpace(category) ? "Physical" : category,
+            basePowerIsPercentOfMaxVitality);
     }
 
     /// <summary>
@@ -74,8 +81,9 @@ public sealed class PlayerRuntimeSkill
         int manaCost,
         int chargeCost,
         int basePower,
-        string category = "Physical")
+        string category = "Physical",
+        bool basePowerIsPercentOfMaxVitality = false)
     {
-        return new PlayerRuntimeSkill(key, displayName, skillType, targetingType, effectType, manaCost, chargeCost, basePower, category);
+        return new PlayerRuntimeSkill(key, displayName, skillType, targetingType, effectType, manaCost, chargeCost, basePower, category, basePowerIsPercentOfMaxVitality);
     }
 }

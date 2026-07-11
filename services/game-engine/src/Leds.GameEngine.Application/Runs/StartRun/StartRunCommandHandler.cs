@@ -130,16 +130,43 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
 
         var grantedSkills = await CollectGrantedSkillsAsync(grantedSkillKeys, cancellationToken);
 
+        // mainCharacter.Skills comes from player-service's run-snapshot, which only
+        // guarantees the equipped skill KEY is correct — DisplayName/EffectType/BasePower
+        // there can be a best-effort guess (e.g. for a skill unlocked from an NPC offering
+        // like Mané's "Favorite de Elise"). Re-resolve each key against the catalog (the
+        // actual source of truth) and only fall back to the snapshot's own data if the
+        // catalog lookup misses, so a legendary/rare skill's real mechanics (EffectType,
+        // BasePower, Category, percent-of-max heal, ...) are what actually gets cast.
+        var catalogLearnedSkills = await CollectGrantedSkillsAsync(mainCharacter.SkillKeys, cancellationToken);
+
         var playerSkills = mainCharacter.Skills
-            .Select(s => PlayerRuntimeSkill.Create(
-                key: s.SkillDefinitionKey,
-                displayName: s.DisplayName,
-                skillType: s.SkillType,
-                targetingType: s.TargetingMode,
-                effectType: s.EffectType,
-                manaCost: s.ManaCost,
-                chargeCost: s.ChargeCost,
-                basePower: s.BasePower))
+            .Select(fallback =>
+            {
+                var fromCatalog = catalogLearnedSkills.FirstOrDefault(
+                    s => string.Equals(s.Key, fallback.SkillDefinitionKey, StringComparison.OrdinalIgnoreCase));
+
+                return fromCatalog is not null
+                    ? PlayerRuntimeSkill.Create(
+                        key: fromCatalog.Key,
+                        displayName: fromCatalog.DisplayName,
+                        skillType: fromCatalog.SkillType,
+                        targetingType: fromCatalog.TargetingType,
+                        effectType: fromCatalog.EffectType,
+                        manaCost: fromCatalog.ManaCost,
+                        chargeCost: fromCatalog.ChargeCost,
+                        basePower: fromCatalog.BasePower,
+                        category: fromCatalog.Category,
+                        basePowerIsPercentOfMaxVitality: fromCatalog.BasePowerIsPercentOfMaxVitality)
+                    : PlayerRuntimeSkill.Create(
+                        key: fallback.SkillDefinitionKey,
+                        displayName: fallback.DisplayName,
+                        skillType: fallback.SkillType,
+                        targetingType: fallback.TargetingMode,
+                        effectType: fallback.EffectType,
+                        manaCost: fallback.ManaCost,
+                        chargeCost: fallback.ChargeCost,
+                        basePower: fallback.BasePower);
+            })
             .Concat(grantedSkills.Select(s => PlayerRuntimeSkill.Create(
                 key: s.Key,
                 displayName: s.DisplayName,
@@ -148,7 +175,9 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
                 effectType: s.EffectType,
                 manaCost: s.ManaCost,
                 chargeCost: s.ChargeCost,
-                basePower: s.BasePower)))
+                basePower: s.BasePower,
+                category: s.Category,
+                basePowerIsPercentOfMaxVitality: s.BasePowerIsPercentOfMaxVitality)))
             .ToArray();
 
         var run = Run.StartNew(

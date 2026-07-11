@@ -24,6 +24,7 @@ public sealed class CombatantSkillEntityConfiguration : IEntityTypeConfiguration
         builder.Property(s => s.BasePower).HasColumnName("base_power");
         builder.Property(s => s.Tags).HasColumnName("tags");
         builder.Property(s => s.Category).HasColumnName("category").HasMaxLength(16).HasDefaultValue("Physical").IsRequired();
+        builder.Property(s => s.BasePowerIsPercentOfMaxVitality).HasColumnName("base_power_is_percent_of_max_vitality").HasDefaultValue(false).IsRequired();
 
         builder.HasOne(s => s.Combatant)
             .WithMany(c => c.Skills)

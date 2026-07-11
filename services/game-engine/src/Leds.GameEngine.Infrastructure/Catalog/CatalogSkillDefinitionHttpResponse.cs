@@ -3,7 +3,8 @@ public sealed record CatalogSkillDefinitionHttpResponse(
     string EffectType, int ManaCost, int ChargeCost, int BasePower,
     IReadOnlyCollection<string> Tags,
     IReadOnlyCollection<CatalogSkillEffectSpecHttpResponse>? Effects = null,
-    string Category = "Physical");
+    string Category = "Physical",
+    bool BasePowerIsPercentOfMaxVitality = false);
 
 public sealed record CatalogSkillEffectSpecHttpResponse(
     string Kind,
