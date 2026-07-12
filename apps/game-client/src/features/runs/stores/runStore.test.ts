@@ -22,6 +22,7 @@ vi.mock('../api/runApi', () => ({
     abandonRun: vi.fn(),
     getPermanentItemCandidates: vi.fn(),
     confirmPermanentItemSelection: vi.fn(),
+    removePalaceLaw: vi.fn(),
   },
 }));
 
@@ -419,6 +420,24 @@ describe('useRunStore actions', () => {
     expect(runApi.confirmPermanentItemSelection).toHaveBeenCalledWith('run-1', ['item.relic.tome']);
     expect(store.isPermanentItemSelectionResolved).toBe(true);
     expect(store.gameplayPhase).toBe('Completed');
+  });
+
+  it('removePalaceLaw sends the law key and refreshes the run', async () => {
+    const store = useRunStore();
+    store.currentRun = {
+      id: 'run-1',
+      status: 'Active',
+      activePalaceLaws: [{ key: 'law-echo-v1', version: '1.0', displayName: 'Loi', description: '', domain: 'Combat' }],
+    } as any;
+
+    vi.mocked(runApi.removePalaceLaw).mockResolvedValue({
+      run: { id: 'run-1', status: 'Active', currentRoom: {}, activePalaceLaws: [] },
+    } as any);
+
+    await store.removePalaceLaw('law-echo-v1');
+
+    expect(runApi.removePalaceLaw).toHaveBeenCalledWith('run-1', 'law-echo-v1');
+    expect(store.currentRun?.activePalaceLaws).toEqual([]);
   });
 
   it('selectNpcDialogueChoice queues a reputation popup from a reputation applied effect', async () => {

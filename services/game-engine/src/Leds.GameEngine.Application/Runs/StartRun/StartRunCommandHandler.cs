@@ -14,6 +14,9 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
     /// <summary>Carnet de bord — see SeedEmotionsAsync in the catalog seed.</summary>
     private const string JournalItemKey = "canon.item.carnet-de-bord";
 
+    /// <summary>Déni permanent — Erika's legendary offering. See SeedErikaAsync in the catalog seed.</summary>
+    private const string LawDenialItemKey = "canon.item.deni-permanent";
+
     private readonly IRunGenerator _runGenerator;
     private readonly IRunRepository _runRepository;
     private readonly IPlayerRunSnapshotGateway _playerGateway;
@@ -46,6 +49,8 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
         var profile = await _playerProfileGateway.GetProfileAsync(request.PlayerId, cancellationToken);
         var journalEnabled = profile.PermanentItems?.Any(item =>
             string.Equals(item.ItemDefinitionKey, JournalItemKey, StringComparison.OrdinalIgnoreCase)) ?? false;
+        var lawDenialEnabled = profile.PermanentItems?.Any(item =>
+            string.Equals(item.ItemDefinitionKey, LawDenialItemKey, StringComparison.OrdinalIgnoreCase)) ?? false;
 
         var seed = _runGenerator.GenerateSeed();
         var initialRoom = await _runGenerator.GenerateInitialRoomAsync(seed, cancellationToken);
@@ -223,7 +228,8 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
             magicDamageReductionPercent: magicDamageReductionPercent,
             criticalChanceBonusPercent: criticalChanceBonusPercent,
             guardBonusPercent: guardBonusPercent,
-            journalEnabled: journalEnabled);
+            journalEnabled: journalEnabled,
+            lawDenialEnabled: lawDenialEnabled);
 
         var characterSnapshots = snapshot.Characters
             .Select(c =>

@@ -17,6 +17,12 @@ public sealed class Run
     /// </summary>
     public const int DefaultRunItemCapacity = 6;
 
+    /// <summary>
+    /// Minimum number of rooms that must pass between two uses of "Déni permanent" —
+    /// see <see cref="CanUseLawDenial"/>.
+    /// </summary>
+    public const int LawDenialCooldownRooms = 10;
+
     private readonly List<Room> _rooms = [];
     private readonly List<ActivePalaceLaw> _activePalaceLaws = [];
     private readonly List<string> _memoryFragments = [];
@@ -63,6 +69,27 @@ public sealed class Run
     /// </summary>
     public bool JournalEnabled { get; private set; }
 
+    /// <summary>
+    /// True when the player owns the "Déni permanent" permanent item — computed once at
+    /// <see cref="StartNew"/> time from the player's profile, like <see cref="JournalEnabled"/>.
+    /// </summary>
+    public bool LawDenialEnabled { get; private set; }
+
+    /// <summary>
+    /// <see cref="CurrentRoomIndex"/> at which "Déni permanent" was last used this run, or
+    /// <c>null</c> if never used. Gates <see cref="CanUseLawDenial"/> via <see cref="LawDenialCooldownRooms"/>.
+    /// </summary>
+    public int? LawDenialLastUsedRoomIndex { get; private set; }
+
+    /// <summary>
+    /// True when the player can currently revoke an active Palace Law with "Déni permanent":
+    /// owns the item, and either never used it this run or has progressed at least
+    /// <see cref="LawDenialCooldownRooms"/> rooms since the last use.
+    /// </summary>
+    public bool CanUseLawDenial =>
+        LawDenialEnabled &&
+        (LawDenialLastUsedRoomIndex is null || CurrentRoomIndex - LawDenialLastUsedRoomIndex.Value >= LawDenialCooldownRooms);
+
     public IReadOnlyCollection<RunItem> RunItems => _runItems.AsReadOnly();
 
     public int RunItemCapacity { get; }
@@ -101,7 +128,9 @@ public sealed class Run
         int magicDamageReductionPercent = 0,
         int criticalChanceBonusPercent = 0,
         int guardBonusPercent = 0,
-        bool journalEnabled = false)
+        bool journalEnabled = false,
+        bool lawDenialEnabled = false,
+        int? lawDenialLastUsedRoomIndex = null)
     {
         Id = id;
         PlayerId = playerId;
@@ -131,6 +160,8 @@ public sealed class Run
         CriticalChanceBonusPercent = criticalChanceBonusPercent;
         GuardBonusPercent = guardBonusPercent;
         JournalEnabled = journalEnabled;
+        LawDenialEnabled = lawDenialEnabled;
+        LawDenialLastUsedRoomIndex = lawDenialLastUsedRoomIndex;
 
         _rooms.Add(initialRoom);
     }
@@ -376,7 +407,8 @@ public sealed class Run
         int magicDamageReductionPercent = 0,
         int criticalChanceBonusPercent = 0,
         int guardBonusPercent = 0,
-        bool journalEnabled = false)
+        bool journalEnabled = false,
+        bool lawDenialEnabled = false)
     {
         if (playerId == Guid.Empty)
         {
@@ -477,7 +509,8 @@ public sealed class Run
             magicDamageReductionPercent: magicDamageReductionPercent,
             criticalChanceBonusPercent: criticalChanceBonusPercent,
             guardBonusPercent: guardBonusPercent,
-            journalEnabled: journalEnabled);
+            journalEnabled: journalEnabled,
+            lawDenialEnabled: lawDenialEnabled);
 
         run.PlayerState = PlayerRuntimeState.Create(
             maxVitality: maxHp,
@@ -1460,6 +1493,48 @@ public sealed class Run
         _activePalaceLaws.RemoveAll(activeLaw => replacedLawKeySet.Contains(activeLaw.Key));
     }
 
+    /// <summary>
+    /// Revokes one currently active Palace Law using "Déni permanent" — the player-triggered
+    /// counterpart to <see cref="ReplaceActiveRoomClimateLaws"/>'s automatic replacement. Consumes
+    /// every unconsumed <see cref="RunModifier"/> the law applied and removes it from
+    /// <see cref="ActivePalaceLaws"/>, then starts the cooldown (<see cref="LawDenialCooldownRooms"/>).
+    /// </summary>
+    public void RemovePalaceLaw(string lawKey)
+    {
+        if (string.IsNullOrWhiteSpace(lawKey))
+        {
+            throw new DomainException("Law key is required.");
+        }
+
+        if (!LawDenialEnabled)
+        {
+            throw new DomainException("This run has no law-denial capability.");
+        }
+
+        if (!CanUseLawDenial)
+        {
+            throw new DomainException("Law denial is still on cooldown.");
+        }
+
+        if (!_activePalaceLaws.Any(law => law.Key == lawKey))
+        {
+            throw new DomainException($"No active palace law with key '{lawKey}'.");
+        }
+
+        var now = DateTime.UtcNow;
+
+        foreach (var modifier in _runModifiers.Where(modifier =>
+            modifier.SourceType == "PalaceLaw" &&
+            modifier.SourceKey == lawKey &&
+            !modifier.IsConsumed))
+        {
+            modifier.Consume(now);
+        }
+
+        _activePalaceLaws.RemoveAll(law => law.Key == lawKey);
+        LawDenialLastUsedRoomIndex = CurrentRoomIndex;
+    }
+
     public void DebugPrepareForNextRoom()
     {
         if (Status is RunStatus.Completed or RunStatus.Failed or RunStatus.Abandoned or RunStatus.Suspended)
@@ -1653,11 +1728,13 @@ public sealed class Run
         int guardBonusPercent = 0,
         int dotDamageBonusPercent = 0,
         bool journalEnabled = false,
-        IEnumerable<RunJournalEntry>? journalEntries = null)
+        IEnumerable<RunJournalEntry>? journalEntries = null,
+        bool lawDenialEnabled = false,
+        int? lawDenialLastUsedRoomIndex = null)
     {
         var firstRoom = rooms.First();
 
-        var run = new Run(id, playerId, seed, generatorVersion, markovMatrixVersion, status, firstRoom, startedAt, maxHp, currentHp, attack, defense, speed, focus, currentRoomIndex, activeCombatId, pendingRewardOfferId, runItemCapacity, typedDamageReductions, hitChanceBonusPercent, dotDurationReductionPercent, dotDamageReductionPercent, dotDamageBonusPercent, magicDamageBonusPercent, magicDamageReductionPercent, criticalChanceBonusPercent, guardBonusPercent, journalEnabled);
+        var run = new Run(id, playerId, seed, generatorVersion, markovMatrixVersion, status, firstRoom, startedAt, maxHp, currentHp, attack, defense, speed, focus, currentRoomIndex, activeCombatId, pendingRewardOfferId, runItemCapacity, typedDamageReductions, hitChanceBonusPercent, dotDurationReductionPercent, dotDamageReductionPercent, dotDamageBonusPercent, magicDamageBonusPercent, magicDamageReductionPercent, criticalChanceBonusPercent, guardBonusPercent, journalEnabled, lawDenialEnabled, lawDenialLastUsedRoomIndex);
         foreach (var room in rooms.Skip(1))
         {
             run._rooms.Add(room);

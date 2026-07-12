@@ -112,6 +112,10 @@ export type RunDto = {
   journalEnabled?: boolean;
   /** Auto-written journal entries for this run, one per event, tagged with the room they happened in. */
   journalEntries?: RunJournalEntryDto[] | null;
+  /** true when the player owns the "Déni permanent" permanent item — gates the law-revoke UI. */
+  lawDenialEnabled?: boolean;
+  /** true when law denial is currently usable: owned, and cooldown (10 rooms) has elapsed. */
+  canUseLawDenial?: boolean;
 };
 
 export type RunJournalEntryDto = {

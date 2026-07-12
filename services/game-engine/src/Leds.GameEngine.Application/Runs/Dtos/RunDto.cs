@@ -46,7 +46,9 @@ public sealed record RunDto(
     RunPartySnapshotDto? Party = null,
     IReadOnlyCollection<PalacePublicIndicatorDto>? PalaceIndicators = null,
     bool JournalEnabled = false,
-    IReadOnlyCollection<RunJournalEntryDto>? JournalEntries = null)
+    IReadOnlyCollection<RunJournalEntryDto>? JournalEntries = null,
+    bool LawDenialEnabled = false,
+    bool CanUseLawDenial = false)
 {
     public static RunDto FromDomain(
         Run run,
@@ -90,7 +92,9 @@ public sealed record RunDto(
             Party: RunPartySnapshotDto.FromDomain(run.PlayerSnapshot, run.PlayerState),
             PalaceIndicators: publicIndicators,
             JournalEnabled: run.JournalEnabled,
-            JournalEntries: run.JournalEntries.Select(RunJournalEntryDto.FromDomain).ToArray());
+            JournalEntries: run.JournalEntries.Select(RunJournalEntryDto.FromDomain).ToArray(),
+            LawDenialEnabled: run.LawDenialEnabled,
+            CanUseLawDenial: run.CanUseLawDenial);
     }
 }
 

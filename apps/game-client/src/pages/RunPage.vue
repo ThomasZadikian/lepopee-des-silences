@@ -265,7 +265,10 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
                   :palace-indicators="runStore.currentRun.palaceIndicators ?? null"
                   :room-climate="runStore.currentRun.currentRoom.activeClimate ?? runStore.currentRun.currentRoom.climate ?? null"
                   show-room-climate
+                  :law-denial-enabled="runStore.currentRun.lawDenialEnabled ?? false"
+                  :can-use-law-denial="runStore.currentRun.canUseLawDenial ?? false"
                   @close="uiStore.toggleLaws"
+                  @revoke-law="runStore.removePalaceLaw"
                 />
             </Transition>
 

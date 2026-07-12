@@ -131,7 +131,8 @@ public static class TestGameEngineFactory
     }
 
     public static Run CreateRun(
-        NodeEventType targetInitialEventType = NodeEventType.Combat)
+        NodeEventType targetInitialEventType = NodeEventType.Combat,
+        bool lawDenialEnabled = false)
     {
         var room = CreateThresholdRoom(targetInitialEventType);
 
@@ -141,7 +142,8 @@ public static class TestGameEngineFactory
             generatorVersion: "gen-test",
             markovMatrixVersion: "markov-test",
             initialRoom: room,
-            startedAt: DateTimeOffset.UtcNow);
+            startedAt: DateTimeOffset.UtcNow,
+            lawDenialEnabled: lawDenialEnabled);
     }
 
     public static Run CreateRunWithPlayerSnapshot(

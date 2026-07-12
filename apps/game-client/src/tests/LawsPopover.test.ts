@@ -46,6 +46,8 @@ function mountPanel(
   modifiers?: RunModifierDto[] | null,
   roomClimate?: string | null,
   palaceIndicators?: PalacePublicIndicatorDto[] | null,
+  lawDenialEnabled?: boolean,
+  canUseLawDenial?: boolean,
 ) {
   return mount(LawsPopover, {
     props: {
@@ -55,6 +57,8 @@ function mountPanel(
       palaceIndicators,
       roomClimate,
       showRoomClimate: roomClimate !== undefined,
+      lawDenialEnabled,
+      canUseLawDenial,
     },
   });
 }
@@ -233,5 +237,40 @@ describe('LawsPopover', () => {
     const wrapper = mountPanel([baseLaw]);
     await wrapper.find('.lp-foot button').trigger('click');
     expect(wrapper.emitted('close')).toBeDefined();
+  });
+
+  // ── Law denial ("Déni permanent") ──
+
+  it('does not show the revoke button when lawDenialEnabled is false', () => {
+    const wrapper = mountPanel([baseLaw], null, null, undefined, undefined, false, false);
+    expect(wrapper.find('.lp-law__revoke').exists()).toBe(false);
+  });
+
+  it('shows a disabled revoke button when enabled but on cooldown', () => {
+    const wrapper = mountPanel([baseLaw], null, null, undefined, undefined, true, false);
+    const button = wrapper.find('.lp-law__revoke');
+    expect(button.exists()).toBe(true);
+    expect((button.element as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('shows an enabled revoke button when usable', () => {
+    const wrapper = mountPanel([baseLaw], null, null, undefined, undefined, true, true);
+    const button = wrapper.find('.lp-law__revoke');
+    expect(button.exists()).toBe(true);
+    expect((button.element as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it('emits revokeLaw with the law key when the revoke button is clicked', async () => {
+    const wrapper = mountPanel([baseLaw], null, null, undefined, undefined, true, true);
+    await wrapper.find('.lp-law__revoke').trigger('click');
+    expect(wrapper.emitted('revokeLaw')).toEqual([[baseLaw.key]]);
+  });
+
+  it('renders one revoke button per law when there are several active laws', () => {
+    const wrapper = mountPanel(
+      [baseLaw, { ...baseLaw, key: 'law-2', displayName: 'Loi du Givre' }],
+      null, null, undefined, undefined, true, true,
+    );
+    expect(wrapper.findAll('.lp-law__revoke').length).toBe(2);
   });
 });

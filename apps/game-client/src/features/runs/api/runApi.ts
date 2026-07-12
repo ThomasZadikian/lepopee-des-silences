@@ -105,4 +105,10 @@ export const runApi = {
       { itemDefinitionKeys },
     );
   },
+
+  removePalaceLaw(runId: string, lawKey: string) {
+    return gameEngineApi.post<RunResponse>(
+      `/api/v2/runs/${runId}/palace-laws/${encodeURIComponent(lawKey)}/revoke`,
+    );
+  },
 };

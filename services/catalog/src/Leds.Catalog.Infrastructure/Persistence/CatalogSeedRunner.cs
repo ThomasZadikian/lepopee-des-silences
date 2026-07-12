@@ -69,6 +69,7 @@ public sealed class CatalogSeedRunner
         await SeedThomasAsync(cancellationToken);
         await SeedArchitecteAsync(cancellationToken);
         await SeedEcrivainAsync(cancellationToken);
+        await SeedErikaAsync(cancellationToken);
         await SeedCanonEnemiesAsync(cancellationToken);
         await SeedCanonSkillsAsync(cancellationToken);
         await SeedCanonItemsAsync(cancellationToken);
@@ -1970,6 +1971,106 @@ public sealed class CatalogSeedRunner
             offerings: offerings);
     }
 
+    // ── Erika (Mémoire, réversible) ──────────────────────────────────────────
+    private async Task<int> SeedErikaAsync(CancellationToken ct)
+    {
+        var persona = new NpcPersona(
+            "Une femme de caractère, calme et tranchante, qui semble comprendre le fonctionnement du Palais avant même qu'on le lui explique — et qui prétend, sans jamais s'en justifier davantage, venir d'ailleurs",
+            EmotionalRegister.Memoire,
+            new[] { "les voyageurs qui posent les bonnes questions", "garder une longueur d'avance sur le Palais", "ce qu'elle seule sait encore d'un autre monde" },
+            new[] { "qu'on nie qu'elle vient d'ailleurs", "perdre ce qui la distingue encore du Palais", "être prise au dépourvu" });
+
+        var wounds = new[]
+        {
+            new NpcWound("w-origine-erika", EmotionalRegister.Memoire, NpcWoundReversibility.SoothableByAct, -2, -4,
+                new[] { new NpcTransgression("w-origine-erika", "erika-origine-niee", -2) },
+                "Elle ne dit jamais d'où elle vient vraiment — seulement qu'elle n'est pas d'ici. Le lui nier, c'est lui retirer la seule chose qui la distingue encore du Palais.")
+        };
+
+        var rencontre = new NpcDialogueNode("rencontre", "Erika",
+            new[]
+            {
+                "Bienvenue au Palais. Ne t'inquiète pas — tout le monde a cette tête-là, au début.",
+                "Ici, tous peuvent être tes amis, ou tes ennemis. Prends garde à tes réponses."
+            },
+            new[]
+            {
+                new NpcDialogueChoice("questionner", "Lui demander comment fonctionne ce lieu", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.AdjustRelationship, rel: 1) }, "gardien"),
+                new NpcDialogueChoice("douter-origine", "Lui dire qu'elle raconte n'importe quoi, qu'elle est comme tout le monde ici", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.SetMemoryFlag, flag: "erika-origine-niee"),
+                            C(ConsequenceKind.Narrative, frag: "Elle hausse un sourcil, sans se départir de son calme. « Crois ce que tu veux. Ça ne changera rien à ce que je sais. »") }, null),
+                new NpcDialogueChoice("partir", "Partir", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.Narrative, frag: "Vous partez sans un mot. Elle reste là, égale à elle-même, à attendre le prochain arrivant.") }, null)
+            });
+
+        var gardien = new NpcDialogueNode("gardien", "Erika",
+            new[] { "Him'Lit est le gardien du lieu, il interviendra régulièrement pour empêcher ta progression." },
+            new[]
+            {
+                new NpcDialogueChoice("ecouter-encore", "Écouter encore", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.AdjustRelationship, rel: 1) }, "compagnons")
+            });
+
+        var compagnons = new NpcDialogueNode("compagnons", "Erika",
+            new[] { "Mané, John et Mina sont aventureux. S'ils en viennent à t'accepter, alors ils t'accompagneront." },
+            new[]
+            {
+                new NpcDialogueChoice("ecouter-encore", "Écouter encore", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.AdjustRelationship, rel: 1) }, "origine")
+            });
+
+        var origine = new NpcDialogueNode("origine", "Erika",
+            new[]
+            {
+                "Moi ? Je ne suis pas de ce lieu. Enfin, pas directement, dirais-je.",
+                "Il y a une faille, quelque part dans ce Palais. Je sais où. Ça ne veut pas dire que je te le dirai — pas encore."
+            },
+            new[]
+            {
+                new NpcDialogueChoice("ecouter-encore", "Écouter encore", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.AdjustRelationship, rel: 1) }, "don")
+            });
+
+        var don = new NpcDialogueNode("don", "Erika",
+            new[] { "Elle vous regarde un instant, presque amusée. « Tu as posé les bonnes questions. Tiens — ça t'aidera, plus tard. »" },
+            new[]
+            {
+                new NpcDialogueChoice("accepter-competence", "Accepter dix points de compétence",
+                    new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 250) },
+                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.erika.competence") }, null),
+                new NpcDialogueChoice("accepter-deni", "Accepter le Déni permanent",
+                    new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) },
+                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.erika.deni-permanent") }, null),
+                new NpcDialogueChoice("don-decliner", "La remercier et poursuivre votre chemin", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.Narrative, frag: "Elle range ce qu'elle tenait, sans se départir de son calme. « Une prochaine fois, alors. »") }, null)
+            });
+
+        var graph = new NpcDialogueGraph("npc.erika.dialogue", "1.0", "rencontre",
+            new Dictionary<string, NpcDialogueNode>
+            {
+                ["rencontre"] = rencontre,
+                ["gardien"] = gardien,
+                ["compagnons"] = compagnons,
+                ["origine"] = origine,
+                ["don"] = don
+            });
+
+        var offerings = new[]
+        {
+            new NpcOffering("offer.erika.competence", NpcOfferingKind.StatPoint, null, 10, true,
+                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 250) }),
+            new NpcOffering("offer.erika.deni-permanent", NpcOfferingKind.Item, "canon.item.deni-permanent", 1, true,
+                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) })
+        };
+
+        return await UpsertNpcAsync("npc.erika", "Erika",
+            "Une femme de caractère, installée dans le Hall d'entrée, qui accueille les voyageurs et leur explique le fonctionnement du Palais. Elle prétend venir d'un autre monde, et semble en savoir bien plus qu'elle ne le laisse paraître — jusqu'à l'emplacement d'une faille que personne d'autre ne semble connaître.",
+            "1.0", EmotionalRegister.Memoire, true, persona, wounds, graph, ct,
+            boundRoomKeys: new[] { "room.halldentree" },
+            offerings: offerings);
+    }
+
     // ──────────────────────────────────────────────────────────────────────────
     //  ENNEMIS CANON — créatures signature tirées de « L'épopée des silences »
     //  et « Des échos ». Chemin de combat vivant : EnemyDefinition + StatBlock +
@@ -2830,6 +2931,13 @@ public sealed class CatalogSeedRunner
         await UpsertItemAsync("canon.item.carnet-de-bord", "Carnet de bord",
             "Un carnet vierge qui ne le reste jamais longtemps. Une fois en ta possession, il consigne de lui-même, run après run, tout ce que tu traverses.",
             "Equipment", "Accessory", "Rare", "Permanent", false, 0, cancellationToken);
+
+        // Aucun effet d'équipement classique : sa mécanique (retirer une loi active du Palais,
+        // une fois toutes les 10 rooms) est branchée par clé directement côté game-engine, pas
+        // via ItemEquipmentEffectKind — voir SeedErikaAsync et StartRunCommandHandler.
+        await UpsertItemAsync("canon.item.deni-permanent", "Déni permanent",
+            "Une clause qu'Erika a arrachée aux marges du Palais, avant même que quiconque songe à en dresser les lois. La brandir, c'est faire vaciller une règle — le temps de la faire taire.",
+            "Equipment", "Accessory", "Legendary", "Permanent", false, 0, cancellationToken);
 
         await UpsertItemAsync("canon.item.pierre-antique", "Pierre antique",
             "Une pierre arrachée aux fondations d'un temple oublié — plus dure que tout ce que le Palais a jamais bâti.",

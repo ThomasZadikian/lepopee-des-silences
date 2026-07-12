@@ -11,6 +11,10 @@ const props = defineProps<{
   palaceIndicators?: PalacePublicIndicatorDto[] | null;
   roomClimate?: RoomClimateStateDto | null;
   showRoomClimate?: boolean;
+  /** true when the player owns "Déni permanent" — shows the revoke action on each law. */
+  lawDenialEnabled?: boolean;
+  /** true when "Déni permanent" is currently usable (owned, cooldown elapsed). */
+  canUseLawDenial?: boolean;
 }>()
 
 const visibleModifiers = computed(() =>
@@ -19,7 +23,7 @@ const visibleModifiers = computed(() =>
 
 const showPalaceIndicators = computed(() => props.palaceIndicators !== undefined)
 
-const emit = defineEmits<{ close: [] }>()
+const emit = defineEmits<{ close: []; revokeLaw: [lawKey: string] }>()
 
 function domainTone(domain: string): 'blood' | 'frost' | 'gold' | '' {
   const d = domain?.toLowerCase() ?? ''
@@ -164,6 +168,15 @@ function modifierValueLabel(value: number): string {
               >{{ law.domain }}</span>
             </div>
             <p class="lp-law__desc">{{ law.description }}</p>
+            <button
+              v-if="lawDenialEnabled"
+              class="lp-law__revoke"
+              :disabled="!canUseLawDenial"
+              :title="canUseLawDenial ? 'Déni permanent' : 'Déni permanent — en recharge'"
+              @click="emit('revokeLaw', law.key)"
+            >
+              Révoquer (Déni permanent)
+            </button>
           </div>
         </div>
       </section>
@@ -451,6 +464,31 @@ function modifierValueLabel(value: number): string {
   line-height: 1.55;
   color: var(--ink-3);
   margin: 0;
+}
+
+.lp-law__revoke {
+  margin-top: 8px;
+  padding: 5px 12px;
+  font-family: var(--font-caps, var(--font));
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gold);
+  background: transparent;
+  border: 1px solid var(--edge-gold, oklch(.65 .09 84 / .4));
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+
+.lp-law__revoke:hover:not(:disabled) {
+  background: var(--wash-gold, oklch(.65 .09 84 / .12));
+  color: var(--ink);
+}
+
+.lp-law__revoke:disabled {
+  opacity: .4;
+  cursor: not-allowed;
 }
 
 /* ── Curse entries ── */

@@ -13,6 +13,7 @@ using Leds.GameEngine.Application.Runs.GetRunReputation;
 using Leds.GameEngine.Application.Runs.MoveToNextRoom;
 using Leds.GameEngine.Application.Runs.PourRunItemLiquid;
 using Leds.GameEngine.Application.Runs.ProgressRun;
+using Leds.GameEngine.Application.Runs.RemovePalaceLaw;
 using Leds.GameEngine.Application.Runs.ResolveCurrentEvent;
 using Leds.GameEngine.Application.Runs.ResumeRun;
 using Leds.GameEngine.Application.Runs.SaveAndExitRun;
@@ -311,6 +312,21 @@ public sealed class RunsController : ControllerBase
         CancellationToken cancellationToken)
     {
         var command = new ConfirmPermanentItemSelectionCommand(runId, request.ItemDefinitionKeys);
+        var response = await _sender.Send(command, cancellationToken);
+
+        return Ok(response);
+    }
+
+    [HttpPost("{runId:guid}/palace-laws/{lawKey}/revoke")]
+    [ProducesResponseType(typeof(RemovePalaceLawResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<RemovePalaceLawResponse>> RemovePalaceLaw(
+        Guid runId,
+        string lawKey,
+        CancellationToken cancellationToken)
+    {
+        var command = new RemovePalaceLawCommand(runId, lawKey);
         var response = await _sender.Send(command, cancellationToken);
 
         return Ok(response);

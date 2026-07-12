@@ -50,6 +50,8 @@ public static class RunPersistenceMapper
             CriticalChanceBonusPercent = run.CriticalChanceBonusPercent,
             GuardBonusPercent = run.GuardBonusPercent,
             JournalEnabled = run.JournalEnabled,
+            LawDenialEnabled = run.LawDenialEnabled,
+            LawDenialLastUsedRoomIndex = run.LawDenialLastUsedRoomIndex,
             StartedAtUtc = run.StartedAt.UtcDateTime,
             EndedAtUtc = run.EndedAt?.UtcDateTime,
             SavedAtUtc = run.SavedAt?.UtcDateTime,
@@ -450,7 +452,9 @@ public static class RunPersistenceMapper
             guardBonusPercent: entity.GuardBonusPercent,
             dotDamageBonusPercent: entity.DotDamageBonusPercent,
             journalEnabled: entity.JournalEnabled,
-            journalEntries: journalEntries);
+            journalEntries: journalEntries,
+            lawDenialEnabled: entity.LawDenialEnabled,
+            lawDenialLastUsedRoomIndex: entity.LawDenialLastUsedRoomIndex);
 
         RehydrateNpcEncounters(run, entity);
         return run;

@@ -107,6 +107,14 @@ describe('runApi', () => {
     );
   });
 
+  it('removePalaceLaw sends POST to the revoke route', async () => {
+    vi.mocked(gameEngineApi.post).mockResolvedValueOnce({});
+    await runApi.removePalaceLaw('run-1', 'law-echo-v1');
+    expect(gameEngineApi.post).toHaveBeenCalledWith(
+      '/api/v2/runs/run-1/palace-laws/law-echo-v1/revoke',
+    );
+  });
+
   it('returns the API response', async () => {
     const mockResponse = { id: 'run-1', status: 'Active' };
     vi.mocked(gameEngineApi.get).mockResolvedValueOnce(mockResponse);

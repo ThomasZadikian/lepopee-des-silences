@@ -29,6 +29,8 @@ public sealed class RunEntity
     public int CriticalChanceBonusPercent { get; set; }
     public int GuardBonusPercent { get; set; }
     public bool JournalEnabled { get; set; }
+    public bool LawDenialEnabled { get; set; }
+    public int? LawDenialLastUsedRoomIndex { get; set; }
     public DateTime StartedAtUtc { get; set; }
     public DateTime? EndedAtUtc { get; set; }
     public DateTime? SavedAtUtc { get; set; }

@@ -254,6 +254,15 @@ export const useRunStore = defineStore('run', () => {
     });
   }
 
+  async function removePalaceLaw(lawKey: string) {
+    if (!currentRun.value) return;
+
+    await execute(async () => {
+      const response = await runApi.removePalaceLaw(currentRun.value!.id, lawKey);
+      currentRun.value = unwrapRunResponse(response);
+    });
+  }
+
   function pushReputationEffects(
     effects?: { kind: string; amount: number; label: string }[] | null,
   ) {
@@ -889,6 +898,7 @@ export const useRunStore = defineStore('run', () => {
     loadInterlude,
     enterNextRoom,
     confirmPermanentItemSelection,
+    removePalaceLaw,
 
     resumableRun,
     isLoadingResumableRun,
