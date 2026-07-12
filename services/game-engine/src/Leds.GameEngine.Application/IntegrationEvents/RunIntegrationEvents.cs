@@ -9,7 +9,8 @@ public sealed record RunCompletedIntegrationEvent(
     Guid PlayerId,
     string Seed,
     int FinalDepth,
-    string GeneratorVersion);
+    string GeneratorVersion,
+    IReadOnlyCollection<NpcReputationSnapshot> NpcReputationScores);
 
 public sealed record RunFailedIntegrationEvent(
     Guid EventId,
@@ -18,7 +19,8 @@ public sealed record RunFailedIntegrationEvent(
     Guid PlayerId,
     string FailureReason,
     int FinalDepth,
-    string GeneratorVersion);
+    string GeneratorVersion,
+    IReadOnlyCollection<NpcReputationSnapshot> NpcReputationScores);
 
 public sealed record RunAbandonedIntegrationEvent(
     Guid EventId,
@@ -26,7 +28,14 @@ public sealed record RunAbandonedIntegrationEvent(
     Guid RunId,
     Guid PlayerId,
     int FinalDepth,
-    string GeneratorVersion);
+    string GeneratorVersion,
+    IReadOnlyCollection<NpcReputationSnapshot> NpcReputationScores);
+
+public sealed record NpcReputationSnapshot(
+    string NpcKey,
+    int Score,
+    int TimesMet,
+    string? CurrentDialogueNodeKey);
 
 public static class RunIntegrationEventFactory
 {
@@ -39,7 +48,8 @@ public static class RunIntegrationEventFactory
             run.PlayerId,
             run.Seed,
             run.CurrentDepth,
-            run.GeneratorVersion);
+            run.GeneratorVersion,
+            MapNpcRelationships(run.NpcRelationships));
     }
 
     public static RunFailedIntegrationEvent CreateFailed(Run run, string failureReason, DateTime occurredAtUtc)
@@ -51,7 +61,8 @@ public static class RunIntegrationEventFactory
             run.PlayerId,
             failureReason,
             run.CurrentDepth,
-            run.GeneratorVersion);
+            run.GeneratorVersion,
+            MapNpcRelationships(run.NpcRelationships));
     }
 
     public static RunAbandonedIntegrationEvent CreateAbandoned(Run run, DateTime occurredAtUtc)
@@ -62,6 +73,15 @@ public static class RunIntegrationEventFactory
             run.Id.Value,
             run.PlayerId,
             run.CurrentDepth,
-            run.GeneratorVersion);
+            run.GeneratorVersion,
+            MapNpcRelationships(run.NpcRelationships));
+    }
+
+    private static IReadOnlyCollection<NpcReputationSnapshot> MapNpcRelationships(IReadOnlyCollection<Domain.Npcs.NpcRelationship> relationships)
+    {
+        return relationships
+            .Where(r => r.TimesMet > 0 || r.RelationshipScore != 0)
+            .Select(r => new NpcReputationSnapshot(r.NpcKey, r.RelationshipScore, r.TimesMet, r.CurrentDialogueNodeKey))
+            .ToArray();
     }
 }

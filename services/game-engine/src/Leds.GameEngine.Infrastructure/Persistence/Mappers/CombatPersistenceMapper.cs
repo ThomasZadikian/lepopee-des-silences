@@ -243,7 +243,10 @@ public static class CombatPersistenceMapper
             BasePower = skill.BasePower,
             Tags = JsonSerializer.Serialize(skill.Tags),
             Category = skill.Category,
-            BasePowerIsPercentOfMaxVitality = skill.BasePowerIsPercentOfMaxVitality
+            BasePowerIsPercentOfMaxVitality = skill.BasePowerIsPercentOfMaxVitality,
+            StatusEffectsJson = skill.StatusEffects is { Count: > 0 }
+                ? JsonSerializer.Serialize(skill.StatusEffects)
+                : null
         };
     }
 
@@ -370,6 +373,10 @@ public static class CombatPersistenceMapper
             ? Array.Empty<string>()
             : JsonSerializer.Deserialize<string[]>(entity.Tags) ?? Array.Empty<string>();
 
+        var statusEffects = string.IsNullOrEmpty(entity.StatusEffectsJson)
+            ? null
+            : JsonSerializer.Deserialize<SkillStatusEffectSpec[]>(entity.StatusEffectsJson);
+
         return CombatantSkill.Rehydrate(
             entity.Key,
             entity.DisplayName,
@@ -380,6 +387,7 @@ public static class CombatPersistenceMapper
             entity.ChargeCost,
             entity.BasePower,
             tags,
+            statusEffects,
             category: entity.Category,
             basePowerIsPercentOfMaxVitality: entity.BasePowerIsPercentOfMaxVitality);
     }

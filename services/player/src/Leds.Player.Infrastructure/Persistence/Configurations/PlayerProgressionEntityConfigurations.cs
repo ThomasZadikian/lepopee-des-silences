@@ -140,3 +140,24 @@ public sealed class PlayerRunStatisticEntityConfiguration : IEntityTypeConfigura
             .OnDelete(DeleteBehavior.Cascade);
     }
 }
+
+public sealed class PlayerNpcReputationScoreEntityConfiguration : IEntityTypeConfiguration<PlayerNpcReputationScoreEntity>
+{
+    public void Configure(EntityTypeBuilder<PlayerNpcReputationScoreEntity> builder)
+    {
+        builder.ToTable("player_npc_reputation_scores");
+        builder.HasKey(s => s.Id);
+        builder.Property(s => s.Id).HasColumnName("id");
+        builder.Property(s => s.PlayerProfileId).HasColumnName("player_profile_id");
+        builder.Property(s => s.NpcKey).HasColumnName("npc_key").HasMaxLength(128).IsRequired();
+        builder.Property(s => s.Score).HasColumnName("score").HasDefaultValue(0);
+        builder.Property(s => s.TimesMet).HasColumnName("times_met").HasDefaultValue(0);
+        builder.Property(s => s.CurrentDialogueNodeKey).HasColumnName("current_dialogue_node_key").HasMaxLength(256);
+        builder.Property(s => s.UpdatedAtUtc).HasColumnName("updated_at_utc");
+        builder.HasIndex(s => new { s.PlayerProfileId, s.NpcKey }).IsUnique();
+        builder.HasOne(s => s.PlayerProfile)
+            .WithMany(p => p.NpcReputationScores)
+            .HasForeignKey(s => s.PlayerProfileId)
+            .OnDelete(DeleteBehavior.Cascade);
+    }
+}

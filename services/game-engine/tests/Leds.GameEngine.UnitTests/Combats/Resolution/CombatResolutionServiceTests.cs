@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Leds.GameEngine.Application.Abstractions;
 using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Application.Combats;
 using Leds.GameEngine.Application.Combats.Resolution;
@@ -83,7 +84,7 @@ public sealed class CombatResolutionServiceTests
     {
         var (run, combat) = CreateCompletedCombat(NodeEventType.RoomBoss);
         var gateway = new Mock<IPlayerProfileGateway>();
-        var service = new CombatResolutionService(CreateRewardOfferFactory(), gateway.Object, Mock.Of<ILogger<CombatResolutionService>>());
+        var service = new CombatResolutionService(CreateRewardOfferFactory(), gateway.Object, Mock.Of<IOutboxWriter>(), Mock.Of<ILogger<CombatResolutionService>>());
 
         var offer = await service.ApplyOutcomeAsync(run, combat, DateTimeOffset.UtcNow);
 
@@ -96,7 +97,7 @@ public sealed class CombatResolutionServiceTests
     {
         var (run, combat) = CreateCompletedCombat(NodeEventType.FinalBoss);
         var gateway = new Mock<IPlayerProfileGateway>();
-        var service = new CombatResolutionService(CreateRewardOfferFactory(), gateway.Object, Mock.Of<ILogger<CombatResolutionService>>());
+        var service = new CombatResolutionService(CreateRewardOfferFactory(), gateway.Object, Mock.Of<IOutboxWriter>(), Mock.Of<ILogger<CombatResolutionService>>());
 
         await service.ApplyOutcomeAsync(run, combat, DateTimeOffset.UtcNow);
 
@@ -108,7 +109,7 @@ public sealed class CombatResolutionServiceTests
     {
         var (run, combat) = CreateCompletedCombat(NodeEventType.Combat);
         var gateway = new Mock<IPlayerProfileGateway>();
-        var service = new CombatResolutionService(CreateRewardOfferFactory(), gateway.Object, Mock.Of<ILogger<CombatResolutionService>>());
+        var service = new CombatResolutionService(CreateRewardOfferFactory(), gateway.Object, Mock.Of<IOutboxWriter>(), Mock.Of<ILogger<CombatResolutionService>>());
 
         await service.ApplyOutcomeAsync(run, combat, DateTimeOffset.UtcNow);
 
@@ -122,7 +123,7 @@ public sealed class CombatResolutionServiceTests
         var gateway = new Mock<IPlayerProfileGateway>();
         gateway.Setup(g => g.AwardStatPointAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new HttpRequestException("Player Service unreachable"));
-        var service = new CombatResolutionService(CreateRewardOfferFactory(), gateway.Object, Mock.Of<ILogger<CombatResolutionService>>());
+        var service = new CombatResolutionService(CreateRewardOfferFactory(), gateway.Object, Mock.Of<IOutboxWriter>(), Mock.Of<ILogger<CombatResolutionService>>());
 
         var offer = await service.ApplyOutcomeAsync(run, combat, DateTimeOffset.UtcNow);
 
@@ -134,7 +135,7 @@ public sealed class CombatResolutionServiceTests
     {
         var (run, combat) = CreateCompletedCombat(NodeEventType.Combat, journalEnabled: true);
         var service = new CombatResolutionService(
-            CreateRewardOfferFactory(), Mock.Of<IPlayerProfileGateway>(), Mock.Of<ILogger<CombatResolutionService>>());
+            CreateRewardOfferFactory(), Mock.Of<IPlayerProfileGateway>(), Mock.Of<IOutboxWriter>(), Mock.Of<ILogger<CombatResolutionService>>());
 
         await service.ApplyOutcomeAsync(run, combat, DateTimeOffset.UtcNow);
 
@@ -146,7 +147,7 @@ public sealed class CombatResolutionServiceTests
     {
         var (run, combat) = CreateFailedCombat(NodeEventType.Combat, journalEnabled: true);
         var service = new CombatResolutionService(
-            CreateRewardOfferFactory(), Mock.Of<IPlayerProfileGateway>(), Mock.Of<ILogger<CombatResolutionService>>());
+            CreateRewardOfferFactory(), Mock.Of<IPlayerProfileGateway>(), Mock.Of<IOutboxWriter>(), Mock.Of<ILogger<CombatResolutionService>>());
 
         await service.ApplyOutcomeAsync(run, combat, DateTimeOffset.UtcNow);
 
@@ -158,7 +159,7 @@ public sealed class CombatResolutionServiceTests
     {
         var (run, combat) = CreateCompletedCombat(NodeEventType.Combat, journalEnabled: false);
         var service = new CombatResolutionService(
-            CreateRewardOfferFactory(), Mock.Of<IPlayerProfileGateway>(), Mock.Of<ILogger<CombatResolutionService>>());
+            CreateRewardOfferFactory(), Mock.Of<IPlayerProfileGateway>(), Mock.Of<IOutboxWriter>(), Mock.Of<ILogger<CombatResolutionService>>());
 
         await service.ApplyOutcomeAsync(run, combat, DateTimeOffset.UtcNow);
 

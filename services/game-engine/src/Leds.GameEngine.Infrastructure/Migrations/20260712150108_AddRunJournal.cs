@@ -1,3 +1,4 @@
+﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -11,7 +12,7 @@ namespace Leds.GameEngine.Infrastructure.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AddColumn<bool>(
-                name: "journal_enabled",
+                name: "JournalEnabled",
                 table: "runs",
                 type: "boolean",
                 nullable: false,
@@ -52,7 +53,7 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                 name: "run_journal_entries");
 
             migrationBuilder.DropColumn(
-                name: "journal_enabled",
+                name: "JournalEnabled",
                 table: "runs");
         }
     }

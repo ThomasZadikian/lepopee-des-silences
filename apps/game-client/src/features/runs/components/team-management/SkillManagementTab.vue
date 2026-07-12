@@ -28,10 +28,15 @@ onMounted(async () => {
 
 const categoryLabels: Record<string, string> = {
   Damage: 'Offensif',
+  Guard: 'Défensif',
   Heal: 'Soins',
   Buff: 'Soutien',
   Debuff: 'Affaiblissement',
+  Weaken: 'Affaiblissement',
+  Disrupt: 'Perturbation',
   Status: 'Statut',
+  CopySkills: 'Copie de sorts',
+  ExtendDotDuration: 'Durée de dot',
 };
 
 function categoryLabel(effectType: string): string {

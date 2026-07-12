@@ -114,6 +114,22 @@ public sealed class StubPlayerProfileGateway : IPlayerProfileGateway
         return Task.FromResult(EmptyProfile(playerId));
     }
 
+    public List<(Guid PlayerId, IReadOnlyCollection<NpcReputationScoreView> Scores)> UpsertedNpcScores { get; } = [];
+    public Dictionary<Guid, List<NpcReputationScoreView>> SeededNpcScores { get; } = new();
+
+    public Task<IReadOnlyCollection<NpcReputationScoreView>> GetNpcReputationScoresAsync(Guid playerId, CancellationToken cancellationToken)
+    {
+        if (SeededNpcScores.TryGetValue(playerId, out var scores))
+            return Task.FromResult<IReadOnlyCollection<NpcReputationScoreView>>(scores);
+        return Task.FromResult<IReadOnlyCollection<NpcReputationScoreView>>([]);
+    }
+
+    public Task UpsertNpcReputationScoresAsync(Guid playerId, Guid sourceRunId, IReadOnlyCollection<NpcReputationScoreView> scores, CancellationToken cancellationToken)
+    {
+        UpsertedNpcScores.Add((playerId, scores));
+        return Task.CompletedTask;
+    }
+
     private static PlayerProfileView EmptyProfile(Guid playerId) => new(
         playerId, "Stub Player", [], new PlayerProgressionView(0, 0));
 }

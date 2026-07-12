@@ -7,6 +7,7 @@ using Leds.GameEngine.Application.Combats.EnemyTurns;
 using Leds.GameEngine.Application.Combats.Metrics;
 using Leds.GameEngine.Application.Combats.Ports;
 using Leds.GameEngine.Application.Common.Exceptions;
+using Leds.GameEngine.Application.IntegrationEvents;
 using Leds.GameEngine.Application.Rewards.Ports;
 using Leds.GameEngine.Application.Rewards.RewardOfferFactory;
 using Leds.GameEngine.Application.Runs.Dtos;
@@ -32,6 +33,7 @@ public sealed class SubmitCombatActionCommandHandler
     private readonly IRewardOfferRepository _rewardOfferRepository;
     private readonly RewardOfferFactory _rewardOfferFactory;
     private readonly ICombatActionRecordRepository _actionRecordRepository;
+    private readonly IOutboxWriter _outboxWriter;
     private readonly IClock _clock;
 
     public SubmitCombatActionCommandHandler(
@@ -42,6 +44,7 @@ public sealed class SubmitCombatActionCommandHandler
         IRewardOfferRepository rewardOfferRepository,
         RewardOfferFactory rewardOfferFactory,
         ICombatActionRecordRepository actionRecordRepository,
+        IOutboxWriter outboxWriter,
         IClock clock)
     {
         _runRepository = runRepository;
@@ -51,6 +54,7 @@ public sealed class SubmitCombatActionCommandHandler
         _rewardOfferRepository = rewardOfferRepository;
         _rewardOfferFactory = rewardOfferFactory;
         _actionRecordRepository = actionRecordRepository;
+        _outboxWriter = outboxWriter;
         _clock = clock;
     }
 
@@ -156,6 +160,9 @@ public sealed class SubmitCombatActionCommandHandler
         else if (combatFailed)
         {
             run.FailActiveCombat(now);
+
+            var failEvt = RunIntegrationEventFactory.CreateFailed(run, "CombatDefeat", now.UtcDateTime);
+            await _outboxWriter.WriteAsync(failEvt, cancellationToken);
         }
 
         await _runRepository.UpdateAsync(run, cancellationToken);

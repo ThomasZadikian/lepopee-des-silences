@@ -7,7 +7,7 @@ HTTP-alpha-1.0.0
 
 **L’épopée des silences** est la refonte v2 du projet initial **RPG_ESI07**.
 Le projet évolue d’une application distribuée v1 composée d’un backend monolithique, d’un portail Vue et d’un client Unity vers une architecture v2 full web, serveur-autoritaire, centrée sur un **Game Engine Service** et des services périphériques spécialisés.
-
+  
 La v2 est considérée comme un nouveau produit actif.
 La v1 est conservée dans `legacy/` comme référence métier, technique et documentaire.
 

@@ -729,6 +729,7 @@ public sealed class UseCombatSkillCommandHandlerTests
         return new CombatResolutionService(
             CreateRewardOfferFactory(),
             Mock.Of<IPlayerProfileGateway>(),
+            Mock.Of<IOutboxWriter>(),
             Mock.Of<ILogger<CombatResolutionService>>());
     }
 

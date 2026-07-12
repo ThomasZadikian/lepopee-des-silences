@@ -18,6 +18,7 @@ public sealed class PlayerDbContext : DbContext
     public DbSet<PlayerCharacterItemEntity> PlayerCharacterItems => Set<PlayerCharacterItemEntity>();
     public DbSet<PlayerPermanentItemEntity> PlayerPermanentItems => Set<PlayerPermanentItemEntity>();
     public DbSet<PlayerRunStatisticEntity> PlayerRunStatistics => Set<PlayerRunStatisticEntity>();
+    public DbSet<PlayerNpcReputationScoreEntity> PlayerNpcReputationScores => Set<PlayerNpcReputationScoreEntity>();
     public DbSet<ProcessedIntegrationEventEntity> ProcessedIntegrationEvents => Set<ProcessedIntegrationEventEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

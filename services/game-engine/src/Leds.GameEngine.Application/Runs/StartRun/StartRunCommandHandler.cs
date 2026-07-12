@@ -269,6 +269,19 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
 
         run.AttachPlayerSnapshot(playerSnapshot);
 
+        var savedScores = await _playerProfileGateway.GetNpcReputationScoresAsync(request.PlayerId, cancellationToken);
+        foreach (var score in savedScores)
+        {
+            var relationship = Domain.Npcs.NpcRelationship.Rehydrate(
+                score.NpcKey,
+                score.Score,
+                woundStates: new Dictionary<string, Domain.Npcs.WoundState>(),
+                flags: [],
+                score.TimesMet,
+                score.CurrentDialogueNodeKey);
+            run.RehydrateNpcRelationship(relationship);
+        }
+
         await _runRepository.AddAsync(run, cancellationToken);
 
         return new StartRunResponse(RunDto.FromDomain(run));

@@ -180,6 +180,7 @@ export const useRunStore = defineStore('run', () => {
     }
 
     if (npcDialogue.value || npcDialogueEnded.value) return 'NpcDialogue';
+    if (lastOutcome.value?.primaryEventType === 'Npc') return 'NpcDialogue';
     if (lastChoiceResult.value) return 'EventChoiceResult';
     if (lastOutcome.value) return 'EventOutcome';
 

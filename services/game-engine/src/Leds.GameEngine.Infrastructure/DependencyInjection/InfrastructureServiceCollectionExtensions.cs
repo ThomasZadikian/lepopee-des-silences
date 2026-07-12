@@ -168,7 +168,21 @@ public static class InfrastructureServiceCollectionExtensions
 
     private static void RegisterOutbox(IServiceCollection services, IConfiguration configuration)
     {
-        var outboxEnabled = configuration.GetValue<bool>("Outbox:DispatcherEnabled", false);
+        services.AddScoped<Persistence.Outbox.IEfOutboxWriter, Persistence.Outbox.EfOutboxWriter>();
+        services.AddScoped<Application.Abstractions.IOutboxWriter, Persistence.Outbox.EfOutboxWriter>();
+
+        services.AddHttpClient<IPlayerProjectionClient, HttpPlayerProjectionClient>(
+            (serviceProvider, client) =>
+            {
+                var options = serviceProvider
+                    .GetRequiredService<IOptions<PlayerGatewayOptions>>()
+                    .Value;
+
+                client.BaseAddress = new Uri(options.BaseUrl);
+                client.Timeout = TimeSpan.FromSeconds(30);
+            });
+
+        var outboxEnabled = configuration.GetValue<bool>("Outbox:DispatcherEnabled", true);
 
         if (outboxEnabled)
         {

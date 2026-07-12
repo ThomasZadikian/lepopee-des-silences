@@ -6,6 +6,7 @@ public sealed class PlayerProfile
 {
     private readonly List<PlayerPermanentUnlock> _permanentUnlocks;
     private readonly List<PlayerPermanentItem> _permanentItems;
+    private readonly List<NpcReputationScore> _npcReputationScores;
 
     private PlayerProfile(
         PlayerId id,
@@ -15,7 +16,8 @@ public sealed class PlayerProfile
         DateTimeOffset createdAtUtc,
         DateTimeOffset updatedAtUtc,
         IReadOnlyCollection<PlayerPermanentUnlock>? permanentUnlocks = null,
-        IReadOnlyCollection<PlayerPermanentItem>? permanentItems = null)
+        IReadOnlyCollection<PlayerPermanentItem>? permanentItems = null,
+        IReadOnlyCollection<NpcReputationScore>? npcReputationScores = null)
     {
         Id = id;
         DisplayName = displayName;
@@ -25,6 +27,7 @@ public sealed class PlayerProfile
         UpdatedAtUtc = updatedAtUtc;
         _permanentUnlocks = permanentUnlocks?.ToList() ?? [];
         _permanentItems = permanentItems?.ToList() ?? [];
+        _npcReputationScores = npcReputationScores?.ToList() ?? [];
     }
 
     public PlayerId Id { get; }
@@ -35,6 +38,7 @@ public sealed class PlayerProfile
     public DateTimeOffset UpdatedAtUtc { get; private set; }
     public IReadOnlyCollection<PlayerPermanentUnlock> PermanentUnlocks => _permanentUnlocks.AsReadOnly();
     public IReadOnlyCollection<PlayerPermanentItem> PermanentItems => _permanentItems.AsReadOnly();
+    public IReadOnlyCollection<NpcReputationScore> NpcReputationScores => _npcReputationScores.AsReadOnly();
 
     public static PlayerProfile Create(string displayName, DateTimeOffset createdAtUtc)
     {
@@ -191,6 +195,36 @@ public sealed class PlayerProfile
         UpdatedAtUtc = updatedAtUtc;
     }
 
+    /// <summary>
+    /// Upserts NPC reputation scores from a completed/failed/abandoned run.
+    /// Scores are absolute (last-write-wins per NPC), not deltas.
+    /// </summary>
+    public void UpsertNpcReputationScores(IReadOnlyCollection<NpcReputationScore> scores, DateTimeOffset now)
+    {
+        foreach (var score in scores)
+        {
+            var existing = _npcReputationScores.FirstOrDefault(s =>
+                string.Equals(s.NpcKey, score.NpcKey, StringComparison.OrdinalIgnoreCase));
+
+            if (existing is null)
+            {
+                _npcReputationScores.Add(score);
+            }
+            else
+            {
+                existing.ApplyDelta(score.Score - existing.Score, score.TimesMet - existing.TimesMet, score.CurrentDialogueNodeKey, now);
+            }
+        }
+
+        Touch(now);
+    }
+
+    /// <summary>
+    /// Gets the stored reputation score for a given NPC, or null if never encountered.
+    /// </summary>
+    public NpcReputationScore? GetNpcReputationScore(string npcKey) =>
+        _npcReputationScores.FirstOrDefault(s => string.Equals(s.NpcKey, npcKey, StringComparison.OrdinalIgnoreCase));
+
     public void LearnSkill(PlayerCharacterId characterId, string skillKey, string? source, DateTimeOffset now)
     {
         Roster.GetRequired(characterId).LearnSkill(PlayerCharacterSkill.Create(skillKey, now, source));
@@ -245,8 +279,9 @@ public sealed class PlayerProfile
         DateTimeOffset createdAtUtc,
         DateTimeOffset updatedAtUtc,
         IReadOnlyCollection<PlayerPermanentUnlock>? permanentUnlocks = null,
-        IReadOnlyCollection<PlayerPermanentItem>? permanentItems = null)
+        IReadOnlyCollection<PlayerPermanentItem>? permanentItems = null,
+        IReadOnlyCollection<NpcReputationScore>? npcReputationScores = null)
     {
-        return new PlayerProfile(id, displayName, roster, progression, createdAtUtc, updatedAtUtc, permanentUnlocks, permanentItems);
+        return new PlayerProfile(id, displayName, roster, progression, createdAtUtc, updatedAtUtc, permanentUnlocks, permanentItems, npcReputationScores);
     }
 }

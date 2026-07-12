@@ -38,6 +38,7 @@ public sealed class AbandonRunCommandHandlerTests
 
         var handler = new AbandonRunCommandHandler(
             repository.Object,
+            Mock.Of<IOutboxWriter>(),
             clock.Object);
 
         // Act
@@ -79,6 +80,7 @@ public sealed class AbandonRunCommandHandlerTests
 
         var handler = new AbandonRunCommandHandler(
             repository.Object,
+            Mock.Of<IOutboxWriter>(),
             clock.Object);
 
         // Act
@@ -115,6 +117,7 @@ public sealed class AbandonRunCommandHandlerTests
 
         var handler = new AbandonRunCommandHandler(
             repository.Object,
+            Mock.Of<IOutboxWriter>(),
             clock.Object);
 
         // Act

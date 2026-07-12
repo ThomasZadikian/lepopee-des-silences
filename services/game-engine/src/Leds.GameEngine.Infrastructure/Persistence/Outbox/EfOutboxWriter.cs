@@ -1,9 +1,10 @@
+using Leds.GameEngine.Application.Abstractions;
 using Leds.GameEngine.Infrastructure.Persistence.Entities;
 using System.Text.Json;
 
 namespace Leds.GameEngine.Infrastructure.Persistence.Outbox;
 
-public sealed class EfOutboxWriter : IEfOutboxWriter
+public sealed class EfOutboxWriter : IEfOutboxWriter, IOutboxWriter
 {
     private readonly GameEngineDbContext _context;
 
@@ -38,6 +39,25 @@ public sealed class EfOutboxWriter : IEfOutboxWriter
 
         _context.OutboxMessages.Add(entity);
         await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    public Task WriteAsync<T>(T integrationEvent, CancellationToken cancellationToken)
+    {
+        var typeName = typeof(T).Name;
+        var entity = new OutboxMessageEntity
+        {
+            Id = Guid.NewGuid(),
+            Type = typeName,
+            EventVersion = "v1",
+            Destination = "player-service",
+            PayloadJson = JsonSerializer.Serialize(integrationEvent, integrationEvent!.GetType()),
+            OccurredAtUtc = DateTime.UtcNow,
+            CreatedAtUtc = DateTime.UtcNow,
+            RetryCount = 0
+        };
+
+        _context.OutboxMessages.Add(entity);
+        return Task.CompletedTask;
     }
 }
 

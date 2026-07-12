@@ -3,10 +3,13 @@ using Leds.Player.Application.Players.AddPermanentItems;
 using Leds.Player.Application.Players.AwardStatPoint;
 using Leds.Player.Application.Players.ClaimNpcOffering;
 using Leds.Player.Application.Players.ClearPermanentItemContent;
+using Leds.Player.Application.Players.GetNpcReputationScores;
 using Leds.Player.Application.Players.GrantNpcReputationMilestone;
+using Leds.Player.Application.Players.UpsertNpcReputationScores;
 using Leds.Player.Application.Players.HasClaimedNpcOffering;
 using Leds.Player.Application.Players.RecruitCompanion;
 using Leds.Player.Application.Players.SetPermanentItemContent;
+using Leds.Player.Application.Players.UpsertNpcReputationScores;
 using Leds.Player.Application.Players.UnlockSkill;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -163,6 +166,30 @@ public sealed class InternalPlayersController : ControllerBase
 
         return Ok(response);
     }
+
+    [HttpGet("{playerId:guid}/npc-reputation-scores")]
+    [ProducesResponseType(typeof(IReadOnlyCollection<NpcReputationScoreDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<IReadOnlyCollection<NpcReputationScoreDto>>> GetNpcReputationScores(
+        Guid playerId,
+        CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new GetNpcReputationScoresQuery(playerId), cancellationToken);
+        return Ok(result);
+    }
+
+    [HttpPost("{playerId:guid}/npc-reputation-scores")]
+    [ProducesResponseType(typeof(IReadOnlyCollection<NpcReputationScoreDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<IReadOnlyCollection<NpcReputationScoreDto>>> UpsertNpcReputationScores(
+        Guid playerId,
+        [FromBody] UpsertNpcReputationScoresRequest request,
+        CancellationToken cancellationToken)
+    {
+        var command = new UpsertNpcReputationScoresCommand(playerId, request.SourceRunId, request.Scores);
+        var result = await _sender.Send(command, cancellationToken);
+        return Ok(result);
+    }
 }
 
 public sealed record AwardStatPointsRequest(int Amount);
@@ -190,3 +217,5 @@ public sealed record HasClaimedNpcOfferingResponse(bool Claimed);
 public sealed record AddPermanentItemsRequest(IReadOnlyCollection<string> ItemDefinitionKeys, Guid? SourceRunId);
 
 public sealed record SetPermanentItemContentRequest(string LiquidDefinitionKey);
+
+public sealed record UpsertNpcReputationScoresRequest(Guid SourceRunId, IReadOnlyCollection<NpcReputationScoreDto> Scores);

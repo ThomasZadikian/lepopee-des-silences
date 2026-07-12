@@ -39,4 +39,14 @@ public interface IPlayerProfileGateway
         int maxVitality, int attackPower, int defense, int startingGuard,
         int speed, int initiative, int recovery, int focus, int mana, int charge,
         IReadOnlyCollection<string> skillKeys, CancellationToken cancellationToken);
+
+    Task<IReadOnlyCollection<NpcReputationScoreView>> GetNpcReputationScoresAsync(Guid playerId, CancellationToken cancellationToken);
+
+    Task UpsertNpcReputationScoresAsync(Guid playerId, Guid sourceRunId, IReadOnlyCollection<NpcReputationScoreView> scores, CancellationToken cancellationToken);
 }
+
+public sealed record NpcReputationScoreView(
+    string NpcKey,
+    int Score,
+    int TimesMet,
+    string? CurrentDialogueNodeKey);

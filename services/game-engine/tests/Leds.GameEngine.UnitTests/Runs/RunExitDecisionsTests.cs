@@ -79,7 +79,7 @@ public sealed class RunExitDecisionsTests
         var clock = new Mock<IClock>();
         clock.SetupGet(c => c.UtcNow).Returns(DateTimeOffset.UtcNow);
 
-        var handler = new AbandonRunCommandHandler(repo.Object, clock.Object);
+        var handler = new AbandonRunCommandHandler(repo.Object, Mock.Of<IOutboxWriter>(), clock.Object);
         return (handler, repo, clock);
     }
 
@@ -265,7 +265,7 @@ public sealed class RunExitDecisionsTests
         var clock = new Mock<IClock>();
         clock.SetupGet(c => c.UtcNow).Returns(now);
 
-        var handler = new AbandonRunCommandHandler(repo.Object, clock.Object);
+        var handler = new AbandonRunCommandHandler(repo.Object, Mock.Of<IOutboxWriter>(), clock.Object);
 
         await handler.Handle(new AbandonRunCommand(run.Id.Value), CancellationToken.None);
 

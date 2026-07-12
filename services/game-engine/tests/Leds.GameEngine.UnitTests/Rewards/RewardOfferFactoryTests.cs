@@ -266,8 +266,8 @@ public sealed class RewardOfferFactoryTests
             RewardSource.Combat, NodeEventType.Combat, riskLevel: 25,
             enemies: [enemy], runSeed: "seed-c", runId: Guid.NewGuid(), combatId: Guid.NewGuid());
 
-        offer.Choices.Count.Should().BeGreaterOrEqualTo(3);
-        offer.Choices.Should().OnlyContain(c => c.SourceEnemyDisplayName is null,
+        offer.Choices.Count.Should().BeGreaterThanOrEqualTo(3);
+        offer.Choices.Should().OnlyContain(c => c.SourceEnemyDisplayName == null,
             because: "the enemy has no loot table, so every item comes from the generic fallback pool.");
     }
 

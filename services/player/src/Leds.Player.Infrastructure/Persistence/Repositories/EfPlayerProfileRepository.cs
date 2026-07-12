@@ -26,6 +26,7 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
                 .ThenInclude(c => c.Items)
             .Include(p => p.PermanentUnlocks)
             .Include(p => p.PermanentItems)
+            .Include(p => p.NpcReputationScores)
             .FirstOrDefaultAsync(p => p.Id == id.Value, cancellationToken);
 
         return entity is null ? null : ToDomain(entity);
@@ -42,6 +43,7 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
                 .ThenInclude(c => c.Items)
             .Include(p => p.PermanentUnlocks)
             .Include(p => p.PermanentItems)
+            .Include(p => p.NpcReputationScores)
             .FirstOrDefaultAsync(p => p.Id == profile.Id.Value, cancellationToken);
 
         if (existing is null)
@@ -89,7 +91,8 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
                 Items = c.Items.Select(ToItemEntity).ToList()
             }).ToList(),
             PermanentUnlocks = profile.PermanentUnlocks.Select(u => ToPermanentUnlockEntity(u, profile.Id.Value)).ToList(),
-            PermanentItems = profile.PermanentItems.Select(i => ToPermanentItemEntity(i, profile.Id.Value)).ToList()
+            PermanentItems = profile.PermanentItems.Select(i => ToPermanentItemEntity(i, profile.Id.Value)).ToList(),
+            NpcReputationScores = profile.NpcReputationScores.Select(s => ToNpcReputationScoreEntity(s, profile.Id.Value)).ToList()
         };
     }
 
@@ -152,6 +155,7 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
 
         UpdatePermanentUnlocks(existing, incoming);
         UpdatePermanentItems(existing, incoming);
+        UpdateNpcReputationScores(existing, incoming);
     }
 
     // Append-only: permanent unlocks are never modified or removed once granted (they're
@@ -192,6 +196,28 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
             var newItem = ToPermanentItemEntity(item, incoming.Id.Value);
             existing.PermanentItems.Add(newItem);
             _context.Add(newItem);
+        }
+    }
+
+    private void UpdateNpcReputationScores(PlayerProfileEntity existing, PlayerProfile incoming)
+    {
+        var existingByKey = existing.NpcReputationScores
+            .ToDictionary(s => s.NpcKey, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var score in incoming.NpcReputationScores)
+        {
+            if (existingByKey.TryGetValue(score.NpcKey, out var existingScore))
+            {
+                existingScore.Score = score.Score;
+                existingScore.TimesMet = score.TimesMet;
+                existingScore.CurrentDialogueNodeKey = score.CurrentDialogueNodeKey;
+                existingScore.UpdatedAtUtc = score.UpdatedAtUtc;
+                continue;
+            }
+
+            var newScore = ToNpcReputationScoreEntity(score, incoming.Id.Value);
+            existing.NpcReputationScores.Add(newScore);
+            _context.Add(newScore);
         }
     }
 
@@ -343,6 +369,11 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
                 i.ItemDefinitionKey, i.SourceRunId, i.AcquiredAtUtc, i.ContainedLiquidDefinitionKey))
             .ToList();
 
+        var npcReputationScores = entity.NpcReputationScores
+            .Select(s => NpcReputationScore.Rehydrate(
+                s.NpcKey, s.Score, s.TimesMet, s.CurrentDialogueNodeKey, s.UpdatedAtUtc))
+            .ToList();
+
         return PlayerProfile.Rehydrate(
             new PlayerId(entity.Id),
             entity.DisplayName,
@@ -351,7 +382,8 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
             entity.CreatedAtUtc,
             entity.UpdatedAtUtc,
             permanentUnlocks,
-            permanentItems);
+            permanentItems,
+            npcReputationScores);
     }
 
     private static PlayerCharacterStatBlockEntity ToStatBlockEntity(PlayerCharacter character)
@@ -420,6 +452,20 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
             SourceRunId = item.SourceRunId,
             AcquiredAtUtc = item.AcquiredAtUtc,
             ContainedLiquidDefinitionKey = item.ContainedLiquidDefinitionKey
+        };
+    }
+
+    private static PlayerNpcReputationScoreEntity ToNpcReputationScoreEntity(NpcReputationScore score, Guid playerProfileId)
+    {
+        return new PlayerNpcReputationScoreEntity
+        {
+            Id = Guid.NewGuid(),
+            PlayerProfileId = playerProfileId,
+            NpcKey = score.NpcKey,
+            Score = score.Score,
+            TimesMet = score.TimesMet,
+            CurrentDialogueNodeKey = score.CurrentDialogueNodeKey,
+            UpdatedAtUtc = score.UpdatedAtUtc
         };
     }
 }

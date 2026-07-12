@@ -2,6 +2,7 @@ using FluentAssertions;
 using Leds.GameEngine.Application.Catalog.Contracts;
 using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Application.Combats;
+using Leds.GameEngine.Application.Rewards.Loot;
 using Leds.GameEngine.Application.Rewards.RewardOfferFactory;
 using Leds.GameEngine.Domain.Rewards;
 using Leds.SharedBuildingBlocks.Errors;
@@ -15,7 +16,7 @@ public sealed class CatalogRewardTemplateFactoryTests
     private readonly Mock<ICatalogContentGateway> _gatewayMock = new();
 
     private RewardOfferFactory CreateFactory() =>
-        new(new CombatRiskProfileResolver(), _gatewayMock.Object);
+        new(new CombatRiskProfileResolver(), _gatewayMock.Object, new EnemyLootRewardBuilder(_gatewayMock.Object));
 
     [Fact]
     public async Task CreateFromTemplateKeyAsync_ShouldReturnNull_WhenTemplateNotFound()

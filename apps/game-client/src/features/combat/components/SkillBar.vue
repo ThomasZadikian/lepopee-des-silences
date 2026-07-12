@@ -45,6 +45,12 @@ const SKILL_TYPE_LABELS: Record<SkillType, string> = {
   Guard: 'Garde',
   Weaken: 'Affaiblissement',
   Disrupt: 'Perturbation',
+  Debuff: 'Affaiblissement',
+  Buff: 'Renforcement',
+  Heal: 'Soin',
+  Status: 'Statut',
+  CopySkills: 'Copie de sorts',
+  ExtendDotDuration: 'Durée de dot',
 };
 
 const EMOTIONAL_TYPE_LABELS: Record<string, string> = {

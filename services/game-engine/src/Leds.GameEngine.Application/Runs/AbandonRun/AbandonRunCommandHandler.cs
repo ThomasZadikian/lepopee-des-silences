@@ -1,6 +1,7 @@
 ﻿using Leds.GameEngine.Application.Abstractions;
 using Leds.SharedBuildingBlocks.Time;
 using Leds.GameEngine.Application.Common.Exceptions;
+using Leds.GameEngine.Application.IntegrationEvents;
 using Leds.GameEngine.Application.Runs.Dtos;
 using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Runs;
@@ -12,13 +13,16 @@ public sealed class AbandonRunCommandHandler
     : IRequestHandler<AbandonRunCommand, AbandonRunResponse>
 {
     private readonly IRunRepository _runRepository;
+    private readonly IOutboxWriter _outboxWriter;
     private readonly IClock _clock;
 
     public AbandonRunCommandHandler(
         IRunRepository runRepository,
+        IOutboxWriter outboxWriter,
         IClock clock)
     {
         _runRepository = runRepository;
+        _outboxWriter = outboxWriter;
         _clock = clock;
     }
 
@@ -42,6 +46,9 @@ public sealed class AbandonRunCommandHandler
         }
 
         run.Abandon(_clock.UtcNow);
+
+        var evt = RunIntegrationEventFactory.CreateAbandoned(run, _clock.UtcNow.UtcDateTime);
+        await _outboxWriter.WriteAsync(evt, cancellationToken);
 
         await _runRepository.UpdateAsync(run, cancellationToken);
 

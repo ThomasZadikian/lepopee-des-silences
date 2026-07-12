@@ -1,4 +1,6 @@
-﻿using Leds.GameEngine.Application.Players.Ports;
+﻿using Leds.GameEngine.Application.Abstractions;
+using Leds.GameEngine.Application.IntegrationEvents;
+using Leds.GameEngine.Application.Players.Ports;
 using Leds.GameEngine.Application.Rewards.RewardOfferFactory;
 using Leds.GameEngine.Application.Runs;
 using Leds.GameEngine.Domain.Combats;
@@ -22,15 +24,18 @@ public sealed class CombatResolutionService : ICombatResolutionService
 {
     private readonly RewardOfferFactory _rewardOfferFactory;
     private readonly IPlayerProfileGateway _playerProfileGateway;
+    private readonly IOutboxWriter _outboxWriter;
     private readonly ILogger<CombatResolutionService> _logger;
 
     public CombatResolutionService(
         RewardOfferFactory rewardOfferFactory,
         IPlayerProfileGateway playerProfileGateway,
+        IOutboxWriter outboxWriter,
         ILogger<CombatResolutionService> logger)
     {
         _rewardOfferFactory = rewardOfferFactory;
         _playerProfileGateway = playerProfileGateway;
+        _outboxWriter = outboxWriter;
         _logger = logger;
     }
 
@@ -61,6 +66,10 @@ public sealed class CombatResolutionService : ICombatResolutionService
                 run.FailActiveCombat(now);
                 run.AppendJournalEntry(RunJournalNarrator.DescribeCombatDefeat(
                     combat.Enemies.Select(e => e.DisplayName).ToArray()));
+
+                var failEvt = RunIntegrationEventFactory.CreateFailed(run, "CombatDefeat", now.UtcDateTime);
+                await _outboxWriter.WriteAsync(failEvt, cancellationToken);
+
                 return null;
 
             default:

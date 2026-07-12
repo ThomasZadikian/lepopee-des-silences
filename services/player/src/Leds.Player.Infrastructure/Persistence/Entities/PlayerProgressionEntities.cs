@@ -88,3 +88,16 @@ public sealed class PlayerRunStatisticEntity
 
     public PlayerProfileEntity PlayerProfile { get; set; } = null!;
 }
+
+public sealed class PlayerNpcReputationScoreEntity
+{
+    public Guid Id { get; set; }
+    public Guid PlayerProfileId { get; set; }
+    public string NpcKey { get; set; } = string.Empty;
+    public int Score { get; set; }
+    public int TimesMet { get; set; }
+    public string? CurrentDialogueNodeKey { get; set; }
+    public DateTimeOffset UpdatedAtUtc { get; set; }
+
+    public PlayerProfileEntity PlayerProfile { get; set; } = null!;
+}

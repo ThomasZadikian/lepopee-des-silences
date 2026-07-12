@@ -15,6 +15,7 @@ public sealed class CombatantSkillEntity
     public string Tags { get; set; } = string.Empty;
     public string Category { get; set; } = "Physical";
     public bool BasePowerIsPercentOfMaxVitality { get; set; }
+    public string? StatusEffectsJson { get; set; }
 
     public CombatantEntity? Combatant { get; set; }
 }

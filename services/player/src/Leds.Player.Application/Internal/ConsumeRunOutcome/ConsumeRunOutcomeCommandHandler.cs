@@ -61,7 +61,18 @@ public sealed class ConsumeRunOutcomeCommandHandler
         }
 
         profile.Touch(_timeProvider.GetUtcNow());
+
+        if (payload.NpcReputationScores is { Count: > 0 })
+        {
+            var now = _timeProvider.GetUtcNow();
+            var scores = payload.NpcReputationScores
+                .Select(s => NpcReputationScore.Create(s.NpcKey, s.Score, s.TimesMet, s.CurrentDialogueNodeKey, now))
+                .ToArray();
+            profile.UpsertNpcReputationScores(scores, now);
+        }
+
         await _profileRepository.SaveAsync(profile, cancellationToken);
+
         await _processedEvents.MarkProcessedAsync(request.EventId, request.EventType, _timeProvider.GetUtcNow().UtcDateTime, cancellationToken);
 
         return new ConsumeRunOutcomeResponse(true, null);
@@ -75,4 +86,11 @@ internal sealed record RunOutcomePayload(
     Guid PlayerId,
     string Seed,
     int FinalDepth,
-    string GeneratorVersion);
+    string GeneratorVersion,
+    IReadOnlyCollection<NpcReputationSnapshot>? NpcReputationScores = null);
+
+internal sealed record NpcReputationSnapshot(
+    string NpcKey,
+    int Score,
+    int TimesMet,
+    string? CurrentDialogueNodeKey);

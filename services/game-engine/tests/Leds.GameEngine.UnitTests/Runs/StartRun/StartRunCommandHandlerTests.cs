@@ -29,6 +29,9 @@ public sealed class StartRunCommandHandlerTests
                 permanentItemKeys
                     .Select(key => new PlayerPermanentItemView(key, null, DateTimeOffset.UtcNow))
                     .ToArray()));
+        gateway
+            .Setup(g => g.GetNpcReputationScoresAsync(playerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Array.Empty<NpcReputationScoreView>());
         return gateway;
     }
 

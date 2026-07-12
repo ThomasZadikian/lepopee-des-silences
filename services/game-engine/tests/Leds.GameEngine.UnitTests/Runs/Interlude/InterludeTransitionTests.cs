@@ -13,6 +13,7 @@ using Leds.GameEngine.Application.Interlude;
 using Leds.GameEngine.Application.Interlude.EnterInterlude;
 using Leds.GameEngine.Application.Interlude.GetInterlude;
 using Leds.GameEngine.Application.Rewards.Ports;
+using Leds.GameEngine.Application.Rewards.Loot;
 using Leds.GameEngine.Application.Runs.ChooseNode;
 using Leds.GameEngine.Application.Runs.MoveToNextRoom;
 using Leds.GameEngine.Application.Runs.ProgressRun;
@@ -597,7 +598,8 @@ public sealed class InterludeTransitionTests
             new Mock<IRewardOfferRepository>().Object,
             new Leds.GameEngine.Application.Rewards.RewardOfferFactory.RewardOfferFactory(
                 new Mock<Leds.GameEngine.Application.Combats.ICombatRiskProfileResolver>().Object,
-                Mock.Of<ICatalogContentGateway>()),
+                Mock.Of<ICatalogContentGateway>(),
+                new EnemyLootRewardBuilder(Mock.Of<ICatalogContentGateway>())),
             Mock.Of<IEnemyCombatTurnResolver>(),
              Mock.Of<ICombatResolutionService>(),
             Mock.Of<Leds.GameEngine.Application.Combats.Atb.IAtbCombatPreparer>(),

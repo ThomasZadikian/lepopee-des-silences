@@ -31,7 +31,7 @@ public sealed class EnemyLootRewardBuilderTests
             "seed-2", Guid.NewGuid(), Guid.NewGuid(), [enemyWithoutTable]);
 
         // No enemy loot table configured -> falls entirely back to the generic pool.
-        choices.Should().OnlyContain(c => c.SourceEnemyKey is null);
+        choices.Should().OnlyContain(c => c.SourceEnemyKey == null);
     }
 
     [Fact]
@@ -42,7 +42,7 @@ public sealed class EnemyLootRewardBuilderTests
         var choices = await CreateBuilder().BuildAsync(
             "seed-3", Guid.NewGuid(), Guid.NewGuid(), [enemyWithoutTable]);
 
-        choices.Count.Should().BeGreaterOrEqualTo(EnemyLootRewardBuilder.MinLootCount);
+        choices.Count.Should().BeGreaterThanOrEqualTo(EnemyLootRewardBuilder.MinLootCount);
     }
 
     [Fact]
@@ -59,7 +59,7 @@ public sealed class EnemyLootRewardBuilderTests
         var choices = await CreateBuilder().BuildAsync(
             "seed-4", Guid.NewGuid(), Guid.NewGuid(), enemies);
 
-        choices.Count.Should().BeLessOrEqualTo(EnemyLootRewardBuilder.MaxLootCount);
+        choices.Count.Should().BeLessThanOrEqualTo(EnemyLootRewardBuilder.MaxLootCount);
     }
 
     [Fact]
@@ -70,7 +70,7 @@ public sealed class EnemyLootRewardBuilderTests
 
         // The stub gateway always has an active fallback pool, so an empty fight still
         // pads up to the floor from it.
-        choices.Count.Should().BeGreaterOrEqualTo(EnemyLootRewardBuilder.MinLootCount);
+        choices.Count.Should().BeGreaterThanOrEqualTo(EnemyLootRewardBuilder.MinLootCount);
     }
 
     [Fact]

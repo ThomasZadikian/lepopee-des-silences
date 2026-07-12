@@ -163,6 +163,32 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
         return await ReadProfileAsync(response, playerId, cancellationToken);
     }
 
+    public async Task<IReadOnlyCollection<NpcReputationScoreView>> GetNpcReputationScoresAsync(Guid playerId, CancellationToken cancellationToken)
+    {
+        var response = await _httpClient.GetAsync($"/api/v2/internal/players/{playerId}/npc-reputation-scores", cancellationToken);
+
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            throw new NotFoundException("Player", playerId);
+
+        response.EnsureSuccessStatusCode();
+
+        var dtos = await response.Content.ReadFromJsonAsync<NpcReputationScoreResponse[]>(cancellationToken);
+        return (dtos ?? []).Select(d => new NpcReputationScoreView(d.NpcKey, d.Score, d.TimesMet, d.CurrentDialogueNodeKey)).ToArray();
+    }
+
+    public async Task UpsertNpcReputationScoresAsync(Guid playerId, Guid sourceRunId, IReadOnlyCollection<NpcReputationScoreView> scores, CancellationToken cancellationToken)
+    {
+        var response = await _httpClient.PostAsJsonAsync(
+            $"/api/v2/internal/players/{playerId}/npc-reputation-scores",
+            new UpsertNpcReputationScoresRequestBody(sourceRunId, scores.Select(s => new NpcReputationScoreRequestItem(s.NpcKey, s.Score, s.TimesMet, s.CurrentDialogueNodeKey)).ToArray()),
+            cancellationToken);
+
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            throw new NotFoundException("Player", playerId);
+
+        response.EnsureSuccessStatusCode();
+    }
+
     private static void EnsureSuccess(HttpResponseMessage response, Guid playerId)
     {
         if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
@@ -313,4 +339,20 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
     private sealed record PlayerProgressionResponse(
         int UnspentStatPoints,
         int TotalStatPointsEarned);
+
+    private sealed record NpcReputationScoreResponse(
+        string NpcKey,
+        int Score,
+        int TimesMet,
+        string? CurrentDialogueNodeKey);
+
+    private sealed record UpsertNpcReputationScoresRequestBody(
+        Guid SourceRunId,
+        IReadOnlyCollection<NpcReputationScoreRequestItem> Scores);
+
+    private sealed record NpcReputationScoreRequestItem(
+        string NpcKey,
+        int Score,
+        int TimesMet,
+        string? CurrentDialogueNodeKey);
 }

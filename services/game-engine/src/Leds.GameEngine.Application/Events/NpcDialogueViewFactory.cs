@@ -15,7 +15,14 @@ public static class NpcDialogueViewFactory
     {
         if (npc.DialogueGraph is null)
         {
-            return null;
+            return new NpcDialogueViewDto(
+                npc.Key,
+                npc.DisplayName,
+                string.Empty,
+                new[] { "La figure se tient là, silencieuse." },
+                Array.Empty<NodeEventChoiceDto>(),
+                relationship.AggregateState.ToString(),
+                EncounterActive: false);
         }
 
         var graph = npc.DialogueGraph;
@@ -23,7 +30,14 @@ public static class NpcDialogueViewFactory
 
         if (!graph.Nodes.TryGetValue(nodeKey, out var node))
         {
-            return null;
+            return new NpcDialogueViewDto(
+                npc.Key,
+                npc.DisplayName,
+                nodeKey,
+                new[] { "La figure se tient là, silencieuse." },
+                Array.Empty<NodeEventChoiceDto>(),
+                relationship.AggregateState.ToString(),
+                EncounterActive: false);
         }
 
         var choices = node.Choices

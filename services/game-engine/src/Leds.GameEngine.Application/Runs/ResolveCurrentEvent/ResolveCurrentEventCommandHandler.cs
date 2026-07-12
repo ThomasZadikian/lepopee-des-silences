@@ -251,7 +251,15 @@ public sealed class ResolveCurrentEventCommandHandler
             resolutionResult = ApplyNpcContent(resolutionResult, npcContent);
 
             var npcRelationship = run.BeginOrResumeNpcEncounter(npcContent.NpcProfileKey);
-            npcDialogue = await BuildNpcDialogueAsync(npcContent.NpcProfileKey, npcRelationship, run, cancellationToken);
+            npcDialogue = await BuildNpcDialogueAsync(npcContent.NpcProfileKey, npcRelationship, run, cancellationToken)
+                ?? new NpcDialogueViewDto(
+                    npcContent.NpcProfileKey,
+                    npcContent.NpcDisplayName,
+                    string.Empty,
+                    new[] { "La figure se tient là, silencieuse." },
+                    Array.Empty<NodeEventChoiceDto>(),
+                    npcRelationship.AggregateState.ToString(),
+                    EncounterActive: false);
 
             if (npcDialogue is not null)
             {
