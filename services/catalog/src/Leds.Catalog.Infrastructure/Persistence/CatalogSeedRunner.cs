@@ -52,6 +52,7 @@ public sealed class CatalogSeedRunner
         await SeedChapelierAsync(cancellationToken);
         await SeedElyasAsync(cancellationToken);
         await SeedOwenAsync(cancellationToken);
+        await SeedForgeronAsync(cancellationToken);
         await SeedHomonculeAsync(cancellationToken);
         await SeedEnfantAsync(cancellationToken);
         await SeedHimLitAsync(cancellationToken);
@@ -163,11 +164,13 @@ public sealed class CatalogSeedRunner
         return 1;
     }
 
-    // TODO(utilisateur) : npc.homoncule et npc.enfant existent tous les deux désormais et se
-    // détestent mutuellement (confirmé narrativement), mais aucune convention de valeur pour
-    // Weight n'a encore été établie (le champ n'est d'ailleurs consommé par aucune logique de
-    // gameplay pour l'instant, juste transporté). Ne pas inventer un nombre ; câbler la paire
-    // une fois la valeur confirmée.
+    // TODO(utilisateur) : deux paires d'affinité confirmées narrativement, aucune convention de
+    // valeur pour Weight n'a encore été établie (le champ n'est d'ailleurs consommé par aucune
+    // logique de gameplay pour l'instant, juste transporté). Ne pas inventer un nombre ; câbler
+    // les paires une fois la valeur confirmée :
+    //   - npc.homoncule / npc.enfant : se détestent mutuellement.
+    //   - npc.homoncule → npc.forgeron : qui est apprécié par l'Homoncule l'est un peu plus par
+    //     le Forgeron (sa création la plus fière) — sens UNIQUEMENT homoncule → forgeron.
     private async Task SeedNpcReputationAffinitiesAsync(CancellationToken ct)
     {
         await Task.CompletedTask;
@@ -497,6 +500,90 @@ public sealed class CatalogSeedRunner
     }
 
     // ── L'Homoncule (Rupture, première création du Forgeron) ─────────────────
+
+    // ── Le Forgeron (Rupture, créateur physique des habitants du Palais) ──────
+
+    private async Task<int> SeedForgeronAsync(CancellationToken ct)
+    {
+        var persona = new NpcPersona("Rude, franc, brutal — les mots dans le mauvais ordre, jamais conçu pour parler", EmotionalRegister.Rupture,
+            new[] { "le silence", "une création qui tient debout" },
+            new[] { "qu'on lui parle", "la critique de son travail" });
+
+        var wounds = new[]
+        {
+            new NpcWound("w-creations-forgeron", EmotionalRegister.Rupture, NpcWoundReversibility.SoothableByAct, -2, -4,
+                new[]
+                {
+                    new NpcTransgression("w-creations-forgeron", "forgeron-critique-creation", -2),
+                    new NpcTransgression("w-creations-forgeron", "forgeron-creation-morte", -2)
+                },
+                "Il ne forge plus. Il fixe le feu, muet, le marteau immobile dans la main.")
+        };
+
+        var rencontre = new NpcDialogueNode("rencontre", "Le Forgeron",
+            new[] { "Toi. Encore un qui vient parler.", "Pas fait pour ça, moi. Parler." },
+            new[]
+            {
+                new NpcDialogueChoice("silence", "Rester silencieux, l'observer travailler", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.AdjustRelationship, rel: 2),
+                            C(ConsequenceKind.SootheWound, wound: "w-creations-forgeron") }, "forge"),
+                new NpcDialogueChoice("complimenter", "Complimenter son travail", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.AdjustRelationship, rel: 1) }, "forge"),
+                new NpcDialogueChoice("critiquer", "Critiquer la brutalité de ses créations", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.SetMemoryFlag, flag: "forgeron-critique-creation"),
+                            C(ConsequenceKind.Narrative, frag: "Il se fige. Le marteau retombe, plus fort que nécessaire. « Sors. »") }, null),
+                new NpcDialogueChoice("partir", "Partir", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.Narrative, frag: "Tu recules. Il ne lève même pas les yeux.") }, null)
+            },
+            TenseLines: new[] { "Toujours là, toi. Pourquoi.", "Parler, parler. Jamais fini." },
+            RupturedLines: new[] { "Dehors. DEHORS.", "Fait pour créer, moi. Pas pour ça." });
+
+        var forge = new NpcDialogueNode("forge", "Le Forgeron",
+            new[] { "Eux, dehors — formes, je donne. Le reste, pas moi.", "L'Homoncule. Premier. Le meilleur, encore." },
+            new[]
+            {
+                new NpcDialogueChoice("continuer", "Continuer de l'écouter", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.AdjustRelationship, rel: 1) }, "don"),
+                new NpcDialogueChoice("demander-abandon", "Lui demander pourquoi il a laissé l'Homoncule seul",
+                    Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.Narrative, frag: "« Fait. Fini. Après, pas mon travail. » Il ne dit rien de plus."),
+                            C(ConsequenceKind.AdjustRelationship, rel: 1) }, "don"),
+                new NpcDialogueChoice("annoncer-mort", "Lui annoncer la mort d'une de ses créations",
+                    Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.SetMemoryFlag, flag: "forgeron-creation-morte"),
+                            C(ConsequenceKind.Narrative, frag: "Le marteau s'arrête en l'air. Il ne le repose pas. Il ne dit rien.") }, null)
+            });
+
+        var don = new NpcDialogueNode("don", "Le Forgeron",
+            new[] { "Tiens. Prends. Pas pour toi que je fais. Fait, c'est tout." },
+            new[]
+            {
+                new NpcDialogueChoice("prendre-marteau", "Accepter le Marteau de forge",
+                    new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 250) },
+                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.forgeron.marteau") }, null),
+                new NpcDialogueChoice("prendre-souffle", "Accepter \"Souffle de la forge\"",
+                    new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) },
+                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.forgeron.souffle") }, null)
+            });
+
+        var graph = new NpcDialogueGraph("npc.forgeron.dialogue", "1.0", "rencontre",
+            new Dictionary<string, NpcDialogueNode> { ["rencontre"] = rencontre, ["forge"] = forge, ["don"] = don });
+
+        var offerings = new[]
+        {
+            new NpcOffering("offer.forgeron.marteau", NpcOfferingKind.Item, "canon.item.marteau-de-forge", 1, true,
+                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 250) }),
+            new NpcOffering("offer.forgeron.souffle", NpcOfferingKind.Skill, "canon.skill.souffle-de-la-forge", 1, true,
+                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) })
+        };
+
+        var n = await UpsertNpcAsync("npc.forgeron", "Le Forgeron",
+            "Créateur des formes physiques des habitants du Palais — il donne un corps, jamais une âme, un pouvoir ou une personnalité (d'autres entités s'en chargent). Solitaire, brutal, à peine capable de discuter. Sa création dont il est le plus fier reste l'Homoncule.", "1.0",
+            EmotionalRegister.Rupture, true, persona, wounds, graph, ct,
+            boundRoomKeys: new[] { "room.enfer3" },
+            offerings: offerings);
+        return n;
+    }
 
     private async Task<int> SeedHomonculeAsync(CancellationToken ct)
     {
@@ -2568,6 +2655,11 @@ public sealed class CatalogSeedRunner
             "Une lentille gravée de formules alchimiques anciennes — celles-là mêmes que Pomenian refuse de considérer comme autre chose que des curiosités d'érudit. Quiconque le chausse voit, malgré lui, un peu plus loin que les livres.",
             "Equipment", "Accessory", "Epic", "Permanent", false, 0, cancellationToken,
             equipmentEffects: new[] { new ItemEquipmentEffect(ItemEquipmentEffectKind.MagicDamageBonusPercent, Amount: 10) });
+
+        await UpsertItemAsync("canon.item.marteau-de-forge", "Marteau de forge",
+            "L'outil du Forgeron — celui qui a donné forme à tout ce qui marche dans le Palais. Il pèse plus qu'il ne devrait.",
+            "Equipment", "Accessory", "Rare", "Permanent", false, 0, cancellationToken,
+            equipmentEffects: new[] { new ItemEquipmentEffect(ItemEquipmentEffectKind.StatBonusPercent, StatKind: "AttackPower", Amount: 10) });
 
         await UpsertItemAsync("canon.item.pierre-antique", "Pierre antique",
             "Une pierre arrachée aux fondations d'un temple oublié — plus dure que tout ce que le Palais a jamais bâti.",
