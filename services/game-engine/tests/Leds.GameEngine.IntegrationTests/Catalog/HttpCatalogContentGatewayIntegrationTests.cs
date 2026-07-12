@@ -43,7 +43,7 @@ public sealed class HttpCatalogContentGatewayIntegrationTests : IAsyncLifetime
         await dbContext.Database.MigrateAsync();
 
         var seedRunner = scope.ServiceProvider.GetRequiredService<CatalogSeedRunner>();
-        await seedRunner.ApplyBaseSeedAsync();
+        await seedRunner.SeedAsync();
 
         var httpClient = _factory.CreateClient();
         _gateway = new HttpCatalogContentGateway(httpClient);
