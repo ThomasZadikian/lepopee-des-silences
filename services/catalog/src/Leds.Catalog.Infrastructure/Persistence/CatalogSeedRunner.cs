@@ -563,7 +563,9 @@ public sealed class CatalogSeedRunner
                     new[] { C(ConsequenceKind.GrantOffering, offering: "offer.forgeron.marteau") }, null),
                 new NpcDialogueChoice("prendre-souffle", "Accepter \"Souffle de la forge\"",
                     new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) },
-                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.forgeron.souffle") }, null)
+                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.forgeron.souffle") }, null),
+                new NpcDialogueChoice("don-decliner", "Partir sans rien demander", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.Narrative, frag: "Il ne dit rien. Il retourne au feu, comme si tu n'étais déjà plus là.") }, null)
             });
 
         var graph = new NpcDialogueGraph("npc.forgeron.dialogue", "1.0", "rencontre",
@@ -711,7 +713,9 @@ public sealed class CatalogSeedRunner
                     new[] { C(ConsequenceKind.GrantOffering, offering: "offer.enfant.sort") }, null),
                 new NpcDialogueChoice("accepter-craie", "Accepter la Craie créatrice",
                     new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 250) },
-                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.enfant.craie") }, null)
+                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.enfant.craie") }, null),
+                new NpcDialogueChoice("don-decliner", "Le remercier et poursuivre votre chemin", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.Narrative, frag: "Le présent retourne contre sa poitrine, sans reproche. « Une prochaine fois, alors. »") }, null)
             });
 
         var graph = new NpcDialogueGraph("npc.enfant.dialogue", "1.0", "rencontre",
@@ -876,7 +880,9 @@ public sealed class CatalogSeedRunner
                     new[] { C(ConsequenceKind.GrantOffering, offering: "offer.tovma.main") }, null),
                 new NpcDialogueChoice("accepter-lunettes", "Accepter les Lunettes d'érudit",
                     new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 250) },
-                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.tovma.lunettes") }, null)
+                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.tovma.lunettes") }, null),
+                new NpcDialogueChoice("don-decliner", "Remercier et poursuivre votre chemin", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.Narrative, frag: "L'objet retourne dans la besace, sans un mot de plus. « Il attendra. Il a l'habitude. »") }, null)
             });
 
         var graph = new NpcDialogueGraph("npc.tovma.dialogue", "1.0", "rencontre",
@@ -949,7 +955,9 @@ public sealed class CatalogSeedRunner
                     new[] { C(ConsequenceKind.GrantOffering, offering: "offer.sathom.potion") }, null),
                 new NpcDialogueChoice("accepter-bague", "Accepter la Bague du courage",
                     new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 500) },
-                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.sathom.bague") }, null)
+                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.sathom.bague") }, null),
+                new NpcDialogueChoice("don-decliner", "Remercier et poursuivre votre chemin", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.Narrative, frag: "L'offre se referme aussi vite qu'elle s'était ouverte. Rien de plus n'est dit.") }, null)
             });
 
         var graph = new NpcDialogueGraph("npc.sathom.dialogue", "1.0", "rencontre",
@@ -1024,7 +1032,9 @@ public sealed class CatalogSeedRunner
                     new[] { C(ConsequenceKind.GrantOffering, offering: "offer.erina.reve") }, null),
                 new NpcDialogueChoice("accepter-liberte", "Accepter La liberté retrouvée",
                     new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) },
-                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.erina.liberte") }, null)
+                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.erina.liberte") }, null),
+                new NpcDialogueChoice("don-decliner", "Remercier et poursuivre votre chemin", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.Narrative, frag: "Un haussement d'épaules, presque soulagé. « Comme vous voulez, alors. »") }, null)
             });
 
         var graph = new NpcDialogueGraph("npc.erina.dialogue", "1.0", "rencontre",
@@ -1093,7 +1103,9 @@ public sealed class CatalogSeedRunner
                     new[] { C(ConsequenceKind.GrantOffering, offering: "offer.pomenian.monocle") }, null),
                 new NpcDialogueChoice("accepter-connaissance", "Accepter Connaissance académique",
                     new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) },
-                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.pomenian.connaissance") }, null)
+                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.pomenian.connaissance") }, null),
+                new NpcDialogueChoice("don-decliner", "Remercier et poursuivre votre chemin", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.Narrative, frag: "L'objet retrouve sa place dans le cabinet, avec le même soin méticuleux. « Dommage. C'était un bon spécimen. »") }, null)
             });
 
         var graph = new NpcDialogueGraph("npc.pomenian.dialogue", "1.0", "rencontre",
@@ -1159,7 +1171,9 @@ public sealed class CatalogSeedRunner
             {
                 new NpcDialogueChoice("accepter-pierre", "Accepter la Pierre antique",
                     new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 250) },
-                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.ouchian.pierre") }, null)
+                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.ouchian.pierre") }, null),
+                new NpcDialogueChoice("don-decliner", "Remercier et poursuivre votre chemin", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.Narrative, frag: "La pierre retourne dans une poche, sans un geste de plus. « Elle a attendu plus longtemps que ça. »") }, null)
             });
 
         var graph = new NpcDialogueGraph("npc.ouchian.dialogue", "1.0", "rencontre",
@@ -1536,7 +1550,9 @@ public sealed class CatalogSeedRunner
                     new[] { C(ConsequenceKind.GrantOffering, offering: "offer.mane.impulsivite") }, null),
                 new NpcDialogueChoice("accepter-favorite", "Accepter \"Favorite de Elise\"",
                     new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) },
-                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.mane.favorite-de-elise") }, null)
+                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.mane.favorite-de-elise") }, null),
+                new NpcDialogueChoice("don-decliner", "Remercier et poursuivre votre chemin", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.Narrative, frag: "« Comme vous voulez. » L'objet disparaît aussi vite qu'il était apparu.") }, null)
             });
 
         var graph = new NpcDialogueGraph("npc.mane.dialogue", "1.0", "rencontre",
@@ -1702,7 +1718,9 @@ public sealed class CatalogSeedRunner
                     new[] { C(ConsequenceKind.GrantOffering, offering: "offer.architecte.marque") }, null),
                 new NpcDialogueChoice("accepter-creation", "Accepter \"Création\"",
                     new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) },
-                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.architecte.creation") }, null)
+                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.architecte.creation") }, null),
+                new NpcDialogueChoice("don-decliner", "Remercier et poursuivre votre chemin", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.Narrative, frag: "Il range ce qu'il tenait, sans un mot — déjà reparti dans ses calculs.") }, null)
             });
 
         var graph = new NpcDialogueGraph("npc.architecte.dialogue", "1.0", "rencontre",
@@ -1768,7 +1786,9 @@ public sealed class CatalogSeedRunner
                     new[] { C(ConsequenceKind.GrantOffering, offering: $"offer.{offeringSlug}.carnet") }, null),
                 new NpcDialogueChoice("prendre-bonus", "Accepter son dernier bienfait",
                     new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) },
-                    new[] { C(ConsequenceKind.GrantOffering, offering: $"offer.{offeringSlug}.bonus") }, null)
+                    new[] { C(ConsequenceKind.GrantOffering, offering: $"offer.{offeringSlug}.bonus") }, null),
+                new NpcDialogueChoice("don-decliner", "Partir sans rien prendre", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.Narrative, frag: "Ce qui restait tendu se referme, rangé. Ça n'étonne personne — plus rien n'étonne vraiment, ici.") }, null)
             });
 
         var graph = new NpcDialogueGraph($"{key}.dialogue", "1.0", "rencontre",
@@ -1923,7 +1943,9 @@ public sealed class CatalogSeedRunner
                     new[] { C(ConsequenceKind.GrantOffering, offering: "offer.ecrivain.plume") }, null),
                 new NpcDialogueChoice("accepter-ecriture", "Accepter \"Écriture continuelle\"",
                     new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) },
-                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.ecrivain.ecriture") }, null)
+                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.ecrivain.ecriture") }, null),
+                new NpcDialogueChoice("don-decliner", "Remercier et poursuivre votre chemin", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.Narrative, frag: "La page retourne se glisser entre les autres, refermée avec soin.") }, null)
             });
 
         var graph = new NpcDialogueGraph("npc.ecrivain.dialogue", "1.0", "rencontre",
