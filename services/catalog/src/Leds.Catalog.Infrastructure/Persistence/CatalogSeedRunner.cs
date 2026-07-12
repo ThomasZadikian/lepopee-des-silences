@@ -1592,7 +1592,7 @@ public sealed class CatalogSeedRunner
                     new[] { C(ConsequenceKind.AdjustRelationship, rel: 2),
                             C(ConsequenceKind.Narrative, frag: "Son visage s'adoucit complètement. « Elise... Ma plus belle réussite. Vous en prenez soin, j'espère. »") }, "don"),
                 new NpcDialogueChoice("elise-absente", "Lui parler d'Elise",
-                    new[] { new DialogueRequirement(DialogueRequirementKind.PlayerLacksCompanion, flagKey: "character.elise") },
+                    new[] { new DialogueRequirement(DialogueRequirementKind.PlayerLacksCompanion, FlagKey: "character.elise") },
                     new[] { C(ConsequenceKind.Narrative, frag: "« Elise n'est pas avec vous. » Sa voix se fait plus froide, presque déçue.") }, "don")
             });
 
