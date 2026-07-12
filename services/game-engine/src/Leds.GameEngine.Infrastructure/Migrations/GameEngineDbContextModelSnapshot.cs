@@ -1959,6 +1959,15 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("order");
 
+                    b.Property<string>("RoomDisplayName")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("room_display_name");
+
+                    b.Property<int>("RoomIndex")
+                        .HasColumnType("integer")
+                        .HasColumnName("room_index");
+
                     b.Property<Guid>("RunId")
                         .HasColumnType("uuid")
                         .HasColumnName("run_id");

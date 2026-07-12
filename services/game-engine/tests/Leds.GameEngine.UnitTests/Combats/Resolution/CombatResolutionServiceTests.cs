@@ -138,7 +138,7 @@ public sealed class CombatResolutionServiceTests
 
         await service.ApplyOutcomeAsync(run, combat, DateTimeOffset.UtcNow);
 
-        run.JournalEntries.Should().ContainSingle(entry => entry.Contains("Sentinel") && entry.Contains("vaincu"));
+        run.JournalEntries.Should().ContainSingle(entry => entry.Text.Contains("Sentinel") && entry.Text.Contains("vaincu"));
     }
 
     [Fact]
@@ -150,7 +150,7 @@ public sealed class CombatResolutionServiceTests
 
         await service.ApplyOutcomeAsync(run, combat, DateTimeOffset.UtcNow);
 
-        run.JournalEntries.Should().ContainSingle(entry => entry.Contains("Sentinel") && entry.Contains("survécu"));
+        run.JournalEntries.Should().ContainSingle(entry => entry.Text.Contains("Sentinel") && entry.Text.Contains("survécu"));
     }
 
     [Fact]

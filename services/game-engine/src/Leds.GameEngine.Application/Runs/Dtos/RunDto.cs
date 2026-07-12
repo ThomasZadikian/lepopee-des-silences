@@ -44,7 +44,9 @@ public sealed record RunDto(
     PlayerRuntimeStateDto? PlayerState,
     IReadOnlyCollection<RunModifierDto>? ActiveModifiers = null,
     RunPartySnapshotDto? Party = null,
-    IReadOnlyCollection<PalacePublicIndicatorDto>? PalaceIndicators = null)
+    IReadOnlyCollection<PalacePublicIndicatorDto>? PalaceIndicators = null,
+    bool JournalEnabled = false,
+    IReadOnlyCollection<RunJournalEntryDto>? JournalEntries = null)
 {
     public static RunDto FromDomain(
         Run run,
@@ -86,8 +88,23 @@ public sealed record RunDto(
             PlayerState: PlayerRuntimeStateDto.FromDomain(run.PlayerState),
             ActiveModifiers: activeModifiers.Length > 0 ? activeModifiers : null,
             Party: RunPartySnapshotDto.FromDomain(run.PlayerSnapshot, run.PlayerState),
-            PalaceIndicators: publicIndicators);
+            PalaceIndicators: publicIndicators,
+            JournalEnabled: run.JournalEnabled,
+            JournalEntries: run.JournalEntries.Select(RunJournalEntryDto.FromDomain).ToArray());
     }
+}
+
+public sealed record RunJournalEntryDto(
+    int RoomIndex,
+    int RoomNumber,
+    string? RoomDisplayName,
+    string Text)
+{
+    public static RunJournalEntryDto FromDomain(RunJournalEntry entry) => new(
+        entry.RoomIndex,
+        entry.RoomIndex + 1,
+        entry.RoomDisplayName,
+        entry.Text);
 }
 
 public sealed record PalacePublicIndicatorDto(

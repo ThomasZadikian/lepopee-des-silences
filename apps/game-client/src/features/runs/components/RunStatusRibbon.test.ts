@@ -167,4 +167,25 @@ describe('RunStatusRibbon', () => {
     const wrapper = mountRibbon(baseRun);
     expect(wrapper.text()).not.toContain('mod.');
   });
+
+  it('disables the journal button when journalEnabled is falsy', () => {
+    const wrapper = mountRibbon(baseRun);
+    const btn = wrapper.findAll('button').find((b) => b.text().includes('Carnet de bord'));
+    expect((btn!.element as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('enables the journal button when journalEnabled is true', () => {
+    const run = { ...baseRun, journalEnabled: true };
+    const wrapper = mountRibbon(run);
+    const btn = wrapper.findAll('button').find((b) => b.text().includes('Carnet de bord'));
+    expect((btn!.element as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it('emits openJournal when the journal button is clicked', async () => {
+    const run = { ...baseRun, journalEnabled: true };
+    const wrapper = mountRibbon(run);
+    const btn = wrapper.findAll('button').find((b) => b.text().includes('Carnet de bord'));
+    if (btn) await btn.trigger('click');
+    expect(wrapper.emitted('openJournal')).toHaveLength(1);
+  });
 });

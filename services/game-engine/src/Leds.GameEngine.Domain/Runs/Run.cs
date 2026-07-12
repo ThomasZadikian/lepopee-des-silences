@@ -20,7 +20,7 @@ public sealed class Run
     private readonly List<Room> _rooms = [];
     private readonly List<ActivePalaceLaw> _activePalaceLaws = [];
     private readonly List<string> _memoryFragments = [];
-    private readonly List<string> _journalEntries = [];
+    private readonly List<RunJournalEntry> _journalEntries = [];
     private readonly List<RunItem> _runItems = [];
     private readonly List<RunModifier> _runModifiers = [];
     private Combat? _activeCombat;
@@ -51,9 +51,10 @@ public sealed class Run
     /// Auto-written literary log of this run's events (item finds, combat outcomes), only ever
     /// populated when <see cref="JournalEnabled"/> is true. Append-only — unlike other run
     /// resources, it is deliberately NOT part of <see cref="RunSnapshot"/>/<see cref="ExitMidRoom"/>
-    /// rollback: it is a historical record of what happened, not a piece of current state.
+    /// rollback: it is a historical record of what happened, not a piece of current state. Each
+    /// entry is tagged with the room it happened in (SFD frontend "Carnet de bord" § 1 page = 1 room).
     /// </summary>
-    public IReadOnlyCollection<string> JournalEntries => _journalEntries.AsReadOnly();
+    public IReadOnlyCollection<RunJournalEntry> JournalEntries => _journalEntries.AsReadOnly();
 
     /// <summary>
     /// True when the player owns the "Carnet de bord" permanent item — computed once at
@@ -917,8 +918,9 @@ public sealed class Run
     }
 
     /// <summary>
-    /// Appends a line to the run's journal (Carnet de bord). A silent no-op when
-    /// <see cref="JournalEnabled"/> is false, so callers don't need to guard every call site.
+    /// Appends a line to the run's journal (Carnet de bord), auto-tagged with the room the run
+    /// is currently in. A silent no-op when <see cref="JournalEnabled"/> is false, so callers
+    /// don't need to guard every call site.
     /// </summary>
     public void AppendJournalEntry(string text)
     {
@@ -927,7 +929,7 @@ public sealed class Run
             return;
         }
 
-        _journalEntries.Add(text.Trim());
+        _journalEntries.Add(new RunJournalEntry(CurrentRoomIndex, CurrentRoom.CatalogBinding?.DisplayName, text.Trim()));
     }
 
     public void ApplyReward(RewardChoice choice)
@@ -1651,7 +1653,7 @@ public sealed class Run
         int guardBonusPercent = 0,
         int dotDamageBonusPercent = 0,
         bool journalEnabled = false,
-        IEnumerable<string>? journalEntries = null)
+        IEnumerable<RunJournalEntry>? journalEntries = null)
     {
         var firstRoom = rooms.First();
 

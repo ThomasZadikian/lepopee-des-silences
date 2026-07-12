@@ -14,6 +14,7 @@ const emit = defineEmits<{
   openBesace: [];
   openParty: [];
   openInfluences: [];
+  openJournal: [];
 }>();
 </script>
 
@@ -59,6 +60,15 @@ const emit = defineEmits<{
 
       <button class="es-btn es-btn--ghost" @click="emit('openBesace')">
         La Besace
+      </button>
+
+      <button
+        class="es-btn es-btn--ghost"
+        :disabled="!run.journalEnabled"
+        :title="!run.journalEnabled ? 'Nécessite l\'objet permanent : Carnet de bord' : 'Ouvrir le Carnet de bord'"
+        @click="emit('openJournal')"
+      >
+        Carnet de bord
       </button>
 
       <button

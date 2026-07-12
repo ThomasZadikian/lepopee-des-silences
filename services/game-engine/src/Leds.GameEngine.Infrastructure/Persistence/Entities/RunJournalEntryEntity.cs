@@ -4,6 +4,8 @@ public sealed class RunJournalEntryEntity
 {
     public Guid Id { get; set; }
     public Guid RunId { get; set; }
+    public int RoomIndex { get; set; }
+    public string? RoomDisplayName { get; set; }
     public string Text { get; set; } = string.Empty;
     public int Order { get; set; }
 

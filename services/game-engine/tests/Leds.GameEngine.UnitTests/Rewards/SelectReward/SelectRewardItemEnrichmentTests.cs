@@ -107,7 +107,7 @@ public sealed class SelectRewardItemEnrichmentTests
             new SelectRewardCommand(run.Id.Value, itemChoice.Id.Value),
             default);
 
-        run.JournalEntries.Should().ContainSingle(entry => entry.Contains("Baume"));
+        run.JournalEntries.Should().ContainSingle(entry => entry.Text.Contains("Baume"));
     }
 
     [Fact]

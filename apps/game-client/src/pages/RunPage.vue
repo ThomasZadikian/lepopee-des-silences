@@ -15,6 +15,7 @@ import type { CurrentEventChoiceResultDto } from '../features/events/types/event
 import InterludePanel from '../features/interlude/InterludePanel.vue';
 import RoomClearedPanel from '../features/interlude/RoomClearedPanel.vue';
 import InventoryDrawer from '../features/inventory/components/InventoryDrawer.vue';
+import JournalModal from '../features/runs/components/JournalModal.vue';
 import PermanentItemSelectionPanel from '../features/runs/components/PermanentItemSelectionPanel.vue';
 import PalaceNodeDrawer from '../features/node-details/PalaceNodeDrawer.vue';
 import LawResolutionPanel from '../features/palace-laws/LawResolutionPanel.vue';
@@ -147,6 +148,7 @@ const isCombatPhase = computed(() => runStore.gameplayPhase === 'Combat');
 const showNodeDrawer = computed(() => isMapPhase.value && runStore.selectedNode);
 const showInventoryDrawer = computed(() => uiStore.activeDrawer === 'besace');
 const showPartyDrawer = computed(() => uiStore.activeDrawer === 'party' && !isCombatPhase.value);
+const showJournalModal = computed(() => uiStore.activeDrawer === 'journal');
 
 watch(showPartyDrawer, (isOpen) => {
   if (isOpen) void playerStore.loadProfile();
@@ -219,6 +221,7 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
             @open-besace="uiStore.toggleBesace"
             @open-party="uiStore.toggleParty"
             @open-influences="uiStore.toggleLaws"
+            @open-journal="uiStore.toggleJournal"
           />
 
           <!-- Elise overlay -->
@@ -279,6 +282,10 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
               />
             </Transition>
           </div>
+
+          <Teleport to="body">
+            <JournalModal v-if="showJournalModal" @close="uiStore.closeDrawer" />
+          </Teleport>
         </div>
       </template>
 

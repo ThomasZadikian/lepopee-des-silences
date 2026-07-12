@@ -81,7 +81,11 @@ public sealed class RunTests
         run.AppendJournalEntry("J'ai trouvé un objet abandonné dans la Pièce des émotions, c'était un carnet.");
 
         run.JournalEntries.Should().ContainSingle()
-            .Which.Should().Be("J'ai trouvé un objet abandonné dans la Pièce des émotions, c'était un carnet.");
+            .Which.Should().BeEquivalentTo(new
+            {
+                RoomIndex = 0,
+                Text = "J'ai trouvé un objet abandonné dans la Pièce des émotions, c'était un carnet."
+            });
     }
 
     [Fact]

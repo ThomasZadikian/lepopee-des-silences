@@ -69,11 +69,13 @@ public static class RunPersistenceMapper
                 })
                 .ToList(),
             JournalEntries = run.JournalEntries
-                .Select((text, index) => new RunJournalEntryEntity
+                .Select((entry, index) => new RunJournalEntryEntity
                 {
                     Id = Guid.NewGuid(),
                     RunId = run.Id.Value,
-                    Text = text,
+                    RoomIndex = entry.RoomIndex,
+                    RoomDisplayName = entry.RoomDisplayName,
+                    Text = entry.Text,
                     Order = index
                 })
                 .ToList(),
@@ -315,7 +317,7 @@ public static class RunPersistenceMapper
             .ToList();
         var journalEntries = entity.JournalEntries
             .OrderBy(e => e.Order)
-            .Select(e => e.Text)
+            .Select(e => new RunJournalEntry(e.RoomIndex, e.RoomDisplayName, e.Text))
             .ToList();
         var activePalaceLaws = entity.ActivePalaceLaws
             .Select(ToDomain)

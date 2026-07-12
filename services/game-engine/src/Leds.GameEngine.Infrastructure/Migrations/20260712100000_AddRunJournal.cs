@@ -23,6 +23,8 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
                     run_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    room_index = table.Column<int>(type: "integer", nullable: false),
+                    room_display_name = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
                     text = table.Column<string>(type: "character varying(1024)", maxLength: 1024, nullable: false),
                     order = table.Column<int>(type: "integer", nullable: false)
                 },

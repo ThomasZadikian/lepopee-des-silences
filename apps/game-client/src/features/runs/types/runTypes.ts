@@ -108,6 +108,17 @@ export type RunDto = {
   palaceIndicators?: PalacePublicIndicatorDto[] | null;
   /** Party snapshot — available hors combat depuis alpha-0.8.1. Null pour les runs antérieures. */
   party?: RunPartySnapshotDto | null;
+  /** true when the player owns the "Carnet de bord" permanent item — gates the journal UI. */
+  journalEnabled?: boolean;
+  /** Auto-written journal entries for this run, one per event, tagged with the room they happened in. */
+  journalEntries?: RunJournalEntryDto[] | null;
+};
+
+export type RunJournalEntryDto = {
+  roomIndex: number;
+  roomNumber: number;
+  roomDisplayName: string | null;
+  text: string;
 };
 
 export type RunItemDto = {
