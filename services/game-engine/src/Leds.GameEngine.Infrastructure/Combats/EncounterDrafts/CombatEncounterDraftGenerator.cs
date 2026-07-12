@@ -102,7 +102,8 @@ public sealed class CombatEncounterDraftGenerator : ICombatEncounterDraftGenerat
                         ChargeCost: s.ChargeCost,
                         BasePower: s.BasePower,
                         Tags: s.Tags,
-                        Category: s.Category))
+                        Category: s.Category,
+                        BasePowerIsPercentOfMaxVitality: s.BasePowerIsPercentOfMaxVitality))
                     .ToArray()))
             .ToArray();
 

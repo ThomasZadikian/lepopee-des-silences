@@ -1495,6 +1495,15 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
         return Task.FromResult<IReadOnlyCollection<CatalogSkillDefinition>>(results);
     }
 
+    public Task<IReadOnlyCollection<CatalogSkillDefinition>> ListActiveSkillDefinitionsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult<IReadOnlyCollection<CatalogSkillDefinition>>(
+            SkillDefinitions.Values
+                .OrderBy(definition => definition.Key, StringComparer.OrdinalIgnoreCase)
+                .ToArray());
+    }
+
     public Task<CatalogEnemyDefinition?> GetEnemyDefinitionByKeyAsync(
         string key,
         CancellationToken cancellationToken = default)

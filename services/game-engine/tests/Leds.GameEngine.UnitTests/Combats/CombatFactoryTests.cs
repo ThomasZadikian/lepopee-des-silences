@@ -180,6 +180,31 @@ public sealed class CombatFactoryTests
     }
 
     [Fact]
+    public void CreateFromDraft_ShouldMapEnemySkillBasePowerIsPercentOfMaxVitality()
+    {
+        var factory = new CombatFactory();
+        var percentHealSkill = new CombatEncounterDraftSkill(
+            "skill.percent-heal", "Souffle vital", "Percent heal.", "Buff", "Self", "Heal", 0, 0, 25,
+            Array.Empty<string>(), BasePowerIsPercentOfMaxVitality: true);
+        var draft = CreateDraft(enemySkills: [percentHealSkill]);
+
+        var combat = factory.CreateFromDraft(draft);
+
+        combat.Enemies.Single().Skills.Single().BasePowerIsPercentOfMaxVitality.Should().BeTrue();
+    }
+
+    [Fact]
+    public void CreateFromDraft_ShouldDefaultEnemySkillBasePowerIsPercentOfMaxVitalityToFalse_WhenNotSpecified()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft(includeSkills: true);
+
+        var combat = factory.CreateFromDraft(draft);
+
+        combat.Enemies.Single().Skills.Single().BasePowerIsPercentOfMaxVitality.Should().BeFalse();
+    }
+
+    [Fact]
     public void CreateFromDraft_ShouldNormalizeEnemyCurrentGuardSkill()
     {
         var factory = new CombatFactory();

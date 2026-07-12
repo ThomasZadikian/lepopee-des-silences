@@ -11,4 +11,5 @@ public sealed record CombatEncounterDraftSkill(
     int ChargeCost,
     int BasePower,
     IReadOnlyCollection<string> Tags,
-    string Category = "Physical");
+    string Category = "Physical",
+    bool BasePowerIsPercentOfMaxVitality = false);
