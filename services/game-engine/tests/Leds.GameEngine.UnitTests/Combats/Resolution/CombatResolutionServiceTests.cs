@@ -25,23 +25,57 @@ public sealed class CombatResolutionServiceTests
             new EnemyLootRewardBuilder(Mock.Of<ICatalogContentGateway>()));
     }
 
-    private static (Run Run, Combat Combat) CreateCompletedCombat(NodeEventType eventType)
+    private static (Run Run, Combat Combat) CreateReadyCombat(
+        NodeEventType eventType, bool journalEnabled = false)
     {
-        var runWithNode = TestGameEngineFactory.CreateRunWithSelectedTargetNode(eventType);
+        Run run;
+        if (journalEnabled)
+        {
+            var roomWithTargetNode = TestGameEngineFactory.CreateThresholdRoomWithTargetInitialNode(eventType);
+            run = Run.StartNew(
+                playerId: Guid.NewGuid(),
+                seed: "seed-unit-test-journal",
+                generatorVersion: "gen-test",
+                markovMatrixVersion: "markov-test",
+                initialRoom: roomWithTargetNode.Room,
+                startedAt: DateTimeOffset.UtcNow,
+                journalEnabled: true);
+            run.ChooseNode(roomWithTargetNode.TargetNode.Id);
+        }
+        else
+        {
+            run = TestGameEngineFactory.CreateRunWithSelectedTargetNode(eventType).Run;
+        }
+
         var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100, 0, []);
         var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 80, []);
         var combat = Combat.Create(
             CombatId.New(),
-            runWithNode.Run.Id,
+            run.Id,
             RoomId.New(),
             NodeId.New(),
             [ally],
             [enemy]);
 
-        runWithNode.Run.StartCombat(combat);
-        combat.MarkCompleted();
+        run.StartCombat(combat);
 
-        return (runWithNode.Run, combat);
+        return (run, combat);
+    }
+
+    private static (Run Run, Combat Combat) CreateCompletedCombat(
+        NodeEventType eventType, bool journalEnabled = false)
+    {
+        var (run, combat) = CreateReadyCombat(eventType, journalEnabled);
+        combat.MarkCompleted();
+        return (run, combat);
+    }
+
+    private static (Run Run, Combat Combat) CreateFailedCombat(
+        NodeEventType eventType, bool journalEnabled = false)
+    {
+        var (run, combat) = CreateReadyCombat(eventType, journalEnabled);
+        combat.MarkFailed();
+        return (run, combat);
     }
 
     [Fact]
@@ -93,5 +127,41 @@ public sealed class CombatResolutionServiceTests
         var offer = await service.ApplyOutcomeAsync(run, combat, DateTimeOffset.UtcNow);
 
         offer.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task ApplyOutcomeAsync_ShouldAppendJournalEntry_OnVictory_WhenJournalEnabled()
+    {
+        var (run, combat) = CreateCompletedCombat(NodeEventType.Combat, journalEnabled: true);
+        var service = new CombatResolutionService(
+            CreateRewardOfferFactory(), Mock.Of<IPlayerProfileGateway>(), Mock.Of<ILogger<CombatResolutionService>>());
+
+        await service.ApplyOutcomeAsync(run, combat, DateTimeOffset.UtcNow);
+
+        run.JournalEntries.Should().ContainSingle(entry => entry.Contains("Sentinel") && entry.Contains("vaincu"));
+    }
+
+    [Fact]
+    public async Task ApplyOutcomeAsync_ShouldAppendJournalEntry_OnDefeat_WhenJournalEnabled()
+    {
+        var (run, combat) = CreateFailedCombat(NodeEventType.Combat, journalEnabled: true);
+        var service = new CombatResolutionService(
+            CreateRewardOfferFactory(), Mock.Of<IPlayerProfileGateway>(), Mock.Of<ILogger<CombatResolutionService>>());
+
+        await service.ApplyOutcomeAsync(run, combat, DateTimeOffset.UtcNow);
+
+        run.JournalEntries.Should().ContainSingle(entry => entry.Contains("Sentinel") && entry.Contains("survécu"));
+    }
+
+    [Fact]
+    public async Task ApplyOutcomeAsync_ShouldNotAppendJournalEntry_WhenJournalDisabled()
+    {
+        var (run, combat) = CreateCompletedCombat(NodeEventType.Combat, journalEnabled: false);
+        var service = new CombatResolutionService(
+            CreateRewardOfferFactory(), Mock.Of<IPlayerProfileGateway>(), Mock.Of<ILogger<CombatResolutionService>>());
+
+        await service.ApplyOutcomeAsync(run, combat, DateTimeOffset.UtcNow);
+
+        run.JournalEntries.Should().BeEmpty();
     }
 }

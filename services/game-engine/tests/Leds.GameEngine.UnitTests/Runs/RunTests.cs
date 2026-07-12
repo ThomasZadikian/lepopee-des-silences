@@ -65,6 +65,44 @@ public sealed class RunTests
     }
 
     [Fact]
+    public void AppendJournalEntry_ShouldRecordText_WhenJournalEnabled()
+    {
+        var initialRoom = TestGameEngineFactory.CreateThresholdRoom();
+
+        var run = Run.StartNew(
+            Guid.NewGuid(),
+            "seed-journal",
+            "gen-0.4.0",
+            "markov-0.2.0",
+            initialRoom,
+            DateTimeOffset.UtcNow,
+            journalEnabled: true);
+
+        run.AppendJournalEntry("J'ai trouvé un objet abandonné dans la Pièce des émotions, c'était un carnet.");
+
+        run.JournalEntries.Should().ContainSingle()
+            .Which.Should().Be("J'ai trouvé un objet abandonné dans la Pièce des émotions, c'était un carnet.");
+    }
+
+    [Fact]
+    public void AppendJournalEntry_ShouldBeNoOp_WhenJournalDisabled()
+    {
+        var initialRoom = TestGameEngineFactory.CreateThresholdRoom();
+
+        var run = Run.StartNew(
+            Guid.NewGuid(),
+            "seed-no-journal",
+            "gen-0.4.0",
+            "markov-0.2.0",
+            initialRoom,
+            DateTimeOffset.UtcNow);
+
+        run.AppendJournalEntry("Ceci ne devrait jamais être écrit.");
+
+        run.JournalEntries.Should().BeEmpty();
+    }
+
+    [Fact]
     public void RoomCreate_ShouldThrow_WhenRoomDoesNotContainAtLeastTwoNodes()
     {
         var roomType = RoomType.Threshold;

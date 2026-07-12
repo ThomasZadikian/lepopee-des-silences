@@ -69,6 +69,48 @@ public sealed class SelectRewardItemEnrichmentTests
     }
 
     [Fact]
+    public async Task Handle_ShouldAppendJournalEntry_WhenItemRewardSelected_AndJournalEnabled()
+    {
+        var room = TestGameEngineFactory.CreateThresholdRoom();
+        var run = Run.StartNew(
+            playerId: Guid.NewGuid(),
+            seed: "seed-enrich-journal",
+            generatorVersion: "gen-test",
+            markovMatrixVersion: "markov-test",
+            initialRoom: room,
+            startedAt: DateTimeOffset.UtcNow,
+            journalEnabled: true);
+        var factory = CreateFactory();
+        var offer = factory.CreateCombatRewardOffer(RewardSource.Combat, Domain.Nodes.NodeEventType.Combat, 25);
+        run.SetPendingRewardOffer(offer.Id);
+
+        var runRepo = new Mock<IRunRepository>();
+        runRepo.Setup(r => r.GetByIdAsync(run.Id, default)).ReturnsAsync(run);
+
+        var rewardRepo = new Mock<IRewardOfferRepository>();
+        rewardRepo.Setup(r => r.GetByIdAsync(offer.Id, default)).ReturnsAsync(offer);
+
+        var catalogGateway = new Mock<ICatalogContentGateway>();
+        catalogGateway
+            .Setup(p => p.GetItemDefinitionByKeyAsync("item.consumable.minor-heal", default))
+            .ReturnsAsync(Result<CatalogItemDefinitionSnapshot>.Success(new CatalogItemDefinitionSnapshot(
+                "item.consumable.minor-heal", "1.0", "Baume", "Soin", null,
+                "Consumable", "Heal", "Common", "UseInCombat", "RuntimeRunOnly",
+                "Additive", 99, true, true, null)));
+
+        var handler = new SelectRewardCommandHandler(
+            runRepo.Object, rewardRepo.Object, catalogGateway.Object);
+
+        var itemChoice = offer.Choices.First(c => c.RewardType == RewardType.TemporaryItem);
+
+        await handler.Handle(
+            new SelectRewardCommand(run.Id.Value, itemChoice.Id.Value),
+            default);
+
+        run.JournalEntries.Should().ContainSingle(entry => entry.Contains("Baume"));
+    }
+
+    [Fact]
     public async Task Handle_ShouldNotThrow_WhenItemDefinitionNotFound()
     {
         var room = TestGameEngineFactory.CreateThresholdRoom();

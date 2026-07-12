@@ -4,6 +4,7 @@ using Leds.SharedBuildingBlocks.Time;
 using Leds.SharedBuildingBlocks.Results;
 using Leds.GameEngine.Application.Catalog.Contracts;
 using Leds.GameEngine.Application.Catalog.Ports;
+using Leds.GameEngine.Application.Players;
 using Leds.GameEngine.Application.Players.Ports;
 using Leds.GameEngine.Application.Runs.StartRun;
 using Leds.GameEngine.Domain.Runs;
@@ -14,6 +15,23 @@ namespace Leds.GameEngine.UnitTests.Runs.StartRun;
 
 public sealed class StartRunCommandHandlerTests
 {
+    private static Mock<IPlayerProfileGateway> CreateProfileGateway(
+        Guid playerId, params string[] permanentItemKeys)
+    {
+        var gateway = new Mock<IPlayerProfileGateway>();
+        gateway
+            .Setup(g => g.GetProfileAsync(playerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new PlayerProfileView(
+                playerId,
+                "Test Player",
+                [],
+                new PlayerProgressionView(0, 0),
+                permanentItemKeys
+                    .Select(key => new PlayerPermanentItemView(key, null, DateTimeOffset.UtcNow))
+                    .ToArray()));
+        return gateway;
+    }
+
     [Fact]
     public async Task Handle_ShouldCreateRun_AndPersistIt()
     {
@@ -78,10 +96,12 @@ public sealed class StartRunCommandHandlerTests
 
         var catalogGateway = new Mock<ICatalogContentGateway>();
 
+        var playerProfileGateway = CreateProfileGateway(playerId);
         var handler = new StartRunCommandHandler(
             generator.Object,
             repository.Object,
             playerGateway.Object,
+            playerProfileGateway.Object,
             catalogGateway.Object,
             clock.Object);
 
@@ -185,10 +205,12 @@ public sealed class StartRunCommandHandlerTests
 
         var catalogGateway = new Mock<ICatalogContentGateway>();
 
+        var playerProfileGateway = CreateProfileGateway(playerId);
         var handler = new StartRunCommandHandler(
             generator.Object,
             repository.Object,
             playerGateway.Object,
+            playerProfileGateway.Object,
             catalogGateway.Object,
             clock.Object);
 
@@ -289,10 +311,12 @@ public sealed class StartRunCommandHandlerTests
                 "skill.granted.shield", "Bouclier accordé", "Un bouclier temporaire.",
                 "Defense", "Self", "Guard", 0, 0, 8, []));
 
+        var playerProfileGateway = CreateProfileGateway(playerId);
         var handler = new StartRunCommandHandler(
             generator.Object,
             repository.Object,
             playerGateway.Object,
+            playerProfileGateway.Object,
             catalogGateway.Object,
             clock.Object);
 
@@ -375,10 +399,12 @@ public sealed class StartRunCommandHandlerTests
                 "Buff", "Self", "Heal", 0, 0, 15, [],
                 BasePowerIsPercentOfMaxVitality: true));
 
+        var playerProfileGateway = CreateProfileGateway(playerId);
         var handler = new StartRunCommandHandler(
             generator.Object,
             repository.Object,
             playerGateway.Object,
+            playerProfileGateway.Object,
             catalogGateway.Object,
             clock.Object);
 
@@ -464,10 +490,12 @@ public sealed class StartRunCommandHandlerTests
                     new CatalogItemEquipmentEffect("StatBonusPercent", "AttackPower", 10, null, null)
                 ])));
 
+        var playerProfileGateway = CreateProfileGateway(playerId);
         var handler = new StartRunCommandHandler(
             generator.Object,
             repository.Object,
             playerGateway.Object,
+            playerProfileGateway.Object,
             catalogGateway.Object,
             clock.Object);
 
@@ -481,5 +509,131 @@ public sealed class StartRunCommandHandlerTests
         // Speed: 10 base + round(10 * 10%) = 11. Attack: 12 base + round(12 * 10%) = 13.
         capturedRun.Speed.Should().Be(11);
         capturedRun.Attack.Should().Be(13);
+    }
+
+    [Fact]
+    public async Task Handle_ShouldEnableJournal_WhenPlayerOwnsCarnetDeBord()
+    {
+        var playerId = Guid.NewGuid();
+        var now = new DateTimeOffset(2026, 5, 30, 12, 0, 0, TimeSpan.Zero);
+
+        var initialRoom = TestGameEngineFactory.CreateThresholdRoom();
+
+        var generator = new Mock<IRunGenerator>();
+        generator.SetupGet(service => service.GeneratorVersion).Returns("gen-0.1.0");
+        generator.SetupGet(service => service.MarkovMatrixVersion).Returns("markov-0.1.0");
+        generator.Setup(service => service.GenerateSeed()).Returns("seed-test-journal");
+        generator.Setup(service => service.GenerateInitialRoomAsync("seed-test-journal", CancellationToken.None)).ReturnsAsync(initialRoom);
+
+        var repository = new Mock<IRunRepository>();
+
+        var playerGateway = new Mock<IPlayerRunSnapshotGateway>();
+        playerGateway
+            .Setup(g => g.GetRunSnapshotAsync(playerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new PlayerRunSnapshot(
+                playerId,
+                "Test Player",
+                [new PlayerRunSnapshotCharacter(
+                    Guid.NewGuid(),
+                    "character.player.self",
+                    "Le Porteur",
+                    Stats: new PlayerRunSnapshotCharacterStats(
+                        MaxVitality: 100,
+                        AttackPower: 12,
+                        Defense: 6,
+                        StartingGuard: 0,
+                        Speed: 10,
+                        Initiative: 10,
+                        Recovery: 5,
+                        Focus: 0,
+                        Mana: 0,
+                        Charge: 0),
+                    Skills: [])]));
+
+        var clock = new Mock<IClock>();
+        clock.SetupGet(service => service.UtcNow).Returns(now);
+
+        var catalogGateway = new Mock<ICatalogContentGateway>();
+
+        var playerProfileGateway = CreateProfileGateway(playerId, "canon.item.carnet-de-bord");
+        var handler = new StartRunCommandHandler(
+            generator.Object,
+            repository.Object,
+            playerGateway.Object,
+            playerProfileGateway.Object,
+            catalogGateway.Object,
+            clock.Object);
+
+        await handler.Handle(
+            new StartRunCommand(playerId),
+            CancellationToken.None);
+
+        var capturedRun = (Run)repository.Invocations
+            .Single(i => i.Method.Name == nameof(IRunRepository.AddAsync)).Arguments[0];
+
+        capturedRun.JournalEnabled.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Handle_ShouldNotEnableJournal_WhenPlayerLacksCarnetDeBord()
+    {
+        var playerId = Guid.NewGuid();
+        var now = new DateTimeOffset(2026, 5, 30, 12, 0, 0, TimeSpan.Zero);
+
+        var initialRoom = TestGameEngineFactory.CreateThresholdRoom();
+
+        var generator = new Mock<IRunGenerator>();
+        generator.SetupGet(service => service.GeneratorVersion).Returns("gen-0.1.0");
+        generator.SetupGet(service => service.MarkovMatrixVersion).Returns("markov-0.1.0");
+        generator.Setup(service => service.GenerateSeed()).Returns("seed-test-no-journal");
+        generator.Setup(service => service.GenerateInitialRoomAsync("seed-test-no-journal", CancellationToken.None)).ReturnsAsync(initialRoom);
+
+        var repository = new Mock<IRunRepository>();
+
+        var playerGateway = new Mock<IPlayerRunSnapshotGateway>();
+        playerGateway
+            .Setup(g => g.GetRunSnapshotAsync(playerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new PlayerRunSnapshot(
+                playerId,
+                "Test Player",
+                [new PlayerRunSnapshotCharacter(
+                    Guid.NewGuid(),
+                    "character.player.self",
+                    "Le Porteur",
+                    Stats: new PlayerRunSnapshotCharacterStats(
+                        MaxVitality: 100,
+                        AttackPower: 12,
+                        Defense: 6,
+                        StartingGuard: 0,
+                        Speed: 10,
+                        Initiative: 10,
+                        Recovery: 5,
+                        Focus: 0,
+                        Mana: 0,
+                        Charge: 0),
+                    Skills: [])]));
+
+        var clock = new Mock<IClock>();
+        clock.SetupGet(service => service.UtcNow).Returns(now);
+
+        var catalogGateway = new Mock<ICatalogContentGateway>();
+
+        var playerProfileGateway = CreateProfileGateway(playerId);
+        var handler = new StartRunCommandHandler(
+            generator.Object,
+            repository.Object,
+            playerGateway.Object,
+            playerProfileGateway.Object,
+            catalogGateway.Object,
+            clock.Object);
+
+        await handler.Handle(
+            new StartRunCommand(playerId),
+            CancellationToken.None);
+
+        var capturedRun = (Run)repository.Invocations
+            .Single(i => i.Method.Name == nameof(IRunRepository.AddAsync)).Arguments[0];
+
+        capturedRun.JournalEnabled.Should().BeFalse();
     }
 }

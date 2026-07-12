@@ -1,5 +1,6 @@
 ﻿using Leds.GameEngine.Application.Players.Ports;
 using Leds.GameEngine.Application.Rewards.RewardOfferFactory;
+using Leds.GameEngine.Application.Runs;
 using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rewards;
@@ -49,6 +50,8 @@ public sealed class CombatResolutionService : ICombatResolutionService
 
                 run.CompleteActiveCombat();
                 run.ConsumeNextCombatModifiers();
+                run.AppendJournalEntry(RunJournalNarrator.DescribeCombatVictory(
+                    combat.Enemies.Select(e => e.DisplayName).ToArray()));
 
                 var rewardOffer = await CreateRewardOfferAsync(run, combat, combatNode, cancellationToken);
                 run.SetPendingRewardOffer(rewardOffer.Id);
@@ -56,6 +59,8 @@ public sealed class CombatResolutionService : ICombatResolutionService
 
             case CombatStatus.Failed:
                 run.FailActiveCombat(now);
+                run.AppendJournalEntry(RunJournalNarrator.DescribeCombatDefeat(
+                    combat.Enemies.Select(e => e.DisplayName).ToArray()));
                 return null;
 
             default:

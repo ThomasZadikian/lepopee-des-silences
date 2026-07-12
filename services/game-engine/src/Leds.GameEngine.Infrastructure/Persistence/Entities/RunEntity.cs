@@ -28,6 +28,7 @@ public sealed class RunEntity
     public int MagicDamageReductionPercent { get; set; }
     public int CriticalChanceBonusPercent { get; set; }
     public int GuardBonusPercent { get; set; }
+    public bool JournalEnabled { get; set; }
     public DateTime StartedAtUtc { get; set; }
     public DateTime? EndedAtUtc { get; set; }
     public DateTime? SavedAtUtc { get; set; }
@@ -47,6 +48,7 @@ public sealed class RunEntity
 
     public List<RoomEntity> Rooms { get; set; } = [];
     public List<RunMemoryFragmentEntity> MemoryFragments { get; set; } = [];
+    public List<RunJournalEntryEntity> JournalEntries { get; set; } = [];
     public List<RunActivePalaceLawEntity> ActivePalaceLaws { get; set; } = [];
     public List<ActiveCurseEntity> ActiveCurses { get; set; } = [];
     public List<RunItemEntity> InventoryItems { get; set; } = [];

@@ -1728,6 +1728,147 @@ public sealed class CatalogSeedRunner
             offerings: offerings);
     }
 
+    // ── Les Émotions (5 PNJ distincts, tirés au hasard à la rencontre) ────────
+    // Autrefois logées dans room.feelings (Pièce des émotions, convertie par l'Architecte lors
+    // de la seconde reconstruction) — la pièce n'accueille plus que des échos aujourd'hui, elles
+    // n'ont jamais réellement trouvé de salle à elles et se sont répandues dans tout le Palais.
+    // D'où l'absence volontaire de BoundRoomKeys ici : elles peuvent être rencontrées partout,
+    // ce qui EST le sens narratif (cf. le thème partagé des 5 fiches ci-dessous).
+
+    private async Task<int> SeedEmotionAsync(
+        string key, string displayName, string offeringSlug, EmotionalRegister register, string voice,
+        string[] likes, string[] dislikes, string description,
+        string[] rencontreLines, string[] confidenceLines, CancellationToken ct)
+    {
+        var persona = new NpcPersona(voice, register, likes, dislikes);
+        var wounds = Array.Empty<NpcWound>();
+
+        var rencontre = new NpcDialogueNode("rencontre", displayName, rencontreLines,
+            new[]
+            {
+                new NpcDialogueChoice("silence", "Rester silencieux, l'écouter", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.AdjustRelationship, rel: 1) }, "confidence"),
+                new NpcDialogueChoice("partir", "Partir", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.Narrative, frag: "Tu t'éloignes, sans un geste pour te retenir.") }, null)
+            });
+
+        var confidence = new NpcDialogueNode("confidence", displayName, confidenceLines,
+            new[]
+            {
+                new NpcDialogueChoice("continuer", "Continuer d'écouter", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.AdjustRelationship, rel: 1) }, "don")
+            });
+
+        var don = new NpcDialogueNode("don", displayName,
+            new[] { "Tiens. Prends ça. Ce n'est pas grand-chose, mais c'est ce qu'il me reste à donner." },
+            new[]
+            {
+                new NpcDialogueChoice("prendre-carnet", "Accepter le \"Carnet de bord\"",
+                    new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 250) },
+                    new[] { C(ConsequenceKind.GrantOffering, offering: $"offer.{offeringSlug}.carnet") }, null),
+                new NpcDialogueChoice("prendre-bonus", "Accepter son dernier bienfait",
+                    new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) },
+                    new[] { C(ConsequenceKind.GrantOffering, offering: $"offer.{offeringSlug}.bonus") }, null)
+            });
+
+        var graph = new NpcDialogueGraph($"{key}.dialogue", "1.0", "rencontre",
+            new Dictionary<string, NpcDialogueNode> { ["rencontre"] = rencontre, ["confidence"] = confidence, ["don"] = don });
+
+        var offerings = new[]
+        {
+            new NpcOffering($"offer.{offeringSlug}.carnet", NpcOfferingKind.Item, "canon.item.carnet-de-bord", 1, true,
+                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 250) }),
+            new NpcOffering($"offer.{offeringSlug}.bonus", NpcOfferingKind.StatPoint, null, 20, true,
+                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) })
+        };
+
+        return await UpsertNpcAsync(key, displayName, description, "1.0", register, true, persona, wounds, graph, ct,
+            offerings: offerings);
+    }
+
+    private async Task SeedEmotionsAsync(CancellationToken ct)
+    {
+        await SeedEmotionAsync("npc.colere", "La Colère", "colere", EmotionalRegister.Rupture,
+            "Cinglante, à vif — elle ne demande rien, elle constate, sèchement",
+            new[] { "que ça éclate", "être prise au sérieux" },
+            new[] { "qu'on la calme", "les excuses" },
+            "L'une des cinq Émotions du Palais, tirée au hasard à chaque rencontre. Le Palais l'a laissée entrer sans jamais lui donner de salle — alors elle se retrouve partout, et ça la met hors d'elle.",
+            new[]
+            {
+                "Encore une salle qui refuse de me garder. Tu trouves ça normal, toi ?",
+                "Le Palais m'a laissée entrer. Il n'a jamais voulu me loger."
+            },
+            new[]
+            {
+                "Aucune pièce ne me retient. Je passe à travers les murs, faute d'en avoir un à moi.",
+                "Alors je suis partout. Ce n'est pas un choix. C'est ce qui reste quand personne ne construit pour toi."
+            }, ct);
+
+        await SeedEmotionAsync("npc.joie", "La Joie", "joie", EmotionalRegister.Memoire,
+            "Chaleureuse mais fatiguée, un sourire qui sait qu'il ne durera pas",
+            new[] { "un instant qui dure", "faire sourire" },
+            new[] { "qu'on la range", "l'oubli" },
+            "L'une des cinq Émotions du Palais, tirée au hasard à chaque rencontre. Le Palais la laisse toujours passer, jamais rester — alors elle sème un peu d'elle-même partout où elle passe.",
+            new[]
+            {
+                "Oh — tu me vois ? Personne ne s'arrête, d'habitude.",
+                "Le Palais me laisse passer, jamais rester. Drôle d'endroit pour quelqu'un comme moi."
+            },
+            new[]
+            {
+                "Je me souviens d'une salle qui devait être la mienne. Elle a fini vide, comme les autres.",
+                "Alors je vais d'une pièce à l'autre. Un peu de moi, partout, nulle part vraiment."
+            }, ct);
+
+        await SeedEmotionAsync("npc.tristesse", "La Tristesse", "tristesse", EmotionalRegister.Melancolie,
+            "Lente, résignée — elle ne pleure pas, elle constate, longtemps après les autres",
+            new[] { "le silence partagé", "qu'on reste" },
+            new[] { "qu'on la précipite", "les fausses consolations" },
+            "L'une des cinq Émotions du Palais, tirée au hasard à chaque rencontre. Aucune salle ne l'a jamais gardée assez longtemps pour qu'elle s'y attache — elle a fini par se disperser dans tout le Palais.",
+            new[]
+            {
+                "Tu passes. Je reste. Enfin — je ne reste jamais bien longtemps non plus.",
+                "Aucune salle ne veut de moi assez pour me garder."
+            },
+            new[]
+            {
+                "Le Palais me traverse plus qu'il ne m'accueille. Une porte, puis une autre, puis plus rien.",
+                "C'est pour ça qu'on me trouve partout. Il n'y a nulle part où s'arrêter."
+            }, ct);
+
+        await SeedEmotionAsync("npc.peur", "La Peur", "peur", EmotionalRegister.Effroi,
+            "Nerveuse, sur le qui-vive — elle parle vite, coupe ses phrases, guette la sortie",
+            new[] { "une sortie de secours", "être prévenue" },
+            new[] { "l'obscurité sans réponse", "les portes fermées" },
+            "L'une des cinq Émotions du Palais, tirée au hasard à chaque rencontre. Aucune pièce du Palais ne ferme vraiment — alors elle ne peut se fixer nulle part, et se disperse pour ne jamais être prise au piège.",
+            new[]
+            {
+                "Tu— tu arrives d'où ? Est-ce que c'est sûr, ici ?",
+                "Aucune pièce ne ferme bien. Le Palais laisse tout entrer, tout sortir."
+            },
+            new[]
+            {
+                "Pas de porte qui tienne, pas de mur qui protège. Je ne peux me fixer nulle part.",
+                "Alors je me disperse. Partout, un peu, pour ne jamais être prise au piège dans un seul endroit."
+            }, ct);
+
+        await SeedEmotionAsync("npc.degout", "Le Dégoût", "degout", EmotionalRegister.Deni,
+            "Sec, dédaigneux — un jugement rendu d'avance, sans appel",
+            new[] { "la clarté", "un jugement tranché" },
+            new[] { "le flou", "qu'on lui mente" },
+            "L'un des cinq Émotions du Palais, tiré au hasard à chaque rencontre. Aucune salle ne l'a jamais jugé digne d'un vrai accueil — il refuse désormais d'en choisir une seule, et se répand partout par principe.",
+            new[]
+            {
+                "Encore un couloir mal fini. Ce Palais ne sait pas se tenir.",
+                "On me tolère. On ne m'installe pas. Il y a une différence."
+            },
+            new[]
+            {
+                "Pas une seule salle digne de m'accueillir vraiment. Alors je refuse de choisir — je vais où bon me semble.",
+                "Partout, plutôt que nulle part correctement."
+            }, ct);
+    }
+
     private async Task<int> SeedEcrivainAsync(CancellationToken ct)
     {
         var persona = new NpcPersona(
@@ -2660,6 +2801,13 @@ public sealed class CatalogSeedRunner
             "L'outil du Forgeron — celui qui a donné forme à tout ce qui marche dans le Palais. Il pèse plus qu'il ne devrait.",
             "Equipment", "Accessory", "Rare", "Permanent", false, 0, cancellationToken,
             equipmentEffects: new[] { new ItemEquipmentEffect(ItemEquipmentEffectKind.StatBonusPercent, StatKind: "AttackPower", Amount: 10) });
+
+        // Aucun effet d'équipement classique : sa mécanique (journalisation automatique des
+        // événements de run) est branchée par clé directement côté game-engine, pas via
+        // ItemEquipmentEffectKind — voir SeedForgeronAsync/SeedEmotionsAsync et StartRunCommandHandler.
+        await UpsertItemAsync("canon.item.carnet-de-bord", "Carnet de bord",
+            "Un carnet vierge qui ne le reste jamais longtemps. Une fois en ta possession, il consigne de lui-même, run après run, tout ce que tu traverses.",
+            "Equipment", "Accessory", "Rare", "Permanent", false, 0, cancellationToken);
 
         await UpsertItemAsync("canon.item.pierre-antique", "Pierre antique",
             "Une pierre arrachée aux fondations d'un temple oublié — plus dure que tout ce que le Palais a jamais bâti.",

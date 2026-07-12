@@ -3,6 +3,7 @@ using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Application.Common.Exceptions;
 using Leds.GameEngine.Application.Rewards.Dtos;
 using Leds.GameEngine.Application.Rewards.Ports;
+using Leds.GameEngine.Application.Runs;
 using Leds.GameEngine.Application.Runs.Dtos;
 using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Rewards;
@@ -94,6 +95,9 @@ public sealed class SelectRewardCommandHandler
                         isContainer: def.IsContainer,
                         containerCapacity: def.ContainerCapacity,
                         isLiquid: def.IsLiquid);
+
+                    run.AppendJournalEntry(RunJournalNarrator.DescribeItemFound(
+                        run.CurrentRoom.CatalogBinding?.DisplayName, def.DisplayName));
                 }
             }
         }

@@ -49,6 +49,7 @@ public static class RunPersistenceMapper
             MagicDamageReductionPercent = run.MagicDamageReductionPercent,
             CriticalChanceBonusPercent = run.CriticalChanceBonusPercent,
             GuardBonusPercent = run.GuardBonusPercent,
+            JournalEnabled = run.JournalEnabled,
             StartedAtUtc = run.StartedAt.UtcDateTime,
             EndedAtUtc = run.EndedAt?.UtcDateTime,
             SavedAtUtc = run.SavedAt?.UtcDateTime,
@@ -64,6 +65,15 @@ public static class RunPersistenceMapper
                     Id = Guid.NewGuid(),
                     RunId = run.Id.Value,
                     FragmentKey = key,
+                    Order = index
+                })
+                .ToList(),
+            JournalEntries = run.JournalEntries
+                .Select((text, index) => new RunJournalEntryEntity
+                {
+                    Id = Guid.NewGuid(),
+                    RunId = run.Id.Value,
+                    Text = text,
                     Order = index
                 })
                 .ToList(),
@@ -303,6 +313,10 @@ public static class RunPersistenceMapper
             .OrderBy(f => f.Order)
             .Select(f => f.FragmentKey)
             .ToList();
+        var journalEntries = entity.JournalEntries
+            .OrderBy(e => e.Order)
+            .Select(e => e.Text)
+            .ToList();
         var activePalaceLaws = entity.ActivePalaceLaws
             .Select(ToDomain)
             .ToList();
@@ -432,7 +446,9 @@ public static class RunPersistenceMapper
             magicDamageReductionPercent: entity.MagicDamageReductionPercent,
             criticalChanceBonusPercent: entity.CriticalChanceBonusPercent,
             guardBonusPercent: entity.GuardBonusPercent,
-            dotDamageBonusPercent: entity.DotDamageBonusPercent);
+            dotDamageBonusPercent: entity.DotDamageBonusPercent,
+            journalEnabled: entity.JournalEnabled,
+            journalEntries: journalEntries);
 
         RehydrateNpcEncounters(run, entity);
         return run;

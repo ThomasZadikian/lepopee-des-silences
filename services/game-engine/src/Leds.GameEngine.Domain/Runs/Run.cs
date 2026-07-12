@@ -20,6 +20,7 @@ public sealed class Run
     private readonly List<Room> _rooms = [];
     private readonly List<ActivePalaceLaw> _activePalaceLaws = [];
     private readonly List<string> _memoryFragments = [];
+    private readonly List<string> _journalEntries = [];
     private readonly List<RunItem> _runItems = [];
     private readonly List<RunModifier> _runModifiers = [];
     private Combat? _activeCombat;
@@ -45,6 +46,21 @@ public sealed class Run
 
     public IReadOnlyCollection<string> MemoryFragments =>
         _memoryFragments.AsReadOnly();
+
+    /// <summary>
+    /// Auto-written literary log of this run's events (item finds, combat outcomes), only ever
+    /// populated when <see cref="JournalEnabled"/> is true. Append-only — unlike other run
+    /// resources, it is deliberately NOT part of <see cref="RunSnapshot"/>/<see cref="ExitMidRoom"/>
+    /// rollback: it is a historical record of what happened, not a piece of current state.
+    /// </summary>
+    public IReadOnlyCollection<string> JournalEntries => _journalEntries.AsReadOnly();
+
+    /// <summary>
+    /// True when the player owns the "Carnet de bord" permanent item — computed once at
+    /// <see cref="StartNew"/> time from the player's profile, like the other flattened starting
+    /// stats/bonuses.
+    /// </summary>
+    public bool JournalEnabled { get; private set; }
 
     public IReadOnlyCollection<RunItem> RunItems => _runItems.AsReadOnly();
 
@@ -83,7 +99,8 @@ public sealed class Run
         int magicDamageBonusPercent = 0,
         int magicDamageReductionPercent = 0,
         int criticalChanceBonusPercent = 0,
-        int guardBonusPercent = 0)
+        int guardBonusPercent = 0,
+        bool journalEnabled = false)
     {
         Id = id;
         PlayerId = playerId;
@@ -112,6 +129,7 @@ public sealed class Run
         MagicDamageReductionPercent = magicDamageReductionPercent;
         CriticalChanceBonusPercent = criticalChanceBonusPercent;
         GuardBonusPercent = guardBonusPercent;
+        JournalEnabled = journalEnabled;
 
         _rooms.Add(initialRoom);
     }
@@ -356,7 +374,8 @@ public sealed class Run
         int magicDamageBonusPercent = 0,
         int magicDamageReductionPercent = 0,
         int criticalChanceBonusPercent = 0,
-        int guardBonusPercent = 0)
+        int guardBonusPercent = 0,
+        bool journalEnabled = false)
     {
         if (playerId == Guid.Empty)
         {
@@ -456,7 +475,8 @@ public sealed class Run
             magicDamageBonusPercent: magicDamageBonusPercent,
             magicDamageReductionPercent: magicDamageReductionPercent,
             criticalChanceBonusPercent: criticalChanceBonusPercent,
-            guardBonusPercent: guardBonusPercent);
+            guardBonusPercent: guardBonusPercent,
+            journalEnabled: journalEnabled);
 
         run.PlayerState = PlayerRuntimeState.Create(
             maxVitality: maxHp,
@@ -894,6 +914,20 @@ public sealed class Run
         }
 
         _memoryFragments.Add(fragmentKey.Trim());
+    }
+
+    /// <summary>
+    /// Appends a line to the run's journal (Carnet de bord). A silent no-op when
+    /// <see cref="JournalEnabled"/> is false, so callers don't need to guard every call site.
+    /// </summary>
+    public void AppendJournalEntry(string text)
+    {
+        if (!JournalEnabled || string.IsNullOrWhiteSpace(text))
+        {
+            return;
+        }
+
+        _journalEntries.Add(text.Trim());
     }
 
     public void ApplyReward(RewardChoice choice)
@@ -1615,11 +1649,13 @@ public sealed class Run
         int magicDamageReductionPercent = 0,
         int criticalChanceBonusPercent = 0,
         int guardBonusPercent = 0,
-        int dotDamageBonusPercent = 0)
+        int dotDamageBonusPercent = 0,
+        bool journalEnabled = false,
+        IEnumerable<string>? journalEntries = null)
     {
         var firstRoom = rooms.First();
 
-        var run = new Run(id, playerId, seed, generatorVersion, markovMatrixVersion, status, firstRoom, startedAt, maxHp, currentHp, attack, defense, speed, focus, currentRoomIndex, activeCombatId, pendingRewardOfferId, runItemCapacity, typedDamageReductions, hitChanceBonusPercent, dotDurationReductionPercent, dotDamageReductionPercent, dotDamageBonusPercent, magicDamageBonusPercent, magicDamageReductionPercent, criticalChanceBonusPercent, guardBonusPercent);
+        var run = new Run(id, playerId, seed, generatorVersion, markovMatrixVersion, status, firstRoom, startedAt, maxHp, currentHp, attack, defense, speed, focus, currentRoomIndex, activeCombatId, pendingRewardOfferId, runItemCapacity, typedDamageReductions, hitChanceBonusPercent, dotDurationReductionPercent, dotDamageReductionPercent, dotDamageBonusPercent, magicDamageBonusPercent, magicDamageReductionPercent, criticalChanceBonusPercent, guardBonusPercent, journalEnabled);
         foreach (var room in rooms.Skip(1))
         {
             run._rooms.Add(room);
@@ -1630,6 +1666,7 @@ public sealed class Run
         run.SavedAt = savedAt;
         run._preSuspendStatus = preSuspendStatus;
         run._memoryFragments.AddRange(memoryFragments);
+        run._journalEntries.AddRange(journalEntries ?? []);
         run._activePalaceLaws.AddRange(activePalaceLaws);
         run._activeCurse = activeCurse;
 

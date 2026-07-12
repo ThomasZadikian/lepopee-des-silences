@@ -11,9 +11,13 @@ namespace Leds.GameEngine.Application.Runs.StartRun;
 
 public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, StartRunResponse>
 {
+    /// <summary>Carnet de bord — see SeedEmotionsAsync in the catalog seed.</summary>
+    private const string JournalItemKey = "canon.item.carnet-de-bord";
+
     private readonly IRunGenerator _runGenerator;
     private readonly IRunRepository _runRepository;
     private readonly IPlayerRunSnapshotGateway _playerGateway;
+    private readonly IPlayerProfileGateway _playerProfileGateway;
     private readonly ICatalogContentGateway _catalogGateway;
     private readonly IClock _clock;
 
@@ -21,12 +25,14 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
         IRunGenerator runGenerator,
         IRunRepository runRepository,
         IPlayerRunSnapshotGateway playerGateway,
+        IPlayerProfileGateway playerProfileGateway,
         ICatalogContentGateway catalogGateway,
         IClock clock)
     {
         _runGenerator = runGenerator;
         _runRepository = runRepository;
         _playerGateway = playerGateway;
+        _playerProfileGateway = playerProfileGateway;
         _catalogGateway = catalogGateway;
         _clock = clock;
     }
@@ -36,6 +42,10 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
         CancellationToken cancellationToken)
     {
         var snapshot = await _playerGateway.GetRunSnapshotAsync(request.PlayerId, cancellationToken);
+
+        var profile = await _playerProfileGateway.GetProfileAsync(request.PlayerId, cancellationToken);
+        var journalEnabled = profile.PermanentItems?.Any(item =>
+            string.Equals(item.ItemDefinitionKey, JournalItemKey, StringComparison.OrdinalIgnoreCase)) ?? false;
 
         var seed = _runGenerator.GenerateSeed();
         var initialRoom = await _runGenerator.GenerateInitialRoomAsync(seed, cancellationToken);
@@ -212,7 +222,8 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
             magicDamageBonusPercent: magicDamageBonusPercent,
             magicDamageReductionPercent: magicDamageReductionPercent,
             criticalChanceBonusPercent: criticalChanceBonusPercent,
-            guardBonusPercent: guardBonusPercent);
+            guardBonusPercent: guardBonusPercent,
+            journalEnabled: journalEnabled);
 
         var characterSnapshots = snapshot.Characters
             .Select(c =>
