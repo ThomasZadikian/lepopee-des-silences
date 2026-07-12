@@ -76,7 +76,7 @@ describe('NpcDialoguePanel', () => {
 
   it('emits continue when ended button is clicked', async () => {
     const wrapper = mountPanel(baseDialogue, [], true);
-    await wrapper.find('.es-btn--lg').trigger('click');
+    await wrapper.find('.npc-exit').trigger('click');
     expect(wrapper.emitted('continue')).toHaveLength(1);
   });
 
@@ -128,7 +128,7 @@ describe('NpcDialoguePanel', () => {
     await wrapper.vm.$nextTick();
     await wrapper.vm.$nextTick();
     expect(wrapper.text()).toContain('Se retirer du seuil');
-    await wrapper.find('.npc-choices .es-btn--lg').trigger('click');
+    await wrapper.find('.npc-choices .npc-exit').trigger('click');
     expect(wrapper.emitted('continue')).toHaveLength(1);
   });
 

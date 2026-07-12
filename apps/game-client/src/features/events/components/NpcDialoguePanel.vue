@@ -189,16 +189,20 @@ onBeforeUnmount(() => { clearTimer(); window.removeEventListener('keydown', onKe
                list while the encounter isn't formally "ended" (e.g. every
                choice was filtered out by an unmet requirement), still offer
                a way out instead of a silent dead end. -->
-          <button class="es-btn es-btn--frost es-btn--lg" :disabled="isLoading" @click="emit('continue')">
-            Se retirer du seuil →
+          <button class="npc-exit" :disabled="isLoading" @click="emit('continue')">
+            <span class="npc-exit__g">◆</span>
+            <span class="npc-exit__l">Se retirer du seuil</span>
+            <span class="npc-exit__a">→</span>
           </button>
         </template>
       </div>
 
       <!-- Ended -->
       <div v-else-if="ended" class="npc-end">
-        <button class="es-btn es-btn--frost es-btn--lg" :disabled="isLoading" @click="emit('continue')">
-          Se retirer du seuil →
+        <button class="npc-exit" :disabled="isLoading" @click="emit('continue')">
+          <span class="npc-exit__g">◆</span>
+          <span class="npc-exit__l">Se retirer du seuil</span>
+          <span class="npc-exit__a">→</span>
         </button>
       </div>
     </div>
@@ -304,6 +308,22 @@ onBeforeUnmount(() => { clearTimer(); window.removeEventListener('keydown', onKe
 .npc-empty { color: var(--ink-4); font-style: italic; text-align: center; }
 
 .npc-end { width: min(820px, 92vw); display: flex; justify-content: center; }
+.npc-exit {
+  display: flex; align-items: center; justify-content: center; gap: 14px;
+  min-width: 280px; padding: 15px 28px; cursor: pointer; text-align: center;
+  color: var(--ink-2); border: 1px solid var(--line); border-radius: 13px;
+  background: linear-gradient(135deg, rgba(125,92,255,.06), transparent 60%), rgba(18,14,30,.6);
+  opacity: 0; transform: translateY(10px); animation: npcRise .45s ease forwards;
+  transition: transform .16s ease, border-color .2s ease, color .2s ease, box-shadow .2s ease;
+}
+.npc-exit:hover:not(:disabled) { transform: translateY(-2px); color: var(--ink); border-color: rgba(183,155,255,.6); box-shadow: 0 10px 30px -16px rgba(125,92,255,.8); }
+.mood-rompu .npc-exit:hover:not(:disabled) { border-color: rgba(255,90,90,.6); box-shadow: 0 10px 30px -16px rgba(255,60,60,.8); }
+.npc-exit:disabled { opacity: .5; cursor: default; }
+.npc-exit__g { color: #b79bff; font-size: 12px; }
+.mood-rompu .npc-exit__g { color: #ff5a5a; }
+.npc-exit__l { font-family: var(--display); font-size: 18px; font-style: italic; }
+.npc-exit__a { color: var(--ink-4); transition: transform .16s ease; }
+.npc-exit:hover:not(:disabled) .npc-exit__a { transform: translateX(5px); color: #b79bff; }
 
 /* Flash */
 .npc-flash { position: absolute; inset: 0; z-index: 9; pointer-events: none; opacity: 0; }
