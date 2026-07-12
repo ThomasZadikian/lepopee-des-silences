@@ -2,11 +2,13 @@ using FluentAssertions;
 using Leds.GameEngine.Application.Abstractions;
 using Leds.SharedBuildingBlocks.Time;
 using Leds.GameEngine.Application.Common.Exceptions;
+using Leds.GameEngine.Application.Players.Ports;
 using Leds.GameEngine.Application.Runs.ExitMidRoom;
 using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Runs;
 using Leds.GameEngine.UnitTests.Common.Factories;
+using Microsoft.Extensions.Logging;
 using Moq;
 
 namespace Leds.GameEngine.UnitTests.Runs.ExitMidRoom;
@@ -23,6 +25,16 @@ public sealed class ExitMidRoomCommandHandlerTests
         return run;
     }
 
+    private static Mock<IPlayerProfileGateway> CreatePlayerProfileGateway()
+    {
+        var gateway = new Mock<IPlayerProfileGateway>();
+        gateway
+            .Setup(g => g.UpsertNpcReputationScoresAsync(
+                It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<IReadOnlyCollection<NpcReputationScoreView>>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        return gateway;
+    }
+
     private static (ExitMidRoomCommandHandler handler, Mock<IRunRepository> repo, Mock<IClock> clock)
         CreateHandler(Run run)
     {
@@ -33,7 +45,8 @@ public sealed class ExitMidRoomCommandHandlerTests
         var clock = new Mock<IClock>();
         clock.SetupGet(c => c.UtcNow).Returns(DateTimeOffset.UtcNow);
 
-        var handler = new ExitMidRoomCommandHandler(repo.Object, clock.Object);
+        var handler = new ExitMidRoomCommandHandler(
+            repo.Object, CreatePlayerProfileGateway().Object, clock.Object, Mock.Of<ILogger<ExitMidRoomCommandHandler>>());
         return (handler, repo, clock);
     }
 
@@ -50,7 +63,8 @@ public sealed class ExitMidRoomCommandHandlerTests
         var clock = new Mock<IClock>();
         clock.SetupGet(c => c.UtcNow).Returns(now);
 
-        var handler = new ExitMidRoomCommandHandler(repo.Object, clock.Object);
+        var handler = new ExitMidRoomCommandHandler(
+            repo.Object, CreatePlayerProfileGateway().Object, clock.Object, Mock.Of<ILogger<ExitMidRoomCommandHandler>>());
         var response = await handler.Handle(
             new ExitMidRoomCommand(run.Id.Value),
             CancellationToken.None);
@@ -78,7 +92,8 @@ public sealed class ExitMidRoomCommandHandlerTests
         var clock = new Mock<IClock>();
         clock.SetupGet(c => c.UtcNow).Returns(DateTimeOffset.UtcNow);
 
-        var handler = new ExitMidRoomCommandHandler(repo.Object, clock.Object);
+        var handler = new ExitMidRoomCommandHandler(
+            repo.Object, CreatePlayerProfileGateway().Object, clock.Object, Mock.Of<ILogger<ExitMidRoomCommandHandler>>());
 
         var act = () => handler.Handle(
             new ExitMidRoomCommand(Guid.NewGuid()),
@@ -119,5 +134,37 @@ public sealed class ExitMidRoomCommandHandlerTests
         await act.Should()
             .ThrowAsync<DomainException>()
             .WithMessage("*must be active*");
+    }
+
+    [Fact]
+    public async Task Handle_ShouldSyncNpcReputation_WhenRunHasRelationships()
+    {
+        var run = CreateActiveRunWithSomeProgression();
+        run.AdjustNpcRelationshipScore("npc.thomas", 5);
+
+        var repo = new Mock<IRunRepository>();
+        repo.Setup(r => r.GetByIdAsync(run.Id, CancellationToken.None))
+            .ReturnsAsync(run);
+
+        var clock = new Mock<IClock>();
+        clock.SetupGet(c => c.UtcNow).Returns(DateTimeOffset.UtcNow);
+
+        var playerProfileGateway = CreatePlayerProfileGateway();
+
+        var handler = new ExitMidRoomCommandHandler(
+            repo.Object, playerProfileGateway.Object, clock.Object, Mock.Of<ILogger<ExitMidRoomCommandHandler>>());
+
+        await handler.Handle(
+            new ExitMidRoomCommand(run.Id.Value),
+            CancellationToken.None);
+
+        playerProfileGateway.Verify(
+            g => g.UpsertNpcReputationScoresAsync(
+                run.PlayerId,
+                run.Id.Value,
+                It.Is<IReadOnlyCollection<NpcReputationScoreView>>(scores =>
+                    scores.Count == 1 && scores.Single().NpcKey == "npc.thomas" && scores.Single().Score == 5),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 }

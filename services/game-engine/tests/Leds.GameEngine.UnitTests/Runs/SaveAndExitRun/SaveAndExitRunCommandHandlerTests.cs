@@ -2,15 +2,27 @@ using FluentAssertions;
 using Leds.GameEngine.Application.Abstractions;
 using Leds.SharedBuildingBlocks.Time;
 using Leds.GameEngine.Application.Common.Exceptions;
+using Leds.GameEngine.Application.Players.Ports;
 using Leds.GameEngine.Application.Runs.SaveAndExitRun;
 using Leds.GameEngine.Domain.Runs;
 using Leds.GameEngine.UnitTests.Common.Factories;
+using Microsoft.Extensions.Logging;
 using Moq;
 
 namespace Leds.GameEngine.UnitTests.Runs.SaveAndExitRun;
 
 public sealed class SaveAndExitRunCommandHandlerTests
 {
+    private static Mock<IPlayerProfileGateway> CreatePlayerProfileGateway()
+    {
+        var gateway = new Mock<IPlayerProfileGateway>();
+        gateway
+            .Setup(g => g.UpsertNpcReputationScoresAsync(
+                It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<IReadOnlyCollection<NpcReputationScoreView>>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        return gateway;
+    }
+
     [Fact]
     public async Task Handle_ShouldSuspendRun_AndPersistIt_WhenAtSafePoint()
     {
@@ -25,7 +37,8 @@ public sealed class SaveAndExitRunCommandHandlerTests
         var clock = new Mock<IClock>();
         clock.SetupGet(c => c.UtcNow).Returns(now);
 
-        var handler = new SaveAndExitRunCommandHandler(repository.Object, clock.Object);
+        var handler = new SaveAndExitRunCommandHandler(
+            repository.Object, CreatePlayerProfileGateway().Object, clock.Object, Mock.Of<ILogger<SaveAndExitRunCommandHandler>>());
 
         var response = await handler.Handle(
             new SaveAndExitRunCommand(run.Id.Value),
@@ -59,7 +72,8 @@ public sealed class SaveAndExitRunCommandHandlerTests
         var clock = new Mock<IClock>();
         clock.SetupGet(c => c.UtcNow).Returns(DateTimeOffset.UtcNow);
 
-        var handler = new SaveAndExitRunCommandHandler(repository.Object, clock.Object);
+        var handler = new SaveAndExitRunCommandHandler(
+            repository.Object, CreatePlayerProfileGateway().Object, clock.Object, Mock.Of<ILogger<SaveAndExitRunCommandHandler>>());
 
         var response = await handler.Handle(
             new SaveAndExitRunCommand(run.Id.Value),
@@ -80,7 +94,8 @@ public sealed class SaveAndExitRunCommandHandlerTests
 
         var clock = new Mock<IClock>();
 
-        var handler = new SaveAndExitRunCommandHandler(repository.Object, clock.Object);
+        var handler = new SaveAndExitRunCommandHandler(
+            repository.Object, CreatePlayerProfileGateway().Object, clock.Object, Mock.Of<ILogger<SaveAndExitRunCommandHandler>>());
 
         var act = () => handler.Handle(
             new SaveAndExitRunCommand(unknownRunId),
@@ -106,7 +121,8 @@ public sealed class SaveAndExitRunCommandHandlerTests
         var clock = new Mock<IClock>();
         clock.SetupGet(c => c.UtcNow).Returns(DateTimeOffset.UtcNow);
 
-        var handler = new SaveAndExitRunCommandHandler(repository.Object, clock.Object);
+        var handler = new SaveAndExitRunCommandHandler(
+            repository.Object, CreatePlayerProfileGateway().Object, clock.Object, Mock.Of<ILogger<SaveAndExitRunCommandHandler>>());
 
         var act = () => handler.Handle(
             new SaveAndExitRunCommand(run.Id.Value),
@@ -134,7 +150,8 @@ public sealed class SaveAndExitRunCommandHandlerTests
         var clock = new Mock<IClock>();
         clock.SetupGet(c => c.UtcNow).Returns(DateTimeOffset.UtcNow);
 
-        var handler = new SaveAndExitRunCommandHandler(repository.Object, clock.Object);
+        var handler = new SaveAndExitRunCommandHandler(
+            repository.Object, CreatePlayerProfileGateway().Object, clock.Object, Mock.Of<ILogger<SaveAndExitRunCommandHandler>>());
 
         var act = () => handler.Handle(
             new SaveAndExitRunCommand(run.Id.Value),
@@ -143,5 +160,69 @@ public sealed class SaveAndExitRunCommandHandlerTests
         await act.Should()
             .ThrowAsync<Leds.GameEngine.Domain.Common.DomainException>()
             .WithMessage("*closed*");
+    }
+
+    [Fact]
+    public async Task Handle_ShouldSyncNpcReputation_WhenRunHasRelationships()
+    {
+        // Regression: a suspended run never fires an integration event (unlike Abandon or
+        // combat defeat), so any reputation gained before "Sauvegarder et quitter" used to be
+        // silently orphaned if the player started a fresh run instead of resuming.
+        var run = TestGameEngineFactory.CreateRunWithCompletedCurrentRoom();
+        run.AdjustNpcRelationshipScore("npc.thomas", 5);
+
+        var repository = new Mock<IRunRepository>();
+        repository.Setup(repo => repo.GetByIdAsync(run.Id, CancellationToken.None))
+            .ReturnsAsync(run);
+
+        var clock = new Mock<IClock>();
+        clock.SetupGet(c => c.UtcNow).Returns(DateTimeOffset.UtcNow);
+
+        var playerProfileGateway = CreatePlayerProfileGateway();
+
+        var handler = new SaveAndExitRunCommandHandler(
+            repository.Object, playerProfileGateway.Object, clock.Object, Mock.Of<ILogger<SaveAndExitRunCommandHandler>>());
+
+        await handler.Handle(
+            new SaveAndExitRunCommand(run.Id.Value),
+            CancellationToken.None);
+
+        playerProfileGateway.Verify(
+            g => g.UpsertNpcReputationScoresAsync(
+                run.PlayerId,
+                run.Id.Value,
+                It.Is<IReadOnlyCollection<NpcReputationScoreView>>(scores =>
+                    scores.Count == 1 && scores.Single().NpcKey == "npc.thomas" && scores.Single().Score == 5),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_ShouldNotThrow_WhenReputationSyncFails()
+    {
+        var run = TestGameEngineFactory.CreateRunWithCompletedCurrentRoom();
+        run.AdjustNpcRelationshipScore("npc.thomas", 5);
+
+        var repository = new Mock<IRunRepository>();
+        repository.Setup(repo => repo.GetByIdAsync(run.Id, CancellationToken.None))
+            .ReturnsAsync(run);
+
+        var clock = new Mock<IClock>();
+        clock.SetupGet(c => c.UtcNow).Returns(DateTimeOffset.UtcNow);
+
+        var playerProfileGateway = new Mock<IPlayerProfileGateway>();
+        playerProfileGateway
+            .Setup(g => g.UpsertNpcReputationScoresAsync(
+                It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<IReadOnlyCollection<NpcReputationScoreView>>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new HttpRequestException("Player Service unreachable"));
+
+        var handler = new SaveAndExitRunCommandHandler(
+            repository.Object, playerProfileGateway.Object, clock.Object, Mock.Of<ILogger<SaveAndExitRunCommandHandler>>());
+
+        var act = () => handler.Handle(
+            new SaveAndExitRunCommand(run.Id.Value),
+            CancellationToken.None);
+
+        await act.Should().NotThrowAsync();
     }
 }

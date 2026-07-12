@@ -5,6 +5,7 @@ using Leds.GameEngine.Application.Events.ChooseEventOption;
 using Leds.GameEngine.Application.Interlude;
 using Leds.GameEngine.Application.Interlude.Dtos;
 using Leds.GameEngine.Application.Interlude.EnterInterlude;
+using Leds.GameEngine.Application.Players.Ports;
 using Leds.GameEngine.Application.Runs.AbandonRun;
 using Leds.GameEngine.Application.Runs.ChooseNode;
 using Leds.GameEngine.Application.Runs.ProgressRun;
@@ -13,6 +14,7 @@ using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Rewards;
 using Leds.GameEngine.Domain.Runs;
 using Leds.GameEngine.UnitTests.Common.Factories;
+using Microsoft.Extensions.Logging;
 using Moq;
 
 namespace Leds.GameEngine.UnitTests.Runs;
@@ -65,7 +67,8 @@ public sealed class RunExitDecisionsTests
         var clock = new Mock<IClock>();
         clock.SetupGet(c => c.UtcNow).Returns(DateTimeOffset.UtcNow);
 
-        var handler = new SaveAndExitRunCommandHandler(repo.Object, clock.Object);
+        var handler = new SaveAndExitRunCommandHandler(
+            repo.Object, Mock.Of<IPlayerProfileGateway>(), clock.Object, Mock.Of<ILogger<SaveAndExitRunCommandHandler>>());
         return (handler, repo, clock);
     }
 
@@ -524,7 +527,8 @@ public sealed class RunExitDecisionsTests
         var clock = new Mock<IClock>();
         clock.SetupGet(c => c.UtcNow).Returns(now);
 
-        var handler = new SaveAndExitRunCommandHandler(repo.Object, clock.Object);
+        var handler = new SaveAndExitRunCommandHandler(
+            repo.Object, Mock.Of<IPlayerProfileGateway>(), clock.Object, Mock.Of<ILogger<SaveAndExitRunCommandHandler>>());
         var response = await handler.Handle(
             new SaveAndExitRunCommand(run.Id.Value),
             CancellationToken.None);
