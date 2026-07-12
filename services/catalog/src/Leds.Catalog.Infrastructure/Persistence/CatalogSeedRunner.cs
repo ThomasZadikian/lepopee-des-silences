@@ -49,9 +49,6 @@ public sealed class CatalogSeedRunner
 
         await SeedMajordomeAsync(cancellationToken);
         await SeedHitomiAsync(cancellationToken);
-        await SeedChapelierAsync(cancellationToken);
-        await SeedElyasAsync(cancellationToken);
-        await SeedOwenAsync(cancellationToken);
         await SeedForgeronAsync(cancellationToken);
         await SeedHomonculeAsync(cancellationToken);
         await SeedEnfantAsync(cancellationToken);
@@ -70,6 +67,7 @@ public sealed class CatalogSeedRunner
         await SeedArchitecteAsync(cancellationToken);
         await SeedEcrivainAsync(cancellationToken);
         await SeedErikaAsync(cancellationToken);
+        await SeedMinaAsync(cancellationToken);
         await SeedCanonEnemiesAsync(cancellationToken);
         await SeedCanonSkillsAsync(cancellationToken);
         await SeedCanonItemsAsync(cancellationToken);
@@ -339,164 +337,6 @@ public sealed class CatalogSeedRunner
                     new RewardCurseEntry(RewardCurseEntryKind.Reward, "Heal", null, 14) }, ct);
         n += await UpsertPoolAsync("pool.hitomi.retrait", "Hitomi — retrait", "Le froid d'une main qu'on n'attrape plus.", "1.0",
             new[] { new RewardCurseEntry(RewardCurseEntryKind.Curse, "Damage", null, 5) }, ct);
-        return n;
-    }
-
-    // ── Le Chapelier (Déni) ──────────────────────────────────────────────────
-
-    private async Task<int> SeedChapelierAsync(CancellationToken ct)
-    {
-        var persona = new NpcPersona("Fier, moderne, intarissable sur son ouvrage", EmotionalRegister.Deni,
-            new[] { "la reconnaissance de son succès", "qu'on ne parle pas du deuil" },
-            new[] { "un chapeau sur mesure", "du thé" });
-
-        var wounds = new[]
-        {
-            new NpcWound("w-cendres", EmotionalRegister.Melancolie, NpcWoundReversibility.Irreversible, -2, -4,
-                new[] { new NpcTransgression("w-cendres", "chapelier-cendres", -5) },
-                "L'odeur de cendres revient. Il pleure ce qu'il refuse de nommer.")
-        };
-
-        var atelier = new NpcDialogueNode("atelier", "Le Chapelier",
-            new[] { "Entrez ! Écoutez ces machines — le bruit même du succès.", "Un chapeau sur mesure, peut-être ? Je fais le meilleur ouvrage du pays." },
-            new[]
-            {
-                new NpcDialogueChoice("commander", "Commander un chapeau", Array.Empty<DialogueRequirement>(),
-                    new[] { C(ConsequenceKind.RewardOrCurseRoll, when: WoundState.Latent, pool: "pool.chapelier.ouvrage"),
-                            C(ConsequenceKind.Narrative, when: WoundState.Rompu, frag: "Ses mains tremblent. Le feutre lui glisse des doigts."),
-                            C(ConsequenceKind.RewardOrCurseRoll, when: WoundState.Rompu, pool: "pool.chapelier.cendres") }, null),
-                new NpcDialogueChoice("parler-deuil", "Évoquer ce qu'il a perdu", Array.Empty<DialogueRequirement>(),
-                    new[] { C(ConsequenceKind.SetMemoryFlag, flag: "chapelier-cendres"),
-                            C(ConsequenceKind.Narrative, frag: "Son sourire se fige. Le vacarme des machines se déforme en un battement lourd.") }, "atelier"),
-                new NpcDialogueChoice("complimenter", "Louer son ouvrage", Array.Empty<DialogueRequirement>(),
-                    new[] { C(ConsequenceKind.AdjustRelationship, rel: 1),
-                            C(ConsequenceKind.Narrative, frag: "Il bombe le torse. « Enfin quelqu'un qui sait voir. »") }, null),
-                new NpcDialogueChoice("partir", "Sortir de l'atelier", Array.Empty<DialogueRequirement>(),
-                    new[] { C(ConsequenceKind.Narrative, frag: "Le clac-clac des machines vous suit jusque dans la rue.") }, null)
-            },
-            TenseLines: new[] { "Clac… clac… Vous entendez ce rythme ? Il… ralentit.", "Asseyez-vous. Ne regardez pas mes mains." },
-            RupturedLines: new[] { "Vous sentez ? Cette odeur de cendres et de chair brûlée.", "Pourquoi ai-je l'impression d'avoir tué ce que j'avais de plus cher ?" });
-
-        var graph = new NpcDialogueGraph("npc.chapelier.dialogue", "1.0", "atelier",
-            new Dictionary<string, NpcDialogueNode> { ["atelier"] = atelier });
-
-        // TODO(utilisateur) : liaison à une Room précise et offres concrètes non fournies
-        // à ce stade — ne pas inventer, compléter une fois le contenu reçu.
-        var n = await UpsertNpcAsync("npc.chapelier", "Le Chapelier",
-            "Maître artisan fier de sa modernité. Quelque chose, sous le vacarme des machines, refuse d'être nommé.", "1.0",
-            EmotionalRegister.Deni, true, persona, wounds, graph, ct);
-        n += await UpsertPoolAsync("pool.chapelier.ouvrage", "Chapelier — ouvrage", "La fierté d'un travail bien fait.", "1.0",
-            new[] { new RewardCurseEntry(RewardCurseEntryKind.Reward, "Heal", null, 10) }, ct);
-        n += await UpsertPoolAsync("pool.chapelier.cendres", "Chapelier — cendres", "Le deuil qui ne dit pas son nom.", "1.0",
-            new[] { new RewardCurseEntry(RewardCurseEntryKind.Curse, "GrantCurse", "curse.weight-of-silence") }, ct);
-        return n;
-    }
-
-    // ── Elyas (guide-prédécesseur, Mémoire) ──────────────────────────────────
-
-    private async Task<int> SeedElyasAsync(CancellationToken ct)
-    {
-        var persona = new NpcPersona("Ancien, calme, énigmatique", EmotionalRegister.Memoire,
-            new[] { "être entendu", "le respect du Palais" },
-            new[] { "un savoir ancien", "une mise en garde" });
-
-        var wounds = new[]
-        {
-            new NpcWound("w-oubli", EmotionalRegister.Memoire, NpcWoundReversibility.SoothableByScore, -1, -3,
-                new[] { new NpcTransgression("w-oubli", "elyas-mepris", -4) },
-                "Le Palais oublie vite ceux qui l'ont aimé. Lui s'en souvient pour deux.")
-        };
-
-        var seuilAncien = new NpcDialogueNode("seuil-ancien", "Elyas",
-            new[] { "J'habitais ce Palais bien avant que tu n'en sois le concierge.", "Si tu es ici, c'est que tu as fui quelque chose. Veux-tu savoir ce que j'ai compris ?" },
-            new[]
-            {
-                new NpcDialogueChoice("ecouter", "Écouter son savoir", Array.Empty<DialogueRequirement>(),
-                    new[] { C(ConsequenceKind.AdjustRelationship, rel: 1),
-                            C(ConsequenceKind.Narrative, frag: "Il sourit, presque soulagé d'être enfin entendu.") }, "savoir"),
-                new NpcDialogueChoice("exiger", "Exiger son pouvoir, sans écouter", Array.Empty<DialogueRequirement>(),
-                    new[] { C(ConsequenceKind.SetMemoryFlag, flag: "elyas-mepris"),
-                            C(ConsequenceKind.Narrative, frag: "« Le pouvoir ? Tu n'as donc rien écouté. »") }, "seuil-ancien"),
-                new NpcDialogueChoice("partir", "Le laisser à ses souvenirs", Array.Empty<DialogueRequirement>(),
-                    new[] { C(ConsequenceKind.Narrative, frag: "Tu t'éloignes. Il murmure un nom que tu ne connais pas.") }, null)
-            },
-            RupturedLines: new[] { "Tu me méprises, toi aussi. Comme tous les échos avant toi.", "Garde tes questions. Le Palais te les reprendra de toute façon." });
-
-        var savoir = new NpcDialogueNode("savoir", "Elyas",
-            new[] { "« Le Palais se nourrit du silence. Mais un savoir partagé devient une arme. »" },
-            new[]
-            {
-                new NpcDialogueChoice("accepter-savoir", "Recevoir son enseignement", Array.Empty<DialogueRequirement>(),
-                    new[] { C(ConsequenceKind.RewardOrCurseRoll, when: WoundState.Latent, pool: "pool.elyas.savoir"),
-                            C(ConsequenceKind.Narrative, when: WoundState.Rompu, frag: "« Trop tard. Tu n'es plus digne d'écouter. »"),
-                            C(ConsequenceKind.RewardOrCurseRoll, when: WoundState.Rompu, pool: "pool.elyas.rancune") }, null),
-                new NpcDialogueChoice("refuser", "Décliner poliment", Array.Empty<DialogueRequirement>(),
-                    new[] { C(ConsequenceKind.AdjustRelationship, rel: 1),
-                            C(ConsequenceKind.Narrative, frag: "« Sage. Tout savoir a un prix. »") }, null)
-            });
-
-        var graph = new NpcDialogueGraph("npc.elyas.dialogue", "1.0", "seuil-ancien",
-            new Dictionary<string, NpcDialogueNode> { ["seuil-ancien"] = seuilAncien, ["savoir"] = savoir });
-
-        // TODO(utilisateur) : liaison à une Room précise et offres concrètes non fournies
-        // à ce stade — ne pas inventer, compléter une fois le contenu reçu.
-        var n = await UpsertNpcAsync("npc.elyas", "Elyas",
-            "Un ancien habitant du Palais, là bien avant toi. Il t'appelle « le concierge ».", "1.0",
-            EmotionalRegister.Memoire, true, persona, wounds, graph, ct);
-        n += await UpsertPoolAsync("pool.elyas.savoir", "Elyas — savoir ancien", "Une vérité sur le Palais, gravée comme une loi.", "1.0",
-            new[] { new RewardCurseEntry(RewardCurseEntryKind.Reward, "GrantLaw", "law.threshold.mefiance-des-echos") }, ct);
-        n += await UpsertPoolAsync("pool.elyas.rancune", "Elyas — rancune", "Le ressentiment d'un écho oublié.", "1.0",
-            new[] { new RewardCurseEntry(RewardCurseEntryKind.Curse, "GrantCurse", "curse.old-wound") }, ct);
-        return n;
-    }
-
-    // ── Le Père Owen (Effroi, veilleur) ──────────────────────────────────────
-
-    private async Task<int> SeedOwenAsync(CancellationToken ct)
-    {
-        var persona = new NpcPersona("Prêtre fou, doucereux, inquiétant", EmotionalRegister.Effroi,
-            new[] { "réciter ses prières", "des oreilles pour l'écouter" },
-            new[] { "une bénédiction impie", "un secret de l'abbaye" });
-
-        var wounds = new[]
-        {
-            new NpcWound("w-foi", EmotionalRegister.Effroi, NpcWoundReversibility.Irreversible, -2, -4,
-                new[] { new NpcTransgression("w-foi", "owen-blaspheme", -5) },
-                "Tu as offensé le Seigneur du Lituisme. L'Œil ne se fermera plus.")
-        };
-
-        var abbaye = new NpcDialogueNode("abbaye", "Le Père Owen",
-            new[] { "Approche, mon enfant. La nuit est le seul moment où l'on entend vraiment.", "Veux-tu une bénédiction ? Les miennes ne ressemblent à aucune autre." },
-            new[]
-            {
-                new NpcDialogueChoice("benediction", "Recevoir sa bénédiction", Array.Empty<DialogueRequirement>(),
-                    new[] { C(ConsequenceKind.RewardOrCurseRoll, when: WoundState.Latent, pool: "pool.owen.benediction"),
-                            C(ConsequenceKind.Narrative, when: WoundState.Rompu, frag: "Il pose sa main froide sur ton front. Quelque chose s'y grave."),
-                            C(ConsequenceKind.RewardOrCurseRoll, when: WoundState.Rompu, pool: "pool.owen.malediction") }, null),
-                new NpcDialogueChoice("renier", "Renier le Lituisme devant lui", Array.Empty<DialogueRequirement>(),
-                    new[] { C(ConsequenceKind.SetMemoryFlag, flag: "owen-blaspheme"),
-                            C(ConsequenceKind.Narrative, frag: "Son regard jaune se fixe sur toi. Les bougies vacillent toutes en même temps.") }, "abbaye"),
-                new NpcDialogueChoice("ecouter-priere", "Écouter sa prière", Array.Empty<DialogueRequirement>(),
-                    new[] { C(ConsequenceKind.AdjustRelationship, rel: 1),
-                            C(ConsequenceKind.Narrative, frag: "Les mots t'échappent, mais leur poids ne te lâche pas.") }, null),
-                new NpcDialogueChoice("partir", "Quitter l'abbaye", Array.Empty<DialogueRequirement>(),
-                    new[] { C(ConsequenceKind.Narrative, frag: "Derrière toi, le murmure des prières reprend, plus fort.") }, null)
-            },
-            TenseLines: new[] { "Tes pas hésitent. Le Seigneur n'aime pas l'hésitation.", "Reste dans la lumière des bougies, veux-tu." },
-            RupturedLines: new[] { "Tu as renié le Seigneur devant moi. Il te voit, désormais.", "L'Œil du Visionnaire ne se ferme jamais. Plus jamais pour toi." });
-
-        var graph = new NpcDialogueGraph("npc.owen.dialogue", "1.0", "abbaye",
-            new Dictionary<string, NpcDialogueNode> { ["abbaye"] = abbaye });
-
-        // TODO(utilisateur) : liaison à une Room précise et offres concrètes non fournies
-        // à ce stade — ne pas inventer, compléter une fois le contenu reçu.
-        var n = await UpsertNpcAsync("npc.owen", "Le Père Owen",
-            "Le veilleur de la tour. Regard jaune et vitreux, prières nocturnes que nul ne devrait entendre.", "1.0",
-            EmotionalRegister.Effroi, true, persona, wounds, graph, ct);
-        n += await UpsertPoolAsync("pool.owen.benediction", "Owen — bénédiction", "Une grâce ambiguë, mais une grâce.", "1.0",
-            new[] { new RewardCurseEntry(RewardCurseEntryKind.Reward, "Heal", null, 16) }, ct);
-        n += await UpsertPoolAsync("pool.owen.malediction", "Owen — malédiction", "Le poids d'une foi reniée.", "1.0",
-            new[] { new RewardCurseEntry(RewardCurseEntryKind.Curse, "GrantCurse", "curse.weight-of-silence") }, ct);
         return n;
     }
 
@@ -2071,6 +1911,94 @@ public sealed class CatalogSeedRunner
             offerings: offerings);
     }
 
+    // ── Mina (Mémoire, protégée par Him'Lit) ─────────────────────────────────
+    private async Task<int> SeedMinaAsync(CancellationToken ct)
+    {
+        var persona = new NpcPersona(
+            "Une petite fille née dans le Palais, la seconde de ses habitants. Elle ne connaît pas ses parents et les cherche sans relâche, partout où elle passe — Him'Lit veille sur elle de si près que le Palais ne semble jamais vraiment l'atteindre",
+            EmotionalRegister.Memoire,
+            new[] { "chercher ses parents", "Mané, Araran, Margot et Erika", "être protégée" },
+            new[] { "qu'on lui dise que ses parents sont morts", "qu'on lui dise qu'ils n'ont jamais existé", "être laissée seule" });
+
+        var wounds = new[]
+        {
+            new NpcWound("w-parents-mina", EmotionalRegister.Memoire, NpcWoundReversibility.Irreversible, -2, -5,
+                new[]
+                {
+                    new NpcTransgression("w-parents-mina", "mina-parents-morts", -5),
+                    new NpcTransgression("w-parents-mina", "mina-parents-inexistants", -5)
+                },
+                "Elle ne sait rien d'eux, mais elle sait qu'ils existent — c'est la seule chose qui la retient de disparaître, elle aussi, dans le Palais. La lui retirer, c'est ne plus rien lui laisser.")
+        };
+
+        var rencontre = new NpcDialogueNode("rencontre", "Mina",
+            new[]
+            {
+                "Tu cherches quelque chose, toi aussi ? Moi, je cherche mes parents. Depuis toujours.",
+                "Him'Lit dit que je suis en sécurité, ici. Que rien du Palais ne peut vraiment m'atteindre."
+            },
+            new[]
+            {
+                new NpcDialogueChoice("chercher", "Lui demander où elle a déjà cherché", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.AdjustRelationship, rel: 1) }, "recherche"),
+                new NpcDialogueChoice("dire-morts", "Lui dire que ses parents sont probablement morts", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.SetMemoryFlag, flag: "mina-parents-morts"),
+                            C(ConsequenceKind.Narrative, frag: "Elle ne pleure pas. Elle se contente de reculer d'un pas, comme si vous veniez de la frapper.") }, null),
+                new NpcDialogueChoice("dire-inexistants", "Lui dire que ses parents n'ont peut-être jamais existé", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.SetMemoryFlag, flag: "mina-parents-inexistants"),
+                            C(ConsequenceKind.Narrative, frag: "« Non. Non, c'est faux. » Sa voix tremble, mais elle ne baisse pas les yeux.") }, null),
+                new NpcDialogueChoice("partir", "Partir", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.Narrative, frag: "Vous partez. Elle retourne déjà à sa recherche, comme si vous n'aviez jamais été là.") }, null)
+            });
+
+        var recherche = new NpcDialogueNode("recherche", "Mina",
+            new[]
+            {
+                "Je cherche partout — dans les couloirs, dans les chambres, même là où on me dit de ne pas aller. Personne ne sait qui ils sont.",
+                "Mané, Araran, Margot et Erika m'aident, parfois. Ce sont les seuls en qui j'ai vraiment confiance, ici."
+            },
+            new[]
+            {
+                new NpcDialogueChoice("ecouter-encore", "Écouter encore", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.AdjustRelationship, rel: 1) }, "don")
+            });
+
+        var don = new NpcDialogueNode("don", "Mina",
+            new[] { "Elle fouille dans une poche usée. « Tiens. Je crois que tu en as plus besoin que moi, maintenant. »" },
+            new[]
+            {
+                new NpcDialogueChoice("accepter-peluche", "Accepter la Peluche de Mina",
+                    new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 250) },
+                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.mina.peluche") }, null),
+                new NpcDialogueChoice("accepter-protection", "Accepter la Protection de Him'Lit",
+                    new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) },
+                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.mina.protection") }, null),
+                new NpcDialogueChoice("don-decliner", "La remercier et poursuivre votre chemin", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.Narrative, frag: "Elle range l'objet contre elle, sans un mot de plus, et retourne à sa recherche.") }, null)
+            });
+
+        var graph = new NpcDialogueGraph("npc.mina.dialogue", "1.0", "rencontre",
+            new Dictionary<string, NpcDialogueNode>
+            {
+                ["rencontre"] = rencontre,
+                ["recherche"] = recherche,
+                ["don"] = don
+            });
+
+        var offerings = new[]
+        {
+            new NpcOffering("offer.mina.peluche", NpcOfferingKind.Item, "canon.item.peluche-mina", 1, true,
+                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 250) }),
+            new NpcOffering("offer.mina.protection", NpcOfferingKind.Item, "canon.item.protection-himlit", 1, true,
+                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) })
+        };
+
+        return await UpsertNpcAsync("npc.mina", "Mina",
+            "Une petite fille née dans le Palais, la seconde de ses habitants. Ses parents restent inconnus ; elle les cherche partout, sous la surveillance protectrice de Him'Lit, qui la tient à l'écart de toutes les influences du Palais.",
+            "1.0", EmotionalRegister.Memoire, true, persona, wounds, graph, ct,
+            offerings: offerings);
+    }
+
     // ──────────────────────────────────────────────────────────────────────────
     //  ENNEMIS CANON — créatures signature tirées de « L'épopée des silences »
     //  et « Des échos ». Chemin de combat vivant : EnemyDefinition + StatBlock +
@@ -2938,6 +2866,22 @@ public sealed class CatalogSeedRunner
         await UpsertItemAsync("canon.item.deni-permanent", "Déni permanent",
             "Une clause qu'Erika a arrachée aux marges du Palais, avant même que quiconque songe à en dresser les lois. La brandir, c'est faire vaciller une règle — le temps de la faire taire.",
             "Equipment", "Accessory", "Legendary", "Permanent", false, 0, cancellationToken);
+
+        // Aucun effet d'équipement classique : le bonus de gain de réputation (+10%) est
+        // branché par clé directement côté game-engine, pas via ItemEquipmentEffectKind —
+        // voir SeedMinaAsync et StartRunCommandHandler.ReputationBoostItemKey.
+        await UpsertItemAsync("canon.item.peluche-mina", "Peluche de Mina",
+            "Usée, cousue de fil grossier — la seule chose que Mina possédait avant de te la confier. La garder sur soi, c'est porter un peu de sa confiance.",
+            "Relic", "Keepsake", "Rare", "Permanent", false, 0, cancellationToken);
+
+        // Aucun effet d'équipement classique : rencontres Him'Lit +50% (génération de
+        // room) + bundle de statut de combat "Ce n'était pas pour vous..." sont branchés
+        // par clé directement côté game-engine, pas via ItemEquipmentEffectKind — voir
+        // SeedMinaAsync, StartRunCommandHandler.HimLitProtectionItemKey, DeterministicRunGenerator
+        // et CombatFactory.ApplyHimLitProtection.
+        await UpsertItemAsync("canon.item.protection-himlit", "Protection de Him'Lit",
+            "Une marque que Him'Lit lui-même a posée sur Mina, et qu'elle a un jour posée sur toi. Elle attire son regard plus souvent qu'elle ne devrait — et pèse, un peu, sur ce que tu portes en combat.",
+            "Relic", "Ward", "Legendary", "Permanent", false, 0, cancellationToken);
 
         await UpsertItemAsync("canon.item.pierre-antique", "Pierre antique",
             "Une pierre arrachée aux fondations d'un temple oublié — plus dure que tout ce que le Palais a jamais bâti.",

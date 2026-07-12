@@ -21,7 +21,8 @@ public interface ICatalogRoomTypeResolver
         string seed,
         int nextRoomDepth,
         string currentRoomTypeKey,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        int bossInterval = CatalogMarkovRoomTypeResolver.BossInterval);
 }
 
 public sealed class CatalogMarkovRoomTypeResolver : ICatalogRoomTypeResolver
@@ -48,11 +49,17 @@ public sealed class CatalogMarkovRoomTypeResolver : ICatalogRoomTypeResolver
         string seed,
         int nextRoomDepth,
         string currentRoomTypeKey,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        int bossInterval = BossInterval)
     {
         if (string.IsNullOrWhiteSpace(seed))
         {
             throw new ArgumentException("Seed is required.", nameof(seed));
+        }
+
+        if (bossInterval <= 0)
+        {
+            bossInterval = BossInterval;
         }
 
         // Depth 0 is always the Threshold (run entrance).
@@ -61,8 +68,9 @@ public sealed class CatalogMarkovRoomTypeResolver : ICatalogRoomTypeResolver
             return ThresholdTheme;
         }
 
-        // Him'Lit boss room recurs every BossInterval rooms (10, 20, 30, …).
-        if (nextRoomDepth % BossInterval == 0)
+        // Him'Lit boss room recurs every bossInterval rooms (10, 20, 30, … — or tighter
+        // when the player owns Mina's "Protection de Him'Lit", see DeterministicRunGenerator).
+        if (nextRoomDepth % bossInterval == 0)
         {
             return FinalTheme;
         }

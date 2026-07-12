@@ -130,7 +130,9 @@ public sealed class Run
         int guardBonusPercent = 0,
         bool journalEnabled = false,
         bool lawDenialEnabled = false,
-        int? lawDenialLastUsedRoomIndex = null)
+        int? lawDenialLastUsedRoomIndex = null,
+        int reputationGainBonusPercent = 0,
+        bool himLitProtectionEnabled = false)
     {
         Id = id;
         PlayerId = playerId;
@@ -162,6 +164,8 @@ public sealed class Run
         JournalEnabled = journalEnabled;
         LawDenialEnabled = lawDenialEnabled;
         LawDenialLastUsedRoomIndex = lawDenialLastUsedRoomIndex;
+        ReputationGainBonusPercent = reputationGainBonusPercent;
+        HimLitProtectionEnabled = himLitProtectionEnabled;
 
         _rooms.Add(initialRoom);
     }
@@ -255,8 +259,19 @@ public sealed class Run
             _npcRelationships[npcKey] = relationship;
         }
 
-        relationship.AdjustScore(delta);
+        relationship.AdjustScore(ScaleReputationGain(delta));
     }
+
+    /// <summary>
+    /// Applies <see cref="ReputationGainBonusPercent"/> to a relationship-score delta.
+    /// Only ever scales UP a positive gain — penalties (negative deltas, e.g. transgressions)
+    /// pass through unchanged, so an item like Mina's "Peluche de Mina" never softens a
+    /// punishment, only amplifies a reward.
+    /// </summary>
+    public int ScaleReputationGain(int delta) =>
+        delta > 0 && ReputationGainBonusPercent > 0
+            ? (int)Math.Round(delta * (100 + ReputationGainBonusPercent) / 100.0)
+            : delta;
 
     /// <summary>Rehydration hook for persistence (Wave 5).</summary>
     public void RehydrateNpcRelationship(NpcRelationship relationship)
@@ -343,6 +358,21 @@ public sealed class Run
     public int CriticalChanceBonusPercent { get; }
     public int GuardBonusPercent { get; }
 
+    /// <summary>
+    /// Percentage bonus applied to positive NPC relationship-score gains (e.g. Mina's
+    /// "Peluche de Mina", owned — not equipped). Never applied to penalties (transgressions).
+    /// Computed once at run start, immutable for the run's lifetime.
+    /// </summary>
+    public int ReputationGainBonusPercent { get; }
+
+    /// <summary>
+    /// True when the player owns Mina's legendary "Protection de Him'Lit" — computed once at
+    /// <see cref="StartNew"/> time from the player's profile, like <see cref="JournalEnabled"/>.
+    /// Drives both a tighter Him'Lit boss-room interval (room generation) and an innate combat
+    /// debuff/buff bundle applied to the protagonist at combat start (see CombatFactory).
+    /// </summary>
+    public bool HimLitProtectionEnabled { get; }
+
     public DateTimeOffset StartedAt { get; }
 
     public DateTimeOffset? EndedAt { get; private set; }
@@ -408,7 +438,9 @@ public sealed class Run
         int criticalChanceBonusPercent = 0,
         int guardBonusPercent = 0,
         bool journalEnabled = false,
-        bool lawDenialEnabled = false)
+        bool lawDenialEnabled = false,
+        int reputationGainBonusPercent = 0,
+        bool himLitProtectionEnabled = false)
     {
         if (playerId == Guid.Empty)
         {
@@ -510,7 +542,9 @@ public sealed class Run
             criticalChanceBonusPercent: criticalChanceBonusPercent,
             guardBonusPercent: guardBonusPercent,
             journalEnabled: journalEnabled,
-            lawDenialEnabled: lawDenialEnabled);
+            lawDenialEnabled: lawDenialEnabled,
+            reputationGainBonusPercent: reputationGainBonusPercent,
+            himLitProtectionEnabled: himLitProtectionEnabled);
 
         run.PlayerState = PlayerRuntimeState.Create(
             maxVitality: maxHp,
@@ -1730,11 +1764,13 @@ public sealed class Run
         bool journalEnabled = false,
         IEnumerable<RunJournalEntry>? journalEntries = null,
         bool lawDenialEnabled = false,
-        int? lawDenialLastUsedRoomIndex = null)
+        int? lawDenialLastUsedRoomIndex = null,
+        int reputationGainBonusPercent = 0,
+        bool himLitProtectionEnabled = false)
     {
         var firstRoom = rooms.First();
 
-        var run = new Run(id, playerId, seed, generatorVersion, markovMatrixVersion, status, firstRoom, startedAt, maxHp, currentHp, attack, defense, speed, focus, currentRoomIndex, activeCombatId, pendingRewardOfferId, runItemCapacity, typedDamageReductions, hitChanceBonusPercent, dotDurationReductionPercent, dotDamageReductionPercent, dotDamageBonusPercent, magicDamageBonusPercent, magicDamageReductionPercent, criticalChanceBonusPercent, guardBonusPercent, journalEnabled, lawDenialEnabled, lawDenialLastUsedRoomIndex);
+        var run = new Run(id, playerId, seed, generatorVersion, markovMatrixVersion, status, firstRoom, startedAt, maxHp, currentHp, attack, defense, speed, focus, currentRoomIndex, activeCombatId, pendingRewardOfferId, runItemCapacity, typedDamageReductions, hitChanceBonusPercent, dotDurationReductionPercent, dotDamageReductionPercent, dotDamageBonusPercent, magicDamageBonusPercent, magicDamageReductionPercent, criticalChanceBonusPercent, guardBonusPercent, journalEnabled, lawDenialEnabled, lawDenialLastUsedRoomIndex, reputationGainBonusPercent, himLitProtectionEnabled);
         foreach (var room in rooms.Skip(1))
         {
             run._rooms.Add(room);

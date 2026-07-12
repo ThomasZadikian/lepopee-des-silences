@@ -1,5 +1,6 @@
 using Leds.GameEngine.Application.Combats.EncounterDrafts;
 using Leds.GameEngine.Domain.Combats;
+using Leds.GameEngine.Domain.Combats.StatusEffects;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
@@ -32,7 +33,8 @@ public sealed class CombatFactory : ICombatFactory
         int magicDamageBonusPercent = 0,
         int magicDamageReductionPercent = 0,
         int criticalChanceBonusPercent = 0,
-        int guardBonusPercent = 0)
+        int guardBonusPercent = 0,
+        bool himLitProtectionEnabled = false)
     {
         return CreateFromDraft(
             CombatId.New(),
@@ -53,7 +55,8 @@ public sealed class CombatFactory : ICombatFactory
             magicDamageBonusPercent,
             magicDamageReductionPercent,
             criticalChanceBonusPercent,
-            guardBonusPercent);
+            guardBonusPercent,
+            himLitProtectionEnabled);
     }
     private static (double VitalityMultiplier, double PowerMultiplier, int GuardBonus) EncounterBonus(string encounterType)
     {
@@ -86,7 +89,8 @@ public sealed class CombatFactory : ICombatFactory
         int magicDamageBonusPercent = 0,
         int magicDamageReductionPercent = 0,
         int criticalChanceBonusPercent = 0,
-        int guardBonusPercent = 0)
+        int guardBonusPercent = 0,
+        bool himLitProtectionEnabled = false)
     {
         // Sum all unconsumed StartingGuardBonus modifiers (e.g. Éclat de garde: +8 garde).
         var guardBonus = runModifiers?
@@ -170,6 +174,12 @@ public sealed class CombatFactory : ICombatFactory
                         hitChanceBonusPercent, dotDurationReductionPercent, dotDamageReductionPercent,
                         magicDamageBonusPercent, magicDamageReductionPercent, criticalChanceBonusPercent,
                         dotDamageBonusPercent);
+
+                    if (himLitProtectionEnabled)
+                    {
+                        ApplyHimLitProtection(protagonist);
+                    }
+
                     return protagonist;
                 }
 
@@ -355,6 +365,43 @@ public sealed class CombatFactory : ICombatFactory
         }
 
         return effectType;
+    }
+
+    /// <summary>
+    /// Mina's legendary "Protection de Him'Lit" (owned — not equipped): a permanent,
+    /// innate buff/debuff bundle applied to the protagonist at the start of every combat,
+    /// narratively "a ward that wasn't quite meant for you" — +10 guard, +5% attack power,
+    /// +5% speed, -10% ATB tempo, -5% skill mana/charge cost.
+    /// </summary>
+    private static void ApplyHimLitProtection(Combatant protagonist)
+    {
+        const string DisplayName = "Ce n'était pas pour vous...";
+
+        protagonist.GainGuard(10);
+
+        protagonist.ApplyStatusEffect(CombatStatusEffect.Create(
+            key: "himlit-protection:attack", displayName: DisplayName,
+            kind: StatusEffectKind.StatModifier, currentTick: 0, durationTicks: 0,
+            magnitude: 5, stat: CombatStat.AttackPower,
+            isMagnitudePercentOfBaseStat: true, isPermanent: true));
+
+        protagonist.ApplyStatusEffect(CombatStatusEffect.Create(
+            key: "himlit-protection:speed", displayName: DisplayName,
+            kind: StatusEffectKind.StatModifier, currentTick: 0, durationTicks: 0,
+            magnitude: 5, stat: CombatStat.Speed,
+            isMagnitudePercentOfBaseStat: true, isPermanent: true));
+
+        protagonist.ApplyStatusEffect(CombatStatusEffect.Create(
+            key: "himlit-protection:tempo", displayName: DisplayName,
+            kind: StatusEffectKind.StatModifier, currentTick: 0, durationTicks: 0,
+            magnitude: -10, stat: CombatStat.AtbTempoModifier,
+            isPermanent: true));
+
+        protagonist.ApplyStatusEffect(CombatStatusEffect.Create(
+            key: "himlit-protection:cost", displayName: DisplayName,
+            kind: StatusEffectKind.StatModifier, currentTick: 0, durationTicks: 0,
+            magnitude: -5, stat: CombatStat.SkillCostReductionPercent,
+            isPermanent: true));
     }
 
     private static int ApplySpeedMultiplier(int baseSpeed, double speedMultiplier)

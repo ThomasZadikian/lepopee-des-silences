@@ -132,7 +132,9 @@ public static class TestGameEngineFactory
 
     public static Run CreateRun(
         NodeEventType targetInitialEventType = NodeEventType.Combat,
-        bool lawDenialEnabled = false)
+        bool lawDenialEnabled = false,
+        int reputationGainBonusPercent = 0,
+        bool himLitProtectionEnabled = false)
     {
         var room = CreateThresholdRoom(targetInitialEventType);
 
@@ -143,7 +145,9 @@ public static class TestGameEngineFactory
             markovMatrixVersion: "markov-test",
             initialRoom: room,
             startedAt: DateTimeOffset.UtcNow,
-            lawDenialEnabled: lawDenialEnabled);
+            lawDenialEnabled: lawDenialEnabled,
+            reputationGainBonusPercent: reputationGainBonusPercent,
+            himLitProtectionEnabled: himLitProtectionEnabled);
     }
 
     public static Run CreateRunWithPlayerSnapshot(

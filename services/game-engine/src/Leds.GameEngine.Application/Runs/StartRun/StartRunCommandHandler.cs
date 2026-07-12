@@ -17,6 +17,15 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
     /// <summary>Déni permanent — Erika's legendary offering. See SeedErikaAsync in the catalog seed.</summary>
     private const string LawDenialItemKey = "canon.item.deni-permanent";
 
+    /// <summary>Peluche de Mina — Mina's rare offering. See SeedMinaAsync in the catalog seed.</summary>
+    private const string ReputationBoostItemKey = "canon.item.peluche-mina";
+
+    /// <summary>Protection de Him'Lit — Mina's legendary offering. See SeedMinaAsync in the catalog seed.</summary>
+    private const string HimLitProtectionItemKey = "canon.item.protection-himlit";
+
+    /// <summary>Flat percentage granted by <see cref="ReputationBoostItemKey"/> — see Run.ReputationGainBonusPercent.</summary>
+    private const int ReputationBoostPercent = 10;
+
     private readonly IRunGenerator _runGenerator;
     private readonly IRunRepository _runRepository;
     private readonly IPlayerRunSnapshotGateway _playerGateway;
@@ -51,6 +60,11 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
             string.Equals(item.ItemDefinitionKey, JournalItemKey, StringComparison.OrdinalIgnoreCase)) ?? false;
         var lawDenialEnabled = profile.PermanentItems?.Any(item =>
             string.Equals(item.ItemDefinitionKey, LawDenialItemKey, StringComparison.OrdinalIgnoreCase)) ?? false;
+        var reputationGainBonusPercent = profile.PermanentItems?.Any(item =>
+            string.Equals(item.ItemDefinitionKey, ReputationBoostItemKey, StringComparison.OrdinalIgnoreCase)) ?? false
+                ? ReputationBoostPercent : 0;
+        var himLitProtectionEnabled = profile.PermanentItems?.Any(item =>
+            string.Equals(item.ItemDefinitionKey, HimLitProtectionItemKey, StringComparison.OrdinalIgnoreCase)) ?? false;
 
         var seed = _runGenerator.GenerateSeed();
         var initialRoom = await _runGenerator.GenerateInitialRoomAsync(seed, cancellationToken);
@@ -229,7 +243,9 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
             criticalChanceBonusPercent: criticalChanceBonusPercent,
             guardBonusPercent: guardBonusPercent,
             journalEnabled: journalEnabled,
-            lawDenialEnabled: lawDenialEnabled);
+            lawDenialEnabled: lawDenialEnabled,
+            reputationGainBonusPercent: reputationGainBonusPercent,
+            himLitProtectionEnabled: himLitProtectionEnabled);
 
         var characterSnapshots = snapshot.Characters
             .Select(c =>

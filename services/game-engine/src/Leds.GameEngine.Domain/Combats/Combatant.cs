@@ -213,6 +213,12 @@ public sealed class Combatant
     /// </summary>
     public int EffectiveAtbTempoModifierPercent => EffectiveStat(CombatStat.AtbTempoModifier, 0);
 
+    /// <summary>
+    /// Percentage points subtracted from a skill's mana/charge cost at cast time — e.g.
+    /// Mina's "Protection de Him'Lit" (-5%, permanent). See CombatSkillEffectResolver.
+    /// </summary>
+    public int EffectiveSkillCostReductionPercent => EffectiveStat(CombatStat.SkillCostReductionPercent, 0);
+
     // ── ATB (Active Time Battle) ──────────────────────────────────────────────
 
     /// <summary>Current ATB gauge (0 = empty). Sourced from runtime state (persisted).</summary>

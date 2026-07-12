@@ -94,9 +94,20 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
         if (actor.Side != CombatantSide.Player)
             return; // enemies cast freely
 
-        actor.SpendMana(skill.ManaCost);
-        actor.SpendCharge(skill.ChargeCost);
+        // Mina's "Protection de Him'Lit" (-5%, permanent) is the only source of this
+        // today — see Combatant.EffectiveSkillCostReductionPercent.
+        var reductionPercent = actor.EffectiveSkillCostReductionPercent;
+        var manaCost = ApplyCostReduction(skill.ManaCost, reductionPercent);
+        var chargeCost = ApplyCostReduction(skill.ChargeCost, reductionPercent);
+
+        actor.SpendMana(manaCost);
+        actor.SpendCharge(chargeCost);
     }
+
+    private static int ApplyCostReduction(int baseCost, int reductionPercent) =>
+        reductionPercent == 0
+            ? baseCost
+            : Math.Max(0, (int)Math.Round(baseCost * (1.0 - reductionPercent / 100.0)));
 
     private static void ResolveHeal(
         Combatant actor,

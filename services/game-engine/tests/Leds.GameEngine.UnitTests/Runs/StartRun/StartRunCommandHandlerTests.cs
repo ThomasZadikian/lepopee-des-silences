@@ -767,4 +767,130 @@ public sealed class StartRunCommandHandlerTests
         capturedRun.LawDenialEnabled.Should().BeFalse();
         capturedRun.CanUseLawDenial.Should().BeFalse();
     }
+
+    [Fact]
+    public async Task Handle_ShouldSetReputationGainBonus_WhenPlayerOwnsPelucheDeMina()
+    {
+        var playerId = Guid.NewGuid();
+        var now = new DateTimeOffset(2026, 7, 12, 12, 0, 0, TimeSpan.Zero);
+
+        var initialRoom = TestGameEngineFactory.CreateThresholdRoom();
+
+        var generator = new Mock<IRunGenerator>();
+        generator.SetupGet(service => service.GeneratorVersion).Returns("gen-0.1.0");
+        generator.SetupGet(service => service.MarkovMatrixVersion).Returns("markov-0.1.0");
+        generator.Setup(service => service.GenerateSeed()).Returns("seed-test-peluche-mina");
+        generator.Setup(service => service.GenerateInitialRoomAsync("seed-test-peluche-mina", CancellationToken.None)).ReturnsAsync(initialRoom);
+
+        var repository = new Mock<IRunRepository>();
+
+        var playerGateway = new Mock<IPlayerRunSnapshotGateway>();
+        playerGateway
+            .Setup(g => g.GetRunSnapshotAsync(playerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new PlayerRunSnapshot(
+                playerId,
+                "Test Player",
+                [new PlayerRunSnapshotCharacter(
+                    Guid.NewGuid(),
+                    "character.player.self",
+                    "Le Porteur",
+                    Stats: new PlayerRunSnapshotCharacterStats(
+                        MaxVitality: 100,
+                        AttackPower: 12,
+                        Defense: 6,
+                        StartingGuard: 0,
+                        Speed: 10,
+                        Initiative: 10,
+                        Recovery: 5,
+                        Focus: 0,
+                        Mana: 0,
+                        Charge: 0),
+                    Skills: [])]));
+
+        var clock = new Mock<IClock>();
+        clock.SetupGet(service => service.UtcNow).Returns(now);
+
+        var catalogGateway = new Mock<ICatalogContentGateway>();
+
+        var playerProfileGateway = CreateProfileGateway(playerId, "canon.item.peluche-mina");
+        var handler = new StartRunCommandHandler(
+            generator.Object,
+            repository.Object,
+            playerGateway.Object,
+            playerProfileGateway.Object,
+            catalogGateway.Object,
+            clock.Object);
+
+        await handler.Handle(
+            new StartRunCommand(playerId),
+            CancellationToken.None);
+
+        var capturedRun = (Run)repository.Invocations
+            .Single(i => i.Method.Name == nameof(IRunRepository.AddAsync)).Arguments[0];
+
+        capturedRun.ReputationGainBonusPercent.Should().Be(10);
+    }
+
+    [Fact]
+    public async Task Handle_ShouldEnableHimLitProtection_WhenPlayerOwnsProtectionDeHimLit()
+    {
+        var playerId = Guid.NewGuid();
+        var now = new DateTimeOffset(2026, 7, 12, 12, 0, 0, TimeSpan.Zero);
+
+        var initialRoom = TestGameEngineFactory.CreateThresholdRoom();
+
+        var generator = new Mock<IRunGenerator>();
+        generator.SetupGet(service => service.GeneratorVersion).Returns("gen-0.1.0");
+        generator.SetupGet(service => service.MarkovMatrixVersion).Returns("markov-0.1.0");
+        generator.Setup(service => service.GenerateSeed()).Returns("seed-test-protection-himlit");
+        generator.Setup(service => service.GenerateInitialRoomAsync("seed-test-protection-himlit", CancellationToken.None)).ReturnsAsync(initialRoom);
+
+        var repository = new Mock<IRunRepository>();
+
+        var playerGateway = new Mock<IPlayerRunSnapshotGateway>();
+        playerGateway
+            .Setup(g => g.GetRunSnapshotAsync(playerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new PlayerRunSnapshot(
+                playerId,
+                "Test Player",
+                [new PlayerRunSnapshotCharacter(
+                    Guid.NewGuid(),
+                    "character.player.self",
+                    "Le Porteur",
+                    Stats: new PlayerRunSnapshotCharacterStats(
+                        MaxVitality: 100,
+                        AttackPower: 12,
+                        Defense: 6,
+                        StartingGuard: 0,
+                        Speed: 10,
+                        Initiative: 10,
+                        Recovery: 5,
+                        Focus: 0,
+                        Mana: 0,
+                        Charge: 0),
+                    Skills: [])]));
+
+        var clock = new Mock<IClock>();
+        clock.SetupGet(service => service.UtcNow).Returns(now);
+
+        var catalogGateway = new Mock<ICatalogContentGateway>();
+
+        var playerProfileGateway = CreateProfileGateway(playerId, "canon.item.protection-himlit");
+        var handler = new StartRunCommandHandler(
+            generator.Object,
+            repository.Object,
+            playerGateway.Object,
+            playerProfileGateway.Object,
+            catalogGateway.Object,
+            clock.Object);
+
+        await handler.Handle(
+            new StartRunCommand(playerId),
+            CancellationToken.None);
+
+        var capturedRun = (Run)repository.Invocations
+            .Single(i => i.Method.Name == nameof(IRunRepository.AddAsync)).Arguments[0];
+
+        capturedRun.HimLitProtectionEnabled.Should().BeTrue();
+    }
 }

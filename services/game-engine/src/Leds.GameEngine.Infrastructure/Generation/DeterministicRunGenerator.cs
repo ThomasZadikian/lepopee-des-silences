@@ -205,11 +205,19 @@ public sealed class DeterministicRunGenerator : IRunGenerator
         // SAL-4: the room-type vocabulary + rotation come from the catalog. The resolver
         // returns a theme key (e.g. "Fear"); we map it to a procedural scaffold enum only
         // for the template/profile/boss machinery, and keep the key for room selection.
+        //
+        // Mina's legendary "Protection de Him'Lit" tightens the boss-recurrence interval
+        // (10 rooms -> ~7) for a ~+50% encounter frequency, owned — not equipped.
+        var bossInterval = run.HimLitProtectionEnabled
+            ? (int)Math.Round(CatalogMarkovRoomTypeResolver.BossInterval / 1.5)
+            : CatalogMarkovRoomTypeResolver.BossInterval;
+
         var nextRoomTypeKey = await _catalogRoomTypeResolver.ResolveNextRoomTypeKeyAsync(
             run.Seed,
             nextRoomDepth,
             run.CurrentRoom.RoomType.ToString(),
-            cancellationToken);
+            cancellationToken,
+            bossInterval);
 
         return (MapThemeToScaffold(nextRoomTypeKey), nextRoomTypeKey, null);
     }

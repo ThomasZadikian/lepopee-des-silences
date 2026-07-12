@@ -20,5 +20,10 @@ public enum CombatStat
     // Combatant.RecalculateAtbFillPerTick), independent of the Speed stat — e.g.
     // "Une destinée cruelle" boosts Speed +20% (a stat) while separately slowing
     // the ATB gauge itself by -15% (this virtual stat).
-    AtbTempoModifier
+    AtbTempoModifier,
+    // Percentage points subtracted from a Player-side skill's mana/charge cost at cast
+    // time (see CombatSkillEffectResolver.ConsumeResources) — e.g. Mina's "Protection
+    // de Him'Lit" reduces cost by 5%. Negative-only in practice; a positive magnitude
+    // would raise costs.
+    SkillCostReductionPercent
 }

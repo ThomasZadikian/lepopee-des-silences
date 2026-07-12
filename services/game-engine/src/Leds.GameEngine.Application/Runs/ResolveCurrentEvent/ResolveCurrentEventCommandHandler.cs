@@ -203,7 +203,8 @@ public sealed class ResolveCurrentEventCommandHandler
                 magicDamageBonusPercent: run.MagicDamageBonusPercent,
                 magicDamageReductionPercent: run.MagicDamageReductionPercent,
                 criticalChanceBonusPercent: run.CriticalChanceBonusPercent,
-                guardBonusPercent: run.GuardBonusPercent);
+                guardBonusPercent: run.GuardBonusPercent,
+                himLitProtectionEnabled: run.HimLitProtectionEnabled);
 
             // ATB: bake Markov tempo + opening gauges, then elect the opener.
             _atbPreparer.PrepareNewCombat(combatRuntime, run);
