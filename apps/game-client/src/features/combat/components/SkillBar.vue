@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import type { CombatUsableItemDto, CombatantRuntimeDto } from '../types/combatContracts';
+import type { CombatUsableItemDto, CombatantRuntimeDto, EmotionalType, TargetingType, SkillType } from '../types/combatContracts';
+import EmotionalTypeBadge from './EmotionalTypeBadge.vue';
+import SigilIcon from '../../../shared/components/SigilIcon.vue';
 
 defineProps<{
   combatant: CombatantRuntimeDto | null;
@@ -30,10 +32,50 @@ function getEffectLabel(effectType: string, effectAmount: number): string {
   }
 }
 
-// function getSkillCost(skill: CombatantRuntimeDto['skills'][number]): number {
-//   return skill.manaCost || skill.chargeCost;
-// }
+const TARGETING_LABELS: Record<TargetingType, string> = {
+  Self: 'Soi-même',
+  SingleEnemy: 'Un ennemi',
+  SingleAlly: 'Un allié',
+  AllEnemies: 'Tous les ennemis',
+  AllAllies: 'Toute l\'équipe',
+};
 
+const SKILL_TYPE_LABELS: Record<SkillType, string> = {
+  Damage: 'Dégâts',
+  Guard: 'Garde',
+  Weaken: 'Affaiblissement',
+  Disrupt: 'Perturbation',
+};
+
+const EMOTIONAL_TYPE_LABELS: Record<string, string> = {
+  Effroi: 'Effroi',
+  Deni: 'Déni',
+  Melancolie: 'Mélancolie',
+  Rupture: 'Rupture',
+  Memoire: 'Mémoire',
+  Silence: 'Silence',
+  Folie: 'Folie',
+  Neutral: 'Neutre',
+};
+
+function targetingLabel(type: TargetingType): string {
+  return TARGETING_LABELS[type] ?? type;
+}
+
+function skillTypeLabel(type: SkillType): string {
+  return SKILL_TYPE_LABELS[type] ?? type;
+}
+
+function emotionalTypeLabel(type: EmotionalType | string): string {
+  return EMOTIONAL_TYPE_LABELS[type] ?? type;
+}
+
+function costLabel(skill: CombatantRuntimeDto['skills'][number]): string | null {
+  const parts: string[] = [];
+  if (skill.manaCost > 0) parts.push(`${skill.manaCost} PP`);
+  if (skill.chargeCost > 0) parts.push(`${skill.chargeCost} Charge`);
+  return parts.length > 0 ? parts.join(' · ') : null;
+}
 </script>
 
 <template>
@@ -55,7 +97,29 @@ function getEffectLabel(effectType: string, effectAmount: number): string {
           :disabled="!isPlayerTurn || isLoading || isSkillDisabled(combatant)"
           @click="$emit('selectSkill', skill.key)"
         >
-          <span class="skill-card__name">{{ skill.displayName }}</span>
+          <span class="skill-card__icon" :class="{ 'skill-card__icon--magic': skill.category === 'Magic' }">
+            <SigilIcon :kind="skill.category === 'Magic' ? 'sort' : 'combat'" :size="15" :stroke-width="1.5" />
+          </span>
+
+          <span class="skill-card__body">
+            <span class="skill-card__name-row">
+              <span class="skill-card__name">{{ skill.displayName }}</span>
+              <EmotionalTypeBadge v-if="skill.emotionalType" :type="skill.emotionalType" compact />
+            </span>
+            <span v-if="costLabel(skill)" class="skill-card__cost">{{ costLabel(skill) }}</span>
+          </span>
+
+          <span class="skill-card__bubble" role="tooltip">
+            <span class="skill-card__bubble-title">{{ skill.displayName }}</span>
+            <span class="skill-card__bubble-line">
+              {{ skillTypeLabel(skill.effectType) }} · {{ targetingLabel(skill.targetingType) }}
+            </span>
+            <span class="skill-card__bubble-line">
+              {{ skill.category === 'Magic' ? 'Magique' : 'Physique' }}<template v-if="skill.emotionalType"> · {{ emotionalTypeLabel(skill.emotionalType) }}</template>
+            </span>
+            <span class="skill-card__bubble-line">Puissance de base : {{ skill.basePower }}</span>
+            <span v-if="costLabel(skill)" class="skill-card__bubble-line">Coût : {{ costLabel(skill) }}</span>
+          </span>
         </button>
       </div>
 
@@ -145,14 +209,15 @@ function getEffectLabel(effectType: string, effectAmount: number): string {
 }
 
 .skill-card {
+  position: relative;
   display: flex;
-  flex-direction: column;
-  gap: 1px;
+  align-items: center;
+  gap: 6px;
   text-align: left;
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   background: var(--panel);
-  padding: 3px var(--space-2);
+  padding: 4px var(--space-2);
   cursor: pointer;
   font-family: inherit;
   color: var(--ink);
@@ -189,10 +254,42 @@ function getEffectLabel(effectType: string, effectAmount: number): string {
   background: oklch(0.840 0.092 162 / 0.12) !important;
 }
 
+.skill-card__icon {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-4);
+}
+
+.skill-card__icon--magic { color: var(--frost); }
+
+.skill-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.skill-card__name-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
 .skill-card__name {
   font-family: var(--font);
   font-size: 0.76rem;
   color: var(--ink-2);
+  white-space: nowrap;
+}
+
+.skill-card__cost {
+  font-family: var(--font-mono);
+  font-size: 0.56rem;
+  letter-spacing: 0.04em;
+  color: var(--ink-4);
 }
 
 .skill-card__meta {
@@ -201,6 +298,54 @@ function getEffectLabel(effectType: string, effectAmount: number): string {
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--ink-4);
+}
+
+.skill-card__bubble {
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  transform: translateX(-50%) translateY(4px);
+  min-width: 190px;
+  max-width: 260px;
+  width: max-content;
+  padding: 9px 11px;
+  border-radius: 5px;
+  border: 1px solid var(--line-strong, oklch(0.42 0.03 60 / 0.7));
+  background: oklch(0.16 0.02 270 / 0.97);
+  color: var(--ink-2, oklch(0.78 0.02 275));
+  font-family: var(--font, serif);
+  text-align: left;
+  white-space: normal;
+  box-shadow: 0 8px 24px -6px oklch(0.1 0.02 270 / 0.6);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  z-index: 60;
+}
+
+.skill-card__bubble-title {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--ink-1, oklch(0.9 0.02 275));
+}
+
+.skill-card__bubble-line {
+  display: block;
+  margin-top: 3px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  line-height: 1.4;
+  color: var(--ink-3, oklch(0.68 0.02 275));
+}
+
+.skill-card:hover .skill-card__bubble,
+.skill-card:focus-visible .skill-card__bubble {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
 }
 
 @media (max-width: 900px) {
@@ -216,5 +361,6 @@ function getEffectLabel(effectType: string, effectAmount: number): string {
 
 @media (prefers-reduced-motion: reduce) {
   .skill-card { transition: none; }
+  .skill-card__bubble { transition: none; }
 }
 </style>

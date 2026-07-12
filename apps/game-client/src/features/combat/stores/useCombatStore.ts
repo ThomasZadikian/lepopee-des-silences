@@ -10,6 +10,7 @@ import type {
   CombatLogEntryDto,
   CombatRuntimeDto,
   CombatUsableItemDto,
+  EmotionalType,
   SkillCategory,
   TargetingType,
 } from '../types/combatContracts';
@@ -22,10 +23,12 @@ export type CombatTerminalEvent =
 export type CombatFeedbackEvent = {
   id: string;
   combatantId: string;
-  type: 'damage' | 'heal' | 'guard' | 'miss';
+  type: 'damage' | 'heal' | 'guard' | 'miss' | 'status';
   amount: number;
   category?: SkillCategory;
   isCritical?: boolean;
+  /** The casting skill's own "élément" — drives the glyph/color for 'status' events. */
+  emotionalType?: EmotionalType;
 };
 
 type CombatantStateOverride = Pick<CombatantRuntimeDto, 'currentVitality' | 'guard' | 'status'>;
@@ -384,18 +387,24 @@ export const useCombatStore = defineStore('combatRuntime', () => {
         continue;
       }
 
+      if (entry.type === 'StatusApplied') {
+        pushFeedbackEvent(target.id, 'status', 0, undefined, undefined, resolveSkillEmotionalType(entry));
+        continue;
+      }
+
       const amount = parseLogAmount(entry.message);
       if (amount <= 0) continue;
 
       if (entry.type === 'DamageApplied') {
         const category = resolveSkillCategory(entry);
+        const emotionalType = resolveSkillEmotionalType(entry);
         const isCritical = pendingCriticalTargetIds.has(target.id);
         if (isGuardAbsorbLog(entry)) {
           target.guard = Math.max(0, target.guard - amount);
           pushFeedbackEvent(target.id, 'guard', amount);
         } else {
           target.currentVitality = Math.max(0, target.currentVitality - amount);
-          pushFeedbackEvent(target.id, 'damage', amount, category, isCritical);
+          pushFeedbackEvent(target.id, 'damage', amount, category, isCritical, emotionalType);
         }
       } else if (entry.type === 'HealApplied') {
         target.currentVitality = Math.min(target.maxVitality, target.currentVitality + amount);
@@ -455,12 +464,21 @@ export const useCombatStore = defineStore('combatRuntime', () => {
     return actor?.skills.find((s) => s.key === entry.skillKey)?.category;
   }
 
+  // Mirrors resolveSkillCategory — the casting skill's own "élément", used to
+  // pick the visual (glyph/color) for a per-family status/damage animation.
+  function resolveSkillEmotionalType(entry: CombatLogEntryDto): EmotionalType | undefined {
+    if (!entry.actorId || !entry.skillKey) return undefined;
+    const actor = findCombatantById(entry.actorId);
+    return actor?.skills.find((s) => s.key === entry.skillKey)?.emotionalType ?? undefined;
+  }
+
   function pushFeedbackEvent(
     combatantId: string,
     type: CombatFeedbackEvent['type'],
     amount: number,
     category?: SkillCategory,
     isCritical?: boolean,
+    emotionalType?: EmotionalType,
   ) {
     const event = {
       id: `${combatantId}-${type}-${Date.now()}-${feedbackEvents.value.length}`,
@@ -469,6 +487,7 @@ export const useCombatStore = defineStore('combatRuntime', () => {
       amount,
       category,
       isCritical,
+      emotionalType,
     };
     feedbackEvents.value = [...feedbackEvents.value, event];
     schedule(() => {
@@ -568,7 +587,8 @@ export const useCombatStore = defineStore('combatRuntime', () => {
       entry.type === 'GuardGained' ||
       entry.type === 'HealApplied' ||
       entry.type === 'TargetDefeated' ||
-      entry.type === 'AttackMissed'
+      entry.type === 'AttackMissed' ||
+      entry.type === 'StatusApplied'
     );
   }
 

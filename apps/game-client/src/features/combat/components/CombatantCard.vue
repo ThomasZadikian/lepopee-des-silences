@@ -51,6 +51,19 @@ const speedEffect = computed<'boosted' | 'slowed' | null>(() => {
   return null;
 });
 
+// Net % StatModifier per stat — only percent-of-base effects are meaningful as a
+// "%" badge (a flat-delta StatModifier wouldn't read correctly as a percentage).
+function statModifierPercent(stat: 'AttackPower' | 'Defense' | 'Speed' | 'Focus'): number {
+  return (props.combatant.statusEffects ?? [])
+    .filter((effect) => effect.kind === 'StatModifier' && effect.stat === stat && effect.isMagnitudePercentOfBaseStat)
+    .reduce((sum, effect) => sum + effect.magnitude * effect.stacks, 0);
+}
+
+const attackModifierPercent = computed(() => statModifierPercent('AttackPower'));
+const defenseModifierPercent = computed(() => statModifierPercent('Defense'));
+const speedModifierPercent = computed(() => statModifierPercent('Speed'));
+const focusModifierPercent = computed(() => statModifierPercent('Focus'));
+
 defineEmits<{
   select: [combatantId: string];
 }>();
@@ -148,18 +161,38 @@ const hasAggro = computed(() =>
         <div class="presence__details-row">
           <span>⚔</span><b>{{ combatant.attackPower ?? 0 }}</b>
           <StatTooltip :text="statDescriptions.AttackPower"><small>Attaque</small></StatTooltip>
+          <span
+            v-if="attackModifierPercent !== 0"
+            class="presence__stat-mod"
+            :class="attackModifierPercent > 0 ? 'presence__stat-mod--up' : 'presence__stat-mod--down'"
+          >{{ attackModifierPercent > 0 ? '▲' : '▼' }} {{ Math.abs(attackModifierPercent) }}%</span>
         </div>
         <div class="presence__details-row">
           <span>⛨</span><b>{{ combatant.defense ?? 0 }}</b>
           <StatTooltip :text="statDescriptions.Defense"><small>Défense</small></StatTooltip>
+          <span
+            v-if="defenseModifierPercent !== 0"
+            class="presence__stat-mod"
+            :class="defenseModifierPercent > 0 ? 'presence__stat-mod--up' : 'presence__stat-mod--down'"
+          >{{ defenseModifierPercent > 0 ? '▲' : '▼' }} {{ Math.abs(defenseModifierPercent) }}%</span>
         </div>
         <div class="presence__details-row">
           <span>⚡</span><b>{{ combatant.speed ?? 0 }}</b>
           <StatTooltip :text="statDescriptions.Speed"><small>Vitesse</small></StatTooltip>
+          <span
+            v-if="speedModifierPercent !== 0"
+            class="presence__stat-mod"
+            :class="speedModifierPercent > 0 ? 'presence__stat-mod--up' : 'presence__stat-mod--down'"
+          >{{ speedModifierPercent > 0 ? '▲' : '▼' }} {{ Math.abs(speedModifierPercent) }}%</span>
         </div>
         <div class="presence__details-row">
           <span>◎</span><b>{{ combatant.focus ?? 0 }}</b>
           <StatTooltip :text="statDescriptions.Focus"><small>Focus</small></StatTooltip>
+          <span
+            v-if="focusModifierPercent !== 0"
+            class="presence__stat-mod"
+            :class="focusModifierPercent > 0 ? 'presence__stat-mod--up' : 'presence__stat-mod--down'"
+          >{{ focusModifierPercent > 0 ? '▲' : '▼' }} {{ Math.abs(focusModifierPercent) }}%</span>
         </div>
       </div>
     </span>
@@ -186,6 +219,9 @@ const hasAggro = computed(() =>
         :kind="fx.kind"
         :magnitude="fx.magnitude"
         :stacks="fx.stacks"
+        :per-tick-amount="fx.perTickAmount"
+        :ticks-remaining="fx.ticksRemaining"
+        :is-permanent="fx.isPermanent"
         :px="26"
       />
     </div>
@@ -344,6 +380,17 @@ const hasAggro = computed(() =>
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
+
+.presence__stat-mod {
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.presence__stat-mod--up { color: var(--frost); }
+.presence__stat-mod--down { color: var(--blood); }
 
 .presence--enemy {
   border-right: 2px solid color-mix(in oklch, var(--blood), transparent 50%);

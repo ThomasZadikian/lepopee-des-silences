@@ -23,10 +23,10 @@ public sealed record CombatRuntimeDto(
             CurrentTick: combat.CurrentTick,
             ActiveCombatantId: combat.ActiveCombatantId?.Value,
             Allies: combat.Allies
-                .Select(CombatantRuntimeDto.FromDomain)
+                .Select(c => CombatantRuntimeDto.FromDomain(c, combat.CurrentTick))
                 .ToArray(),
             Enemies: combat.Enemies
-                .Select(CombatantRuntimeDto.FromDomain)
+                .Select(c => CombatantRuntimeDto.FromDomain(c, combat.CurrentTick))
                 .ToArray(),
             UsableBattleItems: usableItems ?? []);
     }

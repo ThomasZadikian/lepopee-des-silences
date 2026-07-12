@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 
 import type { StatusEffectKind } from '../../features/combat/types/combatContracts';
+import { ticksToTurns } from '../../features/combat/constants/atb';
 
 const props = withDefaults(
   defineProps<{
@@ -13,20 +14,30 @@ const props = withDefaults(
     /** Shows the effect label/duration underneath the sigil. */
     meta?: boolean;
     durLabel?: string;
+    /** What one tick deals/heals/guards right now (0 for non-periodic kinds). */
+    perTickAmount?: number;
+    /** Ticks remaining from the combat's current tick — null/undefined when unknown or permanent. */
+    ticksRemaining?: number | null;
+    isPermanent?: boolean;
   }>(),
-  { magnitude: 0, stacks: 1, px: 40, meta: false, durLabel: '' },
+  {
+    magnitude: 0, stacks: 1, px: 40, meta: false, durLabel: '',
+    perTickAmount: 0, ticksRemaining: null, isPermanent: false,
+  },
 );
 
-type Shape = 'drop' | 'plus' | 'chevUp' | 'chevDown' | 'aster' | 'silence' | 'lock';
+type Shape = 'drop' | 'plus' | 'chevUp' | 'chevDown' | 'aster' | 'silence' | 'lock' | 'ring' | 'diamond';
 
-const KIND_META: Record<string, { color: string; label: string; shape: Shape }> = {
-  DamageOverTime: { color: 'oklch(0.78 0.16 145)', label: 'Dégât continu', shape: 'drop' },
-  HealOverTime: { color: 'oklch(0.82 0.13 200)', label: 'Soin continu', shape: 'plus' },
+const KIND_META: Record<string, { color: string; label: string; shape: Shape; verb?: string }> = {
+  DamageOverTime: { color: 'oklch(0.78 0.16 145)', label: 'Dégât continu', shape: 'drop', verb: 'Dégâts réels' },
+  HealOverTime: { color: 'oklch(0.82 0.13 200)', label: 'Soin continu', shape: 'plus', verb: 'Soin réel' },
+  GuardOverTime: { color: 'oklch(0.86 0.10 86)', label: 'Garde continue', shape: 'ring', verb: 'Garde réelle' },
   'StatModifier+': { color: 'oklch(0.86 0.10 86)', label: 'Renforcement', shape: 'chevUp' },
   'StatModifier-': { color: 'oklch(0.78 0.16 25)', label: 'Affaiblissement', shape: 'chevDown' },
   Stun: { color: 'oklch(0.80 0.13 300)', label: 'Étourdissement', shape: 'aster' },
   Silence: { color: 'oklch(0.80 0.13 300)', label: 'Silence', shape: 'silence' },
   AtbLock: { color: 'oklch(0.80 0.13 300)', label: 'Jauge bloquée', shape: 'lock' },
+  SkillGrant: { color: 'oklch(0.70 0.15 300)', label: 'Sort emprunté', shape: 'diamond' },
 };
 
 const kindMeta = computed(() => {
@@ -49,10 +60,23 @@ const slashLen = computed(() => Math.round(sigPx.value * 0.92));
 const tubeW = computed(() => Math.round(sigPx.value * 0.44));
 const tubeH = computed(() => Math.round(sigPx.value * 0.74));
 const lockBar = computed(() => Math.round(sigPx.value * 0.66));
+const diamondD = computed(() => Math.round(sigPx.value * 0.5));
+
+const durationLine = computed(() => {
+  if (props.isPermanent) return 'Permanent (jusqu\'à la mort)';
+  if (props.ticksRemaining === null || props.ticksRemaining === undefined) return null;
+  const turns = ticksToTurns(props.ticksRemaining);
+  return turns <= 1 ? '1 tour restant' : `${turns} tours restants`;
+});
+
+const perTickLine = computed(() => {
+  if (!kindMeta.value.verb || props.perTickAmount === 0) return null;
+  return `${kindMeta.value.verb} : ${props.perTickAmount} / tour`;
+});
 </script>
 
 <template>
-  <div class="sigil" :style="{ '--sigil-px': px + 'px' }" :title="stacks > 1 ? `${kindMeta.label} ×${stacks}` : kindMeta.label">
+  <div class="sigil" :style="{ '--sigil-px': px + 'px' }" tabindex="0">
     <div class="sigil__chip">
       <div class="sigil__glow" :style="{ background: `radial-gradient(circle at 50% 38%, ${glow}, transparent 72%)` }" />
       <div class="sigil__hairline" :style="{ background: kindMeta.color }" />
@@ -100,22 +124,43 @@ const lockBar = computed(() => Math.round(sigPx.value * 0.66));
           </div>
           <span class="sigil__lock-bar" :style="{ width: lockBar + 'px', height: bar + 'px', background: kindMeta.color }" />
         </template>
+
+        <div
+          v-else-if="kindMeta.shape === 'ring'"
+          class="sigil__ring"
+          :style="{ width: ringD + 'px', height: ringD + 'px', borderWidth: bar + 'px', borderColor: kindMeta.color }"
+        />
+
+        <div
+          v-else-if="kindMeta.shape === 'diamond'"
+          class="sigil__diamond"
+          :style="{ width: diamondD + 'px', height: diamondD + 'px', background: kindMeta.color }"
+        />
       </div>
 
       <div v-if="showStacks" class="sigil__stacks" :style="{ background: kindMeta.color }">{{ stacks }}</div>
     </div>
 
     <div v-if="meta" class="sigil__meta">{{ label }}</div>
+
+    <div class="sigil__bubble" role="tooltip">
+      <div class="sigil__bubble-title">{{ showStacks ? `${kindMeta.label} ×${stacks}` : kindMeta.label }}</div>
+      <div v-if="perTickLine" class="sigil__bubble-line">{{ perTickLine }}</div>
+      <div v-if="durationLine" class="sigil__bubble-line">{{ durationLine }}</div>
+    </div>
   </div>
 </template>
 
 <style scoped>
 .sigil {
+  position: relative;
   display: inline-flex;
   flex-direction: column;
   align-items: center;
   gap: 6px;
   font-family: var(--font);
+  cursor: help;
+  outline: none;
 }
 
 .sigil__chip {
@@ -163,6 +208,8 @@ const lockBar = computed(() => Math.round(sigPx.value * 0.66));
 .sigil__tube-fill { position: absolute; left: 0; right: 0; bottom: 0; height: 38%; opacity: 0.55; }
 .sigil__lock-bar { position: absolute; left: 50%; top: 50%; border-radius: 2px; transform: translate(-50%, -50%); box-shadow: 0 0 4px oklch(0.10 0.03 60 / 0.9); }
 
+.sigil__diamond { border-radius: 3px; transform: rotate(45deg); box-shadow: 0 0 5px oklch(0.10 0.03 60 / 0.4); }
+
 .sigil__stacks {
   position: absolute;
   right: -2px;
@@ -187,5 +234,57 @@ const lockBar = computed(() => Math.round(sigPx.value * 0.66));
   letter-spacing: 0.06em;
   color: var(--ink-4);
   white-space: nowrap;
+}
+
+.sigil__bubble {
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  transform: translateX(-50%) translateY(4px);
+  min-width: 150px;
+  max-width: 220px;
+  width: max-content;
+  padding: 8px 10px;
+  border-radius: 5px;
+  border: 1px solid var(--line-strong, oklch(0.42 0.03 60 / 0.7));
+  background: oklch(0.16 0.02 270 / 0.97);
+  color: var(--ink-2, oklch(0.78 0.02 275));
+  font-family: var(--font, serif);
+  text-align: left;
+  white-space: normal;
+  box-shadow: 0 8px 24px -6px oklch(0.1 0.02 270 / 0.6);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  z-index: 60;
+}
+
+.sigil__bubble-title {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--ink-1, oklch(0.9 0.02 275));
+}
+
+.sigil__bubble-line {
+  margin-top: 3px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  line-height: 1.4;
+  color: var(--ink-3, oklch(0.68 0.02 275));
+}
+
+.sigil:hover .sigil__bubble,
+.sigil:focus-visible .sigil__bubble {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sigil__bubble {
+    transition: none;
+  }
 }
 </style>

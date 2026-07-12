@@ -31,6 +31,7 @@ function baseCombatant(overrides: Partial<CombatantRuntimeDto> = {}): CombatantR
     skills: [
       { key: 'skill.a', displayName: 'Frappe', skillType: 'Damage', targetingType: 'SingleEnemy', effectType: 'Damage', manaCost: 0, chargeCost: 0, basePower: 10, tags: [], category: 'Physical' },
       { key: 'skill.magic', displayName: 'Flamme froide', skillType: 'Damage', targetingType: 'SingleEnemy', effectType: 'Damage', manaCost: 8, chargeCost: 0, basePower: 22, tags: [], category: 'Magic' },
+      { key: 'skill.silence', displayName: 'Silence', skillType: 'Disrupt', targetingType: 'SingleEnemy', effectType: 'Disrupt', manaCost: 4, chargeCost: 0, basePower: 0, tags: [], category: 'Magic', emotionalType: 'Silence' },
     ],
     ...overrides,
   };
@@ -213,6 +214,26 @@ describe('useCombatStore', () => {
       expect(store.feedbackEvents).toContainEqual(
         expect.objectContaining({ combatantId: 'enemy-1', type: 'damage', category: 'Magic' }),
       );
+
+      await playback;
+    });
+
+    it('pushes a status feedback event carrying the casting skill\'s emotionalType, without touching vitality or guard', async () => {
+      const store = useCombatStore();
+      store.initCombat(baseCombat());
+
+      const playback = store.playCombatLogs([
+        logEntry({
+          type: 'StatusApplied', actorId: 'ally-1', skillKey: 'skill.silence', targetIds: ['enemy-1'],
+          message: 'Ombre is silenced.',
+        }),
+      ]);
+
+      expect(store.feedbackEvents).toContainEqual(
+        expect.objectContaining({ combatantId: 'enemy-1', type: 'status', emotionalType: 'Silence' }),
+      );
+      expect(store.findCombatantById('enemy-1')?.currentVitality).toBe(100);
+      expect(store.findCombatantById('enemy-1')?.guard).toBe(0);
 
       await playback;
     });

@@ -126,6 +126,26 @@ public sealed class EmotionalTypeProfileProvider : ICombatantTypeProfileProvider
 
     public EmotionalType ResolveAttackType(Combatant attacker, CombatantSkill skill)
     {
+        if (TryResolveIntrinsicType(skill, out var intrinsic))
+        {
+            return intrinsic;
+        }
+
+        // Default / basic attacks follow the caster's character/archetype type
+        // (and can be modified by items).
+        return Resolve(attacker).AttackType;
+    }
+
+    /// <summary>
+    /// Resolves a skill's OWN elemental identity — a tag override or its entry in
+    /// <see cref="SkillTypesByKey"/> — independently of any caster. Used both by
+    /// <see cref="ResolveAttackType"/> (which then falls back to the caster's type)
+    /// and by <see cref="Dtos.CombatantSkillRuntimeDto.FromDomain"/> to surface a
+    /// skill's "élément" badge in the UI for true spells (basic attacks correctly
+    /// return false — see the doc comment on <see cref="SkillTypesByKey"/>).
+    /// </summary>
+    public static bool TryResolveIntrinsicType(CombatantSkill? skill, out EmotionalType type)
+    {
         // 1) Explicit per-skill override via a tag, e.g. "emotype:rupture".
         if (skill?.Tags is { Count: > 0 })
         {
@@ -140,19 +160,21 @@ public sealed class EmotionalTypeProfileProvider : ICombatantTypeProfileProvider
                 if (trimmed.StartsWith(TypeTagPrefix, StringComparison.OrdinalIgnoreCase)
                     && Enum.TryParse<EmotionalType>(trimmed[TypeTagPrefix.Length..], ignoreCase: true, out var parsed))
                 {
-                    return parsed;
+                    type = parsed;
+                    return true;
                 }
             }
         }
+
         // 2) Intrinsic spell type (belongs to the spell, not the caster).
         if (skill is not null && SkillTypesByKey.TryGetValue(skill.Key, out var spellType))
         {
-            return spellType;
+            type = spellType;
+            return true;
         }
 
-        // 3) Default / basic attacks follow the caster's character/archetype type
-        //    (and can be modified by items).
-        return Resolve(attacker).AttackType;
+        type = default;
+        return false;
     }
 
     private static CombatantTypeProfile Profile(

@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { mount } from '@vue/test-utils';
 import SkillBar from './SkillBar.vue';
+import EmotionalTypeBadge from './EmotionalTypeBadge.vue';
 import type { CombatantRuntimeDto, CombatUsableItemDto } from '../types/combatContracts';
 
 function makeCombatant(overrides: Partial<CombatantRuntimeDto> = {}): CombatantRuntimeDto {
@@ -28,6 +29,7 @@ function makeCombatant(overrides: Partial<CombatantRuntimeDto> = {}): CombatantR
         chargeCost: 0,
         basePower: 10,
         tags: [],
+        category: 'Physical',
       },
       {
         key: 'skill.heal',
@@ -39,6 +41,8 @@ function makeCombatant(overrides: Partial<CombatantRuntimeDto> = {}): CombatantR
         chargeCost: 0,
         basePower: 5,
         tags: [],
+        category: 'Magic',
+        emotionalType: 'Memoire',
       },
     ],
     ...overrides,
@@ -104,10 +108,35 @@ describe('SkillBar', () => {
     expect(wrapper.find('.skill-card__name').text()).toBe('Frappe');
   });
 
-  it('displays skill cost', () => {
+  it('displays skill cost when non-zero', () => {
     const wrapper = mountBar();
     const cards = wrapper.findAll('.skill-card');
-    expect(cards[0].find('.skill-card__meta').text()).toContain('0 PP');
+    expect(cards[1].find('.skill-card__cost').text()).toBe('3 PP');
+  });
+
+  it('does not display a cost line when the skill is free', () => {
+    const wrapper = mountBar();
+    const cards = wrapper.findAll('.skill-card');
+    expect(cards[0].find('.skill-card__cost').exists()).toBe(false);
+  });
+
+  it('shows the element badge when the skill has an emotional type', () => {
+    const wrapper = mountBar();
+    const cards = wrapper.findAll('.skill-card');
+    expect(cards[1].findComponent(EmotionalTypeBadge).props('type')).toBe('Memoire');
+    expect(cards[0].findComponent(EmotionalTypeBadge).exists()).toBe(false);
+  });
+
+  it('renders mechanical skill details in the hover tooltip', () => {
+    const wrapper = mountBar();
+    const cards = wrapper.findAll('.skill-card');
+    const bubble = cards[1].find('.skill-card__bubble');
+    expect(bubble.text()).toContain('Soin');
+    expect(bubble.text()).toContain('Un allié');
+    expect(bubble.text()).toContain('Magique');
+    expect(bubble.text()).toContain('Mémoire');
+    expect(bubble.text()).toContain('Puissance de base : 5');
+    expect(bubble.text()).toContain('Coût : 3 PP');
   });
 
   it('applies selected class to selected skill', () => {

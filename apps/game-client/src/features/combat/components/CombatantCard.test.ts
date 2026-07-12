@@ -272,7 +272,10 @@ describe('CombatantCard', () => {
   it('renders status effects badges', () => {
     const wrapper = mountCard(makeCombatant({
       statusEffects: [
-        { key: 'dot-1', displayName: 'Poison', kind: 'DamageOverTime', stat: '', magnitude: 5, stacks: 1 },
+        {
+          key: 'dot-1', displayName: 'Poison', kind: 'DamageOverTime', stat: '', magnitude: 5, stacks: 1,
+          isMagnitudePercentOfBaseStat: false, perTickAmount: 5, ticksRemaining: 2500, isPermanent: false,
+        },
       ],
     }));
     expect(wrapper.find('.presence__fx-badge').exists()).toBe(true);
@@ -281,10 +284,62 @@ describe('CombatantCard', () => {
   it('shows stack count when stacks > 1', () => {
     const wrapper = mountCard(makeCombatant({
       statusEffects: [
-        { key: 'buff-1', displayName: 'Power Up', kind: 'StatModifier', stat: 'attack', magnitude: 10, stacks: 3 },
+        {
+          key: 'buff-1', displayName: 'Power Up', kind: 'StatModifier', stat: 'attack', magnitude: 10, stacks: 3,
+          isMagnitudePercentOfBaseStat: false, perTickAmount: 0, ticksRemaining: 5000, isPermanent: false,
+        },
       ],
     }));
     expect(wrapper.find('.presence__fx-badge .sigil__stacks').text()).toBe('3');
+  });
+
+  it('forwards per-tick amount, ticks remaining, and permanence to the status token', () => {
+    const wrapper = mountCard(makeCombatant({
+      statusEffects: [
+        {
+          key: 'dot-1', displayName: 'Poison', kind: 'DamageOverTime', stat: '', magnitude: 5, stacks: 1,
+          isMagnitudePercentOfBaseStat: false, perTickAmount: 7, ticksRemaining: 2500, isPermanent: false,
+        },
+      ],
+    }));
+    const bubble = wrapper.find('.presence__fx-badge .sigil__bubble');
+    expect(bubble.text()).toContain('7 / tour');
+    expect(bubble.text()).toContain('1 tour restant');
+  });
+
+  it('shows the % badge next to Attack when a percent-of-base StatModifier is active', async () => {
+    const wrapper = mountCard(makeCombatant({
+      attackPower: 30,
+      statusEffects: [
+        {
+          key: 'buff-atk', displayName: 'Force', kind: 'StatModifier', stat: 'AttackPower', magnitude: 20, stacks: 1,
+          isMagnitudePercentOfBaseStat: true, perTickAmount: 0, ticksRemaining: 5000, isPermanent: false,
+        },
+      ],
+    }));
+    // Substats — and their % badges — are only rendered once the details popover is open.
+    await wrapper.find('.presence__details-trigger').trigger('click');
+    expect(wrapper.find('.presence__stat-mod--up').text()).toBe('▲ 20%');
+  });
+
+  it('shows a downward % badge for a debuff and none for a flat (non-percent) modifier', async () => {
+    const wrapper = mountCard(makeCombatant({
+      defense: 10,
+      focus: 5,
+      statusEffects: [
+        {
+          key: 'debuff-def', displayName: 'Fragilité', kind: 'StatModifier', stat: 'Defense', magnitude: -15, stacks: 1,
+          isMagnitudePercentOfBaseStat: true, perTickAmount: 0, ticksRemaining: 5000, isPermanent: false,
+        },
+        {
+          key: 'flat-focus', displayName: 'Focus brut', kind: 'StatModifier', stat: 'Focus', magnitude: 3, stacks: 1,
+          isMagnitudePercentOfBaseStat: false, perTickAmount: 0, ticksRemaining: 5000, isPermanent: false,
+        },
+      ],
+    }));
+    await wrapper.find('.presence__details-trigger').trigger('click');
+    expect(wrapper.find('.presence__stat-mod--down').text()).toBe('▼ 15%');
+    expect(wrapper.findAll('.presence__stat-mod').length).toBe(1);
   });
 
   it('does not render status effects section when no effects', () => {
@@ -403,6 +458,10 @@ describe('CombatantCard', () => {
   });
 
   describe('ATB speed halo', () => {
+    const noBonus = {
+      isMagnitudePercentOfBaseStat: false, perTickAmount: 0, ticksRemaining: 5000, isPermanent: false,
+    };
+
     function mountWithSpeedProbe(statusEffects: CombatantRuntimeDto['statusEffects']) {
       return mount(CombatantCard, {
         props: {
@@ -433,29 +492,29 @@ describe('CombatantCard', () => {
 
     it('passes a "boosted" speedEffect when a positive Speed buff is active', () => {
       const wrapper = mountWithSpeedProbe([
-        { key: 'buff-speed', displayName: 'Vitesse', kind: 'StatModifier', stat: 'Speed', magnitude: 10, stacks: 1 },
+        { key: 'buff-speed', displayName: 'Vitesse', kind: 'StatModifier', stat: 'Speed', magnitude: 10, stacks: 1, ...noBonus },
       ]);
       expect(wrapper.find('.atb').text()).toBe('boosted');
     });
 
     it('passes a "slowed" speedEffect when a negative Speed debuff is active', () => {
       const wrapper = mountWithSpeedProbe([
-        { key: 'debuff-speed', displayName: 'Lenteur', kind: 'StatModifier', stat: 'Speed', magnitude: -8, stacks: 1 },
+        { key: 'debuff-speed', displayName: 'Lenteur', kind: 'StatModifier', stat: 'Speed', magnitude: -8, stacks: 1, ...noBonus },
       ]);
       expect(wrapper.find('.atb').text()).toBe('slowed');
     });
 
     it('passes no speedEffect when no Speed StatModifier is active', () => {
       const wrapper = mountWithSpeedProbe([
-        { key: 'poison', displayName: 'Poison', kind: 'DamageOverTime', stat: '', magnitude: 5, stacks: 1 },
+        { key: 'poison', displayName: 'Poison', kind: 'DamageOverTime', stat: '', magnitude: 5, stacks: 1, ...noBonus },
       ]);
       expect(wrapper.find('.atb').text()).toBe('');
     });
 
     it('nets out stacked opposing Speed modifiers before choosing a direction', () => {
       const wrapper = mountWithSpeedProbe([
-        { key: 'buff-speed', displayName: 'Vitesse', kind: 'StatModifier', stat: 'Speed', magnitude: 10, stacks: 1 },
-        { key: 'debuff-speed', displayName: 'Lenteur', kind: 'StatModifier', stat: 'Speed', magnitude: -3, stacks: 1 },
+        { key: 'buff-speed', displayName: 'Vitesse', kind: 'StatModifier', stat: 'Speed', magnitude: 10, stacks: 1, ...noBonus },
+        { key: 'debuff-speed', displayName: 'Lenteur', kind: 'StatModifier', stat: 'Speed', magnitude: -3, stacks: 1, ...noBonus },
       ]);
       expect(wrapper.find('.atb').text()).toBe('boosted');
     });

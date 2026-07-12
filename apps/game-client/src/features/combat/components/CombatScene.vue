@@ -128,7 +128,28 @@ function floatEventsFor(combatantId: string) {
   return combatStore.feedbackEvents.filter((event) => event.combatantId === combatantId);
 }
 
+// Same registers/colors as EmotionalTypeBadge.vue's TYPE_META — kept as a
+// separate small map here since this is a glyph-only float, not a full badge.
+const EMOTIONAL_TYPE_GLYPHS: Record<string, { glyph: string; color: string }> = {
+  Effroi: { glyph: '✶', color: 'oklch(0.62 0.20 18)' },
+  Deni: { glyph: '◇', color: 'oklch(0.78 0.13 78)' },
+  Melancolie: { glyph: '❍', color: 'oklch(0.70 0.11 248)' },
+  Rupture: { glyph: '⟡', color: 'oklch(0.66 0.19 38)' },
+  Memoire: { glyph: '◈', color: 'oklch(0.84 0.11 86)' },
+  Silence: { glyph: '○', color: 'oklch(0.80 0.02 272)' },
+  Folie: { glyph: '✳', color: 'oklch(0.64 0.22 340)' },
+};
+
+function statusGlyph(event: CombatFeedbackEvent): string {
+  return EMOTIONAL_TYPE_GLYPHS[event.emotionalType ?? '']?.glyph ?? '✦';
+}
+
+function statusColor(event: CombatFeedbackEvent): string {
+  return EMOTIONAL_TYPE_GLYPHS[event.emotionalType ?? '']?.color ?? 'var(--frost)';
+}
+
 function floatLabel(event: CombatFeedbackEvent): string {
+  if (event.type === 'status') return statusGlyph(event);
   if (event.type === 'heal') return `+${event.amount}`;
   if (event.type === 'guard') return `◇ ${event.amount}`;
   if (event.type === 'miss') return 'Manqué !';
@@ -141,6 +162,11 @@ function floatClasses(event: CombatFeedbackEvent): Record<string, boolean> {
     'combat-float--magic': event.type === 'damage' && event.category === 'Magic',
     'combat-float--critical': Boolean(event.isCritical),
   };
+}
+
+function floatStyle(event: CombatFeedbackEvent): Record<string, string> | undefined {
+  if (event.type !== 'status') return undefined;
+  return { color: statusColor(event) };
 }
 
 watch(() => combatStore.terminalEvent, (event) => {
@@ -269,6 +295,7 @@ watch(
               :key="event.id"
               class="combat-float"
               :class="floatClasses(event)"
+              :style="floatStyle(event)"
             >
               {{ floatLabel(event) }}
             </span>
@@ -316,6 +343,7 @@ watch(
               :key="event.id"
               class="combat-float"
               :class="floatClasses(event)"
+              :style="floatStyle(event)"
             >
               {{ floatLabel(event) }}
             </span>
@@ -686,6 +714,21 @@ watch(
     0 0 26px color-mix(in oklch, var(--blood), transparent 45%),
     0 2px 0 oklch(0 0 0 / 0.55);
   animation: combat-float-rise 1200ms ease-out forwards, combat-float-crit-pulse 420ms ease-out;
+}
+
+/* Status-only skill (no damage/heal number) — a plain colored glyph keyed by
+   the casting skill's own EmotionalType (see EMOTIONAL_TYPE_GLYPHS above). */
+.combat-float--status {
+  font-weight: 400;
+  font-size: clamp(1.1rem, 2vw, 1.6rem);
+  text-shadow: 0 0 12px currentColor, 0 2px 0 oklch(0 0 0 / 0.55);
+  animation: combat-float-status 1100ms ease-out forwards;
+}
+
+@keyframes combat-float-status {
+  0% { opacity: 0; transform: translate(-50%, 6px) scale(0.6) rotate(-8deg); }
+  30% { opacity: 1; transform: translate(-50%, -10px) scale(1.15) rotate(4deg); }
+  100% { opacity: 0; transform: translate(-50%, -34px) scale(1) rotate(0deg); }
 }
 
 /* Miss: no number, just a fading, sideways-drifting dodge notice. */

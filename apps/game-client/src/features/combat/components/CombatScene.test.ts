@@ -246,6 +246,52 @@ describe('CombatScene', () => {
     expect(wrapper.find('.combat-scene__side-title--foe').exists()).toBe(true);
   });
 
+  it('renders a colored glyph float for a status feedback event, keyed by emotionalType', () => {
+    const enemy = makeCombatant('enemy-1', 'Beast', 'Enemy');
+    const wrapper = mountScene('run-1', 'combat-1', {
+      combat: {
+        id: 'combat-1',
+        status: 'Active',
+        turnNumber: 1,
+        activeCombatantId: 'ally-1',
+        allies: [],
+        enemies: [enemy],
+        usableBattleItems: [],
+      },
+      allies: [],
+      enemies: [enemy],
+      allCombatants: [enemy],
+      feedbackEvents: [
+        { id: 'evt-1', combatantId: 'enemy-1', type: 'status', amount: 0, emotionalType: 'Silence' },
+      ],
+    });
+    const float = wrapper.find('.combat-float--status');
+    expect(float.exists()).toBe(true);
+    expect(float.text()).toBe('○');
+  });
+
+  it('falls back to a generic glyph for a status event with no resolvable emotionalType', () => {
+    const enemy = makeCombatant('enemy-1', 'Beast', 'Enemy');
+    const wrapper = mountScene('run-1', 'combat-1', {
+      combat: {
+        id: 'combat-1',
+        status: 'Active',
+        turnNumber: 1,
+        activeCombatantId: 'ally-1',
+        allies: [],
+        enemies: [enemy],
+        usableBattleItems: [],
+      },
+      allies: [],
+      enemies: [enemy],
+      allCombatants: [enemy],
+      feedbackEvents: [
+        { id: 'evt-1', combatantId: 'enemy-1', type: 'status', amount: 0 },
+      ],
+    });
+    expect(wrapper.find('.combat-float--status').text()).toBe('✦');
+  });
+
   it('shows the depth-scaling badge when the current room is past depth 1', () => {
     const enemy = makeCombatant('enemy-1', 'Beast', 'Enemy');
     const wrapper = mountScene(

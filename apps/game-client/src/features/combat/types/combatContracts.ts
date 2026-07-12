@@ -5,7 +5,7 @@ export type CombatSide = 'Player' | 'Enemy';
 export type SkillType = 'Damage' | 'Guard' | 'Weaken' | 'Disrupt';
 
 export type EmotionalType =
-  | 'Neutral' | 'Effroi' | 'Deni' | 'Melancolie' | 'Rupture' | 'Memoire' | 'Silence';
+  | 'Neutral' | 'Effroi' | 'Deni' | 'Melancolie' | 'Rupture' | 'Memoire' | 'Silence' | 'Folie';
 
 export type TargetingType =
   | 'Self'
@@ -27,6 +27,8 @@ export type CombatantSkillRuntimeDto = {
   basePower: number;
   tags: string[];
   category: SkillCategory;
+  /** The skill's OWN "élément" — null for basic attacks / untyped skills. */
+  emotionalType?: EmotionalType | null;
 };
 
 export type CombatantRuntimeDto = {
@@ -59,10 +61,12 @@ export type CombatantRuntimeDto = {
 export type StatusEffectKind =
   | 'DamageOverTime'
   | 'HealOverTime'
+  | 'GuardOverTime'
   | 'StatModifier'
   | 'Stun'
   | 'Silence'
-  | 'AtbLock';
+  | 'AtbLock'
+  | 'SkillGrant';
 
 export type CombatantStatusEffectDto = {
   key: string;
@@ -71,6 +75,13 @@ export type CombatantStatusEffectDto = {
   stat: string;
   magnitude: number;
   stacks: number;
+  /** True when `magnitude` is a percentage of the base stat, not a flat delta. */
+  isMagnitudePercentOfBaseStat: boolean;
+  /** What one tick deals/heals/guards right now (0 for non-periodic kinds). */
+  perTickAmount: number;
+  /** Ticks remaining from the combat's current tick — null when permanent. */
+  ticksRemaining: number | null;
+  isPermanent: boolean;
 };
 
 export type CombatUsableItemDto = {
@@ -118,7 +129,8 @@ export type LogEntryType =
   | 'WeaknessHit'
   | 'ResistedHit'
   | 'ImmuneHit'
-  | 'AtbStagger';
+  | 'AtbStagger'
+  | 'StatusApplied';
 
 export type CombatLogEntryDto = {
   occurredAtUtc: string;

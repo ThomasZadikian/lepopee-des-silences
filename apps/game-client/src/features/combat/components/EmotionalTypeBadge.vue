@@ -21,6 +21,7 @@ const TYPE_META: Record<string, TypeMeta> = {
   Rupture: { label: 'Rupture', glyph: '⟡', color: 'oklch(0.66 0.19 38)' },
   Memoire: { label: 'Mémoire', glyph: '◈', color: 'oklch(0.84 0.11 86)' },
   Silence: { label: 'Silence', glyph: '○', color: 'oklch(0.80 0.02 272)' },
+  Folie: { label: 'Folie', glyph: '✳', color: 'oklch(0.64 0.22 340)' },
   Neutral: { label: 'Neutre', glyph: '·', color: 'oklch(0.58 0.02 272)' },
 };
 

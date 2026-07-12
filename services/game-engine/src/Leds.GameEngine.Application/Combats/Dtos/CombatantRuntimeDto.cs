@@ -33,7 +33,7 @@ public sealed record CombatantRuntimeDto(
     // affinities (honours an item-driven AttackTypeOverride on the combatant).
     private static readonly EmotionalTypeProfileProvider TypeProvider = new();
 
-    public static CombatantRuntimeDto FromDomain(Combatant combatant)
+    public static CombatantRuntimeDto FromDomain(Combatant combatant, int currentTick)
     {
         var profile = TypeProvider.Resolve(combatant);
 
@@ -68,7 +68,11 @@ public sealed record CombatantRuntimeDto(
                     e.Kind.ToString(),
                     e.Stat.ToString(),
                     e.Magnitude,
-                    e.Stacks))
+                    e.Stacks,
+                    e.IsMagnitudePercentOfBaseStat,
+                    e.PeekPerTickAmount(combatant.MaxVitality),
+                    e.IsPermanent ? null : Math.Max(0, e.ExpiresAtTick - currentTick),
+                    e.IsPermanent))
                 .ToArray(),
             Skills: combatant.Skills
                 .Select(CombatantSkillRuntimeDto.FromDomain)

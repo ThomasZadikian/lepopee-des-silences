@@ -166,6 +166,25 @@ public sealed class CombatStatusEffect
     }
 
     /// <summary>
+    /// Read-only preview of the amount ONE tick will deal/heal/guard right now (no
+    /// side effect on the tick schedule) — for UI display (e.g. a status tooltip
+    /// showing "real damage per tick"), not for resolution (see <see cref="ConsumeDueTicks"/>
+    /// for the actual, schedule-advancing computation, which this mirrors exactly).
+    /// Returns 0 for non-periodic effects.
+    /// </summary>
+    public int PeekPerTickAmount(int maxVitalityForPercent = 0)
+    {
+        if (!IsPeriodic)
+            return 0;
+
+        var perTick = IsMagnitudePercentOfMax
+            ? (int)Math.Round(maxVitalityForPercent * (Magnitude / 100.0))
+            : Magnitude;
+
+        return perTick * Stacks;
+    }
+
+    /// <summary>
     /// For periodic effects: returns the total magnitude due since the last tick up to
     /// <paramref name="currentTick"/> (and not past expiry), advancing the schedule.
     /// Returns 0 for non-periodic effects. When <see cref="IsMagnitudePercentOfMax"/> is
