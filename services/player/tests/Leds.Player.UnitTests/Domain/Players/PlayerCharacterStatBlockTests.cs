@@ -325,7 +325,14 @@ public sealed class PlayerCharacterStatBlockTests
             [PlayerStatKind.Mana] = original.Mana,
             [PlayerStatKind.Charge] = original.Charge,
         };
-        expected[kind] += 1;
+        // Vitality and Mana grant a bigger per-point jump than the other stats.
+        var increment = kind switch
+        {
+            PlayerStatKind.MaxVitality => PlayerCharacterStatBlock.MaxVitalityIncrementPerPoint,
+            PlayerStatKind.Mana => PlayerCharacterStatBlock.ManaIncrementPerPoint,
+            _ => 1,
+        };
+        expected[kind] += increment;
 
         incremented.MaxVitality.Should().Be(expected[PlayerStatKind.MaxVitality]);
         incremented.AttackPower.Should().Be(expected[PlayerStatKind.AttackPower]);
@@ -337,6 +344,26 @@ public sealed class PlayerCharacterStatBlockTests
         incremented.Focus.Should().Be(expected[PlayerStatKind.Focus]);
         incremented.Mana.Should().Be(expected[PlayerStatKind.Mana]);
         incremented.Charge.Should().Be(expected[PlayerStatKind.Charge]);
+    }
+
+    [Fact]
+    public void WithIncrementedStat_ShouldIncreaseMaxVitalityByTen()
+    {
+        var original = PlayerCharacterStatBlock.CreateDefaultPorteur();
+
+        var incremented = original.WithIncrementedStat(PlayerStatKind.MaxVitality);
+
+        incremented.MaxVitality.Should().Be(original.MaxVitality + 10);
+    }
+
+    [Fact]
+    public void WithIncrementedStat_ShouldIncreaseManaByFive()
+    {
+        var original = PlayerCharacterStatBlock.CreateDefaultPorteur();
+
+        var incremented = original.WithIncrementedStat(PlayerStatKind.Mana);
+
+        incremented.Mana.Should().Be(original.Mana + 5);
     }
 
     [Fact]

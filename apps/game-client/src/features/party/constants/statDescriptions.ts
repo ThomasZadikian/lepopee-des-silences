@@ -9,7 +9,7 @@ export const statLabels: Record<PlayerStatKind, string> = {
   Initiative:    'Initiative',
   Recovery:      'Récupération',
   Focus:         'Focus',
-  Mana:          'Mana',
+  Mana:          'PP (Mana)',
   Charge:        'Charge',
 };
 
@@ -44,3 +44,18 @@ export const statDescriptions: Record<PlayerStatKind, string> = {
 export function statValue(stats: PlayerCharacterStatsView | undefined, stat: PlayerStatKind): number {
   return stats ? stats[statValueKeys[stat]] : 0;
 }
+
+// Mirrors PlayerCharacterStatBlock.WithIncrementedStat (services/player) — Vitality
+// and PP/Mana grant a bigger jump per point than the other stats.
+export const statPointIncrements: Record<PlayerStatKind, number> = {
+  MaxVitality:   10,
+  AttackPower:   1,
+  Defense:       1,
+  StartingGuard: 1,
+  Speed:         1,
+  Initiative:    1,
+  Recovery:      1,
+  Focus:         1,
+  Mana:          5,
+  Charge:        1,
+};

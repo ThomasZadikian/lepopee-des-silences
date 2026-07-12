@@ -22,7 +22,7 @@ public sealed class CombatSkillEffectResolverTests
 
         var result = _resolver.Resolve(combat, ally, skill, [enemy]);
 
-        result.Applied.Should().BeTrue();
+        result.LogEntries.Should().NotBeEmpty();
         enemy.CurrentVitality.Should().Be(70);
     }
 
@@ -34,7 +34,7 @@ public sealed class CombatSkillEffectResolverTests
 
         var result = _resolver.Resolve(combat, ally, skill, [enemy]);
 
-        result.Applied.Should().BeTrue();
+        result.LogEntries.Should().NotBeEmpty();
         enemy.CurrentVitality.Should().Be(70);
     }
 

@@ -68,4 +68,13 @@ describe('StatManagementTab', () => {
     const button = wrapper.find('.smt-row__add');
     expect(button.attributes('disabled')).toBeDefined();
   });
+
+  it('shows the correct per-stat increment on each +N button (PV +10, PP +5, others +1)', () => {
+    const wrapper = mount(StatManagementTab, { props: { character: baseCharacter() } });
+    const buttons = wrapper.findAll('.smt-row__add');
+
+    expect(buttons[0].text()).toBe('+10'); // MaxVitality is first in statOrder
+    expect(buttons[8].text()).toBe('+5');  // Mana is 9th in statOrder
+    expect(buttons[1].text()).toBe('+1');  // AttackPower
+  });
 });

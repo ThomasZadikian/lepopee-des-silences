@@ -765,7 +765,7 @@ public sealed class UseCombatSkillCommandHandlerTests
         var effectResolver = new Mock<ICombatSkillEffectResolver>();
         effectResolver.Setup(r => r.Resolve(It.IsAny<Combat>(), It.IsAny<Combatant>(), It.IsAny<CombatantSkill>(), It.IsAny<IReadOnlyCollection<Combatant>>()))
             .Returns((Combat combat, Combatant actor, CombatantSkill skill, IReadOnlyCollection<Combatant> targets) =>
-                new CombatSkillEffectResolution(true, [], combat));
+                new CombatSkillEffectResolution([], combat));
 
         var clock = new Mock<IClock>();
         clock.Setup(c => c.UtcNow).Returns(DateTimeOffset.UtcNow);

@@ -47,7 +47,6 @@ public sealed class UtilityEnemyActionPlanner : IEnemyActionPlanner
                     return [ally.Id.Value];
                 }
             case "SingleEnemy":
-            case "AnySingle":
             default:
                 {
                     var target = PickOffenseTarget(combat, actor, skill, players);

@@ -76,12 +76,12 @@ describe('CombatantCard', () => {
 
   it('displays mana stat for player side', () => {
     const wrapper = mountCard(makeCombatant({ side: 'Player', mana: 10 }));
-    expect(wrapper.text()).toContain('10 souffle');
+    expect(wrapper.text()).toContain('10 PP');
   });
 
   it('does not display mana stat for enemy side', () => {
     const wrapper = mountCard(makeCombatant({ side: 'Enemy' }));
-    expect(wrapper.text()).not.toContain('souffle');
+    expect(wrapper.find('.presence__stat--breath').exists()).toBe(false);
   });
 
   it('applies presence--active class when isCurrentActor is true', () => {

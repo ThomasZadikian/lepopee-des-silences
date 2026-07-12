@@ -129,9 +129,9 @@ function rarityTone(rarity: string): string {
                   <span class="party-card__stat-k">GARDE</span>
                   <span class="party-card__stat-v" style="color: var(--frost)">{{ member.guard }}</span>
                 </span>
-                <span v-if="member.mana > 0" class="party-card__stat">
+                <span class="party-card__stat">
                   <StatTooltip :text="statDescriptions.Mana" placement="bottom">
-                    <span class="party-card__stat-k">MANA</span>
+                    <span class="party-card__stat-k">PP</span>
                   </StatTooltip>
                   <span class="party-card__stat-v">{{ member.mana }}</span>
                 </span>

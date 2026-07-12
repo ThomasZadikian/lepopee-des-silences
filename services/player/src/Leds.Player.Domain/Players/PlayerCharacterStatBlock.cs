@@ -90,20 +90,27 @@ public sealed class PlayerCharacterStatBlock
             charge: 0);
     }
 
+    // Per-point increment for each allocatable stat. Most stats grant +1; Vitality
+    // and Mana grant a larger jump since one raw point of PV/PP barely moves the
+    // needle otherwise.
+    public const int MaxVitalityIncrementPerPoint = 10;
+    public const int ManaIncrementPerPoint = 5;
+    private const int DefaultIncrementPerPoint = 1;
+
     public PlayerCharacterStatBlock WithIncrementedStat(PlayerStatKind kind)
     {
         return kind switch
         {
-            PlayerStatKind.MaxVitality => Create(MaxVitality + 1, AttackPower, Defense, StartingGuard, Speed, Initiative, Recovery, Focus, Mana, Charge),
-            PlayerStatKind.AttackPower => Create(MaxVitality, AttackPower + 1, Defense, StartingGuard, Speed, Initiative, Recovery, Focus, Mana, Charge),
-            PlayerStatKind.Defense => Create(MaxVitality, AttackPower, Defense + 1, StartingGuard, Speed, Initiative, Recovery, Focus, Mana, Charge),
-            PlayerStatKind.StartingGuard => Create(MaxVitality, AttackPower, Defense, StartingGuard + 1, Speed, Initiative, Recovery, Focus, Mana, Charge),
-            PlayerStatKind.Speed => Create(MaxVitality, AttackPower, Defense, StartingGuard, Speed + 1, Initiative, Recovery, Focus, Mana, Charge),
-            PlayerStatKind.Initiative => Create(MaxVitality, AttackPower, Defense, StartingGuard, Speed, Initiative + 1, Recovery, Focus, Mana, Charge),
-            PlayerStatKind.Recovery => Create(MaxVitality, AttackPower, Defense, StartingGuard, Speed, Initiative, Recovery + 1, Focus, Mana, Charge),
-            PlayerStatKind.Focus => Create(MaxVitality, AttackPower, Defense, StartingGuard, Speed, Initiative, Recovery, Focus + 1, Mana, Charge),
-            PlayerStatKind.Mana => Create(MaxVitality, AttackPower, Defense, StartingGuard, Speed, Initiative, Recovery, Focus, Mana + 1, Charge),
-            PlayerStatKind.Charge => Create(MaxVitality, AttackPower, Defense, StartingGuard, Speed, Initiative, Recovery, Focus, Mana, Charge + 1),
+            PlayerStatKind.MaxVitality => Create(MaxVitality + MaxVitalityIncrementPerPoint, AttackPower, Defense, StartingGuard, Speed, Initiative, Recovery, Focus, Mana, Charge),
+            PlayerStatKind.AttackPower => Create(MaxVitality, AttackPower + DefaultIncrementPerPoint, Defense, StartingGuard, Speed, Initiative, Recovery, Focus, Mana, Charge),
+            PlayerStatKind.Defense => Create(MaxVitality, AttackPower, Defense + DefaultIncrementPerPoint, StartingGuard, Speed, Initiative, Recovery, Focus, Mana, Charge),
+            PlayerStatKind.StartingGuard => Create(MaxVitality, AttackPower, Defense, StartingGuard + DefaultIncrementPerPoint, Speed, Initiative, Recovery, Focus, Mana, Charge),
+            PlayerStatKind.Speed => Create(MaxVitality, AttackPower, Defense, StartingGuard, Speed + DefaultIncrementPerPoint, Initiative, Recovery, Focus, Mana, Charge),
+            PlayerStatKind.Initiative => Create(MaxVitality, AttackPower, Defense, StartingGuard, Speed, Initiative + DefaultIncrementPerPoint, Recovery, Focus, Mana, Charge),
+            PlayerStatKind.Recovery => Create(MaxVitality, AttackPower, Defense, StartingGuard, Speed, Initiative, Recovery + DefaultIncrementPerPoint, Focus, Mana, Charge),
+            PlayerStatKind.Focus => Create(MaxVitality, AttackPower, Defense, StartingGuard, Speed, Initiative, Recovery, Focus + DefaultIncrementPerPoint, Mana, Charge),
+            PlayerStatKind.Mana => Create(MaxVitality, AttackPower, Defense, StartingGuard, Speed, Initiative, Recovery, Focus, Mana + ManaIncrementPerPoint, Charge),
+            PlayerStatKind.Charge => Create(MaxVitality, AttackPower, Defense, StartingGuard, Speed, Initiative, Recovery, Focus, Mana, Charge + DefaultIncrementPerPoint),
             _ => throw new DomainException($"Unknown stat kind '{kind}'.")
         };
     }

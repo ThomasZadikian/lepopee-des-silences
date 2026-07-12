@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { PlayerCharacterView, PlayerStatKind } from '../../../party/types/playerTypes';
 import { usePlayerStore } from '../../../party/stores/playerStore';
-import { statDescriptions, statLabels, statOrder, statValue } from '../../../party/constants/statDescriptions';
+import { statDescriptions, statLabels, statOrder, statPointIncrements, statValue } from '../../../party/constants/statDescriptions';
 
 const props = defineProps<{ character: PlayerCharacterView }>();
 
@@ -33,7 +33,7 @@ function spendPoint(stat: PlayerStatKind) {
           :disabled="playerStore.isLoading || playerStore.unspentStatPoints <= 0"
           @click="spendPoint(stat)"
         >
-          +1
+          +{{ statPointIncrements[stat] }}
         </button>
       </li>
     </ul>
@@ -108,8 +108,9 @@ function spendPoint(stat: PlayerStatKind) {
 }
 
 .smt-row__add {
-  width: 28px;
+  min-width: 28px;
   height: 28px;
+  padding: 0 6px;
   border-radius: 4px;
   border: 1px solid var(--frost);
   background: oklch(0.50 0.06 232 / 0.12);

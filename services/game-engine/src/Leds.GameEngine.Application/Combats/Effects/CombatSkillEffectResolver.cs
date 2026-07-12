@@ -83,7 +83,7 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
 
         // Apply the durable status(es) (poison/regen/buff/control) on top, if declared.
         ApplySkillStatus(combat, actor, skill, targets, logEntries, attackLanded);
-        return new CombatSkillEffectResolution(true, logEntries, combat);
+        return new CombatSkillEffectResolution(logEntries, combat);
     }
 
     private static void ConsumeResources(Combatant actor, CombatantSkill skill)
@@ -624,21 +624,6 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
 
     private static string ResolveEffectType(CombatantSkill skill)
     {
-        if (string.Equals(skill.Key, "skill.basic.weaken", StringComparison.OrdinalIgnoreCase))
-        {
-            return "Weaken";
-        }
-
-        if (string.Equals(skill.Key, "skill.basic.disrupt", StringComparison.OrdinalIgnoreCase))
-        {
-            return "Disrupt";
-        }
-
-        if (string.Equals(skill.Key, "skill.basic.guard", StringComparison.OrdinalIgnoreCase))
-        {
-            return "Guard";
-        }
-
         if (string.Equals(skill.EffectType, "AddCurrentGuard", StringComparison.OrdinalIgnoreCase))
         {
             return "Guard";
