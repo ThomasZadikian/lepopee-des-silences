@@ -124,6 +124,31 @@ public sealed class CombatStatusEffectTests
     }
 
     [Fact]
+    public void Create_ShouldNeverExpire_WhenIsPermanent()
+    {
+        var effect = CombatStatusEffect.Create(
+            "destinee-cruelle:dot", "Une destinée cruelle", StatusEffectKind.DamageOverTime,
+            currentTick: 0, durationTicks: 0, magnitude: 10, tickInterval: 2500,
+            isMagnitudePercentOfMax: true, isPermanent: true);
+
+        effect.IsExpired(int.MaxValue - 1).Should().BeFalse();
+        effect.ConsumeDueTicks(10_000_000, maxVitalityForPercent: 100).Should().BeGreaterThan(0,
+            because: "a permanent DoT keeps ticking indefinitely.");
+    }
+
+    [Fact]
+    public void ExtendDuration_ShouldBeNoOp_WhenEffectIsPermanent()
+    {
+        var effect = CombatStatusEffect.Create(
+            "destinee-cruelle:dot", "Une destinée cruelle", StatusEffectKind.DamageOverTime,
+            currentTick: 0, durationTicks: 0, isPermanent: true);
+
+        effect.ExtendDuration(500_000);
+
+        effect.IsExpired(500_001).Should().BeFalse();
+    }
+
+    [Fact]
     public void IsExpired_ShouldReturnFalse_WhenCurrentTickBeforeExpiry()
     {
         var effect = CombatStatusEffect.Create("poison", "Poison", StatusEffectKind.DamageOverTime, 0, 5000);

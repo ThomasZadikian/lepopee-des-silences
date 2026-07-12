@@ -28,10 +28,11 @@ public sealed record SkillEffectSpecDto(
     string? Stat,
     bool MagnitudeIsPercentOfMax,
     bool MagnitudeIsPercentOfBaseStat = false,
-    bool AppliesToActor = false)
+    bool AppliesToActor = false,
+    bool IsPermanent = false)
 {
     public static SkillEffectSpecDto FromDomain(SkillEffectSpec spec) => new(
         spec.Kind, spec.StatusKey, spec.Magnitude, spec.DurationTicks,
         spec.TickInterval, spec.Stat, spec.MagnitudeIsPercentOfMax,
-        spec.MagnitudeIsPercentOfBaseStat, spec.AppliesToActor);
+        spec.MagnitudeIsPercentOfBaseStat, spec.AppliesToActor, spec.IsPermanent);
 }

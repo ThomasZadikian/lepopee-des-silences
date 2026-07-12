@@ -19,4 +19,7 @@ public sealed record SkillEffectSpec(
     bool MagnitudeIsPercentOfBaseStat = false,
     // When true, this effect is applied to the ACTOR casting the skill instead of
     // its targets — e.g. a damage skill that also buffs its own caster on hit.
-    bool AppliesToActor = false);
+    bool AppliesToActor = false,
+    // When true, the effect never expires on its own — only removed by the target's
+    // death (e.g. "Une destinée cruelle"). DurationTicks is ignored in this case.
+    bool IsPermanent = false);

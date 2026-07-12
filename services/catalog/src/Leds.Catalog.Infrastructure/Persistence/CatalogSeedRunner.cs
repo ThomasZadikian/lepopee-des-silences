@@ -2104,14 +2104,18 @@ public sealed class CatalogSeedRunner
         // de +10% dégâts des sorts (MagicDamageBonus) et -5% dégâts de sorts subis
         // (MagicDamageReduction). Cible AllAllies : chaque allié reçoit son propre
         // buff, donc pas d'AppliesToActor (la cible n'est déjà pas le lanceur seul).
+        // StatusKey explicite sur chaque effet : deux StatModifier du même sort avec
+        // une clé auto-générée identique (basée sur Kind seul) collisionneraient sinon
+        // — le second Reinforce()rait le premier au lieu de créer son propre effet
+        // (bug corrigé au passage, cf. "Une destinée cruelle").
         await UpsertSkillAsync("canon.skill.connaissance-academique", "Connaissance académique",
             "Un savoir cité comme on brandit une preuve — et pour un temps, l'équipe tout entière frappe et résiste comme s'il avait raison.",
             "Buff", "AllAllies", "Buff", mana: 22, power: 0, cancellationToken,
             effects: new[]
             {
-                new SkillEffectSpec("StatModifier", null, 10, TicksPerTurn * 5,
+                new SkillEffectSpec("StatModifier", "canon.skill.connaissance-academique:magic-bonus", 10, TicksPerTurn * 5,
                     Stat: "MagicDamageBonus"),
-                new SkillEffectSpec("StatModifier", null, 5, TicksPerTurn * 5,
+                new SkillEffectSpec("StatModifier", "canon.skill.connaissance-academique:magic-reduction", 5, TicksPerTurn * 5,
                     Stat: "MagicDamageReduction")
             },
             category: "Magic");
@@ -2151,17 +2155,18 @@ public sealed class CatalogSeedRunner
 
         // "Impulsivité" (Mané) : +5% vitesse (charge d'ATB), +5% dégâts (attaque), mais
         // -10% défense pendant 5 tours — auto-buff/débuff, donc AppliesToActor sur les
-        // trois effets.
+        // trois effets. StatusKey explicite sur chacun (sinon collision, cf.
+        // "Connaissance académique" plus haut).
         await UpsertSkillAsync("canon.skill.impulsivite", "Impulsivité",
             "Agir avant de réfléchir — plus vite, plus fort, mais à découvert.",
             "Buff", "Self", "Buff", mana: 12, power: 0, cancellationToken,
             effects: new[]
             {
-                new SkillEffectSpec("StatModifier", null, 5, TicksPerTurn * 5,
+                new SkillEffectSpec("StatModifier", "canon.skill.impulsivite:speed", 5, TicksPerTurn * 5,
                     Stat: "Speed", MagnitudeIsPercentOfBaseStat: true, AppliesToActor: true),
-                new SkillEffectSpec("StatModifier", null, 5, TicksPerTurn * 5,
+                new SkillEffectSpec("StatModifier", "canon.skill.impulsivite:attack", 5, TicksPerTurn * 5,
                     Stat: "AttackPower", MagnitudeIsPercentOfBaseStat: true, AppliesToActor: true),
-                new SkillEffectSpec("StatModifier", null, -10, TicksPerTurn * 5,
+                new SkillEffectSpec("StatModifier", "canon.skill.impulsivite:defense", -10, TicksPerTurn * 5,
                     Stat: "Defense", MagnitudeIsPercentOfBaseStat: true, AppliesToActor: true)
             },
             category: "Physical");
@@ -2170,14 +2175,15 @@ public sealed class CatalogSeedRunner
         // (charge d'ATB) pendant 5 tours, et restaure instantanément 15% des PV max —
         // le seul sort canon à combiner un effet instantané (Heal, BasePower en % des
         // PV max) avec des buffs durables sur soi.
+        // StatusKey explicite sur chaque effet (sinon collision, cf. "Connaissance académique").
         await UpsertSkillAsync("canon.skill.favorite-de-elise", "Favorite de Elise",
             "Elise veille sur ceux qu'elle préfère — une défense qui se referme, un pas plus vif, et ce qui a été perdu qui revient d'un coup.",
             "Buff", "Self", "Heal", mana: 24, power: 15, cancellationToken,
             effects: new[]
             {
-                new SkillEffectSpec("StatModifier", null, 10, TicksPerTurn * 5,
+                new SkillEffectSpec("StatModifier", "canon.skill.favorite-de-elise:defense", 10, TicksPerTurn * 5,
                     Stat: "Defense", MagnitudeIsPercentOfBaseStat: true, AppliesToActor: true),
-                new SkillEffectSpec("StatModifier", null, 10, TicksPerTurn * 5,
+                new SkillEffectSpec("StatModifier", "canon.skill.favorite-de-elise:speed", 10, TicksPerTurn * 5,
                     Stat: "Speed", MagnitudeIsPercentOfBaseStat: true, AppliesToActor: true)
             },
             category: "Magic",
@@ -2202,6 +2208,139 @@ public sealed class CatalogSeedRunner
         await UpsertSkillAsync("canon.skill.ecriture-continuelle", "Écriture continuelle",
             "Il n'arrête jamais d'écrire — et ce qu'il décrit continue, un peu plus longtemps que prévu, de se produire.",
             "Debuff", "SingleEnemy", "ExtendDotDuration", mana: 16, power: 25, cancellationToken,
+            category: "Magic");
+
+        await UpsertSkillAsync("canon.skill.larme-des-enfers", "Larme des enfers",
+            "En apprenant à invoquer le fleuve des enfers, quelques gouttes suffisent à provoquer une maladie infecte qui ronge les chairs.",
+            "Damage", "SingleEnemy", "Damage", mana: 14, power: 10, cancellationToken,
+            effects: new[] { new SkillEffectSpec("DamageOverTime", null, 7, TicksPerTurn * 15, TickInterval: TicksPerTurn) },
+            category: "Magic");
+
+        await UpsertSkillAsync("canon.skill.souffle-de-la-forge", "Souffle de la forge",
+            "Cette puissante machine crache ses flammes jusqu'au tréfonds des enfers. Celui qui sait la manier peut calciner son adversaire jusqu'à ce que ses os fondent.",
+            "Damage", "SingleEnemy", "Damage", mana: 16, power: 10, cancellationToken,
+            effects: new[] { new SkillEffectSpec("DamageOverTime", null, 10, TicksPerTurn * 10, TickInterval: TicksPerTurn) },
+            category: "Physical");
+
+        // "Contemplation infinie" : "3 charges complètes" = 3 tours par notre convention
+        // partagée (voir AtbConstants.TicksPerTurn côté moteur).
+        await UpsertSkillAsync("canon.skill.contemplation-infinie", "Contemplation infinie",
+            "En se perdant dans les méandres du Palais, la vérité apparaît, mais la clairvoyance pousse à l'immobilité.",
+            "Debuff", "SingleEnemy", "Debuff", mana: 18, power: 0, cancellationToken,
+            effects: new[]
+            {
+                new SkillEffectSpec("StatModifier", null, -25, TicksPerTurn * 3,
+                    Stat: "Speed", MagnitudeIsPercentOfBaseStat: true)
+            },
+            category: "Magic");
+
+        // "Silence" : bloque complètement la prochaine action de la cible (voir
+        // Combatant.IsAtbLocked / Combat.cs — désormais câblé, contrairement à l'ancien
+        // "Se taire" dont le Silence n'était encore branché nulle part).
+        await UpsertSkillAsync("canon.skill.silence", "Silence",
+            "Le silence n'est pas seulement une manière de réfléchir, mais il est également une punition à ceux qui se montrent trop agressifs.",
+            "Debuff", "SingleEnemy", "Debuff", mana: 14, power: 0, cancellationToken,
+            effects: new[] { new SkillEffectSpec("Silence", null, 0, TicksPerTurn) },
+            category: "Magic");
+
+        // Type émotionnel intrinsèque (Mémoire) déclaré dans EmotionalTypeProfileProvider.SkillTypesByKey.
+        await UpsertSkillAsync("canon.skill.sursaut-memoriel", "Sursaut mémoriel",
+            "La mémoire est une réalité qu'il faut trop souvent fuir. Mais rappelez-vous, et souffrez pour accepter.",
+            "Damage", "SingleEnemy", "Damage", mana: 20, power: 12, cancellationToken,
+            effects: new[] { new SkillEffectSpec("DamageOverTime", null, 11, TicksPerTurn * 15, TickInterval: TicksPerTurn) },
+            category: "Magic");
+
+        await UpsertSkillAsync("canon.skill.larme-elise", "Larme d'Elise",
+            "Le silence et l'apathie d'Elise ne sont que des façades. Au fond d'elle brille un espoir et un amour aussi grand que le Palais.",
+            "Buff", "Self", "Heal", mana: 18, power: 5, cancellationToken,
+            effects: new[]
+            {
+                new SkillEffectSpec("HealOverTime", null, 2, TicksPerTurn * 10,
+                    TickInterval: TicksPerTurn, MagnitudeIsPercentOfMax: true, AppliesToActor: true)
+            },
+            category: "Magic",
+            basePowerIsPercentOfMaxVitality: true);
+
+        await UpsertSkillAsync("canon.skill.caresse-de-mane", "Caresse de Mané",
+            "La pureté et la gentillesse de Mané dans un seul geste.",
+            "Buff", "Self", "Heal", mana: 16, power: 15, cancellationToken,
+            category: "Magic",
+            basePowerIsPercentOfMaxVitality: true);
+
+        // Type émotionnel intrinsèque (Déni) déclaré dans EmotionalTypeProfileProvider.SkillTypesByKey.
+        await UpsertSkillAsync("canon.skill.anagramme", "Anagramme",
+            "Inverse les lettres, change les mots, change de personne et attaque sous une nouvelle identité.",
+            "Damage", "SingleEnemy", "Damage", mana: 14, power: 17, cancellationToken,
+            category: "Magic");
+
+        // Type émotionnel intrinsèque (Silence) déclaré dans EmotionalTypeProfileProvider.SkillTypesByKey.
+        await UpsertSkillAsync("canon.skill.lecture-des-silences", "Lecture des silences",
+            "Lire des passages du tome de silence n'est pas donné à tous, mais ceux qui y arrivent font peser le silence sur les ennemis.",
+            "Damage", "SingleEnemy", "Damage", mana: 14, power: 15, cancellationToken,
+            category: "Magic");
+
+        // Type émotionnel intrinsèque (Effroi) déclaré dans EmotionalTypeProfileProvider.SkillTypesByKey.
+        await UpsertSkillAsync("canon.skill.nevrose", "Névrose",
+            "Plonger son ennemi dans une névrose profonde, lui dictant des passages du tome des silences.",
+            "Damage", "SingleEnemy", "Damage", mana: 16, power: 10, cancellationToken,
+            effects: new[] { new SkillEffectSpec("DamageOverTime", null, 6, TicksPerTurn * 10, TickInterval: TicksPerTurn) },
+            category: "Magic");
+
+        // Type émotionnel intrinsèque (Folie, nouveau registre) déclaré dans
+        // EmotionalTypeProfileProvider.SkillTypesByKey. Malédiction à double tranchant :
+        // la cible devient plus forte (Attaque/Vitesse/Focus +7%) tout en se consumant
+        // (DoT), les deux durant la même fenêtre de 15 tours.
+        await UpsertSkillAsync("canon.skill.plongee-dans-la-folie", "Plongée dans la folie",
+            "Fait perdre tout contact avec la réalité à la cible, la rendant extrêmement puissante mais la faisant se consumer à petit feu.",
+            "Damage", "SingleEnemy", "Damage", mana: 24, power: 20, cancellationToken,
+            effects: new[]
+            {
+                new SkillEffectSpec("DamageOverTime", null, 10, TicksPerTurn * 15, TickInterval: TicksPerTurn),
+                new SkillEffectSpec("StatModifier", "canon.skill.plongee-dans-la-folie:attack", 7, TicksPerTurn * 15, Stat: "AttackPower", MagnitudeIsPercentOfBaseStat: true),
+                new SkillEffectSpec("StatModifier", "canon.skill.plongee-dans-la-folie:speed", 7, TicksPerTurn * 15, Stat: "Speed", MagnitudeIsPercentOfBaseStat: true),
+                new SkillEffectSpec("StatModifier", "canon.skill.plongee-dans-la-folie:focus", 7, TicksPerTurn * 15, Stat: "Focus", MagnitudeIsPercentOfBaseStat: true)
+            },
+            category: "Magic");
+
+        await UpsertSkillAsync("canon.skill.egide", "Égide",
+            "Lève une égide mentale pour se protéger des assaillants actuels.",
+            "Buff", "Self", "Guard", mana: 10, power: 15, cancellationToken,
+            category: "Magic");
+
+        await UpsertSkillAsync("canon.skill.rempart", "Rempart",
+            "Élève de puissants remparts pour contrecarrer les attaques ennemies.",
+            "Buff", "AllAllies", "Guard", mana: 16, power: 7, cancellationToken,
+            category: "Physical");
+
+        await UpsertSkillAsync("canon.skill.symphonie-des-enfers", "Symphonie des enfers",
+            "Les enfers vous viennent en aide ; ils veulent récupérer toutes les âmes qui se trouvent face à vous.",
+            "Damage", "AllEnemies", "Damage", mana: 26, power: 6, cancellationToken,
+            effects: new[] { new SkillEffectSpec("DamageOverTime", null, 4, TicksPerTurn * 15, TickInterval: TicksPerTurn) },
+            category: "Magic");
+
+        await UpsertSkillAsync("canon.skill.deluge-du-styx", "Déluge du Styx",
+            "Ouvre une brèche pour laisser se déverser les eaux des enfers, empoisonnant les ennemis.",
+            "Debuff", "AllEnemies", "Debuff", mana: 22, power: 0, cancellationToken,
+            effects: new[] { new SkillEffectSpec("DamageOverTime", null, 6, TicksPerTurn * 15, TickInterval: TicksPerTurn) },
+            category: "Magic");
+
+        // "Une destinée cruelle" : transformation permanente (jusqu'à la mort) — le
+        // seul sort canon à utiliser IsPermanent: true. +20% à Attaque/Défense/Vitesse/
+        // Focus, ET séparément -15% sur la vitesse de remplissage de jauge ATB elle-même
+        // (AtbTempoModifier, indépendant du stat Vitesse — voir Combatant.
+        // RecalculateAtbFillPerTick), ET un DoT de 10% des PV max par tour, sans fin.
+        await UpsertSkillAsync("canon.skill.destinee-cruelle", "Une destinée cruelle",
+            "Il faut parfois savoir chercher au plus profond de soi pour repousser ses limites, quel qu'en soit le prix.",
+            "Buff", "Self", "Buff", mana: 30, power: 0, cancellationToken,
+            effects: new[]
+            {
+                new SkillEffectSpec("StatModifier", "canon.skill.destinee-cruelle:attack", 20, 0, Stat: "AttackPower", MagnitudeIsPercentOfBaseStat: true, AppliesToActor: true, IsPermanent: true),
+                new SkillEffectSpec("StatModifier", "canon.skill.destinee-cruelle:defense", 20, 0, Stat: "Defense", MagnitudeIsPercentOfBaseStat: true, AppliesToActor: true, IsPermanent: true),
+                new SkillEffectSpec("StatModifier", "canon.skill.destinee-cruelle:speed", 20, 0, Stat: "Speed", MagnitudeIsPercentOfBaseStat: true, AppliesToActor: true, IsPermanent: true),
+                new SkillEffectSpec("StatModifier", "canon.skill.destinee-cruelle:focus", 20, 0, Stat: "Focus", MagnitudeIsPercentOfBaseStat: true, AppliesToActor: true, IsPermanent: true),
+                new SkillEffectSpec("StatModifier", "canon.skill.destinee-cruelle:tempo", -15, 0, Stat: "AtbTempoModifier", AppliesToActor: true, IsPermanent: true),
+                new SkillEffectSpec("DamageOverTime", "canon.skill.destinee-cruelle:dot", 10, 0, TickInterval: TicksPerTurn, MagnitudeIsPercentOfMax: true, AppliesToActor: true, IsPermanent: true)
+            },
             category: "Magic");
     }
 

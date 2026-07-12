@@ -101,6 +101,42 @@ public sealed class CombatantTests
     }
 
     [Fact]
+    public void RecalculateAtbFillPerTick_ShouldApplyAtbTempoModifier_IndependentlyOfSpeedStat()
+    {
+        var combatant = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 80, speed: 10);
+        combatant.RecalculateAtbFillPerTick(opponentAverageEffectiveSpeed: 10);
+        var before = combatant.AtbFillPerTick;
+
+        // "Une destinée cruelle": Speed itself is unaffected here (no StatModifier(Speed)
+        // active) — only the separate ATB tempo modifier slows the gauge.
+        combatant.ApplyStatusEffect(Leds.GameEngine.Domain.Combats.StatusEffects.CombatStatusEffect.Create(
+            "destinee-cruelle:tempo", "Une destinée cruelle", Leds.GameEngine.Domain.Combats.StatusEffects.StatusEffectKind.StatModifier,
+            currentTick: 0, durationTicks: 0, magnitude: -15,
+            stat: Leds.GameEngine.Domain.Combats.StatusEffects.CombatStat.AtbTempoModifier, isPermanent: true));
+
+        combatant.RecalculateAtbFillPerTick(opponentAverageEffectiveSpeed: 10);
+
+        combatant.EffectiveSpeed.Should().Be(10, because: "the Speed stat itself must stay untouched.");
+        combatant.AtbFillPerTick.Should().BeLessThan(before,
+            because: "AtbTempoModifier slows the gauge directly, independently of Speed.");
+    }
+
+    [Fact]
+    public void IsAtbLocked_ShouldBeTrue_WhenSilenced()
+    {
+        var combatant = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+
+        combatant.IsAtbLocked.Should().BeFalse();
+
+        combatant.ApplyStatusEffect(Leds.GameEngine.Domain.Combats.StatusEffects.CombatStatusEffect.Create(
+            "silence", "Silence", Leds.GameEngine.Domain.Combats.StatusEffects.StatusEffectKind.Silence,
+            currentTick: 0, durationTicks: 2500));
+
+        combatant.IsSilenced.Should().BeTrue();
+        combatant.IsAtbLocked.Should().BeTrue(because: "Silence blocks the next action exactly like Stun.");
+    }
+
+    [Fact]
     public void Create_ShouldThrow_WhenSourceKeyIsEmpty()
     {
         var act = () => Combatant.Create(CombatantId.New(), "", "Hero", CombatantSide.Player, "Fighter", 100, 100, 0, 0, 0, 0);

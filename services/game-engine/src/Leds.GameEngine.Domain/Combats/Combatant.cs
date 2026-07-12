@@ -205,6 +205,14 @@ public sealed class Combatant
     public int EffectiveCriticalChanceBonusPercent
         => CriticalChanceBonusPercent + EffectiveStat(CombatStat.CriticalChanceBonus, 0);
 
+    /// <summary>
+    /// Percentage modifier applied directly to ATB fill-per-tick, purely skill-driven
+    /// (no equipment channel exists for this) — e.g. "Une destinée cruelle" (-15%,
+    /// permanent). Independent of the Speed stat: a combatant can have both a Speed
+    /// buff AND a separate tempo penalty active at once.
+    /// </summary>
+    public int EffectiveAtbTempoModifierPercent => EffectiveStat(CombatStat.AtbTempoModifier, 0);
+
     // ── ATB (Active Time Battle) ──────────────────────────────────────────────
 
     /// <summary>Current ATB gauge (0 = empty). Sourced from runtime state (persisted).</summary>
@@ -264,7 +272,11 @@ public sealed class Combatant
             AtbTempoCombatantFactorPerMille,
             TempoMomentumPerMille);
 
-        SetAtbFillPerTick(fill);
+        // Applied as a separate multiplicative layer on top of the formula above —
+        // distinct from the Speed stat itself (see EffectiveAtbTempoModifierPercent).
+        var modified = (int)Math.Max(1, Math.Round(fill * (1.0 + EffectiveAtbTempoModifierPercent / 100.0)));
+
+        SetAtbFillPerTick(modified);
     }
 
     // ── Threat (enemy targeting) ────────────────────────────────────────────
@@ -781,5 +793,8 @@ public sealed class Combatant
     // Control flags consumed by the ATB scheduler / action validation (tranche 3+).
     public bool IsStunned => _statusEffects.Any(e => e.Kind == StatusEffectKind.Stun);
     public bool IsSilenced => _statusEffects.Any(e => e.Kind == StatusEffectKind.Silence);
-    public bool IsAtbLocked => IsStunned || _statusEffects.Any(e => e.Kind == StatusEffectKind.AtbLock);
+    // Silence blocks the next action exactly like Stun (see "Silence", canon skill) —
+    // both freeze the gauge here; IsStunned/IsSilenced stay distinct properties for
+    // logging/UI, but gate identically for scheduling purposes.
+    public bool IsAtbLocked => IsStunned || IsSilenced || _statusEffects.Any(e => e.Kind == StatusEffectKind.AtbLock);
 }

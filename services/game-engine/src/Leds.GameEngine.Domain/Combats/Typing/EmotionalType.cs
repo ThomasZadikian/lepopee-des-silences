@@ -30,5 +30,8 @@ public enum EmotionalType
     Memoire = 5,
 
     /// <summary>Silence — the void, absence.</summary>
-    Silence = 6
+    Silence = 6,
+
+    /// <summary>Folie — madness, loss of self.</summary>
+    Folie = 7
 }

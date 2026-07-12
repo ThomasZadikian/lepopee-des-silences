@@ -25,7 +25,8 @@ public sealed class CombatStatusEffect
         int expiresAtTick,
         bool isMagnitudePercentOfMax,
         bool isMagnitudePercentOfBaseStat,
-        IReadOnlyCollection<CombatantSkill>? grantedSkills)
+        IReadOnlyCollection<CombatantSkill>? grantedSkills,
+        bool isPermanent)
     {
         Key = key;
         DisplayName = displayName;
@@ -40,6 +41,7 @@ public sealed class CombatStatusEffect
         IsMagnitudePercentOfMax = isMagnitudePercentOfMax;
         IsMagnitudePercentOfBaseStat = isMagnitudePercentOfBaseStat;
         GrantedSkills = grantedSkills ?? Array.Empty<CombatantSkill>();
+        IsPermanent = isPermanent;
     }
     private const int MinTickInterval = 1400;
 
@@ -68,6 +70,15 @@ public sealed class CombatStatusEffect
     /// <see cref="Combatant.Skills"/> (Création, sort légendaire de l'Architecte).</summary>
     public IReadOnlyCollection<CombatantSkill> GrantedSkills { get; }
 
+    /// <summary>
+    /// When true, this effect never expires from <see cref="IsExpired"/> — it is only
+    /// ever removed by the combatant's death (e.g. "Une destinée cruelle": a curse
+    /// that lasts for the rest of the fight, at the cost of an ongoing % max-HP drain).
+    /// <see cref="ExpiresAtTick"/> is set to <see cref="int.MaxValue"/> and effectively
+    /// unused for a permanent effect.
+    /// </summary>
+    public bool IsPermanent { get; }
+
     public bool IsPeriodic => TickInterval > 0
         && (Kind is StatusEffectKind.DamageOverTime or StatusEffectKind.HealOverTime or StatusEffectKind.GuardOverTime);
 
@@ -88,11 +99,12 @@ public sealed class CombatStatusEffect
         EmotionalType? emotionalType = null,
         bool isMagnitudePercentOfMax = false,
         bool isMagnitudePercentOfBaseStat = false,
-        IReadOnlyCollection<CombatantSkill>? grantedSkills = null)
+        IReadOnlyCollection<CombatantSkill>? grantedSkills = null,
+        bool isPermanent = false)
     {
         if (string.IsNullOrWhiteSpace(key))
             throw new DomainException("Status effect key is required.");
-        if (durationTicks <= 0)
+        if (!isPermanent && durationTicks <= 0)
             throw new DomainException("Status effect duration must be positive.");
         if (stacks < 1)
             throw new DomainException("Status effect must have at least one stack.");
@@ -100,6 +112,7 @@ public sealed class CombatStatusEffect
         // Floor so nothing ticks faster than ~once every 2s, whatever the data says.
         var interval = tickInterval <= 0 ? 0 : Math.Max(tickInterval, MinTickInterval);
         var nextTick = interval > 0 ? currentTick + interval : int.MaxValue;
+        var expiresAtTick = isPermanent ? int.MaxValue : currentTick + durationTicks;
 
         return new CombatStatusEffect(
             key.Trim(),
@@ -111,10 +124,11 @@ public sealed class CombatStatusEffect
             stacks,
             interval,
             nextTick,
-            currentTick + durationTicks,
+            expiresAtTick,
             isMagnitudePercentOfMax,
             isMagnitudePercentOfBaseStat,
-            grantedSkills);
+            grantedSkills,
+            isPermanent);
     }
 
     public static CombatStatusEffect Rehydrate(
@@ -122,10 +136,11 @@ public sealed class CombatStatusEffect
         CombatStat stat, int magnitude, int stacks, int tickInterval, int nextTickAtTick, int expiresAtTick,
         bool isMagnitudePercentOfMax = false,
         bool isMagnitudePercentOfBaseStat = false,
-        IReadOnlyCollection<CombatantSkill>? grantedSkills = null)
-        => new(key, displayName, kind, emotionalType, stat, magnitude, stacks, tickInterval, nextTickAtTick, expiresAtTick, isMagnitudePercentOfMax, isMagnitudePercentOfBaseStat, grantedSkills);
+        IReadOnlyCollection<CombatantSkill>? grantedSkills = null,
+        bool isPermanent = false)
+        => new(key, displayName, kind, emotionalType, stat, magnitude, stacks, tickInterval, nextTickAtTick, expiresAtTick, isMagnitudePercentOfMax, isMagnitudePercentOfBaseStat, grantedSkills, isPermanent);
 
-    public bool IsExpired(int currentTick) => currentTick >= ExpiresAtTick;
+    public bool IsExpired(int currentTick) => !IsPermanent && currentTick >= ExpiresAtTick;
 
     /// <summary>
     /// Re-applying the same effect adds stacks (capped) — remaining duration is

@@ -21,4 +21,7 @@ public sealed record SkillStatusEffectSpec(
     bool MagnitudeIsPercentOfMax = false,
     bool MagnitudeIsPercentOfBaseStat = false,
     // When true, applied to the ACTOR casting the skill instead of its targets.
-    bool AppliesToActor = false);
+    bool AppliesToActor = false,
+    // When true, the effect never expires on its own — only removed by death (e.g.
+    // "Une destinée cruelle"). DurationTicks is ignored in this case.
+    bool IsPermanent = false);

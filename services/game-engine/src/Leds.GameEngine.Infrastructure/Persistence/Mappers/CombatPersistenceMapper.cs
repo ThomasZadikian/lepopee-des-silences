@@ -106,7 +106,8 @@ public static class CombatPersistenceMapper
         int ExpiresAtTick,
         bool IsMagnitudePercentOfMax = false,
         bool IsMagnitudePercentOfBaseStat = false,
-        GrantedSkillSnapshot[]? GrantedSkills = null);
+        GrantedSkillSnapshot[]? GrantedSkills = null,
+        bool IsPermanent = false);
 
     // Kind == SkillGrant only (e.g. "Création") — a snapshot of the target's skills
     // at cast time, temporarily usable by whoever holds the status effect. Mirrors
@@ -139,7 +140,8 @@ public static class CombatPersistenceMapper
                 : e.GrantedSkills.Select(s => new GrantedSkillSnapshot(
                     s.Key, s.DisplayName, s.SkillType, s.TargetingType, s.EffectType,
                     s.ManaCost, s.ChargeCost, s.BasePower, s.Tags.ToArray(), s.Category,
-                    s.BasePowerIsPercentOfMaxVitality)).ToArray())).ToArray();
+                    s.BasePowerIsPercentOfMaxVitality)).ToArray(),
+            e.IsPermanent)).ToArray();
 
         return JsonSerializer.Serialize(snapshots);
     }
@@ -176,7 +178,8 @@ public static class CombatPersistenceMapper
                 s.ExpiresAtTick,
                 s.IsMagnitudePercentOfMax,
                 s.IsMagnitudePercentOfBaseStat,
-                grantedSkills);
+                grantedSkills,
+                s.IsPermanent);
         }
     }
 

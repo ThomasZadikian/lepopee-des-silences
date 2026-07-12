@@ -15,4 +15,5 @@ public sealed record CatalogSkillEffectSpecHttpResponse(
     string? Stat,
     bool MagnitudeIsPercentOfMax,
     bool MagnitudeIsPercentOfBaseStat = false,
-    bool AppliesToActor = false);
+    bool AppliesToActor = false,
+    bool IsPermanent = false);

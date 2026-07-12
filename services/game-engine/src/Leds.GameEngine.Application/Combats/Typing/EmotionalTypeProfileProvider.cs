@@ -35,6 +35,11 @@ public sealed class EmotionalTypeProfileProvider : ICombatantTypeProfileProvider
             // Ethan's "Frayeur organique" (canon.skill.frayeur-organique): the dread
             // it inflicts is the spell's own nature, independent of who casts it.
             ["canon.skill.frayeur-organique"] = EmotionalType.Effroi,
+            ["canon.skill.sursaut-memoriel"] = EmotionalType.Memoire,
+            ["canon.skill.anagramme"] = EmotionalType.Deni,
+            ["canon.skill.lecture-des-silences"] = EmotionalType.Silence,
+            ["canon.skill.nevrose"] = EmotionalType.Effroi,
+            ["canon.skill.plongee-dans-la-folie"] = EmotionalType.Folie,
         };
 
     private static readonly IReadOnlyDictionary<string, CombatantTypeProfile> ProfilesByKey =

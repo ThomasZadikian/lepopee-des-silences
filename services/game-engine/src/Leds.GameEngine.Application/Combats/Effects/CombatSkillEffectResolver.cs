@@ -268,7 +268,7 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
         // Equipment-driven DOT resistance (e.g. Main de Khasma) shortens the
         // duration of an incoming DamageOverTime effect; the per-tick damage
         // reduction itself is applied later, at tick time (Combatant.TickStatusEffects).
-        var durationTicks = spec.Kind == StatusEffectKind.DamageOverTime && recipient.DotDurationReductionPercent > 0
+        var durationTicks = spec.Kind == StatusEffectKind.DamageOverTime && recipient.DotDurationReductionPercent > 0 && !spec.IsPermanent
             ? Math.Max(1, (int)Math.Round(
                 spec.DurationTicks * (1.0 - Math.Min(recipient.DotDurationReductionPercent, 100) / 100.0)))
             : spec.DurationTicks;
@@ -292,7 +292,8 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
             stat: spec.Stat,
             emotionalType: spec.EmotionalType,
             isMagnitudePercentOfMax: spec.MagnitudeIsPercentOfMax,
-            isMagnitudePercentOfBaseStat: spec.MagnitudeIsPercentOfBaseStat));
+            isMagnitudePercentOfBaseStat: spec.MagnitudeIsPercentOfBaseStat,
+            isPermanent: spec.IsPermanent));
     }
 
     /// <returns>True if at least one target was actually struck (not missed).</returns>

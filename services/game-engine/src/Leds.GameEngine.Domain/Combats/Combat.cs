@@ -294,7 +294,7 @@ public sealed class Combat
 
         CurrentTick += deltaTicks;
         return Enemies
-            .Where(e => !e.IsDefeated && !e.IsStunned && e.AtbGauge >= AtbConstants.ReadyThreshold)
+            .Where(e => !e.IsDefeated && !e.IsStunned && !e.IsSilenced && e.AtbGauge >= AtbConstants.ReadyThreshold)
             .OrderByDescending(e => e.AtbGauge)
             .ThenByDescending(e => e.BaseStatSnapshot.Initiative)
             .ThenBy(e => e.Id.Value)
@@ -449,6 +449,7 @@ public sealed class Combat
             var preferred = AllCombatants.FirstOrDefault(c => c.Id.Value == preferredId);
             if (preferred is { IsDefeated: false, Side: CombatantSide.Player }
                 && !preferred.IsStunned
+                && !preferred.IsSilenced
                 && preferred.AtbGauge >= AtbConstants.ReadyThreshold)
             {
                 ActiveCombatantId = preferred.Id;
@@ -461,16 +462,17 @@ public sealed class Combat
         var current = AllCombatants.FirstOrDefault(c => c.Id == ActiveCombatantId);
         if (current is { IsDefeated: false, Side: CombatantSide.Player }
             && !current.IsStunned
+            && !current.IsSilenced
             && current.AtbGauge >= AtbConstants.ReadyThreshold)
         {
             return;
         }
 
         // Fresh election: first READY combatant in party order — allies first
-        // (protagonist, then companions), then enemies. Never by gauge. Stunned
-        // combatants are skipped (they cannot act)..
+        // (protagonist, then companions), then enemies. Never by gauge. Stunned/
+        // silenced combatants are skipped (they cannot act).
         var elected = AllCombatants
-            .FirstOrDefault(c => !c.IsDefeated && !c.IsStunned && c.AtbGauge >= AtbConstants.ReadyThreshold);
+            .FirstOrDefault(c => !c.IsDefeated && !c.IsStunned && !c.IsSilenced && c.AtbGauge >= AtbConstants.ReadyThreshold);
 
         var previousActiveId = ActiveCombatantId;
         ActiveCombatantId = elected?.Id;
