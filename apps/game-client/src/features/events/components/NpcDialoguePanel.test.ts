@@ -121,6 +121,17 @@ describe('NpcDialoguePanel', () => {
     expect(wrapper.text()).toContain('Le silence s\'installe');
   });
 
+  it('still offers a way to leave when choices are empty but the encounter is not formally ended (soft-lock fallback)', async () => {
+    const dialogue = { ...baseDialogue, choices: [], lines: ['Single line.'] };
+    const wrapper = mountPanel(dialogue, [], false);
+    vi.runAllTimers();
+    await wrapper.vm.$nextTick();
+    await wrapper.vm.$nextTick();
+    expect(wrapper.text()).toContain('Se retirer du seuil');
+    await wrapper.find('.npc-choices .es-btn--lg').trigger('click');
+    expect(wrapper.emitted('continue')).toHaveLength(1);
+  });
+
   it('skips to full line on click while typing', async () => {
     const wrapper = mountPanel(baseDialogue);
     await wrapper.find('.npc-box').trigger('click');

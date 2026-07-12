@@ -607,6 +607,14 @@ export const useCombatStore = defineStore('combatRuntime', () => {
     selectedSkillKey.value = skillKey;
     selectedItemId.value = null;
     selectedTargetIds.value = [];
+
+    // AllEnemies/AllAllies skills have no single target to click — the target
+    // set is fully implied by the skill itself, so auto-populate it here
+    // (mirrors the Self-targeting auto-submit special-case for items).
+    const skill = selectedSkill.value;
+    if (skill && (skill.targetingType === 'AllEnemies' || skill.targetingType === 'AllAllies')) {
+      selectedTargetIds.value = validTargets.value.map((t) => t.id);
+    }
   }
 
   function selectTarget(targetId: string) {

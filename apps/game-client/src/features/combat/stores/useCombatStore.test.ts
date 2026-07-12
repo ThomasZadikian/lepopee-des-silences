@@ -32,6 +32,8 @@ function baseCombatant(overrides: Partial<CombatantRuntimeDto> = {}): CombatantR
       { key: 'skill.a', displayName: 'Frappe', skillType: 'Damage', targetingType: 'SingleEnemy', effectType: 'Damage', manaCost: 0, chargeCost: 0, basePower: 10, tags: [], category: 'Physical' },
       { key: 'skill.magic', displayName: 'Flamme froide', skillType: 'Damage', targetingType: 'SingleEnemy', effectType: 'Damage', manaCost: 8, chargeCost: 0, basePower: 22, tags: [], category: 'Magic' },
       { key: 'skill.silence', displayName: 'Silence', skillType: 'Disrupt', targetingType: 'SingleEnemy', effectType: 'Disrupt', manaCost: 4, chargeCost: 0, basePower: 0, tags: [], category: 'Magic', emotionalType: 'Silence' },
+      { key: 'skill.aoe', displayName: 'Déluge du Styx', skillType: 'Damage', targetingType: 'AllEnemies', effectType: 'Damage', manaCost: 10, chargeCost: 0, basePower: 6, tags: [], category: 'Magic' },
+      { key: 'skill.rally', displayName: 'Rempart', skillType: 'Guard', targetingType: 'AllAllies', effectType: 'Guard', manaCost: 6, chargeCost: 0, basePower: 7, tags: [], category: 'Physical' },
     ],
     ...overrides,
   };
@@ -141,6 +143,49 @@ describe('useCombatStore', () => {
 
       expect(store.selectedItemId).toBeNull();
       expect(store.selectedTargetIds).toEqual([]);
+    });
+  });
+
+  describe('selectSkill', () => {
+    it('auto-populates selectedTargetIds with every enemy for an AllEnemies skill, making it immediately submittable', () => {
+      const store = useCombatStore();
+      store.initCombat(baseCombat({
+        enemies: [
+          baseCombatant({ id: 'enemy-1', side: 'Enemy', displayName: 'Ombre' }),
+          baseCombatant({ id: 'enemy-2', side: 'Enemy', displayName: 'Spectre' }),
+        ],
+      }));
+
+      store.selectSkill('skill.aoe');
+
+      expect(store.selectedTargetIds).toEqual(expect.arrayContaining(['enemy-1', 'enemy-2']));
+      expect(store.selectedTargetIds).toHaveLength(2);
+      expect(store.canSubmit).toBe(true);
+    });
+
+    it('auto-populates selectedTargetIds with every ally for an AllAllies skill', () => {
+      const store = useCombatStore();
+      store.initCombat(baseCombat({
+        allies: [
+          baseCombatant({ id: 'ally-1' }),
+          baseCombatant({ id: 'ally-2', displayName: 'Compagnon' }),
+        ],
+      }));
+
+      store.selectSkill('skill.rally');
+
+      expect(store.selectedTargetIds).toEqual(expect.arrayContaining(['ally-1', 'ally-2']));
+      expect(store.canSubmit).toBe(true);
+    });
+
+    it('leaves selectedTargetIds empty for a SingleEnemy skill, requiring an explicit target click', () => {
+      const store = useCombatStore();
+      store.initCombat(baseCombat());
+
+      store.selectSkill('skill.a');
+
+      expect(store.selectedTargetIds).toEqual([]);
+      expect(store.canSubmit).toBe(false);
     });
   });
 

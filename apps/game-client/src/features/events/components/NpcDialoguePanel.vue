@@ -183,7 +183,16 @@ onBeforeUnmount(() => { clearTimer(); window.removeEventListener('keydown', onKe
           <span class="npc-choice__l">{{ choice.label }}</span>
           <span class="npc-choice__a">→</span>
         </button>
-        <p v-if="!choices.length" class="npc-empty">Le silence s'installe…</p>
+        <template v-if="!choices.length">
+          <p class="npc-empty">Le silence s'installe…</p>
+          <!-- Defensive fallback: if the backend ever returns an empty choice
+               list while the encounter isn't formally "ended" (e.g. every
+               choice was filtered out by an unmet requirement), still offer
+               a way out instead of a silent dead end. -->
+          <button class="es-btn es-btn--frost es-btn--lg" :disabled="isLoading" @click="emit('continue')">
+            Se retirer du seuil →
+          </button>
+        </template>
       </div>
 
       <!-- Ended -->
