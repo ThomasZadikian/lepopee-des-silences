@@ -35,15 +35,18 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
         // already validated for player-side actors.
         ConsumeResources(actor, skill);
 
-        // Gates AppliesToActor status effects (e.g. a self-buff on hit): only a
-        // Damage skill can actually miss, so every other effect type "connects"
-        // unconditionally.
+        // Gates AppliesToActor status effects (e.g. a self-buff on hit) and, per-target,
+        // which targets actually receive a Damage skill's attached status effects (DoT,
+        // debuff...): only a Damage skill can actually miss, so every other effect type
+        // "connects" unconditionally (hitTargetIds stays null — no per-target gating).
         var attackLanded = true;
+        HashSet<Guid>? hitTargetIds = null;
 
         switch (ResolveEffectType(skill))
         {
             case "Damage":
-                attackLanded = ResolveDamage(combat, actor, skill, targets, logEntries);
+                hitTargetIds = ResolveDamage(combat, actor, skill, targets, logEntries);
+                attackLanded = hitTargetIds.Count > 0;
                 break;
 
             case "Guard":
@@ -82,7 +85,7 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
         }
 
         // Apply the durable status(es) (poison/regen/buff/control) on top, if declared.
-        ApplySkillStatus(combat, actor, skill, targets, logEntries, attackLanded);
+        ApplySkillStatus(combat, actor, skill, targets, logEntries, attackLanded, hitTargetIds);
         return new CombatSkillEffectResolution(logEntries, combat);
     }
 
@@ -214,7 +217,8 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
         CombatantSkill skill,
         IReadOnlyCollection<Combatant> targets,
         List<CombatLogEntryDto> logEntries,
-        bool attackLanded)
+        bool attackLanded,
+        IReadOnlySet<Guid>? hitTargetIds)
     {
         if (skill.StatusEffects.Count == 0)
             return;
@@ -241,6 +245,13 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
         foreach (var target in targets)
         {
             if (target.IsDefeated)
+                continue;
+
+            // A Damage skill that also carries a DoT/debuff must actually connect with
+            // THIS target before that status effect takes hold — a missed hit shouldn't
+            // still poison. Non-Damage skills (pure status effects) have no miss roll,
+            // so hitTargetIds is null there and every target is affected as before.
+            if (hitTargetIds is not null && !hitTargetIds.Contains(target.Id.Value))
                 continue;
 
             foreach (var spec in skill.StatusEffects.Where(s => !s.AppliesToActor))
@@ -296,8 +307,8 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
             isPermanent: spec.IsPermanent));
     }
 
-    /// <returns>True if at least one target was actually struck (not missed).</returns>
-    private bool ResolveDamage(
+    /// <returns>The ids of every target actually struck (not missed) by this skill.</returns>
+    private HashSet<Guid> ResolveDamage(
         Combat combat,
         Combatant actor,
         CombatantSkill skill,
@@ -311,7 +322,7 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
             CriticalHitCalibration.MaxCritChance,
             CriticalHitCalibration.CritChanceFromFocus(actor.EffectiveFocus) + actor.EffectiveCriticalChanceBonusPercent / 100.0);
         var staggers = IsStaggerSkill(skill);
-        var anyHit = false;
+        var hitTargetIds = new HashSet<Guid>();
 
         foreach (var target in targets)
         {
@@ -329,7 +340,7 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
                 continue;
             }
 
-            anyHit = true;
+            hitTargetIds.Add(target.Id.Value);
 
             var defenderProfile = _typeProfileProvider.Resolve(target);
             var critRoll = DeterministicCombatRoll.UnitInterval(BuildCritSeed(combat, actor, target, skill));
@@ -442,7 +453,7 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
             }
         }
 
-        return anyHit;
+        return hitTargetIds;
     }
 
     // Equipment-driven typed damage reduction (e.g. Craie créatrice: -15% Mémoire),

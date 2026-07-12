@@ -388,6 +388,104 @@ public sealed class CombatSkillEffectResolverTests
     }
 
     [Fact]
+    public void Resolve_ShouldNotApplyTargetStatusEffect_WhenTheAttackMisses()
+    {
+        // Regression: a Damage skill carrying a target-side status effect (DoT/debuff)
+        // used to apply that status unconditionally, even on a target the attack roll
+        // itself reported as missed. Same non-deterministic-but-invariant approach as
+        // Resolve_ShouldGrantAppliesToActorEffect_OnlyWhenTheAttackActuallyLands above.
+        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+        var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 100);
+        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
+        var skill = CombatantSkill.Create(
+            "canon.skill.plume", "Plume empoisonnée", "Damage", "SingleEnemy", "Damage",
+            manaCost: 0, chargeCost: 0, basePower: 10,
+            statusEffects: new[]
+            {
+                new SkillStatusEffectSpec(
+                    "poison", "Poison", StatusEffectKind.DamageOverTime,
+                    Magnitude: 10, DurationTicks: 5000, TickInterval: 1400)
+            });
+
+        var result = _resolver.Resolve(combat, ally, skill, [enemy]);
+
+        var missed = result.LogEntries.Any(e => e.Type == "AttackMissed");
+        if (missed)
+        {
+            enemy.StatusEffects.Should().BeEmpty(because: "a missed attack must not still poison the target.");
+        }
+        else
+        {
+            enemy.StatusEffects.Should().ContainSingle(e => e.Key == "poison");
+        }
+    }
+
+    [Fact]
+    public void Resolve_ShouldApplyTargetStatusEffect_OnlyOnTargetsActuallyHit_WithMultipleTargets()
+    {
+        // Two targets, deterministically different hit outcomes are possible per-target
+        // (the hit roll is seeded per actor/target/skill) — whichever targets are hit
+        // must be exactly the ones carrying the status effect afterwards, never more.
+        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+        var enemyA = Combatant.CreateEnemy("enemy.sentinel-a", "Sentinel A", "Guard", 100);
+        var enemyB = Combatant.CreateEnemy("enemy.sentinel-b", "Sentinel B", "Guard", 100);
+        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemyA, enemyB]);
+        var skill = CombatantSkill.Create(
+            "canon.skill.plume-aoe", "Plume empoisonnée (zone)", "Damage", "AllEnemies", "Damage",
+            manaCost: 0, chargeCost: 0, basePower: 10,
+            statusEffects: new[]
+            {
+                new SkillStatusEffectSpec(
+                    "poison", "Poison", StatusEffectKind.DamageOverTime,
+                    Magnitude: 10, DurationTicks: 5000, TickInterval: 1400)
+            });
+
+        var result = _resolver.Resolve(combat, ally, skill, [enemyA, enemyB]);
+
+        var missedTargetIds = result.LogEntries
+            .Where(e => e.Type == "AttackMissed")
+            .SelectMany(e => e.TargetIds)
+            .ToHashSet();
+
+        foreach (var enemy in new[] { enemyA, enemyB })
+        {
+            if (missedTargetIds.Contains(enemy.Id.Value))
+            {
+                enemy.StatusEffects.Should().BeEmpty(because: $"{enemy.DisplayName} was missed and must not be poisoned.");
+            }
+            else
+            {
+                enemy.StatusEffects.Should().ContainSingle(e => e.Key == "poison");
+            }
+        }
+    }
+
+    [Fact]
+    public void Resolve_ShouldApplyTargetStatusEffect_WhenSkillHasNoInstantEffect_RegardlessOfHitRoll()
+    {
+        // A pure status-only skill (no Damage instant effect) has no hit/miss roll at
+        // all — hitTargetIds stays null and every target is affected, same as before
+        // this fix.
+        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+        var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 100);
+        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
+        var skill = CombatantSkill.Create(
+            "canon.skill.plume", "Plume empoisonnée", "Debuff", "SingleEnemy", "Debuff",
+            manaCost: 0, chargeCost: 0, basePower: 0,
+            statusEffects: new[]
+            {
+                new SkillStatusEffectSpec(
+                    "poison", "Poison", StatusEffectKind.DamageOverTime,
+                    Magnitude: 10, DurationTicks: 5000, TickInterval: 1400)
+            });
+
+        var result = _resolver.Resolve(combat, ally, skill, [enemy]);
+
+        result.LogEntries.Should().NotContain(e => e.Type == "AttackMissed");
+        enemy.StatusEffects.Should().ContainSingle(e => e.Key == "poison");
+    }
+
+    [Fact]
     public void Resolve_ShouldBoostDamage_WhenSkillIsMagicCategory_AndActorHasMagicDamageBonus()
     {
         var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
