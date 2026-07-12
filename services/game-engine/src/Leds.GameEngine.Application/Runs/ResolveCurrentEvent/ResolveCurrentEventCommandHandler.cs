@@ -473,9 +473,12 @@ public sealed class ResolveCurrentEventCommandHandler
             // Disambiguate multiple effects on the same skill (e.g. HealOverTime + GuardOverTime
             // both from "Construction perpétuelle") — a shared key would make the second
             // Reinforce() the first as if it were the same status instead of a distinct one.
+            // DisplayName stays the skill's own name (not the internal Key, which is a raw
+            // catalog key like "canon.skill.regard-infantile:StatModifier" and would otherwise
+            // leak straight into player-facing combat log lines).
             var key = string.IsNullOrWhiteSpace(effect.StatusKey) ? $"{d.Key}:{effect.Kind}" : effect.StatusKey;
             specs.Add(new SkillStatusEffectSpec(
-                Key: key, DisplayName: key, Kind: kind,
+                Key: key, DisplayName: d.DisplayName, Kind: kind,
                 Magnitude: effect.Magnitude, DurationTicks: effect.DurationTicks,
                 TickInterval: effect.TickInterval, Stat: stat, EmotionalType: null, Stacks: 1,
                 MagnitudeIsPercentOfMax: effect.MagnitudeIsPercentOfMax,

@@ -76,6 +76,8 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
         var effectiveDefense = EffectiveStat("Defense", mainCharacter.Stats.Defense);
         var effectiveSpeed = EffectiveStat("Speed", mainCharacter.Stats.Speed);
         var effectiveFocus = EffectiveStat("Focus", mainCharacter.Stats.Focus);
+        var effectiveMana = EffectiveStat("Mana", mainCharacter.Stats.Mana);
+        var effectiveCharge = EffectiveStat("Charge", mainCharacter.Stats.Charge);
         var effectiveRunItemCapacity = EffectiveStat("RunItemCapacity", Run.DefaultRunItemCapacity);
 
         var typedDamageReductions = equipmentEffects
@@ -198,6 +200,8 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
             defense: effectiveDefense,
             speed: effectiveSpeed,
             focus: effectiveFocus,
+            mana: effectiveMana,
+            charge: effectiveCharge,
             playerSkills: playerSkills,
             runItemCapacity: effectiveRunItemCapacity,
             typedDamageReductions: typedDamageReductions,

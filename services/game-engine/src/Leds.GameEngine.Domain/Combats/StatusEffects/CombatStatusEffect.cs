@@ -55,8 +55,9 @@ public sealed class CombatStatusEffect
     public int TickInterval { get; }
     public int NextTickAtTick { get; private set; }
     public int ExpiresAtTick { get; private set; }
-    /// <summary>When true (HealOverTime only), Magnitude is a percentage of the target's
-    /// MaxVitality rather than a flat amount — see <see cref="ConsumeDueTicks"/>.</summary>
+    /// <summary>When true (any periodic kind — HealOverTime, or DamageOverTime for a
+    /// max-HP-scaled curse like "Une destinée cruelle"), Magnitude is a percentage of the
+    /// target's MaxVitality rather than a flat amount — see <see cref="ConsumeDueTicks"/>.</summary>
     public bool IsMagnitudePercentOfMax { get; }
 
     /// <summary>When true (StatModifier only), Magnitude is a percentage of the target's

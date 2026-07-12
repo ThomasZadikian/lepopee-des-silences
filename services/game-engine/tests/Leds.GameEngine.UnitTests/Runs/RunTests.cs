@@ -46,6 +46,25 @@ public sealed class RunTests
     }
 
     [Fact]
+    public void StartNew_ShouldSeedPlayerStateManaAndCharge_FromArguments()
+    {
+        var initialRoom = TestGameEngineFactory.CreateThresholdRoom();
+
+        var run = Run.StartNew(
+            Guid.NewGuid(),
+            "seed-mana",
+            "gen-0.4.0",
+            "markov-0.2.0",
+            initialRoom,
+            DateTimeOffset.UtcNow,
+            mana: 25,
+            charge: 3);
+
+        run.PlayerState!.Mana.Should().Be(25);
+        run.PlayerState!.Charge.Should().Be(3);
+    }
+
+    [Fact]
     public void RoomCreate_ShouldThrow_WhenRoomDoesNotContainAtLeastTwoNodes()
     {
         var roomType = RoomType.Threshold;

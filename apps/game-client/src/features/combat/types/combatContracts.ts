@@ -2,7 +2,11 @@ export type CombatantStatus = 'Active' | 'Defeated';
 
 export type CombatSide = 'Player' | 'Enemy';
 
-export type SkillType = 'Damage' | 'Guard' | 'Weaken' | 'Disrupt';
+export type SkillType =
+  | 'Damage' | 'Guard' | 'Heal' | 'Buff' | 'Debuff' | 'Status'
+  | 'CopySkills' | 'ExtendDotDuration'
+  // Legacy/unused values — no seeded skill produces them today, kept for safety.
+  | 'Weaken' | 'Disrupt';
 
 export type EmotionalType =
   | 'Neutral' | 'Effroi' | 'Deni' | 'Melancolie' | 'Rupture' | 'Memoire' | 'Silence' | 'Folie';

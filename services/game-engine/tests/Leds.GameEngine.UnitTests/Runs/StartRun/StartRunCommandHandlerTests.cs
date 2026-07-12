@@ -128,6 +128,82 @@ public sealed class StartRunCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_ShouldSeedPlayerStateManaAndCharge_FromCharacterStats()
+    {
+        // Regression test: Run.StartNew used to hardcode PlayerState's starting
+        // Mana/Charge at 0 regardless of the character's actual Mana/Charge stat —
+        // silently discarding any stat points invested via SpendStatPointCommand.
+        var playerId = Guid.NewGuid();
+        var now = new DateTimeOffset(2026, 5, 30, 12, 0, 0, TimeSpan.Zero);
+
+        var initialRoom = TestGameEngineFactory.CreateThresholdRoom();
+
+        var generator = new Mock<IRunGenerator>();
+        generator.SetupGet(service => service.GeneratorVersion).Returns("gen-0.1.0");
+        generator.SetupGet(service => service.MarkovMatrixVersion).Returns("markov-0.1.0");
+        generator.Setup(service => service.GenerateSeed()).Returns("seed-test-mana");
+        generator.Setup(service => service.GenerateInitialRoomAsync("seed-test-mana", CancellationToken.None)).ReturnsAsync(initialRoom);
+
+        var repository = new Mock<IRunRepository>();
+
+        var playerGateway = new Mock<IPlayerRunSnapshotGateway>();
+        playerGateway
+            .Setup(g => g.GetRunSnapshotAsync(playerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new PlayerRunSnapshot(
+                playerId,
+                "Test Player",
+                [new PlayerRunSnapshotCharacter(
+                    Guid.NewGuid(),
+                    "character.player.self",
+                    "Le Porteur",
+                    Stats: new PlayerRunSnapshotCharacterStats(
+                        MaxVitality: 100,
+                        AttackPower: 12,
+                        Defense: 6,
+                        StartingGuard: 0,
+                        Speed: 10,
+                        Initiative: 10,
+                        Recovery: 5,
+                        Focus: 0,
+                        Mana: 30,
+                        Charge: 4),
+                    Skills:
+                    [
+                        new PlayerRunSnapshotCharacterSkill(
+                            SkillDefinitionKey: "skill.basic.strike",
+                            DisplayName: "Frappe",
+                            SkillType: "Damage",
+                            TargetingMode: "SingleEnemy",
+                            EffectType: "Damage",
+                            ManaCost: 0,
+                            ChargeCost: 0,
+                            BasePower: 10)
+                    ])]));
+
+        var clock = new Mock<IClock>();
+        clock.SetupGet(service => service.UtcNow).Returns(now);
+
+        var catalogGateway = new Mock<ICatalogContentGateway>();
+
+        var handler = new StartRunCommandHandler(
+            generator.Object,
+            repository.Object,
+            playerGateway.Object,
+            catalogGateway.Object,
+            clock.Object);
+
+        await handler.Handle(
+            new StartRunCommand(playerId),
+            CancellationToken.None);
+
+        var capturedRun = (Run)repository.Invocations
+            .Single(i => i.Method.Name == nameof(IRunRepository.AddAsync)).Arguments[0];
+
+        capturedRun.PlayerState!.Mana.Should().Be(30);
+        capturedRun.PlayerState!.Charge.Should().Be(4);
+    }
+
+    [Fact]
     public async Task Handle_ShouldApplyEquippedItemStatBonusesAndGrantedSkill()
     {
         var playerId = Guid.NewGuid();

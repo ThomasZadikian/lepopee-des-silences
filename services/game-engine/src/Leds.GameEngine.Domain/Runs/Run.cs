@@ -345,6 +345,8 @@ public sealed class Run
         int speed = 10,
         IReadOnlyCollection<PlayerRuntimeSkill>? playerSkills = null,
         int focus = 0,
+        int mana = 0,
+        int charge = 0,
         int runItemCapacity = DefaultRunItemCapacity,
         IReadOnlyDictionary<string, int>? typedDamageReductions = null,
         int hitChanceBonusPercent = 0,
@@ -459,7 +461,9 @@ public sealed class Run
         run.PlayerState = PlayerRuntimeState.Create(
             maxVitality: maxHp,
             skills: playerSkills ?? CreateDefaultPlayerSkills(),
-            currentVitality: currentHp);
+            currentVitality: currentHp,
+            mana: mana,
+            charge: charge);
 
         run._roomSnapshot = run.CreateSnapshot();
 
