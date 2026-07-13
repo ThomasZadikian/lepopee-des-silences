@@ -50,6 +50,7 @@ public static class CombatPersistenceMapper
             Guard = combatant.Guard,
             BaseGuard = combatant.BaseGuard,
             Mana = combatant.Mana,
+            MaxMana = combatant.MaxMana,
             Charge = combatant.Charge,
             Status = combatant.Status.ToString(),
             AttackTypeOverride = combatant.AttackTypeOverride.HasValue ? (int)combatant.AttackTypeOverride.Value : null,
@@ -61,6 +62,7 @@ public static class CombatPersistenceMapper
             MagicDamageBonusPercent = combatant.MagicDamageBonusPercent,
             MagicDamageReductionPercent = combatant.MagicDamageReductionPercent,
             CriticalChanceBonusPercent = combatant.CriticalChanceBonusPercent,
+            HealingBonusPercent = combatant.HealingBonusPercent,
             StatusEffectsJson = SerializeStatusEffects(combatant.StatusEffects),
             // PermanentSkills, not Skills — Skills also includes anything temporarily
             // granted by a SkillGrant status effect (e.g. "Création"), which must NOT
@@ -214,6 +216,7 @@ public static class CombatPersistenceMapper
             CurrentGuard = state.CurrentGuard,
             CurrentFocus = state.CurrentFocus,
             CurrentMana = state.CurrentMana,
+            MaxMana = state.MaxMana,
             CurrentCharge = state.CurrentCharge,
             AtbGaugeValue = state.AtbGaugeValue,
             ActionRecoveryUntilTick = state.ActionRecoveryUntilTick,
@@ -314,6 +317,7 @@ public static class CombatPersistenceMapper
             entity.Skills.Select(ToDomain).ToList(),
             baseStatSnapshot: baseStatSnapshot,
             runtimeState: runtimeState,
+            maxMana: entity.MaxMana,
             attackTypeOverride: entity.AttackTypeOverride.HasValue ? (EmotionalType)entity.AttackTypeOverride.Value : null,
             typedDamageReductionPercent: DeserializeTypedDamageReductions(entity.TypedDamageReductionsJson),
             hitChanceBonusPercent: entity.HitChanceBonusPercent,
@@ -322,7 +326,8 @@ public static class CombatPersistenceMapper
             magicDamageBonusPercent: entity.MagicDamageBonusPercent,
             magicDamageReductionPercent: entity.MagicDamageReductionPercent,
             criticalChanceBonusPercent: entity.CriticalChanceBonusPercent,
-            dotDamageBonusPercent: entity.DotDamageBonusPercent);
+            dotDamageBonusPercent: entity.DotDamageBonusPercent,
+            healingBonusPercent: entity.HealingBonusPercent);
         foreach (var effect in DeserializeStatusEffects(entity.StatusEffectsJson))
             combatant.RehydrateStatusEffect(effect);
 
@@ -364,7 +369,8 @@ public static class CombatPersistenceMapper
             entity.LastAttackerId,
             entity.AtbTempoRoomFactorPerMille,
             entity.AtbTempoCombatantFactorPerMille,
-            entity.TempoMomentumPerMille);
+            entity.TempoMomentumPerMille,
+            maxMana: entity.MaxMana);
     }
 
     public static CombatantSkill ToDomain(CombatantSkillEntity entity)

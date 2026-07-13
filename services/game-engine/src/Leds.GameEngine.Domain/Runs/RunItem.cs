@@ -48,7 +48,7 @@ public sealed class RunItem
         EffectAmount = effectAmount;
         EffectSetKey = effectSetKey;
         EffectSummary = effectSummary;
-        IsUsableInCombat = isUsableInCombat ?? (effectType is RunItemEffectType.Heal or RunItemEffectType.ManaRestore or RunItemEffectType.ChargeRestore);
+        IsUsableInCombat = isUsableInCombat ?? (effectType is RunItemEffectType.Heal or RunItemEffectType.ManaRestore or RunItemEffectType.ChargeRestore or RunItemEffectType.HealAndManaRestorePercent);
         IsUsableOutsideCombat = isUsableOutsideCombat ?? true;
         SourceRewardOptionId = sourceRewardOptionId;
         CreatedAtUtc = createdAtUtc;
@@ -212,7 +212,8 @@ public sealed class RunItem
     public bool IsBattleItem => EffectType is
       RunItemEffectType.Heal
       or RunItemEffectType.ManaRestore
-      or RunItemEffectType.ChargeRestore;
+      or RunItemEffectType.ChargeRestore
+      or RunItemEffectType.HealAndManaRestorePercent;
 
     public string BattleTargetingType => EffectType == RunItemEffectType.Heal
         ? "SingleAlly"

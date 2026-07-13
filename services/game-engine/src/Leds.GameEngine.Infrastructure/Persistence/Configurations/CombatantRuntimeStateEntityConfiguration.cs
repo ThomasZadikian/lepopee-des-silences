@@ -18,6 +18,7 @@ public sealed class CombatantRuntimeStateEntityConfiguration : IEntityTypeConfig
         builder.Property(e => e.CurrentGuard).HasColumnName("current_guard").IsRequired();
         builder.Property(e => e.CurrentFocus).HasColumnName("current_focus").IsRequired();
         builder.Property(e => e.CurrentMana).HasColumnName("current_mana").IsRequired();
+        builder.Property(e => e.MaxMana).HasColumnName("max_mana").HasDefaultValue(int.MaxValue).IsRequired();
         builder.Property(e => e.CurrentCharge).HasColumnName("current_charge").IsRequired();
         builder.Property(e => e.AtbGaugeValue).HasColumnName("atb_gauge_value");
         builder.Property(e => e.ActionRecoveryUntilTick).HasColumnName("action_recovery_until_tick");

@@ -132,7 +132,8 @@ public sealed class Run
         bool lawDenialEnabled = false,
         int? lawDenialLastUsedRoomIndex = null,
         int reputationGainBonusPercent = 0,
-        bool himLitProtectionEnabled = false)
+        bool himLitProtectionEnabled = false,
+        int healingBonusPercent = 0)
     {
         Id = id;
         PlayerId = playerId;
@@ -166,6 +167,7 @@ public sealed class Run
         LawDenialLastUsedRoomIndex = lawDenialLastUsedRoomIndex;
         ReputationGainBonusPercent = reputationGainBonusPercent;
         HimLitProtectionEnabled = himLitProtectionEnabled;
+        HealingBonusPercent = healingBonusPercent;
 
         _rooms.Add(initialRoom);
     }
@@ -259,19 +261,70 @@ public sealed class Run
             _npcRelationships[npcKey] = relationship;
         }
 
-        relationship.AdjustScore(ScaleReputationGain(delta));
+        relationship.AdjustScore(ScaleReputationGain(delta, npcKey));
     }
 
     /// <summary>
-    /// Applies <see cref="ReputationGainBonusPercent"/> to a relationship-score delta.
-    /// Only ever scales UP a positive gain — penalties (negative deltas, e.g. transgressions)
-    /// pass through unchanged, so an item like Mina's "Peluche de Mina" never softens a
-    /// punishment, only amplifies a reward.
+    /// Threshold (on the OTHER npc's relationship score) above/below which a narrative
+    /// pair-modifier in <see cref="ScaleReputationGain"/> kicks in — reuses the same
+    /// "rare" tier value as every NpcOffering's rare-gift gate, for a consistent read on
+    /// "this other relationship is clearly established" either way.
     /// </summary>
-    public int ScaleReputationGain(int delta) =>
-        delta > 0 && ReputationGainBonusPercent > 0
-            ? (int)Math.Round(delta * (100 + ReputationGainBonusPercent) / 100.0)
-            : delta;
+    private const int NarrativePairAffinityThreshold = 250;
+
+    /// <summary>
+    /// Applies <see cref="ReputationGainBonusPercent"/> plus a handful of authored,
+    /// NPC-pair-specific modifiers to a relationship-score delta — social dynamics
+    /// between NPCs that indirectly color how easily the player can win one of them over:
+    /// <list type="bullet">
+    /// <item>Homoncule → Forgeron: his proudest creation being liked makes HIM warm to the
+    /// player faster (+20%, one-directional).</item>
+    /// <item>Homoncule &lt;-&gt; Enfant: they despise each other, so being close to one makes
+    /// the other harder to win over (-30%, mutual).</item>
+    /// <item>Iris: "juge à travers les yeux d'Ethan" — if Ethan has come to dislike the
+    /// player, Iris struggles to like them too (-30%).</item>
+    /// <item>Araran / Tovma / Mané: a mirrored trio — falling out with any one of the
+    /// three makes the other two harder to win over (-30% each).</item>
+    /// </list>
+    /// Only ever scales a POSITIVE gain (both the base bonus and these modifiers) —
+    /// penalties (negative deltas, e.g. transgressions) always pass through unchanged.
+    /// </summary>
+    public int ScaleReputationGain(int delta, string? targetNpcKey = null)
+    {
+        if (delta <= 0)
+        {
+            return delta;
+        }
+
+        var percent = ReputationGainBonusPercent;
+        percent += NarrativePairModifierPercent(targetNpcKey);
+
+        return percent == 0 ? delta : (int)Math.Round(delta * (100 + percent) / 100.0);
+    }
+
+    private int NarrativePairModifierPercent(string? targetNpcKey)
+    {
+        if (string.IsNullOrWhiteSpace(targetNpcKey))
+        {
+            return 0;
+        }
+
+        int OtherScore(string npcKey) => GetNpcRelationship(npcKey)?.RelationshipScore ?? 0;
+        bool Likes(string npcKey) => OtherScore(npcKey) >= NarrativePairAffinityThreshold;
+        bool Dislikes(string npcKey) => OtherScore(npcKey) < 0;
+
+        return targetNpcKey.ToLowerInvariant() switch
+        {
+            "npc.forgeron" => Likes("npc.homoncule") ? 20 : 0,
+            "npc.homoncule" => Likes("npc.enfant") ? -30 : 0,
+            "npc.enfant" => Likes("npc.homoncule") ? -30 : 0,
+            "npc.iris" => Dislikes("npc.ethan") ? -30 : 0,
+            "npc.araran" => Dislikes("npc.tovma") || Dislikes("npc.mane") ? -30 : 0,
+            "npc.tovma" => Dislikes("npc.araran") || Dislikes("npc.mane") ? -30 : 0,
+            "npc.mane" => Dislikes("npc.araran") || Dislikes("npc.tovma") ? -30 : 0,
+            _ => 0
+        };
+    }
 
     /// <summary>Rehydration hook for persistence (Wave 5).</summary>
     public void RehydrateNpcRelationship(NpcRelationship relationship)
@@ -373,6 +426,13 @@ public sealed class Run
     /// </summary>
     public bool HimLitProtectionEnabled { get; }
 
+    /// <summary>
+    /// Equipment-driven percentage points added to ALL healing effects (skills, items,
+    /// in and out of combat) — e.g. Majordome's legendary "La tasse du majordome": +15%.
+    /// Computed once at run start, immutable for the run's lifetime.
+    /// </summary>
+    public int HealingBonusPercent { get; }
+
     public DateTimeOffset StartedAt { get; }
 
     public DateTimeOffset? EndedAt { get; private set; }
@@ -426,6 +486,7 @@ public sealed class Run
         IReadOnlyCollection<PlayerRuntimeSkill>? playerSkills = null,
         int focus = 0,
         int mana = 0,
+        int? maxMana = null,
         int charge = 0,
         int runItemCapacity = DefaultRunItemCapacity,
         IReadOnlyDictionary<string, int>? typedDamageReductions = null,
@@ -440,7 +501,8 @@ public sealed class Run
         bool journalEnabled = false,
         bool lawDenialEnabled = false,
         int reputationGainBonusPercent = 0,
-        bool himLitProtectionEnabled = false)
+        bool himLitProtectionEnabled = false,
+        int healingBonusPercent = 0)
     {
         if (playerId == Guid.Empty)
         {
@@ -544,14 +606,16 @@ public sealed class Run
             journalEnabled: journalEnabled,
             lawDenialEnabled: lawDenialEnabled,
             reputationGainBonusPercent: reputationGainBonusPercent,
-            himLitProtectionEnabled: himLitProtectionEnabled);
+            himLitProtectionEnabled: himLitProtectionEnabled,
+            healingBonusPercent: healingBonusPercent);
 
         run.PlayerState = PlayerRuntimeState.Create(
             maxVitality: maxHp,
             skills: playerSkills ?? CreateDefaultPlayerSkills(),
             currentVitality: currentHp,
             mana: mana,
-            charge: charge);
+            charge: charge,
+            maxMana: maxMana);
 
         run._roomSnapshot = run.CreateSnapshot();
 
@@ -1645,7 +1709,7 @@ public sealed class Run
         switch (item.EffectType)
         {
             case RunItemEffectType.Heal:
-                PlayerState.Heal(item.EffectAmount);
+                PlayerState.Heal(ApplyHealingBonus(item.EffectAmount, HealingBonusPercent));
                 CurrentHp = PlayerState.CurrentVitality;
                 break;
 
@@ -1659,6 +1723,21 @@ public sealed class Run
 
             case RunItemEffectType.ChargeRestore:
                 PlayerState.GainCharge(item.EffectAmount);
+                break;
+
+            case RunItemEffectType.HealAndManaRestorePercent:
+                var healAmount = ApplyHealingBonus(PercentOf(PlayerState.MaxVitality, item.EffectAmount), HealingBonusPercent);
+                if (healAmount > 0)
+                {
+                    PlayerState.Heal(healAmount);
+                    CurrentHp = PlayerState.CurrentVitality;
+                }
+
+                var manaAmount = PercentOf(PlayerState.MaxMana, item.EffectAmount);
+                if (manaAmount > 0)
+                {
+                    PlayerState.GainMana(manaAmount);
+                }
                 break;
 
             case RunItemEffectType.None:
@@ -1685,7 +1764,7 @@ public sealed class Run
         switch (item.EffectType)
         {
             case RunItemEffectType.Heal:
-                playerCombatant.ApplyHeal(item.EffectAmount);
+                playerCombatant.ApplyHeal(ApplyHealingBonus(item.EffectAmount, playerCombatant.EffectiveHealingBonusPercent));
                 break;
 
             case RunItemEffectType.Guard:
@@ -1699,8 +1778,35 @@ public sealed class Run
             case RunItemEffectType.ChargeRestore:
                 playerCombatant.GainCharge(item.EffectAmount);
                 break;
+
+            case RunItemEffectType.HealAndManaRestorePercent:
+                var healAmount = ApplyHealingBonus(
+                    PercentOf(playerCombatant.MaxVitality, item.EffectAmount),
+                    playerCombatant.EffectiveHealingBonusPercent);
+                if (healAmount > 0 && playerCombatant.CurrentVitality < playerCombatant.MaxVitality)
+                {
+                    playerCombatant.ApplyHeal(healAmount);
+                }
+
+                var manaAmount = PercentOf(playerCombatant.MaxMana, item.EffectAmount);
+                if (manaAmount > 0)
+                {
+                    playerCombatant.GainMana(manaAmount);
+                }
+                break;
         }
     }
+
+    /// <summary>Rounds <paramref name="value"/> * <paramref name="percent"/>% to the nearest int.</summary>
+    private static int PercentOf(int value, int percent) => (int)Math.Round(value * (percent / 100.0));
+
+    /// <summary>
+    /// Scales a heal amount by an equipment-driven healing bonus (e.g. La tasse du
+    /// majordome: +15%) — the run's own <see cref="HealingBonusPercent"/> for
+    /// out-of-combat heals, or a specific combatant's <c>EffectiveHealingBonusPercent</c>.
+    /// </summary>
+    private static int ApplyHealingBonus(int amount, int healingBonusPercent)
+        => (int)Math.Round(amount * (1.0 + healingBonusPercent / 100.0));
 
     // -----------------------------------------------------------------------
     // Rehydration (persistence restore)
@@ -1766,11 +1872,12 @@ public sealed class Run
         bool lawDenialEnabled = false,
         int? lawDenialLastUsedRoomIndex = null,
         int reputationGainBonusPercent = 0,
-        bool himLitProtectionEnabled = false)
+        bool himLitProtectionEnabled = false,
+        int healingBonusPercent = 0)
     {
         var firstRoom = rooms.First();
 
-        var run = new Run(id, playerId, seed, generatorVersion, markovMatrixVersion, status, firstRoom, startedAt, maxHp, currentHp, attack, defense, speed, focus, currentRoomIndex, activeCombatId, pendingRewardOfferId, runItemCapacity, typedDamageReductions, hitChanceBonusPercent, dotDurationReductionPercent, dotDamageReductionPercent, dotDamageBonusPercent, magicDamageBonusPercent, magicDamageReductionPercent, criticalChanceBonusPercent, guardBonusPercent, journalEnabled, lawDenialEnabled, lawDenialLastUsedRoomIndex, reputationGainBonusPercent, himLitProtectionEnabled);
+        var run = new Run(id, playerId, seed, generatorVersion, markovMatrixVersion, status, firstRoom, startedAt, maxHp, currentHp, attack, defense, speed, focus, currentRoomIndex, activeCombatId, pendingRewardOfferId, runItemCapacity, typedDamageReductions, hitChanceBonusPercent, dotDurationReductionPercent, dotDamageReductionPercent, dotDamageBonusPercent, magicDamageBonusPercent, magicDamageReductionPercent, criticalChanceBonusPercent, guardBonusPercent, journalEnabled, lawDenialEnabled, lawDenialLastUsedRoomIndex, reputationGainBonusPercent, himLitProtectionEnabled, healingBonusPercent);
         foreach (var room in rooms.Skip(1))
         {
             run._rooms.Add(room);

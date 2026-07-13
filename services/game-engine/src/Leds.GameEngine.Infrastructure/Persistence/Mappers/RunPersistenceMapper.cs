@@ -54,6 +54,7 @@ public static class RunPersistenceMapper
             LawDenialLastUsedRoomIndex = run.LawDenialLastUsedRoomIndex,
             ReputationGainBonusPercent = run.ReputationGainBonusPercent,
             HimLitProtectionEnabled = run.HimLitProtectionEnabled,
+            HealingBonusPercent = run.HealingBonusPercent,
             StartedAtUtc = run.StartedAt.UtcDateTime,
             EndedAtUtc = run.EndedAt?.UtcDateTime,
             SavedAtUtc = run.SavedAt?.UtcDateTime,
@@ -458,7 +459,8 @@ public static class RunPersistenceMapper
             lawDenialEnabled: entity.LawDenialEnabled,
             lawDenialLastUsedRoomIndex: entity.LawDenialLastUsedRoomIndex,
             reputationGainBonusPercent: entity.ReputationGainBonusPercent,
-            himLitProtectionEnabled: entity.HimLitProtectionEnabled);
+            himLitProtectionEnabled: entity.HimLitProtectionEnabled,
+            healingBonusPercent: entity.HealingBonusPercent);
 
         RehydrateNpcEncounters(run, entity);
         return run;

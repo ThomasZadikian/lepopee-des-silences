@@ -151,6 +151,12 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
                 && e.Amount is not null)
             .Sum(e => e.Amount!.Value);
 
+        // e.g. Majordome's legendary "La tasse du majordome": +15% to all healing effects.
+        var healingBonusPercent = equipmentEffects
+            .Where(e => string.Equals(e.Kind, "HealingBonusPercent", StringComparison.OrdinalIgnoreCase)
+                && e.Amount is not null)
+            .Sum(e => e.Amount!.Value);
+
         // e.g. Bague de Iris: +20% of whatever Guard the protagonist would otherwise
         // start combat with (Law/climate-derived — see CombatFactory's guardBonus).
         var guardBonusPercent = StatBonusPercent("Guard");
@@ -230,6 +236,7 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
             speed: effectiveSpeed,
             focus: effectiveFocus,
             mana: effectiveMana,
+            maxMana: effectiveMana,
             charge: effectiveCharge,
             playerSkills: playerSkills,
             runItemCapacity: effectiveRunItemCapacity,
@@ -245,7 +252,8 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
             journalEnabled: journalEnabled,
             lawDenialEnabled: lawDenialEnabled,
             reputationGainBonusPercent: reputationGainBonusPercent,
-            himLitProtectionEnabled: himLitProtectionEnabled);
+            himLitProtectionEnabled: himLitProtectionEnabled,
+            healingBonusPercent: healingBonusPercent);
 
         var characterSnapshots = snapshot.Characters
             .Select(c =>

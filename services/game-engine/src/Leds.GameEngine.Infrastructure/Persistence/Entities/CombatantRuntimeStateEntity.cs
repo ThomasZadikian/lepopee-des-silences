@@ -8,6 +8,7 @@ public sealed class CombatantRuntimeStateEntity
     public int CurrentGuard { get; set; }
     public int CurrentFocus { get; set; }
     public int CurrentMana { get; set; }
+    public int MaxMana { get; set; } = int.MaxValue;
     public int CurrentCharge { get; set; }
     public int? AtbGaugeValue { get; set; }
     public int? ActionRecoveryUntilTick { get; set; }

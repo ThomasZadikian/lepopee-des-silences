@@ -133,6 +133,14 @@ public sealed class UseItemInCombatCommandHandler
                     SkillKey: item.DefinitionKey,
                     TargetIds: [target.Id.Value]),
 
+                RunItemEffectType.HealAndManaRestorePercent => new CombatLogEntryDto(
+                    OccurredAtUtc: now.UtcDateTime,
+                    Type: "HealAndManaRestored",
+                    Message: $"{target.DisplayName} récupère {item.EffectAmount}% de ses PV et PP.",
+                    ActorId: playerCombatant.Id.Value,
+                    SkillKey: item.DefinitionKey,
+                    TargetIds: [target.Id.Value]),
+
                 _ => null
             };
 
@@ -205,7 +213,7 @@ public sealed class UseItemInCombatCommandHandler
             switch (item.EffectType)
             {
                 case RunItemEffectType.Heal:
-                    target.ApplyHeal(item.EffectAmount);
+                    target.ApplyHeal(ApplyHealingBonus(item.EffectAmount, target.EffectiveHealingBonusPercent));
                     break;
 
                 case RunItemEffectType.Guard:
@@ -219,9 +227,28 @@ public sealed class UseItemInCombatCommandHandler
                 case RunItemEffectType.ChargeRestore:
                     target.GainCharge(item.EffectAmount);
                     break;
+
+                case RunItemEffectType.HealAndManaRestorePercent:
+                    var healAmount = ApplyHealingBonus(
+                        (int)Math.Round(target.MaxVitality * (item.EffectAmount / 100.0)),
+                        target.EffectiveHealingBonusPercent);
+                    if (healAmount > 0 && target.CurrentVitality < target.MaxVitality)
+                    {
+                        target.ApplyHeal(healAmount);
+                    }
+
+                    var manaAmount = (int)Math.Round(target.MaxMana * (item.EffectAmount / 100.0));
+                    if (manaAmount > 0)
+                    {
+                        target.GainMana(manaAmount);
+                    }
+                    break;
             }
         }
     }
+
+    private static int ApplyHealingBonus(int amount, int healingBonusPercent)
+        => (int)Math.Round(amount * (1.0 + healingBonusPercent / 100.0));
 
     private static IReadOnlyCollection<CombatLogEntryDto> AdvanceCombat(
         Combat combat,

@@ -17,6 +17,7 @@ public sealed class PlayerRuntimeStateEntityConfiguration : IEntityTypeConfigura
         builder.Property(s => s.CurrentVitality).HasColumnName("current_vitality");
         builder.Property(s => s.Guard).HasColumnName("guard");
         builder.Property(s => s.Mana).HasColumnName("mana");
+        builder.Property(s => s.MaxMana).HasColumnName("max_mana").HasDefaultValue(int.MaxValue);
         builder.Property(s => s.Charge).HasColumnName("charge");
 
         builder.HasOne(s => s.Run)

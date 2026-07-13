@@ -36,6 +36,7 @@ function effectLabel(effectType: string, effectAmount: number): string {
     case 'ChargeRestore':     return `+${effectAmount} Charge`;
     case 'NextCombatGuard':   return `+${effectAmount} Garde (prochain combat)`;
     case 'NarrativeFragment': return 'Fragment narratif';
+    case 'HealAndManaRestorePercent': return `+${effectAmount}% PV et PP`;
     default:                  return '';
   }
 }
@@ -45,6 +46,7 @@ function effectTone(effectType: string): 'sap' | 'frost' | 'gold' | 'blood' | ''
     case 'Heal':
     case 'ManaRestore':
     case 'ChargeRestore':
+    case 'HealAndManaRestorePercent':
     case 'NextCombatGuard': return 'sap';
     case 'Guard':           return 'frost';
     case 'NarrativeFragment': return 'gold';

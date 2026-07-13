@@ -17,6 +17,7 @@ function effectLabel(item: CombatUsableItemDto): string {
     case 'Guard': return `+${item.effectAmount} Garde`;
     case 'ManaRestore': return `+${item.effectAmount} Mana`;
     case 'ChargeRestore': return `+${item.effectAmount} Charge`;
+    case 'HealAndManaRestorePercent': return `+${item.effectAmount}% PV et PP`;
     case 'Damage': return `−${item.effectAmount} PV`;
     default: return `${item.effectAmount}`;
   }

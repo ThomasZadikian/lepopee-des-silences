@@ -142,7 +142,7 @@ public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver
                 break;
 
             case "AdjustRelationship":
-                var appliedDelta = run.ScaleReputationGain(consequence.RelationshipDelta);
+                var appliedDelta = run.ScaleReputationGain(consequence.RelationshipDelta, npc.Key);
                 relationship.AdjustScore(appliedDelta);
                 if (appliedDelta != 0)
                 {

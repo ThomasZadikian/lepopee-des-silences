@@ -129,4 +129,66 @@ public sealed class PlayerRuntimeStateTests
 
         state.CurrentVitality.Should().Be(100);
     }
+
+    [Fact]
+    public void Create_ShouldDefaultMaxManaToUncapped_WhenNotSpecified()
+    {
+        var state = PlayerRuntimeState.Create(100, [CreateDefaultSkill()]);
+
+        state.MaxMana.Should().Be(int.MaxValue);
+
+        state.GainMana(1_000_000);
+
+        state.Mana.Should().Be(1_000_000);
+    }
+
+    [Fact]
+    public void Create_ShouldSetMaxMana_WhenSpecified()
+    {
+        var state = PlayerRuntimeState.Create(100, [CreateDefaultSkill()], mana: 20, maxMana: 20);
+
+        state.MaxMana.Should().Be(20);
+        state.Mana.Should().Be(20);
+    }
+
+    [Fact]
+    public void Create_ShouldThrow_WhenManaExceedsMaxMana()
+    {
+        var act = () => PlayerRuntimeState.Create(100, [CreateDefaultSkill()], mana: 30, maxMana: 20);
+
+        act.Should().Throw<DomainException>();
+    }
+
+    [Fact]
+    public void GainMana_ShouldClampToMaxMana()
+    {
+        var state = PlayerRuntimeState.Create(100, [CreateDefaultSkill()], mana: 15, maxMana: 20);
+
+        state.GainMana(10);
+
+        state.Mana.Should().Be(20);
+    }
+
+    [Fact]
+    public void Rehydrate_ShouldRestoreMaxMana()
+    {
+        var skill = CreateDefaultSkill();
+        var state = PlayerRuntimeState.Rehydrate(100, 75, 10, 15, 2, [skill], maxMana: 20);
+
+        state.MaxMana.Should().Be(20);
+
+        state.GainMana(10);
+
+        state.Mana.Should().Be(20);
+    }
+
+    [Fact]
+    public void SyncFromCombat_ShouldClampManaToMaxMana()
+    {
+        var state = PlayerRuntimeState.Create(100, [CreateDefaultSkill()], maxMana: 20);
+
+        state.SyncFromCombat(50, 0, 999, 0);
+
+        state.Mana.Should().Be(20);
+    }
 }

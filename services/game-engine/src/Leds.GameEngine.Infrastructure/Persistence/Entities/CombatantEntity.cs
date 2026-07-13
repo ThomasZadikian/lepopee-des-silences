@@ -13,6 +13,7 @@ public sealed class CombatantEntity
     public int Guard { get; set; }
     public int BaseGuard { get; set; }
     public int Mana { get; set; }
+    public int MaxMana { get; set; } = int.MaxValue;
     public int Charge { get; set; }
     public string Status { get; set; } = string.Empty;
 
@@ -50,6 +51,12 @@ public sealed class CombatantEntity
     public int MagicDamageBonusPercent { get; set; }
     public int MagicDamageReductionPercent { get; set; }
     public int CriticalChanceBonusPercent { get; set; }
+
+    /// <summary>
+    /// Equipment-driven percentage points added to all healing this combatant applies
+    /// (e.g. Majordome's legendary "La tasse du majordome": +15%).
+    /// </summary>
+    public int HealingBonusPercent { get; set; }
 
     /// <summary>
     /// Active durable status effects (poison/regen/buffs/control) serialized as JSON.

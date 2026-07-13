@@ -23,6 +23,7 @@ public sealed class CombatantEntityConfiguration : IEntityTypeConfiguration<Comb
         builder.Property(c => c.Guard).HasColumnName("guard");
         builder.Property(c => c.BaseGuard).HasColumnName("base_guard");
         builder.Property(c => c.Mana).HasColumnName("mana");
+        builder.Property(c => c.MaxMana).HasColumnName("max_mana").HasDefaultValue(int.MaxValue);
         builder.Property(c => c.Charge).HasColumnName("charge");
         builder.Property(c => c.Status).HasColumnName("status").HasMaxLength(32).IsRequired();
         builder.Property(c => c.AttackTypeOverride).HasColumnName("attack_type_override");
@@ -34,6 +35,7 @@ public sealed class CombatantEntityConfiguration : IEntityTypeConfiguration<Comb
         builder.Property(c => c.MagicDamageBonusPercent).HasColumnName("magic_damage_bonus_percent").HasDefaultValue(0);
         builder.Property(c => c.MagicDamageReductionPercent).HasColumnName("magic_damage_reduction_percent").HasDefaultValue(0);
         builder.Property(c => c.CriticalChanceBonusPercent).HasColumnName("critical_chance_bonus_percent").HasDefaultValue(0);
+        builder.Property(c => c.HealingBonusPercent).HasColumnName("healing_bonus_percent").HasDefaultValue(0);
         builder.Property(c => c.StatusEffectsJson).HasColumnName("status_effects_json");
 
         builder.HasOne(c => c.Combat)

@@ -14,6 +14,7 @@ public static class PlayerRuntimeStatePersistenceMapper
             CurrentVitality = state.CurrentVitality,
             Guard = state.Guard,
             Mana = state.Mana,
+            MaxMana = state.MaxMana,
             Charge = state.Charge,
             Skills = state.Skills.Select(s => ToEntity(s, runId)).ToList()
         };
@@ -45,7 +46,8 @@ public static class PlayerRuntimeStatePersistenceMapper
             entity.Guard,
             entity.Mana,
             entity.Charge,
-            entity.Skills.Select(ToDomain).ToList());
+            entity.Skills.Select(ToDomain).ToList(),
+            maxMana: entity.MaxMana);
     }
 
     public static PlayerRuntimeSkill ToDomain(PlayerRuntimeSkillEntity entity)

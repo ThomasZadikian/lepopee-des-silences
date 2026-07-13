@@ -68,6 +68,7 @@ public sealed class CatalogSeedRunner
         await SeedEcrivainAsync(cancellationToken);
         await SeedErikaAsync(cancellationToken);
         await SeedMinaAsync(cancellationToken);
+        await SeedEmotionsAsync(cancellationToken);
         await SeedCanonEnemiesAsync(cancellationToken);
         await SeedCanonSkillsAsync(cancellationToken);
         await SeedCanonItemsAsync(cancellationToken);
@@ -250,18 +251,45 @@ public sealed class CatalogSeedRunner
                 new NpcDialogueChoice("comprendre", "Hocher la tête", Array.Empty<DialogueRequirement>(),
                     new[] { C(ConsequenceKind.AdjustRelationship, rel: 1),
                             C(ConsequenceKind.Narrative, frag: "Quelque chose dans son regard s'apaise, à peine.") }, "seuil"),
+                new NpcDialogueChoice("don", "Lui demander s'il a quelque chose à offrir", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.Narrative, frag: "Il incline la tête, comme s'il attendait cette question depuis le début.") }, "don"),
                 new NpcDialogueChoice("partir", "S'éloigner", Array.Empty<DialogueRequirement>(),
                     new[] { C(ConsequenceKind.Narrative, frag: "Vous le laissez à son seuil.") }, null)
             });
 
-        var graph = new NpcDialogueGraph("npc.majordome.dialogue", "1.2", "seuil",
-            new Dictionary<string, NpcDialogueNode> { ["seuil"] = seuil, ["confidence"] = confidence });
+        var don = new NpcDialogueNode("don", "Le Majordome",
+            new[] { "« Le thé est toujours prêt pour ceux que je reconnais. » Il vous tend une tasse, sans un geste de trop." },
+            new[]
+            {
+                new NpcDialogueChoice("accepter-tasse-the", "Accepter une tasse de thé",
+                    new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 250) },
+                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.majordome.tasse-the") }, null),
+                new NpcDialogueChoice("accepter-tasse-majordome", "Accepter la tasse du majordome",
+                    new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) },
+                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.majordome.tasse-majordome") }, null),
+                new NpcDialogueChoice("don-decliner", "Remercier et repartir", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.Narrative, frag: "Il incline la tête. « À votre service. »") }, null)
+            });
 
-        // TODO(utilisateur) : liaison à une Room précise et offres concrètes non fournies
-        // à ce stade — ne pas inventer, compléter une fois le contenu reçu.
+        var graph = new NpcDialogueGraph("npc.majordome.dialogue", "1.3", "seuil",
+            new Dictionary<string, NpcDialogueNode> { ["seuil"] = seuil, ["confidence"] = confidence, ["don"] = don });
+
+        var offerings = new[]
+        {
+            // Tasse de thé (rare) : toujours resservie une fois le seuil de réputation atteint —
+            // répétable (IsMajor: false), pas de plafond de dons.
+            new NpcOffering("offer.majordome.tasse-the", NpcOfferingKind.Item, "canon.item.tasse-de-the", 1, false,
+                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 250) }),
+            new NpcOffering("offer.majordome.tasse-majordome", NpcOfferingKind.Item, "canon.item.tasse-du-majordome", 1, true,
+                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) })
+        };
+
+        // TODO(utilisateur) : liaison à une Room précise non fournie à ce stade — ne pas
+        // inventer, compléter une fois le contenu reçu.
         var n = await UpsertNpcAsync("npc.majordome", "Le Majordome",
-            "Une présence du seuil : il accueille, il sert, il veille. Et il n'oublie rien.", "1.2",
-            EmotionalRegister.Silence, true, persona, wounds, graph, ct);
+            "Une présence du seuil : il accueille, il sert, il veille. Et il n'oublie rien.", "1.3",
+            EmotionalRegister.Silence, true, persona, wounds, graph, ct,
+            offerings: offerings);
 
         n += await UpsertPoolAsync("pool.majordome.eau-benigne", "Eau du Majordome — bienveillante",
             "Ce que l'eau offre quand le seuil est respecté.", "1.0",
@@ -2837,6 +2865,16 @@ public sealed class CatalogSeedRunner
             "Un liquide rouge sombre, épais comme du sang. Il referme ce que le Palais a ouvert.",
             "Consumable", "Potion", "Common", "RunOnly", true, 25, cancellationToken,
             effectRunType: "Heal");
+
+        await UpsertItemAsync("canon.item.tasse-de-the", "Tasse de thé",
+            "Toujours chaude, quelle que soit l'heure — comme si le Majordome savait, avant vous, que vous en auriez besoin. Redonne 35% des PV et des PP maximum.",
+            "Consumable", "Potion", "Rare", "RunOnly", true, 35, cancellationToken,
+            effectRunType: "HealAndManaRestorePercent");
+
+        await UpsertItemAsync("canon.item.tasse-du-majordome", "La tasse du majordome",
+            "Sa propre tasse, qu'il ne prête jamais — sauf, une fois, à vous. La porter, c'est un peu apprendre de lui l'art de veiller sur autrui. Augmente les effets de soin de 15%.",
+            "Equipment", "Accessory", "Legendary", "Permanent", false, 0, cancellationToken,
+            equipmentEffects: new[] { new ItemEquipmentEffect(ItemEquipmentEffectKind.HealingBonusPercent, Amount: 15) });
 
         await UpsertItemAsync("canon.item.reve-erina", "Rêve d'Erina",
             "Un fragment de ce qu'elle imagine derrière chaque porte fermée. Tant qu'on le garde sur soi, on avance plus vite — comme elle.",

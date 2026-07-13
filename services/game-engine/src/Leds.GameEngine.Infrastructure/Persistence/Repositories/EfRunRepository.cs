@@ -397,6 +397,7 @@ public sealed class EfRunRepository : IRunRepository
             existingCombatant.CurrentVitality = incomingCombatant.CurrentVitality;
             existingCombatant.Guard = incomingCombatant.Guard;
             existingCombatant.Mana = incomingCombatant.Mana;
+            existingCombatant.MaxMana = incomingCombatant.MaxMana;
             existingCombatant.Charge = incomingCombatant.Charge;
             existingCombatant.Status = incomingCombatant.Status;
 
@@ -434,6 +435,7 @@ public sealed class EfRunRepository : IRunRepository
         existingRun.PlayerState.CurrentVitality = incoming.PlayerState.CurrentVitality;
         existingRun.PlayerState.Guard = incoming.PlayerState.Guard;
         existingRun.PlayerState.Mana = incoming.PlayerState.Mana;
+        existingRun.PlayerState.MaxMana = incoming.PlayerState.MaxMana;
         existingRun.PlayerState.Charge = incoming.PlayerState.Charge;
 
         existingRun.PlayerState.Skills.Clear();

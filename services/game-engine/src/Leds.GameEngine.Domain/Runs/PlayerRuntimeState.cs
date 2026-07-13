@@ -11,6 +11,7 @@ public sealed class PlayerRuntimeState
         int currentVitality,
         int guard,
         int mana,
+        int maxMana,
         int charge,
         IReadOnlyCollection<PlayerRuntimeSkill> skills)
     {
@@ -18,6 +19,7 @@ public sealed class PlayerRuntimeState
         CurrentVitality = currentVitality;
         Guard = guard;
         Mana = mana;
+        MaxMana = maxMana;
         Charge = charge;
         _skills = skills.ToList();
     }
@@ -26,6 +28,7 @@ public sealed class PlayerRuntimeState
     public int CurrentVitality { get; private set; }
     public int Guard { get; private set; }
     public int Mana { get; private set; }
+    public int MaxMana { get; }
     public int Charge { get; private set; }
     public IReadOnlyCollection<PlayerRuntimeSkill> Skills => _skills.AsReadOnly();
 
@@ -37,7 +40,8 @@ public sealed class PlayerRuntimeState
         int currentVitality = 0,
         int guard = 0,
         int mana = 0,
-        int charge = 0)
+        int charge = 0,
+        int? maxMana = null)
     {
         if (maxVitality <= 0)
             throw new DomainException("Max vitality must be greater than zero.");
@@ -50,7 +54,12 @@ public sealed class PlayerRuntimeState
         if (resolvedCurrentVitality > maxVitality)
             throw new DomainException("Current vitality cannot exceed max vitality.");
 
-        return new PlayerRuntimeState(maxVitality, resolvedCurrentVitality, guard, mana, charge, skills);
+        var resolvedMaxMana = maxMana ?? int.MaxValue;
+
+        if (mana > resolvedMaxMana)
+            throw new DomainException("Mana cannot exceed max mana.");
+
+        return new PlayerRuntimeState(maxVitality, resolvedCurrentVitality, guard, mana, resolvedMaxMana, charge, skills);
     }
 
     public void TakeDamage(int amount)
@@ -128,7 +137,7 @@ public sealed class PlayerRuntimeState
         if (amount < 0)
             throw new DomainException("Mana gain amount cannot be negative.");
 
-        Mana += amount;
+        Mana = Math.Min(MaxMana, Mana + amount);
     }
 
     public void SpendCharge(int amount)
@@ -154,7 +163,7 @@ public sealed class PlayerRuntimeState
     {
         CurrentVitality = Math.Max(0, Math.Min(MaxVitality, currentVitality));
         Guard = Math.Max(0, guard);
-        Mana = Math.Max(0, mana);
+        Mana = Math.Max(0, Math.Min(MaxMana, mana));
         Charge = Math.Max(0, charge);
     }
 
@@ -168,8 +177,9 @@ public sealed class PlayerRuntimeState
         int guard,
         int mana,
         int charge,
-        IReadOnlyCollection<PlayerRuntimeSkill> skills)
+        IReadOnlyCollection<PlayerRuntimeSkill> skills,
+        int maxMana = int.MaxValue)
     {
-        return new PlayerRuntimeState(maxVitality, currentVitality, guard, mana, charge, skills);
+        return new PlayerRuntimeState(maxVitality, currentVitality, guard, mana, maxMana, charge, skills);
     }
 }

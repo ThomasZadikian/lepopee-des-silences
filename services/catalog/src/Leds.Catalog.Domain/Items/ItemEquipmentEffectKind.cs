@@ -34,5 +34,8 @@ public enum ItemEquipmentEffectKind
     // Percentage points (Amount) added to the DAMAGE DEALT by DamageOverTime effects
     // the wearer applies to others (e.g. l'Écrivain's Plume d'écrivain: +5%). Distinct
     // from DotDamageReduction, which reduces incoming DoT damage taken.
-    DotDamageBonusPercent = 11
+    DotDamageBonusPercent = 11,
+    // Percentage points (Amount) added to ALL healing the wearer applies — skills and
+    // items, in and out of combat (e.g. Majordome's legendary "La tasse du majordome": +15%).
+    HealingBonusPercent = 12
 }

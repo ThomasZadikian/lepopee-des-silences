@@ -19,13 +19,15 @@ public sealed class CombatantRuntimeState
         Guid? lastAttackerId,
         int? atbTempoRoomFactorPerMille,
         int? atbTempoCombatantFactorPerMille,
-        int tempoMomentumPerMille)
+        int tempoMomentumPerMille,
+        int maxMana)
     {
         Id = id;
         CurrentVitality = currentVitality;
         CurrentGuard = currentGuard;
         CurrentFocus = currentFocus;
         CurrentMana = currentMana;
+        MaxMana = maxMana;
         CurrentCharge = currentCharge;
         AtbGaugeValue = atbGaugeValue;
         ActionRecoveryUntilTick = actionRecoveryUntilTick;
@@ -43,6 +45,7 @@ public sealed class CombatantRuntimeState
     public int CurrentGuard { get; private set; }
     public int CurrentFocus { get; private set; }
     public int CurrentMana { get; private set; }
+    public int MaxMana { get; }
     public int CurrentCharge { get; private set; }
     public int? AtbGaugeValue { get; private set; }
     public int? ActionRecoveryUntilTick { get; private set; }
@@ -91,7 +94,8 @@ public sealed class CombatantRuntimeState
         Guid? lastAttackerId = null,
         int? atbTempoRoomFactorPerMille = null,
         int? atbTempoCombatantFactorPerMille = null,
-        int tempoMomentumPerMille = 0)
+        int tempoMomentumPerMille = 0,
+        int? maxMana = null)
     {
         if (currentVitality < 0)
             throw new DomainException("Current vitality cannot be negative.");
@@ -108,6 +112,11 @@ public sealed class CombatantRuntimeState
         if (currentCharge < 0)
             throw new DomainException("Current charge cannot be negative.");
 
+        var resolvedMaxMana = maxMana ?? int.MaxValue;
+
+        if (currentMana > resolvedMaxMana)
+            throw new DomainException("Current mana cannot exceed max mana.");
+
         return new CombatantRuntimeState(
             Guid.NewGuid(),
             currentVitality,
@@ -123,7 +132,8 @@ public sealed class CombatantRuntimeState
             lastAttackerId,
             atbTempoRoomFactorPerMille,
             atbTempoCombatantFactorPerMille,
-            tempoMomentumPerMille);
+            tempoMomentumPerMille,
+            resolvedMaxMana);
     }
 
     public void ApplyDamage(int amount)
@@ -203,7 +213,7 @@ public sealed class CombatantRuntimeState
         if (amount < 0)
             throw new DomainException("Mana gain amount cannot be negative.");
 
-        CurrentMana += amount;
+        CurrentMana = Math.Min(MaxMana, CurrentMana + amount);
         Touch();
     }
 
@@ -343,7 +353,8 @@ public sealed class CombatantRuntimeState
         Guid? lastAttackerId = null,
         int? atbTempoRoomFactorPerMille = null,
         int? atbTempoCombatantFactorPerMille = null,
-        int tempoMomentumPerMille = 0)
+        int tempoMomentumPerMille = 0,
+        int maxMana = int.MaxValue)
     {
         return new CombatantRuntimeState(
             id,
@@ -360,6 +371,7 @@ public sealed class CombatantRuntimeState
             lastAttackerId,
             atbTempoRoomFactorPerMille,
             atbTempoCombatantFactorPerMille,
-            tempoMomentumPerMille);
+            tempoMomentumPerMille,
+            maxMana);
     }
 }

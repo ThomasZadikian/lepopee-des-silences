@@ -28,6 +28,7 @@ function getEffectLabel(effectType: string, effectAmount: number): string {
     case 'Guard': return `+${effectAmount} Garde`;
     case 'ManaRestore': return `+${effectAmount} Mana`;
     case 'ChargeRestore': return `+${effectAmount} Charge`;
+    case 'HealAndManaRestorePercent': return `+${effectAmount}% PV et PP`;
     default: return `+${effectAmount}`;
   }
 }

@@ -169,6 +169,42 @@ public sealed class CombatantTests
     }
 
     [Fact]
+    public void GainMana_ShouldBeUncapped_WhenCreatedWithoutMaxMana()
+    {
+        var combatant = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+
+        combatant.GainMana(1_000_000);
+
+        combatant.Mana.Should().Be(1_000_000);
+    }
+
+    [Fact]
+    public void GainMana_ShouldClampToMaxMana_WhenSpecifiedAtCreation()
+    {
+        var combatant = Combatant.Create(
+            CombatantId.New(), "player.self", "Hero", CombatantSide.Player, "Fighter",
+            maxVitality: 100, currentVitality: 100, guard: 0, baseGuard: 0,
+            mana: 15, charge: 0, maxMana: 20);
+
+        combatant.MaxMana.Should().Be(20);
+
+        combatant.GainMana(10);
+
+        combatant.Mana.Should().Be(20);
+    }
+
+    [Fact]
+    public void Create_ShouldThrow_WhenManaExceedsMaxMana()
+    {
+        var act = () => Combatant.Create(
+            CombatantId.New(), "player.self", "Hero", CombatantSide.Player, "Fighter",
+            maxVitality: 100, currentVitality: 100, guard: 0, baseGuard: 0,
+            mana: 30, charge: 0, maxMana: 20);
+
+        act.Should().Throw<DomainException>().WithMessage("Combatant mana cannot exceed max mana.");
+    }
+
+    [Fact]
     public void MarkDefeated_ShouldSetStatusDefeated()
     {
         var combatant = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
@@ -355,6 +391,19 @@ public sealed class CombatantTests
         combatant.MagicDamageReductionPercent.Should().Be(5);
         combatant.EffectiveMagicDamageBonusPercent.Should().Be(10);
         combatant.EffectiveMagicDamageReductionPercent.Should().Be(5);
+    }
+
+    [Fact]
+    public void EffectiveHealingBonusPercent_ShouldEqualEquipmentValue_WhenNoStatusEffectIsActive()
+    {
+        var combatant = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+
+        combatant.ApplyEquipmentCombatModifiers(
+            hitChanceBonusPercent: 0, dotDurationReductionPercent: 0, dotDamageReductionPercent: 0,
+            healingBonusPercent: 15);
+
+        combatant.HealingBonusPercent.Should().Be(15);
+        combatant.EffectiveHealingBonusPercent.Should().Be(15);
     }
 
     [Fact]

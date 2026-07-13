@@ -40,6 +40,7 @@ public sealed class RunEntityConfiguration : IEntityTypeConfiguration<RunEntity>
         builder.Property(run => run.CriticalChanceBonusPercent).HasColumnName("critical_chance_bonus_percent").HasDefaultValue(0);
         builder.Property(run => run.GuardBonusPercent).HasColumnName("guard_bonus_percent").HasDefaultValue(0);
         builder.Property(run => run.ReputationGainBonusPercent).HasColumnName("reputation_gain_bonus_percent").HasDefaultValue(0);
+        builder.Property(run => run.HealingBonusPercent).HasColumnName("healing_bonus_percent").HasDefaultValue(0);
         builder.Property(run => run.StartedAtUtc).HasColumnName("started_at_utc");
         builder.Property(run => run.EndedAtUtc).HasColumnName("ended_at_utc");
         builder.Property(run => run.SavedAtUtc).HasColumnName("saved_at_utc");

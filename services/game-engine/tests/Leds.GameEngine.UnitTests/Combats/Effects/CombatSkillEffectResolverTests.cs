@@ -253,6 +253,22 @@ public sealed class CombatSkillEffectResolverTests
     }
 
     [Fact]
+    public void Resolve_ShouldScaleHealByActorEffectiveHealingBonusPercent()
+    {
+        var (combat, ally, _) = CreateCombat();
+        ally.ApplyDamage(50);
+        ally.ApplyEquipmentCombatModifiers(
+            hitChanceBonusPercent: 0, dotDurationReductionPercent: 0, dotDamageReductionPercent: 0,
+            healingBonusPercent: 15);
+        var skill = CreateSkill("skill.heal", "Heal", 20);
+
+        _resolver.Resolve(combat, ally, skill, [ally]);
+
+        // 20 base heal * 1.15 = 23 (rounded).
+        ally.CurrentVitality.Should().Be(50 + 23);
+    }
+
+    [Fact]
     public void Resolve_ShouldGrantActorTargetsSkills_WhenEffectTypeIsCopySkills()
     {
         var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);

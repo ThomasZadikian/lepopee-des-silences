@@ -145,4 +145,50 @@ public sealed class RunUseItemTests
 
         run.PlayerState.Mana.Should().Be(manaBefore + 20);
     }
+
+    // ── Tasse de thé (Majordome) : soin + mana en % du max ────────────────────
+
+    [Fact]
+    public void UseItem_ShouldHealAndRestoreManaByPercent_WhenEffectIsHealAndManaRestorePercent()
+    {
+        var room = TestGameEngineFactory.CreateThresholdRoom();
+        var run = Run.StartNew(
+            Guid.NewGuid(), "seed-tea", "gen-test", "markov-test", room, DateTimeOffset.UtcNow,
+            maxHp: 40, currentHp: 20, mana: 10, maxMana: 20);
+        var tea = RunItem.Create(
+            "item.tasse-de-the.v1", "Tasse de thé", "",
+            RunItemType.Consumable, RunItemRarity.Rare,
+            quantity: 1,
+            effectType: RunItemEffectType.HealAndManaRestorePercent,
+            effectAmount: 35);
+        run.AddRunItem(tea);
+
+        run.UseItem(tea.Id);
+
+        run.PlayerState.CurrentVitality.Should().Be(20 + 14); // 35% of 40 max HP
+        run.PlayerState.Mana.Should().Be(10 + 7); // 35% of 20 max mana
+    }
+
+    [Fact]
+    public void UseItem_ShouldScaleHealPortion_ByHealingBonusPercent()
+    {
+        var room = TestGameEngineFactory.CreateThresholdRoom();
+        var run = Run.StartNew(
+            Guid.NewGuid(), "seed-tea-bonus", "gen-test", "markov-test", room, DateTimeOffset.UtcNow,
+            maxHp: 40, currentHp: 20, mana: 10, maxMana: 20, healingBonusPercent: 15);
+        var tea = RunItem.Create(
+            "item.tasse-de-the.v1", "Tasse de thé", "",
+            RunItemType.Consumable, RunItemRarity.Rare,
+            quantity: 1,
+            effectType: RunItemEffectType.HealAndManaRestorePercent,
+            effectAmount: 35);
+        run.AddRunItem(tea);
+
+        run.UseItem(tea.Id);
+
+        // 35% of 40 = 14, +15% healing bonus = 16 (rounded).
+        run.PlayerState.CurrentVitality.Should().Be(20 + 16);
+        // Mana restore is unaffected by the healing bonus.
+        run.PlayerState.Mana.Should().Be(10 + 7);
+    }
 }

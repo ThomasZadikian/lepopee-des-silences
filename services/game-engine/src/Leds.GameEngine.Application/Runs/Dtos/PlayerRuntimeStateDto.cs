@@ -7,6 +7,7 @@ public sealed record PlayerRuntimeStateDto(
     int CurrentVitality,
     int Guard,
     int Mana,
+    int MaxMana,
     int Charge,
     IReadOnlyCollection<PlayerRuntimeSkillDto> Skills)
 {
@@ -17,6 +18,7 @@ public sealed record PlayerRuntimeStateDto(
             state.CurrentVitality,
             state.Guard,
             state.Mana,
+            state.MaxMana,
             state.Charge,
             state.Skills.Select(PlayerRuntimeSkillDto.FromDomain).ToArray());
     }

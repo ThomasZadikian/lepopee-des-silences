@@ -12,5 +12,9 @@ public enum RunItemEffectType
     AttackTypeOverride = 7,
     // Passive team-wide Speed bonus for as long as the item is granted this run
     // (e.g. Rêve d'Erina: +5% team Speed). EffectAmount is a whole percentage.
-    TeamSpeedBonus = 8
+    TeamSpeedBonus = 8,
+    // Restores the same whole percentage of both max Vitality and max Mana at
+    // once (e.g. Majordome's Tasse de thé: 35% PV + 35% PP). EffectAmount is
+    // that shared percentage.
+    HealAndManaRestorePercent = 9
 }

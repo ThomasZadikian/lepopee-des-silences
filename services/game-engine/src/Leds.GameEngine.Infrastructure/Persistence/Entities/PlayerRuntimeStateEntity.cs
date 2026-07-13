@@ -7,6 +7,7 @@ public sealed class PlayerRuntimeStateEntity
     public int CurrentVitality { get; set; }
     public int Guard { get; set; }
     public int Mana { get; set; }
+    public int MaxMana { get; set; } = int.MaxValue;
     public int Charge { get; set; }
 
     public RunEntity? Run { get; set; }

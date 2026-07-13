@@ -25,5 +25,9 @@ public enum CombatStat
     // time (see CombatSkillEffectResolver.ConsumeResources) — e.g. Mina's "Protection
     // de Him'Lit" reduces cost by 5%. Negative-only in practice; a positive magnitude
     // would raise costs.
-    SkillCostReductionPercent
+    SkillCostReductionPercent,
+    // Percentage points added to all healing this combatant applies (skills and items —
+    // see Combatant.EffectiveHealingBonusPercent), on top of the permanent equipment
+    // component — e.g. Majordome's legendary "La tasse du majordome": +15%.
+    HealingBonus
 }

@@ -18,6 +18,7 @@ public sealed class Combatant
         int guard,
         int baseGuard,
         int mana,
+        int maxMana,
         int charge,
         CombatantStatus status,
         IReadOnlyCollection<CombatantSkill> skills,
@@ -34,6 +35,7 @@ public sealed class Combatant
         Guard = guard;
         BaseGuard = baseGuard;
         Mana = mana;
+        MaxMana = maxMana;
         Charge = charge;
         Status = status;
         _permanentSkills = skills;
@@ -57,6 +59,7 @@ public sealed class Combatant
     public int BaseGuard { get; private set; }
 
     public int Mana { get; private set; }
+    public int MaxMana { get; }
     public int Charge { get; private set; }
     public CombatantStatus Status { get; private set; }
 
@@ -153,14 +156,22 @@ public sealed class Combatant
     public int CriticalChanceBonusPercent { get; private set; }
 
     /// <summary>
+    /// Percentage points added to ALL healing this combatant applies (skills and items),
+    /// granted by equipped items (e.g. Majordome's legendary "La tasse du majordome":
+    /// +15%). Permanent for the run — distinct from the temporary, skill-driven component
+    /// summed in <see cref="EffectiveHealingBonusPercent"/>.
+    /// </summary>
+    public int HealingBonusPercent { get; private set; }
+
+    /// <summary>
     /// Sets (or clears) the equipment-driven hit chance bonus, DOT reductions/bonus, Magic
-    /// damage bonus/reduction, and critical chance bonus. Applied at combat creation
-    /// and restored on rehydration; never mutated mid-turn.
+    /// damage bonus/reduction, critical chance bonus, and healing bonus. Applied at combat
+    /// creation and restored on rehydration; never mutated mid-turn.
     /// </summary>
     public void ApplyEquipmentCombatModifiers(
         int hitChanceBonusPercent, int dotDurationReductionPercent, int dotDamageReductionPercent,
         int magicDamageBonusPercent = 0, int magicDamageReductionPercent = 0, int criticalChanceBonusPercent = 0,
-        int dotDamageBonusPercent = 0)
+        int dotDamageBonusPercent = 0, int healingBonusPercent = 0)
     {
         HitChanceBonusPercent = hitChanceBonusPercent;
         DotDurationReductionPercent = dotDurationReductionPercent;
@@ -169,6 +180,7 @@ public sealed class Combatant
         MagicDamageBonusPercent = magicDamageBonusPercent;
         MagicDamageReductionPercent = magicDamageReductionPercent;
         CriticalChanceBonusPercent = criticalChanceBonusPercent;
+        HealingBonusPercent = healingBonusPercent;
     }
 
     /// <summary>
@@ -178,6 +190,15 @@ public sealed class Combatant
     /// </summary>
     public int EffectiveMagicDamageBonusPercent
         => MagicDamageBonusPercent + EffectiveStat(CombatStat.MagicDamageBonus, 0);
+
+    /// <summary>
+    /// Total healing bonus (%): permanent equipment component (e.g. La tasse du
+    /// majordome) plus any active temporary StatModifier(HealingBonus) status effect.
+    /// Read by <see cref="Leds.GameEngine.Application.Combats.Effects.CombatSkillEffectResolver"/>
+    /// when this combatant applies healing to a target.
+    /// </summary>
+    public int EffectiveHealingBonusPercent
+        => HealingBonusPercent + EffectiveStat(CombatStat.HealingBonus, 0);
 
     /// <summary>
     /// Total DoT-damage-dealt bonus (%): permanent equipment component (e.g. Plume
@@ -357,6 +378,7 @@ public sealed class Combatant
             guard: baseGuard,
             baseGuard: baseGuard,
             mana: 0,
+            maxMana: runtimeState.MaxMana,
             charge: 0,
             CombatantStatus.Active,
             skills?.ToArray() ?? Array.Empty<CombatantSkill>(),
@@ -404,6 +426,7 @@ public sealed class Combatant
             guard: startingGuard,
             baseGuard: startingGuard,
             mana: 0,
+            maxMana: runtimeState.MaxMana,
             charge: 0,
             CombatantStatus.Active,
             skills?.ToArray() ?? Array.Empty<CombatantSkill>(),
@@ -426,8 +449,9 @@ public sealed class Combatant
         IReadOnlyCollection<CombatantSkill>? skills = null,
         int attackPower = 0,
         int defense = 0,
-        int speed = 10, 
-        int focus = 0)
+        int speed = 10,
+        int focus = 0,
+        int? maxMana = null)
     {
         if (id.Value == Guid.Empty)
             throw new DomainException("Combatant id is required.");
@@ -456,6 +480,11 @@ public sealed class Combatant
         if (charge < 0)
             throw new DomainException("Combatant charge must be non-negative.");
 
+        var resolvedMaxMana = maxMana ?? int.MaxValue;
+
+        if (mana > resolvedMaxMana)
+            throw new DomainException("Combatant mana cannot exceed max mana.");
+
         var snapshot = CombatantBaseStatSnapshot.Create(
             maxVitality: maxVitality,
             attackPower: attackPower,
@@ -472,7 +501,8 @@ public sealed class Combatant
             currentVitality: currentVitality,
             currentGuard: guard,
             currentMana: mana,
-            currentCharge: charge);
+            currentCharge: charge,
+            maxMana: resolvedMaxMana);
 
         return new Combatant(
             id,
@@ -485,6 +515,7 @@ public sealed class Combatant
             guard,
             baseGuard,
             mana,
+            resolvedMaxMana,
             charge,
             CombatantStatus.Active,
             skills?.ToArray() ?? Array.Empty<CombatantSkill>(),
@@ -592,7 +623,9 @@ public sealed class Combatant
         int magicDamageBonusPercent = 0,
         int magicDamageReductionPercent = 0,
         int criticalChanceBonusPercent = 0,
-        int dotDamageBonusPercent = 0)
+        int dotDamageBonusPercent = 0,
+        int maxMana = int.MaxValue,
+        int healingBonusPercent = 0)
     {
         var snapshot = baseStatSnapshot ?? CombatantBaseStatSnapshot.Rehydrate(
             Guid.NewGuid(),
@@ -618,15 +651,16 @@ public sealed class Combatant
             charge,
             null,
             null,
-            DateTime.UtcNow);
+            DateTime.UtcNow,
+            maxMana: maxMana);
 
-        var combatant = new Combatant(id, sourceKey, displayName, side, archetype, maxVitality, currentVitality, guard, baseGuard, mana, charge, status, skills, snapshot, state);
+        var combatant = new Combatant(id, sourceKey, displayName, side, archetype, maxVitality, currentVitality, guard, baseGuard, mana, runtimeState?.MaxMana ?? maxMana, charge, status, skills, snapshot, state);
         combatant.AttackTypeOverride = attackTypeOverride;
         combatant.TypedDamageReductionPercent = typedDamageReductionPercent ?? new Dictionary<EmotionalType, int>();
         combatant.ApplyEquipmentCombatModifiers(
             hitChanceBonusPercent, dotDurationReductionPercent, dotDamageReductionPercent,
             magicDamageBonusPercent, magicDamageReductionPercent, criticalChanceBonusPercent,
-            dotDamageBonusPercent);
+            dotDamageBonusPercent, healingBonusPercent);
         return combatant;
     }
 
@@ -657,8 +691,8 @@ public sealed class Combatant
         if (amount < 0)
             throw new DomainException("Mana gain amount cannot be negative.");
 
-        Mana += amount;
         RuntimeState.GainMana(amount);
+        Mana = RuntimeState.CurrentMana;
     }
 
     public void GainCharge(int amount)
