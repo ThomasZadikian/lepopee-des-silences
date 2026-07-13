@@ -82,6 +82,7 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
                 MaxVitality = c.MaxVitality,
                 BaseMana = c.BaseMana,
                 BaseCharge = c.BaseCharge,
+                StatPointsInvested = c.StatPointsInvested,
                 SkillKeysJson = JsonSerializer.Serialize(c.SkillKeys),
                 CharacterType = c.CharacterType,
                 Status = c.Status,
@@ -126,6 +127,7 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
                     MaxVitality = character.MaxVitality,
                     BaseMana = character.BaseMana,
                     BaseCharge = character.BaseCharge,
+                    StatPointsInvested = character.StatPointsInvested,
                     SkillKeysJson = JsonSerializer.Serialize(character.SkillKeys),
                     CharacterType = character.CharacterType,
                     Status = character.Status,
@@ -145,6 +147,7 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
             existingCharacter.MaxVitality = character.MaxVitality;
             existingCharacter.BaseMana = character.BaseMana;
             existingCharacter.BaseCharge = character.BaseCharge;
+            existingCharacter.StatPointsInvested = character.StatPointsInvested;
             existingCharacter.SkillKeysJson = JsonSerializer.Serialize(character.SkillKeys);
             existingCharacter.CharacterType = character.CharacterType;
             existingCharacter.Status = character.Status;
@@ -349,7 +352,8 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
                 c.Status,
                 statBlock,
                 skills,
-                items);
+                items,
+                c.StatPointsInvested);
         }).ToList();
 
         var roster = PlayerRoster.Rehydrate(characters);

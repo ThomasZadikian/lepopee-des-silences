@@ -140,6 +140,19 @@ public sealed class PlayerProfileTests
     }
 
     [Fact]
+    public void SpendStatPoint_ShouldIncrementStatPointsInvestedOnTheCharacter()
+    {
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+        var character = profile.Roster.Characters.Single();
+        profile.AwardStatPoint(DateTimeOffset.UtcNow, amount: 2);
+
+        profile.SpendStatPoint(character.Id, PlayerStatKind.AttackPower, DateTimeOffset.UtcNow);
+        profile.SpendStatPoint(character.Id, PlayerStatKind.Defense, DateTimeOffset.UtcNow);
+
+        character.StatPointsInvested.Should().Be(2);
+    }
+
+    [Fact]
     public void LearnSkill_ShouldAddTheSkillToTheCharacterWithTheGivenSource()
     {
         var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
@@ -256,6 +269,67 @@ public sealed class PlayerProfileTests
         profile.RecruitCompanion("character.thomas", "Thomas", statBlock, ["skill.basic.guard"], now);
 
         profile.Roster.Characters.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void RecruitCompanion_ShouldGrantCatchUpStatPoints_WhenAnExistingCharacterHasInvestedPoints()
+    {
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+        var now = DateTimeOffset.UtcNow;
+        var protagonist = profile.Roster.Characters.Single();
+        profile.AwardStatPoint(now, amount: 3);
+        profile.SpendStatPoint(protagonist.Id, PlayerStatKind.AttackPower, now);
+        profile.SpendStatPoint(protagonist.Id, PlayerStatKind.Defense, now);
+        // 1 point left unspent going into recruitment — must not be confused with the catch-up grant.
+        var statBlock = PlayerCharacterStatBlock.Create(
+            maxVitality: 85, attackPower: 15, defense: 4, startingGuard: 0,
+            speed: 13, initiative: 12, recovery: 4, focus: 3, mana: 15, charge: 0);
+
+        profile.RecruitCompanion("character.mane", "Mané", statBlock, ["skill.basic.strike"], now);
+
+        profile.Progression.UnspentStatPoints.Should().Be(3); // 1 leftover + 2 catch-up
+        profile.Progression.TotalStatPointsEarned.Should().Be(5); // 3 awarded + 2 catch-up
+    }
+
+    [Fact]
+    public void RecruitCompanion_ShouldNotGrantCatchUpStatPoints_WhenNoCharacterHasInvestedAnyYet()
+    {
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+        var now = DateTimeOffset.UtcNow;
+        var statBlock = PlayerCharacterStatBlock.Create(
+            maxVitality: 85, attackPower: 15, defense: 4, startingGuard: 0,
+            speed: 13, initiative: 12, recovery: 4, focus: 3, mana: 15, charge: 0);
+
+        profile.RecruitCompanion("character.mane", "Mané", statBlock, ["skill.basic.strike"], now);
+
+        profile.Progression.UnspentStatPoints.Should().Be(0);
+        profile.Progression.TotalStatPointsEarned.Should().Be(0);
+    }
+
+    [Fact]
+    public void RecruitCompanion_ShouldCatchUpToTheMostAdvancedExistingCompanion_NotJustTheProtagonist()
+    {
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+        var now = DateTimeOffset.UtcNow;
+        var protagonist = profile.Roster.Characters.Single();
+        var firstCompanionStatBlock = PlayerCharacterStatBlock.Create(
+            maxVitality: 110, attackPower: 8, defense: 12, startingGuard: 8,
+            speed: 8, initiative: 8, recovery: 6, focus: 2, mana: 14, charge: 0);
+        profile.RecruitCompanion("character.thomas", "Thomas", firstCompanionStatBlock, ["skill.basic.guard"], now);
+        var thomas = profile.Roster.Characters.Single(c => c.DefinitionKey == "character.thomas");
+        profile.AwardStatPoint(now, amount: 4);
+        profile.SpendStatPoint(thomas.Id, PlayerStatKind.AttackPower, now);
+        profile.SpendStatPoint(thomas.Id, PlayerStatKind.AttackPower, now);
+        profile.SpendStatPoint(thomas.Id, PlayerStatKind.AttackPower, now);
+        // Thomas now has 3 points invested, well ahead of the still-untouched protagonist.
+        var secondCompanionStatBlock = PlayerCharacterStatBlock.Create(
+            maxVitality: 85, attackPower: 15, defense: 4, startingGuard: 0,
+            speed: 13, initiative: 12, recovery: 4, focus: 3, mana: 15, charge: 0);
+
+        profile.RecruitCompanion("character.mane", "Mané", secondCompanionStatBlock, ["skill.basic.strike"], now);
+
+        profile.Progression.UnspentStatPoints.Should().Be(1 + 3); // 1 leftover + catch-up to Thomas's 3
+        protagonist.StatPointsInvested.Should().Be(0);
     }
 
     [Fact]
@@ -532,6 +606,17 @@ public sealed class PlayerCharacterTests
         character.ApplyStatIncrement(PlayerStatKind.AttackPower);
 
         character.StatBlock.AttackPower.Should().Be(originalAttackPower + 1);
+    }
+
+    [Fact]
+    public void ApplyStatIncrement_ShouldIncrementStatPointsInvested()
+    {
+        var character = CreateCharacterWithSkills("skill.a");
+
+        character.ApplyStatIncrement(PlayerStatKind.AttackPower);
+        character.ApplyStatIncrement(PlayerStatKind.Defense);
+
+        character.StatPointsInvested.Should().Be(2);
     }
 
     [Fact]

@@ -31,7 +31,8 @@ public sealed class PlayerCharacter
         string status,
         PlayerCharacterStatBlock statBlock,
         IReadOnlyCollection<PlayerCharacterSkill> skills,
-        IReadOnlyCollection<PlayerCharacterItem>? items = null)
+        IReadOnlyCollection<PlayerCharacterItem>? items = null,
+        int statPointsInvested = 0)
     {
         Id = id;
         DefinitionKey = definitionKey;
@@ -41,6 +42,7 @@ public sealed class PlayerCharacter
         StatBlock = statBlock;
         _skills = skills.ToList();
         _items = items?.ToList() ?? [];
+        StatPointsInvested = statPointsInvested;
     }
 
     public PlayerCharacterId Id { get; }
@@ -49,6 +51,15 @@ public sealed class PlayerCharacter
     public string CharacterType { get; }
     public string Status { get; }
     public PlayerCharacterStatBlock StatBlock { get; private set; }
+
+    /// <summary>
+    /// How many stat points have been spent on this specific character so far.
+    /// Used to catch newly recruited companions up to the party's current level
+    /// (see <see cref="PlayerProfile.RecruitCompanion"/>) — companion base stats are
+    /// arbitrary per-NPC catalog values, so this can't be reverse-engineered from
+    /// the stat block the way it could for the protagonist's fixed starting stats.
+    /// </summary>
+    public int StatPointsInvested { get; private set; }
     public int MaxVitality => StatBlock.MaxVitality;
     public int BaseMana => StatBlock.Mana;
     public int BaseCharge => StatBlock.Charge;
@@ -189,6 +200,7 @@ public sealed class PlayerCharacter
     public void ApplyStatIncrement(PlayerStatKind kind)
     {
         StatBlock = StatBlock.WithIncrementedStat(kind);
+        StatPointsInvested++;
     }
 
     private PlayerCharacterSkill FindSkill(string skillKey)
@@ -275,7 +287,8 @@ public sealed class PlayerCharacter
         string status,
         PlayerCharacterStatBlock statBlock,
         IReadOnlyCollection<PlayerCharacterSkill> skills,
-        IReadOnlyCollection<PlayerCharacterItem>? items = null)
+        IReadOnlyCollection<PlayerCharacterItem>? items = null,
+        int statPointsInvested = 0)
     {
         return new PlayerCharacter(
             id,
@@ -285,6 +298,7 @@ public sealed class PlayerCharacter
             string.IsNullOrWhiteSpace(status) ? "Active" : status,
             statBlock,
             skills,
-            items);
+            items,
+            statPointsInvested);
     }
 }

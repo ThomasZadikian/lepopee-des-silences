@@ -50,13 +50,17 @@ function skillMeta(key: string): SkillDefinitionView | null {
 const equippedSkills = computed(() => props.character.skills.filter((s) => s.isEquipped));
 const knownSkills = computed(() => props.character.skills);
 const knownKeys = computed(() => new Set(props.character.skills.map((s) => s.skillKey)));
+// Scoped to the character being managed here — NOT playerStore's protagonist-only getter,
+// otherwise a companion's loadout stayed stuck at "full" (or "empty") based on the
+// protagonist's own equipped count instead of its own.
+const isLoadoutFull = computed(() => equippedSkills.value.length >= props.character.maxEquippedSkills);
 
 function toggleSkill(skillKey: string, isEquipped: boolean) {
   if (playerStore.isLoading) return;
   if (isEquipped) {
     playerStore.unequipSkill(props.character.id, skillKey);
   } else {
-    if (playerStore.isLoadoutFull) return;
+    if (isLoadoutFull.value) return;
     playerStore.equipSkill(props.character.id, skillKey);
   }
 }
@@ -100,7 +104,7 @@ function toggleSkill(skillKey: string, isEquipped: boolean) {
             type="button"
             class="smk-toggle"
             :class="{ 'smk-toggle--active': skill.isEquipped }"
-            :disabled="playerStore.isLoading || (!skill.isEquipped && playerStore.isLoadoutFull)"
+            :disabled="playerStore.isLoading || (!skill.isEquipped && isLoadoutFull)"
             @click="toggleSkill(skill.skillKey, skill.isEquipped)"
           >
             {{ skill.isEquipped ? 'Équipé' : 'Équiper' }}

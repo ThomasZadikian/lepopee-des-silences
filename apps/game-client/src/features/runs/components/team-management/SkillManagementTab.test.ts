@@ -95,6 +95,39 @@ describe('SkillManagementTab', () => {
     expect(allSkillsSection.text()).toContain('Curious');
   });
 
+  it('does not disable equip for a companion just because the protagonist loadout is full', async () => {
+    const protagonist = baseCharacter();
+    protagonist.skills = [
+      { skillKey: 'skill.a', unlockedAtUtc: '2026-01-01T00:00:00Z', source: 'default', isEquipped: true },
+      { skillKey: 'skill.b', unlockedAtUtc: '2026-01-01T00:00:00Z', source: 'default', isEquipped: true },
+      { skillKey: 'skill.c', unlockedAtUtc: '2026-01-01T00:00:00Z', source: 'default', isEquipped: true },
+    ];
+    protagonist.maxEquippedSkills = 3; // full: 3/3
+    const companion: PlayerCharacterView = {
+      ...baseCharacter(),
+      id: 'char-2',
+      displayName: 'Thomas',
+      characterType: 'Companion',
+      skills: [
+        { skillKey: 'skill.a', unlockedAtUtc: '2026-01-01T00:00:00Z', source: 'npc-offering', isEquipped: false },
+      ],
+    };
+    usePlayerStore().profile = {
+      id: 'player-1',
+      displayName: 'Test',
+      characters: [protagonist, companion],
+      progression: { unspentStatPoints: 0, totalStatPointsEarned: 0, palaceShardCount: 0 },
+      permanentItems: [],
+    };
+
+    const wrapper = mount(SkillManagementTab, { props: { character: companion } });
+    await flushPromises();
+
+    const knownSection = wrapper.findAll('.smk-section')[1];
+    const button = knownSection.findAll('.smk-toggle')[0];
+    expect(button.attributes('disabled')).toBeUndefined();
+  });
+
   it('toggles equip state when clicking a known-skill button', async () => {
     vi.mocked(playerApi.equipSkill).mockResolvedValue({
       id: 'player-1',

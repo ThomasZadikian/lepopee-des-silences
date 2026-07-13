@@ -11,6 +11,7 @@ public sealed class PlayerCharacterEntity
     public int MaxVitality { get; set; }
     public int BaseMana { get; set; }
     public int BaseCharge { get; set; }
+    public int StatPointsInvested { get; set; }
     public string SkillKeysJson { get; set; } = "[]";
     public DateTimeOffset CreatedAtUtc { get; set; }
     public DateTimeOffset UpdatedAtUtc { get; set; }

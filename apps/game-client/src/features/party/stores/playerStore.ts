@@ -11,21 +11,8 @@ export const usePlayerStore = defineStore('player', () => {
   const error = ref<string | null>(null);
 
   const mainCharacter = computed(() => profile.value?.characters[0] ?? null);
-  const equippedCount = computed(
-    () => mainCharacter.value?.skills.filter((skill) => skill.isEquipped).length ?? 0,
-  );
-  const isLoadoutFull = computed(
-    () => equippedCount.value >= (mainCharacter.value?.maxEquippedSkills ?? 0),
-  );
   const unspentStatPoints = computed(() => profile.value?.progression.unspentStatPoints ?? 0);
-
   const permanentItems = computed(() => profile.value?.permanentItems ?? []);
-  const equippedItemCount = computed(
-    () => mainCharacter.value?.items.filter((item) => item.isEquipped).length ?? 0,
-  );
-  const isItemLoadoutFull = computed(
-    () => equippedItemCount.value >= (mainCharacter.value?.maxEquippedItems ?? 0),
-  );
 
   async function execute(action: () => Promise<void>) {
     isLoading.value = true;
@@ -82,12 +69,8 @@ export const usePlayerStore = defineStore('player', () => {
     isLoading,
     error,
     mainCharacter,
-    equippedCount,
-    isLoadoutFull,
     unspentStatPoints,
     permanentItems,
-    equippedItemCount,
-    isItemLoadoutFull,
     loadProfile,
     equipSkill,
     unequipSkill,

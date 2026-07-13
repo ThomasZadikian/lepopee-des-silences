@@ -68,32 +68,6 @@ describe('usePlayerStore', () => {
     expect(store.error).toBeNull();
   });
 
-  it('computes equippedCount from the main character skills', async () => {
-    vi.mocked(playerApi.getProfile).mockResolvedValue(baseProfile());
-    const store = usePlayerStore();
-
-    await store.loadProfile(demoPlayerId);
-
-    expect(store.equippedCount).toBe(1);
-  });
-
-  it('computes isLoadoutFull when equipped count reaches the cap', async () => {
-    const profile = baseProfile({
-      skills: [
-        { skillKey: 'skill.a', unlockedAtUtc: '2026-01-01T00:00:00Z', source: null, isEquipped: true },
-        { skillKey: 'skill.b', unlockedAtUtc: '2026-01-01T00:00:00Z', source: null, isEquipped: true },
-        { skillKey: 'skill.c', unlockedAtUtc: '2026-01-01T00:00:00Z', source: null, isEquipped: true },
-        { skillKey: 'skill.d', unlockedAtUtc: '2026-01-01T00:00:00Z', source: null, isEquipped: true },
-      ],
-    });
-    vi.mocked(playerApi.getProfile).mockResolvedValue(profile);
-    const store = usePlayerStore();
-
-    await store.loadProfile(demoPlayerId);
-
-    expect(store.isLoadoutFull).toBe(true);
-  });
-
   it('exposes unspentStatPoints from progression', async () => {
     vi.mocked(playerApi.getProfile).mockResolvedValue(baseProfile());
     const store = usePlayerStore();
@@ -114,7 +88,7 @@ describe('usePlayerStore', () => {
     await store.equipSkill('char-1', 'skill.b');
 
     expect(playerApi.equipSkill).toHaveBeenCalledWith(demoPlayerId, 'char-1', 'skill.b');
-    expect(store.equippedCount).toBe(2);
+    expect(store.profile?.characters[0].skills[1].isEquipped).toBe(true);
   });
 
   it('spendStatPoint replaces the profile and decrements unspent points', async () => {
@@ -155,37 +129,6 @@ describe('usePlayerStore', () => {
     expect(store.permanentItems[0].itemDefinitionKey).toBe('item.relic.tome');
   });
 
-  it('computes equippedItemCount from the main character items', async () => {
-    const profile = baseProfile({
-      items: [
-        { itemKey: 'item.a', acquiredAtUtc: '2026-01-01T00:00:00Z', source: null, isEquipped: true },
-        { itemKey: 'item.b', acquiredAtUtc: '2026-01-01T00:00:00Z', source: null, isEquipped: false },
-      ],
-    });
-    vi.mocked(playerApi.getProfile).mockResolvedValue(profile);
-    const store = usePlayerStore();
-
-    await store.loadProfile(demoPlayerId);
-
-    expect(store.equippedItemCount).toBe(1);
-  });
-
-  it('computes isItemLoadoutFull when equipped item count reaches the cap', async () => {
-    const profile = baseProfile({
-      maxEquippedItems: 2,
-      items: [
-        { itemKey: 'item.a', acquiredAtUtc: '2026-01-01T00:00:00Z', source: null, isEquipped: true },
-        { itemKey: 'item.b', acquiredAtUtc: '2026-01-01T00:00:00Z', source: null, isEquipped: true },
-      ],
-    });
-    vi.mocked(playerApi.getProfile).mockResolvedValue(profile);
-    const store = usePlayerStore();
-
-    await store.loadProfile(demoPlayerId);
-
-    expect(store.isItemLoadoutFull).toBe(true);
-  });
-
   it('equipItem replaces the profile with the API response', async () => {
     vi.mocked(playerApi.getProfile).mockResolvedValue(baseProfile());
     const updated = baseProfile({
@@ -198,7 +141,7 @@ describe('usePlayerStore', () => {
     await store.equipItem('char-1', 'item.a');
 
     expect(playerApi.equipItem).toHaveBeenCalledWith(demoPlayerId, 'char-1', 'item.a');
-    expect(store.equippedItemCount).toBe(1);
+    expect(store.profile?.characters[0].items[0].isEquipped).toBe(true);
   });
 
   it('unequipItem replaces the profile with the API response', async () => {
@@ -216,6 +159,6 @@ describe('usePlayerStore', () => {
     await store.unequipItem('char-1', 'item.a');
 
     expect(playerApi.unequipItem).toHaveBeenCalledWith(demoPlayerId, 'char-1', 'item.a');
-    expect(store.equippedItemCount).toBe(0);
+    expect(store.profile?.characters[0].items[0].isEquipped).toBe(false);
   });
 });

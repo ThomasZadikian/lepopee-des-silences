@@ -165,6 +165,35 @@ describe('ItemManagementTab', () => {
     expect(dRow.find('.imk-toggle').attributes('disabled')).toBeDefined();
   });
 
+  it('does not disable equip for a companion just because the protagonist loadout is full', () => {
+    const protagonist = baseCharacter({
+      items: [
+        { itemKey: 'item.a', acquiredAtUtc: '2026-01-01T00:00:00Z', source: 'run', isEquipped: true },
+        { itemKey: 'item.b', acquiredAtUtc: '2026-01-01T00:00:00Z', source: 'run', isEquipped: true },
+        { itemKey: 'item.c', acquiredAtUtc: '2026-01-01T00:00:00Z', source: 'run', isEquipped: true },
+      ],
+    });
+    const companion = baseCharacter({
+      id: 'char-2',
+      displayName: 'Thomas',
+      characterType: 'Companion',
+      items: [],
+    });
+    const profile = baseProfile(protagonist);
+    profile.characters = [protagonist, companion];
+    profile.permanentItems = [
+      { itemDefinitionKey: 'item.a', sourceRunId: 'run-1', acquiredAtUtc: '2026-01-01T00:00:00Z' },
+      { itemDefinitionKey: 'item.b', sourceRunId: 'run-1', acquiredAtUtc: '2026-01-01T00:00:00Z' },
+      { itemDefinitionKey: 'item.c', sourceRunId: 'run-1', acquiredAtUtc: '2026-01-01T00:00:00Z' },
+    ];
+    usePlayerStore().profile = profile;
+    const wrapper = mount(ItemManagementTab, { props: { character: companion } });
+
+    const backpackSection = wrapper.findAll('.imk-section')[1];
+    const row = backpackSection.findAll('.imk-row').find((r) => r.text().includes('item.a'))!;
+    expect(row.find('.imk-toggle').attributes('disabled')).toBeUndefined();
+  });
+
   it('shows the empty-backpack message when no permanent items are owned', () => {
     const character = baseCharacter({ items: [] });
     const profile = baseProfile(character);

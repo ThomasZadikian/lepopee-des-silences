@@ -25,6 +25,10 @@ function itemDisplayName(itemKey: string): string {
 }
 
 const equippedItems = computed(() => props.character.items.filter((i) => i.isEquipped));
+// Scoped to the character being managed here — NOT playerStore's protagonist-only getter,
+// otherwise a companion's loadout stayed stuck at "full" (or "empty") based on the
+// protagonist's own equipped count instead of its own.
+const isItemLoadoutFull = computed(() => equippedItems.value.length >= props.character.maxEquippedItems);
 
 function isEquippedOnCharacter(itemKey: string): boolean {
   return props.character.items.some((i) => i.itemKey === itemKey && i.isEquipped);
@@ -35,7 +39,7 @@ function toggleItem(itemKey: string, isEquipped: boolean) {
   if (isEquipped) {
     playerStore.unequipItem(props.character.id, itemKey);
   } else {
-    if (playerStore.isItemLoadoutFull) return;
+    if (isItemLoadoutFull.value) return;
     playerStore.equipItem(props.character.id, itemKey);
   }
 }
@@ -87,7 +91,7 @@ function toggleItem(itemKey: string, isEquipped: boolean) {
             :class="{ 'imk-toggle--active': isEquippedOnCharacter(permanentItem.itemDefinitionKey) }"
             :disabled="
               playerStore.isLoading ||
-              (!isEquippedOnCharacter(permanentItem.itemDefinitionKey) && playerStore.isItemLoadoutFull)
+              (!isEquippedOnCharacter(permanentItem.itemDefinitionKey) && isItemLoadoutFull)
             "
             @click="toggleItem(permanentItem.itemDefinitionKey, isEquippedOnCharacter(permanentItem.itemDefinitionKey))"
           >

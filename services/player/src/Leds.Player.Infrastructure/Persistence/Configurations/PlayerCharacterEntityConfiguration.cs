@@ -21,6 +21,7 @@ public sealed class PlayerCharacterEntityConfiguration : IEntityTypeConfiguratio
         builder.Property(c => c.MaxVitality).HasColumnName("max_vitality").HasComment("Legacy compatibility column. Use player_character_stat_blocks.max_vitality for data-model-0.1.");
         builder.Property(c => c.BaseMana).HasColumnName("base_mana").HasComment("Legacy compatibility column. Use player_character_stat_blocks.mana for data-model-0.1.");
         builder.Property(c => c.BaseCharge).HasColumnName("base_charge").HasComment("Legacy compatibility column. Use player_character_stat_blocks.charge for data-model-0.1.");
+        builder.Property(c => c.StatPointsInvested).HasColumnName("stat_points_invested").HasDefaultValue(0);
         builder.Property(c => c.SkillKeysJson).HasColumnName("skill_keys_json").HasComment("Legacy compatibility column. Use player_character_skills for data-model-0.1.");
         builder.Property(c => c.CreatedAtUtc).HasColumnName("created_at_utc");
         builder.Property(c => c.UpdatedAtUtc).HasColumnName("updated_at_utc");
