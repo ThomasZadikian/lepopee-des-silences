@@ -10,7 +10,8 @@ public sealed class PlayerProgression
         int totalRunsFailed,
         int totalRunsAbandoned,
         int unspentStatPoints,
-        int totalStatPointsEarned)
+        int totalStatPointsEarned,
+        int palaceShardCount)
     {
         TotalRunsStarted = totalRunsStarted;
         TotalRunsCompleted = totalRunsCompleted;
@@ -18,6 +19,7 @@ public sealed class PlayerProgression
         TotalRunsAbandoned = totalRunsAbandoned;
         UnspentStatPoints = unspentStatPoints;
         TotalStatPointsEarned = totalStatPointsEarned;
+        PalaceShardCount = palaceShardCount;
     }
 
     public int TotalRunsStarted { get; private set; }
@@ -27,9 +29,15 @@ public sealed class PlayerProgression
     public int UnspentStatPoints { get; private set; }
     public int TotalStatPointsEarned { get; private set; }
 
+    /// <summary>
+    /// "Éclats du Palais" — the player's persistent currency (John's rare offering).
+    /// Pure counter for now: no spend mechanism exists yet.
+    /// </summary>
+    public int PalaceShardCount { get; private set; }
+
     public static PlayerProgression CreateDefault()
     {
-        return new PlayerProgression(0, 0, 0, 0, 0, 0);
+        return new PlayerProgression(0, 0, 0, 0, 0, 0, 0);
     }
 
     public void IncrementRunsStarted() => TotalRunsStarted++;
@@ -72,8 +80,21 @@ public sealed class PlayerProgression
         int totalRunsFailed,
         int totalRunsAbandoned = 0,
         int unspentStatPoints = 0,
-        int totalStatPointsEarned = 0)
+        int totalStatPointsEarned = 0,
+        int palaceShardCount = 0)
     {
-        return new PlayerProgression(totalRunsStarted, totalRunsCompleted, totalRunsFailed, totalRunsAbandoned, unspentStatPoints, totalStatPointsEarned);
+        return new PlayerProgression(totalRunsStarted, totalRunsCompleted, totalRunsFailed, totalRunsAbandoned, unspentStatPoints, totalStatPointsEarned, palaceShardCount);
+    }
+
+    /// <summary>
+    /// Awards "Éclats du Palais", the player's persistent currency (John's rare offering).
+    /// Pure counter for now: no spend mechanism exists yet.
+    /// </summary>
+    public void AwardCurrency(int amount)
+    {
+        if (amount <= 0)
+            throw new DomainException("Currency amount must be positive.");
+
+        PalaceShardCount += amount;
     }
 }

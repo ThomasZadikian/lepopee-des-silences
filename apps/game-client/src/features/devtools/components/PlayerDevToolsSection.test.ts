@@ -12,6 +12,7 @@ const baseCharacter: PlayerCharacterView = {
   maxEquippedSkills: 4,
   items: [],
   maxEquippedItems: 3,
+  characterType: 'Standard',
   skills: [],
   stats: {
     maxVitality: 100, attackPower: 12, defense: 6, startingGuard: 0,

@@ -111,4 +111,11 @@ export const runApi = {
       `/api/v2/runs/${runId}/palace-laws/${encodeURIComponent(lawKey)}/revoke`,
     );
   },
+
+  useCaliceInfini(runId: string, targetCombatantId?: string | null) {
+    return gameEngineApi.post<RunResponse, { targetCombatantId?: string | null }>(
+      `/api/v2/runs/${runId}/calice-infini/use`,
+      { targetCombatantId: targetCombatantId ?? null },
+    );
+  },
 };

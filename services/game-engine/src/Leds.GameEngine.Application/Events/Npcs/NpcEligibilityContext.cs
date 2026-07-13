@@ -12,4 +12,6 @@ public sealed record NpcEligibilityContext(
     RoomType RoomType,
     int NodeDepth,
     int RoomDepth = 0,
-    string? RoomKey = null);
+    string? RoomKey = null,
+    // NPC keys of already-recruited companions — never re-selected for an encounter.
+    IReadOnlyCollection<string>? RecruitedCompanionNpcKeys = null);

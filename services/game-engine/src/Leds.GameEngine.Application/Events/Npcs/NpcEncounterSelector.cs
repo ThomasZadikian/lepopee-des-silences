@@ -17,6 +17,7 @@ public sealed class NpcEncounterSelector : INpcEncounterSelector
             .Where(npc => IsDepthCompatible(npc, context.NodeDepth))
             .Where(npc => IsRoomTypeCompatible(npc, context.RoomType))
             .Where(npc => IsBoundRoomCompatible(npc, context.RoomKey))
+            .Where(npc => !IsAlreadyRecruitedCompanion(npc, context.RecruitedCompanionNpcKeys))
             .ToArray();
 
         var constrained = eligible
@@ -70,6 +71,15 @@ public sealed class NpcEncounterSelector : INpcEncounterSelector
         if (npc.BoundRoomKeys.Count == 0)
             return true;
         return roomKey != null && npc.BoundRoomKeys.Contains(roomKey, StringComparer.OrdinalIgnoreCase);
+    }
+
+    // An NPC already recruited as a companion never appears again as a fresh encounter —
+    // they travel with the player instead (see ResolveCurrentEventCommandHandler.RecruitedCompanionNpcKeys).
+    private static bool IsAlreadyRecruitedCompanion(
+        CatalogNpcDefinition npc, IReadOnlyCollection<string>? recruitedCompanionNpcKeys)
+    {
+        return recruitedCompanionNpcKeys is not null
+            && recruitedCompanionNpcKeys.Contains(npc.Key, StringComparer.OrdinalIgnoreCase);
     }
 
     private static bool MatchesPalaceState(CatalogNpcDefinition npc, PalaceRoomState state)

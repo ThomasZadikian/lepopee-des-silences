@@ -10,4 +10,7 @@ public sealed record NpcOffering(
     string? TargetKey,
     int Amount,
     bool IsMajor,
-    IReadOnlyList<DialogueRequirement> UnlockConditions);
+    IReadOnlyList<DialogueRequirement> UnlockConditions,
+    // Only meaningful when Kind == Companion — the authored combat kit the recruited
+    // companion fights with. Null on every other offering kind.
+    CompanionKitSpec? CompanionKit = null);

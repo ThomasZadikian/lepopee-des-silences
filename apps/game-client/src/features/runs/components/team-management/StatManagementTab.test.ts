@@ -24,6 +24,7 @@ function baseCharacter(): PlayerCharacterView {
     maxEquippedSkills: 4,
     items: [],
     maxEquippedItems: 3,
+    characterType: 'Standard',
     skills: [],
     stats: {
       maxVitality: 100, attackPower: 12, defense: 6, startingGuard: 0,
@@ -49,7 +50,7 @@ describe('StatManagementTab', () => {
       id: 'player-1',
       displayName: 'Test',
       characters: [baseCharacter()],
-      progression: { unspentStatPoints: 3, totalStatPointsEarned: 5 },
+      progression: { unspentStatPoints: 3, totalStatPointsEarned: 5, palaceShardCount: 0 },
       permanentItems: [],
     };
     const wrapper = mount(StatManagementTab, { props: { character: baseCharacter() } });
@@ -61,7 +62,7 @@ describe('StatManagementTab', () => {
       id: 'player-1',
       displayName: 'Test',
       characters: [baseCharacter()],
-      progression: { unspentStatPoints: 0, totalStatPointsEarned: 0 },
+      progression: { unspentStatPoints: 0, totalStatPointsEarned: 0, palaceShardCount: 0 },
       permanentItems: [],
     };
     const wrapper = mount(StatManagementTab, { props: { character: baseCharacter() } });

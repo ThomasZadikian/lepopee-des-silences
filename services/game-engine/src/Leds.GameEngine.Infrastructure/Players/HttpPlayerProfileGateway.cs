@@ -113,6 +113,14 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
         return await ReadProfileAsync(response, playerId, cancellationToken);
     }
 
+    public async Task<PlayerProfileView> AwardCurrencyAsync(Guid playerId, int amount, CancellationToken cancellationToken)
+    {
+        var response = await _httpClient.PostAsJsonAsync(
+            $"/api/v2/internal/players/{playerId}/currency/award", new AwardCurrencyRequestBody(amount), cancellationToken);
+
+        return await ReadProfileAsync(response, playerId, cancellationToken);
+    }
+
     public async Task<bool> HasClaimedNpcOfferingAsync(Guid playerId, string npcKey, string offeringKey, CancellationToken cancellationToken)
     {
         var response = await _httpClient.GetAsync(
@@ -253,17 +261,21 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
                     Items: (c.Items ?? [])
                         .Select(i => new PlayerCharacterItemView(i.ItemKey, i.AcquiredAtUtc, i.Source, i.IsEquipped))
                         .ToArray(),
-                    MaxEquippedItems: c.MaxEquippedItems))
+                    MaxEquippedItems: c.MaxEquippedItems,
+                    CharacterType: c.CharacterType))
                 .ToArray(),
             Progression: new PlayerProgressionView(
                 dto.Progression.UnspentStatPoints,
-                dto.Progression.TotalStatPointsEarned),
+                dto.Progression.TotalStatPointsEarned,
+                dto.Progression.PalaceShardCount),
             PermanentItems: (dto.PermanentItems ?? [])
                 .Select(i => new PlayerPermanentItemView(i.ItemDefinitionKey, i.SourceRunId, i.AcquiredAtUtc, i.ContainedLiquidDefinitionKey))
                 .ToArray());
     }
 
     private sealed record AwardStatPointsRequestBody(int Amount);
+
+    private sealed record AwardCurrencyRequestBody(int Amount);
 
     private sealed record RecruitCompanionRequestBody(
         string DisplayName,
@@ -304,7 +316,8 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
         PlayerCharacterStatsResponse Stats,
         int MaxEquippedSkills,
         IReadOnlyCollection<PlayerCharacterItemResponse>? Items = null,
-        int MaxEquippedItems = 3);
+        int MaxEquippedItems = 3,
+        string CharacterType = "Standard");
 
     private sealed record PlayerCharacterSkillResponse(
         string SkillKey,
@@ -338,7 +351,8 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
 
     private sealed record PlayerProgressionResponse(
         int UnspentStatPoints,
-        int TotalStatPointsEarned);
+        int TotalStatPointsEarned,
+        int PalaceShardCount = 0);
 
     private sealed record NpcReputationScoreResponse(
         string NpcKey,

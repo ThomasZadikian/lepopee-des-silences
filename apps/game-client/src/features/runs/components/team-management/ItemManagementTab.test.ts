@@ -33,6 +33,7 @@ function baseCharacter(overrides: Partial<PlayerCharacterView> = {}): PlayerChar
     definitionKey: 'character.player.self',
     displayName: 'Le Porteur',
     maxEquippedSkills: 4,
+    characterType: 'Standard',
     skills: [],
     stats: {
       maxVitality: 100, attackPower: 12, defense: 6, startingGuard: 0,
@@ -52,7 +53,7 @@ function baseProfile(character: PlayerCharacterView): PlayerProfileView {
     id: 'player-1',
     displayName: 'Test',
     characters: [character],
-    progression: { unspentStatPoints: 0, totalStatPointsEarned: 0 },
+    progression: { unspentStatPoints: 0, totalStatPointsEarned: 0, palaceShardCount: 0 },
     permanentItems: [
       { itemDefinitionKey: 'item.relic.tome', sourceRunId: 'run-1', acquiredAtUtc: '2026-01-01T00:00:00Z' },
       { itemDefinitionKey: 'item.equipment.sac', sourceRunId: 'run-1', acquiredAtUtc: '2026-01-01T00:00:00Z' },

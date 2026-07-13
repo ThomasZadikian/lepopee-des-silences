@@ -11,6 +11,7 @@ public sealed class PlayerProfileEntity
     public int TotalRunsAbandoned { get; set; }
     public int UnspentStatPoints { get; set; }
     public int TotalStatPointsEarned { get; set; }
+    public int PalaceShardCount { get; set; }
     public DateTimeOffset CreatedAtUtc { get; set; }
     public DateTimeOffset UpdatedAtUtc { get; set; }
 

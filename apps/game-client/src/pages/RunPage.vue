@@ -281,6 +281,8 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
                 :laws="runStore.currentRun.activePalaceLaws ?? null"
                 :curses="runStore.currentRun.activeCurses ?? null"
                 :items="runStore.currentRun.inventoryItems ?? null"
+                :calice-infini-enabled="runStore.currentRun.caliceInfiniEnabled ?? false"
+                :can-use-calice-infini="runStore.currentRun.canUseCaliceInfini ?? false"
                 @close="uiStore.closeDrawer"
               />
             </Transition>

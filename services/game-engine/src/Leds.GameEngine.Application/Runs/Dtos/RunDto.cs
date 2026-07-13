@@ -48,7 +48,9 @@ public sealed record RunDto(
     bool JournalEnabled = false,
     IReadOnlyCollection<RunJournalEntryDto>? JournalEntries = null,
     bool LawDenialEnabled = false,
-    bool CanUseLawDenial = false)
+    bool CanUseLawDenial = false,
+    bool CaliceInfiniEnabled = false,
+    bool CanUseCaliceInfini = false)
 {
     public static RunDto FromDomain(
         Run run,
@@ -94,7 +96,9 @@ public sealed record RunDto(
             JournalEnabled: run.JournalEnabled,
             JournalEntries: run.JournalEntries.Select(RunJournalEntryDto.FromDomain).ToArray(),
             LawDenialEnabled: run.LawDenialEnabled,
-            CanUseLawDenial: run.CanUseLawDenial);
+            CanUseLawDenial: run.CanUseLawDenial,
+            CaliceInfiniEnabled: run.CaliceInfiniEnabled,
+            CanUseCaliceInfini: run.CanUseCaliceInfini);
     }
 }
 

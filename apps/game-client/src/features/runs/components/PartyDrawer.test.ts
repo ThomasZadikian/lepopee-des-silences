@@ -16,9 +16,11 @@ function mountDrawer(
   laws: ActivePalaceLawDto[] | null = null,
   curses: ActiveCurseDto[] | null = null,
   items: RunItemDto[] | null = null,
+  caliceInfiniEnabled = false,
+  canUseCaliceInfini = false,
 ) {
   return mount(PartyDrawer, {
-    props: { allies, modifiers, laws, curses, items },
+    props: { allies, modifiers, laws, curses, items, caliceInfiniEnabled, canUseCaliceInfini },
     global: {
       stubs: {
         Transition: { template: '<slot />' },
@@ -236,6 +238,7 @@ describe('PartyDrawer', () => {
           maxEquippedSkills: 4,
           items: [],
           maxEquippedItems: 3,
+          characterType: 'Standard',
           skills: [],
           stats: {
             maxVitality: 100, attackPower: 12, defense: 6, startingGuard: 0,
@@ -243,7 +246,7 @@ describe('PartyDrawer', () => {
           },
         },
       ],
-      progression: { unspentStatPoints: 0, totalStatPointsEarned: 0 },
+      progression: { unspentStatPoints: 0, totalStatPointsEarned: 0, palaceShardCount: 0 },
       permanentItems: [],
     };
     const wrapper = mountDrawer();
@@ -253,6 +256,25 @@ describe('PartyDrawer', () => {
   it('does not show the manage button when no player profile is loaded', () => {
     const wrapper = mountDrawer();
     expect(wrapper.find('.party-drawer__manage-btn').exists()).toBe(false);
+  });
+
+  it('does not show the Calice infini button when the player does not own it', () => {
+    const wrapper = mountDrawer(null, null, null, null, null, false, false);
+    expect(wrapper.text()).not.toContain('Calice infini');
+  });
+
+  it('shows an enabled Calice infini button when usable', () => {
+    const wrapper = mountDrawer(null, null, null, null, null, true, true);
+    const button = wrapper.findAll('button').find((b) => b.text().includes('Calice infini'));
+    expect(button).toBeTruthy();
+    expect(button!.attributes('disabled')).toBeUndefined();
+  });
+
+  it('disables the Calice infini button while on cooldown', () => {
+    const wrapper = mountDrawer(null, null, null, null, null, true, false);
+    const button = wrapper.findAll('button').find((b) => b.text().includes('Calice infini'));
+    expect(button).toBeTruthy();
+    expect(button!.attributes('disabled')).toBeDefined();
   });
 
   it('opens the team management modal when the manage button is clicked', async () => {
@@ -267,6 +289,7 @@ describe('PartyDrawer', () => {
           maxEquippedSkills: 4,
           items: [],
           maxEquippedItems: 3,
+          characterType: 'Standard',
           skills: [],
           stats: {
             maxVitality: 100, attackPower: 12, defense: 6, startingGuard: 0,
@@ -274,7 +297,7 @@ describe('PartyDrawer', () => {
           },
         },
       ],
-      progression: { unspentStatPoints: 0, totalStatPointsEarned: 0 },
+      progression: { unspentStatPoints: 0, totalStatPointsEarned: 0, palaceShardCount: 0 },
       permanentItems: [],
     };
     const wrapper = mountDrawer();

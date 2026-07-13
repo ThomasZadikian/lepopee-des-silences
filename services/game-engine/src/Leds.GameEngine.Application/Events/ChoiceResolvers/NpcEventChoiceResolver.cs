@@ -260,22 +260,35 @@ public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver
                 await _playerProfileGateway.AwardStatPointsAsync(run.PlayerId, amount, cancellationToken);
                 return $"Tu sens ta détermination grandir. +{amount} point de compétence.";
 
+            case "Currency":
+                var currencyAmount = offering.Amount > 0 ? offering.Amount : 1;
+                await _playerProfileGateway.AwardCurrencyAsync(run.PlayerId, currencyAmount, cancellationToken);
+                return $"+{currencyAmount} Éclats du Palais.";
+
             case "Companion":
                 if (string.IsNullOrWhiteSpace(offering.TargetKey))
                 {
                     return "Rien ne se produit.";
                 }
 
-                // No per-companion authored kit exists yet (no catalog concept for it) —
-                // recruited companions start with the same balanced baseline as the
-                // protagonist's own default stats, and only the universal basic skills.
-                // TODO(utilisateur) : remplacer par un kit propre à chaque compagnon
-                // (stats/sorts) une fois le contenu reçu.
+                // Every companion offering is authored with its own combat kit in the
+                // catalog seed (CompanionKitSpec) — the fallback below only guards against
+                // a malformed offering (kit missing) and should never fire in practice.
+                var kit = offering.CompanionKit;
                 await _playerProfileGateway.RecruitCompanionAsync(
                     run.PlayerId, offering.TargetKey, npc.DisplayName,
-                    maxVitality: 100, attackPower: 12, defense: 6, startingGuard: 0,
-                    speed: 10, initiative: 10, recovery: 5, focus: 0, mana: 0, charge: 0,
-                    skillKeys: new[] { "skill.basic.guard" }, cancellationToken);
+                    maxVitality: kit?.MaxVitality ?? 100,
+                    attackPower: kit?.AttackPower ?? 12,
+                    defense: kit?.Defense ?? 6,
+                    startingGuard: kit?.StartingGuard ?? 0,
+                    speed: kit?.Speed ?? 10,
+                    initiative: kit?.Initiative ?? 10,
+                    recovery: kit?.Recovery ?? 5,
+                    focus: kit?.Focus ?? 0,
+                    mana: kit?.Mana ?? 0,
+                    charge: kit?.Charge ?? 0,
+                    skillKeys: kit?.SkillKeys ?? new[] { "skill.basic.guard" },
+                    cancellationToken);
                 return $"{npc.DisplayName} se joint à vous, désormais — pour de bon.";
 
             case "ReputationBoost":

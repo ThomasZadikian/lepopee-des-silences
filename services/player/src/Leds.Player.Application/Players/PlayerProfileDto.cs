@@ -50,6 +50,7 @@ public sealed record PlayerCharacterDto(
     Guid Id,
     string DefinitionKey,
     string DisplayName,
+    string CharacterType,
     int MaxVitality,
     int BaseMana,
     int BaseCharge,
@@ -73,6 +74,7 @@ public sealed record PlayerCharacterDto(
             character.Id.Value,
             character.DefinitionKey,
             character.DisplayName,
+            character.CharacterType,
             character.MaxVitality,
             character.BaseMana,
             character.BaseCharge,
@@ -152,7 +154,8 @@ public sealed record PlayerProgressionDto(
     int TotalRunsFailed,
     int TotalRunsAbandoned,
     int UnspentStatPoints,
-    int TotalStatPointsEarned)
+    int TotalStatPointsEarned,
+    int PalaceShardCount)
 {
     public static PlayerProgressionDto FromDomain(PlayerProgression progression)
     {
@@ -162,6 +165,7 @@ public sealed record PlayerProgressionDto(
             progression.TotalRunsFailed,
             progression.TotalRunsAbandoned,
             progression.UnspentStatPoints,
-            progression.TotalStatPointsEarned);
+            progression.TotalStatPointsEarned,
+            progression.PalaceShardCount);
     }
 }

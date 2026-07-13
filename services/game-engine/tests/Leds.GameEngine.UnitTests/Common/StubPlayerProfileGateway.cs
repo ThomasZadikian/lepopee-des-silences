@@ -14,6 +14,7 @@ public sealed class StubPlayerProfileGateway : IPlayerProfileGateway
 
     public List<(Guid PlayerId, Guid CharacterId, string SkillKey, string Source)> UnlockedSkills { get; } = [];
     public List<(Guid PlayerId, int Amount)> AwardedStatPoints { get; } = [];
+    public List<(Guid PlayerId, int Amount)> AwardedCurrency { get; } = [];
     public List<(Guid PlayerId, string NpcKey, string OfferingKey, Guid? SourceRunId)> ClaimedOfferings { get; } = [];
     public List<(Guid PlayerId, string NpcKey, string MilestoneKey, Guid? SourceRunId)> GrantedMilestones { get; } = [];
     public List<(Guid PlayerId, Guid CharacterId, string ItemKey)> EquippedItems { get; } = [];
@@ -85,6 +86,12 @@ public sealed class StubPlayerProfileGateway : IPlayerProfileGateway
     public Task<PlayerProfileView> AwardStatPointsAsync(Guid playerId, int amount, CancellationToken cancellationToken)
     {
         AwardedStatPoints.Add((playerId, amount));
+        return Task.FromResult(EmptyProfile(playerId));
+    }
+
+    public Task<PlayerProfileView> AwardCurrencyAsync(Guid playerId, int amount, CancellationToken cancellationToken)
+    {
+        AwardedCurrency.Add((playerId, amount));
         return Task.FromResult(EmptyProfile(playerId));
     }
 

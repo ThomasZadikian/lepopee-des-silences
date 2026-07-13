@@ -441,6 +441,27 @@ public sealed class ResolveCurrentEventCommandHandler
         return allies;
     }
 
+    /// <summary>
+    /// NPC keys of already-recruited companions, derived from the roster's character
+    /// definition keys by naming convention (<c>"character.thomas"</c> → <c>"npc.thomas"</c>).
+    /// Used to keep a recruited NPC from ever being re-selected for an encounter — see
+    /// NpcEncounterSelector.
+    /// </summary>
+    private static IReadOnlyCollection<string> RecruitedCompanionNpcKeys(Run run)
+    {
+        const string CharacterKeyPrefix = "character.";
+        const string NpcKeyPrefix = "npc.";
+
+        var characters = run.PlayerSnapshot?.Characters.ToArray() ?? [];
+
+        return characters
+            .Skip(1) // index 0 is always the protagonist, never an NPC-derived companion
+            .Select(c => c.DefinitionKey)
+            .Where(key => key.StartsWith(CharacterKeyPrefix, StringComparison.OrdinalIgnoreCase))
+            .Select(key => NpcKeyPrefix + key[CharacterKeyPrefix.Length..])
+            .ToArray();
+    }
+
     private async Task<IReadOnlyDictionary<string, IReadOnlyList<SkillStatusEffectSpec>>> BuildSkillEffectsAsync(
     Run run, CombatEncounterDraft draft, CancellationToken ct)
     {
@@ -549,7 +570,8 @@ public sealed class ResolveCurrentEventCommandHandler
                 .ToArray(),
             PalaceRoomState: room.PalaceState,
             RoomClimate: ResolveActiveClimate(run, room),
-            RoomKey: room.CatalogBinding?.Key);
+            RoomKey: room.CatalogBinding?.Key,
+            RecruitedCompanionNpcKeys: RecruitedCompanionNpcKeys(run));
 
         var contentResult = await _eventContentResolver.ResolveAsync(
             contentContext, cancellationToken);

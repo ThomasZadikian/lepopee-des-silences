@@ -33,6 +33,7 @@ function baseCharacter(): PlayerCharacterView {
     maxEquippedSkills: 4,
     items: [],
     maxEquippedItems: 3,
+    characterType: 'Standard',
     skills: [
       { skillKey: 'skill.a', unlockedAtUtc: '2026-01-01T00:00:00Z', source: 'default', isEquipped: true },
       { skillKey: 'skill.b', unlockedAtUtc: '2026-01-01T00:00:00Z', source: 'default', isEquipped: false },
@@ -99,7 +100,7 @@ describe('SkillManagementTab', () => {
       id: 'player-1',
       displayName: 'Test',
       characters: [baseCharacter()],
-      progression: { unspentStatPoints: 0, totalStatPointsEarned: 0 },
+      progression: { unspentStatPoints: 0, totalStatPointsEarned: 0, palaceShardCount: 0 },
       permanentItems: [],
     });
     const character = baseCharacter();
@@ -107,7 +108,7 @@ describe('SkillManagementTab', () => {
       id: 'player-1',
       displayName: 'Test',
       characters: [character],
-      progression: { unspentStatPoints: 0, totalStatPointsEarned: 0 },
+      progression: { unspentStatPoints: 0, totalStatPointsEarned: 0, palaceShardCount: 0 },
       permanentItems: [],
     };
     const wrapper = mount(SkillManagementTab, { props: { character } });

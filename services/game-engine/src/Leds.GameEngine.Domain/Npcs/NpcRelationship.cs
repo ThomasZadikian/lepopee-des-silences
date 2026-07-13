@@ -72,7 +72,20 @@ public sealed class NpcRelationship
             currentDialogueNodeKey);
     }
 
-    public void AdjustScore(int delta) => RelationshipScore += delta;
+    // Elise's reputation can never decrease — she is "totalement apathique" and has no
+    // wound/trigger of her own; any negative delta reaching her (e.g. a future authored
+    // choice) is simply ignored rather than lowering her score.
+    private const string NeverDecreasingNpcKey = "npc.elise";
+
+    public void AdjustScore(int delta)
+    {
+        if (delta < 0 && string.Equals(NpcKey, NeverDecreasingNpcKey, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        RelationshipScore += delta;
+    }
 
     public void SetFlag(string flag)
     {

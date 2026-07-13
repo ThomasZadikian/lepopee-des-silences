@@ -116,6 +116,10 @@ export type RunDto = {
   lawDenialEnabled?: boolean;
   /** true when law denial is currently usable: owned, and cooldown (10 rooms) has elapsed. */
   canUseLawDenial?: boolean;
+  /** true when the player owns the "Calice infini" permanent item — gates the Calice infini UI. */
+  caliceInfiniEnabled?: boolean;
+  /** true when Calice infini is currently usable: owned, and at least 1 room has elapsed since last use. */
+  canUseCaliceInfini?: boolean;
 };
 
 export type RunJournalEntryDto = {

@@ -37,6 +37,7 @@ function baseProfile(): PlayerProfileView {
         maxEquippedSkills: 4,
         items: [],
         maxEquippedItems: 3,
+        characterType: 'Standard',
         skills: [
           { skillKey: 'skill.a', unlockedAtUtc: '2026-01-01T00:00:00Z', source: 'default', isEquipped: true },
         ],
@@ -46,7 +47,7 @@ function baseProfile(): PlayerProfileView {
         },
       },
     ],
-    progression: { unspentStatPoints: 2, totalStatPointsEarned: 3 },
+    progression: { unspentStatPoints: 2, totalStatPointsEarned: 3, palaceShardCount: 0 },
     permanentItems: [],
   };
 }
@@ -108,6 +109,38 @@ describe('TeamManagementModal', () => {
     const wrapper = mountModal();
     await flushPromises();
     expect(wrapper.find('.tmm-character-picker').exists()).toBe(false);
+  });
+
+  it('shows the palace shard count', async () => {
+    const wrapper = mountModal();
+    await flushPromises();
+    expect(wrapper.text()).toContain('Éclats du Palais');
+  });
+
+  it('shows a "Compagnon" badge in the character picker for recruited companions', async () => {
+    const profile = baseProfile();
+    profile.characters.push({
+      id: 'char-2',
+      definitionKey: 'character.thomas',
+      displayName: 'Thomas',
+      maxEquippedSkills: 4,
+      items: [],
+      maxEquippedItems: 3,
+      characterType: 'Companion',
+      skills: [],
+      stats: {
+        maxVitality: 110, attackPower: 8, defense: 12, startingGuard: 8,
+        speed: 8, initiative: 8, recovery: 6, focus: 2, mana: 14, charge: 0,
+      },
+    });
+    usePlayerStore().profile = profile;
+
+    const wrapper = mountModal();
+    await flushPromises();
+
+    const picker = wrapper.find('.tmm-character-picker');
+    expect(picker.exists()).toBe(true);
+    expect(picker.text()).toContain('Compagnon');
   });
 
   it('emits close when the backdrop is clicked', async () => {

@@ -12,5 +12,9 @@ public enum NpcOfferingKind
     // Recruits the NPC as a permanent companion (TargetKey = the companion's
     // character definition key, e.g. "character.thomas") — added to the player's
     // roster for life, fights alongside the protagonist in every future run.
-    Companion = 4
+    Companion = 4,
+    // Awards a flat amount of the player's persistent currency ("Éclats du Palais").
+    // Amount = how much to award. No spend mechanism exists yet — this is a pure
+    // counter for now (see John's rare offering).
+    Currency = 5
 }

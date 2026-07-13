@@ -14,6 +14,7 @@ using Leds.GameEngine.Application.Runs.MoveToNextRoom;
 using Leds.GameEngine.Application.Runs.PourRunItemLiquid;
 using Leds.GameEngine.Application.Runs.ProgressRun;
 using Leds.GameEngine.Application.Runs.RemovePalaceLaw;
+using Leds.GameEngine.Application.Runs.UseCaliceInfini;
 using Leds.GameEngine.Application.Runs.ResolveCurrentEvent;
 using Leds.GameEngine.Application.Runs.ResumeRun;
 using Leds.GameEngine.Application.Runs.SaveAndExitRun;
@@ -331,9 +332,26 @@ public sealed class RunsController : ControllerBase
 
         return Ok(response);
     }
+
+    [HttpPost("{runId:guid}/calice-infini/use")]
+    [ProducesResponseType(typeof(UseCaliceInfiniResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<UseCaliceInfiniResponse>> UseCaliceInfini(
+        Guid runId,
+        [FromBody] UseCaliceInfiniRequest? request,
+        CancellationToken cancellationToken)
+    {
+        var command = new UseCaliceInfiniCommand(runId, request?.TargetCombatantId);
+        var response = await _sender.Send(command, cancellationToken);
+
+        return Ok(response);
+    }
 }
 
 public sealed record StartRunRequest(Guid PlayerId);
+
+public sealed record UseCaliceInfiniRequest(Guid? TargetCombatantId);
 
 public sealed record ConfirmPermanentItemSelectionRequest(IReadOnlyCollection<string> ItemDefinitionKeys);
 

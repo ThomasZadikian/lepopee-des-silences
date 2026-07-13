@@ -68,6 +68,8 @@ public sealed class CatalogSeedRunner
         await SeedEcrivainAsync(cancellationToken);
         await SeedErikaAsync(cancellationToken);
         await SeedMinaAsync(cancellationToken);
+        await SeedEliseAsync(cancellationToken);
+        await SeedJohnAsync(cancellationToken);
         await SeedEmotionsAsync(cancellationToken);
         await SeedCanonEnemiesAsync(cancellationToken);
         await SeedCanonSkillsAsync(cancellationToken);
@@ -1420,6 +1422,9 @@ public sealed class CatalogSeedRunner
                 new NpcDialogueChoice("accepter-favorite", "Accepter \"Favorite de Elise\"",
                     new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) },
                     new[] { C(ConsequenceKind.GrantOffering, offering: "offer.mane.favorite-de-elise") }, null),
+                new NpcDialogueChoice("accepter-compagnon", "Lui demander de vous accompagner",
+                    new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) },
+                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.mane.compagnon") }, null),
                 new NpcDialogueChoice("don-decliner", "Remercier et poursuivre votre chemin", Array.Empty<DialogueRequirement>(),
                     new[] { C(ConsequenceKind.Narrative, frag: "« Comme vous voulez. » L'objet disparaît aussi vite qu'il était apparu.") }, null)
             });
@@ -1432,7 +1437,15 @@ public sealed class CatalogSeedRunner
             new NpcOffering("offer.mane.impulsivite", NpcOfferingKind.Skill, "canon.skill.impulsivite", 1, true,
                 new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 250) }),
             new NpcOffering("offer.mane.favorite-de-elise", NpcOfferingKind.Skill, "canon.skill.favorite-de-elise", 1, true,
-                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) })
+                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) }),
+            // IsMajor: true — Mané ne peut être recrutée comme compagnon qu'une fois.
+            // Kit compagnon : glass cannon impulsive, réutilise son sort signature déjà en jeu.
+            new NpcOffering("offer.mane.compagnon", NpcOfferingKind.Companion, "character.mane", 1, true,
+                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) },
+                CompanionKit: new CompanionKitSpec(
+                    MaxVitality: 85, AttackPower: 15, Defense: 4, StartingGuard: 0,
+                    Speed: 13, Initiative: 12, Recovery: 4, Focus: 3, Mana: 15, Charge: 0,
+                    SkillKeys: new[] { "skill.basic.strike", "canon.skill.impulsivite" }))
         };
 
         return await UpsertNpcAsync("npc.mane", "Mané",
@@ -1503,8 +1516,13 @@ public sealed class CatalogSeedRunner
             new NpcOffering("offer.thomas.carnet", NpcOfferingKind.Item, "canon.item.carnet-premier-architecte", 1, true,
                 new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 250) }),
             // IsMajor: true — Thomas ne peut être recruté comme compagnon qu'une fois.
+            // Kit compagnon : tank/support structurel (persona de projection de l'Architecte).
             new NpcOffering("offer.thomas.compagnon", NpcOfferingKind.Companion, "character.thomas", 1, true,
-                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) })
+                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) },
+                CompanionKit: new CompanionKitSpec(
+                    MaxVitality: 110, AttackPower: 8, Defense: 12, StartingGuard: 8,
+                    Speed: 8, Initiative: 8, Recovery: 6, Focus: 2, Mana: 14, Charge: 0,
+                    SkillKeys: new[] { "skill.basic.strike", "skill.basic.guard", "canon.skill.fondations-de-thomas" }))
         };
 
         return await UpsertNpcAsync("npc.thomas", "Thomas",
@@ -2001,6 +2019,9 @@ public sealed class CatalogSeedRunner
                 new NpcDialogueChoice("accepter-protection", "Accepter la Protection de Him'Lit",
                     new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) },
                     new[] { C(ConsequenceKind.GrantOffering, offering: "offer.mina.protection") }, null),
+                new NpcDialogueChoice("accepter-compagnon", "Lui demander de vous accompagner",
+                    new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) },
+                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.mina.compagnon") }, null),
                 new NpcDialogueChoice("don-decliner", "La remercier et poursuivre votre chemin", Array.Empty<DialogueRequirement>(),
                     new[] { C(ConsequenceKind.Narrative, frag: "Elle range l'objet contre elle, sans un mot de plus, et retourne à sa recherche.") }, null)
             });
@@ -2018,12 +2039,202 @@ public sealed class CatalogSeedRunner
             new NpcOffering("offer.mina.peluche", NpcOfferingKind.Item, "canon.item.peluche-mina", 1, true,
                 new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 250) }),
             new NpcOffering("offer.mina.protection", NpcOfferingKind.Item, "canon.item.protection-himlit", 1, true,
-                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) })
+                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) }),
+            // IsMajor: true — Mina ne peut être recrutée comme compagnon qu'une fois.
+            // Kit compagnon : support/soin léger fragile, thème protecteur/enfantin.
+            new NpcOffering("offer.mina.compagnon", NpcOfferingKind.Companion, "character.mina", 1, true,
+                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) },
+                CompanionKit: new CompanionKitSpec(
+                    MaxVitality: 65, AttackPower: 5, Defense: 5, StartingGuard: 2,
+                    Speed: 10, Initiative: 9, Recovery: 5, Focus: 5, Mana: 22, Charge: 0,
+                    SkillKeys: new[] { "skill.basic.strike", "canon.skill.veillee-de-mina" }))
         };
 
         return await UpsertNpcAsync("npc.mina", "Mina",
             "Une petite fille née dans le Palais, la seconde de ses habitants. Ses parents restent inconnus ; elle les cherche partout, sous la surveillance protectrice de Him'Lit, qui la tient à l'écart de toutes les influences du Palais.",
             "1.0", EmotionalRegister.Memoire, true, persona, wounds, graph, ct,
+            offerings: offerings);
+    }
+
+    // ── Elise (Silence, apathique, sans déclencheur) ─────────────────────────
+    // L'accompagnatrice du Palais, aussi ancienne que l'Enfant. Elle connaît tout
+    // du Palais mais ne répond jamais aux questions ("il faut apprendre seul").
+    // Totalement apathique : aucune NpcWound (pas de déclencheur), et sa réputation
+    // ne peut jamais diminuer (garde-fou dans NpcRelationship.AdjustScore, côté
+    // game-engine — voir NeverDecreasingNpcKey = "npc.elise").
+    private async Task<int> SeedEliseAsync(CancellationToken ct)
+    {
+        var persona = new NpcPersona(
+            "Aussi ancienne que l'Enfant. Elle connaît chaque pierre, chaque couloir, chaque loi du Palais — et ne dit jamais rien de ce qu'elle sait. Apprendre seul, ici, n'est pas une punition : c'est la seule voie qu'elle reconnaît.",
+            EmotionalRegister.Silence,
+            new[] { "accompagner sans guider", "le silence", "regarder apprendre" },
+            Array.Empty<string>());
+
+        var wounds = Array.Empty<NpcWound>();
+
+        var rencontre = new NpcDialogueNode("rencontre", "Elise",
+            new[]
+            {
+                "Elle est là, immobile, comme si elle vous attendait depuis toujours — ou depuis jamais, ça ne change rien pour elle.",
+                "« Je sais où mène ce couloir. Je sais ce que cache cette porte. Je ne vous le dirai pas. »"
+            },
+            new[]
+            {
+                new NpcDialogueChoice("demander-chemin", "Lui demander ce qui vous attend plus loin", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.AdjustRelationship, rel: 1),
+                            C(ConsequenceKind.Narrative, frag: "Elle ne répond pas. Elle se contente de vous regarder chercher, sans un geste pour vous aider — ni pour vous en empêcher.") }, "silence"),
+                new NpcDialogueChoice("demander-age", "Lui demander depuis combien de temps elle est là", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.AdjustRelationship, rel: 1),
+                            C(ConsequenceKind.Narrative, frag: "Un silence, long. Puis rien — comme si la question elle-même s'était perdue quelque part entre vous deux.") }, "silence"),
+                new NpcDialogueChoice("partir", "Partir", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.Narrative, frag: "Vous partez. Elle ne vous suit pas des yeux — elle est déjà ailleurs, ou nulle part.") }, null)
+            });
+
+        var silence = new NpcDialogueNode("silence", "Elise",
+            new[] { "« On n'apprend rien de ce qu'on vous donne. On apprend de ce qu'on traverse. »" },
+            new[]
+            {
+                new NpcDialogueChoice("continuer", "Rester encore un instant", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.AdjustRelationship, rel: 1) }, "don")
+            });
+
+        var don = new NpcDialogueNode("don", "Elise",
+            new[] { "Elle tend la main, sans un mot d'explication — comme toujours." },
+            new[]
+            {
+                new NpcDialogueChoice("accepter-baiser", "Accepter le \"Baiser d'Elise\"",
+                    new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 250) },
+                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.elise.baiser") }, null),
+                new NpcDialogueChoice("accepter-favorite", "Accepter \"Favorite de Elise\"",
+                    new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) },
+                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.elise.favorite") }, null),
+                new NpcDialogueChoice("accepter-compagnon", "Lui demander de vous accompagner",
+                    new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) },
+                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.elise.compagnon") }, null),
+                new NpcDialogueChoice("don-decliner", "Ne rien prendre et poursuivre votre chemin", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.Narrative, frag: "Sa main retombe, sans reproche. Rien, chez elle, n'attend jamais rien.") }, null)
+            });
+
+        var graph = new NpcDialogueGraph("npc.elise.dialogue", "1.0", "rencontre",
+            new Dictionary<string, NpcDialogueNode> { ["rencontre"] = rencontre, ["silence"] = silence, ["don"] = don });
+
+        var offerings = new[]
+        {
+            // Butin rare : nouveau sort (unique à Elise).
+            new NpcOffering("offer.elise.baiser", NpcOfferingKind.Skill, "canon.skill.baiser-delise", 1, true,
+                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 250) }),
+            // Butin légendaire : sort existant, déjà offert par Mané — double-octroi
+            // confirmé no-op côté domaine (PlayerCharacter.AddSkill), aucun risque.
+            new NpcOffering("offer.elise.favorite", NpcOfferingKind.Skill, "canon.skill.favorite-de-elise", 1, true,
+                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) }),
+            // IsMajor: true — Elise ne peut être recrutée comme compagnon qu'une fois.
+            // Kit compagnon : support/soin léger, seul geste concret qu'elle offre en combat.
+            new NpcOffering("offer.elise.compagnon", NpcOfferingKind.Companion, "character.elise", 1, true,
+                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) },
+                CompanionKit: new CompanionKitSpec(
+                    MaxVitality: 80, AttackPower: 4, Defense: 6, StartingGuard: 0,
+                    Speed: 9, Initiative: 8, Recovery: 5, Focus: 7, Mana: 26, Charge: 0,
+                    SkillKeys: new[] { "skill.basic.strike", "canon.skill.baiser-delise" }))
+        };
+
+        return await UpsertNpcAsync("npc.elise", "Elise",
+            "L'accompagnatrice du Palais, aussi ancienne que l'Enfant. Elle connaît toutes les connaissances du Palais et guide les aventuriers dans sa traversée — sans jamais répondre à une question, puisqu'il faut apprendre seul, ici. Totalement apathique.",
+            "1.0", EmotionalRegister.Silence, true, persona, wounds, graph, ct,
+            offerings: offerings);
+    }
+
+    // ── John (Rupture, réversible) ────────────────────────────────────────────
+    // Ancien voleur, a traversé la faille du Palais (écho direct au dialogue d'Erika)
+    // en pillant d'anciennes ruines, a survécu des années en volant avant que le
+    // Palais l'envoie « digérer » via l'arrestation de Him'Lit. Déteste Him'Lit ; en
+    // entendre parler le met en colère.
+    private async Task<int> SeedJohnAsync(CancellationToken ct)
+    {
+        var persona = new NpcPersona(
+            "Un ancien voleur, méfiant et amer, mais rusé et débrouillard — il a survécu des années dans le Palais en volant ce qu'il fallait. Il aime l'indépendance et profiter d'une faille ; il déteste l'autorité, être enfermé, et par-dessus tout, Him'Lit.",
+            EmotionalRegister.Rupture,
+            new[] { "l'indépendance", "profiter d'une faille", "voler ce dont il a besoin" },
+            new[] { "Him'Lit", "l'autorité", "être enfermé" });
+
+        var wounds = new[]
+        {
+            new NpcWound("w-john-himlit", EmotionalRegister.Rupture, NpcWoundReversibility.SoothableByAct, -2, -4,
+                new[] { new NpcTransgression("w-john-himlit", "john-himlit-mention", -3) },
+                "Him'Lit l'a fait arrêter, après des années à échapper au Palais en pillant ce qu'il pouvait. En prononcer le nom devant lui, c'est rouvrir l'arrestation elle-même.")
+        };
+
+        var rencontre = new NpcDialogueNode("rencontre", "John",
+            new[]
+            {
+                "Il vous jauge d'un coup d'œil, la main déjà proche de sa ceinture — vieille habitude de voleur.",
+                "« Vous n'êtes pas Him'Lit. C'est déjà un bon point, pour vous. »"
+            },
+            new[]
+            {
+                new NpcDialogueChoice("mentionner-himlit", "Lui demander ce qu'il pense de Him'Lit", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.SetMemoryFlag, flag: "john-himlit-mention"),
+                            C(ConsequenceKind.Narrative, frag: "Sa mâchoire se serre. « Ne prononcez plus jamais ce nom devant moi. »") }, null),
+                new NpcDialogueChoice("demander-passe", "Lui demander comment il est arrivé ici", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.AdjustRelationship, rel: 1) }, "passe"),
+                new NpcDialogueChoice("partir", "Partir", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.Narrative, frag: "Vous partez. Il vous suit du regard, méfiant, jusqu'à ce que vous ayez disparu.") }, null)
+            });
+
+        var passe = new NpcDialogueNode("passe", "John",
+            new[]
+            {
+                "« J'ai pillé des ruines, avant. De vieilles ruines, oubliées de tous — sauf de moi. Et puis j'ai trouvé une faille. »",
+                "« Le Palais n'aime pas qu'on lui échappe. Il a fini par m'envoyer Him'Lit. »"
+            },
+            new[]
+            {
+                new NpcDialogueChoice("continuer", "Continuer à l'écouter", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.AdjustRelationship, rel: 1) }, "don")
+            });
+
+        var don = new NpcDialogueNode("don", "John",
+            new[] { "Il sort une bourse usée, la soupèse un instant avant de vous la tendre. « Tenez. Ça ne me servira plus à grand-chose, de toute façon. »" },
+            new[]
+            {
+                new NpcDialogueChoice("accepter-eclats", "Accepter 1000 Éclats du Palais",
+                    new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 250) },
+                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.john.eclats") }, null),
+                new NpcDialogueChoice("accepter-calice", "Accepter le \"Calice infini\"",
+                    new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) },
+                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.john.calice") }, null),
+                new NpcDialogueChoice("accepter-compagnon", "Lui demander de vous accompagner",
+                    new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) },
+                    new[] { C(ConsequenceKind.GrantOffering, offering: "offer.john.compagnon") }, null),
+                new NpcDialogueChoice("don-decliner", "Le remercier et poursuivre votre chemin", Array.Empty<DialogueRequirement>(),
+                    new[] { C(ConsequenceKind.Narrative, frag: "Il range la bourse, sans un mot — vieille habitude de ne rien laisser voir.") }, null)
+            });
+
+        var graph = new NpcDialogueGraph("npc.john.dialogue", "1.0", "rencontre",
+            new Dictionary<string, NpcDialogueNode> { ["rencontre"] = rencontre, ["passe"] = passe, ["don"] = don });
+
+        var offerings = new[]
+        {
+            // Butin rare : monnaie "Éclats du Palais" (nouvelle mécanique, pur compteur —
+            // voir NpcOfferingKind.Currency et NpcEventChoiceResolver.ApplyOfferingAsync).
+            new NpcOffering("offer.john.eclats", NpcOfferingKind.Currency, null, 1000, true,
+                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 250) }),
+            // Butin légendaire : accessoire "Calice infini" — restaure 50% des PV max
+            // de la cible, une fois par Room (voir Run.UseCaliceInfini).
+            new NpcOffering("offer.john.calice", NpcOfferingKind.Item, "canon.item.calice-infini", 1, true,
+                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) }),
+            // IsMajor: true — John ne peut être recruté comme compagnon qu'une fois.
+            // Kit compagnon : rapide/opportuniste, thème ancien voleur.
+            new NpcOffering("offer.john.compagnon", NpcOfferingKind.Companion, "character.john", 1, true,
+                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) },
+                CompanionKit: new CompanionKitSpec(
+                    MaxVitality: 90, AttackPower: 13, Defense: 5, StartingGuard: 0,
+                    Speed: 14, Initiative: 14, Recovery: 4, Focus: 6, Mana: 10, Charge: 0,
+                    SkillKeys: new[] { "skill.basic.strike", "canon.skill.vol-a-la-tire" }))
+        };
+
+        return await UpsertNpcAsync("npc.john", "John",
+            "Un ancien voleur qui, en pillant d'anciennes ruines, a fini par traverser la faille du Palais. Il y a survécu des années en volant, jusqu'à ce que le Palais l'envoie « digérer » via l'arrestation de Him'Lit — qu'il déteste depuis, tout comme la seule mention de son nom.",
+            "1.0", EmotionalRegister.Rupture, true, persona, wounds, graph, ct,
             offerings: offerings);
     }
 
@@ -2659,6 +2870,55 @@ public sealed class CatalogSeedRunner
                 new SkillEffectSpec("DamageOverTime", "canon.skill.destinee-cruelle:dot", 10, 0, TickInterval: TicksPerTurn, MagnitudeIsPercentOfMax: true, AppliesToActor: true, IsPermanent: true)
             },
             category: "Magic");
+
+        // ── Sorts de kit compagnon (chantier "Compagnons") ─────────────────────
+
+        // "Fondations" (Thomas, kit compagnon) : garde instantanée + défense renforcée
+        // sur une durée — thème tank/support structurel, cohérent avec sa persona
+        // (l'Architecte). Cible SingleAlly : les effets s'appliquent à la cible choisie,
+        // pas au lanceur (pas de AppliesToActor, cf. "Rempart").
+        await UpsertSkillAsync("canon.skill.fondations-de-thomas", "Fondations",
+            "Il pose, sous les pas d'un allié, quelque chose d'aussi stable que le Palais lui-même.",
+            "Buff", "SingleAlly", "Guard", mana: 14, power: 15, cancellationToken,
+            effects: new[]
+            {
+                new SkillEffectSpec("StatModifier", "canon.skill.fondations-de-thomas:defense", 10, TicksPerTurn * 4,
+                    Stat: "Defense", MagnitudeIsPercentOfBaseStat: true)
+            },
+            category: "Physical");
+
+        // "Veillée" (Mina, kit compagnon) : garde qui se régénère sur quelques tours —
+        // thème protecteur/enfantin, cohérent avec sa persona (veillée par Him'Lit).
+        await UpsertSkillAsync("canon.skill.veillee-de-mina", "Veillée",
+            "Elle veille sur toi comme Him'Lit veille sur elle — une garde qui revient, tour après tour.",
+            "Buff", "SingleAlly", "Buff", mana: 18, power: 0, cancellationToken,
+            effects: new[]
+            {
+                new SkillEffectSpec("GuardOverTime", null, 6, TicksPerTurn * 5, TickInterval: TicksPerTurn)
+            },
+            category: "Magic");
+
+        // "Baiser d'Elise" (Elise, butin rare) : soin instantané de 20% des PV max —
+        // le seul geste concret d'Elise, elle qui ne répond jamais aux questions.
+        await UpsertSkillAsync("canon.skill.baiser-delise", "Baiser d'Elise",
+            "Elle ne dit rien. Elle pose seulement les lèvres, et ce qui était perdu revient, un peu.",
+            "Heal", "SingleAlly", "Heal", mana: 16, power: 20, cancellationToken,
+            category: "Magic",
+            basePowerIsPercentOfMaxVitality: true);
+
+        // "Vol à la tire" (John, kit compagnon) : frappe rapide et gain de précision
+        // critique pour le lanceur — thème rapide/opportuniste, cohérent avec sa
+        // persona (ancien voleur). AppliesToActor: true car le bonus doit revenir sur
+        // John, pas sur la cible frappée (cf. "La liberté retrouvée").
+        await UpsertSkillAsync("canon.skill.vol-a-la-tire", "Vol à la tire",
+            "Un geste vif, appris dans les ruines, avant que le Palais ne lui envoie Him'Lit.",
+            "Damage", "SingleEnemy", "Damage", mana: 10, power: 16, cancellationToken,
+            effects: new[]
+            {
+                new SkillEffectSpec("StatModifier", "canon.skill.vol-a-la-tire:crit", 10, TicksPerTurn,
+                    Stat: "CriticalChanceBonus", AppliesToActor: true)
+            },
+            category: "Physical");
     }
 
     private async Task UpsertSkillAsync(
@@ -2920,6 +3180,14 @@ public sealed class CatalogSeedRunner
         await UpsertItemAsync("canon.item.protection-himlit", "Protection de Him'Lit",
             "Une marque que Him'Lit lui-même a posée sur Mina, et qu'elle a un jour posée sur toi. Elle attire son regard plus souvent qu'elle ne devrait — et pèse, un peu, sur ce que tu portes en combat.",
             "Relic", "Ward", "Legendary", "Permanent", false, 0, cancellationToken);
+
+        // Aucun effet d'équipement classique : sa mécanique (restaurer 50% des PV max
+        // d'une cible, une fois par Room) est branchée par clé directement côté
+        // game-engine, pas via ItemEquipmentEffectKind — voir SeedJohnAsync,
+        // StartRunCommandHandler.CaliceInfiniItemKey et Run.UseCaliceInfini.
+        await UpsertItemAsync("canon.item.calice-infini", "Calice infini",
+            "Un calice que John a gardé de ses années de pillage, avant que le Palais ne l'envoie digérer par Him'Lit. Il ne se vide jamais tout à fait — une gorgée suffit à refaire ce qui a été perdu.",
+            "Equipment", "Accessory", "Legendary", "Permanent", false, 0, cancellationToken);
 
         await UpsertItemAsync("canon.item.pierre-antique", "Pierre antique",
             "Une pierre arrachée aux fondations d'un temple oublié — plus dure que tout ce que le Palais a jamais bâti.",

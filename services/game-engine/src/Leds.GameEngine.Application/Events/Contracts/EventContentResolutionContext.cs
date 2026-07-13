@@ -15,4 +15,7 @@ public sealed record EventContentResolutionContext(
     IReadOnlyCollection<string>? ActivePalaceLawKeys = null,
     PalaceRoomState? PalaceRoomState = null,
     string? RoomClimate = null,
-    string? RoomKey = null);
+    string? RoomKey = null,
+    // NPC keys of already-recruited companions (derived from the player's roster) — an
+    // NPC in this set must never be re-selected for an encounter (see NpcEncounterSelector).
+    IReadOnlyCollection<string>? RecruitedCompanionNpcKeys = null);

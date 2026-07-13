@@ -115,6 +115,15 @@ describe('runApi', () => {
     );
   });
 
+  it('useCaliceInfini sends POST to the calice-infini use route', async () => {
+    vi.mocked(gameEngineApi.post).mockResolvedValueOnce({});
+    await runApi.useCaliceInfini('run-1');
+    expect(gameEngineApi.post).toHaveBeenCalledWith(
+      '/api/v2/runs/run-1/calice-infini/use',
+      { targetCombatantId: null },
+    );
+  });
+
   it('returns the API response', async () => {
     const mockResponse = { id: 'run-1', status: 'Active' };
     vi.mocked(gameEngineApi.get).mockResolvedValueOnce(mockResponse);

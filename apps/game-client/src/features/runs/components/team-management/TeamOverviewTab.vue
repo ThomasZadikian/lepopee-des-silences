@@ -5,6 +5,7 @@ import type { SkillDefinitionView } from '../../../party/types/skillTypes';
 import { statDescriptions, statLabels, statOrder, statValue } from '../../../party/constants/statDescriptions';
 import { skillsApi } from '../../../party/api/skillsApi';
 import StatTooltip from '../../../../shared/components/StatTooltip.vue';
+import ChipBadge from '../../../../shared/components/ChipBadge.vue';
 
 defineProps<{ characters: PlayerCharacterView[] }>();
 
@@ -28,7 +29,10 @@ function skillDisplayName(skillKey: string): string {
   <div class="tov-root">
     <article v-for="character in characters" :key="character.id" class="tov-card">
       <header class="tov-card__header">
-        <span class="tov-card__name">{{ character.displayName }}</span>
+        <span class="tov-card__name">
+          {{ character.displayName }}
+          <ChipBadge v-if="character.characterType === 'Companion'" tone="gold">Compagnon</ChipBadge>
+        </span>
         <span class="es-label">{{ character.definitionKey }}</span>
       </header>
 
@@ -90,6 +94,9 @@ function skillDisplayName(skillKey: string): string {
   font-size: 18px;
   font-weight: 600;
   color: var(--ink);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .tov-card__stats {

@@ -1,5 +1,6 @@
 using Leds.Player.Application.Players;
 using Leds.Player.Application.Players.AddPermanentItems;
+using Leds.Player.Application.Players.AwardCurrency;
 using Leds.Player.Application.Players.AwardStatPoint;
 using Leds.Player.Application.Players.ClaimNpcOffering;
 using Leds.Player.Application.Players.ClearPermanentItemContent;
@@ -36,6 +37,20 @@ public sealed class InternalPlayersController : ControllerBase
         CancellationToken cancellationToken)
     {
         var command = new AwardStatPointCommand(playerId, request?.Amount ?? 1);
+        var response = await _sender.Send(command, cancellationToken);
+
+        return Ok(response);
+    }
+
+    [HttpPost("{playerId:guid}/currency/award")]
+    [ProducesResponseType(typeof(PlayerProfileDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<PlayerProfileDto>> AwardCurrency(
+        Guid playerId,
+        [FromBody] AwardCurrencyRequest request,
+        CancellationToken cancellationToken)
+    {
+        var command = new AwardCurrencyCommand(playerId, request.Amount);
         var response = await _sender.Send(command, cancellationToken);
 
         return Ok(response);
@@ -193,6 +208,8 @@ public sealed class InternalPlayersController : ControllerBase
 }
 
 public sealed record AwardStatPointsRequest(int Amount);
+
+public sealed record AwardCurrencyRequest(int Amount);
 
 public sealed record UnlockSkillRequest(string? Source);
 

@@ -253,6 +253,16 @@ public sealed class PlayerProfile
         Touch(now);
     }
 
+    /// <summary>
+    /// Awards "Éclats du Palais", the player's persistent currency (John's rare offering).
+    /// Profile-level, mirrors AwardStatPoint.
+    /// </summary>
+    public void AwardCurrency(DateTimeOffset now, int amount)
+    {
+        Progression.AwardCurrency(amount);
+        Touch(now);
+    }
+
     public void SpendStatPoint(PlayerCharacterId characterId, PlayerStatKind kind, DateTimeOffset now)
     {
         if (Progression.UnspentStatPoints <= 0)

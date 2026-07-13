@@ -8,7 +8,8 @@ public sealed record NpcOfferingDto(
     string? TargetKey,
     int Amount,
     bool IsMajor,
-    IReadOnlyCollection<DialogueRequirementDto> UnlockConditions)
+    IReadOnlyCollection<DialogueRequirementDto> UnlockConditions,
+    CompanionKitSpecDto? CompanionKit = null)
 {
     public static NpcOfferingDto FromDomain(NpcOffering offering) => new(
         offering.Key,
@@ -16,5 +17,33 @@ public sealed record NpcOfferingDto(
         offering.TargetKey,
         offering.Amount,
         offering.IsMajor,
-        offering.UnlockConditions.Select(DialogueRequirementDto.FromDomain).ToArray());
+        offering.UnlockConditions.Select(DialogueRequirementDto.FromDomain).ToArray(),
+        offering.CompanionKit is null ? null : CompanionKitSpecDto.FromDomain(offering.CompanionKit));
+}
+
+public sealed record CompanionKitSpecDto(
+    int MaxVitality,
+    int AttackPower,
+    int Defense,
+    int StartingGuard,
+    int Speed,
+    int Initiative,
+    int Recovery,
+    int Focus,
+    int Mana,
+    int Charge,
+    IReadOnlyCollection<string> SkillKeys)
+{
+    public static CompanionKitSpecDto FromDomain(CompanionKitSpec kit) => new(
+        kit.MaxVitality,
+        kit.AttackPower,
+        kit.Defense,
+        kit.StartingGuard,
+        kit.Speed,
+        kit.Initiative,
+        kit.Recovery,
+        kit.Focus,
+        kit.Mana,
+        kit.Charge,
+        kit.SkillKeys.ToArray());
 }

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { usePlayerStore } from '../../party/stores/playerStore';
+import { useRunStore } from '../stores/runStore';
 import { statDescriptions } from '../../party/constants/statDescriptions';
 import type { ActiveCurseDto, ActivePalaceLawDto, RunItemDto, RunModifierDto, RunPartyMemberDto } from '../types/runTypes';
 import StatTooltip from '../../../shared/components/StatTooltip.vue';
@@ -10,13 +11,16 @@ defineProps<{
   allies: RunPartyMemberDto[] | null;
   modifiers: RunModifierDto[] | null;
   laws: ActivePalaceLawDto[] | null;
-  curses: ActiveCurseDto[] | null; 
+  curses: ActiveCurseDto[] | null;
   items: RunItemDto[] | null;
+  caliceInfiniEnabled?: boolean;
+  canUseCaliceInfini?: boolean;
 }>();
 
 defineEmits<{ close: [] }>();
 
 const playerStore = usePlayerStore();
+const runStore = useRunStore();
 const isManageModalOpen = ref(false);
 
 function vitalityPct(m: RunPartyMemberDto): number {
@@ -175,10 +179,22 @@ function rarityTone(rarity: string): string {
       </section>
 
       <!-- ── Gestion de l'équipe ── -->
-      <!-- ── Gestion de l'équipe ── -->
       <section v-if="playerStore.mainCharacter" class="party-drawer__section">
         <button type="button" class="party-drawer__manage-btn" @click="isManageModalOpen = true">
           Gérer l'équipe
+        </button>
+      </section>
+
+      <!-- ── Calice infini ── -->
+      <section v-if="caliceInfiniEnabled" class="party-drawer__section">
+        <button
+          type="button"
+          class="party-drawer__manage-btn"
+          :disabled="!canUseCaliceInfini"
+          :title="canUseCaliceInfini ? 'Calice infini' : 'Calice infini — en recharge'"
+          @click="runStore.useCaliceInfini()"
+        >
+          Utiliser le Calice infini
         </button>
       </section>
 
@@ -357,14 +373,14 @@ function rarityTone(rarity: string): string {
   transition: background .15s, box-shadow .15s;
 }
 
-.party-drawer__manage-btn:hover {
+.party-drawer__manage-btn:hover:not(:disabled) {
   background: oklch(.55 .08 85 / .22);
   box-shadow: 0 0 18px -6px oklch(.72 .1 85 / .4);
 }
 
-.party-drawer__manage-btn:hover {
-  background: oklch(.55 .08 85 / .22);
-  box-shadow: 0 0 18px -6px oklch(.72 .1 85 / .4);
+.party-drawer__manage-btn:disabled {
+  opacity: .4;
+  cursor: not-allowed;
 }
 
 .party-drawer__list {

@@ -26,6 +26,9 @@ public interface IPlayerProfileGateway
 
     Task<PlayerProfileView> AwardStatPointsAsync(Guid playerId, int amount, CancellationToken cancellationToken);
 
+    /// <summary>Awards a flat amount of the player's persistent currency ("Éclats du Palais").</summary>
+    Task<PlayerProfileView> AwardCurrencyAsync(Guid playerId, int amount, CancellationToken cancellationToken);
+
     Task<bool> HasClaimedNpcOfferingAsync(Guid playerId, string npcKey, string offeringKey, CancellationToken cancellationToken);
 
     Task ClaimNpcOfferingAsync(Guid playerId, string npcKey, string offeringKey, Guid? sourceRunId, CancellationToken cancellationToken);

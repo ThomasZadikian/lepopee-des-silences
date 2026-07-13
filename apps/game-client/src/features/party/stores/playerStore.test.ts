@@ -29,6 +29,7 @@ function baseProfile(overrides: Partial<PlayerProfileView['characters'][0]> = {}
         maxEquippedSkills: 4,
         items: [],
         maxEquippedItems: 3,
+        characterType: 'Standard',
         skills: [
           { skillKey: 'skill.a', unlockedAtUtc: '2026-01-01T00:00:00Z', source: 'default', isEquipped: true },
           { skillKey: 'skill.b', unlockedAtUtc: '2026-01-01T00:00:00Z', source: 'default', isEquipped: false },
@@ -40,7 +41,7 @@ function baseProfile(overrides: Partial<PlayerProfileView['characters'][0]> = {}
         ...overrides,
       },
     ],
-    progression: { unspentStatPoints: 2, totalStatPointsEarned: 3 },
+    progression: { unspentStatPoints: 2, totalStatPointsEarned: 3, palaceShardCount: 0 },
     permanentItems: [],
   };
 }

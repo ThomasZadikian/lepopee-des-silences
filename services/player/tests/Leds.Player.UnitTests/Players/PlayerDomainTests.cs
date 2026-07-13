@@ -68,6 +68,40 @@ public sealed class PlayerProfileTests
     }
 
     [Fact]
+    public void AwardCurrency_ShouldIncrementProgressionAndTouchProfile()
+    {
+        var createdAt = DateTimeOffset.UtcNow;
+        var profile = PlayerProfile.Create("Test", createdAt);
+        var awardedAt = createdAt.AddMinutes(5);
+
+        profile.AwardCurrency(awardedAt, 1000);
+
+        profile.Progression.PalaceShardCount.Should().Be(1000);
+        profile.UpdatedAtUtc.Should().Be(awardedAt);
+    }
+
+    [Fact]
+    public void AwardCurrency_ShouldAccumulateAcrossMultipleAwards()
+    {
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+
+        profile.AwardCurrency(DateTimeOffset.UtcNow, 1000);
+        profile.AwardCurrency(DateTimeOffset.UtcNow, 500);
+
+        profile.Progression.PalaceShardCount.Should().Be(1500);
+    }
+
+    [Fact]
+    public void AwardCurrency_ShouldRejectNonPositiveAmount()
+    {
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+
+        var act = () => profile.AwardCurrency(DateTimeOffset.UtcNow, 0);
+
+        act.Should().Throw<DomainException>().WithMessage("*Currency amount*");
+    }
+
+    [Fact]
     public void SpendStatPoint_ShouldRejectWhenNoPointsAvailable()
     {
         var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);

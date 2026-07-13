@@ -15,7 +15,8 @@ public sealed record PlayerCharacterView(
     PlayerCharacterStatsView Stats,
     int MaxEquippedSkills,
     IReadOnlyCollection<PlayerCharacterItemView>? Items = null,
-    int MaxEquippedItems = 3);
+    int MaxEquippedItems = 3,
+    string CharacterType = "Standard");
 
 public sealed record PlayerCharacterSkillView(
     string SkillKey,
@@ -49,4 +50,5 @@ public sealed record PlayerCharacterStatsView(
 
 public sealed record PlayerProgressionView(
     int UnspentStatPoints,
-    int TotalStatPointsEarned);
+    int TotalStatPointsEarned,
+    int PalaceShardCount = 0);

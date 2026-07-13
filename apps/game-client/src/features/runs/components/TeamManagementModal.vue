@@ -5,6 +5,7 @@ import TeamOverviewTab from './team-management/TeamOverviewTab.vue';
 import StatManagementTab from './team-management/StatManagementTab.vue';
 import SkillManagementTab from './team-management/SkillManagementTab.vue';
 import ItemManagementTab from './team-management/ItemManagementTab.vue';
+import ChipBadge from '../../../shared/components/ChipBadge.vue';
 
 defineEmits<{ close: [] }>();
 
@@ -40,7 +41,12 @@ onMounted(async () => {
       <button class="tmm-close" @click="$emit('close')" aria-label="Fermer">✕</button>
 
       <header class="tmm-header">
-        <h2 class="tmm-title">Gestion de l'équipe</h2>
+        <div class="tmm-title-row">
+          <h2 class="tmm-title">Gestion de l'équipe</h2>
+          <span v-if="playerStore.profile" class="tmm-currency" title="Éclats du Palais">
+            {{ playerStore.profile.progression.palaceShardCount }} Éclats du Palais
+          </span>
+        </div>
         <nav class="tmm-tabs">
           <button
             v-for="tab in tabs"
@@ -64,6 +70,7 @@ onMounted(async () => {
             @click="selectedCharacterId = character.id"
           >
             {{ character.displayName }}
+            <ChipBadge v-if="character.characterType === 'Companion'" tone="gold">Compagnon</ChipBadge>
           </button>
         </div>
       </header>
@@ -135,12 +142,26 @@ onMounted(async () => {
   border-bottom: 1px solid var(--line-soft);
 }
 
+.tmm-title-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 14px;
+}
+
 .tmm-title {
   font-family: var(--font-display, var(--font));
   font-size: 22px;
   font-weight: 500;
   color: var(--gold);
-  margin: 0 0 14px;
+  margin: 0;
+}
+
+.tmm-currency {
+  font-size: 12px;
+  color: var(--ink-3);
+  white-space: nowrap;
 }
 
 .tmm-tabs {
@@ -178,6 +199,9 @@ onMounted(async () => {
 }
 
 .tmm-character-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 4px 12px;
   border-radius: 999px;
   border: 1px solid var(--line-soft);

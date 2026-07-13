@@ -23,6 +23,7 @@ vi.mock('../api/runApi', () => ({
     getPermanentItemCandidates: vi.fn(),
     confirmPermanentItemSelection: vi.fn(),
     removePalaceLaw: vi.fn(),
+    useCaliceInfini: vi.fn(),
   },
 }));
 
@@ -438,6 +439,25 @@ describe('useRunStore actions', () => {
 
     expect(runApi.removePalaceLaw).toHaveBeenCalledWith('run-1', 'law-echo-v1');
     expect(store.currentRun?.activePalaceLaws).toEqual([]);
+  });
+
+  it('useCaliceInfini calls the API and refreshes the run', async () => {
+    const store = useRunStore();
+    store.currentRun = {
+      id: 'run-1',
+      status: 'Active',
+      caliceInfiniEnabled: true,
+      canUseCaliceInfini: true,
+    } as any;
+
+    vi.mocked(runApi.useCaliceInfini).mockResolvedValue({
+      run: { id: 'run-1', status: 'Active', currentRoom: {}, canUseCaliceInfini: false },
+    } as any);
+
+    await store.useCaliceInfini();
+
+    expect(runApi.useCaliceInfini).toHaveBeenCalledWith('run-1', undefined);
+    expect(store.currentRun?.canUseCaliceInfini).toBe(false);
   });
 
   it('selectNpcDialogueChoice queues a reputation popup from a reputation applied effect', async () => {

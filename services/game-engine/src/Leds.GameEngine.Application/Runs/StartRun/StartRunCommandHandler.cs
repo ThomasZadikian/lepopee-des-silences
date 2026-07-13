@@ -23,6 +23,9 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
     /// <summary>Protection de Him'Lit — Mina's legendary offering. See SeedMinaAsync in the catalog seed.</summary>
     private const string HimLitProtectionItemKey = "canon.item.protection-himlit";
 
+    /// <summary>Calice infini — John's legendary offering. See SeedJohnAsync in the catalog seed.</summary>
+    private const string CaliceInfiniItemKey = "canon.item.calice-infini";
+
     /// <summary>Flat percentage granted by <see cref="ReputationBoostItemKey"/> — see Run.ReputationGainBonusPercent.</summary>
     private const int ReputationBoostPercent = 10;
 
@@ -65,6 +68,8 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
                 ? ReputationBoostPercent : 0;
         var himLitProtectionEnabled = profile.PermanentItems?.Any(item =>
             string.Equals(item.ItemDefinitionKey, HimLitProtectionItemKey, StringComparison.OrdinalIgnoreCase)) ?? false;
+        var caliceInfiniEnabled = profile.PermanentItems?.Any(item =>
+            string.Equals(item.ItemDefinitionKey, CaliceInfiniItemKey, StringComparison.OrdinalIgnoreCase)) ?? false;
 
         var seed = _runGenerator.GenerateSeed();
         var initialRoom = await _runGenerator.GenerateInitialRoomAsync(seed, cancellationToken);
@@ -253,7 +258,8 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
             lawDenialEnabled: lawDenialEnabled,
             reputationGainBonusPercent: reputationGainBonusPercent,
             himLitProtectionEnabled: himLitProtectionEnabled,
-            healingBonusPercent: healingBonusPercent);
+            healingBonusPercent: healingBonusPercent,
+            caliceInfiniEnabled: caliceInfiniEnabled);
 
         var characterSnapshots = snapshot.Characters
             .Select(c =>

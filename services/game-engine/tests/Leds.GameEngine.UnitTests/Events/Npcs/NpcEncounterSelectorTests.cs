@@ -57,7 +57,8 @@ public sealed class NpcEncounterSelectorTests
         string? climate = null,
         RoomType roomType = RoomType.Threshold,
         int nodeDepth = 1,
-        string? roomKey = null) =>
+        string? roomKey = null,
+        IReadOnlyCollection<string>? recruitedCompanionNpcKeys = null) =>
         new(
             RunId: Guid.NewGuid(),
             RoomId: Guid.NewGuid(),
@@ -67,7 +68,8 @@ public sealed class NpcEncounterSelectorTests
             RoomClimate: climate,
             RoomType: roomType,
             NodeDepth: nodeDepth,
-            RoomKey: roomKey);
+            RoomKey: roomKey,
+            RecruitedCompanionNpcKeys: recruitedCompanionNpcKeys);
 
     [Fact]
     public void SelectEligibleNpc_ShouldReturnNull_WhenNoNpcs()
@@ -376,5 +378,48 @@ public sealed class NpcEncounterSelectorTests
 
         result.Should().NotBeNull();
         result!.Key.Should().Be("npc-neutral-traveler");
+    }
+
+    [Fact]
+    public void SelectEligibleNpc_ShouldExcludeRecruitedCompanion()
+    {
+        var npcs = new[]
+        {
+            new CatalogNpcDefinition(
+                Key: "npc.thomas",
+                DisplayName: "Thomas",
+                Description: "Recrutable comme compagnon.",
+                Tags: [],
+                CompatibleRoomTypes: [],
+                CompatiblePalaceRoomStates: [],
+                CompatibleRoomClimates: [])
+        };
+
+        var result = new NpcEncounterSelector().SelectEligibleNpc(
+            CreateContext(recruitedCompanionNpcKeys: ["npc.thomas"]), npcs);
+
+        result.Should().BeNull();
+    }
+
+    [Fact]
+    public void SelectEligibleNpc_ShouldStillIncludeUnrecruitedNpc_WhenAnotherCompanionIsRecruited()
+    {
+        var npcs = new[]
+        {
+            new CatalogNpcDefinition(
+                Key: "npc.thomas",
+                DisplayName: "Thomas",
+                Description: "Recrutable comme compagnon.",
+                Tags: [],
+                CompatibleRoomTypes: [],
+                CompatiblePalaceRoomStates: [],
+                CompatibleRoomClimates: [])
+        };
+
+        var result = new NpcEncounterSelector().SelectEligibleNpc(
+            CreateContext(recruitedCompanionNpcKeys: ["npc.mane"]), npcs);
+
+        result.Should().NotBeNull();
+        result!.Key.Should().Be("npc.thomas");
     }
 }

@@ -134,7 +134,8 @@ public static class TestGameEngineFactory
         NodeEventType targetInitialEventType = NodeEventType.Combat,
         bool lawDenialEnabled = false,
         int reputationGainBonusPercent = 0,
-        bool himLitProtectionEnabled = false)
+        bool himLitProtectionEnabled = false,
+        bool caliceInfiniEnabled = false)
     {
         var room = CreateThresholdRoom(targetInitialEventType);
 
@@ -147,7 +148,8 @@ public static class TestGameEngineFactory
             startedAt: DateTimeOffset.UtcNow,
             lawDenialEnabled: lawDenialEnabled,
             reputationGainBonusPercent: reputationGainBonusPercent,
-            himLitProtectionEnabled: himLitProtectionEnabled);
+            himLitProtectionEnabled: himLitProtectionEnabled,
+            caliceInfiniEnabled: caliceInfiniEnabled);
     }
 
     public static Run CreateRunWithPlayerSnapshot(

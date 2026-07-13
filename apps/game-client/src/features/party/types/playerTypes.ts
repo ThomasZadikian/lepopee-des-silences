@@ -46,11 +46,13 @@ export type PlayerCharacterView = {
   maxEquippedSkills: number;
   items: PlayerCharacterItemView[];
   maxEquippedItems: number;
+  characterType: 'Standard' | 'Companion';
 };
 
 export type PlayerProgressionView = {
   unspentStatPoints: number;
   totalStatPointsEarned: number;
+  palaceShardCount: number;
 };
 
 export type PlayerPermanentItemView = {

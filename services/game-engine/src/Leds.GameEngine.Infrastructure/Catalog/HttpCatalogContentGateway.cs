@@ -1346,7 +1346,12 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
 
     private static CatalogNpcOffering MapNpcOffering(CatalogNpcOfferingHttpResponse s) =>
         new(s.Key, s.Kind, s.TargetKey, s.Amount, s.IsMajor,
-            (s.UnlockConditions ?? []).Select(MapDialogueRequirement).ToArray());
+            (s.UnlockConditions ?? []).Select(MapDialogueRequirement).ToArray(),
+            s.CompanionKit is null ? null : MapCompanionKit(s.CompanionKit));
+
+    private static CatalogCompanionKit MapCompanionKit(CatalogCompanionKitHttpResponse s) =>
+        new(s.MaxVitality, s.AttackPower, s.Defense, s.StartingGuard, s.Speed,
+            s.Initiative, s.Recovery, s.Focus, s.Mana, s.Charge, s.SkillKeys ?? []);
 
     private static CatalogNpcPersona MapNpcPersona(CatalogNpcPersonaHttpResponse s) =>
         new(s.Tone, s.Register, s.Needs ?? [], s.Offerings ?? []);
@@ -1725,7 +1730,21 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
         string? TargetKey,
         int Amount,
         bool IsMajor,
-        IReadOnlyCollection<CatalogDialogueRequirementHttpResponse>? UnlockConditions);
+        IReadOnlyCollection<CatalogDialogueRequirementHttpResponse>? UnlockConditions,
+        CatalogCompanionKitHttpResponse? CompanionKit = null);
+
+    private sealed record CatalogCompanionKitHttpResponse(
+        int MaxVitality,
+        int AttackPower,
+        int Defense,
+        int StartingGuard,
+        int Speed,
+        int Initiative,
+        int Recovery,
+        int Focus,
+        int Mana,
+        int Charge,
+        IReadOnlyCollection<string>? SkillKeys);
 
     private sealed record CatalogNpcPersonaHttpResponse(
         string Tone,

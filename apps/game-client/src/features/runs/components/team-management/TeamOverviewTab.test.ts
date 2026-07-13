@@ -20,6 +20,7 @@ function baseCharacter(overrides: Partial<PlayerCharacterView> = {}): PlayerChar
     maxEquippedSkills: 4,
     items: [],
     maxEquippedItems: 3,
+    characterType: 'Standard',
     skills: [
       { skillKey: 'skill.a', unlockedAtUtc: '2026-01-01T00:00:00Z', source: 'default', isEquipped: true },
     ],
@@ -79,5 +80,19 @@ describe('TeamOverviewTab', () => {
   it('shows an empty-state message when no characters exist', () => {
     const wrapper = mount(TeamOverviewTab, { props: { characters: [] } });
     expect(wrapper.text()).toContain('Aucun personnage disponible.');
+  });
+
+  it('shows a "Compagnon" badge for recruited companions', () => {
+    const wrapper = mount(TeamOverviewTab, {
+      props: { characters: [baseCharacter({ characterType: 'Companion' })] },
+    });
+    expect(wrapper.text()).toContain('Compagnon');
+  });
+
+  it('does not show a "Compagnon" badge for the protagonist', () => {
+    const wrapper = mount(TeamOverviewTab, {
+      props: { characters: [baseCharacter({ characterType: 'Standard' })] },
+    });
+    expect(wrapper.text()).not.toContain('Compagnon');
   });
 });

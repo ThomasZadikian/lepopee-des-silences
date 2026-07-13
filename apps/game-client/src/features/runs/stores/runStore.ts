@@ -263,6 +263,15 @@ export const useRunStore = defineStore('run', () => {
     });
   }
 
+  async function useCaliceInfini(targetCombatantId?: string | null) {
+    if (!currentRun.value) return;
+
+    await execute(async () => {
+      const response = await runApi.useCaliceInfini(currentRun.value!.id, targetCombatantId);
+      currentRun.value = unwrapRunResponse(response);
+    });
+  }
+
   function pushReputationEffects(
     effects?: { kind: string; amount: number; label: string }[] | null,
   ) {
@@ -899,6 +908,7 @@ export const useRunStore = defineStore('run', () => {
     enterNextRoom,
     confirmPermanentItemSelection,
     removePalaceLaw,
+    useCaliceInfini,
 
     resumableRun,
     isLoadingResumableRun,

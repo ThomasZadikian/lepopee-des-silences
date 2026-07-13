@@ -23,6 +23,12 @@ public sealed class Run
     /// </summary>
     public const int LawDenialCooldownRooms = 10;
 
+    /// <summary>
+    /// Minimum number of rooms that must pass between two uses of "Calice infini" —
+    /// see <see cref="CanUseCaliceInfini"/>.
+    /// </summary>
+    public const int CaliceInfiniCooldownRooms = 1;
+
     private readonly List<Room> _rooms = [];
     private readonly List<ActivePalaceLaw> _activePalaceLaws = [];
     private readonly List<string> _memoryFragments = [];
@@ -90,6 +96,26 @@ public sealed class Run
         LawDenialEnabled &&
         (LawDenialLastUsedRoomIndex is null || CurrentRoomIndex - LawDenialLastUsedRoomIndex.Value >= LawDenialCooldownRooms);
 
+    /// <summary>
+    /// True when the player owns the "Calice infini" permanent item — computed once at
+    /// <see cref="StartNew"/> time from the player's profile, like <see cref="LawDenialEnabled"/>.
+    /// </summary>
+    public bool CaliceInfiniEnabled { get; private set; }
+
+    /// <summary>
+    /// <see cref="CurrentRoomIndex"/> at which "Calice infini" was last used this run, or
+    /// <c>null</c> if never used. Gates <see cref="CanUseCaliceInfini"/> via <see cref="CaliceInfiniCooldownRooms"/>.
+    /// </summary>
+    public int? CaliceInfiniLastUsedRoomIndex { get; private set; }
+
+    /// <summary>
+    /// True when the player can currently use "Calice infini": owns the item, and either
+    /// never used it this run or has progressed at least one room since the last use.
+    /// </summary>
+    public bool CanUseCaliceInfini =>
+        CaliceInfiniEnabled &&
+        (CaliceInfiniLastUsedRoomIndex is null || CurrentRoomIndex > CaliceInfiniLastUsedRoomIndex.Value);
+
     public IReadOnlyCollection<RunItem> RunItems => _runItems.AsReadOnly();
 
     public int RunItemCapacity { get; }
@@ -133,7 +159,9 @@ public sealed class Run
         int? lawDenialLastUsedRoomIndex = null,
         int reputationGainBonusPercent = 0,
         bool himLitProtectionEnabled = false,
-        int healingBonusPercent = 0)
+        int healingBonusPercent = 0,
+        bool caliceInfiniEnabled = false,
+        int? caliceInfiniLastUsedRoomIndex = null)
     {
         Id = id;
         PlayerId = playerId;
@@ -168,6 +196,8 @@ public sealed class Run
         ReputationGainBonusPercent = reputationGainBonusPercent;
         HimLitProtectionEnabled = himLitProtectionEnabled;
         HealingBonusPercent = healingBonusPercent;
+        CaliceInfiniEnabled = caliceInfiniEnabled;
+        CaliceInfiniLastUsedRoomIndex = caliceInfiniLastUsedRoomIndex;
 
         _rooms.Add(initialRoom);
     }
@@ -502,7 +532,8 @@ public sealed class Run
         bool lawDenialEnabled = false,
         int reputationGainBonusPercent = 0,
         bool himLitProtectionEnabled = false,
-        int healingBonusPercent = 0)
+        int healingBonusPercent = 0,
+        bool caliceInfiniEnabled = false)
     {
         if (playerId == Guid.Empty)
         {
@@ -607,7 +638,8 @@ public sealed class Run
             lawDenialEnabled: lawDenialEnabled,
             reputationGainBonusPercent: reputationGainBonusPercent,
             himLitProtectionEnabled: himLitProtectionEnabled,
-            healingBonusPercent: healingBonusPercent);
+            healingBonusPercent: healingBonusPercent,
+            caliceInfiniEnabled: caliceInfiniEnabled);
 
         run.PlayerState = PlayerRuntimeState.Create(
             maxVitality: maxHp,
@@ -1633,6 +1665,54 @@ public sealed class Run
         LawDenialLastUsedRoomIndex = CurrentRoomIndex;
     }
 
+    /// <summary>
+    /// Uses "Calice infini" — restores 50% of the target's max vitality, once per room
+    /// (<see cref="CaliceInfiniCooldownRooms"/>). When a combat is active and a target
+    /// combatant is given, heals that combatant (ally or protagonist) using its own
+    /// <see cref="Combatant.EffectiveHealingBonusPercent"/>, mirroring item-based combat
+    /// healing (e.g. "La tasse de thé"). Otherwise heals <see cref="PlayerState"/> out of
+    /// combat using the run's <see cref="HealingBonusPercent"/>.
+    /// </summary>
+    public void UseCaliceInfini(Guid? targetCombatantId)
+    {
+        if (!CaliceInfiniEnabled)
+        {
+            throw new DomainException("This run has no Calice infini capability.");
+        }
+
+        if (!CanUseCaliceInfini)
+        {
+            throw new DomainException("Calice infini is still on cooldown.");
+        }
+
+        if (_activeCombat is not null && targetCombatantId is not null)
+        {
+            var target = _activeCombat.Allies
+                .FirstOrDefault(a => a.Id.Value == targetCombatantId.Value);
+
+            if (target is null)
+            {
+                throw new DomainException($"No ally combatant with id '{targetCombatantId.Value}'.");
+            }
+
+            if (!target.IsDefeated)
+            {
+                target.ApplyHeal(ApplyHealingBonus(PercentOf(target.MaxVitality, 50), target.EffectiveHealingBonusPercent));
+            }
+        }
+        else
+        {
+            var healAmount = ApplyHealingBonus(PercentOf(PlayerState.MaxVitality, 50), HealingBonusPercent);
+            if (healAmount > 0)
+            {
+                PlayerState.Heal(healAmount);
+                CurrentHp = PlayerState.CurrentVitality;
+            }
+        }
+
+        CaliceInfiniLastUsedRoomIndex = CurrentRoomIndex;
+    }
+
     public void DebugPrepareForNextRoom()
     {
         if (Status is RunStatus.Completed or RunStatus.Failed or RunStatus.Abandoned or RunStatus.Suspended)
@@ -1873,11 +1953,13 @@ public sealed class Run
         int? lawDenialLastUsedRoomIndex = null,
         int reputationGainBonusPercent = 0,
         bool himLitProtectionEnabled = false,
-        int healingBonusPercent = 0)
+        int healingBonusPercent = 0,
+        bool caliceInfiniEnabled = false,
+        int? caliceInfiniLastUsedRoomIndex = null)
     {
         var firstRoom = rooms.First();
 
-        var run = new Run(id, playerId, seed, generatorVersion, markovMatrixVersion, status, firstRoom, startedAt, maxHp, currentHp, attack, defense, speed, focus, currentRoomIndex, activeCombatId, pendingRewardOfferId, runItemCapacity, typedDamageReductions, hitChanceBonusPercent, dotDurationReductionPercent, dotDamageReductionPercent, dotDamageBonusPercent, magicDamageBonusPercent, magicDamageReductionPercent, criticalChanceBonusPercent, guardBonusPercent, journalEnabled, lawDenialEnabled, lawDenialLastUsedRoomIndex, reputationGainBonusPercent, himLitProtectionEnabled, healingBonusPercent);
+        var run = new Run(id, playerId, seed, generatorVersion, markovMatrixVersion, status, firstRoom, startedAt, maxHp, currentHp, attack, defense, speed, focus, currentRoomIndex, activeCombatId, pendingRewardOfferId, runItemCapacity, typedDamageReductions, hitChanceBonusPercent, dotDurationReductionPercent, dotDamageReductionPercent, dotDamageBonusPercent, magicDamageBonusPercent, magicDamageReductionPercent, criticalChanceBonusPercent, guardBonusPercent, journalEnabled, lawDenialEnabled, lawDenialLastUsedRoomIndex, reputationGainBonusPercent, himLitProtectionEnabled, healingBonusPercent, caliceInfiniEnabled, caliceInfiniLastUsedRoomIndex);
         foreach (var room in rooms.Skip(1))
         {
             run._rooms.Add(room);
