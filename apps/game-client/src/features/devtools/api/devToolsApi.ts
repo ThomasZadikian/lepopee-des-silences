@@ -121,8 +121,12 @@ export const devToolsApi = {
     );
   },
 
-    addAlly(token: string, runId: string) {
-    return post<DevToolsRunResponse>(token, `/api/dev/v2/runs/${runId}/party/add-ally`);
+    addAlly(token: string, runId: string, companionNpcKey: string) {
+    return post<DevToolsRunResponse>(
+      token,
+      `/api/dev/v2/runs/${runId}/party/add-ally`,
+      { companionNpcKey },
+    );
   },
 
   removeAlly(token: string, runId: string) {

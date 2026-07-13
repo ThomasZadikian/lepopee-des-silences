@@ -17,7 +17,7 @@ const emit = defineEmits<{
   clearLaws: [];
   activateCurse: [curseKey: string];
   clearCurses: [];
-  addAlly: [];
+  addAlly: [companionNpcKey: string];
   removeAlly: [];
 }>();
 
@@ -26,6 +26,15 @@ const palaceState = ref<PalaceRoomStateKey>('Silent');
 const climate = ref<RoomClimateKey>('Heatwave');
 const lawKey = ref('');
 const curseKey = ref('');
+
+const companionOptions: { key: string; label: string }[] = [
+  { key: 'npc.thomas', label: 'Thomas' },
+  { key: 'npc.mane', label: 'Mané' },
+  { key: 'npc.mina', label: 'Mina' },
+  { key: 'npc.elise', label: 'Elise' },
+  { key: 'npc.john', label: 'John' },
+];
+const selectedCompanionKey = ref(companionOptions[0]!.key);
 
 const palaceStates: PalaceRoomStateKey[] = ['Neutral', 'Silent', 'Painful', 'Enraged', 'Violent'];
 const climates: RoomClimateKey[] = ['None', 'Grey', 'Rain', 'Heatwave', 'Hail'];
@@ -60,13 +69,19 @@ function confirmAndClearCurses() {
 
     <div class="devtools-card">
       <h3>Party</h3>
-      <button class="devtools-btn" :disabled="props.disabled || props.isLoading" @click="emit('addAlly')">
-        + Ajouter un allié
+      <label class="devtools-label">
+        Compagnon
+        <select v-model="selectedCompanionKey" class="devtools-input">
+          <option v-for="option in companionOptions" :key="option.key" :value="option.key">{{ option.label }}</option>
+        </select>
+      </label>
+      <button class="devtools-btn" :disabled="props.disabled || props.isLoading" @click="emit('addAlly', selectedCompanionKey)">
+        + Recruter le compagnon
       </button>
       <button class="devtools-btn devtools-btn--danger" :disabled="props.disabled || props.isLoading" @click="emit('removeAlly')">
-        − Retirer un allié
+        − Retirer le dernier compagnon
       </button>
-      <p class="devtools-muted">Effet au prochain combat (roster, max 5).</p>
+      <p class="devtools-muted">Effet au prochain combat (roster, max 5). Kit de combat réel du compagnon (catalogue).</p>
     </div>
 
     <div class="devtools-card">

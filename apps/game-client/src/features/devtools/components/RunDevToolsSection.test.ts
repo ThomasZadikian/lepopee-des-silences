@@ -78,7 +78,7 @@ describe('RunDevToolsSection', () => {
   it('emits forcePalaceState with selected state', async () => {
     const wrapper = mountSection();
     const selects = wrapper.findAll('select');
-    await selects[0].setValue('Enraged');
+    await selects[1].setValue('Enraged');
     const btn = wrapper.findAll('button').find((b) => b.text().includes('Force state'));
     if (btn) await btn.trigger('click');
     expect(wrapper.emitted('forcePalaceState')).toBeDefined();
@@ -88,7 +88,7 @@ describe('RunDevToolsSection', () => {
   it('emits forceClimate with selected climate', async () => {
     const wrapper = mountSection();
     const selects = wrapper.findAll('select');
-    await selects[1].setValue('Rain');
+    await selects[2].setValue('Rain');
     const btn = wrapper.findAll('button').find((b) => b.text().includes('Force climate'));
     if (btn) await btn.trigger('click');
     expect(wrapper.emitted('forceClimate')).toBeDefined();
@@ -127,18 +127,36 @@ describe('RunDevToolsSection', () => {
     expect((btn!.element as HTMLButtonElement).disabled).toBe(true);
   });
 
-  it('emits addAlly when button is clicked', async () => {
+  it('emits addAlly with the selected companion key when button is clicked', async () => {
     const wrapper = mountSection();
-    const btn = wrapper.findAll('button').find((b) => b.text().includes('Ajouter un allié'));
+    const btn = wrapper.findAll('button').find((b) => b.text().includes('Recruter le compagnon'));
     if (btn) await btn.trigger('click');
     expect(wrapper.emitted('addAlly')).toHaveLength(1);
+    expect(wrapper.emitted('addAlly')![0][0]).toBe('npc.thomas');
+  });
+
+  it('emits addAlly with a different companion key once selected', async () => {
+    const wrapper = mountSection();
+    const select = wrapper.findAll('select')[0];
+    await select.setValue('npc.john');
+    const btn = wrapper.findAll('button').find((b) => b.text().includes('Recruter le compagnon'));
+    if (btn) await btn.trigger('click');
+    expect(wrapper.emitted('addAlly')![0][0]).toBe('npc.john');
   });
 
   it('emits removeAlly when button is clicked', async () => {
     const wrapper = mountSection();
-    const btn = wrapper.findAll('button').find((b) => b.text().includes('Retirer un allié'));
+    const btn = wrapper.findAll('button').find((b) => b.text().includes('Retirer le dernier compagnon'));
     if (btn) await btn.trigger('click');
     expect(wrapper.emitted('removeAlly')).toHaveLength(1);
+  });
+
+  it('shows all 5 recruitable companions in the selector', () => {
+    const wrapper = mountSection();
+    const select = wrapper.findAll('select')[0];
+    const options = select.findAll('option');
+    expect(options.length).toBe(5);
+    expect(options.map((o) => o.text())).toEqual(['Thomas', 'Mané', 'Mina', 'Elise', 'John']);
   });
 
   it('emits clearLaws on confirm', async () => {
@@ -181,14 +199,14 @@ describe('RunDevToolsSection', () => {
 
   it('shows all palace states in selector', () => {
     const wrapper = mountSection();
-    const select = wrapper.findAll('select')[0];
+    const select = wrapper.findAll('select')[1];
     const options = select.findAll('option');
     expect(options.length).toBe(5);
   });
 
   it('shows all climates in selector', () => {
     const wrapper = mountSection();
-    const select = wrapper.findAll('select')[1];
+    const select = wrapper.findAll('select')[2];
     const options = select.findAll('option');
     expect(options.length).toBe(5);
   });

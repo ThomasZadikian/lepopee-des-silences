@@ -96,8 +96,11 @@ function advanceRoom() {
   void execute((token) => devToolsApi.advanceRoom(token, props.runId), 'Room avancee.');
 }
 
-function addAlly() {
-  void execute((token) => devToolsApi.addAlly(token, props.runId), 'Allié ajouté (prochain combat).');
+function addAlly(companionNpcKey: string) {
+  void execute(
+    (token) => devToolsApi.addAlly(token, props.runId, companionNpcKey),
+    'Compagnon recruté (prochain combat).',
+  );
 }
 
 function removeAlly() {

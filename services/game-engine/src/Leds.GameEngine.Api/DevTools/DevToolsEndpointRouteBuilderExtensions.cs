@@ -156,10 +156,11 @@ public static class DevToolsEndpointRouteBuilderExtensions
 
         group.MapPost("/runs/{runId:guid}/party/add-ally", async Task<Ok<DevToolsRunDebugResult>> (
     Guid runId,
+    DevToolsAddCompanionRequest request,
     IDevToolsRunDebugService service,
     CancellationToken cancellationToken) =>
         {
-            var result = await service.AddDebugAllyAsync(runId, cancellationToken);
+            var result = await service.AddDebugAllyAsync(runId, request.CompanionNpcKey, cancellationToken);
             return TypedResults.Ok(result);
         });
 
@@ -226,3 +227,5 @@ public sealed record DevToolsSetVitalsRequest(int Vitality, int Guard);
 public sealed record DevToolsApplyStatusRequest(string StatusKey, int Stacks, int Duration);
 
 public sealed record DevToolsAwardStatPointsRequest(int Amount);
+
+public sealed record DevToolsAddCompanionRequest(string CompanionNpcKey);

@@ -46,7 +46,11 @@ public interface IDevToolsRunDebugService
         int guard,
         CancellationToken cancellationToken = default);
 
-    Task<DevToolsRunDebugResult> AddDebugAllyAsync(Guid runId, CancellationToken cancellationToken = default);
+    /// <summary>Recruits one of the authored, recruitable companions (Thomas, Mané, Mina, Elise, John)
+    /// straight onto the current run's roster, using its real catalog-authored combat kit — for
+    /// testing without grinding NPC reputation. <paramref name="companionNpcKey"/> must be an NPC key
+    /// that has a Companion-kind offering with a CompanionKit (e.g. "npc.thomas").</summary>
+    Task<DevToolsRunDebugResult> AddDebugAllyAsync(Guid runId, string companionNpcKey, CancellationToken cancellationToken = default);
 
     Task<DevToolsRunDebugResult> RemoveDebugAllyAsync(Guid runId, CancellationToken cancellationToken = default);
 

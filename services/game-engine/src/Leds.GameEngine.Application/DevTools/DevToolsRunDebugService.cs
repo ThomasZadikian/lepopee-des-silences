@@ -21,7 +21,6 @@ public sealed class DevToolsRunDebugService : IDevToolsRunDebugService
 {
     private const int MaxAdvanceRoomCount = 10;
     private const int MaxPartySize = 5;
-    private static readonly string[] DebugCompanionNames = { "Loup", "Renard", "Corbeau", "Lynx" };
     private const int MaxDebugVitality = 999;
     private const int MaxDebugGuard = 999;
 
@@ -210,9 +209,13 @@ public sealed class DevToolsRunDebugService : IDevToolsRunDebugService
     }
 
     public async Task<DevToolsRunDebugResult> AddDebugAllyAsync(
-    Guid runId,
-    CancellationToken cancellationToken = default)
+        Guid runId,
+        string companionNpcKey,
+        CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrWhiteSpace(companionNpcKey))
+            throw new DomainException("Companion NPC key is required.");
+
         var run = await GetRunAsync(runId, cancellationToken);
         var snapshot = run.PlayerSnapshot
             ?? throw new DomainException("Run has no player snapshot to add a companion to.");
@@ -220,46 +223,71 @@ public sealed class DevToolsRunDebugService : IDevToolsRunDebugService
         if (snapshot.Characters.Count >= MaxPartySize)
             throw new DomainException($"Party is already at the maximum of {MaxPartySize} characters.");
 
-        var companionIndex = snapshot.Characters.Count - 1; // 0 = protagonist
-        var name = DebugCompanionNames[Math.Clamp(companionIndex, 0, DebugCompanionNames.Length - 1)];
+        var npcs = await _catalogContentGateway.ListNpcDefinitionsAsync(cancellationToken);
+        var npc = npcs.FirstOrDefault(n => string.Equals(n.Key, companionNpcKey, StringComparison.OrdinalIgnoreCase))
+            ?? throw new NotFoundException("NPC definition", companionNpcKey);
+
+        var offering = (npc.Offerings ?? [])
+            .FirstOrDefault(o => string.Equals(o.Kind, "Companion", StringComparison.OrdinalIgnoreCase) && o.CompanionKit is not null)
+            ?? throw new DomainException($"NPC '{companionNpcKey}' has no recruitable companion kit.");
+
+        var kit = offering.CompanionKit!;
 
         var statBlock = RunCharacterStatSnapshot.Create(
-            maxVitality: 30,
-            attackPower: 10,
-            defense: 4,
-            startingGuard: 0,
-            speed: 11,
-            initiative: 8,
-            recovery: 5,
-            focus: 6,
-            mana: 0,
-            charge: 0);
+            maxVitality: kit.MaxVitality,
+            attackPower: kit.AttackPower,
+            defense: kit.Defense,
+            startingGuard: kit.StartingGuard,
+            speed: kit.Speed,
+            initiative: kit.Initiative,
+            recovery: kit.Recovery,
+            focus: kit.Focus,
+            mana: kit.Mana,
+            charge: kit.Charge);
 
-        var skills = new[]
+        var skillSnapshots = new List<RunCharacterSkillSnapshot>();
+        foreach (var skillKey in kit.SkillKeys)
         {
-            RunCharacterSkillSnapshot.Create(
+            var skill = await _catalogContentGateway.GetSkillDefinitionByKeyAsync(skillKey, cancellationToken);
+            if (skill is null)
+                continue;
+
+            skillSnapshots.Add(RunCharacterSkillSnapshot.Create(
+                skillDefinitionKey: skill.Key,
+                displayName: skill.DisplayName,
+                skillType: skill.SkillType,
+                targetingMode: skill.TargetingType,
+                effectType: skill.EffectType,
+                manaCost: skill.ManaCost,
+                chargeCost: skill.ChargeCost,
+                basePower: skill.BasePower));
+        }
+
+        if (skillSnapshots.Count == 0)
+        {
+            skillSnapshots.Add(RunCharacterSkillSnapshot.Create(
                 skillDefinitionKey: "skill.basic.strike",
-                displayName: "Morsure",
+                displayName: "Frappe",
                 skillType: "Damage",
                 targetingMode: "SingleEnemy",
                 effectType: "Damage",
                 manaCost: 0,
                 chargeCost: 0,
-                basePower: 9)
-        };
+                basePower: 10));
+        }
 
         var character = RunCharacterSnapshot.Create(
             characterId: Guid.NewGuid(),
-            definitionKey: $"devtools.companion.{name.ToLowerInvariant()}",
-            displayName: name,
+            definitionKey: offering.TargetKey ?? npc.Key,
+            displayName: npc.DisplayName,
             statBlock: statBlock,
-            skills: skills);
+            skills: skillSnapshots);
 
         snapshot.DebugAddCharacter(character);
 
         await _runRepository.UpdateAsync(run, cancellationToken);
         return new DevToolsRunDebugResult(
-            $"Companion '{name}' added to the roster (effective next combat).",
+            $"'{npc.DisplayName}' added to the roster (effective next combat).",
             RunDto.FromDomain(run));
     }
 
