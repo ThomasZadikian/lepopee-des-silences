@@ -19,7 +19,15 @@ public sealed record EnemyDefinitionDto(
     int AttackPower = 0,
     int Defense = 0,
     int Speed = 10,
-    int Focus = 0)
+    int Focus = 0,
+    int Initiative = 0,
+    int Mana = 0,
+    int MagicAttack = 0,
+    int MagicDefense = 0,
+    int Menace = 0,
+    string Rarity = "Common",
+    string? Registre = null,
+    IReadOnlyCollection<string>? BoundRoomKeys = null)
 {
     public static EnemyDefinitionDto FromDomain(IEnemyDefinition definition)
     {
@@ -40,6 +48,14 @@ public sealed record EnemyDefinitionDto(
             definition.AttackPower,
             definition.Defense,
             definition.Speed,
-            definition.Focus);
+            definition.Focus,
+            definition.Initiative,
+            definition.Mana,
+            definition.MagicAttack,
+            definition.MagicDefense,
+            definition.Menace,
+            definition.Rarity,
+            definition.Registre,
+            definition.BoundRoomKeys.ToArray());
     }
 }

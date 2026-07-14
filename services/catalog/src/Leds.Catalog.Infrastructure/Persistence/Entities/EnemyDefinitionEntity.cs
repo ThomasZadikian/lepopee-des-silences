@@ -14,6 +14,20 @@ public sealed class EnemyDefinitionEntity
     public string? Family { get; set; }
     public string Rank { get; set; } = "Common";
     public string? Role { get; set; }
+    // Bestiaire authoring: 4-tier rarity (Common/Uncommon/Rare/MiniBoss), distinct from
+    // the pre-existing Rank (Common/Elite/Boss) which the encounter-budget algorithm
+    // already reads — Rarity is purely descriptive/authoring metadata.
+    public string Rarity { get; set; } = "Common";
+    // Bestiaire authoring: emotional register, mirrors NPCs' EmotionalRegister (as a
+    // string, same convention as other free-text catalog fields on this entity).
+    public string? Registre { get; set; }
+    // Bestiaire authoring: encounter threat-budget weight (1-10), used to size
+    // encounter compositions — distinct from BaseDifficulty (vitality/power scaling).
+    public int MenaceLevel { get; set; }
+    // Bestiaire authoring: precise room-key binding (mirrors NPC BoundRoomKeys),
+    // additive to the existing coarse CompatibleRoomTypesJson category match — when
+    // non-empty, encounter selection should prefer/require these specific rooms.
+    public string BoundRoomKeysJson { get; set; } = "[]";
     public int BaseDifficulty { get; set; }
     public int EncounterWeight { get; set; } = 1;
     public int MinRiskLevel { get; set; }

@@ -39,6 +39,95 @@ public sealed class EnemyDefinitionTests
         def.AttackPower.Should().Be(0);
         def.Defense.Should().Be(0);
         def.Speed.Should().Be(10);
+        def.Initiative.Should().Be(0);
+        def.Mana.Should().Be(0);
+        def.MagicAttack.Should().Be(0);
+        def.MagicDefense.Should().Be(0);
+        def.Menace.Should().Be(0);
+        def.Rarity.Should().Be("Common");
+        def.Registre.Should().BeNull();
+        def.BoundRoomKeys.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Create_ShouldSetBestiaireFields_WhenProvided()
+    {
+        var def = EnemyDefinition.Create(
+            "enemy.veilleur-tapis",
+            "Veilleur du Tapis",
+            "Une silhouette de majordome sans visage.",
+            "1.0.0",
+            "Fragile",
+            baseDifficulty: 1,
+            minRiskLevel: 1,
+            maxRiskLevel: 2,
+            compatibleRoomTypes: ["Threshold"],
+            tags: ["silence"],
+            skillKeys: ["skill.basic.strike"],
+            initiative: 5,
+            mana: 10,
+            magicAttack: 4,
+            magicDefense: 8,
+            menace: 2,
+            rarity: "Common",
+            registre: "Silence",
+            boundRoomKeys: ["room.halldentree", "room.couloirs"]);
+
+        def.Initiative.Should().Be(5);
+        def.Mana.Should().Be(10);
+        def.MagicAttack.Should().Be(4);
+        def.MagicDefense.Should().Be(8);
+        def.Menace.Should().Be(2);
+        def.Rarity.Should().Be("Common");
+        def.Registre.Should().Be("Silence");
+        def.BoundRoomKeys.Should().BeEquivalentTo("room.halldentree", "room.couloirs");
+    }
+
+    [Fact]
+    public void Create_ShouldThrow_WhenMagicAttackIsNegative()
+    {
+        var act = () => EnemyDefinition.Create(
+            "enemy.test", "Name", "Desc", "1.0.0", "Fragile", 1, 1, 2, ["Threshold"], [], [],
+            magicAttack: -1);
+
+        act.Should()
+            .Throw<DomainException>()
+            .WithMessage("Enemy definition magic attack cannot be negative.");
+    }
+
+    [Fact]
+    public void Create_ShouldThrow_WhenMagicDefenseIsNegative()
+    {
+        var act = () => EnemyDefinition.Create(
+            "enemy.test", "Name", "Desc", "1.0.0", "Fragile", 1, 1, 2, ["Threshold"], [], [],
+            magicDefense: -1);
+
+        act.Should()
+            .Throw<DomainException>()
+            .WithMessage("Enemy definition magic defense cannot be negative.");
+    }
+
+    [Fact]
+    public void Create_ShouldThrow_WhenMenaceIsNegative()
+    {
+        var act = () => EnemyDefinition.Create(
+            "enemy.test", "Name", "Desc", "1.0.0", "Fragile", 1, 1, 2, ["Threshold"], [], [],
+            menace: -1);
+
+        act.Should()
+            .Throw<DomainException>()
+            .WithMessage("Enemy definition menace cannot be negative.");
+    }
+
+    [Fact]
+    public void Create_ShouldDeduplicateBoundRoomKeys()
+    {
+        var def = EnemyDefinition.Create(
+            "enemy.test", "Name", "Desc", "1.0.0", "Fragile", 1, 1, 2,
+            ["Threshold"], [], [],
+            boundRoomKeys: ["room.a", "room.a", "room.b"]);
+
+        def.BoundRoomKeys.Should().BeEquivalentTo("room.a", "room.b");
     }
 
     [Fact]

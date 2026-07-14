@@ -88,6 +88,9 @@ public sealed class CombatEncounterDraftGenerator : ICombatEncounterDraftGenerat
                 Defense: e.Defense,
                 Speed: e.Speed,
                 Focus: e.Focus,
+                MagicAttack: e.MagicAttack,
+                MagicDefense: e.MagicDefense,
+                Mana: e.Mana,
                 Skills: e.SkillKeys
                     .Select(sk => skillLookup.GetValueOrDefault(sk))
                     .Where(s => s is not null)

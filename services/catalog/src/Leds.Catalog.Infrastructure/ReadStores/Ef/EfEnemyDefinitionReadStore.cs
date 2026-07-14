@@ -64,6 +64,7 @@ public sealed class EfEnemyDefinitionReadStore : IEnemyDefinitionReadStore
         var compatibleRoomTypes = JsonSerializer.Deserialize<List<string>>(entity.CompatibleRoomTypesJson) ?? [];
         var tags = JsonSerializer.Deserialize<List<string>>(entity.TagsJson) ?? [];
         var skillKeys = JsonSerializer.Deserialize<List<string>>(entity.SkillKeysJson) ?? [];
+        var boundRoomKeys = JsonSerializer.Deserialize<List<string>>(entity.BoundRoomKeysJson) ?? [];
 
         return EnemyDefinition.Create(
             entity.Key,
@@ -81,6 +82,14 @@ public sealed class EfEnemyDefinitionReadStore : IEnemyDefinitionReadStore
             attackPower: entity.StatBlock?.AttackPower ?? 0,
             defense: entity.StatBlock?.Defense ?? 0,
             speed: entity.StatBlock?.Speed ?? 10,
-            focus: entity.StatBlock?.Focus ?? 0);
+            focus: entity.StatBlock?.Focus ?? 0,
+            initiative: entity.StatBlock?.Initiative ?? 0,
+            mana: entity.StatBlock?.Mana ?? 0,
+            magicAttack: entity.StatBlock?.MagicAttack ?? 0,
+            magicDefense: entity.StatBlock?.MagicDefense ?? 0,
+            menace: entity.MenaceLevel,
+            rarity: entity.Rarity,
+            registre: entity.Registre,
+            boundRoomKeys: boundRoomKeys);
     }
 }

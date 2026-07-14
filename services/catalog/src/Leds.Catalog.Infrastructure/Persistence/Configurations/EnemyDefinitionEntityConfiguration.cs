@@ -24,6 +24,10 @@ public sealed class EnemyDefinitionEntityConfiguration : IEntityTypeConfiguratio
         builder.Property(e => e.Family).HasColumnName("family").HasMaxLength(64);
         builder.Property(e => e.Rank).HasColumnName("rank").HasMaxLength(64).HasDefaultValue("Common").IsRequired();
         builder.Property(e => e.Role).HasColumnName("role").HasMaxLength(64);
+        builder.Property(e => e.Rarity).HasColumnName("rarity").HasMaxLength(32).HasDefaultValue("Common").IsRequired();
+        builder.Property(e => e.Registre).HasColumnName("registre").HasMaxLength(32);
+        builder.Property(e => e.MenaceLevel).HasColumnName("menace_level").HasDefaultValue(0);
+        builder.Property(e => e.BoundRoomKeysJson).HasColumnName("bound_room_keys_json").HasDefaultValue("[]");
         builder.Property(e => e.BaseDifficulty).HasColumnName("base_difficulty");
         builder.Property(e => e.EncounterWeight).HasColumnName("encounter_weight").HasDefaultValue(1);
         builder.Property(e => e.MinRiskLevel).HasColumnName("min_risk_level");

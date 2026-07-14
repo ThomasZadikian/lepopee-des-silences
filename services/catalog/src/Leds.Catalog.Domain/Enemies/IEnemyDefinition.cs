@@ -25,4 +25,20 @@ public interface IEnemyDefinition : ICatalogContent
     IReadOnlyCollection<string> Tags { get; }
 
     IReadOnlyCollection<string> SkillKeys { get; }
+
+    int Initiative { get; }
+
+    int Mana { get; }
+
+    int MagicAttack { get; }
+
+    int MagicDefense { get; }
+
+    int Menace { get; }
+
+    string Rarity { get; }
+
+    string? Registre { get; }
+
+    IReadOnlyCollection<string> BoundRoomKeys { get; }
 }

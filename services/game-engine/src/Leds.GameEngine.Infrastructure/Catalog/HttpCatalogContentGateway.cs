@@ -1029,7 +1029,15 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
             AttackPower: source.AttackPower,
             Defense: source.Defense,
             Speed: source.Speed,
-            Focus: source.Focus);
+            Focus: source.Focus,
+            Initiative: source.Initiative,
+            Mana: source.Mana,
+            MagicAttack: source.MagicAttack,
+            MagicDefense: source.MagicDefense,
+            Menace: source.Menace,
+            Rarity: source.Rarity,
+            Registre: source.Registre,
+            BoundRoomKeys: source.BoundRoomKeys);
     }
 
     private static PalaceLawDefinitionSnapshot MapToPalaceLawDefinitionSnapshot(

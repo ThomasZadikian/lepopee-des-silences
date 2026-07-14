@@ -2441,7 +2441,10 @@ public sealed class CatalogSeedRunner
         int depthMin, int depthMax, int riskMin, int riskMax,
         string[] roomTypes, string[] tags, string[] skillKeys,
         int vitality, int attack, int defense, int guard, int speed, int focus,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default,
+        int magicAttack = 0, int magicDefense = 0, int initiative = 0, int mana = 0,
+        int menace = 0, string rarity = "Common", string? registre = null,
+        string[]? boundRoomKeys = null)
     {
         const string version = "canon-1.0.0";
         var now = DateTime.UtcNow;
@@ -2475,6 +2478,10 @@ public sealed class CatalogSeedRunner
                 MaxDepth = depthMax,
                 IsElite = isElite,
                 BaseWeight = 1,
+                Rarity = rarity,
+                Registre = registre,
+                MenaceLevel = menace,
+                BoundRoomKeysJson = JsonSerializer.Serialize(boundRoomKeys ?? Array.Empty<string>()),
                 CompatibleRoomTypesJson = JsonSerializer.Serialize(roomTypes),
                 TagsJson = JsonSerializer.Serialize(tags),
                 SkillKeysJson = JsonSerializer.Serialize(skillKeys),
@@ -2490,11 +2497,13 @@ public sealed class CatalogSeedRunner
                 Defense = defense,
                 StartingGuard = guard,
                 Speed = speed,
-                Initiative = 0,
+                Initiative = initiative,
                 Recovery = 0,
                 Focus = focus,
-                Mana = 0,
-                Charge = 0
+                Mana = mana,
+                Charge = 0,
+                MagicAttack = magicAttack,
+                MagicDefense = magicDefense
             };
             foreach (var skillKey in skillKeys.Distinct(StringComparer.OrdinalIgnoreCase))
             {
@@ -2525,6 +2534,10 @@ public sealed class CatalogSeedRunner
         existing.MinDepth = depthMin;
         existing.MaxDepth = depthMax;
         existing.IsElite = isElite;
+        existing.Rarity = rarity;
+        existing.Registre = registre;
+        existing.MenaceLevel = menace;
+        existing.BoundRoomKeysJson = JsonSerializer.Serialize(boundRoomKeys ?? Array.Empty<string>());
         existing.CompatibleRoomTypesJson = JsonSerializer.Serialize(roomTypes);
         existing.TagsJson = JsonSerializer.Serialize(tags);
         existing.SkillKeysJson = JsonSerializer.Serialize(skillKeys);
@@ -2541,6 +2554,10 @@ public sealed class CatalogSeedRunner
         existing.StatBlock.StartingGuard = guard;
         existing.StatBlock.Speed = speed;
         existing.StatBlock.Focus = focus;
+        existing.StatBlock.Initiative = initiative;
+        existing.StatBlock.Mana = mana;
+        existing.StatBlock.MagicAttack = magicAttack;
+        existing.StatBlock.MagicDefense = magicDefense;
 
         var desired = skillKeys.Distinct(StringComparer.OrdinalIgnoreCase).ToHashSet(StringComparer.OrdinalIgnoreCase);
         foreach (var skillKey in desired.Where(k => existing.SkillLinks.All(l => !string.Equals(l.SkillDefinitionKey, k, StringComparison.OrdinalIgnoreCase))))

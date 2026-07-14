@@ -14,4 +14,12 @@ public sealed record CatalogEnemyDefinitionHttpResponse(
     int AttackPower = 0,
     int Defense = 0,
     int Speed = 10,
-    int Focus = 0);
+    int Focus = 0,
+    int Initiative = 0,
+    int Mana = 0,
+    int MagicAttack = 0,
+    int MagicDefense = 0,
+    int Menace = 0,
+    string Rarity = "Common",
+    string? Registre = null,
+    IReadOnlyCollection<string>? BoundRoomKeys = null);
