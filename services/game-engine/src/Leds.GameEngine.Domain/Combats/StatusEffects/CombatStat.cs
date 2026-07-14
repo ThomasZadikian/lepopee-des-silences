@@ -7,6 +7,11 @@ public enum CombatStat
     Defense,
     Speed,
     Focus,
+    // Authored base stats (mirror AttackPower/Defense) driving the Magic-category
+    // damage ratio in CombatSkillEffectResolver.StatModifierDamageMultiplier —
+    // symmetric to how AttackPower/Defense drive the Physical-category ratio.
+    MagicAttack,
+    MagicDefense,
     // Virtual stats (no authored base value — base is always 0, so only flat
     // StatModifier contributions matter): percentage points added to / subtracted
     // from Magic-category skill damage (see CombatSkillEffectResolver).

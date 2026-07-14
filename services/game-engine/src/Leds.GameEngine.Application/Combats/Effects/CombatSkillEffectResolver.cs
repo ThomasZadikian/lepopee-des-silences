@@ -361,7 +361,7 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
             // type/crit are applied.
             var basePower = ApplyStatMultiplier(
                 skill.BasePower,
-                StatModifierDamageMultiplier(actor, target) * MagicCategoryDamageMultiplier(skill, actor, target));
+                StatModifierDamageMultiplier(skill, actor, target) * MagicCategoryDamageMultiplier(skill, actor, target));
 
             var outcome = DamageCalculator.Calculate(
                 basePower,
@@ -498,10 +498,17 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
     // 1.0 multiplier, same as the old delta-only formula's no-buff case.
     private const double AttackDefenseBaseline = 20.0;
 
-    private static double StatModifierDamageMultiplier(Combatant actor, Combatant target)
+    // Magic-category skills use EffectiveMagicAttack/EffectiveMagicDefense instead of
+    // the physical AttackPower/Defense pair — symmetric ratio, separate stat channel.
+    // Every combatant predating the Bestiaire chantier has MagicAttack/MagicDefense at
+    // 0/0 by default, which keeps this multiplier neutral (1.0) for them.
+    private static double StatModifierDamageMultiplier(CombatantSkill skill, Combatant actor, Combatant target)
     {
-        var multiplier = (AttackDefenseBaseline + actor.EffectiveAttackPower)
-            / (AttackDefenseBaseline + target.EffectiveDefense);
+        var isMagic = string.Equals(skill.Category, "Magic", StringComparison.OrdinalIgnoreCase);
+        var attack = isMagic ? actor.EffectiveMagicAttack : actor.EffectiveAttackPower;
+        var defense = isMagic ? target.EffectiveMagicDefense : target.EffectiveDefense;
+
+        var multiplier = (AttackDefenseBaseline + attack) / (AttackDefenseBaseline + defense);
 
         return Math.Clamp(multiplier, 0.25, 3.0);
     }

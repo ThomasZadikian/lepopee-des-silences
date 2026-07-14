@@ -441,6 +441,38 @@ public sealed class CombatantTests
     }
 
     [Fact]
+    public void EffectiveMagicAttackAndDefense_ShouldDefaultToZero_WhenNotAuthored()
+    {
+        var combatant = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 100);
+
+        combatant.EffectiveMagicAttack.Should().Be(0);
+        combatant.EffectiveMagicDefense.Should().Be(0,
+            because: "every combatant predating the Bestiaire chantier must keep a neutral Magic damage ratio (see CombatSkillEffectResolver.StatModifierDamageMultiplier).");
+    }
+
+    [Fact]
+    public void EffectiveMagicAttackAndDefense_ShouldEqualAuthoredBaseValue()
+    {
+        var combatant = Combatant.CreateEnemy("enemy.eclat-eveille", "Éclat Éveillé", "Guard", 44, magicAttack: 15, magicDefense: 12);
+
+        combatant.EffectiveMagicAttack.Should().Be(15);
+        combatant.EffectiveMagicDefense.Should().Be(12);
+    }
+
+    [Fact]
+    public void EffectiveMagicAttack_ShouldSumBaseValueAndStatModifierStatus()
+    {
+        var combatant = Combatant.CreateEnemy("enemy.eclat-eveille", "Éclat Éveillé", "Guard", 44, magicAttack: 15);
+
+        combatant.ApplyStatusEffect(Leds.GameEngine.Domain.Combats.StatusEffects.CombatStatusEffect.Create(
+            "facette:bonus", "Facette", Leds.GameEngine.Domain.Combats.StatusEffects.StatusEffectKind.StatModifier,
+            currentTick: 0, durationTicks: 5000, magnitude: 5, stat: Leds.GameEngine.Domain.Combats.StatusEffects.CombatStat.MagicAttack));
+
+        combatant.EffectiveMagicAttack.Should().Be(20,
+            because: "authored base (15) + skill-driven StatModifier buff (5) must both contribute, mirroring EffectiveAttackPower.");
+    }
+
+    [Fact]
     public void EffectiveDotDamageBonusPercent_ShouldSumEquipmentAndStatModifierStatus()
     {
         var combatant = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);

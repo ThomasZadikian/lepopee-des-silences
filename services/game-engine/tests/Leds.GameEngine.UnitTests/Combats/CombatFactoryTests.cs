@@ -22,6 +22,9 @@ public sealed class CombatFactoryTests
         int enemyDefense = 0,
         int enemySpeed = 10,
         int enemyFocus = 0,
+        int enemyMagicAttack = 0,
+        int enemyMagicDefense = 0,
+        int enemyMana = 0,
         double difficultyMultiplier = 1.0)
     {
         var allies = Enumerable.Range(0, allyCount).Select(i =>
@@ -56,7 +59,10 @@ public sealed class CombatFactoryTests
                 AttackPower: enemyAttackPower,
                 Defense: enemyDefense,
                 Speed: enemySpeed,
-                Focus: enemyFocus);
+                Focus: enemyFocus,
+                MagicAttack: enemyMagicAttack,
+                MagicDefense: enemyMagicDefense,
+                Mana: enemyMana);
         }).ToArray();
 
         return new CombatEncounterDraft(
@@ -266,6 +272,36 @@ public sealed class CombatFactoryTests
             because: "Speed now keeps pace with run depth too, same as the other authored stats.");
         enemy.BaseStatSnapshot.Focus.Should().Be(10,
             because: "Focus (crit chance) should keep pace with run depth, same as the other authored stats.");
+    }
+
+    [Fact]
+    public void CreateFromDraft_ShouldWireCatalogMagicAttackDefenseAndMana_IntoEnemyCombatant()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft(enemyMagicAttack: 12, enemyMagicDefense: 9, enemyMana: 20);
+
+        var combat = factory.CreateFromDraft(draft);
+
+        var enemy = combat.Enemies.Single();
+        enemy.BaseStatSnapshot.MagicAttack.Should().Be(12);
+        enemy.BaseStatSnapshot.MagicDefense.Should().Be(9);
+        enemy.Mana.Should().Be(20);
+        enemy.MaxMana.Should().Be(20);
+    }
+
+    [Fact]
+    public void CreateFromDraft_ShouldScaleEnemyMagicAttackDefense_WithDifficultyMultiplier()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft(enemyMagicAttack: 10, enemyMagicDefense: 10, difficultyMultiplier: 2.0);
+
+        var combat = factory.CreateFromDraft(draft);
+
+        var enemy = combat.Enemies.Single();
+        enemy.BaseStatSnapshot.MagicAttack.Should().Be(20,
+            because: "MagicAttack should keep pace with run depth, same as the other authored stats.");
+        enemy.BaseStatSnapshot.MagicDefense.Should().Be(20,
+            because: "MagicDefense should keep pace with run depth, same as the other authored stats.");
     }
 
     [Fact]

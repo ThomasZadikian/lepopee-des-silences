@@ -396,7 +396,10 @@ public sealed class Combatant
         int attackPower = 0,
         int defense = 0,
         int speed = 10,
-        int focus = 0)
+        int focus = 0,
+        int magicAttack = 0,
+        int magicDefense = 0,
+        int mana = 0)
     {
         var id = CombatantId.New();
         var snapshot = CombatantBaseStatSnapshot.Create(
@@ -408,12 +411,16 @@ public sealed class Combatant
             initiative: 0,
             recovery: 0,
             focus: focus,
-            mana: 0,
-            charge: 0);
+            mana: mana,
+            charge: 0,
+            magicAttack: magicAttack,
+            magicDefense: magicDefense);
 
         var runtimeState = CombatantRuntimeState.Create(
             currentVitality: maxVitality,
-            currentGuard: startingGuard);
+            currentGuard: startingGuard,
+            currentMana: mana,
+            maxMana: mana);
 
         return new Combatant(
             id,
@@ -425,7 +432,7 @@ public sealed class Combatant
             currentVitality: maxVitality,
             guard: startingGuard,
             baseGuard: startingGuard,
-            mana: 0,
+            mana: mana,
             maxMana: runtimeState.MaxMana,
             charge: 0,
             CombatantStatus.Active,
@@ -451,7 +458,9 @@ public sealed class Combatant
         int defense = 0,
         int speed = 10,
         int focus = 0,
-        int? maxMana = null)
+        int? maxMana = null,
+        int magicAttack = 0,
+        int magicDefense = 0)
     {
         if (id.Value == Guid.Empty)
             throw new DomainException("Combatant id is required.");
@@ -495,7 +504,9 @@ public sealed class Combatant
             recovery: 0,
             focus: focus,
             mana: mana,
-            charge: charge);
+            charge: charge,
+            magicAttack: magicAttack,
+            magicDefense: magicDefense);
 
         var runtimeState = CombatantRuntimeState.Create(
             currentVitality: currentVitality,
@@ -829,6 +840,8 @@ public sealed class Combatant
     public int EffectiveDefense => Math.Max(0, EffectiveStat(CombatStat.Defense, BaseStatSnapshot.Defense));
     public int EffectiveSpeed => Math.Max(1, EffectiveStat(CombatStat.Speed, BaseStatSnapshot.Speed));
     public int EffectiveFocus => Math.Max(0, EffectiveStat(CombatStat.Focus, BaseStatSnapshot.Focus));
+    public int EffectiveMagicAttack => Math.Max(0, EffectiveStat(CombatStat.MagicAttack, BaseStatSnapshot.MagicAttack));
+    public int EffectiveMagicDefense => Math.Max(0, EffectiveStat(CombatStat.MagicDefense, BaseStatSnapshot.MagicDefense));
 
     // Control flags consumed by the ATB scheduler / action validation (tranche 3+).
     public bool IsStunned => _statusEffects.Any(e => e.Kind == StatusEffectKind.Stun);

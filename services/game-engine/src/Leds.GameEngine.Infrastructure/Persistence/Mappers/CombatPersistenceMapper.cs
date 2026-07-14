@@ -201,6 +201,8 @@ public static class CombatPersistenceMapper
             Focus = snapshot.Focus,
             Mana = snapshot.Mana,
             Charge = snapshot.Charge,
+            MagicAttack = snapshot.MagicAttack,
+            MagicDefense = snapshot.MagicDefense,
             AtbReadyThreshold = snapshot.AtbReadyThreshold,
             CreatedAtUtc = snapshot.CreatedAtUtc
         };
@@ -349,7 +351,9 @@ public static class CombatPersistenceMapper
             entity.Mana,
             entity.Charge,
             entity.AtbReadyThreshold,
-            entity.CreatedAtUtc);
+            entity.CreatedAtUtc,
+            entity.MagicAttack,
+            entity.MagicDefense);
     }
 
     public static CombatantRuntimeState ToDomainRuntimeState(CombatantRuntimeStateEntity entity)

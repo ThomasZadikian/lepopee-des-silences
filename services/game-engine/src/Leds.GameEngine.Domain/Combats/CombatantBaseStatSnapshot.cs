@@ -17,7 +17,9 @@ public sealed class CombatantBaseStatSnapshot
         int mana,
         int charge,
         int? atbReadyThreshold,
-        DateTime createdAtUtc)
+        DateTime createdAtUtc,
+        int magicAttack,
+        int magicDefense)
     {
         Id = id;
         MaxVitality = maxVitality;
@@ -32,6 +34,8 @@ public sealed class CombatantBaseStatSnapshot
         Charge = charge;
         AtbReadyThreshold = atbReadyThreshold;
         CreatedAtUtc = createdAtUtc;
+        MagicAttack = magicAttack;
+        MagicDefense = magicDefense;
     }
 
     public Guid Id { get; }
@@ -47,6 +51,12 @@ public sealed class CombatantBaseStatSnapshot
     public int Charge { get; }
     public int? AtbReadyThreshold { get; }
     public DateTime CreatedAtUtc { get; }
+    // Authored base stats mirroring AttackPower/Defense — default 0, which keeps
+    // the Magic-category damage ratio neutral (see CombatSkillEffectResolver) for
+    // every combatant that doesn't explicitly author these (all content predating
+    // the Bestiaire chantier).
+    public int MagicAttack { get; }
+    public int MagicDefense { get; }
 
     public static CombatantBaseStatSnapshot Create(
         int maxVitality,
@@ -59,7 +69,9 @@ public sealed class CombatantBaseStatSnapshot
         int focus,
         int mana,
         int charge,
-        int? atbReadyThreshold = null)
+        int? atbReadyThreshold = null,
+        int magicAttack = 0,
+        int magicDefense = 0)
     {
         if (maxVitality <= 0)
             throw new DomainException("Max vitality must be greater than zero.");
@@ -91,6 +103,12 @@ public sealed class CombatantBaseStatSnapshot
         if (charge < 0)
             throw new DomainException("Charge cannot be negative.");
 
+        if (magicAttack < 0)
+            throw new DomainException("Magic attack cannot be negative.");
+
+        if (magicDefense < 0)
+            throw new DomainException("Magic defense cannot be negative.");
+
         return new CombatantBaseStatSnapshot(
             Guid.NewGuid(),
             maxVitality,
@@ -104,7 +122,9 @@ public sealed class CombatantBaseStatSnapshot
             mana,
             charge,
             atbReadyThreshold,
-            DateTime.UtcNow);
+            DateTime.UtcNow,
+            magicAttack,
+            magicDefense);
     }
 
     public static CombatantBaseStatSnapshot Rehydrate(
@@ -120,7 +140,9 @@ public sealed class CombatantBaseStatSnapshot
         int mana,
         int charge,
         int? atbReadyThreshold,
-        DateTime createdAtUtc)
+        DateTime createdAtUtc,
+        int magicAttack = 0,
+        int magicDefense = 0)
     {
         return new CombatantBaseStatSnapshot(
             id,
@@ -135,6 +157,8 @@ public sealed class CombatantBaseStatSnapshot
             mana,
             charge,
             atbReadyThreshold,
-            createdAtUtc);
+            createdAtUtc,
+            magicAttack,
+            magicDefense);
     }
 }

@@ -35,7 +35,9 @@ public sealed class CombatFactory : ICombatFactory
         int criticalChanceBonusPercent = 0,
         int guardBonusPercent = 0,
         bool himLitProtectionEnabled = false,
-        int healingBonusPercent = 0)
+        int healingBonusPercent = 0,
+        int magicAttack = 0,
+        int magicDefense = 0)
     {
         return CreateFromDraft(
             CombatId.New(),
@@ -58,7 +60,9 @@ public sealed class CombatFactory : ICombatFactory
             criticalChanceBonusPercent,
             guardBonusPercent,
             himLitProtectionEnabled,
-            healingBonusPercent);
+            healingBonusPercent,
+            magicAttack,
+            magicDefense);
     }
     private static (double VitalityMultiplier, double PowerMultiplier, int GuardBonus) EncounterBonus(string encounterType)
     {
@@ -93,7 +97,9 @@ public sealed class CombatFactory : ICombatFactory
         int criticalChanceBonusPercent = 0,
         int guardBonusPercent = 0,
         bool himLitProtectionEnabled = false,
-        int healingBonusPercent = 0)
+        int healingBonusPercent = 0,
+        int magicAttack = 0,
+        int magicDefense = 0)
     {
         // Sum all unconsumed StartingGuardBonus modifiers (e.g. Éclat de garde: +8 garde).
         var guardBonus = runModifiers?
@@ -171,7 +177,9 @@ public sealed class CombatFactory : ICombatFactory
                         defense: defense,
                         speed: ApplySpeedMultiplier(speed, speedMultiplier),
                         focus: focus,
-                        maxMana: maxMana);
+                        maxMana: maxMana,
+                        magicAttack: magicAttack,
+                        magicDefense: magicDefense);
 
                     protagonist.ApplyAttackTypeOverride(attackTypeOverride);
                     protagonist.ApplyTypedDamageReductions(typedDamageReductions);
@@ -224,7 +232,9 @@ public sealed class CombatFactory : ICombatFactory
                     defense: ally.Defense,
                     speed: ApplySpeedMultiplier(ally.Speed, speedMultiplier),
                     focus: ally.Focus,
-                    maxMana: ally.Mana);
+                    maxMana: ally.Mana,
+                    magicAttack: ally.MagicAttack,
+                    magicDefense: ally.MagicDefense);
 
                 // Companions keep their own emotional type (no item override).
                 companion.ApplyAttackTypeOverride(null);
@@ -283,6 +293,8 @@ public sealed class CombatFactory : ICombatFactory
                 var scaledDefense = _enemyStatScaler.ScaleValue(enemy.Defense, draft.DifficultyMultiplier);
                 var scaledFocus = _enemyStatScaler.ScaleValue(enemy.Focus, draft.DifficultyMultiplier);
                 var scaledSpeed = _enemyStatScaler.ScaleValue(enemy.Speed, draft.DifficultyMultiplier);
+                var scaledMagicAttack = _enemyStatScaler.ScaleValue(enemy.MagicAttack, draft.DifficultyMultiplier);
+                var scaledMagicDefense = _enemyStatScaler.ScaleValue(enemy.MagicDefense, draft.DifficultyMultiplier);
 
                 return Combatant.CreateEnemy(
                     sourceKey: enemy.EnemyKey,
@@ -294,7 +306,10 @@ public sealed class CombatFactory : ICombatFactory
                     attackPower: scaledAttackPower,
                     defense: scaledDefense,
                     speed: scaledSpeed,
-                    focus: scaledFocus);
+                    focus: scaledFocus,
+                    magicAttack: scaledMagicAttack,
+                    magicDefense: scaledMagicDefense,
+                    mana: enemy.Mana);
             })
             .ToArray();
 

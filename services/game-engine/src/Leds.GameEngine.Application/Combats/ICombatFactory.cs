@@ -28,7 +28,9 @@ public interface ICombatFactory
         int criticalChanceBonusPercent = 0,
         int guardBonusPercent = 0,
         bool himLitProtectionEnabled = false,
-        int healingBonusPercent = 0);
+        int healingBonusPercent = 0,
+        int magicAttack = 0,
+        int magicDefense = 0);
 
     Combat CreateFromDraft(
         CombatId combatId,
@@ -51,5 +53,7 @@ public interface ICombatFactory
         int criticalChanceBonusPercent = 0,
         int guardBonusPercent = 0,
         bool himLitProtectionEnabled = false,
-        int healingBonusPercent = 0);
+        int healingBonusPercent = 0,
+        int magicAttack = 0,
+        int magicDefense = 0);
 }

@@ -97,6 +97,87 @@ public sealed class CombatSkillEffectResolverTests
     }
 
     [Fact]
+    public void Resolve_ShouldIncreaseMagicDamage_UsingMagicAttackNotPhysicalAttackPower()
+    {
+        var ally = Combatant.Create(
+            CombatantId.New(), "player.self", "Hero", CombatantSide.Player, "Fighter",
+            maxVitality: 100, currentVitality: 100, guard: 0, baseGuard: 0, mana: 0, charge: 0,
+            attackPower: 20, magicAttack: 0);
+        var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 80);
+        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
+        var skill = CombatantSkill.Create(
+            "canon.skill.flamme-froide", "Flamme froide", "Damage", "SingleEnemy", "Damage",
+            manaCost: 8, chargeCost: 0, basePower: 10, category: "Magic");
+
+        _resolver.Resolve(combat, ally, skill, [enemy]);
+
+        // A high physical AttackPower must NOT boost a Magic-category skill: the
+        // physical stat is ignored here, only MagicAttack (0) applies, so the ratio
+        // stays neutral — (20 baseline + 0 magic attack) / (20 baseline + 0 magic
+        // defense) = 1.0.
+        enemy.CurrentVitality.Should().Be(80 - 10);
+    }
+
+    [Fact]
+    public void Resolve_ShouldIncreaseMagicDamage_WhenActorMagicAttackIsAboveBaseline()
+    {
+        var ally = Combatant.Create(
+            CombatantId.New(), "player.self", "Hero", CombatantSide.Player, "Fighter",
+            maxVitality: 100, currentVitality: 100, guard: 0, baseGuard: 0, mana: 0, charge: 0,
+            magicAttack: 20);
+        var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 80);
+        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
+        var skill = CombatantSkill.Create(
+            "canon.skill.flamme-froide", "Flamme froide", "Damage", "SingleEnemy", "Damage",
+            manaCost: 8, chargeCost: 0, basePower: 10, category: "Magic");
+
+        _resolver.Resolve(combat, ally, skill, [enemy]);
+
+        // multiplier = (20 baseline + 20 magic attack) / (20 baseline + 0 magic defense) = 2.0.
+        enemy.CurrentVitality.Should().Be(80 - 20);
+    }
+
+    [Fact]
+    public void Resolve_ShouldReduceMagicDamage_WhenTargetMagicDefenseIsAboveBaseline()
+    {
+        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+        var enemy = Combatant.Create(
+            CombatantId.New(), "enemy.sentinel", "Sentinel", CombatantSide.Enemy, "Guard",
+            maxVitality: 80, currentVitality: 80, guard: 0, baseGuard: 0, mana: 0, charge: 0,
+            magicDefense: 20);
+        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
+        var skill = CombatantSkill.Create(
+            "canon.skill.flamme-froide", "Flamme froide", "Damage", "SingleEnemy", "Damage",
+            manaCost: 8, chargeCost: 0, basePower: 10, category: "Magic");
+
+        _resolver.Resolve(combat, ally, skill, [enemy]);
+
+        // multiplier = (20 baseline + 0 magic attack) / (20 baseline + 20 magic defense) = 0.5.
+        enemy.CurrentVitality.Should().Be(80 - 5);
+    }
+
+    [Fact]
+    public void Resolve_ShouldIgnoreMagicAttackDefense_ForPhysicalCategorySkills()
+    {
+        var ally = Combatant.Create(
+            CombatantId.New(), "player.self", "Hero", CombatantSide.Player, "Fighter",
+            maxVitality: 100, currentVitality: 100, guard: 0, baseGuard: 0, mana: 0, charge: 0,
+            magicAttack: 30);
+        var enemy = Combatant.Create(
+            CombatantId.New(), "enemy.sentinel", "Sentinel", CombatantSide.Enemy, "Guard",
+            maxVitality: 80, currentVitality: 80, guard: 0, baseGuard: 0, mana: 0, charge: 0,
+            magicDefense: 30);
+        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
+        var skill = CreateSkill("skill.basic.strike", "Damage", 10);
+
+        _resolver.Resolve(combat, ally, skill, [enemy]);
+
+        // Physical-category skill: MagicAttack/MagicDefense are irrelevant, ratio
+        // stays neutral at (20 baseline + 0 attack) / (20 baseline + 0 defense) = 1.0.
+        enemy.CurrentVitality.Should().Be(70);
+    }
+
+    [Fact]
     public void Resolve_ShouldCreateDamageLogEntries()
     {
         var (combat, ally, enemy) = CreateCombat();
