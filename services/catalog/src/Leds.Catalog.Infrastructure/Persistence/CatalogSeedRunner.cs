@@ -79,6 +79,7 @@ public sealed class CatalogSeedRunner
         await SeedBestiaireChimeresDesPlainesAsync(cancellationToken);
         await SeedBestiaireCreationsDuForgeronAsync(cancellationToken);
         await SeedBestiaireBlousesBlanchesAsync(cancellationToken);
+        await SeedBestiairePenitentsDeLaMontagneAsync(cancellationToken);
         await SeedCanonItemsAsync(cancellationToken);
         await SeedCanonCursesAsync(cancellationToken);
         await SeedCanonLawsAsync(cancellationToken);
@@ -3873,6 +3874,135 @@ public sealed class CatalogSeedRunner
             magicAttack: 9, magicDefense: 10, initiative: 4, mana: 22, menace: 7,
             rarity: "Rare", registre: registre,
             boundRoomKeys: new[] { "room.hopital", "room.cellulehopital" });
+    }
+
+    private async Task SeedBestiairePenitentsDeLaMontagneAsync(CancellationToken cancellationToken)
+    {
+        const string family = "Penitents de la Montagne";
+        const string registre = "Effroi";
+
+        // Mécanique de famille "Le Pèlerinage" (chaque Prière pose une Station, max 3 ;
+        // à 3 Stations, la Frayeur Exhumée peut se manifester en renfort, ou les
+        // Pénitents se soignent de 20% PV max) n'est pas modélisée — nécessiterait un
+        // compteur partagé au niveau du Combat ET une invocation de renfort en cours
+        // de combat, absents du moteur (même famille de limitation que les mécaniques
+        // de famille précédentes). "Chapelet de dents" perd son volet "+2 dégâts par
+        // Station" (puissance fixe) ; "Dernière prière" perd son volet "pose 2
+        // Stations d'un coup" et devient une Prière renforcée à la place.
+
+        await UpsertSkillAsync("canon.skill.baton-de-marche", "Bâton de marche",
+            "Un coup du bâton poli par des siècles de pente.",
+            "Damage", "SingleEnemy", "Damage", mana: 0, power: 9, cancellationToken,
+            category: "Physical");
+
+        await UpsertSkillAsync("canon.skill.chapelet-de-dents", "Chapelet de dents",
+            "Égrène.",
+            "Damage", "SingleEnemy", "Damage", mana: 8, power: 11, cancellationToken,
+            category: "Magic");
+
+        // "Repentir" : la doc décrit -10% PV max sur soi en plus du buff — la vitalité
+        // maximale d'un combattant est une valeur figée à la création côté moteur,
+        // aucune réduction en cours de combat n'est possible ; seul le buff est câblé.
+        await UpsertSkillAsync("canon.skill.repentir", "Repentir",
+            "La faute oubliée exige quand même son prix.",
+            "Buff", "Self", "Buff", mana: 6, power: 0, cancellationToken,
+            effects: new[] { new SkillEffectSpec("StatModifier", null, 6, TicksPerTurn * 3, Stat: "MagicAttack") },
+            category: "Magic");
+
+        await UpsertSkillAsync("canon.skill.encens-inverse", "Encens inversé",
+            "Ce qui rôde respire mieux.",
+            "Debuff", "AllEnemies", "Debuff", mana: 10, power: 0, cancellationToken,
+            effects: new[] { new SkillEffectSpec("StatModifier", null, -3, TicksPerTurn * 3, Stat: "MagicDefense") },
+            category: "Magic");
+
+        // "Oraison cousue" : la doc décrit un soin de 40% des dégâts infligés
+        // (lifesteal conditionnel) — aucun mécanisme de soin proportionnel aux dégâts
+        // d'un coup donné n'existe côté moteur ; approximé par un soin en % des PV max
+        // fixe sur le même coup. L'IA ne la lance que sur une cible déjà sous -DEF
+        // (voir PrieurLituiqueBossBehavior), préservant le synergisme documenté même
+        // sans le pourcentage conditionnel.
+        await UpsertSkillAsync("canon.skill.oraison-cousue", "Oraison cousue",
+            "Le drain accompli.",
+            "Damage", "SingleEnemy", "Damage", mana: 14, power: 18, cancellationToken,
+            effects: new[]
+            {
+                new SkillEffectSpec("HealOverTime", null, 10, TicksPerTurn, TickInterval: TicksPerTurn,
+                    MagnitudeIsPercentOfMax: true, AppliesToActor: true)
+            },
+            category: "Magic");
+
+        // "Dernière prière" : voir la note de mécanique de famille ci-dessus — devient
+        // une Prière renforcée (débuff de Défense doublé) plutôt que de poser deux
+        // Stations. Le plafond "une fois par combat" n'est pas non plus appliqué
+        // (aucun compteur d'utilisation par sort côté moteur).
+        await UpsertSkillAsync("canon.skill.derniere-priere", "Dernière prière",
+            "Le nom exact de ce que Him'Lit n'aime pas.",
+            "Drain", "SingleEnemy", "Debuff", mana: 20, power: 18, cancellationToken,
+            effects: new[] { new SkillEffectSpec("StatModifier", null, -8, TicksPerTurn * 3, Stat: "Defense") },
+            category: "Magic");
+
+        // "Posture finale" : la doc cible Initiative (-4 brut) — non modifiable en
+        // combat côté moteur (même substitution que Berceuse inversée/Regard fixe) ;
+        // approximée par AtbTempoModifier.
+        await UpsertSkillAsync("canon.skill.posture-finale", "Posture finale",
+            "Elle a vu.",
+            "Debuff", "SingleEnemy", "Debuff", mana: 10, power: 0, cancellationToken,
+            effects: new[]
+            {
+                new SkillEffectSpec("StatModifier", "canon.skill.posture-finale:tempo", -12, TicksPerTurn * 3, Stat: "AtbTempoModifier"),
+                new SkillEffectSpec("StatModifier", "canon.skill.posture-finale:focus", -3, TicksPerTurn * 3, Stat: "Focus")
+            },
+            category: "Magic");
+
+        // "Griffe de recul" : la doc décrit une intargetabilité au corps-à-corps —
+        // sans objet côté moteur (aucun statut d'intargetabilité, voir Bond de flanc,
+        // famille Chimères) ; dégâts seuls.
+        await UpsertSkillAsync("canon.skill.griffe-de-recul", "Griffe de recul",
+            "Frappe en reculant.",
+            "Damage", "SingleEnemy", "Damage", mana: 0, power: 14, cancellationToken,
+            category: "Physical");
+
+        await UpsertEnemyAsync(
+            "canon.enemy.pelerin-sans-visage", "Pèlerin Sans Visage",
+            "Une silhouette en robe de bure, courbée par la pente, dont la capuche s'ouvre sur une surface lisse — pas effacée : usée, comme une pièce de monnaie trop manipulée. Il gravit la montagne en égrenant un chapelet dont chaque grain est une petite dent. « Il monte depuis si longtemps qu'il a usé son visage contre le vent. »",
+            "Skirmisher", family, "Common", "Skirmisher", isElite: false,
+            depthMin: 4, depthMax: 9, riskMin: 25, riskMax: 70,
+            roomTypes: new[] { "Memory", "Silence" },
+            tags: new[] { "bestiaire", "melancolie", "penitents-de-la-montagne", "pelerinage" },
+            skillKeys: new[] { "canon.skill.priere-aspiration", "canon.skill.baton-de-marche", "canon.skill.chapelet-de-dents", "canon.skill.repentir" },
+            vitality: 42, attack: 7, defense: 6, guard: 0, speed: 6, focus: 5,
+            cancellationToken,
+            magicAttack: 7, magicDefense: 8, initiative: 5, mana: 16, menace: 3,
+            rarity: "Common", registre: "Melancolie",
+            boundRoomKeys: new[] { "room.montagne", "room.templempontagne" });
+
+        await UpsertEnemyAsync(
+            "canon.enemy.prieur-lituique", "Prieur Lituique",
+            "Un officiant au dos trop droit pour la bure qu'il porte, dont la bouche est cousue de fil d'or — et qui prie quand même, par les pores, par les gestes, par les jointures de ses doigts qui craquent en rythme liturgique. Devant lui flotte un encensoir qui fume à l'envers : la fumée descend. « Elle restaure — mais nourrit ce qui rôde. Lui, il sait exactement ce qui rôde. »",
+            "Support", family, "Uncommon", "Support", isElite: false,
+            depthMin: 4, depthMax: 9, riskMin: 30, riskMax: 75,
+            roomTypes: new[] { "Memory" },
+            tags: new[] { "bestiaire", "effroi", "penitents-de-la-montagne", "pelerinage", "priority" },
+            skillKeys: new[] { "canon.skill.priere-aspiration", "canon.skill.encens-inverse", "canon.skill.oraison-cousue", "canon.skill.derniere-priere" },
+            vitality: 72, attack: 5, defense: 8, guard: 0, speed: 6, focus: 8,
+            cancellationToken,
+            magicAttack: 13, magicDefense: 11, initiative: 6, mana: 28, menace: 6,
+            rarity: "Uncommon", registre: registre,
+            boundRoomKeys: new[] { "room.templempontagne", "room.chambrefunéraire" });
+
+        await UpsertEnemyAsync(
+            "canon.enemy.frayeur-exhumee", "Frayeur Exhumée",
+            "Le premier explorateur — ou ce que l'ouverture de sa chambre funéraire a réveillé de lui. Un corps momifié dans une posture de recul, bras levés devant un danger que personne d'autre ne voit, figé au centième de seconde de sa dernière terreur. Il projette cette terreur autour de lui comme une lampe projette la lumière. « Depuis la découverte de la chambre, les échos de la frayeur ne cessent de s'agiter. En voici la source. »",
+            "Bruiser", family, "Rare", "Bruiser", isElite: true,
+            depthMin: 5, depthMax: 9, riskMin: 35, riskMax: 85,
+            roomTypes: new[] { "Memory" },
+            tags: new[] { "bestiaire", "effroi", "penitents-de-la-montagne", "elite", "dot" },
+            skillKeys: new[] { "canon.skill.frayeur-organique", "canon.skill.posture-finale", "canon.skill.griffe-de-recul", "canon.skill.nevrose" },
+            vitality: 104, attack: 12, defense: 8, guard: 0, speed: 7, focus: 6,
+            cancellationToken,
+            magicAttack: 14, magicDefense: 9, initiative: 9, mana: 24, menace: 8,
+            rarity: "Rare", registre: registre,
+            boundRoomKeys: new[] { "room.chambrefunéraire", "room.sousterrainmontagne" });
     }
 
     private async Task UpsertSkillAsync(

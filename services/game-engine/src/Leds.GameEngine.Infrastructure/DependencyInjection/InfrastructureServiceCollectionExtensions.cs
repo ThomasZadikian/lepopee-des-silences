@@ -232,5 +232,10 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IBossBehavior, Leds.GameEngine.Application.Combats.EnemyTurns.Bossing.Canon.InfirmiereDeniBossBehavior>();
         services.AddSingleton<IBossBehavior, Leds.GameEngine.Application.Combats.EnemyTurns.Bossing.Canon.SouvenirAliteBossBehavior>();
         services.AddSingleton<IBossBehavior, Leds.GameEngine.Application.Combats.EnemyTurns.Bossing.Canon.RegisseurBlancBossBehavior>();
+
+        // Bestiaire — Les Pénitents de la Montagne (famille 7).
+        services.AddSingleton<IBossBehavior, Leds.GameEngine.Application.Combats.EnemyTurns.Bossing.Canon.PelerinSansVisageBossBehavior>();
+        services.AddSingleton<IBossBehavior, Leds.GameEngine.Application.Combats.EnemyTurns.Bossing.Canon.PrieurLituiqueBossBehavior>();
+        services.AddSingleton<IBossBehavior, Leds.GameEngine.Application.Combats.EnemyTurns.Bossing.Canon.FrayeurExhumeeBossBehavior>();
     }
 }
