@@ -67,13 +67,14 @@ public sealed class RoomReachabilityGraphValidationTests
         hallDentree.WorldDefinitionId.Should().Be(palais.Id);
 
         var palaisRoomCount = await context.RoomDefinitions.CountAsync(r => r.WorldDefinitionId == palais.Id);
-        palaisRoomCount.Should().Be(22);
+        palaisRoomCount.Should().Be(27);
     }
 
     [Theory]
     [InlineData("room.falaise", "room.enfer1", "room.enfer2", "room.enfer3", "room.enfer4")]
     [InlineData("room.soleil", "room.chateau", "room.cellule")]
     [InlineData("room.hopital", "room.cellulehopital", "room.faille")]
+    [InlineData("room.montagne", "room.templempontagne", "room.chambrefunéraire", "room.sousterrainmontagne", "room.cavernedecrystal")]
     public async Task StrictChain_ShouldBeLinearAndConvergeToAnEmptyChildList(params string[] chainKeysInOrder)
     {
         var (context, _) = _fixture.CreateContext();

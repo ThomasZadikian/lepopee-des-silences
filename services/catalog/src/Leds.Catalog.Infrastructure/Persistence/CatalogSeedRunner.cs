@@ -4456,7 +4456,9 @@ public sealed class CatalogSeedRunner
         "room.jardin", "room.faille",
         "room.falaise", "room.enfer1", "room.enfer2", "room.enfer3", "room.enfer4",
         "room.soleil", "room.chateau", "room.cellule",
-        "room.hopital", "room.cellulehopital"
+        "room.hopital", "room.cellulehopital",
+        "room.montagne", "room.templempontagne", "room.chambrefunéraire",
+        "room.sousterrainmontagne", "room.cavernedecrystal"
     ];
 
     private async Task SeedPalaisWorldAsync(CancellationToken cancellationToken)
@@ -4614,6 +4616,44 @@ public sealed class CatalogSeedRunner
             "Palais intérieur", "Epic", "Madness", 5, 9, cancellationToken,
             excludeFromOpenPool: true, isCulturalEcho: false);
 
+        // Chaîne stricte : Montagne → Temple → Chambre funéraire → Sous-terrains →
+        // Caverne de crystal → (repli niveau 0). Fournie par l'utilisateur pour
+        // débloquer les familles Bestiaire "Pénitents de la Montagne" et "Gardiens
+        // de Crystal", dont les créatures pointaient vers des salles inexistantes.
+        await UpsertRoomAsync("room.montagne", "La montagne",
+            "Paysage de calme, de retraite et d'apaisement, les montagnes du Palais sont un lieu de repentance " +
+            "pour tous ceux qui souhaitent effectuer un pèlerinage en toute quiétude.",
+            "Palais intérieur", "Common", "Meditation", 2, 9, cancellationToken,
+            triggersStrictChain: true, isCulturalEcho: false);
+
+        await UpsertRoomAsync("room.templempontagne", "La montagne - Le temple",
+            "Contemplant les montagnes et les plaines, le temple des montagnes impressionne par sa structure " +
+            "Maya, sa taille déraisonnable et, surtout, ses pièces aux piliers ornés de joyaux et de gravures " +
+            "anciennes.",
+            "Palais intérieur", "Common", "Silence", 2, 9, cancellationToken,
+            excludeFromOpenPool: true, isCulturalEcho: false);
+
+        await UpsertRoomAsync("room.chambrefunéraire", "La montagne - la chambre funéraire",
+            "Au centre du temple, une vision d'horreur se réveille. La chambre funéraire du premier explorateur " +
+            "fut découverte lors de la première reconstruction du Palais, par un aventurier accompagné de " +
+            "Hitomi et, depuis, les échos de la frayeur ne cessent de s'agiter au sein de cette pièce.",
+            "Palais intérieur", "Rare", "Underground", 2, 9, cancellationToken,
+            excludeFromOpenPool: true, isCulturalEcho: false);
+
+        await UpsertRoomAsync("room.sousterrainmontagne", "La montagne - Les sous-terrains",
+            "Derrière la chambre funéraire, cachée par une porte qui ne s'ouvre que si l'on est digne des " +
+            "profondeurs, se trouve un long tunnel qui mène à une antichambre, qui mène à un lieu unique et " +
+            "magnifique : la chambre de crystal.",
+            "Palais intérieur", "Epic", "Underground", 2, 9, cancellationToken,
+            excludeFromOpenPool: true, isCulturalEcho: false);
+
+        await UpsertRoomAsync("room.cavernedecrystal", "La montagne - La caverne de crystal",
+            "Pièce antique, datée de la construction du Palais, la caverne de crystal abrite bien plus que de " +
+            "simples joyaux resplendissants. Une magie ancestrale, des gardiens intemporels et, au milieu de " +
+            "tout cela, une sorte de vieille maison continuellement en feu.",
+            "Palais intérieur", "Legendary", "Collapse", 2, 9, cancellationToken,
+            excludeFromOpenPool: true, isCulturalEcho: false);
+
         // Les salles doivent être persistées avant de résoudre leurs Id par clé pour le
         // câblage du graphe et du Monde ci-dessous (les requêtes suivantes touchent la
         // base, elles ne voient pas les Add() en attente sur le change tracker).
@@ -4627,6 +4667,9 @@ public sealed class CatalogSeedRunner
         // salle niveau 1 qui referme cette chaîne plutôt que de retomber sur le hall).
         await LinkStrictChainAsync(cancellationToken,
             "room.hopital", "room.cellulehopital", "room.faille");
+        await LinkStrictChainAsync(cancellationToken,
+            "room.montagne", "room.templempontagne", "room.chambrefunéraire",
+            "room.sousterrainmontagne", "room.cavernedecrystal");
 
         // Enchaînements niveau 1 ↔ niveau 2 (source : tableau "Room" fourni, colonne
         // "Pièce suivante" faisant foi salle par salle — cf. discussion sur les quelques
@@ -4648,6 +4691,9 @@ public sealed class CatalogSeedRunner
         // configuré) : comme toutes les salles niveau 3+ sont déjà marquées
         // ExcludeFromOpenPool, la résolution automatique donne exactement "toutes les
         // salles de niveau 1 et 2" sans qu'aucune exclusion explicite soit nécessaire ici.
+        // room.montagne (ExcludeFromOpenPool: false) en profite automatiquement — pas
+        // de LinkReachabilityAsync explicite nécessaire pour l'atteindre depuis les
+        // couloirs.
 
         await LinkReachabilityAsync("room.palier", "room.couloirs", cancellationToken);
         await LinkReachabilityAsync("room.palier", "room.meditation", cancellationToken);
