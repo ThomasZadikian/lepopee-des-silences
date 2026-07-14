@@ -241,6 +241,34 @@ public sealed class EncounterCompositionPolicyTests
         result.SelectedEnemies.Should().NotContain(e => e.Key == "enemy.veilleur-tapis");
     }
 
+    [Fact]
+    public void Compose_ShouldPreferPreciselyBoundEnemy_OverCheaperUnboundEnemy_WhenRoomKeyMatches()
+    {
+        // A room-bound Bestiaire creature must win its own room even against a cheaper
+        // unrestricted enemy that would otherwise always be picked first by archetype cost —
+        // otherwise legacy filler permanently shadows every Bestiaire creature that competes
+        // for the same slot, since Compose is deterministic (see the "Determinism" tests).
+        var boundEnemy = GuardEnemy with { Key = "enemy.veilleur-tapis", BoundRoomKeys = ["room.halldentree"] };
+        var context = CreateContext(riskLevel: 2, enemies: [boundEnemy, FragileEnemy], roomKey: "room.halldentree");
+
+        var result = Policy.Compose(context);
+
+        result.SelectedEnemies.First().Key.Should().Be("enemy.veilleur-tapis");
+    }
+
+    [Fact]
+    public void Compose_ShouldNotPrioritizeBoundEnemy_WhenRoomKeyDoesNotMatchAnyBoundEnemy()
+    {
+        // Regression guard: when no candidate is bound to the current room, ordering
+        // falls back to plain archetype cost exactly as before this fix.
+        var boundEnemy = GuardEnemy with { Key = "enemy.veilleur-tapis", BoundRoomKeys = ["room.halldentree"] };
+        var context = CreateContext(riskLevel: 2, enemies: [boundEnemy, FragileEnemy], roomKey: "room.couloirs");
+
+        var result = Policy.Compose(context);
+
+        result.SelectedEnemies.First().Key.Should().Be(FragileEnemy.Key);
+    }
+
     // --- Budget ---
 
     [Fact]

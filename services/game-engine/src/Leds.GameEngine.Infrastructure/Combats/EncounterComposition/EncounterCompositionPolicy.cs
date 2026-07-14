@@ -124,7 +124,12 @@ public sealed class EncounterCompositionPolicy : IEncounterCompositionPolicy
         return context.AvailableEnemies
             .Where(e => e.MinRiskLevel <= context.RiskLevel && context.RiskLevel <= e.MaxRiskLevel)
             .Where(e => IsBoundRoomCompatible(e, context.RoomKey))
-            .OrderBy(e => GetArchetypeCost(e.Archetype))
+            // A creature precisely bound to this room (Bestiaire) is that room's resident and
+            // must win the pick over unrestricted/legacy filler competing for the same slot —
+            // otherwise an unbound enemy with a cheaper archetype or an earlier Key deterministically
+            // (see the "Determinism" tests below) shadows it forever, in every room, for every run.
+            .OrderBy(e => IsPreciselyBoundToRoom(e, context.RoomKey) ? 0 : 1)
+            .ThenBy(e => GetArchetypeCost(e.Archetype))
             .ThenBy(e => preferredArchetypes.Contains(e.Archetype, StringComparer.OrdinalIgnoreCase) ? 0 : 1)
             .ThenByDescending(e => e.BaseDifficulty)
             .ThenBy(e => e.Key, StringComparer.Ordinal)
@@ -142,6 +147,13 @@ public sealed class EncounterCompositionPolicy : IEncounterCompositionPolicy
             return true;
 
         return roomKey is not null && enemy.BoundRoomKeys.Contains(roomKey, StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static bool IsPreciselyBoundToRoom(CatalogEnemyDefinition enemy, string? roomKey)
+    {
+        return enemy.BoundRoomKeys is { Count: > 0 }
+            && roomKey is not null
+            && enemy.BoundRoomKeys.Contains(roomKey, StringComparer.OrdinalIgnoreCase);
     }
 
     private static IReadOnlyCollection<CatalogEnemyDefinition> SelectCombatEnemies(

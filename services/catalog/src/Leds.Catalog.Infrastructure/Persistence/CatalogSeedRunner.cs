@@ -2264,29 +2264,10 @@ public sealed class CatalogSeedRunner
         // depthMin, depthMax, riskMin, riskMax, roomTypes, tags, skillKeys,
         // vitality, attack, defense, guard, speed, focus
         await UpsertEnemyAsync(
-            "canon.enemy.chimeres-serpentaires", "Chimères serpentaires",
-            "Elles rôdent les rues, la citadelle et les couloirs du Palais. À chaque prière prononcée, elles aspirent un peu de conscience. Elles sont en quête de quelque chose qu'elles ne nomment jamais.",
-            "Shadow", "Lituisme", "Common", "Drain", isElite: false,
-            depthMin: 1, depthMax: 6, riskMin: 1, riskMax: 50,
-            roomTypes: new[] { "Threshold", "Fear", "Silence" },
-            tags: new[] { "canon", "lituisme", "drain", "meute" },
-                        skillKeys: new[] {
-                "skill.basic.strike",
-                "canon.skill.flamme-froide",
-                "canon.skill.priere-aspiration",
-                "canon.skill.transmutation",
-                "canon.skill.brume",
-                "canon.skill.flamme-seraphine",
-                "canon.skill.se-taire"
-            },
-            vitality: 22, attack: 6, defense: 3, guard: 0, speed: 13, focus: 3,
-            cancellationToken);
-
-        await UpsertEnemyAsync(
             "canon.enemy.voraces", "Voraces",
             "Hautes d'un mètre quarante à trois mètres, elles dévorent les énergies. Intelligentes, elles chassent en meute — ou seules, quand l'énergie est assez alléchante.",
             "Shadow", "Predateurs", "Elite", "Bruiser", isElite: true,
-            depthMin: 2, depthMax: 8, riskMin: 25, riskMax: 80,
+            depthMin: 2, depthMax: 8, riskMin: 2, riskMax: 5,
             roomTypes: new[] { "Rupture", "Fear", "Shadow" },
             tags: new[] { "canon", "predateur", "meute", "elite" },
             skillKeys: new[] { "skill.basic.strike" },
@@ -2297,7 +2278,7 @@ public sealed class CatalogSeedRunner
             "canon.enemy.lamiz", "Lamiz",
             "Une meute attirée par l'énergie « alléchante ». Là où l'une apparaît, les autres suivent.",
             "Shadow", "Predateurs", "Common", "Swarm", isElite: false,
-            depthMin: 1, depthMax: 6, riskMin: 1, riskMax: 55,
+            depthMin: 1, depthMax: 6, riskMin: 1, riskMax: 3,
             roomTypes: new[] { "Threshold", "Fear", "Shadow" },
             tags: new[] { "canon", "predateur", "meute" },
             skillKeys: new[] { "skill.basic.strike", "canon.skill.flamme-froide", "canon.skill.priere-aspiration", "canon.skill.transmutation", "canon.skill.brume", "canon.skill.flamme-seraphine", "canon.skill.se-taire" },
@@ -2308,7 +2289,7 @@ public sealed class CatalogSeedRunner
             "canon.enemy.uguiro", "Uguiro",
             "Un monstre des profondeurs du Palais. Lent à se révéler, terrible une fois éveillé.",
             "Shadow", "Predateurs", "Elite", "Bruiser", isElite: true,
-            depthMin: 3, depthMax: 9, riskMin: 35, riskMax: 90,
+            depthMin: 3, depthMax: 9, riskMin: 2, riskMax: 5,
             roomTypes: new[] { "Rupture", "Shadow" },
             tags: new[] { "canon", "monstre", "elite" },
             skillKeys: new[] { "skill.basic.strike", "canon.skill.flamme-froide", "canon.skill.priere-aspiration", "canon.skill.transmutation", "canon.skill.brume", "canon.skill.flamme-seraphine", "canon.skill.se-taire" },
@@ -2319,7 +2300,7 @@ public sealed class CatalogSeedRunner
             "canon.enemy.ombres-tentaculaires", "Ombres tentaculaires",
             "Dans la brume, elles s'étirent jusqu'aux toits. On murmure des rats grands comme des chiens, des serpents à pattes — mais ce ne sont que ses bras.",
             "Shadow", "Brume", "Common", "Disruptor", isElite: false,
-            depthMin: 1, depthMax: 5, riskMin: 1, riskMax: 45,
+            depthMin: 1, depthMax: 5, riskMin: 1, riskMax: 3,
             roomTypes: new[] { "Threshold", "Fear" },
             tags: new[] { "canon", "ambiance", "brume" },
             skillKeys: new[] { "skill.basic.strike", "canon.skill.flamme-froide", "canon.skill.priere-aspiration", "canon.skill.transmutation", "canon.skill.brume", "canon.skill.flamme-seraphine", "canon.skill.se-taire" },
@@ -2330,7 +2311,7 @@ public sealed class CatalogSeedRunner
             "canon.enemy.oeil-du-visionnaire", "L'Œil du Visionnaire animé",
             "Le symbole rampe sur les pavés au gré des flammes. Pupille en amande, violacée et jaune : il vous voit avant que vous ne le voyiez.",
             "Memory", "Lituisme", "Elite", "Disruptor", isElite: true,
-            depthMin: 2, depthMax: 7, riskMin: 20, riskMax: 70,
+            depthMin: 2, depthMax: 7, riskMin: 2, riskMax: 4,
             roomTypes: new[] { "Fear", "Memory" },
             tags: new[] { "canon", "lituisme", "surveillance", "motif" },
             skillKeys: new[] { "skill.basic.strike", "canon.skill.flamme-froide", "canon.skill.priere-aspiration", "canon.skill.transmutation", "canon.skill.brume", "canon.skill.flamme-seraphine", "canon.skill.se-taire" },
@@ -2341,7 +2322,7 @@ public sealed class CatalogSeedRunner
             "canon.enemy.goule-anxiete", "La Goule",
             "L'Anxiété personnifiée. Elle envahit, recouvre, étouffe — jusqu'au « Tais-toi » d'Elise qui, parfois, la fait reculer.",
             "Shadow", "Psyche", "Elite", "Drain", isElite: true,
-            depthMin: 2, depthMax: 8, riskMin: 25, riskMax: 85,
+            depthMin: 2, depthMax: 8, riskMin: 2, riskMax: 5,
             roomTypes: new[] { "Fear", "Rupture" },
             tags: new[] { "canon", "anxiete", "psyche", "elite" },
             skillKeys: new[] {
@@ -2360,7 +2341,7 @@ public sealed class CatalogSeedRunner
             "canon.enemy.homoncule", "L'Homoncule",
             "Né d'une flamme froide bleu-violet, nacré et soufré. Lent, presque doux — jusqu'à ce qu'il hurle. Le feu, le vrai, est sa seule terreur.",
             "Rupture", "Alchimie", "Elite", "Bruiser", isElite: true,
-            depthMin: 3, depthMax: 9, riskMin: 40, riskMax: 95,
+            depthMin: 3, depthMax: 9, riskMin: 3, riskMax: 5,
             roomTypes: new[] { "Rupture", "Memory" },
             tags: new[] { "canon", "alchimie", "homoncule", "elite", "weak.fire" },
             skillKeys: new[] { "skill.basic.strike", "canon.skill.flamme-froide", "canon.skill.priere-aspiration", "canon.skill.transmutation", "canon.skill.brume", "canon.skill.flamme-seraphine", "canon.skill.se-taire" },
@@ -2369,43 +2350,10 @@ public sealed class CatalogSeedRunner
 
         // ── Ennemis canon additionnels (renfort du bestiaire, mêmes familles/thèmes) ──
         await UpsertEnemyAsync(
-            "canon.enemy.chien-de-priere", "Chien de prière",
-            "Dressé par les prêtres pour flairer le doute. Il mord ceux qui hésitent au seuil.",
-            "Shadow", "Lituisme", "Common", "Skirmisher", isElite: false,
-            depthMin: 1, depthMax: 5, riskMin: 1, riskMax: 40,
-            roomTypes: new[] { "Threshold", "Fear" },
-            tags: new[] { "canon", "lituisme", "chien", "meute" },
-            skillKeys: new[] { "skill.basic.strike", "canon.skill.flamme-froide" },
-            vitality: 14, attack: 6, defense: 0, guard: 0, speed: 15, focus: 0,
-            cancellationToken);
-
-        await UpsertEnemyAsync(
-            "canon.enemy.penitent-muet", "Le Pénitent muet",
-            "Il a fait vœu de silence après avoir trop prié. Sa présence pèse, mais son corps refuse de céder.",
-            "Silence", "Lituisme", "Common", "Guard", isElite: false,
-            depthMin: 1, depthMax: 6, riskMin: 1, riskMax: 45,
-            roomTypes: new[] { "Silence", "Threshold" },
-            tags: new[] { "canon", "lituisme", "silence", "penitence" },
-            skillKeys: new[] { "skill.basic.strike", "canon.skill.se-taire" },
-            vitality: 24, attack: 5, defense: 9, guard: 4, speed: 8, focus: 0,
-            cancellationToken);
-
-        await UpsertEnemyAsync(
-            "canon.enemy.racine-amere", "La Racine amère",
-            "Une racine qui a bu trop de larmes. Elle se souvient à ta place — et t'en vole le prix.",
-            "Forest", "Nature", "Common", "Support", isElite: false,
-            depthMin: 1, depthMax: 6, riskMin: 1, riskMax: 40,
-            roomTypes: new[] { "Forest", "Memory" },
-            tags: new[] { "canon", "nature", "memoire", "racine" },
-            skillKeys: new[] { "skill.basic.strike", "canon.skill.priere-aspiration" },
-            vitality: 20, attack: 4, defense: 3, guard: 0, speed: 6, focus: 3,
-            cancellationToken);
-
-        await UpsertEnemyAsync(
             "canon.enemy.fossoyeur-pale", "Le Fossoyeur pâle",
             "Il creuse avant même que tu sois tombé. Rapide, silencieux, jamais las.",
             "Rupture", "Predateurs", "Common", "Skirmisher", isElite: false,
-            depthMin: 2, depthMax: 7, riskMin: 10, riskMax: 55,
+            depthMin: 2, depthMax: 7, riskMin: 1, riskMax: 3,
             roomTypes: new[] { "Rupture", "Threshold" },
             tags: new[] { "canon", "predateur", "fossoyeur" },
             skillKeys: new[] { "skill.basic.strike", "canon.skill.brume" },
@@ -2416,36 +2364,19 @@ public sealed class CatalogSeedRunner
             "canon.enemy.enfant-argile", "L'Enfant d'argile",
             "Un essai raté de l'Homoncule, abandonné avant l'achèvement. Il soigne encore, par réflexe.",
             "Rupture", "Alchimie", "Common", "Support", isElite: false,
-            depthMin: 2, depthMax: 6, riskMin: 5, riskMax: 45,
+            depthMin: 2, depthMax: 6, riskMin: 1, riskMax: 3,
             roomTypes: new[] { "Rupture", "Memory" },
             tags: new[] { "canon", "alchimie", "argile", "enfant" },
             skillKeys: new[] { "skill.basic.strike", "canon.skill.transmutation" },
             vitality: 16, attack: 4, defense: 6, guard: 2, speed: 9, focus: 3,
             cancellationToken);
-
-        await UpsertEnemyAsync(
-            "canon.enemy.prieure-carmine", "La Prieure carmine",
-            "Elle mène la prière quand les autres n'osent plus. Sa voix seule referme les blessures — et en rouvre d'autres.",
-            "Shadow", "Lituisme", "Elite", "Support", isElite: true,
-            depthMin: 3, depthMax: 8, riskMin: 30, riskMax: 80,
-            roomTypes: new[] { "Fear", "Silence" },
-            tags: new[] { "canon", "lituisme", "elite", "prieure" },
-            skillKeys: new[] { "skill.basic.strike", "canon.skill.priere-aspiration", "canon.skill.se-taire", "canon.skill.flamme-seraphine" },
-            vitality: 36, attack: 8, defense: 9, guard: 4, speed: 10, focus: 6,
-            cancellationToken);
-
-        await UpsertEnemyAsync(
-            "canon.enemy.veilleur-ombre", "Le Veilleur d'ombre",
-            "Il ne dort jamais, ne parle jamais. Il regarde, et ce qu'il regarde s'égare.",
-            "Shadow", "Brume", "Elite", "Disruptor", isElite: true,
-            depthMin: 3, depthMax: 9, riskMin: 30, riskMax: 85,
-            roomTypes: new[] { "Rupture", "Shadow" },
-            tags: new[] { "canon", "brume", "elite", "veilleur" },
-            skillKeys: new[] { "skill.basic.strike", "canon.skill.brume", "canon.skill.flamme-froide" },
-            vitality: 42, attack: 10, defense: 12, guard: 5, speed: 13, focus: 0,
-            cancellationToken);
     }
 
+    // riskMin/riskMax are compared at runtime against ResolveCurrentEventCommandHandler's
+    // catalogRiskLevel = Clamp(node.RiskLevel / 20 + 1, 1, 5) — a 1-5 bucket, NOT the raw
+    // 0-100 node-risk scale. An enemy authored with riskMin >= 10 on that raw scale can
+    // never be selected (MinRiskLevel <= 5 never holds), which silently excluded most of
+    // the Bestiaire roster until this was caught. Always author riskMin/riskMax on 1-5.
     private async Task UpsertEnemyAsync(
         string key, string name, string description,
         string archetype, string family, string rank, string role, bool isElite,
@@ -3053,12 +2984,17 @@ public sealed class CatalogSeedRunner
             "Damage", "SingleEnemy", "Damage", mana: 16, power: 28, cancellationToken,
             category: "Magic");
 
+        // roomTypes uses "Memory"/"Silence", not "Threshold": no Palais room theme ever
+        // parses to RoomType.Threshold (DeterministicRunGenerator.MapThemeToScaffold falls
+        // back to Memory for unrecognized themes), and room.halldentree/room.palier both
+        // resolve to Memory while room.couloirs resolves to Silence — matching this family's
+        // BoundRoomKeys exactly so the coarse RoomType filter never excludes them.
         await UpsertEnemyAsync(
             "canon.enemy.veilleur-tapis", "Veilleur du Tapis",
             "Une silhouette de majordome sans visage, penchée en permanence vers le sol, comme figée dans une révérence qui n'a jamais eu le droit de se relever. Ses mains gantées lissent inlassablement un pan de tapis bordeaux qui le suit où qu'il aille, cousu à ses chevilles. « Vos pieds. Je vous prie. »",
             "Guard", family, "Common", "Guard", isElite: false,
-            depthMin: 1, depthMax: 3, riskMin: 1, riskMax: 40,
-            roomTypes: new[] { "Threshold", "Silence" },
+            depthMin: 1, depthMax: 3, riskMin: 1, riskMax: 3,
+            roomTypes: new[] { "Memory", "Silence" },
             tags: new[] { "bestiaire", "silence", "veilleurs-du-seuil", "protocole" },
             skillKeys: new[] { "canon.skill.pli-du-tapis", "canon.skill.rempart", "canon.skill.etouffement-feutre", "canon.skill.seuil-souille" },
             vitality: 62, attack: 7, defense: 10, guard: 0, speed: 6, focus: 3,
@@ -3071,8 +3007,8 @@ public sealed class CatalogSeedRunner
             "canon.enemy.porteur-plateau", "Porteur de Plateau",
             "Un torse en livrée, sans jambes, flottant à hauteur exacte de service. Sur son plateau d'argent : trois tasses. La première fume, la deuxième est vide, la troisième est retournée. Personne n'a jamais bu la troisième. « Thé ? Eau ? Attention ? »",
             "Support", family, "Common", "Support", isElite: false,
-            depthMin: 1, depthMax: 4, riskMin: 1, riskMax: 45,
-            roomTypes: new[] { "Threshold", "Silence" },
+            depthMin: 1, depthMax: 4, riskMin: 1, riskMax: 3,
+            roomTypes: new[] { "Memory", "Silence" },
             tags: new[] { "bestiaire", "silence", "veilleurs-du-seuil", "protocole" },
             skillKeys: new[] { "canon.skill.priere-aspiration", "canon.skill.service-du-the", "canon.skill.tasse-retournee", "canon.skill.etiquette" },
             vitality: 44, attack: 4, defense: 5, guard: 0, speed: 9, focus: 6,
@@ -3085,8 +3021,8 @@ public sealed class CatalogSeedRunner
             "canon.enemy.echo-politesse", "Écho de Politesse",
             "Une brume en forme de courbette. On la distingue à peine dans les couloirs distordus : un pli dans l'air qui s'incline sur votre passage et ne se redresse que dans votre dos. « Après vous. Non — après vous. »",
             "Disruptor", family, "Common", "Disruptor", isElite: false,
-            depthMin: 1, depthMax: 5, riskMin: 1, riskMax: 50,
-            roomTypes: new[] { "Threshold", "Silence" },
+            depthMin: 1, depthMax: 5, riskMin: 1, riskMax: 3,
+            roomTypes: new[] { "Memory", "Silence" },
             tags: new[] { "bestiaire", "silence", "veilleurs-du-seuil" },
             skillKeys: new[] { "canon.skill.brume", "canon.skill.formule-creuse", "canon.skill.courbette-inversee", "canon.skill.se-taire" },
             vitality: 38, attack: 3, defense: 4, guard: 0, speed: 11, focus: 7,
@@ -3099,8 +3035,8 @@ public sealed class CatalogSeedRunner
             "canon.enemy.sentinelle-seuil", "Sentinelle du Seuil",
             "Un pilier de marbre du Hall — l'un des quatre — descendu de son socle. Des veines bleu-violet parcourent sa pierre : la Flamme froide dort dedans. Il marche lentement, et le sol s'essuie tout seul devant ses pas. « Le seuil a été souillé. Cela ne se pardonne pas. »",
             "Bruiser", family, "Elite", "Bruiser", isElite: true,
-            depthMin: 2, depthMax: 6, riskMin: 2, riskMax: 60,
-            roomTypes: new[] { "Threshold", "Silence" },
+            depthMin: 2, depthMax: 6, riskMin: 1, riskMax: 4,
+            roomTypes: new[] { "Memory", "Silence" },
             tags: new[] { "bestiaire", "silence", "veilleurs-du-seuil", "elite" },
             skillKeys: new[] { "canon.skill.flamme-froide", "canon.skill.chute-de-marbre", "canon.skill.socle", "canon.skill.verdict-du-seuil" },
             vitality: 88, attack: 11, defense: 12, guard: 0, speed: 5, focus: 4,
@@ -3234,7 +3170,7 @@ public sealed class CatalogSeedRunner
             "canon.enemy.copiste-aveugle", "Copiste Aveugle",
             "Un scribe voûté dont les orbites sont scellées de cire à cacheter. Ses doigts, terminés par des plumes, courent sur un parchemin déroulé à même l'air. Il recopie tout ce qui se passe dans la pièce — les gestes, les cris, les silences — en temps réel. « Je n'ai pas besoin de voir. Le texte se souvient pour moi. »",
             "Disruptor", family, "Common", "Disruptor", isElite: false,
-            depthMin: 2, depthMax: 6, riskMin: 10, riskMax: 55,
+            depthMin: 2, depthMax: 6, riskMin: 1, riskMax: 3,
             roomTypes: new[] { "Memory" },
             tags: new[] { "bestiaire", "memoire", "copistes", "dot" },
             skillKeys: new[] { "canon.skill.dictee", "canon.skill.sursaut-memoriel", "canon.skill.lecture-des-silences", "canon.skill.plume-seche" },
@@ -3248,7 +3184,7 @@ public sealed class CatalogSeedRunner
             "canon.enemy.encrier-vivant", "Encrier Vivant",
             "Une masse d'encre noire contenue dans un corps de verre fêlé, à peu près humanoïde. Elle laisse derrière elle des flaques qui forment des mots — toujours les mêmes : les premières pièces du Palais, décrites à l'infini. « Il ne faut jamais, jamais manquer d'encre. »",
             "Support", family, "Common", "Support", isElite: false,
-            depthMin: 2, depthMax: 7, riskMin: 10, riskMax: 60,
+            depthMin: 2, depthMax: 7, riskMin: 1, riskMax: 4,
             roomTypes: new[] { "Memory" },
             tags: new[] { "bestiaire", "memoire", "copistes" },
             skillKeys: new[] { "canon.skill.recharge", "canon.skill.encre-vive", "canon.skill.eclaboussure", "canon.skill.corps-de-verre" },
@@ -3262,7 +3198,7 @@ public sealed class CatalogSeedRunner
             "canon.enemy.page-inachevee", "Page Inachevée",
             "Une feuille immense, déchirée à mi-hauteur, qui flotte verticalement. Le texte qu'elle porte s'interrompt en plein mot. Ceux qui la lisent trop longtemps sentent leur propre pensée s'interrompre au même endroit, encore et encore. « La phrase s'arrête ici. Vous aussi. »",
             "Disruptor", family, "Uncommon", "Disruptor", isElite: false,
-            depthMin: 2, depthMax: 7, riskMin: 15, riskMax: 60,
+            depthMin: 2, depthMax: 7, riskMin: 1, riskMax: 4,
             roomTypes: new[] { "Silence", "Memory" },
             tags: new[] { "bestiaire", "silence", "copistes", "control" },
             skillKeys: new[] { "canon.skill.silence", "canon.skill.phrase-inachevee", "canon.skill.marge-blanche", "canon.skill.repli-de-papier" },
@@ -3276,7 +3212,7 @@ public sealed class CatalogSeedRunner
             "canon.enemy.relieur", "Le Relieur",
             "Un artisan massif au tablier de cuir, dont les bras se terminent en aiguilles courbes enfilées de nerf. Il ne relie pas des livres : il relie des instants entre eux, cousant la douleur d'hier à celle de demain pour qu'aucune ne puisse finir. « Rien ne se termine tant que je n'ai pas cousu la dernière page. »",
             "Bruiser", family, "Rare", "Bruiser", isElite: true,
-            depthMin: 3, depthMax: 8, riskMin: 25, riskMax: 75,
+            depthMin: 3, depthMax: 8, riskMin: 2, riskMax: 4,
             roomTypes: new[] { "Memory" },
             tags: new[] { "bestiaire", "memoire", "copistes", "elite", "dot" },
             skillKeys: new[] { "canon.skill.ecriture-continuelle", "canon.skill.couture", "canon.skill.reliure-de-chair", "canon.skill.noeud-final" },
@@ -3375,7 +3311,7 @@ public sealed class CatalogSeedRunner
             "canon.enemy.squelette-souvenir", "Squelette de Souvenir",
             "Un squelette gris cendre dont les os portent des gravures illisibles — les restes d'un moment que personne n'a jamais raconté. Il tient parfois un objet incongru : une tasse, un jouet, une clef. L'objet est le seul indice de ce qu'il fut. « ... » (il n'a jamais été raconté ; il n'a pas de voix)",
             "Skirmisher", family, "Common", "Skirmisher", isElite: false,
-            depthMin: 3, depthMax: 8, riskMin: 15, riskMax: 60,
+            depthMin: 3, depthMax: 8, riskMin: 1, riskMax: 4,
             roomTypes: new[] { "Silence", "Memory" },
             tags: new[] { "bestiaire", "memoire", "squelettes-de-souvenirs", "ossuaire" },
             skillKeys: new[] { "canon.skill.griffe-dos", "canon.skill.fragment-grave", "canon.skill.etreinte-creuse", "canon.skill.effondrement" },
@@ -3389,7 +3325,7 @@ public sealed class CatalogSeedRunner
             "canon.enemy.porteur-cendre", "Porteur de Cendre",
             "Une silhouette encapuchonnée courbée sous une hotte débordant de cendre et d'ossements. Elle traverse la Calamité en ramassant ce qui reste des souvenirs morts, et les rallume un à un, comme des braises. « Je me souviens d'eux. C'est mon fardeau, et ma monnaie. »",
             "Support", family, "Uncommon", "Support", isElite: false,
-            depthMin: 3, depthMax: 8, riskMin: 20, riskMax: 65,
+            depthMin: 3, depthMax: 8, riskMin: 2, riskMax: 4,
             roomTypes: new[] { "Silence", "Memory" },
             tags: new[] { "bestiaire", "memoire", "squelettes-de-souvenirs", "ossuaire", "priority" },
             skillKeys: new[] { "canon.skill.braise-memorielle", "canon.skill.jet-de-cendre", "canon.skill.fardeau-partage", "canon.skill.sursaut-memoriel" },
@@ -3403,7 +3339,7 @@ public sealed class CatalogSeedRunner
             "canon.enemy.choeur-muet", "Chœur Muet",
             "Trois cages thoraciques fusionnées en un seul buste, surmontées de trois crânes aux mâchoires grandes ouvertes. Aucun son n'en sort — mais l'air vibre, et le silence qui règne autour d'eux pèse physiquement sur les épaules. « Ils chantent. Vous ne l'entendrez jamais. C'est ça, le supplice. »",
             "Disruptor", family, "Rare", "Disruptor", isElite: true,
-            depthMin: 4, depthMax: 9, riskMin: 25, riskMax: 75,
+            depthMin: 4, depthMax: 9, riskMin: 2, riskMax: 4,
             roomTypes: new[] { "Silence" },
             tags: new[] { "bestiaire", "silence", "squelettes-de-souvenirs", "elite", "control" },
             skillKeys: new[] { "canon.skill.lecture-des-silences", "canon.skill.silence", "canon.skill.berceuse-inversee", "canon.skill.note-tenue" },
@@ -3524,7 +3460,7 @@ public sealed class CatalogSeedRunner
             "canon.enemy.chimere-affamee", "Chimère Affamée",
             "Un prédateur composite — corps de cervidé, mâchoire de brochet, pattes trop nombreuses et repliées sous le ventre. Immobile dans les hautes herbes, elle est indiscernable des animaux paisibles de la plaine. Jusqu'à ce que quelque chose saigne. « Elle ne rugit pas. Elle compte vos battements de cœur. »",
             "Skirmisher", family, "Common", "Skirmisher", isElite: false,
-            depthMin: 3, depthMax: 8, riskMin: 20, riskMax: 65,
+            depthMin: 3, depthMax: 8, riskMin: 2, riskMax: 4,
             roomTypes: new[] { "Memory" },
             tags: new[] { "bestiaire", "effroi", "chimeres-des-plaines", "faim" },
             skillKeys: new[] { "canon.skill.curee", "canon.skill.morsure-composite", "canon.skill.bond-de-flanc", "canon.skill.guet" },
@@ -3538,7 +3474,7 @@ public sealed class CatalogSeedRunner
             "canon.enemy.berger-ordres", "Berger d'Ordres",
             "Une haute figure pastorale au visage effacé, appuyée sur une houlette faite d'une règle d'architecte démesurément allongée. Il ne parle pas aux chimères : il leur montre, et elles comprennent. Ses gestes ont la précision d'un plan. « Le troupeau ne demande qu'une chose. Je la lui accorde. »",
             "Support", family, "Uncommon", "Support", isElite: false,
-            depthMin: 3, depthMax: 8, riskMin: 25, riskMax: 70,
+            depthMin: 3, depthMax: 8, riskMin: 2, riskMax: 4,
             roomTypes: new[] { "Memory" },
             tags: new[] { "bestiaire", "folie", "chimeres-des-plaines", "faim", "priority" },
             skillKeys: new[] { "canon.skill.designation", "canon.skill.plongee-dans-la-folie", "canon.skill.houlette", "canon.skill.ration" },
@@ -3552,7 +3488,7 @@ public sealed class CatalogSeedRunner
             "canon.enemy.agneau-inverse", "Agneau Inversé",
             "De loin : un agneau paisible, blanc, broutant. De près : la laine pousse vers l'intérieur, et ce qui remplit le corps n'est pas de la chair. C'est du silence comprimé, prêt à se détendre d'un coup. « Il broutait. Vous avez cligné des yeux. Il vous regarde. »",
             "Disruptor", family, "Uncommon", "Disruptor", isElite: false,
-            depthMin: 3, depthMax: 9, riskMin: 20, riskMax: 65,
+            depthMin: 3, depthMax: 9, riskMin: 2, riskMax: 4,
             roomTypes: new[] { "Memory" },
             tags: new[] { "bestiaire", "effroi", "chimeres-des-plaines", "piege" },
             skillKeys: new[] { "canon.skill.brout", "canon.skill.regard-fixe", "canon.skill.belement-a-lenvers", "canon.skill.detente" },
@@ -3698,7 +3634,7 @@ public sealed class CatalogSeedRunner
             "canon.enemy.creation-instable", "Création Instable",
             "Un assemblage humanoïde de plaques mal jointes, dont une jambe est plus courte que l'autre et dont le torse s'ouvre par intermittence sur un foyer qui n'aurait jamais dû rester allumé. Elle se redresse sans cesse, compulsivement, comme pour prouver quelque chose à un marteau absent. « Elle se tient debout. Presque. C'est le presque qui fait mal. »",
             "Bruiser", family, "Common", "Bruiser", isElite: false,
-            depthMin: 4, depthMax: 9, riskMin: 25, riskMax: 70,
+            depthMin: 4, depthMax: 9, riskMin: 2, riskMax: 4,
             roomTypes: new[] { "Memory" },
             tags: new[] { "bestiaire", "rupture", "creations-du-forgeron", "trempe" },
             skillKeys: new[] { "canon.skill.coup-de-plaque", "canon.skill.egide", "canon.skill.foyer-ouvert", "canon.skill.redressement" },
@@ -3712,7 +3648,7 @@ public sealed class CatalogSeedRunner
             "canon.enemy.marteau-vivant", "Marteau Vivant",
             "Un marteau de forge de deux mètres, animé, dont le manche s'est tordu en colonne vertébrale. Il frappe le sol en rythme, continuellement — le rythme exact du Forgeron au travail. Quand il frappe autre chose que le sol, ça hurle. C'est lui, le hurlement. « Les marteaux qui hurlent. C'est de lui qu'on parle. »",
             "Bruiser", family, "Uncommon", "Bruiser", isElite: false,
-            depthMin: 4, depthMax: 9, riskMin: 30, riskMax: 75,
+            depthMin: 4, depthMax: 9, riskMin: 2, riskMax: 4,
             roomTypes: new[] { "Memory" },
             tags: new[] { "bestiaire", "rupture", "creations-du-forgeron", "dot" },
             skillKeys: new[] { "canon.skill.frappe-denclume", "canon.skill.souffle-de-la-forge", "canon.skill.cadence", "canon.skill.coup-de-grace-forgeron" },
@@ -3726,7 +3662,7 @@ public sealed class CatalogSeedRunner
             "canon.enemy.sentinelle-fonte", "Sentinelle de Fonte",
             "Une statue de fonte grossière, assise en tailleur au milieu des piliers de fer, qui murmure la litanie alchimique du Forgeron. Elle ne se lève jamais. Ses mains, posées sur ses genoux, rougissent quand elle transmute — et le métal de ses alliés rougit avec. « Plomb, or, mercure, soufre, sel. Elle récite. C'est tout ce qu'on lui a laissé. »",
             "Support", family, "Uncommon", "Support", isElite: false,
-            depthMin: 4, depthMax: 9, riskMin: 25, riskMax: 70,
+            depthMin: 4, depthMax: 9, riskMin: 2, riskMax: 4,
             roomTypes: new[] { "Memory" },
             tags: new[] { "bestiaire", "rupture", "creations-du-forgeron", "trempe", "priority" },
             skillKeys: new[] { "canon.skill.transmutation-alliee", "canon.skill.litanie", "canon.skill.scorie", "canon.skill.fonte" },
@@ -3740,7 +3676,7 @@ public sealed class CatalogSeedRunner
             "canon.enemy.scorie-rampante", "Scorie Rampante",
             "Une flaque de laitier incandescent, à demi solidifiée, qui se traîne en laissant des traces vitrifiées. Par moments, une forme s'ébauche dans sa masse — une main, un profil — puis retombe. Elle n'a jamais eu de forme finale. Elle les essaie toutes. « Ce que la forge recrache. Ça rampe. Ça brûle. Ça se souvient d'avoir été un projet. »",
             "Skirmisher", family, "Common", "Skirmisher", isElite: false,
-            depthMin: 4, depthMax: 10, riskMin: 20, riskMax: 65,
+            depthMin: 4, depthMax: 10, riskMin: 2, riskMax: 4,
             roomTypes: new[] { "Memory" },
             tags: new[] { "bestiaire", "rupture", "creations-du-forgeron", "dot" },
             skillKeys: new[] { "canon.skill.contact", "canon.skill.laitier-ardent", "canon.skill.eclat-vitrifie", "canon.skill.reformation" },
@@ -3841,7 +3777,7 @@ public sealed class CatalogSeedRunner
             "canon.enemy.infirmiere-deni", "Infirmière du Déni",
             "Une silhouette amidonnée, impeccable, dont la coiffe descend trop bas pour qu'on voie les yeux. Elle pousse un chariot dont les fioles sont toutes étiquetées du même mot, illisible. Sa voix est celle de Margot — en plus douce, ce qui est pire. « Vous n'avez pas mal. Regardez le dossier : nulle part il n'est écrit que vous avez mal. »",
             "Disruptor", family, "Uncommon", "Disruptor", isElite: false,
-            depthMin: 4, depthMax: 9, riskMin: 30, riskMax: 75,
+            depthMin: 4, depthMax: 9, riskMin: 2, riskMax: 4,
             roomTypes: new[] { "Memory" },
             tags: new[] { "bestiaire", "deni", "blouses-blanches", "dossier" },
             skillKeys: new[] { "canon.skill.placebo", "canon.skill.injection-blanche", "canon.skill.bordage", "canon.skill.anagramme" },
@@ -3855,7 +3791,7 @@ public sealed class CatalogSeedRunner
             "canon.enemy.souvenir-alite", "Souvenir Alité",
             "Un lit d'hôpital qui se déplace seul, draps tendus sur une forme humaine qui respire. Personne n'est dessous. La forme respire quand même. Sur la table de chevet, des fleurs fanées se refont une jeunesse quand on les regarde. « Il attend une visite. Vous ferez l'affaire. »",
             "Skirmisher", family, "Common", "Skirmisher", isElite: false,
-            depthMin: 4, depthMax: 9, riskMin: 25, riskMax: 70,
+            depthMin: 4, depthMax: 9, riskMin: 2, riskMax: 4,
             roomTypes: new[] { "Memory" },
             tags: new[] { "bestiaire", "melancolie", "blouses-blanches", "dot" },
             skillKeys: new[] { "canon.skill.nevrose", "canon.skill.sonnette", "canon.skill.visite", "canon.skill.drap-tendu" },
@@ -3869,7 +3805,7 @@ public sealed class CatalogSeedRunner
             "canon.enemy.regisseur-blanc", "Régisseur des Couloirs Blancs",
             "Un fonctionnaire immense au dos droit, dont le trousseau de clefs pend jusqu'au sol. Chaque clef ouvre une porte qui n'existe plus. Il arpente les couloirs blancs en vérifiant des serrures absentes, et l'ordre qu'il maintient est si total que l'air lui-même circule en file indienne. « Les visites sont terminées. Elles l'ont toujours été. »",
             "Support", family, "Rare", "Support", isElite: true,
-            depthMin: 5, depthMax: 9, riskMin: 35, riskMax: 80,
+            depthMin: 5, depthMax: 9, riskMin: 2, riskMax: 5,
             roomTypes: new[] { "Memory" },
             tags: new[] { "bestiaire", "deni", "blouses-blanches", "elite", "control" },
             skillKeys: new[] { "canon.skill.contemplation-infinie", "canon.skill.tour-de-clef", "canon.skill.trousseau", "canon.skill.extinction-des-feux" },
@@ -3970,7 +3906,7 @@ public sealed class CatalogSeedRunner
             "canon.enemy.pelerin-sans-visage", "Pèlerin Sans Visage",
             "Une silhouette en robe de bure, courbée par la pente, dont la capuche s'ouvre sur une surface lisse — pas effacée : usée, comme une pièce de monnaie trop manipulée. Il gravit la montagne en égrenant un chapelet dont chaque grain est une petite dent. « Il monte depuis si longtemps qu'il a usé son visage contre le vent. »",
             "Skirmisher", family, "Common", "Skirmisher", isElite: false,
-            depthMin: 4, depthMax: 9, riskMin: 25, riskMax: 70,
+            depthMin: 4, depthMax: 9, riskMin: 2, riskMax: 4,
             roomTypes: new[] { "Memory", "Silence" },
             tags: new[] { "bestiaire", "melancolie", "penitents-de-la-montagne", "pelerinage" },
             skillKeys: new[] { "canon.skill.priere-aspiration", "canon.skill.baton-de-marche", "canon.skill.chapelet-de-dents", "canon.skill.repentir" },
@@ -3984,7 +3920,7 @@ public sealed class CatalogSeedRunner
             "canon.enemy.prieur-lituique", "Prieur Lituique",
             "Un officiant au dos trop droit pour la bure qu'il porte, dont la bouche est cousue de fil d'or — et qui prie quand même, par les pores, par les gestes, par les jointures de ses doigts qui craquent en rythme liturgique. Devant lui flotte un encensoir qui fume à l'envers : la fumée descend. « Elle restaure — mais nourrit ce qui rôde. Lui, il sait exactement ce qui rôde. »",
             "Support", family, "Uncommon", "Support", isElite: false,
-            depthMin: 4, depthMax: 9, riskMin: 30, riskMax: 75,
+            depthMin: 4, depthMax: 9, riskMin: 2, riskMax: 4,
             roomTypes: new[] { "Memory" },
             tags: new[] { "bestiaire", "effroi", "penitents-de-la-montagne", "pelerinage", "priority" },
             skillKeys: new[] { "canon.skill.priere-aspiration", "canon.skill.encens-inverse", "canon.skill.oraison-cousue", "canon.skill.derniere-priere" },
@@ -3998,7 +3934,7 @@ public sealed class CatalogSeedRunner
             "canon.enemy.frayeur-exhumee", "Frayeur Exhumée",
             "Le premier explorateur — ou ce que l'ouverture de sa chambre funéraire a réveillé de lui. Un corps momifié dans une posture de recul, bras levés devant un danger que personne d'autre ne voit, figé au centième de seconde de sa dernière terreur. Il projette cette terreur autour de lui comme une lampe projette la lumière. « Depuis la découverte de la chambre, les échos de la frayeur ne cessent de s'agiter. En voici la source. »",
             "Bruiser", family, "Rare", "Bruiser", isElite: true,
-            depthMin: 5, depthMax: 9, riskMin: 35, riskMax: 85,
+            depthMin: 5, depthMax: 9, riskMin: 2, riskMax: 5,
             roomTypes: new[] { "Memory" },
             tags: new[] { "bestiaire", "effroi", "penitents-de-la-montagne", "elite", "dot" },
             skillKeys: new[] { "canon.skill.frayeur-organique", "canon.skill.posture-finale", "canon.skill.griffe-de-recul", "canon.skill.nevrose" },
@@ -4080,7 +4016,7 @@ public sealed class CatalogSeedRunner
             "canon.enemy.promeneur-fige", "Promeneur Figé",
             "Un promeneur en habits du dimanche, sourire cordial, chapeau levé en salut perpétuel. Son bras ne redescend jamais complètement. Quand on le croise une deuxième fois, il salue exactement pareil — même angle, même sourire, même phrase, même virgule. « Belle journée, n'est-ce pas ? N'est-ce pas ? N'est-ce pas ? »",
             "Skirmisher", family, "Common", "Skirmisher", isElite: false,
-            depthMin: 3, depthMax: 8, riskMin: 15, riskMax: 60,
+            depthMin: 3, depthMax: 8, riskMin: 1, riskMax: 4,
             roomTypes: new[] { "Memory" },
             tags: new[] { "bestiaire", "deni", "faux-habitants-du-jardin", "boucle" },
             skillKeys: new[] { "canon.skill.salut-de-chapeau", "canon.skill.conversation-tranquille", "canon.skill.pas-de-promenade", "canon.skill.sifflotement" },
@@ -4094,7 +4030,7 @@ public sealed class CatalogSeedRunner
             "canon.enemy.jardinier-sans-ombre", "Jardinier Sans Ombre",
             "Un jardinier voûté sur ses massifs, sécateur en main, qui taille sans interruption des fleurs déjà parfaites. Le soleil du Palais l'éclaire de face, de dos, de partout — et il ne projette aucune ombre. C'est lui qui l'a coupée : elle faisait désordre. « Les fleurs sont merveilleuses parce que je coupe tout ce qui ne l'est pas. »",
             "Disruptor", family, "Uncommon", "Disruptor", isElite: false,
-            depthMin: 4, depthMax: 9, riskMin: 25, riskMax: 70,
+            depthMin: 4, depthMax: 9, riskMin: 2, riskMax: 4,
             roomTypes: new[] { "Memory" },
             tags: new[] { "bestiaire", "deni", "faux-habitants-du-jardin", "anti-buff" },
             skillKeys: new[] { "canon.skill.emondage", "canon.skill.greffe", "canon.skill.secateur", "canon.skill.paillage" },
@@ -4162,7 +4098,7 @@ public sealed class CatalogSeedRunner
             "canon.enemy.gardien-intemporel", "Gardien Intemporel",
             "Un colosse de crystal translucide dans lequel on distingue, en suspension, des objets d'époques impossibles : un marteau qui n'est pas celui du Forgeron, une craie qui n'est pas celle de l'Enfant, une plume qui n'est pas celle de l'Écrivain. Des prototypes. Ou des originaux. « Il gardait déjà. Il gardera encore. Le mot “toujours” a été inventé pour éviter de le décrire. »",
             "Bruiser", family, "Rare", "Bruiser", isElite: true,
-            depthMin: 5, depthMax: 9, riskMin: 40, riskMax: 90,
+            depthMin: 5, depthMax: 9, riskMin: 3, riskMax: 5,
             roomTypes: new[] { "Memory" },
             tags: new[] { "bestiaire", "memoire-ancienne", "gardiens-de-crystal", "elite", "resonance" },
             skillKeys: new[] { "canon.skill.poing-de-crystal", "canon.skill.rempart", "canon.skill.refraction", "canon.skill.stase" },
@@ -4176,7 +4112,7 @@ public sealed class CatalogSeedRunner
             "canon.enemy.eclat-eveille", "Éclat Éveillé",
             "Un cristal flottant de la taille d'un cœur, qui pulse d'une lumière interne au rythme d'un battement. Il n'a ni yeux ni bouche, mais tous ceux qui l'approchent jurent s'être sentis dévisagés — puis mémorisés. « Un joyau qui a fini par comprendre qu'on le regardait. »",
             "Skirmisher", family, "Uncommon", "Skirmisher", isElite: false,
-            depthMin: 5, depthMax: 9, riskMin: 35, riskMax: 85,
+            depthMin: 5, depthMax: 9, riskMin: 2, riskMax: 5,
             roomTypes: new[] { "Memory" },
             tags: new[] { "bestiaire", "memoire-ancienne", "gardiens-de-crystal", "resonance" },
             skillKeys: new[] { "canon.skill.flamme-seraphine", "canon.skill.facette", "canon.skill.pulsation", "canon.skill.prisme" },
@@ -4275,7 +4211,7 @@ public sealed class CatalogSeedRunner
             "canon.enemy.echo-colere", "Écho de Colère",
             "Une déchirure rouge sombre dans l'air, en forme de geste interrompu — un poing levé qui n'est jamais retombé. Elle vibre d'une chaleur sèche et cherche, en permanence, quelque chose qui mérite d'éclater. « Ça n'a plus personne à défendre. Ça frappe quand même. »",
             "Bruiser", family, "Uncommon", "Bruiser", isElite: false,
-            depthMin: 3, depthMax: 10, riskMin: 20, riskMax: 70,
+            depthMin: 3, depthMax: 10, riskMin: 2, riskMax: 4,
             roomTypes: new[] { "Memory" },
             tags: new[] { "bestiaire", "rupture", "echos-d-emotions", "dissonance" },
             skillKeys: new[] { "canon.skill.eclat-echo-colere", "canon.skill.constat-sec", "canon.skill.montee", "canon.skill.explosion" },
@@ -4288,7 +4224,7 @@ public sealed class CatalogSeedRunner
             "canon.enemy.echo-peur", "Écho de Peur",
             "Un frémissement pâle qui n'est jamais tout à fait là où on le regarde. Il se déplace par saccades, longe les murs, et son contact donne l'exacte sensation d'une porte qu'on trouve fermée dans le noir. « Il guette une sortie qui n'existe plus. Vous êtes entre lui et elle. »",
             "Disruptor", family, "Uncommon", "Disruptor", isElite: false,
-            depthMin: 3, depthMax: 10, riskMin: 20, riskMax: 70,
+            depthMin: 3, depthMax: 10, riskMin: 2, riskMax: 4,
             roomTypes: new[] { "Memory" },
             tags: new[] { "bestiaire", "effroi", "echos-d-emotions", "dissonance" },
             skillKeys: new[] { "canon.skill.frisson", "canon.skill.porte-fermee", "canon.skill.saccade", "canon.skill.nevrose" },
@@ -4302,7 +4238,7 @@ public sealed class CatalogSeedRunner
             "canon.enemy.echo-tristesse", "Écho de Tristesse",
             "Une lenteur visible — l'air lui-même semble plus épais autour de lui. Il a vaguement la forme d'une personne assise, même quand il se déplace. Ceux qui le traversent se souviennent soudain de tout ce qu'ils n'ont pas dit à temps. « Il ne pleure pas. Il constate, longtemps après tout le monde. »",
             "Support", family, "Uncommon", "Support", isElite: false,
-            depthMin: 3, depthMax: 10, riskMin: 20, riskMax: 70,
+            depthMin: 3, depthMax: 10, riskMin: 2, riskMax: 4,
             roomTypes: new[] { "Memory" },
             tags: new[] { "bestiaire", "melancolie", "echos-d-emotions", "dissonance", "dot" },
             skillKeys: new[] { "canon.skill.poids", "canon.skill.sursaut-memoriel", "canon.skill.constat-tardif", "canon.skill.silence-partage" },
@@ -4348,7 +4284,7 @@ public sealed class CatalogSeedRunner
             "canon.enemy.imperatrice", "L'Impératrice",
             "Une silhouette féminine démesurée émergeant à mi-corps de la mer violacée, couronnée d'une structure qui évoque à la fois un diadème et une cage thoracique renversée. Sa robe est la mer — littéralement : les vagues sont son ourlet, et la marée suit ses humeurs. « Malheureux sont ceux qui croiseront l'impératrice dans ce lieu. »",
             "Bruiser", "Imperatrice de la Falaise", "Legendary", "Bruiser", isElite: true,
-            depthMin: 2, depthMax: 9, riskMin: 50, riskMax: 100,
+            depthMin: 2, depthMax: 9, riskMin: 3, riskMax: 5,
             roomTypes: new[] { "Silence" },
             tags: new[] { "bestiaire", "effroi", "silence", "mini-boss", "unique" },
             skillKeys: new[] { "canon.skill.deluge-du-styx", "canon.skill.symphonie-des-enfers", "canon.skill.maree-montante", "canon.skill.lame-de-fond", "canon.skill.lame-de-fond-renforcee" },
@@ -5635,16 +5571,6 @@ public sealed class CatalogSeedRunner
     private async Task SeedCanonLootAsync(CancellationToken cancellationToken)
     {
         // enemyKey, entries (itemKey, dropPercent)
-        await UpsertEnemyLootTableAsync("canon.enemy.chimeres-serpentaires",
-            "Butin des Chimères serpentaires", "Ce que laisse une chimère serpentaire vaincue.",
-            new[]
-            {
-                new LootEntry("canon.item.datura", 30),
-                new LootEntry("canon.item.cendre-benite", 40),
-                new LootEntry("canon.item.lanterne", 20),
-                new LootEntry("canon.item.khamsa", 6),
-            }, cancellationToken);
-
         await UpsertEnemyLootTableAsync("canon.enemy.lamiz",
             "Butin des Lamiz", "Ce que laisse une Lamiz vaincue.",
             new[]
@@ -5661,33 +5587,6 @@ public sealed class CatalogSeedRunner
                 new LootEntry("canon.item.filament-de-brume", 45),
                 new LootEntry("canon.item.lanterne", 25),
                 new LootEntry("canon.item.larme-de-racine", 15),
-            }, cancellationToken);
-
-        await UpsertEnemyLootTableAsync("canon.enemy.chien-de-priere",
-            "Butin du Chien de prière", "Ce que laisse un chien de prière vaincu.",
-            new[]
-            {
-                new LootEntry("canon.item.dent-vorace", 35),
-                new LootEntry("canon.item.cendre-benite", 30),
-                new LootEntry("canon.item.lanterne", 20),
-            }, cancellationToken);
-
-        await UpsertEnemyLootTableAsync("canon.enemy.penitent-muet",
-            "Butin du Pénitent muet", "Ce que laisse un pénitent muet vaincu.",
-            new[]
-            {
-                new LootEntry("canon.item.cendre-benite", 45),
-                new LootEntry("canon.item.parchemin-cardinal", 20),
-                new LootEntry("canon.item.lanterne", 20),
-            }, cancellationToken);
-
-        await UpsertEnemyLootTableAsync("canon.enemy.racine-amere",
-            "Butin de la Racine amère", "Ce que laisse une racine amère vaincue.",
-            new[]
-            {
-                new LootEntry("canon.item.larme-de-racine", 50),
-                new LootEntry("canon.item.sel-alchimique", 20),
-                new LootEntry("canon.item.lanterne", 15),
             }, cancellationToken);
 
         await UpsertEnemyLootTableAsync("canon.enemy.fossoyeur-pale",
@@ -5756,24 +5655,6 @@ public sealed class CatalogSeedRunner
                 new LootEntry("canon.item.onguent-anxiete", 20),
                 new LootEntry("canon.item.masque-bec-oiseau", 10),
                 new LootEntry("canon.item.khamsa", 6),
-            }, cancellationToken);
-
-        await UpsertEnemyLootTableAsync("canon.enemy.prieure-carmine",
-            "Butin de la Prieure carmine", "Ce que laisse la Prieure carmine vaincue.",
-            new[]
-            {
-                new LootEntry("canon.item.cendre-benite", 40),
-                new LootEntry("canon.item.onguent-anxiete", 25),
-                new LootEntry("canon.item.khamsa", 8),
-            }, cancellationToken);
-
-        await UpsertEnemyLootTableAsync("canon.enemy.veilleur-ombre",
-            "Butin du Veilleur d'ombre", "Ce que laisse le Veilleur d'ombre vaincu.",
-            new[]
-            {
-                new LootEntry("canon.item.filament-de-brume", 45),
-                new LootEntry("canon.item.masque-bec-oiseau", 20),
-                new LootEntry("canon.item.datura", 12),
             }, cancellationToken);
 
         await UpsertEnemyLootTableAsync("canon.enemy.grand-cardinal",
