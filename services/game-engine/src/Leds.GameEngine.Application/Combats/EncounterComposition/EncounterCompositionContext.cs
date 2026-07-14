@@ -13,4 +13,5 @@ public sealed record EncounterCompositionContext(
     int NodeDepth = 0,
     IReadOnlyCollection<ActivePalaceLaw>? ActivePalaceLaws = null,
     PalaceRoomState PalaceRoomState = PalaceRoomState.Neutral,
-    string? RoomClimate = null);
+    string? RoomClimate = null,
+    string? RoomKey = null);

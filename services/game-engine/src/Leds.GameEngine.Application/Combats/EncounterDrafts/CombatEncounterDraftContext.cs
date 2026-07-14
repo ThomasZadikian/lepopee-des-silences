@@ -15,4 +15,5 @@ public sealed record CombatEncounterDraftContext(
     IReadOnlyCollection<ActivePalaceLaw>? ActivePalaceLaws = null,
     PalaceRoomState PalaceRoomState = PalaceRoomState.Neutral,
     string? RoomClimate = null,
-    IReadOnlyCollection<CombatEncounterDraftAlly>? PartyAllies = null);
+    IReadOnlyCollection<CombatEncounterDraftAlly>? PartyAllies = null,
+    string? RoomKey = null);

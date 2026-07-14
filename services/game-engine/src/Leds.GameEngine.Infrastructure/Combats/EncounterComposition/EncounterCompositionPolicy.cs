@@ -123,11 +123,25 @@ public sealed class EncounterCompositionPolicy : IEncounterCompositionPolicy
 
         return context.AvailableEnemies
             .Where(e => e.MinRiskLevel <= context.RiskLevel && context.RiskLevel <= e.MaxRiskLevel)
+            .Where(e => IsBoundRoomCompatible(e, context.RoomKey))
             .OrderBy(e => GetArchetypeCost(e.Archetype))
             .ThenBy(e => preferredArchetypes.Contains(e.Archetype, StringComparer.OrdinalIgnoreCase) ? 0 : 1)
             .ThenByDescending(e => e.BaseDifficulty)
             .ThenBy(e => e.Key, StringComparer.Ordinal)
             .ToList();
+    }
+
+    // A Bestiaire creature bound to specific rooms (BoundRoomKeys non-empty) is only
+    // eligible in one of those precise rooms — additive to, and stricter than, the
+    // coarse RoomType match already applied upstream (ListCompatibleEnemyDefinitionsAsync).
+    // A creature with no BoundRoomKeys is unrestricted (mirrors NpcEncounterSelector's
+    // IsBoundRoomCompatible for NPCs).
+    private static bool IsBoundRoomCompatible(CatalogEnemyDefinition enemy, string? roomKey)
+    {
+        if (enemy.BoundRoomKeys is not { Count: > 0 })
+            return true;
+
+        return roomKey is not null && enemy.BoundRoomKeys.Contains(roomKey, StringComparer.OrdinalIgnoreCase);
     }
 
     private static IReadOnlyCollection<CatalogEnemyDefinition> SelectCombatEnemies(

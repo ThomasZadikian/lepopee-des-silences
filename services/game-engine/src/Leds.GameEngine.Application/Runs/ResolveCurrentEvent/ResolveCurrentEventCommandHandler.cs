@@ -379,7 +379,8 @@ public sealed class ResolveCurrentEventCommandHandler
             ActivePalaceLaws: run.ActivePalaceLaws,
             PalaceRoomState: room.PalaceState,
             RoomClimate: ResolveActiveClimate(run, room),
-            PartyAllies: BuildPartyAllies(run));
+            PartyAllies: BuildPartyAllies(run),
+            RoomKey: room.CatalogBinding?.Key);
 
         return await _encounterDraftGenerator.GenerateAsync(
             draftContext, cancellationToken);

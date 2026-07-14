@@ -124,7 +124,8 @@ public sealed class EncounterCompositionPolicyTests
         string encounterType = "Combat",
         int roomIndex = 0,
         IReadOnlyCollection<CatalogEnemyDefinition>? enemies = null,
-        PalaceRoomState palaceRoomState = PalaceRoomState.Neutral)
+        PalaceRoomState palaceRoomState = PalaceRoomState.Neutral,
+        string? roomKey = null)
     {
         return new EncounterCompositionContext(
             RoomType: "Threshold",
@@ -132,7 +133,8 @@ public sealed class EncounterCompositionPolicyTests
             RiskLevel: riskLevel,
             EncounterType: encounterType,
             AvailableEnemies: enemies ?? new[] { FragileEnemy, SupportEnemy, GuardEnemy },
-            PalaceRoomState: palaceRoomState);
+            PalaceRoomState: palaceRoomState,
+            RoomKey: roomKey);
     }
 
     // --- Validation ---
@@ -191,6 +193,52 @@ public sealed class EncounterCompositionPolicyTests
 
         act.Should().Throw<DomainException>()
             .WithMessage("*No compatible enemy definitions*");
+    }
+
+    // --- BoundRoomKeys (Bestiaire) ---
+
+    [Fact]
+    public void Compose_ShouldExcludeBoundEnemy_WhenRoomKeyDoesNotMatch()
+    {
+        var boundEnemy = FragileEnemy with { Key = "enemy.veilleur-tapis", BoundRoomKeys = ["room.halldentree"] };
+        var context = CreateContext(riskLevel: 2, enemies: [boundEnemy, SupportEnemy], roomKey: "room.couloirs");
+
+        var result = Policy.Compose(context);
+
+        result.SelectedEnemies.Should().NotContain(e => e.Key == "enemy.veilleur-tapis");
+    }
+
+    [Fact]
+    public void Compose_ShouldIncludeBoundEnemy_WhenRoomKeyMatches()
+    {
+        var boundEnemy = FragileEnemy with { Key = "enemy.veilleur-tapis", BoundRoomKeys = ["room.halldentree"] };
+        var context = CreateContext(riskLevel: 2, enemies: [boundEnemy], roomKey: "room.halldentree");
+
+        var result = Policy.Compose(context);
+
+        result.SelectedEnemies.Should().Contain(e => e.Key == "enemy.veilleur-tapis");
+    }
+
+    [Fact]
+    public void Compose_ShouldIncludeUnboundEnemy_RegardlessOfRoomKey()
+    {
+        var context = CreateContext(riskLevel: 2, enemies: [FragileEnemy], roomKey: "room.some-other-room");
+
+        var result = Policy.Compose(context);
+
+        result.SelectedEnemies.Should().Contain(e => e.Key == FragileEnemy.Key,
+            because: "an enemy with no BoundRoomKeys is unrestricted, mirroring NpcEncounterSelector's NPC behavior.");
+    }
+
+    [Fact]
+    public void Compose_ShouldExcludeBoundEnemy_WhenRoomKeyIsNull()
+    {
+        var boundEnemy = FragileEnemy with { Key = "enemy.veilleur-tapis", BoundRoomKeys = ["room.halldentree"] };
+        var context = CreateContext(riskLevel: 2, enemies: [boundEnemy, SupportEnemy], roomKey: null);
+
+        var result = Policy.Compose(context);
+
+        result.SelectedEnemies.Should().NotContain(e => e.Key == "enemy.veilleur-tapis");
     }
 
     // --- Budget ---

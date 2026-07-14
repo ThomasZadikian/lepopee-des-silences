@@ -46,7 +46,8 @@ public sealed class CombatEncounterDraftGenerator : ICombatEncounterDraftGenerat
             NodeDepth: context.NodeDepth,
             ActivePalaceLaws: context.ActivePalaceLaws,
             PalaceRoomState: context.PalaceRoomState,
-            RoomClimate: context.RoomClimate);
+            RoomClimate: context.RoomClimate,
+            RoomKey: context.RoomKey);
 
         var compositionResult = _compositionPolicy.Compose(compositionContext);
 

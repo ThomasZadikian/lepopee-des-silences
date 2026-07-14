@@ -8,5 +8,7 @@ public enum EmotionalRegister
     Melancolie = 3,
     Rupture = 4,
     Memoire = 5,
-    Silence = 6
+    Silence = 6,
+    // Bestiaire: registre des Chimères des Plaines (Berger d'Ordres, Plongée dans la folie).
+    Folie = 7
 }

@@ -15,12 +15,13 @@ public sealed class EmotionalRegisterTests
         ((int)EmotionalRegister.Rupture).Should().Be(4);
         ((int)EmotionalRegister.Memoire).Should().Be(5);
         ((int)EmotionalRegister.Silence).Should().Be(6);
+        ((int)EmotionalRegister.Folie).Should().Be(7);
     }
 
     [Fact]
-    public void ShouldHaveSevenValues()
+    public void ShouldHaveEightValues()
     {
-        Enum.GetValues<EmotionalRegister>().Should().HaveCount(7);
+        Enum.GetValues<EmotionalRegister>().Should().HaveCount(8);
     }
 
     [Fact]
