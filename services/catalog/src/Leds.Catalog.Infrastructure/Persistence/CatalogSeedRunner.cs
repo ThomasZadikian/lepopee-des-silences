@@ -81,6 +81,7 @@ public sealed class CatalogSeedRunner
         await SeedBestiaireBlousesBlanchesAsync(cancellationToken);
         await SeedBestiairePenitentsDeLaMontagneAsync(cancellationToken);
         await SeedBestiaireFauxHabitantsDuJardinAsync(cancellationToken);
+        await SeedBestiaireGardiensDeCrystalAsync(cancellationToken);
         await SeedCanonItemsAsync(cancellationToken);
         await SeedCanonCursesAsync(cancellationToken);
         await SeedCanonLawsAsync(cancellationToken);
@@ -4100,6 +4101,88 @@ public sealed class CatalogSeedRunner
             magicAttack: 7, magicDefense: 8, initiative: 9, mana: 18, menace: 5,
             rarity: "Uncommon", registre: registre,
             boundRoomKeys: new[] { "room.jardin", "room.soleil" });
+    }
+
+    private async Task SeedBestiaireGardiensDeCrystalAsync(CancellationToken cancellationToken)
+    {
+        const string family = "Gardiens de Crystal";
+        const string registre = "Memoire";
+
+        // Mécanique de famille "La Résonance" (chaque dégât magique subi par un
+        // Gardien charge un compteur partagé entre tous les Gardiens du combat,
+        // jusqu'à +1 cible par palier de 3) n'est pas modélisée — nécessiterait un
+        // compteur partagé au niveau du Combat, absent du moteur (même famille de
+        // limitation que la Faim/le Pèlerinage/le Dossier). "Réfraction" perd donc
+        // son volet multi-cible ; "Pulsation" perd son incrément de Résonance.
+
+        await UpsertSkillAsync("canon.skill.poing-de-crystal", "Poing de crystal",
+            "Le poids d'un âge entier dans un seul coup.",
+            "Damage", "SingleEnemy", "Damage", mana: 0, power: 17, cancellationToken,
+            category: "Physical");
+
+        await UpsertSkillAsync("canon.skill.refraction", "Réfraction",
+            "Renvoie la lumière ancestrale.",
+            "Damage", "SingleEnemy", "Damage", mana: 12, power: 15, cancellationToken,
+            category: "Magic");
+
+        await UpsertSkillAsync("canon.skill.stase", "Stase",
+            "Elle rejoint, un instant, les objets en suspension.",
+            "Debuff", "SingleEnemy", "Debuff", mana: 18, power: 0, cancellationToken,
+            effects: new[]
+            {
+                new SkillEffectSpec("Silence", "canon.skill.stase:silence", 0, TicksPerTurn * 2),
+                new SkillEffectSpec("StatModifier", "canon.skill.stase:speed", -25, TicksPerTurn * 2, Stat: "Speed", MagnitudeIsPercentOfBaseStat: true)
+            },
+            category: "Magic");
+
+        await UpsertSkillAsync("canon.skill.facette", "Facette",
+            "La lumière cherche l'angle.",
+            "Buff", "Self", "Buff", mana: 8, power: 0, cancellationToken,
+            effects: new[] { new SkillEffectSpec("StatModifier", null, 15, TicksPerTurn * 2, Stat: "MagicDamageBonus") },
+            category: "Magic");
+
+        await UpsertSkillAsync("canon.skill.pulsation", "Pulsation",
+            "Le battement se propage.",
+            "Damage", "SingleEnemy", "Damage", mana: 10, power: 12, cancellationToken,
+            category: "Magic");
+
+        // "Prisme" : la doc décrit une répartition des dégâts du prochain sort
+        // mono-cible subi entre les Gardiens — aucun mécanisme de redirection/partage
+        // de dégâts entrants n'existe côté moteur (voir Reliure de chair, famille
+        // Copistes) ; approximé par une garde instantanée, simplification à
+        // assumer/affiner plus tard.
+        await UpsertSkillAsync("canon.skill.prisme", "Prisme",
+            "La lumière ne s'arrête pas, elle se partage.",
+            "Buff", "Self", "Guard", mana: 14, power: 12, cancellationToken,
+            category: "Magic");
+
+        await UpsertEnemyAsync(
+            "canon.enemy.gardien-intemporel", "Gardien Intemporel",
+            "Un colosse de crystal translucide dans lequel on distingue, en suspension, des objets d'époques impossibles : un marteau qui n'est pas celui du Forgeron, une craie qui n'est pas celle de l'Enfant, une plume qui n'est pas celle de l'Écrivain. Des prototypes. Ou des originaux. « Il gardait déjà. Il gardera encore. Le mot “toujours” a été inventé pour éviter de le décrire. »",
+            "Bruiser", family, "Rare", "Bruiser", isElite: true,
+            depthMin: 5, depthMax: 9, riskMin: 40, riskMax: 90,
+            roomTypes: new[] { "Memory" },
+            tags: new[] { "bestiaire", "memoire-ancienne", "gardiens-de-crystal", "elite", "resonance" },
+            skillKeys: new[] { "canon.skill.poing-de-crystal", "canon.skill.rempart", "canon.skill.refraction", "canon.skill.stase" },
+            vitality: 130, attack: 14, defense: 14, guard: 0, speed: 3, focus: 5,
+            cancellationToken,
+            magicAttack: 10, magicDefense: 13, initiative: 2, mana: 26, menace: 8,
+            rarity: "Rare", registre: registre,
+            boundRoomKeys: new[] { "room.sousterrainmontagne", "room.cavernedecrystal" });
+
+        await UpsertEnemyAsync(
+            "canon.enemy.eclat-eveille", "Éclat Éveillé",
+            "Un cristal flottant de la taille d'un cœur, qui pulse d'une lumière interne au rythme d'un battement. Il n'a ni yeux ni bouche, mais tous ceux qui l'approchent jurent s'être sentis dévisagés — puis mémorisés. « Un joyau qui a fini par comprendre qu'on le regardait. »",
+            "Skirmisher", family, "Uncommon", "Skirmisher", isElite: false,
+            depthMin: 5, depthMax: 9, riskMin: 35, riskMax: 85,
+            roomTypes: new[] { "Memory" },
+            tags: new[] { "bestiaire", "memoire-ancienne", "gardiens-de-crystal", "resonance" },
+            skillKeys: new[] { "canon.skill.flamme-seraphine", "canon.skill.facette", "canon.skill.pulsation", "canon.skill.prisme" },
+            vitality: 44, attack: 3, defense: 4, guard: 0, speed: 10, focus: 9,
+            cancellationToken,
+            magicAttack: 15, magicDefense: 12, initiative: 10, mana: 30, menace: 5,
+            rarity: "Uncommon", registre: registre,
+            boundRoomKeys: new[] { "room.cavernedecrystal" });
     }
 
     private async Task UpsertSkillAsync(
