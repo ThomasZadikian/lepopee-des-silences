@@ -104,6 +104,58 @@ public abstract class CanonBossBehaviorBase : IBossBehavior
     protected static bool HasNegativeStatModifier(Combatant combatant, CombatStat stat)
         => combatant.StatusEffects.Any(e =>
             e.Kind == StatusEffectKind.StatModifier && e.Stat == stat && e.Magnitude < 0);
+
+    /// <summary>The slowest living player (Speed stat), tie-broken deterministically.</summary>
+    protected static Combatant? SlowestPlayer(Combat combat, Combatant boss)
+        => LivingPlayers(combat)
+            .OrderBy(a => a.EffectiveSpeed)
+            .ThenBy(a => DeterministicTieKey(combat, boss, a))
+            .FirstOrDefault();
+
+    /// <summary>The living player with the lowest EffectiveMagicDefense — the softest opener for a Magic-category mark/DoT.</summary>
+    protected static Combatant? LowestMagicDefensePlayer(Combat combat, Combatant boss)
+        => LivingPlayers(combat)
+            .OrderBy(a => a.EffectiveMagicDefense)
+            .ThenBy(a => DeterministicTieKey(combat, boss, a))
+            .FirstOrDefault();
+
+    /// <summary>The living player currently carrying a status effect with the given key (case-insensitive). Null if none.</summary>
+    protected static Combatant? PlayerWithStatus(Combat combat, string statusKey)
+        => LivingPlayers(combat).FirstOrDefault(p =>
+            p.StatusEffects.Any(e => string.Equals(e.Key, statusKey, StringComparison.OrdinalIgnoreCase)));
+
+    /// <summary>The living player NOT currently affected by any DamageOverTime effect. Null if everyone already is.</summary>
+    protected static Combatant? PlayerWithoutDot(Combat combat, Combatant boss)
+        => LivingPlayers(combat)
+            .Where(p => p.StatusEffects.All(e => e.Kind != StatusEffectKind.DamageOverTime))
+            .OrderBy(a => DeterministicTieKey(combat, boss, a))
+            .FirstOrDefault();
+
+    /// <summary>
+    /// The living combatant on the boss's own side (excluding the boss) with the
+    /// lowest current Mana, but only if that Mana is below <paramref name="threshold"/>.
+    /// Null if no other ally survives or nobody is actually starved.
+    /// </summary>
+    protected static Combatant? MostManaStarvedAlly(Combat combat, Combatant boss, int threshold)
+    {
+        var candidate = combat.Enemies
+            .Where(e => !e.IsDefeated && e.Id.Value != boss.Id.Value)
+            .OrderBy(e => e.Mana)
+            .ThenBy(e => DeterministicTieKey(combat, boss, e))
+            .FirstOrDefault();
+
+        return candidate is not null && candidate.Mana < threshold ? candidate : null;
+    }
+
+    /// <summary>
+    /// Deterministic probability roll (true with the given probability, 0..1), seeded
+    /// per combat/turn/boss/tag so combats replay identically — the same convention as
+    /// <see cref="DeterministicTieKey"/>, but for weighted-choice AI branches (e.g.
+    /// "55% Éclaboussure, else Corps de verre") instead of ordering ties.
+    /// </summary>
+    protected static bool Chance(Combat combat, Combatant boss, string tag, double probability)
+        => DeterministicCombatRoll.UnitInterval(
+            $"boss-chance:{tag}:{combat.Id.Value}:{combat.TurnNumber}:{boss.Id.Value}") < probability;
 }
 
 /// <summary>

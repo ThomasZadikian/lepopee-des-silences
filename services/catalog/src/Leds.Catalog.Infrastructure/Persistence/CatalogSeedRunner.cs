@@ -74,6 +74,7 @@ public sealed class CatalogSeedRunner
         await SeedCanonEnemiesAsync(cancellationToken);
         await SeedCanonSkillsAsync(cancellationToken);
         await SeedBestiaireVeilleursDuSeuilAsync(cancellationToken);
+        await SeedBestiaireCopistesAsync(cancellationToken);
         await SeedCanonItemsAsync(cancellationToken);
         await SeedCanonCursesAsync(cancellationToken);
         await SeedCanonLawsAsync(cancellationToken);
@@ -3098,6 +3099,183 @@ public sealed class CatalogSeedRunner
             magicAttack: 12, magicDefense: 7, initiative: 4, mana: 20, menace: 6,
             rarity: "Rare", registre: registre,
             boundRoomKeys: new[] { "room.halldentree", "room.couloirs" });
+    }
+
+    private async Task SeedBestiaireCopistesAsync(CancellationToken cancellationToken)
+    {
+        const string family = "Copistes";
+        const string registre = "Memoire";
+
+        // Dictée (Copiste Aveugle) : marque la cible d'une petite entaille magique —
+        // la clé de statut dérivée ("canon.skill.dictee:StatModifier") sert aussi de
+        // repère à l'IA pour retrouver "la cible marquée" au tour suivant (voir
+        // CopisteAveugleBossBehavior). Le vrai bonus documenté ("+2 dégâts/tour au
+        // prochain DoT subi") n'est pas câblé — aucun hook de magnitude conditionnelle
+        // sur un DoT à venir n'existe côté moteur ; approximé par une vulnérabilité
+        // magique mineure et immédiate.
+        await UpsertSkillAsync("canon.skill.dictee", "Dictée",
+            "Marque la cible : ce qui est dicté est aggravé.",
+            "Debuff", "SingleEnemy", "Debuff", mana: 10, power: 0, cancellationToken,
+            effects: new[]
+            {
+                new SkillEffectSpec("StatModifier", null, -4, TicksPerTurn * 2, Stat: "MagicDefense")
+            },
+            category: "Magic");
+
+        // Plume sèche (Copiste Aveugle) : frappe de repli quand le mana manque.
+        await UpsertSkillAsync("canon.skill.plume-seche", "Plume sèche",
+            "Griffure de plume. Frappe de repli quand le mana manque.",
+            "Damage", "SingleEnemy", "Damage", mana: 0, power: 8, cancellationToken,
+            category: "Physical");
+
+        // Encre vive (Encrier Vivant) : DoT pur, l'encre pénètre et continue d'écrire.
+        await UpsertSkillAsync("canon.skill.encre-vive", "Encre vive",
+            "L'encre pénètre et continue d'écrire sous la peau.",
+            "Debuff", "SingleEnemy", "Debuff", mana: 10, power: 0, cancellationToken,
+            effects: new[]
+            {
+                new SkillEffectSpec("DamageOverTime", null, 6, TicksPerTurn * 8, TickInterval: TicksPerTurn)
+            },
+            category: "Magic");
+
+        // Recharge (Encrier Vivant) : transfère 8 mana à un allié — EffectType
+        // "RestoreMana", nouveau au moteur (CombatSkillEffectResolver.ResolveRestoreMana),
+        // ajouté avec cette famille pour porter le rôle de réservoir tactique du groupe.
+        await UpsertSkillAsync("canon.skill.recharge", "Recharge",
+            "L'encrier se penche, l'allié trempe sa plume.",
+            "Buff", "SingleAlly", "RestoreMana", mana: 0, power: 8, cancellationToken,
+            category: "Magic");
+
+        // Éclaboussure (Encrier Vivant) : dégâts de zone légers + -2 Focus (2 tours).
+        await UpsertSkillAsync("canon.skill.eclaboussure", "Éclaboussure",
+            "L'encre gicle dans les yeux.",
+            "Damage", "AllEnemies", "Damage", mana: 12, power: 10, cancellationToken,
+            effects: new[] { new SkillEffectSpec("StatModifier", null, -2, TicksPerTurn * 2, Stat: "Focus") },
+            category: "Magic");
+
+        // Corps de verre (Encrier Vivant) : garde instantanée de 10.
+        await UpsertSkillAsync("canon.skill.corps-de-verre", "Corps de verre",
+            "Durcit sa paroi fêlée.",
+            "Buff", "Self", "Guard", mana: 8, power: 10, cancellationToken,
+            category: "Physical");
+
+        // Phrase inachevée (Page Inachevée) : dégâts magiques. Le bonus documenté
+        // ("+50% si la cible canalisait ou vient de subir Silence") n'est pas câblé
+        // comme multiplicateur — l'IA compense en priorisant ce sort sur une cible
+        // déjà sous Silence (voir PageInacheveeBossBehavior), donc le synergisme
+        // narratif reste respecté même sans bonus de puissance conditionnel.
+        await UpsertSkillAsync("canon.skill.phrase-inachevee", "Phrase inachevée",
+            "Dégâts. Si la cible était en train de canaliser ou vient de subir Silence : la phrase frappe plus fort.",
+            "Damage", "SingleEnemy", "Damage", mana: 10, power: 12, cancellationToken,
+            category: "Magic");
+
+        // Marge blanche (Page Inachevée) : la doc décrit l'effacement du plus récent
+        // buff de la cible — aucun mécanisme de dissipation ciblée n'existe côté
+        // moteur ; approximé par un débuff de Focus (« ce qui n'est pas écrit
+        // n'existe pas »), simplification à assumer/affiner plus tard.
+        await UpsertSkillAsync("canon.skill.marge-blanche", "Marge blanche",
+            "Ce qui n'est pas écrit n'existe pas.",
+            "Debuff", "SingleEnemy", "Debuff", mana: 8, power: 0, cancellationToken,
+            effects: new[] { new SkillEffectSpec("StatModifier", null, -3, TicksPerTurn * 2, Stat: "Focus") },
+            category: "Magic");
+
+        // Repli de papier (Page Inachevée) : la doc décrit une esquive garantie de la
+        // prochaine attaque mono-cible (1x/4 tours) — aucun statut d'esquive garantie
+        // n'existe côté moteur ; approximé par une garde instantanée légère,
+        // simplification à assumer/affiner plus tard.
+        await UpsertSkillAsync("canon.skill.repli-de-papier", "Repli de papier",
+            "Se plie sur elle-même.",
+            "Buff", "Self", "Guard", mana: 0, power: 8, cancellationToken,
+            category: "Physical");
+
+        // Couture (Le Relieur) : l'aiguille traverse. La doc conditionne -3 Vitesse à
+        // "2+ DoT actifs sur la cible" — appliqué ici systématiquement (pas de lecture
+        // conditionnelle du nombre de DoT adverses dans l'auteurisation d'un sort),
+        // simplification mineure à assumer/affiner plus tard.
+        await UpsertSkillAsync("canon.skill.couture", "Couture",
+            "L'aiguille traverse. Cousue sur place.",
+            "Damage", "SingleEnemy", "Damage", mana: 8, power: 16, cancellationToken,
+            effects: new[] { new SkillEffectSpec("StatModifier", null, -3, TicksPerTurn * 3, Stat: "Speed") },
+            category: "Physical");
+
+        // Reliure de chair (Le Relieur) : la doc décrit un partage de 30% des dégâts
+        // subis entre deux adversaires liés — aucune mécanique de partage de dégâts
+        // entre deux cibles n'existe côté moteur ; approximé par un débuff de
+        // Défense sur la cible désignée (« liée, donc affaiblie »), simplification à
+        // assumer/affiner plus tard.
+        await UpsertSkillAsync("canon.skill.reliure-de-chair", "Reliure de chair",
+            "Lie deux adversaires : la douleur de l'un rejaillit sur l'autre.",
+            "Debuff", "SingleEnemy", "Debuff", mana: 14, power: 0, cancellationToken,
+            effects: new[]
+            {
+                new SkillEffectSpec("StatModifier", null, -15, TicksPerTurn * 3, Stat: "Defense", MagnitudeIsPercentOfBaseStat: true)
+            },
+            category: "Magic");
+
+        // Nœud final (Le Relieur) : exécution. La doc ajoute +8 dégâts par DoT actif
+        // sur la cible — aucune lecture du nombre de DoT adverses dans le calcul de
+        // puissance d'un sort n'existe côté moteur ; puissance fixe ici,
+        // simplification à assumer/affiner plus tard.
+        await UpsertSkillAsync("canon.skill.noeud-final", "Nœud final",
+            "Le livre se ferme.",
+            "Damage", "SingleEnemy", "Damage", mana: 20, power: 24, cancellationToken,
+            category: "Magic");
+
+        await UpsertEnemyAsync(
+            "canon.enemy.copiste-aveugle", "Copiste Aveugle",
+            "Un scribe voûté dont les orbites sont scellées de cire à cacheter. Ses doigts, terminés par des plumes, courent sur un parchemin déroulé à même l'air. Il recopie tout ce qui se passe dans la pièce — les gestes, les cris, les silences — en temps réel. « Je n'ai pas besoin de voir. Le texte se souvient pour moi. »",
+            "Disruptor", family, "Common", "Disruptor", isElite: false,
+            depthMin: 2, depthMax: 6, riskMin: 10, riskMax: 55,
+            roomTypes: new[] { "Memory" },
+            tags: new[] { "bestiaire", "memoire", "copistes", "dot" },
+            skillKeys: new[] { "canon.skill.dictee", "canon.skill.sursaut-memoriel", "canon.skill.lecture-des-silences", "canon.skill.plume-seche" },
+            vitality: 46, attack: 4, defense: 5, guard: 0, speed: 8, focus: 8,
+            cancellationToken,
+            magicAttack: 11, magicDefense: 9, initiative: 8, mana: 20, menace: 3,
+            rarity: "Common", registre: registre,
+            boundRoomKeys: new[] { "room.palier", "room.labyrinthe" });
+
+        await UpsertEnemyAsync(
+            "canon.enemy.encrier-vivant", "Encrier Vivant",
+            "Une masse d'encre noire contenue dans un corps de verre fêlé, à peu près humanoïde. Elle laisse derrière elle des flaques qui forment des mots — toujours les mêmes : les premières pièces du Palais, décrites à l'infini. « Il ne faut jamais, jamais manquer d'encre. »",
+            "Support", family, "Common", "Support", isElite: false,
+            depthMin: 2, depthMax: 7, riskMin: 10, riskMax: 60,
+            roomTypes: new[] { "Memory" },
+            tags: new[] { "bestiaire", "memoire", "copistes" },
+            skillKeys: new[] { "canon.skill.recharge", "canon.skill.encre-vive", "canon.skill.eclaboussure", "canon.skill.corps-de-verre" },
+            vitality: 58, attack: 6, defense: 8, guard: 0, speed: 6, focus: 5,
+            cancellationToken,
+            magicAttack: 8, magicDefense: 10, initiative: 5, mana: 26, menace: 3,
+            rarity: "Common", registre: registre,
+            boundRoomKeys: new[] { "room.labyrinthe", "room.enfer3" });
+
+        await UpsertEnemyAsync(
+            "canon.enemy.page-inachevee", "Page Inachevée",
+            "Une feuille immense, déchirée à mi-hauteur, qui flotte verticalement. Le texte qu'elle porte s'interrompt en plein mot. Ceux qui la lisent trop longtemps sentent leur propre pensée s'interrompre au même endroit, encore et encore. « La phrase s'arrête ici. Vous aussi. »",
+            "Disruptor", family, "Uncommon", "Disruptor", isElite: false,
+            depthMin: 2, depthMax: 7, riskMin: 15, riskMax: 60,
+            roomTypes: new[] { "Silence", "Memory" },
+            tags: new[] { "bestiaire", "silence", "copistes", "control" },
+            skillKeys: new[] { "canon.skill.silence", "canon.skill.phrase-inachevee", "canon.skill.marge-blanche", "canon.skill.repli-de-papier" },
+            vitality: 36, attack: 3, defense: 3, guard: 0, speed: 12, focus: 9,
+            cancellationToken,
+            magicAttack: 10, magicDefense: 12, initiative: 12, mana: 22, menace: 4,
+            rarity: "Uncommon", registre: "Silence",
+            boundRoomKeys: new[] { "room.palier", "room.labyrinthe" });
+
+        await UpsertEnemyAsync(
+            "canon.enemy.relieur", "Le Relieur",
+            "Un artisan massif au tablier de cuir, dont les bras se terminent en aiguilles courbes enfilées de nerf. Il ne relie pas des livres : il relie des instants entre eux, cousant la douleur d'hier à celle de demain pour qu'aucune ne puisse finir. « Rien ne se termine tant que je n'ai pas cousu la dernière page. »",
+            "Bruiser", family, "Rare", "Bruiser", isElite: true,
+            depthMin: 3, depthMax: 8, riskMin: 25, riskMax: 75,
+            roomTypes: new[] { "Memory" },
+            tags: new[] { "bestiaire", "memoire", "copistes", "elite", "dot" },
+            skillKeys: new[] { "canon.skill.ecriture-continuelle", "canon.skill.couture", "canon.skill.reliure-de-chair", "canon.skill.noeud-final" },
+            vitality: 92, attack: 10, defense: 9, guard: 0, speed: 5, focus: 7,
+            cancellationToken,
+            magicAttack: 13, magicDefense: 10, initiative: 4, mana: 24, menace: 7,
+            rarity: "Rare", registre: registre,
+            boundRoomKeys: new[] { "room.labyrinthe" });
     }
 
     private async Task UpsertSkillAsync(

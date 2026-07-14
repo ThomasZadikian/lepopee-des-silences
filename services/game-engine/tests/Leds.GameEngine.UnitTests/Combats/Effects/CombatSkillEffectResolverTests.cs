@@ -334,6 +334,40 @@ public sealed class CombatSkillEffectResolverTests
     }
 
     [Fact]
+    public void Resolve_ShouldRestoreMana_WhenEffectTypeIsRestoreMana()
+    {
+        var caster = Combatant.CreateEnemy("canon.enemy.encrier-vivant", "Encrier", "Support", 58, mana: 26);
+        var ally = Combatant.CreateEnemy("canon.enemy.copiste-aveugle", "Copiste", "Skirmisher", 46, mana: 20);
+        ally.SpendMana(15); // 5/20 mana remaining
+        var enemy = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
+        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [enemy], [caster, ally]);
+        var skill = CombatantSkill.Create(
+            "canon.skill.recharge", "Recharge", "Buff", "SingleAlly", "RestoreMana",
+            manaCost: 0, chargeCost: 0, basePower: 8, category: "Magic");
+
+        _resolver.Resolve(combat, caster, skill, [ally]);
+
+        ally.Mana.Should().Be(13);
+    }
+
+    [Fact]
+    public void Resolve_ShouldClampRestoredMana_ToMaxMana()
+    {
+        var caster = Combatant.CreateEnemy("canon.enemy.encrier-vivant", "Encrier", "Support", 58, mana: 26);
+        var ally = Combatant.CreateEnemy("canon.enemy.copiste-aveugle", "Copiste", "Skirmisher", 46, mana: 20);
+        ally.SpendMana(4); // 16/20 mana remaining
+        var enemy = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
+        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [enemy], [caster, ally]);
+        var skill = CombatantSkill.Create(
+            "canon.skill.recharge", "Recharge", "Buff", "SingleAlly", "RestoreMana",
+            manaCost: 0, chargeCost: 0, basePower: 8, category: "Magic");
+
+        _resolver.Resolve(combat, caster, skill, [ally]);
+
+        ally.Mana.Should().Be(20);
+    }
+
+    [Fact]
     public void Resolve_ShouldScaleHealByActorEffectiveHealingBonusPercent()
     {
         var (combat, ally, _) = CreateCombat();
@@ -392,6 +426,88 @@ public sealed class CombatSkillEffectResolverTests
 
         // +50% DoT damage bonus on the caster => 10 base magnitude becomes 15.
         enemy.StatusEffects.Should().ContainSingle(e => e.Key == "poison" && e.Magnitude == 15);
+    }
+
+    [Fact]
+    public void Resolve_ShouldScaleDotMagnitude_ByMagicAttackAndMagicDefense_ForMagicCategorySkills()
+    {
+        var ally = Combatant.Create(
+            CombatantId.New(), "player.self", "Hero", CombatantSide.Player, "Fighter",
+            maxVitality: 100, currentVitality: 100, guard: 0, baseGuard: 0, mana: 0, charge: 0,
+            magicAttack: 20);
+        var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 100);
+        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
+        var skill = CombatantSkill.Create(
+            "canon.skill.encre-vive", "Encre vive", "Debuff", "SingleEnemy", "Debuff",
+            manaCost: 0, chargeCost: 0, basePower: 0, category: "Magic",
+            statusEffects: new[]
+            {
+                new SkillStatusEffectSpec(
+                    "ink", "Encre vive", StatusEffectKind.DamageOverTime,
+                    Magnitude: 6, DurationTicks: 5000, TickInterval: 1400)
+            });
+
+        _resolver.Resolve(combat, ally, skill, [enemy]);
+
+        // multiplier = (20 baseline + 20 magic attack) / (20 baseline + 0 magic defense) = 2.0
+        // => 6 base magnitude becomes 12, same symmetric ratio as instant Magic damage.
+        enemy.StatusEffects.Should().ContainSingle(e => e.Key == "ink" && e.Magnitude == 12);
+    }
+
+    [Fact]
+    public void Resolve_ShouldIgnoreMagicAttackDefense_ForPhysicalCategoryDotSkills()
+    {
+        var ally = Combatant.Create(
+            CombatantId.New(), "player.self", "Hero", CombatantSide.Player, "Fighter",
+            maxVitality: 100, currentVitality: 100, guard: 0, baseGuard: 0, mana: 0, charge: 0,
+            magicAttack: 40);
+        var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 100);
+        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
+        var skill = CombatantSkill.Create(
+            "canon.skill.plume", "Plume empoisonnée", "Debuff", "SingleEnemy", "Debuff",
+            manaCost: 0, chargeCost: 0, basePower: 0,
+            statusEffects: new[]
+            {
+                new SkillStatusEffectSpec(
+                    "poison", "Poison", StatusEffectKind.DamageOverTime,
+                    Magnitude: 10, DurationTicks: 5000, TickInterval: 1400)
+            });
+
+        _resolver.Resolve(combat, ally, skill, [enemy]);
+
+        // Physical-category (default) DoT: MagicAttack is irrelevant, and both
+        // AttackPower/Defense sit at 0, so the ratio stays neutral at 1.0.
+        enemy.StatusEffects.Should().ContainSingle(e => e.Key == "poison" && e.Magnitude == 10);
+    }
+
+    [Fact]
+    public void Resolve_ShouldNotScalePercentOfMaxDot_ByAttackOrDefense()
+    {
+        // A self-inflicted, percent-of-max-HP DoT (e.g. "Une destinée cruelle") is a
+        // curse proportional to the caster's own max HP, not an attack roll against a
+        // defender — the attack/defense ratio must not apply to it.
+        var ally = Combatant.Create(
+            CombatantId.New(), "player.self", "Hero", CombatantSide.Player, "Fighter",
+            maxVitality: 100, currentVitality: 100, guard: 0, baseGuard: 0, mana: 0, charge: 0,
+            magicAttack: 60);
+        ally.ApplyEquipmentCombatModifiers(
+            hitChanceBonusPercent: 100, dotDurationReductionPercent: 0, dotDamageReductionPercent: 0);
+        var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 80);
+        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
+        var skill = CombatantSkill.Create(
+            "canon.skill.destinee-cruelle", "Une destinée cruelle", "Damage", "SingleEnemy", "Damage",
+            manaCost: 0, chargeCost: 0, basePower: 10, category: "Magic",
+            statusEffects: new[]
+            {
+                new SkillStatusEffectSpec(
+                    "destinee-cruelle:dot", "Une destinée cruelle", StatusEffectKind.DamageOverTime,
+                    Magnitude: 10, DurationTicks: 0, TickInterval: 1400,
+                    MagnitudeIsPercentOfMax: true, AppliesToActor: true, IsPermanent: true)
+            });
+
+        _resolver.Resolve(combat, ally, skill, [enemy]);
+
+        ally.StatusEffects.Should().ContainSingle(e => e.Key == "destinee-cruelle:dot" && e.Magnitude == 10);
     }
 
     [Fact]

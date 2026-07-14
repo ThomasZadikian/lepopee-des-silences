@@ -61,6 +61,10 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
                 ResolveHeal(actor, skill, targets, logEntries);
                 break;
 
+            case "RestoreMana":
+                ResolveRestoreMana(actor, skill, targets, logEntries);
+                break;
+
             case "Disrupt":
                 ResolveTextEffect(actor, skill, targets, "EffectApplied", "disrupts", logEntries);
                 break;
@@ -137,6 +141,35 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
                 logEntries.Add(CreateLog(
                     "HealApplied",
                     $"{target.DisplayName} recovers {healed} vitality.",
+                    actor,
+                    skill,
+                    [target]));
+            }
+        }
+    }
+
+    // "Recharge" (Encrier Vivant) : transfère du mana brut à un allié — pas de bonus/
+    // malus de stat, contrairement à Heal (pas de ressource "MagicAttack de mana").
+    private static void ResolveRestoreMana(
+        Combatant actor,
+        CombatantSkill skill,
+        IReadOnlyCollection<Combatant> targets,
+        List<CombatLogEntryDto> logEntries)
+    {
+        foreach (var target in targets)
+        {
+            if (target.IsDefeated || target.Mana >= target.MaxMana)
+                continue;
+
+            var before = target.Mana;
+            target.GainMana(skill.BasePower);
+            var restored = target.Mana - before;
+
+            if (restored > 0)
+            {
+                logEntries.Add(CreateLog(
+                    "ManaRestored",
+                    $"{target.DisplayName} recovers {restored} mana.",
                     actor,
                     skill,
                     [target]));
@@ -243,7 +276,7 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
         {
             foreach (var spec in skill.StatusEffects.Where(s => s.AppliesToActor))
             {
-                ApplyStatusEffectSpec(combat, spec, actor, actor);
+                ApplyStatusEffectSpec(combat, skill, spec, actor, actor);
 
                 logEntries.Add(CreateLog(
                     "StatusApplied",
@@ -268,7 +301,7 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
 
             foreach (var spec in skill.StatusEffects.Where(s => !s.AppliesToActor))
             {
-                ApplyStatusEffectSpec(combat, spec, target, actor);
+                ApplyStatusEffectSpec(combat, skill, spec, target, actor);
 
                 logEntries.Add(CreateLog(
                     "StatusApplied",
@@ -286,7 +319,8 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
         }
     }
 
-    private static void ApplyStatusEffectSpec(Combat combat, SkillStatusEffectSpec spec, Combatant recipient, Combatant caster)
+    private static void ApplyStatusEffectSpec(
+        Combat combat, CombatantSkill skill, SkillStatusEffectSpec spec, Combatant recipient, Combatant caster)
     {
         // Equipment-driven DOT resistance (e.g. Main de Khasma) shortens the
         // duration of an incoming DamageOverTime effect; the per-tick damage
@@ -296,11 +330,27 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
                 spec.DurationTicks * (1.0 - Math.Min(recipient.DotDurationReductionPercent, 100) / 100.0)))
             : spec.DurationTicks;
 
+        // Flat-magnitude DoTs (poison/burn/ink...) are attack rolls like any other
+        // damage: they scale with the caster's Attack/Defense (or MagicAttack/
+        // MagicDefense for Magic-category skills) via the SAME symmetric ratio and
+        // magic bonus/reduction multipliers instant Damage skills use — see
+        // StatModifierDamageMultiplier/MagicCategoryDamageMultiplier. Percent-of-max
+        // DoTs (e.g. "Une destinée cruelle", a self-inflicted curse proportional to
+        // the caster's own max HP) are excluded: they aren't an attack against a
+        // defender, so an attack/defense ratio has no meaning there.
+        var statMultiplier = spec.Kind == StatusEffectKind.DamageOverTime && !spec.MagnitudeIsPercentOfMax
+            ? StatModifierDamageMultiplier(skill, caster, recipient) * MagicCategoryDamageMultiplier(skill, caster, recipient)
+            : 1.0;
+
         // Equipment/skill-driven DOT damage bonus (e.g. l'Écrivain's Plume d'écrivain)
         // is baked into the per-tick magnitude at cast time, from the CASTER's stat —
         // distinct from the recipient-side DotDamageReductionPercent applied at tick time.
-        var magnitude = spec.Kind == StatusEffectKind.DamageOverTime && caster.EffectiveDotDamageBonusPercent > 0
-            ? (int)Math.Round(spec.Magnitude * (1.0 + caster.EffectiveDotDamageBonusPercent / 100.0))
+        var bonusMultiplier = spec.Kind == StatusEffectKind.DamageOverTime && caster.EffectiveDotDamageBonusPercent > 0
+            ? 1.0 + caster.EffectiveDotDamageBonusPercent / 100.0
+            : 1.0;
+
+        var magnitude = spec.Kind == StatusEffectKind.DamageOverTime
+            ? Math.Max(1, (int)Math.Round(spec.Magnitude * statMultiplier * bonusMultiplier, MidpointRounding.AwayFromZero))
             : spec.Magnitude;
 
         recipient.ApplyStatusEffect(CombatStatusEffect.Create(
