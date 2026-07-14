@@ -80,6 +80,7 @@ public sealed class CatalogSeedRunner
         await SeedBestiaireCreationsDuForgeronAsync(cancellationToken);
         await SeedBestiaireBlousesBlanchesAsync(cancellationToken);
         await SeedBestiairePenitentsDeLaMontagneAsync(cancellationToken);
+        await SeedBestiaireFauxHabitantsDuJardinAsync(cancellationToken);
         await SeedCanonItemsAsync(cancellationToken);
         await SeedCanonCursesAsync(cancellationToken);
         await SeedCanonLawsAsync(cancellationToken);
@@ -4003,6 +4004,102 @@ public sealed class CatalogSeedRunner
             magicAttack: 14, magicDefense: 9, initiative: 9, mana: 24, menace: 8,
             rarity: "Rare", registre: registre,
             boundRoomKeys: new[] { "room.chambrefunéraire", "room.sousterrainmontagne" });
+    }
+
+    private async Task SeedBestiaireFauxHabitantsDuJardinAsync(CancellationToken cancellationToken)
+    {
+        const string family = "Faux Habitants du Jardin";
+        const string registre = "Deni";
+
+        // Mécanique de famille "La Boucle" (les Faux Habitants rejouent leur premier
+        // tour de combat tous les 3 tours — même sort, même cible) n'est pas modélisée
+        // littéralement : rejouer une décision passée exigerait de mémoriser le tour 1
+        // (sort + cible) quelque part, or IBossBehavior.DecideAction est sans état
+        // (relit uniquement le Combat/Combattant courants à chaque appel), et rien ne
+        // conserve cet historique côté moteur. Approximée par un cycle pondéré
+        // toujours actif plutôt qu'une vraie boucle mémorisée.
+
+        await UpsertSkillAsync("canon.skill.salut-de-chapeau", "Salut de chapeau",
+            "Le bord du chapeau est une lame.",
+            "Damage", "SingleEnemy", "Damage", mana: 0, power: 10, cancellationToken,
+            category: "Physical");
+
+        await UpsertSkillAsync("canon.skill.conversation-tranquille", "Conversation tranquille",
+            "Ça n'a ni début ni fin.",
+            "Debuff", "SingleEnemy", "Debuff", mana: 8, power: 0, cancellationToken,
+            effects: new[] { new SkillEffectSpec("StatModifier", null, -3, TicksPerTurn * 3, Stat: "Focus") },
+            category: "Magic");
+
+        // "Pas de promenade" : la doc décrit un changement de rang + 15% esquive —
+        // sans objet côté moteur (pas de rang, pas de levier d'esquive côté cible) ;
+        // approximé par une garde instantanée.
+        await UpsertSkillAsync("canon.skill.pas-de-promenade", "Pas de promenade",
+            "Toutes les quarante secondes, exactement.",
+            "Buff", "Self", "Guard", mana: 4, power: 6, cancellationToken,
+            category: "Physical");
+
+        await UpsertSkillAsync("canon.skill.sifflotement", "Sifflotement",
+            "Le souffle bouclé, projeté.",
+            "Damage", "AllEnemies", "Damage", mana: 6, power: 8, cancellationToken,
+            category: "Magic");
+
+        await UpsertSkillAsync("canon.skill.secateur", "Sécateur",
+            "Il taille les tiges et les tendons avec le même soin.",
+            "Damage", "SingleEnemy", "Damage", mana: 0, power: 13, cancellationToken,
+            category: "Physical");
+
+        // "Émondage" : la doc ajoute la purge de TOUS les buffs de la cible — aucun
+        // mécanisme de dissipation n'existe côté moteur (voir Marge blanche, famille
+        // Copistes) ; dégâts seuls.
+        await UpsertSkillAsync("canon.skill.emondage", "Émondage",
+            "Ce qui dépasse est coupé.",
+            "Damage", "SingleEnemy", "Damage", mana: 10, power: 11, cancellationToken,
+            category: "Physical");
+
+        // "Greffe" : la doc décrit le vol du dernier buff purgé, réappliqué à un
+        // allié — dépend d'Émondage, qui ne purge pas réellement côté moteur ;
+        // devient un buff de Défense direct sur l'allié, simplification à
+        // assumer/affiner plus tard.
+        await UpsertSkillAsync("canon.skill.greffe", "Greffe",
+            "Rien ne se perd au jardin.",
+            "Buff", "SingleAlly", "Buff", mana: 12, power: 0, cancellationToken,
+            effects: new[] { new SkillEffectSpec("StatModifier", null, 15, TicksPerTurn * 3, Stat: "Defense", MagnitudeIsPercentOfBaseStat: true) },
+            category: "Magic");
+
+        // "Paillage" : la doc ajoute une immunité au prochain débuff — aucun statut
+        // d'immunité n'existe côté moteur ; seule la garde est câblée.
+        await UpsertSkillAsync("canon.skill.paillage", "Paillage",
+            "Le massif est protégé pour l'hiver.",
+            "Buff", "SingleAlly", "Guard", mana: 8, power: 8, cancellationToken,
+            category: "Magic");
+
+        await UpsertEnemyAsync(
+            "canon.enemy.promeneur-fige", "Promeneur Figé",
+            "Un promeneur en habits du dimanche, sourire cordial, chapeau levé en salut perpétuel. Son bras ne redescend jamais complètement. Quand on le croise une deuxième fois, il salue exactement pareil — même angle, même sourire, même phrase, même virgule. « Belle journée, n'est-ce pas ? N'est-ce pas ? N'est-ce pas ? »",
+            "Skirmisher", family, "Common", "Skirmisher", isElite: false,
+            depthMin: 3, depthMax: 8, riskMin: 15, riskMax: 60,
+            roomTypes: new[] { "Memory" },
+            tags: new[] { "bestiaire", "deni", "faux-habitants-du-jardin", "boucle" },
+            skillKeys: new[] { "canon.skill.salut-de-chapeau", "canon.skill.conversation-tranquille", "canon.skill.pas-de-promenade", "canon.skill.sifflotement" },
+            vitality: 38, attack: 8, defense: 5, guard: 0, speed: 7, focus: 3,
+            cancellationToken,
+            magicAttack: 5, magicDefense: 6, initiative: 6, mana: 10, menace: 2,
+            rarity: "Common", registre: registre,
+            boundRoomKeys: new[] { "room.jardin" });
+
+        await UpsertEnemyAsync(
+            "canon.enemy.jardinier-sans-ombre", "Jardinier Sans Ombre",
+            "Un jardinier voûté sur ses massifs, sécateur en main, qui taille sans interruption des fleurs déjà parfaites. Le soleil du Palais l'éclaire de face, de dos, de partout — et il ne projette aucune ombre. C'est lui qui l'a coupée : elle faisait désordre. « Les fleurs sont merveilleuses parce que je coupe tout ce qui ne l'est pas. »",
+            "Disruptor", family, "Uncommon", "Disruptor", isElite: false,
+            depthMin: 4, depthMax: 9, riskMin: 25, riskMax: 70,
+            roomTypes: new[] { "Memory" },
+            tags: new[] { "bestiaire", "deni", "faux-habitants-du-jardin", "anti-buff" },
+            skillKeys: new[] { "canon.skill.emondage", "canon.skill.greffe", "canon.skill.secateur", "canon.skill.paillage" },
+            vitality: 74, attack: 12, defense: 7, guard: 0, speed: 9, focus: 5,
+            cancellationToken,
+            magicAttack: 7, magicDefense: 8, initiative: 9, mana: 18, menace: 5,
+            rarity: "Uncommon", registre: registre,
+            boundRoomKeys: new[] { "room.jardin", "room.soleil" });
     }
 
     private async Task UpsertSkillAsync(
