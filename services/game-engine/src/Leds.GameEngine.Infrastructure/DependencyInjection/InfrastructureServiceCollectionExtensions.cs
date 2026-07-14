@@ -216,5 +216,10 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IBossBehavior, Leds.GameEngine.Application.Combats.EnemyTurns.Bossing.Canon.SqueletteSouvenirBossBehavior>();
         services.AddSingleton<IBossBehavior, Leds.GameEngine.Application.Combats.EnemyTurns.Bossing.Canon.PorteurCendreBossBehavior>();
         services.AddSingleton<IBossBehavior, Leds.GameEngine.Application.Combats.EnemyTurns.Bossing.Canon.ChoeurMuetBossBehavior>();
+
+        // Bestiaire — Les Chimères des Plaines (famille 4).
+        services.AddSingleton<IBossBehavior, Leds.GameEngine.Application.Combats.EnemyTurns.Bossing.Canon.ChimereAffameeBossBehavior>();
+        services.AddSingleton<IBossBehavior, Leds.GameEngine.Application.Combats.EnemyTurns.Bossing.Canon.BergerOrdresBossBehavior>();
+        services.AddSingleton<IBossBehavior, Leds.GameEngine.Application.Combats.EnemyTurns.Bossing.Canon.AgneauInverseBossBehavior>();
     }
 }

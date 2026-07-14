@@ -76,6 +76,7 @@ public sealed class CatalogSeedRunner
         await SeedBestiaireVeilleursDuSeuilAsync(cancellationToken);
         await SeedBestiaireCopistesAsync(cancellationToken);
         await SeedBestiaireSqueletteDeSouvenirsAsync(cancellationToken);
+        await SeedBestiaireChimeresDesPlainesAsync(cancellationToken);
         await SeedCanonItemsAsync(cancellationToken);
         await SeedCanonCursesAsync(cancellationToken);
         await SeedCanonLawsAsync(cancellationToken);
@@ -3404,6 +3405,155 @@ public sealed class CatalogSeedRunner
             magicAttack: 13, magicDefense: 12, initiative: 3, mana: 26, menace: 6,
             rarity: "Rare", registre: "Silence",
             boundRoomKeys: new[] { "room.enfer1" });
+    }
+
+    private async Task SeedBestiaireChimeresDesPlainesAsync(CancellationToken cancellationToken)
+    {
+        const string family = "Chimeres des Plaines";
+        const string registre = "Effroi";
+
+        // Mécanique de famille "La Faim" (chaque dégât de DoT subi par un adversaire
+        // charge un compteur partagé entre toutes les Chimères du combat, jusqu'à un
+        // coup critique garanti à 5 crans) n'est pas modélisée — nécessiterait un
+        // compteur partagé au niveau du Combat, inexistant côté moteur (même famille
+        // de limitation que l'Ossuaire des Squelettes de Souvenirs). Les sorts et IA
+        // ci-dessous approximent l'esprit de la mécanique (cible la plus couverte de
+        // DoT) sans le compteur lui-même ni la garantie de critique. Le lifesteal de
+        // Curée (soin de 50% des dégâts infligés) et l'intargetabilité de Bond de
+        // flanc n'ont pas non plus de levier moteur dédié — approximés respectivement
+        // par un soin en % des PV max et une frappe simple, documenté ci-dessous.
+
+        await UpsertSkillAsync("canon.skill.morsure-composite", "Morsure composite",
+            "Trois rangées de dents qui ne s'accordent pas.",
+            "Damage", "SingleEnemy", "Damage", mana: 0, power: 13, cancellationToken,
+            category: "Physical");
+
+        // "Bond de flanc" : la doc décrit une intargetabilité par les attaques de
+        // mêlée jusqu'au prochain tour — aucun statut d'intargetabilité n'existe côté
+        // moteur ; approximé par une frappe simple, simplification à assumer/affiner
+        // plus tard.
+        await UpsertSkillAsync("canon.skill.bond-de-flanc", "Bond de flanc",
+            "Frappe et change de rang.",
+            "Damage", "SingleEnemy", "Damage", mana: 6, power: 10, cancellationToken,
+            category: "Physical");
+
+        // "Curée" : la doc décrit un soin de 50% des dégâts infligés (lifesteal) —
+        // aucun mécanisme de soin proportionnel aux dégâts d'un coup donné n'existe
+        // côté moteur ; approximé par un soin en % des PV max du lanceur sur le
+        // même coup, simplification à assumer/affiner plus tard.
+        await UpsertSkillAsync("canon.skill.curee", "Curée",
+            "Ne frappe que ce qui est déjà à terre.",
+            "Damage", "SingleEnemy", "Damage", mana: 8, power: 16, cancellationToken,
+            effects: new[]
+            {
+                new SkillEffectSpec("HealOverTime", null, 8, TicksPerTurn, TickInterval: TicksPerTurn,
+                    MagnitudeIsPercentOfMax: true, AppliesToActor: true)
+            },
+            category: "Physical");
+
+        // "Guet" : la doc décrit +1 cran de Faim (non modélisé) et +15% esquive (aucun
+        // levier d'esquive côté cible n'existe côté moteur) — approximé par une garde
+        // instantanée, même esprit défensif par un autre levier déjà câblé.
+        await UpsertSkillAsync("canon.skill.guet", "Guet",
+            "Elle attend que ça saigne.",
+            "Buff", "Self", "Guard", mana: 0, power: 6, cancellationToken,
+            category: "Physical");
+
+        // "Désignation" : la doc décrit +10% dégâts physiques subis — aucun canal
+        // StatModifier générique "dégâts subis" n'existe côté moteur ; approximé par
+        // une réduction de Défense (effet pratique équivalent via la formule de
+        // dégâts symétrique), simplification à assumer/affiner plus tard.
+        await UpsertSkillAsync("canon.skill.designation", "Désignation",
+            "Marque une cible : toutes les Chimères la priorisent.",
+            "Debuff", "SingleEnemy", "Debuff", mana: 6, power: 0, cancellationToken,
+            effects: new[]
+            {
+                new SkillEffectSpec("StatModifier", null, -10, TicksPerTurn * 3, Stat: "Defense", MagnitudeIsPercentOfBaseStat: true)
+            },
+            category: "Magic");
+
+        await UpsertSkillAsync("canon.skill.houlette", "Houlette",
+            "Un coup sec de la règle démesurée. Rappel à l'ordre.",
+            "Damage", "SingleEnemy", "Damage", mana: 0, power: 11, cancellationToken,
+            category: "Physical");
+
+        // "Ration" : la doc décrit une dépense de 2 crans de Faim (non modélisée) —
+        // le coût est ignoré, seul le soin de groupe est câblé.
+        await UpsertSkillAsync("canon.skill.ration", "Ration",
+            "Le berger nourrit — un peu, jamais assez.",
+            "Buff", "AllAllies", "Heal", mana: 10, power: 10, cancellationToken,
+            category: "Magic", basePowerIsPercentOfMaxVitality: true);
+
+        await UpsertSkillAsync("canon.skill.brout", "Brout",
+            "Passe son tour en broutant. Le calme s'épaissit.",
+            "Buff", "Self", "Guard", mana: 0, power: 8, cancellationToken,
+            category: "Physical");
+
+        // "Regard fixe" : la doc cible Initiative (-3 brut) — non modifiable en
+        // combat côté moteur (voir la même note pour Berceuse inversée, famille
+        // Squelettes de Souvenirs). Approximé par AtbTempoModifier, même intention.
+        await UpsertSkillAsync("canon.skill.regard-fixe", "Regard fixe",
+            "Vous l'avez regardé trop longtemps.",
+            "Debuff", "SingleEnemy", "Debuff", mana: 6, power: 0, cancellationToken,
+            effects: new[] { new SkillEffectSpec("StatModifier", null, -12, TicksPerTurn * 3, Stat: "AtbTempoModifier") },
+            category: "Magic");
+
+        await UpsertSkillAsync("canon.skill.belement-a-lenvers", "Bêlement à l'envers",
+            "Un son qui rentre au lieu de sortir.",
+            "Damage", "SingleEnemy", "Damage", mana: 10, power: 12, cancellationToken,
+            category: "Magic");
+
+        // "Détente" : la doc ajoute un déclenchement passif à la mort de l'Agneau —
+        // aucun hook "on death" n'existe côté moteur (même famille de limitation que
+        // l'Ossuaire) ; seul le déclenchement volontaire sous 25% PV est câblé, via
+        // l'IA (AgneauInverseBossBehavior).
+        await UpsertSkillAsync("canon.skill.detente", "Détente",
+            "Le silence comprimé se libère.",
+            "Damage", "AllEnemies", "Damage", mana: 0, power: 26, cancellationToken,
+            effects: new[] { new SkillEffectSpec("Silence", null, 0, TicksPerTurn) },
+            category: "Magic");
+
+        await UpsertEnemyAsync(
+            "canon.enemy.chimere-affamee", "Chimère Affamée",
+            "Un prédateur composite — corps de cervidé, mâchoire de brochet, pattes trop nombreuses et repliées sous le ventre. Immobile dans les hautes herbes, elle est indiscernable des animaux paisibles de la plaine. Jusqu'à ce que quelque chose saigne. « Elle ne rugit pas. Elle compte vos battements de cœur. »",
+            "Skirmisher", family, "Common", "Skirmisher", isElite: false,
+            depthMin: 3, depthMax: 8, riskMin: 20, riskMax: 65,
+            roomTypes: new[] { "Memory" },
+            tags: new[] { "bestiaire", "effroi", "chimeres-des-plaines", "faim" },
+            skillKeys: new[] { "canon.skill.curee", "canon.skill.morsure-composite", "canon.skill.bond-de-flanc", "canon.skill.guet" },
+            vitality: 52, attack: 12, defense: 5, guard: 0, speed: 13, focus: 2,
+            cancellationToken,
+            magicAttack: 2, magicDefense: 5, initiative: 12, mana: 8, menace: 4,
+            rarity: "Common", registre: registre,
+            boundRoomKeys: new[] { "room.enfer2" });
+
+        await UpsertEnemyAsync(
+            "canon.enemy.berger-ordres", "Berger d'Ordres",
+            "Une haute figure pastorale au visage effacé, appuyée sur une houlette faite d'une règle d'architecte démesurément allongée. Il ne parle pas aux chimères : il leur montre, et elles comprennent. Ses gestes ont la précision d'un plan. « Le troupeau ne demande qu'une chose. Je la lui accorde. »",
+            "Support", family, "Uncommon", "Support", isElite: false,
+            depthMin: 3, depthMax: 8, riskMin: 25, riskMax: 70,
+            roomTypes: new[] { "Memory" },
+            tags: new[] { "bestiaire", "folie", "chimeres-des-plaines", "faim", "priority" },
+            skillKeys: new[] { "canon.skill.designation", "canon.skill.plongee-dans-la-folie", "canon.skill.houlette", "canon.skill.ration" },
+            vitality: 70, attack: 6, defense: 7, guard: 0, speed: 7, focus: 8,
+            cancellationToken,
+            magicAttack: 11, magicDefense: 10, initiative: 8, mana: 24, menace: 6,
+            rarity: "Uncommon", registre: "Folie",
+            boundRoomKeys: new[] { "room.enfer2" });
+
+        await UpsertEnemyAsync(
+            "canon.enemy.agneau-inverse", "Agneau Inversé",
+            "De loin : un agneau paisible, blanc, broutant. De près : la laine pousse vers l'intérieur, et ce qui remplit le corps n'est pas de la chair. C'est du silence comprimé, prêt à se détendre d'un coup. « Il broutait. Vous avez cligné des yeux. Il vous regarde. »",
+            "Disruptor", family, "Uncommon", "Disruptor", isElite: false,
+            depthMin: 3, depthMax: 9, riskMin: 20, riskMax: 65,
+            roomTypes: new[] { "Memory" },
+            tags: new[] { "bestiaire", "effroi", "chimeres-des-plaines", "piege" },
+            skillKeys: new[] { "canon.skill.brout", "canon.skill.regard-fixe", "canon.skill.belement-a-lenvers", "canon.skill.detente" },
+            vitality: 40, attack: 5, defense: 6, guard: 0, speed: 8, focus: 4,
+            cancellationToken,
+            magicAttack: 7, magicDefense: 8, initiative: 7, mana: 14, menace: 3,
+            rarity: "Uncommon", registre: registre,
+            boundRoomKeys: new[] { "room.enfer2", "room.jardin" });
     }
 
     private async Task UpsertSkillAsync(

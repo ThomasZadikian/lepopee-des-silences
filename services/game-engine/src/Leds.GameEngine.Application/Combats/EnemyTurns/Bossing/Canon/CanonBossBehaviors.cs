@@ -45,7 +45,7 @@ public abstract class CanonBossBehaviorBase : IBossBehavior
     /// A reproducible-but-not-array-order hash used to break exact ties in HP-based
     /// target selection (turn 1, nobody hurt yet, etc.).
     /// </summary>
-    private static double DeterministicTieKey(Combat combat, Combatant actor, Combatant candidate)
+    protected static double DeterministicTieKey(Combat combat, Combatant actor, Combatant candidate)
         => DeterministicCombatRoll.UnitInterval(
             $"boss-target:{combat.Id.Value}:{combat.TurnNumber}:{actor.Id.Value}:{candidate.Id.Value}");
 
