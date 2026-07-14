@@ -41,6 +41,14 @@ public abstract class CanonBossBehaviorBase : IBossBehavior
             .ThenBy(a => DeterministicTieKey(combat, boss, a))
             .FirstOrDefault();
 
+    /// <summary>The living player with the lowest EffectiveDefense (best target for a physical opener). Null if none.
+    /// Same deterministic tie-break as <see cref="LowestHpPlayer"/>.</summary>
+    protected static Combatant? LeastDefendedPlayer(Combat combat, Combatant boss)
+        => LivingPlayers(combat)
+            .OrderBy(a => a.EffectiveDefense)
+            .ThenBy(a => DeterministicTieKey(combat, boss, a))
+            .FirstOrDefault();
+
     /// <summary>
     /// A reproducible-but-not-array-order hash used to break exact ties in HP-based
     /// target selection (turn 1, nobody hurt yet, etc.).

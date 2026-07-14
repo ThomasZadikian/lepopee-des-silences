@@ -77,6 +77,7 @@ public sealed class CatalogSeedRunner
         await SeedBestiaireCopistesAsync(cancellationToken);
         await SeedBestiaireSqueletteDeSouvenirsAsync(cancellationToken);
         await SeedBestiaireChimeresDesPlainesAsync(cancellationToken);
+        await SeedBestiaireCreationsDuForgeronAsync(cancellationToken);
         await SeedCanonItemsAsync(cancellationToken);
         await SeedCanonCursesAsync(cancellationToken);
         await SeedCanonLawsAsync(cancellationToken);
@@ -3554,6 +3555,194 @@ public sealed class CatalogSeedRunner
             magicAttack: 7, magicDefense: 8, initiative: 7, mana: 14, menace: 3,
             rarity: "Uncommon", registre: registre,
             boundRoomKeys: new[] { "room.enfer2", "room.jardin" });
+    }
+
+    private async Task SeedBestiaireCreationsDuForgeronAsync(CancellationToken cancellationToken)
+    {
+        const string family = "Creations du Forgeron";
+        const string registre = "Rupture";
+
+        // Mécanique de famille "La Trempe" : quand une Création subit un buff
+        // d'Attaque, elle gagne aussi +2 DEF (brut) pour la même durée. Câblée
+        // directement dans les sorts eux-mêmes ci-dessous (Redressement,
+        // Transmutation alliée, Litanie) plutôt que via une règle générique — chaque
+        // sort qui buffe l'Attaque d'une Création porte aussi son propre effet +2 DEF.
+        // Le second volet ("les DoT de feu posés par les Créations ne peuvent pas
+        // être purgés tant que la Sentinelle de Fonte est en vie") est sans objet :
+        // aucun mécanisme de purge/dissipation ciblée n'existe côté moteur (voir
+        // Marge blanche, famille Copistes) — rien à immuniser.
+
+        await UpsertSkillAsync("canon.skill.coup-de-plaque", "Coup de plaque",
+            "Frappe avec ce qui dépasse.",
+            "Damage", "SingleEnemy", "Damage", mana: 0, power: 12, cancellationToken,
+            category: "Physical");
+
+        // "Foyer ouvert" : la doc décrit un piège réactif (Brûlure à la première
+        // cible qui frappe au corps-à-corps avant le prochain tour) — aucun
+        // déclencheur réactif "sur coup reçu" n'existe côté moteur (même famille de
+        // limitation que l'Attitude en combat) ; approximé par une Brûlure lancée
+        // activement, l'IA la réservant à l'agresseur le plus récent quand connu
+        // (voir CreationInstableBossBehavior, via Combatant.LastAttackerId).
+        await UpsertSkillAsync("canon.skill.foyer-ouvert", "Foyer ouvert",
+            "Son torse s'ouvre.",
+            "Debuff", "SingleEnemy", "Debuff", mana: 8, power: 0, cancellationToken,
+            effects: new[] { new SkillEffectSpec("DamageOverTime", null, 5, TicksPerTurn * 4, TickInterval: TicksPerTurn) },
+            category: "Magic");
+
+        await UpsertSkillAsync("canon.skill.redressement", "Redressement",
+            "Elle se remet droite. Encore.",
+            "Buff", "Self", "Buff", mana: 6, power: 0, cancellationToken,
+            effects: new[]
+            {
+                new SkillEffectSpec("StatModifier", "canon.skill.redressement:attack", 4, TicksPerTurn * 3, Stat: "AttackPower"),
+                new SkillEffectSpec("StatModifier", "canon.skill.redressement:trempe", 2, TicksPerTurn * 3, Stat: "Defense")
+            },
+            category: "Physical");
+
+        await UpsertSkillAsync("canon.skill.frappe-denclume", "Frappe d'enclume",
+            "Le geste appris. Précis, cadencé, sans intention.",
+            "Damage", "SingleEnemy", "Damage", mana: 0, power: 14, cancellationToken,
+            category: "Physical");
+
+        await UpsertSkillAsync("canon.skill.cadence", "Cadence",
+            "Le rythme s'accélère.",
+            "Buff", "Self", "Buff", mana: 8, power: 0, cancellationToken,
+            effects: new[] { new SkillEffectSpec("StatModifier", null, 10, TicksPerTurn * 4, Stat: "Speed", MagnitudeIsPercentOfBaseStat: true) },
+            category: "Physical");
+
+        // "Coup de grâce du forgeron" : la doc décrit la consommation immédiate du
+        // DoT restant sur la cible — aucun mécanisme de lecture/consommation d'un
+        // DoT actif n'existe côté moteur ; approximé par une puissance élevée fixe,
+        // l'IA le réservant aux cibles déjà sous DoT (voir MarteauVivantBossBehavior).
+        await UpsertSkillAsync("canon.skill.coup-de-grace-forgeron", "Coup de grâce du forgeron",
+            "On frappe le fer tant qu'il est chaud.",
+            "Damage", "SingleEnemy", "Damage", mana: 14, power: 22, cancellationToken,
+            category: "Physical");
+
+        await UpsertSkillAsync("canon.skill.transmutation-alliee", "Transmutation",
+            "Plomb, or, mercure, soufre, sel.",
+            "Buff", "SingleAlly", "Buff", mana: 6, power: 0, cancellationToken,
+            effects: new[]
+            {
+                new SkillEffectSpec("StatModifier", "canon.skill.transmutation-alliee:attack", 4, TicksPerTurn * 3, Stat: "AttackPower"),
+                new SkillEffectSpec("StatModifier", "canon.skill.transmutation-alliee:trempe", 2, TicksPerTurn * 3, Stat: "Defense")
+            },
+            category: "Magic");
+
+        await UpsertSkillAsync("canon.skill.litanie", "Litanie",
+            "La formule récitée en entier, une fois n'est pas coutume.",
+            "Buff", "AllAllies", "Buff", mana: 10, power: 0, cancellationToken,
+            effects: new[]
+            {
+                new SkillEffectSpec("StatModifier", "canon.skill.litanie:attack", 4, TicksPerTurn * 2, Stat: "AttackPower"),
+                new SkillEffectSpec("StatModifier", "canon.skill.litanie:trempe", 2, TicksPerTurn * 2, Stat: "Defense")
+            },
+            category: "Magic");
+
+        await UpsertSkillAsync("canon.skill.scorie", "Scorie",
+            "Crache du métal en fusion.",
+            "Damage", "SingleEnemy", "Damage", mana: 8, power: 11, cancellationToken,
+            effects: new[] { new SkillEffectSpec("DamageOverTime", null, 4, TicksPerTurn * 3, TickInterval: TicksPerTurn) },
+            category: "Magic");
+
+        await UpsertSkillAsync("canon.skill.fonte", "Fonte",
+            "Elle était déjà assise.",
+            "Buff", "Self", "Buff", mana: 12, power: 0, cancellationToken,
+            effects: new[]
+            {
+                new SkillEffectSpec("StatModifier", null, 8, TicksPerTurn * 3, Stat: "Defense"),
+                new SkillEffectSpec("StatModifier", null, -2, TicksPerTurn * 3, Stat: "Speed")
+            },
+            category: "Magic");
+
+        await UpsertSkillAsync("canon.skill.contact", "Contact",
+            "Toucher incandescent.",
+            "Damage", "SingleEnemy", "Damage", mana: 0, power: 8, cancellationToken,
+            category: "Physical");
+
+        // "Laitier ardent" : la doc décrit +2 tours flat sur les DoT de feu actifs —
+        // réutilise l'EffectType "ExtendDotDuration" déjà câblé (Écriture continuelle,
+        // famille Copistes), qui n'étend qu'en pourcentage de la durée restante, pas
+        // en tours fixes ; approximé par +40%.
+        await UpsertSkillAsync("canon.skill.laitier-ardent", "Laitier ardent",
+            "La braise recouverte dure plus longtemps.",
+            "Debuff", "SingleEnemy", "ExtendDotDuration", mana: 8, power: 40, cancellationToken,
+            category: "Magic");
+
+        // "Éclat vitrifié" : la doc décrit 10% de chance d'appliquer Brûlure — aucune
+        // application d'effet probabiliste n'existe côté moteur (un effet attaché à
+        // un sort s'applique systématiquement au toucher) ; la Brûlure s'applique
+        // donc à chaque coup, simplification à assumer/affiner plus tard.
+        await UpsertSkillAsync("canon.skill.eclat-vitrifie", "Éclat vitrifié",
+            "Projette un fragment.",
+            "Damage", "SingleEnemy", "Damage", mana: 5, power: 9, cancellationToken,
+            effects: new[] { new SkillEffectSpec("DamageOverTime", null, 3, TicksPerTurn * 3, TickInterval: TicksPerTurn) },
+            category: "Physical");
+
+        // "Reformation" : la doc limite l'usage à 2 fois par combat — aucun compteur
+        // d'utilisations par sort n'existe côté moteur (au-delà du coût en
+        // mana/charge) ; utilisable sans limite, simplification à assumer/affiner
+        // plus tard.
+        await UpsertSkillAsync("canon.skill.reformation", "Reformation",
+            "Se reforme.",
+            "Buff", "Self", "Heal", mana: 6, power: 15, cancellationToken,
+            category: "Magic", basePowerIsPercentOfMaxVitality: true);
+
+        await UpsertEnemyAsync(
+            "canon.enemy.creation-instable", "Création Instable",
+            "Un assemblage humanoïde de plaques mal jointes, dont une jambe est plus courte que l'autre et dont le torse s'ouvre par intermittence sur un foyer qui n'aurait jamais dû rester allumé. Elle se redresse sans cesse, compulsivement, comme pour prouver quelque chose à un marteau absent. « Elle se tient debout. Presque. C'est le presque qui fait mal. »",
+            "Bruiser", family, "Common", "Bruiser", isElite: false,
+            depthMin: 4, depthMax: 9, riskMin: 25, riskMax: 70,
+            roomTypes: new[] { "Memory" },
+            tags: new[] { "bestiaire", "rupture", "creations-du-forgeron", "trempe" },
+            skillKeys: new[] { "canon.skill.coup-de-plaque", "canon.skill.egide", "canon.skill.foyer-ouvert", "canon.skill.redressement" },
+            vitality: 78, attack: 12, defense: 9, guard: 0, speed: 6, focus: 3,
+            cancellationToken,
+            magicAttack: 3, magicDefense: 5, initiative: 5, mana: 12, menace: 4,
+            rarity: "Common", registre: registre,
+            boundRoomKeys: new[] { "room.enfer3" });
+
+        await UpsertEnemyAsync(
+            "canon.enemy.marteau-vivant", "Marteau Vivant",
+            "Un marteau de forge de deux mètres, animé, dont le manche s'est tordu en colonne vertébrale. Il frappe le sol en rythme, continuellement — le rythme exact du Forgeron au travail. Quand il frappe autre chose que le sol, ça hurle. C'est lui, le hurlement. « Les marteaux qui hurlent. C'est de lui qu'on parle. »",
+            "Bruiser", family, "Uncommon", "Bruiser", isElite: false,
+            depthMin: 4, depthMax: 9, riskMin: 30, riskMax: 75,
+            roomTypes: new[] { "Memory" },
+            tags: new[] { "bestiaire", "rupture", "creations-du-forgeron", "dot" },
+            skillKeys: new[] { "canon.skill.frappe-denclume", "canon.skill.souffle-de-la-forge", "canon.skill.cadence", "canon.skill.coup-de-grace-forgeron" },
+            vitality: 64, attack: 14, defense: 7, guard: 0, speed: 8, focus: 3,
+            cancellationToken,
+            magicAttack: 6, magicDefense: 4, initiative: 7, mana: 18, menace: 6,
+            rarity: "Uncommon", registre: registre,
+            boundRoomKeys: new[] { "room.enfer3" });
+
+        await UpsertEnemyAsync(
+            "canon.enemy.sentinelle-fonte", "Sentinelle de Fonte",
+            "Une statue de fonte grossière, assise en tailleur au milieu des piliers de fer, qui murmure la litanie alchimique du Forgeron. Elle ne se lève jamais. Ses mains, posées sur ses genoux, rougissent quand elle transmute — et le métal de ses alliés rougit avec. « Plomb, or, mercure, soufre, sel. Elle récite. C'est tout ce qu'on lui a laissé. »",
+            "Support", family, "Uncommon", "Support", isElite: false,
+            depthMin: 4, depthMax: 9, riskMin: 25, riskMax: 70,
+            roomTypes: new[] { "Memory" },
+            tags: new[] { "bestiaire", "rupture", "creations-du-forgeron", "trempe", "priority" },
+            skillKeys: new[] { "canon.skill.transmutation-alliee", "canon.skill.litanie", "canon.skill.scorie", "canon.skill.fonte" },
+            vitality: 82, attack: 5, defense: 13, guard: 0, speed: 3, focus: 6,
+            cancellationToken,
+            magicAttack: 9, magicDefense: 8, initiative: 2, mana: 22, menace: 5,
+            rarity: "Uncommon", registre: registre,
+            boundRoomKeys: new[] { "room.enfer3" });
+
+        await UpsertEnemyAsync(
+            "canon.enemy.scorie-rampante", "Scorie Rampante",
+            "Une flaque de laitier incandescent, à demi solidifiée, qui se traîne en laissant des traces vitrifiées. Par moments, une forme s'ébauche dans sa masse — une main, un profil — puis retombe. Elle n'a jamais eu de forme finale. Elle les essaie toutes. « Ce que la forge recrache. Ça rampe. Ça brûle. Ça se souvient d'avoir été un projet. »",
+            "Skirmisher", family, "Common", "Skirmisher", isElite: false,
+            depthMin: 4, depthMax: 10, riskMin: 20, riskMax: 65,
+            roomTypes: new[] { "Memory" },
+            tags: new[] { "bestiaire", "rupture", "creations-du-forgeron", "dot" },
+            skillKeys: new[] { "canon.skill.contact", "canon.skill.laitier-ardent", "canon.skill.eclat-vitrifie", "canon.skill.reformation" },
+            vitality: 30, attack: 7, defense: 4, guard: 0, speed: 4, focus: 2,
+            cancellationToken,
+            magicAttack: 6, magicDefense: 6, initiative: 3, mana: 10, menace: 2,
+            rarity: "Common", registre: registre,
+            boundRoomKeys: new[] { "room.enfer3", "room.enfer4" });
     }
 
     private async Task UpsertSkillAsync(
