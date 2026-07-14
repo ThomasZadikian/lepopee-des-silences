@@ -75,6 +75,7 @@ public sealed class CatalogSeedRunner
         await SeedCanonSkillsAsync(cancellationToken);
         await SeedBestiaireVeilleursDuSeuilAsync(cancellationToken);
         await SeedBestiaireCopistesAsync(cancellationToken);
+        await SeedBestiaireSqueletteDeSouvenirsAsync(cancellationToken);
         await SeedCanonItemsAsync(cancellationToken);
         await SeedCanonCursesAsync(cancellationToken);
         await SeedCanonLawsAsync(cancellationToken);
@@ -3276,6 +3277,133 @@ public sealed class CatalogSeedRunner
             magicAttack: 13, magicDefense: 10, initiative: 4, mana: 24, menace: 7,
             rarity: "Rare", registre: registre,
             boundRoomKeys: new[] { "room.labyrinthe" });
+    }
+
+    private async Task SeedBestiaireSqueletteDeSouvenirsAsync(CancellationToken cancellationToken)
+    {
+        const string family = "Squelettes de Souvenirs";
+        const string registre = "Memoire";
+
+        // Mécanique de famille "L'Ossuaire" (un Squelette mort laisse un Ossement au
+        // sol ; le Porteur de Cendre peut le consommer pour relever ce Squelette à
+        // 40% PV) et la remise "-2 mana Silence dans la Calamité" ne sont pas
+        // modélisées — nécessiteraient respectivement un hook "on ally death" avec
+        // suivi d'un jeton persistant côté combat, et une conscience de la salle dans
+        // le calcul du coût d'un sort. Différé, comme la Rature des Veilleurs du
+        // Seuil et l'Attitude en combat en général. "Effondrement" et "Braise
+        // mémorielle" ci-dessous sont donc des approximations : la première perd son
+        // volet "meurt et relance l'Ossuaire" (ne reste que les dégâts de zone), la
+        // seconde perd sa fonction de relance et devient une garde défensive de
+        // repli — jamais choisie par l'IA (voir PorteurCendreBossBehavior).
+
+        await UpsertSkillAsync("canon.skill.griffe-dos", "Griffe d'os",
+            "Frappe simple. Ce que tout ce qui a des phalanges sait faire.",
+            "Damage", "SingleEnemy", "Damage", mana: 0, power: 10, cancellationToken,
+            category: "Physical");
+
+        await UpsertSkillAsync("canon.skill.fragment-grave", "Fragment gravé",
+            "Lance un éclat d'os gravé : la cible voit le souvenir.",
+            "Damage", "SingleEnemy", "Damage", mana: 6, power: 8, cancellationToken,
+            effects: new[] { new SkillEffectSpec("StatModifier", null, -2, TicksPerTurn * 2, Stat: "Focus") },
+            category: "Magic");
+
+        await UpsertSkillAsync("canon.skill.etreinte-creuse", "Étreinte creuse",
+            "Agrippe : il cherche quelqu'un pour se souvenir de lui.",
+            "Damage", "SingleEnemy", "Damage", mana: 4, power: 6, cancellationToken,
+            effects: new[]
+            {
+                new SkillEffectSpec("StatModifier", null, -10, TicksPerTurn * 2, Stat: "Speed", MagnitudeIsPercentOfBaseStat: true)
+            },
+            category: "Physical");
+
+        await UpsertSkillAsync("canon.skill.effondrement", "Effondrement",
+            "Se démembre volontairement : dégâts de zone.",
+            "Damage", "AllEnemies", "Damage", mana: 0, power: 6, cancellationToken,
+            category: "Physical");
+
+        await UpsertSkillAsync("canon.skill.braise-memorielle", "Braise mémorielle",
+            "Rallume un Ossement — pour l'instant, ne fait que se replier prudemment.",
+            "Buff", "Self", "Guard", mana: 8, power: 6, cancellationToken,
+            category: "Magic");
+
+        await UpsertSkillAsync("canon.skill.jet-de-cendre", "Jet de cendre",
+            "La cendre entre dans les yeux et la mémoire.",
+            "Damage", "SingleEnemy", "Damage", mana: 7, power: 9, cancellationToken,
+            effects: new[] { new SkillEffectSpec("StatModifier", null, -3, TicksPerTurn * 3, Stat: "Focus") },
+            category: "Magic");
+
+        // "Fardeau partagé" (Porteur de Cendre) : la doc décrit un coût de -8% PV max
+        // pour le Porteur en échange du soin — non câblé (un sort n'a qu'une seule
+        // liste de cibles côté moteur, pas de cible secondaire "soi-même" distincte
+        // pour un coût), simplification à assumer/affiner plus tard.
+        await UpsertSkillAsync("canon.skill.fardeau-partage", "Fardeau partagé",
+            "Il absorbe le fardeau de l'allié.",
+            "Heal", "SingleAlly", "Heal", mana: 10, power: 8, cancellationToken,
+            category: "Magic", basePowerIsPercentOfMaxVitality: true);
+
+        // "Berceuse inversée" : la doc cible Initiative (-4 brut) — Initiative n'est
+        // qu'une valeur de départ figée pour l'ordre d'engagement côté moteur, pas un
+        // canal de StatModifier modifiable en combat. Approximé par AtbTempoModifier
+        // (ralentit directement le remplissage de la jauge ATB), même intention
+        // (retarder les tours adverses) par un autre levier déjà câblé.
+        await UpsertSkillAsync("canon.skill.berceuse-inversee", "Berceuse inversée",
+            "Le sommeil monte sans qu'aucun son ne l'annonce.",
+            "Debuff", "AllEnemies", "Debuff", mana: 12, power: 0, cancellationToken,
+            effects: new[] { new SkillEffectSpec("StatModifier", null, -15, TicksPerTurn * 3, Stat: "AtbTempoModifier") },
+            category: "Magic");
+
+        // "Note tenue" : la doc décrit un tour de canalisation puis des dégâts
+        // doublés sur cible sous Silence — ni la canalisation (aucun sort ne prend
+        // plus d'un tour côté moteur) ni le doublement conditionnel de puissance ne
+        // sont câblés ; l'IA compense en ne visant que des cibles déjà sous Silence
+        // (voir ChoeurMuetBossBehavior), même approche que Phrase inachevée
+        // (famille Copistes).
+        await UpsertSkillAsync("canon.skill.note-tenue", "Note tenue",
+            "L'accord final.",
+            "Damage", "SingleEnemy", "Damage", mana: 18, power: 20, cancellationToken,
+            category: "Magic");
+
+        await UpsertEnemyAsync(
+            "canon.enemy.squelette-souvenir", "Squelette de Souvenir",
+            "Un squelette gris cendre dont les os portent des gravures illisibles — les restes d'un moment que personne n'a jamais raconté. Il tient parfois un objet incongru : une tasse, un jouet, une clef. L'objet est le seul indice de ce qu'il fut. « ... » (il n'a jamais été raconté ; il n'a pas de voix)",
+            "Skirmisher", family, "Common", "Skirmisher", isElite: false,
+            depthMin: 3, depthMax: 8, riskMin: 15, riskMax: 60,
+            roomTypes: new[] { "Silence", "Memory" },
+            tags: new[] { "bestiaire", "memoire", "squelettes-de-souvenirs", "ossuaire" },
+            skillKeys: new[] { "canon.skill.griffe-dos", "canon.skill.fragment-grave", "canon.skill.etreinte-creuse", "canon.skill.effondrement" },
+            vitality: 34, attack: 8, defense: 6, guard: 0, speed: 7, focus: 2,
+            cancellationToken,
+            magicAttack: 3, magicDefense: 4, initiative: 6, mana: 8, menace: 2,
+            rarity: "Common", registre: registre,
+            boundRoomKeys: new[] { "room.enfer1" });
+
+        await UpsertEnemyAsync(
+            "canon.enemy.porteur-cendre", "Porteur de Cendre",
+            "Une silhouette encapuchonnée courbée sous une hotte débordant de cendre et d'ossements. Elle traverse la Calamité en ramassant ce qui reste des souvenirs morts, et les rallume un à un, comme des braises. « Je me souviens d'eux. C'est mon fardeau, et ma monnaie. »",
+            "Support", family, "Uncommon", "Support", isElite: false,
+            depthMin: 3, depthMax: 8, riskMin: 20, riskMax: 65,
+            roomTypes: new[] { "Silence", "Memory" },
+            tags: new[] { "bestiaire", "memoire", "squelettes-de-souvenirs", "ossuaire", "priority" },
+            skillKeys: new[] { "canon.skill.braise-memorielle", "canon.skill.jet-de-cendre", "canon.skill.fardeau-partage", "canon.skill.sursaut-memoriel" },
+            vitality: 66, attack: 5, defense: 8, guard: 0, speed: 6, focus: 6,
+            cancellationToken,
+            magicAttack: 10, magicDefense: 9, initiative: 5, mana: 24, menace: 5,
+            rarity: "Uncommon", registre: registre,
+            boundRoomKeys: new[] { "room.enfer1" });
+
+        await UpsertEnemyAsync(
+            "canon.enemy.choeur-muet", "Chœur Muet",
+            "Trois cages thoraciques fusionnées en un seul buste, surmontées de trois crânes aux mâchoires grandes ouvertes. Aucun son n'en sort — mais l'air vibre, et le silence qui règne autour d'eux pèse physiquement sur les épaules. « Ils chantent. Vous ne l'entendrez jamais. C'est ça, le supplice. »",
+            "Disruptor", family, "Rare", "Disruptor", isElite: true,
+            depthMin: 4, depthMax: 9, riskMin: 25, riskMax: 75,
+            roomTypes: new[] { "Silence" },
+            tags: new[] { "bestiaire", "silence", "squelettes-de-souvenirs", "elite", "control" },
+            skillKeys: new[] { "canon.skill.lecture-des-silences", "canon.skill.silence", "canon.skill.berceuse-inversee", "canon.skill.note-tenue" },
+            vitality: 74, attack: 4, defense: 7, guard: 0, speed: 4, focus: 8,
+            cancellationToken,
+            magicAttack: 13, magicDefense: 12, initiative: 3, mana: 26, menace: 6,
+            rarity: "Rare", registre: "Silence",
+            boundRoomKeys: new[] { "room.enfer1" });
     }
 
     private async Task UpsertSkillAsync(
