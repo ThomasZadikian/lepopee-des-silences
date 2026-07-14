@@ -245,5 +245,13 @@ public static class InfrastructureServiceCollectionExtensions
         // Bestiaire — Les Gardiens de Crystal (famille 9).
         services.AddSingleton<IBossBehavior, Leds.GameEngine.Application.Combats.EnemyTurns.Bossing.Canon.GardienIntemporelBossBehavior>();
         services.AddSingleton<IBossBehavior, Leds.GameEngine.Application.Combats.EnemyTurns.Bossing.Canon.EclatEveilleBossBehavior>();
+
+        // Bestiaire — Les Échos d'Émotions (famille 10).
+        services.AddSingleton<IBossBehavior, Leds.GameEngine.Application.Combats.EnemyTurns.Bossing.Canon.EchoColereBossBehavior>();
+        services.AddSingleton<IBossBehavior, Leds.GameEngine.Application.Combats.EnemyTurns.Bossing.Canon.EchoPeurBossBehavior>();
+        services.AddSingleton<IBossBehavior, Leds.GameEngine.Application.Combats.EnemyTurns.Bossing.Canon.EchoTristesseBossBehavior>();
+
+        // Bestiaire — L'Impératrice de la Falaise (mini-boss).
+        services.AddSingleton<IBossBehavior, Leds.GameEngine.Application.Combats.EnemyTurns.Bossing.Canon.ImperatriceBossBehavior>();
     }
 }

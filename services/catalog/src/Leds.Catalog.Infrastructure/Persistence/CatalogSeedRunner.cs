@@ -82,6 +82,8 @@ public sealed class CatalogSeedRunner
         await SeedBestiairePenitentsDeLaMontagneAsync(cancellationToken);
         await SeedBestiaireFauxHabitantsDuJardinAsync(cancellationToken);
         await SeedBestiaireGardiensDeCrystalAsync(cancellationToken);
+        await SeedBestiaireEchosDEmotionsAsync(cancellationToken);
+        await SeedBestiaireImperatriceDeLaFalaiseAsync(cancellationToken);
         await SeedCanonItemsAsync(cancellationToken);
         await SeedCanonCursesAsync(cancellationToken);
         await SeedCanonLawsAsync(cancellationToken);
@@ -4183,6 +4185,178 @@ public sealed class CatalogSeedRunner
             magicAttack: 15, magicDefense: 12, initiative: 10, mana: 30, menace: 5,
             rarity: "Uncommon", registre: registre,
             boundRoomKeys: new[] { "room.cavernedecrystal" });
+    }
+
+    private async Task SeedBestiaireEchosDEmotionsAsync(CancellationToken cancellationToken)
+    {
+        const string family = "Echos d'Emotions";
+
+        // Mécanique de famille "La Dissonance" (deux Échos différents dans le même
+        // combat s'amplifient de +10% M.ATQ chacun ; deux Échos identiques se
+        // parasitent à -10% chacun) n'est pas modélisée — appliquer un tel bonus
+        // dépendrait de la composition exacte du combat au moment de l'engagement,
+        // et bien qu'un premier tour puisse en théorie le calculer, l'effort de
+        // nouvelle autorisation (deux sorts de buff/debuff dédiés rien que pour ce
+        // calcul d'ouverture) n'a pas été jugé prioritaire face au reste du
+        // Bestiaire restant — différé, comme les autres mécaniques de famille à
+        // compteur partagé. La clause "un Écho n'apparaît jamais dans un combat où
+        // son Émotion originale est scriptée en événement" est hors du périmètre du
+        // moteur de combat (c'est une règle de sélection de rencontre, pas de
+        // comportement en combat) — non câblée non plus.
+
+        await UpsertSkillAsync("canon.skill.eclat-echo-colere", "Éclat",
+            "Le poing retombe, enfin.",
+            "Damage", "SingleEnemy", "Damage", mana: 0, power: 12, cancellationToken,
+            category: "Physical");
+
+        // "Constat sec" : la doc décrit +15% dégâts DE CET ÉCHO SPÉCIFIQUEMENT sur la
+        // cible désignée — aucun canal de dégâts-subis-par-attaquant-spécifique
+        // n'existe côté moteur (seule une réduction de Défense générique, affectant
+        // tous les attaquants, est disponible) ; approximé par un débuff de Défense.
+        await UpsertSkillAsync("canon.skill.constat-sec", "Constat sec",
+            "Elle subit +15% dégâts de l'Écho.",
+            "Debuff", "SingleEnemy", "Debuff", mana: 8, power: 0, cancellationToken,
+            effects: new[] { new SkillEffectSpec("StatModifier", null, -15, TicksPerTurn * 3, Stat: "Defense", MagnitudeIsPercentOfBaseStat: true) },
+            category: "Magic");
+
+        await UpsertSkillAsync("canon.skill.montee", "Montée",
+            "Ça monte. Personne ne calmera rien.",
+            "Buff", "Self", "Buff", mana: 6, power: 0, cancellationToken,
+            effects: new[] { new SkillEffectSpec("StatModifier", null, 5, TicksPerTurn * 3, Stat: "AttackPower") },
+            category: "Physical");
+
+        await UpsertSkillAsync("canon.skill.explosion", "Explosion",
+            "Ça devait éclater.",
+            "Damage", "AllEnemies", "Damage", mana: 16, power: 20, cancellationToken,
+            category: "Magic");
+
+        await UpsertSkillAsync("canon.skill.frisson", "Frisson",
+            "Quelque chose a bougé derrière vous.",
+            "Damage", "SingleEnemy", "Damage", mana: 6, power: 9, cancellationToken,
+            effects: new[] { new SkillEffectSpec("StatModifier", null, -12, TicksPerTurn * 2, Stat: "AtbTempoModifier") },
+            category: "Magic");
+
+        // "Porte fermée" : la doc ajoute un verrou de rang — sans objet côté moteur
+        // (pas de système de rang) ; seul le débuff de Focus est câblé.
+        await UpsertSkillAsync("canon.skill.porte-fermee", "Porte fermée",
+            "Il n'y a pas de sortie.",
+            "Debuff", "SingleEnemy", "Debuff", mana: 10, power: 0, cancellationToken,
+            effects: new[] { new SkillEffectSpec("StatModifier", null, -3, TicksPerTurn * 2, Stat: "Focus") },
+            category: "Magic");
+
+        // "Saccade" : la doc décrit un changement de rang + 25% esquive — sans objet
+        // côté moteur ; approximé par une garde instantanée.
+        await UpsertSkillAsync("canon.skill.saccade", "Saccade",
+            "Là où vous regardez, il n'est déjà plus.",
+            "Buff", "Self", "Guard", mana: 4, power: 6, cancellationToken,
+            category: "Physical");
+
+        await UpsertSkillAsync("canon.skill.poids", "Poids",
+            "Tout devient un peu plus loin.",
+            "Debuff", "SingleEnemy", "Debuff", mana: 8, power: 0, cancellationToken,
+            effects: new[] { new SkillEffectSpec("StatModifier", null, -15, TicksPerTurn * 3, Stat: "Speed", MagnitudeIsPercentOfBaseStat: true) },
+            category: "Magic");
+
+        // "Constat tardif" : la doc décrit un ciblage sur "la cible qui a agi il y a
+        // le plus longtemps" — aucun suivi d'ordre d'action n'existe côté moteur ;
+        // ciblage laissé à l'IA (cible la plus faible), simplification à
+        // assumer/affiner plus tard.
+        await UpsertSkillAsync("canon.skill.constat-tardif", "Constat tardif",
+            "Toujours en retard, toujours exact.",
+            "Damage", "SingleEnemy", "Damage", mana: 10, power: 16, cancellationToken,
+            category: "Magic");
+
+        await UpsertSkillAsync("canon.skill.silence-partage", "Silence partagé",
+            "Le seul répit qu'il connaisse. Il le partage.",
+            "Heal", "AllAllies", "Heal", mana: 12, power: 6, cancellationToken,
+            category: "Magic", basePowerIsPercentOfMaxVitality: true);
+
+        await UpsertEnemyAsync(
+            "canon.enemy.echo-colere", "Écho de Colère",
+            "Une déchirure rouge sombre dans l'air, en forme de geste interrompu — un poing levé qui n'est jamais retombé. Elle vibre d'une chaleur sèche et cherche, en permanence, quelque chose qui mérite d'éclater. « Ça n'a plus personne à défendre. Ça frappe quand même. »",
+            "Bruiser", family, "Uncommon", "Bruiser", isElite: false,
+            depthMin: 3, depthMax: 10, riskMin: 20, riskMax: 70,
+            roomTypes: new[] { "Memory" },
+            tags: new[] { "bestiaire", "rupture", "echos-d-emotions", "dissonance" },
+            skillKeys: new[] { "canon.skill.eclat-echo-colere", "canon.skill.constat-sec", "canon.skill.montee", "canon.skill.explosion" },
+            vitality: 60, attack: 13, defense: 5, guard: 0, speed: 9, focus: 3,
+            cancellationToken,
+            magicAttack: 9, magicDefense: 6, initiative: 9, mana: 14, menace: 5,
+            rarity: "Uncommon", registre: "Rupture");
+
+        await UpsertEnemyAsync(
+            "canon.enemy.echo-peur", "Écho de Peur",
+            "Un frémissement pâle qui n'est jamais tout à fait là où on le regarde. Il se déplace par saccades, longe les murs, et son contact donne l'exacte sensation d'une porte qu'on trouve fermée dans le noir. « Il guette une sortie qui n'existe plus. Vous êtes entre lui et elle. »",
+            "Disruptor", family, "Uncommon", "Disruptor", isElite: false,
+            depthMin: 3, depthMax: 10, riskMin: 20, riskMax: 70,
+            roomTypes: new[] { "Memory" },
+            tags: new[] { "bestiaire", "effroi", "echos-d-emotions", "dissonance" },
+            skillKeys: new[] { "canon.skill.frisson", "canon.skill.porte-fermee", "canon.skill.saccade", "canon.skill.nevrose" },
+            vitality: 42, attack: 6, defense: 4, guard: 0, speed: 14, focus: 6,
+            cancellationToken,
+            magicAttack: 10, magicDefense: 8, initiative: 14, mana: 18, menace: 4,
+            rarity: "Uncommon", registre: "Effroi",
+            boundRoomKeys: new[] { "room.feelings", "room.falaise", "room.couloirs" });
+
+        await UpsertEnemyAsync(
+            "canon.enemy.echo-tristesse", "Écho de Tristesse",
+            "Une lenteur visible — l'air lui-même semble plus épais autour de lui. Il a vaguement la forme d'une personne assise, même quand il se déplace. Ceux qui le traversent se souviennent soudain de tout ce qu'ils n'ont pas dit à temps. « Il ne pleure pas. Il constate, longtemps après tout le monde. »",
+            "Support", family, "Uncommon", "Support", isElite: false,
+            depthMin: 3, depthMax: 10, riskMin: 20, riskMax: 70,
+            roomTypes: new[] { "Memory" },
+            tags: new[] { "bestiaire", "melancolie", "echos-d-emotions", "dissonance", "dot" },
+            skillKeys: new[] { "canon.skill.poids", "canon.skill.sursaut-memoriel", "canon.skill.constat-tardif", "canon.skill.silence-partage" },
+            vitality: 80, attack: 7, defense: 9, guard: 0, speed: 3, focus: 6,
+            cancellationToken,
+            magicAttack: 11, magicDefense: 11, initiative: 2, mana: 22, menace: 5,
+            rarity: "Uncommon", registre: "Melancolie",
+            boundRoomKeys: new[] { "room.feelings", "room.room08", "room.hopital" });
+    }
+
+    private async Task SeedBestiaireImperatriceDeLaFalaiseAsync(CancellationToken cancellationToken)
+    {
+        // "L'Impératrice de la Falaise" — mini-boss unique par run, gate-keeper
+        // optionnel des enfers. N'appartient à aucune famille du Bestiaire (registre
+        // Effroi/Silence, à part). Le plafond "unique par run" documenté n'est pas
+        // appliqué mécaniquement (aucun compteur d'apparition par run côté moteur) ;
+        // sa rareté (Legendary) et son menace élevé la rendent naturellement rare via
+        // la sélection de rencontre existante.
+
+        await UpsertSkillAsync("canon.skill.maree-montante", "Marée montante",
+            "La falaise se rétrécit.",
+            "Debuff", "AllEnemies", "Debuff", mana: 14, power: 0, cancellationToken,
+            effects: new[] { new SkillEffectSpec("StatModifier", null, -10, TicksPerTurn * 2, Stat: "Speed", MagnitudeIsPercentOfBaseStat: true) },
+            category: "Magic");
+
+        await UpsertSkillAsync("canon.skill.lame-de-fond", "Lame de fond",
+            "La mer achève ce qu'elle a commencé.",
+            "Damage", "SingleEnemy", "Damage", mana: 18, power: 26, cancellationToken,
+            category: "Physical");
+
+        // Variante "+50% sur cible sous 2+ DoT" de Lame de fond : le moteur ne
+        // permet pas de moduler la puissance d'un sort selon l'état de la cible au
+        // moment du calcul de dégâts, donc ce bonus est authoré comme un second sort
+        // à puissance fixe majorée, sélectionné par l'IA quand la condition est
+        // remplie (voir ImperatriceBossBehavior), plutôt que comme un multiplicateur
+        // dynamique.
+        await UpsertSkillAsync("canon.skill.lame-de-fond-renforcee", "Lame de fond (renforcée)",
+            "La mer achève ce qu'elle a commencé — plus fort encore.",
+            "Damage", "SingleEnemy", "Damage", mana: 18, power: 39, cancellationToken,
+            category: "Physical");
+
+        await UpsertEnemyAsync(
+            "canon.enemy.imperatrice", "L'Impératrice",
+            "Une silhouette féminine démesurée émergeant à mi-corps de la mer violacée, couronnée d'une structure qui évoque à la fois un diadème et une cage thoracique renversée. Sa robe est la mer — littéralement : les vagues sont son ourlet, et la marée suit ses humeurs. « Malheureux sont ceux qui croiseront l'impératrice dans ce lieu. »",
+            "Bruiser", "Imperatrice de la Falaise", "Legendary", "Bruiser", isElite: true,
+            depthMin: 2, depthMax: 9, riskMin: 50, riskMax: 100,
+            roomTypes: new[] { "Silence" },
+            tags: new[] { "bestiaire", "effroi", "silence", "mini-boss", "unique" },
+            skillKeys: new[] { "canon.skill.deluge-du-styx", "canon.skill.symphonie-des-enfers", "canon.skill.maree-montante", "canon.skill.lame-de-fond", "canon.skill.lame-de-fond-renforcee" },
+            vitality: 240, attack: 13, defense: 11, guard: 0, speed: 7, focus: 9,
+            cancellationToken,
+            magicAttack: 17, magicDefense: 14, initiative: 8, mana: 40, menace: 10,
+            rarity: "Legendary", registre: "Effroi",
+            boundRoomKeys: new[] { "room.falaise" });
     }
 
     private async Task UpsertSkillAsync(
