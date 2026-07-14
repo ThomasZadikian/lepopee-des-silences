@@ -55,6 +55,8 @@ export type CombatantRuntimeDto = {
   defense?: number;
   speed?: number;
   focus?: number;
+  magicAttack?: number;
+  magicDefense?: number;
   atbGauge?: number;
   atbFillPerTick?: number;
   threatValue?: number;

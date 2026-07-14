@@ -53,7 +53,9 @@ const speedEffect = computed<'boosted' | 'slowed' | null>(() => {
 
 // Net % StatModifier per stat — only percent-of-base effects are meaningful as a
 // "%" badge (a flat-delta StatModifier wouldn't read correctly as a percentage).
-function statModifierPercent(stat: 'AttackPower' | 'Defense' | 'Speed' | 'Focus'): number {
+function statModifierPercent(
+  stat: 'AttackPower' | 'Defense' | 'Speed' | 'Focus' | 'MagicAttack' | 'MagicDefense',
+): number {
   return (props.combatant.statusEffects ?? [])
     .filter((effect) => effect.kind === 'StatModifier' && effect.stat === stat && effect.isMagnitudePercentOfBaseStat)
     .reduce((sum, effect) => sum + effect.magnitude * effect.stacks, 0);
@@ -63,6 +65,15 @@ const attackModifierPercent = computed(() => statModifierPercent('AttackPower'))
 const defenseModifierPercent = computed(() => statModifierPercent('Defense'));
 const speedModifierPercent = computed(() => statModifierPercent('Speed'));
 const focusModifierPercent = computed(() => statModifierPercent('Focus'));
+const magicAttackModifierPercent = computed(() => statModifierPercent('MagicAttack'));
+const magicDefenseModifierPercent = computed(() => statModifierPercent('MagicDefense'));
+
+// Magic Attack/Defense aren't player-allocatable stats (see statDescriptions.ts,
+// scoped to PlayerStatKind), so their tooltip copy lives here instead.
+const magicAttackDescription =
+  'Puissance des sorts de catégorie Magique. Symétrique à Attaque, mais pour les dégâts magiques uniquement.';
+const magicDefenseDescription =
+  'Réduit les dégâts magiques subis, symétriquement à Défense pour les dégâts physiques.';
 
 defineEmits<{
   select: [combatantId: string];
@@ -193,6 +204,24 @@ const hasAggro = computed(() =>
             class="presence__stat-mod"
             :class="focusModifierPercent > 0 ? 'presence__stat-mod--up' : 'presence__stat-mod--down'"
           >{{ focusModifierPercent > 0 ? '▲' : '▼' }} {{ Math.abs(focusModifierPercent) }}%</span>
+        </div>
+        <div class="presence__details-row">
+          <span>✨</span><b>{{ combatant.magicAttack ?? 0 }}</b>
+          <StatTooltip :text="magicAttackDescription"><small>Attaque magique</small></StatTooltip>
+          <span
+            v-if="magicAttackModifierPercent !== 0"
+            class="presence__stat-mod"
+            :class="magicAttackModifierPercent > 0 ? 'presence__stat-mod--up' : 'presence__stat-mod--down'"
+          >{{ magicAttackModifierPercent > 0 ? '▲' : '▼' }} {{ Math.abs(magicAttackModifierPercent) }}%</span>
+        </div>
+        <div class="presence__details-row">
+          <span>🔮</span><b>{{ combatant.magicDefense ?? 0 }}</b>
+          <StatTooltip :text="magicDefenseDescription"><small>Défense magique</small></StatTooltip>
+          <span
+            v-if="magicDefenseModifierPercent !== 0"
+            class="presence__stat-mod"
+            :class="magicDefenseModifierPercent > 0 ? 'presence__stat-mod--up' : 'presence__stat-mod--down'"
+          >{{ magicDefenseModifierPercent > 0 ? '▲' : '▼' }} {{ Math.abs(magicDefenseModifierPercent) }}%</span>
         </div>
       </div>
     </span>

@@ -342,6 +342,46 @@ describe('CombatantCard', () => {
     expect(wrapper.findAll('.presence__stat-mod').length).toBe(1);
   });
 
+  it('shows the % badge next to Magic Attack when a percent-of-base StatModifier is active', async () => {
+    const wrapper = mountCard(makeCombatant({
+      magicAttack: 18,
+      statusEffects: [
+        {
+          key: 'buff-matk', displayName: 'Ferveur', kind: 'StatModifier', stat: 'MagicAttack', magnitude: 25, stacks: 1,
+          isMagnitudePercentOfBaseStat: true, perTickAmount: 0, ticksRemaining: 5000, isPermanent: false,
+        },
+      ],
+    }));
+    await wrapper.find('.presence__details-trigger').trigger('click');
+    expect(wrapper.text()).toContain('18');
+    expect(wrapper.find('.presence__stat-mod--up').text()).toBe('▲ 25%');
+  });
+
+  it('shows a downward % badge for Magic Defense and none for a flat (non-percent) modifier', async () => {
+    const wrapper = mountCard(makeCombatant({
+      magicDefense: 12,
+      statusEffects: [
+        {
+          key: 'debuff-mdef', displayName: 'Vulnérabilité', kind: 'StatModifier', stat: 'MagicDefense', magnitude: -10, stacks: 1,
+          isMagnitudePercentOfBaseStat: true, perTickAmount: 0, ticksRemaining: 5000, isPermanent: false,
+        },
+      ],
+    }));
+    await wrapper.find('.presence__details-trigger').trigger('click');
+    expect(wrapper.text()).toContain('12');
+    expect(wrapper.find('.presence__stat-mod--down').text()).toBe('▼ 10%');
+    expect(wrapper.findAll('.presence__stat-mod').length).toBe(1);
+  });
+
+  it('defaults Magic Attack and Magic Defense to 0 when absent from the DTO', async () => {
+    const wrapper = mountCard(makeCombatant());
+    await wrapper.find('.presence__details-trigger').trigger('click');
+    const rows = wrapper.findAll('.presence__details-row');
+    const magicRows = rows.slice(-2);
+    expect(magicRows[0].find('b').text()).toBe('0');
+    expect(magicRows[1].find('b').text()).toBe('0');
+  });
+
   it('does not render status effects section when no effects', () => {
     const wrapper = mountCard(makeCombatant({ statusEffects: [] }));
     expect(wrapper.find('.presence__fx').exists()).toBe(false);
