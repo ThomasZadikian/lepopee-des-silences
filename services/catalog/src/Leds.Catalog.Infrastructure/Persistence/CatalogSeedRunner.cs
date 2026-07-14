@@ -78,6 +78,7 @@ public sealed class CatalogSeedRunner
         await SeedBestiaireSqueletteDeSouvenirsAsync(cancellationToken);
         await SeedBestiaireChimeresDesPlainesAsync(cancellationToken);
         await SeedBestiaireCreationsDuForgeronAsync(cancellationToken);
+        await SeedBestiaireBlousesBlanchesAsync(cancellationToken);
         await SeedCanonItemsAsync(cancellationToken);
         await SeedCanonCursesAsync(cancellationToken);
         await SeedCanonLawsAsync(cancellationToken);
@@ -3743,6 +3744,135 @@ public sealed class CatalogSeedRunner
             magicAttack: 6, magicDefense: 6, initiative: 3, mana: 10, menace: 2,
             rarity: "Common", registre: registre,
             boundRoomKeys: new[] { "room.enfer3", "room.enfer4" });
+    }
+
+    private async Task SeedBestiaireBlousesBlanchesAsync(CancellationToken cancellationToken)
+    {
+        const string family = "Blouses Blanches";
+        const string registre = "Deni";
+
+        // Mécanique de famille "Le Dossier" (la première fois qu'un adversaire utilise
+        // chaque type d'action — attaque physique, sort magique, soin, buff — les
+        // Blouses le "consignent" ; entièrement consigné, il subit -10% sur toutes ses
+        // statistiques) n'est pas modélisée — nécessiterait un suivi partagé, par
+        // adversaire, des catégories d'action déjà observées, absent du moteur (même
+        // famille de limitation que l'Ossuaire/la Faim/la Résonance des familles
+        // précédentes).
+
+        // "Placebo" : la doc décrit la négation du prochain soin reçu par la cible
+        // (converti en 0, récupéré en Garde par l'Infirmière) — aucun mécanisme
+        // d'interception d'un soin futur n'existe côté moteur ; approximé par une
+        // garde instantanée directe, simplification à assumer/affiner plus tard.
+        await UpsertSkillAsync("canon.skill.placebo", "Placebo",
+            "Le prochain soin reçu par la cible est nié.",
+            "Buff", "Self", "Guard", mana: 10, power: 10, cancellationToken,
+            category: "Magic");
+
+        await UpsertSkillAsync("canon.skill.bordage", "Bordage",
+            "C'est pour votre bien.",
+            "Debuff", "SingleEnemy", "Debuff", mana: 12, power: 0, cancellationToken,
+            effects: new[]
+            {
+                new SkillEffectSpec("StatModifier", "canon.skill.bordage:speed", -15, TicksPerTurn * 3, Stat: "Speed", MagnitudeIsPercentOfBaseStat: true),
+                new SkillEffectSpec("StatModifier", "canon.skill.bordage:attack", -10, TicksPerTurn * 3, Stat: "AttackPower", MagnitudeIsPercentOfBaseStat: true)
+            },
+            category: "Magic");
+
+        // "Injection blanche" : la doc ajoute la purge d'1 buff de la cible — aucun
+        // mécanisme de dissipation ciblée n'existe côté moteur (voir Marge blanche,
+        // famille Copistes) ; dégâts purs, simplification à assumer/affiner plus tard.
+        await UpsertSkillAsync("canon.skill.injection-blanche", "Injection blanche",
+            "Le produit fait effet : vous redevenez conforme.",
+            "Damage", "SingleEnemy", "Damage", mana: 8, power: 10, cancellationToken,
+            category: "Magic");
+
+        await UpsertSkillAsync("canon.skill.drap-tendu", "Drap tendu",
+            "Le tissu sent le produit ménager.",
+            "Debuff", "SingleEnemy", "Debuff", mana: 6, power: 0, cancellationToken,
+            effects: new[] { new SkillEffectSpec("StatModifier", null, -3, TicksPerTurn * 3, Stat: "Focus") },
+            category: "Physical");
+
+        // "Sonnette" : la doc décrit un appel qui fait jouer un Placebo gratuit à
+        // l'Infirmière si présente — aucun mécanisme ne permet de déclencher l'action
+        // d'un autre combattant hors de son tour côté moteur ; seul le repli ("sinon
+        // +5 Garde sur soi") est câblé.
+        await UpsertSkillAsync("canon.skill.sonnette", "Sonnette",
+            "Appelle.",
+            "Buff", "Self", "Guard", mana: 8, power: 5, cancellationToken,
+            category: "Magic");
+
+        // "Visite" : la doc décrit une attraction de rang — aucun système de rang
+        // n'existe côté moteur (ciblage plat) ; dégâts seuls, simplification à
+        // assumer/affiner plus tard.
+        await UpsertSkillAsync("canon.skill.visite", "Visite",
+            "Approchez. Il attendait.",
+            "Damage", "SingleEnemy", "Damage", mana: 12, power: 14, cancellationToken,
+            category: "Magic");
+
+        // "Tour de clef" : la doc décrit une immobilisation de rang/fuite — sans objet
+        // côté moteur (pas de rang, pas d'action de fuite) ; approximé par un débuff
+        // d'Attaque (la cible "enfermée" perd en initiative offensive), simplification
+        // à assumer/affiner plus tard.
+        await UpsertSkillAsync("canon.skill.tour-de-clef", "Tour de clef",
+            "La chambre est fermée.",
+            "Debuff", "SingleEnemy", "Debuff", mana: 14, power: 0, cancellationToken,
+            effects: new[]
+            {
+                new SkillEffectSpec("StatModifier", null, -10, TicksPerTurn * 2, Stat: "AttackPower", MagnitudeIsPercentOfBaseStat: true)
+            },
+            category: "Magic");
+
+        await UpsertSkillAsync("canon.skill.trousseau", "Trousseau",
+            "Le poids de toutes les portes.",
+            "Damage", "SingleEnemy", "Damage", mana: 0, power: 13, cancellationToken,
+            category: "Physical");
+
+        await UpsertSkillAsync("canon.skill.extinction-des-feux", "Extinction des feux",
+            "Le règlement est appliqué.",
+            "Damage", "SingleEnemy", "Damage", mana: 20, power: 24, cancellationToken,
+            category: "Magic");
+
+        await UpsertEnemyAsync(
+            "canon.enemy.infirmiere-deni", "Infirmière du Déni",
+            "Une silhouette amidonnée, impeccable, dont la coiffe descend trop bas pour qu'on voie les yeux. Elle pousse un chariot dont les fioles sont toutes étiquetées du même mot, illisible. Sa voix est celle de Margot — en plus douce, ce qui est pire. « Vous n'avez pas mal. Regardez le dossier : nulle part il n'est écrit que vous avez mal. »",
+            "Disruptor", family, "Uncommon", "Disruptor", isElite: false,
+            depthMin: 4, depthMax: 9, riskMin: 30, riskMax: 75,
+            roomTypes: new[] { "Memory" },
+            tags: new[] { "bestiaire", "deni", "blouses-blanches", "dossier" },
+            skillKeys: new[] { "canon.skill.placebo", "canon.skill.injection-blanche", "canon.skill.bordage", "canon.skill.anagramme" },
+            vitality: 68, attack: 4, defense: 6, guard: 0, speed: 8, focus: 8,
+            cancellationToken,
+            magicAttack: 12, magicDefense: 11, initiative: 8, mana: 26, menace: 6,
+            rarity: "Uncommon", registre: registre,
+            boundRoomKeys: new[] { "room.hopital", "room.cellulehopital" });
+
+        await UpsertEnemyAsync(
+            "canon.enemy.souvenir-alite", "Souvenir Alité",
+            "Un lit d'hôpital qui se déplace seul, draps tendus sur une forme humaine qui respire. Personne n'est dessous. La forme respire quand même. Sur la table de chevet, des fleurs fanées se refont une jeunesse quand on les regarde. « Il attend une visite. Vous ferez l'affaire. »",
+            "Skirmisher", family, "Common", "Skirmisher", isElite: false,
+            depthMin: 4, depthMax: 9, riskMin: 25, riskMax: 70,
+            roomTypes: new[] { "Memory" },
+            tags: new[] { "bestiaire", "melancolie", "blouses-blanches", "dot" },
+            skillKeys: new[] { "canon.skill.nevrose", "canon.skill.sonnette", "canon.skill.visite", "canon.skill.drap-tendu" },
+            vitality: 56, attack: 6, defense: 8, guard: 0, speed: 4, focus: 5,
+            cancellationToken,
+            magicAttack: 9, magicDefense: 9, initiative: 3, mana: 20, menace: 3,
+            rarity: "Common", registre: "Melancolie",
+            boundRoomKeys: new[] { "room.hopital" });
+
+        await UpsertEnemyAsync(
+            "canon.enemy.regisseur-blanc", "Régisseur des Couloirs Blancs",
+            "Un fonctionnaire immense au dos droit, dont le trousseau de clefs pend jusqu'au sol. Chaque clef ouvre une porte qui n'existe plus. Il arpente les couloirs blancs en vérifiant des serrures absentes, et l'ordre qu'il maintient est si total que l'air lui-même circule en file indienne. « Les visites sont terminées. Elles l'ont toujours été. »",
+            "Support", family, "Rare", "Support", isElite: true,
+            depthMin: 5, depthMax: 9, riskMin: 35, riskMax: 80,
+            roomTypes: new[] { "Memory" },
+            tags: new[] { "bestiaire", "deni", "blouses-blanches", "elite", "control" },
+            skillKeys: new[] { "canon.skill.contemplation-infinie", "canon.skill.tour-de-clef", "canon.skill.trousseau", "canon.skill.extinction-des-feux" },
+            vitality: 96, attack: 11, defense: 11, guard: 0, speed: 5, focus: 6,
+            cancellationToken,
+            magicAttack: 9, magicDefense: 10, initiative: 4, mana: 22, menace: 7,
+            rarity: "Rare", registre: registre,
+            boundRoomKeys: new[] { "room.hopital", "room.cellulehopital" });
     }
 
     private async Task UpsertSkillAsync(

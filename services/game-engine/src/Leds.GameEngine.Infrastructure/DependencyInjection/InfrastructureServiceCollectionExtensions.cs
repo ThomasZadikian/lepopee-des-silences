@@ -227,5 +227,10 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IBossBehavior, Leds.GameEngine.Application.Combats.EnemyTurns.Bossing.Canon.MarteauVivantBossBehavior>();
         services.AddSingleton<IBossBehavior, Leds.GameEngine.Application.Combats.EnemyTurns.Bossing.Canon.SentinelleFonteBossBehavior>();
         services.AddSingleton<IBossBehavior, Leds.GameEngine.Application.Combats.EnemyTurns.Bossing.Canon.ScorieRampanteBossBehavior>();
+
+        // Bestiaire — Les Blouses Blanches (famille 6).
+        services.AddSingleton<IBossBehavior, Leds.GameEngine.Application.Combats.EnemyTurns.Bossing.Canon.InfirmiereDeniBossBehavior>();
+        services.AddSingleton<IBossBehavior, Leds.GameEngine.Application.Combats.EnemyTurns.Bossing.Canon.SouvenirAliteBossBehavior>();
+        services.AddSingleton<IBossBehavior, Leds.GameEngine.Application.Combats.EnemyTurns.Bossing.Canon.RegisseurBlancBossBehavior>();
     }
 }

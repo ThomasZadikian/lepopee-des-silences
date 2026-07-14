@@ -113,6 +113,10 @@ public abstract class CanonBossBehaviorBase : IBossBehavior
         => combatant.StatusEffects.Any(e =>
             e.Kind == StatusEffectKind.StatModifier && e.Stat == stat && e.Magnitude < 0);
 
+    /// <summary>True if the combatant currently carries any active positive (beneficial) StatModifier.</summary>
+    protected static bool HasAnyPositiveStatModifier(Combatant combatant)
+        => combatant.StatusEffects.Any(e => e.Kind == StatusEffectKind.StatModifier && e.Magnitude > 0);
+
     /// <summary>The slowest living player (Speed stat), tie-broken deterministically.</summary>
     protected static Combatant? SlowestPlayer(Combat combat, Combatant boss)
         => LivingPlayers(combat)
