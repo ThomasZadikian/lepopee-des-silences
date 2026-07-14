@@ -1,4 +1,5 @@
 ﻿using Leds.GameEngine.Domain.Combats;
+using Leds.GameEngine.Domain.Combats.StatusEffects;
 using Leds.GameEngine.Domain.Combats.Typing;
 
 namespace Leds.GameEngine.Application.Combats.EnemyTurns.Bossing.Canon;
@@ -65,6 +66,44 @@ public abstract class CanonBossBehaviorBase : IBossBehavior
         => Owns(boss, skillKey)
             ? new BossActionDecision(skillKey, [boss.Id.Value])
             : null;
+
+    /// <summary>Builds a decision hitting every living player (AoE skill on the boss's opposing side).</summary>
+    protected static BossActionDecision? OnAllPlayers(Combatant boss, string skillKey, Combat combat)
+    {
+        var targets = LivingPlayers(combat);
+        return targets.Count > 0 && Owns(boss, skillKey)
+            ? new BossActionDecision(skillKey, targets.Select(p => p.Id.Value).ToArray())
+            : null;
+    }
+
+    /// <summary>Builds a decision hitting every living combatant on the boss's own side (team buff/guard).</summary>
+    protected static BossActionDecision? OnAllAllies(Combatant boss, string skillKey, Combat combat)
+    {
+        var targets = combat.Enemies.Where(e => !e.IsDefeated).ToArray();
+        return targets.Length > 0 && Owns(boss, skillKey)
+            ? new BossActionDecision(skillKey, targets.Select(e => e.Id.Value).ToArray())
+            : null;
+    }
+
+    /// <summary>The fastest living player (Speed stat), tie-broken deterministically.</summary>
+    protected static Combatant? FastestPlayer(Combat combat, Combatant boss)
+        => LivingPlayers(combat)
+            .OrderByDescending(a => a.EffectiveSpeed)
+            .ThenBy(a => DeterministicTieKey(combat, boss, a))
+            .FirstOrDefault();
+
+    /// <summary>The most-wounded living combatant on the boss's own side, excluding the boss itself. Null if none other survive.</summary>
+    protected static Combatant? MostWoundedAlly(Combat combat, Combatant boss)
+        => combat.Enemies
+            .Where(e => !e.IsDefeated && e.Id.Value != boss.Id.Value)
+            .OrderBy(e => HpFraction(e))
+            .ThenBy(e => DeterministicTieKey(combat, boss, e))
+            .FirstOrDefault();
+
+    /// <summary>True if the combatant currently carries an active negative StatModifier on the given stat.</summary>
+    protected static bool HasNegativeStatModifier(Combatant combatant, CombatStat stat)
+        => combatant.StatusEffects.Any(e =>
+            e.Kind == StatusEffectKind.StatModifier && e.Stat == stat && e.Magnitude < 0);
 }
 
 /// <summary>

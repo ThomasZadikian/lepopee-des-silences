@@ -73,6 +73,7 @@ public sealed class CatalogSeedRunner
         await SeedEmotionsAsync(cancellationToken);
         await SeedCanonEnemiesAsync(cancellationToken);
         await SeedCanonSkillsAsync(cancellationToken);
+        await SeedBestiaireVeilleursDuSeuilAsync(cancellationToken);
         await SeedCanonItemsAsync(cancellationToken);
         await SeedCanonCursesAsync(cancellationToken);
         await SeedCanonLawsAsync(cancellationToken);
@@ -2936,6 +2937,167 @@ public sealed class CatalogSeedRunner
                     Stat: "CriticalChanceBonus", AppliesToActor: true)
             },
             category: "Physical");
+    }
+
+    // ── BESTIAIRE — LES VEILLEURS DU SEUIL (Silence · Hall d'entrée, Couloirs, Palier) ──
+    // Première famille du Bestiaire officiel du Palais : silhouettes de service nées
+    // des offenses faites au tapis/seuil du Hall, prolongeant le rituel d'hospitalité
+    // du Majordome. Mécanique de famille "Le Protocole" (tant que le Porteur de
+    // Plateau est en vie, les debuffs des Veilleurs durent plus longtemps ; le tuer
+    // brise le Protocole) et les 5 réactions "Attitude en combat" par créature sont
+    // documentées ici en NarrativeText mais ne sont PAS câblées mécaniquement — elles
+    // demandent un nouveau hook moteur (réaction au dégât subi / mort d'un allié) qui
+    // n'existe pas encore ; c'est le prochain étage du chantier, pas cette passe.
+    private async Task SeedBestiaireVeilleursDuSeuilAsync(CancellationToken cancellationToken)
+    {
+        const string family = "Veilleurs du Seuil";
+        const string registre = "Silence";
+
+        // Pli du tapis (Veilleur du Tapis) : frappe basique flavorée, le tapis claque comme un fouet.
+        await UpsertSkillAsync("canon.skill.pli-du-tapis", "Pli du tapis",
+            "Le tapis se soulève et claque comme un fouet.",
+            "Damage", "SingleEnemy", "Damage", mana: 0, power: 9, cancellationToken,
+            category: "Physical");
+
+        // Étouffement feutré (Veilleur du Tapis) : -15% Vitesse, 3 tours.
+        await UpsertSkillAsync("canon.skill.etouffement-feutre", "Étouffement feutré",
+            "Enroule la cible : le tapis absorbe le bruit des pas.",
+            "Debuff", "SingleEnemy", "Debuff", mana: 8, power: 0, cancellationToken,
+            effects: new[]
+            {
+                new SkillEffectSpec("StatModifier", null, -15, TicksPerTurn * 3,
+                    Stat: "Speed", MagnitudeIsPercentOfBaseStat: true)
+            },
+            category: "Magic");
+
+        // Seuil souillé (Veilleur du Tapis) : punition du protocole — l'IA du Veilleur
+        // ne la lance que sur un adversaire ayant attaqué un Veilleur allié ce tour
+        // (règle comportementale, non une restriction de ciblage moteur).
+        await UpsertSkillAsync("canon.skill.seuil-souille", "Seuil souillé",
+            "Punition du protocole : quiconque frappe un Veilleur en répond devant tous les autres.",
+            "Damage", "SingleEnemy", "Debuff", mana: 12, power: 14, cancellationToken,
+            category: "Magic");
+
+        // Service du thé (Porteur de Plateau) : soin 12% PV max.
+        await UpsertSkillAsync("canon.skill.service-du-the", "Service du thé",
+            "Soigne l'allié le plus blessé. La première tasse fume toujours.",
+            "Heal", "SingleAlly", "Heal", mana: 10, power: 12, cancellationToken,
+            category: "Magic", basePowerIsPercentOfMaxVitality: true);
+
+        // Tasse retournée (Porteur de Plateau) : poison 5 dégâts/tour, 6 tours.
+        await UpsertSkillAsync("canon.skill.tasse-retournee", "Tasse retournée",
+            "La troisième tasse trouve enfin preneur.",
+            "Debuff", "SingleEnemy", "Debuff", mana: 12, power: 0, cancellationToken,
+            effects: new[]
+            {
+                new SkillEffectSpec("DamageOverTime", null, 5, TicksPerTurn * 6, TickInterval: TicksPerTurn)
+            },
+            category: "Magic");
+
+        // Étiquette (Porteur de Plateau) : +3 Focus brut à toute l'équipe, 3 tours.
+        await UpsertSkillAsync("canon.skill.etiquette", "Étiquette",
+            "Le service se resserre.",
+            "Buff", "AllAllies", "Buff", mana: 8, power: 0, cancellationToken,
+            effects: new[] { new SkillEffectSpec("StatModifier", null, 3, TicksPerTurn * 3, Stat: "Focus") },
+            category: "Magic");
+
+        // Formule creuse (Écho de Politesse) : dégâts magiques.
+        await UpsertSkillAsync("canon.skill.formule-creuse", "Formule creuse",
+            "Les mots vides pèsent plus lourd qu'on ne croit.",
+            "Damage", "SingleEnemy", "Damage", mana: 9, power: 13, cancellationToken,
+            category: "Magic");
+
+        // Courbette inversée (Écho de Politesse) : la doc décrit un renvoi de 30% des
+        // prochains dégâts magiques subis — approximé ici en réduction de dégâts
+        // magiques (pas de mécanique de renvoi au moteur ; réduction défensive plutôt
+        // que réflexion offensive, simplification à assumer/affiner plus tard).
+        await UpsertSkillAsync("canon.skill.courbette-inversee", "Courbette inversée",
+            "La politesse se retourne.",
+            "Buff", "Self", "Buff", mana: 11, power: 0, cancellationToken,
+            effects: new[]
+            {
+                new SkillEffectSpec("StatModifier", null, 30, TicksPerTurn * 2, Stat: "MagicDamageReduction")
+            },
+            category: "Magic");
+
+        // Chute de marbre (Sentinelle du Seuil) : frappe lourde. La doc décrit -1 tour
+        // d'ATB pour la Sentinelle elle-même (coût d'auto-interruption) — non câblé
+        // (aucun effet "auto-interruption" authorable aujourd'hui), simplification à
+        // assumer/affiner plus tard.
+        await UpsertSkillAsync("canon.skill.chute-de-marbre", "Chute de marbre",
+            "Frappe lourde mono-cible. Elle doit se redresser.",
+            "Damage", "SingleEnemy", "Damage", mana: 6, power: 18, cancellationToken,
+            category: "Physical");
+
+        // Socle (Sentinelle du Seuil) : garde instantanée de 15.
+        await UpsertSkillAsync("canon.skill.socle", "Socle",
+            "Redevient pilier un instant.",
+            "Buff", "Self", "Guard", mana: 10, power: 15, cancellationToken,
+            category: "Physical");
+
+        // Verdict du seuil (Sentinelle du Seuil) : exécution. La doc exige -DEF ET
+        // -Focus actifs sur la cible — règle comportementale (IA), non une
+        // restriction de ciblage moteur.
+        await UpsertSkillAsync("canon.skill.verdict-du-seuil", "Verdict du seuil",
+            "Le protocole est complet ; la sentence tombe.",
+            "Damage", "SingleEnemy", "Damage", mana: 16, power: 28, cancellationToken,
+            category: "Magic");
+
+        await UpsertEnemyAsync(
+            "canon.enemy.veilleur-tapis", "Veilleur du Tapis",
+            "Une silhouette de majordome sans visage, penchée en permanence vers le sol, comme figée dans une révérence qui n'a jamais eu le droit de se relever. Ses mains gantées lissent inlassablement un pan de tapis bordeaux qui le suit où qu'il aille, cousu à ses chevilles. « Vos pieds. Je vous prie. »",
+            "Guard", family, "Common", "Guard", isElite: false,
+            depthMin: 1, depthMax: 3, riskMin: 1, riskMax: 40,
+            roomTypes: new[] { "Threshold", "Silence" },
+            tags: new[] { "bestiaire", "silence", "veilleurs-du-seuil", "protocole" },
+            skillKeys: new[] { "canon.skill.pli-du-tapis", "canon.skill.rempart", "canon.skill.etouffement-feutre", "canon.skill.seuil-souille" },
+            vitality: 62, attack: 7, defense: 10, guard: 0, speed: 6, focus: 3,
+            cancellationToken,
+            magicAttack: 4, magicDefense: 8, initiative: 5, mana: 10, menace: 2,
+            rarity: "Common", registre: registre,
+            boundRoomKeys: new[] { "room.halldentree", "room.couloirs" });
+
+        await UpsertEnemyAsync(
+            "canon.enemy.porteur-plateau", "Porteur de Plateau",
+            "Un torse en livrée, sans jambes, flottant à hauteur exacte de service. Sur son plateau d'argent : trois tasses. La première fume, la deuxième est vide, la troisième est retournée. Personne n'a jamais bu la troisième. « Thé ? Eau ? Attention ? »",
+            "Support", family, "Common", "Support", isElite: false,
+            depthMin: 1, depthMax: 4, riskMin: 1, riskMax: 45,
+            roomTypes: new[] { "Threshold", "Silence" },
+            tags: new[] { "bestiaire", "silence", "veilleurs-du-seuil", "protocole" },
+            skillKeys: new[] { "canon.skill.priere-aspiration", "canon.skill.service-du-the", "canon.skill.tasse-retournee", "canon.skill.etiquette" },
+            vitality: 44, attack: 4, defense: 5, guard: 0, speed: 9, focus: 6,
+            cancellationToken,
+            magicAttack: 9, magicDefense: 9, initiative: 9, mana: 18, menace: 4,
+            rarity: "Common", registre: registre,
+            boundRoomKeys: new[] { "room.halldentree", "room.couloirs", "room.palier" });
+
+        await UpsertEnemyAsync(
+            "canon.enemy.echo-politesse", "Écho de Politesse",
+            "Une brume en forme de courbette. On la distingue à peine dans les couloirs distordus : un pli dans l'air qui s'incline sur votre passage et ne se redresse que dans votre dos. « Après vous. Non — après vous. »",
+            "Disruptor", family, "Common", "Disruptor", isElite: false,
+            depthMin: 1, depthMax: 5, riskMin: 1, riskMax: 50,
+            roomTypes: new[] { "Threshold", "Silence" },
+            tags: new[] { "bestiaire", "silence", "veilleurs-du-seuil" },
+            skillKeys: new[] { "canon.skill.brume", "canon.skill.formule-creuse", "canon.skill.courbette-inversee", "canon.skill.se-taire" },
+            vitality: 38, attack: 3, defense: 4, guard: 0, speed: 11, focus: 7,
+            cancellationToken,
+            magicAttack: 10, magicDefense: 11, initiative: 11, mana: 16, menace: 3,
+            rarity: "Uncommon", registre: registre,
+            boundRoomKeys: new[] { "room.couloirs", "room.palier" });
+
+        await UpsertEnemyAsync(
+            "canon.enemy.sentinelle-seuil", "Sentinelle du Seuil",
+            "Un pilier de marbre du Hall — l'un des quatre — descendu de son socle. Des veines bleu-violet parcourent sa pierre : la Flamme froide dort dedans. Il marche lentement, et le sol s'essuie tout seul devant ses pas. « Le seuil a été souillé. Cela ne se pardonne pas. »",
+            "Bruiser", family, "Elite", "Bruiser", isElite: true,
+            depthMin: 2, depthMax: 6, riskMin: 2, riskMax: 60,
+            roomTypes: new[] { "Threshold", "Silence" },
+            tags: new[] { "bestiaire", "silence", "veilleurs-du-seuil", "elite" },
+            skillKeys: new[] { "canon.skill.flamme-froide", "canon.skill.chute-de-marbre", "canon.skill.socle", "canon.skill.verdict-du-seuil" },
+            vitality: 88, attack: 11, defense: 12, guard: 0, speed: 5, focus: 4,
+            cancellationToken,
+            magicAttack: 12, magicDefense: 7, initiative: 4, mana: 20, menace: 6,
+            rarity: "Rare", registre: registre,
+            boundRoomKeys: new[] { "room.halldentree", "room.couloirs" });
     }
 
     private async Task UpsertSkillAsync(
