@@ -5473,8 +5473,13 @@ public sealed class CatalogSeedRunner
                 Role = "Boss",
                 BaseDifficulty = difficulty,
                 EncounterWeight = 1,
-                MinRiskLevel = 30,
-                MaxRiskLevel = 100,
+                // Same 1-5 runtime scale as UpsertEnemyAsync's riskMin/riskMax (see the
+                // comment above that method) — bosses are late-game, so they gate on the
+                // top of the range rather than the raw 0-100 convention this used to use,
+                // which made every RoomBoss/FinalBoss fight silently substitute a generic
+                // enemy for the actual named boss.
+                MinRiskLevel = 3,
+                MaxRiskLevel = 5,
                 MinDepth = 3,
                 MaxDepth = 9,
                 IsBoss = true,
@@ -5510,6 +5515,7 @@ public sealed class CatalogSeedRunner
             enemy.Version = version; enemy.Status = "Active";
             enemy.Archetype = "Boss"; enemy.Rank = "Boss"; enemy.Role = "Boss";
             enemy.BaseDifficulty = difficulty; enemy.IsBoss = true; enemy.IsElite = true;
+            enemy.MinRiskLevel = 3; enemy.MaxRiskLevel = 5;
             enemy.CompatibleRoomTypesJson = JsonSerializer.Serialize(roomTypes);
             enemy.TagsJson = JsonSerializer.Serialize(new[] { "canon", "boss" });
             enemy.SkillKeysJson = JsonSerializer.Serialize(skillKeys);

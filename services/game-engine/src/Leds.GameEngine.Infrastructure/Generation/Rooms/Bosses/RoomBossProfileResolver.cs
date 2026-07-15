@@ -36,14 +36,17 @@ public sealed class RoomBossProfileResolver : IRoomBossProfileResolver
             $"{catalogProfile.Key}-v1");
     }
 
+    // BaseDifficulty is seeded as a small integer (CatalogSeedRunner.UpsertBossAsync passes
+    // 2-5 across the five canon bosses), not the 0-100 scale this used to bucket against —
+    // which flattened every boss, including the final boss, to "Low" regardless of severity.
     private static string MapDifficultyToDangerHint(int difficulty)
     {
         return difficulty switch
         {
-            <= 25 => "Low",
-            <= 50 => "Medium",
-            <= 75 => "High",
-            <= 90 => "Very High",
+            <= 1 => "Low",
+            2 => "Medium",
+            3 => "High",
+            4 => "Very High",
             _ => "Extreme"
         };
     }

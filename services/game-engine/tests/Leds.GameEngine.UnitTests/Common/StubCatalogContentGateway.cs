@@ -752,54 +752,59 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
     private static readonly IReadOnlyDictionary<string, CatalogRoomBossProfile> RoomBossProfiles =
         new Dictionary<string, CatalogRoomBossProfile>(StringComparer.OrdinalIgnoreCase)
         {
+            // BaseDifficulty is on the same small 1-5 scale MapDifficultyToDangerHint buckets
+            // against in production (real canon bosses' `difficulty` param, CatalogSeedRunner's
+            // UpsertBossAsync) — kept here at values that reproduce each test's original
+            // expected DangerHint after that bucket function was rescaled off the stale 0-100
+            // convention this fixture used to (incorrectly) assume.
             ["Threshold"] = new CatalogRoomBossProfile(
                 Key: "boss.threshold.warden",
                 DisplayName: "Gardien du Seuil",
                 Description: "Premier gardien de la run. Veille sur le seuil du Palais des Silences.",
                 RoomType: "Threshold",
-                BaseDifficulty: 70,
+                BaseDifficulty: 3,
                 Tags: ["boss", "threshold", "guardian"]),
             ["Forest"] = new CatalogRoomBossProfile(
                 Key: "boss.forest.rootbound-memory",
                 DisplayName: "Gardien des Racines",
                 Description: "Mémoire organique du Palais. Ses racines plongent dans les silences oubliés.",
                 RoomType: "Forest",
-                BaseDifficulty: 45,
+                BaseDifficulty: 2,
                 Tags: ["boss", "forest", "nature"]),
             ["Rupture"] = new CatalogRoomBossProfile(
                 Key: "boss.rupture.fractured-echo",
                 DisplayName: "Fragment de Rupture",
                 Description: "Instable et agressif. Une brèche dans la cohérence du Palais.",
                 RoomType: "Rupture",
-                BaseDifficulty: 65,
+                BaseDifficulty: 3,
                 Tags: ["boss", "rupture", "chaos"]),
             ["Silence"] = new CatalogRoomBossProfile(
                 Key: "boss.silence.mute-herald",
                 DisplayName: "Voix Éteinte",
                 Description: "Systémique, mutique. Altère les règles de la pièce par sa seule présence.",
                 RoomType: "Silence",
-                BaseDifficulty: 50,
+                BaseDifficulty: 2,
                 Tags: ["boss", "silence", "void"]),
             ["Antechamber"] = new CatalogRoomBossProfile(
                 Key: "boss.antechamber.last-door",
                 DisplayName: "Gardien de l'Antichambre",
                 Description: "Avant-poste du Final. Aucun pèlerin n'a franchi cette porte.",
                 RoomType: "Antechamber",
-                BaseDifficulty: 85,
+                BaseDifficulty: 4,
                 Tags: ["boss", "antechamber", "elite"]),
             ["Memory"] = new CatalogRoomBossProfile(
                 Key: "boss.memory.archivist",
                 DisplayName: "Archiviste des Échos",
                 Description: "Lié au Tome et aux fragments de mémoire. Connaît chaque silence.",
                 RoomType: "Memory",
-                BaseDifficulty: 40,
+                BaseDifficulty: 2,
                 Tags: ["boss", "memory", "lore"]),
             ["Final"] = new CatalogRoomBossProfile(
                 Key: "boss.final.himlit",
                 DisplayName: "Him'Lit",
                 Description: "Le silence originel. La source du Palais.",
                 RoomType: "Final",
-                BaseDifficulty: 100,
+                BaseDifficulty: 5,
                 Tags: ["boss", "final", "himlit"])
         };
 
