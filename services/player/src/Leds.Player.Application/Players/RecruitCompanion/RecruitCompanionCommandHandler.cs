@@ -31,7 +31,9 @@ public sealed class RecruitCompanionCommandHandler : IRequestHandler<RecruitComp
             request.Recovery,
             request.Focus,
             request.Mana,
-            request.Charge);
+            request.Charge,
+            request.MagicAttack,
+            request.MagicDefense);
 
         profile.RecruitCompanion(
             request.CompanionDefinitionKey, request.DisplayName, statBlock, request.SkillKeys, _timeProvider.GetUtcNow());

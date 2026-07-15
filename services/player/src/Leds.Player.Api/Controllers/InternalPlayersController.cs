@@ -85,7 +85,7 @@ public sealed class InternalPlayersController : ControllerBase
             playerId, companionKey, request.DisplayName,
             request.MaxVitality, request.AttackPower, request.Defense, request.StartingGuard,
             request.Speed, request.Initiative, request.Recovery, request.Focus, request.Mana, request.Charge,
-            request.SkillKeys);
+            request.SkillKeys, request.MagicAttack, request.MagicDefense);
         var response = await _sender.Send(command, cancellationToken);
 
         return Ok(response);
@@ -225,7 +225,9 @@ public sealed record RecruitCompanionRequest(
     int Focus,
     int Mana,
     int Charge,
-    IReadOnlyCollection<string> SkillKeys);
+    IReadOnlyCollection<string> SkillKeys,
+    int MagicAttack = 0,
+    int MagicDefense = 0);
 
 public sealed record SourceRunRequest(Guid? SourceRunId);
 

@@ -14,7 +14,9 @@ public sealed class PlayerCharacterStatBlock
         int recovery,
         int focus,
         int mana,
-        int charge)
+        int charge,
+        int magicAttack,
+        int magicDefense)
     {
         MaxVitality = maxVitality;
         AttackPower = attackPower;
@@ -26,6 +28,8 @@ public sealed class PlayerCharacterStatBlock
         Focus = focus;
         Mana = mana;
         Charge = charge;
+        MagicAttack = magicAttack;
+        MagicDefense = magicDefense;
     }
 
     public int MaxVitality { get; }
@@ -38,6 +42,8 @@ public sealed class PlayerCharacterStatBlock
     public int Focus { get; }
     public int Mana { get; }
     public int Charge { get; }
+    public int MagicAttack { get; }
+    public int MagicDefense { get; }
 
     public static PlayerCharacterStatBlock Create(
         int maxVitality,
@@ -49,7 +55,9 @@ public sealed class PlayerCharacterStatBlock
         int recovery,
         int focus,
         int mana,
-        int charge)
+        int charge,
+        int magicAttack = 0,
+        int magicDefense = 0)
     {
         if (maxVitality <= 0) throw new DomainException("Max vitality must be greater than zero.");
         if (attackPower < 0) throw new DomainException("Attack power cannot be negative.");
@@ -61,6 +69,8 @@ public sealed class PlayerCharacterStatBlock
         if (focus < 0) throw new DomainException("Focus cannot be negative.");
         if (mana < 0) throw new DomainException("Mana cannot be negative.");
         if (charge < 0) throw new DomainException("Charge cannot be negative.");
+        if (magicAttack < 0) throw new DomainException("Magic attack cannot be negative.");
+        if (magicDefense < 0) throw new DomainException("Magic defense cannot be negative.");
 
         return new PlayerCharacterStatBlock(
             maxVitality,
@@ -72,7 +82,9 @@ public sealed class PlayerCharacterStatBlock
             recovery,
             focus,
             mana,
-            charge);
+            charge,
+            magicAttack,
+            magicDefense);
     }
 
     public static PlayerCharacterStatBlock CreateDefaultPorteur()
@@ -87,7 +99,9 @@ public sealed class PlayerCharacterStatBlock
             recovery: 5,
             focus: 0,
             mana: 0,
-            charge: 0);
+            charge: 0,
+            magicAttack: 0,
+            magicDefense: 0);
     }
 
     // Per-point increment for each allocatable stat. Most stats grant +1; Vitality
@@ -101,16 +115,18 @@ public sealed class PlayerCharacterStatBlock
     {
         return kind switch
         {
-            PlayerStatKind.MaxVitality => Create(MaxVitality + MaxVitalityIncrementPerPoint, AttackPower, Defense, StartingGuard, Speed, Initiative, Recovery, Focus, Mana, Charge),
-            PlayerStatKind.AttackPower => Create(MaxVitality, AttackPower + DefaultIncrementPerPoint, Defense, StartingGuard, Speed, Initiative, Recovery, Focus, Mana, Charge),
-            PlayerStatKind.Defense => Create(MaxVitality, AttackPower, Defense + DefaultIncrementPerPoint, StartingGuard, Speed, Initiative, Recovery, Focus, Mana, Charge),
-            PlayerStatKind.StartingGuard => Create(MaxVitality, AttackPower, Defense, StartingGuard + DefaultIncrementPerPoint, Speed, Initiative, Recovery, Focus, Mana, Charge),
-            PlayerStatKind.Speed => Create(MaxVitality, AttackPower, Defense, StartingGuard, Speed + DefaultIncrementPerPoint, Initiative, Recovery, Focus, Mana, Charge),
-            PlayerStatKind.Initiative => Create(MaxVitality, AttackPower, Defense, StartingGuard, Speed, Initiative + DefaultIncrementPerPoint, Recovery, Focus, Mana, Charge),
-            PlayerStatKind.Recovery => Create(MaxVitality, AttackPower, Defense, StartingGuard, Speed, Initiative, Recovery + DefaultIncrementPerPoint, Focus, Mana, Charge),
-            PlayerStatKind.Focus => Create(MaxVitality, AttackPower, Defense, StartingGuard, Speed, Initiative, Recovery, Focus + DefaultIncrementPerPoint, Mana, Charge),
-            PlayerStatKind.Mana => Create(MaxVitality, AttackPower, Defense, StartingGuard, Speed, Initiative, Recovery, Focus, Mana + ManaIncrementPerPoint, Charge),
-            PlayerStatKind.Charge => Create(MaxVitality, AttackPower, Defense, StartingGuard, Speed, Initiative, Recovery, Focus, Mana, Charge + DefaultIncrementPerPoint),
+            PlayerStatKind.MaxVitality => Create(MaxVitality + MaxVitalityIncrementPerPoint, AttackPower, Defense, StartingGuard, Speed, Initiative, Recovery, Focus, Mana, Charge, MagicAttack, MagicDefense),
+            PlayerStatKind.AttackPower => Create(MaxVitality, AttackPower + DefaultIncrementPerPoint, Defense, StartingGuard, Speed, Initiative, Recovery, Focus, Mana, Charge, MagicAttack, MagicDefense),
+            PlayerStatKind.Defense => Create(MaxVitality, AttackPower, Defense + DefaultIncrementPerPoint, StartingGuard, Speed, Initiative, Recovery, Focus, Mana, Charge, MagicAttack, MagicDefense),
+            PlayerStatKind.StartingGuard => Create(MaxVitality, AttackPower, Defense, StartingGuard + DefaultIncrementPerPoint, Speed, Initiative, Recovery, Focus, Mana, Charge, MagicAttack, MagicDefense),
+            PlayerStatKind.Speed => Create(MaxVitality, AttackPower, Defense, StartingGuard, Speed + DefaultIncrementPerPoint, Initiative, Recovery, Focus, Mana, Charge, MagicAttack, MagicDefense),
+            PlayerStatKind.Initiative => Create(MaxVitality, AttackPower, Defense, StartingGuard, Speed, Initiative + DefaultIncrementPerPoint, Recovery, Focus, Mana, Charge, MagicAttack, MagicDefense),
+            PlayerStatKind.Recovery => Create(MaxVitality, AttackPower, Defense, StartingGuard, Speed, Initiative, Recovery + DefaultIncrementPerPoint, Focus, Mana, Charge, MagicAttack, MagicDefense),
+            PlayerStatKind.Focus => Create(MaxVitality, AttackPower, Defense, StartingGuard, Speed, Initiative, Recovery, Focus + DefaultIncrementPerPoint, Mana, Charge, MagicAttack, MagicDefense),
+            PlayerStatKind.Mana => Create(MaxVitality, AttackPower, Defense, StartingGuard, Speed, Initiative, Recovery, Focus, Mana + ManaIncrementPerPoint, Charge, MagicAttack, MagicDefense),
+            PlayerStatKind.Charge => Create(MaxVitality, AttackPower, Defense, StartingGuard, Speed, Initiative, Recovery, Focus, Mana, Charge + DefaultIncrementPerPoint, MagicAttack, MagicDefense),
+            PlayerStatKind.MagicAttack => Create(MaxVitality, AttackPower, Defense, StartingGuard, Speed, Initiative, Recovery, Focus, Mana, Charge, MagicAttack + DefaultIncrementPerPoint, MagicDefense),
+            PlayerStatKind.MagicDefense => Create(MaxVitality, AttackPower, Defense, StartingGuard, Speed, Initiative, Recovery, Focus, Mana, Charge, MagicAttack, MagicDefense + DefaultIncrementPerPoint),
             _ => throw new DomainException($"Unknown stat kind '{kind}'.")
         };
     }

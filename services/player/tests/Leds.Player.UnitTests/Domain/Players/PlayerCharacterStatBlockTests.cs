@@ -262,17 +262,61 @@ public sealed class PlayerCharacterStatBlockTests
         statBlock.Charge.Should().Be(0);
     }
 
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(-100)]
+    [InlineData(int.MinValue)]
+    public void Create_ShouldRejectNegativeMagicAttack(int magicAttack)
+    {
+        var act = () => PlayerCharacterStatBlock.Create(
+            100, 12, 6, 0, 10, 10, 5, 0, 0, 0, magicAttack, 0);
+
+        act.Should().Throw<DomainException>().WithMessage("*Magic attack*");
+    }
+
+    [Fact]
+    public void Create_ShouldAcceptZeroMagicAttack()
+    {
+        var statBlock = PlayerCharacterStatBlock.Create(
+            100, 12, 6, 0, 10, 10, 5, 0, 0, 0, magicAttack: 0);
+
+        statBlock.MagicAttack.Should().Be(0);
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(-100)]
+    [InlineData(int.MinValue)]
+    public void Create_ShouldRejectNegativeMagicDefense(int magicDefense)
+    {
+        var act = () => PlayerCharacterStatBlock.Create(
+            100, 12, 6, 0, 10, 10, 5, 0, 0, 0, magicDefense: magicDefense);
+
+        act.Should().Throw<DomainException>().WithMessage("*Magic defense*");
+    }
+
+    [Fact]
+    public void Create_ShouldAcceptZeroMagicDefense()
+    {
+        var statBlock = PlayerCharacterStatBlock.Create(
+            100, 12, 6, 0, 10, 10, 5, 0, 0, 0, magicDefense: 0);
+
+        statBlock.MagicDefense.Should().Be(0);
+    }
+
     [Fact]
     public void Create_ShouldAcceptHighStatValues()
     {
         var statBlock = PlayerCharacterStatBlock.Create(
             int.MaxValue, int.MaxValue, int.MaxValue, int.MaxValue,
             int.MaxValue, int.MaxValue, int.MaxValue, int.MaxValue,
-            int.MaxValue, int.MaxValue);
+            int.MaxValue, int.MaxValue, int.MaxValue, int.MaxValue);
 
         statBlock.MaxVitality.Should().Be(int.MaxValue);
         statBlock.AttackPower.Should().Be(int.MaxValue);
         statBlock.Defense.Should().Be(int.MaxValue);
+        statBlock.MagicAttack.Should().Be(int.MaxValue);
+        statBlock.MagicDefense.Should().Be(int.MaxValue);
     }
 
     [Fact]
@@ -304,6 +348,8 @@ public sealed class PlayerCharacterStatBlockTests
     [InlineData(PlayerStatKind.Focus)]
     [InlineData(PlayerStatKind.Mana)]
     [InlineData(PlayerStatKind.Charge)]
+    [InlineData(PlayerStatKind.MagicAttack)]
+    [InlineData(PlayerStatKind.MagicDefense)]
     public void WithIncrementedStat_ShouldIncrementOnlyTheSelectedStat(PlayerStatKind kind)
     {
         var original = PlayerCharacterStatBlock.CreateDefaultPorteur();
@@ -324,6 +370,8 @@ public sealed class PlayerCharacterStatBlockTests
             [PlayerStatKind.Focus] = original.Focus,
             [PlayerStatKind.Mana] = original.Mana,
             [PlayerStatKind.Charge] = original.Charge,
+            [PlayerStatKind.MagicAttack] = original.MagicAttack,
+            [PlayerStatKind.MagicDefense] = original.MagicDefense,
         };
         // Vitality and Mana grant a bigger per-point jump than the other stats.
         var increment = kind switch
@@ -344,6 +392,8 @@ public sealed class PlayerCharacterStatBlockTests
         incremented.Focus.Should().Be(expected[PlayerStatKind.Focus]);
         incremented.Mana.Should().Be(expected[PlayerStatKind.Mana]);
         incremented.Charge.Should().Be(expected[PlayerStatKind.Charge]);
+        incremented.MagicAttack.Should().Be(expected[PlayerStatKind.MagicAttack]);
+        incremented.MagicDefense.Should().Be(expected[PlayerStatKind.MagicDefense]);
     }
 
     [Fact]

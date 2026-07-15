@@ -130,7 +130,9 @@ public sealed record PlayerCharacterStatsDto(
     int Recovery,
     int Focus,
     int Mana,
-    int Charge)
+    int Charge,
+    int MagicAttack,
+    int MagicDefense)
 {
     public static PlayerCharacterStatsDto FromDomain(PlayerCharacterStatBlock statBlock)
     {
@@ -144,7 +146,9 @@ public sealed record PlayerCharacterStatsDto(
             statBlock.Recovery,
             statBlock.Focus,
             statBlock.Mana,
-            statBlock.Charge);
+            statBlock.Charge,
+            statBlock.MagicAttack,
+            statBlock.MagicDefense);
     }
 }
 

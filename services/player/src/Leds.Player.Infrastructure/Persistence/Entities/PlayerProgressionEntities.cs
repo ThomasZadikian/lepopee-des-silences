@@ -14,6 +14,8 @@ public sealed class PlayerCharacterStatBlockEntity
     public int Focus { get; set; }
     public int Mana { get; set; }
     public int Charge { get; set; }
+    public int MagicAttack { get; set; }
+    public int MagicDefense { get; set; }
 
     public PlayerCharacterEntity PlayerCharacter { get; set; } = null!;
 }

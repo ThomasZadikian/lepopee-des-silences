@@ -11,5 +11,7 @@ public enum PlayerStatKind
     Recovery,
     Focus,
     Mana,
-    Charge
+    Charge,
+    MagicAttack,
+    MagicDefense
 }

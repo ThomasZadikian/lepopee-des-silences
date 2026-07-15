@@ -16,4 +16,6 @@ public sealed record RecruitCompanionCommand(
     int Focus,
     int Mana,
     int Charge,
-    IReadOnlyCollection<string> SkillKeys) : IRequest<PlayerProfileDto>;
+    IReadOnlyCollection<string> SkillKeys,
+    int MagicAttack = 0,
+    int MagicDefense = 0) : IRequest<PlayerProfileDto>;
