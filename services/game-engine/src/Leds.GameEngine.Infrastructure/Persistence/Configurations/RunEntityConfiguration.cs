@@ -29,6 +29,8 @@ public sealed class RunEntityConfiguration : IEntityTypeConfiguration<RunEntity>
         builder.Property(run => run.Defense).HasColumnName("defense");
         builder.Property(run => run.Speed).HasColumnName("speed");
         builder.Property(run => run.Focus).HasColumnName("focus");
+        builder.Property(run => run.MagicAttack).HasColumnName("magic_attack").HasDefaultValue(0);
+        builder.Property(run => run.MagicDefense).HasColumnName("magic_defense").HasDefaultValue(0);
         builder.Property(run => run.RunItemCapacity).HasColumnName("run_item_capacity").HasDefaultValue(Run.DefaultRunItemCapacity);
         builder.Property(run => run.TypedDamageReductionsJson).HasColumnName("typed_damage_reductions_json");
         builder.Property(run => run.HitChanceBonusPercent).HasColumnName("hit_chance_bonus_percent").HasDefaultValue(0);

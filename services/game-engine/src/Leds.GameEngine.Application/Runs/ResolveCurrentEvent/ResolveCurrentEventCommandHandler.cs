@@ -194,6 +194,7 @@ public sealed class ResolveCurrentEventCommandHandler
                 combatId, draft, run.PlayerState, run.RunModifiers,
                 attackPower: run.Attack, defense: run.Defense, speed: run.Speed,
                 palaceRoomState: room.PalaceState, focus: run.Focus,
+                magicAttack: run.MagicAttack, magicDefense: run.MagicDefense,
                 skillEffects: skillEffects,
                 typedDamageReductions: ToTypedDamageReductions(run.TypedDamageReductions),
                 hitChanceBonusPercent: run.HitChanceBonusPercent,
@@ -416,6 +417,8 @@ public sealed class ResolveCurrentEventCommandHandler
             Focus: protagonist.StatBlock.Focus,
             Mana: protagonist.StatBlock.Mana,
             Charge: protagonist.StatBlock.Charge,
+            MagicAttack: protagonist.StatBlock.MagicAttack,
+            MagicDefense: protagonist.StatBlock.MagicDefense,
             Skills: MapCharacterSkills(protagonist)));
 
         foreach (var companion in characters.Skip(1).Take(4))
@@ -436,6 +439,8 @@ public sealed class ResolveCurrentEventCommandHandler
                 Focus: companion.StatBlock.Focus,
                 Mana: companion.StatBlock.Mana,
                 Charge: companion.StatBlock.Charge,
+                MagicAttack: companion.StatBlock.MagicAttack,
+                MagicDefense: companion.StatBlock.MagicDefense,
                 Skills: MapCharacterSkills(companion)));
         }
 

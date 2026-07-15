@@ -22,4 +22,6 @@ public sealed record CatalogCompanionKit(
     int Focus,
     int Mana,
     int Charge,
-    IReadOnlyCollection<string> SkillKeys);
+    IReadOnlyCollection<string> SkillKeys,
+    int MagicAttack = 0,
+    int MagicDefense = 0);

@@ -110,6 +110,8 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
         var effectiveDefense = EffectiveStat("Defense", mainCharacter.Stats.Defense);
         var effectiveSpeed = EffectiveStat("Speed", mainCharacter.Stats.Speed);
         var effectiveFocus = EffectiveStat("Focus", mainCharacter.Stats.Focus);
+        var effectiveMagicAttack = EffectiveStat("MagicAttack", mainCharacter.Stats.MagicAttack);
+        var effectiveMagicDefense = EffectiveStat("MagicDefense", mainCharacter.Stats.MagicDefense);
         var effectiveMana = EffectiveStat("Mana", mainCharacter.Stats.Mana);
         var effectiveCharge = EffectiveStat("Charge", mainCharacter.Stats.Charge);
         var effectiveRunItemCapacity = EffectiveStat("RunItemCapacity", Run.DefaultRunItemCapacity);
@@ -240,6 +242,8 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
             defense: effectiveDefense,
             speed: effectiveSpeed,
             focus: effectiveFocus,
+            magicAttack: effectiveMagicAttack,
+            magicDefense: effectiveMagicDefense,
             mana: effectiveMana,
             maxMana: effectiveMana,
             charge: effectiveCharge,
@@ -274,7 +278,9 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
                     recovery: c.Stats.Recovery,
                     focus: c.Stats.Focus,
                     mana: c.Stats.Mana,
-                    charge: c.Stats.Charge);
+                    charge: c.Stats.Charge,
+                    magicAttack: c.Stats.MagicAttack,
+                    magicDefense: c.Stats.MagicDefense);
 
                 var skillSnapshots = c.Skills
                     .Select(s => RunCharacterSkillSnapshot.Create(

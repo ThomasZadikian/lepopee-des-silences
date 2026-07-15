@@ -15,7 +15,9 @@ public sealed class RunCharacterStatSnapshot
         int recovery,
         int focus,
         int mana,
-        int charge)
+        int charge,
+        int magicAttack,
+        int magicDefense)
     {
         Id = id;
         MaxVitality = maxVitality;
@@ -28,6 +30,8 @@ public sealed class RunCharacterStatSnapshot
         Focus = focus;
         Mana = mana;
         Charge = charge;
+        MagicAttack = magicAttack;
+        MagicDefense = magicDefense;
     }
 
     public Guid Id { get; }
@@ -41,6 +45,8 @@ public sealed class RunCharacterStatSnapshot
     public int Focus { get; }
     public int Mana { get; }
     public int Charge { get; }
+    public int MagicAttack { get; }
+    public int MagicDefense { get; }
 
     public static RunCharacterStatSnapshot Create(
         int maxVitality,
@@ -52,7 +58,9 @@ public sealed class RunCharacterStatSnapshot
         int recovery,
         int focus,
         int mana,
-        int charge)
+        int charge,
+        int magicAttack = 0,
+        int magicDefense = 0)
     {
         if (maxVitality <= 0)
             throw new DomainException("Max vitality must be greater than zero.");
@@ -84,6 +92,12 @@ public sealed class RunCharacterStatSnapshot
         if (charge < 0)
             throw new DomainException("Charge cannot be negative.");
 
+        if (magicAttack < 0)
+            throw new DomainException("Magic attack cannot be negative.");
+
+        if (magicDefense < 0)
+            throw new DomainException("Magic defense cannot be negative.");
+
         return new RunCharacterStatSnapshot(
             Guid.NewGuid(),
             maxVitality,
@@ -95,7 +109,9 @@ public sealed class RunCharacterStatSnapshot
             recovery,
             focus,
             mana,
-            charge);
+            charge,
+            magicAttack,
+            magicDefense);
     }
 
     public static RunCharacterStatSnapshot CreateDefault()
@@ -111,7 +127,9 @@ public sealed class RunCharacterStatSnapshot
             recovery: 5,
             focus: 0,
             mana: 0,
-            charge: 0);
+            charge: 0,
+            magicAttack: 0,
+            magicDefense: 0);
     }
 
     public static RunCharacterStatSnapshot Rehydrate(
@@ -125,7 +143,9 @@ public sealed class RunCharacterStatSnapshot
         int recovery,
         int focus,
         int mana,
-        int charge)
+        int charge,
+        int magicAttack = 0,
+        int magicDefense = 0)
     {
         return new RunCharacterStatSnapshot(
             id,
@@ -138,6 +158,8 @@ public sealed class RunCharacterStatSnapshot
             recovery,
             focus,
             mana,
-            charge);
+            charge,
+            magicAttack,
+            magicDefense);
     }
 }

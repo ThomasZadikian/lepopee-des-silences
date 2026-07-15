@@ -288,7 +288,9 @@ public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver
                     mana: kit?.Mana ?? 0,
                     charge: kit?.Charge ?? 0,
                     skillKeys: kit?.SkillKeys ?? new[] { "skill.basic.guard" },
-                    cancellationToken);
+                    cancellationToken,
+                    magicAttack: kit?.MagicAttack ?? 0,
+                    magicDefense: kit?.MagicDefense ?? 0);
                 return $"{npc.DisplayName} se joint à vous, désormais — pour de bon.";
 
             case "ReputationBoost":

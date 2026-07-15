@@ -14,4 +14,6 @@ public sealed record CompanionKitSpec(
     int Focus,
     int Mana,
     int Charge,
-    IReadOnlyList<string> SkillKeys);
+    IReadOnlyList<string> SkillKeys,
+    int MagicAttack = 0,
+    int MagicDefense = 0);

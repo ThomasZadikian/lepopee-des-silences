@@ -55,7 +55,9 @@ public sealed class HttpPlayerRunSnapshotGateway : IPlayerRunSnapshotGateway
                             Recovery: c.Stats.Recovery,
                             Focus: c.Stats.Focus,
                             Mana: c.Stats.Mana,
-                            Charge: c.Stats.Charge)
+                            Charge: c.Stats.Charge,
+                            MagicAttack: c.Stats.MagicAttack,
+                            MagicDefense: c.Stats.MagicDefense)
                         : new PlayerRunSnapshotCharacterStats(
                             MaxVitality: c.MaxVitality,
                             AttackPower: 12,
@@ -126,7 +128,9 @@ public sealed class HttpPlayerRunSnapshotGateway : IPlayerRunSnapshotGateway
         int Recovery,
         int Focus,
         int Mana,
-        int Charge);
+        int Charge,
+        int MagicAttack = 0,
+        int MagicDefense = 0);
 
     private sealed record PlayerRunSnapshotCharacterSkillResponse(
         string SkillDefinitionKey,

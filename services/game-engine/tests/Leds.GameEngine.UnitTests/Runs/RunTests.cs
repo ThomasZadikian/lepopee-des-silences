@@ -65,6 +65,42 @@ public sealed class RunTests
     }
 
     [Fact]
+    public void StartNew_ShouldSeedMagicAttackAndMagicDefense_FromArguments()
+    {
+        var initialRoom = TestGameEngineFactory.CreateThresholdRoom();
+
+        var run = Run.StartNew(
+            Guid.NewGuid(),
+            "seed-magic-stats",
+            "gen-0.4.0",
+            "markov-0.2.0",
+            initialRoom,
+            DateTimeOffset.UtcNow,
+            magicAttack: 9,
+            magicDefense: 4);
+
+        run.MagicAttack.Should().Be(9);
+        run.MagicDefense.Should().Be(4);
+    }
+
+    [Fact]
+    public void StartNew_ShouldDefaultMagicAttackAndMagicDefense_ToZero_WhenNotProvided()
+    {
+        var initialRoom = TestGameEngineFactory.CreateThresholdRoom();
+
+        var run = Run.StartNew(
+            Guid.NewGuid(),
+            "seed-magic-stats-default",
+            "gen-0.4.0",
+            "markov-0.2.0",
+            initialRoom,
+            DateTimeOffset.UtcNow);
+
+        run.MagicAttack.Should().Be(0);
+        run.MagicDefense.Should().Be(0);
+    }
+
+    [Fact]
     public void AppendJournalEntry_ShouldRecordText_WhenJournalEnabled()
     {
         var initialRoom = TestGameEngineFactory.CreateThresholdRoom();

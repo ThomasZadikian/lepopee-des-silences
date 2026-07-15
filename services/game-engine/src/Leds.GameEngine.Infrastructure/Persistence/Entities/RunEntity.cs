@@ -18,6 +18,8 @@ public sealed class RunEntity
     public int Defense { get; set; }
     public int Speed { get; set; }
     public int Focus { get; set; }
+    public int MagicAttack { get; set; }
+    public int MagicDefense { get; set; }
     public int RunItemCapacity { get; set; }
     public string? TypedDamageReductionsJson { get; set; }
     public int HitChanceBonusPercent { get; set; }

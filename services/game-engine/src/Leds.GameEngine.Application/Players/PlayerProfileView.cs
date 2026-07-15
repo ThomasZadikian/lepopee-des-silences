@@ -46,7 +46,9 @@ public sealed record PlayerCharacterStatsView(
     int Recovery,
     int Focus,
     int Mana,
-    int Charge);
+    int Charge,
+    int MagicAttack = 0,
+    int MagicDefense = 0);
 
 public sealed record PlayerProgressionView(
     int UnspentStatPoints,

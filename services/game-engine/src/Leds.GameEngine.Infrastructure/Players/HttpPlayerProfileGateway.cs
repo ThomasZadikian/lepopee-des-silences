@@ -159,13 +159,15 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
         Guid playerId, string companionDefinitionKey, string displayName,
         int maxVitality, int attackPower, int defense, int startingGuard,
         int speed, int initiative, int recovery, int focus, int mana, int charge,
-        IReadOnlyCollection<string> skillKeys, CancellationToken cancellationToken)
+        IReadOnlyCollection<string> skillKeys, CancellationToken cancellationToken,
+        int magicAttack = 0, int magicDefense = 0)
     {
         var response = await _httpClient.PostAsJsonAsync(
             $"/api/v2/internal/players/{playerId}/companions/{companionDefinitionKey}/recruit",
             new RecruitCompanionRequestBody(
                 displayName, maxVitality, attackPower, defense, startingGuard,
-                speed, initiative, recovery, focus, mana, charge, skillKeys),
+                speed, initiative, recovery, focus, mana, charge, skillKeys,
+                magicAttack, magicDefense),
             cancellationToken);
 
         return await ReadProfileAsync(response, playerId, cancellationToken);
@@ -256,7 +258,9 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
                         c.Stats.Recovery,
                         c.Stats.Focus,
                         c.Stats.Mana,
-                        c.Stats.Charge),
+                        c.Stats.Charge,
+                        c.Stats.MagicAttack,
+                        c.Stats.MagicDefense),
                     MaxEquippedSkills: c.MaxEquippedSkills,
                     Items: (c.Items ?? [])
                         .Select(i => new PlayerCharacterItemView(i.ItemKey, i.AcquiredAtUtc, i.Source, i.IsEquipped))
@@ -289,7 +293,9 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
         int Focus,
         int Mana,
         int Charge,
-        IReadOnlyCollection<string> SkillKeys);
+        IReadOnlyCollection<string> SkillKeys,
+        int MagicAttack = 0,
+        int MagicDefense = 0);
 
     private sealed record UnlockSkillRequestBody(string Source);
 
@@ -347,7 +353,9 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
         int Recovery,
         int Focus,
         int Mana,
-        int Charge);
+        int Charge,
+        int MagicAttack = 0,
+        int MagicDefense = 0);
 
     private sealed record PlayerProgressionResponse(
         int UnspentStatPoints,

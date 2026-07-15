@@ -37,6 +37,8 @@ public static class RunPersistenceMapper
             Defense = run.Defense,
             Speed = run.Speed,
             Focus = run.Focus,
+            MagicAttack = run.MagicAttack,
+            MagicDefense = run.MagicDefense,
             RunItemCapacity = run.RunItemCapacity,
             TypedDamageReductionsJson = run.TypedDamageReductions.Count > 0
                 ? JsonSerializer.Serialize(run.TypedDamageReductions)
@@ -290,7 +292,9 @@ public static class RunPersistenceMapper
             Recovery = stat.Recovery,
             Focus = stat.Focus,
             Mana = stat.Mana,
-            Charge = stat.Charge
+            Charge = stat.Charge,
+            MagicAttack = stat.MagicAttack,
+            MagicDefense = stat.MagicDefense
         };
     }
 
@@ -464,7 +468,9 @@ public static class RunPersistenceMapper
             himLitProtectionEnabled: entity.HimLitProtectionEnabled,
             healingBonusPercent: entity.HealingBonusPercent,
             caliceInfiniEnabled: entity.CaliceInfiniEnabled,
-            caliceInfiniLastUsedRoomIndex: entity.CaliceInfiniLastUsedRoomIndex);
+            caliceInfiniLastUsedRoomIndex: entity.CaliceInfiniLastUsedRoomIndex,
+            magicAttack: entity.MagicAttack,
+            magicDefense: entity.MagicDefense);
 
         RehydrateNpcEncounters(run, entity);
         return run;
@@ -650,7 +656,9 @@ public static class RunPersistenceMapper
             entity.Recovery,
             entity.Focus,
             entity.Mana,
-            entity.Charge);
+            entity.Charge,
+            entity.MagicAttack,
+            entity.MagicDefense);
     }
 
     private static RunCharacterSkillSnapshot ToDomainCharacterSkillSnapshot(RunCharacterSkillSnapshotEntity entity)

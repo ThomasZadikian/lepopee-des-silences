@@ -338,6 +338,107 @@ public sealed class StartRunCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_ShouldSeedRunMagicAttackAndMagicDefense_FromSnapshotAndEquipmentBonuses()
+    {
+        var playerId = Guid.NewGuid();
+        var now = new DateTimeOffset(2026, 5, 30, 12, 0, 0, TimeSpan.Zero);
+
+        var initialRoom = TestGameEngineFactory.CreateThresholdRoom();
+
+        var generator = new Mock<IRunGenerator>();
+        generator.SetupGet(service => service.GeneratorVersion).Returns("gen-0.1.0");
+        generator.SetupGet(service => service.MarkovMatrixVersion).Returns("markov-0.1.0");
+        generator.Setup(service => service.GenerateSeed()).Returns("seed-test-magic");
+        generator.Setup(service => service.GenerateInitialRoomAsync("seed-test-magic", CancellationToken.None)).ReturnsAsync(initialRoom);
+
+        var repository = new Mock<IRunRepository>();
+
+        var playerGateway = new Mock<IPlayerRunSnapshotGateway>();
+        playerGateway
+            .Setup(g => g.GetRunSnapshotAsync(playerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new PlayerRunSnapshot(
+                playerId,
+                "Test Player",
+                [new PlayerRunSnapshotCharacter(
+                    Guid.NewGuid(),
+                    "character.player.self",
+                    "Le Porteur",
+                    Stats: new PlayerRunSnapshotCharacterStats(
+                        MaxVitality: 100,
+                        AttackPower: 12,
+                        Defense: 6,
+                        StartingGuard: 0,
+                        Speed: 10,
+                        Initiative: 10,
+                        Recovery: 5,
+                        Focus: 0,
+                        Mana: 0,
+                        Charge: 0,
+                        MagicAttack: 9,
+                        MagicDefense: 4),
+                    Skills:
+                    [
+                        new PlayerRunSnapshotCharacterSkill(
+                            SkillDefinitionKey: "skill.basic.strike",
+                            DisplayName: "Frappe",
+                            SkillType: "Damage",
+                            TargetingMode: "SingleEnemy",
+                            EffectType: "Damage",
+                            ManaCost: 0,
+                            ChargeCost: 0,
+                            BasePower: 10)
+                    ],
+                    EquippedItemKeys: ["item.equipment.monocle"])]));
+
+        var clock = new Mock<IClock>();
+        clock.SetupGet(service => service.UtcNow).Returns(now);
+
+        var catalogGateway = new Mock<ICatalogContentGateway>();
+        catalogGateway
+            .Setup(g => g.GetItemDefinitionByKeyAsync("item.equipment.monocle", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<CatalogItemDefinitionSnapshot>.Success(new CatalogItemDefinitionSnapshot(
+                "item.equipment.monocle",
+                "1.0",
+                "Monocle",
+                "Un monocle qui augmente l'attaque magique.",
+                null,
+                "Equipment",
+                "Accessory",
+                "Rare",
+                "PermanentEquip",
+                "Permanent",
+                "None",
+                1,
+                false,
+                false,
+                null,
+                IsPermanentEligible: true,
+                EquipmentEffects:
+                [
+                    new CatalogItemEquipmentEffect("StatBonus", "MagicAttack", 3, null, null)
+                ])));
+
+        var playerProfileGateway = CreateProfileGateway(playerId);
+        var handler = new StartRunCommandHandler(
+            generator.Object,
+            repository.Object,
+            playerGateway.Object,
+            playerProfileGateway.Object,
+            catalogGateway.Object,
+            clock.Object);
+
+        await handler.Handle(
+            new StartRunCommand(playerId),
+            CancellationToken.None);
+
+        var capturedRun = (Run)repository.Invocations
+            .Single(i => i.Method.Name == nameof(IRunRepository.AddAsync)).Arguments[0];
+
+        capturedRun.MagicAttack.Should().Be(12);
+        capturedRun.MagicDefense.Should().Be(4);
+    }
+
+    [Fact]
     public async Task Handle_ShouldResolveEquippedSkill_FromCatalog_NotFromSnapshotGuess()
     {
         var playerId = Guid.NewGuid();

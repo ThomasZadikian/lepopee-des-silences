@@ -30,7 +30,9 @@ public sealed record PlayerRunSnapshotCharacterStats(
     int Recovery,
     int Focus,
     int Mana,
-    int Charge);
+    int Charge,
+    int MagicAttack = 0,
+    int MagicDefense = 0);
 
 public sealed record PlayerRunSnapshotCharacterSkill(
     string SkillDefinitionKey,

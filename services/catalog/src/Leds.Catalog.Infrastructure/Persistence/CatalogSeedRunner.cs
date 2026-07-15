@@ -1456,7 +1456,8 @@ public sealed class CatalogSeedRunner
                 CompanionKit: new CompanionKitSpec(
                     MaxVitality: 85, AttackPower: 15, Defense: 4, StartingGuard: 0,
                     Speed: 13, Initiative: 12, Recovery: 4, Focus: 3, Mana: 15, Charge: 0,
-                    SkillKeys: new[] { "skill.basic.strike", "canon.skill.impulsivite" }))
+                    SkillKeys: new[] { "skill.basic.strike", "canon.skill.impulsivite" },
+                    MagicAttack: 3, MagicDefense: 2))
         };
 
         return await UpsertNpcAsync("npc.mane", "Mané",
@@ -1533,7 +1534,8 @@ public sealed class CatalogSeedRunner
                 CompanionKit: new CompanionKitSpec(
                     MaxVitality: 110, AttackPower: 8, Defense: 12, StartingGuard: 8,
                     Speed: 8, Initiative: 8, Recovery: 6, Focus: 2, Mana: 14, Charge: 0,
-                    SkillKeys: new[] { "skill.basic.strike", "skill.basic.guard", "canon.skill.fondations-de-thomas" }))
+                    SkillKeys: new[] { "skill.basic.strike", "skill.basic.guard", "canon.skill.fondations-de-thomas" },
+                    MagicAttack: 4, MagicDefense: 11))
         };
 
         return await UpsertNpcAsync("npc.thomas", "Thomas",
@@ -2058,7 +2060,8 @@ public sealed class CatalogSeedRunner
                 CompanionKit: new CompanionKitSpec(
                     MaxVitality: 65, AttackPower: 5, Defense: 5, StartingGuard: 2,
                     Speed: 10, Initiative: 9, Recovery: 5, Focus: 5, Mana: 22, Charge: 0,
-                    SkillKeys: new[] { "skill.basic.strike", "canon.skill.veillee-de-mina" }))
+                    SkillKeys: new[] { "skill.basic.strike", "canon.skill.veillee-de-mina" },
+                    MagicAttack: 12, MagicDefense: 8))
         };
 
         return await UpsertNpcAsync("npc.mina", "Mina",
@@ -2145,7 +2148,8 @@ public sealed class CatalogSeedRunner
                 CompanionKit: new CompanionKitSpec(
                     MaxVitality: 80, AttackPower: 4, Defense: 6, StartingGuard: 0,
                     Speed: 9, Initiative: 8, Recovery: 5, Focus: 7, Mana: 26, Charge: 0,
-                    SkillKeys: new[] { "skill.basic.strike", "canon.skill.baiser-delise" }))
+                    SkillKeys: new[] { "skill.basic.strike", "canon.skill.baiser-delise" },
+                    MagicAttack: 15, MagicDefense: 9))
         };
 
         return await UpsertNpcAsync("npc.elise", "Elise",
@@ -2240,7 +2244,8 @@ public sealed class CatalogSeedRunner
                 CompanionKit: new CompanionKitSpec(
                     MaxVitality: 90, AttackPower: 13, Defense: 5, StartingGuard: 0,
                     Speed: 14, Initiative: 14, Recovery: 4, Focus: 6, Mana: 10, Charge: 0,
-                    SkillKeys: new[] { "skill.basic.strike", "canon.skill.vol-a-la-tire" }))
+                    SkillKeys: new[] { "skill.basic.strike", "canon.skill.vol-a-la-tire" },
+                    MagicAttack: 4, MagicDefense: 4))
         };
 
         return await UpsertNpcAsync("npc.john", "John",

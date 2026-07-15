@@ -32,7 +32,9 @@ public sealed record CompanionKitSpecDto(
     int Focus,
     int Mana,
     int Charge,
-    IReadOnlyCollection<string> SkillKeys)
+    IReadOnlyCollection<string> SkillKeys,
+    int MagicAttack = 0,
+    int MagicDefense = 0)
 {
     public static CompanionKitSpecDto FromDomain(CompanionKitSpec kit) => new(
         kit.MaxVitality,
@@ -45,5 +47,7 @@ public sealed record CompanionKitSpecDto(
         kit.Focus,
         kit.Mana,
         kit.Charge,
-        kit.SkillKeys.ToArray());
+        kit.SkillKeys.ToArray(),
+        kit.MagicAttack,
+        kit.MagicDefense);
 }

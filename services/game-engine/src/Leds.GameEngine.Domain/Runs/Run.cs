@@ -161,7 +161,9 @@ public sealed class Run
         bool himLitProtectionEnabled = false,
         int healingBonusPercent = 0,
         bool caliceInfiniEnabled = false,
-        int? caliceInfiniLastUsedRoomIndex = null)
+        int? caliceInfiniLastUsedRoomIndex = null,
+        int magicAttack = 0,
+        int magicDefense = 0)
     {
         Id = id;
         PlayerId = playerId;
@@ -177,6 +179,8 @@ public sealed class Run
         Defense = defense;
         Speed = speed;
         Focus = focus;
+        MagicAttack = magicAttack;
+        MagicDefense = magicDefense;
         CurrentRoomIndex = currentRoomIndex;
         ActiveCombatId = activeCombatId;
         PendingRewardOfferId = pendingRewardOfferId;
@@ -403,6 +407,10 @@ public sealed class Run
     /// </summary>
     public int Focus { get; }
 
+    public int MagicAttack { get; private set; }
+
+    public int MagicDefense { get; private set; }
+
     /// <summary>
     /// Equipment-driven typed damage reductions (EmotionalType name -> percent 0-100),
     /// computed once at run start from equipped items (SFD equipment §8) and immutable
@@ -533,7 +541,9 @@ public sealed class Run
         int reputationGainBonusPercent = 0,
         bool himLitProtectionEnabled = false,
         int healingBonusPercent = 0,
-        bool caliceInfiniEnabled = false)
+        bool caliceInfiniEnabled = false,
+        int magicAttack = 0,
+        int magicDefense = 0)
     {
         if (playerId == Guid.Empty)
         {
@@ -639,7 +649,9 @@ public sealed class Run
             reputationGainBonusPercent: reputationGainBonusPercent,
             himLitProtectionEnabled: himLitProtectionEnabled,
             healingBonusPercent: healingBonusPercent,
-            caliceInfiniEnabled: caliceInfiniEnabled);
+            caliceInfiniEnabled: caliceInfiniEnabled,
+            magicAttack: magicAttack,
+            magicDefense: magicDefense);
 
         run.PlayerState = PlayerRuntimeState.Create(
             maxVitality: maxHp,
@@ -1955,11 +1967,13 @@ public sealed class Run
         bool himLitProtectionEnabled = false,
         int healingBonusPercent = 0,
         bool caliceInfiniEnabled = false,
-        int? caliceInfiniLastUsedRoomIndex = null)
+        int? caliceInfiniLastUsedRoomIndex = null,
+        int magicAttack = 0,
+        int magicDefense = 0)
     {
         var firstRoom = rooms.First();
 
-        var run = new Run(id, playerId, seed, generatorVersion, markovMatrixVersion, status, firstRoom, startedAt, maxHp, currentHp, attack, defense, speed, focus, currentRoomIndex, activeCombatId, pendingRewardOfferId, runItemCapacity, typedDamageReductions, hitChanceBonusPercent, dotDurationReductionPercent, dotDamageReductionPercent, dotDamageBonusPercent, magicDamageBonusPercent, magicDamageReductionPercent, criticalChanceBonusPercent, guardBonusPercent, journalEnabled, lawDenialEnabled, lawDenialLastUsedRoomIndex, reputationGainBonusPercent, himLitProtectionEnabled, healingBonusPercent, caliceInfiniEnabled, caliceInfiniLastUsedRoomIndex);
+        var run = new Run(id, playerId, seed, generatorVersion, markovMatrixVersion, status, firstRoom, startedAt, maxHp, currentHp, attack, defense, speed, focus, currentRoomIndex, activeCombatId, pendingRewardOfferId, runItemCapacity, typedDamageReductions, hitChanceBonusPercent, dotDurationReductionPercent, dotDamageReductionPercent, dotDamageBonusPercent, magicDamageBonusPercent, magicDamageReductionPercent, criticalChanceBonusPercent, guardBonusPercent, journalEnabled, lawDenialEnabled, lawDenialLastUsedRoomIndex, reputationGainBonusPercent, himLitProtectionEnabled, healingBonusPercent, caliceInfiniEnabled, caliceInfiniLastUsedRoomIndex, magicAttack, magicDefense);
         foreach (var room in rooms.Skip(1))
         {
             run._rooms.Add(room);
