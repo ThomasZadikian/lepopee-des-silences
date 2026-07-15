@@ -68,13 +68,6 @@ const focusModifierPercent = computed(() => statModifierPercent('Focus'));
 const magicAttackModifierPercent = computed(() => statModifierPercent('MagicAttack'));
 const magicDefenseModifierPercent = computed(() => statModifierPercent('MagicDefense'));
 
-// Magic Attack/Defense aren't player-allocatable stats (see statDescriptions.ts,
-// scoped to PlayerStatKind), so their tooltip copy lives here instead.
-const magicAttackDescription =
-  'Puissance des sorts de catégorie Magique. Symétrique à Attaque, mais pour les dégâts magiques uniquement.';
-const magicDefenseDescription =
-  'Réduit les dégâts magiques subis, symétriquement à Défense pour les dégâts physiques.';
-
 defineEmits<{
   select: [combatantId: string];
 }>();
@@ -207,7 +200,7 @@ const hasAggro = computed(() =>
         </div>
         <div class="presence__details-row">
           <span>✨</span><b>{{ combatant.magicAttack ?? 0 }}</b>
-          <StatTooltip :text="magicAttackDescription"><small>Attaque magique</small></StatTooltip>
+          <StatTooltip :text="statDescriptions.MagicAttack"><small>Attaque magique</small></StatTooltip>
           <span
             v-if="magicAttackModifierPercent !== 0"
             class="presence__stat-mod"
@@ -216,7 +209,7 @@ const hasAggro = computed(() =>
         </div>
         <div class="presence__details-row">
           <span>🔮</span><b>{{ combatant.magicDefense ?? 0 }}</b>
-          <StatTooltip :text="magicDefenseDescription"><small>Défense magique</small></StatTooltip>
+          <StatTooltip :text="statDescriptions.MagicDefense"><small>Défense magique</small></StatTooltip>
           <span
             v-if="magicDefenseModifierPercent !== 0"
             class="presence__stat-mod"

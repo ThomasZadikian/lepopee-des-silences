@@ -29,6 +29,7 @@ function baseCharacter(): PlayerCharacterView {
     stats: {
       maxVitality: 100, attackPower: 12, defense: 6, startingGuard: 0,
       speed: 10, initiative: 10, recovery: 5, focus: 0, mana: 0, charge: 0,
+      magicAttack: 0, magicDefense: 0,
     },
   };
 }
@@ -39,9 +40,9 @@ describe('StatManagementTab', () => {
     vi.clearAllMocks();
   });
 
-  it('renders all 10 stats with a description each', () => {
+  it('renders all 12 stats with a description each', () => {
     const wrapper = mount(StatManagementTab, { props: { character: baseCharacter() } });
-    expect(wrapper.findAll('.smt-row')).toHaveLength(10);
+    expect(wrapper.findAll('.smt-row')).toHaveLength(12);
     expect(wrapper.findAll('.smt-row__desc').every((d) => d.text().length > 0)).toBe(true);
   });
 

@@ -16,6 +16,8 @@ export type PlayerCharacterStatsView = {
   focus: number;
   mana: number;
   charge: number;
+  magicAttack?: number;
+  magicDefense?: number;
 };
 
 export type PlayerStatKind =
@@ -28,7 +30,9 @@ export type PlayerStatKind =
   | 'Recovery'
   | 'Focus'
   | 'Mana'
-  | 'Charge';
+  | 'Charge'
+  | 'MagicAttack'
+  | 'MagicDefense';
 
 export type PlayerCharacterItemView = {
   itemKey: string;

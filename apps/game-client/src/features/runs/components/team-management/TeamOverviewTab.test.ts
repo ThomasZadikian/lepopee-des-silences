@@ -27,6 +27,7 @@ function baseCharacter(overrides: Partial<PlayerCharacterView> = {}): PlayerChar
     stats: {
       maxVitality: 100, attackPower: 12, defense: 6, startingGuard: 0,
       speed: 10, initiative: 10, recovery: 5, focus: 0, mana: 0, charge: 0,
+      magicAttack: 0, magicDefense: 0,
     },
     ...overrides,
   };
@@ -60,9 +61,9 @@ describe('TeamOverviewTab', () => {
     expect(wrapper.text()).toContain('Le Porteur');
   });
 
-  it('renders all 10 stats', () => {
+  it('renders all 12 stats', () => {
     const wrapper = mount(TeamOverviewTab, { props: { characters: [baseCharacter()] } });
-    expect(wrapper.findAll('.tov-stat')).toHaveLength(10);
+    expect(wrapper.findAll('.tov-stat')).toHaveLength(12);
   });
 
   it('shows equipped skills', () => {
