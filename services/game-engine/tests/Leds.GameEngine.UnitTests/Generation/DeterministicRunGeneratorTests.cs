@@ -1,13 +1,76 @@
 using FluentAssertions;
+using Leds.GameEngine.Application.Catalog;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
+using Leds.GameEngine.Infrastructure.Generation;
+using Leds.GameEngine.UnitTests.Common;
 using Leds.GameEngine.UnitTests.Common.Factories;
 
 namespace Leds.GameEngine.UnitTests.Generation;
 
 public sealed class DeterministicRunGeneratorTests
 {
+    [Fact]
+    public async Task GenerateInitialRoom_ShouldAttachStructurelessPalaceNotice_WhenNoWorldIsConfigured()
+    {
+        // Default stub gateway has no Worlds/RoomDefinitions configured — the legacy
+        // fallback path this whole test file otherwise exercises implicitly.
+        var generator = TestGeneratorFactory.CreateDeterministicRunGenerator();
+
+        var room = await generator.GenerateInitialRoomAsync("seed-no-world");
+
+        room.CatalogBinding.Should().NotBeNull();
+        room.CatalogBinding!.DisplayName.Should().BeEmpty(
+            because: "an empty DisplayName keeps the top bar showing the theme/room type, not a fake canon name.");
+        room.CatalogBinding!.NarrativeText.Should().Be(
+            DeterministicRunGenerator.StructurelessPalaceNotice);
+    }
+
+    [Fact]
+    public async Task GenerateInitialRoom_ShouldBindTheRealEntryRoom_AndNotAttachTheNotice_WhenAWorldIsConfigured()
+    {
+        var catalogGateway = new StubCatalogContentGateway
+        {
+            WorldDefinitions = [new CatalogWorldDefinition("palais", "Palais", "room.halldentree")],
+            RoomDefinitions =
+            [
+                new CatalogRoomDefinition(
+                    Key: "room.halldentree",
+                    DisplayName: "Hall d'entrée",
+                    Description: "Le hall d'entrée du Palais.",
+                    NarrativeText: "Un tapis rouge et quatre piliers de marbre.",
+                    RoomFamily: "Palais intérieur",
+                    RoomRarity: "Epic",
+                    Theme: "Welcome",
+                    MinDepth: 0,
+                    MaxDepth: 9,
+                    BaseWeight: 1,
+                    EnemyPoolKey: null,
+                    RewardPoolKey: null,
+                    LawPoolKey: null,
+                    CursePoolKey: null,
+                    BossDefinitionKey: null,
+                    IsUnique: false,
+                    WorldKey: "palais",
+                    IsWorldEntryRoom: true,
+                    TriggersStrictChain: false,
+                    ReachableRoomKeys: [])
+            ]
+        };
+
+        var generator = TestGeneratorFactory.CreateDeterministicRunGenerator(catalogGateway);
+
+        var room = await generator.GenerateInitialRoomAsync("seed-with-world");
+
+        room.CatalogBinding.Should().NotBeNull();
+        room.CatalogBinding!.Key.Should().Be("room.halldentree");
+        room.CatalogBinding!.DisplayName.Should().Be("Hall d'entrée");
+        room.CatalogBinding!.NarrativeText.Should().Be("Un tapis rouge et quatre piliers de marbre.");
+        room.CatalogBinding!.NarrativeText.Should().NotBe(
+            DeterministicRunGenerator.StructurelessPalaceNotice);
+    }
+
     [Fact]
     public async Task GenerateInitialRoom_ShouldCreateVisibleRoomPlan()
     {

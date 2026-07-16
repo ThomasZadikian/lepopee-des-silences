@@ -16,6 +16,17 @@ namespace Leds.GameEngine.Infrastructure.Generation;
 
 public sealed class DeterministicRunGenerator : IRunGenerator
 {
+    /// <summary>
+    /// Shown to the player when the very first room could not be bound to a real catalog
+    /// room (no "Palais" World configured, or its entry room unresolved) — the run still
+    /// starts on the procedural Threshold scaffold, but none of the Bestiaire families are
+    /// authored against that legacy room type, so encounters there fall back to the old
+    /// pre-Bestiaire placeholder roster. Surfaced narratively rather than failing the run,
+    /// since the legacy scaffold is still fully playable.
+    /// </summary>
+    internal const string StructurelessPalaceNotice =
+        "Le Palais n'a pas sa structure habituelle, tout semble... sans vie.";
+
     private readonly ISeededRandomFactory _randomFactory;
     private readonly ICatalogRoomTypeResolver _catalogRoomTypeResolver;
     private readonly IRoomReachabilitySelector _roomReachabilitySelector;
@@ -94,6 +105,20 @@ public sealed class DeterministicRunGenerator : IRunGenerator
                     cancellationToken);
 
         await AttachCatalogRoomAsync(room, CatalogMarkovRoomTypeResolver.ThresholdTheme, seed, roomDepth: 0, cancellationToken);
+
+        if (room.CatalogBinding is null)
+        {
+            room.AttachCatalogBinding(new CatalogRoomBinding(
+                Key: "system.fallback.threshold",
+                DisplayName: string.Empty,
+                NarrativeText: StructurelessPalaceNotice,
+                EnemyPoolKey: null,
+                RewardPoolKey: null,
+                LawPoolKey: null,
+                CursePoolKey: null,
+                IsUnique: false));
+        }
+
         return room;
     }
 

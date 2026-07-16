@@ -1572,13 +1572,22 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
     {
         return Task.FromResult<IReadOnlyCollection<CatalogRewardCursePool>>([]);
     }
+    /// <summary>
+    /// Overridable per-test — defaults to empty so every existing test keeps exercising the
+    /// legacy "no World configured" fallback path unchanged.
+    /// </summary>
+    public IReadOnlyCollection<CatalogRoomDefinition> RoomDefinitions { get; set; } = [];
+
+    /// <summary>Overridable per-test — see <see cref="RoomDefinitions"/>.</summary>
+    public IReadOnlyCollection<CatalogWorldDefinition> WorldDefinitions { get; set; } = [];
+
     public Task<IReadOnlyCollection<CatalogRoomDefinition>> ListRoomDefinitionsAsync(
     CancellationToken cancellationToken = default)
-    => Task.FromResult<IReadOnlyCollection<CatalogRoomDefinition>>([]);
+    => Task.FromResult(RoomDefinitions);
 
     public Task<IReadOnlyCollection<CatalogWorldDefinition>> ListWorldDefinitionsAsync(
     CancellationToken cancellationToken = default)
-    => Task.FromResult<IReadOnlyCollection<CatalogWorldDefinition>>([]);
+    => Task.FromResult(WorldDefinitions);
 
     public Task<IReadOnlyCollection<CatalogRoomThemeAffinity>> ListRoomThemeAffinitiesAsync(
     CancellationToken cancellationToken = default)

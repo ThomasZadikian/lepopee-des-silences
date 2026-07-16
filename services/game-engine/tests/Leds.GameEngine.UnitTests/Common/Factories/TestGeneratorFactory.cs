@@ -15,7 +15,8 @@ namespace Leds.GameEngine.UnitTests.Common.Factories;
 
 public static class TestGeneratorFactory
 {
-    public static DeterministicRunGenerator CreateDeterministicRunGenerator()
+    public static DeterministicRunGenerator CreateDeterministicRunGenerator(
+        StubCatalogContentGateway? catalogContentGateway = null)
     {
         var mapRoomGenerator = new MapRoomGenerator(
             new RoomMapLayoutTemplateProvider(),
@@ -38,6 +39,6 @@ public static class TestGeneratorFactory
             stateResolver,
             mapRoomGenerator,
             new RunPsycheEvolver(calibration),
-            new StubCatalogContentGateway());
+            catalogContentGateway ?? new StubCatalogContentGateway());
     }
 }

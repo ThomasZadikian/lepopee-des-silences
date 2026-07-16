@@ -14,6 +14,11 @@ const roomName    = computed(() =>
   room.value?.catalogName || room.value?.theme || room.value?.roomType || '—');
 const isCanonRoom = computed(() => Boolean(room.value?.catalogName));
 const roomNarrative = computed(() => room.value?.catalogNarrative ?? '');
+// A narrative present without a canon name only ever happens for the system's own
+// "structureless Palace" fallback notice (see DeterministicRunGenerator) — every real
+// canon room carries both together. Surfaced as a visible banner, not just the tooltip.
+const systemNotice = computed(() =>
+  !isCanonRoom.value && roomNarrative.value ? roomNarrative.value : '');
 const depth      = computed(() => (room.value?.currentNodeDepth ?? 0) + 1);
 const maxDepth   = computed(() => (room.value?.maxNodeDepth ?? 0) + 1);
 const activeLaws = computed(() => run.value?.activePalaceLaws?.length ?? 0);
@@ -102,6 +107,10 @@ const statusColor = computed(() =>
     <!-- Slot pour actions supplémentaires (boutons Sauvegarder, Lois, etc.) -->
     <slot />
   </header>
+
+  <div v-if="systemNotice" class="es-system-notice" role="status">
+    {{ systemNotice }}
+  </div>
 </template>
 
 <style scoped>
@@ -123,5 +132,17 @@ const statusColor = computed(() =>
 
 .es-runbar__ref-link:hover {
   color: var(--gold);
+}
+
+.es-system-notice {
+  padding: 6px 30px;
+  font-family: var(--font-caps);
+  font-size: 11px;
+  font-style: italic;
+  letter-spacing: 0.03em;
+  color: var(--ink-4);
+  background: rgba(0, 0, 0, 0.15);
+  border-bottom: 1px solid var(--line, rgba(255, 255, 255, 0.08));
+  text-align: center;
 }
 </style>

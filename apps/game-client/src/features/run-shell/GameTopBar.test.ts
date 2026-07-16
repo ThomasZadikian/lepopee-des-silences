@@ -187,4 +187,40 @@ describe('GameTopBar', () => {
     });
     expect(wrapper.text()).toContain('Réputation');
   });
+
+  it('shows the structureless-Palace notice when a narrative is present without a canon name', () => {
+    const wrapper = mountTopBar({
+      currentRun: {
+        currentRoom: {
+          theme: 'Threshold',
+          catalogName: null,
+          catalogNarrative: 'Le Palais n\'a pas sa structure habituelle, tout semble... sans vie.',
+        },
+      },
+    });
+    expect(wrapper.find('.es-system-notice').exists()).toBe(true);
+    expect(wrapper.text()).toContain('sans vie');
+  });
+
+  it('does not show the notice for a normal canon room with both a name and narrative', () => {
+    const wrapper = mountTopBar({
+      currentRun: {
+        currentRoom: {
+          theme: 'Memory',
+          catalogName: 'Le Palier',
+          catalogNarrative: 'Huit marches qui semblent une éternité.',
+        },
+      },
+    });
+    expect(wrapper.find('.es-system-notice').exists()).toBe(false);
+  });
+
+  it('does not show the notice for a plain procedural room with no catalog binding', () => {
+    const wrapper = mountTopBar({
+      currentRun: {
+        currentRoom: { theme: 'Rupture' },
+      },
+    });
+    expect(wrapper.find('.es-system-notice').exists()).toBe(false);
+  });
 });
