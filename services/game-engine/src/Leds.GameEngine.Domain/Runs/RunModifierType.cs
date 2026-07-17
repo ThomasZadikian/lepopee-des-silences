@@ -80,4 +80,9 @@ public enum RunModifierType
     /// while in combat; outside combat, consumable effects are boosted +25%. See
     /// Run.UseItem.</summary>
     ConsumablesRestrictedInCombat = 31,
+
+    /// <summary>"Loi de l'Éloge Funèbre" (law.eloge-funebre) — after any combatant (either
+    /// side) is defeated, the next combatant to act may only use the basic attack. See
+    /// Combat.RegisterCombatantDefeated/NextActionRestrictedToBasicAttack.</summary>
+    PostDeathBasicAttackOnly = 32,
 }

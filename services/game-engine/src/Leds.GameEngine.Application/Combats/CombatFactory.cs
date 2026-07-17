@@ -131,6 +131,11 @@ public sealed class CombatFactory : ICombatFactory
         // convention as healingBlocked above, resolved by Combat.AdvanceTurn.
         var falaiseWindEnabled = string.Equals(draft.RoomKey, "room.falaise", StringComparison.OrdinalIgnoreCase);
 
+        // "Loi de l'Éloge Funèbre" (law.eloge-funebre): a normal ambient-drawn law (not
+        // room-bound), baked in from the run's active RunModifiers.
+        var postDeathBasicAttackOnlyEnabled = activeModifiers
+            .Any(m => m.Type == RunModifierType.PostDeathBasicAttackOnly && !m.IsConsumed);
+
         if (activeClimate == RoomClimate.Rain)
         {
             guardBonus += 5;
@@ -336,7 +341,8 @@ public sealed class CombatFactory : ICombatFactory
                 ComputeDuelDamageAsymmetryEnabled(activeModifiers),
                 dotMagnitudeBonus,
                 healingBlocked,
-                falaiseWindEnabled);
+                falaiseWindEnabled,
+                postDeathBasicAttackOnlyEnabled);
         }
 
         var enemies = draft.Enemies
@@ -452,7 +458,8 @@ public sealed class CombatFactory : ICombatFactory
             ComputeDuelDamageAsymmetryEnabled(activeModifiers),
             dotMagnitudeBonus,
             healingBlocked,
-            falaiseWindEnabled);
+            falaiseWindEnabled,
+            postDeathBasicAttackOnlyEnabled);
     }
 
     /// <summary>

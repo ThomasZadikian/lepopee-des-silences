@@ -38,6 +38,8 @@ public static class CombatPersistenceMapper
             DotMagnitudeBonus = combat.DotMagnitudeBonus,
             HealingBlocked = combat.HealingBlocked,
             FalaiseWindEnabled = combat.FalaiseWindEnabled,
+            PostDeathBasicAttackOnlyEnabled = combat.PostDeathBasicAttackOnlyEnabled,
+            NextActionRestrictedToBasicAttack = combat.NextActionRestrictedToBasicAttack,
             ActiveCombatantId = combat.ActiveCombatantId?.Value,
             CreatedAtUtc = combat.CreatedAtUtc,
             UpdatedAtUtc = DateTime.UtcNow,
@@ -310,7 +312,9 @@ public static class CombatPersistenceMapper
             entity.DuelDamageAsymmetryEnabled,
             entity.DotMagnitudeBonus,
             entity.HealingBlocked,
-            entity.FalaiseWindEnabled);
+            entity.FalaiseWindEnabled,
+            entity.PostDeathBasicAttackOnlyEnabled,
+            entity.NextActionRestrictedToBasicAttack);
     }
 
     public static Combatant ToDomain(CombatantEntity entity)

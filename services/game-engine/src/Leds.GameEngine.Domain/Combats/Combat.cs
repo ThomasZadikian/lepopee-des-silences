@@ -31,7 +31,9 @@ public sealed class Combat
         bool duelDamageAsymmetryEnabled,
         int dotMagnitudeBonus,
         bool healingBlocked,
-        bool falaiseWindEnabled = false)
+        bool falaiseWindEnabled = false,
+        bool postDeathBasicAttackOnlyEnabled = false,
+        bool nextActionRestrictedToBasicAttack = false)
     {
         Id = id;
         RunId = runId;
@@ -54,6 +56,8 @@ public sealed class Combat
         DotMagnitudeBonus = dotMagnitudeBonus;
         HealingBlocked = healingBlocked;
         FalaiseWindEnabled = falaiseWindEnabled;
+        PostDeathBasicAttackOnlyEnabled = postDeathBasicAttackOnlyEnabled;
+        NextActionRestrictedToBasicAttack = nextActionRestrictedToBasicAttack;
     }
 
     public CombatId Id { get; }
@@ -179,6 +183,42 @@ public sealed class Combat
     /// only the row/vitality state changes.</summary>
     public bool FalaiseWindEnabled { get; }
 
+    /// <summary>"Loi de l'Éloge Funèbre" (law.eloge-funebre): "à chaque mort (alliée ou
+    /// ennemie), le combattant suivant dans l'ordre d'action ne peut effectuer qu'une
+    /// attaque basique." Baked in at creation from the run's active RunModifiers (a
+    /// normal ambient-drawn law, unlike the room-bound flags above).</summary>
+    public bool PostDeathBasicAttackOnlyEnabled { get; }
+
+    /// <summary>
+    /// Mutable runtime state for "Loi de l'Éloge Funèbre": true after a combatant has
+    /// been defeated and the next actor's action has not yet been validated. Set by
+    /// <see cref="RegisterCombatantDefeated"/>, consumed by
+    /// <see cref="ConsumeBasicAttackRestriction"/> once a valid action resolves — only
+    /// the basic attack ("skill.basic.strike") can pass validation while this is true
+    /// (see CombatSkillActionValidator). Documented simplification: item use
+    /// (UseItemInCombatCommand) and the Reposition action are NOT gated by this
+    /// restriction — only skill-based actions are, since both other paths never call
+    /// through the shared skill-action validator.
+    /// </summary>
+    public bool NextActionRestrictedToBasicAttack { get; private set; }
+
+    /// <summary>Records that a combatant was just defeated; arms the "Loi de l'Éloge
+    /// Funèbre" restriction for whoever acts next. No-op when the law is inactive.</summary>
+    public void RegisterCombatantDefeated()
+    {
+        if (PostDeathBasicAttackOnlyEnabled)
+        {
+            NextActionRestrictedToBasicAttack = true;
+        }
+    }
+
+    /// <summary>Clears the "Loi de l'Éloge Funèbre" restriction once a valid action has
+    /// consumed it (called on every successful validation, a no-op when already clear).</summary>
+    public void ConsumeBasicAttackRestriction()
+    {
+        NextActionRestrictedToBasicAttack = false;
+    }
+
     /// <summary>"Loi de la Falaise" random-target chance, checked once per turn.</summary>
     private const double FalaiseWindTriggerChance = 0.10;
 
@@ -200,7 +240,8 @@ public sealed class Combat
         bool duelDamageAsymmetryEnabled = false,
         int dotMagnitudeBonus = 0,
         bool healingBlocked = false,
-        bool falaiseWindEnabled = false)
+        bool falaiseWindEnabled = false,
+        bool postDeathBasicAttackOnlyEnabled = false)
     {
         if (id.Value == Guid.Empty)
             throw new DomainException("Combat id is required.");
@@ -242,7 +283,8 @@ public sealed class Combat
             duelDamageAsymmetryEnabled: duelDamageAsymmetryEnabled,
             dotMagnitudeBonus: dotMagnitudeBonus,
             healingBlocked: healingBlocked,
-            falaiseWindEnabled: falaiseWindEnabled);
+            falaiseWindEnabled: falaiseWindEnabled,
+            postDeathBasicAttackOnlyEnabled: postDeathBasicAttackOnlyEnabled);
     }
 
     public void MarkCompleted()
@@ -503,8 +545,14 @@ public sealed class Combat
 
         foreach (var combatant in AllCombatants.ToArray())
         {
+            var wasAlive = !combatant.IsDefeated;
+
             foreach (var ev in combatant.TickStatusEffects(CurrentTick))
                 ticks.Add(new CombatantStatusTick(combatant.Id.Value, combatant.DisplayName, ev));
+
+            // "Loi de l'Éloge Funèbre" applies to any death, DoT-inflicted included.
+            if (wasAlive && combatant.IsDefeated)
+                RegisterCombatantDefeated();
         }
 
         // DoT may have defeated someone — re-evaluate combat end.
@@ -572,9 +620,11 @@ public sealed class Combat
         bool duelDamageAsymmetryEnabled = false,
         int dotMagnitudeBonus = 0,
         bool healingBlocked = false,
-        bool falaiseWindEnabled = false)
+        bool falaiseWindEnabled = false,
+        bool postDeathBasicAttackOnlyEnabled = false,
+        bool nextActionRestrictedToBasicAttack = false)
     {
-        return new Combat(id, runId, roomId, nodeId, status, allies, enemies, activeCombatantId, turnNumber, currentTick, createdAtUtc, hitCounter, hitCounterDoubleDamageEnabled, firstHitCriticalEnabled, hasFirstHitLanded, lowHpDamageAmplificationEnabled, dotDurationExtensionTicks, duelDamageAsymmetryEnabled, dotMagnitudeBonus, healingBlocked, falaiseWindEnabled);
+        return new Combat(id, runId, roomId, nodeId, status, allies, enemies, activeCombatantId, turnNumber, currentTick, createdAtUtc, hitCounter, hitCounterDoubleDamageEnabled, firstHitCriticalEnabled, hasFirstHitLanded, lowHpDamageAmplificationEnabled, dotDurationExtensionTicks, duelDamageAsymmetryEnabled, dotMagnitudeBonus, healingBlocked, falaiseWindEnabled, postDeathBasicAttackOnlyEnabled, nextActionRestrictedToBasicAttack);
     }
 
     /// <summary>

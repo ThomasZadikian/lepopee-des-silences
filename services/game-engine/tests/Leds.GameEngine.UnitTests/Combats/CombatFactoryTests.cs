@@ -885,6 +885,37 @@ public sealed class CombatFactoryTests
     }
 
     // ---------------------------------------------------------------------------
+    // "Loi de l'Éloge Funèbre" (PostDeathBasicAttackOnlyEnabled) — RunModifier-driven,
+    // baked at combat creation; the actual post-death gate lives on Combat itself
+    // (RegisterCombatantDefeated/NextActionRestrictedToBasicAttack), tested in
+    // CombatSkillActionValidatorTests.
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void CreateFromDraft_ShouldEnablePostDeathBasicAttackOnly_WhenTheLawIsActive()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft();
+        var modifier = RunModifier.Create(
+            RunModifierType.PostDeathBasicAttackOnly, 1, RunModifierDuration.UntilRoomEnds, "PalaceLaw", "law-eloge-funebre-test");
+
+        var combat = factory.CreateFromDraft(draft, runModifiers: [modifier]);
+
+        combat.PostDeathBasicAttackOnlyEnabled.Should().BeTrue();
+    }
+
+    [Fact]
+    public void CreateFromDraft_ShouldNotEnablePostDeathBasicAttackOnly_WhenTheLawIsNotActive()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft();
+
+        var combat = factory.CreateFromDraft(draft);
+
+        combat.PostDeathBasicAttackOnlyEnabled.Should().BeFalse();
+    }
+
+    // ---------------------------------------------------------------------------
     // "Loi des Visites Terminées" (HealingBlocked) — room-bound (RoomKey), not a
     // RunModifier/tirage.
     // ---------------------------------------------------------------------------

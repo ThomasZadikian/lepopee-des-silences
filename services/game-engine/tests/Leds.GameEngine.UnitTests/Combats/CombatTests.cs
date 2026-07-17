@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Leds.GameEngine.Domain.Combats;
+using Leds.GameEngine.Domain.Combats.StatusEffects;
 using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rooms;
@@ -18,7 +19,8 @@ public sealed class CombatTests
         bool duelDamageAsymmetryEnabled = false,
         int dotMagnitudeBonus = 0,
         bool healingBlocked = false,
-        bool falaiseWindEnabled = false)
+        bool falaiseWindEnabled = false,
+        bool postDeathBasicAttackOnlyEnabled = false)
     {
         var allies = Enumerable.Range(0, allyCount).Select(i =>
             Combatant.CreateAlly($"player.{i}", $"Hero{i}", "Fighter", 100)).ToArray();
@@ -40,7 +42,8 @@ public sealed class CombatTests
             duelDamageAsymmetryEnabled,
             dotMagnitudeBonus,
             healingBlocked,
-            falaiseWindEnabled);
+            falaiseWindEnabled,
+            postDeathBasicAttackOnlyEnabled);
     }
 
     [Fact]
@@ -556,5 +559,68 @@ public sealed class CombatTests
         anyDamaged.Should().BeTrue(
             because: "when every combatant is already in Back row, a triggered roll can only deal " +
                 "the 5-damage 'embruns' fallback, never a row push.");
+    }
+
+    // ---------------------------------------------------------------------------
+    // "Loi de l'Éloge Funèbre" (PostDeathBasicAttackOnlyEnabled) — the next combatant
+    // to act after any death may only use the basic attack. The gate itself lives in
+    // CombatSkillActionValidator (see CombatSkillActionValidatorTests); here we only
+    // check Combat's own bookkeeping: the baked flag and RegisterCombatantDefeated/
+    // ConsumeBasicAttackRestriction, including the DoT-inflicted-death path wired
+    // into TickAllStatusEffects.
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void PostDeathBasicAttackOnlyEnabled_ShouldReflectTheValueBakedInAtCreation()
+    {
+        CreateSut(postDeathBasicAttackOnlyEnabled: true).PostDeathBasicAttackOnlyEnabled.Should().BeTrue();
+        CreateSut().PostDeathBasicAttackOnlyEnabled.Should().BeFalse();
+    }
+
+    [Fact]
+    public void RegisterCombatantDefeated_ShouldSetNextActionRestrictedToBasicAttack_WhenTheLawIsEnabled()
+    {
+        var combat = CreateSut(postDeathBasicAttackOnlyEnabled: true);
+
+        combat.RegisterCombatantDefeated();
+
+        combat.NextActionRestrictedToBasicAttack.Should().BeTrue();
+    }
+
+    [Fact]
+    public void RegisterCombatantDefeated_ShouldNotSetNextActionRestrictedToBasicAttack_WhenTheLawIsDisabled()
+    {
+        var combat = CreateSut(postDeathBasicAttackOnlyEnabled: false);
+
+        combat.RegisterCombatantDefeated();
+
+        combat.NextActionRestrictedToBasicAttack.Should().BeFalse();
+    }
+
+    [Fact]
+    public void ConsumeBasicAttackRestriction_ShouldClearTheRestriction()
+    {
+        var combat = CreateSut(postDeathBasicAttackOnlyEnabled: true);
+        combat.RegisterCombatantDefeated();
+
+        combat.ConsumeBasicAttackRestriction();
+
+        combat.NextActionRestrictedToBasicAttack.Should().BeFalse();
+    }
+
+    [Fact]
+    public void TickAllStatusEffects_ShouldRestrictNextAction_WhenADotKillsACombatant()
+    {
+        var combat = CreateSut(allyCount: 1, enemyCount: 1, postDeathBasicAttackOnlyEnabled: true);
+        var enemy = combat.Enemies.Single();
+        enemy.ApplyStatusEffect(CombatStatusEffect.Create(
+            "lethal-poison", "Poison mortel", StatusEffectKind.DamageOverTime,
+            currentTick: combat.CurrentTick, durationTicks: 10000, magnitude: 999, stacks: 1, tickInterval: 1400));
+
+        combat.HoldTick(1400);
+        combat.TickAllStatusEffects();
+
+        enemy.IsDefeated.Should().BeTrue();
+        combat.NextActionRestrictedToBasicAttack.Should().BeTrue();
     }
 }

@@ -567,6 +567,10 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
 
             if (target.IsDefeated)
             {
+                // "Loi de l'Éloge Funèbre": arms the next actor's basic-attack-only
+                // restriction. No-op when the law isn't active.
+                combat.RegisterCombatantDefeated();
+
                 logEntries.Add(CreateLog(
                     "TargetDefeated",
                     $"{target.DisplayName} is defeated.",

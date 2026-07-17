@@ -171,4 +171,68 @@ public sealed class CombatSkillActionValidatorTests
         result.Actor.Should().Be(_ally);
         result.Skill.Should().Be(_strikeSkill);
     }
+
+    private Combat CreateElogeFunebreCombat(Combatant ally, Combatant enemy)
+    {
+        return Combat.Create(
+            id: CombatId.New(),
+            runId: RunId.New(),
+            roomId: RoomId.New(),
+            nodeId: NodeId.New(),
+            allies: [ally],
+            enemies: [enemy],
+            postDeathBasicAttackOnlyEnabled: true);
+    }
+
+    [Fact]
+    public void Validate_ShouldFail_WhenNonBasicAttackAttempted_AfterDeath_UnderElogeFunebre()
+    {
+        var ally = Combatant.CreateAlly(
+            sourceKey: "player.self", displayName: "Hero", archetype: "Fighter",
+            maxVitality: 100, skills: [_strikeSkill, _healSkill]);
+        var enemy = Combatant.CreateEnemy(
+            sourceKey: "enemy.sentinel", displayName: "Sentinel", archetype: "Guard",
+            maxVitality: 80, skills: [_strikeSkill]);
+        var combat = CreateElogeFunebreCombat(ally, enemy);
+        _targetingRuleValidator
+            .Setup(v => v.Validate(combat, ally, _healSkill, It.IsAny<IReadOnlyCollection<Guid>>()))
+            .Returns(new CombatTargetingValidationResult(true, null, [ally]));
+
+        combat.RegisterCombatantDefeated();
+
+        var result = _validator.Validate(combat, ally.Id.Value, "skill.basic.heal", [ally.Id.Value]);
+
+        result.IsValid.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("Éloge Funèbre");
+    }
+
+    [Fact]
+    public void Validate_ShouldSucceed_WhenBasicAttackAttempted_AfterDeath_UnderElogeFunebre_AndConsumeRestriction()
+    {
+        var ally = Combatant.CreateAlly(
+            sourceKey: "player.self", displayName: "Hero", archetype: "Fighter",
+            maxVitality: 100, skills: [_strikeSkill, _healSkill]);
+        var enemy = Combatant.CreateEnemy(
+            sourceKey: "enemy.sentinel", displayName: "Sentinel", archetype: "Guard",
+            maxVitality: 80, skills: [_strikeSkill]);
+        var combat = CreateElogeFunebreCombat(ally, enemy);
+        _targetingRuleValidator
+            .Setup(v => v.Validate(combat, ally, _strikeSkill, It.IsAny<IReadOnlyCollection<Guid>>()))
+            .Returns(new CombatTargetingValidationResult(true, null, [enemy]));
+
+        combat.RegisterCombatantDefeated();
+
+        var result = _validator.Validate(combat, ally.Id.Value, "skill.basic.strike", [enemy.Id.Value]);
+
+        result.IsValid.Should().BeTrue();
+        combat.NextActionRestrictedToBasicAttack.Should().BeFalse();
+    }
+
+    [Fact]
+    public void RegisterCombatantDefeated_ShouldNotRestrictNextAction_WhenLawNotActive()
+    {
+        _activeCombat.RegisterCombatantDefeated();
+
+        _activeCombat.NextActionRestrictedToBasicAttack.Should().BeFalse();
+    }
 }

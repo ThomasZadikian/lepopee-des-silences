@@ -45,12 +45,25 @@ public sealed class CombatSkillActionValidator : ICombatSkillActionValidator
             return Invalid($"Actor does not own skill '{skillKey}'.");
         }
 
+        // "Loi de l'Éloge Funèbre": after any death, the next actor may only use the
+        // basic attack. Documented simplification: item use and Reposition never call
+        // through this shared validator, so neither is gated by this restriction.
+        if (combat.NextActionRestrictedToBasicAttack
+            && !string.Equals(skill.Key, BasicAttackSkillKey, StringComparison.OrdinalIgnoreCase))
+        {
+            return Invalid("Loi de l'Éloge Funèbre: seule une attaque basique est permise après une mort.");
+        }
+
         var targetingResult = _targetingRuleValidator.Validate(combat, actor, skill, targetIds);
 
         if (!targetingResult.IsValid)
         {
             return Invalid(targetingResult.ErrorMessage!);
         }
+
+        // A valid action (necessarily the basic attack, if the restriction was active)
+        // consumes the restriction so it doesn't linger into the actor after next.
+        combat.ConsumeBasicAttackRestriction();
 
         return new CombatSkillActionValidationResult(
             IsValid: true,
@@ -59,6 +72,8 @@ public sealed class CombatSkillActionValidator : ICombatSkillActionValidator
             Skill: skill,
             Targets: targetingResult.Targets);
     }
+
+    private const string BasicAttackSkillKey = "skill.basic.strike";
 
     private static CombatSkillActionValidationResult Invalid(string message)
     {

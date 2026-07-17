@@ -19,6 +19,8 @@ public sealed class CombatEntity
     public int DotMagnitudeBonus { get; set; }
     public bool HealingBlocked { get; set; }
     public bool FalaiseWindEnabled { get; set; }
+    public bool PostDeathBasicAttackOnlyEnabled { get; set; }
+    public bool NextActionRestrictedToBasicAttack { get; set; }
     public Guid? ActiveCombatantId { get; set; }
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }

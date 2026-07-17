@@ -4982,12 +4982,12 @@ public sealed class CatalogSeedRunner
         await _ctx.SaveChangesAsync(cancellationToken);
     }
 
-    // Chapitre IV — Lois de combat. 5 of its 7 laws already have full mechanical
+    // Chapitre IV — Lois de combat. 6 of its 7 laws already have full mechanical
     // backing (File Indienne/Curée/Première Impression from Phase 3bis, Duel/Écriture
-    // from this pass). "Loi du Miroir" (copy the ally's first cast onto the fastest
-    // enemy, inverted targeting) and "Loi de l'Éloge Funèbre" (only a basic attack
-    // allowed the turn after a death) are NOT seeded — they need re-entrant skill
-    // resolution and action-validation changes respectively, neither of which exists.
+    // from this pass, Éloge Funèbre new in this pass — post-death basic-attack-only
+    // gate via Combat.NextActionRestrictedToBasicAttack). "Loi du Miroir" (copy the
+    // ally's first cast onto the fastest enemy, inverted targeting) is NOT seeded —
+    // it needs re-entrant skill resolution that doesn't exist.
     //
     // Two room-type weight-doubling promulgation rules are NOT enforced by the engine
     // (documented gap, same as Chapitre VIII): Curée "poids doublé aux Plaines" and
@@ -5078,6 +5078,23 @@ public sealed class CatalogSeedRunner
             impactDomains: ["Combat"],
             cancellationToken);
 
+        await UpsertCompendiumLawAsync(
+            key: "law.eloge-funebre",
+            name: "Loi de l'Éloge Funèbre",
+            narrativeText: "Article XXXI — Quand quelqu'un tombe, le Palais exige un instant de "
+                + "recueillement. Nul artifice, nul éclat : juste le geste le plus simple.",
+            description: "Dès qu'un combattant (allié ou ennemi) est mis hors combat, le "
+                + "prochain combattant à agir ne peut porter qu'une attaque de base — aucun "
+                + "sort, aucune capacité, tant que ce geste n'a pas été rendu.",
+            rarity: "Peu commun",
+            polarity: "Sévère",
+            isMajeure: false,
+            minDepth: null,
+            duration: "UntilRoomEnds",
+            selectionGroup: "law.combat",
+            impactDomains: ["Combat"],
+            cancellationToken);
+
         await _ctx.SaveChangesAsync(cancellationToken);
 
         await UpsertLawEffectAsync("law.file-indienne", "EnableTurnOrderLock", 1m, "UntilRoomEnds", null, cancellationToken);
@@ -5085,6 +5102,7 @@ public sealed class CatalogSeedRunner
         await UpsertLawEffectAsync("law.premiere-impression", "EnableFirstHitCritical", 1m, "UntilFloorEnds", null, cancellationToken);
         await UpsertLawEffectAsync("law.duel", "EnableDuelDamageAsymmetry", 1m, "UntilRoomEnds", null, cancellationToken);
         await UpsertLawEffectAsync("law.ecriture", "EnableDotDurationExtension", 2m, "UntilFloorEnds", null, cancellationToken);
+        await UpsertLawEffectAsync("law.eloge-funebre", "EnablePostDeathBasicAttackOnly", 1m, "UntilRoomEnds", null, cancellationToken);
 
         await _ctx.SaveChangesAsync(cancellationToken);
     }

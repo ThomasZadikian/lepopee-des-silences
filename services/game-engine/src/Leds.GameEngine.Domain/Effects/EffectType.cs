@@ -71,4 +71,6 @@ public enum EffectType
     EnableSilenceDuActive,
     /// <summary>"Loi des Poches Cousues" (law.poches-cousues) → RunModifierType.ConsumablesRestrictedInCombat.</summary>
     EnableConsumablesRestrictedInCombat,
+    /// <summary>"Loi de l'Éloge Funèbre" (law.eloge-funebre) → RunModifierType.PostDeathBasicAttackOnly.</summary>
+    EnablePostDeathBasicAttackOnly,
 }
