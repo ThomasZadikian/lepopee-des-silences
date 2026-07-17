@@ -9,7 +9,8 @@ namespace Leds.GameEngine.UnitTests.Combats;
 
 public sealed class CombatTests
 {
-    private static Combat CreateSut(int allyCount = 1, int enemyCount = 1)
+    private static Combat CreateSut(
+        int allyCount = 1, int enemyCount = 1, bool hitCounterDoubleDamageEnabled = false)
     {
         var allies = Enumerable.Range(0, allyCount).Select(i =>
             Combatant.CreateAlly($"player.{i}", $"Hero{i}", "Fighter", 100)).ToArray();
@@ -23,7 +24,8 @@ public sealed class CombatTests
             RoomId.New(),
             NodeId.New(),
             allies,
-            enemies);
+            enemies,
+            hitCounterDoubleDamageEnabled);
     }
 
     [Fact]
@@ -325,5 +327,63 @@ public sealed class CombatTests
         combat.AdvanceTurn();
         combat.ActiveCombatantId.Should().Be(expectedOrder[0]);
         combat.TurnNumber.Should().Be(2);
+    }
+
+    // ---------------------------------------------------------------------------
+    // "Loi du Treizième Coup" (RegisterLandedHit)
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void RegisterLandedHit_ShouldReturnFalse_ForTheFirstTwelveHits_WhenEnabled()
+    {
+        var combat = CreateSut(hitCounterDoubleDamageEnabled: true);
+
+        for (var i = 0; i < Combat.HitCounterTrigger - 1; i++)
+        {
+            combat.RegisterLandedHit().Should().BeFalse();
+        }
+
+        combat.HitCounter.Should().Be(Combat.HitCounterTrigger - 1);
+    }
+
+    [Fact]
+    public void RegisterLandedHit_ShouldReturnTrue_OnTheThirteenthHit_WhenEnabled()
+    {
+        var combat = CreateSut(hitCounterDoubleDamageEnabled: true);
+
+        for (var i = 0; i < Combat.HitCounterTrigger - 1; i++)
+        {
+            combat.RegisterLandedHit();
+        }
+
+        combat.RegisterLandedHit().Should().BeTrue();
+        combat.HitCounter.Should().Be(Combat.HitCounterTrigger);
+    }
+
+    [Fact]
+    public void RegisterLandedHit_ShouldNeverReturnTrue_WhenNotEnabled()
+    {
+        var combat = CreateSut(hitCounterDoubleDamageEnabled: false);
+
+        for (var i = 0; i < Combat.HitCounterTrigger * 2; i++)
+        {
+            combat.RegisterLandedHit().Should().BeFalse();
+        }
+    }
+
+    [Fact]
+    public void RegisterLandedHit_ShouldRepeatEveryThirteenHits_WhenEnabled()
+    {
+        var combat = CreateSut(hitCounterDoubleDamageEnabled: true);
+        var results = new List<bool>();
+
+        for (var i = 0; i < Combat.HitCounterTrigger * 2; i++)
+        {
+            results.Add(combat.RegisterLandedHit());
+        }
+
+        results[Combat.HitCounterTrigger - 1].Should().BeTrue();
+        results[Combat.HitCounterTrigger * 2 - 1].Should().BeTrue();
+        results.Count(r => r).Should().Be(2);
     }
 }

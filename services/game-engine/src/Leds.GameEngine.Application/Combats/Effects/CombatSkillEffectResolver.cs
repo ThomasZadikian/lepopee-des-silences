@@ -408,6 +408,10 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
 
             hitTargetIds.Add(target.Id.Value);
 
+            // "Loi du Treizième Coup": every 13th landed hit (all sides combined) deals
+            // double damage. Registered here, right as the hit is confirmed to land.
+            var isThirteenthHit = combat.RegisterLandedHit();
+
             var defenderProfile = _typeProfileProvider.Resolve(target);
             var critRoll = DeterministicCombatRoll.UnitInterval(BuildCritSeed(combat, actor, target, skill));
 
@@ -433,6 +437,17 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
             }
 
             outcome = ApplyEquipmentDamageReduction(outcome, target, attackType);
+
+            if (isThirteenthHit && outcome.FinalAmount > 0)
+            {
+                outcome = outcome with { FinalAmount = outcome.FinalAmount * 2 };
+                logEntries.Add(CreateLog(
+                    "ThirteenthHit",
+                    $"Le treizième coup frappe {target.DisplayName} — dégâts doublés !",
+                    actor,
+                    skill,
+                    [target]));
+            }
 
             logEntries.Add(CreateLog(
                 "SkillUsed",

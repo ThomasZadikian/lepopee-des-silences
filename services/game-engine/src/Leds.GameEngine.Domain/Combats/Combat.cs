@@ -20,7 +20,9 @@ public sealed class Combat
         CombatantId? activeCombatantId,
         int turnNumber,
         int currentTick,
-        DateTime createdAtUtc)
+        DateTime createdAtUtc,
+        int hitCounter,
+        bool hitCounterDoubleDamageEnabled)
     {
         Id = id;
         RunId = runId;
@@ -33,6 +35,8 @@ public sealed class Combat
         TurnNumber = turnNumber;
         CurrentTick = currentTick;
         CreatedAtUtc = createdAtUtc;
+        HitCounter = hitCounter;
+        HitCounterDoubleDamageEnabled = hitCounterDoubleDamageEnabled;
     }
 
     public CombatId Id { get; }
@@ -55,13 +59,39 @@ public sealed class Combat
 
     private IEnumerable<Combatant> AllCombatants => Allies.Concat(Enemies);
 
+    /// <summary>"Loi du Treizième Coup" — every 13th landed hit (all sides combined).</summary>
+    public const int HitCounterTrigger = 13;
+
+    /// <summary>Total landed hits (all sides combined) so far this combat.</summary>
+    public int HitCounter { get; private set; }
+
+    /// <summary>True when the "Loi du Treizième Coup" law is active for this combat,
+    /// baked in at creation from the run's active RunModifiers.</summary>
+    public bool HitCounterDoubleDamageEnabled { get; }
+
+    /// <summary>
+    /// "Loi du Treizième Coup" (law.treizieme-coup): "toutes les douze frappes, le
+    /// Palais en réclame une" — records a landed hit and returns true when it is the
+    /// 13th (and every 13th thereafter) landed hit of the combat, all sides combined.
+    /// The caller must then double that hit's damage. Simplified: the hit's own natural
+    /// attacker/target is treated as the "bénéficiaire" rather than reassigning the bonus
+    /// to an unrelated random combatant — no such reassignment mechanic exists in the
+    /// single-hit damage pipeline (documented simplification).
+    /// </summary>
+    public bool RegisterLandedHit()
+    {
+        HitCounter++;
+        return HitCounterDoubleDamageEnabled && HitCounter % HitCounterTrigger == 0;
+    }
+
     public static Combat Create(
         CombatId id,
         RunId runId,
         RoomId roomId,
         NodeId nodeId,
         IReadOnlyCollection<Combatant> allies,
-        IReadOnlyCollection<Combatant> enemies)
+        IReadOnlyCollection<Combatant> enemies,
+        bool hitCounterDoubleDamageEnabled = false)
     {
         if (id.Value == Guid.Empty)
             throw new DomainException("Combat id is required.");
@@ -93,7 +123,9 @@ public sealed class Combat
             activeCombatantId: openingOrder[0].Id,
             turnNumber: 1,
             currentTick: 0,
-            createdAtUtc: DateTime.UtcNow);
+            createdAtUtc: DateTime.UtcNow,
+            hitCounter: 0,
+            hitCounterDoubleDamageEnabled: hitCounterDoubleDamageEnabled);
     }
 
     public void MarkCompleted()
@@ -372,9 +404,11 @@ public sealed class Combat
         CombatantId? activeCombatantId,
         int turnNumber,
         DateTime createdAtUtc,
-        int currentTick = 0)
+        int currentTick = 0,
+        int hitCounter = 0,
+        bool hitCounterDoubleDamageEnabled = false)
     {
-        return new Combat(id, runId, roomId, nodeId, status, allies, enemies, activeCombatantId, turnNumber, currentTick, createdAtUtc);
+        return new Combat(id, runId, roomId, nodeId, status, allies, enemies, activeCombatantId, turnNumber, currentTick, createdAtUtc, hitCounter, hitCounterDoubleDamageEnabled);
     }
 
     /// <summary>

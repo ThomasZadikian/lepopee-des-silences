@@ -340,13 +340,17 @@ public sealed class CombatFactory : ICombatFactory
             ApplyTurnOrderReversal(allies.Concat(enemies));
         }
 
+        var hitCounterDoubleDamageEnabled = activeModifiers
+            .Any(m => m.Type == RunModifierType.HitCounterDoubleDamage && !m.IsConsumed);
+
         return Combat.Create(
             combatId,
             new RunId(draft.RunId),
             new RoomId(draft.RoomId),
             new NodeId(draft.NodeId),
             allies,
-            enemies);
+            enemies,
+            hitCounterDoubleDamageEnabled);
     }
 
     /// <summary>

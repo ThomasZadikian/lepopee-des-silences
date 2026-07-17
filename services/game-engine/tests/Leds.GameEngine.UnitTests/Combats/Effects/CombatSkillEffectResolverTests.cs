@@ -803,6 +803,72 @@ public sealed class CombatSkillEffectResolverTests
             because: "the guaranteed critical is consumed after the first landed hit — the second target rolls normally.");
     }
 
+    // ---------------------------------------------------------------------------
+    // "Loi du Treizième Coup" (HitCounterDoubleDamage)
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void Resolve_ShouldDoubleDamage_OnTheThirteenthLandedHit_WhenEnabled()
+    {
+        var (combat, ally, enemy) = CreateThirteenthHitCombat(hitCounterDoubleDamageEnabled: true);
+        var skill = CreateSkill("skill.basic.strike", "Damage", 10);
+
+        for (var i = 0; i < Combat.HitCounterTrigger; i++)
+        {
+            _resolver.Resolve(combat, ally, skill, [enemy]);
+        }
+
+        // 12 normal hits of 10 + the 13th hit doubled to 20 = 140 total.
+        enemy.CurrentVitality.Should().Be(1000 - 140);
+    }
+
+    [Fact]
+    public void Resolve_ShouldNotDoubleDamage_WhenHitCounterDoubleDamageIsDisabled()
+    {
+        var (combat, ally, enemy) = CreateThirteenthHitCombat(hitCounterDoubleDamageEnabled: false);
+        var skill = CreateSkill("skill.basic.strike", "Damage", 10);
+
+        for (var i = 0; i < Combat.HitCounterTrigger; i++)
+        {
+            _resolver.Resolve(combat, ally, skill, [enemy]);
+        }
+
+        // 13 normal hits of 10 = 130 total, none doubled.
+        enemy.CurrentVitality.Should().Be(1000 - 130);
+    }
+
+    [Fact]
+    public void Resolve_ShouldLogTheThirteenthHit_WhenItLands()
+    {
+        var (combat, ally, enemy) = CreateThirteenthHitCombat(hitCounterDoubleDamageEnabled: true);
+        var skill = CreateSkill("skill.basic.strike", "Damage", 10);
+
+        CombatSkillEffectResolution lastResult = null!;
+        for (var i = 0; i < Combat.HitCounterTrigger; i++)
+        {
+            lastResult = _resolver.Resolve(combat, ally, skill, [enemy]);
+        }
+
+        lastResult.LogEntries.Should().Contain(entry => entry.Type == "ThirteenthHit");
+    }
+
+    private static (Combat Combat, Combatant Ally, Combatant Enemy) CreateThirteenthHitCombat(
+        bool hitCounterDoubleDamageEnabled)
+    {
+        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+        // Guaranteed hit chance: the hit-roll seed is stable across repeated calls with
+        // the same actor/target/skill/turn, so a natural miss would deterministically
+        // repeat on every iteration instead of varying — remove that risk entirely.
+        ally.ApplyEquipmentCombatModifiers(100, 0, 0);
+
+        var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 1000);
+        var combat = Combat.Create(
+            CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(),
+            [ally], [enemy], hitCounterDoubleDamageEnabled);
+
+        return (combat, ally, enemy);
+    }
+
     private static void ApplyGuaranteedCritical(Combatant combatant)
     {
         combatant.ApplyStatusEffect(CombatStatusEffect.Create(

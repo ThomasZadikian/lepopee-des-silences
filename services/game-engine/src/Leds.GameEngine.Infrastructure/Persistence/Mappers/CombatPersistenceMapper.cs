@@ -28,6 +28,8 @@ public static class CombatPersistenceMapper
             Status = combat.Status.ToString(),
             TurnNumber = combat.TurnNumber,
             CurrentTick = combat.CurrentTick,
+            HitCounter = combat.HitCounter,
+            HitCounterDoubleDamageEnabled = combat.HitCounterDoubleDamageEnabled,
             ActiveCombatantId = combat.ActiveCombatantId?.Value,
             CreatedAtUtc = combat.CreatedAtUtc,
             UpdatedAtUtc = DateTime.UtcNow,
@@ -288,9 +290,10 @@ public static class CombatPersistenceMapper
             enemies,
             entity.ActiveCombatantId.HasValue ? new CombatantId(entity.ActiveCombatantId.Value) : null,
             entity.TurnNumber,
-            entity.CreatedAtUtc, 
-            entity.CurrentTick            
-            );
+            entity.CreatedAtUtc,
+            entity.CurrentTick,
+            entity.HitCounter,
+            entity.HitCounterDoubleDamageEnabled);
     }
 
     public static Combatant ToDomain(CombatantEntity entity)
