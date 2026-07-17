@@ -4,6 +4,7 @@ using Leds.GameEngine.Application.Combats.Dtos;
 using Leds.GameEngine.Application.Combats.SubmitCombatAction;
 using Leds.GameEngine.Application.Runs.AdvanceCombatTurn;
 using Leds.GameEngine.Application.Runs.HoldCombatTurn;
+using Leds.GameEngine.Application.Runs.Reposition;
 using Leds.GameEngine.Application.Runs.UseCombatSkill;
 using Leds.GameEngine.Application.Runs.UseItemInCombat;
 using Leds.GameEngine.Domain.Combats;
@@ -151,6 +152,32 @@ public sealed class CombatsController : ControllerBase
         return Ok(response);
     }
 
+    /// <summary>
+    /// Switches the actor between Front and Back row. Costs the actor's whole turn,
+    /// like a basic attack — see RepositionCommandHandler.
+    /// </summary>
+    [HttpPost("{combatId:guid}/reposition-actions")]
+    [ProducesResponseType(typeof(CombatSkillActionResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<CombatSkillActionResult>> Reposition(
+        Guid runId,
+        Guid combatId,
+        [FromBody] RepositionRequest request,
+        CancellationToken cancellationToken)
+    {
+        var command = new RepositionCommand(
+            RunId: runId,
+            CombatId: combatId,
+            ActorId: request.ActorId,
+            Row: request.Row);
+
+        var response = await _sender.Send(command, cancellationToken);
+
+        return Ok(response);
+    }
+
     [HttpPost("{combatId:guid}/item-actions")]
     [ProducesResponseType(typeof(CombatSkillActionResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -185,3 +212,7 @@ public sealed record UseItemInCombatRequest(
     IReadOnlyCollection<Guid>? TargetIds);
 
 public sealed record HoldCombatTurnRequest(int DeltaTicks);
+
+public sealed record RepositionRequest(
+    Guid ActorId,
+    string Row);
