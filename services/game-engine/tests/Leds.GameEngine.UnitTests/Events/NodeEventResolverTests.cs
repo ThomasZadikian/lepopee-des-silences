@@ -167,33 +167,6 @@ public sealed class NodeEventResolverTests
     }
 
     // ---------------------------------------------------------------------------
-    // Law
-    // ---------------------------------------------------------------------------
-
-    [Fact]
-    public void ResolveCurrentEvent_ShouldReturnLawOutcome_WhenNodeTypeIsLaw()
-    {
-        var dto = ResolveDto(new LawNodeEventResolver(), NodeEventType.Law);
-
-        dto.NodeId.Should().NotBeEmpty();
-        dto.PrimaryEventType.Should().Be(NodeEventType.Law.ToString());
-        dto.ResolutionKind.Should().Be(NodeEventResolutionKind.PalaceLawOffered.ToString());
-        dto.RiskLevel.Should().BeGreaterThanOrEqualTo(0).And.BeLessThanOrEqualTo(100);
-        dto.RewardProfile.Should().NotBeNullOrWhiteSpace();
-        dto.Title.Should().NotBeNullOrWhiteSpace();
-        dto.Description.Should().NotBeNullOrWhiteSpace();
-        dto.RequiresPlayerChoice.Should().BeTrue();
-        dto.Choices.Should().ContainSingle(
-            because: "a Palace Law cannot be refused once offered.");
-        dto.Choices.Single().ChoiceId.Should().Be("accept-law");
-        dto.Choices.Should().AllSatisfy(choice =>
-        {
-            choice.ChoiceId.Should().NotBeNullOrWhiteSpace();
-            choice.Label.Should().NotBeNullOrWhiteSpace();
-        });
-    }
-
-    // ---------------------------------------------------------------------------
     // Merchant
     // ---------------------------------------------------------------------------
 
@@ -341,7 +314,6 @@ public sealed class NodeEventResolverTests
         new ItemNodeEventResolver().EventType.Should().Be(NodeEventType.Item);
         new RareNodeEventResolver().EventType.Should().Be(NodeEventType.Rare);
         new RestNodeEventResolver().EventType.Should().Be(NodeEventType.Rest);
-        new LawNodeEventResolver().EventType.Should().Be(NodeEventType.Law);
         new MerchantNodeEventResolver().EventType.Should().Be(NodeEventType.Merchant);
         new NpcNodeEventResolver().EventType.Should().Be(NodeEventType.Npc);
         new RoomBossNodeEventResolver().EventType.Should().Be(NodeEventType.RoomBoss);

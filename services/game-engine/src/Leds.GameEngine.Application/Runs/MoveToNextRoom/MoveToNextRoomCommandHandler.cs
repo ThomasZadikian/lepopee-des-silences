@@ -1,5 +1,6 @@
 ﻿using Leds.GameEngine.Application.Abstractions;
 using Leds.GameEngine.Application.Common.Exceptions;
+using Leds.GameEngine.Application.PalaceLaws;
 using Leds.GameEngine.Application.Runs.Dtos;
 using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Runs;
@@ -12,13 +13,16 @@ public sealed class MoveToNextRoomCommandHandler
 {
     private readonly IRunRepository _runRepository;
     private readonly IRunGenerator _runGenerator;
+    private readonly IAmbientPalaceLawPromulgator _palaceLawPromulgator;
 
     public MoveToNextRoomCommandHandler(
         IRunRepository runRepository,
-        IRunGenerator runGenerator)
+        IRunGenerator runGenerator,
+        IAmbientPalaceLawPromulgator palaceLawPromulgator)
     {
         _runRepository = runRepository;
         _runGenerator = runGenerator;
+        _palaceLawPromulgator = palaceLawPromulgator;
     }
 
     public async Task<MoveToNextRoomResponse> Handle(
@@ -43,6 +47,10 @@ public sealed class MoveToNextRoomCommandHandler
         var nextRoom = await _runGenerator.GenerateNextRoomAsync(run, cancellationToken);
 
         run.MoveToNextRoom(nextRoom);
+
+        // Ambient promulgation ("irréfusabilité") replaces the old player-chosen "Loi" map
+        // node: a law may now be promulgated automatically on entering the new room.
+        await _palaceLawPromulgator.PromulgateForRoomTransitionAsync(run, nextRoom, cancellationToken);
 
         await _runRepository.UpdateAsync(run, cancellationToken);
 

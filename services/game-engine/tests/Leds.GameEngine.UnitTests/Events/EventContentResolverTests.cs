@@ -79,24 +79,12 @@ public sealed class EventContentResolverTests
     }
 
     [Fact]
-    public async Task ResolveAsync_ShouldResolvePalaceLawContent_WhenEventTypeIsLaw()
+    public async Task ResolveAsync_ShouldFilterAlreadyActivePalaceLaws_ForCurseEvents()
     {
-        var result = await _resolver.ResolveAsync(CreateContext(NodeEventType.Law));
-
-        result.IsSuccess.Should().BeTrue();
-
-        var content = result.Value.Should()
-            .BeOfType<ResolvedPalaceLawEventContent>()
-            .Subject;
-
-        content.PalaceLawDefinitionKey.Should().NotBeNullOrWhiteSpace();
-        content.PalaceLawName.Should().NotBeNullOrWhiteSpace();
-    }
-
-    [Fact]
-    public async Task ResolveAsync_ShouldFilterAlreadyActivePalaceLaws()
-    {
-        var context = CreateContext(NodeEventType.Law) with
+        // NodeEventType.Law is no longer a selectable map node (ambient promulgation
+        // replaced it), but PalaceLawEventContentResolutionStrategy still shares its
+        // catalog-law pool and eligibility filtering with NodeEventType.Curse.
+        var context = CreateContext(NodeEventType.Curse) with
         {
             ActivePalaceLawKeys =
             [
@@ -114,7 +102,7 @@ public sealed class EventContentResolverTests
 
         result.IsSuccess.Should().BeTrue();
         var content = result.Value.Should()
-            .BeOfType<ResolvedPalaceLawEventContent>()
+            .BeOfType<ResolvedCurseEventContent>()
             .Subject;
 
         content.PalaceLawDefinitionKey.Should().Be("law-aegis-v1");

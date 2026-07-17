@@ -4,13 +4,13 @@ using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Application.Combats.Dtos;
 using Leds.GameEngine.Application.Combats.Resolution;
 using Leds.GameEngine.Application.Common.Exceptions;
+using Leds.GameEngine.Application.PalaceLaws;
 using Leds.GameEngine.Application.Rewards.Ports;
 using Leds.GameEngine.Application.Runs.Dtos;
 using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Combats.Atb;
 using Leds.GameEngine.Domain.Combats.StatusEffects;
 using Leds.GameEngine.Domain.Common;
-using Leds.GameEngine.Domain.Effects;
 using Leds.GameEngine.Domain.PalaceLaws;
 using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
@@ -138,7 +138,7 @@ public sealed class DevToolsRunDebugService : IDevToolsRunDebugService
         if (definitionResult.IsFailure)
             throw new NotFoundException($"Palace law definition '{lawKey}' was not found.");
 
-        run.ActivatePalaceLaw(ToDomainLaw(definitionResult.Value));
+        run.ActivatePalaceLaw(PalaceLawMapper.CreatePalaceLaw(definitionResult.Value, PalaceLawDomain.Combat));
 
         await _runRepository.UpdateAsync(run, cancellationToken);
 
@@ -475,71 +475,4 @@ public sealed class DevToolsRunDebugService : IDevToolsRunDebugService
         };
     }
 
-    private static PalaceLaw ToDomainLaw(PalaceLawDefinitionSnapshot definition)
-    {
-        var domains = definition.ImpactDomains
-            .Select(domain => Enum.TryParse<PalaceLawDomain>(domain, ignoreCase: true, out var parsed)
-                ? parsed
-                : (PalaceLawDomain?)null)
-            .Where(domain => domain.HasValue)
-            .Select(domain => domain!.Value)
-            .Distinct()
-            .ToArray();
-
-        if (domains.Length == 0)
-            domains = [PalaceLawDomain.Combat];
-
-        var effects = (definition.Effects ?? [])
-            .Select(MapLawEffect)
-            .Where(effect => effect is not null)
-            .Select(effect => effect!)
-            .ToArray();
-
-        return PalaceLaw.Create(definition.Key, definition.Name, definition.Version, domains, effects);
-    }
-
-    private static PalaceLawEffect? MapLawEffect(CatalogEffectDefinitionSnapshot effect)
-    {
-        if (!Enum.TryParse<EffectType>(effect.EffectType, ignoreCase: true, out var effectType))
-            throw new DomainException($"Palace law effect type '{effect.EffectType}' is not supported by the runtime.");
-
-        var duration = Enum.TryParse<RunModifierDuration>(effect.Duration, ignoreCase: true, out var parsedDuration)
-            ? parsedDuration
-            : RunModifierDuration.UntilRunEnds;
-
-        return effectType switch
-        {
-            EffectType.AddStartingGuard => PalaceLawEffect.Create(
-                RunModifierType.StartingGuardBonus,
-                (double)effect.Value,
-                duration),
-            EffectType.ModifyDifficultyMultiplier => PalaceLawEffect.Create(
-                RunModifierType.CombatDifficultyMultiplier,
-                (double)effect.Value,
-                duration),
-            EffectType.ModifyRewardPowerMultiplier => PalaceLawEffect.Create(
-                RunModifierType.RewardPowerMultiplier,
-                (double)effect.Value,
-                duration),
-            EffectType.ModifyAttackPower => PalaceLawEffect.Create(
-                RunModifierType.AttackPowerBonus,
-                (double)effect.Value,
-                duration),
-            EffectType.ModifyDefense => PalaceLawEffect.Create(
-                RunModifierType.DefenseBonus,
-                (double)effect.Value,
-                duration),
-            EffectType.ModifySpeed => PalaceLawEffect.Create(
-                RunModifierType.SpeedBonus,
-                (double)effect.Value,
-                duration),
-            EffectType.ApplyRoomClimate => PalaceLawEffect.Create(
-                RunModifierType.RoomClimate,
-                MapClimate(effect.Condition ?? effect.BehaviorTag)
-                    ?? throw new DomainException("ApplyRoomClimate requires a concrete climate."),
-                RunModifierDuration.UntilRoomEnds),
-            EffectType.ModifyGenerationWeight => null,
-            _ => throw new DomainException($"Palace law effect type '{effect.EffectType}' is not supported by the runtime.")
-        };
-    }
 }

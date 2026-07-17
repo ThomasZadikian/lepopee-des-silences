@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Leds.GameEngine.Application.Abstractions;
 using Leds.GameEngine.Application.Common.Exceptions;
+using Leds.GameEngine.Application.PalaceLaws;
 using Leds.GameEngine.Application.Runs.MoveToNextRoom;
 using Leds.GameEngine.Domain.Runs;
 using Leds.GameEngine.UnitTests.Common.Factories;
@@ -27,9 +28,12 @@ public sealed class MoveToNextRoomCommandHandlerTests
             .Setup(service => service.GenerateNextRoomAsync(run, CancellationToken.None))
             .ReturnsAsync(nextRoom);
 
+        var palaceLawPromulgator = new Mock<IAmbientPalaceLawPromulgator>();
+
         var handler = new MoveToNextRoomCommandHandler(
             repository.Object,
-            generator.Object);
+            generator.Object,
+            palaceLawPromulgator.Object);
 
         var response = await handler.Handle(
             new MoveToNextRoomCommand(run.Id.Value),
@@ -56,10 +60,12 @@ public sealed class MoveToNextRoomCommandHandlerTests
             .ReturnsAsync((Run?)null);
 
         var generator = new Mock<IRunGenerator>();
+        var palaceLawPromulgator = new Mock<IAmbientPalaceLawPromulgator>();
 
         var handler = new MoveToNextRoomCommandHandler(
             repository.Object,
-            generator.Object);
+            generator.Object,
+            palaceLawPromulgator.Object);
 
         var act = () => handler.Handle(
             new MoveToNextRoomCommand(runId),

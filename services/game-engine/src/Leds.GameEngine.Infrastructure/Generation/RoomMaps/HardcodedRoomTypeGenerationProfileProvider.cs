@@ -19,13 +19,13 @@ public sealed class HardcodedRoomTypeGenerationProfileProvider : IRoomTypeGenera
             // Low-to-moderate risk. Single reward option per node type
             // to keep the experience predictable for first-time players.
             // ----------------------------------------------------------------
-            // Law is excluded from all profiles until a gameplay-effective
-            // RunModifier implementation exists (no visible node without real effect).
+            // NodeEventType.Law is no longer generated as a map node — Palace Laws are
+            // promulgated ambiently (irréfusabilité), triggered from room transitions
+            // instead of a player-chosen node. See Run.PromulgateLaw.
             [RoomType.Threshold] = new RoomTypeGenerationProfile(
                 RoomType.Threshold,
                 nodeTypeWeights:
                 [
-                    new(NodeEventType.Law,      25),
                     new(NodeEventType.Combat,   30),
                     new(NodeEventType.Rest,     15),
                     new(NodeEventType.Item,     15),
@@ -60,7 +60,6 @@ public sealed class HardcodedRoomTypeGenerationProfileProvider : IRoomTypeGenera
                 RoomType.Forest,
                 nodeTypeWeights:
                 [
-                    new(NodeEventType.Law,      25),
                     new(NodeEventType.Npc,      25),
                     new(NodeEventType.Rest,     20),
                     new(NodeEventType.Item,     20),
@@ -93,8 +92,6 @@ public sealed class HardcodedRoomTypeGenerationProfileProvider : IRoomTypeGenera
                 RoomType.Rupture,
                 nodeTypeWeights:
                 [
-
-                    new(NodeEventType.Law,      25),
                     new(NodeEventType.Combat,   30),
                     new(NodeEventType.Elite,    20),
                     new(NodeEventType.Rare,     15),
@@ -123,13 +120,13 @@ public sealed class HardcodedRoomTypeGenerationProfileProvider : IRoomTypeGenera
             // Variable risk — less frontal danger, more indirect/systemic.
             // Law and Merchant have richer reward options to reflect player choice.
             // ----------------------------------------------------------------
-            // Silence had Law as its defining node type (25 weight).
-            // Until Law gains a real RunModifier implementation, weight is redistributed to Npc and Merchant.
+            // Silence had Law as its defining node type (25 weight); now that Palace Laws
+            // are promulgated ambiently rather than via a map node, that weight is
+            // redistributed to Npc and Merchant.
             [RoomType.Silence] = new RoomTypeGenerationProfile(
                 RoomType.Silence,
                 nodeTypeWeights:
                 [
-                    new(NodeEventType.Law,      25),
                     new(NodeEventType.Npc,      35),
                     new(NodeEventType.Merchant, 30),
                     new(NodeEventType.Rest,     10),
@@ -160,12 +157,12 @@ public sealed class HardcodedRoomTypeGenerationProfileProvider : IRoomTypeGenera
             // NodeEventType.Memory and Narrative are NOT used as direct MapNode
             // types — they are approximated through Npc, Law, Item, Rest.
             // ----------------------------------------------------------------
-            // Memory had Law with 25 weight; redistributed to Npc and Item until Law has gameplay effect.
+            // Memory had Law with 25 weight; redistributed to Npc and Item now that Palace
+            // Laws are promulgated ambiently rather than via a map node.
             [RoomType.Memory] = new RoomTypeGenerationProfile(
                 RoomType.Memory,
                 nodeTypeWeights:
                 [
-                    new(NodeEventType.Law,      25),
                     new(NodeEventType.Npc,      40),
                     new(NodeEventType.Item,     30),
                     new(NodeEventType.Rest,     15),
@@ -174,7 +171,6 @@ public sealed class HardcodedRoomTypeGenerationProfileProvider : IRoomTypeGenera
                     new(NodeEventType.Merchant,  2),
                     new(NodeEventType.Elite,     1),
                     // NodeEventType.Curse intentionally excluded from Memory rooms
-                    // NodeEventType.Law excluded until gameplay-effective implementation
                 ],
                 riskMin: 5,
                 riskMax: 46,

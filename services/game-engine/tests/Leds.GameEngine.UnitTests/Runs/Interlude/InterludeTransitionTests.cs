@@ -12,6 +12,7 @@ using Leds.GameEngine.Application.Events.ResolveNodeEvent;
 using Leds.GameEngine.Application.Interlude;
 using Leds.GameEngine.Application.Interlude.EnterInterlude;
 using Leds.GameEngine.Application.Interlude.GetInterlude;
+using Leds.GameEngine.Application.PalaceLaws;
 using Leds.GameEngine.Application.Rewards.Ports;
 using Leds.GameEngine.Application.Rewards.Loot;
 using Leds.GameEngine.Application.Runs.ChooseNode;
@@ -357,7 +358,8 @@ public sealed class InterludeTransitionTests
             .ReturnsAsync(run);
 
         var generator = new Mock<IRunGenerator>();
-        var handler = new MoveToNextRoomCommandHandler(repo.Object, generator.Object);
+        var palaceLawPromulgator = new Mock<IAmbientPalaceLawPromulgator>();
+        var handler = new MoveToNextRoomCommandHandler(repo.Object, generator.Object, palaceLawPromulgator.Object);
 
         var act = () => handler.Handle(
             new MoveToNextRoomCommand(run.Id.Value),
@@ -382,7 +384,8 @@ public sealed class InterludeTransitionTests
         var generator = new Mock<IRunGenerator>();
         generator.Setup(g => g.GenerateNextRoomAsync(run, CancellationToken.None)).ReturnsAsync(nextRoom);
 
-        var handler = new MoveToNextRoomCommandHandler(repo.Object, generator.Object);
+        var palaceLawPromulgator = new Mock<IAmbientPalaceLawPromulgator>();
+        var handler = new MoveToNextRoomCommandHandler(repo.Object, generator.Object, palaceLawPromulgator.Object);
         var response = await handler.Handle(
             new MoveToNextRoomCommand(run.Id.Value),
             CancellationToken.None);
@@ -403,7 +406,8 @@ public sealed class InterludeTransitionTests
         var generator = new Mock<IRunGenerator>();
         generator.Setup(g => g.GenerateNextRoomAsync(run, CancellationToken.None)).ReturnsAsync(nextRoom);
 
-        var handler = new MoveToNextRoomCommandHandler(repo.Object, generator.Object);
+        var palaceLawPromulgator = new Mock<IAmbientPalaceLawPromulgator>();
+        var handler = new MoveToNextRoomCommandHandler(repo.Object, generator.Object, palaceLawPromulgator.Object);
         var response = await handler.Handle(
             new MoveToNextRoomCommand(run.Id.Value),
             CancellationToken.None);
@@ -424,7 +428,8 @@ public sealed class InterludeTransitionTests
         var generator = new Mock<IRunGenerator>();
         generator.Setup(g => g.GenerateNextRoomAsync(run, CancellationToken.None)).ReturnsAsync(nextRoom);
 
-        var handler = new MoveToNextRoomCommandHandler(repo.Object, generator.Object);
+        var palaceLawPromulgator = new Mock<IAmbientPalaceLawPromulgator>();
+        var handler = new MoveToNextRoomCommandHandler(repo.Object, generator.Object, palaceLawPromulgator.Object);
         var response = await handler.Handle(
             new MoveToNextRoomCommand(run.Id.Value),
             CancellationToken.None);
@@ -446,7 +451,8 @@ public sealed class InterludeTransitionTests
         var generator = new Mock<IRunGenerator>();
         generator.Setup(g => g.GenerateNextRoomAsync(run, CancellationToken.None)).ReturnsAsync(nextRoom);
 
-        var handler = new MoveToNextRoomCommandHandler(repo.Object, generator.Object);
+        var palaceLawPromulgator = new Mock<IAmbientPalaceLawPromulgator>();
+        var handler = new MoveToNextRoomCommandHandler(repo.Object, generator.Object, palaceLawPromulgator.Object);
         await handler.Handle(
             new MoveToNextRoomCommand(run.Id.Value),
             CancellationToken.None);
@@ -468,7 +474,8 @@ public sealed class InterludeTransitionTests
         var generator = new Mock<IRunGenerator>();
         generator.Setup(g => g.GenerateNextRoomAsync(run, CancellationToken.None)).ReturnsAsync(nextRoom);
 
-        var handler = new MoveToNextRoomCommandHandler(repo.Object, generator.Object);
+        var palaceLawPromulgator = new Mock<IAmbientPalaceLawPromulgator>();
+        var handler = new MoveToNextRoomCommandHandler(repo.Object, generator.Object, palaceLawPromulgator.Object);
 
         // Verify generator was called with the run (depth-aware call)
         await handler.Handle(
@@ -492,7 +499,8 @@ public sealed class InterludeTransitionTests
         var generator = new Mock<IRunGenerator>();
         generator.Setup(g => g.GenerateNextRoomAsync(run, CancellationToken.None)).ReturnsAsync(nextRoom);
 
-        var handler = new MoveToNextRoomCommandHandler(repo.Object, generator.Object);
+        var palaceLawPromulgator = new Mock<IAmbientPalaceLawPromulgator>();
+        var handler = new MoveToNextRoomCommandHandler(repo.Object, generator.Object, palaceLawPromulgator.Object);
         var response = await handler.Handle(
             new MoveToNextRoomCommand(run.Id.Value),
             CancellationToken.None);
@@ -513,7 +521,8 @@ public sealed class InterludeTransitionTests
         var generator = new Mock<IRunGenerator>();
         generator.Setup(g => g.GenerateNextRoomAsync(run, CancellationToken.None)).ReturnsAsync(nextRoom);
 
-        var handler = new MoveToNextRoomCommandHandler(repo.Object, generator.Object);
+        var palaceLawPromulgator = new Mock<IAmbientPalaceLawPromulgator>();
+        var handler = new MoveToNextRoomCommandHandler(repo.Object, generator.Object, palaceLawPromulgator.Object);
         await handler.Handle(
             new MoveToNextRoomCommand(run.Id.Value),
             CancellationToken.None);

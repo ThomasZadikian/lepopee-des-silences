@@ -241,12 +241,6 @@ public sealed class ResolveCurrentEventCommandHandler
             run.ResolveCurrentEvent();
             selectedNode.ChooseEventOption("trade");
         }
-        else if (selectedNode.EventType == NodeEventType.Law)
-        {
-            resolvedContent = await ResolveEventContentAsync(run, room, selectedNode, cancellationToken);
-            resolutionResult = ApplyPalaceLawContent(resolutionResult, (ResolvedPalaceLawEventContent)resolvedContent);
-            run.ResolveCurrentEvent();
-        }
         else if (selectedNode.EventType == NodeEventType.Npc)
         {
             resolvedContent = await ResolveEventContentAsync(run, room, selectedNode, cancellationToken);
@@ -602,22 +596,6 @@ public sealed class ResolveCurrentEventCommandHandler
         {
             Title = content.NpcDisplayName,
             Description = content.NpcDescription
-        };
-    }
-
-    private static NodeEventResolutionResult ApplyPalaceLawContent(
-        NodeEventResolutionResult result,
-        ResolvedPalaceLawEventContent content)
-    {
-        return result with
-        {
-            Title = content.PalaceLawName,
-            Description = content.PalaceLawDescription,
-            Choices = result.Choices.Select(choice => choice.ChoiceId switch
-            {
-                "accept-law" => choice with { ChoiceId = $"accept-law:{content.PalaceLawDefinitionKey}" },
-                _ => choice
-            }).ToArray()
         };
     }
 

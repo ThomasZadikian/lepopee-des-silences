@@ -26,8 +26,11 @@ public sealed class PalaceLawEventContentResolutionStrategy : IEventContentResol
         _catalogContentGateway = catalogContentGateway;
     }
 
+    // NodeEventType.Law is no longer a selectable map node (ambient promulgation replaced
+    // it — see Run.PromulgateLaw), so this strategy now only serves Curse events. It still
+    // shares the catalog law pool and eligibility filtering Curse relies on.
     public IReadOnlyCollection<NodeEventType> SupportedEventTypes { get; } =
-        new[] { NodeEventType.Law, NodeEventType.Curse };
+        new[] { NodeEventType.Curse };
 
     public async Task<Result<ResolvedNodeEventContent>> ResolveAsync(
         EventContentResolutionContext context,
@@ -50,21 +53,8 @@ public sealed class PalaceLawEventContentResolutionStrategy : IEventContentResol
 
         var palaceLaw = SelectDeterministically(context, eligiblePalaceLaws);
 
-        if (context.EventType == NodeEventType.Curse)
-        {
-            return Result<ResolvedNodeEventContent>.Success(
-                new ResolvedCurseEventContent(
-                    EventTemplateKey: DefaultEventTemplateKey,
-                    EventTemplateVersion: TemplateVersion,
-                    Tags: [],
-                    PalaceLawDefinitionKey: palaceLaw.Key,
-                    PalaceLawName: palaceLaw.Name,
-                    PalaceLawDescription: palaceLaw.Description,
-                    PalaceLawDefinitionVersion: palaceLaw.Version));
-        }
-
         return Result<ResolvedNodeEventContent>.Success(
-            new ResolvedPalaceLawEventContent(
+            new ResolvedCurseEventContent(
                 EventTemplateKey: DefaultEventTemplateKey,
                 EventTemplateVersion: TemplateVersion,
                 Tags: [],
