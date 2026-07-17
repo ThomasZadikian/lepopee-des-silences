@@ -22,7 +22,8 @@ public sealed class CombatTests
         bool falaiseWindEnabled = false,
         bool postDeathBasicAttackOnlyEnabled = false,
         bool tapisPropreEnabled = false,
-        bool thirdCupHealCorruptionEnabled = false)
+        bool thirdCupHealCorruptionEnabled = false,
+        bool presentationsEnabled = false)
     {
         var allies = Enumerable.Range(0, allyCount).Select(i =>
             Combatant.CreateAlly($"player.{i}", $"Hero{i}", "Fighter", 100)).ToArray();
@@ -47,7 +48,8 @@ public sealed class CombatTests
             falaiseWindEnabled,
             postDeathBasicAttackOnlyEnabled,
             tapisPropreEnabled,
-            thirdCupHealCorruptionEnabled);
+            thirdCupHealCorruptionEnabled,
+            presentationsEnabled);
     }
 
     [Fact]
@@ -665,5 +667,18 @@ public sealed class CombatTests
         healAmount.Should().Be(20);
         triggered.Should().BeFalse();
         target.StatusEffects.Should().BeEmpty();
+    }
+
+    // ---------------------------------------------------------------------------
+    // "Loi des Présentations" (PresentationsEnabled) — no Combat-level mutable state;
+    // the per-enemy first-action forecast (gated on Combatant.HasActedThisCombat) is
+    // tested in EnemyCombatTurnResolverTests, since it needs a real enemy turn to fire.
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void PresentationsEnabled_ShouldReflectTheValueBakedInAtCreation()
+    {
+        CreateSut(presentationsEnabled: true).PresentationsEnabled.Should().BeTrue();
+        CreateSut().PresentationsEnabled.Should().BeFalse();
     }
 }

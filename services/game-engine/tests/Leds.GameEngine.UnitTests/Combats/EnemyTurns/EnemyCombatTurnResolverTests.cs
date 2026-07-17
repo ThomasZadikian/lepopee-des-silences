@@ -238,6 +238,58 @@ public sealed class EnemyCombatTurnResolverTests
         result.TargetIds.Should().ContainSingle(id => id == highThreat.Id.Value);
     }
 
+    // "Loi des Présentations" (law.presentations) — on an enemy's first action of the
+    // combat, telegraph the resolved skill/targets via a dedicated "ActionForecast" log
+    // entry, reusing the exact values about to be executed (no separate AI preview call).
+    [Fact]
+    public void Resolve_ShouldAddActionForecast_OnEnemyFirstAction_WhenPresentationsEnabled()
+    {
+        var skill = CreateSkill("skill.basic.strike", "Damage", "SingleEnemy", 10);
+        var ally = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
+        var enemy = Combatant.CreateEnemy("enemy.1", "Enemy", "Guard", 80, [skill]);
+        var combat = Combat.Create(
+            CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy],
+            presentationsEnabled: true);
+        combat.AdvanceTurn();
+
+        var result = _resolver.Resolve(combat);
+
+        result.LogEntries.Should().ContainSingle(e => e.Type == "ActionForecast"
+            && e.Message.Contains("Enemy") && e.Message.Contains(skill.DisplayName) && e.Message.Contains("Hero"));
+    }
+
+    [Fact]
+    public void Resolve_ShouldNotAddActionForecast_WhenPresentationsDisabled()
+    {
+        var combat = CreateCombat(enemySkills: [CreateSkill("skill.basic.strike", "Damage", "SingleEnemy", 10)]);
+        combat.AdvanceTurn();
+
+        var result = _resolver.Resolve(combat);
+
+        result.LogEntries.Should().NotContain(e => e.Type == "ActionForecast");
+    }
+
+    [Fact]
+    public void Resolve_ShouldNotAddActionForecast_WhenActorHasAlreadyActedThisCombat()
+    {
+        var skill = CreateSkill("skill.basic.strike", "Damage", "SingleEnemy", 10);
+        var ally = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
+        var enemy = Combatant.CreateEnemy("enemy.1", "Enemy", "Guard", 80, [skill]);
+        var combat = Combat.Create(
+            CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy],
+            presentationsEnabled: true);
+        combat.AdvanceTurn();
+        // Simulate the enemy already having acted once this combat (e.g. a prior
+        // Reposition/buff turn) — HasActedThisCombat is what the law's gate reads.
+        // recoveryTicks: 0 keeps it immediately actionable again without disturbing
+        // which combatant is currently active.
+        enemy.RegisterAtbAction(combat.CurrentTick, 0);
+
+        var result = _resolver.Resolve(combat);
+
+        result.LogEntries.Should().NotContain(e => e.Type == "ActionForecast");
+    }
+
     private static Combat CreateCombat(IReadOnlyCollection<CombatantSkill> enemySkills)
     {
         var ally = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);

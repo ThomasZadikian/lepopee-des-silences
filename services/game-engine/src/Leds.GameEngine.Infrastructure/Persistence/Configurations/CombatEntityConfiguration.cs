@@ -33,6 +33,7 @@ public sealed class CombatEntityConfiguration : IEntityTypeConfiguration<CombatE
         builder.Property(c => c.NextActionRestrictedToBasicAttack).HasColumnName("next_action_restricted_to_basic_attack").HasDefaultValue(false);
         builder.Property(c => c.TapisPropreEnabled).HasColumnName("tapis_propre_enabled").HasDefaultValue(false);
         builder.Property(c => c.ThirdCupHealCorruptionEnabled).HasColumnName("third_cup_heal_corruption_enabled").HasDefaultValue(false);
+        builder.Property(c => c.PresentationsEnabled).HasColumnName("presentations_enabled").HasDefaultValue(false);
         builder.Property(c => c.ActiveCombatantId).HasColumnName("active_combatant_id");
         builder.Property(c => c.CreatedAtUtc).HasColumnName("created_at_utc");
         builder.Property(c => c.UpdatedAtUtc).HasColumnName("updated_at_utc");

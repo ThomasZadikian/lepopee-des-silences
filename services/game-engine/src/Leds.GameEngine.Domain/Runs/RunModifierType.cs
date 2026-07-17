@@ -102,4 +102,13 @@ public enum RunModifierType
     /// "un nœud sur deux est vide à l'ouverture" half is NOT modeled (documented gap —
     /// no zero-choice RewardOffer flow exists).</summary>
     AbondanceExtraChoiceEnabled = 35,
+
+    /// <summary>"Loi des Présentations" (law.presentations) — each enemy's first action
+    /// of the combat is announced (telegraphed) via a log entry immediately before it
+    /// resolves. See EnemyCombatTurnResolver.Resolve. Documented simplification: the SFD
+    /// says "au premier tour de chaque combat, tous les ennemis annoncent" (a single
+    /// batch announcement at combat start) — this is approximated as each enemy
+    /// announcing individually right before their own first action, since no channel
+    /// exists to surface log entries before combat's first response.</summary>
+    PresentationsEnabled = 36,
 }

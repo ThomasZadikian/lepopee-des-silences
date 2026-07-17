@@ -35,7 +35,8 @@ public sealed class Combat
         bool postDeathBasicAttackOnlyEnabled = false,
         bool nextActionRestrictedToBasicAttack = false,
         bool tapisPropreEnabled = false,
-        bool thirdCupHealCorruptionEnabled = false)
+        bool thirdCupHealCorruptionEnabled = false,
+        bool presentationsEnabled = false)
     {
         Id = id;
         RunId = runId;
@@ -62,6 +63,7 @@ public sealed class Combat
         NextActionRestrictedToBasicAttack = nextActionRestrictedToBasicAttack;
         TapisPropreEnabled = tapisPropreEnabled;
         ThirdCupHealCorruptionEnabled = thirdCupHealCorruptionEnabled;
+        PresentationsEnabled = presentationsEnabled;
     }
 
     public CombatId Id { get; }
@@ -279,6 +281,12 @@ public sealed class Combat
         return (corrupted, true);
     }
 
+    /// <summary>"Loi des Présentations" (law.presentations): baked in at creation from the
+    /// run's active RunModifiers. Read by EnemyCombatTurnResolver.Resolve together with
+    /// Combatant.HasActedThisCombat to telegraph an enemy's first action of the combat
+    /// via a log entry immediately before it resolves.</summary>
+    public bool PresentationsEnabled { get; }
+
     /// <summary>"Loi de la Falaise" random-target chance, checked once per turn.</summary>
     private const double FalaiseWindTriggerChance = 0.10;
 
@@ -303,7 +311,8 @@ public sealed class Combat
         bool falaiseWindEnabled = false,
         bool postDeathBasicAttackOnlyEnabled = false,
         bool tapisPropreEnabled = false,
-        bool thirdCupHealCorruptionEnabled = false)
+        bool thirdCupHealCorruptionEnabled = false,
+        bool presentationsEnabled = false)
     {
         if (id.Value == Guid.Empty)
             throw new DomainException("Combat id is required.");
@@ -348,7 +357,8 @@ public sealed class Combat
             falaiseWindEnabled: falaiseWindEnabled,
             postDeathBasicAttackOnlyEnabled: postDeathBasicAttackOnlyEnabled,
             tapisPropreEnabled: tapisPropreEnabled,
-            thirdCupHealCorruptionEnabled: thirdCupHealCorruptionEnabled);
+            thirdCupHealCorruptionEnabled: thirdCupHealCorruptionEnabled,
+            presentationsEnabled: presentationsEnabled);
     }
 
     public void MarkCompleted()
@@ -688,9 +698,10 @@ public sealed class Combat
         bool postDeathBasicAttackOnlyEnabled = false,
         bool nextActionRestrictedToBasicAttack = false,
         bool tapisPropreEnabled = false,
-        bool thirdCupHealCorruptionEnabled = false)
+        bool thirdCupHealCorruptionEnabled = false,
+        bool presentationsEnabled = false)
     {
-        return new Combat(id, runId, roomId, nodeId, status, allies, enemies, activeCombatantId, turnNumber, currentTick, createdAtUtc, hitCounter, hitCounterDoubleDamageEnabled, firstHitCriticalEnabled, hasFirstHitLanded, lowHpDamageAmplificationEnabled, dotDurationExtensionTicks, duelDamageAsymmetryEnabled, dotMagnitudeBonus, healingBlocked, falaiseWindEnabled, postDeathBasicAttackOnlyEnabled, nextActionRestrictedToBasicAttack, tapisPropreEnabled, thirdCupHealCorruptionEnabled);
+        return new Combat(id, runId, roomId, nodeId, status, allies, enemies, activeCombatantId, turnNumber, currentTick, createdAtUtc, hitCounter, hitCounterDoubleDamageEnabled, firstHitCriticalEnabled, hasFirstHitLanded, lowHpDamageAmplificationEnabled, dotDurationExtensionTicks, duelDamageAsymmetryEnabled, dotMagnitudeBonus, healingBlocked, falaiseWindEnabled, postDeathBasicAttackOnlyEnabled, nextActionRestrictedToBasicAttack, tapisPropreEnabled, thirdCupHealCorruptionEnabled, presentationsEnabled);
     }
 
     /// <summary>

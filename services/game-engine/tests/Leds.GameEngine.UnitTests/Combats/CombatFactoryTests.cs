@@ -976,6 +976,36 @@ public sealed class CombatFactoryTests
     }
 
     // ---------------------------------------------------------------------------
+    // "Loi des Présentations" (PresentationsEnabled) — RunModifier-driven, baked at
+    // combat creation; the per-enemy first-action forecast itself lives in
+    // EnemyCombatTurnResolver.Resolve, tested in EnemyCombatTurnResolverTests.
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void CreateFromDraft_ShouldEnablePresentations_WhenTheLawIsActive()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft();
+        var modifier = RunModifier.Create(
+            RunModifierType.PresentationsEnabled, 1, RunModifierDuration.UntilFloorEnds, "PalaceLaw", "law-presentations-test");
+
+        var combat = factory.CreateFromDraft(draft, runModifiers: [modifier]);
+
+        combat.PresentationsEnabled.Should().BeTrue();
+    }
+
+    [Fact]
+    public void CreateFromDraft_ShouldNotEnablePresentations_WhenTheLawIsNotActive()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft();
+
+        var combat = factory.CreateFromDraft(draft);
+
+        combat.PresentationsEnabled.Should().BeFalse();
+    }
+
+    // ---------------------------------------------------------------------------
     // "Loi des Visites Terminées" (HealingBlocked) — room-bound (RoomKey), not a
     // RunModifier/tirage.
     // ---------------------------------------------------------------------------

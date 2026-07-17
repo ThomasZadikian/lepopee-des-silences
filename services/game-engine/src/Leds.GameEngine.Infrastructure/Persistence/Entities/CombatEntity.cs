@@ -23,6 +23,7 @@ public sealed class CombatEntity
     public bool NextActionRestrictedToBasicAttack { get; set; }
     public bool TapisPropreEnabled { get; set; }
     public bool ThirdCupHealCorruptionEnabled { get; set; }
+    public bool PresentationsEnabled { get; set; }
     public Guid? ActiveCombatantId { get; set; }
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }

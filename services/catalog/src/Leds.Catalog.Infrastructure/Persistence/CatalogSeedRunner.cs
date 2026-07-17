@@ -5427,14 +5427,13 @@ public sealed class CatalogSeedRunner
         await _ctx.SaveChangesAsync(cancellationToken);
     }
 
-    // Chapitre VI — Lois de mémoire & de relations. 2 of its 4 laws are seeded: "Loi du
-    // Nom Retenu" (reuses ReputationChangeDoubled) and "Loi du Témoin" (new
-    // WoundHealingBlocked mechanic). NOT seeded: "Loi de l'Oubli Partiel"
-    // (law.oubli-partiel) needs a mechanism to temporarily remove a random non-Frappe
-    // ally skill for the floor plus a floor-end stat-point grant — no skill-removal/
-    // floor-end-hook mechanism exists for this shape yet. "Loi des Présentations"
-    // (law.presentations) needs enemies to telegraph their next action on their first
-    // turn — no "action forecast" feature exists.
+    // Chapitre VI — Lois de mémoire & de relations. 3 of its 4 laws are seeded: "Loi du
+    // Nom Retenu" (reuses ReputationChangeDoubled), "Loi du Témoin" (new
+    // WoundHealingBlocked mechanic), and "Loi des Présentations" (new PresentationsEnabled
+    // mechanic — see EnemyCombatTurnResolver.Resolve, gated on Combatant.HasActedThisCombat).
+    // NOT seeded: "Loi de l'Oubli Partiel" (law.oubli-partiel) needs a mechanism to
+    // temporarily remove a random non-Frappe ally skill for the floor plus a floor-end
+    // stat-point grant — no skill-removal/floor-end-hook mechanism exists for this shape yet.
     private async Task SeedLoisDeMemoireAsync(CancellationToken cancellationToken)
     {
         await UpsertCompendiumLawAsync(
@@ -5471,10 +5470,34 @@ public sealed class CatalogSeedRunner
             impactDomains: ["Narrative"],
             cancellationToken);
 
+        // "Loi des Présentations" (law.presentations): documented simplification — the
+        // SFD's "au premier tour de chaque combat, tous les ennemis annoncent" (a single
+        // batch announcement at combat start) is approximated as each enemy announcing
+        // individually right before their own first action (see
+        // RunModifierType.PresentationsEnabled for the full rationale).
+        await UpsertCompendiumLawAsync(
+            key: "law.presentations",
+            name: "Loi des Présentations",
+            narrativeText: "Article IV — Nul ne frappe un inconnu sous ce toit. Faites "
+                + "connaissance ; ensuite, frappez qui vous connaissez.",
+            description: "Au premier tour de chaque combat, tous les ennemis annoncent "
+                + "leur prochaine action (intentions visibles). Version diminuée et "
+                + "gratuite des Yeux du marchand, qui eux montrent tout en permanence — "
+                + "et coûtent 25% PV max.",
+            rarity: "Commun",
+            polarity: "Clémente",
+            isMajeure: false,
+            minDepth: null,
+            duration: "UntilFloorEnds",
+            selectionGroup: "law.memoire",
+            impactDomains: ["Combat"],
+            cancellationToken);
+
         await _ctx.SaveChangesAsync(cancellationToken);
 
         await UpsertLawEffectAsync("law.nom-retenu", "EnableReputationChangeDoubled", 1m, "UntilFloorEnds", null, cancellationToken);
         await UpsertLawEffectAsync("law.temoin", "EnableWoundHealingBlocked", 1m, "UntilFloorEnds", null, cancellationToken);
+        await UpsertLawEffectAsync("law.presentations", "EnablePresentations", 1m, "UntilFloorEnds", null, cancellationToken);
 
         await _ctx.SaveChangesAsync(cancellationToken);
     }

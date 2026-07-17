@@ -144,6 +144,10 @@ public sealed class CombatFactory : ICombatFactory
         var thirdCupHealCorruptionEnabled = activeModifiers
             .Any(m => m.Type == RunModifierType.ThirdCupHealCorruptionEnabled && !m.IsConsumed);
 
+        // "Loi des Présentations" (law.presentations): same ambient-drawn convention.
+        var presentationsEnabled = activeModifiers
+            .Any(m => m.Type == RunModifierType.PresentationsEnabled && !m.IsConsumed);
+
         if (activeClimate == RoomClimate.Rain)
         {
             guardBonus += 5;
@@ -352,7 +356,8 @@ public sealed class CombatFactory : ICombatFactory
                 falaiseWindEnabled,
                 postDeathBasicAttackOnlyEnabled,
                 tapisPropreEnabled,
-                thirdCupHealCorruptionEnabled);
+                thirdCupHealCorruptionEnabled,
+                presentationsEnabled);
         }
 
         var enemies = draft.Enemies
@@ -471,7 +476,8 @@ public sealed class CombatFactory : ICombatFactory
             falaiseWindEnabled,
             postDeathBasicAttackOnlyEnabled,
             tapisPropreEnabled,
-            thirdCupHealCorruptionEnabled);
+            thirdCupHealCorruptionEnabled,
+            presentationsEnabled);
     }
 
     /// <summary>

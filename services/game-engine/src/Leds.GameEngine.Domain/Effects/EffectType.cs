@@ -79,4 +79,6 @@ public enum EffectType
     EnableThirdCupHealCorruption,
     /// <summary>"Loi de l'Abondance" (law.abondance) → RunModifierType.AbondanceExtraChoiceEnabled.</summary>
     EnableAbondanceExtraChoice,
+    /// <summary>"Loi des Présentations" (law.presentations) → RunModifierType.PresentationsEnabled.</summary>
+    EnablePresentations,
 }
