@@ -5404,17 +5404,20 @@ public sealed class CatalogSeedRunner
     // RunModifier. IsCumulExempt = true per the SFD ("elles ne comptent pas dans la
     // limite de cumul : elles sont le terrain, pas le climat").
     //
-    // 2 of its 5 laws are seeded: "Loi des Visites Terminées" (room.hopital) and "Loi
-    // de la Falaise" (room.falaise, added once the Row/Rank positioning system existed
-    // — see Combat.FalaiseWindEnabled/ApplyFalaiseWindIfActive). Both mechanics
-    // (CombatFactory checking draft.RoomKey) are hardcoded room-key checks, not
-    // catalog-driven effects — so neither has an EffectDefinition/RunModifier attached;
-    // they exist purely as descriptive/display metadata. The other 3 need mechanics
-    // that don't exist yet: "Loi de la Cellule" (room.cellule) needs a no-death/
-    // forced-surrender combat-resolution mode; "Loi des Sorties Mouvantes"
-    // (room.labyrinthe) needs a chain-combat trigger after 12 turns; "Loi du
-    // Sanctuaire" (room.meditation) needs the ambient promulgator to refuse ANY
-    // promulgation while in that room.
+    // 3 of its 5 laws are seeded: "Loi des Visites Terminées" (room.hopital), "Loi de la
+    // Falaise" (room.falaise, added once the Row/Rank positioning system existed — see
+    // Combat.FalaiseWindEnabled/ApplyFalaiseWindIfActive), and "Loi du Sanctuaire"
+    // (room.meditation, see AmbientPalaceLawPromulgator.SanctuaryRoomKey). All three
+    // mechanics are hardcoded room-key checks, not catalog-driven effects — so none has
+    // an EffectDefinition/RunModifier attached; they exist purely as descriptive/display
+    // metadata. Sanctuaire's SFD text has a second half NOT modeled (documented gap):
+    // "aucune loi Sévère ni majeure ne s'applique dans cette salle" — suspending laws
+    // already active when entering needs the same RunModifierType.SuspendSevereLaws
+    // mechanic "Loi du Répit" (Chapitre II) is missing; only the "no NEW promulgation"
+    // half is implemented. The other 2 need mechanics that don't exist yet: "Loi de la
+    // Cellule" (room.cellule) needs a no-death/forced-surrender combat-resolution mode;
+    // "Loi des Sorties Mouvantes" (room.labyrinthe) needs a chain-combat trigger after
+    // 12 turns.
     private async Task SeedLoisLieesAuxSallesAsync(CancellationToken cancellationToken)
     {
         await UpsertCompendiumLawAsync(
@@ -5460,6 +5463,33 @@ public sealed class CatalogSeedRunner
             impactDomains: ["Combat"],
             cancellationToken: cancellationToken,
             roomKey: "room.falaise",
+            isCumulExempt: true);
+
+        // "Loi du Sanctuaire" (room.meditation): AmbientPalaceLawPromulgator now refuses
+        // ANY promulgation while the player is in this room (SanctuaryRoomKey check) —
+        // same hardcoded-RoomKey convention as the two laws above. The SFD's other half
+        // ("aucune loi Sévère ni majeure ne s'applique dans cette salle" — suspending
+        // already-active laws) is NOT modeled: it needs the same RunModifierType.
+        // SuspendSevereLaws mechanic law.repit (Chapitre II) is missing, documented there.
+        await UpsertCompendiumLawAsync(
+            key: "law.sanctuaire",
+            name: "Loi du Sanctuaire",
+            narrativeText: "Article Un-bis — Il existe un endroit où le registre lui-même "
+                + "se tait. Le Palais ne s'en souvient que lorsqu'il y entre, et il n'y "
+                + "entre jamais.",
+            description: "Aucune nouvelle loi ne peut être promulguée tant que l'équipe "
+                + "est dans cette salle (les lois Sévères/majeures déjà actives avant "
+                + "d'y entrer restent actives — non modélisé : leur suspension a besoin "
+                + "du même mécanisme que la Loi du Répit).",
+            rarity: "Liée",
+            polarity: "Clémente",
+            isMajeure: false,
+            minDepth: null,
+            duration: "Permanent",
+            selectionGroup: "law.salle",
+            impactDomains: ["Narrative"],
+            cancellationToken: cancellationToken,
+            roomKey: "room.meditation",
             isCumulExempt: true);
 
         await _ctx.SaveChangesAsync(cancellationToken);

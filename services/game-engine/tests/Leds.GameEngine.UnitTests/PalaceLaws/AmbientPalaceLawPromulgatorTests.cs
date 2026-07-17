@@ -3,6 +3,7 @@ using Leds.GameEngine.Application.Catalog.Contracts;
 using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Application.PalaceLaws;
 using Leds.GameEngine.Domain.PalaceLaws;
+using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
 using Leds.GameEngine.Domain.Selection;
 using Leds.GameEngine.UnitTests.Common.Factories;
@@ -154,6 +155,45 @@ public sealed class AmbientPalaceLawPromulgatorTests
         await sut.PromulgateForRoomTransitionAsync(run, nextRoom);
 
         run.ActivePalaceLaws.Should().ContainSingle(law => law.Key == "law-deep");
+    }
+
+    // ---------------------------------------------------------------------------
+    // "Loi du Sanctuaire" (room.meditation) — no promulgation while in that room.
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public async Task PromulgateForRoomTransitionAsync_ShouldNotPromulgate_WhenNextRoomIsTheSanctuary()
+    {
+        var run = TestGameEngineFactory.CreateRun();
+        var sut = CreateSut(CreateLaw("law-a"));
+
+        var sanctuary = TestGameEngineFactory.CreateThresholdRoom(depth: 1);
+        sanctuary.AttachCatalogBinding(new CatalogRoomBinding(
+            "room.meditation", "Salle de méditation", null, null, null, null, null, IsUnique: false));
+
+        await sut.PromulgateForRoomTransitionAsync(run, sanctuary);
+
+        run.ActivePalaceLaws.Should().BeEmpty(
+            because: "Loi du Sanctuaire refuses ANY promulgation while in room.meditation.");
+        run.LastPromulgationFloorIndex.Should().NotBe(run.FloorIndex,
+            because: "skipping the sanctuary must not consume the floor's still-pending guaranteed promulgation.");
+    }
+
+    [Fact]
+    public async Task PromulgateForRoomTransitionAsync_ShouldResumeGuaranteedPromulgation_AfterLeavingTheSanctuary()
+    {
+        var run = TestGameEngineFactory.CreateRun();
+        var sut = CreateSut(CreateLaw("law-a"));
+
+        var sanctuary = TestGameEngineFactory.CreateThresholdRoom(depth: 1);
+        sanctuary.AttachCatalogBinding(new CatalogRoomBinding(
+            "room.meditation", "Salle de méditation", null, null, null, null, null, IsUnique: false));
+        await sut.PromulgateForRoomTransitionAsync(run, sanctuary);
+
+        var nextRoom = TestGameEngineFactory.CreateThresholdRoom(depth: 1);
+        await sut.PromulgateForRoomTransitionAsync(run, nextRoom);
+
+        run.ActivePalaceLaws.Should().ContainSingle(law => law.Key == "law-a");
     }
 
     private static void AdvanceRooms(Run run, int count)
