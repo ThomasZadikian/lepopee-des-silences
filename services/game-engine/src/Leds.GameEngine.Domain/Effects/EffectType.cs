@@ -83,4 +83,6 @@ public enum EffectType
     EnablePresentations,
     /// <summary>"Loi du Miroir" (law.miroir) → RunModifierType.MiroirEnabled.</summary>
     EnableMiroir,
+    /// <summary>"Loi de l'Invitation" (law.invitation) → RunModifierType.LootChanceBonusPercent.</summary>
+    EnableLootChanceBonus,
 }

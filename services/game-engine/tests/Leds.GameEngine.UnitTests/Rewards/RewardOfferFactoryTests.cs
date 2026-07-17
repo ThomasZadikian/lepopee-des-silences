@@ -344,4 +344,71 @@ public sealed class RewardOfferFactoryTests
 
         offer.Choices.Should().HaveCount(3);
     }
+
+    // -----------------------------------------------------------------------
+    // "Loi de l'Invitation" (law.invitation) — combat loot item drop chances are
+    // boosted while RunModifierType.LootChanceBonusPercent is active. The bonus math
+    // itself is covered thoroughly in EnemyLootRewardBuilderTests; here we only verify
+    // CreateCombatRewardOfferAsync actually threads run.RunModifiers through.
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public async Task CreateCombatRewardOfferAsync_ShouldIncreaseLowProbabilityItemDropRate_WhenLootChanceBonusModifierIsActive()
+    {
+        var enemy = Combatant.CreateEnemy("enemy.forest.chimere-serpentaire", "Chimere Serpentaire", "Beast", 20);
+        var runId = Guid.NewGuid();
+        var combatId = Guid.NewGuid();
+        var modifier = RunModifier.Create(
+            RunModifierType.LootChanceBonusPercent, 100, RunModifierDuration.UntilFloorEnds, "PalaceLaw", "law-invitation-test");
+        const int trials = 100;
+
+        var baselineHits = 0;
+        var boostedHits = 0;
+
+        for (var i = 0; i < trials; i++)
+        {
+            var seed = $"seed-invitation-factory-{i}";
+            var factory = CreateFactory(new StubCatalogContentGateway());
+
+            var baseline = await factory.CreateCombatRewardOfferAsync(
+                RewardSource.Combat, NodeEventType.Combat, riskLevel: 25,
+                enemies: [enemy], runSeed: seed, runId: runId, combatId: combatId);
+            if (baseline.Choices.Any(c => c.PayloadKey.Contains("venin-cristallise"))) baselineHits++;
+
+            var boosted = await factory.CreateCombatRewardOfferAsync(
+                RewardSource.Combat, NodeEventType.Combat, riskLevel: 25,
+                enemies: [enemy], runSeed: seed, runId: runId, combatId: combatId,
+                cancellationToken: CancellationToken.None, runModifiers: [modifier]);
+            if (boosted.Choices.Any(c => c.PayloadKey.Contains("venin-cristallise"))) boostedHits++;
+        }
+
+        boostedHits.Should().BeGreaterThan(baselineHits,
+            "an active LootChanceBonusPercent modifier should reach the loot builder and increase drop rates");
+    }
+
+    [Fact]
+    public async Task CreateCombatRewardOfferAsync_ShouldIgnoreLootChanceBonusModifier_WhenConsumed()
+    {
+        var enemy = Combatant.CreateEnemy("enemy.forest.chimere-serpentaire", "Chimere Serpentaire", "Beast", 20);
+        var runId = Guid.NewGuid();
+        var combatId = Guid.NewGuid();
+        var modifier = RunModifier.Create(
+            RunModifierType.LootChanceBonusPercent, 1000, RunModifierDuration.UntilFloorEnds, "PalaceLaw", "law-invitation-test");
+        modifier.Consume(DateTime.UtcNow);
+
+        var withoutModifier = await CreateFactory(new StubCatalogContentGateway()).CreateCombatRewardOfferAsync(
+            RewardSource.Combat, NodeEventType.Combat, riskLevel: 25,
+            enemies: [enemy], runSeed: "seed-invitation-consumed", runId: runId, combatId: combatId);
+
+        var withConsumedModifier = await CreateFactory(new StubCatalogContentGateway()).CreateCombatRewardOfferAsync(
+            RewardSource.Combat, NodeEventType.Combat, riskLevel: 25,
+            enemies: [enemy], runSeed: "seed-invitation-consumed", runId: runId, combatId: combatId,
+            cancellationToken: CancellationToken.None, runModifiers: [modifier]);
+
+        // Same seed/run/combat, so the only possible difference is the modifier — a
+        // consumed one must be excluded from the sum, leaving the roll unchanged even
+        // at an enormous 1000% bonus.
+        withConsumedModifier.Choices.Select(c => c.PayloadKey)
+            .Should().Equal(withoutModifier.Choices.Select(c => c.PayloadKey));
+    }
 }

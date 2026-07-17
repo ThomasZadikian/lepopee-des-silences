@@ -110,6 +110,7 @@ public sealed class CombatResolutionService : ICombatResolutionService
             run.Seed,
             run.Id.Value,
             combat.Id.Value,
-            cancellationToken);
+            cancellationToken,
+            run.RunModifiers);
     }
 }

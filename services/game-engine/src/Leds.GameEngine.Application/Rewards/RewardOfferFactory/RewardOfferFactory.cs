@@ -66,11 +66,19 @@ public sealed class RewardOfferFactory
         string runSeed,
         Guid runId,
         Guid combatId,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        IReadOnlyCollection<RunModifier>? runModifiers = null)
     {
         var scaling = _riskProfileResolver.Resolve(eventType, riskLevel);
 
-        var choices = await _enemyLootRewardBuilder.BuildAsync(runSeed, runId, combatId, enemies, cancellationToken);
+        // "Loi de l'Invitation" (law.invitation): combat loot item drop chances are
+        // boosted. The SFD's matching "+10% Éclats" half is a documented gap — see
+        // RunModifierType.LootChanceBonusPercent.
+        var lootChanceBonusPercent = runModifiers?
+            .Where(m => m.Type == RunModifierType.LootChanceBonusPercent && !m.IsConsumed)
+            .Sum(m => m.Value) ?? 0;
+
+        var choices = await _enemyLootRewardBuilder.BuildAsync(runSeed, runId, combatId, enemies, lootChanceBonusPercent, cancellationToken);
 
         if (choices.Count == 0)
         {

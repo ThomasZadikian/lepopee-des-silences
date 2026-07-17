@@ -176,4 +176,21 @@ public sealed class PalaceLawMapperTests
         var effect = law.Effects.Should().ContainSingle(e => e.ModifierType == RunModifierType.DotDurationExtension).Subject;
         effect.Value.Should().Be(2);
     }
+
+    [Fact]
+    public void CreatePalaceLaw_ShouldMapLootChanceBonus_PreservingItsMagnitude()
+    {
+        var definition = CreateDefinition(
+            impactDomains: ["Rewards"],
+            effects:
+            [
+                new CatalogEffectDefinitionSnapshot(
+                    "EnableLootChanceBonus", "Run", 10m, "Flat", "UntilFloorEnds", "Additive", null, 0, null, null, null),
+            ]);
+
+        var law = PalaceLawMapper.CreatePalaceLaw(definition);
+
+        var effect = law.Effects.Should().ContainSingle(e => e.ModifierType == RunModifierType.LootChanceBonusPercent).Subject;
+        effect.Value.Should().Be(10);
+    }
 }

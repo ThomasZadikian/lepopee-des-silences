@@ -118,4 +118,16 @@ public enum RunModifierType
     /// Combat.TryConsumeMirrorTrigger/GetFastestLivingEnemy and
     /// UseCombatSkillCommandHandler.ResolveMirrorCopyIfTriggered).</summary>
     MiroirEnabled = 37,
+
+    /// <summary>"Loi de l'Invitation" (law.invitation) — combat loot item drop chances
+    /// are boosted by this percentage (e.g. 10 → +10%), applied multiplicatively to
+    /// each loot table entry's DropPercent. See EnemyLootRewardBuilder.RollIndependent.
+    /// Value is meaningful (the bonus percent itself), not a mere gate. Documented gap:
+    /// the SFD's "tout butin est majoré... Éclats" half (a +10% currency bonus) is NOT
+    /// modeled — no combat-loot currency mechanic exists in the engine at all (Éclats
+    /// are only ever awarded via NPC rare-offering claims). The SFD's "impossible de
+    /// fuir les combats" restriction is likewise not modeled, but requires no code: no
+    /// combat-flee action exists anywhere in the engine to begin with, so the
+    /// restriction is vacuously already true.</summary>
+    LootChanceBonusPercent = 38,
 }

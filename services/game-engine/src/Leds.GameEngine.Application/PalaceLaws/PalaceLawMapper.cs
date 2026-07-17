@@ -128,6 +128,8 @@ public static class PalaceLawMapper
                 RunModifierType.PresentationsEnabled, 1, duration),
             EffectType.EnableMiroir => PalaceLawEffect.Create(
                 RunModifierType.MiroirEnabled, 1, duration),
+            EffectType.EnableLootChanceBonus => PalaceLawEffect.Create(
+                RunModifierType.LootChanceBonusPercent, (double)effect.Value, duration),
 
             _ => throw new DomainException($"Palace law effect type '{effect.EffectType}' is not supported by the runtime.")
         };

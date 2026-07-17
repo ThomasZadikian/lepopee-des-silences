@@ -5221,20 +5221,23 @@ public sealed class CatalogSeedRunner
         await _ctx.SaveChangesAsync(cancellationToken);
     }
 
-    // Chapitre III — Lois du seuil & de l'étiquette. 4 of its 5 laws are seeded: Loi des
-    // Pieds Essuyés (trivial reuse of StartingGuardBonus), Loi du Silence Dû (new
-    // PhysicalDamageBonus/FlatManaCostBonus mechanic), Loi du Tapis Propre (new
-    // per-combatant first-turn action-type gate — see Combatant.HasActedThisCombat /
-    // CombatSkillActionValidator), and Loi de la Troisième Tasse (new per-heal-application
-    // corruption roll — see Combat.ApplyThirdCupRollIfActive, called from both
-    // CombatSkillEffectResolver.ResolveHeal and UseItemInCombatCommandHandler.ApplyItemEffect).
-    // The last one is NOT seeded — needs a genuinely new engine mechanic that doesn't
-    // exist yet: "Loi de l'Invitation" (law.invitation) needs disabling a "flee" combat
-    // action that doesn't exist in the engine AND a loot bonus — RunModifierType.
-    // RewardPowerMultiplier is itself dead code upstream (written by PalaceLawMapper but
-    // never read by RewardOfferFactory, which only consumes the risk-derived
-    // CombatRiskProfile.RewardPowerMultiplier), so seeding it would silently do nothing;
-    // fixing that pre-existing gap is out of scope here.
+    // Chapitre III — Lois du seuil & de l'étiquette. All 5 of its laws now have
+    // mechanical backing: Loi des Pieds Essuyés (trivial reuse of StartingGuardBonus),
+    // Loi du Silence Dû (new PhysicalDamageBonus/FlatManaCostBonus mechanic), Loi du
+    // Tapis Propre (new per-combatant first-turn action-type gate — see
+    // Combatant.HasActedThisCombat / CombatSkillActionValidator), Loi de la Troisième
+    // Tasse (new per-heal-application corruption roll — see
+    // Combat.ApplyThirdCupRollIfActive, called from both CombatSkillEffectResolver.
+    // ResolveHeal and UseItemInCombatCommandHandler.ApplyItemEffect), and — added this
+    // pass — "Loi de l'Invitation" (law.invitation): a new RunModifierType.
+    // LootChanceBonusPercent boosts combat loot item drop chances (see
+    // EnemyLootRewardBuilder.RollIndependent), threaded through RewardOfferFactory.
+    // CreateCombatRewardOfferAsync/CombatResolutionService the same way Abondance's
+    // extra-choice flag is threaded through CreateItemRewardOffer. Two documented gaps
+    // remain for Invitation: the SFD's "+10% Éclats" half is NOT modeled (no combat-loot
+    // currency mechanic exists anywhere — Éclats are only ever awarded via NPC
+    // rare-offering claims), and its "impossible de fuir les combats" restriction needs
+    // no code at all, since no combat-flee action exists in the engine to begin with.
     //
     // Loi du Tapis Propre's "poids doublé au Hall et aux Couloirs" promulgation nuance and
     // Loi de la Troisième Tasse's "Le Porteur de Plateau tire sa Tasse retournée à 25% au
@@ -5315,12 +5318,29 @@ public sealed class CatalogSeedRunner
             // the engine checks exclusions one-directionally against the newly-drawn law.
             exclusionKeys: ["law.souvenir-doux"]);
 
+        await UpsertCompendiumLawAsync(
+            key: "law.invitation",
+            name: "Loi de l'Invitation",
+            narrativeText: "Article IX — L'invité qui se lève avant le dessert insulte la "
+                + "table. L'invité qui reste sera servi largement.",
+            description: "Impossible de fuir les combats de l'étage. En contrepartie, les "
+                + "chances de butin sont majorées de +10%.",
+            rarity: "Peu commun",
+            polarity: "DoubleTranchant",
+            isMajeure: false,
+            minDepth: null,
+            duration: "UntilFloorEnds",
+            selectionGroup: "law.seuil",
+            impactDomains: ["Rewards"],
+            cancellationToken);
+
         await _ctx.SaveChangesAsync(cancellationToken);
 
         await UpsertLawEffectAsync("law.pieds-essuyes", "AddStartingGuard", 3m, "UntilFloorEnds", null, cancellationToken);
         await UpsertLawEffectAsync("law.silence-du", "EnableSilenceDuActive", 1m, "UntilRoomEnds", null, cancellationToken);
         await UpsertLawEffectAsync("law.tapis-propre", "EnableTapisPropreEnabled", 1m, "UntilFloorEnds", null, cancellationToken);
         await UpsertLawEffectAsync("law.troisieme-tasse", "EnableThirdCupHealCorruption", 1m, "UntilFloorEnds", null, cancellationToken);
+        await UpsertLawEffectAsync("law.invitation", "EnableLootChanceBonus", 10m, "UntilFloorEnds", null, cancellationToken);
 
         await _ctx.SaveChangesAsync(cancellationToken);
     }

@@ -113,4 +113,53 @@ public sealed class EnemyLootRewardBuilderTests
         distinctSignatures.Should().BeGreaterThan(1,
             "different seeds should be able to produce different loot rolls.");
     }
+
+    // "Loi de l'Invitation" (law.invitation) — combat loot item drop chances are
+    // boosted by a percentage. "enemy.forest.chimere-serpentaire" has a low-probability
+    // entry (item.consumable.venin-cristallise, 8%) that's the most sensitive to a
+    // bonus. Each trial index reuses the SAME seed for the baseline and boosted call —
+    // since the underlying deterministic sample only depends on (seed, runId, combatId,
+    // step), not on the bonus, a boosted hit is a strict superset of a baseline hit for
+    // any given trial (16% effective threshold vs 8%), making this a paired comparison
+    // rather than two independent noisy samples.
+    [Fact]
+    public async Task BuildAsync_ShouldIncreaseLowProbabilityItemDropRate_WhenLootChanceBonusIsActive()
+    {
+        var enemy = Combatant.CreateEnemy("enemy.forest.chimere-serpentaire", "Chimere Serpentaire", "Beast", 20);
+        var runId = Guid.NewGuid();
+        var combatId = Guid.NewGuid();
+        const int trials = 300;
+
+        var baselineHits = 0;
+        var boostedHits = 0;
+
+        for (var i = 0; i < trials; i++)
+        {
+            var seed = $"seed-invitation-{i}";
+            var builder = CreateBuilder();
+
+            var baseline = await builder.BuildAsync(seed, runId, combatId, [enemy]);
+            if (baseline.Any(c => c.PayloadKey.Contains("venin-cristallise"))) baselineHits++;
+
+            var boosted = await builder.BuildAsync(seed, runId, combatId, [enemy], lootChanceBonusPercent: 100);
+            if (boosted.Any(c => c.PayloadKey.Contains("venin-cristallise"))) boostedHits++;
+        }
+
+        boostedHits.Should().BeGreaterThan(baselineHits,
+            "a +100% loot chance bonus should meaningfully increase a low-probability item's drop rate");
+    }
+
+    [Fact]
+    public async Task BuildAsync_ShouldCapEffectiveDropChance_AtOneHundredPercent()
+    {
+        var enemy = Combatant.CreateEnemy("enemy.forest.chimere-serpentaire", "Chimere Serpentaire", "Beast", 20);
+
+        var choices = await CreateBuilder().BuildAsync(
+            "seed-invitation-cap", Guid.NewGuid(), Guid.NewGuid(), [enemy], lootChanceBonusPercent: 1000);
+
+        // An enormous bonus clamps every entry's effective drop chance at 100% — the
+        // enemy's lowest-probability entry must roll every time (never silently exceed
+        // 100% and throw or behave oddly).
+        choices.Should().Contain(c => c.PayloadKey.Contains("venin-cristallise"));
+    }
 }
