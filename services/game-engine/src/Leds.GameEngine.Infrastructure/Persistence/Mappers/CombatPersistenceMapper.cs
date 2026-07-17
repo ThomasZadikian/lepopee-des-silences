@@ -62,6 +62,7 @@ public static class CombatPersistenceMapper
             MaxMana = combatant.MaxMana,
             Charge = combatant.Charge,
             Status = combatant.Status.ToString(),
+            Row = combatant.Row.ToString(),
             AttackTypeOverride = combatant.AttackTypeOverride.HasValue ? (int)combatant.AttackTypeOverride.Value : null,
             TypedDamageReductionsJson = SerializeTypedDamageReductions(combatant.TypedDamageReductionPercent),
             HitChanceBonusPercent = combatant.HitChanceBonusPercent,
@@ -346,7 +347,8 @@ public static class CombatPersistenceMapper
             magicDamageReductionPercent: entity.MagicDamageReductionPercent,
             criticalChanceBonusPercent: entity.CriticalChanceBonusPercent,
             dotDamageBonusPercent: entity.DotDamageBonusPercent,
-            healingBonusPercent: entity.HealingBonusPercent);
+            healingBonusPercent: entity.HealingBonusPercent,
+            row: string.IsNullOrWhiteSpace(entity.Row) ? CombatRow.Front : Enum.Parse<CombatRow>(entity.Row));
         foreach (var effect in DeserializeStatusEffects(entity.StatusEffectsJson))
             combatant.RehydrateStatusEffect(effect);
 

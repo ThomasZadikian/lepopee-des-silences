@@ -12,6 +12,7 @@ public sealed class CombatTargetingRuleValidatorTests
     private readonly CombatTargetingRuleValidator _validator = new();
     private readonly CombatantSkill _selfSkill;
     private readonly CombatantSkill _singleEnemySkill;
+    private readonly CombatantSkill _singleEnemyMagicSkill;
     private readonly CombatantSkill _singleAllySkill;
     private readonly CombatantSkill _allEnemiesSkill;
     private readonly CombatantSkill _allAlliesSkill;
@@ -26,6 +27,7 @@ public sealed class CombatTargetingRuleValidatorTests
     {
         _selfSkill = CreateSkill("skill.basic.guard", "Self");
         _singleEnemySkill = CreateSkill("skill.basic.strike", "SingleEnemy");
+        _singleEnemyMagicSkill = CreateSkill("canon.skill.flamme-froide", "SingleEnemy", category: "Magic");
         _singleAllySkill = CreateSkill("skill.basic.heal", "SingleAlly");
         _allEnemiesSkill = CreateSkill("skill.basic.cleave", "AllEnemies");
         _allAlliesSkill = CreateSkill("skill.basic.rally", "AllAllies");
@@ -258,7 +260,7 @@ public sealed class CombatTargetingRuleValidatorTests
         result.ErrorMessage.Should().Be("Unsupported targeting type: Unsupported");
     }
 
-    private static CombatantSkill CreateSkill(string key, string targetingType)
+    private static CombatantSkill CreateSkill(string key, string targetingType, string category = "Physical")
     {
         return CombatantSkill.Create(
             key: key,
@@ -268,6 +270,56 @@ public sealed class CombatTargetingRuleValidatorTests
             effectType: "Damage",
             manaCost: 0,
             chargeCost: 0,
-            basePower: 1);
+            basePower: 1,
+            category: category);
+    }
+
+    // -----------------------------------------------------------------------
+    // Row (Front/Back positioning) — "hors de portée" untargetable rule
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public void Validate_ShouldFail_WhenPhysicalSingleEnemySkillTargetsABackRowEnemy()
+    {
+        _enemy.SetRow(CombatRow.Back);
+
+        var result = _validator.Validate(_combat, _ally, _singleEnemySkill, [_enemy.Id.Value]);
+
+        result.IsValid.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("Back row");
+    }
+
+    [Fact]
+    public void Validate_ShouldSucceed_WhenMagicSingleEnemySkillTargetsABackRowEnemy()
+    {
+        _enemy.SetRow(CombatRow.Back);
+
+        var result = _validator.Validate(_combat, _ally, _singleEnemyMagicSkill, [_enemy.Id.Value]);
+
+        result.IsValid.Should().BeTrue(because: "Magic-category skills are not restricted by row.");
+    }
+
+    [Fact]
+    public void Validate_ShouldExcludeBackRowEnemy_FromAllEnemiesExpectedSet_ForPhysicalSkill()
+    {
+        _enemy2.SetRow(CombatRow.Back);
+
+        var result = _validator.Validate(_combat, _ally, _allEnemiesSkill, [_enemy.Id.Value]);
+
+        result.IsValid.Should().BeTrue(
+            because: "a Physical AllEnemies skill's expected target set excludes Back row enemies out of its reach.");
+        result.Targets.Should().ContainSingle(t => t.Id == _enemy.Id);
+    }
+
+    [Fact]
+    public void Validate_ShouldExcludeBackRowAlly_FromAllAlliesExpectedSet_ForPhysicalSkill()
+    {
+        _ally2.SetRow(CombatRow.Back);
+
+        var result = _validator.Validate(_combat, _ally, _allAlliesSkill, [_ally.Id.Value]);
+
+        result.IsValid.Should().BeTrue(
+            because: "a Physical AllAllies skill's expected target set excludes Back row allies out of its reach.");
+        result.Targets.Should().ContainSingle(t => t.Id == _ally.Id);
     }
 }

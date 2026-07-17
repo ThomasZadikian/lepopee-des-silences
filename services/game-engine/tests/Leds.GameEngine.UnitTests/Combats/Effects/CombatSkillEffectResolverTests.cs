@@ -1253,6 +1253,79 @@ public sealed class CombatSkillEffectResolverTests
         return (combat, ally, enemyA, enemyB);
     }
 
+    // -----------------------------------------------------------------------
+    // Row (Front/Back positioning)
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public void Resolve_ShouldReduceDamageDealt_WhenActorIsInBackRow_ForPhysicalSkill()
+    {
+        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+        ally.ApplyEquipmentCombatModifiers(100, 0, 0); // guaranteed hit chance
+        ally.SetRow(CombatRow.Back);
+        var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 100);
+        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
+        var skill = CreateSkill("skill.basic.strike", "Damage", 40);
+
+        _resolver.Resolve(combat, ally, skill, [enemy]);
+
+        // -15% physical damage dealt while in Back row: round(40 * 0.85) = 34.
+        enemy.CurrentVitality.Should().Be(100 - 34);
+    }
+
+    [Fact]
+    public void Resolve_ShouldReduceDamageTaken_WhenTargetIsInBackRow_ForPhysicalSkill()
+    {
+        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+        ally.ApplyEquipmentCombatModifiers(100, 0, 0); // guaranteed hit chance
+        var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 100);
+        enemy.SetRow(CombatRow.Back);
+        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
+        var skill = CreateSkill("skill.basic.strike", "Damage", 40);
+
+        _resolver.Resolve(combat, ally, skill, [enemy]);
+
+        // -5% incoming physical damage while in Back row: round(40 * 0.95) = 38.
+        enemy.CurrentVitality.Should().Be(100 - 38);
+    }
+
+    [Fact]
+    public void Resolve_ShouldApplyStackingBlindShotMalus_WhenBothActorAndTargetAreInBackRow_ForMagicSkill()
+    {
+        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+        ally.ApplyEquipmentCombatModifiers(100, 0, 0); // guaranteed hit chance
+        ally.SetRow(CombatRow.Back);
+        var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 100);
+        enemy.SetRow(CombatRow.Back);
+        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
+        var skill = CombatantSkill.Create(
+            "canon.skill.flamme-froide", "Flamme froide", "Damage", "SingleEnemy", "Damage",
+            manaCost: 0, chargeCost: 0, basePower: 40, category: "Magic");
+
+        _resolver.Resolve(combat, ally, skill, [enemy]);
+
+        // "Tir à l'aveugle": both sides in Back row against a Magic skill applies the
+        // extra -5% damage malus alone (the -15%/-5% physical-only terms don't apply
+        // to a Magic skill) — round(40 * 0.95) = 38.
+        enemy.CurrentVitality.Should().Be(100 - 38);
+    }
+
+    [Fact]
+    public void Resolve_ShouldReduceHealing_WhenTargetIsInBackRow()
+    {
+        var (combat, ally, _) = CreateCombat();
+        ally.ApplyDamage(60); // 100 -> 40, leaves room to heal
+        ally.SetRow(CombatRow.Back);
+        var skill = CombatantSkill.Create(
+            "canon.skill.soin", "Soin", "Heal", "SingleAlly", "Heal",
+            manaCost: 0, chargeCost: 0, basePower: 50);
+
+        _resolver.Resolve(combat, ally, skill, [ally]);
+
+        // -10% healing received while in Back row: round(50 * 0.9) = 45.
+        ally.CurrentVitality.Should().Be(40 + 45);
+    }
+
     private static (Combat Combat, Combatant Ally, Combatant Enemy) CreateCombat()
     {
         var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);

@@ -23,13 +23,23 @@ public sealed class CombatTargetingRuleValidator : ICombatTargetingRuleValidator
         return skill.TargetingType switch
         {
             "Self" => ValidateSelf(actor, targets),
-            "SingleEnemy" => ValidateSingleEnemy(actor, targets),
-            "SingleAlly" => ValidateSingleAlly(actor, targets),
-            "AllEnemies" => ValidateAllEnemies(combat, actor, targets),
-            "AllAllies" => ValidateAllAllies(combat, actor, targets),
+            "SingleEnemy" => ValidateSingleEnemy(actor, skill, targets),
+            "SingleAlly" => ValidateSingleAlly(actor, skill, targets),
+            "AllEnemies" => ValidateAllEnemies(combat, actor, skill, targets),
+            "AllAllies" => ValidateAllAllies(combat, actor, skill, targets),
             _ => Invalid($"Unsupported targeting type: {skill.TargetingType}")
         };
     }
+
+    /// <summary>
+    /// Physical-category ("short range") skills cannot reach a Back-row combatant at
+    /// all — the row's "hors de portée" untargetable rule. Magic-category skills are
+    /// unaffected. Applied uniformly to enemy and ally targeting: the rule is about
+    /// physical reach, not specifically about attacking enemies.
+    /// </summary>
+    private static bool IsOutOfPhysicalRange(CombatantSkill skill, Combatant target) =>
+        string.Equals(skill.Category, "Physical", StringComparison.OrdinalIgnoreCase)
+        && target.Row == CombatRow.Back;
 
     private static CombatTargetingValidationResult ResolveTargets(
         Combat combat,
@@ -77,6 +87,7 @@ public sealed class CombatTargetingRuleValidator : ICombatTargetingRuleValidator
 
     private static CombatTargetingValidationResult ValidateSingleEnemy(
         Combatant actor,
+        CombatantSkill skill,
         IReadOnlyCollection<Combatant> targets)
     {
         if (targets.Count != 1)
@@ -84,9 +95,16 @@ public sealed class CombatTargetingRuleValidator : ICombatTargetingRuleValidator
             return Invalid("SingleEnemy targeting requires exactly one target.");
         }
 
-        if (targets.Single().Side == actor.Side)
+        var target = targets.Single();
+
+        if (target.Side == actor.Side)
         {
             return Invalid("SingleEnemy targeting requires a target from the opposite side.");
+        }
+
+        if (IsOutOfPhysicalRange(skill, target))
+        {
+            return Invalid("Physical-category skills cannot target a Back row combatant.");
         }
 
         return Valid(targets);
@@ -94,6 +112,7 @@ public sealed class CombatTargetingRuleValidator : ICombatTargetingRuleValidator
 
     private static CombatTargetingValidationResult ValidateSingleAlly(
         Combatant actor,
+        CombatantSkill skill,
         IReadOnlyCollection<Combatant> targets)
     {
         if (targets.Count != 1)
@@ -101,9 +120,16 @@ public sealed class CombatTargetingRuleValidator : ICombatTargetingRuleValidator
             return Invalid("SingleAlly targeting requires exactly one target.");
         }
 
-        if (targets.Single().Side != actor.Side)
+        var target = targets.Single();
+
+        if (target.Side != actor.Side)
         {
             return Invalid("SingleAlly targeting requires a target from the same side.");
+        }
+
+        if (IsOutOfPhysicalRange(skill, target))
+        {
+            return Invalid("Physical-category skills cannot target a Back row combatant.");
         }
 
         return Valid(targets);
@@ -112,6 +138,7 @@ public sealed class CombatTargetingRuleValidator : ICombatTargetingRuleValidator
     private static CombatTargetingValidationResult ValidateAllEnemies(
         Combat combat,
         Combatant actor,
+        CombatantSkill skill,
         IReadOnlyCollection<Combatant> targets)
     {
         if (targets.Count == 0)
@@ -125,15 +152,16 @@ public sealed class CombatTargetingRuleValidator : ICombatTargetingRuleValidator
         }
 
         var expectedTargets = GetAllCombatants(combat)
-            .Where(c => c.Side != actor.Side && !c.IsDefeated)
+            .Where(c => c.Side != actor.Side && !c.IsDefeated && !IsOutOfPhysicalRange(skill, c))
             .ToArray();
 
-        return ValidateExplicitTargetSet(targets, expectedTargets, "AllEnemies targeting requires all active enemies.");
+        return ValidateExplicitTargetSet(targets, expectedTargets, "AllEnemies targeting requires all active, reachable enemies.");
     }
 
     private static CombatTargetingValidationResult ValidateAllAllies(
         Combat combat,
         Combatant actor,
+        CombatantSkill skill,
         IReadOnlyCollection<Combatant> targets)
     {
         if (targets.Count == 0)
@@ -147,10 +175,10 @@ public sealed class CombatTargetingRuleValidator : ICombatTargetingRuleValidator
         }
 
         var expectedTargets = GetAllCombatants(combat)
-            .Where(c => c.Side == actor.Side && !c.IsDefeated)
+            .Where(c => c.Side == actor.Side && !c.IsDefeated && !IsOutOfPhysicalRange(skill, c))
             .ToArray();
 
-        return ValidateExplicitTargetSet(targets, expectedTargets, "AllAllies targeting requires all active allies.");
+        return ValidateExplicitTargetSet(targets, expectedTargets, "AllAllies targeting requires all active, reachable allies.");
     }
 
     private static CombatTargetingValidationResult ValidateExplicitTargetSet(

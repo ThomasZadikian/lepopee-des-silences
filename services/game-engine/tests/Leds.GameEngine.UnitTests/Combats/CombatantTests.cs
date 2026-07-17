@@ -544,4 +544,76 @@ public sealed class CombatantTests
 
         combatant.Skills.Should().NotContain(s => s.Key == "canon.skill.flamme-froide");
     }
+
+    // -----------------------------------------------------------------------
+    // Row (Front/Back positioning)
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public void Row_ShouldDefaultToFront()
+    {
+        var combatant = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+
+        combatant.Row.Should().Be(CombatRow.Front);
+        combatant.RowAtbFillBonusPercent.Should().Be(0);
+        combatant.RowFocusBonusPercent.Should().Be(0);
+        combatant.RowIncomingPhysicalDamageReductionPercent.Should().Be(0);
+        combatant.RowHealingReceivedReductionPercent.Should().Be(0);
+        combatant.RowPhysicalDamageDealtReductionPercent.Should().Be(0);
+        combatant.RowAccuracyPenaltyPercent.Should().Be(0);
+    }
+
+    [Fact]
+    public void SetRow_ShouldSwitchToBack_AndExposeAllBackRowBonusesAndMaluses()
+    {
+        var combatant = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+
+        combatant.SetRow(CombatRow.Back);
+
+        combatant.Row.Should().Be(CombatRow.Back);
+        combatant.RowAtbFillBonusPercent.Should().Be(5);
+        combatant.RowFocusBonusPercent.Should().Be(3);
+        combatant.RowIncomingPhysicalDamageReductionPercent.Should().Be(5);
+        combatant.RowHealingReceivedReductionPercent.Should().Be(10);
+        combatant.RowPhysicalDamageDealtReductionPercent.Should().Be(15);
+        combatant.RowAccuracyPenaltyPercent.Should().Be(5);
+    }
+
+    [Fact]
+    public void SetRow_ShouldBeMutableBackToFront()
+    {
+        var combatant = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+        combatant.SetRow(CombatRow.Back);
+
+        combatant.SetRow(CombatRow.Front);
+
+        combatant.Row.Should().Be(CombatRow.Front);
+        combatant.RowPhysicalDamageDealtReductionPercent.Should().Be(0);
+    }
+
+    [Fact]
+    public void EffectiveFocus_ShouldIncludeRowFocusBonus_WhenInBackRow()
+    {
+        var combatant = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 80, focus: 10);
+        var frontFocus = combatant.EffectiveFocus;
+
+        combatant.SetRow(CombatRow.Back);
+
+        combatant.EffectiveFocus.Should().BeGreaterThan(frontFocus,
+            because: "Back row grants +3% Focus on top of the base value.");
+    }
+
+    [Fact]
+    public void RecalculateAtbFillPerTick_ShouldBeFaster_WhenInBackRow()
+    {
+        var combatant = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 80, speed: 10);
+        combatant.RecalculateAtbFillPerTick(opponentAverageEffectiveSpeed: 10);
+        var frontFill = combatant.AtbFillPerTick;
+
+        combatant.SetRow(CombatRow.Back);
+        combatant.RecalculateAtbFillPerTick(opponentAverageEffectiveSpeed: 10);
+
+        combatant.AtbFillPerTick.Should().BeGreaterThan(frontFill,
+            because: "Back row grants +5% ATB fill-per-tick speed.");
+    }
 }

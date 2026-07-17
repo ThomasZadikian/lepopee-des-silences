@@ -18,6 +18,13 @@ public sealed class CombatantEntity
     public string Status { get; set; } = string.Empty;
 
     /// <summary>
+    /// Positioning rank (CombatRow enum name: "Front"/"Back"). Mutable mid-combat via
+    /// the Reposition action — unlike the equipment-driven modifiers below, this is
+    /// not baked once at combat creation.
+    /// </summary>
+    public string Row { get; set; } = "Front";
+
+    /// <summary>
     /// Optional emotional attack type override (int value of EmotionalType), set
     /// from an AttackTypeOverride run modifier at combat creation. Null = no override.
     /// </summary>

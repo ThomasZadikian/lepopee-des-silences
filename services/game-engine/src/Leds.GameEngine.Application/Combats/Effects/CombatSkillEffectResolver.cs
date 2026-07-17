@@ -136,7 +136,11 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
             var baseHealAmount = skill.BasePowerIsPercentOfMaxVitality
                 ? (int)Math.Round(target.MaxVitality * (skill.BasePower / 100.0))
                 : skill.BasePower;
-            var healAmount = (int)Math.Round(baseHealAmount * (1.0 + actor.EffectiveHealingBonusPercent / 100.0));
+            // Back row's -10% healing received malus — the strategic counterweight to
+            // the row's other benefits (see Combatant.RowHealingReceivedReductionPercent).
+            var healAmount = (int)Math.Round(baseHealAmount
+                * (1.0 + actor.EffectiveHealingBonusPercent / 100.0)
+                * (1.0 - target.RowHealingReceivedReductionPercent / 100.0));
 
             var before = target.CurrentVitality;
             target.ApplyHeal(healAmount);
@@ -359,6 +363,7 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
             ? StatModifierDamageMultiplier(skill, caster, recipient)
                 * MagicCategoryDamageMultiplier(skill, caster, recipient)
                 * PhysicalCategoryDamageMultiplier(skill, caster)
+                * RowDamageMultiplier(skill, caster, recipient)
             : 1.0;
 
         // Equipment/skill-driven DOT damage bonus (e.g. l'Écrivain's Plume d'écrivain)
@@ -415,7 +420,8 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
 
         foreach (var target in targets)
         {
-            var hitChance = HitChanceCalibration.HitChanceFromBonus(actor.HitChanceBonusPercent);
+            var hitChance = HitChanceCalibration.HitChanceFromBonus(
+                actor.HitChanceBonusPercent - RowAccuracyPenaltyPercent(actor, target));
             var hitRoll = DeterministicCombatRoll.UnitInterval(BuildHitSeed(combat, actor, target, skill));
 
             if (hitRoll >= hitChance)
@@ -450,6 +456,7 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
                 StatModifierDamageMultiplier(skill, actor, target)
                     * MagicCategoryDamageMultiplier(skill, actor, target)
                     * PhysicalCategoryDamageMultiplier(skill, actor)
+                    * RowDamageMultiplier(skill, actor, target)
                     * DuelDamageAsymmetryMultiplier(combat, skill));
 
             var effectiveCritChance = isFirstHitCritical ? 1.0 : critChance;
@@ -654,6 +661,52 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
         }
 
         return Math.Max(0.0, 1.0 + actor.EffectivePhysicalDamageBonusPercent / 100.0);
+    }
+
+    /// <summary>
+    /// Row positioning's damage-side effects: the attacker's own -15% physical damage
+    /// dealt malus while in the Back row, the target's -5% incoming physical damage
+    /// reduction while in the Back row (both Physical-category only), and the "tir à
+    /// l'aveugle" stacking malus (-5% damage) when the attacker is in Back row AND
+    /// targets a Back-row combatant — confirmed by the player to apply to both
+    /// Physical and Magic. In practice the Physical half of that stacking malus never
+    /// fires: Physical skills can never target a Back-row combatant at all (see
+    /// CombatTargetingRuleValidator's "hors de portée" rule) — kept as specified
+    /// rather than special-cased away.
+    /// </summary>
+    private static double RowDamageMultiplier(CombatantSkill skill, Combatant actor, Combatant target)
+    {
+        var multiplier = 1.0;
+
+        if (string.Equals(skill.Category, "Physical", StringComparison.OrdinalIgnoreCase))
+        {
+            multiplier *= 1.0 - actor.RowPhysicalDamageDealtReductionPercent / 100.0;
+            multiplier *= 1.0 - target.RowIncomingPhysicalDamageReductionPercent / 100.0;
+        }
+
+        if (actor.Row == CombatRow.Back && target.Row == CombatRow.Back)
+        {
+            multiplier *= 0.95;
+        }
+
+        return Math.Max(0.0, multiplier);
+    }
+
+    /// <summary>
+    /// Row positioning's accuracy-side effects: the attacker's own -5% accuracy malus
+    /// on all attacks while in the Back row, plus an additional -5% "tir à l'aveugle"
+    /// malus when targeting another Back-row combatant while also in the Back row.
+    /// </summary>
+    private static int RowAccuracyPenaltyPercent(Combatant actor, Combatant target)
+    {
+        var penalty = actor.RowAccuracyPenaltyPercent;
+
+        if (actor.Row == CombatRow.Back && target.Row == CombatRow.Back)
+        {
+            penalty += 5;
+        }
+
+        return penalty;
     }
 
     /// <summary>"Loi du Duel" (law.duel): "les attaques et sorts mono-cibles infligent

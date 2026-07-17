@@ -23,7 +23,8 @@ public sealed class Combatant
         CombatantStatus status,
         IReadOnlyCollection<CombatantSkill> skills,
         CombatantBaseStatSnapshot baseStatSnapshot,
-        CombatantRuntimeState runtimeState)
+        CombatantRuntimeState runtimeState,
+        CombatRow row = CombatRow.Front)
     {
         Id = id;
         SourceKey = sourceKey;
@@ -41,6 +42,7 @@ public sealed class Combatant
         _permanentSkills = skills;
         BaseStatSnapshot = baseStatSnapshot;
         RuntimeState = runtimeState;
+        Row = row;
     }
 
     public CombatantId Id { get; }
@@ -62,6 +64,47 @@ public sealed class Combatant
     public int MaxMana { get; }
     public int Charge { get; private set; }
     public CombatantStatus Status { get; private set; }
+
+    /// <summary>
+    /// Positioning rank (Front/Back). Front is the default. Mutable mid-combat via
+    /// <see cref="SetRow"/> (the "Repositionnement" action, which consumes the whole
+    /// turn) — unlike the equipment-driven modifiers above, this is not baked once at
+    /// combat creation.
+    /// </summary>
+    public CombatRow Row { get; private set; }
+
+    /// <summary>
+    /// Changes this combatant's row. Called by the Reposition combat action; costs
+    /// the actor's whole turn (enforced by the caller via RegisterAtbAction), not by
+    /// this method itself.
+    /// </summary>
+    public void SetRow(CombatRow row)
+    {
+        Row = row;
+    }
+
+    /// <summary>ATB fill-per-tick bonus (%) from being in the Back row (faster turns).</summary>
+    public int RowAtbFillBonusPercent => Row == CombatRow.Back ? 5 : 0;
+
+    /// <summary>Focus bonus (%) from being in the Back row.</summary>
+    public int RowFocusBonusPercent => Row == CombatRow.Back ? 3 : 0;
+
+    /// <summary>Incoming physical damage reduction (%) from being in the Back row (defensive mitigation).</summary>
+    public int RowIncomingPhysicalDamageReductionPercent => Row == CombatRow.Back ? 5 : 0;
+
+    /// <summary>
+    /// Healing received reduction (%) while in the Back row — the strategic
+    /// counterweight to Back row's other benefits, so an all-Back-row team isn't
+    /// a free lunch (proposed alongside the rest of the ruleset, confirmed by the
+    /// player).
+    /// </summary>
+    public int RowHealingReceivedReductionPercent => Row == CombatRow.Back ? 10 : 0;
+
+    /// <summary>Physical damage dealt reduction (%) when THIS combatant attacks while in the Back row.</summary>
+    public int RowPhysicalDamageDealtReductionPercent => Row == CombatRow.Back ? 15 : 0;
+
+    /// <summary>Accuracy penalty (percentage points) on all attacks when THIS combatant is in the Back row.</summary>
+    public int RowAccuracyPenaltyPercent => Row == CombatRow.Back ? 5 : 0;
 
     private readonly IReadOnlyCollection<CombatantSkill> _permanentSkills;
 
@@ -319,7 +362,9 @@ public sealed class Combatant
 
         // Applied as a separate multiplicative layer on top of the formula above —
         // distinct from the Speed stat itself (see EffectiveAtbTempoModifierPercent).
-        var modified = (int)Math.Max(1, Math.Round(fill * (1.0 + EffectiveAtbTempoModifierPercent / 100.0)));
+        // Row's ATB bonus stacks in the same layer as the tempo modifier.
+        var modified = (int)Math.Max(1, Math.Round(
+            fill * (1.0 + (EffectiveAtbTempoModifierPercent + RowAtbFillBonusPercent) / 100.0)));
 
         SetAtbFillPerTick(modified);
     }
@@ -366,7 +411,8 @@ public sealed class Combatant
         string archetype,
         int maxVitality,
         int baseGuard = 0,
-        IReadOnlyCollection<CombatantSkill>? skills = null)
+        IReadOnlyCollection<CombatantSkill>? skills = null,
+        CombatRow row = CombatRow.Front)
     {
         var id = CombatantId.New();
         var snapshot = CombatantBaseStatSnapshot.Create(
@@ -401,7 +447,8 @@ public sealed class Combatant
             CombatantStatus.Active,
             skills?.ToArray() ?? Array.Empty<CombatantSkill>(),
             snapshot,
-            runtimeState);
+            runtimeState,
+            row);
     }
 
     public static Combatant CreateEnemy(
@@ -417,7 +464,8 @@ public sealed class Combatant
         int focus = 0,
         int magicAttack = 0,
         int magicDefense = 0,
-        int mana = 0)
+        int mana = 0,
+        CombatRow row = CombatRow.Front)
     {
         var id = CombatantId.New();
         var snapshot = CombatantBaseStatSnapshot.Create(
@@ -456,7 +504,8 @@ public sealed class Combatant
             CombatantStatus.Active,
             skills?.ToArray() ?? Array.Empty<CombatantSkill>(),
             snapshot,
-            runtimeState);
+            runtimeState,
+            row);
     }
 
     public static Combatant Create(
@@ -478,7 +527,8 @@ public sealed class Combatant
         int focus = 0,
         int? maxMana = null,
         int magicAttack = 0,
-        int magicDefense = 0)
+        int magicDefense = 0,
+        CombatRow row = CombatRow.Front)
     {
         if (id.Value == Guid.Empty)
             throw new DomainException("Combatant id is required.");
@@ -549,7 +599,8 @@ public sealed class Combatant
             CombatantStatus.Active,
             skills?.ToArray() ?? Array.Empty<CombatantSkill>(),
             snapshot,
-            runtimeState);
+            runtimeState,
+            row);
     }
 
     public void MarkDefeated()
@@ -654,7 +705,8 @@ public sealed class Combatant
         int criticalChanceBonusPercent = 0,
         int dotDamageBonusPercent = 0,
         int maxMana = int.MaxValue,
-        int healingBonusPercent = 0)
+        int healingBonusPercent = 0,
+        CombatRow row = CombatRow.Front)
     {
         var snapshot = baseStatSnapshot ?? CombatantBaseStatSnapshot.Rehydrate(
             Guid.NewGuid(),
@@ -683,7 +735,7 @@ public sealed class Combatant
             DateTime.UtcNow,
             maxMana: maxMana);
 
-        var combatant = new Combatant(id, sourceKey, displayName, side, archetype, maxVitality, currentVitality, guard, baseGuard, mana, runtimeState?.MaxMana ?? maxMana, charge, status, skills, snapshot, state);
+        var combatant = new Combatant(id, sourceKey, displayName, side, archetype, maxVitality, currentVitality, guard, baseGuard, mana, runtimeState?.MaxMana ?? maxMana, charge, status, skills, snapshot, state, row);
         combatant.AttackTypeOverride = attackTypeOverride;
         combatant.TypedDamageReductionPercent = typedDamageReductionPercent ?? new Dictionary<EmotionalType, int>();
         combatant.ApplyEquipmentCombatModifiers(
@@ -857,7 +909,8 @@ public sealed class Combatant
     public int EffectiveAttackPower => Math.Max(0, EffectiveStat(CombatStat.AttackPower, BaseStatSnapshot.AttackPower));
     public int EffectiveDefense => Math.Max(0, EffectiveStat(CombatStat.Defense, BaseStatSnapshot.Defense));
     public int EffectiveSpeed => Math.Max(1, EffectiveStat(CombatStat.Speed, BaseStatSnapshot.Speed));
-    public int EffectiveFocus => Math.Max(0, EffectiveStat(CombatStat.Focus, BaseStatSnapshot.Focus));
+    public int EffectiveFocus => Math.Max(0, EffectiveStat(CombatStat.Focus, BaseStatSnapshot.Focus)
+        + (int)Math.Round(BaseStatSnapshot.Focus * RowFocusBonusPercent / 100.0));
     public int EffectiveMagicAttack => Math.Max(0, EffectiveStat(CombatStat.MagicAttack, BaseStatSnapshot.MagicAttack));
     public int EffectiveMagicDefense => Math.Max(0, EffectiveStat(CombatStat.MagicDefense, BaseStatSnapshot.MagicDefense));
 
