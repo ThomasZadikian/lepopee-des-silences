@@ -91,6 +91,8 @@ public sealed class CatalogSeedRunner
         await SeedLoisMajeuresAsync(cancellationToken);
         await SeedLoisDeCombatAsync(cancellationToken);
         await SeedLoisClimatiquesAsync(cancellationToken);
+        await SeedLoisDuSeuilAsync(cancellationToken);
+        await SeedEditsClementsAsync(cancellationToken);
         await SeedCanonRoomsAsync(cancellationToken);
         await SeedPalaisWorldAsync(cancellationToken);
         await SeedRoomThemeAffinitiesAsync(cancellationToken);
@@ -5174,6 +5176,112 @@ public sealed class CatalogSeedRunner
         await UpsertLawEffectAsync("law.accords", "ApplyRoomClimate", 0m, "UntilRoomEnds", "accords", cancellationToken);
         await UpsertLawEffectAsync("law.deuil-sec", "ApplyRoomClimate", 0m, "UntilRoomEnds", "deuil-sec", cancellationToken);
         await UpsertLawEffectAsync("law.maree-haute", "ApplyRoomClimate", 0m, "UntilRoomEnds", "maree-haute", cancellationToken);
+
+        await _ctx.SaveChangesAsync(cancellationToken);
+    }
+
+    // Chapitre III — Lois du seuil & de l'étiquette. Only 1 of its 5 laws is seeded:
+    // Loi des Pieds Essuyés (trivial reuse of the existing StartingGuardBonus mechanic).
+    // The other 4 are NOT seeded — each needs a genuinely new engine mechanic that
+    // doesn't exist yet (documented gap, same convention as the rest of this chantier):
+    // "Loi du Tapis Propre" (law.tapis-propre) needs per-combatant first-turn action-type
+    // validation (support/buff/debuff/move only, no attack) — the same class of problem
+    // as Chapitre IV's un-seeded Miroir/Éloge Funèbre. "Loi de l'Invitation" (law.invitation)
+    // needs disabling a "flee" combat action that doesn't exist in the engine AND a loot
+    // bonus — RunModifierType.RewardPowerMultiplier is itself dead code upstream (written
+    // by PalaceLawMapper but never read by RewardOfferFactory, which only consumes the
+    // risk-derived CombatRiskProfile.RewardPowerMultiplier), so seeding it would silently
+    // do nothing; fixing that pre-existing gap is out of scope here. "Loi du Silence Dû"
+    // (law.silence-du) needs a flat (not percent) mana-cost increase and a symmetric
+    // physical-damage-bonus CombatStat, neither of which exists. "Loi de la Troisième
+    // Tasse" (law.troisieme-tasse) needs a random per-heal-application corruption roll.
+    private async Task SeedLoisDuSeuilAsync(CancellationToken cancellationToken)
+    {
+        await UpsertCompendiumLawAsync(
+            key: "law.pieds-essuyes",
+            name: "Loi des Pieds Essuyés",
+            narrativeText: "Article II — Quiconque honore le seuil sera tenu pour honorable "
+                + "jusqu'à preuve du contraire. La preuve du contraire arrive vite, ici.",
+            description: "À l'entrée de chaque combat, toute l'équipe gagne +3 Garde. Le "
+                + "seuil respecté protège ceux qui le respectent.",
+            rarity: "Commun",
+            polarity: "Clémente",
+            isMajeure: false,
+            minDepth: null,
+            duration: "UntilFloorEnds",
+            selectionGroup: "law.seuil",
+            impactDomains: ["Combat"],
+            cancellationToken);
+
+        await _ctx.SaveChangesAsync(cancellationToken);
+
+        await UpsertLawEffectAsync("law.pieds-essuyes", "AddStartingGuard", 3m, "UntilFloorEnds", null, cancellationToken);
+
+        await _ctx.SaveChangesAsync(cancellationToken);
+    }
+
+    // Chapitre VII — Édits cléments. 3 of its 5 laws are seeded: Pas Léger (reuses
+    // SpeedBonus), Hôte Généreux (reuses StartingGuardBonus), Souvenir Doux (reuses the
+    // new AllyHealingBonus mechanic). NOT seeded: "Édit de la Chandelle" (law.chandelle,
+    // +1 free reroll on item nodes for the floor — needs a node-reroll-count mechanic
+    // that doesn't exist) and "Édit des Portes Ouvertes" (law.portes-ouvertes, reveals the
+    // full floor layout — needs a map-reveal feature spanning backend + frontend).
+    private async Task SeedEditsClementsAsync(CancellationToken cancellationToken)
+    {
+        await UpsertCompendiumLawAsync(
+            key: "law.pas-leger",
+            name: "Édit du Pas Léger",
+            narrativeText: "Article VIII — Les couloirs sont longs et le Palais a horreur "
+                + "qu'on y traîne. Allez.",
+            description: "+10% Vitesse pour toute l'équipe.",
+            rarity: "Peu commun",
+            polarity: "Clémente",
+            isMajeure: false,
+            minDepth: null,
+            duration: "UntilFloorEnds",
+            selectionGroup: "law.edit",
+            impactDomains: ["Combat"],
+            cancellationToken);
+
+        await UpsertCompendiumLawAsync(
+            key: "law.hote-genereux",
+            name: "Édit de l'Hôte Généreux",
+            narrativeText: "Article XI — Les invités seront servis avant d'être éprouvés. "
+                + "C'est l'ordre des choses, et l'ordre des plats.",
+            description: "L'équipe entre dans chaque combat avec +10 Garde.",
+            rarity: "Peu commun",
+            polarity: "Clémente",
+            isMajeure: false,
+            minDepth: null,
+            duration: "UntilFloorEnds",
+            selectionGroup: "law.edit",
+            impactDomains: ["Combat"],
+            cancellationToken);
+
+        await UpsertCompendiumLawAsync(
+            key: "law.souvenir-doux",
+            name: "Édit du Souvenir Doux",
+            narrativeText: "Article XVII — Il est arrivé, une fois, que quelqu'un soit "
+                + "heureux ici. L'étage s'en souvient. Profitez de sa distraction.",
+            description: "Tous les soins reçus par l'équipe sont majorés de +20%.",
+            rarity: "Peu commun",
+            polarity: "Clémente",
+            isMajeure: false,
+            minDepth: null,
+            duration: "UntilFloorEnds",
+            selectionGroup: "law.edit",
+            impactDomains: ["Combat"],
+            cancellationToken: cancellationToken,
+            // "incompatible avec la Loi de la Troisième Tasse" per the SFD — Troisième
+            // Tasse is not seeded (see SeedLoisDuSeuilAsync), so this exclusion is
+            // currently a no-op; kept for when it eventually is seeded.
+            exclusionKeys: ["law.troisieme-tasse"]);
+
+        await _ctx.SaveChangesAsync(cancellationToken);
+
+        await UpsertLawEffectAsync("law.pas-leger", "ModifySpeed", 0.10m, "UntilFloorEnds", null, cancellationToken);
+        await UpsertLawEffectAsync("law.hote-genereux", "AddStartingGuard", 10m, "UntilFloorEnds", null, cancellationToken);
+        await UpsertLawEffectAsync("law.souvenir-doux", "EnableAllyHealingBonus", 20m, "UntilFloorEnds", null, cancellationToken);
 
         await _ctx.SaveChangesAsync(cancellationToken);
     }
