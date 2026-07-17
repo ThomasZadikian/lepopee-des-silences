@@ -361,6 +361,14 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
             ? Math.Max(1, (int)Math.Round(spec.Magnitude * statMultiplier * bonusMultiplier, MidpointRounding.AwayFromZero))
             : spec.Magnitude;
 
+        // "Loi de la Marée Haute" (law.maree-haute, Pluie violacée): "+1 dégât par tour à
+        // tous les DoT" — a flat bonus on flat-magnitude DoTs only; percent-of-max DoTs
+        // (e.g. "Une destinée cruelle") aren't comparable to a flat unit and are excluded.
+        if (spec.Kind == StatusEffectKind.DamageOverTime && !spec.MagnitudeIsPercentOfMax && !spec.IsPermanent)
+        {
+            magnitude += combat.DotMagnitudeBonus;
+        }
+
         recipient.ApplyStatusEffect(CombatStatusEffect.Create(
             key: spec.Key,
             displayName: spec.DisplayName,

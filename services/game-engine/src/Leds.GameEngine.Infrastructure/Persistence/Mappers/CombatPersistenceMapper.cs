@@ -35,6 +35,7 @@ public static class CombatPersistenceMapper
             LowHpDamageAmplificationEnabled = combat.LowHpDamageAmplificationEnabled,
             DotDurationExtensionTicks = combat.DotDurationExtensionTicks,
             DuelDamageAsymmetryEnabled = combat.DuelDamageAsymmetryEnabled,
+            DotMagnitudeBonus = combat.DotMagnitudeBonus,
             ActiveCombatantId = combat.ActiveCombatantId?.Value,
             CreatedAtUtc = combat.CreatedAtUtc,
             UpdatedAtUtc = DateTime.UtcNow,
@@ -303,7 +304,8 @@ public static class CombatPersistenceMapper
             entity.HasFirstHitLanded,
             entity.LowHpDamageAmplificationEnabled,
             entity.DotDurationExtensionTicks,
-            entity.DuelDamageAsymmetryEnabled);
+            entity.DuelDamageAsymmetryEnabled,
+            entity.DotMagnitudeBonus);
     }
 
     public static Combatant ToDomain(CombatantEntity entity)

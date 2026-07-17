@@ -27,7 +27,8 @@ public sealed class Combat
         bool hasFirstHitLanded,
         bool lowHpDamageAmplificationEnabled,
         int dotDurationExtensionTicks,
-        bool duelDamageAsymmetryEnabled)
+        bool duelDamageAsymmetryEnabled,
+        int dotMagnitudeBonus)
     {
         Id = id;
         RunId = runId;
@@ -47,6 +48,7 @@ public sealed class Combat
         LowHpDamageAmplificationEnabled = lowHpDamageAmplificationEnabled;
         DotDurationExtensionTicks = dotDurationExtensionTicks;
         DuelDamageAsymmetryEnabled = duelDamageAsymmetryEnabled;
+        DotMagnitudeBonus = dotMagnitudeBonus;
     }
 
     public CombatId Id { get; }
@@ -149,6 +151,13 @@ public sealed class Combat
     /// <summary>"Loi du Duel" area-of-effect damage penalty, in percent.</summary>
     public const int DuelAreaOfEffectPenaltyPercent = 20;
 
+    /// <summary>"Loi de la Marée Haute" (law.maree-haute, Pluie violacée climate): "tous
+    /// les DoT (joueur et ennemis) infligent +1 dégât par tour" — a flat magnitude bonus
+    /// added to every newly-applied DamageOverTime effect (see CombatSkillEffectResolver.
+    /// ApplyStatusEffectSpec). Baked in at creation from the active climate, zero
+    /// otherwise. Generic (not climate-specific by name) so any future law can reuse it.</summary>
+    public int DotMagnitudeBonus { get; }
+
     public static Combat Create(
         CombatId id,
         RunId runId,
@@ -160,7 +169,8 @@ public sealed class Combat
         bool firstHitCriticalEnabled = false,
         bool lowHpDamageAmplificationEnabled = false,
         int dotDurationExtensionTicks = 0,
-        bool duelDamageAsymmetryEnabled = false)
+        bool duelDamageAsymmetryEnabled = false,
+        int dotMagnitudeBonus = 0)
     {
         if (id.Value == Guid.Empty)
             throw new DomainException("Combat id is required.");
@@ -199,7 +209,8 @@ public sealed class Combat
             hasFirstHitLanded: false,
             lowHpDamageAmplificationEnabled: lowHpDamageAmplificationEnabled,
             dotDurationExtensionTicks: dotDurationExtensionTicks,
-            duelDamageAsymmetryEnabled: duelDamageAsymmetryEnabled);
+            duelDamageAsymmetryEnabled: duelDamageAsymmetryEnabled,
+            dotMagnitudeBonus: dotMagnitudeBonus);
     }
 
     public void MarkCompleted()
@@ -485,9 +496,10 @@ public sealed class Combat
         bool hasFirstHitLanded = false,
         bool lowHpDamageAmplificationEnabled = false,
         int dotDurationExtensionTicks = 0,
-        bool duelDamageAsymmetryEnabled = false)
+        bool duelDamageAsymmetryEnabled = false,
+        int dotMagnitudeBonus = 0)
     {
-        return new Combat(id, runId, roomId, nodeId, status, allies, enemies, activeCombatantId, turnNumber, currentTick, createdAtUtc, hitCounter, hitCounterDoubleDamageEnabled, firstHitCriticalEnabled, hasFirstHitLanded, lowHpDamageAmplificationEnabled, dotDurationExtensionTicks, duelDamageAsymmetryEnabled);
+        return new Combat(id, runId, roomId, nodeId, status, allies, enemies, activeCombatantId, turnNumber, currentTick, createdAtUtc, hitCounter, hitCounterDoubleDamageEnabled, firstHitCriticalEnabled, hasFirstHitLanded, lowHpDamageAmplificationEnabled, dotDurationExtensionTicks, duelDamageAsymmetryEnabled, dotMagnitudeBonus);
     }
 
     /// <summary>

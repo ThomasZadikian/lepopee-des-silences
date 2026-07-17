@@ -736,6 +736,90 @@ public sealed class CombatFactoryTests
     }
 
     // ---------------------------------------------------------------------------
+    // Chapitre II — the 4 new SFD climates (Brume/Orage/Pluie de cendres/Pluie
+    // violacée), additive alongside the legacy Grey/Rain/Heatwave/Hail values.
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void CreateFromDraft_ShouldApplyBrumeClimateFocusPenalty_ToEveryCombatant()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft();
+
+        var combat = factory.CreateFromDraft(
+            draft,
+            focus: 10,
+            enemyFocus: 10,
+            runModifiers: [CreateClimateModifier(draft.RoomId, 5)]);
+
+        combat.Allies.Single().EffectiveFocus.Should().Be(7,
+            because: "Loi du Voile / Brume applies a flat -3 Focus penalty to every combatant.");
+        combat.Enemies.Single().EffectiveFocus.Should().Be(7,
+            because: "The Brume Focus penalty applies to enemies too.");
+    }
+
+    [Fact]
+    public void CreateFromDraft_ShouldApplyOrageClimateMagicDamageBonus_ToEveryCombatant()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft();
+
+        var combat = factory.CreateFromDraft(
+            draft,
+            runModifiers: [CreateClimateModifier(draft.RoomId, 6)]);
+
+        combat.Allies.Single().EffectiveMagicDamageBonusPercent.Should().Be(15,
+            because: "Loi des Accords / Orage grants +15% magic damage to every combatant.");
+        combat.Enemies.Single().EffectiveMagicDamageBonusPercent.Should().Be(15);
+    }
+
+    [Fact]
+    public void CreateFromDraft_ShouldApplyPluieDeCendresClimateHealingAndDotBonus_ToEveryCombatant()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft();
+
+        var combat = factory.CreateFromDraft(
+            draft,
+            runModifiers: [CreateClimateModifier(draft.RoomId, 7)]);
+
+        var ally = combat.Allies.Single();
+        ally.EffectiveHealingBonusPercent.Should().Be(-25,
+            because: "Loi du Deuil Sec / Pluie de cendres reduces healing by 25%.");
+        ally.EffectiveDotDamageBonusPercent.Should().Be(15,
+            because: "\"+15% dégâts de feu\" is reinterpreted as +15% DoT damage bonus (no elemental fire type exists).");
+    }
+
+    [Fact]
+    public void CreateFromDraft_ShouldNotApplyAnyClimateBundle_WhenPluieViolaceeIsActive()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft();
+
+        var combat = factory.CreateFromDraft(
+            draft,
+            runModifiers: [CreateClimateModifier(draft.RoomId, 8)]);
+
+        var ally = combat.Allies.Single();
+        ally.EffectiveMagicDamageBonusPercent.Should().Be(0);
+        ally.EffectiveHealingBonusPercent.Should().Be(0);
+        ally.EffectiveDotDamageBonusPercent.Should().Be(0);
+        combat.DotMagnitudeBonus.Should().Be(1,
+            because: "Loi de la Marée Haute / Pluie violacée is threaded through Combat.DotMagnitudeBonus instead of a stat bundle.");
+    }
+
+    [Fact]
+    public void CreateFromDraft_ShouldLeaveDotMagnitudeBonusAtZero_WhenNoClimateIsActive()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft();
+
+        var combat = factory.CreateFromDraft(draft);
+
+        combat.DotMagnitudeBonus.Should().Be(0);
+    }
+
+    // ---------------------------------------------------------------------------
     // "Loi du Reflet" (MirrorCombatCopy) — mirrors the PLAYER's own team into the
     // enemy slot for the next combat (60% stats, same skills), replacing whatever
     // enemies the room would have spawned — not a clone of those enemies.

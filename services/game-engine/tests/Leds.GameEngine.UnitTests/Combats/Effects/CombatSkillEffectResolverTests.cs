@@ -956,6 +956,61 @@ public sealed class CombatSkillEffectResolverTests
     }
 
     // ---------------------------------------------------------------------------
+    // "Loi de la Marée Haute" (DotMagnitudeBonus) — every flat-magnitude DamageOverTime
+    // effect (both sides) deals N extra damage per tick.
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void Resolve_ShouldAddFlatMagnitudeBonus_WhenDotMagnitudeBonusIsActive()
+    {
+        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+        var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 100);
+        var combat = Combat.Create(
+            CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(),
+            [ally], [enemy],
+            hitCounterDoubleDamageEnabled: false,
+            firstHitCriticalEnabled: false,
+            lowHpDamageAmplificationEnabled: false,
+            dotDurationExtensionTicks: 0,
+            duelDamageAsymmetryEnabled: false,
+            dotMagnitudeBonus: 1);
+        var skill = CombatantSkill.Create(
+            "canon.skill.plume", "Plume empoisonnée", "Debuff", "SingleEnemy", "Debuff",
+            manaCost: 0, chargeCost: 0, basePower: 0,
+            statusEffects: new[]
+            {
+                new SkillStatusEffectSpec(
+                    "poison", "Poison", StatusEffectKind.DamageOverTime,
+                    Magnitude: 10, DurationTicks: 5000, TickInterval: 1400)
+            });
+
+        _resolver.Resolve(combat, ally, skill, [enemy]);
+
+        enemy.StatusEffects.Should().ContainSingle(e => e.Key == "poison" && e.Magnitude == 11);
+    }
+
+    [Fact]
+    public void Resolve_ShouldNotAddMagnitudeBonus_WhenTheLawIsNotActive()
+    {
+        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+        var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 100);
+        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
+        var skill = CombatantSkill.Create(
+            "canon.skill.plume", "Plume empoisonnée", "Debuff", "SingleEnemy", "Debuff",
+            manaCost: 0, chargeCost: 0, basePower: 0,
+            statusEffects: new[]
+            {
+                new SkillStatusEffectSpec(
+                    "poison", "Poison", StatusEffectKind.DamageOverTime,
+                    Magnitude: 10, DurationTicks: 5000, TickInterval: 1400)
+            });
+
+        _resolver.Resolve(combat, ally, skill, [enemy]);
+
+        enemy.StatusEffects.Should().ContainSingle(e => e.Key == "poison" && e.Magnitude == 10);
+    }
+
+    // ---------------------------------------------------------------------------
     // "Loi du Duel" (DuelDamageAsymmetryEnabled) — mono-target +20%, area-of-effect -20%.
     // ---------------------------------------------------------------------------
 

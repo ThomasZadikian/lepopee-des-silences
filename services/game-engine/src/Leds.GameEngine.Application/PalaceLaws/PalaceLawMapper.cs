@@ -119,6 +119,12 @@ public static class PalaceLawMapper
             "rain" or "pluie" => 2,
             "heatwave" or "canicule" => 3,
             "hail" or "grele" or "grêle" => 4,
+            // Chapitre II — the Compendium's actual 5 canonical climates (see
+            // CombatFactory.RoomClimate for why these are separate from the 4 above).
+            "brume" or "voile" => 5,
+            "orage" or "accords" => 6,
+            "pluie-de-cendres" or "pluie de cendres" or "deuil-sec" => 7,
+            "pluie-violacee" or "pluie violacee" or "pluie-violacée" or "pluie violacée" or "maree-haute" or "marée-haute" => 8,
             _ => throw new DomainException("ApplyRoomClimate requires a supported climate condition.")
         };
     }

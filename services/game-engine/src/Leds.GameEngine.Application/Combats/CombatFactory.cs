@@ -126,6 +126,11 @@ public sealed class CombatFactory : ICombatFactory
             guardBonus += 5;
         }
 
+        // "Loi de la Marée Haute" (law.maree-haute, Pluie violacée): "+1 dégât par tour à
+        // tous les DoT" — baked into Combat at creation, consumed by
+        // CombatSkillEffectResolver.ApplyStatusEffectSpec for every newly-applied DoT.
+        var dotMagnitudeBonus = activeClimate == RoomClimate.PluieViolacee ? 1 : 0;
+
         // Equipment-driven percentage bonus on top of the Law/climate-derived guard
         // above (e.g. Bague de Iris: +20% — 0 guard stays 0, 100 becomes 120).
         guardBonus = (int)Math.Round(guardBonus * (1.0 + guardBonusPercent / 100.0));
@@ -296,6 +301,8 @@ public sealed class CombatFactory : ICombatFactory
                 ApplyCruelDestinyToEveryone(allies.Concat(mirroredEnemies));
             }
 
+            ApplyClimateStatBundle(activeClimate, allies.Concat(mirroredEnemies));
+
             var mirrorHitCounterDoubleDamageEnabled = activeModifiers
                 .Any(m => m.Type == RunModifierType.HitCounterDoubleDamage && !m.IsConsumed);
             var mirrorFirstHitCriticalEnabled = activeModifiers
@@ -314,7 +321,8 @@ public sealed class CombatFactory : ICombatFactory
                 mirrorFirstHitCriticalEnabled,
                 mirrorLowHpDamageAmplificationEnabled,
                 ComputeDotDurationExtensionTicks(activeModifiers),
-                ComputeDuelDamageAsymmetryEnabled(activeModifiers));
+                ComputeDuelDamageAsymmetryEnabled(activeModifiers),
+                dotMagnitudeBonus);
         }
 
         var enemies = draft.Enemies
@@ -405,6 +413,8 @@ public sealed class CombatFactory : ICombatFactory
             ApplyCruelDestinyToEveryone(allies.Concat(enemies));
         }
 
+        ApplyClimateStatBundle(activeClimate, allies.Concat(enemies));
+
         var hitCounterDoubleDamageEnabled = activeModifiers
             .Any(m => m.Type == RunModifierType.HitCounterDoubleDamage && !m.IsConsumed);
         var firstHitCriticalEnabled = activeModifiers
@@ -423,7 +433,8 @@ public sealed class CombatFactory : ICombatFactory
             firstHitCriticalEnabled,
             lowHpDamageAmplificationEnabled,
             ComputeDotDurationExtensionTicks(activeModifiers),
-            ComputeDuelDamageAsymmetryEnabled(activeModifiers));
+            ComputeDuelDamageAsymmetryEnabled(activeModifiers),
+            dotMagnitudeBonus);
     }
 
     /// <summary>
@@ -549,6 +560,73 @@ public sealed class CombatFactory : ICombatFactory
         }
     }
 
+    /// <summary>
+    /// Chapitre II — the three climates whose effect is a flat stat bundle applied to
+    /// EVERY combatant for the room (player and enemy alike, same convention as
+    /// ApplyCruelDestinyToEveryone): "Brume" (law.voile, -3 Focus flat), "Orage"
+    /// (law.accords, +15% magic damage), "Pluie de cendres" (law.deuil-sec, -25%
+    /// healing received/applied, +15% DoT damage — "dégâts de feu" reinterpreted as a
+    /// DoT bonus since no elemental "fire" type exists, documented simplification).
+    /// "Pluie violacée" (Marée Haute) is handled separately via Combat.DotMagnitudeBonus
+    /// since it needs to be threaded through the resolver, not just a StatModifier.
+    /// </summary>
+    private static void ApplyClimateStatBundle(RoomClimate? climate, IEnumerable<Combatant> combatants)
+    {
+        if (climate is not (RoomClimate.Brume or RoomClimate.Orage or RoomClimate.PluieDeCendres))
+            return;
+
+        foreach (var combatant in combatants)
+        {
+            switch (climate)
+            {
+                case RoomClimate.Brume:
+                    combatant.ApplyStatusEffect(CombatStatusEffect.Create(
+                        key: "climat-brume:focus",
+                        displayName: "Brume",
+                        kind: StatusEffectKind.StatModifier,
+                        currentTick: 0,
+                        durationTicks: 0,
+                        magnitude: -3,
+                        stat: CombatStat.Focus,
+                        isPermanent: true));
+                    break;
+
+                case RoomClimate.Orage:
+                    combatant.ApplyStatusEffect(CombatStatusEffect.Create(
+                        key: "climat-orage:magic-damage",
+                        displayName: "Orage",
+                        kind: StatusEffectKind.StatModifier,
+                        currentTick: 0,
+                        durationTicks: 0,
+                        magnitude: 15,
+                        stat: CombatStat.MagicDamageBonus,
+                        isPermanent: true));
+                    break;
+
+                case RoomClimate.PluieDeCendres:
+                    combatant.ApplyStatusEffect(CombatStatusEffect.Create(
+                        key: "climat-pluie-de-cendres:healing",
+                        displayName: "Pluie de cendres",
+                        kind: StatusEffectKind.StatModifier,
+                        currentTick: 0,
+                        durationTicks: 0,
+                        magnitude: -25,
+                        stat: CombatStat.HealingBonus,
+                        isPermanent: true));
+                    combatant.ApplyStatusEffect(CombatStatusEffect.Create(
+                        key: "climat-pluie-de-cendres:dot",
+                        displayName: "Pluie de cendres",
+                        kind: StatusEffectKind.StatModifier,
+                        currentTick: 0,
+                        durationTicks: 0,
+                        magnitude: 15,
+                        stat: CombatStat.DotDamageBonus,
+                        isPermanent: true));
+                    break;
+            }
+        }
+    }
+
     /// <summary>"Loi de l'Écriture" (law.ecriture): "tous les DoT durent +2 tours" — the
     /// RunModifier's Value is a bonus TURN count (as authored in the catalog), converted
     /// here to ticks so Combat only ever deals in its native tick unit.</summary>
@@ -607,6 +685,17 @@ public sealed class CombatFactory : ICombatFactory
             2 => RoomClimate.Rain,
             3 => RoomClimate.Heatwave,
             4 => RoomClimate.Hail,
+            // Chapitre II "Lois climatiques" — the Compendium's actual 5 canonical
+            // climate states (Accalmie/Pluie violacée/Brume/Orage/Pluie de cendres) do
+            // not match the 4 legacy values above (built before the Compendium existed,
+            // never seeded by any catalog content — kept only for the existing test
+            // suite). Added on, not renumbered, per the append-only convention. Accalmie
+            // (law.repit) is not mapped: it needs a Sévère-law-suspension mechanic
+            // (RunModifierType.SuspendSevereLaws) that doesn't exist yet.
+            5 => RoomClimate.Brume,
+            6 => RoomClimate.Orage,
+            7 => RoomClimate.PluieDeCendres,
+            8 => RoomClimate.PluieViolacee,
             _ => null
         };
     }
@@ -616,7 +705,11 @@ public sealed class CombatFactory : ICombatFactory
         Grey,
         Rain,
         Heatwave,
-        Hail
+        Hail,
+        Brume,
+        Orage,
+        PluieDeCendres,
+        PluieViolacee
     }
 
     private static string NormalizeCombatEffectType(string skillKey, string effectType)

@@ -15,7 +15,8 @@ public sealed class CombatTests
         bool firstHitCriticalEnabled = false,
         bool lowHpDamageAmplificationEnabled = false,
         int dotDurationExtensionTicks = 0,
-        bool duelDamageAsymmetryEnabled = false)
+        bool duelDamageAsymmetryEnabled = false,
+        int dotMagnitudeBonus = 0)
     {
         var allies = Enumerable.Range(0, allyCount).Select(i =>
             Combatant.CreateAlly($"player.{i}", $"Hero{i}", "Fighter", 100)).ToArray();
@@ -34,7 +35,8 @@ public sealed class CombatTests
             firstHitCriticalEnabled,
             lowHpDamageAmplificationEnabled,
             dotDurationExtensionTicks,
-            duelDamageAsymmetryEnabled);
+            duelDamageAsymmetryEnabled,
+            dotMagnitudeBonus);
     }
 
     [Fact]
@@ -450,5 +452,17 @@ public sealed class CombatTests
     {
         CreateSut(duelDamageAsymmetryEnabled: true).DuelDamageAsymmetryEnabled.Should().BeTrue();
         CreateSut(duelDamageAsymmetryEnabled: false).DuelDamageAsymmetryEnabled.Should().BeFalse();
+    }
+
+    // ---------------------------------------------------------------------------
+    // "Loi de la Marée Haute" (DotMagnitudeBonus) — the flag itself; the actual
+    // +1-per-tick DoT bonus is exercised in CombatSkillEffectResolverTests.
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void DotMagnitudeBonus_ShouldReflectTheValueBakedInAtCreation()
+    {
+        CreateSut(dotMagnitudeBonus: 1).DotMagnitudeBonus.Should().Be(1);
+        CreateSut().DotMagnitudeBonus.Should().Be(0);
     }
 }

@@ -16,6 +16,7 @@ public sealed class CombatEntity
     public bool LowHpDamageAmplificationEnabled { get; set; }
     public int DotDurationExtensionTicks { get; set; }
     public bool DuelDamageAsymmetryEnabled { get; set; }
+    public int DotMagnitudeBonus { get; set; }
     public Guid? ActiveCombatantId { get; set; }
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
