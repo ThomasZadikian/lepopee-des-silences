@@ -386,6 +386,10 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
         var staggers = IsStaggerSkill(skill);
         var hitTargetIds = new HashSet<Guid>();
 
+        // "Loi de la Première Impression": the actor's next landed hit is forced to
+        // critical. Consumed the moment it lands — an AoE cast only guarantees it once.
+        var guaranteedCriticalPending = actor.HasGuaranteedCritical;
+
         foreach (var target in targets)
         {
             var hitChance = HitChanceCalibration.HitChanceFromBonus(actor.HitChanceBonusPercent);
@@ -413,12 +417,20 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
                 skill.BasePower,
                 StatModifierDamageMultiplier(skill, actor, target) * MagicCategoryDamageMultiplier(skill, actor, target));
 
+            var effectiveCritChance = guaranteedCriticalPending ? 1.0 : critChance;
+
             var outcome = DamageCalculator.Calculate(
                 basePower,
                 attackType,
                 defenderProfile,
-                critChance,
+                effectiveCritChance,
                 critRoll);
+
+            if (guaranteedCriticalPending)
+            {
+                actor.ConsumeSingleUseStatusEffect(StatusEffectKind.GuaranteedCritical);
+                guaranteedCriticalPending = false;
+            }
 
             outcome = ApplyEquipmentDamageReduction(outcome, target, attackType);
 

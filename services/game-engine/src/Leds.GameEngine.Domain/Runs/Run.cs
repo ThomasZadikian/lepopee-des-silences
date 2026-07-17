@@ -1096,6 +1096,24 @@ public sealed class Run
         PlayerState?.LoseVitality(amount, floor: 1);
     }
 
+    /// <summary>Percentage of <see cref="RunModifierType.RoomTraversalHpDrain"/>'s "Dévoration" drain.</summary>
+    private const int RoomTraversalHpDrainPercent = 3;
+
+    /// <summary>
+    /// "Dévoration" — when the <see cref="RunModifierType.RoomTraversalHpDrain"/> law is
+    /// active and the player traverses a room without resolving any combat node in it,
+    /// drains <see cref="RoomTraversalHpDrainPercent"/>% of max vitality. Called by the
+    /// room-transition handler once it determines the room just left had no Combat/Elite/
+    /// RoomBoss resolution.
+    /// </summary>
+    public void OnRoomEnteredWithoutCombat()
+    {
+        if (!_runModifiers.Any(m => m.Type == RunModifierType.RoomTraversalHpDrain && !m.IsConsumed))
+            return;
+
+        ApplyVitalityLoss(PercentOf(MaxHp, RoomTraversalHpDrainPercent));
+    }
+
     public void ApplyStatBonus(string stat, int value)
     {
         if (string.IsNullOrWhiteSpace(stat))

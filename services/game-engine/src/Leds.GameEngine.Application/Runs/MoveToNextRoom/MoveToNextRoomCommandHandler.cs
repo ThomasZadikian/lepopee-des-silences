@@ -3,6 +3,8 @@ using Leds.GameEngine.Application.Common.Exceptions;
 using Leds.GameEngine.Application.PalaceLaws;
 using Leds.GameEngine.Application.Runs.Dtos;
 using Leds.GameEngine.Domain.Common;
+using Leds.GameEngine.Domain.Nodes;
+using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
 using MediatR;
 
@@ -44,6 +46,7 @@ public sealed class MoveToNextRoomCommandHandler
                 "Cannot enter the next room: run must be in Interlude state.");
         }
 
+        var leftRoom = run.CurrentRoom;
         var nextRoom = await _runGenerator.GenerateNextRoomAsync(run, cancellationToken);
 
         run.MoveToNextRoom(nextRoom);
@@ -52,8 +55,22 @@ public sealed class MoveToNextRoomCommandHandler
         // node: a law may now be promulgated automatically on entering the new room.
         await _palaceLawPromulgator.PromulgateForRoomTransitionAsync(run, nextRoom, cancellationToken);
 
+        // Dévoration: chip HP away when the room just left had no combat resolution at all.
+        if (!HasResolvedCombatNode(leftRoom))
+        {
+            run.OnRoomEnteredWithoutCombat();
+        }
+
         await _runRepository.UpdateAsync(run, cancellationToken);
 
         return new MoveToNextRoomResponse(RunDto.FromDomain(run));
+    }
+
+    private static bool HasResolvedCombatNode(Room room)
+    {
+        return room.Nodes.Any(node =>
+            node.State == NodeState.Resolved &&
+            node.EventType is NodeEventType.Combat or NodeEventType.Elite
+                or NodeEventType.RoomBoss or NodeEventType.FinalBoss);
     }
 }

@@ -755,6 +755,65 @@ public sealed class CombatSkillEffectResolverTests
         enemy.CurrentVitality.Should().Be(200 - 10);
     }
 
+    // ---------------------------------------------------------------------------
+    // "Loi de la Première Impression" (GuaranteedCritical)
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void Resolve_ShouldForceACriticalHit_WhenActorHasGuaranteedCritical()
+    {
+        // Default CreateCombat ally has Focus 0 => normal crit chance is exactly 0,
+        // so any crit observed here can only come from the guaranteed-critical effect.
+        var (combat, ally, enemy) = CreateCombat();
+        ApplyGuaranteedCritical(ally);
+        var skill = CreateSkill("skill.basic.strike", "Damage", 10);
+
+        var result = _resolver.Resolve(combat, ally, skill, [enemy]);
+
+        result.LogEntries.Should().Contain(entry => entry.Type == "CriticalHit");
+        // CritMultiplier is 1.5x — 10 base power becomes 15.
+        enemy.CurrentVitality.Should().Be(80 - 15);
+    }
+
+    [Fact]
+    public void Resolve_ShouldConsumeGuaranteedCritical_AfterItLands()
+    {
+        var (combat, ally, enemy) = CreateCombat();
+        ApplyGuaranteedCritical(ally);
+        var skill = CreateSkill("skill.basic.strike", "Damage", 10);
+
+        _resolver.Resolve(combat, ally, skill, [enemy]);
+
+        ally.HasGuaranteedCritical.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Resolve_ShouldOnlyGuaranteeOneCriticalHit_OnAMultiTargetSkill()
+    {
+        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+        ApplyGuaranteedCritical(ally);
+        var enemyA = Combatant.CreateEnemy("enemy.sentinel-a", "Sentinel A", "Guard", 80);
+        var enemyB = Combatant.CreateEnemy("enemy.sentinel-b", "Sentinel B", "Guard", 80);
+        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemyA, enemyB]);
+        var skill = CreateSkill("skill.basic.strike", "Damage", 10);
+
+        var result = _resolver.Resolve(combat, ally, skill, [enemyA, enemyB]);
+
+        result.LogEntries.Count(entry => entry.Type == "CriticalHit").Should().Be(1,
+            because: "the guaranteed critical is consumed after the first landed hit — the second target rolls normally.");
+    }
+
+    private static void ApplyGuaranteedCritical(Combatant combatant)
+    {
+        combatant.ApplyStatusEffect(CombatStatusEffect.Create(
+            key: "law-first-impression",
+            displayName: "Loi de la Première Impression",
+            kind: StatusEffectKind.GuaranteedCritical,
+            currentTick: 0,
+            durationTicks: 0,
+            isPermanent: true));
+    }
+
     private static (Combat Combat, Combatant Ally, Combatant Enemy) CreateCombat()
     {
         var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
