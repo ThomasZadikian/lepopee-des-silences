@@ -101,7 +101,10 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
         // Mina's "Protection de Him'Lit" (-5%, permanent) is the only source of this
         // today — see Combatant.EffectiveSkillCostReductionPercent.
         var reductionPercent = actor.EffectiveSkillCostReductionPercent;
-        var manaCost = ApplyCostReduction(skill.ManaCost, reductionPercent);
+        // "Loi du Silence Dû" (law.silence-du): "les sorts coûtent +2 mana" — a flat bonus
+        // added on top of the percentage reduction above, distinct unit (see
+        // Combatant.EffectiveFlatManaCostBonus).
+        var manaCost = Math.Max(0, ApplyCostReduction(skill.ManaCost, reductionPercent) + actor.EffectiveFlatManaCostBonus);
         var chargeCost = ApplyCostReduction(skill.ChargeCost, reductionPercent);
 
         actor.SpendMana(manaCost);
@@ -347,7 +350,9 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
         // the caster's own max HP) are excluded: they aren't an attack against a
         // defender, so an attack/defense ratio has no meaning there.
         var statMultiplier = spec.Kind == StatusEffectKind.DamageOverTime && !spec.MagnitudeIsPercentOfMax
-            ? StatModifierDamageMultiplier(skill, caster, recipient) * MagicCategoryDamageMultiplier(skill, caster, recipient)
+            ? StatModifierDamageMultiplier(skill, caster, recipient)
+                * MagicCategoryDamageMultiplier(skill, caster, recipient)
+                * PhysicalCategoryDamageMultiplier(skill, caster)
             : 1.0;
 
         // Equipment/skill-driven DOT damage bonus (e.g. l'Écrivain's Plume d'écrivain)
@@ -438,6 +443,7 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
                 skill.BasePower,
                 StatModifierDamageMultiplier(skill, actor, target)
                     * MagicCategoryDamageMultiplier(skill, actor, target)
+                    * PhysicalCategoryDamageMultiplier(skill, actor)
                     * DuelDamageAsymmetryMultiplier(combat, skill));
 
             var effectiveCritChance = isFirstHitCritical ? 1.0 : critChance;
@@ -629,6 +635,19 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
         var bonus = 1.0 + actor.EffectiveMagicDamageBonusPercent / 100.0;
         var reduction = 1.0 - Math.Min(target.EffectiveMagicDamageReductionPercent, 100) / 100.0;
         return Math.Max(0.0, bonus * reduction);
+    }
+
+    /// <summary>"Loi du Silence Dû" (law.silence-du): "les attaques physiques infligent
+    /// +8% de dégâts" — symmetric counterpart to <see cref="MagicCategoryDamageMultiplier"/>,
+    /// boosting Physical-category skills only (no reduction side exists for this stat yet).</summary>
+    private static double PhysicalCategoryDamageMultiplier(CombatantSkill skill, Combatant actor)
+    {
+        if (!string.Equals(skill.Category, "Physical", StringComparison.OrdinalIgnoreCase))
+        {
+            return 1.0;
+        }
+
+        return Math.Max(0.0, 1.0 + actor.EffectivePhysicalDamageBonusPercent / 100.0);
     }
 
     /// <summary>"Loi du Duel" (law.duel): "les attaques et sorts mono-cibles infligent

@@ -756,6 +756,69 @@ public sealed class CombatSkillEffectResolverTests
     }
 
     // ---------------------------------------------------------------------------
+    // "Loi du Silence Dû" (PhysicalDamageBonus / FlatManaCostBonus)
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void Resolve_ShouldBoostDamage_WhenSkillIsPhysicalCategory_AndActorHasPhysicalDamageBonus()
+    {
+        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+        ally.ApplyStatusEffect(CombatStatusEffect.Create(
+            key: "law-silence-du:physical-damage", displayName: "Silence dû",
+            kind: StatusEffectKind.StatModifier, currentTick: 0, durationTicks: 0,
+            magnitude: 8, stat: CombatStat.PhysicalDamageBonus, isPermanent: true));
+        var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 200);
+        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
+        var skill = CombatantSkill.Create(
+            "skill.basic.strike", "Frappe", "Damage", "SingleEnemy", "Damage",
+            manaCost: 0, chargeCost: 0, basePower: 10, category: "Physical");
+
+        _resolver.Resolve(combat, ally, skill, [enemy]);
+
+        // baseline multiplier = 1.0; Physical bonus = +8% => round(10 * 1.08) = 11 damage.
+        enemy.CurrentVitality.Should().Be(200 - 11);
+    }
+
+    [Fact]
+    public void Resolve_ShouldIgnorePhysicalDamageBonus_WhenSkillIsMagicCategory()
+    {
+        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+        ally.ApplyStatusEffect(CombatStatusEffect.Create(
+            key: "law-silence-du:physical-damage", displayName: "Silence dû",
+            kind: StatusEffectKind.StatModifier, currentTick: 0, durationTicks: 0,
+            magnitude: 8, stat: CombatStat.PhysicalDamageBonus, isPermanent: true));
+        var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 200);
+        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
+        var skill = CombatantSkill.Create(
+            "canon.skill.flamme-froide", "Flamme froide", "Damage", "SingleEnemy", "Damage",
+            manaCost: 0, chargeCost: 0, basePower: 10, category: "Magic");
+
+        _resolver.Resolve(combat, ally, skill, [enemy]);
+
+        enemy.CurrentVitality.Should().Be(200 - 10);
+    }
+
+    [Fact]
+    public void Resolve_ShouldAddFlatManaCostBonus_ToPlayerSideCast()
+    {
+        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+        ally.GainMana(10);
+        ally.ApplyStatusEffect(CombatStatusEffect.Create(
+            key: "law-silence-du:mana-cost", displayName: "Silence dû",
+            kind: StatusEffectKind.StatModifier, currentTick: 0, durationTicks: 0,
+            magnitude: 2, stat: CombatStat.FlatManaCostBonus, isPermanent: true));
+        var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 200);
+        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
+        var skill = CombatantSkill.Create(
+            "skill.basic.strike", "Frappe", "Damage", "SingleEnemy", "Damage",
+            manaCost: 3, chargeCost: 0, basePower: 10, category: "Physical");
+
+        _resolver.Resolve(combat, ally, skill, [enemy]);
+
+        ally.Mana.Should().Be(10 - 3 - 2);
+    }
+
+    // ---------------------------------------------------------------------------
     // "Loi de la Première Impression" (Combat.FirstHitCriticalEnabled) — combat-scoped:
     // the very first landed hit of the WHOLE combat is forced critical, regardless of
     // which side lands it (not a per-combatant effect).

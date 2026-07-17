@@ -303,6 +303,7 @@ public sealed class CombatFactory : ICombatFactory
 
             ApplyClimateStatBundle(activeClimate, allies.Concat(mirroredEnemies));
             ApplyAllyHealingBonus(activeModifiers, allies);
+            ApplySilenceDuBundle(activeModifiers, allies.Concat(mirroredEnemies));
 
             var mirrorHitCounterDoubleDamageEnabled = activeModifiers
                 .Any(m => m.Type == RunModifierType.HitCounterDoubleDamage && !m.IsConsumed);
@@ -416,6 +417,7 @@ public sealed class CombatFactory : ICombatFactory
 
         ApplyClimateStatBundle(activeClimate, allies.Concat(enemies));
         ApplyAllyHealingBonus(activeModifiers, allies);
+        ApplySilenceDuBundle(activeModifiers, allies.Concat(enemies));
 
         var hitCounterDoubleDamageEnabled = activeModifiers
             .Any(m => m.Type == RunModifierType.HitCounterDoubleDamage && !m.IsConsumed);
@@ -652,6 +654,39 @@ public sealed class CombatFactory : ICombatFactory
                 durationTicks: 0,
                 magnitude: (int)Math.Round(bonusPercent),
                 stat: CombatStat.HealingBonus,
+                isPermanent: true));
+        }
+    }
+
+    /// <summary>"Loi du Silence Dû" (law.silence-du): "les sorts coûtent +2 mana pour tous
+    /// les combattants ; les attaques physiques infligent +8% de dégâts" — symmetric,
+    /// both sides. The mana-cost half only has a real effect on the Player side in
+    /// practice (CombatSkillEffectResolver.ConsumeResources: "enemies cast freely"), a
+    /// pre-existing engine simplification unrelated to this law.</summary>
+    private static void ApplySilenceDuBundle(IReadOnlyCollection<RunModifier> activeModifiers, IEnumerable<Combatant> combatants)
+    {
+        if (!activeModifiers.Any(m => m.Type == RunModifierType.SilenceDuActive && !m.IsConsumed))
+            return;
+
+        foreach (var combatant in combatants)
+        {
+            combatant.ApplyStatusEffect(CombatStatusEffect.Create(
+                key: "law-silence-du:physical-damage",
+                displayName: "Silence dû",
+                kind: StatusEffectKind.StatModifier,
+                currentTick: 0,
+                durationTicks: 0,
+                magnitude: 8,
+                stat: CombatStat.PhysicalDamageBonus,
+                isPermanent: true));
+            combatant.ApplyStatusEffect(CombatStatusEffect.Create(
+                key: "law-silence-du:mana-cost",
+                displayName: "Silence dû",
+                kind: StatusEffectKind.StatModifier,
+                currentTick: 0,
+                durationTicks: 0,
+                magnitude: 2,
+                stat: CombatStat.FlatManaCostBonus,
                 isPermanent: true));
         }
     }

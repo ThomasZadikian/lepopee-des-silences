@@ -110,6 +110,8 @@ public static class PalaceLawMapper
                 RunModifierType.AllyHealingBonus, (double)effect.Value, duration),
             EffectType.EnableReputationChangeDoubled => PalaceLawEffect.Create(
                 RunModifierType.ReputationChangeDoubled, 1, duration),
+            EffectType.EnableSilenceDuActive => PalaceLawEffect.Create(
+                RunModifierType.SilenceDuActive, 1, duration),
             EffectType.EnableWoundHealingBlocked => PalaceLawEffect.Create(
                 RunModifierType.WoundHealingBlocked, 1, duration),
 

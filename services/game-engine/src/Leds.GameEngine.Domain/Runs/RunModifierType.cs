@@ -70,4 +70,9 @@ public enum RunModifierType
     /// ("RefreshWounds") — worsening (arming/rupturing) is unaffected. See
     /// NpcEventChoiceResolver's IsWoundHealingBlocked check.</summary>
     WoundHealingBlocked = 29,
+
+    /// <summary>"Loi du Silence Dû" (law.silence-du) — both sides: Physical-category
+    /// skills deal +8% damage, and every Player-side skill cast costs +2 flat mana. See
+    /// CombatFactory.ApplySilenceDuBundle.</summary>
+    SilenceDuActive = 30,
 }

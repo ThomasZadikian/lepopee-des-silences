@@ -851,6 +851,38 @@ public sealed class CombatFactoryTests
     }
 
     // ---------------------------------------------------------------------------
+    // "Loi du Silence Dû" (SilenceDuActive) — symmetric, both sides.
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void CreateFromDraft_ShouldApplySilenceDuBundle_ToEveryCombatant_WhenTheLawIsActive()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft();
+        var modifier = RunModifier.Create(
+            RunModifierType.SilenceDuActive, 1, RunModifierDuration.UntilRoomEnds, "PalaceLaw", "law-silence-du-test");
+
+        var combat = factory.CreateFromDraft(draft, runModifiers: [modifier]);
+
+        combat.Allies.Single().EffectivePhysicalDamageBonusPercent.Should().Be(8);
+        combat.Allies.Single().EffectiveFlatManaCostBonus.Should().Be(2);
+        combat.Enemies.Single().EffectivePhysicalDamageBonusPercent.Should().Be(8);
+        combat.Enemies.Single().EffectiveFlatManaCostBonus.Should().Be(2);
+    }
+
+    [Fact]
+    public void CreateFromDraft_ShouldNotApplySilenceDuBundle_WhenTheLawIsNotActive()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft();
+
+        var combat = factory.CreateFromDraft(draft);
+
+        combat.Allies.Single().EffectivePhysicalDamageBonusPercent.Should().Be(0);
+        combat.Allies.Single().EffectiveFlatManaCostBonus.Should().Be(0);
+    }
+
+    // ---------------------------------------------------------------------------
     // "Loi du Reflet" (MirrorCombatCopy) — mirrors the PLAYER's own team into the
     // enemy slot for the next combat (60% stats, same skills), replacing whatever
     // enemies the room would have spawned — not a clone of those enemies.

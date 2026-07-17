@@ -67,4 +67,6 @@ public enum EffectType
     EnableReputationChangeDoubled,
     /// <summary>"Loi du Témoin" (law.temoin) → RunModifierType.WoundHealingBlocked.</summary>
     EnableWoundHealingBlocked,
+    /// <summary>"Loi du Silence Dû" (law.silence-du) → RunModifierType.SilenceDuActive.</summary>
+    EnableSilenceDuActive,
 }

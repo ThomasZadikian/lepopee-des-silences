@@ -218,6 +218,24 @@ public sealed class Combatant
         => MagicDamageReductionPercent + EffectiveStat(CombatStat.MagicDamageReduction, 0);
 
     /// <summary>
+    /// Total Physical-category damage bonus (%) — symmetric counterpart to
+    /// <see cref="EffectiveMagicDamageBonusPercent"/>, virtual only (no permanent
+    /// equipment component exists yet). "Loi du Silence Dû" (law.silence-du) is its
+    /// only source today.
+    /// </summary>
+    public int EffectivePhysicalDamageBonusPercent
+        => EffectiveStat(CombatStat.PhysicalDamageBonus, 0);
+
+    /// <summary>
+    /// Flat (not percentage) mana cost added to this combatant's next skill casts, on
+    /// top of <see cref="EffectiveSkillCostReductionPercent"/>'s percentage reduction.
+    /// Read by <see cref="Leds.GameEngine.Application.Combats.Effects.CombatSkillEffectResolver"/>.ConsumeResources.
+    /// "Loi du Silence Dû" (law.silence-du) is its only source today.
+    /// </summary>
+    public int EffectiveFlatManaCostBonus
+        => EffectiveStat(CombatStat.FlatManaCostBonus, 0);
+
+    /// <summary>
     /// Total flat critical chance bonus (percentage points): permanent equipment
     /// component plus any active temporary StatModifier(CriticalChanceBonus) status
     /// effect. Added on top of the Focus-derived chance, still capped overall by

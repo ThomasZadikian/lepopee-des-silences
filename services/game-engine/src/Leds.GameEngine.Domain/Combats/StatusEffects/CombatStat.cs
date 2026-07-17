@@ -34,5 +34,14 @@ public enum CombatStat
     // Percentage points added to all healing this combatant applies (skills and items —
     // see Combatant.EffectiveHealingBonusPercent), on top of the permanent equipment
     // component — e.g. Majordome's legendary "La tasse du majordome": +15%.
-    HealingBonus
+    HealingBonus,
+    // Percentage points added to Physical-category skill damage — symmetric counterpart
+    // to MagicDamageBonus (see CombatSkillEffectResolver.PhysicalCategoryDamageMultiplier).
+    // "Loi du Silence Dû" (law.silence-du) is its only source today.
+    PhysicalDamageBonus,
+    // Flat (not percentage) mana cost added to every Player-side skill cast, on top of
+    // SkillCostReductionPercent's percentage reduction — see
+    // Combatant.EffectiveFlatManaCostBonus / CombatSkillEffectResolver.ConsumeResources.
+    // "Loi du Silence Dû" (law.silence-du) is its only source today.
+    FlatManaCostBonus
 }
