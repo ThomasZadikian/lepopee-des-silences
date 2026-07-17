@@ -722,4 +722,72 @@ public sealed class CombatFactoryTests
             "law-climate-test",
             expiresAtRoomId: roomId);
     }
+
+    // ---------------------------------------------------------------------------
+    // "Loi du Reflet" (MirrorCombatCopy)
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void CreateFromDraft_ShouldNotDuplicateEnemies_WhenMirrorCombatCopyIsNotActive()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft(enemyCount: 2);
+
+        var combat = factory.CreateFromDraft(draft);
+
+        combat.Enemies.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void CreateFromDraft_ShouldDoubleEnemyCount_WhenMirrorCombatCopyIsActive()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft(enemyCount: 2);
+
+        var combat = factory.CreateFromDraft(draft, runModifiers: [CreateMirrorCombatCopyModifier()]);
+
+        combat.Enemies.Should().HaveCount(4);
+    }
+
+    [Fact]
+    public void CreateFromDraft_ShouldScaleTheMirroredEnemy_ToSixtyPercentStats()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft(enemyCount: 1, enemyAttackPower: 20, enemyDefense: 10, enemySpeed: 20);
+
+        var combat = factory.CreateFromDraft(draft, runModifiers: [CreateMirrorCombatCopyModifier()]);
+
+        var original = combat.Enemies.Single(e => !e.DisplayName.StartsWith("Reflet"));
+        var mirror = combat.Enemies.Single(e => e.DisplayName.StartsWith("Reflet"));
+
+        mirror.MaxVitality.Should().Be((int)Math.Round(original.MaxVitality * 0.6));
+        mirror.BaseStatSnapshot.AttackPower.Should().Be((int)Math.Round(original.BaseStatSnapshot.AttackPower * 0.6));
+        mirror.BaseStatSnapshot.Defense.Should().Be((int)Math.Round(original.BaseStatSnapshot.Defense * 0.6));
+        mirror.BaseStatSnapshot.Speed.Should().Be((int)Math.Round(original.BaseStatSnapshot.Speed * 0.6));
+    }
+
+    [Fact]
+    public void CreateFromDraft_ShouldGiveTheMirroredEnemy_TheSameSkillRotationAtReducedPower()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft(includeSkills: true);
+
+        var combat = factory.CreateFromDraft(draft, runModifiers: [CreateMirrorCombatCopyModifier()]);
+
+        var original = combat.Enemies.Single(e => !e.DisplayName.StartsWith("Reflet"));
+        var mirror = combat.Enemies.Single(e => e.DisplayName.StartsWith("Reflet"));
+
+        mirror.Skills.Should().HaveSameCount(original.Skills);
+        mirror.Skills.Single().BasePower.Should().BeLessThan(original.Skills.Single().BasePower);
+    }
+
+    private static RunModifier CreateMirrorCombatCopyModifier()
+    {
+        return RunModifier.Create(
+            RunModifierType.MirrorCombatCopy,
+            1,
+            RunModifierDuration.UntilRunEnds,
+            "PalaceLaw",
+            "law-reflet-test");
+    }
 }

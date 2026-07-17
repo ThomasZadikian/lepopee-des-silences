@@ -13,6 +13,9 @@ public sealed class CombatFactory : ICombatFactory
     private const int EnemyVitalityBase = 40;
     private const int VitalityPerDifficulty = 50;
 
+    /// <summary>"Loi du Reflet" — the mirrored enemy copy's stats, as a fraction of the original.</summary>
+    private const double MirrorCombatCopyStatMultiplier = 0.6;
+
     private readonly EnemyStatScaler _enemyStatScaler = new();
 
     public Combat CreateFromDraft(
@@ -244,8 +247,13 @@ public sealed class CombatFactory : ICombatFactory
 
         var (bossVitalityMultiplier, bossPowerMultiplier, bossGuardBonus) = EncounterBonus(draft.EncounterType);
 
+        // "Loi du Reflet": every enemy gets a mirrored copy at MirrorCombatCopyStatMultiplier
+        // of its stats, using its own default skill rotation rather than a combat-history-
+        // driven one (no combat-history tracking exists — documented simplification).
+        var isMirrorCombatCopyActive = activeModifiers.Any(m => m.Type == RunModifierType.MirrorCombatCopy && !m.IsConsumed);
+
         var enemies = draft.Enemies
-            .Select(enemy =>
+            .SelectMany(enemy =>
             {
                 var baseVitality = (int)Math.Ceiling(
                     (EnemyVitalityBase + enemy.BaseDifficulty * VitalityPerDifficulty) * bossVitalityMultiplier); var representativePower = enemy.Skills.Count > 0
@@ -261,31 +269,6 @@ public sealed class CombatFactory : ICombatFactory
                 }) * bossPowerMultiplier;
                 var enemyStartingGuard = (palaceRoomState == PalaceRoomState.Silent ? 8 : 0) + bossGuardBonus;
 
-                var skills = enemy.Skills
-                    .Select(s =>
-                    {
-                        var scaledSkill = _enemyStatScaler.Scale(baseVitality, s.BasePower, draft.DifficultyMultiplier);
-                        var power = ScaleEnemySkillPower(
-                            s.EffectType,
-                            scaledSkill.Power,
-                            enemyPowerMultiplier,
-                            palaceRoomState);
-                        return CombatantSkill.Create(
-                            s.Key,
-                            s.DisplayName,
-                            s.SkillType,
-                            s.TargetingType,
-                            NormalizeCombatEffectType(s.Key, s.EffectType),
-                            s.ManaCost,
-                            s.ChargeCost,
-                            power,
-                            s.Tags,
-                            EffectFor(skillEffects, s.Key),
-                            category: s.Category,
-                            basePowerIsPercentOfMaxVitality: s.BasePowerIsPercentOfMaxVitality);
-                    })
-                    .ToArray();
-
                 // Attack/Defense/Focus/Speed all keep pace with run depth and active
                 // Palace Laws the same way Vitality/Power do, via the same difficulty
                 // multiplier, so enemy stats genuinely scale as a percentage increase.
@@ -296,20 +279,59 @@ public sealed class CombatFactory : ICombatFactory
                 var scaledMagicAttack = _enemyStatScaler.ScaleValue(enemy.MagicAttack, draft.DifficultyMultiplier);
                 var scaledMagicDefense = _enemyStatScaler.ScaleValue(enemy.MagicDefense, draft.DifficultyMultiplier);
 
-                return Combatant.CreateEnemy(
+                CombatantSkill[] BuildSkills(double statMultiplier) => enemy.Skills
+                    .Select(s =>
+                    {
+                        var scaledSkill = _enemyStatScaler.Scale(baseVitality, s.BasePower, draft.DifficultyMultiplier);
+                        var power = ScaleEnemySkillPower(
+                            s.EffectType,
+                            scaledSkill.Power,
+                            enemyPowerMultiplier,
+                            palaceRoomState);
+                        var mirroredPower = statMultiplier == 1.0
+                            ? power
+                            : Math.Max(1, (int)Math.Round(power * statMultiplier));
+
+                        return CombatantSkill.Create(
+                            s.Key,
+                            s.DisplayName,
+                            s.SkillType,
+                            s.TargetingType,
+                            NormalizeCombatEffectType(s.Key, s.EffectType),
+                            s.ManaCost,
+                            s.ChargeCost,
+                            mirroredPower,
+                            s.Tags,
+                            EffectFor(skillEffects, s.Key),
+                            category: s.Category,
+                            basePowerIsPercentOfMaxVitality: s.BasePowerIsPercentOfMaxVitality);
+                    })
+                    .ToArray();
+
+                Combatant BuildEnemy(double statMultiplier, string? displayNameOverride) => Combatant.CreateEnemy(
                     sourceKey: enemy.EnemyKey,
-                    displayName: enemy.DisplayName,
+                    displayName: displayNameOverride ?? enemy.DisplayName,
                     archetype: enemy.Archetype,
-                    maxVitality: scaled.Vitality,
-                    skills: skills,
-                    startingGuard: enemyStartingGuard,
-                    attackPower: scaledAttackPower,
-                    defense: scaledDefense,
-                    speed: scaledSpeed,
-                    focus: scaledFocus,
-                    magicAttack: scaledMagicAttack,
-                    magicDefense: scaledMagicDefense,
+                    maxVitality: Math.Max(1, (int)Math.Round(scaled.Vitality * statMultiplier)),
+                    skills: BuildSkills(statMultiplier),
+                    startingGuard: (int)Math.Round(enemyStartingGuard * statMultiplier),
+                    attackPower: (int)Math.Round(scaledAttackPower * statMultiplier),
+                    defense: (int)Math.Round(scaledDefense * statMultiplier),
+                    speed: Math.Max(1, (int)Math.Round(scaledSpeed * statMultiplier)),
+                    focus: (int)Math.Round(scaledFocus * statMultiplier),
+                    magicAttack: (int)Math.Round(scaledMagicAttack * statMultiplier),
+                    magicDefense: (int)Math.Round(scaledMagicDefense * statMultiplier),
                     mana: enemy.Mana);
+
+                var original = BuildEnemy(1.0, null);
+
+                if (!isMirrorCombatCopyActive)
+                {
+                    return new[] { original };
+                }
+
+                var mirror = BuildEnemy(MirrorCombatCopyStatMultiplier, $"Reflet de {enemy.DisplayName}");
+                return new[] { original, mirror };
             })
             .ToArray();
 
