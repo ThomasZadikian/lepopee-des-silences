@@ -1,0 +1,230 @@
+using FluentAssertions;
+using Leds.GameEngine.Domain.Common;
+using Leds.GameEngine.Domain.PalaceLaws;
+using Leds.GameEngine.Domain.Runs;
+using Leds.GameEngine.UnitTests.Common.Factories;
+
+namespace Leds.GameEngine.UnitTests.Runs;
+
+/// <summary>
+/// Ambient promulgation ("irréfusabilité") — <see cref="Run.PromulgateLaw"/> is the single
+/// entry point through which a drawn law becomes active, applying the majeure-exclusivity
+/// and exclusion-pairs rules. The Soupape rule (<see cref="Run.ShouldForceCompliantPromulgation"/>)
+/// is a query the CALLER consults before drawing — it is not enforced inside this method.
+/// </summary>
+public sealed class RunPromulgationTests
+{
+    private static PalaceLaw CreateLaw(
+        string key = "law-promulgation-v1",
+        bool isMajeure = false,
+        IReadOnlyCollection<string>? exclusionKeys = null) => PalaceLaw.Create(
+        key, "Loi promulguée", "1.0.0",
+        domains: [PalaceLawDomain.Combat],
+        effects:
+        [
+            PalaceLawEffect.Create(
+                RunModifierType.PermanentCombatDifficultyBonus,
+                value: 0.10,
+                RunModifierDuration.UntilRunEnds),
+        ],
+        isMajeure: isMajeure,
+        exclusionKeys: exclusionKeys);
+
+    private static PalaceLaw CreateLawWithPolarity(string key, string polarity) => PalaceLaw.Create(
+        key, "Loi polarisée", "1.0.0",
+        domains: [PalaceLawDomain.Combat],
+        effects:
+        [
+            PalaceLawEffect.Create(
+                RunModifierType.PermanentCombatDifficultyBonus,
+                value: 0.05,
+                RunModifierDuration.UntilRunEnds),
+        ],
+        polarity: polarity);
+
+    [Fact]
+    public void PromulgateLaw_ShouldActivateTheLaw_AndReturnTrue()
+    {
+        var run = TestGameEngineFactory.CreateRun();
+        var law = CreateLaw();
+
+        var result = run.PromulgateLaw(law);
+
+        result.Should().BeTrue();
+        run.ActivePalaceLaws.Should().ContainSingle(activeLaw => activeLaw.Key == law.Key);
+    }
+
+    [Fact]
+    public void PromulgateLaw_ShouldSetLastPromulgationFloorIndex_ToCurrentFloor()
+    {
+        var run = TestGameEngineFactory.CreateRun();
+
+        run.PromulgateLaw(CreateLaw());
+
+        run.LastPromulgationFloorIndex.Should().Be(run.FloorIndex);
+        run.FloorIndex.Should().Be(0, because: "CurrentRoomIndex is 0 at the start of a run.");
+    }
+
+    [Fact]
+    public void PromulgateLaw_ShouldBeIdempotent_WhenTheLawIsAlreadyActive()
+    {
+        var run = TestGameEngineFactory.CreateRun();
+        var law = CreateLaw();
+        run.PromulgateLaw(law);
+
+        var result = run.PromulgateLaw(law);
+
+        result.Should().BeTrue();
+        run.ActivePalaceLaws.Should().ContainSingle(activeLaw => activeLaw.Key == law.Key);
+    }
+
+    [Fact]
+    public void PromulgateLaw_ShouldReject_WhenAnotherMajeureLawIsAlreadyActive()
+    {
+        var run = TestGameEngineFactory.CreateRun();
+        run.PromulgateLaw(CreateLaw("law-majeure-a", isMajeure: true));
+
+        var result = run.PromulgateLaw(CreateLaw("law-majeure-b", isMajeure: true));
+
+        result.Should().BeFalse();
+        run.ActivePalaceLaws.Should().ContainSingle(activeLaw => activeLaw.Key == "law-majeure-a");
+    }
+
+    [Fact]
+    public void PromulgateLaw_ShouldAllowASecondMajeureLaw_AfterTheFirstIsRevoked()
+    {
+        var run = TestGameEngineFactory.CreateRun(lawDenialEnabled: true);
+        run.PromulgateLaw(CreateLaw("law-majeure-a", isMajeure: true));
+        run.RemovePalaceLaw("law-majeure-a");
+
+        var result = run.PromulgateLaw(CreateLaw("law-majeure-b", isMajeure: true));
+
+        result.Should().BeTrue();
+        run.ActivePalaceLaws.Should().ContainSingle(activeLaw => activeLaw.Key == "law-majeure-b");
+    }
+
+    [Fact]
+    public void PromulgateLaw_ShouldReject_WhenExcludedByAnActiveLaw()
+    {
+        var run = TestGameEngineFactory.CreateRun();
+        run.PromulgateLaw(CreateLaw("law-troisieme-tasse"));
+
+        var result = run.PromulgateLaw(CreateLaw(
+            "law-souvenir-doux",
+            exclusionKeys: ["law-troisieme-tasse"]));
+
+        result.Should().BeFalse();
+        run.ActivePalaceLaws.Should().ContainSingle(activeLaw => activeLaw.Key == "law-troisieme-tasse");
+    }
+
+    [Fact]
+    public void PromulgateLaw_ShouldThrow_WhenRunIsClosed()
+    {
+        var run = TestGameEngineFactory.CreateRun();
+        run.CompleteRun(DateTimeOffset.UtcNow);
+
+        var act = () => run.PromulgateLaw(CreateLaw());
+
+        act.Should().Throw<DomainException>().WithMessage("*closed run*");
+    }
+
+    [Fact]
+    public void ShouldForceCompliantPromulgation_ShouldBeFalse_WhenFewerThanThreeSevereLawsAreActive()
+    {
+        // The cumul cap (1 + profondeur/2) is only 1 at CurrentRoomIndex 0 — advance far enough
+        // that 2-3 laws can coexist without EnforceCumulCap revoking the earlier ones.
+        var run = TestGameEngineFactory.CreateRun();
+        AdvanceRooms(run, 4);
+
+        run.PromulgateLaw(CreateLawWithPolarity("law-severe-a", PalaceLawPolarity.Severe));
+        run.PromulgateLaw(CreateLawWithPolarity("law-severe-b", PalaceLawPolarity.Severe));
+
+        run.ShouldForceCompliantPromulgation.Should().BeFalse();
+    }
+
+    [Fact]
+    public void ShouldForceCompliantPromulgation_ShouldBeTrue_WhenThreeOrMoreSevereLawsAreActive()
+    {
+        var run = TestGameEngineFactory.CreateRun();
+        AdvanceRooms(run, 4);
+
+        run.PromulgateLaw(CreateLawWithPolarity("law-severe-a", PalaceLawPolarity.Severe));
+        run.PromulgateLaw(CreateLawWithPolarity("law-severe-b", PalaceLawPolarity.Severe));
+        run.PromulgateLaw(CreateLawWithPolarity("law-severe-c", PalaceLawPolarity.Severe));
+
+        run.ShouldForceCompliantPromulgation.Should().BeTrue();
+    }
+
+    [Fact]
+    public void FloorIndex_ShouldAdvance_OnceTenRoomsHaveBeenTraversed()
+    {
+        var run = TestGameEngineFactory.CreateRun();
+
+        AdvanceRooms(run, 10);
+
+        run.CurrentRoomIndex.Should().Be(10);
+        run.FloorIndex.Should().Be(1, because: "10 traversed rooms cross exactly one floor boundary.");
+    }
+
+    [Fact]
+    public void ConsumeFloorEndModifiers_ShouldBeCalledAutomatically_WhenMoveToNextRoomCrossesAFloorBoundary()
+    {
+        var run = TestGameEngineFactory.CreateRun();
+        run.AddRunModifier(RunModifier.Create(
+            RunModifierType.PermanentCombatDifficultyBonus,
+            0.10,
+            RunModifierDuration.UntilFloorEnds,
+            sourceType: "PalaceLaw",
+            sourceKey: "law-floor-scoped"));
+
+        AdvanceRooms(run, 10);
+
+        run.RunModifiers.Should().OnlyContain(modifier => modifier.IsConsumed);
+    }
+
+    [Fact]
+    public void ConsumeFloorEndModifiers_ShouldNotConsume_WhileStillOnTheSameFloor()
+    {
+        var run = TestGameEngineFactory.CreateRun();
+        run.AddRunModifier(RunModifier.Create(
+            RunModifierType.PermanentCombatDifficultyBonus,
+            0.10,
+            RunModifierDuration.UntilFloorEnds,
+            sourceType: "PalaceLaw",
+            sourceKey: "law-floor-scoped"));
+
+        AdvanceRooms(run, 9);
+
+        run.FloorIndex.Should().Be(0);
+        run.RunModifiers.Should().OnlyContain(modifier => !modifier.IsConsumed);
+    }
+
+    private static void AdvanceRooms(Run run, int count)
+    {
+        for (var i = 0; i < count; i++)
+        {
+            AdvanceToNextRoom(run);
+        }
+    }
+
+    private static void AdvanceToNextRoom(Run run)
+    {
+        while (run.Status == RunStatus.Active)
+        {
+            var node = run.CurrentRoom.AvailableNodes.First();
+
+            run.ChooseNode(node.Id);
+            run.ResolveCurrentEvent();
+
+            if (run.Status == RunStatus.RoomResolved)
+            {
+                break;
+            }
+
+            run.ProgressCurrentRoom();
+        }
+
+        run.EnterInterlude();
+        run.MoveToNextRoom(TestGameEngineFactory.CreateThresholdRoom(depth: run.CurrentDepth + 1));
+    }
+}

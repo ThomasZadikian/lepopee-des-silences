@@ -41,6 +41,30 @@ public sealed class RunActivePalaceLawEntityConfiguration : IEntityTypeConfigura
         builder.Property(law => law.ConsumedAtUtc)
             .HasColumnName("consumed_at_utc");
 
+        builder.Property(law => law.Rarity)
+            .HasColumnName("rarity")
+            .HasMaxLength(32)
+            .HasDefaultValue("Commun")
+            .IsRequired();
+
+        builder.Property(law => law.Polarity)
+            .HasColumnName("polarity")
+            .HasMaxLength(32)
+            .HasDefaultValue("Neutre")
+            .IsRequired();
+
+        builder.Property(law => law.IsMajeure)
+            .HasColumnName("is_majeure")
+            .HasDefaultValue(false);
+
+        builder.Property(law => law.RoomKey)
+            .HasColumnName("room_key")
+            .HasMaxLength(160);
+
+        builder.Property(law => law.IsCumulExempt)
+            .HasColumnName("is_cumul_exempt")
+            .HasDefaultValue(false);
+
         builder.HasOne(law => law.Run)
             .WithMany(run => run.ActivePalaceLaws)
             .HasForeignKey(law => law.RunId)

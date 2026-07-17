@@ -15,6 +15,11 @@ public sealed class RunActivePalaceLawEntity
     public DateTime? AppliedAtUtc { get; set; }
     public Guid? ExpiresAtRoomId { get; set; }
     public DateTime? ConsumedAtUtc { get; set; }
+    public string Rarity { get; set; } = "Commun";
+    public string Polarity { get; set; } = "Neutre";
+    public bool IsMajeure { get; set; }
+    public string? RoomKey { get; set; }
+    public bool IsCumulExempt { get; set; }
 
     public RunEntity? Run { get; set; }
 }

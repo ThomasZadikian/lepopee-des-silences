@@ -54,6 +54,7 @@ public static class RunPersistenceMapper
             JournalEnabled = run.JournalEnabled,
             LawDenialEnabled = run.LawDenialEnabled,
             LawDenialLastUsedRoomIndex = run.LawDenialLastUsedRoomIndex,
+            LastPromulgationFloorIndex = run.LastPromulgationFloorIndex,
             ReputationGainBonusPercent = run.ReputationGainBonusPercent,
             HimLitProtectionEnabled = run.HimLitProtectionEnabled,
             HealingBonusPercent = run.HealingBonusPercent,
@@ -103,7 +104,12 @@ public static class RunPersistenceMapper
                     Duration = law.Duration,
                     AppliedAtUtc = law.AppliedAtUtc,
                     ExpiresAtRoomId = law.ExpiresAtRoomId,
-                    ConsumedAtUtc = law.ConsumedAtUtc
+                    ConsumedAtUtc = law.ConsumedAtUtc,
+                    Rarity = law.Rarity,
+                    Polarity = law.Polarity,
+                    IsMajeure = law.IsMajeure,
+                    RoomKey = law.RoomKey,
+                    IsCumulExempt = law.IsCumulExempt
                 })
                 .ToList(),
             ActiveCurses = run.ActiveCurse is not null
@@ -156,8 +162,7 @@ public static class RunPersistenceMapper
                 ValueMode = m.ValueMode,
                 StackPolicy = m.StackPolicy,
                 ExpiresAtRoomId = m.ExpiresAtRoomId,
-                ExpiresAtCombatId = m.ExpiresAtCombatId,
-                ExpiresAtFloorIndex = m.ExpiresAtFloorIndex
+                ExpiresAtCombatId = m.ExpiresAtCombatId
             }).ToList(),
             PlayerSnapshot = run.PlayerSnapshot is not null
                 ? ToPlayerSnapshotEntity(run.PlayerSnapshot, run.Id.Value)
@@ -412,8 +417,7 @@ public static class RunPersistenceMapper
             m.ValueMode ?? "Flat",
             m.StackPolicy ?? "Additive",
             m.ExpiresAtRoomId,
-            m.ExpiresAtCombatId,
-            m.ExpiresAtFloorIndex)).ToList();
+            m.ExpiresAtCombatId)).ToList();
 
         var playerSnapshot = entity.PlayerSnapshot is not null
             ? ToDomainPlayerSnapshot(entity.PlayerSnapshot)
@@ -466,6 +470,7 @@ public static class RunPersistenceMapper
             journalEntries: journalEntries,
             lawDenialEnabled: entity.LawDenialEnabled,
             lawDenialLastUsedRoomIndex: entity.LawDenialLastUsedRoomIndex,
+            lastPromulgationFloorIndex: entity.LastPromulgationFloorIndex,
             reputationGainBonusPercent: entity.ReputationGainBonusPercent,
             himLitProtectionEnabled: entity.HimLitProtectionEnabled,
             healingBonusPercent: entity.HealingBonusPercent,
@@ -557,7 +562,12 @@ public static class RunPersistenceMapper
             entity.Duration,
             entity.AppliedAtUtc,
             entity.ExpiresAtRoomId,
-            entity.ConsumedAtUtc);
+            entity.ConsumedAtUtc,
+            entity.Rarity,
+            entity.Polarity,
+            entity.IsMajeure,
+            entity.RoomKey,
+            entity.IsCumulExempt);
     }
 
     public static ActiveCurse ToDomain(ActiveCurseEntity entity)

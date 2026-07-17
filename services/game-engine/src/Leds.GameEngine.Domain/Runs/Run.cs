@@ -116,6 +116,42 @@ public sealed class Run
         CaliceInfiniEnabled &&
         (CaliceInfiniLastUsedRoomIndex is null || CurrentRoomIndex > CaliceInfiniLastUsedRoomIndex.Value);
 
+    /// <summary>
+    /// Number of rooms per "étage" (floor) — matches the Him'Lit boss recurrence interval
+    /// (services/game-engine's BossInterval, Infrastructure-layer, can't be referenced directly
+    /// from Domain). Kept as its own constant here rather than shared across the layer boundary.
+    /// </summary>
+    public const int FloorLengthInRooms = 10;
+
+    /// <summary>
+    /// Zero-based index of the current "étage" (floor) — the granularity used by the
+    /// Compendium des Lois du Palais for "1 promulgation garantie par nouvel étage" and by
+    /// <see cref="RunModifierDuration.UntilFloorEnds"/>.
+    /// </summary>
+    public int FloorIndex => CurrentRoomIndex / FloorLengthInRooms;
+
+    /// <summary>
+    /// <see cref="FloorIndex"/> at which a law was last promulgated (via a guaranteed
+    /// new-floor draw or the 20%-per-room roll) — used by the caller to know whether this
+    /// floor's guaranteed promulgation has already happened.
+    /// </summary>
+    public int? LastPromulgationFloorIndex { get; private set; }
+
+    /// <summary>
+    /// Number of currently active "Sévère" laws at or above which the Soupape rule kicks in.
+    /// </summary>
+    public const int SoupapeSevereThreshold = 3;
+
+    /// <summary>
+    /// The Soupape rule: true once <see cref="SoupapeSevereThreshold"/> or more active laws
+    /// are <see cref="PalaceLawPolarity.Severe"/>. The CALLER — whoever draws the next law to
+    /// promulgate — must then restrict that draw to <see cref="PalaceLawPolarity.Clemente"/> or
+    /// <see cref="PalaceLawPolarity.DoubleTranchant"/> laws; <see cref="PromulgateLaw"/> itself
+    /// receives an already-drawn law and does not re-roll.
+    /// </summary>
+    public bool ShouldForceCompliantPromulgation =>
+        _activePalaceLaws.Count(law => law.Polarity == PalaceLawPolarity.Severe) >= SoupapeSevereThreshold;
+
     public IReadOnlyCollection<RunItem> RunItems => _runItems.AsReadOnly();
 
     public int RunItemCapacity { get; }
@@ -163,7 +199,8 @@ public sealed class Run
         bool caliceInfiniEnabled = false,
         int? caliceInfiniLastUsedRoomIndex = null,
         int magicAttack = 0,
-        int magicDefense = 0)
+        int magicDefense = 0,
+        int? lastPromulgationFloorIndex = null)
     {
         Id = id;
         PlayerId = playerId;
@@ -202,6 +239,7 @@ public sealed class Run
         HealingBonusPercent = healingBonusPercent;
         CaliceInfiniEnabled = caliceInfiniEnabled;
         CaliceInfiniLastUsedRoomIndex = caliceInfiniLastUsedRoomIndex;
+        LastPromulgationFloorIndex = lastPromulgationFloorIndex;
 
         _rooms.Add(initialRoom);
     }
@@ -774,6 +812,8 @@ public sealed class Run
             throw new DomainException("Next room depth must be current depth + 1.");
         }
 
+        var previousFloorIndex = FloorIndex;
+
         // Run sans fin : aucune profondeur maximale. La room boss (Him'Lit) est portee
         // par son type de room, que le generateur produit tous les 10 rooms.
         _rooms.Add(nextRoom);
@@ -782,6 +822,11 @@ public sealed class Run
         Status = nextRoom.RoomType == RoomType.Final
             ? RunStatus.BossReached
             : RunStatus.Active;
+
+        if (FloorIndex != previousFloorIndex)
+        {
+            ConsumeFloorEndModifiers();
+        }
     }
 
     public void CompleteRun(DateTimeOffset endedAt)
@@ -1326,6 +1371,21 @@ public sealed class Run
         }
     }
 
+    /// <summary>
+    /// Consumes all unconsumed modifiers whose duration is <see cref="RunModifierDuration.UntilFloorEnds"/>.
+    /// Called automatically from <see cref="MoveToNextRoom"/> whenever <see cref="FloorIndex"/> changes.
+    /// </summary>
+    public void ConsumeFloorEndModifiers()
+    {
+        var now = DateTime.UtcNow;
+
+        foreach (var modifier in _runModifiers
+            .Where(m => m.Duration == RunModifierDuration.UntilFloorEnds && !m.IsConsumed))
+        {
+            modifier.Consume(now);
+        }
+    }
+
     private void AddRunItemFromPayload(string payloadKey)
     {
         // Payload format: "item:<definitionKey>:<displayName>:<description>:<type>:<rarity>:<effectType>:<effectAmount>"
@@ -1633,6 +1693,76 @@ public sealed class Run
         }
 
         _activePalaceLaws.RemoveAll(activeLaw => replacedLawKeySet.Contains(activeLaw.Key));
+    }
+
+    /// <summary>
+    /// Single entry point for ambient law promulgation (irréfusabilité — Compendium des Lois
+    /// du Palais). Applies the Chapitre VIII majeure exclusivity (at most one active) and the
+    /// explicit exclusion-pairs rule, then delegates to <see cref="ActivatePalaceLaw"/> and
+    /// <see cref="EnforceCumulCap"/>. The Soupape rule (<see cref="ShouldForceCompliantPromulgation"/>)
+    /// is the CALLER's responsibility when drawing which law to pass in — this method receives an
+    /// already-drawn law and only rejects, it never re-rolls.
+    /// </summary>
+    /// <returns>
+    /// <c>true</c> if the law is now active (including if it already was — idempotent),
+    /// <c>false</c> if rejected by the majeure-exclusivity or exclusion-pairs rule, in which
+    /// case the caller may draw a different law instead.
+    /// </returns>
+    public bool PromulgateLaw(PalaceLaw law)
+    {
+        ArgumentNullException.ThrowIfNull(law);
+
+        if (Status is RunStatus.Completed or RunStatus.Failed or RunStatus.Abandoned)
+            throw new DomainException("Cannot promulgate a palace law on a closed run.");
+
+        if (_activePalaceLaws.Any(activeLaw => activeLaw.Key == law.Key))
+            return true;
+
+        if (law.IsMajeure && _activePalaceLaws.Any(activeLaw => activeLaw.IsMajeure))
+            return false;
+
+        if (law.ExclusionKeys.Count > 0 &&
+            _activePalaceLaws.Any(activeLaw => law.ExclusionKeys.Contains(activeLaw.Key)))
+        {
+            return false;
+        }
+
+        ActivatePalaceLaw(law);
+        LastPromulgationFloorIndex = FloorIndex;
+        EnforceCumulCap();
+
+        return true;
+    }
+
+    /// <summary>
+    /// Enforces the cumul cap: at most <c>1 + profondeur/2</c> (capped at 6) active laws,
+    /// where "profondeur" is <see cref="CurrentRoomIndex"/>. Revokes the oldest active law
+    /// (by <see cref="ActivePalaceLaw.AppliedAtUtc"/>) — excluding <see cref="ActivePalaceLaw.IsCumulExempt"/>
+    /// (Chapitre IX room-linked) laws, which count toward neither the cap nor its enforcement —
+    /// until the cap is respected.
+    /// </summary>
+    public void EnforceCumulCap()
+    {
+        var cap = Math.Min(6, 1 + CurrentRoomIndex / 2);
+        var now = DateTime.UtcNow;
+
+        while (_activePalaceLaws.Count(law => !law.IsCumulExempt) > cap)
+        {
+            var oldest = _activePalaceLaws
+                .Where(law => !law.IsCumulExempt)
+                .OrderBy(law => law.AppliedAtUtc)
+                .First();
+
+            foreach (var modifier in _runModifiers.Where(modifier =>
+                modifier.SourceType == "PalaceLaw" &&
+                modifier.SourceKey == oldest.Key &&
+                !modifier.IsConsumed))
+            {
+                modifier.Consume(now);
+            }
+
+            _activePalaceLaws.Remove(oldest);
+        }
     }
 
     /// <summary>
@@ -1969,11 +2099,12 @@ public sealed class Run
         bool caliceInfiniEnabled = false,
         int? caliceInfiniLastUsedRoomIndex = null,
         int magicAttack = 0,
-        int magicDefense = 0)
+        int magicDefense = 0,
+        int? lastPromulgationFloorIndex = null)
     {
         var firstRoom = rooms.First();
 
-        var run = new Run(id, playerId, seed, generatorVersion, markovMatrixVersion, status, firstRoom, startedAt, maxHp, currentHp, attack, defense, speed, focus, currentRoomIndex, activeCombatId, pendingRewardOfferId, runItemCapacity, typedDamageReductions, hitChanceBonusPercent, dotDurationReductionPercent, dotDamageReductionPercent, dotDamageBonusPercent, magicDamageBonusPercent, magicDamageReductionPercent, criticalChanceBonusPercent, guardBonusPercent, journalEnabled, lawDenialEnabled, lawDenialLastUsedRoomIndex, reputationGainBonusPercent, himLitProtectionEnabled, healingBonusPercent, caliceInfiniEnabled, caliceInfiniLastUsedRoomIndex, magicAttack, magicDefense);
+        var run = new Run(id, playerId, seed, generatorVersion, markovMatrixVersion, status, firstRoom, startedAt, maxHp, currentHp, attack, defense, speed, focus, currentRoomIndex, activeCombatId, pendingRewardOfferId, runItemCapacity, typedDamageReductions, hitChanceBonusPercent, dotDurationReductionPercent, dotDamageReductionPercent, dotDamageBonusPercent, magicDamageBonusPercent, magicDamageReductionPercent, criticalChanceBonusPercent, guardBonusPercent, journalEnabled, lawDenialEnabled, lawDenialLastUsedRoomIndex, reputationGainBonusPercent, himLitProtectionEnabled, healingBonusPercent, caliceInfiniEnabled, caliceInfiniLastUsedRoomIndex, magicAttack, magicDefense, lastPromulgationFloorIndex);
         foreach (var room in rooms.Skip(1))
         {
             run._rooms.Add(room);

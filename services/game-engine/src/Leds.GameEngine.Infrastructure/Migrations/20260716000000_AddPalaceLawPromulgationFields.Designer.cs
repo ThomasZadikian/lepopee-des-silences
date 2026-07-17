@@ -2109,10 +2109,6 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("expires_at_combat_id");
 
-                    b.Property<int?>("ExpiresAtFloorIndex")
-                        .HasColumnType("integer")
-                        .HasColumnName("expires_at_floor_index");
-
                     b.Property<Guid?>("ExpiresAtRoomId")
                         .HasColumnType("uuid")
                         .HasColumnName("expires_at_room_id");

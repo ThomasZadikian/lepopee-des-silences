@@ -15,12 +15,6 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                 table: "runs",
                 type: "integer",
                 nullable: true);
-
-            migrationBuilder.AddColumn<int>(
-                name: "expires_at_floor_index",
-                table: "run_modifiers",
-                type: "integer",
-                nullable: true);
         }
 
         /// <inheritdoc />
@@ -29,10 +23,6 @@ namespace Leds.GameEngine.Infrastructure.Migrations
             migrationBuilder.DropColumn(
                 name: "last_promulgation_floor_index",
                 table: "runs");
-
-            migrationBuilder.DropColumn(
-                name: "expires_at_floor_index",
-                table: "run_modifiers");
         }
     }
 }
