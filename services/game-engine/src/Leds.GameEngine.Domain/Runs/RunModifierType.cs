@@ -85,4 +85,9 @@ public enum RunModifierType
     /// side) is defeated, the next combatant to act may only use the basic attack. See
     /// Combat.RegisterCombatantDefeated/NextActionRestrictedToBasicAttack.</summary>
     PostDeathBasicAttackOnly = 32,
+
+    /// <summary>"Loi du Tapis Propre" (law.tapis-propre) — each combatant's (either side)
+    /// first turn of combat cannot be a Damage-type skill; support/buff/debuff/movement
+    /// only. See Combatant.HasActedThisCombat/CombatSkillActionValidator.</summary>
+    TapisPropreEnabled = 33,
 }

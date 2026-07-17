@@ -45,6 +45,17 @@ public sealed class CombatSkillActionValidator : ICombatSkillActionValidator
             return Invalid($"Actor does not own skill '{skillKey}'.");
         }
 
+        // "Loi du Tapis Propre": each combatant's OWN first turn of the combat cannot
+        // be an attack — support/buff/debuff/movement only. Movement (Reposition) and
+        // non-Damage skills still mark HasActedThisCombat via RegisterAtbAction, so the
+        // restriction only ever gates the very first action, whatever form it takes.
+        if (combat.TapisPropreEnabled
+            && !actor.HasActedThisCombat
+            && string.Equals(skill.SkillType, "Damage", StringComparison.OrdinalIgnoreCase))
+        {
+            return Invalid("Loi du Tapis Propre: le premier tour ne peut pas être une attaque.");
+        }
+
         // "Loi de l'Éloge Funèbre": after any death, the next actor may only use the
         // basic attack. Documented simplification: item use and Reposition never call
         // through this shared validator, so neither is gated by this restriction.

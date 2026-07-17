@@ -20,7 +20,8 @@ public sealed class CombatTests
         int dotMagnitudeBonus = 0,
         bool healingBlocked = false,
         bool falaiseWindEnabled = false,
-        bool postDeathBasicAttackOnlyEnabled = false)
+        bool postDeathBasicAttackOnlyEnabled = false,
+        bool tapisPropreEnabled = false)
     {
         var allies = Enumerable.Range(0, allyCount).Select(i =>
             Combatant.CreateAlly($"player.{i}", $"Hero{i}", "Fighter", 100)).ToArray();
@@ -43,7 +44,8 @@ public sealed class CombatTests
             dotMagnitudeBonus,
             healingBlocked,
             falaiseWindEnabled,
-            postDeathBasicAttackOnlyEnabled);
+            postDeathBasicAttackOnlyEnabled,
+            tapisPropreEnabled);
     }
 
     [Fact]
@@ -622,5 +624,18 @@ public sealed class CombatTests
 
         enemy.IsDefeated.Should().BeTrue();
         combat.NextActionRestrictedToBasicAttack.Should().BeTrue();
+    }
+
+    // ---------------------------------------------------------------------------
+    // "Loi du Tapis Propre" (TapisPropreEnabled) — no Combat-level mutable state;
+    // the restriction is tracked per-combatant (Combatant.HasActedThisCombat) and
+    // enforced in CombatSkillActionValidator (see CombatSkillActionValidatorTests).
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void TapisPropreEnabled_ShouldReflectTheValueBakedInAtCreation()
+    {
+        CreateSut(tapisPropreEnabled: true).TapisPropreEnabled.Should().BeTrue();
+        CreateSut().TapisPropreEnabled.Should().BeFalse();
     }
 }

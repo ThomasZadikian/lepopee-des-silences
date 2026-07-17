@@ -235,4 +235,72 @@ public sealed class CombatSkillActionValidatorTests
 
         _activeCombat.NextActionRestrictedToBasicAttack.Should().BeFalse();
     }
+
+    private Combat CreateTapisPropreCombat(Combatant ally, Combatant enemy)
+    {
+        return Combat.Create(
+            id: CombatId.New(),
+            runId: RunId.New(),
+            roomId: RoomId.New(),
+            nodeId: NodeId.New(),
+            allies: [ally],
+            enemies: [enemy],
+            tapisPropreEnabled: true);
+    }
+
+    [Fact]
+    public void Validate_ShouldFail_WhenAttackAttempted_OnFirstTurn_UnderTapisPropre()
+    {
+        var ally = Combatant.CreateAlly(
+            sourceKey: "player.self", displayName: "Hero", archetype: "Fighter",
+            maxVitality: 100, skills: [_strikeSkill, _healSkill]);
+        var enemy = Combatant.CreateEnemy(
+            sourceKey: "enemy.sentinel", displayName: "Sentinel", archetype: "Guard",
+            maxVitality: 80, skills: [_strikeSkill]);
+        var combat = CreateTapisPropreCombat(ally, enemy);
+
+        var result = _validator.Validate(combat, ally.Id.Value, "skill.basic.strike", [enemy.Id.Value]);
+
+        result.IsValid.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("Tapis Propre");
+    }
+
+    [Fact]
+    public void Validate_ShouldSucceed_WhenNonAttackSkillAttempted_OnFirstTurn_UnderTapisPropre()
+    {
+        var ally = Combatant.CreateAlly(
+            sourceKey: "player.self", displayName: "Hero", archetype: "Fighter",
+            maxVitality: 100, skills: [_strikeSkill, _healSkill]);
+        var enemy = Combatant.CreateEnemy(
+            sourceKey: "enemy.sentinel", displayName: "Sentinel", archetype: "Guard",
+            maxVitality: 80, skills: [_strikeSkill]);
+        var combat = CreateTapisPropreCombat(ally, enemy);
+        _targetingRuleValidator
+            .Setup(v => v.Validate(combat, ally, _healSkill, It.IsAny<IReadOnlyCollection<Guid>>()))
+            .Returns(new CombatTargetingValidationResult(true, null, [ally]));
+
+        var result = _validator.Validate(combat, ally.Id.Value, "skill.basic.heal", [ally.Id.Value]);
+
+        result.IsValid.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Validate_ShouldSucceed_WhenAttackAttempted_AfterActorAlreadyActed_UnderTapisPropre()
+    {
+        var ally = Combatant.CreateAlly(
+            sourceKey: "player.self", displayName: "Hero", archetype: "Fighter",
+            maxVitality: 100, skills: [_strikeSkill, _healSkill]);
+        var enemy = Combatant.CreateEnemy(
+            sourceKey: "enemy.sentinel", displayName: "Sentinel", archetype: "Guard",
+            maxVitality: 80, skills: [_strikeSkill]);
+        var combat = CreateTapisPropreCombat(ally, enemy);
+        ally.RegisterAtbAction(currentTick: 0, recoveryTicks: 0);
+        _targetingRuleValidator
+            .Setup(v => v.Validate(combat, ally, _strikeSkill, It.IsAny<IReadOnlyCollection<Guid>>()))
+            .Returns(new CombatTargetingValidationResult(true, null, [enemy]));
+
+        var result = _validator.Validate(combat, ally.Id.Value, "skill.basic.strike", [enemy.Id.Value]);
+
+        result.IsValid.Should().BeTrue();
+    }
 }

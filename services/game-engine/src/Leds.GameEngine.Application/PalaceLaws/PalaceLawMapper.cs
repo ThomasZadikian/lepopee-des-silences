@@ -118,6 +118,8 @@ public static class PalaceLawMapper
                 RunModifierType.ConsumablesRestrictedInCombat, 1, duration),
             EffectType.EnablePostDeathBasicAttackOnly => PalaceLawEffect.Create(
                 RunModifierType.PostDeathBasicAttackOnly, 1, duration),
+            EffectType.EnableTapisPropreEnabled => PalaceLawEffect.Create(
+                RunModifierType.TapisPropreEnabled, 1, duration),
 
             _ => throw new DomainException($"Palace law effect type '{effect.EffectType}' is not supported by the runtime.")
         };

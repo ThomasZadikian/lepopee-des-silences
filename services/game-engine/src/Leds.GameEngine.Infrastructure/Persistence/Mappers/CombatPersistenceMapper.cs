@@ -40,6 +40,7 @@ public static class CombatPersistenceMapper
             FalaiseWindEnabled = combat.FalaiseWindEnabled,
             PostDeathBasicAttackOnlyEnabled = combat.PostDeathBasicAttackOnlyEnabled,
             NextActionRestrictedToBasicAttack = combat.NextActionRestrictedToBasicAttack,
+            TapisPropreEnabled = combat.TapisPropreEnabled,
             ActiveCombatantId = combat.ActiveCombatantId?.Value,
             CreatedAtUtc = combat.CreatedAtUtc,
             UpdatedAtUtc = DateTime.UtcNow,
@@ -66,6 +67,7 @@ public static class CombatPersistenceMapper
             Charge = combatant.Charge,
             Status = combatant.Status.ToString(),
             Row = combatant.Row.ToString(),
+            HasActedThisCombat = combatant.HasActedThisCombat,
             AttackTypeOverride = combatant.AttackTypeOverride.HasValue ? (int)combatant.AttackTypeOverride.Value : null,
             TypedDamageReductionsJson = SerializeTypedDamageReductions(combatant.TypedDamageReductionPercent),
             HitChanceBonusPercent = combatant.HitChanceBonusPercent,
@@ -314,7 +316,8 @@ public static class CombatPersistenceMapper
             entity.HealingBlocked,
             entity.FalaiseWindEnabled,
             entity.PostDeathBasicAttackOnlyEnabled,
-            entity.NextActionRestrictedToBasicAttack);
+            entity.NextActionRestrictedToBasicAttack,
+            entity.TapisPropreEnabled);
     }
 
     public static Combatant ToDomain(CombatantEntity entity)
@@ -354,7 +357,8 @@ public static class CombatPersistenceMapper
             criticalChanceBonusPercent: entity.CriticalChanceBonusPercent,
             dotDamageBonusPercent: entity.DotDamageBonusPercent,
             healingBonusPercent: entity.HealingBonusPercent,
-            row: string.IsNullOrWhiteSpace(entity.Row) ? CombatRow.Front : Enum.Parse<CombatRow>(entity.Row));
+            row: string.IsNullOrWhiteSpace(entity.Row) ? CombatRow.Front : Enum.Parse<CombatRow>(entity.Row),
+            hasActedThisCombat: entity.HasActedThisCombat);
         foreach (var effect in DeserializeStatusEffects(entity.StatusEffectsJson))
             combatant.RehydrateStatusEffect(effect);
 

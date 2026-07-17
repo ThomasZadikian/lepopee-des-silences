@@ -33,7 +33,8 @@ public sealed class Combat
         bool healingBlocked,
         bool falaiseWindEnabled = false,
         bool postDeathBasicAttackOnlyEnabled = false,
-        bool nextActionRestrictedToBasicAttack = false)
+        bool nextActionRestrictedToBasicAttack = false,
+        bool tapisPropreEnabled = false)
     {
         Id = id;
         RunId = runId;
@@ -58,6 +59,7 @@ public sealed class Combat
         FalaiseWindEnabled = falaiseWindEnabled;
         PostDeathBasicAttackOnlyEnabled = postDeathBasicAttackOnlyEnabled;
         NextActionRestrictedToBasicAttack = nextActionRestrictedToBasicAttack;
+        TapisPropreEnabled = tapisPropreEnabled;
     }
 
     public CombatId Id { get; }
@@ -219,6 +221,12 @@ public sealed class Combat
         NextActionRestrictedToBasicAttack = false;
     }
 
+    /// <summary>"Loi du Tapis Propre" (law.tapis-propre): baked in at creation from the
+    /// run's active RunModifiers. Unlike Éloge Funèbre above, no mutable combat-wide
+    /// state is needed — the restriction is tracked per-combatant via
+    /// Combatant.HasActedThisCombat and enforced in CombatSkillActionValidator.</summary>
+    public bool TapisPropreEnabled { get; }
+
     /// <summary>"Loi de la Falaise" random-target chance, checked once per turn.</summary>
     private const double FalaiseWindTriggerChance = 0.10;
 
@@ -241,7 +249,8 @@ public sealed class Combat
         int dotMagnitudeBonus = 0,
         bool healingBlocked = false,
         bool falaiseWindEnabled = false,
-        bool postDeathBasicAttackOnlyEnabled = false)
+        bool postDeathBasicAttackOnlyEnabled = false,
+        bool tapisPropreEnabled = false)
     {
         if (id.Value == Guid.Empty)
             throw new DomainException("Combat id is required.");
@@ -284,7 +293,8 @@ public sealed class Combat
             dotMagnitudeBonus: dotMagnitudeBonus,
             healingBlocked: healingBlocked,
             falaiseWindEnabled: falaiseWindEnabled,
-            postDeathBasicAttackOnlyEnabled: postDeathBasicAttackOnlyEnabled);
+            postDeathBasicAttackOnlyEnabled: postDeathBasicAttackOnlyEnabled,
+            tapisPropreEnabled: tapisPropreEnabled);
     }
 
     public void MarkCompleted()
@@ -622,9 +632,10 @@ public sealed class Combat
         bool healingBlocked = false,
         bool falaiseWindEnabled = false,
         bool postDeathBasicAttackOnlyEnabled = false,
-        bool nextActionRestrictedToBasicAttack = false)
+        bool nextActionRestrictedToBasicAttack = false,
+        bool tapisPropreEnabled = false)
     {
-        return new Combat(id, runId, roomId, nodeId, status, allies, enemies, activeCombatantId, turnNumber, currentTick, createdAtUtc, hitCounter, hitCounterDoubleDamageEnabled, firstHitCriticalEnabled, hasFirstHitLanded, lowHpDamageAmplificationEnabled, dotDurationExtensionTicks, duelDamageAsymmetryEnabled, dotMagnitudeBonus, healingBlocked, falaiseWindEnabled, postDeathBasicAttackOnlyEnabled, nextActionRestrictedToBasicAttack);
+        return new Combat(id, runId, roomId, nodeId, status, allies, enemies, activeCombatantId, turnNumber, currentTick, createdAtUtc, hitCounter, hitCounterDoubleDamageEnabled, firstHitCriticalEnabled, hasFirstHitLanded, lowHpDamageAmplificationEnabled, dotDurationExtensionTicks, duelDamageAsymmetryEnabled, dotMagnitudeBonus, healingBlocked, falaiseWindEnabled, postDeathBasicAttackOnlyEnabled, nextActionRestrictedToBasicAttack, tapisPropreEnabled);
     }
 
     /// <summary>

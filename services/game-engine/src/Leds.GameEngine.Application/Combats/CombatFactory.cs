@@ -136,6 +136,10 @@ public sealed class CombatFactory : ICombatFactory
         var postDeathBasicAttackOnlyEnabled = activeModifiers
             .Any(m => m.Type == RunModifierType.PostDeathBasicAttackOnly && !m.IsConsumed);
 
+        // "Loi du Tapis Propre" (law.tapis-propre): same ambient-drawn convention.
+        var tapisPropreEnabled = activeModifiers
+            .Any(m => m.Type == RunModifierType.TapisPropreEnabled && !m.IsConsumed);
+
         if (activeClimate == RoomClimate.Rain)
         {
             guardBonus += 5;
@@ -342,7 +346,8 @@ public sealed class CombatFactory : ICombatFactory
                 dotMagnitudeBonus,
                 healingBlocked,
                 falaiseWindEnabled,
-                postDeathBasicAttackOnlyEnabled);
+                postDeathBasicAttackOnlyEnabled,
+                tapisPropreEnabled);
         }
 
         var enemies = draft.Enemies
@@ -459,7 +464,8 @@ public sealed class CombatFactory : ICombatFactory
             dotMagnitudeBonus,
             healingBlocked,
             falaiseWindEnabled,
-            postDeathBasicAttackOnlyEnabled);
+            postDeathBasicAttackOnlyEnabled,
+            tapisPropreEnabled);
     }
 
     /// <summary>

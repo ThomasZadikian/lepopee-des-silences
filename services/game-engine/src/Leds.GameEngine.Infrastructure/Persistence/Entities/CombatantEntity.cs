@@ -25,6 +25,12 @@ public sealed class CombatantEntity
     public string Row { get; set; } = "Front";
 
     /// <summary>
+    /// "Loi du Tapis Propre": true once this combatant has taken any action (of any
+    /// kind) in the current combat. See Combatant.HasActedThisCombat.
+    /// </summary>
+    public bool HasActedThisCombat { get; set; }
+
+    /// <summary>
     /// Optional emotional attack type override (int value of EmotionalType), set
     /// from an AttackTypeOverride run modifier at combat creation. Null = no override.
     /// </summary>

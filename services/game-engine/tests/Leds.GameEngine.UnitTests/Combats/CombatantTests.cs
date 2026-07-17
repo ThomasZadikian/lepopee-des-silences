@@ -83,6 +83,22 @@ public sealed class CombatantTests
     }
 
     [Fact]
+    public void HasActedThisCombat_ShouldBeFalse_OnANewlyCreatedCombatant()
+    {
+        Combatant.CreateAlly("player.self", "Hero", "Fighter", 100).HasActedThisCombat.Should().BeFalse();
+    }
+
+    [Fact]
+    public void RegisterAtbAction_ShouldSetHasActedThisCombat_ToTrue()
+    {
+        var combatant = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+
+        combatant.RegisterAtbAction(currentTick: 0, recoveryTicks: 10);
+
+        combatant.HasActedThisCombat.Should().BeTrue();
+    }
+
+    [Fact]
     public void RecalculateAtbFillPerTick_ShouldReactToLiveEffectiveSpeed()
     {
         var combatant = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 80, speed: 10);

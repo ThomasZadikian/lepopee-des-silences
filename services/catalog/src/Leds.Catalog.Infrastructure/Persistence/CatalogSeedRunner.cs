@@ -5201,21 +5201,23 @@ public sealed class CatalogSeedRunner
         await _ctx.SaveChangesAsync(cancellationToken);
     }
 
-    // Chapitre III — Lois du seuil & de l'étiquette. 2 of its 5 laws are seeded: Loi des
-    // Pieds Essuyés (trivial reuse of StartingGuardBonus) and Loi du Silence Dû (new
-    // PhysicalDamageBonus/FlatManaCostBonus mechanic). The other 3 are NOT seeded — each
-    // needs a genuinely new engine mechanic that doesn't exist yet (documented gap, same
-    // convention as the rest of this chantier): "Loi du Tapis Propre" (law.tapis-propre)
-    // needs per-combatant first-turn action-type validation (support/buff/debuff/move
-    // only, no attack) — the same class of problem as Chapitre IV's un-seeded
-    // Miroir/Éloge Funèbre. "Loi de l'Invitation" (law.invitation) needs disabling a
-    // "flee" combat action that doesn't exist in the engine AND a loot bonus —
+    // Chapitre III — Lois du seuil & de l'étiquette. 3 of its 5 laws are seeded: Loi des
+    // Pieds Essuyés (trivial reuse of StartingGuardBonus), Loi du Silence Dû (new
+    // PhysicalDamageBonus/FlatManaCostBonus mechanic), and Loi du Tapis Propre (new
+    // per-combatant first-turn action-type gate — see Combatant.HasActedThisCombat /
+    // CombatSkillActionValidator). The other 2 are NOT seeded — each needs a genuinely
+    // new engine mechanic that doesn't exist yet (documented gap, same convention as
+    // the rest of this chantier): "Loi de l'Invitation" (law.invitation) needs disabling
+    // a "flee" combat action that doesn't exist in the engine AND a loot bonus —
     // RunModifierType.RewardPowerMultiplier is itself dead code upstream (written by
     // PalaceLawMapper but never read by RewardOfferFactory, which only consumes the
     // risk-derived CombatRiskProfile.RewardPowerMultiplier), so seeding it would silently
     // do nothing; fixing that pre-existing gap is out of scope here. "Loi de la
     // Troisième Tasse" (law.troisieme-tasse) needs a random per-heal-application
     // corruption roll.
+    //
+    // Loi du Tapis Propre's "poids doublé au Hall et aux Couloirs" promulgation nuance is
+    // NOT enforced (documented gap, same as the room-weight-doubling notes elsewhere).
     private async Task SeedLoisDuSeuilAsync(CancellationToken cancellationToken)
     {
         await UpsertCompendiumLawAsync(
@@ -5251,10 +5253,28 @@ public sealed class CatalogSeedRunner
             impactDomains: ["Combat"],
             cancellationToken);
 
+        await UpsertCompendiumLawAsync(
+            key: "law.tapis-propre",
+            name: "Loi du Tapis Propre",
+            narrativeText: "Article Premier — On s'essuie les pieds. On salue. Ensuite, "
+                + "seulement, on peut s'entretuer proprement.",
+            description: "Dans chaque combat, le premier tour de chaque combattant "
+                + "(équipe ET ennemis) ne peut pas être une attaque : sorts de soutien, "
+                + "buffs, débuffs et déplacements uniquement. La politesse d'abord.",
+            rarity: "Commun",
+            polarity: "Neutre",
+            isMajeure: false,
+            minDepth: null,
+            duration: "UntilFloorEnds",
+            selectionGroup: "law.seuil",
+            impactDomains: ["Combat"],
+            cancellationToken);
+
         await _ctx.SaveChangesAsync(cancellationToken);
 
         await UpsertLawEffectAsync("law.pieds-essuyes", "AddStartingGuard", 3m, "UntilFloorEnds", null, cancellationToken);
         await UpsertLawEffectAsync("law.silence-du", "EnableSilenceDuActive", 1m, "UntilRoomEnds", null, cancellationToken);
+        await UpsertLawEffectAsync("law.tapis-propre", "EnableTapisPropreEnabled", 1m, "UntilFloorEnds", null, cancellationToken);
 
         await _ctx.SaveChangesAsync(cancellationToken);
     }

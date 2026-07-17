@@ -73,4 +73,6 @@ public enum EffectType
     EnableConsumablesRestrictedInCombat,
     /// <summary>"Loi de l'Éloge Funèbre" (law.eloge-funebre) → RunModifierType.PostDeathBasicAttackOnly.</summary>
     EnablePostDeathBasicAttackOnly,
+    /// <summary>"Loi du Tapis Propre" (law.tapis-propre) → RunModifierType.TapisPropreEnabled.</summary>
+    EnableTapisPropreEnabled,
 }
