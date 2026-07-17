@@ -32,6 +32,7 @@ public static class CombatPersistenceMapper
             HitCounterDoubleDamageEnabled = combat.HitCounterDoubleDamageEnabled,
             FirstHitCriticalEnabled = combat.FirstHitCriticalEnabled,
             HasFirstHitLanded = combat.HasFirstHitLanded,
+            LowHpDamageAmplificationEnabled = combat.LowHpDamageAmplificationEnabled,
             ActiveCombatantId = combat.ActiveCombatantId?.Value,
             CreatedAtUtc = combat.CreatedAtUtc,
             UpdatedAtUtc = DateTime.UtcNow,
@@ -297,7 +298,8 @@ public static class CombatPersistenceMapper
             entity.HitCounter,
             entity.HitCounterDoubleDamageEnabled,
             entity.FirstHitCriticalEnabled,
-            entity.HasFirstHitLanded);
+            entity.HasFirstHitLanded,
+            entity.LowHpDamageAmplificationEnabled);
     }
 
     public static Combatant ToDomain(CombatantEntity entity)

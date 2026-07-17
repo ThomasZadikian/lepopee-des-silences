@@ -13,6 +13,7 @@ public sealed class CombatEntity
     public bool HitCounterDoubleDamageEnabled { get; set; }
     public bool FirstHitCriticalEnabled { get; set; }
     public bool HasFirstHitLanded { get; set; }
+    public bool LowHpDamageAmplificationEnabled { get; set; }
     public Guid? ActiveCombatantId { get; set; }
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }

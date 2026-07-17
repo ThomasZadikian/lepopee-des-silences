@@ -24,7 +24,8 @@ public sealed class Combat
         int hitCounter,
         bool hitCounterDoubleDamageEnabled,
         bool firstHitCriticalEnabled,
-        bool hasFirstHitLanded)
+        bool hasFirstHitLanded,
+        bool lowHpDamageAmplificationEnabled)
     {
         Id = id;
         RunId = runId;
@@ -41,6 +42,7 @@ public sealed class Combat
         HitCounterDoubleDamageEnabled = hitCounterDoubleDamageEnabled;
         FirstHitCriticalEnabled = firstHitCriticalEnabled;
         HasFirstHitLanded = hasFirstHitLanded;
+        LowHpDamageAmplificationEnabled = lowHpDamageAmplificationEnabled;
     }
 
     public CombatId Id { get; }
@@ -112,6 +114,19 @@ public sealed class Combat
         return FirstHitCriticalEnabled;
     }
 
+    /// <summary>"Loi de la Curée" (law.curee): "+15% dégâts subis pour tout combattant
+    /// sous 25% de ses PV max" — a symmetric damage-taken amplifier, baked in at
+    /// creation from the run's active RunModifiers. Checked live against the
+    /// TARGET's current vitality on every hit (see CombatSkillEffectResolver), since
+    /// the threshold moves with HP throughout the fight.</summary>
+    public bool LowHpDamageAmplificationEnabled { get; }
+
+    /// <summary>"Loi de la Curée" HP threshold, as a percent of max vitality.</summary>
+    public const int LowHpDamageAmplificationThresholdPercent = 25;
+
+    /// <summary>"Loi de la Curée" damage-taken bonus, in percent.</summary>
+    public const int LowHpDamageAmplificationBonusPercent = 15;
+
     public static Combat Create(
         CombatId id,
         RunId runId,
@@ -120,7 +135,8 @@ public sealed class Combat
         IReadOnlyCollection<Combatant> allies,
         IReadOnlyCollection<Combatant> enemies,
         bool hitCounterDoubleDamageEnabled = false,
-        bool firstHitCriticalEnabled = false)
+        bool firstHitCriticalEnabled = false,
+        bool lowHpDamageAmplificationEnabled = false)
     {
         if (id.Value == Guid.Empty)
             throw new DomainException("Combat id is required.");
@@ -156,7 +172,8 @@ public sealed class Combat
             hitCounter: 0,
             hitCounterDoubleDamageEnabled: hitCounterDoubleDamageEnabled,
             firstHitCriticalEnabled: firstHitCriticalEnabled,
-            hasFirstHitLanded: false);
+            hasFirstHitLanded: false,
+            lowHpDamageAmplificationEnabled: lowHpDamageAmplificationEnabled);
     }
 
     public void MarkCompleted()
@@ -439,9 +456,10 @@ public sealed class Combat
         int hitCounter = 0,
         bool hitCounterDoubleDamageEnabled = false,
         bool firstHitCriticalEnabled = false,
-        bool hasFirstHitLanded = false)
+        bool hasFirstHitLanded = false,
+        bool lowHpDamageAmplificationEnabled = false)
     {
-        return new Combat(id, runId, roomId, nodeId, status, allies, enemies, activeCombatantId, turnNumber, currentTick, createdAtUtc, hitCounter, hitCounterDoubleDamageEnabled, firstHitCriticalEnabled, hasFirstHitLanded);
+        return new Combat(id, runId, roomId, nodeId, status, allies, enemies, activeCombatantId, turnNumber, currentTick, createdAtUtc, hitCounter, hitCounterDoubleDamageEnabled, firstHitCriticalEnabled, hasFirstHitLanded, lowHpDamageAmplificationEnabled);
     }
 
     /// <summary>

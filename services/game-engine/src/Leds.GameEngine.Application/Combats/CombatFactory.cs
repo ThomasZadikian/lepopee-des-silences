@@ -289,6 +289,8 @@ public sealed class CombatFactory : ICombatFactory
                 .Any(m => m.Type == RunModifierType.HitCounterDoubleDamage && !m.IsConsumed);
             var mirrorFirstHitCriticalEnabled = activeModifiers
                 .Any(m => m.Type == RunModifierType.FirstHitCritical && !m.IsConsumed);
+            var mirrorLowHpDamageAmplificationEnabled = activeModifiers
+                .Any(m => m.Type == RunModifierType.DamageAmplificationBelowHpThreshold && !m.IsConsumed);
 
             return Combat.Create(
                 combatId,
@@ -298,7 +300,8 @@ public sealed class CombatFactory : ICombatFactory
                 allies,
                 mirroredEnemies,
                 mirrorHitCounterDoubleDamageEnabled,
-                mirrorFirstHitCriticalEnabled);
+                mirrorFirstHitCriticalEnabled,
+                mirrorLowHpDamageAmplificationEnabled);
         }
 
         var enemies = draft.Enemies
@@ -383,6 +386,8 @@ public sealed class CombatFactory : ICombatFactory
             .Any(m => m.Type == RunModifierType.HitCounterDoubleDamage && !m.IsConsumed);
         var firstHitCriticalEnabled = activeModifiers
             .Any(m => m.Type == RunModifierType.FirstHitCritical && !m.IsConsumed);
+        var lowHpDamageAmplificationEnabled = activeModifiers
+            .Any(m => m.Type == RunModifierType.DamageAmplificationBelowHpThreshold && !m.IsConsumed);
 
         return Combat.Create(
             combatId,
@@ -392,7 +397,8 @@ public sealed class CombatFactory : ICombatFactory
             allies,
             enemies,
             hitCounterDoubleDamageEnabled,
-            firstHitCriticalEnabled);
+            firstHitCriticalEnabled,
+            lowHpDamageAmplificationEnabled);
     }
 
     /// <summary>

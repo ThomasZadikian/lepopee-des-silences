@@ -10,7 +10,10 @@ namespace Leds.GameEngine.UnitTests.Combats;
 public sealed class CombatTests
 {
     private static Combat CreateSut(
-        int allyCount = 1, int enemyCount = 1, bool hitCounterDoubleDamageEnabled = false)
+        int allyCount = 1, int enemyCount = 1,
+        bool hitCounterDoubleDamageEnabled = false,
+        bool firstHitCriticalEnabled = false,
+        bool lowHpDamageAmplificationEnabled = false)
     {
         var allies = Enumerable.Range(0, allyCount).Select(i =>
             Combatant.CreateAlly($"player.{i}", $"Hero{i}", "Fighter", 100)).ToArray();
@@ -25,7 +28,9 @@ public sealed class CombatTests
             NodeId.New(),
             allies,
             enemies,
-            hitCounterDoubleDamageEnabled);
+            hitCounterDoubleDamageEnabled,
+            firstHitCriticalEnabled,
+            lowHpDamageAmplificationEnabled);
     }
 
     [Fact]
@@ -385,5 +390,41 @@ public sealed class CombatTests
         results[Combat.HitCounterTrigger - 1].Should().BeTrue();
         results[Combat.HitCounterTrigger * 2 - 1].Should().BeTrue();
         results.Count(r => r).Should().Be(2);
+    }
+
+    // ---------------------------------------------------------------------------
+    // "Loi de la Première Impression" (TryConsumeFirstHitCritical)
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void TryConsumeFirstHitCritical_ShouldReturnTrue_OnceOnly_WhenEnabled()
+    {
+        var combat = CreateSut(firstHitCriticalEnabled: true);
+
+        combat.TryConsumeFirstHitCritical().Should().BeTrue();
+        combat.TryConsumeFirstHitCritical().Should().BeFalse();
+        combat.HasFirstHitLanded.Should().BeTrue();
+    }
+
+    [Fact]
+    public void TryConsumeFirstHitCritical_ShouldAlwaysReturnFalse_WhenNotEnabled()
+    {
+        var combat = CreateSut(firstHitCriticalEnabled: false);
+
+        combat.TryConsumeFirstHitCritical().Should().BeFalse();
+        combat.HasFirstHitLanded.Should().BeTrue();
+    }
+
+    // ---------------------------------------------------------------------------
+    // "Loi de la Curée" (LowHpDamageAmplificationEnabled) — the flag itself; the
+    // actual +15%-below-25%-HP amplification is exercised in
+    // CombatSkillEffectResolverTests (it needs live vitality, resolved there).
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void LowHpDamageAmplificationEnabled_ShouldReflectTheValueBakedInAtCreation()
+    {
+        CreateSut(lowHpDamageAmplificationEnabled: true).LowHpDamageAmplificationEnabled.Should().BeTrue();
+        CreateSut(lowHpDamageAmplificationEnabled: false).LowHpDamageAmplificationEnabled.Should().BeFalse();
     }
 }

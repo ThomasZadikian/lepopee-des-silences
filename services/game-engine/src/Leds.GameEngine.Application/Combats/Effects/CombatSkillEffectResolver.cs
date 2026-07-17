@@ -444,6 +444,19 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
                     [target]));
             }
 
+            // "Loi de la Curée": +15% damage taken while the TARGET is already below
+            // 25% of its max vitality — checked against vitality as it stood BEFORE
+            // this hit lands, symmetric across both sides.
+            if (combat.LowHpDamageAmplificationEnabled && outcome.FinalAmount > 0
+                && target.CurrentVitality * 100 < target.MaxVitality * Combat.LowHpDamageAmplificationThresholdPercent)
+            {
+                outcome = outcome with
+                {
+                    FinalAmount = (int)Math.Round(
+                        outcome.FinalAmount * (1.0 + Combat.LowHpDamageAmplificationBonusPercent / 100.0))
+                };
+            }
+
             logEntries.Add(CreateLog(
                 "SkillUsed",
                 $"{actor.DisplayName} uses {skill.DisplayName} on {target.DisplayName} for {outcome.FinalAmount} damage{DescribeOutcome(outcome)}.",

@@ -860,6 +860,64 @@ public sealed class CombatSkillEffectResolverTests
         lastResult.LogEntries.Should().Contain(entry => entry.Type == "ThirteenthHit");
     }
 
+    // ---------------------------------------------------------------------------
+    // "Loi de la Curée" (DamageAmplificationBelowHpThreshold) — +15% damage taken
+    // while the TARGET is already below 25% of its max vitality, symmetric across
+    // both sides.
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void Resolve_ShouldAmplifyDamage_WhenTargetIsBelowTheLowHpThreshold_AndEnabled()
+    {
+        var (combat, ally, enemy) = CreateLowHpAmplificationCombat(lowHpDamageAmplificationEnabled: true, enemyMaxVitality: 200);
+        enemy.ApplyDamage(160); // 40/200 = 20% < 25% threshold
+        var skill = CreateSkill("skill.basic.strike", "Damage", 20);
+
+        _resolver.Resolve(combat, ally, skill, [enemy]);
+
+        // 20 base damage amplified by +15% = 23.
+        enemy.CurrentVitality.Should().Be(40 - 23);
+    }
+
+    [Fact]
+    public void Resolve_ShouldNotAmplifyDamage_WhenTargetIsAboveTheLowHpThreshold()
+    {
+        var (combat, ally, enemy) = CreateLowHpAmplificationCombat(lowHpDamageAmplificationEnabled: true, enemyMaxVitality: 100);
+        var skill = CreateSkill("skill.basic.strike", "Damage", 10);
+
+        _resolver.Resolve(combat, ally, skill, [enemy]);
+
+        enemy.CurrentVitality.Should().Be(100 - 10);
+    }
+
+    [Fact]
+    public void Resolve_ShouldNotAmplifyDamage_WhenTheLawIsDisabled()
+    {
+        var (combat, ally, enemy) = CreateLowHpAmplificationCombat(lowHpDamageAmplificationEnabled: false, enemyMaxVitality: 100);
+        enemy.ApplyDamage(80); // 20% HP, would qualify if the law were active
+        var skill = CreateSkill("skill.basic.strike", "Damage", 10);
+
+        _resolver.Resolve(combat, ally, skill, [enemy]);
+
+        enemy.CurrentVitality.Should().Be(20 - 10);
+    }
+
+    private static (Combat Combat, Combatant Ally, Combatant Enemy) CreateLowHpAmplificationCombat(
+        bool lowHpDamageAmplificationEnabled, int enemyMaxVitality)
+    {
+        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+        ally.ApplyEquipmentCombatModifiers(100, 0, 0); // guaranteed hit chance
+        var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", enemyMaxVitality);
+        var combat = Combat.Create(
+            CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(),
+            [ally], [enemy],
+            hitCounterDoubleDamageEnabled: false,
+            firstHitCriticalEnabled: false,
+            lowHpDamageAmplificationEnabled: lowHpDamageAmplificationEnabled);
+
+        return (combat, ally, enemy);
+    }
+
     private static (Combat Combat, Combatant Ally, Combatant Enemy) CreateThirteenthHitCombat(
         bool hitCounterDoubleDamageEnabled)
     {
