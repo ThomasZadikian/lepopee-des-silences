@@ -31,7 +31,8 @@ public sealed class CombatFactoryTests
         int allySpeed = 10,
         int allyFocus = 0,
         int allyMagicAttack = 0,
-        int allyMagicDefense = 0)
+        int allyMagicDefense = 0,
+        string? roomKey = null)
     {
         var allies = Enumerable.Range(0, allyCount).Select(i =>
             new CombatEncounterDraftAlly(
@@ -87,7 +88,8 @@ public sealed class CombatFactoryTests
             EncounterType: "Combat",
             Enemies: enemies,
             Allies: allies,
-            DifficultyMultiplier: difficultyMultiplier);
+            DifficultyMultiplier: difficultyMultiplier,
+            RoomKey: roomKey);
     }
 
     [Fact]
@@ -880,6 +882,44 @@ public sealed class CombatFactoryTests
 
         combat.Allies.Single().EffectivePhysicalDamageBonusPercent.Should().Be(0);
         combat.Allies.Single().EffectiveFlatManaCostBonus.Should().Be(0);
+    }
+
+    // ---------------------------------------------------------------------------
+    // "Loi des Visites Terminées" (HealingBlocked) — room-bound (RoomKey), not a
+    // RunModifier/tirage.
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void CreateFromDraft_ShouldSetHealingBlocked_WhenRoomKeyIsHopital()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft(roomKey: "room.hopital");
+
+        var combat = factory.CreateFromDraft(draft);
+
+        combat.HealingBlocked.Should().BeTrue();
+    }
+
+    [Fact]
+    public void CreateFromDraft_ShouldNotSetHealingBlocked_WhenRoomKeyIsSomethingElse()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft(roomKey: "room.jardin");
+
+        var combat = factory.CreateFromDraft(draft);
+
+        combat.HealingBlocked.Should().BeFalse();
+    }
+
+    [Fact]
+    public void CreateFromDraft_ShouldNotSetHealingBlocked_WhenRoomKeyIsAbsent()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft();
+
+        var combat = factory.CreateFromDraft(draft);
+
+        combat.HealingBlocked.Should().BeFalse();
     }
 
     // ---------------------------------------------------------------------------

@@ -28,7 +28,8 @@ public sealed class Combat
         bool lowHpDamageAmplificationEnabled,
         int dotDurationExtensionTicks,
         bool duelDamageAsymmetryEnabled,
-        int dotMagnitudeBonus)
+        int dotMagnitudeBonus,
+        bool healingBlocked)
     {
         Id = id;
         RunId = runId;
@@ -49,6 +50,7 @@ public sealed class Combat
         DotDurationExtensionTicks = dotDurationExtensionTicks;
         DuelDamageAsymmetryEnabled = duelDamageAsymmetryEnabled;
         DotMagnitudeBonus = dotMagnitudeBonus;
+        HealingBlocked = healingBlocked;
     }
 
     public CombatId Id { get; }
@@ -158,6 +160,13 @@ public sealed class Combat
     /// otherwise. Generic (not climate-specific by name) so any future law can reuse it.</summary>
     public int DotMagnitudeBonus { get; }
 
+    /// <summary>"Loi des Visites Terminées" (law.visites-terminees, liée à room.hopital):
+    /// "les sorts de soin sont sans effet dans cette salle (les soins par objets
+    /// fonctionnent)" — gates CombatSkillEffectResolver's "Heal" skill-effect branch only;
+    /// item-based healing (UseItemInCombatCommandHandler) is a separate code path and is
+    /// untouched. Baked in at creation from the room's CatalogRoomKey.</summary>
+    public bool HealingBlocked { get; }
+
     public static Combat Create(
         CombatId id,
         RunId runId,
@@ -170,7 +179,8 @@ public sealed class Combat
         bool lowHpDamageAmplificationEnabled = false,
         int dotDurationExtensionTicks = 0,
         bool duelDamageAsymmetryEnabled = false,
-        int dotMagnitudeBonus = 0)
+        int dotMagnitudeBonus = 0,
+        bool healingBlocked = false)
     {
         if (id.Value == Guid.Empty)
             throw new DomainException("Combat id is required.");
@@ -210,7 +220,8 @@ public sealed class Combat
             lowHpDamageAmplificationEnabled: lowHpDamageAmplificationEnabled,
             dotDurationExtensionTicks: dotDurationExtensionTicks,
             duelDamageAsymmetryEnabled: duelDamageAsymmetryEnabled,
-            dotMagnitudeBonus: dotMagnitudeBonus);
+            dotMagnitudeBonus: dotMagnitudeBonus,
+            healingBlocked: healingBlocked);
     }
 
     public void MarkCompleted()
@@ -497,9 +508,10 @@ public sealed class Combat
         bool lowHpDamageAmplificationEnabled = false,
         int dotDurationExtensionTicks = 0,
         bool duelDamageAsymmetryEnabled = false,
-        int dotMagnitudeBonus = 0)
+        int dotMagnitudeBonus = 0,
+        bool healingBlocked = false)
     {
-        return new Combat(id, runId, roomId, nodeId, status, allies, enemies, activeCombatantId, turnNumber, currentTick, createdAtUtc, hitCounter, hitCounterDoubleDamageEnabled, firstHitCriticalEnabled, hasFirstHitLanded, lowHpDamageAmplificationEnabled, dotDurationExtensionTicks, duelDamageAsymmetryEnabled, dotMagnitudeBonus);
+        return new Combat(id, runId, roomId, nodeId, status, allies, enemies, activeCombatantId, turnNumber, currentTick, createdAtUtc, hitCounter, hitCounterDoubleDamageEnabled, firstHitCriticalEnabled, hasFirstHitLanded, lowHpDamageAmplificationEnabled, dotDurationExtensionTicks, duelDamageAsymmetryEnabled, dotMagnitudeBonus, healingBlocked);
     }
 
     /// <summary>

@@ -16,7 +16,8 @@ public sealed class CombatTests
         bool lowHpDamageAmplificationEnabled = false,
         int dotDurationExtensionTicks = 0,
         bool duelDamageAsymmetryEnabled = false,
-        int dotMagnitudeBonus = 0)
+        int dotMagnitudeBonus = 0,
+        bool healingBlocked = false)
     {
         var allies = Enumerable.Range(0, allyCount).Select(i =>
             Combatant.CreateAlly($"player.{i}", $"Hero{i}", "Fighter", 100)).ToArray();
@@ -36,7 +37,8 @@ public sealed class CombatTests
             lowHpDamageAmplificationEnabled,
             dotDurationExtensionTicks,
             duelDamageAsymmetryEnabled,
-            dotMagnitudeBonus);
+            dotMagnitudeBonus,
+            healingBlocked);
     }
 
     [Fact]
@@ -464,5 +466,17 @@ public sealed class CombatTests
     {
         CreateSut(dotMagnitudeBonus: 1).DotMagnitudeBonus.Should().Be(1);
         CreateSut().DotMagnitudeBonus.Should().Be(0);
+    }
+
+    // ---------------------------------------------------------------------------
+    // "Loi des Visites Terminées" (HealingBlocked) — the flag itself; the actual
+    // healing-skill no-op is exercised in CombatSkillEffectResolverTests.
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void HealingBlocked_ShouldReflectTheValueBakedInAtCreation()
+    {
+        CreateSut(healingBlocked: true).HealingBlocked.Should().BeTrue();
+        CreateSut().HealingBlocked.Should().BeFalse();
     }
 }

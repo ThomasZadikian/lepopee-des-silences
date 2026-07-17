@@ -27,6 +27,7 @@ public sealed class CombatEntityConfiguration : IEntityTypeConfiguration<CombatE
         builder.Property(c => c.DotDurationExtensionTicks).HasColumnName("dot_duration_extension_ticks");
         builder.Property(c => c.DuelDamageAsymmetryEnabled).HasColumnName("duel_damage_asymmetry_enabled");
         builder.Property(c => c.DotMagnitudeBonus).HasColumnName("dot_magnitude_bonus");
+        builder.Property(c => c.HealingBlocked).HasColumnName("healing_blocked");
         builder.Property(c => c.ActiveCombatantId).HasColumnName("active_combatant_id");
         builder.Property(c => c.CreatedAtUtc).HasColumnName("created_at_utc");
         builder.Property(c => c.UpdatedAtUtc).HasColumnName("updated_at_utc");

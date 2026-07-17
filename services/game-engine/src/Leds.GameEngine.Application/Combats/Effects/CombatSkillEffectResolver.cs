@@ -58,7 +58,13 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
                 break;
 
             case "Heal":
-                ResolveHeal(actor, skill, targets, logEntries);
+                // "Loi des Visites Terminées" (room.hopital): "les sorts de soin sont sans
+                // effet dans cette salle" — item-based healing (a separate command path,
+                // UseItemInCombatCommandHandler) is untouched.
+                if (!combat.HealingBlocked)
+                {
+                    ResolveHeal(actor, skill, targets, logEntries);
+                }
                 break;
 
             case "RestoreMana":

@@ -10,4 +10,5 @@ public sealed record CombatEncounterDraft(
     string EncounterType,
     IReadOnlyCollection<CombatEncounterDraftEnemy> Enemies,
     IReadOnlyCollection<CombatEncounterDraftAlly> Allies,
-    double DifficultyMultiplier = 1.0);
+    double DifficultyMultiplier = 1.0,
+    string? RoomKey = null);

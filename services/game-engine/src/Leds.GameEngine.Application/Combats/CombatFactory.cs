@@ -121,6 +121,11 @@ public sealed class CombatFactory : ICombatFactory
             .Sum(m => m.Value);
         var activeClimate = ResolveActiveClimate(draft.RoomId, activeModifiers);
 
+        // "Loi des Visites Terminées" (law.visites-terminees, liée à room.hopital): "les
+        // sorts de soin sont sans effet dans cette salle" — a room-bound rule (RoomKey),
+        // not a RunModifier/tirage, always active whenever combat happens in that room.
+        var healingBlocked = string.Equals(draft.RoomKey, "room.hopital", StringComparison.OrdinalIgnoreCase);
+
         if (activeClimate == RoomClimate.Rain)
         {
             guardBonus += 5;
@@ -324,7 +329,8 @@ public sealed class CombatFactory : ICombatFactory
                 mirrorLowHpDamageAmplificationEnabled,
                 ComputeDotDurationExtensionTicks(activeModifiers),
                 ComputeDuelDamageAsymmetryEnabled(activeModifiers),
-                dotMagnitudeBonus);
+                dotMagnitudeBonus,
+                healingBlocked);
         }
 
         var enemies = draft.Enemies
@@ -438,7 +444,8 @@ public sealed class CombatFactory : ICombatFactory
             lowHpDamageAmplificationEnabled,
             ComputeDotDurationExtensionTicks(activeModifiers),
             ComputeDuelDamageAsymmetryEnabled(activeModifiers),
-            dotMagnitudeBonus);
+            dotMagnitudeBonus,
+            healingBlocked);
     }
 
     /// <summary>

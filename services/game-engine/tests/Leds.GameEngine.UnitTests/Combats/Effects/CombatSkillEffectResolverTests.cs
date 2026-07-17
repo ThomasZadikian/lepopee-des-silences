@@ -316,6 +316,50 @@ public sealed class CombatSkillEffectResolverTests
         ally.ThreatValue.Should().BeGreaterThan(0);
     }
 
+    // ---------------------------------------------------------------------------
+    // "Loi des Visites Terminées" (Combat.HealingBlocked, liée à room.hopital) —
+    // skill-based healing is a no-op; item-based healing is a separate code path
+    // (UseItemInCombatCommandHandler) untouched by this flag.
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void Resolve_ShouldNotHeal_WhenHealingIsBlocked()
+    {
+        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+        ally.ApplyDamage(50);
+        var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 80);
+        var combat = Combat.Create(
+            CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(),
+            [ally], [enemy],
+            hitCounterDoubleDamageEnabled: false,
+            firstHitCriticalEnabled: false,
+            lowHpDamageAmplificationEnabled: false,
+            dotDurationExtensionTicks: 0,
+            duelDamageAsymmetryEnabled: false,
+            dotMagnitudeBonus: 0,
+            healingBlocked: true);
+        var skill = CreateSkill("skill.heal", "Heal", 15);
+
+        _resolver.Resolve(combat, ally, skill, [ally]);
+
+        ally.CurrentVitality.Should().Be(50,
+            because: "Loi des Visites Terminées makes skill-based healing a no-op in this room.");
+    }
+
+    [Fact]
+    public void Resolve_ShouldHeal_WhenHealingIsNotBlocked()
+    {
+        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+        ally.ApplyDamage(50);
+        var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 80);
+        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
+        var skill = CreateSkill("skill.heal", "Heal", 15);
+
+        _resolver.Resolve(combat, ally, skill, [ally]);
+
+        ally.CurrentVitality.Should().Be(65);
+    }
+
     [Fact]
     public void Resolve_ShouldHealPercentOfMaxVitality_WhenBasePowerIsPercentOfMaxVitality()
     {

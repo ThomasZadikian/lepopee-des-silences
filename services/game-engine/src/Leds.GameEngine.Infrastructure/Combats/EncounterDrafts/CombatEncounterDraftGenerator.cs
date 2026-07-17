@@ -137,6 +137,7 @@ public sealed class CombatEncounterDraftGenerator : ICombatEncounterDraftGenerat
             EncounterType: context.EncounterType,
             Enemies: enemies,
             Allies: allies,
-            DifficultyMultiplier: riskProfile.DifficultyMultiplier * EnemyStatScaler.DepthMultiplier(context.RoomIndex));
+            DifficultyMultiplier: riskProfile.DifficultyMultiplier * EnemyStatScaler.DepthMultiplier(context.RoomIndex),
+            RoomKey: context.RoomKey);
     }
 }
