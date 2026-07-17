@@ -15,6 +15,7 @@ public sealed class RunModifierEntity
     public string StackPolicy { get; set; } = "Additive";
     public Guid? ExpiresAtRoomId { get; set; }
     public Guid? ExpiresAtCombatId { get; set; }
+    public int? ExpiresAtFloorIndex { get; set; }
 
     public RunEntity? Run { get; set; }
 }

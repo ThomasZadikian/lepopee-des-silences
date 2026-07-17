@@ -32,6 +32,12 @@ public sealed class PalaceLawDefinitionEntityConfiguration : IEntityTypeConfigur
         builder.Property(e => e.MaxDepth).HasColumnName("max_depth");
         builder.Property(e => e.SelectionGroup).HasColumnName("selection_group").HasMaxLength(64);
         builder.Property(e => e.ImpactDomainsJson).HasColumnName("impact_domains_json").HasComment("Legacy JSON compatibility column. Structured effects/tags are relational in data-model-0.1.");
+        builder.Property(e => e.Rarity).HasColumnName("rarity").HasMaxLength(32).HasDefaultValue("Commun").IsRequired();
+        builder.Property(e => e.Polarity).HasColumnName("polarity").HasMaxLength(32).HasDefaultValue("Neutre").IsRequired();
+        builder.Property(e => e.IsMajeure).HasColumnName("is_majeure").HasDefaultValue(false);
+        builder.Property(e => e.RoomKey).HasColumnName("room_key").HasMaxLength(160);
+        builder.Property(e => e.IsCumulExempt).HasColumnName("is_cumul_exempt").HasDefaultValue(false);
+        builder.Property(e => e.ExclusionKeysJson).HasColumnName("exclusion_keys_json").HasDefaultValue("[]");
         builder.Property(e => e.CreatedAtUtc).HasColumnName("created_at_utc");
         builder.Property(e => e.UpdatedAtUtc).HasColumnName("updated_at_utc");
 

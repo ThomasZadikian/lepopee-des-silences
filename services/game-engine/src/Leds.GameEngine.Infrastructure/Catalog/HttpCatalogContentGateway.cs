@@ -1053,7 +1053,16 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
             Priority: source.Priority,
             ImpactDomains: source.ImpactDomains ?? [],
             EffectSetKey: source.EffectSetKey,
-            Effects: source.Effects?.Select(MapToCatalogEffectDefinitionSnapshot).ToArray() ?? []);
+            Effects: source.Effects?.Select(MapToCatalogEffectDefinitionSnapshot).ToArray() ?? [],
+            BaseWeight: source.BaseWeight,
+            MinDepth: source.MinDepth,
+            MaxDepth: source.MaxDepth,
+            Rarity: source.Rarity,
+            Polarity: source.Polarity,
+            IsMajeure: source.IsMajeure,
+            RoomKey: source.RoomKey,
+            IsCumulExempt: source.IsCumulExempt,
+            ExclusionKeys: source.ExclusionKeys ?? []);
     }
 
     private static CatalogCurseDefinitionSnapshot MapToCatalogCurseDefinitionSnapshot(
@@ -1647,7 +1656,16 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
         int Priority,
         IReadOnlyCollection<string>? ImpactDomains,
         string? EffectSetKey,
-        IReadOnlyCollection<CatalogEffectDefinitionHttpResponse>? Effects);
+        IReadOnlyCollection<CatalogEffectDefinitionHttpResponse>? Effects,
+        int BaseWeight = 1,
+        int? MinDepth = null,
+        int? MaxDepth = null,
+        string Rarity = "Commun",
+        string Polarity = "Neutre",
+        bool IsMajeure = false,
+        string? RoomKey = null,
+        bool IsCumulExempt = false,
+        IReadOnlyCollection<string>? ExclusionKeys = null);
 
     private sealed record CatalogEffectDefinitionHttpResponse(
         string EffectType,

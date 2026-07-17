@@ -13,4 +13,13 @@ public sealed record PalaceLawDefinitionSnapshot(
     int Priority,
     IReadOnlyCollection<string> ImpactDomains,
     string? EffectSetKey = null,
-    IReadOnlyCollection<CatalogEffectDefinitionSnapshot>? Effects = null);
+    IReadOnlyCollection<CatalogEffectDefinitionSnapshot>? Effects = null,
+    int BaseWeight = 1,
+    int? MinDepth = null,
+    int? MaxDepth = null,
+    string Rarity = "Commun",
+    string Polarity = "Neutre",
+    bool IsMajeure = false,
+    string? RoomKey = null,
+    bool IsCumulExempt = false,
+    IReadOnlyCollection<string>? ExclusionKeys = null);

@@ -156,7 +156,8 @@ public static class RunPersistenceMapper
                 ValueMode = m.ValueMode,
                 StackPolicy = m.StackPolicy,
                 ExpiresAtRoomId = m.ExpiresAtRoomId,
-                ExpiresAtCombatId = m.ExpiresAtCombatId
+                ExpiresAtCombatId = m.ExpiresAtCombatId,
+                ExpiresAtFloorIndex = m.ExpiresAtFloorIndex
             }).ToList(),
             PlayerSnapshot = run.PlayerSnapshot is not null
                 ? ToPlayerSnapshotEntity(run.PlayerSnapshot, run.Id.Value)
@@ -411,7 +412,8 @@ public static class RunPersistenceMapper
             m.ValueMode ?? "Flat",
             m.StackPolicy ?? "Additive",
             m.ExpiresAtRoomId,
-            m.ExpiresAtCombatId)).ToList();
+            m.ExpiresAtCombatId,
+            m.ExpiresAtFloorIndex)).ToList();
 
         var playerSnapshot = entity.PlayerSnapshot is not null
             ? ToDomainPlayerSnapshot(entity.PlayerSnapshot)

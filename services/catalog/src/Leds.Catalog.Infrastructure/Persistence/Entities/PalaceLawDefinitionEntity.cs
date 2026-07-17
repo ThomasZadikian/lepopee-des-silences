@@ -22,6 +22,30 @@ public sealed class PalaceLawDefinitionEntity
     public int? MaxDepth { get; set; }
     public string? SelectionGroup { get; set; }
     public string ImpactDomainsJson { get; set; } = "[]";
+
+    /// <summary>Display-only rarity tier (Commun/PeuCommun/Rare/Epique/Legendaire) — the actual
+    /// draw weight is <see cref="BaseWeight"/>, resolved against the fixed rarity-tier table in
+    /// the promulgation engine, not this string.</summary>
+    public string Rarity { get; set; } = "Commun";
+
+    /// <summary>Clemente/Severe/DoubleTranchant/Neutre — drives the Soupape rule (3+ active
+    /// Severe laws forces the next promulgation to Clemente or DoubleTranchant).</summary>
+    public string Polarity { get; set; } = "Neutre";
+
+    /// <summary>Chapitre VIII "lois majeures" — at most one may be active at a time.</summary>
+    public bool IsMajeure { get; set; }
+
+    /// <summary>Chapitre IX "lois liées aux salles" — non-null pins this law to a single
+    /// catalog room key; it is then exempt from the cumul cap (<see cref="IsCumulExempt"/>)
+    /// and only ever promulgated when entering that room.</summary>
+    public string? RoomKey { get; set; }
+
+    public bool IsCumulExempt { get; set; }
+
+    /// <summary>JSON array of other law keys this law cannot coexist with (e.g. Troisième
+    /// Tasse / Souvenir Doux) — re-rolled on conflict at promulgation time.</summary>
+    public string ExclusionKeysJson { get; set; } = "[]";
+
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
 

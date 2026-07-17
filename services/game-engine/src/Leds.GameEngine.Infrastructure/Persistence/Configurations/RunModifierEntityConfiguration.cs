@@ -25,6 +25,7 @@ public sealed class RunModifierEntityConfiguration : IEntityTypeConfiguration<Ru
         builder.Property(m => m.StackPolicy).HasColumnName("stack_policy").HasMaxLength(32).IsRequired().HasDefaultValue("Additive");
         builder.Property(m => m.ExpiresAtRoomId).HasColumnName("expires_at_room_id");
         builder.Property(m => m.ExpiresAtCombatId).HasColumnName("expires_at_combat_id");
+        builder.Property(m => m.ExpiresAtFloorIndex).HasColumnName("expires_at_floor_index");
 
         builder.HasOne(m => m.Run)
             .WithMany(run => run.RunModifiers)

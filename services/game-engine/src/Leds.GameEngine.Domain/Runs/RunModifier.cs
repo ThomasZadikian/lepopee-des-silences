@@ -17,7 +17,8 @@ public sealed class RunModifier
         string valueMode,
         string stackPolicy,
         Guid? expiresAtRoomId,
-        Guid? expiresAtCombatId)
+        Guid? expiresAtCombatId,
+        int? expiresAtFloorIndex)
     {
         Id = id;
         Type = type;
@@ -31,6 +32,7 @@ public sealed class RunModifier
         StackPolicy = stackPolicy;
         ExpiresAtRoomId = expiresAtRoomId;
         ExpiresAtCombatId = expiresAtCombatId;
+        ExpiresAtFloorIndex = expiresAtFloorIndex;
     }
 
     public RunModifierId Id { get; }
@@ -59,6 +61,12 @@ public sealed class RunModifier
 
     public Guid? ExpiresAtCombatId { get; }
 
+    /// <summary>
+    /// <see cref="Run.FloorIndex"/> at which this modifier expires, for
+    /// <see cref="RunModifierDuration.UntilFloorEnds"/>. Null otherwise.
+    /// </summary>
+    public int? ExpiresAtFloorIndex { get; }
+
     public static RunModifier Create(
         RunModifierType type,
         double value,
@@ -68,7 +76,8 @@ public sealed class RunModifier
         string valueMode = "Flat",
         string stackPolicy = "Additive",
         Guid? expiresAtRoomId = null,
-        Guid? expiresAtCombatId = null)
+        Guid? expiresAtCombatId = null,
+        int? expiresAtFloorIndex = null)
     {
         if (string.IsNullOrWhiteSpace(sourceType))
             throw new DomainException("RunModifier source type is required.");
@@ -88,7 +97,8 @@ public sealed class RunModifier
             valueMode,
             stackPolicy,
             expiresAtRoomId,
-            expiresAtCombatId);
+            expiresAtCombatId,
+            expiresAtFloorIndex);
     }
 
     public static RunModifier Rehydrate(
@@ -103,13 +113,15 @@ public sealed class RunModifier
         string valueMode = "Flat",
         string stackPolicy = "Additive",
         Guid? expiresAtRoomId = null,
-        Guid? expiresAtCombatId = null)
+        Guid? expiresAtCombatId = null,
+        int? expiresAtFloorIndex = null)
     {
         return new RunModifier(
             id, type, value, duration, sourceType, sourceKey,
             createdAtUtc, consumedAtUtc,
             valueMode, stackPolicy,
-            expiresAtRoomId, expiresAtCombatId);
+            expiresAtRoomId, expiresAtCombatId,
+            expiresAtFloorIndex);
     }
 
     public void Consume(DateTime consumedAt)

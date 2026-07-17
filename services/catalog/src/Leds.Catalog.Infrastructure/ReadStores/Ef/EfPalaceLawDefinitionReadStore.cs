@@ -76,6 +76,7 @@ public sealed class EfPalaceLawDefinitionReadStore : IPalaceLawDefinitionReadSto
     private static PalaceLawDefinitionDto MapToDto(PalaceLawDefinitionEntity entity)
     {
         var impactDomains = JsonSerializer.Deserialize<List<string>>(entity.ImpactDomainsJson) ?? [];
+        var exclusionKeys = JsonSerializer.Deserialize<List<string>>(entity.ExclusionKeysJson) ?? [];
 
         return new PalaceLawDefinitionDto(
             entity.Id,
@@ -91,7 +92,16 @@ public sealed class EfPalaceLawDefinitionReadStore : IPalaceLawDefinitionReadSto
             entity.EffectSet?.Effects
                 .OrderBy(effect => effect.Order)
                 .Select(MapEffectToDto)
-                .ToArray() ?? []);
+                .ToArray() ?? [],
+            entity.BaseWeight,
+            entity.MinDepth,
+            entity.MaxDepth,
+            entity.Rarity,
+            entity.Polarity,
+            entity.IsMajeure,
+            entity.RoomKey,
+            entity.IsCumulExempt,
+            exclusionKeys);
     }
 
     private static PalaceLawEffectDefinitionDto MapEffectToDto(EffectDefinitionEntity entity)
