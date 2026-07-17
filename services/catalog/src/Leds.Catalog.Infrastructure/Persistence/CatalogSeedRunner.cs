@@ -5090,20 +5090,23 @@ public sealed class CatalogSeedRunner
     // RunModifiers" mechanism touching every read site across the codebase, judged
     // too invasive for this pass (documented gap).
     //
-    // Loi du Voile's "+10% esquive" half is NOT modeled — no dodge/evasion mechanic
-    // exists anywhere in the engine (documented gap); only its "-3 Focus" half is
-    // seeded. Only one RoomClimate can be active at a time (Run.ReplaceActiveRoomClimateLaws
-    // already enforces this), so these 4 share a dedicated selection group.
+    // Loi du Voile's "+10% esquive" half and Loi des Accords' "5% chance de tonner"
+    // sub-effect are NOT modeled (documented gap) — no dodge/evasion mechanic and no
+    // random-extra-target-on-magic-hit mechanic exist anywhere in the engine; only
+    // each law's primary stat effect is seeded. Only one RoomClimate can be active
+    // at a time (Run.ReplaceActiveRoomClimateLaws already enforces this), so these 4
+    // share a dedicated selection group.
     private async Task SeedLoisClimatiquesAsync(CancellationToken cancellationToken)
     {
         await UpsertCompendiumLawAsync(
             key: "law.voile",
             name: "Loi du Voile",
-            narrativeText: "Article IV — Une brume s'est levée sur le Palais. Elle ne cache "
-                + "rien ; elle empêche seulement de voir clair.",
-            description: "Climat de la salle : Brume. Tous les combattants perdent 3 Focus. "
-                + "(La SFD prévoit aussi +10% d'esquive sous ce climat — non modélisé, aucun "
-                + "mécanisme d'esquive n'existe dans le moteur.)",
+            narrativeText: "Article VII — Ce que nul ne voit clairement, nul n'a à le regretter "
+                + "précisément. Le Palais accorde le flou à parts égales.",
+            description: "Climat de la salle : Brume. -3 Focus (brut) pour tous les "
+                + "combattants ; +10% d'esquive pour tous les combattants (non modélisé, aucun "
+                + "mécanisme d'esquive n'existe dans le moteur — seul le malus de Focus est "
+                + "appliqué).",
             rarity: "Commun",
             polarity: "DoubleTranchant",
             isMajeure: false,
@@ -5116,12 +5119,13 @@ public sealed class CatalogSeedRunner
         await UpsertCompendiumLawAsync(
             key: "law.accords",
             name: "Loi des Accords",
-            narrativeText: "Article XXI — L'orage gronde sur le Palais. Il accorde ses "
-                + "faveurs à quiconque sait s'en servir.",
-            description: "Climat de la salle : Orage. Tous les combattants infligent +15% de "
-                + "dégâts magiques.",
-            rarity: "Commun",
-            polarity: "Neutre",
+            narrativeText: "Article XXIII — Le tonnerre du Palais gronde en accords, jamais en "
+                + "coups. Que ceux qui chantent soient entendus plus loin qu'ils ne visaient.",
+            description: "Climat de la salle : Orage. +15% dégâts magiques pour tous ; chaque "
+                + "sort de dégâts magiques a 5% de chance de « tonner » — frapper une cible "
+                + "supplémentaire aléatoire (non modélisé, seul le bonus de dégâts est appliqué).",
+            rarity: "Rare",
+            polarity: "DoubleTranchant",
             isMajeure: false,
             minDepth: null,
             duration: "UntilRoomEnds",
@@ -5132,12 +5136,11 @@ public sealed class CatalogSeedRunner
         await UpsertCompendiumLawAsync(
             key: "law.deuil-sec",
             name: "Loi du Deuil Sec",
-            narrativeText: "Article XXXVIII — Une pluie de cendres tombe sur le Palais. Elle "
-                + "n'éteint rien ; elle recouvre.",
-            description: "Climat de la salle : Pluie de cendres. Tous les combattants voient "
-                + "leurs soins réduits de 25% et leurs dégâts sur la durée augmentés de 15% "
-                + "(« dégâts de feu » de la SFD réinterprétés en bonus DoT — aucun type "
-                + "élémentaire feu n'existe dans le moteur).",
+            narrativeText: "Article XIX — La forge a brûlé quelque chose aujourd'hui. Le Palais "
+                + "porte le deuil, et le deuil ne console pas.",
+            description: "Climat de la salle : Pluie de cendres. Tous les soins sont réduits de "
+                + "25% ; tous les dégâts de feu gagnent +15% (réinterprété en bonus de dégâts "
+                + "DoT — aucun type élémentaire feu n'existe dans le moteur).",
             rarity: "Peu commun",
             polarity: "Sévère",
             isMajeure: false,
@@ -5150,12 +5153,14 @@ public sealed class CatalogSeedRunner
         await UpsertCompendiumLawAsync(
             key: "law.maree-haute",
             name: "Loi de la Marée Haute",
-            narrativeText: "Article LII — Une pluie violacée monte sur le Palais, aussi haute "
-                + "qu'une marée. Tout ce qui saigne, saigne un peu plus.",
-            description: "Climat de la salle : Pluie violacée. Tous les dégâts sur la durée "
-                + "(joueur et ennemis) infligent +1 dégât par tour.",
+            narrativeText: "Article XII — La mer a des droits sur toute chose entamée. Ce qui "
+                + "saigne saignera un peu plus, par égard pour Elle.",
+            description: "Climat de la salle : Pluie violacée. Tous les DoT (joueur et ennemis) "
+                + "infligent +1 dégât par tour. (La SFD prévoit aussi qu'à la Falaise la "
+                + "probabilité d'apparition de l'Impératrice passe à 100% — non modélisé, "
+                + "aucune pondération de rencontre par room-key n'est câblée pour cette loi.)",
             rarity: "Peu commun",
-            polarity: "Neutre",
+            polarity: "Sévère",
             isMajeure: false,
             minDepth: null,
             duration: "UntilRoomEnds",
