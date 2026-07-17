@@ -5287,17 +5287,14 @@ public sealed class CatalogSeedRunner
         await _ctx.SaveChangesAsync(cancellationToken);
     }
 
-    // Chapitre VI — Lois de mémoire & de relations. Only 1 of its 4 laws is seeded:
-    // "Loi du Nom Retenu" (reuses the new ReputationChangeDoubled mechanic). NOT seeded:
-    // "Loi de l'Oubli Partiel" (law.oubli-partiel) needs a mechanism to temporarily
-    // remove a random non-Frappe ally skill for the floor plus a floor-end stat-point
-    // grant — no skill-removal/floor-end-hook mechanism exists for this shape yet.
-    // "Loi des Présentations" (law.presentations) needs enemies to telegraph their next
-    // action on their first turn — no "action forecast" feature exists. "Loi du Témoin"
-    // (law.temoin) needs freezing NPC reputation deltas for the floor (the inverse of
-    // Nom Retenu) — tractable in principle (same ScaleReputationGain hook, force the
-    // scaled result to 0) but deferred to keep this pass scoped to one law per session
-    // slice; revisit alongside a future Chapitre VI pass.
+    // Chapitre VI — Lois de mémoire & de relations. 2 of its 4 laws are seeded: "Loi du
+    // Nom Retenu" (reuses ReputationChangeDoubled) and "Loi du Témoin" (new
+    // WoundHealingBlocked mechanic). NOT seeded: "Loi de l'Oubli Partiel"
+    // (law.oubli-partiel) needs a mechanism to temporarily remove a random non-Frappe
+    // ally skill for the floor plus a floor-end stat-point grant — no skill-removal/
+    // floor-end-hook mechanism exists for this shape yet. "Loi des Présentations"
+    // (law.presentations) needs enemies to telegraph their next action on their first
+    // turn — no "action forecast" feature exists.
     private async Task SeedLoisDeMemoireAsync(CancellationToken cancellationToken)
     {
         await UpsertCompendiumLawAsync(
@@ -5317,9 +5314,27 @@ public sealed class CatalogSeedRunner
             impactDomains: ["Narrative"],
             cancellationToken);
 
+        await UpsertCompendiumLawAsync(
+            key: "law.temoin",
+            name: "Loi du Témoin",
+            narrativeText: "Article LVI — Ce qui a été fait a été vu. Ce qui a été vu ne se "
+                + "défait pas séance tenante ; il faudra au moins changer d'étage.",
+            description: "Les blessures PNJ armées pendant cet étage ne peuvent pas être "
+                + "apaisées (ni par acte, ni par score) tant que l'étage n'est pas quitté. "
+                + "Les rancunes tiennent.",
+            rarity: "Épique",
+            polarity: "Sévère",
+            isMajeure: false,
+            minDepth: 2,
+            duration: "UntilFloorEnds",
+            selectionGroup: "law.memoire",
+            impactDomains: ["Narrative"],
+            cancellationToken);
+
         await _ctx.SaveChangesAsync(cancellationToken);
 
         await UpsertLawEffectAsync("law.nom-retenu", "EnableReputationChangeDoubled", 1m, "UntilFloorEnds", null, cancellationToken);
+        await UpsertLawEffectAsync("law.temoin", "EnableWoundHealingBlocked", 1m, "UntilFloorEnds", null, cancellationToken);
 
         await _ctx.SaveChangesAsync(cancellationToken);
     }
