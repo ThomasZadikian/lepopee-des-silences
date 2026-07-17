@@ -69,4 +69,6 @@ public enum EffectType
     EnableWoundHealingBlocked,
     /// <summary>"Loi du Silence Dû" (law.silence-du) → RunModifierType.SilenceDuActive.</summary>
     EnableSilenceDuActive,
+    /// <summary>"Loi des Poches Cousues" (law.poches-cousues) → RunModifierType.ConsumablesRestrictedInCombat.</summary>
+    EnableConsumablesRestrictedInCombat,
 }

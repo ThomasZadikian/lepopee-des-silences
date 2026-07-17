@@ -114,6 +114,8 @@ public static class PalaceLawMapper
                 RunModifierType.SilenceDuActive, 1, duration),
             EffectType.EnableWoundHealingBlocked => PalaceLawEffect.Create(
                 RunModifierType.WoundHealingBlocked, 1, duration),
+            EffectType.EnableConsumablesRestrictedInCombat => PalaceLawEffect.Create(
+                RunModifierType.ConsumablesRestrictedInCombat, 1, duration),
 
             _ => throw new DomainException($"Palace law effect type '{effect.EffectType}' is not supported by the runtime.")
         };

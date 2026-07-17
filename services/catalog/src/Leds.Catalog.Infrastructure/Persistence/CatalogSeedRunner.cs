@@ -92,6 +92,7 @@ public sealed class CatalogSeedRunner
         await SeedLoisDeCombatAsync(cancellationToken);
         await SeedLoisClimatiquesAsync(cancellationToken);
         await SeedLoisDuSeuilAsync(cancellationToken);
+        await SeedLoisEconomieAsync(cancellationToken);
         await SeedEditsClementsAsync(cancellationToken);
         await SeedLoisDeMemoireAsync(cancellationToken);
         await SeedLoisLieesAuxSallesAsync(cancellationToken);
@@ -5236,6 +5237,43 @@ public sealed class CatalogSeedRunner
 
         await UpsertLawEffectAsync("law.pieds-essuyes", "AddStartingGuard", 3m, "UntilFloorEnds", null, cancellationToken);
         await UpsertLawEffectAsync("law.silence-du", "EnableSilenceDuActive", 1m, "UntilRoomEnds", null, cancellationToken);
+
+        await _ctx.SaveChangesAsync(cancellationToken);
+    }
+
+    // Chapitre V — Lois d'économie. 1 of its 4 laws is seeded: "Loi des Poches Cousues"
+    // (law.poches-cousues, new RunModifierType.ConsumablesRestrictedInCombat — see
+    // Run.UseItem). The other 3 are NOT seeded (documented gap): "Loi de l'Impôt du
+    // Seuil" (law.impot-seuil) and "Loi du Prêteur" (law.preteur) both need an in-run
+    // debit/credit path for Éclats du Palais — today that currency lives ONLY on the
+    // player-service PlayerProfile (read via IPlayerProfileGateway as a snapshot value,
+    // PalaceShardCount), with no command allowing game-engine to spend or grant it
+    // mid-run; wiring a synchronous cross-service wallet mutation into every room
+    // transition is out of scope for this pass. "Loi de l'Abondance" (law.abondance)
+    // needs both a reward-offer choice-count override (today hardcoded to 3 in
+    // RewardOfferFactory.CreateItemRewardChoices) AND a new "one node in two is empty at
+    // opening" per-floor parity mechanic — no zero-choice RewardOffer flow exists yet.
+    private async Task SeedLoisEconomieAsync(CancellationToken cancellationToken)
+    {
+        await UpsertCompendiumLawAsync(
+            key: "law.poches-cousues",
+            name: "Loi des Poches Cousues",
+            narrativeText: "Article XLI — On ne fouille pas ses poches à table. Ce qui s'y "
+                + "trouve mûrira d'attendre.",
+            description: "Aucun consommable utilisable en combat dans cette salle. Hors "
+                + "combat, les consommables rendent +25% (les soins comme les points).",
+            rarity: "Rare",
+            polarity: "DoubleTranchant",
+            isMajeure: false,
+            minDepth: null,
+            duration: "UntilRoomEnds",
+            selectionGroup: "law.economie",
+            impactDomains: ["Combat"],
+            cancellationToken);
+
+        await _ctx.SaveChangesAsync(cancellationToken);
+
+        await UpsertLawEffectAsync("law.poches-cousues", "EnableConsumablesRestrictedInCombat", 1m, "UntilRoomEnds", null, cancellationToken);
 
         await _ctx.SaveChangesAsync(cancellationToken);
     }

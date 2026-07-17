@@ -1952,6 +1952,9 @@ public sealed class Run
     /// A tuple describing what was applied: the effect type, the amount, and whether
     /// the item was fully consumed (quantity reached zero).
     /// </returns>
+    /// <summary>"Loi des Poches Cousues" (law.poches-cousues) out-of-combat consumable bonus, in percent.</summary>
+    private const int ConsumablesRestrictedBonusPercent = 25;
+
     public (RunItemEffectType effectType, int amount, bool itemDepleted) UseItem(RunItemId itemId)
     {
         if (Status is RunStatus.Completed or RunStatus.Failed or RunStatus.Abandoned)
@@ -1960,48 +1963,62 @@ public sealed class Run
         var item = _runItems.FirstOrDefault(i => i.Id == itemId)
             ?? throw new DomainException($"Item '{itemId.Value}' not found in run inventory.");
 
+        var consumablesRestricted = _runModifiers
+            .Any(m => m.Type == RunModifierType.ConsumablesRestrictedInCombat && !m.IsConsumed);
+
+        if (_activeCombat is not null && consumablesRestricted)
+            throw new DomainException("Loi des Poches Cousues: no consumable can be used in combat in this room.");
+
         // ConsumeOne validates Type == Consumable and Quantity > 0.
         item.ConsumeOne();
 
-        ApplyItemEffectToPlayerState(item);
+        // Bonus only applies out of combat (the "in combat" branch above already threw
+        // if consumablesRestricted and _activeCombat is not null, so reaching here with
+        // _activeCombat null and the modifier active is exactly the law's "hors combat"
+        // half).
+        var effectAmount = consumablesRestricted && _activeCombat is null
+            ? (int)Math.Round(item.EffectAmount * (1.0 + ConsumablesRestrictedBonusPercent / 100.0), MidpointRounding.AwayFromZero)
+            : item.EffectAmount;
+
+        ApplyItemEffectToPlayerState(item, effectAmount);
 
         if (_activeCombat is not null)
-            ApplyItemEffectToCombatant(item, _activeCombat);
+            ApplyItemEffectToCombatant(item, _activeCombat, effectAmount);
 
         var depleted = item.Quantity == 0;
-        return (item.EffectType, item.EffectAmount, depleted);
+        return (item.EffectType, effectAmount, depleted);
     }
 
-    private void ApplyItemEffectToPlayerState(RunItem item)
+    private void ApplyItemEffectToPlayerState(RunItem item, int effectAmount)
     {
         switch (item.EffectType)
         {
             case RunItemEffectType.Heal:
-                PlayerState.Heal(ApplyHealingBonus(item.EffectAmount, HealingBonusPercent));
+                PlayerState.Heal(ApplyHealingBonus(effectAmount, HealingBonusPercent));
                 CurrentHp = PlayerState.CurrentVitality;
                 break;
 
             case RunItemEffectType.Guard:
-                PlayerState.GainGuard(item.EffectAmount);
+                PlayerState.GainGuard(effectAmount);
                 break;
 
             case RunItemEffectType.ManaRestore:
-                PlayerState.GainMana(item.EffectAmount);
+                PlayerState.GainMana(effectAmount);
                 break;
 
             case RunItemEffectType.ChargeRestore:
-                PlayerState.GainCharge(item.EffectAmount);
+                PlayerState.GainCharge(effectAmount);
                 break;
 
             case RunItemEffectType.HealAndManaRestorePercent:
-                var healAmount = ApplyHealingBonus(PercentOf(PlayerState.MaxVitality, item.EffectAmount), HealingBonusPercent);
+                var healAmount = ApplyHealingBonus(PercentOf(PlayerState.MaxVitality, effectAmount), HealingBonusPercent);
                 if (healAmount > 0)
                 {
                     PlayerState.Heal(healAmount);
                     CurrentHp = PlayerState.CurrentVitality;
                 }
 
-                var manaAmount = PercentOf(PlayerState.MaxMana, item.EffectAmount);
+                var manaAmount = PercentOf(PlayerState.MaxMana, effectAmount);
                 if (manaAmount > 0)
                 {
                     PlayerState.GainMana(manaAmount);
@@ -2021,7 +2038,7 @@ public sealed class Run
         }
     }
 
-    private static void ApplyItemEffectToCombatant(RunItem item, Combat combat)
+    private static void ApplyItemEffectToCombatant(RunItem item, Combat combat, int effectAmount)
     {
         var playerCombatant = combat.Allies
             .FirstOrDefault(a => a.Side == CombatantSide.Player);
@@ -2032,31 +2049,31 @@ public sealed class Run
         switch (item.EffectType)
         {
             case RunItemEffectType.Heal:
-                playerCombatant.ApplyHeal(ApplyHealingBonus(item.EffectAmount, playerCombatant.EffectiveHealingBonusPercent));
+                playerCombatant.ApplyHeal(ApplyHealingBonus(effectAmount, playerCombatant.EffectiveHealingBonusPercent));
                 break;
 
             case RunItemEffectType.Guard:
-                playerCombatant.GainGuard(item.EffectAmount);
+                playerCombatant.GainGuard(effectAmount);
                 break;
 
             case RunItemEffectType.ManaRestore:
-                playerCombatant.GainMana(item.EffectAmount);
+                playerCombatant.GainMana(effectAmount);
                 break;
 
             case RunItemEffectType.ChargeRestore:
-                playerCombatant.GainCharge(item.EffectAmount);
+                playerCombatant.GainCharge(effectAmount);
                 break;
 
             case RunItemEffectType.HealAndManaRestorePercent:
                 var healAmount = ApplyHealingBonus(
-                    PercentOf(playerCombatant.MaxVitality, item.EffectAmount),
+                    PercentOf(playerCombatant.MaxVitality, effectAmount),
                     playerCombatant.EffectiveHealingBonusPercent);
                 if (healAmount > 0 && playerCombatant.CurrentVitality < playerCombatant.MaxVitality)
                 {
                     playerCombatant.ApplyHeal(healAmount);
                 }
 
-                var manaAmount = PercentOf(playerCombatant.MaxMana, item.EffectAmount);
+                var manaAmount = PercentOf(playerCombatant.MaxMana, effectAmount);
                 if (manaAmount > 0)
                 {
                     playerCombatant.GainMana(manaAmount);

@@ -75,4 +75,9 @@ public enum RunModifierType
     /// skills deal +8% damage, and every Player-side skill cast costs +2 flat mana. See
     /// CombatFactory.ApplySilenceDuBundle.</summary>
     SilenceDuActive = 30,
+
+    /// <summary>"Loi des Poches Cousues" (law.poches-cousues) — no consumable can be used
+    /// while in combat; outside combat, consumable effects are boosted +25%. See
+    /// Run.UseItem.</summary>
+    ConsumablesRestrictedInCombat = 31,
 }

@@ -1,5 +1,8 @@
 ﻿using FluentAssertions;
+using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Common;
+using Leds.GameEngine.Domain.Nodes;
+using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
 using Leds.GameEngine.UnitTests.Common.Factories;
 
@@ -190,5 +193,89 @@ public sealed class RunUseItemTests
         run.PlayerState.CurrentVitality.Should().Be(20 + 16);
         // Mana restore is unaffected by the healing bonus.
         run.PlayerState.Mana.Should().Be(10 + 7);
+    }
+
+    // ---------------------------------------------------------------------------
+    // "Loi des Poches Cousues" (RunModifierType.ConsumablesRestrictedInCombat):
+    // blocks consumables in combat, boosts them +25% out of combat.
+    // ---------------------------------------------------------------------------
+
+    private static RunModifier CreatePochesCousuesModifier() => RunModifier.Create(
+        RunModifierType.ConsumablesRestrictedInCombat,
+        value: 1,
+        RunModifierDuration.UntilRoomEnds,
+        sourceType: "PalaceLaw",
+        sourceKey: "law-poches-cousues");
+
+    private static (Run Run, Combat Combat) CreateRunWithActiveCombat()
+    {
+        var run = TestGameEngineFactory.CreateRunWithSelectedTargetNode(NodeEventType.Combat).Run;
+        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+        var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 80);
+        var combat = Combat.Create(CombatId.New(), run.Id, RoomId.New(), NodeId.New(), [ally], [enemy]);
+        run.StartCombat(combat);
+
+        return (run, combat);
+    }
+
+    [Fact]
+    public void UseItem_ShouldThrow_WhenConsumablesRestrictedInCombat_AndRunHasActiveCombat()
+    {
+        var (run, _) = CreateRunWithActiveCombat();
+        run.AddRunModifier(CreatePochesCousuesModifier());
+        var item = CreateHealPotion();
+        run.AddRunItem(item);
+
+        var act = () => run.UseItem(item.Id);
+
+        act.Should()
+            .Throw<DomainException>()
+            .WithMessage("*Poches Cousues*");
+        item.Quantity.Should().Be(2, because: "a rejected use must not consume a charge.");
+    }
+
+    [Fact]
+    public void UseItem_ShouldBoostEffectByTwentyFivePercent_WhenConsumablesRestrictedActive_AndOutOfCombat()
+    {
+        var run = TestGameEngineFactory.CreateRun();
+        run.PlayerState.TakeDamage(15);
+        run.AddRunModifier(CreatePochesCousuesModifier());
+        var item = CreateHealPotion();
+        run.AddRunItem(item);
+        var vitalityBefore = run.PlayerState.CurrentVitality;
+
+        var (_, amount, _) = run.UseItem(item.Id);
+
+        // round(10 * 1.25) = 13.
+        amount.Should().Be(13);
+        run.PlayerState.CurrentVitality.Should().Be(vitalityBefore + 13);
+    }
+
+    [Fact]
+    public void UseItem_ShouldNotBoostEffect_WhenConsumablesRestrictedModifierIsConsumed()
+    {
+        var run = TestGameEngineFactory.CreateRun();
+        run.PlayerState.TakeDamage(15);
+        var modifier = CreatePochesCousuesModifier();
+        run.AddRunModifier(modifier);
+        modifier.Consume(DateTime.UtcNow);
+        var item = CreateHealPotion();
+        run.AddRunItem(item);
+
+        var (_, amount, _) = run.UseItem(item.Id);
+
+        amount.Should().Be(10);
+    }
+
+    [Fact]
+    public void UseItem_ShouldNotThrowOrBoost_WhenNoConsumablesRestrictedModifierIsActive()
+    {
+        var (run, _) = CreateRunWithActiveCombat();
+        var item = CreateHealPotion();
+        run.AddRunItem(item);
+
+        var (_, amount, _) = run.UseItem(item.Id);
+
+        amount.Should().Be(10);
     }
 }
