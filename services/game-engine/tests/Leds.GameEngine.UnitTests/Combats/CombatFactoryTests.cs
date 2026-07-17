@@ -790,4 +790,66 @@ public sealed class CombatFactoryTests
             "PalaceLaw",
             "law-reflet-test");
     }
+
+    // ---------------------------------------------------------------------------
+    // "Loi du Sablier Renversé" (TurnOrderReverse)
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void CreateFromDraft_ShouldNotAlterSpeed_WhenTurnOrderReverseIsNotActive()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft(enemySpeed: 30);
+
+        var combat = factory.CreateFromDraft(draft, speed: 10);
+
+        combat.Allies.Single().EffectiveSpeed.Should().Be(10);
+        combat.Enemies.Single().EffectiveSpeed.Should().Be(30);
+    }
+
+    [Fact]
+    public void CreateFromDraft_ShouldMirrorSpeedAroundTheRosterRange_WhenTurnOrderReverseIsActive()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft(enemySpeed: 30);
+
+        var combat = factory.CreateFromDraft(
+            draft, speed: 10, runModifiers: [CreateTurnOrderReverseModifier()]);
+
+        // min=10, max=30 => slowest (ally, 10) and fastest (enemy, 30) swap places.
+        combat.Allies.Single().EffectiveSpeed.Should().Be(30);
+        combat.Enemies.Single().EffectiveSpeed.Should().Be(10);
+    }
+
+    [Fact]
+    public void CreateFromDraft_ShouldLeaveTheMedianCombatantUnchanged_WhenTurnOrderReverseIsActive()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft(enemyCount: 2);
+        // Ally speed 10, one enemy at 30 (fastest), one enemy exactly at the midpoint (20).
+        var midpointDraft = draft with
+        {
+            Enemies = new[]
+            {
+                draft.Enemies.ElementAt(0) with { Speed = 30 },
+                draft.Enemies.ElementAt(1) with { Speed = 20 }
+            }
+        };
+
+        var combat = factory.CreateFromDraft(
+            midpointDraft, speed: 10, runModifiers: [CreateTurnOrderReverseModifier()]);
+
+        // min=10, max=30 => midpoint (20) mirrors to itself: 10+30-20=20.
+        combat.Enemies.Single(e => e.SourceKey == "enemy.1").EffectiveSpeed.Should().Be(20);
+    }
+
+    private static RunModifier CreateTurnOrderReverseModifier()
+    {
+        return RunModifier.Create(
+            RunModifierType.TurnOrderReverse,
+            1,
+            RunModifierDuration.UntilRoomEnds,
+            "PalaceLaw",
+            "law-sablier-test");
+    }
 }

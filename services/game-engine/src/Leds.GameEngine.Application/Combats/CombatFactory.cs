@@ -335,6 +335,11 @@ public sealed class CombatFactory : ICombatFactory
             })
             .ToArray();
 
+        if (activeModifiers.Any(m => m.Type == RunModifierType.TurnOrderReverse && !m.IsConsumed))
+        {
+            ApplyTurnOrderReversal(allies.Concat(enemies));
+        }
+
         return Combat.Create(
             combatId,
             new RunId(draft.RunId),
@@ -342,6 +347,44 @@ public sealed class CombatFactory : ICombatFactory
             new NodeId(draft.NodeId),
             allies,
             enemies);
+    }
+
+    /// <summary>
+    /// "Loi du Sablier Renversé" (law.sablier, Durée: Salle) — "les combattants les plus
+    /// lents agissent en premier, les plus rapides en dernier. L'ATB coule à l'envers."
+    /// Mirrors every combatant's base Speed around the roster's [min, max] range via a
+    /// flat Speed StatModifier, so the existing (Speed-driven) ATB tempo formula produces
+    /// a genuinely reversed turn order without needing its own inversion path. Re-derived
+    /// fresh for every combat in the room for as long as the law's RunModifier
+    /// (UntilRoomEnds) stays unconsumed — same pattern as RoomClimate/AttackTypeOverride.
+    /// </summary>
+    private static void ApplyTurnOrderReversal(IEnumerable<Combatant> combatants)
+    {
+        var roster = combatants.ToArray();
+        if (roster.Length == 0)
+            return;
+
+        var minSpeed = roster.Min(c => c.BaseStatSnapshot.Speed);
+        var maxSpeed = roster.Max(c => c.BaseStatSnapshot.Speed);
+
+        foreach (var combatant in roster)
+        {
+            var invertedSpeed = minSpeed + maxSpeed - combatant.BaseStatSnapshot.Speed;
+            var delta = invertedSpeed - combatant.BaseStatSnapshot.Speed;
+
+            if (delta == 0)
+                continue;
+
+            combatant.ApplyStatusEffect(CombatStatusEffect.Create(
+                key: "law-sablier-renverse:speed",
+                displayName: "Sablier renversé",
+                kind: StatusEffectKind.StatModifier,
+                currentTick: 0,
+                durationTicks: 0,
+                magnitude: delta,
+                stat: CombatStat.Speed,
+                isPermanent: true));
+        }
     }
 
     // Looks up the durable statuses a skill applies, by skill key (catalog-sourced).
