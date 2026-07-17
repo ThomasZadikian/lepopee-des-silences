@@ -94,6 +94,7 @@ public sealed class CatalogSeedRunner
         await SeedLoisDuSeuilAsync(cancellationToken);
         await SeedEditsClementsAsync(cancellationToken);
         await SeedLoisDeMemoireAsync(cancellationToken);
+        await SeedLoisLieesAuxSallesAsync(cancellationToken);
         await SeedCanonRoomsAsync(cancellationToken);
         await SeedPalaisWorldAsync(cancellationToken);
         await SeedRoomThemeAffinitiesAsync(cancellationToken);
@@ -5353,6 +5354,49 @@ public sealed class CatalogSeedRunner
 
         await UpsertLawEffectAsync("law.nom-retenu", "EnableReputationChangeDoubled", 1m, "UntilFloorEnds", null, cancellationToken);
         await UpsertLawEffectAsync("law.temoin", "EnableWoundHealingBlocked", 1m, "UntilFloorEnds", null, cancellationToken);
+
+        await _ctx.SaveChangesAsync(cancellationToken);
+    }
+
+    // Chapitre IX — Lois liées aux salles. These are structurally different from every
+    // other chapter: they are NOT drawn by the ambient promulgator (AmbientPalaceLawPromulgator
+    // explicitly excludes any law with a non-null RoomKey from its pool) and never appear
+    // in Run.ActivePalaceLaws — they're "always active" the moment the player is in the
+    // matching room, checked directly against the room's RoomKey rather than through a
+    // RunModifier. IsCumulExempt = true per the SFD ("elles ne comptent pas dans la
+    // limite de cumul : elles sont le terrain, pas le climat").
+    //
+    // Only 1 of its 5 laws is seeded: "Loi des Visites Terminées" (room.hopital), whose
+    // mechanic (CombatFactory checking draft.RoomKey == "room.hopital") is a hardcoded
+    // room-key check, not a catalog-driven effect — so no EffectDefinition/RunModifier
+    // is attached to this entry; it exists purely as descriptive/display metadata. The
+    // other 4 need mechanics that don't exist yet: "Loi de la Cellule" (room.cellule)
+    // needs a no-death/forced-surrender combat-resolution mode; "Loi de la Falaise"
+    // (room.falaise) needs a row-based combatant-positioning system that doesn't exist
+    // in combat (only in map layout); "Loi des Sorties Mouvantes" (room.labyrinthe)
+    // needs a chain-combat trigger after 12 turns; "Loi du Sanctuaire" (room.meditation)
+    // needs the ambient promulgator to refuse ANY promulgation while in that room.
+    private async Task SeedLoisLieesAuxSallesAsync(CancellationToken cancellationToken)
+    {
+        await UpsertCompendiumLawAsync(
+            key: "law.visites-terminees",
+            name: "Loi des Visites Terminées",
+            narrativeText: "Article XLVIII — Les soins sont dispensés par le personnel "
+                + "autorisé, aux heures autorisées, aux patients autorisés. Vous n'êtes "
+                + "rien de tout cela.",
+            description: "Les sorts de soin sont sans effet dans cette salle (les soins "
+                + "par objets fonctionnent). L'administration a des horaires ; la magie "
+                + "n'a pas de passe-droit.",
+            rarity: "Liée",
+            polarity: "Sévère",
+            isMajeure: false,
+            minDepth: null,
+            duration: "Permanent",
+            selectionGroup: "law.salle",
+            impactDomains: ["Combat"],
+            cancellationToken: cancellationToken,
+            roomKey: "room.hopital",
+            isCumulExempt: true);
 
         await _ctx.SaveChangesAsync(cancellationToken);
     }
