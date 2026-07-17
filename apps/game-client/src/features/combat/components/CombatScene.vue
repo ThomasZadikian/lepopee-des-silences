@@ -258,6 +258,14 @@ watch(
           <span class="combat-scene__header-turn">tour {{ combatStore.combat.turnNumber }} · temps réel · les jauges ne s'arrêtent pas</span>
         </div>
 
+        <p
+          v-if="combatStore.activeActionBanner"
+          class="combat-scene__action-banner"
+          aria-live="polite"
+        >
+          {{ combatStore.activeActionBanner }}
+        </p>
+
         <!-- Les Manifestations (enemies) -->
         <p class="combat-scene__side-title combat-scene__side-title--foe">
           ◆ Les Manifestations · {{ combatStore.enemies.length }}
@@ -546,6 +554,27 @@ watch(
   font-size: 0.68rem;
   letter-spacing: 0.06em;
   color: var(--ink-5);
+}
+
+.combat-scene__action-banner {
+  margin: 0 0 14px;
+  padding: var(--space-2) var(--space-4);
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: clamp(0.95rem, 1.6vw, 1.2rem);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--gold);
+  border: 1px solid var(--edge-gold);
+  border-radius: var(--radius-sm);
+  background: linear-gradient(180deg, oklch(0.24 0.05 60 / 0.85), oklch(0.18 0.04 60 / 0.9));
+  text-shadow: 0 0 14px color-mix(in oklch, var(--gold), transparent 55%);
+  animation: combat-banner-in 220ms ease-out;
+}
+
+@keyframes combat-banner-in {
+  0% { opacity: 0; transform: translateY(-6px); }
+  100% { opacity: 1; transform: translateY(0); }
 }
 
 .combat-scene__side-title {
@@ -903,6 +932,7 @@ watch(
 
 @media (prefers-reduced-motion: reduce) {
   .combat-scene__resolving,
+  .combat-scene__action-banner,
   .combat-float,
   .seuil-manometer__needle {
     animation: none;
