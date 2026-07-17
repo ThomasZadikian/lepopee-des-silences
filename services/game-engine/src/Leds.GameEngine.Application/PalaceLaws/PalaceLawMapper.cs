@@ -84,6 +84,23 @@ public static class PalaceLawMapper
                 RunModifierDuration.UntilRoomEnds),
             EffectType.ModifyGenerationWeight => null,
             EffectType.ModifyEnemyBehavior => null,
+
+            // Lois du Palais — gate-style effects (see EffectType.cs for the law → mechanic map).
+            EffectType.EnableTurnOrderReverse => PalaceLawEffect.Create(
+                RunModifierType.TurnOrderReverse, 1, duration),
+            EffectType.EnableTurnOrderLock => PalaceLawEffect.Create(
+                RunModifierType.TurnOrderLock, 1, duration),
+            EffectType.EnableRoomTraversalHpDrain => PalaceLawEffect.Create(
+                RunModifierType.RoomTraversalHpDrain, 1, duration),
+            EffectType.EnableHitCounterDoubleDamage => PalaceLawEffect.Create(
+                RunModifierType.HitCounterDoubleDamage, 1, duration),
+            EffectType.EnableMirrorCombatCopy => PalaceLawEffect.Create(
+                RunModifierType.MirrorCombatCopy, 1, duration),
+            EffectType.EnableFirstHitCritical => PalaceLawEffect.Create(
+                RunModifierType.FirstHitCritical, 1, duration),
+            EffectType.EnableLowHpDamageAmplification => PalaceLawEffect.Create(
+                RunModifierType.DamageAmplificationBelowHpThreshold, 1, duration),
+
             _ => throw new DomainException($"Palace law effect type '{effect.EffectType}' is not supported by the runtime.")
         };
     }

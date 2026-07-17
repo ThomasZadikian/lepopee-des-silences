@@ -35,4 +35,23 @@ public enum EffectType
     ApplyBehaviorTag,
     ApplyNarrativePressure,
     ApplyRoomClimate,
+
+    // Lois du Palais — gate-style effects for the Compendium's exotic combat mechanics
+    // (chapitres IV/VIII). The effect's Value only needs to be non-zero (PalaceLawEffect.Create
+    // rejects zero); the mechanic reads the RunModifier's mere presence, not its magnitude.
+    /// <summary>"Loi du Sablier Renversé" (law.sablier) → RunModifierType.TurnOrderReverse.</summary>
+    EnableTurnOrderReverse,
+    /// <summary>"Loi de la File Indienne" (law.file-indienne) → RunModifierType.TurnOrderLock.</summary>
+    EnableTurnOrderLock,
+    /// <summary>"Loi de la Dévoration" (law.devoration) → RunModifierType.RoomTraversalHpDrain
+    /// (gates both the room-traversal drain and the per-win restore).</summary>
+    EnableRoomTraversalHpDrain,
+    /// <summary>"Loi du Treizième Coup" (law.treizieme-coup) → RunModifierType.HitCounterDoubleDamage.</summary>
+    EnableHitCounterDoubleDamage,
+    /// <summary>"Loi du Reflet" (law.reflet) → RunModifierType.MirrorCombatCopy.</summary>
+    EnableMirrorCombatCopy,
+    /// <summary>"Loi de la Première Impression" (law.premiere-impression) → RunModifierType.FirstHitCritical.</summary>
+    EnableFirstHitCritical,
+    /// <summary>"Loi de la Curée" (law.curee) → RunModifierType.DamageAmplificationBelowHpThreshold.</summary>
+    EnableLowHpDamageAmplification,
 }

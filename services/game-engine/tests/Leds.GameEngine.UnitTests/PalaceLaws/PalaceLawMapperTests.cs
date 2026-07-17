@@ -108,4 +108,27 @@ public sealed class PalaceLawMapperTests
         law.Effects.Should().BeEmpty(
             because: "generation-weight and enemy-behavior effects have no direct RunModifier translation.");
     }
+
+    [Theory]
+    [InlineData("EnableTurnOrderReverse", RunModifierType.TurnOrderReverse)]
+    [InlineData("EnableTurnOrderLock", RunModifierType.TurnOrderLock)]
+    [InlineData("EnableRoomTraversalHpDrain", RunModifierType.RoomTraversalHpDrain)]
+    [InlineData("EnableHitCounterDoubleDamage", RunModifierType.HitCounterDoubleDamage)]
+    [InlineData("EnableMirrorCombatCopy", RunModifierType.MirrorCombatCopy)]
+    [InlineData("EnableFirstHitCritical", RunModifierType.FirstHitCritical)]
+    [InlineData("EnableLowHpDamageAmplification", RunModifierType.DamageAmplificationBelowHpThreshold)]
+    public void CreatePalaceLaw_ShouldMapExoticMechanicGateEffects(string effectType, RunModifierType expected)
+    {
+        var definition = CreateDefinition(
+            impactDomains: ["Combat"],
+            effects:
+            [
+                new CatalogEffectDefinitionSnapshot(
+                    effectType, "Run", 1m, "Flat", "UntilRoomEnds", "Additive", null, 0, null, null, null),
+            ]);
+
+        var law = PalaceLawMapper.CreatePalaceLaw(definition);
+
+        law.Effects.Should().ContainSingle(effect => effect.ModifierType == expected);
+    }
 }
