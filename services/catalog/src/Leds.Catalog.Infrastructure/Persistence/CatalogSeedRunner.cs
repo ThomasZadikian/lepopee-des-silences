@@ -88,6 +88,7 @@ public sealed class CatalogSeedRunner
         await SeedCanonCursesAsync(cancellationToken);
         await SeedCanonLawsAsync(cancellationToken);
         await AttachCanonLawEffectsAsync(cancellationToken);
+        await SeedLoisMajeuresAsync(cancellationToken);
         await SeedCanonRoomsAsync(cancellationToken);
         await SeedPalaisWorldAsync(cancellationToken);
         await SeedRoomThemeAffinitiesAsync(cancellationToken);
@@ -4858,6 +4859,165 @@ public sealed class CatalogSeedRunner
         existing.Visibility = visibility; existing.Priority = priority;
         existing.ImpactDomainsJson = domainsJson; existing.UpdatedAtUtc = now;
     }
+
+    // ── COMPENDIUM DES LOIS DU PALAIS (40 lois, Phase 4) ─────────────────────
+    //
+    // Chapitre VIII — Lois majeures & paradoxales. Seeded first because 4 of its 5 laws
+    // already have full mechanical backing from Phase 3 (Reflet/Sablier Renversé/Dévoration/
+    // Treizième Coup); "Loi de la Destinée" needs a new "apply to every combatant
+    // unconditionally at combat creation" mechanic that doesn't exist yet and is
+    // deliberately NOT seeded here — seeding it without real backing would show the
+    // player a mechanical description that lies about what the game actually does.
+    //
+    // Two promulgation rules from the compendium are NOT enforced by the engine yet
+    // (documented gap, same convention as the Phase 3 "document but simplify" pattern):
+    // "jamais deux fois par run" (Reflet) and "poids doublé si Ethan a été rencontré
+    // cette run" (Dévoration) — both would need new per-run tracking state.
+    private async Task SeedLoisMajeuresAsync(CancellationToken cancellationToken)
+    {
+        await UpsertCompendiumLawAsync(
+            key: "law.reflet",
+            name: "Loi du Reflet",
+            narrativeText: "Article LXVI — Le Palais vous a assez regardés. Voyez ce qu'il voit.",
+            description: "Le prochain combat remplace les ennemis prévus par des reflets de "
+                + "l'équipe : mêmes sorts, mêmes accessoires, 60% des statistiques. Les reflets "
+                + "connaissent vos habitudes — leur IA copie vos trois derniers combats "
+                + "(simplifié en jeu : rotation de sorts par défaut de chaque allié).",
+            rarity: "Légendaire",
+            polarity: "Sévère",
+            isMajeure: true,
+            minDepth: 3,
+            duration: "NextCombatOnly",
+            selectionGroup: "law.majeure",
+            impactDomains: ["Combat"],
+            cancellationToken);
+
+        await UpsertCompendiumLawAsync(
+            key: "law.sablier",
+            name: "Loi du Sablier Renversé",
+            narrativeText: "Article XLIX — Le temps du Palais n'a pas de sens privilégié. "
+                + "Aujourd'hui, il remonte. Les lents ont assez attendu.",
+            description: "L'initiative est inversée pour la salle : les combattants les plus "
+                + "lents agissent en premier, les plus rapides en dernier. L'ATB coule à l'envers.",
+            rarity: "Épique",
+            polarity: "Neutre",
+            isMajeure: false,
+            minDepth: 2,
+            duration: "UntilRoomEnds",
+            selectionGroup: "law.combat",
+            impactDomains: ["Combat"],
+            cancellationToken);
+
+        await UpsertCompendiumLawAsync(
+            key: "law.devoration",
+            name: "Loi de la Dévoration",
+            narrativeText: "Article LIX — Le Palais dévore doucement. Il accepte les paiements "
+                + "en violence d'autrui. C'est même sa monnaie préférée.",
+            description: "Le Palais a faim : chaque salle traversée SANS combat draine 3% des "
+                + "PV max de l'équipe. Chaque combat remporté restaure 5%. Nourrissez-le, ou "
+                + "nourrissez-vous.",
+            rarity: "Épique",
+            polarity: "Sévère",
+            isMajeure: false,
+            minDepth: 2,
+            duration: "UntilFloorEnds",
+            selectionGroup: "law.combat",
+            impactDomains: ["Combat"],
+            cancellationToken);
+
+        await UpsertCompendiumLawAsync(
+            key: "law.treizieme-coup",
+            name: "Loi du Treizième Coup",
+            narrativeText: "Article XIII — Toutes les douze frappes, le Palais en réclame une. "
+                + "Il ne précise pas pour qui. C'est ce qui rend la chose équitable, et "
+                + "divertissante.",
+            description: "Un compteur global court sur chaque combat : le 13e coup porté (tous "
+                + "camps confondus) inflige des dégâts doublés — et son bénéficiaire est tiré au "
+                + "sort parmi TOUS les combattants au moment où il tombe (simplifié en jeu : "
+                + "l'auteur naturel du coup en bénéficie).",
+            rarity: "Épique",
+            polarity: "DoubleTranchant",
+            isMajeure: false,
+            minDepth: 2,
+            duration: "UntilRoomEnds",
+            selectionGroup: "law.combat",
+            impactDomains: ["Combat"],
+            cancellationToken);
+
+        // UpsertLawEffectAsync looks the law up by key via a database query — it must run
+        // against a database that already has these 4 laws persisted, not merely added to
+        // the change tracker (the final SaveChangesAsync in SeedAsync is too late for that).
+        await _ctx.SaveChangesAsync(cancellationToken);
+
+        await UpsertLawEffectAsync("law.reflet", "EnableMirrorCombatCopy", 1m, "NextCombatOnly", null, cancellationToken);
+        await UpsertLawEffectAsync("law.sablier", "EnableTurnOrderReverse", 1m, "UntilRoomEnds", null, cancellationToken);
+        await UpsertLawEffectAsync("law.devoration", "EnableRoomTraversalHpDrain", 1m, "UntilFloorEnds", null, cancellationToken);
+        await UpsertLawEffectAsync("law.treizieme-coup", "EnableHitCounterDoubleDamage", 1m, "UntilRoomEnds", null, cancellationToken);
+
+        await _ctx.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task UpsertCompendiumLawAsync(
+        string key, string name, string narrativeText, string description,
+        string rarity, string polarity, bool isMajeure, int? minDepth, string duration,
+        string selectionGroup, string[] impactDomains, CancellationToken cancellationToken,
+        int? maxDepth = null, string? roomKey = null, bool isCumulExempt = false,
+        string[]? exclusionKeys = null, int baseWeight = 1)
+    {
+        const string version = "compendium-1.0.0";
+        var now = DateTime.UtcNow;
+        var domainsJson = JsonSerializer.Serialize(impactDomains);
+        var exclusionKeysJson = JsonSerializer.Serialize(exclusionKeys ?? []);
+
+        var existing = await _ctx.PalaceLawDefinitions.FirstOrDefaultAsync(l => l.Key == key, cancellationToken);
+        if (existing is null)
+        {
+            _ctx.PalaceLawDefinitions.Add(new PalaceLawDefinitionEntity
+            {
+                Id = Guid.NewGuid(),
+                Key = key,
+                Name = name,
+                DisplayName = name,
+                Description = description,
+                NarrativeText = narrativeText,
+                Version = version,
+                Status = "Active",
+                Scope = "Run",
+                Duration = duration,
+                Trigger = "OnApplied",
+                Severity = polarity == "Sévère" || polarity == "DoubleTranchant" ? 2 : 1,
+                Visibility = "Visible",
+                Priority = 0,
+                EffectSetId = null,
+                BaseWeight = baseWeight,
+                MinDepth = minDepth,
+                MaxDepth = maxDepth,
+                SelectionGroup = selectionGroup,
+                ImpactDomainsJson = domainsJson,
+                Rarity = rarity,
+                Polarity = polarity,
+                IsMajeure = isMajeure,
+                RoomKey = roomKey,
+                IsCumulExempt = isCumulExempt,
+                ExclusionKeysJson = exclusionKeysJson,
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
+            });
+            return;
+        }
+
+        existing.Name = name; existing.DisplayName = name;
+        existing.Description = description; existing.NarrativeText = narrativeText;
+        existing.Version = version; existing.Status = "Active";
+        existing.Duration = duration; existing.Priority = 0;
+        existing.MinDepth = minDepth; existing.MaxDepth = maxDepth;
+        existing.SelectionGroup = selectionGroup; existing.ImpactDomainsJson = domainsJson;
+        existing.Rarity = rarity; existing.Polarity = polarity; existing.IsMajeure = isMajeure;
+        existing.RoomKey = roomKey; existing.IsCumulExempt = isCumulExempt;
+        existing.ExclusionKeysJson = exclusionKeysJson; existing.BaseWeight = baseWeight;
+        existing.UpdatedAtUtc = now;
+    }
+
     // ── SALLES CANON (lieux) ──────────────────────────────────────────────────
     private async Task SeedCanonRoomTypesAsync(CancellationToken cancellationToken)
     {
