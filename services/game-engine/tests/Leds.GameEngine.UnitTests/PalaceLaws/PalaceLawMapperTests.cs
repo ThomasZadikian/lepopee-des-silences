@@ -125,6 +125,7 @@ public sealed class PalaceLawMapperTests
     [InlineData("EnableConsumablesRestrictedInCombat", RunModifierType.ConsumablesRestrictedInCombat)]
     [InlineData("EnablePostDeathBasicAttackOnly", RunModifierType.PostDeathBasicAttackOnly)]
     [InlineData("EnableTapisPropreEnabled", RunModifierType.TapisPropreEnabled)]
+    [InlineData("EnableThirdCupHealCorruption", RunModifierType.ThirdCupHealCorruptionEnabled)]
     public void CreatePalaceLaw_ShouldMapExoticMechanicGateEffects(string effectType, RunModifierType expected)
     {
         var definition = CreateDefinition(

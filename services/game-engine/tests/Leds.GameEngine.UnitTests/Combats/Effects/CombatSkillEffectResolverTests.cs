@@ -360,6 +360,87 @@ public sealed class CombatSkillEffectResolverTests
         ally.CurrentVitality.Should().Be(65);
     }
 
+    // ---------------------------------------------------------------------------
+    // "Loi de la Troisième Tasse" (Combat.ThirdCupHealCorruptionEnabled) — resolved
+    // once per heal application via Combat.ApplyThirdCupRollIfActive. Each combat below
+    // uses a fresh Guid (Combat.Id is part of the roll's seed), so running many
+    // independent combats gives a robust statistical signal without ever depending on a
+    // single hardcoded outcome.
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void Resolve_ShouldSometimesHalveHeal_WhenThirdCupIsEnabled()
+    {
+        var anyCorrupted = false;
+        var anyNotCorrupted = false;
+
+        for (var i = 0; i < 300; i++)
+        {
+            var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+            ally.ApplyDamage(50);
+            var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 80);
+            var combat = Combat.Create(
+                CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy],
+                thirdCupHealCorruptionEnabled: true);
+            var skill = CreateSkill("skill.heal", "Heal", 20);
+
+            _resolver.Resolve(combat, ally, skill, [ally]);
+
+            if (ally.CurrentVitality == 60) anyCorrupted = true; // 50 + half of 20
+            else if (ally.CurrentVitality == 70) anyNotCorrupted = true; // 50 + 20
+        }
+
+        anyCorrupted.Should().BeTrue(because: "roughly 10% of 300 independent rolls must trigger at least once.");
+        anyNotCorrupted.Should().BeTrue(because: "roughly 90% of 300 independent rolls must NOT trigger at least once.");
+    }
+
+    [Fact]
+    public void Resolve_ShouldApplyPoisonDamageOverTime_WhenThirdCupTriggers()
+    {
+        Combatant? poisoned = null;
+
+        for (var i = 0; i < 300 && poisoned is null; i++)
+        {
+            var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+            ally.ApplyDamage(50);
+            var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 80);
+            var combat = Combat.Create(
+                CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy],
+                thirdCupHealCorruptionEnabled: true);
+            var skill = CreateSkill("skill.heal", "Heal", 20);
+
+            _resolver.Resolve(combat, ally, skill, [ally]);
+
+            if (ally.StatusEffects.Any(e => e.Key == "troisieme-tasse-poison"))
+                poisoned = ally;
+        }
+
+        poisoned.Should().NotBeNull(because: "300 independent 10% rolls must trigger at least once.");
+        var poison = poisoned!.StatusEffects.Single(e => e.Key == "troisieme-tasse-poison");
+        poison.Kind.Should().Be(StatusEffectKind.DamageOverTime);
+        poison.Magnitude.Should().Be(3);
+    }
+
+    [Fact]
+    public void Resolve_ShouldNeverHalveHealOrApplyPoison_WhenThirdCupIsDisabled()
+    {
+        for (var i = 0; i < 50; i++)
+        {
+            var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+            ally.ApplyDamage(50);
+            var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 80);
+            var combat = Combat.Create(
+                CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy],
+                thirdCupHealCorruptionEnabled: false);
+            var skill = CreateSkill("skill.heal", "Heal", 20);
+
+            _resolver.Resolve(combat, ally, skill, [ally]);
+
+            ally.CurrentVitality.Should().Be(70);
+            ally.StatusEffects.Should().BeEmpty();
+        }
+    }
+
     [Fact]
     public void Resolve_ShouldHealPercentOfMaxVitality_WhenBasePowerIsPercentOfMaxVitality()
     {

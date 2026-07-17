@@ -946,6 +946,36 @@ public sealed class CombatFactoryTests
     }
 
     // ---------------------------------------------------------------------------
+    // "Loi de la Troisième Tasse" (ThirdCupHealCorruptionEnabled) — RunModifier-driven,
+    // baked at combat creation; the per-application roll itself lives on Combat
+    // (ApplyThirdCupRollIfActive), tested in CombatSkillEffectResolverTests.
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void CreateFromDraft_ShouldEnableThirdCupHealCorruption_WhenTheLawIsActive()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft();
+        var modifier = RunModifier.Create(
+            RunModifierType.ThirdCupHealCorruptionEnabled, 1, RunModifierDuration.UntilFloorEnds, "PalaceLaw", "law-troisieme-tasse-test");
+
+        var combat = factory.CreateFromDraft(draft, runModifiers: [modifier]);
+
+        combat.ThirdCupHealCorruptionEnabled.Should().BeTrue();
+    }
+
+    [Fact]
+    public void CreateFromDraft_ShouldNotEnableThirdCupHealCorruption_WhenTheLawIsNotActive()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft();
+
+        var combat = factory.CreateFromDraft(draft);
+
+        combat.ThirdCupHealCorruptionEnabled.Should().BeFalse();
+    }
+
+    // ---------------------------------------------------------------------------
     // "Loi des Visites Terminées" (HealingBlocked) — room-bound (RoomKey), not a
     // RunModifier/tirage.
     // ---------------------------------------------------------------------------

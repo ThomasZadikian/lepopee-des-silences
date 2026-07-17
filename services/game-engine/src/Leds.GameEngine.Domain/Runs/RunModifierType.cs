@@ -90,4 +90,10 @@ public enum RunModifierType
     /// first turn of combat cannot be a Damage-type skill; support/buff/debuff/movement
     /// only. See Combatant.HasActedThisCombat/CombatSkillActionValidator.</summary>
     TapisPropreEnabled = 33,
+
+    /// <summary>"Loi de la Troisième Tasse" (law.troisieme-tasse) — every heal
+    /// application (skill or item) has a 10% chance to be "served in the third cup":
+    /// halved, with a light poison DoT applied instead. See
+    /// Combat.ApplyThirdCupRollIfActive.</summary>
+    ThirdCupHealCorruptionEnabled = 34,
 }

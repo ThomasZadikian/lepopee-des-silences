@@ -5201,23 +5201,27 @@ public sealed class CatalogSeedRunner
         await _ctx.SaveChangesAsync(cancellationToken);
     }
 
-    // Chapitre III — Lois du seuil & de l'étiquette. 3 of its 5 laws are seeded: Loi des
+    // Chapitre III — Lois du seuil & de l'étiquette. 4 of its 5 laws are seeded: Loi des
     // Pieds Essuyés (trivial reuse of StartingGuardBonus), Loi du Silence Dû (new
-    // PhysicalDamageBonus/FlatManaCostBonus mechanic), and Loi du Tapis Propre (new
+    // PhysicalDamageBonus/FlatManaCostBonus mechanic), Loi du Tapis Propre (new
     // per-combatant first-turn action-type gate — see Combatant.HasActedThisCombat /
-    // CombatSkillActionValidator). The other 2 are NOT seeded — each needs a genuinely
-    // new engine mechanic that doesn't exist yet (documented gap, same convention as
-    // the rest of this chantier): "Loi de l'Invitation" (law.invitation) needs disabling
-    // a "flee" combat action that doesn't exist in the engine AND a loot bonus —
-    // RunModifierType.RewardPowerMultiplier is itself dead code upstream (written by
-    // PalaceLawMapper but never read by RewardOfferFactory, which only consumes the
-    // risk-derived CombatRiskProfile.RewardPowerMultiplier), so seeding it would silently
-    // do nothing; fixing that pre-existing gap is out of scope here. "Loi de la
-    // Troisième Tasse" (law.troisieme-tasse) needs a random per-heal-application
-    // corruption roll.
+    // CombatSkillActionValidator), and Loi de la Troisième Tasse (new per-heal-application
+    // corruption roll — see Combat.ApplyThirdCupRollIfActive, called from both
+    // CombatSkillEffectResolver.ResolveHeal and UseItemInCombatCommandHandler.ApplyItemEffect).
+    // The last one is NOT seeded — needs a genuinely new engine mechanic that doesn't
+    // exist yet: "Loi de l'Invitation" (law.invitation) needs disabling a "flee" combat
+    // action that doesn't exist in the engine AND a loot bonus — RunModifierType.
+    // RewardPowerMultiplier is itself dead code upstream (written by PalaceLawMapper but
+    // never read by RewardOfferFactory, which only consumes the risk-derived
+    // CombatRiskProfile.RewardPowerMultiplier), so seeding it would silently do nothing;
+    // fixing that pre-existing gap is out of scope here.
     //
-    // Loi du Tapis Propre's "poids doublé au Hall et aux Couloirs" promulgation nuance is
-    // NOT enforced (documented gap, same as the room-weight-doubling notes elsewhere).
+    // Loi du Tapis Propre's "poids doublé au Hall et aux Couloirs" promulgation nuance and
+    // Loi de la Troisième Tasse's "Le Porteur de Plateau tire sa Tasse retournée à 25% au
+    // lieu de 10%" per-NPC-item nuance are NOT enforced (documented gap, same as the
+    // room-weight-doubling notes elsewhere). Troisième Tasse's HealAndManaRestorePercent
+    // item family is also excluded from the roll (documented simplification, see
+    // UseItemInCombatCommandHandler.ApplyItemEffect).
     private async Task SeedLoisDuSeuilAsync(CancellationToken cancellationToken)
     {
         await UpsertCompendiumLawAsync(
@@ -5270,11 +5274,33 @@ public sealed class CatalogSeedRunner
             impactDomains: ["Combat"],
             cancellationToken);
 
+        await UpsertCompendiumLawAsync(
+            key: "law.troisieme-tasse",
+            name: "Loi de la Troisième Tasse",
+            narrativeText: "Article XLIV — Trois tasses sont servies. La première fume, "
+                + "la deuxième est vide. Le Palais ne dit jamais laquelle est la troisième.",
+            description: "Chaque soin (sort ou objet) a 10% de chance d'être servi dans "
+                + "la troisième tasse : il ne restaure que la moitié et applique un "
+                + "poison léger (3 dégâts/tour, 4 tours).",
+            rarity: "Rare",
+            polarity: "Sévère",
+            isMajeure: false,
+            minDepth: null,
+            duration: "UntilFloorEnds",
+            selectionGroup: "law.seuil",
+            impactDomains: ["Combat"],
+            cancellationToken: cancellationToken,
+            // "jamais en même temps que l'Édit du Souvenir Doux" per the SFD — mirrors
+            // Souvenir Doux's own exclusionKeys entry (see SeedEditsClementsAsync) since
+            // the engine checks exclusions one-directionally against the newly-drawn law.
+            exclusionKeys: ["law.souvenir-doux"]);
+
         await _ctx.SaveChangesAsync(cancellationToken);
 
         await UpsertLawEffectAsync("law.pieds-essuyes", "AddStartingGuard", 3m, "UntilFloorEnds", null, cancellationToken);
         await UpsertLawEffectAsync("law.silence-du", "EnableSilenceDuActive", 1m, "UntilRoomEnds", null, cancellationToken);
         await UpsertLawEffectAsync("law.tapis-propre", "EnableTapisPropreEnabled", 1m, "UntilFloorEnds", null, cancellationToken);
+        await UpsertLawEffectAsync("law.troisieme-tasse", "EnableThirdCupHealCorruption", 1m, "UntilFloorEnds", null, cancellationToken);
 
         await _ctx.SaveChangesAsync(cancellationToken);
     }
@@ -5368,9 +5394,8 @@ public sealed class CatalogSeedRunner
             selectionGroup: "law.edit",
             impactDomains: ["Combat"],
             cancellationToken: cancellationToken,
-            // "incompatible avec la Loi de la Troisième Tasse" per the SFD — Troisième
-            // Tasse is not seeded (see SeedLoisDuSeuilAsync), so this exclusion is
-            // currently a no-op; kept for when it eventually is seeded.
+            // "incompatible avec la Loi de la Troisième Tasse" per the SFD — mirrored by
+            // Troisième Tasse's own exclusionKeys entry (see SeedLoisDuSeuilAsync).
             exclusionKeys: ["law.troisieme-tasse"]);
 
         await _ctx.SaveChangesAsync(cancellationToken);

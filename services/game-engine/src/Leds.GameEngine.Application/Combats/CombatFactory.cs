@@ -140,6 +140,10 @@ public sealed class CombatFactory : ICombatFactory
         var tapisPropreEnabled = activeModifiers
             .Any(m => m.Type == RunModifierType.TapisPropreEnabled && !m.IsConsumed);
 
+        // "Loi de la Troisième Tasse" (law.troisieme-tasse): same ambient-drawn convention.
+        var thirdCupHealCorruptionEnabled = activeModifiers
+            .Any(m => m.Type == RunModifierType.ThirdCupHealCorruptionEnabled && !m.IsConsumed);
+
         if (activeClimate == RoomClimate.Rain)
         {
             guardBonus += 5;
@@ -347,7 +351,8 @@ public sealed class CombatFactory : ICombatFactory
                 healingBlocked,
                 falaiseWindEnabled,
                 postDeathBasicAttackOnlyEnabled,
-                tapisPropreEnabled);
+                tapisPropreEnabled,
+                thirdCupHealCorruptionEnabled);
         }
 
         var enemies = draft.Enemies
@@ -465,7 +470,8 @@ public sealed class CombatFactory : ICombatFactory
             healingBlocked,
             falaiseWindEnabled,
             postDeathBasicAttackOnlyEnabled,
-            tapisPropreEnabled);
+            tapisPropreEnabled,
+            thirdCupHealCorruptionEnabled);
     }
 
     /// <summary>

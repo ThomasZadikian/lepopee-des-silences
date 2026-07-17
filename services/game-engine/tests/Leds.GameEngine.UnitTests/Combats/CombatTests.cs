@@ -21,7 +21,8 @@ public sealed class CombatTests
         bool healingBlocked = false,
         bool falaiseWindEnabled = false,
         bool postDeathBasicAttackOnlyEnabled = false,
-        bool tapisPropreEnabled = false)
+        bool tapisPropreEnabled = false,
+        bool thirdCupHealCorruptionEnabled = false)
     {
         var allies = Enumerable.Range(0, allyCount).Select(i =>
             Combatant.CreateAlly($"player.{i}", $"Hero{i}", "Fighter", 100)).ToArray();
@@ -45,7 +46,8 @@ public sealed class CombatTests
             healingBlocked,
             falaiseWindEnabled,
             postDeathBasicAttackOnlyEnabled,
-            tapisPropreEnabled);
+            tapisPropreEnabled,
+            thirdCupHealCorruptionEnabled);
     }
 
     [Fact]
@@ -637,5 +639,31 @@ public sealed class CombatTests
     {
         CreateSut(tapisPropreEnabled: true).TapisPropreEnabled.Should().BeTrue();
         CreateSut().TapisPropreEnabled.Should().BeFalse();
+    }
+
+    // ---------------------------------------------------------------------------
+    // "Loi de la Troisième Tasse" (ThirdCupHealCorruptionEnabled) — the per-application
+    // roll (ApplyThirdCupRollIfActive) is tested in CombatSkillEffectResolverTests, since
+    // it needs a heal to actually apply.
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void ThirdCupHealCorruptionEnabled_ShouldReflectTheValueBakedInAtCreation()
+    {
+        CreateSut(thirdCupHealCorruptionEnabled: true).ThirdCupHealCorruptionEnabled.Should().BeTrue();
+        CreateSut().ThirdCupHealCorruptionEnabled.Should().BeFalse();
+    }
+
+    [Fact]
+    public void ApplyThirdCupRollIfActive_ShouldReturnHealAmountUnchanged_WhenLawIsInactive()
+    {
+        var combat = CreateSut(thirdCupHealCorruptionEnabled: false);
+        var target = combat.Allies.Single();
+
+        var (healAmount, triggered) = combat.ApplyThirdCupRollIfActive(target, 20);
+
+        healAmount.Should().Be(20);
+        triggered.Should().BeFalse();
+        target.StatusEffects.Should().BeEmpty();
     }
 }

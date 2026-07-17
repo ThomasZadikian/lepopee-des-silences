@@ -75,4 +75,6 @@ public enum EffectType
     EnablePostDeathBasicAttackOnly,
     /// <summary>"Loi du Tapis Propre" (law.tapis-propre) → RunModifierType.TapisPropreEnabled.</summary>
     EnableTapisPropreEnabled,
+    /// <summary>"Loi de la Troisième Tasse" (law.troisieme-tasse) → RunModifierType.ThirdCupHealCorruptionEnabled.</summary>
+    EnableThirdCupHealCorruption,
 }

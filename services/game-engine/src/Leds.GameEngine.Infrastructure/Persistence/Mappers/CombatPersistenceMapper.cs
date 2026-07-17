@@ -41,6 +41,7 @@ public static class CombatPersistenceMapper
             PostDeathBasicAttackOnlyEnabled = combat.PostDeathBasicAttackOnlyEnabled,
             NextActionRestrictedToBasicAttack = combat.NextActionRestrictedToBasicAttack,
             TapisPropreEnabled = combat.TapisPropreEnabled,
+            ThirdCupHealCorruptionEnabled = combat.ThirdCupHealCorruptionEnabled,
             ActiveCombatantId = combat.ActiveCombatantId?.Value,
             CreatedAtUtc = combat.CreatedAtUtc,
             UpdatedAtUtc = DateTime.UtcNow,
@@ -317,7 +318,8 @@ public static class CombatPersistenceMapper
             entity.FalaiseWindEnabled,
             entity.PostDeathBasicAttackOnlyEnabled,
             entity.NextActionRestrictedToBasicAttack,
-            entity.TapisPropreEnabled);
+            entity.TapisPropreEnabled,
+            entity.ThirdCupHealCorruptionEnabled);
     }
 
     public static Combatant ToDomain(CombatantEntity entity)

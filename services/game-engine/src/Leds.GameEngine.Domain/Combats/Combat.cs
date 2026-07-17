@@ -34,7 +34,8 @@ public sealed class Combat
         bool falaiseWindEnabled = false,
         bool postDeathBasicAttackOnlyEnabled = false,
         bool nextActionRestrictedToBasicAttack = false,
-        bool tapisPropreEnabled = false)
+        bool tapisPropreEnabled = false,
+        bool thirdCupHealCorruptionEnabled = false)
     {
         Id = id;
         RunId = runId;
@@ -60,6 +61,7 @@ public sealed class Combat
         PostDeathBasicAttackOnlyEnabled = postDeathBasicAttackOnlyEnabled;
         NextActionRestrictedToBasicAttack = nextActionRestrictedToBasicAttack;
         TapisPropreEnabled = tapisPropreEnabled;
+        ThirdCupHealCorruptionEnabled = thirdCupHealCorruptionEnabled;
     }
 
     public CombatId Id { get; }
@@ -227,6 +229,56 @@ public sealed class Combat
     /// Combatant.HasActedThisCombat and enforced in CombatSkillActionValidator.</summary>
     public bool TapisPropreEnabled { get; }
 
+    /// <summary>"Loi de la Troisième Tasse" (law.troisieme-tasse): baked in at creation
+    /// from the run's active RunModifiers. Every heal application (skill or item) rolls
+    /// <see cref="ApplyThirdCupRollIfActive"/> — no mutable combat-wide state, the roll
+    /// is purely per-application and per-target.</summary>
+    public bool ThirdCupHealCorruptionEnabled { get; }
+
+    /// <summary>"Loi de la Troisième Tasse" per-application chance.</summary>
+    private const double ThirdCupChance = 0.10;
+
+    /// <summary>"Loi de la Troisième Tasse" heal multiplier when the cup is corrupted
+    /// ("il ne restaure que la moitié").</summary>
+    private const double ThirdCupHealMultiplier = 0.5;
+
+    /// <summary>"Loi de la Troisième Tasse" poison ("léger") per-turn damage.</summary>
+    private const int ThirdCupPoisonDamagePerTurn = 3;
+
+    /// <summary>"Loi de la Troisième Tasse" poison duration, in "tours" (combat turns).</summary>
+    private const int ThirdCupPoisonDurationTurns = 4;
+
+    /// <summary>
+    /// Rolls "Loi de la Troisième Tasse" for one heal application (skill or item):
+    /// 10% chance the heal is "served in the third cup" — halved, with a light poison
+    /// DoT applied to the target. No-op (returns <paramref name="healAmount"/> unchanged,
+    /// triggered=false) when the law is inactive. Called once per target per heal
+    /// application by both CombatSkillEffectResolver.ResolveHeal and
+    /// UseItemInCombatCommandHandler.ApplyItemEffect.
+    /// </summary>
+    public (int HealAmount, bool Triggered) ApplyThirdCupRollIfActive(Combatant target, int healAmount)
+    {
+        if (!ThirdCupHealCorruptionEnabled)
+            return (healAmount, false);
+
+        var seed = $"troisieme-tasse|{Id.Value:N}|{target.Id.Value:N}|{CurrentTick}";
+        if (DeterministicCombatRoll.UnitInterval(seed) >= ThirdCupChance)
+            return (healAmount, false);
+
+        target.ApplyStatusEffect(CombatStatusEffect.Create(
+            key: "troisieme-tasse-poison",
+            displayName: "Poison léger (Troisième Tasse)",
+            kind: StatusEffectKind.DamageOverTime,
+            currentTick: CurrentTick,
+            durationTicks: AtbConstants.TicksPerTurn * ThirdCupPoisonDurationTurns,
+            magnitude: ThirdCupPoisonDamagePerTurn,
+            stacks: 1,
+            tickInterval: AtbConstants.TicksPerTurn));
+
+        var corrupted = Math.Max(1, (int)Math.Round(healAmount * ThirdCupHealMultiplier, MidpointRounding.AwayFromZero));
+        return (corrupted, true);
+    }
+
     /// <summary>"Loi de la Falaise" random-target chance, checked once per turn.</summary>
     private const double FalaiseWindTriggerChance = 0.10;
 
@@ -250,7 +302,8 @@ public sealed class Combat
         bool healingBlocked = false,
         bool falaiseWindEnabled = false,
         bool postDeathBasicAttackOnlyEnabled = false,
-        bool tapisPropreEnabled = false)
+        bool tapisPropreEnabled = false,
+        bool thirdCupHealCorruptionEnabled = false)
     {
         if (id.Value == Guid.Empty)
             throw new DomainException("Combat id is required.");
@@ -294,7 +347,8 @@ public sealed class Combat
             healingBlocked: healingBlocked,
             falaiseWindEnabled: falaiseWindEnabled,
             postDeathBasicAttackOnlyEnabled: postDeathBasicAttackOnlyEnabled,
-            tapisPropreEnabled: tapisPropreEnabled);
+            tapisPropreEnabled: tapisPropreEnabled,
+            thirdCupHealCorruptionEnabled: thirdCupHealCorruptionEnabled);
     }
 
     public void MarkCompleted()
@@ -633,9 +687,10 @@ public sealed class Combat
         bool falaiseWindEnabled = false,
         bool postDeathBasicAttackOnlyEnabled = false,
         bool nextActionRestrictedToBasicAttack = false,
-        bool tapisPropreEnabled = false)
+        bool tapisPropreEnabled = false,
+        bool thirdCupHealCorruptionEnabled = false)
     {
-        return new Combat(id, runId, roomId, nodeId, status, allies, enemies, activeCombatantId, turnNumber, currentTick, createdAtUtc, hitCounter, hitCounterDoubleDamageEnabled, firstHitCriticalEnabled, hasFirstHitLanded, lowHpDamageAmplificationEnabled, dotDurationExtensionTicks, duelDamageAsymmetryEnabled, dotMagnitudeBonus, healingBlocked, falaiseWindEnabled, postDeathBasicAttackOnlyEnabled, nextActionRestrictedToBasicAttack, tapisPropreEnabled);
+        return new Combat(id, runId, roomId, nodeId, status, allies, enemies, activeCombatantId, turnNumber, currentTick, createdAtUtc, hitCounter, hitCounterDoubleDamageEnabled, firstHitCriticalEnabled, hasFirstHitLanded, lowHpDamageAmplificationEnabled, dotDurationExtensionTicks, duelDamageAsymmetryEnabled, dotMagnitudeBonus, healingBlocked, falaiseWindEnabled, postDeathBasicAttackOnlyEnabled, nextActionRestrictedToBasicAttack, tapisPropreEnabled, thirdCupHealCorruptionEnabled);
     }
 
     /// <summary>

@@ -80,7 +80,7 @@ public sealed class UseItemInCombatCommandHandler
         // ── Application de l'effet sur le combattant ───────────────────────
 
         var targets = ResolveTargets(item, playerCombatant, run.ActiveCombat, request.TargetIds);
-        ApplyItemEffect(item, targets);
+        var thirdCupTargetIds = ApplyItemEffect(run.ActiveCombat, item, targets);
         item.ConsumeOne();
 
         var now = _clock.UtcNow;
@@ -99,12 +99,19 @@ public sealed class UseItemInCombatCommandHandler
         // le changement visuellement avant les tours ennemis.
         foreach (var target in targets)
         {
+            // "Loi de la Troisième Tasse": halves the displayed/applied amount and
+            // adds a poison mention when this target's cup got corrupted.
+            var isThirdCup = thirdCupTargetIds.Contains(target.Id.Value);
+            var healDisplayAmount = isThirdCup
+                ? Math.Max(1, (int)Math.Round(item.EffectAmount * 0.5, MidpointRounding.AwayFromZero))
+                : item.EffectAmount;
+
             var effectEntry = item.EffectType switch
             {
                 RunItemEffectType.Heal => new CombatLogEntryDto(
                     OccurredAtUtc: now.UtcDateTime,
                     Type: "HealApplied",
-                    Message: $"{target.DisplayName} récupère {item.EffectAmount} PV.",
+                    Message: $"{target.DisplayName} récupère {healDisplayAmount} PV.",
                     ActorId: playerCombatant.Id.Value,
                     SkillKey: item.DefinitionKey,
                     TargetIds: [target.Id.Value]),
@@ -146,6 +153,17 @@ public sealed class UseItemInCombatCommandHandler
 
             if (effectEntry is not null)
                 logs.Add(effectEntry);
+
+            if (isThirdCup)
+            {
+                logs.Add(new CombatLogEntryDto(
+                    OccurredAtUtc: now.UtcDateTime,
+                    Type: "StatusApplied",
+                    Message: $"{target.DisplayName}'s cup was the third one — a light poison sets in.",
+                    ActorId: playerCombatant.Id.Value,
+                    SkillKey: item.DefinitionKey,
+                    TargetIds: [target.Id.Value]));
+            }
         }
 
         // ── Avance de tour + tours ennemis ─────────────────────────────────
@@ -204,17 +222,28 @@ public sealed class UseItemInCombatCommandHandler
         };
     }
 
-    private static void ApplyItemEffect(
+    private static HashSet<Guid> ApplyItemEffect(
+        Combat combat,
         RunItem item,
         IReadOnlyCollection<Combatant> targets)
     {
+        // "Loi de la Troisième Tasse": item-based heals roll the same corruption
+        // chance as skill-based heals (HealAndManaRestorePercent items are excluded,
+        // documented simplification — see CombatFactory/Combat.ApplyThirdCupRollIfActive).
+        var thirdCupTargetIds = new HashSet<Guid>();
+
         foreach (var target in targets)
         {
             switch (item.EffectType)
             {
                 case RunItemEffectType.Heal:
-                    target.ApplyHeal(ApplyHealingBonus(item.EffectAmount, target.EffectiveHealingBonusPercent));
+                {
+                    var (healAmount, triggered) = combat.ApplyThirdCupRollIfActive(
+                        target, ApplyHealingBonus(item.EffectAmount, target.EffectiveHealingBonusPercent));
+                    target.ApplyHeal(healAmount);
+                    if (triggered) thirdCupTargetIds.Add(target.Id.Value);
                     break;
+                }
 
                 case RunItemEffectType.Guard:
                     target.GainGuard(item.EffectAmount);
@@ -245,6 +274,8 @@ public sealed class UseItemInCombatCommandHandler
                     break;
             }
         }
+
+        return thirdCupTargetIds;
     }
 
     private static int ApplyHealingBonus(int amount, int healingBonusPercent)
