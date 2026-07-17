@@ -90,6 +90,7 @@ public sealed class CatalogSeedRunner
         await AttachCanonLawEffectsAsync(cancellationToken);
         await SeedLoisMajeuresAsync(cancellationToken);
         await SeedLoisDeCombatAsync(cancellationToken);
+        await SeedLoisClimatiquesAsync(cancellationToken);
         await SeedCanonRoomsAsync(cancellationToken);
         await SeedPalaisWorldAsync(cancellationToken);
         await SeedRoomThemeAffinitiesAsync(cancellationToken);
@@ -5079,6 +5080,95 @@ public sealed class CatalogSeedRunner
         await UpsertLawEffectAsync("law.premiere-impression", "EnableFirstHitCritical", 1m, "UntilFloorEnds", null, cancellationToken);
         await UpsertLawEffectAsync("law.duel", "EnableDuelDamageAsymmetry", 1m, "UntilRoomEnds", null, cancellationToken);
         await UpsertLawEffectAsync("law.ecriture", "EnableDotDurationExtension", 2m, "UntilFloorEnds", null, cancellationToken);
+
+        await _ctx.SaveChangesAsync(cancellationToken);
+    }
+
+    // Chapitre II — Lois climatiques. 4 of its 5 laws are seeded: Marée Haute, Deuil
+    // Sec, Voile, Accords. "Loi du Répit" (Accalmie: suspend every active Sévère law
+    // for the room) is NOT seeded — it would need a cross-cutting "suspend Sévère
+    // RunModifiers" mechanism touching every read site across the codebase, judged
+    // too invasive for this pass (documented gap).
+    //
+    // Loi du Voile's "+10% esquive" half is NOT modeled — no dodge/evasion mechanic
+    // exists anywhere in the engine (documented gap); only its "-3 Focus" half is
+    // seeded. Only one RoomClimate can be active at a time (Run.ReplaceActiveRoomClimateLaws
+    // already enforces this), so these 4 share a dedicated selection group.
+    private async Task SeedLoisClimatiquesAsync(CancellationToken cancellationToken)
+    {
+        await UpsertCompendiumLawAsync(
+            key: "law.voile",
+            name: "Loi du Voile",
+            narrativeText: "Article IV — Une brume s'est levée sur le Palais. Elle ne cache "
+                + "rien ; elle empêche seulement de voir clair.",
+            description: "Climat de la salle : Brume. Tous les combattants perdent 3 Focus. "
+                + "(La SFD prévoit aussi +10% d'esquive sous ce climat — non modélisé, aucun "
+                + "mécanisme d'esquive n'existe dans le moteur.)",
+            rarity: "Commun",
+            polarity: "DoubleTranchant",
+            isMajeure: false,
+            minDepth: null,
+            duration: "UntilRoomEnds",
+            selectionGroup: "law.climat",
+            impactDomains: ["Combat"],
+            cancellationToken);
+
+        await UpsertCompendiumLawAsync(
+            key: "law.accords",
+            name: "Loi des Accords",
+            narrativeText: "Article XXI — L'orage gronde sur le Palais. Il accorde ses "
+                + "faveurs à quiconque sait s'en servir.",
+            description: "Climat de la salle : Orage. Tous les combattants infligent +15% de "
+                + "dégâts magiques.",
+            rarity: "Commun",
+            polarity: "Neutre",
+            isMajeure: false,
+            minDepth: null,
+            duration: "UntilRoomEnds",
+            selectionGroup: "law.climat",
+            impactDomains: ["Combat"],
+            cancellationToken);
+
+        await UpsertCompendiumLawAsync(
+            key: "law.deuil-sec",
+            name: "Loi du Deuil Sec",
+            narrativeText: "Article XXXVIII — Une pluie de cendres tombe sur le Palais. Elle "
+                + "n'éteint rien ; elle recouvre.",
+            description: "Climat de la salle : Pluie de cendres. Tous les combattants voient "
+                + "leurs soins réduits de 25% et leurs dégâts sur la durée augmentés de 15% "
+                + "(« dégâts de feu » de la SFD réinterprétés en bonus DoT — aucun type "
+                + "élémentaire feu n'existe dans le moteur).",
+            rarity: "Peu commun",
+            polarity: "Sévère",
+            isMajeure: false,
+            minDepth: null,
+            duration: "UntilRoomEnds",
+            selectionGroup: "law.climat",
+            impactDomains: ["Combat"],
+            cancellationToken);
+
+        await UpsertCompendiumLawAsync(
+            key: "law.maree-haute",
+            name: "Loi de la Marée Haute",
+            narrativeText: "Article LII — Une pluie violacée monte sur le Palais, aussi haute "
+                + "qu'une marée. Tout ce qui saigne, saigne un peu plus.",
+            description: "Climat de la salle : Pluie violacée. Tous les dégâts sur la durée "
+                + "(joueur et ennemis) infligent +1 dégât par tour.",
+            rarity: "Peu commun",
+            polarity: "Neutre",
+            isMajeure: false,
+            minDepth: null,
+            duration: "UntilRoomEnds",
+            selectionGroup: "law.climat",
+            impactDomains: ["Combat"],
+            cancellationToken);
+
+        await _ctx.SaveChangesAsync(cancellationToken);
+
+        await UpsertLawEffectAsync("law.voile", "ApplyRoomClimate", 0m, "UntilRoomEnds", "voile", cancellationToken);
+        await UpsertLawEffectAsync("law.accords", "ApplyRoomClimate", 0m, "UntilRoomEnds", "accords", cancellationToken);
+        await UpsertLawEffectAsync("law.deuil-sec", "ApplyRoomClimate", 0m, "UntilRoomEnds", "deuil-sec", cancellationToken);
+        await UpsertLawEffectAsync("law.maree-haute", "ApplyRoomClimate", 0m, "UntilRoomEnds", "maree-haute", cancellationToken);
 
         await _ctx.SaveChangesAsync(cancellationToken);
     }
