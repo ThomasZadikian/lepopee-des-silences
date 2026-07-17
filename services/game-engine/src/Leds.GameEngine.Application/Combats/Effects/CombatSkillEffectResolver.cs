@@ -386,10 +386,6 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
         var staggers = IsStaggerSkill(skill);
         var hitTargetIds = new HashSet<Guid>();
 
-        // "Loi de la Première Impression": the actor's next landed hit is forced to
-        // critical. Consumed the moment it lands — an AoE cast only guarantees it once.
-        var guaranteedCriticalPending = actor.HasGuaranteedCritical;
-
         foreach (var target in targets)
         {
             var hitChance = HitChanceCalibration.HitChanceFromBonus(actor.HitChanceBonusPercent);
@@ -412,6 +408,11 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
             // double damage. Registered here, right as the hit is confirmed to land.
             var isThirteenthHit = combat.RegisterLandedHit();
 
+            // "Loi de la Première Impression": the combat's very first landed hit (any
+            // side, whoever lands it) is forced to critical. Combat-scoped, not
+            // combatant-scoped — consumed the moment ANY hit lands, at most once.
+            var isFirstHitCritical = combat.TryConsumeFirstHitCritical();
+
             var defenderProfile = _typeProfileProvider.Resolve(target);
             var critRoll = DeterministicCombatRoll.UnitInterval(BuildCritSeed(combat, actor, target, skill));
 
@@ -421,7 +422,7 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
                 skill.BasePower,
                 StatModifierDamageMultiplier(skill, actor, target) * MagicCategoryDamageMultiplier(skill, actor, target));
 
-            var effectiveCritChance = guaranteedCriticalPending ? 1.0 : critChance;
+            var effectiveCritChance = isFirstHitCritical ? 1.0 : critChance;
 
             var outcome = DamageCalculator.Calculate(
                 basePower,
@@ -429,12 +430,6 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
                 defenderProfile,
                 effectiveCritChance,
                 critRoll);
-
-            if (guaranteedCriticalPending)
-            {
-                actor.ConsumeSingleUseStatusEffect(StatusEffectKind.GuaranteedCritical);
-                guaranteedCriticalPending = false;
-            }
 
             outcome = ApplyEquipmentDamageReduction(outcome, target, attackType);
 

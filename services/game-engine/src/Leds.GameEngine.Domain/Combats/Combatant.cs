@@ -850,20 +850,4 @@ public sealed class Combatant
     // both freeze the gauge here; IsStunned/IsSilenced stay distinct properties for
     // logging/UI, but gate identically for scheduling purposes.
     public bool IsAtbLocked => IsStunned || IsSilenced || _statusEffects.Any(e => e.Kind == StatusEffectKind.AtbLock);
-
-    /// <summary>"Loi de la Première Impression" — true while this combatant's next damage
-    /// roll is forced to critical. See <see cref="ConsumeSingleUseStatusEffect"/>.</summary>
-    public bool HasGuaranteedCritical => _statusEffects.Any(e => e.Kind == StatusEffectKind.GuaranteedCritical);
-
-    /// <summary>
-    /// Removes one single-use status effect of the given kind (e.g. GuaranteedCritical),
-    /// consumed the instant it triggers rather than expiring by duration/tick. No-op if
-    /// no effect of that kind is active.
-    /// </summary>
-    public void ConsumeSingleUseStatusEffect(StatusEffectKind kind)
-    {
-        var effect = _statusEffects.FirstOrDefault(e => e.Kind == kind);
-        if (effect is not null)
-            _statusEffects.Remove(effect);
-    }
 }

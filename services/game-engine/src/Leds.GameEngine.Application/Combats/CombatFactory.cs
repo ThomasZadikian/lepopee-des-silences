@@ -247,10 +247,59 @@ public sealed class CombatFactory : ICombatFactory
 
         var (bossVitalityMultiplier, bossPowerMultiplier, bossGuardBonus) = EncounterBonus(draft.EncounterType);
 
-        // "Loi du Reflet": every enemy gets a mirrored copy at MirrorCombatCopyStatMultiplier
-        // of its stats, using its own default skill rotation rather than a combat-history-
-        // driven one (no combat-history tracking exists — documented simplification).
+        // "Loi du Reflet" (law.reflet): "reflète votre propre équipe dans le camp
+        // adverse" — the next combat's entire enemy side is replaced by a mirror of
+        // the PLAYER's own team (same skills, 60% stats), not by clones of the room's
+        // actual enemies. AI copying "vos trois derniers combats" is simplified to the
+        // mirrored combatant's own (i.e. the ally's) default skill rotation, since no
+        // combat-history tracking exists (documented simplification).
         var isMirrorCombatCopyActive = activeModifiers.Any(m => m.Type == RunModifierType.MirrorCombatCopy && !m.IsConsumed);
+
+        if (isMirrorCombatCopyActive)
+        {
+            var mirroredEnemies = allies
+                .Select(ally => Combatant.Create(
+                    CombatantId.New(),
+                    sourceKey: $"reflet.{ally.SourceKey}",
+                    displayName: $"Reflet de {ally.DisplayName}",
+                    side: CombatantSide.Enemy,
+                    archetype: ally.Archetype,
+                    maxVitality: Math.Max(1, (int)Math.Round(ally.MaxVitality * MirrorCombatCopyStatMultiplier)),
+                    currentVitality: Math.Max(1, (int)Math.Round(ally.MaxVitality * MirrorCombatCopyStatMultiplier)),
+                    guard: 0,
+                    baseGuard: 0,
+                    mana: ally.Mana,
+                    charge: 0,
+                    skills: ally.Skills,
+                    attackPower: (int)Math.Round(ally.BaseStatSnapshot.AttackPower * MirrorCombatCopyStatMultiplier),
+                    defense: (int)Math.Round(ally.BaseStatSnapshot.Defense * MirrorCombatCopyStatMultiplier),
+                    speed: Math.Max(1, (int)Math.Round(ally.BaseStatSnapshot.Speed * MirrorCombatCopyStatMultiplier)),
+                    focus: (int)Math.Round(ally.BaseStatSnapshot.Focus * MirrorCombatCopyStatMultiplier),
+                    maxMana: ally.MaxMana,
+                    magicAttack: (int)Math.Round(ally.BaseStatSnapshot.MagicAttack * MirrorCombatCopyStatMultiplier),
+                    magicDefense: (int)Math.Round(ally.BaseStatSnapshot.MagicDefense * MirrorCombatCopyStatMultiplier)))
+                .ToArray();
+
+            if (activeModifiers.Any(m => m.Type == RunModifierType.TurnOrderReverse && !m.IsConsumed))
+            {
+                ApplyTurnOrderReversal(allies.Concat(mirroredEnemies));
+            }
+
+            var mirrorHitCounterDoubleDamageEnabled = activeModifiers
+                .Any(m => m.Type == RunModifierType.HitCounterDoubleDamage && !m.IsConsumed);
+            var mirrorFirstHitCriticalEnabled = activeModifiers
+                .Any(m => m.Type == RunModifierType.FirstHitCritical && !m.IsConsumed);
+
+            return Combat.Create(
+                combatId,
+                new RunId(draft.RunId),
+                new RoomId(draft.RoomId),
+                new NodeId(draft.NodeId),
+                allies,
+                mirroredEnemies,
+                mirrorHitCounterDoubleDamageEnabled,
+                mirrorFirstHitCriticalEnabled);
+        }
 
         var enemies = draft.Enemies
             .SelectMany(enemy =>
@@ -279,7 +328,7 @@ public sealed class CombatFactory : ICombatFactory
                 var scaledMagicAttack = _enemyStatScaler.ScaleValue(enemy.MagicAttack, draft.DifficultyMultiplier);
                 var scaledMagicDefense = _enemyStatScaler.ScaleValue(enemy.MagicDefense, draft.DifficultyMultiplier);
 
-                CombatantSkill[] BuildSkills(double statMultiplier) => enemy.Skills
+                var skills = enemy.Skills
                     .Select(s =>
                     {
                         var scaledSkill = _enemyStatScaler.Scale(baseVitality, s.BasePower, draft.DifficultyMultiplier);
@@ -288,9 +337,6 @@ public sealed class CombatFactory : ICombatFactory
                             scaledSkill.Power,
                             enemyPowerMultiplier,
                             palaceRoomState);
-                        var mirroredPower = statMultiplier == 1.0
-                            ? power
-                            : Math.Max(1, (int)Math.Round(power * statMultiplier));
 
                         return CombatantSkill.Create(
                             s.Key,
@@ -300,7 +346,7 @@ public sealed class CombatFactory : ICombatFactory
                             NormalizeCombatEffectType(s.Key, s.EffectType),
                             s.ManaCost,
                             s.ChargeCost,
-                            mirroredPower,
+                            power,
                             s.Tags,
                             EffectFor(skillEffects, s.Key),
                             category: s.Category,
@@ -308,30 +354,23 @@ public sealed class CombatFactory : ICombatFactory
                     })
                     .ToArray();
 
-                Combatant BuildEnemy(double statMultiplier, string? displayNameOverride) => Combatant.CreateEnemy(
-                    sourceKey: enemy.EnemyKey,
-                    displayName: displayNameOverride ?? enemy.DisplayName,
-                    archetype: enemy.Archetype,
-                    maxVitality: Math.Max(1, (int)Math.Round(scaled.Vitality * statMultiplier)),
-                    skills: BuildSkills(statMultiplier),
-                    startingGuard: (int)Math.Round(enemyStartingGuard * statMultiplier),
-                    attackPower: (int)Math.Round(scaledAttackPower * statMultiplier),
-                    defense: (int)Math.Round(scaledDefense * statMultiplier),
-                    speed: Math.Max(1, (int)Math.Round(scaledSpeed * statMultiplier)),
-                    focus: (int)Math.Round(scaledFocus * statMultiplier),
-                    magicAttack: (int)Math.Round(scaledMagicAttack * statMultiplier),
-                    magicDefense: (int)Math.Round(scaledMagicDefense * statMultiplier),
-                    mana: enemy.Mana);
-
-                var original = BuildEnemy(1.0, null);
-
-                if (!isMirrorCombatCopyActive)
+                return new[]
                 {
-                    return new[] { original };
-                }
-
-                var mirror = BuildEnemy(MirrorCombatCopyStatMultiplier, $"Reflet de {enemy.DisplayName}");
-                return new[] { original, mirror };
+                    Combatant.CreateEnemy(
+                        sourceKey: enemy.EnemyKey,
+                        displayName: enemy.DisplayName,
+                        archetype: enemy.Archetype,
+                        maxVitality: Math.Max(1, scaled.Vitality),
+                        skills: skills,
+                        startingGuard: enemyStartingGuard,
+                        attackPower: scaledAttackPower,
+                        defense: scaledDefense,
+                        speed: Math.Max(1, scaledSpeed),
+                        focus: scaledFocus,
+                        magicAttack: scaledMagicAttack,
+                        magicDefense: scaledMagicDefense,
+                        mana: enemy.Mana)
+                };
             })
             .ToArray();
 
@@ -342,6 +381,8 @@ public sealed class CombatFactory : ICombatFactory
 
         var hitCounterDoubleDamageEnabled = activeModifiers
             .Any(m => m.Type == RunModifierType.HitCounterDoubleDamage && !m.IsConsumed);
+        var firstHitCriticalEnabled = activeModifiers
+            .Any(m => m.Type == RunModifierType.FirstHitCritical && !m.IsConsumed);
 
         return Combat.Create(
             combatId,
@@ -350,7 +391,8 @@ public sealed class CombatFactory : ICombatFactory
             new NodeId(draft.NodeId),
             allies,
             enemies,
-            hitCounterDoubleDamageEnabled);
+            hitCounterDoubleDamageEnabled,
+            firstHitCriticalEnabled);
     }
 
     /// <summary>

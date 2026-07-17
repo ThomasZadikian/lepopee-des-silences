@@ -22,7 +22,9 @@ public sealed class Combat
         int currentTick,
         DateTime createdAtUtc,
         int hitCounter,
-        bool hitCounterDoubleDamageEnabled)
+        bool hitCounterDoubleDamageEnabled,
+        bool firstHitCriticalEnabled,
+        bool hasFirstHitLanded)
     {
         Id = id;
         RunId = runId;
@@ -37,6 +39,8 @@ public sealed class Combat
         CreatedAtUtc = createdAtUtc;
         HitCounter = hitCounter;
         HitCounterDoubleDamageEnabled = hitCounterDoubleDamageEnabled;
+        FirstHitCriticalEnabled = firstHitCriticalEnabled;
+        HasFirstHitLanded = hasFirstHitLanded;
     }
 
     public CombatId Id { get; }
@@ -84,6 +88,30 @@ public sealed class Combat
         return HitCounterDoubleDamageEnabled && HitCounter % HitCounterTrigger == 0;
     }
 
+    /// <summary>True when the "Loi de la Première Impression" law is active for this
+    /// combat, baked in at creation from the run's active RunModifiers.</summary>
+    public bool FirstHitCriticalEnabled { get; }
+
+    /// <summary>Whether the combat's very first landed hit (any side) has already
+    /// been resolved — regardless of whether the law was active to force it critical.</summary>
+    public bool HasFirstHitLanded { get; private set; }
+
+    /// <summary>
+    /// "Loi de la Première Impression" (law.premiere-impression): "le tout premier
+    /// coup porté dans chaque combat, quel qu'en soit l'auteur, est automatiquement
+    /// critique." Combat-scoped (not combatant-scoped): whichever side lands the
+    /// very first hit benefits, regardless of who that is. Returns true exactly once
+    /// per combat, the moment the first hit lands.
+    /// </summary>
+    public bool TryConsumeFirstHitCritical()
+    {
+        if (HasFirstHitLanded)
+            return false;
+
+        HasFirstHitLanded = true;
+        return FirstHitCriticalEnabled;
+    }
+
     public static Combat Create(
         CombatId id,
         RunId runId,
@@ -91,7 +119,8 @@ public sealed class Combat
         NodeId nodeId,
         IReadOnlyCollection<Combatant> allies,
         IReadOnlyCollection<Combatant> enemies,
-        bool hitCounterDoubleDamageEnabled = false)
+        bool hitCounterDoubleDamageEnabled = false,
+        bool firstHitCriticalEnabled = false)
     {
         if (id.Value == Guid.Empty)
             throw new DomainException("Combat id is required.");
@@ -125,7 +154,9 @@ public sealed class Combat
             currentTick: 0,
             createdAtUtc: DateTime.UtcNow,
             hitCounter: 0,
-            hitCounterDoubleDamageEnabled: hitCounterDoubleDamageEnabled);
+            hitCounterDoubleDamageEnabled: hitCounterDoubleDamageEnabled,
+            firstHitCriticalEnabled: firstHitCriticalEnabled,
+            hasFirstHitLanded: false);
     }
 
     public void MarkCompleted()
@@ -406,9 +437,11 @@ public sealed class Combat
         DateTime createdAtUtc,
         int currentTick = 0,
         int hitCounter = 0,
-        bool hitCounterDoubleDamageEnabled = false)
+        bool hitCounterDoubleDamageEnabled = false,
+        bool firstHitCriticalEnabled = false,
+        bool hasFirstHitLanded = false)
     {
-        return new Combat(id, runId, roomId, nodeId, status, allies, enemies, activeCombatantId, turnNumber, currentTick, createdAtUtc, hitCounter, hitCounterDoubleDamageEnabled);
+        return new Combat(id, runId, roomId, nodeId, status, allies, enemies, activeCombatantId, turnNumber, currentTick, createdAtUtc, hitCounter, hitCounterDoubleDamageEnabled, firstHitCriticalEnabled, hasFirstHitLanded);
     }
 
     /// <summary>

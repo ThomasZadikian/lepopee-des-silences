@@ -21,6 +21,8 @@ public sealed class CombatEntityConfiguration : IEntityTypeConfiguration<CombatE
         builder.Property(c => c.CurrentTick).HasColumnName("current_tick");
         builder.Property(c => c.HitCounter).HasColumnName("hit_counter");
         builder.Property(c => c.HitCounterDoubleDamageEnabled).HasColumnName("hit_counter_double_damage_enabled");
+        builder.Property(c => c.FirstHitCriticalEnabled).HasColumnName("first_hit_critical_enabled");
+        builder.Property(c => c.HasFirstHitLanded).HasColumnName("has_first_hit_landed");
         builder.Property(c => c.ActiveCombatantId).HasColumnName("active_combatant_id");
         builder.Property(c => c.CreatedAtUtc).HasColumnName("created_at_utc");
         builder.Property(c => c.UpdatedAtUtc).HasColumnName("updated_at_utc");

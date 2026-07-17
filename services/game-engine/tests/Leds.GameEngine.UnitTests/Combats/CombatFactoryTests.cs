@@ -25,14 +25,26 @@ public sealed class CombatFactoryTests
         int enemyMagicAttack = 0,
         int enemyMagicDefense = 0,
         int enemyMana = 0,
-        double difficultyMultiplier = 1.0)
+        double difficultyMultiplier = 1.0,
+        int allyAttackPower = 0,
+        int allyDefense = 0,
+        int allySpeed = 10,
+        int allyFocus = 0,
+        int allyMagicAttack = 0,
+        int allyMagicDefense = 0)
     {
         var allies = Enumerable.Range(0, allyCount).Select(i =>
             new CombatEncounterDraftAlly(
                 $"player.{i}",
                 $"Hero{i}",
                 "Fighter",
-                allyTags ?? Array.Empty<string>())).ToArray();
+                allyTags ?? Array.Empty<string>(),
+                AttackPower: allyAttackPower,
+                Defense: allyDefense,
+                Speed: allySpeed,
+                Focus: allyFocus,
+                MagicAttack: allyMagicAttack,
+                MagicDefense: allyMagicDefense)).ToArray();
 
         var enemies = Enumerable.Range(0, enemyCount).Select(i =>
         {
@@ -724,11 +736,13 @@ public sealed class CombatFactoryTests
     }
 
     // ---------------------------------------------------------------------------
-    // "Loi du Reflet" (MirrorCombatCopy)
+    // "Loi du Reflet" (MirrorCombatCopy) — mirrors the PLAYER's own team into the
+    // enemy slot for the next combat (60% stats, same skills), replacing whatever
+    // enemies the room would have spawned — not a clone of those enemies.
     // ---------------------------------------------------------------------------
 
     [Fact]
-    public void CreateFromDraft_ShouldNotDuplicateEnemies_WhenMirrorCombatCopyIsNotActive()
+    public void CreateFromDraft_ShouldNotReplaceEnemies_WhenMirrorCombatCopyIsNotActive()
     {
         var factory = new CombatFactory();
         var draft = CreateDraft(enemyCount: 2);
@@ -736,49 +750,52 @@ public sealed class CombatFactoryTests
         var combat = factory.CreateFromDraft(draft);
 
         combat.Enemies.Should().HaveCount(2);
+        combat.Enemies.Should().OnlyContain(e => !e.DisplayName.StartsWith("Reflet"));
     }
 
     [Fact]
-    public void CreateFromDraft_ShouldDoubleEnemyCount_WhenMirrorCombatCopyIsActive()
+    public void CreateFromDraft_ShouldReplaceEnemiesWithMirroredAllies_WhenMirrorCombatCopyIsActive()
     {
         var factory = new CombatFactory();
-        var draft = CreateDraft(enemyCount: 2);
+        var draft = CreateDraft(allyCount: 2, enemyCount: 3);
 
         var combat = factory.CreateFromDraft(draft, runModifiers: [CreateMirrorCombatCopyModifier()]);
 
-        combat.Enemies.Should().HaveCount(4);
+        // The mirrored enemy side matches the ALLY roster, not the room's own enemies.
+        combat.Enemies.Should().HaveCount(2);
+        combat.Enemies.Should().OnlyContain(e => e.DisplayName.StartsWith("Reflet de"));
     }
 
     [Fact]
-    public void CreateFromDraft_ShouldScaleTheMirroredEnemy_ToSixtyPercentStats()
+    public void CreateFromDraft_ShouldScaleTheMirroredAlly_ToSixtyPercentStats()
     {
         var factory = new CombatFactory();
-        var draft = CreateDraft(enemyCount: 1, enemyAttackPower: 20, enemyDefense: 10, enemySpeed: 20);
+        var draft = CreateDraft(allyCount: 1, allyAttackPower: 20, allyDefense: 10, allySpeed: 20);
 
         var combat = factory.CreateFromDraft(draft, runModifiers: [CreateMirrorCombatCopyModifier()]);
 
-        var original = combat.Enemies.Single(e => !e.DisplayName.StartsWith("Reflet"));
-        var mirror = combat.Enemies.Single(e => e.DisplayName.StartsWith("Reflet"));
+        var ally = combat.Allies.Single();
+        var mirror = combat.Enemies.Single();
 
-        mirror.MaxVitality.Should().Be((int)Math.Round(original.MaxVitality * 0.6));
-        mirror.BaseStatSnapshot.AttackPower.Should().Be((int)Math.Round(original.BaseStatSnapshot.AttackPower * 0.6));
-        mirror.BaseStatSnapshot.Defense.Should().Be((int)Math.Round(original.BaseStatSnapshot.Defense * 0.6));
-        mirror.BaseStatSnapshot.Speed.Should().Be((int)Math.Round(original.BaseStatSnapshot.Speed * 0.6));
+        mirror.MaxVitality.Should().Be((int)Math.Round(ally.MaxVitality * 0.6));
+        mirror.BaseStatSnapshot.AttackPower.Should().Be((int)Math.Round(ally.BaseStatSnapshot.AttackPower * 0.6));
+        mirror.BaseStatSnapshot.Defense.Should().Be((int)Math.Round(ally.BaseStatSnapshot.Defense * 0.6));
+        mirror.BaseStatSnapshot.Speed.Should().Be((int)Math.Round(ally.BaseStatSnapshot.Speed * 0.6));
     }
 
     [Fact]
-    public void CreateFromDraft_ShouldGiveTheMirroredEnemy_TheSameSkillRotationAtReducedPower()
+    public void CreateFromDraft_ShouldGiveTheMirroredAlly_TheSameSkillRotation()
     {
         var factory = new CombatFactory();
-        var draft = CreateDraft(includeSkills: true);
+        var draft = CreateDraft(allyCount: 1);
 
         var combat = factory.CreateFromDraft(draft, runModifiers: [CreateMirrorCombatCopyModifier()]);
 
-        var original = combat.Enemies.Single(e => !e.DisplayName.StartsWith("Reflet"));
-        var mirror = combat.Enemies.Single(e => e.DisplayName.StartsWith("Reflet"));
+        var ally = combat.Allies.Single();
+        var mirror = combat.Enemies.Single();
 
-        mirror.Skills.Should().HaveSameCount(original.Skills);
-        mirror.Skills.Single().BasePower.Should().BeLessThan(original.Skills.Single().BasePower);
+        mirror.Skills.Should().HaveSameCount(ally.Skills);
+        mirror.Skills.Select(s => s.Key).Should().BeEquivalentTo(ally.Skills.Select(s => s.Key));
     }
 
     private static RunModifier CreateMirrorCombatCopyModifier()

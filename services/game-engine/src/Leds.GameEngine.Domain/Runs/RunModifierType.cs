@@ -24,9 +24,18 @@ public enum RunModifierType
     // RunModifierEntity.Type), mais on évite quand même de réordonner par prudence.
     TurnOrderLock = 16,
     TurnOrderReverse = 17,
-    ExecuteThreshold = 18,
+
+    /// <summary>"Loi de la Curée" (law.curee) — +15% damage taken while below 25% max
+    /// HP, symmetric across both sides. Renamed from the never-seeded "ExecuteThreshold"
+    /// placeholder, which wrongly assumed an instant-kill mechanic (safe to rename in
+    /// place — never persisted, and RunModifierEntity.Type is stored by name anyway).</summary>
+    DamageAmplificationBelowHpThreshold = 18,
     RoomTraversalHpDrain = 19,
     HitCounterDoubleDamage = 20,
     MirrorCombatCopy = 21,
     SuspendSevereLaws = 22,
+
+    /// <summary>"Loi de la Première Impression" (law.premiere-impression) — the combat's
+    /// first landed hit, any side, is forced critical. See Combat.FirstHitCriticalEnabled.</summary>
+    FirstHitCritical = 23,
 }

@@ -11,6 +11,8 @@ public sealed class CombatEntity
     public int CurrentTick { get; set; }
     public int HitCounter { get; set; }
     public bool HitCounterDoubleDamageEnabled { get; set; }
+    public bool FirstHitCriticalEnabled { get; set; }
+    public bool HasFirstHitLanded { get; set; }
     public Guid? ActiveCombatantId { get; set; }
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
