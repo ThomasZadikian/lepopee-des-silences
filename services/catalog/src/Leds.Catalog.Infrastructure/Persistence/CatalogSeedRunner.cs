@@ -93,6 +93,7 @@ public sealed class CatalogSeedRunner
         await SeedLoisClimatiquesAsync(cancellationToken);
         await SeedLoisDuSeuilAsync(cancellationToken);
         await SeedEditsClementsAsync(cancellationToken);
+        await SeedLoisDeMemoireAsync(cancellationToken);
         await SeedCanonRoomsAsync(cancellationToken);
         await SeedPalaisWorldAsync(cancellationToken);
         await SeedRoomThemeAffinitiesAsync(cancellationToken);
@@ -5282,6 +5283,43 @@ public sealed class CatalogSeedRunner
         await UpsertLawEffectAsync("law.pas-leger", "ModifySpeed", 0.10m, "UntilFloorEnds", null, cancellationToken);
         await UpsertLawEffectAsync("law.hote-genereux", "AddStartingGuard", 10m, "UntilFloorEnds", null, cancellationToken);
         await UpsertLawEffectAsync("law.souvenir-doux", "EnableAllyHealingBonus", 20m, "UntilFloorEnds", null, cancellationToken);
+
+        await _ctx.SaveChangesAsync(cancellationToken);
+    }
+
+    // Chapitre VI — Lois de mémoire & de relations. Only 1 of its 4 laws is seeded:
+    // "Loi du Nom Retenu" (reuses the new ReputationChangeDoubled mechanic). NOT seeded:
+    // "Loi de l'Oubli Partiel" (law.oubli-partiel) needs a mechanism to temporarily
+    // remove a random non-Frappe ally skill for the floor plus a floor-end stat-point
+    // grant — no skill-removal/floor-end-hook mechanism exists for this shape yet.
+    // "Loi des Présentations" (law.presentations) needs enemies to telegraph their next
+    // action on their first turn — no "action forecast" feature exists. "Loi du Témoin"
+    // (law.temoin) needs freezing NPC reputation deltas for the floor (the inverse of
+    // Nom Retenu) — tractable in principle (same ScaleReputationGain hook, force the
+    // scaled result to 0) but deferred to keep this pass scoped to one law per session
+    // slice; revisit alongside a future Chapitre VI pass.
+    private async Task SeedLoisDeMemoireAsync(CancellationToken cancellationToken)
+    {
+        await UpsertCompendiumLawAsync(
+            key: "law.nom-retenu",
+            name: "Loi du Nom Retenu",
+            narrativeText: "Article XXV — Ce qui se dit devant témoin compte double. Le "
+                + "Palais est toujours témoin.",
+            description: "Toute réputation gagnée auprès des PNJ de l'étage est doublée. "
+                + "Toute réputation perdue également. Le Palais prend des notes, et il "
+                + "écrit gros.",
+            rarity: "Rare",
+            polarity: "DoubleTranchant",
+            isMajeure: false,
+            minDepth: null,
+            duration: "UntilFloorEnds",
+            selectionGroup: "law.memoire",
+            impactDomains: ["Narrative"],
+            cancellationToken);
+
+        await _ctx.SaveChangesAsync(cancellationToken);
+
+        await UpsertLawEffectAsync("law.nom-retenu", "EnableReputationChangeDoubled", 1m, "UntilFloorEnds", null, cancellationToken);
 
         await _ctx.SaveChangesAsync(cancellationToken);
     }
