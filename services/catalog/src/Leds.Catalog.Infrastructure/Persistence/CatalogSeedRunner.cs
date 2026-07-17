@@ -89,6 +89,7 @@ public sealed class CatalogSeedRunner
         await SeedCanonLawsAsync(cancellationToken);
         await AttachCanonLawEffectsAsync(cancellationToken);
         await SeedLoisMajeuresAsync(cancellationToken);
+        await SeedLoisDeCombatAsync(cancellationToken);
         await SeedCanonRoomsAsync(cancellationToken);
         await SeedPalaisWorldAsync(cancellationToken);
         await SeedRoomThemeAffinitiesAsync(cancellationToken);
@@ -4953,6 +4954,113 @@ public sealed class CatalogSeedRunner
         await UpsertLawEffectAsync("law.sablier", "EnableTurnOrderReverse", 1m, "UntilRoomEnds", null, cancellationToken);
         await UpsertLawEffectAsync("law.devoration", "EnableRoomTraversalHpDrain", 1m, "UntilFloorEnds", null, cancellationToken);
         await UpsertLawEffectAsync("law.treizieme-coup", "EnableHitCounterDoubleDamage", 1m, "UntilRoomEnds", null, cancellationToken);
+
+        await _ctx.SaveChangesAsync(cancellationToken);
+    }
+
+    // Chapitre IV — Lois de combat. 5 of its 7 laws already have full mechanical
+    // backing (File Indienne/Curée/Première Impression from Phase 3bis, Duel/Écriture
+    // from this pass). "Loi du Miroir" (copy the ally's first cast onto the fastest
+    // enemy, inverted targeting) and "Loi de l'Éloge Funèbre" (only a basic attack
+    // allowed the turn after a death) are NOT seeded — they need re-entrant skill
+    // resolution and action-validation changes respectively, neither of which exists.
+    //
+    // Two room-type weight-doubling promulgation rules are NOT enforced by the engine
+    // (documented gap, same as Chapitre VIII): Curée "poids doublé aux Plaines" and
+    // Écriture "poids doublé au Palier et au Labyrinthe".
+    private async Task SeedLoisDeCombatAsync(CancellationToken cancellationToken)
+    {
+        await UpsertCompendiumLawAsync(
+            key: "law.file-indienne",
+            name: "Loi de la File Indienne",
+            narrativeText: "Article XVI — Chacun son tour. Le Palais a l'éternité ; vous, un "
+                + "peu moins ; raison de plus pour faire la queue.",
+            description: "Aucun combattant ne peut agir une seconde fois tant que tous les "
+                + "combattants n'ont pas agi une fois. L'ATB devient un tour par tour strict, "
+                + "ordonné par Initiative (approximé en jeu : la Vitesse de tous les "
+                + "combattants est ramenée à la moyenne du groupe).",
+            rarity: "Rare",
+            polarity: "Neutre",
+            isMajeure: false,
+            minDepth: null,
+            duration: "UntilRoomEnds",
+            selectionGroup: "law.combat",
+            impactDomains: ["Combat"],
+            cancellationToken);
+
+        await UpsertCompendiumLawAsync(
+            key: "law.curee",
+            name: "Loi de la Curée",
+            narrativeText: "Article XXVII — La pitié est un étage que le Palais n'a jamais "
+                + "construit.",
+            description: "Tout combattant sous 25% de ses PV subit +15% de dégâts. Le Palais "
+                + "achève ce qui chancelle — des deux côtés.",
+            rarity: "Peu commun",
+            polarity: "Sévère",
+            isMajeure: false,
+            minDepth: null,
+            duration: "UntilRoomEnds",
+            selectionGroup: "law.combat",
+            impactDomains: ["Combat"],
+            cancellationToken);
+
+        await UpsertCompendiumLawAsync(
+            key: "law.premiere-impression",
+            name: "Loi de la Première Impression",
+            narrativeText: "Article VI — On n'a jamais deux fois l'occasion de faire une "
+                + "première blessure.",
+            description: "Le tout premier coup porté dans chaque combat (quel qu'en soit "
+                + "l'auteur) est automatiquement critique. Le Palais n'accorde qu'une seule "
+                + "première fois.",
+            rarity: "Rare",
+            polarity: "DoubleTranchant",
+            isMajeure: false,
+            minDepth: null,
+            duration: "UntilFloorEnds",
+            selectionGroup: "law.combat",
+            impactDomains: ["Combat"],
+            cancellationToken);
+
+        await UpsertCompendiumLawAsync(
+            key: "law.duel",
+            name: "Loi du Duel",
+            narrativeText: "Article XIV — La foule est une lâcheté arithmétique. L'adresse se "
+                + "prouve à une seule adresse.",
+            description: "Les attaques et sorts mono-cibles infligent +20% ; les attaques et "
+                + "sorts de zone infligent -20%. Le Palais estime qu'on ne tue bien qu'en "
+                + "regardant.",
+            rarity: "Commun",
+            polarity: "DoubleTranchant",
+            isMajeure: false,
+            minDepth: null,
+            duration: "UntilRoomEnds",
+            selectionGroup: "law.combat",
+            impactDomains: ["Combat"],
+            cancellationToken);
+
+        await UpsertCompendiumLawAsync(
+            key: "law.ecriture",
+            name: "Loi de l'Écriture",
+            narrativeText: "Article XLVII — Le registre n'efface rien. Il prolonge. C'est sa "
+                + "définition, et désormais la vôtre.",
+            description: "Tous les DoT (des deux camps) durent +2 tours. Ce qui est écrit au "
+                + "Palais y reste écrit un peu plus longtemps.",
+            rarity: "Peu commun",
+            polarity: "DoubleTranchant",
+            isMajeure: false,
+            minDepth: null,
+            duration: "UntilFloorEnds",
+            selectionGroup: "law.combat",
+            impactDomains: ["Combat"],
+            cancellationToken);
+
+        await _ctx.SaveChangesAsync(cancellationToken);
+
+        await UpsertLawEffectAsync("law.file-indienne", "EnableTurnOrderLock", 1m, "UntilRoomEnds", null, cancellationToken);
+        await UpsertLawEffectAsync("law.curee", "EnableLowHpDamageAmplification", 1m, "UntilRoomEnds", null, cancellationToken);
+        await UpsertLawEffectAsync("law.premiere-impression", "EnableFirstHitCritical", 1m, "UntilFloorEnds", null, cancellationToken);
+        await UpsertLawEffectAsync("law.duel", "EnableDuelDamageAsymmetry", 1m, "UntilRoomEnds", null, cancellationToken);
+        await UpsertLawEffectAsync("law.ecriture", "EnableDotDurationExtension", 2m, "UntilFloorEnds", null, cancellationToken);
 
         await _ctx.SaveChangesAsync(cancellationToken);
     }
