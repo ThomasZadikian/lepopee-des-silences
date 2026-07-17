@@ -106,7 +106,7 @@ public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver
         effects.Add(new AppliedConsequenceEffect("statPoint", 1, npc.DisplayName));
 
         EvaluateTransgressions(npc, run, relationship);
-        RefreshWounds(npc, relationship);
+        RefreshWounds(npc, run, relationship);
 
         relationship.AdvanceTo(choice.NextNodeKey);
         var encounterCompleted = string.IsNullOrWhiteSpace(choice.NextNodeKey);
@@ -170,7 +170,8 @@ public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver
                     var wound = npc.Wounds?.FirstOrDefault(w =>
                         string.Equals(w.Key, consequence.WoundKey, StringComparison.OrdinalIgnoreCase));
                     var canRevert = wound is not null &&
-                        !string.Equals(wound.Reversibility, "Irreversible", StringComparison.OrdinalIgnoreCase);
+                        !string.Equals(wound.Reversibility, "Irreversible", StringComparison.OrdinalIgnoreCase) &&
+                        !IsWoundHealingBlocked(run);
                     relationship.SetWoundState(consequence.WoundKey, WoundState.Latent, canRevert);
                 }
                 break;
@@ -564,16 +565,25 @@ public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver
         }
     }
 
-    private static void RefreshWounds(CatalogNpcDefinition npc, NpcRelationship relationship)
+    private static void RefreshWounds(CatalogNpcDefinition npc, Run run, NpcRelationship relationship)
     {
         if (npc.Wounds is null) return;
 
+        var woundHealingBlocked = IsWoundHealingBlocked(run);
         foreach (var wound in npc.Wounds)
         {
-            var canRevert = string.Equals(wound.Reversibility, "SoothableByScore", StringComparison.OrdinalIgnoreCase);
+            var canRevert = string.Equals(wound.Reversibility, "SoothableByScore", StringComparison.OrdinalIgnoreCase)
+                && !woundHealingBlocked;
             relationship.RefreshFromScore(wound.Key, wound.TenseThreshold, wound.RuptureThreshold, canRevert);
         }
     }
+
+    /// <summary>"Loi du Témoin" (RunModifierType.WoundHealingBlocked) — armed wounds cannot
+    /// be soothed for the floor, either by act or by score; worsening is unaffected since
+    /// NpcRelationship.SetWoundState always allows a state that's >= the current one
+    /// regardless of canRevert.</summary>
+    private static bool IsWoundHealingBlocked(Run run)
+        => run.GetActiveModifiers(RunModifierType.WoundHealingBlocked).Count > 0;
 
     private static CurrentEventChoiceResolutionResult Fade(string choiceId)
     {

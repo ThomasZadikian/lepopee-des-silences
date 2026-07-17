@@ -64,4 +64,10 @@ public enum RunModifierType
     /// floor (both gains AND losses/transgressions) is doubled. See
     /// Run.ScaleReputationGain.</summary>
     ReputationChangeDoubled = 28,
+
+    /// <summary>"Loi du Témoin" (law.temoin) — armed NPC wounds cannot be soothed for the
+    /// floor, neither by a dialogue act ("SootheWound") nor by score threshold
+    /// ("RefreshWounds") — worsening (arming/rupturing) is unaffected. See
+    /// NpcEventChoiceResolver's IsWoundHealingBlocked check.</summary>
+    WoundHealingBlocked = 29,
 }

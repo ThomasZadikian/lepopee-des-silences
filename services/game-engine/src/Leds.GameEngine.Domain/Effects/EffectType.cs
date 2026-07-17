@@ -65,4 +65,6 @@ public enum EffectType
     EnableAllyHealingBonus,
     /// <summary>"Loi du Nom Retenu" (law.nom-retenu) → RunModifierType.ReputationChangeDoubled.</summary>
     EnableReputationChangeDoubled,
+    /// <summary>"Loi du Témoin" (law.temoin) → RunModifierType.WoundHealingBlocked.</summary>
+    EnableWoundHealingBlocked,
 }
