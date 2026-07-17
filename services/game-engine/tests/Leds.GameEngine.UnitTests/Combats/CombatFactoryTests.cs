@@ -869,4 +869,46 @@ public sealed class CombatFactoryTests
             "PalaceLaw",
             "law-sablier-test");
     }
+
+    // ---------------------------------------------------------------------------
+    // "Loi de la File Indienne" (TurnOrderLock) — approximated by flattening every
+    // combatant's Speed to the roster average (documented simplification, see
+    // CombatFactory.ApplyStrictInitiativeOrder).
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void CreateFromDraft_ShouldNotAlterSpeed_WhenTurnOrderLockIsNotActive()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft(enemySpeed: 30);
+
+        var combat = factory.CreateFromDraft(draft, speed: 10);
+
+        combat.Allies.Single().EffectiveSpeed.Should().Be(10);
+        combat.Enemies.Single().EffectiveSpeed.Should().Be(30);
+    }
+
+    [Fact]
+    public void CreateFromDraft_ShouldFlattenSpeedToTheRosterAverage_WhenTurnOrderLockIsActive()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft(enemySpeed: 30);
+
+        var combat = factory.CreateFromDraft(
+            draft, speed: 10, runModifiers: [CreateTurnOrderLockModifier()]);
+
+        // average(10, 30) = 20 for both.
+        combat.Allies.Single().EffectiveSpeed.Should().Be(20);
+        combat.Enemies.Single().EffectiveSpeed.Should().Be(20);
+    }
+
+    private static RunModifier CreateTurnOrderLockModifier()
+    {
+        return RunModifier.Create(
+            RunModifierType.TurnOrderLock,
+            1,
+            RunModifierDuration.UntilRoomEnds,
+            "PalaceLaw",
+            "law-file-indienne-test");
+    }
 }

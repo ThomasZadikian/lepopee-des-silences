@@ -285,6 +285,11 @@ public sealed class CombatFactory : ICombatFactory
                 ApplyTurnOrderReversal(allies.Concat(mirroredEnemies));
             }
 
+            if (activeModifiers.Any(m => m.Type == RunModifierType.TurnOrderLock && !m.IsConsumed))
+            {
+                ApplyStrictInitiativeOrder(allies.Concat(mirroredEnemies));
+            }
+
             var mirrorHitCounterDoubleDamageEnabled = activeModifiers
                 .Any(m => m.Type == RunModifierType.HitCounterDoubleDamage && !m.IsConsumed);
             var mirrorFirstHitCriticalEnabled = activeModifiers
@@ -382,6 +387,11 @@ public sealed class CombatFactory : ICombatFactory
             ApplyTurnOrderReversal(allies.Concat(enemies));
         }
 
+        if (activeModifiers.Any(m => m.Type == RunModifierType.TurnOrderLock && !m.IsConsumed))
+        {
+            ApplyStrictInitiativeOrder(allies.Concat(enemies));
+        }
+
         var hitCounterDoubleDamageEnabled = activeModifiers
             .Any(m => m.Type == RunModifierType.HitCounterDoubleDamage && !m.IsConsumed);
         var firstHitCriticalEnabled = activeModifiers
@@ -430,6 +440,43 @@ public sealed class CombatFactory : ICombatFactory
             combatant.ApplyStatusEffect(CombatStatusEffect.Create(
                 key: "law-sablier-renverse:speed",
                 displayName: "Sablier renversé",
+                kind: StatusEffectKind.StatModifier,
+                currentTick: 0,
+                durationTicks: 0,
+                magnitude: delta,
+                stat: CombatStat.Speed,
+                isPermanent: true));
+        }
+    }
+
+    /// <summary>
+    /// "Loi de la File Indienne" (law.file-indienne, Durée: Salle) — "aucun combattant
+    /// ne peut agir une seconde fois tant que tous les combattants n'ont pas agi une
+    /// fois. L'ATB devient un tour par tour strict, ordonné par Initiative." A true
+    /// lockstep round-robin would require bypassing the ATB scheduler entirely — instead
+    /// (documented simplification, same approach as Sablier Renversé): every combatant's
+    /// Speed is flattened to the roster's average via a flat StatModifier, so ATB fill
+    /// rates converge and turns cycle in Initiative order — the scheduler's existing
+    /// tie-break — approximating a strict round-robin rather than reimplementing it.
+    /// </summary>
+    private static void ApplyStrictInitiativeOrder(IEnumerable<Combatant> combatants)
+    {
+        var roster = combatants.ToArray();
+        if (roster.Length == 0)
+            return;
+
+        var averageSpeed = (int)Math.Round(roster.Average(c => c.BaseStatSnapshot.Speed));
+
+        foreach (var combatant in roster)
+        {
+            var delta = averageSpeed - combatant.BaseStatSnapshot.Speed;
+
+            if (delta == 0)
+                continue;
+
+            combatant.ApplyStatusEffect(CombatStatusEffect.Create(
+                key: "law-file-indienne:speed",
+                displayName: "File indienne",
                 kind: StatusEffectKind.StatModifier,
                 currentTick: 0,
                 durationTicks: 0,
