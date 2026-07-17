@@ -1,5 +1,6 @@
 using Leds.GameEngine.Application.Combats.EncounterDrafts;
 using Leds.GameEngine.Domain.Combats;
+using Leds.GameEngine.Domain.Combats.Atb;
 using Leds.GameEngine.Domain.Combats.StatusEffects;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rooms;
@@ -306,7 +307,9 @@ public sealed class CombatFactory : ICombatFactory
                 mirroredEnemies,
                 mirrorHitCounterDoubleDamageEnabled,
                 mirrorFirstHitCriticalEnabled,
-                mirrorLowHpDamageAmplificationEnabled);
+                mirrorLowHpDamageAmplificationEnabled,
+                ComputeDotDurationExtensionTicks(activeModifiers),
+                ComputeDuelDamageAsymmetryEnabled(activeModifiers));
         }
 
         var enemies = draft.Enemies
@@ -408,7 +411,9 @@ public sealed class CombatFactory : ICombatFactory
             enemies,
             hitCounterDoubleDamageEnabled,
             firstHitCriticalEnabled,
-            lowHpDamageAmplificationEnabled);
+            lowHpDamageAmplificationEnabled,
+            ComputeDotDurationExtensionTicks(activeModifiers),
+            ComputeDuelDamageAsymmetryEnabled(activeModifiers));
     }
 
     /// <summary>
@@ -485,6 +490,21 @@ public sealed class CombatFactory : ICombatFactory
                 isPermanent: true));
         }
     }
+
+    /// <summary>"Loi de l'Écriture" (law.ecriture): "tous les DoT durent +2 tours" — the
+    /// RunModifier's Value is a bonus TURN count (as authored in the catalog), converted
+    /// here to ticks so Combat only ever deals in its native tick unit.</summary>
+    private static int ComputeDotDurationExtensionTicks(IReadOnlyCollection<RunModifier> activeModifiers)
+    {
+        var bonusTurns = activeModifiers
+            .Where(m => m.Type == RunModifierType.DotDurationExtension && !m.IsConsumed)
+            .Sum(m => m.Value);
+
+        return (int)Math.Round(bonusTurns * AtbConstants.TicksPerTurn);
+    }
+
+    private static bool ComputeDuelDamageAsymmetryEnabled(IReadOnlyCollection<RunModifier> activeModifiers)
+        => activeModifiers.Any(m => m.Type == RunModifierType.DuelDamageAsymmetry && !m.IsConsumed);
 
     // Looks up the durable statuses a skill applies, by skill key (catalog-sourced).
     private static IReadOnlyList<SkillStatusEffectSpec>? EffectFor(

@@ -131,4 +131,37 @@ public sealed class PalaceLawMapperTests
 
         law.Effects.Should().ContainSingle(effect => effect.ModifierType == expected);
     }
+
+    [Fact]
+    public void CreatePalaceLaw_ShouldMapDuelDamageAsymmetryGateEffect()
+    {
+        var definition = CreateDefinition(
+            impactDomains: ["Combat"],
+            effects:
+            [
+                new CatalogEffectDefinitionSnapshot(
+                    "EnableDuelDamageAsymmetry", "Run", 1m, "Flat", "UntilRoomEnds", "Additive", null, 0, null, null, null),
+            ]);
+
+        var law = PalaceLawMapper.CreatePalaceLaw(definition);
+
+        law.Effects.Should().ContainSingle(effect => effect.ModifierType == RunModifierType.DuelDamageAsymmetry);
+    }
+
+    [Fact]
+    public void CreatePalaceLaw_ShouldMapDotDurationExtension_PreservingItsMagnitude()
+    {
+        var definition = CreateDefinition(
+            impactDomains: ["Combat"],
+            effects:
+            [
+                new CatalogEffectDefinitionSnapshot(
+                    "EnableDotDurationExtension", "Run", 2m, "Flat", "UntilRoomEnds", "Additive", null, 0, null, null, null),
+            ]);
+
+        var law = PalaceLawMapper.CreatePalaceLaw(definition);
+
+        var effect = law.Effects.Should().ContainSingle(e => e.ModifierType == RunModifierType.DotDurationExtension).Subject;
+        effect.Value.Should().Be(2);
+    }
 }

@@ -13,7 +13,9 @@ public sealed class CombatTests
         int allyCount = 1, int enemyCount = 1,
         bool hitCounterDoubleDamageEnabled = false,
         bool firstHitCriticalEnabled = false,
-        bool lowHpDamageAmplificationEnabled = false)
+        bool lowHpDamageAmplificationEnabled = false,
+        int dotDurationExtensionTicks = 0,
+        bool duelDamageAsymmetryEnabled = false)
     {
         var allies = Enumerable.Range(0, allyCount).Select(i =>
             Combatant.CreateAlly($"player.{i}", $"Hero{i}", "Fighter", 100)).ToArray();
@@ -30,7 +32,9 @@ public sealed class CombatTests
             enemies,
             hitCounterDoubleDamageEnabled,
             firstHitCriticalEnabled,
-            lowHpDamageAmplificationEnabled);
+            lowHpDamageAmplificationEnabled,
+            dotDurationExtensionTicks,
+            duelDamageAsymmetryEnabled);
     }
 
     [Fact]
@@ -426,5 +430,25 @@ public sealed class CombatTests
     {
         CreateSut(lowHpDamageAmplificationEnabled: true).LowHpDamageAmplificationEnabled.Should().BeTrue();
         CreateSut(lowHpDamageAmplificationEnabled: false).LowHpDamageAmplificationEnabled.Should().BeFalse();
+    }
+
+    // ---------------------------------------------------------------------------
+    // "Loi de l'Écriture" (DotDurationExtensionTicks) and "Loi du Duel"
+    // (DuelDamageAsymmetryEnabled) — flags baked in at creation; the actual
+    // mechanics are exercised in CombatSkillEffectResolverTests.
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void DotDurationExtensionTicks_ShouldReflectTheValueBakedInAtCreation()
+    {
+        CreateSut(dotDurationExtensionTicks: 5000).DotDurationExtensionTicks.Should().Be(5000);
+        CreateSut().DotDurationExtensionTicks.Should().Be(0);
+    }
+
+    [Fact]
+    public void DuelDamageAsymmetryEnabled_ShouldReflectTheValueBakedInAtCreation()
+    {
+        CreateSut(duelDamageAsymmetryEnabled: true).DuelDamageAsymmetryEnabled.Should().BeTrue();
+        CreateSut(duelDamageAsymmetryEnabled: false).DuelDamageAsymmetryEnabled.Should().BeFalse();
     }
 }

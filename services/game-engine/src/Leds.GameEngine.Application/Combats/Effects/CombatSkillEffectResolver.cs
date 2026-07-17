@@ -330,6 +330,14 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
                 spec.DurationTicks * (1.0 - Math.Min(recipient.DotDurationReductionPercent, 100) / 100.0)))
             : spec.DurationTicks;
 
+        // "Loi de l'Écriture" (law.ecriture): "tous les DoT (des deux camps) durent
+        // +2 tours" — a flat tick bonus on top of the equipment-driven reduction above,
+        // symmetric across both sides.
+        if (spec.Kind == StatusEffectKind.DamageOverTime && !spec.IsPermanent)
+        {
+            durationTicks += combat.DotDurationExtensionTicks;
+        }
+
         // Flat-magnitude DoTs (poison/burn/ink...) are attack rolls like any other
         // damage: they scale with the caster's Attack/Defense (or MagicAttack/
         // MagicDefense for Magic-category skills) via the SAME symmetric ratio and
@@ -420,7 +428,9 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
             // type/crit are applied.
             var basePower = ApplyStatMultiplier(
                 skill.BasePower,
-                StatModifierDamageMultiplier(skill, actor, target) * MagicCategoryDamageMultiplier(skill, actor, target));
+                StatModifierDamageMultiplier(skill, actor, target)
+                    * MagicCategoryDamageMultiplier(skill, actor, target)
+                    * DuelDamageAsymmetryMultiplier(combat, skill));
 
             var effectiveCritChance = isFirstHitCritical ? 1.0 : critChance;
 
@@ -611,6 +621,23 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
         var bonus = 1.0 + actor.EffectiveMagicDamageBonusPercent / 100.0;
         var reduction = 1.0 - Math.Min(target.EffectiveMagicDamageReductionPercent, 100) / 100.0;
         return Math.Max(0.0, bonus * reduction);
+    }
+
+    /// <summary>"Loi du Duel" (law.duel): "les attaques et sorts mono-cibles infligent
+    /// +20% ; les attaques et sorts de zone infligent -20%", both sides. Mono-target =
+    /// SingleEnemy/SingleAlly; area-of-effect = AllEnemies/AllAllies. Any other
+    /// targeting type (e.g. Self) is neither and stays at 1.0.</summary>
+    private static double DuelDamageAsymmetryMultiplier(Combat combat, CombatantSkill skill)
+    {
+        if (!combat.DuelDamageAsymmetryEnabled)
+            return 1.0;
+
+        return skill.TargetingType switch
+        {
+            "SingleEnemy" or "SingleAlly" => 1.0 + Combat.DuelSingleTargetBonusPercent / 100.0,
+            "AllEnemies" or "AllAllies" => 1.0 - Combat.DuelAreaOfEffectPenaltyPercent / 100.0,
+            _ => 1.0
+        };
     }
 
     private static int ApplyStatMultiplier(int basePower, double statMultiplier)

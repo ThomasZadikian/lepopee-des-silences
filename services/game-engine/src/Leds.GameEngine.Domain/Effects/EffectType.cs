@@ -54,4 +54,9 @@ public enum EffectType
     EnableFirstHitCritical,
     /// <summary>"Loi de la Curée" (law.curee) → RunModifierType.DamageAmplificationBelowHpThreshold.</summary>
     EnableLowHpDamageAmplification,
+    /// <summary>"Loi de l'Écriture" (law.ecriture) → RunModifierType.DotDurationExtension. Unlike
+    /// the other gate-style effects above, the Value here is meaningful: the bonus turn count.</summary>
+    EnableDotDurationExtension,
+    /// <summary>"Loi du Duel" (law.duel) → RunModifierType.DuelDamageAsymmetry.</summary>
+    EnableDuelDamageAsymmetry,
 }

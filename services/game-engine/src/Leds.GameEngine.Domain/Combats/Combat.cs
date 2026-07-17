@@ -25,7 +25,9 @@ public sealed class Combat
         bool hitCounterDoubleDamageEnabled,
         bool firstHitCriticalEnabled,
         bool hasFirstHitLanded,
-        bool lowHpDamageAmplificationEnabled)
+        bool lowHpDamageAmplificationEnabled,
+        int dotDurationExtensionTicks,
+        bool duelDamageAsymmetryEnabled)
     {
         Id = id;
         RunId = runId;
@@ -43,6 +45,8 @@ public sealed class Combat
         FirstHitCriticalEnabled = firstHitCriticalEnabled;
         HasFirstHitLanded = hasFirstHitLanded;
         LowHpDamageAmplificationEnabled = lowHpDamageAmplificationEnabled;
+        DotDurationExtensionTicks = dotDurationExtensionTicks;
+        DuelDamageAsymmetryEnabled = duelDamageAsymmetryEnabled;
     }
 
     public CombatId Id { get; }
@@ -127,6 +131,24 @@ public sealed class Combat
     /// <summary>"Loi de la Curée" damage-taken bonus, in percent.</summary>
     public const int LowHpDamageAmplificationBonusPercent = 15;
 
+    /// <summary>"Loi de l'Écriture" (law.ecriture): "tous les DoT (des deux camps) durent
+    /// +2 tours" — bonus ticks added to every newly-applied DamageOverTime effect's
+    /// duration (see CombatSkillEffectResolver.ApplyStatusEffectSpec). Baked in at
+    /// creation as ticks (already converted from the law's "turns" magnitude via
+    /// AtbConstants.TicksPerTurn), zero when the law is not active.</summary>
+    public int DotDurationExtensionTicks { get; }
+
+    /// <summary>"Loi du Duel" (law.duel): "les attaques et sorts mono-cibles infligent
+    /// +20% ; les attaques et sorts de zone infligent -20%" — symmetric across both
+    /// sides, baked in at creation from the run's active RunModifiers.</summary>
+    public bool DuelDamageAsymmetryEnabled { get; }
+
+    /// <summary>"Loi du Duel" mono-target damage bonus, in percent.</summary>
+    public const int DuelSingleTargetBonusPercent = 20;
+
+    /// <summary>"Loi du Duel" area-of-effect damage penalty, in percent.</summary>
+    public const int DuelAreaOfEffectPenaltyPercent = 20;
+
     public static Combat Create(
         CombatId id,
         RunId runId,
@@ -136,7 +158,9 @@ public sealed class Combat
         IReadOnlyCollection<Combatant> enemies,
         bool hitCounterDoubleDamageEnabled = false,
         bool firstHitCriticalEnabled = false,
-        bool lowHpDamageAmplificationEnabled = false)
+        bool lowHpDamageAmplificationEnabled = false,
+        int dotDurationExtensionTicks = 0,
+        bool duelDamageAsymmetryEnabled = false)
     {
         if (id.Value == Guid.Empty)
             throw new DomainException("Combat id is required.");
@@ -173,7 +197,9 @@ public sealed class Combat
             hitCounterDoubleDamageEnabled: hitCounterDoubleDamageEnabled,
             firstHitCriticalEnabled: firstHitCriticalEnabled,
             hasFirstHitLanded: false,
-            lowHpDamageAmplificationEnabled: lowHpDamageAmplificationEnabled);
+            lowHpDamageAmplificationEnabled: lowHpDamageAmplificationEnabled,
+            dotDurationExtensionTicks: dotDurationExtensionTicks,
+            duelDamageAsymmetryEnabled: duelDamageAsymmetryEnabled);
     }
 
     public void MarkCompleted()
@@ -457,9 +483,11 @@ public sealed class Combat
         bool hitCounterDoubleDamageEnabled = false,
         bool firstHitCriticalEnabled = false,
         bool hasFirstHitLanded = false,
-        bool lowHpDamageAmplificationEnabled = false)
+        bool lowHpDamageAmplificationEnabled = false,
+        int dotDurationExtensionTicks = 0,
+        bool duelDamageAsymmetryEnabled = false)
     {
-        return new Combat(id, runId, roomId, nodeId, status, allies, enemies, activeCombatantId, turnNumber, currentTick, createdAtUtc, hitCounter, hitCounterDoubleDamageEnabled, firstHitCriticalEnabled, hasFirstHitLanded, lowHpDamageAmplificationEnabled);
+        return new Combat(id, runId, roomId, nodeId, status, allies, enemies, activeCombatantId, turnNumber, currentTick, createdAtUtc, hitCounter, hitCounterDoubleDamageEnabled, firstHitCriticalEnabled, hasFirstHitLanded, lowHpDamageAmplificationEnabled, dotDurationExtensionTicks, duelDamageAsymmetryEnabled);
     }
 
     /// <summary>

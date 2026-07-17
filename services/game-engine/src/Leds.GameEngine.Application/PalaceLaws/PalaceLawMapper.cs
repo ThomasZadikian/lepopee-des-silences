@@ -100,6 +100,10 @@ public static class PalaceLawMapper
                 RunModifierType.FirstHitCritical, 1, duration),
             EffectType.EnableLowHpDamageAmplification => PalaceLawEffect.Create(
                 RunModifierType.DamageAmplificationBelowHpThreshold, 1, duration),
+            EffectType.EnableDotDurationExtension => PalaceLawEffect.Create(
+                RunModifierType.DotDurationExtension, (double)effect.Value, duration),
+            EffectType.EnableDuelDamageAsymmetry => PalaceLawEffect.Create(
+                RunModifierType.DuelDamageAsymmetry, 1, duration),
 
             _ => throw new DomainException($"Palace law effect type '{effect.EffectType}' is not supported by the runtime.")
         };

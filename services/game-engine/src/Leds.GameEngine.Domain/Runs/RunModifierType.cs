@@ -38,4 +38,13 @@ public enum RunModifierType
     /// <summary>"Loi de la Première Impression" (law.premiere-impression) — the combat's
     /// first landed hit, any side, is forced critical. See Combat.FirstHitCriticalEnabled.</summary>
     FirstHitCritical = 23,
+
+    /// <summary>"Loi de l'Écriture" (law.ecriture) — every DamageOverTime effect (both sides)
+    /// lasts N extra turns. Value is the bonus turn count (converted to ticks at
+    /// CombatFactory time via AtbConstants.TicksPerTurn), not a raw tick count.</summary>
+    DotDurationExtension = 24,
+
+    /// <summary>"Loi du Duel" (law.duel) — mono-target skills deal +20% damage, AoE skills
+    /// deal -20%, both sides. See Combat.DuelDamageAsymmetryEnabled.</summary>
+    DuelDamageAsymmetry = 25,
 }

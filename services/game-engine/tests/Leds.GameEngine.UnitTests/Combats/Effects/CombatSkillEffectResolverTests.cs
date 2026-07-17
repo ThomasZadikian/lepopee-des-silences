@@ -902,6 +902,139 @@ public sealed class CombatSkillEffectResolverTests
         enemy.CurrentVitality.Should().Be(20 - 10);
     }
 
+    // ---------------------------------------------------------------------------
+    // "Loi de l'Écriture" (DotDurationExtensionTicks) — every DamageOverTime effect
+    // (both sides) lasts N extra ticks.
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void Resolve_ShouldExtendDotDuration_WhenDotDurationExtensionIsActive()
+    {
+        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+        var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 100);
+        var combat = Combat.Create(
+            CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(),
+            [ally], [enemy],
+            hitCounterDoubleDamageEnabled: false,
+            firstHitCriticalEnabled: false,
+            lowHpDamageAmplificationEnabled: false,
+            dotDurationExtensionTicks: 5000);
+        var skill = CombatantSkill.Create(
+            "canon.skill.plume", "Plume empoisonnée", "Debuff", "SingleEnemy", "Debuff",
+            manaCost: 0, chargeCost: 0, basePower: 0,
+            statusEffects: new[]
+            {
+                new SkillStatusEffectSpec(
+                    "poison", "Poison", StatusEffectKind.DamageOverTime,
+                    Magnitude: 10, DurationTicks: 5000, TickInterval: 1400)
+            });
+
+        _resolver.Resolve(combat, ally, skill, [enemy]);
+
+        enemy.StatusEffects.Should().ContainSingle(e => e.Key == "poison" && e.ExpiresAtTick == 10000);
+    }
+
+    [Fact]
+    public void Resolve_ShouldNotExtendDotDuration_WhenTheLawIsNotActive()
+    {
+        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+        var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 100);
+        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
+        var skill = CombatantSkill.Create(
+            "canon.skill.plume", "Plume empoisonnée", "Debuff", "SingleEnemy", "Debuff",
+            manaCost: 0, chargeCost: 0, basePower: 0,
+            statusEffects: new[]
+            {
+                new SkillStatusEffectSpec(
+                    "poison", "Poison", StatusEffectKind.DamageOverTime,
+                    Magnitude: 10, DurationTicks: 5000, TickInterval: 1400)
+            });
+
+        _resolver.Resolve(combat, ally, skill, [enemy]);
+
+        enemy.StatusEffects.Should().ContainSingle(e => e.Key == "poison" && e.ExpiresAtTick == 5000);
+    }
+
+    // ---------------------------------------------------------------------------
+    // "Loi du Duel" (DuelDamageAsymmetryEnabled) — mono-target +20%, area-of-effect -20%.
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void Resolve_ShouldBoostMonoTargetDamage_WhenDuelDamageAsymmetryIsActive()
+    {
+        var (combat, ally, enemy) = CreateDuelCombat(duelDamageAsymmetryEnabled: true);
+        var skill = CombatantSkill.Create(
+            "skill.basic.strike", "Frappe", "Damage", "SingleEnemy", "Damage", 0, 0, 10);
+
+        _resolver.Resolve(combat, ally, skill, [enemy]);
+
+        // 10 base power +20% = 12.
+        enemy.CurrentVitality.Should().Be(80 - 12);
+    }
+
+    [Fact]
+    public void Resolve_ShouldReduceAreaOfEffectDamage_WhenDuelDamageAsymmetryIsActive()
+    {
+        var (combat, ally, enemyA, enemyB) = CreateDuelCombatWithTwoEnemies(duelDamageAsymmetryEnabled: true);
+        var skill = CombatantSkill.Create(
+            "skill.basic.blast", "Explosion", "Damage", "AllEnemies", "Damage", 0, 0, 10);
+
+        _resolver.Resolve(combat, ally, skill, [enemyA, enemyB]);
+
+        // 10 base power -20% = 8.
+        enemyA.CurrentVitality.Should().Be(80 - 8);
+        enemyB.CurrentVitality.Should().Be(80 - 8);
+    }
+
+    [Fact]
+    public void Resolve_ShouldNotChangeDamage_WhenDuelDamageAsymmetryIsNotActive()
+    {
+        var (combat, ally, enemy) = CreateDuelCombat(duelDamageAsymmetryEnabled: false);
+        var skill = CombatantSkill.Create(
+            "skill.basic.strike", "Frappe", "Damage", "SingleEnemy", "Damage", 0, 0, 10);
+
+        _resolver.Resolve(combat, ally, skill, [enemy]);
+
+        enemy.CurrentVitality.Should().Be(80 - 10);
+    }
+
+    private static (Combat Combat, Combatant Ally, Combatant Enemy) CreateDuelCombat(
+        bool duelDamageAsymmetryEnabled)
+    {
+        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+        ally.ApplyEquipmentCombatModifiers(100, 0, 0); // guaranteed hit chance
+        var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 80);
+        var combat = Combat.Create(
+            CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(),
+            [ally], [enemy],
+            hitCounterDoubleDamageEnabled: false,
+            firstHitCriticalEnabled: false,
+            lowHpDamageAmplificationEnabled: false,
+            dotDurationExtensionTicks: 0,
+            duelDamageAsymmetryEnabled: duelDamageAsymmetryEnabled);
+
+        return (combat, ally, enemy);
+    }
+
+    private static (Combat Combat, Combatant Ally, Combatant EnemyA, Combatant EnemyB) CreateDuelCombatWithTwoEnemies(
+        bool duelDamageAsymmetryEnabled)
+    {
+        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+        ally.ApplyEquipmentCombatModifiers(100, 0, 0); // guaranteed hit chance
+        var enemyA = Combatant.CreateEnemy("enemy.sentinel-a", "Sentinel A", "Guard", 80);
+        var enemyB = Combatant.CreateEnemy("enemy.sentinel-b", "Sentinel B", "Guard", 80);
+        var combat = Combat.Create(
+            CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(),
+            [ally], [enemyA, enemyB],
+            hitCounterDoubleDamageEnabled: false,
+            firstHitCriticalEnabled: false,
+            lowHpDamageAmplificationEnabled: false,
+            dotDurationExtensionTicks: 0,
+            duelDamageAsymmetryEnabled: duelDamageAsymmetryEnabled);
+
+        return (combat, ally, enemyA, enemyB);
+    }
+
     private static (Combat Combat, Combatant Ally, Combatant Enemy) CreateLowHpAmplificationCombat(
         bool lowHpDamageAmplificationEnabled, int enemyMaxVitality)
     {
