@@ -54,4 +54,9 @@ public enum RunModifierType
     /// Applied once at CombatFactory time (like TurnOrderReverse) — no Combat-level flag
     /// needed since nothing has to be checked live during the fight.</summary>
     CruelDestinyForEveryone = 26,
+
+    /// <summary>"Édit du Souvenir Doux" (law.souvenir-doux) — all healing RECEIVED by the
+    /// player's own team (allies only, unlike the Chapitre II climate bundles which are
+    /// symmetric) is boosted +20% for the floor. See CombatFactory.ApplyAllyHealingBonus.</summary>
+    AllyHealingBonus = 27,
 }

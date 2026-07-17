@@ -106,6 +106,8 @@ public static class PalaceLawMapper
                 RunModifierType.DuelDamageAsymmetry, 1, duration),
             EffectType.EnableCruelDestinyForEveryone => PalaceLawEffect.Create(
                 RunModifierType.CruelDestinyForEveryone, 1, duration),
+            EffectType.EnableAllyHealingBonus => PalaceLawEffect.Create(
+                RunModifierType.AllyHealingBonus, (double)effect.Value, duration),
 
             _ => throw new DomainException($"Palace law effect type '{effect.EffectType}' is not supported by the runtime.")
         };

@@ -820,6 +820,37 @@ public sealed class CombatFactoryTests
     }
 
     // ---------------------------------------------------------------------------
+    // "Édit du Souvenir Doux" (AllyHealingBonus) — allies only, unlike the climate
+    // bundles above which apply to both sides.
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void CreateFromDraft_ShouldApplyAllyHealingBonus_WhenTheEditIsActive()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft();
+        var modifier = RunModifier.Create(
+            RunModifierType.AllyHealingBonus, 20, RunModifierDuration.UntilFloorEnds, "PalaceLaw", "law-souvenir-doux-test");
+
+        var combat = factory.CreateFromDraft(draft, runModifiers: [modifier]);
+
+        combat.Allies.Single().EffectiveHealingBonusPercent.Should().Be(20);
+        combat.Enemies.Single().EffectiveHealingBonusPercent.Should().Be(0,
+            because: "Édit du Souvenir Doux only boosts healing received by the player's own team.");
+    }
+
+    [Fact]
+    public void CreateFromDraft_ShouldNotApplyAllyHealingBonus_WhenTheEditIsNotActive()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft();
+
+        var combat = factory.CreateFromDraft(draft);
+
+        combat.Allies.Single().EffectiveHealingBonusPercent.Should().Be(0);
+    }
+
+    // ---------------------------------------------------------------------------
     // "Loi du Reflet" (MirrorCombatCopy) — mirrors the PLAYER's own team into the
     // enemy slot for the next combat (60% stats, same skills), replacing whatever
     // enemies the room would have spawned — not a clone of those enemies.

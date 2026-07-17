@@ -302,6 +302,7 @@ public sealed class CombatFactory : ICombatFactory
             }
 
             ApplyClimateStatBundle(activeClimate, allies.Concat(mirroredEnemies));
+            ApplyAllyHealingBonus(activeModifiers, allies);
 
             var mirrorHitCounterDoubleDamageEnabled = activeModifiers
                 .Any(m => m.Type == RunModifierType.HitCounterDoubleDamage && !m.IsConsumed);
@@ -414,6 +415,7 @@ public sealed class CombatFactory : ICombatFactory
         }
 
         ApplyClimateStatBundle(activeClimate, allies.Concat(enemies));
+        ApplyAllyHealingBonus(activeModifiers, allies);
 
         var hitCounterDoubleDamageEnabled = activeModifiers
             .Any(m => m.Type == RunModifierType.HitCounterDoubleDamage && !m.IsConsumed);
@@ -624,6 +626,33 @@ public sealed class CombatFactory : ICombatFactory
                         isPermanent: true));
                     break;
             }
+        }
+    }
+
+    /// <summary>"Édit du Souvenir Doux" (law.souvenir-doux): "tous les soins reçus par
+    /// l'équipe sont majorés de +20%" — allies ONLY (unlike the climate bundles above,
+    /// which are symmetric). Value is the flat percentage bonus as authored in the
+    /// catalog.</summary>
+    private static void ApplyAllyHealingBonus(IReadOnlyCollection<RunModifier> activeModifiers, IEnumerable<Combatant> allies)
+    {
+        var bonusPercent = activeModifiers
+            .Where(m => m.Type == RunModifierType.AllyHealingBonus && !m.IsConsumed)
+            .Sum(m => m.Value);
+
+        if (bonusPercent == 0)
+            return;
+
+        foreach (var ally in allies)
+        {
+            ally.ApplyStatusEffect(CombatStatusEffect.Create(
+                key: "law-souvenir-doux:healing",
+                displayName: "Souvenir doux",
+                kind: StatusEffectKind.StatModifier,
+                currentTick: 0,
+                durationTicks: 0,
+                magnitude: (int)Math.Round(bonusPercent),
+                stat: CombatStat.HealingBonus,
+                isPermanent: true));
         }
     }
 

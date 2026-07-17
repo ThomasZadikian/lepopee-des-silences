@@ -61,4 +61,6 @@ public enum EffectType
     EnableDuelDamageAsymmetry,
     /// <summary>"Loi de la Destinée" (law.destinee) → RunModifierType.CruelDestinyForEveryone.</summary>
     EnableCruelDestinyForEveryone,
+    /// <summary>"Édit du Souvenir Doux" (law.souvenir-doux) → RunModifierType.AllyHealingBonus.</summary>
+    EnableAllyHealingBonus,
 }
