@@ -68,6 +68,11 @@ public sealed class AmbientPalaceLawPromulgator : IAmbientPalaceLawPromulgator
         var pool = allLaws
             .Where(law => string.IsNullOrEmpty(law.RoomKey))
             .Where(law => !activeLawKeys.Contains(law.Key))
+            // "Promulgation : Profondeur ≥N" — several laws (chapitres VII/VIII notably) are
+            // gated to a minimum/maximum room depth (Run.CurrentDepth), e.g. law.reflet's
+            // "Profondeur ≥3".
+            .Where(law => law.MinDepth is null || run.CurrentDepth >= law.MinDepth)
+            .Where(law => law.MaxDepth is null || run.CurrentDepth <= law.MaxDepth)
             .ToList();
 
         if (run.ShouldForceCompliantPromulgation)

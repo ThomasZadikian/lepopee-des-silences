@@ -3,6 +3,7 @@ using Leds.GameEngine.Application.Catalog.Contracts;
 using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Application.PalaceLaws;
 using Leds.GameEngine.Domain.PalaceLaws;
+using Leds.GameEngine.Domain.Runs;
 using Leds.GameEngine.Domain.Selection;
 using Leds.GameEngine.UnitTests.Common.Factories;
 using Moq;
@@ -21,7 +22,9 @@ public sealed class AmbientPalaceLawPromulgatorTests
         bool isMajeure = false,
         string? roomKey = null,
         int baseWeight = 1,
-        string polarity = "Neutre") => new(
+        string polarity = "Neutre",
+        int? minDepth = null,
+        int? maxDepth = null) => new(
         Key: key,
         Name: $"Loi {key}",
         Description: "desc",
@@ -31,6 +34,8 @@ public sealed class AmbientPalaceLawPromulgatorTests
         Priority: 0,
         ImpactDomains: ["Narrative"],
         BaseWeight: baseWeight,
+        MinDepth: minDepth,
+        MaxDepth: maxDepth,
         Rarity: "Commun",
         Polarity: polarity,
         IsMajeure: isMajeure,
@@ -123,5 +128,60 @@ public sealed class AmbientPalaceLawPromulgatorTests
 
         run.ActivePalaceLaws.Should().ContainSingle(
             because: "law-a is already active — the only catalog candidate must be excluded from the pool.");
+    }
+
+    [Fact]
+    public async Task PromulgateForRoomTransitionAsync_ShouldExcludeALaw_BelowItsMinDepth()
+    {
+        var run = TestGameEngineFactory.CreateRun();
+        var sut = CreateSut(CreateLaw("law-deep", minDepth: 3));
+
+        var nextRoom = TestGameEngineFactory.CreateThresholdRoom(depth: 1);
+        await sut.PromulgateForRoomTransitionAsync(run, nextRoom);
+
+        run.ActivePalaceLaws.Should().BeEmpty(
+            because: "the only candidate requires depth >=3 and the run is still at depth 0.");
+    }
+
+    [Fact]
+    public async Task PromulgateForRoomTransitionAsync_ShouldIncludeALaw_OnceItsMinDepthIsReached()
+    {
+        var run = TestGameEngineFactory.CreateRun();
+        var sut = CreateSut(CreateLaw("law-deep", minDepth: 3));
+
+        AdvanceRooms(run, 3);
+        var nextRoom = TestGameEngineFactory.CreateThresholdRoom(depth: run.CurrentDepth + 1);
+        await sut.PromulgateForRoomTransitionAsync(run, nextRoom);
+
+        run.ActivePalaceLaws.Should().ContainSingle(law => law.Key == "law-deep");
+    }
+
+    private static void AdvanceRooms(Run run, int count)
+    {
+        for (var i = 0; i < count; i++)
+        {
+            AdvanceToNextRoom(run);
+        }
+    }
+
+    private static void AdvanceToNextRoom(Run run)
+    {
+        while (run.Status == RunStatus.Active)
+        {
+            var node = run.CurrentRoom.AvailableNodes.First();
+
+            run.ChooseNode(node.Id);
+            run.ResolveCurrentEvent();
+
+            if (run.Status == RunStatus.RoomResolved)
+            {
+                break;
+            }
+
+            run.ProgressCurrentRoom();
+        }
+
+        run.EnterInterlude();
+        run.MoveToNextRoom(TestGameEngineFactory.CreateThresholdRoom(depth: run.CurrentDepth + 1));
     }
 }
