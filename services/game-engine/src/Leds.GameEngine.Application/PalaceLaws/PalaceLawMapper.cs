@@ -122,6 +122,8 @@ public static class PalaceLawMapper
                 RunModifierType.TapisPropreEnabled, 1, duration),
             EffectType.EnableThirdCupHealCorruption => PalaceLawEffect.Create(
                 RunModifierType.ThirdCupHealCorruptionEnabled, 1, duration),
+            EffectType.EnableAbondanceExtraChoice => PalaceLawEffect.Create(
+                RunModifierType.AbondanceExtraChoiceEnabled, 1, duration),
 
             _ => throw new DomainException($"Palace law effect type '{effect.EffectType}' is not supported by the runtime.")
         };

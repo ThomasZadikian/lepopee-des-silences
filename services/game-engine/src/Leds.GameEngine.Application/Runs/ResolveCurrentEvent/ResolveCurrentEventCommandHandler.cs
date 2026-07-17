@@ -224,7 +224,8 @@ public sealed class ResolveCurrentEventCommandHandler
         {
             var itemRewardOffer = _rewardOfferFactory.CreateItemRewardOffer(
                 selectedNode.RewardProfile,
-                selectedNode.RiskLevel);
+                selectedNode.RiskLevel,
+                run.RunModifiers);
 
             run.SetPendingRewardOffer(itemRewardOffer.Id);
             pendingRewardOffer = itemRewardOffer;

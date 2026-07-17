@@ -77,4 +77,6 @@ public enum EffectType
     EnableTapisPropreEnabled,
     /// <summary>"Loi de la Troisième Tasse" (law.troisieme-tasse) → RunModifierType.ThirdCupHealCorruptionEnabled.</summary>
     EnableThirdCupHealCorruption,
+    /// <summary>"Loi de l'Abondance" (law.abondance) → RunModifierType.AbondanceExtraChoiceEnabled.</summary>
+    EnableAbondanceExtraChoice,
 }

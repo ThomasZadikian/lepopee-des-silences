@@ -6,6 +6,7 @@ using Leds.GameEngine.Application.Rewards.RewardOfferFactory;
 using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rewards;
+using Leds.GameEngine.Domain.Runs;
 using Leds.GameEngine.UnitTests.Common;
 using Moq;
 
@@ -305,5 +306,42 @@ public sealed class RewardOfferFactoryTests
 
         offer.Choices.Should().HaveCount(3,
             because: "with no enemies and no fallback pool configured, the factory falls back to the hardcoded tier choices.");
+    }
+
+    // -----------------------------------------------------------------------
+    // "Loi de l'Abondance" (law.abondance) — item nodes propose a 4th choice while
+    // RunModifierType.AbondanceExtraChoiceEnabled is active. Documented simplification:
+    // the "un nœud sur deux est vide" half is not modeled — see RewardOfferFactory.
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public void CreateItemRewardOffer_ShouldReturnThreeChoices_WhenAbondanceIsNotActive()
+    {
+        var offer = CreateFactory().CreateItemRewardOffer("default", riskLevel: 25);
+
+        offer.Choices.Should().HaveCount(3);
+    }
+
+    [Fact]
+    public void CreateItemRewardOffer_ShouldReturnFourChoices_WhenAbondanceIsActive()
+    {
+        var modifier = RunModifier.Create(
+            RunModifierType.AbondanceExtraChoiceEnabled, 1, RunModifierDuration.UntilFloorEnds, "PalaceLaw", "law-abondance-test");
+
+        var offer = CreateFactory().CreateItemRewardOffer("default", riskLevel: 25, [modifier]);
+
+        offer.Choices.Should().HaveCount(4);
+    }
+
+    [Fact]
+    public void CreateItemRewardOffer_ShouldReturnThreeChoices_WhenAbondanceModifierIsConsumed()
+    {
+        var modifier = RunModifier.Create(
+            RunModifierType.AbondanceExtraChoiceEnabled, 1, RunModifierDuration.UntilFloorEnds, "PalaceLaw", "law-abondance-test");
+        modifier.Consume(DateTime.UtcNow);
+
+        var offer = CreateFactory().CreateItemRewardOffer("default", riskLevel: 25, [modifier]);
+
+        offer.Choices.Should().HaveCount(3);
     }
 }

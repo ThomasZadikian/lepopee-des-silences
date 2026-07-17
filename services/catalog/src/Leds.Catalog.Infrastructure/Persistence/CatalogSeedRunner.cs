@@ -5305,18 +5305,21 @@ public sealed class CatalogSeedRunner
         await _ctx.SaveChangesAsync(cancellationToken);
     }
 
-    // Chapitre V — Lois d'économie. 1 of its 4 laws is seeded: "Loi des Poches Cousues"
+    // Chapitre V — Lois d'économie. 2 of its 4 laws are seeded: "Loi des Poches Cousues"
     // (law.poches-cousues, new RunModifierType.ConsumablesRestrictedInCombat — see
-    // Run.UseItem). The other 3 are NOT seeded (documented gap): "Loi de l'Impôt du
-    // Seuil" (law.impot-seuil) and "Loi du Prêteur" (law.preteur) both need an in-run
-    // debit/credit path for Éclats du Palais — today that currency lives ONLY on the
-    // player-service PlayerProfile (read via IPlayerProfileGateway as a snapshot value,
-    // PalaceShardCount), with no command allowing game-engine to spend or grant it
-    // mid-run; wiring a synchronous cross-service wallet mutation into every room
-    // transition is out of scope for this pass. "Loi de l'Abondance" (law.abondance)
-    // needs both a reward-offer choice-count override (today hardcoded to 3 in
-    // RewardOfferFactory.CreateItemRewardChoices) AND a new "one node in two is empty at
-    // opening" per-floor parity mechanic — no zero-choice RewardOffer flow exists yet.
+    // Run.UseItem) and "Loi de l'Abondance" (law.abondance, new RunModifierType.
+    // AbondanceExtraChoiceEnabled — see RewardOfferFactory.CreateItemRewardOffer). The
+    // other 2 are NOT seeded (documented gap): "Loi de l'Impôt du Seuil" (law.impot-seuil)
+    // and "Loi du Prêteur" (law.preteur) both need an in-run debit/credit path for Éclats
+    // du Palais — today that currency lives ONLY on the player-service PlayerProfile
+    // (read via IPlayerProfileGateway as a snapshot value, PalaceShardCount), with no
+    // command allowing game-engine to spend or grant it mid-run; wiring a synchronous
+    // cross-service wallet mutation into every room transition is out of scope for this
+    // pass.
+    //
+    // Loi de l'Abondance's "un nœud sur deux est vide à l'ouverture" half is NOT modeled
+    // (documented simplification) — no zero-choice RewardOffer flow exists; the item
+    // node always gets the 4th choice while the law is active, never an empty node.
     private async Task SeedLoisEconomieAsync(CancellationToken cancellationToken)
     {
         await UpsertCompendiumLawAsync(
@@ -5335,9 +5338,26 @@ public sealed class CatalogSeedRunner
             impactDomains: ["Combat"],
             cancellationToken);
 
+        await UpsertCompendiumLawAsync(
+            key: "law.abondance",
+            name: "Loi de l'Abondance",
+            narrativeText: "Article XXXV — L'abondance est un prêt. Le Palais rembourse "
+                + "en avance et encaisse en retard.",
+            description: "Les nœuds d'objets proposent 4 choix au lieu de 3 — mais un "
+                + "nœud sur deux est vide à l'ouverture (le Palais a déjà servi).",
+            rarity: "Peu commun",
+            polarity: "DoubleTranchant",
+            isMajeure: false,
+            minDepth: null,
+            duration: "UntilFloorEnds",
+            selectionGroup: "law.economie",
+            impactDomains: ["Rewards"],
+            cancellationToken);
+
         await _ctx.SaveChangesAsync(cancellationToken);
 
         await UpsertLawEffectAsync("law.poches-cousues", "EnableConsumablesRestrictedInCombat", 1m, "UntilRoomEnds", null, cancellationToken);
+        await UpsertLawEffectAsync("law.abondance", "EnableAbondanceExtraChoice", 1m, "UntilFloorEnds", null, cancellationToken);
 
         await _ctx.SaveChangesAsync(cancellationToken);
     }

@@ -96,4 +96,10 @@ public enum RunModifierType
     /// halved, with a light poison DoT applied instead. See
     /// Combat.ApplyThirdCupRollIfActive.</summary>
     ThirdCupHealCorruptionEnabled = 34,
+
+    /// <summary>"Loi de l'Abondance" (law.abondance) — item-node reward offers propose
+    /// 4 choices instead of 3. See RewardOfferFactory.CreateItemRewardOffer. The SFD's
+    /// "un nœud sur deux est vide à l'ouverture" half is NOT modeled (documented gap —
+    /// no zero-choice RewardOffer flow exists).</summary>
+    AbondanceExtraChoiceEnabled = 35,
 }

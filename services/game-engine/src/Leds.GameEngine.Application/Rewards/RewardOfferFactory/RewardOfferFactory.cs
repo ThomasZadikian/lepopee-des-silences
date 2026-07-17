@@ -4,6 +4,7 @@ using Leds.GameEngine.Application.Rewards.Loot;
 using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rewards;
+using Leds.GameEngine.Domain.Runs;
 
 namespace Leds.GameEngine.Application.Rewards.RewardOfferFactory;
 
@@ -124,9 +125,16 @@ public sealed class RewardOfferFactory
         return RewardOffer.Create(RewardSource.NodeEvent, choices);
     }
 
-    public RewardOffer CreateItemRewardOffer(string rewardProfile, int riskLevel)
+    public RewardOffer CreateItemRewardOffer(
+        string rewardProfile,
+        int riskLevel,
+        IReadOnlyCollection<RunModifier>? runModifiers = null)
     {
-        var choices = CreateItemRewardChoices(rewardProfile, riskLevel);
+        // "Loi de l'Abondance" (law.abondance): item nodes propose a 4th choice.
+        var extraChoiceEnabled = runModifiers?
+            .Any(m => m.Type == RunModifierType.AbondanceExtraChoiceEnabled && !m.IsConsumed) ?? false;
+
+        var choices = CreateItemRewardChoices(rewardProfile, riskLevel, extraChoiceEnabled);
         return RewardOffer.Create(RewardSource.NodeEvent, choices);
     }
 
@@ -238,14 +246,15 @@ public sealed class RewardOfferFactory
         };
     }
 
-    private List<RewardChoice> CreateItemRewardChoices(string rewardProfile, int riskLevel)
+    private List<RewardChoice> CreateItemRewardChoices(
+        string rewardProfile, int riskLevel, bool extraChoiceEnabled = false)
     {
         // Memory rooms give a guard shard + a heal option — thematically aligned with
         // the exploration / knowledge flavour of the Memory biome.
         // All other Item node profiles default to a guard shard + heal combo.
         var baseHeal = riskLevel / 5 + 10;
 
-        return new List<RewardChoice>
+        var choices = new List<RewardChoice>
         {
             RewardChoice.Create(
                 RewardType.TemporaryItem,
@@ -265,6 +274,20 @@ public sealed class RewardOfferFactory
                 $"Récupère {baseHeal} PV.",
                 $"heal:{baseHeal}")
         };
+
+        // "Loi de l'Abondance": a 4th choice. Documented simplification — the SFD's "un
+        // nœud sur deux est vide à l'ouverture" half is not modeled, so this node always
+        // gets the extra choice while the law is active, never a zero-choice node.
+        if (extraChoiceEnabled)
+        {
+            choices.Add(RewardChoice.Create(
+                RewardType.TemporaryItem,
+                "Surplus du Palais",
+                "Le Palais offre un quatrième choix — un nœud sur deux le regrettera.",
+                "item:item.consumable.minor-heal:Surplus du Palais:Le Palais offre un quatrième choix — un nœud sur deux le regrettera.:Consumable:Common:Heal:15"));
+        }
+
+        return choices;
     }
 
     private List<RewardChoice> CreateMerchantRewardChoices(int riskLevel)
