@@ -5181,21 +5181,21 @@ public sealed class CatalogSeedRunner
         await _ctx.SaveChangesAsync(cancellationToken);
     }
 
-    // Chapitre III — Lois du seuil & de l'étiquette. Only 1 of its 5 laws is seeded:
-    // Loi des Pieds Essuyés (trivial reuse of the existing StartingGuardBonus mechanic).
-    // The other 4 are NOT seeded — each needs a genuinely new engine mechanic that
-    // doesn't exist yet (documented gap, same convention as the rest of this chantier):
-    // "Loi du Tapis Propre" (law.tapis-propre) needs per-combatant first-turn action-type
-    // validation (support/buff/debuff/move only, no attack) — the same class of problem
-    // as Chapitre IV's un-seeded Miroir/Éloge Funèbre. "Loi de l'Invitation" (law.invitation)
-    // needs disabling a "flee" combat action that doesn't exist in the engine AND a loot
-    // bonus — RunModifierType.RewardPowerMultiplier is itself dead code upstream (written
-    // by PalaceLawMapper but never read by RewardOfferFactory, which only consumes the
+    // Chapitre III — Lois du seuil & de l'étiquette. 2 of its 5 laws are seeded: Loi des
+    // Pieds Essuyés (trivial reuse of StartingGuardBonus) and Loi du Silence Dû (new
+    // PhysicalDamageBonus/FlatManaCostBonus mechanic). The other 3 are NOT seeded — each
+    // needs a genuinely new engine mechanic that doesn't exist yet (documented gap, same
+    // convention as the rest of this chantier): "Loi du Tapis Propre" (law.tapis-propre)
+    // needs per-combatant first-turn action-type validation (support/buff/debuff/move
+    // only, no attack) — the same class of problem as Chapitre IV's un-seeded
+    // Miroir/Éloge Funèbre. "Loi de l'Invitation" (law.invitation) needs disabling a
+    // "flee" combat action that doesn't exist in the engine AND a loot bonus —
+    // RunModifierType.RewardPowerMultiplier is itself dead code upstream (written by
+    // PalaceLawMapper but never read by RewardOfferFactory, which only consumes the
     // risk-derived CombatRiskProfile.RewardPowerMultiplier), so seeding it would silently
-    // do nothing; fixing that pre-existing gap is out of scope here. "Loi du Silence Dû"
-    // (law.silence-du) needs a flat (not percent) mana-cost increase and a symmetric
-    // physical-damage-bonus CombatStat, neither of which exists. "Loi de la Troisième
-    // Tasse" (law.troisieme-tasse) needs a random per-heal-application corruption roll.
+    // do nothing; fixing that pre-existing gap is out of scope here. "Loi de la
+    // Troisième Tasse" (law.troisieme-tasse) needs a random per-heal-application
+    // corruption roll.
     private async Task SeedLoisDuSeuilAsync(CancellationToken cancellationToken)
     {
         await UpsertCompendiumLawAsync(
@@ -5214,9 +5214,27 @@ public sealed class CatalogSeedRunner
             impactDomains: ["Combat"],
             cancellationToken);
 
+        await UpsertCompendiumLawAsync(
+            key: "law.silence-du",
+            name: "Loi du Silence Dû",
+            narrativeText: "Article XXXI — Ce qui peut se faire sans être dit gagnera à "
+                + "l'être. Le reste paiera le dérangement.",
+            description: "Les sorts coûtent +2 mana pour tous les combattants ; les "
+                + "attaques physiques infligent +8% de dégâts. Le Palais préfère les "
+                + "gestes aux mots.",
+            rarity: "Peu commun",
+            polarity: "Neutre",
+            isMajeure: false,
+            minDepth: null,
+            duration: "UntilRoomEnds",
+            selectionGroup: "law.seuil",
+            impactDomains: ["Combat"],
+            cancellationToken);
+
         await _ctx.SaveChangesAsync(cancellationToken);
 
         await UpsertLawEffectAsync("law.pieds-essuyes", "AddStartingGuard", 3m, "UntilFloorEnds", null, cancellationToken);
+        await UpsertLawEffectAsync("law.silence-du", "EnableSilenceDuActive", 1m, "UntilRoomEnds", null, cancellationToken);
 
         await _ctx.SaveChangesAsync(cancellationToken);
     }
