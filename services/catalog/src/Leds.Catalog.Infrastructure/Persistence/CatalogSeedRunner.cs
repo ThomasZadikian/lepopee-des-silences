@@ -4863,17 +4863,15 @@ public sealed class CatalogSeedRunner
 
     // ── COMPENDIUM DES LOIS DU PALAIS (40 lois, Phase 4) ─────────────────────
     //
-    // Chapitre VIII — Lois majeures & paradoxales. Seeded first because 4 of its 5 laws
-    // already have full mechanical backing from Phase 3 (Reflet/Sablier Renversé/Dévoration/
-    // Treizième Coup); "Loi de la Destinée" needs a new "apply to every combatant
-    // unconditionally at combat creation" mechanic that doesn't exist yet and is
-    // deliberately NOT seeded here — seeding it without real backing would show the
-    // player a mechanical description that lies about what the game actually does.
+    // Chapitre VIII — Lois majeures & paradoxales. All 5 laws now have full mechanical
+    // backing (Reflet/Sablier Renversé/Dévoration/Treizième Coup from Phase 3, Destinée
+    // added afterward reusing the existing "Une destinée cruelle" canon skill bundle).
     //
-    // Two promulgation rules from the compendium are NOT enforced by the engine yet
-    // (documented gap, same convention as the Phase 3 "document but simplify" pattern):
-    // "jamais deux fois par run" (Reflet) and "poids doublé si Ethan a été rencontré
-    // cette run" (Dévoration) — both would need new per-run tracking state.
+    // Promulgation rules NOT enforced by the engine yet (documented gap, same convention
+    // as the Phase 3 "document but simplify" pattern) — both would need new per-run
+    // tracking state: "jamais deux fois par run" (Reflet, Destinée), "poids doublé si
+    // Ethan a été rencontré cette run" (Dévoration). Majeure exclusivity itself
+    // ("jamais deux lois majeures actives simultanément") IS enforced, by IsMajeure.
     private async Task SeedLoisMajeuresAsync(CancellationToken cancellationToken)
     {
         await UpsertCompendiumLawAsync(
@@ -4945,8 +4943,27 @@ public sealed class CatalogSeedRunner
             impactDomains: ["Combat"],
             cancellationToken);
 
+        await UpsertCompendiumLawAsync(
+            key: "law.destinee",
+            name: "Loi de la Destinée",
+            narrativeText: "Article C — Il faut parfois savoir chercher au plus profond de soi "
+                + "pour repousser ses limites, quel qu'en soit le prix. Le Palais a décidé que "
+                + "c'était parfois maintenant, et pour tout le monde.",
+            description: "Pour la salle, TOUS les combattants (équipe et ennemis) reçoivent "
+                + "« Une destinée cruelle » : +20% Attaque, Défense, Vitesse et Focus "
+                + "permanents (durée du combat), -15% sur la vitesse de remplissage ATB — et "
+                + "un DoT de 10% des PV max par tour, sans fin.",
+            rarity: "Légendaire",
+            polarity: "DoubleTranchant",
+            isMajeure: true,
+            minDepth: 3,
+            duration: "UntilRoomEnds",
+            selectionGroup: "law.majeure",
+            impactDomains: ["Combat"],
+            cancellationToken);
+
         // UpsertLawEffectAsync looks the law up by key via a database query — it must run
-        // against a database that already has these 4 laws persisted, not merely added to
+        // against a database that already has these 5 laws persisted, not merely added to
         // the change tracker (the final SaveChangesAsync in SeedAsync is too late for that).
         await _ctx.SaveChangesAsync(cancellationToken);
 
@@ -4954,6 +4971,7 @@ public sealed class CatalogSeedRunner
         await UpsertLawEffectAsync("law.sablier", "EnableTurnOrderReverse", 1m, "UntilRoomEnds", null, cancellationToken);
         await UpsertLawEffectAsync("law.devoration", "EnableRoomTraversalHpDrain", 1m, "UntilFloorEnds", null, cancellationToken);
         await UpsertLawEffectAsync("law.treizieme-coup", "EnableHitCounterDoubleDamage", 1m, "UntilRoomEnds", null, cancellationToken);
+        await UpsertLawEffectAsync("law.destinee", "EnableCruelDestinyForEveryone", 1m, "UntilRoomEnds", null, cancellationToken);
 
         await _ctx.SaveChangesAsync(cancellationToken);
     }
