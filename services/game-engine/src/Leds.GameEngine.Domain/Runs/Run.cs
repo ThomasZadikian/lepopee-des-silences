@@ -1017,6 +1017,8 @@ public sealed class Run
             throw new DomainException("Active combat must be completed before resolving combat victory.");
         }
 
+        OnCombatWon();
+
         ActiveCombatId = null;
         _activeCombat = null;
 
@@ -1099,6 +1101,9 @@ public sealed class Run
     /// <summary>Percentage of <see cref="RunModifierType.RoomTraversalHpDrain"/>'s "Dévoration" drain.</summary>
     private const int RoomTraversalHpDrainPercent = 3;
 
+    /// <summary>Percentage of max vitality "Dévoration" restores per combat WON.</summary>
+    private const int DevorationCombatWinRestorePercent = 5;
+
     /// <summary>
     /// "Dévoration" — when the <see cref="RunModifierType.RoomTraversalHpDrain"/> law is
     /// active and the player traverses a room without resolving any combat node in it,
@@ -1112,6 +1117,22 @@ public sealed class Run
             return;
 
         ApplyVitalityLoss(PercentOf(MaxHp, RoomTraversalHpDrainPercent));
+    }
+
+    /// <summary>
+    /// "Dévoration" — the other half of law.devoration: "chaque combat remporté
+    /// restaure 5%" of max vitality, under the same <see cref="RunModifierType.RoomTraversalHpDrain"/>
+    /// modifier as the room-traversal drain. Called from <see cref="CompleteActiveCombat()"/>
+    /// on every combat victory.
+    /// </summary>
+    private void OnCombatWon()
+    {
+        if (!_runModifiers.Any(m => m.Type == RunModifierType.RoomTraversalHpDrain && !m.IsConsumed))
+            return;
+
+        var restoreAmount = PercentOf(MaxHp, DevorationCombatWinRestorePercent);
+        if (restoreAmount > 0)
+            ApplyHeal(restoreAmount);
     }
 
     public void ApplyStatBonus(string stat, int value)

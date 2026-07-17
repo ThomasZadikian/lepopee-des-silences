@@ -1,4 +1,7 @@
 using FluentAssertions;
+using Leds.GameEngine.Domain.Combats;
+using Leds.GameEngine.Domain.Nodes;
+using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
 using Leds.GameEngine.UnitTests.Common.Factories;
 
@@ -66,5 +69,60 @@ public sealed class RunRoomTraversalDrainTests
         run.OnRoomEnteredWithoutCombat();
 
         run.CurrentHp.Should().Be(hpBefore);
+    }
+
+    // ---------------------------------------------------------------------------
+    // "Dévoration" — the other half: <see cref="Run.CompleteActiveCombat()"/>
+    // restores 5% of max vitality per combat WON, under the same modifier.
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void CompleteActiveCombat_ShouldRestoreFivePercentMaxVitality_WhenTheModifierIsActive()
+    {
+        var (run, combat) = CreateRunWithSelectedNodeAndCombat();
+        run.AddRunModifier(CreateDrainModifier());
+        run.ApplyVitalityLoss(run.MaxHp / 2);
+        var hpBefore = run.CurrentHp;
+        combat.MarkCompleted();
+
+        run.CompleteActiveCombat();
+
+        run.CurrentHp.Should().Be(hpBefore + (int)Math.Round(run.MaxHp * 0.05));
+    }
+
+    [Fact]
+    public void CompleteActiveCombat_ShouldNotRestoreVitality_WhenTheModifierIsNotActive()
+    {
+        var (run, combat) = CreateRunWithSelectedNodeAndCombat();
+        run.ApplyVitalityLoss(run.MaxHp / 2);
+        var hpBefore = run.CurrentHp;
+        combat.MarkCompleted();
+
+        run.CompleteActiveCombat();
+
+        run.CurrentHp.Should().Be(hpBefore);
+    }
+
+    [Fact]
+    public void CompleteActiveCombat_ShouldNotRestoreVitality_WhenAlreadyAtFullHp()
+    {
+        var (run, combat) = CreateRunWithSelectedNodeAndCombat();
+        run.AddRunModifier(CreateDrainModifier());
+        combat.MarkCompleted();
+
+        run.CompleteActiveCombat();
+
+        run.CurrentHp.Should().Be(run.MaxHp);
+    }
+
+    private static (Run Run, Combat Combat) CreateRunWithSelectedNodeAndCombat()
+    {
+        var run = TestGameEngineFactory.CreateRunWithSelectedTargetNode(NodeEventType.Combat).Run;
+        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+        var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 80);
+        var combat = Combat.Create(CombatId.New(), run.Id, RoomId.New(), NodeId.New(), [ally], [enemy]);
+        run.StartCombat(combat);
+
+        return (run, combat);
     }
 }
