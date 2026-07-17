@@ -128,6 +128,7 @@ public sealed class PalaceLawMapperTests
     [InlineData("EnableThirdCupHealCorruption", RunModifierType.ThirdCupHealCorruptionEnabled)]
     [InlineData("EnableAbondanceExtraChoice", RunModifierType.AbondanceExtraChoiceEnabled)]
     [InlineData("EnablePresentations", RunModifierType.PresentationsEnabled)]
+    [InlineData("EnableMiroir", RunModifierType.MiroirEnabled)]
     public void CreatePalaceLaw_ShouldMapExoticMechanicGateEffects(string effectType, RunModifierType expected)
     {
         var definition = CreateDefinition(

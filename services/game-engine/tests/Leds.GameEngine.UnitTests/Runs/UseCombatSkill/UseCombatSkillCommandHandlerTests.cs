@@ -635,6 +635,53 @@ public sealed class UseCombatSkillCommandHandlerTests
             .WithMessage("Automatic enemy turn resolution exceeded the safety limit.");
     }
 
+    // "Loi du Miroir" (law.miroir) — the first ally-cast skill of the combat is
+    // immediately copied by the fastest living enemy (see
+    // UseCombatSkillCommandHandler.ResolveMirrorCopyIfTriggered).
+
+    [Fact]
+    public async Task Handle_ShouldTriggerMirrorCopy_OnFirstAllySkillUse_WhenMiroirEnabled()
+    {
+        var setup = CreateRunWithActiveCombatAndMiroir(_strikeSkill, miroirEnabled: true);
+        var handler = CreateHandlerWithRealEffectResolver(setup, _strikeSkill, [setup.Enemy], out _, out _);
+
+        var result = await handler.Handle(CreateCommand(setup, _strikeSkill, [setup.Enemy]), CancellationToken.None);
+
+        // The single enemy copies the "SingleEnemy" strike back at the original
+        // caster (the ally) — targeting is re-resolved from the enemy's own side.
+        result.Combat.Allies.Single().CurrentVitality.Should().Be(90);
+        result.LogEntries.Should().Contain(e => e.Type == "MirrorCopy" && e.ActorId == setup.Enemy.Id.Value);
+    }
+
+    [Fact]
+    public async Task Handle_ShouldNotTriggerMirrorCopy_WhenMiroirDisabled()
+    {
+        var setup = CreateRunWithActiveCombatAndMiroir(_strikeSkill, miroirEnabled: false);
+        var handler = CreateHandlerWithRealEffectResolver(setup, _strikeSkill, [setup.Enemy], out _, out _);
+
+        var result = await handler.Handle(CreateCommand(setup, _strikeSkill, [setup.Enemy]), CancellationToken.None);
+
+        result.Combat.Allies.Single().CurrentVitality.Should().Be(100);
+        result.LogEntries.Should().NotContain(e => e.Type == "MirrorCopy");
+    }
+
+    [Fact]
+    public async Task Handle_ShouldMirrorAllEnemiesSkill_AsAllAlliesFromTheCopyingEnemySide()
+    {
+        var aoeSkill = CreateSkill("skill.basic.blast", "Damage", "AllEnemies", 10);
+        var ally1 = Combatant.CreateAlly("player.1", "Hero1", "Fighter", 100, 0, [aoeSkill]);
+        var ally2 = Combatant.CreateAlly("player.2", "Hero2", "Fighter", 100, 0, [aoeSkill]);
+        var enemy = Combatant.CreateEnemy("enemy.1", "Enemy1", "Guard", 80, []);
+        var setup = CreateRunWithActiveCombatAndMiroir([ally1, ally2], [enemy], miroirEnabled: true);
+        var activeAlly = setup.Combat.Allies.Single(a => a.Id == setup.Combat.ActiveCombatantId);
+        var handler = CreateHandlerWithRealEffectResolver(setup, aoeSkill, activeAlly, [enemy], out _, out _);
+
+        var result = await handler.Handle(CreateCommand(setup, activeAlly, aoeSkill, [enemy]), CancellationToken.None);
+
+        // "AllEnemies" resolved from the copying enemy's side means "the whole ally team".
+        result.Combat.Allies.Should().OnlyContain(a => a.CurrentVitality == 90);
+    }
+
     private static UseCombatSkillCommandHandler CreateHandlerWithRealEffectResolver(
         (Run Run, Combat Combat, Combatant Ally, Combatant Enemy) setup,
         CombatantSkill skill,
@@ -834,6 +881,46 @@ public sealed class UseCombatSkillCommandHandlerTests
             NodeId.New(),
             allies,
             enemies);
+
+        runWithNode.Run.StartCombat(combat);
+
+        return (runWithNode.Run, combat, allies.First(), enemies.First());
+    }
+
+    private static (Run Run, Combat Combat, Combatant Ally, Combatant Enemy) CreateRunWithActiveCombatAndMiroir(
+        CombatantSkill allySkill, bool miroirEnabled)
+    {
+        var runWithNode = TestGameEngineFactory.CreateRunWithSelectedTargetNode(NodeEventType.Combat);
+        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100, 0, [allySkill]);
+        var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 80, []);
+        var combat = Combat.Create(
+            CombatId.New(),
+            runWithNode.Run.Id,
+            RoomId.New(),
+            NodeId.New(),
+            [ally],
+            [enemy],
+            miroirEnabled: miroirEnabled);
+
+        runWithNode.Run.StartCombat(combat);
+
+        return (runWithNode.Run, combat, ally, enemy);
+    }
+
+    private static (Run Run, Combat Combat, Combatant Ally, Combatant Enemy) CreateRunWithActiveCombatAndMiroir(
+        IReadOnlyCollection<Combatant> allies,
+        IReadOnlyCollection<Combatant> enemies,
+        bool miroirEnabled)
+    {
+        var runWithNode = TestGameEngineFactory.CreateRunWithSelectedTargetNode(NodeEventType.Combat);
+        var combat = Combat.Create(
+            CombatId.New(),
+            runWithNode.Run.Id,
+            RoomId.New(),
+            NodeId.New(),
+            allies,
+            enemies,
+            miroirEnabled: miroirEnabled);
 
         runWithNode.Run.StartCombat(combat);
 

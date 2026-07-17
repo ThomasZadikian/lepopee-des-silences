@@ -148,6 +148,10 @@ public sealed class CombatFactory : ICombatFactory
         var presentationsEnabled = activeModifiers
             .Any(m => m.Type == RunModifierType.PresentationsEnabled && !m.IsConsumed);
 
+        // "Loi du Miroir" (law.miroir): same ambient-drawn convention.
+        var miroirEnabled = activeModifiers
+            .Any(m => m.Type == RunModifierType.MiroirEnabled && !m.IsConsumed);
+
         if (activeClimate == RoomClimate.Rain)
         {
             guardBonus += 5;
@@ -357,7 +361,8 @@ public sealed class CombatFactory : ICombatFactory
                 postDeathBasicAttackOnlyEnabled,
                 tapisPropreEnabled,
                 thirdCupHealCorruptionEnabled,
-                presentationsEnabled);
+                presentationsEnabled,
+                miroirEnabled);
         }
 
         var enemies = draft.Enemies
@@ -477,7 +482,8 @@ public sealed class CombatFactory : ICombatFactory
             postDeathBasicAttackOnlyEnabled,
             tapisPropreEnabled,
             thirdCupHealCorruptionEnabled,
-            presentationsEnabled);
+            presentationsEnabled,
+            miroirEnabled);
     }
 
     /// <summary>

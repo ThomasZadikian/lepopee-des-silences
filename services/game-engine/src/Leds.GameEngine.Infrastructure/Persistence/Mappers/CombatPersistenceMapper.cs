@@ -43,6 +43,8 @@ public static class CombatPersistenceMapper
             TapisPropreEnabled = combat.TapisPropreEnabled,
             ThirdCupHealCorruptionEnabled = combat.ThirdCupHealCorruptionEnabled,
             PresentationsEnabled = combat.PresentationsEnabled,
+            MiroirEnabled = combat.MiroirEnabled,
+            HasMirrorTriggered = combat.HasMirrorTriggered,
             ActiveCombatantId = combat.ActiveCombatantId?.Value,
             CreatedAtUtc = combat.CreatedAtUtc,
             UpdatedAtUtc = DateTime.UtcNow,
@@ -321,7 +323,9 @@ public static class CombatPersistenceMapper
             entity.NextActionRestrictedToBasicAttack,
             entity.TapisPropreEnabled,
             entity.ThirdCupHealCorruptionEnabled,
-            entity.PresentationsEnabled);
+            entity.PresentationsEnabled,
+            entity.MiroirEnabled,
+            entity.HasMirrorTriggered);
     }
 
     public static Combatant ToDomain(CombatantEntity entity)

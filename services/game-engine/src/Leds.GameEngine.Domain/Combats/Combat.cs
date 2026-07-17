@@ -36,7 +36,9 @@ public sealed class Combat
         bool nextActionRestrictedToBasicAttack = false,
         bool tapisPropreEnabled = false,
         bool thirdCupHealCorruptionEnabled = false,
-        bool presentationsEnabled = false)
+        bool presentationsEnabled = false,
+        bool miroirEnabled = false,
+        bool hasMirrorTriggered = false)
     {
         Id = id;
         RunId = runId;
@@ -64,6 +66,8 @@ public sealed class Combat
         TapisPropreEnabled = tapisPropreEnabled;
         ThirdCupHealCorruptionEnabled = thirdCupHealCorruptionEnabled;
         PresentationsEnabled = presentationsEnabled;
+        MiroirEnabled = miroirEnabled;
+        HasMirrorTriggered = hasMirrorTriggered;
     }
 
     public CombatId Id { get; }
@@ -287,6 +291,45 @@ public sealed class Combat
     /// via a log entry immediately before it resolves.</summary>
     public bool PresentationsEnabled { get; }
 
+    /// <summary>"Loi du Miroir" (law.miroir): baked in at creation from the run's active
+    /// RunModifiers. See TryConsumeMirrorTrigger.</summary>
+    public bool MiroirEnabled { get; }
+
+    /// <summary>Whether the combat's first ally-cast skill has already resolved — tracked
+    /// regardless of whether "Loi du Miroir" is active, since there is no other reason to
+    /// track it. Set by <see cref="TryConsumeMirrorTrigger"/>.</summary>
+    public bool HasMirrorTriggered { get; private set; }
+
+    /// <summary>
+    /// "Loi du Miroir" (law.miroir): "le premier sort lancé par l'équipe dans chaque
+    /// combat est immédiatement copié par l'ennemi le plus rapide (mêmes valeurs,
+    /// ciblage inversé)." Called once, right after the FIRST ally skill use of the
+    /// combat resolves (any skill, any target) — see
+    /// UseCombatSkillCommandHandler.ResolveMirrorCopyIfTriggered. Returns true exactly
+    /// once per combat, only when the law is active.
+    /// </summary>
+    public bool TryConsumeMirrorTrigger()
+    {
+        if (HasMirrorTriggered)
+            return false;
+
+        HasMirrorTriggered = true;
+        return MiroirEnabled;
+    }
+
+    /// <summary>"Loi du Miroir": the fastest living enemy — the one who copies the first
+    /// ally-cast skill of the combat. Same tie-break convention as OrderByInitiative
+    /// (Speed, then Initiative, then Id for determinism).</summary>
+    public Combatant? GetFastestLivingEnemy()
+    {
+        return Enemies
+            .Where(e => !e.IsDefeated)
+            .OrderByDescending(e => e.BaseStatSnapshot.Speed)
+            .ThenByDescending(e => e.BaseStatSnapshot.Initiative)
+            .ThenBy(e => e.Id.Value)
+            .FirstOrDefault();
+    }
+
     /// <summary>"Loi de la Falaise" random-target chance, checked once per turn.</summary>
     private const double FalaiseWindTriggerChance = 0.10;
 
@@ -312,7 +355,8 @@ public sealed class Combat
         bool postDeathBasicAttackOnlyEnabled = false,
         bool tapisPropreEnabled = false,
         bool thirdCupHealCorruptionEnabled = false,
-        bool presentationsEnabled = false)
+        bool presentationsEnabled = false,
+        bool miroirEnabled = false)
     {
         if (id.Value == Guid.Empty)
             throw new DomainException("Combat id is required.");
@@ -358,7 +402,8 @@ public sealed class Combat
             postDeathBasicAttackOnlyEnabled: postDeathBasicAttackOnlyEnabled,
             tapisPropreEnabled: tapisPropreEnabled,
             thirdCupHealCorruptionEnabled: thirdCupHealCorruptionEnabled,
-            presentationsEnabled: presentationsEnabled);
+            presentationsEnabled: presentationsEnabled,
+            miroirEnabled: miroirEnabled);
     }
 
     public void MarkCompleted()
@@ -699,9 +744,11 @@ public sealed class Combat
         bool nextActionRestrictedToBasicAttack = false,
         bool tapisPropreEnabled = false,
         bool thirdCupHealCorruptionEnabled = false,
-        bool presentationsEnabled = false)
+        bool presentationsEnabled = false,
+        bool miroirEnabled = false,
+        bool hasMirrorTriggered = false)
     {
-        return new Combat(id, runId, roomId, nodeId, status, allies, enemies, activeCombatantId, turnNumber, currentTick, createdAtUtc, hitCounter, hitCounterDoubleDamageEnabled, firstHitCriticalEnabled, hasFirstHitLanded, lowHpDamageAmplificationEnabled, dotDurationExtensionTicks, duelDamageAsymmetryEnabled, dotMagnitudeBonus, healingBlocked, falaiseWindEnabled, postDeathBasicAttackOnlyEnabled, nextActionRestrictedToBasicAttack, tapisPropreEnabled, thirdCupHealCorruptionEnabled, presentationsEnabled);
+        return new Combat(id, runId, roomId, nodeId, status, allies, enemies, activeCombatantId, turnNumber, currentTick, createdAtUtc, hitCounter, hitCounterDoubleDamageEnabled, firstHitCriticalEnabled, hasFirstHitLanded, lowHpDamageAmplificationEnabled, dotDurationExtensionTicks, duelDamageAsymmetryEnabled, dotMagnitudeBonus, healingBlocked, falaiseWindEnabled, postDeathBasicAttackOnlyEnabled, nextActionRestrictedToBasicAttack, tapisPropreEnabled, thirdCupHealCorruptionEnabled, presentationsEnabled, miroirEnabled, hasMirrorTriggered);
     }
 
     /// <summary>

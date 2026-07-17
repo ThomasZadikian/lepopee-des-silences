@@ -1006,6 +1006,36 @@ public sealed class CombatFactoryTests
     }
 
     // ---------------------------------------------------------------------------
+    // "Loi du Miroir" (MiroirEnabled) — RunModifier-driven, baked at combat creation;
+    // the mirror-copy mechanic itself lives in
+    // UseCombatSkillCommandHandler.ResolveMirrorCopyIfTriggered, tested there.
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void CreateFromDraft_ShouldEnableMiroir_WhenTheLawIsActive()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft();
+        var modifier = RunModifier.Create(
+            RunModifierType.MiroirEnabled, 1, RunModifierDuration.UntilFloorEnds, "PalaceLaw", "law-miroir-test");
+
+        var combat = factory.CreateFromDraft(draft, runModifiers: [modifier]);
+
+        combat.MiroirEnabled.Should().BeTrue();
+    }
+
+    [Fact]
+    public void CreateFromDraft_ShouldNotEnableMiroir_WhenTheLawIsNotActive()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft();
+
+        var combat = factory.CreateFromDraft(draft);
+
+        combat.MiroirEnabled.Should().BeFalse();
+    }
+
+    // ---------------------------------------------------------------------------
     // "Loi des Visites Terminées" (HealingBlocked) — room-bound (RoomKey), not a
     // RunModifier/tirage.
     // ---------------------------------------------------------------------------

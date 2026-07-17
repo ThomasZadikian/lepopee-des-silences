@@ -34,6 +34,8 @@ public sealed class CombatEntityConfiguration : IEntityTypeConfiguration<CombatE
         builder.Property(c => c.TapisPropreEnabled).HasColumnName("tapis_propre_enabled").HasDefaultValue(false);
         builder.Property(c => c.ThirdCupHealCorruptionEnabled).HasColumnName("third_cup_heal_corruption_enabled").HasDefaultValue(false);
         builder.Property(c => c.PresentationsEnabled).HasColumnName("presentations_enabled").HasDefaultValue(false);
+        builder.Property(c => c.MiroirEnabled).HasColumnName("miroir_enabled").HasDefaultValue(false);
+        builder.Property(c => c.HasMirrorTriggered).HasColumnName("has_mirror_triggered").HasDefaultValue(false);
         builder.Property(c => c.ActiveCombatantId).HasColumnName("active_combatant_id");
         builder.Property(c => c.CreatedAtUtc).HasColumnName("created_at_utc");
         builder.Property(c => c.UpdatedAtUtc).HasColumnName("updated_at_utc");

@@ -4982,12 +4982,14 @@ public sealed class CatalogSeedRunner
         await _ctx.SaveChangesAsync(cancellationToken);
     }
 
-    // Chapitre IV — Lois de combat. 6 of its 7 laws already have full mechanical
-    // backing (File Indienne/Curée/Première Impression from Phase 3bis, Duel/Écriture
-    // from this pass, Éloge Funèbre new in this pass — post-death basic-attack-only
-    // gate via Combat.NextActionRestrictedToBasicAttack). "Loi du Miroir" (copy the
-    // ally's first cast onto the fastest enemy, inverted targeting) is NOT seeded —
-    // it needs re-entrant skill resolution that doesn't exist.
+    // Chapitre IV — Lois de combat. All 7 of its laws now have full mechanical backing
+    // (File Indienne/Curée/Première Impression from Phase 3bis, Duel/Écriture/Éloge
+    // Funèbre from an earlier pass — post-death basic-attack-only gate via
+    // Combat.NextActionRestrictedToBasicAttack — and "Loi du Miroir", added this pass:
+    // the first ally-cast skill of the combat is re-resolved from the fastest living
+    // enemy's side via UseCombatSkillCommandHandler.ResolveMirrorCopyIfTriggered — no
+    // explicit target inversion needed, since TargetingType is always relative to the
+    // acting combatant's own side).
     //
     // Two room-type weight-doubling promulgation rules are NOT enforced by the engine
     // (documented gap, same as Chapitre VIII): Curée "poids doublé aux Plaines" and
@@ -5095,6 +5097,23 @@ public sealed class CatalogSeedRunner
             impactDomains: ["Combat"],
             cancellationToken);
 
+        await UpsertCompendiumLawAsync(
+            key: "law.miroir",
+            name: "Loi du Miroir",
+            narrativeText: "Article LII — Tout ce que vous direz au Palais, le Palais sait "
+                + "le redire. Choisissez votre premier mot avec soin.",
+            description: "Le premier sort lancé par l'équipe dans chaque combat est "
+                + "immédiatement copié par l'ennemi le plus rapide (mêmes valeurs, ciblage "
+                + "inversé).",
+            rarity: "Épique",
+            polarity: "Sévère",
+            isMajeure: false,
+            minDepth: 2,
+            duration: "UntilFloorEnds",
+            selectionGroup: "law.combat",
+            impactDomains: ["Combat"],
+            cancellationToken);
+
         await _ctx.SaveChangesAsync(cancellationToken);
 
         await UpsertLawEffectAsync("law.file-indienne", "EnableTurnOrderLock", 1m, "UntilRoomEnds", null, cancellationToken);
@@ -5103,6 +5122,7 @@ public sealed class CatalogSeedRunner
         await UpsertLawEffectAsync("law.duel", "EnableDuelDamageAsymmetry", 1m, "UntilRoomEnds", null, cancellationToken);
         await UpsertLawEffectAsync("law.ecriture", "EnableDotDurationExtension", 2m, "UntilFloorEnds", null, cancellationToken);
         await UpsertLawEffectAsync("law.eloge-funebre", "EnablePostDeathBasicAttackOnly", 1m, "UntilRoomEnds", null, cancellationToken);
+        await UpsertLawEffectAsync("law.miroir", "EnableMiroir", 1m, "UntilFloorEnds", null, cancellationToken);
 
         await _ctx.SaveChangesAsync(cancellationToken);
     }

@@ -23,7 +23,8 @@ public sealed class CombatTests
         bool postDeathBasicAttackOnlyEnabled = false,
         bool tapisPropreEnabled = false,
         bool thirdCupHealCorruptionEnabled = false,
-        bool presentationsEnabled = false)
+        bool presentationsEnabled = false,
+        bool miroirEnabled = false)
     {
         var allies = Enumerable.Range(0, allyCount).Select(i =>
             Combatant.CreateAlly($"player.{i}", $"Hero{i}", "Fighter", 100)).ToArray();
@@ -49,7 +50,8 @@ public sealed class CombatTests
             postDeathBasicAttackOnlyEnabled,
             tapisPropreEnabled,
             thirdCupHealCorruptionEnabled,
-            presentationsEnabled);
+            presentationsEnabled,
+            miroirEnabled);
     }
 
     [Fact]
@@ -680,5 +682,47 @@ public sealed class CombatTests
     {
         CreateSut(presentationsEnabled: true).PresentationsEnabled.Should().BeTrue();
         CreateSut().PresentationsEnabled.Should().BeFalse();
+    }
+
+    // ---------------------------------------------------------------------------
+    // "Loi du Miroir" (MiroirEnabled) — the mirror-copy resolution itself lives in
+    // UseCombatSkillCommandHandler.ResolveMirrorCopyIfTriggered, tested there. Here we
+    // only verify the baked flag and the TryConsumeMirrorTrigger/GetFastestLivingEnemy
+    // building blocks it relies on.
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void MiroirEnabled_ShouldReflectTheValueBakedInAtCreation()
+    {
+        CreateSut(miroirEnabled: true).MiroirEnabled.Should().BeTrue();
+        CreateSut().MiroirEnabled.Should().BeFalse();
+    }
+
+    [Fact]
+    public void TryConsumeMirrorTrigger_ShouldReturnTrue_OnlyOnce_WhenLawIsActive()
+    {
+        var combat = CreateSut(miroirEnabled: true);
+
+        combat.TryConsumeMirrorTrigger().Should().BeTrue();
+        combat.HasMirrorTriggered.Should().BeTrue();
+        combat.TryConsumeMirrorTrigger().Should().BeFalse();
+    }
+
+    [Fact]
+    public void TryConsumeMirrorTrigger_ShouldConsumeButReturnFalse_WhenLawIsInactive()
+    {
+        var combat = CreateSut(miroirEnabled: false);
+
+        combat.TryConsumeMirrorTrigger().Should().BeFalse();
+        combat.HasMirrorTriggered.Should().BeTrue();
+    }
+
+    [Fact]
+    public void GetFastestLivingEnemy_ShouldReturnNull_WhenNoEnemyIsLiving()
+    {
+        var combat = CreateSut(enemyCount: 1);
+        combat.Enemies.Single().MarkDefeated();
+
+        combat.GetFastestLivingEnemy().Should().BeNull();
     }
 }

@@ -81,4 +81,6 @@ public enum EffectType
     EnableAbondanceExtraChoice,
     /// <summary>"Loi des Présentations" (law.presentations) → RunModifierType.PresentationsEnabled.</summary>
     EnablePresentations,
+    /// <summary>"Loi du Miroir" (law.miroir) → RunModifierType.MiroirEnabled.</summary>
+    EnableMiroir,
 }

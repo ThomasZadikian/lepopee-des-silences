@@ -111,4 +111,11 @@ public enum RunModifierType
     /// announcing individually right before their own first action, since no channel
     /// exists to surface log entries before combat's first response.</summary>
     PresentationsEnabled = 36,
+
+    /// <summary>"Loi du Miroir" (law.miroir) — the first skill cast by the player's team
+    /// in each combat is immediately copied by the fastest living enemy (same values,
+    /// targeting re-resolved from the copying enemy's side — see
+    /// Combat.TryConsumeMirrorTrigger/GetFastestLivingEnemy and
+    /// UseCombatSkillCommandHandler.ResolveMirrorCopyIfTriggered).</summary>
+    MiroirEnabled = 37,
 }
