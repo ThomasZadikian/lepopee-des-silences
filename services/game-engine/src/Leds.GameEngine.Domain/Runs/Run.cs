@@ -358,20 +358,27 @@ public sealed class Run
     /// <item>Araran / Tovma / Mané: a mirrored trio — falling out with any one of the
     /// three makes the other two harder to win over (-30% each).</item>
     /// </list>
-    /// Only ever scales a POSITIVE gain (both the base bonus and these modifiers) —
-    /// penalties (negative deltas, e.g. transgressions) always pass through unchanged.
+    /// Only the base bonus and NPC-pair modifiers above are scoped to POSITIVE gains —
+    /// negative deltas (e.g. transgressions) normally pass through unchanged, EXCEPT
+    /// under "Loi du Nom Retenu" (RunModifierType.ReputationChangeDoubled), which doubles
+    /// gains AND losses alike for the floor. NpcRelationship.AdjustScore already floors
+    /// Elise's score against any decrease, so doubling a penalty destined for her is a
+    /// no-op there, matching the law's own carve-out for her.
     /// </summary>
     public int ScaleReputationGain(int delta, string? targetNpcKey = null)
     {
+        var doubled = GetActiveModifiers(RunModifierType.ReputationChangeDoubled).Count > 0;
+
         if (delta <= 0)
         {
-            return delta;
+            return doubled ? delta * 2 : delta;
         }
 
         var percent = ReputationGainBonusPercent;
         percent += NarrativePairModifierPercent(targetNpcKey);
 
-        return percent == 0 ? delta : (int)Math.Round(delta * (100 + percent) / 100.0);
+        var scaled = percent == 0 ? delta : (int)Math.Round(delta * (100 + percent) / 100.0);
+        return doubled ? scaled * 2 : scaled;
     }
 
     private int NarrativePairModifierPercent(string? targetNpcKey)

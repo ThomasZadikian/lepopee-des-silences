@@ -105,7 +105,7 @@ public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver
         fragments.Add(new NarrativeFragmentDto(npc.DisplayName, "Cette rencontre t'apprend quelque chose sur toi-même. +1 point de compétence."));
         effects.Add(new AppliedConsequenceEffect("statPoint", 1, npc.DisplayName));
 
-        EvaluateTransgressions(npc, relationship);
+        EvaluateTransgressions(npc, run, relationship);
         RefreshWounds(npc, relationship);
 
         relationship.AdvanceTo(choice.NextNodeKey);
@@ -542,7 +542,7 @@ public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver
         => run.PlayerSnapshot?.Characters.Any(c =>
             string.Equals(c.DefinitionKey, companionDefinitionKey, StringComparison.OrdinalIgnoreCase)) == true;
 
-    private static void EvaluateTransgressions(CatalogNpcDefinition npc, NpcRelationship relationship)
+    private static void EvaluateTransgressions(CatalogNpcDefinition npc, Run run, NpcRelationship relationship)
     {
         if (npc.Wounds is null) return;
 
@@ -553,7 +553,10 @@ public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver
                 var marker = $"__armed:{wound.Key}:{transgression.TriggerFlag}";
                 if (relationship.HasFlag(transgression.TriggerFlag) && !relationship.HasFlag(marker))
                 {
-                    relationship.AdjustScore(transgression.RelationshipPenalty);
+                    // "Loi du Nom Retenu" (RunModifierType.ReputationChangeDoubled) doubles
+                    // transgression penalties too, not just gains — routed through the same
+                    // ScaleReputationGain used for positive dialogue consequences.
+                    relationship.AdjustScore(run.ScaleReputationGain(transgression.RelationshipPenalty, npc.Key));
                     relationship.SetWoundState(wound.Key, WoundState.Rompu, canRevert: false);
                     relationship.SetFlag(marker);
                 }

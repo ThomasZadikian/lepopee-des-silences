@@ -63,4 +63,6 @@ public enum EffectType
     EnableCruelDestinyForEveryone,
     /// <summary>"Édit du Souvenir Doux" (law.souvenir-doux) → RunModifierType.AllyHealingBonus.</summary>
     EnableAllyHealingBonus,
+    /// <summary>"Loi du Nom Retenu" (law.nom-retenu) → RunModifierType.ReputationChangeDoubled.</summary>
+    EnableReputationChangeDoubled,
 }

@@ -119,6 +119,7 @@ public sealed class PalaceLawMapperTests
     [InlineData("EnableLowHpDamageAmplification", RunModifierType.DamageAmplificationBelowHpThreshold)]
     [InlineData("EnableCruelDestinyForEveryone", RunModifierType.CruelDestinyForEveryone)]
     [InlineData("EnableAllyHealingBonus", RunModifierType.AllyHealingBonus)]
+    [InlineData("EnableReputationChangeDoubled", RunModifierType.ReputationChangeDoubled)]
     public void CreatePalaceLaw_ShouldMapExoticMechanicGateEffects(string effectType, RunModifierType expected)
     {
         var definition = CreateDefinition(

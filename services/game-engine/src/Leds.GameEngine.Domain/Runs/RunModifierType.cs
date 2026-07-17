@@ -59,4 +59,9 @@ public enum RunModifierType
     /// player's own team (allies only, unlike the Chapitre II climate bundles which are
     /// symmetric) is boosted +20% for the floor. See CombatFactory.ApplyAllyHealingBonus.</summary>
     AllyHealingBonus = 27,
+
+    /// <summary>"Loi du Nom Retenu" (law.nom-retenu) — every NPC reputation change for the
+    /// floor (both gains AND losses/transgressions) is doubled. See
+    /// Run.ScaleReputationGain.</summary>
+    ReputationChangeDoubled = 28,
 }
