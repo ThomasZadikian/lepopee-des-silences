@@ -291,6 +291,11 @@ public sealed class CombatFactory : ICombatFactory
                 ApplyStrictInitiativeOrder(allies.Concat(mirroredEnemies));
             }
 
+            if (activeModifiers.Any(m => m.Type == RunModifierType.CruelDestinyForEveryone && !m.IsConsumed))
+            {
+                ApplyCruelDestinyToEveryone(allies.Concat(mirroredEnemies));
+            }
+
             var mirrorHitCounterDoubleDamageEnabled = activeModifiers
                 .Any(m => m.Type == RunModifierType.HitCounterDoubleDamage && !m.IsConsumed);
             var mirrorFirstHitCriticalEnabled = activeModifiers
@@ -395,6 +400,11 @@ public sealed class CombatFactory : ICombatFactory
             ApplyStrictInitiativeOrder(allies.Concat(enemies));
         }
 
+        if (activeModifiers.Any(m => m.Type == RunModifierType.CruelDestinyForEveryone && !m.IsConsumed))
+        {
+            ApplyCruelDestinyToEveryone(allies.Concat(enemies));
+        }
+
         var hitCounterDoubleDamageEnabled = activeModifiers
             .Any(m => m.Type == RunModifierType.HitCounterDoubleDamage && !m.IsConsumed);
         var firstHitCriticalEnabled = activeModifiers
@@ -487,6 +497,54 @@ public sealed class CombatFactory : ICombatFactory
                 durationTicks: 0,
                 magnitude: delta,
                 stat: CombatStat.Speed,
+                isPermanent: true));
+        }
+    }
+
+    /// <summary>"Loi de la Destinée" (law.destinee, Durée: Salle) — "TOUS les combattants
+    /// (équipe et ennemis) reçoivent « Une destinée cruelle »" for the room. Reuses the
+    /// exact same permanent effect bundle as the existing legendary player skill
+    /// canon.skill.destinee-cruelle (+20% Attack/Defense/Speed/Focus, -15% ATB tempo,
+    /// 10%-max-HP DoT with no end) per the compendium's own note ("application
+    /// universelle du seul sort canon permanent"), applied to every combatant instead
+    /// of just the caster.</summary>
+    private static void ApplyCruelDestinyToEveryone(IEnumerable<Combatant> combatants)
+    {
+        foreach (var combatant in combatants)
+        {
+            foreach (var stat in new[] { CombatStat.AttackPower, CombatStat.Defense, CombatStat.Speed, CombatStat.Focus })
+            {
+                combatant.ApplyStatusEffect(CombatStatusEffect.Create(
+                    key: $"law-destinee:{stat}",
+                    displayName: "Une destinée cruelle",
+                    kind: StatusEffectKind.StatModifier,
+                    currentTick: 0,
+                    durationTicks: 0,
+                    magnitude: 20,
+                    stat: stat,
+                    isMagnitudePercentOfBaseStat: true,
+                    isPermanent: true));
+            }
+
+            combatant.ApplyStatusEffect(CombatStatusEffect.Create(
+                key: "law-destinee:tempo",
+                displayName: "Une destinée cruelle",
+                kind: StatusEffectKind.StatModifier,
+                currentTick: 0,
+                durationTicks: 0,
+                magnitude: -15,
+                stat: CombatStat.AtbTempoModifier,
+                isPermanent: true));
+
+            combatant.ApplyStatusEffect(CombatStatusEffect.Create(
+                key: "law-destinee:dot",
+                displayName: "Une destinée cruelle",
+                kind: StatusEffectKind.DamageOverTime,
+                currentTick: 0,
+                durationTicks: 0,
+                magnitude: 10,
+                tickInterval: AtbConstants.TicksPerTurn,
+                isMagnitudePercentOfMax: true,
                 isPermanent: true));
         }
     }

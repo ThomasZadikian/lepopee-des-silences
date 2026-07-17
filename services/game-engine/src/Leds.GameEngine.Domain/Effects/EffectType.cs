@@ -59,4 +59,6 @@ public enum EffectType
     EnableDotDurationExtension,
     /// <summary>"Loi du Duel" (law.duel) → RunModifierType.DuelDamageAsymmetry.</summary>
     EnableDuelDamageAsymmetry,
+    /// <summary>"Loi de la Destinée" (law.destinee) → RunModifierType.CruelDestinyForEveryone.</summary>
+    EnableCruelDestinyForEveryone,
 }

@@ -117,6 +117,7 @@ public sealed class PalaceLawMapperTests
     [InlineData("EnableMirrorCombatCopy", RunModifierType.MirrorCombatCopy)]
     [InlineData("EnableFirstHitCritical", RunModifierType.FirstHitCritical)]
     [InlineData("EnableLowHpDamageAmplification", RunModifierType.DamageAmplificationBelowHpThreshold)]
+    [InlineData("EnableCruelDestinyForEveryone", RunModifierType.CruelDestinyForEveryone)]
     public void CreatePalaceLaw_ShouldMapExoticMechanicGateEffects(string effectType, RunModifierType expected)
     {
         var definition = CreateDefinition(

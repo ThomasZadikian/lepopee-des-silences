@@ -47,4 +47,11 @@ public enum RunModifierType
     /// <summary>"Loi du Duel" (law.duel) — mono-target skills deal +20% damage, AoE skills
     /// deal -20%, both sides. See Combat.DuelDamageAsymmetryEnabled.</summary>
     DuelDamageAsymmetry = 25,
+
+    /// <summary>"Loi de la Destinée" (law.destinee) — every combatant, both sides, receives
+    /// the exact "Une destinée cruelle" bundle (canon.skill.destinee-cruelle) for the room:
+    /// +20% Attack/Defense/Speed/Focus, -15% ATB tempo, and a 10%-max-HP DoT with no end.
+    /// Applied once at CombatFactory time (like TurnOrderReverse) — no Combat-level flag
+    /// needed since nothing has to be checked live during the fight.</summary>
+    CruelDestinyForEveryone = 26,
 }

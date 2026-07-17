@@ -104,6 +104,8 @@ public static class PalaceLawMapper
                 RunModifierType.DotDurationExtension, (double)effect.Value, duration),
             EffectType.EnableDuelDamageAsymmetry => PalaceLawEffect.Create(
                 RunModifierType.DuelDamageAsymmetry, 1, duration),
+            EffectType.EnableCruelDestinyForEveryone => PalaceLawEffect.Create(
+                RunModifierType.CruelDestinyForEveryone, 1, duration),
 
             _ => throw new DomainException($"Palace law effect type '{effect.EffectType}' is not supported by the runtime.")
         };

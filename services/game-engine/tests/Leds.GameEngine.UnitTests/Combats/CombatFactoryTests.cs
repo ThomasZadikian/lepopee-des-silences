@@ -911,4 +911,57 @@ public sealed class CombatFactoryTests
             "PalaceLaw",
             "law-file-indienne-test");
     }
+
+    // ---------------------------------------------------------------------------
+    // "Loi de la Destinée" (CruelDestinyForEveryone) — grants "Une destinée cruelle"
+    // (+20% Attack/Defense/Speed/Focus, -15% ATB tempo, 10%-max-HP eternal DoT) to
+    // every combatant, both sides.
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void CreateFromDraft_ShouldGrantCruelDestinyToEveryone_WhenTheLawIsActive()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft(enemyAttackPower: 100, enemyDefense: 100, enemySpeed: 100, enemyFocus: 100);
+
+        var combat = factory.CreateFromDraft(
+            draft, attackPower: 100, defense: 100, speed: 100, focus: 100,
+            runModifiers: [CreateCruelDestinyModifier()]);
+
+        var ally = combat.Allies.Single();
+        var enemy = combat.Enemies.Single();
+
+        ally.EffectiveAttackPower.Should().Be(120);
+        ally.EffectiveDefense.Should().Be(120);
+        ally.EffectiveSpeed.Should().Be(120);
+        ally.EffectiveFocus.Should().Be(120);
+        ally.EffectiveAtbTempoModifierPercent.Should().Be(-15);
+        ally.StatusEffects.Should().Contain(e => e.Key == "law-destinee:dot" && e.Magnitude == 10);
+
+        enemy.EffectiveAttackPower.Should().Be(120);
+        enemy.EffectiveAtbTempoModifierPercent.Should().Be(-15);
+        enemy.StatusEffects.Should().Contain(e => e.Key == "law-destinee:dot" && e.Magnitude == 10);
+    }
+
+    [Fact]
+    public void CreateFromDraft_ShouldNotGrantCruelDestiny_WhenTheLawIsNotActive()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft();
+
+        var combat = factory.CreateFromDraft(draft);
+
+        combat.Allies.Single().StatusEffects.Should().NotContain(e => e.Key == "law-destinee:dot");
+        combat.Enemies.Single().StatusEffects.Should().NotContain(e => e.Key == "law-destinee:dot");
+    }
+
+    private static RunModifier CreateCruelDestinyModifier()
+    {
+        return RunModifier.Create(
+            RunModifierType.CruelDestinyForEveryone,
+            1,
+            RunModifierDuration.UntilRoomEnds,
+            "PalaceLaw",
+            "law-destinee-test");
+    }
 }
