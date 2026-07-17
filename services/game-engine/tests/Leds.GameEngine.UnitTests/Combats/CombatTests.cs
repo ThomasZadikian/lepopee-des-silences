@@ -17,7 +17,8 @@ public sealed class CombatTests
         int dotDurationExtensionTicks = 0,
         bool duelDamageAsymmetryEnabled = false,
         int dotMagnitudeBonus = 0,
-        bool healingBlocked = false)
+        bool healingBlocked = false,
+        bool falaiseWindEnabled = false)
     {
         var allies = Enumerable.Range(0, allyCount).Select(i =>
             Combatant.CreateAlly($"player.{i}", $"Hero{i}", "Fighter", 100)).ToArray();
@@ -38,7 +39,8 @@ public sealed class CombatTests
             dotDurationExtensionTicks,
             duelDamageAsymmetryEnabled,
             dotMagnitudeBonus,
-            healingBlocked);
+            healingBlocked,
+            falaiseWindEnabled);
     }
 
     [Fact]
@@ -478,5 +480,81 @@ public sealed class CombatTests
     {
         CreateSut(healingBlocked: true).HealingBlocked.Should().BeTrue();
         CreateSut().HealingBlocked.Should().BeFalse();
+    }
+
+    // ---------------------------------------------------------------------------
+    // "Loi de la Falaise" (FalaiseWindEnabled) — resolved once per AdvanceTurn: a
+    // deterministic-but-seeded 10% chance pushes a random combatant to Back row, or
+    // deals 5 "embruns" vitality damage if it was already there. Each combat below
+    // uses a fresh Guid (Combat.Id is part of the roll's seed), so running many
+    // independent combats gives a robust statistical signal without ever depending
+    // on a single hardcoded outcome.
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void FalaiseWindEnabled_ShouldReflectTheValueBakedInAtCreation()
+    {
+        CreateSut(falaiseWindEnabled: true).FalaiseWindEnabled.Should().BeTrue();
+        CreateSut().FalaiseWindEnabled.Should().BeFalse();
+    }
+
+    [Fact]
+    public void AdvanceTurn_ShouldNeverPushOrDamageAnyone_WhenFalaiseWindIsDisabled()
+    {
+        for (var i = 0; i < 50; i++)
+        {
+            var combat = CreateSut(allyCount: 2, enemyCount: 2, falaiseWindEnabled: false);
+            var before = combat.Allies.Concat(combat.Enemies).ToDictionary(c => c.Id, c => c.CurrentVitality);
+
+            combat.AdvanceTurn();
+
+            combat.Allies.Concat(combat.Enemies).Should().OnlyContain(c => c.Row == CombatRow.Front);
+            combat.Allies.Concat(combat.Enemies)
+                .Should().OnlyContain(c => c.CurrentVitality == before[c.Id]);
+        }
+    }
+
+    [Fact]
+    public void AdvanceTurn_ShouldSometimesPushARandomCombatantToBackRow_WhenFalaiseWindIsEnabled()
+    {
+        var anyPushed = false;
+        var anyNotPushed = false;
+
+        for (var i = 0; i < 300; i++)
+        {
+            var combat = CreateSut(allyCount: 2, enemyCount: 2, falaiseWindEnabled: true);
+
+            combat.AdvanceTurn();
+
+            var pushed = combat.Allies.Concat(combat.Enemies).Any(c => c.Row == CombatRow.Back);
+            anyPushed |= pushed;
+            anyNotPushed |= !pushed;
+        }
+
+        anyPushed.Should().BeTrue(because: "roughly 10% of 300 independent rolls must trigger at least once.");
+        anyNotPushed.Should().BeTrue(because: "roughly 90% of 300 independent rolls must NOT trigger at least once.");
+    }
+
+    [Fact]
+    public void AdvanceTurn_ShouldDealEmbrunsDamage_WhenThePickedCombatantIsAlreadyInBackRow()
+    {
+        var anyDamaged = false;
+
+        for (var i = 0; i < 300; i++)
+        {
+            var combat = CreateSut(allyCount: 2, enemyCount: 2, falaiseWindEnabled: true);
+            foreach (var combatant in combat.Allies.Concat(combat.Enemies))
+                combatant.SetRow(CombatRow.Back);
+            var before = combat.Allies.Concat(combat.Enemies).ToDictionary(c => c.Id, c => c.CurrentVitality);
+
+            combat.AdvanceTurn();
+
+            if (combat.Allies.Concat(combat.Enemies).Any(c => c.CurrentVitality < before[c.Id]))
+                anyDamaged = true;
+        }
+
+        anyDamaged.Should().BeTrue(
+            because: "when every combatant is already in Back row, a triggered roll can only deal " +
+                "the 5-damage 'embruns' fallback, never a row push.");
     }
 }

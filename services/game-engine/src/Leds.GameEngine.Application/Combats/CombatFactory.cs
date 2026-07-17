@@ -126,6 +126,11 @@ public sealed class CombatFactory : ICombatFactory
         // not a RunModifier/tirage, always active whenever combat happens in that room.
         var healingBlocked = string.Equals(draft.RoomKey, "room.hopital", StringComparison.OrdinalIgnoreCase);
 
+        // "Loi de la Falaise" (law.falaise, liée à room.falaise): "10% de chance qu'un
+        // combattant aléatoire soit repoussé d'un rang" each turn — same room-bound
+        // convention as healingBlocked above, resolved by Combat.AdvanceTurn.
+        var falaiseWindEnabled = string.Equals(draft.RoomKey, "room.falaise", StringComparison.OrdinalIgnoreCase);
+
         if (activeClimate == RoomClimate.Rain)
         {
             guardBonus += 5;
@@ -330,7 +335,8 @@ public sealed class CombatFactory : ICombatFactory
                 ComputeDotDurationExtensionTicks(activeModifiers),
                 ComputeDuelDamageAsymmetryEnabled(activeModifiers),
                 dotMagnitudeBonus,
-                healingBlocked);
+                healingBlocked,
+                falaiseWindEnabled);
         }
 
         var enemies = draft.Enemies
@@ -445,7 +451,8 @@ public sealed class CombatFactory : ICombatFactory
             ComputeDotDurationExtensionTicks(activeModifiers),
             ComputeDuelDamageAsymmetryEnabled(activeModifiers),
             dotMagnitudeBonus,
-            healingBlocked);
+            healingBlocked,
+            falaiseWindEnabled);
     }
 
     /// <summary>

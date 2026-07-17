@@ -1,5 +1,6 @@
 using Leds.GameEngine.Domain.Combats.Atb;
 using Leds.GameEngine.Domain.Combats.StatusEffects;
+using Leds.GameEngine.Domain.Combats.Typing;
 using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rooms;
@@ -29,7 +30,8 @@ public sealed class Combat
         int dotDurationExtensionTicks,
         bool duelDamageAsymmetryEnabled,
         int dotMagnitudeBonus,
-        bool healingBlocked)
+        bool healingBlocked,
+        bool falaiseWindEnabled = false)
     {
         Id = id;
         RunId = runId;
@@ -51,6 +53,7 @@ public sealed class Combat
         DuelDamageAsymmetryEnabled = duelDamageAsymmetryEnabled;
         DotMagnitudeBonus = dotMagnitudeBonus;
         HealingBlocked = healingBlocked;
+        FalaiseWindEnabled = falaiseWindEnabled;
     }
 
     public CombatId Id { get; }
@@ -167,6 +170,22 @@ public sealed class Combat
     /// untouched. Baked in at creation from the room's CatalogRoomKey.</summary>
     public bool HealingBlocked { get; }
 
+    /// <summary>"Loi de la Falaise" (law.falaise, liée à room.falaise): "à chaque tour de
+    /// combat, 10% de chance qu'un combattant aléatoire soit repoussé d'un rang. Les
+    /// combattants déjà au rang arrière subissent 5 dégâts (les embruns)." Baked in at
+    /// creation from the room's CatalogRoomKey (same convention as HealingBlocked);
+    /// resolved once per <see cref="AdvanceTurn"/> — see <see cref="ApplyFalaiseWindIfActive"/>.
+    /// No combat-log entry surfaces the trigger today (documented simplification):
+    /// only the row/vitality state changes.</summary>
+    public bool FalaiseWindEnabled { get; }
+
+    /// <summary>"Loi de la Falaise" random-target chance, checked once per turn.</summary>
+    private const double FalaiseWindTriggerChance = 0.10;
+
+    /// <summary>"Loi de la Falaise" fallback damage ("les embruns") when the randomly
+    /// picked combatant is already in the Back row and cannot be pushed further.</summary>
+    private const int FalaiseWindDamage = 5;
+
     public static Combat Create(
         CombatId id,
         RunId runId,
@@ -180,7 +199,8 @@ public sealed class Combat
         int dotDurationExtensionTicks = 0,
         bool duelDamageAsymmetryEnabled = false,
         int dotMagnitudeBonus = 0,
-        bool healingBlocked = false)
+        bool healingBlocked = false,
+        bool falaiseWindEnabled = false)
     {
         if (id.Value == Guid.Empty)
             throw new DomainException("Combat id is required.");
@@ -221,7 +241,8 @@ public sealed class Combat
             dotDurationExtensionTicks: dotDurationExtensionTicks,
             duelDamageAsymmetryEnabled: duelDamageAsymmetryEnabled,
             dotMagnitudeBonus: dotMagnitudeBonus,
-            healingBlocked: healingBlocked);
+            healingBlocked: healingBlocked,
+            falaiseWindEnabled: falaiseWindEnabled);
     }
 
     public void MarkCompleted()
@@ -364,6 +385,47 @@ public sealed class Combat
         TurnNumber++;
 
         GetActiveCombatant()?.ResetGuardToBase();
+
+        ApplyFalaiseWindIfActive();
+    }
+
+    /// <summary>
+    /// "Loi de la Falaise": each turn advance, a 10%-chance deterministic roll (seeded by
+    /// combat id + turn number, so replays/rehydration reproduce the same outcome) picks
+    /// a random living combatant. A Front-row target is pushed to Back; a target already
+    /// in Back row instead takes <see cref="FalaiseWindDamage"/> vitality damage
+    /// (bypassing Guard — "les embruns" are an environmental effect, not an attack).
+    /// No-op when <see cref="FalaiseWindEnabled"/> is false.
+    /// </summary>
+    private void ApplyFalaiseWindIfActive()
+    {
+        if (!FalaiseWindEnabled || Status != CombatStatus.Active)
+            return;
+
+        var living = AllCombatants.Where(c => !c.IsDefeated).ToArray();
+        if (living.Length == 0)
+            return;
+
+        var triggerSeed = $"falaise-wind|{Id.Value:N}|{TurnNumber}";
+        if (DeterministicCombatRoll.UnitInterval(triggerSeed) >= FalaiseWindTriggerChance)
+            return;
+
+        var pickSeed = $"falaise-wind-target|{Id.Value:N}|{TurnNumber}";
+        var index = Math.Min(
+            (int)(DeterministicCombatRoll.UnitInterval(pickSeed) * living.Length),
+            living.Length - 1);
+        var target = living[index];
+
+        if (target.Row == CombatRow.Front)
+        {
+            target.SetRow(CombatRow.Back);
+        }
+        else
+        {
+            target.ApplyVitalityDamage(FalaiseWindDamage);
+            CompleteIfAllEnemiesDefeated();
+            FailIfAllAlliesDefeated();
+        }
     }
 
     /// <summary>
@@ -509,9 +571,10 @@ public sealed class Combat
         int dotDurationExtensionTicks = 0,
         bool duelDamageAsymmetryEnabled = false,
         int dotMagnitudeBonus = 0,
-        bool healingBlocked = false)
+        bool healingBlocked = false,
+        bool falaiseWindEnabled = false)
     {
-        return new Combat(id, runId, roomId, nodeId, status, allies, enemies, activeCombatantId, turnNumber, currentTick, createdAtUtc, hitCounter, hitCounterDoubleDamageEnabled, firstHitCriticalEnabled, hasFirstHitLanded, lowHpDamageAmplificationEnabled, dotDurationExtensionTicks, duelDamageAsymmetryEnabled, dotMagnitudeBonus, healingBlocked);
+        return new Combat(id, runId, roomId, nodeId, status, allies, enemies, activeCombatantId, turnNumber, currentTick, createdAtUtc, hitCounter, hitCounterDoubleDamageEnabled, firstHitCriticalEnabled, hasFirstHitLanded, lowHpDamageAmplificationEnabled, dotDurationExtensionTicks, duelDamageAsymmetryEnabled, dotMagnitudeBonus, healingBlocked, falaiseWindEnabled);
     }
 
     /// <summary>

@@ -5366,16 +5366,17 @@ public sealed class CatalogSeedRunner
     // RunModifier. IsCumulExempt = true per the SFD ("elles ne comptent pas dans la
     // limite de cumul : elles sont le terrain, pas le climat").
     //
-    // Only 1 of its 5 laws is seeded: "Loi des Visites Terminées" (room.hopital), whose
-    // mechanic (CombatFactory checking draft.RoomKey == "room.hopital") is a hardcoded
-    // room-key check, not a catalog-driven effect — so no EffectDefinition/RunModifier
-    // is attached to this entry; it exists purely as descriptive/display metadata. The
-    // other 4 need mechanics that don't exist yet: "Loi de la Cellule" (room.cellule)
-    // needs a no-death/forced-surrender combat-resolution mode; "Loi de la Falaise"
-    // (room.falaise) needs a row-based combatant-positioning system that doesn't exist
-    // in combat (only in map layout); "Loi des Sorties Mouvantes" (room.labyrinthe)
-    // needs a chain-combat trigger after 12 turns; "Loi du Sanctuaire" (room.meditation)
-    // needs the ambient promulgator to refuse ANY promulgation while in that room.
+    // 2 of its 5 laws are seeded: "Loi des Visites Terminées" (room.hopital) and "Loi
+    // de la Falaise" (room.falaise, added once the Row/Rank positioning system existed
+    // — see Combat.FalaiseWindEnabled/ApplyFalaiseWindIfActive). Both mechanics
+    // (CombatFactory checking draft.RoomKey) are hardcoded room-key checks, not
+    // catalog-driven effects — so neither has an EffectDefinition/RunModifier attached;
+    // they exist purely as descriptive/display metadata. The other 3 need mechanics
+    // that don't exist yet: "Loi de la Cellule" (room.cellule) needs a no-death/
+    // forced-surrender combat-resolution mode; "Loi des Sorties Mouvantes"
+    // (room.labyrinthe) needs a chain-combat trigger after 12 turns; "Loi du
+    // Sanctuaire" (room.meditation) needs the ambient promulgator to refuse ANY
+    // promulgation while in that room.
     private async Task SeedLoisLieesAuxSallesAsync(CancellationToken cancellationToken)
     {
         await UpsertCompendiumLawAsync(
@@ -5396,6 +5397,31 @@ public sealed class CatalogSeedRunner
             impactDomains: ["Combat"],
             cancellationToken: cancellationToken,
             roomKey: "room.hopital",
+            isCumulExempt: true);
+
+        // "Loi de la Falaise" (room.falaise): the row/rank positioning system it needs
+        // now exists in the engine (CombatFactory sets Combat.FalaiseWindEnabled from
+        // the room's RoomKey; Combat.AdvanceTurn resolves the 10% chance each turn) —
+        // same hardcoded-RoomKey convention as Visites Terminées above, no
+        // EffectDefinition/RunModifier attached.
+        await UpsertCompendiumLawAsync(
+            key: "law.falaise",
+            name: "Loi de la Falaise",
+            narrativeText: "Article XL — Entre le Palais et ses enfers, il y a du vent. Le "
+                + "vent n'a pas signé le registre. Le vent fait ce qu'il veut.",
+            description: "Le vent de la mer violacée souffle : à chaque tour de combat, "
+                + "10% de chance qu'un combattant aléatoire soit repoussé d'un rang "
+                + "(rang arrière). Les combattants déjà au rang arrière subissent 5 dégâts "
+                + "à la place (les embruns).",
+            rarity: "Liée",
+            polarity: "Sévère",
+            isMajeure: false,
+            minDepth: null,
+            duration: "Permanent",
+            selectionGroup: "law.salle",
+            impactDomains: ["Combat"],
+            cancellationToken: cancellationToken,
+            roomKey: "room.falaise",
             isCumulExempt: true);
 
         await _ctx.SaveChangesAsync(cancellationToken);

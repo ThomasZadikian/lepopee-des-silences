@@ -18,6 +18,7 @@ public sealed class CombatEntity
     public bool DuelDamageAsymmetryEnabled { get; set; }
     public int DotMagnitudeBonus { get; set; }
     public bool HealingBlocked { get; set; }
+    public bool FalaiseWindEnabled { get; set; }
     public Guid? ActiveCombatantId { get; set; }
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }

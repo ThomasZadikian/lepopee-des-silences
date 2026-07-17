@@ -923,6 +923,44 @@ public sealed class CombatFactoryTests
     }
 
     // ---------------------------------------------------------------------------
+    // "Loi de la Falaise" (FalaiseWindEnabled) — room-bound (RoomKey), same
+    // convention as HealingBlocked above.
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void CreateFromDraft_ShouldSetFalaiseWindEnabled_WhenRoomKeyIsFalaise()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft(roomKey: "room.falaise");
+
+        var combat = factory.CreateFromDraft(draft);
+
+        combat.FalaiseWindEnabled.Should().BeTrue();
+    }
+
+    [Fact]
+    public void CreateFromDraft_ShouldNotSetFalaiseWindEnabled_WhenRoomKeyIsSomethingElse()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft(roomKey: "room.jardin");
+
+        var combat = factory.CreateFromDraft(draft);
+
+        combat.FalaiseWindEnabled.Should().BeFalse();
+    }
+
+    [Fact]
+    public void CreateFromDraft_ShouldNotSetFalaiseWindEnabled_WhenRoomKeyIsAbsent()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft();
+
+        var combat = factory.CreateFromDraft(draft);
+
+        combat.FalaiseWindEnabled.Should().BeFalse();
+    }
+
+    // ---------------------------------------------------------------------------
     // "Loi du Reflet" (MirrorCombatCopy) — mirrors the PLAYER's own team into the
     // enemy slot for the next combat (60% stats, same skills), replacing whatever
     // enemies the room would have spawned — not a clone of those enemies.
