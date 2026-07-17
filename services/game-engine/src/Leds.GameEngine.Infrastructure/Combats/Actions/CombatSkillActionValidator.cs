@@ -45,6 +45,14 @@ public sealed class CombatSkillActionValidator : ICombatSkillActionValidator
             return Invalid($"Actor does not own skill '{skillKey}'.");
         }
 
+        // "Loi de l'Oubli Partiel": one skill, picked at promulgation time from the
+        // team's full roster, is unusable for the rest of the floor.
+        if (combat.ForgottenSkillKey is not null
+            && string.Equals(skill.Key, combat.ForgottenSkillKey, StringComparison.OrdinalIgnoreCase))
+        {
+            return Invalid("Loi de l'Oubli Partiel: ce sort est oublié pour le reste de l'étage.");
+        }
+
         // "Loi du Tapis Propre": each combatant's OWN first turn of the combat cannot
         // be an attack — support/buff/debuff/movement only. Movement (Reposition) and
         // non-Damage skills still mark HasActedThisCombat via RegisterAtbAction, so the

@@ -41,7 +41,8 @@ public sealed class CombatFactory : ICombatFactory
         bool himLitProtectionEnabled = false,
         int healingBonusPercent = 0,
         int magicAttack = 0,
-        int magicDefense = 0)
+        int magicDefense = 0,
+        string? forgottenSkillKey = null)
     {
         return CreateFromDraft(
             CombatId.New(),
@@ -66,7 +67,8 @@ public sealed class CombatFactory : ICombatFactory
             himLitProtectionEnabled,
             healingBonusPercent,
             magicAttack,
-            magicDefense);
+            magicDefense,
+            forgottenSkillKey);
     }
     private static (double VitalityMultiplier, double PowerMultiplier, int GuardBonus) EncounterBonus(string encounterType)
     {
@@ -103,7 +105,8 @@ public sealed class CombatFactory : ICombatFactory
         bool himLitProtectionEnabled = false,
         int healingBonusPercent = 0,
         int magicAttack = 0,
-        int magicDefense = 0)
+        int magicDefense = 0,
+        string? forgottenSkillKey = null)
     {
         // Sum all unconsumed StartingGuardBonus modifiers (e.g. Éclat de garde: +8 garde).
         var guardBonus = runModifiers?
@@ -362,7 +365,8 @@ public sealed class CombatFactory : ICombatFactory
                 tapisPropreEnabled,
                 thirdCupHealCorruptionEnabled,
                 presentationsEnabled,
-                miroirEnabled);
+                miroirEnabled,
+                forgottenSkillKey);
         }
 
         var enemies = draft.Enemies
@@ -483,7 +487,8 @@ public sealed class CombatFactory : ICombatFactory
             tapisPropreEnabled,
             thirdCupHealCorruptionEnabled,
             presentationsEnabled,
-            miroirEnabled);
+            miroirEnabled,
+            forgottenSkillKey);
     }
 
     /// <summary>

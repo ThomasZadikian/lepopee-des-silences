@@ -5467,13 +5467,13 @@ public sealed class CatalogSeedRunner
         await _ctx.SaveChangesAsync(cancellationToken);
     }
 
-    // Chapitre VI — Lois de mémoire & de relations. 3 of its 4 laws are seeded: "Loi du
-    // Nom Retenu" (reuses ReputationChangeDoubled), "Loi du Témoin" (new
-    // WoundHealingBlocked mechanic), and "Loi des Présentations" (new PresentationsEnabled
-    // mechanic — see EnemyCombatTurnResolver.Resolve, gated on Combatant.HasActedThisCombat).
-    // NOT seeded: "Loi de l'Oubli Partiel" (law.oubli-partiel) needs a mechanism to
-    // temporarily remove a random non-Frappe ally skill for the floor plus a floor-end
-    // stat-point grant — no skill-removal/floor-end-hook mechanism exists for this shape yet.
+    // Chapitre VI — Lois de mémoire & de relations. All 4 of its laws now have full
+    // mechanical backing: "Loi du Nom Retenu" (reuses ReputationChangeDoubled), "Loi du
+    // Témoin" (WoundHealingBlocked), "Loi des Présentations" (PresentationsEnabled — see
+    // EnemyCombatTurnResolver.Resolve, gated on Combatant.HasActedThisCombat), and "Loi de
+    // l'Oubli Partiel" (SkillForgotten — see RunModifierType.SkillForgotten and
+    // Run.PickForgottenSkill for the random-skill draw and the floor-end +8 stat-point
+    // payout).
     private async Task SeedLoisDeMemoireAsync(CancellationToken cancellationToken)
     {
         await UpsertCompendiumLawAsync(
@@ -5533,14 +5533,45 @@ public sealed class CatalogSeedRunner
             impactDomains: ["Combat"],
             cancellationToken);
 
+        // "Loi de l'Oubli Partiel" (law.oubli-partiel): "jamais au premier étage" is
+        // encoded as minDepth: FloorLengthInRooms (10) — the first room index of the
+        // second floor — since Run.FloorIndex = CurrentRoomIndex / FloorLengthInRooms and
+        // MinDepth is compared against CurrentRoomIndex-based depth (see
+        // AmbientPalaceLawPromulgator). The forgotten skill is drawn once at promulgation
+        // (Run.PickForgottenSkill, excluding "skill.basic.strike"/hors Frappe) and the
+        // +8 stat points are paid out when the floor-end modifier is consumed
+        // (Run.ConsumeFloorEndModifiers / MoveToNextRoomCommandHandler).
+        await UpsertCompendiumLawAsync(
+            key: "law.oubli-partiel",
+            name: "Loi de l'Oubli Partiel",
+            narrativeText: "Article XXXIII — On ne mesure la valeur d'un mot qu'en le "
+                + "perdant. Le Palais facture la leçon au tarif pédagogique.",
+            description: "Un sort aléatoire de l'équipe (hors Frappe) est oublié pour la "
+                + "durée de l'étage. À la fin de l'étage, l'oubli enseigne : +8 points de "
+                + "compétence.",
+            rarity: "Rare",
+            polarity: "DoubleTranchant",
+            isMajeure: false,
+            minDepth: FloorLengthInRoomsForLawMinDepth,
+            duration: "UntilFloorEnds",
+            selectionGroup: "law.memoire",
+            impactDomains: ["Combat"],
+            cancellationToken);
+
         await _ctx.SaveChangesAsync(cancellationToken);
 
         await UpsertLawEffectAsync("law.nom-retenu", "EnableReputationChangeDoubled", 1m, "UntilFloorEnds", null, cancellationToken);
         await UpsertLawEffectAsync("law.temoin", "EnableWoundHealingBlocked", 1m, "UntilFloorEnds", null, cancellationToken);
         await UpsertLawEffectAsync("law.presentations", "EnablePresentations", 1m, "UntilFloorEnds", null, cancellationToken);
+        await UpsertLawEffectAsync("law.oubli-partiel", "EnableSkillForgotten", 1m, "UntilFloorEnds", null, cancellationToken);
 
         await _ctx.SaveChangesAsync(cancellationToken);
     }
+
+    // Mirrors Run.FloorLengthInRooms (game-engine) — the catalog service has no reference
+    // to that domain type, so the constant is duplicated here with an explicit name tying
+    // it back to the "jamais au premier étage" promulgation rule above.
+    private const int FloorLengthInRoomsForLawMinDepth = 10;
 
     // Chapitre IX — Lois liées aux salles. These are structurally different from every
     // other chapter: they are NOT drawn by the ambient promulgator (AmbientPalaceLawPromulgator

@@ -227,4 +227,115 @@ public sealed class RunPromulgationTests
         run.EnterInterlude();
         run.MoveToNextRoom(TestGameEngineFactory.CreateThresholdRoom(depth: run.CurrentDepth + 1));
     }
+
+    // ---------------------------------------------------------------------------
+    // "Loi de l'Oubli Partiel" — the forgotten skill is drawn once at promulgation
+    // time (Run.PickForgottenSkill), then cleared with a +8 stat-point payout signal
+    // when the floor-scoped modifier is consumed (Run.ConsumeFloorEndModifiers /
+    // Run.MoveToNextRoom's bool return).
+    // ---------------------------------------------------------------------------
+
+    private static PalaceLaw CreateOubliPartielLaw(string key = "law.oubli-partiel") => PalaceLaw.Create(
+        key, "Loi de l'Oubli Partiel", "1.0.0",
+        domains: [PalaceLawDomain.Combat],
+        effects:
+        [
+            PalaceLawEffect.Create(
+                RunModifierType.SkillForgotten, value: 1, RunModifierDuration.UntilFloorEnds),
+        ]);
+
+    private static Run CreateRunWithMultipleSkills()
+    {
+        var run = TestGameEngineFactory.CreateRun();
+
+        var statBlock = RunCharacterStatSnapshot.Create(
+            maxVitality: 100, attackPower: 12, defense: 6, startingGuard: 0,
+            speed: 10, initiative: 10, recovery: 5, focus: 0, mana: 0, charge: 0);
+
+        var skills = new[]
+        {
+            RunCharacterSkillSnapshot.Create(
+                skillDefinitionKey: "skill.basic.strike", displayName: "Frappe",
+                skillType: "Damage", targetingMode: "SingleEnemy", effectType: "Damage",
+                manaCost: 0, chargeCost: 0, basePower: 10),
+            RunCharacterSkillSnapshot.Create(
+                skillDefinitionKey: "skill.hero.blaze", displayName: "Brasier",
+                skillType: "Damage", targetingMode: "SingleEnemy", effectType: "Damage",
+                manaCost: 5, chargeCost: 0, basePower: 20),
+        };
+
+        var character = RunCharacterSnapshot.Create(
+            characterId: Guid.NewGuid(), definitionKey: "character.player.self",
+            displayName: "Le Porteur", statBlock: statBlock, skills: skills);
+
+        run.AttachPlayerSnapshot(RunPlayerSnapshot.Create(
+            playerId: run.PlayerId, displayName: "Joueur", characters: [character],
+            createdAtUtc: DateTimeOffset.UtcNow));
+
+        return run;
+    }
+
+    [Fact]
+    public void PromulgateLaw_ShouldPickAForgottenSkill_ExcludingTheBasicAttack()
+    {
+        var run = CreateRunWithMultipleSkills();
+
+        run.PromulgateLaw(CreateOubliPartielLaw());
+
+        run.ForgottenSkillKey.Should().Be("skill.hero.blaze");
+    }
+
+    [Fact]
+    public void MoveToNextRoom_ShouldReturnTrueAndClearTheForgottenSkill_WhenCrossingAFloorBoundary()
+    {
+        var run = CreateRunWithMultipleSkills();
+        run.PromulgateLaw(CreateOubliPartielLaw());
+        run.ForgottenSkillKey.Should().NotBeNull();
+
+        var result = AdvanceToFloorBoundary(run);
+
+        result.Should().BeTrue();
+        run.ForgottenSkillKey.Should().BeNull();
+    }
+
+    [Fact]
+    public void MoveToNextRoom_ShouldReturnFalse_WhileStillOnTheSameFloor()
+    {
+        var run = CreateRunWithMultipleSkills();
+        run.PromulgateLaw(CreateOubliPartielLaw());
+
+        run.EnterInterlude();
+        var result = run.MoveToNextRoom(TestGameEngineFactory.CreateThresholdRoom(depth: run.CurrentDepth + 1));
+
+        result.Should().BeFalse();
+        run.ForgottenSkillKey.Should().NotBeNull();
+    }
+
+    private static bool AdvanceToFloorBoundary(Run run)
+    {
+        var result = false;
+
+        for (var i = 0; i < 10; i++)
+        {
+            while (run.Status == RunStatus.Active)
+            {
+                var node = run.CurrentRoom.AvailableNodes.First();
+
+                run.ChooseNode(node.Id);
+                run.ResolveCurrentEvent();
+
+                if (run.Status == RunStatus.RoomResolved)
+                {
+                    break;
+                }
+
+                run.ProgressCurrentRoom();
+            }
+
+            run.EnterInterlude();
+            result = run.MoveToNextRoom(TestGameEngineFactory.CreateThresholdRoom(depth: run.CurrentDepth + 1));
+        }
+
+        return result;
+    }
 }

@@ -24,7 +24,8 @@ public sealed class CombatTests
         bool tapisPropreEnabled = false,
         bool thirdCupHealCorruptionEnabled = false,
         bool presentationsEnabled = false,
-        bool miroirEnabled = false)
+        bool miroirEnabled = false,
+        string? forgottenSkillKey = null)
     {
         var allies = Enumerable.Range(0, allyCount).Select(i =>
             Combatant.CreateAlly($"player.{i}", $"Hero{i}", "Fighter", 100)).ToArray();
@@ -51,7 +52,8 @@ public sealed class CombatTests
             tapisPropreEnabled,
             thirdCupHealCorruptionEnabled,
             presentationsEnabled,
-            miroirEnabled);
+            miroirEnabled,
+            forgottenSkillKey: forgottenSkillKey);
     }
 
     [Fact]
@@ -724,5 +726,17 @@ public sealed class CombatTests
         combat.Enemies.Single().MarkDefeated();
 
         combat.GetFastestLivingEnemy().Should().BeNull();
+    }
+
+    // ---------------------------------------------------------------------------
+    // "Loi de l'Oubli Partiel" (ForgottenSkillKey) — the rejection itself lives in
+    // CombatSkillActionValidator, tested there. Here we only verify the baked value.
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void ForgottenSkillKey_ShouldReflectTheValueBakedInAtCreation()
+    {
+        CreateSut(forgottenSkillKey: "skill.hero.blaze").ForgottenSkillKey.Should().Be("skill.hero.blaze");
+        CreateSut().ForgottenSkillKey.Should().BeNull();
     }
 }

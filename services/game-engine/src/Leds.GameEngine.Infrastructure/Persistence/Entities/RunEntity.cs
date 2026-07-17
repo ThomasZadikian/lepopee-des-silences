@@ -34,6 +34,7 @@ public sealed class RunEntity
     public bool LawDenialEnabled { get; set; }
     public int? LawDenialLastUsedRoomIndex { get; set; }
     public int? LastPromulgationFloorIndex { get; set; }
+    public string? ForgottenSkillKey { get; set; }
     public int ReputationGainBonusPercent { get; set; }
     public bool HimLitProtectionEnabled { get; set; }
     public int HealingBonusPercent { get; set; }

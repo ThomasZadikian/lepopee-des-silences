@@ -45,6 +45,7 @@ public static class CombatPersistenceMapper
             PresentationsEnabled = combat.PresentationsEnabled,
             MiroirEnabled = combat.MiroirEnabled,
             HasMirrorTriggered = combat.HasMirrorTriggered,
+            ForgottenSkillKey = combat.ForgottenSkillKey,
             ActiveCombatantId = combat.ActiveCombatantId?.Value,
             CreatedAtUtc = combat.CreatedAtUtc,
             UpdatedAtUtc = DateTime.UtcNow,
@@ -325,7 +326,8 @@ public static class CombatPersistenceMapper
             entity.ThirdCupHealCorruptionEnabled,
             entity.PresentationsEnabled,
             entity.MiroirEnabled,
-            entity.HasMirrorTriggered);
+            entity.HasMirrorTriggered,
+            entity.ForgottenSkillKey);
     }
 
     public static Combatant ToDomain(CombatantEntity entity)

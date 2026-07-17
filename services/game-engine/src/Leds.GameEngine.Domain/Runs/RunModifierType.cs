@@ -130,4 +130,15 @@ public enum RunModifierType
     /// combat-flee action exists anywhere in the engine to begin with, so the
     /// restriction is vacuously already true.</summary>
     LootChanceBonusPercent = 38,
+
+    /// <summary>"Loi de l'Oubli Partiel" (law.oubli-partiel) — gates the floor-scoped
+    /// forgotten-skill restriction. The actual forgotten skill KEY cannot live on this
+    /// modifier (Value is a plain double, no string payload) — it is picked once at
+    /// promulgation time and stored directly on Run.ForgottenSkillKey (see
+    /// Run.PickForgottenSkill, called from ActivatePalaceLaw), then baked into Combat
+    /// the same way other Run-level flags are (see CombatFactory). This modifier's
+    /// only job is to ride the existing UntilFloorEnds consumption/cumul-cap plumbing;
+    /// Run.ConsumeFloorEndModifiers clears ForgottenSkillKey and signals the +8
+    /// skill-point payout when it is consumed.</summary>
+    SkillForgotten = 39,
 }

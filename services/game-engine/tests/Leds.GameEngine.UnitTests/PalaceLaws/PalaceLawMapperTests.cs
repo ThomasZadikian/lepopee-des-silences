@@ -129,6 +129,7 @@ public sealed class PalaceLawMapperTests
     [InlineData("EnableAbondanceExtraChoice", RunModifierType.AbondanceExtraChoiceEnabled)]
     [InlineData("EnablePresentations", RunModifierType.PresentationsEnabled)]
     [InlineData("EnableMiroir", RunModifierType.MiroirEnabled)]
+    [InlineData("EnableSkillForgotten", RunModifierType.SkillForgotten)]
     public void CreatePalaceLaw_ShouldMapExoticMechanicGateEffects(string effectType, RunModifierType expected)
     {
         var definition = CreateDefinition(

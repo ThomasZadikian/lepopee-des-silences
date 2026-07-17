@@ -5,6 +5,7 @@ using Leds.GameEngine.Domain.Npcs;
 using Leds.GameEngine.Domain.PalaceLaws;
 using Leds.GameEngine.Domain.Rewards;
 using Leds.GameEngine.Domain.Rooms;
+using Leds.GameEngine.Domain.Selection;
 
 namespace Leds.GameEngine.Domain.Runs;
 
@@ -138,6 +139,15 @@ public sealed class Run
     public int? LastPromulgationFloorIndex { get; private set; }
 
     /// <summary>
+    /// "Loi de l'Oubli Partiel" (law.oubli-partiel): the skill key forgotten for the
+    /// rest of the floor, if the law is currently active. Picked once at promulgation
+    /// time by <see cref="PickForgottenSkill"/> (not stored on the RunModifier itself —
+    /// RunModifier.Value is a plain double, no string payload). Cleared by
+    /// <see cref="ConsumeFloorEndModifiers"/> once the backing modifier expires.
+    /// </summary>
+    public string? ForgottenSkillKey { get; private set; }
+
+    /// <summary>
     /// Number of currently active "Sévère" laws at or above which the Soupape rule kicks in.
     /// </summary>
     public const int SoupapeSevereThreshold = 3;
@@ -200,7 +210,8 @@ public sealed class Run
         int? caliceInfiniLastUsedRoomIndex = null,
         int magicAttack = 0,
         int magicDefense = 0,
-        int? lastPromulgationFloorIndex = null)
+        int? lastPromulgationFloorIndex = null,
+        string? forgottenSkillKey = null)
     {
         Id = id;
         PlayerId = playerId;
@@ -240,6 +251,7 @@ public sealed class Run
         CaliceInfiniEnabled = caliceInfiniEnabled;
         CaliceInfiniLastUsedRoomIndex = caliceInfiniLastUsedRoomIndex;
         LastPromulgationFloorIndex = lastPromulgationFloorIndex;
+        ForgottenSkillKey = forgottenSkillKey;
 
         _rooms.Add(initialRoom);
     }
@@ -797,9 +809,12 @@ public sealed class Run
     /// <summary>
     /// Moves the run from <see cref="RunStatus.Interlude"/> to the next room.
     /// Increments <see cref="CurrentRoomIndex"/> and sets the run back to
-    /// <see cref="RunStatus.Active"/>.
+    /// <see cref="RunStatus.Active"/>. Returns true when this transition just crossed
+    /// a floor boundary AND consumed an active "Loi de l'Oubli Partiel" modifier — the
+    /// caller must then award <see cref="SkillForgottenFloorEndStatPoints"/> skill
+    /// points (see <see cref="ConsumeFloorEndModifiers"/>).
     /// </summary>
-    public void MoveToNextRoom(Room nextRoom)
+    public bool MoveToNextRoom(Room nextRoom)
     {
         _roomSnapshot = CreateSnapshot();
 
@@ -830,10 +845,7 @@ public sealed class Run
             ? RunStatus.BossReached
             : RunStatus.Active;
 
-        if (FloorIndex != previousFloorIndex)
-        {
-            ConsumeFloorEndModifiers();
-        }
+        return FloorIndex != previousFloorIndex && ConsumeFloorEndModifiers();
     }
 
     public void CompleteRun(DateTimeOffset endedAt)
@@ -1417,19 +1429,36 @@ public sealed class Run
         }
     }
 
+    /// <summary>"Loi de l'Oubli Partiel" floor-end payout: the number of skill points
+    /// the team learns from having forgotten a skill for the floor.</summary>
+    public const int SkillForgottenFloorEndStatPoints = 8;
+
     /// <summary>
     /// Consumes all unconsumed modifiers whose duration is <see cref="RunModifierDuration.UntilFloorEnds"/>.
     /// Called automatically from <see cref="MoveToNextRoom"/> whenever <see cref="FloorIndex"/> changes.
+    /// Returns true when a "Loi de l'Oubli Partiel" modifier was just consumed — the
+    /// caller (an Application-layer handler) must then award
+    /// <see cref="SkillForgottenFloorEndStatPoints"/> skill points, since awarding them
+    /// is a gateway/Application concern the Domain layer cannot reach.
     /// </summary>
-    public void ConsumeFloorEndModifiers()
+    public bool ConsumeFloorEndModifiers()
     {
         var now = DateTime.UtcNow;
+        var oubliPartielPayoutDue = false;
 
         foreach (var modifier in _runModifiers
             .Where(m => m.Duration == RunModifierDuration.UntilFloorEnds && !m.IsConsumed))
         {
+            if (modifier.Type == RunModifierType.SkillForgotten)
+            {
+                oubliPartielPayoutDue = true;
+                ForgottenSkillKey = null;
+            }
+
             modifier.Consume(now);
         }
+
+        return oubliPartielPayoutDue;
     }
 
     private void AddRunItemFromPayload(string payloadKey)
@@ -1694,6 +1723,11 @@ public sealed class Run
             ReplaceActiveRoomClimateLaws();
         }
 
+        if (law.Effects.Any(effect => effect.ModifierType == RunModifierType.SkillForgotten))
+        {
+            PickForgottenSkill();
+        }
+
         _activePalaceLaws.Add(ActivePalaceLaw.From(law));
 
         // Apply each mechanical effect of the law as a RunModifier.
@@ -1739,6 +1773,38 @@ public sealed class Run
         }
 
         _activePalaceLaws.RemoveAll(activeLaw => replacedLawKeySet.Contains(activeLaw.Key));
+    }
+
+    /// <summary>Basic attack skill key, excluded from "Loi de l'Oubli Partiel"'s draw
+    /// per the SFD ("hors Frappe") — mirrors CombatSkillActionValidator's own constant.</summary>
+    private const string BasicAttackSkillKey = "skill.basic.strike";
+
+    /// <summary>
+    /// "Loi de l'Oubli Partiel" (law.oubli-partiel): picks one random skill key from the
+    /// team's full roster (any character, any skill except the basic attack) to become
+    /// unusable for the rest of the floor. Deterministic from the run's seed. A no-op
+    /// (leaves ForgottenSkillKey unset) when no eligible skill exists yet — e.g. a solo
+    /// run whose only skill so far is the basic attack.
+    /// </summary>
+    private void PickForgottenSkill()
+    {
+        var eligible = (PlayerSnapshot?.Characters ?? [])
+            .SelectMany(character => character.Skills)
+            .Select(skill => skill.SkillDefinitionKey)
+            .Where(key => !string.Equals(key, BasicAttackSkillKey, StringComparison.OrdinalIgnoreCase))
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(key => key, StringComparer.Ordinal)
+            .ToArray();
+
+        if (eligible.Length == 0)
+            return;
+
+        var sample = DeterministicSampler.NextUnitInterval(Seed, Id.Value, CurrentRoomId.Value, FloorIndex);
+        var index = (int)(sample * eligible.Length);
+        if (index >= eligible.Length)
+            index = eligible.Length - 1;
+
+        ForgottenSkillKey = eligible[index];
     }
 
     /// <summary>
@@ -2163,11 +2229,12 @@ public sealed class Run
         int? caliceInfiniLastUsedRoomIndex = null,
         int magicAttack = 0,
         int magicDefense = 0,
-        int? lastPromulgationFloorIndex = null)
+        int? lastPromulgationFloorIndex = null,
+        string? forgottenSkillKey = null)
     {
         var firstRoom = rooms.First();
 
-        var run = new Run(id, playerId, seed, generatorVersion, markovMatrixVersion, status, firstRoom, startedAt, maxHp, currentHp, attack, defense, speed, focus, currentRoomIndex, activeCombatId, pendingRewardOfferId, runItemCapacity, typedDamageReductions, hitChanceBonusPercent, dotDurationReductionPercent, dotDamageReductionPercent, dotDamageBonusPercent, magicDamageBonusPercent, magicDamageReductionPercent, criticalChanceBonusPercent, guardBonusPercent, journalEnabled, lawDenialEnabled, lawDenialLastUsedRoomIndex, reputationGainBonusPercent, himLitProtectionEnabled, healingBonusPercent, caliceInfiniEnabled, caliceInfiniLastUsedRoomIndex, magicAttack, magicDefense, lastPromulgationFloorIndex);
+        var run = new Run(id, playerId, seed, generatorVersion, markovMatrixVersion, status, firstRoom, startedAt, maxHp, currentHp, attack, defense, speed, focus, currentRoomIndex, activeCombatId, pendingRewardOfferId, runItemCapacity, typedDamageReductions, hitChanceBonusPercent, dotDurationReductionPercent, dotDamageReductionPercent, dotDamageBonusPercent, magicDamageBonusPercent, magicDamageReductionPercent, criticalChanceBonusPercent, guardBonusPercent, journalEnabled, lawDenialEnabled, lawDenialLastUsedRoomIndex, reputationGainBonusPercent, himLitProtectionEnabled, healingBonusPercent, caliceInfiniEnabled, caliceInfiniLastUsedRoomIndex, magicAttack, magicDefense, lastPromulgationFloorIndex, forgottenSkillKey);
         foreach (var room in rooms.Skip(1))
         {
             run._rooms.Add(room);

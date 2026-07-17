@@ -38,7 +38,8 @@ public sealed class Combat
         bool thirdCupHealCorruptionEnabled = false,
         bool presentationsEnabled = false,
         bool miroirEnabled = false,
-        bool hasMirrorTriggered = false)
+        bool hasMirrorTriggered = false,
+        string? forgottenSkillKey = null)
     {
         Id = id;
         RunId = runId;
@@ -68,6 +69,7 @@ public sealed class Combat
         PresentationsEnabled = presentationsEnabled;
         MiroirEnabled = miroirEnabled;
         HasMirrorTriggered = hasMirrorTriggered;
+        ForgottenSkillKey = forgottenSkillKey;
     }
 
     public CombatId Id { get; }
@@ -330,6 +332,12 @@ public sealed class Combat
             .FirstOrDefault();
     }
 
+    /// <summary>"Loi de l'Oubli Partiel" (law.oubli-partiel): the skill key forgotten
+    /// for the floor, baked in at creation from Run.ForgottenSkillKey (picked once at
+    /// promulgation time — see Run.PickForgottenSkill). Null when the law is inactive.
+    /// Enforced by CombatSkillActionValidator.</summary>
+    public string? ForgottenSkillKey { get; }
+
     /// <summary>"Loi de la Falaise" random-target chance, checked once per turn.</summary>
     private const double FalaiseWindTriggerChance = 0.10;
 
@@ -356,7 +364,8 @@ public sealed class Combat
         bool tapisPropreEnabled = false,
         bool thirdCupHealCorruptionEnabled = false,
         bool presentationsEnabled = false,
-        bool miroirEnabled = false)
+        bool miroirEnabled = false,
+        string? forgottenSkillKey = null)
     {
         if (id.Value == Guid.Empty)
             throw new DomainException("Combat id is required.");
@@ -403,7 +412,8 @@ public sealed class Combat
             tapisPropreEnabled: tapisPropreEnabled,
             thirdCupHealCorruptionEnabled: thirdCupHealCorruptionEnabled,
             presentationsEnabled: presentationsEnabled,
-            miroirEnabled: miroirEnabled);
+            miroirEnabled: miroirEnabled,
+            forgottenSkillKey: forgottenSkillKey);
     }
 
     public void MarkCompleted()
@@ -746,9 +756,10 @@ public sealed class Combat
         bool thirdCupHealCorruptionEnabled = false,
         bool presentationsEnabled = false,
         bool miroirEnabled = false,
-        bool hasMirrorTriggered = false)
+        bool hasMirrorTriggered = false,
+        string? forgottenSkillKey = null)
     {
-        return new Combat(id, runId, roomId, nodeId, status, allies, enemies, activeCombatantId, turnNumber, currentTick, createdAtUtc, hitCounter, hitCounterDoubleDamageEnabled, firstHitCriticalEnabled, hasFirstHitLanded, lowHpDamageAmplificationEnabled, dotDurationExtensionTicks, duelDamageAsymmetryEnabled, dotMagnitudeBonus, healingBlocked, falaiseWindEnabled, postDeathBasicAttackOnlyEnabled, nextActionRestrictedToBasicAttack, tapisPropreEnabled, thirdCupHealCorruptionEnabled, presentationsEnabled, miroirEnabled, hasMirrorTriggered);
+        return new Combat(id, runId, roomId, nodeId, status, allies, enemies, activeCombatantId, turnNumber, currentTick, createdAtUtc, hitCounter, hitCounterDoubleDamageEnabled, firstHitCriticalEnabled, hasFirstHitLanded, lowHpDamageAmplificationEnabled, dotDurationExtensionTicks, duelDamageAsymmetryEnabled, dotMagnitudeBonus, healingBlocked, falaiseWindEnabled, postDeathBasicAttackOnlyEnabled, nextActionRestrictedToBasicAttack, tapisPropreEnabled, thirdCupHealCorruptionEnabled, presentationsEnabled, miroirEnabled, hasMirrorTriggered, forgottenSkillKey);
     }
 
     /// <summary>

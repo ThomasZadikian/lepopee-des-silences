@@ -36,6 +36,7 @@ public sealed class CombatEntityConfiguration : IEntityTypeConfiguration<CombatE
         builder.Property(c => c.PresentationsEnabled).HasColumnName("presentations_enabled").HasDefaultValue(false);
         builder.Property(c => c.MiroirEnabled).HasColumnName("miroir_enabled").HasDefaultValue(false);
         builder.Property(c => c.HasMirrorTriggered).HasColumnName("has_mirror_triggered").HasDefaultValue(false);
+        builder.Property(c => c.ForgottenSkillKey).HasColumnName("forgotten_skill_key").HasMaxLength(256);
         builder.Property(c => c.ActiveCombatantId).HasColumnName("active_combatant_id");
         builder.Property(c => c.CreatedAtUtc).HasColumnName("created_at_utc");
         builder.Property(c => c.UpdatedAtUtc).HasColumnName("updated_at_utc");

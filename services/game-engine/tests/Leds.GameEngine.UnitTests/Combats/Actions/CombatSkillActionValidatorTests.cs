@@ -303,4 +303,52 @@ public sealed class CombatSkillActionValidatorTests
 
         result.IsValid.Should().BeTrue();
     }
+
+    private Combat CreateOubliPartielCombat(Combatant ally, Combatant enemy, string forgottenSkillKey)
+    {
+        return Combat.Create(
+            id: CombatId.New(),
+            runId: RunId.New(),
+            roomId: RoomId.New(),
+            nodeId: NodeId.New(),
+            allies: [ally],
+            enemies: [enemy],
+            forgottenSkillKey: forgottenSkillKey);
+    }
+
+    [Fact]
+    public void Validate_ShouldFail_WhenForgottenSkillAttempted_UnderOubliPartiel()
+    {
+        var ally = Combatant.CreateAlly(
+            sourceKey: "player.self", displayName: "Hero", archetype: "Fighter",
+            maxVitality: 100, skills: [_strikeSkill, _healSkill]);
+        var enemy = Combatant.CreateEnemy(
+            sourceKey: "enemy.sentinel", displayName: "Sentinel", archetype: "Guard",
+            maxVitality: 80, skills: [_strikeSkill]);
+        var combat = CreateOubliPartielCombat(ally, enemy, forgottenSkillKey: "skill.basic.heal");
+
+        var result = _validator.Validate(combat, ally.Id.Value, "skill.basic.heal", [ally.Id.Value]);
+
+        result.IsValid.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("Oubli Partiel");
+    }
+
+    [Fact]
+    public void Validate_ShouldSucceed_WhenOtherSkillAttempted_UnderOubliPartiel()
+    {
+        var ally = Combatant.CreateAlly(
+            sourceKey: "player.self", displayName: "Hero", archetype: "Fighter",
+            maxVitality: 100, skills: [_strikeSkill, _healSkill]);
+        var enemy = Combatant.CreateEnemy(
+            sourceKey: "enemy.sentinel", displayName: "Sentinel", archetype: "Guard",
+            maxVitality: 80, skills: [_strikeSkill]);
+        var combat = CreateOubliPartielCombat(ally, enemy, forgottenSkillKey: "skill.basic.heal");
+        _targetingRuleValidator
+            .Setup(v => v.Validate(combat, ally, _strikeSkill, It.IsAny<IReadOnlyCollection<Guid>>()))
+            .Returns(new CombatTargetingValidationResult(true, null, [enemy]));
+
+        var result = _validator.Validate(combat, ally.Id.Value, "skill.basic.strike", [enemy.Id.Value]);
+
+        result.IsValid.Should().BeTrue();
+    }
 }

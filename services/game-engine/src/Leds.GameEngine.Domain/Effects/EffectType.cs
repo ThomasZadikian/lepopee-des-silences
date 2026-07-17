@@ -85,4 +85,6 @@ public enum EffectType
     EnableMiroir,
     /// <summary>"Loi de l'Invitation" (law.invitation) → RunModifierType.LootChanceBonusPercent.</summary>
     EnableLootChanceBonus,
+    /// <summary>"Loi de l'Oubli Partiel" (law.oubli-partiel) → RunModifierType.SkillForgotten.</summary>
+    EnableSkillForgotten,
 }

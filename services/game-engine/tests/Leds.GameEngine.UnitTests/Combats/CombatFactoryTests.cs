@@ -1036,6 +1036,35 @@ public sealed class CombatFactoryTests
     }
 
     // ---------------------------------------------------------------------------
+    // "Loi de l'Oubli Partiel" (ForgottenSkillKey) — unlike the other palace-law
+    // flags, this one is not baked from an active RunModifier here: the forgotten
+    // skill is drawn once at promulgation time (Run.PickForgottenSkill) and passed
+    // straight through as a Run-level field. This test only verifies the passthrough.
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void CreateFromDraft_ShouldThreadForgottenSkillKey_WhenProvided()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft();
+
+        var combat = factory.CreateFromDraft(draft, forgottenSkillKey: "skill.hero.blaze");
+
+        combat.ForgottenSkillKey.Should().Be("skill.hero.blaze");
+    }
+
+    [Fact]
+    public void CreateFromDraft_ShouldLeaveForgottenSkillKeyNull_WhenNotProvided()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft();
+
+        var combat = factory.CreateFromDraft(draft);
+
+        combat.ForgottenSkillKey.Should().BeNull();
+    }
+
+    // ---------------------------------------------------------------------------
     // "Loi des Visites Terminées" (HealingBlocked) — room-bound (RoomKey), not a
     // RunModifier/tirage.
     // ---------------------------------------------------------------------------
