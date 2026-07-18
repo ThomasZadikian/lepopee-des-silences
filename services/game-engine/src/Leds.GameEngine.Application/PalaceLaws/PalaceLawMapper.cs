@@ -50,7 +50,8 @@ public static class PalaceLawMapper
             isMajeure: definition.IsMajeure,
             roomKey: definition.RoomKey,
             isCumulExempt: definition.IsCumulExempt,
-            exclusionKeys: definition.ExclusionKeys);
+            exclusionKeys: definition.ExclusionKeys,
+            description: definition.Description);
     }
 
     private static PalaceLawEffect? MapEffect(CatalogEffectDefinitionSnapshot effect)

@@ -17,7 +17,9 @@ export type ActivePalaceLawDto = {
   version: string;
   displayName: string;
   description: string;
-  domain: string;
+  rarity: string;
+  polarity: string;
+  domains: string[];
 };
 
 export type PalacePublicIndicatorDto = {

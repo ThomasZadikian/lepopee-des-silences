@@ -33,6 +33,10 @@ function domainTone(domain: string): 'blood' | 'frost' | 'gold' | '' {
   return ''
 }
 
+function primaryDomain(law: ActivePalaceLawDto): string {
+  return law.domains?.[0] ?? ''
+}
+
 const DURATION_LABELS: Record<string, string> = {
   UntilRunEnds:   'run entière',
   Permanent:      'permanent',
@@ -140,9 +144,9 @@ function modifierValueLabel(value: number): string {
             stroke-linejoin="round"
             aria-hidden="true"
             :style="{
-              color: domainTone(law.domain ?? '') === 'gold'  ? 'var(--gold)'
-                   : domainTone(law.domain ?? '') === 'blood' ? 'var(--blood)'
-                   : domainTone(law.domain ?? '') === 'frost' ? 'var(--frost)'
+              color: domainTone(primaryDomain(law)) === 'gold'  ? 'var(--gold)'
+                   : domainTone(primaryDomain(law)) === 'blood' ? 'var(--blood)'
+                   : domainTone(primaryDomain(law)) === 'frost' ? 'var(--frost)'
                    : 'var(--gold-dim, oklch(.65 .09 84 / .6))',
               flex: '0 0 auto',
               marginTop: '2px',
@@ -157,15 +161,17 @@ function modifierValueLabel(value: number): string {
                 {{ law.version }}
               </span>
             </div>
-            <div v-if="law.domain" style="margin-bottom: 7px;">
+            <div v-if="primaryDomain(law)" style="margin-bottom: 7px; display: flex; gap: 5px; flex-wrap: wrap;">
               <span
                 class="es-chip"
                 :class="{
-                  'es-chip--gold':  domainTone(law.domain) === 'gold',
-                  'es-chip--frost': domainTone(law.domain) === 'frost',
-                  'es-chip--blood': domainTone(law.domain) === 'blood',
+                  'es-chip--gold':  domainTone(primaryDomain(law)) === 'gold',
+                  'es-chip--frost': domainTone(primaryDomain(law)) === 'frost',
+                  'es-chip--blood': domainTone(primaryDomain(law)) === 'blood',
                 }"
-              >{{ law.domain }}</span>
+              >{{ primaryDomain(law) }}</span>
+              <span v-if="law.rarity" class="es-chip">{{ law.rarity }}</span>
+              <span v-if="law.polarity" class="es-chip">{{ law.polarity }}</span>
             </div>
             <p class="lp-law__desc">{{ law.description }}</p>
             <button

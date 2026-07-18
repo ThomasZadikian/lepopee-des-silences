@@ -9,7 +9,9 @@ const baseLaw: ActivePalaceLawDto = {
   version: '1.0',
   displayName: 'Loi du Sang',
   description: 'Chaque combat commence avec de la garde.',
-  domain: 'Combat',
+  rarity: 'Commun',
+  polarity: 'Neutre',
+  domains: ['Combat'],
 };
 
 const baseCurse: ActiveCurseDto = {

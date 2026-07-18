@@ -53,7 +53,7 @@ describe('RunStatusRibbon', () => {
   });
 
   it('shows laws button when laws exist', () => {
-    const run = { ...baseRun, activePalaceLaws: [{ key: 'law-1', displayName: 'Law 1', domain: 'Combat', version: 'v1' }] };
+    const run = { ...baseRun, activePalaceLaws: [{ key: 'law-1', displayName: 'Law 1', description: '', rarity: 'Commun', polarity: 'Neutre', domains: ['Combat'], version: 'v1' }] };
     const wrapper = mountRibbon(run);
     expect(wrapper.text()).toContain('1 loi');
   });
@@ -62,8 +62,8 @@ describe('RunStatusRibbon', () => {
     const run = {
       ...baseRun,
       activePalaceLaws: [
-        { key: 'law-1', displayName: 'Law 1', domain: 'Combat', version: 'v1' },
-        { key: 'law-2', displayName: 'Law 2', domain: 'Combat', version: 'v1' },
+        { key: 'law-1', displayName: 'Law 1', description: '', rarity: 'Commun', polarity: 'Neutre', domains: ['Combat'], version: 'v1' },
+        { key: 'law-2', displayName: 'Law 2', description: '', rarity: 'Commun', polarity: 'Neutre', domains: ['Combat'], version: 'v1' },
       ],
     };
     const wrapper = mountRibbon(run);
@@ -128,7 +128,7 @@ describe('RunStatusRibbon', () => {
   });
 
   it('emits openInfluences when laws button is clicked', async () => {
-    const run = { ...baseRun, activePalaceLaws: [{ key: 'law-1', displayName: 'Law 1', domain: 'Combat', version: 'v1' }] };
+    const run = { ...baseRun, activePalaceLaws: [{ key: 'law-1', displayName: 'Law 1', description: '', rarity: 'Commun', polarity: 'Neutre', domains: ['Combat'], version: 'v1' }] };
     const wrapper = mountRibbon(run);
     const btn = wrapper.findAll('button').find((b) => b.text().includes('loi'));
     if (btn) await btn.trigger('click');

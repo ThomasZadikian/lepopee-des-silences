@@ -54,9 +54,11 @@ describe('PartyDrawer', () => {
   const baseLaw: ActivePalaceLawDto = {
     key: 'law-aegis-v1',
     displayName: 'Loi d\'Aegis',
-    domain: 'Combat',
+    domains: ['Combat'],
     version: 'v1',
     description: 'Protège les alliés.',
+    rarity: 'Commun',
+    polarity: 'Neutre',
   };
 
   const baseCurse: ActiveCurseDto = {

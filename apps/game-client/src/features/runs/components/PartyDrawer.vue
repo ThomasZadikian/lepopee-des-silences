@@ -234,7 +234,7 @@ function rarityTone(rarity: string): string {
         <h4 class="party-drawer__section-title">Lois du Palais</h4>
         <ul class="party-drawer__list">
           <li v-for="law in laws" :key="law.key" class="party-drawer__law">
-            <span class="es-chip es-chip--gold" style="font-size: 9px; padding: 1px 6px; flex-shrink: 0;">{{ law.domain }}</span>
+            <span class="es-chip es-chip--gold" style="font-size: 9px; padding: 1px 6px; flex-shrink: 0;">{{ law.domains[0] }}</span>
             <span class="party-drawer__law-name">{{ law.displayName || law.key }}</span>
           </li>
         </ul>

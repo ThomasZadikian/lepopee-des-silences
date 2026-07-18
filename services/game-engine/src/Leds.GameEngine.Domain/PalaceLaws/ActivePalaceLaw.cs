@@ -93,7 +93,7 @@ public sealed class ActivePalaceLaw
             law.Version,
             law.Domains,
             displayName: law.Name,
-            description: null,
+            description: law.Description,
             duration: "UntilRunEnds",
             appliedAtUtc: DateTime.UtcNow,
             expiresAtRoomId: null,

@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import { RouterLink } from 'vue-router';
 import { useRunStore } from '../runs/stores/runStore';
+import StatTooltip from '../../shared/components/StatTooltip.vue';
 
 const runStore = useRunStore();
 
@@ -22,6 +23,11 @@ const systemNotice = computed(() =>
 const depth      = computed(() => (room.value?.currentNodeDepth ?? 0) + 1);
 const maxDepth   = computed(() => (room.value?.maxNodeDepth ?? 0) + 1);
 const activeLaws = computed(() => run.value?.activePalaceLaws?.length ?? 0);
+const activeLawsTooltip = computed(() => {
+  const laws = run.value?.activePalaceLaws ?? [];
+  if (laws.length === 0) return 'Aucune loi active.';
+  return laws.map((law) => `${law.displayName || law.key} (${law.rarity})`).join(' · ');
+});
 const phase      = computed(() => {
   const p = runStore.gameplayPhase;
   const map: Record<string, string> = {
@@ -78,7 +84,9 @@ const statusColor = computed(() =>
     <!-- Lois -->
     <div class="es-seg">
       <span class="es-seg__k">Lois actives</span>
-      <span class="es-seg__v">{{ lawsLabel }}</span>
+      <StatTooltip :text="activeLawsTooltip">
+        <span class="es-seg__v">{{ lawsLabel }}</span>
+      </StatTooltip>
     </div>
 
     <!-- spacer -->

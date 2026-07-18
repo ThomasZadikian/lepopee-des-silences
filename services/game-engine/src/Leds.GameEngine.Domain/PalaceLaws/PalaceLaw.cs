@@ -21,7 +21,8 @@ public sealed class PalaceLaw
         bool isMajeure,
         string? roomKey,
         bool isCumulExempt,
-        IReadOnlyCollection<string> exclusionKeys)
+        IReadOnlyCollection<string> exclusionKeys,
+        string description)
     {
         Id = id;
         Key = key;
@@ -35,6 +36,7 @@ public sealed class PalaceLaw
         RoomKey = roomKey;
         IsCumulExempt = isCumulExempt;
         _exclusionKeys = exclusionKeys.ToList();
+        Description = description;
     }
 
     public PalaceLawId Id { get; }
@@ -42,6 +44,10 @@ public sealed class PalaceLaw
     public string Name { get; }
     public string Version { get; }
     public IReadOnlyCollection<PalaceLawDomain> Domains => _domains.AsReadOnly();
+
+    /// <summary>Player-facing description of what this law actually does — surfaced via
+    /// ActivePalaceLaw.Description/ActivePalaceLawDto (Lois du Palais Phase 5).</summary>
+    public string Description { get; }
 
     /// <summary>
     /// Mechanical effects applied to the run when this law is accepted.
@@ -80,7 +86,8 @@ public sealed class PalaceLaw
         bool isMajeure = false,
         string? roomKey = null,
         bool isCumulExempt = false,
-        IReadOnlyCollection<string>? exclusionKeys = null)
+        IReadOnlyCollection<string>? exclusionKeys = null,
+        string description = "")
     {
         if (string.IsNullOrWhiteSpace(key))
             throw new DomainException("Palace law key is required.");
@@ -106,6 +113,7 @@ public sealed class PalaceLaw
             isMajeure,
             roomKey,
             isCumulExempt,
-            exclusionKeys ?? []);
+            exclusionKeys ?? [],
+            description);
     }
 }
