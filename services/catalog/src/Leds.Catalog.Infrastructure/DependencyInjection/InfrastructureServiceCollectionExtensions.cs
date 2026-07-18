@@ -37,6 +37,7 @@ public static class InfrastructureServiceCollectionExtensions
             options.UseNpgsql(configuration.GetConnectionString("CatalogDb")));
 
         services.AddScoped<CatalogSeedRunner>();
+        services.AddScoped<ExternalCatalogContentSeeder>();
         services.AddScoped<ISkillDefinitionReadStore, EfSkillDefinitionReadStore>();
         services.AddScoped<IEnemyDefinitionReadStore, EfEnemyDefinitionReadStore>();
         services.AddScoped<IItemTemplateReadStore, EfItemDefinitionReadStore>();
