@@ -28,7 +28,7 @@ public sealed class EnemyDefinitionRiskLevelValidationTests
         var (context, _) = _fixture.CreateContext();
         await using var _ = context;
         var runner = new CatalogSeedRunner(context, NullLogger<CatalogSeedRunner>.Instance);
-        await runner.SeedAsync(CancellationToken.None);
+        await runner.ApplyBaseSeedAsync(CancellationToken.None);
 
         var enemies = await context.EnemyDefinitions
             .Where(e => e.Status == "Active")

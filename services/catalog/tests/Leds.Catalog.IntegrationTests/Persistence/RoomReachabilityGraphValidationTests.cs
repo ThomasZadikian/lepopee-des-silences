@@ -27,7 +27,7 @@ public sealed class RoomReachabilityGraphValidationTests
         var (context, _) = _fixture.CreateContext();
         await using var _ = context;
         var runner = new CatalogSeedRunner(context, NullLogger<CatalogSeedRunner>.Instance);
-        await runner.SeedAsync(CancellationToken.None);
+        await runner.ApplyBaseSeedAsync(CancellationToken.None);
 
         var roomIds = await context.RoomDefinitions.Select(r => r.Id).ToListAsync();
         var edges = await context.RoomReachability.ToListAsync();
@@ -41,7 +41,7 @@ public sealed class RoomReachabilityGraphValidationTests
         var (context, _) = _fixture.CreateContext();
         await using var _ = context;
         var runner = new CatalogSeedRunner(context, NullLogger<CatalogSeedRunner>.Instance);
-        await runner.SeedAsync(CancellationToken.None);
+        await runner.ApplyBaseSeedAsync(CancellationToken.None);
 
         var worlds = await context.WorldDefinitions.ToListAsync();
         worlds.Should().NotBeEmpty();
@@ -59,7 +59,7 @@ public sealed class RoomReachabilityGraphValidationTests
         var (context, _) = _fixture.CreateContext();
         await using var _ = context;
         var runner = new CatalogSeedRunner(context, NullLogger<CatalogSeedRunner>.Instance);
-        await runner.SeedAsync(CancellationToken.None);
+        await runner.ApplyBaseSeedAsync(CancellationToken.None);
 
         var palais = await context.WorldDefinitions.SingleAsync(w => w.Key == "palais");
         var hallDentree = await context.RoomDefinitions.SingleAsync(r => r.Key == "room.halldentree");
@@ -80,7 +80,7 @@ public sealed class RoomReachabilityGraphValidationTests
         var (context, _) = _fixture.CreateContext();
         await using var _ = context;
         var runner = new CatalogSeedRunner(context, NullLogger<CatalogSeedRunner>.Instance);
-        await runner.SeedAsync(CancellationToken.None);
+        await runner.ApplyBaseSeedAsync(CancellationToken.None);
 
         for (var i = 0; i < chainKeysInOrder.Length; i++)
         {

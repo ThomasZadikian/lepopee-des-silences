@@ -30,7 +30,8 @@ public interface ICombatFactory
         bool himLitProtectionEnabled = false,
         int healingBonusPercent = 0,
         int magicAttack = 0,
-        int magicDefense = 0);
+        int magicDefense = 0,
+        string? forgottenSkillKey = null);
 
     Combat CreateFromDraft(
         CombatId combatId,
@@ -55,5 +56,6 @@ public interface ICombatFactory
         bool himLitProtectionEnabled = false,
         int healingBonusPercent = 0,
         int magicAttack = 0,
-        int magicDefense = 0);
+        int magicDefense = 0,
+        string? forgottenSkillKey = null);
 }

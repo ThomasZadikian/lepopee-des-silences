@@ -133,7 +133,8 @@ public sealed class StubPlayerProfileGateway : IPlayerProfileGateway
         Guid playerId, string companionDefinitionKey, string displayName,
         int maxVitality, int attackPower, int defense, int startingGuard,
         int speed, int initiative, int recovery, int focus, int mana, int charge,
-        IReadOnlyCollection<string> skillKeys, CancellationToken cancellationToken)
+        IReadOnlyCollection<string> skillKeys, CancellationToken cancellationToken,
+        int magicAttack = 0, int magicDefense = 0)
     {
         RecruitedCompanions.Add((playerId, companionDefinitionKey, displayName, skillKeys));
         return Task.FromResult(EmptyProfile(playerId));

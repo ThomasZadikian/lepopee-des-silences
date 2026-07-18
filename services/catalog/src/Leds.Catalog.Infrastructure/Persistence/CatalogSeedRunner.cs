@@ -43,7 +43,7 @@ public sealed class CatalogSeedRunner
         _logger = logger;
     }
 
-    public async Task SeedAsync(CancellationToken cancellationToken = default)
+    public async Task ApplyBaseSeedAsync(CancellationToken cancellationToken = default)
     {
         _now = DateTime.UtcNow;
 
@@ -4971,7 +4971,8 @@ public sealed class CatalogSeedRunner
 
         // UpsertLawEffectAsync looks the law up by key via a database query — it must run
         // against a database that already has these 5 laws persisted, not merely added to
-        // the change tracker (the final SaveChangesAsync in SeedAsync is too late for that).
+        // the change tracker (the final SaveChangesAsync in ApplyBaseSeedAsync is too late
+        // for that).
         await _ctx.SaveChangesAsync(cancellationToken);
 
         await UpsertLawEffectAsync("law.reflet", "EnableMirrorCombatCopy", 1m, "NextCombatOnly", null, cancellationToken);
