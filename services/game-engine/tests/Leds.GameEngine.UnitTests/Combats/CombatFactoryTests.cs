@@ -289,18 +289,35 @@ public sealed class CombatFactoryTests
     }
 
     [Fact]
-    public void CreateFromDraft_ShouldWireCatalogMagicAttackDefenseAndMana_IntoEnemyCombatant()
+    public void CreateFromDraft_ShouldWireCatalogMagicAttackDefense_IntoEnemyCombatant()
     {
         var factory = new CombatFactory();
-        var draft = CreateDraft(enemyMagicAttack: 12, enemyMagicDefense: 9, enemyMana: 20);
+        var draft = CreateDraft(enemyMagicAttack: 12, enemyMagicDefense: 9);
 
         var combat = factory.CreateFromDraft(draft);
 
         var enemy = combat.Enemies.Single();
         enemy.BaseStatSnapshot.MagicAttack.Should().Be(12);
         enemy.BaseStatSnapshot.MagicDefense.Should().Be(9);
-        enemy.Mana.Should().Be(20);
-        enemy.MaxMana.Should().Be(20);
+    }
+
+    // Design rule: every combatant's base PP is 85% of its MaxVitality. For enemies
+    // this is computed off the (scaled) Vitality rather than read from the catalog's
+    // authored Mana value, so it stays correct at any depth/difficulty without
+    // requiring ~40 hand-authored Bestiaire values to track Vitality by hand.
+    [Fact]
+    public void CreateFromDraft_ShouldDeriveEnemyMana_As85PercentOfMaxVitality()
+    {
+        var factory = new CombatFactory();
+        // The catalog's own Mana value (999) must be ignored entirely by the new rule.
+        var draft = CreateDraft(enemyMana: 999);
+
+        var combat = factory.CreateFromDraft(draft);
+
+        var enemy = combat.Enemies.Single();
+        var expectedMana = (int)Math.Round(enemy.MaxVitality * 0.85, MidpointRounding.AwayFromZero);
+        enemy.Mana.Should().Be(expectedMana);
+        enemy.MaxMana.Should().Be(expectedMana);
     }
 
     [Fact]

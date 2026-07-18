@@ -98,7 +98,10 @@ public sealed class PlayerCharacterStatBlock
             initiative: 10,
             recovery: 5,
             focus: 0,
-            mana: 0,
+            // Base PP = 85% of base MaxVitality (design rule applied uniformly to
+            // the protagonist, every recruited companion, and every enemy — see
+            // CombatFactory for the enemy side, computed off scaled Vitality).
+            mana: 85,
             charge: 0,
             // Same 2:1 ratio as AttackPower/Defense, halved since the starter kit
             // (skill.basic.strike/guard) is physical-only — a magic baseline of 0

@@ -17,6 +17,11 @@ public sealed class CombatFactory : ICombatFactory
     /// <summary>"Loi du Reflet" — the mirrored enemy copy's stats, as a fraction of the original.</summary>
     private const double MirrorCombatCopyStatMultiplier = 0.6;
 
+    /// <summary>Base PP design rule: every combatant's Mana is 85% of its (scaled)
+    /// MaxVitality — see PlayerCharacterStatBlock.CreateDefaultPorteur for the
+    /// player/companion side of the same rule.</summary>
+    private const double EnemyManaToVitalityRatio = 0.85;
+
     private readonly EnemyStatScaler _enemyStatScaler = new();
 
     public Combat CreateFromDraft(
@@ -430,13 +435,15 @@ public sealed class CombatFactory : ICombatFactory
                     })
                     .ToArray();
 
+                var scaledEnemyVitality = Math.Max(1, scaled.Vitality);
+
                 return new[]
                 {
                     Combatant.CreateEnemy(
                         sourceKey: enemy.EnemyKey,
                         displayName: enemy.DisplayName,
                         archetype: enemy.Archetype,
-                        maxVitality: Math.Max(1, scaled.Vitality),
+                        maxVitality: scaledEnemyVitality,
                         skills: skills,
                         startingGuard: enemyStartingGuard,
                         attackPower: scaledAttackPower,
@@ -445,7 +452,12 @@ public sealed class CombatFactory : ICombatFactory
                         focus: scaledFocus,
                         magicAttack: scaledMagicAttack,
                         magicDefense: scaledMagicDefense,
-                        mana: enemy.Mana)
+                        // Base PP = 85% of (scaled) Vitality — enemies "cast freely" (see
+                        // CombatSkillEffectResolver.ConsumeResources), so this is purely
+                        // informational, but stays consistent with the player-side rule
+                        // and scales automatically with depth/difficulty instead of
+                        // relying on ~40 hand-authored catalog values.
+                        mana: (int)Math.Round(scaledEnemyVitality * EnemyManaToVitalityRatio, MidpointRounding.AwayFromZero))
                 };
             })
             .ToArray();
