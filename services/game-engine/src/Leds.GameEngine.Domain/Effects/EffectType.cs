@@ -91,4 +91,6 @@ public enum EffectType
     EnableRoomToll,
     /// <summary>"Loi du Prêteur" (law.preteur) → RunModifierType.CurrencyGainBonusPercent.</summary>
     EnableCurrencyGainBonus,
+    /// <summary>"Loi de la Chandelle" (law.chandelle) → RunModifierType.ItemNodeRerollCharge.</summary>
+    EnableItemNodeReroll,
 }

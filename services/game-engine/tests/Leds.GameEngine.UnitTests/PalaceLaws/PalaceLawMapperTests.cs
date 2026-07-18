@@ -228,4 +228,21 @@ public sealed class PalaceLawMapperTests
         var effect = law.Effects.Should().ContainSingle(e => e.ModifierType == RunModifierType.CurrencyGainBonusPercent).Subject;
         effect.Value.Should().Be(50);
     }
+
+    [Fact]
+    public void CreatePalaceLaw_ShouldMapItemNodeReroll_PreservingItsMagnitude()
+    {
+        var definition = CreateDefinition(
+            impactDomains: ["Rewards"],
+            effects:
+            [
+                new CatalogEffectDefinitionSnapshot(
+                    "EnableItemNodeReroll", "Run", 1m, "Flat", "UntilFloorEnds", "Additive", null, 0, null, null, null),
+            ]);
+
+        var law = PalaceLawMapper.CreatePalaceLaw(definition);
+
+        var effect = law.Effects.Should().ContainSingle(e => e.ModifierType == RunModifierType.ItemNodeRerollCharge).Subject;
+        effect.Value.Should().Be(1);
+    }
 }

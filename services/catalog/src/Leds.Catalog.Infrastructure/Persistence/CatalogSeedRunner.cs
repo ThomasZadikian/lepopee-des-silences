@@ -103,6 +103,7 @@ public sealed class CatalogSeedRunner
         await SeedCanonBossesAsync(cancellationToken);
         await SeedCanonRoomTypesAsync(cancellationToken);
         await SeedCanonLootAsync(cancellationToken);
+        await SeedRewardTemplatesAsync(cancellationToken);
 
         // Sauvegarde inconditionnelle : les SeedCanon*Async ajoutent au change-tracker
         // EF mais ne renvoient pas de compteur ; gater le SaveChanges sur les seuls PNJ
@@ -5439,12 +5440,16 @@ public sealed class CatalogSeedRunner
         await _ctx.SaveChangesAsync(cancellationToken);
     }
 
-    // Chapitre VII — Édits cléments. 3 of its 5 laws are seeded: Pas Léger (reuses
+    // Chapitre VII — Édits cléments. 4 of its 5 laws are seeded: Pas Léger (reuses
     // SpeedBonus), Hôte Généreux (reuses StartingGuardBonus), Souvenir Doux (reuses the
-    // new AllyHealingBonus mechanic). NOT seeded: "Édit de la Chandelle" (law.chandelle,
-    // +1 free reroll on item nodes for the floor — needs a node-reroll-count mechanic
-    // that doesn't exist) and "Édit des Portes Ouvertes" (law.portes-ouvertes, reveals the
-    // full floor layout — needs a map-reveal feature spanning backend + frontend).
+    // AllyHealingBonus mechanic), and — added this pass — "Édit de la Chandelle"
+    // (law.chandelle, RunModifierType.ItemNodeRerollCharge — a free reroll of the pending
+    // item-node reward offer, see Run.TryConsumeItemNodeRerollCharge and
+    // RerollItemRewardOfferCommandHandler on the game-engine side). NOT seeded: "Édit des
+    // Portes Ouvertes" (law.portes-ouvertes, reveals the full floor layout — needs a
+    // map-reveal feature spanning backend + frontend; rooms are generated lazily one at a
+    // time based on the player's node choice, so there is no "future floor" data to
+    // reveal without a redesign of room generation).
     private async Task SeedEditsClementsAsync(CancellationToken cancellationToken)
     {
         await UpsertCompendiumLawAsync(
@@ -5495,11 +5500,28 @@ public sealed class CatalogSeedRunner
             // Troisième Tasse's own exclusionKeys entry (see SeedLoisDuSeuilAsync).
             exclusionKeys: ["law.troisieme-tasse"]);
 
+        await UpsertCompendiumLawAsync(
+            key: "law.chandelle",
+            name: "Édit de la Chandelle",
+            narrativeText: "Article V — Une chandelle de plus au chandelier. Regardez "
+                + "mieux avant de choisir.",
+            description: "+1 relance gratuite de nœud d'objet pour l'étage (cumulable "
+                + "avec l'Éclat de la faille).",
+            rarity: "Commun",
+            polarity: "Clémente",
+            isMajeure: false,
+            minDepth: null,
+            duration: "UntilFloorEnds",
+            selectionGroup: "law.edit",
+            impactDomains: ["Rewards"],
+            cancellationToken);
+
         await _ctx.SaveChangesAsync(cancellationToken);
 
         await UpsertLawEffectAsync("law.pas-leger", "ModifySpeed", 0.10m, "UntilFloorEnds", null, cancellationToken);
         await UpsertLawEffectAsync("law.hote-genereux", "AddStartingGuard", 10m, "UntilFloorEnds", null, cancellationToken);
         await UpsertLawEffectAsync("law.souvenir-doux", "EnableAllyHealingBonus", 20m, "UntilFloorEnds", null, cancellationToken);
+        await UpsertLawEffectAsync("law.chandelle", "EnableItemNodeReroll", 1m, "UntilFloorEnds", null, cancellationToken);
 
         await _ctx.SaveChangesAsync(cancellationToken);
     }
@@ -6699,5 +6721,108 @@ public sealed class CatalogSeedRunner
         existing.Version = version; existing.Status = "Active";
         existing.EntriesJson = JsonSerializer.Serialize(entries, J);
         existing.UpdatedAtUtc = now;
+    }
+
+    // "Loi de la Chandelle" (law.chandelle) needs an item-node reward pool larger than
+    // what's shown per offer, so a reroll can draw a genuinely different subset (see
+    // RewardOfferFactory.CreateItemRewardOfferAsync/SampleOptionsDeterministically on
+    // the game-engine side). Today the pool below is exactly 3 options — the same 3
+    // TemporaryItem/Heal choices previously hardcoded directly in RewardOfferFactory —
+    // so a reroll currently returns the same 3 back (documented, not a bug): once a
+    // larger authored item list is added here, rerolls will draw real variety.
+    private async Task SeedRewardTemplatesAsync(CancellationToken cancellationToken)
+    {
+        await UpsertItemRewardTemplateAsync(
+            key: "reward.item.default",
+            displayName: "Récompense d'objet",
+            description: "Récompense proposée à l'ouverture d'un nœud objet.",
+            maxOptionsShown: 3,
+            options:
+            [
+                new RewardTemplateOptionSpec(
+                    "TemporaryItem", "Éclat de garde",
+                    "Offre une protection permanente pendant la run.",
+                    "item.consumable.guard-shard", 8, "Consumable", "Uncommon", "Guard"),
+                new RewardTemplateOptionSpec(
+                    "TemporaryItem", "Baume de mémoire",
+                    "Restaure une partie de la vitalité.",
+                    "item.consumable.minor-heal", 15, "Consumable", "Common", "Heal"),
+                new RewardTemplateOptionSpec(
+                    "Heal", "Souffle du passé",
+                    "Récupère des PV proportionnels au risque de la salle.",
+                    null, 10, null, null, null),
+            ],
+            cancellationToken);
+    }
+
+    private sealed record RewardTemplateOptionSpec(
+        string RewardType, string Label, string Description, string? PayloadKey, int BaseAmount,
+        string? ItemType, string? ItemRarity, string? ItemEffectType);
+
+    private async Task UpsertItemRewardTemplateAsync(
+        string key, string displayName, string description, int maxOptionsShown,
+        IReadOnlyCollection<RewardTemplateOptionSpec> options, CancellationToken cancellationToken)
+    {
+        const string version = "canon-1.0.0";
+        var now = DateTime.UtcNow;
+
+        var template = await _ctx.RewardTemplates
+            .Include(t => t.Options)
+            .FirstOrDefaultAsync(t => t.Key == key, cancellationToken);
+
+        if (template is null)
+        {
+            template = new RewardTemplateEntity
+            {
+                Id = Guid.NewGuid(),
+                Key = key,
+                DisplayName = displayName,
+                Description = description,
+                SourceType = "NodeEvent",
+                MinOptions = maxOptionsShown,
+                MaxOptions = maxOptionsShown,
+                Version = version,
+                Status = "Active",
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
+            };
+            _ctx.RewardTemplates.Add(template);
+        }
+        else
+        {
+            template.DisplayName = displayName;
+            template.Description = description;
+            template.SourceType = "NodeEvent";
+            template.MinOptions = maxOptionsShown;
+            template.MaxOptions = maxOptionsShown;
+            template.Version = version;
+            template.Status = "Active";
+            template.UpdatedAtUtc = now;
+
+            // Replace the option pool wholesale on reseed, so this stays the single
+            // source of truth for "reward.item.default" (e.g. once the full authored
+            // item list is added here).
+            _ctx.RewardTemplateOptions.RemoveRange(template.Options);
+            template.Options.Clear();
+        }
+
+        foreach (var option in options)
+        {
+            template.Options.Add(new RewardTemplateOptionEntity
+            {
+                Id = Guid.NewGuid(),
+                RewardTemplateId = template.Id,
+                RewardType = option.RewardType,
+                Label = option.Label,
+                Description = option.Description,
+                PayloadKey = option.PayloadKey,
+                BaseAmount = option.BaseAmount,
+                ScalingMode = "Flat",
+                Weight = 1,
+                ItemType = option.ItemType,
+                ItemRarity = option.ItemRarity,
+                ItemEffectType = option.ItemEffectType
+            });
+        }
     }
 }

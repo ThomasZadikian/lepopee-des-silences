@@ -160,4 +160,11 @@ public enum RunModifierType
     /// Also doubles as this law's "active" marker for the floor-end 25% clawback (see
     /// Run.ConsumeFloorEndModifiers / MoveToNextRoomCommandHandler).</summary>
     CurrencyGainBonusPercent = 42,
+
+    /// <summary>"Loi de la Chandelle" (law.chandelle) — one free reroll of an item-node
+    /// reward offer for the floor. One modifier instance = one charge, consumed on use
+    /// (not swept in bulk at floor end like other UntilFloorEnds modifiers — see
+    /// Run.TryConsumeItemNodeRerollCharge, called from RerollItemRewardOfferCommandHandler).
+    /// Unused charges still expire normally at floor end via ConsumeFloorEndModifiers.</summary>
+    ItemNodeRerollCharge = 43,
 }

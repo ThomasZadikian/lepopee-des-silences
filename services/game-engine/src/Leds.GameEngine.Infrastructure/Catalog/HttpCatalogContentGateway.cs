@@ -1146,7 +1146,10 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
             source.EffectSetKey,
             source.BaseAmount,
             source.ScalingMode,
-            source.Weight);
+            source.Weight,
+            source.ItemType,
+            source.ItemRarity,
+            source.ItemEffectType);
     }
 
     private static EnemyTemplateSnapshot MapToEnemyTemplateSnapshot(
@@ -1644,7 +1647,10 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
         string? EffectSetKey,
         int BaseAmount,
         string ScalingMode,
-        int Weight);
+        int Weight,
+        string? ItemType = null,
+        string? ItemRarity = null,
+        string? ItemEffectType = null);
 
     private sealed record CatalogPalaceLawDefinitionHttpResponse(
         string Key,

@@ -1840,6 +1840,32 @@ public sealed class Run
     }
 
     /// <summary>
+    /// "Loi de la Chandelle" (law.chandelle): consumes one free item-node reroll charge,
+    /// if any is available. Unlike most UntilFloorEnds modifiers (swept in bulk at floor
+    /// end), a charge is consumed one at a time, on demand, by
+    /// RerollItemRewardOfferCommandHandler. Returns false when no charge remains.
+    /// </summary>
+    public bool TryConsumeItemNodeRerollCharge()
+    {
+        var charge = _runModifiers.FirstOrDefault(m =>
+            m.Type == RunModifierType.ItemNodeRerollCharge && !m.IsConsumed);
+
+        if (charge is null)
+        {
+            return false;
+        }
+
+        charge.Consume(DateTime.UtcNow);
+        return true;
+    }
+
+    /// <summary>Number of "Loi de la Chandelle" reroll charges already consumed this
+    /// floor — used as the deterministic nonce so consecutive rerolls of the same item
+    /// node draw different results (see RewardOfferFactory.CreateItemRewardChoices).</summary>
+    public int ConsumedItemNodeRerollCount =>
+        _runModifiers.Count(m => m.Type == RunModifierType.ItemNodeRerollCharge && m.IsConsumed);
+
+    /// <summary>
     /// Single entry point for ambient law promulgation (irréfusabilité — Compendium des Lois
     /// du Palais). Applies the Chapitre VIII majeure exclusivity (at most one active) and the
     /// explicit exclusion-pairs rule, then delegates to <see cref="ActivatePalaceLaw"/> and

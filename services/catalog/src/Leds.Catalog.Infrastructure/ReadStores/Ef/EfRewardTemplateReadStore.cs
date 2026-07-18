@@ -77,6 +77,9 @@ public sealed class EfRewardTemplateReadStore : IRewardTemplateReadStore
             entity.EffectSet?.Key,
             entity.BaseAmount ?? 0,
             entity.ScalingMode,
-            entity.Weight);
+            entity.Weight,
+            entity.ItemType,
+            entity.ItemRarity,
+            entity.ItemEffectType);
     }
 }

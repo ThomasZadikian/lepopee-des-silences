@@ -399,4 +399,56 @@ public sealed class RunPromulgationTests
 
         result.PreteurClawbackDue.Should().BeFalse();
     }
+
+    // ---------------------------------------------------------------------------
+    // "Loi de la Chandelle" — one free item-node reroll charge per modifier instance,
+    // consumed one at a time (unlike other UntilFloorEnds modifiers, which are swept
+    // in bulk at floor end). The actual reward-offer reroll happens in
+    // RerollItemRewardOfferCommandHandler; here we only verify the charge bookkeeping.
+    // ---------------------------------------------------------------------------
+
+    private static PalaceLaw CreateChandelleLaw(string key = "law.chandelle") => PalaceLaw.Create(
+        key, "Loi de la Chandelle", "1.0.0",
+        domains: [PalaceLawDomain.Rewards],
+        effects:
+        [
+            PalaceLawEffect.Create(
+                RunModifierType.ItemNodeRerollCharge, value: 1, RunModifierDuration.UntilFloorEnds),
+        ]);
+
+    [Fact]
+    public void TryConsumeItemNodeRerollCharge_ShouldConsumeOneChargeAndReturnTrue_WhenChargeAvailable()
+    {
+        var run = TestGameEngineFactory.CreateRun();
+        run.PromulgateLaw(CreateChandelleLaw());
+
+        var consumed = run.TryConsumeItemNodeRerollCharge();
+
+        consumed.Should().BeTrue();
+        run.ConsumedItemNodeRerollCount.Should().Be(1);
+    }
+
+    [Fact]
+    public void TryConsumeItemNodeRerollCharge_ShouldReturnFalse_WhenNoChargeAvailable()
+    {
+        var run = TestGameEngineFactory.CreateRun();
+
+        var consumed = run.TryConsumeItemNodeRerollCharge();
+
+        consumed.Should().BeFalse();
+        run.ConsumedItemNodeRerollCount.Should().Be(0);
+    }
+
+    [Fact]
+    public void TryConsumeItemNodeRerollCharge_ShouldReturnFalse_OnceTheOnlyChargeIsAlreadyConsumed()
+    {
+        var run = TestGameEngineFactory.CreateRun();
+        run.PromulgateLaw(CreateChandelleLaw());
+        run.TryConsumeItemNodeRerollCharge();
+
+        var consumedAgain = run.TryConsumeItemNodeRerollCharge();
+
+        consumedAgain.Should().BeFalse();
+        run.ConsumedItemNodeRerollCount.Should().Be(1);
+    }
 }

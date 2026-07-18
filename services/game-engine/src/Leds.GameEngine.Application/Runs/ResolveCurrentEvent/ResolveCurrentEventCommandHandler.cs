@@ -223,10 +223,15 @@ public sealed class ResolveCurrentEventCommandHandler
         }
         else if (selectedNode.EventType == NodeEventType.Item)
         {
-            var itemRewardOffer = _rewardOfferFactory.CreateItemRewardOffer(
+            var itemRewardOffer = await _rewardOfferFactory.CreateItemRewardOfferAsync(
                 selectedNode.RewardProfile,
                 selectedNode.RiskLevel,
-                run.RunModifiers);
+                run.RunModifiers,
+                run.Seed,
+                run.Id.Value,
+                selectedNode.Id.Value,
+                rerollNonce: 0,
+                cancellationToken);
 
             run.SetPendingRewardOffer(itemRewardOffer.Id);
             pendingRewardOffer = itemRewardOffer;

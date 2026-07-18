@@ -1,3 +1,4 @@
+using Leds.GameEngine.Application.Catalog.Contracts;
 using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Application.Combats;
 using Leds.GameEngine.Application.Rewards.Loot;
@@ -5,6 +6,7 @@ using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rewards;
 using Leds.GameEngine.Domain.Runs;
+using Leds.GameEngine.Domain.Selection;
 
 namespace Leds.GameEngine.Application.Rewards.RewardOfferFactory;
 
@@ -106,25 +108,34 @@ public sealed class RewardOfferFactory
 
         var template = templateResult.Value;
 
-        var choices = template.Options.Select(opt =>
-        {
-            var rewardType = Enum.Parse<RewardType>(opt.RewardType);
-            var payloadKey = opt.PayloadType switch
-            {
-                "Item" when opt.PayloadKey is not null => $"item:{opt.PayloadKey}:{opt.Label}:{opt.Description}:Consumable:Common:Heal:{opt.BaseAmount}",
-                _ when opt.PayloadKey is not null => opt.PayloadKey,
-                _ => $"heal:{opt.BaseAmount}"
-            };
-            return RewardChoice.Create(
-                rewardType,
-                opt.Label,
-                opt.Description,
-                payloadKey);
-        }).ToList();
+        var choices = template.Options.Select(BuildRewardChoiceFromOption).ToList();
 
         return RewardOffer.Create(
             Enum.TryParse<RewardSource>(template.SourceType, ignoreCase: true, out var source) ? source : RewardSource.Combat,
             choices);
+    }
+
+    private static RewardChoice BuildRewardChoiceFromOption(CatalogRewardTemplateOptionSnapshot option)
+    {
+        var rewardType = Enum.Parse<RewardType>(option.RewardType);
+        return RewardChoice.Create(rewardType, option.Label, option.Description, BuildPayloadKey(option));
+    }
+
+    private static string BuildPayloadKey(CatalogRewardTemplateOptionSnapshot option)
+    {
+        if (option.PayloadType == "Item" && option.PayloadKey is not null)
+        {
+            // ItemType/ItemRarity/ItemEffectType default to Consumable/Common/Heal for
+            // templates authored before these fields existed — every "reward.item.*"
+            // template seeded going forward carries its own real values (see
+            // CatalogSeedRunner).
+            var itemType = option.ItemType ?? "Consumable";
+            var itemRarity = option.ItemRarity ?? "Common";
+            var itemEffectType = option.ItemEffectType ?? "Heal";
+            return $"item:{option.PayloadKey}:{option.Label}:{option.Description}:{itemType}:{itemRarity}:{itemEffectType}:{option.BaseAmount}";
+        }
+
+        return option.PayloadKey ?? $"heal:{option.BaseAmount}";
     }
 
     public RewardOffer CreateMerchantRewardOffer(int riskLevel)
@@ -133,17 +144,78 @@ public sealed class RewardOfferFactory
         return RewardOffer.Create(RewardSource.NodeEvent, choices);
     }
 
-    public RewardOffer CreateItemRewardOffer(
+    /// <summary>Catalog key for the item-node reward pool. "Loi de la Chandelle"
+    /// (law.chandelle) rerolls draw a different subset of this same pool — see
+    /// SampleOptionsDeterministically.</summary>
+    private const string ItemRewardTemplateKey = "reward.item.default";
+
+    /// <summary>
+    /// Creates an item-node reward offer by deterministically sampling from the
+    /// catalog-authored "reward.item.default" template's option pool (see
+    /// CatalogSeedRunner) — the pool may hold more options than are shown at once, so
+    /// "Loi de la Chandelle" (law.chandelle) can reroll into a genuinely different
+    /// subset by passing a different <paramref name="rerollNonce"/>. Falls back to the
+    /// small hardcoded baseline (<see cref="CreateItemRewardChoices"/>) if the catalog
+    /// template is unreachable or missing, so an item node is never left with zero
+    /// choices.
+    /// </summary>
+    public async Task<RewardOffer> CreateItemRewardOfferAsync(
         string rewardProfile,
         int riskLevel,
-        IReadOnlyCollection<RunModifier>? runModifiers = null)
+        IReadOnlyCollection<RunModifier>? runModifiers,
+        string runSeed,
+        Guid runId,
+        Guid nodeId,
+        int rerollNonce = 0,
+        CancellationToken cancellationToken = default)
     {
         // "Loi de l'Abondance" (law.abondance): item nodes propose a 4th choice.
         var extraChoiceEnabled = runModifiers?
             .Any(m => m.Type == RunModifierType.AbondanceExtraChoiceEnabled && !m.IsConsumed) ?? false;
 
-        var choices = CreateItemRewardChoices(rewardProfile, riskLevel, extraChoiceEnabled);
+        var templateResult = await _catalogContentGateway.GetRewardTemplateByKeyAsync(
+            ItemRewardTemplateKey, cancellationToken);
+
+        if (templateResult is null || templateResult.IsFailure || templateResult.Value.Options.Count == 0)
+        {
+            var fallbackChoices = CreateItemRewardChoices(rewardProfile, riskLevel, extraChoiceEnabled);
+            return RewardOffer.Create(RewardSource.NodeEvent, fallbackChoices);
+        }
+
+        var template = templateResult.Value;
+        var desiredCount = extraChoiceEnabled ? template.MaxChoices + 1 : template.MaxChoices;
+        var sampled = SampleOptionsDeterministically(
+            template.Options, desiredCount, runSeed, runId, nodeId, rerollNonce);
+
+        var choices = sampled.Select(BuildRewardChoiceFromOption).ToList();
         return RewardOffer.Create(RewardSource.NodeEvent, choices);
+    }
+
+    /// <summary>
+    /// Picks <paramref name="count"/> distinct options from <paramref name="pool"/>,
+    /// deterministic from (seed, runId, contextId, rerollNonce) — same inputs always
+    /// produce the same subset, a different rerollNonce (almost always) produces a
+    /// different one. Clamped to the pool's size, since a reroll charge should never
+    /// throw just because the pool hasn't been authored with enough variety yet.
+    /// </summary>
+    private static List<CatalogRewardTemplateOptionSnapshot> SampleOptionsDeterministically(
+        IReadOnlyCollection<CatalogRewardTemplateOptionSnapshot> pool,
+        int count,
+        string seed,
+        Guid runId,
+        Guid contextId,
+        int rerollNonce)
+    {
+        var poolList = pool.ToList();
+        var take = Math.Clamp(count, 0, poolList.Count);
+
+        return poolList
+            .Select((option, index) => (option, sortKey: DeterministicSampler.NextUnitInterval(
+                seed, runId, contextId, (index * 1000) + rerollNonce)))
+            .OrderBy(entry => entry.sortKey)
+            .Take(take)
+            .Select(entry => entry.option)
+            .ToList();
     }
 
     private List<RewardChoice> CreateCombatRewardChoices(int riskLevel, double multiplier)

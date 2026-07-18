@@ -179,6 +179,9 @@ public sealed class RewardTemplateOptionEntityConfiguration : IEntityTypeConfigu
         builder.Property(e => e.ScalingMode).HasColumnName("scaling_mode").HasMaxLength(32).IsRequired();
         builder.Property(e => e.Weight).HasColumnName("weight");
         builder.Property(e => e.EffectSetId).HasColumnName("effect_set_id");
+        builder.Property(e => e.ItemType).HasColumnName("item_type").HasMaxLength(32);
+        builder.Property(e => e.ItemRarity).HasColumnName("item_rarity").HasMaxLength(32);
+        builder.Property(e => e.ItemEffectType).HasColumnName("item_effect_type").HasMaxLength(32);
         builder.HasOne(e => e.RewardTemplate).WithMany(e => e.Options).HasForeignKey(e => e.RewardTemplateId).OnDelete(DeleteBehavior.Cascade);
         builder.HasOne(e => e.EffectSet).WithMany().HasForeignKey(e => e.EffectSetId).OnDelete(DeleteBehavior.SetNull);
     }

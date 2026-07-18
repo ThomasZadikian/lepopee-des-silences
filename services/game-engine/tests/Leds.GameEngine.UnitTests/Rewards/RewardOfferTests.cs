@@ -88,4 +88,53 @@ public sealed class RewardOfferTests
             .Throw<DomainException>()
             .WithMessage("Reward choice was not found in the offer.");
     }
+
+    // "Loi de la Chandelle" (law.chandelle) — rerolls an item-node offer in place.
+    [Fact]
+    public void ReplaceChoices_ShouldSwapTheChoiceSet_WhilePreservingOfferIdentity()
+    {
+        var original = new[]
+        {
+            RewardChoice.Create(RewardType.Heal, "Heal", "Restore some HP.", "heal:10")
+        };
+        var offer = RewardOffer.Create(RewardSource.NodeEvent, original);
+        var rerolled = new[]
+        {
+            RewardChoice.Create(RewardType.TemporaryItem, "Éclat de garde", "Guard.", "item:x:Éclat:desc:Consumable:Uncommon:Guard:8")
+        };
+
+        offer.ReplaceChoices(rerolled);
+
+        offer.Id.Should().NotBeNull();
+        offer.Source.Should().Be(RewardSource.NodeEvent);
+        offer.State.Should().Be(RewardOfferState.Pending);
+        offer.Choices.Should().ContainSingle().Which.Should().Be(rerolled[0]);
+    }
+
+    [Fact]
+    public void ReplaceChoices_ShouldThrow_WhenOfferIsNotPending()
+    {
+        var choices = new[] { RewardChoice.Create(RewardType.Heal, "Heal", "Restore some HP.", "heal:10") };
+        var offer = RewardOffer.Create(RewardSource.NodeEvent, choices);
+        offer.SelectChoice(choices[0].Id);
+
+        var act = () => offer.ReplaceChoices(choices);
+
+        act.Should()
+            .Throw<DomainException>()
+            .WithMessage("Only a pending reward offer can be rerolled.");
+    }
+
+    [Fact]
+    public void ReplaceChoices_ShouldThrow_WhenChoicesAreEmpty()
+    {
+        var choices = new[] { RewardChoice.Create(RewardType.Heal, "Heal", "Restore some HP.", "heal:10") };
+        var offer = RewardOffer.Create(RewardSource.NodeEvent, choices);
+
+        var act = () => offer.ReplaceChoices(Array.Empty<RewardChoice>());
+
+        act.Should()
+            .Throw<DomainException>()
+            .WithMessage("Reward offer must have at least one choice.");
+    }
 }

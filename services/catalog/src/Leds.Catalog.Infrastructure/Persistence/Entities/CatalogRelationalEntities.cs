@@ -192,6 +192,18 @@ public sealed class RewardTemplateOptionEntity
     public int Weight { get; set; } = 1;
     public Guid? EffectSetId { get; set; }
 
+    /// <summary>
+    /// Only meaningful for RewardType "TemporaryItem" options — mirrors the game-engine
+    /// RunItemType/RunItemRarity/RunItemEffectType enums by name (e.g. "Consumable",
+    /// "Uncommon", "Guard"), so RewardOfferFactory can build a full
+    /// "item:&lt;key&gt;:&lt;label&gt;:&lt;desc&gt;:&lt;type&gt;:&lt;rarity&gt;:&lt;effectType&gt;:&lt;amount&gt;"
+    /// reward payload (see Run.AddRunItemFromPayload) instead of hardcoding
+    /// Consumable/Common/Heal for every templated item option.
+    /// </summary>
+    public string? ItemType { get; set; }
+    public string? ItemRarity { get; set; }
+    public string? ItemEffectType { get; set; }
+
     public RewardTemplateEntity RewardTemplate { get; set; } = null!;
     public EffectSetEntity? EffectSet { get; set; }
 }
