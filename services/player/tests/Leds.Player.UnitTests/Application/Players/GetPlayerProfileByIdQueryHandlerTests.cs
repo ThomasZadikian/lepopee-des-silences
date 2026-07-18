@@ -58,7 +58,7 @@ public sealed class GetPlayerProfileByIdQueryHandlerTests
         result.Should().NotBeNull();
         result!.Characters.Should().HaveCount(1);
         result.Characters.Single().DefinitionKey.Should().Be("character.player.self");
-        result.Characters.Single().DisplayName.Should().Be("Le Porteur");
+        result.Characters.Single().DisplayName.Should().Be("L'Aventurier");
     }
 
     [Fact]

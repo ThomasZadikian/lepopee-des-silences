@@ -195,7 +195,7 @@ public sealed class PlayerProfile
         // of loadout, so it isn't part of the learnable/equippable pool.
         var defaultCharacter = PlayerCharacter.Create(
             definitionKey: "character.player.self",
-            displayName: "Le Porteur",
+            displayName: "L'Aventurier",
             statBlock: PlayerCharacterStatBlock.CreateDefaultPorteur(),
             skills:
             [

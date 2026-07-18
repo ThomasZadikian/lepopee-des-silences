@@ -115,4 +115,25 @@ describe('StatusEffectToken', () => {
     const wrapper = mount(StatusEffectToken, { props: { kind: 'DamageOverTime', stacks: 3 } });
     expect(wrapper.find('.sigil__bubble-title').text()).toBe('Dégât continu ×3');
   });
+
+  // Regression: ticks remaining used to be visible only in the hover bubble,
+  // requiring a hover/click to see how long a DoT/status has left.
+  it('shows a persistent ticks-remaining badge without needing to hover', () => {
+    const wrapper = mount(StatusEffectToken, {
+      props: { kind: 'DamageOverTime', ticksRemaining: 5001 },
+    });
+    expect(wrapper.find('.sigil__ticks').text()).toBe('3');
+  });
+
+  it('hides the ticks-remaining badge when the effect is permanent', () => {
+    const wrapper = mount(StatusEffectToken, {
+      props: { kind: 'StatModifier', magnitude: 20, isPermanent: true, ticksRemaining: null },
+    });
+    expect(wrapper.find('.sigil__ticks').exists()).toBe(false);
+  });
+
+  it('hides the ticks-remaining badge when ticksRemaining is unknown', () => {
+    const wrapper = mount(StatusEffectToken, { props: { kind: 'DamageOverTime' } });
+    expect(wrapper.find('.sigil__ticks').exists()).toBe(false);
+  });
 });

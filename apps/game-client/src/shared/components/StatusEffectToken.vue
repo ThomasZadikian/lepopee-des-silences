@@ -62,11 +62,16 @@ const tubeH = computed(() => Math.round(sigPx.value * 0.74));
 const lockBar = computed(() => Math.round(sigPx.value * 0.66));
 const diamondD = computed(() => Math.round(sigPx.value * 0.5));
 
+const turnsRemaining = computed(() => {
+  if (props.isPermanent) return null;
+  if (props.ticksRemaining === null || props.ticksRemaining === undefined) return null;
+  return ticksToTurns(props.ticksRemaining);
+});
+
 const durationLine = computed(() => {
   if (props.isPermanent) return 'Permanent (jusqu\'à la mort)';
-  if (props.ticksRemaining === null || props.ticksRemaining === undefined) return null;
-  const turns = ticksToTurns(props.ticksRemaining);
-  return turns <= 1 ? '1 tour restant' : `${turns} tours restants`;
+  if (turnsRemaining.value === null) return null;
+  return turnsRemaining.value <= 1 ? '1 tour restant' : `${turnsRemaining.value} tours restants`;
 });
 
 const perTickLine = computed(() => {
@@ -139,6 +144,11 @@ const perTickLine = computed(() => {
       </div>
 
       <div v-if="showStacks" class="sigil__stacks" :style="{ background: kindMeta.color }">{{ stacks }}</div>
+      <div
+        v-if="turnsRemaining !== null"
+        class="sigil__ticks"
+        :style="{ background: kindMeta.color }"
+      >{{ turnsRemaining }}</div>
     </div>
 
     <div v-if="meta" class="sigil__meta">{{ label }}</div>
@@ -214,6 +224,24 @@ const perTickLine = computed(() => {
   position: absolute;
   right: -2px;
   bottom: -2px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 500;
+  color: oklch(0.16 0.02 50);
+  border-radius: 4px;
+  box-shadow: 0 1px 3px oklch(0.08 0.015 48 / 0.5);
+}
+
+.sigil__ticks {
+  position: absolute;
+  left: -2px;
+  top: -2px;
   min-width: 14px;
   height: 14px;
   padding: 0 3px;

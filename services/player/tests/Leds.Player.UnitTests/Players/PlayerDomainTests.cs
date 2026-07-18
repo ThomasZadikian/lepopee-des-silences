@@ -13,7 +13,7 @@ public sealed class PlayerProfileTests
 
         profile.Roster.Characters.Should().HaveCount(1);
         profile.Roster.Characters.Single().DefinitionKey.Should().Be("character.player.self");
-        profile.Roster.Characters.Single().DisplayName.Should().Be("Le Porteur");
+        profile.Roster.Characters.Single().DisplayName.Should().Be("L'Aventurier");
     }
 
     [Fact]

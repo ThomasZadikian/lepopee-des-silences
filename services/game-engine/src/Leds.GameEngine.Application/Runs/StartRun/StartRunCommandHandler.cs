@@ -2,6 +2,7 @@
 using Leds.SharedBuildingBlocks.Time;
 using Leds.GameEngine.Application.Catalog.Contracts;
 using Leds.GameEngine.Application.Catalog.Ports;
+using Leds.GameEngine.Application.PalaceLaws;
 using Leds.GameEngine.Application.Players.Ports;
 using Leds.GameEngine.Application.Runs.Dtos;
 using Leds.GameEngine.Domain.Runs;
@@ -34,6 +35,7 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
     private readonly IPlayerRunSnapshotGateway _playerGateway;
     private readonly IPlayerProfileGateway _playerProfileGateway;
     private readonly ICatalogContentGateway _catalogGateway;
+    private readonly IAmbientPalaceLawPromulgator _palaceLawPromulgator;
     private readonly IClock _clock;
 
     public StartRunCommandHandler(
@@ -42,6 +44,7 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
         IPlayerRunSnapshotGateway playerGateway,
         IPlayerProfileGateway playerProfileGateway,
         ICatalogContentGateway catalogGateway,
+        IAmbientPalaceLawPromulgator palaceLawPromulgator,
         IClock clock)
     {
         _runGenerator = runGenerator;
@@ -49,6 +52,7 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
         _playerGateway = playerGateway;
         _playerProfileGateway = playerProfileGateway;
         _catalogGateway = catalogGateway;
+        _palaceLawPromulgator = palaceLawPromulgator;
         _clock = clock;
     }
 
@@ -264,6 +268,12 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
             himLitProtectionEnabled: himLitProtectionEnabled,
             healingBonusPercent: healingBonusPercent,
             caliceInfiniEnabled: caliceInfiniEnabled);
+
+        // Ambient promulgation ("irréfusabilité") also applies to the very first room of
+        // the run: without this, MoveToNextRoomCommandHandler's guaranteed first-floor
+        // draw would never fire before the player leaves the Hall (StartRun never used to
+        // call the promulgator at all).
+        await _palaceLawPromulgator.PromulgateForRoomTransitionAsync(run, run.CurrentRoom, cancellationToken);
 
         var characterSnapshots = snapshot.Characters
             .Select(c =>

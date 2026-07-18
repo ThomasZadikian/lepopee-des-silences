@@ -4,9 +4,11 @@ using Leds.SharedBuildingBlocks.Time;
 using Leds.SharedBuildingBlocks.Results;
 using Leds.GameEngine.Application.Catalog.Contracts;
 using Leds.GameEngine.Application.Catalog.Ports;
+using Leds.GameEngine.Application.PalaceLaws;
 using Leds.GameEngine.Application.Players;
 using Leds.GameEngine.Application.Players.Ports;
 using Leds.GameEngine.Application.Runs.StartRun;
+using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
 using Leds.GameEngine.UnitTests.Common.Factories;
 using Moq;
@@ -98,6 +100,10 @@ public sealed class StartRunCommandHandlerTests
         clock.SetupGet(service => service.UtcNow).Returns(now);
 
         var catalogGateway = new Mock<ICatalogContentGateway>();
+        var palaceLawPromulgator = new Mock<IAmbientPalaceLawPromulgator>();
+        palaceLawPromulgator
+            .Setup(p => p.PromulgateForRoomTransitionAsync(It.IsAny<Run>(), It.IsAny<Room>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
 
         var playerProfileGateway = CreateProfileGateway(playerId);
         var handler = new StartRunCommandHandler(
@@ -106,6 +112,7 @@ public sealed class StartRunCommandHandlerTests
             playerGateway.Object,
             playerProfileGateway.Object,
             catalogGateway.Object,
+            palaceLawPromulgator.Object,
             clock.Object);
 
         var response = await handler.Handle(
@@ -207,6 +214,10 @@ public sealed class StartRunCommandHandlerTests
         clock.SetupGet(service => service.UtcNow).Returns(now);
 
         var catalogGateway = new Mock<ICatalogContentGateway>();
+        var palaceLawPromulgator = new Mock<IAmbientPalaceLawPromulgator>();
+        palaceLawPromulgator
+            .Setup(p => p.PromulgateForRoomTransitionAsync(It.IsAny<Run>(), It.IsAny<Room>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
 
         var playerProfileGateway = CreateProfileGateway(playerId);
         var handler = new StartRunCommandHandler(
@@ -215,6 +226,7 @@ public sealed class StartRunCommandHandlerTests
             playerGateway.Object,
             playerProfileGateway.Object,
             catalogGateway.Object,
+            palaceLawPromulgator.Object,
             clock.Object);
 
         await handler.Handle(
@@ -283,6 +295,10 @@ public sealed class StartRunCommandHandlerTests
         clock.SetupGet(service => service.UtcNow).Returns(now);
 
         var catalogGateway = new Mock<ICatalogContentGateway>();
+        var palaceLawPromulgator = new Mock<IAmbientPalaceLawPromulgator>();
+        palaceLawPromulgator
+            .Setup(p => p.PromulgateForRoomTransitionAsync(It.IsAny<Run>(), It.IsAny<Room>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
         catalogGateway
             .Setup(g => g.GetItemDefinitionByKeyAsync("item.equipment.sac-a-dos", It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result<CatalogItemDefinitionSnapshot>.Success(new CatalogItemDefinitionSnapshot(
@@ -321,6 +337,7 @@ public sealed class StartRunCommandHandlerTests
             playerGateway.Object,
             playerProfileGateway.Object,
             catalogGateway.Object,
+            palaceLawPromulgator.Object,
             clock.Object);
 
         await handler.Handle(
@@ -394,6 +411,10 @@ public sealed class StartRunCommandHandlerTests
         clock.SetupGet(service => service.UtcNow).Returns(now);
 
         var catalogGateway = new Mock<ICatalogContentGateway>();
+        var palaceLawPromulgator = new Mock<IAmbientPalaceLawPromulgator>();
+        palaceLawPromulgator
+            .Setup(p => p.PromulgateForRoomTransitionAsync(It.IsAny<Run>(), It.IsAny<Room>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
         catalogGateway
             .Setup(g => g.GetItemDefinitionByKeyAsync("item.equipment.monocle", It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result<CatalogItemDefinitionSnapshot>.Success(new CatalogItemDefinitionSnapshot(
@@ -425,6 +446,7 @@ public sealed class StartRunCommandHandlerTests
             playerGateway.Object,
             playerProfileGateway.Object,
             catalogGateway.Object,
+            palaceLawPromulgator.Object,
             clock.Object);
 
         await handler.Handle(
@@ -496,6 +518,10 @@ public sealed class StartRunCommandHandlerTests
         clock.SetupGet(service => service.UtcNow).Returns(now);
 
         var catalogGateway = new Mock<ICatalogContentGateway>();
+        var palaceLawPromulgator = new Mock<IAmbientPalaceLawPromulgator>();
+        palaceLawPromulgator
+            .Setup(p => p.PromulgateForRoomTransitionAsync(It.IsAny<Run>(), It.IsAny<Room>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
         catalogGateway
             .Setup(g => g.GetSkillDefinitionByKeyAsync("skill.mane.favorite-de-elise", It.IsAny<CancellationToken>()))
             .ReturnsAsync(new CatalogSkillDefinition(
@@ -510,6 +536,7 @@ public sealed class StartRunCommandHandlerTests
             playerGateway.Object,
             playerProfileGateway.Object,
             catalogGateway.Object,
+            palaceLawPromulgator.Object,
             clock.Object);
 
         await handler.Handle(
@@ -569,6 +596,10 @@ public sealed class StartRunCommandHandlerTests
         clock.SetupGet(service => service.UtcNow).Returns(now);
 
         var catalogGateway = new Mock<ICatalogContentGateway>();
+        var palaceLawPromulgator = new Mock<IAmbientPalaceLawPromulgator>();
+        palaceLawPromulgator
+            .Setup(p => p.PromulgateForRoomTransitionAsync(It.IsAny<Run>(), It.IsAny<Room>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
         catalogGateway
             .Setup(g => g.GetItemDefinitionByKeyAsync("item.equipment.bague-du-courage", It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result<CatalogItemDefinitionSnapshot>.Success(new CatalogItemDefinitionSnapshot(
@@ -601,6 +632,7 @@ public sealed class StartRunCommandHandlerTests
             playerGateway.Object,
             playerProfileGateway.Object,
             catalogGateway.Object,
+            palaceLawPromulgator.Object,
             clock.Object);
 
         await handler.Handle(
@@ -658,6 +690,10 @@ public sealed class StartRunCommandHandlerTests
         clock.SetupGet(service => service.UtcNow).Returns(now);
 
         var catalogGateway = new Mock<ICatalogContentGateway>();
+        var palaceLawPromulgator = new Mock<IAmbientPalaceLawPromulgator>();
+        palaceLawPromulgator
+            .Setup(p => p.PromulgateForRoomTransitionAsync(It.IsAny<Run>(), It.IsAny<Room>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
 
         var playerProfileGateway = CreateProfileGateway(playerId, "canon.item.carnet-de-bord");
         var handler = new StartRunCommandHandler(
@@ -666,6 +702,7 @@ public sealed class StartRunCommandHandlerTests
             playerGateway.Object,
             playerProfileGateway.Object,
             catalogGateway.Object,
+            palaceLawPromulgator.Object,
             clock.Object);
 
         await handler.Handle(
@@ -721,6 +758,10 @@ public sealed class StartRunCommandHandlerTests
         clock.SetupGet(service => service.UtcNow).Returns(now);
 
         var catalogGateway = new Mock<ICatalogContentGateway>();
+        var palaceLawPromulgator = new Mock<IAmbientPalaceLawPromulgator>();
+        palaceLawPromulgator
+            .Setup(p => p.PromulgateForRoomTransitionAsync(It.IsAny<Run>(), It.IsAny<Room>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
 
         var playerProfileGateway = CreateProfileGateway(playerId);
         var handler = new StartRunCommandHandler(
@@ -729,6 +770,7 @@ public sealed class StartRunCommandHandlerTests
             playerGateway.Object,
             playerProfileGateway.Object,
             catalogGateway.Object,
+            palaceLawPromulgator.Object,
             clock.Object);
 
         await handler.Handle(
@@ -784,6 +826,10 @@ public sealed class StartRunCommandHandlerTests
         clock.SetupGet(service => service.UtcNow).Returns(now);
 
         var catalogGateway = new Mock<ICatalogContentGateway>();
+        var palaceLawPromulgator = new Mock<IAmbientPalaceLawPromulgator>();
+        palaceLawPromulgator
+            .Setup(p => p.PromulgateForRoomTransitionAsync(It.IsAny<Run>(), It.IsAny<Room>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
 
         var playerProfileGateway = CreateProfileGateway(playerId, "canon.item.deni-permanent");
         var handler = new StartRunCommandHandler(
@@ -792,6 +838,7 @@ public sealed class StartRunCommandHandlerTests
             playerGateway.Object,
             playerProfileGateway.Object,
             catalogGateway.Object,
+            palaceLawPromulgator.Object,
             clock.Object);
 
         await handler.Handle(
@@ -848,6 +895,10 @@ public sealed class StartRunCommandHandlerTests
         clock.SetupGet(service => service.UtcNow).Returns(now);
 
         var catalogGateway = new Mock<ICatalogContentGateway>();
+        var palaceLawPromulgator = new Mock<IAmbientPalaceLawPromulgator>();
+        palaceLawPromulgator
+            .Setup(p => p.PromulgateForRoomTransitionAsync(It.IsAny<Run>(), It.IsAny<Room>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
 
         var playerProfileGateway = CreateProfileGateway(playerId);
         var handler = new StartRunCommandHandler(
@@ -856,6 +907,7 @@ public sealed class StartRunCommandHandlerTests
             playerGateway.Object,
             playerProfileGateway.Object,
             catalogGateway.Object,
+            palaceLawPromulgator.Object,
             clock.Object);
 
         await handler.Handle(
@@ -912,6 +964,10 @@ public sealed class StartRunCommandHandlerTests
         clock.SetupGet(service => service.UtcNow).Returns(now);
 
         var catalogGateway = new Mock<ICatalogContentGateway>();
+        var palaceLawPromulgator = new Mock<IAmbientPalaceLawPromulgator>();
+        palaceLawPromulgator
+            .Setup(p => p.PromulgateForRoomTransitionAsync(It.IsAny<Run>(), It.IsAny<Room>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
 
         var playerProfileGateway = CreateProfileGateway(playerId, "canon.item.calice-infini");
         var handler = new StartRunCommandHandler(
@@ -920,6 +976,7 @@ public sealed class StartRunCommandHandlerTests
             playerGateway.Object,
             playerProfileGateway.Object,
             catalogGateway.Object,
+            palaceLawPromulgator.Object,
             clock.Object);
 
         await handler.Handle(
@@ -976,6 +1033,10 @@ public sealed class StartRunCommandHandlerTests
         clock.SetupGet(service => service.UtcNow).Returns(now);
 
         var catalogGateway = new Mock<ICatalogContentGateway>();
+        var palaceLawPromulgator = new Mock<IAmbientPalaceLawPromulgator>();
+        palaceLawPromulgator
+            .Setup(p => p.PromulgateForRoomTransitionAsync(It.IsAny<Run>(), It.IsAny<Room>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
 
         var playerProfileGateway = CreateProfileGateway(playerId, "canon.item.peluche-mina");
         var handler = new StartRunCommandHandler(
@@ -984,6 +1045,7 @@ public sealed class StartRunCommandHandlerTests
             playerGateway.Object,
             playerProfileGateway.Object,
             catalogGateway.Object,
+            palaceLawPromulgator.Object,
             clock.Object);
 
         await handler.Handle(
@@ -1039,6 +1101,10 @@ public sealed class StartRunCommandHandlerTests
         clock.SetupGet(service => service.UtcNow).Returns(now);
 
         var catalogGateway = new Mock<ICatalogContentGateway>();
+        var palaceLawPromulgator = new Mock<IAmbientPalaceLawPromulgator>();
+        palaceLawPromulgator
+            .Setup(p => p.PromulgateForRoomTransitionAsync(It.IsAny<Run>(), It.IsAny<Room>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
 
         var playerProfileGateway = CreateProfileGateway(playerId, "canon.item.protection-himlit");
         var handler = new StartRunCommandHandler(
@@ -1047,6 +1113,7 @@ public sealed class StartRunCommandHandlerTests
             playerGateway.Object,
             playerProfileGateway.Object,
             catalogGateway.Object,
+            palaceLawPromulgator.Object,
             clock.Object);
 
         await handler.Handle(

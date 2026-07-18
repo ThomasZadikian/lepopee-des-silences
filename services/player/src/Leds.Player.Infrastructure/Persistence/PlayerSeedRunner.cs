@@ -53,7 +53,7 @@ public sealed class PlayerSeedRunner
                     Id = DefaultCharacterId,
                     PlayerProfileId = DemoPlayerId,
                     DefinitionKey = "character.player.self",
-                    DisplayName = "Le Porteur",
+                    DisplayName = "L'Aventurier",
                     CharacterType = "Standard",
                     Status = "Active",
                     MaxVitality = 100,

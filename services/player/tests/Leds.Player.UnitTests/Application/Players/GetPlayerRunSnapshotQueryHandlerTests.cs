@@ -109,7 +109,7 @@ public sealed class GetPlayerRunSnapshotQueryHandlerTests
         result.Characters.Should().HaveCount(1);
         var character = result.Characters.Single();
         character.DefinitionKey.Should().Be("character.player.self");
-        character.DisplayName.Should().Be("Le Porteur");
+        character.DisplayName.Should().Be("L'Aventurier");
         character.MaxVitality.Should().Be(100);
         character.BaseMana.Should().Be(0);
         character.BaseCharge.Should().Be(0);
