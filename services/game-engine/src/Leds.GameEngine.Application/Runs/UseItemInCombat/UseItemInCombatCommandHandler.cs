@@ -258,6 +258,7 @@ public sealed class UseItemInCombatCommandHandler
                     break;
 
                 case RunItemEffectType.HealAndManaRestorePercent:
+                {
                     var healAmount = ApplyHealingBonus(
                         (int)Math.Round(target.MaxVitality * (item.EffectAmount / 100.0)),
                         target.EffectiveHealingBonusPercent);
@@ -272,6 +273,7 @@ public sealed class UseItemInCombatCommandHandler
                         target.GainMana(manaAmount);
                     }
                     break;
+                }
             }
         }
 
