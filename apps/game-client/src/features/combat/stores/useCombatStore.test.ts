@@ -296,11 +296,12 @@ describe('useCombatStore', () => {
       await playback;
     });
 
-    it('sets activeActionBanner to "X utilise Y sur Z !" as soon as a SkillUsed entry is processed', async () => {
+    it('sets activeActionBanner to "X utilise Y sur Z !" as soon as the action-accepted entry is processed', async () => {
       const store = useCombatStore();
       store.initCombat(baseCombat());
 
       const playback = store.playCombatLogs([
+        logEntry({ type: 'ActionAccepted', actorId: 'ally-1', skillKey: 'skill.a', targetIds: ['enemy-1'], message: "Skill 'skill.a' used by actor 'ally-1'." }),
         logEntry({ type: 'SkillUsed', actorId: 'ally-1', skillKey: 'skill.a', targetIds: ['enemy-1'], message: 'Le Porteur uses Frappe on Ombre.' }),
         logEntry({ type: 'DamageApplied', actorId: 'ally-1', skillKey: 'skill.a', targetIds: ['enemy-1'], message: 'Ombre takes 10 damage.' }),
       ]);
@@ -310,7 +311,33 @@ describe('useCombatStore', () => {
       await playback;
     });
 
-    it('merges every target into one banner for a multi-target skill (one SkillUsed entry per target)', async () => {
+    it('sets activeActionBanner for a non-damage skill (e.g. a status/disrupt effect), which never emits a SkillUsed entry', async () => {
+      // Regression test: CombatSkillEffectResolver only emits "SkillUsed" from its
+      // Damage branch — a Heal/Guard/Disrupt/status-only skill never produces one,
+      // on either side. The banner must therefore key off 'ActionAccepted' (player)
+      // / 'EnemyTurnResolved' (enemy), which are always present regardless of effect type.
+      const store = useCombatStore();
+      store.initCombat(baseCombat({
+        enemies: [baseCombatant({
+          id: 'enemy-1',
+          side: 'Enemy',
+          displayName: 'Porteur de Plateau',
+          skills: [{ key: 'skill.tasse-retournee', displayName: 'Tasse retournée', skillType: 'Disrupt', targetingType: 'SingleAlly', effectType: 'Disrupt', manaCost: 0, chargeCost: 0, basePower: 0, tags: [], category: 'Magic' }],
+        })],
+      }));
+
+      const playback = store.playCombatLogs([
+        logEntry({ type: 'EnemyTurnResolved', actorId: 'enemy-1', skillKey: 'skill.tasse-retournee', targetIds: ['ally-1'], message: 'Porteur de Plateau uses Tasse retournée.' }),
+        logEntry({ type: 'StatusApplied', actorId: 'enemy-1', skillKey: 'skill.tasse-retournee', targetIds: ['ally-1'], message: 'Le Porteur is afflicted by Tasse retournée.' }),
+        logEntry({ type: 'TurnAdvanced', message: 'Time flows…' }),
+      ]);
+
+      expect(store.activeActionBanner).toBe('Porteur de Plateau utilise Tasse retournée sur Le Porteur !');
+
+      await playback;
+    });
+
+    it('merges every target into one banner for a multi-target skill (targetIds already complete on the one ActionAccepted entry)', async () => {
       const store = useCombatStore();
       store.initCombat(baseCombat({
         enemies: [
@@ -320,6 +347,7 @@ describe('useCombatStore', () => {
       }));
 
       const playback = store.playCombatLogs([
+        logEntry({ type: 'ActionAccepted', actorId: 'ally-1', skillKey: 'skill.aoe', targetIds: ['enemy-1', 'enemy-2'], message: "Skill 'skill.aoe' used by actor 'ally-1'." }),
         logEntry({ type: 'SkillUsed', actorId: 'ally-1', skillKey: 'skill.aoe', targetIds: ['enemy-1'], message: 'Le Porteur uses Déluge du Styx on Ombre.' }),
         logEntry({ type: 'SkillUsed', actorId: 'ally-1', skillKey: 'skill.aoe', targetIds: ['enemy-2'], message: 'Le Porteur uses Déluge du Styx on Spectre.' }),
         logEntry({ type: 'DamageApplied', actorId: 'ally-1', skillKey: 'skill.aoe', targetIds: ['enemy-1'], message: 'Ombre takes 6 damage.' }),
@@ -336,6 +364,7 @@ describe('useCombatStore', () => {
       store.initCombat(baseCombat());
 
       await store.playCombatLogs([
+        logEntry({ type: 'ActionAccepted', actorId: 'ally-1', skillKey: 'skill.a', targetIds: ['enemy-1'], message: "Skill 'skill.a' used by actor 'ally-1'." }),
         logEntry({ type: 'SkillUsed', actorId: 'ally-1', skillKey: 'skill.a', targetIds: ['enemy-1'], message: 'Le Porteur uses Frappe on Ombre.' }),
         logEntry({ type: 'DamageApplied', actorId: 'ally-1', skillKey: 'skill.a', targetIds: ['enemy-1'], message: 'Ombre takes 10 damage.' }),
       ]);

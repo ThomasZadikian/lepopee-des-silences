@@ -396,11 +396,18 @@ export const useCombatStore = defineStore('combatRuntime', () => {
 
   type ActionBanner = { text: string; needsFallbackDelay: boolean };
 
-  // Pre-scans one server response's log entries and, for every SkillUsed/
-  // ItemUsed entry, builds the "X utilise Y sur Z !" banner text — merging
+  // Pre-scans one server response's log entries and builds the "X utilise Y
+  // sur Z !" banner text from whichever entry announces an action — merging
   // consecutive entries for the same actor+skill (AllEnemies/AllAllies skills
-  // emit one SkillUsed entry per target) so the banner lists every target once.
+  // emit one entry per target) so the banner lists every target once.
   // Returns a map keyed by the index of each group's FIRST entry.
+  //
+  // The trigger is 'ActionAccepted' (player skills) / 'EnemyTurnResolved'
+  // (enemy skills) / 'ItemUsed' (items) rather than 'SkillUsed': the backend
+  // only emits 'SkillUsed' from the Damage-effect branch of the skill effect
+  // resolver, so a Heal/Guard/Disrupt/status-only skill never produces one —
+  // the three trigger types above are the only entries guaranteed to exist
+  // exactly once for every skill use, whatever its effect type.
   function buildActionBanners(entries: CombatLogEntryDto[]): Map<number, ActionBanner> {
     const banners = new Map<number, ActionBanner>();
 
@@ -412,8 +419,8 @@ export const useCombatStore = defineStore('combatRuntime', () => {
         entries[index - 1].actorId === entry.actorId &&
         entries[index - 1].skillKey === entry.skillKey;
       if (isPreviousSameGroup) continue;
-      if (entry.type !== 'SkillUsed' && entry.type !== 'ItemUsed') continue;
-      if (!entry.actorId) continue;
+      if (entry.type !== 'ActionAccepted' && entry.type !== 'EnemyTurnResolved' && entry.type !== 'ItemUsed') continue;
+      if (!entry.actorId || !entry.skillKey) continue;
 
       const actor = findCombatantById(entry.actorId);
       if (!actor) continue;

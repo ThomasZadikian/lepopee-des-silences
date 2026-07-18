@@ -120,6 +120,7 @@ export type CombatEncounterDraftDto = {
 };
 
 export type LogEntryType =
+  | 'ActionAccepted'
   | 'SkillUsed'
   | 'ItemUsed'
   | 'DamageApplied'

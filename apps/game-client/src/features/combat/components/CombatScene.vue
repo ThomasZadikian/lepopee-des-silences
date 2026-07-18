@@ -557,7 +557,14 @@ watch(
 }
 
 .combat-scene__action-banner {
-  margin: 0 0 14px;
+  position: fixed;
+  top: 5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: var(--z-modal);
+  margin: 0;
+  max-width: min(90vw, 34rem);
+  pointer-events: none;
   padding: var(--space-2) var(--space-4);
   text-align: center;
   font-family: var(--font-display);
@@ -567,14 +574,15 @@ watch(
   color: var(--gold);
   border: 1px solid var(--edge-gold);
   border-radius: var(--radius-sm);
-  background: linear-gradient(180deg, oklch(0.24 0.05 60 / 0.85), oklch(0.18 0.04 60 / 0.9));
+  background: linear-gradient(180deg, oklch(0.24 0.05 60 / 0.92), oklch(0.18 0.04 60 / 0.95));
+  box-shadow: 0 8px 28px oklch(0 0 0 / 0.4);
   text-shadow: 0 0 14px color-mix(in oklch, var(--gold), transparent 55%);
   animation: combat-banner-in 220ms ease-out;
 }
 
 @keyframes combat-banner-in {
-  0% { opacity: 0; transform: translateY(-6px); }
-  100% { opacity: 1; transform: translateY(0); }
+  0% { opacity: 0; transform: translate(-50%, -6px); }
+  100% { opacity: 1; transform: translate(-50%, 0); }
 }
 
 .combat-scene__side-title {
