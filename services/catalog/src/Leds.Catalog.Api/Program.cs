@@ -31,7 +31,10 @@ if (app.Environment.IsDevelopment())
     if (app.Configuration.GetValue<bool>("CatalogSeed:ApplyOnStartup"))
     {
         var seedRunner = scope.ServiceProvider.GetRequiredService<CatalogSeedRunner>();
-        await seedRunner.SeedAsync();
+        await seedRunner.ApplyBaseSeedAsync();
+
+        var externalSeeder = scope.ServiceProvider.GetRequiredService<ExternalCatalogContentSeeder>();
+        await externalSeeder.ApplyAsync();
     }
 }
 
