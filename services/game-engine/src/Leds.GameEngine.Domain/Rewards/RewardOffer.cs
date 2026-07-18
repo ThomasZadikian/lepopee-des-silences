@@ -90,6 +90,35 @@ public sealed class RewardOffer
             defeatedEnemies);
     }
 
+    /// <summary>
+    /// "Loi de la Chandelle" (law.chandelle) — replaces this offer's choices in place
+    /// (a reroll), preserving its identity (Id/Source) so the Run's PendingRewardOfferId
+    /// stays valid. Same invariants as <see cref="Create"/>.
+    /// </summary>
+    public void ReplaceChoices(IReadOnlyCollection<RewardChoice> choices)
+    {
+        if (State != RewardOfferState.Pending)
+        {
+            throw new DomainException("Only a pending reward offer can be rerolled.");
+        }
+
+        var choiceList = choices?.ToList()
+            ?? throw new DomainException("Reward choices are required.");
+
+        if (choiceList.Count == 0)
+        {
+            throw new DomainException("Reward offer must have at least one choice.");
+        }
+
+        if (choiceList.Select(choice => choice.Id).Distinct().Count() != choiceList.Count)
+        {
+            throw new DomainException("Reward choice ids must be unique.");
+        }
+
+        _choices.Clear();
+        _choices.AddRange(choiceList);
+    }
+
     public void SelectChoice(RewardChoiceId choiceId)
     {
         if (State != RewardOfferState.Pending)

@@ -227,4 +227,228 @@ public sealed class RunPromulgationTests
         run.EnterInterlude();
         run.MoveToNextRoom(TestGameEngineFactory.CreateThresholdRoom(depth: run.CurrentDepth + 1));
     }
+
+    // ---------------------------------------------------------------------------
+    // "Loi de l'Oubli Partiel" — the forgotten skill is drawn once at promulgation
+    // time (Run.PickForgottenSkill), then cleared with a +8 stat-point payout signal
+    // when the floor-scoped modifier is consumed (Run.ConsumeFloorEndModifiers /
+    // Run.MoveToNextRoom's FloorEndModifierConsumptionResult return).
+    // ---------------------------------------------------------------------------
+
+    private static PalaceLaw CreateOubliPartielLaw(string key = "law.oubli-partiel") => PalaceLaw.Create(
+        key, "Loi de l'Oubli Partiel", "1.0.0",
+        domains: [PalaceLawDomain.Combat],
+        effects:
+        [
+            PalaceLawEffect.Create(
+                RunModifierType.SkillForgotten, value: 1, RunModifierDuration.UntilFloorEnds),
+        ]);
+
+    private static Run CreateRunWithMultipleSkills()
+    {
+        var run = TestGameEngineFactory.CreateRun();
+
+        var statBlock = RunCharacterStatSnapshot.Create(
+            maxVitality: 100, attackPower: 12, defense: 6, startingGuard: 0,
+            speed: 10, initiative: 10, recovery: 5, focus: 0, mana: 0, charge: 0);
+
+        var skills = new[]
+        {
+            RunCharacterSkillSnapshot.Create(
+                skillDefinitionKey: "skill.basic.strike", displayName: "Frappe",
+                skillType: "Damage", targetingMode: "SingleEnemy", effectType: "Damage",
+                manaCost: 0, chargeCost: 0, basePower: 10),
+            RunCharacterSkillSnapshot.Create(
+                skillDefinitionKey: "skill.hero.blaze", displayName: "Brasier",
+                skillType: "Damage", targetingMode: "SingleEnemy", effectType: "Damage",
+                manaCost: 5, chargeCost: 0, basePower: 20),
+        };
+
+        var character = RunCharacterSnapshot.Create(
+            characterId: Guid.NewGuid(), definitionKey: "character.player.self",
+            displayName: "Le Porteur", statBlock: statBlock, skills: skills);
+
+        run.AttachPlayerSnapshot(RunPlayerSnapshot.Create(
+            playerId: run.PlayerId, displayName: "Joueur", characters: [character],
+            createdAtUtc: DateTimeOffset.UtcNow));
+
+        return run;
+    }
+
+    [Fact]
+    public void PromulgateLaw_ShouldPickAForgottenSkill_ExcludingTheBasicAttack()
+    {
+        var run = CreateRunWithMultipleSkills();
+
+        run.PromulgateLaw(CreateOubliPartielLaw());
+
+        run.ForgottenSkillKey.Should().Be("skill.hero.blaze");
+    }
+
+    [Fact]
+    public void MoveToNextRoom_ShouldReturnTrueAndClearTheForgottenSkill_WhenCrossingAFloorBoundary()
+    {
+        var run = CreateRunWithMultipleSkills();
+        run.PromulgateLaw(CreateOubliPartielLaw());
+        run.ForgottenSkillKey.Should().NotBeNull();
+
+        var result = AdvanceToFloorBoundary(run);
+
+        result.OubliPartielPayoutDue.Should().BeTrue();
+        run.ForgottenSkillKey.Should().BeNull();
+    }
+
+    [Fact]
+    public void MoveToNextRoom_ShouldReturnFalse_WhileStillOnTheSameFloor()
+    {
+        var run = CreateRunWithMultipleSkills();
+        run.PromulgateLaw(CreateOubliPartielLaw());
+
+        run.EnterInterlude();
+        var result = run.MoveToNextRoom(TestGameEngineFactory.CreateThresholdRoom(depth: run.CurrentDepth + 1));
+
+        result.OubliPartielPayoutDue.Should().BeFalse();
+        run.ForgottenSkillKey.Should().NotBeNull();
+    }
+
+    private static Run.FloorEndModifierConsumptionResult AdvanceToFloorBoundary(Run run)
+    {
+        var result = Run.FloorEndModifierConsumptionResult.None;
+
+        for (var i = 0; i < 10; i++)
+        {
+            while (run.Status == RunStatus.Active)
+            {
+                var node = run.CurrentRoom.AvailableNodes.First();
+
+                run.ChooseNode(node.Id);
+                run.ResolveCurrentEvent();
+
+                if (run.Status == RunStatus.RoomResolved)
+                {
+                    break;
+                }
+
+                run.ProgressCurrentRoom();
+            }
+
+            run.EnterInterlude();
+            result = run.MoveToNextRoom(TestGameEngineFactory.CreateThresholdRoom(depth: run.CurrentDepth + 1));
+        }
+
+        return result;
+    }
+
+    // ---------------------------------------------------------------------------
+    // "Loi de l'Impôt du Seuil" — the toll charge itself happens in
+    // MoveToNextRoomCommandHandler (application layer, needs the currency gateway).
+    // Here we only verify the domain-level insolvency debuff Run.
+    // ApplyRoomTollInsolvencyDebuff applies.
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void ApplyRoomTollInsolvencyDebuff_ShouldAddAStackingFloorScopedModifier()
+    {
+        var run = TestGameEngineFactory.CreateRun();
+
+        run.ApplyRoomTollInsolvencyDebuff();
+        run.ApplyRoomTollInsolvencyDebuff();
+
+        run.RunModifiers.Should().HaveCount(2)
+            .And.OnlyContain(m =>
+                m.Type == RunModifierType.MaxHpReductionPercent
+                && m.Value == Run.RoomTollInsolvencyMaxHpReductionPercent
+                && m.Duration == RunModifierDuration.UntilFloorEnds
+                && !m.IsConsumed);
+    }
+
+    // ---------------------------------------------------------------------------
+    // "Loi du Prêteur" — the CurrencyGainBonusPercent modifier doubles as this law's
+    // "active" marker; its floor-end consumption signals the clawback (the actual
+    // gateway read/spend happens in MoveToNextRoomCommandHandler).
+    // ---------------------------------------------------------------------------
+
+    private static PalaceLaw CreatePreteurLaw(string key = "law.preteur") => PalaceLaw.Create(
+        key, "Loi du Prêteur", "1.0.0",
+        domains: [PalaceLawDomain.Rewards],
+        effects:
+        [
+            PalaceLawEffect.Create(
+                RunModifierType.CurrencyGainBonusPercent, value: 50, RunModifierDuration.UntilFloorEnds),
+        ]);
+
+    [Fact]
+    public void MoveToNextRoom_ShouldSignalPreteurClawbackDue_WhenCrossingAFloorBoundary()
+    {
+        var run = TestGameEngineFactory.CreateRun();
+        run.PromulgateLaw(CreatePreteurLaw());
+
+        var result = AdvanceToFloorBoundary(run);
+
+        result.PreteurClawbackDue.Should().BeTrue();
+    }
+
+    [Fact]
+    public void MoveToNextRoom_ShouldNotSignalPreteurClawback_WhileStillOnTheSameFloor()
+    {
+        var run = TestGameEngineFactory.CreateRun();
+        run.PromulgateLaw(CreatePreteurLaw());
+
+        run.EnterInterlude();
+        var result = run.MoveToNextRoom(TestGameEngineFactory.CreateThresholdRoom(depth: run.CurrentDepth + 1));
+
+        result.PreteurClawbackDue.Should().BeFalse();
+    }
+
+    // ---------------------------------------------------------------------------
+    // "Loi de la Chandelle" — one free item-node reroll charge per modifier instance,
+    // consumed one at a time (unlike other UntilFloorEnds modifiers, which are swept
+    // in bulk at floor end). The actual reward-offer reroll happens in
+    // RerollItemRewardOfferCommandHandler; here we only verify the charge bookkeeping.
+    // ---------------------------------------------------------------------------
+
+    private static PalaceLaw CreateChandelleLaw(string key = "law.chandelle") => PalaceLaw.Create(
+        key, "Loi de la Chandelle", "1.0.0",
+        domains: [PalaceLawDomain.Rewards],
+        effects:
+        [
+            PalaceLawEffect.Create(
+                RunModifierType.ItemNodeRerollCharge, value: 1, RunModifierDuration.UntilFloorEnds),
+        ]);
+
+    [Fact]
+    public void TryConsumeItemNodeRerollCharge_ShouldConsumeOneChargeAndReturnTrue_WhenChargeAvailable()
+    {
+        var run = TestGameEngineFactory.CreateRun();
+        run.PromulgateLaw(CreateChandelleLaw());
+
+        var consumed = run.TryConsumeItemNodeRerollCharge();
+
+        consumed.Should().BeTrue();
+        run.ConsumedItemNodeRerollCount.Should().Be(1);
+    }
+
+    [Fact]
+    public void TryConsumeItemNodeRerollCharge_ShouldReturnFalse_WhenNoChargeAvailable()
+    {
+        var run = TestGameEngineFactory.CreateRun();
+
+        var consumed = run.TryConsumeItemNodeRerollCharge();
+
+        consumed.Should().BeFalse();
+        run.ConsumedItemNodeRerollCount.Should().Be(0);
+    }
+
+    [Fact]
+    public void TryConsumeItemNodeRerollCharge_ShouldReturnFalse_OnceTheOnlyChargeIsAlreadyConsumed()
+    {
+        var run = TestGameEngineFactory.CreateRun();
+        run.PromulgateLaw(CreateChandelleLaw());
+        run.TryConsumeItemNodeRerollCharge();
+
+        var consumedAgain = run.TryConsumeItemNodeRerollCharge();
+
+        consumedAgain.Should().BeFalse();
+        run.ConsumedItemNodeRerollCount.Should().Be(1);
+    }
 }

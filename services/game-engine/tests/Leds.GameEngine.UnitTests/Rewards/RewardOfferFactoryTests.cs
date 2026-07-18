@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Leds.GameEngine.Application.Catalog.Contracts;
 using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Application.Combats;
 using Leds.GameEngine.Application.Rewards.Loot;
@@ -6,7 +7,9 @@ using Leds.GameEngine.Application.Rewards.RewardOfferFactory;
 using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rewards;
+using Leds.GameEngine.Domain.Runs;
 using Leds.GameEngine.UnitTests.Common;
+using Leds.SharedBuildingBlocks.Results;
 using Moq;
 
 namespace Leds.GameEngine.UnitTests.Rewards;
@@ -305,5 +308,244 @@ public sealed class RewardOfferFactoryTests
 
         offer.Choices.Should().HaveCount(3,
             because: "with no enemies and no fallback pool configured, the factory falls back to the hardcoded tier choices.");
+    }
+
+    // -----------------------------------------------------------------------
+    // "Loi de l'Abondance" (law.abondance) — item nodes propose a 4th choice while
+    // RunModifierType.AbondanceExtraChoiceEnabled is active. Documented simplification:
+    // the "un nœud sur deux est vide" half is not modeled — see RewardOfferFactory.
+    // -----------------------------------------------------------------------
+
+    // These 3 hit the unconfigured Mock.Of<ICatalogContentGateway>() default from
+    // CreateFactory(), so GetRewardTemplateByKeyAsync returns null and
+    // CreateItemRewardOfferAsync falls back to the small hardcoded pool (see
+    // RewardOfferFactory.CreateItemRewardChoices) — exercised directly by the
+    // catalog-driven tests further below.
+    [Fact]
+    public async Task CreateItemRewardOffer_ShouldReturnThreeChoices_WhenAbondanceIsNotActive()
+    {
+        var offer = await CreateFactory().CreateItemRewardOfferAsync(
+            "default", riskLevel: 25, null, "seed", Guid.NewGuid(), Guid.NewGuid());
+
+        offer.Choices.Should().HaveCount(3);
+    }
+
+    [Fact]
+    public async Task CreateItemRewardOffer_ShouldReturnFourChoices_WhenAbondanceIsActive()
+    {
+        var modifier = RunModifier.Create(
+            RunModifierType.AbondanceExtraChoiceEnabled, 1, RunModifierDuration.UntilFloorEnds, "PalaceLaw", "law-abondance-test");
+
+        var offer = await CreateFactory().CreateItemRewardOfferAsync(
+            "default", riskLevel: 25, [modifier], "seed", Guid.NewGuid(), Guid.NewGuid());
+
+        offer.Choices.Should().HaveCount(4);
+    }
+
+    [Fact]
+    public async Task CreateItemRewardOffer_ShouldReturnThreeChoices_WhenAbondanceModifierIsConsumed()
+    {
+        var modifier = RunModifier.Create(
+            RunModifierType.AbondanceExtraChoiceEnabled, 1, RunModifierDuration.UntilFloorEnds, "PalaceLaw", "law-abondance-test");
+        modifier.Consume(DateTime.UtcNow);
+
+        var offer = await CreateFactory().CreateItemRewardOfferAsync(
+            "default", riskLevel: 25, [modifier], "seed", Guid.NewGuid(), Guid.NewGuid());
+
+        offer.Choices.Should().HaveCount(3);
+    }
+
+    // -----------------------------------------------------------------------
+    // "Loi de l'Invitation" (law.invitation) — combat loot item drop chances are
+    // boosted while RunModifierType.LootChanceBonusPercent is active. The bonus math
+    // itself is covered thoroughly in EnemyLootRewardBuilderTests; here we only verify
+    // CreateCombatRewardOfferAsync actually threads run.RunModifiers through.
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public async Task CreateCombatRewardOfferAsync_ShouldIncreaseLowProbabilityItemDropRate_WhenLootChanceBonusModifierIsActive()
+    {
+        var enemy = Combatant.CreateEnemy("enemy.forest.chimere-serpentaire", "Chimere Serpentaire", "Beast", 20);
+        var runId = Guid.NewGuid();
+        var combatId = Guid.NewGuid();
+        var modifier = RunModifier.Create(
+            RunModifierType.LootChanceBonusPercent, 100, RunModifierDuration.UntilFloorEnds, "PalaceLaw", "law-invitation-test");
+        const int trials = 100;
+
+        var baselineHits = 0;
+        var boostedHits = 0;
+
+        for (var i = 0; i < trials; i++)
+        {
+            var seed = $"seed-invitation-factory-{i}";
+            var factory = CreateFactory(new StubCatalogContentGateway());
+
+            var baseline = await factory.CreateCombatRewardOfferAsync(
+                RewardSource.Combat, NodeEventType.Combat, riskLevel: 25,
+                enemies: [enemy], runSeed: seed, runId: runId, combatId: combatId);
+            if (baseline.Choices.Any(c => c.PayloadKey.Contains("venin-cristallise"))) baselineHits++;
+
+            var boosted = await factory.CreateCombatRewardOfferAsync(
+                RewardSource.Combat, NodeEventType.Combat, riskLevel: 25,
+                enemies: [enemy], runSeed: seed, runId: runId, combatId: combatId,
+                cancellationToken: CancellationToken.None, runModifiers: [modifier]);
+            if (boosted.Choices.Any(c => c.PayloadKey.Contains("venin-cristallise"))) boostedHits++;
+        }
+
+        boostedHits.Should().BeGreaterThan(baselineHits,
+            "an active LootChanceBonusPercent modifier should reach the loot builder and increase drop rates");
+    }
+
+    [Fact]
+    public async Task CreateCombatRewardOfferAsync_ShouldIgnoreLootChanceBonusModifier_WhenConsumed()
+    {
+        var enemy = Combatant.CreateEnemy("enemy.forest.chimere-serpentaire", "Chimere Serpentaire", "Beast", 20);
+        var runId = Guid.NewGuid();
+        var combatId = Guid.NewGuid();
+        var modifier = RunModifier.Create(
+            RunModifierType.LootChanceBonusPercent, 1000, RunModifierDuration.UntilFloorEnds, "PalaceLaw", "law-invitation-test");
+        modifier.Consume(DateTime.UtcNow);
+
+        var withoutModifier = await CreateFactory(new StubCatalogContentGateway()).CreateCombatRewardOfferAsync(
+            RewardSource.Combat, NodeEventType.Combat, riskLevel: 25,
+            enemies: [enemy], runSeed: "seed-invitation-consumed", runId: runId, combatId: combatId);
+
+        var withConsumedModifier = await CreateFactory(new StubCatalogContentGateway()).CreateCombatRewardOfferAsync(
+            RewardSource.Combat, NodeEventType.Combat, riskLevel: 25,
+            enemies: [enemy], runSeed: "seed-invitation-consumed", runId: runId, combatId: combatId,
+            cancellationToken: CancellationToken.None, runModifiers: [modifier]);
+
+        // Same seed/run/combat, so the only possible difference is the modifier — a
+        // consumed one must be excluded from the sum, leaving the roll unchanged even
+        // at an enormous 1000% bonus.
+        withConsumedModifier.Choices.Select(c => c.PayloadKey)
+            .Should().Equal(withoutModifier.Choices.Select(c => c.PayloadKey));
+    }
+
+    // -----------------------------------------------------------------------
+    // "Loi de la Chandelle" (law.chandelle) — item-node offers are deterministically
+    // sampled from the catalog-authored "reward.item.default" template pool, so that a
+    // reroll (a different rerollNonce) can draw a genuinely different subset once the
+    // pool holds more options than are shown at once.
+    // -----------------------------------------------------------------------
+
+    private static CatalogRewardTemplateOptionSnapshot CreateOption(string key, int weight = 1) => new(
+        RewardType: "TemporaryItem",
+        Label: $"Objet {key}",
+        Description: $"Description {key}",
+        PayloadKey: $"item.consumable.{key}",
+        PayloadType: "Item",
+        EffectSetKey: null,
+        BaseAmount: 10,
+        ScalingMode: "Flat",
+        Weight: weight,
+        ItemType: "Consumable",
+        ItemRarity: "Uncommon",
+        ItemEffectType: "Guard");
+
+    private static Mock<ICatalogContentGateway> CreateGatewayWithItemPool(
+        IReadOnlyCollection<CatalogRewardTemplateOptionSnapshot> options, int maxChoices = 3)
+    {
+        var template = new CatalogRewardTemplateSnapshot(
+            Key: "reward.item.default",
+            Version: "1.0.0",
+            DisplayName: "Objets du Palais",
+            Description: "desc",
+            SourceType: "NodeEvent",
+            MinChoices: maxChoices,
+            MaxChoices: maxChoices,
+            Options: options);
+
+        var gateway = new Mock<ICatalogContentGateway>();
+        gateway
+            .Setup(g => g.GetRewardTemplateByKeyAsync("reward.item.default", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<CatalogRewardTemplateSnapshot>.Success(template));
+
+        return gateway;
+    }
+
+    [Fact]
+    public async Task CreateItemRewardOfferAsync_ShouldSampleExactlyMaxChoices_FromTheCatalogPool()
+    {
+        var options = Enumerable.Range(1, 5).Select(i => CreateOption($"opt-{i}")).ToList();
+        var gateway = CreateGatewayWithItemPool(options, maxChoices: 3);
+
+        var offer = await CreateFactory(gateway.Object).CreateItemRewardOfferAsync(
+            "default", riskLevel: 25, null, "seed-chandelle", Guid.NewGuid(), Guid.NewGuid());
+
+        offer.Choices.Should().HaveCount(3);
+    }
+
+    [Fact]
+    public async Task CreateItemRewardOfferAsync_ShouldBeDeterministic_ForTheSameSeedRunNodeAndRerollNonce()
+    {
+        var options = Enumerable.Range(1, 5).Select(i => CreateOption($"opt-{i}")).ToList();
+        var gateway = CreateGatewayWithItemPool(options, maxChoices: 3);
+        var runId = Guid.NewGuid();
+        var nodeId = Guid.NewGuid();
+
+        var first = await CreateFactory(gateway.Object).CreateItemRewardOfferAsync(
+            "default", riskLevel: 25, null, "seed-chandelle", runId, nodeId, rerollNonce: 0);
+        var second = await CreateFactory(gateway.Object).CreateItemRewardOfferAsync(
+            "default", riskLevel: 25, null, "seed-chandelle", runId, nodeId, rerollNonce: 0);
+
+        first.Choices.Select(c => c.PayloadKey).Should().Equal(second.Choices.Select(c => c.PayloadKey));
+    }
+
+    [Fact]
+    public async Task CreateItemRewardOfferAsync_ShouldDrawADifferentSubset_WhenRerollNonceChanges()
+    {
+        var options = Enumerable.Range(1, 8).Select(i => CreateOption($"opt-{i}")).ToList();
+        var gateway = CreateGatewayWithItemPool(options, maxChoices: 3);
+        var runId = Guid.NewGuid();
+        var nodeId = Guid.NewGuid();
+
+        var initial = await CreateFactory(gateway.Object).CreateItemRewardOfferAsync(
+            "default", riskLevel: 25, null, "seed-chandelle-reroll", runId, nodeId, rerollNonce: 0);
+        var rerolled = await CreateFactory(gateway.Object).CreateItemRewardOfferAsync(
+            "default", riskLevel: 25, null, "seed-chandelle-reroll", runId, nodeId, rerollNonce: 1);
+
+        rerolled.Choices.Select(c => c.PayloadKey)
+            .Should().NotBeEquivalentTo(initial.Choices.Select(c => c.PayloadKey),
+            because: "a pool larger than the shown count should reroll into a different subset.");
+    }
+
+    [Fact]
+    public async Task CreateItemRewardOfferAsync_ShouldThreadItemTypeRarityAndEffectType_IntoThePayloadKey()
+    {
+        var option = new CatalogRewardTemplateOptionSnapshot(
+            RewardType: "TemporaryItem",
+            Label: "Éclat de garde",
+            Description: "Offre une protection.",
+            PayloadKey: "item.consumable.guard-shard",
+            PayloadType: "Item",
+            EffectSetKey: null,
+            BaseAmount: 8,
+            ScalingMode: "Flat",
+            Weight: 1,
+            ItemType: "Consumable",
+            ItemRarity: "Uncommon",
+            ItemEffectType: "Guard");
+        var gateway = CreateGatewayWithItemPool([option], maxChoices: 1);
+
+        var offer = await CreateFactory(gateway.Object).CreateItemRewardOfferAsync(
+            "default", riskLevel: 25, null, "seed-chandelle-typed", Guid.NewGuid(), Guid.NewGuid());
+
+        offer.Choices.Should().ContainSingle().Which.PayloadKey.Should().Be(
+            "item:item.consumable.guard-shard:Éclat de garde:Offre une protection.:Consumable:Uncommon:Guard:8");
+    }
+
+    [Fact]
+    public async Task CreateItemRewardOfferAsync_ShouldSampleFourChoices_WhenAbondanceIsActive_AgainstTheCatalogPool()
+    {
+        var options = Enumerable.Range(1, 6).Select(i => CreateOption($"opt-{i}")).ToList();
+        var gateway = CreateGatewayWithItemPool(options, maxChoices: 3);
+        var modifier = RunModifier.Create(
+            RunModifierType.AbondanceExtraChoiceEnabled, 1, RunModifierDuration.UntilFloorEnds, "PalaceLaw", "law-abondance-test");
+
+        var offer = await CreateFactory(gateway.Object).CreateItemRewardOfferAsync(
+            "default", riskLevel: 25, [modifier], "seed-chandelle-abondance", Guid.NewGuid(), Guid.NewGuid());
+
+        offer.Choices.Should().HaveCount(4);
     }
 }

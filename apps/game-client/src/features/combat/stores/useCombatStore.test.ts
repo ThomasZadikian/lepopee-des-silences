@@ -295,5 +295,69 @@ describe('useCombatStore', () => {
 
       await playback;
     });
+
+    it('sets activeActionBanner to "X utilise Y sur Z !" as soon as a SkillUsed entry is processed', async () => {
+      const store = useCombatStore();
+      store.initCombat(baseCombat());
+
+      const playback = store.playCombatLogs([
+        logEntry({ type: 'SkillUsed', actorId: 'ally-1', skillKey: 'skill.a', targetIds: ['enemy-1'], message: 'Le Porteur uses Frappe on Ombre.' }),
+        logEntry({ type: 'DamageApplied', actorId: 'ally-1', skillKey: 'skill.a', targetIds: ['enemy-1'], message: 'Ombre takes 10 damage.' }),
+      ]);
+
+      expect(store.activeActionBanner).toBe('Le Porteur utilise Frappe sur Ombre !');
+
+      await playback;
+    });
+
+    it('merges every target into one banner for a multi-target skill (one SkillUsed entry per target)', async () => {
+      const store = useCombatStore();
+      store.initCombat(baseCombat({
+        enemies: [
+          baseCombatant({ id: 'enemy-1', side: 'Enemy', displayName: 'Ombre' }),
+          baseCombatant({ id: 'enemy-2', side: 'Enemy', displayName: 'Spectre' }),
+        ],
+      }));
+
+      const playback = store.playCombatLogs([
+        logEntry({ type: 'SkillUsed', actorId: 'ally-1', skillKey: 'skill.aoe', targetIds: ['enemy-1'], message: 'Le Porteur uses Déluge du Styx on Ombre.' }),
+        logEntry({ type: 'SkillUsed', actorId: 'ally-1', skillKey: 'skill.aoe', targetIds: ['enemy-2'], message: 'Le Porteur uses Déluge du Styx on Spectre.' }),
+        logEntry({ type: 'DamageApplied', actorId: 'ally-1', skillKey: 'skill.aoe', targetIds: ['enemy-1'], message: 'Ombre takes 6 damage.' }),
+        logEntry({ type: 'DamageApplied', actorId: 'ally-1', skillKey: 'skill.aoe', targetIds: ['enemy-2'], message: 'Spectre takes 6 damage.' }),
+      ]);
+
+      expect(store.activeActionBanner).toBe('Le Porteur utilise Déluge du Styx sur Ombre, Spectre !');
+
+      await playback;
+    });
+
+    it('clears activeActionBanner once the whole log sequence has finished playing', async () => {
+      const store = useCombatStore();
+      store.initCombat(baseCombat());
+
+      await store.playCombatLogs([
+        logEntry({ type: 'SkillUsed', actorId: 'ally-1', skillKey: 'skill.a', targetIds: ['enemy-1'], message: 'Le Porteur uses Frappe on Ombre.' }),
+        logEntry({ type: 'DamageApplied', actorId: 'ally-1', skillKey: 'skill.a', targetIds: ['enemy-1'], message: 'Ombre takes 10 damage.' }),
+      ]);
+
+      expect(store.activeActionBanner).toBeNull();
+    });
+
+    it('builds an item-use banner from the usable item\'s display name', async () => {
+      const store = useCombatStore();
+      store.initCombat(baseCombat({
+        usableBattleItems: [
+          { itemId: 'item-1', definitionKey: 'potion', displayName: 'Potion', effectType: 'Heal', effectAmount: 10, quantity: 1, targetingType: 'SingleAlly' },
+        ],
+      }));
+
+      const playback = store.playCombatLogs([
+        logEntry({ type: 'ItemUsed', actorId: 'ally-1', skillKey: 'potion', targetIds: ['ally-1'], message: 'Le Porteur utilise Potion.' }),
+      ]);
+
+      expect(store.activeActionBanner).toBe('Le Porteur utilise Potion sur Le Porteur !');
+
+      await playback;
+    });
   });
 });

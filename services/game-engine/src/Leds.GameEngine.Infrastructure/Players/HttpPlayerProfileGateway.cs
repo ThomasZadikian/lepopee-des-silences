@@ -121,6 +121,22 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
         return await ReadProfileAsync(response, playerId, cancellationToken);
     }
 
+    public async Task<bool> TrySpendCurrencyAsync(Guid playerId, int amount, CancellationToken cancellationToken)
+    {
+        var response = await _httpClient.PostAsJsonAsync(
+            $"/api/v2/internal/players/{playerId}/currency/spend", new SpendCurrencyRequestBody(amount), cancellationToken);
+
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            throw new NotFoundException("Player", playerId);
+        }
+
+        response.EnsureSuccessStatusCode();
+
+        var dto = await response.Content.ReadFromJsonAsync<SpendCurrencyResponse>(cancellationToken);
+        return dto?.Succeeded ?? false;
+    }
+
     public async Task<bool> HasClaimedNpcOfferingAsync(Guid playerId, string npcKey, string offeringKey, CancellationToken cancellationToken)
     {
         var response = await _httpClient.GetAsync(
@@ -280,6 +296,10 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
     private sealed record AwardStatPointsRequestBody(int Amount);
 
     private sealed record AwardCurrencyRequestBody(int Amount);
+
+    private sealed record SpendCurrencyRequestBody(int Amount);
+
+    private sealed record SpendCurrencyResponse(bool Succeeded);
 
     private sealed record RecruitCompanionRequestBody(
         string DisplayName,

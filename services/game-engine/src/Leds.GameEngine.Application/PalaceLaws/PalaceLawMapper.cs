@@ -116,6 +116,28 @@ public static class PalaceLawMapper
                 RunModifierType.WoundHealingBlocked, 1, duration),
             EffectType.EnableConsumablesRestrictedInCombat => PalaceLawEffect.Create(
                 RunModifierType.ConsumablesRestrictedInCombat, 1, duration),
+            EffectType.EnablePostDeathBasicAttackOnly => PalaceLawEffect.Create(
+                RunModifierType.PostDeathBasicAttackOnly, 1, duration),
+            EffectType.EnableTapisPropreEnabled => PalaceLawEffect.Create(
+                RunModifierType.TapisPropreEnabled, 1, duration),
+            EffectType.EnableThirdCupHealCorruption => PalaceLawEffect.Create(
+                RunModifierType.ThirdCupHealCorruptionEnabled, 1, duration),
+            EffectType.EnableAbondanceExtraChoice => PalaceLawEffect.Create(
+                RunModifierType.AbondanceExtraChoiceEnabled, 1, duration),
+            EffectType.EnablePresentations => PalaceLawEffect.Create(
+                RunModifierType.PresentationsEnabled, 1, duration),
+            EffectType.EnableMiroir => PalaceLawEffect.Create(
+                RunModifierType.MiroirEnabled, 1, duration),
+            EffectType.EnableLootChanceBonus => PalaceLawEffect.Create(
+                RunModifierType.LootChanceBonusPercent, (double)effect.Value, duration),
+            EffectType.EnableSkillForgotten => PalaceLawEffect.Create(
+                RunModifierType.SkillForgotten, 1, duration),
+            EffectType.EnableRoomToll => PalaceLawEffect.Create(
+                RunModifierType.RoomTollAmount, (double)effect.Value, duration),
+            EffectType.EnableCurrencyGainBonus => PalaceLawEffect.Create(
+                RunModifierType.CurrencyGainBonusPercent, (double)effect.Value, duration),
+            EffectType.EnableItemNodeReroll => PalaceLawEffect.Create(
+                RunModifierType.ItemNodeRerollCharge, 1, duration),
 
             _ => throw new DomainException($"Palace law effect type '{effect.EffectType}' is not supported by the runtime.")
         };

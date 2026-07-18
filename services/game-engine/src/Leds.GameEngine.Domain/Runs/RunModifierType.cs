@@ -80,4 +80,91 @@ public enum RunModifierType
     /// while in combat; outside combat, consumable effects are boosted +25%. See
     /// Run.UseItem.</summary>
     ConsumablesRestrictedInCombat = 31,
+
+    /// <summary>"Loi de l'Éloge Funèbre" (law.eloge-funebre) — after any combatant (either
+    /// side) is defeated, the next combatant to act may only use the basic attack. See
+    /// Combat.RegisterCombatantDefeated/NextActionRestrictedToBasicAttack.</summary>
+    PostDeathBasicAttackOnly = 32,
+
+    /// <summary>"Loi du Tapis Propre" (law.tapis-propre) — each combatant's (either side)
+    /// first turn of combat cannot be a Damage-type skill; support/buff/debuff/movement
+    /// only. See Combatant.HasActedThisCombat/CombatSkillActionValidator.</summary>
+    TapisPropreEnabled = 33,
+
+    /// <summary>"Loi de la Troisième Tasse" (law.troisieme-tasse) — every heal
+    /// application (skill or item) has a 10% chance to be "served in the third cup":
+    /// halved, with a light poison DoT applied instead. See
+    /// Combat.ApplyThirdCupRollIfActive.</summary>
+    ThirdCupHealCorruptionEnabled = 34,
+
+    /// <summary>"Loi de l'Abondance" (law.abondance) — item-node reward offers propose
+    /// 4 choices instead of 3. See RewardOfferFactory.CreateItemRewardOffer. The SFD's
+    /// "un nœud sur deux est vide à l'ouverture" half is NOT modeled (documented gap —
+    /// no zero-choice RewardOffer flow exists).</summary>
+    AbondanceExtraChoiceEnabled = 35,
+
+    /// <summary>"Loi des Présentations" (law.presentations) — each enemy's first action
+    /// of the combat is announced (telegraphed) via a log entry immediately before it
+    /// resolves. See EnemyCombatTurnResolver.Resolve. Documented simplification: the SFD
+    /// says "au premier tour de chaque combat, tous les ennemis annoncent" (a single
+    /// batch announcement at combat start) — this is approximated as each enemy
+    /// announcing individually right before their own first action, since no channel
+    /// exists to surface log entries before combat's first response.</summary>
+    PresentationsEnabled = 36,
+
+    /// <summary>"Loi du Miroir" (law.miroir) — the first skill cast by the player's team
+    /// in each combat is immediately copied by the fastest living enemy (same values,
+    /// targeting re-resolved from the copying enemy's side — see
+    /// Combat.TryConsumeMirrorTrigger/GetFastestLivingEnemy and
+    /// UseCombatSkillCommandHandler.ResolveMirrorCopyIfTriggered).</summary>
+    MiroirEnabled = 37,
+
+    /// <summary>"Loi de l'Invitation" (law.invitation) — combat loot item drop chances
+    /// are boosted by this percentage (e.g. 10 → +10%), applied multiplicatively to
+    /// each loot table entry's DropPercent. See EnemyLootRewardBuilder.RollIndependent.
+    /// Value is meaningful (the bonus percent itself), not a mere gate. Documented gap:
+    /// the SFD's "tout butin est majoré... Éclats" half (a +10% currency bonus) is NOT
+    /// modeled — no combat-loot currency mechanic exists in the engine at all (Éclats
+    /// are only ever awarded via NPC rare-offering claims). The SFD's "impossible de
+    /// fuir les combats" restriction is likewise not modeled, but requires no code: no
+    /// combat-flee action exists anywhere in the engine to begin with, so the
+    /// restriction is vacuously already true.</summary>
+    LootChanceBonusPercent = 38,
+
+    /// <summary>"Loi de l'Oubli Partiel" (law.oubli-partiel) — gates the floor-scoped
+    /// forgotten-skill restriction. The actual forgotten skill KEY cannot live on this
+    /// modifier (Value is a plain double, no string payload) — it is picked once at
+    /// promulgation time and stored directly on Run.ForgottenSkillKey (see
+    /// Run.PickForgottenSkill, called from ActivatePalaceLaw), then baked into Combat
+    /// the same way other Run-level flags are (see CombatFactory). This modifier's
+    /// only job is to ride the existing UntilFloorEnds consumption/cumul-cap plumbing;
+    /// Run.ConsumeFloorEndModifiers clears ForgottenSkillKey and signals the +8
+    /// skill-point payout when it is consumed.</summary>
+    SkillForgotten = 39,
+
+    /// <summary>"Loi de l'Impôt du Seuil" (law.impot-seuil) — cost in "Éclats du Palais"
+    /// charged at the entry of every room while the law is active (SFD: 5). See
+    /// MoveToNextRoomCommandHandler, which reads this magnitude and calls
+    /// IPlayerProfileGateway.TrySpendCurrencyAsync at each room transition.</summary>
+    RoomTollAmount = 40,
+
+    /// <summary>"Loi de l'Impôt du Seuil" insolvency penalty — a stacking, floor-scoped
+    /// reduction to the whole team's max HP (SFD: -2% per unpaid room toll, cumulable).
+    /// Not granted by PalaceLawMapper/ActivatePalaceLaw like other law effects — applied
+    /// directly via Run.ApplyRoomTollInsolvencyDebuff whenever a room-toll payment fails.
+    /// Summed and applied as a multiplier in CombatFactory.CreateFromDraft.</summary>
+    MaxHpReductionPercent = 41,
+
+    /// <summary>"Loi du Prêteur" (law.preteur) — currency gains from NPC offerings are
+    /// boosted by this percentage (SFD: +50%). See NpcEventChoiceResolver.ApplyOfferingAsync.
+    /// Also doubles as this law's "active" marker for the floor-end 25% clawback (see
+    /// Run.ConsumeFloorEndModifiers / MoveToNextRoomCommandHandler).</summary>
+    CurrencyGainBonusPercent = 42,
+
+    /// <summary>"Loi de la Chandelle" (law.chandelle) — one free reroll of an item-node
+    /// reward offer for the floor. One modifier instance = one charge, consumed on use
+    /// (not swept in bulk at floor end like other UntilFloorEnds modifiers — see
+    /// Run.TryConsumeItemNodeRerollCharge, called from RerollItemRewardOfferCommandHandler).
+    /// Unused charges still expire normally at floor end via ConsumeFloorEndModifiers.</summary>
+    ItemNodeRerollCharge = 43,
 }

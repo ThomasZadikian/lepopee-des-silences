@@ -38,6 +38,14 @@ public static class CombatPersistenceMapper
             DotMagnitudeBonus = combat.DotMagnitudeBonus,
             HealingBlocked = combat.HealingBlocked,
             FalaiseWindEnabled = combat.FalaiseWindEnabled,
+            PostDeathBasicAttackOnlyEnabled = combat.PostDeathBasicAttackOnlyEnabled,
+            NextActionRestrictedToBasicAttack = combat.NextActionRestrictedToBasicAttack,
+            TapisPropreEnabled = combat.TapisPropreEnabled,
+            ThirdCupHealCorruptionEnabled = combat.ThirdCupHealCorruptionEnabled,
+            PresentationsEnabled = combat.PresentationsEnabled,
+            MiroirEnabled = combat.MiroirEnabled,
+            HasMirrorTriggered = combat.HasMirrorTriggered,
+            ForgottenSkillKey = combat.ForgottenSkillKey,
             ActiveCombatantId = combat.ActiveCombatantId?.Value,
             CreatedAtUtc = combat.CreatedAtUtc,
             UpdatedAtUtc = DateTime.UtcNow,
@@ -64,6 +72,7 @@ public static class CombatPersistenceMapper
             Charge = combatant.Charge,
             Status = combatant.Status.ToString(),
             Row = combatant.Row.ToString(),
+            HasActedThisCombat = combatant.HasActedThisCombat,
             AttackTypeOverride = combatant.AttackTypeOverride.HasValue ? (int)combatant.AttackTypeOverride.Value : null,
             TypedDamageReductionsJson = SerializeTypedDamageReductions(combatant.TypedDamageReductionPercent),
             HitChanceBonusPercent = combatant.HitChanceBonusPercent,
@@ -310,7 +319,15 @@ public static class CombatPersistenceMapper
             entity.DuelDamageAsymmetryEnabled,
             entity.DotMagnitudeBonus,
             entity.HealingBlocked,
-            entity.FalaiseWindEnabled);
+            entity.FalaiseWindEnabled,
+            entity.PostDeathBasicAttackOnlyEnabled,
+            entity.NextActionRestrictedToBasicAttack,
+            entity.TapisPropreEnabled,
+            entity.ThirdCupHealCorruptionEnabled,
+            entity.PresentationsEnabled,
+            entity.MiroirEnabled,
+            entity.HasMirrorTriggered,
+            entity.ForgottenSkillKey);
     }
 
     public static Combatant ToDomain(CombatantEntity entity)
@@ -350,7 +367,8 @@ public static class CombatPersistenceMapper
             criticalChanceBonusPercent: entity.CriticalChanceBonusPercent,
             dotDamageBonusPercent: entity.DotDamageBonusPercent,
             healingBonusPercent: entity.HealingBonusPercent,
-            row: string.IsNullOrWhiteSpace(entity.Row) ? CombatRow.Front : Enum.Parse<CombatRow>(entity.Row));
+            row: string.IsNullOrWhiteSpace(entity.Row) ? CombatRow.Front : Enum.Parse<CombatRow>(entity.Row),
+            hasActedThisCombat: entity.HasActedThisCombat);
         foreach (var effect in DeserializeStatusEffects(entity.StatusEffectsJson))
             combatant.RehydrateStatusEffect(effect);
 

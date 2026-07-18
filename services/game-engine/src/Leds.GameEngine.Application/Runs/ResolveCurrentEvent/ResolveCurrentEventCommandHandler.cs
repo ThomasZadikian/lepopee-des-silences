@@ -206,7 +206,8 @@ public sealed class ResolveCurrentEventCommandHandler
                 criticalChanceBonusPercent: run.CriticalChanceBonusPercent,
                 guardBonusPercent: run.GuardBonusPercent,
                 himLitProtectionEnabled: run.HimLitProtectionEnabled,
-                healingBonusPercent: run.HealingBonusPercent);
+                healingBonusPercent: run.HealingBonusPercent,
+                forgottenSkillKey: run.ForgottenSkillKey);
 
             // ATB: bake Markov tempo + opening gauges, then elect the opener.
             _atbPreparer.PrepareNewCombat(combatRuntime, run);
@@ -222,9 +223,15 @@ public sealed class ResolveCurrentEventCommandHandler
         }
         else if (selectedNode.EventType == NodeEventType.Item)
         {
-            var itemRewardOffer = _rewardOfferFactory.CreateItemRewardOffer(
+            var itemRewardOffer = await _rewardOfferFactory.CreateItemRewardOfferAsync(
                 selectedNode.RewardProfile,
-                selectedNode.RiskLevel);
+                selectedNode.RiskLevel,
+                run.RunModifiers,
+                run.Seed,
+                run.Id.Value,
+                selectedNode.Id.Value,
+                rerollNonce: 0,
+                cancellationToken);
 
             run.SetPendingRewardOffer(itemRewardOffer.Id);
             pendingRewardOffer = itemRewardOffer;

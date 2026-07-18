@@ -41,7 +41,8 @@ public sealed class CombatFactory : ICombatFactory
         bool himLitProtectionEnabled = false,
         int healingBonusPercent = 0,
         int magicAttack = 0,
-        int magicDefense = 0)
+        int magicDefense = 0,
+        string? forgottenSkillKey = null)
     {
         return CreateFromDraft(
             CombatId.New(),
@@ -66,7 +67,8 @@ public sealed class CombatFactory : ICombatFactory
             himLitProtectionEnabled,
             healingBonusPercent,
             magicAttack,
-            magicDefense);
+            magicDefense,
+            forgottenSkillKey);
     }
     private static (double VitalityMultiplier, double PowerMultiplier, int GuardBonus) EncounterBonus(string encounterType)
     {
@@ -103,7 +105,8 @@ public sealed class CombatFactory : ICombatFactory
         bool himLitProtectionEnabled = false,
         int healingBonusPercent = 0,
         int magicAttack = 0,
-        int magicDefense = 0)
+        int magicDefense = 0,
+        string? forgottenSkillKey = null)
     {
         // Sum all unconsumed StartingGuardBonus modifiers (e.g. Éclat de garde: +8 garde).
         var guardBonus = runModifiers?
@@ -119,6 +122,12 @@ public sealed class CombatFactory : ICombatFactory
         var speedMultiplier = 1.0 + activeModifiers
             .Where(m => m.Type == RunModifierType.SpeedBonus && !m.IsConsumed)
             .Sum(m => m.Value);
+        // "Loi de l'Impôt du Seuil" (law.impot-seuil) insolvency penalty: stacking -2%
+        // team max HP per unpaid room toll this floor. Applied to every Player-side
+        // combatant (protagonist AND companions) — "l'équipe" in the SFD text.
+        var maxVitalityMultiplier = 1.0 - activeModifiers
+            .Where(m => m.Type == RunModifierType.MaxHpReductionPercent && !m.IsConsumed)
+            .Sum(m => m.Value) / 100.0;
         var activeClimate = ResolveActiveClimate(draft.RoomId, activeModifiers);
 
         // "Loi des Visites Terminées" (law.visites-terminees, liée à room.hopital): "les
@@ -130,6 +139,27 @@ public sealed class CombatFactory : ICombatFactory
         // combattant aléatoire soit repoussé d'un rang" each turn — same room-bound
         // convention as healingBlocked above, resolved by Combat.AdvanceTurn.
         var falaiseWindEnabled = string.Equals(draft.RoomKey, "room.falaise", StringComparison.OrdinalIgnoreCase);
+
+        // "Loi de l'Éloge Funèbre" (law.eloge-funebre): a normal ambient-drawn law (not
+        // room-bound), baked in from the run's active RunModifiers.
+        var postDeathBasicAttackOnlyEnabled = activeModifiers
+            .Any(m => m.Type == RunModifierType.PostDeathBasicAttackOnly && !m.IsConsumed);
+
+        // "Loi du Tapis Propre" (law.tapis-propre): same ambient-drawn convention.
+        var tapisPropreEnabled = activeModifiers
+            .Any(m => m.Type == RunModifierType.TapisPropreEnabled && !m.IsConsumed);
+
+        // "Loi de la Troisième Tasse" (law.troisieme-tasse): same ambient-drawn convention.
+        var thirdCupHealCorruptionEnabled = activeModifiers
+            .Any(m => m.Type == RunModifierType.ThirdCupHealCorruptionEnabled && !m.IsConsumed);
+
+        // "Loi des Présentations" (law.presentations): same ambient-drawn convention.
+        var presentationsEnabled = activeModifiers
+            .Any(m => m.Type == RunModifierType.PresentationsEnabled && !m.IsConsumed);
+
+        // "Loi du Miroir" (law.miroir): same ambient-drawn convention.
+        var miroirEnabled = activeModifiers
+            .Any(m => m.Type == RunModifierType.MiroirEnabled && !m.IsConsumed);
 
         if (activeClimate == RoomClimate.Rain)
         {
@@ -172,8 +202,9 @@ public sealed class CombatFactory : ICombatFactory
                         .ToArray()
                         ?? GetDefaultAllySkills(attackPowerMultiplier, skillEffects);
 
-                    var maxVitality = playerState?.MaxVitality ?? 100;
-                    var currentVitality = playerState?.CurrentVitality ?? maxVitality;
+                    var maxVitality = Math.Max(1,
+                        (int)Math.Round((playerState?.MaxVitality ?? 100) * maxVitalityMultiplier));
+                    var currentVitality = Math.Min(playerState?.CurrentVitality ?? maxVitality, maxVitality);
                     var guard = (playerState?.Guard ?? 0) + guardBonus;
                     var mana = playerState?.Mana ?? 0;
                     var maxMana = playerState?.MaxMana;
@@ -232,7 +263,8 @@ public sealed class CombatFactory : ICombatFactory
                         .ToArray()
                     : GetDefaultAllySkills(attackPowerMultiplier, skillEffects);
 
-                var companionMaxVitality = ally.MaxVitality > 0 ? ally.MaxVitality : 100;
+                var companionMaxVitality = Math.Max(1, (int)Math.Round(
+                    (ally.MaxVitality > 0 ? ally.MaxVitality : 100) * maxVitalityMultiplier));
 
                 var companion = Combatant.Create(
                     CombatantId.New(),
@@ -336,7 +368,13 @@ public sealed class CombatFactory : ICombatFactory
                 ComputeDuelDamageAsymmetryEnabled(activeModifiers),
                 dotMagnitudeBonus,
                 healingBlocked,
-                falaiseWindEnabled);
+                falaiseWindEnabled,
+                postDeathBasicAttackOnlyEnabled,
+                tapisPropreEnabled,
+                thirdCupHealCorruptionEnabled,
+                presentationsEnabled,
+                miroirEnabled,
+                forgottenSkillKey);
         }
 
         var enemies = draft.Enemies
@@ -452,7 +490,13 @@ public sealed class CombatFactory : ICombatFactory
             ComputeDuelDamageAsymmetryEnabled(activeModifiers),
             dotMagnitudeBonus,
             healingBlocked,
-            falaiseWindEnabled);
+            falaiseWindEnabled,
+            postDeathBasicAttackOnlyEnabled,
+            tapisPropreEnabled,
+            thirdCupHealCorruptionEnabled,
+            presentationsEnabled,
+            miroirEnabled,
+            forgottenSkillKey);
     }
 
     /// <summary>

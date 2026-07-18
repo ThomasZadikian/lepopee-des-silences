@@ -278,6 +278,19 @@ public sealed class PlayerProfile
         Touch(now);
     }
 
+    /// <summary>
+    /// Spends "Éclats du Palais" if affordable. Profile-level, mirrors AwardCurrency.
+    /// Returns whether the spend succeeded — insolvency does not throw.
+    /// </summary>
+    public bool TrySpendCurrency(DateTimeOffset now, int amount)
+    {
+        var succeeded = Progression.TrySpendCurrency(amount);
+        if (succeeded)
+            Touch(now);
+
+        return succeeded;
+    }
+
     public void SpendStatPoint(PlayerCharacterId characterId, PlayerStatKind kind, DateTimeOffset now)
     {
         if (Progression.UnspentStatPoints <= 0)

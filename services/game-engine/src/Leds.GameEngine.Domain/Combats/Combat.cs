@@ -31,7 +31,15 @@ public sealed class Combat
         bool duelDamageAsymmetryEnabled,
         int dotMagnitudeBonus,
         bool healingBlocked,
-        bool falaiseWindEnabled = false)
+        bool falaiseWindEnabled = false,
+        bool postDeathBasicAttackOnlyEnabled = false,
+        bool nextActionRestrictedToBasicAttack = false,
+        bool tapisPropreEnabled = false,
+        bool thirdCupHealCorruptionEnabled = false,
+        bool presentationsEnabled = false,
+        bool miroirEnabled = false,
+        bool hasMirrorTriggered = false,
+        string? forgottenSkillKey = null)
     {
         Id = id;
         RunId = runId;
@@ -54,6 +62,14 @@ public sealed class Combat
         DotMagnitudeBonus = dotMagnitudeBonus;
         HealingBlocked = healingBlocked;
         FalaiseWindEnabled = falaiseWindEnabled;
+        PostDeathBasicAttackOnlyEnabled = postDeathBasicAttackOnlyEnabled;
+        NextActionRestrictedToBasicAttack = nextActionRestrictedToBasicAttack;
+        TapisPropreEnabled = tapisPropreEnabled;
+        ThirdCupHealCorruptionEnabled = thirdCupHealCorruptionEnabled;
+        PresentationsEnabled = presentationsEnabled;
+        MiroirEnabled = miroirEnabled;
+        HasMirrorTriggered = hasMirrorTriggered;
+        ForgottenSkillKey = forgottenSkillKey;
     }
 
     public CombatId Id { get; }
@@ -179,6 +195,149 @@ public sealed class Combat
     /// only the row/vitality state changes.</summary>
     public bool FalaiseWindEnabled { get; }
 
+    /// <summary>"Loi de l'Éloge Funèbre" (law.eloge-funebre): "à chaque mort (alliée ou
+    /// ennemie), le combattant suivant dans l'ordre d'action ne peut effectuer qu'une
+    /// attaque basique." Baked in at creation from the run's active RunModifiers (a
+    /// normal ambient-drawn law, unlike the room-bound flags above).</summary>
+    public bool PostDeathBasicAttackOnlyEnabled { get; }
+
+    /// <summary>
+    /// Mutable runtime state for "Loi de l'Éloge Funèbre": true after a combatant has
+    /// been defeated and the next actor's action has not yet been validated. Set by
+    /// <see cref="RegisterCombatantDefeated"/>, consumed by
+    /// <see cref="ConsumeBasicAttackRestriction"/> once a valid action resolves — only
+    /// the basic attack ("skill.basic.strike") can pass validation while this is true
+    /// (see CombatSkillActionValidator). Documented simplification: item use
+    /// (UseItemInCombatCommand) and the Reposition action are NOT gated by this
+    /// restriction — only skill-based actions are, since both other paths never call
+    /// through the shared skill-action validator.
+    /// </summary>
+    public bool NextActionRestrictedToBasicAttack { get; private set; }
+
+    /// <summary>Records that a combatant was just defeated; arms the "Loi de l'Éloge
+    /// Funèbre" restriction for whoever acts next. No-op when the law is inactive.</summary>
+    public void RegisterCombatantDefeated()
+    {
+        if (PostDeathBasicAttackOnlyEnabled)
+        {
+            NextActionRestrictedToBasicAttack = true;
+        }
+    }
+
+    /// <summary>Clears the "Loi de l'Éloge Funèbre" restriction once a valid action has
+    /// consumed it (called on every successful validation, a no-op when already clear).</summary>
+    public void ConsumeBasicAttackRestriction()
+    {
+        NextActionRestrictedToBasicAttack = false;
+    }
+
+    /// <summary>"Loi du Tapis Propre" (law.tapis-propre): baked in at creation from the
+    /// run's active RunModifiers. Unlike Éloge Funèbre above, no mutable combat-wide
+    /// state is needed — the restriction is tracked per-combatant via
+    /// Combatant.HasActedThisCombat and enforced in CombatSkillActionValidator.</summary>
+    public bool TapisPropreEnabled { get; }
+
+    /// <summary>"Loi de la Troisième Tasse" (law.troisieme-tasse): baked in at creation
+    /// from the run's active RunModifiers. Every heal application (skill or item) rolls
+    /// <see cref="ApplyThirdCupRollIfActive"/> — no mutable combat-wide state, the roll
+    /// is purely per-application and per-target.</summary>
+    public bool ThirdCupHealCorruptionEnabled { get; }
+
+    /// <summary>"Loi de la Troisième Tasse" per-application chance.</summary>
+    private const double ThirdCupChance = 0.10;
+
+    /// <summary>"Loi de la Troisième Tasse" heal multiplier when the cup is corrupted
+    /// ("il ne restaure que la moitié").</summary>
+    private const double ThirdCupHealMultiplier = 0.5;
+
+    /// <summary>"Loi de la Troisième Tasse" poison ("léger") per-turn damage.</summary>
+    private const int ThirdCupPoisonDamagePerTurn = 3;
+
+    /// <summary>"Loi de la Troisième Tasse" poison duration, in "tours" (combat turns).</summary>
+    private const int ThirdCupPoisonDurationTurns = 4;
+
+    /// <summary>
+    /// Rolls "Loi de la Troisième Tasse" for one heal application (skill or item):
+    /// 10% chance the heal is "served in the third cup" — halved, with a light poison
+    /// DoT applied to the target. No-op (returns <paramref name="healAmount"/> unchanged,
+    /// triggered=false) when the law is inactive. Called once per target per heal
+    /// application by both CombatSkillEffectResolver.ResolveHeal and
+    /// UseItemInCombatCommandHandler.ApplyItemEffect.
+    /// </summary>
+    public (int HealAmount, bool Triggered) ApplyThirdCupRollIfActive(Combatant target, int healAmount)
+    {
+        if (!ThirdCupHealCorruptionEnabled)
+            return (healAmount, false);
+
+        var seed = $"troisieme-tasse|{Id.Value:N}|{target.Id.Value:N}|{CurrentTick}";
+        if (DeterministicCombatRoll.UnitInterval(seed) >= ThirdCupChance)
+            return (healAmount, false);
+
+        target.ApplyStatusEffect(CombatStatusEffect.Create(
+            key: "troisieme-tasse-poison",
+            displayName: "Poison léger (Troisième Tasse)",
+            kind: StatusEffectKind.DamageOverTime,
+            currentTick: CurrentTick,
+            durationTicks: AtbConstants.TicksPerTurn * ThirdCupPoisonDurationTurns,
+            magnitude: ThirdCupPoisonDamagePerTurn,
+            stacks: 1,
+            tickInterval: AtbConstants.TicksPerTurn));
+
+        var corrupted = Math.Max(1, (int)Math.Round(healAmount * ThirdCupHealMultiplier, MidpointRounding.AwayFromZero));
+        return (corrupted, true);
+    }
+
+    /// <summary>"Loi des Présentations" (law.presentations): baked in at creation from the
+    /// run's active RunModifiers. Read by EnemyCombatTurnResolver.Resolve together with
+    /// Combatant.HasActedThisCombat to telegraph an enemy's first action of the combat
+    /// via a log entry immediately before it resolves.</summary>
+    public bool PresentationsEnabled { get; }
+
+    /// <summary>"Loi du Miroir" (law.miroir): baked in at creation from the run's active
+    /// RunModifiers. See TryConsumeMirrorTrigger.</summary>
+    public bool MiroirEnabled { get; }
+
+    /// <summary>Whether the combat's first ally-cast skill has already resolved — tracked
+    /// regardless of whether "Loi du Miroir" is active, since there is no other reason to
+    /// track it. Set by <see cref="TryConsumeMirrorTrigger"/>.</summary>
+    public bool HasMirrorTriggered { get; private set; }
+
+    /// <summary>
+    /// "Loi du Miroir" (law.miroir): "le premier sort lancé par l'équipe dans chaque
+    /// combat est immédiatement copié par l'ennemi le plus rapide (mêmes valeurs,
+    /// ciblage inversé)." Called once, right after the FIRST ally skill use of the
+    /// combat resolves (any skill, any target) — see
+    /// UseCombatSkillCommandHandler.ResolveMirrorCopyIfTriggered. Returns true exactly
+    /// once per combat, only when the law is active.
+    /// </summary>
+    public bool TryConsumeMirrorTrigger()
+    {
+        if (HasMirrorTriggered)
+            return false;
+
+        HasMirrorTriggered = true;
+        return MiroirEnabled;
+    }
+
+    /// <summary>"Loi du Miroir": the fastest living enemy — the one who copies the first
+    /// ally-cast skill of the combat. Same tie-break convention as OrderByInitiative
+    /// (Speed, then Initiative, then Id for determinism).</summary>
+    public Combatant? GetFastestLivingEnemy()
+    {
+        return Enemies
+            .Where(e => !e.IsDefeated)
+            .OrderByDescending(e => e.BaseStatSnapshot.Speed)
+            .ThenByDescending(e => e.BaseStatSnapshot.Initiative)
+            .ThenBy(e => e.Id.Value)
+            .FirstOrDefault();
+    }
+
+    /// <summary>"Loi de l'Oubli Partiel" (law.oubli-partiel): the skill key forgotten
+    /// for the floor, baked in at creation from Run.ForgottenSkillKey (picked once at
+    /// promulgation time — see Run.PickForgottenSkill). Null when the law is inactive.
+    /// Enforced by CombatSkillActionValidator.</summary>
+    public string? ForgottenSkillKey { get; }
+
     /// <summary>"Loi de la Falaise" random-target chance, checked once per turn.</summary>
     private const double FalaiseWindTriggerChance = 0.10;
 
@@ -200,7 +359,13 @@ public sealed class Combat
         bool duelDamageAsymmetryEnabled = false,
         int dotMagnitudeBonus = 0,
         bool healingBlocked = false,
-        bool falaiseWindEnabled = false)
+        bool falaiseWindEnabled = false,
+        bool postDeathBasicAttackOnlyEnabled = false,
+        bool tapisPropreEnabled = false,
+        bool thirdCupHealCorruptionEnabled = false,
+        bool presentationsEnabled = false,
+        bool miroirEnabled = false,
+        string? forgottenSkillKey = null)
     {
         if (id.Value == Guid.Empty)
             throw new DomainException("Combat id is required.");
@@ -242,7 +407,13 @@ public sealed class Combat
             duelDamageAsymmetryEnabled: duelDamageAsymmetryEnabled,
             dotMagnitudeBonus: dotMagnitudeBonus,
             healingBlocked: healingBlocked,
-            falaiseWindEnabled: falaiseWindEnabled);
+            falaiseWindEnabled: falaiseWindEnabled,
+            postDeathBasicAttackOnlyEnabled: postDeathBasicAttackOnlyEnabled,
+            tapisPropreEnabled: tapisPropreEnabled,
+            thirdCupHealCorruptionEnabled: thirdCupHealCorruptionEnabled,
+            presentationsEnabled: presentationsEnabled,
+            miroirEnabled: miroirEnabled,
+            forgottenSkillKey: forgottenSkillKey);
     }
 
     public void MarkCompleted()
@@ -503,8 +674,14 @@ public sealed class Combat
 
         foreach (var combatant in AllCombatants.ToArray())
         {
+            var wasAlive = !combatant.IsDefeated;
+
             foreach (var ev in combatant.TickStatusEffects(CurrentTick))
                 ticks.Add(new CombatantStatusTick(combatant.Id.Value, combatant.DisplayName, ev));
+
+            // "Loi de l'Éloge Funèbre" applies to any death, DoT-inflicted included.
+            if (wasAlive && combatant.IsDefeated)
+                RegisterCombatantDefeated();
         }
 
         // DoT may have defeated someone — re-evaluate combat end.
@@ -572,9 +749,17 @@ public sealed class Combat
         bool duelDamageAsymmetryEnabled = false,
         int dotMagnitudeBonus = 0,
         bool healingBlocked = false,
-        bool falaiseWindEnabled = false)
+        bool falaiseWindEnabled = false,
+        bool postDeathBasicAttackOnlyEnabled = false,
+        bool nextActionRestrictedToBasicAttack = false,
+        bool tapisPropreEnabled = false,
+        bool thirdCupHealCorruptionEnabled = false,
+        bool presentationsEnabled = false,
+        bool miroirEnabled = false,
+        bool hasMirrorTriggered = false,
+        string? forgottenSkillKey = null)
     {
-        return new Combat(id, runId, roomId, nodeId, status, allies, enemies, activeCombatantId, turnNumber, currentTick, createdAtUtc, hitCounter, hitCounterDoubleDamageEnabled, firstHitCriticalEnabled, hasFirstHitLanded, lowHpDamageAmplificationEnabled, dotDurationExtensionTicks, duelDamageAsymmetryEnabled, dotMagnitudeBonus, healingBlocked, falaiseWindEnabled);
+        return new Combat(id, runId, roomId, nodeId, status, allies, enemies, activeCombatantId, turnNumber, currentTick, createdAtUtc, hitCounter, hitCounterDoubleDamageEnabled, firstHitCriticalEnabled, hasFirstHitLanded, lowHpDamageAmplificationEnabled, dotDurationExtensionTicks, duelDamageAsymmetryEnabled, dotMagnitudeBonus, healingBlocked, falaiseWindEnabled, postDeathBasicAttackOnlyEnabled, nextActionRestrictedToBasicAttack, tapisPropreEnabled, thirdCupHealCorruptionEnabled, presentationsEnabled, miroirEnabled, hasMirrorTriggered, forgottenSkillKey);
     }
 
     /// <summary>

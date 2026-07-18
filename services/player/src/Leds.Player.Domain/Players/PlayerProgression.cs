@@ -97,4 +97,21 @@ public sealed class PlayerProgression
 
         PalaceShardCount += amount;
     }
+
+    /// <summary>
+    /// Spends "Éclats du Palais" if the player can afford it. Returns false (rather
+    /// than throwing) on insufficient funds — insolvency is an expected outcome for
+    /// callers like "Loi de l'Impôt du Seuil", not an exceptional one.
+    /// </summary>
+    public bool TrySpendCurrency(int amount)
+    {
+        if (amount <= 0)
+            throw new DomainException("Currency amount must be positive.");
+
+        if (PalaceShardCount < amount)
+            return false;
+
+        PalaceShardCount -= amount;
+        return true;
+    }
 }

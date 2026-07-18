@@ -331,6 +331,37 @@ public sealed class CombatFactoryTests
         ally.CurrentVitality.Should().Be(100);
     }
 
+    // "Loi de l'Impôt du Seuil" (law.impot-seuil) insolvency penalty — stacking -2% team
+    // max HP per unpaid room toll. Applied via MaxHpReductionPercent modifiers.
+    [Fact]
+    public void CreateFromDraft_ShouldReduceMaxVitality_WhenImpotDuSeuilInsolvencyDebuffIsActive()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft();
+        var modifier = RunModifier.Create(
+            RunModifierType.MaxHpReductionPercent, 10, RunModifierDuration.UntilFloorEnds, "PalaceLaw", "law.impot-seuil");
+
+        var combat = factory.CreateFromDraft(draft, runModifiers: [modifier]);
+
+        combat.Allies.Single().MaxVitality.Should().Be(90);
+    }
+
+    [Fact]
+    public void CreateFromDraft_ShouldStackMultipleMaxHpReductionModifiers()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft();
+        var modifiers = new[]
+        {
+            RunModifier.Create(RunModifierType.MaxHpReductionPercent, 2, RunModifierDuration.UntilFloorEnds, "PalaceLaw", "law.impot-seuil"),
+            RunModifier.Create(RunModifierType.MaxHpReductionPercent, 2, RunModifierDuration.UntilFloorEnds, "PalaceLaw", "law.impot-seuil"),
+        };
+
+        var combat = factory.CreateFromDraft(draft, runModifiers: modifiers);
+
+        combat.Allies.Single().MaxVitality.Should().Be(96);
+    }
+
     [Fact]
     public void CreateFromDraft_ShouldGiveDefaultSkillsToAllies()
     {
@@ -882,6 +913,186 @@ public sealed class CombatFactoryTests
 
         combat.Allies.Single().EffectivePhysicalDamageBonusPercent.Should().Be(0);
         combat.Allies.Single().EffectiveFlatManaCostBonus.Should().Be(0);
+    }
+
+    // ---------------------------------------------------------------------------
+    // "Loi de l'Éloge Funèbre" (PostDeathBasicAttackOnlyEnabled) — RunModifier-driven,
+    // baked at combat creation; the actual post-death gate lives on Combat itself
+    // (RegisterCombatantDefeated/NextActionRestrictedToBasicAttack), tested in
+    // CombatSkillActionValidatorTests.
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void CreateFromDraft_ShouldEnablePostDeathBasicAttackOnly_WhenTheLawIsActive()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft();
+        var modifier = RunModifier.Create(
+            RunModifierType.PostDeathBasicAttackOnly, 1, RunModifierDuration.UntilRoomEnds, "PalaceLaw", "law-eloge-funebre-test");
+
+        var combat = factory.CreateFromDraft(draft, runModifiers: [modifier]);
+
+        combat.PostDeathBasicAttackOnlyEnabled.Should().BeTrue();
+    }
+
+    [Fact]
+    public void CreateFromDraft_ShouldNotEnablePostDeathBasicAttackOnly_WhenTheLawIsNotActive()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft();
+
+        var combat = factory.CreateFromDraft(draft);
+
+        combat.PostDeathBasicAttackOnlyEnabled.Should().BeFalse();
+    }
+
+    // ---------------------------------------------------------------------------
+    // "Loi du Tapis Propre" (TapisPropreEnabled) — RunModifier-driven, baked at
+    // combat creation; the per-combatant first-turn gate itself lives on Combatant
+    // (HasActedThisCombat), tested in CombatSkillActionValidatorTests.
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void CreateFromDraft_ShouldEnableTapisPropre_WhenTheLawIsActive()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft();
+        var modifier = RunModifier.Create(
+            RunModifierType.TapisPropreEnabled, 1, RunModifierDuration.UntilFloorEnds, "PalaceLaw", "law-tapis-propre-test");
+
+        var combat = factory.CreateFromDraft(draft, runModifiers: [modifier]);
+
+        combat.TapisPropreEnabled.Should().BeTrue();
+    }
+
+    [Fact]
+    public void CreateFromDraft_ShouldNotEnableTapisPropre_WhenTheLawIsNotActive()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft();
+
+        var combat = factory.CreateFromDraft(draft);
+
+        combat.TapisPropreEnabled.Should().BeFalse();
+    }
+
+    // ---------------------------------------------------------------------------
+    // "Loi de la Troisième Tasse" (ThirdCupHealCorruptionEnabled) — RunModifier-driven,
+    // baked at combat creation; the per-application roll itself lives on Combat
+    // (ApplyThirdCupRollIfActive), tested in CombatSkillEffectResolverTests.
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void CreateFromDraft_ShouldEnableThirdCupHealCorruption_WhenTheLawIsActive()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft();
+        var modifier = RunModifier.Create(
+            RunModifierType.ThirdCupHealCorruptionEnabled, 1, RunModifierDuration.UntilFloorEnds, "PalaceLaw", "law-troisieme-tasse-test");
+
+        var combat = factory.CreateFromDraft(draft, runModifiers: [modifier]);
+
+        combat.ThirdCupHealCorruptionEnabled.Should().BeTrue();
+    }
+
+    [Fact]
+    public void CreateFromDraft_ShouldNotEnableThirdCupHealCorruption_WhenTheLawIsNotActive()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft();
+
+        var combat = factory.CreateFromDraft(draft);
+
+        combat.ThirdCupHealCorruptionEnabled.Should().BeFalse();
+    }
+
+    // ---------------------------------------------------------------------------
+    // "Loi des Présentations" (PresentationsEnabled) — RunModifier-driven, baked at
+    // combat creation; the per-enemy first-action forecast itself lives in
+    // EnemyCombatTurnResolver.Resolve, tested in EnemyCombatTurnResolverTests.
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void CreateFromDraft_ShouldEnablePresentations_WhenTheLawIsActive()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft();
+        var modifier = RunModifier.Create(
+            RunModifierType.PresentationsEnabled, 1, RunModifierDuration.UntilFloorEnds, "PalaceLaw", "law-presentations-test");
+
+        var combat = factory.CreateFromDraft(draft, runModifiers: [modifier]);
+
+        combat.PresentationsEnabled.Should().BeTrue();
+    }
+
+    [Fact]
+    public void CreateFromDraft_ShouldNotEnablePresentations_WhenTheLawIsNotActive()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft();
+
+        var combat = factory.CreateFromDraft(draft);
+
+        combat.PresentationsEnabled.Should().BeFalse();
+    }
+
+    // ---------------------------------------------------------------------------
+    // "Loi du Miroir" (MiroirEnabled) — RunModifier-driven, baked at combat creation;
+    // the mirror-copy mechanic itself lives in
+    // UseCombatSkillCommandHandler.ResolveMirrorCopyIfTriggered, tested there.
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void CreateFromDraft_ShouldEnableMiroir_WhenTheLawIsActive()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft();
+        var modifier = RunModifier.Create(
+            RunModifierType.MiroirEnabled, 1, RunModifierDuration.UntilFloorEnds, "PalaceLaw", "law-miroir-test");
+
+        var combat = factory.CreateFromDraft(draft, runModifiers: [modifier]);
+
+        combat.MiroirEnabled.Should().BeTrue();
+    }
+
+    [Fact]
+    public void CreateFromDraft_ShouldNotEnableMiroir_WhenTheLawIsNotActive()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft();
+
+        var combat = factory.CreateFromDraft(draft);
+
+        combat.MiroirEnabled.Should().BeFalse();
+    }
+
+    // ---------------------------------------------------------------------------
+    // "Loi de l'Oubli Partiel" (ForgottenSkillKey) — unlike the other palace-law
+    // flags, this one is not baked from an active RunModifier here: the forgotten
+    // skill is drawn once at promulgation time (Run.PickForgottenSkill) and passed
+    // straight through as a Run-level field. This test only verifies the passthrough.
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void CreateFromDraft_ShouldThreadForgottenSkillKey_WhenProvided()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft();
+
+        var combat = factory.CreateFromDraft(draft, forgottenSkillKey: "skill.hero.blaze");
+
+        combat.ForgottenSkillKey.Should().Be("skill.hero.blaze");
+    }
+
+    [Fact]
+    public void CreateFromDraft_ShouldLeaveForgottenSkillKeyNull_WhenNotProvided()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft();
+
+        var combat = factory.CreateFromDraft(draft);
+
+        combat.ForgottenSkillKey.Should().BeNull();
     }
 
     // ---------------------------------------------------------------------------

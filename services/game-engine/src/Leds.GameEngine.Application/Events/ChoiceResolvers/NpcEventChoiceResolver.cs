@@ -263,8 +263,16 @@ public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver
 
             case "Currency":
                 var currencyAmount = offering.Amount > 0 ? offering.Amount : 1;
-                await _playerProfileGateway.AwardCurrencyAsync(run.PlayerId, currencyAmount, cancellationToken);
-                return $"+{currencyAmount} Éclats du Palais.";
+
+                // "Loi du Prêteur" (law.preteur): currency gains are boosted while active.
+                var currencyGainBonusPercent = run.RunModifiers
+                    .Where(m => m.Type == RunModifierType.CurrencyGainBonusPercent && !m.IsConsumed)
+                    .Sum(m => m.Value);
+                var boostedCurrencyAmount = (int)Math.Round(
+                    currencyAmount * (1 + currencyGainBonusPercent / 100.0));
+
+                await _playerProfileGateway.AwardCurrencyAsync(run.PlayerId, boostedCurrencyAmount, cancellationToken);
+                return $"+{boostedCurrencyAmount} Éclats du Palais.";
 
             case "Companion":
                 if (string.IsNullOrWhiteSpace(offering.TargetKey))

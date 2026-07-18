@@ -51,6 +51,10 @@ export const useCombatStore = defineStore('combatRuntime', () => {
   const recentlyCriticalHitIds = ref<string[]>([]);
   const recentlyMissedIds = ref<string[]>([]);
   const feedbackEvents = ref<CombatFeedbackEvent[]>([]);
+  // "X utilise Y sur Z !" — set for the whole duration of an action (see
+  // playCombatLogs) so it stays visible until that action's log sequence
+  // finishes playing out, not just for a single hit's brief animation.
+  const activeActionBanner = ref<string | null>(null);
   const combatantStateOverrides = ref<Record<string, CombatantStateOverride>>({});
   const processedLogKeys = ref<Set<string>>(new Set());
   const animationTimers: ReturnType<typeof globalThis.setTimeout>[] = [];
@@ -331,35 +335,121 @@ export const useCombatStore = defineStore('combatRuntime', () => {
 
   async function playCombatLogs(entries: CombatLogEntryDto[]) {
     pendingCriticalTargetIds = new Set<string>();
+    const actionBanners = buildActionBanners(entries);
 
-    for (const entry of entries) {
-      const logKey = createLogKey(entry);
-      if (processedLogKeys.value.has(logKey)) continue;
-      processedLogKeys.value = new Set([...processedLogKeys.value, logKey]);
+    try {
+      for (let index = 0; index < entries.length; index++) {
+        const entry = entries[index];
+        const logKey = createLogKey(entry);
+        if (processedLogKeys.value.has(logKey)) continue;
+        processedLogKeys.value = new Set([...processedLogKeys.value, logKey]);
 
-      logEntries.value = [...logEntries.value, entry];
+        logEntries.value = [...logEntries.value, entry];
 
-      if (entry.actorId && (entry.type === 'SkillUsed' || entry.type === 'ItemUsed')) {
-        markActing(entry.actorId);
+        const banner = actionBanners.get(index);
+        if (banner) {
+          activeActionBanner.value = banner.text;
+          // A DamageApplied/HealApplied/etc. entry almost always follows right after
+          // and already awaits its own delay below, which keeps the banner visible
+          // for free. Only force a minimum delay here for the rare case where no
+          // such entry follows (e.g. a RestoreMana skill on an already-full target
+          // produces no log at all) — otherwise a same-tick set-then-clear would
+          // never actually render.
+          if (banner.needsFallbackDelay) await delay(500);
+        }
+
+        if (entry.actorId && (entry.type === 'SkillUsed' || entry.type === 'ItemUsed')) {
+          markActing(entry.actorId);
+        }
+
+        if (entry.type === 'CriticalHit') {
+          for (const targetId of entry.targetIds) pendingCriticalTargetIds.add(targetId);
+        }
+
+        if (entry.type === 'EnemyTurnResolved' && entry.actorId) {
+          thinkingCombatantId.value = entry.actorId;
+          markActing(entry.actorId, 900);
+          await delay(2000);
+          thinkingCombatantId.value = null;
+          await delay(250);
+        } else if (entry.targetIds.length > 0 && shouldHighlightTarget(entry)) {
+          applyLogDelta(entry);
+          markFeedbackFromLog(entry);
+          await delay(550);
+          await delay(150);
+        }
       }
-
-      if (entry.type === 'CriticalHit') {
-        for (const targetId of entry.targetIds) pendingCriticalTargetIds.add(targetId);
-      }
-
-      if (entry.type === 'EnemyTurnResolved' && entry.actorId) {
-        thinkingCombatantId.value = entry.actorId;
-        markActing(entry.actorId, 900);
-        await delay(2000);
-        thinkingCombatantId.value = null;
-        await delay(250);
-      } else if (entry.targetIds.length > 0 && shouldHighlightTarget(entry)) {
-        applyLogDelta(entry);
-        markFeedbackFromLog(entry);
-        await delay(550);
-        await delay(150);
-      }
+    } finally {
+      // The banner spans one action's whole log sequence — clear it only once
+      // that sequence (and thus the action's animation) has fully played out.
+      activeActionBanner.value = null;
     }
+  }
+
+  // An entry that itself causes playCombatLogs to await a delay — used below to
+  // decide whether an action banner already gets a "free ride" from the entry
+  // immediately following it, or needs its own fallback delay.
+  function entryTriggersDelay(entry: CombatLogEntryDto): boolean {
+    if (entry.type === 'EnemyTurnResolved' && entry.actorId) return true;
+    return entry.targetIds.length > 0 && shouldHighlightTarget(entry);
+  }
+
+  type ActionBanner = { text: string; needsFallbackDelay: boolean };
+
+  // Pre-scans one server response's log entries and, for every SkillUsed/
+  // ItemUsed entry, builds the "X utilise Y sur Z !" banner text — merging
+  // consecutive entries for the same actor+skill (AllEnemies/AllAllies skills
+  // emit one SkillUsed entry per target) so the banner lists every target once.
+  // Returns a map keyed by the index of each group's FIRST entry.
+  function buildActionBanners(entries: CombatLogEntryDto[]): Map<number, ActionBanner> {
+    const banners = new Map<number, ActionBanner>();
+
+    for (let index = 0; index < entries.length; index++) {
+      const entry = entries[index];
+      const isPreviousSameGroup =
+        index > 0 &&
+        entries[index - 1].type === entry.type &&
+        entries[index - 1].actorId === entry.actorId &&
+        entries[index - 1].skillKey === entry.skillKey;
+      if (isPreviousSameGroup) continue;
+      if (entry.type !== 'SkillUsed' && entry.type !== 'ItemUsed') continue;
+      if (!entry.actorId) continue;
+
+      const actor = findCombatantById(entry.actorId);
+      if (!actor) continue;
+
+      const targetIds = new Set<string>(entry.targetIds);
+      let cursor = index;
+      while (
+        cursor + 1 < entries.length &&
+        entries[cursor + 1].type === entry.type &&
+        entries[cursor + 1].actorId === entry.actorId &&
+        entries[cursor + 1].skillKey === entry.skillKey
+      ) {
+        cursor += 1;
+        for (const id of entries[cursor].targetIds) targetIds.add(id);
+      }
+
+      const targetNames = [...targetIds]
+        .map((id) => findCombatantById(id)?.displayName)
+        .filter((name): name is string => Boolean(name));
+
+      const actionName =
+        entry.type === 'ItemUsed'
+          ? (combat.value?.usableBattleItems.find((i) => i.definitionKey === entry.skillKey)?.displayName
+              ?? entry.skillKey ?? 'un objet')
+          : (actor.skills.find((s) => s.key === entry.skillKey)?.displayName ?? entry.skillKey ?? 'une capacité');
+
+      const text = targetNames.length > 0
+        ? `${actor.displayName} utilise ${actionName} sur ${targetNames.join(', ')} !`
+        : `${actor.displayName} utilise ${actionName} !`;
+      const nextEntry = entries[cursor + 1];
+      const needsFallbackDelay = !nextEntry || !entryTriggersDelay(nextEntry);
+
+      banners.set(index, { text, needsFallbackDelay });
+    }
+
+    return banners;
   }
 
   function parseLogAmount(message: string): number {
@@ -578,6 +668,7 @@ export const useCombatStore = defineStore('combatRuntime', () => {
     recentlyCriticalHitIds.value = [];
     recentlyMissedIds.value = [];
     feedbackEvents.value = [];
+    activeActionBanner.value = null;
     pendingCriticalTargetIds = new Set<string>();
   }
 
@@ -789,6 +880,7 @@ export const useCombatStore = defineStore('combatRuntime', () => {
     recentlyCriticalHitIds,
     recentlyMissedIds,
     feedbackEvents,
+    activeActionBanner,
     allies,
     enemies,
     allCombatants,

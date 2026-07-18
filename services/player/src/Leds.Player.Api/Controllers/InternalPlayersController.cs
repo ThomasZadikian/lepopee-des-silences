@@ -2,6 +2,7 @@ using Leds.Player.Application.Players;
 using Leds.Player.Application.Players.AddPermanentItems;
 using Leds.Player.Application.Players.AwardCurrency;
 using Leds.Player.Application.Players.AwardStatPoint;
+using Leds.Player.Application.Players.SpendCurrency;
 using Leds.Player.Application.Players.ClaimNpcOffering;
 using Leds.Player.Application.Players.ClearPermanentItemContent;
 using Leds.Player.Application.Players.GetNpcReputationScores;
@@ -51,6 +52,23 @@ public sealed class InternalPlayersController : ControllerBase
         CancellationToken cancellationToken)
     {
         var command = new AwardCurrencyCommand(playerId, request.Amount);
+        var response = await _sender.Send(command, cancellationToken);
+
+        return Ok(response);
+    }
+
+    /// <summary>Spends "Éclats du Palais" if affordable. 200 with Succeeded=false on
+    /// insolvency — not a 4xx, since insufficient funds is an expected outcome for
+    /// callers like "Loi de l'Impôt du Seuil".</summary>
+    [HttpPost("{playerId:guid}/currency/spend")]
+    [ProducesResponseType(typeof(SpendCurrencyResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<SpendCurrencyResult>> SpendCurrency(
+        Guid playerId,
+        [FromBody] SpendCurrencyRequest request,
+        CancellationToken cancellationToken)
+    {
+        var command = new SpendCurrencyCommand(playerId, request.Amount);
         var response = await _sender.Send(command, cancellationToken);
 
         return Ok(response);
@@ -210,6 +228,8 @@ public sealed class InternalPlayersController : ControllerBase
 public sealed record AwardStatPointsRequest(int Amount);
 
 public sealed record AwardCurrencyRequest(int Amount);
+
+public sealed record SpendCurrencyRequest(int Amount);
 
 public sealed record UnlockSkillRequest(string? Source);
 

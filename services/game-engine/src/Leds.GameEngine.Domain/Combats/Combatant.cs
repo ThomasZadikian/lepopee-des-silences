@@ -24,7 +24,8 @@ public sealed class Combatant
         IReadOnlyCollection<CombatantSkill> skills,
         CombatantBaseStatSnapshot baseStatSnapshot,
         CombatantRuntimeState runtimeState,
-        CombatRow row = CombatRow.Front)
+        CombatRow row = CombatRow.Front,
+        bool hasActedThisCombat = false)
     {
         Id = id;
         SourceKey = sourceKey;
@@ -37,6 +38,7 @@ public sealed class Combatant
         BaseGuard = baseGuard;
         Mana = mana;
         MaxMana = maxMana;
+        HasActedThisCombat = hasActedThisCombat;
         Charge = charge;
         Status = status;
         _permanentSkills = skills;
@@ -82,6 +84,15 @@ public sealed class Combatant
     {
         Row = row;
     }
+
+    /// <summary>
+    /// "Loi du Tapis Propre" (law.tapis-propre): true once this combatant has taken
+    /// any action (of any kind) in the current combat. Set by <see cref="RegisterAtbAction"/>,
+    /// so a first turn spent on Reposition/buff/heal still counts as "having acted" —
+    /// only a Damage-type skill is gated while this is false (see
+    /// CombatSkillActionValidator).
+    /// </summary>
+    public bool HasActedThisCombat { get; private set; }
 
     /// <summary>ATB fill-per-tick bonus (%) from being in the Back row (faster turns).</summary>
     public int RowAtbFillBonusPercent => Row == CombatRow.Back ? 5 : 0;
@@ -391,6 +402,7 @@ public sealed class Combatant
         RuntimeState.SetActionRecovery(recoveryTicks > 0 ? currentTick + recoveryTicks : null);
         // Momentum is a burst reward for the NEXT turn — it is spent in full once acted on.
         RuntimeState.ResetTempoMomentum();
+        HasActedThisCombat = true;
     }
 
     /// <summary>
@@ -706,7 +718,8 @@ public sealed class Combatant
         int dotDamageBonusPercent = 0,
         int maxMana = int.MaxValue,
         int healingBonusPercent = 0,
-        CombatRow row = CombatRow.Front)
+        CombatRow row = CombatRow.Front,
+        bool hasActedThisCombat = false)
     {
         var snapshot = baseStatSnapshot ?? CombatantBaseStatSnapshot.Rehydrate(
             Guid.NewGuid(),
@@ -735,7 +748,7 @@ public sealed class Combatant
             DateTime.UtcNow,
             maxMana: maxMana);
 
-        var combatant = new Combatant(id, sourceKey, displayName, side, archetype, maxVitality, currentVitality, guard, baseGuard, mana, runtimeState?.MaxMana ?? maxMana, charge, status, skills, snapshot, state, row);
+        var combatant = new Combatant(id, sourceKey, displayName, side, archetype, maxVitality, currentVitality, guard, baseGuard, mana, runtimeState?.MaxMana ?? maxMana, charge, status, skills, snapshot, state, row, hasActedThisCombat);
         combatant.AttackTypeOverride = attackTypeOverride;
         combatant.TypedDamageReductionPercent = typedDamageReductionPercent ?? new Dictionary<EmotionalType, int>();
         combatant.ApplyEquipmentCombatModifiers(

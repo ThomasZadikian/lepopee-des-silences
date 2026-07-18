@@ -103,6 +103,7 @@ public sealed class CatalogSeedRunner
         await SeedCanonBossesAsync(cancellationToken);
         await SeedCanonRoomTypesAsync(cancellationToken);
         await SeedCanonLootAsync(cancellationToken);
+        await SeedRewardTemplatesAsync(cancellationToken);
 
         // Sauvegarde inconditionnelle : les SeedCanon*Async ajoutent au change-tracker
         // EF mais ne renvoient pas de compteur ; gater le SaveChanges sur les seuls PNJ
@@ -4982,12 +4983,14 @@ public sealed class CatalogSeedRunner
         await _ctx.SaveChangesAsync(cancellationToken);
     }
 
-    // Chapitre IV — Lois de combat. 5 of its 7 laws already have full mechanical
-    // backing (File Indienne/Curée/Première Impression from Phase 3bis, Duel/Écriture
-    // from this pass). "Loi du Miroir" (copy the ally's first cast onto the fastest
-    // enemy, inverted targeting) and "Loi de l'Éloge Funèbre" (only a basic attack
-    // allowed the turn after a death) are NOT seeded — they need re-entrant skill
-    // resolution and action-validation changes respectively, neither of which exists.
+    // Chapitre IV — Lois de combat. All 7 of its laws now have full mechanical backing
+    // (File Indienne/Curée/Première Impression from Phase 3bis, Duel/Écriture/Éloge
+    // Funèbre from an earlier pass — post-death basic-attack-only gate via
+    // Combat.NextActionRestrictedToBasicAttack — and "Loi du Miroir", added this pass:
+    // the first ally-cast skill of the combat is re-resolved from the fastest living
+    // enemy's side via UseCombatSkillCommandHandler.ResolveMirrorCopyIfTriggered — no
+    // explicit target inversion needed, since TargetingType is always relative to the
+    // acting combatant's own side).
     //
     // Two room-type weight-doubling promulgation rules are NOT enforced by the engine
     // (documented gap, same as Chapitre VIII): Curée "poids doublé aux Plaines" and
@@ -5078,6 +5081,40 @@ public sealed class CatalogSeedRunner
             impactDomains: ["Combat"],
             cancellationToken);
 
+        await UpsertCompendiumLawAsync(
+            key: "law.eloge-funebre",
+            name: "Loi de l'Éloge Funèbre",
+            narrativeText: "Article XXXI — Quand quelqu'un tombe, le Palais exige un instant de "
+                + "recueillement. Nul artifice, nul éclat : juste le geste le plus simple.",
+            description: "Dès qu'un combattant (allié ou ennemi) est mis hors combat, le "
+                + "prochain combattant à agir ne peut porter qu'une attaque de base — aucun "
+                + "sort, aucune capacité, tant que ce geste n'a pas été rendu.",
+            rarity: "Peu commun",
+            polarity: "Sévère",
+            isMajeure: false,
+            minDepth: null,
+            duration: "UntilRoomEnds",
+            selectionGroup: "law.combat",
+            impactDomains: ["Combat"],
+            cancellationToken);
+
+        await UpsertCompendiumLawAsync(
+            key: "law.miroir",
+            name: "Loi du Miroir",
+            narrativeText: "Article LII — Tout ce que vous direz au Palais, le Palais sait "
+                + "le redire. Choisissez votre premier mot avec soin.",
+            description: "Le premier sort lancé par l'équipe dans chaque combat est "
+                + "immédiatement copié par l'ennemi le plus rapide (mêmes valeurs, ciblage "
+                + "inversé).",
+            rarity: "Épique",
+            polarity: "Sévère",
+            isMajeure: false,
+            minDepth: 2,
+            duration: "UntilFloorEnds",
+            selectionGroup: "law.combat",
+            impactDomains: ["Combat"],
+            cancellationToken);
+
         await _ctx.SaveChangesAsync(cancellationToken);
 
         await UpsertLawEffectAsync("law.file-indienne", "EnableTurnOrderLock", 1m, "UntilRoomEnds", null, cancellationToken);
@@ -5085,6 +5122,8 @@ public sealed class CatalogSeedRunner
         await UpsertLawEffectAsync("law.premiere-impression", "EnableFirstHitCritical", 1m, "UntilFloorEnds", null, cancellationToken);
         await UpsertLawEffectAsync("law.duel", "EnableDuelDamageAsymmetry", 1m, "UntilRoomEnds", null, cancellationToken);
         await UpsertLawEffectAsync("law.ecriture", "EnableDotDurationExtension", 2m, "UntilFloorEnds", null, cancellationToken);
+        await UpsertLawEffectAsync("law.eloge-funebre", "EnablePostDeathBasicAttackOnly", 1m, "UntilRoomEnds", null, cancellationToken);
+        await UpsertLawEffectAsync("law.miroir", "EnableMiroir", 1m, "UntilFloorEnds", null, cancellationToken);
 
         await _ctx.SaveChangesAsync(cancellationToken);
     }
@@ -5183,21 +5222,30 @@ public sealed class CatalogSeedRunner
         await _ctx.SaveChangesAsync(cancellationToken);
     }
 
-    // Chapitre III — Lois du seuil & de l'étiquette. 2 of its 5 laws are seeded: Loi des
-    // Pieds Essuyés (trivial reuse of StartingGuardBonus) and Loi du Silence Dû (new
-    // PhysicalDamageBonus/FlatManaCostBonus mechanic). The other 3 are NOT seeded — each
-    // needs a genuinely new engine mechanic that doesn't exist yet (documented gap, same
-    // convention as the rest of this chantier): "Loi du Tapis Propre" (law.tapis-propre)
-    // needs per-combatant first-turn action-type validation (support/buff/debuff/move
-    // only, no attack) — the same class of problem as Chapitre IV's un-seeded
-    // Miroir/Éloge Funèbre. "Loi de l'Invitation" (law.invitation) needs disabling a
-    // "flee" combat action that doesn't exist in the engine AND a loot bonus —
-    // RunModifierType.RewardPowerMultiplier is itself dead code upstream (written by
-    // PalaceLawMapper but never read by RewardOfferFactory, which only consumes the
-    // risk-derived CombatRiskProfile.RewardPowerMultiplier), so seeding it would silently
-    // do nothing; fixing that pre-existing gap is out of scope here. "Loi de la
-    // Troisième Tasse" (law.troisieme-tasse) needs a random per-heal-application
-    // corruption roll.
+    // Chapitre III — Lois du seuil & de l'étiquette. All 5 of its laws now have
+    // mechanical backing: Loi des Pieds Essuyés (trivial reuse of StartingGuardBonus),
+    // Loi du Silence Dû (new PhysicalDamageBonus/FlatManaCostBonus mechanic), Loi du
+    // Tapis Propre (new per-combatant first-turn action-type gate — see
+    // Combatant.HasActedThisCombat / CombatSkillActionValidator), Loi de la Troisième
+    // Tasse (new per-heal-application corruption roll — see
+    // Combat.ApplyThirdCupRollIfActive, called from both CombatSkillEffectResolver.
+    // ResolveHeal and UseItemInCombatCommandHandler.ApplyItemEffect), and — added this
+    // pass — "Loi de l'Invitation" (law.invitation): a new RunModifierType.
+    // LootChanceBonusPercent boosts combat loot item drop chances (see
+    // EnemyLootRewardBuilder.RollIndependent), threaded through RewardOfferFactory.
+    // CreateCombatRewardOfferAsync/CombatResolutionService the same way Abondance's
+    // extra-choice flag is threaded through CreateItemRewardOffer. Two documented gaps
+    // remain for Invitation: the SFD's "+10% Éclats" half is NOT modeled (no combat-loot
+    // currency mechanic exists anywhere — Éclats are only ever awarded via NPC
+    // rare-offering claims), and its "impossible de fuir les combats" restriction needs
+    // no code at all, since no combat-flee action exists in the engine to begin with.
+    //
+    // Loi du Tapis Propre's "poids doublé au Hall et aux Couloirs" promulgation nuance and
+    // Loi de la Troisième Tasse's "Le Porteur de Plateau tire sa Tasse retournée à 25% au
+    // lieu de 10%" per-NPC-item nuance are NOT enforced (documented gap, same as the
+    // room-weight-doubling notes elsewhere). Troisième Tasse's HealAndManaRestorePercent
+    // item family is also excluded from the roll (documented simplification, see
+    // UseItemInCombatCommandHandler.ApplyItemEffect).
     private async Task SeedLoisDuSeuilAsync(CancellationToken cancellationToken)
     {
         await UpsertCompendiumLawAsync(
@@ -5233,26 +5281,88 @@ public sealed class CatalogSeedRunner
             impactDomains: ["Combat"],
             cancellationToken);
 
+        await UpsertCompendiumLawAsync(
+            key: "law.tapis-propre",
+            name: "Loi du Tapis Propre",
+            narrativeText: "Article Premier — On s'essuie les pieds. On salue. Ensuite, "
+                + "seulement, on peut s'entretuer proprement.",
+            description: "Dans chaque combat, le premier tour de chaque combattant "
+                + "(équipe ET ennemis) ne peut pas être une attaque : sorts de soutien, "
+                + "buffs, débuffs et déplacements uniquement. La politesse d'abord.",
+            rarity: "Commun",
+            polarity: "Neutre",
+            isMajeure: false,
+            minDepth: null,
+            duration: "UntilFloorEnds",
+            selectionGroup: "law.seuil",
+            impactDomains: ["Combat"],
+            cancellationToken);
+
+        await UpsertCompendiumLawAsync(
+            key: "law.troisieme-tasse",
+            name: "Loi de la Troisième Tasse",
+            narrativeText: "Article XLIV — Trois tasses sont servies. La première fume, "
+                + "la deuxième est vide. Le Palais ne dit jamais laquelle est la troisième.",
+            description: "Chaque soin (sort ou objet) a 10% de chance d'être servi dans "
+                + "la troisième tasse : il ne restaure que la moitié et applique un "
+                + "poison léger (3 dégâts/tour, 4 tours).",
+            rarity: "Rare",
+            polarity: "Sévère",
+            isMajeure: false,
+            minDepth: null,
+            duration: "UntilFloorEnds",
+            selectionGroup: "law.seuil",
+            impactDomains: ["Combat"],
+            cancellationToken: cancellationToken,
+            // "jamais en même temps que l'Édit du Souvenir Doux" per the SFD — mirrors
+            // Souvenir Doux's own exclusionKeys entry (see SeedEditsClementsAsync) since
+            // the engine checks exclusions one-directionally against the newly-drawn law.
+            exclusionKeys: ["law.souvenir-doux"]);
+
+        await UpsertCompendiumLawAsync(
+            key: "law.invitation",
+            name: "Loi de l'Invitation",
+            narrativeText: "Article IX — L'invité qui se lève avant le dessert insulte la "
+                + "table. L'invité qui reste sera servi largement.",
+            description: "Impossible de fuir les combats de l'étage. En contrepartie, les "
+                + "chances de butin sont majorées de +10%.",
+            rarity: "Peu commun",
+            polarity: "DoubleTranchant",
+            isMajeure: false,
+            minDepth: null,
+            duration: "UntilFloorEnds",
+            selectionGroup: "law.seuil",
+            impactDomains: ["Rewards"],
+            cancellationToken);
+
         await _ctx.SaveChangesAsync(cancellationToken);
 
         await UpsertLawEffectAsync("law.pieds-essuyes", "AddStartingGuard", 3m, "UntilFloorEnds", null, cancellationToken);
         await UpsertLawEffectAsync("law.silence-du", "EnableSilenceDuActive", 1m, "UntilRoomEnds", null, cancellationToken);
+        await UpsertLawEffectAsync("law.tapis-propre", "EnableTapisPropreEnabled", 1m, "UntilFloorEnds", null, cancellationToken);
+        await UpsertLawEffectAsync("law.troisieme-tasse", "EnableThirdCupHealCorruption", 1m, "UntilFloorEnds", null, cancellationToken);
+        await UpsertLawEffectAsync("law.invitation", "EnableLootChanceBonus", 10m, "UntilFloorEnds", null, cancellationToken);
 
         await _ctx.SaveChangesAsync(cancellationToken);
     }
 
-    // Chapitre V — Lois d'économie. 1 of its 4 laws is seeded: "Loi des Poches Cousues"
-    // (law.poches-cousues, new RunModifierType.ConsumablesRestrictedInCombat — see
-    // Run.UseItem). The other 3 are NOT seeded (documented gap): "Loi de l'Impôt du
-    // Seuil" (law.impot-seuil) and "Loi du Prêteur" (law.preteur) both need an in-run
-    // debit/credit path for Éclats du Palais — today that currency lives ONLY on the
-    // player-service PlayerProfile (read via IPlayerProfileGateway as a snapshot value,
-    // PalaceShardCount), with no command allowing game-engine to spend or grant it
-    // mid-run; wiring a synchronous cross-service wallet mutation into every room
-    // transition is out of scope for this pass. "Loi de l'Abondance" (law.abondance)
-    // needs both a reward-offer choice-count override (today hardcoded to 3 in
-    // RewardOfferFactory.CreateItemRewardChoices) AND a new "one node in two is empty at
-    // opening" per-floor parity mechanic — no zero-choice RewardOffer flow exists yet.
+    // Chapitre V — Lois d'économie. All 4 of its laws now have mechanical backing:
+    // "Loi des Poches Cousues" (law.poches-cousues, RunModifierType.
+    // ConsumablesRestrictedInCombat — see Run.UseItem), "Loi de l'Abondance"
+    // (law.abondance, RunModifierType.AbondanceExtraChoiceEnabled — see
+    // RewardOfferFactory.CreateItemRewardOffer), "Loi de l'Impôt du Seuil"
+    // (law.impot-seuil, RunModifierType.RoomTollAmount — a per-room-entry currency toll,
+    // see MoveToNextRoomCommandHandler and IPlayerProfileGateway.TrySpendCurrencyAsync),
+    // and "Loi du Prêteur" (law.preteur, RunModifierType.CurrencyGainBonusPercent — a
+    // currency-gain multiplier applied in NpcEventChoiceResolver, with a floor-end
+    // clawback also driven from MoveToNextRoomCommandHandler). The latter two required
+    // adding a currency-spend capability to the player-service (PlayerProgression.
+    // TrySpendCurrency), since previously Éclats du Palais could only ever be awarded,
+    // never spent.
+    //
+    // Loi de l'Abondance's "un nœud sur deux est vide à l'ouverture" half is NOT modeled
+    // (documented simplification) — no zero-choice RewardOffer flow exists; the item
+    // node always gets the 4th choice while the law is active, never an empty node.
     private async Task SeedLoisEconomieAsync(CancellationToken cancellationToken)
     {
         await UpsertCompendiumLawAsync(
@@ -5271,19 +5381,75 @@ public sealed class CatalogSeedRunner
             impactDomains: ["Combat"],
             cancellationToken);
 
+        await UpsertCompendiumLawAsync(
+            key: "law.abondance",
+            name: "Loi de l'Abondance",
+            narrativeText: "Article XXXV — L'abondance est un prêt. Le Palais rembourse "
+                + "en avance et encaisse en retard.",
+            description: "Les nœuds d'objets proposent 4 choix au lieu de 3 — mais un "
+                + "nœud sur deux est vide à l'ouverture (le Palais a déjà servi).",
+            rarity: "Peu commun",
+            polarity: "DoubleTranchant",
+            isMajeure: false,
+            minDepth: null,
+            duration: "UntilFloorEnds",
+            selectionGroup: "law.economie",
+            impactDomains: ["Rewards"],
+            cancellationToken);
+
+        await UpsertCompendiumLawAsync(
+            key: "law.impot-seuil",
+            name: "Loi de l'Impôt du Seuil",
+            narrativeText: "Article XXI — Le passage est gratuit pour qui peut le payer. "
+                + "Les autres paieront avec ce qu'ils sont.",
+            description: "Chaque salle traversée coûte 5 Éclats, prélevés à l'entrée. En "
+                + "cas d'insolvabilité, le Palais prélève en nature : −2% PV max de "
+                + "l'équipe jusqu'à la fin de l'étage (cumulable).",
+            rarity: "Peu commun",
+            polarity: "Sévère",
+            isMajeure: false,
+            minDepth: null,
+            duration: "UntilFloorEnds",
+            selectionGroup: "law.economie",
+            impactDomains: ["Combat"],
+            cancellationToken);
+
+        await UpsertCompendiumLawAsync(
+            key: "law.preteur",
+            name: "Loi du Prêteur",
+            narrativeText: "Article XXIX — Le Palais avance les fonds. Le Palais n'oublie "
+                + "jamais une avance. Le Palais, en vérité, n'oublie rien du tout.",
+            description: "Les Éclats ramassés sont majorés de +50%. À la fin de l'étage, "
+                + "le Palais reprend 25% du total détenu — intérêts compris.",
+            rarity: "Peu commun",
+            polarity: "DoubleTranchant",
+            isMajeure: false,
+            minDepth: null,
+            duration: "UntilFloorEnds",
+            selectionGroup: "law.economie",
+            impactDomains: ["Rewards"],
+            cancellationToken);
+
         await _ctx.SaveChangesAsync(cancellationToken);
 
         await UpsertLawEffectAsync("law.poches-cousues", "EnableConsumablesRestrictedInCombat", 1m, "UntilRoomEnds", null, cancellationToken);
+        await UpsertLawEffectAsync("law.abondance", "EnableAbondanceExtraChoice", 1m, "UntilFloorEnds", null, cancellationToken);
+        await UpsertLawEffectAsync("law.impot-seuil", "EnableRoomToll", 5m, "UntilFloorEnds", null, cancellationToken);
+        await UpsertLawEffectAsync("law.preteur", "EnableCurrencyGainBonus", 50m, "UntilFloorEnds", null, cancellationToken);
 
         await _ctx.SaveChangesAsync(cancellationToken);
     }
 
-    // Chapitre VII — Édits cléments. 3 of its 5 laws are seeded: Pas Léger (reuses
+    // Chapitre VII — Édits cléments. 4 of its 5 laws are seeded: Pas Léger (reuses
     // SpeedBonus), Hôte Généreux (reuses StartingGuardBonus), Souvenir Doux (reuses the
-    // new AllyHealingBonus mechanic). NOT seeded: "Édit de la Chandelle" (law.chandelle,
-    // +1 free reroll on item nodes for the floor — needs a node-reroll-count mechanic
-    // that doesn't exist) and "Édit des Portes Ouvertes" (law.portes-ouvertes, reveals the
-    // full floor layout — needs a map-reveal feature spanning backend + frontend).
+    // AllyHealingBonus mechanic), and — added this pass — "Édit de la Chandelle"
+    // (law.chandelle, RunModifierType.ItemNodeRerollCharge — a free reroll of the pending
+    // item-node reward offer, see Run.TryConsumeItemNodeRerollCharge and
+    // RerollItemRewardOfferCommandHandler on the game-engine side). NOT seeded: "Édit des
+    // Portes Ouvertes" (law.portes-ouvertes, reveals the full floor layout — needs a
+    // map-reveal feature spanning backend + frontend; rooms are generated lazily one at a
+    // time based on the player's node choice, so there is no "future floor" data to
+    // reveal without a redesign of room generation).
     private async Task SeedEditsClementsAsync(CancellationToken cancellationToken)
     {
         await UpsertCompendiumLawAsync(
@@ -5330,28 +5496,43 @@ public sealed class CatalogSeedRunner
             selectionGroup: "law.edit",
             impactDomains: ["Combat"],
             cancellationToken: cancellationToken,
-            // "incompatible avec la Loi de la Troisième Tasse" per the SFD — Troisième
-            // Tasse is not seeded (see SeedLoisDuSeuilAsync), so this exclusion is
-            // currently a no-op; kept for when it eventually is seeded.
+            // "incompatible avec la Loi de la Troisième Tasse" per the SFD — mirrored by
+            // Troisième Tasse's own exclusionKeys entry (see SeedLoisDuSeuilAsync).
             exclusionKeys: ["law.troisieme-tasse"]);
+
+        await UpsertCompendiumLawAsync(
+            key: "law.chandelle",
+            name: "Édit de la Chandelle",
+            narrativeText: "Article V — Une chandelle de plus au chandelier. Regardez "
+                + "mieux avant de choisir.",
+            description: "+1 relance gratuite de nœud d'objet pour l'étage (cumulable "
+                + "avec l'Éclat de la faille).",
+            rarity: "Commun",
+            polarity: "Clémente",
+            isMajeure: false,
+            minDepth: null,
+            duration: "UntilFloorEnds",
+            selectionGroup: "law.edit",
+            impactDomains: ["Rewards"],
+            cancellationToken);
 
         await _ctx.SaveChangesAsync(cancellationToken);
 
         await UpsertLawEffectAsync("law.pas-leger", "ModifySpeed", 0.10m, "UntilFloorEnds", null, cancellationToken);
         await UpsertLawEffectAsync("law.hote-genereux", "AddStartingGuard", 10m, "UntilFloorEnds", null, cancellationToken);
         await UpsertLawEffectAsync("law.souvenir-doux", "EnableAllyHealingBonus", 20m, "UntilFloorEnds", null, cancellationToken);
+        await UpsertLawEffectAsync("law.chandelle", "EnableItemNodeReroll", 1m, "UntilFloorEnds", null, cancellationToken);
 
         await _ctx.SaveChangesAsync(cancellationToken);
     }
 
-    // Chapitre VI — Lois de mémoire & de relations. 2 of its 4 laws are seeded: "Loi du
-    // Nom Retenu" (reuses ReputationChangeDoubled) and "Loi du Témoin" (new
-    // WoundHealingBlocked mechanic). NOT seeded: "Loi de l'Oubli Partiel"
-    // (law.oubli-partiel) needs a mechanism to temporarily remove a random non-Frappe
-    // ally skill for the floor plus a floor-end stat-point grant — no skill-removal/
-    // floor-end-hook mechanism exists for this shape yet. "Loi des Présentations"
-    // (law.presentations) needs enemies to telegraph their next action on their first
-    // turn — no "action forecast" feature exists.
+    // Chapitre VI — Lois de mémoire & de relations. All 4 of its laws now have full
+    // mechanical backing: "Loi du Nom Retenu" (reuses ReputationChangeDoubled), "Loi du
+    // Témoin" (WoundHealingBlocked), "Loi des Présentations" (PresentationsEnabled — see
+    // EnemyCombatTurnResolver.Resolve, gated on Combatant.HasActedThisCombat), and "Loi de
+    // l'Oubli Partiel" (SkillForgotten — see RunModifierType.SkillForgotten and
+    // Run.PickForgottenSkill for the random-skill draw and the floor-end +8 stat-point
+    // payout).
     private async Task SeedLoisDeMemoireAsync(CancellationToken cancellationToken)
     {
         await UpsertCompendiumLawAsync(
@@ -5388,13 +5569,68 @@ public sealed class CatalogSeedRunner
             impactDomains: ["Narrative"],
             cancellationToken);
 
+        // "Loi des Présentations" (law.presentations): documented simplification — the
+        // SFD's "au premier tour de chaque combat, tous les ennemis annoncent" (a single
+        // batch announcement at combat start) is approximated as each enemy announcing
+        // individually right before their own first action (see
+        // RunModifierType.PresentationsEnabled for the full rationale).
+        await UpsertCompendiumLawAsync(
+            key: "law.presentations",
+            name: "Loi des Présentations",
+            narrativeText: "Article IV — Nul ne frappe un inconnu sous ce toit. Faites "
+                + "connaissance ; ensuite, frappez qui vous connaissez.",
+            description: "Au premier tour de chaque combat, tous les ennemis annoncent "
+                + "leur prochaine action (intentions visibles). Version diminuée et "
+                + "gratuite des Yeux du marchand, qui eux montrent tout en permanence — "
+                + "et coûtent 25% PV max.",
+            rarity: "Commun",
+            polarity: "Clémente",
+            isMajeure: false,
+            minDepth: null,
+            duration: "UntilFloorEnds",
+            selectionGroup: "law.memoire",
+            impactDomains: ["Combat"],
+            cancellationToken);
+
+        // "Loi de l'Oubli Partiel" (law.oubli-partiel): "jamais au premier étage" is
+        // encoded as minDepth: FloorLengthInRooms (10) — the first room index of the
+        // second floor — since Run.FloorIndex = CurrentRoomIndex / FloorLengthInRooms and
+        // MinDepth is compared against CurrentRoomIndex-based depth (see
+        // AmbientPalaceLawPromulgator). The forgotten skill is drawn once at promulgation
+        // (Run.PickForgottenSkill, excluding "skill.basic.strike"/hors Frappe) and the
+        // +8 stat points are paid out when the floor-end modifier is consumed
+        // (Run.ConsumeFloorEndModifiers / MoveToNextRoomCommandHandler).
+        await UpsertCompendiumLawAsync(
+            key: "law.oubli-partiel",
+            name: "Loi de l'Oubli Partiel",
+            narrativeText: "Article XXXIII — On ne mesure la valeur d'un mot qu'en le "
+                + "perdant. Le Palais facture la leçon au tarif pédagogique.",
+            description: "Un sort aléatoire de l'équipe (hors Frappe) est oublié pour la "
+                + "durée de l'étage. À la fin de l'étage, l'oubli enseigne : +8 points de "
+                + "compétence.",
+            rarity: "Rare",
+            polarity: "DoubleTranchant",
+            isMajeure: false,
+            minDepth: FloorLengthInRoomsForLawMinDepth,
+            duration: "UntilFloorEnds",
+            selectionGroup: "law.memoire",
+            impactDomains: ["Combat"],
+            cancellationToken);
+
         await _ctx.SaveChangesAsync(cancellationToken);
 
         await UpsertLawEffectAsync("law.nom-retenu", "EnableReputationChangeDoubled", 1m, "UntilFloorEnds", null, cancellationToken);
         await UpsertLawEffectAsync("law.temoin", "EnableWoundHealingBlocked", 1m, "UntilFloorEnds", null, cancellationToken);
+        await UpsertLawEffectAsync("law.presentations", "EnablePresentations", 1m, "UntilFloorEnds", null, cancellationToken);
+        await UpsertLawEffectAsync("law.oubli-partiel", "EnableSkillForgotten", 1m, "UntilFloorEnds", null, cancellationToken);
 
         await _ctx.SaveChangesAsync(cancellationToken);
     }
+
+    // Mirrors Run.FloorLengthInRooms (game-engine) — the catalog service has no reference
+    // to that domain type, so the constant is duplicated here with an explicit name tying
+    // it back to the "jamais au premier étage" promulgation rule above.
+    private const int FloorLengthInRoomsForLawMinDepth = 10;
 
     // Chapitre IX — Lois liées aux salles. These are structurally different from every
     // other chapter: they are NOT drawn by the ambient promulgator (AmbientPalaceLawPromulgator
@@ -5404,17 +5640,20 @@ public sealed class CatalogSeedRunner
     // RunModifier. IsCumulExempt = true per the SFD ("elles ne comptent pas dans la
     // limite de cumul : elles sont le terrain, pas le climat").
     //
-    // 2 of its 5 laws are seeded: "Loi des Visites Terminées" (room.hopital) and "Loi
-    // de la Falaise" (room.falaise, added once the Row/Rank positioning system existed
-    // — see Combat.FalaiseWindEnabled/ApplyFalaiseWindIfActive). Both mechanics
-    // (CombatFactory checking draft.RoomKey) are hardcoded room-key checks, not
-    // catalog-driven effects — so neither has an EffectDefinition/RunModifier attached;
-    // they exist purely as descriptive/display metadata. The other 3 need mechanics
-    // that don't exist yet: "Loi de la Cellule" (room.cellule) needs a no-death/
-    // forced-surrender combat-resolution mode; "Loi des Sorties Mouvantes"
-    // (room.labyrinthe) needs a chain-combat trigger after 12 turns; "Loi du
-    // Sanctuaire" (room.meditation) needs the ambient promulgator to refuse ANY
-    // promulgation while in that room.
+    // 3 of its 5 laws are seeded: "Loi des Visites Terminées" (room.hopital), "Loi de la
+    // Falaise" (room.falaise, added once the Row/Rank positioning system existed — see
+    // Combat.FalaiseWindEnabled/ApplyFalaiseWindIfActive), and "Loi du Sanctuaire"
+    // (room.meditation, see AmbientPalaceLawPromulgator.SanctuaryRoomKey). All three
+    // mechanics are hardcoded room-key checks, not catalog-driven effects — so none has
+    // an EffectDefinition/RunModifier attached; they exist purely as descriptive/display
+    // metadata. Sanctuaire's SFD text has a second half NOT modeled (documented gap):
+    // "aucune loi Sévère ni majeure ne s'applique dans cette salle" — suspending laws
+    // already active when entering needs the same RunModifierType.SuspendSevereLaws
+    // mechanic "Loi du Répit" (Chapitre II) is missing; only the "no NEW promulgation"
+    // half is implemented. The other 2 need mechanics that don't exist yet: "Loi de la
+    // Cellule" (room.cellule) needs a no-death/forced-surrender combat-resolution mode;
+    // "Loi des Sorties Mouvantes" (room.labyrinthe) needs a chain-combat trigger after
+    // 12 turns.
     private async Task SeedLoisLieesAuxSallesAsync(CancellationToken cancellationToken)
     {
         await UpsertCompendiumLawAsync(
@@ -5460,6 +5699,33 @@ public sealed class CatalogSeedRunner
             impactDomains: ["Combat"],
             cancellationToken: cancellationToken,
             roomKey: "room.falaise",
+            isCumulExempt: true);
+
+        // "Loi du Sanctuaire" (room.meditation): AmbientPalaceLawPromulgator now refuses
+        // ANY promulgation while the player is in this room (SanctuaryRoomKey check) —
+        // same hardcoded-RoomKey convention as the two laws above. The SFD's other half
+        // ("aucune loi Sévère ni majeure ne s'applique dans cette salle" — suspending
+        // already-active laws) is NOT modeled: it needs the same RunModifierType.
+        // SuspendSevereLaws mechanic law.repit (Chapitre II) is missing, documented there.
+        await UpsertCompendiumLawAsync(
+            key: "law.sanctuaire",
+            name: "Loi du Sanctuaire",
+            narrativeText: "Article Un-bis — Il existe un endroit où le registre lui-même "
+                + "se tait. Le Palais ne s'en souvient que lorsqu'il y entre, et il n'y "
+                + "entre jamais.",
+            description: "Aucune nouvelle loi ne peut être promulguée tant que l'équipe "
+                + "est dans cette salle (les lois Sévères/majeures déjà actives avant "
+                + "d'y entrer restent actives — non modélisé : leur suspension a besoin "
+                + "du même mécanisme que la Loi du Répit).",
+            rarity: "Liée",
+            polarity: "Clémente",
+            isMajeure: false,
+            minDepth: null,
+            duration: "Permanent",
+            selectionGroup: "law.salle",
+            impactDomains: ["Narrative"],
+            cancellationToken: cancellationToken,
+            roomKey: "room.meditation",
             isCumulExempt: true);
 
         await _ctx.SaveChangesAsync(cancellationToken);
@@ -6455,5 +6721,108 @@ public sealed class CatalogSeedRunner
         existing.Version = version; existing.Status = "Active";
         existing.EntriesJson = JsonSerializer.Serialize(entries, J);
         existing.UpdatedAtUtc = now;
+    }
+
+    // "Loi de la Chandelle" (law.chandelle) needs an item-node reward pool larger than
+    // what's shown per offer, so a reroll can draw a genuinely different subset (see
+    // RewardOfferFactory.CreateItemRewardOfferAsync/SampleOptionsDeterministically on
+    // the game-engine side). Today the pool below is exactly 3 options — the same 3
+    // TemporaryItem/Heal choices previously hardcoded directly in RewardOfferFactory —
+    // so a reroll currently returns the same 3 back (documented, not a bug): once a
+    // larger authored item list is added here, rerolls will draw real variety.
+    private async Task SeedRewardTemplatesAsync(CancellationToken cancellationToken)
+    {
+        await UpsertItemRewardTemplateAsync(
+            key: "reward.item.default",
+            displayName: "Récompense d'objet",
+            description: "Récompense proposée à l'ouverture d'un nœud objet.",
+            maxOptionsShown: 3,
+            options:
+            [
+                new RewardTemplateOptionSpec(
+                    "TemporaryItem", "Éclat de garde",
+                    "Offre une protection permanente pendant la run.",
+                    "item.consumable.guard-shard", 8, "Consumable", "Uncommon", "Guard"),
+                new RewardTemplateOptionSpec(
+                    "TemporaryItem", "Baume de mémoire",
+                    "Restaure une partie de la vitalité.",
+                    "item.consumable.minor-heal", 15, "Consumable", "Common", "Heal"),
+                new RewardTemplateOptionSpec(
+                    "Heal", "Souffle du passé",
+                    "Récupère des PV proportionnels au risque de la salle.",
+                    null, 10, null, null, null),
+            ],
+            cancellationToken);
+    }
+
+    private sealed record RewardTemplateOptionSpec(
+        string RewardType, string Label, string Description, string? PayloadKey, int BaseAmount,
+        string? ItemType, string? ItemRarity, string? ItemEffectType);
+
+    private async Task UpsertItemRewardTemplateAsync(
+        string key, string displayName, string description, int maxOptionsShown,
+        IReadOnlyCollection<RewardTemplateOptionSpec> options, CancellationToken cancellationToken)
+    {
+        const string version = "canon-1.0.0";
+        var now = DateTime.UtcNow;
+
+        var template = await _ctx.RewardTemplates
+            .Include(t => t.Options)
+            .FirstOrDefaultAsync(t => t.Key == key, cancellationToken);
+
+        if (template is null)
+        {
+            template = new RewardTemplateEntity
+            {
+                Id = Guid.NewGuid(),
+                Key = key,
+                DisplayName = displayName,
+                Description = description,
+                SourceType = "NodeEvent",
+                MinOptions = maxOptionsShown,
+                MaxOptions = maxOptionsShown,
+                Version = version,
+                Status = "Active",
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
+            };
+            _ctx.RewardTemplates.Add(template);
+        }
+        else
+        {
+            template.DisplayName = displayName;
+            template.Description = description;
+            template.SourceType = "NodeEvent";
+            template.MinOptions = maxOptionsShown;
+            template.MaxOptions = maxOptionsShown;
+            template.Version = version;
+            template.Status = "Active";
+            template.UpdatedAtUtc = now;
+
+            // Replace the option pool wholesale on reseed, so this stays the single
+            // source of truth for "reward.item.default" (e.g. once the full authored
+            // item list is added here).
+            _ctx.RewardTemplateOptions.RemoveRange(template.Options);
+            template.Options.Clear();
+        }
+
+        foreach (var option in options)
+        {
+            template.Options.Add(new RewardTemplateOptionEntity
+            {
+                Id = Guid.NewGuid(),
+                RewardTemplateId = template.Id,
+                RewardType = option.RewardType,
+                Label = option.Label,
+                Description = option.Description,
+                PayloadKey = option.PayloadKey,
+                BaseAmount = option.BaseAmount,
+                ScalingMode = "Flat",
+                Weight = 1,
+                ItemType = option.ItemType,
+                ItemRarity = option.ItemRarity,
+                ItemEffectType = option.ItemEffectType
+            });
+        }
     }
 }

@@ -358,9 +358,20 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("first_hit_critical_enabled");
 
+                    b.Property<string>("ForgottenSkillKey")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("forgotten_skill_key");
+
                     b.Property<bool>("HasFirstHitLanded")
                         .HasColumnType("boolean")
                         .HasColumnName("has_first_hit_landed");
+
+                    b.Property<bool>("HasMirrorTriggered")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("has_mirror_triggered");
 
                     b.Property<bool>("HealingBlocked")
                         .HasColumnType("boolean")
@@ -378,9 +389,33 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("low_hp_damage_amplification_enabled");
 
+                    b.Property<bool>("MiroirEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("miroir_enabled");
+
+                    b.Property<bool>("NextActionRestrictedToBasicAttack")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("next_action_restricted_to_basic_attack");
+
                     b.Property<Guid>("NodeId")
                         .HasColumnType("uuid")
                         .HasColumnName("node_id");
+
+                    b.Property<bool>("PostDeathBasicAttackOnlyEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("post_death_basic_attack_only_enabled");
+
+                    b.Property<bool>("PresentationsEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("presentations_enabled");
 
                     b.Property<Guid>("RoomId")
                         .HasColumnType("uuid")
@@ -395,6 +430,18 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)")
                         .HasColumnName("status");
+
+                    b.Property<bool>("TapisPropreEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("tapis_propre_enabled");
+
+                    b.Property<bool>("ThirdCupHealCorruptionEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("third_cup_heal_corruption_enabled");
 
                     b.Property<int>("TurnNumber")
                         .HasColumnType("integer")
@@ -558,6 +605,12 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                     b.Property<int>("Guard")
                         .HasColumnType("integer")
                         .HasColumnName("guard");
+
+                    b.Property<bool>("HasActedThisCombat")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("has_acted_this_combat");
 
                     b.Property<int>("HealingBonusPercent")
                         .ValueGeneratedOnAdd()
@@ -1777,6 +1830,11 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                     b.Property<int>("Focus")
                         .HasColumnType("integer")
                         .HasColumnName("focus");
+
+                    b.Property<string>("ForgottenSkillKey")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("forgotten_skill_key");
 
                     b.Property<string>("GeneratorVersion")
                         .IsRequired()

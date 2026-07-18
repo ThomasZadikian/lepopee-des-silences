@@ -47,11 +47,24 @@ public sealed class AmbientPalaceLawPromulgator : IAmbientPalaceLawPromulgator
         _weightedSelector = weightedSelector;
     }
 
+    /// <summary>"Loi du Sanctuaire" (law.sanctuaire, room.meditation): "aucune loi Sévère
+    /// ni majeure ne s'applique dans cette salle ; aucune ne peut y être promulguée." A
+    /// hardcoded room-key check (same convention as CombatFactory's room-bound flags) —
+    /// no RunModifier is involved since the room itself is the rule. Skipping here (rather
+    /// than consuming <see cref="Run.LastPromulgationFloorIndex"/>) means a still-pending
+    /// guaranteed floor promulgation resumes at the next room after leaving.</summary>
+    private const string SanctuaryRoomKey = "room.meditation";
+
     public async Task PromulgateForRoomTransitionAsync(
         Run run,
         Room nextRoom,
         CancellationToken cancellationToken = default)
     {
+        if (string.Equals(nextRoom.CatalogBinding?.Key, SanctuaryRoomKey, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
         var isGuaranteed = run.LastPromulgationFloorIndex != run.FloorIndex;
 
         if (!isGuaranteed && !RolledForRandomPromulgation(run, nextRoom.Id.Value))

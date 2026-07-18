@@ -126,6 +126,9 @@ public sealed class UseCombatSkillCommandHandler
             validationResult.Actor!.Id.Value,
             AtbActionMath.RecoveryTicks(validationResult.Skill!.BasePower, validationResult.Actor!.BaseStatSnapshot.Recovery));
 
+        var mirrorLogEntries = ResolveMirrorCopyIfTriggered(
+            effectResolution.Combat, validationResult.Actor!, validationResult.Skill!);
+
         var progressionLogEntries = AdvanceCombat(effectResolution.Combat, now.UtcDateTime);
 
         var allActionRecords = new List<CombatActionRecord>();
@@ -160,6 +163,7 @@ public sealed class UseCombatSkillCommandHandler
 
         var logEntries = new[] { logEntry }
             .Concat(effectResolution.LogEntries)
+            .Concat(mirrorLogEntries)
             .Concat(progressionLogEntries)
             .Concat(enemyTurnLogEntries)
             .ToArray();
@@ -177,6 +181,73 @@ public sealed class UseCombatSkillCommandHandler
             CombatFailed: combatFailed,
             CanProgressRun: combatCompleted,
             RunStatus: run.Status.ToString());
+    }
+
+    /// <summary>
+    /// "Loi du Miroir" (law.miroir): "le premier sort lancé par l'équipe dans chaque
+    /// combat est immédiatement copié par l'ennemi le plus rapide (mêmes valeurs,
+    /// ciblage inversé)." Fires once per combat, right after the FIRST ally skill use
+    /// resolves — reuses the exact skill object and re-resolves its TargetingType from
+    /// the copying enemy's side (targeting is always relative to the actor, so no
+    /// explicit inversion is needed: e.g. "SingleEnemy" from the enemy's perspective
+    /// naturally resolves to an ally). No-op when the law is inactive, combat is no
+    /// longer active, no living enemy exists, or this is not the combat's first ally
+    /// skill use. Documented simplification: the copy does not consume the copying
+    /// enemy's own ATB gauge/turn — it is an instant reaction, not a scheduled action.
+    /// </summary>
+    private CombatLogEntryDto[] ResolveMirrorCopyIfTriggered(
+        Combat combat, Combatant originalCaster, CombatantSkill skill)
+    {
+        if (combat.Status != CombatStatus.Active || !combat.TryConsumeMirrorTrigger())
+            return [];
+
+        var mirrorActor = combat.GetFastestLivingEnemy();
+        if (mirrorActor is null)
+            return [];
+
+        var mirrorTargets = ResolveMirrorTargets(combat, mirrorActor, originalCaster, skill);
+        if (mirrorTargets.Count == 0)
+            return [];
+
+        var mirrorResolution = _effectResolver.Resolve(combat, mirrorActor, skill, mirrorTargets);
+
+        var announcement = new CombatLogEntryDto(
+            OccurredAtUtc: DateTime.UtcNow,
+            Type: "MirrorCopy",
+            Message: $"{mirrorActor.DisplayName} copies {originalCaster.DisplayName}'s {skill.DisplayName} !",
+            ActorId: mirrorActor.Id.Value,
+            SkillKey: skill.Key,
+            TargetIds: mirrorTargets.Select(t => t.Id.Value).ToArray());
+
+        return new[] { announcement }.Concat(mirrorResolution.LogEntries).ToArray();
+    }
+
+    private static IReadOnlyCollection<Combatant> ResolveMirrorTargets(
+        Combat combat, Combatant mirrorActor, Combatant originalCaster, CombatantSkill skill)
+    {
+        switch ((skill.TargetingType ?? string.Empty).Trim())
+        {
+            case "Self":
+                return [mirrorActor];
+            case "AllEnemies":
+                // From the copying enemy's perspective, "AllEnemies" means the whole ally team.
+                return combat.Allies.Where(a => !a.IsDefeated).ToArray();
+            case "AllAllies":
+                return combat.Enemies.Where(e => !e.IsDefeated).ToArray();
+            case "SingleAlly":
+                {
+                    var mostWounded = combat.Enemies
+                        .Where(e => !e.IsDefeated)
+                        .OrderBy(e => e.MaxVitality > 0 ? (double)e.CurrentVitality / e.MaxVitality : 0.0)
+                        .FirstOrDefault();
+                    return mostWounded is null ? [] : [mostWounded];
+                }
+            case "SingleEnemy":
+            default:
+                // "Choisissez votre premier mot avec soin" — the copy turns the exact
+                // same single-target spell back on whoever cast it first.
+                return originalCaster.IsDefeated ? [] : [originalCaster];
+        }
     }
 
     private IReadOnlyCollection<CombatLogEntryDto> ResolveEnemyTurns(

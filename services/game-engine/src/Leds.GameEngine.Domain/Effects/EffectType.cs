@@ -71,4 +71,26 @@ public enum EffectType
     EnableSilenceDuActive,
     /// <summary>"Loi des Poches Cousues" (law.poches-cousues) → RunModifierType.ConsumablesRestrictedInCombat.</summary>
     EnableConsumablesRestrictedInCombat,
+    /// <summary>"Loi de l'Éloge Funèbre" (law.eloge-funebre) → RunModifierType.PostDeathBasicAttackOnly.</summary>
+    EnablePostDeathBasicAttackOnly,
+    /// <summary>"Loi du Tapis Propre" (law.tapis-propre) → RunModifierType.TapisPropreEnabled.</summary>
+    EnableTapisPropreEnabled,
+    /// <summary>"Loi de la Troisième Tasse" (law.troisieme-tasse) → RunModifierType.ThirdCupHealCorruptionEnabled.</summary>
+    EnableThirdCupHealCorruption,
+    /// <summary>"Loi de l'Abondance" (law.abondance) → RunModifierType.AbondanceExtraChoiceEnabled.</summary>
+    EnableAbondanceExtraChoice,
+    /// <summary>"Loi des Présentations" (law.presentations) → RunModifierType.PresentationsEnabled.</summary>
+    EnablePresentations,
+    /// <summary>"Loi du Miroir" (law.miroir) → RunModifierType.MiroirEnabled.</summary>
+    EnableMiroir,
+    /// <summary>"Loi de l'Invitation" (law.invitation) → RunModifierType.LootChanceBonusPercent.</summary>
+    EnableLootChanceBonus,
+    /// <summary>"Loi de l'Oubli Partiel" (law.oubli-partiel) → RunModifierType.SkillForgotten.</summary>
+    EnableSkillForgotten,
+    /// <summary>"Loi de l'Impôt du Seuil" (law.impot-seuil) → RunModifierType.RoomTollAmount.</summary>
+    EnableRoomToll,
+    /// <summary>"Loi du Prêteur" (law.preteur) → RunModifierType.CurrencyGainBonusPercent.</summary>
+    EnableCurrencyGainBonus,
+    /// <summary>"Loi de la Chandelle" (law.chandelle) → RunModifierType.ItemNodeRerollCharge.</summary>
+    EnableItemNodeReroll,
 }

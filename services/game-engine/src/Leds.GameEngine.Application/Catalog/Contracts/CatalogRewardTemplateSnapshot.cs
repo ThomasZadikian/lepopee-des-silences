@@ -19,4 +19,7 @@ public sealed record CatalogRewardTemplateOptionSnapshot(
     string? EffectSetKey,
     int BaseAmount,
     string ScalingMode,
-    int Weight);
+    int Weight,
+    string? ItemType = null,
+    string? ItemRarity = null,
+    string? ItemEffectType = null);

@@ -63,7 +63,7 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
                 // UseItemInCombatCommandHandler) is untouched.
                 if (!combat.HealingBlocked)
                 {
-                    ResolveHeal(actor, skill, targets, logEntries);
+                    ResolveHeal(combat, actor, skill, targets, logEntries);
                 }
                 break;
 
@@ -123,6 +123,7 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
             : Math.Max(0, (int)Math.Round(baseCost * (1.0 - reductionPercent / 100.0)));
 
     private static void ResolveHeal(
+        Combat combat,
         Combatant actor,
         CombatantSkill skill,
         IReadOnlyCollection<Combatant> targets,
@@ -142,6 +143,11 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
                 * (1.0 + actor.EffectiveHealingBonusPercent / 100.0)
                 * (1.0 - target.RowHealingReceivedReductionPercent / 100.0));
 
+            // "Loi de la Troisième Tasse": may halve healAmount and apply a light
+            // poison to the target. No-op when the law is inactive.
+            var (correctedHealAmount, thirdCupTriggered) = combat.ApplyThirdCupRollIfActive(target, healAmount);
+            healAmount = correctedHealAmount;
+
             var before = target.CurrentVitality;
             target.ApplyHeal(healAmount);
             var healed = target.CurrentVitality - before;
@@ -157,6 +163,16 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
                     actor,
                     skill,
                     [target]));
+
+                if (thirdCupTriggered)
+                {
+                    logEntries.Add(CreateLog(
+                        "StatusApplied",
+                        $"{target.DisplayName}'s cup was the third one — a light poison sets in.",
+                        actor,
+                        skill,
+                        [target]));
+                }
             }
         }
     }
@@ -567,6 +583,10 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
 
             if (target.IsDefeated)
             {
+                // "Loi de l'Éloge Funèbre": arms the next actor's basic-attack-only
+                // restriction. No-op when the law isn't active.
+                combat.RegisterCombatantDefeated();
+
                 logEntries.Add(CreateLog(
                     "TargetDefeated",
                     $"{target.DisplayName} is defeated.",

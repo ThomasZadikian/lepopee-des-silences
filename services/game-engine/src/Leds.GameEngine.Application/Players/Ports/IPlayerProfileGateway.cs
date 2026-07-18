@@ -29,6 +29,11 @@ public interface IPlayerProfileGateway
     /// <summary>Awards a flat amount of the player's persistent currency ("Éclats du Palais").</summary>
     Task<PlayerProfileView> AwardCurrencyAsync(Guid playerId, int amount, CancellationToken cancellationToken);
 
+    /// <summary>Spends the player's persistent currency ("Éclats du Palais") if they can
+    /// afford it. Returns false (not an exception) on insufficient funds — insolvency is
+    /// an expected outcome for callers like "Loi de l'Impôt du Seuil".</summary>
+    Task<bool> TrySpendCurrencyAsync(Guid playerId, int amount, CancellationToken cancellationToken);
+
     Task<bool> HasClaimedNpcOfferingAsync(Guid playerId, string npcKey, string offeringKey, CancellationToken cancellationToken);
 
     Task ClaimNpcOfferingAsync(Guid playerId, string npcKey, string offeringKey, Guid? sourceRunId, CancellationToken cancellationToken);

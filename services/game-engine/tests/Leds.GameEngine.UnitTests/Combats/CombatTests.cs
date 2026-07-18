@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Leds.GameEngine.Domain.Combats;
+using Leds.GameEngine.Domain.Combats.StatusEffects;
 using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rooms;
@@ -18,7 +19,13 @@ public sealed class CombatTests
         bool duelDamageAsymmetryEnabled = false,
         int dotMagnitudeBonus = 0,
         bool healingBlocked = false,
-        bool falaiseWindEnabled = false)
+        bool falaiseWindEnabled = false,
+        bool postDeathBasicAttackOnlyEnabled = false,
+        bool tapisPropreEnabled = false,
+        bool thirdCupHealCorruptionEnabled = false,
+        bool presentationsEnabled = false,
+        bool miroirEnabled = false,
+        string? forgottenSkillKey = null)
     {
         var allies = Enumerable.Range(0, allyCount).Select(i =>
             Combatant.CreateAlly($"player.{i}", $"Hero{i}", "Fighter", 100)).ToArray();
@@ -40,7 +47,13 @@ public sealed class CombatTests
             duelDamageAsymmetryEnabled,
             dotMagnitudeBonus,
             healingBlocked,
-            falaiseWindEnabled);
+            falaiseWindEnabled,
+            postDeathBasicAttackOnlyEnabled,
+            tapisPropreEnabled,
+            thirdCupHealCorruptionEnabled,
+            presentationsEnabled,
+            miroirEnabled,
+            forgottenSkillKey: forgottenSkillKey);
     }
 
     [Fact]
@@ -556,5 +569,174 @@ public sealed class CombatTests
         anyDamaged.Should().BeTrue(
             because: "when every combatant is already in Back row, a triggered roll can only deal " +
                 "the 5-damage 'embruns' fallback, never a row push.");
+    }
+
+    // ---------------------------------------------------------------------------
+    // "Loi de l'Éloge Funèbre" (PostDeathBasicAttackOnlyEnabled) — the next combatant
+    // to act after any death may only use the basic attack. The gate itself lives in
+    // CombatSkillActionValidator (see CombatSkillActionValidatorTests); here we only
+    // check Combat's own bookkeeping: the baked flag and RegisterCombatantDefeated/
+    // ConsumeBasicAttackRestriction, including the DoT-inflicted-death path wired
+    // into TickAllStatusEffects.
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void PostDeathBasicAttackOnlyEnabled_ShouldReflectTheValueBakedInAtCreation()
+    {
+        CreateSut(postDeathBasicAttackOnlyEnabled: true).PostDeathBasicAttackOnlyEnabled.Should().BeTrue();
+        CreateSut().PostDeathBasicAttackOnlyEnabled.Should().BeFalse();
+    }
+
+    [Fact]
+    public void RegisterCombatantDefeated_ShouldSetNextActionRestrictedToBasicAttack_WhenTheLawIsEnabled()
+    {
+        var combat = CreateSut(postDeathBasicAttackOnlyEnabled: true);
+
+        combat.RegisterCombatantDefeated();
+
+        combat.NextActionRestrictedToBasicAttack.Should().BeTrue();
+    }
+
+    [Fact]
+    public void RegisterCombatantDefeated_ShouldNotSetNextActionRestrictedToBasicAttack_WhenTheLawIsDisabled()
+    {
+        var combat = CreateSut(postDeathBasicAttackOnlyEnabled: false);
+
+        combat.RegisterCombatantDefeated();
+
+        combat.NextActionRestrictedToBasicAttack.Should().BeFalse();
+    }
+
+    [Fact]
+    public void ConsumeBasicAttackRestriction_ShouldClearTheRestriction()
+    {
+        var combat = CreateSut(postDeathBasicAttackOnlyEnabled: true);
+        combat.RegisterCombatantDefeated();
+
+        combat.ConsumeBasicAttackRestriction();
+
+        combat.NextActionRestrictedToBasicAttack.Should().BeFalse();
+    }
+
+    [Fact]
+    public void TickAllStatusEffects_ShouldRestrictNextAction_WhenADotKillsACombatant()
+    {
+        var combat = CreateSut(allyCount: 1, enemyCount: 1, postDeathBasicAttackOnlyEnabled: true);
+        var enemy = combat.Enemies.Single();
+        enemy.ApplyStatusEffect(CombatStatusEffect.Create(
+            "lethal-poison", "Poison mortel", StatusEffectKind.DamageOverTime,
+            currentTick: combat.CurrentTick, durationTicks: 10000, magnitude: 999, stacks: 1, tickInterval: 1400));
+
+        combat.HoldTick(1400);
+        combat.TickAllStatusEffects();
+
+        enemy.IsDefeated.Should().BeTrue();
+        combat.NextActionRestrictedToBasicAttack.Should().BeTrue();
+    }
+
+    // ---------------------------------------------------------------------------
+    // "Loi du Tapis Propre" (TapisPropreEnabled) — no Combat-level mutable state;
+    // the restriction is tracked per-combatant (Combatant.HasActedThisCombat) and
+    // enforced in CombatSkillActionValidator (see CombatSkillActionValidatorTests).
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void TapisPropreEnabled_ShouldReflectTheValueBakedInAtCreation()
+    {
+        CreateSut(tapisPropreEnabled: true).TapisPropreEnabled.Should().BeTrue();
+        CreateSut().TapisPropreEnabled.Should().BeFalse();
+    }
+
+    // ---------------------------------------------------------------------------
+    // "Loi de la Troisième Tasse" (ThirdCupHealCorruptionEnabled) — the per-application
+    // roll (ApplyThirdCupRollIfActive) is tested in CombatSkillEffectResolverTests, since
+    // it needs a heal to actually apply.
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void ThirdCupHealCorruptionEnabled_ShouldReflectTheValueBakedInAtCreation()
+    {
+        CreateSut(thirdCupHealCorruptionEnabled: true).ThirdCupHealCorruptionEnabled.Should().BeTrue();
+        CreateSut().ThirdCupHealCorruptionEnabled.Should().BeFalse();
+    }
+
+    [Fact]
+    public void ApplyThirdCupRollIfActive_ShouldReturnHealAmountUnchanged_WhenLawIsInactive()
+    {
+        var combat = CreateSut(thirdCupHealCorruptionEnabled: false);
+        var target = combat.Allies.Single();
+
+        var (healAmount, triggered) = combat.ApplyThirdCupRollIfActive(target, 20);
+
+        healAmount.Should().Be(20);
+        triggered.Should().BeFalse();
+        target.StatusEffects.Should().BeEmpty();
+    }
+
+    // ---------------------------------------------------------------------------
+    // "Loi des Présentations" (PresentationsEnabled) — no Combat-level mutable state;
+    // the per-enemy first-action forecast (gated on Combatant.HasActedThisCombat) is
+    // tested in EnemyCombatTurnResolverTests, since it needs a real enemy turn to fire.
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void PresentationsEnabled_ShouldReflectTheValueBakedInAtCreation()
+    {
+        CreateSut(presentationsEnabled: true).PresentationsEnabled.Should().BeTrue();
+        CreateSut().PresentationsEnabled.Should().BeFalse();
+    }
+
+    // ---------------------------------------------------------------------------
+    // "Loi du Miroir" (MiroirEnabled) — the mirror-copy resolution itself lives in
+    // UseCombatSkillCommandHandler.ResolveMirrorCopyIfTriggered, tested there. Here we
+    // only verify the baked flag and the TryConsumeMirrorTrigger/GetFastestLivingEnemy
+    // building blocks it relies on.
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void MiroirEnabled_ShouldReflectTheValueBakedInAtCreation()
+    {
+        CreateSut(miroirEnabled: true).MiroirEnabled.Should().BeTrue();
+        CreateSut().MiroirEnabled.Should().BeFalse();
+    }
+
+    [Fact]
+    public void TryConsumeMirrorTrigger_ShouldReturnTrue_OnlyOnce_WhenLawIsActive()
+    {
+        var combat = CreateSut(miroirEnabled: true);
+
+        combat.TryConsumeMirrorTrigger().Should().BeTrue();
+        combat.HasMirrorTriggered.Should().BeTrue();
+        combat.TryConsumeMirrorTrigger().Should().BeFalse();
+    }
+
+    [Fact]
+    public void TryConsumeMirrorTrigger_ShouldConsumeButReturnFalse_WhenLawIsInactive()
+    {
+        var combat = CreateSut(miroirEnabled: false);
+
+        combat.TryConsumeMirrorTrigger().Should().BeFalse();
+        combat.HasMirrorTriggered.Should().BeTrue();
+    }
+
+    [Fact]
+    public void GetFastestLivingEnemy_ShouldReturnNull_WhenNoEnemyIsLiving()
+    {
+        var combat = CreateSut(enemyCount: 1);
+        combat.Enemies.Single().MarkDefeated();
+
+        combat.GetFastestLivingEnemy().Should().BeNull();
+    }
+
+    // ---------------------------------------------------------------------------
+    // "Loi de l'Oubli Partiel" (ForgottenSkillKey) — the rejection itself lives in
+    // CombatSkillActionValidator, tested there. Here we only verify the baked value.
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void ForgottenSkillKey_ShouldReflectTheValueBakedInAtCreation()
+    {
+        CreateSut(forgottenSkillKey: "skill.hero.blaze").ForgottenSkillKey.Should().Be("skill.hero.blaze");
+        CreateSut().ForgottenSkillKey.Should().BeNull();
     }
 }

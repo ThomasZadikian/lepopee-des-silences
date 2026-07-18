@@ -1670,6 +1670,21 @@ namespace Leds.Catalog.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("effect_set_id");
 
+                    b.Property<string>("ItemEffectType")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("item_effect_type");
+
+                    b.Property<string>("ItemRarity")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("item_rarity");
+
+                    b.Property<string>("ItemType")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("item_type");
+
                     b.Property<string>("Label")
                         .IsRequired()
                         .HasMaxLength(256)

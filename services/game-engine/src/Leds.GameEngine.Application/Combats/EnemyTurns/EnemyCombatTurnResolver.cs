@@ -103,6 +103,22 @@ public sealed class EnemyCombatTurnResolver : IEnemyCombatTurnResolver
             return new EnemyCombatTurnResolution(true, actor.Id.Value, skill.Key, targetIds, logEntries, CombatRuntimeDto.FromDomain(combat));
         }
 
+        // "Loi des Présentations" (law.presentations): telegraph the enemy's first action
+        // of the combat via a dedicated log entry, reusing the skill/targets already
+        // resolved above (no separate AI preview call — avoids any staleness between the
+        // announcement and the actual resolution below).
+        if (combat.PresentationsEnabled && !actor.HasActedThisCombat)
+        {
+            var forecastTargetNames = string.Join(", ", validationResult.Targets.Select(t => t.DisplayName));
+            logEntries.Add(CreateSystemLog(
+                "ActionForecast",
+                $"{actor.DisplayName} s'apprête à utiliser {skill.DisplayName} sur {forecastTargetNames} !",
+                combat,
+                actor.Id.Value,
+                skill.Key,
+                targetIds));
+        }
+
         logEntries.Add(CreateSystemLog(
             "EnemyTurnResolved",
             $"{actor.DisplayName} uses {skill.DisplayName}.",

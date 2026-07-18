@@ -45,12 +45,44 @@ public sealed class CombatSkillActionValidator : ICombatSkillActionValidator
             return Invalid($"Actor does not own skill '{skillKey}'.");
         }
 
+        // "Loi de l'Oubli Partiel": one skill, picked at promulgation time from the
+        // team's full roster, is unusable for the rest of the floor.
+        if (combat.ForgottenSkillKey is not null
+            && string.Equals(skill.Key, combat.ForgottenSkillKey, StringComparison.OrdinalIgnoreCase))
+        {
+            return Invalid("Loi de l'Oubli Partiel: ce sort est oublié pour le reste de l'étage.");
+        }
+
+        // "Loi du Tapis Propre": each combatant's OWN first turn of the combat cannot
+        // be an attack — support/buff/debuff/movement only. Movement (Reposition) and
+        // non-Damage skills still mark HasActedThisCombat via RegisterAtbAction, so the
+        // restriction only ever gates the very first action, whatever form it takes.
+        if (combat.TapisPropreEnabled
+            && !actor.HasActedThisCombat
+            && string.Equals(skill.SkillType, "Damage", StringComparison.OrdinalIgnoreCase))
+        {
+            return Invalid("Loi du Tapis Propre: le premier tour ne peut pas être une attaque.");
+        }
+
+        // "Loi de l'Éloge Funèbre": after any death, the next actor may only use the
+        // basic attack. Documented simplification: item use and Reposition never call
+        // through this shared validator, so neither is gated by this restriction.
+        if (combat.NextActionRestrictedToBasicAttack
+            && !string.Equals(skill.Key, BasicAttackSkillKey, StringComparison.OrdinalIgnoreCase))
+        {
+            return Invalid("Loi de l'Éloge Funèbre: seule une attaque basique est permise après une mort.");
+        }
+
         var targetingResult = _targetingRuleValidator.Validate(combat, actor, skill, targetIds);
 
         if (!targetingResult.IsValid)
         {
             return Invalid(targetingResult.ErrorMessage!);
         }
+
+        // A valid action (necessarily the basic attack, if the restriction was active)
+        // consumes the restriction so it doesn't linger into the actor after next.
+        combat.ConsumeBasicAttackRestriction();
 
         return new CombatSkillActionValidationResult(
             IsValid: true,
@@ -59,6 +91,8 @@ public sealed class CombatSkillActionValidator : ICombatSkillActionValidator
             Skill: skill,
             Targets: targetingResult.Targets);
     }
+
+    private const string BasicAttackSkillKey = "skill.basic.strike";
 
     private static CombatSkillActionValidationResult Invalid(string message)
     {
