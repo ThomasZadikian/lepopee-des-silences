@@ -6802,7 +6802,6 @@ public sealed class CatalogSeedRunner
         var now = DateTime.UtcNow;
 
         var template = await _ctx.RewardTemplates
-            .Include(t => t.Options)
             .FirstOrDefaultAsync(t => t.Key == key, cancellationToken);
 
         if (template is null)
@@ -6836,14 +6835,20 @@ public sealed class CatalogSeedRunner
 
             // Replace the option pool wholesale on reseed, so this stays the single
             // source of truth for "reward.item.default" (e.g. once the full authored
-            // item list is added here).
-            _ctx.RewardTemplateOptions.RemoveRange(template.Options);
-            template.Options.Clear();
+            // item list is added here). Uses a bulk delete keyed by RewardTemplateId
+            // instead of tracking + RemoveRange-ing the loaded options: the latter can
+            // throw DbUpdateConcurrencyException ("0 rows affected") if the tracked
+            // option rows are stale relative to the database (e.g. a prior interrupted
+            // reseed) — ExecuteDeleteAsync bypasses the change tracker and always
+            // succeeds regardless of what's actually still there.
+            await _ctx.RewardTemplateOptions
+                .Where(o => o.RewardTemplateId == template.Id)
+                .ExecuteDeleteAsync(cancellationToken);
         }
 
         foreach (var option in options)
         {
-            template.Options.Add(new RewardTemplateOptionEntity
+            _ctx.RewardTemplateOptions.Add(new RewardTemplateOptionEntity
             {
                 Id = Guid.NewGuid(),
                 RewardTemplateId = template.Id,
