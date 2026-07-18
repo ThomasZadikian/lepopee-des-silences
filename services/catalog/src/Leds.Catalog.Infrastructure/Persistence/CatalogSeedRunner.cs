@@ -86,8 +86,7 @@ public sealed class CatalogSeedRunner
         await SeedBestiaireImperatriceDeLaFalaiseAsync(cancellationToken);
         await SeedCanonItemsAsync(cancellationToken);
         await SeedCanonCursesAsync(cancellationToken);
-        await SeedCanonLawsAsync(cancellationToken);
-        await AttachCanonLawEffectsAsync(cancellationToken);
+        await PruneCanonLawPlaceholdersAsync(cancellationToken);
         await SeedLoisMajeuresAsync(cancellationToken);
         await SeedLoisDeCombatAsync(cancellationToken);
         await SeedLoisClimatiquesAsync(cancellationToken);
@@ -4739,43 +4738,27 @@ public sealed class CatalogSeedRunner
         existing.UpdatedAtUtc = now;
     }
     // ── LOIS DU PALAIS CANON (arrêtés papaux) ─────────────────────────────────
-    private async Task SeedCanonLawsAsync(CancellationToken cancellationToken)
+    // Lois du Palais Phase 6: prune the 5 placeholder "canon.law.*" laws (Arrêté 153-2,
+    // Interdiction de construire, Création de vie, Prières impies nocturnes, Reflets
+    // de Lune) predate the 37-law compendium and are superseded by it — nothing in
+    // game-engine, tests, or the frontend references these keys by name (grepped the
+    // whole repo). Rather than just stop re-seeding them (which would leave stale rows
+    // in any database that already ran the old seed), this actively deletes any
+    // existing rows: the 5 PalaceLawDefinitions themselves, plus their attached
+    // EffectSets ("effect.canon.law.*") — EffectDefinitions cascade-delete with their
+    // EffectSet by EF convention (required FK), so nothing orphaned is left behind.
+    // Uses ExecuteDeleteAsync (bypasses the change tracker) for the same reason as
+    // UpsertItemRewardTemplateAsync above: a prune step must succeed unconditionally,
+    // whether 0, 5, or a partial set of these rows still exist.
+    private async Task PruneCanonLawPlaceholdersAsync(CancellationToken cancellationToken)
     {
-        // key, name, desc, severity, visibility, priority, impactDomains, trigger
-        await UpsertLawAsync("canon.law.arrete-153-2", "Arrêté papal n°153-2",
-            "Interdiction formelle de tout véhicule étranger dans l'enceinte sainte. L'étranger marche, ou ne marche pas.",
-            severity: 1, visibility: "Visible", priority: 1,
-            impactDomains: new[] { "Events", "Generation" }, trigger: "OnApplied", cancellationToken);
+        await _ctx.PalaceLawDefinitions
+            .Where(l => l.Key.StartsWith("canon.law."))
+            .ExecuteDeleteAsync(cancellationToken);
 
-        await UpsertLawAsync("canon.law.interdiction-construire", "Interdiction de construire",
-            "Nul ne bâtit sans la bénédiction du clergé. Ce qui s'élève sans permission s'effondre.",
-            severity: 1, visibility: "Visible", priority: 2,
-            impactDomains: new[] { "Generation" }, trigger: "OnApplied", cancellationToken);
-
-        await UpsertLawAsync("canon.law.creation-vie-heresie", "Création de vie : hérésie",
-            "Donner la vie est le privilège de Dieu seul. Quiconque transmute le souffle sera décapité.",
-            severity: 3, visibility: "Visible", priority: 5,
-            impactDomains: new[] { "Narrative", "Combat" }, trigger: "OnTransgression", cancellationToken);
-
-        await UpsertLawAsync("canon.law.prieres-impies-nocturnes", "Prières impies nocturnes",
-            "À la tombée de la nuit, les prières montent de l'abbaye. Ce qui se nourrit de la voix s'en trouve renforcé.",
-            severity: 2, visibility: "PartiallyVisible", priority: 3,
-            impactDomains: new[] { "Combat" }, trigger: "OnCombatStarted", cancellationToken);
-
-        await UpsertLawAsync("canon.law.reflets-de-lune", "Le poids des reflets de Lune",
-            "Him'Lit n'est pas encore là. Mais la Lune le précède, et son influence croît à chaque palier franchi.",
-            severity: 3, visibility: "Hidden", priority: 9,
-            impactDomains: new[] { "HimLit", "Rewards" }, trigger: "OnDepthIncreased", cancellationToken);
-    }
-
-    private async Task AttachCanonLawEffectsAsync(CancellationToken cancellationToken)
-    {
-        // lawKey, effectType (cf. EffectType côté game-engine), value, duration, condition
-        await UpsertLawEffectAsync("canon.law.reflets-de-lune", "ModifyDifficultyMultiplier", 0.30m, "UntilRunEnds", null, cancellationToken);
-        await UpsertLawEffectAsync("canon.law.creation-vie-heresie", "ModifyDifficultyMultiplier", 0.20m, "UntilRunEnds", null, cancellationToken);
-        await UpsertLawEffectAsync("canon.law.prieres-impies-nocturnes", "ModifyDifficultyMultiplier", 0.15m, "UntilRunEnds", null, cancellationToken);
-        await UpsertLawEffectAsync("canon.law.interdiction-construire", "ModifyRewardPowerMultiplier", -0.15m, "UntilRunEnds", null, cancellationToken);
-        await UpsertLawEffectAsync("canon.law.arrete-153-2", "ModifySpeed", -0.20m, "UntilRunEnds", null, cancellationToken);
+        await _ctx.EffectSets
+            .Where(e => e.Key.StartsWith("effect.canon.law."))
+            .ExecuteDeleteAsync(cancellationToken);
     }
 
     private async Task UpsertLawEffectAsync(
@@ -4822,50 +4805,6 @@ public sealed class CatalogSeedRunner
 
         law.EffectSetId = effectSet.Id;
         law.UpdatedAtUtc = now;
-    }
-
-    private async Task UpsertLawAsync(
-        string key, string name, string description,
-        int severity, string visibility, int priority,
-        string[] impactDomains, string trigger, CancellationToken cancellationToken)
-    {
-        const string version = "canon-1.0.0";
-        var now = DateTime.UtcNow;
-        var domainsJson = JsonSerializer.Serialize(impactDomains);
-        var existing = await _ctx.PalaceLawDefinitions.FirstOrDefaultAsync(l => l.Key == key, cancellationToken);
-        if (existing is null)
-        {
-            _ctx.PalaceLawDefinitions.Add(new PalaceLawDefinitionEntity
-            {
-                Id = Guid.NewGuid(),
-                Key = key,
-                Name = name,
-                DisplayName = name,
-                Description = description,
-                NarrativeText = description,
-                Version = version,
-                Status = "Active",
-                Scope = "Run",
-                Duration = "UntilRunEnds",
-                Trigger = trigger,
-                Severity = severity,
-                Visibility = visibility,
-                Priority = priority,
-                EffectSetId = null,
-                BaseWeight = 1,
-                SelectionGroup = "law.canon",
-                ImpactDomainsJson = domainsJson,
-                CreatedAtUtc = now,
-                UpdatedAtUtc = now
-            });
-            return;
-        }
-        existing.Name = name; existing.DisplayName = name;
-        existing.Description = description; existing.NarrativeText = description;
-        existing.Version = version; existing.Status = "Active";
-        existing.Trigger = trigger; existing.Severity = severity;
-        existing.Visibility = visibility; existing.Priority = priority;
-        existing.ImpactDomainsJson = domainsJson; existing.UpdatedAtUtc = now;
     }
 
     // ── COMPENDIUM DES LOIS DU PALAIS (40 lois, Phase 4) ─────────────────────
