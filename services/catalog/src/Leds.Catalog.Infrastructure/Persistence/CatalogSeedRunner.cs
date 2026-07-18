@@ -2930,7 +2930,7 @@ public sealed class CatalogSeedRunner
         // (règle comportementale, non une restriction de ciblage moteur).
         await UpsertSkillAsync("canon.skill.seuil-souille", "Seuil souillé",
             "Punition du protocole : quiconque frappe un Veilleur en répond devant tous les autres.",
-            "Damage", "SingleEnemy", "Debuff", mana: 12, power: 14, cancellationToken,
+            "Damage", "SingleEnemy", "Damage", mana: 12, power: 14, cancellationToken,
             category: "Magic");
 
         // Service du thé (Porteur de Plateau) : soin 12% PV max.
