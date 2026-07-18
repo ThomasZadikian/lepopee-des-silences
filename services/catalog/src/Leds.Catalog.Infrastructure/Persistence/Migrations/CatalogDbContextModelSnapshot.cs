@@ -1374,6 +1374,7 @@ namespace Leds.Catalog.Infrastructure.Persistence.Migrations
                         .HasColumnName("effect_set_id");
 
                     b.Property<string>("ExclusionKeysJson")
+                        .IsRequired()
                         .ValueGeneratedOnAdd()
                         .HasColumnType("text")
                         .HasDefaultValue("[]")
