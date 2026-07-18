@@ -245,4 +245,20 @@ public sealed class PalaceLawMapperTests
         var effect = law.Effects.Should().ContainSingle(e => e.ModifierType == RunModifierType.ItemNodeRerollCharge).Subject;
         effect.Value.Should().Be(1);
     }
+
+    [Fact]
+    public void CreatePalaceLaw_ShouldMapSuspendSevereLaws()
+    {
+        var definition = CreateDefinition(
+            impactDomains: ["Combat"],
+            effects:
+            [
+                new CatalogEffectDefinitionSnapshot(
+                    "EnableSuspendSevereLaws", "Run", 1m, "Flat", "UntilRoomEnds", "Additive", null, 0, null, null, null),
+            ]);
+
+        var law = PalaceLawMapper.CreatePalaceLaw(definition);
+
+        law.Effects.Should().ContainSingle(effect => effect.ModifierType == RunModifierType.SuspendSevereLaws);
+    }
 }

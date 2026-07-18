@@ -59,6 +59,7 @@ public sealed class RunEntityConfiguration : IEntityTypeConfiguration<RunEntity>
         builder.Property(run => run.NpcRelationshipsJson).HasColumnName("npc_relationships_json");
         builder.Property(run => run.LastPromulgationFloorIndex).HasColumnName("last_promulgation_floor_index");
         builder.Property(run => run.ForgottenSkillKey).HasColumnName("forgotten_skill_key").HasMaxLength(256);
+        builder.Property(run => run.SuspendedSevereLawModifierIdsJson).HasColumnName("suspended_severe_law_modifier_ids_json");
         builder.Property(run => run.CreatedAtUtc).HasColumnName("created_at_utc");
         builder.Property(run => run.UpdatedAtUtc).HasColumnName("updated_at_utc");
 

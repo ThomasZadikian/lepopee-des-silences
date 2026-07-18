@@ -56,6 +56,9 @@ public static class RunPersistenceMapper
             LawDenialLastUsedRoomIndex = run.LawDenialLastUsedRoomIndex,
             LastPromulgationFloorIndex = run.LastPromulgationFloorIndex,
             ForgottenSkillKey = run.ForgottenSkillKey,
+            SuspendedSevereLawModifierIdsJson = run.SuspendedSevereLawModifierIds.Count > 0
+                ? JsonSerializer.Serialize(run.SuspendedSevereLawModifierIds)
+                : null,
             ReputationGainBonusPercent = run.ReputationGainBonusPercent,
             HimLitProtectionEnabled = run.HimLitProtectionEnabled,
             HealingBonusPercent = run.HealingBonusPercent,
@@ -473,6 +476,9 @@ public static class RunPersistenceMapper
             lawDenialLastUsedRoomIndex: entity.LawDenialLastUsedRoomIndex,
             lastPromulgationFloorIndex: entity.LastPromulgationFloorIndex,
             forgottenSkillKey: entity.ForgottenSkillKey,
+            suspendedSevereLawModifierIds: string.IsNullOrWhiteSpace(entity.SuspendedSevereLawModifierIdsJson)
+                ? null
+                : JsonSerializer.Deserialize<Guid[]>(entity.SuspendedSevereLawModifierIdsJson),
             reputationGainBonusPercent: entity.ReputationGainBonusPercent,
             himLitProtectionEnabled: entity.HimLitProtectionEnabled,
             healingBonusPercent: entity.HealingBonusPercent,

@@ -451,4 +451,76 @@ public sealed class RunPromulgationTests
         consumedAgain.Should().BeFalse();
         run.ConsumedItemNodeRerollCount.Should().Be(1);
     }
+
+    // ---------------------------------------------------------------------------
+    // "Loi du Répit" — ACCALMIE: pauses every active Sévère law's effects for the
+    // room (by temporary consumption, see Run.SuspendActiveSevereLawModifiers),
+    // reversed when the room is left (MoveToNextRoom) or rolled back (ExitMidRoom).
+    // ---------------------------------------------------------------------------
+
+    private static PalaceLaw CreateRepitLaw(string key = "law.repit") => PalaceLaw.Create(
+        key, "Loi du Répit", "1.0.0",
+        domains: [PalaceLawDomain.Combat],
+        effects:
+        [
+            PalaceLawEffect.Create(
+                RunModifierType.SuspendSevereLaws, value: 1, RunModifierDuration.UntilRoomEnds),
+        ],
+        polarity: PalaceLawPolarity.Clemente);
+
+    [Fact]
+    public void PromulgateLaw_ShouldSuspendActiveSevereLawModifiers_WhenRepitIsPromulgated()
+    {
+        var run = TestGameEngineFactory.CreateRun();
+        run.PromulgateLaw(CreateLawWithPolarity("law-severe-test", PalaceLawPolarity.Severe));
+
+        run.PromulgateLaw(CreateRepitLaw());
+
+        var severeModifier = run.RunModifiers.Should().ContainSingle(m => m.SourceKey == "law-severe-test").Subject;
+        severeModifier.IsConsumed.Should().BeTrue();
+        run.SuspendedSevereLawModifierIds.Should().Contain(severeModifier.Id.Value);
+    }
+
+    [Fact]
+    public void PromulgateLaw_ShouldNotSuspendClementeLawModifiers_WhenRepitIsPromulgated()
+    {
+        var run = TestGameEngineFactory.CreateRun();
+        run.PromulgateLaw(CreateLawWithPolarity("law-clemente-test", PalaceLawPolarity.Clemente));
+
+        run.PromulgateLaw(CreateRepitLaw());
+
+        var clementeModifier = run.RunModifiers.Should().ContainSingle(m => m.SourceKey == "law-clemente-test").Subject;
+        clementeModifier.IsConsumed.Should().BeFalse();
+        run.SuspendedSevereLawModifierIds.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void MoveToNextRoom_ShouldResumeSuspendedSevereLawModifiers_WhenLeavingTheRoom()
+    {
+        var run = TestGameEngineFactory.CreateRun();
+        run.PromulgateLaw(CreateLawWithPolarity("law-severe-test", PalaceLawPolarity.Severe));
+        run.PromulgateLaw(CreateRepitLaw());
+        var severeModifier = run.RunModifiers.Single(m => m.SourceKey == "law-severe-test");
+        severeModifier.IsConsumed.Should().BeTrue();
+
+        run.EnterInterlude();
+        run.MoveToNextRoom(TestGameEngineFactory.CreateThresholdRoom(depth: run.CurrentDepth + 1));
+
+        severeModifier.IsConsumed.Should().BeFalse();
+        run.SuspendedSevereLawModifierIds.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ExitMidRoom_ShouldResumeSuspendedSevereLawModifiers()
+    {
+        var run = TestGameEngineFactory.CreateRun();
+        run.PromulgateLaw(CreateLawWithPolarity("law-severe-test", PalaceLawPolarity.Severe));
+        run.PromulgateLaw(CreateRepitLaw());
+        var severeModifier = run.RunModifiers.Single(m => m.SourceKey == "law-severe-test");
+
+        run.ExitMidRoom(DateTimeOffset.UtcNow);
+
+        severeModifier.IsConsumed.Should().BeFalse();
+        run.SuspendedSevereLawModifierIds.Should().BeEmpty();
+    }
 }

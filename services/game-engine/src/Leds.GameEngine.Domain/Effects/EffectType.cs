@@ -93,4 +93,6 @@ public enum EffectType
     EnableCurrencyGainBonus,
     /// <summary>"Loi de la Chandelle" (law.chandelle) → RunModifierType.ItemNodeRerollCharge.</summary>
     EnableItemNodeReroll,
+    /// <summary>"Loi du Répit" (law.repit) → RunModifierType.SuspendSevereLaws.</summary>
+    EnableSuspendSevereLaws,
 }

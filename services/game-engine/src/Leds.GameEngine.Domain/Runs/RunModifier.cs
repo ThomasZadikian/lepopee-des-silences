@@ -119,4 +119,18 @@ public sealed class RunModifier
 
         ConsumedAtUtc = consumedAt;
     }
+
+    /// <summary>
+    /// Reverses <see cref="Consume"/> — reserved for "Loi du Répit" (law.repit), which
+    /// temporarily consumes every active Sévère law's modifiers to simulate suspension
+    /// ("ACCALMIE") and revives them here once the room they were suspended in is left
+    /// (see Run.SuspendActiveSevereLawModifiers/ResumeSuspendedSevereLawModifiers). Every
+    /// modifier consumption site already filters on !IsConsumed, so this needs no other
+    /// wiring — but it also means this is not a general-purpose undo: nothing else should
+    /// call it, since genuine consumption elsewhere is meant to be permanent.
+    /// </summary>
+    public void Unconsume()
+    {
+        ConsumedAtUtc = null;
+    }
 }

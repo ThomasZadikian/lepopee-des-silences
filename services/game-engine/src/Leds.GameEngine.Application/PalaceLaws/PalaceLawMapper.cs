@@ -138,6 +138,8 @@ public static class PalaceLawMapper
                 RunModifierType.CurrencyGainBonusPercent, (double)effect.Value, duration),
             EffectType.EnableItemNodeReroll => PalaceLawEffect.Create(
                 RunModifierType.ItemNodeRerollCharge, 1, duration),
+            EffectType.EnableSuspendSevereLaws => PalaceLawEffect.Create(
+                RunModifierType.SuspendSevereLaws, 1, duration),
 
             _ => throw new DomainException($"Palace law effect type '{effect.EffectType}' is not supported by the runtime.")
         };

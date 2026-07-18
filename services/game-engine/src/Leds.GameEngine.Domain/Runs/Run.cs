@@ -36,6 +36,7 @@ public sealed class Run
     private readonly List<RunJournalEntry> _journalEntries = [];
     private readonly List<RunItem> _runItems = [];
     private readonly List<RunModifier> _runModifiers = [];
+    private readonly List<Guid> _suspendedSevereLawModifierIds = [];
     private Combat? _activeCombat;
     private ActiveCurse? _activeCurse;
     private RunSnapshot? _roomSnapshot;
@@ -171,6 +172,14 @@ public sealed class Run
     /// Filter by <see cref="RunModifier.IsConsumed"/> as needed.
     /// </summary>
     public IReadOnlyCollection<RunModifier> RunModifiers => _runModifiers.AsReadOnly();
+
+    /// <summary>
+    /// Ids of the Sévère-law modifiers currently paused by "Loi du Répit" (law.repit)'s
+    /// ACCALMIE — see <see cref="SuspendActiveSevereLawModifiers"/>. Persisted so the
+    /// suspension survives across command calls; resumed in <see cref="MoveToNextRoom"/>
+    /// (leaving the room) and <see cref="ExitMidRoom"/> (rolling back to before it started).
+    /// </summary>
+    public IReadOnlyCollection<Guid> SuspendedSevereLawModifierIds => _suspendedSevereLawModifierIds.AsReadOnly();
 
     private Run(
         RunId id,
@@ -833,6 +842,11 @@ public sealed class Run
         }
 
         var previousFloorIndex = FloorIndex;
+
+        // "Loi du Répit" (law.repit): laws suspended for the room now being left resume —
+        // done before the floor-end sweep below so a resumed UntilFloorEnds modifier can
+        // still be correctly consumed if this same transition also crosses a floor boundary.
+        ResumeSuspendedSevereLawModifiers();
 
         // Run sans fin : aucune profondeur maximale. La room boss (Him'Lit) est portee
         // par son type de room, que le generateur produit tous les 10 rooms.
@@ -1705,6 +1719,12 @@ public sealed class Run
         _activePalaceLaws.Clear();
         _activePalaceLaws.AddRange(snapshot.ActivePalaceLaws);
 
+        // "Loi du Répit" (law.repit) can only have suspended laws within the room being
+        // rolled back (its own duration is exactly one room) — undo that suspension too,
+        // since the snapshot predates it and the severe modifiers below must come back
+        // exactly as they were at room entry, not merely present-but-still-consumed.
+        ResumeSuspendedSevereLawModifiers();
+
         var snapshotItemIds = snapshot.RunItemIds.ToHashSet();
         _runItems.RemoveAll(item => !snapshotItemIds.Contains(item.Id.Value));
 
@@ -1756,6 +1776,66 @@ public sealed class Run
                 sourceKey: law.Key,
                 expiresAtRoomId: expiresAtRoomId));
         }
+
+        if (law.Effects.Any(effect => effect.ModifierType == RunModifierType.SuspendSevereLaws))
+        {
+            SuspendActiveSevereLawModifiers();
+        }
+    }
+
+    /// <summary>
+    /// "Loi du Répit" (law.repit) — ACCALMIE: pauses every currently-active Sévère-polarity
+    /// law's effects for the room by marking their unconsumed modifiers as consumed. Every
+    /// consumption site across the engine already filters on RunModifier.IsConsumed, so
+    /// pausing them this way needs no further wiring anywhere else. Reversed by
+    /// <see cref="ResumeSuspendedSevereLawModifiers"/> once the room is left. Only laws active
+    /// at the moment of promulgation are captured — matches the SFD (ambient promulgation
+    /// only fires once per room entry, so no new Sévère law can appear mid-room under normal
+    /// play).
+    /// </summary>
+    private void SuspendActiveSevereLawModifiers()
+    {
+        var now = DateTime.UtcNow;
+        var severeLawKeys = _activePalaceLaws
+            .Where(law => law.Polarity == PalaceLawPolarity.Severe)
+            .Select(law => law.Key)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        if (severeLawKeys.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var modifier in _runModifiers.Where(modifier =>
+            modifier.SourceType == "PalaceLaw" &&
+            severeLawKeys.Contains(modifier.SourceKey) &&
+            !modifier.IsConsumed))
+        {
+            modifier.Consume(now);
+            _suspendedSevereLawModifierIds.Add(modifier.Id.Value);
+        }
+    }
+
+    /// <summary>
+    /// Reverses <see cref="SuspendActiveSevereLawModifiers"/> — called from
+    /// <see cref="MoveToNextRoom"/> (leaving the room "Loi du Répit" suspended laws in) and
+    /// <see cref="ExitMidRoom"/> (rolling back to before the suspension happened). A no-op
+    /// once nothing is suspended.
+    /// </summary>
+    private void ResumeSuspendedSevereLawModifiers()
+    {
+        if (_suspendedSevereLawModifierIds.Count == 0)
+        {
+            return;
+        }
+
+        var suspendedIds = _suspendedSevereLawModifierIds.ToHashSet();
+        foreach (var modifier in _runModifiers.Where(modifier => suspendedIds.Contains(modifier.Id.Value)))
+        {
+            modifier.Unconsume();
+        }
+
+        _suspendedSevereLawModifierIds.Clear();
     }
 
     private void ReplaceActiveRoomClimateLaws()
@@ -2288,7 +2368,8 @@ public sealed class Run
         int magicAttack = 0,
         int magicDefense = 0,
         int? lastPromulgationFloorIndex = null,
-        string? forgottenSkillKey = null)
+        string? forgottenSkillKey = null,
+        IEnumerable<Guid>? suspendedSevereLawModifierIds = null)
     {
         var firstRoom = rooms.First();
 
@@ -2330,6 +2411,11 @@ public sealed class Run
         if (runModifiers is not null)
         {
             run._runModifiers.AddRange(runModifiers);
+        }
+
+        if (suspendedSevereLawModifierIds is not null)
+        {
+            run._suspendedSevereLawModifierIds.AddRange(suspendedSevereLawModifierIds);
         }
 
         run._playerSnapshot = playerSnapshot;

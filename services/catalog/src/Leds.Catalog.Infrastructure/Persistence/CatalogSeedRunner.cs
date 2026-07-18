@@ -5128,11 +5128,13 @@ public sealed class CatalogSeedRunner
         await _ctx.SaveChangesAsync(cancellationToken);
     }
 
-    // Chapitre II — Lois climatiques. 4 of its 5 laws are seeded: Marée Haute, Deuil
-    // Sec, Voile, Accords. "Loi du Répit" (Accalmie: suspend every active Sévère law
-    // for the room) is NOT seeded — it would need a cross-cutting "suspend Sévère
-    // RunModifiers" mechanism touching every read site across the codebase, judged
-    // too invasive for this pass (documented gap).
+    // Chapitre II — Lois climatiques. All 5 laws are now seeded: Marée Haute, Deuil
+    // Sec, Voile, Accords, and "Loi du Répit" (Accalmie: suspends every active Sévère
+    // law's effects for the room via RunModifierType.SuspendSevereLaws — see
+    // Run.SuspendActiveSevereLawModifiers, which pauses them by temporary consumption
+    // rather than needing every read site across the codebase touched individually).
+    // Répit's own SFD "-10% Attaque magique for Effroi-registre enemies" half is NOT
+    // modeled (documented gap) — no Bestiaire enemy has been tagged with a Registre yet.
     //
     // Loi du Voile's "+10% esquive" half and Loi des Accords' "5% chance de tonner"
     // sub-effect are NOT modeled (documented gap) — no dodge/evasion mechanic and no
@@ -5212,12 +5214,40 @@ public sealed class CatalogSeedRunner
             impactDomains: ["Combat"],
             cancellationToken);
 
+        // "Loi du Répit" (law.repit): the 5th and last climatic law — ACCALMIE. Unlike the
+        // 4 above it isn't a room-climate effect: it pauses every currently-active Sévère
+        // law's effects for the room (RunModifierType.SuspendSevereLaws, see
+        // Run.SuspendActiveSevereLawModifiers/ResumeSuspendedSevereLawModifiers — laws are
+        // temporarily consumed and revived, so every existing consumption site respects the
+        // pause without further wiring). Documented gap: the SFD's second half ("les ennemis
+        // de registre Effroi perdent 10% d'Attaque magique") is NOT modeled — CatalogEnemyDefinition.
+        // Registre exists as scaffolding (Bestiaire Phase 0) but no Bestiaire enemy has actually
+        // been tagged with a Registre value yet, so there is nothing to match against.
+        await UpsertCompendiumLawAsync(
+            key: "law.repit",
+            name: "Loi du Répit",
+            narrativeText: "Article III — Même le Palais respire. Qu'on ne le dise pas trop "
+                + "fort.",
+            description: "Impose ACCALMIE : toutes les lois Sévères actives sont suspendues "
+                + "dans cette salle (elles reprennent à la sortie). (La SFD prévoit aussi "
+                + "-10% d'Attaque magique pour les ennemis de registre Effroi — non modélisé, "
+                + "aucun ennemi du Bestiaire n'est encore tagué avec un registre.)",
+            rarity: "Rare",
+            polarity: "Clémente",
+            isMajeure: false,
+            minDepth: null,
+            duration: "UntilRoomEnds",
+            selectionGroup: "law.climat",
+            impactDomains: ["Combat"],
+            cancellationToken);
+
         await _ctx.SaveChangesAsync(cancellationToken);
 
         await UpsertLawEffectAsync("law.voile", "ApplyRoomClimate", 0m, "UntilRoomEnds", "voile", cancellationToken);
         await UpsertLawEffectAsync("law.accords", "ApplyRoomClimate", 0m, "UntilRoomEnds", "accords", cancellationToken);
         await UpsertLawEffectAsync("law.deuil-sec", "ApplyRoomClimate", 0m, "UntilRoomEnds", "deuil-sec", cancellationToken);
         await UpsertLawEffectAsync("law.maree-haute", "ApplyRoomClimate", 0m, "UntilRoomEnds", "maree-haute", cancellationToken);
+        await UpsertLawEffectAsync("law.repit", "EnableSuspendSevereLaws", 1m, "UntilRoomEnds", null, cancellationToken);
 
         await _ctx.SaveChangesAsync(cancellationToken);
     }
@@ -5647,10 +5677,13 @@ public sealed class CatalogSeedRunner
     // mechanics are hardcoded room-key checks, not catalog-driven effects — so none has
     // an EffectDefinition/RunModifier attached; they exist purely as descriptive/display
     // metadata. Sanctuaire's SFD text has a second half NOT modeled (documented gap):
-    // "aucune loi Sévère ni majeure ne s'applique dans cette salle" — suspending laws
-    // already active when entering needs the same RunModifierType.SuspendSevereLaws
-    // mechanic "Loi du Répit" (Chapitre II) is missing; only the "no NEW promulgation"
-    // half is implemented. The other 2 need mechanics that don't exist yet: "Loi de la
+    // "aucune loi Sévère ni majeure ne s'applique dans cette salle" — the suspension
+    // primitive itself now exists (RunModifierType.SuspendSevereLaws, built for "Loi
+    // du Répit", Chapitre II — see Run.SuspendActiveSevereLawModifiers), but nothing
+    // triggers it on ENTERING room.meditation specifically (only law promulgation
+    // does), and it would also need to cover majeure laws, not just Sévère ones; only
+    // the "no NEW promulgation" half is implemented. The other 2 need mechanics that
+    // don't exist yet: "Loi de la
     // Cellule" (room.cellule) needs a no-death/forced-surrender combat-resolution mode;
     // "Loi des Sorties Mouvantes" (room.labyrinthe) needs a chain-combat trigger after
     // 12 turns.
@@ -5705,8 +5738,9 @@ public sealed class CatalogSeedRunner
         // ANY promulgation while the player is in this room (SanctuaryRoomKey check) —
         // same hardcoded-RoomKey convention as the two laws above. The SFD's other half
         // ("aucune loi Sévère ni majeure ne s'applique dans cette salle" — suspending
-        // already-active laws) is NOT modeled: it needs the same RunModifierType.
-        // SuspendSevereLaws mechanic law.repit (Chapitre II) is missing, documented there.
+        // already-active laws) is NOT modeled: the RunModifierType.SuspendSevereLaws
+        // primitive it needs now exists (law.repit, Chapitre II) but nothing calls it on
+        // room entry here yet — see SeedLoisLieesAuxSallesAsync's header comment.
         await UpsertCompendiumLawAsync(
             key: "law.sanctuaire",
             name: "Loi du Sanctuaire",
