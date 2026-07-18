@@ -81,9 +81,9 @@ public sealed class MoveToNextRoomCommandHandlerTests
             .WithMessage($"Run with id '{runId}' was not found.");
     }
 
-    // "Loi de l'Oubli Partiel": Run.MoveToNextRoom signals (via its bool return) that
-    // the floor-scoped forgotten-skill modifier was just consumed — the handler must
-    // pay out the +8 stat points at that moment.
+    // "Loi de l'Oubli Partiel": Run.MoveToNextRoom signals (via its
+    // FloorEndModifierConsumptionResult return) that the floor-scoped forgotten-skill
+    // modifier was just consumed — the handler must pay out the +8 stat points then.
     [Fact]
     public async Task Handle_ShouldAwardStatPoints_WhenOubliPartielPayoutIsDueOnFloorEnd()
     {
@@ -123,5 +123,130 @@ public sealed class MoveToNextRoomCommandHandlerTests
 
         playerProfileGateway.AwardedStatPoints.Should()
             .ContainSingle(award => award.PlayerId == run.PlayerId && award.Amount == Run.SkillForgottenFloorEndStatPoints);
+    }
+
+    // "Loi de l'Impôt du Seuil": a toll is charged at the entry of every room while
+    // the law is active — successful payment should not apply the insolvency debuff.
+    [Fact]
+    public async Task Handle_ShouldChargeTheRoomToll_AndNotApplyInsolvencyDebuff_WhenAffordable()
+    {
+        var run = TestGameEngineFactory.CreateRunWithCompletedCurrentRoom();
+        run.AddRunModifier(RunModifier.Create(
+            RunModifierType.RoomTollAmount, 5, RunModifierDuration.UntilFloorEnds,
+            sourceType: "PalaceLaw", sourceKey: "law.impot-seuil"));
+        run.EnterInterlude();
+        var nextRoom = TestGameEngineFactory.CreateThresholdRoom(depth: run.CurrentDepth + 1);
+
+        var repository = new Mock<IRunRepository>();
+        repository.Setup(repo => repo.GetByIdAsync(run.Id, CancellationToken.None)).ReturnsAsync(run);
+
+        var generator = new Mock<IRunGenerator>();
+        generator.Setup(service => service.GenerateNextRoomAsync(run, CancellationToken.None)).ReturnsAsync(nextRoom);
+
+        var palaceLawPromulgator = new Mock<IAmbientPalaceLawPromulgator>();
+        var playerProfileGateway = new StubPlayerProfileGateway();
+        playerProfileGateway.SeedCurrencyBalance(run.PlayerId, 100);
+
+        var handler = new MoveToNextRoomCommandHandler(
+            repository.Object, generator.Object, palaceLawPromulgator.Object, playerProfileGateway);
+
+        await handler.Handle(new MoveToNextRoomCommand(run.Id.Value), CancellationToken.None);
+
+        playerProfileGateway.SpentCurrencyAttempts.Should()
+            .ContainSingle(attempt => attempt.PlayerId == run.PlayerId && attempt.Amount == 5 && attempt.Succeeded);
+        run.RunModifiers.Should().NotContain(m => m.Type == RunModifierType.MaxHpReductionPercent);
+    }
+
+    [Fact]
+    public async Task Handle_ShouldApplyInsolvencyDebuff_WhenTheRoomTollCannotBeAfforded()
+    {
+        var run = TestGameEngineFactory.CreateRunWithCompletedCurrentRoom();
+        run.AddRunModifier(RunModifier.Create(
+            RunModifierType.RoomTollAmount, 5, RunModifierDuration.UntilFloorEnds,
+            sourceType: "PalaceLaw", sourceKey: "law.impot-seuil"));
+        run.EnterInterlude();
+        var nextRoom = TestGameEngineFactory.CreateThresholdRoom(depth: run.CurrentDepth + 1);
+
+        var repository = new Mock<IRunRepository>();
+        repository.Setup(repo => repo.GetByIdAsync(run.Id, CancellationToken.None)).ReturnsAsync(run);
+
+        var generator = new Mock<IRunGenerator>();
+        generator.Setup(service => service.GenerateNextRoomAsync(run, CancellationToken.None)).ReturnsAsync(nextRoom);
+
+        var palaceLawPromulgator = new Mock<IAmbientPalaceLawPromulgator>();
+        var playerProfileGateway = new StubPlayerProfileGateway();
+        playerProfileGateway.SeedCurrencyBalance(run.PlayerId, 0);
+
+        var handler = new MoveToNextRoomCommandHandler(
+            repository.Object, generator.Object, palaceLawPromulgator.Object, playerProfileGateway);
+
+        await handler.Handle(new MoveToNextRoomCommand(run.Id.Value), CancellationToken.None);
+
+        playerProfileGateway.SpentCurrencyAttempts.Should()
+            .ContainSingle(attempt => attempt.PlayerId == run.PlayerId && attempt.Amount == 5 && !attempt.Succeeded);
+        run.RunModifiers.Should().ContainSingle(m =>
+            m.Type == RunModifierType.MaxHpReductionPercent
+            && m.Value == Run.RoomTollInsolvencyMaxHpReductionPercent);
+    }
+
+    // "Loi du Prêteur": at floor end, the Palais claws back a fraction of the current
+    // currency total.
+    [Fact]
+    public async Task Handle_ShouldClawBackAFractionOfCurrency_WhenPreteurClawbackIsDueOnFloorEnd()
+    {
+        var run = TestGameEngineFactory.CreateRunWithCompletedCurrentRoom();
+        run.AddRunModifier(RunModifier.Create(
+            RunModifierType.CurrencyGainBonusPercent, 50, RunModifierDuration.UntilFloorEnds,
+            sourceType: "PalaceLaw", sourceKey: "law.preteur"));
+        run.EnterInterlude();
+
+        // FloorLengthInRooms is 10 — CreateRunWithCompletedCurrentRoom leaves the run on
+        // room index 0, so a next room at depth 10 crosses exactly one floor boundary.
+        var nextRoom = TestGameEngineFactory.CreateThresholdRoom(depth: 10);
+
+        var repository = new Mock<IRunRepository>();
+        repository.Setup(repo => repo.GetByIdAsync(run.Id, CancellationToken.None)).ReturnsAsync(run);
+
+        var generator = new Mock<IRunGenerator>();
+        generator.Setup(service => service.GenerateNextRoomAsync(run, CancellationToken.None)).ReturnsAsync(nextRoom);
+
+        var palaceLawPromulgator = new Mock<IAmbientPalaceLawPromulgator>();
+        var playerProfileGateway = new StubPlayerProfileGateway();
+        playerProfileGateway.SeedCurrencyBalance(run.PlayerId, 100);
+
+        var handler = new MoveToNextRoomCommandHandler(
+            repository.Object, generator.Object, palaceLawPromulgator.Object, playerProfileGateway);
+
+        await handler.Handle(new MoveToNextRoomCommand(run.Id.Value), CancellationToken.None);
+
+        playerProfileGateway.SpentCurrencyAttempts.Should()
+            .ContainSingle(attempt => attempt.PlayerId == run.PlayerId && attempt.Amount == 25 && attempt.Succeeded);
+    }
+
+    [Fact]
+    public async Task Handle_ShouldNotAttemptAClawback_WhenPreteurBalanceIsZero()
+    {
+        var run = TestGameEngineFactory.CreateRunWithCompletedCurrentRoom();
+        run.AddRunModifier(RunModifier.Create(
+            RunModifierType.CurrencyGainBonusPercent, 50, RunModifierDuration.UntilFloorEnds,
+            sourceType: "PalaceLaw", sourceKey: "law.preteur"));
+        run.EnterInterlude();
+        var nextRoom = TestGameEngineFactory.CreateThresholdRoom(depth: 10);
+
+        var repository = new Mock<IRunRepository>();
+        repository.Setup(repo => repo.GetByIdAsync(run.Id, CancellationToken.None)).ReturnsAsync(run);
+
+        var generator = new Mock<IRunGenerator>();
+        generator.Setup(service => service.GenerateNextRoomAsync(run, CancellationToken.None)).ReturnsAsync(nextRoom);
+
+        var palaceLawPromulgator = new Mock<IAmbientPalaceLawPromulgator>();
+        var playerProfileGateway = new StubPlayerProfileGateway();
+
+        var handler = new MoveToNextRoomCommandHandler(
+            repository.Object, generator.Object, palaceLawPromulgator.Object, playerProfileGateway);
+
+        await handler.Handle(new MoveToNextRoomCommand(run.Id.Value), CancellationToken.None);
+
+        playerProfileGateway.SpentCurrencyAttempts.Should().BeEmpty();
     }
 }

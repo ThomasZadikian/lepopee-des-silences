@@ -232,7 +232,7 @@ public sealed class RunPromulgationTests
     // "Loi de l'Oubli Partiel" — the forgotten skill is drawn once at promulgation
     // time (Run.PickForgottenSkill), then cleared with a +8 stat-point payout signal
     // when the floor-scoped modifier is consumed (Run.ConsumeFloorEndModifiers /
-    // Run.MoveToNextRoom's bool return).
+    // Run.MoveToNextRoom's FloorEndModifierConsumptionResult return).
     // ---------------------------------------------------------------------------
 
     private static PalaceLaw CreateOubliPartielLaw(string key = "law.oubli-partiel") => PalaceLaw.Create(
@@ -294,7 +294,7 @@ public sealed class RunPromulgationTests
 
         var result = AdvanceToFloorBoundary(run);
 
-        result.Should().BeTrue();
+        result.OubliPartielPayoutDue.Should().BeTrue();
         run.ForgottenSkillKey.Should().BeNull();
     }
 
@@ -307,13 +307,13 @@ public sealed class RunPromulgationTests
         run.EnterInterlude();
         var result = run.MoveToNextRoom(TestGameEngineFactory.CreateThresholdRoom(depth: run.CurrentDepth + 1));
 
-        result.Should().BeFalse();
+        result.OubliPartielPayoutDue.Should().BeFalse();
         run.ForgottenSkillKey.Should().NotBeNull();
     }
 
-    private static bool AdvanceToFloorBoundary(Run run)
+    private static Run.FloorEndModifierConsumptionResult AdvanceToFloorBoundary(Run run)
     {
-        var result = false;
+        var result = Run.FloorEndModifierConsumptionResult.None;
 
         for (var i = 0; i < 10; i++)
         {
@@ -337,5 +337,66 @@ public sealed class RunPromulgationTests
         }
 
         return result;
+    }
+
+    // ---------------------------------------------------------------------------
+    // "Loi de l'Impôt du Seuil" — the toll charge itself happens in
+    // MoveToNextRoomCommandHandler (application layer, needs the currency gateway).
+    // Here we only verify the domain-level insolvency debuff Run.
+    // ApplyRoomTollInsolvencyDebuff applies.
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void ApplyRoomTollInsolvencyDebuff_ShouldAddAStackingFloorScopedModifier()
+    {
+        var run = TestGameEngineFactory.CreateRun();
+
+        run.ApplyRoomTollInsolvencyDebuff();
+        run.ApplyRoomTollInsolvencyDebuff();
+
+        run.RunModifiers.Should().HaveCount(2)
+            .And.OnlyContain(m =>
+                m.Type == RunModifierType.MaxHpReductionPercent
+                && m.Value == Run.RoomTollInsolvencyMaxHpReductionPercent
+                && m.Duration == RunModifierDuration.UntilFloorEnds
+                && !m.IsConsumed);
+    }
+
+    // ---------------------------------------------------------------------------
+    // "Loi du Prêteur" — the CurrencyGainBonusPercent modifier doubles as this law's
+    // "active" marker; its floor-end consumption signals the clawback (the actual
+    // gateway read/spend happens in MoveToNextRoomCommandHandler).
+    // ---------------------------------------------------------------------------
+
+    private static PalaceLaw CreatePreteurLaw(string key = "law.preteur") => PalaceLaw.Create(
+        key, "Loi du Prêteur", "1.0.0",
+        domains: [PalaceLawDomain.Rewards],
+        effects:
+        [
+            PalaceLawEffect.Create(
+                RunModifierType.CurrencyGainBonusPercent, value: 50, RunModifierDuration.UntilFloorEnds),
+        ]);
+
+    [Fact]
+    public void MoveToNextRoom_ShouldSignalPreteurClawbackDue_WhenCrossingAFloorBoundary()
+    {
+        var run = TestGameEngineFactory.CreateRun();
+        run.PromulgateLaw(CreatePreteurLaw());
+
+        var result = AdvanceToFloorBoundary(run);
+
+        result.PreteurClawbackDue.Should().BeTrue();
+    }
+
+    [Fact]
+    public void MoveToNextRoom_ShouldNotSignalPreteurClawback_WhileStillOnTheSameFloor()
+    {
+        var run = TestGameEngineFactory.CreateRun();
+        run.PromulgateLaw(CreatePreteurLaw());
+
+        run.EnterInterlude();
+        var result = run.MoveToNextRoom(TestGameEngineFactory.CreateThresholdRoom(depth: run.CurrentDepth + 1));
+
+        result.PreteurClawbackDue.Should().BeFalse();
     }
 }

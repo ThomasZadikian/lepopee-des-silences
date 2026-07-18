@@ -122,6 +122,12 @@ public sealed class CombatFactory : ICombatFactory
         var speedMultiplier = 1.0 + activeModifiers
             .Where(m => m.Type == RunModifierType.SpeedBonus && !m.IsConsumed)
             .Sum(m => m.Value);
+        // "Loi de l'Impôt du Seuil" (law.impot-seuil) insolvency penalty: stacking -2%
+        // team max HP per unpaid room toll this floor. Applied to every Player-side
+        // combatant (protagonist AND companions) — "l'équipe" in the SFD text.
+        var maxVitalityMultiplier = 1.0 - activeModifiers
+            .Where(m => m.Type == RunModifierType.MaxHpReductionPercent && !m.IsConsumed)
+            .Sum(m => m.Value) / 100.0;
         var activeClimate = ResolveActiveClimate(draft.RoomId, activeModifiers);
 
         // "Loi des Visites Terminées" (law.visites-terminees, liée à room.hopital): "les
@@ -196,8 +202,9 @@ public sealed class CombatFactory : ICombatFactory
                         .ToArray()
                         ?? GetDefaultAllySkills(attackPowerMultiplier, skillEffects);
 
-                    var maxVitality = playerState?.MaxVitality ?? 100;
-                    var currentVitality = playerState?.CurrentVitality ?? maxVitality;
+                    var maxVitality = Math.Max(1,
+                        (int)Math.Round((playerState?.MaxVitality ?? 100) * maxVitalityMultiplier));
+                    var currentVitality = Math.Min(playerState?.CurrentVitality ?? maxVitality, maxVitality);
                     var guard = (playerState?.Guard ?? 0) + guardBonus;
                     var mana = playerState?.Mana ?? 0;
                     var maxMana = playerState?.MaxMana;
@@ -256,7 +263,8 @@ public sealed class CombatFactory : ICombatFactory
                         .ToArray()
                     : GetDefaultAllySkills(attackPowerMultiplier, skillEffects);
 
-                var companionMaxVitality = ally.MaxVitality > 0 ? ally.MaxVitality : 100;
+                var companionMaxVitality = Math.Max(1, (int)Math.Round(
+                    (ally.MaxVitality > 0 ? ally.MaxVitality : 100) * maxVitalityMultiplier));
 
                 var companion = Combatant.Create(
                     CombatantId.New(),

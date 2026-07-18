@@ -87,4 +87,8 @@ public enum EffectType
     EnableLootChanceBonus,
     /// <summary>"Loi de l'Oubli Partiel" (law.oubli-partiel) → RunModifierType.SkillForgotten.</summary>
     EnableSkillForgotten,
+    /// <summary>"Loi de l'Impôt du Seuil" (law.impot-seuil) → RunModifierType.RoomTollAmount.</summary>
+    EnableRoomToll,
+    /// <summary>"Loi du Prêteur" (law.preteur) → RunModifierType.CurrencyGainBonusPercent.</summary>
+    EnableCurrencyGainBonus,
 }

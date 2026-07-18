@@ -133,6 +133,41 @@ public sealed class NpcEventChoiceResolverTests
     }
 
     [Fact]
+    public async Task ResolveAsync_ShouldAwardCurrency_WhenGenericCurrencyOfferingIsTaken()
+    {
+        var (run, node) = CreateRunWithActiveOfferingGiver();
+        var context = new CurrentEventChoiceResolutionContext(run, run.CurrentRoom, node, "take-currency");
+        var playerProfileGateway = new StubPlayerProfileGateway();
+        var sut = new NpcEventChoiceResolver(new StubCatalogContentGateway(), playerProfileGateway);
+
+        var result = await sut.ResolveAsync(context);
+
+        result.Accepted.Should().BeTrue();
+        playerProfileGateway.AwardedCurrency.Should()
+            .ContainSingle(a => a.PlayerId == run.PlayerId && a.Amount == 100);
+    }
+
+    // "Loi du Prêteur" (law.preteur): currency gains from NPC offerings are boosted
+    // while the law is active.
+    [Fact]
+    public async Task ResolveAsync_ShouldBoostAwardedCurrency_WhenPreteurIsActive()
+    {
+        var (run, node) = CreateRunWithActiveOfferingGiver();
+        run.AddRunModifier(RunModifier.Create(
+            RunModifierType.CurrencyGainBonusPercent, 50, RunModifierDuration.UntilFloorEnds,
+            sourceType: "PalaceLaw", sourceKey: "law.preteur"));
+        var context = new CurrentEventChoiceResolutionContext(run, run.CurrentRoom, node, "take-currency");
+        var playerProfileGateway = new StubPlayerProfileGateway();
+        var sut = new NpcEventChoiceResolver(new StubCatalogContentGateway(), playerProfileGateway);
+
+        var result = await sut.ResolveAsync(context);
+
+        result.Accepted.Should().BeTrue();
+        playerProfileGateway.AwardedCurrency.Should()
+            .ContainSingle(a => a.PlayerId == run.PlayerId && a.Amount == 150);
+    }
+
+    [Fact]
     public async Task ResolveAsync_ShouldAwardStatPoint_OnEveryResolvedChoice_RegardlessOfConsequences()
     {
         var (run, node) = CreateRunWithActiveOfferingGiver();

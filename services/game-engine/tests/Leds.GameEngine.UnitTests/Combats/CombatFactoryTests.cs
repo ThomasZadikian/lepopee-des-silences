@@ -331,6 +331,37 @@ public sealed class CombatFactoryTests
         ally.CurrentVitality.Should().Be(100);
     }
 
+    // "Loi de l'Impôt du Seuil" (law.impot-seuil) insolvency penalty — stacking -2% team
+    // max HP per unpaid room toll. Applied via MaxHpReductionPercent modifiers.
+    [Fact]
+    public void CreateFromDraft_ShouldReduceMaxVitality_WhenImpotDuSeuilInsolvencyDebuffIsActive()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft();
+        var modifier = RunModifier.Create(
+            RunModifierType.MaxHpReductionPercent, 10, RunModifierDuration.UntilFloorEnds, "PalaceLaw", "law.impot-seuil");
+
+        var combat = factory.CreateFromDraft(draft, runModifiers: [modifier]);
+
+        combat.Allies.Single().MaxVitality.Should().Be(90);
+    }
+
+    [Fact]
+    public void CreateFromDraft_ShouldStackMultipleMaxHpReductionModifiers()
+    {
+        var factory = new CombatFactory();
+        var draft = CreateDraft();
+        var modifiers = new[]
+        {
+            RunModifier.Create(RunModifierType.MaxHpReductionPercent, 2, RunModifierDuration.UntilFloorEnds, "PalaceLaw", "law.impot-seuil"),
+            RunModifier.Create(RunModifierType.MaxHpReductionPercent, 2, RunModifierDuration.UntilFloorEnds, "PalaceLaw", "law.impot-seuil"),
+        };
+
+        var combat = factory.CreateFromDraft(draft, runModifiers: modifiers);
+
+        combat.Allies.Single().MaxVitality.Should().Be(96);
+    }
+
     [Fact]
     public void CreateFromDraft_ShouldGiveDefaultSkillsToAllies()
     {

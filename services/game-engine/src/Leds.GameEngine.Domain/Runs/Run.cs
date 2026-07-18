@@ -809,12 +809,10 @@ public sealed class Run
     /// <summary>
     /// Moves the run from <see cref="RunStatus.Interlude"/> to the next room.
     /// Increments <see cref="CurrentRoomIndex"/> and sets the run back to
-    /// <see cref="RunStatus.Active"/>. Returns true when this transition just crossed
-    /// a floor boundary AND consumed an active "Loi de l'Oubli Partiel" modifier — the
-    /// caller must then award <see cref="SkillForgottenFloorEndStatPoints"/> skill
-    /// points (see <see cref="ConsumeFloorEndModifiers"/>).
+    /// <see cref="RunStatus.Active"/>. Signals which floor-end payouts are due when this
+    /// transition just crossed a floor boundary (see <see cref="ConsumeFloorEndModifiers"/>).
     /// </summary>
-    public bool MoveToNextRoom(Room nextRoom)
+    public FloorEndModifierConsumptionResult MoveToNextRoom(Room nextRoom)
     {
         _roomSnapshot = CreateSnapshot();
 
@@ -845,7 +843,9 @@ public sealed class Run
             ? RunStatus.BossReached
             : RunStatus.Active;
 
-        return FloorIndex != previousFloorIndex && ConsumeFloorEndModifiers();
+        return FloorIndex != previousFloorIndex
+            ? ConsumeFloorEndModifiers()
+            : FloorEndModifierConsumptionResult.None;
     }
 
     public void CompleteRun(DateTimeOffset endedAt)
@@ -1433,18 +1433,22 @@ public sealed class Run
     /// the team learns from having forgotten a skill for the floor.</summary>
     public const int SkillForgottenFloorEndStatPoints = 8;
 
+    /// <summary>"Loi du Prêteur" floor-end clawback: the fraction of the player's total
+    /// currency the Palais reclaims (SFD: "25% du total détenu — intérêts compris").</summary>
+    public const double PreteurClawbackFraction = 0.25;
+
     /// <summary>
     /// Consumes all unconsumed modifiers whose duration is <see cref="RunModifierDuration.UntilFloorEnds"/>.
     /// Called automatically from <see cref="MoveToNextRoom"/> whenever <see cref="FloorIndex"/> changes.
-    /// Returns true when a "Loi de l'Oubli Partiel" modifier was just consumed — the
-    /// caller (an Application-layer handler) must then award
-    /// <see cref="SkillForgottenFloorEndStatPoints"/> skill points, since awarding them
-    /// is a gateway/Application concern the Domain layer cannot reach.
+    /// Signals which payouts are due — the caller (an Application-layer handler) must
+    /// then perform them via the player-profile gateway, since that I/O is a
+    /// gateway/Application concern the Domain layer cannot reach.
     /// </summary>
-    public bool ConsumeFloorEndModifiers()
+    public FloorEndModifierConsumptionResult ConsumeFloorEndModifiers()
     {
         var now = DateTime.UtcNow;
         var oubliPartielPayoutDue = false;
+        var preteurClawbackDue = false;
 
         foreach (var modifier in _runModifiers
             .Where(m => m.Duration == RunModifierDuration.UntilFloorEnds && !m.IsConsumed))
@@ -1454,11 +1458,18 @@ public sealed class Run
                 oubliPartielPayoutDue = true;
                 ForgottenSkillKey = null;
             }
+            else if (modifier.Type == RunModifierType.CurrencyGainBonusPercent)
+            {
+                // "Loi du Prêteur" (law.preteur): the currency-gain-bonus modifier
+                // doubles as this law's "active" marker — its floor-end consumption
+                // signals that the 25% clawback is due.
+                preteurClawbackDue = true;
+            }
 
             modifier.Consume(now);
         }
 
-        return oubliPartielPayoutDue;
+        return new FloorEndModifierConsumptionResult(oubliPartielPayoutDue, preteurClawbackDue);
     }
 
     private void AddRunItemFromPayload(string payloadKey)
@@ -1805,6 +1816,27 @@ public sealed class Run
             index = eligible.Length - 1;
 
         ForgottenSkillKey = eligible[index];
+    }
+
+    /// <summary>"Loi de l'Impôt du Seuil" insolvency penalty: -2% team max HP for the
+    /// rest of the floor, per unpaid room toll (cumulable — see
+    /// RunModifierType.MaxHpReductionPercent).</summary>
+    public const int RoomTollInsolvencyMaxHpReductionPercent = 2;
+
+    /// <summary>
+    /// "Loi de l'Impôt du Seuil" (law.impot-seuil): applied by the Application-layer
+    /// handler when a room-toll payment fails (see MoveToNextRoomCommandHandler /
+    /// IPlayerProfileGateway.TrySpendCurrencyAsync). Stacks across unpaid rooms within
+    /// the same floor; cleared like any other UntilFloorEnds modifier at floor end.
+    /// </summary>
+    public void ApplyRoomTollInsolvencyDebuff()
+    {
+        AddRunModifier(RunModifier.Create(
+            RunModifierType.MaxHpReductionPercent,
+            RoomTollInsolvencyMaxHpReductionPercent,
+            RunModifierDuration.UntilFloorEnds,
+            sourceType: "PalaceLaw",
+            sourceKey: "law.impot-seuil"));
     }
 
     /// <summary>
@@ -2293,4 +2325,16 @@ public sealed class Run
         ActivePalaceLaw[] ActivePalaceLaws,
         Guid[]? RunItemIds = null,
         Guid[]? RunModifierIds = null);
+
+    /// <summary>
+    /// Signals which floor-end payouts an Application-layer handler must perform via the
+    /// player-profile gateway after a room transition crosses a floor boundary. See
+    /// <see cref="ConsumeFloorEndModifiers"/>/<see cref="MoveToNextRoom"/>.
+    /// </summary>
+    public readonly record struct FloorEndModifierConsumptionResult(
+        bool OubliPartielPayoutDue,
+        bool PreteurClawbackDue)
+    {
+        public static readonly FloorEndModifierConsumptionResult None = new(false, false);
+    }
 }

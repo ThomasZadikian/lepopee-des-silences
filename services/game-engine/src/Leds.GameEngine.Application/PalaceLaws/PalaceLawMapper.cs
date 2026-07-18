@@ -132,6 +132,10 @@ public static class PalaceLawMapper
                 RunModifierType.LootChanceBonusPercent, (double)effect.Value, duration),
             EffectType.EnableSkillForgotten => PalaceLawEffect.Create(
                 RunModifierType.SkillForgotten, 1, duration),
+            EffectType.EnableRoomToll => PalaceLawEffect.Create(
+                RunModifierType.RoomTollAmount, (double)effect.Value, duration),
+            EffectType.EnableCurrencyGainBonus => PalaceLawEffect.Create(
+                RunModifierType.CurrencyGainBonusPercent, (double)effect.Value, duration),
 
             _ => throw new DomainException($"Palace law effect type '{effect.EffectType}' is not supported by the runtime.")
         };

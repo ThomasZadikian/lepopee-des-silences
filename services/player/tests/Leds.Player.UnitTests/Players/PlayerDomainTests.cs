@@ -102,6 +102,44 @@ public sealed class PlayerProfileTests
     }
 
     [Fact]
+    public void TrySpendCurrency_ShouldDecrementAndReturnTrue_WhenAffordable()
+    {
+        var createdAt = DateTimeOffset.UtcNow;
+        var profile = PlayerProfile.Create("Test", createdAt);
+        profile.AwardCurrency(createdAt, 100);
+        var spentAt = createdAt.AddMinutes(5);
+
+        var succeeded = profile.TrySpendCurrency(spentAt, 30);
+
+        succeeded.Should().BeTrue();
+        profile.Progression.PalaceShardCount.Should().Be(70);
+        profile.UpdatedAtUtc.Should().Be(spentAt);
+    }
+
+    [Fact]
+    public void TrySpendCurrency_ShouldReturnFalseAndLeaveBalanceUnchanged_WhenInsufficientFunds()
+    {
+        var createdAt = DateTimeOffset.UtcNow;
+        var profile = PlayerProfile.Create("Test", createdAt);
+        profile.AwardCurrency(createdAt, 10);
+
+        var succeeded = profile.TrySpendCurrency(createdAt.AddMinutes(5), 30);
+
+        succeeded.Should().BeFalse();
+        profile.Progression.PalaceShardCount.Should().Be(10);
+    }
+
+    [Fact]
+    public void TrySpendCurrency_ShouldRejectNonPositiveAmount()
+    {
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+
+        var act = () => profile.TrySpendCurrency(DateTimeOffset.UtcNow, 0);
+
+        act.Should().Throw<DomainException>().WithMessage("*Currency amount*");
+    }
+
+    [Fact]
     public void SpendStatPoint_ShouldRejectWhenNoPointsAvailable()
     {
         var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);

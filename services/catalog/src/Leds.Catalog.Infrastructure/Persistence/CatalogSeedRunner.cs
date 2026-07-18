@@ -5345,17 +5345,19 @@ public sealed class CatalogSeedRunner
         await _ctx.SaveChangesAsync(cancellationToken);
     }
 
-    // Chapitre V — Lois d'économie. 2 of its 4 laws are seeded: "Loi des Poches Cousues"
-    // (law.poches-cousues, new RunModifierType.ConsumablesRestrictedInCombat — see
-    // Run.UseItem) and "Loi de l'Abondance" (law.abondance, new RunModifierType.
-    // AbondanceExtraChoiceEnabled — see RewardOfferFactory.CreateItemRewardOffer). The
-    // other 2 are NOT seeded (documented gap): "Loi de l'Impôt du Seuil" (law.impot-seuil)
-    // and "Loi du Prêteur" (law.preteur) both need an in-run debit/credit path for Éclats
-    // du Palais — today that currency lives ONLY on the player-service PlayerProfile
-    // (read via IPlayerProfileGateway as a snapshot value, PalaceShardCount), with no
-    // command allowing game-engine to spend or grant it mid-run; wiring a synchronous
-    // cross-service wallet mutation into every room transition is out of scope for this
-    // pass.
+    // Chapitre V — Lois d'économie. All 4 of its laws now have mechanical backing:
+    // "Loi des Poches Cousues" (law.poches-cousues, RunModifierType.
+    // ConsumablesRestrictedInCombat — see Run.UseItem), "Loi de l'Abondance"
+    // (law.abondance, RunModifierType.AbondanceExtraChoiceEnabled — see
+    // RewardOfferFactory.CreateItemRewardOffer), "Loi de l'Impôt du Seuil"
+    // (law.impot-seuil, RunModifierType.RoomTollAmount — a per-room-entry currency toll,
+    // see MoveToNextRoomCommandHandler and IPlayerProfileGateway.TrySpendCurrencyAsync),
+    // and "Loi du Prêteur" (law.preteur, RunModifierType.CurrencyGainBonusPercent — a
+    // currency-gain multiplier applied in NpcEventChoiceResolver, with a floor-end
+    // clawback also driven from MoveToNextRoomCommandHandler). The latter two required
+    // adding a currency-spend capability to the player-service (PlayerProgression.
+    // TrySpendCurrency), since previously Éclats du Palais could only ever be awarded,
+    // never spent.
     //
     // Loi de l'Abondance's "un nœud sur deux est vide à l'ouverture" half is NOT modeled
     // (documented simplification) — no zero-choice RewardOffer flow exists; the item
@@ -5394,10 +5396,45 @@ public sealed class CatalogSeedRunner
             impactDomains: ["Rewards"],
             cancellationToken);
 
+        await UpsertCompendiumLawAsync(
+            key: "law.impot-seuil",
+            name: "Loi de l'Impôt du Seuil",
+            narrativeText: "Article XXI — Le passage est gratuit pour qui peut le payer. "
+                + "Les autres paieront avec ce qu'ils sont.",
+            description: "Chaque salle traversée coûte 5 Éclats, prélevés à l'entrée. En "
+                + "cas d'insolvabilité, le Palais prélève en nature : −2% PV max de "
+                + "l'équipe jusqu'à la fin de l'étage (cumulable).",
+            rarity: "Peu commun",
+            polarity: "Sévère",
+            isMajeure: false,
+            minDepth: null,
+            duration: "UntilFloorEnds",
+            selectionGroup: "law.economie",
+            impactDomains: ["Combat"],
+            cancellationToken);
+
+        await UpsertCompendiumLawAsync(
+            key: "law.preteur",
+            name: "Loi du Prêteur",
+            narrativeText: "Article XXIX — Le Palais avance les fonds. Le Palais n'oublie "
+                + "jamais une avance. Le Palais, en vérité, n'oublie rien du tout.",
+            description: "Les Éclats ramassés sont majorés de +50%. À la fin de l'étage, "
+                + "le Palais reprend 25% du total détenu — intérêts compris.",
+            rarity: "Peu commun",
+            polarity: "DoubleTranchant",
+            isMajeure: false,
+            minDepth: null,
+            duration: "UntilFloorEnds",
+            selectionGroup: "law.economie",
+            impactDomains: ["Rewards"],
+            cancellationToken);
+
         await _ctx.SaveChangesAsync(cancellationToken);
 
         await UpsertLawEffectAsync("law.poches-cousues", "EnableConsumablesRestrictedInCombat", 1m, "UntilRoomEnds", null, cancellationToken);
         await UpsertLawEffectAsync("law.abondance", "EnableAbondanceExtraChoice", 1m, "UntilFloorEnds", null, cancellationToken);
+        await UpsertLawEffectAsync("law.impot-seuil", "EnableRoomToll", 5m, "UntilFloorEnds", null, cancellationToken);
+        await UpsertLawEffectAsync("law.preteur", "EnableCurrencyGainBonus", 50m, "UntilFloorEnds", null, cancellationToken);
 
         await _ctx.SaveChangesAsync(cancellationToken);
     }

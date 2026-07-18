@@ -1227,6 +1227,7 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 [
                     new CatalogNpcOffering("offer.skill", "Skill", "skill.basic.strike", 0, IsMajor: true, UnlockConditions: []),
                     new CatalogNpcOffering("offer.stat", "StatPoint", null, 1, IsMajor: false, UnlockConditions: []),
+                    new CatalogNpcOffering("offer.currency", "Currency", null, 100, IsMajor: false, UnlockConditions: []),
                     new CatalogNpcOffering("offer.item", "Item", "item.consumable.minor-heal", 1, IsMajor: false, UnlockConditions: []),
                     new CatalogNpcOffering("offer.item.nonstandard", "Item", "item.equipment.sac-nonstandard", 1, IsMajor: false, UnlockConditions: []),
                     new CatalogNpcOffering("offer.skill.gated", "Skill", "skill.basic.strike", 0, IsMajor: true,
@@ -1253,6 +1254,11 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                                     "take-stat", "Prendre le point de compétence",
                                     [], [new CatalogDialogueConsequence(
                                         "GrantOffering", null, null, null, null, 0, null, null, "offer.stat", null, null, null)],
+                                    null),
+                                new CatalogNpcDialogueChoice(
+                                    "take-currency", "Prendre les Éclats",
+                                    [], [new CatalogDialogueConsequence(
+                                        "GrantOffering", null, null, null, null, 0, null, null, "offer.currency", null, null, null)],
                                     null),
                                 new CatalogNpcDialogueChoice(
                                     "take-item", "Prendre l'objet",

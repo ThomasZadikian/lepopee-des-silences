@@ -141,4 +141,23 @@ public enum RunModifierType
     /// Run.ConsumeFloorEndModifiers clears ForgottenSkillKey and signals the +8
     /// skill-point payout when it is consumed.</summary>
     SkillForgotten = 39,
+
+    /// <summary>"Loi de l'Impôt du Seuil" (law.impot-seuil) — cost in "Éclats du Palais"
+    /// charged at the entry of every room while the law is active (SFD: 5). See
+    /// MoveToNextRoomCommandHandler, which reads this magnitude and calls
+    /// IPlayerProfileGateway.TrySpendCurrencyAsync at each room transition.</summary>
+    RoomTollAmount = 40,
+
+    /// <summary>"Loi de l'Impôt du Seuil" insolvency penalty — a stacking, floor-scoped
+    /// reduction to the whole team's max HP (SFD: -2% per unpaid room toll, cumulable).
+    /// Not granted by PalaceLawMapper/ActivatePalaceLaw like other law effects — applied
+    /// directly via Run.ApplyRoomTollInsolvencyDebuff whenever a room-toll payment fails.
+    /// Summed and applied as a multiplier in CombatFactory.CreateFromDraft.</summary>
+    MaxHpReductionPercent = 41,
+
+    /// <summary>"Loi du Prêteur" (law.preteur) — currency gains from NPC offerings are
+    /// boosted by this percentage (SFD: +50%). See NpcEventChoiceResolver.ApplyOfferingAsync.
+    /// Also doubles as this law's "active" marker for the floor-end 25% clawback (see
+    /// Run.ConsumeFloorEndModifiers / MoveToNextRoomCommandHandler).</summary>
+    CurrencyGainBonusPercent = 42,
 }

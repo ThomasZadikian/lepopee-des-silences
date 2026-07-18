@@ -194,4 +194,38 @@ public sealed class PalaceLawMapperTests
         var effect = law.Effects.Should().ContainSingle(e => e.ModifierType == RunModifierType.LootChanceBonusPercent).Subject;
         effect.Value.Should().Be(10);
     }
+
+    [Fact]
+    public void CreatePalaceLaw_ShouldMapRoomToll_PreservingItsMagnitude()
+    {
+        var definition = CreateDefinition(
+            impactDomains: ["Combat"],
+            effects:
+            [
+                new CatalogEffectDefinitionSnapshot(
+                    "EnableRoomToll", "Run", 5m, "Flat", "UntilFloorEnds", "Additive", null, 0, null, null, null),
+            ]);
+
+        var law = PalaceLawMapper.CreatePalaceLaw(definition);
+
+        var effect = law.Effects.Should().ContainSingle(e => e.ModifierType == RunModifierType.RoomTollAmount).Subject;
+        effect.Value.Should().Be(5);
+    }
+
+    [Fact]
+    public void CreatePalaceLaw_ShouldMapCurrencyGainBonus_PreservingItsMagnitude()
+    {
+        var definition = CreateDefinition(
+            impactDomains: ["Rewards"],
+            effects:
+            [
+                new CatalogEffectDefinitionSnapshot(
+                    "EnableCurrencyGainBonus", "Run", 50m, "Flat", "UntilFloorEnds", "Additive", null, 0, null, null, null),
+            ]);
+
+        var law = PalaceLawMapper.CreatePalaceLaw(definition);
+
+        var effect = law.Effects.Should().ContainSingle(e => e.ModifierType == RunModifierType.CurrencyGainBonusPercent).Subject;
+        effect.Value.Should().Be(50);
+    }
 }
