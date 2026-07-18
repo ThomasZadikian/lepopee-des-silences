@@ -48,6 +48,8 @@ public sealed class PlayerCharacterStatBlockTests
         statBlock.Focus.Should().Be(0);
         statBlock.Mana.Should().Be(0);
         statBlock.Charge.Should().Be(0);
+        statBlock.MagicAttack.Should().Be(6);
+        statBlock.MagicDefense.Should().Be(3);
     }
 
     [Theory]

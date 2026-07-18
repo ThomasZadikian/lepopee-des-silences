@@ -100,8 +100,11 @@ public sealed class PlayerCharacterStatBlock
             focus: 0,
             mana: 0,
             charge: 0,
-            magicAttack: 0,
-            magicDefense: 0);
+            // Same 2:1 ratio as AttackPower/Defense, halved since the starter kit
+            // (skill.basic.strike/guard) is physical-only — a magic baseline of 0
+            // made Magic Attack/Defense inert until stat points were spent on them.
+            magicAttack: 6,
+            magicDefense: 3);
     }
 
     // Per-point increment for each allocatable stat. Most stats grant +1; Vitality

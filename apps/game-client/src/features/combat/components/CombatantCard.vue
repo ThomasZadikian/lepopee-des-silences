@@ -256,7 +256,7 @@ const hasAggro = computed(() =>
     <div class="presence__stats">
       <span class="presence__stat presence__stat--hp">PV {{ combatant.currentVitality }} / {{ combatant.maxVitality }}</span>
       <span v-if="combatant.guard > 0" class="presence__stat presence__stat--guard">⛨ {{ combatant.guard }}</span>
-      <span v-if="combatant.side === 'Player'" class="presence__stat presence__stat--breath">{{ combatant.mana }} PP</span>
+      <span class="presence__stat presence__stat--breath">{{ combatant.mana }} PP</span>
     </div>
 
     <div

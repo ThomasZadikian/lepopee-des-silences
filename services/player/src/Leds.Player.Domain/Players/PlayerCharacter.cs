@@ -106,7 +106,11 @@ public sealed class PlayerCharacter
             recovery: 5,
             focus: 0,
             mana: baseMana,
-            charge: baseCharge);
+            charge: baseCharge,
+            // Same baseline as CreateDefaultPorteur() — recruited companions used to
+            // start with Magic Attack/Defense at 0 since these params were omitted here.
+            magicAttack: 6,
+            magicDefense: 3);
 
         if (skillKeys is null || skillKeys.Count == 0)
             throw new DomainException("Character must have at least one skill.");

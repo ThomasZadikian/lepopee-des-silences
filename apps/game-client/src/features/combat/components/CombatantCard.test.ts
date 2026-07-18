@@ -79,9 +79,13 @@ describe('CombatantCard', () => {
     expect(wrapper.text()).toContain('10 PP');
   });
 
-  it('does not display mana stat for enemy side', () => {
-    const wrapper = mountCard(makeCombatant({ side: 'Enemy' }));
-    expect(wrapper.find('.presence__stat--breath').exists()).toBe(false);
+  // Regression: enemy mana used to be hidden entirely, even though the Bestiaire
+  // gives every creature a real Mana stat (informational — enemies still cast
+  // freely, see CombatSkillEffectResolver.ConsumeResources).
+  it('displays mana stat for enemy side too', () => {
+    const wrapper = mountCard(makeCombatant({ side: 'Enemy', mana: 20 }));
+    expect(wrapper.find('.presence__stat--breath').exists()).toBe(true);
+    expect(wrapper.text()).toContain('20 PP');
   });
 
   it('applies presence--active class when isCurrentActor is true', () => {
