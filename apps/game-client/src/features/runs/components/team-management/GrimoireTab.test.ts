@@ -211,4 +211,56 @@ describe('GrimoireTab', () => {
     const unequippedToggle = cards[1].find('.grimoire-toggle'); // skill.b
     expect(unequippedToggle.attributes('disabled')).toBeDefined();
   });
+
+  it('sorts alphabetically by default', async () => {
+    const wrapper = mount(GrimoireTab, { props: { character: baseCharacter() } });
+    await flushPromises();
+
+    const names = wrapper.findAll('.grimoire-card__name').map((n) => n.text());
+    expect(names).toEqual(['Frappe', 'Garde', 'Secret']);
+  });
+
+  it('sorts by effect category, then alphabetically within each category', async () => {
+    const wrapper = mount(GrimoireTab, { props: { character: baseCharacter() } });
+    await flushPromises();
+
+    await wrapper.find('.grimoire-sort__select').setValue('category');
+
+    // Frappe/Secret = Damage ("Offensif"), Garde = Buff ("Soutien") — Offensif < Soutien.
+    const names = wrapper.findAll('.grimoire-card__name').map((n) => n.text());
+    expect(names).toEqual(['Frappe', 'Secret', 'Garde']);
+  });
+
+  it('paginates at 6 skills per page (2 columns × 3 rows) and resets to page 1 on sort change', async () => {
+    const manySkills: SkillDefinitionView[] = Array.from({ length: 8 }, (_, i) => ({
+      key: `skill.${i}`,
+      displayName: `Sort ${String(i).padStart(2, '0')}`,
+      description: 'Un sort.',
+      skillType: 'Damage',
+      targetingType: 'SingleEnemy',
+      effectType: 'Damage',
+      manaCost: 0,
+      chargeCost: 0,
+      basePower: 5,
+      category: 'Physical',
+      basePowerIsPercentOfMaxVitality: false,
+      effects: [],
+      acquisitionHints: [],
+    }));
+    vi.mocked(skillsApi.listActive).mockResolvedValue({ skills: manySkills });
+
+    const wrapper = mount(GrimoireTab, { props: { character: baseCharacter() } });
+    await flushPromises();
+
+    expect(wrapper.findAll('.grimoire-card')).toHaveLength(6);
+    expect(wrapper.find('.grimoire-page-indicator').text()).toBe('Page 1 / 2');
+
+    const buttons = wrapper.findAll('.grimoire-page-btn');
+    await buttons[1].trigger('click'); // Suivant
+    expect(wrapper.find('.grimoire-page-indicator').text()).toBe('Page 2 / 2');
+    expect(wrapper.findAll('.grimoire-card')).toHaveLength(2);
+
+    await wrapper.find('.grimoire-sort__select').setValue('category');
+    expect(wrapper.find('.grimoire-page-indicator').text()).toBe('Page 1 / 2');
+  });
 });

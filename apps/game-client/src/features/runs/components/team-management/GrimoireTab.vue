@@ -47,6 +47,44 @@ function categoryLabel(effectType: string): string {
   return categoryLabels[effectType] ?? effectType;
 }
 
+// ── Tri + pagination (2 colonnes × 3 sorts par page) ──
+const PAGE_SIZE = 6;
+const sortMode = ref<'alphabetical' | 'category'>('alphabetical');
+const currentPage = ref(1);
+
+const sortedSkills = computed(() => {
+  const list = [...allSkills.value];
+  if (sortMode.value === 'category') {
+    list.sort((a, b) => {
+      const categoryCompare = categoryLabel(a.effectType).localeCompare(categoryLabel(b.effectType));
+      return categoryCompare !== 0 ? categoryCompare : a.displayName.localeCompare(b.displayName);
+    });
+  } else {
+    list.sort((a, b) => a.displayName.localeCompare(b.displayName));
+  }
+  return list;
+});
+
+const totalPages = computed(() => Math.max(1, Math.ceil(sortedSkills.value.length / PAGE_SIZE)));
+
+const pagedSkills = computed(() => {
+  const start = (currentPage.value - 1) * PAGE_SIZE;
+  return sortedSkills.value.slice(start, start + PAGE_SIZE);
+});
+
+watch(sortMode, () => { currentPage.value = 1; });
+watch(totalPages, (newTotal) => {
+  if (currentPage.value > newTotal) currentPage.value = newTotal;
+});
+
+function goToPreviousPage() {
+  if (currentPage.value > 1) currentPage.value -= 1;
+}
+
+function goToNextPage() {
+  if (currentPage.value < totalPages.value) currentPage.value += 1;
+}
+
 const statLabels: Record<string, string> = {
   AttackPower: 'Attaque',
   Defense: 'Défense',
@@ -193,10 +231,20 @@ function cancelChoices() {
       </div>
     </header>
 
+    <div v-if="!isLoadingSkills" class="grimoire-toolbar">
+      <label class="grimoire-sort">
+        Trier par
+        <select v-model="sortMode" class="grimoire-sort__select">
+          <option value="alphabetical">Alphabétique</option>
+          <option value="category">Catégorie d'effet</option>
+        </select>
+      </label>
+    </div>
+
     <p v-if="isLoadingSkills" class="grimoire-empty">Chargement du grimoire…</p>
     <div v-else class="grimoire-grid">
       <div
-        v-for="skill in allSkills"
+        v-for="skill in pagedSkills"
         :key="skill.key"
         class="grimoire-card"
         :class="{
@@ -242,6 +290,26 @@ function cancelChoices() {
           </p>
         </template>
       </div>
+    </div>
+
+    <div v-if="!isLoadingSkills" class="grimoire-pagination">
+      <button
+        type="button"
+        class="grimoire-page-btn"
+        :disabled="currentPage <= 1"
+        @click="goToPreviousPage"
+      >
+        ‹ Précédent
+      </button>
+      <span class="grimoire-page-indicator">Page {{ currentPage }} / {{ totalPages }}</span>
+      <button
+        type="button"
+        class="grimoire-page-btn"
+        :disabled="currentPage >= totalPages"
+        @click="goToNextPage"
+      >
+        Suivant ›
+      </button>
     </div>
   </div>
 </template>
@@ -320,10 +388,76 @@ function cancelChoices() {
   background: oklch(0.55 0.08 85 / 0.12);
 }
 
+.grimoire-toolbar {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.grimoire-sort {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-caps, var(--font));
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+}
+
+.grimoire-sort__select {
+  font-family: var(--font, sans-serif);
+  font-size: 12px;
+  text-transform: none;
+  letter-spacing: normal;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--line-soft);
+  background: var(--panel, oklch(0.20 0.025 270));
+  color: var(--ink-2);
+}
+
 .grimoire-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  grid-template-columns: repeat(2, 1fr);
   gap: 12px;
+}
+
+.grimoire-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding-top: 8px;
+}
+
+.grimoire-page-btn {
+  font-family: var(--font-caps, var(--font));
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 6px 14px;
+  border-radius: 4px;
+  border: 1px solid var(--line-soft);
+  background: transparent;
+  color: var(--ink-3);
+  cursor: pointer;
+  transition: opacity 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.grimoire-page-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.grimoire-page-btn:not(:disabled):hover {
+  border-color: var(--ink-3);
+  color: var(--ink-2);
+}
+
+.grimoire-page-indicator {
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+  color: var(--ink-3);
 }
 
 .grimoire-card {

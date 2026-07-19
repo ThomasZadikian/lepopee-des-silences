@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import PartyDrawer from './PartyDrawer.vue';
-import { usePlayerStore } from '../../party/stores/playerStore';
 import type { RunPartyMemberDto, RunModifierDto, ActivePalaceLawDto, ActiveCurseDto, RunItemDto } from '../types/runTypes';
 
 beforeEach(() => {
@@ -228,38 +227,6 @@ describe('PartyDrawer', () => {
     expect(wrapper.exists()).toBe(true);
   });
 
-  it('shows the "Gérer l\'équipe" button when a player profile is present', () => {
-    usePlayerStore().profile = {
-      id: 'player-1',
-      displayName: 'Test',
-      characters: [
-        {
-          id: 'char-1',
-          definitionKey: 'character.player.self',
-          displayName: 'Le Porteur',
-          maxEquippedSkills: 4,
-          items: [],
-          maxEquippedItems: 3,
-          characterType: 'Standard',
-          skills: [],
-          stats: {
-            maxVitality: 100, attackPower: 12, defense: 6, startingGuard: 0,
-            speed: 10, initiative: 10, recovery: 5, focus: 0, mana: 0, charge: 0,
-          },
-        },
-      ],
-      progression: { unspentStatPoints: 0, totalStatPointsEarned: 0, palaceShardCount: 0 },
-      permanentItems: [],
-    };
-    const wrapper = mountDrawer();
-    expect(wrapper.find('.party-drawer__manage-btn').exists()).toBe(true);
-  });
-
-  it('does not show the manage button when no player profile is loaded', () => {
-    const wrapper = mountDrawer();
-    expect(wrapper.find('.party-drawer__manage-btn').exists()).toBe(false);
-  });
-
   it('does not show the Calice infini button when the player does not own it', () => {
     const wrapper = mountDrawer(null, null, null, null, null, false, false);
     expect(wrapper.text()).not.toContain('Calice infini');
@@ -279,34 +246,4 @@ describe('PartyDrawer', () => {
     expect(button!.attributes('disabled')).toBeDefined();
   });
 
-  it('opens the team management modal when the manage button is clicked', async () => {
-    usePlayerStore().profile = {
-      id: 'player-1',
-      displayName: 'Test',
-      characters: [
-        {
-          id: 'char-1',
-          definitionKey: 'character.player.self',
-          displayName: 'Le Porteur',
-          maxEquippedSkills: 4,
-          items: [],
-          maxEquippedItems: 3,
-          characterType: 'Standard',
-          skills: [],
-          stats: {
-            maxVitality: 100, attackPower: 12, defense: 6, startingGuard: 0,
-            speed: 10, initiative: 10, recovery: 5, focus: 0, mana: 0, charge: 0,
-          },
-        },
-      ],
-      progression: { unspentStatPoints: 0, totalStatPointsEarned: 0, palaceShardCount: 0 },
-      permanentItems: [],
-    };
-    const wrapper = mountDrawer();
-    expect(document.body.querySelector('.tmm-backdrop')).toBeNull();
-
-    await wrapper.find('.party-drawer__manage-btn').trigger('click');
-
-    expect(document.body.querySelector('.tmm-backdrop')).not.toBeNull();
-  });
 });

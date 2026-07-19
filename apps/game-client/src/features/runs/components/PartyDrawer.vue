@@ -1,11 +1,8 @@
 <script setup lang="ts">
-import { ref } from 'vue';
-import { usePlayerStore } from '../../party/stores/playerStore';
 import { useRunStore } from '../stores/runStore';
 import { statDescriptions } from '../../party/constants/statDescriptions';
 import type { ActiveCurseDto, ActivePalaceLawDto, RunItemDto, RunModifierDto, RunPartyMemberDto } from '../types/runTypes';
 import StatTooltip from '../../../shared/components/StatTooltip.vue';
-import TeamManagementModal from './TeamManagementModal.vue';
 
 defineProps<{
   allies: RunPartyMemberDto[] | null;
@@ -19,9 +16,7 @@ defineProps<{
 
 defineEmits<{ close: [] }>();
 
-const playerStore = usePlayerStore();
 const runStore = useRunStore();
-const isManageModalOpen = ref(false);
 
 function vitalityPct(m: RunPartyMemberDto): number {
   if (!m.maxVitality) return 0;
@@ -178,13 +173,6 @@ function rarityTone(rarity: string): string {
         </p>
       </section>
 
-      <!-- ── Gestion de l'équipe ── -->
-      <section v-if="playerStore.mainCharacter" class="party-drawer__section">
-        <button type="button" class="party-drawer__manage-btn" @click="isManageModalOpen = true">
-          Gérer l'équipe
-        </button>
-      </section>
-
       <!-- ── Calice infini ── -->
       <section v-if="caliceInfiniEnabled" class="party-drawer__section">
         <button
@@ -261,14 +249,6 @@ function rarityTone(rarity: string): string {
         Aucune donnée d'équipe disponible.
       </p>
     </div>
-
-    <Teleport to="body">
-      <TeamManagementModal v-if="isManageModalOpen" @close="isManageModalOpen = false" />
-    </Teleport>
-
-    <Teleport to="body">
-      <TeamManagementModal v-if="isManageModalOpen" @close="isManageModalOpen = false" />
-    </Teleport>
   </aside>
 </template>
 

@@ -26,9 +26,9 @@ import RewardOfferPanel from '../features/rewards/components/RewardOfferPanel.vu
 import RoomClimateEffects from '../features/room-climate/RoomClimateEffects.vue';
 import PartyDrawer from '../features/runs/components/PartyDrawer.vue';
 import RunStatusRibbon from '../features/runs/components/RunStatusRibbon.vue';
+import TeamMicroMenu from '../features/runs/components/TeamMicroMenu.vue';
 import { useRunStore } from '../features/runs/stores/runStore';
 import DecisionDiptych from '../shared/components/DecisionDiptych.vue';
-import RuntimeDebugPanel from '../shared/components/RuntimeDebugPanel.vue';
 import { useGameUiStore } from '../shared/stores/useGameUiStore';
 
 const route = useRoute();
@@ -39,7 +39,6 @@ const uiStore = useGameUiStore();
 const playerStore = usePlayerStore();
 const devToolsEnabled = import.meta.env.DEV === true &&
   import.meta.env.VITE_GAME_CLIENT_DEVTOOLS_ENABLED === 'true';
-const showRuntimeDebugPanel = import.meta.env.DEV === true;
 const DevToolsPanel = devToolsEnabled
   ? defineAsyncComponent(() => import('../features/devtools/components/DevToolsPanel.vue'))
   : null;
@@ -445,20 +444,9 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
         </section>
       </template>
 
-      <!-- ── Runtime debug (all non-combat phases) ── -->
+      <!-- ── Micro-menu (Équipe/Statistiques/Grimoire/Équipement) ── -->
       <Teleport to="body">
-        <div v-if="showRuntimeDebugPanel && !isCombatPhase" class="rdp-float">
-          <RuntimeDebugPanel
-            :data="{
-              run: runStore.currentRun,
-              phase: runStore.gameplayPhase,
-              combatRuntime: runStore.combatRuntime,
-              lastOutcome: runStore.lastOutcome,
-              pendingReward: runStore.pendingRewardOffer,
-            }"
-            label="Run state"
-          />
-        </div>
+        <TeamMicroMenu v-if="!isCombatPhase" />
       </Teleport>
 
       <!-- Devtools are development-only and require VITE_GAME_CLIENT_DEVTOOLS_ENABLED=true. -->
@@ -538,16 +526,6 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
 
 .phase-center .es-btn {
   margin-top: var(--space-4);
-}
-
-.rdp-float {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  width: 480px;
-  max-width: 100vw;
-  z-index: 9000;
-  pointer-events: auto;
 }
 
 .devtools-float-toggle {

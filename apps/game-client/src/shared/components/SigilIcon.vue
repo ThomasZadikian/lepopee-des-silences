@@ -113,6 +113,32 @@ const props = withDefaults(defineProps<{
       <path d="M9 3 V18 M15 6 V21" />
     </template>
 
+    <!-- équipe : deux silhouettes -->
+    <template v-else-if="props.kind === 'equipe'">
+      <circle cx="8.5" cy="8" r="3.1" />
+      <path d="M3 20 v-1.5 a5.5 5.5 0 0 1 11 0 V20" />
+      <circle cx="16.5" cy="8.5" r="2.4" />
+      <path d="M14.5 12.2 a4.6 4.6 0 0 1 6.5 4.2 V20" />
+    </template>
+
+    <!-- statistiques : barres ascendantes -->
+    <template v-else-if="props.kind === 'statistiques'">
+      <path d="M5 20 V13 M11 20 V9 M17 20 V5" />
+      <path d="M3 20 H21" />
+    </template>
+
+    <!-- grimoire : livre ouvert -->
+    <template v-else-if="props.kind === 'grimoire'">
+      <path d="M12 6.5 C10 5 6.5 4.3 4 4.8 V17.8 C6.5 17.3 10 18 12 19.5" />
+      <path d="M12 6.5 C14 5 17.5 4.3 20 4.8 V17.8 C17.5 17.3 14 18 12 19.5" />
+      <path d="M12 6.5 V19.5" />
+    </template>
+
+    <!-- équipement : bouclier -->
+    <template v-else-if="props.kind === 'equipement'">
+      <path d="M12 3 L19 5.5 V11.5 C19 16 16 19 12 21 C8 19 5 16 5 11.5 V5.5 Z" />
+    </template>
+
     <!-- fallback générique -->
     <template v-else>
       <circle cx="12" cy="12" r="8" stroke-dasharray="2.5 4" opacity="0.85" />
