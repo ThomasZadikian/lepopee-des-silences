@@ -1,8 +1,7 @@
 ﻿using Leds.GameEngine.Application.Abstractions;
 using Leds.SharedBuildingBlocks.Time;
-using Leds.GameEngine.Application.Catalog.Contracts;
-using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Application.PalaceLaws;
+using Leds.GameEngine.Application.Players;
 using Leds.GameEngine.Application.Players.Ports;
 using Leds.GameEngine.Application.Runs.Dtos;
 using Leds.GameEngine.Domain.Runs;
@@ -34,8 +33,8 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
     private readonly IRunRepository _runRepository;
     private readonly IPlayerRunSnapshotGateway _playerGateway;
     private readonly IPlayerProfileGateway _playerProfileGateway;
-    private readonly ICatalogContentGateway _catalogGateway;
     private readonly IAmbientPalaceLawPromulgator _palaceLawPromulgator;
+    private readonly PlayerSkillMerger _skillMerger;
     private readonly IClock _clock;
 
     public StartRunCommandHandler(
@@ -43,16 +42,16 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
         IRunRepository runRepository,
         IPlayerRunSnapshotGateway playerGateway,
         IPlayerProfileGateway playerProfileGateway,
-        ICatalogContentGateway catalogGateway,
         IAmbientPalaceLawPromulgator palaceLawPromulgator,
+        PlayerSkillMerger skillMerger,
         IClock clock)
     {
         _runGenerator = runGenerator;
         _runRepository = runRepository;
         _playerGateway = playerGateway;
         _playerProfileGateway = playerProfileGateway;
-        _catalogGateway = catalogGateway;
         _palaceLawPromulgator = palaceLawPromulgator;
+        _skillMerger = skillMerger;
         _clock = clock;
     }
 
@@ -81,7 +80,7 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
         var mainCharacter = snapshot.Characters.FirstOrDefault()
             ?? throw new InvalidOperationException("Player snapshot has no available characters.");
 
-        var equipmentEffects = await CollectEquippedItemEffectsAsync(
+        var equipmentEffects = await _skillMerger.CollectEquippedItemEffectsAsync(
             mainCharacter.EquippedItems, cancellationToken);
 
         var statBonuses = equipmentEffects
@@ -172,55 +171,10 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
         // start combat with (Law/climate-derived — see CombatFactory's guardBonus).
         var guardBonusPercent = StatBonusPercent("Guard");
 
-        var grantedSkillKeys = equipmentEffects
-            .Where(e => string.Equals(e.Kind, "GrantSkill", StringComparison.OrdinalIgnoreCase)
-                && !string.IsNullOrWhiteSpace(e.SkillKey))
-            .Select(e => e.SkillKey!)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .Where(key => !mainCharacter.Skills.Any(
-                s => string.Equals(s.SkillDefinitionKey, key, StringComparison.OrdinalIgnoreCase)))
-            .ToArray();
+        var mergedSkills = await _skillMerger.MergeSkillsAsync(mainCharacter, equipmentEffects, cancellationToken);
 
-        var grantedSkills = await CollectGrantedSkillsAsync(grantedSkillKeys, cancellationToken);
-
-        // mainCharacter.Skills comes from player-service's run-snapshot, which only
-        // guarantees the equipped skill KEY is correct — DisplayName/EffectType/BasePower
-        // there can be a best-effort guess (e.g. for a skill unlocked from an NPC offering
-        // like Mané's "Favorite de Elise"). Re-resolve each key against the catalog (the
-        // actual source of truth) and only fall back to the snapshot's own data if the
-        // catalog lookup misses, so a legendary/rare skill's real mechanics (EffectType,
-        // BasePower, Category, percent-of-max heal, ...) are what actually gets cast.
-        var catalogLearnedSkills = await CollectGrantedSkillsAsync(mainCharacter.SkillKeys, cancellationToken);
-
-        var playerSkills = mainCharacter.Skills
-            .Select(fallback =>
-            {
-                var fromCatalog = catalogLearnedSkills.FirstOrDefault(
-                    s => string.Equals(s.Key, fallback.SkillDefinitionKey, StringComparison.OrdinalIgnoreCase));
-
-                return fromCatalog is not null
-                    ? PlayerRuntimeSkill.Create(
-                        key: fromCatalog.Key,
-                        displayName: fromCatalog.DisplayName,
-                        skillType: fromCatalog.SkillType,
-                        targetingType: fromCatalog.TargetingType,
-                        effectType: fromCatalog.EffectType,
-                        manaCost: fromCatalog.ManaCost,
-                        chargeCost: fromCatalog.ChargeCost,
-                        basePower: fromCatalog.BasePower,
-                        category: fromCatalog.Category,
-                        basePowerIsPercentOfMaxVitality: fromCatalog.BasePowerIsPercentOfMaxVitality)
-                    : PlayerRuntimeSkill.Create(
-                        key: fallback.SkillDefinitionKey,
-                        displayName: fallback.DisplayName,
-                        skillType: fallback.SkillType,
-                        targetingType: fallback.TargetingMode,
-                        effectType: fallback.EffectType,
-                        manaCost: fallback.ManaCost,
-                        chargeCost: fallback.ChargeCost,
-                        basePower: fallback.BasePower);
-            })
-            .Concat(grantedSkills.Select(s => PlayerRuntimeSkill.Create(
+        var playerSkills = mergedSkills
+            .Select(s => PlayerRuntimeSkill.Create(
                 key: s.Key,
                 displayName: s.DisplayName,
                 skillType: s.SkillType,
@@ -230,7 +184,7 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
                 chargeCost: s.ChargeCost,
                 basePower: s.BasePower,
                 category: s.Category,
-                basePowerIsPercentOfMaxVitality: s.BasePowerIsPercentOfMaxVitality)))
+                basePowerIsPercentOfMaxVitality: s.BasePowerIsPercentOfMaxVitality))
             .ToArray();
 
         var run = Run.StartNew(
@@ -337,51 +291,5 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
         await _runRepository.AddAsync(run, cancellationToken);
 
         return new StartRunResponse(RunDto.FromDomain(run));
-    }
-
-    private async Task<IReadOnlyCollection<CatalogItemEquipmentEffect>> CollectEquippedItemEffectsAsync(
-        IReadOnlyCollection<string> equippedItemKeys,
-        CancellationToken cancellationToken)
-    {
-        if (equippedItemKeys.Count == 0)
-        {
-            return [];
-        }
-
-        var effects = new List<CatalogItemEquipmentEffect>();
-
-        foreach (var itemKey in equippedItemKeys)
-        {
-            var result = await _catalogGateway.GetItemDefinitionByKeyAsync(itemKey, cancellationToken);
-            if (result.IsSuccess && result.Value.EquipmentEffects is { Count: > 0 } itemEffects)
-            {
-                effects.AddRange(itemEffects);
-            }
-        }
-
-        return effects;
-    }
-
-    private async Task<IReadOnlyCollection<CatalogSkillDefinition>> CollectGrantedSkillsAsync(
-        IReadOnlyCollection<string> skillKeys,
-        CancellationToken cancellationToken)
-    {
-        if (skillKeys.Count == 0)
-        {
-            return [];
-        }
-
-        var skills = new List<CatalogSkillDefinition>();
-
-        foreach (var skillKey in skillKeys)
-        {
-            var skill = await _catalogGateway.GetSkillDefinitionByKeyAsync(skillKey, cancellationToken);
-            if (skill is not null)
-            {
-                skills.Add(skill);
-            }
-        }
-
-        return skills;
     }
 }

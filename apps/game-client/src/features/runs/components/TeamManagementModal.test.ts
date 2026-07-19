@@ -70,7 +70,7 @@ describe('TeamManagementModal', () => {
     const wrapper = mountModal();
     await flushPromises();
     const tabs = wrapper.findAll('.tmm-tab');
-    expect(tabs.map((t) => t.text())).toEqual(['Équipe', 'Statistiques', 'Compétences', 'Équipement']);
+    expect(tabs.map((t) => t.text())).toEqual(['Équipe', 'Statistiques', 'Grimoire', 'Équipement']);
   });
 
   it('shows the overview tab by default', async () => {
@@ -93,7 +93,7 @@ describe('TeamManagementModal', () => {
     const tabs = wrapper.findAll('.tmm-tab');
     await tabs[2].trigger('click');
     await flushPromises();
-    expect(wrapper.text()).toContain('Sorts équipés');
+    expect(wrapper.text()).toContain('Valider les choix');
   });
 
   it('switches to the items tab on click', async () => {

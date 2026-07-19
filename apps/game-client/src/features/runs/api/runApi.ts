@@ -112,6 +112,12 @@ export const runApi = {
     );
   },
 
+  syncPartySkills(runId: string) {
+    return gameEngineApi.post<RunResponse>(
+      `/api/v2/runs/${runId}/sync-skills`,
+    );
+  },
+
   useCaliceInfini(runId: string, targetCombatantId?: string | null) {
     return gameEngineApi.post<RunResponse, { targetCombatantId?: string | null }>(
       `/api/v2/runs/${runId}/calice-infini/use`,

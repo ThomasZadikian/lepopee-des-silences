@@ -10,6 +10,7 @@ using Leds.GameEngine.Application.Events.ResolveNodeEvent;
 using Leds.GameEngine.Application.Events.Resolvers;
 using Leds.GameEngine.Application.Interlude;
 using Leds.GameEngine.Application.PalaceLaws;
+using Leds.GameEngine.Application.Players;
 using Leds.GameEngine.Application.Rewards.Loot;
 using Leds.GameEngine.Application.Rewards.RewardOfferFactory;
 using Leds.GameEngine.Application.Runs.PalaceIndicators;
@@ -57,6 +58,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<IAmbientPalaceLawPromulgator, AmbientPalaceLawPromulgator>();
         services.AddScoped<EnemyLootRewardBuilder>();
         services.AddScoped<RewardOfferFactory>();
+        services.AddScoped<PlayerSkillMerger>();
         services.AddScoped<IInterludeNodeProvider, DefaultInterludeNodeProvider>();
         services.AddSingleton<ICombatFactory, CombatFactory>();
         services.AddScoped<IPalacePublicIndicatorProjectionService, PalacePublicIndicatorProjectionService>();

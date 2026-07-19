@@ -19,6 +19,7 @@ using Leds.GameEngine.Application.Runs.ResolveCurrentEvent;
 using Leds.GameEngine.Application.Runs.ResumeRun;
 using Leds.GameEngine.Application.Runs.SaveAndExitRun;
 using Leds.GameEngine.Application.Runs.StartRun;
+using Leds.GameEngine.Application.Runs.SyncPartySkills;
 using Leds.GameEngine.Application.Runs.UseRunItem;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -328,6 +329,20 @@ public sealed class RunsController : ControllerBase
         CancellationToken cancellationToken)
     {
         var command = new RemovePalaceLawCommand(runId, lawKey);
+        var response = await _sender.Send(command, cancellationToken);
+
+        return Ok(response);
+    }
+
+    [HttpPost("{runId:guid}/sync-skills")]
+    [ProducesResponseType(typeof(SyncPartySkillsResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<SyncPartySkillsResponse>> SyncPartySkills(
+        Guid runId,
+        CancellationToken cancellationToken)
+    {
+        var command = new SyncPartySkillsCommand(runId);
         var response = await _sender.Send(command, cancellationToken);
 
         return Ok(response);

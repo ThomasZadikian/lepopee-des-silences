@@ -457,6 +457,28 @@ public sealed class Run
 
     public PlayerRuntimeState PlayerState { get; private set; } = null!;
 
+    /// <summary>
+    /// Grimoire mid-run resync ("Valider les choix"): replaces the protagonist's
+    /// effective combat skills so the next combat casts with the freshly-validated
+    /// selection instead of the loadout frozen at StartRun.
+    /// </summary>
+    public void ReplacePlayerSkills(IReadOnlyCollection<PlayerRuntimeSkill> skills)
+    {
+        PlayerState.ReplaceSkills(skills);
+    }
+
+    /// <summary>
+    /// Grimoire mid-run resync ("Valider les choix") for a companion: replaces the
+    /// matching <see cref="RunCharacterSnapshot"/>'s effective combat skills.
+    /// </summary>
+    public void ReplaceCharacterSkills(Guid characterId, IReadOnlyCollection<RunCharacterSkillSnapshot> skills)
+    {
+        var character = PlayerSnapshot?.Characters.FirstOrDefault(c => c.CharacterId == characterId)
+            ?? throw new DomainException($"Character '{characterId}' was not found in this run's player snapshot.");
+
+        character.ReplaceSkills(skills);
+    }
+
     public int MaxHp { get; }
 
     public int CurrentHp { get; private set; }

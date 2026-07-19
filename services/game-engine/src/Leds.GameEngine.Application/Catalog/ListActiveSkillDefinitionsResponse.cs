@@ -9,6 +9,22 @@ public sealed record SkillDefinitionView(
     string EffectType,
     int ManaCost,
     int ChargeCost,
-    int BasePower);
+    int BasePower,
+    string Category,
+    bool BasePowerIsPercentOfMaxVitality,
+    IReadOnlyCollection<SkillEffectView> Effects,
+    IReadOnlyCollection<string> AcquisitionHints);
+
+public sealed record SkillEffectView(
+    string Kind,
+    string? StatusKey,
+    int Magnitude,
+    int DurationTicks,
+    int TickInterval,
+    string? Stat,
+    bool MagnitudeIsPercentOfMax,
+    bool MagnitudeIsPercentOfBaseStat,
+    bool AppliesToActor,
+    bool IsPermanent);
 
 public sealed record ListActiveSkillDefinitionsResponse(IReadOnlyCollection<SkillDefinitionView> Skills);

@@ -168,6 +168,20 @@ public sealed class PlayerRuntimeState
     }
 
     /// <summary>
+    /// Grimoire mid-run resync: replaces the equipped skill loadout in place so the
+    /// next combat casts with the freshly-validated selection instead of the one
+    /// frozen at StartRun. Combat vitality/mana/guard/charge are untouched.
+    /// </summary>
+    public void ReplaceSkills(IReadOnlyCollection<PlayerRuntimeSkill> skills)
+    {
+        if (skills is null || skills.Count == 0)
+            throw new DomainException("Player must have at least one skill.");
+
+        _skills.Clear();
+        _skills.AddRange(skills);
+    }
+
+    /// <summary>
     /// Rehydrates player runtime state from a trusted persistence snapshot.
     /// This method must not be used to create a new gameplay player state.
     /// </summary>

@@ -3,7 +3,7 @@ import { computed, onMounted, ref } from 'vue';
 import { usePlayerStore } from '../../party/stores/playerStore';
 import TeamOverviewTab from './team-management/TeamOverviewTab.vue';
 import StatManagementTab from './team-management/StatManagementTab.vue';
-import SkillManagementTab from './team-management/SkillManagementTab.vue';
+import GrimoireTab from './team-management/GrimoireTab.vue';
 import ItemManagementTab from './team-management/ItemManagementTab.vue';
 import ChipBadge from '../../../shared/components/ChipBadge.vue';
 
@@ -16,7 +16,7 @@ type TabKey = 'overview' | 'stats' | 'skills' | 'items';
 const tabs: { key: TabKey; label: string }[] = [
   { key: 'overview', label: 'Équipe' },
   { key: 'stats', label: 'Statistiques' },
-  { key: 'skills', label: 'Compétences' },
+  { key: 'skills', label: 'Grimoire' },
   { key: 'items', label: 'Équipement' },
 ];
 
@@ -81,7 +81,7 @@ onMounted(async () => {
         <template v-else>
           <TeamOverviewTab v-if="activeTab === 'overview'" :characters="characters" />
           <StatManagementTab v-else-if="activeTab === 'stats'" :character="selectedCharacter" />
-          <SkillManagementTab v-else-if="activeTab === 'skills'" :character="selectedCharacter" />
+          <GrimoireTab v-else-if="activeTab === 'skills'" :character="selectedCharacter" />
           <ItemManagementTab v-else-if="activeTab === 'items'" :character="selectedCharacter" />
         </template>
       </div>

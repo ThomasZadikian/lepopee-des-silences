@@ -272,6 +272,20 @@ export const useRunStore = defineStore('run', () => {
     });
   }
 
+  /**
+   * Grimoire "Valider les choix": re-applies the freshly-equipped skill selection to
+   * the active Run's live combat state (protagonist + companions), so the change is
+   * felt in the next combat instead of only on the next Run. No-op outside a Run.
+   */
+  async function syncPartySkills() {
+    if (!currentRun.value) return;
+
+    await execute(async () => {
+      const response = await runApi.syncPartySkills(currentRun.value!.id);
+      currentRun.value = unwrapRunResponse(response);
+    });
+  }
+
   function pushReputationEffects(
     effects?: { kind: string; amount: number; label: string }[] | null,
   ) {
@@ -921,6 +935,7 @@ export const useRunStore = defineStore('run', () => {
     confirmPermanentItemSelection,
     removePalaceLaw,
     useCaliceInfini,
+    syncPartySkills,
 
     resumableRun,
     isLoadingResumableRun,

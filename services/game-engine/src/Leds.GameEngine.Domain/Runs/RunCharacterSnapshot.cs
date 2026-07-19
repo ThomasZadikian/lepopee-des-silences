@@ -57,6 +57,20 @@ public sealed class RunCharacterSnapshot
             skills);
     }
 
+    /// <summary>
+    /// Grimoire mid-run resync: replaces this companion's effective combat skills so the
+    /// next combat casts with the freshly-validated selection instead of the loadout
+    /// frozen at StartRun (see <see cref="Run.ReplaceCharacterSkills"/>).
+    /// </summary>
+    public void ReplaceSkills(IReadOnlyCollection<RunCharacterSkillSnapshot> skills)
+    {
+        if (skills is null || skills.Count == 0)
+            throw new DomainException("Character must have at least one skill.");
+
+        _skills.Clear();
+        _skills.AddRange(skills);
+    }
+
     public static RunCharacterSnapshot Rehydrate(
         Guid id,
         Guid characterId,
