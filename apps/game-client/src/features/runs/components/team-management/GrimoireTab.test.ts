@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { mount, flushPromises } from '@vue/test-utils';
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 
 import GrimoireTab from './GrimoireTab.vue';
@@ -71,24 +71,32 @@ function baseCharacter(): PlayerCharacterView {
   };
 }
 
+function skill(overrides: Partial<SkillDefinitionView> & { key: string; displayName: string }): SkillDefinitionView {
+  return {
+    description: 'Un sort.', skillType: 'Damage', targetingType: 'SingleEnemy', effectType: 'Damage',
+    manaCost: 0, chargeCost: 0, basePower: 10, category: 'Physical',
+    basePowerIsPercentOfMaxVitality: false, effects: [], acquisitionHints: [],
+    ...overrides,
+  };
+}
+
 function baseSkills(): SkillDefinitionView[] {
   return [
-    {
-      key: 'skill.a', displayName: 'Frappe', description: 'Un coup.', skillType: 'Damage',
-      targetingType: 'SingleEnemy', effectType: 'Damage', manaCost: 0, chargeCost: 0, basePower: 10,
-      category: 'Physical', basePowerIsPercentOfMaxVitality: false, effects: [], acquisitionHints: [],
-    },
-    {
-      key: 'skill.b', displayName: 'Garde', description: 'Se protège.', skillType: 'Guard',
-      targetingType: 'Self', effectType: 'Buff', manaCost: 0, chargeCost: 0, basePower: 0,
-      category: 'Physical', basePowerIsPercentOfMaxVitality: false, effects: [], acquisitionHints: [],
-    },
-    {
-      key: 'skill.locked', displayName: 'Secret', description: 'Un sort verrouillé.', skillType: 'Damage',
-      targetingType: 'SingleEnemy', effectType: 'Damage', manaCost: 3, chargeCost: 0, basePower: 20,
-      category: 'Magic', basePowerIsPercentOfMaxVitality: false, effects: [], acquisitionHints: ['Offert par Hitomi'],
-    },
+    skill({ key: 'skill.a', displayName: 'Frappe', description: 'Un coup.' }),
+    skill({ key: 'skill.b', displayName: 'Garde', description: 'Se protège.', skillType: 'Guard', effectType: 'Buff' }),
+    skill({
+      key: 'skill.locked', displayName: 'Secret', description: 'Un sort verrouillé.', manaCost: 3, basePower: 20,
+      category: 'Magic', acquisitionHints: ['Offert par Hitomi'],
+    }),
   ];
+}
+
+// Equipping/unequipping moves a card's section (Disponibles <-> Équipés), so a stale
+// wrapper reference from before the click points at a detached node. Re-query by name.
+function findCardByName(wrapper: VueWrapper<any>, name: string) {
+  const card = wrapper.findAll('.grimoire-card').find((c) => c.find('.grimoire-card__name').text() === name);
+  if (!card) throw new Error(`No grimoire card found for "${name}"`);
+  return card;
 }
 
 function setPlayerProfile(characters: PlayerCharacterView[]) {
@@ -119,6 +127,21 @@ describe('GrimoireTab', () => {
     expect(cards[0].classes()).not.toContain('grimoire-card--locked');
   });
 
+  it('separates equipped, available, and locked skills into distinct sections', async () => {
+    const wrapper = mount(GrimoireTab, { props: { character: baseCharacter() } });
+    await flushPromises();
+
+    const equipped = wrapper.find('.grimoire-section--equipped');
+    const available = wrapper.find('.grimoire-section--available');
+    const locked = wrapper.find('.grimoire-section--locked');
+
+    expect(equipped.text()).toContain('Frappe');
+    expect(equipped.text()).not.toContain('Garde');
+    expect(available.text()).toContain('Garde');
+    expect(available.text()).not.toContain('Frappe');
+    expect(locked.text()).toContain('Secret');
+  });
+
   it('shows the equip toggle only for owned skills', async () => {
     const wrapper = mount(GrimoireTab, { props: { character: baseCharacter() } });
     await flushPromises();
@@ -133,11 +156,11 @@ describe('GrimoireTab', () => {
     const wrapper = mount(GrimoireTab, { props: { character: baseCharacter() } });
     await flushPromises();
 
-    const cards = wrapper.findAll('.grimoire-card');
-    await cards[1].find('.grimoire-toggle').trigger('click'); // equip skill.b
+    await findCardByName(wrapper, 'Garde').find('.grimoire-toggle').trigger('click'); // equip skill.b
 
     expect(playerApi.equipSkill).not.toHaveBeenCalled();
-    expect(cards[1].find('.grimoire-toggle').text()).toBe('Équipé');
+    expect(findCardByName(wrapper, 'Garde').find('.grimoire-toggle').text()).toBe('Équipé');
+    expect(wrapper.find('.grimoire-section--equipped').text()).toContain('Garde');
   });
 
   it('Annuler resets the staged selection without calling the API', async () => {
@@ -145,11 +168,11 @@ describe('GrimoireTab', () => {
     const wrapper = mount(GrimoireTab, { props: { character: baseCharacter() } });
     await flushPromises();
 
-    const cards = wrapper.findAll('.grimoire-card');
-    await cards[1].find('.grimoire-toggle').trigger('click');
+    await findCardByName(wrapper, 'Garde').find('.grimoire-toggle').trigger('click');
     await wrapper.find('.grimoire-btn--ghost').trigger('click');
 
-    expect(cards[1].find('.grimoire-toggle').text()).toBe('Équiper');
+    expect(findCardByName(wrapper, 'Garde').find('.grimoire-toggle').text()).toBe('Équiper');
+    expect(wrapper.find('.grimoire-section--available').text()).toContain('Garde');
     expect(playerApi.equipSkill).not.toHaveBeenCalled();
   });
 
@@ -165,8 +188,7 @@ describe('GrimoireTab', () => {
     const wrapper = mount(GrimoireTab, { props: { character: baseCharacter() } });
     await flushPromises();
 
-    const cards = wrapper.findAll('.grimoire-card');
-    await cards[1].find('.grimoire-toggle').trigger('click'); // equip skill.b
+    await findCardByName(wrapper, 'Garde').find('.grimoire-toggle').trigger('click'); // equip skill.b
     await wrapper.find('.grimoire-btn--primary').trigger('click');
     await flushPromises();
 
@@ -192,8 +214,7 @@ describe('GrimoireTab', () => {
     const wrapper = mount(GrimoireTab, { props: { character: baseCharacter() } });
     await flushPromises();
 
-    const cards = wrapper.findAll('.grimoire-card');
-    await cards[1].find('.grimoire-toggle').trigger('click');
+    await findCardByName(wrapper, 'Garde').find('.grimoire-toggle').trigger('click');
     await wrapper.find('.grimoire-btn--primary').trigger('click');
     await flushPromises();
 
@@ -207,60 +228,76 @@ describe('GrimoireTab', () => {
     const wrapper = mount(GrimoireTab, { props: { character } });
     await flushPromises();
 
-    const cards = wrapper.findAll('.grimoire-card');
-    const unequippedToggle = cards[1].find('.grimoire-toggle'); // skill.b
+    const unequippedToggle = findCardByName(wrapper, 'Garde').find('.grimoire-toggle'); // skill.b
     expect(unequippedToggle.attributes('disabled')).toBeDefined();
   });
 
-  it('sorts alphabetically by default', async () => {
+  it('filters skills by name across all sections via the search bar', async () => {
     const wrapper = mount(GrimoireTab, { props: { character: baseCharacter() } });
     await flushPromises();
 
-    const names = wrapper.findAll('.grimoire-card__name').map((n) => n.text());
-    expect(names).toEqual(['Frappe', 'Garde', 'Secret']);
+    await wrapper.find('.grimoire-search').setValue('secr');
+
+    expect(wrapper.findAll('.grimoire-card')).toHaveLength(1);
+    expect(wrapper.find('.grimoire-section--locked').text()).toContain('Secret');
+    expect(wrapper.find('.grimoire-section--equipped').text()).toContain('Aucun sort équipé ne correspond à la recherche.');
+    expect(wrapper.find('.grimoire-section--available').text()).toContain('Aucun sort disponible ne correspond à la recherche.');
   });
 
-  it('sorts by effect category, then alphabetically within each category', async () => {
-    const wrapper = mount(GrimoireTab, { props: { character: baseCharacter() } });
-    await flushPromises();
+  describe('locked section: sort + pagination', () => {
+    function manyLockedSkills(): SkillDefinitionView[] {
+      // skill.a/skill.b are known (per baseCharacter) and land in Équipés/Disponibles;
+      // the three z-prefixed ones stay unknown and land in the Verrouillés section under test.
+      return [
+        skill({ key: 'skill.a', displayName: 'Frappe' }),
+        skill({ key: 'skill.b', displayName: 'Garde', effectType: 'Buff' }),
+        skill({ key: 'skill.z1', displayName: 'Zephyr', effectType: 'Damage' }),
+        skill({ key: 'skill.z2', displayName: 'Aurore', effectType: 'Buff' }),
+        skill({ key: 'skill.z3', displayName: 'Brume', effectType: 'Damage' }),
+      ];
+    }
 
-    await wrapper.find('.grimoire-sort__select').setValue('category');
+    it('sorts alphabetically by default within a section', async () => {
+      vi.mocked(skillsApi.listActive).mockResolvedValue({ skills: manyLockedSkills() });
+      const wrapper = mount(GrimoireTab, { props: { character: baseCharacter() } });
+      await flushPromises();
 
-    // Frappe/Secret = Damage ("Offensif"), Garde = Buff ("Soutien") — Offensif < Soutien.
-    const names = wrapper.findAll('.grimoire-card__name').map((n) => n.text());
-    expect(names).toEqual(['Frappe', 'Secret', 'Garde']);
-  });
+      const names = wrapper.find('.grimoire-section--locked').findAll('.grimoire-card__name').map((n) => n.text());
+      expect(names).toEqual(['Aurore', 'Brume', 'Zephyr']);
+    });
 
-  it('paginates at 6 skills per page (2 columns × 3 rows) and resets to page 1 on sort change', async () => {
-    const manySkills: SkillDefinitionView[] = Array.from({ length: 8 }, (_, i) => ({
-      key: `skill.${i}`,
-      displayName: `Sort ${String(i).padStart(2, '0')}`,
-      description: 'Un sort.',
-      skillType: 'Damage',
-      targetingType: 'SingleEnemy',
-      effectType: 'Damage',
-      manaCost: 0,
-      chargeCost: 0,
-      basePower: 5,
-      category: 'Physical',
-      basePowerIsPercentOfMaxVitality: false,
-      effects: [],
-      acquisitionHints: [],
-    }));
-    vi.mocked(skillsApi.listActive).mockResolvedValue({ skills: manySkills });
+    it('sorts by effect category, then alphabetically within each category', async () => {
+      vi.mocked(skillsApi.listActive).mockResolvedValue({ skills: manyLockedSkills() });
+      const wrapper = mount(GrimoireTab, { props: { character: baseCharacter() } });
+      await flushPromises();
 
-    const wrapper = mount(GrimoireTab, { props: { character: baseCharacter() } });
-    await flushPromises();
+      await wrapper.find('.grimoire-sort__select').setValue('category');
 
-    expect(wrapper.findAll('.grimoire-card')).toHaveLength(6);
-    expect(wrapper.find('.grimoire-page-indicator').text()).toBe('Page 1 / 2');
+      // Damage ("Offensif") sorts before Buff ("Soutien"): Brume/Zephyr, then Aurore.
+      const names = wrapper.find('.grimoire-section--locked').findAll('.grimoire-card__name').map((n) => n.text());
+      expect(names).toEqual(['Brume', 'Zephyr', 'Aurore']);
+    });
 
-    const buttons = wrapper.findAll('.grimoire-page-btn');
-    await buttons[1].trigger('click'); // Suivant
-    expect(wrapper.find('.grimoire-page-indicator').text()).toBe('Page 2 / 2');
-    expect(wrapper.findAll('.grimoire-card')).toHaveLength(2);
+    it('paginates the locked section at 6 skills per page and resets to page 1 on sort change', async () => {
+      const manySkills: SkillDefinitionView[] = Array.from({ length: 8 }, (_, i) =>
+        skill({ key: `skill.locked-${i}`, displayName: `Sort ${String(i).padStart(2, '0')}` }),
+      );
+      vi.mocked(skillsApi.listActive).mockResolvedValue({ skills: manySkills });
 
-    await wrapper.find('.grimoire-sort__select').setValue('category');
-    expect(wrapper.find('.grimoire-page-indicator').text()).toBe('Page 1 / 2');
+      const wrapper = mount(GrimoireTab, { props: { character: baseCharacter() } });
+      await flushPromises();
+
+      const locked = wrapper.find('.grimoire-section--locked');
+      expect(locked.findAll('.grimoire-card')).toHaveLength(6);
+      expect(locked.find('.grimoire-page-indicator').text()).toBe('Page 1 / 2');
+
+      const buttons = locked.findAll('.grimoire-page-btn');
+      await buttons[1].trigger('click'); // Suivant
+      expect(wrapper.find('.grimoire-section--locked .grimoire-page-indicator').text()).toBe('Page 2 / 2');
+      expect(wrapper.find('.grimoire-section--locked').findAll('.grimoire-card')).toHaveLength(2);
+
+      await wrapper.find('.grimoire-sort__select').setValue('category');
+      expect(wrapper.find('.grimoire-section--locked .grimoire-page-indicator').text()).toBe('Page 1 / 2');
+    });
   });
 });

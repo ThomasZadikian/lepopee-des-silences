@@ -1,10 +1,13 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch, type ComputedRef } from 'vue';
 import type { PlayerCharacterView } from '../../../party/types/playerTypes';
-import type { SkillDefinitionView, SkillEffectView } from '../../../party/types/skillTypes';
+import type { SkillDefinitionView } from '../../../party/types/skillTypes';
 import { usePlayerStore } from '../../../party/stores/playerStore';
 import { useRunStore } from '../../stores/runStore';
 import { skillsApi } from '../../../party/api/skillsApi';
+import { categoryLabel } from './grimoireDisplay';
+import GrimoireSkillCard from './GrimoireSkillCard.vue';
+import GrimoirePaginationControls from './GrimoirePaginationControls.vue';
 
 const props = defineProps<{ character: PlayerCharacterView }>();
 
@@ -30,27 +33,10 @@ async function loadSkills() {
   }
 }
 
-const categoryLabels: Record<string, string> = {
-  Damage: 'Offensif',
-  Guard: 'Défensif',
-  Heal: 'Soins',
-  Buff: 'Soutien',
-  Debuff: 'Affaiblissement',
-  Weaken: 'Affaiblissement',
-  Disrupt: 'Perturbation',
-  Status: 'Statut',
-  CopySkills: 'Copie de sorts',
-  ExtendDotDuration: 'Durée de dot',
-};
-
-function categoryLabel(effectType: string): string {
-  return categoryLabels[effectType] ?? effectType;
-}
-
-// ── Tri + pagination (2 colonnes × 3 sorts par page) ──
+// ── Recherche + tri ──
 const PAGE_SIZE = 6;
+const searchQuery = ref('');
 const sortMode = ref<'alphabetical' | 'category'>('alphabetical');
-const currentPage = ref(1);
 
 const sortedSkills = computed(() => {
   const list = [...allSkills.value];
@@ -65,66 +51,11 @@ const sortedSkills = computed(() => {
   return list;
 });
 
-const totalPages = computed(() => Math.max(1, Math.ceil(sortedSkills.value.length / PAGE_SIZE)));
-
-const pagedSkills = computed(() => {
-  const start = (currentPage.value - 1) * PAGE_SIZE;
-  return sortedSkills.value.slice(start, start + PAGE_SIZE);
+const filteredSkills = computed(() => {
+  const query = searchQuery.value.trim().toLowerCase();
+  if (!query) return sortedSkills.value;
+  return sortedSkills.value.filter((skill) => skill.displayName.toLowerCase().includes(query));
 });
-
-watch(sortMode, () => { currentPage.value = 1; });
-watch(totalPages, (newTotal) => {
-  if (currentPage.value > newTotal) currentPage.value = newTotal;
-});
-
-function goToPreviousPage() {
-  if (currentPage.value > 1) currentPage.value -= 1;
-}
-
-function goToNextPage() {
-  if (currentPage.value < totalPages.value) currentPage.value += 1;
-}
-
-const statLabels: Record<string, string> = {
-  AttackPower: 'Attaque',
-  Defense: 'Défense',
-  MagicAttack: 'Attaque magique',
-  MagicDefense: 'Défense magique',
-  Speed: 'Vitesse',
-  Focus: 'Focus',
-  CriticalChanceBonus: 'Chances de critique',
-  MaxVitality: 'PV max',
-};
-
-const effectKindLabels: Record<string, string> = {
-  HealOverTime: 'Soin continu',
-  GuardOverTime: 'Garde continue',
-  DamageOverTime: 'Dégâts continus',
-  Silence: 'Silence',
-  GuaranteedCritical: 'Critique garanti',
-};
-
-/** Formats one skill effect into a short, player-facing French sentence. */
-function formatEffect(effect: SkillEffectView): string {
-  const durationSuffix = effect.isPermanent
-    ? ' (permanent)'
-    : effect.durationTicks > 0
-      ? ` (${effect.durationTicks} ticks)`
-      : '';
-
-  if (effect.kind === 'StatModifier' && effect.stat) {
-    const statLabel = statLabels[effect.stat] ?? effect.stat;
-    const sign = effect.magnitude >= 0 ? '+' : '';
-    const unit = effect.magnitudeIsPercentOfMax || effect.magnitudeIsPercentOfBaseStat ? '%' : '';
-    const target = effect.appliesToActor ? ' (sur soi)' : '';
-    return `${statLabel} ${sign}${effect.magnitude}${unit}${target}${durationSuffix}`;
-  }
-
-  const label = effectKindLabels[effect.kind] ?? effect.kind;
-  if (effect.magnitude === 0) return `${label}${durationSuffix}`;
-  const unit = effect.magnitudeIsPercentOfMax || effect.magnitudeIsPercentOfBaseStat ? '%' : '';
-  return `${label} ${effect.magnitude}${unit}${durationSuffix}`;
-}
 
 const knownKeys = computed(() => new Set(props.character.skills.map((s) => s.skillKey)));
 
@@ -163,6 +94,50 @@ function togglePending(skillKey: string) {
   }
   pendingEquippedKeys.value = next;
 }
+
+// ── Sections : Équipés / Disponibles / Verrouillés ──
+const equippedSkills = computed(() =>
+  filteredSkills.value.filter((skill) => pendingEquippedKeys.value.has(skill.key)),
+);
+const availableSkills = computed(() =>
+  filteredSkills.value.filter((skill) => knownKeys.value.has(skill.key) && !pendingEquippedKeys.value.has(skill.key)),
+);
+const lockedSkills = computed(() =>
+  filteredSkills.value.filter((skill) => !knownKeys.value.has(skill.key)),
+);
+
+function useSectionPagination(items: ComputedRef<SkillDefinitionView[]>) {
+  const currentPage = ref(1);
+  const totalPages = computed(() => Math.max(1, Math.ceil(items.value.length / PAGE_SIZE)));
+  const pageItems = computed(() => {
+    const start = (currentPage.value - 1) * PAGE_SIZE;
+    return items.value.slice(start, start + PAGE_SIZE);
+  });
+
+  watch(totalPages, (newTotal) => {
+    if (currentPage.value > newTotal) currentPage.value = newTotal;
+  });
+
+  function goToPreviousPage() {
+    if (currentPage.value > 1) currentPage.value -= 1;
+  }
+
+  function goToNextPage() {
+    if (currentPage.value < totalPages.value) currentPage.value += 1;
+  }
+
+  return { currentPage, totalPages, pageItems, goToPreviousPage, goToNextPage };
+}
+
+const equippedPage = useSectionPagination(equippedSkills);
+const availablePage = useSectionPagination(availableSkills);
+const lockedPage = useSectionPagination(lockedSkills);
+
+watch([sortMode, searchQuery], () => {
+  equippedPage.currentPage.value = 1;
+  availablePage.currentPage.value = 1;
+  lockedPage.currentPage.value = 1;
+});
 
 const isSaving = ref(false);
 const saveError = ref<string | null>(null);
@@ -232,6 +207,12 @@ function cancelChoices() {
     </header>
 
     <div v-if="!isLoadingSkills" class="grimoire-toolbar">
+      <input
+        v-model="searchQuery"
+        type="search"
+        class="grimoire-search"
+        placeholder="Rechercher un sort…"
+      />
       <label class="grimoire-sort">
         Trier par
         <select v-model="sortMode" class="grimoire-sort__select">
@@ -242,75 +223,92 @@ function cancelChoices() {
     </div>
 
     <p v-if="isLoadingSkills" class="grimoire-empty">Chargement du grimoire…</p>
-    <div v-else class="grimoire-grid">
-      <div
-        v-for="skill in pagedSkills"
-        :key="skill.key"
-        class="grimoire-card"
-        :class="{
-          'grimoire-card--locked': !knownKeys.has(skill.key),
-          'grimoire-card--equipped': pendingEquippedKeys.has(skill.key),
-        }"
-      >
-        <div class="grimoire-card__head">
-          <span class="grimoire-card__name">{{ skill.displayName }}</span>
-          <span class="grimoire-chip">{{ categoryLabel(skill.effectType) }}</span>
-          <span class="grimoire-chip grimoire-chip--muted">{{ skill.category === 'Magic' ? 'Magique' : 'Physique' }}</span>
+
+    <template v-else>
+      <section class="grimoire-section grimoire-section--equipped">
+        <header class="grimoire-section__head">
+          <h5 class="grimoire-section__title">Sorts équipés</h5>
+          <span class="grimoire-section__count">{{ equippedSkills.length }} / {{ character.maxEquippedSkills }}</span>
+        </header>
+        <p v-if="!equippedSkills.length" class="grimoire-empty">
+          {{ searchQuery ? 'Aucun sort équipé ne correspond à la recherche.' : 'Aucun sort équipé pour le moment.' }}
+        </p>
+        <div v-else class="grimoire-grid">
+          <GrimoireSkillCard
+            v-for="skill in equippedPage.pageItems.value"
+            :key="skill.key"
+            :skill="skill"
+            :is-known="true"
+            :is-equipped="true"
+            :disabled="false"
+            @toggle-equip="togglePending"
+          />
         </div>
+        <GrimoirePaginationControls
+          v-if="equippedPage.totalPages.value > 1"
+          :current-page="equippedPage.currentPage.value"
+          :total-pages="equippedPage.totalPages.value"
+          @previous="equippedPage.goToPreviousPage"
+          @next="equippedPage.goToNextPage"
+        />
+      </section>
 
-        <p class="grimoire-card__desc">{{ skill.description }}</p>
-
-        <ul v-if="skill.effects.length" class="grimoire-effects">
-          <li v-for="(effect, index) in skill.effects" :key="index">{{ formatEffect(effect) }}</li>
-        </ul>
-
-        <div class="grimoire-card__stats">
-          <span>Puissance : {{ skill.basePower }}{{ skill.basePowerIsPercentOfMaxVitality ? '% PV max' : '' }}</span>
-          <span v-if="skill.manaCost > 0">Mana : {{ skill.manaCost }}</span>
-          <span v-if="skill.chargeCost > 0">Charge : {{ skill.chargeCost }}</span>
+      <section class="grimoire-section grimoire-section--available">
+        <header class="grimoire-section__head">
+          <h5 class="grimoire-section__title">Sorts disponibles</h5>
+          <span class="grimoire-section__count">{{ availableSkills.length }}</span>
+        </header>
+        <p v-if="!availableSkills.length" class="grimoire-empty">
+          {{ searchQuery ? 'Aucun sort disponible ne correspond à la recherche.' : 'Aucun sort disponible pour le moment.' }}
+        </p>
+        <div v-else class="grimoire-grid">
+          <GrimoireSkillCard
+            v-for="skill in availablePage.pageItems.value"
+            :key="skill.key"
+            :skill="skill"
+            :is-known="true"
+            :is-equipped="false"
+            :disabled="isLoadoutFull"
+            @toggle-equip="togglePending"
+          />
         </div>
+        <GrimoirePaginationControls
+          v-if="availablePage.totalPages.value > 1"
+          :current-page="availablePage.currentPage.value"
+          :total-pages="availablePage.totalPages.value"
+          @previous="availablePage.goToPreviousPage"
+          @next="availablePage.goToNextPage"
+        />
+      </section>
 
-        <template v-if="knownKeys.has(skill.key)">
-          <button
-            type="button"
-            class="grimoire-toggle"
-            :class="{ 'grimoire-toggle--active': pendingEquippedKeys.has(skill.key) }"
-            :disabled="!pendingEquippedKeys.has(skill.key) && isLoadoutFull"
-            @click="togglePending(skill.key)"
-          >
-            {{ pendingEquippedKeys.has(skill.key) ? 'Équipé' : 'Équiper' }}
-          </button>
-        </template>
-        <template v-else>
-          <p class="grimoire-lock-hint">
-            <template v-if="skill.acquisitionHints.length">
-              {{ skill.acquisitionHints.join(' · ') }}
-            </template>
-            <template v-else>Non débloqué.</template>
-          </p>
-        </template>
-      </div>
-    </div>
-
-    <div v-if="!isLoadingSkills" class="grimoire-pagination">
-      <button
-        type="button"
-        class="grimoire-page-btn"
-        :disabled="currentPage <= 1"
-        @click="goToPreviousPage"
-      >
-        ‹ Précédent
-      </button>
-      <span class="grimoire-page-indicator">Page {{ currentPage }} / {{ totalPages }}</span>
-      <button
-        type="button"
-        class="grimoire-page-btn"
-        :disabled="currentPage >= totalPages"
-        @click="goToNextPage"
-      >
-        Suivant ›
-      </button>
-    </div>
+      <section class="grimoire-section grimoire-section--locked">
+        <header class="grimoire-section__head">
+          <h5 class="grimoire-section__title">Sorts verrouillés</h5>
+          <span class="grimoire-section__count">{{ lockedSkills.length }}</span>
+        </header>
+        <p v-if="!lockedSkills.length" class="grimoire-empty">
+          {{ searchQuery ? 'Aucun sort verrouillé ne correspond à la recherche.' : 'Tous les sorts sont débloqués !' }}
+        </p>
+        <div v-else class="grimoire-grid">
+          <GrimoireSkillCard
+            v-for="skill in lockedPage.pageItems.value"
+            :key="skill.key"
+            :skill="skill"
+            :is-known="false"
+            :is-equipped="false"
+            :disabled="true"
+            @toggle-equip="togglePending"
+          />
+        </div>
+        <GrimoirePaginationControls
+          v-if="lockedPage.totalPages.value > 1"
+          :current-page="lockedPage.currentPage.value"
+          :total-pages="lockedPage.totalPages.value"
+          @previous="lockedPage.goToPreviousPage"
+          @next="lockedPage.goToNextPage"
+        />
+      </section>
+    </template>
   </div>
 </template>
 
@@ -390,7 +388,26 @@ function cancelChoices() {
 
 .grimoire-toolbar {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.grimoire-search {
+  flex: 1;
+  min-width: 160px;
+  font-family: var(--font, sans-serif);
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--line-soft);
+  background: var(--panel, oklch(0.20 0.025 270));
+  color: var(--ink-2);
+}
+
+.grimoire-search::placeholder {
+  color: var(--ink-4);
 }
 
 .grimoire-sort {
@@ -402,6 +419,7 @@ function cancelChoices() {
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--ink-4);
+  white-space: nowrap;
 }
 
 .grimoire-sort__select {
@@ -416,154 +434,37 @@ function cancelChoices() {
   color: var(--ink-2);
 }
 
+.grimoire-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.grimoire-section__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.grimoire-section__title {
+  font-family: var(--font-caps, var(--font));
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin: 0;
+}
+
+.grimoire-section__count {
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  color: var(--ink-4);
+}
+
 .grimoire-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 12px;
-}
-
-.grimoire-pagination {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  padding-top: 8px;
-}
-
-.grimoire-page-btn {
-  font-family: var(--font-caps, var(--font));
-  font-size: 10px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  padding: 6px 14px;
-  border-radius: 4px;
-  border: 1px solid var(--line-soft);
-  background: transparent;
-  color: var(--ink-3);
-  cursor: pointer;
-  transition: opacity 0.15s, border-color 0.15s, color 0.15s;
-}
-
-.grimoire-page-btn:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-}
-
-.grimoire-page-btn:not(:disabled):hover {
-  border-color: var(--ink-3);
-  color: var(--ink-2);
-}
-
-.grimoire-page-indicator {
-  font-family: var(--font-mono, monospace);
-  font-size: 12px;
-  color: var(--ink-3);
-}
-
-.grimoire-card {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 12px;
-  border-radius: 6px;
-  border: 1px solid var(--line-soft);
-  background: oklch(0.24 0.015 283 / 0.35);
-}
-
-.grimoire-card--equipped {
-  border-color: var(--gold);
-}
-
-.grimoire-card--locked {
-  opacity: 0.5;
-  filter: grayscale(0.6);
-}
-
-.grimoire-card__head {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-.grimoire-card__name {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ink-2);
-}
-
-.grimoire-chip {
-  font-family: var(--font-mono, monospace);
-  font-size: 10px;
-  padding: 1px 6px;
-  border-radius: 999px;
-  border: 1px solid var(--line-soft);
-  color: var(--ink-3);
-}
-
-.grimoire-chip--muted {
-  color: var(--ink-4);
-}
-
-.grimoire-card__desc {
-  margin: 0;
-  font-size: 12px;
-  color: var(--ink-4);
-  line-height: 1.4;
-}
-
-.grimoire-effects {
-  margin: 0;
-  padding-left: 16px;
-  font-size: 11px;
-  color: var(--frost, var(--ink-3));
-  line-height: 1.5;
-}
-
-.grimoire-card__stats {
-  display: flex;
-  gap: 12px;
-  font-family: var(--font-mono, monospace);
-  font-size: 11px;
-  color: var(--ink-3);
-}
-
-.grimoire-lock-hint {
-  margin: 0;
-  font-size: 11px;
-  font-style: italic;
-  color: var(--ink-4);
-}
-
-.grimoire-toggle {
-  align-self: flex-start;
-  font-family: var(--font-caps, var(--font));
-  font-size: 9.5px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  padding: 4px 10px;
-  border-radius: 3px;
-  border: 1px solid var(--line-soft);
-  background: transparent;
-  color: var(--ink-4);
-  cursor: pointer;
-  transition: opacity 0.15s, border-color 0.15s, color 0.15s;
-}
-
-.grimoire-toggle:disabled {
-  opacity: 0.38;
-  cursor: not-allowed;
-}
-
-.grimoire-toggle:not(:disabled):hover {
-  border-color: var(--ink-3);
-  color: var(--ink-2);
-}
-
-.grimoire-toggle--active {
-  border-color: var(--gold);
-  color: var(--gold);
-  background: oklch(0.55 0.08 85 / 0.12);
 }
 
 .grimoire-empty {
