@@ -392,6 +392,14 @@ public sealed class Combatant
 
     public void RecordLastAttacker(Guid attackerId) => RuntimeState.RecordLastAttacker(attackerId);
 
+    /// <summary>Flags a "coup très puissant" (≥25% MaxVitality in one hit) since this
+    /// combatant's last action — see <see cref="CombatantRuntimeState.RecordDamageTaken"/>.</summary>
+    public void RecordDamageTaken(int amount) => RuntimeState.RecordDamageTaken(amount, MaxVitality);
+
+    /// <summary>One-shot read of whether a "coup très puissant" landed since this
+    /// combatant's last action; clears the flag once read.</summary>
+    public bool ConsumePowerfulHitSinceLastAction() => RuntimeState.ConsumePowerfulHitSinceLastAction();
+
     /// <summary>
     /// Records that this combatant just acted: its gauge is consumed and it enters
     /// recovery until <paramref name="currentTick"/> + <paramref name="recoveryTicks"/>.

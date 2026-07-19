@@ -168,6 +168,15 @@ public abstract class CanonBossBehaviorBase : IBossBehavior
     protected static bool Chance(Combat combat, Combatant boss, string tag, double probability)
         => DeterministicCombatRoll.UnitInterval(
             $"boss-chance:{tag}:{combat.Id.Value}:{combat.TurnNumber}:{boss.Id.Value}") < probability;
+
+    /// <summary>
+    /// "Attitude en combat — face à un coup très puissant" (SFD Bestiaire du Palais,
+    /// ≥25% MaxVitality in one hit). One-shot: true at most once per qualifying hit,
+    /// then clears — call this at most once per DecideAction so a single powerful hit
+    /// doesn't retrigger the reaction turn after turn.
+    /// </summary>
+    protected static bool TookPowerfulHit(Combatant combatant)
+        => combatant.ConsumePowerfulHitSinceLastAction();
 }
 
 /// <summary>

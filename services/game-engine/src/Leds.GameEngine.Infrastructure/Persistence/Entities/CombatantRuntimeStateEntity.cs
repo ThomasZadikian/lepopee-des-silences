@@ -18,6 +18,7 @@ public sealed class CombatantRuntimeStateEntity
     public int TempoMomentumPerMille { get; set; }
     public double ThreatValue { get; set; }
     public Guid? LastAttackerId { get; set; }
+    public bool TookPowerfulHitSinceLastAction { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
 
     public CombatantEntity? Combatant { get; set; }

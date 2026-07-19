@@ -248,6 +248,7 @@ public static class CombatPersistenceMapper
             TempoMomentumPerMille = state.TempoMomentumPerMille,
             ThreatValue = state.ThreatValue,
             LastAttackerId = state.LastAttackerId,
+            TookPowerfulHitSinceLastAction = state.TookPowerfulHitSinceLastAction,
             UpdatedAtUtc = state.UpdatedAtUtc
         };
     }
@@ -413,7 +414,8 @@ public static class CombatPersistenceMapper
             entity.AtbTempoRoomFactorPerMille,
             entity.AtbTempoCombatantFactorPerMille,
             entity.TempoMomentumPerMille,
-            maxMana: entity.MaxMana);
+            maxMana: entity.MaxMana,
+            tookPowerfulHitSinceLastAction: entity.TookPowerfulHitSinceLastAction);
     }
 
     public static CombatantSkill ToDomain(CombatantSkillEntity entity)

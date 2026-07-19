@@ -547,6 +547,7 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
             var vitalityDamage = vitalityBefore - target.CurrentVitality;
 
             target.RecordLastAttacker(actor.Id.Value);
+            target.RecordDamageTaken(outcome.FinalAmount);
 
             if (actor.Side == CombatantSide.Player)
             {

@@ -2903,10 +2903,15 @@ public sealed class CatalogSeedRunner
     // des offenses faites au tapis/seuil du Hall, prolongeant le rituel d'hospitalité
     // du Majordome. Mécanique de famille "Le Protocole" (tant que le Porteur de
     // Plateau est en vie, les debuffs des Veilleurs durent plus longtemps ; le tuer
-    // brise le Protocole) et les 5 réactions "Attitude en combat" par créature sont
-    // documentées ici en NarrativeText mais ne sont PAS câblées mécaniquement — elles
-    // demandent un nouveau hook moteur (réaction au dégât subi / mort d'un allié) qui
-    // n'existe pas encore ; c'est le prochain étage du chantier, pas cette passe.
+    // brise le Protocole) reste non câblée mécaniquement (nécessite un hook "mort d'un
+    // allié" qui n'existe pas encore). Sur les 5 réactions "Attitude en combat" par
+    // créature : "face à un coup très puissant" (≥25% MaxVitality en un coup) EST
+    // câblée pour la Sentinelle du Seuil (voir SentinelleSeuilBossBehavior — Chantier
+    // Bestiaire Phase 11/12) ; les 3 autres créatures de cette même réaction et les 4
+    // autres lignes d'Attitude en combat par créature restent non câblées (chacune
+    // demande un effet nouveau non encore authorable : garde gratuite hors action,
+    // soin boosté ponctuel, esquive garantie une fois par combat, etc.) — prochaines
+    // passes du même chantier.
     private async Task SeedBestiaireVeilleursDuSeuilAsync(CancellationToken cancellationToken)
     {
         const string family = "Veilleurs du Seuil";

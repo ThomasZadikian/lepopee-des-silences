@@ -20,7 +20,8 @@ public sealed class CombatantRuntimeState
         int? atbTempoRoomFactorPerMille,
         int? atbTempoCombatantFactorPerMille,
         int tempoMomentumPerMille,
-        int maxMana)
+        int maxMana,
+        bool tookPowerfulHitSinceLastAction)
     {
         Id = id;
         CurrentVitality = currentVitality;
@@ -38,6 +39,7 @@ public sealed class CombatantRuntimeState
         AtbTempoRoomFactorPerMille = atbTempoRoomFactorPerMille;
         AtbTempoCombatantFactorPerMille = atbTempoCombatantFactorPerMille;
         TempoMomentumPerMille = tempoMomentumPerMille;
+        TookPowerfulHitSinceLastAction = tookPowerfulHitSinceLastAction;
     }
 
     public Guid Id { get; }
@@ -79,6 +81,15 @@ public sealed class CombatantRuntimeState
     /// <summary>Id of the combatant who most recently damaged this one, if any.</summary>
     public Guid? LastAttackerId { get; private set; }
 
+    /// <summary>
+    /// True if this combatant took a single hit for ≥25% of its MaxVitality since its
+    /// last action — the Bestiaire's uniform "coup très puissant" threshold (source:
+    /// SFD Bestiaire du Palais, §I). Set by <see cref="RecordDamageTaken"/>, read via
+    /// the one-shot <see cref="ConsumePowerfulHitSinceLastAction"/> so a scripted
+    /// reaction only fires once per qualifying hit.
+    /// </summary>
+    public bool TookPowerfulHitSinceLastAction { get; private set; }
+
     public bool IsDefeated => CurrentVitality <= 0;
 
     public static CombatantRuntimeState Create(
@@ -95,7 +106,8 @@ public sealed class CombatantRuntimeState
         int? atbTempoRoomFactorPerMille = null,
         int? atbTempoCombatantFactorPerMille = null,
         int tempoMomentumPerMille = 0,
-        int? maxMana = null)
+        int? maxMana = null,
+        bool tookPowerfulHitSinceLastAction = false)
     {
         if (currentVitality < 0)
             throw new DomainException("Current vitality cannot be negative.");
@@ -133,7 +145,8 @@ public sealed class CombatantRuntimeState
             atbTempoRoomFactorPerMille,
             atbTempoCombatantFactorPerMille,
             tempoMomentumPerMille,
-            resolvedMaxMana);
+            resolvedMaxMana,
+            tookPowerfulHitSinceLastAction);
     }
 
     public void ApplyDamage(int amount)
@@ -320,6 +333,34 @@ public sealed class CombatantRuntimeState
         Touch();
     }
 
+    /// <summary>
+    /// Flags a "coup très puissant" (≥25% of MaxVitality in one hit, the Bestiaire's
+    /// uniform threshold) since this combatant's last action. Never clears the flag for
+    /// a sub-threshold hit — one qualifying hit is enough, even if followed by smaller
+    /// ones, until a script actually consumes it.
+    /// </summary>
+    public void RecordDamageTaken(int amount, int maxVitality)
+    {
+        if (maxVitality <= 0 || amount <= 0) return;
+
+        if (amount * 4 >= maxVitality)
+        {
+            TookPowerfulHitSinceLastAction = true;
+            Touch();
+        }
+    }
+
+    /// <summary>One-shot read: returns whether a qualifying hit landed since the last
+    /// action, and clears the flag so it doesn't re-trigger next turn.</summary>
+    public bool ConsumePowerfulHitSinceLastAction()
+    {
+        if (!TookPowerfulHitSinceLastAction) return false;
+
+        TookPowerfulHitSinceLastAction = false;
+        Touch();
+        return true;
+    }
+
     public void DebugSetVitals(int maxVitality, int vitality, int guard)
     {
         if (vitality < 0 || vitality > maxVitality)
@@ -354,7 +395,8 @@ public sealed class CombatantRuntimeState
         int? atbTempoRoomFactorPerMille = null,
         int? atbTempoCombatantFactorPerMille = null,
         int tempoMomentumPerMille = 0,
-        int maxMana = int.MaxValue)
+        int maxMana = int.MaxValue,
+        bool tookPowerfulHitSinceLastAction = false)
     {
         return new CombatantRuntimeState(
             id,
@@ -372,6 +414,7 @@ public sealed class CombatantRuntimeState
             atbTempoRoomFactorPerMille,
             atbTempoCombatantFactorPerMille,
             tempoMomentumPerMille,
-            maxMana);
+            maxMana,
+            tookPowerfulHitSinceLastAction);
     }
 }

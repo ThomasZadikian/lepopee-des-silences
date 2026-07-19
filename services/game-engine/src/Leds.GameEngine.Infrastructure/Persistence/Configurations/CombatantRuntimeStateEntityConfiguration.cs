@@ -28,6 +28,8 @@ public sealed class CombatantRuntimeStateEntityConfiguration : IEntityTypeConfig
         builder.Property(e => e.TempoMomentumPerMille).HasColumnName("tempo_momentum_per_mille").HasDefaultValue(0).IsRequired();
         builder.Property(e => e.ThreatValue).HasColumnName("threat_value").HasDefaultValue(0d).IsRequired();
         builder.Property(e => e.LastAttackerId).HasColumnName("last_attacker_id");
+        builder.Property(e => e.TookPowerfulHitSinceLastAction)
+            .HasColumnName("took_powerful_hit_since_last_action").HasDefaultValue(false).IsRequired();
         builder.Property(e => e.UpdatedAtUtc).HasColumnName("updated_at_utc");
         builder.Property(e => e.UpdatedAtUtc).HasColumnName("updated_at_utc");
 

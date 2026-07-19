@@ -5,11 +5,24 @@ namespace Leds.GameEngine.Application.Combats.EnemyTurns.Bossing.Canon;
 
 /// <summary>
 /// Bestiaire, famille "Les Veilleurs du Seuil" — scripts déterministes pour les
-/// quatre créatures. Le suivi précis "qui a attaqué quel allié ce tour" décrit
-/// dans le PDF (déclencheur de Seuil souillé) n'existe pas encore côté moteur
-/// (mécanique "Attitude en combat" différée) ; il est approximé ici par un
-/// ciblage prioritaire déterministe (plus faible/plus rapide en PV), pas par le
-/// dernier agresseur réel. À affiner quand le hook réactif sera construit.
+/// quatre créatures.
+/// <para>
+/// Le suivi précis "qui a attaqué quel allié ce tour" décrit dans le PDF
+/// (déclencheur de Seuil souillé) reste approximé par un ciblage prioritaire
+/// déterministe (plus faible/plus rapide en PV), pas par le dernier agresseur
+/// réel — un vrai suivi "par allié" n'existe pas encore côté moteur.
+/// </para>
+/// <para>
+/// "Face à un coup très puissant" (≥25% MaxVitality en un coup) EST câblée
+/// pour la Sentinelle du Seuil via <see cref="CanonBossBehaviorBase.TookPowerfulHit"/>
+/// (Chantier Bestiaire Phase 11/12). Les 3 autres réactions "Attitude en combat"
+/// de cette famille à ce même déclencheur (Veilleur du Tapis, Porteur de Plateau,
+/// Écho de Politesse) demandent chacune un effet nouveau non encore authorable
+/// (garde gratuite hors action, soin boosté ponctuel, esquive garantie une fois
+/// par combat) — non câblées, prochaine passe. "Le Protocole" (mécanique de
+/// famille) et les 4 autres lignes d'Attitude en combat par créature restent
+/// également non câblées.
+/// </para>
 /// </summary>
 public sealed class VeilleurTapisBossBehavior : CanonBossBehaviorBase
 {
@@ -107,6 +120,13 @@ public sealed class SentinelleSeuilBossBehavior : CanonBossBehaviorBase
     {
         var boss = context.Boss;
         var combat = context.Combat;
+
+        // Attitude en combat — face à un coup très puissant : "Socle immédiat au tour
+        // suivant. Un pilier ne tombe pas deux fois." Takes priority over the normal
+        // plan below, matching the SFD's framing of Attitude en combat as a reaction
+        // that overrides standing priorities, not just another item in the same list.
+        if (TookPowerfulHit(boss))
+            return OnSelf(boss, "canon.skill.socle");
 
         var judged = LivingPlayers(combat)
             .FirstOrDefault(p => HasNegativeStatModifier(p, CombatStat.Defense)
