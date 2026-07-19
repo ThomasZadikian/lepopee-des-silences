@@ -7,6 +7,14 @@ namespace Leds.GameEngine.Application.Combats.EnemyTurns.Bossing.Canon;
 /// Bestiaire, famille "Les Échos d'Émotions" — scripts déterministes pour les
 /// trois créatures. La mécanique de famille "La Dissonance" n'est pas modélisée
 /// — voir le commentaire dans CatalogSeedRunner.SeedBestiaireEchosDEmotionsAsync.
+/// <para>
+/// "Face à un coup très puissant" (≥25% MaxVitality en un coup) EST câblée pour
+/// les 3 créatures (Chantier Bestiaire Phase 13). L'Écho de Peur a un sort
+/// défensif dédié (Saccade) dans son kit de 4 ; l'Écho de Colère, sans
+/// alternative défensive, explose de rage (Explosion, si le mana le permet) ou
+/// riposte contre son dernier agresseur sinon ; l'Écho de Tristesse réutilise son
+/// soin partagé (Silence partagé, normalement réservé à ≤40% PV) hors seuil.
+/// </para>
 /// </summary>
 public sealed class EchoColereBossBehavior : CanonBossBehaviorBase
 {
@@ -16,6 +24,20 @@ public sealed class EchoColereBossBehavior : CanonBossBehaviorBase
     {
         var boss = context.Boss;
         var combat = context.Combat;
+
+        // Attitude en combat — face à un coup très puissant : explose de rage
+        // si le mana le permet, sinon riposte contre son dernier agresseur.
+        // Prend priorité sur le plan normal ; si ni l'un ni l'autre n'aboutit,
+        // continue sur le plan normal.
+        if (TookPowerfulHit(boss))
+        {
+            var reaction = boss.Mana >= 16
+                ? OnAllPlayers(boss, "canon.skill.explosion", combat)
+                : null;
+            reaction ??= Strike(boss, "canon.skill.constat-sec", LastAttacker(combat, boss))
+                ?? Strike(boss, "canon.skill.eclat-echo-colere", LastAttacker(combat, boss));
+            if (reaction is not null) return reaction;
+        }
 
         if (HpFraction(boss) < 0.50 && boss.Mana >= 16)
             return OnAllPlayers(boss, "canon.skill.explosion", combat);
@@ -49,6 +71,13 @@ public sealed class EchoPeurBossBehavior : CanonBossBehaviorBase
         var boss = context.Boss;
         var combat = context.Combat;
 
+        // Attitude en combat — face à un coup très puissant : là où vous
+        // regardez, il n'est déjà plus (Saccade). Prend priorité sur le plan
+        // normal, y compris l'alternance de tours ci-dessous.
+        if (TookPowerfulHit(boss))
+            return OnSelf(boss, "canon.skill.saccade")
+                ?? Strike(boss, "canon.skill.frisson", LowestHpPlayer(combat, boss));
+
         if (combat.TurnNumber % 2 == 0)
             return OnSelf(boss, "canon.skill.saccade")
                 ?? Strike(boss, "canon.skill.frisson", LowestHpPlayer(combat, boss));
@@ -76,11 +105,18 @@ public sealed class EchoTristesseBossBehavior : CanonBossBehaviorBase
         var boss = context.Boss;
         var combat = context.Combat;
 
+        var sharedRespite = combat.Enemies.Concat(combat.Allies).Where(c => !c.IsDefeated).ToArray();
+
+        // Attitude en combat — face à un coup très puissant : partage un répit
+        // sincère avec tout le monde, alliés et adversaires (normalement
+        // réservé à ≤40% PV). Prend priorité sur le plan normal.
+        if (TookPowerfulHit(boss) && sharedRespite.Length > 0 && Owns(boss, "canon.skill.silence-partage"))
+            return new BossActionDecision("canon.skill.silence-partage", sharedRespite.Select(c => c.Id.Value).ToArray());
+
         if (HpFraction(boss) < 0.40)
         {
-            var everyone = combat.Enemies.Concat(combat.Allies).Where(c => !c.IsDefeated).ToArray();
-            return everyone.Length > 0 && Owns(boss, "canon.skill.silence-partage")
-                ? new BossActionDecision("canon.skill.silence-partage", everyone.Select(c => c.Id.Value).ToArray())
+            return sharedRespite.Length > 0 && Owns(boss, "canon.skill.silence-partage")
+                ? new BossActionDecision("canon.skill.silence-partage", sharedRespite.Select(c => c.Id.Value).ToArray())
                 : null;
         }
 
