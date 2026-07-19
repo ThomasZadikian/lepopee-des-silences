@@ -253,6 +253,17 @@ public sealed class MapNode
         ChosenEventOptionId = null;
     }
 
+    /// <summary>
+    /// Grid-mode counterpart of <see cref="ResetToInitial"/> — every grid node starts
+    /// <see cref="NodeState.Available"/> (free exploration has no row-unlock progression to
+    /// replay), used when rolling back a Tactical-mode room (e.g. mid-room exit).
+    /// </summary>
+    public void ResetToGridAvailable()
+    {
+        State = NodeState.Available;
+        ChosenEventOptionId = null;
+    }
+
     public void ChooseEventOption(string choiceId)
     {
         if (State != NodeState.Resolved)

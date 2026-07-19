@@ -17,7 +17,8 @@ public sealed class Room
         RoomState state,
         IEnumerable<MapNode> nodes,
         string? layoutTemplateKey,
-        string? layoutTemplateVersion)
+        string? layoutTemplateVersion,
+        RoomGrid? grid = null)
     {
         Id = id;
         Depth = depth;
@@ -31,6 +32,7 @@ public sealed class Room
         MaxNodeDepth = _nodes.Count > 0 ? _nodes.Max(n => n.Row) : 0;
         LayoutTemplateKey = layoutTemplateKey;
         LayoutTemplateVersion = layoutTemplateVersion;
+        Grid = grid;
     }
 
 
@@ -60,6 +62,12 @@ public sealed class Room
 
     public string? LayoutTemplateVersion { get; }
 
+    /// <summary>
+    /// Free-movement grid overlay — null for every Classic-mode room (row/lane node-graph
+    /// behavior is completely untouched). Non-null only for rooms built via <see cref="CreateGrid"/>.
+    /// </summary>
+    public RoomGrid? Grid { get; }
+
 
     public CatalogRoomBinding? CatalogBinding { get; private set; }
 
@@ -69,9 +77,29 @@ public sealed class Room
         CatalogBinding = binding;
     }
 
-    public IReadOnlyCollection<MapNode> AvailableNodes => _nodes
-        .Where(n => n.Row == CurrentNodeDepth && n.State == NodeState.Available)
-        .ToArray();
+    public IReadOnlyCollection<MapNode> AvailableNodes => Grid is null
+        ? _nodes.Where(n => n.Row == CurrentNodeDepth && n.State == NodeState.Available).ToArray()
+        : VisibleNodes.Where(n => n.State == NodeState.Available).ToArray();
+
+    /// <summary>
+    /// Nodes revealed by fog of war so far — empty for Classic-mode rooms (which have no
+    /// fog of war; the full node graph is always sent, gated by lock state instead).
+    /// </summary>
+    public IReadOnlyCollection<MapNode> VisibleNodes => Grid is null
+        ? Array.Empty<MapNode>()
+        : _nodes.Where(n => Grid.RevealedNodeIds.Contains(n.Id)).ToArray();
+
+    /// <summary>
+    /// The single node currently in <see cref="NodeState.Selected"/>, if any — mode-aware so
+    /// Application-layer call sites don't need to know whether this room uses the row/lane DAG
+    /// (Classic) or free grid exploration (Tactical).
+    /// </summary>
+    public MapNode? CurrentSelectedNode => _nodes.SingleOrDefault(n =>
+        n.State == NodeState.Selected && (Grid is not null || n.Row == CurrentNodeDepth));
+
+    /// <summary>Mode-aware counterpart of <see cref="CurrentSelectedNode"/> for <see cref="NodeState.Resolved"/>.</summary>
+    public MapNode? CurrentResolvedNode => _nodes.SingleOrDefault(n =>
+        n.State == NodeState.Resolved && (Grid is not null || n.Row == CurrentNodeDepth));
 
     public static Room Create(
         int depth,
@@ -202,6 +230,119 @@ public sealed class Room
             layoutTemplateVersion.Trim());
     }
 
+    /// <summary>
+    /// Builds a Tactical-mode room: nodes are placed on a free-movement grid (Row=Y, Lane=X)
+    /// instead of the Classic row-by-row DAG. Deliberately does NOT call any of the DAG-only
+    /// validations (<see cref="EnsureRowsAreContinuous"/>, <see cref="EnsureParentReferencesAreValid"/>,
+    /// <see cref="EnsureAllNonBossNodesHaveChildren"/>, <see cref="EnsureAllPathsConvergeToBoss"/>,
+    /// <see cref="EnsureNoCrossRowConnections"/>) — none of them apply to free exploration.
+    /// </summary>
+    public static Room CreateGrid(
+        int depth,
+        RoomType roomType,
+        PalaceRoomState palaceState,
+        string theme,
+        RoomBossProfile bossProfile,
+        IEnumerable<MapNode> nodes,
+        int gridWidth,
+        int gridHeight,
+        int movementBudget,
+        int startX,
+        int startY,
+        string layoutTemplateKey,
+        string layoutTemplateVersion)
+    {
+        if (depth is < 0 or > 10)
+        {
+            throw new DomainException("Room depth must be between 0 and 10.");
+        }
+
+        if (string.IsNullOrWhiteSpace(theme))
+        {
+            throw new DomainException("Room theme is required.");
+        }
+
+        ArgumentNullException.ThrowIfNull(bossProfile);
+
+        if (string.IsNullOrWhiteSpace(layoutTemplateKey))
+        {
+            throw new DomainException("Layout template key is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(layoutTemplateVersion))
+        {
+            throw new DomainException("Layout template version is required.");
+        }
+
+        var nodeList = nodes?.ToList()
+            ?? throw new DomainException("Room nodes are required.");
+
+        if (nodeList.Count < 1)
+        {
+            throw new DomainException("A grid room must contain at least 1 node.");
+        }
+
+        var bossNodes = nodeList.Where(n => n.IsBoss).ToArray();
+
+        if (bossNodes.Length != 1)
+        {
+            throw new DomainException("A room must contain exactly one boss node.");
+        }
+
+        var bossNode = bossNodes.Single();
+
+        if (nodeList.Any(n => n.State != NodeState.Available))
+        {
+            throw new DomainException("Every grid node must start as available.");
+        }
+
+        foreach (var node in nodeList)
+        {
+            if (node.Lane < 0 || node.Lane >= gridWidth || node.Row < 0 || node.Row >= gridHeight)
+            {
+                throw new DomainException("Every grid node must be within the grid bounds.");
+            }
+        }
+
+        if (nodeList.Select(n => (n.Lane, n.Row)).Distinct().Count() != nodeList.Count)
+        {
+            throw new DomainException("Two grid nodes cannot occupy the same cell.");
+        }
+
+        if (startX < 0 || startX >= gridWidth || startY < 0 || startY >= gridHeight)
+        {
+            throw new DomainException("Grid start position must be within the grid bounds.");
+        }
+
+        if (nodeList.Any(n => n.Lane == startX && n.Row == startY))
+        {
+            throw new DomainException("No node can occupy the party's starting cell.");
+        }
+
+        var distanceToBoss = Math.Abs(bossNode.Lane - startX) + Math.Abs(bossNode.Row - startY);
+
+        if (distanceToBoss > movementBudget)
+        {
+            throw new DomainException(
+                "The boss must be reachable within the room's movement budget.");
+        }
+
+        var grid = RoomGrid.CreateInitial(gridWidth, gridHeight, movementBudget, startX, startY, nodeList);
+
+        return new Room(
+            RoomId.New(),
+            depth,
+            roomType,
+            palaceState,
+            theme.Trim(),
+            bossProfile,
+            RoomState.Active,
+            nodeList,
+            layoutTemplateKey.Trim(),
+            layoutTemplateVersion.Trim(),
+            grid);
+    }
+
     public MapNode GetNode(NodeId nodeId)
     {
         return _nodes.FirstOrDefault(n => n.Id == nodeId)
@@ -210,6 +351,8 @@ public sealed class Room
 
     public void SelectNode(NodeId nodeId)
     {
+        EnsureClassicRoom();
+
         if (State is not RoomState.Active and not RoomState.BossReached)
         {
             throw new DomainException("Room is not waiting for a node selection.");
@@ -237,13 +380,14 @@ public sealed class Room
 
     public void ResolveSelectedNodeEvent()
     {
+        EnsureClassicRoom();
+
         if (State != RoomState.NodeSelected)
         {
             throw new DomainException("Room must have a selected node before resolving an event.");
         }
 
-        var selectedNode = _nodes.SingleOrDefault(n =>
-                n.Row == CurrentNodeDepth && n.State == NodeState.Selected)
+        var selectedNode = CurrentSelectedNode
             ?? throw new DomainException("No node has been selected for the current room depth.");
 
         selectedNode.Resolve();
@@ -255,6 +399,8 @@ public sealed class Room
 
     public void UnlockNextNodeLayer()
     {
+        EnsureClassicRoom();
+
         if (State != RoomState.NodeResolved)
         {
             throw new DomainException("Current node event must be resolved before progressing.");
@@ -265,8 +411,7 @@ public sealed class Room
             throw new DomainException("Room has already reached its final node depth.");
         }
 
-        var resolvedNode = _nodes.SingleOrDefault(n =>
-                n.Row == CurrentNodeDepth && n.State == NodeState.Resolved)
+        var resolvedNode = CurrentResolvedNode
             ?? throw new DomainException("No node has been resolved at the current room depth.");
 
         var nextDepth = CurrentNodeDepth + 1;
@@ -295,11 +440,164 @@ public sealed class Room
             : RoomState.Active;
     }
 
+    /// <summary>
+    /// Tactical-mode counterpart of the Classic <see cref="SelectNode"/>/
+    /// <see cref="UnlockNextNodeLayer"/> pair — moves the party across the grid, deducting the
+    /// Manhattan-distance cost from the movement budget and revealing fog of war along the path.
+    /// </summary>
+    public void MoveParty(int targetX, int targetY)
+    {
+        EnsureGridRoom();
+
+        if (State is not RoomState.Active)
+        {
+            throw new DomainException("Room is not waiting for party movement.");
+        }
+
+        if (targetX < 0 || targetX >= Grid!.Width || targetY < 0 || targetY >= Grid.Height)
+        {
+            throw new DomainException("Target position is outside the grid bounds.");
+        }
+
+        var cost = Math.Abs(targetX - Grid.PartyX) + Math.Abs(targetY - Grid.PartyY);
+
+        if (cost == 0)
+        {
+            throw new DomainException("The party is already at the target position.");
+        }
+
+        if (cost > Grid.MovementBudgetRemaining)
+        {
+            throw new DomainException("Not enough movement budget remaining for this move.");
+        }
+
+        Grid.MoveTo(targetX, targetY, cost, _nodes);
+    }
+
+    /// <summary>
+    /// Selects the node currently occupied by the party — the grid-mode equivalent of
+    /// <see cref="SelectNode"/> (which instead requires the node to be on the current row).
+    /// </summary>
+    public void EnterNodeAtPartyPosition(NodeId nodeId)
+    {
+        EnsureGridRoom();
+
+        if (State is not RoomState.Active)
+        {
+            throw new DomainException("Room is not waiting for a node selection.");
+        }
+
+        var node = GetNode(nodeId);
+
+        if (node.Lane != Grid!.PartyX || node.Row != Grid.PartyY)
+        {
+            throw new DomainException("The party is not standing on this node's cell.");
+        }
+
+        node.Select();
+        State = RoomState.NodeSelected;
+    }
+
+    /// <summary>Grid-mode counterpart of <see cref="ResolveSelectedNodeEvent"/>.</summary>
+    public void ResolveSelectedGridNodeEvent()
+    {
+        EnsureGridRoom();
+
+        if (State != RoomState.NodeSelected)
+        {
+            throw new DomainException("Room must have a selected node before resolving an event.");
+        }
+
+        var selectedNode = CurrentSelectedNode
+            ?? throw new DomainException("No node has been selected in this room.");
+
+        selectedNode.Resolve();
+
+        State = selectedNode.IsBoss
+            ? RoomState.Completed
+            : RoomState.NodeResolved;
+    }
+
+    /// <summary>
+    /// Grid-mode counterpart of <see cref="UnlockNextNodeLayer"/> — there is no next layer to
+    /// unlock in free exploration, so this simply returns the room to free movement.
+    /// </summary>
+    public void ReturnToGridExploration()
+    {
+        EnsureGridRoom();
+
+        if (State != RoomState.NodeResolved)
+        {
+            throw new DomainException("Current node event must be resolved before progressing.");
+        }
+
+        State = RoomState.Active;
+    }
+
+    /// <summary>
+    /// True once the party has exhausted its movement budget and the boss node hasn't been
+    /// engaged yet — the player can then challenge the boss without walking to its cell
+    /// (see <see cref="ChallengeBossRemotely"/>), so a room can never become permanently
+    /// unfinishable even if the boss ends up unreachable on foot.
+    /// </summary>
+    public bool CanChallengeBossRemotely =>
+        Grid is not null
+        && Grid.MovementBudgetRemaining <= 0
+        && State is RoomState.Active
+        && _nodes.Single(n => n.IsBoss).State == NodeState.Available;
+
+    /// <summary>
+    /// "Le boss approche à grands pas" — lets the player engage the boss directly once movement
+    /// budget is exhausted, without needing to be on its cell. Reuses the exact same
+    /// <see cref="MapNode.Select"/>/<see cref="ResolveSelectedGridNodeEvent"/> path as walking
+    /// onto the boss's cell normally would.
+    /// </summary>
+    public void ChallengeBossRemotely()
+    {
+        EnsureGridRoom();
+
+        if (!CanChallengeBossRemotely)
+        {
+            throw new DomainException("Remote boss challenge is not available yet.");
+        }
+
+        _nodes.Single(n => n.IsBoss).Select();
+        State = RoomState.NodeSelected;
+    }
+
+    private void EnsureGridRoom()
+    {
+        if (Grid is null)
+        {
+            throw new DomainException("Room is not a grid room.");
+        }
+    }
+
+    private void EnsureClassicRoom()
+    {
+        if (Grid is not null)
+        {
+            throw new DomainException("Room is a grid room; use the Tactical-mode methods instead.");
+        }
+    }
+
     public void ResetProgress()
     {
         if (State is RoomState.Active or RoomState.NodeSelected
             or RoomState.NodeResolved or RoomState.BossReached)
         {
+            if (Grid is not null)
+            {
+                foreach (var node in _nodes)
+                {
+                    node.ResetToGridAvailable();
+                }
+
+                Grid.ResetToInitial(_nodes);
+                State = RoomState.Active;
+                return;
+            }
+
             foreach (var node in _nodes)
             {
                 node.ResetToInitial();
@@ -473,9 +771,10 @@ public sealed class Room
         int currentNodeDepth,
         IEnumerable<MapNode> nodes,
         string? layoutTemplateKey,
-        string? layoutTemplateVersion)
+        string? layoutTemplateVersion,
+        RoomGrid? grid = null)
     {
-        var room = new Room(id, depth, roomType, palaceState, theme, bossProfile, state, nodes, layoutTemplateKey, layoutTemplateVersion);
+        var room = new Room(id, depth, roomType, palaceState, theme, bossProfile, state, nodes, layoutTemplateKey, layoutTemplateVersion, grid);
         room.CurrentNodeDepth = currentNodeDepth;
         return room;
     }
@@ -525,7 +824,8 @@ public sealed class Room
         int currentNodeDepth,
         IEnumerable<MapNode> nodes,
         string? layoutTemplateKey,
-        string? layoutTemplateVersion)
+        string? layoutTemplateVersion,
+        RoomGrid? grid = null)
     {
         return Rehydrate(
             id,
@@ -538,6 +838,7 @@ public sealed class Room
             currentNodeDepth,
             nodes,
             layoutTemplateKey,
-            layoutTemplateVersion);
+            layoutTemplateVersion,
+            grid);
     }
 }

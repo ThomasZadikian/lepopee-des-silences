@@ -90,6 +90,8 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IRoomMapLayoutTemplateProvider, RoomMapLayoutTemplateProvider>();
         services.AddSingleton<IRoomTypeGenerationProfileProvider, HardcodedRoomTypeGenerationProfileProvider>();
         services.AddSingleton<IMapRoomGenerator, MapRoomGenerator>();
+        services.AddSingleton<IGridRoomLayoutTemplateProvider, GridRoomLayoutTemplateProvider>();
+        services.AddSingleton<IGridRoomGenerator, GridRoomGenerator>();
 
         services.Configure<CatalogGatewayOptions>(
             configuration.GetSection(CatalogGatewayOptions.SectionName));

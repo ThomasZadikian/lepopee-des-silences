@@ -1,5 +1,4 @@
 using Leds.GameEngine.Application.RoomMaps;
-using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.RoomMapLayouts;
 using Leds.GameEngine.Domain.Rooms;
@@ -83,22 +82,17 @@ public sealed class MapRoomGenerator : IMapRoomGenerator
             {
                 var type = isBossRow
                     ? NodeEventType.RoomBoss
-                    : PickWeightedNodeType(profile, random);
+                    : NodeGenerationHeuristics.PickWeightedNodeType(profile, random);
 
                 var riskLevel = isBossRow
                     ? 85
                     : random.Next(profile.RiskMin, profile.RiskMax);
 
-                // Combat danger tier is the sole difficulty axis now, derived from the
-                // same generation roll — but only meaningful for combat-flavored nodes
-                // (decision: "le risque n'a de sens que pour les combats").
-                var combatRiskTier = MapNode.IsCombatFlavored(type)
-                    ? (RiskTier?)(RiskTier)Math.Clamp(riskLevel / 20 + 1, 1, 5)
-                    : null;
+                var combatRiskTier = NodeGenerationHeuristics.DeriveCombatRiskTier(type, riskLevel);
 
                 var rewardProfile = isBossRow
                     ? "room-boss"
-                    : PickRewardProfile(type, profile, random);
+                    : NodeGenerationHeuristics.PickRewardProfile(type, profile, random);
 
                 var parentNodeIds = Array.Empty<NodeId>();
                 var initialState = row == 0 ? NodeState.Available : NodeState.Planned;
@@ -117,23 +111,6 @@ public sealed class MapRoomGenerator : IMapRoomGenerator
         }
 
         return nodes;
-    }
-
-    private static NodeEventType PickWeightedNodeType(RoomTypeGenerationProfile profile, Random random)
-    {
-        var roll = random.Next(profile.TotalWeight);
-        var cumulative = 0;
-
-        foreach (var weight in profile.NodeTypeWeights)
-        {
-            cumulative += weight.Weight;
-            if (roll < cumulative)
-            {
-                return weight.NodeType;
-            }
-        }
-
-        return profile.NodeTypeWeights[0].NodeType;
     }
 
     private static void ConnectNodes(
@@ -190,30 +167,5 @@ public sealed class MapRoomGenerator : IMapRoomGenerator
                 }
             }
         }
-    }
-
-    private static string PickRewardProfile(
-        NodeEventType type,
-        RoomTypeGenerationProfile profile,
-        Random random)
-    {
-        if (profile.RewardProfilesByNodeType.TryGetValue(type, out var options) && options.Count > 0)
-        {
-            return options.Count == 1 ? options[0] : options[random.Next(options.Count)];
-        }
-
-        return type switch
-        {
-            NodeEventType.Combat => "combat-common",
-            NodeEventType.Elite => "elite",
-            NodeEventType.Rest => "rest-safe",
-            NodeEventType.Item => "item-common",
-            NodeEventType.Npc => "narrative",
-            NodeEventType.Merchant => "merchant",
-            NodeEventType.Law => "law",
-            NodeEventType.Curse => "curse",
-            NodeEventType.Rare => "rare",
-            _ => "standard"
-        };
     }
 }
