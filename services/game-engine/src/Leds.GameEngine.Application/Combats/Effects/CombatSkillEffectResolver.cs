@@ -367,6 +367,21 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
             durationTicks += combat.DotDurationExtensionTicks;
         }
 
+        // "Le Protocole" (Bestiaire, famille Veilleurs du Seuil, mécanique de famille) :
+        // tant que le Porteur de Plateau est vivant dans ce combat, tous les debuffs
+        // qu'un ennemi inflige à un joueur durent 1 tour de plus. "Debuff" est identifié
+        // par la même convention déjà en place ci-dessous pour le Momentum (cross-side =
+        // nuisible) ; calculé en direct plutôt que via un flag persisté sur Combat, car la
+        // condition ("vivant") peut basculer en cours de combat si le Porteur meurt.
+        if (!spec.IsPermanent
+            && caster.Side == CombatantSide.Enemy
+            && recipient.Side == CombatantSide.Player
+            && combat.Enemies.Any(e => !e.IsDefeated
+                && string.Equals(e.SourceKey, "canon.enemy.porteur-plateau", StringComparison.OrdinalIgnoreCase)))
+        {
+            durationTicks += AtbConstants.TicksPerTurn;
+        }
+
         // Flat-magnitude DoTs (poison/burn/ink...) are attack rolls like any other
         // damage: they scale with the caster's Attack/Defense (or MagicAttack/
         // MagicDefense for Magic-category skills) via the SAME symmetric ratio and

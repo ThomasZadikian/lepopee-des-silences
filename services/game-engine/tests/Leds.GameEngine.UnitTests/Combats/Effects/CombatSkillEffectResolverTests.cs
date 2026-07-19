@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Leds.GameEngine.Application.Combats.Effects;
 using Leds.GameEngine.Domain.Combats;
+using Leds.GameEngine.Domain.Combats.Atb;
 using Leds.GameEngine.Domain.Combats.StatusEffects;
 using Leds.GameEngine.Domain.Combats.Typing;
 using Leds.GameEngine.Domain.Common;
@@ -1141,6 +1142,78 @@ public sealed class CombatSkillEffectResolverTests
         _resolver.Resolve(combat, ally, skill, [enemy]);
 
         enemy.StatusEffects.Should().ContainSingle(e => e.Key == "poison" && e.ExpiresAtTick == 5000);
+    }
+
+    // ---------------------------------------------------------------------------
+    // "Le Protocole" (Bestiaire, Veilleurs du Seuil) — while a living Porteur de
+    // Plateau is present among the enemies, debuffs an enemy inflicts on a player
+    // last 1 extra turn (AtbConstants.TicksPerTurn).
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void Resolve_ShouldExtendDebuffDuration_WhenPorteurDePlateauIsAlive()
+    {
+        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+        var enemy = Combatant.CreateEnemy("canon.enemy.veilleur-tapis", "Veilleur du Tapis", "Guard", 100);
+        var porteur = Combatant.CreateEnemy("canon.enemy.porteur-plateau", "Porteur de Plateau", "Support", 50);
+        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy, porteur]);
+        var skill = CombatantSkill.Create(
+            "canon.skill.etouffement-feutre", "Étouffement feutré", "Debuff", "SingleEnemy", "Debuff",
+            manaCost: 0, chargeCost: 0, basePower: 0,
+            statusEffects: new[]
+            {
+                new SkillStatusEffectSpec(
+                    "slow", "Ralenti", StatusEffectKind.StatModifier,
+                    Magnitude: -15, DurationTicks: 5000, Stat: CombatStat.Speed)
+            });
+
+        _resolver.Resolve(combat, enemy, skill, [ally]);
+
+        ally.StatusEffects.Should().ContainSingle(e => e.Key == "slow" && e.ExpiresAtTick == 5000 + AtbConstants.TicksPerTurn);
+    }
+
+    [Fact]
+    public void Resolve_ShouldNotExtendDebuffDuration_WhenPorteurDePlateauIsAbsent()
+    {
+        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+        var enemy = Combatant.CreateEnemy("canon.enemy.veilleur-tapis", "Veilleur du Tapis", "Guard", 100);
+        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
+        var skill = CombatantSkill.Create(
+            "canon.skill.etouffement-feutre", "Étouffement feutré", "Debuff", "SingleEnemy", "Debuff",
+            manaCost: 0, chargeCost: 0, basePower: 0,
+            statusEffects: new[]
+            {
+                new SkillStatusEffectSpec(
+                    "slow", "Ralenti", StatusEffectKind.StatModifier,
+                    Magnitude: -15, DurationTicks: 5000, Stat: CombatStat.Speed)
+            });
+
+        _resolver.Resolve(combat, enemy, skill, [ally]);
+
+        ally.StatusEffects.Should().ContainSingle(e => e.Key == "slow" && e.ExpiresAtTick == 5000);
+    }
+
+    [Fact]
+    public void Resolve_ShouldNotExtendDebuffDuration_WhenPorteurDePlateauIsDefeated()
+    {
+        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+        var enemy = Combatant.CreateEnemy("canon.enemy.veilleur-tapis", "Veilleur du Tapis", "Guard", 100);
+        var porteur = Combatant.CreateEnemy("canon.enemy.porteur-plateau", "Porteur de Plateau", "Support", 10);
+        porteur.ApplyDamage(10);
+        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy, porteur]);
+        var skill = CombatantSkill.Create(
+            "canon.skill.etouffement-feutre", "Étouffement feutré", "Debuff", "SingleEnemy", "Debuff",
+            manaCost: 0, chargeCost: 0, basePower: 0,
+            statusEffects: new[]
+            {
+                new SkillStatusEffectSpec(
+                    "slow", "Ralenti", StatusEffectKind.StatModifier,
+                    Magnitude: -15, DurationTicks: 5000, Stat: CombatStat.Speed)
+            });
+
+        _resolver.Resolve(combat, enemy, skill, [ally]);
+
+        ally.StatusEffects.Should().ContainSingle(e => e.Key == "slow" && e.ExpiresAtTick == 5000);
     }
 
     // ---------------------------------------------------------------------------
