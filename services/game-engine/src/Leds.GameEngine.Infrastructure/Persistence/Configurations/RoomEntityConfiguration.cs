@@ -37,6 +37,17 @@ public sealed class RoomEntityConfiguration : IEntityTypeConfiguration<RoomEntit
         builder.Property(room => room.CursePoolKey).HasColumnName("curse_pool_key").HasMaxLength(160);
         builder.Property(room => room.CatalogIsUnique).HasColumnName("catalog_is_unique").HasDefaultValue(false);
 
+        builder.Property(room => room.GridWidth).HasColumnName("grid_width");
+        builder.Property(room => room.GridHeight).HasColumnName("grid_height");
+        builder.Property(room => room.GridMovementBudget).HasColumnName("grid_movement_budget");
+        builder.Property(room => room.GridMovementBudgetRemaining).HasColumnName("grid_movement_budget_remaining");
+        builder.Property(room => room.GridStartX).HasColumnName("grid_start_x");
+        builder.Property(room => room.GridStartY).HasColumnName("grid_start_y");
+        builder.Property(room => room.GridPartyX).HasColumnName("grid_party_x");
+        builder.Property(room => room.GridPartyY).HasColumnName("grid_party_y");
+        builder.Property(room => room.GridRevealedNodeIdsCsv).HasColumnName("grid_revealed_node_ids_csv");
+        builder.Property(room => room.GridRevealedCellsCsv).HasColumnName("grid_revealed_cells_csv");
+
         builder.HasOne(room => room.Run)
             .WithMany(run => run.Rooms)
             .HasForeignKey(room => room.RunId)

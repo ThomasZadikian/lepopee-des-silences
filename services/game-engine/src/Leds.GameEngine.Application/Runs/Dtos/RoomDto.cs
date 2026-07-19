@@ -21,11 +21,17 @@ public sealed record RoomDto(
     PalaceRoomStateDto? PalaceState = null,
     string? CatalogRoomKey = null,
     string? CatalogName = null,
-    string? CatalogNarrative = null)
+    string? CatalogNarrative = null,
+    RoomGridDto? Grid = null)
 {
     public static RoomDto FromDomain(Room room, IReadOnlyCollection<RunModifier>? runModifiers = null)
     {
         var activeClimate = ResolveActiveClimate(room, runModifiers ?? []);
+
+        // Tactical mode (Grid not null): only fog-of-war-revealed nodes are ever sent to the
+        // client — sending the full node list would defeat the point of the fog of war.
+        // Classic mode: unchanged, the full node list as always.
+        var nodesForDto = room.Grid is not null ? room.VisibleNodes : room.Nodes;
 
         return new RoomDto(
             room.Id.Value,
@@ -37,7 +43,7 @@ public sealed record RoomDto(
             room.MaxNodeDepth,
             room.TotalNodeCount,
             RoomBossProfileDto.FromDomain(room.BossProfile),
-            room.Nodes.Select(MapNodeDto.FromDomain).ToArray(),
+            nodesForDto.Select(MapNodeDto.FromDomain).ToArray(),
             room.AvailableNodes.Select(MapNodeDto.FromDomain).ToArray(),
             room.LayoutTemplateKey,
             room.LayoutTemplateVersion,
@@ -45,7 +51,8 @@ public sealed record RoomDto(
             PalaceRoomStateDto.FromDomain(room.PalaceState),
             room.CatalogBinding?.Key,
             room.CatalogBinding?.DisplayName,
-            room.CatalogBinding?.NarrativeText);
+            room.CatalogBinding?.NarrativeText,
+            room.Grid is null ? null : RoomGridDto.FromDomain(room.Grid, room.CanChallengeBossRemotely));
     }
 
     private static string? ResolveActiveClimate(
@@ -68,6 +75,31 @@ public sealed record RoomDto(
             4 => "Hail",
             _ => null
         };
+    }
+}
+
+/// <summary>Tactical-mode grid overlay — <c>null</c> for a Classic room.</summary>
+public sealed record RoomGridDto(
+    int Width,
+    int Height,
+    int MovementBudget,
+    int MovementBudgetRemaining,
+    int PartyX,
+    int PartyY,
+    bool CanChallengeBossRemotely,
+    IReadOnlyCollection<int[]> RevealedCells)
+{
+    public static RoomGridDto FromDomain(RoomGrid grid, bool canChallengeBossRemotely)
+    {
+        return new RoomGridDto(
+            grid.Width,
+            grid.Height,
+            grid.MovementBudget,
+            grid.MovementBudgetRemaining,
+            grid.PartyX,
+            grid.PartyY,
+            canChallengeBossRemotely,
+            grid.RevealedCells.Select(cell => new[] { cell.X, cell.Y }).ToArray());
     }
 }
 

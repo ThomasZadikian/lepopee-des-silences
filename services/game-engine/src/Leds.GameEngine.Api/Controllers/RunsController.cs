@@ -1,15 +1,18 @@
 using Leds.GameEngine.Application.Combats.Dtos;
 using Leds.GameEngine.Application.Events.ChooseEventOption;
 using Leds.GameEngine.Application.Runs.AbandonRun;
+using Leds.GameEngine.Application.Runs.ChallengeBossRemotely;
 using Leds.GameEngine.Application.Runs.ChooseNode;
 using Leds.GameEngine.Application.Runs.ConfirmPermanentItemSelection;
 using Leds.GameEngine.Application.Runs.EmptyRunItemContainer;
+using Leds.GameEngine.Application.Runs.EnterGridNode;
 using Leds.GameEngine.Application.Runs.ExitMidRoom;
 using Leds.GameEngine.Application.Runs.GetCurrentCombat;
 using Leds.GameEngine.Application.Runs.GetPermanentItemCandidates;
 using Leds.GameEngine.Application.Runs.GetRunById;
 using Leds.GameEngine.Application.Runs.GetRunInventory;
 using Leds.GameEngine.Application.Runs.GetRunReputation;
+using Leds.GameEngine.Application.Runs.MoveParty;
 using Leds.GameEngine.Application.Runs.MoveToNextRoom;
 using Leds.GameEngine.Application.Runs.PourRunItemLiquid;
 using Leds.GameEngine.Application.Runs.ProgressRun;
@@ -46,7 +49,7 @@ public sealed class RunsController : ControllerBase
         [FromBody] StartRunRequest request,
         CancellationToken cancellationToken)
     {
-        var command = new StartRunCommand(request.PlayerId);
+        var command = new StartRunCommand(request.PlayerId, request.ExplorationMode);
 
         var response = await _sender.Send(command, cancellationToken);
 
@@ -351,6 +354,50 @@ public sealed class RunsController : ControllerBase
         return Ok(response);
     }
 
+    [HttpPost("{runId:guid}/party/move")]
+    [ProducesResponseType(typeof(MovePartyResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<MovePartyResponse>> MoveParty(
+        Guid runId,
+        [FromBody] MovePartyRequest request,
+        CancellationToken cancellationToken)
+    {
+        var command = new MovePartyCommand(runId, request.TargetX, request.TargetY);
+        var response = await _sender.Send(command, cancellationToken);
+
+        return Ok(response);
+    }
+
+    [HttpPost("{runId:guid}/nodes/{nodeId:guid}/enter")]
+    [ProducesResponseType(typeof(EnterGridNodeResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<EnterGridNodeResponse>> EnterGridNode(
+        Guid runId,
+        Guid nodeId,
+        CancellationToken cancellationToken)
+    {
+        var command = new EnterGridNodeCommand(runId, nodeId);
+        var response = await _sender.Send(command, cancellationToken);
+
+        return Ok(response);
+    }
+
+    [HttpPost("{runId:guid}/rooms/current/challenge-boss")]
+    [ProducesResponseType(typeof(ChallengeBossRemotelyResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<ChallengeBossRemotelyResponse>> ChallengeBossRemotely(
+        Guid runId,
+        CancellationToken cancellationToken)
+    {
+        var command = new ChallengeBossRemotelyCommand(runId);
+        var response = await _sender.Send(command, cancellationToken);
+
+        return Ok(response);
+    }
+
     [HttpPost("{runId:guid}/sync-skills")]
     [ProducesResponseType(typeof(SyncPartySkillsResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -395,7 +442,9 @@ public sealed class RunsController : ControllerBase
     }
 }
 
-public sealed record StartRunRequest(Guid PlayerId);
+public sealed record StartRunRequest(Guid PlayerId, string? ExplorationMode = null);
+
+public sealed record MovePartyRequest(int TargetX, int TargetY);
 
 public sealed record UseCaliceInfiniRequest(Guid? TargetCombatantId);
 

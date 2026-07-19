@@ -77,8 +77,12 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
         var caliceInfiniEnabled = profile.PermanentItems?.Any(item =>
             string.Equals(item.ItemDefinitionKey, CaliceInfiniItemKey, StringComparison.OrdinalIgnoreCase)) ?? false;
 
+        var explorationMode = string.Equals(request.ExplorationMode, "Tactical", StringComparison.OrdinalIgnoreCase)
+            ? RunExplorationMode.Tactical
+            : RunExplorationMode.Classic;
+
         var seed = _runGenerator.GenerateSeed();
-        var initialRoom = await _runGenerator.GenerateInitialRoomAsync(seed, cancellationToken);
+        var initialRoom = await _runGenerator.GenerateInitialRoomAsync(seed, cancellationToken, explorationMode);
 
         var mainCharacter = snapshot.Characters.FirstOrDefault()
             ?? throw new InvalidOperationException("Player snapshot has no available characters.");
@@ -186,7 +190,8 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
             reputationGainBonusPercent: reputationGainBonusPercent,
             himLitProtectionEnabled: himLitProtectionEnabled,
             healingBonusPercent: healingBonusPercent,
-            caliceInfiniEnabled: caliceInfiniEnabled);
+            caliceInfiniEnabled: caliceInfiniEnabled,
+            explorationMode: explorationMode);
 
         // Ambient promulgation ("irréfusabilité") also applies to the very first room of
         // the run: without this, MoveToNextRoomCommandHandler's guaranteed first-floor

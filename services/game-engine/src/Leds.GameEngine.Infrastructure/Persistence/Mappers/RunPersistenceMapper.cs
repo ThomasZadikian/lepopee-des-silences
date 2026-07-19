@@ -64,6 +64,7 @@ public static class RunPersistenceMapper
             HealingBonusPercent = run.HealingBonusPercent,
             CaliceInfiniEnabled = run.CaliceInfiniEnabled,
             CaliceInfiniLastUsedRoomIndex = run.CaliceInfiniLastUsedRoomIndex,
+            ExplorationMode = run.ExplorationMode.ToString(),
             StartedAtUtc = run.StartedAt.UtcDateTime,
             EndedAtUtc = run.EndedAt?.UtcDateTime,
             SavedAtUtc = run.SavedAt?.UtcDateTime,
@@ -222,6 +223,20 @@ public static class RunPersistenceMapper
             LawPoolKey = room.CatalogBinding?.LawPoolKey,
             CursePoolKey = room.CatalogBinding?.CursePoolKey,
             CatalogIsUnique = room.CatalogBinding?.IsUnique ?? false,
+            GridWidth = room.Grid?.Width,
+            GridHeight = room.Grid?.Height,
+            GridMovementBudget = room.Grid?.MovementBudget,
+            GridMovementBudgetRemaining = room.Grid?.MovementBudgetRemaining,
+            GridStartX = room.Grid?.StartX,
+            GridStartY = room.Grid?.StartY,
+            GridPartyX = room.Grid?.PartyX,
+            GridPartyY = room.Grid?.PartyY,
+            GridRevealedNodeIdsCsv = room.Grid is null
+                ? null
+                : string.Join(";", room.Grid.RevealedNodeIds.Select(id => id.Value.ToString())),
+            GridRevealedCellsCsv = room.Grid is null
+                ? null
+                : string.Join(";", room.Grid.RevealedCells.Select(cell => $"{cell.X},{cell.Y}")),
             Nodes = room.Nodes.Select(node => ToEntity(node, room.Id.Value)).ToList()
         };
     }
@@ -486,7 +501,10 @@ public static class RunPersistenceMapper
             caliceInfiniEnabled: entity.CaliceInfiniEnabled,
             caliceInfiniLastUsedRoomIndex: entity.CaliceInfiniLastUsedRoomIndex,
             magicAttack: entity.MagicAttack,
-            magicDefense: entity.MagicDefense);
+            magicDefense: entity.MagicDefense,
+            explorationMode: string.IsNullOrWhiteSpace(entity.ExplorationMode)
+                ? RunExplorationMode.Classic
+                : Enum.Parse<RunExplorationMode>(entity.ExplorationMode));
 
         RehydrateNpcEncounters(run, entity);
         return run;
@@ -503,6 +521,20 @@ public static class RunPersistenceMapper
             entity.BossDangerHint,
             entity.BossEnemyTemplateKey);
 
+        var grid = entity.GridWidth.HasValue
+            ? RoomGrid.Rehydrate(
+                entity.GridWidth.Value,
+                entity.GridHeight!.Value,
+                entity.GridMovementBudget!.Value,
+                entity.GridMovementBudgetRemaining!.Value,
+                entity.GridStartX!.Value,
+                entity.GridStartY!.Value,
+                entity.GridPartyX!.Value,
+                entity.GridPartyY!.Value,
+                ParseGridRevealedNodeIds(entity.GridRevealedNodeIdsCsv),
+                ParseGridRevealedCells(entity.GridRevealedCellsCsv))
+            : null;
+
         var room = Room.Rehydrate(
             new RoomId(entity.Id),
             entity.Depth,
@@ -516,7 +548,8 @@ public static class RunPersistenceMapper
             entity.CurrentNodeDepth,
             nodes,
             entity.LayoutTemplateKey,
-            entity.LayoutTemplateVersion);
+            entity.LayoutTemplateVersion,
+            grid);
 
         if (!string.IsNullOrWhiteSpace(entity.CatalogRoomKey))
         {
@@ -532,6 +565,32 @@ public static class RunPersistenceMapper
         }
 
         return room;
+    }
+
+    private static IEnumerable<NodeId> ParseGridRevealedNodeIds(string? csv)
+    {
+        if (string.IsNullOrEmpty(csv))
+        {
+            return [];
+        }
+
+        return csv.Split(';', StringSplitOptions.RemoveEmptyEntries)
+            .Select(id => new NodeId(Guid.Parse(id)));
+    }
+
+    private static IEnumerable<(int X, int Y)> ParseGridRevealedCells(string? csv)
+    {
+        if (string.IsNullOrEmpty(csv))
+        {
+            return [];
+        }
+
+        return csv.Split(';', StringSplitOptions.RemoveEmptyEntries)
+            .Select(pair =>
+            {
+                var parts = pair.Split(',');
+                return (X: int.Parse(parts[0]), Y: int.Parse(parts[1]));
+            });
     }
 
     public static MapNode ToDomain(MapNodeEntity entity)

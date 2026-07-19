@@ -1138,4 +1138,79 @@ public sealed class StartRunCommandHandlerTests
 
         capturedRun.HimLitProtectionEnabled.Should().BeTrue();
     }
+
+    [Fact]
+    public async Task Handle_ShouldStartATacticalRun_WhenExplorationModeIsTactical()
+    {
+        var playerId = Guid.NewGuid();
+        var now = new DateTimeOffset(2026, 7, 19, 12, 0, 0, TimeSpan.Zero);
+
+        var initialRoom = TestGameEngineFactory.CreateGridThresholdRoom().Room;
+
+        var generator = new Mock<IRunGenerator>();
+        generator.SetupGet(service => service.GeneratorVersion).Returns("gen-0.1.0");
+        generator.SetupGet(service => service.MarkovMatrixVersion).Returns("markov-0.1.0");
+        generator.Setup(service => service.GenerateSeed()).Returns("seed-test-tactical");
+        generator
+            .Setup(service => service.GenerateInitialRoomAsync(
+                "seed-test-tactical", CancellationToken.None, RunExplorationMode.Tactical))
+            .ReturnsAsync(initialRoom);
+
+        var repository = new Mock<IRunRepository>();
+
+        var playerGateway = new Mock<IPlayerRunSnapshotGateway>();
+        playerGateway
+            .Setup(g => g.GetRunSnapshotAsync(playerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new PlayerRunSnapshot(
+                playerId,
+                "Test Player",
+                [new PlayerRunSnapshotCharacter(
+                    Guid.NewGuid(),
+                    "character.player.self",
+                    "Le Porteur",
+                    Stats: new PlayerRunSnapshotCharacterStats(
+                        MaxVitality: 100,
+                        AttackPower: 12,
+                        Defense: 6,
+                        StartingGuard: 0,
+                        Speed: 10,
+                        Initiative: 10,
+                        Recovery: 5,
+                        Focus: 0,
+                        Mana: 0,
+                        Charge: 0),
+                    Skills: [])]));
+
+        var clock = new Mock<IClock>();
+        clock.SetupGet(service => service.UtcNow).Returns(now);
+
+        var catalogGateway = new Mock<ICatalogContentGateway>();
+        var palaceLawPromulgator = new Mock<IAmbientPalaceLawPromulgator>();
+        palaceLawPromulgator
+            .Setup(p => p.PromulgateForRoomTransitionAsync(It.IsAny<Run>(), It.IsAny<Room>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var playerProfileGateway = CreateProfileGateway(playerId);
+        var handler = new StartRunCommandHandler(
+            generator.Object,
+            repository.Object,
+            playerGateway.Object,
+            playerProfileGateway.Object,
+            palaceLawPromulgator.Object,
+            new PlayerSkillMerger(catalogGateway.Object),
+            new PlayerStatMerger(),
+            clock.Object);
+
+        var response = await handler.Handle(
+            new StartRunCommand(playerId, ExplorationMode: "Tactical"),
+            CancellationToken.None);
+
+        response.Run.ExplorationMode.Should().Be("Tactical");
+        response.Run.CurrentRoom.Grid.Should().NotBeNull();
+
+        var capturedRun = (Run)repository.Invocations
+            .Single(i => i.Method.Name == nameof(IRunRepository.AddAsync)).Arguments[0];
+
+        capturedRun.ExplorationMode.Should().Be(RunExplorationMode.Tactical);
+    }
 }

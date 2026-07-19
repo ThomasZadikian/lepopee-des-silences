@@ -41,6 +41,7 @@ public sealed class RunEntity
     public int HealingBonusPercent { get; set; }
     public bool CaliceInfiniEnabled { get; set; }
     public int? CaliceInfiniLastUsedRoomIndex { get; set; }
+    public string ExplorationMode { get; set; } = "Classic";
     public DateTime StartedAtUtc { get; set; }
     public DateTime? EndedAtUtc { get; set; }
     public DateTime? SavedAtUtc { get; set; }

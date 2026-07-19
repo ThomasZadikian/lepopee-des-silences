@@ -27,6 +27,20 @@ public sealed class RoomEntity
     public string? CursePoolKey { get; set; }
     public bool CatalogIsUnique { get; set; }
 
+    // Tactical mode (RoomGrid overlay) — all null for a Classic room.
+    public int? GridWidth { get; set; }
+    public int? GridHeight { get; set; }
+    public int? GridMovementBudget { get; set; }
+    public int? GridMovementBudgetRemaining { get; set; }
+    public int? GridStartX { get; set; }
+    public int? GridStartY { get; set; }
+    public int? GridPartyX { get; set; }
+    public int? GridPartyY { get; set; }
+    /// <summary>Semicolon-separated node GUIDs, e.g. "guid1;guid2".</summary>
+    public string? GridRevealedNodeIdsCsv { get; set; }
+    /// <summary>Semicolon-separated "x,y" pairs, e.g. "0,0;1,0;2,0".</summary>
+    public string? GridRevealedCellsCsv { get; set; }
+
     public RunEntity? Run { get; set; }
     public List<MapNodeEntity> Nodes { get; set; } = [];
 }
