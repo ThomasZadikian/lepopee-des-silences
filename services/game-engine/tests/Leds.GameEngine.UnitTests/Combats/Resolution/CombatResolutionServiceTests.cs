@@ -131,6 +131,35 @@ public sealed class CombatResolutionServiceTests
     }
 
     [Fact]
+    public async Task ApplyOutcomeAsync_ShouldAwardCombatEclats_WhenCombatCompletes()
+    {
+        // Test fixtures never set an explicit CombatRiskTier, so the node falls back to
+        // RiskTier.Tendu (see CombatResolutionService.CreateRewardOfferAsync), which grants
+        // 1 Éclat (see CombatRiskProfileResolver.EclatsBaseAmountByTier).
+        var (run, combat) = CreateCompletedCombat(NodeEventType.Combat);
+        var gateway = new Mock<IPlayerProfileGateway>();
+        var service = new CombatResolutionService(CreateRewardOfferFactory(), gateway.Object, Mock.Of<IOutboxWriter>(), Mock.Of<ILogger<CombatResolutionService>>());
+
+        await service.ApplyOutcomeAsync(run, combat, DateTimeOffset.UtcNow);
+
+        gateway.Verify(g => g.AwardCurrencyAsync(run.PlayerId, 1, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ApplyOutcomeAsync_ShouldStillReturnRewardOffer_WhenEclatsGatewayThrows()
+    {
+        var (run, combat) = CreateCompletedCombat(NodeEventType.Combat);
+        var gateway = new Mock<IPlayerProfileGateway>();
+        gateway.Setup(g => g.AwardCurrencyAsync(It.IsAny<Guid>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new HttpRequestException("Player Service unreachable"));
+        var service = new CombatResolutionService(CreateRewardOfferFactory(), gateway.Object, Mock.Of<IOutboxWriter>(), Mock.Of<ILogger<CombatResolutionService>>());
+
+        var offer = await service.ApplyOutcomeAsync(run, combat, DateTimeOffset.UtcNow);
+
+        offer.Should().NotBeNull();
+    }
+
+    [Fact]
     public async Task ApplyOutcomeAsync_ShouldAppendJournalEntry_OnVictory_WhenJournalEnabled()
     {
         var (run, combat) = CreateCompletedCombat(NodeEventType.Combat, journalEnabled: true);

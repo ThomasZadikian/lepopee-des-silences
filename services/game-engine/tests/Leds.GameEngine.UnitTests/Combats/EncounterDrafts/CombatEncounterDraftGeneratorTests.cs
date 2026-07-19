@@ -127,7 +127,8 @@ public sealed class CombatEncounterDraftGeneratorTests
             .Setup(r => r.Resolve(It.IsAny<Leds.GameEngine.Domain.Nodes.NodeEventType>(), It.IsAny<int>()))
             .Returns(new Leds.GameEngine.Domain.Combats.CombatRiskProfile(
                 Leds.GameEngine.Domain.Combats.CombatTier.Normal,
-                20, 20, 0, 1.0, 1.0, Leds.GameEngine.Domain.Combats.RiskBand.Low));
+                Leds.GameEngine.Domain.Combats.RiskTier.Tendu,
+                1.0, 1.0, 1.0, 0));
         return new CombatEncounterDraftGenerator(gateway.Object, policy.Object, riskProfileResolver.Object);
     }
 
@@ -330,7 +331,8 @@ public sealed class CombatEncounterDraftGeneratorTests
             .Setup(r => r.Resolve(It.IsAny<Leds.GameEngine.Domain.Nodes.NodeEventType>(), It.IsAny<int>()))
             .Returns(new Leds.GameEngine.Domain.Combats.CombatRiskProfile(
                 Leds.GameEngine.Domain.Combats.CombatTier.Normal,
-                20, 20, 0, 1.0, 1.0, Leds.GameEngine.Domain.Combats.RiskBand.Low));
+                Leds.GameEngine.Domain.Combats.RiskTier.Tendu,
+                1.0, 1.0, 1.0, 0));
 
         var generator = new CombatEncounterDraftGenerator(gateway.Object, policy.Object, riskProfileResolver.Object);
         var draft = await generator.GenerateAsync(DefaultContext);
@@ -338,6 +340,39 @@ public sealed class CombatEncounterDraftGeneratorTests
         draft.Enemies.Should().HaveCount(2);
         draft.Enemies.Should().Contain(e => e.EnemyKey == FragmentDoute.Key);
         draft.Enemies.Should().Contain(e => e.EnemyKey == ResistanceInterieure.Key);
+    }
+
+    [Fact]
+    public async Task GenerateAsync_ShouldApplyEliteStatBonus_OnlyToThePreferredEnemy()
+    {
+        var preferredEnemy = ResistanceInterieure with { AttackPower = 10, Defense = 10 };
+        var escortEnemy = FragmentDoute with { AttackPower = 10, Defense = 10 };
+
+        var gateway = CreateGatewayWithSkills([preferredEnemy, escortEnemy]);
+        var policy = new Mock<IEncounterCompositionPolicy>();
+        policy
+            .Setup(p => p.Compose(It.IsAny<EncounterCompositionContext>()))
+            .Returns(new EncounterCompositionResult(
+                DifficultyBudget: 5,
+                EnemyCount: 2,
+                SelectedEnemies: new[] { preferredEnemy, escortEnemy },
+                PreferredEnemyKey: preferredEnemy.Key));
+
+        var context = DefaultContext with { EncounterType = "Elite" };
+        var generator = CreateGenerator(gateway, policy);
+
+        var draft = await generator.GenerateAsync(context);
+
+        var preferred = draft.Enemies.Single(e => e.EnemyKey == preferredEnemy.Key);
+        var escort = draft.Enemies.Single(e => e.EnemyKey == escortEnemy.Key);
+
+        // EliteStatMultiplier = 1.5 applied only to the preferred pick: ceil(10 * 1.5) = 15.
+        preferred.AttackPower.Should().Be(15);
+        preferred.Defense.Should().Be(15);
+
+        // The escort gets no bonus at all — same base values as authored.
+        escort.AttackPower.Should().Be(10);
+        escort.Defense.Should().Be(10);
     }
 
     [Fact]

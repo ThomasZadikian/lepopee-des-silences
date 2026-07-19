@@ -240,6 +240,7 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
                 @generate-next-nodes="runStore.progressRun"
                 @choose-and-resolve="runStore.confirmAndResolveNode"
                 @close="runStore.resetPreviewedNode"
+                @wager-node="runStore.wagerNode"
               />
             </Transition>
 

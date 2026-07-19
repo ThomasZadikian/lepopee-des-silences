@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Nodes;
 
@@ -6,6 +7,137 @@ namespace Leds.GameEngine.UnitTests.Nodes;
 
 public sealed class MapNodeTests
 {
+    // -----------------------------------------------------------------------
+    // CombatRiskTier / IsCombatFlavored (risk redesign)
+    // -----------------------------------------------------------------------
+
+    [Theory]
+    [InlineData(NodeEventType.Combat, true)]
+    [InlineData(NodeEventType.Rare, true)]
+    [InlineData(NodeEventType.Elite, true)]
+    [InlineData(NodeEventType.RoomBoss, true)]
+    [InlineData(NodeEventType.FinalBoss, true)]
+    [InlineData(NodeEventType.Item, false)]
+    [InlineData(NodeEventType.Npc, false)]
+    [InlineData(NodeEventType.Memory, false)]
+    [InlineData(NodeEventType.Rest, false)]
+    [InlineData(NodeEventType.Merchant, false)]
+    [InlineData(NodeEventType.Law, false)]
+    [InlineData(NodeEventType.Curse, false)]
+    public void IsCombatFlavored_ShouldReturnExpectedResult(NodeEventType eventType, bool expected)
+    {
+        MapNode.IsCombatFlavored(eventType).Should().Be(expected);
+    }
+
+    [Fact]
+    public void Create_ShouldAcceptACombatRiskTier_ForACombatFlavoredNode()
+    {
+        var node = MapNode.Create(
+            NodeEventType.Elite, 60, "standard", 0, 0, Array.Empty<NodeId>(),
+            combatRiskTier: RiskTier.Dangereux);
+
+        node.CombatRiskTier.Should().Be(RiskTier.Dangereux);
+    }
+
+    [Fact]
+    public void Create_ShouldThrow_WhenANonCombatNodeHasACombatRiskTier()
+    {
+        var act = () => MapNode.Create(
+            NodeEventType.Item, 60, "standard", 0, 0, Array.Empty<NodeId>(),
+            combatRiskTier: RiskTier.Dangereux);
+
+        act.Should().Throw<DomainException>()
+            .WithMessage("Non-combat node type 'Item' must not have a CombatRiskTier.");
+    }
+
+    [Fact]
+    public void Create_ShouldLeaveCombatRiskTierNull_ByDefault()
+    {
+        var node = MapNode.Create(NodeEventType.Combat, 25, "standard", 0, 0, Array.Empty<NodeId>());
+
+        node.CombatRiskTier.Should().BeNull();
+    }
+
+    // -----------------------------------------------------------------------
+    // RaiseRisk ("provoquer le destin")
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public void RaiseRisk_ShouldIncreaseTierByOneStep()
+    {
+        var node = MapNode.Create(
+            NodeEventType.Combat, 25, "standard", 0, 0, Array.Empty<NodeId>(),
+            combatRiskTier: RiskTier.Tendu);
+
+        node.RaiseRisk();
+
+        node.CombatRiskTier.Should().Be(RiskTier.Dangereux);
+    }
+
+    [Fact]
+    public void RaiseRisk_ShouldBeRepeatable_UpToFatal()
+    {
+        var node = MapNode.Create(
+            NodeEventType.Combat, 25, "standard", 0, 0, Array.Empty<NodeId>(),
+            combatRiskTier: RiskTier.Calme);
+
+        node.RaiseRisk();
+        node.RaiseRisk();
+        node.RaiseRisk();
+        node.RaiseRisk();
+
+        node.CombatRiskTier.Should().Be(RiskTier.Fatal);
+    }
+
+    [Fact]
+    public void RaiseRisk_ShouldThrow_WhenAlreadyAtFatal()
+    {
+        var node = MapNode.Create(
+            NodeEventType.Combat, 25, "standard", 0, 0, Array.Empty<NodeId>(),
+            combatRiskTier: RiskTier.Fatal);
+
+        var act = () => node.RaiseRisk();
+
+        act.Should().Throw<DomainException>()
+            .WithMessage("This node's risk is already at the maximum tier (Fatal).");
+    }
+
+    [Fact]
+    public void RaiseRisk_ShouldThrow_WhenNodeIsNotCombatFlavored()
+    {
+        var node = MapNode.Create(NodeEventType.Item, 25, "standard", 0, 0, Array.Empty<NodeId>());
+
+        var act = () => node.RaiseRisk();
+
+        act.Should().Throw<DomainException>()
+            .WithMessage("Only combat-flavored nodes can have their risk raised; 'Item' is not one.");
+    }
+
+    [Fact]
+    public void RaiseRisk_ShouldThrow_WhenNodeHasNoCombatRiskTier()
+    {
+        var node = MapNode.Create(NodeEventType.Combat, 25, "standard", 0, 0, Array.Empty<NodeId>());
+
+        var act = () => node.RaiseRisk();
+
+        act.Should().Throw<DomainException>()
+            .WithMessage("This combat node has no CombatRiskTier to raise.");
+    }
+
+    [Fact]
+    public void RaiseRisk_ShouldThrow_WhenNodeIsNotAvailable()
+    {
+        var node = MapNode.Create(
+            NodeEventType.Combat, 25, "standard", 0, 0, Array.Empty<NodeId>(),
+            combatRiskTier: RiskTier.Tendu);
+        node.Select();
+
+        var act = () => node.RaiseRisk();
+
+        act.Should().Throw<DomainException>()
+            .WithMessage("Only an available MapNode's risk can be raised.");
+    }
+
     [Fact]
     public void Create_ShouldSucceed_WithValidData()
     {

@@ -23,6 +23,7 @@ vi.mock('../api/runApi', () => ({
     getPermanentItemCandidates: vi.fn(),
     confirmPermanentItemSelection: vi.fn(),
     removePalaceLaw: vi.fn(),
+    wagerNode: vi.fn(),
     useCaliceInfini: vi.fn(),
     syncPartySkills: vi.fn(),
     syncPartyStats: vi.fn(),
@@ -471,6 +472,28 @@ describe('useRunStore actions', () => {
 
     expect(runApi.removePalaceLaw).toHaveBeenCalledWith('run-1', 'law-echo-v1');
     expect(store.currentRun?.activePalaceLaws).toEqual([]);
+  });
+
+  it('wagerNode sends the node id and refreshes the run', async () => {
+    const store = useRunStore();
+    store.currentRun = {
+      id: 'run-1',
+      status: 'Active',
+      currentRoom: { nodes: [{ id: 'node-1', combatRiskTier: 'Tendu' }] },
+    } as any;
+
+    vi.mocked(runApi.wagerNode).mockResolvedValue({
+      run: {
+        id: 'run-1',
+        status: 'Active',
+        currentRoom: { nodes: [{ id: 'node-1', combatRiskTier: 'Dangereux' }] },
+      },
+    } as any);
+
+    await store.wagerNode('node-1');
+
+    expect(runApi.wagerNode).toHaveBeenCalledWith('run-1', 'node-1');
+    expect(store.currentRun?.currentRoom.nodes[0].combatRiskTier).toBe('Dangereux');
   });
 
   it('useCaliceInfini calls the API and refreshes the run', async () => {

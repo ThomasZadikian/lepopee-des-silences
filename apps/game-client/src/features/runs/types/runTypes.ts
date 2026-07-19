@@ -1,9 +1,17 @@
+/** The 5 named combat danger tiers (see backend RiskTier). Only meaningful for
+ * combat-flavored nodes (Combat/Elite/Rare/RoomBoss/FinalBoss) — null otherwise. */
+export type CombatRiskTier = 'Calme' | 'Tendu' | 'Dangereux' | 'Perilleux' | 'Fatal';
+
 export type NodeDto = {
   id: string;
   type: string;
   row: number;
   lane: number;
+  /** Raw 0-100 generation roll. Still drives Item/Merchant reward generosity —
+   * unrelated to combat danger, which is now carried separately by combatRiskTier. */
   riskLevel: number;
+  /** Combat danger tier (Calme..Fatal). Null for non-combat node types. */
+  combatRiskTier?: CombatRiskTier | null;
   rewardProfile: string;
   parentNodeIds: string[];
   state: string;

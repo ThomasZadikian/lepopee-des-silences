@@ -8,6 +8,7 @@ using Leds.GameEngine.Application.Combats.Metrics;
 using Leds.GameEngine.Application.Combats.Ports;
 using Leds.GameEngine.Application.Common.Exceptions;
 using Leds.GameEngine.Application.IntegrationEvents;
+using Leds.GameEngine.Application.Players.Ports;
 using Leds.GameEngine.Application.Rewards.Ports;
 using Leds.GameEngine.Application.Rewards.RewardOfferFactory;
 using Leds.GameEngine.Application.Runs.Dtos;
@@ -18,6 +19,7 @@ using Leds.GameEngine.Domain.Rewards;
 using Leds.GameEngine.Domain.Runs;
 using Leds.SharedBuildingBlocks.Time;
 using MediatR;
+using Microsoft.Extensions.Logging;
 
 namespace Leds.GameEngine.Application.Combats.SubmitCombatAction;
 
@@ -35,6 +37,8 @@ public sealed class SubmitCombatActionCommandHandler
     private readonly ICombatActionRecordRepository _actionRecordRepository;
     private readonly IOutboxWriter _outboxWriter;
     private readonly IClock _clock;
+    private readonly IPlayerProfileGateway _playerProfileGateway;
+    private readonly ILogger<SubmitCombatActionCommandHandler> _logger;
 
     public SubmitCombatActionCommandHandler(
         IRunRepository runRepository,
@@ -45,7 +49,9 @@ public sealed class SubmitCombatActionCommandHandler
         RewardOfferFactory rewardOfferFactory,
         ICombatActionRecordRepository actionRecordRepository,
         IOutboxWriter outboxWriter,
-        IClock clock)
+        IClock clock,
+        IPlayerProfileGateway playerProfileGateway,
+        ILogger<SubmitCombatActionCommandHandler> logger)
     {
         _runRepository = runRepository;
         _validator = validator;
@@ -56,6 +62,8 @@ public sealed class SubmitCombatActionCommandHandler
         _actionRecordRepository = actionRecordRepository;
         _outboxWriter = outboxWriter;
         _clock = clock;
+        _playerProfileGateway = playerProfileGateway;
+        _logger = logger;
     }
 
     public async Task<SubmitCombatActionResponse> Handle(
@@ -154,8 +162,9 @@ public sealed class SubmitCombatActionCommandHandler
             rewardOffer = _rewardOfferFactory.CreateCombatRewardOffer(
                 source,
                 combatNode?.EventType ?? NodeEventType.Combat,
-                combatNode?.RiskLevel ?? 25);
+                (int)(combatNode?.CombatRiskTier ?? RiskTier.Tendu));
             run.SetPendingRewardOffer(rewardOffer.Id);
+            await AwardCombatEclatsAsync(run, rewardOffer, cancellationToken);
         }
         else if (combatFailed)
         {
@@ -194,6 +203,26 @@ public sealed class SubmitCombatActionCommandHandler
         return new SubmitCombatActionResponse(
             RunDto.FromDomain(run),
             resultDto);
+    }
+
+    // Must never block or fail combat resolution: the reward offer always ships
+    // even if the Player Service is unreachable.
+    private async Task AwardCombatEclatsAsync(Run run, RewardOffer rewardOffer, CancellationToken cancellationToken)
+    {
+        var amount = rewardOffer.CombatScaling?.EclatsBaseAmount ?? 0;
+        if (amount <= 0)
+        {
+            return;
+        }
+
+        try
+        {
+            await _playerProfileGateway.AwardCurrencyAsync(run.PlayerId, amount, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to award combat Éclats for player {PlayerId}", run.PlayerId);
+        }
     }
 
     private IReadOnlyCollection<CombatActionRecord> ResolveEnemyTurns(

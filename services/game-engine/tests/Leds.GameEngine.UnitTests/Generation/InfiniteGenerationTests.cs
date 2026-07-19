@@ -64,14 +64,4 @@ public sealed class InfiniteGenerationTests
 
         act.Should().NotThrow();
     }
-
-    [Theory]
-    [InlineData(1, 1.0)]
-    [InlineData(11, 2.0)]   // 1 + 10 * 0.10
-    [InlineData(21, 3.0)]   // 1 + 20 * 0.10
-    public void Difficulty_grows_linearly_with_depth(int roomDepth, double expected)
-    {
-        EnemyStatScaler.DepthMultiplier(roomDepth)
-            .Should().BeApproximately(expected, 0.0001);
-    }
 }

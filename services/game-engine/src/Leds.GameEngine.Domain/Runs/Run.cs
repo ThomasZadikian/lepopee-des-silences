@@ -843,6 +843,19 @@ public sealed class Run
         CurrentRoom.SelectNode(nodeId);
     }
 
+    /// <summary>
+    /// "Provoquer le destin" — raises an available combat-flavored node's danger by one
+    /// tier before the player commits to it, in exchange for better rewards. Delegates
+    /// entirely to <see cref="MapNode.RaiseRisk"/> for its guards (combat-flavored,
+    /// still Available, not already Fatal).
+    /// </summary>
+    public void RaiseNodeRisk(Guid nodeId)
+    {
+        EnsureActive();
+
+        CurrentRoom.GetNode(new NodeId(nodeId)).RaiseRisk();
+    }
+
     public void ResolveCurrentEvent()
     {
         EnsureActive();

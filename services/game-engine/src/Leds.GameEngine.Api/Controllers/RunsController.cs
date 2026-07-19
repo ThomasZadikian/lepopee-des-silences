@@ -13,6 +13,7 @@ using Leds.GameEngine.Application.Runs.GetRunReputation;
 using Leds.GameEngine.Application.Runs.MoveToNextRoom;
 using Leds.GameEngine.Application.Runs.PourRunItemLiquid;
 using Leds.GameEngine.Application.Runs.ProgressRun;
+using Leds.GameEngine.Application.Runs.RaiseNodeRisk;
 using Leds.GameEngine.Application.Runs.RemovePalaceLaw;
 using Leds.GameEngine.Application.Runs.UseCaliceInfini;
 using Leds.GameEngine.Application.Runs.ResolveCurrentEvent;
@@ -330,6 +331,21 @@ public sealed class RunsController : ControllerBase
         CancellationToken cancellationToken)
     {
         var command = new RemovePalaceLawCommand(runId, lawKey);
+        var response = await _sender.Send(command, cancellationToken);
+
+        return Ok(response);
+    }
+
+    [HttpPost("{runId:guid}/nodes/{nodeId:guid}/wager")]
+    [ProducesResponseType(typeof(RaiseNodeRiskResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<RaiseNodeRiskResponse>> RaiseNodeRisk(
+        Guid runId,
+        Guid nodeId,
+        CancellationToken cancellationToken)
+    {
+        var command = new RaiseNodeRiskCommand(runId, nodeId);
         var response = await _sender.Send(command, cancellationToken);
 
         return Ok(response);

@@ -28,6 +28,7 @@ describe('PalaceNodeDrawer', () => {
     row: 1,
     lane: 0,
     riskLevel: 50,
+    combatRiskTier: 'Dangereux',
     rewardProfile: 'combat-common',
     isBoss: false,
     parentNodeIds: [],
@@ -53,10 +54,21 @@ describe('PalaceNodeDrawer', () => {
     expect(wrapper.text()).toContain('Accessible');
   });
 
-  it('displays risk level', () => {
+  it('displays risk tier', () => {
     const wrapper = mountDrawer(baseNode);
-    expect(wrapper.text()).toContain('Élevé');
-    expect(wrapper.text()).toContain('50/100');
+    expect(wrapper.text()).toContain('Dangereux');
+  });
+
+  it('hides risk tier for non-combat node types', () => {
+    const node = { ...baseNode, type: 'Item', combatRiskTier: null };
+    const wrapper = mountDrawer(node);
+    expect(wrapper.find('.node-drawer__risk').exists()).toBe(false);
+  });
+
+  it('hides risk tier when combatRiskTier is null on a combat node', () => {
+    const node = { ...baseNode, combatRiskTier: null };
+    const wrapper = mountDrawer(node);
+    expect(wrapper.find('.node-drawer__risk').exists()).toBe(false);
   });
 
   it('displays reward profile when available', () => {
@@ -111,16 +123,22 @@ describe('PalaceNodeDrawer', () => {
     expect(wrapper.text()).toContain('Ce nœud est verrouillé');
   });
 
-  it('applies correct risk class for low risk', () => {
-    const node = { ...baseNode, riskLevel: 10 };
+  it('applies correct risk class for Calme tier', () => {
+    const node = { ...baseNode, combatRiskTier: 'Calme' as const };
     const wrapper = mountDrawer(node);
     expect(wrapper.find('.risk--low').exists()).toBe(true);
   });
 
-  it('applies correct risk class for critical risk', () => {
-    const node = { ...baseNode, riskLevel: 90 };
+  it('applies correct risk class for Perilleux tier', () => {
+    const node = { ...baseNode, combatRiskTier: 'Perilleux' as const };
     const wrapper = mountDrawer(node);
     expect(wrapper.find('.risk--critical').exists()).toBe(true);
+  });
+
+  it('applies correct risk class for Fatal tier', () => {
+    const node = { ...baseNode, combatRiskTier: 'Fatal' as const };
+    const wrapper = mountDrawer(node);
+    expect(wrapper.find('.risk--fatal').exists()).toBe(true);
   });
 
   it('handles different node types', () => {
@@ -166,5 +184,43 @@ describe('PalaceNodeDrawer', () => {
   it('shows loading text when isLoading is true', () => {
     const wrapper = mountDrawer(baseNode, true);
     expect(wrapper.text()).toContain('Résolution');
+  });
+
+  it('shows the wager button for an available combat node below Fatal', () => {
+    const wrapper = mountDrawer(baseNode);
+    expect(wrapper.find('.node-drawer__wager').exists()).toBe(true);
+  });
+
+  it('hides the wager button for non-combat node types', () => {
+    const node = { ...baseNode, type: 'Item', combatRiskTier: null };
+    const wrapper = mountDrawer(node);
+    expect(wrapper.find('.node-drawer__wager').exists()).toBe(false);
+  });
+
+  it('hides the wager button when the node is already at Fatal tier', () => {
+    const node = { ...baseNode, combatRiskTier: 'Fatal' as const };
+    const wrapper = mountDrawer(node);
+    expect(wrapper.find('.node-drawer__wager').exists()).toBe(false);
+  });
+
+  it('hides the wager button when the node is not Available', () => {
+    const node = { ...baseNode, state: 'Selected' };
+    const wrapper = mountDrawer(node);
+    expect(wrapper.find('.node-drawer__wager').exists()).toBe(false);
+  });
+
+  it('hides the wager button when there is an active combat or pending reward', () => {
+    const wrapperCombat = mountDrawer(baseNode, false, true);
+    expect(wrapperCombat.find('.node-drawer__wager').exists()).toBe(false);
+
+    const wrapperReward = mountDrawer(baseNode, false, false, true);
+    expect(wrapperReward.find('.node-drawer__wager').exists()).toBe(false);
+  });
+
+  it('emits wagerNode with the node id when the wager button is clicked', async () => {
+    const wrapper = mountDrawer(baseNode);
+    await wrapper.find('.node-drawer__wager').trigger('click');
+    expect(wrapper.emitted('wagerNode')).toHaveLength(1);
+    expect(wrapper.emitted('wagerNode')![0][0]).toBe('node-1');
   });
 });

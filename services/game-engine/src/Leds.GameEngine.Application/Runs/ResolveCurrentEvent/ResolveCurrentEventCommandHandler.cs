@@ -364,7 +364,9 @@ public sealed class ResolveCurrentEventCommandHandler
             _ => "Combat"
         };
 
-        var catalogRiskLevel = Math.Clamp(selectedNode.RiskLevel / 20 + 1, 1, 5);
+        // CombatRiskTier is generated directly on combat-flavored nodes (MapRoomGenerator) —
+        // no more rescale from the raw 0-100 RiskLevel needed at resolve time.
+        var catalogRiskLevel = (int)(selectedNode.CombatRiskTier ?? Leds.GameEngine.Domain.Combats.RiskTier.Tendu);
 
         var enemyCount = encounterType switch
         {

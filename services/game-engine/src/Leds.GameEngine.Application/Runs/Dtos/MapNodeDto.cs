@@ -8,6 +8,7 @@ public sealed record MapNodeDto(
     int Row,
     int Lane,
     int RiskLevel,
+    string? CombatRiskTier,
     string RewardProfile,
     IReadOnlyCollection<Guid> ParentNodeIds,
     string State,
@@ -23,6 +24,7 @@ public sealed record MapNodeDto(
             node.Row,
             node.Lane,
             node.RiskLevel,
+            node.CombatRiskTier?.ToString(),
             node.RewardProfile,
             node.ParentNodeIds
                 .Select(parentId => parentId.Value)

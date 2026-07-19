@@ -23,6 +23,7 @@ describe('PalaceMapPlaceholder', () => {
     row: 0,
     lane: 0,
     riskLevel: 50,
+    combatRiskTier: 'Dangereux',
     rewardProfile: 'combat-common',
     isBoss: false,
     parentNodeIds: [],
@@ -147,38 +148,50 @@ describe('PalaceMapPlaceholder', () => {
     expect(wrapper.text()).toContain('○');
   });
 
-  it('shows risk label in title', () => {
+  it('shows risk tier label in title', () => {
     const wrapper = mountMap([baseNode]);
     const node = wrapper.find('.map__node');
-    expect(node.attributes('title')).toContain('Risque élevé');
+    expect(node.attributes('title')).toContain('Dangereux');
   });
 
-  it('shows boss risk label', () => {
-    const node = { ...baseNode, isBoss: true, type: 'RoomBoss' };
+  it('shows Fatal risk tier label for boss nodes', () => {
+    const node = { ...baseNode, isBoss: true, type: 'RoomBoss', combatRiskTier: 'Fatal' as const };
     const wrapper = mountMap([node]);
     const el = wrapper.find('.map__node');
-    expect(el.attributes('title')).toContain('Boss');
+    expect(el.attributes('title')).toContain('Fatal');
   });
 
-  it('shows critical risk label', () => {
-    const node = { ...baseNode, riskLevel: 80 };
+  it('shows Perilleux risk tier label as "Périlleux"', () => {
+    const node = { ...baseNode, combatRiskTier: 'Perilleux' as const };
     const wrapper = mountMap([node]);
     const el = wrapper.find('.map__node');
-    expect(el.attributes('title')).toContain('Risque critique');
+    expect(el.attributes('title')).toContain('Périlleux');
   });
 
-  it('shows high risk label', () => {
-    const node = { ...baseNode, riskLevel: 60 };
+  it('shows Calme risk tier label', () => {
+    const node = { ...baseNode, combatRiskTier: 'Calme' as const };
     const wrapper = mountMap([node]);
     const el = wrapper.find('.map__node');
-    expect(el.attributes('title')).toContain('Risque élevé');
+    expect(el.attributes('title')).toContain('Calme');
   });
 
-  it('shows low risk label', () => {
-    const node = { ...baseNode, riskLevel: 10 };
+  it('hides risk tier entirely for non-combat node types', () => {
+    const node = { ...baseNode, type: 'Item', combatRiskTier: null };
     const wrapper = mountMap([node]);
     const el = wrapper.find('.map__node');
-    expect(el.attributes('title')).toContain('Risque faible');
+    expect(el.attributes('title')).toBe('Item — combat-common');
+    expect(el.classes()).not.toContain('map__node--risk-low');
+    expect(el.classes()).not.toContain('map__node--risk-moderate');
+    expect(el.classes()).not.toContain('map__node--risk-high');
+    expect(el.classes()).not.toContain('map__node--risk-critical');
+    expect(el.classes()).not.toContain('map__node--risk-boss');
+  });
+
+  it('hides risk tier when combatRiskTier is null on a combat node', () => {
+    const node = { ...baseNode, combatRiskTier: null };
+    const wrapper = mountMap([node]);
+    const el = wrapper.find('.map__node');
+    expect(el.attributes('title')).toBe('Combat — combat-common');
   });
 
   it('renders edges between connected nodes', () => {

@@ -5,40 +5,59 @@ namespace Leds.GameEngine.Application.Combats;
 
 /// <summary>
 /// Stateless, deterministic implementation of <see cref="ICombatRiskProfileResolver"/>.
-///
-/// Formula:
-///   riskDelta              = max(0, actualRisk − baseRisk)
-///   difficultyMultiplier   = clamp(1.0 + riskDelta / 100.0, 1.0, MaxMultiplier)
-///   rewardPowerMultiplier  = difficultyMultiplier
-///
-/// BaseRisk values:
-///   Normal   = 20
-///   Rare     = 30
-///   Elite    = 35
-///   RoomBoss = 50
-///   FinalBoss= 70
-///
-/// RiskBand mapping (based on actualRisk):
-///   0–24   → Low
-///   25–49  → Moderate
-///   50–74  → High
-///   75–100 → Critical
+/// Every multiplier is a flat per-tier lookup — no more raw-delta formula, since the
+/// node's danger is now a single 5-value tier rather than a continuous 0-100 roll.
 /// </summary>
 public sealed class CombatRiskProfileResolver : ICombatRiskProfileResolver
 {
-    private const double MaxMultiplier = 1.75;
-
-    private static readonly IReadOnlyDictionary<CombatTier, int> BaseRisks =
-        new Dictionary<CombatTier, int>
+    // BALANCE KNOB — base combat stat multiplier per risk tier. Applied to every enemy in
+    // the encounter; Elite/Rare "preferred" picks get an additional bonus on top of this
+    // (see CombatEncounterDraftGenerator / EliteStatMultiplier / RareStatMultiplier).
+    private static readonly IReadOnlyDictionary<RiskTier, double> DifficultyMultiplierByTier =
+        new Dictionary<RiskTier, double>
         {
-            [CombatTier.Normal] = 20,
-            [CombatTier.Rare] = 30,
-            [CombatTier.Elite] = 35,
-            [CombatTier.RoomBoss] = 50,
-            [CombatTier.FinalBoss] = 70,
+            [RiskTier.Calme] = 1.00,
+            [RiskTier.Tendu] = 1.15,
+            [RiskTier.Dangereux] = 1.35,
+            [RiskTier.Perilleux] = 1.60,
+            [RiskTier.Fatal] = 2.00,
         };
 
-    public CombatRiskProfile Resolve(NodeEventType eventType, int actualRiskLevel)
+    // BALANCE KNOB — multiplies each loot entry's drop percent before rolling (see
+    // EnemyLootRewardBuilder), capped at 100% there.
+    private static readonly IReadOnlyDictionary<RiskTier, double> LootMultiplierByTier =
+        new Dictionary<RiskTier, double>
+        {
+            [RiskTier.Calme] = 1.00,
+            [RiskTier.Tendu] = 1.10,
+            [RiskTier.Dangereux] = 1.25,
+            [RiskTier.Perilleux] = 1.45,
+            [RiskTier.Fatal] = 1.75,
+        };
+
+    // BALANCE KNOB — multiplies reputation gain from resolving this combat.
+    private static readonly IReadOnlyDictionary<RiskTier, double> ReputationMultiplierByTier =
+        new Dictionary<RiskTier, double>
+        {
+            [RiskTier.Calme] = 1.00,
+            [RiskTier.Tendu] = 1.10,
+            [RiskTier.Dangereux] = 1.20,
+            [RiskTier.Perilleux] = 1.35,
+            [RiskTier.Fatal] = 1.50,
+        };
+
+    // BALANCE KNOB — flat Éclats du Palais granted on combat resolution.
+    private static readonly IReadOnlyDictionary<RiskTier, int> EclatsBaseAmountByTier =
+        new Dictionary<RiskTier, int>
+        {
+            [RiskTier.Calme] = 0,
+            [RiskTier.Tendu] = 1,
+            [RiskTier.Dangereux] = 2,
+            [RiskTier.Perilleux] = 3,
+            [RiskTier.Fatal] = 5,
+        };
+
+    public CombatRiskProfile Resolve(NodeEventType eventType, int riskLevel)
     {
         if (!IsCombatNodeType(eventType))
         {
@@ -47,8 +66,22 @@ public sealed class CombatRiskProfileResolver : ICombatRiskProfileResolver
                 nameof(eventType));
         }
 
-        var tier = ToCombatTier(eventType);
-        return BuildProfile(tier, actualRiskLevel);
+        if (riskLevel < 1 || riskLevel > 5)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(riskLevel), riskLevel, "Risk level must be between 1 and 5.");
+        }
+
+        var tier = (RiskTier)riskLevel;
+        var combatTier = ToCombatTier(eventType);
+
+        return new CombatRiskProfile(
+            Tier: combatTier,
+            RiskTier: tier,
+            DifficultyMultiplier: DifficultyMultiplierByTier[tier],
+            LootMultiplier: LootMultiplierByTier[tier],
+            ReputationMultiplier: ReputationMultiplierByTier[tier],
+            EclatsBaseAmount: EclatsBaseAmountByTier[tier]);
     }
 
     public bool IsCombatNodeType(NodeEventType eventType) =>
@@ -65,30 +98,5 @@ public sealed class CombatRiskProfileResolver : ICombatRiskProfileResolver
         NodeEventType.RoomBoss => CombatTier.RoomBoss,
         NodeEventType.FinalBoss => CombatTier.FinalBoss,
         _ => CombatTier.Normal
-    };
-
-    private static CombatRiskProfile BuildProfile(CombatTier tier, int actualRiskLevel)
-    {
-        var baseRisk = BaseRisks[tier];
-        var riskDelta = Math.Max(0, actualRiskLevel - baseRisk);
-        var multiplier = Math.Min(MaxMultiplier, 1.0 + riskDelta / 100.0);
-        var band = ToRiskBand(actualRiskLevel);
-
-        return new CombatRiskProfile(
-            Tier: tier,
-            BaseRisk: baseRisk,
-            ActualRisk: actualRiskLevel,
-            RiskDelta: riskDelta,
-            DifficultyMultiplier: multiplier,
-            RewardPowerMultiplier: multiplier,
-            RiskBand: band);
-    }
-
-    private static RiskBand ToRiskBand(int actualRiskLevel) => actualRiskLevel switch
-    {
-        < 25 => RiskBand.Low,
-        < 50 => RiskBand.Moderate,
-        < 75 => RiskBand.High,
-        _ => RiskBand.Critical
     };
 }

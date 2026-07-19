@@ -60,6 +60,7 @@ public sealed class CombatResolutionService : ICombatResolutionService
 
                 var rewardOffer = await CreateRewardOfferAsync(run, combat, combatNode, cancellationToken);
                 run.SetPendingRewardOffer(rewardOffer.Id);
+                await AwardCombatEclatsAsync(run, rewardOffer, cancellationToken);
                 return rewardOffer;
 
             case CombatStatus.Failed:
@@ -105,12 +106,32 @@ public sealed class CombatResolutionService : ICombatResolutionService
         return await _rewardOfferFactory.CreateCombatRewardOfferAsync(
             source,
             combatNode?.EventType ?? NodeEventType.Combat,
-            combatNode?.RiskLevel ?? 25,
+            (int)(combatNode?.CombatRiskTier ?? RiskTier.Tendu),
             combat.Enemies,
             run.Seed,
             run.Id.Value,
             combat.Id.Value,
             cancellationToken,
             run.RunModifiers);
+    }
+
+    // Must never block or fail combat resolution: the reward offer always ships
+    // even if the Player Service is unreachable.
+    private async Task AwardCombatEclatsAsync(Run run, RewardOffer rewardOffer, CancellationToken cancellationToken)
+    {
+        var amount = rewardOffer.CombatScaling?.EclatsBaseAmount ?? 0;
+        if (amount <= 0)
+        {
+            return;
+        }
+
+        try
+        {
+            await _playerProfileGateway.AwardCurrencyAsync(run.PlayerId, amount, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to award combat Éclats for player {PlayerId}", run.PlayerId);
+        }
     }
 }

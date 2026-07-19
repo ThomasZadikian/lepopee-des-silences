@@ -346,27 +346,16 @@ public sealed class EncounterCompositionPolicyTests
     }
 
     [Fact]
-    public void Compose_ShouldIncreaseBudget_ForDeepRoom()
+    public void Compose_ShouldNotIncreaseBudget_ForDeepRoom()
     {
+        // Depth/RoomIndex is no longer a difficulty axis — risk tier alone drives budget.
         var shallow = CreateContext(riskLevel: 3, roomIndex: 0);
-        var deep = CreateContext(riskLevel: 3, roomIndex: 4);
+        var deep = CreateContext(riskLevel: 3, roomIndex: 7);
 
         var shallowResult = Policy.Compose(shallow);
         var deepResult = Policy.Compose(deep);
 
-        deepResult.DifficultyBudget.Should().Be(shallowResult.DifficultyBudget + 1);
-    }
-
-    [Fact]
-    public void Compose_ShouldIncreaseBudget_ForVeryDeepRoom()
-    {
-        var shallow = CreateContext(riskLevel: 3, roomIndex: 0);
-        var veryDeep = CreateContext(riskLevel: 3, roomIndex: 7);
-
-        var shallowResult = Policy.Compose(shallow);
-        var deepResult = Policy.Compose(veryDeep);
-
-        deepResult.DifficultyBudget.Should().Be(shallowResult.DifficultyBudget + 2);
+        deepResult.DifficultyBudget.Should().Be(shallowResult.DifficultyBudget);
     }
 
     // --- Enemy count ---
@@ -402,13 +391,14 @@ public sealed class EncounterCompositionPolicyTests
     }
 
     [Fact]
-    public void Compose_ShouldSelectAtMostTwoEnemies_ForRare()
+    public void Compose_ShouldSelectExactlyOneEnemy_ForRare()
     {
+        // Rare is always solo now — never brings a second enemy, unlike the old logic.
         var context = CreateContext(riskLevel: 5, encounterType: "Rare");
 
         var result = Policy.Compose(context);
 
-        result.EnemyCount.Should().BeLessThanOrEqualTo(2);
+        result.EnemyCount.Should().Be(1);
     }
 
     [Fact]
@@ -461,8 +451,11 @@ public sealed class EncounterCompositionPolicyTests
     }
 
     [Fact]
-    public void Compose_ShouldPreferSupportOrDisruptor_ForRareEncounter_WhenAvailable()
+    public void Compose_ShouldPreferSupportOrDisruptor_ForRareEncounter_WhenNoRarityTaggedEnemyIsAvailable()
     {
+        // Temporary bridge fallback: none of these fixtures set Rarity="Rare" (they default
+        // to "Common"), so this exercises the archetype heuristic kept for catalogs that
+        // haven't tagged Rarity yet. Remove once catalog Rarity seeding (Phase 11) lands.
         var context = CreateContext(
             riskLevel: 3,
             encounterType: "Rare",
@@ -471,6 +464,52 @@ public sealed class EncounterCompositionPolicyTests
         var result = Policy.Compose(context);
 
         result.SelectedEnemies.Should().Contain(e => e.Key == SupportEnemy.Key);
+    }
+
+    [Fact]
+    public void Compose_ShouldPreferRarityTaggedEnemy_ForRareEncounter_OverArchetypeFallback()
+    {
+        var rareTagged = GuardEnemy with { Key = "enemy.rare-tagged.v1", Rarity = "Rare" };
+        var context = CreateContext(
+            riskLevel: 3,
+            encounterType: "Rare",
+            enemies: [SupportEnemy, rareTagged]);
+
+        var result = Policy.Compose(context);
+
+        result.SelectedEnemies.Should().ContainSingle().Which.Key.Should().Be(rareTagged.Key);
+    }
+
+    [Fact]
+    public void Compose_ShouldEscortEliteWithAStrictlyWeakerEnemy_WhenOneFitsTheBudget()
+    {
+        var weaker = FragileEnemy with { Key = "enemy.weaker.v1", BaseDifficulty = 1 };
+        var context = CreateContext(
+            riskLevel: 5,
+            encounterType: "Elite",
+            enemies: [EliteEnemy, weaker]);
+
+        var result = Policy.Compose(context);
+
+        result.SelectedEnemies.Should().Contain(e => e.Key == EliteEnemy.Key);
+        result.SelectedEnemies.Should().Contain(e => e.Key == weaker.Key);
+    }
+
+    [Fact]
+    public void Compose_ShouldFieldEliteAlone_WhenNoStrictlyWeakerEnemyIsEligible()
+    {
+        // An equal-difficulty candidate must never be picked as an escort — only a
+        // strictly weaker one — so with no weaker enemy in the pool, Elite fields alone.
+        // (No "elite" tag/archetype here so it can't itself be picked as the preferred pick.)
+        var equallyStrong = GuardEnemy with { Key = "enemy.equally-strong.v1", BaseDifficulty = 10 };
+        var context = CreateContext(
+            riskLevel: 5,
+            encounterType: "Elite",
+            enemies: [EliteEnemy, equallyStrong]);
+
+        var result = Policy.Compose(context);
+
+        result.SelectedEnemies.Should().ContainSingle().Which.Key.Should().Be(EliteEnemy.Key);
     }
 
     [Fact]
@@ -537,8 +576,9 @@ public sealed class EncounterCompositionPolicyTests
     // --- RoomProgression ---
 
     [Fact]
-    public void Compose_ShouldIncreaseDifficultyBudget_WhenRoomIndexIsHigh()
+    public void Compose_ShouldNotChangeDifficultyBudget_AcrossRoomIndex()
     {
+        // Depth/RoomIndex is purely structural now — it no longer drives difficulty.
         var early = CreateContext(riskLevel: 3, roomIndex: 1);
         var mid = CreateContext(riskLevel: 3, roomIndex: 4);
         var late = CreateContext(riskLevel: 3, roomIndex: 7);
@@ -547,8 +587,8 @@ public sealed class EncounterCompositionPolicyTests
         var midResult = Policy.Compose(mid);
         var lateResult = Policy.Compose(late);
 
-        midResult.DifficultyBudget.Should().Be(earlyResult.DifficultyBudget + 1);
-        lateResult.DifficultyBudget.Should().Be(earlyResult.DifficultyBudget + 2);
+        midResult.DifficultyBudget.Should().Be(earlyResult.DifficultyBudget);
+        lateResult.DifficultyBudget.Should().Be(earlyResult.DifficultyBudget);
     }
 
     // --- PalaceRoomState archetype preference ---

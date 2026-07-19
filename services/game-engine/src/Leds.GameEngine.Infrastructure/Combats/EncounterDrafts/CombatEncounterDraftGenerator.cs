@@ -13,6 +13,14 @@ public sealed class CombatEncounterDraftGenerator : ICombatEncounterDraftGenerat
     private const string PlayerRole = "Protagonist";
     private static readonly IReadOnlyCollection<string> PlayerTags = new[] { "player", "protagonist" };
 
+    // BALANCE KNOB — stat bonus applied ONLY to the Elite/Rare "preferred" enemy pick
+    // (EncounterCompositionResult.PreferredEnemyKey), multiplicatively on top of the base
+    // per-tier DifficultyMultiplier every enemy already gets. An Elite's escort (if any) —
+    // always a strictly weaker enemy, see EncounterCompositionPolicy.SelectEliteEnemies —
+    // never receives this bonus, only the preferred pick does.
+    private const double EliteStatMultiplier = 1.5;
+    private const double RareStatMultiplier = 1.25;
+
     private readonly ICatalogContentGateway _catalogContentGateway;
     private readonly IEncounterCompositionPolicy _compositionPolicy;
     private readonly ICombatRiskProfileResolver _riskProfileResolver;
@@ -75,40 +83,53 @@ public sealed class CombatEncounterDraftGenerator : ICombatEncounterDraftGenerat
         }
 
         var enemies = selected
-            .Select(e => new CombatEncounterDraftEnemy(
-                EnemyKey: e.Key,
-                DisplayName: e.DisplayName,
-                Description: e.Description,
-                Archetype: e.Archetype,
-                BaseDifficulty: e.BaseDifficulty,
-                MinRiskLevel: e.MinRiskLevel,
-                MaxRiskLevel: e.MaxRiskLevel,
-                Tags: e.Tags,
-                SkillKeys: e.SkillKeys,
-                AttackPower: e.AttackPower,
-                Defense: e.Defense,
-                Speed: e.Speed,
-                Focus: e.Focus,
-                MagicAttack: e.MagicAttack,
-                MagicDefense: e.MagicDefense,
-                Mana: e.Mana,
-                Skills: e.SkillKeys
-                    .Select(sk => skillLookup.GetValueOrDefault(sk))
-                    .Where(s => s is not null)
-                    .Select(s => new CombatEncounterDraftSkill(
-                        Key: s!.Key,
-                        DisplayName: s.DisplayName,
-                        Description: s.Description,
-                        SkillType: s.SkillType,
-                        TargetingType: s.TargetingType,
-                        EffectType: s.EffectType,
-                        ManaCost: s.ManaCost,
-                        ChargeCost: s.ChargeCost,
-                        BasePower: s.BasePower,
-                        Tags: s.Tags,
-                        Category: s.Category,
-                        BasePowerIsPercentOfMaxVitality: s.BasePowerIsPercentOfMaxVitality))
-                    .ToArray()))
+            .Select(e =>
+            {
+                // Only the Elite/Rare "preferred" pick gets a stat bonus — never its escort.
+                var statMultiplier = e.Key == compositionResult.PreferredEnemyKey
+                    ? context.EncounterType switch
+                    {
+                        "Elite" => EliteStatMultiplier,
+                        "Rare" => RareStatMultiplier,
+                        _ => 1.0,
+                    }
+                    : 1.0;
+
+                return new CombatEncounterDraftEnemy(
+                    EnemyKey: e.Key,
+                    DisplayName: e.DisplayName,
+                    Description: e.Description,
+                    Archetype: e.Archetype,
+                    BaseDifficulty: e.BaseDifficulty,
+                    MinRiskLevel: e.MinRiskLevel,
+                    MaxRiskLevel: e.MaxRiskLevel,
+                    Tags: e.Tags,
+                    SkillKeys: e.SkillKeys,
+                    AttackPower: ScaleStat(e.AttackPower, statMultiplier),
+                    Defense: ScaleStat(e.Defense, statMultiplier),
+                    Speed: e.Speed,
+                    Focus: e.Focus,
+                    MagicAttack: ScaleStat(e.MagicAttack, statMultiplier),
+                    MagicDefense: ScaleStat(e.MagicDefense, statMultiplier),
+                    Mana: e.Mana,
+                    Skills: e.SkillKeys
+                        .Select(sk => skillLookup.GetValueOrDefault(sk))
+                        .Where(s => s is not null)
+                        .Select(s => new CombatEncounterDraftSkill(
+                            Key: s!.Key,
+                            DisplayName: s.DisplayName,
+                            Description: s.Description,
+                            SkillType: s.SkillType,
+                            TargetingType: s.TargetingType,
+                            EffectType: s.EffectType,
+                            ManaCost: s.ManaCost,
+                            ChargeCost: s.ChargeCost,
+                            BasePower: s.BasePower,
+                            Tags: s.Tags,
+                            Category: s.Category,
+                            BasePowerIsPercentOfMaxVitality: s.BasePowerIsPercentOfMaxVitality))
+                        .ToArray());
+            })
             .ToArray();
 
         var allies = context.PartyAllies is { Count: > 0 }
@@ -137,7 +158,10 @@ public sealed class CombatEncounterDraftGenerator : ICombatEncounterDraftGenerat
             EncounterType: context.EncounterType,
             Enemies: enemies,
             Allies: allies,
-            DifficultyMultiplier: riskProfile.DifficultyMultiplier * EnemyStatScaler.DepthMultiplier(context.RoomIndex),
+            DifficultyMultiplier: riskProfile.DifficultyMultiplier,
             RoomKey: context.RoomKey);
     }
+
+    private static int ScaleStat(int baseValue, double multiplier) =>
+        multiplier == 1.0 ? baseValue : (int)Math.Ceiling(baseValue * multiplier);
 }

@@ -286,49 +286,66 @@ function getNodePulseDelay(node: NodeDto): number {
   return -(hash % 1800);
 }
 
+// Risk (now the 5-tier CombatRiskTier) only means something for combat-flavored
+// nodes — the other types (Item/Npc/Memory/Rest/Merchant/Law/Curse) never carry one.
+const COMBAT_NODE_TYPES = new Set(['Combat', 'Elite', 'Rare', 'RoomBoss', 'FinalBoss']);
+
+function isCombatFlavored(node: NodeDto): boolean {
+  return COMBAT_NODE_TYPES.has(node.type);
+}
+
 function getRiskClass(node: NodeDto): string {
   // Resolved nodes keep their green; past-unchosen are invisible — no risk colour needed.
   if (isPastUnchosenNode(node) || node.state === 'Resolved') {
     return '';
   }
 
-  if (node.isBoss) {
-    return 'map__node--risk-boss';
+  if (!isCombatFlavored(node) || !node.combatRiskTier) {
+    return '';
   }
 
-  if (node.riskLevel >= 75) {
-    return 'map__node--risk-critical';
+  switch (node.combatRiskTier) {
+    case 'Calme':
+      return 'map__node--risk-low';
+    case 'Tendu':
+      return 'map__node--risk-moderate';
+    case 'Dangereux':
+      return 'map__node--risk-high';
+    case 'Perilleux':
+      return 'map__node--risk-critical';
+    case 'Fatal':
+      return 'map__node--risk-boss';
+    default:
+      return '';
   }
-
-  if (node.riskLevel >= 50) {
-    return 'map__node--risk-high';
-  }
-
-  if (node.riskLevel >= 25) {
-    return 'map__node--risk-moderate';
-  }
-
-  return 'map__node--risk-low';
 }
 
-function getRiskLabel(node: NodeDto): string {
-  if (node.isBoss) {
-    return 'Boss';
+function getRiskLabel(node: NodeDto): string | null {
+  if (!isCombatFlavored(node) || !node.combatRiskTier) {
+    return null;
   }
 
-  if (node.riskLevel >= 75) {
-    return 'Risque critique';
+  switch (node.combatRiskTier) {
+    case 'Calme':
+      return 'Calme';
+    case 'Tendu':
+      return 'Tendu';
+    case 'Dangereux':
+      return 'Dangereux';
+    case 'Perilleux':
+      return 'Périlleux';
+    case 'Fatal':
+      return 'Fatal';
+    default:
+      return null;
   }
+}
 
-  if (node.riskLevel >= 50) {
-    return 'Risque élevé';
-  }
+function getNodeTooltip(node: NodeDto): string {
+  const riskLabel = getRiskLabel(node);
+  const riskPart = riskLabel ? ` — ${riskLabel}` : '';
 
-  if (node.riskLevel >= 25) {
-    return 'Risque modéré';
-  }
-
-  return 'Risque faible';
+  return `${node.type}${riskPart} — ${node.rewardProfile}`;
 }
 </script>
 
@@ -373,7 +390,7 @@ function getRiskLabel(node: NodeDto): string {
           ...getNodePosition(node),
           '--node-pulse-delay': `${getNodePulseDelay(node)}ms`,
         }"
-        :title="`${node.type} — ${getRiskLabel(node)} (${node.riskLevel}) — ${node.rewardProfile}`"
+        :title="getNodeTooltip(node)"
         :disabled="node.state !== 'Available'"
         @click="chooseNode(node)"
       >
