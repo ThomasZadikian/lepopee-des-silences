@@ -260,6 +260,87 @@ public static class TestGameEngineFactory
 
         return run;
     }
+
+    /// <summary>Tactical-mode counterpart of <see cref="CreateThresholdRoom"/> — a 5x5 grid,
+    /// party starts at (0,0), one non-boss node at (1,0), 4 filler item nodes (to satisfy
+    /// <see cref="Run.StartNew"/>'s minimum-6-node rule, same as the real generator's 10-14
+    /// node range), and the boss at (4,4) (Manhattan distance 8, within the 10-budget default).
+    /// </summary>
+    public static TestRoomWithTargetNode CreateGridThresholdRoom(
+        NodeEventType targetInitialEventType = NodeEventType.Combat,
+        int depth = 0,
+        int movementBudget = 10)
+    {
+        var roomType = RoomType.Threshold;
+
+        var bossProfile = RoomBossProfile.Create(
+            bossId: "threshold-guardian",
+            name: "Gardien du Seuil",
+            roomType: roomType,
+            dangerHint: "High",
+            enemyTemplateKey: "boss-threshold-guardian-v1");
+
+        var targetNode = CreateMapNode(
+            eventType: targetInitialEventType,
+            riskLevel: 25,
+            rewardProfile: "standard",
+            row: 0,
+            lane: 1,
+            parentNodeIds: Array.Empty<NodeId>(),
+            isBoss: false,
+            initialState: NodeState.Available);
+
+        var fillerNodes = new[]
+        {
+            CreateMapNode(eventType: NodeEventType.Item, riskLevel: 10, rewardProfile: "standard", row: 0, lane: 2, initialState: NodeState.Available),
+            CreateMapNode(eventType: NodeEventType.Item, riskLevel: 10, rewardProfile: "standard", row: 0, lane: 3, initialState: NodeState.Available),
+            CreateMapNode(eventType: NodeEventType.Item, riskLevel: 10, rewardProfile: "standard", row: 1, lane: 0, initialState: NodeState.Available),
+            CreateMapNode(eventType: NodeEventType.Item, riskLevel: 10, rewardProfile: "standard", row: 2, lane: 0, initialState: NodeState.Available)
+        };
+
+        var bossNode = CreateMapNode(
+            eventType: NodeEventType.RoomBoss,
+            riskLevel: 85,
+            rewardProfile: "room-boss",
+            row: 4,
+            lane: 4,
+            parentNodeIds: Array.Empty<NodeId>(),
+            isBoss: true,
+            initialState: NodeState.Available);
+
+        var room = Room.CreateGrid(
+            depth: depth,
+            roomType: roomType,
+            palaceState: PalaceRoomState.Neutral,
+            theme: "Threshold",
+            bossProfile: bossProfile,
+            nodes: new[] { targetNode }.Concat(fillerNodes).Append(bossNode),
+            gridWidth: 5,
+            gridHeight: 5,
+            movementBudget: movementBudget,
+            startX: 0,
+            startY: 0,
+            layoutTemplateKey: "test-grid-v1",
+            layoutTemplateVersion: "1.0.0");
+
+        return new TestRoomWithTargetNode(room, targetNode);
+    }
+
+    /// <summary>Tactical-mode counterpart of <see cref="CreateRun"/>.</summary>
+    public static Run CreateGridRun(
+        NodeEventType targetInitialEventType = NodeEventType.Combat)
+    {
+        var room = CreateGridThresholdRoom(targetInitialEventType).Room;
+
+        return Run.StartNew(
+            playerId: Guid.NewGuid(),
+            seed: "seed-unit-test-grid",
+            generatorVersion: "gen-test",
+            markovMatrixVersion: "markov-test",
+            initialRoom: room,
+            startedAt: DateTimeOffset.UtcNow,
+            explorationMode: RunExplorationMode.Tactical);
+    }
 }
 
 public sealed record TestRoomWithTargetNode(

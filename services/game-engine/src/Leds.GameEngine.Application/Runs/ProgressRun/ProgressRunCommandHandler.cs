@@ -3,7 +3,6 @@ using Leds.GameEngine.Application.Common.Exceptions;
 using Leds.GameEngine.Application.Events.ChooseEventOption;
 using Leds.GameEngine.Application.Runs.Dtos;
 using Leds.GameEngine.Domain.Common;
-using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Runs;
 using MediatR;
 
@@ -62,9 +61,7 @@ public sealed class ProgressRunCommandHandler
 
         var room = run.CurrentRoom;
 
-        var resolvedNode = room.Nodes.SingleOrDefault(node =>
-            node.Row == room.CurrentNodeDepth &&
-            node.State == NodeState.Resolved);
+        var resolvedNode = room.CurrentResolvedNode;
 
         if (resolvedNode is not null &&
             _choiceRequirementResolver.RequiresChoice(resolvedNode) &&

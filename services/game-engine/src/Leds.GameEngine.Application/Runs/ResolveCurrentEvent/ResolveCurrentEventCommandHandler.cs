@@ -95,9 +95,7 @@ public sealed class ResolveCurrentEventCommandHandler
         }
 
         var room = run.CurrentRoom;
-        var selectedNode = room.Nodes.SingleOrDefault(node =>
-            node.Row == room.CurrentNodeDepth &&
-            node.State == NodeState.Selected);
+        var selectedNode = room.CurrentSelectedNode;
 
         if (selectedNode is null)
         {

@@ -32,6 +32,7 @@ public sealed class DeterministicRunGenerator : IRunGenerator
     private readonly IRoomReachabilitySelector _roomReachabilitySelector;
     private readonly IPalaceRoomStateResolver _palaceRoomStateResolver;
     private readonly IMapRoomGenerator _mapRoomGenerator;
+    private readonly IGridRoomGenerator _gridRoomGenerator;
     private readonly IRunPsycheEvolver _psycheEvolver;
     private readonly ICatalogContentGateway _catalogContentGateway;
 
@@ -41,6 +42,7 @@ public sealed class DeterministicRunGenerator : IRunGenerator
         IRoomReachabilitySelector roomReachabilitySelector,
         IPalaceRoomStateResolver palaceRoomStateResolver,
         IMapRoomGenerator mapRoomGenerator,
+        IGridRoomGenerator gridRoomGenerator,
         IRunPsycheEvolver psycheEvolver,
         ICatalogContentGateway catalogContentGateway)
     {
@@ -49,6 +51,7 @@ public sealed class DeterministicRunGenerator : IRunGenerator
         _roomReachabilitySelector = roomReachabilitySelector;
         _palaceRoomStateResolver = palaceRoomStateResolver;
         _mapRoomGenerator = mapRoomGenerator;
+        _gridRoomGenerator = gridRoomGenerator;
         _psycheEvolver = psycheEvolver;
         _catalogContentGateway = catalogContentGateway;
     }
@@ -64,7 +67,8 @@ public sealed class DeterministicRunGenerator : IRunGenerator
 
     public async Task<Room> GenerateInitialRoomAsync(
         string seed,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        RunExplorationMode explorationMode = RunExplorationMode.Classic)
     {
         var random = _randomFactory.CreateForRoom(
             seed,
@@ -87,8 +91,9 @@ public sealed class DeterministicRunGenerator : IRunGenerator
             if (entryRoom is not null)
             {
                 var entryRoomType = MapThemeToScaffold(entryRoom.Theme);
-                var entryScaffold = await _mapRoomGenerator.GenerateAsync(
-                    seed, GeneratorVersion, roomDepth: 0, entryRoomType, random, cancellationToken);
+                var entryScaffold = await GenerateRoomShapeAsync(
+                    seed, GeneratorVersion, roomDepth: 0, entryRoomType, random, cancellationToken,
+                    PalaceRoomState.Neutral, explorationMode);
                 AttachCatalogRoom(entryScaffold, entryRoom);
                 return entryScaffold;
             }
@@ -96,13 +101,15 @@ public sealed class DeterministicRunGenerator : IRunGenerator
 
         // Legacy path (SAL-2/SAL-4): no World configured, or its entry room can't be
         // resolved in the catalog — start on the procedural Threshold scaffold, unchanged.
-        var room = await _mapRoomGenerator.GenerateAsync(
+        var room = await GenerateRoomShapeAsync(
                     seed,
                     GeneratorVersion,
                     roomDepth: 0,
                     roomType: RoomType.Threshold,
                     random,
-                    cancellationToken);
+                    cancellationToken,
+                    PalaceRoomState.Neutral,
+                    explorationMode);
 
         await AttachCatalogRoomAsync(room, CatalogMarkovRoomTypeResolver.ThresholdTheme, seed, roomDepth: 0, cancellationToken);
 
@@ -162,14 +169,15 @@ public sealed class DeterministicRunGenerator : IRunGenerator
             nextRoomDepth,
             GeneratorVersion);
 
-        var room = await _mapRoomGenerator.GenerateAsync(
+        var room = await GenerateRoomShapeAsync(
             run.Seed,
             GeneratorVersion,
             nextRoomDepth,
             roomType,
             random,
             cancellationToken,
-            palaceState);
+            palaceState,
+            run.ExplorationMode);
 
         if (preResolvedDefinition is not null)
         {
@@ -257,6 +265,27 @@ public sealed class DeterministicRunGenerator : IRunGenerator
         => Enum.TryParse<RoomType>(themeKey, ignoreCase: true, out var roomType)
             ? roomType
             : RoomType.Memory;
+
+    /// <summary>
+    /// Chooses which room shape to generate — the Classic row/lane DAG
+    /// (<see cref="IMapRoomGenerator"/>) or the Tactical free-roam grid
+    /// (<see cref="IGridRoomGenerator"/>) — based on the run's exploration mode. Catalog
+    /// binding, theme resolution, and every other generation concern is identical either way.
+    /// </summary>
+    private Task<Room> GenerateRoomShapeAsync(
+        string seed,
+        string generatorVersion,
+        int roomDepth,
+        RoomType roomType,
+        Random random,
+        CancellationToken cancellationToken,
+        PalaceRoomState palaceState,
+        RunExplorationMode explorationMode)
+    {
+        return explorationMode == RunExplorationMode.Tactical
+            ? _gridRoomGenerator.GenerateAsync(seed, generatorVersion, roomDepth, roomType, random, cancellationToken, palaceState)
+            : _mapRoomGenerator.GenerateAsync(seed, generatorVersion, roomDepth, roomType, random, cancellationToken, palaceState);
+    }
 
     private async Task AttachCatalogRoomAsync(
         Room room,

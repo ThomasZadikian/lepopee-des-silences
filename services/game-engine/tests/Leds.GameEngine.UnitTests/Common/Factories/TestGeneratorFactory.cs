@@ -24,6 +24,12 @@ public static class TestGeneratorFactory
             new RoomBossProfileResolver(new StubCatalogContentGateway()),
             new HardcodedRoomTypeGenerationProfileProvider());
 
+        var gridRoomGenerator = new GridRoomGenerator(
+            new GridRoomLayoutTemplateProvider(),
+            new RoomThemeResolver(),
+            new RoomBossProfileResolver(new StubCatalogContentGateway()),
+            new HardcodedRoomTypeGenerationProfileProvider());
+
         var traceSink = new NullMarkovTransitionTraceSink();
         var calibration = new EmotionalCalibration();
 
@@ -38,6 +44,7 @@ public static class TestGeneratorFactory
             new RoomReachabilitySelector(),
             stateResolver,
             mapRoomGenerator,
+            gridRoomGenerator,
             new RunPsycheEvolver(calibration),
             catalogContentGateway ?? new StubCatalogContentGateway());
     }

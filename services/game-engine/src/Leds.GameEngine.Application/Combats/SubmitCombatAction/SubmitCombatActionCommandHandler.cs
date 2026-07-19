@@ -143,9 +143,7 @@ public sealed class SubmitCombatActionCommandHandler
 
         if (combatCompleted)
         {
-            var combatNode = run.CurrentRoom.Nodes.SingleOrDefault(n =>
-                n.State == NodeState.Selected &&
-                n.Row == run.CurrentRoom.CurrentNodeDepth);
+            var combatNode = run.CurrentRoom.CurrentSelectedNode;
 
             run.CompleteActiveCombat();
             run.ConsumeNextCombatModifiers();

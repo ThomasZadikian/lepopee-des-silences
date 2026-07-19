@@ -49,9 +49,7 @@ public sealed class CombatResolutionService : ICombatResolutionService
         {
             case CombatStatus.Completed:
                 // Doit être lu AVANT de compléter (l'état du nœud peut changer).
-                var combatNode = run.CurrentRoom.Nodes.SingleOrDefault(n =>
-                    n.State == NodeState.Selected &&
-                    n.Row == run.CurrentRoom.CurrentNodeDepth);
+                var combatNode = run.CurrentRoom.CurrentSelectedNode;
 
                 run.CompleteActiveCombat();
                 run.ConsumeNextCombatModifiers();
