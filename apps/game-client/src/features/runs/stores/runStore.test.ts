@@ -25,6 +25,7 @@ vi.mock('../api/runApi', () => ({
     removePalaceLaw: vi.fn(),
     useCaliceInfini: vi.fn(),
     syncPartySkills: vi.fn(),
+    syncPartyStats: vi.fn(),
   },
 }));
 
@@ -511,6 +512,28 @@ describe('useRunStore actions', () => {
     await store.syncPartySkills();
 
     expect(runApi.syncPartySkills).not.toHaveBeenCalled();
+  });
+
+  it('syncPartyStats calls the API and refreshes the run', async () => {
+    const store = useRunStore();
+    store.currentRun = { id: 'run-1', status: 'Active' } as any;
+
+    vi.mocked(runApi.syncPartyStats).mockResolvedValue({
+      run: { id: 'run-1', status: 'Active', currentRoom: {} },
+    } as any);
+
+    await store.syncPartyStats();
+
+    expect(runApi.syncPartyStats).toHaveBeenCalledWith('run-1');
+  });
+
+  it('syncPartyStats is a no-op when there is no active run', async () => {
+    const store = useRunStore();
+    store.currentRun = null;
+
+    await store.syncPartyStats();
+
+    expect(runApi.syncPartyStats).not.toHaveBeenCalled();
   });
 
   it('selectNpcDialogueChoice queues a reputation popup from a reputation applied effect', async () => {

@@ -118,6 +118,12 @@ export const runApi = {
     );
   },
 
+  syncPartyStats(runId: string) {
+    return gameEngineApi.post<RunResponse>(
+      `/api/v2/runs/${runId}/sync-stats`,
+    );
+  },
+
   useCaliceInfini(runId: string, targetCombatantId?: string | null) {
     return gameEngineApi.post<RunResponse, { targetCombatantId?: string | null }>(
       `/api/v2/runs/${runId}/calice-infini/use`,

@@ -24,11 +24,11 @@ public sealed class PlayerRuntimeState
         _skills = skills.ToList();
     }
 
-    public int MaxVitality { get; }
+    public int MaxVitality { get; private set; }
     public int CurrentVitality { get; private set; }
     public int Guard { get; private set; }
     public int Mana { get; private set; }
-    public int MaxMana { get; }
+    public int MaxMana { get; private set; }
     public int Charge { get; private set; }
     public IReadOnlyCollection<PlayerRuntimeSkill> Skills => _skills.AsReadOnly();
 
@@ -179,6 +179,24 @@ public sealed class PlayerRuntimeState
 
         _skills.Clear();
         _skills.AddRange(skills);
+    }
+
+    /// <summary>
+    /// Stat-point mid-run resync ("Valider les choix"): raises the vitality/mana caps
+    /// and tops both up to the new values, and overwrites Charge — allocating a stat
+    /// point always "levels up" the resource instead of merely raising a ceiling the
+    /// player would have to refill through play.
+    /// </summary>
+    public void ReplaceEffectiveStats(int maxVitality, int maxMana, int charge)
+    {
+        if (maxVitality <= 0)
+            throw new DomainException("Max vitality must be greater than zero.");
+
+        MaxVitality = maxVitality;
+        CurrentVitality = maxVitality;
+        MaxMana = maxMana;
+        Mana = maxMana;
+        Charge = charge;
     }
 
     /// <summary>

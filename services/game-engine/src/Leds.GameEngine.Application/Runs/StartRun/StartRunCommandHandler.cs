@@ -35,6 +35,7 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
     private readonly IPlayerProfileGateway _playerProfileGateway;
     private readonly IAmbientPalaceLawPromulgator _palaceLawPromulgator;
     private readonly PlayerSkillMerger _skillMerger;
+    private readonly PlayerStatMerger _statMerger;
     private readonly IClock _clock;
 
     public StartRunCommandHandler(
@@ -44,6 +45,7 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
         IPlayerProfileGateway playerProfileGateway,
         IAmbientPalaceLawPromulgator palaceLawPromulgator,
         PlayerSkillMerger skillMerger,
+        PlayerStatMerger statMerger,
         IClock clock)
     {
         _runGenerator = runGenerator;
@@ -52,6 +54,7 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
         _playerProfileGateway = playerProfileGateway;
         _palaceLawPromulgator = palaceLawPromulgator;
         _skillMerger = skillMerger;
+        _statMerger = statMerger;
         _clock = clock;
     }
 
@@ -83,41 +86,7 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
         var equipmentEffects = await _skillMerger.CollectEquippedItemEffectsAsync(
             mainCharacter.EquippedItems, cancellationToken);
 
-        var statBonuses = equipmentEffects
-            .Where(e => string.Equals(e.Kind, "StatBonus", StringComparison.OrdinalIgnoreCase)
-                && e.StatKind is not null
-                && e.Amount is not null)
-            .GroupBy(e => e.StatKind!, StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(g => g.Key, g => g.Sum(e => e.Amount!.Value), StringComparer.OrdinalIgnoreCase);
-
-        int StatBonus(string statKind) => statBonuses.TryGetValue(statKind, out var value) ? value : 0;
-
-        // Percentage bonuses (e.g. Bague du courage: +10% Speed, +10% AttackPower) —
-        // the default way to author stat-boosting equipment going forward. Computed
-        // against the character's raw base stat, independent of any flat StatBonus,
-        // then both are added to the base (see EffectiveStat below).
-        var statBonusPercents = equipmentEffects
-            .Where(e => string.Equals(e.Kind, "StatBonusPercent", StringComparison.OrdinalIgnoreCase)
-                && e.StatKind is not null
-                && e.Amount is not null)
-            .GroupBy(e => e.StatKind!, StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(g => g.Key, g => g.Sum(e => e.Amount!.Value), StringComparer.OrdinalIgnoreCase);
-
-        int StatBonusPercent(string statKind) => statBonusPercents.TryGetValue(statKind, out var value) ? value : 0;
-
-        int EffectiveStat(string statKind, int baseValue) =>
-            baseValue + StatBonus(statKind) + (int)Math.Round(baseValue * StatBonusPercent(statKind) / 100.0);
-
-        var effectiveMaxHp = EffectiveStat("MaxVitality", mainCharacter.Stats.MaxVitality);
-        var effectiveAttack = EffectiveStat("AttackPower", mainCharacter.Stats.AttackPower);
-        var effectiveDefense = EffectiveStat("Defense", mainCharacter.Stats.Defense);
-        var effectiveSpeed = EffectiveStat("Speed", mainCharacter.Stats.Speed);
-        var effectiveFocus = EffectiveStat("Focus", mainCharacter.Stats.Focus);
-        var effectiveMagicAttack = EffectiveStat("MagicAttack", mainCharacter.Stats.MagicAttack);
-        var effectiveMagicDefense = EffectiveStat("MagicDefense", mainCharacter.Stats.MagicDefense);
-        var effectiveMana = EffectiveStat("Mana", mainCharacter.Stats.Mana);
-        var effectiveCharge = EffectiveStat("Charge", mainCharacter.Stats.Charge);
-        var effectiveRunItemCapacity = EffectiveStat("RunItemCapacity", Run.DefaultRunItemCapacity);
+        var effectiveStats = _statMerger.ComputeEffectiveStats(mainCharacter.Stats, equipmentEffects);
 
         var typedDamageReductions = equipmentEffects
             .Where(e => string.Equals(e.Kind, "DamageReductionByType", StringComparison.OrdinalIgnoreCase)
@@ -167,10 +136,6 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
                 && e.Amount is not null)
             .Sum(e => e.Amount!.Value);
 
-        // e.g. Bague de Iris: +20% of whatever Guard the protagonist would otherwise
-        // start combat with (Law/climate-derived — see CombatFactory's guardBonus).
-        var guardBonusPercent = StatBonusPercent("Guard");
-
         var mergedSkills = await _skillMerger.MergeSkillsAsync(mainCharacter, equipmentEffects, cancellationToken);
 
         var playerSkills = mergedSkills
@@ -194,19 +159,19 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
             _runGenerator.MarkovMatrixVersion,
             initialRoom,
             _clock.UtcNow,
-            maxHp: effectiveMaxHp,
-            currentHp: effectiveMaxHp,
-            attack: effectiveAttack,
-            defense: effectiveDefense,
-            speed: effectiveSpeed,
-            focus: effectiveFocus,
-            magicAttack: effectiveMagicAttack,
-            magicDefense: effectiveMagicDefense,
-            mana: effectiveMana,
-            maxMana: effectiveMana,
-            charge: effectiveCharge,
+            maxHp: effectiveStats.MaxVitality,
+            currentHp: effectiveStats.MaxVitality,
+            attack: effectiveStats.AttackPower,
+            defense: effectiveStats.Defense,
+            speed: effectiveStats.Speed,
+            focus: effectiveStats.Focus,
+            magicAttack: effectiveStats.MagicAttack,
+            magicDefense: effectiveStats.MagicDefense,
+            mana: effectiveStats.Mana,
+            maxMana: effectiveStats.Mana,
+            charge: effectiveStats.Charge,
             playerSkills: playerSkills,
-            runItemCapacity: effectiveRunItemCapacity,
+            runItemCapacity: effectiveStats.RunItemCapacity,
             typedDamageReductions: typedDamageReductions,
             hitChanceBonusPercent: hitChanceBonusPercent,
             dotDurationReductionPercent: dotDurationReductionPercent,
@@ -215,7 +180,7 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
             magicDamageBonusPercent: magicDamageBonusPercent,
             magicDamageReductionPercent: magicDamageReductionPercent,
             criticalChanceBonusPercent: criticalChanceBonusPercent,
-            guardBonusPercent: guardBonusPercent,
+            guardBonusPercent: effectiveStats.GuardBonusPercent,
             journalEnabled: journalEnabled,
             lawDenialEnabled: lawDenialEnabled,
             reputationGainBonusPercent: reputationGainBonusPercent,

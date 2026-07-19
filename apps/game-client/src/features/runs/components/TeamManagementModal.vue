@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { usePlayerStore } from '../../party/stores/playerStore';
 import TeamOverviewTab from './team-management/TeamOverviewTab.vue';
-import StatManagementTab from './team-management/StatManagementTab.vue';
+import CharacterStatsTab from './team-management/CharacterStatsTab.vue';
 import GrimoireTab from './team-management/GrimoireTab.vue';
 import ItemManagementTab from './team-management/ItemManagementTab.vue';
 import ChipBadge from '../../../shared/components/ChipBadge.vue';
@@ -80,7 +80,7 @@ onMounted(async () => {
         <p v-else-if="!selectedCharacter" class="tmm-empty">Aucun personnage disponible.</p>
         <template v-else>
           <TeamOverviewTab v-if="activeTab === 'overview'" :characters="characters" />
-          <StatManagementTab v-else-if="activeTab === 'stats'" :character="selectedCharacter" />
+          <CharacterStatsTab v-else-if="activeTab === 'stats'" :character="selectedCharacter" />
           <GrimoireTab v-else-if="activeTab === 'skills'" :character="selectedCharacter" />
           <ItemManagementTab v-else-if="activeTab === 'items'" :character="selectedCharacter" />
         </template>

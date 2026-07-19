@@ -20,6 +20,7 @@ using Leds.GameEngine.Application.Runs.ResumeRun;
 using Leds.GameEngine.Application.Runs.SaveAndExitRun;
 using Leds.GameEngine.Application.Runs.StartRun;
 using Leds.GameEngine.Application.Runs.SyncPartySkills;
+using Leds.GameEngine.Application.Runs.SyncPartyStats;
 using Leds.GameEngine.Application.Runs.UseRunItem;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -343,6 +344,20 @@ public sealed class RunsController : ControllerBase
         CancellationToken cancellationToken)
     {
         var command = new SyncPartySkillsCommand(runId);
+        var response = await _sender.Send(command, cancellationToken);
+
+        return Ok(response);
+    }
+
+    [HttpPost("{runId:guid}/sync-stats")]
+    [ProducesResponseType(typeof(SyncPartyStatsResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<SyncPartyStatsResponse>> SyncPartyStats(
+        Guid runId,
+        CancellationToken cancellationToken)
+    {
+        var command = new SyncPartyStatsCommand(runId);
         var response = await _sender.Send(command, cancellationToken);
 
         return Ok(response);

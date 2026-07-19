@@ -35,18 +35,18 @@ public sealed class RunCharacterStatSnapshot
     }
 
     public Guid Id { get; }
-    public int MaxVitality { get; }
-    public int AttackPower { get; }
-    public int Defense { get; }
-    public int StartingGuard { get; }
-    public int Speed { get; }
-    public int Initiative { get; }
-    public int Recovery { get; }
-    public int Focus { get; }
-    public int Mana { get; }
-    public int Charge { get; }
-    public int MagicAttack { get; }
-    public int MagicDefense { get; }
+    public int MaxVitality { get; private set; }
+    public int AttackPower { get; private set; }
+    public int Defense { get; private set; }
+    public int StartingGuard { get; private set; }
+    public int Speed { get; private set; }
+    public int Initiative { get; private set; }
+    public int Recovery { get; private set; }
+    public int Focus { get; private set; }
+    public int Mana { get; private set; }
+    public int Charge { get; private set; }
+    public int MagicAttack { get; private set; }
+    public int MagicDefense { get; private set; }
 
     public static RunCharacterStatSnapshot Create(
         int maxVitality,
@@ -130,6 +130,75 @@ public sealed class RunCharacterStatSnapshot
             charge: 0,
             magicAttack: 0,
             magicDefense: 0);
+    }
+
+    /// <summary>
+    /// Stat-point mid-run resync ("Valider les choix"): overwrites every field with
+    /// the freshly-computed values (see <see cref="Run.ReplaceCharacterStats"/>).
+    /// Same validation as <see cref="Create"/>.
+    /// </summary>
+    public void ReplaceStats(
+        int maxVitality,
+        int attackPower,
+        int defense,
+        int startingGuard,
+        int speed,
+        int initiative,
+        int recovery,
+        int focus,
+        int mana,
+        int charge,
+        int magicAttack,
+        int magicDefense)
+    {
+        if (maxVitality <= 0)
+            throw new DomainException("Max vitality must be greater than zero.");
+
+        if (attackPower <= 0)
+            throw new DomainException("Attack power must be greater than zero.");
+
+        if (defense < 0)
+            throw new DomainException("Defense cannot be negative.");
+
+        if (startingGuard < 0)
+            throw new DomainException("Starting guard cannot be negative.");
+
+        if (speed <= 0)
+            throw new DomainException("Speed must be greater than zero.");
+
+        if (initiative < 0)
+            throw new DomainException("Initiative cannot be negative.");
+
+        if (recovery < 0)
+            throw new DomainException("Recovery cannot be negative.");
+
+        if (focus < 0)
+            throw new DomainException("Focus cannot be negative.");
+
+        if (mana < 0)
+            throw new DomainException("Mana cannot be negative.");
+
+        if (charge < 0)
+            throw new DomainException("Charge cannot be negative.");
+
+        if (magicAttack < 0)
+            throw new DomainException("Magic attack cannot be negative.");
+
+        if (magicDefense < 0)
+            throw new DomainException("Magic defense cannot be negative.");
+
+        MaxVitality = maxVitality;
+        AttackPower = attackPower;
+        Defense = defense;
+        StartingGuard = startingGuard;
+        Speed = speed;
+        Initiative = initiative;
+        Recovery = recovery;
+        Focus = focus;
+        Mana = mana;
+        Charge = charge;
+        MagicAttack = magicAttack;
+        MagicDefense = magicDefense;
     }
 
     public static RunCharacterStatSnapshot Rehydrate(

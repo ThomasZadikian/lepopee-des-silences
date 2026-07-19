@@ -479,7 +479,7 @@ public sealed class Run
         character.ReplaceSkills(skills);
     }
 
-    public int MaxHp { get; }
+    public int MaxHp { get; private set; }
 
     public int CurrentHp { get; private set; }
 
@@ -490,14 +490,71 @@ public sealed class Run
     public int Speed { get; private set; }
 
     /// <summary>
-    /// Character Focus stat (drives critical-hit chance in combat). Immutable for
-    /// the run; sourced from the main character at run start.
+    /// Character Focus stat (drives critical-hit chance in combat). Sourced from the
+    /// main character at run start; can be raised mid-run by <see cref="ReplacePlayerStats"/>.
     /// </summary>
-    public int Focus { get; }
+    public int Focus { get; private set; }
 
     public int MagicAttack { get; private set; }
 
     public int MagicDefense { get; private set; }
+
+    /// <summary>
+    /// Stat-point mid-run resync ("Valider les choix"): applies the protagonist's
+    /// freshly-computed effective stats. MaxHp/CurrentHp are kept in sync with
+    /// <see cref="PlayerState"/>'s vitality (the value combat actually reads) so the
+    /// two representations don't drift.
+    /// </summary>
+    public void ReplacePlayerStats(
+        int maxVitality,
+        int maxMana,
+        int charge,
+        int attack,
+        int defense,
+        int speed,
+        int focus,
+        int magicAttack,
+        int magicDefense)
+    {
+        PlayerState.ReplaceEffectiveStats(maxVitality, maxMana, charge);
+
+        MaxHp = maxVitality;
+        CurrentHp = maxVitality;
+        Attack = attack;
+        Defense = defense;
+        Speed = speed;
+        Focus = focus;
+        MagicAttack = magicAttack;
+        MagicDefense = magicDefense;
+    }
+
+    /// <summary>
+    /// Stat-point mid-run resync ("Valider les choix") for a companion (or the
+    /// protagonist's own mirror entry, index 0): replaces the matching
+    /// <see cref="RunCharacterSnapshot"/>'s stat block.
+    /// </summary>
+    public void ReplaceCharacterStats(
+        Guid characterId,
+        int maxVitality,
+        int attackPower,
+        int defense,
+        int startingGuard,
+        int speed,
+        int initiative,
+        int recovery,
+        int focus,
+        int mana,
+        int charge,
+        int magicAttack,
+        int magicDefense)
+    {
+        var character = PlayerSnapshot?.Characters.FirstOrDefault(c => c.CharacterId == characterId)
+            ?? throw new DomainException($"Character '{characterId}' was not found in this run's player snapshot.");
+
+        character.StatBlock.ReplaceStats(
+            maxVitality, attackPower, defense, startingGuard, speed,
+            initiative, recovery, focus, mana, charge, magicAttack, magicDefense);
+    }
 
     /// <summary>
     /// Equipment-driven typed damage reductions (EmotionalType name -> percent 0-100),

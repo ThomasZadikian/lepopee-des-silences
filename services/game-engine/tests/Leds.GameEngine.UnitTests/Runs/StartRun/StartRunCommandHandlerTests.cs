@@ -113,6 +113,7 @@ public sealed class StartRunCommandHandlerTests
             playerProfileGateway.Object,
             palaceLawPromulgator.Object,
             new PlayerSkillMerger(catalogGateway.Object),
+            new PlayerStatMerger(),
             clock.Object);
 
         var response = await handler.Handle(
@@ -227,6 +228,7 @@ public sealed class StartRunCommandHandlerTests
             playerProfileGateway.Object,
             palaceLawPromulgator.Object,
             new PlayerSkillMerger(catalogGateway.Object),
+            new PlayerStatMerger(),
             clock.Object);
 
         await handler.Handle(
@@ -338,6 +340,7 @@ public sealed class StartRunCommandHandlerTests
             playerProfileGateway.Object,
             palaceLawPromulgator.Object,
             new PlayerSkillMerger(catalogGateway.Object),
+            new PlayerStatMerger(),
             clock.Object);
 
         await handler.Handle(
@@ -447,6 +450,7 @@ public sealed class StartRunCommandHandlerTests
             playerProfileGateway.Object,
             palaceLawPromulgator.Object,
             new PlayerSkillMerger(catalogGateway.Object),
+            new PlayerStatMerger(),
             clock.Object);
 
         await handler.Handle(
@@ -537,6 +541,7 @@ public sealed class StartRunCommandHandlerTests
             playerProfileGateway.Object,
             palaceLawPromulgator.Object,
             new PlayerSkillMerger(catalogGateway.Object),
+            new PlayerStatMerger(),
             clock.Object);
 
         await handler.Handle(
@@ -633,6 +638,7 @@ public sealed class StartRunCommandHandlerTests
             playerProfileGateway.Object,
             palaceLawPromulgator.Object,
             new PlayerSkillMerger(catalogGateway.Object),
+            new PlayerStatMerger(),
             clock.Object);
 
         await handler.Handle(
@@ -703,6 +709,7 @@ public sealed class StartRunCommandHandlerTests
             playerProfileGateway.Object,
             palaceLawPromulgator.Object,
             new PlayerSkillMerger(catalogGateway.Object),
+            new PlayerStatMerger(),
             clock.Object);
 
         await handler.Handle(
@@ -771,6 +778,7 @@ public sealed class StartRunCommandHandlerTests
             playerProfileGateway.Object,
             palaceLawPromulgator.Object,
             new PlayerSkillMerger(catalogGateway.Object),
+            new PlayerStatMerger(),
             clock.Object);
 
         await handler.Handle(
@@ -839,6 +847,7 @@ public sealed class StartRunCommandHandlerTests
             playerProfileGateway.Object,
             palaceLawPromulgator.Object,
             new PlayerSkillMerger(catalogGateway.Object),
+            new PlayerStatMerger(),
             clock.Object);
 
         await handler.Handle(
@@ -908,6 +917,7 @@ public sealed class StartRunCommandHandlerTests
             playerProfileGateway.Object,
             palaceLawPromulgator.Object,
             new PlayerSkillMerger(catalogGateway.Object),
+            new PlayerStatMerger(),
             clock.Object);
 
         await handler.Handle(
@@ -977,6 +987,7 @@ public sealed class StartRunCommandHandlerTests
             playerProfileGateway.Object,
             palaceLawPromulgator.Object,
             new PlayerSkillMerger(catalogGateway.Object),
+            new PlayerStatMerger(),
             clock.Object);
 
         await handler.Handle(
@@ -1046,6 +1057,7 @@ public sealed class StartRunCommandHandlerTests
             playerProfileGateway.Object,
             palaceLawPromulgator.Object,
             new PlayerSkillMerger(catalogGateway.Object),
+            new PlayerStatMerger(),
             clock.Object);
 
         await handler.Handle(
@@ -1114,6 +1126,7 @@ public sealed class StartRunCommandHandlerTests
             playerProfileGateway.Object,
             palaceLawPromulgator.Object,
             new PlayerSkillMerger(catalogGateway.Object),
+            new PlayerStatMerger(),
             clock.Object);
 
         await handler.Handle(

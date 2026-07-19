@@ -286,6 +286,20 @@ export const useRunStore = defineStore('run', () => {
     });
   }
 
+  /**
+   * Stat-point "Valider les choix": re-applies the freshly-allocated stat points to
+   * the active Run's live combat state (protagonist + companions), so the change is
+   * felt in the next combat instead of only on the next Run. No-op outside a Run.
+   */
+  async function syncPartyStats() {
+    if (!currentRun.value) return;
+
+    await execute(async () => {
+      const response = await runApi.syncPartyStats(currentRun.value!.id);
+      currentRun.value = unwrapRunResponse(response);
+    });
+  }
+
   function pushReputationEffects(
     effects?: { kind: string; amount: number; label: string }[] | null,
   ) {
@@ -936,6 +950,7 @@ export const useRunStore = defineStore('run', () => {
     removePalaceLaw,
     useCaliceInfini,
     syncPartySkills,
+    syncPartyStats,
 
     resumableRun,
     isLoadingResumableRun,

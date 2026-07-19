@@ -1,0 +1,107 @@
+using Leds.GameEngine.Application.Abstractions;
+using Leds.GameEngine.Application.Common.Exceptions;
+using Leds.GameEngine.Application.Players;
+using Leds.GameEngine.Application.Players.Ports;
+using Leds.GameEngine.Application.Runs.Dtos;
+using Leds.GameEngine.Domain.Common;
+using Leds.GameEngine.Domain.Runs;
+using MediatR;
+
+namespace Leds.GameEngine.Application.Runs.SyncPartyStats;
+
+/// <summary>
+/// Stat-point mid-run resync ("Valider les choix"): re-reads the freshest stat
+/// allocation from player-service and re-applies StartRun's effective-stat
+/// computation (via <see cref="PlayerStatMerger"/>) to every character already in
+/// this run's roster, so a mid-run stat-point spend takes effect in the next combat
+/// instead of only on the next Run. Mirrors <c>SyncPartySkillsCommandHandler</c>
+/// exactly, kept as a separate command so the already-shipped skill resync isn't touched.
+/// </summary>
+public sealed class SyncPartyStatsCommandHandler
+    : IRequestHandler<SyncPartyStatsCommand, SyncPartyStatsResponse>
+{
+    private readonly IRunRepository _runRepository;
+    private readonly IPlayerRunSnapshotGateway _playerGateway;
+    private readonly PlayerSkillMerger _skillMerger;
+    private readonly PlayerStatMerger _statMerger;
+
+    public SyncPartyStatsCommandHandler(
+        IRunRepository runRepository,
+        IPlayerRunSnapshotGateway playerGateway,
+        PlayerSkillMerger skillMerger,
+        PlayerStatMerger statMerger)
+    {
+        _runRepository = runRepository;
+        _playerGateway = playerGateway;
+        _skillMerger = skillMerger;
+        _statMerger = statMerger;
+    }
+
+    public async Task<SyncPartyStatsResponse> Handle(
+        SyncPartyStatsCommand request,
+        CancellationToken cancellationToken)
+    {
+        var runId = new RunId(request.RunId);
+
+        var run = await _runRepository.GetByIdAsync(runId, cancellationToken)
+            ?? throw new NotFoundException("Run", request.RunId);
+
+        if (run.HasActiveCombat)
+        {
+            throw new DomainException("Cannot sync party stats while a combat is active.");
+        }
+
+        var snapshot = await _playerGateway.GetRunSnapshotAsync(run.PlayerId, cancellationToken);
+
+        for (var i = 0; i < snapshot.Characters.Count; i++)
+        {
+            var character = snapshot.Characters.ElementAt(i);
+
+            if (i == 0)
+            {
+                var equipmentEffects = await _skillMerger.CollectEquippedItemEffectsAsync(
+                    character.EquippedItems, cancellationToken);
+                var effectiveStats = _statMerger.ComputeEffectiveStats(character.Stats, equipmentEffects);
+
+                run.ReplacePlayerStats(
+                    maxVitality: effectiveStats.MaxVitality,
+                    maxMana: effectiveStats.Mana,
+                    charge: effectiveStats.Charge,
+                    attack: effectiveStats.AttackPower,
+                    defense: effectiveStats.Defense,
+                    speed: effectiveStats.Speed,
+                    focus: effectiveStats.Focus,
+                    magicAttack: effectiveStats.MagicAttack,
+                    magicDefense: effectiveStats.MagicDefense);
+            }
+
+            var existingSnapshotCharacter = run.PlayerSnapshot?.Characters
+                .FirstOrDefault(c => c.CharacterId == character.CharacterId);
+
+            if (existingSnapshotCharacter is not null)
+            {
+                // Raw (non-equipment-adjusted) stats for every character, protagonist
+                // included — mirrors StartRunCommandHandler's uniform treatment of
+                // RunCharacterSnapshot for all roster members.
+                run.ReplaceCharacterStats(
+                    character.CharacterId,
+                    maxVitality: character.Stats.MaxVitality,
+                    attackPower: character.Stats.AttackPower,
+                    defense: character.Stats.Defense,
+                    startingGuard: character.Stats.StartingGuard,
+                    speed: character.Stats.Speed,
+                    initiative: character.Stats.Initiative,
+                    recovery: character.Stats.Recovery,
+                    focus: character.Stats.Focus,
+                    mana: character.Stats.Mana,
+                    charge: character.Stats.Charge,
+                    magicAttack: character.Stats.MagicAttack,
+                    magicDefense: character.Stats.MagicDefense);
+            }
+        }
+
+        await _runRepository.UpdateAsync(run, cancellationToken);
+
+        return new SyncPartyStatsResponse(RunDto.FromDomain(run));
+    }
+}

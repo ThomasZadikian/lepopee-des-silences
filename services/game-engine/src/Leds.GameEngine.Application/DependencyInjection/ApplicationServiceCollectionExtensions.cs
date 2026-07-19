@@ -59,6 +59,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<EnemyLootRewardBuilder>();
         services.AddScoped<RewardOfferFactory>();
         services.AddScoped<PlayerSkillMerger>();
+        services.AddScoped<PlayerStatMerger>();
         services.AddScoped<IInterludeNodeProvider, DefaultInterludeNodeProvider>();
         services.AddSingleton<ICombatFactory, CombatFactory>();
         services.AddScoped<IPalacePublicIndicatorProjectionService, PalacePublicIndicatorProjectionService>();

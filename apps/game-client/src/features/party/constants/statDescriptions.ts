@@ -67,3 +67,22 @@ export const statPointIncrements: Record<PlayerStatKind, number> = {
   MagicAttack:   1,
   MagicDefense:  1,
 };
+
+// Purely cosmetic per-stat ceiling used to normalize the radar diagram's 12 axes to
+// a common 0-1 scale (each stat has a wildly different natural range). Not a game
+// rule and not enforced anywhere — just a reasonable "comfortably filled" reference
+// point, tunable independently of balance.
+export const statRadarMax: Record<PlayerStatKind, number> = {
+  MaxVitality:   400,
+  AttackPower:   50,
+  Defense:       40,
+  StartingGuard: 30,
+  Speed:         40,
+  Initiative:    40,
+  Recovery:      35,
+  Focus:         30,
+  Mana:          150,
+  Charge:        30,
+  MagicAttack:   40,
+  MagicDefense:  40,
+};
