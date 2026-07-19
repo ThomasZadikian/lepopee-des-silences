@@ -13,8 +13,9 @@ public sealed class DeterministicEncounterEnemySelectorTests
 
     private static CatalogEnemyDefinitionSnapshot CreateEnemy(
         string key, string rank = "Common", bool isBoss = false, bool isElite = false,
-        int weight = 10, int minDepth = 0, int maxDepth = 99, string archetype = "Fragile") =>
-        new(key, "1.0", key, "", null, archetype, null, rank, null,
+        int weight = 10, int minDepth = 0, int maxDepth = 99, string archetype = "Fragile",
+        string? family = null) =>
+        new(key, "1.0", key, "", null, archetype, family, rank, null,
             3, weight, minDepth, maxDepth, isBoss, isElite, null, [],
             new CatalogEnemyStatBlockSnapshot(30, 8, 3, 0, 10, 5, 0, 0),
             [new CatalogEnemySkillSnapshot($"{key}.skill", "Hit", "Damage", "SingleEnemy", "Damage", 0, 0, 10)]);
@@ -189,6 +190,86 @@ public sealed class DeterministicEncounterEnemySelectorTests
         var selector = CreateSelector();
         var candidates = new[] { CreateEnemy("only-one") };
         var context = CreateContext(riskLevel: 5);
+
+        var result = selector.SelectEnemies(context, candidates);
+
+        result.Should().HaveCount(1);
+    }
+
+    // ---------------------------------------------------------------------------
+    // "Groupes d'ennemis cohérents" (Chantier Bestiaire Phase 14) — family-anchor
+    // weight bias when multiple enemies are drawn for the same combat.
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void SelectEnemies_ShouldBeDeterministic_WithFamiliesPresent()
+    {
+        var selector = CreateSelector();
+        var candidates = new[]
+        {
+            CreateEnemy("veilleur1", family: "Veilleurs du Seuil", weight: 10),
+            CreateEnemy("veilleur2", family: "Veilleurs du Seuil", weight: 8),
+            CreateEnemy("copiste1", family: "Copistes", weight: 10),
+            CreateEnemy("copiste2", family: "Copistes", weight: 6),
+        };
+        var context = CreateContext(seed: "family-seed", riskLevel: 4);
+
+        var result1 = selector.SelectEnemies(context, candidates);
+        var result2 = selector.SelectEnemies(context, candidates);
+
+        result1.Select(r => r.Enemy.Key).Should().Equal(result2.Select(r => r.Enemy.Key));
+    }
+
+    [Fact]
+    public void SelectEnemies_ShouldRespectMaxEnemyCount_WithFamiliesPresent()
+    {
+        var selector = CreateSelector();
+        var candidates = new[]
+        {
+            CreateEnemy("veilleur1", family: "Veilleurs du Seuil"),
+            CreateEnemy("veilleur2", family: "Veilleurs du Seuil"),
+            CreateEnemy("veilleur3", family: "Veilleurs du Seuil"),
+            CreateEnemy("copiste1", family: "Copistes"),
+            CreateEnemy("copiste2", family: "Copistes"),
+        };
+        var context = CreateContext(riskLevel: 5);
+
+        var result = selector.SelectEnemies(context, candidates);
+
+        result.Count.Should().BeLessThanOrEqualTo(3);
+        result.Select(r => r.Enemy.Key).Should().OnlyHaveUniqueItems();
+    }
+
+    [Fact]
+    public void SelectEnemies_ShouldOnlyReturnEligibleCandidates_WhenFamilyHasASingleMember()
+    {
+        var selector = CreateSelector();
+        // No family has 2+ members here, so the anchor-family draw finds nothing
+        // and BuildWeightedCandidates must fall back to unbiased weights.
+        var candidates = new[]
+        {
+            CreateEnemy("lone1", family: "Famille A", weight: 10),
+            CreateEnemy("lone2", family: "Famille B", weight: 10),
+            CreateEnemy("lone3", family: "Famille C", weight: 10),
+        };
+        var context = CreateContext(riskLevel: 4);
+
+        var result = selector.SelectEnemies(context, candidates);
+
+        var validKeys = candidates.Select(c => c.Key).ToHashSet();
+        result.Should().AllSatisfy(r => validKeys.Should().Contain(r.Enemy.Key));
+    }
+
+    [Fact]
+    public void SelectEnemies_ShouldReturnSingle_ForRiskLevelOne_EvenWithFamiliesPresent()
+    {
+        var selector = CreateSelector();
+        var candidates = new[]
+        {
+            CreateEnemy("veilleur1", family: "Veilleurs du Seuil"),
+            CreateEnemy("veilleur2", family: "Veilleurs du Seuil"),
+        };
+        var context = CreateContext(riskLevel: 1);
 
         var result = selector.SelectEnemies(context, candidates);
 
