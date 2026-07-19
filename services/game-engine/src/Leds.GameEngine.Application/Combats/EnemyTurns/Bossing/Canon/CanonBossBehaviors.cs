@@ -177,6 +177,20 @@ public abstract class CanonBossBehaviorBase : IBossBehavior
     /// </summary>
     protected static bool TookPowerfulHit(Combatant combatant)
         => combatant.ConsumePowerfulHitSinceLastAction();
+
+    /// <summary>
+    /// The living combatant (either side) matching <paramref name="boss"/>'s recorded
+    /// <see cref="Combatant.LastAttackerId"/>, if any and still alive. Used by
+    /// creatures whose "coup très puissant" reaction is to retaliate against whoever
+    /// just hit them, when their 4-skill kit has no dedicated defensive/self skill to
+    /// react with instead.
+    /// </summary>
+    protected static Combatant? LastAttacker(Combat combat, Combatant boss)
+    {
+        if (boss.LastAttackerId is not { } attackerId) return null;
+        return combat.Allies.Concat(combat.Enemies)
+            .FirstOrDefault(c => c.Id.Value == attackerId && !c.IsDefeated);
+    }
 }
 
 /// <summary>

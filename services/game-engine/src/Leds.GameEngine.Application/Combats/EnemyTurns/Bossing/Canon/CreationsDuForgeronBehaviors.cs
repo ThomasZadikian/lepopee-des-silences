@@ -8,6 +8,18 @@ namespace Leds.GameEngine.Application.Combats.EnemyTurns.Bossing.Canon;
 /// les quatre créatures. La mécanique de famille "La Trempe" (+2 DEF quand une
 /// Création reçoit un buff d'Attaque) est câblée directement dans les sorts
 /// (voir CatalogSeedRunner.SeedBestiaireCreationsDuForgeronAsync), pas ici.
+/// <para>
+/// "Face à un coup très puissant" (≥25% MaxVitality en un coup) EST câblée pour
+/// les 4 créatures (Chantier Bestiaire Phase 13), chacune via le sort défensif/de
+/// soin déjà présent dans son kit de 4 : Création Instable → Égide, Sentinelle de
+/// Fonte → Fonte, Scorie Rampante → Reformation. Le Marteau Vivant, un DPS pur
+/// sans alternative défensive, riposte contre son dernier agresseur
+/// (<see cref="CanonBossBehaviorBase.LastAttacker"/>) avec son sort le plus
+/// offensif à la place. Cette réaction prend priorité sur la logique existante de
+/// riposte "Foyer ouvert" de la Création Instable (déclenchée à chaque tour où
+/// elle a un agresseur connu, sans seuil de dégâts) — les deux coexistent, le
+/// coup très puissant passant simplement en premier.
+/// </para>
 /// </summary>
 public sealed class CreationInstableBossBehavior : CanonBossBehaviorBase
 {
@@ -17,6 +29,11 @@ public sealed class CreationInstableBossBehavior : CanonBossBehaviorBase
     {
         var boss = context.Boss;
         var combat = context.Combat;
+
+        // Attitude en combat — face à un coup très puissant : lève une égide
+        // mentale. Prend priorité sur le plan normal, y compris "Foyer ouvert".
+        if (TookPowerfulHit(boss))
+            return OnSelf(boss, "canon.skill.egide");
 
         if (boss.LastAttackerId is { } attackerId)
         {
@@ -47,6 +64,17 @@ public sealed class MarteauVivantBossBehavior : CanonBossBehaviorBase
     {
         var boss = context.Boss;
         var combat = context.Combat;
+
+        // Attitude en combat — face à un coup très puissant : aucun sort
+        // défensif dans son kit (DPS pur), riposte contre son dernier
+        // agresseur avec son sort le plus offensif. Prend priorité sur le plan
+        // normal ; si aucun agresseur vivant n'est identifiable, continue.
+        if (TookPowerfulHit(boss))
+        {
+            var retaliation = Strike(boss, "canon.skill.coup-de-grace-forgeron", LastAttacker(combat, boss))
+                ?? Strike(boss, "canon.skill.frappe-denclume", LastAttacker(combat, boss));
+            if (retaliation is not null) return retaliation;
+        }
 
         var isAttackBuffed = boss.StatusEffects.Any(e =>
             e.Kind == StatusEffectKind.StatModifier && e.Stat == CombatStat.AttackPower && e.Magnitude > 0);
@@ -80,6 +108,11 @@ public sealed class SentinelleFonteBossBehavior : CanonBossBehaviorBase
         var boss = context.Boss;
         var combat = context.Combat;
 
+        // Attitude en combat — face à un coup très puissant : Fonte. Prend
+        // priorité sur le plan normal.
+        if (TookPowerfulHit(boss))
+            return OnSelf(boss, "canon.skill.fonte");
+
         var marteau = combat.Enemies.FirstOrDefault(e =>
             !e.IsDefeated && string.Equals(e.SourceKey, "canon.enemy.marteau-vivant", StringComparison.OrdinalIgnoreCase));
         if (combat.TurnNumber == 1 && marteau is not null)
@@ -108,6 +141,11 @@ public sealed class ScorieRampanteBossBehavior : CanonBossBehaviorBase
     {
         var boss = context.Boss;
         var combat = context.Combat;
+
+        // Attitude en combat — face à un coup très puissant : se reforme.
+        // Prend priorité sur le plan normal.
+        if (TookPowerfulHit(boss))
+            return OnSelf(boss, "canon.skill.reformation");
 
         var dottedTarget = LivingPlayers(combat)
             .FirstOrDefault(p => p.StatusEffects.Any(e => e.Kind == StatusEffectKind.DamageOverTime));

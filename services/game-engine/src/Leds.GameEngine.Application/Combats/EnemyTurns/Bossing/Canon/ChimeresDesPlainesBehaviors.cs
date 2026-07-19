@@ -13,6 +13,13 @@ namespace Leds.GameEngine.Application.Combats.EnemyTurns.Bossing.Canon;
 /// critique. Voir CatalogSeedRunner.SeedBestiaireChimeresDesPlainesAsync pour le
 /// détail des autres approximations (lifesteal de Curée, intargetabilité de Bond
 /// de flanc, esquive de Guet, déclenchement à la mort de Détente).
+/// <para>
+/// "Face à un coup très puissant" (≥25% MaxVitality en un coup) EST câblée pour
+/// les 3 créatures (Chantier Bestiaire Phase 13), chacune via un sort défensif ou
+/// de soutien déjà présent dans son kit de 4 : Chimère Affamée → Guet (garde),
+/// Agneau Inversé → Brout (garde), Berger d'Ordres → Ration (soin de groupe, le
+/// berger rallie la meute plutôt que de se protéger seul).
+/// </para>
 /// </summary>
 public sealed class ChimereAffameeBossBehavior : CanonBossBehaviorBase
 {
@@ -22,6 +29,11 @@ public sealed class ChimereAffameeBossBehavior : CanonBossBehaviorBase
     {
         var boss = context.Boss;
         var combat = context.Combat;
+
+        // Attitude en combat — face à un coup très puissant : elle attend que
+        // ça saigne. Prend priorité sur le plan normal.
+        if (TookPowerfulHit(boss))
+            return OnSelf(boss, "canon.skill.guet");
 
         var weakest = LowestHpPlayer(combat, boss);
         if (weakest is not null && HpFraction(weakest) < 0.40)
@@ -61,6 +73,12 @@ public sealed class BergerOrdresBossBehavior : CanonBossBehaviorBase
         var boss = context.Boss;
         var combat = context.Combat;
 
+        // Attitude en combat — face à un coup très puissant : le berger nourrit
+        // — un peu, jamais assez (rallie la meute plutôt que de se protéger
+        // seul). Prend priorité sur le plan normal.
+        if (TookPowerfulHit(boss))
+            return OnAllAllies(boss, "canon.skill.ration", combat);
+
         if (combat.TurnNumber == 1)
             return Strike(boss, "canon.skill.designation", LowestHpPlayer(combat, boss));
 
@@ -90,6 +108,13 @@ public sealed class AgneauInverseBossBehavior : CanonBossBehaviorBase
     {
         var boss = context.Boss;
         var combat = context.Combat;
+
+        // Attitude en combat — face à un coup très puissant : passe son tour en
+        // broutant, le calme s'épaissit. Prend priorité sur le plan normal,
+        // y compris la Détente sous 25% PV (une réaction immédiate à un coup
+        // qui vient de tomber prime sur le seuil de PV bas).
+        if (TookPowerfulHit(boss))
+            return OnSelf(boss, "canon.skill.brout");
 
         if (HpFraction(boss) < 0.25 && LivingPlayers(combat).Count >= 2)
             return OnAllPlayers(boss, "canon.skill.detente", combat);

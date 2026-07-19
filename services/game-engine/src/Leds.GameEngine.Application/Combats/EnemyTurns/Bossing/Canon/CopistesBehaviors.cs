@@ -5,12 +5,24 @@ namespace Leds.GameEngine.Application.Combats.EnemyTurns.Bossing.Canon;
 
 /// <summary>
 /// Bestiaire, famille "Les Copistes" — scripts déterministes pour les quatre
-/// créatures. Le mécanisme de famille "La Marge" (les effets sur la durée posés
-/// par un Copiste sont "écrits" ; tuer un Copiste en train de canaliser inflige
-/// Rature aux alliés) n'est pas modélisé — nécessiterait un hook "on ally death"
-/// qui n'existe pas encore côté moteur (même famille de limitation que
-/// "Attitude en combat" pour les Veilleurs du Seuil). Différé, pas silencieusement
-/// ignoré.
+/// créatures.
+/// <para>
+/// "Face à un coup très puissant" (≥25% MaxVitality en un coup) EST câblée pour
+/// les 4 créatures (Chantier Bestiaire Phase 13). Aucune n'a de sort défensif/
+/// auto-ciblé dans son kit de 4 (invariant SFD §I) sauf l'Encrier Vivant (Corps de
+/// verre) et la Page Inachevée (Repli de papier), qui l'utilisent directement ; le
+/// Copiste Aveugle et le Relieur, sans alternative défensive, ripostent contre
+/// leur dernier agresseur (<see cref="CanonBossBehaviorBase.LastAttacker"/>) avec
+/// leur sort le plus offensif — approximation documentée, faute d'effet "riposte"
+/// dédié authorable aujourd'hui.
+/// </para>
+/// <para>
+/// Le mécanisme de famille "La Marge" (les effets sur la durée posés par un
+/// Copiste sont "écrits" ; tuer un Copiste en train de canaliser inflige Rature
+/// aux alliés) n'est pas modélisé — nécessiterait un hook "on ally death" qui
+/// n'existe pas encore côté moteur (même famille de limitation que "L'Ossuaire"
+/// pour les Squelettes de Souvenirs). Différé, pas silencieusement ignoré.
+/// </para>
 /// </summary>
 public sealed class CopisteAveugleBossBehavior : CanonBossBehaviorBase
 {
@@ -20,6 +32,17 @@ public sealed class CopisteAveugleBossBehavior : CanonBossBehaviorBase
     {
         var boss = context.Boss;
         var combat = context.Combat;
+
+        // Attitude en combat — face à un coup très puissant : aucun sort défensif
+        // dans son kit, riposte contre son dernier agresseur avec son sort le plus
+        // offensif. Prend priorité sur le plan normal ; si aucun agresseur vivant
+        // n'est identifiable, continue sur le plan normal ci-dessous.
+        if (TookPowerfulHit(boss))
+        {
+            var retaliation = Strike(boss, "canon.skill.lecture-des-silences", LastAttacker(combat, boss))
+                ?? Strike(boss, "canon.skill.plume-seche", LastAttacker(combat, boss));
+            if (retaliation is not null) return retaliation;
+        }
 
         if (combat.TurnNumber == 1)
             return Strike(boss, "canon.skill.dictee", LowestMagicDefensePlayer(combat, boss));
@@ -50,6 +73,11 @@ public sealed class EncrierVivantBossBehavior : CanonBossBehaviorBase
     {
         var boss = context.Boss;
         var combat = context.Combat;
+
+        // Attitude en combat — face à un coup très puissant : durcit sa paroi
+        // fêlée. Prend priorité sur le plan normal.
+        if (TookPowerfulHit(boss))
+            return OnSelf(boss, "canon.skill.corps-de-verre");
 
         var starvedAlly = MostManaStarvedAlly(combat, boss, threshold: 12);
         if (starvedAlly is not null)
@@ -85,6 +113,11 @@ public sealed class PageInacheveeBossBehavior : CanonBossBehaviorBase
         var boss = context.Boss;
         var combat = context.Combat;
 
+        // Attitude en combat — face à un coup très puissant : se plie sur
+        // elle-même. Prend priorité sur le plan normal.
+        if (TookPowerfulHit(boss))
+            return OnSelf(boss, "canon.skill.repli-de-papier");
+
         var silenced = LivingPlayers(combat).FirstOrDefault(p => p.IsSilenced);
         if (silenced is not null)
             return Strike(boss, "canon.skill.phrase-inachevee", silenced);
@@ -113,6 +146,17 @@ public sealed class RelieurBossBehavior : CanonBossBehaviorBase
     {
         var boss = context.Boss;
         var combat = context.Combat;
+
+        // Attitude en combat — face à un coup très puissant : aucun sort
+        // défensif dans son kit, riposte contre son dernier agresseur avec son
+        // sort le plus offensif. Prend priorité sur le plan normal ; si aucun
+        // agresseur vivant n'est identifiable, continue sur le plan normal.
+        if (TookPowerfulHit(boss))
+        {
+            var retaliation = Strike(boss, "canon.skill.noeud-final", LastAttacker(combat, boss))
+                ?? Strike(boss, "canon.skill.couture", LastAttacker(combat, boss));
+            if (retaliation is not null) return retaliation;
+        }
 
         var heavilyDotted = LivingPlayers(combat)
             .FirstOrDefault(p => p.StatusEffects.Count(e => e.Kind == StatusEffectKind.DamageOverTime) >= 2);

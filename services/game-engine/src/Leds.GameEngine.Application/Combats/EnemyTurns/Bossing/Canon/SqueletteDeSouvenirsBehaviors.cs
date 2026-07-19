@@ -8,6 +8,14 @@ namespace Leds.GameEngine.Application.Combats.EnemyTurns.Bossing.Canon;
 /// Ossement laissé au sol) n'est pas modélisée — voir le commentaire dans
 /// CatalogSeedRunner.SeedBestiaireSqueletteDeSouvenirsAsync pour le détail des
 /// approximations correspondantes (Effondrement, Braise mémorielle).
+/// <para>
+/// "Face à un coup très puissant" (≥25% MaxVitality en un coup) EST câblée pour
+/// les 3 créatures (Chantier Bestiaire Phase 13). Le Porteur de Cendre a un sort
+/// défensif dédié (Braise mémorielle) qui l'utilise directement ; le Squelette de
+/// Souvenir et le Chœur Muet, sans alternative défensive dans leur kit de 4,
+/// ripostent contre leur dernier agresseur (<see cref="CanonBossBehaviorBase.LastAttacker"/>)
+/// avec leur sort le plus offensif.
+/// </para>
 /// </summary>
 public sealed class SqueletteSouvenirBossBehavior : CanonBossBehaviorBase
 {
@@ -17,6 +25,17 @@ public sealed class SqueletteSouvenirBossBehavior : CanonBossBehaviorBase
     {
         var boss = context.Boss;
         var combat = context.Combat;
+
+        // Attitude en combat — face à un coup très puissant : aucun sort
+        // défensif dans son kit, riposte contre son dernier agresseur avec son
+        // sort le plus offensif. Prend priorité sur le plan normal ; si aucun
+        // agresseur vivant n'est identifiable, continue sur le plan normal.
+        if (TookPowerfulHit(boss))
+        {
+            var retaliation = Strike(boss, "canon.skill.fragment-grave", LastAttacker(combat, boss))
+                ?? Strike(boss, "canon.skill.griffe-dos", LastAttacker(combat, boss));
+            if (retaliation is not null) return retaliation;
+        }
 
         var porteurAlive = combat.Enemies.Any(e =>
             !e.IsDefeated && string.Equals(e.SourceKey, "canon.enemy.porteur-cendre", StringComparison.OrdinalIgnoreCase));
@@ -45,7 +64,8 @@ public sealed class SqueletteSouvenirBossBehavior : CanonBossBehaviorBase
 /// ("Braise mémorielle si un Ossement est disponible") est absente ici : aucun
 /// suivi d'Ossement n'existe côté moteur (voir la note de classe dans
 /// SqueletteSouvenirBossBehavior) — il passe directement au soin d'urgence, puis
-/// harcèle.
+/// harcèle. Braise mémorielle sert désormais de réaction "Attitude en combat"
+/// (garde défensive face à un coup très puissant), sa seule utilisation par l'IA.
 /// </summary>
 public sealed class PorteurCendreBossBehavior : CanonBossBehaviorBase
 {
@@ -55,6 +75,12 @@ public sealed class PorteurCendreBossBehavior : CanonBossBehaviorBase
     {
         var boss = context.Boss;
         var combat = context.Combat;
+
+        // Attitude en combat — face à un coup très puissant : rallume un
+        // Ossement — pour l'instant, se replie prudemment (voir commentaire de
+        // classe). Prend priorité sur le plan normal.
+        if (TookPowerfulHit(boss))
+            return OnSelf(boss, "canon.skill.braise-memorielle");
 
         var mostWoundedAlly = MostWoundedAlly(combat, boss);
         if (mostWoundedAlly is not null && HpFraction(mostWoundedAlly) < 0.40)
@@ -82,6 +108,17 @@ public sealed class ChoeurMuetBossBehavior : CanonBossBehaviorBase
     {
         var boss = context.Boss;
         var combat = context.Combat;
+
+        // Attitude en combat — face à un coup très puissant : aucun sort
+        // défensif dans son kit, riposte contre son dernier agresseur avec son
+        // sort le plus offensif. Prend priorité sur le plan normal ; si aucun
+        // agresseur vivant n'est identifiable, continue sur le plan normal.
+        if (TookPowerfulHit(boss))
+        {
+            var retaliation = Strike(boss, "canon.skill.note-tenue", LastAttacker(combat, boss))
+                ?? Strike(boss, "canon.skill.lecture-des-silences", LastAttacker(combat, boss));
+            if (retaliation is not null) return retaliation;
+        }
 
         if (combat.TurnNumber == 1 && Chance(combat, boss, "berceuse-ouverture", 0.80))
             return OnAllPlayers(boss, "canon.skill.berceuse-inversee", combat);
