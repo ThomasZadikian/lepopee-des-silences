@@ -263,6 +263,15 @@ export const useRunStore = defineStore('run', () => {
     });
   }
 
+  async function wagerNode(nodeId: string) {
+    if (!currentRun.value) return;
+
+    await execute(async () => {
+      const response = await runApi.wagerNode(currentRun.value!.id, nodeId);
+      currentRun.value = unwrapRunResponse(response);
+    });
+  }
+
   async function useCaliceInfini(targetCombatantId?: string | null) {
     if (!currentRun.value) return;
 
@@ -948,6 +957,7 @@ export const useRunStore = defineStore('run', () => {
     enterNextRoom,
     confirmPermanentItemSelection,
     removePalaceLaw,
+    wagerNode,
     useCaliceInfini,
     syncPartySkills,
     syncPartyStats,

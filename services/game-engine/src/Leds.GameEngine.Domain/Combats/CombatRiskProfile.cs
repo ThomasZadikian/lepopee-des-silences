@@ -3,25 +3,20 @@ namespace Leds.GameEngine.Domain.Combats;
 /// <summary>
 /// Immutable value object representing the risk-scaling context of a combat encounter.
 /// Produced by <c>ICombatRiskProfileResolver</c> and attached to <c>RewardOffer</c>
-/// so that item-generation pipelines can later scale reward power deterministically.
+/// so that item-generation pipelines can scale reward power deterministically.
+/// Driven entirely by the node's <see cref="RiskTier"/> — a single per-tier lookup
+/// table, replacing the old raw-0-100-delta formula.
 /// </summary>
-/// <param name="Tier">Combat tier derived from the node event type.</param>
-/// <param name="BaseRisk">Reference risk level for this tier (e.g. Elite = 35).</param>
-/// <param name="ActualRisk">Actual risk level of the map node (0–100).</param>
-/// <param name="RiskDelta">max(0, ActualRisk − BaseRisk) — never negative.</param>
-/// <param name="DifficultyMultiplier">
-/// clamp(1.0 + RiskDelta / 100, 1.0, 1.75).
-/// Intended future use: scale enemy stats.
-/// </param>
-/// <param name="RewardPowerMultiplier">
-/// Equals DifficultyMultiplier — scales the power budget of the generated reward.
-/// </param>
-/// <param name="RiskBand">Qualitative band of the actual risk level.</param>
+/// <param name="Tier">Combat tier derived from the node event type (Normal/Rare/Elite/RoomBoss/FinalBoss).</param>
+/// <param name="RiskTier">The node's combat danger tier (Calme..Fatal).</param>
+/// <param name="DifficultyMultiplier">Base stat multiplier applied to every enemy in the encounter.</param>
+/// <param name="LootMultiplier">Multiplies each loot entry's drop percent, capped at 100%.</param>
+/// <param name="ReputationMultiplier">Multiplies reputation gain from resolving this combat.</param>
+/// <param name="EclatsBaseAmount">Flat Éclats du Palais granted on combat resolution.</param>
 public sealed record CombatRiskProfile(
     CombatTier Tier,
-    int BaseRisk,
-    int ActualRisk,
-    int RiskDelta,
+    RiskTier RiskTier,
     double DifficultyMultiplier,
-    double RewardPowerMultiplier,
-    RiskBand RiskBand);
+    double LootMultiplier,
+    double ReputationMultiplier,
+    int EclatsBaseAmount);

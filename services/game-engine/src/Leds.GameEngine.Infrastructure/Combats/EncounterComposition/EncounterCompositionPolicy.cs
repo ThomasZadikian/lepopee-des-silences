@@ -65,11 +65,13 @@ public sealed class EncounterCompositionPolicy : IEncounterCompositionPolicy
             throw new DomainException("No compatible enemy definitions were found for encounter composition.");
         }
 
+        string? preferredEnemyKey = null;
+
         var selected = context.EncounterType switch
         {
             "Combat" => SelectCombatEnemies(eligible, budget, context),
-            "Elite" => SelectEliteEnemies(eligible, budget),
-            "Rare" => SelectRareEnemies(eligible, budget),
+            "Elite" => SelectEliteEnemies(eligible, budget, out preferredEnemyKey),
+            "Rare" => SelectRareEnemies(eligible, out preferredEnemyKey),
             "RoomBoss" => SelectRoomBossEnemies(eligible),
             "FinalBoss" => SelectRoomBossEnemies(eligible),
             _ => SelectCombatEnemies(eligible, budget, context),
@@ -84,7 +86,8 @@ public sealed class EncounterCompositionPolicy : IEncounterCompositionPolicy
         return new EncounterCompositionResult(
             DifficultyBudget: budget,
             EnemyCount: selected.Count,
-            SelectedEnemies: selected);
+            SelectedEnemies: selected,
+            PreferredEnemyKey: preferredEnemyKey);
     }
 
     private static int CalculateBudget(EncounterCompositionContext context)
@@ -98,10 +101,7 @@ public sealed class EncounterCompositionPolicy : IEncounterCompositionPolicy
             _ => 0,
         };
 
-        if (context.RoomIndex >= 6)
-            budget += 2;
-        else if (context.RoomIndex >= 3)
-            budget += 1;
+        // Depth/RoomIndex is no longer a difficulty axis — risk tier alone drives budget now.
 
         // Palace Laws targeting Generation add +1 budget per active law, capped at +3.
         // This makes encounters progressively harder as more laws accumulate.
@@ -189,84 +189,81 @@ public sealed class EncounterCompositionPolicy : IEncounterCompositionPolicy
     }
 
     /// <summary>
-    /// Early-run balance: limits enemy count based on depth and risk level.
-    /// Prevents unfair encounters at the start of a run.
+    /// Limits enemy count based purely on risk tier — depth no longer plays into this
+    /// (risk tier is the sole difficulty axis; depth is now purely structural).
     /// </summary>
     private static int GetMaxEnemiesForEarlyRun(EncounterCompositionContext context)
     {
-        // Depth 0-1 with low risk (1-2): 1 enemy maximum
-        if (context.NodeDepth <= 1 && context.RiskLevel <= 2)
-            return 1;
-
-        // Low risk (1-2): max 2 enemies
+        // Low risk (Calme/Tendu): max 2 enemies
         if (context.RiskLevel <= 2)
             return 2;
 
-        // Medium risk (3): max 3 enemies
+        // Medium risk (Dangereux): max 3 enemies
         if (context.RiskLevel <= 3)
             return 3;
 
-        // High risk (4-5): up to 3 enemies
+        // High risk (Perilleux/Fatal): up to 4 enemies
         return 4;
     }
 
+    // Elite = one strong "preferred" enemy (gets a stat bonus applied later, see
+    // EnemyStatScaler/CombatEncounterDraftGenerator) optionally escorted by a STRICTLY
+    // weaker enemy. Unlike the old logic, the escort is never allowed to be an equal or
+    // stronger pick — if no strictly-weaker candidate fits the budget, the Elite fields alone.
     private static IReadOnlyCollection<CatalogEnemyDefinition> SelectEliteEnemies(
-        List<CatalogEnemyDefinition> eligible, int budget)
+        List<CatalogEnemyDefinition> eligible, int budget, out string? preferredEnemyKey)
     {
         var preferred = eligible
             .FirstOrDefault(e => e.Tags.Contains("elite", StringComparer.OrdinalIgnoreCase)
                               || string.Equals(e.Archetype, "Elite", StringComparison.OrdinalIgnoreCase));
 
-        if (preferred is not null)
-        {
-            var cost = GetArchetypeCost(preferred.Archetype);
-            var remaining = budget - cost;
-
-            var second = eligible
-                .Where(e => e.Key != preferred.Key)
-                .FirstOrDefault(e => GetArchetypeCost(e.Archetype) <= remaining);
-
-            return second is not null
-                ? new[] { preferred, second }
-                : new[] { preferred };
-        }
-
-        var hardest = eligible
+        preferred ??= eligible
             .OrderByDescending(e => e.BaseDifficulty)
             .ThenBy(e => e.Key, StringComparer.Ordinal)
             .First();
 
-        return [hardest];
+        preferredEnemyKey = preferred.Key;
+
+        var cost = GetArchetypeCost(preferred.Archetype);
+        var remaining = budget - cost;
+
+        var escort = eligible
+            .Where(e => e.Key != preferred.Key && e.BaseDifficulty < preferred.BaseDifficulty)
+            .Where(e => GetArchetypeCost(e.Archetype) <= remaining)
+            .OrderByDescending(e => e.BaseDifficulty)
+            .ThenBy(e => e.Key, StringComparer.Ordinal)
+            .FirstOrDefault();
+
+        return escort is not null
+            ? new[] { preferred, escort }
+            : new[] { preferred };
     }
 
+    // Rare = always exactly one enemy, keyed off the catalog's Rarity field (not the
+    // Support/Disruptor archetype heuristic this used to use, which had nothing to do
+    // with rarity). Bridge fallback: if the catalog hasn't tagged any eligible enemy as
+    // Rare yet (seeding follow-up), fall back to the old archetype heuristic so Rare
+    // nodes don't come up empty in the meantime.
+    // TODO: remove the archetype fallback once catalog Rarity tagging is complete.
     private static IReadOnlyCollection<CatalogEnemyDefinition> SelectRareEnemies(
-        List<CatalogEnemyDefinition> eligible, int budget)
+        List<CatalogEnemyDefinition> eligible, out string? preferredEnemyKey)
     {
         var preferred = eligible
+            .FirstOrDefault(e => string.Equals(e.Rarity, "Rare", StringComparison.OrdinalIgnoreCase));
+
+        preferred ??= eligible
             .FirstOrDefault(e =>
                 string.Equals(e.Archetype, "Support", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(e.Archetype, "Disruptor", StringComparison.OrdinalIgnoreCase));
 
-        if (preferred is not null)
-        {
-            var cost = GetArchetypeCost(preferred.Archetype);
-            var remaining = budget - cost;
-
-            var second = eligible
-                .Where(e => e.Key != preferred.Key)
-                .FirstOrDefault(e => GetArchetypeCost(e.Archetype) <= remaining);
-
-            return second is not null
-                ? new[] { preferred, second }
-                : new[] { preferred };
-        }
-
-        var hardest = eligible
+        preferred ??= eligible
             .OrderByDescending(e => e.BaseDifficulty)
             .ThenBy(e => e.Key, StringComparer.Ordinal)
             .First();
 
-        return [hardest];
+        preferredEnemyKey = preferred.Key;
+
+        return [preferred];
     }
 
     private static IReadOnlyCollection<CatalogEnemyDefinition> SelectRoomBossEnemies(

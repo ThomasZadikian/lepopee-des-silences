@@ -33,7 +33,7 @@ public sealed class RewardOfferFactoryTests
     public void CreateCombatRewardOffer_ShouldReturnOfferWithThreeChoices()
     {
         var offer = CreateFactory()
-            .CreateCombatRewardOffer(RewardSource.Combat, NodeEventType.Combat, riskLevel: 25);
+            .CreateCombatRewardOffer(RewardSource.Combat, NodeEventType.Combat, riskLevel: 2);
 
         offer.Source.Should().Be(RewardSource.Combat);
         offer.State.Should().Be(RewardOfferState.Pending);
@@ -44,7 +44,7 @@ public sealed class RewardOfferFactoryTests
     public void CreateCombatRewardOffer_ShouldIncludeHealChoice()
     {
         var offer = CreateFactory()
-            .CreateCombatRewardOffer(RewardSource.Combat, NodeEventType.Combat, riskLevel: 25);
+            .CreateCombatRewardOffer(RewardSource.Combat, NodeEventType.Combat, riskLevel: 2);
 
         offer.Choices.Should().Contain(choice => choice.RewardType == RewardType.Heal);
     }
@@ -53,7 +53,7 @@ public sealed class RewardOfferFactoryTests
     public void CreateCombatRewardOffer_ShouldExposeHealAndItemChoices()
     {
         var offer = CreateFactory()
-            .CreateCombatRewardOffer(RewardSource.Elite, NodeEventType.Elite, riskLevel: 50);
+            .CreateCombatRewardOffer(RewardSource.Elite, NodeEventType.Elite, riskLevel: 3);
 
         offer.Choices.Should().Contain(choice =>
             choice.RewardType == RewardType.Heal ||
@@ -68,7 +68,7 @@ public sealed class RewardOfferFactoryTests
     public void CombatOutcome_ShouldUseNormalRewardProfile()
     {
         var offer = CreateFactory()
-            .CreateCombatRewardOffer(RewardSource.Combat, NodeEventType.Combat, riskLevel: 30);
+            .CreateCombatRewardOffer(RewardSource.Combat, NodeEventType.Combat, riskLevel: 3);
 
         offer.Source.Should().Be(RewardSource.Combat);
         offer.Choices.Should().HaveCount(3);
@@ -81,7 +81,7 @@ public sealed class RewardOfferFactoryTests
     public void RareCombatOutcome_ShouldUseRareRewardProfile()
     {
         var offer = CreateFactory()
-            .CreateCombatRewardOffer(RewardSource.Rare, NodeEventType.Rare, riskLevel: 50);
+            .CreateCombatRewardOffer(RewardSource.Rare, NodeEventType.Rare, riskLevel: 3);
 
         offer.Source.Should().Be(RewardSource.Rare);
         offer.Choices.Should().HaveCount(3);
@@ -94,7 +94,7 @@ public sealed class RewardOfferFactoryTests
     public void EliteCombatOutcome_ShouldUseEliteRewardProfile()
     {
         var offer = CreateFactory()
-            .CreateCombatRewardOffer(RewardSource.Elite, NodeEventType.Elite, riskLevel: 65);
+            .CreateCombatRewardOffer(RewardSource.Elite, NodeEventType.Elite, riskLevel: 4);
 
         offer.Source.Should().Be(RewardSource.Elite);
         offer.Choices.Should().HaveCount(3);
@@ -107,7 +107,7 @@ public sealed class RewardOfferFactoryTests
     public void RoomBossOutcome_ShouldUseBossRewardProfile()
     {
         var offer = CreateFactory()
-            .CreateCombatRewardOffer(RewardSource.RoomBoss, NodeEventType.RoomBoss, riskLevel: 85);
+            .CreateCombatRewardOffer(RewardSource.RoomBoss, NodeEventType.RoomBoss, riskLevel: 5);
 
         offer.Source.Should().Be(RewardSource.RoomBoss);
         offer.Choices.Should().HaveCount(3);
@@ -117,106 +117,77 @@ public sealed class RewardOfferFactoryTests
     }
 
     // -----------------------------------------------------------------------
-    // CombatScaling metadata — Normal combat
+    // CombatScaling metadata — flat per-tier lookup, no more raw-delta formula
     // -----------------------------------------------------------------------
 
     [Fact]
-    public void CreateRewardOffer_ShouldIncludeRiskScalingMetadata_ForNormalCombat()
+    public void CreateRewardOffer_ShouldIncludeRiskScalingMetadata_ForCalmeTier()
     {
-        // Combat baseRisk 20, actualRisk 20 → delta 0, multiplier 1.00
         var offer = CreateFactory()
-            .CreateCombatRewardOffer(RewardSource.Combat, NodeEventType.Combat, riskLevel: 20);
+            .CreateCombatRewardOffer(RewardSource.Combat, NodeEventType.Combat, riskLevel: 1);
 
         offer.CombatScaling.Should().NotBeNull(
             "CombatScaling must be populated for all combat offers.");
 
         var scaling = offer.CombatScaling!;
         scaling.Tier.Should().Be(CombatTier.Normal);
-        scaling.BaseRisk.Should().Be(20);
-        scaling.ActualRisk.Should().Be(20);
-        scaling.RiskDelta.Should().Be(0);
-        scaling.RewardPowerMultiplier.Should().BeApproximately(1.0, 0.001,
-            "no delta → multiplier is exactly 1.00.");
+        scaling.RiskTier.Should().Be(RiskTier.Calme.ToString());
+        scaling.DifficultyMultiplier.Should().BeApproximately(1.0, 0.001);
     }
 
     [Fact]
     public void CreateRewardOffer_ShouldIncludeRiskScalingMetadata_ForRareCombat()
     {
-        // Rare baseRisk 30, actualRisk 70 → delta 40, multiplier 1.40
         var offer = CreateFactory()
-            .CreateCombatRewardOffer(RewardSource.Rare, NodeEventType.Rare, riskLevel: 70);
+            .CreateCombatRewardOffer(RewardSource.Rare, NodeEventType.Rare, riskLevel: 4);
 
         var scaling = offer.CombatScaling!;
         scaling.Tier.Should().Be(CombatTier.Rare);
-        scaling.BaseRisk.Should().Be(30);
-        scaling.RiskDelta.Should().Be(40);
-        scaling.RewardPowerMultiplier.Should().BeApproximately(1.40, 0.001,
-            "Rare risk 70: delta 40, multiplier 1.40.");
+        scaling.RiskTier.Should().Be(RiskTier.Perilleux.ToString());
+        scaling.DifficultyMultiplier.Should().BeApproximately(1.60, 0.001);
     }
 
     [Fact]
     public void CreateRewardOffer_ShouldIncludeRiskScalingMetadata_ForEliteCombat()
     {
-        // Elite baseRisk 35, actualRisk 75 → delta 40, multiplier 1.40
         var offer = CreateFactory()
-            .CreateCombatRewardOffer(RewardSource.Elite, NodeEventType.Elite, riskLevel: 75);
+            .CreateCombatRewardOffer(RewardSource.Elite, NodeEventType.Elite, riskLevel: 4);
 
         var scaling = offer.CombatScaling!;
         scaling.Tier.Should().Be(CombatTier.Elite);
-        scaling.BaseRisk.Should().Be(35);
-        scaling.RiskDelta.Should().Be(40);
-        scaling.RewardPowerMultiplier.Should().BeApproximately(1.40, 0.001,
-            "Elite risk 75: delta 40, multiplier 1.40.");
+        scaling.RiskTier.Should().Be(RiskTier.Perilleux.ToString());
+        scaling.DifficultyMultiplier.Should().BeApproximately(1.60, 0.001);
     }
 
     [Fact]
     public void CreateRewardOffer_ShouldIncludeRiskScalingMetadata_ForRoomBossCombat()
     {
-        // RoomBoss baseRisk 50, actualRisk 90 → delta 40, multiplier 1.40
         var offer = CreateFactory()
-            .CreateCombatRewardOffer(RewardSource.RoomBoss, NodeEventType.RoomBoss, riskLevel: 90);
+            .CreateCombatRewardOffer(RewardSource.RoomBoss, NodeEventType.RoomBoss, riskLevel: 5);
 
         var scaling = offer.CombatScaling!;
         scaling.Tier.Should().Be(CombatTier.RoomBoss);
-        scaling.BaseRisk.Should().Be(50);
-        scaling.RiskDelta.Should().Be(40);
-        scaling.RewardPowerMultiplier.Should().BeApproximately(1.40, 0.001,
-            "RoomBoss risk 90: delta 40, multiplier 1.40.");
+        scaling.RiskTier.Should().Be(RiskTier.Fatal.ToString());
+        scaling.DifficultyMultiplier.Should().BeApproximately(2.00, 0.001);
     }
 
     [Fact]
-    public void CreateRewardOffer_ShouldHaveMultiplierOne_WhenRiskEqualsBaseRisk()
+    public void CreateRewardOffer_ShouldHaveMultiplierOne_ForCalmeTier_RegardlessOfEncounterType()
     {
-        // Elite at exactly its base risk — no bonus
         var offer = CreateFactory()
-            .CreateCombatRewardOffer(RewardSource.Elite, NodeEventType.Elite, riskLevel: 35);
+            .CreateCombatRewardOffer(RewardSource.Elite, NodeEventType.Elite, riskLevel: 1);
 
-        offer.CombatScaling!.RewardPowerMultiplier.Should().BeApproximately(1.0, 0.001);
+        offer.CombatScaling!.DifficultyMultiplier.Should().BeApproximately(1.0, 0.001);
     }
 
     [Fact]
-    public void CreateRewardOffer_ShouldClampMultiplier_WhenRiskIsMaximum()
+    public void CreateRewardOffer_ShouldUseTheMaxMultiplier_AtFatalTier()
     {
-        // Normal baseRisk 20, actualRisk 100 → delta 80 → raw 1.80 → clamped 1.75
         var offer = CreateFactory()
-            .CreateCombatRewardOffer(RewardSource.Combat, NodeEventType.Combat, riskLevel: 100);
+            .CreateCombatRewardOffer(RewardSource.Combat, NodeEventType.Combat, riskLevel: 5);
 
-        offer.CombatScaling!.RewardPowerMultiplier.Should().BeApproximately(1.75, 0.001,
-            "multiplier is clamped at 1.75.");
-    }
-
-    [Fact]
-    public void CreateRewardOffer_ShouldIncludeCorrectRiskBand_InScaling()
-    {
-        var lowOffer = CreateFactory().CreateCombatRewardOffer(RewardSource.Combat, NodeEventType.Combat, 10);
-        var moderateOffer = CreateFactory().CreateCombatRewardOffer(RewardSource.Combat, NodeEventType.Combat, 35);
-        var highOffer = CreateFactory().CreateCombatRewardOffer(RewardSource.Combat, NodeEventType.Combat, 60);
-        var criticalOffer = CreateFactory().CreateCombatRewardOffer(RewardSource.Combat, NodeEventType.Combat, 80);
-
-        lowOffer.CombatScaling!.RiskBand.Should().Be(RiskBand.Low);
-        moderateOffer.CombatScaling!.RiskBand.Should().Be(RiskBand.Moderate);
-        highOffer.CombatScaling!.RiskBand.Should().Be(RiskBand.High);
-        criticalOffer.CombatScaling!.RiskBand.Should().Be(RiskBand.Critical);
+        offer.CombatScaling!.DifficultyMultiplier.Should().BeApproximately(2.00, 0.001,
+            "Fatal is the highest tier, capping the multiplier table.");
     }
 
     // -----------------------------------------------------------------------
@@ -231,7 +202,7 @@ public sealed class RewardOfferFactoryTests
         var enemy = Combatant.CreateEnemy("enemy.forest.chimere-serpentaire", "Chimere Serpentaire", "Beast", 20);
 
         var offer = await factory.CreateCombatRewardOfferAsync(
-            RewardSource.Combat, NodeEventType.Combat, riskLevel: 25,
+            RewardSource.Combat, NodeEventType.Combat, riskLevel: 3,
             enemies: [enemy], runSeed: "seed-a", runId: Guid.NewGuid(), combatId: Guid.NewGuid());
 
         offer.Choices.Should().NotBeEmpty();
@@ -252,7 +223,7 @@ public sealed class RewardOfferFactoryTests
         };
 
         var offer = await factory.CreateCombatRewardOfferAsync(
-            RewardSource.Combat, NodeEventType.Combat, riskLevel: 25,
+            RewardSource.Combat, NodeEventType.Combat, riskLevel: 3,
             enemies: enemies, runSeed: "seed-b", runId: Guid.NewGuid(), combatId: Guid.NewGuid());
 
         offer.Choices.Count.Should().BeInRange(3, 6);
@@ -266,7 +237,7 @@ public sealed class RewardOfferFactoryTests
         var enemy = Combatant.CreateEnemy("enemy.threshold.echo", "Echo", "Fragile", 20);
 
         var offer = await factory.CreateCombatRewardOfferAsync(
-            RewardSource.Combat, NodeEventType.Combat, riskLevel: 25,
+            RewardSource.Combat, NodeEventType.Combat, riskLevel: 3,
             enemies: [enemy], runSeed: "seed-c", runId: Guid.NewGuid(), combatId: Guid.NewGuid());
 
         offer.Choices.Count.Should().BeGreaterThanOrEqualTo(3);
@@ -286,11 +257,11 @@ public sealed class RewardOfferFactoryTests
         var combatId = Guid.NewGuid();
 
         var first = await CreateFactory(new StubCatalogContentGateway()).CreateCombatRewardOfferAsync(
-            RewardSource.Combat, NodeEventType.Combat, riskLevel: 25,
+            RewardSource.Combat, NodeEventType.Combat, riskLevel: 3,
             enemies: enemies, runSeed: "seed-d", runId: runId, combatId: combatId);
 
         var second = await CreateFactory(new StubCatalogContentGateway()).CreateCombatRewardOfferAsync(
-            RewardSource.Combat, NodeEventType.Combat, riskLevel: 25,
+            RewardSource.Combat, NodeEventType.Combat, riskLevel: 3,
             enemies: enemies, runSeed: "seed-d", runId: runId, combatId: combatId);
 
         first.Choices.Select(c => c.PayloadKey).Should().Equal(second.Choices.Select(c => c.PayloadKey));
@@ -303,7 +274,7 @@ public sealed class RewardOfferFactoryTests
         var factory = CreateFactory(gateway);
 
         var offer = await factory.CreateCombatRewardOfferAsync(
-            RewardSource.Combat, NodeEventType.Combat, riskLevel: 25,
+            RewardSource.Combat, NodeEventType.Combat, riskLevel: 3,
             enemies: [], runSeed: "seed-e", runId: Guid.NewGuid(), combatId: Guid.NewGuid());
 
         offer.Choices.Should().HaveCount(3,
@@ -381,12 +352,12 @@ public sealed class RewardOfferFactoryTests
             var factory = CreateFactory(new StubCatalogContentGateway());
 
             var baseline = await factory.CreateCombatRewardOfferAsync(
-                RewardSource.Combat, NodeEventType.Combat, riskLevel: 25,
+                RewardSource.Combat, NodeEventType.Combat, riskLevel: 3,
                 enemies: [enemy], runSeed: seed, runId: runId, combatId: combatId);
             if (baseline.Choices.Any(c => c.PayloadKey.Contains("venin-cristallise"))) baselineHits++;
 
             var boosted = await factory.CreateCombatRewardOfferAsync(
-                RewardSource.Combat, NodeEventType.Combat, riskLevel: 25,
+                RewardSource.Combat, NodeEventType.Combat, riskLevel: 3,
                 enemies: [enemy], runSeed: seed, runId: runId, combatId: combatId,
                 cancellationToken: CancellationToken.None, runModifiers: [modifier]);
             if (boosted.Choices.Any(c => c.PayloadKey.Contains("venin-cristallise"))) boostedHits++;
@@ -407,11 +378,11 @@ public sealed class RewardOfferFactoryTests
         modifier.Consume(DateTime.UtcNow);
 
         var withoutModifier = await CreateFactory(new StubCatalogContentGateway()).CreateCombatRewardOfferAsync(
-            RewardSource.Combat, NodeEventType.Combat, riskLevel: 25,
+            RewardSource.Combat, NodeEventType.Combat, riskLevel: 3,
             enemies: [enemy], runSeed: "seed-invitation-consumed", runId: runId, combatId: combatId);
 
         var withConsumedModifier = await CreateFactory(new StubCatalogContentGateway()).CreateCombatRewardOfferAsync(
-            RewardSource.Combat, NodeEventType.Combat, riskLevel: 25,
+            RewardSource.Combat, NodeEventType.Combat, riskLevel: 3,
             enemies: [enemy], runSeed: "seed-invitation-consumed", runId: runId, combatId: combatId,
             cancellationToken: CancellationToken.None, runModifiers: [modifier]);
 

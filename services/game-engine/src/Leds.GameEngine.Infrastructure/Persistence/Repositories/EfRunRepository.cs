@@ -239,6 +239,7 @@ public sealed class EfRunRepository : IRunRepository
             existingNode.Row = incomingNode.Row;
             existingNode.Lane = incomingNode.Lane;
             existingNode.RiskLevel = incomingNode.RiskLevel;
+            existingNode.CombatRiskTier = incomingNode.CombatRiskTier;
             existingNode.RewardProfile = incomingNode.RewardProfile;
             existingNode.IsBoss = incomingNode.IsBoss;
             existingNode.State = incomingNode.State;

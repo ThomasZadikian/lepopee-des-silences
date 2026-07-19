@@ -18,6 +18,7 @@ public sealed class MapNodeEntityConfiguration : IEntityTypeConfiguration<MapNod
         builder.Property(node => node.Row).HasColumnName("row");
         builder.Property(node => node.Lane).HasColumnName("lane");
         builder.Property(node => node.RiskLevel).HasColumnName("risk_level");
+        builder.Property(node => node.CombatRiskTier).HasColumnName("combat_risk_tier").HasMaxLength(32);
         builder.Property(node => node.RewardProfile).HasColumnName("reward_profile").HasMaxLength(128).IsRequired();
         builder.Property(node => node.IsBoss).HasColumnName("is_boss");
         builder.Property(node => node.State).HasColumnName("state").HasMaxLength(64).IsRequired();

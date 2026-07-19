@@ -77,20 +77,18 @@ public sealed record RewardChoiceDto(
 /// </summary>
 public sealed record CombatScalingDto(
     string CombatTier,
-    int BaseRisk,
-    int ActualRisk,
-    int RiskDelta,
+    string RiskTier,
     double DifficultyMultiplier,
-    double RewardPowerMultiplier,
-    string RiskBand)
+    double LootMultiplier,
+    double ReputationMultiplier,
+    int EclatsBaseAmount)
 {
     public static CombatScalingDto FromDomain(CombatRiskProfile profile) =>
         new(
             profile.Tier.ToString(),
-            profile.BaseRisk,
-            profile.ActualRisk,
-            profile.RiskDelta,
+            profile.RiskTier.ToString(),
             profile.DifficultyMultiplier,
-            profile.RewardPowerMultiplier,
-            profile.RiskBand.ToString());
+            profile.LootMultiplier,
+            profile.ReputationMultiplier,
+            profile.EclatsBaseAmount);
 }

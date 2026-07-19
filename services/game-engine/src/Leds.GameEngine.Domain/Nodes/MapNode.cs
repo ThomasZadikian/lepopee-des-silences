@@ -1,3 +1,4 @@
+using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Common;
 
 namespace Leds.GameEngine.Domain.Nodes;
@@ -12,6 +13,7 @@ public sealed class MapNode
         int row,
         int lane,
         int riskLevel,
+        RiskTier? combatRiskTier,
         string rewardProfile,
         IReadOnlyCollection<NodeId> parentNodeIds,
         bool isBoss,
@@ -22,6 +24,7 @@ public sealed class MapNode
         Row = row;
         Lane = lane;
         RiskLevel = riskLevel;
+        CombatRiskTier = combatRiskTier;
         RewardProfile = rewardProfile;
         _parentNodeIds = parentNodeIds.ToList();
         IsBoss = isBoss;
@@ -36,7 +39,19 @@ public sealed class MapNode
 
     public int Lane { get; }
 
+    /// <summary>
+    /// Raw generation roll (0-100). Kept as-is for non-combat nodes (Item/Merchant/etc.),
+    /// which use it to vary reward generosity — a concern separate from combat danger.
+    /// </summary>
     public int RiskLevel { get; }
+
+    /// <summary>
+    /// The node's combat danger tier — the sole difficulty axis for combat-flavored nodes
+    /// (Combat/Elite/Rare/RoomBoss/FinalBoss). Null for every other node type: danger has
+    /// no meaning for an Item/Npc/Memory/Rest/Merchant/Law/Curse node. Mutable only via
+    /// <see cref="RaiseRisk"/> (the "provoquer le destin" wager).
+    /// </summary>
+    public RiskTier? CombatRiskTier { get; private set; }
 
     public string RewardProfile { get; }
 
@@ -56,6 +71,18 @@ public sealed class MapNode
 
     public bool HasChosenEventOption => !string.IsNullOrWhiteSpace(ChosenEventOptionId);
 
+    /// <summary>
+    /// Combat-flavored node types are the only ones with a meaningful combat danger tier —
+    /// mirrors <c>ICombatRiskProfileResolver.IsCombatNodeType</c> (kept in sync manually,
+    /// since Domain must not depend on Application).
+    /// </summary>
+    public static bool IsCombatFlavored(NodeEventType eventType) =>
+        eventType is NodeEventType.Combat
+                  or NodeEventType.Rare
+                  or NodeEventType.Elite
+                  or NodeEventType.RoomBoss
+                  or NodeEventType.FinalBoss;
+
     public static MapNode Create(
         NodeEventType eventType,
         int riskLevel,
@@ -64,11 +91,17 @@ public sealed class MapNode
         int lane,
         IReadOnlyCollection<NodeId> parentNodeIds,
         bool isBoss = false,
-        NodeState initialState = NodeState.Available)
+        NodeState initialState = NodeState.Available,
+        RiskTier? combatRiskTier = null)
     {
         if (riskLevel is < 0 or > 100)
         {
             throw new DomainException("MapNode risk level must be between 0 and 100.");
+        }
+
+        if (combatRiskTier is not null && !IsCombatFlavored(eventType))
+        {
+            throw new DomainException($"Non-combat node type '{eventType}' must not have a CombatRiskTier.");
         }
 
         if (string.IsNullOrWhiteSpace(rewardProfile))
@@ -110,6 +143,7 @@ public sealed class MapNode
             row,
             lane,
             riskLevel,
+            combatRiskTier,
             rewardProfile.Trim(),
             parentList,
             isBoss,
@@ -181,6 +215,38 @@ public sealed class MapNode
         State = NodeState.Resolved;
     }
 
+    /// <summary>
+    /// "Provoquer le destin" — the player raises this node's combat danger by one tier
+    /// in exchange for a better reward (see CombatRiskProfile's Loot/Reputation/Éclats
+    /// multipliers). Repeatable: each call raises the tier by one step, capped at Fatal.
+    /// Only meaningful for combat-flavored, not-yet-entered nodes — raising the risk of
+    /// a node you can't avoid, or one that isn't dangerous to begin with, makes no sense.
+    /// </summary>
+    public void RaiseRisk()
+    {
+        if (!IsCombatFlavored(EventType))
+        {
+            throw new DomainException($"Only combat-flavored nodes can have their risk raised; '{EventType}' is not one.");
+        }
+
+        if (CombatRiskTier is null)
+        {
+            throw new DomainException("This combat node has no CombatRiskTier to raise.");
+        }
+
+        if (State != NodeState.Available)
+        {
+            throw new DomainException("Only an available MapNode's risk can be raised.");
+        }
+
+        if (CombatRiskTier == RiskTier.Fatal)
+        {
+            throw new DomainException("This node's risk is already at the maximum tier (Fatal).");
+        }
+
+        CombatRiskTier += 1;
+    }
+
     public void ResetToInitial()
     {
         State = IsInitial ? NodeState.Available : NodeState.Planned;
@@ -217,9 +283,10 @@ public sealed class MapNode
         IReadOnlyCollection<NodeId> parentNodeIds,
         bool isBoss,
         NodeState state,
-        string? chosenEventOptionId)
+        string? chosenEventOptionId,
+        RiskTier? combatRiskTier = null)
     {
-        var node = new MapNode(id, eventType, row, lane, riskLevel, rewardProfile, parentNodeIds, isBoss, state);
+        var node = new MapNode(id, eventType, row, lane, riskLevel, combatRiskTier, rewardProfile, parentNodeIds, isBoss, state);
         node.ChosenEventOptionId = chosenEventOptionId;
         return node;
     }

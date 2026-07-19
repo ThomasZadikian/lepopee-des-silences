@@ -1,4 +1,5 @@
 using Leds.GameEngine.Application.RoomMaps;
+using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.RoomMapLayouts;
 using Leds.GameEngine.Domain.Rooms;
@@ -88,6 +89,13 @@ public sealed class MapRoomGenerator : IMapRoomGenerator
                     ? 85
                     : random.Next(profile.RiskMin, profile.RiskMax);
 
+                // Combat danger tier is the sole difficulty axis now, derived from the
+                // same generation roll — but only meaningful for combat-flavored nodes
+                // (decision: "le risque n'a de sens que pour les combats").
+                var combatRiskTier = MapNode.IsCombatFlavored(type)
+                    ? (RiskTier?)(RiskTier)Math.Clamp(riskLevel / 20 + 1, 1, 5)
+                    : null;
+
                 var rewardProfile = isBossRow
                     ? "room-boss"
                     : PickRewardProfile(type, profile, random);
@@ -103,7 +111,8 @@ public sealed class MapRoomGenerator : IMapRoomGenerator
                     lane,
                     parentNodeIds,
                     isBoss: isBossRow,
-                    initialState));
+                    initialState,
+                    combatRiskTier: combatRiskTier));
             }
         }
 

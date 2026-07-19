@@ -236,6 +236,7 @@ public static class RunPersistenceMapper
             Row = node.Row,
             Lane = node.Lane,
             RiskLevel = node.RiskLevel,
+            CombatRiskTier = node.CombatRiskTier?.ToString(),
             RewardProfile = node.RewardProfile,
             IsBoss = node.IsBoss,
             State = node.State.ToString(),
@@ -549,7 +550,8 @@ public static class RunPersistenceMapper
             parentNodeIds,
             entity.IsBoss,
             Enum.Parse<NodeState>(entity.State),
-            entity.ChosenEventOptionId);
+            entity.ChosenEventOptionId,
+            string.IsNullOrEmpty(entity.CombatRiskTier) ? null : Enum.Parse<RiskTier>(entity.CombatRiskTier));
     }
 
     public static ActivePalaceLaw ToDomain(RunActivePalaceLawEntity entity)

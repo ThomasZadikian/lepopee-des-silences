@@ -38,7 +38,8 @@ public sealed class EnemyLootRewardBuilder
         Guid combatId,
         IReadOnlyCollection<Combatant> enemies,
         double lootChanceBonusPercent = 0,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        double lootMultiplier = 1.0)
     {
         var rolled = new List<RolledLoot>();
         var step = 0;
@@ -51,7 +52,7 @@ public sealed class EnemyLootRewardBuilder
                 continue; // No loot table configured yet for this enemy — expected during partial content rollout.
             }
 
-            var hits = RollIndependent(table.Entries, runSeed, runId, combatId, ref step, lootChanceBonusPercent);
+            var hits = RollIndependent(table.Entries, runSeed, runId, combatId, ref step, lootChanceBonusPercent, lootMultiplier);
             hits = ClampCount(hits, table.Entries, MinPerEnemy, MaxPerEnemy, runSeed, runId, combatId, ref step);
 
             rolled.AddRange(hits.Select(itemKey => new RolledLoot(itemKey, enemy.SourceKey, enemy.DisplayName)));
@@ -64,7 +65,7 @@ public sealed class EnemyLootRewardBuilder
 
         if (rolled.Count < MinLootCount)
         {
-            rolled = await PadFromFallbackAsync(rolled, runSeed, runId, combatId, step, lootChanceBonusPercent, cancellationToken);
+            rolled = await PadFromFallbackAsync(rolled, runSeed, runId, combatId, step, lootChanceBonusPercent, cancellationToken, lootMultiplier);
         }
 
         var choices = new List<RewardChoice>();
@@ -157,7 +158,8 @@ public sealed class EnemyLootRewardBuilder
         Guid combatId,
         int step,
         double lootChanceBonusPercent,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        double lootMultiplier = 1.0)
     {
         var fallback = await _catalogContentGateway.GetActiveGenericLootPoolAsync(cancellationToken);
         if (fallback is null || fallback.Entries.Count == 0)
@@ -167,7 +169,7 @@ public sealed class EnemyLootRewardBuilder
 
         var needed = MinLootCount - rolled.Count;
 
-        var hits = RollIndependent(fallback.Entries, runSeed, runId, combatId, ref step, lootChanceBonusPercent);
+        var hits = RollIndependent(fallback.Entries, runSeed, runId, combatId, ref step, lootChanceBonusPercent, lootMultiplier);
         // Target the fallback hit count at exactly what's needed: pad from the highest-%
         // entries if the independent rolls came up short, trim uniformly if they overshot.
         hits = ClampCount(hits, fallback.Entries, needed, needed, runSeed, runId, combatId, ref step);
@@ -188,17 +190,19 @@ public sealed class EnemyLootRewardBuilder
         Guid runId,
         Guid combatId,
         ref int step,
-        double lootChanceBonusPercent = 0)
+        double lootChanceBonusPercent = 0,
+        double lootMultiplier = 1.0)
     {
         var hits = new List<string>();
         foreach (var entry in entries)
         {
             var sample = DeterministicSampler.NextUnitInterval(runSeed, runId, combatId, step++);
-            // "Loi de l'Invitation" (law.invitation): multiplicative drop-chance bonus,
-            // capped at 100% so a stacked bonus can never exceed a guaranteed drop.
+            // "Loi de l'Invitation" (law.invitation) and the node's risk tier (LootMultiplier,
+            // see CombatRiskProfileResolver) both boost drop chance multiplicatively, capped
+            // at 100% so a stacked bonus can never exceed a guaranteed drop.
             var effectiveDropPercent = Math.Min(
                 100m,
-                entry.DropPercent * (1 + (decimal)lootChanceBonusPercent / 100m));
+                entry.DropPercent * (decimal)lootMultiplier * (1 + (decimal)lootChanceBonusPercent / 100m));
             if (sample < effectiveDropPercent / 100m)
             {
                 hits.Add(entry.ItemDefinitionKey);

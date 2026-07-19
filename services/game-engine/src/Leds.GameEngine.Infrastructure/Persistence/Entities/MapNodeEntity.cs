@@ -8,6 +8,7 @@ public sealed class MapNodeEntity
     public int Row { get; set; }
     public int Lane { get; set; }
     public int RiskLevel { get; set; }
+    public string? CombatRiskTier { get; set; }
     public string RewardProfile { get; set; } = string.Empty;
     public bool IsBoss { get; set; }
     public string State { get; set; } = string.Empty;

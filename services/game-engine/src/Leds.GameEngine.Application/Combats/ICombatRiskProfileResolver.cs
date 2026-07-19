@@ -4,10 +4,10 @@ using Leds.GameEngine.Domain.Nodes;
 namespace Leds.GameEngine.Application.Combats;
 
 /// <summary>
-/// Centralizes the risk-scaling formula for combat encounters.
-/// Given a node event type and its actual risk level, produces a
+/// Centralizes the risk-scaling tables for combat encounters.
+/// Given a node event type and its combat risk tier, produces a
 /// <see cref="CombatRiskProfile"/> that carries the multipliers used by
-/// both the combat difficulty system and the reward-power budget.
+/// the combat difficulty system and by loot/reputation/currency rewards.
 /// </summary>
 public interface ICombatRiskProfileResolver
 {
@@ -18,8 +18,12 @@ public interface ICombatRiskProfileResolver
     /// Must be a combat type: Combat, Rare, Elite, RoomBoss, or FinalBoss.
     /// Throws <see cref="ArgumentException"/> for non-combat types.
     /// </param>
-    /// <param name="actualRiskLevel">Risk level of the map node (0–100).</param>
-    CombatRiskProfile Resolve(NodeEventType eventType, int actualRiskLevel);
+    /// <param name="riskLevel">
+    /// The node's combat risk tier, as the 1-5 ordinal of <see cref="RiskTier"/>
+    /// (Calme=1 .. Fatal=5). Kept as a plain int to match
+    /// <c>EncounterCompositionContext.RiskLevel</c>, which already carries this same value.
+    /// </param>
+    CombatRiskProfile Resolve(NodeEventType eventType, int riskLevel);
 
     /// <summary>Returns true if the event type is handled by the combat risk system.</summary>
     bool IsCombatNodeType(NodeEventType eventType);

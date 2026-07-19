@@ -28,10 +28,12 @@ public sealed class RewardOfferFactory
     }
 
     /// <summary>
-    /// Creates a combat reward offer for the given source tier and node risk level.
+    /// Creates a combat reward offer for the given source tier and combat risk tier.
     /// The <paramref name="eventType"/> is forwarded to <see cref="ICombatRiskProfileResolver"/>
-    /// so that the resulting <see cref="RewardOffer.CombatScaling"/> reflects the exact
-    /// tier base-risk and computed multipliers.
+    /// so that the resulting <see cref="RewardOffer.CombatScaling"/> reflects the tier's
+    /// computed multipliers. <paramref name="riskLevel"/> is the node's combat risk tier
+    /// (1-5, see <see cref="Leds.GameEngine.Domain.Combats.RiskTier"/>) — NOT the raw
+    /// 0-100 <c>MapNode.RiskLevel</c> used by Item/Merchant reward generation.
     /// </summary>
     public RewardOffer CreateCombatRewardOffer(
         RewardSource source,
@@ -42,10 +44,10 @@ public sealed class RewardOfferFactory
 
         var choices = source switch
         {
-            RewardSource.RoomBoss => CreateBossRewardChoices(riskLevel, scaling.RewardPowerMultiplier),
-            RewardSource.Elite => CreateEliteRewardChoices(riskLevel, scaling.RewardPowerMultiplier),
-            RewardSource.Rare => CreateRareRewardChoices(riskLevel, scaling.RewardPowerMultiplier),
-            _ => CreateCombatRewardChoices(riskLevel, scaling.RewardPowerMultiplier)
+            RewardSource.RoomBoss => CreateBossRewardChoices(riskLevel, scaling.DifficultyMultiplier),
+            RewardSource.Elite => CreateEliteRewardChoices(riskLevel, scaling.DifficultyMultiplier),
+            RewardSource.Rare => CreateRareRewardChoices(riskLevel, scaling.DifficultyMultiplier),
+            _ => CreateCombatRewardChoices(riskLevel, scaling.DifficultyMultiplier)
         };
 
         return RewardOffer.Create(source, choices, scaling);
@@ -80,16 +82,17 @@ public sealed class RewardOfferFactory
             .Where(m => m.Type == RunModifierType.LootChanceBonusPercent && !m.IsConsumed)
             .Sum(m => m.Value) ?? 0;
 
-        var choices = await _enemyLootRewardBuilder.BuildAsync(runSeed, runId, combatId, enemies, lootChanceBonusPercent, cancellationToken);
+        var choices = await _enemyLootRewardBuilder.BuildAsync(
+            runSeed, runId, combatId, enemies, lootChanceBonusPercent, cancellationToken, scaling.LootMultiplier);
 
         if (choices.Count == 0)
         {
             choices = source switch
             {
-                RewardSource.RoomBoss => CreateBossRewardChoices(riskLevel, scaling.RewardPowerMultiplier),
-                RewardSource.Elite => CreateEliteRewardChoices(riskLevel, scaling.RewardPowerMultiplier),
-                RewardSource.Rare => CreateRareRewardChoices(riskLevel, scaling.RewardPowerMultiplier),
-                _ => CreateCombatRewardChoices(riskLevel, scaling.RewardPowerMultiplier)
+                RewardSource.RoomBoss => CreateBossRewardChoices(riskLevel, scaling.DifficultyMultiplier),
+                RewardSource.Elite => CreateEliteRewardChoices(riskLevel, scaling.DifficultyMultiplier),
+                RewardSource.Rare => CreateRareRewardChoices(riskLevel, scaling.DifficultyMultiplier),
+                _ => CreateCombatRewardChoices(riskLevel, scaling.DifficultyMultiplier)
             };
         }
 
@@ -220,7 +223,9 @@ public sealed class RewardOfferFactory
 
     private List<RewardChoice> CreateCombatRewardChoices(int riskLevel, double multiplier)
     {
-        var baseHeal = riskLevel / 5 + 10;
+        // BALANCE KNOB — riskLevel is now the 1-5 combat risk tier (was 0-100); rescaled to
+        // roughly preserve the old 10-30 heal range across the 5 discrete tiers.
+        var baseHeal = (riskLevel - 1) * 5 + 10;
         var healAmount = _rewardPowerScaler.ScaleAmount(baseHeal, multiplier);
 
         return new List<RewardChoice>
@@ -247,7 +252,8 @@ public sealed class RewardOfferFactory
 
     private List<RewardChoice> CreateRareRewardChoices(int riskLevel, double multiplier)
     {
-        var baseHeal = riskLevel / 4 + 15;
+        // BALANCE KNOB — rescaled from a 0-100 input to the 1-5 tier (old range ~15-40).
+        var baseHeal = (riskLevel - 1) * 6 + 15;
         var healAmount = _rewardPowerScaler.ScaleAmount(baseHeal, multiplier);
 
         return new List<RewardChoice>
@@ -274,7 +280,8 @@ public sealed class RewardOfferFactory
 
     private List<RewardChoice> CreateEliteRewardChoices(int riskLevel, double multiplier)
     {
-        var baseHeal = riskLevel / 3 + 20;
+        // BALANCE KNOB — rescaled from a 0-100 input to the 1-5 tier (old range ~20-53).
+        var baseHeal = (riskLevel - 1) * 8 + 20;
         var healAmount = _rewardPowerScaler.ScaleAmount(baseHeal, multiplier);
 
         return new List<RewardChoice>
@@ -301,7 +308,8 @@ public sealed class RewardOfferFactory
 
     private List<RewardChoice> CreateBossRewardChoices(int riskLevel, double multiplier)
     {
-        var baseHeal = riskLevel / 2 + 30;
+        // BALANCE KNOB — rescaled from a 0-100 input to the 1-5 tier (old range ~30-80).
+        var baseHeal = (riskLevel - 1) * 12 + 30;
         var healAmount = _rewardPowerScaler.ScaleAmount(baseHeal, multiplier);
 
         return new List<RewardChoice>

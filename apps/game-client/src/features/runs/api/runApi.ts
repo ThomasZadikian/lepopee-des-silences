@@ -112,6 +112,12 @@ export const runApi = {
     );
   },
 
+  wagerNode(runId: string, nodeId: string) {
+    return gameEngineApi.post<RunResponse>(
+      `/api/v2/runs/${runId}/nodes/${nodeId}/wager`,
+    );
+  },
+
   syncPartySkills(runId: string) {
     return gameEngineApi.post<RunResponse>(
       `/api/v2/runs/${runId}/sync-skills`,

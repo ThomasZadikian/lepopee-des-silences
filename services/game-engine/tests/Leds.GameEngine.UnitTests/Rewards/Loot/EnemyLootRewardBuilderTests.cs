@@ -150,6 +150,36 @@ public sealed class EnemyLootRewardBuilderTests
     }
 
     [Fact]
+    public async Task BuildAsync_ShouldIncreaseLowProbabilityItemDropRate_WhenLootMultiplierIsAboveOne()
+    {
+        // Same paired-trial reasoning as the loot-chance-bonus test above, but exercising
+        // the risk-tier LootMultiplier (CombatRiskProfileResolver) instead of the law
+        // modifier — a separate code path feeding the same effectiveDropPercent formula.
+        var enemy = Combatant.CreateEnemy("enemy.forest.chimere-serpentaire", "Chimere Serpentaire", "Beast", 20);
+        var runId = Guid.NewGuid();
+        var combatId = Guid.NewGuid();
+        const int trials = 300;
+
+        var baselineHits = 0;
+        var boostedHits = 0;
+
+        for (var i = 0; i < trials; i++)
+        {
+            var seed = $"seed-risktier-{i}";
+            var builder = CreateBuilder();
+
+            var baseline = await builder.BuildAsync(seed, runId, combatId, [enemy]);
+            if (baseline.Any(c => c.PayloadKey.Contains("venin-cristallise"))) baselineHits++;
+
+            var boosted = await builder.BuildAsync(seed, runId, combatId, [enemy], lootMultiplier: 1.75);
+            if (boosted.Any(c => c.PayloadKey.Contains("venin-cristallise"))) boostedHits++;
+        }
+
+        boostedHits.Should().BeGreaterThan(baselineHits,
+            "the Fatal tier's 1.75x LootMultiplier should meaningfully increase a low-probability item's drop rate");
+    }
+
+    [Fact]
     public async Task BuildAsync_ShouldCapEffectiveDropChance_AtOneHundredPercent()
     {
         var enemy = Combatant.CreateEnemy("enemy.forest.chimere-serpentaire", "Chimere Serpentaire", "Beast", 20);

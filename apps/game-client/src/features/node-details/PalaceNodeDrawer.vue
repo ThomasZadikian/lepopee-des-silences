@@ -14,6 +14,7 @@ const emit = defineEmits<{
   generateNextNodes: [];
   chooseAndResolve: [];
   close: [];
+  wagerNode: [nodeId: string];
 }>();
 
 const nodeTypeLabel: Record<string, string> = {
@@ -40,13 +41,38 @@ const stateLabel: Record<string, string> = {
   Planned: 'En attente',
 };
 
-const riskLabel = computed(() => {
-  const r = props.node?.riskLevel ?? 0;
-  if (r <= 24) return { text: 'Faible', cls: 'risk--low' };
-  if (r <= 49) return { text: 'Modéré', cls: 'risk--moderate' };
-  if (r <= 74) return { text: 'Élevé', cls: 'risk--high' };
-  return { text: 'Critique', cls: 'risk--critical' };
+// Danger (the 5-tier CombatRiskTier) only means something for combat-flavored
+// nodes — the other types (Item/Npc/Memory/Rest/Merchant/Law/Curse) never carry one.
+const COMBAT_NODE_TYPES = new Set(['Combat', 'Elite', 'Rare', 'RoomBoss', 'FinalBoss']);
+
+const isCombatFlavored = computed(() =>
+  Boolean(props.node && COMBAT_NODE_TYPES.has(props.node.type)));
+
+const RISK_TIER_DISPLAY: Record<string, { text: string; cls: string }> = {
+  Calme: { text: 'Calme', cls: 'risk--low' },
+  Tendu: { text: 'Tendu', cls: 'risk--moderate' },
+  Dangereux: { text: 'Dangereux', cls: 'risk--high' },
+  Perilleux: { text: 'Périlleux', cls: 'risk--critical' },
+  Fatal: { text: 'Fatal', cls: 'risk--fatal' },
+};
+
+const riskTierDisplay = computed(() => {
+  const tier = props.node?.combatRiskTier;
+  if (!isCombatFlavored.value || !tier) return null;
+  return RISK_TIER_DISPLAY[tier] ?? null;
 });
+
+const canWager = computed(() => {
+  if (!props.node || !isCombatFlavored.value) return false;
+  if (props.node.state !== 'Available') return false;
+  if (props.hasActiveCombat || props.hasPendingReward) return false;
+  return Boolean(props.node.combatRiskTier) && props.node.combatRiskTier !== 'Fatal';
+});
+
+function handleWager() {
+  if (!props.node) return;
+  emit('wagerNode', props.node.id);
+}
 
 const canAct = computed(() => {
   if (!props.node) return false;
@@ -86,10 +112,9 @@ function handleAction() {
 
       <hr class="es-rule" />
 
-      <div class="node-drawer__risk">
-        <span class="es-label">Risque</span>
-        <span :class="['node-drawer__risk-value', riskLabel.cls]">{{ riskLabel.text }}</span>
-        <span class="es-mono">{{ node.riskLevel }}/100</span>
+      <div v-if="riskTierDisplay" class="node-drawer__risk">
+        <span class="es-label">Danger</span>
+        <span :class="['node-drawer__risk-value', riskTierDisplay.cls]">{{ riskTierDisplay.text }}</span>
       </div>
 
       <div v-if="node.rewardProfile" class="node-drawer__reward">
@@ -98,6 +123,15 @@ function handleAction() {
       </div>
 
       <div class="node-drawer__spacer" />
+
+      <button
+        v-if="canWager"
+        class="es-btn es-btn--ghost node-drawer__wager"
+        :disabled="isLoading"
+        @click="handleWager"
+      >
+        Provoquer le destin
+      </button>
 
       <button
         v-if="canAct"
@@ -179,6 +213,7 @@ function handleAction() {
 .risk--moderate { color: var(--gold-dim); }
 .risk--high { color: var(--blood-dim); }
 .risk--critical { color: var(--blood); }
+.risk--fatal { color: var(--blood); font-weight: 600; }
 
 .node-drawer__spacer {
   flex: 1;
@@ -188,6 +223,12 @@ function handleAction() {
 .node-drawer__cta {
   width: 100%;
   justify-content: center;
+}
+
+.node-drawer__wager {
+  width: 100%;
+  justify-content: center;
+  margin-bottom: var(--space-2);
 }
 
 .node-drawer__hint {
