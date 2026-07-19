@@ -74,8 +74,15 @@ public sealed class PlayerSeedRunner
                         Initiative = 10,
                         Recovery = 5,
                         Focus = 15,
-                        Mana = 0,
-                        Charge = 0
+                        // Mirrors PlayerCharacterStatBlock.CreateDefaultPorteur() — this demo
+                        // seed builds its EF entity directly instead of going through that
+                        // domain factory, so it must be kept in sync by hand. Mana = 85% of
+                        // base MaxVitality; MagicAttack/MagicDefense = same 2:1 ratio as
+                        // AttackPower/Defense, halved since the starter kit is physical-only.
+                        Mana = 85,
+                        Charge = 0,
+                        MagicAttack = 6,
+                        MagicDefense = 3
                     },
                     Skills =
                     [
