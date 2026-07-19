@@ -8,6 +8,13 @@ namespace Leds.GameEngine.Application.Combats.EnemyTurns.Bossing.Canon;
 /// les deux créatures. La mécanique de famille "La Boucle" (rejoue le tour 1 tous
 /// les 3 tours) n'est pas modélisée — voir le commentaire dans
 /// CatalogSeedRunner.SeedBestiaireFauxHabitantsDuJardinAsync.
+/// <para>
+/// "Face à un coup très puissant" (≥25% MaxVitality en un coup) EST câblée pour
+/// les 2 créatures (Chantier Bestiaire Phase 13) : le Promeneur Figé sur soi (Pas
+/// de promenade, garde) ; le Jardinier Sans Ombre avec Paillage, un sort ciblant
+/// normalement un allié blessé, appliqué à lui-même (« le massif est protégé pour
+/// l'hiver »).
+/// </para>
 /// </summary>
 public sealed class PromeneurFigeBossBehavior : CanonBossBehaviorBase
 {
@@ -17,6 +24,12 @@ public sealed class PromeneurFigeBossBehavior : CanonBossBehaviorBase
     {
         var boss = context.Boss;
         var combat = context.Combat;
+
+        // Attitude en combat — face à un coup très puissant : toutes les
+        // quarante secondes, exactement (Pas de promenade, sur soi). Prend
+        // priorité sur le plan normal.
+        if (TookPowerfulHit(boss))
+            return OnSelf(boss, "canon.skill.pas-de-promenade");
 
         // Cycle pondéré 50/30/20 (deux tirages imbriqués indépendants, même
         // convention que le Squelette de Souvenir).
@@ -48,6 +61,12 @@ public sealed class JardinierSansOmbreBossBehavior : CanonBossBehaviorBase
     {
         var boss = context.Boss;
         var combat = context.Combat;
+
+        // Attitude en combat — face à un coup très puissant : le massif est
+        // protégé pour l'hiver (Paillage, sur soi — un sort normalement destiné
+        // à un allié blessé). Prend priorité sur le plan normal.
+        if (TookPowerfulHit(boss))
+            return Strike(boss, "canon.skill.paillage", boss);
 
         var multiBuffed = LivingPlayers(combat)
             .FirstOrDefault(p => p.StatusEffects.Count(e => e.Kind == StatusEffectKind.StatModifier && e.Magnitude > 0) >= 2);

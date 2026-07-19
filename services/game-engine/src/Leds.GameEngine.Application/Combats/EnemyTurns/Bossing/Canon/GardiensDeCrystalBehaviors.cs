@@ -6,6 +6,12 @@ namespace Leds.GameEngine.Application.Combats.EnemyTurns.Bossing.Canon;
 /// Bestiaire, famille "Les Gardiens de Crystal" — scripts déterministes pour les
 /// deux créatures. La mécanique de famille "La Résonance" n'est pas modélisée —
 /// voir le commentaire dans CatalogSeedRunner.SeedBestiaireGardiensDeCrystalAsync.
+/// <para>
+/// "Face à un coup très puissant" (≥25% MaxVitality en un coup) EST câblée pour
+/// les 2 créatures (Chantier Bestiaire Phase 13), chacune via un sort défensif
+/// déjà présent dans son kit de 4 : Gardien Intemporel → Rempart (garde de
+/// groupe), Éclat Éveillé → Prisme (garde).
+/// </para>
 /// </summary>
 public sealed class GardienIntemporelBossBehavior : CanonBossBehaviorBase
 {
@@ -15,6 +21,13 @@ public sealed class GardienIntemporelBossBehavior : CanonBossBehaviorBase
     {
         var boss = context.Boss;
         var combat = context.Combat;
+
+        // Attitude en combat — face à un coup très puissant : élève un rempart
+        // de groupe. Prend priorité sur le plan normal, y compris le premier
+        // tour ci-dessous.
+        if (TookPowerfulHit(boss))
+            return OnAllAllies(boss, "canon.skill.rempart", combat)
+                ?? OnSelf(boss, "canon.skill.rempart");
 
         var eclatPresent = combat.Enemies.Any(e =>
             !e.IsDefeated && string.Equals(e.SourceKey, "canon.enemy.eclat-eveille", StringComparison.OrdinalIgnoreCase));
@@ -49,6 +62,13 @@ public sealed class EclatEveilleBossBehavior : CanonBossBehaviorBase
     {
         var boss = context.Boss;
         var combat = context.Combat;
+
+        // Attitude en combat — face à un coup très puissant : la lumière ne
+        // s'arrête pas, elle se partage (Prisme, garde). Prend priorité sur le
+        // plan normal, y compris les deux premiers tours ci-dessous.
+        if (TookPowerfulHit(boss))
+            return OnSelf(boss, "canon.skill.prisme")
+                ?? Strike(boss, "canon.skill.pulsation", LowestHpPlayer(combat, boss));
 
         if (combat.TurnNumber == 1)
             return OnSelf(boss, "canon.skill.facette")

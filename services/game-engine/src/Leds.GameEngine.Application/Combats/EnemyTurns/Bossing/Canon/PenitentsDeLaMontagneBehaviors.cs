@@ -9,6 +9,14 @@ namespace Leds.GameEngine.Application.Combats.EnemyTurns.Bossing.Canon;
 /// partagées, manifestation de la Frayeur Exhumée en renfort) n'est pas
 /// modélisée — voir le commentaire dans
 /// CatalogSeedRunner.SeedBestiairePenitentsDeLaMontagneAsync.
+/// <para>
+/// "Face à un coup très puissant" (≥25% MaxVitality en un coup) EST câblée pour
+/// les 3 créatures (Chantier Bestiaire Phase 13). Le Pèlerin Sans Visage réutilise
+/// son propre buff sur soi (Repentir) déjà présent dans son kit de 4 ; le Prieur
+/// Lituique et la Frayeur Exhumée, sans alternative défensive, ripostent contre
+/// leur dernier agresseur (<see cref="CanonBossBehaviorBase.LastAttacker"/>) avec
+/// leur sort le plus offensif à la place.
+/// </para>
 /// </summary>
 public sealed class PelerinSansVisageBossBehavior : CanonBossBehaviorBase
 {
@@ -18,6 +26,13 @@ public sealed class PelerinSansVisageBossBehavior : CanonBossBehaviorBase
     {
         var boss = context.Boss;
         var combat = context.Combat;
+
+        // Attitude en combat — face à un coup très puissant : la faute oubliée
+        // exige quand même son prix (Repentir, sur soi). Prend priorité sur le
+        // plan normal, y compris le seuil de PV bas ci-dessous.
+        if (TookPowerfulHit(boss))
+            return OnSelf(boss, "canon.skill.repentir")
+                ?? Strike(boss, "canon.skill.chapelet-de-dents", LowestHpPlayer(combat, boss));
 
         if (HpFraction(boss) < 0.50)
             return OnSelf(boss, "canon.skill.repentir")
@@ -44,6 +59,17 @@ public sealed class PrieurLituiqueBossBehavior : CanonBossBehaviorBase
     {
         var boss = context.Boss;
         var combat = context.Combat;
+
+        // Attitude en combat — face à un coup très puissant : aucun sort
+        // défensif dans son kit, riposte contre son dernier agresseur avec son
+        // sort le plus offensif. Prend priorité sur le plan normal ; si aucun
+        // agresseur vivant n'est identifiable, continue sur le plan normal.
+        if (TookPowerfulHit(boss))
+        {
+            var retaliation = Strike(boss, "canon.skill.derniere-priere", LastAttacker(combat, boss))
+                ?? Strike(boss, "canon.skill.oraison-cousue", LastAttacker(combat, boss));
+            if (retaliation is not null) return retaliation;
+        }
 
         if (combat.TurnNumber == 1)
             return OnAllPlayers(boss, "canon.skill.encens-inverse", combat)
@@ -74,6 +100,17 @@ public sealed class FrayeurExhumeeBossBehavior : CanonBossBehaviorBase
     {
         var boss = context.Boss;
         var combat = context.Combat;
+
+        // Attitude en combat — face à un coup très puissant : aucun sort
+        // défensif dans son kit, riposte contre son dernier agresseur avec son
+        // sort le plus offensif. Prend priorité sur le plan normal ; si aucun
+        // agresseur vivant n'est identifiable, continue sur le plan normal.
+        if (TookPowerfulHit(boss))
+        {
+            var retaliation = Strike(boss, "canon.skill.griffe-de-recul", LastAttacker(combat, boss))
+                ?? Strike(boss, "canon.skill.frayeur-organique", LastAttacker(combat, boss));
+            if (retaliation is not null) return retaliation;
+        }
 
         if (combat.TurnNumber == 1)
         {

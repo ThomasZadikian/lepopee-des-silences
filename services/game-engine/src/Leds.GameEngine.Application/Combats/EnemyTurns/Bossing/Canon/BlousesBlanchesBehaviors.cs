@@ -8,6 +8,15 @@ namespace Leds.GameEngine.Application.Combats.EnemyTurns.Bossing.Canon;
 /// cumulative des types d'action adverses, -10% de stats une fois les 4 types
 /// observés) n'est pas modélisée — voir le commentaire dans
 /// CatalogSeedRunner.SeedBestiaireBlousesBlanchesAsync.
+/// <para>
+/// "Face à un coup très puissant" (≥25% MaxVitality en un coup) EST câblée pour
+/// les 3 créatures (Chantier Bestiaire Phase 13). L'Infirmière du Déni (Placebo)
+/// et le Souvenir Alité (Sonnette) ont un sort défensif dédié dans leur kit de 4
+/// et l'utilisent directement ; le Régisseur des Couloirs Blancs, sans
+/// alternative défensive, riposte contre son dernier agresseur
+/// (<see cref="CanonBossBehaviorBase.LastAttacker"/>) avec son sort le plus
+/// offensif à la place.
+/// </para>
 /// </summary>
 public sealed class InfirmiereDeniBossBehavior : CanonBossBehaviorBase
 {
@@ -17,6 +26,12 @@ public sealed class InfirmiereDeniBossBehavior : CanonBossBehaviorBase
     {
         var boss = context.Boss;
         var combat = context.Combat;
+
+        // Attitude en combat — face à un coup très puissant : le prochain soin
+        // reçu par la cible est nié (Placebo, sur soi). Prend priorité sur le
+        // plan normal, y compris le premier tour.
+        if (TookPowerfulHit(boss))
+            return OnSelf(boss, "canon.skill.placebo");
 
         if (combat.TurnNumber == 1)
             return OnSelf(boss, "canon.skill.placebo");
@@ -42,6 +57,11 @@ public sealed class SouvenirAliteBossBehavior : CanonBossBehaviorBase
     {
         var boss = context.Boss;
         var combat = context.Combat;
+
+        // Attitude en combat — face à un coup très puissant : appelle
+        // (Sonnette, sur soi). Prend priorité sur le plan normal.
+        if (TookPowerfulHit(boss))
+            return OnSelf(boss, "canon.skill.sonnette");
 
         var undotted = PlayerWithoutDot(combat, boss);
         if (undotted is not null)
@@ -70,6 +90,17 @@ public sealed class RegisseurBlancBossBehavior : CanonBossBehaviorBase
     {
         var boss = context.Boss;
         var combat = context.Combat;
+
+        // Attitude en combat — face à un coup très puissant : aucun sort
+        // défensif dans son kit, riposte contre son dernier agresseur avec son
+        // sort le plus offensif. Prend priorité sur le plan normal ; si aucun
+        // agresseur vivant n'est identifiable, continue sur le plan normal.
+        if (TookPowerfulHit(boss))
+        {
+            var retaliation = Strike(boss, "canon.skill.extinction-des-feux", LastAttacker(combat, boss))
+                ?? Strike(boss, "canon.skill.trousseau", LastAttacker(combat, boss));
+            if (retaliation is not null) return retaliation;
+        }
 
         var slowed = PlayerWithStatus(combat, "canon.skill.contemplation-infinie:StatModifier");
         var locked = PlayerWithStatus(combat, "canon.skill.tour-de-clef:StatModifier");
