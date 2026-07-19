@@ -472,6 +472,10 @@ public sealed class ResolveCurrentEventCommandHandlerTests
         response.Outcome.NarrativeFragments.Should().Contain(f =>
             f.Speaker == "Him'Lit"
             && f.Text == "Tiens. Une neuvième chambre, et vous tenez encore debout.");
+        // The FinalBoss branch never asks for player choices, so nothing else ever
+        // closes out the NPC encounter it opens to read TimesMet — it must end it
+        // itself, or ActiveNpcKey stays dangling on "npc.himlit".
+        run.ActiveNpcKey.Should().BeNull();
     }
 
     [Fact]

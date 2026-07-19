@@ -164,6 +164,13 @@ public sealed class ResolveCurrentEventCommandHandler
                             .ToArray()
                     };
                 }
+
+                // Unlike NodeEventType.Npc (see NpcEventChoiceResolver, which always ends the
+                // encounter at every exit point), this FinalBoss branch never asked for player
+                // choices, so there's no later choice-resolution step to close it out — end it
+                // here instead, otherwise Run.ActiveNpcKey stays dangling on "npc.himlit" until
+                // the next real NPC encounter overwrites it.
+                run.EndNpcEncounter();
             }
 
             var combatId = CombatId.New();

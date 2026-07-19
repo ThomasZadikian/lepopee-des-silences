@@ -423,6 +423,36 @@ describe('useRunStore actions', () => {
     expect(store.gameplayPhase).toBe('Completed');
   });
 
+  it('continueAfterOutcome dismisses the outcome without calling progressRun when combat is already active', async () => {
+    const store = useRunStore();
+    // Him'Lit (FinalBoss) starts combat in the same response as his taunt lines —
+    // "Continue" here must just reveal the already-active combat.
+    store.currentRun = { id: 'run-1', status: 'Active', activeCombatId: 'combat-1' } as any;
+    store.lastOutcome = { narrativeFragments: [{ speaker: "Him'Lit", text: 'Tiens.' }] } as any;
+
+    await store.continueAfterOutcome();
+
+    expect(runApi.progressRun).not.toHaveBeenCalled();
+    expect(store.lastOutcome).toBeNull();
+    expect(store.gameplayPhase).toBe('Combat');
+  });
+
+  it('continueAfterOutcome calls progressRun when no combat is active', async () => {
+    const store = useRunStore();
+    store.currentRun = { id: 'run-1', status: 'Active' } as any;
+    store.lastOutcome = { narrativeFragments: [{ speaker: 'Narrateur', text: 'Un couloir silencieux.' }] } as any;
+
+    vi.mocked(runApi.progressRun).mockResolvedValue({
+      id: 'run-1',
+      status: 'Active',
+      currentRoom: {},
+    } as any);
+
+    await store.continueAfterOutcome();
+
+    expect(runApi.progressRun).toHaveBeenCalledWith('run-1');
+  });
+
   it('removePalaceLaw sends the law key and refreshes the run', async () => {
     const store = useRunStore();
     store.currentRun = {

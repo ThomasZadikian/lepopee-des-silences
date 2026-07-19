@@ -757,6 +757,18 @@ export const useRunStore = defineStore('run', () => {
 
   async function continueAfterOutcome() {
     if (!lastOutcome.value) return;
+
+    // Him'Lit (FinalBoss) starts combat in the SAME resolveCurrentEvent response as
+    // his taunt lines — unlike every other node type, where narrative and combat are
+    // two separate steps. When that's the case, "Continue" just needs to dismiss the
+    // narrative outcome to reveal the already-active combat; calling progressRun()
+    // here would hit a command that assumes no combat is running yet and does
+    // nothing, leaving the button appearing broken.
+    if (currentRun.value?.activeCombatId) {
+      lastOutcome.value = null;
+      return;
+    }
+
     await progressRun();
   }
 
