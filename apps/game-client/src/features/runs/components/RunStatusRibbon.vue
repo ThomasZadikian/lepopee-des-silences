@@ -1,8 +1,9 @@
 <script setup lang="ts">
+import { computed, ref, watch } from 'vue';
 import RoomClimateBadge from '../../room-climate/RoomClimateBadge.vue';
 import type { RunDto } from '../../runs/types/runTypes';
 
-defineProps<{
+const props = defineProps<{
   run: RunDto;
   isSafePoint: boolean;
 }>();
@@ -16,10 +17,32 @@ const emit = defineEmits<{
   openInfluences: [];
   openJournal: [];
 }>();
+
+// Tactical mode only: folded down to a small tab by default to declutter the map view
+// — Classic mode keeps today's always-expanded ribbon untouched.
+const isTactical = computed(() => props.run.explorationMode === 'Tactical');
+const isCollapsed = ref(false);
+watch(
+  isTactical,
+  (tactical) => {
+    if (tactical) isCollapsed.value = true;
+  },
+  { immediate: true },
+);
 </script>
 
 <template>
-  <div class="status-ribbon">
+  <button
+    v-if="isTactical && isCollapsed"
+    type="button"
+    class="status-ribbon-tab"
+    aria-label="Afficher la barre d'actions"
+    @click="isCollapsed = false"
+  >
+    <span aria-hidden="true">☰</span>
+  </button>
+
+  <div v-else class="status-ribbon">
     <div class="status-ribbon__info">
       <span class="es-chip es-chip--gold">Salle {{ run.currentRoomNumber }}</span>
       <span class="es-chip">{{ run.currentRoom?.roomType ?? '—' }}</span>
@@ -94,11 +117,47 @@ const emit = defineEmits<{
       >
         Abandonner
       </button>
+
+      <button
+        v-if="isTactical"
+        type="button"
+        class="es-btn es-btn--ghost status-ribbon__collapse"
+        aria-label="Réduire la barre d'actions"
+        @click="isCollapsed = true"
+      >
+        ▾
+      </button>
     </div>
   </div>
 </template>
 
 <style scoped>
+.status-ribbon-tab {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 22px;
+  margin: 4px;
+  border: 1px solid var(--line-soft);
+  border-radius: 4px;
+  background: oklch(0.20 0.04 60 / 0.85);
+  color: var(--ink-3);
+  cursor: pointer;
+  z-index: var(--z-panel);
+}
+
+.status-ribbon-tab:hover {
+  color: var(--gold);
+}
+
+.status-ribbon__collapse {
+  padding: 3px 8px !important;
+}
+
 .status-ribbon {
   position: absolute;
   bottom: 0;

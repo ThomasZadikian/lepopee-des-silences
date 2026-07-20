@@ -6,6 +6,7 @@ import GameTopBar from './GameTopBar.vue';
 const mockStore = {
   currentRun: null,
   gameplayPhase: 'Loading',
+  isTacticalMode: false,
 };
 
 vi.mock('../runs/stores/runStore', () => ({
@@ -18,6 +19,7 @@ function mountTopBar(storeOverrides: Record<string, any> = {}) {
   Object.assign(mockStore, {
     currentRun: null,
     gameplayPhase: 'Loading',
+    isTacticalMode: false,
   }, storeOverrides);
 
   return mount(GameTopBar, {
@@ -30,6 +32,7 @@ describe('GameTopBar', () => {
     vi.clearAllMocks();
     mockStore.currentRun = null;
     mockStore.gameplayPhase = 'Loading';
+    mockStore.isTacticalMode = false;
   });
 
   it('renders without crashing', () => {
@@ -173,6 +176,30 @@ describe('GameTopBar', () => {
       isTacticalMode: false,
     });
     expect(wrapper.text()).toContain('Profondeur');
+  });
+
+  it('collapses to a small tab by default in Tactical mode, hiding the full bar', () => {
+    const wrapper = mountTopBar({ isTacticalMode: true });
+    expect(wrapper.find('.es-runbar-tab').exists()).toBe(true);
+    expect(wrapper.find('.es-runbar').exists()).toBe(false);
+  });
+
+  it('does not collapse by default in Classic mode', () => {
+    const wrapper = mountTopBar({ isTacticalMode: false });
+    expect(wrapper.find('.es-runbar-tab').exists()).toBe(false);
+    expect(wrapper.find('.es-runbar').exists()).toBe(true);
+  });
+
+  it('expands the full bar as an overlay when the tab is clicked, and can be re-collapsed', async () => {
+    const wrapper = mountTopBar({ isTacticalMode: true });
+
+    await wrapper.find('.es-runbar-tab').trigger('click');
+    expect(wrapper.find('.es-runbar--overlay').exists()).toBe(true);
+    expect(wrapper.find('.es-runbar-tab').exists()).toBe(false);
+
+    await wrapper.find('.es-runbar__collapse').trigger('click');
+    expect(wrapper.find('.es-runbar-tab').exists()).toBe(true);
+    expect(wrapper.find('.es-runbar--overlay').exists()).toBe(false);
   });
 
   it('pads depth values with leading zeros', () => {

@@ -1,10 +1,22 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 import { useRunStore } from '../runs/stores/runStore';
 import StatTooltip from '../../shared/components/StatTooltip.vue';
 
 const runStore = useRunStore();
+
+// Tactical mode only: fold the status bar down to a small tab by default, to give the
+// map as much room as possible — expanding it overlays the map rather than pushing it
+// down. Classic mode keeps today's always-expanded, in-flow behavior untouched.
+const isCollapsed = ref(false);
+watch(
+  () => runStore.isTacticalMode,
+  (tactical) => {
+    if (tactical) isCollapsed.value = true;
+  },
+  { immediate: true },
+);
 
 const run    = computed(() => runStore.currentRun);
 const room   = computed(() => run.value?.currentRoom);
@@ -48,7 +60,22 @@ const statusColor = computed(() =>
 </script>
 
 <template>
-  <header class="es-runbar" style="position: relative; z-index: 8">
+  <button
+    v-if="runStore.isTacticalMode && isCollapsed"
+    type="button"
+    class="es-runbar-tab"
+    aria-label="Afficher la barre de statut"
+    @click="isCollapsed = false"
+  >
+    <span aria-hidden="true">☰</span>
+  </button>
+
+  <header
+    v-else
+    class="es-runbar"
+    :class="{ 'es-runbar--overlay': runStore.isTacticalMode }"
+    style="position: relative; z-index: 8"
+  >
     <!-- Palais -->
     <div class="es-seg" style="padding-left: 30px">
       <span class="es-seg__k">Palais</span>
@@ -114,6 +141,16 @@ const statusColor = computed(() =>
 
     <!-- Slot pour actions supplémentaires (boutons Sauvegarder, Lois, etc.) -->
     <slot />
+
+    <button
+      v-if="runStore.isTacticalMode"
+      type="button"
+      class="es-runbar__collapse"
+      aria-label="Réduire la barre de statut"
+      @click="isCollapsed = true"
+    >
+      ▴
+    </button>
   </header>
 
   <div v-if="systemNotice" class="es-system-notice" role="status">
@@ -122,6 +159,51 @@ const statusColor = computed(() =>
 </template>
 
 <style scoped>
+.es-runbar-tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 22px;
+  margin: 4px;
+  border: 1px solid var(--line-soft);
+  border-radius: 4px;
+  background: oklch(0.20 0.04 272 / 0.85);
+  color: var(--ink-3);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.es-runbar-tab:hover {
+  color: var(--frost);
+}
+
+.es-runbar--overlay {
+  /* The inline style="position: relative; z-index: 8" on the element pre-dates this
+     class and still wins on specificity for position — !important is required here to
+     switch it to an overlay. z-index:8 (inline, unchanged) already clears
+     .game-shell__main's z-index:1, so no override needed there. */
+  position: absolute !important;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: oklch(0.16 0.03 272 / 0.94);
+  backdrop-filter: blur(8px);
+}
+
+.es-runbar__collapse {
+  border: none;
+  background: transparent;
+  color: var(--ink-4);
+  cursor: pointer;
+  padding: 4px 14px;
+  font-size: 0.85rem;
+}
+
+.es-runbar__collapse:hover {
+  color: var(--frost);
+}
+
 .es-runbar__refs {
   flex-direction: row;
   align-items: center;
