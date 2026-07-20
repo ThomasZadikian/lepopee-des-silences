@@ -27,9 +27,12 @@ defineEmits<{ close: [] }>();
 }
 
 .pom-panel {
+  /* Fixed size regardless of content — a short page and a long one both get the
+     same 80vw x 80vh frame, with .pom-scroll taking up any slack internally,
+     instead of the panel stretching/shrinking to fit whatever's inside it. */
   position: relative;
-  width: min(1100px, 94vw);
-  max-height: 88vh;
+  width: 80vw;
+  height: 80vh;
   overflow: hidden;
   display: flex;
   flex-direction: column;

@@ -144,14 +144,13 @@ async function startNewRun() {
 }
 
 const isMapPhase = computed(() => runStore.gameplayPhase === 'Map');
+// activeModifiers deliberately excluded — a law's mechanical effect is mirrored
+// there under the hood, so counting it too double-counts the same influence
+// (LawsPopover no longer displays modifiers separately for the same reason).
 const totalInfluenceCount = computed(() => {
   const run = runStore.currentRun;
   if (!run) return 0;
-  return (
-    (run.activePalaceLaws?.length ?? 0) +
-    (run.activeCurses?.length ?? 0) +
-    (run.activeModifiers?.length ?? 0)
-  );
+  return (run.activePalaceLaws?.length ?? 0) + (run.activeCurses?.length ?? 0);
 });
 const isCombatPhase = computed(() => runStore.gameplayPhase === 'Combat');
 const showNodeDrawer = computed(() =>
@@ -284,8 +283,6 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
                   v-if="showLaws"
                   :laws="runStore.currentRun.activePalaceLaws"
                   :curses="runStore.currentRun.activeCurses"
-                  :modifiers="runStore.currentRun.activeModifiers ?? null"
-                  :palace-indicators="runStore.currentRun.palaceIndicators ?? null"
                   :room-climate="runStore.currentRun.currentRoom.activeClimate ?? runStore.currentRun.currentRoom.climate ?? null"
                   show-room-climate
                   :law-denial-enabled="runStore.currentRun.lawDenialEnabled ?? false"

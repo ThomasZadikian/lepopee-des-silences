@@ -367,6 +367,7 @@ function toggleInfoCollapsed() {
           <button
             type="button"
             class="tgrid__info-toggle"
+            :class="{ 'tgrid__info-toggle--alert': showChallengeBossBanner }"
             :aria-label="isInfoCollapsed ? 'Afficher les informations' : 'Réduire les informations'"
             @click="toggleInfoCollapsed"
           >
@@ -526,7 +527,8 @@ function toggleInfoCollapsed() {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .tgrid__node-icon {
+  .tgrid__node-icon,
+  .tgrid__info-toggle--alert {
     animation: none;
   }
 }
@@ -692,6 +694,7 @@ function toggleInfoCollapsed() {
 }
 
 .tgrid__info-overlay {
+  position: relative;
   min-width: 0;
 }
 
@@ -717,6 +720,15 @@ function toggleInfoCollapsed() {
 .tgrid__info-toggle:hover,
 .tgrid__laws-tab:hover {
   background: oklch(0.20 0.04 272 / 1);
+}
+
+.tgrid__info-toggle--alert {
+  animation: tgrid-info-alert-glow 1.6s ease-in-out infinite;
+}
+
+@keyframes tgrid-info-alert-glow {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--blood), transparent 60%); }
+  50% { box-shadow: 0 0 10px 3px color-mix(in oklch, var(--blood), transparent 20%); }
 }
 
 .tgrid__room-tab {
@@ -749,6 +761,15 @@ function toggleInfoCollapsed() {
 }
 
 .tgrid__info-body {
+  /* Absolute + anchored under the toggle, out of normal flow — expanding it must
+     overlay the canvas, not widen .tgrid__info-overlay and push the room/laws tabs
+     sideways the way it did when this sat in flow. */
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 6;
+  width: max-content;
+  max-width: 280px;
   padding: var(--space-2) var(--space-4) var(--space-3);
   background: oklch(0.20 0.04 272 / 0.92);
   backdrop-filter: blur(8px);
@@ -758,28 +779,6 @@ function toggleInfoCollapsed() {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-}
-
-.tgrid__node-panel-actions .es-btn {
-  width: 100%;
-  justify-content: center;
-}
-
-/* ── Hover tooltip ────────────────────────────────────────────────────────────── */
-.tgrid__hover-tooltip {
-  position: fixed;
-  z-index: var(--z-tooltip, 1000);
-  padding: 4px 10px;
-  font-family: var(--font-caps);
-  font-size: 0.7rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--ink);
-  background: oklch(0.18 0.03 272 / 0.95);
-  border: 1px solid var(--line-soft);
-  border-radius: 3px;
-  pointer-events: none;
-  white-space: nowrap;
 }
 
 .tgrid__boss-banner {

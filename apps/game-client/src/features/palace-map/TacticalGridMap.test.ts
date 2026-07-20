@@ -268,6 +268,18 @@ describe('TacticalGridMap', () => {
     expect(wrapper.find('.tgrid__info-alert-dot').exists()).toBe(false);
   });
 
+  it('glows the info toggle when the boss challenge is available', () => {
+    const room = makeRoom({}, { movementBudgetRemaining: 0, canChallengeBossRemotely: true });
+    const wrapper = mount(TacticalGridMap, { props: { room } });
+    expect(wrapper.find('.tgrid__info-toggle').classes()).toContain('tgrid__info-toggle--alert');
+  });
+
+  it('does not glow the info toggle when the boss challenge is unavailable', () => {
+    const room = makeRoom({}, { movementBudgetRemaining: 5, canChallengeBossRemotely: false });
+    const wrapper = mount(TacticalGridMap, { props: { room } });
+    expect(wrapper.find('.tgrid__info-toggle').classes()).not.toContain('tgrid__info-toggle--alert');
+  });
+
   it('shows the challenge-boss banner when the budget is exhausted and challenge is available', async () => {
     const room = makeRoom({}, { movementBudgetRemaining: 0, canChallengeBossRemotely: true });
     const wrapper = mount(TacticalGridMap, { props: { room } });

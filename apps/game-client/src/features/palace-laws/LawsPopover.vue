@@ -1,14 +1,10 @@
 <script setup lang="ts">
-import { computed } from 'vue';
-import PalacePublicIndicatorsPanel from '../palace-indicators/PalacePublicIndicatorsPanel.vue';
 import RoomClimatePanel from '../room-climate/RoomClimatePanel.vue';
-import type { ActivePalaceLawDto, ActiveCurseDto, PalacePublicIndicatorDto, RoomClimateStateDto, RunModifierDto } from '../runs/types/runTypes';
+import type { ActivePalaceLawDto, ActiveCurseDto, RoomClimateStateDto } from '../runs/types/runTypes';
 
-const props = defineProps<{
+defineProps<{
   laws?: ActivePalaceLawDto[] | null;
   curses?: ActiveCurseDto[] | null;
-  modifiers?: RunModifierDto[] | null;
-  palaceIndicators?: PalacePublicIndicatorDto[] | null;
   roomClimate?: RoomClimateStateDto | null;
   showRoomClimate?: boolean;
   /** true when the player owns "Déni permanent" — shows the revoke action on each law. */
@@ -16,12 +12,6 @@ const props = defineProps<{
   /** true when "Déni permanent" is currently usable (owned, cooldown elapsed). */
   canUseLawDenial?: boolean;
 }>()
-
-const visibleModifiers = computed(() =>
-  (props.modifiers ?? []).filter(m => m.sourceType !== 'RunItem')
-)
-
-const showPalaceIndicators = computed(() => props.palaceIndicators !== undefined)
 
 const emit = defineEmits<{ close: []; revokeLaw: [lawKey: string] }>()
 
@@ -47,14 +37,6 @@ const DURATION_LABELS: Record<string, string> = {
 function durationLabel(d: string | null | undefined): string {
   if (!d) return ''
   return DURATION_LABELS[d] ?? d
-}
-
-function modifierTypeLabel(type: string): string {
-  return type.replace(/([A-Z])/g, ' $1').trim()
-}
-
-function modifierValueLabel(value: number): string {
-  return `${value >= 0 ? '+' : ''}${value}`
 }
 </script>
 
@@ -115,12 +97,7 @@ function modifierValueLabel(value: number): string {
     <RoomClimatePanel v-if="showRoomClimate" class="lp-climate" :climate="roomClimate" />
 
     <!-- Content -->
-    <div v-if="showPalaceIndicators || laws?.length || curses?.length || visibleModifiers.length" class="lp-body">
-
-      <PalacePublicIndicatorsPanel
-        v-if="showPalaceIndicators"
-        :indicators="palaceIndicators"
-      />
+    <div v-if="laws?.length || curses?.length" class="lp-body">
 
       <!-- ── Lois du Palais ── -->
       <section v-if="laws && laws.length" class="lp-section">
@@ -233,29 +210,6 @@ function modifierValueLabel(value: number): string {
             <span v-if="curse.duration" class="lp-curse__duration">
               {{ durationLabel(curse.duration) }}
             </span>
-          </div>
-        </div>
-      </section>
-
-      <!-- ── Modificateurs ── -->
-      <section v-if="visibleModifiers.length" class="lp-section">
-        <h4 class="lp-section__title">
-          Modificateurs
-          <span class="lp-section__count">{{ visibleModifiers.length }}</span>
-        </h4>
-        <div
-          v-for="mod in visibleModifiers"
-          :key="mod.id"
-          class="lp-mod"
-        >
-          <div class="lp-mod__body">
-            <div class="lp-mod__head">
-              <span class="lp-mod__type">{{ modifierTypeLabel(mod.type) }}</span>
-              <span class="es-chip" style="font-size: 9px; padding: 1px 6px;">
-                {{ modifierValueLabel(mod.value) }}
-              </span>
-            </div>
-            <span v-if="mod.duration" class="lp-mod__duration">{{ durationLabel(mod.duration) }}</span>
           </div>
         </div>
       </section>
@@ -542,42 +496,6 @@ function modifierValueLabel(value: number): string {
 }
 
 .lp-curse__duration {
-  font-family: var(--font-caps, var(--font));
-  font-size: 9.5px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--ink-5, oklch(.42 .018 268));
-}
-
-/* ── Modifier entries ── */
-.lp-mod {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--line-soft, oklch(.32 .022 268 / .5));
-}
-
-.lp-mod:last-child { border-bottom: none; }
-
-.lp-mod__body { flex: 1; min-width: 0; }
-
-.lp-mod__head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 3px;
-}
-
-.lp-mod__type {
-  font-family: var(--font-display);
-  font-size: 13.5px;
-  font-weight: 600;
-  color: var(--ink-2);
-}
-
-.lp-mod__duration {
   font-family: var(--font-caps, var(--font));
   font-size: 9.5px;
   letter-spacing: 0.1em;
