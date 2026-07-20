@@ -236,21 +236,56 @@ describe('TacticalGridMap', () => {
     expect(wrapper.emitted('wagerNode')).toEqual([['node-1']]);
   });
 
-  it('shows the challenge-boss banner when the budget is exhausted and challenge is available', () => {
+  it('the info overlay (kicker/budget/boss banner) is collapsed by default', () => {
+    const wrapper = mount(TacticalGridMap, { props: { room: makeRoom() } });
+    expect(wrapper.find('.tgrid__info-overlay--collapsed').exists()).toBe(true);
+    expect(wrapper.find('.tgrid__info-body').exists()).toBe(false);
+  });
+
+  it('expands and re-collapses the info overlay on toggle click, overlaying the map', async () => {
+    const wrapper = mount(TacticalGridMap, { props: { room: makeRoom() } });
+
+    await wrapper.find('.tgrid__info-toggle').trigger('click');
+    expect(wrapper.find('.tgrid__info-overlay--collapsed').exists()).toBe(false);
+    expect(wrapper.find('.tgrid__info-body').exists()).toBe(true);
+    expect(wrapper.text()).toContain('Exploration tactique');
+
+    await wrapper.find('.tgrid__info-toggle').trigger('click');
+    expect(wrapper.find('.tgrid__info-overlay--collapsed').exists()).toBe(true);
+    expect(wrapper.find('.tgrid__info-body').exists()).toBe(false);
+  });
+
+  it('shows a pulsing alert dot on the collapsed info tab when the boss challenge is available', () => {
     const room = makeRoom({}, { movementBudgetRemaining: 0, canChallengeBossRemotely: true });
     const wrapper = mount(TacticalGridMap, { props: { room } });
+    expect(wrapper.find('.tgrid__info-alert-dot').exists()).toBe(true);
+  });
+
+  it('hides the alert dot once the info overlay is expanded', async () => {
+    const room = makeRoom({}, { movementBudgetRemaining: 0, canChallengeBossRemotely: true });
+    const wrapper = mount(TacticalGridMap, { props: { room } });
+    await wrapper.find('.tgrid__info-toggle').trigger('click');
+    expect(wrapper.find('.tgrid__info-alert-dot').exists()).toBe(false);
+  });
+
+  it('shows the challenge-boss banner when the budget is exhausted and challenge is available', async () => {
+    const room = makeRoom({}, { movementBudgetRemaining: 0, canChallengeBossRemotely: true });
+    const wrapper = mount(TacticalGridMap, { props: { room } });
+    await wrapper.find('.tgrid__info-toggle').trigger('click');
     expect(wrapper.find('.tgrid__boss-banner').exists()).toBe(true);
   });
 
-  it('hides the challenge-boss banner when budget remains', () => {
+  it('hides the challenge-boss banner when budget remains', async () => {
     const room = makeRoom({}, { movementBudgetRemaining: 5, canChallengeBossRemotely: false });
     const wrapper = mount(TacticalGridMap, { props: { room } });
+    await wrapper.find('.tgrid__info-toggle').trigger('click');
     expect(wrapper.find('.tgrid__boss-banner').exists()).toBe(false);
   });
 
   it('emits challengeBoss when the banner button is clicked', async () => {
     const room = makeRoom({}, { movementBudgetRemaining: 0, canChallengeBossRemotely: true });
     const wrapper = mount(TacticalGridMap, { props: { room } });
+    await wrapper.find('.tgrid__info-toggle').trigger('click');
     await wrapper.find('.tgrid__boss-banner button').trigger('click');
     expect(wrapper.emitted('challengeBoss')).toHaveLength(1);
   });

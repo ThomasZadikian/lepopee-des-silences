@@ -253,17 +253,19 @@ watch(
 function togglePanelCollapsed() {
   isPanelCollapsed.value = !isPanelCollapsed.value;
 }
+
+// ── Top info overlay (kicker + movement budget + boss banner) ──────────────────────
+// External to the map itself, so it starts folded to a small tab and only overlays
+// the canvas — never pushes it down — once opened.
+const isInfoCollapsed = ref(true);
+
+function toggleInfoCollapsed() {
+  isInfoCollapsed.value = !isInfoCollapsed.value;
+}
 </script>
 
 <template>
   <section class="tgrid">
-    <header class="tgrid__header">
-      <span class="es-kicker">Exploration tactique</span>
-      <span v-if="grid" class="tgrid__budget">
-        Déplacement <strong>{{ grid.movementBudgetRemaining }}</strong> / {{ grid.movementBudget }}
-      </span>
-    </header>
-
     <div
       v-if="grid"
       class="tgrid__canvas"
@@ -344,15 +346,41 @@ function togglePanelCollapsed() {
           </div>
         </div>
       </div>
-    </div>
 
-    <div v-if="showChallengeBossBanner" class="tgrid__boss-banner">
-      <p class="tgrid__boss-banner-text">
-        Le budget de déplacement est épuisé. Le gardien de la salle approche à grands pas.
-      </p>
-      <button type="button" class="es-btn es-btn--blood" @click="emit('challengeBoss')">
-        Provoquer le combat de boss →
-      </button>
+      <div
+        class="tgrid__info-overlay"
+        :class="{ 'tgrid__info-overlay--collapsed': isInfoCollapsed }"
+      >
+        <button
+          type="button"
+          class="tgrid__info-toggle"
+          :aria-label="isInfoCollapsed ? 'Afficher les informations' : 'Réduire les informations'"
+          @click="toggleInfoCollapsed"
+        >
+          <span class="es-kicker">Exploration tactique</span>
+          <span
+            v-if="showChallengeBossBanner && isInfoCollapsed"
+            class="tgrid__info-alert-dot"
+            aria-hidden="true"
+          />
+          <span class="tgrid__info-chevron">{{ isInfoCollapsed ? '▾' : '▴' }}</span>
+        </button>
+
+        <div v-if="!isInfoCollapsed" class="tgrid__info-body">
+          <span class="tgrid__budget">
+            Déplacement <strong>{{ grid.movementBudgetRemaining }}</strong> / {{ grid.movementBudget }}
+          </span>
+
+          <div v-if="showChallengeBossBanner" class="tgrid__boss-banner">
+            <p class="tgrid__boss-banner-text">
+              Le budget de déplacement est épuisé. Le gardien de la salle approche à grands pas.
+            </p>
+            <button type="button" class="es-btn es-btn--blood" @click="emit('challengeBoss')">
+              Provoquer le combat de boss →
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <Teleport to="body">
@@ -370,16 +398,6 @@ function togglePanelCollapsed() {
   display: flex;
   flex-direction: column;
   padding: var(--space-3) var(--space-4);
-}
-
-.tgrid__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding-bottom: var(--space-2);
-  border-bottom: 1px solid var(--line-soft);
-  margin-bottom: var(--space-3);
 }
 
 .tgrid__budget {
@@ -455,13 +473,25 @@ function togglePanelCollapsed() {
   box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--blood), transparent 25%);
 }
 
+@keyframes tgrid-node-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.14); }
+}
+
 .tgrid__node-icon {
   color: var(--frost);
+  animation: tgrid-node-pulse 1.8s ease-in-out infinite;
 }
 
 .tgrid__node-icon--ghost {
   opacity: 0.6;
   filter: grayscale(0.35);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tgrid__node-icon {
+    animation: none;
+  }
 }
 
 .tgrid__cell--boss-node .tgrid__node-icon {
@@ -606,8 +636,59 @@ function togglePanelCollapsed() {
   white-space: nowrap;
 }
 
+/* ── Top info overlay (kicker + budget + boss banner) ────────────────────────── */
+.tgrid__info-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 5;
+  max-width: calc(100% - 2 * var(--space-3));
+}
+
+.tgrid__info-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  border: 1px solid var(--line-soft);
+  border-top: none;
+  border-left: none;
+  border-radius: 0 0 4px 0;
+  padding: 4px 12px;
+  background: oklch(0.20 0.04 272 / 0.9);
+  color: var(--ink-3);
+  cursor: pointer;
+}
+
+.tgrid__info-toggle:hover {
+  background: oklch(0.20 0.04 272 / 1);
+}
+
+.tgrid__info-alert-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--blood);
+  animation: tgrid-node-pulse 1.4s ease-in-out infinite;
+}
+
+.tgrid__info-chevron {
+  font-size: 0.7rem;
+  color: var(--ink-4);
+}
+
+.tgrid__info-body {
+  padding: var(--space-2) var(--space-4) var(--space-3);
+  background: oklch(0.20 0.04 272 / 0.92);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--line-soft);
+  border-top: none;
+  border-radius: 0 0 6px 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
 .tgrid__boss-banner {
-  margin-top: var(--space-3);
   padding: var(--space-3) var(--space-4);
   border: 1px solid var(--blood-dim, var(--blood));
   border-radius: 4px;

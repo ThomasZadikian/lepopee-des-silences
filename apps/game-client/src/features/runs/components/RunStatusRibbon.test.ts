@@ -188,4 +188,30 @@ describe('RunStatusRibbon', () => {
     if (btn) await btn.trigger('click');
     expect(wrapper.emitted('openJournal')).toHaveLength(1);
   });
+
+  it('does not collapse by default in Classic mode', () => {
+    const wrapper = mountRibbon(baseRun);
+    expect(wrapper.find('.status-ribbon-tab').exists()).toBe(false);
+    expect(wrapper.find('.status-ribbon').exists()).toBe(true);
+  });
+
+  it('collapses to a small tab by default in Tactical mode', () => {
+    const run = { ...baseRun, explorationMode: 'Tactical' as const };
+    const wrapper = mountRibbon(run);
+    expect(wrapper.find('.status-ribbon-tab').exists()).toBe(true);
+    expect(wrapper.find('.status-ribbon').exists()).toBe(false);
+  });
+
+  it('expands and re-collapses the ribbon on toggle click in Tactical mode', async () => {
+    const run = { ...baseRun, explorationMode: 'Tactical' as const };
+    const wrapper = mountRibbon(run);
+
+    await wrapper.find('.status-ribbon-tab').trigger('click');
+    expect(wrapper.find('.status-ribbon').exists()).toBe(true);
+    expect(wrapper.text()).toContain('Salle 1');
+
+    const collapseBtn = wrapper.findAll('button').find((b) => b.classes().includes('status-ribbon__collapse'));
+    await collapseBtn!.trigger('click');
+    expect(wrapper.find('.status-ribbon-tab').exists()).toBe(true);
+  });
 });
