@@ -75,8 +75,8 @@ const statusColor = computed(() =>
       <span class="es-seg__v es-gold">{{ seed }}</span>
     </div>
 
-    <!-- Profondeur -->
-    <div class="es-seg">
+    <!-- Profondeur (sans objet en mode Tactique — pas de structure en lignes à traverser) -->
+    <div v-if="!runStore.isTacticalMode" class="es-seg">
       <span class="es-seg__k">Profondeur</span>
       <span class="es-seg__v">{{ depthLabel }}</span>
     </div>
