@@ -16,10 +16,10 @@ import type {
 } from '../../interlude/interludeTypes';
 
 export const runApi = {
-  startRun(playerId: string) {
-    return gameEngineApi.post<StartRunResponse, { playerId: string }>(
+  startRun(playerId: string, explorationMode?: 'Classic' | 'Tactical') {
+    return gameEngineApi.post<StartRunResponse, { playerId: string; explorationMode?: string }>(
       '/api/v2/runs',
-      { playerId },
+      { playerId, explorationMode },
     );
   },
 
@@ -115,6 +115,25 @@ export const runApi = {
   wagerNode(runId: string, nodeId: string) {
     return gameEngineApi.post<RunResponse>(
       `/api/v2/runs/${runId}/nodes/${nodeId}/wager`,
+    );
+  },
+
+  moveParty(runId: string, targetX: number, targetY: number) {
+    return gameEngineApi.post<RunResponse, { targetX: number; targetY: number }>(
+      `/api/v2/runs/${runId}/party/move`,
+      { targetX, targetY },
+    );
+  },
+
+  enterGridNode(runId: string, nodeId: string) {
+    return gameEngineApi.post<RunResponse>(
+      `/api/v2/runs/${runId}/nodes/${nodeId}/enter`,
+    );
+  },
+
+  challengeBossRemotely(runId: string) {
+    return gameEngineApi.post<RunResponse>(
+      `/api/v2/runs/${runId}/rooms/current/challenge-boss`,
     );
   },
 

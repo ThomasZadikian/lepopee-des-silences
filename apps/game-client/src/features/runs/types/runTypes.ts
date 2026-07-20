@@ -60,6 +60,19 @@ export type RoomClimateDto = {
 
 export type RoomClimateStateDto = string | RoomClimateDto;
 
+/** Tactical-mode free-roam grid overlay — absent/null for a Classic room. */
+export type RoomGridDto = {
+  width: number;
+  height: number;
+  movementBudget: number;
+  movementBudgetRemaining: number;
+  partyX: number;
+  partyY: number;
+  canChallengeBossRemotely: boolean;
+  /** Fog-of-war revealed cells, each as [x, y]. */
+  revealedCells: [number, number][];
+};
+
 export type RoomDto = {
   id: string;
   depth: number;
@@ -82,6 +95,8 @@ export type RoomDto = {
   catalogName?: string | null;
   /** Canon room narrative/flavour text. */
   catalogNarrative?: string | null;
+  /** Tactical-mode grid overlay. Null/absent for a Classic room. */
+  grid?: RoomGridDto | null;
 };
 
 export type RunDto = {
@@ -130,6 +145,8 @@ export type RunDto = {
   caliceInfiniEnabled?: boolean;
   /** true when Calice infini is currently usable: owned, and at least 1 room has elapsed since last use. */
   canUseCaliceInfini?: boolean;
+  /** Combat/exploration system chosen at run launch: 'Classic' (DAG node graph) or 'Tactical' (free-roam grid). Immutable for the run's lifetime. Always populated by the backend; optional here only for resilience against older cached shapes. */
+  explorationMode?: 'Classic' | 'Tactical';
 };
 
 export type RunJournalEntryDto = {

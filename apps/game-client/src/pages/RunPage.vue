@@ -21,6 +21,7 @@ import PalaceNodeDrawer from '../features/node-details/PalaceNodeDrawer.vue';
 import LawResolutionPanel from '../features/palace-laws/LawResolutionPanel.vue';
 import LawsPopover from '../features/palace-laws/LawsPopover.vue';
 import PalaceMapPlaceholder from '../features/palace-map/PalaceMapPlaceholder.vue';
+import TacticalGridMap from '../features/palace-map/TacticalGridMap.vue';
 import { usePlayerStore } from '../features/party/stores/playerStore';
 import RewardOfferPanel from '../features/rewards/components/RewardOfferPanel.vue';
 import RoomClimateEffects from '../features/room-climate/RoomClimateEffects.vue';
@@ -198,7 +199,16 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
         <div class="phase-map">
           <!-- Map canvas -->
           <div class="phase-map__canvas">
+            <TacticalGridMap
+              v-if="runStore.isTacticalMode"
+              :room="runStore.currentRun.currentRoom"
+              @move-request="runStore.movePartyTo"
+              @enter-node="runStore.enterGridNode"
+              @wager-node="runStore.wagerNode"
+              @challenge-boss="runStore.challengeBossRemotely"
+            />
             <PalaceMapPlaceholder
+              v-else
               :nodes="runStore.allNodes"
               :available-nodes="runStore.availableNodes"
               :selected-node-id="runStore.selectedNode?.id ?? null"

@@ -24,6 +24,9 @@ vi.mock('../api/runApi', () => ({
     confirmPermanentItemSelection: vi.fn(),
     removePalaceLaw: vi.fn(),
     wagerNode: vi.fn(),
+    moveParty: vi.fn(),
+    enterGridNode: vi.fn(),
+    challengeBossRemotely: vi.fn(),
     useCaliceInfini: vi.fn(),
     syncPartySkills: vi.fn(),
     syncPartyStats: vi.fn(),
@@ -208,6 +211,31 @@ describe('useRunStore actions', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
     vi.clearAllMocks();
+  });
+
+  it('startRun forwards the exploration mode to the API', async () => {
+    const store = useRunStore();
+
+    vi.mocked(runApi.startRun).mockResolvedValue({
+      run: { id: 'run-1', status: 'Active', explorationMode: 'Tactical', currentRoom: {} },
+    } as any);
+
+    await store.startRun('Tactical');
+
+    expect(runApi.startRun).toHaveBeenCalledWith(expect.any(String), 'Tactical');
+    expect(store.currentRun?.explorationMode).toBe('Tactical');
+  });
+
+  it('startRun defaults to no exploration mode when none is given', async () => {
+    const store = useRunStore();
+
+    vi.mocked(runApi.startRun).mockResolvedValue({
+      run: { id: 'run-1', status: 'Active', explorationMode: 'Classic', currentRoom: {} },
+    } as any);
+
+    await store.startRun();
+
+    expect(runApi.startRun).toHaveBeenCalledWith(expect.any(String), undefined);
   });
 
   it('previewNode sets previewedNodeId for available node', () => {
@@ -494,6 +522,56 @@ describe('useRunStore actions', () => {
 
     expect(runApi.wagerNode).toHaveBeenCalledWith('run-1', 'node-1');
     expect(store.currentRun?.currentRoom.nodes[0].combatRiskTier).toBe('Dangereux');
+  });
+
+  it('movePartyTo sends the target cell and refreshes the run', async () => {
+    const store = useRunStore();
+    store.currentRun = {
+      id: 'run-1',
+      status: 'Active',
+      explorationMode: 'Tactical',
+      currentRoom: { grid: { partyX: 0, partyY: 0 } },
+    } as any;
+
+    vi.mocked(runApi.moveParty).mockResolvedValue({
+      run: {
+        id: 'run-1',
+        status: 'Active',
+        explorationMode: 'Tactical',
+        currentRoom: { grid: { partyX: 1, partyY: 0 } },
+      },
+    } as any);
+
+    await store.movePartyTo(1, 0);
+
+    expect(runApi.moveParty).toHaveBeenCalledWith('run-1', 1, 0);
+    expect(store.currentRun?.currentRoom.grid.partyX).toBe(1);
+  });
+
+  it('enterGridNode sends the node id and refreshes the run', async () => {
+    const store = useRunStore();
+    store.currentRun = { id: 'run-1', status: 'Active', explorationMode: 'Tactical' } as any;
+
+    vi.mocked(runApi.enterGridNode).mockResolvedValue({
+      run: { id: 'run-1', status: 'Active', explorationMode: 'Tactical', currentRoom: {} },
+    } as any);
+
+    await store.enterGridNode('node-1');
+
+    expect(runApi.enterGridNode).toHaveBeenCalledWith('run-1', 'node-1');
+  });
+
+  it('challengeBossRemotely calls the API and refreshes the run', async () => {
+    const store = useRunStore();
+    store.currentRun = { id: 'run-1', status: 'Active', explorationMode: 'Tactical' } as any;
+
+    vi.mocked(runApi.challengeBossRemotely).mockResolvedValue({
+      run: { id: 'run-1', status: 'Active', explorationMode: 'Tactical', currentRoom: {} },
+    } as any);
+
+    await store.challengeBossRemotely();
+
+    expect(runApi.challengeBossRemotely).toHaveBeenCalledWith('run-1');
   });
 
   it('useCaliceInfini calls the API and refreshes the run', async () => {

@@ -119,6 +119,11 @@ export const useRunStore = defineStore('run', () => {
 
   const availableNodes = computed(() => currentRoom.value?.availableNodes ?? []);
 
+  /** Tactical-mode grid overlay of the current room. Null for a Classic run. */
+  const currentGrid = computed(() => currentRoom.value?.grid ?? null);
+
+  const isTacticalMode = computed(() => currentRun.value?.explorationMode === 'Tactical');
+
   /**
    * True when the current room is fully cleared (boss defeated, reward selected)
    * and the run is waiting to enter the Interlude.
@@ -272,6 +277,37 @@ export const useRunStore = defineStore('run', () => {
     });
   }
 
+  // -------------------------------------------------------------------------
+  // Tactical grid exploration
+  // -------------------------------------------------------------------------
+
+  async function movePartyTo(x: number, y: number) {
+    if (!currentRun.value) return;
+
+    await execute(async () => {
+      const response = await runApi.moveParty(currentRun.value!.id, x, y);
+      currentRun.value = unwrapRunResponse(response);
+    });
+  }
+
+  async function enterGridNode(nodeId: string) {
+    if (!currentRun.value) return;
+
+    await execute(async () => {
+      const response = await runApi.enterGridNode(currentRun.value!.id, nodeId);
+      currentRun.value = unwrapRunResponse(response);
+    });
+  }
+
+  async function challengeBossRemotely() {
+    if (!currentRun.value) return;
+
+    await execute(async () => {
+      const response = await runApi.challengeBossRemotely(currentRun.value!.id);
+      currentRun.value = unwrapRunResponse(response);
+    });
+  }
+
   async function useCaliceInfini(targetCombatantId?: string | null) {
     if (!currentRun.value) return;
 
@@ -351,13 +387,13 @@ export const useRunStore = defineStore('run', () => {
   // Run lifecycle
   // -------------------------------------------------------------------------
 
-  async function startRun() {
+  async function startRun(explorationMode?: 'Classic' | 'Tactical') {
     await execute(async () => {
       // Vider currentRun avant l'appel pour que, si l'API échoue,
       // le composant appelant ne navigue pas vers l'ancienne run.
       currentRun.value = null;
 
-      const response = await runApi.startRun(demoPlayerId);
+      const response = await runApi.startRun(demoPlayerId, explorationMode);
       const run = unwrapRunResponse(response);
 
       lastChoiceResult.value = null;
@@ -908,6 +944,8 @@ export const useRunStore = defineStore('run', () => {
     allNodes,
     selectedNode,
     availableNodes,
+    currentGrid,
+    isTacticalMode,
     previewedNodeId,
     lastOutcome,
     lastChoiceResult,
@@ -958,6 +996,9 @@ export const useRunStore = defineStore('run', () => {
     confirmPermanentItemSelection,
     removePalaceLaw,
     wagerNode,
+    movePartyTo,
+    enterGridNode,
+    challengeBossRemotely,
     useCaliceInfini,
     syncPartySkills,
     syncPartyStats,
