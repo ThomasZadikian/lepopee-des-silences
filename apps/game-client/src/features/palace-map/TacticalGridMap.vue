@@ -755,17 +755,22 @@ function toggleInfoCollapsed() {
   content: '';
   position: absolute;
   inset: -55%;
-  border-radius: 45%;
+  border-radius: 100%;
+  /* Purely decorative — never intercepts clicks. The overshoot (inset: -55%) means
+     this box extends well past its own fog tile and over neighboring cells; without
+     pointer-events: none, that overshoot silently ate clicks meant for an adjacent
+     available tile whenever the mist drifted over it. */
+  pointer-events: none;
   /* Each blob's center is nudged by the cell's own --fog-jx/--fog-jy (set in
      cellStyle()) so neighboring tiles don't all draw the same cloud shape — without
      that, the mist reads as an obviously repeating scalloped texture. */
   background:
-    radial-gradient(circle at calc(28% + var(--fog-jx, 0) * 0.7%) calc(34% + var(--fog-jy, 0) * 0.7%), color-mix(in oklch, var(--ink-3), transparent 35%), transparent 55%),
-    radial-gradient(circle at calc(70% - var(--fog-jy, 0) * 0.8%) calc(26% + var(--fog-jx, 0) * 0.6%), color-mix(in oklch, var(--ink-4), transparent 42%), transparent 58%),
-    radial-gradient(circle at calc(46% + var(--fog-jy, 0) * 0.6%) calc(74% - var(--fog-jx, 0) * 0.8%), color-mix(in oklch, var(--ink-5), transparent 32%), transparent 62%),
+    radial-gradient(circle at calc(15% + var(--fog-jx, 0) * 0.7%) calc(34% + var(--fog-jy, 0) * 0.7%), color-mix(in oklch, var(--ink-3), transparent 35%), transparent 55%),
+    radial-gradient(circle at calc(60% - var(--fog-jy, 0) * 0.8%) calc(26% + var(--fog-jx, 0) * 0.6%), color-mix(in oklch, var(--ink-4), transparent 42%), transparent 58%),
+    radial-gradient(circle at calc(30% + var(--fog-jy, 0) * 0.6%) calc(74% - var(--fog-jx, 0) * 0.8%), color-mix(in oklch, var(--ink-5), transparent 32%), transparent 62%),
     color-mix(in oklch, var(--void), black 42%);
-  filter: blur(9px);
-  opacity: 0.9;
+  filter: blur(15px);
+  opacity: 0.2;
   animation: tgrid-fog-drift 18s ease-in-out infinite;
   animation-delay: calc(var(--fog-jx, 0) * -0.15s);
   transform: scale(var(--fog-scale, 1));
@@ -774,13 +779,13 @@ function toggleInfoCollapsed() {
 .tgrid__cell--fog-marker::before {
   /* Known objective through the fog — a thinner mist so the ghost icon underneath
      still reads, but still clearly distinct from a revealed cell. */
-  opacity: 0.62;
+  opacity: 0.1;
 }
 
 @keyframes tgrid-fog-drift {
   0%, 100% { transform: translate(0, 0) scale(var(--fog-scale, 1)); }
-  33% { transform: translate(4%, -3%) scale(calc(var(--fog-scale, 1) * 1.04)); }
-  66% { transform: translate(-3%, 3%) scale(calc(var(--fog-scale, 1) * 1.02)); }
+  33% { transform: translate(8%, -8%) scale(calc(var(--fog-scale, 1) * 1.04)); }
+  66% { transform: translate(-12%, 8%) scale(calc(var(--fog-scale, 1) * 1.02)); }
 }
 
 .tgrid__cell--revealed {
@@ -794,14 +799,18 @@ function toggleInfoCollapsed() {
      point, even in a room whose ambient theme shares its tone (e.g. a Combat node's
      blood tint on a Rupture room, which is itself blood-tinted). */
   --tile-tint: var(--theme-accent, var(--gold));
-  --tile-tint-pct: calc(9% + var(--terrain-height, 0) * 3%);
-  --tile-edge: color-mix(in oklch, var(--tile-tint), var(--line) 45%);
+  --tile-tint-pct: calc(14% + var(--terrain-height, 0) * 3%);
+  --tile-edge: color-mix(in oklch, var(--tile-tint), var(--line-strong, var(--line)) 55%);
   background: color-mix(in oklch, var(--panel), var(--tile-tint) var(--tile-tint-pct));
+  /* A flat (height 0) tile still needs to read as a discrete block, not melt into its
+     neighbors — so the border/top-highlight/drop-shadow all have a real baseline
+     here, with height only adding on top of that rather than being the sole source
+     of definition. */
   box-shadow:
-    inset 0 0 0 1px var(--tile-edge),
-    inset 0 1px 0 color-mix(in oklch, white, transparent 78%),
-    0 calc(2px + var(--terrain-height, 0) * 2px) calc(4px + var(--terrain-height, 0) * 3px)
-      oklch(0 0 0 / calc(0.18 + var(--terrain-height, 0) * 0.08));
+    inset 0 0 0 1.5px var(--tile-edge),
+    inset 0 1px 0 color-mix(in oklch, white, transparent 68%),
+    0 calc(3px + var(--terrain-height, 0) * 2px) calc(5px + var(--terrain-height, 0) * 3px)
+      oklch(0 0 0 / calc(0.24 + var(--terrain-height, 0) * 0.08));
 }
 
 .tgrid__cell--revealed:not([aria-disabled='true']):hover {
