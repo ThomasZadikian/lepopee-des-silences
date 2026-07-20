@@ -72,6 +72,64 @@ public sealed class DeterministicRunGeneratorTests
     }
 
     [Fact]
+    public async Task GenerateInitialRoom_ShouldGenerateAGridRoom_WhenExplorationModeIsTactical()
+    {
+        // Regression: GenerateRoomShapeAsync used to forward the Classic generator version
+        // ("room-map-layout-1.0.0") to the grid generator unconditionally, which only knows
+        // its own version ("grid-room-layout-1.0.0") — every Tactical run crashed with
+        // KeyNotFoundException on the very first room, regardless of RoomType.
+        var generator = TestGeneratorFactory.CreateDeterministicRunGenerator();
+
+        var room = await generator.GenerateInitialRoomAsync(
+            "seed-tactical-no-world", CancellationToken.None, RunExplorationMode.Tactical);
+
+        room.Grid.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task GenerateInitialRoom_ShouldGenerateAGridRoom_ForACatalogBoundEntryRoom_WhenExplorationModeIsTactical()
+    {
+        // Same regression as above, exercised through the catalog-bound entry-room path
+        // (the one that actually crashed in production — the entry room's theme doesn't
+        // parse as a RoomType, so it resolves to RoomType.Memory via MapThemeToScaffold).
+        var catalogGateway = new StubCatalogContentGateway
+        {
+            WorldDefinitions = [new CatalogWorldDefinition("palais", "Palais", "room.halldentree")],
+            RoomDefinitions =
+            [
+                new CatalogRoomDefinition(
+                    Key: "room.halldentree",
+                    DisplayName: "Hall d'entrée",
+                    Description: "Le hall d'entrée du Palais.",
+                    NarrativeText: "Un tapis rouge et quatre piliers de marbre.",
+                    RoomFamily: "Palais intérieur",
+                    RoomRarity: "Epic",
+                    Theme: "Welcome",
+                    MinDepth: 0,
+                    MaxDepth: 9,
+                    BaseWeight: 1,
+                    EnemyPoolKey: null,
+                    RewardPoolKey: null,
+                    LawPoolKey: null,
+                    CursePoolKey: null,
+                    BossDefinitionKey: null,
+                    IsUnique: false,
+                    WorldKey: "palais",
+                    IsWorldEntryRoom: true,
+                    TriggersStrictChain: false,
+                    ReachableRoomKeys: [])
+            ]
+        };
+
+        var generator = TestGeneratorFactory.CreateDeterministicRunGenerator(catalogGateway);
+
+        var room = await generator.GenerateInitialRoomAsync(
+            "seed-tactical-with-world", CancellationToken.None, RunExplorationMode.Tactical);
+
+        room.Grid.Should().NotBeNull();
+    }
+
+    [Fact]
     public async Task GenerateInitialRoom_ShouldCreateVisibleRoomPlan()
     {
         var generator = TestGeneratorFactory.CreateDeterministicRunGenerator();
@@ -273,6 +331,28 @@ public sealed class DeterministicRunGeneratorTests
 
         room.PalaceState.Should().Be(PalaceRoomState.Neutral,
             because: "The initial Threshold room at depth 0 always has Neutral state.");
+    }
+
+    [Fact]
+    public async Task GenerateNextRoom_ShouldGenerateAGridRoom_WhenTheRunIsTactical()
+    {
+        // Same regression as the initial-room tests above, but for GenerateNextRoomAsync —
+        // both call sites share GenerateRoomShapeAsync, so both needed the fix.
+        var generator = TestGeneratorFactory.CreateDeterministicRunGenerator();
+        var initialRoom = await generator.GenerateInitialRoomAsync(
+            "seed-tactical-next", CancellationToken.None, RunExplorationMode.Tactical);
+        var run = Run.StartNew(
+            Guid.NewGuid(),
+            "seed-tactical-next",
+            generator.GeneratorVersion,
+            generator.MarkovMatrixVersion,
+            initialRoom,
+            DateTimeOffset.UtcNow,
+            explorationMode: RunExplorationMode.Tactical);
+
+        var nextRoom = await generator.GenerateNextRoomAsync(run);
+
+        nextRoom.Grid.Should().NotBeNull();
     }
 
     [Fact]

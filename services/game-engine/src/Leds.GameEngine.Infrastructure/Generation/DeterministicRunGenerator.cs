@@ -282,8 +282,12 @@ public sealed class DeterministicRunGenerator : IRunGenerator
         PalaceRoomState palaceState,
         RunExplorationMode explorationMode)
     {
+        // Classic and Tactical templates are versioned independently (DefaultRoomMapLayoutTemplates
+        // vs DefaultGridRoomLayoutTemplates) — the caller-supplied generatorVersion is always the
+        // Classic one (DeterministicRunGenerator.GeneratorVersion), so it must NOT be forwarded to
+        // the grid generator, which looks its own templates up by its own version constant.
         return explorationMode == RunExplorationMode.Tactical
-            ? _gridRoomGenerator.GenerateAsync(seed, generatorVersion, roomDepth, roomType, random, cancellationToken, palaceState)
+            ? _gridRoomGenerator.GenerateAsync(seed, DefaultGridRoomLayoutTemplates.GeneratorVersion, roomDepth, roomType, random, cancellationToken, palaceState)
             : _mapRoomGenerator.GenerateAsync(seed, generatorVersion, roomDepth, roomType, random, cancellationToken, palaceState);
     }
 
