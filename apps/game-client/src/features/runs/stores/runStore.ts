@@ -290,12 +290,29 @@ export const useRunStore = defineStore('run', () => {
     });
   }
 
+  // Both enterGridNode and challengeBossRemotely only *select* the node server-side
+  // (grid-mode counterpart of Classic's chooseNode) — resolving it into an outcome is
+  // a separate step, so we chain resolveCurrentEvent immediately after, mirroring
+  // confirmAndResolveNode's combined choose+resolve for Classic mode. Without this,
+  // the room stays in NodeSelected forever and the next move/action is rejected by
+  // the domain guard ("Room is not waiting for party movement.").
   async function enterGridNode(nodeId: string) {
     if (!currentRun.value) return;
 
     await execute(async () => {
-      const response = await runApi.enterGridNode(currentRun.value!.id, nodeId);
-      currentRun.value = unwrapRunResponse(response);
+      const enterResponse = await runApi.enterGridNode(currentRun.value!.id, nodeId);
+      currentRun.value = unwrapRunResponse(enterResponse);
+
+      const resolveResponse = await runApi.resolveCurrentEvent(currentRun.value!.id);
+      currentRun.value = resolveResponse.run;
+      lastOutcome.value = resolveResponse.outcome;
+      npcDialogue.value = resolveResponse.npcDialogue ?? null;
+      npcDialogueEchoes.value = [];
+      npcDialogueEnded.value = false;
+      activeCombat.value = resolveResponse.startedCombat ?? null;
+      combatRuntime.value = resolveResponse.combat ?? null;
+
+      await refreshPendingRewardIfNeeded();
     });
   }
 
@@ -303,8 +320,19 @@ export const useRunStore = defineStore('run', () => {
     if (!currentRun.value) return;
 
     await execute(async () => {
-      const response = await runApi.challengeBossRemotely(currentRun.value!.id);
-      currentRun.value = unwrapRunResponse(response);
+      const challengeResponse = await runApi.challengeBossRemotely(currentRun.value!.id);
+      currentRun.value = unwrapRunResponse(challengeResponse);
+
+      const resolveResponse = await runApi.resolveCurrentEvent(currentRun.value!.id);
+      currentRun.value = resolveResponse.run;
+      lastOutcome.value = resolveResponse.outcome;
+      npcDialogue.value = resolveResponse.npcDialogue ?? null;
+      npcDialogueEchoes.value = [];
+      npcDialogueEnded.value = false;
+      activeCombat.value = resolveResponse.startedCombat ?? null;
+      combatRuntime.value = resolveResponse.combat ?? null;
+
+      await refreshPendingRewardIfNeeded();
     });
   }
 
