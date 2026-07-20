@@ -114,10 +114,19 @@ watch(canvasEl, (el) => {
 
 onBeforeUnmount(() => canvasObserver?.disconnect());
 
+// Shrinks the whole diamond inward so that even the outermost tile's own half-width/
+// half-height never reaches the canvas edge — without this, corner tiles clip against
+// (or visually touch) the canvas border on wide/narrow windows.
+const ISO_FIT = 0.82;
+// The board's vertical center sits a bit below the canvas's true center: the top-tabs
+// chrome (kicker/room name/Lois button) overlays the top-left corner, so leaving more
+// headroom there than at the bottom keeps the diamond clear of it.
+const ISO_V_CENTER = 56;
+
 const ISO_UNIT_X = computed(() => {
   const g = grid.value;
   if (!g) return 0;
-  return 100 / (g.width + g.height);
+  return (100 / (g.width + g.height)) * ISO_FIT;
 });
 const ISO_ASPECT_CORRECTION = computed(() => {
   const { width, height } = canvasSize.value;
@@ -133,9 +142,9 @@ function isoLeft(x: number, y: number): number {
 
 function isoTop(x: number, y: number): number {
   const g = grid.value;
-  if (!g) return 50;
+  if (!g) return ISO_V_CENTER;
   const maxSpan = g.width - 1 + (g.height - 1);
-  return 50 + (x + y - maxSpan / 2) * ISO_UNIT_Y.value;
+  return ISO_V_CENTER + (x + y - maxSpan / 2) * ISO_UNIT_Y.value;
 }
 
 function cellStyle(cell: Cell) {
@@ -177,6 +186,38 @@ const backdropClass = computed(() =>
 // Same room + same theme always renders the same backdrop family; this is the only
 // thing that varies it slightly between two rooms sharing a theme (a small hue drift).
 const roomNuance = computed(() => hashSeed(props.room.id ?? '') % 100);
+
+// Tiles borrow the room's accent color too — an "Antechamber" floor reads gold, a
+// "Forest" floor reads green, etc. — instead of every room sharing the same neutral
+// grey tile regardless of theme.
+const THEME_ACCENT: Record<string, string> = {
+  Threshold: '--frost',
+  Memory: '--gold',
+  Forest: '--sap',
+  Rupture: '--blood',
+  Silence: '--frost',
+  Antechamber: '--gold',
+  Final: '--blood',
+};
+
+const themeAccent = computed(() => THEME_ACCENT[props.room.theme] ?? '--gold');
+
+// ── Node tile tone: color-codes a node's tile by what it means, not just that it
+// holds a node — combat sits on blood, treasure/commerce/decrees on gold, presences
+// on frost, respite on sap. Makes the board read at a glance, FFT-style.
+const NODE_TILE_TONE: Record<string, string> = {
+  Combat: 'blood', Elite: 'blood', Rare: 'blood', RoomBoss: 'blood', FinalBoss: 'blood',
+  Curse: 'blood',
+  Item: 'gold', Merchant: 'gold', Law: 'gold',
+  Npc: 'frost', Memory: 'frost',
+  Rest: 'sap',
+};
+
+function nodeTileToneClass(node: NodeDto | null): string {
+  if (!node) return '';
+  const tone = NODE_TILE_TONE[node.type];
+  return tone ? `tgrid__cell--tone-${tone}` : '';
+}
 
 const SIGIL_KIND_BY_NODE_TYPE: Record<string, string> = {
   Combat: 'combat',
@@ -361,7 +402,12 @@ function toggleInfoCollapsed() {
 
 <template>
   <section class="tgrid">
-    <div v-if="grid" ref="canvasEl" class="tgrid__canvas">
+    <div
+      v-if="grid"
+      ref="canvasEl"
+      class="tgrid__canvas"
+      :style="{ '--theme-accent': `var(${themeAccent})` }"
+    >
       <div
         class="tgrid__backdrop"
         :class="backdropClass"
@@ -374,7 +420,7 @@ function toggleInfoCollapsed() {
         :key="`${cell.x}-${cell.y}`"
         type="button"
         class="tgrid__cell"
-        :class="cellClass(cell)"
+        :class="[cellClass(cell), nodeTileToneClass(nodeAt(cell.x, cell.y))]"
         :style="cellStyle(cell)"
         :aria-disabled="!isRevealed(cell.x, cell.y)"
         :aria-label="`Case ${cell.x},${cell.y}`"
@@ -505,9 +551,11 @@ function toggleInfoCollapsed() {
 .tgrid {
   height: 100%;
   min-height: 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   padding: var(--space-3) var(--space-4);
+  overflow: hidden;
 }
 
 .tgrid__budget {
@@ -644,26 +692,63 @@ function toggleInfoCollapsed() {
 }
 
 .tgrid__cell--revealed {
-  background: color-mix(in oklch, var(--panel), black calc(var(--terrain-height, 0) * 6%));
+  /* Lightly tinted by the room's theme accent (a tile "belongs" to its room without
+     drowning out node tiles below), and lit — not shadowed — by height: a taller tile
+     catches more light, which reads more legibly as elevation than darkening did.
+     --tile-tint/--tile-tint-pct/--tile-edge are the knobs every variant below
+     overrides, so the paint formula itself lives in one place. Node tiles push
+     --tile-tint-pct much higher and add a bright --tile-edge border on top of this
+     same base — that gap is deliberate: a node must always read as a clear focal
+     point, even in a room whose ambient theme shares its tone (e.g. a Combat node's
+     blood tint on a Rupture room, which is itself blood-tinted). */
+  --tile-tint: var(--theme-accent, var(--gold));
+  --tile-tint-pct: calc(9% + var(--terrain-height, 0) * 3%);
+  --tile-edge: color-mix(in oklch, var(--tile-tint), var(--line) 45%);
+  background: color-mix(in oklch, var(--panel), var(--tile-tint) var(--tile-tint-pct));
   box-shadow:
-    inset 0 0 0 1px color-mix(in oklch, var(--line), transparent 55%),
+    inset 0 0 0 1px var(--tile-edge),
+    inset 0 1px 0 color-mix(in oklch, white, transparent 78%),
     0 calc(2px + var(--terrain-height, 0) * 2px) calc(4px + var(--terrain-height, 0) * 3px)
-      oklch(0 0 0 / calc(0.15 + var(--terrain-height, 0) * 0.08));
+      oklch(0 0 0 / calc(0.18 + var(--terrain-height, 0) * 0.08));
 }
 
 .tgrid__cell--revealed:not([aria-disabled='true']):hover {
-  filter: brightness(1.18);
+  filter: brightness(1.18) saturate(1.15);
   transform: translate(-50%, calc(-50% - var(--terrain-height, 0) * 4px)) scale(1.08);
 }
 
 .tgrid__cell--node.tgrid__cell--revealed {
-  background: color-mix(in oklch, var(--panel), var(--frost) 14%);
-  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--frost), transparent 30%);
+  /* Fallback for any node type not covered by a --tone-* class below. */
+  --tile-tint: var(--frost);
+  --tile-tint-pct: calc(55% + var(--terrain-height, 0) * 4%);
+  --tile-edge: color-mix(in oklch, var(--frost), white 30%);
+}
+
+.tgrid__cell--tone-blood.tgrid__cell--revealed { --tile-tint: var(--blood); --tile-tint-pct: calc(55% + var(--terrain-height, 0) * 4%); --tile-edge: color-mix(in oklch, var(--blood), white 30%); }
+.tgrid__cell--tone-gold.tgrid__cell--revealed  { --tile-tint: var(--gold);  --tile-tint-pct: calc(55% + var(--terrain-height, 0) * 4%); --tile-edge: color-mix(in oklch, var(--gold), white 30%); }
+.tgrid__cell--tone-frost.tgrid__cell--revealed { --tile-tint: var(--frost); --tile-tint-pct: calc(55% + var(--terrain-height, 0) * 4%); --tile-edge: color-mix(in oklch, var(--frost), white 30%); }
+.tgrid__cell--tone-sap.tgrid__cell--revealed   { --tile-tint: var(--sap);   --tile-tint-pct: calc(55% + var(--terrain-height, 0) * 4%); --tile-edge: color-mix(in oklch, var(--sap), white 30%); }
+
+.tgrid__cell--tone-blood.tgrid__cell--revealed,
+.tgrid__cell--tone-gold.tgrid__cell--revealed,
+.tgrid__cell--tone-frost.tgrid__cell--revealed,
+.tgrid__cell--tone-sap.tgrid__cell--revealed,
+.tgrid__cell--node.tgrid__cell--revealed {
+  box-shadow:
+    inset 0 0 0 2px var(--tile-edge),
+    inset 0 1px 0 color-mix(in oklch, white, transparent 65%),
+    0 calc(3px + var(--terrain-height, 0) * 2px) calc(6px + var(--terrain-height, 0) * 3px)
+      color-mix(in oklch, var(--tile-tint), transparent 65%);
 }
 
 .tgrid__cell--boss-node.tgrid__cell--revealed {
-  background: color-mix(in oklch, var(--panel), var(--blood) 18%);
-  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--blood), transparent 25%);
+  --tile-tint: var(--blood);
+  --tile-tint-pct: calc(68% + var(--terrain-height, 0) * 4%);
+  --tile-edge: color-mix(in oklch, var(--blood), white 40%);
+  box-shadow:
+    inset 0 0 0 2px var(--tile-edge),
+    inset 0 1px 0 color-mix(in oklch, white, transparent 60%),
+    0 0 16px 3px color-mix(in oklch, var(--blood), transparent 40%);
 }
 
 .tgrid__cell--resolved-node.tgrid__cell--revealed {
@@ -723,12 +808,28 @@ function toggleInfoCollapsed() {
 
 .tgrid__party-token {
   position: absolute;
-  width: 0.85rem;
-  height: 0.85rem;
+  width: 1rem;
+  height: 1rem;
   border-radius: 50%;
-  background: var(--gold);
-  box-shadow: 0 0 10px 2px color-mix(in oklch, var(--gold), transparent 30%);
+  background: radial-gradient(circle at 35% 30%, var(--gold-hi, var(--gold)), var(--gold) 70%);
+  border: 1.5px solid color-mix(in oklch, white, transparent 30%);
+  box-shadow:
+    0 0 12px 3px color-mix(in oklch, var(--gold), transparent 25%),
+    0 3px 4px oklch(0 0 0 / 0.4);
   transform: translate(-50%, calc(-50% - var(--terrain-height, 0) * 4px));
+}
+
+.tgrid__party-token::after {
+  /* Ground ring under the token — anchors it visually to its tile like an FFT unit marker. */
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -6px;
+  width: 1.3rem;
+  height: 0.4rem;
+  border-radius: 50%;
+  border: 1.5px solid color-mix(in oklch, var(--gold), transparent 35%);
+  transform: translateX(-50%);
 }
 
 /* ── Node side panel ─────────────────────────────────────────────────────────── */
