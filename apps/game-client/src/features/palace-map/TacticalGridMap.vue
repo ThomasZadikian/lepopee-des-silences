@@ -494,6 +494,11 @@ function toggleInfoCollapsed() {
   }
 }
 
+.tgrid__node-icon--ghost {
+  opacity: 0.6;
+  filter: grayscale(0.35);
+}
+
 .tgrid__cell--boss-node .tgrid__node-icon {
   color: var(--blood);
 }
@@ -686,6 +691,28 @@ function toggleInfoCollapsed() {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+}
+
+.tgrid__node-panel-actions .es-btn {
+  width: 100%;
+  justify-content: center;
+}
+
+/* ── Hover tooltip ────────────────────────────────────────────────────────────── */
+.tgrid__hover-tooltip {
+  position: fixed;
+  z-index: var(--z-tooltip, 1000);
+  padding: 4px 10px;
+  font-family: var(--font-caps);
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: oklch(0.18 0.03 272 / 0.95);
+  border: 1px solid var(--line-soft);
+  border-radius: 3px;
+  pointer-events: none;
+  white-space: nowrap;
 }
 
 .tgrid__boss-banner {
