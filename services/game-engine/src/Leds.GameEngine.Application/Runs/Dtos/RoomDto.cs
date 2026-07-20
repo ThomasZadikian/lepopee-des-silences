@@ -1,4 +1,5 @@
-﻿using Leds.GameEngine.Domain.Rooms;
+﻿using Leds.GameEngine.Domain.Nodes;
+using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
 
 namespace Leds.GameEngine.Application.Runs.Dtos;
@@ -28,10 +29,18 @@ public sealed record RoomDto(
     {
         var activeClimate = ResolveActiveClimate(room, runModifiers ?? []);
 
-        // Tactical mode (Grid not null): only fog-of-war-revealed nodes are ever sent to the
-        // client — sending the full node list would defeat the point of the fog of war.
+        // Tactical mode (Grid not null): fog-of-war-revealed nodes, PLUS every still-Available
+        // node regardless of reveal state — so the player always knows which directions hold an
+        // objective, even unexplored. This only exposes a node's type/position as a distant
+        // marker; the terrain/path to it stays hidden (RevealedCells is untouched). Sending the
+        // full node list unconditionally would defeat the point of the fog of war entirely.
         // Classic mode: unchanged, the full node list as always.
-        var nodesForDto = room.Grid is not null ? room.VisibleNodes : room.Nodes;
+        var nodesForDto = room.Grid is not null
+            ? room.VisibleNodes
+                .Concat(room.Nodes.Where(node => node.State == NodeState.Available))
+                .Distinct()
+                .ToArray()
+            : room.Nodes;
 
         return new RoomDto(
             room.Id.Value,

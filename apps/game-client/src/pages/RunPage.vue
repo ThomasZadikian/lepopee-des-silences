@@ -145,7 +145,9 @@ async function startNewRun() {
 
 const isMapPhase = computed(() => runStore.gameplayPhase === 'Map');
 const isCombatPhase = computed(() => runStore.gameplayPhase === 'Combat');
-const showNodeDrawer = computed(() => isMapPhase.value && runStore.selectedNode);
+const showNodeDrawer = computed(() =>
+  isMapPhase.value && !runStore.isTacticalMode && runStore.selectedNode,
+);
 const showInventoryDrawer = computed(() => uiStore.activeDrawer === 'besace');
 const showPartyDrawer = computed(() => uiStore.activeDrawer === 'party' && !isCombatPhase.value);
 const showJournalModal = computed(() => uiStore.activeDrawer === 'journal');

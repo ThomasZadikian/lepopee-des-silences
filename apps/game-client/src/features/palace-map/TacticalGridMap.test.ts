@@ -73,10 +73,10 @@ describe('TacticalGridMap', () => {
     expect(wrapper.findAll('.tgrid__cell--fog')).toHaveLength(7);
   });
 
-  it('disables fog cells and enables revealed cells', () => {
+  it('marks fog cells as aria-disabled and revealed cells as not', () => {
     const wrapper = mount(TacticalGridMap, { props: { room: makeRoom() } });
     const cells = wrapper.findAll('.tgrid__cell');
-    const disabledCount = cells.filter((c) => (c.element as HTMLButtonElement).disabled).length;
+    const disabledCount = cells.filter((c) => c.attributes('aria-disabled') === 'true').length;
     expect(disabledCount).toBe(7);
   });
 
@@ -102,23 +102,96 @@ describe('TacticalGridMap', () => {
     expect(wrapper.emitted('moveRequest')).toBeUndefined();
   });
 
-  it('renders a node icon only on a revealed cell holding a node', () => {
+  it('renders a node icon on a revealed cell holding a node', () => {
     const node = makeNode({ row: 0, lane: 1 });
     const room = makeRoom({ nodes: [node] });
     const wrapper = mount(TacticalGridMap, { props: { room } });
     expect(wrapper.findAll('.tgrid__node-icon')).toHaveLength(1);
   });
 
-  it('shows the standing-node panel when the party is on an available node', () => {
+  it('renders a dimmed marker icon for an available node on an unrevealed (fogged) cell', () => {
+    // (2,2) is outside the default revealedCells ([[0,0],[1,0]]) — the backend now sends
+    // Available nodes regardless of fog so the player still sees where to head.
+    const node = makeNode({ row: 2, lane: 2, state: 'Available' });
+    const room = makeRoom({ nodes: [node] });
+    const wrapper = mount(TacticalGridMap, { props: { room } });
+
+    const icons = wrapper.findAll('.tgrid__node-icon');
+    expect(icons).toHaveLength(1);
+    expect(icons[0].classes()).toContain('tgrid__node-icon--ghost');
+
+    const cells = wrapper.findAll('.tgrid__cell');
+    const fogMarkerCell = cells.find((c) => c.classes().includes('tgrid__cell--fog-marker'));
+    expect(fogMarkerCell).toBeDefined();
+  });
+
+  it('shows a hover tooltip with just the node type when hovering a node cell', async () => {
+    // The tooltip is Teleported to <body> so it can escape the map's overflow:hidden
+    // clipping — query the document directly rather than the mounted wrapper subtree.
+    const node = makeNode({ row: 0, lane: 1, type: 'Merchant' });
+    const room = makeRoom({ nodes: [node] });
+    const wrapper = mount(TacticalGridMap, { props: { room }, attachTo: document.body });
+
+    expect(document.querySelector('.tgrid__hover-tooltip')).toBeNull();
+
+    const cells = wrapper.findAll('.tgrid__cell');
+    await cells[1].trigger('mouseenter'); // (1,0) holds the node
+
+    const tooltip = document.querySelector('.tgrid__hover-tooltip');
+    expect(tooltip).not.toBeNull();
+    expect(tooltip?.textContent?.trim()).toBe('Marchand');
+
+    await cells[1].trigger('mouseleave');
+    expect(document.querySelector('.tgrid__hover-tooltip')).toBeNull();
+
+    wrapper.unmount();
+  });
+
+  it('shows the node side panel when the party is on an available node', () => {
     const node = makeNode({ row: 0, lane: 0, state: 'Available' });
     const room = makeRoom({ nodes: [node] });
     const wrapper = mount(TacticalGridMap, { props: { room } });
-    expect(wrapper.find('.tgrid__standing-node').exists()).toBe(true);
+    expect(wrapper.find('.tgrid__node-panel').exists()).toBe(true);
   });
 
-  it('does not show the standing-node panel when the party cell has no node', () => {
+  it('does not show the node side panel when the party cell has no node', () => {
     const wrapper = mount(TacticalGridMap, { props: { room: makeRoom() } });
-    expect(wrapper.find('.tgrid__standing-node').exists()).toBe(false);
+    expect(wrapper.find('.tgrid__node-panel').exists()).toBe(false);
+  });
+
+  it('opens the panel on the right when the party is in the left half of the grid', () => {
+    const node = makeNode({ row: 0, lane: 0, state: 'Available' });
+    const room = makeRoom({ nodes: [node] }, { partyX: 0, partyY: 0 });
+    const wrapper = mount(TacticalGridMap, { props: { room } });
+    expect(wrapper.find('.tgrid__node-panel--right').exists()).toBe(true);
+    expect(wrapper.find('.tgrid__node-panel--left').exists()).toBe(false);
+  });
+
+  it('opens the panel on the left when the party is in the right half of the grid', () => {
+    const node = makeNode({ row: 0, lane: 2, state: 'Available' });
+    const room = makeRoom(
+      { nodes: [node] },
+      { partyX: 2, partyY: 0, revealedCells: [[0, 0], [1, 0], [2, 0]] },
+    );
+    const wrapper = mount(TacticalGridMap, { props: { room } });
+    expect(wrapper.find('.tgrid__node-panel--left').exists()).toBe(true);
+    expect(wrapper.find('.tgrid__node-panel--right').exists()).toBe(false);
+  });
+
+  it('collapses and reopens the node panel', async () => {
+    const node = makeNode({ row: 0, lane: 0, state: 'Available' });
+    const room = makeRoom({ nodes: [node] });
+    const wrapper = mount(TacticalGridMap, { props: { room } });
+
+    expect(wrapper.find('.tgrid__node-panel-body').exists()).toBe(true);
+
+    await wrapper.find('.tgrid__node-panel-toggle').trigger('click');
+    expect(wrapper.find('.tgrid__node-panel--collapsed').exists()).toBe(true);
+    expect(wrapper.find('.tgrid__node-panel-body').exists()).toBe(false);
+
+    await wrapper.find('.tgrid__node-panel-toggle').trigger('click');
+    expect(wrapper.find('.tgrid__node-panel--collapsed').exists()).toBe(false);
+    expect(wrapper.find('.tgrid__node-panel-body').exists()).toBe(true);
   });
 
   it('emits enterNode when the "Entrer" button is clicked', async () => {

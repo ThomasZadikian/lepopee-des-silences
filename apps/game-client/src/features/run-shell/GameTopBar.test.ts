@@ -155,6 +155,26 @@ describe('GameTopBar', () => {
     expect(wrapper.text()).toContain('Custom');
   });
 
+  it('hides the depth segment in Tactical mode', () => {
+    const wrapper = mountTopBar({
+      currentRun: {
+        currentRoom: { currentNodeDepth: 1, maxNodeDepth: 4 },
+      },
+      isTacticalMode: true,
+    });
+    expect(wrapper.text()).not.toContain('Profondeur');
+  });
+
+  it('shows the depth segment in Classic mode', () => {
+    const wrapper = mountTopBar({
+      currentRun: {
+        currentRoom: { currentNodeDepth: 1, maxNodeDepth: 4 },
+      },
+      isTacticalMode: false,
+    });
+    expect(wrapper.text()).toContain('Profondeur');
+  });
+
   it('pads depth values with leading zeros', () => {
     const wrapper = mountTopBar({
       currentRun: {

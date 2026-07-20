@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 import SigilIcon from '../../shared/components/SigilIcon.vue';
 import type { NodeDto, RoomDto } from '../runs/types/runTypes';
@@ -102,13 +102,67 @@ function sigilKindFor(node: NodeDto): string {
   return SIGIL_KIND_BY_NODE_TYPE[node.type] ?? 'objet';
 }
 
+// Short label — used both for the hover tooltip (type only, as requested) and as the
+// side panel's kicker.
+const NODE_TYPE_LABEL: Record<string, string> = {
+  Combat: 'Combat',
+  Elite: 'Élite',
+  Rare: 'Rencontre rare',
+  RoomBoss: 'Gardien de salle',
+  FinalBoss: 'Confrontation finale',
+  Item: 'Objet',
+  Npc: 'Présence',
+  Memory: 'Souvenir',
+  Rest: 'Repos',
+  Merchant: 'Marchand',
+  Law: 'Décret du Palais',
+  Curse: 'Malédiction',
+};
+
+function nodeTypeLabel(node: NodeDto): string {
+  return NODE_TYPE_LABEL[node.type] ?? node.type;
+}
+
+// Fuller flavor text for the side panel's description.
+const NODE_TYPE_DESCRIPTION: Record<string, string> = {
+  Combat: 'Un affrontement direct vous attend dans les profondeurs du Palais.',
+  Elite: "Un adversaire d'élite barre le passage. La victoire sera coûteuse.",
+  Rare: "Une présence rare s'est manifestée — imprévisible et potentiellement précieuse.",
+  RoomBoss: 'Le Gardien de cette salle attend. Aucun passage sans combat.',
+  FinalBoss: 'La présence finale du Palais. Tout converge ici.',
+  Rest: 'Un refuge temporaire. Reprendre souffle avant de continuer.',
+  Item: 'Un objet a été laissé ici. Son origine reste obscure.',
+  Npc: "Quelqu'un — ou quelque chose — souhaite vous parler.",
+  Merchant: "Un marchand propose ses services dans l'ombre du Palais.",
+  Law: 'Une règle du Palais inscrite dans ses murs. La lire vous changera.',
+  Curse: 'Une malédiction latente. Y toucher a un coût.',
+  Memory: "Un écho du passé. Ce souvenir n'est pas le vôtre.",
+};
+
+function nodeTypeDescription(node: NodeDto): string {
+  return NODE_TYPE_DESCRIPTION[node.type] ?? 'Un nœud inconnu du Palais.';
+}
+
+const RISK_TIER_DISPLAY: Record<string, { text: string; cls: string }> = {
+  Calme: { text: 'Calme', cls: 'tgrid__risk--low' },
+  Tendu: { text: 'Tendu', cls: 'tgrid__risk--moderate' },
+  Dangereux: { text: 'Dangereux', cls: 'tgrid__risk--high' },
+  Perilleux: { text: 'Périlleux', cls: 'tgrid__risk--critical' },
+  Fatal: { text: 'Fatal', cls: 'tgrid__risk--fatal' },
+};
+
 function cellClass(cell: Cell) {
   const revealed = isRevealed(cell.x, cell.y);
-  const node = revealed ? nodeAt(cell.x, cell.y) : null;
+  const node = nodeAt(cell.x, cell.y);
+  // Available nodes are sent by the backend regardless of fog (see RoomDto.FromDomain),
+  // so a node can appear on an otherwise-unexplored cell — shown as a dimmed marker
+  // (tgrid__cell--fog-marker) rather than the fully-lit look of a revealed cell.
+  const fogMarker = !revealed && Boolean(node);
 
   return {
     'tgrid__cell--revealed': revealed,
     'tgrid__cell--fog': !revealed,
+    'tgrid__cell--fog-marker': fogMarker,
     'tgrid__cell--node': Boolean(node),
     'tgrid__cell--boss-node': node?.isBoss ?? false,
     'tgrid__cell--party': isParty(cell.x, cell.y),
@@ -119,12 +173,35 @@ function onCellClick(cell: Cell) {
   if (!isRevealed(cell.x, cell.y)) return;
 
   if (isParty(cell.x, cell.y)) {
-    // Standing on a node's cell opens the standing-node panel below (entrer/wager) —
-    // clicking the cell itself is a no-op so it doesn't fight with that panel.
+    // Standing on a node's cell opens the standing-node side panel — clicking the
+    // cell itself is a no-op so it doesn't fight with that panel.
     return;
   }
 
   emit('moveRequest', cell.x, cell.y);
+}
+
+// ── Hover tooltip: shows just the node type, following the cursor ──────────────────
+const hoveredNode = ref<NodeDto | null>(null);
+const mouseX = ref(0);
+const mouseY = ref(0);
+
+const tooltipStyle = computed(() => ({
+  left: `${mouseX.value + 16}px`,
+  top: `${mouseY.value + 16}px`,
+}));
+
+function onCellMouseEnter(cell: Cell) {
+  hoveredNode.value = nodeAt(cell.x, cell.y);
+}
+
+function onCellMouseMove(event: MouseEvent) {
+  mouseX.value = event.clientX;
+  mouseY.value = event.clientY;
+}
+
+function onCellMouseLeave() {
+  hoveredNode.value = null;
 }
 
 const showChallengeBossBanner = computed(() =>
@@ -146,6 +223,36 @@ const canWagerStandingNode = computed(() => {
   if (!node) return false;
   return COMBAT_NODE_TYPES.has(node.type) && node.combatRiskTier && node.combatRiskTier !== 'Fatal';
 });
+
+const standingNodeRiskDisplay = computed(() => {
+  const node = standingNode.value;
+  if (!node || !COMBAT_NODE_TYPES.has(node.type) || !node.combatRiskTier) return null;
+  return RISK_TIER_DISPLAY[node.combatRiskTier] ?? null;
+});
+
+// ── Node side panel: opens itself when the party steps onto an available node ──────
+// Opens on the side of the screen the party ISN'T standing near, so it never covers
+// the ground the player is about to look at next.
+const panelSide = computed<'left' | 'right'>(() => {
+  const g = grid.value;
+  if (!g) return 'right';
+  return g.partyX < g.width / 2 ? 'right' : 'left';
+});
+
+const isPanelCollapsed = ref(false);
+
+watch(
+  () => standingNode.value?.id ?? null,
+  (nodeId, previousNodeId) => {
+    if (nodeId && nodeId !== previousNodeId) {
+      isPanelCollapsed.value = false;
+    }
+  },
+);
+
+function togglePanelCollapsed() {
+  isPanelCollapsed.value = !isPanelCollapsed.value;
+}
 </script>
 
 <template>
@@ -172,13 +279,17 @@ const canWagerStandingNode = computed(() => {
         class="tgrid__cell"
         :class="cellClass(cell)"
         :style="{ '--terrain-height': terrainHeight(cell.x, cell.y) }"
-        :disabled="!isRevealed(cell.x, cell.y)"
+        :aria-disabled="!isRevealed(cell.x, cell.y)"
         :aria-label="`Case ${cell.x},${cell.y}`"
         @click="onCellClick(cell)"
+        @mouseenter="onCellMouseEnter(cell)"
+        @mousemove="onCellMouseMove"
+        @mouseleave="onCellMouseLeave"
       >
         <SigilIcon
-          v-if="isRevealed(cell.x, cell.y) && nodeAt(cell.x, cell.y)"
+          v-if="nodeAt(cell.x, cell.y)"
           class="tgrid__node-icon"
+          :class="{ 'tgrid__node-icon--ghost': !isRevealed(cell.x, cell.y) }"
           :kind="sigilKindFor(nodeAt(cell.x, cell.y)!)"
           :size="20"
         />
@@ -187,30 +298,51 @@ const canWagerStandingNode = computed(() => {
       <div class="tgrid__party" :style="partyStyle" aria-hidden="true">
         <span class="tgrid__party-token" />
       </div>
-    </div>
 
-    <div v-if="standingNode" class="tgrid__standing-node">
-      <div class="tgrid__standing-node-info">
-        <SigilIcon :kind="sigilKindFor(standingNode)" :size="22" />
-        <div>
-          <p class="tgrid__standing-node-type">{{ standingNode.type }}</p>
-          <p v-if="standingNode.combatRiskTier" class="tgrid__standing-node-risk">
-            {{ standingNode.combatRiskTier }}
-          </p>
-        </div>
-      </div>
-      <div class="tgrid__standing-node-actions">
+      <div
+        v-if="standingNode"
+        class="tgrid__node-panel"
+        :class="[`tgrid__node-panel--${panelSide}`, { 'tgrid__node-panel--collapsed': isPanelCollapsed }]"
+      >
         <button
-          v-if="canWagerStandingNode"
           type="button"
-          class="es-btn es-btn--ghost"
-          @click="emit('wagerNode', standingNode.id)"
+          class="tgrid__node-panel-toggle"
+          :aria-label="isPanelCollapsed ? 'Ouvrir le panneau du nœud' : 'Réduire le panneau du nœud'"
+          @click="togglePanelCollapsed"
         >
-          Provoquer le destin
+          <span v-if="panelSide === 'right'">{{ isPanelCollapsed ? '◂' : '▸' }}</span>
+          <span v-else>{{ isPanelCollapsed ? '▸' : '◂' }}</span>
         </button>
-        <button type="button" class="es-btn" @click="emit('enterNode', standingNode.id)">
-          Entrer →
-        </button>
+
+        <div v-if="!isPanelCollapsed" class="tgrid__node-panel-body">
+          <div class="tgrid__node-panel-header">
+            <SigilIcon :kind="sigilKindFor(standingNode)" :size="22" />
+            <span class="es-kicker">{{ nodeTypeLabel(standingNode) }}</span>
+          </div>
+
+          <p class="tgrid__node-panel-desc">{{ nodeTypeDescription(standingNode) }}</p>
+
+          <div v-if="standingNodeRiskDisplay" class="tgrid__node-panel-risk">
+            <span class="es-label">Danger</span>
+            <span :class="['tgrid__node-panel-risk-value', standingNodeRiskDisplay.cls]">
+              {{ standingNodeRiskDisplay.text }}
+            </span>
+          </div>
+
+          <div class="tgrid__node-panel-actions">
+            <button
+              v-if="canWagerStandingNode"
+              type="button"
+              class="es-btn es-btn--ghost"
+              @click="emit('wagerNode', standingNode.id)"
+            >
+              Provoquer le destin
+            </button>
+            <button type="button" class="es-btn" @click="emit('enterNode', standingNode.id)">
+              Entrer →
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -222,12 +354,19 @@ const canWagerStandingNode = computed(() => {
         Provoquer le combat de boss →
       </button>
     </div>
+
+    <Teleport to="body">
+      <div v-if="hoveredNode" class="tgrid__hover-tooltip" :style="tooltipStyle">
+        {{ nodeTypeLabel(hoveredNode) }}
+      </div>
+    </Teleport>
   </section>
 </template>
 
 <style scoped>
 .tgrid {
   height: 100%;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   padding: var(--space-3) var(--space-4);
@@ -256,9 +395,12 @@ const canWagerStandingNode = computed(() => {
 .tgrid__canvas {
   position: relative;
   flex: 1;
+  min-height: 0;
+  min-width: 0;
   display: grid;
   gap: 2px;
   padding: 6px;
+  overflow: hidden;
   border: 1px solid color-mix(in oklch, var(--line), transparent 60%);
   background:
     radial-gradient(circle at 20% 50%, var(--wash-gold), transparent 18%),
@@ -267,6 +409,8 @@ const canWagerStandingNode = computed(() => {
 
 .tgrid__cell {
   position: relative;
+  min-height: 0;
+  min-width: 0;
   display: grid;
   place-items: center;
   border: none;
@@ -276,7 +420,7 @@ const canWagerStandingNode = computed(() => {
   transition: filter 0.15s ease, transform 0.15s ease;
 }
 
-.tgrid__cell:disabled {
+.tgrid__cell[aria-disabled='true'] {
   cursor: default;
 }
 
@@ -285,12 +429,18 @@ const canWagerStandingNode = computed(() => {
   opacity: 0.55;
 }
 
+.tgrid__cell--fog-marker {
+  /* Known objective through the fog — noticeably less dim than plain fog so the
+     marker reads at a glance, but still clearly distinct from a revealed cell. */
+  opacity: 0.78;
+}
+
 .tgrid__cell--revealed {
   background: color-mix(in oklch, var(--panel), black calc(var(--terrain-height, 0) * 6%));
   box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--line), transparent 55%);
 }
 
-.tgrid__cell--revealed:not(:disabled):hover {
+.tgrid__cell--revealed:not([aria-disabled='true']):hover {
   filter: brightness(1.18);
   transform: scale(1.03);
 }
@@ -307,6 +457,11 @@ const canWagerStandingNode = computed(() => {
 
 .tgrid__node-icon {
   color: var(--frost);
+}
+
+.tgrid__node-icon--ghost {
+  opacity: 0.6;
+  filter: grayscale(0.35);
 }
 
 .tgrid__cell--boss-node .tgrid__node-icon {
@@ -332,44 +487,123 @@ const canWagerStandingNode = computed(() => {
   box-shadow: 0 0 10px 2px color-mix(in oklch, var(--gold), transparent 30%);
 }
 
-.tgrid__standing-node {
-  margin-top: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  border: 1px solid color-mix(in oklch, var(--frost), transparent 45%);
-  border-radius: 4px;
-  background: color-mix(in oklch, var(--panel), var(--frost) 8%);
+/* ── Node side panel ─────────────────────────────────────────────────────────── */
+.tgrid__node-panel {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 260px;
+  max-width: 80%;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  flex-wrap: wrap;
+  z-index: 4;
+  transition: width 0.2s ease;
 }
 
-.tgrid__standing-node-info {
+.tgrid__node-panel--right {
+  right: 0;
+  flex-direction: row;
+}
+
+.tgrid__node-panel--left {
+  left: 0;
+  flex-direction: row-reverse;
+}
+
+.tgrid__node-panel--collapsed {
+  width: 26px;
+}
+
+.tgrid__node-panel-toggle {
+  flex: 0 0 auto;
+  width: 26px;
+  border: none;
+  border-left: 1px solid var(--line-soft);
+  border-right: 1px solid var(--line-soft);
+  cursor: pointer;
+  background: color-mix(in oklch, var(--panel), var(--frost) 10%);
+  color: var(--frost);
+  font-size: 0.9rem;
   display: flex;
   align-items: center;
+  justify-content: center;
+}
+
+.tgrid__node-panel-toggle:hover {
+  background: color-mix(in oklch, var(--panel), var(--frost) 18%);
+}
+
+.tgrid__node-panel-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
   gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: oklch(0.22 0.04 272 / 0.92);
+  border-left: 1px solid var(--line-soft);
+  border-right: 1px solid var(--line-soft);
+  backdrop-filter: blur(8px);
+  overflow-y: auto;
+}
+
+.tgrid__node-panel-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   color: var(--frost);
 }
 
-.tgrid__standing-node-type {
-  margin: 0;
-  color: var(--ink);
-  font-family: var(--font-caps);
-  font-size: 0.8rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.tgrid__standing-node-risk {
+.tgrid__node-panel-desc {
   margin: 0;
   color: var(--ink-3);
-  font-size: 0.75rem;
+  font-size: 0.82rem;
+  line-height: 1.5;
 }
 
-.tgrid__standing-node-actions {
+.tgrid__node-panel-risk {
   display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.tgrid__node-panel-risk-value {
+  font-family: var(--font);
+  font-size: 0.9rem;
+}
+
+.tgrid__risk--low { color: var(--ink-3); }
+.tgrid__risk--moderate { color: var(--gold-dim); }
+.tgrid__risk--high { color: var(--blood-dim); }
+.tgrid__risk--critical { color: var(--blood); }
+.tgrid__risk--fatal { color: var(--blood); font-weight: 600; }
+
+.tgrid__node-panel-actions {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
   gap: var(--space-2);
+}
+
+.tgrid__node-panel-actions .es-btn {
+  width: 100%;
+  justify-content: center;
+}
+
+/* ── Hover tooltip ────────────────────────────────────────────────────────────── */
+.tgrid__hover-tooltip {
+  position: fixed;
+  z-index: var(--z-tooltip, 1000);
+  padding: 4px 10px;
+  font-family: var(--font-caps);
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: oklch(0.18 0.03 272 / 0.95);
+  border: 1px solid var(--line-soft);
+  border-radius: 3px;
+  pointer-events: none;
+  white-space: nowrap;
 }
 
 .tgrid__boss-banner {

@@ -548,30 +548,47 @@ describe('useRunStore actions', () => {
     expect(store.currentRun?.currentRoom.grid.partyX).toBe(1);
   });
 
-  it('enterGridNode sends the node id and refreshes the run', async () => {
+  it('enterGridNode selects the node then resolves it immediately, so the room returns to a movable state', async () => {
     const store = useRunStore();
     store.currentRun = { id: 'run-1', status: 'Active', explorationMode: 'Tactical' } as any;
 
     vi.mocked(runApi.enterGridNode).mockResolvedValue({
-      run: { id: 'run-1', status: 'Active', explorationMode: 'Tactical', currentRoom: {} },
+      run: { id: 'run-1', status: 'Active', explorationMode: 'Tactical', currentRoom: { state: 'NodeSelected' } },
+    } as any);
+    vi.mocked(runApi.resolveCurrentEvent).mockResolvedValue({
+      run: { id: 'run-1', status: 'Active', explorationMode: 'Tactical', currentRoom: { state: 'NodeResolved' } },
+      outcome: { title: 'Objet trouvé' },
     } as any);
 
     await store.enterGridNode('node-1');
 
     expect(runApi.enterGridNode).toHaveBeenCalledWith('run-1', 'node-1');
+    expect(runApi.resolveCurrentEvent).toHaveBeenCalledWith('run-1');
+    expect(store.currentRun?.currentRoom.state).toBe('NodeResolved');
+    expect(store.lastOutcome?.title).toBe('Objet trouvé');
+    expect(store.error).toBeNull();
   });
 
-  it('challengeBossRemotely calls the API and refreshes the run', async () => {
+  it('challengeBossRemotely selects the boss node then resolves it immediately', async () => {
     const store = useRunStore();
     store.currentRun = { id: 'run-1', status: 'Active', explorationMode: 'Tactical' } as any;
 
     vi.mocked(runApi.challengeBossRemotely).mockResolvedValue({
-      run: { id: 'run-1', status: 'Active', explorationMode: 'Tactical', currentRoom: {} },
+      run: { id: 'run-1', status: 'Active', explorationMode: 'Tactical', currentRoom: { state: 'NodeSelected' } },
+    } as any);
+    vi.mocked(runApi.resolveCurrentEvent).mockResolvedValue({
+      run: { id: 'run-1', status: 'RoomResolved', explorationMode: 'Tactical', currentRoom: { state: 'Completed' } },
+      outcome: { title: 'Boss vaincu' },
+      startedCombat: null,
     } as any);
 
     await store.challengeBossRemotely();
 
     expect(runApi.challengeBossRemotely).toHaveBeenCalledWith('run-1');
+    expect(runApi.resolveCurrentEvent).toHaveBeenCalledWith('run-1');
+    expect(store.currentRun?.currentRoom.state).toBe('Completed');
+    expect(store.lastOutcome?.title).toBe('Boss vaincu');
+    expect(store.error).toBeNull();
   });
 
   it('useCaliceInfini calls the API and refreshes the run', async () => {
