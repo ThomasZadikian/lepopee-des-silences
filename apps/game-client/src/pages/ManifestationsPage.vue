@@ -7,6 +7,7 @@ import type { EmotionalType } from '../features/combat/types/combatContracts';
 import PalaceAtmosphere from '../shared/components/PalaceAtmosphere.vue';
 
 const router = useRouter();
+const props = defineProps<{ embedded?: boolean }>();
 
 type BossEntry = {
   name: string;
@@ -110,11 +111,11 @@ const selected = computed(() => bosses[selectedIndex.value]);
 </script>
 
 <template>
-  <main class="manif-page" data-mood="palais">
-    <PalaceAtmosphere />
+  <main class="manif-page" :class="{ 'manif-page--embedded': props.embedded }" data-mood="palais">
+    <PalaceAtmosphere v-if="!props.embedded" />
 
     <div class="manif-page__content">
-      <button class="manif-page__back" @click="router.back()">← Retour</button>
+      <button v-if="!props.embedded" class="manif-page__back" @click="router.back()">← Retour</button>
 
       <span class="es-kicker">Bestiaire · gardiens des salles</span>
       <h1 class="es-h1" style="font-size: clamp(30px, 4.4vw, 52px); margin-top: 12px">
@@ -204,12 +205,22 @@ const selected = computed(() => bosses[selectedIndex.value]);
   font-family: var(--font);
 }
 
+.manif-page--embedded {
+  height: auto;
+  min-height: 100%;
+  overflow: visible;
+}
+
 .manif-page__content {
   position: relative;
   z-index: 5;
   max-width: 1180px;
   margin: 0 auto;
   padding: 64px 4vw 90px;
+}
+
+.manif-page--embedded .manif-page__content {
+  padding: 40px 4vw 48px;
 }
 
 .manif-page__back {

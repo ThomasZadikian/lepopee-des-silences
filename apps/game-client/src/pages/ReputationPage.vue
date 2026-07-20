@@ -10,8 +10,11 @@ import type { NpcReputationDto } from '../features/reputation/types/reputationTy
 
 const route = useRoute();
 const router = useRouter();
+const props = defineProps<{ embedded?: boolean; runId?: string }>();
 
-const runId = computed(() => String(route.params.runId ?? ''));
+// Embedded mode (opened as a modal from within a run) passes the run id directly —
+// there's no route navigation to carry it as a param there.
+const runId = computed(() => props.runId ?? String(route.params.runId ?? ''));
 
 const npcs = ref<NpcReputationDto[]>([]);
 const isLoading = ref(false);
@@ -67,11 +70,11 @@ onMounted(async () => {
 </script>
 
 <template>
-  <main class="reputation-page" data-mood="palais">
-    <PalaceAtmosphere />
+  <main class="reputation-page" :class="{ 'reputation-page--embedded': props.embedded }" data-mood="palais">
+    <PalaceAtmosphere v-if="!props.embedded" />
 
     <div class="reputation-page__content">
-      <button class="reputation-page__back" @click="router.back()">← Retour</button>
+      <button v-if="!props.embedded" class="reputation-page__back" @click="router.back()">← Retour</button>
 
       <span class="es-kicker">Système · liens avec les habitants du Palais</span>
       <h1 class="es-h1" style="font-size: clamp(30px, 4.4vw, 52px); margin-top: 12px">Réputation</h1>
@@ -157,12 +160,22 @@ onMounted(async () => {
   font-family: var(--font);
 }
 
+.reputation-page--embedded {
+  height: auto;
+  min-height: 100%;
+  overflow: visible;
+}
+
 .reputation-page__content {
   position: relative;
   z-index: 5;
   max-width: 1100px;
   margin: 0 auto;
   padding: 64px 4vw 90px;
+}
+
+.reputation-page--embedded .reputation-page__content {
+  padding: 40px 4vw 48px;
 }
 
 .reputation-page__back {

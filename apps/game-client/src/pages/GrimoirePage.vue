@@ -10,6 +10,7 @@ import GrimoireTab from '../features/runs/components/team-management/GrimoireTab
 
 const router = useRouter();
 const playerStore = usePlayerStore();
+const props = defineProps<{ embedded?: boolean }>();
 
 const characters = computed(() => playerStore.profile?.characters ?? []);
 const selectedCharacterId = ref<string | null>(null);
@@ -24,11 +25,11 @@ onMounted(async () => {
 </script>
 
 <template>
-  <main class="grimoire-page" data-mood="palais">
-    <PalaceAtmosphere />
+  <main class="grimoire-page" :class="{ 'grimoire-page--embedded': props.embedded }" data-mood="palais">
+    <PalaceAtmosphere v-if="!props.embedded" />
 
     <div class="grimoire-page__content">
-      <button class="grimoire-page__back" @click="router.back()">← Retour</button>
+      <button v-if="!props.embedded" class="grimoire-page__back" @click="router.back()">← Retour</button>
 
       <span class="es-kicker">Système · sorts du personnage</span>
       <h1 class="es-h1" style="font-size: clamp(30px, 4.4vw, 52px); margin-top: 12px">Grimoire</h1>
@@ -64,12 +65,22 @@ onMounted(async () => {
   font-family: var(--font);
 }
 
+.grimoire-page--embedded {
+  height: auto;
+  min-height: 100%;
+  overflow: visible;
+}
+
 .grimoire-page__content {
   position: relative;
   z-index: 5;
   max-width: 1100px;
   margin: 0 auto;
   padding: 64px 4vw 90px;
+}
+
+.grimoire-page--embedded .grimoire-page__content {
+  padding: 40px 4vw 48px;
 }
 
 .grimoire-page__back {

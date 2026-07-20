@@ -10,6 +10,7 @@ import CharacterStatsTab from '../features/runs/components/team-management/Chara
 
 const router = useRouter();
 const playerStore = usePlayerStore();
+const props = defineProps<{ embedded?: boolean }>();
 
 const characters = computed(() => playerStore.profile?.characters ?? []);
 const selectedCharacterId = ref<string | null>(null);
@@ -24,11 +25,11 @@ onMounted(async () => {
 </script>
 
 <template>
-  <main class="stats-page" data-mood="palais">
-    <PalaceAtmosphere />
+  <main class="stats-page" :class="{ 'stats-page--embedded': props.embedded }" data-mood="palais">
+    <PalaceAtmosphere v-if="!props.embedded" />
 
     <div class="stats-page__content">
-      <button class="stats-page__back" @click="router.back()">← Retour</button>
+      <button v-if="!props.embedded" class="stats-page__back" @click="router.back()">← Retour</button>
 
       <span class="es-kicker">Système · caractéristiques du personnage</span>
       <h1 class="es-h1" style="font-size: clamp(30px, 4.4vw, 52px); margin-top: 12px">Statistiques</h1>
@@ -64,12 +65,22 @@ onMounted(async () => {
   font-family: var(--font);
 }
 
+.stats-page--embedded {
+  height: auto;
+  min-height: 100%;
+  overflow: visible;
+}
+
 .stats-page__content {
   position: relative;
   z-index: 5;
   max-width: 1100px;
   margin: 0 auto;
   padding: 64px 4vw 90px;
+}
+
+.stats-page--embedded .stats-page__content {
+  padding: 40px 4vw 48px;
 }
 
 .stats-page__back {

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { mount } from '@vue/test-utils';
 import GameTopBar from './GameTopBar.vue';
 
@@ -15,6 +15,10 @@ vi.mock('../runs/stores/runStore', () => ({
 
 const routerLinkStub = { template: '<a><slot /></a>', props: ['to'] };
 
+function pageStub(name: string) {
+  return { name, props: ['embedded', 'runId'], template: `<div class="stub-${name}" />` };
+}
+
 function mountTopBar(storeOverrides: Record<string, any> = {}) {
   Object.assign(mockStore, {
     currentRun: null,
@@ -23,11 +27,24 @@ function mountTopBar(storeOverrides: Record<string, any> = {}) {
   }, storeOverrides);
 
   return mount(GameTopBar, {
-    global: { stubs: { RouterLink: routerLinkStub } },
+    attachTo: document.body,
+    global: {
+      stubs: {
+        RouterLink: routerLinkStub,
+        StatutsPage: pageStub('statuts-page'),
+        ManifestationsPage: pageStub('manifestations-page'),
+        ReputationPage: pageStub('reputation-page'),
+        TutorialPage: pageStub('tutorial-page'),
+      },
+    },
   });
 }
 
 describe('GameTopBar', () => {
+  afterEach(() => {
+    document.body.innerHTML = '';
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     mockStore.currentRun = null;
@@ -269,5 +286,51 @@ describe('GameTopBar', () => {
       },
     });
     expect(wrapper.find('.es-system-notice').exists()).toBe(false);
+  });
+
+  it('shows no reference modal by default', () => {
+    mountTopBar();
+    expect(document.querySelector('.pom-backdrop')).toBeNull();
+  });
+
+  it('opens the Statuts page as a modal overlay instead of navigating', async () => {
+    const wrapper = mountTopBar();
+    const btn = wrapper.findAll('button.es-runbar__ref-link').find((b) => b.text() === 'Statuts');
+    await btn!.trigger('click');
+    expect(document.querySelector('.stub-statuts-page')).not.toBeNull();
+  });
+
+  it('opens the Manifestations page as a modal overlay', async () => {
+    const wrapper = mountTopBar();
+    const btn = wrapper.findAll('button.es-runbar__ref-link').find((b) => b.text() === 'Manifestations');
+    await btn!.trigger('click');
+    expect(document.querySelector('.stub-manifestations-page')).not.toBeNull();
+  });
+
+  it('opens the Tutoriel page as a modal overlay', async () => {
+    const wrapper = mountTopBar();
+    const btn = wrapper.findAll('button.es-runbar__ref-link').find((b) => b.text() === 'Tutoriel');
+    await btn!.trigger('click');
+    expect(document.querySelector('.stub-tutorial-page')).not.toBeNull();
+  });
+
+  it('opens the Réputation page as a modal overlay, passing the current run id', async () => {
+    const wrapper = mountTopBar({ currentRun: { id: 'run-1' } });
+    const btn = wrapper.findAll('button.es-runbar__ref-link').find((b) => b.text() === 'Réputation');
+    await btn!.trigger('click');
+    const stub = document.querySelector('.stub-reputation-page');
+    expect(stub).not.toBeNull();
+  });
+
+  it('closes the reference modal when PageOverlayModal emits close', async () => {
+    const wrapper = mountTopBar();
+    const btn = wrapper.findAll('button.es-runbar__ref-link').find((b) => b.text() === 'Statuts');
+    await btn!.trigger('click');
+    expect(document.querySelector('.pom-backdrop')).not.toBeNull();
+
+    const closeBtn = document.querySelector('.pom-close') as HTMLButtonElement;
+    closeBtn.click();
+    await wrapper.vm.$nextTick();
+    expect(document.querySelector('.pom-backdrop')).toBeNull();
   });
 });

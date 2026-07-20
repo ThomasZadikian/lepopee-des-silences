@@ -7,6 +7,7 @@ import StatusEffectToken from '../shared/components/StatusEffectToken.vue';
 import type { StatusEffectKind } from '../features/combat/types/combatContracts';
 
 const router = useRouter();
+const props = defineProps<{ embedded?: boolean }>();
 
 type StatusItem = {
   kind: StatusEffectKind;
@@ -97,11 +98,11 @@ const groups: StatusGroup[] = [
 </script>
 
 <template>
-  <main class="statuts-page" data-mood="palais">
-    <PalaceAtmosphere />
+  <main class="statuts-page" :class="{ 'statuts-page--embedded': props.embedded }" data-mood="palais">
+    <PalaceAtmosphere v-if="!props.embedded" />
 
     <div class="statuts-page__content">
-      <button class="statuts-page__back" @click="router.back()">← Retour</button>
+      <button v-if="!props.embedded" class="statuts-page__back" @click="router.back()">← Retour</button>
 
       <span class="es-kicker">Système · altérations de l’esprit</span>
       <h1 class="es-h1" style="font-size: clamp(30px, 4.4vw, 52px); margin-top: 12px">Les statuts</h1>
@@ -147,12 +148,22 @@ const groups: StatusGroup[] = [
   font-family: var(--font);
 }
 
+.statuts-page--embedded {
+  height: auto;
+  min-height: 100%;
+  overflow: visible;
+}
+
 .statuts-page__content {
   position: relative;
   z-index: 5;
   max-width: 1100px;
   margin: 0 auto;
   padding: 64px 4vw 90px;
+}
+
+.statuts-page--embedded .statuts-page__content {
+  padding: 40px 4vw 48px;
 }
 
 .statuts-page__back {

@@ -5,6 +5,7 @@ import PalaceAtmosphere from '../shared/components/PalaceAtmosphere.vue';
 import RuleOrnament from '../shared/components/RuleOrnament.vue';
 
 const router = useRouter();
+const props = defineProps<{ embedded?: boolean }>();
 
 type TutorialSection = {
   title: string;
@@ -65,11 +66,11 @@ const sections: TutorialSection[] = [
 </script>
 
 <template>
-  <main class="tutorial-page" data-mood="palais">
-    <PalaceAtmosphere />
+  <main class="tutorial-page" :class="{ 'tutorial-page--embedded': props.embedded }" data-mood="palais">
+    <PalaceAtmosphere v-if="!props.embedded" />
 
     <div class="tutorial-page__content">
-      <button class="tutorial-page__back" @click="router.back()">← Retour</button>
+      <button v-if="!props.embedded" class="tutorial-page__back" @click="router.back()">← Retour</button>
 
       <span class="es-kicker">Système · comprendre le Palais</span>
       <h1 class="es-h1" style="font-size: clamp(30px, 4.4vw, 52px); margin-top: 12px">
@@ -108,12 +109,22 @@ const sections: TutorialSection[] = [
   font-family: var(--font);
 }
 
+.tutorial-page--embedded {
+  height: auto;
+  min-height: 100%;
+  overflow: visible;
+}
+
 .tutorial-page__content {
   position: relative;
   z-index: 5;
   max-width: 860px;
   margin: 0 auto;
   padding: 64px 4vw 90px;
+}
+
+.tutorial-page--embedded .tutorial-page__content {
+  padding: 40px 4vw 48px;
 }
 
 .tutorial-page__back {

@@ -290,6 +290,57 @@ describe('TacticalGridMap', () => {
     expect(wrapper.emitted('challengeBoss')).toHaveLength(1);
   });
 
+  it('marks a resolved node as visually spent', () => {
+    const node = makeNode({ row: 0, lane: 1, state: 'Resolved' });
+    const room = makeRoom({ nodes: [node] });
+    const wrapper = mount(TacticalGridMap, { props: { room } });
+
+    expect(wrapper.find('.tgrid__cell--resolved-node').exists()).toBe(true);
+    expect(wrapper.find('.tgrid__node-icon--resolved').exists()).toBe(true);
+  });
+
+  it('does not mark an available node as resolved', () => {
+    const node = makeNode({ row: 0, lane: 1, state: 'Available' });
+    const room = makeRoom({ nodes: [node] });
+    const wrapper = mount(TacticalGridMap, { props: { room } });
+
+    expect(wrapper.find('.tgrid__cell--resolved-node').exists()).toBe(false);
+    expect(wrapper.find('.tgrid__node-icon--resolved').exists()).toBe(false);
+  });
+
+  it('shows the room name next to the "Exploration tactique" tag, falling back to theme', () => {
+    const room = makeRoom({ theme: 'La Forêt', catalogName: null });
+    const wrapper = mount(TacticalGridMap, { props: { room } });
+    expect(wrapper.find('.tgrid__room-tab').text()).toBe('La Forêt');
+  });
+
+  it('prefers the canon room name over the theme when both are present', () => {
+    const room = makeRoom({ theme: 'La Forêt', catalogName: 'Le temple de Mounkaanêt' });
+    const wrapper = mount(TacticalGridMap, { props: { room } });
+    expect(wrapper.find('.tgrid__room-tab').text()).toBe('Le temple de Mounkaanêt');
+  });
+
+  it('always shows the Lois tab, independent of the info overlay collapse state', () => {
+    const wrapper = mount(TacticalGridMap, { props: { room: makeRoom() } });
+    expect(wrapper.find('.tgrid__laws-tab').exists()).toBe(true);
+  });
+
+  it('emits toggleLaws when the Lois tab is clicked', async () => {
+    const wrapper = mount(TacticalGridMap, { props: { room: makeRoom() } });
+    await wrapper.find('.tgrid__laws-tab').trigger('click');
+    expect(wrapper.emitted('toggleLaws')).toHaveLength(1);
+  });
+
+  it('shows an influence count badge on the Lois tab when provided', () => {
+    const wrapper = mount(TacticalGridMap, { props: { room: makeRoom(), influenceCount: 3 } });
+    expect(wrapper.find('.tgrid__laws-tab-count').text()).toBe('3');
+  });
+
+  it('hides the influence count badge when there are no active influences', () => {
+    const wrapper = mount(TacticalGridMap, { props: { room: makeRoom(), influenceCount: 0 } });
+    expect(wrapper.find('.tgrid__laws-tab-count').exists()).toBe(false);
+  });
+
   it('handles a room without a grid gracefully', () => {
     const room = makeRoom({ grid: null });
     const wrapper = mount(TacticalGridMap, { props: { room } });

@@ -10,6 +10,7 @@ import ItemManagementTab from '../features/runs/components/team-management/ItemM
 
 const router = useRouter();
 const playerStore = usePlayerStore();
+const props = defineProps<{ embedded?: boolean }>();
 
 const characters = computed(() => playerStore.profile?.characters ?? []);
 const selectedCharacterId = ref<string | null>(null);
@@ -24,11 +25,11 @@ onMounted(async () => {
 </script>
 
 <template>
-  <main class="equipment-page" data-mood="palais">
-    <PalaceAtmosphere />
+  <main class="equipment-page" :class="{ 'equipment-page--embedded': props.embedded }" data-mood="palais">
+    <PalaceAtmosphere v-if="!props.embedded" />
 
     <div class="equipment-page__content">
-      <button class="equipment-page__back" @click="router.back()">← Retour</button>
+      <button v-if="!props.embedded" class="equipment-page__back" @click="router.back()">← Retour</button>
 
       <span class="es-kicker">Système · équipement du personnage</span>
       <h1 class="es-h1" style="font-size: clamp(30px, 4.4vw, 52px); margin-top: 12px">Équipement</h1>
@@ -64,12 +65,22 @@ onMounted(async () => {
   font-family: var(--font);
 }
 
+.equipment-page--embedded {
+  height: auto;
+  min-height: 100%;
+  overflow: visible;
+}
+
 .equipment-page__content {
   position: relative;
   z-index: 5;
   max-width: 1100px;
   margin: 0 auto;
   padding: 64px 4vw 90px;
+}
+
+.equipment-page--embedded .equipment-page__content {
+  padding: 40px 4vw 48px;
 }
 
 .equipment-page__back {

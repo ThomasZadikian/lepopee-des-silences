@@ -1,10 +1,19 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { RouterLink } from 'vue-router';
 import { useRunStore } from '../runs/stores/runStore';
 import StatTooltip from '../../shared/components/StatTooltip.vue';
+import PageOverlayModal from '../../shared/components/PageOverlayModal.vue';
+import StatutsPage from '../../pages/StatutsPage.vue';
+import ManifestationsPage from '../../pages/ManifestationsPage.vue';
+import ReputationPage from '../../pages/ReputationPage.vue';
+import TutorialPage from '../../pages/TutorialPage.vue';
 
 const runStore = useRunStore();
+
+// Reference pages open as a modal overlaying the map instead of navigating away —
+// the player should never have to leave the game board to consult them.
+type RefModal = 'statuts' | 'manifestations' | 'reputation' | 'tutoriel';
+const activeRefModal = ref<RefModal | null>(null);
 
 // Tactical mode only: fold the status bar down to a small tab by default, to give the
 // map as much room as possible — expanding it overlays the map rather than pushing it
@@ -84,8 +93,8 @@ const statusColor = computed(() =>
       </span>
     </div>
 
-    <!-- Salle -->
-    <div class="es-seg">
+    <!-- Salle (affichée à côté de "Exploration tactique" sur la carte en mode Tactique) -->
+    <div v-if="!runStore.isTacticalMode" class="es-seg">
       <span class="es-seg__k">Salle</span>
             <span
         class="es-seg__v"
@@ -131,12 +140,12 @@ const statusColor = computed(() =>
       <span class="es-seg__v" :style="{ color: statusColor }">● {{ status }}</span>
     </div>
 
-    <!-- Références : statuts, bestiaire, réputation, tutoriel -->
+    <!-- Références : statuts, bestiaire, réputation, tutoriel — s'ouvrent en superposition -->
     <div class="es-seg es-runbar__refs" style="padding-right: 30px; border-right: none">
-      <RouterLink class="es-runbar__ref-link" to="/statuts">Statuts</RouterLink>
-      <RouterLink class="es-runbar__ref-link" to="/manifestations">Manifestations</RouterLink>
-      <RouterLink v-if="run" class="es-runbar__ref-link" :to="`/reputation/${run.id}`">Réputation</RouterLink>
-      <RouterLink class="es-runbar__ref-link" to="/tutoriel">Tutoriel</RouterLink>
+      <button type="button" class="es-runbar__ref-link" @click="activeRefModal = 'statuts'">Statuts</button>
+      <button type="button" class="es-runbar__ref-link" @click="activeRefModal = 'manifestations'">Manifestations</button>
+      <button v-if="run" type="button" class="es-runbar__ref-link" @click="activeRefModal = 'reputation'">Réputation</button>
+      <button type="button" class="es-runbar__ref-link" @click="activeRefModal = 'tutoriel'">Tutoriel</button>
     </div>
 
     <!-- Slot pour actions supplémentaires (boutons Sauvegarder, Lois, etc.) -->
@@ -156,6 +165,15 @@ const statusColor = computed(() =>
   <div v-if="systemNotice" class="es-system-notice" role="status">
     {{ systemNotice }}
   </div>
+
+  <Teleport to="body">
+    <PageOverlayModal v-if="activeRefModal" @close="activeRefModal = null">
+      <StatutsPage v-if="activeRefModal === 'statuts'" embedded />
+      <ManifestationsPage v-else-if="activeRefModal === 'manifestations'" embedded />
+      <ReputationPage v-else-if="activeRefModal === 'reputation'" embedded :run-id="run?.id" />
+      <TutorialPage v-else-if="activeRefModal === 'tutoriel'" embedded />
+    </PageOverlayModal>
+  </Teleport>
 </template>
 
 <style scoped>
@@ -211,6 +229,10 @@ const statusColor = computed(() =>
 }
 
 .es-runbar__ref-link {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
   font-family: var(--font-caps);
   font-size: 10px;
   letter-spacing: 0.14em;

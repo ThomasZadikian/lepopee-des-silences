@@ -144,6 +144,15 @@ async function startNewRun() {
 }
 
 const isMapPhase = computed(() => runStore.gameplayPhase === 'Map');
+const totalInfluenceCount = computed(() => {
+  const run = runStore.currentRun;
+  if (!run) return 0;
+  return (
+    (run.activePalaceLaws?.length ?? 0) +
+    (run.activeCurses?.length ?? 0) +
+    (run.activeModifiers?.length ?? 0)
+  );
+});
 const isCombatPhase = computed(() => runStore.gameplayPhase === 'Combat');
 const showNodeDrawer = computed(() =>
   isMapPhase.value && !runStore.isTacticalMode && runStore.selectedNode,
@@ -204,10 +213,12 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
             <TacticalGridMap
               v-if="runStore.isTacticalMode"
               :room="runStore.currentRun.currentRoom"
+              :influence-count="totalInfluenceCount"
               @move-request="runStore.movePartyTo"
               @enter-node="runStore.enterGridNode"
               @wager-node="runStore.wagerNode"
               @challenge-boss="runStore.challengeBossRemotely"
+              @toggle-laws="uiStore.toggleLaws"
             />
             <PalaceMapPlaceholder
               v-else

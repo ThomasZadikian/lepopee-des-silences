@@ -9,6 +9,7 @@ import TeamOverviewTab from '../features/runs/components/team-management/TeamOve
 
 const router = useRouter();
 const playerStore = usePlayerStore();
+const props = defineProps<{ embedded?: boolean }>();
 
 const characters = computed(() => playerStore.profile?.characters ?? []);
 
@@ -18,11 +19,11 @@ onMounted(async () => {
 </script>
 
 <template>
-  <main class="team-page" data-mood="palais">
-    <PalaceAtmosphere />
+  <main class="team-page" :class="{ 'team-page--embedded': props.embedded }" data-mood="palais">
+    <PalaceAtmosphere v-if="!props.embedded" />
 
     <div class="team-page__content">
-      <button class="team-page__back" @click="router.back()">← Retour</button>
+      <button v-if="!props.embedded" class="team-page__back" @click="router.back()">← Retour</button>
 
       <span class="es-kicker">Système · votre équipe</span>
       <h1 class="es-h1" style="font-size: clamp(30px, 4.4vw, 52px); margin-top: 12px">Équipe</h1>
@@ -51,12 +52,22 @@ onMounted(async () => {
   font-family: var(--font);
 }
 
+.team-page--embedded {
+  height: auto;
+  min-height: 100%;
+  overflow: visible;
+}
+
 .team-page__content {
   position: relative;
   z-index: 5;
   max-width: 1100px;
   margin: 0 auto;
   padding: 64px 4vw 90px;
+}
+
+.team-page--embedded .team-page__content {
+  padding: 40px 4vw 48px;
 }
 
 .team-page__back {
