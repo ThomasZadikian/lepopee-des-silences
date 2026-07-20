@@ -77,13 +77,60 @@ function hashSeed(seed: string): number {
   return hash;
 }
 
+/** Small deterministic PRNG (mulberry32) — same room always generates the same terrain. */
+function mulberry32(seed: number): () => number {
+  let a = seed;
+  return () => {
+    a |= 0;
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 /**
- * Purely cosmetic terrain height, deterministic from (roomId, x, y) — never sent
- * to or read from the backend. Only shades/lifts the cell; no mechanical effect
- * during exploration (height only matters once the future tactical combat chantier lands).
+ * Purely cosmetic terrain heightmap, deterministic from roomId — never sent to or
+ * read from the backend. Only shades/lifts cells; no mechanical effect during
+ * exploration (height only matters once the future tactical combat chantier lands).
+ *
+ * Scattering a handful of "peaks" and taking, per cell, the max over
+ * max(0, peakHeight - manhattanDistance) gives actual little mountains (a smooth
+ * falloff from each peak) instead of independently-rolled per-cell noise — and since
+ * the max of 1-Lipschitz cone functions is itself 1-Lipschitz, two orthogonally
+ * adjacent cells can never differ by more than one level: a height-2 tile always has
+ * a height-1 (or higher) tile next to it, never a sheer drop straight to 0.
  */
+const heightMap = computed<number[][]>(() => {
+  const g = grid.value;
+  if (!g) return [];
+
+  const rng = mulberry32(hashSeed(props.room.id ?? ''));
+  const peakCount = Math.max(1, Math.round((g.width * g.height) / 18));
+  const peaks = Array.from({ length: peakCount }, () => ({
+    x: Math.floor(rng() * g.width),
+    y: Math.floor(rng() * g.height),
+    height: 1 + Math.floor(rng() * 3), // 1..3
+  }));
+
+  const map: number[][] = [];
+  for (let y = 0; y < g.height; y++) {
+    const row: number[] = [];
+    for (let x = 0; x < g.width; x++) {
+      let cellHeight = 0;
+      for (const peak of peaks) {
+        const distance = Math.abs(x - peak.x) + Math.abs(y - peak.y);
+        cellHeight = Math.max(cellHeight, peak.height - distance);
+      }
+      row.push(Math.max(0, cellHeight));
+    }
+    map.push(row);
+  }
+  return map;
+});
+
 function terrainHeight(x: number, y: number): number {
-  return hashSeed(`${props.room.id}:${x}:${y}`) % 4;
+  return heightMap.value[y]?.[x] ?? 0;
 }
 
 // ── Fake isometry (2.5D projection) ─────────────────────────────────────────────
@@ -137,7 +184,10 @@ const ISO_TILE_W = computed(() => ISO_UNIT_X.value * 2.05); // slight overlap hi
 const ISO_TILE_H = computed(() => ISO_UNIT_Y.value * 2.05);
 
 function isoLeft(x: number, y: number): number {
-  return 50 + (x - y) * ISO_UNIT_X.value;
+  // Mirrored from the first pass (x increasing now sweeps toward the bottom-left,
+  // y toward the bottom-right) — flipped per feedback that the original diagonal
+  // direction read wrong.
+  return 50 - (x - y) * ISO_UNIT_X.value;
 }
 
 function isoTop(x: number, y: number): number {
@@ -148,6 +198,11 @@ function isoTop(x: number, y: number): number {
 }
 
 function cellStyle(cell: Cell) {
+  // Per-cell jitter for the fog cloud layout (see .tgrid__cell--fog::before) — without
+  // it, every fog tile draws the exact same gradient positions and the mist reads as
+  // a repeating scalloped texture instead of an irregular cloud.
+  const fogSeed = hashSeed(`${props.room.id}:fog:${cell.x}:${cell.y}`);
+  const fogSeed2 = hashSeed(`${props.room.id}:fog2:${cell.x}:${cell.y}`);
   return {
     left: `${isoLeft(cell.x, cell.y)}%`,
     top: `${isoTop(cell.x, cell.y)}%`,
@@ -155,6 +210,12 @@ function cellStyle(cell: Cell) {
     height: `${ISO_TILE_H.value}%`,
     zIndex: String(cell.x + cell.y),
     '--terrain-height': terrainHeight(cell.x, cell.y),
+    '--fog-jx': (fogSeed % 41) - 20,
+    '--fog-jy': (Math.floor(fogSeed / 41) % 41) - 20,
+    // Varies each cloud's own size, not just its position — sub-tile position jitter
+    // alone still reads as a regular texture at the tile-pitch frequency; letting
+    // neighboring clouds be genuinely bigger/smaller breaks that rhythm.
+    '--fog-scale': 0.75 + (fogSeed2 % 100) / 100 * 0.65,
   };
 }
 
@@ -681,14 +742,45 @@ function toggleInfoCollapsed() {
 }
 
 .tgrid__cell--fog {
-  background: color-mix(in oklch, var(--void), black 30%);
-  opacity: 0.55;
+  /* Real mist, not a flat dark diamond: unclipped, blurred, drifting cloud layered
+     in ::before — a hard-edged tinted shape read as "a bad gradient", not fog. Height
+     is also suppressed here (transform below drops the terrain-height offset) since
+     an unrevealed tile shouldn't hint at its elevation before being seen. */
+  clip-path: none;
+  background: transparent;
+  transform: translate(-50%, -50%);
 }
 
-.tgrid__cell--fog-marker {
-  /* Known objective through the fog — noticeably less dim than plain fog so the
-     marker reads at a glance, but still clearly distinct from a revealed cell. */
-  opacity: 0.78;
+.tgrid__cell--fog::before {
+  content: '';
+  position: absolute;
+  inset: -55%;
+  border-radius: 45%;
+  /* Each blob's center is nudged by the cell's own --fog-jx/--fog-jy (set in
+     cellStyle()) so neighboring tiles don't all draw the same cloud shape — without
+     that, the mist reads as an obviously repeating scalloped texture. */
+  background:
+    radial-gradient(circle at calc(28% + var(--fog-jx, 0) * 0.7%) calc(34% + var(--fog-jy, 0) * 0.7%), color-mix(in oklch, var(--ink-3), transparent 35%), transparent 55%),
+    radial-gradient(circle at calc(70% - var(--fog-jy, 0) * 0.8%) calc(26% + var(--fog-jx, 0) * 0.6%), color-mix(in oklch, var(--ink-4), transparent 42%), transparent 58%),
+    radial-gradient(circle at calc(46% + var(--fog-jy, 0) * 0.6%) calc(74% - var(--fog-jx, 0) * 0.8%), color-mix(in oklch, var(--ink-5), transparent 32%), transparent 62%),
+    color-mix(in oklch, var(--void), black 42%);
+  filter: blur(9px);
+  opacity: 0.9;
+  animation: tgrid-fog-drift 18s ease-in-out infinite;
+  animation-delay: calc(var(--fog-jx, 0) * -0.15s);
+  transform: scale(var(--fog-scale, 1));
+}
+
+.tgrid__cell--fog-marker::before {
+  /* Known objective through the fog — a thinner mist so the ghost icon underneath
+     still reads, but still clearly distinct from a revealed cell. */
+  opacity: 0.62;
+}
+
+@keyframes tgrid-fog-drift {
+  0%, 100% { transform: translate(0, 0) scale(var(--fog-scale, 1)); }
+  33% { transform: translate(4%, -3%) scale(calc(var(--fog-scale, 1) * 1.04)); }
+  66% { transform: translate(-3%, 3%) scale(calc(var(--fog-scale, 1) * 1.02)); }
 }
 
 .tgrid__cell--revealed {
@@ -783,7 +875,8 @@ function toggleInfoCollapsed() {
 @media (prefers-reduced-motion: reduce) {
   .tgrid__node-icon,
   .tgrid__info-toggle--alert,
-  .tgrid__backdrop--final {
+  .tgrid__backdrop--final,
+  .tgrid__cell--fog::before {
     animation: none;
   }
 }
