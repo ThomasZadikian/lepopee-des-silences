@@ -359,4 +359,75 @@ describe('TacticalGridMap', () => {
     expect(wrapper.exists()).toBe(true);
     expect(wrapper.findAll('.tgrid__cell')).toHaveLength(0);
   });
+
+  // ── Room backdrop (theme-coherent, CSS-only) ────────────────────────────────────
+
+  it.each([
+    ['Threshold', 'tgrid__backdrop--threshold'],
+    ['Memory', 'tgrid__backdrop--memory'],
+    ['Forest', 'tgrid__backdrop--forest'],
+    ['Rupture', 'tgrid__backdrop--rupture'],
+    ['Silence', 'tgrid__backdrop--silence'],
+    ['Antechamber', 'tgrid__backdrop--antechamber'],
+    ['Final', 'tgrid__backdrop--final'],
+  ])('applies the %s theme backdrop class', (theme, expectedClass) => {
+    const room = makeRoom({ theme });
+    const wrapper = mount(TacticalGridMap, { props: { room } });
+    expect(wrapper.find('.tgrid__backdrop').classes()).toContain(expectedClass);
+  });
+
+  it('falls back to the default backdrop for an unrecognized theme', () => {
+    const room = makeRoom({ theme: 'La Forêt' });
+    const wrapper = mount(TacticalGridMap, { props: { room } });
+    expect(wrapper.find('.tgrid__backdrop').classes()).toContain('tgrid__backdrop--default');
+  });
+
+  it('gives two rooms with the same id the same backdrop nuance', () => {
+    const roomA = makeRoom({ id: 'room-42', theme: 'Forest' });
+    const roomB = makeRoom({ id: 'room-42', theme: 'Forest' });
+    const wrapperA = mount(TacticalGridMap, { props: { room: roomA } });
+    const wrapperB = mount(TacticalGridMap, { props: { room: roomB } });
+    expect(wrapperA.find('.tgrid__backdrop').attributes('style'))
+      .toBe(wrapperB.find('.tgrid__backdrop').attributes('style'));
+  });
+
+  it('gives two rooms with different ids a different backdrop nuance', () => {
+    const roomA = makeRoom({ id: 'room-1', theme: 'Forest' });
+    const roomB = makeRoom({ id: 'room-999', theme: 'Forest' });
+    const wrapperA = mount(TacticalGridMap, { props: { room: roomA } });
+    const wrapperB = mount(TacticalGridMap, { props: { room: roomB } });
+    expect(wrapperA.find('.tgrid__backdrop').attributes('style'))
+      .not.toBe(wrapperB.find('.tgrid__backdrop').attributes('style'));
+  });
+
+  // ── Fake isometry / height (2.5D projection) ────────────────────────────────────
+
+  it('positions each cell at a distinct isometric coordinate', () => {
+    const wrapper = mount(TacticalGridMap, { props: { room: makeRoom() } });
+    const cells = wrapper.findAll('.tgrid__cell');
+    const positions = new Set(cells.map((c) => c.attributes('style')));
+    expect(positions.size).toBe(cells.length);
+  });
+
+  it('positions the party token via the same isometric projection as its cell', () => {
+    const room = makeRoom({}, { partyX: 1, partyY: 0 });
+    const wrapper = mount(TacticalGridMap, { props: { room } });
+    const partyStyle = wrapper.find('.tgrid__party').attributes('style') ?? '';
+    const cells = wrapper.findAll('.tgrid__cell');
+    // (1,0) is the second cell in row-major order for a 3x3 grid.
+    const cellStyle = cells[1].attributes('style') ?? '';
+
+    const extractLeft = (style: string) => style.match(/left:\s*([\d.]+)%/)?.[1];
+    const extractTop = (style: string) => style.match(/top:\s*([\d.]+)%/)?.[1];
+
+    expect(extractLeft(partyStyle)).toBe(extractLeft(cellStyle));
+    expect(extractTop(partyStyle)).toBe(extractTop(cellStyle));
+  });
+
+  it('carries a distinct --terrain-height custom property per cell', () => {
+    const wrapper = mount(TacticalGridMap, { props: { room: makeRoom() } });
+    const cells = wrapper.findAll('.tgrid__cell');
+    const heights = cells.map((c) => c.attributes('style')?.match(/--terrain-height:\s*(\d)/)?.[1]);
+    expect(heights.every((h) => h !== undefined)).toBe(true);
+  });
 });

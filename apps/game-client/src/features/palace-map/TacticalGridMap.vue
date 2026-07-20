@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 
 import SigilIcon from '../../shared/components/SigilIcon.vue';
 import type { NodeDto, RoomDto } from '../runs/types/runTypes';
@@ -68,29 +68,115 @@ const cells = computed<Cell[]>(() => {
   return result;
 });
 
+/** Small deterministic string hash — reused for terrain height and the room-level backdrop nuance. */
+function hashSeed(seed: string): number {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
+  }
+  return hash;
+}
+
+/**
+ * Purely cosmetic terrain height, deterministic from (roomId, x, y) — never sent
+ * to or read from the backend. Only shades/lifts the cell; no mechanical effect
+ * during exploration (height only matters once the future tactical combat chantier lands).
+ */
+function terrainHeight(x: number, y: number): number {
+  return hashSeed(`${props.room.id}:${x}:${y}`) % 4;
+}
+
+// ── Fake isometry (2.5D projection) ─────────────────────────────────────────────
+// No 3D library: cells are laid out with plain absolute positioning, projected onto
+// a diamond via the classic isometric formula, instead of a literal CSS Grid. Height
+// then reads as a per-cell vertical offset (translateY) layered on top of that.
+//
+// Positions are expressed in % of the canvas, but a % point isn't the same number of
+// pixels on both axes unless the canvas happens to be square — and the game board
+// never is (it's the full remaining viewport). Left uncorrected, the diamond comes
+// out squashed flat. canvasSize (measured live via ResizeObserver) lets the vertical
+// unit compensate for the canvas's actual aspect ratio so tiles read as a true ~2:1
+// isometric diamond regardless of window size. Falls back to a fixed 0.5 ratio when
+// unmeasured (first paint, or jsdom in tests, which has no ResizeObserver).
+const canvasEl = ref<HTMLElement | null>(null);
+const canvasSize = ref({ width: 0, height: 0 });
+let canvasObserver: ResizeObserver | null = null;
+
+watch(canvasEl, (el) => {
+  canvasObserver?.disconnect();
+  canvasObserver = null;
+  if (!el || typeof ResizeObserver === 'undefined') return;
+  canvasObserver = new ResizeObserver(([entry]) => {
+    canvasSize.value = { width: entry.contentRect.width, height: entry.contentRect.height };
+  });
+  canvasObserver.observe(el);
+});
+
+onBeforeUnmount(() => canvasObserver?.disconnect());
+
+const ISO_UNIT_X = computed(() => {
+  const g = grid.value;
+  if (!g) return 0;
+  return 100 / (g.width + g.height);
+});
+const ISO_ASPECT_CORRECTION = computed(() => {
+  const { width, height } = canvasSize.value;
+  return width > 0 && height > 0 ? width / height : 1;
+});
+const ISO_UNIT_Y = computed(() => (ISO_UNIT_X.value / 2) * ISO_ASPECT_CORRECTION.value);
+const ISO_TILE_W = computed(() => ISO_UNIT_X.value * 2.05); // slight overlap hides seams
+const ISO_TILE_H = computed(() => ISO_UNIT_Y.value * 2.05);
+
+function isoLeft(x: number, y: number): number {
+  return 50 + (x - y) * ISO_UNIT_X.value;
+}
+
+function isoTop(x: number, y: number): number {
+  const g = grid.value;
+  if (!g) return 50;
+  const maxSpan = g.width - 1 + (g.height - 1);
+  return 50 + (x + y - maxSpan / 2) * ISO_UNIT_Y.value;
+}
+
+function cellStyle(cell: Cell) {
+  return {
+    left: `${isoLeft(cell.x, cell.y)}%`,
+    top: `${isoTop(cell.x, cell.y)}%`,
+    width: `${ISO_TILE_W.value}%`,
+    height: `${ISO_TILE_H.value}%`,
+    zIndex: String(cell.x + cell.y),
+    '--terrain-height': terrainHeight(cell.x, cell.y),
+  };
+}
+
 const partyStyle = computed(() => {
   const g = grid.value;
   if (!g) return {};
 
   return {
-    left: `${((g.partyX + 0.5) / g.width) * 100}%`,
-    top: `${((g.partyY + 0.5) / g.height) * 100}%`,
+    left: `${isoLeft(g.partyX, g.partyY)}%`,
+    top: `${isoTop(g.partyX, g.partyY)}%`,
+    '--terrain-height': terrainHeight(g.partyX, g.partyY),
   };
 });
 
-/**
- * Purely cosmetic terrain height, deterministic from (roomId, x, y) — never sent
- * to or read from the backend. Only shades the cell; no mechanical effect during
- * exploration (height only matters once the future tactical combat chantier lands).
- */
-function terrainHeight(x: number, y: number): number {
-  const seed = `${props.room.id}:${x}:${y}`;
-  let hash = 0;
-  for (let i = 0; i < seed.length; i++) {
-    hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
-  }
-  return hash % 4;
-}
+// ── Room backdrop: thematic, coherent within a theme, lightly nuanced per room ─────
+const THEME_BACKDROP_CLASS: Record<string, string> = {
+  Threshold: 'tgrid__backdrop--threshold',
+  Memory: 'tgrid__backdrop--memory',
+  Forest: 'tgrid__backdrop--forest',
+  Rupture: 'tgrid__backdrop--rupture',
+  Silence: 'tgrid__backdrop--silence',
+  Antechamber: 'tgrid__backdrop--antechamber',
+  Final: 'tgrid__backdrop--final',
+};
+
+const backdropClass = computed(() =>
+  THEME_BACKDROP_CLASS[props.room.theme] ?? 'tgrid__backdrop--default');
+
+// Same room + same theme always renders the same backdrop family; this is the only
+// thing that varies it slightly between two rooms sharing a theme (a small hue drift).
+const roomNuance = computed(() => hashSeed(props.room.id ?? '') % 100);
 
 const SIGIL_KIND_BY_NODE_TYPE: Record<string, string> = {
   Combat: 'combat',
@@ -275,21 +361,21 @@ function toggleInfoCollapsed() {
 
 <template>
   <section class="tgrid">
-    <div
-      v-if="grid"
-      class="tgrid__canvas"
-      :style="{
-        gridTemplateColumns: `repeat(${grid.width}, 1fr)`,
-        gridTemplateRows: `repeat(${grid.height}, 1fr)`,
-      }"
-    >
+    <div v-if="grid" ref="canvasEl" class="tgrid__canvas">
+      <div
+        class="tgrid__backdrop"
+        :class="backdropClass"
+        :style="{ '--room-nuance': roomNuance }"
+        aria-hidden="true"
+      />
+
       <button
         v-for="cell in cells"
         :key="`${cell.x}-${cell.y}`"
         type="button"
         class="tgrid__cell"
         :class="cellClass(cell)"
-        :style="{ '--terrain-height': terrainHeight(cell.x, cell.y) }"
+        :style="cellStyle(cell)"
         :aria-disabled="!isRevealed(cell.x, cell.y)"
         :aria-label="`Case ${cell.x},${cell.y}`"
         @click="onCellClick(cell)"
@@ -439,18 +525,96 @@ function toggleInfoCollapsed() {
   flex: 1;
   min-height: 0;
   min-width: 0;
-  display: grid;
-  gap: 2px;
   padding: 6px;
   overflow: hidden;
   border: 1px solid color-mix(in oklch, var(--line), transparent 60%);
+}
+
+/* ── Room backdrop: thematic, coherent within a theme, lightly nuanced per room ─────
+   Pure CSS (no image assets, no 3D library) — layered gradients per theme, with a
+   small deterministic hue drift (--room-nuance) so two rooms sharing a theme still
+   read as the same place while not being pixel-identical. */
+.tgrid__backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  filter: hue-rotate(calc((var(--room-nuance, 50) - 50) * 0.3deg));
+}
+
+.tgrid__backdrop--default {
   background:
-    radial-gradient(circle at 20% 50%, var(--wash-gold), transparent 18%),
-    radial-gradient(circle at 88% 50%, var(--wash-blood), transparent 12%);
+    radial-gradient(circle at 20% 50%, var(--wash-gold), transparent 25%),
+    radial-gradient(circle at 88% 50%, var(--wash-blood), transparent 20%),
+    var(--void);
+}
+
+.tgrid__backdrop--threshold {
+  /* Seuil — porte liminale : colonne de lumière verticale, vignette brumeuse. */
+  background:
+    linear-gradient(90deg, transparent 42%, color-mix(in oklch, var(--frost), transparent 82%) 50%, transparent 58%),
+    radial-gradient(ellipse at 50% 100%, color-mix(in oklch, var(--void), black 20%), transparent 70%),
+    var(--void);
+}
+
+.tgrid__backdrop--memory {
+  /* Mémoire — sépia chaud, fines ondulations horizontales façon page tournée. */
+  background:
+    repeating-linear-gradient(0deg, transparent 0 22px, color-mix(in oklch, var(--gold), transparent 92%) 22px 23px),
+    radial-gradient(circle at 30% 20%, color-mix(in oklch, var(--gold), transparent 85%), transparent 60%),
+    color-mix(in oklch, var(--void), var(--gold) 4%);
+}
+
+.tgrid__backdrop--forest {
+  /* Forêt — vert profond, troncs verticaux répétés. */
+  background:
+    repeating-linear-gradient(90deg, color-mix(in oklch, var(--void), var(--sap) 6%) 0 26px, color-mix(in oklch, var(--void), black 15%) 26px 30px),
+    radial-gradient(circle at 50% 0%, color-mix(in oklch, var(--sap), transparent 80%), transparent 65%),
+    color-mix(in oklch, var(--void), var(--sap) 5%);
+}
+
+.tgrid__backdrop--rupture {
+  /* Rupture — fractures anguleuses, croisées, teintées de sang. */
+  background:
+    repeating-linear-gradient(35deg, transparent 0 40px, color-mix(in oklch, var(--blood), transparent 88%) 40px 42px),
+    repeating-linear-gradient(-35deg, transparent 0 55px, color-mix(in oklch, var(--blood), transparent 90%) 55px 57px),
+    color-mix(in oklch, var(--void), var(--blood) 6%);
+}
+
+.tgrid__backdrop--silence {
+  /* Silence — pâle, immobile, ondes concentriques comme une eau stagnante. */
+  background:
+    radial-gradient(circle at 50% 50%,
+      transparent 0 18%, color-mix(in oklch, var(--frost), transparent 92%) 18% 19%,
+      transparent 19% 34%, color-mix(in oklch, var(--frost), transparent 94%) 34% 35%,
+      transparent 35%),
+    color-mix(in oklch, var(--void), var(--frost) 4%);
+}
+
+.tgrid__backdrop--antechamber {
+  /* Antichambre — colonnade dorée, formelle. */
+  background:
+    repeating-linear-gradient(90deg, color-mix(in oklch, var(--gold), transparent 90%) 0 3px, transparent 3px 64px),
+    radial-gradient(ellipse at 50% -10%, color-mix(in oklch, var(--gold), transparent 82%), transparent 55%),
+    color-mix(in oklch, var(--void), var(--gold) 3%);
+}
+
+.tgrid__backdrop--final {
+  /* Confrontation finale — pulsation sombre et sanglante. */
+  background:
+    radial-gradient(circle at 50% 50%, color-mix(in oklch, var(--blood), transparent 55%), transparent 60%),
+    var(--void);
+  animation: tgrid-backdrop-pulse 6s ease-in-out infinite;
+}
+
+@keyframes tgrid-backdrop-pulse {
+  0%, 100% { opacity: 0.75; }
+  50% { opacity: 1; }
 }
 
 .tgrid__cell {
-  position: relative;
+  position: absolute;
   min-height: 0;
   min-width: 0;
   display: grid;
@@ -459,6 +623,8 @@ function toggleInfoCollapsed() {
   border-radius: 2px;
   padding: 0;
   cursor: pointer;
+  clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+  transform: translate(-50%, calc(-50% - var(--terrain-height, 0) * 4px));
   transition: filter 0.15s ease, transform 0.15s ease;
 }
 
@@ -479,12 +645,15 @@ function toggleInfoCollapsed() {
 
 .tgrid__cell--revealed {
   background: color-mix(in oklch, var(--panel), black calc(var(--terrain-height, 0) * 6%));
-  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--line), transparent 55%);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in oklch, var(--line), transparent 55%),
+    0 calc(2px + var(--terrain-height, 0) * 2px) calc(4px + var(--terrain-height, 0) * 3px)
+      oklch(0 0 0 / calc(0.15 + var(--terrain-height, 0) * 0.08));
 }
 
 .tgrid__cell--revealed:not([aria-disabled='true']):hover {
   filter: brightness(1.18);
-  transform: scale(1.03);
+  transform: translate(-50%, calc(-50% - var(--terrain-height, 0) * 4px)) scale(1.08);
 }
 
 .tgrid__cell--node.tgrid__cell--revealed {
@@ -528,7 +697,8 @@ function toggleInfoCollapsed() {
 
 @media (prefers-reduced-motion: reduce) {
   .tgrid__node-icon,
-  .tgrid__info-toggle--alert {
+  .tgrid__info-toggle--alert,
+  .tgrid__backdrop--final {
     animation: none;
   }
 }
@@ -548,17 +718,17 @@ function toggleInfoCollapsed() {
   height: 0;
   transition: left 0.3s ease, top 0.3s ease;
   pointer-events: none;
-  z-index: 3;
+  z-index: 100;
 }
 
 .tgrid__party-token {
   position: absolute;
-  translate: -50% -50%;
   width: 0.85rem;
   height: 0.85rem;
   border-radius: 50%;
   background: var(--gold);
   box-shadow: 0 0 10px 2px color-mix(in oklch, var(--gold), transparent 30%);
+  transform: translate(-50%, calc(-50% - var(--terrain-height, 0) * 4px));
 }
 
 /* ── Node side panel ─────────────────────────────────────────────────────────── */
@@ -569,7 +739,7 @@ function toggleInfoCollapsed() {
   width: 260px;
   max-width: 80%;
   display: flex;
-  z-index: 4;
+  z-index: 110;
   transition: width 0.2s ease;
 }
 
@@ -685,7 +855,7 @@ function toggleInfoCollapsed() {
   position: absolute;
   top: 0;
   left: 0;
-  z-index: 5;
+  z-index: 120;
   display: flex;
   align-items: flex-start;
   flex-wrap: wrap;
