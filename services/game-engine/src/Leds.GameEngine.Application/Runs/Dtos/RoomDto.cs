@@ -97,7 +97,14 @@ public sealed record RoomGridDto(
     int PartyX,
     int PartyY,
     bool CanChallengeBossRemotely,
-    IReadOnlyCollection<int[]> RevealedCells)
+    IReadOnlyCollection<int[]> RevealedCells,
+    // Flat, row-major (index = y*Width+x), one value 0..3 per cell — sent for the whole grid,
+    // not gated by fog of war, so the renderer can autotile terrain at the fog boundary and
+    // objective markers can still show a sensible tile through unexplored fog.
+    IReadOnlyList<int> Elevation,
+    // [x,y] pairs, same shape convention as RevealedCells — sent for the whole grid, same
+    // rationale as Elevation above.
+    IReadOnlyCollection<int[]> ObstacleCells)
 {
     public static RoomGridDto FromDomain(RoomGrid grid, bool canChallengeBossRemotely)
     {
@@ -109,7 +116,9 @@ public sealed record RoomGridDto(
             grid.PartyX,
             grid.PartyY,
             canChallengeBossRemotely,
-            grid.RevealedCells.Select(cell => new[] { cell.X, cell.Y }).ToArray());
+            grid.RevealedCells.Select(cell => new[] { cell.X, cell.Y }).ToArray(),
+            grid.Elevation.ToArray(),
+            grid.Obstacles.Select(cell => new[] { cell.X, cell.Y }).ToArray());
     }
 }
 

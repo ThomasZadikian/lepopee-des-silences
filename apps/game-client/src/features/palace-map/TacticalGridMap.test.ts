@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 import TacticalGridMap from './TacticalGridMap.vue';
 import type { NodeDto, RoomDto, RoomGridDto } from '../runs/types/runTypes';
+import { projectToScreen } from './composables/useTerrainDrawPlan';
 
 function makeNode(overrides: Partial<NodeDto> = {}): NodeDto {
   return {
@@ -32,6 +33,8 @@ function makeGrid(overrides: Partial<RoomGridDto> = {}): RoomGridDto {
     partyY: 0,
     canChallengeBossRemotely: false,
     revealedCells: [[0, 0], [1, 0]],
+    elevation: new Array(9).fill(0),
+    obstacleCells: [],
     ...overrides,
   };
 }
@@ -56,62 +59,42 @@ function makeRoom(overrides: Partial<RoomDto> = {}, gridOverrides: Partial<RoomG
   };
 }
 
+// A note on what changed from the CSS-isometric renderer this replaced: cells used to be
+// individual DOM `<button class="tgrid__cell">`s, so click-to-move, hover, fog/revealed
+// state, and per-cell position/height could all be asserted by querying/regex-parsing that
+// DOM. The board is now painted onto a single `<canvas>` (see useTerrainDrawPlan.ts /
+// useTerrainSprites.ts) — there's no per-cell DOM node left to query, and jsdom's `<canvas>`
+// has no real layout (`getBoundingClientRect()` always returns zeros), so click/hover hit-
+// testing can't be driven through simulated DOM events here either. That logic (the isometric
+// projection, its inverse, and the sprite/fog selection rules) is pure and framework-agnostic
+// by construction — see useTerrainDrawPlan.spec.ts, which tests it directly instead. This file
+// keeps only what's still real DOM: the side panel, top tabs, tooltip, boss banner, node
+// markers, and party token (all deliberately still DOM overlays — see TacticalGridMap.vue).
+
 describe('TacticalGridMap', () => {
   it('renders without crashing', () => {
     const wrapper = mount(TacticalGridMap, { props: { room: makeRoom() } });
     expect(wrapper.exists()).toBe(true);
   });
 
-  it('renders one cell per grid position', () => {
+  it('renders the terrain canvas', () => {
     const wrapper = mount(TacticalGridMap, { props: { room: makeRoom() } });
-    expect(wrapper.findAll('.tgrid__cell')).toHaveLength(9);
+    expect(wrapper.find('.tgrid__terrain-canvas').exists()).toBe(true);
   });
 
-  it('marks revealed cells as revealed and the rest as fog', () => {
-    const wrapper = mount(TacticalGridMap, { props: { room: makeRoom() } });
-    expect(wrapper.findAll('.tgrid__cell--revealed')).toHaveLength(2);
-    expect(wrapper.findAll('.tgrid__cell--fog')).toHaveLength(7);
-  });
-
-  it('marks fog cells as aria-disabled and revealed cells as not', () => {
-    const wrapper = mount(TacticalGridMap, { props: { room: makeRoom() } });
-    const cells = wrapper.findAll('.tgrid__cell');
-    const disabledCount = cells.filter((c) => c.attributes('aria-disabled') === 'true').length;
-    expect(disabledCount).toBe(7);
-  });
-
-  it('emits moveRequest when clicking a revealed non-party cell', async () => {
-    const wrapper = mount(TacticalGridMap, { props: { room: makeRoom() } });
-    const cells = wrapper.findAll('.tgrid__cell');
-    // revealed cells are (0,0) [party] and (1,0) — index 1 in row-major order.
-    await cells[1].trigger('click');
-    expect(wrapper.emitted('moveRequest')).toEqual([[1, 0]]);
-  });
-
-  it('does not emit moveRequest when clicking a fog cell', async () => {
-    const wrapper = mount(TacticalGridMap, { props: { room: makeRoom() } });
-    const cells = wrapper.findAll('.tgrid__cell');
-    await cells[2].trigger('click'); // (2,0) — not revealed
-    expect(wrapper.emitted('moveRequest')).toBeUndefined();
-  });
-
-  it('does not emit moveRequest when clicking the party cell', async () => {
-    const wrapper = mount(TacticalGridMap, { props: { room: makeRoom() } });
-    const cells = wrapper.findAll('.tgrid__cell');
-    await cells[0].trigger('click'); // (0,0) — party cell
-    expect(wrapper.emitted('moveRequest')).toBeUndefined();
-  });
-
-  it('renders a node icon on a revealed cell holding a node', () => {
+  it('renders a node icon marker for a revealed node', () => {
     const node = makeNode({ row: 0, lane: 1 });
     const room = makeRoom({ nodes: [node] });
     const wrapper = mount(TacticalGridMap, { props: { room } });
-    expect(wrapper.findAll('.tgrid__node-icon')).toHaveLength(1);
+    const icons = wrapper.findAll('.tgrid__node-icon');
+    expect(icons).toHaveLength(1);
+    expect(icons[0].classes()).not.toContain('tgrid__node-icon--ghost');
   });
 
   it('renders a dimmed marker icon for an available node on an unrevealed (fogged) cell', () => {
-    // (2,2) is outside the default revealedCells ([[0,0],[1,0]]) — the backend now sends
-    // Available nodes regardless of fog so the player still sees where to head.
+    // (2,2) is outside the default revealedCells ([[0,0],[1,0]]) — the backend sends
+    // Available nodes regardless of fog so the player still sees where to head, but the
+    // marker itself reads as a dimmed "ghost" rather than a fully-lit one.
     const node = makeNode({ row: 2, lane: 2, state: 'Available' });
     const room = makeRoom({ nodes: [node] });
     const wrapper = mount(TacticalGridMap, { props: { room } });
@@ -119,32 +102,27 @@ describe('TacticalGridMap', () => {
     const icons = wrapper.findAll('.tgrid__node-icon');
     expect(icons).toHaveLength(1);
     expect(icons[0].classes()).toContain('tgrid__node-icon--ghost');
-
-    const cells = wrapper.findAll('.tgrid__cell');
-    const fogMarkerCell = cells.find((c) => c.classes().includes('tgrid__cell--fog-marker'));
-    expect(fogMarkerCell).toBeDefined();
   });
 
-  it('shows a hover tooltip with just the node type when hovering a node cell', async () => {
-    // The tooltip is Teleported to <body> so it can escape the map's overflow:hidden
-    // clipping — query the document directly rather than the mounted wrapper subtree.
-    const node = makeNode({ row: 0, lane: 1, type: 'Merchant' });
+  it('marks a resolved node marker as visually spent', () => {
+    const node = makeNode({ row: 0, lane: 1, state: 'Resolved' });
     const room = makeRoom({ nodes: [node] });
-    const wrapper = mount(TacticalGridMap, { props: { room }, attachTo: document.body });
+    const wrapper = mount(TacticalGridMap, { props: { room } });
+    expect(wrapper.find('.tgrid__node-icon--resolved').exists()).toBe(true);
+  });
 
-    expect(document.querySelector('.tgrid__hover-tooltip')).toBeNull();
+  it('does not mark an available node marker as resolved', () => {
+    const node = makeNode({ row: 0, lane: 1, state: 'Available' });
+    const room = makeRoom({ nodes: [node] });
+    const wrapper = mount(TacticalGridMap, { props: { room } });
+    expect(wrapper.find('.tgrid__node-icon--resolved').exists()).toBe(false);
+  });
 
-    const cells = wrapper.findAll('.tgrid__cell');
-    await cells[1].trigger('mouseenter'); // (1,0) holds the node
-
-    const tooltip = document.querySelector('.tgrid__hover-tooltip');
-    expect(tooltip).not.toBeNull();
-    expect(tooltip?.textContent?.trim()).toBe('Marchand');
-
-    await cells[1].trigger('mouseleave');
-    expect(document.querySelector('.tgrid__hover-tooltip')).toBeNull();
-
-    wrapper.unmount();
+  it('marks a boss node marker distinctly', () => {
+    const node = makeNode({ row: 0, lane: 1, isBoss: true, type: 'RoomBoss' });
+    const room = makeRoom({ nodes: [node] });
+    const wrapper = mount(TacticalGridMap, { props: { room } });
+    expect(wrapper.find('.tgrid__node-icon--boss').exists()).toBe(true);
   });
 
   it('shows the node side panel when the party is on an available node', () => {
@@ -302,24 +280,6 @@ describe('TacticalGridMap', () => {
     expect(wrapper.emitted('challengeBoss')).toHaveLength(1);
   });
 
-  it('marks a resolved node as visually spent', () => {
-    const node = makeNode({ row: 0, lane: 1, state: 'Resolved' });
-    const room = makeRoom({ nodes: [node] });
-    const wrapper = mount(TacticalGridMap, { props: { room } });
-
-    expect(wrapper.find('.tgrid__cell--resolved-node').exists()).toBe(true);
-    expect(wrapper.find('.tgrid__node-icon--resolved').exists()).toBe(true);
-  });
-
-  it('does not mark an available node as resolved', () => {
-    const node = makeNode({ row: 0, lane: 1, state: 'Available' });
-    const room = makeRoom({ nodes: [node] });
-    const wrapper = mount(TacticalGridMap, { props: { room } });
-
-    expect(wrapper.find('.tgrid__cell--resolved-node').exists()).toBe(false);
-    expect(wrapper.find('.tgrid__node-icon--resolved').exists()).toBe(false);
-  });
-
   it('shows the room name next to the "Exploration tactique" tag, falling back to theme', () => {
     const room = makeRoom({ theme: 'La Forêt', catalogName: null });
     const wrapper = mount(TacticalGridMap, { props: { room } });
@@ -393,38 +353,18 @@ describe('TacticalGridMap', () => {
       .not.toBe(wrapperB.find('.tgrid__backdrop').attributes('style'));
   });
 
-  // ── Fake isometry / height (2.5D projection) ────────────────────────────────────
+  // ── Party token position + movement animation ──────────────────────────────────
+  // canvasSize falls back to a fixed 100x100 square before any real ResizeObserver
+  // measurement (jsdom has none), so projections stay distinct/meaningful in tests —
+  // see the comment on canvasSize's declaration in TacticalGridMap.vue.
 
-  it('positions each cell at a distinct isometric coordinate', () => {
-    const wrapper = mount(TacticalGridMap, { props: { room: makeRoom() } });
-    const cells = wrapper.findAll('.tgrid__cell');
-    const positions = new Set(cells.map((c) => c.attributes('style')));
-    expect(positions.size).toBe(cells.length);
-  });
-
-  it('positions the party token via the same isometric projection as its cell', () => {
+  it('positions the party token at a screen coordinate derived from its grid cell', () => {
     const room = makeRoom({}, { partyX: 1, partyY: 0 });
     const wrapper = mount(TacticalGridMap, { props: { room } });
-    const partyStyle = wrapper.find('.tgrid__party').attributes('style') ?? '';
-    const cells = wrapper.findAll('.tgrid__cell');
-    // (1,0) is the second cell in row-major order for a 3x3 grid.
-    const cellStyle = cells[1].attributes('style') ?? '';
-
-    const extractLeft = (style: string) => style.match(/left:\s*([\d.]+)%/)?.[1];
-    const extractTop = (style: string) => style.match(/top:\s*([\d.]+)%/)?.[1];
-
-    expect(extractLeft(partyStyle)).toBe(extractLeft(cellStyle));
-    expect(extractTop(partyStyle)).toBe(extractTop(cellStyle));
+    const style = wrapper.find('.tgrid__party').attributes('style') ?? '';
+    expect(style).toMatch(/left:\s*[\d.]+px/);
+    expect(style).toMatch(/top:\s*[\d.]+px/);
   });
-
-  it('carries a distinct --terrain-height custom property per cell', () => {
-    const wrapper = mount(TacticalGridMap, { props: { room: makeRoom() } });
-    const cells = wrapper.findAll('.tgrid__cell');
-    const heights = cells.map((c) => c.attributes('style')?.match(/--terrain-height:\s*(\d)/)?.[1]);
-    expect(heights.every((h) => h !== undefined)).toBe(true);
-  });
-
-  // ── Party token movement animation (step-by-step, not a teleport) ──────────────
 
   it('steps the party token through each intermediate cell instead of jumping straight to the destination', async () => {
     vi.useFakeTimers();
@@ -432,29 +372,33 @@ describe('TacticalGridMap', () => {
       const room = makeRoom({}, { partyX: 0, partyY: 0, revealedCells: [[0, 0], [1, 0], [2, 0]] });
       const wrapper = mount(TacticalGridMap, { props: { room } });
 
-      const extractLeft = (style: string | undefined) => style?.match(/left:\s*([\d.]+)%/)?.[1];
+      const extractLeft = (style: string | undefined) => style?.match(/left:\s*([\d.]+)px/)?.[1];
       const currentPartyLeft = () => extractLeft(wrapper.find('.tgrid__party').attributes('style'));
 
       const startLeft = currentPartyLeft();
-      const finalCellLeft = extractLeft(wrapper.findAll('.tgrid__cell')[2].attributes('style'));
 
       await wrapper.setProps({
         room: makeRoom({}, { partyX: 2, partyY: 0, revealedCells: [[0, 0], [1, 0], [2, 0]] }),
       });
 
-      // One step interval in: the token should have advanced exactly one cell
-      // (toward x=1) — neither still at the start nor already at the destination,
-      // since the move animates cell-by-cell rather than jumping straight there.
+      // The animation hasn't ticked yet right after the prop change (usePartyTokenPath steps
+      // over time via setInterval, it doesn't jump), so the expected final position has to be
+      // computed independently rather than read from the DOM at this instant.
+      const finalLeft = String(projectToScreen(2, 0, { canvasWidth: 100, canvasHeight: 100, gridWidth: 3, gridHeight: 3 }).screenX);
+
+      // One step interval in: the token should have advanced exactly one cell — neither
+      // still at the start nor already at the destination, since the move animates
+      // cell-by-cell rather than jumping straight there.
       vi.advanceTimersByTime(150);
       await wrapper.vm.$nextTick();
       const midLeft = currentPartyLeft();
       expect(midLeft).not.toBe(startLeft);
-      expect(midLeft).not.toBe(finalCellLeft);
+      expect(Number(midLeft)).not.toBeCloseTo(Number(finalLeft), 5);
 
       vi.advanceTimersByTime(1000);
       await wrapper.vm.$nextTick();
 
-      expect(currentPartyLeft()).toBe(finalCellLeft);
+      expect(Number(currentPartyLeft())).toBeCloseTo(Number(finalLeft), 5);
     } finally {
       vi.useRealTimers();
     }
@@ -470,11 +414,16 @@ describe('TacticalGridMap', () => {
       await wrapper.setProps({ room: roomB });
 
       const partyLeft = wrapper.find('.tgrid__party').attributes('style')
-        ?.match(/left:\s*([\d.]+)%/)?.[1];
-      const cellLeft = wrapper.findAll('.tgrid__cell')[1].attributes('style')
-        ?.match(/left:\s*([\d.]+)%/)?.[1];
+        ?.match(/left:\s*([\d.]+)px/)?.[1];
 
-      expect(partyLeft).toBe(cellLeft);
+      // No animation frame in between: the left value must already equal (1,0)'s own
+      // projection right after the prop change, not still be mid-transition from (0,0).
+      // Grid is 3x3 in makeGrid(); canvasSize falls back to the fixed 100x100 square.
+      const expected = projectToScreen(1, 0, {
+        canvasWidth: 100, canvasHeight: 100, gridWidth: 3, gridHeight: 3,
+      });
+
+      expect(Number(partyLeft)).toBeCloseTo(expected.screenX, 5);
     } finally {
       vi.useRealTimers();
     }

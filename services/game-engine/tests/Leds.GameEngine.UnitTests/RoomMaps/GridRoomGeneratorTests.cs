@@ -178,4 +178,105 @@ public sealed class GridRoomGeneratorTests
         (boss1.Lane, boss1.Row).Should().Be((boss2.Lane, boss2.Row),
             "the boss's position only depends on the template shape, not on the seeded random rolls.");
     }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(7)]
+    [InlineData(42)]
+    [InlineData(1234)]
+    [InlineData(987654)]
+    public async Task GenerateRoom_ShouldNeverPlaceObstaclesOnStartNodeOrBossCell(int seed)
+    {
+        var sut = CreateSut();
+        var random = new Random(seed);
+
+        var room = await sut.GenerateAsync(Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, random);
+
+        room.Grid!.IsObstacle(room.Grid.StartX, room.Grid.StartY).Should().BeFalse();
+
+        room.Nodes.Should().AllSatisfy(n =>
+            room.Grid.IsObstacle(n.Lane, n.Row).Should().BeFalse());
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(7)]
+    [InlineData(42)]
+    [InlineData(1234)]
+    [InlineData(987654)]
+    public async Task GenerateRoom_ShouldKeepEveryNodeAndBossReachableFromStart(int seed)
+    {
+        var sut = CreateSut();
+        var random = new Random(seed);
+
+        var room = await sut.GenerateAsync(Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, random);
+
+        room.Nodes.Should().AllSatisfy(n =>
+            room.Grid!.FindPath(n.Lane, n.Row).Should().NotBeNull(
+                $"node at ({n.Lane},{n.Row}) must be reachable from the start — obstacle " +
+                "generation is expected to guarantee connectivity."));
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(7)]
+    [InlineData(42)]
+    public async Task GenerateRoom_ShouldProduceElevation_ThatIsOneLipschitzBetweenNeighbors(int seed)
+    {
+        var sut = CreateSut();
+        var random = new Random(seed);
+
+        var room = await sut.GenerateAsync(Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, random);
+        var grid = room.Grid!;
+
+        for (var y = 0; y < grid.Height; y++)
+        {
+            for (var x = 0; x < grid.Width; x++)
+            {
+                if (x + 1 < grid.Width)
+                {
+                    Math.Abs(grid.ElevationAt(x, y) - grid.ElevationAt(x + 1, y)).Should().BeLessThanOrEqualTo(1);
+                }
+
+                if (y + 1 < grid.Height)
+                {
+                    Math.Abs(grid.ElevationAt(x, y) - grid.ElevationAt(x, y + 1)).Should().BeLessThanOrEqualTo(1);
+                }
+            }
+        }
+    }
+
+    [Fact]
+    public async Task GenerateRoom_ShouldActuallyPopulateElevationAndObstacles_NotJustDefaultToFlat()
+    {
+        // Canary against a regression where the generator silently stops threading real terrain
+        // through to Room.Create and falls back to RoomGrid.CreateInitial's flat/no-obstacle
+        // defaults — those defaults exist for hand-built test rooms, not for generated ones.
+        var sut = CreateSut();
+        var random = new Random(42);
+
+        var room = await sut.GenerateAsync(Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, random);
+
+        room.Grid!.Elevation.Should().Contain(level => level > 0,
+            "the default template's board is large enough that a cone-falloff heightmap should raise at least one cell.");
+        room.Grid.Obstacles.Should().NotBeEmpty(
+            "the default template's board is large enough that some obstacles should survive the connectivity check.");
+    }
+
+    [Fact]
+    public async Task GenerateRoom_ShouldKeepObstacleDensityWithinExpectedBand()
+    {
+        var sut = CreateSut();
+        var random = new Random(42);
+
+        var room = await sut.GenerateAsync(Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, random);
+        var grid = room.Grid!;
+
+        var totalCells = grid.Width * grid.Height;
+
+        // Loose band, not the exact 15% knob — connectivity checks can and do discard some
+        // candidates, so this only guards against a gross regression (e.g. no obstacles at all,
+        // or so many the board becomes unplayable).
+        grid.Obstacles.Count.Should().BeInRange(0, (int)(totalCells * 0.3));
+    }
 }

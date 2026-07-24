@@ -3,11 +3,13 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue';
 
 import SigilIcon from '../../shared/components/SigilIcon.vue';
 import type { NodeDto, RoomDto } from '../runs/types/runTypes';
-import { hashSeed, usePalaceTerrain } from './composables/usePalaceTerrain';
+import { usePalaceTerrain } from './composables/usePalaceTerrain';
 import { usePartyTokenPath } from './composables/usePartyTokenPath';
-import { useNodePresentation, RISK_TIER_DISPLAY } from './composables/useNodePresentation';
+import { useNodePresentation, NODE_TILE_TONE, RISK_TIER_DISPLAY } from './composables/useNodePresentation';
 import { useRoomBackdropTheme } from './composables/useRoomBackdropTheme';
 import { useGridCells, type Cell } from './composables/useGridCells';
+import { useTerrainSprites, GROUND_ANCHOR_RATIO, type FloorTint } from './composables/useTerrainSprites';
+import { buildDrawPlan, isoUnit, projectToScreen, unprojectFromScreen } from './composables/useTerrainDrawPlan';
 
 const props = defineProps<{
   room: RoomDto;
@@ -31,29 +33,29 @@ const roomName = computed(() =>
 const room = computed(() => props.room);
 const grid = computed(() => props.room.grid ?? null);
 
-const { isRevealed, nodeAt, isParty, cells } = useGridCells(room, grid);
+const { isRevealed, nodeAt, isParty, cells, revealedCells, obstacleCells, nodesByCell } =
+  useGridCells(room, grid);
 
 const { displayPartyX, displayPartyY } = usePartyTokenPath(room, grid);
 
 const { terrainHeight } = usePalaceTerrain(room, grid);
 
-// ── Fake isometry (2.5D projection) ─────────────────────────────────────────────
-// No 3D library: cells are laid out with plain absolute positioning, projected onto
-// a diamond via the classic isometric formula, instead of a literal CSS Grid. Height
-// then reads as a per-cell vertical offset (translateY) layered on top of that.
-//
-// Positions are expressed in % of the canvas, but a % point isn't the same number of
-// pixels on both axes unless the canvas happens to be square — and the game board
-// never is (it's the full remaining viewport). Left uncorrected, the diamond comes
-// out squashed flat. canvasSize (measured live via ResizeObserver) lets the vertical
-// unit compensate for the canvas's actual aspect ratio so tiles read as a true ~2:1
-// isometric diamond regardless of window size. Falls back to a fixed 0.5 ratio when
-// unmeasured (first paint, or jsdom in tests, which has no ResizeObserver).
-const canvasEl = ref<HTMLElement | null>(null);
-const canvasSize = ref({ width: 0, height: 0 });
+// ── Canvas terrain renderer ──────────────────────────────────────────────────────
+// The grid/fog/party overlays used to be individual absolutely-positioned DOM `<button>`s
+// per cell, projected via a CSS-percent isometric formula. That's replaced here by a single
+// `<canvas>` painting procedurally-generated tile sprites (see useTerrainSprites.ts) at real
+// pixel positions (see useTerrainDrawPlan.ts) — node icons and the party token stay DOM
+// overlays layered on top (SigilIcon is SVG, no reason to duplicate it in canvas; their
+// animation/transition needs don't fit a redraw-per-frame model either).
+const canvasContainerEl = ref<HTMLElement | null>(null);
+const canvasEl = ref<HTMLCanvasElement | null>(null);
+// A square fallback (not 0×0) so every projection/hit-test stays meaningful before the
+// ResizeObserver's first real measurement — first paint, or a test environment (e.g. jsdom)
+// that doesn't implement ResizeObserver at all.
+const canvasSize = ref({ width: 100, height: 100 });
 let canvasObserver: ResizeObserver | null = null;
 
-watch(canvasEl, (el) => {
+watch(canvasContainerEl, (el) => {
   canvasObserver?.disconnect();
   canvasObserver = null;
   if (!el || typeof ResizeObserver === 'undefined') return;
@@ -65,94 +67,140 @@ watch(canvasEl, (el) => {
 
 onBeforeUnmount(() => canvasObserver?.disconnect());
 
-// Shrinks the whole diamond inward so that even the outermost tile's own half-width/
-// half-height never reaches the canvas edge — without this, corner tiles clip against
-// (or visually touch) the canvas border on wide/narrow windows.
-const ISO_FIT = 0.82;
-// The board's vertical center sits a bit below the canvas's true center: the top-tabs
-// chrome (kicker/room name/Lois button) overlays the top-left corner, so leaving more
-// headroom there than at the bottom keeps the diamond clear of it.
-const ISO_V_CENTER = 56;
-
-const ISO_UNIT_X = computed(() => {
-  const g = grid.value;
-  if (!g) return 0;
-  return (100 / (g.width + g.height)) * ISO_FIT;
-});
-const ISO_ASPECT_CORRECTION = computed(() => {
-  const { width, height } = canvasSize.value;
-  return width > 0 && height > 0 ? width / height : 1;
-});
-const ISO_UNIT_Y = computed(() => (ISO_UNIT_X.value / 2) * ISO_ASPECT_CORRECTION.value);
-const ISO_TILE_W = computed(() => ISO_UNIT_X.value * 2.05); // slight overlap hides seams
-const ISO_TILE_H = computed(() => ISO_UNIT_Y.value * 2.05);
-
-function isoLeft(x: number, y: number): number {
-  // Mirrored from the first pass (x increasing now sweeps toward the bottom-left,
-  // y toward the bottom-right) — flipped per feedback that the original diagonal
-  // direction read wrong.
-  return 50 - (x - y) * ISO_UNIT_X.value;
-}
-
-function isoTop(x: number, y: number): number {
-  const g = grid.value;
-  if (!g) return ISO_V_CENTER;
-  const maxSpan = g.width - 1 + (g.height - 1);
-  return ISO_V_CENTER + (x + y - maxSpan / 2) * ISO_UNIT_Y.value;
-}
-
-function cellStyle(cell: Cell) {
-  // Per-cell jitter for the fog cloud layout (see .tgrid__cell--fog::before) — without
-  // it, every fog tile draws the exact same gradient positions and the mist reads as
-  // a repeating scalloped texture instead of an irregular cloud.
-  const fogSeed = hashSeed(`${props.room.id}:fog:${cell.x}:${cell.y}`);
-  const fogSeed2 = hashSeed(`${props.room.id}:fog2:${cell.x}:${cell.y}`);
-  return {
-    left: `${isoLeft(cell.x, cell.y)}%`,
-    top: `${isoTop(cell.x, cell.y)}%`,
-    width: `${ISO_TILE_W.value}%`,
-    height: `${ISO_TILE_H.value}%`,
-    zIndex: String(cell.x + cell.y),
-    '--terrain-height': terrainHeight(cell.x, cell.y),
-    '--fog-jx': (fogSeed % 41) - 20,
-    '--fog-jy': (Math.floor(fogSeed / 41) % 41) - 20,
-    // Varies each cloud's own size, not just its position — sub-tile position jitter
-    // alone still reads as a regular texture at the tile-pitch frequency; letting
-    // neighboring clouds be genuinely bigger/smaller breaks that rhythm.
-    '--fog-scale': 0.75 + (fogSeed2 % 100) / 100 * 0.65,
-  };
-}
-
-const partyStyle = computed(() => {
-  if (!grid.value) return {};
-
-  return {
-    left: `${isoLeft(displayPartyX.value, displayPartyY.value)}%`,
-    top: `${isoTop(displayPartyX.value, displayPartyY.value)}%`,
-    '--terrain-height': terrainHeight(displayPartyX.value, displayPartyY.value),
-  };
-});
-
 const { backdropClass, roomNuance, themeAccent } = useRoomBackdropTheme(room);
 const { nodeTileToneClass, sigilKindFor, nodeTypeLabel, nodeTypeDescription } = useNodePresentation();
 
-function cellClass(cell: Cell) {
-  const revealed = isRevealed(cell.x, cell.y);
-  const node = nodeAt(cell.x, cell.y);
-  // Available nodes are sent by the backend regardless of fog (see RoomDto.FromDomain),
-  // so a node can appear on an otherwise-unexplored cell — shown as a dimmed marker
-  // (tgrid__cell--fog-marker) rather than the fully-lit look of a revealed cell.
-  const fogMarker = !revealed && Boolean(node);
+const TONE_VALUES = new Set(['blood', 'gold', 'frost', 'sap']);
+
+const ambientTint = computed<FloorTint>(() => {
+  const accent = themeAccent.value.replace('--', '');
+  return (TONE_VALUES.has(accent) ? accent : 'neutral') as FloorTint;
+});
+
+function nodeTintFor(node: NodeDto): FloorTint {
+  const tone = NODE_TILE_TONE[node.type];
+  return (tone && TONE_VALUES.has(tone) ? tone : 'neutral') as FloorTint;
+}
+
+const projectionParams = computed(() => {
+  const g = grid.value;
+  return {
+    canvasWidth: canvasSize.value.width,
+    canvasHeight: canvasSize.value.height,
+    gridWidth: g?.width ?? 0,
+    gridHeight: g?.height ?? 0,
+  };
+});
+
+const drawPlan = computed(() => {
+  const g = grid.value;
+  if (!g || canvasSize.value.width === 0 || canvasSize.value.height === 0) return [];
+
+  return buildDrawPlan({
+    cells: cells.value,
+    gridWidth: g.width,
+    gridHeight: g.height,
+    canvasWidth: canvasSize.value.width,
+    canvasHeight: canvasSize.value.height,
+    roomId: props.room.id,
+    ambientTint: ambientTint.value,
+    elevation: g.elevation,
+    revealedCells: revealedCells.value,
+    obstacleCells: obstacleCells.value,
+    nodesByCell: nodesByCell.value,
+    nodeTintFor,
+  });
+});
+
+const { getSprite, spriteAspectRatio } = useTerrainSprites();
+
+function paintCanvas() {
+  const canvas = canvasEl.value;
+  const g = grid.value;
+  if (!canvas || !g || canvasSize.value.width === 0) return;
+
+  canvas.width = canvasSize.value.width;
+  canvas.height = canvasSize.value.height;
+
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  const { isoUnitX } = isoUnit(projectionParams.value);
+  const destW = isoUnitX * 2.05; // slight overlap hides seams, matches the old CSS tile ratio
+  const destH = destW / spriteAspectRatio;
+
+  for (const entry of drawPlan.value) {
+    const sprite = getSprite(entry.spriteKey);
+    ctx.drawImage(
+      sprite,
+      entry.screenX - (destW / 2),
+      entry.screenY - (destH * GROUND_ANCHOR_RATIO),
+      destW,
+      destH,
+    );
+  }
+}
+
+watch(drawPlan, paintCanvas, { flush: 'post' });
+
+// ── Node markers + party token: DOM overlays positioned via the same pixel projection ──
+const TERRAIN_LIFT_PX = 8;
+
+const nodeMarkers = computed(() => {
+  const g = grid.value;
+  // Deliberately NOT gated on canvasSize being measured (unlike drawPlan): a marker's
+  // existence/ghost-state only depends on grid data, not on pixel geometry. Positions
+  // are degenerate (all stacked at the projection's origin) until the ResizeObserver
+  // first fires, same as any other layout-dependent element on first paint — and it
+  // keeps this list testable without a real ResizeObserver (e.g. under jsdom).
+  if (!g) return [];
+
+  const markers: { node: NodeDto; screenX: number; screenY: number; ghost: boolean }[] = [];
+
+  for (const cell of cells.value) {
+    const node = nodeAt(cell.x, cell.y);
+    if (!node) continue;
+
+    const revealed = isRevealed(cell.x, cell.y);
+    const { screenX, screenY } = projectToScreen(cell.x, cell.y, projectionParams.value);
+    const lift = revealed ? terrainHeight(cell.x, cell.y) * TERRAIN_LIFT_PX : 0;
+    markers.push({ node, screenX, screenY: screenY - lift, ghost: !revealed });
+  }
+
+  return markers;
+});
+
+const partyMarkerStyle = computed(() => {
+  const g = grid.value;
+  if (!g) return { display: 'none' };
+
+  const { screenX, screenY } = projectToScreen(displayPartyX.value, displayPartyY.value, projectionParams.value);
+  const lift = terrainHeight(displayPartyX.value, displayPartyY.value) * TERRAIN_LIFT_PX;
 
   return {
-    'tgrid__cell--revealed': revealed,
-    'tgrid__cell--fog': !revealed,
-    'tgrid__cell--fog-marker': fogMarker,
-    'tgrid__cell--node': Boolean(node),
-    'tgrid__cell--boss-node': node?.isBoss ?? false,
-    'tgrid__cell--resolved-node': node?.state === 'Resolved',
-    'tgrid__cell--party': isParty(cell.x, cell.y),
+    left: `${screenX}px`,
+    top: `${screenY - lift}px`,
   };
+});
+
+// ── Click-to-move / hover: canvas has no per-cell DOM nodes, so hit-testing inverse-
+// projects the pointer position back to a grid cell. ──────────────────────────────
+function canvasPointToCell(event: MouseEvent): Cell | null {
+  const canvas = canvasEl.value;
+  const g = grid.value;
+  if (!canvas || !g) return null;
+
+  const rect = canvas.getBoundingClientRect();
+  const { x, y } = unprojectFromScreen(
+    event.clientX - rect.left,
+    event.clientY - rect.top,
+    { canvasWidth: rect.width, canvasHeight: rect.height, gridWidth: g.width, gridHeight: g.height },
+  );
+
+  if (x < 0 || x >= g.width || y < 0 || y >= g.height) return null;
+  return { x, y };
 }
 
 function onCellClick(cell: Cell) {
@@ -167,6 +215,11 @@ function onCellClick(cell: Cell) {
   emit('moveRequest', cell.x, cell.y);
 }
 
+function onCanvasClick(event: MouseEvent) {
+  const cell = canvasPointToCell(event);
+  if (cell) onCellClick(cell);
+}
+
 // ── Hover tooltip: shows just the node type, following the cursor ──────────────────
 const hoveredNode = ref<NodeDto | null>(null);
 const mouseX = ref(0);
@@ -177,16 +230,15 @@ const tooltipStyle = computed(() => ({
   top: `${mouseY.value + 16}px`,
 }));
 
-function onCellMouseEnter(cell: Cell) {
-  hoveredNode.value = nodeAt(cell.x, cell.y);
-}
-
-function onCellMouseMove(event: MouseEvent) {
+function onCanvasMouseMove(event: MouseEvent) {
   mouseX.value = event.clientX;
   mouseY.value = event.clientY;
+
+  const cell = canvasPointToCell(event);
+  hoveredNode.value = cell ? nodeAt(cell.x, cell.y) : null;
 }
 
-function onCellMouseLeave() {
+function onCanvasMouseLeave() {
   hoveredNode.value = null;
 }
 
@@ -254,7 +306,7 @@ function toggleInfoCollapsed() {
   <section class="tgrid">
     <div
       v-if="grid"
-      ref="canvasEl"
+      ref="canvasContainerEl"
       class="tgrid__canvas"
       :style="{ '--theme-accent': `var(${themeAccent})` }"
     >
@@ -265,33 +317,31 @@ function toggleInfoCollapsed() {
         aria-hidden="true"
       />
 
-      <button
-        v-for="cell in cells"
-        :key="`${cell.x}-${cell.y}`"
-        type="button"
-        class="tgrid__cell"
-        :class="[cellClass(cell), nodeTileToneClass(nodeAt(cell.x, cell.y))]"
-        :style="cellStyle(cell)"
-        :aria-disabled="!isRevealed(cell.x, cell.y)"
-        :aria-label="`Case ${cell.x},${cell.y}`"
-        @click="onCellClick(cell)"
-        @mouseenter="onCellMouseEnter(cell)"
-        @mousemove="onCellMouseMove"
-        @mouseleave="onCellMouseLeave"
-      >
-        <SigilIcon
-          v-if="nodeAt(cell.x, cell.y)"
-          class="tgrid__node-icon"
-          :class="{
-            'tgrid__node-icon--ghost': !isRevealed(cell.x, cell.y),
-            'tgrid__node-icon--resolved': nodeAt(cell.x, cell.y)!.state === 'Resolved',
-          }"
-          :kind="sigilKindFor(nodeAt(cell.x, cell.y)!)"
-          :size="20"
-        />
-      </button>
+      <canvas
+        ref="canvasEl"
+        class="tgrid__terrain-canvas"
+        role="img"
+        aria-label="Plateau d'exploration tactique"
+        @click="onCanvasClick"
+        @mousemove="onCanvasMouseMove"
+        @mouseleave="onCanvasMouseLeave"
+      />
 
-      <div class="tgrid__party" :style="partyStyle" aria-hidden="true">
+      <SigilIcon
+        v-for="marker in nodeMarkers"
+        :key="marker.node.id"
+        class="tgrid__node-icon"
+        :class="{
+          'tgrid__node-icon--ghost': marker.ghost,
+          'tgrid__node-icon--resolved': marker.node.state === 'Resolved',
+          'tgrid__node-icon--boss': marker.node.isBoss,
+        }"
+        :style="{ left: `${marker.screenX}px`, top: `${marker.screenY}px` }"
+        :kind="sigilKindFor(marker.node)"
+        :size="20"
+      />
+
+      <div class="tgrid__party" :style="partyMarkerStyle" aria-hidden="true">
         <span class="tgrid__party-token" />
       </div>
 
@@ -428,10 +478,18 @@ function toggleInfoCollapsed() {
   border: 1px solid color-mix(in oklch, var(--line), transparent 60%);
 }
 
+.tgrid__terrain-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
 /* ── Room backdrop: thematic, coherent within a theme, lightly nuanced per room ─────
    Pure CSS (no image assets, no 3D library) — layered gradients per theme, with a
    small deterministic hue drift (--room-nuance) so two rooms sharing a theme still
-   read as the same place while not being pixel-identical. */
+   read as the same place while not being pixel-identical. Sits behind the terrain
+   canvas, visible through/around the painted diamonds. */
 .tgrid__backdrop {
   position: absolute;
   inset: 0;
@@ -511,169 +569,17 @@ function toggleInfoCollapsed() {
   50% { opacity: 1; }
 }
 
-.tgrid__cell {
-  position: absolute;
-  min-height: 0;
-  min-width: 0;
-  display: grid;
-  place-items: center;
-  border: none;
-  border-radius: 2px;
-  padding: 0;
-  cursor: pointer;
-  clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
-  transform: translate(-50%, calc(-50% - var(--terrain-height, 0) * 8px));
-  transition: filter 0.15s ease, transform 0.15s ease;
-}
-
-.tgrid__cell[aria-disabled='true'] {
-  cursor: default;
-}
-
-.tgrid__cell--fog {
-  /* Real mist, not a flat dark diamond: unclipped, blurred, drifting cloud layered
-     in ::before — a hard-edged tinted shape read as "a bad gradient", not fog. Height
-     is also suppressed here (transform below drops the terrain-height offset) since
-     an unrevealed tile shouldn't hint at its elevation before being seen. */
-  clip-path: none;
-  background: transparent;
-  transform: translate(-50%, -50%);
-}
-
-.tgrid__cell--fog::before {
-  content: '';
-  position: absolute;
-  inset: -55%;
-  border-radius: 100%;
-  /* Purely decorative — never intercepts clicks. The overshoot (inset: -55%) means
-     this box extends well past its own fog tile and over neighboring cells; without
-     pointer-events: none, that overshoot silently ate clicks meant for an adjacent
-     available tile whenever the mist drifted over it. */
-  pointer-events: none;
-  /* Each blob's center is nudged by the cell's own --fog-jx/--fog-jy (set in
-     cellStyle()) so neighboring tiles don't all draw the same cloud shape — without
-     that, the mist reads as an obviously repeating scalloped texture. */
-  background:
-    radial-gradient(circle at calc(15% + var(--fog-jx, 0) * 0.7%) calc(34% + var(--fog-jy, 0) * 0.7%), color-mix(in oklch, var(--ink-3), transparent 35%), transparent 55%),
-    radial-gradient(circle at calc(60% - var(--fog-jy, 0) * 0.8%) calc(26% + var(--fog-jx, 0) * 0.6%), color-mix(in oklch, var(--ink-4), transparent 42%), transparent 58%),
-    radial-gradient(circle at calc(30% + var(--fog-jy, 0) * 0.6%) calc(74% - var(--fog-jx, 0) * 0.8%), color-mix(in oklch, var(--ink-5), transparent 32%), transparent 62%),
-    color-mix(in oklch, var(--void), black 42%);
-  filter: blur(15px);
-  opacity: 0.2;
-  animation: tgrid-fog-drift 18s ease-in-out infinite;
-  animation-delay: calc(var(--fog-jx, 0) * -0.15s);
-  transform: scale(var(--fog-scale, 1));
-}
-
-.tgrid__cell--fog-marker::before {
-  /* Known objective through the fog — a thinner mist so the ghost icon underneath
-     still reads, but still clearly distinct from a revealed cell. */
-  opacity: 0.1;
-}
-
-@keyframes tgrid-fog-drift {
-  0%, 100% { transform: translate(0, 0) scale(var(--fog-scale, 1)); }
-  33% { transform: translate(8%, -8%) scale(calc(var(--fog-scale, 1) * 1.04)); }
-  66% { transform: translate(-12%, 8%) scale(calc(var(--fog-scale, 1) * 1.02)); }
-}
-
-.tgrid__cell--revealed {
-  /* Lightly tinted by the room's theme accent (a tile "belongs" to its room without
-     drowning out node tiles below), and lit — not shadowed — by height: a taller tile
-     catches more light, which reads more legibly as elevation than darkening did.
-     --tile-tint/--tile-tint-pct/--tile-edge are the knobs every variant below
-     overrides, so the paint formula itself lives in one place. Node tiles push
-     --tile-tint-pct much higher and add a bright --tile-edge border on top of this
-     same base — that gap is deliberate: a node must always read as a clear focal
-     point, even in a room whose ambient theme shares its tone (e.g. a Combat node's
-     blood tint on a Rupture room, which is itself blood-tinted). */
-  --tile-tint: var(--theme-accent, var(--gold));
-  --tile-tint-pct: calc(14% + var(--terrain-height, 0) * 6%);
-  --tile-edge: color-mix(in oklch, var(--tile-tint), var(--line-strong, var(--line)) 55%);
-  background: color-mix(in oklch, var(--panel), var(--tile-tint) var(--tile-tint-pct));
-  /* A flat (height 0) tile still needs to read as a discrete block, not melt into its
-     neighbors — so the border/top-highlight/drop-shadow all have a real baseline
-     here, with height only adding on top of that rather than being the sole source
-     of definition. The drop shadow in particular scales hard with height (5px→17px
-     blur) so a raised tile visibly casts onto the ground below it, not just sits a
-     few pixels higher. */
-  box-shadow:
-    inset 0 0 0 1.5px var(--tile-edge),
-    inset 0 1px 0 color-mix(in oklch, white, transparent 68%),
-    0 calc(3px + var(--terrain-height, 0) * 4px) calc(5px + var(--terrain-height, 0) * 4px)
-      oklch(0 0 0 / calc(0.24 + var(--terrain-height, 0) * 0.13));
-}
-
-.tgrid__cell--revealed::after {
-  /* The "riser": a darker twin of the same diamond, left at ground level while the
-     tile above it lifts by --terrain-height — reads as the block's shaded side face
-     peeking out beneath it, the classic isometric "this tile is standing on a
-     pedestal" cue. Invisible at height 0 (0 offset = perfectly hidden behind its own
-     tile, and opacity is 0 there too, so flat ground never shows a stray outline). */
-  content: '';
-  position: absolute;
-  inset: 0;
-  clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
-  background: color-mix(in oklch, var(--tile-tint, var(--gold)), black 55%);
-  transform: translateY(calc(var(--terrain-height, 0) * 8px));
-  opacity: calc(var(--terrain-height, 0) * 0.3);
-  z-index: -1;
-  pointer-events: none;
-}
-
-.tgrid__cell--revealed:not([aria-disabled='true']):hover {
-  filter: brightness(1.18) saturate(1.15);
-  transform: translate(-50%, calc(-50% - var(--terrain-height, 0) * 8px)) scale(1.08);
-}
-
-.tgrid__cell--node.tgrid__cell--revealed {
-  /* Fallback for any node type not covered by a --tone-* class below. */
-  --tile-tint: var(--frost);
-  --tile-tint-pct: calc(55% + var(--terrain-height, 0) * 4%);
-  --tile-edge: color-mix(in oklch, var(--frost), white 30%);
-}
-
-.tgrid__cell--tone-blood.tgrid__cell--revealed { --tile-tint: var(--blood); --tile-tint-pct: calc(55% + var(--terrain-height, 0) * 4%); --tile-edge: color-mix(in oklch, var(--blood), white 30%); }
-.tgrid__cell--tone-gold.tgrid__cell--revealed  { --tile-tint: var(--gold);  --tile-tint-pct: calc(55% + var(--terrain-height, 0) * 4%); --tile-edge: color-mix(in oklch, var(--gold), white 30%); }
-.tgrid__cell--tone-frost.tgrid__cell--revealed { --tile-tint: var(--frost); --tile-tint-pct: calc(55% + var(--terrain-height, 0) * 4%); --tile-edge: color-mix(in oklch, var(--frost), white 30%); }
-.tgrid__cell--tone-sap.tgrid__cell--revealed   { --tile-tint: var(--sap);   --tile-tint-pct: calc(55% + var(--terrain-height, 0) * 4%); --tile-edge: color-mix(in oklch, var(--sap), white 30%); }
-
-.tgrid__cell--tone-blood.tgrid__cell--revealed,
-.tgrid__cell--tone-gold.tgrid__cell--revealed,
-.tgrid__cell--tone-frost.tgrid__cell--revealed,
-.tgrid__cell--tone-sap.tgrid__cell--revealed,
-.tgrid__cell--node.tgrid__cell--revealed {
-  box-shadow:
-    inset 0 0 0 2px var(--tile-edge),
-    inset 0 1px 0 color-mix(in oklch, white, transparent 65%),
-    0 calc(3px + var(--terrain-height, 0) * 4px) calc(6px + var(--terrain-height, 0) * 4px)
-      color-mix(in oklch, var(--tile-tint), transparent 65%);
-}
-
-.tgrid__cell--boss-node.tgrid__cell--revealed {
-  --tile-tint: var(--blood);
-  --tile-tint-pct: calc(68% + var(--terrain-height, 0) * 4%);
-  --tile-edge: color-mix(in oklch, var(--blood), white 40%);
-  box-shadow:
-    inset 0 0 0 2px var(--tile-edge),
-    inset 0 1px 0 color-mix(in oklch, white, transparent 60%),
-    0 0 16px 3px color-mix(in oklch, var(--blood), transparent 40%);
-}
-
-.tgrid__cell--resolved-node.tgrid__cell--revealed {
-  /* Spent node — visibly greyed out so the player never mistakes it for something
-     still worth visiting. Overrides the node/boss tints above via class order. */
-  background: color-mix(in oklch, var(--panel), black 35%);
-  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--line), transparent 70%);
-}
-
 @keyframes tgrid-node-pulse {
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.14); }
 }
 
 .tgrid__node-icon {
+  position: absolute;
+  transform: translate(-50%, -50%);
   color: var(--frost);
+  pointer-events: none;
+  z-index: 50;
   animation: tgrid-node-pulse 1.8s ease-in-out infinite;
 }
 
@@ -689,11 +595,14 @@ function toggleInfoCollapsed() {
   filter: grayscale(0.9);
 }
 
+.tgrid__node-icon--boss {
+  color: var(--blood);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .tgrid__node-icon,
   .tgrid__info-toggle--alert,
-  .tgrid__backdrop--final,
-  .tgrid__cell--fog::before {
+  .tgrid__backdrop--final {
     animation: none;
   }
 
@@ -702,22 +611,13 @@ function toggleInfoCollapsed() {
   }
 }
 
-.tgrid__node-icon--ghost {
-  opacity: 0.6;
-  filter: grayscale(0.35);
-}
-
-.tgrid__cell--boss-node .tgrid__node-icon {
-  color: var(--blood);
-}
-
 .tgrid__party {
   position: absolute;
   width: 0;
   height: 0;
-  /* Matches PARTY_STEP_MS in the script: one cell-to-cell glide per animation
-     step, so consecutive steps hand off smoothly instead of interrupting a
-     longer transition mid-flight. */
+  /* Matches PARTY_STEP_MS in usePartyTokenPath: one cell-to-cell glide per animation
+     step, so consecutive steps hand off smoothly instead of interrupting a longer
+     transition mid-flight. */
   transition: left 0.15s ease, top 0.15s ease;
   pointer-events: none;
   z-index: 100;
@@ -733,7 +633,7 @@ function toggleInfoCollapsed() {
   box-shadow:
     0 0 12px 3px color-mix(in oklch, var(--gold), transparent 25%),
     0 3px 4px oklch(0 0 0 / 0.4);
-  transform: translate(-50%, calc(-50% - var(--terrain-height, 0) * 8px));
+  transform: translate(-50%, -50%);
 }
 
 .tgrid__party-token::after {

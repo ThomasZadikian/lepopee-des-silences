@@ -39,6 +39,10 @@ public sealed class RoomEntity
     public string GridRevealedNodeIdsCsv { get; set; } = string.Empty;
     /// <summary>Semicolon-separated "x,y" pairs, e.g. "0,0;1,0;2,0".</summary>
     public string GridRevealedCellsCsv { get; set; } = string.Empty;
+    /// <summary>Comma-separated ints, row-major (index = y*GridWidth+x), one per cell.</summary>
+    public string GridElevationCsv { get; set; } = string.Empty;
+    /// <summary>Semicolon-separated "x,y" pairs, same format as GridRevealedCellsCsv.</summary>
+    public string GridObstacleCellsCsv { get; set; } = string.Empty;
     /// <summary>The node currently in the Select/Resolve interaction slot — see Room._currentGridNodeId.</summary>
     public Guid? CurrentGridNodeId { get; set; }
 

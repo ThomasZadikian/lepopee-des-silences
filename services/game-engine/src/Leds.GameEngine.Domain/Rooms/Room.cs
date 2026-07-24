@@ -132,7 +132,9 @@ public sealed class Room
         int startX,
         int startY,
         string layoutTemplateKey,
-        string layoutTemplateVersion)
+        string layoutTemplateVersion,
+        IReadOnlyList<int>? elevation = null,
+        IReadOnlyCollection<(int X, int Y)>? obstacles = null)
     {
         if (depth is < 0 or > 10)
         {
@@ -201,15 +203,31 @@ public sealed class Room
             throw new DomainException("No node can occupy the party's starting cell.");
         }
 
-        var distanceToBoss = Math.Abs(bossNode.Lane - startX) + Math.Abs(bossNode.Row - startY);
+        var grid = RoomGrid.CreateInitial(
+            gridWidth, gridHeight, movementBudget, startX, startY, nodeList, elevation, obstacles);
 
-        if (distanceToBoss > movementBudget)
+        // Raw Manhattan distance is no longer a safe reachability bound once elevation can add
+        // cost to a climb — the real routed cost (obstacles routed around, elevation priced in)
+        // is what must fit the movement budget.
+        var bossRoute = grid.FindPath(bossNode.Lane, bossNode.Row);
+
+        if (bossRoute is null || bossRoute.Value.Cost > movementBudget)
         {
             throw new DomainException(
                 "The boss must be reachable within the room's movement budget.");
         }
 
-        var grid = RoomGrid.CreateInitial(gridWidth, gridHeight, movementBudget, startX, startY, nodeList);
+        // Defense-in-depth: generation is expected to guarantee every node is reachable from the
+        // start (obstacle placement is connectivity-checked at generation time), but a room built
+        // by hand (tests, future authoring tools) gets the same guarantee enforced here.
+        foreach (var node in nodeList)
+        {
+            if (!node.IsBoss && grid.FindPath(node.Lane, node.Row) is null)
+            {
+                throw new DomainException(
+                    "Every grid node must be reachable from the party's starting position.");
+            }
+        }
 
         return new Room(
             RoomId.New(),
@@ -237,7 +255,9 @@ public sealed class Room
         int startX,
         int startY,
         string layoutTemplateKey,
-        string layoutTemplateVersion)
+        string layoutTemplateVersion,
+        IReadOnlyList<int>? elevation = null,
+        IReadOnlyCollection<(int X, int Y)>? obstacles = null)
     {
         return Create(
             depth,
@@ -252,7 +272,9 @@ public sealed class Room
             startX,
             startY,
             layoutTemplateKey,
-            layoutTemplateVersion);
+            layoutTemplateVersion,
+            elevation,
+            obstacles);
     }
 
     public MapNode GetNode(NodeId nodeId)
@@ -262,8 +284,9 @@ public sealed class Room
     }
 
     /// <summary>
-    /// Moves the party across the grid, deducting the Manhattan-distance cost from the
-    /// movement budget and revealing fog of war along the path.
+    /// Moves the party across the grid along the cheapest walkable route (obstacles routed
+    /// around, elevation climbs priced in — see <see cref="RoomGrid.FindPath"/>), deducting the
+    /// route's cost from the movement budget and revealing fog of war along the way.
     /// </summary>
     public void MoveParty(int targetX, int targetY)
     {
@@ -277,19 +300,20 @@ public sealed class Room
             throw new DomainException("Target position is outside the grid bounds.");
         }
 
-        var cost = Math.Abs(targetX - Grid.PartyX) + Math.Abs(targetY - Grid.PartyY);
-
-        if (cost == 0)
+        if (targetX == Grid.PartyX && targetY == Grid.PartyY)
         {
             throw new DomainException("The party is already at the target position.");
         }
 
-        if (cost > Grid.MovementBudgetRemaining)
+        var route = Grid.FindPath(targetX, targetY)
+            ?? throw new DomainException("No walkable path to the target position.");
+
+        if (route.Cost > Grid.MovementBudgetRemaining)
         {
             throw new DomainException("Not enough movement budget remaining for this move.");
         }
 
-        Grid.MoveTo(targetX, targetY, cost, _nodes);
+        Grid.MoveTo(route.Path, route.Cost, _nodes);
     }
 
     /// <summary>Selects the node currently occupied by the party.</summary>

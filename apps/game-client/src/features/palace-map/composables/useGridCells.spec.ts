@@ -30,6 +30,8 @@ function makeGrid(overrides: Partial<RoomGridDto> = {}): RoomGridDto {
     partyY: 0,
     canChallengeBossRemotely: false,
     revealedCells: [[0, 0], [1, 0]],
+    elevation: new Array(16).fill(0),
+    obstacleCells: [],
     ...overrides,
   };
 }
@@ -112,5 +114,24 @@ describe('useGridCells', () => {
     const { cells } = useGridCells(room, gridRef);
 
     expect(cells.value).toEqual([]);
+  });
+
+  it('reports only obstacle cells as obstacles', () => {
+    const grid = makeGrid({ obstacleCells: [[2, 1], [3, 3]] });
+    const room = computed(() => makeRoom(grid));
+    const gridRef = computed(() => grid);
+    const { isObstacle } = useGridCells(room, gridRef);
+
+    expect(isObstacle(2, 1)).toBe(true);
+    expect(isObstacle(3, 3)).toBe(true);
+    expect(isObstacle(0, 0)).toBe(false);
+  });
+
+  it('returns false for isObstacle when there is no grid', () => {
+    const room = computed(() => makeRoom(makeGrid()));
+    const gridRef = computed(() => null);
+    const { isObstacle } = useGridCells(room, gridRef);
+
+    expect(isObstacle(0, 0)).toBe(false);
   });
 });

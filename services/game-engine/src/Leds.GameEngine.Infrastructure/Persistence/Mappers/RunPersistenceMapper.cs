@@ -232,6 +232,8 @@ public static class RunPersistenceMapper
             GridPartyY = room.Grid.PartyY,
             GridRevealedNodeIdsCsv = string.Join(";", room.Grid.RevealedNodeIds.Select(id => id.Value.ToString())),
             GridRevealedCellsCsv = string.Join(";", room.Grid.RevealedCells.Select(cell => $"{cell.X},{cell.Y}")),
+            GridElevationCsv = string.Join(",", room.Grid.Elevation),
+            GridObstacleCellsCsv = string.Join(";", room.Grid.Obstacles.Select(cell => $"{cell.X},{cell.Y}")),
             CurrentGridNodeId = room.CurrentGridNodeId?.Value,
             Nodes = room.Nodes.Select(node => ToEntity(node, room.Id.Value)).ToList()
         };
@@ -524,7 +526,9 @@ public static class RunPersistenceMapper
             entity.GridPartyX,
             entity.GridPartyY,
             ParseGridRevealedNodeIds(entity.GridRevealedNodeIdsCsv),
-            ParseGridRevealedCells(entity.GridRevealedCellsCsv));
+            ParseGridRevealedCells(entity.GridRevealedCellsCsv),
+            ParseGridElevation(entity.GridElevationCsv, entity.GridWidth, entity.GridHeight),
+            ParseGridRevealedCells(entity.GridObstacleCellsCsv).ToArray());
 
         var room = Room.Rehydrate(
             new RoomId(entity.Id),
@@ -583,6 +587,20 @@ public static class RunPersistenceMapper
                 var parts = pair.Split(',');
                 return (X: int.Parse(parts[0]), Y: int.Parse(parts[1]));
             });
+    }
+
+    /// <summary>Falls back to a flat (all-zero) map for rooms persisted before this field
+    /// existed — matches this project's nullable/defaulted-column migration convention.</summary>
+    private static IReadOnlyList<int> ParseGridElevation(string? csv, int width, int height)
+    {
+        if (string.IsNullOrEmpty(csv))
+        {
+            return new int[width * height];
+        }
+
+        return csv.Split(',', StringSplitOptions.RemoveEmptyEntries)
+            .Select(int.Parse)
+            .ToArray();
     }
 
     public static MapNode ToDomain(MapNodeEntity entity)

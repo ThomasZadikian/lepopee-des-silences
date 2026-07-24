@@ -71,6 +71,11 @@ export type RoomGridDto = {
   canChallengeBossRemotely: boolean;
   /** Fog-of-war revealed cells, each as [x, y]. */
   revealedCells: [number, number][];
+  /** Flat, row-major (index = y*width+x), one value 0..3 per cell. Sent for the whole grid,
+   * not gated by fog of war — real server-authoritative terrain, not a cosmetic client hash. */
+  elevation: number[];
+  /** Impassable cells, each as [x, y]. Sent for the whole grid, same rationale as elevation. */
+  obstacleCells: [number, number][];
 };
 
 export type RoomDto = {
