@@ -53,6 +53,84 @@ function isParty(x: number, y: number): boolean {
   return grid.value !== null && grid.value.partyX === x && grid.value.partyY === y;
 }
 
+// ── Party token animation: step through the path cell-by-cell instead of a ────────
+// single CSS glide straight from the old grid.partyX/Y to the new one, which cut a
+// diagonal shortcut through untraveled ground and read as a teleport for any move
+// longer than one cell. Mirrors RoomGrid.MoveTo's own path (X axis first, then Y)
+// so the token visibly walks the same cells the domain actually moved it through.
+const PARTY_STEP_MS = 150;
+const prefersReducedMotion =
+  typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+    ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    : false;
+
+const displayPartyX = ref(grid.value?.partyX ?? 0);
+const displayPartyY = ref(grid.value?.partyY ?? 0);
+let partyAnimationTimer: ReturnType<typeof setInterval> | null = null;
+let lastAnimatedRoomId: string | null = null;
+
+function stopPartyAnimation() {
+  if (partyAnimationTimer !== null) {
+    clearInterval(partyAnimationTimer);
+    partyAnimationTimer = null;
+  }
+}
+
+function snapPartyTo(x: number, y: number) {
+  stopPartyAnimation();
+  displayPartyX.value = x;
+  displayPartyY.value = y;
+}
+
+function animatePartyTo(targetX: number, targetY: number) {
+  stopPartyAnimation();
+
+  const steps: Array<[number, number]> = [];
+  let x = displayPartyX.value;
+  let y = displayPartyY.value;
+  const stepX = Math.sign(targetX - x);
+  while (x !== targetX) {
+    x += stepX;
+    steps.push([x, y]);
+  }
+  const stepY = Math.sign(targetY - y);
+  while (y !== targetY) {
+    y += stepY;
+    steps.push([x, y]);
+  }
+  if (steps.length === 0) return;
+
+  let stepIndex = 0;
+  partyAnimationTimer = setInterval(() => {
+    const step = steps[stepIndex];
+    if (!step) {
+      stopPartyAnimation();
+      return;
+    }
+    [displayPartyX.value, displayPartyY.value] = step;
+    stepIndex += 1;
+    if (stepIndex >= steps.length) stopPartyAnimation();
+  }, PARTY_STEP_MS);
+}
+
+watch(
+  () => (grid.value ? ([props.room.id, grid.value.partyX, grid.value.partyY] as const) : null),
+  (next) => {
+    if (!next) return;
+    const [roomId, x, y] = next;
+    const isNewRoom = roomId !== lastAnimatedRoomId;
+    lastAnimatedRoomId = roomId;
+    if (isNewRoom || prefersReducedMotion) {
+      snapPartyTo(x, y);
+    } else {
+      animatePartyTo(x, y);
+    }
+  },
+  { immediate: true },
+);
+
+onBeforeUnmount(() => stopPartyAnimation());
+
 type Cell = { x: number; y: number };
 
 const cells = computed<Cell[]>(() => {
@@ -220,13 +298,12 @@ function cellStyle(cell: Cell) {
 }
 
 const partyStyle = computed(() => {
-  const g = grid.value;
-  if (!g) return {};
+  if (!grid.value) return {};
 
   return {
-    left: `${isoLeft(g.partyX, g.partyY)}%`,
-    top: `${isoTop(g.partyX, g.partyY)}%`,
-    '--terrain-height': terrainHeight(g.partyX, g.partyY),
+    left: `${isoLeft(displayPartyX.value, displayPartyY.value)}%`,
+    top: `${isoTop(displayPartyX.value, displayPartyY.value)}%`,
+    '--terrain-height': terrainHeight(displayPartyX.value, displayPartyY.value),
   };
 });
 
@@ -907,6 +984,10 @@ function toggleInfoCollapsed() {
   .tgrid__cell--fog::before {
     animation: none;
   }
+
+  .tgrid__party {
+    transition: none;
+  }
 }
 
 .tgrid__node-icon--ghost {
@@ -922,7 +1003,10 @@ function toggleInfoCollapsed() {
   position: absolute;
   width: 0;
   height: 0;
-  transition: left 0.3s ease, top 0.3s ease;
+  /* Matches PARTY_STEP_MS in the script: one cell-to-cell glide per animation
+     step, so consecutive steps hand off smoothly instead of interrupting a
+     longer transition mid-flight. */
+  transition: left 0.15s ease, top 0.15s ease;
   pointer-events: none;
   z-index: 100;
 }

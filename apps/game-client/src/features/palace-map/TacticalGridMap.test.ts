@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 import TacticalGridMap from './TacticalGridMap.vue';
 import type { NodeDto, RoomDto, RoomGridDto } from '../runs/types/runTypes';
@@ -429,5 +429,61 @@ describe('TacticalGridMap', () => {
     const cells = wrapper.findAll('.tgrid__cell');
     const heights = cells.map((c) => c.attributes('style')?.match(/--terrain-height:\s*(\d)/)?.[1]);
     expect(heights.every((h) => h !== undefined)).toBe(true);
+  });
+
+  // ── Party token movement animation (step-by-step, not a teleport) ──────────────
+
+  it('steps the party token through each intermediate cell instead of jumping straight to the destination', async () => {
+    vi.useFakeTimers();
+    try {
+      const room = makeRoom({}, { partyX: 0, partyY: 0, revealedCells: [[0, 0], [1, 0], [2, 0]] });
+      const wrapper = mount(TacticalGridMap, { props: { room } });
+
+      const extractLeft = (style: string | undefined) => style?.match(/left:\s*([\d.]+)%/)?.[1];
+      const currentPartyLeft = () => extractLeft(wrapper.find('.tgrid__party').attributes('style'));
+
+      const startLeft = currentPartyLeft();
+      const finalCellLeft = extractLeft(wrapper.findAll('.tgrid__cell')[2].attributes('style'));
+
+      await wrapper.setProps({
+        room: makeRoom({}, { partyX: 2, partyY: 0, revealedCells: [[0, 0], [1, 0], [2, 0]] }),
+      });
+
+      // One step interval in: the token should have advanced exactly one cell
+      // (toward x=1) — neither still at the start nor already at the destination,
+      // since the move animates cell-by-cell rather than jumping straight there.
+      vi.advanceTimersByTime(150);
+      await wrapper.vm.$nextTick();
+      const midLeft = currentPartyLeft();
+      expect(midLeft).not.toBe(startLeft);
+      expect(midLeft).not.toBe(finalCellLeft);
+
+      vi.advanceTimersByTime(1000);
+      await wrapper.vm.$nextTick();
+
+      expect(currentPartyLeft()).toBe(finalCellLeft);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('snaps the party token immediately (no animation) when the room changes', async () => {
+    vi.useFakeTimers();
+    try {
+      const roomA = makeRoom({ id: 'room-1' }, { partyX: 0, partyY: 0 });
+      const wrapper = mount(TacticalGridMap, { props: { room: roomA } });
+
+      const roomB = makeRoom({ id: 'room-2' }, { partyX: 1, partyY: 0 });
+      await wrapper.setProps({ room: roomB });
+
+      const partyLeft = wrapper.find('.tgrid__party').attributes('style')
+        ?.match(/left:\s*([\d.]+)%/)?.[1];
+      const cellLeft = wrapper.findAll('.tgrid__cell')[1].attributes('style')
+        ?.match(/left:\s*([\d.]+)%/)?.[1];
+
+      expect(partyLeft).toBe(cellLeft);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
