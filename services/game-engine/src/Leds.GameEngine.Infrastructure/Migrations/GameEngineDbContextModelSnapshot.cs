@@ -1392,6 +1392,10 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasColumnType("character varying(160)")
                         .HasColumnName("catalog_room_key");
 
+                    b.Property<Guid?>("CurrentGridNodeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("current_grid_node_id");
+
                     b.Property<int>("CurrentNodeDepth")
                         .HasColumnType("integer")
                         .HasColumnName("current_node_depth");

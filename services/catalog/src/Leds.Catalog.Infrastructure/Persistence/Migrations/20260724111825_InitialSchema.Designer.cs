@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Leds.Catalog.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(CatalogDbContext))]
-    [Migration("20260628050040_AddNpcContentFieldsAndRewardCursePools")]
-    partial class AddNpcContentFieldsAndRewardCursePools
+    [Migration("20260724111825_InitialSchema")]
+    partial class InitialSchema
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -363,6 +363,13 @@ namespace Leds.Catalog.Infrastructure.Persistence.Migrations
                         .HasDefaultValue(1)
                         .HasColumnName("base_weight");
 
+                    b.Property<string>("BoundRoomKeysJson")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text")
+                        .HasDefaultValue("[]")
+                        .HasColumnName("bound_room_keys_json");
+
                     b.Property<string>("CompatibleRoomTypesJson")
                         .IsRequired()
                         .HasColumnType("text")
@@ -417,6 +424,12 @@ namespace Leds.Catalog.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("max_risk_level");
 
+                    b.Property<int>("MenaceLevel")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("menace_level");
+
                     b.Property<int?>("MinDepth")
                         .HasColumnType("integer")
                         .HasColumnName("min_depth");
@@ -442,6 +455,19 @@ namespace Leds.Catalog.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(64)")
                         .HasDefaultValue("Common")
                         .HasColumnName("rank");
+
+                    b.Property<string>("Rarity")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasDefaultValue("Common")
+                        .HasColumnName("rarity");
+
+                    b.Property<string>("Registre")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("registre");
 
                     b.Property<string>("RewardProfileKey")
                         .HasMaxLength(128)
@@ -496,6 +522,76 @@ namespace Leds.Catalog.Infrastructure.Persistence.Migrations
                     b.ToTable("catalog_enemy_definitions", (string)null);
                 });
 
+            modelBuilder.Entity("Leds.Catalog.Infrastructure.Persistence.Entities.EnemyLootTableEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("description");
+
+                    b.Property<string>("EnemyDefinitionKey")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("enemy_definition_key");
+
+                    b.Property<string>("EntriesJson")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasDefaultValue("[]")
+                        .HasColumnName("entries_json");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("key");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("status");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at_utc");
+
+                    b.Property<string>("Version")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EnemyDefinitionKey")
+                        .IsUnique();
+
+                    b.HasIndex("Key")
+                        .IsUnique();
+
+                    b.HasIndex("Status");
+
+                    b.ToTable("catalog_enemy_loot_tables", (string)null);
+                });
+
             modelBuilder.Entity("Leds.Catalog.Infrastructure.Persistence.Entities.EnemySkillLinkEntity", b =>
                 {
                     b.Property<Guid>("EnemyDefinitionId")
@@ -542,6 +638,18 @@ namespace Leds.Catalog.Infrastructure.Persistence.Migrations
                     b.Property<int>("Initiative")
                         .HasColumnType("integer")
                         .HasColumnName("initiative");
+
+                    b.Property<int>("MagicAttack")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("magic_attack");
+
+                    b.Property<int>("MagicDefense")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("magic_defense");
 
                     b.Property<int>("Mana")
                         .HasColumnType("integer")
@@ -769,6 +877,67 @@ namespace Leds.Catalog.Infrastructure.Persistence.Migrations
                     b.ToTable("catalog_event_templates", (string)null);
                 });
 
+            modelBuilder.Entity("Leds.Catalog.Infrastructure.Persistence.Entities.GenericLootPoolEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("description");
+
+                    b.Property<string>("EntriesJson")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasDefaultValue("[]")
+                        .HasColumnName("entries_json");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("key");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("status");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at_utc");
+
+                    b.Property<string>("Version")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Key")
+                        .IsUnique();
+
+                    b.HasIndex("Status");
+
+                    b.ToTable("catalog_generic_loot_pools", (string)null);
+                });
+
             modelBuilder.Entity("Leds.Catalog.Infrastructure.Persistence.Entities.ItemDefinitionEntity", b =>
                 {
                     b.Property<Guid>("Id")
@@ -787,6 +956,10 @@ namespace Leds.Catalog.Infrastructure.Persistence.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)")
                         .HasColumnName("category");
+
+                    b.Property<int?>("ContainerCapacity")
+                        .HasColumnType("integer")
+                        .HasColumnName("container_capacity");
 
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone")
@@ -810,6 +983,11 @@ namespace Leds.Catalog.Infrastructure.Persistence.Migrations
                         .HasColumnName("duration")
                         .HasComment("Legacy compatibility column. Use lifecycle/usage_mode/effect_set_id for data-model-0.1 definitions.");
 
+                    b.Property<string>("EffectRunType")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("effect_run_type");
+
                     b.Property<Guid?>("EffectSetId")
                         .HasColumnType("uuid")
                         .HasColumnName("effect_set_id");
@@ -818,6 +996,22 @@ namespace Leds.Catalog.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("effect_value")
                         .HasComment("Legacy compatibility column. Canonical effects live in catalog_effect_sets/catalog_effect_definitions.");
+
+                    b.Property<string>("EquipmentEffectsJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("equipment_effects_json");
+
+                    b.Property<bool>("IsContainer")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_container");
+
+                    b.Property<bool>("IsLiquid")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_liquid");
 
                     b.Property<bool>("IsUsableInCombat")
                         .HasColumnType("boolean")
@@ -880,6 +1074,10 @@ namespace Leds.Catalog.Infrastructure.Persistence.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)")
                         .HasColumnName("rarity");
+
+                    b.Property<string>("ReadablePagesJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("readable_pages_json");
 
                     b.Property<string>("SelectionGroup")
                         .HasMaxLength(64)
@@ -971,6 +1169,13 @@ namespace Leds.Catalog.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<string>("BoundRoomKeysJson")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text")
+                        .HasDefaultValue("[]")
+                        .HasColumnName("bound_room_keys_json");
+
                     b.Property<string>("CompatiblePalaceRoomStatesJson")
                         .IsRequired()
                         .HasColumnType("text")
@@ -1046,6 +1251,10 @@ namespace Leds.Catalog.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(256)")
                         .HasColumnName("name");
 
+                    b.Property<string>("OfferingsJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("offerings_json");
+
                     b.Property<string>("PersonaJson")
                         .HasColumnType("jsonb")
                         .HasColumnName("persona_json");
@@ -1088,6 +1297,45 @@ namespace Leds.Catalog.Infrastructure.Persistence.Migrations
                     b.ToTable("catalog_npc_definitions", (string)null);
                 });
 
+            modelBuilder.Entity("Leds.Catalog.Infrastructure.Persistence.Entities.NpcReputationAffinityEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<string>("NpcKeyFrom")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("npc_key_from");
+
+                    b.Property<string>("NpcKeyTo")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("npc_key_to");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at_utc");
+
+                    b.Property<decimal>("Weight")
+                        .HasColumnType("numeric(6,3)")
+                        .HasColumnName("weight");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NpcKeyFrom", "NpcKeyTo")
+                        .IsUnique();
+
+                    b.ToTable("catalog_npc_reputation_affinities", (string)null);
+                });
+
             modelBuilder.Entity("Leds.Catalog.Infrastructure.Persistence.Entities.PalaceLawDefinitionEntity", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1128,11 +1376,30 @@ namespace Leds.Catalog.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("effect_set_id");
 
+                    b.Property<string>("ExclusionKeysJson")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text")
+                        .HasDefaultValue("[]")
+                        .HasColumnName("exclusion_keys_json");
+
                     b.Property<string>("ImpactDomainsJson")
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("impact_domains_json")
                         .HasComment("Legacy JSON compatibility column. Structured effects/tags are relational in data-model-0.1.");
+
+                    b.Property<bool>("IsCumulExempt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_cumul_exempt");
+
+                    b.Property<bool>("IsMajeure")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_majeure");
 
                     b.Property<string>("Key")
                         .IsRequired()
@@ -1158,9 +1425,30 @@ namespace Leds.Catalog.Infrastructure.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("narrative_text");
 
+                    b.Property<string>("Polarity")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasDefaultValue("Neutre")
+                        .HasColumnName("polarity");
+
                     b.Property<int>("Priority")
                         .HasColumnType("integer")
                         .HasColumnName("priority");
+
+                    b.Property<string>("Rarity")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasDefaultValue("Commun")
+                        .HasColumnName("rarity");
+
+                    b.Property<string>("RoomKey")
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("room_key");
 
                     b.Property<string>("Scope")
                         .IsRequired()
@@ -1385,6 +1673,21 @@ namespace Leds.Catalog.Infrastructure.Persistence.Migrations
                     b.Property<Guid?>("EffectSetId")
                         .HasColumnType("uuid")
                         .HasColumnName("effect_set_id");
+
+                    b.Property<string>("ItemEffectType")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("item_effect_type");
+
+                    b.Property<string>("ItemRarity")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("item_rarity");
+
+                    b.Property<string>("ItemType")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("item_type");
 
                     b.Property<string>("Label")
                         .IsRequired()
@@ -1694,6 +1997,10 @@ namespace Leds.Catalog.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(160)")
                         .HasColumnName("enemy_pool_key");
 
+                    b.Property<bool>("ExcludeFromOpenPool")
+                        .HasColumnType("boolean")
+                        .HasColumnName("exclude_from_open_pool");
+
                     b.Property<bool>("IsCulturalEcho")
                         .HasColumnType("boolean")
                         .HasColumnName("is_cultural_echo");
@@ -1724,6 +2031,12 @@ namespace Leds.Catalog.Infrastructure.Persistence.Migrations
                     b.Property<string>("NarrativeText")
                         .HasColumnType("text")
                         .HasColumnName("narrative_text");
+
+                    b.Property<string>("ReachabilityMode")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("reachability_mode");
 
                     b.Property<string>("RewardPoolKey")
                         .HasMaxLength(160)
@@ -1764,6 +2077,10 @@ namespace Leds.Catalog.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(128)")
                         .HasColumnName("theme");
 
+                    b.Property<bool>("TriggersStrictChain")
+                        .HasColumnType("boolean")
+                        .HasColumnName("triggers_strict_chain");
+
                     b.Property<DateTime>("UpdatedAtUtc")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at_utc");
@@ -1774,12 +2091,18 @@ namespace Leds.Catalog.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(32)")
                         .HasColumnName("version");
 
+                    b.Property<Guid?>("WorldDefinitionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("world_definition_id");
+
                     b.HasKey("Id");
 
                     b.HasIndex("Key")
                         .IsUnique();
 
                     b.HasIndex("Status");
+
+                    b.HasIndex("WorldDefinitionId");
 
                     b.ToTable("catalog_room_definitions", (string)null);
                 });
@@ -2002,6 +2325,23 @@ namespace Leds.Catalog.Infrastructure.Persistence.Migrations
                     b.ToTable("catalog_room_law_pool_entries", (string)null);
                 });
 
+            modelBuilder.Entity("Leds.Catalog.Infrastructure.Persistence.Entities.RoomReachabilityEntity", b =>
+                {
+                    b.Property<Guid>("FromRoomDefinitionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("from_room_definition_id");
+
+                    b.Property<Guid>("ToRoomDefinitionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("to_room_definition_id");
+
+                    b.HasKey("FromRoomDefinitionId", "ToRoomDefinitionId");
+
+                    b.HasIndex("ToRoomDefinitionId");
+
+                    b.ToTable("catalog_room_reachability", (string)null);
+                });
+
             modelBuilder.Entity("Leds.Catalog.Infrastructure.Persistence.Entities.RoomRewardPoolEntity", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2184,6 +2524,45 @@ namespace Leds.Catalog.Infrastructure.Persistence.Migrations
                     b.ToTable("catalog_room_tags", (string)null);
                 });
 
+            modelBuilder.Entity("Leds.Catalog.Infrastructure.Persistence.Entities.RoomThemeAffinityEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<string>("ThemeFrom")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("theme_from");
+
+                    b.Property<string>("ThemeTo")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("theme_to");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at_utc");
+
+                    b.Property<decimal>("Weight")
+                        .HasColumnType("numeric(6,3)")
+                        .HasColumnName("weight");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ThemeFrom", "ThemeTo")
+                        .IsUnique();
+
+                    b.ToTable("catalog_room_theme_affinities", (string)null);
+                });
+
             modelBuilder.Entity("Leds.Catalog.Infrastructure.Persistence.Entities.RoomTypeDefinitionEntity", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2271,6 +2650,12 @@ namespace Leds.Catalog.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("base_power");
 
+                    b.Property<bool>("BasePowerIsPercentOfMaxVitality")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("base_power_is_percent_of_max_vitality");
+
                     b.Property<int>("BaseWeight")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
@@ -2280,6 +2665,14 @@ namespace Leds.Catalog.Infrastructure.Persistence.Migrations
                     b.Property<int>("CastTime")
                         .HasColumnType("integer")
                         .HasColumnName("cast_time");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasDefaultValue("Physical")
+                        .HasColumnName("category");
 
                     b.Property<int>("ChargeCost")
                         .HasColumnType("integer")
@@ -2316,42 +2709,9 @@ namespace Leds.Catalog.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(256)")
                         .HasColumnName("display_name");
 
-                    b.Property<int>("EffectDurationTicks")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(0)
-                        .HasColumnName("effect_duration_ticks");
-
-                    b.Property<string>("EffectKind")
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)")
-                        .HasColumnName("effect_kind");
-
-                    b.Property<int>("EffectMagnitude")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(0)
-                        .HasColumnName("effect_magnitude");
-
                     b.Property<Guid?>("EffectSetId")
                         .HasColumnType("uuid")
                         .HasColumnName("effect_set_id");
-
-                    b.Property<string>("EffectStat")
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)")
-                        .HasColumnName("effect_stat");
-
-                    b.Property<string>("EffectStatusKey")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
-                        .HasColumnName("effect_status_key");
-
-                    b.Property<int>("EffectTickInterval")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(0)
-                        .HasColumnName("effect_tick_interval");
 
                     b.Property<string>("EffectType")
                         .IsRequired()
@@ -2359,6 +2719,10 @@ namespace Leds.Catalog.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(64)")
                         .HasColumnName("effect_type")
                         .HasComment("Legacy compatibility summary. Canonical effects live in catalog_effect_sets/catalog_effect_definitions.");
+
+                    b.Property<string>("EffectsJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("effects_json");
 
                     b.Property<string>("Key")
                         .IsRequired()
@@ -2542,6 +2906,59 @@ namespace Leds.Catalog.Infrastructure.Persistence.Migrations
                     b.HasIndex("Status");
 
                     b.ToTable("catalog_skill_templates", (string)null);
+                });
+
+            modelBuilder.Entity("Leds.Catalog.Infrastructure.Persistence.Entities.WorldDefinitionEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("display_name");
+
+                    b.Property<Guid>("EntryRoomDefinitionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("entry_room_definition_id");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("key");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("status");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at_utc");
+
+                    b.Property<string>("Version")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EntryRoomDefinitionId");
+
+                    b.HasIndex("Key")
+                        .IsUnique();
+
+                    b.ToTable("catalog_world_definitions", (string)null);
                 });
 
             modelBuilder.Entity("Leds.Catalog.Infrastructure.Persistence.Entities.CurseDefinitionEntity", b =>
@@ -2750,6 +3167,16 @@ namespace Leds.Catalog.Infrastructure.Persistence.Migrations
                     b.Navigation("Pool");
                 });
 
+            modelBuilder.Entity("Leds.Catalog.Infrastructure.Persistence.Entities.RoomDefinitionEntity", b =>
+                {
+                    b.HasOne("Leds.Catalog.Infrastructure.Persistence.Entities.WorldDefinitionEntity", "WorldDefinition")
+                        .WithMany("Rooms")
+                        .HasForeignKey("WorldDefinitionId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("WorldDefinition");
+                });
+
             modelBuilder.Entity("Leds.Catalog.Infrastructure.Persistence.Entities.RoomEnemyPoolEntryEntity", b =>
                 {
                     b.HasOne("Leds.Catalog.Infrastructure.Persistence.Entities.RoomEnemyPoolEntity", "Pool")
@@ -2770,6 +3197,25 @@ namespace Leds.Catalog.Infrastructure.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("Pool");
+                });
+
+            modelBuilder.Entity("Leds.Catalog.Infrastructure.Persistence.Entities.RoomReachabilityEntity", b =>
+                {
+                    b.HasOne("Leds.Catalog.Infrastructure.Persistence.Entities.RoomDefinitionEntity", "FromRoomDefinition")
+                        .WithMany("ReachableTo")
+                        .HasForeignKey("FromRoomDefinitionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Leds.Catalog.Infrastructure.Persistence.Entities.RoomDefinitionEntity", "ToRoomDefinition")
+                        .WithMany("ReachableFrom")
+                        .HasForeignKey("ToRoomDefinitionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("FromRoomDefinition");
+
+                    b.Navigation("ToRoomDefinition");
                 });
 
             modelBuilder.Entity("Leds.Catalog.Infrastructure.Persistence.Entities.RoomRewardPoolEntryEntity", b =>
@@ -2841,6 +3287,17 @@ namespace Leds.Catalog.Infrastructure.Persistence.Migrations
                     b.Navigation("Tag");
                 });
 
+            modelBuilder.Entity("Leds.Catalog.Infrastructure.Persistence.Entities.WorldDefinitionEntity", b =>
+                {
+                    b.HasOne("Leds.Catalog.Infrastructure.Persistence.Entities.RoomDefinitionEntity", "EntryRoomDefinition")
+                        .WithMany()
+                        .HasForeignKey("EntryRoomDefinitionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("EntryRoomDefinition");
+                });
+
             modelBuilder.Entity("Leds.Catalog.Infrastructure.Persistence.Entities.CurseDefinitionEntity", b =>
                 {
                     b.Navigation("Tags");
@@ -2889,6 +3346,10 @@ namespace Leds.Catalog.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Leds.Catalog.Infrastructure.Persistence.Entities.RoomDefinitionEntity", b =>
                 {
+                    b.Navigation("ReachableFrom");
+
+                    b.Navigation("ReachableTo");
+
                     b.Navigation("Tags");
                 });
 
@@ -2910,6 +3371,11 @@ namespace Leds.Catalog.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Leds.Catalog.Infrastructure.Persistence.Entities.SkillDefinitionEntity", b =>
                 {
                     b.Navigation("Tags");
+                });
+
+            modelBuilder.Entity("Leds.Catalog.Infrastructure.Persistence.Entities.WorldDefinitionEntity", b =>
+                {
+                    b.Navigation("Rooms");
                 });
 #pragma warning restore 612, 618
         }

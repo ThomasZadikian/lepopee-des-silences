@@ -980,6 +980,11 @@ namespace Leds.Catalog.Infrastructure.Persistence.Migrations
                         .HasColumnName("duration")
                         .HasComment("Legacy compatibility column. Use lifecycle/usage_mode/effect_set_id for data-model-0.1 definitions.");
 
+                    b.Property<string>("EffectRunType")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("effect_run_type");
+
                     b.Property<Guid?>("EffectSetId")
                         .HasColumnType("uuid")
                         .HasColumnName("effect_set_id");
@@ -988,11 +993,6 @@ namespace Leds.Catalog.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("effect_value")
                         .HasComment("Legacy compatibility column. Canonical effects live in catalog_effect_sets/catalog_effect_definitions.");
-
-                    b.Property<string>("EffectRunType")
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)")
-                        .HasColumnName("effect_run_type");
 
                     b.Property<string>("EquipmentEffectsJson")
                         .HasColumnType("jsonb")

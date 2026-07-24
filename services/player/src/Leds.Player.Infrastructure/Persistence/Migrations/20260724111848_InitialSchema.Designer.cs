@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Leds.Player.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(PlayerDbContext))]
-    [Migration("20260712163426_AddPlayerNpcReputationScores")]
-    partial class AddPlayerNpcReputationScores
+    [Migration("20260724111848_InitialSchema")]
+    partial class InitialSchema
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -80,6 +80,12 @@ namespace Leds.Player.Infrastructure.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("skill_keys_json")
                         .HasComment("Legacy compatibility column. Use player_character_skills for data-model-0.1.");
+
+                    b.Property<int>("StatPointsInvested")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("stat_points_invested");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -219,6 +225,18 @@ namespace Leds.Player.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasDefaultValue(10)
                         .HasColumnName("initiative");
+
+                    b.Property<int>("MagicAttack")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("magic_attack");
+
+                    b.Property<int>("MagicDefense")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("magic_defense");
 
                     b.Property<int>("Mana")
                         .ValueGeneratedOnAdd()
@@ -406,6 +424,12 @@ namespace Leds.Player.Infrastructure.Persistence.Migrations
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)")
                         .HasColumnName("display_name");
+
+                    b.Property<int>("PalaceShardCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("palace_shard_count");
 
                     b.Property<int>("TotalRunsAbandoned")
                         .ValueGeneratedOnAdd()
