@@ -19,7 +19,7 @@ $jobs = Get-Job -ErrorAction SilentlyContinue
 if ($jobs) {
     $jobs | Stop-Job -ErrorAction SilentlyContinue
     $jobs | Remove-Job -ErrorAction SilentlyContinue
-    Write-Host "  ✓ Stopped $($jobs.Count) background job(s)." -ForegroundColor Green
+    Write-Host "  [OK] Stopped $($jobs.Count) background job(s)." -ForegroundColor Green
 } else {
     Write-Host "  No background jobs found." -ForegroundColor DarkGray
 }
@@ -38,7 +38,7 @@ $serviceProcesses = Get-CimInstance Win32_Process `
     Where-Object { $_.CommandLine -and $_.CommandLine -match $repoRootPattern }
 if ($serviceProcesses) {
     $serviceProcesses | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
-    Write-Host "  ✓ Stopped $($serviceProcesses.Count) process(es)." -ForegroundColor Green
+    Write-Host "  [OK] Stopped $($serviceProcesses.Count) process(es)." -ForegroundColor Green
 } else {
     Write-Host "  No dotnet/node processes found." -ForegroundColor DarkGray
 }
@@ -53,7 +53,7 @@ $shellWindows = Get-CimInstance Win32_Process `
     Where-Object { $_.CommandLine -and $_.CommandLine -match $repoRootPattern -and $_.ProcessId -ne $PID }
 if ($shellWindows) {
     $shellWindows | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
-    Write-Host "  ✓ Closed $($shellWindows.Count) window(s)." -ForegroundColor Green
+    Write-Host "  [OK] Closed $($shellWindows.Count) window(s)." -ForegroundColor Green
 } else {
     Write-Host "  No service windows found." -ForegroundColor DarkGray
 }
