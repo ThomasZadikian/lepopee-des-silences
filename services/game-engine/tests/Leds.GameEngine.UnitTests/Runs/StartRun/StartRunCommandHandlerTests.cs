@@ -594,7 +594,26 @@ public sealed class StartRunCommandHandlerTests
                         Focus: 0,
                         Mana: 0,
                         Charge: 0),
-                    Skills: [],
+                    Skills: [
+                        new PlayerRunSnapshotCharacterSkill(
+                            SkillDefinitionKey: "skill.basic.strike",
+                            DisplayName: "Frappe",
+                            SkillType: "Damage",
+                            TargetingMode: "SingleEnemy",
+                            EffectType: "Damage",
+                            ManaCost: 0,
+                            ChargeCost: 0,
+                            BasePower: 10),
+                        new PlayerRunSnapshotCharacterSkill(
+                            SkillDefinitionKey: "skill.basic.guard",
+                            DisplayName: "Garde",
+                            SkillType: "Defense",
+                            TargetingMode: "Self",
+                            EffectType: "Guard",
+                            ManaCost: 0,
+                            ChargeCost: 0,
+                            BasePower: 5)
+                    ],
                     EquippedItemKeys: ["item.equipment.bague-du-courage"])]));
 
         var clock = new Mock<IClock>();
@@ -690,7 +709,26 @@ public sealed class StartRunCommandHandlerTests
                         Focus: 0,
                         Mana: 0,
                         Charge: 0),
-                    Skills: [])]));
+                    Skills: [
+                        new PlayerRunSnapshotCharacterSkill(
+                            SkillDefinitionKey: "skill.basic.strike",
+                            DisplayName: "Frappe",
+                            SkillType: "Damage",
+                            TargetingMode: "SingleEnemy",
+                            EffectType: "Damage",
+                            ManaCost: 0,
+                            ChargeCost: 0,
+                            BasePower: 10),
+                        new PlayerRunSnapshotCharacterSkill(
+                            SkillDefinitionKey: "skill.basic.guard",
+                            DisplayName: "Garde",
+                            SkillType: "Defense",
+                            TargetingMode: "Self",
+                            EffectType: "Guard",
+                            ManaCost: 0,
+                            ChargeCost: 0,
+                            BasePower: 5)
+                    ])]));
 
         var clock = new Mock<IClock>();
         clock.SetupGet(service => service.UtcNow).Returns(now);
@@ -759,7 +797,26 @@ public sealed class StartRunCommandHandlerTests
                         Focus: 0,
                         Mana: 0,
                         Charge: 0),
-                    Skills: [])]));
+                    Skills: [
+                        new PlayerRunSnapshotCharacterSkill(
+                            SkillDefinitionKey: "skill.basic.strike",
+                            DisplayName: "Frappe",
+                            SkillType: "Damage",
+                            TargetingMode: "SingleEnemy",
+                            EffectType: "Damage",
+                            ManaCost: 0,
+                            ChargeCost: 0,
+                            BasePower: 10),
+                        new PlayerRunSnapshotCharacterSkill(
+                            SkillDefinitionKey: "skill.basic.guard",
+                            DisplayName: "Garde",
+                            SkillType: "Defense",
+                            TargetingMode: "Self",
+                            EffectType: "Guard",
+                            ManaCost: 0,
+                            ChargeCost: 0,
+                            BasePower: 5)
+                    ])]));
 
         var clock = new Mock<IClock>();
         clock.SetupGet(service => service.UtcNow).Returns(now);
@@ -828,7 +885,26 @@ public sealed class StartRunCommandHandlerTests
                         Focus: 0,
                         Mana: 0,
                         Charge: 0),
-                    Skills: [])]));
+                    Skills: [
+                        new PlayerRunSnapshotCharacterSkill(
+                            SkillDefinitionKey: "skill.basic.strike",
+                            DisplayName: "Frappe",
+                            SkillType: "Damage",
+                            TargetingMode: "SingleEnemy",
+                            EffectType: "Damage",
+                            ManaCost: 0,
+                            ChargeCost: 0,
+                            BasePower: 10),
+                        new PlayerRunSnapshotCharacterSkill(
+                            SkillDefinitionKey: "skill.basic.guard",
+                            DisplayName: "Garde",
+                            SkillType: "Defense",
+                            TargetingMode: "Self",
+                            EffectType: "Guard",
+                            ManaCost: 0,
+                            ChargeCost: 0,
+                            BasePower: 5)
+                    ])]));
 
         var clock = new Mock<IClock>();
         clock.SetupGet(service => service.UtcNow).Returns(now);
@@ -898,7 +974,26 @@ public sealed class StartRunCommandHandlerTests
                         Focus: 0,
                         Mana: 0,
                         Charge: 0),
-                    Skills: [])]));
+                    Skills: [
+                        new PlayerRunSnapshotCharacterSkill(
+                            SkillDefinitionKey: "skill.basic.strike",
+                            DisplayName: "Frappe",
+                            SkillType: "Damage",
+                            TargetingMode: "SingleEnemy",
+                            EffectType: "Damage",
+                            ManaCost: 0,
+                            ChargeCost: 0,
+                            BasePower: 10),
+                        new PlayerRunSnapshotCharacterSkill(
+                            SkillDefinitionKey: "skill.basic.guard",
+                            DisplayName: "Garde",
+                            SkillType: "Defense",
+                            TargetingMode: "Self",
+                            EffectType: "Guard",
+                            ManaCost: 0,
+                            ChargeCost: 0,
+                            BasePower: 5)
+                    ])]));
 
         var clock = new Mock<IClock>();
         clock.SetupGet(service => service.UtcNow).Returns(now);
@@ -968,7 +1063,26 @@ public sealed class StartRunCommandHandlerTests
                         Focus: 0,
                         Mana: 0,
                         Charge: 0),
-                    Skills: [])]));
+                    Skills: [
+                        new PlayerRunSnapshotCharacterSkill(
+                            SkillDefinitionKey: "skill.basic.strike",
+                            DisplayName: "Frappe",
+                            SkillType: "Damage",
+                            TargetingMode: "SingleEnemy",
+                            EffectType: "Damage",
+                            ManaCost: 0,
+                            ChargeCost: 0,
+                            BasePower: 10),
+                        new PlayerRunSnapshotCharacterSkill(
+                            SkillDefinitionKey: "skill.basic.guard",
+                            DisplayName: "Garde",
+                            SkillType: "Defense",
+                            TargetingMode: "Self",
+                            EffectType: "Guard",
+                            ManaCost: 0,
+                            ChargeCost: 0,
+                            BasePower: 5)
+                    ])]));
 
         var clock = new Mock<IClock>();
         clock.SetupGet(service => service.UtcNow).Returns(now);
@@ -1038,7 +1152,26 @@ public sealed class StartRunCommandHandlerTests
                         Focus: 0,
                         Mana: 0,
                         Charge: 0),
-                    Skills: [])]));
+                    Skills: [
+                        new PlayerRunSnapshotCharacterSkill(
+                            SkillDefinitionKey: "skill.basic.strike",
+                            DisplayName: "Frappe",
+                            SkillType: "Damage",
+                            TargetingMode: "SingleEnemy",
+                            EffectType: "Damage",
+                            ManaCost: 0,
+                            ChargeCost: 0,
+                            BasePower: 10),
+                        new PlayerRunSnapshotCharacterSkill(
+                            SkillDefinitionKey: "skill.basic.guard",
+                            DisplayName: "Garde",
+                            SkillType: "Defense",
+                            TargetingMode: "Self",
+                            EffectType: "Guard",
+                            ManaCost: 0,
+                            ChargeCost: 0,
+                            BasePower: 5)
+                    ])]));
 
         var clock = new Mock<IClock>();
         clock.SetupGet(service => service.UtcNow).Returns(now);
@@ -1107,7 +1240,26 @@ public sealed class StartRunCommandHandlerTests
                         Focus: 0,
                         Mana: 0,
                         Charge: 0),
-                    Skills: [])]));
+                    Skills: [
+                        new PlayerRunSnapshotCharacterSkill(
+                            SkillDefinitionKey: "skill.basic.strike",
+                            DisplayName: "Frappe",
+                            SkillType: "Damage",
+                            TargetingMode: "SingleEnemy",
+                            EffectType: "Damage",
+                            ManaCost: 0,
+                            ChargeCost: 0,
+                            BasePower: 10),
+                        new PlayerRunSnapshotCharacterSkill(
+                            SkillDefinitionKey: "skill.basic.guard",
+                            DisplayName: "Garde",
+                            SkillType: "Defense",
+                            TargetingMode: "Self",
+                            EffectType: "Guard",
+                            ManaCost: 0,
+                            ChargeCost: 0,
+                            BasePower: 5)
+                    ])]));
 
         var clock = new Mock<IClock>();
         clock.SetupGet(service => service.UtcNow).Returns(now);
@@ -1179,7 +1331,26 @@ public sealed class StartRunCommandHandlerTests
                         Focus: 0,
                         Mana: 0,
                         Charge: 0),
-                    Skills: [])]));
+                    Skills: [
+                        new PlayerRunSnapshotCharacterSkill(
+                            SkillDefinitionKey: "skill.basic.strike",
+                            DisplayName: "Frappe",
+                            SkillType: "Damage",
+                            TargetingMode: "SingleEnemy",
+                            EffectType: "Damage",
+                            ManaCost: 0,
+                            ChargeCost: 0,
+                            BasePower: 10),
+                        new PlayerRunSnapshotCharacterSkill(
+                            SkillDefinitionKey: "skill.basic.guard",
+                            DisplayName: "Garde",
+                            SkillType: "Defense",
+                            TargetingMode: "Self",
+                            EffectType: "Guard",
+                            ManaCost: 0,
+                            ChargeCost: 0,
+                            BasePower: 5)
+                    ])]));
 
         var clock = new Mock<IClock>();
         clock.SetupGet(service => service.UtcNow).Returns(now);
