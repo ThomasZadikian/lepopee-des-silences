@@ -7,6 +7,16 @@ public sealed class Room
 {
     private readonly List<MapNode> _nodes;
 
+    /// <summary>
+    /// Grid mode only — the node currently in the Select/Resolve interaction slot (set by
+    /// <see cref="EnterNodeAtPartyPosition"/>/<see cref="ChallengeBossRemotely"/>). Needed
+    /// because, unlike Classic where <see cref="CurrentNodeDepth"/> naturally scopes
+    /// "current" to a single row, a grid node stays <see cref="NodeState.Resolved"/> forever
+    /// once resolved — so after a second node is resolved, scanning _nodes by state alone
+    /// would match more than one node. See CurrentSelectedNode/CurrentResolvedNode below.
+    /// </summary>
+    private NodeId? _currentGridNodeId;
+
     private Room(
         RoomId id,
         int depth,
@@ -68,6 +78,8 @@ public sealed class Room
     /// </summary>
     public RoomGrid? Grid { get; }
 
+    /// <summary>Persistence-facing view of <see cref="_currentGridNodeId"/> — see its own doc comment.</summary>
+    public NodeId? CurrentGridNodeId => _currentGridNodeId;
 
     public CatalogRoomBinding? CatalogBinding { get; private set; }
 
@@ -94,12 +106,30 @@ public sealed class Room
     /// Application-layer call sites don't need to know whether this room uses the row/lane DAG
     /// (Classic) or free grid exploration (Tactical).
     /// </summary>
-    public MapNode? CurrentSelectedNode => _nodes.SingleOrDefault(n =>
-        n.State == NodeState.Selected && (Grid is not null || n.Row == CurrentNodeDepth));
+    public MapNode? CurrentSelectedNode => Grid is not null
+        ? CurrentGridInteractionNode(NodeState.Selected)
+        : _nodes.SingleOrDefault(n => n.State == NodeState.Selected && n.Row == CurrentNodeDepth);
 
     /// <summary>Mode-aware counterpart of <see cref="CurrentSelectedNode"/> for <see cref="NodeState.Resolved"/>.</summary>
-    public MapNode? CurrentResolvedNode => _nodes.SingleOrDefault(n =>
-        n.State == NodeState.Resolved && (Grid is not null || n.Row == CurrentNodeDepth));
+    public MapNode? CurrentResolvedNode => Grid is not null
+        ? CurrentGridInteractionNode(NodeState.Resolved)
+        : _nodes.SingleOrDefault(n => n.State == NodeState.Resolved && n.Row == CurrentNodeDepth);
+
+    /// <summary>
+    /// Grid-mode lookup by the tracked <see cref="_currentGridNodeId"/> instead of scanning
+    /// all nodes by state — a resolved grid node never reverts, so more than one node can be
+    /// Resolved at once; only the one we most recently selected/resolved is "current".
+    /// </summary>
+    private MapNode? CurrentGridInteractionNode(NodeState expectedState)
+    {
+        if (_currentGridNodeId is not { } nodeId)
+        {
+            return null;
+        }
+
+        var node = _nodes.SingleOrDefault(n => n.Id == nodeId);
+        return node?.State == expectedState ? node : null;
+    }
 
     public static Room Create(
         int depth,
@@ -495,6 +525,7 @@ public sealed class Room
         }
 
         node.Select();
+        _currentGridNodeId = nodeId;
         State = RoomState.NodeSelected;
     }
 
@@ -561,7 +592,9 @@ public sealed class Room
             throw new DomainException("Remote boss challenge is not available yet.");
         }
 
-        _nodes.Single(n => n.IsBoss).Select();
+        var bossNode = _nodes.Single(n => n.IsBoss);
+        bossNode.Select();
+        _currentGridNodeId = bossNode.Id;
         State = RoomState.NodeSelected;
     }
 
@@ -772,10 +805,12 @@ public sealed class Room
         IEnumerable<MapNode> nodes,
         string? layoutTemplateKey,
         string? layoutTemplateVersion,
-        RoomGrid? grid = null)
+        RoomGrid? grid = null,
+        NodeId? currentGridNodeId = null)
     {
         var room = new Room(id, depth, roomType, palaceState, theme, bossProfile, state, nodes, layoutTemplateKey, layoutTemplateVersion, grid);
         room.CurrentNodeDepth = currentNodeDepth;
+        room._currentGridNodeId = currentGridNodeId;
         return room;
     }
 
@@ -825,7 +860,8 @@ public sealed class Room
         IEnumerable<MapNode> nodes,
         string? layoutTemplateKey,
         string? layoutTemplateVersion,
-        RoomGrid? grid = null)
+        RoomGrid? grid = null,
+        NodeId? currentGridNodeId = null)
     {
         return Rehydrate(
             id,
@@ -839,6 +875,7 @@ public sealed class Room
             nodes,
             layoutTemplateKey,
             layoutTemplateVersion,
-            grid);
+            grid,
+            currentGridNodeId);
     }
 }

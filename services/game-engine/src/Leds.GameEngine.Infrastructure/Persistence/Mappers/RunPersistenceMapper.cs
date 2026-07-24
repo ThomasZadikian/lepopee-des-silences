@@ -237,6 +237,7 @@ public static class RunPersistenceMapper
             GridRevealedCellsCsv = room.Grid is null
                 ? null
                 : string.Join(";", room.Grid.RevealedCells.Select(cell => $"{cell.X},{cell.Y}")),
+            CurrentGridNodeId = room.CurrentGridNodeId?.Value,
             Nodes = room.Nodes.Select(node => ToEntity(node, room.Id.Value)).ToList()
         };
     }
@@ -549,7 +550,8 @@ public static class RunPersistenceMapper
             nodes,
             entity.LayoutTemplateKey,
             entity.LayoutTemplateVersion,
-            grid);
+            grid,
+            entity.CurrentGridNodeId is { } currentGridNodeId ? new NodeId(currentGridNodeId) : null);
 
         if (!string.IsNullOrWhiteSpace(entity.CatalogRoomKey))
         {

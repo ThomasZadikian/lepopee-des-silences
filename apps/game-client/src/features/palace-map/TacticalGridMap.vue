@@ -733,7 +733,7 @@ function toggleInfoCollapsed() {
   padding: 0;
   cursor: pointer;
   clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
-  transform: translate(-50%, calc(-50% - var(--terrain-height, 0) * 4px));
+  transform: translate(-50%, calc(-50% - var(--terrain-height, 0) * 8px));
   transition: filter 0.15s ease, transform 0.15s ease;
 }
 
@@ -799,23 +799,42 @@ function toggleInfoCollapsed() {
      point, even in a room whose ambient theme shares its tone (e.g. a Combat node's
      blood tint on a Rupture room, which is itself blood-tinted). */
   --tile-tint: var(--theme-accent, var(--gold));
-  --tile-tint-pct: calc(14% + var(--terrain-height, 0) * 3%);
+  --tile-tint-pct: calc(14% + var(--terrain-height, 0) * 6%);
   --tile-edge: color-mix(in oklch, var(--tile-tint), var(--line-strong, var(--line)) 55%);
   background: color-mix(in oklch, var(--panel), var(--tile-tint) var(--tile-tint-pct));
   /* A flat (height 0) tile still needs to read as a discrete block, not melt into its
      neighbors — so the border/top-highlight/drop-shadow all have a real baseline
      here, with height only adding on top of that rather than being the sole source
-     of definition. */
+     of definition. The drop shadow in particular scales hard with height (5px→17px
+     blur) so a raised tile visibly casts onto the ground below it, not just sits a
+     few pixels higher. */
   box-shadow:
     inset 0 0 0 1.5px var(--tile-edge),
     inset 0 1px 0 color-mix(in oklch, white, transparent 68%),
-    0 calc(3px + var(--terrain-height, 0) * 2px) calc(5px + var(--terrain-height, 0) * 3px)
-      oklch(0 0 0 / calc(0.24 + var(--terrain-height, 0) * 0.08));
+    0 calc(3px + var(--terrain-height, 0) * 4px) calc(5px + var(--terrain-height, 0) * 4px)
+      oklch(0 0 0 / calc(0.24 + var(--terrain-height, 0) * 0.13));
+}
+
+.tgrid__cell--revealed::after {
+  /* The "riser": a darker twin of the same diamond, left at ground level while the
+     tile above it lifts by --terrain-height — reads as the block's shaded side face
+     peeking out beneath it, the classic isometric "this tile is standing on a
+     pedestal" cue. Invisible at height 0 (0 offset = perfectly hidden behind its own
+     tile, and opacity is 0 there too, so flat ground never shows a stray outline). */
+  content: '';
+  position: absolute;
+  inset: 0;
+  clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+  background: color-mix(in oklch, var(--tile-tint, var(--gold)), black 55%);
+  transform: translateY(calc(var(--terrain-height, 0) * 8px));
+  opacity: calc(var(--terrain-height, 0) * 0.3);
+  z-index: -1;
+  pointer-events: none;
 }
 
 .tgrid__cell--revealed:not([aria-disabled='true']):hover {
   filter: brightness(1.18) saturate(1.15);
-  transform: translate(-50%, calc(-50% - var(--terrain-height, 0) * 4px)) scale(1.08);
+  transform: translate(-50%, calc(-50% - var(--terrain-height, 0) * 8px)) scale(1.08);
 }
 
 .tgrid__cell--node.tgrid__cell--revealed {
@@ -838,7 +857,7 @@ function toggleInfoCollapsed() {
   box-shadow:
     inset 0 0 0 2px var(--tile-edge),
     inset 0 1px 0 color-mix(in oklch, white, transparent 65%),
-    0 calc(3px + var(--terrain-height, 0) * 2px) calc(6px + var(--terrain-height, 0) * 3px)
+    0 calc(3px + var(--terrain-height, 0) * 4px) calc(6px + var(--terrain-height, 0) * 4px)
       color-mix(in oklch, var(--tile-tint), transparent 65%);
 }
 
@@ -918,7 +937,7 @@ function toggleInfoCollapsed() {
   box-shadow:
     0 0 12px 3px color-mix(in oklch, var(--gold), transparent 25%),
     0 3px 4px oklch(0 0 0 / 0.4);
-  transform: translate(-50%, calc(-50% - var(--terrain-height, 0) * 4px));
+  transform: translate(-50%, calc(-50% - var(--terrain-height, 0) * 8px));
 }
 
 .tgrid__party-token::after {

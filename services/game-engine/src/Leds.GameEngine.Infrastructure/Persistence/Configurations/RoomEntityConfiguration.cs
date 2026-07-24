@@ -47,6 +47,7 @@ public sealed class RoomEntityConfiguration : IEntityTypeConfiguration<RoomEntit
         builder.Property(room => room.GridPartyY).HasColumnName("grid_party_y");
         builder.Property(room => room.GridRevealedNodeIdsCsv).HasColumnName("grid_revealed_node_ids_csv");
         builder.Property(room => room.GridRevealedCellsCsv).HasColumnName("grid_revealed_cells_csv");
+        builder.Property(room => room.CurrentGridNodeId).HasColumnName("current_grid_node_id");
 
         builder.HasOne(room => room.Run)
             .WithMany(run => run.Rooms)

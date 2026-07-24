@@ -40,6 +40,8 @@ public sealed class RoomEntity
     public string? GridRevealedNodeIdsCsv { get; set; }
     /// <summary>Semicolon-separated "x,y" pairs, e.g. "0,0;1,0;2,0".</summary>
     public string? GridRevealedCellsCsv { get; set; }
+    /// <summary>The node currently in the Select/Resolve interaction slot — see Room._currentGridNodeId.</summary>
+    public Guid? CurrentGridNodeId { get; set; }
 
     public RunEntity? Run { get; set; }
     public List<MapNodeEntity> Nodes { get; set; } = [];

@@ -204,6 +204,72 @@ public sealed class RoomGridLifecycleTests
         room.State.Should().Be(RoomState.Active);
     }
 
+    // -----------------------------------------------------------------------
+    // Regression: "Room is not waiting for party movement." after a 2nd node.
+    // CurrentResolvedNode used to scan _nodes by NodeState alone in grid mode;
+    // since a resolved grid node never reverts, a 2nd resolved node made that
+    // scan match more than one node (SingleOrDefault threw), so
+    // ReturnToGridExploration was never reached and the room got stuck in
+    // NodeResolved forever — MoveParty then always threw.
+    // -----------------------------------------------------------------------
+
+    /// <summary>5x5 grid, party at (0,0), TWO non-boss nodes plus the boss.</summary>
+    private static Room CreateGridRoomWithTwoItemNodes(int movementBudget = 10)
+    {
+        var firstNode = CreateAvailableNode(lane: 1, row: 0);
+        var secondNode = CreateAvailableNode(lane: 2, row: 0);
+        var bossNode = CreateAvailableNode(lane: 4, row: 4, isBoss: true);
+
+        return Room.CreateGrid(
+            depth: 0, RoomType.Threshold, PalaceRoomState.Neutral, "Threshold",
+            CreateBossProfile(), [firstNode, secondNode, bossNode],
+            gridWidth: 5, gridHeight: 5, movementBudget, startX: 0, startY: 0,
+            layoutTemplateKey: "test-grid-v1", layoutTemplateVersion: "1.0.0");
+    }
+
+    private static void EnterMoveResolveAndReturn(Room room, MapNode node)
+    {
+        room.MoveParty(node.Lane, node.Row);
+        room.EnterNodeAtPartyPosition(node.Id);
+        room.ResolveSelectedGridNodeEvent();
+        room.ReturnToGridExploration();
+    }
+
+    [Fact]
+    public void CurrentResolvedNode_ShouldIdentifyOnlyTheJustResolvedNode_AfterASecondNodeIsResolved()
+    {
+        var room = CreateGridRoomWithTwoItemNodes();
+        var firstNode = room.Nodes.First(n => !n.IsBoss);
+        var secondNode = room.Nodes.Where(n => !n.IsBoss).Skip(1).First();
+        EnterMoveResolveAndReturn(room, firstNode);
+
+        room.MoveParty(secondNode.Lane, secondNode.Row);
+        room.EnterNodeAtPartyPosition(secondNode.Id);
+        room.ResolveSelectedGridNodeEvent();
+
+        // Both nodes are Resolved by now — CurrentResolvedNode must still resolve to
+        // exactly the second one (the one this interaction cycle is actually about),
+        // not throw "Sequence contains more than one matching element".
+        var act = () => room.CurrentResolvedNode;
+        act.Should().NotThrow();
+        room.CurrentResolvedNode.Should().Be(secondNode);
+        firstNode.State.Should().Be(NodeState.Resolved);
+    }
+
+    [Fact]
+    public void MoveParty_ShouldStillWork_AfterResolvingASecondNode()
+    {
+        var room = CreateGridRoomWithTwoItemNodes();
+        var firstNode = room.Nodes.First(n => !n.IsBoss);
+        var secondNode = room.Nodes.Where(n => !n.IsBoss).Skip(1).First();
+        EnterMoveResolveAndReturn(room, firstNode);
+        EnterMoveResolveAndReturn(room, secondNode);
+
+        room.State.Should().Be(RoomState.Active);
+        var act = () => room.MoveParty(0, 1);
+        act.Should().NotThrow();
+    }
+
     [Fact]
     public void CanChallengeBossRemotely_ShouldBeFalse_WhenBudgetRemains()
     {
