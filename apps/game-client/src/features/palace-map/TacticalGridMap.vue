@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+import * as THREE from 'three';
 import { TresCanvas } from '@tresjs/core';
 
 import SigilIcon from '../../shared/components/SigilIcon.vue';
@@ -129,7 +130,7 @@ function toggleInfoCollapsed() {
 <template>
   <section class="tgrid">
     <div v-if="grid" class="tgrid__canvas">
-      <TresCanvas clear-color="#0a0a12">
+      <TresCanvas clear-color="#0a0a12" :shadows="true" :shadow-map-type="THREE.VSMShadowMap">
         <PalaceScene :room="room" @cell-click="onCellClick" @node-hover="onNodeHover" />
       </TresCanvas>
 

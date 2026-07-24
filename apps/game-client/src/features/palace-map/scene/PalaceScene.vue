@@ -52,6 +52,15 @@ const lightPosition = computed<[number, number, number]>(() => {
   return [cx + 5, 8, cz + 3];
 });
 
+// Half-width of the directional light's shadow-camera frustum — sized to the grid so
+// every tile falls inside it (an unsized default frustum, ~-5..5, would clip most of a
+// production 10x8 board and silently drop shadows past its edge).
+const shadowExtent = computed(() => {
+  const g = grid.value;
+  if (!g) return 8;
+  return (Math.max(g.width, g.height) * TILE_SIZE) / 2 + 2;
+});
+
 function onCellClick(x: number, y: number) {
   if (!isRevealed(x, y)) return;
   if (isParty(x, y)) return;
@@ -90,6 +99,31 @@ watch(palette3D, (p) => {
   sceneFog.color.set(p.fogColor);
   sceneFog.density = p.fogDensity;
 });
+
+// ── Directional light shadow target + frustum ────────────────────────────────────
+// Both set imperatively rather than via template shadow-camera-* props: THREE.
+// DirectionalLight aims its shadow camera at `light.target`, which defaults to an
+// Object3D sitting at the world origin — never touched here otherwise, so its matrix
+// would go stale (the grid itself is centered at `centerTarget`, not the origin).
+// And OrthographicCamera (what `light.shadow.camera` is) only recomputes its actual
+// projection when `updateProjectionMatrix()` runs — nothing calls that for us after a
+// reactive prop patch, so sizing the frustum via template props alone silently keeps
+// the default ~-5..5 bounds regardless of what's bound in the template.
+const lightRef = ref<THREE.DirectionalLight | null>(null);
+watch([lightRef, centerTarget, shadowExtent], ([light, ct, extent]) => {
+  if (!light) return;
+  light.target.position.set(...ct);
+  light.target.updateMatrixWorld();
+
+  const cam = light.shadow.camera;
+  cam.left = -extent;
+  cam.right = extent;
+  cam.top = extent;
+  cam.bottom = -extent;
+  cam.near = 0.5;
+  cam.far = 30;
+  cam.updateProjectionMatrix();
+}, { immediate: true });
 </script>
 
 <template>
@@ -105,9 +139,14 @@ watch(palette3D, (p) => {
 
   <TresAmbientLight :color="palette3D.ambientLightColor" :intensity="ambientIntensity" />
   <TresDirectionalLight
+    ref="lightRef"
     :color="palette3D.directionalLightColor"
     :intensity="palette3D.directionalLightIntensity"
     :position="lightPosition"
+    :cast-shadow="true"
+    :shadow-mapSize-width="1024"
+    :shadow-mapSize-height="1024"
+    :shadow-bias="-0.0015"
   />
   <!-- Soft sky/ground fill — the single biggest lever against the flat, everything-in-
        shadow look a lone ambient+directional pair gives stylized low-poly tiles.

@@ -11,8 +11,6 @@ export type DecorPart = {
   color: number;
   emissive: number;
   emissiveIntensity: number;
-  roughness: number;
-  metalness: number;
 };
 
 export type DecorPropSpec = {
@@ -43,8 +41,6 @@ const RING_MIN_MARGIN = 1.2;
 const RING_MAX_MARGIN = 3.4;
 
 function buildParts(kind: ThemeDecorKind, rng: () => number, accentColor: number): DecorPart[] {
-  const base = { emissive: accentColor, roughness: 0.6, metalness: 0.15 };
-
   switch (kind) {
     case 'pillar': {
       // Threshold/Antechamber — a slender formal column, softly glowing at the top.
@@ -53,12 +49,12 @@ function buildParts(kind: ThemeDecorKind, rng: () => number, accentColor: number
         {
           geometryFactory: () => new THREE.CylinderGeometry(0.16, 0.22, height, 8),
           offset: [0, height / 2, 0],
-          color: accentColor, emissiveIntensity: 0, ...base,
+          color: accentColor, emissive: accentColor, emissiveIntensity: 0,
         },
         {
           geometryFactory: () => new THREE.OctahedronGeometry(0.22, 0),
           offset: [0, height + 0.15, 0],
-          color: accentColor, emissiveIntensity: 0.5, ...base,
+          color: accentColor, emissive: accentColor, emissiveIntensity: 0.5,
         },
       ];
     }
@@ -68,7 +64,7 @@ function buildParts(kind: ThemeDecorKind, rng: () => number, accentColor: number
       return [{
         geometryFactory: () => new THREE.BoxGeometry(0.34, height, 0.34),
         offset: [0, height / 2, 0],
-        color: accentColor, emissiveIntensity: 0.08, ...base,
+        color: accentColor, emissive: accentColor, emissiveIntensity: 0.08,
       }];
     }
     case 'tree': {
@@ -79,34 +75,34 @@ function buildParts(kind: ThemeDecorKind, rng: () => number, accentColor: number
         {
           geometryFactory: () => new THREE.CylinderGeometry(0.09, 0.13, trunkHeight, 6),
           offset: [0, trunkHeight / 2, 0],
-          color: 0x3a2a1c, emissiveIntensity: 0, emissive: 0x000000, roughness: 0.85, metalness: 0,
+          color: 0x3a2a1c, emissive: 0x000000, emissiveIntensity: 0,
         },
         {
           geometryFactory: () => new THREE.ConeGeometry(0.55, canopyHeight, 7),
           offset: [0, trunkHeight + canopyHeight / 2.4, 0],
-          color: accentColor, emissiveIntensity: 0.05, ...base,
+          color: accentColor, emissive: accentColor, emissiveIntensity: 0.05,
         },
       ];
     }
     case 'crystal': {
       // Rupture — a jagged cluster of shards at slightly different heights/angles.
-      return Array.from({ length: 3 }, (_, i) => {
+      return Array.from({ length: 3 }, () => {
         const height = 0.6 + rng() * 1.2;
         return {
           geometryFactory: () => new THREE.ConeGeometry(0.16 + rng() * 0.1, height, 5),
           offset: [(rng() - 0.5) * 0.4, height / 2, (rng() - 0.5) * 0.4] as [number, number, number],
-          color: accentColor, emissiveIntensity: 0.35, ...base, metalness: 0.3,
+          color: accentColor, emissive: accentColor, emissiveIntensity: 0.35,
         };
       });
     }
     case 'spike': {
       // Final — broken, oppressive spikes, more emissive than any other theme's decor.
-      return Array.from({ length: 2 }, (_, i) => {
+      return Array.from({ length: 2 }, () => {
         const height = 1 + rng() * 1.6;
         return {
           geometryFactory: () => new THREE.ConeGeometry(0.2, height, 4),
           offset: [(rng() - 0.5) * 0.5, height / 2, (rng() - 0.5) * 0.5] as [number, number, number],
-          color: accentColor, emissiveIntensity: 0.5, ...base, roughness: 0.4,
+          color: accentColor, emissive: accentColor, emissiveIntensity: 0.5,
         };
       });
     }

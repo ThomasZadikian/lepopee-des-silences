@@ -5,6 +5,7 @@ import { useLoop, type TresPointerEvent } from '@tresjs/core';
 import type { NodeDto } from '../../runs/types/runTypes';
 import { useNodeGeometry } from '../composables/useNodeGeometry';
 import { useNodePresentation } from '../composables/useNodePresentation';
+import { getToonGradientTexture } from './toonGradientTexture';
 import { TILE_SIZE, HEIGHT_UNIT } from './sceneConstants';
 
 const props = defineProps<{
@@ -32,6 +33,7 @@ const { sigilKindFor } = useNodePresentation();
 // instance) — computed once, non-reactively.
 const spec = geometrySpecFor(sigilKindFor(props.node));
 const geometry = spec.geometryFactory();
+const gradientTexture = getToonGradientTexture();
 
 const resolved = computed(() => props.node.state === 'Resolved');
 
@@ -91,15 +93,15 @@ if (!props.reducedMotion) {
     ref="meshRef"
     :position="position"
     :scale="spec.scale"
+    :cast-shadow="true"
     @click="emit('click')"
     @pointer-enter="(event: TresPointerEvent) => emit('pointerEnter', event.clientX, event.clientY)"
     @pointer-move="(event: TresPointerEvent) => emit('pointerMove', event.clientX, event.clientY)"
     @pointer-leave="emit('pointerLeave')"
   >
-    <TresMeshStandardMaterial
+    <TresMeshToonMaterial
       :color="materialColor"
-      :roughness="spec.materialParams.roughness"
-      :metalness="spec.materialParams.metalness"
+      :gradient-map="gradientTexture"
       :emissive="spec.materialParams.emissive"
       :emissive-intensity="emissiveIntensity"
       :transparent="materialOpacity < 1"

@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import * as THREE from 'three';
+import { getToonGradientTexture } from './toonGradientTexture';
 import { TILE_SIZE, HEIGHT_UNIT, TILE_THICKNESS } from './sceneConstants';
+
+const gradientTexture = getToonGradientTexture();
 
 const props = defineProps<{
   x: number;
@@ -26,8 +29,8 @@ const color = computed(() => {
 </script>
 
 <template>
-  <TresMesh :position="position" @click="emit('click')">
+  <TresMesh :position="position" :receive-shadow="true" @click="emit('click')">
     <TresBoxGeometry :args="[TILE_SIZE * 0.94, TILE_THICKNESS, TILE_SIZE * 0.94]" />
-    <TresMeshStandardMaterial :color="color" :roughness="0.75" :metalness="0.05" />
+    <TresMeshToonMaterial :color="color" :gradient-map="gradientTexture" />
   </TresMesh>
 </template>

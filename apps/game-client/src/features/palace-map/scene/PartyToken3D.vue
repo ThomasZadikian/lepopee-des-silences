@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import { getToonGradientTexture } from './toonGradientTexture';
 import { TILE_SIZE, HEIGHT_UNIT } from './sceneConstants';
+
+const gradientTexture = getToonGradientTexture();
 
 const props = defineProps<{
   x: number;
@@ -26,20 +29,19 @@ const ringRotation: [number, number, number] = [Math.PI / 2, 0, 0];
 </script>
 
 <template>
-  <TresMesh :position="spherePosition">
+  <TresMesh :position="spherePosition" :cast-shadow="true">
     <TresSphereGeometry :args="[0.22, 16, 12]" />
-    <TresMeshStandardMaterial
+    <TresMeshToonMaterial
       :color="PARTY_COLOR"
+      :gradient-map="gradientTexture"
       :emissive="PARTY_COLOR"
       :emissive-intensity="0.6"
-      :roughness="0.3"
-      :metalness="0.4"
     />
   </TresMesh>
 
   <TresMesh :position="ringPosition" :rotation="ringRotation">
     <TresTorusGeometry :args="[0.32, 0.03, 8, 24]" />
-    <TresMeshStandardMaterial :color="PARTY_COLOR" :roughness="0.5" />
+    <TresMeshToonMaterial :color="PARTY_COLOR" :gradient-map="gradientTexture" />
   </TresMesh>
 
   <TresPointLight :position="spherePosition" :color="PARTY_COLOR" :intensity="1.2" :distance="3" />
