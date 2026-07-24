@@ -24,26 +24,38 @@ if ($jobs) {
     Write-Host "  No background jobs found." -ForegroundColor DarkGray
 }
 
-# 2. Stop dotnet processes
-Write-Host "Stopping dotnet processes..." -ForegroundColor Yellow
-$dotnetProcesses = Get-Process -Name "dotnet" -ErrorAction SilentlyContinue
-if ($dotnetProcesses) {
-    $dotnetProcesses | Stop-Process -Force -ErrorAction SilentlyContinue
-    Write-Host "  ✓ Stopped $($dotnetProcesses.Count) dotnet process(es)." -ForegroundColor Green
+# 2. Stop this repo's dotnet/node processes, matched by command line rather
+#    than process name or window title: start-dev.ps1's `dotnet run` executes
+#    each API's native apphost directly (e.g. Leds.GameEngine.Api.exe), which
+#    never shows up under Get-Process -Name "dotnet"; and node.exe running
+#    inside a PowerShell window has no MainWindowTitle of its own. Both of
+#    those matched nothing, silently leaving every service running.
+Write-Host "Stopping dotnet/node processes for this repo..." -ForegroundColor Yellow
+$repoRootPattern = [regex]::Escape($repoRoot)
+$serviceProcesses = Get-CimInstance Win32_Process `
+    -Filter "Name = 'dotnet.exe' OR Name = 'node.exe' OR Name LIKE 'Leds.%.exe'" `
+    -ErrorAction SilentlyContinue |
+    Where-Object { $_.CommandLine -and $_.CommandLine -match $repoRootPattern }
+if ($serviceProcesses) {
+    $serviceProcesses | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+    Write-Host "  ✓ Stopped $($serviceProcesses.Count) process(es)." -ForegroundColor Green
 } else {
-    Write-Host "  No dotnet processes found." -ForegroundColor DarkGray
+    Write-Host "  No dotnet/node processes found." -ForegroundColor DarkGray
 }
 
-# 3. Stop node processes (only those related to our project)
-Write-Host "Stopping node processes..." -ForegroundColor Yellow
-$nodeProcesses = Get-Process -Name "node" -ErrorAction SilentlyContinue | Where-Object {
-    $_.Path -like "*game-client*" -or $_.MainWindowTitle -like "*vite*"
-}
-if ($nodeProcesses) {
-    $nodeProcesses | Stop-Process -Force -ErrorAction SilentlyContinue
-    Write-Host "  ✓ Stopped $($nodeProcesses.Count) node process(es)." -ForegroundColor Green
+# 3. Close the separate PowerShell windows start-dev.ps1 opened for each
+#    service (killing the dotnet/node child above does not close the parent
+#    window that hosts it).
+Write-Host "Closing service PowerShell windows..." -ForegroundColor Yellow
+$shellWindows = Get-CimInstance Win32_Process `
+    -Filter "Name = 'powershell.exe' OR Name = 'pwsh.exe'" `
+    -ErrorAction SilentlyContinue |
+    Where-Object { $_.CommandLine -and $_.CommandLine -match $repoRootPattern -and $_.ProcessId -ne $PID }
+if ($shellWindows) {
+    $shellWindows | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+    Write-Host "  ✓ Closed $($shellWindows.Count) window(s)." -ForegroundColor Green
 } else {
-    Write-Host "  No node processes found." -ForegroundColor DarkGray
+    Write-Host "  No service windows found." -ForegroundColor DarkGray
 }
 
 # 4. Stop Docker containers
