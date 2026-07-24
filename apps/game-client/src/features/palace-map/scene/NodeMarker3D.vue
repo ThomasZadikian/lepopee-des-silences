@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import * as THREE from 'three';
-import { useLoop } from '@tresjs/core';
+import { useLoop, type TresPointerEvent } from '@tresjs/core';
 import type { NodeDto } from '../../runs/types/runTypes';
 import { useNodeGeometry } from '../composables/useNodeGeometry';
 import { useNodePresentation } from '../composables/useNodePresentation';
@@ -17,7 +17,12 @@ const props = defineProps<{
   reducedMotion: boolean;
 }>();
 
-const emit = defineEmits<{ click: [] }>();
+const emit = defineEmits<{
+  click: [];
+  pointerEnter: [clientX: number, clientY: number];
+  pointerMove: [clientX: number, clientY: number];
+  pointerLeave: [];
+}>();
 
 const { geometrySpecFor } = useNodeGeometry();
 const { sigilKindFor } = useNodePresentation();
@@ -82,7 +87,15 @@ if (!props.reducedMotion) {
 </script>
 
 <template>
-  <TresMesh ref="meshRef" :position="position" :scale="spec.scale" @click="emit('click')">
+  <TresMesh
+    ref="meshRef"
+    :position="position"
+    :scale="spec.scale"
+    @click="emit('click')"
+    @pointer-enter="(event: TresPointerEvent) => emit('pointerEnter', event.clientX, event.clientY)"
+    @pointer-move="(event: TresPointerEvent) => emit('pointerMove', event.clientX, event.clientY)"
+    @pointer-leave="emit('pointerLeave')"
+  >
     <TresMeshStandardMaterial
       :color="materialColor"
       :roughness="spec.materialParams.roughness"

@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue';
 import { useLoop } from '@tresjs/core';
 import { OrbitControls } from '@tresjs/cientos';
-import type { RoomDto } from '../../runs/types/runTypes';
+import type { NodeDto, RoomDto } from '../../runs/types/runTypes';
 import { useGridCells } from '../composables/useGridCells';
 import { usePalaceTerrain } from '../composables/usePalaceTerrain';
 import { usePartyTokenPath } from '../composables/usePartyTokenPath';
@@ -14,7 +14,10 @@ import PartyToken3D from './PartyToken3D.vue';
 import { TILE_SIZE } from './sceneConstants';
 
 const props = defineProps<{ room: RoomDto }>();
-const emit = defineEmits<{ cellClick: [x: number, y: number] }>();
+const emit = defineEmits<{
+  cellClick: [x: number, y: number];
+  nodeHover: [payload: { node: NodeDto; clientX: number; clientY: number } | null];
+}>();
 
 const room = computed(() => props.room);
 const grid = computed(() => props.room.grid ?? null);
@@ -118,6 +121,9 @@ const ambientIntensity = computed(() => palette3D.value.ambientLightIntensity * 
         :ghost="!isRevealed(cell.x, cell.y)"
         :reduced-motion="prefersReducedMotion"
         @click="onCellClick(cell.x, cell.y)"
+        @pointer-enter="(clientX, clientY) => emit('nodeHover', { node: nodeAt(cell.x, cell.y)!, clientX, clientY })"
+        @pointer-move="(clientX, clientY) => emit('nodeHover', { node: nodeAt(cell.x, cell.y)!, clientX, clientY })"
+        @pointer-leave="emit('nodeHover', null)"
       />
     </template>
 
