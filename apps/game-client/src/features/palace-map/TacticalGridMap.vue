@@ -7,6 +7,7 @@ import { hashSeed, usePalaceTerrain } from './composables/usePalaceTerrain';
 import { usePartyTokenPath } from './composables/usePartyTokenPath';
 import { useNodePresentation, RISK_TIER_DISPLAY } from './composables/useNodePresentation';
 import { useRoomBackdropTheme } from './composables/useRoomBackdropTheme';
+import { useGridCells, type Cell } from './composables/useGridCells';
 
 const props = defineProps<{
   room: RoomDto;
@@ -30,50 +31,9 @@ const roomName = computed(() =>
 const room = computed(() => props.room);
 const grid = computed(() => props.room.grid ?? null);
 
-const revealedCells = computed(() => {
-  const set = new Set<string>();
-  for (const [x, y] of grid.value?.revealedCells ?? []) {
-    set.add(`${x},${y}`);
-  }
-  return set;
-});
-
-function isRevealed(x: number, y: number): boolean {
-  return revealedCells.value.has(`${x},${y}`);
-}
-
-const nodesByCell = computed(() => {
-  const map = new Map<string, NodeDto>();
-  for (const node of props.room.nodes) {
-    map.set(`${node.lane},${node.row}`, node);
-  }
-  return map;
-});
-
-function nodeAt(x: number, y: number): NodeDto | null {
-  return nodesByCell.value.get(`${x},${y}`) ?? null;
-}
-
-function isParty(x: number, y: number): boolean {
-  return grid.value !== null && grid.value.partyX === x && grid.value.partyY === y;
-}
+const { isRevealed, nodeAt, isParty, cells } = useGridCells(room, grid);
 
 const { displayPartyX, displayPartyY } = usePartyTokenPath(room, grid);
-
-type Cell = { x: number; y: number };
-
-const cells = computed<Cell[]>(() => {
-  const g = grid.value;
-  if (!g) return [];
-
-  const result: Cell[] = [];
-  for (let y = 0; y < g.height; y++) {
-    for (let x = 0; x < g.width; x++) {
-      result.push({ x, y });
-    }
-  }
-  return result;
-});
 
 const { terrainHeight } = usePalaceTerrain(room, grid);
 

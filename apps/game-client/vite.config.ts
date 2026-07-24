@@ -9,8 +9,10 @@ export default defineConfig({
         compilerOptions: {
           // TresCanvas is a real Vue component (imported explicitly) — only the
           // dynamically-extended Three.js catalogue tags (TresMesh, TresPerspectiveCamera,
-          // etc.) should bypass Vue's component resolution.
-          isCustomElement: (tag) => tag.startsWith('Tres') && tag !== 'TresCanvas',
+          // etc.) and the <primitive> escape hatch (for manually-constructed Three.js
+          // instances, e.g. merged BufferGeometry) should bypass Vue's component
+          // resolution.
+          isCustomElement: (tag) => (tag.startsWith('Tres') && tag !== 'TresCanvas') || tag === 'primitive',
         },
       },
     }),
