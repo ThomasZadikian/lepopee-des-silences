@@ -26,6 +26,93 @@ export const THEME_ACCENT: Record<string, string> = {
   Final: '--blood',
 };
 
+export type ThemePalette3D = {
+  floorColor: number;
+  fogColor: number;
+  fogDensity: number;
+  ambientLightColor: number;
+  ambientLightIntensity: number;
+  directionalLightColor: number;
+  directionalLightIntensity: number;
+  accentColor: number;
+  /** Only set for the Final theme — drives the slow pulsing glow (see FogCloud/marker loops). */
+  pulseSpeed?: number;
+};
+
+// Approximate hex equivalents of tokens.css's oklch tone variables — see the same
+// note in useNodeGeometry.ts. Not meant to be a pixel-exact conversion.
+const GOLD = 0xcbb26a;
+const FROST = 0xa7a8e8;
+const BLOOD = 0xe08a8a;
+const SAP = 0x8fd9b0;
+const VOID = 0x1c1c2e;
+
+/**
+ * One 3D-scene entry per backdrop theme — the TresJS translation of each CSS
+ * .tgrid__backdrop--* variant's own intent (see the CSS comments on those classes):
+ * a base floor tone, a fog color/density for the unrevealed distance, and an
+ * ambient/directional light pairing that reads as "this room's own light", not a
+ * single neutral studio light shared by every theme.
+ */
+export const THEME_PALETTE_3D: Record<string, ThemePalette3D> = {
+  Threshold: {
+    // Liminal doorway — cool, pale, a misty vertical light column.
+    floorColor: 0x24243a, fogColor: FROST, fogDensity: 0.09,
+    ambientLightColor: FROST, ambientLightIntensity: 0.5,
+    directionalLightColor: 0xffffff, directionalLightIntensity: 0.6,
+    accentColor: FROST,
+  },
+  Memory: {
+    // Warm sepia, a page-turned quality.
+    floorColor: 0x332c1e, fogColor: GOLD, fogDensity: 0.06,
+    ambientLightColor: GOLD, ambientLightIntensity: 0.55,
+    directionalLightColor: 0xffe9c2, directionalLightIntensity: 0.55,
+    accentColor: GOLD,
+  },
+  Forest: {
+    // Deep green canopy, dappled light.
+    floorColor: 0x1c2e22, fogColor: SAP, fogDensity: 0.1,
+    ambientLightColor: SAP, ambientLightIntensity: 0.45,
+    directionalLightColor: 0xbfe8c9, directionalLightIntensity: 0.5,
+    accentColor: SAP,
+  },
+  Rupture: {
+    // Angular fractures, blood-tinted cracks.
+    floorColor: 0x2e1c1e, fogColor: BLOOD, fogDensity: 0.11,
+    ambientLightColor: BLOOD, ambientLightIntensity: 0.4,
+    directionalLightColor: 0xffb0b0, directionalLightIntensity: 0.5,
+    accentColor: BLOOD,
+  },
+  Silence: {
+    // Pale, still, concentric-ripple stillness.
+    floorColor: 0x26263a, fogColor: FROST, fogDensity: 0.13,
+    ambientLightColor: FROST, ambientLightIntensity: 0.6,
+    directionalLightColor: 0xe8e8ff, directionalLightIntensity: 0.35,
+    accentColor: FROST,
+  },
+  Antechamber: {
+    // Formal golden colonnade.
+    floorColor: 0x362c1c, fogColor: GOLD, fogDensity: 0.05,
+    ambientLightColor: GOLD, ambientLightIntensity: 0.5,
+    directionalLightColor: 0xffe9c2, directionalLightIntensity: 0.7,
+    accentColor: GOLD,
+  },
+  Final: {
+    // Dark, sanguine, slowly pulsing — the confrontation theme.
+    floorColor: 0x200e10, fogColor: BLOOD, fogDensity: 0.16,
+    ambientLightColor: BLOOD, ambientLightIntensity: 0.35,
+    directionalLightColor: BLOOD, directionalLightIntensity: 0.45,
+    accentColor: BLOOD, pulseSpeed: 1 / 6, // ~6s period, matches tgrid-backdrop-pulse
+  },
+};
+
+const DEFAULT_PALETTE_3D: ThemePalette3D = {
+  floorColor: VOID, fogColor: GOLD, fogDensity: 0.08,
+  ambientLightColor: GOLD, ambientLightIntensity: 0.5,
+  directionalLightColor: 0xffffff, directionalLightIntensity: 0.5,
+  accentColor: GOLD,
+};
+
 export function useRoomBackdropTheme(room: ComputedRef<RoomDto>) {
   const backdropClass = computed(() =>
     THEME_BACKDROP_CLASS[room.value.theme] ?? 'tgrid__backdrop--default');
@@ -36,5 +123,7 @@ export function useRoomBackdropTheme(room: ComputedRef<RoomDto>) {
 
   const themeAccent = computed(() => THEME_ACCENT[room.value.theme] ?? '--gold');
 
-  return { backdropClass, roomNuance, themeAccent };
+  const palette3D = computed(() => THEME_PALETTE_3D[room.value.theme] ?? DEFAULT_PALETTE_3D);
+
+  return { backdropClass, roomNuance, themeAccent, palette3D };
 }
