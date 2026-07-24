@@ -3,6 +3,10 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue';
 
 import SigilIcon from '../../shared/components/SigilIcon.vue';
 import type { NodeDto, RoomDto } from '../runs/types/runTypes';
+import { hashSeed, usePalaceTerrain } from './composables/usePalaceTerrain';
+import { usePartyTokenPath } from './composables/usePartyTokenPath';
+import { useNodePresentation, RISK_TIER_DISPLAY } from './composables/useNodePresentation';
+import { useRoomBackdropTheme } from './composables/useRoomBackdropTheme';
 
 const props = defineProps<{
   room: RoomDto;
@@ -23,6 +27,7 @@ const emit = defineEmits<{
 const roomName = computed(() =>
   props.room.catalogName || props.room.theme || props.room.roomType || '—');
 
+const room = computed(() => props.room);
 const grid = computed(() => props.room.grid ?? null);
 
 const revealedCells = computed(() => {
@@ -53,83 +58,7 @@ function isParty(x: number, y: number): boolean {
   return grid.value !== null && grid.value.partyX === x && grid.value.partyY === y;
 }
 
-// ── Party token animation: step through the path cell-by-cell instead of a ────────
-// single CSS glide straight from the old grid.partyX/Y to the new one, which cut a
-// diagonal shortcut through untraveled ground and read as a teleport for any move
-// longer than one cell. Mirrors RoomGrid.MoveTo's own path (X axis first, then Y)
-// so the token visibly walks the same cells the domain actually moved it through.
-const PARTY_STEP_MS = 150;
-const prefersReducedMotion =
-  typeof window !== 'undefined' && typeof window.matchMedia === 'function'
-    ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    : false;
-
-const displayPartyX = ref(grid.value?.partyX ?? 0);
-const displayPartyY = ref(grid.value?.partyY ?? 0);
-let partyAnimationTimer: ReturnType<typeof setInterval> | null = null;
-let lastAnimatedRoomId: string | null = null;
-
-function stopPartyAnimation() {
-  if (partyAnimationTimer !== null) {
-    clearInterval(partyAnimationTimer);
-    partyAnimationTimer = null;
-  }
-}
-
-function snapPartyTo(x: number, y: number) {
-  stopPartyAnimation();
-  displayPartyX.value = x;
-  displayPartyY.value = y;
-}
-
-function animatePartyTo(targetX: number, targetY: number) {
-  stopPartyAnimation();
-
-  const steps: Array<[number, number]> = [];
-  let x = displayPartyX.value;
-  let y = displayPartyY.value;
-  const stepX = Math.sign(targetX - x);
-  while (x !== targetX) {
-    x += stepX;
-    steps.push([x, y]);
-  }
-  const stepY = Math.sign(targetY - y);
-  while (y !== targetY) {
-    y += stepY;
-    steps.push([x, y]);
-  }
-  if (steps.length === 0) return;
-
-  let stepIndex = 0;
-  partyAnimationTimer = setInterval(() => {
-    const step = steps[stepIndex];
-    if (!step) {
-      stopPartyAnimation();
-      return;
-    }
-    [displayPartyX.value, displayPartyY.value] = step;
-    stepIndex += 1;
-    if (stepIndex >= steps.length) stopPartyAnimation();
-  }, PARTY_STEP_MS);
-}
-
-watch(
-  () => (grid.value ? ([props.room.id, grid.value.partyX, grid.value.partyY] as const) : null),
-  (next) => {
-    if (!next) return;
-    const [roomId, x, y] = next;
-    const isNewRoom = roomId !== lastAnimatedRoomId;
-    lastAnimatedRoomId = roomId;
-    if (isNewRoom || prefersReducedMotion) {
-      snapPartyTo(x, y);
-    } else {
-      animatePartyTo(x, y);
-    }
-  },
-  { immediate: true },
-);
-
-onBeforeUnmount(() => stopPartyAnimation());
+const { displayPartyX, displayPartyY } = usePartyTokenPath(room, grid);
 
 type Cell = { x: number; y: number };
 
@@ -146,70 +75,7 @@ const cells = computed<Cell[]>(() => {
   return result;
 });
 
-/** Small deterministic string hash — reused for terrain height and the room-level backdrop nuance. */
-function hashSeed(seed: string): number {
-  let hash = 0;
-  for (let i = 0; i < seed.length; i++) {
-    hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
-  }
-  return hash;
-}
-
-/** Small deterministic PRNG (mulberry32) — same room always generates the same terrain. */
-function mulberry32(seed: number): () => number {
-  let a = seed;
-  return () => {
-    a |= 0;
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-/**
- * Purely cosmetic terrain heightmap, deterministic from roomId — never sent to or
- * read from the backend. Only shades/lifts cells; no mechanical effect during
- * exploration (height only matters once the future tactical combat chantier lands).
- *
- * Scattering a handful of "peaks" and taking, per cell, the max over
- * max(0, peakHeight - manhattanDistance) gives actual little mountains (a smooth
- * falloff from each peak) instead of independently-rolled per-cell noise — and since
- * the max of 1-Lipschitz cone functions is itself 1-Lipschitz, two orthogonally
- * adjacent cells can never differ by more than one level: a height-2 tile always has
- * a height-1 (or higher) tile next to it, never a sheer drop straight to 0.
- */
-const heightMap = computed<number[][]>(() => {
-  const g = grid.value;
-  if (!g) return [];
-
-  const rng = mulberry32(hashSeed(props.room.id ?? ''));
-  const peakCount = Math.max(1, Math.round((g.width * g.height) / 18));
-  const peaks = Array.from({ length: peakCount }, () => ({
-    x: Math.floor(rng() * g.width),
-    y: Math.floor(rng() * g.height),
-    height: 1 + Math.floor(rng() * 3), // 1..3
-  }));
-
-  const map: number[][] = [];
-  for (let y = 0; y < g.height; y++) {
-    const row: number[] = [];
-    for (let x = 0; x < g.width; x++) {
-      let cellHeight = 0;
-      for (const peak of peaks) {
-        const distance = Math.abs(x - peak.x) + Math.abs(y - peak.y);
-        cellHeight = Math.max(cellHeight, peak.height - distance);
-      }
-      row.push(Math.max(0, cellHeight));
-    }
-    map.push(row);
-  }
-  return map;
-});
-
-function terrainHeight(x: number, y: number): number {
-  return heightMap.value[y]?.[x] ?? 0;
-}
+const { terrainHeight } = usePalaceTerrain(room, grid);
 
 // ── Fake isometry (2.5D projection) ─────────────────────────────────────────────
 // No 3D library: cells are laid out with plain absolute positioning, projected onto
@@ -307,122 +173,8 @@ const partyStyle = computed(() => {
   };
 });
 
-// ── Room backdrop: thematic, coherent within a theme, lightly nuanced per room ─────
-const THEME_BACKDROP_CLASS: Record<string, string> = {
-  Threshold: 'tgrid__backdrop--threshold',
-  Memory: 'tgrid__backdrop--memory',
-  Forest: 'tgrid__backdrop--forest',
-  Rupture: 'tgrid__backdrop--rupture',
-  Silence: 'tgrid__backdrop--silence',
-  Antechamber: 'tgrid__backdrop--antechamber',
-  Final: 'tgrid__backdrop--final',
-};
-
-const backdropClass = computed(() =>
-  THEME_BACKDROP_CLASS[props.room.theme] ?? 'tgrid__backdrop--default');
-
-// Same room + same theme always renders the same backdrop family; this is the only
-// thing that varies it slightly between two rooms sharing a theme (a small hue drift).
-const roomNuance = computed(() => hashSeed(props.room.id ?? '') % 100);
-
-// Tiles borrow the room's accent color too — an "Antechamber" floor reads gold, a
-// "Forest" floor reads green, etc. — instead of every room sharing the same neutral
-// grey tile regardless of theme.
-const THEME_ACCENT: Record<string, string> = {
-  Threshold: '--frost',
-  Memory: '--gold',
-  Forest: '--sap',
-  Rupture: '--blood',
-  Silence: '--frost',
-  Antechamber: '--gold',
-  Final: '--blood',
-};
-
-const themeAccent = computed(() => THEME_ACCENT[props.room.theme] ?? '--gold');
-
-// ── Node tile tone: color-codes a node's tile by what it means, not just that it
-// holds a node — combat sits on blood, treasure/commerce/decrees on gold, presences
-// on frost, respite on sap. Makes the board read at a glance, FFT-style.
-const NODE_TILE_TONE: Record<string, string> = {
-  Combat: 'blood', Elite: 'blood', Rare: 'blood', RoomBoss: 'blood', FinalBoss: 'blood',
-  Curse: 'blood',
-  Item: 'gold', Merchant: 'gold', Law: 'gold',
-  Npc: 'frost', Memory: 'frost',
-  Rest: 'sap',
-};
-
-function nodeTileToneClass(node: NodeDto | null): string {
-  if (!node) return '';
-  const tone = NODE_TILE_TONE[node.type];
-  return tone ? `tgrid__cell--tone-${tone}` : '';
-}
-
-const SIGIL_KIND_BY_NODE_TYPE: Record<string, string> = {
-  Combat: 'combat',
-  Elite: 'elite',
-  Rare: 'rare',
-  RoomBoss: 'boss',
-  FinalBoss: 'boss',
-  Item: 'objet',
-  Npc: 'pnj',
-  Rest: 'repos',
-  Merchant: 'marchand',
-  Law: 'loi',
-  Curse: 'malediction',
-};
-
-function sigilKindFor(node: NodeDto): string {
-  return SIGIL_KIND_BY_NODE_TYPE[node.type] ?? 'objet';
-}
-
-// Short label — used both for the hover tooltip (type only, as requested) and as the
-// side panel's kicker.
-const NODE_TYPE_LABEL: Record<string, string> = {
-  Combat: 'Combat',
-  Elite: 'Élite',
-  Rare: 'Rencontre rare',
-  RoomBoss: 'Gardien de salle',
-  FinalBoss: 'Confrontation finale',
-  Item: 'Objet',
-  Npc: 'Présence',
-  Memory: 'Souvenir',
-  Rest: 'Repos',
-  Merchant: 'Marchand',
-  Law: 'Décret du Palais',
-  Curse: 'Malédiction',
-};
-
-function nodeTypeLabel(node: NodeDto): string {
-  return NODE_TYPE_LABEL[node.type] ?? node.type;
-}
-
-// Fuller flavor text for the side panel's description.
-const NODE_TYPE_DESCRIPTION: Record<string, string> = {
-  Combat: 'Un affrontement direct vous attend dans les profondeurs du Palais.',
-  Elite: "Un adversaire d'élite barre le passage. La victoire sera coûteuse.",
-  Rare: "Une présence rare s'est manifestée — imprévisible et potentiellement précieuse.",
-  RoomBoss: 'Le Gardien de cette salle attend. Aucun passage sans combat.',
-  FinalBoss: 'La présence finale du Palais. Tout converge ici.',
-  Rest: 'Un refuge temporaire. Reprendre souffle avant de continuer.',
-  Item: 'Un objet a été laissé ici. Son origine reste obscure.',
-  Npc: "Quelqu'un — ou quelque chose — souhaite vous parler.",
-  Merchant: "Un marchand propose ses services dans l'ombre du Palais.",
-  Law: 'Une règle du Palais inscrite dans ses murs. La lire vous changera.',
-  Curse: 'Une malédiction latente. Y toucher a un coût.',
-  Memory: "Un écho du passé. Ce souvenir n'est pas le vôtre.",
-};
-
-function nodeTypeDescription(node: NodeDto): string {
-  return NODE_TYPE_DESCRIPTION[node.type] ?? 'Un nœud inconnu du Palais.';
-}
-
-const RISK_TIER_DISPLAY: Record<string, { text: string; cls: string }> = {
-  Calme: { text: 'Calme', cls: 'tgrid__risk--low' },
-  Tendu: { text: 'Tendu', cls: 'tgrid__risk--moderate' },
-  Dangereux: { text: 'Dangereux', cls: 'tgrid__risk--high' },
-  Perilleux: { text: 'Périlleux', cls: 'tgrid__risk--critical' },
-  Fatal: { text: 'Fatal', cls: 'tgrid__risk--fatal' },
-};
+const { backdropClass, roomNuance, themeAccent } = useRoomBackdropTheme(room);
+const { nodeTileToneClass, sigilKindFor, nodeTypeLabel, nodeTypeDescription } = useNodePresentation();
 
 function cellClass(cell: Cell) {
   const revealed = isRevealed(cell.x, cell.y);
