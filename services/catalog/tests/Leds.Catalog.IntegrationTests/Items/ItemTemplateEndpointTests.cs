@@ -36,14 +36,14 @@ public sealed class ItemTemplateEndpointTests
 
         payload.Templates.Select(template => template.Key)
             .Should()
-            .Contain("item-memory-potion");
+            .Contain("canon.item.potion-de-vie");
     }
 
     [Fact]
     public async Task GetItemByKey_ShouldReturnItemTemplate_WhenKeyExists()
     {
         var response = await _client.GetAsync(
-            "/api/v2/catalog/items/item-memory-potion");
+            "/api/v2/catalog/items/canon.item.potion-de-vie");
 
         var body = await response.Content.ReadAsStringAsync();
 
@@ -57,8 +57,8 @@ public sealed class ItemTemplateEndpointTests
         payload.Should().NotBeNull();
         payload!.Template.Should().NotBeNull();
 
-        payload.Template!.Key.Should().Be("item-memory-potion");
-        payload.Template.Name.Should().Be("Potion de Mémoire");
+        payload.Template!.Key.Should().Be("canon.item.potion-de-vie");
+        payload.Template.Name.Should().Be("Potion de vie");
         payload.Template.Status.Should().Be("Active");
         payload.Template.Category.Should().Be("Consumable");
         payload.Template.Rarity.Should().Be("Common");

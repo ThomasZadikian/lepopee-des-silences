@@ -38,15 +38,15 @@ public sealed class EnemyDefinitionEndpointTests
         payload.Definitions.Should().OnlyContain(d => d.Status == "Active");
         payload.Definitions.Select(d => d.Key)
             .Should()
-            .Contain("enemy.threshold.doubt-fragment")
-            .And.Contain("enemy.final.silent-double");
+            .Contain("canon.enemy.sentinelle-seuil")
+            .And.Contain("canon.enemy.imperatrice");
     }
 
     [Fact]
     public async Task GetEnemyDefinitionByKey_ShouldReturnExpectedEnemy()
     {
         var response = await _client.GetAsync(
-            "/api/v2/catalog/enemy-definitions/enemy.threshold.doubt-fragment");
+            "/api/v2/catalog/enemy-definitions/canon.enemy.sentinelle-seuil");
 
         var body = await response.Content.ReadAsStringAsync();
 
@@ -59,16 +59,16 @@ public sealed class EnemyDefinitionEndpointTests
         payload.Should().NotBeNull();
         payload!.Definition.Should().NotBeNull();
 
-        payload.Definition!.Key.Should().Be("enemy.threshold.doubt-fragment");
-        payload.Definition.Name.Should().Be("Fragment de Doute");
+        payload.Definition!.Key.Should().Be("canon.enemy.sentinelle-seuil");
+        payload.Definition.Name.Should().Be("Sentinelle du Seuil");
         payload.Definition.Status.Should().Be("Active");
-        payload.Definition.Archetype.Should().Be("Fragile");
+        payload.Definition.Archetype.Should().Be("Bruiser");
         payload.Definition.BaseDifficulty.Should().Be(1);
         payload.Definition.MinRiskLevel.Should().Be(1);
-        payload.Definition.MaxRiskLevel.Should().Be(2);
-        payload.Definition.CompatibleRoomTypes.Should().Contain("Threshold");
-        payload.Definition.Tags.Should().Contain("threshold");
-        payload.Definition.SkillKeys.Should().Contain("skill.basic.strike");
+        payload.Definition.MaxRiskLevel.Should().Be(4);
+        payload.Definition.CompatibleRoomTypes.Should().Contain("Silence");
+        payload.Definition.Tags.Should().Contain("silence");
+        payload.Definition.SkillKeys.Should().Contain("canon.skill.flamme-froide");
     }
 
     [Fact]
@@ -127,8 +127,8 @@ public sealed class EnemyDefinitionEndpointTests
         payload!.Definitions.Should().NotBeEmpty();
         payload.Definitions.Select(d => d.Key)
             .Should()
-            .Contain("enemy.silence.mute-witness")
-            .And.Contain("enemy.silence.absent-voice");
+            .Contain("canon.enemy.choeur-muet")
+            .And.Contain("canon.enemy.page-inachevee");
     }
 
     [Fact]
@@ -191,8 +191,7 @@ public sealed class EnemyDefinitionEndpointTests
         payload!.Definitions.Should().NotBeEmpty();
         payload.Definitions.Select(d => d.Key)
             .Should()
-            .Contain("enemy.final.silent-double")
-            .And.Contain("enemy.final.last-echo");
+            .Contain("canon.enemy.himlit");
     }
 
     private sealed record ListEnemyDefinitionsResponse(

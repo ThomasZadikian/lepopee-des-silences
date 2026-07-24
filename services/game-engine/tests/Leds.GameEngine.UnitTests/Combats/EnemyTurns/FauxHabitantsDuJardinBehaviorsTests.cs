@@ -53,7 +53,8 @@ public sealed class FauxHabitantsDuJardinBehaviorsTests
         else if (decision.SkillKey == "canon.skill.sifflotement")
             decision.TargetIds.Should().BeEquivalentTo(new[] { hero1.Id.Value, hero2.Id.Value });
         else
-            decision.TargetIds.Should().ContainSingle().Which.Should().BeOneOf(hero1.Id.Value, hero2.Id.Value);
+            decision.TargetIds.Should().ContainSingle()
+                .And.Contain(id => id == hero1.Id.Value || id == hero2.Id.Value);
     }
 
     [Fact]

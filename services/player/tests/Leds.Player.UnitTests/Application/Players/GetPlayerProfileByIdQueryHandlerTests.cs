@@ -149,7 +149,7 @@ public sealed class GetPlayerProfileByIdQueryHandlerTests
 
         result.Should().NotBeNull();
         result!.Characters.Single().MaxVitality.Should().Be(100);
-        result.Characters.Single().BaseMana.Should().Be(0);
+        result.Characters.Single().BaseMana.Should().Be(85);
         result.Characters.Single().BaseCharge.Should().Be(0);
     }
 
