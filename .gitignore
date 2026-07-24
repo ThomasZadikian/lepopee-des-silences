@@ -444,6 +444,12 @@ UserSettings/
 AssetImportState
 /Assets/Plugins/Editor/JetBrains*
 
+# --- Playwright E2E ---
+apps/game-client/e2e/
+apps/game-client/playwright.config.ts
+apps/game-client/test-results/
+apps/game-client/playwright-report/
+
 # --- Frontend (Node/Vite/Vue) ---
 node_modules/
 dist/

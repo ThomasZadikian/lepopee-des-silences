@@ -111,7 +111,7 @@ public sealed class GetPlayerRunSnapshotQueryHandlerTests
         character.DefinitionKey.Should().Be("character.player.self");
         character.DisplayName.Should().Be("L'Aventurier");
         character.MaxVitality.Should().Be(100);
-        character.BaseMana.Should().Be(0);
+        character.BaseMana.Should().Be(85);
         character.BaseCharge.Should().Be(0);
     }
 

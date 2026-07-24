@@ -131,7 +131,7 @@ public sealed class RewardOfferFactoryTests
 
         var scaling = offer.CombatScaling!;
         scaling.Tier.Should().Be(CombatTier.Normal);
-        scaling.RiskTier.Should().Be(RiskTier.Calme.ToString());
+        scaling.RiskTier.Should().Be(RiskTier.Calme);
         scaling.DifficultyMultiplier.Should().BeApproximately(1.0, 0.001);
     }
 
@@ -143,7 +143,7 @@ public sealed class RewardOfferFactoryTests
 
         var scaling = offer.CombatScaling!;
         scaling.Tier.Should().Be(CombatTier.Rare);
-        scaling.RiskTier.Should().Be(RiskTier.Perilleux.ToString());
+        scaling.RiskTier.Should().Be(RiskTier.Perilleux);
         scaling.DifficultyMultiplier.Should().BeApproximately(1.60, 0.001);
     }
 
@@ -155,7 +155,7 @@ public sealed class RewardOfferFactoryTests
 
         var scaling = offer.CombatScaling!;
         scaling.Tier.Should().Be(CombatTier.Elite);
-        scaling.RiskTier.Should().Be(RiskTier.Perilleux.ToString());
+        scaling.RiskTier.Should().Be(RiskTier.Perilleux);
         scaling.DifficultyMultiplier.Should().BeApproximately(1.60, 0.001);
     }
 
@@ -167,7 +167,7 @@ public sealed class RewardOfferFactoryTests
 
         var scaling = offer.CombatScaling!;
         scaling.Tier.Should().Be(CombatTier.RoomBoss);
-        scaling.RiskTier.Should().Be(RiskTier.Fatal.ToString());
+        scaling.RiskTier.Should().Be(RiskTier.Fatal);
         scaling.DifficultyMultiplier.Should().BeApproximately(2.00, 0.001);
     }
 

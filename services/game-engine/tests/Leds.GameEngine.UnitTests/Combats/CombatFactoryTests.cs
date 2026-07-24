@@ -799,7 +799,6 @@ public sealed class CombatFactoryTests
         var combat = factory.CreateFromDraft(
             draft,
             focus: 10,
-            enemyFocus: 10,
             runModifiers: [CreateClimateModifier(draft.RoomId, 5)]);
 
         combat.Allies.Single().EffectiveFocus.Should().Be(7,

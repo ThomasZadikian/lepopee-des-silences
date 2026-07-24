@@ -107,7 +107,7 @@ public sealed class RoomGrid
     /// L-shaped path (X axis first, then Y) between the current and target position, not just
     /// at the destination, since there are no obstacles to path around in v1.
     /// </summary>
-    internal void MoveTo(int targetX, int targetY, int cost, IReadOnlyCollection<MapNode> nodes)
+    public void MoveTo(int targetX, int targetY, int cost, IReadOnlyCollection<MapNode> nodes)
     {
         var stepX = Math.Sign(targetX - PartyX);
         for (var x = PartyX; x != targetX; x += stepX)
@@ -128,7 +128,7 @@ public sealed class RoomGrid
         RevealAround(targetX, targetY, nodes);
     }
 
-    internal void ResetToInitial(IReadOnlyCollection<MapNode> nodes)
+    public void ResetToInitial(IReadOnlyCollection<MapNode> nodes)
     {
         PartyX = StartX;
         PartyY = StartY;
