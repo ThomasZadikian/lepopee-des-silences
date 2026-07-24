@@ -11,7 +11,7 @@ namespace Leds.GameEngine.Infrastructure.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropColumn(
-                name: "exploration_mode",
+                name: "ExplorationMode",
                 table: "runs");
 
             migrationBuilder.AlterColumn<string>(
@@ -119,7 +119,7 @@ namespace Leds.GameEngine.Infrastructure.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AddColumn<string>(
-                name: "exploration_mode",
+                name: "ExplorationMode",
                 table: "runs",
                 type: "text",
                 nullable: false,
