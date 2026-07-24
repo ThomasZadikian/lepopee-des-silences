@@ -24,7 +24,7 @@ public sealed class RoomGridLifecycleTests
         var itemNode = CreateAvailableNode(lane: 1, row: 0);
         var bossNode = CreateAvailableNode(lane: 4, row: 4, isBoss: true);
 
-        return Room.CreateGrid(
+        return Room.Create(
             depth: 0, RoomType.Threshold, PalaceRoomState.Neutral, "Threshold",
             CreateBossProfile(), [itemNode, bossNode],
             gridWidth: 5, gridHeight: 5, movementBudget, startX: 0, startY: 0,
@@ -46,7 +46,7 @@ public sealed class RoomGridLifecycleTests
     {
         var itemNode = CreateAvailableNode(lane: 1, row: 0);
 
-        var act = () => Room.CreateGrid(
+        var act = () => Room.Create(
             0, RoomType.Threshold, PalaceRoomState.Neutral, "Threshold", CreateBossProfile(),
             [itemNode], gridWidth: 5, gridHeight: 5, movementBudget: 10, startX: 0, startY: 0,
             layoutTemplateKey: "k", layoutTemplateVersion: "v");
@@ -60,7 +60,7 @@ public sealed class RoomGridLifecycleTests
         var outOfBounds = CreateAvailableNode(lane: 99, row: 0);
         var bossNode = CreateAvailableNode(lane: 4, row: 4, isBoss: true);
 
-        var act = () => Room.CreateGrid(
+        var act = () => Room.Create(
             0, RoomType.Threshold, PalaceRoomState.Neutral, "Threshold", CreateBossProfile(),
             [outOfBounds, bossNode], gridWidth: 5, gridHeight: 5, movementBudget: 10, startX: 0, startY: 0,
             layoutTemplateKey: "k", layoutTemplateVersion: "v");
@@ -75,7 +75,7 @@ public sealed class RoomGridLifecycleTests
         var nodeB = CreateAvailableNode(lane: 1, row: 1);
         var bossNode = CreateAvailableNode(lane: 4, row: 4, isBoss: true);
 
-        var act = () => Room.CreateGrid(
+        var act = () => Room.Create(
             0, RoomType.Threshold, PalaceRoomState.Neutral, "Threshold", CreateBossProfile(),
             [nodeA, nodeB, bossNode], gridWidth: 5, gridHeight: 5, movementBudget: 10, startX: 0, startY: 0,
             layoutTemplateKey: "k", layoutTemplateVersion: "v");
@@ -88,7 +88,7 @@ public sealed class RoomGridLifecycleTests
     {
         var bossNode = CreateAvailableNode(lane: 4, row: 4, isBoss: true);
 
-        var act = () => Room.CreateGrid(
+        var act = () => Room.Create(
             0, RoomType.Threshold, PalaceRoomState.Neutral, "Threshold", CreateBossProfile(),
             [bossNode], gridWidth: 5, gridHeight: 5, movementBudget: 1, startX: 0, startY: 0,
             layoutTemplateKey: "k", layoutTemplateVersion: "v");
@@ -130,16 +130,6 @@ public sealed class RoomGridLifecycleTests
     }
 
     [Fact]
-    public void MoveParty_ShouldThrow_OnAClassicRoom()
-    {
-        var room = CreateClassicRoom();
-
-        var act = () => room.MoveParty(1, 0);
-
-        act.Should().Throw<DomainException>();
-    }
-
-    [Fact]
     public void EnterNodeAtPartyPosition_ShouldSelectTheNode_WhenPartyIsOnItsCell()
     {
         var room = CreateGridRoom();
@@ -171,7 +161,7 @@ public sealed class RoomGridLifecycleTests
         room.MoveParty(itemNode.Lane, itemNode.Row);
         room.EnterNodeAtPartyPosition(itemNode.Id);
 
-        room.ResolveSelectedGridNodeEvent();
+        room.ResolveSelectedNodeEvent();
 
         room.State.Should().Be(RoomState.NodeResolved);
         itemNode.State.Should().Be(NodeState.Resolved);
@@ -185,7 +175,7 @@ public sealed class RoomGridLifecycleTests
         room.MoveParty(boss.Lane, boss.Row);
         room.EnterNodeAtPartyPosition(boss.Id);
 
-        room.ResolveSelectedGridNodeEvent();
+        room.ResolveSelectedNodeEvent();
 
         room.State.Should().Be(RoomState.Completed);
     }
@@ -197,9 +187,9 @@ public sealed class RoomGridLifecycleTests
         var itemNode = room.Nodes.Single(n => !n.IsBoss);
         room.MoveParty(itemNode.Lane, itemNode.Row);
         room.EnterNodeAtPartyPosition(itemNode.Id);
-        room.ResolveSelectedGridNodeEvent();
+        room.ResolveSelectedNodeEvent();
 
-        room.ReturnToGridExploration();
+        room.ReturnToExploration();
 
         room.State.Should().Be(RoomState.Active);
     }
@@ -220,7 +210,7 @@ public sealed class RoomGridLifecycleTests
         var secondNode = CreateAvailableNode(lane: 2, row: 0);
         var bossNode = CreateAvailableNode(lane: 4, row: 4, isBoss: true);
 
-        return Room.CreateGrid(
+        return Room.Create(
             depth: 0, RoomType.Threshold, PalaceRoomState.Neutral, "Threshold",
             CreateBossProfile(), [firstNode, secondNode, bossNode],
             gridWidth: 5, gridHeight: 5, movementBudget, startX: 0, startY: 0,
@@ -231,8 +221,8 @@ public sealed class RoomGridLifecycleTests
     {
         room.MoveParty(node.Lane, node.Row);
         room.EnterNodeAtPartyPosition(node.Id);
-        room.ResolveSelectedGridNodeEvent();
-        room.ReturnToGridExploration();
+        room.ResolveSelectedNodeEvent();
+        room.ReturnToExploration();
     }
 
     [Fact]
@@ -245,7 +235,7 @@ public sealed class RoomGridLifecycleTests
 
         room.MoveParty(secondNode.Lane, secondNode.Row);
         room.EnterNodeAtPartyPosition(secondNode.Id);
-        room.ResolveSelectedGridNodeEvent();
+        room.ResolveSelectedNodeEvent();
 
         // Both nodes are Resolved by now — CurrentResolvedNode must still resolve to
         // exactly the second one (the one this interaction cycle is actually about),
@@ -318,7 +308,7 @@ public sealed class RoomGridLifecycleTests
         var itemNode = room.Nodes.Single(n => !n.IsBoss);
         room.MoveParty(itemNode.Lane, itemNode.Row);
         room.EnterNodeAtPartyPosition(itemNode.Id);
-        room.ResolveSelectedGridNodeEvent();
+        room.ResolveSelectedNodeEvent();
 
         room.ResetProgress();
 
@@ -329,44 +319,4 @@ public sealed class RoomGridLifecycleTests
         itemNode.State.Should().Be(NodeState.Available);
     }
 
-    // -----------------------------------------------------------------------
-    // Classic-mode room must reject the grid-only methods (defense-in-depth)
-    // -----------------------------------------------------------------------
-
-    private static Room CreateClassicRoom()
-    {
-        var boss = MapNode.Create(
-            NodeEventType.RoomBoss, riskLevel: 85, rewardProfile: "room-boss",
-            row: 1, lane: 0, parentNodeIds: Array.Empty<NodeId>(),
-            isBoss: true, initialState: NodeState.Planned);
-        var initial = MapNode.Create(
-            NodeEventType.Item, riskLevel: 10, rewardProfile: "standard",
-            row: 0, lane: 0, parentNodeIds: Array.Empty<NodeId>(),
-            isBoss: false, initialState: NodeState.Available);
-        boss.AddParent(initial.Id);
-
-        return Room.Create(0, RoomType.Threshold, PalaceRoomState.Neutral, "Threshold", CreateBossProfile(), [initial, boss]);
-    }
-
-    [Fact]
-    public void EnterNodeAtPartyPosition_ShouldThrow_OnAClassicRoom()
-    {
-        var room = CreateClassicRoom();
-        var node = room.Nodes.First();
-
-        var act = () => room.EnterNodeAtPartyPosition(node.Id);
-
-        act.Should().Throw<DomainException>();
-    }
-
-    [Fact]
-    public void SelectNode_ShouldThrow_OnAGridRoom()
-    {
-        var room = CreateGridRoom();
-        var itemNode = room.Nodes.Single(n => !n.IsBoss);
-
-        var act = () => room.SelectNode(itemNode.Id);
-
-        act.Should().Throw<DomainException>();
-    }
 }

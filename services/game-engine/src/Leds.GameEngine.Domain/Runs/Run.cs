@@ -220,8 +220,7 @@ public sealed class Run
         int magicAttack = 0,
         int magicDefense = 0,
         int? lastPromulgationFloorIndex = null,
-        string? forgottenSkillKey = null,
-        RunExplorationMode explorationMode = RunExplorationMode.Classic)
+        string? forgottenSkillKey = null)
     {
         Id = id;
         PlayerId = playerId;
@@ -262,7 +261,6 @@ public sealed class Run
         CaliceInfiniLastUsedRoomIndex = caliceInfiniLastUsedRoomIndex;
         LastPromulgationFloorIndex = lastPromulgationFloorIndex;
         ForgottenSkillKey = forgottenSkillKey;
-        ExplorationMode = explorationMode;
 
         _rooms.Add(initialRoom);
     }
@@ -618,13 +616,6 @@ public sealed class Run
     /// </summary>
     public int HealingBonusPercent { get; }
 
-    /// <summary>
-    /// The combat/exploration system chosen by the player at run launch — <see cref="RunExplorationMode.Classic"/>
-    /// (DAG node graph) or <see cref="RunExplorationMode.Tactical"/> (free-roam grid). Explicit
-    /// player choice supplied at <see cref="StartNew"/> time, immutable for the run's lifetime.
-    /// </summary>
-    public RunExplorationMode ExplorationMode { get; }
-
     public DateTimeOffset StartedAt { get; }
 
     public DateTimeOffset? EndedAt { get; private set; }
@@ -697,8 +688,7 @@ public sealed class Run
         int healingBonusPercent = 0,
         bool caliceInfiniEnabled = false,
         int magicAttack = 0,
-        int magicDefense = 0,
-        RunExplorationMode explorationMode = RunExplorationMode.Classic)
+        int magicDefense = 0)
     {
         if (playerId == Guid.Empty)
         {
@@ -735,10 +725,6 @@ public sealed class Run
             throw new DomainException("A new run must start with a room containing between 6 and 30 nodes.");
         }
 
-        if (initialRoom.Grid is null && initialRoom.AvailableNodes.Count is < 1 or > 4)
-        {
-            throw new DomainException("A new run must start with between 1 and 4 available nodes.");
-        }
         if (initialRoom.Nodes.Count(node => node.IsBoss) != 1)
         {
             throw new DomainException("A new run must start with exactly one room boss node.");
@@ -806,8 +792,7 @@ public sealed class Run
             healingBonusPercent: healingBonusPercent,
             caliceInfiniEnabled: caliceInfiniEnabled,
             magicAttack: magicAttack,
-            magicDefense: magicDefense,
-            explorationMode: explorationMode);
+            magicDefense: magicDefense);
 
         run.PlayerState = PlayerRuntimeState.Create(
             maxVitality: maxHp,
@@ -847,13 +832,6 @@ public sealed class Run
         ];
     }
 
-    public void ChooseNode(NodeId nodeId)
-    {
-        EnsureActive();
-
-        CurrentRoom.SelectNode(nodeId);
-    }
-
     /// <summary>
     /// "Provoquer le destin" — raises an available combat-flavored node's danger by one
     /// tier before the player commits to it, in exchange for better rewards. Delegates
@@ -868,8 +846,8 @@ public sealed class Run
     }
 
     /// <summary>
-    /// Moves the party toward the given cell within the current grid room. Tactical mode only —
-    /// delegates entirely to <see cref="Room.MoveParty"/>, which throws for a Classic room.
+    /// Moves the party toward the given cell within the current grid room. Delegates entirely
+    /// to <see cref="Room.MoveParty"/>.
     /// </summary>
     public void MoveParty(int targetX, int targetY)
     {
@@ -879,9 +857,8 @@ public sealed class Run
     }
 
     /// <summary>
-    /// Enters the node the party currently stands on within the current grid room. Tactical
-    /// mode only — delegates entirely to <see cref="Room.EnterNodeAtPartyPosition"/>, which
-    /// throws for a Classic room.
+    /// Enters the node the party currently stands on within the current grid room. Delegates
+    /// entirely to <see cref="Room.EnterNodeAtPartyPosition"/>.
     /// </summary>
     public void EnterGridNode(Guid nodeId)
     {
@@ -892,8 +869,8 @@ public sealed class Run
 
     /// <summary>
     /// Challenges the room boss remotely once the movement budget is exhausted, without
-    /// requiring the party to walk onto its cell. Tactical mode only — delegates entirely to
-    /// <see cref="Room.ChallengeBossRemotely"/>, which throws for a Classic room.
+    /// requiring the party to walk onto its cell. Delegates entirely to
+    /// <see cref="Room.ChallengeBossRemotely"/>.
     /// </summary>
     public void ChallengeBossRemotely()
     {
@@ -906,14 +883,7 @@ public sealed class Run
     {
         EnsureActive();
 
-        if (CurrentRoom.Grid is not null)
-        {
-            CurrentRoom.ResolveSelectedGridNodeEvent();
-        }
-        else
-        {
-            CurrentRoom.ResolveSelectedNodeEvent();
-        }
+        CurrentRoom.ResolveSelectedNodeEvent();
 
         if (CurrentRoom.State == RoomState.Completed)
         {
@@ -925,14 +895,7 @@ public sealed class Run
     {
         EnsureActive();
 
-        if (CurrentRoom.Grid is not null)
-        {
-            CurrentRoom.ReturnToGridExploration();
-        }
-        else
-        {
-            CurrentRoom.UnlockNextNodeLayer();
-        }
+        CurrentRoom.ReturnToExploration();
     }
 
     /// <summary>
@@ -2521,12 +2484,11 @@ public sealed class Run
         int magicDefense = 0,
         int? lastPromulgationFloorIndex = null,
         string? forgottenSkillKey = null,
-        IEnumerable<Guid>? suspendedSevereLawModifierIds = null,
-        RunExplorationMode explorationMode = RunExplorationMode.Classic)
+        IEnumerable<Guid>? suspendedSevereLawModifierIds = null)
     {
         var firstRoom = rooms.First();
 
-        var run = new Run(id, playerId, seed, generatorVersion, markovMatrixVersion, status, firstRoom, startedAt, maxHp, currentHp, attack, defense, speed, focus, currentRoomIndex, activeCombatId, pendingRewardOfferId, runItemCapacity, typedDamageReductions, hitChanceBonusPercent, dotDurationReductionPercent, dotDamageReductionPercent, dotDamageBonusPercent, magicDamageBonusPercent, magicDamageReductionPercent, criticalChanceBonusPercent, guardBonusPercent, journalEnabled, lawDenialEnabled, lawDenialLastUsedRoomIndex, reputationGainBonusPercent, himLitProtectionEnabled, healingBonusPercent, caliceInfiniEnabled, caliceInfiniLastUsedRoomIndex, magicAttack, magicDefense, lastPromulgationFloorIndex, forgottenSkillKey, explorationMode);
+        var run = new Run(id, playerId, seed, generatorVersion, markovMatrixVersion, status, firstRoom, startedAt, maxHp, currentHp, attack, defense, speed, focus, currentRoomIndex, activeCombatId, pendingRewardOfferId, runItemCapacity, typedDamageReductions, hitChanceBonusPercent, dotDurationReductionPercent, dotDamageReductionPercent, dotDamageBonusPercent, magicDamageBonusPercent, magicDamageReductionPercent, criticalChanceBonusPercent, guardBonusPercent, journalEnabled, lawDenialEnabled, lawDenialLastUsedRoomIndex, reputationGainBonusPercent, himLitProtectionEnabled, healingBonusPercent, caliceInfiniEnabled, caliceInfiniLastUsedRoomIndex, magicAttack, magicDefense, lastPromulgationFloorIndex, forgottenSkillKey);
         foreach (var room in rooms.Skip(1))
         {
             run._rooms.Add(room);

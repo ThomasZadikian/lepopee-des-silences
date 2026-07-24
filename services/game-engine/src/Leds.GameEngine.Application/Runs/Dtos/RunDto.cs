@@ -50,8 +50,7 @@ public sealed record RunDto(
     bool LawDenialEnabled = false,
     bool CanUseLawDenial = false,
     bool CaliceInfiniEnabled = false,
-    bool CanUseCaliceInfini = false,
-    string ExplorationMode = "Classic")
+    bool CanUseCaliceInfini = false)
 {
     public static RunDto FromDomain(
         Run run,
@@ -99,8 +98,7 @@ public sealed record RunDto(
             LawDenialEnabled: run.LawDenialEnabled,
             CanUseLawDenial: run.CanUseLawDenial,
             CaliceInfiniEnabled: run.CaliceInfiniEnabled,
-            CanUseCaliceInfini: run.CanUseCaliceInfini,
-            ExplorationMode: run.ExplorationMode.ToString());
+            CanUseCaliceInfini: run.CanUseCaliceInfini);
     }
 }
 

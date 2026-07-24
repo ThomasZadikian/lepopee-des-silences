@@ -98,16 +98,28 @@ public sealed class EfRunRepositoryPlayerStateTests : IDisposable
 
     private static Run CreateTestRun()
     {
-        var node1 = MapNode.Create(NodeEventType.Combat, 25, "standard", 0, 0, []);
-        var node2 = MapNode.Create(NodeEventType.Combat, 25, "standard", 0, 1, []);
-        var node3 = MapNode.Create(NodeEventType.Combat, 25, "standard", 0, 2, []);
-        var node4 = MapNode.Create(NodeEventType.Combat, 30, "standard", 1, 0, [node1.Id], initialState: NodeState.Planned);
-        var node5 = MapNode.Create(NodeEventType.Combat, 30, "standard", 1, 1, [node1.Id, node2.Id], initialState: NodeState.Planned);
-        var node6 = MapNode.Create(NodeEventType.Combat, 30, "standard", 1, 2, [node2.Id, node3.Id], initialState: NodeState.Planned);
-        var bossNode = MapNode.Create(NodeEventType.RoomBoss, 50, "boss", 2, 1, [node4.Id, node5.Id, node6.Id], isBoss: true, initialState: NodeState.Planned);
+        var node1 = MapNode.Create(NodeEventType.Combat, 25, "standard", row: 0, lane: 1, []);
+        var node2 = MapNode.Create(NodeEventType.Combat, 25, "standard", row: 0, lane: 2, []);
+        var node3 = MapNode.Create(NodeEventType.Combat, 25, "standard", row: 0, lane: 3, []);
+        var node4 = MapNode.Create(NodeEventType.Combat, 30, "standard", row: 1, lane: 1, []);
+        var node5 = MapNode.Create(NodeEventType.Combat, 30, "standard", row: 1, lane: 2, []);
+        var node6 = MapNode.Create(NodeEventType.Combat, 30, "standard", row: 1, lane: 3, []);
+        var bossNode = MapNode.Create(NodeEventType.RoomBoss, 50, "boss", row: 4, lane: 4, [], isBoss: true);
 
         var bossProfile = RoomBossProfile.Create("boss-1", "Test Boss", RoomType.Memory, "A dark presence", "enemy.boss.1");
-        var room = Room.Create(0, RoomType.Memory, "Test Room", bossProfile, [node1, node2, node3, node4, node5, node6, bossNode]);
+        var room = Room.Create(
+            depth: 0,
+            roomType: RoomType.Memory,
+            theme: "Test Room",
+            bossProfile: bossProfile,
+            nodes: [node1, node2, node3, node4, node5, node6, bossNode],
+            gridWidth: 5,
+            gridHeight: 5,
+            movementBudget: 10,
+            startX: 0,
+            startY: 0,
+            layoutTemplateKey: "test-grid-v1",
+            layoutTemplateVersion: "1.0.0");
 
         return Run.StartNew(
             Guid.NewGuid(),

@@ -247,16 +247,9 @@ public sealed class MapNode
         CombatRiskTier += 1;
     }
 
-    public void ResetToInitial()
-    {
-        State = IsInitial ? NodeState.Available : NodeState.Planned;
-        ChosenEventOptionId = null;
-    }
-
     /// <summary>
-    /// Grid-mode counterpart of <see cref="ResetToInitial"/> — every grid node starts
-    /// <see cref="NodeState.Available"/> (free exploration has no row-unlock progression to
-    /// replay), used when rolling back a Tactical-mode room (e.g. mid-room exit).
+    /// Every grid node starts <see cref="NodeState.Available"/> (free exploration has no
+    /// row-unlock progression to replay), used when rolling back a room (e.g. mid-room exit).
     /// </summary>
     public void ResetToGridAvailable()
     {

@@ -36,7 +36,7 @@ public sealed class ResumeRunTests
         var run = TestGameEngineFactory.CreateRun();
         // Play through some nodes first
         var node = run.CurrentRoom.AvailableNodes.First();
-        run.ChooseNode(node.Id);
+        TestGameEngineFactory.EnterNode(run, node);
         run.ResolveCurrentEvent();
         run.ProgressCurrentRoom();
         // Now exit mid-room

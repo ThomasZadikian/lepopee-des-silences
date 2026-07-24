@@ -72,26 +72,15 @@ public sealed class DeterministicRunGeneratorTests
     }
 
     [Fact]
-    public async Task GenerateInitialRoom_ShouldGenerateAGridRoom_WhenExplorationModeIsTactical()
+    public async Task GenerateInitialRoom_ShouldGenerateAGridRoom_ForACatalogBoundEntryRoom()
     {
         // Regression: GenerateRoomShapeAsync used to forward the Classic generator version
         // ("room-map-layout-1.0.0") to the grid generator unconditionally, which only knows
-        // its own version ("grid-room-layout-1.0.0") — every Tactical run crashed with
-        // KeyNotFoundException on the very first room, regardless of RoomType.
-        var generator = TestGeneratorFactory.CreateDeterministicRunGenerator();
-
-        var room = await generator.GenerateInitialRoomAsync(
-            "seed-tactical-no-world", CancellationToken.None, RunExplorationMode.Tactical);
-
-        room.Grid.Should().NotBeNull();
-    }
-
-    [Fact]
-    public async Task GenerateInitialRoom_ShouldGenerateAGridRoom_ForACatalogBoundEntryRoom_WhenExplorationModeIsTactical()
-    {
-        // Same regression as above, exercised through the catalog-bound entry-room path
-        // (the one that actually crashed in production — the entry room's theme doesn't
-        // parse as a RoomType, so it resolves to RoomType.Memory via MapThemeToScaffold).
+        // its own version ("grid-room-layout-1.0.0") — the very first room crashed with
+        // KeyNotFoundException regardless of RoomType. Exercised through the catalog-bound
+        // entry-room path (the one that actually crashed in production — the entry room's
+        // theme doesn't parse as a RoomType, so it resolves to RoomType.Memory via
+        // MapThemeToScaffold).
         var catalogGateway = new StubCatalogContentGateway
         {
             WorldDefinitions = [new CatalogWorldDefinition("palais", "Palais", "room.halldentree")],
@@ -123,8 +112,7 @@ public sealed class DeterministicRunGeneratorTests
 
         var generator = TestGeneratorFactory.CreateDeterministicRunGenerator(catalogGateway);
 
-        var room = await generator.GenerateInitialRoomAsync(
-            "seed-tactical-with-world", CancellationToken.None, RunExplorationMode.Tactical);
+        var room = await generator.GenerateInitialRoomAsync("seed-with-world");
 
         room.Grid.Should().NotBeNull();
     }
@@ -140,21 +128,11 @@ public sealed class DeterministicRunGeneratorTests
         room.RoomType.Should().Be(RoomType.Threshold);
         room.Theme.Should().Be("Threshold");
         room.State.Should().Be(RoomState.Active);
-        room.CurrentNodeDepth.Should().Be(0);
 
-        room.TotalNodeCount.Should().Be(22);
+        room.TotalNodeCount.Should().BeInRange(10, 14);
         room.Nodes.Should().HaveCount(room.TotalNodeCount);
-
-        room.AvailableNodes.Should().HaveCount(2);
-        room.AvailableNodes.Should().OnlyContain(node => node.Row == 0);
-        room.AvailableNodes.Should().OnlyContain(node => node.State == NodeState.Available);
-
-        room.Nodes
-            .Where(node => node.Row > 0)
-            .Should()
-            .OnlyContain(node => node.State == NodeState.Planned);
-
         room.Nodes.Should().ContainSingle(node => node.IsBoss);
+        room.Nodes.Should().OnlyContain(node => node.State == NodeState.Available);
     }
 
     [Fact]
@@ -172,24 +150,8 @@ public sealed class DeterministicRunGeneratorTests
 
         var bossNode = room.Nodes.Single(node => node.IsBoss);
 
-        bossNode.Row.Should().Be(room.MaxNodeDepth);
-        bossNode.State.Should().Be(NodeState.Planned);
+        bossNode.State.Should().Be(NodeState.Available);
         bossNode.EventType.Should().Be(NodeEventType.RoomBoss);
-    }
-
-    [Fact]
-    public async Task GenerateInitialRoom_ShouldCreateEightRows()
-    {
-        var generator = TestGeneratorFactory.CreateDeterministicRunGenerator();
-
-        var room = await generator.GenerateInitialRoomAsync("seed-test-001");
-
-        var rowCount = room.Nodes
-            .Select(node => node.Row)
-            .Distinct()
-            .Count();
-
-        rowCount.Should().Be(8);
     }
 
     [Fact]
@@ -243,83 +205,16 @@ public sealed class DeterministicRunGeneratorTests
     }
 
     [Fact]
-    public async Task GenerateInitialRoom_ShouldCreateConvergentGraph_ToRoomBoss()
+    public async Task GenerateInitialRoom_ShouldPlaceEveryNodeOnADistinctCell_WithinGridBounds()
     {
         var generator = TestGeneratorFactory.CreateDeterministicRunGenerator();
 
         var room = await generator.GenerateInitialRoomAsync("seed-test-001");
 
-        var bossNode = room.Nodes.Single(node => node.IsBoss);
-
-        foreach (var node in room.Nodes.Where(node => !node.IsBoss))
-        {
-            HasPathToBoss(node, bossNode, room.Nodes).Should().BeTrue();
-        }
-    }
-
-    private static bool HasPathToBoss(
-        MapNode currentNode,
-        MapNode bossNode,
-        IReadOnlyCollection<MapNode> nodes)
-    {
-        var children = nodes
-            .Where(node => node.ParentNodeIds.Contains(currentNode.Id))
-            .ToArray();
-
-        if (children.Any(child => child.Id == bossNode.Id))
-        {
-            return true;
-        }
-
-        return children.Any(child => HasPathToBoss(child, bossNode, nodes));
-    }
-
-    [Fact]
-    public async Task GenerateInitialRoom_ShouldGiveEveryNonBossNodeAtLeastOneChild()
-    {
-        var generator = TestGeneratorFactory.CreateDeterministicRunGenerator();
-
-        var room = await generator.GenerateInitialRoomAsync("seed-test-001");
-
-        foreach (var node in room.Nodes.Where(node => !node.IsBoss))
-        {
-            room.Nodes
-                .Any(candidate => candidate.ParentNodeIds.Contains(node.Id))
-                .Should()
-                .BeTrue();
-        }
-    }
-
-    [Fact]
-    public async Task GenerateInitialRoom_ShouldPlaceSingleRoomBossNodeAtFinalRow()
-    {
-        var generator = TestGeneratorFactory.CreateDeterministicRunGenerator();
-
-        var room = await generator.GenerateInitialRoomAsync("seed-test-001");
-
-        var finalRowNodes = room.Nodes
-            .Where(node => node.Row == room.MaxNodeDepth)
-            .ToArray();
-
-        finalRowNodes.Should().ContainSingle();
-
-        var bossNode = finalRowNodes.Single();
-
-        bossNode.IsBoss.Should().BeTrue();
-        bossNode.EventType.Should().Be(NodeEventType.RoomBoss);
-        bossNode.State.Should().Be(NodeState.Planned);
-    }
-
-    [Fact]
-    public async Task GenerateInitialRoom_ShouldCreateAtLeastTwoAvailableNodesAtInitialRow()
-    {
-        var generator = TestGeneratorFactory.CreateDeterministicRunGenerator();
-
-        var room = await generator.GenerateInitialRoomAsync("seed-test-001");
-
-        room.AvailableNodes.Should().HaveCount(2);
-        room.AvailableNodes.Should().OnlyContain(node => node.Row == 0);
-        room.AvailableNodes.Should().OnlyContain(node => node.State == NodeState.Available);
+        room.Nodes.Select(node => (node.Lane, node.Row)).Distinct().Should().HaveCount(room.Nodes.Count);
+        room.Nodes.Should().OnlyContain(node =>
+            node.Lane >= 0 && node.Lane < room.Grid.Width &&
+            node.Row >= 0 && node.Row < room.Grid.Height);
     }
 
     [Fact]
@@ -334,21 +229,17 @@ public sealed class DeterministicRunGeneratorTests
     }
 
     [Fact]
-    public async Task GenerateNextRoom_ShouldGenerateAGridRoom_WhenTheRunIsTactical()
+    public async Task GenerateNextRoom_ShouldGenerateAGridRoom()
     {
-        // Same regression as the initial-room tests above, but for GenerateNextRoomAsync —
-        // both call sites share GenerateRoomShapeAsync, so both needed the fix.
         var generator = TestGeneratorFactory.CreateDeterministicRunGenerator();
-        var initialRoom = await generator.GenerateInitialRoomAsync(
-            "seed-tactical-next", CancellationToken.None, RunExplorationMode.Tactical);
+        var initialRoom = await generator.GenerateInitialRoomAsync("seed-next");
         var run = Run.StartNew(
             Guid.NewGuid(),
-            "seed-tactical-next",
+            "seed-next",
             generator.GeneratorVersion,
             generator.MarkovMatrixVersion,
             initialRoom,
-            DateTimeOffset.UtcNow,
-            explorationMode: RunExplorationMode.Tactical);
+            DateTimeOffset.UtcNow);
 
         var nextRoom = await generator.GenerateNextRoomAsync(run);
 

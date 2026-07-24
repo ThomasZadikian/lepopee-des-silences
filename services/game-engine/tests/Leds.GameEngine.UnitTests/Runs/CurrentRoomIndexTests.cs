@@ -94,7 +94,7 @@ public sealed class CurrentRoomIndexTests
         var run = TestGameEngineFactory.CreateRun();
         var firstNode = run.CurrentRoom.AvailableNodes.First();
 
-        run.ChooseNode(firstNode.Id);
+        TestGameEngineFactory.EnterNode(run, firstNode);
 
         run.CurrentRoomIndex.Should().Be(0,
             because: "Choosing a node within the current room must not change CurrentRoomIndex.");

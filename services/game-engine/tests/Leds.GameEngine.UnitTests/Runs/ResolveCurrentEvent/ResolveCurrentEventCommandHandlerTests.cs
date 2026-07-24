@@ -99,7 +99,7 @@ public sealed class ResolveCurrentEventCommandHandlerTests
         var run = TestGameEngineFactory.CreateRun();
         var selectedNode = run.CurrentRoom.AvailableNodes.First();
 
-        run.ChooseNode(selectedNode.Id);
+        TestGameEngineFactory.EnterNode(run, selectedNode);
 
         var repository = new Mock<IRunRepository>();
         repository
@@ -203,7 +203,7 @@ public sealed class ResolveCurrentEventCommandHandlerTests
         var run = TestGameEngineFactory.CreateRun();
         var nodeCountBefore = run.CurrentRoom.Nodes.Count;
         var selectedNode = run.CurrentRoom.AvailableNodes.First();
-        run.ChooseNode(selectedNode.Id);
+        TestGameEngineFactory.EnterNode(run, selectedNode);
 
         var repository = new Mock<IRunRepository>();
         repository
@@ -225,7 +225,7 @@ public sealed class ResolveCurrentEventCommandHandlerTests
     {
         var run = TestGameEngineFactory.CreateRun();
         var selectedNode = run.CurrentRoom.AvailableNodes.First();
-        run.ChooseNode(selectedNode.Id);
+        TestGameEngineFactory.EnterNode(run, selectedNode);
 
         var repository = new Mock<IRunRepository>();
         repository
@@ -268,7 +268,7 @@ public sealed class ResolveCurrentEventCommandHandlerTests
     {
         var run = TestGameEngineFactory.CreateRun(NodeEventType.Combat);
         var selectedNode = run.CurrentRoom.AvailableNodes.First();
-        run.ChooseNode(selectedNode.Id);
+        TestGameEngineFactory.EnterNode(run, selectedNode);
 
         var repository = new Mock<IRunRepository>();
         repository
@@ -384,7 +384,7 @@ public sealed class ResolveCurrentEventCommandHandlerTests
     {
         var run = TestGameEngineFactory.CreateRun(NodeEventType.FinalBoss);
         var selectedNode = run.CurrentRoom.AvailableNodes.First();
-        run.ChooseNode(selectedNode.Id);
+        TestGameEngineFactory.EnterNode(run, selectedNode);
 
         var repository = new Mock<IRunRepository>();
         repository
@@ -483,7 +483,7 @@ public sealed class ResolveCurrentEventCommandHandlerTests
     {
         var run = TestGameEngineFactory.CreateRun(NodeEventType.Combat);
         var selectedNode = run.CurrentRoom.AvailableNodes.First();
-        run.ChooseNode(selectedNode.Id);
+        TestGameEngineFactory.EnterNode(run, selectedNode);
 
         var repository = new Mock<IRunRepository>();
         repository
@@ -602,7 +602,7 @@ public sealed class ResolveCurrentEventCommandHandlerTests
     {
         var run = TestGameEngineFactory.CreateRun(NodeEventType.Item);
         var selectedNode = run.CurrentRoom.AvailableNodes.First();
-        run.ChooseNode(selectedNode.Id);
+        TestGameEngineFactory.EnterNode(run, selectedNode);
 
         var repository = new Mock<IRunRepository>();
         repository

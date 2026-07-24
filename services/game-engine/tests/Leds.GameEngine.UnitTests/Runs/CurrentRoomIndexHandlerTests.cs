@@ -8,8 +8,8 @@ using Leds.GameEngine.Application.Rewards.Ports;
 using Leds.GameEngine.Application.Rewards.Loot;
 using Leds.GameEngine.Application.Rewards.RewardOfferFactory;
 using Leds.GameEngine.Application.Rewards.SelectReward;
-using Leds.GameEngine.Application.Runs.ChooseNode;
 using Leds.GameEngine.Application.Runs.Dtos;
+using Leds.GameEngine.Application.Runs.EnterGridNode;
 using Leds.GameEngine.Application.Runs.GetRunById;
 using Leds.GameEngine.Application.Runs.PalaceIndicators;
 using Leds.GameEngine.Application.Runs.ProgressRun;
@@ -64,28 +64,29 @@ public sealed class CurrentRoomIndexHandlerTests
     }
 
     // -----------------------------------------------------------------------
-    // ChooseNode
+    // EnterGridNode
     // -----------------------------------------------------------------------
 
     [Fact]
-    public async Task ChooseNode_ShouldPreserveCurrentRoomIndex()
+    public async Task EnterGridNode_ShouldPreserveCurrentRoomIndex()
     {
         var run = TestGameEngineFactory.CreateRun();
         var selectedNode = run.CurrentRoom.AvailableNodes.First();
+        run.MoveParty(selectedNode.Lane, selectedNode.Row);
 
         var repository = new Mock<IRunRepository>();
         repository
             .Setup(r => r.GetByIdAsync(run.Id, CancellationToken.None))
             .ReturnsAsync(run);
 
-        var handler = new ChooseNodeCommandHandler(repository.Object);
+        var handler = new EnterGridNodeCommandHandler(repository.Object);
 
         var response = await handler.Handle(
-            new ChooseNodeCommand(run.Id.Value, selectedNode.Id.Value),
+            new EnterGridNodeCommand(run.Id.Value, selectedNode.Id.Value),
             CancellationToken.None);
 
         response.Run.CurrentRoomIndex.Should().Be(0,
-            because: "Choosing a node within the current room must not change CurrentRoomIndex.");
+            because: "Entering a node within the current room must not change CurrentRoomIndex.");
     }
 
     // -----------------------------------------------------------------------

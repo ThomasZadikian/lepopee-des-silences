@@ -15,7 +15,7 @@ using Leds.GameEngine.Application.Interlude.GetInterlude;
 using Leds.GameEngine.Application.PalaceLaws;
 using Leds.GameEngine.Application.Rewards.Ports;
 using Leds.GameEngine.Application.Rewards.Loot;
-using Leds.GameEngine.Application.Runs.ChooseNode;
+using Leds.GameEngine.Application.Runs.EnterGridNode;
 using Leds.GameEngine.Application.Runs.MoveToNextRoom;
 using Leds.GameEngine.Application.Runs.ProgressRun;
 using Leds.GameEngine.Application.Runs.ResolveCurrentEvent;
@@ -569,7 +569,7 @@ public sealed class InterludeTransitionTests
     }
 
     [Fact]
-    public async Task ChooseNode_ShouldFail_WhenRunIsInterlude()
+    public async Task EnterGridNode_ShouldFail_WhenRunIsInterlude()
     {
         var run = CreateRunInInterlude();
 
@@ -577,11 +577,11 @@ public sealed class InterludeTransitionTests
         repo.Setup(r => r.GetByIdAsync(run.Id, CancellationToken.None))
             .ReturnsAsync(run);
 
-        var handler = new ChooseNodeCommandHandler(repo.Object);
+        var handler = new EnterGridNodeCommandHandler(repo.Object);
         var anyNodeId = Guid.NewGuid();
 
         var act = () => handler.Handle(
-            new ChooseNodeCommand(run.Id.Value, anyNodeId),
+            new EnterGridNodeCommand(run.Id.Value, anyNodeId),
             CancellationToken.None);
 
         await act.Should()

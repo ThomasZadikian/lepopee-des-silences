@@ -2,7 +2,6 @@ using Leds.GameEngine.Application.Combats.Dtos;
 using Leds.GameEngine.Application.Events.ChooseEventOption;
 using Leds.GameEngine.Application.Runs.AbandonRun;
 using Leds.GameEngine.Application.Runs.ChallengeBossRemotely;
-using Leds.GameEngine.Application.Runs.ChooseNode;
 using Leds.GameEngine.Application.Runs.ConfirmPermanentItemSelection;
 using Leds.GameEngine.Application.Runs.EmptyRunItemContainer;
 using Leds.GameEngine.Application.Runs.EnterGridNode;
@@ -49,7 +48,7 @@ public sealed class RunsController : ControllerBase
         [FromBody] StartRunRequest request,
         CancellationToken cancellationToken)
     {
-        var command = new StartRunCommand(request.PlayerId, request.ExplorationMode);
+        var command = new StartRunCommand(request.PlayerId);
 
         var response = await _sender.Send(command, cancellationToken);
 
@@ -83,22 +82,6 @@ public sealed class RunsController : ControllerBase
         var query = new GetCurrentCombatQuery(runId);
 
         var response = await _sender.Send(query, cancellationToken);
-
-        return Ok(response);
-    }
-
-    [HttpPost("{runId:guid}/nodes/{nodeId:guid}/choose")]
-    [ProducesResponseType(typeof(ChooseNodeResponse), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<ChooseNodeResponse>> ChooseNode(
-    Guid runId,
-    Guid nodeId,
-    CancellationToken cancellationToken)
-    {
-        var command = new ChooseNodeCommand(runId, nodeId);
-
-        var response = await _sender.Send(command, cancellationToken);
 
         return Ok(response);
     }
@@ -442,7 +425,7 @@ public sealed class RunsController : ControllerBase
     }
 }
 
-public sealed record StartRunRequest(Guid PlayerId, string? ExplorationMode = null);
+public sealed record StartRunRequest(Guid PlayerId);
 
 public sealed record MovePartyRequest(int TargetX, int TargetY);
 

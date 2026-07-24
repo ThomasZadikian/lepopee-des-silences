@@ -31,7 +31,6 @@ public sealed class DeterministicRunGenerator : IRunGenerator
     private readonly ICatalogRoomTypeResolver _catalogRoomTypeResolver;
     private readonly IRoomReachabilitySelector _roomReachabilitySelector;
     private readonly IPalaceRoomStateResolver _palaceRoomStateResolver;
-    private readonly IMapRoomGenerator _mapRoomGenerator;
     private readonly IGridRoomGenerator _gridRoomGenerator;
     private readonly IRunPsycheEvolver _psycheEvolver;
     private readonly ICatalogContentGateway _catalogContentGateway;
@@ -41,7 +40,6 @@ public sealed class DeterministicRunGenerator : IRunGenerator
         ICatalogRoomTypeResolver catalogRoomTypeResolver,
         IRoomReachabilitySelector roomReachabilitySelector,
         IPalaceRoomStateResolver palaceRoomStateResolver,
-        IMapRoomGenerator mapRoomGenerator,
         IGridRoomGenerator gridRoomGenerator,
         IRunPsycheEvolver psycheEvolver,
         ICatalogContentGateway catalogContentGateway)
@@ -50,13 +48,12 @@ public sealed class DeterministicRunGenerator : IRunGenerator
         _catalogRoomTypeResolver = catalogRoomTypeResolver;
         _roomReachabilitySelector = roomReachabilitySelector;
         _palaceRoomStateResolver = palaceRoomStateResolver;
-        _mapRoomGenerator = mapRoomGenerator;
         _gridRoomGenerator = gridRoomGenerator;
         _psycheEvolver = psycheEvolver;
         _catalogContentGateway = catalogContentGateway;
     }
 
-    public string GeneratorVersion => DefaultRoomMapLayoutTemplates.GeneratorVersion;
+    public string GeneratorVersion => DefaultGridRoomLayoutTemplates.GeneratorVersion;
 
     public string MarkovMatrixVersion => StaticRoomTypeMarkovMatrixProvider.SupportedVersion;
 
@@ -67,8 +64,7 @@ public sealed class DeterministicRunGenerator : IRunGenerator
 
     public async Task<Room> GenerateInitialRoomAsync(
         string seed,
-        CancellationToken cancellationToken = default,
-        RunExplorationMode explorationMode = RunExplorationMode.Classic)
+        CancellationToken cancellationToken = default)
     {
         var random = _randomFactory.CreateForRoom(
             seed,
@@ -93,7 +89,7 @@ public sealed class DeterministicRunGenerator : IRunGenerator
                 var entryRoomType = MapThemeToScaffold(entryRoom.Theme);
                 var entryScaffold = await GenerateRoomShapeAsync(
                     seed, GeneratorVersion, roomDepth: 0, entryRoomType, random, cancellationToken,
-                    PalaceRoomState.Neutral, explorationMode);
+                    PalaceRoomState.Neutral);
                 AttachCatalogRoom(entryScaffold, entryRoom);
                 return entryScaffold;
             }
@@ -108,8 +104,7 @@ public sealed class DeterministicRunGenerator : IRunGenerator
                     roomType: RoomType.Threshold,
                     random,
                     cancellationToken,
-                    PalaceRoomState.Neutral,
-                    explorationMode);
+                    PalaceRoomState.Neutral);
 
         await AttachCatalogRoomAsync(room, CatalogMarkovRoomTypeResolver.ThresholdTheme, seed, roomDepth: 0, cancellationToken);
 
@@ -176,8 +171,7 @@ public sealed class DeterministicRunGenerator : IRunGenerator
             roomType,
             random,
             cancellationToken,
-            palaceState,
-            run.ExplorationMode);
+            palaceState);
 
         if (preResolvedDefinition is not null)
         {
@@ -266,12 +260,6 @@ public sealed class DeterministicRunGenerator : IRunGenerator
             ? roomType
             : RoomType.Memory;
 
-    /// <summary>
-    /// Chooses which room shape to generate — the Classic row/lane DAG
-    /// (<see cref="IMapRoomGenerator"/>) or the Tactical free-roam grid
-    /// (<see cref="IGridRoomGenerator"/>) — based on the run's exploration mode. Catalog
-    /// binding, theme resolution, and every other generation concern is identical either way.
-    /// </summary>
     private Task<Room> GenerateRoomShapeAsync(
         string seed,
         string generatorVersion,
@@ -279,16 +267,9 @@ public sealed class DeterministicRunGenerator : IRunGenerator
         RoomType roomType,
         Random random,
         CancellationToken cancellationToken,
-        PalaceRoomState palaceState,
-        RunExplorationMode explorationMode)
+        PalaceRoomState palaceState)
     {
-        // Classic and Tactical templates are versioned independently (DefaultRoomMapLayoutTemplates
-        // vs DefaultGridRoomLayoutTemplates) — the caller-supplied generatorVersion is always the
-        // Classic one (DeterministicRunGenerator.GeneratorVersion), so it must NOT be forwarded to
-        // the grid generator, which looks its own templates up by its own version constant.
-        return explorationMode == RunExplorationMode.Tactical
-            ? _gridRoomGenerator.GenerateAsync(seed, DefaultGridRoomLayoutTemplates.GeneratorVersion, roomDepth, roomType, random, cancellationToken, palaceState)
-            : _mapRoomGenerator.GenerateAsync(seed, generatorVersion, roomDepth, roomType, random, cancellationToken, palaceState);
+        return _gridRoomGenerator.GenerateAsync(seed, generatorVersion, roomDepth, roomType, random, cancellationToken, palaceState);
     }
 
     private async Task AttachCatalogRoomAsync(

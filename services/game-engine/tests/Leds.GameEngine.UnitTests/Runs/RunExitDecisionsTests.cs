@@ -7,7 +7,7 @@ using Leds.GameEngine.Application.Interlude.Dtos;
 using Leds.GameEngine.Application.Interlude.EnterInterlude;
 using Leds.GameEngine.Application.Players.Ports;
 using Leds.GameEngine.Application.Runs.AbandonRun;
-using Leds.GameEngine.Application.Runs.ChooseNode;
+using Leds.GameEngine.Application.Runs.EnterGridNode;
 using Leds.GameEngine.Application.Runs.ProgressRun;
 using Leds.GameEngine.Application.Runs.SaveAndExitRun;
 using Leds.GameEngine.Domain.Common;
@@ -432,7 +432,7 @@ public sealed class RunExitDecisionsTests
     }
 
     [Fact]
-    public async Task ChooseNode_ShouldFail_WhenRunIsSuspended()
+    public async Task EnterGridNode_ShouldFail_WhenRunIsSuspended()
     {
         var run = CreateRunSuspendedFromRoomResolved();
 
@@ -440,10 +440,10 @@ public sealed class RunExitDecisionsTests
         repo.Setup(r => r.GetByIdAsync(run.Id, CancellationToken.None))
             .ReturnsAsync(run);
 
-        var handler = new ChooseNodeCommandHandler(repo.Object);
+        var handler = new EnterGridNodeCommandHandler(repo.Object);
 
         var act = () => handler.Handle(
-            new ChooseNodeCommand(run.Id.Value, Guid.NewGuid()),
+            new EnterGridNodeCommand(run.Id.Value, Guid.NewGuid()),
             CancellationToken.None);
 
         await act.Should()
@@ -452,7 +452,7 @@ public sealed class RunExitDecisionsTests
     }
 
     [Fact]
-    public async Task ChooseNode_ShouldFail_WhenRunIsAbandoned()
+    public async Task EnterGridNode_ShouldFail_WhenRunIsAbandoned()
     {
         var run = TestGameEngineFactory.CreateRun();
         run.Abandon(DateTimeOffset.UtcNow);
@@ -461,10 +461,10 @@ public sealed class RunExitDecisionsTests
         repo.Setup(r => r.GetByIdAsync(run.Id, CancellationToken.None))
             .ReturnsAsync(run);
 
-        var handler = new ChooseNodeCommandHandler(repo.Object);
+        var handler = new EnterGridNodeCommandHandler(repo.Object);
 
         var act = () => handler.Handle(
-            new ChooseNodeCommand(run.Id.Value, Guid.NewGuid()),
+            new EnterGridNodeCommand(run.Id.Value, Guid.NewGuid()),
             CancellationToken.None);
 
         await act.Should()

@@ -35,21 +35,15 @@ public sealed class GetRunByIdQueryHandlerTests
         response.Run.Status.Should().Be(RunStatus.Active.ToString());
         var allNodes = response.Run.CurrentRoom.Nodes.ToArray();
 
-        allNodes.Should().HaveCount(response.Run.CurrentRoom.TotalNodeCount);
         allNodes.Should().HaveCount(6);
 
         response.Run.CurrentRoom.AvailableNodes
             .Should()
-            .HaveCount(2);
+            .HaveCount(5);
 
         response.Run.CurrentRoom.AvailableNodes
             .Should()
-            .OnlyContain(node => node.State == "Available" && node.Row == 0);
-
-        allNodes
-            .Where(node => node.Row > 0)
-            .Should()
-            .OnlyContain(node => node.State == "Planned");
+            .OnlyContain(node => node.State == "Available");
 
         allNodes
             .Should()

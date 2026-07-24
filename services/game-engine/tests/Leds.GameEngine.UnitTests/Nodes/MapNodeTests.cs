@@ -537,63 +537,6 @@ public sealed class MapNodeTests
     }
 
     [Fact]
-    public void ResetToInitial_ShouldSetAvailable_ForInitialNode()
-    {
-        var node = MapNode.Create(
-            NodeEventType.Combat,
-            25,
-            "standard",
-            0,
-            0,
-            Array.Empty<NodeId>());
-        node.Select();
-        node.Resolve();
-
-        node.ResetToInitial();
-
-        node.State.Should().Be(NodeState.Available);
-    }
-
-    [Fact]
-    public void ResetToInitial_ShouldSetPlanned_ForNonInitialNode()
-    {
-        var node = MapNode.Create(
-            NodeEventType.Combat,
-            25,
-            "standard",
-            1,
-            0,
-            new[] { NodeId.New() },
-            initialState: NodeState.Planned);
-        node.Unlock();
-        node.Select();
-        node.Resolve();
-
-        node.ResetToInitial();
-
-        node.State.Should().Be(NodeState.Planned);
-    }
-
-    [Fact]
-    public void ResetToInitial_ShouldClearChosenEventOptionId()
-    {
-        var node = MapNode.Create(
-            NodeEventType.Combat,
-            25,
-            "standard",
-            0,
-            0,
-            Array.Empty<NodeId>());
-        node.Select();
-        node.Resolve();
-        node.ChooseEventOption("choice-1");
-
-        node.ResetToInitial();
-
-        node.HasChosenEventOption.Should().BeFalse();
-    }
-
-    [Fact]
     public void ChooseEventOption_ShouldSetChosenEventOptionId()
     {
         var node = MapNode.Create(

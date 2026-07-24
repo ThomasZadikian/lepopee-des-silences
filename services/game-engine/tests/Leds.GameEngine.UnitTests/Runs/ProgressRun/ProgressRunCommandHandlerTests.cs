@@ -47,8 +47,6 @@ public sealed class ProgressRunCommandHandlerTests
 
         var run = runWithNode.Run;
 
-        var depthBeforeProgress = run.CurrentRoom.CurrentNodeDepth;
-
         var handler = CreateHandler(run);
 
         // Act
@@ -56,18 +54,11 @@ public sealed class ProgressRunCommandHandlerTests
             new ProgressRunCommand(run.Id.Value),
             CancellationToken.None);
 
-        // Assert: next layer is unlocked
-        response.Run.CurrentRoom.CurrentNodeDepth
-            .Should().Be(depthBeforeProgress + 1,
-                because: "ProgressRun should increment currentNodeDepth by 1.");
-
+        // Assert: back to free exploration
+        response.Run.CurrentRoom.State.Should().Be("Active");
         response.Run.CurrentRoom.AvailableNodes
             .Should().NotBeEmpty(
-                because: "Children of the resolved combat node should be available.");
-
-        response.Run.CurrentRoom.AvailableNodes
-            .Should().OnlyContain(n => n.Row == response.Run.CurrentRoom.CurrentNodeDepth,
-                because: "Available nodes must be at the new currentNodeDepth.");
+                because: "The other nodes revealed by fog of war remain available for exploration.");
 
         response.Run.Status.Should().Be("Active");
     }
@@ -87,7 +78,7 @@ public sealed class ProgressRunCommandHandlerTests
             CombatantSnapshot.Create("e", "Enemy", CombatantSide.Enemy,
                 30, 8, 4, 6),
         });
-        run.ChooseNode(run.CurrentRoom.AvailableNodes.First().Id);
+        TestGameEngineFactory.EnterNode(run, run.CurrentRoom.AvailableNodes.First());
         run.SetActiveCombat(combat.Id);
 
         var handler = CreateHandler(run);

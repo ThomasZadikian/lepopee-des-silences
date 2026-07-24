@@ -4,6 +4,10 @@ using Leds.GameEngine.Domain.Runs;
 
 namespace Leds.GameEngine.Application.Runs.Dtos;
 
+/// <param name="Grid">
+/// Always populated for a live domain Room — kept as a nullable optional parameter only for
+/// positional-record convenience, not because a room can lack a grid.
+/// </param>
 public sealed record RoomDto(
     Guid Id,
     int Depth,
@@ -29,18 +33,15 @@ public sealed record RoomDto(
     {
         var activeClimate = ResolveActiveClimate(room, runModifiers ?? []);
 
-        // Tactical mode (Grid not null): fog-of-war-revealed nodes, PLUS every still-Available
-        // node regardless of reveal state — so the player always knows which directions hold an
-        // objective, even unexplored. This only exposes a node's type/position as a distant
-        // marker; the terrain/path to it stays hidden (RevealedCells is untouched). Sending the
-        // full node list unconditionally would defeat the point of the fog of war entirely.
-        // Classic mode: unchanged, the full node list as always.
-        var nodesForDto = room.Grid is not null
-            ? room.VisibleNodes
-                .Concat(room.Nodes.Where(node => node.State == NodeState.Available))
-                .Distinct()
-                .ToArray()
-            : room.Nodes;
+        // Fog-of-war-revealed nodes, PLUS every still-Available node regardless of reveal
+        // state — so the player always knows which directions hold an objective, even
+        // unexplored. This only exposes a node's type/position as a distant marker; the
+        // terrain/path to it stays hidden (RevealedCells is untouched). Sending the full node
+        // list unconditionally would defeat the point of the fog of war entirely.
+        var nodesForDto = room.VisibleNodes
+            .Concat(room.Nodes.Where(node => node.State == NodeState.Available))
+            .Distinct()
+            .ToArray();
 
         return new RoomDto(
             room.Id.Value,
@@ -61,7 +62,7 @@ public sealed record RoomDto(
             room.CatalogBinding?.Key,
             room.CatalogBinding?.DisplayName,
             room.CatalogBinding?.NarrativeText,
-            room.Grid is null ? null : RoomGridDto.FromDomain(room.Grid, room.CanChallengeBossRemotely));
+            RoomGridDto.FromDomain(room.Grid, room.CanChallengeBossRemotely));
     }
 
     private static string? ResolveActiveClimate(
@@ -87,7 +88,7 @@ public sealed record RoomDto(
     }
 }
 
-/// <summary>Tactical-mode grid overlay — <c>null</c> for a Classic room.</summary>
+/// <summary>Free-movement grid overlay.</summary>
 public sealed record RoomGridDto(
     int Width,
     int Height,

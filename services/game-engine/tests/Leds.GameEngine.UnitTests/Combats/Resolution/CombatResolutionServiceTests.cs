@@ -41,7 +41,7 @@ public sealed class CombatResolutionServiceTests
                 initialRoom: roomWithTargetNode.Room,
                 startedAt: DateTimeOffset.UtcNow,
                 journalEnabled: true);
-            run.ChooseNode(roomWithTargetNode.TargetNode.Id);
+            TestGameEngineFactory.EnterNode(run, roomWithTargetNode.TargetNode);
         }
         else
         {

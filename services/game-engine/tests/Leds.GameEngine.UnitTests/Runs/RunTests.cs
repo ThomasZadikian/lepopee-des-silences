@@ -37,11 +37,11 @@ public sealed class RunTests
         run.CurrentRoom.RoomType.Should().Be(RoomType.Threshold);
         run.CurrentRoom.Theme.Should().Be("Threshold");
         run.CurrentRoom.CurrentNodeDepth.Should().Be(0);
-        run.CurrentRoom.MaxNodeDepth.Should().Be(2);
+        run.CurrentRoom.MaxNodeDepth.Should().Be(4);
         run.CurrentRoom.State.Should().Be(RoomState.Active);
         run.CurrentRoom.TotalNodeCount.Should().Be(6);
 
-        run.CurrentRoom.AvailableNodes.Should().HaveCount(2);
+        run.CurrentRoom.AvailableNodes.Should().HaveCount(5);
         run.CurrentRoom.Nodes.Should().ContainSingle(node => node.IsBoss);
     }
 
@@ -143,86 +143,29 @@ public sealed class RunTests
     }
 
     [Fact]
-    public void RoomCreate_ShouldThrow_WhenRoomDoesNotContainAtLeastTwoNodes()
-    {
-        var roomType = RoomType.Threshold;
-        var bossProfile = CreateBossProfile(roomType);
-
-        var singleNode = MapNode.Create(
-            NodeEventType.Combat,
-            20,
-            "combat-common",
-            row: 0,
-            lane: 0,
-            parentNodeIds: Array.Empty<NodeId>(),
-            isBoss: false,
-            initialState: NodeState.Available);
-
-        var nodes = new[] { singleNode };
-
-        var act = () => Room.Create(
-            0,
-            roomType,
-            "Threshold",
-            bossProfile,
-            nodes);
-
-        act.Should()
-            .Throw<DomainException>()
-            .WithMessage("A room must contain at least 2 nodes.");
-    }
-
-    [Fact]
-    public void ChooseNode_ShouldSelectRequestedNode_LockSiblings_AndMarkUnreachableBranches()
+    public void EnterGridNode_ShouldSelectRequestedNode()
     {
         var run = TestGameEngineFactory.CreateRun();
 
         var selectedNode = run.CurrentRoom.AvailableNodes.First();
 
-        run.ChooseNode(selectedNode.Id);
+        TestGameEngineFactory.EnterNode(run, selectedNode);
 
         selectedNode.State.Should().Be(NodeState.Selected);
         run.CurrentRoom.State.Should().Be(RoomState.NodeSelected);
-
-        run.CurrentRoom.Nodes
-            .Where(node => node.Row == run.CurrentRoom.CurrentNodeDepth &&
-                           node.Id != selectedNode.Id)
-            .Should()
-            .OnlyContain(node => node.State == NodeState.Locked);
-
-        run.CurrentRoom.Nodes
-            .Where(node => node.Row > run.CurrentRoom.CurrentNodeDepth)
-            .Should()
-            .OnlyContain(node =>
-                node.State == NodeState.Planned ||
-                node.State == NodeState.Unreachable);
-
-        run.CurrentRoom.Nodes
-            .Where(node =>
-                node.Row > run.CurrentRoom.CurrentNodeDepth &&
-                IsReachableFrom(selectedNode.Id, node, run.CurrentRoom.Nodes))
-            .Should()
-            .OnlyContain(node => node.State == NodeState.Planned);
-
-        run.CurrentRoom.Nodes
-            .Where(node =>
-                node.Row > run.CurrentRoom.CurrentNodeDepth &&
-                !IsReachableFrom(selectedNode.Id, node, run.CurrentRoom.Nodes))
-            .Should()
-            .OnlyContain(node => node.State == NodeState.Unreachable);
     }
 
     [Fact]
-    public void ChooseNode_ShouldThrow_WhenNodeWasAlreadySelectedAtCurrentDepth()
+    public void EnterGridNode_ShouldThrow_WhenAnotherNodeIsAlreadySelected()
     {
         var run = TestGameEngineFactory.CreateRun();
 
         var firstNode = run.CurrentRoom.AvailableNodes.First();
         var secondNode = run.CurrentRoom.AvailableNodes.Last();
 
-        run.ChooseNode(firstNode.Id);
+        TestGameEngineFactory.EnterNode(run, firstNode);
 
-        var act = () => run.ChooseNode(secondNode.Id);
+        var act = () => run.EnterGridNode(secondNode.Id.Value);
 
         act.Should()
             .Throw<DomainException>()
@@ -236,7 +179,7 @@ public sealed class RunTests
 
         var selectedNode = run.CurrentRoom.AvailableNodes.First();
 
-        run.ChooseNode(selectedNode.Id);
+        TestGameEngineFactory.EnterNode(run, selectedNode);
         run.ResolveCurrentEvent();
 
         selectedNode.State.Should().Be(NodeState.Resolved);
@@ -245,24 +188,20 @@ public sealed class RunTests
     }
 
     [Fact]
-    public void ProgressCurrentRoom_ShouldUnlockNextLayer_AfterCurrentEventIsResolved()
+    public void ProgressCurrentRoom_ShouldReturnToActiveExploration_AfterCurrentEventIsResolved()
     {
         var run = TestGameEngineFactory.CreateRun();
 
         var selectedNode = run.CurrentRoom.AvailableNodes.First();
 
-        run.ChooseNode(selectedNode.Id);
+        TestGameEngineFactory.EnterNode(run, selectedNode);
         run.ResolveCurrentEvent();
 
         run.CurrentRoom.State.Should().Be(RoomState.NodeResolved);
 
         run.ProgressCurrentRoom();
 
-        run.CurrentRoom.CurrentNodeDepth.Should().Be(1);
         run.CurrentRoom.State.Should().Be(RoomState.Active);
-        run.CurrentRoom.AvailableNodes.Should().NotBeEmpty();
-        run.CurrentRoom.AvailableNodes.Should().OnlyContain(node => node.Row == 1);
-        run.CurrentRoom.AvailableNodes.Should().OnlyContain(node => node.State == NodeState.Available);
     }
 
     [Fact]
@@ -270,24 +209,9 @@ public sealed class RunTests
     {
         var run = TestGameEngineFactory.CreateRun();
 
-        while (run.CurrentRoom.State != RoomState.BossReached)
-        {
-            var node = run.CurrentRoom.AvailableNodes.First();
+        var bossNode = run.CurrentRoom.Nodes.Single(n => n.IsBoss);
 
-            run.ChooseNode(node.Id);
-            run.ResolveCurrentEvent();
-            run.ProgressCurrentRoom();
-        }
-
-        run.CurrentRoom.State.Should().Be(RoomState.BossReached);
-        run.CurrentRoom.AvailableNodes.Should().ContainSingle();
-
-        var bossNode = run.CurrentRoom.AvailableNodes.Single();
-
-        bossNode.IsBoss.Should().BeTrue();
-        bossNode.EventType.Should().Be(NodeEventType.RoomBoss);
-
-        run.ChooseNode(bossNode.Id);
+        TestGameEngineFactory.EnterNode(run, bossNode);
         run.ResolveCurrentEvent();
 
         bossNode.State.Should().Be(NodeState.Resolved);
@@ -390,39 +314,6 @@ public sealed class RunTests
 
         run.Status.Should().Be(RunStatus.Abandoned);
         run.EndedAt.Should().Be(endedAt);
-    }
-
-    private static RoomBossProfile CreateBossProfile(RoomType roomType)
-    {
-        return RoomBossProfile.Create(
-            "threshold-guardian",
-            "Gardien du Seuil",
-            roomType,
-            "High",
-            "boss-threshold-guardian-v1");
-    }
-
-    private static bool IsReachableFrom(
-    NodeId ancestorNodeId,
-    MapNode node,
-    IReadOnlyCollection<MapNode> allNodes)
-    {
-        if (node.ParentNodeIds.Contains(ancestorNodeId))
-        {
-            return true;
-        }
-
-        foreach (var parentNodeId in node.ParentNodeIds)
-        {
-            var parent = allNodes.SingleOrDefault(candidate => candidate.Id == parentNodeId);
-
-            if (parent is not null && IsReachableFrom(ancestorNodeId, parent, allNodes))
-            {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     [Fact]

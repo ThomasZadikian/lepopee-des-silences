@@ -4,11 +4,10 @@ using Leds.GameEngine.Domain.Nodes;
 namespace Leds.GameEngine.Domain.Rooms;
 
 /// <summary>
-/// Free-movement grid overlay for a room explored in <see cref="Runs.RunExplorationMode.Tactical"/>
-/// mode. Owned by <see cref="Room"/> (<see cref="Room.Grid"/>) — null for every Classic-mode room,
-/// which keeps the row/lane node-graph behavior completely untouched. Movement is orthogonal
-/// (4 directions), cost is Manhattan distance; fog of war reveals cells/nodes within
-/// <see cref="VisionRadius"/> of every cell the party has stood on or passed through.
+/// Free-movement grid overlay for a room. Owned by <see cref="Room"/> (<see cref="Room.Grid"/>).
+/// Movement is orthogonal (4 directions), cost is Manhattan distance; fog of war reveals
+/// cells/nodes within <see cref="VisionRadius"/> of every cell the party has stood on or passed
+/// through.
 /// </summary>
 public sealed class RoomGrid
 {

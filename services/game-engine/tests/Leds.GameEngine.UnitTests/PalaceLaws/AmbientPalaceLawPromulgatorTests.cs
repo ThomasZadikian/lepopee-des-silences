@@ -206,19 +206,12 @@ public sealed class AmbientPalaceLawPromulgatorTests
 
     private static void AdvanceToNextRoom(Run run)
     {
-        while (run.Status == RunStatus.Active)
+        if (run.Status == RunStatus.Active)
         {
-            var node = run.CurrentRoom.AvailableNodes.First();
+            var bossNode = run.CurrentRoom.Nodes.Single(n => n.IsBoss);
 
-            run.ChooseNode(node.Id);
+            TestGameEngineFactory.EnterNode(run, bossNode);
             run.ResolveCurrentEvent();
-
-            if (run.Status == RunStatus.RoomResolved)
-            {
-                break;
-            }
-
-            run.ProgressCurrentRoom();
         }
 
         run.EnterInterlude();

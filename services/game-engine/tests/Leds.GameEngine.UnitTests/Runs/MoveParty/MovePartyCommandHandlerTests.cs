@@ -46,21 +46,4 @@ public sealed class MovePartyCommandHandlerTests
 
         await act.Should().ThrowAsync<NotFoundException>();
     }
-
-    [Fact]
-    public async Task Handle_ShouldThrowDomainException_OnAClassicRun()
-    {
-        var run = TestGameEngineFactory.CreateRun();
-
-        var repo = new Mock<IRunRepository>();
-        repo.Setup(r => r.GetByIdAsync(run.Id, It.IsAny<CancellationToken>())).ReturnsAsync(run);
-
-        var handler = new MovePartyCommandHandler(repo.Object);
-
-        var act = () => handler.Handle(
-            new MovePartyCommand(run.Id.Value, 1, 0),
-            CancellationToken.None);
-
-        await act.Should().ThrowAsync<DomainException>();
-    }
 }

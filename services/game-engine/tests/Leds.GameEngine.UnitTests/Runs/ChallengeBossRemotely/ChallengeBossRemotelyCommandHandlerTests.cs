@@ -23,8 +23,7 @@ public sealed class ChallengeBossRemotelyCommandHandlerTests
             generatorVersion: "gen-test",
             markovMatrixVersion: "markov-test",
             initialRoom: room,
-            startedAt: DateTimeOffset.UtcNow,
-            explorationMode: RunExplorationMode.Tactical);
+            startedAt: DateTimeOffset.UtcNow);
 
         run.MoveParty(4, 0); // costs 4, remaining 4
         run.MoveParty(0, 0); // costs 4 back to start, remaining 0

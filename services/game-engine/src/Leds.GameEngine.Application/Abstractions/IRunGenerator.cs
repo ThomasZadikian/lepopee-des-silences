@@ -13,8 +13,7 @@ public interface IRunGenerator
 
     Task<Room> GenerateInitialRoomAsync(
         string seed,
-        CancellationToken cancellationToken = default,
-        RunExplorationMode explorationMode = RunExplorationMode.Classic);
+        CancellationToken cancellationToken = default);
 
     Task<Room> GenerateNextRoomAsync(Run run, CancellationToken cancellationToken = default);
 }

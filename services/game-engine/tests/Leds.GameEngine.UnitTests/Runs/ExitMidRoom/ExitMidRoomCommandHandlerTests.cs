@@ -19,7 +19,7 @@ public sealed class ExitMidRoomCommandHandlerTests
     {
         var run = TestGameEngineFactory.CreateRun();
         var node = run.CurrentRoom.AvailableNodes.First();
-        run.ChooseNode(node.Id);
+        TestGameEngineFactory.EnterNode(run, node);
         run.ResolveCurrentEvent();
         run.ProgressCurrentRoom();
         return run;

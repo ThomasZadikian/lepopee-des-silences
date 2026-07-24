@@ -18,12 +18,6 @@ public static class TestGeneratorFactory
     public static DeterministicRunGenerator CreateDeterministicRunGenerator(
         StubCatalogContentGateway? catalogContentGateway = null)
     {
-        var mapRoomGenerator = new MapRoomGenerator(
-            new RoomMapLayoutTemplateProvider(),
-            new RoomThemeResolver(),
-            new RoomBossProfileResolver(new StubCatalogContentGateway()),
-            new HardcodedRoomTypeGenerationProfileProvider());
-
         var gridRoomGenerator = new GridRoomGenerator(
             new GridRoomLayoutTemplateProvider(),
             new RoomThemeResolver(),
@@ -43,7 +37,6 @@ public static class TestGeneratorFactory
             new CatalogMarkovRoomTypeResolver(new StubCatalogContentGateway()),
             new RoomReachabilitySelector(),
             stateResolver,
-            mapRoomGenerator,
             gridRoomGenerator,
             new RunPsycheEvolver(calibration),
             catalogContentGateway ?? new StubCatalogContentGateway());

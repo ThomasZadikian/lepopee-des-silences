@@ -17,7 +17,7 @@ public sealed class ExitMidRoomTests
         var run = TestGameEngineFactory.CreateRun();
 
         var firstNode = run.CurrentRoom.AvailableNodes.First();
-        run.ChooseNode(firstNode.Id);
+        TestGameEngineFactory.EnterNode(run, firstNode);
         run.ResolveCurrentEvent();
         run.ProgressCurrentRoom();
 
@@ -76,7 +76,7 @@ public sealed class ExitMidRoomTests
     {
         var run = TestGameEngineFactory.CreateRun();
         var firstNode = run.CurrentRoom.AvailableNodes.First();
-        run.ChooseNode(firstNode.Id);
+        TestGameEngineFactory.EnterNode(run, firstNode);
         run.ResolveCurrentEvent();
         run.CurrentRoom.State.Should().Be(RoomState.NodeResolved);
         run.CurrentRoom.CurrentNodeDepth.Should().Be(0);
@@ -86,7 +86,7 @@ public sealed class ExitMidRoomTests
 
         run.CurrentRoom.CurrentNodeDepth.Should().Be(0);
         run.CurrentRoom.State.Should().Be(RoomState.Active);
-        run.CurrentRoom.AvailableNodes.Should().OnlyContain(n => n.Row == 0);
+        run.CurrentRoom.AvailableNodes.Should().OnlyContain(n => n.State == NodeState.Available);
     }
 
     [Fact]
@@ -305,7 +305,7 @@ public sealed class ExitMidRoomTests
         run.Status.Should().Be(RunStatus.Active);
 
         var node = run.CurrentRoom.AvailableNodes.First();
-        run.ChooseNode(node.Id);
+        TestGameEngineFactory.EnterNode(run, node);
         run.ApplyStatBonus("attack", 10);
 
         var exitAgain = () => run.ExitMidRoom(DateTimeOffset.UtcNow);

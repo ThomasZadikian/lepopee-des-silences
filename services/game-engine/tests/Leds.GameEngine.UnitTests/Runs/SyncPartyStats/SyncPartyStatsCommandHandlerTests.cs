@@ -140,7 +140,7 @@ public sealed class SyncPartyStatsCommandHandlerTests
             CombatantSnapshot.Create("p", "Player", CombatantSide.Player, 40, 12, 6, 10),
             CombatantSnapshot.Create("e", "Enemy", CombatantSide.Enemy, 30, 8, 4, 6),
         });
-        run.ChooseNode(run.CurrentRoom.AvailableNodes.First().Id);
+        TestGameEngineFactory.EnterNode(run, run.CurrentRoom.AvailableNodes.First());
         run.SetActiveCombat(combat.Id);
 
         var repo = new Mock<IRunRepository>();

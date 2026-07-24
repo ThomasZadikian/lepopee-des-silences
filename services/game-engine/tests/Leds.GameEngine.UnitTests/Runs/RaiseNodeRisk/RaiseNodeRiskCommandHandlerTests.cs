@@ -21,7 +21,7 @@ public sealed class RaiseNodeRiskCommandHandlerTests
             riskLevel: 25,
             rewardProfile: "standard",
             row: 0,
-            lane: 0,
+            lane: 1,
             parentNodeIds: Array.Empty<NodeId>(),
             isBoss: false,
             initialState: NodeState.Available,
@@ -38,18 +38,33 @@ public sealed class RaiseNodeRiskCommandHandlerTests
             NodeEventType.RoomBoss,
             riskLevel: 85,
             rewardProfile: "room-boss",
-            row: 1,
-            lane: 0,
-            parentNodeIds: new[] { combatNode.Id },
+            row: 4,
+            lane: 4,
+            parentNodeIds: Array.Empty<NodeId>(),
             isBoss: true,
-            initialState: NodeState.Planned);
+            initialState: NodeState.Available);
+
+        var fillerNodes = new[]
+        {
+            MapNode.Create(NodeEventType.Item, 10, "standard", row: 0, lane: 2, []),
+            MapNode.Create(NodeEventType.Item, 10, "standard", row: 0, lane: 3, []),
+            MapNode.Create(NodeEventType.Item, 10, "standard", row: 1, lane: 0, []),
+            MapNode.Create(NodeEventType.Item, 10, "standard", row: 2, lane: 0, [])
+        };
 
         var room = Room.Create(
             depth: 0,
             roomType: RoomType.Threshold,
             theme: "Threshold",
             bossProfile: bossProfile,
-            nodes: new[] { combatNode, bossNode });
+            nodes: new[] { combatNode, bossNode }.Concat(fillerNodes),
+            gridWidth: 5,
+            gridHeight: 5,
+            movementBudget: 10,
+            startX: 0,
+            startY: 0,
+            layoutTemplateKey: "test-grid-v1",
+            layoutTemplateVersion: "1.0.0");
 
         var run = Run.StartNew(
             playerId: Guid.NewGuid(),

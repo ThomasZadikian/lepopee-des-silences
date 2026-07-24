@@ -46,7 +46,7 @@ public sealed class GridRoomGenerator : IGridRoomGenerator
 
         var bossProfile = await _bossProfileResolver.ResolveAsync(roomType, cancellationToken);
 
-        return Room.CreateGrid(
+        return Room.Create(
             roomDepth,
             roomType,
             palaceState,
