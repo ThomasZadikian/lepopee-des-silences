@@ -26,12 +26,6 @@ describe('runApi', () => {
     expect(gameEngineApi.get).toHaveBeenCalledWith('/api/v2/runs/run-1');
   });
 
-  it('chooseNode sends POST request', async () => {
-    vi.mocked(gameEngineApi.post).mockResolvedValueOnce({});
-    await runApi.chooseNode('run-1', 'node-1');
-    expect(gameEngineApi.post).toHaveBeenCalledWith('/api/v2/runs/run-1/nodes/node-1/choose');
-  });
-
   it('resolveCurrentEvent sends POST request', async () => {
     vi.mocked(gameEngineApi.post).mockResolvedValueOnce({});
     await runApi.resolveCurrentEvent('run-1');

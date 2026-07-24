@@ -353,13 +353,6 @@ describe('TacticalGridMap', () => {
     expect(wrapper.find('.tgrid__laws-tab-count').exists()).toBe(false);
   });
 
-  it('handles a room without a grid gracefully', () => {
-    const room = makeRoom({ grid: null });
-    const wrapper = mount(TacticalGridMap, { props: { room } });
-    expect(wrapper.exists()).toBe(true);
-    expect(wrapper.findAll('.tgrid__cell')).toHaveLength(0);
-  });
-
   // ── Room backdrop (theme-coherent, CSS-only) ────────────────────────────────────
 
   it.each([

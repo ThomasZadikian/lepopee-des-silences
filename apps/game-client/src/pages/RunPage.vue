@@ -17,10 +17,8 @@ import RoomClearedPanel from '../features/interlude/RoomClearedPanel.vue';
 import InventoryDrawer from '../features/inventory/components/InventoryDrawer.vue';
 import JournalModal from '../features/runs/components/JournalModal.vue';
 import PermanentItemSelectionPanel from '../features/runs/components/PermanentItemSelectionPanel.vue';
-import PalaceNodeDrawer from '../features/node-details/PalaceNodeDrawer.vue';
 import LawResolutionPanel from '../features/palace-laws/LawResolutionPanel.vue';
 import LawsPopover from '../features/palace-laws/LawsPopover.vue';
-import PalaceMapPlaceholder from '../features/palace-map/PalaceMapPlaceholder.vue';
 import TacticalGridMap from '../features/palace-map/TacticalGridMap.vue';
 import { usePlayerStore } from '../features/party/stores/playerStore';
 import RewardOfferPanel from '../features/rewards/components/RewardOfferPanel.vue';
@@ -115,21 +113,12 @@ async function handleExitMidRoom() {
   if (ok) await router.replace('/');
 }
 
-function clearAllUi() {
-  runStore.resetPreviewedNode();
-  uiStore.closeAll();
-}
-
 // Clicking anywhere outside the open drawers closes them — except on the
 // map itself (its own click handling for choosing/deselecting nodes stays
 // authoritative) and on the status ribbon (whose buttons already toggle
 // their own drawer; letting this listener also fire there would reopen a
 // drawer the same click just closed).
 const drawersRef = ref<HTMLElement | null>(null);
-  
-// useClickOutside(drawersRef, clearAllUi, {
-//   ignoreSelectors: ['.phase-map__canvas', '.status-ribbon'],
-// });
 
 async function handleLeaveRun() {
   combatStore.clearCombat();
@@ -153,9 +142,6 @@ const totalInfluenceCount = computed(() => {
   return (run.activePalaceLaws?.length ?? 0) + (run.activeCurses?.length ?? 0);
 });
 const isCombatPhase = computed(() => runStore.gameplayPhase === 'Combat');
-const showNodeDrawer = computed(() =>
-  isMapPhase.value && !runStore.isTacticalMode && runStore.selectedNode,
-);
 const showInventoryDrawer = computed(() => uiStore.activeDrawer === 'besace');
 const showPartyDrawer = computed(() => uiStore.activeDrawer === 'party' && !isCombatPhase.value);
 const showJournalModal = computed(() => uiStore.activeDrawer === 'journal');
@@ -210,7 +196,6 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
           <!-- Map canvas -->
           <div class="phase-map__canvas">
             <TacticalGridMap
-              v-if="runStore.isTacticalMode"
               :room="runStore.currentRun.currentRoom"
               :influence-count="totalInfluenceCount"
               @move-request="runStore.movePartyTo"
@@ -218,17 +203,6 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
               @wager-node="runStore.wagerNode"
               @challenge-boss="runStore.challengeBossRemotely"
               @toggle-laws="uiStore.toggleLaws"
-            />
-            <PalaceMapPlaceholder
-              v-else
-              :nodes="runStore.allNodes"
-              :available-nodes="runStore.availableNodes"
-              :selected-node-id="runStore.selectedNode?.id ?? null"
-              :current-row="runStore.currentRun.currentRoom.currentNodeDepth"
-              :layout-template-key="runStore.currentRun.currentRoom.layoutTemplateKey"
-              :layout-template-version="runStore.currentRun.currentRoom.layoutTemplateVersion"
-              @choose-node="runStore.previewNode"
-            @deselect-node="clearAllUi"
             />
           </div>
 
@@ -250,22 +224,6 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
 
           <!-- Drawers (right, absolute positioned) — a click outside all of them closes whichever is open -->
           <div ref="drawersRef">
-            <!-- Node drawer -->
-            <Transition name="slide">
-              <PalaceNodeDrawer
-                v-if="showNodeDrawer"
-                :node="runStore.selectedNode"
-                :is-loading="runStore.isLoading"
-                :has-active-combat="Boolean(runStore.currentRun.activeCombatId)"
-                :has-pending-reward="Boolean(runStore.pendingRewardOffer || runStore.currentRun.pendingRewardOfferId)"
-                @resolve-current-event="runStore.confirmAndResolveNode"
-                @generate-next-nodes="runStore.progressRun"
-                @choose-and-resolve="runStore.confirmAndResolveNode"
-                @close="runStore.resetPreviewedNode"
-                @wager-node="runStore.wagerNode"
-              />
-            </Transition>
-
             <!-- Inventory drawer -->
             <Transition name="slide">
               <InventoryDrawer

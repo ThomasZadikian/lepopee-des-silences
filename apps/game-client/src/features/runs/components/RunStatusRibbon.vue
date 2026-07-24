@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { ref } from 'vue';
 import RoomClimateBadge from '../../room-climate/RoomClimateBadge.vue';
 import type { RunDto } from '../../runs/types/runTypes';
 
-const props = defineProps<{
+defineProps<{
   run: RunDto;
   isSafePoint: boolean;
 }>();
@@ -18,22 +18,13 @@ const emit = defineEmits<{
   openJournal: [];
 }>();
 
-// Tactical mode only: folded down to a small tab by default to declutter the map view
-// — Classic mode keeps today's always-expanded ribbon untouched.
-const isTactical = computed(() => props.run.explorationMode === 'Tactical');
-const isCollapsed = ref(false);
-watch(
-  isTactical,
-  (tactical) => {
-    if (tactical) isCollapsed.value = true;
-  },
-  { immediate: true },
-);
+// Folded down to a small tab by default to declutter the map view.
+const isCollapsed = ref(true);
 </script>
 
 <template>
   <button
-    v-if="isTactical && isCollapsed"
+    v-if="isCollapsed"
     type="button"
     class="status-ribbon-tab"
     aria-label="Afficher la barre d'actions"
@@ -119,7 +110,6 @@ watch(
       </button>
 
       <button
-        v-if="isTactical"
         type="button"
         class="es-btn es-btn--ghost status-ribbon__collapse"
         aria-label="Réduire la barre d'actions"

@@ -9,7 +9,6 @@ vi.mock('../api/runApi', () => ({
   runApi: {
     startRun: vi.fn(),
     getRun: vi.fn(),
-    chooseNode: vi.fn(),
     resolveCurrentEvent: vi.fn(),
     progressRun: vi.fn(),
     generateNextNodes: vi.fn(),
@@ -55,16 +54,6 @@ describe('useRunStore computed properties', () => {
   it('currentRoom returns null when no run', () => {
     const store = useRunStore();
     expect(store.currentRoom).toBeNull();
-  });
-
-  it('allNodes returns empty array when no room', () => {
-    const store = useRunStore();
-    expect(store.allNodes).toEqual([]);
-  });
-
-  it('previewedNode returns null when no preview', () => {
-    const store = useRunStore();
-    expect(store.previewedNode == null).toBe(true);
   });
 
   it('isRoomCleared is false when no run', () => {
@@ -213,80 +202,17 @@ describe('useRunStore actions', () => {
     vi.clearAllMocks();
   });
 
-  it('startRun forwards the exploration mode to the API', async () => {
+  it('startRun calls the API with the demo player id', async () => {
     const store = useRunStore();
 
     vi.mocked(runApi.startRun).mockResolvedValue({
-      run: { id: 'run-1', status: 'Active', explorationMode: 'Tactical', currentRoom: {} },
-    } as any);
-
-    await store.startRun('Tactical');
-
-    expect(runApi.startRun).toHaveBeenCalledWith(expect.any(String), 'Tactical');
-    expect(store.currentRun?.explorationMode).toBe('Tactical');
-  });
-
-  it('startRun defaults to no exploration mode when none is given', async () => {
-    const store = useRunStore();
-
-    vi.mocked(runApi.startRun).mockResolvedValue({
-      run: { id: 'run-1', status: 'Active', explorationMode: 'Classic', currentRoom: {} },
+      run: { id: 'run-1', status: 'Active', currentRoom: {} },
     } as any);
 
     await store.startRun();
 
-    expect(runApi.startRun).toHaveBeenCalledWith(expect.any(String), undefined);
-  });
-
-  it('previewNode sets previewedNodeId for available node', () => {
-    const store = useRunStore();
-    store.currentRun = {
-      id: 'run-1',
-      status: 'Active',
-      currentRoomIndex: 0,
-      currentRoomNumber: 1,
-      currentRoom: {
-        id: 'room-1',
-        roomType: 'Combat',
-        currentNodeDepth: 0,
-        maxNodeDepth: 3,
-        nodes: [{ id: 'node-1', state: 'Available', type: 'Combat', riskLevel: 50, row: 0, lane: 0, parentNodeIds: [], rewardProfile: 'combat-common', isBoss: false }],
-        availableNodes: [{ id: 'node-1', state: 'Available' }],
-        bossPreview: { name: 'Boss', dangerHint: 'High' },
-      },
-    } as any;
-
-    store.previewNode('node-1');
-    expect(store.previewedNodeId).toBe('node-1');
-  });
-
-  it('previewNode does nothing for non-available node', () => {
-    const store = useRunStore();
-    store.currentRun = {
-      id: 'run-1',
-      status: 'Active',
-      currentRoomIndex: 0,
-      currentRoomNumber: 1,
-      currentRoom: {
-        id: 'room-1',
-        roomType: 'Combat',
-        currentNodeDepth: 0,
-        maxNodeDepth: 3,
-        nodes: [{ id: 'node-1', state: 'Locked', type: 'Combat', riskLevel: 50, row: 0, lane: 0, parentNodeIds: [], rewardProfile: 'combat-common', isBoss: false }],
-        availableNodes: [],
-        bossPreview: { name: 'Boss', dangerHint: 'High' },
-      },
-    } as any;
-
-    store.previewNode('node-1');
-    expect(store.previewedNodeId).toBeNull();
-  });
-
-  it('resetPreviewedNode clears preview', () => {
-    const store = useRunStore();
-    store.previewedNodeId = 'some-node';
-    store.resetPreviewedNode();
-    expect(store.previewedNodeId).toBeNull();
+    expect(runApi.startRun).toHaveBeenCalledWith(expect.any(String));
+    expect(store.currentRun?.id).toBe('run-1');
   });
 
   it('clearCurrentRun resets all run state', () => {
@@ -297,7 +223,6 @@ describe('useRunStore actions', () => {
     store.npcDialogue = { nodeKey: 'npc-1' } as any;
     store.activeCombat = { id: 'combat-1' } as any;
     store.combatRuntime = { id: 'combat-1' } as any;
-    store.previewedNodeId = 'node-1';
     store.lastChoiceResult = { id: 'result-1' } as any;
     store.currentInterlude = { id: 'interlude-1' } as any;
     store.error = 'error';
@@ -310,75 +235,9 @@ describe('useRunStore actions', () => {
     expect(store.npcDialogue).toBeNull();
     expect(store.activeCombat).toBeNull();
     expect(store.combatRuntime).toBeNull();
-    expect(store.previewedNodeId).toBeNull();
     expect(store.lastChoiceResult).toBeNull();
     expect(store.currentInterlude).toBeNull();
     expect(store.error).toBeNull();
-  });
-
-  it('chooseNode delegates to previewNode', () => {
-    const store = useRunStore();
-    store.currentRun = {
-      id: 'run-1',
-      status: 'Active',
-      currentRoomIndex: 0,
-      currentRoomNumber: 1,
-      currentRoom: {
-        id: 'room-1',
-        roomType: 'Combat',
-        currentNodeDepth: 0,
-        maxNodeDepth: 3,
-        nodes: [{ id: 'node-1', state: 'Available', type: 'Combat', riskLevel: 50, row: 0, lane: 0, parentNodeIds: [], rewardProfile: 'combat-common', isBoss: false }],
-        availableNodes: [{ id: 'node-1', state: 'Available' }],
-        bossPreview: { name: 'Boss', dangerHint: 'High' },
-      },
-    } as any;
-
-    store.chooseNode('node-1');
-    expect(store.previewedNodeId).toBe('node-1');
-  });
-
-  it('selectedNode returns previewed node when set', () => {
-    const store = useRunStore();
-    store.currentRun = {
-      id: 'run-1',
-      status: 'Active',
-      currentRoomIndex: 0,
-      currentRoomNumber: 1,
-      currentRoom: {
-        id: 'room-1',
-        roomType: 'Combat',
-        currentNodeDepth: 0,
-        maxNodeDepth: 3,
-        nodes: [{ id: 'node-1', state: 'Available', type: 'Combat', riskLevel: 50, row: 0, lane: 0, parentNodeIds: [], rewardProfile: 'combat-common', isBoss: false }],
-        availableNodes: [{ id: 'node-1', state: 'Available' }],
-        bossPreview: { name: 'Boss', dangerHint: 'High' },
-      },
-    } as any;
-    store.previewedNodeId = 'node-1';
-
-    expect(store.selectedNode?.id).toBe('node-1');
-  });
-
-  it('selectedNode returns selected node when no preview', () => {
-    const store = useRunStore();
-    store.currentRun = {
-      id: 'run-1',
-      status: 'Active',
-      currentRoomIndex: 0,
-      currentRoomNumber: 1,
-      currentRoom: {
-        id: 'room-1',
-        roomType: 'Combat',
-        currentNodeDepth: 0,
-        maxNodeDepth: 3,
-        nodes: [{ id: 'node-1', state: 'Selected', type: 'Combat', riskLevel: 50, row: 0, lane: 0, parentNodeIds: [], rewardProfile: 'combat-common', isBoss: false }],
-        availableNodes: [],
-        bossPreview: { name: 'Boss', dangerHint: 'High' },
-      },
-    } as any;
-
-    expect(store.selectedNode?.id).toBe('node-1');
   });
 
   it('selectReward surfaces the specific bag-full message when the run bag is full', async () => {
@@ -529,7 +388,6 @@ describe('useRunStore actions', () => {
     store.currentRun = {
       id: 'run-1',
       status: 'Active',
-      explorationMode: 'Tactical',
       currentRoom: { grid: { partyX: 0, partyY: 0 } },
     } as any;
 
@@ -537,7 +395,6 @@ describe('useRunStore actions', () => {
       run: {
         id: 'run-1',
         status: 'Active',
-        explorationMode: 'Tactical',
         currentRoom: { grid: { partyX: 1, partyY: 0 } },
       },
     } as any);
@@ -550,13 +407,13 @@ describe('useRunStore actions', () => {
 
   it('enterGridNode selects the node then resolves it immediately, so the room returns to a movable state', async () => {
     const store = useRunStore();
-    store.currentRun = { id: 'run-1', status: 'Active', explorationMode: 'Tactical' } as any;
+    store.currentRun = { id: 'run-1', status: 'Active' } as any;
 
     vi.mocked(runApi.enterGridNode).mockResolvedValue({
-      run: { id: 'run-1', status: 'Active', explorationMode: 'Tactical', currentRoom: { state: 'NodeSelected' } },
+      run: { id: 'run-1', status: 'Active', currentRoom: { state: 'NodeSelected' } },
     } as any);
     vi.mocked(runApi.resolveCurrentEvent).mockResolvedValue({
-      run: { id: 'run-1', status: 'Active', explorationMode: 'Tactical', currentRoom: { state: 'NodeResolved' } },
+      run: { id: 'run-1', status: 'Active', currentRoom: { state: 'NodeResolved' } },
       outcome: { title: 'Objet trouvé' },
     } as any);
 
@@ -571,13 +428,13 @@ describe('useRunStore actions', () => {
 
   it('challengeBossRemotely selects the boss node then resolves it immediately', async () => {
     const store = useRunStore();
-    store.currentRun = { id: 'run-1', status: 'Active', explorationMode: 'Tactical' } as any;
+    store.currentRun = { id: 'run-1', status: 'Active' } as any;
 
     vi.mocked(runApi.challengeBossRemotely).mockResolvedValue({
-      run: { id: 'run-1', status: 'Active', explorationMode: 'Tactical', currentRoom: { state: 'NodeSelected' } },
+      run: { id: 'run-1', status: 'Active', currentRoom: { state: 'NodeSelected' } },
     } as any);
     vi.mocked(runApi.resolveCurrentEvent).mockResolvedValue({
-      run: { id: 'run-1', status: 'RoomResolved', explorationMode: 'Tactical', currentRoom: { state: 'Completed' } },
+      run: { id: 'run-1', status: 'RoomResolved', currentRoom: { state: 'Completed' } },
       outcome: { title: 'Boss vaincu' },
       startedCombat: null,
     } as any);

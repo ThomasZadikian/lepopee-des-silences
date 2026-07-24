@@ -24,7 +24,6 @@ vi.mock('../../api/runApi', () => ({
   runApi: {
     startRun: vi.fn(),
     getRun: vi.fn(),
-    chooseNode: vi.fn(),
     resolveCurrentEvent: vi.fn(),
     progressRun: vi.fn(),
     generateNextNodes: vi.fn(),

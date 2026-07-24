@@ -6,7 +6,6 @@ import GameTopBar from './GameTopBar.vue';
 const mockStore = {
   currentRun: null,
   gameplayPhase: 'Loading',
-  isTacticalMode: false,
 };
 
 vi.mock('../runs/stores/runStore', () => ({
@@ -23,7 +22,6 @@ function mountTopBar(storeOverrides: Record<string, any> = {}) {
   Object.assign(mockStore, {
     currentRun: null,
     gameplayPhase: 'Loading',
-    isTacticalMode: false,
   }, storeOverrides);
 
   return mount(GameTopBar, {
@@ -40,6 +38,14 @@ function mountTopBar(storeOverrides: Record<string, any> = {}) {
   });
 }
 
+// The bar is collapsed to a small tab by default — most content assertions need it
+// expanded first.
+async function mountExpandedTopBar(storeOverrides: Record<string, any> = {}) {
+  const wrapper = mountTopBar(storeOverrides);
+  await wrapper.find('.es-runbar-tab').trigger('click');
+  return wrapper;
+}
+
 describe('GameTopBar', () => {
   afterEach(() => {
     document.body.innerHTML = '';
@@ -49,7 +55,6 @@ describe('GameTopBar', () => {
     vi.clearAllMocks();
     mockStore.currentRun = null;
     mockStore.gameplayPhase = 'Loading';
-    mockStore.isTacticalMode = false;
   });
 
   it('renders without crashing', () => {
@@ -57,158 +62,14 @@ describe('GameTopBar', () => {
     expect(wrapper.exists()).toBe(true);
   });
 
-  it('displays the game title', () => {
+  it('collapses to a small tab by default, hiding the full bar', () => {
     const wrapper = mountTopBar();
-    expect(wrapper.text()).toContain('L\'ÉPOPÉE DES SILENCES');
-  });
-
-  it('displays Palais label', () => {
-    const wrapper = mountTopBar();
-    expect(wrapper.text()).toContain('Palais');
-  });
-
-  it('displays fallback values when no run', () => {
-    const wrapper = mountTopBar();
-    expect(wrapper.text()).toContain('—');
-  });
-
-  it('displays room name when run exists', () => {
-    const wrapper = mountTopBar({
-      currentRun: {
-        currentRoom: { theme: 'Salle sombre', roomType: 'Combat' },
-      },
-    });
-    expect(wrapper.text()).toContain('Salle sombre');
-  });
-
-  it('falls back to roomType when theme is absent', () => {
-    const wrapper = mountTopBar({
-      currentRun: {
-        currentRoom: { roomType: 'Combat' },
-      },
-    });
-    expect(wrapper.text()).toContain('Combat');
-  });
-
-  it('displays seed value', () => {
-    const wrapper = mountTopBar({
-      currentRun: { seed: 'abc123' },
-    });
-    expect(wrapper.text()).toContain('abc123');
-  });
-
-  it('displays depth progression', () => {
-    const wrapper = mountTopBar({
-      currentRun: {
-        currentRoom: { currentNodeDepth: 1, maxNodeDepth: 4 },
-      },
-    });
-    expect(wrapper.text()).toContain('02 / 05');
-  });
-
-  it('displays active laws count', () => {
-    const wrapper = mountTopBar({
-      currentRun: {
-        activePalaceLaws: [{}, {}, {}],
-      },
-    });
-    expect(wrapper.text()).toContain('03');
-  });
-
-  it('displays gameplay phase', () => {
-    const wrapper = mountTopBar({
-      gameplayPhase: 'Combat',
-    });
-    expect(wrapper.text()).toContain('COMBAT');
-  });
-
-  it('displays run status', () => {
-    const wrapper = mountTopBar({
-      currentRun: { status: 'Active' },
-    });
-    expect(wrapper.text()).toContain('Active');
-  });
-
-  it('applies blood color for Failed status', () => {
-    const wrapper = mountTopBar({
-      currentRun: { status: 'Failed' },
-    });
-    const statusEl = wrapper.findAll('.es-seg__v').find((el) => el.text().includes('Failed'));
-    expect(statusEl?.attributes('style')).toContain('var(--blood)');
-  });
-
-  it('maps Map phase to EXPLORATION', () => {
-    const wrapper = mountTopBar({ gameplayPhase: 'Map' });
-    expect(wrapper.text()).toContain('EXPLORATION');
-  });
-
-  it('maps Reward phase to RÉCOMPENSE', () => {
-    const wrapper = mountTopBar({ gameplayPhase: 'Reward' });
-    expect(wrapper.text()).toContain('RÉCOMPENSE');
-  });
-
-  it('maps Interlude phase to INTERLUDE', () => {
-    const wrapper = mountTopBar({ gameplayPhase: 'Interlude' });
-    expect(wrapper.text()).toContain('INTERLUDE');
-  });
-
-  it('maps RoomCleared phase to SALLE LIBÉRÉE', () => {
-    const wrapper = mountTopBar({ gameplayPhase: 'RoomCleared' });
-    expect(wrapper.text()).toContain('SALLE LIBÉRÉE');
-  });
-
-  it('maps Suspended phase to SUSPENDU', () => {
-    const wrapper = mountTopBar({ gameplayPhase: 'Suspended' });
-    expect(wrapper.text()).toContain('SUSPENDU');
-  });
-
-  it('maps Completed phase to TERMINÉ', () => {
-    const wrapper = mountTopBar({ gameplayPhase: 'Completed' });
-    expect(wrapper.text()).toContain('TERMINÉ');
-  });
-
-  it('renders slot content', () => {
-    const wrapper = mount(GameTopBar, {
-      slots: { default: '<span class="custom-slot">Custom</span>' },
-      global: { stubs: { RouterLink: routerLinkStub } },
-    });
-    expect(wrapper.text()).toContain('Custom');
-  });
-
-  it('hides the depth segment in Tactical mode', () => {
-    const wrapper = mountTopBar({
-      currentRun: {
-        currentRoom: { currentNodeDepth: 1, maxNodeDepth: 4 },
-      },
-      isTacticalMode: true,
-    });
-    expect(wrapper.text()).not.toContain('Profondeur');
-  });
-
-  it('shows the depth segment in Classic mode', () => {
-    const wrapper = mountTopBar({
-      currentRun: {
-        currentRoom: { currentNodeDepth: 1, maxNodeDepth: 4 },
-      },
-      isTacticalMode: false,
-    });
-    expect(wrapper.text()).toContain('Profondeur');
-  });
-
-  it('collapses to a small tab by default in Tactical mode, hiding the full bar', () => {
-    const wrapper = mountTopBar({ isTacticalMode: true });
     expect(wrapper.find('.es-runbar-tab').exists()).toBe(true);
     expect(wrapper.find('.es-runbar').exists()).toBe(false);
   });
 
-  it('does not collapse by default in Classic mode', () => {
-    const wrapper = mountTopBar({ isTacticalMode: false });
-    expect(wrapper.find('.es-runbar-tab').exists()).toBe(false);
-    expect(wrapper.find('.es-runbar').exists()).toBe(true);
-  });
-
   it('expands the full bar as an overlay when the tab is clicked, and can be re-collapsed', async () => {
-    const wrapper = mountTopBar({ isTacticalMode: true });
+    const wrapper = mountTopBar();
 
     await wrapper.find('.es-runbar-tab').trigger('click');
     expect(wrapper.find('.es-runbar--overlay').exists()).toBe(true);
@@ -219,41 +80,124 @@ describe('GameTopBar', () => {
     expect(wrapper.find('.es-runbar--overlay').exists()).toBe(false);
   });
 
-  it('pads depth values with leading zeros', () => {
-    const wrapper = mountTopBar({
-      currentRun: {
-        currentRoom: { currentNodeDepth: 0, maxNodeDepth: 9 },
-      },
-    });
-    expect(wrapper.text()).toContain('01 / 10');
+  it('displays the game title', async () => {
+    const wrapper = await mountExpandedTopBar();
+    expect(wrapper.text()).toContain('L\'ÉPOPÉE DES SILENCES');
   });
 
-  it('handles missing currentRoom gracefully', () => {
-    const wrapper = mountTopBar({
+  it('displays Palais label', async () => {
+    const wrapper = await mountExpandedTopBar();
+    expect(wrapper.text()).toContain('Palais');
+  });
+
+  it('displays fallback values when no run', async () => {
+    const wrapper = await mountExpandedTopBar();
+    expect(wrapper.text()).toContain('—');
+  });
+
+  it('displays seed value', async () => {
+    const wrapper = await mountExpandedTopBar({
+      currentRun: { seed: 'abc123' },
+    });
+    expect(wrapper.text()).toContain('abc123');
+  });
+
+  it('displays active laws count', async () => {
+    const wrapper = await mountExpandedTopBar({
+      currentRun: {
+        activePalaceLaws: [{}, {}, {}],
+      },
+    });
+    expect(wrapper.text()).toContain('03');
+  });
+
+  it('displays gameplay phase', async () => {
+    const wrapper = await mountExpandedTopBar({
+      gameplayPhase: 'Combat',
+    });
+    expect(wrapper.text()).toContain('COMBAT');
+  });
+
+  it('displays run status', async () => {
+    const wrapper = await mountExpandedTopBar({
+      currentRun: { status: 'Active' },
+    });
+    expect(wrapper.text()).toContain('Active');
+  });
+
+  it('applies blood color for Failed status', async () => {
+    const wrapper = await mountExpandedTopBar({
+      currentRun: { status: 'Failed' },
+    });
+    const statusEl = wrapper.findAll('.es-seg__v').find((el) => el.text().includes('Failed'));
+    expect(statusEl?.attributes('style')).toContain('var(--blood)');
+  });
+
+  it('maps Map phase to EXPLORATION', async () => {
+    const wrapper = await mountExpandedTopBar({ gameplayPhase: 'Map' });
+    expect(wrapper.text()).toContain('EXPLORATION');
+  });
+
+  it('maps Reward phase to RÉCOMPENSE', async () => {
+    const wrapper = await mountExpandedTopBar({ gameplayPhase: 'Reward' });
+    expect(wrapper.text()).toContain('RÉCOMPENSE');
+  });
+
+  it('maps Interlude phase to INTERLUDE', async () => {
+    const wrapper = await mountExpandedTopBar({ gameplayPhase: 'Interlude' });
+    expect(wrapper.text()).toContain('INTERLUDE');
+  });
+
+  it('maps RoomCleared phase to SALLE LIBÉRÉE', async () => {
+    const wrapper = await mountExpandedTopBar({ gameplayPhase: 'RoomCleared' });
+    expect(wrapper.text()).toContain('SALLE LIBÉRÉE');
+  });
+
+  it('maps Suspended phase to SUSPENDU', async () => {
+    const wrapper = await mountExpandedTopBar({ gameplayPhase: 'Suspended' });
+    expect(wrapper.text()).toContain('SUSPENDU');
+  });
+
+  it('maps Completed phase to TERMINÉ', async () => {
+    const wrapper = await mountExpandedTopBar({ gameplayPhase: 'Completed' });
+    expect(wrapper.text()).toContain('TERMINÉ');
+  });
+
+  it('renders slot content', async () => {
+    const wrapper = mount(GameTopBar, {
+      slots: { default: '<span class="custom-slot">Custom</span>' },
+      global: { stubs: { RouterLink: routerLinkStub } },
+    });
+    await wrapper.find('.es-runbar-tab').trigger('click');
+    expect(wrapper.text()).toContain('Custom');
+  });
+
+  it('handles missing currentRoom gracefully', async () => {
+    const wrapper = await mountExpandedTopBar({
       currentRun: {},
     });
     expect(wrapper.exists()).toBe(true);
   });
 
-  it('always displays the Tutoriel link', () => {
-    const wrapper = mountTopBar();
+  it('always displays the Tutoriel link', async () => {
+    const wrapper = await mountExpandedTopBar();
     expect(wrapper.text()).toContain('Tutoriel');
   });
 
-  it('hides the Réputation link when there is no active run', () => {
-    const wrapper = mountTopBar();
+  it('hides the Réputation link when there is no active run', async () => {
+    const wrapper = await mountExpandedTopBar();
     expect(wrapper.text()).not.toContain('Réputation');
   });
 
-  it('shows the Réputation link when a run is active', () => {
-    const wrapper = mountTopBar({
+  it('shows the Réputation link when a run is active', async () => {
+    const wrapper = await mountExpandedTopBar({
       currentRun: { id: 'run-1' },
     });
     expect(wrapper.text()).toContain('Réputation');
   });
 
-  it('shows the structureless-Palace notice when a narrative is present without a canon name', () => {
-    const wrapper = mountTopBar({
+  it('shows the structureless-Palace notice when a narrative is present without a canon name', async () => {
+    const wrapper = await mountExpandedTopBar({
       currentRun: {
         currentRoom: {
           theme: 'Threshold',
@@ -266,8 +210,8 @@ describe('GameTopBar', () => {
     expect(wrapper.text()).toContain('sans vie');
   });
 
-  it('does not show the notice for a normal canon room with both a name and narrative', () => {
-    const wrapper = mountTopBar({
+  it('does not show the notice for a normal canon room with both a name and narrative', async () => {
+    const wrapper = await mountExpandedTopBar({
       currentRun: {
         currentRoom: {
           theme: 'Memory',
@@ -279,8 +223,8 @@ describe('GameTopBar', () => {
     expect(wrapper.find('.es-system-notice').exists()).toBe(false);
   });
 
-  it('does not show the notice for a plain procedural room with no catalog binding', () => {
-    const wrapper = mountTopBar({
+  it('does not show the notice for a plain procedural room with no catalog binding', async () => {
+    const wrapper = await mountExpandedTopBar({
       currentRun: {
         currentRoom: { theme: 'Rupture' },
       },
@@ -288,34 +232,34 @@ describe('GameTopBar', () => {
     expect(wrapper.find('.es-system-notice').exists()).toBe(false);
   });
 
-  it('shows no reference modal by default', () => {
-    mountTopBar();
+  it('shows no reference modal by default', async () => {
+    await mountExpandedTopBar();
     expect(document.querySelector('.pom-backdrop')).toBeNull();
   });
 
   it('opens the Statuts page as a modal overlay instead of navigating', async () => {
-    const wrapper = mountTopBar();
+    const wrapper = await mountExpandedTopBar();
     const btn = wrapper.findAll('button.es-runbar__ref-link').find((b) => b.text() === 'Statuts');
     await btn!.trigger('click');
     expect(document.querySelector('.stub-statuts-page')).not.toBeNull();
   });
 
   it('opens the Manifestations page as a modal overlay', async () => {
-    const wrapper = mountTopBar();
+    const wrapper = await mountExpandedTopBar();
     const btn = wrapper.findAll('button.es-runbar__ref-link').find((b) => b.text() === 'Manifestations');
     await btn!.trigger('click');
     expect(document.querySelector('.stub-manifestations-page')).not.toBeNull();
   });
 
   it('opens the Tutoriel page as a modal overlay', async () => {
-    const wrapper = mountTopBar();
+    const wrapper = await mountExpandedTopBar();
     const btn = wrapper.findAll('button.es-runbar__ref-link').find((b) => b.text() === 'Tutoriel');
     await btn!.trigger('click');
     expect(document.querySelector('.stub-tutorial-page')).not.toBeNull();
   });
 
   it('opens the Réputation page as a modal overlay, passing the current run id', async () => {
-    const wrapper = mountTopBar({ currentRun: { id: 'run-1' } });
+    const wrapper = await mountExpandedTopBar({ currentRun: { id: 'run-1' } });
     const btn = wrapper.findAll('button.es-runbar__ref-link').find((b) => b.text() === 'Réputation');
     await btn!.trigger('click');
     const stub = document.querySelector('.stub-reputation-page');
@@ -323,7 +267,7 @@ describe('GameTopBar', () => {
   });
 
   it('closes the reference modal when PageOverlayModal emits close', async () => {
-    const wrapper = mountTopBar();
+    const wrapper = await mountExpandedTopBar();
     const btn = wrapper.findAll('button.es-runbar__ref-link').find((b) => b.text() === 'Statuts');
     await btn!.trigger('click');
     expect(document.querySelector('.pom-backdrop')).not.toBeNull();

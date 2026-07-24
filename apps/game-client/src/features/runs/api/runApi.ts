@@ -1,7 +1,6 @@
 import { gameEngineApi } from '../../../shared/api/gameEngineApi';
 
 import type {
-  ChooseNodeResponse,
   ConfirmPermanentItemSelectionResponse,
   GenerateNextNodesResponse,
   GetPermanentItemCandidatesResponse,
@@ -16,21 +15,15 @@ import type {
 } from '../../interlude/interludeTypes';
 
 export const runApi = {
-  startRun(playerId: string, explorationMode?: 'Classic' | 'Tactical') {
-    return gameEngineApi.post<StartRunResponse, { playerId: string; explorationMode?: string }>(
+  startRun(playerId: string) {
+    return gameEngineApi.post<StartRunResponse, { playerId: string }>(
       '/api/v2/runs',
-      { playerId, explorationMode },
+      { playerId },
     );
   },
 
   getRun(runId: string) {
     return gameEngineApi.get<RunResponse>(`/api/v2/runs/${runId}`);
-  },
-
-  chooseNode(runId: string, nodeId: string) {
-    return gameEngineApi.post<ChooseNodeResponse>(
-      `/api/v2/runs/${runId}/nodes/${nodeId}/choose`,
-    );
   },
 
   resolveCurrentEvent(runId: string) {

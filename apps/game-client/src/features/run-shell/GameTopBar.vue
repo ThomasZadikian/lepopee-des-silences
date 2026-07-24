@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, ref } from 'vue';
 import { useRunStore } from '../runs/stores/runStore';
 import StatTooltip from '../../shared/components/StatTooltip.vue';
 import PageOverlayModal from '../../shared/components/PageOverlayModal.vue';
@@ -15,25 +15,14 @@ const runStore = useRunStore();
 type RefModal = 'statuts' | 'manifestations' | 'reputation' | 'tutoriel';
 const activeRefModal = ref<RefModal | null>(null);
 
-// Tactical mode only: fold the status bar down to a small tab by default, to give the
-// map as much room as possible — expanding it overlays the map rather than pushing it
-// down. Classic mode keeps today's always-expanded, in-flow behavior untouched.
-const isCollapsed = ref(false);
-watch(
-  () => runStore.isTacticalMode,
-  (tactical) => {
-    if (tactical) isCollapsed.value = true;
-  },
-  { immediate: true },
-);
+// Fold the status bar down to a small tab by default, to give the map as much room
+// as possible — expanding it overlays the map rather than pushing it down.
+const isCollapsed = ref(true);
 
 const run    = computed(() => runStore.currentRun);
 const room   = computed(() => run.value?.currentRoom);
 
 const seed       = computed(() => run.value?.seed ?? '—');
-// Prefer the canon room name (e.g. "Le temple de Mounkaanêt") over the abstract theme.
-const roomName    = computed(() =>
-  room.value?.catalogName || room.value?.theme || room.value?.roomType || '—');
 const isCanonRoom = computed(() => Boolean(room.value?.catalogName));
 const roomNarrative = computed(() => room.value?.catalogNarrative ?? '');
 // A narrative present without a canon name only ever happens for the system's own
@@ -41,8 +30,6 @@ const roomNarrative = computed(() => room.value?.catalogNarrative ?? '');
 // canon room carries both together. Surfaced as a visible banner, not just the tooltip.
 const systemNotice = computed(() =>
   !isCanonRoom.value && roomNarrative.value ? roomNarrative.value : '');
-const depth      = computed(() => (room.value?.currentNodeDepth ?? 0) + 1);
-const maxDepth   = computed(() => (room.value?.maxNodeDepth ?? 0) + 1);
 const activeLaws = computed(() => run.value?.activePalaceLaws?.length ?? 0);
 const activeLawsTooltip = computed(() => {
   const laws = run.value?.activePalaceLaws ?? [];
@@ -61,8 +48,6 @@ const phase      = computed(() => {
 });
 const status = computed(() => run.value?.status ?? '—');
 
-const depthLabel  = computed(() =>
-  `${String(depth.value).padStart(2, '0')} / ${String(maxDepth.value).padStart(2, '0')}`)
 const lawsLabel   = computed(() => String(activeLaws.value).padStart(2, '0'))
 const statusColor = computed(() =>
   status.value === 'Failed' ? 'var(--blood)' : 'var(--frost)')
@@ -70,7 +55,7 @@ const statusColor = computed(() =>
 
 <template>
   <button
-    v-if="runStore.isTacticalMode && isCollapsed"
+    v-if="isCollapsed"
     type="button"
     class="es-runbar-tab"
     aria-label="Afficher la barre de statut"
@@ -81,8 +66,7 @@ const statusColor = computed(() =>
 
   <header
     v-else
-    class="es-runbar"
-    :class="{ 'es-runbar--overlay': runStore.isTacticalMode }"
+    class="es-runbar es-runbar--overlay"
     style="position: relative; z-index: 8"
   >
     <!-- Palais -->
@@ -93,28 +77,10 @@ const statusColor = computed(() =>
       </span>
     </div>
 
-    <!-- Salle (affichée à côté de "Exploration tactique" sur la carte en mode Tactique) -->
-    <div v-if="!runStore.isTacticalMode" class="es-seg">
-      <span class="es-seg__k">Salle</span>
-            <span
-        class="es-seg__v"
-        :class="{ 'es-room--canon': isCanonRoom }"
-        :title="roomNarrative"
-      >
-        <span v-if="isCanonRoom" class="es-room__sigil" aria-hidden="true">✦</span>{{ roomName }}
-      </span>
-    </div>
-
     <!-- Seed -->
     <div class="es-seg">
       <span class="es-seg__k">Seed</span>
       <span class="es-seg__v es-gold">{{ seed }}</span>
-    </div>
-
-    <!-- Profondeur (sans objet en mode Tactique — pas de structure en lignes à traverser) -->
-    <div v-if="!runStore.isTacticalMode" class="es-seg">
-      <span class="es-seg__k">Profondeur</span>
-      <span class="es-seg__v">{{ depthLabel }}</span>
     </div>
 
     <!-- Lois -->
@@ -152,7 +118,6 @@ const statusColor = computed(() =>
     <slot />
 
     <button
-      v-if="runStore.isTacticalMode"
       type="button"
       class="es-runbar__collapse"
       aria-label="Réduire la barre de statut"

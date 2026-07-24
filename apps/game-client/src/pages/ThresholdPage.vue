@@ -18,10 +18,8 @@ async function resumeRun() {
   if (runStore.currentRun?.id) await router.push(`/run/${run.id}`);
 }
 
-const explorationMode = ref<'Classic' | 'Tactical'>('Classic');
-
 async function startRun() {
-  await runStore.startRun(explorationMode.value);
+  await runStore.startRun();
   const runId = runStore.currentRun?.id;
   if (!runId) return;
   await router.push(`/run/${runId}`);
@@ -199,34 +197,6 @@ const isNeuf    = computed(() => openPanel.value === 'neuf');
                 <div class="ribbon__stat">
                   <span class="es-label" style="color: var(--ink-4)">Seed</span>
                   <span class="ribbon__stat-value" style="color: var(--frost)">attribuée au départ</span>
-                </div>
-              </div>
-
-              <div class="mode-toggle" role="radiogroup" aria-label="Mode de combat">
-                <span class="es-label" style="color: var(--ink-4); display: block; margin-bottom: 8px">
-                  Mode de combat
-                </span>
-                <div class="mode-toggle__chips">
-                  <button
-                    type="button"
-                    role="radio"
-                    :aria-checked="explorationMode === 'Classic'"
-                    class="mode-toggle__chip"
-                    :class="{ 'mode-toggle__chip--active': explorationMode === 'Classic' }"
-                    @click="explorationMode = 'Classic'"
-                  >
-                    Classique · ATB
-                  </button>
-                  <button
-                    type="button"
-                    role="radio"
-                    :aria-checked="explorationMode === 'Tactical'"
-                    class="mode-toggle__chip mode-toggle__chip--tactical"
-                    :class="{ 'mode-toggle__chip--active': explorationMode === 'Tactical' }"
-                    @click="explorationMode = 'Tactical'"
-                  >
-                    Tactique · Grille
-                  </button>
                 </div>
               </div>
 
@@ -484,39 +454,6 @@ const isNeuf    = computed(() => openPanel.value === 'neuf');
 
 .ribbon__btn {
   font-family: var(--font-caps);
-}
-
-/* ── Mode toggle (Classique / Tactique) ── */
-.mode-toggle__chips {
-  display: flex;
-  gap: 8px;
-}
-
-.mode-toggle__chip {
-  flex: 1;
-  padding: 10px 14px;
-  border-radius: 3px;
-  border: 1px solid var(--line);
-  background: oklch(0.32 0.028 268 / 0.5);
-  color: var(--ink-3);
-  font-family: var(--font-caps);
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: border-color 0.2s, color 0.2s, background 0.2s;
-}
-
-.mode-toggle__chip--active {
-  color: var(--frost);
-  border-color: var(--frost-dim);
-  background: oklch(0.56 0.12 276 / 0.26);
-}
-
-.mode-toggle__chip--tactical.mode-toggle__chip--active {
-  color: var(--sap);
-  border-color: var(--sap);
-  background: color-mix(in oklch, var(--sap), transparent 78%);
 }
 
 /* ── Elise ── */

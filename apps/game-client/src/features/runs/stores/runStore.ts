@@ -12,7 +12,6 @@ import {
   unwrapRunResponse,
   type CombatInstanceDto,
   type NarrativeFragmentDto,
-  type NodeDto,
   type NpcDialogueViewDto,
   type PermanentItemCandidateDto,
   type ResolveCurrentEventResponse,
@@ -68,7 +67,6 @@ export const useRunStore = defineStore('run', () => {
   const npcDialogueEnded = ref(false);
   const activeCombat = ref<CombatInstanceDto | null>(null);
   const combatRuntime = shallowRef<CombatRuntimeDto | null>(null);
-  const previewedNodeId = ref<string | null>(null);
   const lastChoiceResult = ref<CurrentEventChoiceResultDto | null>(null);
 
   const currentInterlude = ref<InterludeDto | null>(null);
@@ -99,30 +97,8 @@ export const useRunStore = defineStore('run', () => {
 
   const currentRoom = computed(() => currentRun.value?.currentRoom ?? null);
 
-  const allNodes = computed<NodeDto[]>(() => {
-    return currentRoom.value?.nodes ?? [];
-  });
-
-  const previewedNode = computed<NodeDto | null>(() => {
-    if (!previewedNodeId.value) return null;
-    return allNodes.value.find((n) => n.id === previewedNodeId.value) ?? null;
-  });
-
-  const selectedNode = computed<NodeDto | null>(() => {
-    const room = currentRoom.value;
-    if (!room) return null;
-    if (previewedNode.value) return previewedNode.value;
-    const selected = allNodes.value.find((n) => n.state === 'Selected');
-    if (selected) return selected;
-    return null;
-  });
-
-  const availableNodes = computed(() => currentRoom.value?.availableNodes ?? []);
-
-  /** Tactical-mode grid overlay of the current room. Null for a Classic run. */
+  /** Free-roam grid overlay of the current room. */
   const currentGrid = computed(() => currentRoom.value?.grid ?? null);
-
-  const isTacticalMode = computed(() => currentRun.value?.explorationMode === 'Tactical');
 
   /**
    * True when the current room is fully cleared (boss defeated, reward selected)
@@ -196,20 +172,10 @@ export const useRunStore = defineStore('run', () => {
   // Helpers
   // -------------------------------------------------------------------------
 
-  function resetPreviewedNode() {
-    previewedNodeId.value = null;
-  }
-
   function resetNpcDialogue() {
     npcDialogue.value = null;
     npcDialogueEchoes.value = [];
     npcDialogueEnded.value = false;
-  }
-
-  function previewNode(nodeId: string) {
-    const node = allNodes.value.find((n) => n.id === nodeId);
-    if (!node || node.state !== 'Available') return;
-    previewedNodeId.value = nodeId;
   }
 
   async function execute(action: () => Promise<void>) {
@@ -290,12 +256,10 @@ export const useRunStore = defineStore('run', () => {
     });
   }
 
-  // Both enterGridNode and challengeBossRemotely only *select* the node server-side
-  // (grid-mode counterpart of Classic's chooseNode) — resolving it into an outcome is
-  // a separate step, so we chain resolveCurrentEvent immediately after, mirroring
-  // confirmAndResolveNode's combined choose+resolve for Classic mode. Without this,
-  // the room stays in NodeSelected forever and the next move/action is rejected by
-  // the domain guard ("Room is not waiting for party movement.").
+  // Both enterGridNode and challengeBossRemotely only *select* the node server-side —
+  // resolving it into an outcome is a separate step, so we chain the resolve call
+  // immediately after. Without this, the room stays in NodeSelected forever and the
+  // next move/action is rejected by the domain guard ("Room is not waiting for party movement.").
   async function enterGridNode(nodeId: string) {
     if (!currentRun.value) return;
 
@@ -415,13 +379,13 @@ export const useRunStore = defineStore('run', () => {
   // Run lifecycle
   // -------------------------------------------------------------------------
 
-  async function startRun(explorationMode?: 'Classic' | 'Tactical') {
+  async function startRun() {
     await execute(async () => {
       // Vider currentRun avant l'appel pour que, si l'API échoue,
       // le composant appelant ne navigue pas vers l'ancienne run.
       currentRun.value = null;
 
-      const response = await runApi.startRun(demoPlayerId, explorationMode);
+      const response = await runApi.startRun(demoPlayerId);
       const run = unwrapRunResponse(response);
 
       lastChoiceResult.value = null;
@@ -432,7 +396,6 @@ export const useRunStore = defineStore('run', () => {
       activeCombat.value = null;
       combatRuntime.value = null;
       currentInterlude.value = null;
-      resetPreviewedNode();
       permanentItemCandidates.value = [];
       isPermanentItemSelectionResolved.value = false;
 
@@ -457,7 +420,6 @@ export const useRunStore = defineStore('run', () => {
       currentRun.value = run;
       currentInterlude.value = null;
       resetNpcDialogue();
-      resetPreviewedNode();
 
       if (!run.activeCombatId) {
         activeCombat.value = null;
@@ -476,66 +438,6 @@ export const useRunStore = defineStore('run', () => {
   // Map / node actions
   // -------------------------------------------------------------------------
 
-  function chooseNode(nodeId: string) {
-    previewNode(nodeId);
-  }
-
-  async function confirmAndResolveNode() {
-    if (!currentRun.value || !selectedNode.value) return;
-
-    lastChoiceResult.value = null;
-    const node = selectedNode.value;
-
-    if (node.state === 'Resolved') {
-      await progressRun();
-      return;
-    }
-
-    if (node.state === 'Selected') {
-      await resolveCurrentEvent();
-      return;
-    }
-
-    if (node.state !== 'Available') return;
-
-    await execute(async () => {
-      const chooseResponse = await runApi.chooseNode(currentRun.value!.id, node.id);
-      currentRun.value = unwrapRunResponse(chooseResponse);
-      resetPreviewedNode();
-
-      const resolveResponse = await runApi.resolveCurrentEvent(currentRun.value!.id);
-      currentRun.value = resolveResponse.run;
-      lastOutcome.value = resolveResponse.outcome;
-      npcDialogue.value = resolveResponse.npcDialogue ?? null;
-      npcDialogueEchoes.value = [];
-      npcDialogueEnded.value = false;
-      activeCombat.value = resolveResponse.startedCombat ?? null;
-      combatRuntime.value = resolveResponse.combat ?? null;
-
-      await refreshPendingRewardIfNeeded();
-    });
-  }
-
-  async function resolveCurrentEvent() {
-    if (!currentRun.value) return;
-
-    await execute(async () => {
-      const response = await runApi.resolveCurrentEvent(currentRun.value!.id);
-
-      lastChoiceResult.value = null;
-      currentRun.value = response.run;
-      lastOutcome.value = response.outcome;
-      npcDialogue.value = response.npcDialogue ?? null;
-      npcDialogueEchoes.value = [];
-      npcDialogueEnded.value = false;
-      activeCombat.value = response.startedCombat ?? null;
-      combatRuntime.value = response.combat ?? null;
-      resetPreviewedNode();
-
-      await refreshPendingRewardIfNeeded();
-    });
-  }
-
   async function progressRun() {
     if (!currentRun.value) return;
 
@@ -553,7 +455,6 @@ export const useRunStore = defineStore('run', () => {
       lastOutcome.value = null;
       resetNpcDialogue();
       activeCombat.value = null;
-      resetPreviewedNode();
 
       await refreshPendingRewardIfNeeded();
     });
@@ -567,7 +468,6 @@ export const useRunStore = defineStore('run', () => {
       currentRun.value = unwrapRunResponse(response);
       lastOutcome.value = null;
       resetNpcDialogue();
-      resetPreviewedNode();
       await refreshPendingRewardIfNeeded();
     });
   }
@@ -588,7 +488,6 @@ export const useRunStore = defineStore('run', () => {
       activeCombat.value = null;
       combatRuntime.value = null;
       lastOutcome.value = null;
-      resetPreviewedNode();
 
       await refreshPendingRewardIfNeeded();
       await progressRunInlineIfReady();
@@ -608,7 +507,6 @@ export const useRunStore = defineStore('run', () => {
       combatRuntime.value = null;
       lastOutcome.value = null;
       pendingRewardOffer.value = null;
-      resetPreviewedNode();
     });
   }
 
@@ -637,7 +535,6 @@ export const useRunStore = defineStore('run', () => {
       lastChoiceResult.value = null;
       lastOutcome.value = null;
       activeCombat.value = null;
-      resetPreviewedNode();
 
       await refreshPendingRewardIfNeeded();
 
@@ -700,7 +597,6 @@ export const useRunStore = defineStore('run', () => {
       resetNpcDialogue();
       activeCombat.value = null;
       lastChoiceResult.value = null;
-      resetPreviewedNode();
     } catch (caught) {
       error.value = caught instanceof Error
         ? caught.message
@@ -843,7 +739,6 @@ export const useRunStore = defineStore('run', () => {
     resetNpcDialogue();
     activeCombat.value = null;
     combatRuntime.value = null;
-    previewedNodeId.value = null;
     lastChoiceResult.value = null;
     currentInterlude.value = null;
     error.value = null;
@@ -900,7 +795,6 @@ export const useRunStore = defineStore('run', () => {
       lastChoiceResult.value = choiceResult;
       lastOutcome.value = null;
       activeCombat.value = null;
-      resetPreviewedNode();
       pushReputationEffects(choiceResult?.appliedEffects);
 
       await refreshPendingRewardIfNeeded();
@@ -969,12 +863,7 @@ export const useRunStore = defineStore('run', () => {
   return {
     currentRun,
     currentRoom,
-    allNodes,
-    selectedNode,
-    availableNodes,
     currentGrid,
-    isTacticalMode,
-    previewedNodeId,
     lastOutcome,
     lastChoiceResult,
     npcDialogue,
@@ -1002,11 +891,7 @@ export const useRunStore = defineStore('run', () => {
 
     startRun,
     loadRun,
-    chooseNode,
-    previewNode,
-    confirmAndResolveNode,
     progressRun,
-    resolveCurrentEvent,
     generateNextNodes,
     loadPendingReward,
     selectReward,
@@ -1042,6 +927,5 @@ export const useRunStore = defineStore('run', () => {
     exitMidRoom,
     abandonCurrentRun,
     clearCurrentRun,
-    resetPreviewedNode,
   };
 });
