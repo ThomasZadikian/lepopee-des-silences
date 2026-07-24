@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
-import { useLoop } from '@tresjs/core';
+import { computed, ref, watch } from 'vue';
+import * as THREE from 'three';
+import { useLoop, useTresContext } from '@tresjs/core';
 import { OrbitControls } from '@tresjs/cientos';
 import type { NodeDto, RoomDto } from '../../runs/types/runTypes';
 import { useGridCells } from '../composables/useGridCells';
@@ -11,6 +12,7 @@ import TerrainTile from './TerrainTile.vue';
 import FogCloud from './FogCloud.vue';
 import NodeMarker3D from './NodeMarker3D.vue';
 import PartyToken3D from './PartyToken3D.vue';
+import SceneDecor from './SceneDecor.vue';
 import { TILE_SIZE } from './sceneConstants';
 
 const props = defineProps<{ room: RoomDto }>();
@@ -73,6 +75,21 @@ if (!prefersReducedMotion) {
 }
 
 const ambientIntensity = computed(() => palette3D.value.ambientLightIntensity * pulseMultiplier.value);
+
+// ── Scene-level atmospheric fog ──────────────────────────────────────────────────
+// Set imperatively on the real THREE.Scene instance rather than via a template
+// <primitive attach="fog">: TresJS's patchProp only special-cases a primitive's
+// `object` prop at initial creation, not on later reactive patches (the same bug
+// class already worked around in NodeMarker3D's geometry assignment) — a plain watch
+// mutating an existing Fog instance's own properties sidesteps that entirely.
+const { scene } = useTresContext();
+const sceneFog = new THREE.FogExp2(palette3D.value.fogColor, palette3D.value.fogDensity);
+
+watch(scene, (s) => { if (s) s.fog = sceneFog; }, { immediate: true });
+watch(palette3D, (p) => {
+  sceneFog.color.set(p.fogColor);
+  sceneFog.density = p.fogDensity;
+});
 </script>
 
 <template>
@@ -92,8 +109,20 @@ const ambientIntensity = computed(() => palette3D.value.ambientLightIntensity * 
     :intensity="palette3D.directionalLightIntensity"
     :position="lightPosition"
   />
+  <!-- Soft sky/ground fill — the single biggest lever against the flat, everything-in-
+       shadow look a lone ambient+directional pair gives stylized low-poly tiles.
+       Scaled off the theme's own ambient intensity rather than a flat value so a
+       deliberately dim/oppressive theme (Final) stays dim instead of being washed out
+       by a fill light that doesn't know about that intent. -->
+  <TresHemisphereLight
+    :color="palette3D.ambientLightColor"
+    :ground-color="palette3D.floorColor"
+    :intensity="palette3D.ambientLightIntensity * 0.45"
+  />
 
   <template v-if="grid">
+    <SceneDecor :room="room" :grid="grid" :accent-color="palette3D.accentColor" />
+
     <template v-for="cell in cells" :key="`${cell.x}-${cell.y}`">
       <TerrainTile
         v-if="isRevealed(cell.x, cell.y)"

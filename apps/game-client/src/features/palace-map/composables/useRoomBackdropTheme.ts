@@ -54,62 +54,70 @@ const VOID = 0x1c1c2e;
  * ambient/directional light pairing that reads as "this room's own light", not a
  * single neutral studio light shared by every theme.
  */
+// BALANCE KNOB — light intensities. Three.js's physically-correct lighting model
+// needs noticeably higher intensity values than the old 0-1 scale suggests — a
+// tinted, non-white ambient at 0.5 alone rendered as near-black on MeshStandardMaterial.
+// Ambient sits well above directional here specifically because these are stylized flat
+// tiles (no baked shadow/AO to preserve), so a strong ambient + a modest directional for
+// just a hint of directionality reads far better than trying to fake realism.
 export const THEME_PALETTE_3D: Record<string, ThemePalette3D> = {
   Threshold: {
     // Liminal doorway — cool, pale, a misty vertical light column.
-    floorColor: 0x24243a, fogColor: FROST, fogDensity: 0.09,
-    ambientLightColor: FROST, ambientLightIntensity: 0.5,
-    directionalLightColor: 0xffffff, directionalLightIntensity: 0.6,
+    floorColor: 0x24243a, fogColor: FROST, fogDensity: 0.014,
+    ambientLightColor: FROST, ambientLightIntensity: 1.7,
+    directionalLightColor: 0xffffff, directionalLightIntensity: 1.4,
     accentColor: FROST,
   },
   Memory: {
     // Warm sepia, a page-turned quality.
-    floorColor: 0x332c1e, fogColor: GOLD, fogDensity: 0.06,
-    ambientLightColor: GOLD, ambientLightIntensity: 0.55,
-    directionalLightColor: 0xffe9c2, directionalLightIntensity: 0.55,
+    floorColor: 0x332c1e, fogColor: GOLD, fogDensity: 0.008,
+    ambientLightColor: GOLD, ambientLightIntensity: 1.8,
+    directionalLightColor: 0xffe9c2, directionalLightIntensity: 1.3,
     accentColor: GOLD,
   },
   Forest: {
     // Deep green canopy, dappled light.
-    floorColor: 0x1c2e22, fogColor: SAP, fogDensity: 0.1,
-    ambientLightColor: SAP, ambientLightIntensity: 0.45,
-    directionalLightColor: 0xbfe8c9, directionalLightIntensity: 0.5,
+    floorColor: 0x1c2e22, fogColor: SAP, fogDensity: 0.015,
+    ambientLightColor: SAP, ambientLightIntensity: 1.5,
+    directionalLightColor: 0xbfe8c9, directionalLightIntensity: 1.3,
     accentColor: SAP,
   },
   Rupture: {
     // Angular fractures, blood-tinted cracks.
-    floorColor: 0x2e1c1e, fogColor: BLOOD, fogDensity: 0.11,
-    ambientLightColor: BLOOD, ambientLightIntensity: 0.4,
-    directionalLightColor: 0xffb0b0, directionalLightIntensity: 0.5,
+    floorColor: 0x2e1c1e, fogColor: BLOOD, fogDensity: 0.017,
+    ambientLightColor: BLOOD, ambientLightIntensity: 1.4,
+    directionalLightColor: 0xffb0b0, directionalLightIntensity: 1.3,
     accentColor: BLOOD,
   },
   Silence: {
     // Pale, still, concentric-ripple stillness.
-    floorColor: 0x26263a, fogColor: FROST, fogDensity: 0.13,
-    ambientLightColor: FROST, ambientLightIntensity: 0.6,
-    directionalLightColor: 0xe8e8ff, directionalLightIntensity: 0.35,
+    floorColor: 0x26263a, fogColor: FROST, fogDensity: 0.02,
+    ambientLightColor: FROST, ambientLightIntensity: 1.9,
+    directionalLightColor: 0xe8e8ff, directionalLightIntensity: 1.0,
     accentColor: FROST,
   },
   Antechamber: {
     // Formal golden colonnade.
-    floorColor: 0x362c1c, fogColor: GOLD, fogDensity: 0.05,
-    ambientLightColor: GOLD, ambientLightIntensity: 0.5,
-    directionalLightColor: 0xffe9c2, directionalLightIntensity: 0.7,
+    floorColor: 0x362c1c, fogColor: GOLD, fogDensity: 0.006,
+    ambientLightColor: GOLD, ambientLightIntensity: 1.7,
+    directionalLightColor: 0xffe9c2, directionalLightIntensity: 1.6,
     accentColor: GOLD,
   },
   Final: {
-    // Dark, sanguine, slowly pulsing — the confrontation theme.
-    floorColor: 0x200e10, fogColor: BLOOD, fogDensity: 0.16,
-    ambientLightColor: BLOOD, ambientLightIntensity: 0.35,
-    directionalLightColor: BLOOD, directionalLightIntensity: 0.45,
+    // Dark, sanguine, slowly pulsing — the confrontation theme. Kept dimmer than the
+    // rest on purpose (this is the one room meant to feel oppressive), but still well
+    // above the old near-black baseline.
+    floorColor: 0x200e10, fogColor: BLOOD, fogDensity: 0.022,
+    ambientLightColor: BLOOD, ambientLightIntensity: 0.9,
+    directionalLightColor: BLOOD, directionalLightIntensity: 0.75,
     accentColor: BLOOD, pulseSpeed: 1 / 6, // ~6s period, matches tgrid-backdrop-pulse
   },
 };
 
 const DEFAULT_PALETTE_3D: ThemePalette3D = {
-  floorColor: VOID, fogColor: GOLD, fogDensity: 0.08,
-  ambientLightColor: GOLD, ambientLightIntensity: 0.5,
-  directionalLightColor: 0xffffff, directionalLightIntensity: 0.5,
+  floorColor: VOID, fogColor: GOLD, fogDensity: 0.012,
+  ambientLightColor: GOLD, ambientLightIntensity: 1.6,
+  directionalLightColor: 0xffffff, directionalLightIntensity: 1.3,
   accentColor: GOLD,
 };
 
