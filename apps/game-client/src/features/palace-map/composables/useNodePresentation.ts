@@ -30,9 +30,7 @@ export const SIGIL_KIND_BY_NODE_TYPE: Record<string, string> = {
  * the board in a way the small flat sigil never could — a campfire, a hooded figure, a
  * suspended shard — so an objective is legible before you are on top of it.
  *
- * Only event nodes that represent *something physically there* get one. Combat/Elite/Rare and
- * the boss deliberately do not: their tile already carries a danger tell and a glow, and a
- * decorative statue on an ambush would give it away.
+ * Only event nodes that represent *something physically there* get one.
  */
 export const PROP_KIND_BY_NODE_TYPE: Record<string, 'npc' | 'star' | 'campfire'> = {
   Npc: 'npc',
@@ -42,6 +40,27 @@ export const PROP_KIND_BY_NODE_TYPE: Record<string, 'npc' | 'star' | 'campfire'>
   Memory: 'star',
   Law: 'star',
 };
+
+/**
+ * The prop a node actually paints. Types with scenery of their own keep it; a node that fires
+ * the moment you step on it and has none — an ambush — gets a pacing figure instead of an empty
+ * tile, on the creator's explicit call ("je veux tout de même mon PNJ qui se déplace dessus").
+ * The figure is what you see; whether it means you harm is what the danger tell does or does not
+ * say, so an ambush stays a real gamble rather than becoming a blank patch of floor.
+ *
+ * A boss never gets one: its tile already glows, and the remote challenge means it is never a
+ * thing you walk into by surprise.
+ */
+export function propKindFor(node: {
+  type: string;
+  isBoss?: boolean;
+  contactBehavior?: string;
+}): 'npc' | 'star' | 'campfire' | null {
+  const authored = PROP_KIND_BY_NODE_TYPE[node.type];
+  if (authored) return authored;
+  if (node.isBoss) return null;
+  return node.contactBehavior === 'TriggerOnEnter' ? 'npc' : null;
+}
 
 // Short label — used both for the hover tooltip (type only, as requested) and as the
 // side panel's kicker.

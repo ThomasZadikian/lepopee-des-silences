@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { useNodePresentation } from './useNodePresentation';
+import { propKindFor, useNodePresentation } from './useNodePresentation';
 import type { NodeDto } from '../../runs/types/runTypes';
 
 function makeNode(type: string, overrides: Partial<NodeDto> = {}): NodeDto {
@@ -70,5 +70,27 @@ describe('useNodePresentation', () => {
 
   it('assigns the sap tone to Rest', () => {
     expect(nodeTileToneClass(makeNode('Rest'))).toBe('tgrid__cell--tone-sap');
+  });
+});
+
+describe('propKindFor', () => {
+  it('keeps the authored prop for node types that have scenery of their own', () => {
+    expect(propKindFor(makeNode('Rest'))).toBe('campfire');
+    expect(propKindFor(makeNode('Npc'))).toBe('npc');
+    expect(propKindFor(makeNode('Item'))).toBe('star');
+  });
+
+  it('stands a figure on an ambush — a contact node with no scenery of its own', () => {
+    expect(propKindFor(makeNode('Combat', { contactBehavior: 'TriggerOnEnter' }))).toBe('npc');
+  });
+
+  it('leaves a node bare when nothing about it fires on contact', () => {
+    expect(propKindFor(makeNode('Combat'))).toBeNull();
+    expect(propKindFor(makeNode('Elite', { contactBehavior: 'Blocking' }))).toBeNull();
+  });
+
+  it('leaves the boss bare even on contact — its tile already carries a glow', () => {
+    expect(propKindFor(makeNode('RoomBoss', { isBoss: true, contactBehavior: 'TriggerOnEnter' })))
+      .toBeNull();
   });
 });

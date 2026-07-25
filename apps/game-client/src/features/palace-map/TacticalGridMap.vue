@@ -13,6 +13,9 @@ import {
   drawAmbient,
   drawBackdrop,
   drawDangerAura,
+  drawFireFx,
+  drawRevealFx,
+  drawStarFx,
   drawFogOfWar,
   visionRadius,
   GROUND_ANCHOR_RATIO,
@@ -158,6 +161,88 @@ const reachableCells = computed(() => {
   return set;
 });
 
+/** Cells the server still reports as holding an unfound cache. */
+const serverHintCells = computed(() => {
+  const set = new Set<string>();
+  for (const [x, y] of grid.value?.hintCells ?? []) set.add(`${x},${y}`);
+  return set;
+});
+
+// Every per-frame effect in this component is gated on this — see the paint loop below.
+const prefersReducedMotion = typeof window !== 'undefined'
+  && typeof window.matchMedia === 'function'
+  && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// ── Reveal transition ────────────────────────────────────────────────────────────
+// Searching a corner is the one moment where the room gives something back, and a cache that
+// simply blinks from hollow slab to open alcove between two frames reads as a glitch. So the
+// swap is held for half a beat and the dust of it is painted over the tile.
+const REVEAL_MS = 500;
+// The slab keeps ringing hollow until this far into the effect; past it the alcove is open
+// underneath the dust. Matches the atelier's own crossover.
+const REVEAL_KEY_FLIP = 0.45;
+
+/** cellKey → rAF timestamp the effect started at; -1 until the first frame assigns one. */
+const revealStarts = new Map<string, number>();
+/** Cells whose sprite must still read as a hint because their effect has not crossed over. */
+const revealHoldCells = ref(new Set<string>());
+
+watch(serverHintCells, (now, before) => {
+  if (prefersReducedMotion || !before) return;
+  for (const cellKey of before) {
+    if (now.has(cellKey) || revealStarts.has(cellKey)) continue;
+    revealStarts.set(cellKey, -1);
+    revealHoldCells.value = new Set(revealHoldCells.value).add(cellKey);
+  }
+});
+
+/**
+ * Advances every in-flight reveal and returns each one's progress, so the paint loop can both
+ * flip the sprite key at the crossover and composite the dust on top.
+ */
+function tickReveals(timestamp: number): Map<string, number> {
+  const progress = new Map<string, number>();
+  if (revealStarts.size === 0) return progress;
+
+  let held = revealHoldCells.value;
+  let holdChanged = false;
+
+  for (const [cellKey, start] of revealStarts) {
+    if (start < 0) {
+      revealStarts.set(cellKey, timestamp);
+      progress.set(cellKey, 0);
+      continue;
+    }
+    const t = (timestamp - start) / REVEAL_MS;
+    if (t >= 1) {
+      revealStarts.delete(cellKey);
+      if (held.has(cellKey)) {
+        if (!holdChanged) { held = new Set(held); holdChanged = true; }
+        held.delete(cellKey);
+      }
+      continue;
+    }
+    progress.set(cellKey, t);
+    if (t >= REVEAL_KEY_FLIP && held.has(cellKey)) {
+      if (!holdChanged) { held = new Set(held); holdChanged = true; }
+      held.delete(cellKey);
+    }
+  }
+
+  // Reassigned rather than mutated so the draw plan recomputes — at most twice per reveal
+  // (crossover, then end), not once per frame.
+  if (holdChanged) revealHoldCells.value = held;
+  return progress;
+}
+
+/** What the draw plan reads: the server's caches plus any whose reveal is still mid-flight. */
+const hintCells = computed(() => {
+  if (revealHoldCells.value.size === 0) return serverHintCells.value;
+  const set = new Set(serverHintCells.value);
+  for (const cellKey of revealHoldCells.value) set.add(cellKey);
+  return set;
+});
+
 const projectionParams = computed(() => {
   const g = grid.value;
   return {
@@ -183,6 +268,7 @@ const drawPlan = computed(() => {
     elevation: g.elevation,
     obstacleCells: obstacleCells.value,
     isFloor,
+    hintCells: hintCells.value,
     nodesByCell: nodesByCell.value,
     nodeTintFor,
     party: { x: displayPartyX.value, y: displayPartyY.value },
@@ -233,6 +319,7 @@ function paintCanvas(timestamp: number) {
   paintBackdrop(ctx, canvas.width, canvas.height, timestamp);
 
   const { destW, destH, propH } = spriteDest.value;
+  const revealProgress = tickReveals(timestamp);
 
   // Anything painted in front of these has to let them show through, or the player loses track
   // of where they are and what they are about to click.
@@ -250,11 +337,38 @@ function paintCanvas(timestamp: number) {
     const occludes = seeThroughTargets.some((target) => occludesTarget(entry, target, destW, destH));
     if (occludes) ctx.globalAlpha = OCCLUDER_ALPHA;
 
-    if (usesPropRect(entry.spriteKey)) {
-      // A wall stands ON the ground, so its own cell elevation is already baked into the
-      // silhouette — no extra lift here, unlike floors whose top face rises with elevation.
-      ctx.drawImage(sprite, dx, entry.screenY - (propH * PROP_GROUND_ANCHOR_RATIO), destW, propH);
+    const key = entry.spriteKey;
+
+    if (usesPropRect(key)) {
+      // Scenery rides its tile's elevation; a wall stands ON the ground, so its own cell
+      // elevation is already baked into the silhouette and it takes no extra lift.
+      const lift = key.kind === 'prop' ? elevationLiftPx(entry.elevation) : 0;
+      // A waiting figure breathes, and paces its own tile rather than standing to attention —
+      // the sway is offset by cell so a row of them never moves in unison. Both amplitudes stay
+      // well inside one tile: this reads as someone alive, not as a second movement system.
+      const isFigure = key.kind === 'prop' && key.prop === 'npc';
+      const bob = isFigure ? Math.sin((timestamp * 0.0016) + entry.x) * 1.6 : 0;
+      const pace = isFigure
+        ? Math.sin((timestamp * 0.0007) + (entry.x * 1.7) + (entry.y * 0.9)) * (destW * 0.06)
+        : 0;
+      const propDy = entry.screenY - (propH * PROP_GROUND_ANCHOR_RATIO) - lift;
+
+      ctx.drawImage(sprite, dx + pace, propDy + bob, destW, propH);
+
+      // Flame and shard are runtime effects rather than baked frames — that is what makes
+      // these props read as alive rather than as furniture.
+      if (key.kind === 'prop' && key.prop === 'campfire') {
+        drawFireFx(ctx, dx, propDy, destW, propH, timestamp);
+      }
+      if (key.kind === 'prop' && key.prop === 'star') {
+        drawStarFx(ctx, dx, propDy, destW, propH, timestamp);
+      }
     } else {
+      // The reachable wash breathes so it reads as an invitation; the cursor stays solid so
+      // the cell actually under the pointer never gets lost in that breathing.
+      if (key.kind === 'highlight' && key.variant === 'move') {
+        ctx.globalAlpha *= 0.55 + (0.45 * Math.sin((timestamp * 0.0022) + ((entry.x + entry.y) * 0.5)));
+      }
       ctx.drawImage(sprite, dx, entry.screenY - (destH * GROUND_ANCHOR_RATIO), destW, destH);
     }
 
@@ -274,6 +388,24 @@ function paintCanvas(timestamp: number) {
         timestamp,
         entry.spriteKey.elevation,
       );
+    }
+
+    // The dust of a cache being opened, over the slab that is still ringing hollow and then
+    // over the alcove underneath it — which is what carries the eye across the swap.
+    if (entry.spriteKey.kind === 'floor') {
+      const revealT = revealProgress.get(entry.cellKey);
+      if (revealT !== undefined) {
+        drawRevealFx(
+          ctx,
+          dx,
+          entry.screenY - (destH * GROUND_ANCHOR_RATIO),
+          destW,
+          destH,
+          revealT,
+          paintedTheme.value,
+          entry.spriteKey.elevation,
+        );
+      }
     }
   }
 
@@ -341,10 +473,6 @@ function paintBackdrop(ctx: CanvasRenderingContext2D, width: number, height: num
 // The ambient particle pass animates, so painting is driven by requestAnimationFrame rather
 // than by a watcher on the draw plan. Under prefers-reduced-motion nothing animates, so we fall
 // back to repainting only when the plan actually changes — same behaviour as before this change.
-const prefersReducedMotion = typeof window !== 'undefined'
-  && typeof window.matchMedia === 'function'
-  && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
 let frameHandle: number | null = null;
 
 function renderFrame(timestamp: number) {

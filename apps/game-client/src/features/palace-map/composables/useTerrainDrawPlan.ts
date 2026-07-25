@@ -1,7 +1,7 @@
 import type { DangerTell, NodeDto } from '../../runs/types/runTypes';
 import type { Cell } from './useGridCells';
 import { hashSeed } from './usePalaceTerrain';
-import { PROP_KIND_BY_NODE_TYPE } from './useNodePresentation';
+import { propKindFor } from './useNodePresentation';
 import {
   TERRAIN_SPRITE_CONSTANTS,
   cliffSides,
@@ -30,6 +30,22 @@ const DANGER_SPRITE: Record<DangerTell, 'none' | 'tracks' | 'glow' | 'blight'> =
 function dangerFor(node: NodeDto | null): 'none' | 'tracks' | 'glow' | 'blight' {
   if (!node || node.state === 'Resolved') return 'none';
   return DANGER_SPRITE[node.dangerTell ?? 'None'] ?? 'none';
+}
+
+/**
+ * A cache reads in two stages: a hollow-sounding slab before it is found, an open alcove after.
+ * The unfound stage comes from the grid's hint cells (position only — the node itself is
+ * withheld); the found stage comes from the node, which the server starts sending once it has
+ * been searched out.
+ */
+function hiddenFor(
+  cellKey: string,
+  hintCells: Set<string> | undefined,
+  node: NodeDto | null,
+): 'none' | 'hint' | 'revealed' {
+  if (hintCells?.has(cellKey)) return 'hint';
+  if (node?.hiddenState === 'Revealed') return 'revealed';
+  return 'none';
 }
 
 // BALANCE KNOB — shrinks the whole diamond inward so the outermost tile's own half-width/
@@ -180,6 +196,10 @@ export type DrawPlanEntry = {
   spriteKey: SpriteKey;
   screenX: number;
   screenY: number;
+  /** The cell's own elevation. A rendering hint, deliberately NOT part of the sprite key: a
+   * prop looks the same at any height, so baking elevation into its key would fragment the
+   * cache for nothing — but the renderer still has to lift it onto the tile it stands on. */
+  elevation: number;
   /** Painter's-algorithm depth order: further-back and shorter tiles paint first. */
   sortKey: number;
 };
@@ -210,6 +230,10 @@ export type BuildDrawPlanInput = {
   /** The party's current (possibly mid-step-animation) cell — always integer grid
    * coordinates, see usePartyTokenPath. Null before a grid exists. */
   party: { x: number; y: number } | null;
+  /** Cells holding an unfound cache — painted as a slab that rings hollow, which is the whole
+   * tell that makes searching worth a player's budget. Position only; what is under it stays
+   * unknown until searched. */
+  hintCells?: Set<string>;
   /** Cells the party may legally click to move to (revealed, walkable, affordable). Painted
    * with the 'move' highlight so the reachable area is readable at a glance instead of having
    * to be guessed from the fog. */
@@ -278,6 +302,8 @@ export function buildDrawPlan(input: BuildDrawPlanInput): DrawPlanEntry[] {
         elevation: cellElevation,
         surfaceSeed: surfaceSeedFor(cell.x, cell.y),
         ...cliffSides(cell.x, cell.y, isFloor),
+        // A slab that rings hollow, or the open alcove it becomes once searched.
+        hidden: hiddenFor(cellKey, input.hintCells, node),
         // The painted tell for a node that fires on contact. A contact node with no tell paints
         // as plain floor — that IS the ambush, and must stay indistinguishable.
         danger: dangerFor(node),
@@ -293,6 +319,7 @@ export function buildDrawPlan(input: BuildDrawPlanInput): DrawPlanEntry[] {
       spriteKey,
       screenX,
       screenY,
+      elevation: cellElevation,
       sortKey: ((cell.x + cell.y) * 4) + sortElevation,
     });
   }
@@ -306,7 +333,7 @@ export function buildDrawPlan(input: BuildDrawPlanInput): DrawPlanEntry[] {
     const node = input.nodesByCell.get(`${cell.x},${cell.y}`);
     if (!node || node.state === 'Resolved') continue;
 
-    const prop = PROP_KIND_BY_NODE_TYPE[node.type];
+    const prop = propKindFor(node);
     if (!prop) continue;
 
     const elevationLevel = input.elevation[(cell.y * input.gridWidth) + cell.x] ?? 0;
@@ -319,6 +346,7 @@ export function buildDrawPlan(input: BuildDrawPlanInput): DrawPlanEntry[] {
       spriteKey: { kind: 'prop', theme: input.theme, prop },
       screenX,
       screenY,
+      elevation: elevationLevel,
       sortKey: ((cell.x + cell.y) * 4) + elevationLevel + 0.45,
     });
   }
@@ -336,6 +364,7 @@ export function buildDrawPlan(input: BuildDrawPlanInput): DrawPlanEntry[] {
         spriteKey: { kind: 'highlight', variant: 'move', elevation: elevationLevel },
         screenX,
         screenY,
+        elevation: elevationLevel,
         // Below the cursor highlight (+0.25) so hovering a reachable cell still reads as
         // hovered rather than merging into the reachable wash.
         sortKey: ((x + y) * 4) + elevationLevel + 0.2,
@@ -355,6 +384,7 @@ export function buildDrawPlan(input: BuildDrawPlanInput): DrawPlanEntry[] {
       spriteKey: { kind: 'highlight', variant: 'cursor', elevation: elevationLevel },
       screenX,
       screenY,
+      elevation: elevationLevel,
       // Above the tile it marks, below the party token standing on it (+0.5).
       sortKey: ((x + y) * 4) + elevationLevel + 0.25,
     });
@@ -372,6 +402,7 @@ export function buildDrawPlan(input: BuildDrawPlanInput): DrawPlanEntry[] {
       spriteKey: { kind: 'party', elevation: elevationLevel },
       screenX,
       screenY,
+      elevation: elevationLevel,
       // +0.5 sorts the party strictly after its own floor/obstacle tile (same base sortKey)
       // without relying on stable-sort insertion order to break the tie — it should always
       // paint on top of the ground it's standing on, but still get occluded by any tile with

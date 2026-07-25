@@ -103,6 +103,17 @@ public sealed class Room
         _nodes.Where(n => Grid.RevealedNodeIds.Contains(n.Id) && !n.IsHidden).ToArray();
 
     /// <summary>
+    /// Cells holding a cache nobody has found yet — position only, deliberately without the
+    /// node behind it. The room shows a slab that rings hollow; what is underneath stays
+    /// unknown until it is searched, which is the whole point of spending budget on a search.
+    /// Revealed once found, so it drops out of this list and the node itself becomes visible.
+    /// </summary>
+    public IReadOnlyCollection<(int X, int Y)> HintCells => _nodes
+        .Where(node => node.IsHidden)
+        .Select(node => (node.Lane, node.Row))
+        .ToArray();
+
+    /// <summary>
     /// Hidden nodes close enough to the party to be searched out. Kept separate from
     /// <see cref="VisibleNodes"/>: the client is told a search would find something nearby, never
     /// what or exactly where.

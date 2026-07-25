@@ -19,6 +19,7 @@ function makeGrid(overrides: Partial<RoomGridDto> = {}): RoomGridDto {
     obstacleCells: [],
     floorCells: [],
     canSearch: false,
+    hintCells: [],
     ...overrides,
   };
 }

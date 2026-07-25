@@ -17,6 +17,7 @@ function makeGrid(partyX: number, partyY: number): RoomGridDto {
     obstacleCells: [],
     floorCells: [],
     canSearch: false,
+    hintCells: [],
   };
 }
 

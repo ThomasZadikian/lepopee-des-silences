@@ -345,10 +345,35 @@ describe('buildDrawPlan', () => {
         .toMatchObject({ kind: 'prop', prop: 'npc' });
     });
 
-    it('gives combat nodes no prop, so an ambush keeps no decoration to give it away', () => {
+    it('leaves a combat node bare when nothing about it fires on contact', () => {
       const plan = buildDrawPlan({
         ...baseInput,
         nodesByCell: new Map([['1,1', makeNode({ lane: 1, row: 1, type: 'Combat' })]]),
+      });
+
+      expect(plan.some((e) => e.cellKey === 'prop:1,1')).toBe(false);
+    });
+
+    it('stands a figure on an ambush, so the tile is not an empty patch of floor', () => {
+      const plan = buildDrawPlan({
+        ...baseInput,
+        nodesByCell: new Map([
+          ['1,1', makeNode({ lane: 1, row: 1, type: 'Combat', contactBehavior: 'TriggerOnEnter' })],
+        ]),
+      });
+
+      expect(plan.find((e) => e.cellKey === 'prop:1,1')!.spriteKey)
+        .toMatchObject({ kind: 'prop', prop: 'npc' });
+    });
+
+    it('keeps the boss bare even though it fires on contact — its tile already glows', () => {
+      const plan = buildDrawPlan({
+        ...baseInput,
+        nodesByCell: new Map([
+          ['1,1', makeNode({
+            lane: 1, row: 1, type: 'RoomBoss', isBoss: true, contactBehavior: 'TriggerOnEnter',
+          })],
+        ]),
       });
 
       expect(plan.some((e) => e.cellKey === 'prop:1,1')).toBe(false);
@@ -376,6 +401,27 @@ describe('buildDrawPlan', () => {
 
       expect(prop.sortKey).toBeGreaterThan(tile.sortKey);
       expect(party.sortKey).toBeGreaterThan(prop.sortKey);
+    });
+  });
+
+  describe('hidden caches', () => {
+    it('paints a hollow-sounding slab on a cell holding an unfound cache', () => {
+      // The position is all the client ever gets — no node, no type, no reward. Without this
+      // tell the player would have nothing to notice and no reason to spend budget searching.
+      const plan = buildDrawPlan({ ...baseInput, hintCells: new Set(['3,1']) });
+
+      expect(plan.find((e) => e.x === 3 && e.y === 1)!.spriteKey).toMatchObject({ hidden: 'hint' });
+      expect(plan.find((e) => e.x === 0 && e.y === 0)!.spriteKey).toMatchObject({ hidden: 'none' });
+    });
+
+    it('opens the alcove once the cache has been searched out', () => {
+      const found = makeNode({ lane: 3, row: 1, type: 'Item', hiddenState: 'Revealed' });
+      const plan = buildDrawPlan({
+        ...baseInput,
+        nodesByCell: new Map([['3,1', found]]),
+      });
+
+      expect(plan.find((e) => e.x === 3 && e.y === 1)!.spriteKey).toMatchObject({ hidden: 'revealed' });
     });
   });
 

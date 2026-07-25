@@ -65,7 +65,7 @@ public sealed record RoomDto(
             room.CatalogBinding?.Key,
             room.CatalogBinding?.DisplayName,
             room.CatalogBinding?.NarrativeText,
-            RoomGridDto.FromDomain(room.Grid, room.CanChallengeBossRemotely, room.CanSearchAtPartyPosition));
+            RoomGridDto.FromDomain(room.Grid, room.CanChallengeBossRemotely, room.CanSearchAtPartyPosition, room.HintCells));
     }
 
     private static string? ResolveActiveClimate(
@@ -112,12 +112,19 @@ public sealed record RoomGridDto(
     // in the bounding rectangle, which is what gives a room a shape (alcoves, an L, ragged
     // edges) and tells the renderer where to draw cliff faces.
     IReadOnlyList<bool> FloorCells,
-    // Whether searching from where the party stands would turn something up. Deliberately a
-    // single boolean and not the cache's position: the client may show that a search is worth
-    // trying, never what or exactly where.
-    bool CanSearch)
+    // Whether searching from where the party stands would turn something up.
+    bool CanSearch,
+    // [x,y] of every cell holding an unfound cache. POSITION ONLY — no id, type or reward: the
+    // player is meant to see that a slab rings hollow and choose whether to spend budget
+    // finding out what is under it. Withholding the position entirely (as this DTO first did)
+    // left nothing to notice, so nothing could motivate a search.
+    IReadOnlyCollection<int[]> HintCells)
 {
-    public static RoomGridDto FromDomain(RoomGrid grid, bool canChallengeBossRemotely, bool canSearch)
+    public static RoomGridDto FromDomain(
+        RoomGrid grid,
+        bool canChallengeBossRemotely,
+        bool canSearch,
+        IReadOnlyCollection<(int X, int Y)> hintCells)
     {
         return new RoomGridDto(
             grid.Width,
@@ -131,7 +138,8 @@ public sealed record RoomGridDto(
             grid.Elevation.ToArray(),
             grid.Obstacles.Select(cell => new[] { cell.X, cell.Y }).ToArray(),
             grid.FloorMask.ToArray(),
-            canSearch);
+            canSearch,
+            hintCells.Select(cell => new[] { cell.X, cell.Y }).ToArray());
     }
 }
 

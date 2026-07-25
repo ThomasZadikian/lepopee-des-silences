@@ -22,6 +22,9 @@ export type NodeDto = {
   contactBehavior?: ContactBehavior;
   /** The warning it gives off before contact. 'None' on a contact node IS the ambush. */
   dangerTell?: DangerTell;
+  /** 'Revealed' once a cache has been searched out. An unfound cache is not sent as a node at
+   * all — only its cell appears in `RoomGridDto.hintCells`. */
+  hiddenState?: 'None' | 'Hint' | 'Revealed';
 };
 
 /** Mirrors the backend ContactBehavior enum. */
@@ -92,6 +95,10 @@ export type RoomGridDto = {
   /** Whether searching from where the party stands would turn something up. Deliberately not
    * the cache's position: the player is told a search is worth trying, never what or where. */
   canSearch: boolean;
+  /** Cells holding an unfound cache, each as [x, y]. Position only — deliberately no id, type
+   * or reward: the player sees a slab that rings hollow and decides whether to spend budget
+   * finding out what is under it. */
+  hintCells: [number, number][];
 };
 
 export type RoomDto = {
