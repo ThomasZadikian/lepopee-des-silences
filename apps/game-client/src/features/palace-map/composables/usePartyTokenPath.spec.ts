@@ -13,6 +13,8 @@ function makeGrid(partyX: number, partyY: number): RoomGridDto {
     partyY,
     canChallengeBossRemotely: false,
     revealedCells: [],
+    elevation: new Array(6 * 5).fill(0),
+    obstacleCells: [],
   };
 }
 

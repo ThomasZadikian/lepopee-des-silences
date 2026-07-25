@@ -8,7 +8,7 @@ import { usePartyTokenPath } from './composables/usePartyTokenPath';
 import { useNodePresentation, NODE_TILE_TONE, RISK_TIER_DISPLAY } from './composables/useNodePresentation';
 import { useRoomBackdropTheme } from './composables/useRoomBackdropTheme';
 import { useGridCells, type Cell } from './composables/useGridCells';
-import { useTerrainSprites, GROUND_ANCHOR_RATIO, type FloorTint } from './composables/useTerrainSprites';
+import { useTerrainSprites, GROUND_ANCHOR_RATIO, TERRAIN_SPRITE_CONSTANTS, type FloorTint } from './composables/useTerrainSprites';
 import { buildDrawPlan, isoUnit, projectToScreen, unprojectFromScreen } from './composables/useTerrainDrawPlan';
 
 const props = defineProps<{
@@ -68,7 +68,7 @@ watch(canvasContainerEl, (el) => {
 onBeforeUnmount(() => canvasObserver?.disconnect());
 
 const { backdropClass, roomNuance, themeAccent } = useRoomBackdropTheme(room);
-const { nodeTileToneClass, sigilKindFor, nodeTypeLabel, nodeTypeDescription } = useNodePresentation();
+const { sigilKindFor, nodeTypeLabel, nodeTypeDescription } = useNodePresentation();
 
 const TONE_VALUES = new Set(['blood', 'gold', 'frost', 'sap']);
 
@@ -107,10 +107,30 @@ const drawPlan = computed(() => {
     obstacleCells: obstacleCells.value,
     nodesByCell: nodesByCell.value,
     nodeTintFor,
+    party: { x: displayPartyX.value, y: displayPartyY.value },
   });
 });
 
 const { getSprite, spriteAspectRatio } = useTerrainSprites();
+
+// Shared by the canvas blit loop and every DOM overlay that needs to line up with it
+// (node markers, hover highlight) — a single source of truth for tile pixel size so nothing
+// can drift out of sync with a separately-hardcoded lift constant.
+const spriteDest = computed(() => {
+  const { isoUnitX } = isoUnit(projectionParams.value);
+  const destW = isoUnitX * 2.05; // slight overlap hides seams, matches the old CSS tile ratio
+  const destH = destW / spriteAspectRatio;
+  return { destW, destH };
+});
+
+/** How many pixels a tile at this elevation sits above ground level on screen, at the
+ * canvas's current scale — matches exactly how far a terrain sprite's own top face shifts
+ * for the same elevation (see useTerrainSprites' diamondCenterY/GROUND_ANCHOR_RATIO), so a
+ * DOM overlay computing its own lift with this never drifts from what's painted on canvas. */
+function elevationLiftPx(elevationLevel: number): number {
+  const scale = spriteDest.value.destH / TERRAIN_SPRITE_CONSTANTS.SPRITE_H;
+  return elevationLevel * TERRAIN_SPRITE_CONSTANTS.BASE_STEP_PX * scale;
+}
 
 function paintCanvas() {
   const canvas = canvasEl.value;
@@ -125,9 +145,7 @@ function paintCanvas() {
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  const { isoUnitX } = isoUnit(projectionParams.value);
-  const destW = isoUnitX * 2.05; // slight overlap hides seams, matches the old CSS tile ratio
-  const destH = destW / spriteAspectRatio;
+  const { destW, destH } = spriteDest.value;
 
   for (const entry of drawPlan.value) {
     const sprite = getSprite(entry.spriteKey);
@@ -143,9 +161,11 @@ function paintCanvas() {
 
 watch(drawPlan, paintCanvas, { flush: 'post' });
 
-// ── Node markers + party token: DOM overlays positioned via the same pixel projection ──
-const TERRAIN_LIFT_PX = 8;
-
+// ── Node markers: DOM overlays positioned via the same pixel projection as the canvas ──
+// (the party token itself is now drawn INTO the canvas as part of drawPlan above — see
+// useTerrainSprites' 'party' sprite kind — so it participates in the same depth-sorted
+// painter's algorithm as terrain: a taller tile further along the diagonal correctly paints
+// over/occludes it instead of a DOM overlay always floating above the whole canvas.)
 const nodeMarkers = computed(() => {
   const g = grid.value;
   // Deliberately NOT gated on canvasSize being measured (unlike drawPlan): a marker's
@@ -162,24 +182,11 @@ const nodeMarkers = computed(() => {
     if (!node) continue;
 
     const { screenX, screenY } = projectToScreen(cell.x, cell.y, projectionParams.value);
-    const lift = terrainHeight(cell.x, cell.y) * TERRAIN_LIFT_PX;
+    const lift = elevationLiftPx(terrainHeight(cell.x, cell.y));
     markers.push({ node, screenX, screenY: screenY - lift });
   }
 
   return markers;
-});
-
-const partyMarkerStyle = computed(() => {
-  const g = grid.value;
-  if (!g) return { display: 'none' };
-
-  const { screenX, screenY } = projectToScreen(displayPartyX.value, displayPartyY.value, projectionParams.value);
-  const lift = terrainHeight(displayPartyX.value, displayPartyY.value) * TERRAIN_LIFT_PX;
-
-  return {
-    left: `${screenX}px`,
-    top: `${screenY - lift}px`,
-  };
 });
 
 // ── Click-to-move / hover: canvas has no per-cell DOM nodes, so hit-testing inverse-
@@ -217,8 +224,9 @@ function onCanvasClick(event: MouseEvent) {
   if (cell) onCellClick(cell);
 }
 
-// ── Hover tooltip: shows just the node type, following the cursor ──────────────────
+// ── Hover tooltip + cell highlight ───────────────────────────────────────────────
 const hoveredNode = ref<NodeDto | null>(null);
+const hoveredCell = ref<Cell | null>(null);
 const mouseX = ref(0);
 const mouseY = ref(0);
 
@@ -227,15 +235,37 @@ const tooltipStyle = computed(() => ({
   top: `${mouseY.value + 16}px`,
 }));
 
+/** A pulsing diamond outline over whichever cell the pointer is currently on — the same
+ * projection/lift math as everything else so it hugs the tile exactly, elevation included. */
+const hoverHighlightStyle = computed(() => {
+  const cell = hoveredCell.value;
+  if (!cell) return null;
+
+  const { screenX, screenY } = projectToScreen(cell.x, cell.y, projectionParams.value);
+  const lift = elevationLiftPx(terrainHeight(cell.x, cell.y));
+  const { destW } = spriteDest.value;
+  const scale = destW / TERRAIN_SPRITE_CONSTANTS.BASE_TILE_W;
+  const diamondH = TERRAIN_SPRITE_CONSTANTS.BASE_TILE_H * scale;
+
+  return {
+    left: `${screenX}px`,
+    top: `${screenY - lift}px`,
+    width: `${destW}px`,
+    height: `${diamondH}px`,
+  };
+});
+
 function onCanvasMouseMove(event: MouseEvent) {
   mouseX.value = event.clientX;
   mouseY.value = event.clientY;
 
   const cell = canvasPointToCell(event);
+  hoveredCell.value = cell;
   hoveredNode.value = cell ? nodeAt(cell.x, cell.y) : null;
 }
 
 function onCanvasMouseLeave() {
+  hoveredCell.value = null;
   hoveredNode.value = null;
 }
 
@@ -324,6 +354,13 @@ function toggleInfoCollapsed() {
         @mouseleave="onCanvasMouseLeave"
       />
 
+      <div
+        v-if="hoverHighlightStyle"
+        class="tgrid__hover-highlight"
+        :style="hoverHighlightStyle"
+        aria-hidden="true"
+      />
+
       <SigilIcon
         v-for="marker in nodeMarkers"
         :key="marker.node.id"
@@ -336,10 +373,6 @@ function toggleInfoCollapsed() {
         :kind="sigilKindFor(marker.node)"
         :size="20"
       />
-
-      <div class="tgrid__party" :style="partyMarkerStyle" aria-hidden="true">
-        <span class="tgrid__party-token" />
-      </div>
 
       <div
         v-if="standingNode"
@@ -593,51 +626,28 @@ function toggleInfoCollapsed() {
 @media (prefers-reduced-motion: reduce) {
   .tgrid__node-icon,
   .tgrid__info-toggle--alert,
-  .tgrid__backdrop--final {
+  .tgrid__backdrop--final,
+  .tgrid__hover-highlight {
     animation: none;
   }
-
-  .tgrid__party {
-    transition: none;
-  }
 }
 
-.tgrid__party {
+/* ── Hover highlight: pulsing diamond outline over the cell under the pointer ────── */
+.tgrid__hover-highlight {
   position: absolute;
-  width: 0;
-  height: 0;
-  /* Matches PARTY_STEP_MS in usePartyTokenPath: one cell-to-cell glide per animation
-     step, so consecutive steps hand off smoothly instead of interrupting a longer
-     transition mid-flight. */
-  transition: left 0.15s ease, top 0.15s ease;
-  pointer-events: none;
-  z-index: 100;
-}
-
-.tgrid__party-token {
-  position: absolute;
-  width: 1rem;
-  height: 1rem;
-  border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, var(--gold-hi, var(--gold)), var(--gold) 70%);
-  border: 1.5px solid color-mix(in oklch, white, transparent 30%);
-  box-shadow:
-    0 0 12px 3px color-mix(in oklch, var(--gold), transparent 25%),
-    0 3px 4px oklch(0 0 0 / 0.4);
   transform: translate(-50%, -50%);
+  clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+  background: color-mix(in oklch, var(--frost), transparent 78%);
+  outline: 2px solid color-mix(in oklch, var(--frost), transparent 15%);
+  outline-offset: -2px;
+  pointer-events: none;
+  z-index: 40;
+  animation: tgrid-hover-pulse 1.1s ease-in-out infinite;
 }
 
-.tgrid__party-token::after {
-  /* Ground ring under the token — anchors it visually to its tile like an FFT unit marker. */
-  content: '';
-  position: absolute;
-  left: 50%;
-  bottom: -6px;
-  width: 1.3rem;
-  height: 0.4rem;
-  border-radius: 50%;
-  border: 1.5px solid color-mix(in oklch, var(--gold), transparent 35%);
-  transform: translateX(-50%);
+@keyframes tgrid-hover-pulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
 }
 
 /* ── Node side panel ─────────────────────────────────────────────────────────── */

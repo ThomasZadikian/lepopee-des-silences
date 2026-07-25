@@ -69,6 +69,7 @@ describe('buildDrawPlan', () => {
     obstacleCells: new Set<string>(),
     nodesByCell: new Map<string, NodeDto>(),
     nodeTintFor: () => 'blood' as const,
+    party: null,
   };
 
   it('paints a cell with no node as an ambient-tinted floor, regardless of reveal state', () => {
@@ -149,8 +150,51 @@ describe('buildDrawPlan', () => {
     expect(taller.sortKey).toBeGreaterThan(shorter.sortKey);
   });
 
-  it('produces exactly one entry per grid cell', () => {
+  it('produces exactly one entry per grid cell, plus one for the party when present', () => {
     const plan = buildDrawPlan(baseInput);
     expect(plan).toHaveLength(25);
+
+    const withParty = buildDrawPlan({ ...baseInput, party: { x: 0, y: 0 } });
+    expect(withParty).toHaveLength(26);
+  });
+
+  describe('party token', () => {
+    it('is omitted entirely when there is no party (e.g. before a grid exists)', () => {
+      const plan = buildDrawPlan(baseInput);
+      expect(plan.some((e) => e.spriteKey.kind === 'party')).toBe(false);
+    });
+
+    it('projects to the same screen position as the cell it stands on', () => {
+      const plan = buildDrawPlan({ ...baseInput, party: { x: 2, y: 3 } });
+      const partyEntry = plan.find((e) => e.spriteKey.kind === 'party')!;
+      const cellEntry = plan.find((e) => e.x === 2 && e.y === 3 && e.spriteKey.kind !== 'party')!;
+      expect(partyEntry.screenX).toBe(cellEntry.screenX);
+      expect(partyEntry.screenY).toBe(cellEntry.screenY);
+    });
+
+    it("reads its own elevation from the cell it's standing on", () => {
+      const elevation = new Array(25).fill(0);
+      elevation[(3 * 5) + 2] = 2; // cell (x=2, y=3)
+      const plan = buildDrawPlan({ ...baseInput, elevation, party: { x: 2, y: 3 } });
+      const partyEntry = plan.find((e) => e.spriteKey.kind === 'party')!;
+      expect(partyEntry.spriteKey).toMatchObject({ kind: 'party', elevation: 2 });
+    });
+
+    it('sorts strictly after its own floor tile, so it paints on top of the ground it stands on', () => {
+      const plan = buildDrawPlan({ ...baseInput, party: { x: 2, y: 3 } });
+      const partyEntry = plan.find((e) => e.spriteKey.kind === 'party')!;
+      const cellEntry = plan.find((e) => e.x === 2 && e.y === 3 && e.spriteKey.kind !== 'party')!;
+      expect(partyEntry.sortKey).toBeGreaterThan(cellEntry.sortKey);
+    });
+
+    it('still sorts behind a taller tile further along the diagonal (gets occluded by it)', () => {
+      const elevation = new Array(25).fill(0);
+      elevation[(0 * 5) + 4] = 3; // (4,0): x+y=4, elevation 3
+      // Party at (2,2): x+y=4, elevation 0 — same diagonal sum, but shorter.
+      const plan = buildDrawPlan({ ...baseInput, elevation, party: { x: 2, y: 2 } });
+      const partyEntry = plan.find((e) => e.spriteKey.kind === 'party')!;
+      const tallTile = plan.find((e) => e.x === 4 && e.y === 0)!;
+      expect(tallTile.sortKey).toBeGreaterThan(partyEntry.sortKey);
+    });
   });
 });

@@ -83,6 +83,9 @@ export type BuildDrawPlanInput = {
   nodesByCell: Map<string, NodeDto>;
   /** Resolves a node's own tint (see NODE_TILE_TONE), 'neutral' for unmapped types. */
   nodeTintFor: (node: NodeDto) => FloorTint;
+  /** The party's current (possibly mid-step-animation) cell — always integer grid
+   * coordinates, see usePartyTokenPath. Null before a grid exists. */
+  party: { x: number; y: number } | null;
 };
 
 /**
@@ -136,6 +139,26 @@ export function buildDrawPlan(input: BuildDrawPlanInput): DrawPlanEntry[] {
       screenX,
       screenY,
       sortKey: ((cell.x + cell.y) * 4) + elevationLevel,
+    });
+  }
+
+  if (input.party) {
+    const { x, y } = input.party;
+    const elevationLevel = input.elevation[(y * input.gridWidth) + x] ?? 0;
+    const { screenX, screenY } = projectToScreen(x, y, projection);
+
+    entries.push({
+      cellKey: 'party',
+      x,
+      y,
+      spriteKey: { kind: 'party', elevation: elevationLevel },
+      screenX,
+      screenY,
+      // +0.5 sorts the party strictly after its own floor/obstacle tile (same base sortKey)
+      // without relying on stable-sort insertion order to break the tie — it should always
+      // paint on top of the ground it's standing on, but still get occluded by any tile with
+      // a genuinely higher sortKey (a taller cell further along the diagonal).
+      sortKey: ((x + y) * 4) + elevationLevel + 0.5,
     });
   }
 

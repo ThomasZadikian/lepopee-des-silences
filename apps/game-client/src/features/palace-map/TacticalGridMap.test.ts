@@ -1,9 +1,8 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { mount } from '@vue/test-utils';
 import TacticalGridMap from './TacticalGridMap.vue';
 import type { NodeDto, RoomDto, RoomGridDto } from '../runs/types/runTypes';
-import { projectToScreen } from './composables/useTerrainDrawPlan';
 
 function makeNode(overrides: Partial<NodeDto> = {}): NodeDto {
   return {
@@ -357,79 +356,11 @@ describe('TacticalGridMap', () => {
       .not.toBe(wrapperB.find('.tgrid__backdrop').attributes('style'));
   });
 
-  // ── Party token position + movement animation ──────────────────────────────────
-  // canvasSize falls back to a fixed 100x100 square before any real ResizeObserver
-  // measurement (jsdom has none), so projections stay distinct/meaningful in tests —
-  // see the comment on canvasSize's declaration in TacticalGridMap.vue.
-
-  it('positions the party token at a screen coordinate derived from its grid cell', () => {
-    const room = makeRoom({}, { partyX: 1, partyY: 0 });
-    const wrapper = mount(TacticalGridMap, { props: { room } });
-    const style = wrapper.find('.tgrid__party').attributes('style') ?? '';
-    expect(style).toMatch(/left:\s*[\d.]+px/);
-    expect(style).toMatch(/top:\s*[\d.]+px/);
-  });
-
-  it('steps the party token through each intermediate cell instead of jumping straight to the destination', async () => {
-    vi.useFakeTimers();
-    try {
-      const room = makeRoom({}, { partyX: 0, partyY: 0, revealedCells: [[0, 0], [1, 0], [2, 0]] });
-      const wrapper = mount(TacticalGridMap, { props: { room } });
-
-      const extractLeft = (style: string | undefined) => style?.match(/left:\s*([\d.]+)px/)?.[1];
-      const currentPartyLeft = () => extractLeft(wrapper.find('.tgrid__party').attributes('style'));
-
-      const startLeft = currentPartyLeft();
-
-      await wrapper.setProps({
-        room: makeRoom({}, { partyX: 2, partyY: 0, revealedCells: [[0, 0], [1, 0], [2, 0]] }),
-      });
-
-      // The animation hasn't ticked yet right after the prop change (usePartyTokenPath steps
-      // over time via setInterval, it doesn't jump), so the expected final position has to be
-      // computed independently rather than read from the DOM at this instant.
-      const finalLeft = String(projectToScreen(2, 0, { canvasWidth: 100, canvasHeight: 100, gridWidth: 3, gridHeight: 3 }).screenX);
-
-      // One step interval in: the token should have advanced exactly one cell — neither
-      // still at the start nor already at the destination, since the move animates
-      // cell-by-cell rather than jumping straight there.
-      vi.advanceTimersByTime(150);
-      await wrapper.vm.$nextTick();
-      const midLeft = currentPartyLeft();
-      expect(midLeft).not.toBe(startLeft);
-      expect(Number(midLeft)).not.toBeCloseTo(Number(finalLeft), 5);
-
-      vi.advanceTimersByTime(1000);
-      await wrapper.vm.$nextTick();
-
-      expect(Number(currentPartyLeft())).toBeCloseTo(Number(finalLeft), 5);
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-
-  it('snaps the party token immediately (no animation) when the room changes', async () => {
-    vi.useFakeTimers();
-    try {
-      const roomA = makeRoom({ id: 'room-1' }, { partyX: 0, partyY: 0 });
-      const wrapper = mount(TacticalGridMap, { props: { room: roomA } });
-
-      const roomB = makeRoom({ id: 'room-2' }, { partyX: 1, partyY: 0 });
-      await wrapper.setProps({ room: roomB });
-
-      const partyLeft = wrapper.find('.tgrid__party').attributes('style')
-        ?.match(/left:\s*([\d.]+)px/)?.[1];
-
-      // No animation frame in between: the left value must already equal (1,0)'s own
-      // projection right after the prop change, not still be mid-transition from (0,0).
-      // Grid is 3x3 in makeGrid(); canvasSize falls back to the fixed 100x100 square.
-      const expected = projectToScreen(1, 0, {
-        canvasWidth: 100, canvasHeight: 100, gridWidth: 3, gridHeight: 3,
-      });
-
-      expect(Number(partyLeft)).toBeCloseTo(expected.screenX, 5);
-    } finally {
-      vi.useRealTimers();
-    }
-  });
+  // Party token position + step-by-step movement animation: the token is now drawn INTO the
+  // terrain canvas (see useTerrainSprites' 'party' sprite kind), not a separate DOM element,
+  // so there's no `.tgrid__party` node left to query here. Its screen position/sprite/depth-
+  // sort entry is pure and framework-agnostic by construction — see useTerrainDrawPlan.spec.ts
+  // ("party token" describe block). The underlying step-by-step animation timing (X-then-Y,
+  // one cell per PARTY_STEP_MS) is covered by usePartyTokenPath.spec.ts, which still drives
+  // the same displayPartyX/displayPartyY this component feeds into the draw plan.
 });
