@@ -1,6 +1,22 @@
 import type { NodeDto } from '../../runs/types/runTypes';
 import type { Cell } from './useGridCells';
-import { TERRAIN_SPRITE_CONSTANTS, type FloorTint, type SpriteKey } from './useTerrainSprites';
+import { hashSeed } from './usePalaceTerrain';
+import {
+  TERRAIN_SPRITE_CONSTANTS,
+  cliffSides,
+  obstacleVariantCount,
+  type FloorTint,
+  type RoomTheme,
+  type SpriteKey,
+} from './useTerrainSprites';
+
+/** How many hand-painted brush variations a floor cycles through, so a large flat area never
+ * reads as one tile stamped repeatedly. Formula from the tile-engine handoff. */
+const SURFACE_SEED_COUNT = 5;
+
+function surfaceSeedFor(x: number, y: number): number {
+  return ((x * 7) + (y * 13)) % SURFACE_SEED_COUNT;
+}
 
 // BALANCE KNOB — shrinks the whole diamond inward so the outermost tile's own half-width/
 // half-height never reaches the canvas edge (mirrors the old CSS ISO_FIT).
@@ -141,9 +157,17 @@ export type BuildDrawPlanInput = {
   canvasHeight: number;
   /** The room theme's own accent tone (see THEME_ACCENT), used for plain floor tiles. */
   ambientTint: FloorTint;
+  /** The room's theme — what gives its tiles their painted material (marble, moss, planks…).
+   * Backend `RoomThemeResolver` emits exactly the 7 names the tile engine paints. */
+  theme: RoomTheme;
   /** Flat, row-major, one 0..3 value per cell. */
   elevation: number[];
   obstacleCells: Set<string>;
+  /** Whether a cell is part of the room at all. Cliff faces are painted on tiles whose
+   * front-left/front-right neighbour is NOT floor, which is what makes a non-rectangular room
+   * read as having real edges. Defaults to "everything inside the grid is floor" — the grid is
+   * still a full rectangle server-side, so today only the outer border grows cliffs. */
+  isFloor?: (x: number, y: number) => boolean;
   /** Keyed "x,y" (matches useGridCells' nodesByCell, which keys by lane,row = x,y). */
   nodesByCell: Map<string, NodeDto>;
   /** Resolves a node's own tint (see NODE_TILE_TONE), 'neutral' for unmapped types. */
@@ -151,6 +175,9 @@ export type BuildDrawPlanInput = {
   /** The party's current (possibly mid-step-animation) cell — always integer grid
    * coordinates, see usePartyTokenPath. Null before a grid exists. */
   party: { x: number; y: number } | null;
+  /** The cell under the pointer, if any — painted as a highlight sprite hugging that tile's
+   * own diamond at its own elevation. Null when the pointer is off the board. */
+  hoveredCell?: { x: number; y: number } | null;
 };
 
 /**
@@ -172,17 +199,31 @@ export function buildDrawPlan(input: BuildDrawPlanInput): DrawPlanEntry[] {
 
   const entries: DrawPlanEntry[] = [];
 
+  const isFloor = input.isFloor
+    ?? ((x: number, y: number) => x >= 0 && x < input.gridWidth && y >= 0 && y < input.gridHeight);
+  const wallVariants = obstacleVariantCount(input.theme);
+
   for (const cell of input.cells) {
     const cellKey = `${cell.x},${cell.y}`;
     const node = input.nodesByCell.get(cellKey) ?? null;
     const obstacle = input.obstacleCells.has(cellKey);
-    const elevationLevel = input.elevation[(cell.y * input.gridWidth) + cell.x] ?? 0;
+    const cellElevation = input.elevation[(cell.y * input.gridWidth) + cell.x] ?? 0;
+    // A wall is painted as a full-height silhouette regardless of the ground under it, so it
+    // must also SORT at full height — otherwise a tall floor tile beside it would paint over
+    // the wall it is supposed to stand behind.
+    const sortElevation = obstacle ? TERRAIN_SPRITE_CONSTANTS.MAX_ELEVATION : cellElevation;
     const { screenX, screenY } = projectToScreen(cell.x, cell.y, projection);
 
     let spriteKey: SpriteKey;
 
     if (obstacle) {
-      spriteKey = { kind: 'obstacle' };
+      spriteKey = {
+        kind: 'obstacle',
+        theme: input.theme,
+        // Deterministic per cell: the same wall keeps the same silhouette across repaints,
+        // but three distinct ones alternate across the room instead of one stamped everywhere.
+        variant: wallVariants > 0 ? hashSeed(cellKey) % wallVariants : 0,
+      };
     } else {
       const tint: FloorTint = node
         ? (node.isBoss ? 'blood' : input.nodeTintFor(node))
@@ -190,7 +231,10 @@ export function buildDrawPlan(input: BuildDrawPlanInput): DrawPlanEntry[] {
       spriteKey = {
         kind: 'floor',
         tint,
-        elevation: elevationLevel,
+        theme: input.theme,
+        elevation: cellElevation,
+        surfaceSeed: surfaceSeedFor(cell.x, cell.y),
+        ...cliffSides(cell.x, cell.y, isFloor),
         resolved: node?.state === 'Resolved',
         glow: node?.isBoss ?? false,
       };
@@ -203,7 +247,24 @@ export function buildDrawPlan(input: BuildDrawPlanInput): DrawPlanEntry[] {
       spriteKey,
       screenX,
       screenY,
-      sortKey: ((cell.x + cell.y) * 4) + elevationLevel,
+      sortKey: ((cell.x + cell.y) * 4) + sortElevation,
+    });
+  }
+
+  if (input.hoveredCell) {
+    const { x, y } = input.hoveredCell;
+    const elevationLevel = input.elevation[(y * input.gridWidth) + x] ?? 0;
+    const { screenX, screenY } = projectToScreen(x, y, projection);
+
+    entries.push({
+      cellKey: 'hover',
+      x,
+      y,
+      spriteKey: { kind: 'highlight', variant: 'cursor', elevation: elevationLevel },
+      screenX,
+      screenY,
+      // Above the tile it marks, below the party token standing on it (+0.5).
+      sortKey: ((x + y) * 4) + elevationLevel + 0.25,
     });
   }
 

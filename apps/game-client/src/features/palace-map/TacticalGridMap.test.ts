@@ -316,45 +316,12 @@ describe('TacticalGridMap', () => {
     expect(wrapper.find('.tgrid__laws-tab-count').exists()).toBe(false);
   });
 
-  // ── Room backdrop (theme-coherent, CSS-only) ────────────────────────────────────
-
-  it.each([
-    ['Threshold', 'tgrid__backdrop--threshold'],
-    ['Memory', 'tgrid__backdrop--memory'],
-    ['Forest', 'tgrid__backdrop--forest'],
-    ['Rupture', 'tgrid__backdrop--rupture'],
-    ['Silence', 'tgrid__backdrop--silence'],
-    ['Antechamber', 'tgrid__backdrop--antechamber'],
-    ['Final', 'tgrid__backdrop--final'],
-  ])('applies the %s theme backdrop class', (theme, expectedClass) => {
-    const room = makeRoom({ theme });
-    const wrapper = mount(TacticalGridMap, { props: { room } });
-    expect(wrapper.find('.tgrid__backdrop').classes()).toContain(expectedClass);
-  });
-
-  it('falls back to the default backdrop for an unrecognized theme', () => {
-    const room = makeRoom({ theme: 'La Forêt' });
-    const wrapper = mount(TacticalGridMap, { props: { room } });
-    expect(wrapper.find('.tgrid__backdrop').classes()).toContain('tgrid__backdrop--default');
-  });
-
-  it('gives two rooms with the same id the same backdrop nuance', () => {
-    const roomA = makeRoom({ id: 'room-42', theme: 'Forest' });
-    const roomB = makeRoom({ id: 'room-42', theme: 'Forest' });
-    const wrapperA = mount(TacticalGridMap, { props: { room: roomA } });
-    const wrapperB = mount(TacticalGridMap, { props: { room: roomB } });
-    expect(wrapperA.find('.tgrid__backdrop').attributes('style'))
-      .toBe(wrapperB.find('.tgrid__backdrop').attributes('style'));
-  });
-
-  it('gives two rooms with different ids a different backdrop nuance', () => {
-    const roomA = makeRoom({ id: 'room-1', theme: 'Forest' });
-    const roomB = makeRoom({ id: 'room-999', theme: 'Forest' });
-    const wrapperA = mount(TacticalGridMap, { props: { room: roomA } });
-    const wrapperB = mount(TacticalGridMap, { props: { room: roomB } });
-    expect(wrapperA.find('.tgrid__backdrop').attributes('style'))
-      .not.toBe(wrapperB.find('.tgrid__backdrop').attributes('style'));
-  });
+  // Room backdrop: the seven per-theme CSS gradient stacks are gone — the backdrop is now
+  // painted into the terrain canvas by the tile engine (drawBackdrop), seeded by the room id.
+  // There is no `.tgrid__backdrop` element left to assert on, and jsdom cannot judge canvas
+  // pixels. The decision those tests really guarded — which theme a room resolves to, and the
+  // fallback for an unknown one — moved to useRoomBackdropTheme.spec.ts, where it is testable
+  // without mounting anything.
 
   // Party token position + step-by-step movement animation: the token is now drawn INTO the
   // terrain canvas (see useTerrainSprites' 'party' sprite kind), not a separate DOM element,

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 import SigilIcon from '../../shared/components/SigilIcon.vue';
 import type { NodeDto, RoomDto } from '../runs/types/runTypes';
@@ -8,7 +8,15 @@ import { usePartyTokenPath } from './composables/usePartyTokenPath';
 import { useNodePresentation, NODE_TILE_TONE, RISK_TIER_DISPLAY } from './composables/useNodePresentation';
 import { useRoomBackdropTheme } from './composables/useRoomBackdropTheme';
 import { useGridCells, type Cell } from './composables/useGridCells';
-import { useTerrainSprites, GROUND_ANCHOR_RATIO, TERRAIN_SPRITE_CONSTANTS, type FloorTint } from './composables/useTerrainSprites';
+import {
+  useTerrainSprites,
+  drawAmbient,
+  drawBackdrop,
+  GROUND_ANCHOR_RATIO,
+  PROP_GROUND_ANCHOR_RATIO,
+  TERRAIN_SPRITE_CONSTANTS,
+  type FloorTint,
+} from './composables/useTerrainSprites';
 import { buildDrawPlan, isoUnit, projectToScreen, screenToCell } from './composables/useTerrainDrawPlan';
 
 const props = defineProps<{
@@ -41,13 +49,14 @@ const { displayPartyX, displayPartyY } = usePartyTokenPath(room, grid);
 const { terrainHeight } = usePalaceTerrain(room, grid);
 
 // ── Canvas terrain renderer ──────────────────────────────────────────────────────
-// The grid/fog/party overlays used to be individual absolutely-positioned DOM `<button>`s
-// per cell, projected via a CSS-percent isometric formula. That's replaced here by a single
-// `<canvas>` painting procedurally-generated tile sprites (see useTerrainSprites.ts) at real
-// pixel positions (see useTerrainDrawPlan.ts) — node icons and the party token stay DOM
-// overlays layered on top (SigilIcon is SVG, no reason to duplicate it in canvas; their
-// animation/transition needs don't fit a redraw-per-frame model either).
+// A single `<canvas>` paints hand-painted isometric tiles (see useTerrainSprites.ts, backed by
+// the dependency-free tilecraft engine) at real pixel positions (see useTerrainDrawPlan.ts).
+// Terrain, walls, the party token and the hover highlight all live INSIDE the canvas so they
+// share one depth-sorted painter's pass; only node markers (SVG SigilIcon) and the surrounding
+// chrome — side panel, tabs, tooltip, boss banner — stay DOM overlays on top.
 const canvasContainerEl = ref<HTMLElement | null>(null);
+/** The cell under the pointer. Declared up here because the draw plan reads it. */
+const hoveredCell = ref<Cell | null>(null);
 const canvasEl = ref<HTMLCanvasElement | null>(null);
 // A square fallback (not 0×0) so every projection/hit-test stays meaningful before the
 // ResizeObserver's first real measurement — first paint, or a test environment (e.g. jsdom)
@@ -67,7 +76,9 @@ watch(canvasContainerEl, (el) => {
 
 onBeforeUnmount(() => canvasObserver?.disconnect());
 
-const { backdropClass, roomNuance, themeAccent } = useRoomBackdropTheme(room);
+// `paintedTheme` is what drives the tile materials, palette and backdrop scenery; `themeAccent`
+// is the CSS token the surrounding DOM chrome borrows so panel/tab accents match the room.
+const { paintedTheme, themeAccent } = useRoomBackdropTheme(room);
 const { sigilKindFor, nodeTypeLabel, nodeTypeDescription } = useNodePresentation();
 
 const TONE_VALUES = new Set(['blood', 'gold', 'frost', 'sap']);
@@ -103,63 +114,128 @@ const drawPlan = computed(() => {
     canvasWidth: canvasSize.value.width,
     canvasHeight: canvasSize.value.height,
     ambientTint: ambientTint.value,
+    theme: paintedTheme.value,
     elevation: g.elevation,
     obstacleCells: obstacleCells.value,
     nodesByCell: nodesByCell.value,
     nodeTintFor,
     party: { x: displayPartyX.value, y: displayPartyY.value },
+    hoveredCell: hoveredCell.value,
   });
 });
 
-const { getSprite, spriteAspectRatio } = useTerrainSprites();
+const { getSprite, spriteAspectRatio, propAspectRatio, usesPropRect } = useTerrainSprites();
 
-// Shared by the canvas blit loop and every DOM overlay that needs to line up with it
-// (node markers, hover highlight) — a single source of truth for tile pixel size so nothing
-// can drift out of sync with a separately-hardcoded lift constant.
+// Shared by the canvas blit loop and every DOM overlay that needs to line up with it (node
+// markers) — a single source of truth for tile pixel size so nothing can drift out of sync
+// with a separately-hardcoded lift constant.
+//
+// Painted sprites come on TWO canvas sizes with two different ground anchors: floors/party/
+// highlights on the short one, walls and scenery on a much taller one (a wall silhouette rises
+// well above its own tile and would be chopped flat otherwise). Blitting a wall with the floor
+// anchor sinks it into the ground, so both rects are computed here and picked per sprite key.
 const spriteDest = computed(() => {
   const { isoUnitX } = isoUnit(projectionParams.value);
   const destW = isoUnitX * 2.05; // slight overlap hides seams, matches the old CSS tile ratio
-  const destH = destW / spriteAspectRatio;
-  return { destW, destH };
+  return { destW, destH: destW / spriteAspectRatio, propH: destW / propAspectRatio };
 });
 
 /** How many pixels a tile at this elevation sits above ground level on screen, at the
  * canvas's current scale — matches exactly how far a terrain sprite's own top face shifts
- * for the same elevation (see useTerrainSprites' diamondCenterY/GROUND_ANCHOR_RATIO), so a
- * DOM overlay computing its own lift with this never drifts from what's painted on canvas. */
+ * for the same elevation, so a DOM overlay computing its own lift with this never drifts from
+ * what's painted on canvas. Always derived from the FLOOR canvas, never the tall one. */
 function elevationLiftPx(elevationLevel: number): number {
   const scale = spriteDest.value.destH / TERRAIN_SPRITE_CONSTANTS.SPRITE_H;
   return elevationLevel * TERRAIN_SPRITE_CONSTANTS.BASE_STEP_PX * scale;
 }
 
-function paintCanvas() {
+function paintCanvas(timestamp: number) {
   const canvas = canvasEl.value;
   const g = grid.value;
   if (!canvas || !g || canvasSize.value.width === 0) return;
 
-  canvas.width = canvasSize.value.width;
-  canvas.height = canvasSize.value.height;
+  if (canvas.width !== canvasSize.value.width || canvas.height !== canvasSize.value.height) {
+    canvas.width = canvasSize.value.width;
+    canvas.height = canvasSize.value.height;
+  }
 
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+  paintBackdrop(ctx, canvas.width, canvas.height, timestamp);
 
-  const { destW, destH } = spriteDest.value;
+  const { destW, destH, propH } = spriteDest.value;
 
   for (const entry of drawPlan.value) {
     const sprite = getSprite(entry.spriteKey);
-    ctx.drawImage(
-      sprite,
-      entry.screenX - (destW / 2),
-      entry.screenY - (destH * GROUND_ANCHOR_RATIO),
-      destW,
-      destH,
-    );
+    const dx = entry.screenX - (destW / 2);
+
+    if (usesPropRect(entry.spriteKey)) {
+      // A wall stands ON the ground, so its own cell elevation is already baked into the
+      // silhouette — no extra lift here, unlike floors whose top face rises with elevation.
+      ctx.drawImage(sprite, dx, entry.screenY - (propH * PROP_GROUND_ANCHOR_RATIO), destW, propH);
+    } else {
+      ctx.drawImage(sprite, dx, entry.screenY - (destH * GROUND_ANCHOR_RATIO), destW, destH);
+    }
   }
+
+  drawAmbient(ctx, canvas.width, canvas.height, paintedTheme.value, timestamp);
 }
 
-watch(drawPlan, paintCanvas, { flush: 'post' });
+// ── Backdrop: painted, cached, theme-driven ──────────────────────────────────────
+// Replaces the seven per-theme CSS gradient stacks that used to live in this component's
+// <style> block. It's the single most expensive thing painted per frame and the only one whose
+// content barely moves, so it's baked into an offscreen canvas and re-blitted — invalidated on
+// resize or a room/theme change, never per frame.
+const backdropCache = { canvas: null as HTMLCanvasElement | null, key: '' };
+
+function paintBackdrop(ctx: CanvasRenderingContext2D, width: number, height: number, timestamp: number) {
+  const key = `${width}x${height}:${paintedTheme.value}:${room.value.id}`;
+
+  if (backdropCache.key !== key || !backdropCache.canvas) {
+    const offscreen = document.createElement('canvas');
+    offscreen.width = width;
+    offscreen.height = height;
+    const offCtx = offscreen.getContext('2d');
+    if (!offCtx) {
+      // jsdom and other canvas-less environments: skip the backdrop rather than crash.
+      drawBackdrop(ctx, width, height, paintedTheme.value, timestamp, room.value.id, { scenery: true });
+      return;
+    }
+    drawBackdrop(offCtx, width, height, paintedTheme.value, timestamp, room.value.id, { scenery: true });
+    backdropCache.canvas = offscreen;
+    backdropCache.key = key;
+  }
+
+  ctx.drawImage(backdropCache.canvas, 0, 0);
+}
+
+// ── Paint loop ───────────────────────────────────────────────────────────────────
+// The ambient particle pass animates, so painting is driven by requestAnimationFrame rather
+// than by a watcher on the draw plan. Under prefers-reduced-motion nothing animates, so we fall
+// back to repainting only when the plan actually changes — same behaviour as before this change.
+const prefersReducedMotion = typeof window !== 'undefined'
+  && typeof window.matchMedia === 'function'
+  && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+let frameHandle: number | null = null;
+
+function renderFrame(timestamp: number) {
+  paintCanvas(timestamp);
+  frameHandle = requestAnimationFrame(renderFrame);
+}
+
+if (prefersReducedMotion || typeof requestAnimationFrame === 'undefined') {
+  watch(drawPlan, () => paintCanvas(0), { flush: 'post' });
+} else {
+  onMounted(() => {
+    frameHandle = requestAnimationFrame(renderFrame);
+  });
+  onBeforeUnmount(() => {
+    if (frameHandle !== null) cancelAnimationFrame(frameHandle);
+  });
+}
 
 // ── Node markers: DOM overlays positioned via the same pixel projection as the canvas ──
 // (the party token itself is now drawn INTO the canvas as part of drawPlan above — see
@@ -227,9 +303,12 @@ function onCanvasClick(event: MouseEvent) {
   if (cell) onCellClick(cell);
 }
 
-// ── Hover tooltip + cell highlight ───────────────────────────────────────────────
+// ── Hover tooltip ────────────────────────────────────────────────────────────────
+// The hovered cell's own highlight is painted INTO the canvas (see the draw plan's
+// 'highlight' sprite) so it hugs the tile's real diamond at its real elevation and sorts
+// correctly against neighbouring tiles — `hoveredCell` itself is declared further up because
+// the draw plan reads it.
 const hoveredNode = ref<NodeDto | null>(null);
-const hoveredCell = ref<Cell | null>(null);
 const mouseX = ref(0);
 const mouseY = ref(0);
 
@@ -237,26 +316,6 @@ const tooltipStyle = computed(() => ({
   left: `${mouseX.value + 16}px`,
   top: `${mouseY.value + 16}px`,
 }));
-
-/** A pulsing diamond outline over whichever cell the pointer is currently on — the same
- * projection/lift math as everything else so it hugs the tile exactly, elevation included. */
-const hoverHighlightStyle = computed(() => {
-  const cell = hoveredCell.value;
-  if (!cell) return null;
-
-  const { screenX, screenY } = projectToScreen(cell.x, cell.y, projectionParams.value);
-  const lift = elevationLiftPx(terrainHeight(cell.x, cell.y));
-  const { destW } = spriteDest.value;
-  const scale = destW / TERRAIN_SPRITE_CONSTANTS.BASE_TILE_W;
-  const diamondH = TERRAIN_SPRITE_CONSTANTS.BASE_TILE_H * scale;
-
-  return {
-    left: `${screenX}px`,
-    top: `${screenY - lift}px`,
-    width: `${destW}px`,
-    height: `${diamondH}px`,
-  };
-});
 
 function onCanvasMouseMove(event: MouseEvent) {
   mouseX.value = event.clientX;
@@ -340,13 +399,6 @@ function toggleInfoCollapsed() {
       class="tgrid__canvas"
       :style="{ '--theme-accent': `var(${themeAccent})` }"
     >
-      <div
-        class="tgrid__backdrop"
-        :class="backdropClass"
-        :style="{ '--room-nuance': roomNuance }"
-        aria-hidden="true"
-      />
-
       <canvas
         ref="canvasEl"
         class="tgrid__terrain-canvas"
@@ -355,13 +407,6 @@ function toggleInfoCollapsed() {
         @click="onCanvasClick"
         @mousemove="onCanvasMouseMove"
         @mouseleave="onCanvasMouseLeave"
-      />
-
-      <div
-        v-if="hoverHighlightStyle"
-        class="tgrid__hover-highlight"
-        :style="hoverHighlightStyle"
-        aria-hidden="true"
       />
 
       <SigilIcon
@@ -517,90 +562,6 @@ function toggleInfoCollapsed() {
   height: 100%;
 }
 
-/* ── Room backdrop: thematic, coherent within a theme, lightly nuanced per room ─────
-   Pure CSS (no image assets, no 3D library) — layered gradients per theme, with a
-   small deterministic hue drift (--room-nuance) so two rooms sharing a theme still
-   read as the same place while not being pixel-identical. Sits behind the terrain
-   canvas, visible through/around the painted diamonds. */
-.tgrid__backdrop {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  overflow: hidden;
-  filter: hue-rotate(calc((var(--room-nuance, 50) - 50) * 0.3deg));
-}
-
-.tgrid__backdrop--default {
-  background:
-    radial-gradient(circle at 20% 50%, var(--wash-gold), transparent 25%),
-    radial-gradient(circle at 88% 50%, var(--wash-blood), transparent 20%),
-    var(--void);
-}
-
-.tgrid__backdrop--threshold {
-  /* Seuil — porte liminale : colonne de lumière verticale, vignette brumeuse. */
-  background:
-    linear-gradient(90deg, transparent 42%, color-mix(in oklch, var(--frost), transparent 82%) 50%, transparent 58%),
-    radial-gradient(ellipse at 50% 100%, color-mix(in oklch, var(--void), black 20%), transparent 70%),
-    var(--void);
-}
-
-.tgrid__backdrop--memory {
-  /* Mémoire — sépia chaud, fines ondulations horizontales façon page tournée. */
-  background:
-    repeating-linear-gradient(0deg, transparent 0 22px, color-mix(in oklch, var(--gold), transparent 92%) 22px 23px),
-    radial-gradient(circle at 30% 20%, color-mix(in oklch, var(--gold), transparent 85%), transparent 60%),
-    color-mix(in oklch, var(--void), var(--gold) 4%);
-}
-
-.tgrid__backdrop--forest {
-  /* Forêt — vert profond, troncs verticaux répétés. */
-  background:
-    repeating-linear-gradient(90deg, color-mix(in oklch, var(--void), var(--sap) 6%) 0 26px, color-mix(in oklch, var(--void), black 15%) 26px 30px),
-    radial-gradient(circle at 50% 0%, color-mix(in oklch, var(--sap), transparent 80%), transparent 65%),
-    color-mix(in oklch, var(--void), var(--sap) 5%);
-}
-
-.tgrid__backdrop--rupture {
-  /* Rupture — fractures anguleuses, croisées, teintées de sang. */
-  background:
-    repeating-linear-gradient(35deg, transparent 0 40px, color-mix(in oklch, var(--blood), transparent 88%) 40px 42px),
-    repeating-linear-gradient(-35deg, transparent 0 55px, color-mix(in oklch, var(--blood), transparent 90%) 55px 57px),
-    color-mix(in oklch, var(--void), var(--blood) 6%);
-}
-
-.tgrid__backdrop--silence {
-  /* Silence — pâle, immobile, ondes concentriques comme une eau stagnante. */
-  background:
-    radial-gradient(circle at 50% 50%,
-      transparent 0 18%, color-mix(in oklch, var(--frost), transparent 92%) 18% 19%,
-      transparent 19% 34%, color-mix(in oklch, var(--frost), transparent 94%) 34% 35%,
-      transparent 35%),
-    color-mix(in oklch, var(--void), var(--frost) 4%);
-}
-
-.tgrid__backdrop--antechamber {
-  /* Antichambre — colonnade dorée, formelle. */
-  background:
-    repeating-linear-gradient(90deg, color-mix(in oklch, var(--gold), transparent 90%) 0 3px, transparent 3px 64px),
-    radial-gradient(ellipse at 50% -10%, color-mix(in oklch, var(--gold), transparent 82%), transparent 55%),
-    color-mix(in oklch, var(--void), var(--gold) 3%);
-}
-
-.tgrid__backdrop--final {
-  /* Confrontation finale — pulsation sombre et sanglante. */
-  background:
-    radial-gradient(circle at 50% 50%, color-mix(in oklch, var(--blood), transparent 55%), transparent 60%),
-    var(--void);
-  animation: tgrid-backdrop-pulse 6s ease-in-out infinite;
-}
-
-@keyframes tgrid-backdrop-pulse {
-  0%, 100% { opacity: 0.75; }
-  50% { opacity: 1; }
-}
-
 @keyframes tgrid-node-pulse {
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.14); }
@@ -628,29 +589,9 @@ function toggleInfoCollapsed() {
 
 @media (prefers-reduced-motion: reduce) {
   .tgrid__node-icon,
-  .tgrid__info-toggle--alert,
-  .tgrid__backdrop--final,
-  .tgrid__hover-highlight {
+  .tgrid__info-toggle--alert {
     animation: none;
   }
-}
-
-/* ── Hover highlight: pulsing diamond outline over the cell under the pointer ────── */
-.tgrid__hover-highlight {
-  position: absolute;
-  transform: translate(-50%, -50%);
-  clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
-  background: color-mix(in oklch, var(--frost), transparent 78%);
-  outline: 2px solid color-mix(in oklch, var(--frost), transparent 15%);
-  outline-offset: -2px;
-  pointer-events: none;
-  z-index: 40;
-  animation: tgrid-hover-pulse 1.1s ease-in-out infinite;
-}
-
-@keyframes tgrid-hover-pulse {
-  0%, 100% { opacity: 0.55; }
-  50% { opacity: 1; }
 }
 
 /* ── Node side panel ─────────────────────────────────────────────────────────── */

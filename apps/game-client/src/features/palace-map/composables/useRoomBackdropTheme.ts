@@ -1,17 +1,30 @@
 import { computed, type ComputedRef } from 'vue';
 import type { RoomDto } from '../../runs/types/runTypes';
-import { hashSeed } from './usePalaceTerrain';
+import type { RoomTheme } from './useTerrainSprites';
 
-// ── Room backdrop: thematic, coherent within a theme, lightly nuanced per room ─────
-export const THEME_BACKDROP_CLASS: Record<string, string> = {
-  Threshold: 'tgrid__backdrop--threshold',
-  Memory: 'tgrid__backdrop--memory',
-  Forest: 'tgrid__backdrop--forest',
-  Rupture: 'tgrid__backdrop--rupture',
-  Silence: 'tgrid__backdrop--silence',
-  Antechamber: 'tgrid__backdrop--antechamber',
-  Final: 'tgrid__backdrop--final',
-};
+/**
+ * Resolves a room's theme into the two things the renderer needs from it: the painted-tile
+ * theme (materials, palette, backdrop scenery) and the accent token the UI chrome borrows.
+ *
+ * The room backdrop used to be seven stacks of CSS gradients declared in TacticalGridMap.vue,
+ * nuanced per room by a hue-rotate. It is now painted into the canvas by the tile engine
+ * (`drawBackdrop`), which takes the room id as its own seed — so the CSS class table and the
+ * hue-drift helper that fed it are gone rather than kept unused.
+ */
+
+/** The 7 themes the tile engine paints. Exactly the strings the backend's RoomThemeResolver
+ * emits (`RoomThemeResolver.cs`) — the two lists must stay in step. */
+export const PAINTED_THEMES: readonly RoomTheme[] = [
+  'Threshold', 'Memory', 'Forest', 'Rupture', 'Silence', 'Antechamber', 'Final',
+];
+
+const PAINTED_THEME_SET = new Set<string>(PAINTED_THEMES);
+
+/** Falls back to Threshold rather than painting an unthemed void: an unknown theme means the
+ * backend grew a room type the renderer hasn't been taught yet, which should still be playable. */
+export function resolvePaintedTheme(theme: string | null | undefined): RoomTheme {
+  return PAINTED_THEME_SET.has(theme ?? '') ? (theme as RoomTheme) : 'Threshold';
+}
 
 // Tiles borrow the room's accent color too — an "Antechamber" floor reads gold, a
 // "Forest" floor reads green, etc. — instead of every room sharing the same neutral
@@ -27,14 +40,9 @@ export const THEME_ACCENT: Record<string, string> = {
 };
 
 export function useRoomBackdropTheme(room: ComputedRef<RoomDto>) {
-  const backdropClass = computed(() =>
-    THEME_BACKDROP_CLASS[room.value.theme] ?? 'tgrid__backdrop--default');
-
-  // Same room + same theme always renders the same backdrop family; this is the only
-  // thing that varies it slightly between two rooms sharing a theme (a small hue drift).
-  const roomNuance = computed(() => hashSeed(room.value.id ?? '') % 100);
+  const paintedTheme = computed(() => resolvePaintedTheme(room.value.theme));
 
   const themeAccent = computed(() => THEME_ACCENT[room.value.theme] ?? '--gold');
 
-  return { backdropClass, roomNuance, themeAccent };
+  return { paintedTheme, themeAccent };
 }

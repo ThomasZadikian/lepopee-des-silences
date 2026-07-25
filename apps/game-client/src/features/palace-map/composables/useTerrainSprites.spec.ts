@@ -1,14 +1,46 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { useTerrainSprites, spriteKeyToString, type SpriteKey } from './useTerrainSprites';
+import {
+  useTerrainSprites,
+  spriteKeyToString,
+  usesPropRect,
+  type RoomTheme,
+  type SpriteKey,
+} from './useTerrainSprites';
+
+// jsdom has no canvas backend, so `getContext('2d')` returns null and the tile engine's own
+// `if (!ctx) return canvas` guards short-circuit every paint. That's exactly what makes these
+// tests meaningful anyway: they assert the KEY/CACHE contract (which variants exist, that they
+// bake without throwing, that they memoize distinctly) — not pixel output, which no headless
+// environment can judge.
+
+const THEMES: RoomTheme[] = [
+  'Threshold', 'Memory', 'Forest', 'Rupture', 'Silence', 'Antechamber', 'Final',
+];
 
 const ALL_KEYS: SpriteKey[] = [
-  ...(['blood', 'gold', 'frost', 'sap', 'neutral'] as const).flatMap((tint) =>
-    ([0, 1, 2, 3] as const).flatMap((elevation) =>
-      ([false, true] as const).flatMap((resolved) =>
-        ([false, true] as const).map((glow) =>
-          ({ kind: 'floor', tint, elevation, resolved, glow } as const))))),
-  { kind: 'obstacle' },
+  // Floors: every theme × every elevation, plus the state/edge flags that change the painting.
+  ...THEMES.flatMap((theme) =>
+    ([0, 1, 2, 3] as const).map((elevation): SpriteKey =>
+      ({ kind: 'floor', tint: 'frost', theme, elevation, surfaceSeed: elevation }))),
+  { kind: 'floor', tint: 'gold', theme: 'Memory', elevation: 1, resolved: true },
+  { kind: 'floor', tint: 'blood', theme: 'Rupture', elevation: 0, glow: true },
+  { kind: 'floor', tint: 'frost', theme: 'Silence', elevation: 2, cliffLeft: true },
+  { kind: 'floor', tint: 'frost', theme: 'Silence', elevation: 2, cliffRight: true },
+  { kind: 'floor', tint: 'sap', theme: 'Forest', elevation: 0, hidden: 'hint' },
+  { kind: 'floor', tint: 'sap', theme: 'Forest', elevation: 0, hidden: 'revealed' },
+  { kind: 'floor', tint: 'sap', theme: 'Forest', elevation: 0, danger: 'tracks' },
+  { kind: 'floor', tint: 'sap', theme: 'Forest', elevation: 0, danger: 'glow' },
+  { kind: 'floor', tint: 'sap', theme: 'Forest', elevation: 0, danger: 'blight' },
+  // Walls: three distinct silhouettes per theme, on the tall canvas.
+  ...THEMES.flatMap((theme) =>
+    ([0, 1, 2] as const).map((variant): SpriteKey => ({ kind: 'obstacle', theme, variant }))),
+  // Scenery and gameplay layers.
+  { kind: 'prop', theme: 'Antechamber', prop: 'column' },
+  { kind: 'prop', theme: 'Threshold', prop: 'arch' },
+  ...(['move', 'attack', 'cursor', 'path'] as const).map((variant): SpriteKey =>
+    ({ kind: 'highlight', variant, elevation: 0 })),
+  ...([0, 1, 2, 3] as const).map((elevation): SpriteKey => ({ kind: 'party', elevation })),
 ];
 
 describe('useTerrainSprites', () => {
@@ -22,7 +54,7 @@ describe('useTerrainSprites', () => {
 
   it('returns a canvas-like object with the expected dimensions', () => {
     const { getSprite } = useTerrainSprites();
-    const sprite = getSprite({ kind: 'floor', tint: 'gold', elevation: 2, resolved: false, glow: false });
+    const sprite = getSprite({ kind: 'floor', tint: 'gold', theme: 'Memory', elevation: 2 });
 
     expect(sprite.width).toBeGreaterThan(0);
     expect(sprite.height).toBeGreaterThan(0);
@@ -30,26 +62,52 @@ describe('useTerrainSprites', () => {
 
   it('memoizes by key: the same key returns the exact same cached instance', () => {
     const { getSprite } = useTerrainSprites();
-    const key: SpriteKey = { kind: 'floor', tint: 'blood', elevation: 1, resolved: false, glow: true };
+    const key: SpriteKey = { kind: 'floor', tint: 'blood', theme: 'Rupture', elevation: 1, glow: true };
 
-    const first = getSprite(key);
-    const second = getSprite({ ...key });
-
-    expect(second).toBe(first);
+    expect(getSprite({ ...key })).toBe(getSprite(key));
   });
 
   it('does not confuse two floor keys that differ only in one field', () => {
-    const { getSprite } = useTerrainSprites();
-    const base = { kind: 'floor', tint: 'gold', elevation: 1, resolved: false, glow: false } as const;
+    const base = { kind: 'floor', tint: 'gold', theme: 'Memory', elevation: 1 } as const;
+    const stringified = spriteKeyToString(base);
 
-    expect(getSprite(base)).toBe(getSprite({ ...base }));
-    expect(spriteKeyToString(base)).not.toBe(spriteKeyToString({ ...base, elevation: 2 }));
-    expect(spriteKeyToString(base)).not.toBe(spriteKeyToString({ ...base, resolved: true }));
-    expect(spriteKeyToString(base)).not.toBe(spriteKeyToString({ ...base, glow: true }));
+    for (const variation of [
+      { ...base, elevation: 2 },
+      { ...base, theme: 'Forest' as const },
+      { ...base, surfaceSeed: 3 },
+      { ...base, resolved: true },
+      { ...base, glow: true },
+      { ...base, cliffLeft: true },
+      { ...base, cliffRight: true },
+      { ...base, hidden: 'hint' as const },
+      { ...base, danger: 'tracks' as const },
+    ]) {
+      expect(spriteKeyToString(variation)).not.toBe(stringified);
+    }
   });
 
-  it('exposes a stable, positive sprite aspect ratio', () => {
-    const { spriteAspectRatio } = useTerrainSprites();
+  it('keeps the three wall variants of a theme distinct', () => {
+    const keys = ([0, 1, 2] as const).map((variant): SpriteKey =>
+      ({ kind: 'obstacle', theme: 'Antechamber', variant }));
+
+    expect(new Set(keys.map(spriteKeyToString)).size).toBe(3);
+  });
+
+  it('routes only walls and scenery to the tall canvas', () => {
+    expect(usesPropRect({ kind: 'obstacle', theme: 'Forest', variant: 0 })).toBe(true);
+    expect(usesPropRect({ kind: 'prop', theme: 'Forest', prop: 'trunk' })).toBe(true);
+
+    expect(usesPropRect({ kind: 'floor', tint: 'sap', theme: 'Forest', elevation: 3 })).toBe(false);
+    expect(usesPropRect({ kind: 'party', elevation: 0 })).toBe(false);
+    expect(usesPropRect({ kind: 'highlight', variant: 'cursor', elevation: 0 })).toBe(false);
+  });
+
+  it('exposes stable, positive aspect ratios for both canvases', () => {
+    const { spriteAspectRatio, propAspectRatio } = useTerrainSprites();
+
     expect(spriteAspectRatio).toBeGreaterThan(0);
+    expect(propAspectRatio).toBeGreaterThan(0);
+    // The tall canvas is taller for the same width, so its width/height ratio is smaller.
+    expect(propAspectRatio).toBeLessThan(spriteAspectRatio);
   });
 });

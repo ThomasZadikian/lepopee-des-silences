@@ -66,6 +66,7 @@ describe('buildDrawPlan', () => {
     canvasWidth: PARAMS.canvasWidth,
     canvasHeight: PARAMS.canvasHeight,
     ambientTint: 'frost' as const,
+    theme: 'Threshold' as const,
     elevation: new Array(25).fill(0),
     obstacleCells: new Set<string>(),
     nodesByCell: new Map<string, NodeDto>(),
@@ -88,7 +89,7 @@ describe('buildDrawPlan', () => {
       obstacleCells: new Set(['1,1']),
     });
     const entry = plan.find((e) => e.x === 1 && e.y === 1)!;
-    expect(entry.spriteKey).toEqual({ kind: 'obstacle' });
+    expect(entry.spriteKey).toMatchObject({ kind: 'obstacle', theme: 'Threshold' });
   });
 
   it('paints a node cell using the node tint, not the ambient theme tint', () => {
@@ -157,6 +158,131 @@ describe('buildDrawPlan', () => {
 
     const withParty = buildDrawPlan({ ...baseInput, party: { x: 0, y: 0 } });
     expect(withParty).toHaveLength(26);
+  });
+
+  describe('painted-tile fields', () => {
+    it('stamps the room theme onto both floor and obstacle keys', () => {
+      const plan = buildDrawPlan({
+        ...baseInput,
+        theme: 'Forest',
+        obstacleCells: new Set(['1,1']),
+      });
+
+      expect(plan.find((e) => e.x === 0 && e.y === 0)!.spriteKey).toMatchObject({ theme: 'Forest' });
+      expect(plan.find((e) => e.x === 1 && e.y === 1)!.spriteKey).toMatchObject({ theme: 'Forest' });
+    });
+
+    it('varies the brush seed across neighbours but keeps it stable for a given cell', () => {
+      const first = buildDrawPlan(baseInput);
+      const second = buildDrawPlan(baseInput);
+
+      const seedAt = (plan: typeof first, x: number, y: number) => {
+        const key = plan.find((e) => e.x === x && e.y === y)!.spriteKey;
+        return key.kind === 'floor' ? key.surfaceSeed : undefined;
+      };
+
+      expect(seedAt(first, 2, 2)).toBe(seedAt(second, 2, 2));
+      expect(seedAt(first, 0, 0)).not.toBe(seedAt(first, 1, 0));
+      // Five brush variations, so every seed must land in 0..4.
+      for (const entry of first) {
+        if (entry.spriteKey.kind !== 'floor') continue;
+        expect(entry.spriteKey.surfaceSeed).toBeGreaterThanOrEqual(0);
+        expect(entry.spriteKey.surfaceSeed).toBeLessThan(5);
+      }
+    });
+
+    it('grows cliff faces only on the grid edges its front neighbours fall off', () => {
+      const plan = buildDrawPlan(baseInput);
+
+      // (4, 2): front-left neighbour (5,2) is off-grid, front-right (4,3) is not.
+      expect(plan.find((e) => e.x === 4 && e.y === 2)!.spriteKey)
+        .toMatchObject({ cliffLeft: true, cliffRight: false });
+      // (2, 4): the mirror case.
+      expect(plan.find((e) => e.x === 2 && e.y === 4)!.spriteKey)
+        .toMatchObject({ cliffLeft: false, cliffRight: true });
+      // (4, 4): the outer corner — both.
+      expect(plan.find((e) => e.x === 4 && e.y === 4)!.spriteKey)
+        .toMatchObject({ cliffLeft: true, cliffRight: true });
+      // An interior cell has no cliff at all.
+      expect(plan.find((e) => e.x === 1 && e.y === 1)!.spriteKey)
+        .toMatchObject({ cliffLeft: false, cliffRight: false });
+    });
+
+    it('lets a caller declare cells outside the room, carving cliffs inside the grid', () => {
+      // Forward-looking: rooms are still full rectangles server-side, so this proves the hook
+      // works before the backend can express a non-rectangular room.
+      const plan = buildDrawPlan({
+        ...baseInput,
+        isFloor: (x, y) => !(x === 3 && y === 2) && x >= 0 && x < 5 && y >= 0 && y < 5,
+      });
+
+      // (2,2)'s front-left neighbour (3,2) is now outside the room.
+      expect(plan.find((e) => e.x === 2 && e.y === 2)!.spriteKey).toMatchObject({ cliffLeft: true });
+    });
+
+    it('gives walls a stable per-cell silhouette variant', () => {
+      const input = { ...baseInput, obstacleCells: new Set(['1,1', '2,3', '4,0']) };
+      const first = buildDrawPlan(input);
+      const second = buildDrawPlan(input);
+
+      const variantAt = (plan: typeof first, x: number, y: number) => {
+        const key = plan.find((e) => e.x === x && e.y === y)!.spriteKey;
+        return key.kind === 'obstacle' ? key.variant : undefined;
+      };
+
+      expect(variantAt(first, 1, 1)).toBe(variantAt(second, 1, 1));
+      for (const [x, y] of [[1, 1], [2, 3], [4, 0]]) {
+        expect(variantAt(first, x, y)).toBeGreaterThanOrEqual(0);
+        expect(variantAt(first, x, y)).toBeLessThan(3);
+      }
+    });
+
+    it('sorts a wall at full height so a tall floor beside it never paints over it', () => {
+      const elevation = new Array(25).fill(0);
+      elevation[(1 * 5) + 2] = 3; // (2,1) is a tall floor, x+y=3
+      const plan = buildDrawPlan({
+        ...baseInput,
+        elevation,
+        obstacleCells: new Set(['1,2']), // (1,2) is a wall on flat ground, also x+y=3
+      });
+
+      const wall = plan.find((e) => e.x === 1 && e.y === 2)!;
+      const tallFloor = plan.find((e) => e.x === 2 && e.y === 1)!;
+      // Same diagonal, and the wall's ground elevation is 0 — without the full-height rule the
+      // tall floor would sort after it and paint over the wall.
+      expect(wall.sortKey).toBe(tallFloor.sortKey);
+    });
+  });
+
+  describe('hover highlight', () => {
+    it('adds no entry when nothing is hovered', () => {
+      const plan = buildDrawPlan(baseInput);
+      expect(plan.some((e) => e.spriteKey.kind === 'highlight')).toBe(false);
+    });
+
+    it('paints over the hovered tile but under a party token standing on it', () => {
+      const plan = buildDrawPlan({
+        ...baseInput,
+        hoveredCell: { x: 2, y: 2 },
+        party: { x: 2, y: 2 },
+      });
+
+      const tile = plan.find((e) => e.x === 2 && e.y === 2 && e.spriteKey.kind === 'floor')!;
+      const highlight = plan.find((e) => e.spriteKey.kind === 'highlight')!;
+      const party = plan.find((e) => e.spriteKey.kind === 'party')!;
+
+      expect(highlight.sortKey).toBeGreaterThan(tile.sortKey);
+      expect(party.sortKey).toBeGreaterThan(highlight.sortKey);
+    });
+
+    it("takes the hovered cell's own elevation so it hugs a raised tile", () => {
+      const elevation = new Array(25).fill(0);
+      elevation[(3 * 5) + 1] = 2; // (1,3)
+      const plan = buildDrawPlan({ ...baseInput, elevation, hoveredCell: { x: 1, y: 3 } });
+
+      expect(plan.find((e) => e.spriteKey.kind === 'highlight')!.spriteKey)
+        .toMatchObject({ kind: 'highlight', variant: 'cursor', elevation: 2 });
+    });
   });
 
   describe('party token', () => {
