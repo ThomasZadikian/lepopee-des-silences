@@ -60,16 +60,21 @@ function makeRoom(overrides: Partial<RoomDto> = {}, gridOverrides: Partial<RoomG
 }
 
 // A note on what changed from the CSS-isometric renderer this replaced: cells used to be
-// individual DOM `<button class="tgrid__cell">`s, so click-to-move, hover, fog/revealed
-// state, and per-cell position/height could all be asserted by querying/regex-parsing that
-// DOM. The board is now painted onto a single `<canvas>` (see useTerrainDrawPlan.ts /
-// useTerrainSprites.ts) — there's no per-cell DOM node left to query, and jsdom's `<canvas>`
-// has no real layout (`getBoundingClientRect()` always returns zeros), so click/hover hit-
-// testing can't be driven through simulated DOM events here either. That logic (the isometric
-// projection, its inverse, and the sprite/fog selection rules) is pure and framework-agnostic
-// by construction — see useTerrainDrawPlan.spec.ts, which tests it directly instead. This file
-// keeps only what's still real DOM: the side panel, top tabs, tooltip, boss banner, node
-// markers, and party token (all deliberately still DOM overlays — see TacticalGridMap.vue).
+// individual DOM `<button class="tgrid__cell">`s, so click-to-move, hover, revealed state, and
+// per-cell position/height could all be asserted by querying/regex-parsing that DOM. The board
+// is now painted onto a single `<canvas>` (see useTerrainDrawPlan.ts / useTerrainSprites.ts) —
+// there's no per-cell DOM node left to query, and jsdom's `<canvas>` has no real layout
+// (`getBoundingClientRect()` always returns zeros), so click/hover hit-testing can't be driven
+// through simulated DOM events here either. That logic (the isometric projection, its inverse,
+// and the sprite selection rules) is pure and framework-agnostic by construction — see
+// useTerrainDrawPlan.spec.ts, which tests it directly instead. This file keeps only what's
+// still real DOM: the side panel, top tabs, tooltip, boss banner, node markers, and party
+// token (all deliberately still DOM overlays — see TacticalGridMap.vue).
+//
+// Terrain no longer renders a fog-of-war overlay at all: every cell always paints its real
+// sprite (floor/obstacle) regardless of reveal state, and node markers no longer dim to a
+// "ghost" look for an unrevealed cell either — see useTerrainDrawPlan.ts/TacticalGridMap.vue.
+// Fog-of-war still gates movement (useGridCells.isRevealed, unchanged), it just isn't drawn.
 
 describe('TacticalGridMap', () => {
   it('renders without crashing', () => {
@@ -88,20 +93,19 @@ describe('TacticalGridMap', () => {
     const wrapper = mount(TacticalGridMap, { props: { room } });
     const icons = wrapper.findAll('.tgrid__node-icon');
     expect(icons).toHaveLength(1);
-    expect(icons[0].classes()).not.toContain('tgrid__node-icon--ghost');
   });
 
-  it('renders a dimmed marker icon for an available node on an unrevealed (fogged) cell', () => {
-    // (2,2) is outside the default revealedCells ([[0,0],[1,0]]) — the backend sends
-    // Available nodes regardless of fog so the player still sees where to head, but the
-    // marker itself reads as a dimmed "ghost" rather than a fully-lit one.
+  it('renders a node icon marker for an available node on an unrevealed cell, same as a revealed one', () => {
+    // (2,2) is outside the default revealedCells ([[0,0],[1,0]]) — the backend sends Available
+    // nodes regardless of fog so the player still sees where to head. There's no more visual
+    // distinction for reveal state (fog rendering was removed), so this marker paints exactly
+    // like any other node marker.
     const node = makeNode({ row: 2, lane: 2, state: 'Available' });
     const room = makeRoom({ nodes: [node] });
     const wrapper = mount(TacticalGridMap, { props: { room } });
 
     const icons = wrapper.findAll('.tgrid__node-icon');
     expect(icons).toHaveLength(1);
-    expect(icons[0].classes()).toContain('tgrid__node-icon--ghost');
   });
 
   it('marks a resolved node marker as visually spent', () => {

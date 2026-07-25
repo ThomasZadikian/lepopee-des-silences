@@ -6,15 +6,9 @@ const ALL_KEYS: SpriteKey[] = [
   ...(['blood', 'gold', 'frost', 'sap', 'neutral'] as const).flatMap((tint) =>
     ([0, 1, 2, 3] as const).flatMap((elevation) =>
       ([false, true] as const).flatMap((resolved) =>
-        ([false, true] as const).flatMap((glow) =>
-          (['lit', 'ghost'] as const).map((light) =>
-            ({ kind: 'floor', tint, elevation, resolved, glow, light } as const)))))),
-  { kind: 'obstacle', light: 'lit' },
-  { kind: 'obstacle', light: 'ghost' },
-  { kind: 'fog', variant: 0, marker: false },
-  { kind: 'fog', variant: 1, marker: false },
-  { kind: 'fog', variant: 2, marker: true },
-  { kind: 'fog', variant: 3, marker: true },
+        ([false, true] as const).map((glow) =>
+          ({ kind: 'floor', tint, elevation, resolved, glow } as const))))),
+  { kind: 'obstacle' },
 ];
 
 describe('useTerrainSprites', () => {
@@ -28,7 +22,7 @@ describe('useTerrainSprites', () => {
 
   it('returns a canvas-like object with the expected dimensions', () => {
     const { getSprite } = useTerrainSprites();
-    const sprite = getSprite({ kind: 'floor', tint: 'gold', elevation: 2, resolved: false, glow: false, light: 'lit' });
+    const sprite = getSprite({ kind: 'floor', tint: 'gold', elevation: 2, resolved: false, glow: false });
 
     expect(sprite.width).toBeGreaterThan(0);
     expect(sprite.height).toBeGreaterThan(0);
@@ -36,7 +30,7 @@ describe('useTerrainSprites', () => {
 
   it('memoizes by key: the same key returns the exact same cached instance', () => {
     const { getSprite } = useTerrainSprites();
-    const key: SpriteKey = { kind: 'floor', tint: 'blood', elevation: 1, resolved: false, glow: true, light: 'lit' };
+    const key: SpriteKey = { kind: 'floor', tint: 'blood', elevation: 1, resolved: false, glow: true };
 
     const first = getSprite(key);
     const second = getSprite({ ...key });
@@ -46,12 +40,12 @@ describe('useTerrainSprites', () => {
 
   it('does not confuse two floor keys that differ only in one field', () => {
     const { getSprite } = useTerrainSprites();
-    const base = { kind: 'floor', tint: 'gold', elevation: 1, resolved: false, glow: false, light: 'lit' } as const;
+    const base = { kind: 'floor', tint: 'gold', elevation: 1, resolved: false, glow: false } as const;
 
     expect(getSprite(base)).toBe(getSprite({ ...base }));
     expect(spriteKeyToString(base)).not.toBe(spriteKeyToString({ ...base, elevation: 2 }));
     expect(spriteKeyToString(base)).not.toBe(spriteKeyToString({ ...base, resolved: true }));
-    expect(spriteKeyToString(base)).not.toBe(spriteKeyToString({ ...base, light: 'ghost' }));
+    expect(spriteKeyToString(base)).not.toBe(spriteKeyToString({ ...base, glow: true }));
   });
 
   it('exposes a stable, positive sprite aspect ratio', () => {

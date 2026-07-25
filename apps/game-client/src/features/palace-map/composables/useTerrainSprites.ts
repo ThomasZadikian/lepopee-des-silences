@@ -28,21 +28,17 @@ export const GROUND_ANCHOR_RATIO = GROUND_ANCHOR_Y / SPRITE_H;
  * resolve to one of these — see THEME_ACCENT / NODE_TILE_TONE). 'neutral' is the fallback
  * for a node type with no specific tone entry. */
 export type FloorTint = 'blood' | 'gold' | 'frost' | 'sap' | 'neutral';
-export type TileLight = 'lit' | 'ghost';
 
 export type SpriteKey =
-  | { kind: 'floor'; tint: FloorTint; elevation: number; resolved: boolean; glow: boolean; light: TileLight }
-  | { kind: 'obstacle'; light: TileLight }
-  | { kind: 'fog'; variant: number; marker: boolean };
+  | { kind: 'floor'; tint: FloorTint; elevation: number; resolved: boolean; glow: boolean }
+  | { kind: 'obstacle' };
 
 export function spriteKeyToString(key: SpriteKey): string {
   switch (key.kind) {
     case 'floor':
-      return `floor:${key.tint}:${key.elevation}:${key.resolved ? 'r' : '-'}:${key.glow ? 'g' : '-'}:${key.light}`;
+      return `floor:${key.tint}:${key.elevation}:${key.resolved ? 'r' : '-'}:${key.glow ? 'g' : '-'}`;
     case 'obstacle':
-      return `obstacle:${key.light}`;
-    case 'fog':
-      return `fog:${key.variant}:${key.marker ? 'marker' : 'blank'}`;
+      return 'obstacle';
   }
 }
 
@@ -160,14 +156,10 @@ function bakeFloorSprite(key: Extract<SpriteKey, { kind: 'floor' }>): HTMLCanvas
     applyOverlay(ctx, canvas, 'rgba(0, 0, 0, 0.45)', 1);
   }
 
-  if (key.light === 'ghost') {
-    applyOverlay(ctx, canvas, cssVar('--void'), 0.55);
-  }
-
   return canvas;
 }
 
-function bakeObstacleSprite(key: Extract<SpriteKey, { kind: 'obstacle' }>): HTMLCanvasElement {
+function bakeObstacleSprite(): HTMLCanvasElement {
   const canvas = makeCanvas(BASE_TILE_W, SPRITE_H);
   const ctx = canvas.getContext('2d');
   if (!ctx) return canvas;
@@ -194,47 +186,6 @@ function bakeObstacleSprite(key: Extract<SpriteKey, { kind: 'obstacle' }>): HTML
   }
   ctx.restore();
 
-  if (key.light === 'ghost') {
-    applyOverlay(ctx, canvas, cssVar('--void'), 0.55);
-  }
-
-  return canvas;
-}
-
-function bakeFogSprite(key: Extract<SpriteKey, { kind: 'fog' }>): HTMLCanvasElement {
-  const canvas = makeCanvas(BASE_TILE_W, SPRITE_H);
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return canvas;
-
-  // A handful of baked variants (picked per-cell by a seeded hash, see buildDrawPlan) stand
-  // in for genuinely-unique-per-cell mist — enough to break the repeating-texture look
-  // without baking one sprite per cell.
-  const cx = BASE_TILE_W / 2;
-  const cy = SPRITE_H / 2;
-  const jitterX = ((key.variant * 37) % 23) - 11;
-  const jitterY = ((key.variant * 53) % 19) - 9;
-  const blobs = [
-    { dx: -18 + jitterX, dy: -6 + jitterY, r: 40 },
-    { dx: 16 - jitterY, dy: 4 + jitterX, r: 34 },
-    { dx: -4 + jitterY, dy: 14 - jitterX, r: 30 },
-  ];
-
-  ctx.filter = 'blur(6px)';
-  for (const blob of blobs) {
-    const gradient = ctx.createRadialGradient(
-      cx + blob.dx, cy + blob.dy, 0,
-      cx + blob.dx, cy + blob.dy, blob.r,
-    );
-    gradient.addColorStop(0, 'rgba(20, 18, 32, 0.9)');
-    gradient.addColorStop(1, 'rgba(20, 18, 32, 0)');
-    ctx.fillStyle = gradient;
-    ctx.beginPath();
-    ctx.arc(cx + blob.dx, cy + blob.dy, blob.r, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  ctx.filter = 'none';
-  applyOverlay(ctx, canvas, 'rgba(10, 9, 18, 0.5)', key.marker ? 0.45 : 0.85);
-
   return canvas;
 }
 
@@ -243,9 +194,7 @@ function bakeSprite(key: SpriteKey): HTMLCanvasElement {
     case 'floor':
       return bakeFloorSprite(key);
     case 'obstacle':
-      return bakeObstacleSprite(key);
-    case 'fog':
-      return bakeFogSprite(key);
+      return bakeObstacleSprite();
   }
 }
 

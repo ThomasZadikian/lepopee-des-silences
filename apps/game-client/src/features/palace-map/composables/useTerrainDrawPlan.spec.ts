@@ -64,73 +64,46 @@ describe('buildDrawPlan', () => {
     gridHeight: 5,
     canvasWidth: PARAMS.canvasWidth,
     canvasHeight: PARAMS.canvasHeight,
-    roomId: 'room-1',
     ambientTint: 'frost' as const,
     elevation: new Array(25).fill(0),
-    revealedCells: new Set<string>(),
     obstacleCells: new Set<string>(),
     nodesByCell: new Map<string, NodeDto>(),
     nodeTintFor: () => 'blood' as const,
   };
 
-  it('paints an unrevealed cell with no node as fog', () => {
+  it('paints a cell with no node as an ambient-tinted floor, regardless of reveal state', () => {
+    // There is no fog-of-war rendering anymore — terrain always paints at full visibility;
+    // useGridCells.isRevealed still gates movement/clicks elsewhere, buildDrawPlan just no
+    // longer reads it.
     const plan = buildDrawPlan(baseInput);
     const entry = plan.find((e) => e.x === 3 && e.y === 3)!;
-    expect(entry.spriteKey.kind).toBe('fog');
+    expect(entry.spriteKey).toMatchObject({ kind: 'floor', tint: 'frost', resolved: false, glow: false });
   });
 
-  it('paints a revealed cell with no node as an ambient-tinted floor', () => {
-    const plan = buildDrawPlan({ ...baseInput, revealedCells: new Set(['2,2']) });
-    const entry = plan.find((e) => e.x === 2 && e.y === 2)!;
-    expect(entry.spriteKey).toMatchObject({ kind: 'floor', tint: 'frost', resolved: false, glow: false, light: 'lit' });
-  });
-
-  it('paints a revealed obstacle cell as an obstacle, not floor or fog', () => {
-    const plan = buildDrawPlan({
-      ...baseInput,
-      revealedCells: new Set(['1,1']),
-      obstacleCells: new Set(['1,1']),
-    });
-    const entry = plan.find((e) => e.x === 1 && e.y === 1)!;
-    expect(entry.spriteKey).toEqual({ kind: 'obstacle', light: 'lit' });
-  });
-
-  it('paints an unrevealed obstacle cell (no node) as fog — terrain shape stays hidden until revealed', () => {
+  it('paints an obstacle cell as an obstacle, not floor', () => {
     const plan = buildDrawPlan({
       ...baseInput,
       obstacleCells: new Set(['1,1']),
     });
     const entry = plan.find((e) => e.x === 1 && e.y === 1)!;
-    expect(entry.spriteKey.kind).toBe('fog');
+    expect(entry.spriteKey).toEqual({ kind: 'obstacle' });
   });
 
-  it('paints a revealed node cell using the node tint, not the ambient theme tint', () => {
+  it('paints a node cell using the node tint, not the ambient theme tint', () => {
     const node = makeNode({ lane: 0, row: 0 });
     const plan = buildDrawPlan({
       ...baseInput,
-      revealedCells: new Set(['0,0']),
       nodesByCell: new Map([['0,0', node]]),
       nodeTintFor: () => 'gold',
     });
     const entry = plan.find((e) => e.x === 0 && e.y === 0)!;
-    expect(entry.spriteKey).toMatchObject({ kind: 'floor', tint: 'gold', light: 'lit' });
-  });
-
-  it('paints an unrevealed node cell as a ghost floor tile, not fog — the objective marker rule', () => {
-    const node = makeNode({ lane: 4, row: 4, state: 'Available' });
-    const plan = buildDrawPlan({
-      ...baseInput,
-      nodesByCell: new Map([['4,4', node]]),
-    });
-    const entry = plan.find((e) => e.x === 4 && e.y === 4)!;
-    expect(entry.spriteKey).toMatchObject({ kind: 'floor', light: 'ghost' });
+    expect(entry.spriteKey).toMatchObject({ kind: 'floor', tint: 'gold' });
   });
 
   it('gives a boss node a blood tint and a glow, regardless of nodeTintFor', () => {
     const boss = makeNode({ lane: 0, row: 0, isBoss: true, type: 'RoomBoss' });
     const plan = buildDrawPlan({
       ...baseInput,
-      revealedCells: new Set(['0,0']),
       nodesByCell: new Map([['0,0', boss]]),
       nodeTintFor: () => 'sap',
     });
@@ -142,7 +115,6 @@ describe('buildDrawPlan', () => {
     const resolved = makeNode({ lane: 0, row: 0, state: 'Resolved' });
     const plan = buildDrawPlan({
       ...baseInput,
-      revealedCells: new Set(['0,0']),
       nodesByCell: new Map([['0,0', resolved]]),
     });
     const entry = plan.find((e) => e.x === 0 && e.y === 0)!;
@@ -155,7 +127,6 @@ describe('buildDrawPlan', () => {
     const plan = buildDrawPlan({
       ...baseInput,
       elevation,
-      revealedCells: new Set(['3,2']),
     });
     const entry = plan.find((e) => e.x === 3 && e.y === 2)!;
     expect(entry.spriteKey).toMatchObject({ kind: 'floor', elevation: 2 });

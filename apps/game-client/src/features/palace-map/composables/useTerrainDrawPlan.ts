@@ -1,5 +1,4 @@
 import type { NodeDto } from '../../runs/types/runTypes';
-import { hashSeed } from './usePalaceTerrain';
 import type { Cell } from './useGridCells';
 import type { FloorTint, SpriteKey } from './useTerrainSprites';
 
@@ -9,7 +8,6 @@ const ISO_FIT = 0.82;
 // The board's vertical center sits a bit below the canvas's true center, clearing the
 // top-tabs chrome that overlays the top-left corner (mirrors the old CSS ISO_V_CENTER).
 const ISO_V_CENTER = 0.56;
-const FOG_VARIANT_COUNT = 4;
 
 export type ProjectionParams = {
   canvasWidth: number;
@@ -76,12 +74,10 @@ export type BuildDrawPlanInput = {
   gridHeight: number;
   canvasWidth: number;
   canvasHeight: number;
-  roomId: string;
   /** The room theme's own accent tone (see THEME_ACCENT), used for plain floor tiles. */
   ambientTint: FloorTint;
   /** Flat, row-major, one 0..3 value per cell. */
   elevation: number[];
-  revealedCells: Set<string>;
   obstacleCells: Set<string>;
   /** Keyed "x,y" (matches useGridCells' nodesByCell, which keys by lane,row = x,y). */
   nodesByCell: Map<string, NodeDto>;
@@ -90,9 +86,13 @@ export type BuildDrawPlanInput = {
 };
 
 /**
- * Pure function: given the current grid/fog/terrain state, decides which sprite each cell
- * should paint and where, sorted back-to-front for the canvas painter's algorithm. No canvas
- * or DOM access here — this is what makes it directly unit-testable without a browser.
+ * Pure function: given the current grid/terrain state, decides which sprite each cell should
+ * paint and where, sorted back-to-front for the canvas painter's algorithm. No canvas or DOM
+ * access here — this is what makes it directly unit-testable without a browser.
+ *
+ * Terrain always paints at full visibility regardless of fog-of-war reveal state — there is no
+ * more fog rendering layer. Reveal state still gates movement/click-ability elsewhere
+ * (useGridCells.isRevealed), this function just no longer reads it.
  */
 export function buildDrawPlan(input: BuildDrawPlanInput): DrawPlanEntry[] {
   const projection: ProjectionParams = {
@@ -106,7 +106,6 @@ export function buildDrawPlan(input: BuildDrawPlanInput): DrawPlanEntry[] {
 
   for (const cell of input.cells) {
     const cellKey = `${cell.x},${cell.y}`;
-    const revealed = input.revealedCells.has(cellKey);
     const node = input.nodesByCell.get(cellKey) ?? null;
     const obstacle = input.obstacleCells.has(cellKey);
     const elevationLevel = input.elevation[(cell.y * input.gridWidth) + cell.x] ?? 0;
@@ -114,14 +113,8 @@ export function buildDrawPlan(input: BuildDrawPlanInput): DrawPlanEntry[] {
 
     let spriteKey: SpriteKey;
 
-    if (!revealed && !node) {
-      // Fog always wins for a cell with no known objective on it — terrain shape (even
-      // "this is a wall") stays hidden until revealed, matching the existing backend
-      // invariant that only a node's position/type leaks through fog, never its terrain.
-      const variant = hashSeed(`${input.roomId}:fog:${cell.x}:${cell.y}`) % FOG_VARIANT_COUNT;
-      spriteKey = { kind: 'fog', variant, marker: false };
-    } else if (obstacle) {
-      spriteKey = { kind: 'obstacle', light: revealed ? 'lit' : 'ghost' };
+    if (obstacle) {
+      spriteKey = { kind: 'obstacle' };
     } else {
       const tint: FloorTint = node
         ? (node.isBoss ? 'blood' : input.nodeTintFor(node))
@@ -132,7 +125,6 @@ export function buildDrawPlan(input: BuildDrawPlanInput): DrawPlanEntry[] {
         elevation: elevationLevel,
         resolved: node?.state === 'Resolved',
         glow: node?.isBoss ?? false,
-        light: revealed ? 'lit' : 'ghost',
       };
     }
 

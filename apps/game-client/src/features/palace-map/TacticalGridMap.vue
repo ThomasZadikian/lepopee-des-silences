@@ -33,7 +33,7 @@ const roomName = computed(() =>
 const room = computed(() => props.room);
 const grid = computed(() => props.room.grid ?? null);
 
-const { isRevealed, nodeAt, isParty, cells, revealedCells, obstacleCells, nodesByCell } =
+const { isRevealed, nodeAt, isParty, cells, obstacleCells, nodesByCell } =
   useGridCells(room, grid);
 
 const { displayPartyX, displayPartyY } = usePartyTokenPath(room, grid);
@@ -102,10 +102,8 @@ const drawPlan = computed(() => {
     gridHeight: g.height,
     canvasWidth: canvasSize.value.width,
     canvasHeight: canvasSize.value.height,
-    roomId: props.room.id,
     ambientTint: ambientTint.value,
     elevation: g.elevation,
-    revealedCells: revealedCells.value,
     obstacleCells: obstacleCells.value,
     nodesByCell: nodesByCell.value,
     nodeTintFor,
@@ -151,22 +149,21 @@ const TERRAIN_LIFT_PX = 8;
 const nodeMarkers = computed(() => {
   const g = grid.value;
   // Deliberately NOT gated on canvasSize being measured (unlike drawPlan): a marker's
-  // existence/ghost-state only depends on grid data, not on pixel geometry. Positions
-  // are degenerate (all stacked at the projection's origin) until the ResizeObserver
-  // first fires, same as any other layout-dependent element on first paint — and it
-  // keeps this list testable without a real ResizeObserver (e.g. under jsdom).
+  // existence only depends on grid data, not on pixel geometry. Positions are degenerate
+  // (all stacked at the projection's origin) until the ResizeObserver first fires, same as
+  // any other layout-dependent element on first paint — and it keeps this list testable
+  // without a real ResizeObserver (e.g. under jsdom).
   if (!g) return [];
 
-  const markers: { node: NodeDto; screenX: number; screenY: number; ghost: boolean }[] = [];
+  const markers: { node: NodeDto; screenX: number; screenY: number }[] = [];
 
   for (const cell of cells.value) {
     const node = nodeAt(cell.x, cell.y);
     if (!node) continue;
 
-    const revealed = isRevealed(cell.x, cell.y);
     const { screenX, screenY } = projectToScreen(cell.x, cell.y, projectionParams.value);
-    const lift = revealed ? terrainHeight(cell.x, cell.y) * TERRAIN_LIFT_PX : 0;
-    markers.push({ node, screenX, screenY: screenY - lift, ghost: !revealed });
+    const lift = terrainHeight(cell.x, cell.y) * TERRAIN_LIFT_PX;
+    markers.push({ node, screenX, screenY: screenY - lift });
   }
 
   return markers;
@@ -332,7 +329,6 @@ function toggleInfoCollapsed() {
         :key="marker.node.id"
         class="tgrid__node-icon"
         :class="{
-          'tgrid__node-icon--ghost': marker.ghost,
           'tgrid__node-icon--resolved': marker.node.state === 'Resolved',
           'tgrid__node-icon--boss': marker.node.isBoss,
         }"
@@ -581,11 +577,6 @@ function toggleInfoCollapsed() {
   pointer-events: none;
   z-index: 50;
   animation: tgrid-node-pulse 1.8s ease-in-out infinite;
-}
-
-.tgrid__node-icon--ghost {
-  opacity: 0.6;
-  filter: grayscale(0.35);
 }
 
 .tgrid__node-icon--resolved {
