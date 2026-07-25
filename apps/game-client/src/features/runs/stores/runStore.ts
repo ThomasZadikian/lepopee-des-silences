@@ -8,6 +8,7 @@ import {
 } from '../../rewards/types/rewardTypes';
 
 import { runApi } from '../api/runApi';
+import { partyWalkDurationMs } from '../../palace-map/composables/usePartyTokenPath';
 import {
   unwrapRunResponse,
   type CombatInstanceDto,
@@ -52,6 +53,11 @@ function setSuspendedRunId(runId: string): void {
 
 function clearSuspendedRunId(): void {
   try { localStorage.removeItem(SUSPENDED_RUN_KEY); } catch {}
+}
+
+/** Resolves after `ms`, and immediately when there is nothing to wait for. */
+function delay(ms: number): Promise<void> {
+  return ms > 0 ? new Promise((resolve) => setTimeout(resolve, ms)) : Promise.resolve();
 }
 
 export const useRunStore = defineStore('run', () => {
@@ -251,6 +257,9 @@ export const useRunStore = defineStore('run', () => {
     if (!currentRun.value) return;
 
     await execute(async () => {
+      const before = currentRun.value!.currentRoom?.grid;
+      const from = { x: before?.partyX ?? 0, y: before?.partyY ?? 0 };
+
       const response = await runApi.moveParty(currentRun.value!.id, x, y);
       currentRun.value = unwrapRunResponse(response);
 
@@ -258,6 +267,15 @@ export const useRunStore = defineStore('run', () => {
       // to be clicked), which leaves the room in NodeSelected exactly like enterGridNode does.
       // Without resolving it here the event never fires and the next move is refused by the
       // domain guard — the room would simply appear stuck.
+      if (currentRun.value?.currentRoom?.state === 'NodeSelected') {
+        // Let the party actually walk there first. Resolving immediately swaps the board out
+        // for the event screen before the token has moved a single frame, so an ambush read as
+        // a teleport onto the thing that sprang it — losing the approach, which is the only
+        // part of a contact node the player gets to watch.
+        const after = currentRun.value.currentRoom.grid;
+        await delay(partyWalkDurationMs(from.x, from.y, after?.partyX ?? from.x, after?.partyY ?? from.y));
+      }
+
       await resolveSelectedNodeIfAny();
     });
   }

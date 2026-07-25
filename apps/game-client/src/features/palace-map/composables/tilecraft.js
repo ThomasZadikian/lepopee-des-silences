@@ -120,7 +120,247 @@ export const THEMES = {
   },
 };
 export const THEME_NAMES = Object.keys(THEMES);
-function theme(name) { return THEMES[name] ?? THEMES.Threshold; }
+
+// ── Les 27 salles canon ──────────────────────────────────────────────────────────────
+// Une salle = un thème de rendu de base + un jeu de surcharges. `base` garantit qu'une
+// salle inconnue ou un champ non surchargé retombe sur un thème valide ; les surcharges
+// portent l'identité (palette, vocabulaire de surface, murs, décors, particules, brume).
+// La clé est le `catalogRoomKey` déjà présent dans RoomDto : aucun travail backend.
+export const ROOMS = {
+  // ── Niveau 0 ──
+  'room.halldentree': {
+    label: "Hall d'entrée", base: 'Antechamber', chain: null, step: 0,
+    surface: 'carpet', rug: '#8e2f36', walls: ['column', 'gate', 'brokenColumn'], props: ['column', 'beam'],
+    top: '#b9a377', topDeep: '#4c3f28', seam: '#2a2216', riser: '#54452c', riserDeep: '#1d1710',
+    accent: '#e8c069', glow: '#fff1c4', particle: 'gilt',
+    sky: ['#140d09', '#33210f', '#77531f'], fog: '#1b1410',
+  },
+  'room.palier': {
+    label: 'Palier', base: 'Memory', chain: null, step: 1,
+    surface: 'parchment', walls: ['shelf', 'crates', 'monolith'], props: ['column', 'cairn'],
+    top: '#9c8a63', topDeep: '#3f3627', seam: '#272016',
+    accent: '#f0d489', glow: '#fff4cd', particle: 'flake',
+    sky: ['#100c0a', '#241d16', '#4d3d29'], fog: '#171310',
+  },
+  'room.couloirs': {
+    label: 'Couloirs', base: 'Silence', chain: null, step: 1,
+    surface: 'carpet', rug: '#5e2029', walls: ['gate', 'rubble', 'monolith'], props: ['obeliskProp', 'cairn'],
+    top: '#6f707a', topDeep: '#2f3138', seam: '#1d1f24', riser: '#333540', riserDeep: '#14151a',
+    accent: '#b9bfd0', glow: '#dfe5f0', particle: 'dust',
+    sky: ['#0a0b0e', '#161a20', '#2f353f'], fog: '#12141a',
+  },
+
+  // ── Niveau 2 — culs-de-sac et portes ──
+  'room.feelings': {
+    label: 'Pièce des émotions', base: 'Threshold', chain: null, step: 2,
+    surface: 'plank', walls: ['crates', 'shelf', 'brokenColumn'], props: ['beam', 'cairn'],
+    top: '#9f86a8', topDeep: '#413353', seam: '#281f38', riser: '#43354f', riserDeep: '#1a1425',
+    accent: '#d8aee0', glow: '#f4dcf6', particle: 'mote',
+    sky: ['#0f0a15', '#221733', '#4a3168'], fog: '#170f1e',
+  },
+  'room.turtle': {
+    label: 'Passage brisé, vers la tortue', base: 'Rupture', chain: null, step: 2,
+    surface: 'fracture', walls: ['shard', 'rubble', 'boulder'], props: ['spire', 'cairn'],
+    top: '#6b5a86', topDeep: '#2b2143', seam: '#1a1430', riser: '#302446', riserDeep: '#120d1f',
+    accent: '#b78cff', glow: '#e2ccff', particle: 'ember',
+    sky: ['#08060f', '#1c1030', '#472a7d'], fog: '#140d20',
+  },
+  'room.enfermement': {
+    label: 'Pièce camisolée', base: 'Silence', chain: null, step: 2,
+    surface: 'flagstone', walls: ['gate', 'monolith', 'rubble'], props: ['obeliskProp', 'cairn'],
+    top: '#5f666a', topDeep: '#282d31', seam: '#191d20', riser: '#2c3236', riserDeep: '#111416',
+    accent: '#9fb2b8', glow: '#cfdde1', particle: 'dust',
+    sky: ['#070809', '#101416', '#242c30'], fog: '#0e1113',
+  },
+  'room.meditation': {
+    label: 'Salle de méditation', base: 'Threshold', chain: null, step: 2,
+    surface: 'marble', walls: ['column', 'brokenColumn', 'obelisk'], props: ['beam', 'arch'],
+    top: '#b6c4dc', topDeep: '#4e5a75', seam: '#333c52', riser: '#54617d', riserDeep: '#232a3a',
+    accent: '#d9e8ff', glow: '#f4faff', particle: 'mote',
+    sky: ['#1a2338', '#3a4a70', '#8fa8d4'], fog: '#26314a',
+  },
+  'room.room08': {
+    label: 'Chambre 08', base: 'Memory', chain: null, step: 2,
+    surface: 'plank', walls: ['crates', 'shelf', 'brokenColumn'], props: ['cairn', 'beam'],
+    top: '#a4825c', topDeep: '#463323', seam: '#2b1e14', riser: '#4d3826', riserDeep: '#1e140d',
+    accent: '#f5b07a', glow: '#ffdcbc', particle: 'flake',
+    sky: ['#120b08', '#2b1710', '#5e2f1c'], fog: '#1a1210',
+  },
+  'room.chambredelise': {
+    label: "Chambre d'Elise", base: 'Antechamber', chain: null, step: 2,
+    surface: 'marble', walls: ['column', 'gate', 'brokenColumn'], props: ['column', 'arch'],
+    top: '#bfa48f', topDeep: '#4f3d3a', seam: '#302426', riser: '#553f3d', riserDeep: '#1f1719',
+    accent: '#f3c3ac', glow: '#ffe6d8', particle: 'gilt',
+    sky: ['#150e0f', '#33191d', '#7a3a3c'], fog: '#1d1416',
+  },
+  'room.jardin': {
+    label: 'Le jardin', base: 'Forest', chain: 'soleil', step: 1,
+    surface: 'moss', walls: ['trunk', 'deadfall', 'boulder'], props: ['trunk', 'arch'],
+    top: '#79a06a', topDeep: '#31492f', seam: '#1f3020', riser: '#3d5636', riserDeep: '#182617',
+    accent: '#c9f08f', glow: '#eaffd2', particle: 'petal',
+    sky: ['#2a3f2c', '#4b6b45', '#a9c98a'], fog: '#3a5039',
+  },
+  'room.falaise': {
+    label: 'La falaise', base: 'Silence', chain: 'enfers', step: 1,
+    surface: 'flagstone', walls: ['boulder', 'rubble', 'monolith'], props: ['cairn', 'obeliskProp'],
+    top: '#6d6577', topDeep: '#2e2a3a', seam: '#1d1a27', riser: '#332f42', riserDeep: '#13111c',
+    accent: '#a891d6', glow: '#d8caf2', particle: 'dust',
+    sky: ['#0b0812', '#1d1731', '#4b3577'], fog: '#151020',
+  },
+  'room.montagne': {
+    label: 'La montagne', base: 'Silence', chain: 'montagne', step: 1,
+    surface: 'flagstone', walls: ['boulder', 'rubble', 'obelisk'], props: ['cairn', 'obeliskProp'],
+    top: '#8e9aa6', topDeep: '#3e454e', seam: '#282d34', riser: '#434a54', riserDeep: '#1a1d22',
+    accent: '#dbe8f2', glow: '#f6fbff', particle: 'snow',
+    sky: ['#1b2430', '#3d4f63', '#8fa6bd'], fog: '#2b3540',
+  },
+  'room.labyrinthe': {
+    label: 'Labyrinthe', base: 'Memory', chain: null, step: 3,
+    surface: 'flagstone', walls: ['monolith', 'gate', 'shelf'], props: ['column', 'cairn'],
+    top: '#8a7548', topDeep: '#3b311e', seam: '#241d12', riser: '#413522', riserDeep: '#181209',
+    accent: '#e3bf6a', glow: '#ffe9ae', particle: 'flake',
+    sky: ['#0c0906', '#1e170d', '#3f2f18'], fog: '#13100b',
+  },
+  'room.hopital': {
+    label: "L'hopital", base: 'Silence', chain: 'hopital', step: 1,
+    surface: 'clinic', walls: ['gate', 'crates', 'monolith'], props: ['beam', 'obeliskProp'],
+    top: '#c6cfc8', topDeep: '#5c6660', seam: '#3d4642', riser: '#646d67', riserDeep: '#262d2a',
+    accent: '#e6f2ea', glow: '#ffffff', particle: 'dust',
+    sky: ['#1c2422', '#39463f', '#7f938a'], fog: '#2b342f',
+  },
+  'room.faille': {
+    label: 'La faille', base: 'Final', chain: null, step: 3,
+    surface: 'pulse', walls: ['shard', 'spire', 'gate'], props: ['spire', 'beam'],
+    top: '#5f4a86', topDeep: '#251c45', seam: '#150f2c', riser: '#2b2050', riserDeep: '#0f0a1f',
+    accent: '#c69bff', glow: '#eddcff', particle: 'emberDark',
+    sky: ['#050310', '#1a0b38', '#5a1fa8'], fog: '#120a22',
+  },
+
+  // ── Chaîne A — Les Enfers (dégradation : cendre → leurre → métal → sang) ──
+  'room.enfer1': {
+    label: 'Les enfers - La calamité', base: 'Rupture', chain: 'enfers', step: 2,
+    surface: 'fracture', walls: ['rubble', 'boulder', 'shard'], props: ['cairn', 'spire'],
+    top: '#7a7068', topDeep: '#332e2b', seam: '#201d1b', riser: '#3a3431', riserDeep: '#141211',
+    accent: '#c8b8a4', glow: '#e8ddcd', particle: 'ash',
+    sky: ['#0b0a09', '#1d1a17', '#413931'], fog: '#141210',
+  },
+  'room.enfer2': {
+    label: 'Les enfers - la plaine', base: 'Forest', chain: 'enfers', step: 3,
+    surface: 'moss', walls: ['deadfall', 'trunk', 'boulder'], props: ['trunk', 'cairn'],
+    top: '#7d8449', topDeep: '#343722', seam: '#212314', riser: '#3b3e24', riserDeep: '#15170d',
+    accent: '#d5d17a', glow: '#f2eeb8', particle: 'spore',
+    sky: ['#0d0e08', '#232512', '#4d5223'], fog: '#171a0e',
+  },
+  'room.enfer3': {
+    label: 'Les enfers - la forge', base: 'Rupture', chain: 'enfers', step: 4,
+    surface: 'flagstone', walls: ['monolith', 'gate', 'rubble'], props: ['spire', 'obeliskProp'],
+    top: '#6d5049', topDeep: '#2e211e', seam: '#1d1412', riser: '#372420', riserDeep: '#140c0a',
+    accent: '#ff8a3c', glow: '#ffcf96', particle: 'ember',
+    sky: ['#100604', '#33110a', '#8a2f10'], fog: '#1a0d09',
+  },
+  'room.enfer4': {
+    label: 'Les enfers - Le chateau', base: 'Final', chain: 'enfers', step: 5,
+    surface: 'flagstone', walls: ['gate', 'column', 'brokenColumn'], props: ['column', 'spire'],
+    top: '#6b4046', topDeep: '#2c181d', seam: '#1b0e12', riser: '#331b21', riserDeep: '#12080b',
+    accent: '#ff7a72', glow: '#ffc0b4', particle: 'emberDark',
+    sky: ['#070305', '#26080e', '#6b1018'], fog: '#160a0d',
+  },
+
+  // ── Chaîne B — Le Soleil ──
+  'room.soleil': {
+    label: 'Le soleil', base: 'Final', chain: 'soleil', step: 2,
+    surface: 'pulse', walls: ['spire', 'shard', 'gate'], props: ['beam', 'arch'],
+    top: '#c4914b', topDeep: '#5b3b18', seam: '#3a250f', riser: '#63400f', riserDeep: '#251706',
+    accent: '#ffd166', glow: '#fff6d0', particle: 'plasma',
+    sky: ['#2a1203', '#6e2f05', '#ffb020'], fog: '#40200a',
+  },
+  'room.chateau': {
+    // Même bâtiment que room.enfer4, déplacé au centre du soleil : mêmes murs, même
+    // vocabulaire de sol, palette réchauffée. Le rappel doit se voir, la confusion non.
+    label: 'Le chateau', base: 'Antechamber', chain: 'soleil', step: 3,
+    surface: 'flagstone', walls: ['gate', 'column', 'brokenColumn'], props: ['column', 'arch'],
+    top: '#c1a06a', topDeep: '#544128', seam: '#352819', riser: '#5b4527', riserDeep: '#211910',
+    accent: '#ffd98a', glow: '#fff4d2', particle: 'gilt',
+    sky: ['#1e1206', '#4a2c0c', '#b8761f'], fog: '#2c1d0c',
+  },
+  'room.cellule': {
+    label: 'Le chateau - La cellule', base: 'Memory', chain: 'soleil', step: 4,
+    surface: 'plank', walls: ['crates', 'shelf', 'brokenColumn'], props: ['cairn', 'beam'],
+    top: '#a89275', topDeep: '#463b2c', seam: '#2b241a', riser: '#4c4030', riserDeep: '#1c1712',
+    accent: '#a8d8e0', glow: '#e6f8fb', particle: 'flake',
+    sky: ['#12100c', '#2a2318', '#5d4a2c'], fog: '#1a1610',
+  },
+
+  // ── Chaîne C — L'Hôpital ──
+  'room.cellulehopital': {
+    label: "L'hopital - la cellule", base: 'Silence', chain: 'hopital', step: 2,
+    surface: 'clinic', walls: ['gate', 'rubble', 'monolith'], props: ['obeliskProp', 'beam'],
+    top: '#a9a4b0', topDeep: '#474252', seam: '#2e2a38', riser: '#4d4759', riserDeep: '#1b1823',
+    accent: '#b9a6de', glow: '#e4d9f6', particle: 'dust',
+    sky: ['#0d0b12', '#1f1a2b', '#453a5e'], fog: '#171423',
+  },
+
+  // ── Chaîne D — La Montagne (extérieur → temple → tombeau → tunnel → merveille) ──
+  'room.templempontagne': {
+    label: 'La montagne - Le temple', base: 'Antechamber', chain: 'montagne', step: 2,
+    surface: 'flagstone', walls: ['column', 'monolith', 'gate'], props: ['column', 'arch'],
+    top: '#a08b62', topDeep: '#453a26', seam: '#2b2317', riser: '#4a3e28', riserDeep: '#1b160f',
+    accent: '#7fd8b0', glow: '#d8f6e8', particle: 'gilt',
+    sky: ['#100e0a', '#2b2515', '#5f5327'], fog: '#1a170f',
+  },
+  'room.chambrefunéraire': {
+    label: 'La montagne - la chambre funéraire', base: 'Memory', chain: 'montagne', step: 3,
+    surface: 'flagstone', walls: ['monolith', 'crates', 'rubble'], props: ['obeliskProp', 'cairn'],
+    top: '#6f6350', topDeep: '#2f2a21', seam: '#1e1a14', riser: '#352f25', riserDeep: '#13100c',
+    accent: '#e0a85c', glow: '#ffd79a', particle: 'ash',
+    sky: ['#080706', '#171310', '#33291d'], fog: '#100e0b',
+  },
+  'room.sousterrainmontagne': {
+    label: 'La montagne - Les sous-terrains', base: 'Silence', chain: 'montagne', step: 4,
+    surface: 'flagstone', walls: ['boulder', 'rubble', 'monolith'], props: ['cairn', 'beam'],
+    top: '#5b5348', topDeep: '#27231d', seam: '#191612', riser: '#2d2822', riserDeep: '#100e0c',
+    accent: '#9ec6c0', glow: '#d6ecea', particle: 'dust',
+    sky: ['#050505', '#0f1211', '#212a28'], fog: '#0b0d0d',
+  },
+  'room.cavernedecrystal': {
+    label: 'La montagne - La caverne de crystal', base: 'Threshold', chain: 'montagne', step: 5,
+    surface: 'crystal', walls: ['shard', 'boulder', 'monolith'], props: ['spire', 'beam'],
+    top: '#7f97c4', topDeep: '#333f66', seam: '#20284a', riser: '#36406b', riserDeep: '#141930',
+    accent: '#8ce8ff', glow: '#dff8ff', particle: 'mote',
+    sky: ['#050813', '#141f45', '#3b64a8'], fog: '#101733',
+  },
+};
+export const ROOM_KEYS = Object.keys(ROOMS);
+
+const ROOM_CACHE = new Map();
+/** Compose une salle : thème de base + surcharges. Mémoïsé — appelé à chaque sprite. */
+function composeRoom(key) {
+  const hit = ROOM_CACHE.get(key);
+  if (hit) return hit;
+  const spec = ROOMS[key];
+  const base = THEMES[spec.base] ?? THEMES.Threshold;
+  const th = { ...base, ...spec };
+  th.wall = th.walls ? th.walls[0] : base.wall;
+  th.roomKey = key;
+  ROOM_CACHE.set(key, th);
+  return th;
+}
+
+/** Accepte indifféremment un nom de thème de rendu ou une clé de salle (`room.*`). */
+function theme(name) {
+  if (name && ROOMS[name]) return composeRoom(name);
+  return THEMES[name] ?? THEMES.Threshold;
+}
+
+/** Décors de salle disponibles pour un thème ou une salle. */
+export function themeProps(name) { return theme(name).props ?? []; }
+/** Libellé lisible d'un thème ou d'une salle. */
+export function themeLabel(name) { return theme(name).label; }
+/** Couleur du voile de brouillard de guerre, déclinée par salle. */
+export function fogColor(name) {
+  const th = theme(name);
+  return th.fog ?? th.sky[0];
+}
 
 // ── Géométrie du diamant ─────────────────────────────────────────────────────────────
 function centerY(elev) { return (TILE.MAX - elev) * TILE.STEP + TILE.H / 2; }
@@ -238,7 +478,97 @@ function paintSurface(ctx, th, R, c, top, deep, o) {
     case 'fracture': return fracture(ctx, th, R, c, top, deep, 1);
     case 'pulse': return fracture(ctx, th, R, c, top, deep, 1.6);
     case 'ripple': return ripples(ctx, th, R, c, top, deep);
+    case 'carpet': return carpet(ctx, th, R, c, top, deep);
+    case 'clinic': return clinic(ctx, th, R, c, top, deep);
+    case 'crystal': return crystalFloor(ctx, th, R, c, top, deep);
     default: return null;
+  }
+}
+
+/** Tapis posé sur dalle : marge de pierre, bordure tissée, poil, usure. Hall & Couloirs. */
+function carpet(ctx, th, R, c, top, deep) {
+  flagstones(ctx, th, R, c, top, deep, 2);
+  const rug = th.rug ?? mix(th.accent, '#5a1a20', 0.6);
+  // Marge fine : les tapis de deux cases voisines se rejoignent presque, l'ensemble lit
+  // comme une seule pièce d'étoffe et non comme un damier de carrés rouges.
+  const m = 0.05;
+  const quad = (a, b) => {
+    const p = new Path2D();
+    const pts = [isoPt(a, a, c), isoPt(b, a, c), isoPt(b, b, c), isoPt(a, b, c)];
+    p.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < 4; i++) p.lineTo(pts[i].x, pts[i].y);
+    p.closePath();
+    return p;
+  };
+  const outer = quad(m, 1 - m);
+  ctx.save();
+  const g = ctx.createLinearGradient(c.cx, c.cy - c.hh, c.cx, c.cy + c.hh);
+  g.addColorStop(0, rgba(shade(rug, 0.16), 1));
+  g.addColorStop(1, rgba(shade(rug, -0.3), 1));
+  ctx.fillStyle = g;
+  ctx.fill(outer);
+  ctx.clip(outer);
+  // Poil du tapis : grain fin, dense, orienté — c'est ce qui évite l'effet "aplat rouge".
+  for (let i = 0; i < 140; i++) {
+    const p = isoPt(R(), R(), c);
+    ctx.fillStyle = rgba(R() > 0.5 ? shade(rug, 0.22) : shade(rug, -0.28), R2(R, 0.06, 0.24));
+    ctx.fillRect(p.x, p.y, R2(R, 1, 2.6), 1);
+  }
+  // Usure : deux traînées plus claires, comme un passage souvent emprunté.
+  for (let i = 0; i < 3; i++) {
+    const p = isoPt(R2(R, 0.2, 0.8), R2(R, 0.2, 0.8), c);
+    const wg = ctx.createRadialGradient(p.x, p.y, 1, p.x, p.y, R2(R, 14, 26));
+    wg.addColorStop(0, rgba(shade(rug, 0.3), 0.16));
+    wg.addColorStop(1, rgba(shade(rug, 0.3), 0));
+    ctx.fillStyle = wg;
+    ctx.fillRect(p.x - 30, p.y - 20, 60, 40);
+  }
+  ctx.restore();
+  ctx.strokeStyle = rgba(shade(rug, 0.34), 0.5); ctx.lineWidth = 1.4;
+  ctx.stroke(quad(m + 0.06, 1 - m - 0.06));
+  ctx.strokeStyle = rgba('#000000', 0.4); ctx.lineWidth = 1;
+  ctx.stroke(outer);
+}
+
+/** Carrelage d'hôpital : grandes dalles claires, joints froids, reflet sec, traçages au sol. */
+function clinic(ctx, th, R, c, top, deep) {
+  flagstones(ctx, th, R, c, top, deep, 2);
+  ctx.save();
+  ctx.clip(diamondPath(TILE.MAX, 1));
+  const sg = ctx.createLinearGradient(c.left.x, c.top.y, c.right.x, c.bottom.y);
+  sg.addColorStop(0, rgba('#ffffff', 0.16));
+  sg.addColorStop(0.5, rgba('#ffffff', 0.03));
+  sg.addColorStop(1, rgba(th.topDeep, 0.14));
+  ctx.fillStyle = sg;
+  ctx.fill(diamondPath(TILE.MAX, -1));
+  // Quelques auréoles : le lieu est propre, pas neuf.
+  for (let i = 0; i < 3; i++) {
+    const p = isoPt(R(), R(), c);
+    const st = ctx.createRadialGradient(p.x, p.y, 1, p.x, p.y, R2(R, 8, 18));
+    st.addColorStop(0, rgba(mix(th.topDeep, '#6b7a5e', 0.5), R2(R, 0.06, 0.14)));
+    st.addColorStop(1, rgba(th.topDeep, 0));
+    ctx.fillStyle = st;
+    ctx.fillRect(p.x - 20, p.y - 20, 40, 40);
+  }
+  ctx.restore();
+}
+
+/** Sol de la caverne : facettes de crystal affleurantes, arêtes lumineuses. */
+function crystalFloor(ctx, th, R, c, top, deep) {
+  flagstones(ctx, th, R, c, top, deep, 2);
+  for (let i = 0; i < 7; i++) {
+    const a = isoPt(R(), R(), c);
+    const p = new Path2D();
+    p.moveTo(a.x, a.y);
+    const n = 3 + ((R() * 2) | 0);
+    for (let k = 0; k < n; k++) {
+      p.lineTo(a.x + R2(R, -13, 13), a.y + R2(R, -7, 7));
+    }
+    p.closePath();
+    ctx.fillStyle = rgba(mix(top, th.glow, R2(R, 0.15, 0.55)), R2(R, 0.10, 0.3));
+    ctx.fill(p);
+    ctx.strokeStyle = rgba(th.glow, R2(R, 0.12, 0.4)); ctx.lineWidth = R2(R, 0.6, 1.3);
+    ctx.stroke(p);
   }
 }
 
@@ -843,7 +1173,7 @@ function wallKind(th, variant) {
   return list[((variant | 0) % list.length + list.length) % list.length];
 }
 
-function bakeObstacle(name, variant, grain) {
+function bakeObstacle(name, variant, grain, elevation) {
   const th = theme(name);
   const kind = wallKind(th, variant);
   const R = makeRng(hashSeed('wall:' + name + ':' + kind));
@@ -854,19 +1184,29 @@ function bakeObstacle(name, variant, grain) {
   if (!ctx) return cv;
   ctx.translate(0, PROP_EXTRA_H);
 
-  // Un mur ne doit jamais paraître plus bas que le sol voisin : toujours à l'élévation max.
-  paintRisers(ctx, TILE.MAX, th, R, { grain });
-  const c = corners(TILE.MAX);
+  // ⚠ DIVERGENCE ASSUMÉE vis-à-vis du handoff — à reporter à chaque rafraîchissement.
+  // La version livrée cuisait le socle à `TILE.MAX` en toutes circonstances ("un mur ne doit
+  // jamais paraître plus bas que le sol voisin"). Effet de bord : un obstacle posé sur une
+  // case de niveau 0 recevait quand même un piédestal de trois paliers qui n'existe nulle
+  // part dans le terrain, donc TOUS les obstacles lisaient comme des tours — y compris les
+  // silhouettes délibérément basses du moteur (éboulis, rocher, tronc couché), qui ne
+  // pouvaient jamais jouer leur rôle de simple barrage au sol.
+  // Le socle suit désormais l'élévation réelle de la case. La préoccupation d'origine reste
+  // traitée, mais là où elle appartient : l'ordre de tri, qui garde les obstacles à
+  // MAX_ELEVATION côté plan de dessin, donc un mur ne passe jamais derrière un sol voisin.
+  const level = Math.max(0, Math.min(TILE.MAX, elevation | 0));
+  paintRisers(ctx, level, th, R, { grain });
+  const c = corners(level);
   ctx.save();
-  ctx.clip(diamondPath(TILE.MAX, 0.5));
+  ctx.clip(diamondPath(level, 0.5));
   const g = ctx.createLinearGradient(c.left.x, c.top.y, c.right.x, c.bottom.y);
   g.addColorStop(0, rgba(shade(th.riser, 0.14), 1));
   g.addColorStop(1, rgba(th.riserDeep, 1));
-  ctx.fillStyle = g; ctx.fill(diamondPath(TILE.MAX, -1));
+  ctx.fillStyle = g; ctx.fill(diamondPath(level, -1));
   speckle(ctx, c.cx - c.hw, c.cy - c.hh, TILE.W, TILE.H, R, Math.round(320 * grain), th.glow, '#000000');
   ctx.restore();
   ctx.strokeStyle = rgba(th.glow, 0.18); ctx.lineWidth = 1.6;
-  ctx.stroke(diamondPath(TILE.MAX));
+  ctx.stroke(diamondPath(level));
 
   // Halo froid derrière la masse : détache la silhouette du fond, même en salle sombre.
   const sty = WALL_STYLE[kind] ?? { striation: 'masonry' };
@@ -1145,6 +1485,347 @@ function bakeProp(name, propKind, grain) {
     ctx.restore();
     return cv;
   }
+  if (propKind === 'monster' || propKind === 'elite') {
+    // Menace génerique. Opposée point par point au PNJ : quadrupède et non bipède, basse et
+    // allongée et non élancée, hérissée et non drapée, deux yeux et non un. Le corps prend
+    // la couleur sombre de la salle ; les yeux gardent partout le même rouge — c'est le
+    // signal de gameplay, il ne doit pas dépendre de l'ambiance.
+    const big = propKind === 'elite';
+    const s = big ? 1.16 : 1;
+    const hide = mix(th.riserDeep, '#1a1216', 0.5);
+    const hideLit = shade(hide, 0.3);
+    const EYE = '#ff5a3c', EYE_DEEP = '#8e1a0e';
+    const y = (v) => base - v * s;
+    const x = (v) => cx + v * s;
+    const M = (pts, o) => paintMass(ctx, pts.map(([a, b]) => P(x(a), y(b))), th, R, o);
+    const skin = { striation: 'fibre', base: hide, deep: '#08060a', rim: 0.12 };
+    const skinDark = { striation: 'fibre', base: shade(hide, -0.24), deep: '#050308', rim: 0.06 };
+
+    // Ombre large et basse, décentrée vers l'arrière : la bête est ramassée sur ses pattes.
+    ctx.fillStyle = rgba('#000000', 0.5);
+    ctx.beginPath(); ctx.ellipse(x(-4), base - 1, 38 * s, 12 * s, 0, 0, Math.PI * 2); ctx.fill();
+
+    // Pattes arrière, cuisse haute et jarret cassé — la poussée d'un prédateur.
+    M([[-32, 2], [-28, 30], [-12, 32], [-16, 4]], skinDark);
+    M([[-20, 4], [-17, 22], [-7, 22], [-10, 2]], skinDark);
+    // Patte avant, tendue, portant le poids de l'encolure basse.
+    M([[8, 2], [12, 30], [22, 30], [18, 2]], skinDark);
+    for (const px0 of [-26, -13, 13]) {
+      M([[px0 - 2, 6], [px0 + 11, 6], [px0 + 9, -1], [px0, -1]], { ...skinDark, rim: 0.1 });
+      for (let k = 0; k < 3; k++) {
+        ctx.beginPath();
+        ctx.moveTo(x(px0 + k * 3.6), y(1));
+        ctx.lineTo(x(px0 + 1.6 + k * 3.6), y(-3));
+        ctx.lineTo(x(px0 + 3.2 + k * 3.6), y(1));
+        ctx.closePath();
+        ctx.fillStyle = rgba('#cbbfae', 0.72); ctx.fill();
+      }
+    }
+
+    ctx.save();
+    ctx.shadowColor = rgba('#000000', 0.6); ctx.shadowBlur = 12;
+    // Tronc : croupe basse à gauche, garrot bossu au centre, ligne qui plonge vers l'avant.
+    M([[-30, 4], [-40, 14], [-44, 22], [-52, 20], [-48, 26], [-38, 26], [-32, 20]], skinDark);
+    M([[-36, 12], [-35, 24], [-31, 34], [-22, 42], [-10, 45], [2, 44], [12, 40],
+      [20, 34], [24, 26], [22, 18], [18, 11], [4, 8], [-14, 8], [-28, 9]], skin);
+    M([[-30, 28], [-27, 46], [-11, 48], [-8, 30]], { ...skin, base: hideLit, rim: 0.2 });
+    // Encolure courte, presque horizontale : la tête est portée plus bas que le garrot.
+    M([[16, 34], [20, 42], [36, 38], [33, 24]], skin);
+    // Tête allongée, museau en avant, arcade sourcilière lourde.
+    M([[28, 20], [31, 36], [50, 34], [56, 24], [48, 15], [33, 14]], { ...skin, base: hideLit, rim: 0.24 });
+    ctx.restore();
+
+    // Crête d'épines, inclinée vers l'arrière : la ligne qui dit « hostile » de loin.
+    for (let i = 0; i < (big ? 7 : 5); i++) {
+      const t0 = i / (big ? 6 : 4);
+      const sx = x(-28 + t0 * 42);
+      const sy = y(34 + Math.sin(t0 * Math.PI) * 12);
+      const hgt = (big ? 20 : 15) * (0.55 + 0.45 * Math.sin(t0 * Math.PI)) * s;
+      ctx.beginPath();
+      ctx.moveTo(sx - 3.4 * s, sy);
+      ctx.lineTo(sx - hgt * 0.42, sy - hgt);
+      ctx.lineTo(sx + 3.4 * s, sy);
+      ctx.closePath();
+      ctx.fillStyle = rgba(shade(hide, -0.4), 0.95); ctx.fill();
+      ctx.strokeStyle = rgba(EYE_DEEP, 0.3); ctx.lineWidth = 1; ctx.stroke();
+    }
+    if (big) {
+      // Élite : deux cornes de bélier qui partent en arrière puis reviennent. Seule
+      // différence de lecture avec la bête commune — même corps, même posture.
+      for (const [off, up, al] of [[-4, 0, 0.55], [3, 4, 0.9]]) {
+        const horn = new Path2D();
+        horn.moveTo(x(38 + off), y(32 + up));
+        horn.quadraticCurveTo(x(34 + off), y(50 + up), x(14 + off), y(58 + up));
+        horn.quadraticCurveTo(x(28 + off), y(46 + up), x(31 + off), y(30 + up));
+        horn.closePath();
+        ctx.fillStyle = rgba('#cfc3ae', al); ctx.fill(horn);
+        ctx.strokeStyle = rgba('#241a12', 0.4); ctx.lineWidth = 1.1; ctx.stroke(horn);
+      }
+    }
+    // Gueule : dents claires sur noir. Jamais de bouche dessinée trait par trait.
+    ctx.save();
+    const maw = new Path2D();
+    maw.moveTo(x(36), y(26)); maw.lineTo(x(55), y(25)); maw.lineTo(x(50), y(16)); maw.lineTo(x(36), y(17));
+    maw.closePath();
+    ctx.fillStyle = rgba('#0a0406', 0.95); ctx.fill(maw);
+    ctx.clip(maw);
+    for (let i = 0; i < 6; i++) {
+      const tx = x(37 + i * 3);
+      ctx.beginPath();
+      ctx.moveTo(tx, y(25.5)); ctx.lineTo(tx + 1.4 * s, y(20)); ctx.lineTo(tx + 2.8 * s, y(25.5));
+      ctx.closePath();
+      ctx.fillStyle = rgba('#e8ded0', 0.62); ctx.fill();
+    }
+    ctx.restore();
+    // Arcade : un simple trait sombre au-dessus des yeux, et le regard s'enfonce.
+    ctx.beginPath();
+    ctx.moveTo(x(31), y(32)); ctx.lineTo(x(49), y(31));
+    ctx.strokeStyle = rgba('#050306', 0.7); ctx.lineWidth = 3 * s; ctx.stroke();
+    // Yeux : paire rapprochée, halo chaud, sous l'arcade.
+    ctx.save();
+    ctx.shadowColor = rgba(EYE, 0.8); ctx.shadowBlur = 6;
+    for (const dx0 of [35, 42]) {
+      ctx.beginPath();
+      ctx.ellipse(x(dx0), y(28.5), 2.4 * s, 1.7 * s, -0.2, 0, Math.PI * 2);
+      ctx.fillStyle = rgba(EYE, 0.95); ctx.fill();
+    }
+    ctx.restore();
+    return cv;
+  }
+  if (propKind === 'boss') {
+    // Objectif de la salle : doit se voir de l'autre bout du plateau. Trois lectures
+    // superpos\u00e9es \u2014 un sceau au sol, une masse deux fois plus haute qu'un PNJ, une couronne.
+    const hide = mix(th.riserDeep, '#150f18', 0.5);
+    const EYE = '#ff5a3c';
+    ctx.fillStyle = rgba('#000000', 0.55);
+    ctx.beginPath(); ctx.ellipse(cx, base - 1, 44, 16, 0, 0, Math.PI * 2); ctx.fill();
+
+    // Sceau au sol : deux anneaux en perspective iso + rayons. Marque le territoire.
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for (const [rr, al, lw] of [[44, 0.5, 2.2], [31, 0.3, 1.4]]) {
+      ctx.beginPath();
+      ctx.ellipse(cx, base - 2, rr, rr * 0.42, 0, 0, Math.PI * 2);
+      ctx.strokeStyle = rgba(th.accent, al); ctx.lineWidth = lw;
+      ctx.shadowColor = rgba(th.accent, 0.8); ctx.shadowBlur = 12;
+      ctx.stroke();
+    }
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.moveTo(cx + Math.cos(a) * 31, base - 2 + Math.sin(a) * 13);
+      ctx.lineTo(cx + Math.cos(a) * 44, base - 2 + Math.sin(a) * 18);
+      ctx.strokeStyle = rgba(th.glow, 0.3); ctx.lineWidth = 1.4;
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // Manteau : base tr\u00e8s large qui se resserre aux \u00e9paules, tomb\u00e9 jusqu'au sol.
+    ctx.save();
+    ctx.shadowColor = rgba('#000000', 0.7); ctx.shadowBlur = 18;
+    const cloak = new Path2D();
+    cloak.moveTo(cx - 40, base - 2);
+    cloak.quadraticCurveTo(cx - 34, base - 66, cx - 24, base - 118);
+    cloak.quadraticCurveTo(cx - 6, base - 136, cx + 20, base - 118);
+    cloak.quadraticCurveTo(cx + 32, base - 62, cx + 40, base - 2);
+    cloak.closePath();
+    const cg = ctx.createLinearGradient(cx - 40, 0, cx + 40, 0);
+    cg.addColorStop(0, rgba(shade(hide, 0.2), 1));
+    cg.addColorStop(0.55, rgba(hide, 1));
+    cg.addColorStop(1, rgba('#080509', 1));
+    ctx.fillStyle = cg; ctx.fill(cloak);
+    ctx.restore();
+    ctx.save();
+    ctx.clip(cloak);
+    for (let i = 0; i < 11; i++) {
+      const x0 = cx - 34 + i * 6.6;
+      ctx.beginPath();
+      ctx.moveTo(x0, base - 4);
+      ctx.quadraticCurveTo(x0 + R2(R, -5, 5), base - 70, x0 + R2(R, -3, 7), base - 120);
+      ctx.strokeStyle = rgba(R() > 0.45 ? '#000000' : th.accent, R() > 0.45 ? 0.34 : 0.12);
+      ctx.lineWidth = R2(R, 1, 2.6); ctx.stroke();
+    }
+    // Lueur qui monte du bas du manteau : la masse a quelque chose dedans.
+    const ig = ctx.createLinearGradient(0, base, 0, base - 60);
+    ig.addColorStop(0, rgba(th.accent, 0.28));
+    ig.addColorStop(1, rgba(th.accent, 0));
+    ctx.fillStyle = ig; ctx.fillRect(cx - 44, base - 60, 88, 60);
+    ctx.restore();
+
+    // \u00c9paules : deux \u00e9paulettes angulaires qui \u00e9largissent le haut de la silhouette.
+    for (const dir of [-1, 1]) {
+      paintMass(ctx, [P(cx + dir * 16, base - 100), P(cx + dir * 34, base - 116),
+        P(cx + dir * 42, base - 98), P(cx + dir * 22, base - 88)], th, R,
+      { striation: 'masonry', base: shade(hide, 0.12), deep: '#0a070c', rim: 0.24 });
+    }
+    // T\u00eate voil\u00e9e + couronne de cornes.
+    const head = new Path2D();
+    head.moveTo(cx - 15, base - 118);
+    head.quadraticCurveTo(cx - 17, base - 152, cx - 1, base - 158);
+    head.quadraticCurveTo(cx + 14, base - 152, cx + 12, base - 118);
+    head.closePath();
+    ctx.fillStyle = rgba('#0a0710', 0.98); ctx.fill(head);
+    ctx.strokeStyle = rgba(th.accent, 0.3); ctx.lineWidth = 1.4; ctx.stroke(head);
+    ctx.save();
+    ctx.shadowColor = rgba(th.glow, 0.7); ctx.shadowBlur = 14;
+    for (let i = 0; i < 5; i++) {
+      const t0 = i / 4;
+      const hx0 = cx - 22 + t0 * 44;
+      const hgt = 34 + Math.sin(t0 * Math.PI) * 26;
+      ctx.beginPath();
+      ctx.moveTo(hx0 - 5, base - 146);
+      ctx.quadraticCurveTo(hx0 + (t0 - 0.5) * 34, base - 146 - hgt * 0.62, hx0 + (t0 - 0.5) * 58, base - 142 - hgt);
+      ctx.lineTo(hx0 + 5, base - 146);
+      ctx.closePath();
+      ctx.fillStyle = rgba(mix('#d8cdbb', th.accent, 0.35), 0.9); ctx.fill();
+      ctx.strokeStyle = rgba('#1a1218', 0.55); ctx.lineWidth = 1.2; ctx.stroke();
+    }
+    ctx.restore();
+    // Trois yeux : une paire, plus un troisi\u00e8me au front. Impossible \u00e0 confondre avec la b\u00eate.
+    ctx.save();
+    ctx.shadowColor = rgba(EYE, 0.95); ctx.shadowBlur = 16;
+    for (const [ex, ey, er] of [[-7, 134, 3.4], [5, 134, 3.4], [-1, 146, 2.2]]) {
+      ctx.beginPath();
+      ctx.ellipse(cx + ex, base - ey, er, er * 0.72, 0, 0, Math.PI * 2);
+      ctx.fillStyle = rgba(EYE, 0.95); ctx.fill();
+    }
+    ctx.restore();
+    // \u00c9clats en suspension autour des \u00e9paules : le boss d\u00e9range l'espace autour de lui.
+    for (let i = 0; i < 7; i++) {
+      const a = R() * Math.PI * 2, rr = R2(R, 46, 74);
+      const px = cx + Math.cos(a) * rr, py = base - 110 + Math.sin(a) * rr * 0.5;
+      ctx.save();
+      ctx.translate(px, py); ctx.rotate(R2(R, -0.8, 0.8));
+      ctx.fillStyle = rgba(th.glow, R2(R, 0.2, 0.5));
+      ctx.beginPath();
+      ctx.moveTo(0, -R2(R, 5, 11)); ctx.lineTo(R2(R, 2, 4), 0); ctx.lineTo(0, R2(R, 4, 9)); ctx.lineTo(-R2(R, 2, 4), 0);
+      ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
+    return cv;
+  }
+  if (propKind === 'merchant') {
+    // \u00c9tal : tr\u00e9teau, drap, auvent, ballots, lanterne. Aucune figure \u2014 c'est le commerce
+    // qu'on doit reconna\u00eetre, pas un personnage (le PNJ garde sa silhouette).
+    const wood = '#4a3626', woodDeep = '#150e08';
+    for (const dx0 of [-34, 30]) {
+      paintMass(ctx, [P(cx + dx0, base), P(cx + dx0 + 1, base - 96),
+        P(cx + dx0 + 6, base - 96), P(cx + dx0 + 6, base)], th, R,
+      { striation: 'fibre', base: wood, deep: woodDeep, rim: 0.1 });
+    }
+    // Auvent ray\u00e9, l\u00e9g\u00e8rement pentu, festonn\u00e9 en bord.
+    const cloth = mix(th.accent, '#7a3b32', 0.55);
+    const awn = new Path2D();
+    awn.moveTo(cx - 40, base - 92); awn.lineTo(cx + 40, base - 100);
+    awn.lineTo(cx + 44, base - 78); awn.lineTo(cx - 44, base - 70);
+    awn.closePath();
+    ctx.save();
+    ctx.shadowColor = rgba('#000000', 0.5); ctx.shadowBlur = 10;
+    ctx.fillStyle = rgba(cloth, 1); ctx.fill(awn);
+    ctx.restore();
+    ctx.save();
+    ctx.clip(awn);
+    for (let i = 0; i < 7; i++) {
+      ctx.fillStyle = rgba(i % 2 ? shade(cloth, 0.22) : shade(cloth, -0.26), 0.85);
+      ctx.fillRect(cx - 44 + i * 12.6, base - 104, 6.3, 40);
+    }
+    ctx.restore();
+    for (let i = 0; i < 8; i++) {
+      const fx = cx - 42 + i * 11;
+      ctx.beginPath();
+      ctx.arc(fx + 5, base - 71 - i * 1, 5.5, 0, Math.PI);
+      ctx.fillStyle = rgba(shade(cloth, -0.18), 0.9); ctx.fill();
+    }
+    // Plateau + drap qui pend.
+    paintMass(ctx, [P(cx - 42, base - 40), P(cx - 42, base - 47), P(cx + 42, base - 52), P(cx + 42, base - 45)],
+      th, R, { striation: 'fibre', base: shade(wood, 0.16), deep: woodDeep, rim: 0.16 });
+    const drape = new Path2D();
+    drape.moveTo(cx - 40, base - 42); drape.lineTo(cx + 40, base - 47);
+    drape.quadraticCurveTo(cx + 20, base - 8, cx - 2, base - 14);
+    drape.quadraticCurveTo(cx - 24, base - 6, cx - 40, base - 16);
+    drape.closePath();
+    ctx.fillStyle = rgba(mix(th.riser, cloth, 0.35), 0.96); ctx.fill(drape);
+    ctx.save();
+    ctx.clip(drape);
+    for (let i = 0; i < 9; i++) {
+      const x0 = cx - 38 + i * 9;
+      ctx.beginPath(); ctx.moveTo(x0, base - 44); ctx.lineTo(x0 + R2(R, -3, 3), base - 12);
+      ctx.strokeStyle = rgba('#000000', R2(R, 0.1, 0.28)); ctx.lineWidth = R2(R, 1, 2.2); ctx.stroke();
+    }
+    ctx.restore();
+    // Marchandise : ballots ficel\u00e9s, deux fioles, une pi\u00e8ce de tissu roul\u00e9e.
+    for (const [bx, by, brx, bry] of [[-26, 52, 11, 8], [-6, 54, 9, 7], [24, 56, 12, 9]]) {
+      ctx.beginPath();
+      ctx.ellipse(cx + bx, base - by, brx, bry, R2(R, -0.2, 0.2), 0, Math.PI * 2);
+      ctx.fillStyle = rgba(mix(th.riser, '#6b5537', 0.6), 1); ctx.fill();
+      ctx.strokeStyle = rgba('#1a1208', 0.6); ctx.lineWidth = 1.2; ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(cx + bx - brx, base - by); ctx.lineTo(cx + bx + brx, base - by);
+      ctx.strokeStyle = rgba('#d8c49a', 0.35); ctx.lineWidth = 1; ctx.stroke();
+    }
+    for (const vx of [6, 14]) {
+      paintMass(ctx, [P(cx + vx - 3, base - 52), P(cx + vx - 2, base - 64),
+        P(cx + vx + 2, base - 64), P(cx + vx + 3, base - 52)], th, R,
+      { striation: 'masonry', base: mix(th.glow, '#3c5a52', 0.5), deep: '#0d1614', rim: 0.3 });
+    }
+    // Lanterne suspendue \u00e0 l'auvent : la seule source de lumi\u00e8re, elle dit \"ouvert\".
+    ctx.beginPath();
+    ctx.moveTo(cx + 34, base - 76); ctx.lineTo(cx + 34, base - 64);
+    ctx.strokeStyle = rgba('#2a2018', 0.9); ctx.lineWidth = 1.4; ctx.stroke();
+    ctx.save();
+    ctx.shadowColor = rgba('#ffcf8a', 0.9); ctx.shadowBlur = 16;
+    ctx.fillStyle = rgba('#ffdca4', 0.9);
+    ctx.beginPath(); ctx.ellipse(cx + 34, base - 58, 5, 6.5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+    return cv;
+  }
+  if (propKind === 'curse') {
+    // Mal\u00e9diction : rien de vivant, rien de chaud. Une st\u00e8le fendue, un anneau bris\u00e9 en
+    // suspension, des vrilles qui rampent. La palette ignore l'accent de la salle \u2014 le
+    // violet-noir doit \u00eatre le m\u00eame partout, comme le rouge des yeux de b\u00eate.
+    const ink = '#1d0b22', inkDeep = '#070309', wound = '#6e1550';
+    ctx.fillStyle = rgba('#000000', 0.5);
+    ctx.beginPath(); ctx.ellipse(cx, base - 1, 28, 11, 0, 0, Math.PI * 2); ctx.fill();
+    for (let i = 0; i < 9; i++) {
+      const a = R() * Math.PI * 2, rr = R2(R, 12, 32);
+      ctx.beginPath();
+      ctx.moveTo(cx, base - 2);
+      ctx.quadraticCurveTo(cx + Math.cos(a) * rr * 0.6, base - 2 + Math.sin(a) * rr * 0.3 - 6,
+        cx + Math.cos(a) * rr, base - 2 + Math.sin(a) * rr * 0.42);
+      ctx.strokeStyle = rgba(inkDeep, R2(R, 0.4, 0.85)); ctx.lineWidth = R2(R, 1, 2.6); ctx.lineCap = 'round';
+      ctx.stroke();
+    }
+    ctx.save();
+    ctx.shadowColor = rgba(wound, 0.3); ctx.shadowBlur = 9;
+    paintMass(ctx, [P(cx - 17, base), P(cx - 13, base - 62), P(cx - 3, base - 74),
+      P(cx + 4, base - 60), P(cx + 16, base)], th, R,
+    { striation: 'splinter', base: ink, deep: inkDeep, rim: 0.16 });
+    ctx.restore();
+    // Fente qui court sur la st\u00e8le, ourl\u00e9e de lumi\u00e8re mauve.
+    ctx.beginPath();
+    ctx.moveTo(cx - 4, base - 70);
+    ctx.quadraticCurveTo(cx + 4, base - 44, cx - 6, base - 8);
+    ctx.strokeStyle = rgba(mix(wound, '#ff86c8', 0.35), 0.5); ctx.lineWidth = 1.6;
+    ctx.shadowColor = rgba(wound, 0.6); ctx.shadowBlur = 7;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    // Anneau bris\u00e9 en suspension au-dessus : trois arcs, jamais un cercle ferm\u00e9.
+    for (const [a0, a1] of [[-0.2, 1.5], [1.9, 3.2], [3.7, 5.6]]) {
+      ctx.beginPath();
+      ctx.ellipse(cx, base - 96, 22, 9, 0, a0, a1);
+      ctx.strokeStyle = rgba(mix(wound, '#c88ab0', 0.3), 0.4); ctx.lineWidth = 2.2;
+      ctx.shadowColor = rgba(wound, 0.5); ctx.shadowBlur = 8;
+      ctx.stroke();
+    }
+    ctx.shadowBlur = 0;
+    for (let i = 0; i < 12; i++) {
+      ctx.fillStyle = rgba(mix(wound, '#000000', R2(R, 0, 0.5)), R2(R, 0.2, 0.6));
+      ctx.beginPath();
+      ctx.arc(cx + R2(R, -26, 26), base - 96 + R2(R, -22, 22), R2(R, 0.7, 2), 0, Math.PI * 2);
+      ctx.fill();
+    }
+    return cv;
+  }
   // cairn : petit empilement d'éclats de pierre, discret, sert de repère.
   ctx.save();
   ctx.shadowColor = rgba('#000000', 0.5); ctx.shadowBlur = 8;
@@ -1272,7 +1953,7 @@ export function spriteKeyToString(k) {
         'f', k.theme, k.elevation, k.surfaceSeed ?? 0, k.hidden ?? 'n', k.danger ?? 'n',
         k.cliffLeft ? 'L' : '-', k.cliffRight ? 'R' : '-', k.resolved ? 'r' : '-', k.glow ? 'g' : '-',
       ].join(':');
-    case 'obstacle': return `o:${k.theme}:${k.variant ?? 0}`;
+    case 'obstacle': return `o:${k.theme}:${k.variant ?? 0}:${k.elevation ?? 0}`;
     case 'prop': return `p:${k.theme}:${k.prop}`;
     case 'highlight': return `h:${k.variant}:${k.elevation}`;
     case 'party': return `y:${k.elevation}`;
@@ -1289,7 +1970,7 @@ export function createTileForge(options = {}) {
     if (hit) return hit;
     let cv;
     switch (key.kind) {
-      case 'obstacle': cv = bakeObstacle(key.theme, key.variant ?? 0, grain); break;
+      case 'obstacle': cv = bakeObstacle(key.theme, key.variant ?? 0, grain, key.elevation ?? 0); break;
       case 'prop': cv = bakeProp(key.theme, key.prop, grain); break;
       case 'highlight': cv = bakeHighlight(key.variant, key.elevation ?? 0); break;
       case 'party': cv = bakeParty(key.elevation ?? 0); break;
@@ -1314,6 +1995,28 @@ export function obstacleVariantCount(name) {
   const th = theme(name);
   return (th.walls ?? [th.wall]).length;
 }
+
+/** Tous les décors disponibles, dans l'ordre : décor de salle puis décor d'événement. */
+export const PROP_KINDS = [
+  'beam', 'arch', 'trunk', 'spire', 'obeliskProp', 'column', 'cairn',
+  'npc', 'merchant', 'campfire', 'star', 'curse', 'monster', 'elite', 'boss',
+];
+
+/** Décor à poser sur un nœud, par type de nœud. `null` = pas de décor (case nue). */
+export const NODE_PROP = {
+  presence: 'npc',
+  merchant: 'merchant',
+  rest: 'campfire',
+  item: 'star',
+  memory: 'star',
+  law: 'star',
+  curse: 'curse',
+  ambush: 'monster',
+  elite: 'elite',
+  rare: 'elite',
+  boss: 'boss',
+  finalConfrontation: 'boss',
+};
 
 /** Faces latérales à peindre en falaise : la case devant-gauche est (x+1,y), devant-droite (x,y+1). */
 export function cliffSides(x, y, isFloor) {
@@ -1495,6 +2198,18 @@ function drawScenery(ctx, w, h, th, R, t) {
       pillars(0, 11, h * 0.3, w * 0.035);
       arches(0.75, 4, h * 0.44, w * 0.15);
       break;
+    case 'carpet': // Hall / Couloirs : enfilade de portes, colonnade serrée derrière.
+      pillars(0, 9, h * 0.26, w * 0.04);
+      arches(0.75, 4, h * 0.4, w * 0.13);
+      break;
+    case 'clinic': // Hôpital : travées régulières, alignement clinique, rien qui dépasse.
+      pillars(0, 13, h * 0.22, w * 0.025);
+      pillars(0.7, 6, h * 0.3, w * 0.05);
+      break;
+    case 'crystal': // Caverne : aiguilles de crystal en deux plans.
+      shards(0, 8, h * 0.34);
+      shards(0.8, 5, h * 0.5);
+      break;
     default:
       pillars(0, 7, h * 0.28, w * 0.05);
   }
@@ -1510,6 +2225,10 @@ const AMBIENT = {
   emberDark: { n: 14, rise: -0.0050, size: [1.0, 2.8], alpha: [0.16, 0.52], drift: 16 },
   dust: { n: 12, rise: -0.0012, size: [0.7, 1.8], alpha: [0.07, 0.24], drift: 12 },
   gilt: { n: 16, rise: -0.0026, size: [0.8, 2.1], alpha: [0.11, 0.36], drift: 24 },
+  ash: { n: 20, rise: 0.0030, size: [0.9, 2.4], alpha: [0.10, 0.30], drift: 34 },
+  snow: { n: 22, rise: 0.0052, size: [1.0, 2.4], alpha: [0.16, 0.5], drift: 40 },
+  petal: { n: 13, rise: 0.0026, size: [1.4, 3.2], alpha: [0.14, 0.4], drift: 46 },
+  plasma: { n: 18, rise: -0.0072, size: [1.1, 3.0], alpha: [0.22, 0.62], drift: 18 },
 };
 /** Particules d'ambiance, sans état : tout est fonction de (index, temps). */
 export function drawAmbient(ctx, w, h, name, t) {
@@ -1696,7 +2415,7 @@ export function drawFogOfWar(ctx, w, h, centers, radius, name, t = 0) {
   if (!f) return;
   f.clearRect(0, 0, w, h);
   const veil = f.createLinearGradient(0, 0, 0, h);
-  veil.addColorStop(0, rgba(mix(th.sky[0], '#000000', 0.35), 0.94));
+  veil.addColorStop(0, rgba(mix(th.fog ?? th.sky[0], '#000000', 0.35), 0.94));
   veil.addColorStop(1, rgba('#04040a', 0.97));
   f.fillStyle = veil;
   f.fillRect(0, 0, w, h);

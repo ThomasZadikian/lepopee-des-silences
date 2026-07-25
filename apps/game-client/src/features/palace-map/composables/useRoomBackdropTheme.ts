@@ -1,6 +1,6 @@
 import { computed, type ComputedRef } from 'vue';
 import type { RoomDto } from '../../runs/types/runTypes';
-import type { RoomTheme } from './useTerrainSprites';
+import { resolveRoomVisual, type RenderTheme } from './useTerrainSprites';
 
 /**
  * Resolves a room's theme into the two things the renderer needs from it: the painted-tile
@@ -12,9 +12,10 @@ import type { RoomTheme } from './useTerrainSprites';
  * hue-drift helper that fed it are gone rather than kept unused.
  */
 
-/** The 7 themes the tile engine paints. Exactly the strings the backend's RoomThemeResolver
- * emits (`RoomThemeResolver.cs`) — the two lists must stay in step. */
-export const PAINTED_THEMES: readonly RoomTheme[] = [
+/** The 7 generic render themes. Exactly the strings the backend's RoomThemeResolver emits
+ * (`RoomThemeResolver.cs`) — the two lists must stay in step. These are the FALLBACK: a room
+ * the catalogue names gets its own palette instead (see paintedTheme below). */
+export const PAINTED_THEMES: readonly RenderTheme[] = [
   'Threshold', 'Memory', 'Forest', 'Rupture', 'Silence', 'Antechamber', 'Final',
 ];
 
@@ -22,8 +23,8 @@ const PAINTED_THEME_SET = new Set<string>(PAINTED_THEMES);
 
 /** Falls back to Threshold rather than painting an unthemed void: an unknown theme means the
  * backend grew a room type the renderer hasn't been taught yet, which should still be playable. */
-export function resolvePaintedTheme(theme: string | null | undefined): RoomTheme {
-  return PAINTED_THEME_SET.has(theme ?? '') ? (theme as RoomTheme) : 'Threshold';
+export function resolvePaintedTheme(theme: string | null | undefined): RenderTheme {
+  return PAINTED_THEME_SET.has(theme ?? '') ? (theme as RenderTheme) : 'Threshold';
 }
 
 // Tiles borrow the room's accent color too — an "Antechamber" floor reads gold, a
@@ -40,7 +41,17 @@ export const THEME_ACCENT: Record<string, string> = {
 };
 
 export function useRoomBackdropTheme(room: ComputedRef<RoomDto>) {
-  const paintedTheme = computed(() => resolvePaintedTheme(room.value.theme));
+  /**
+   * What the renderer actually paints with. The 27 canon Palace rooms each carry their own
+   * palette in the tile engine, keyed by the catalogue key the DTO already sends; anything the
+   * catalogue does not name — a room type with no canon entry — falls back to its generic
+   * render theme. Without this, every room in the Palace collapsed onto 7 shared palettes and
+   * the entrance hall could come out with the same floor as the fourth circle of hell.
+   */
+  const paintedTheme = computed(() => resolveRoomVisual(
+    room.value.catalogRoomKey ?? undefined,
+    resolvePaintedTheme(room.value.theme),
+  ));
 
   const themeAccent = computed(() => THEME_ACCENT[room.value.theme] ?? '--gold');
 

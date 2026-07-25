@@ -74,23 +74,36 @@ describe('useNodePresentation', () => {
 });
 
 describe('propKindFor', () => {
-  it('keeps the authored prop for node types that have scenery of their own', () => {
+  it('gives every authored node type scenery of its own', () => {
+    // The merchant no longer borrows the hooded figure, and the curse/enemy/boss types have
+    // stopped being bare tiles — the v2 asset set added one prop per type.
     expect(propKindFor(makeNode('Rest'))).toBe('campfire');
     expect(propKindFor(makeNode('Npc'))).toBe('npc');
+    expect(propKindFor(makeNode('Merchant'))).toBe('merchant');
     expect(propKindFor(makeNode('Item'))).toBe('star');
+    expect(propKindFor(makeNode('Curse'))).toBe('curse');
+    expect(propKindFor(makeNode('Combat'))).toBe('monster');
   });
 
-  it('stands a figure on an ambush — a contact node with no scenery of its own', () => {
-    expect(propKindFor(makeNode('Combat', { contactBehavior: 'TriggerOnEnter' }))).toBe('npc');
+  it('gives Elite and Rare the horned beast rather than the plain one', () => {
+    expect(propKindFor(makeNode('Elite'))).toBe('elite');
+    expect(propKindFor(makeNode('Rare'))).toBe('elite');
   });
 
-  it('leaves a node bare when nothing about it fires on contact', () => {
-    expect(propKindFor(makeNode('Combat'))).toBeNull();
-    expect(propKindFor(makeNode('Elite', { contactBehavior: 'Blocking' }))).toBeNull();
+  it('gives the boss its own silhouette — it is what the room is for', () => {
+    // Reverses an earlier rule of ours. The boss tile used to be left bare on the grounds that
+    // its glow was enough; the design's boss prop is built to read from across the board, which
+    // is the better answer for the room's objective.
+    expect(propKindFor(makeNode('RoomBoss', { isBoss: true }))).toBe('boss');
+    expect(propKindFor(makeNode('FinalBoss', { isBoss: true }))).toBe('boss');
   });
 
-  it('leaves the boss bare even on contact — its tile already carries a glow', () => {
-    expect(propKindFor(makeNode('RoomBoss', { isBoss: true, contactBehavior: 'TriggerOnEnter' })))
-      .toBeNull();
+  it('falls back to the beast for an unauthored type that fires on contact', () => {
+    expect(propKindFor(makeNode('SomeFutureType', { contactBehavior: 'TriggerOnEnter' })))
+      .toBe('monster');
+  });
+
+  it('leaves an unauthored, non-contact type bare rather than guessing', () => {
+    expect(propKindFor(makeNode('SomeFutureType'))).toBeNull();
   });
 });

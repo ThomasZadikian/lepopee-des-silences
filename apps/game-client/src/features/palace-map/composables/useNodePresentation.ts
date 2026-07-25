@@ -1,4 +1,5 @@
 import type { NodeDto } from '../../runs/types/runTypes';
+import type { PropKind } from './useTerrainSprites';
 
 // ── Node tile tone: color-codes a node's tile by what it means, not just that it
 // holds a node — combat sits on blood, treasure/commerce/decrees on gold, presences
@@ -32,34 +33,42 @@ export const SIGIL_KIND_BY_NODE_TYPE: Record<string, string> = {
  *
  * Only event nodes that represent *something physically there* get one.
  */
-export const PROP_KIND_BY_NODE_TYPE: Record<string, 'npc' | 'star' | 'campfire'> = {
+export const PROP_KIND_BY_NODE_TYPE: Record<string, PropKind> = {
   Npc: 'npc',
-  Merchant: 'npc',
+  Merchant: 'merchant',
   Rest: 'campfire',
   Item: 'star',
   Memory: 'star',
   Law: 'star',
+  Curse: 'curse',
+  Combat: 'monster',
+  Elite: 'elite',
+  Rare: 'elite',
+  RoomBoss: 'boss',
+  FinalBoss: 'boss',
 };
 
 /**
- * The prop a node actually paints. Types with scenery of their own keep it; a node that fires
- * the moment you step on it and has none — an ambush — gets a pacing figure instead of an empty
- * tile, on the creator's explicit call ("je veux tout de même mon PNJ qui se déplace dessus").
- * The figure is what you see; whether it means you harm is what the danger tell does or does not
- * say, so an ambush stays a real gamble rather than becoming a blank patch of floor.
+ * The prop a node actually paints.
  *
- * A boss never gets one: its tile already glows, and the remote challenge means it is never a
- * thing you walk into by surprise.
+ * Every type now has scenery of its own — the merchant has a stall instead of borrowing the
+ * hooded figure, the curse has a stele, an enemy node has a crouching beast, and the boss has
+ * a silhouette twice a figure's height that reads from the far side of the board.
+ *
+ * One deliberate departure from the design handoff, on the creator's explicit call ("je veux
+ * tout de même mon PNJ qui se déplace dessus"): the handoff leaves an ambush's tile bare, and
+ * here it gets its beast. The gamble survives because the tell, not the prop, is what says
+ * whether the thing means you harm — and the beast's silhouette is nothing like the NPC's, so
+ * showing it no longer muddles "someone waits here" with "something waits here".
  */
 export function propKindFor(node: {
   type: string;
   isBoss?: boolean;
   contactBehavior?: string;
-}): 'npc' | 'star' | 'campfire' | null {
+}): PropKind | null {
   const authored = PROP_KIND_BY_NODE_TYPE[node.type];
   if (authored) return authored;
-  if (node.isBoss) return null;
-  return node.contactBehavior === 'TriggerOnEnter' ? 'npc' : null;
+  return node.contactBehavior === 'TriggerOnEnter' ? 'monster' : null;
 }
 
 // Short label — used both for the hover tooltip (type only, as requested) and as the

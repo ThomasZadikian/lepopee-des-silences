@@ -345,38 +345,31 @@ describe('buildDrawPlan', () => {
         .toMatchObject({ kind: 'prop', prop: 'npc' });
     });
 
-    it('leaves a combat node bare when nothing about it fires on contact', () => {
-      const plan = buildDrawPlan({
-        ...baseInput,
-        nodesByCell: new Map([['1,1', makeNode({ lane: 1, row: 1, type: 'Combat' })]]),
-      });
-
-      expect(plan.some((e) => e.cellKey === 'prop:1,1')).toBe(false);
-    });
-
-    it('stands a figure on an ambush, so the tile is not an empty patch of floor', () => {
+    it('stands the beast on a combat node, the horned one on an elite', () => {
       const plan = buildDrawPlan({
         ...baseInput,
         nodesByCell: new Map([
-          ['1,1', makeNode({ lane: 1, row: 1, type: 'Combat', contactBehavior: 'TriggerOnEnter' })],
+          ['1,1', makeNode({ lane: 1, row: 1, type: 'Combat' })],
+          ['2,2', makeNode({ lane: 2, row: 2, type: 'Elite' })],
         ]),
       });
 
       expect(plan.find((e) => e.cellKey === 'prop:1,1')!.spriteKey)
-        .toMatchObject({ kind: 'prop', prop: 'npc' });
+        .toMatchObject({ kind: 'prop', prop: 'monster' });
+      expect(plan.find((e) => e.cellKey === 'prop:2,2')!.spriteKey)
+        .toMatchObject({ kind: 'prop', prop: 'elite' });
     });
 
-    it('keeps the boss bare even though it fires on contact — its tile already glows', () => {
+    it('stands the boss silhouette on the room objective', () => {
       const plan = buildDrawPlan({
         ...baseInput,
         nodesByCell: new Map([
-          ['1,1', makeNode({
-            lane: 1, row: 1, type: 'RoomBoss', isBoss: true, contactBehavior: 'TriggerOnEnter',
-          })],
+          ['1,1', makeNode({ lane: 1, row: 1, type: 'RoomBoss', isBoss: true })],
         ]),
       });
 
-      expect(plan.some((e) => e.cellKey === 'prop:1,1')).toBe(false);
+      expect(plan.find((e) => e.cellKey === 'prop:1,1')!.spriteKey)
+        .toMatchObject({ kind: 'prop', prop: 'boss' });
     });
 
     it('clears the prop once the node is spent', () => {

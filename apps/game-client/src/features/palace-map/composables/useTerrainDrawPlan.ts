@@ -294,6 +294,11 @@ export function buildDrawPlan(input: BuildDrawPlanInput): DrawPlanEntry[] {
         // Deterministic per cell: the same wall keeps the same silhouette across repaints,
         // but three distinct ones alternate across the room instead of one stamped everywhere.
         variant: wallVariants > 0 ? hashSeed(cellKey) % wallVariants : 0,
+        // Its own cell's height, NOT the board maximum. A low silhouette (rubble, boulder,
+        // deadfall) on flat ground has to read as something you cannot cross rather than as
+        // one more tower — see the obstacle key's own note. Depth ORDER still pins obstacles
+        // at MAX_ELEVATION, just below.
+        elevation: cellElevation,
       };
     } else {
       const tint: FloorTint = node

@@ -37,6 +37,13 @@ import {
   obstacleVariantCount,
   spriteKeyToString as forgeKeyToString,
   THEMES,
+  ROOMS,
+  ROOM_KEYS,
+  NODE_PROP,
+  PROP_KINDS,
+  themeLabel,
+  themeProps,
+  fogColor,
   TILE,
   SPRITE_W,
   SPRITE_H,
@@ -49,24 +56,55 @@ export const GROUND_ANCHOR_RATIO = FORGE_GROUND_ANCHOR_RATIO;
 export {
   PROP_GROUND_ANCHOR_RATIO, cliffSides, drawBackdrop, drawAmbient, drawRevealFx,
   drawDangerAura, drawFireFx, drawStarFx, drawFogOfWar, visionRadius, obstacleVariantCount,
-  anchorRatioAt,
+  anchorRatioAt, ROOMS, ROOM_KEYS, NODE_PROP, PROP_KINDS, themeLabel, themeProps, fogColor,
 };
 
 export type FloorTint = 'blood' | 'gold' | 'frost' | 'sap' | 'neutral';
 
-/** Room themes, in the order the palace lays them out. */
-export type RoomTheme =
+/** Thèmes de rendu génériques — le repli, quand la salle n'est pas identifiée. */
+export type RenderTheme =
   | 'Threshold' | 'Memory' | 'Forest' | 'Rupture' | 'Silence' | 'Antechamber' | 'Final';
+
+/** Clé de salle du catalogue : `catalogRoomKey` de `RoomDto` ("room.halldentree"…). */
+export type CatalogRoomKey = string;
+
+/**
+ * Identité visuelle d'une tuile. Passer de préférence le `catalogRoomKey` : les 27 salles
+ * du Palais ont chacune leur palette. Un `RenderTheme` reste accepté (repli à 7 palettes).
+ */
+export type RoomTheme = RenderTheme | CatalogRoomKey;
+
+/** true si la clé correspond à une des 27 salles canon. */
+export function isCatalogRoom(key: string | undefined): boolean {
+  return !!key && Object.prototype.hasOwnProperty.call(ROOMS, key);
+}
+
+/**
+ * Résout l'identité visuelle à utiliser pour une salle : la salle canon si le catalogue l'a
+ * fournie, sinon le thème génerique dérivé du `RoomType`. Point d'entrée unique côté client.
+ */
+export function resolveRoomVisual(
+  catalogRoomKey: string | undefined,
+  fallbackTheme: RenderTheme = 'Threshold',
+): RoomTheme {
+  return isCatalogRoom(catalogRoomKey) ? (catalogRoomKey as CatalogRoomKey) : fallbackTheme;
+}
 
 /** A tile's hidden-node state: indistinguishable → a slab that rings hollow → open alcove. */
 export type HiddenState = 'none' | 'hint' | 'revealed';
 /** Pre-contact danger tell. `none` is the ambush: deliberately identical to plain floor. */
 export type DangerTell = 'none' | 'tracks' | 'glow' | 'blight';
 export type HighlightVariant = 'move' | 'attack' | 'cursor' | 'path';
-/** Décor vertical. `npc` / `star` / `campfire` sont les événements de case. */
+/**
+ * Décor vertical. Les sept premiers sont les décors de salle ; les suivants sont les décors
+ * d'événement, un par type de nœud (voir `NODE_PROP`).
+ * `monster` est la menace génerique posée sur un nœud ennemi, `elite` la même bête cornue
+ * (élite / rare), `boss` l'objectif de la salle — silhouette deux fois plus haute, sceau au
+ * sol, visible de l'autre bout du plateau.
+ */
 export type PropKind =
   | 'beam' | 'arch' | 'column' | 'trunk' | 'spire' | 'obeliskProp' | 'cairn'
-  | 'npc' | 'star' | 'campfire';
+  | 'npc' | 'merchant' | 'star' | 'campfire' | 'curse' | 'monster' | 'elite' | 'boss';
 
 export type SpriteKey =
   | {
@@ -89,6 +127,14 @@ export type SpriteKey =
       theme?: RoomTheme;
       /** 0–2 : chaque thème propose trois obstacles distincts (`obstacleVariantCount`). */
       variant?: number;
+      /**
+       * DIVERGENCE ASSUMÉE vis-à-vis du handoff (voir bakeObstacle dans tilecraft.js).
+       * Le socle de l'obstacle est cuit à CETTE élévation plutôt qu'à MAX_ELEVATION : sans ça
+       * un éboulis posé au niveau 0 reçoit un piédestal de trois paliers absent du terrain, et
+       * tous les obstacles lisent comme des tours. L'ordre de peinture, lui, garde bien les
+       * obstacles à MAX_ELEVATION — c'est là que la préoccupation d'origine est traitée.
+       */
+      elevation?: number;
     }
   | { kind: 'party'; elevation: number }
   | { kind: 'prop'; theme?: RoomTheme; prop: PropKind }
@@ -121,7 +167,10 @@ function toForgeKey(key: SpriteKey): ForgeKey {
         glow: !!key.glow,
       };
     case 'obstacle':
-      return { kind: 'obstacle', theme: key.theme ?? 'Threshold', variant: key.variant ?? 0 };
+      return {
+        kind: 'obstacle', theme: key.theme ?? 'Threshold',
+        variant: key.variant ?? 0, elevation: key.elevation ?? 0,
+      };
     case 'prop':
       return { kind: 'prop', theme: key.theme ?? 'Threshold', prop: key.prop };
     case 'highlight':
@@ -164,10 +213,14 @@ export function useTerrainSprites(options: TerrainSpriteOptions = {}) {
   };
 }
 
-/** The theme's accent/glow hexes, for HUD elements that must match the room. */
+/** Accent / lueur / libellé d'un thème OU d'une salle — pour le HUD, qui doit suivre la salle. */
 export function themePalette(theme: RoomTheme) {
-  const t = THEMES[theme] ?? THEMES.Threshold;
-  return { accent: t.accent, glow: t.glow, tint: t.tint, label: t.label, sky: t.sky };
+  const room = ROOMS[theme];
+  const t = room ? { ...(THEMES[room.base] ?? THEMES.Threshold), ...room } : (THEMES[theme] ?? THEMES.Threshold);
+  return {
+    accent: t.accent, glow: t.glow, tint: t.tint, label: t.label, sky: t.sky,
+    fog: fogColor(theme),
+  };
 }
 
 export const TERRAIN_SPRITE_CONSTANTS = {
