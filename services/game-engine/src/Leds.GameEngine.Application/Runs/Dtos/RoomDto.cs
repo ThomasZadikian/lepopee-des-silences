@@ -38,8 +38,11 @@ public sealed record RoomDto(
         // unexplored. This only exposes a node's type/position as a distant marker; the
         // terrain/path to it stays hidden (RevealedCells is untouched). Sending the full node
         // list unconditionally would defeat the point of the fog of war entirely.
+        //
+        // Hidden nodes are excluded from BOTH halves: a cache the player is meant to search for
+        // must not show up as a distant marker, which the Available branch would otherwise do.
         var nodesForDto = room.VisibleNodes
-            .Concat(room.Nodes.Where(node => node.State == NodeState.Available))
+            .Concat(room.Nodes.Where(node => node.State == NodeState.Available && !node.IsHidden))
             .Distinct()
             .ToArray();
 
@@ -62,7 +65,7 @@ public sealed record RoomDto(
             room.CatalogBinding?.Key,
             room.CatalogBinding?.DisplayName,
             room.CatalogBinding?.NarrativeText,
-            RoomGridDto.FromDomain(room.Grid, room.CanChallengeBossRemotely));
+            RoomGridDto.FromDomain(room.Grid, room.CanChallengeBossRemotely, room.CanSearchAtPartyPosition));
     }
 
     private static string? ResolveActiveClimate(
@@ -104,9 +107,17 @@ public sealed record RoomGridDto(
     IReadOnlyList<int> Elevation,
     // [x,y] pairs, same shape convention as RevealedCells — sent for the whole grid, same
     // rationale as Elevation above.
-    IReadOnlyCollection<int[]> ObstacleCells)
+    IReadOnlyCollection<int[]> ObstacleCells,
+    // Flat, row-major like Elevation: which cells are part of the room at all. False = a hole
+    // in the bounding rectangle, which is what gives a room a shape (alcoves, an L, ragged
+    // edges) and tells the renderer where to draw cliff faces.
+    IReadOnlyList<bool> FloorCells,
+    // Whether searching from where the party stands would turn something up. Deliberately a
+    // single boolean and not the cache's position: the client may show that a search is worth
+    // trying, never what or exactly where.
+    bool CanSearch)
 {
-    public static RoomGridDto FromDomain(RoomGrid grid, bool canChallengeBossRemotely)
+    public static RoomGridDto FromDomain(RoomGrid grid, bool canChallengeBossRemotely, bool canSearch)
     {
         return new RoomGridDto(
             grid.Width,
@@ -118,7 +129,9 @@ public sealed record RoomGridDto(
             canChallengeBossRemotely,
             grid.RevealedCells.Select(cell => new[] { cell.X, cell.Y }).ToArray(),
             grid.Elevation.ToArray(),
-            grid.Obstacles.Select(cell => new[] { cell.X, cell.Y }).ToArray());
+            grid.Obstacles.Select(cell => new[] { cell.X, cell.Y }).ToArray(),
+            grid.FloorMask.ToArray(),
+            canSearch);
     }
 }
 

@@ -23,6 +23,9 @@ public sealed class MapNodeEntityConfiguration : IEntityTypeConfiguration<MapNod
         builder.Property(node => node.IsBoss).HasColumnName("is_boss");
         builder.Property(node => node.State).HasColumnName("state").HasMaxLength(64).IsRequired();
         builder.Property(node => node.ChosenEventOptionId).HasColumnName("chosen_event_option_id").HasMaxLength(128);
+        builder.Property(node => node.HiddenState).HasColumnName("hidden_state").HasMaxLength(32);
+        builder.Property(node => node.DangerTell).HasColumnName("danger_tell").HasMaxLength(32);
+        builder.Property(node => node.ContactBehavior).HasColumnName("contact_behavior").HasMaxLength(32);
 
         builder.HasOne(node => node.Room)
             .WithMany(room => room.Nodes)

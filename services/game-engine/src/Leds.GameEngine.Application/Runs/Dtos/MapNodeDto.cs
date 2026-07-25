@@ -14,7 +14,12 @@ public sealed record MapNodeDto(
     string State,
     bool IsBoss,
     bool IsInitial,
-    bool HasChosenEventOption)
+    bool HasChosenEventOption,
+    // How this node reads on the board: what walking onto it does, and what warning it gives
+    // off beforehand. A hidden node never reaches the client at all (see RoomDto.FromDomain),
+    // so there is no HiddenState here — its absence from the payload IS the hiding.
+    string ContactBehavior,
+    string DangerTell)
 {
     public static MapNodeDto FromDomain(MapNode node)
     {
@@ -32,6 +37,8 @@ public sealed record MapNodeDto(
             node.State.ToString(),
             node.IsBoss,
             node.IsInitial,
-            node.HasChosenEventOption);
+            node.HasChosenEventOption,
+            node.ContactBehavior.ToString(),
+            node.DangerTell.ToString());
     }
 }

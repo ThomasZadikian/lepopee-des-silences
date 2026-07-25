@@ -234,6 +234,7 @@ public static class RunPersistenceMapper
             GridRevealedCellsCsv = string.Join(";", room.Grid.RevealedCells.Select(cell => $"{cell.X},{cell.Y}")),
             GridElevationCsv = string.Join(",", room.Grid.Elevation),
             GridObstacleCellsCsv = string.Join(";", room.Grid.Obstacles.Select(cell => $"{cell.X},{cell.Y}")),
+            GridFloorCellsCsv = string.Join(",", room.Grid.FloorMask.Select(cell => cell ? "1" : "0")),
             CurrentGridNodeId = room.CurrentGridNodeId?.Value,
             Nodes = room.Nodes.Select(node => ToEntity(node, room.Id.Value)).ToList()
         };
@@ -254,6 +255,9 @@ public static class RunPersistenceMapper
             IsBoss = node.IsBoss,
             State = node.State.ToString(),
             ChosenEventOptionId = node.ChosenEventOptionId,
+            HiddenState = node.HiddenState.ToString(),
+            DangerTell = node.DangerTell.ToString(),
+            ContactBehavior = node.ContactBehavior.ToString(),
             ParentNodeLinks = node.ParentNodeIds
                 .Select(parentId => new MapNodeParentNodeEntity
                 {
@@ -528,7 +532,8 @@ public static class RunPersistenceMapper
             ParseGridRevealedNodeIds(entity.GridRevealedNodeIdsCsv),
             ParseGridRevealedCells(entity.GridRevealedCellsCsv),
             ParseGridElevation(entity.GridElevationCsv, entity.GridWidth, entity.GridHeight),
-            ParseGridRevealedCells(entity.GridObstacleCellsCsv).ToArray());
+            ParseGridRevealedCells(entity.GridObstacleCellsCsv).ToArray(),
+            ParseGridFloorCells(entity.GridFloorCellsCsv, entity.GridWidth, entity.GridHeight));
 
         var room = Room.Rehydrate(
             new RoomId(entity.Id),
@@ -591,6 +596,31 @@ public static class RunPersistenceMapper
 
     /// <summary>Falls back to a flat (all-zero) map for rooms persisted before this field
     /// existed — matches this project's nullable/defaulted-column migration convention.</summary>
+    /// <summary>
+    /// Empty means "every cell is floor" — how a room persisted before rooms had a shape must
+    /// be read, matching this project's defaulted-column migration convention. A stored mask of
+    /// the wrong length is treated the same way rather than crashing a run mid-load.
+    /// </summary>
+    private static IReadOnlyList<bool> ParseGridFloorCells(string? csv, int width, int height)
+    {
+        if (string.IsNullOrEmpty(csv))
+        {
+            return Enumerable.Repeat(true, width * height).ToArray();
+        }
+
+        var parsed = csv.Split(',', StringSplitOptions.RemoveEmptyEntries)
+            .Select(cell => cell == "1")
+            .ToArray();
+
+        return parsed.Length == width * height
+            ? parsed
+            : Enumerable.Repeat(true, width * height).ToArray();
+    }
+
+    /// <summary>Missing/unknown reads back as the enum's default — the "nothing special" value.</summary>
+    private static TEnum ParseEnumOrDefault<TEnum>(string? value) where TEnum : struct, Enum =>
+        Enum.TryParse<TEnum>(value, out var parsed) ? parsed : default;
+
     private static IReadOnlyList<int> ParseGridElevation(string? csv, int width, int height)
     {
         if (string.IsNullOrEmpty(csv))
@@ -620,7 +650,10 @@ public static class RunPersistenceMapper
             entity.IsBoss,
             Enum.Parse<NodeState>(entity.State),
             entity.ChosenEventOptionId,
-            string.IsNullOrEmpty(entity.CombatRiskTier) ? null : Enum.Parse<RiskTier>(entity.CombatRiskTier));
+            string.IsNullOrEmpty(entity.CombatRiskTier) ? null : Enum.Parse<RiskTier>(entity.CombatRiskTier),
+            ParseEnumOrDefault<HiddenState>(entity.HiddenState),
+            ParseEnumOrDefault<DangerTell>(entity.DangerTell),
+            ParseEnumOrDefault<ContactBehavior>(entity.ContactBehavior));
     }
 
     public static ActivePalaceLaw ToDomain(RunActivePalaceLawEntity entity)

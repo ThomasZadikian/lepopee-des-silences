@@ -46,10 +46,101 @@ public sealed class GridRoomGeneratorTests
         room.Grid.Should().NotBeNull();
         room.Grid!.Width.Should().Be(10);
         room.Grid.Height.Should().Be(8);
-        room.Grid.MovementBudget.Should().Be(26);
-        room.Grid.MovementBudgetRemaining.Should().Be(26);
         room.Grid.PartyX.Should().Be(0);
         room.Grid.PartyY.Should().Be(4);
+
+        // The budget is no longer the template's constant: it is derived from the cheapest route
+        // to the boss on the room actually generated, plus slack. Asserted as the contract that
+        // matters (never below the template floor, always a full budget at spawn) rather than as
+        // a magic number, which would break whenever the shape or obstacle rolls shift.
+        room.Grid.MovementBudget.Should().BeGreaterThanOrEqualTo(26);
+        room.Grid.MovementBudgetRemaining.Should().Be(room.Grid.MovementBudget);
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(7)]
+    [InlineData(42)]
+    [InlineData(1337)]
+    public async Task GenerateRoom_ShouldLeaveBudgetToSpare_BeyondTheCheapestRouteToTheBoss(int seed)
+    {
+        var sut = CreateSut();
+        var random = new Random(seed);
+
+        var room = await sut.GenerateAsync(Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, random);
+
+        var boss = room.Nodes.Single(node => node.IsBoss);
+        var route = room.Grid.FindPath(boss.Lane, boss.Row);
+
+        route.Should().NotBeNull("the boss must always be reachable");
+
+        // Reaching the objective must never be all the budget affords — there has to be room to
+        // detour into a recess and search it.
+        (room.Grid.MovementBudget - route!.Value.Cost)
+            .Should().BeGreaterThan(0, "exploring must stay affordable, not just surviving the room");
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(7)]
+    [InlineData(42)]
+    [InlineData(1337)]
+    public async Task GenerateRoom_ShouldKeepEveryNodeOnReachableFloor(int seed)
+    {
+        var sut = CreateSut();
+        var random = new Random(seed);
+
+        var room = await sut.GenerateAsync(Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, random);
+
+        foreach (var node in room.Nodes)
+        {
+            room.Grid.IsFloor(node.Lane, node.Row)
+                .Should().BeTrue("a node cannot stand on a hole in the room");
+            room.Grid.IsObstacle(node.Lane, node.Row)
+                .Should().BeFalse("a node cannot stand inside a wall");
+            room.Grid.FindPath(node.Lane, node.Row)
+                .Should().NotBeNull("every node must stay reachable from the spawn");
+        }
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(7)]
+    [InlineData(42)]
+    [InlineData(1337)]
+    public async Task GenerateRoom_ShouldHideOnlyLootAndNeverTheBoss(int seed)
+    {
+        var sut = CreateSut();
+        var random = new Random(seed);
+
+        var room = await sut.GenerateAsync(Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, random);
+
+        foreach (var hidden in room.Nodes.Where(node => node.IsHidden))
+        {
+            hidden.IsBoss.Should().BeFalse("hiding the room's objective could strand the run");
+            hidden.EventType.Should().Be(NodeEventType.Item,
+                "a cache rewards a detour with loot, never with an unchosen fight");
+        }
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(7)]
+    [InlineData(42)]
+    [InlineData(1337)]
+    public async Task GenerateRoom_ShouldNotCarveAwayTheWholeRoom(int seed)
+    {
+        var sut = CreateSut();
+        var random = new Random(seed);
+
+        var room = await sut.GenerateAsync(Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, random);
+
+        var floorCount = room.Grid.FloorMask.Count(cell => cell);
+        var total = room.Grid.Width * room.Grid.Height;
+
+        room.Grid.IsFloor(room.Grid.StartX, room.Grid.StartY).Should().BeTrue();
+        floorCount.Should().BeLessThan(total, "a room should not stay a perfect rectangle");
+        floorCount.Should().BeGreaterThan(total / 2, "carving must shape the room, not consume it");
     }
 
     [Fact]

@@ -43,6 +43,13 @@ public sealed class RoomEntity
     public string GridElevationCsv { get; set; } = string.Empty;
     /// <summary>Semicolon-separated "x,y" pairs, same format as GridRevealedCellsCsv.</summary>
     public string GridObstacleCellsCsv { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Comma-separated 0/1, row-major (index = y*GridWidth+x), one per cell: which cells are
+    /// part of the room. Empty means "every cell is floor" — the shape rooms had before rooms
+    /// had a shape, which is exactly how rows persisted before this column should be read.
+    /// </summary>
+    public string GridFloorCellsCsv { get; set; } = string.Empty;
     /// <summary>The node currently in the Select/Resolve interaction slot — see Room._currentGridNodeId.</summary>
     public Guid? CurrentGridNodeId { get; set; }
 
