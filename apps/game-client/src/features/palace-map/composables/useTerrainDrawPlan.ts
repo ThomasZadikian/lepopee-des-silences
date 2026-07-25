@@ -1,6 +1,6 @@
 import type { NodeDto } from '../../runs/types/runTypes';
 import type { Cell } from './useGridCells';
-import type { FloorTint, SpriteKey } from './useTerrainSprites';
+import { TERRAIN_SPRITE_CONSTANTS, type FloorTint, type SpriteKey } from './useTerrainSprites';
 
 // BALANCE KNOB — shrinks the whole diamond inward so the outermost tile's own half-width/
 // half-height never reaches the canvas edge (mirrors the old CSS ISO_FIT).
@@ -55,6 +55,71 @@ export function unprojectFromScreen(
     x: Math.round((sum + diff) / 2) + 0,
     y: Math.round((sum - diff) / 2) + 0,
   };
+}
+
+export type ScreenToCellInput = {
+  screenX: number;
+  screenY: number;
+  gridWidth: number;
+  gridHeight: number;
+  canvasWidth: number;
+  canvasHeight: number;
+  /** Flat, row-major, one 0..3 value per cell — same shape as BuildDrawPlanInput.elevation. */
+  elevation: number[];
+  obstacleCells: Set<string>;
+};
+
+/**
+ * Inverse of what's actually PAINTED, not of the flat projection: a tile at elevation > 0 is
+ * drawn shifted up on screen by its own lift (see useTerrainSprites' diamondCenterY /
+ * TacticalGridMap's elevationLiftPx) while `projectToScreen`/`unprojectFromScreen` only know
+ * about the flat, elevation-0 grid. Using the flat inverse for click hit-testing meant an
+ * elevated tile could only be clicked by aiming at its unlifted footprint — visibly offset
+ * below where the tile is actually drawn. This tests each cell's real lifted top-face diamond
+ * instead, and — since a taller tile can visually overlap a shorter one behind it — breaks any
+ * overlap in favor of the higher sortKey, matching the painter's-algorithm draw order (the tile
+ * actually visible at that pixel wins the hit test, same as it wins the paint).
+ */
+export function screenToCell(input: ScreenToCellInput): Cell | null {
+  const projection: ProjectionParams = {
+    canvasWidth: input.canvasWidth,
+    canvasHeight: input.canvasHeight,
+    gridWidth: input.gridWidth,
+    gridHeight: input.gridHeight,
+  };
+  const { isoUnitX } = isoUnit(projection);
+  if (isoUnitX === 0) return null;
+
+  // Mirrors TacticalGridMap's spriteDest/elevationLiftPx exactly (destW/destH/lift scale) —
+  // kept in lockstep by formula here rather than threaded through as extra parameters, since
+  // every one of these is fully derived from isoUnitX and the fixed sprite constants.
+  const { BASE_TILE_W, BASE_TILE_H, BASE_STEP_PX, MAX_ELEVATION, SPRITE_H } = TERRAIN_SPRITE_CONSTANTS;
+  const destW = isoUnitX * 2.05;
+  const destH = (destW * SPRITE_H) / BASE_TILE_W;
+  const liftPerLevel = (destH / SPRITE_H) * BASE_STEP_PX;
+  const halfW = destW / 2;
+  const halfH = (BASE_TILE_H * (destW / BASE_TILE_W)) / 2;
+
+  let best: { x: number; y: number; sortKey: number } | null = null;
+
+  for (let y = 0; y < input.gridHeight; y++) {
+    for (let x = 0; x < input.gridWidth; x++) {
+      const isObstacle = input.obstacleCells.has(`${x},${y}`);
+      const elevationLevel = isObstacle ? MAX_ELEVATION : (input.elevation[(y * input.gridWidth) + x] ?? 0);
+
+      const { screenX: cx, screenY: flatCy } = projectToScreen(x, y, projection);
+      const cy = flatCy - (elevationLevel * liftPerLevel);
+
+      const dx = Math.abs(input.screenX - cx) / halfW;
+      const dy = Math.abs(input.screenY - cy) / halfH;
+      if (dx + dy > 1) continue;
+
+      const sortKey = ((x + y) * 4) + elevationLevel;
+      if (!best || sortKey > best.sortKey) best = { x, y, sortKey };
+    }
+  }
+
+  return best ? { x: best.x, y: best.y } : null;
 }
 
 export type DrawPlanEntry = {

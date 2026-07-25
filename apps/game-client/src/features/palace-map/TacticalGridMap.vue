@@ -9,7 +9,7 @@ import { useNodePresentation, NODE_TILE_TONE, RISK_TIER_DISPLAY } from './compos
 import { useRoomBackdropTheme } from './composables/useRoomBackdropTheme';
 import { useGridCells, type Cell } from './composables/useGridCells';
 import { useTerrainSprites, GROUND_ANCHOR_RATIO, TERRAIN_SPRITE_CONSTANTS, type FloorTint } from './composables/useTerrainSprites';
-import { buildDrawPlan, isoUnit, projectToScreen, unprojectFromScreen } from './composables/useTerrainDrawPlan';
+import { buildDrawPlan, isoUnit, projectToScreen, screenToCell } from './composables/useTerrainDrawPlan';
 
 const props = defineProps<{
   room: RoomDto;
@@ -190,21 +190,24 @@ const nodeMarkers = computed(() => {
 });
 
 // ── Click-to-move / hover: canvas has no per-cell DOM nodes, so hit-testing inverse-
-// projects the pointer position back to a grid cell. ──────────────────────────────
+// projects the pointer position back to a grid cell — accounting for each cell's own
+// elevation lift, so an elevated tile is hit where it's actually drawn (see screenToCell). ──
 function canvasPointToCell(event: MouseEvent): Cell | null {
   const canvas = canvasEl.value;
   const g = grid.value;
   if (!canvas || !g) return null;
 
   const rect = canvas.getBoundingClientRect();
-  const { x, y } = unprojectFromScreen(
-    event.clientX - rect.left,
-    event.clientY - rect.top,
-    { canvasWidth: rect.width, canvasHeight: rect.height, gridWidth: g.width, gridHeight: g.height },
-  );
-
-  if (x < 0 || x >= g.width || y < 0 || y >= g.height) return null;
-  return { x, y };
+  return screenToCell({
+    screenX: event.clientX - rect.left,
+    screenY: event.clientY - rect.top,
+    canvasWidth: rect.width,
+    canvasHeight: rect.height,
+    gridWidth: g.width,
+    gridHeight: g.height,
+    elevation: g.elevation,
+    obstacleCells: obstacleCells.value,
+  });
 }
 
 function onCellClick(cell: Cell) {

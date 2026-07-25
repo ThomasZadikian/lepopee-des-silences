@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { NodeDto } from '../../runs/types/runTypes';
-import { buildDrawPlan, projectToScreen, unprojectFromScreen, type ProjectionParams } from './useTerrainDrawPlan';
+import { buildDrawPlan, isoUnit, projectToScreen, screenToCell, unprojectFromScreen, type ProjectionParams } from './useTerrainDrawPlan';
+import { TERRAIN_SPRITE_CONSTANTS } from './useTerrainSprites';
 import type { Cell } from './useGridCells';
 
 const PARAMS: ProjectionParams = { canvasWidth: 200, canvasHeight: 200, gridWidth: 5, gridHeight: 5 };
@@ -196,5 +197,70 @@ describe('buildDrawPlan', () => {
       const tallTile = plan.find((e) => e.x === 4 && e.y === 0)!;
       expect(tallTile.sortKey).toBeGreaterThan(partyEntry.sortKey);
     });
+  });
+});
+
+describe('screenToCell', () => {
+  const screenToCellBase = {
+    gridWidth: 5,
+    gridHeight: 5,
+    canvasWidth: PARAMS.canvasWidth,
+    canvasHeight: PARAMS.canvasHeight,
+    elevation: new Array(25).fill(0),
+    obstacleCells: new Set<string>(),
+  };
+
+  function liftPx(elevationLevel: number): number {
+    const { isoUnitX } = isoUnit(PARAMS);
+    const destW = isoUnitX * 2.05;
+    return (destW / TERRAIN_SPRITE_CONSTANTS.BASE_TILE_W) * TERRAIN_SPRITE_CONSTANTS.BASE_STEP_PX * elevationLevel;
+  }
+
+  it('matches the flat projection when every cell is at elevation 0 (parity with the old inverse)', () => {
+    for (const [x, y] of [[0, 0], [2, 2], [4, 4], [1, 3]]) {
+      const { screenX, screenY } = projectToScreen(x, y, PARAMS);
+      expect(screenToCell({ ...screenToCellBase, screenX, screenY })).toEqual({ x, y });
+    }
+  });
+
+  it('hits an elevated cell where it is actually drawn, not at its flat footprint', () => {
+    const elevation = new Array(25).fill(0);
+    elevation[(2 * 5) + 2] = 3; // cell (2,2)
+    const { screenX, screenY } = projectToScreen(2, 2, PARAMS);
+    const liftedY = screenY - liftPx(3);
+
+    expect(screenToCell({ ...screenToCellBase, elevation, screenX, screenY: liftedY })).toEqual({ x: 2, y: 2 });
+  });
+
+  it('no longer resolves a click at an elevated cell\'s old flat position to that cell', () => {
+    const elevation = new Array(25).fill(0);
+    elevation[(2 * 5) + 2] = 3;
+    const { screenX, screenY } = projectToScreen(2, 2, PARAMS);
+
+    expect(screenToCell({ ...screenToCellBase, elevation, screenX, screenY })).not.toEqual({ x: 2, y: 2 });
+  });
+
+  it('hit-tests an obstacle at max elevation regardless of its own elevation value', () => {
+    const obstacleCells = new Set(['1,1']);
+    const { screenX, screenY } = projectToScreen(1, 1, PARAMS);
+    const liftedY = screenY - liftPx(TERRAIN_SPRITE_CONSTANTS.MAX_ELEVATION);
+
+    expect(screenToCell({ ...screenToCellBase, obstacleCells, screenX, screenY: liftedY })).toEqual({ x: 1, y: 1 });
+  });
+
+  it('resolves overlapping diamonds toward the higher sortKey (the visually front-most tile)', () => {
+    const elevation = new Array(25).fill(0);
+    elevation[(0 * 5) + 1] = 3; // cell (1,0): sortKey (1+0)*4+3=7, vs cell (0,0)'s sortKey 0
+
+    const a = projectToScreen(0, 0, PARAMS);
+    const bFlat = projectToScreen(1, 0, PARAMS);
+    const b = { screenX: bFlat.screenX, screenY: bFlat.screenY - liftPx(3) };
+    const midpoint = { screenX: (a.screenX + b.screenX) / 2, screenY: (a.screenY + b.screenY) / 2 };
+
+    expect(screenToCell({ ...screenToCellBase, elevation, ...midpoint })).toEqual({ x: 1, y: 0 });
+  });
+
+  it('returns null well outside any tile', () => {
+    expect(screenToCell({ ...screenToCellBase, screenX: -500, screenY: -500 })).toBeNull();
   });
 });
