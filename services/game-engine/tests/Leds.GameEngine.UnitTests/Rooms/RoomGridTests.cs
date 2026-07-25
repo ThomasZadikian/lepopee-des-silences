@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rooms;
@@ -13,6 +14,29 @@ public sealed class RoomGridTests
         isBoss: false, initialState: NodeState.Available);
 
     private static int[] FlatElevation(int width, int height) => new int[width * height];
+
+    private static MapNode CreateContactNode(
+        int lane, int row, ContactBehavior behavior, NodeState state = NodeState.Available)
+    {
+        var node = MapNode.Create(
+            NodeEventType.Combat, riskLevel: 10, rewardProfile: "standard",
+            row, lane, parentNodeIds: Array.Empty<NodeId>(),
+            isBoss: false, initialState: NodeState.Available,
+            combatRiskTier: RiskTier.Tendu, contactBehavior: behavior);
+
+        if (state is NodeState.Selected or NodeState.Resolved)
+        {
+            node.Select();
+        }
+
+        if (state is NodeState.Resolved)
+        {
+            node.Resolve();
+        }
+
+        return node;
+    }
+
 
     private static int[] ElevationWith(int width, int height, params (int X, int Y, int Level)[] overrides)
     {
@@ -347,5 +371,71 @@ public sealed class RoomGridTests
             5, 5, movementBudget: 20, startX: 2, startY: 2, [farNode], elevation: ridgeElevation);
 
         grid.RevealedNodeIds.Should().NotContain(farNode.Id);
+    }
+
+    // ── Contact nodes ────────────────────────────────────────────────────────────────
+    // This whole area shipped without a single test, which is exactly how the walk-over-a-spent
+    // node defect below reached a player. These pin the rules MoveTo actually has to follow.
+
+    [Fact]
+    public void MoveTo_ShouldStopAtTheFirstContactNode_AndChargeOnlyTheStepsWalked()
+    {
+        var ambush = CreateContactNode(lane: 2, row: 0, ContactBehavior.TriggerOnEnter);
+        var grid = RoomGrid.CreateInitial(
+            5, 1, movementBudget: 20, startX: 0, startY: 0, [ambush]);
+
+        var route = grid.FindPath(4, 0);
+        var triggered = grid.MoveTo(route!.Value.Path, route.Value.Cost, [ambush]);
+
+        triggered.Should().BeSameAs(ambush);
+        grid.PartyX.Should().Be(2, "the walk stops where the ambush fires, not where it was aimed");
+        grid.MovementBudgetRemaining.Should().Be(18, "only the two steps actually walked are paid for");
+    }
+
+    [Fact]
+    public void MoveTo_ShouldWalkStraightOverASpentContactNode()
+    {
+        // The defect this pins: MoveTo returned any contact node regardless of state, the caller
+        // then tried to Select() an already-Resolved one, that threw, and the whole move was
+        // refused. Every contact node the player had cleared quietly became a wall that FindPath
+        // still routed through — so an explored room got less and less crossable.
+        var spent = CreateContactNode(lane: 2, row: 0, ContactBehavior.TriggerOnEnter, NodeState.Resolved);
+        var grid = RoomGrid.CreateInitial(
+            5, 1, movementBudget: 20, startX: 0, startY: 0, [spent]);
+
+        var route = grid.FindPath(4, 0);
+        var triggered = grid.MoveTo(route!.Value.Path, route.Value.Cost, [spent]);
+
+        triggered.Should().BeNull("a node already dealt with has nothing left to fire");
+        grid.PartyX.Should().Be(4, "the party crosses its cell and reaches the far side");
+        grid.MovementBudgetRemaining.Should().Be(16);
+    }
+
+    [Fact]
+    public void MoveTo_ShouldIgnoreAHiddenContactNode()
+    {
+        var hidden = MapNode.Create(
+            NodeEventType.Item, riskLevel: 10, rewardProfile: "standard",
+            row: 0, lane: 2, parentNodeIds: Array.Empty<NodeId>(),
+            isBoss: false, initialState: NodeState.Available,
+            contactBehavior: ContactBehavior.TriggerOnEnter, hiddenState: HiddenState.Hint);
+
+        var grid = RoomGrid.CreateInitial(5, 1, movementBudget: 20, startX: 0, startY: 0, [hidden]);
+
+        var route = grid.FindPath(4, 0);
+
+        grid.MoveTo(route!.Value.Path, route.Value.Cost, [hidden])
+            .Should().BeNull("a node nobody has found cannot spring on the party");
+    }
+
+    [Fact]
+    public void FindPath_ShouldEndOnABlockingCell_ButNeverRouteThroughIt()
+    {
+        var lockNode = CreateContactNode(lane: 2, row: 0, ContactBehavior.Blocking);
+        var blockers = new HashSet<(int X, int Y)> { (2, 0) };
+        var grid = RoomGrid.CreateInitial(5, 1, movementBudget: 20, startX: 0, startY: 0, [lockNode]);
+
+        grid.FindPath(2, 0, blockers).Should().NotBeNull("a lock is a place you can walk up to");
+        grid.FindPath(4, 0, blockers).Should().BeNull("but a corridor it bars has no way past it");
     }
 }

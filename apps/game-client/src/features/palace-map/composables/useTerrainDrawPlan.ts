@@ -238,6 +238,10 @@ export type BuildDrawPlanInput = {
    * with the 'move' highlight so the reachable area is readable at a glance instead of having
    * to be guessed from the fog. */
   reachableCells?: Set<string>;
+  /** The exact steps the party would walk to reach the hovered cell, in order — the route the
+   * pathfinder chose, which is rarely the straight line the player pictures once a wall or a
+   * climb is in the way. Empty or absent when nothing is hovered. */
+  pathCells?: readonly { x: number; y: number }[];
   /** The cell under the pointer, if any — painted as a highlight sprite hugging that tile's
    * own diamond at its own elevation. Null when the pointer is off the board. */
   hoveredCell?: { x: number; y: number } | null;
@@ -370,6 +374,26 @@ export function buildDrawPlan(input: BuildDrawPlanInput): DrawPlanEntry[] {
         sortKey: ((x + y) * 4) + elevationLevel + 0.2,
       });
     }
+  }
+
+  // The route the party would actually walk, laid over the reachable wash so the player can see
+  // the detour a wall or a climb forces before paying for it.
+  for (const step of input.pathCells ?? []) {
+    const elevationLevel = input.elevation[(step.y * input.gridWidth) + step.x] ?? 0;
+    const { screenX, screenY } = projectToScreen(step.x, step.y, projection);
+
+    entries.push({
+      cellKey: `path:${step.x},${step.y}`,
+      x: step.x,
+      y: step.y,
+      spriteKey: { kind: 'highlight', variant: 'path', elevation: elevationLevel },
+      screenX,
+      screenY,
+      elevation: elevationLevel,
+      // Over the reachable wash (+0.2), under the cursor (+0.25): the route reads as a stronger
+      // mark on top of the range, and the cell under the pointer still wins.
+      sortKey: ((step.x + step.y) * 4) + elevationLevel + 0.22,
+    });
   }
 
   if (input.hoveredCell) {

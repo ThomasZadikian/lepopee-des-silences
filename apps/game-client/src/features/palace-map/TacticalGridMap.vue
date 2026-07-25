@@ -24,6 +24,7 @@ import {
   type FloorTint,
 } from './composables/useTerrainSprites';
 import { buildDrawPlan, isoUnit, projectToScreen, screenToCell } from './composables/useTerrainDrawPlan';
+import { buildMovementRange } from './composables/useMovementRange';
 
 const props = defineProps<{
   room: RoomDto;
@@ -152,21 +153,89 @@ const AMBIENT_TIME_SCALE = 0.45;
  * authority on affordability (it answers with a real message). Reproducing the pathfinder here
  * would be a second source of truth free to disagree with the server.
  */
+/**
+ * What a move would really cost, from where the party stands. Rebuilt whenever the party moves,
+ * the budget changes, or a node's state changes — a node that stops blocking reopens a route.
+ */
+const movementRange = computed(() => {
+  const g = grid.value;
+  if (!g) return null;
+
+  const blockers = new Set<string>();
+  const triggers = new Set<string>();
+
+  for (const node of room.value?.nodes ?? []) {
+    if (node.state === 'Resolved') continue;
+    const key = `${node.lane},${node.row}`;
+    // Mirrors MapNode.TriggersOnContact — a lock fires on contact too, it just also bars transit.
+    if (node.contactBehavior === 'Blocking') {
+      blockers.add(key);
+      triggers.add(key);
+    } else if (node.contactBehavior === 'TriggerOnEnter') {
+      triggers.add(key);
+    }
+  }
+
+  return buildMovementRange({
+    gridWidth: g.width,
+    gridHeight: g.height,
+    elevation: g.elevation,
+    isWalkable: (x, y) => isFloor(x, y) && !obstacleCells.value.has(`${x},${y}`),
+    party: { x: g.partyX, y: g.partyY },
+    transitBlockers: blockers,
+    contactTriggers: triggers,
+  });
+});
+
+/**
+ * Cells the player can actually click. Previously this was every revealed floor cell, which
+ * promised reachability the budget could not pay for: the far corner lit up, the click was
+ * refused by the server, and the whole thing read as broken movement. The wash now means what
+ * it says — inside it, a click always works.
+ */
 const reachableCells = computed(() => {
   const g = grid.value;
+  const range = movementRange.value;
+  if (!g || !range) return new Set<string>();
+
+  const affordable = range.within(g.movementBudgetRemaining);
   const set = new Set<string>();
-  if (!g) return set;
 
-  for (const cell of cells.value) {
-    if (!isRevealed(cell.x, cell.y)) continue;
-    if (!isFloor(cell.x, cell.y)) continue;
-    if (obstacleCells.value.has(`${cell.x},${cell.y}`)) continue;
-    if (isParty(cell.x, cell.y)) continue;
-
-    set.add(`${cell.x},${cell.y}`);
+  for (const key of affordable) {
+    const [x, y] = key.split(',').map(Number);
+    // Fog still gates intent: the party does not walk to somewhere nobody has seen.
+    if (isRevealed(x, y)) set.add(key);
   }
 
   return set;
+});
+
+/** The walk that clicking the hovered cell would produce — null when it is out of reach. */
+const hoveredRoute = computed(() => {
+  const cell = hoveredCell.value;
+  const range = movementRange.value;
+  if (!cell || !range) return null;
+  if (!reachableCells.value.has(`${cell.x},${cell.y}`)) return null;
+  return range.routeTo(cell.x, cell.y);
+});
+
+/**
+ * What the move under the pointer would spend, and what would be left after. The budget is the
+ * whole tension of the room, so the price has to be readable at the moment of the decision
+ * rather than discovered from a counter that already dropped.
+ */
+const moveReadout = computed(() => {
+  const route = hoveredRoute.value;
+  const g = grid.value;
+  if (!route || !g) return null;
+
+  return {
+    cost: route.cost,
+    remaining: g.movementBudgetRemaining - route.cost,
+    // The walk stops short because something fires on the way — the price is honest, the
+    // destination is not what was clicked.
+    truncated: route.truncated,
+  };
 });
 
 /** Cells the server still reports as holding an unfound cache. */
@@ -281,6 +350,7 @@ const drawPlan = computed(() => {
     nodeTintFor,
     party: { x: displayPartyX.value, y: displayPartyY.value },
     reachableCells: reachableCells.value,
+    pathCells: hoveredRoute.value?.path,
     hoveredCell: hoveredCell.value,
   });
 });
@@ -768,8 +838,15 @@ function toggleInfoCollapsed() {
     </div>
 
     <Teleport to="body">
-      <div v-if="hoveredNode" class="tgrid__hover-tooltip" :style="tooltipStyle">
-        {{ nodeTypeLabel(hoveredNode) }}
+      <div v-if="hoveredNode || moveReadout" class="tgrid__hover-tooltip" :style="tooltipStyle">
+        <span v-if="hoveredNode">{{ nodeTypeLabel(hoveredNode) }}</span>
+        <span v-if="moveReadout" class="tgrid__move-readout">
+          <span class="tgrid__move-readout-cost">−{{ moveReadout.cost }} PM</span>
+          <span class="tgrid__move-readout-left">reste {{ moveReadout.remaining }}</span>
+          <span v-if="moveReadout.truncated" class="tgrid__move-readout-warn">
+            arrêt en chemin
+          </span>
+        </span>
       </div>
     </Teleport>
   </section>
@@ -942,6 +1019,31 @@ function toggleInfoCollapsed() {
   border-radius: 3px;
   pointer-events: none;
   white-space: nowrap;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* The price of the move under the pointer. Sits under the node label when there is one, so a
+   cell that is both an objective and a walk reads as one thing, not two tooltips fighting. */
+.tgrid__move-readout {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.tgrid__move-readout-cost {
+  color: var(--gold);
+}
+
+.tgrid__move-readout-left {
+  color: var(--ink-3);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.tgrid__move-readout-warn {
+  color: var(--blood);
 }
 
 /* ── Top tabs row: info overlay, room name, always-visible Lois button ──────────── */

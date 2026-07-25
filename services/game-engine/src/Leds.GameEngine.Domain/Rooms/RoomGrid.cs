@@ -380,8 +380,18 @@ public sealed class RoomGrid
 
             RevealAround(x, y, nodes);
 
+            // Available only. A node that has already been dealt with must let the party walk
+            // over its cell freely: without this test the caller goes on to Select() a Resolved
+            // node, that throws, and the WHOLE move is refused — so every contact node the
+            // player resolved quietly turned its cell into a wall that FindPath still routed
+            // through, making more and more of an explored room unreachable. Same filter
+            // Room.CurrentTransitBlockers already applies, and the same one Select() enforces.
             triggered = nodes.FirstOrDefault(node =>
-                node.Lane == x && node.Row == y && node.TriggersOnContact && !node.IsHidden);
+                node.Lane == x
+                && node.Row == y
+                && node.TriggersOnContact
+                && !node.IsHidden
+                && node.State == NodeState.Available);
 
             if (triggered is not null)
             {
