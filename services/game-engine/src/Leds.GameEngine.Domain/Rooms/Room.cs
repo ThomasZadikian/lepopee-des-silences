@@ -93,9 +93,23 @@ public sealed class Room
     public IReadOnlyCollection<MapNode> AvailableNodes =>
         VisibleNodes.Where(n => n.State == NodeState.Available).ToArray();
 
-    /// <summary>Nodes revealed by fog of war so far.</summary>
+    /// <summary>
+    /// Nodes the party knows about: revealed by fog of war AND not still hiding. Hidden nodes
+    /// are withheld here rather than only in the DTO, so nothing downstream — the projection
+    /// sent to the client included — can accidentally advertise a node the player is supposed
+    /// to have to search for.
+    /// </summary>
     public IReadOnlyCollection<MapNode> VisibleNodes =>
-        _nodes.Where(n => Grid.RevealedNodeIds.Contains(n.Id)).ToArray();
+        _nodes.Where(n => Grid.RevealedNodeIds.Contains(n.Id) && !n.IsHidden).ToArray();
+
+    /// <summary>
+    /// Hidden nodes close enough to the party to be searched out. Kept separate from
+    /// <see cref="VisibleNodes"/>: the client is told a search would find something nearby, never
+    /// what or exactly where.
+    /// </summary>
+    public IReadOnlyCollection<MapNode> SearchableNodes => _nodes
+        .Where(n => n.IsHidden && IsWithinSearchRange(n))
+        .ToArray();
 
     /// <summary>The single node currently in <see cref="NodeState.Selected"/>, if any.</summary>
     public MapNode? CurrentSelectedNode => CurrentGridInteractionNode(NodeState.Selected);
@@ -134,7 +148,8 @@ public sealed class Room
         string layoutTemplateKey,
         string layoutTemplateVersion,
         IReadOnlyList<int>? elevation = null,
-        IReadOnlyCollection<(int X, int Y)>? obstacles = null)
+        IReadOnlyCollection<(int X, int Y)>? obstacles = null,
+        IReadOnlyList<bool>? floorCells = null)
     {
         if (depth is < 0 or > 10)
         {
@@ -204,7 +219,18 @@ public sealed class Room
         }
 
         var grid = RoomGrid.CreateInitial(
-            gridWidth, gridHeight, movementBudget, startX, startY, nodeList, elevation, obstacles);
+            gridWidth, gridHeight, movementBudget, startX, startY, nodeList,
+            elevation, obstacles, floorCells);
+
+        // A node standing on a hole in the room's shape would be unreachable and unpaintable.
+        // Checked after the grid exists because the floor mask is validated/defaulted there.
+        foreach (var node in nodeList)
+        {
+            if (!grid.IsFloor(node.Lane, node.Row))
+            {
+                throw new DomainException("Every grid node must stand on one of the room's floor cells.");
+            }
+        }
 
         // Raw Manhattan distance is no longer a safe reachability bound once elevation can add
         // cost to a climb — the real routed cost (obstacles routed around, elevation priced in)
@@ -284,9 +310,26 @@ public sealed class Room
     }
 
     /// <summary>
-    /// Moves the party across the grid along the cheapest walkable route (obstacles routed
-    /// around, elevation climbs priced in — see <see cref="RoomGrid.FindPath"/>), deducting the
-    /// route's cost from the movement budget and revealing fog of war along the way.
+    /// Cells the party cannot walk THROUGH right now: unresolved blocking nodes. A lock stops
+    /// blocking once it has been dealt with, otherwise resolving it would leave the room
+    /// permanently severed. Hidden nodes are excluded — an undiscovered node cannot bar a
+    /// corridor the party has no way of knowing about.
+    /// </summary>
+    private IReadOnlySet<(int X, int Y)> CurrentTransitBlockers => _nodes
+        .Where(node => node.BlocksTransit && !node.IsHidden && node.State != NodeState.Resolved)
+        .Select(node => (node.Lane, node.Row))
+        .ToHashSet();
+
+    /// <summary>
+    /// Moves the party across the grid along the cheapest walkable route (obstacles and holes
+    /// routed around, elevation climbs priced in, unresolved blocking nodes never crossed — see
+    /// <see cref="RoomGrid.FindPath"/>), deducting the route's cost from the movement budget and
+    /// revealing fog of war along the way.
+    /// <para>
+    /// If the walk steps onto a contact-triggered node it stops there, is charged only for the
+    /// ground actually covered, and the node is selected immediately — the same interaction
+    /// <see cref="EnterNodeAtPartyPosition"/> performs, minus the choice.
+    /// </para>
     /// </summary>
     public void MoveParty(int targetX, int targetY)
     {
@@ -305,7 +348,7 @@ public sealed class Room
             throw new DomainException("The party is already at the target position.");
         }
 
-        var route = Grid.FindPath(targetX, targetY)
+        var route = Grid.FindPath(targetX, targetY, CurrentTransitBlockers)
             ?? throw new DomainException("No walkable path to the target position.");
 
         if (route.Cost > Grid.MovementBudgetRemaining)
@@ -313,7 +356,69 @@ public sealed class Room
             throw new DomainException("Not enough movement budget remaining for this move.");
         }
 
-        Grid.MoveTo(route.Path, route.Cost, _nodes);
+        var triggered = Grid.MoveTo(route.Path, route.Cost, _nodes);
+
+        if (triggered is not null)
+        {
+            triggered.Select();
+            _currentGridNodeId = triggered.Id;
+            State = RoomState.NodeSelected;
+        }
+    }
+
+    // BALANCE KNOB — how far a search reaches, in cells (Chebyshev: the 8 cells around the
+    // party plus its own). Deliberately tight: finding something has to be about standing in
+    // the right place, not about sweeping the room from a distance.
+    public const int SearchRadius = 1;
+
+    // BALANCE KNOB — what one search costs out of the movement budget. This is the whole
+    // tension of the mechanic: every search is a step not taken toward the boss.
+    public const int SearchCost = 2;
+
+    private bool IsWithinSearchRange(MapNode node) =>
+        Math.Abs(node.Lane - Grid.PartyX) <= SearchRadius
+        && Math.Abs(node.Row - Grid.PartyY) <= SearchRadius;
+
+    /// <summary>
+    /// True when searching from where the party stands would actually turn something up and
+    /// there is budget left to pay for it — what the client gates its "Search" button on.
+    /// </summary>
+    public bool CanSearchAtPartyPosition =>
+        State is RoomState.Active
+        && Grid.MovementBudgetRemaining >= SearchCost
+        && SearchableNodes.Count > 0;
+
+    /// <summary>
+    /// Searches the ground around the party, revealing every hidden node within
+    /// <see cref="SearchRadius"/> and spending <see cref="SearchCost"/> from the movement budget.
+    /// Refuses when there is nothing to find, so a player cannot burn budget on empty ground —
+    /// the cost is a real trade-off, not a trap.
+    /// </summary>
+    public void SearchAtPartyPosition()
+    {
+        if (State is not RoomState.Active)
+        {
+            throw new DomainException("Room is not waiting for party movement.");
+        }
+
+        if (Grid.MovementBudgetRemaining < SearchCost)
+        {
+            throw new DomainException("Not enough movement budget remaining to search.");
+        }
+
+        var found = SearchableNodes;
+
+        if (found.Count == 0)
+        {
+            throw new DomainException("There is nothing to find here.");
+        }
+
+        foreach (var node in found)
+        {
+            node.Reveal();
+        }
+
+        Grid.SpendMovementBudget(SearchCost, _nodes);
     }
 
     /// <summary>Selects the node currently occupied by the party.</summary>
@@ -329,6 +434,11 @@ public sealed class Room
         if (node.Lane != Grid.PartyX || node.Row != Grid.PartyY)
         {
             throw new DomainException("The party is not standing on this node's cell.");
+        }
+
+        if (node.IsHidden)
+        {
+            throw new DomainException("This node has not been found yet.");
         }
 
         node.Select();

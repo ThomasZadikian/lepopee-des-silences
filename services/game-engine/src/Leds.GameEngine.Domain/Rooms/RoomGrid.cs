@@ -25,6 +25,7 @@ public sealed class RoomGrid
     };
 
     private readonly int[] _elevation;
+    private readonly bool[] _isFloor;
     private readonly HashSet<(int X, int Y)> _obstacles;
     private readonly HashSet<NodeId> _revealedNodeIds;
     private readonly HashSet<(int X, int Y)> _revealedCells;
@@ -41,8 +42,10 @@ public sealed class RoomGrid
         HashSet<NodeId> revealedNodeIds,
         HashSet<(int X, int Y)> revealedCells,
         int[] elevation,
-        HashSet<(int X, int Y)> obstacles)
+        HashSet<(int X, int Y)> obstacles,
+        bool[] isFloor)
     {
+        _isFloor = isFloor;
         Width = width;
         Height = height;
         MovementBudget = movementBudget;
@@ -83,9 +86,35 @@ public sealed class RoomGrid
     /// <summary>Impassable cells. Immutable for the room's lifetime.</summary>
     public IReadOnlyCollection<(int X, int Y)> Obstacles => _obstacles;
 
+    /// <summary>
+    /// Which cells are part of the room at all, flat row-major like <see cref="Elevation"/>.
+    /// The grid stays a full rectangle as a coordinate system; a cell that is not floor is a
+    /// hole in that rectangle — not walkable, not visible, not paintable — which is what lets a
+    /// room be L-shaped, have recesses, or end in a ragged edge. Immutable for the room's
+    /// lifetime.
+    /// </summary>
+    public IReadOnlyList<bool> FloorMask => _isFloor;
+
     public int ElevationAt(int x, int y) => _elevation[(y * Width) + x];
 
     public bool IsObstacle(int x, int y) => _obstacles.Contains((x, y));
+
+    /// <summary>
+    /// Whether (x, y) is a cell of this room. Returns false out of bounds too, so callers can
+    /// use it as a single "is this a real cell" test instead of pairing it with a bounds check.
+    /// </summary>
+    public bool IsFloor(int x, int y)
+    {
+        if (x < 0 || x >= Width || y < 0 || y >= Height)
+        {
+            return false;
+        }
+
+        return _isFloor[(y * Width) + x];
+    }
+
+    /// <summary>Floor, and not blocked by an obstacle — the test the pathfinder enqueues on.</summary>
+    public bool IsWalkable(int x, int y) => IsFloor(x, y) && !IsObstacle(x, y);
 
     public static RoomGrid CreateInitial(
         int width,
@@ -95,7 +124,8 @@ public sealed class RoomGrid
         int startY,
         IReadOnlyCollection<MapNode> nodes,
         IReadOnlyList<int>? elevation = null,
-        IReadOnlyCollection<(int X, int Y)>? obstacles = null)
+        IReadOnlyCollection<(int X, int Y)>? obstacles = null,
+        IReadOnlyList<bool>? floorCells = null)
     {
         if (width <= 0)
         {
@@ -115,6 +145,27 @@ public sealed class RoomGrid
         if (startX < 0 || startX >= width || startY < 0 || startY >= height)
         {
             throw new DomainException("Grid start position must be within the grid bounds.");
+        }
+
+        // Default: the whole rectangle is floor — a room with no declared shape is the plain
+        // rectangle rooms were before shapes existed.
+        var resolvedFloor = floorCells is null
+            ? Enumerable.Repeat(true, width * height).ToArray()
+            : floorCells.ToArray();
+
+        if (resolvedFloor.Length != width * height)
+        {
+            throw new DomainException("Floor mask must have exactly Width*Height entries.");
+        }
+
+        if (!resolvedFloor[(startY * width) + startX])
+        {
+            throw new DomainException("The party's starting cell must be part of the room.");
+        }
+
+        if (!resolvedFloor.Any(cell => cell))
+        {
+            throw new DomainException("A room must contain at least one floor cell.");
         }
 
         var resolvedElevation = elevation is null ? new int[width * height] : elevation.ToArray();
@@ -149,11 +200,21 @@ public sealed class RoomGrid
             throw new DomainException("The party's starting cell cannot be an obstacle.");
         }
 
+        // An obstacle on a hole would be doubly impassable and impossible to render coherently —
+        // it means the generator disagrees with itself about where the room is.
+        foreach (var (obstacleX, obstacleY) in resolvedObstacles)
+        {
+            if (!resolvedFloor[(obstacleY * width) + obstacleX])
+            {
+                throw new DomainException("An obstacle cannot sit outside the room's floor.");
+            }
+        }
+
         var grid = new RoomGrid(
             width, height, movementBudget, movementBudget,
             startX, startY, startX, startY,
             new HashSet<NodeId>(), new HashSet<(int X, int Y)>(),
-            resolvedElevation, resolvedObstacles);
+            resolvedElevation, resolvedObstacles, resolvedFloor);
 
         grid.RevealAround(startX, startY, nodes);
 
@@ -162,20 +223,26 @@ public sealed class RoomGrid
 
     /// <summary>
     /// Finds the cheapest walkable route from the party's current position to
-    /// (targetX, targetY), routing around obstacle cells entirely (never enqueued) and pricing
-    /// each orthogonal step at 1 plus any elevation gained climbing into it (descending is free).
-    /// Returns null when the target is out of bounds, itself an obstacle, or unreachable given
-    /// the current obstacle layout. The returned path starts with the first step taken (excludes
-    /// the party's current cell) and ends with the target cell.
+    /// (targetX, targetY), routing around obstacle cells and holes in the room's shape entirely
+    /// (never enqueued) and pricing each orthogonal step at 1 plus any elevation gained climbing
+    /// into it (descending is free). Returns null when the target is not a walkable cell or is
+    /// unreachable. The returned path starts with the first step taken (excludes the party's
+    /// current cell) and ends with the target cell.
+    /// <para>
+    /// <paramref name="transitBlockers"/> are cells a route may END on but never pass THROUGH —
+    /// how a blocking node becomes a real lock on a corridor. Pass null to ignore locks entirely,
+    /// which is what a "could the party ever get there at all" check wants (see
+    /// <c>Room.Create</c>'s reachability guards): a lock is meant to be dealt with, not to make
+    /// the room permanently impassable.
+    /// </para>
     /// </summary>
-    public (IReadOnlyList<(int X, int Y)> Path, int Cost)? FindPath(int targetX, int targetY)
+    public (IReadOnlyList<(int X, int Y)> Path, int Cost)? FindPath(
+        int targetX,
+        int targetY,
+        IReadOnlySet<(int X, int Y)>? transitBlockers = null)
     {
-        if (targetX < 0 || targetX >= Width || targetY < 0 || targetY >= Height)
-        {
-            return null;
-        }
-
-        if (IsObstacle(targetX, targetY))
+        // IsWalkable covers bounds, holes in the room's shape, and obstacles in one test.
+        if (!IsWalkable(targetX, targetY))
         {
             return null;
         }
@@ -219,17 +286,19 @@ public sealed class RoomGrid
                 break;
             }
 
+            // A blocking cell can be walked ONTO but not THROUGH: reaching it settles its own
+            // distance (so it stays a valid destination), but we never expand past it.
+            if (transitBlockers is not null && transitBlockers.Contains((currentX, currentY)))
+            {
+                continue;
+            }
+
             foreach (var (dx, dy) in OrthogonalNeighbors)
             {
                 var neighborX = currentX + dx;
                 var neighborY = currentY + dy;
 
-                if (neighborX < 0 || neighborX >= Width || neighborY < 0 || neighborY >= Height)
-                {
-                    continue;
-                }
-
-                if (IsObstacle(neighborX, neighborY))
+                if (!IsWalkable(neighborX, neighborY))
                 {
                     continue;
                 }
@@ -279,26 +348,68 @@ public sealed class RoomGrid
     }
 
     /// <summary>
-    /// Moves the party along an already-validated <paramref name="path"/> (see
-    /// <see cref="FindPath"/> — bounds, obstacles, and budget already checked by
-    /// <see cref="Room.MoveParty"/>). Reveals fog of war at every cell walked through, not just
-    /// the destination.
+    /// Walks the party along an already-validated <paramref name="path"/> (see
+    /// <see cref="FindPath"/> — reachability and budget already checked by
+    /// <see cref="Room.MoveParty"/>), revealing fog of war at every cell walked through rather
+    /// than only at the destination.
+    /// <para>
+    /// The walk stops early on the first cell holding a contact-triggered node, and only the
+    /// distance actually covered is charged — stepping into an ambush costs what it cost to get
+    /// there, not the move the party had intended. Returns that node, or null if the party
+    /// walked the whole way; the caller turns a non-null result into the node interaction (see
+    /// <see cref="Room.MoveParty"/>).
+    /// </para>
     /// </summary>
-    public void MoveTo(IReadOnlyList<(int X, int Y)> path, int cost, IReadOnlyCollection<MapNode> nodes)
+    public MapNode? MoveTo(
+        IReadOnlyList<(int X, int Y)> path,
+        int cost,
+        IReadOnlyCollection<MapNode> nodes)
     {
+        MapNode? triggered = null;
+        var walked = 0;
+        var spent = 0;
+        var (previousX, previousY) = (PartyX, PartyY);
+
         foreach (var (x, y) in path)
         {
+            // Re-priced per step rather than reusing `cost`, because a truncated walk must be
+            // charged for what it covered — same formula as FindPath's edge weight.
+            spent += 1 + Math.Max(0, ElevationAt(x, y) - ElevationAt(previousX, previousY));
+            (previousX, previousY) = (x, y);
+            walked++;
+
             RevealAround(x, y, nodes);
+
+            triggered = nodes.FirstOrDefault(node =>
+                node.Lane == x && node.Row == y && node.TriggersOnContact && !node.IsHidden);
+
+            if (triggered is not null)
+            {
+                break;
+            }
         }
 
-        if (path.Count > 0)
+        if (walked > 0)
         {
-            var (lastX, lastY) = path[^1];
+            var (lastX, lastY) = path[walked - 1];
             PartyX = lastX;
             PartyY = lastY;
         }
 
+        MovementBudgetRemaining -= triggered is null ? cost : spent;
+
+        return triggered;
+    }
+
+    /// <summary>
+    /// Spends budget on something other than walking (searching the ground — see
+    /// <see cref="Room.SearchAtPartyPosition"/>), then re-reveals around the party: a node that
+    /// just stopped hiding becomes visible without the party having to move again.
+    /// </summary>
+    internal void SpendMovementBudget(int cost, IReadOnlyCollection<MapNode> nodes)
+    {
         MovementBudgetRemaining -= cost;
+        RevealAround(PartyX, PartyY, nodes);
     }
 
     public void ResetToInitial(IReadOnlyCollection<MapNode> nodes)
@@ -325,7 +436,9 @@ public sealed class RoomGrid
                 var cellX = x + dx;
                 var cellY = y + dy;
 
-                if (cellX < 0 || cellX >= Width || cellY < 0 || cellY >= Height)
+                // A hole in the room's shape is not a cell you can reveal — there is nothing
+                // there to see. (IsFloor also covers the bounds check.)
+                if (!IsFloor(cellX, cellY))
                 {
                     continue;
                 }
@@ -377,6 +490,14 @@ public sealed class RoomGrid
             if (IsObstacle(intermediateX, intermediateY))
             {
                 return false;
+            }
+
+            // A hole in the room is empty space, not a wall: you see straight across a gap, and
+            // its stored elevation is meaningless, so skip the height test rather than let a
+            // leftover value block the sightline.
+            if (!IsFloor(intermediateX, intermediateY))
+            {
+                continue;
             }
 
             var t = (double)i / totalSteps;
@@ -443,12 +564,19 @@ public sealed class RoomGrid
         IEnumerable<NodeId> revealedNodeIds,
         IEnumerable<(int X, int Y)> revealedCells,
         IReadOnlyList<int> elevation,
-        IReadOnlyCollection<(int X, int Y)> obstacles)
+        IReadOnlyCollection<(int X, int Y)> obstacles,
+        IReadOnlyList<bool>? floorCells = null)
     {
+        // Null = every cell is floor, matching rooms persisted before rooms had a shape (their
+        // stored mask is empty and the mapper hands back null).
+        var resolvedFloor = floorCells is null
+            ? Enumerable.Repeat(true, width * height).ToArray()
+            : floorCells.ToArray();
+
         return new RoomGrid(
             width, height, movementBudget, movementBudgetRemaining,
             startX, startY, partyX, partyY,
             new HashSet<NodeId>(revealedNodeIds), new HashSet<(int X, int Y)>(revealedCells),
-            elevation.ToArray(), new HashSet<(int X, int Y)>(obstacles));
+            elevation.ToArray(), new HashSet<(int X, int Y)>(obstacles), resolvedFloor);
     }
 }

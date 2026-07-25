@@ -17,8 +17,14 @@ public sealed class MapNode
         string rewardProfile,
         IReadOnlyCollection<NodeId> parentNodeIds,
         bool isBoss,
-        NodeState state)
+        NodeState state,
+        HiddenState hiddenState,
+        DangerTell dangerTell,
+        ContactBehavior contactBehavior)
     {
+        HiddenState = hiddenState;
+        DangerTell = dangerTell;
+        ContactBehavior = contactBehavior;
         Id = id;
         EventType = eventType;
         Row = row;
@@ -61,6 +67,31 @@ public sealed class MapNode
 
     public NodeState State { get; private set; }
 
+    /// <summary>
+    /// Whether this node still has to be found before it can be entered. Mutable only via
+    /// <see cref="Reveal"/> (searching the ground around the party).
+    /// </summary>
+    public HiddenState HiddenState { get; private set; }
+
+    /// <summary>The warning the node gives off before contact. See <see cref="DangerTell"/>.</summary>
+    public DangerTell DangerTell { get; }
+
+    /// <summary>What walking onto this node's cell does. See <see cref="ContactBehavior"/>.</summary>
+    public ContactBehavior ContactBehavior { get; }
+
+    /// <summary>
+    /// A hidden node is not enterable and must not be advertised to the client until searched —
+    /// the whole point being that the player does not know it is there.
+    /// </summary>
+    public bool IsHidden => HiddenState == HiddenState.Hint;
+
+    /// <summary>Walking onto this cell resolves the node with no prompt.</summary>
+    public bool TriggersOnContact =>
+        ContactBehavior is ContactBehavior.TriggerOnEnter or ContactBehavior.Blocking;
+
+    /// <summary>The cell cannot be crossed in transit — a path may end on it, never pass through.</summary>
+    public bool BlocksTransit => ContactBehavior == ContactBehavior.Blocking;
+
     public bool IsInitial => Row == 0 && _parentNodeIds.Count == 0 && !IsBoss;
 
     public bool IsAvailable => State == NodeState.Available;
@@ -92,7 +123,10 @@ public sealed class MapNode
         IReadOnlyCollection<NodeId> parentNodeIds,
         bool isBoss = false,
         NodeState initialState = NodeState.Available,
-        RiskTier? combatRiskTier = null)
+        RiskTier? combatRiskTier = null,
+        HiddenState hiddenState = HiddenState.None,
+        DangerTell dangerTell = DangerTell.None,
+        ContactBehavior contactBehavior = ContactBehavior.None)
     {
         if (riskLevel is < 0 or > 100)
         {
@@ -137,6 +171,27 @@ public sealed class MapNode
             throw new DomainException("A boss MapNode must have a RoomBoss or FinalBoss event type.");
         }
 
+        // The boss is the room's objective and the fallback the party can always fall back on
+        // (see Room.ChallengeBossRemotely) — hiding it could strand a run with nothing to do.
+        if (isBoss && hiddenState != HiddenState.None)
+        {
+            throw new DomainException("A boss MapNode cannot be hidden.");
+        }
+
+        // A node starts either plainly visible or waiting to be found; 'Revealed' is a state you
+        // arrive at by searching, never one you are created in.
+        if (hiddenState == HiddenState.Revealed)
+        {
+            throw new DomainException("A newly created MapNode cannot start already revealed.");
+        }
+
+        // A danger tell is the warning that a contact trigger is coming. On a node nothing
+        // happens on contact it would be a lie told to the player.
+        if (dangerTell != DangerTell.None && contactBehavior == ContactBehavior.None)
+        {
+            throw new DomainException("Only a contact-triggered MapNode can carry a danger tell.");
+        }
+
         return new MapNode(
             NodeId.New(),
             eventType,
@@ -147,7 +202,10 @@ public sealed class MapNode
             rewardProfile.Trim(),
             parentList,
             isBoss,
-            initialState);
+            initialState,
+            hiddenState,
+            dangerTell,
+            contactBehavior);
     }
 
     public void AddParent(NodeId parentId)
@@ -251,6 +309,21 @@ public sealed class MapNode
     /// Every grid node starts <see cref="NodeState.Available"/> (free exploration has no
     /// row-unlock progression to replay), used when rolling back a room (e.g. mid-room exit).
     /// </summary>
+    /// <summary>
+    /// Found by searching the ground around it. Same guard-then-mutate shape as the other
+    /// lifecycle methods: only a node that is actually hiding can be revealed, so a caller
+    /// cannot quietly "reveal" an ordinary node and change nothing.
+    /// </summary>
+    public void Reveal()
+    {
+        if (HiddenState != HiddenState.Hint)
+        {
+            throw new DomainException("Only a hidden MapNode can be revealed.");
+        }
+
+        HiddenState = HiddenState.Revealed;
+    }
+
     public void ResetToGridAvailable()
     {
         State = NodeState.Available;
@@ -288,9 +361,14 @@ public sealed class MapNode
         bool isBoss,
         NodeState state,
         string? chosenEventOptionId,
-        RiskTier? combatRiskTier = null)
+        RiskTier? combatRiskTier = null,
+        HiddenState hiddenState = HiddenState.None,
+        DangerTell dangerTell = DangerTell.None,
+        ContactBehavior contactBehavior = ContactBehavior.None)
     {
-        var node = new MapNode(id, eventType, row, lane, riskLevel, combatRiskTier, rewardProfile, parentNodeIds, isBoss, state);
+        var node = new MapNode(
+            id, eventType, row, lane, riskLevel, combatRiskTier, rewardProfile, parentNodeIds,
+            isBoss, state, hiddenState, dangerTell, contactBehavior);
         node.ChosenEventOptionId = chosenEventOptionId;
         return node;
     }

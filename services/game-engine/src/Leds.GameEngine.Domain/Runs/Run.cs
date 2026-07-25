@@ -857,6 +857,17 @@ public sealed class Run
     }
 
     /// <summary>
+    /// Searches the ground around the party for hidden nodes, at the cost of movement budget.
+    /// Delegates to the current room — see <see cref="Room.SearchAtPartyPosition"/>.
+    /// </summary>
+    public void SearchAtPartyPosition()
+    {
+        EnsureActive();
+
+        CurrentRoom.SearchAtPartyPosition();
+    }
+
+    /// <summary>
     /// Enters the node the party currently stands on within the current grid room. Delegates
     /// entirely to <see cref="Room.EnterNodeAtPartyPosition"/>.
     /// </summary>

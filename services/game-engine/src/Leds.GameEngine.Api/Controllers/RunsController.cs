@@ -12,6 +12,7 @@ using Leds.GameEngine.Application.Runs.GetRunById;
 using Leds.GameEngine.Application.Runs.GetRunInventory;
 using Leds.GameEngine.Application.Runs.GetRunReputation;
 using Leds.GameEngine.Application.Runs.MoveParty;
+using Leds.GameEngine.Application.Runs.Search;
 using Leds.GameEngine.Application.Runs.MoveToNextRoom;
 using Leds.GameEngine.Application.Runs.PourRunItemLiquid;
 using Leds.GameEngine.Application.Runs.ProgressRun;
@@ -347,6 +348,24 @@ public sealed class RunsController : ControllerBase
         CancellationToken cancellationToken)
     {
         var command = new MovePartyCommand(runId, request.TargetX, request.TargetY);
+        var response = await _sender.Send(command, cancellationToken);
+
+        return Ok(response);
+    }
+
+    /// <summary>
+    /// Searches the ground around the party for hidden nodes, spending movement budget.
+    /// No body: the party can only ever search where it already stands.
+    /// </summary>
+    [HttpPost("{runId:guid}/party/search")]
+    [ProducesResponseType(typeof(SearchResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<SearchResponse>> Search(
+        Guid runId,
+        CancellationToken cancellationToken)
+    {
+        var command = new SearchCommand(runId);
         var response = await _sender.Send(command, cancellationToken);
 
         return Ok(response);
