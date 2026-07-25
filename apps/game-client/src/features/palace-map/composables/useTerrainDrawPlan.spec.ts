@@ -33,6 +33,38 @@ function cellsFor(width: number, height: number): Cell[] {
   return cells;
 }
 
+describe('isoUnit', () => {
+  it('shrinks the tile so a short, wide canvas still fits the whole board', () => {
+    // Deriving the unit from the width alone let the frontmost row run off the bottom of a
+    // letterboxed viewport — the "one tile sticking out of the scene" case.
+    const wideAndShort = { canvasWidth: 1900, canvasHeight: 500, gridWidth: 10, gridHeight: 8 };
+    const roomy = { canvasWidth: 1900, canvasHeight: 1400, gridWidth: 10, gridHeight: 8 };
+
+    expect(isoUnit(wideAndShort).isoUnitX).toBeLessThan(isoUnit(roomy).isoUnitX);
+  });
+
+  it('keeps the whole board inside the canvas on a short viewport', () => {
+    const params = { canvasWidth: 1900, canvasHeight: 500, gridWidth: 10, gridHeight: 8 };
+    const { isoUnitX } = isoUnit(params);
+    const destW = isoUnitX * 2.05;
+    const destH = (destW * TERRAIN_SPRITE_CONSTANTS.SPRITE_H) / TERRAIN_SPRITE_CONSTANTS.BASE_TILE_W;
+
+    let lowest = -Infinity;
+    for (let y = 0; y < 8; y++) {
+      for (let x = 0; x < 10; x++) {
+        const { screenY } = projectToScreen(x, y, params);
+        lowest = Math.max(lowest, screenY + (destH * (1 - 0.5412)));
+      }
+    }
+
+    expect(lowest).toBeLessThanOrEqual(params.canvasHeight);
+  });
+
+  it('never divides by zero on a degenerate grid', () => {
+    expect(isoUnit({ canvasWidth: 100, canvasHeight: 100, gridWidth: 0, gridHeight: 0 }).isoUnitX).toBe(0);
+  });
+});
+
 describe('projectToScreen / unprojectFromScreen', () => {
   it('round-trips a handful of interior cells back to themselves', () => {
     for (const [x, y] of [[0, 0], [2, 2], [4, 4], [1, 3], [3, 0]]) {
@@ -294,6 +326,90 @@ describe('buildDrawPlan', () => {
       const plan = buildDrawPlan({ ...baseInput, nodesByCell: new Map([['1,1', spent]]) });
 
       expect(plan.find((e) => e.x === 1 && e.y === 1)!.spriteKey).toMatchObject({ danger: 'none' });
+    });
+  });
+
+  describe('event props', () => {
+    it('stands a campfire on a Rest node and a figure on an NPC', () => {
+      const plan = buildDrawPlan({
+        ...baseInput,
+        nodesByCell: new Map([
+          ['1,1', makeNode({ lane: 1, row: 1, type: 'Rest' })],
+          ['2,2', makeNode({ lane: 2, row: 2, type: 'Npc' })],
+        ]),
+      });
+
+      expect(plan.find((e) => e.cellKey === 'prop:1,1')!.spriteKey)
+        .toMatchObject({ kind: 'prop', prop: 'campfire' });
+      expect(plan.find((e) => e.cellKey === 'prop:2,2')!.spriteKey)
+        .toMatchObject({ kind: 'prop', prop: 'npc' });
+    });
+
+    it('gives combat nodes no prop, so an ambush keeps no decoration to give it away', () => {
+      const plan = buildDrawPlan({
+        ...baseInput,
+        nodesByCell: new Map([['1,1', makeNode({ lane: 1, row: 1, type: 'Combat' })]]),
+      });
+
+      expect(plan.some((e) => e.cellKey === 'prop:1,1')).toBe(false);
+    });
+
+    it('clears the prop once the node is spent', () => {
+      const plan = buildDrawPlan({
+        ...baseInput,
+        nodesByCell: new Map([['1,1', makeNode({ lane: 1, row: 1, type: 'Rest', state: 'Resolved' })]]),
+      });
+
+      expect(plan.some((e) => e.cellKey === 'prop:1,1')).toBe(false);
+    });
+
+    it('sorts a prop above its own tile but below the party standing there', () => {
+      const plan = buildDrawPlan({
+        ...baseInput,
+        nodesByCell: new Map([['2,2', makeNode({ lane: 2, row: 2, type: 'Rest' })]]),
+        party: { x: 2, y: 2 },
+      });
+
+      const tile = plan.find((e) => e.x === 2 && e.y === 2 && e.spriteKey.kind === 'floor')!;
+      const prop = plan.find((e) => e.cellKey === 'prop:2,2')!;
+      const party = plan.find((e) => e.spriteKey.kind === 'party')!;
+
+      expect(prop.sortKey).toBeGreaterThan(tile.sortKey);
+      expect(party.sortKey).toBeGreaterThan(prop.sortKey);
+    });
+  });
+
+  describe('reachable cells', () => {
+    it('marks each reachable cell with a move highlight at its own elevation', () => {
+      const elevation = new Array(25).fill(0);
+      elevation[(1 * 5) + 2] = 2; // (2,1)
+      const plan = buildDrawPlan({
+        ...baseInput,
+        elevation,
+        reachableCells: new Set(['2,1', '3,3']),
+      });
+
+      expect(plan.find((e) => e.cellKey === 'move:2,1')!.spriteKey)
+        .toMatchObject({ kind: 'highlight', variant: 'move', elevation: 2 });
+      expect(plan.find((e) => e.cellKey === 'move:3,3')).toBeDefined();
+    });
+
+    it('keeps the hovered cell readable on top of its own reachable wash', () => {
+      const plan = buildDrawPlan({
+        ...baseInput,
+        reachableCells: new Set(['2,2']),
+        hoveredCell: { x: 2, y: 2 },
+      });
+
+      const move = plan.find((e) => e.cellKey === 'move:2,2')!;
+      const cursor = plan.find((e) => e.cellKey === 'hover')!;
+
+      expect(cursor.sortKey).toBeGreaterThan(move.sortKey);
+    });
+
+    it('adds nothing when no cell is reachable', () => {
+      const plan = buildDrawPlan({ ...baseInput, reachableCells: new Set<string>() });
+      expect(plan.some((e) => e.cellKey.startsWith('move:'))).toBe(false);
     });
   });
 

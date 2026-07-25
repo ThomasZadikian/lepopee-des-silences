@@ -25,6 +25,24 @@ export const SIGIL_KIND_BY_NODE_TYPE: Record<string, string> = {
   Curse: 'malediction',
 };
 
+/**
+ * The painted 3D-ish prop that stands on a node's tile, per node type. These read from across
+ * the board in a way the small flat sigil never could — a campfire, a hooded figure, a
+ * suspended shard — so an objective is legible before you are on top of it.
+ *
+ * Only event nodes that represent *something physically there* get one. Combat/Elite/Rare and
+ * the boss deliberately do not: their tile already carries a danger tell and a glow, and a
+ * decorative statue on an ambush would give it away.
+ */
+export const PROP_KIND_BY_NODE_TYPE: Record<string, 'npc' | 'star' | 'campfire'> = {
+  Npc: 'npc',
+  Merchant: 'npc',
+  Rest: 'campfire',
+  Item: 'star',
+  Memory: 'star',
+  Law: 'star',
+};
+
 // Short label — used both for the hover tooltip (type only, as requested) and as the
 // side panel's kicker.
 export const NODE_TYPE_LABEL: Record<string, string> = {

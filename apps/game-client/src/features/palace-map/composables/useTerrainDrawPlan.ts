@@ -1,6 +1,7 @@
 import type { DangerTell, NodeDto } from '../../runs/types/runTypes';
 import type { Cell } from './useGridCells';
 import { hashSeed } from './usePalaceTerrain';
+import { PROP_KIND_BY_NODE_TYPE } from './useNodePresentation';
 import {
   TERRAIN_SPRITE_CONSTANTS,
   cliffSides,
@@ -34,6 +35,12 @@ function dangerFor(node: NodeDto | null): 'none' | 'tracks' | 'glow' | 'blight' 
 // BALANCE KNOB — shrinks the whole diamond inward so the outermost tile's own half-width/
 // half-height never reaches the canvas edge (mirrors the old CSS ISO_FIT).
 const ISO_FIT = 0.82;
+// BALANCE KNOB — the same, for height. The tile size used to be derived from the canvas WIDTH
+// alone, so on a wide-but-short viewport the board's vertical span (plus a tile's own height
+// and the lift of a level-3 tile) ran off the bottom and the frontmost cell was clipped. The
+// unit is now whichever of the two constraints is tighter. Lower than ISO_FIT because a 2:1
+// diamond spends its height budget on the tile body and the elevation lift, not just spacing.
+const ISO_FIT_V = 0.72;
 // The board's vertical center sits a bit below the canvas's true center, clearing the
 // top-tabs chrome that overlays the top-left corner (mirrors the old CSS ISO_V_CENTER).
 const ISO_V_CENTER = 0.56;
@@ -46,7 +53,15 @@ export type ProjectionParams = {
 };
 
 export function isoUnit(params: ProjectionParams): { isoUnitX: number; isoUnitY: number } {
-  const isoUnitX = (params.canvasWidth / (params.gridWidth + params.gridHeight)) * ISO_FIT;
+  const span = params.gridWidth + params.gridHeight;
+  if (span === 0) return { isoUnitX: 0, isoUnitY: 0 };
+
+  const widthConstrained = (params.canvasWidth * ISO_FIT) / span;
+  // Doubled because the vertical unit is half the horizontal one on a 2:1 diamond, so the
+  // board's vertical span only eats half as much per cell.
+  const heightConstrained = (params.canvasHeight * 2 * ISO_FIT_V) / span;
+
+  const isoUnitX = Math.min(widthConstrained, heightConstrained);
   return { isoUnitX, isoUnitY: isoUnitX / 2 };
 }
 
@@ -195,6 +210,10 @@ export type BuildDrawPlanInput = {
   /** The party's current (possibly mid-step-animation) cell — always integer grid
    * coordinates, see usePartyTokenPath. Null before a grid exists. */
   party: { x: number; y: number } | null;
+  /** Cells the party may legally click to move to (revealed, walkable, affordable). Painted
+   * with the 'move' highlight so the reachable area is readable at a glance instead of having
+   * to be guessed from the fog. */
+  reachableCells?: Set<string>;
   /** The cell under the pointer, if any — painted as a highlight sprite hugging that tile's
    * own diamond at its own elevation. Null when the pointer is off the board. */
   hoveredCell?: { x: number; y: number } | null;
@@ -276,6 +295,52 @@ export function buildDrawPlan(input: BuildDrawPlanInput): DrawPlanEntry[] {
       screenY,
       sortKey: ((cell.x + cell.y) * 4) + sortElevation,
     });
+  }
+
+  // Scenery standing on a node's tile — painted after every floor tile so it can overlap the
+  // ones behind it, and sorted just under the party so the party never disappears behind a
+  // prop on its own cell.
+  for (const cell of input.cells) {
+    if (!isFloor(cell.x, cell.y)) continue;
+
+    const node = input.nodesByCell.get(`${cell.x},${cell.y}`);
+    if (!node || node.state === 'Resolved') continue;
+
+    const prop = PROP_KIND_BY_NODE_TYPE[node.type];
+    if (!prop) continue;
+
+    const elevationLevel = input.elevation[(cell.y * input.gridWidth) + cell.x] ?? 0;
+    const { screenX, screenY } = projectToScreen(cell.x, cell.y, projection);
+
+    entries.push({
+      cellKey: `prop:${cell.x},${cell.y}`,
+      x: cell.x,
+      y: cell.y,
+      spriteKey: { kind: 'prop', theme: input.theme, prop },
+      screenX,
+      screenY,
+      sortKey: ((cell.x + cell.y) * 4) + elevationLevel + 0.45,
+    });
+  }
+
+  if (input.reachableCells) {
+    for (const cellKey of input.reachableCells) {
+      const [x, y] = cellKey.split(',').map(Number);
+      const elevationLevel = input.elevation[(y * input.gridWidth) + x] ?? 0;
+      const { screenX, screenY } = projectToScreen(x, y, projection);
+
+      entries.push({
+        cellKey: `move:${cellKey}`,
+        x,
+        y,
+        spriteKey: { kind: 'highlight', variant: 'move', elevation: elevationLevel },
+        screenX,
+        screenY,
+        // Below the cursor highlight (+0.25) so hovering a reachable cell still reads as
+        // hovered rather than merging into the reachable wash.
+        sortKey: ((x + y) * 4) + elevationLevel + 0.2,
+      });
+    }
   }
 
   if (input.hoveredCell) {

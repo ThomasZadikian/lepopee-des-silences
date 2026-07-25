@@ -13,6 +13,8 @@ import {
   drawAmbient,
   drawBackdrop,
   drawDangerAura,
+  drawFogOfWar,
+  visionRadius,
   GROUND_ANCHOR_RATIO,
   PROP_GROUND_ANCHOR_RATIO,
   TERRAIN_SPRITE_CONSTANTS,
@@ -95,6 +97,67 @@ function nodeTintFor(node: NodeDto): FloorTint {
   return (tone && TONE_VALUES.has(tone) ? tone : 'neutral') as FloorTint;
 }
 
+// BALANCE KNOB — opacity of a wall or raised tile that stands between the camera and the
+// party (or the cell being hovered). Low enough to see through, high enough that the terrain
+// still reads as solid rather than as a hole.
+const OCCLUDER_ALPHA = 0.42;
+
+/**
+ * Whether `entry` is painted in front of `target` AND actually covers it. Only things that
+ * genuinely rise off the ground can hide anything — a flat floor tile never does — so the test
+ * is limited to walls, scenery and raised tiles, and to entries that sort later (i.e. paint on
+ * top). The horizontal test uses the tile's own half-width; the vertical one only looks
+ * upwards, since a sprite covers the ground behind it, never in front.
+ */
+function occludesTarget(
+  entry: { spriteKey: { kind: string; elevation?: number }; screenX: number; screenY: number; sortKey: number },
+  target: { screenX: number; screenY: number; sortKey: number },
+  destW: number,
+  destH: number,
+): boolean {
+  if (entry.sortKey <= target.sortKey) return false;
+
+  const rises = entry.spriteKey.kind === 'obstacle'
+    || entry.spriteKey.kind === 'prop'
+    || (entry.spriteKey.kind === 'floor' && (entry.spriteKey.elevation ?? 0) > 0);
+  if (!rises) return false;
+
+  const dx = Math.abs(entry.screenX - target.screenX);
+  const dy = target.screenY - entry.screenY;
+
+  return dx < destW * 0.5 && dy > -destH * 0.25 && dy < destH * 1.1;
+}
+
+// BALANCE KNOB — how much slower the ambient particles drift than the engine's own default.
+// They read as dust hanging in the air rather than as motion competing with the board.
+const AMBIENT_TIME_SCALE = 0.45;
+
+/**
+ * Cells the player may actually click right now: revealed, real floor, not a wall, not where
+ * the party already stands. Highlighted so the reachable area is readable at a glance — the
+ * fog alone left the player guessing which of the dimmed cells were legal targets.
+ *
+ * Deliberately NOT a budget/pathfinding check: the store stays optimistic and the domain is the
+ * authority on affordability (it answers with a real message). Reproducing the pathfinder here
+ * would be a second source of truth free to disagree with the server.
+ */
+const reachableCells = computed(() => {
+  const g = grid.value;
+  const set = new Set<string>();
+  if (!g) return set;
+
+  for (const cell of cells.value) {
+    if (!isRevealed(cell.x, cell.y)) continue;
+    if (!isFloor(cell.x, cell.y)) continue;
+    if (obstacleCells.value.has(`${cell.x},${cell.y}`)) continue;
+    if (isParty(cell.x, cell.y)) continue;
+
+    set.add(`${cell.x},${cell.y}`);
+  }
+
+  return set;
+});
+
 const projectionParams = computed(() => {
   const g = grid.value;
   return {
@@ -123,6 +186,7 @@ const drawPlan = computed(() => {
     nodesByCell: nodesByCell.value,
     nodeTintFor,
     party: { x: displayPartyX.value, y: displayPartyY.value },
+    reachableCells: reachableCells.value,
     hoveredCell: hoveredCell.value,
   });
 });
@@ -170,9 +234,21 @@ function paintCanvas(timestamp: number) {
 
   const { destW, destH, propH } = spriteDest.value;
 
+  // Anything painted in front of these has to let them show through, or the player loses track
+  // of where they are and what they are about to click.
+  const seeThroughTargets = [
+    drawPlan.value.find((entry) => entry.spriteKey.kind === 'party'),
+    hoveredCell.value
+      ? drawPlan.value.find((e) => e.spriteKey.kind === 'highlight' && e.spriteKey.variant === 'cursor')
+      : undefined,
+  ].filter((entry): entry is NonNullable<typeof entry> => entry !== undefined);
+
   for (const entry of drawPlan.value) {
     const sprite = getSprite(entry.spriteKey);
     const dx = entry.screenX - (destW / 2);
+
+    const occludes = seeThroughTargets.some((target) => occludesTarget(entry, target, destW, destH));
+    if (occludes) ctx.globalAlpha = OCCLUDER_ALPHA;
 
     if (usesPropRect(entry.spriteKey)) {
       // A wall stands ON the ground, so its own cell elevation is already baked into the
@@ -181,6 +257,8 @@ function paintCanvas(timestamp: number) {
     } else {
       ctx.drawImage(sprite, dx, entry.screenY - (destH * GROUND_ANCHOR_RATIO), destW, destH);
     }
+
+    ctx.globalAlpha = 1;
 
     // Composed AFTER the tile, or the blit would paint straight over it. The tell itself is
     // baked into the sprite; only this pulse is a runtime effect, so it costs no cache variant.
@@ -199,7 +277,36 @@ function paintCanvas(timestamp: number) {
     }
   }
 
-  drawAmbient(ctx, canvas.width, canvas.height, paintedTheme.value, timestamp);
+  paintFogOfWar(ctx, canvas.width, canvas.height, timestamp);
+  drawAmbient(ctx, canvas.width, canvas.height, paintedTheme.value, timestamp * AMBIENT_TIME_SCALE);
+}
+
+/**
+ * Fog of war, painted after the tiles and before the ambient particles: a veil over the whole
+ * board, punched through at every cell the party has already seen. Passing all the explored
+ * cells as centres of ONE call is what makes the holes melt into a single explored region
+ * instead of stacking as separate discs. The holes are 2:1 ellipses, so the cleared area
+ * follows the isometric grid rather than reading as a circle laid over it.
+ */
+function paintFogOfWar(ctx: CanvasRenderingContext2D, width: number, height: number, timestamp: number) {
+  const g = grid.value;
+  if (!g) return;
+
+  const { isoUnitX } = isoUnit(projectionParams.value);
+  if (isoUnitX === 0) return;
+
+  const centers = g.revealedCells.map(([x, y]) => {
+    const { screenX, screenY } = projectToScreen(x, y, projectionParams.value);
+    return {
+      x: screenX,
+      y: screenY - elevationLiftPx(terrainHeight(x, y)),
+      radius: visionRadius(1, isoUnitX),
+    };
+  });
+
+  if (centers.length === 0) return;
+
+  drawFogOfWar(ctx, width, height, centers, 0, paintedTheme.value, timestamp);
 }
 
 // ── Backdrop: painted, cached, theme-driven ──────────────────────────────────────

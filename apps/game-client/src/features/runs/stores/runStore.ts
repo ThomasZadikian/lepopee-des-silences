@@ -253,7 +253,31 @@ export const useRunStore = defineStore('run', () => {
     await execute(async () => {
       const response = await runApi.moveParty(currentRun.value!.id, x, y);
       currentRun.value = unwrapRunResponse(response);
+
+      // Walking onto a contact node selects it server-side mid-move (an ambush does not wait
+      // to be clicked), which leaves the room in NodeSelected exactly like enterGridNode does.
+      // Without resolving it here the event never fires and the next move is refused by the
+      // domain guard — the room would simply appear stuck.
+      await resolveSelectedNodeIfAny();
     });
+  }
+
+  /** Turns a server-side node selection into an actual outcome. Shared by every path that can
+   * leave the room in NodeSelected: entering deliberately, challenging the boss remotely, or
+   * stepping onto a node that triggers on contact. */
+  async function resolveSelectedNodeIfAny() {
+    if (currentRun.value?.currentRoom?.state !== 'NodeSelected') return;
+
+    const resolveResponse = await runApi.resolveCurrentEvent(currentRun.value.id);
+    currentRun.value = resolveResponse.run;
+    lastOutcome.value = resolveResponse.outcome;
+    npcDialogue.value = resolveResponse.npcDialogue ?? null;
+    npcDialogueEchoes.value = [];
+    npcDialogueEnded.value = false;
+    activeCombat.value = resolveResponse.startedCombat ?? null;
+    combatRuntime.value = resolveResponse.combat ?? null;
+
+    await refreshPendingRewardIfNeeded();
   }
 
   /** Searches around the party for hidden nodes, at the cost of movement budget. Optimistic
@@ -279,16 +303,7 @@ export const useRunStore = defineStore('run', () => {
       const enterResponse = await runApi.enterGridNode(currentRun.value!.id, nodeId);
       currentRun.value = unwrapRunResponse(enterResponse);
 
-      const resolveResponse = await runApi.resolveCurrentEvent(currentRun.value!.id);
-      currentRun.value = resolveResponse.run;
-      lastOutcome.value = resolveResponse.outcome;
-      npcDialogue.value = resolveResponse.npcDialogue ?? null;
-      npcDialogueEchoes.value = [];
-      npcDialogueEnded.value = false;
-      activeCombat.value = resolveResponse.startedCombat ?? null;
-      combatRuntime.value = resolveResponse.combat ?? null;
-
-      await refreshPendingRewardIfNeeded();
+      await resolveSelectedNodeIfAny();
     });
   }
 
