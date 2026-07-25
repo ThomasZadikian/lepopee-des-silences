@@ -12,6 +12,7 @@ import {
   useTerrainSprites,
   drawAmbient,
   drawBackdrop,
+  drawDangerAura,
   GROUND_ANCHOR_RATIO,
   PROP_GROUND_ANCHOR_RATIO,
   TERRAIN_SPRITE_CONSTANTS,
@@ -30,6 +31,7 @@ const emit = defineEmits<{
   enterNode: [nodeId: string];
   wagerNode: [nodeId: string];
   challengeBoss: [];
+  search: [];
   toggleLaws: [];
 }>();
 
@@ -41,7 +43,7 @@ const roomName = computed(() =>
 const room = computed(() => props.room);
 const grid = computed(() => props.room.grid ?? null);
 
-const { isRevealed, nodeAt, isParty, cells, obstacleCells, nodesByCell } =
+const { isRevealed, nodeAt, isParty, cells, obstacleCells, isFloor, nodesByCell } =
   useGridCells(room, grid);
 
 const { displayPartyX, displayPartyY } = usePartyTokenPath(room, grid);
@@ -117,6 +119,7 @@ const drawPlan = computed(() => {
     theme: paintedTheme.value,
     elevation: g.elevation,
     obstacleCells: obstacleCells.value,
+    isFloor,
     nodesByCell: nodesByCell.value,
     nodeTintFor,
     party: { x: displayPartyX.value, y: displayPartyY.value },
@@ -177,6 +180,22 @@ function paintCanvas(timestamp: number) {
       ctx.drawImage(sprite, dx, entry.screenY - (propH * PROP_GROUND_ANCHOR_RATIO), destW, propH);
     } else {
       ctx.drawImage(sprite, dx, entry.screenY - (destH * GROUND_ANCHOR_RATIO), destW, destH);
+    }
+
+    // Composed AFTER the tile, or the blit would paint straight over it. The tell itself is
+    // baked into the sprite; only this pulse is a runtime effect, so it costs no cache variant.
+    // Elevation must be passed through, otherwise the aura stays pinned at ground level and
+    // rides up over the riser of a raised tile.
+    if (entry.spriteKey.kind === 'floor' && (entry.spriteKey.danger ?? 'none') !== 'none') {
+      drawDangerAura(
+        ctx,
+        dx,
+        entry.screenY - (destH * GROUND_ANCHOR_RATIO),
+        destW,
+        destH,
+        timestamp,
+        entry.spriteKey.elevation,
+      );
     }
   }
 
@@ -283,6 +302,7 @@ function canvasPointToCell(event: MouseEvent): Cell | null {
     gridHeight: g.height,
     elevation: g.elevation,
     obstacleCells: obstacleCells.value,
+    isFloor,
   });
 }
 
@@ -494,6 +514,15 @@ function toggleInfoCollapsed() {
               Déplacement <strong>{{ grid.movementBudgetRemaining }}</strong> / {{ grid.movementBudget }}
             </span>
 
+            <button
+              v-if="grid.canSearch"
+              type="button"
+              class="es-btn es-btn--ghost tgrid__search-btn"
+              @click="emit('search')"
+            >
+              Fouiller les environs
+            </button>
+
             <div v-if="showChallengeBossBanner" class="tgrid__boss-banner">
               <p class="tgrid__boss-banner-text">
                 Le budget de déplacement est épuisé. Le gardien de la salle approche à grands pas.
@@ -507,6 +536,10 @@ function toggleInfoCollapsed() {
 
         <div class="tgrid__room-tab">
           <span class="es-kicker">{{ roomName }}</span>
+        </div>
+
+        <div v-if="grid.canSearch" class="tgrid__search-tab">
+          <span class="es-kicker">Quelque chose ici…</span>
         </div>
 
         <button type="button" class="tgrid__laws-tab" @click="emit('toggleLaws')">
@@ -589,7 +622,8 @@ function toggleInfoCollapsed() {
 
 @media (prefers-reduced-motion: reduce) {
   .tgrid__node-icon,
-  .tgrid__info-toggle--alert {
+  .tgrid__info-toggle--alert,
+  .tgrid__search-tab {
     animation: none;
   }
 }
@@ -762,6 +796,24 @@ function toggleInfoCollapsed() {
 @keyframes tgrid-info-alert-glow {
   0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--blood), transparent 60%); }
   50% { box-shadow: 0 0 10px 3px color-mix(in oklch, var(--blood), transparent 20%); }
+}
+
+.tgrid__search-btn {
+  align-self: flex-start;
+}
+
+/* A tell that a search is worth trying here — never what, never exactly where. */
+.tgrid__search-tab {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  border: 1px solid color-mix(in oklch, var(--gold), transparent 40%);
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+  padding: 4px 12px;
+  background: oklch(0.20 0.04 272 / 0.9);
+  color: var(--gold);
+  animation: tgrid-node-pulse 2.4s ease-in-out infinite;
 }
 
 .tgrid__room-tab {

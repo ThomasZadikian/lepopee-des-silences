@@ -118,6 +118,12 @@ export const runApi = {
     );
   },
 
+  /** Searches the ground around the party for hidden nodes. No body — the party can only
+   * ever search where it already stands. */
+  searchParty(runId: string) {
+    return gameEngineApi.post<RunResponse>(`/api/v2/runs/${runId}/party/search`);
+  },
+
   enterGridNode(runId: string, nodeId: string) {
     return gameEngineApi.post<RunResponse>(
       `/api/v2/runs/${runId}/nodes/${nodeId}/enter`,

@@ -202,6 +202,7 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
               @enter-node="runStore.enterGridNode"
               @wager-node="runStore.wagerNode"
               @challenge-boss="runStore.challengeBossRemotely"
+              @search="runStore.searchParty"
               @toggle-laws="uiStore.toggleLaws"
             />
           </div>

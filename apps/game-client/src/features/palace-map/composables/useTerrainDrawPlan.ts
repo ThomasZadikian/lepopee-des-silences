@@ -1,4 +1,4 @@
-import type { NodeDto } from '../../runs/types/runTypes';
+import type { DangerTell, NodeDto } from '../../runs/types/runTypes';
 import type { Cell } from './useGridCells';
 import { hashSeed } from './usePalaceTerrain';
 import {
@@ -16,6 +16,19 @@ const SURFACE_SEED_COUNT = 5;
 
 function surfaceSeedFor(x: number, y: number): number {
   return ((x * 7) + (y * 13)) % SURFACE_SEED_COUNT;
+}
+
+/** Backend DangerTell → the tile engine's own spelling. */
+const DANGER_SPRITE: Record<DangerTell, 'none' | 'tracks' | 'glow' | 'blight'> = {
+  None: 'none',
+  Tracks: 'tracks',
+  Glow: 'glow',
+  Blight: 'blight',
+};
+
+function dangerFor(node: NodeDto | null): 'none' | 'tracks' | 'glow' | 'blight' {
+  if (!node || node.state === 'Resolved') return 'none';
+  return DANGER_SPRITE[node.dangerTell ?? 'None'] ?? 'none';
 }
 
 // BALANCE KNOB — shrinks the whole diamond inward so the outermost tile's own half-width/
@@ -83,6 +96,9 @@ export type ScreenToCellInput = {
   /** Flat, row-major, one 0..3 value per cell — same shape as BuildDrawPlanInput.elevation. */
   elevation: number[];
   obstacleCells: Set<string>;
+  /** Same predicate the draw plan uses — a hole paints no tile, so it must not be clickable
+   * either. Defaults to "everything inside the grid is floor". */
+  isFloor?: (x: number, y: number) => boolean;
 };
 
 /**
@@ -117,9 +133,13 @@ export function screenToCell(input: ScreenToCellInput): Cell | null {
   const halfH = (BASE_TILE_H * (destW / BASE_TILE_W)) / 2;
 
   let best: { x: number; y: number; sortKey: number } | null = null;
+  const isFloor = input.isFloor
+    ?? ((x: number, y: number) => x >= 0 && x < input.gridWidth && y >= 0 && y < input.gridHeight);
 
   for (let y = 0; y < input.gridHeight; y++) {
     for (let x = 0; x < input.gridWidth; x++) {
+      if (!isFloor(x, y)) continue;
+
       const isObstacle = input.obstacleCells.has(`${x},${y}`);
       const elevationLevel = isObstacle ? MAX_ELEVATION : (input.elevation[(y * input.gridWidth) + x] ?? 0);
 
@@ -204,6 +224,10 @@ export function buildDrawPlan(input: BuildDrawPlanInput): DrawPlanEntry[] {
   const wallVariants = obstacleVariantCount(input.theme);
 
   for (const cell of input.cells) {
+    // A hole in the room's shape paints nothing at all — that void is what makes the
+    // surrounding tiles read as an edge, via the cliff faces they grow towards it.
+    if (!isFloor(cell.x, cell.y)) continue;
+
     const cellKey = `${cell.x},${cell.y}`;
     const node = input.nodesByCell.get(cellKey) ?? null;
     const obstacle = input.obstacleCells.has(cellKey);
@@ -235,6 +259,9 @@ export function buildDrawPlan(input: BuildDrawPlanInput): DrawPlanEntry[] {
         elevation: cellElevation,
         surfaceSeed: surfaceSeedFor(cell.x, cell.y),
         ...cliffSides(cell.x, cell.y, isFloor),
+        // The painted tell for a node that fires on contact. A contact node with no tell paints
+        // as plain floor — that IS the ambush, and must stay indistinguishable.
+        danger: dangerFor(node),
         resolved: node?.state === 'Resolved',
         glow: node?.isBoss ?? false,
       };

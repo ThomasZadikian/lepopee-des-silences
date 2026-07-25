@@ -18,7 +18,17 @@ export type NodeDto = {
   isBoss: boolean;
   isInitial: boolean;
   hasChosenEventOption: boolean;
+  /** What walking onto this node's cell does. 'Blocking' cells cannot be crossed in transit. */
+  contactBehavior?: ContactBehavior;
+  /** The warning it gives off before contact. 'None' on a contact node IS the ambush. */
+  dangerTell?: DangerTell;
 };
+
+/** Mirrors the backend ContactBehavior enum. */
+export type ContactBehavior = 'None' | 'TriggerOnEnter' | 'Blocking';
+
+/** Mirrors the backend DangerTell enum. */
+export type DangerTell = 'None' | 'Tracks' | 'Glow' | 'Blight';
 
 export type ActivePalaceLawDto = {
   key: string;
@@ -76,6 +86,12 @@ export type RoomGridDto = {
   elevation: number[];
   /** Impassable cells, each as [x, y]. Sent for the whole grid, same rationale as elevation. */
   obstacleCells: [number, number][];
+  /** Flat, row-major like elevation: which cells are part of the room at all. False = a hole in
+   * the bounding rectangle — what gives a room its shape and where cliff faces get painted. */
+  floorCells: boolean[];
+  /** Whether searching from where the party stands would turn something up. Deliberately not
+   * the cache's position: the player is told a search is worth trying, never what or where. */
+  canSearch: boolean;
 };
 
 export type RoomDto = {

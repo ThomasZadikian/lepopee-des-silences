@@ -254,6 +254,49 @@ describe('buildDrawPlan', () => {
     });
   });
 
+  describe('room shape', () => {
+    it('paints nothing at all on a hole, and grows cliffs on the tiles around it', () => {
+      const plan = buildDrawPlan({
+        ...baseInput,
+        isFloor: (x, y) => !(x === 3 && y === 2) && x >= 0 && x < 5 && y >= 0 && y < 5,
+      });
+
+      expect(plan.some((e) => e.x === 3 && e.y === 2)).toBe(false);
+      // (2,2)'s front-left neighbour is now outside the room.
+      expect(plan.find((e) => e.x === 2 && e.y === 2)!.spriteKey).toMatchObject({ cliffLeft: true });
+    });
+  });
+
+  describe('danger tells', () => {
+    it('paints the tell a contact node carries', () => {
+      const node = makeNode({ lane: 1, row: 1, dangerTell: 'Tracks' });
+      const plan = buildDrawPlan({ ...baseInput, nodesByCell: new Map([['1,1', node]]) });
+
+      expect(plan.find((e) => e.x === 1 && e.y === 1)!.spriteKey).toMatchObject({ danger: 'tracks' });
+    });
+
+    it('leaves an ambush indistinguishable from plain floor', () => {
+      // DangerTell 'None' on a contact node IS the ambush — it must paint exactly like the
+      // empty tile beside it, tell included.
+      const ambush = makeNode({ lane: 1, row: 1, dangerTell: 'None', contactBehavior: 'TriggerOnEnter' });
+      const plan = buildDrawPlan({ ...baseInput, nodesByCell: new Map([['1,1', ambush]]) });
+
+      const ambushTile = plan.find((e) => e.x === 1 && e.y === 1)!;
+      const plainTile = plan.find((e) => e.x === 2 && e.y === 2)!;
+
+      expect(ambushTile.spriteKey).toMatchObject({ danger: 'none' });
+      expect((ambushTile.spriteKey as { danger?: string }).danger)
+        .toBe((plainTile.spriteKey as { danger?: string }).danger);
+    });
+
+    it('drops the tell once the node is resolved', () => {
+      const spent = makeNode({ lane: 1, row: 1, dangerTell: 'Glow', state: 'Resolved' });
+      const plan = buildDrawPlan({ ...baseInput, nodesByCell: new Map([['1,1', spent]]) });
+
+      expect(plan.find((e) => e.x === 1 && e.y === 1)!.spriteKey).toMatchObject({ danger: 'none' });
+    });
+  });
+
   describe('hover highlight', () => {
     it('adds no entry when nothing is hovered', () => {
       const plan = buildDrawPlan(baseInput);

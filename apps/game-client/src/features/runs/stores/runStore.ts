@@ -256,6 +256,18 @@ export const useRunStore = defineStore('run', () => {
     });
   }
 
+  /** Searches around the party for hidden nodes, at the cost of movement budget. Optimistic
+   * like every other grid action: the domain rejects it (nothing to find, not enough budget)
+   * and the message surfaces through `error`. */
+  async function searchParty() {
+    if (!currentRun.value) return;
+
+    await execute(async () => {
+      const response = await runApi.searchParty(currentRun.value!.id);
+      currentRun.value = unwrapRunResponse(response);
+    });
+  }
+
   // Both enterGridNode and challengeBossRemotely only *select* the node server-side —
   // resolving it into an outcome is a separate step, so we chain the resolve call
   // immediately after. Without this, the room stays in NodeSelected forever and the
@@ -910,6 +922,7 @@ export const useRunStore = defineStore('run', () => {
     removePalaceLaw,
     wagerNode,
     movePartyTo,
+    searchParty,
     enterGridNode,
     challengeBossRemotely,
     useCaliceInfini,

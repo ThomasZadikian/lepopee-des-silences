@@ -15,6 +15,8 @@ function makeGrid(partyX: number, partyY: number): RoomGridDto {
     revealedCells: [],
     elevation: new Array(6 * 5).fill(0),
     obstacleCells: [],
+    floorCells: [],
+    canSearch: false,
   };
 }
 

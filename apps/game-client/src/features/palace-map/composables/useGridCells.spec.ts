@@ -32,6 +32,8 @@ function makeGrid(overrides: Partial<RoomGridDto> = {}): RoomGridDto {
     revealedCells: [[0, 0], [1, 0]],
     elevation: new Array(16).fill(0),
     obstacleCells: [],
+    floorCells: [],
+    canSearch: false,
     ...overrides,
   };
 }
@@ -133,5 +135,53 @@ describe('useGridCells', () => {
     const { isObstacle } = useGridCells(room, gridRef);
 
     expect(isObstacle(0, 0)).toBe(false);
+  });
+
+  describe('isFloor', () => {
+    it('treats every in-bounds cell as floor when no mask is sent', () => {
+      // A room persisted before rooms had a shape sends nothing — it was a full rectangle,
+      // and must keep reading as one rather than vanishing entirely.
+      const grid = makeGrid({ floorCells: [] });
+      const room = computed(() => makeRoom(grid));
+      const gridRef = computed(() => grid);
+      const { isFloor } = useGridCells(room, gridRef);
+
+      expect(isFloor(0, 0)).toBe(true);
+      expect(isFloor(3, 2)).toBe(true);
+    });
+
+    it('reads holes out of a full-length mask', () => {
+      const mask = new Array(4 * 4).fill(true);
+      mask[(2 * 4) + 3] = false; // (x=3, y=2)
+      const grid = makeGrid({ floorCells: mask });
+      const room = computed(() => makeRoom(grid));
+      const gridRef = computed(() => grid);
+      const { isFloor } = useGridCells(room, gridRef);
+
+      expect(isFloor(3, 2)).toBe(false);
+      expect(isFloor(2, 2)).toBe(true);
+    });
+
+    it('falls back to all-floor when the mask length disagrees with the grid', () => {
+      // Better a plain rectangle than a room that renders as nothing at all.
+      const grid = makeGrid({ floorCells: [true, false] });
+      const room = computed(() => makeRoom(grid));
+      const gridRef = computed(() => grid);
+      const { isFloor } = useGridCells(room, gridRef);
+
+      expect(isFloor(1, 0)).toBe(true);
+    });
+
+    it('reports out-of-bounds and no-grid as not floor', () => {
+      const grid = makeGrid();
+      const room = computed(() => makeRoom(grid));
+      const { isFloor } = useGridCells(room, computed(() => grid));
+
+      expect(isFloor(-1, 0)).toBe(false);
+      expect(isFloor(99, 0)).toBe(false);
+
+      const { isFloor: noGrid } = useGridCells(room, computed(() => null));
+      expect(noGrid(0, 0)).toBe(false);
+    });
   });
 });

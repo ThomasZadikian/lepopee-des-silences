@@ -49,6 +49,22 @@ export function useGridCells(room: ComputedRef<RoomDto>, grid: ComputedRef<RoomG
     return obstacleCells.value.has(`${x},${y}`);
   }
 
+  /**
+   * Whether a cell is part of the room at all. Returns false out of bounds too, so callers can
+   * use it as a single "is this a real cell" test. A room persisted before rooms had a shape
+   * sends no mask at all — treated as "everything is floor", the shape those rooms had.
+   */
+  function isFloor(x: number, y: number): boolean {
+    const g = grid.value;
+    if (!g) return false;
+    if (x < 0 || x >= g.width || y < 0 || y >= g.height) return false;
+
+    const mask = g.floorCells;
+    if (!mask || mask.length !== g.width * g.height) return true;
+
+    return mask[(y * g.width) + x];
+  }
+
   const cells = computed<Cell[]>(() => {
     const g = grid.value;
     if (!g) return [];
@@ -70,6 +86,7 @@ export function useGridCells(room: ComputedRef<RoomDto>, grid: ComputedRef<RoomG
     isParty,
     obstacleCells,
     isObstacle,
+    isFloor,
     cells,
   };
 }
