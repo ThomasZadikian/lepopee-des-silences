@@ -128,6 +128,44 @@ public sealed class GridRoomGeneratorTests
     [InlineData(7)]
     [InlineData(42)]
     [InlineData(1337)]
+    [InlineData(2026)]
+    [InlineData(90210)]
+    public async Task GenerateRoom_ShouldAlwaysOfferSomewhereToRest(int seed)
+    {
+        var sut = CreateSut();
+        var random = new Random(seed);
+
+        var room = await sut.GenerateAsync(Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, random);
+
+        room.Nodes.Should().Contain(node => node.EventType == NodeEventType.Rest,
+            "left to the weighted draw a room can come out with no breather at all, which makes "
+            + "attrition a matter of luck rather than of the player's routing choices");
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(7)]
+    [InlineData(42)]
+    [InlineData(1337)]
+    public async Task GenerateRoom_ShouldPutTheGuaranteedRestOutOfArmsReachOfTheEntrance(int seed)
+    {
+        var sut = CreateSut();
+        var random = new Random(seed);
+
+        var room = await sut.GenerateAsync(Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, random);
+        var grid = room.Grid;
+
+        room.Nodes.Where(node => node.EventType == NodeEventType.Rest)
+            .Should().Contain(
+                node => Math.Abs(node.Lane - grid.StartX) + Math.Abs(node.Row - grid.StartY) > 1,
+                "a breather you trip over on the first step costs nothing to reach and so decides nothing");
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(7)]
+    [InlineData(42)]
+    [InlineData(1337)]
     public async Task GenerateRoom_ShouldNotCarveAwayTheWholeRoom(int seed)
     {
         var sut = CreateSut();

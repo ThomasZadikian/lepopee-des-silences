@@ -89,46 +89,22 @@ describe('TacticalGridMap', () => {
     expect(wrapper.find('.tgrid__terrain-canvas').exists()).toBe(true);
   });
 
-  it('renders a node icon marker for a revealed node', () => {
-    const node = makeNode({ row: 0, lane: 1 });
-    const room = makeRoom({ nodes: [node] });
-    const wrapper = mount(TacticalGridMap, { props: { room } });
-    const icons = wrapper.findAll('.tgrid__node-icon');
-    expect(icons).toHaveLength(1);
-  });
-
-  it('renders a node icon marker for an available node on an unrevealed cell, same as a revealed one', () => {
-    // (2,2) is outside the default revealedCells ([[0,0],[1,0]]) — the backend sends Available
-    // nodes regardless of fog so the player still sees where to head. There's no more visual
-    // distinction for reveal state (fog rendering was removed), so this marker paints exactly
-    // like any other node marker.
-    const node = makeNode({ row: 2, lane: 2, state: 'Available' });
-    const room = makeRoom({ nodes: [node] });
+  it('floats no sigil over the board — nodes read from what is painted on their tile', () => {
+    // Replaces five DOM-marker tests (presence, unrevealed-but-available, resolved, boss).
+    // Those markers were flat SVG glyphs hovering above the canvas; the painted scene now says
+    // the same things in its own language — a prop for the node, a wash for a spent one, a glow
+    // for the boss — and that lives in the draw plan, asserted in useTerrainDrawPlan.spec.ts.
+    // This keeps a guard that they never creep back in over the canvas.
+    const room = makeRoom({
+      nodes: [
+        makeNode({ row: 0, lane: 1, state: 'Available' }),
+        makeNode({ row: 2, lane: 2, state: 'Resolved' }),
+        makeNode({ row: 3, lane: 3, isBoss: true, type: 'RoomBoss' }),
+      ],
+    });
     const wrapper = mount(TacticalGridMap, { props: { room } });
 
-    const icons = wrapper.findAll('.tgrid__node-icon');
-    expect(icons).toHaveLength(1);
-  });
-
-  it('marks a resolved node marker as visually spent', () => {
-    const node = makeNode({ row: 0, lane: 1, state: 'Resolved' });
-    const room = makeRoom({ nodes: [node] });
-    const wrapper = mount(TacticalGridMap, { props: { room } });
-    expect(wrapper.find('.tgrid__node-icon--resolved').exists()).toBe(true);
-  });
-
-  it('does not mark an available node marker as resolved', () => {
-    const node = makeNode({ row: 0, lane: 1, state: 'Available' });
-    const room = makeRoom({ nodes: [node] });
-    const wrapper = mount(TacticalGridMap, { props: { room } });
-    expect(wrapper.find('.tgrid__node-icon--resolved').exists()).toBe(false);
-  });
-
-  it('marks a boss node marker distinctly', () => {
-    const node = makeNode({ row: 0, lane: 1, isBoss: true, type: 'RoomBoss' });
-    const room = makeRoom({ nodes: [node] });
-    const wrapper = mount(TacticalGridMap, { props: { room } });
-    expect(wrapper.find('.tgrid__node-icon--boss').exists()).toBe(true);
+    expect(wrapper.findAll('.tgrid__node-icon')).toHaveLength(0);
   });
 
   it('shows the node side panel when the party is on an available node', () => {
@@ -284,6 +260,23 @@ describe('TacticalGridMap', () => {
     await wrapper.find('.tgrid__info-toggle').trigger('click');
     await wrapper.find('.tgrid__boss-banner button').trigger('click');
     expect(wrapper.emitted('challengeBoss')).toHaveLength(1);
+  });
+
+  it('emits search from the search tab without expanding the info panel first', async () => {
+    // The info panel starts collapsed, so the labelled button inside it is out of reach on
+    // arrival. The tab is what the player actually sees and clicks; it used to be an inert div,
+    // which is exactly what made searching look broken.
+    const room = makeRoom({}, { canSearch: true });
+    const wrapper = mount(TacticalGridMap, { props: { room } });
+
+    await wrapper.find('.tgrid__search-tab').trigger('click');
+
+    expect(wrapper.emitted('search')).toHaveLength(1);
+  });
+
+  it('hides the search tab when there is nothing within reach to find', () => {
+    const wrapper = mount(TacticalGridMap, { props: { room: makeRoom({}, { canSearch: false }) } });
+    expect(wrapper.find('.tgrid__search-tab').exists()).toBe(false);
   });
 
   it('shows the room name next to the "Exploration tactique" tag, falling back to theme', () => {

@@ -585,9 +585,22 @@ public sealed class GridRoomGenerator : IGridRoomGenerator
             .Take(Math.Min(remainingCount, freeCells.Count))
             .ToList();
 
+        // One guaranteed breather per room. Left to the weighted draw, Rest is only one type
+        // among a dozen and a room can easily come out with none at all — which makes the run's
+        // attrition a matter of luck rather than of the routing choices the player made. It goes
+        // on the cell furthest from the entrance so it is a place you reach, not one you trip
+        // over on the first step. Nothing stops the weighted draw below from rolling more.
+        var guaranteedRestCell = chosenCells.Count == 0
+            ? (Cell: default((int X, int Y)), Exists: false)
+            : (Cell: chosenCells
+                .OrderByDescending(c => Math.Abs(c.X - template.StartX) + Math.Abs(c.Y - template.StartY))
+                .First(), Exists: true);
+
         foreach (var (x, y) in chosenCells)
         {
-            var type = NodeGenerationHeuristics.PickWeightedNodeType(profile, random);
+            var type = guaranteedRestCell.Exists && (x, y) == guaranteedRestCell.Cell
+                ? NodeEventType.Rest
+                : NodeGenerationHeuristics.PickWeightedNodeType(profile, random);
             var riskLevel = random.Next(profile.RiskMin, profile.RiskMax);
             var combatRiskTier = NodeGenerationHeuristics.DeriveCombatRiskTier(type, riskLevel);
             var rewardProfile = NodeGenerationHeuristics.PickRewardProfile(type, profile, random);

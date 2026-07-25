@@ -58,9 +58,11 @@ const { terrainHeight } = usePalaceTerrain(room, grid);
 // ── Canvas terrain renderer ──────────────────────────────────────────────────────
 // A single `<canvas>` paints hand-painted isometric tiles (see useTerrainSprites.ts, backed by
 // the dependency-free tilecraft engine) at real pixel positions (see useTerrainDrawPlan.ts).
-// Terrain, walls, the party token and the hover highlight all live INSIDE the canvas so they
-// share one depth-sorted painter's pass; only node markers (SVG SigilIcon) and the surrounding
-// chrome — side panel, tabs, tooltip, boss banner — stay DOM overlays on top.
+// Terrain, walls, scenery, the party token and the hover highlight all live INSIDE the canvas
+// so they share one depth-sorted painter's pass; only the surrounding chrome — side panel,
+// tabs, tooltip, boss banner — stays a DOM overlay on top. Nodes used to also carry a floating
+// SVG sigil here; the painted props say the same thing in the scene's own language, so the
+// sigil now appears only in the side panel where it labels the node you are standing on.
 const canvasContainerEl = ref<HTMLElement | null>(null);
 /** The cell under the pointer. Declared up here because the draw plan reads it. */
 const hoveredCell = ref<Cell | null>(null);
@@ -104,6 +106,12 @@ function nodeTintFor(node: NodeDto): FloorTint {
 // party (or the cell being hovered). Low enough to see through, high enough that the terrain
 // still reads as solid rather than as a hole.
 const OCCLUDER_ALPHA = 0.42;
+
+// BALANCE KNOB — how much of the fog veil actually lands. Below ~0.6 the unexplored board reads
+// as merely dim and the fog stops being a real barrier to knowledge; at 1 it is a black wall and
+// the painted backdrop behind it is wasted. See paintFogOfWar for why this is applied here
+// rather than inside the tile engine.
+const FOG_VEIL_ALPHA = 0.76;
 
 /**
  * Whether `entry` is painted in front of `target` AND actually covers it. Only things that
@@ -438,7 +446,15 @@ function paintFogOfWar(ctx: CanvasRenderingContext2D, width: number, height: num
 
   if (centers.length === 0) return;
 
+  // The engine's veil is near-opaque (alpha .94→.97), which buried not just the unexplored
+  // tiles but the painted backdrop behind them — the whole board read as black. Blitting the
+  // veil at partial alpha lets the room's shape and its sky show through as a suggestion,
+  // which is what the design atelier looks like. The punched holes are fully transparent in
+  // the veil buffer, so scaling its alpha leaves explored ground exactly as bright as before.
+  const previousAlpha = ctx.globalAlpha;
+  ctx.globalAlpha = previousAlpha * FOG_VEIL_ALPHA;
   drawFogOfWar(ctx, width, height, centers, 0, paintedTheme.value, timestamp);
+  ctx.globalAlpha = previousAlpha;
 }
 
 // ── Backdrop: painted, cached, theme-driven ──────────────────────────────────────
@@ -490,34 +506,6 @@ if (prefersReducedMotion || typeof requestAnimationFrame === 'undefined') {
     if (frameHandle !== null) cancelAnimationFrame(frameHandle);
   });
 }
-
-// ── Node markers: DOM overlays positioned via the same pixel projection as the canvas ──
-// (the party token itself is now drawn INTO the canvas as part of drawPlan above — see
-// useTerrainSprites' 'party' sprite kind — so it participates in the same depth-sorted
-// painter's algorithm as terrain: a taller tile further along the diagonal correctly paints
-// over/occludes it instead of a DOM overlay always floating above the whole canvas.)
-const nodeMarkers = computed(() => {
-  const g = grid.value;
-  // Deliberately NOT gated on canvasSize being measured (unlike drawPlan): a marker's
-  // existence only depends on grid data, not on pixel geometry. Positions are degenerate
-  // (all stacked at the projection's origin) until the ResizeObserver first fires, same as
-  // any other layout-dependent element on first paint — and it keeps this list testable
-  // without a real ResizeObserver (e.g. under jsdom).
-  if (!g) return [];
-
-  const markers: { node: NodeDto; screenX: number; screenY: number }[] = [];
-
-  for (const cell of cells.value) {
-    const node = nodeAt(cell.x, cell.y);
-    if (!node) continue;
-
-    const { screenX, screenY } = projectToScreen(cell.x, cell.y, projectionParams.value);
-    const lift = elevationLiftPx(terrainHeight(cell.x, cell.y));
-    markers.push({ node, screenX, screenY: screenY - lift });
-  }
-
-  return markers;
-});
 
 // ── Click-to-move / hover: canvas has no per-cell DOM nodes, so hit-testing inverse-
 // projects the pointer position back to a grid cell — accounting for each cell's own
@@ -664,19 +652,6 @@ function toggleInfoCollapsed() {
         @mouseleave="onCanvasMouseLeave"
       />
 
-      <SigilIcon
-        v-for="marker in nodeMarkers"
-        :key="marker.node.id"
-        class="tgrid__node-icon"
-        :class="{
-          'tgrid__node-icon--resolved': marker.node.state === 'Resolved',
-          'tgrid__node-icon--boss': marker.node.isBoss,
-        }"
-        :style="{ left: `${marker.screenX}px`, top: `${marker.screenY}px` }"
-        :kind="sigilKindFor(marker.node)"
-        :size="20"
-      />
-
       <div
         v-if="standingNode"
         class="tgrid__node-panel"
@@ -773,9 +748,17 @@ function toggleInfoCollapsed() {
           <span class="es-kicker">{{ roomName }}</span>
         </div>
 
-        <div v-if="grid.canSearch" class="tgrid__search-tab">
-          <span class="es-kicker">Quelque chose ici…</span>
-        </div>
+        <!-- Sits beside the room and Laws tabs and reads exactly like them, so it has to BE
+             actionable: as an inert div it was the thing players clicked to search, and the
+             only working control was buried inside the info panel, which starts collapsed. -->
+        <button
+          v-if="grid.canSearch"
+          type="button"
+          class="tgrid__search-tab"
+          @click="emit('search')"
+        >
+          <span class="es-kicker">Fouiller les environs</span>
+        </button>
 
         <button type="button" class="tgrid__laws-tab" @click="emit('toggleLaws')">
           <span class="es-kicker">Lois</span>
@@ -835,28 +818,7 @@ function toggleInfoCollapsed() {
   50% { transform: scale(1.14); }
 }
 
-.tgrid__node-icon {
-  position: absolute;
-  transform: translate(-50%, -50%);
-  color: var(--frost);
-  pointer-events: none;
-  z-index: 50;
-  animation: tgrid-node-pulse 1.8s ease-in-out infinite;
-}
-
-.tgrid__node-icon--resolved {
-  /* Spent node — static (no pulse) and clearly desaturated. */
-  animation: none;
-  opacity: 0.35;
-  filter: grayscale(0.9);
-}
-
-.tgrid__node-icon--boss {
-  color: var(--blood);
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .tgrid__node-icon,
   .tgrid__info-toggle--alert,
   .tgrid__search-tab {
     animation: none;
@@ -1048,6 +1010,7 @@ function toggleInfoCollapsed() {
   padding: 4px 12px;
   background: oklch(0.20 0.04 272 / 0.9);
   color: var(--gold);
+  cursor: pointer;
   animation: tgrid-node-pulse 2.4s ease-in-out infinite;
 }
 
