@@ -156,14 +156,19 @@ export function screenToCell(input: ScreenToCellInput): Cell | null {
   // Mirrors TacticalGridMap's spriteDest/elevationLiftPx exactly (destW/destH/lift scale) —
   // kept in lockstep by formula here rather than threaded through as extra parameters, since
   // every one of these is fully derived from isoUnitX and the fixed sprite constants.
-  const { BASE_TILE_W, BASE_TILE_H, BASE_STEP_PX, MAX_ELEVATION, SPRITE_H } = TERRAIN_SPRITE_CONSTANTS;
+  const { BASE_TILE_W, BASE_TILE_H, BASE_STEP_PX, SPRITE_H } = TERRAIN_SPRITE_CONSTANTS;
   const destW = isoUnitX * 2.05;
   const destH = (destW * SPRITE_H) / BASE_TILE_W;
   const liftPerLevel = (destH / SPRITE_H) * BASE_STEP_PX;
   const halfW = destW / 2;
   const halfH = (BASE_TILE_H * (destW / BASE_TILE_W)) / 2;
 
+  // Walkable candidates win outright over obstacles. A wall is never somewhere the party can be
+  // sent, so when the pointer covers both a wall and open ground, the click belongs to the
+  // ground — otherwise a cell tucked behind a wall becomes genuinely hard to pick.
   let best: { x: number; y: number; sortKey: number } | null = null;
+  let bestObstacle: { x: number; y: number; sortKey: number } | null = null;
+
   const isFloor = input.isFloor
     ?? ((x: number, y: number) => x >= 0 && x < input.gridWidth && y >= 0 && y < input.gridHeight);
 
@@ -172,7 +177,12 @@ export function screenToCell(input: ScreenToCellInput): Cell | null {
       if (!isFloor(x, y)) continue;
 
       const isObstacle = input.obstacleCells.has(`${x},${y}`);
-      const elevationLevel = isObstacle ? MAX_ELEVATION : (input.elevation[(y * input.gridWidth) + x] ?? 0);
+      // An obstacle's own cell height, like every other cell. This used to be MAX_ELEVATION,
+      // which lifted the clickable diamond three steps above where the tile is actually
+      // painted — so it drifted over the cells BEHIND it and, ranking highest, stole their
+      // clicks. Depth order still pins obstacles at MAX so a wall paints in front; that is a
+      // painting concern and has no business deciding what the pointer is over.
+      const elevationLevel = input.elevation[(y * input.gridWidth) + x] ?? 0;
 
       const { screenX: cx, screenY: flatCy } = projectToScreen(x, y, projection);
       const cy = flatCy - (elevationLevel * liftPerLevel);
@@ -182,11 +192,17 @@ export function screenToCell(input: ScreenToCellInput): Cell | null {
       if (dx + dy > 1) continue;
 
       const sortKey = ((x + y) * 4) + elevationLevel;
-      if (!best || sortKey > best.sortKey) best = { x, y, sortKey };
+
+      if (isObstacle) {
+        if (!bestObstacle || sortKey > bestObstacle.sortKey) bestObstacle = { x, y, sortKey };
+      } else if (!best || sortKey > best.sortKey) {
+        best = { x, y, sortKey };
+      }
     }
   }
 
-  return best ? { x: best.x, y: best.y } : null;
+  const hit = best ?? bestObstacle;
+  return hit ? { x: hit.x, y: hit.y } : null;
 }
 
 export type DrawPlanEntry = {

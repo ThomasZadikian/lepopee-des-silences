@@ -34,7 +34,9 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  moveRequest: [x: number, y: number];
+  // The step count comes along because only the board knows the route the pathfinder chose,
+  // and the store has to wait exactly that long before resolving a contact node.
+  moveRequest: [x: number, y: number, plannedSteps: number];
   enterNode: [nodeId: string];
   wagerNode: [nodeId: string];
   challengeBoss: [];
@@ -53,7 +55,7 @@ const grid = computed(() => props.room.grid ?? null);
 const { isRevealed, nodeAt, isParty, cells, obstacleCells, isFloor, nodesByCell } =
   useGridCells(room, grid);
 
-const { displayPartyX, displayPartyY } = usePartyTokenPath(room, grid);
+const { displayPartyX, displayPartyY, planRoute } = usePartyTokenPath(room, grid);
 
 const { terrainHeight } = usePalaceTerrain(room, grid);
 
@@ -656,7 +658,11 @@ function onCellClick(cell: Cell) {
     return;
   }
 
-  emit('moveRequest', cell.x, cell.y);
+  // Record the exact cells the party will walk, before the move commits: once the new position
+  // lands, the pathfinder is rebuilt around it and can no longer say how the party got there.
+  const route = hoveredRoute.value;
+  planRoute(route?.path ?? null);
+  emit('moveRequest', cell.x, cell.y, route?.path.length ?? 0);
 }
 
 function onCanvasClick(event: MouseEvent) {

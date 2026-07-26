@@ -84,6 +84,49 @@ describe('usePartyTokenPath', () => {
     ]);
   });
 
+  it('walks the recorded route rather than cutting a straight line through a wall', async () => {
+    // The X-then-Y reconstruction was fine when movement was plain Manhattan. With walls in
+    // the way the pathfinder detours, and replaying a straight line walked the token visibly
+    // THROUGH the wall it had actually gone around.
+    const grid = ref(makeGrid(0, 0));
+    const room = computed(() => makeRoom('room-1', grid.value));
+    const gridRef = computed(() => grid.value);
+
+    const { displayPartyX, displayPartyY, planRoute } = usePartyTokenPath(room, gridRef);
+
+    // A wall at (1,0) forces the detour (0,1) → (1,1) → (2,1) → (2,0).
+    planRoute([{ x: 0, y: 1 }, { x: 1, y: 1 }, { x: 2, y: 1 }, { x: 2, y: 0 }]);
+    grid.value = { ...grid.value, partyX: 2, partyY: 0 };
+    await nextTick();
+
+    const walked: Array<[number, number]> = [];
+    for (let i = 0; i < 4; i++) {
+      vi.advanceTimersByTime(PARTY_STEP_MS);
+      walked.push([displayPartyX.value, displayPartyY.value]);
+    }
+
+    expect(walked).toEqual([[0, 1], [1, 1], [2, 1], [2, 0]]);
+    expect(walked).not.toContainEqual([1, 0]);
+  });
+
+  it('falls back to the straight line when the recorded route does not end where the party did', async () => {
+    // A stale plan must never be replayed: a rough walk is acceptable, walking to the wrong
+    // cell is not.
+    const grid = ref(makeGrid(0, 0));
+    const room = computed(() => makeRoom('room-1', grid.value));
+    const gridRef = computed(() => grid.value);
+
+    const { displayPartyX, displayPartyY, planRoute } = usePartyTokenPath(room, gridRef);
+
+    planRoute([{ x: 0, y: 1 }, { x: 0, y: 2 }]);
+    grid.value = { ...grid.value, partyX: 2, partyY: 0 };
+    await nextTick();
+
+    for (let i = 0; i < 2; i++) vi.advanceTimersByTime(PARTY_STEP_MS);
+
+    expect([displayPartyX.value, displayPartyY.value]).toEqual([2, 0]);
+  });
+
   it('snaps instantly to a new room instead of animating across unrelated coordinates', async () => {
     const roomId = ref('room-1');
     const grid = ref(makeGrid(0, 0));

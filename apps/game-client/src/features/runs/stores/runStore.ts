@@ -253,7 +253,7 @@ export const useRunStore = defineStore('run', () => {
   // Tactical grid exploration
   // -------------------------------------------------------------------------
 
-  async function movePartyTo(x: number, y: number) {
+  async function movePartyTo(x: number, y: number, plannedSteps = 0) {
     if (!currentRun.value) return;
 
     await execute(async () => {
@@ -272,8 +272,13 @@ export const useRunStore = defineStore('run', () => {
         // for the event screen before the token has moved a single frame, so an ambush read as
         // a teleport onto the thing that sprang it — losing the approach, which is the only
         // part of a contact node the player gets to watch.
+        // Step count from the board when it has one: a route that detours around a wall is
+        // longer than the straight-line distance, and waiting only the latter would fire the
+        // event while the party is still walking.
         const after = currentRun.value.currentRoom.grid;
-        await delay(partyWalkDurationMs(from.x, from.y, after?.partyX ?? from.x, after?.partyY ?? from.y));
+        await delay(plannedSteps > 0
+          ? partyWalkDurationMs(0, 0, plannedSteps, 0)
+          : partyWalkDurationMs(from.x, from.y, after?.partyX ?? from.x, after?.partyY ?? from.y));
       }
 
       await resolveSelectedNodeIfAny();

@@ -564,12 +564,39 @@ describe('screenToCell', () => {
     expect(screenToCell({ ...screenToCellBase, elevation, screenX, screenY })).not.toEqual({ x: 2, y: 2 });
   });
 
-  it('hit-tests an obstacle at max elevation regardless of its own elevation value', () => {
+  it('hit-tests an obstacle at its own elevation, not at max', () => {
+    // The reverse of what this file used to assert. Testing walls at MAX_ELEVATION lifted their
+    // clickable diamond three steps above where the tile is painted, so it drifted over the
+    // cells BEHIND the wall and — ranking highest — stole their clicks. Depth ORDER still pins
+    // obstacles at MAX so a wall paints in front; that is a painting concern only.
     const obstacleCells = new Set(['1,1']);
-    const { screenX, screenY } = projectToScreen(1, 1, PARAMS);
-    const liftedY = screenY - liftPx(TERRAIN_SPRITE_CONSTANTS.MAX_ELEVATION);
+    const flat = projectToScreen(1, 1, PARAMS);
 
-    expect(screenToCell({ ...screenToCellBase, obstacleCells, screenX, screenY: liftedY })).toEqual({ x: 1, y: 1 });
+    expect(screenToCell({ ...screenToCellBase, obstacleCells, screenX: flat.screenX, screenY: flat.screenY }))
+      .toEqual({ x: 1, y: 1 });
+
+    const liftedY = flat.screenY - liftPx(TERRAIN_SPRITE_CONSTANTS.MAX_ELEVATION);
+    expect(screenToCell({ ...screenToCellBase, obstacleCells, screenX: flat.screenX, screenY: liftedY }))
+      .not.toEqual({ x: 1, y: 1 });
+  });
+
+  it('gives the click to open ground when a wall and a walkable cell both cover the pointer', () => {
+    // Directly the reported complaint: a cell tucked behind a wall was hard to pick, because the
+    // wall won every overlap. A wall is never a destination, so it only wins when nothing else
+    // is under the pointer.
+    const obstacleCells = new Set(['2,2']);
+    const { screenX, screenY } = projectToScreen(2, 2, PARAMS);
+
+    // Nudge toward the neighbour that overlaps this diamond's edge.
+    const nudged = { screenX: screenX + 1, screenY: screenY + 1 };
+    const hit = screenToCell({ ...screenToCellBase, obstacleCells, ...nudged });
+
+    // Whatever it resolves to, it is allowed to be the wall ONLY if no walkable cell covers the
+    // same point — which the plain (no-obstacle) run tells us.
+    const withoutObstacle = screenToCell({ ...screenToCellBase, ...nudged });
+    if (withoutObstacle && !(withoutObstacle.x === 2 && withoutObstacle.y === 2)) {
+      expect(hit).toEqual(withoutObstacle);
+    }
   });
 
   it('resolves overlapping diamonds toward the higher sortKey (the visually front-most tile)', () => {

@@ -29,11 +29,16 @@ export function partyWalkDurationMs(
 }
 
 /**
- * Party token animation: step through the path cell-by-cell instead of a single CSS
- * glide straight from the old grid.partyX/Y to the new one, which cut a diagonal
- * shortcut through untraveled ground and read as a teleport for any move longer than
- * one cell. Mirrors RoomGrid.MoveTo's own path (X axis first, then Y) so the token
- * visibly walks the same cells the domain actually moved it through.
+ * Party token animation: step through the path cell-by-cell instead of a single glide straight
+ * from the old grid.partyX/Y to the new one, which cut a diagonal shortcut through untraveled
+ * ground and read as a teleport for any move longer than one cell.
+ *
+ * The route is supplied by the caller (`planRoute`), because the only correct one is the one
+ * the pathfinder chose. The old X-then-Y reconstruction was right back when movement was plain
+ * Manhattan; once walls and holes existed it started walking the token straight THROUGH them —
+ * the party visibly crossed a wall it had in fact gone around. When no route was recorded (a
+ * move the board did not originate, a rehydrate), it still falls back to X-then-Y: a rough
+ * walk beats a jump.
  */
 export function usePartyTokenPath(
   room: ComputedRef<RoomDto>,
@@ -48,6 +53,8 @@ export function usePartyTokenPath(
   const displayPartyY = ref(grid.value?.partyY ?? 0);
   let partyAnimationTimer: ReturnType<typeof setInterval> | null = null;
   let lastAnimatedRoomId: string | null = null;
+  /** The route the board last asked for, consumed by the next position change. */
+  let plannedRoute: ReadonlyArray<{ x: number; y: number }> | null = null;
 
   function stopPartyAnimation() {
     if (partyAnimationTimer !== null) {
@@ -62,21 +69,41 @@ export function usePartyTokenPath(
     displayPartyY.value = y;
   }
 
+  /**
+   * Records the exact cells the party is about to walk. Called when the board dispatches a
+   * move, since by the time the new position arrives the pathfinder has been rebuilt around
+   * it and can no longer say how the party got there.
+   */
+  function planRoute(route: ReadonlyArray<{ x: number; y: number }> | null) {
+    plannedRoute = route && route.length > 0 ? route : null;
+  }
+
   function animatePartyTo(targetX: number, targetY: number) {
     stopPartyAnimation();
 
     const steps: Array<[number, number]> = [];
-    let x = displayPartyX.value;
-    let y = displayPartyY.value;
-    const stepX = Math.sign(targetX - x);
-    while (x !== targetX) {
-      x += stepX;
-      steps.push([x, y]);
-    }
-    const stepY = Math.sign(targetY - y);
-    while (y !== targetY) {
-      y += stepY;
-      steps.push([x, y]);
+    const planned = plannedRoute;
+    plannedRoute = null;
+
+    const endsOnTarget = planned
+      && planned[planned.length - 1].x === targetX
+      && planned[planned.length - 1].y === targetY;
+
+    if (planned && endsOnTarget) {
+      for (const cell of planned) steps.push([cell.x, cell.y]);
+    } else {
+      let x = displayPartyX.value;
+      let y = displayPartyY.value;
+      const stepX = Math.sign(targetX - x);
+      while (x !== targetX) {
+        x += stepX;
+        steps.push([x, y]);
+      }
+      const stepY = Math.sign(targetY - y);
+      while (y !== targetY) {
+        y += stepY;
+        steps.push([x, y]);
+      }
     }
     if (steps.length === 0) return;
 
@@ -116,6 +143,7 @@ export function usePartyTokenPath(
     displayPartyX,
     displayPartyY,
     animatePartyTo,
+    planRoute,
     snapPartyTo,
     stopPartyAnimation,
   };
