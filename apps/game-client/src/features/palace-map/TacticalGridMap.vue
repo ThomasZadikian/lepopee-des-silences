@@ -20,6 +20,7 @@ import {
   visionRadius,
   GROUND_ANCHOR_RATIO,
   PROP_GROUND_ANCHOR_RATIO,
+  anchorRatioAt,
   TERRAIN_SPRITE_CONSTANTS,
   type FloorTint,
 } from './composables/useTerrainSprites';
@@ -113,6 +114,44 @@ const OCCLUDER_ALPHA = 0.42;
 // the painted backdrop behind it is wasted. See paintFogOfWar for why this is applied here
 // rather than inside the tile engine.
 const FOG_VEIL_ALPHA = 0.76;
+
+/**
+ * The route the party would walk, drawn over its tiles.
+ *
+ * The engine's own 'path' highlight is a pale wash, and laid on top of the reachable wash —
+ * which is also pale, and also blue — it simply disappeared. Amber is the one hue nothing else
+ * on the board uses, so the route separates from the range at a glance instead of having to be
+ * picked out of it. Painted as the tile's own top-face diamond so it hugs the terrain at
+ * whatever height the cell sits at, rather than floating as a flat screen-space shape.
+ */
+function paintPathMarker(
+  ctx: CanvasRenderingContext2D,
+  dx: number, dy: number, destW: number, destH: number,
+  elevationLevel: number,
+  isDestination: boolean,
+) {
+  const cx = dx + (destW / 2);
+  const cy = dy + (destH * anchorRatioAt(elevationLevel));
+  const halfW = destW / 2;
+  const halfH = halfW / 2; // the board's 2:1 dimetric diamond
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - halfH);
+  ctx.lineTo(cx + halfW, cy);
+  ctx.lineTo(cx, cy + halfH);
+  ctx.lineTo(cx - halfW, cy);
+  ctx.closePath();
+
+  // The last cell of the route reads stronger: it is the one being chosen, the rest is how
+  // the party gets there.
+  ctx.fillStyle = isDestination ? 'rgba(255, 176, 66, 0.42)' : 'rgba(255, 158, 51, 0.22)';
+  ctx.fill();
+  ctx.strokeStyle = isDestination ? 'rgba(255, 208, 130, 0.95)' : 'rgba(255, 184, 92, 0.7)';
+  ctx.lineWidth = isDestination ? 2.4 : 1.6;
+  ctx.stroke();
+  ctx.restore();
+}
 
 /**
  * Whether `entry` is painted in front of `target` AND actually covers it. Only things that
@@ -447,7 +486,16 @@ function paintCanvas(timestamp: number) {
       if (key.kind === 'highlight' && key.variant === 'move') {
         ctx.globalAlpha *= 0.55 + (0.45 * Math.sin((timestamp * 0.0022) + ((entry.x + entry.y) * 0.5)));
       }
-      ctx.drawImage(sprite, dx, entry.screenY - (destH * GROUND_ANCHOR_RATIO), destW, destH);
+      const highlightDy = entry.screenY - (destH * GROUND_ANCHOR_RATIO);
+      ctx.drawImage(sprite, dx, highlightDy, destW, destH);
+
+      if (key.kind === 'highlight' && key.variant === 'path') {
+        const last = hoveredRoute.value?.path.at(-1);
+        paintPathMarker(
+          ctx, dx, highlightDy, destW, destH, entry.elevation,
+          last?.x === entry.x && last?.y === entry.y,
+        );
+      }
     }
 
     ctx.globalAlpha = 1;

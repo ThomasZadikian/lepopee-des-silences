@@ -102,6 +102,16 @@ describe('useTerrainSprites', () => {
     expect(usesPropRect({ kind: 'highlight', variant: 'cursor', elevation: 0 })).toBe(false);
   });
 
+  it('keys an obstacle by its elevation, so two heights never share one baked sprite', () => {
+    // The sprite is baked with a plinth AND a silhouette at the cell's own height. If the cache
+    // key ignored elevation, the first height baked would be handed back for every other one and
+    // the whole per-cell height would silently do nothing.
+    const flat = spriteKeyToString({ kind: 'obstacle', theme: 'Forest', variant: 0, elevation: 0 });
+    const raised = spriteKeyToString({ kind: 'obstacle', theme: 'Forest', variant: 0, elevation: 3 });
+
+    expect(flat).not.toBe(raised);
+  });
+
   it('exposes stable, positive aspect ratios for both canvases', () => {
     const { spriteAspectRatio, propAspectRatio } = useTerrainSprites();
 

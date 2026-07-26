@@ -1057,9 +1057,13 @@ function paintMass(ctx, poly, th, R, o = {}) {
   ctx.stroke(path);
 }
 
-function obstacleSilhouette(kind, R) {
+function obstacleSilhouette(kind, R, level = TILE.MAX) {
   const cx = TILE.W / 2;
-  const base = centerY(TILE.MAX) + 4; // assis sur la face du dessus, hauteur max
+  // Assise sur la face du dessus de SA case. Cette valeur était figée à TILE.MAX, ce qui allait
+  // de pair avec un socle lui aussi toujours cuit à TILE.MAX ; maintenant que le socle suit
+  // l'élévation réelle (cf. bakeObstacle), la masse doit suivre le même palier, sinon elle
+  // flotte de (TILE.MAX - level) * TILE.STEP px au-dessus de sa propre tuile.
+  const base = centerY(level) + 4;
   const P = (x, y) => ({ x, y });
   switch (kind) {
     case 'monolith':
@@ -1213,7 +1217,7 @@ function bakeObstacle(name, variant, grain, elevation) {
   ctx.save();
   ctx.shadowColor = rgba(th.accent, 0.5);
   ctx.shadowBlur = 16;
-  for (const poly of obstacleSilhouette(kind, R)) paintMass(ctx, poly, th, R, { rim: 0.3, ...sty });
+  for (const poly of obstacleSilhouette(kind, R, level)) paintMass(ctx, poly, th, R, { rim: 0.3, ...sty });
   ctx.restore();
   return cv;
 }
