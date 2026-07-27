@@ -377,7 +377,10 @@ n'est introduite.
    coupée par les crêtes (`TacticalMovement.HasLineOfSight`), avantage de hauteur
    (`TacticalCombat.HasHeightAdvantage`). Reste à appliquer le bonus de +5% au calcul de dégâts,
    ce qui suppose de faire descendre la notion de portée dans le noyau de résolution.
-8. IA de déplacement et cohésion de groupe.
+8. ~~IA de déplacement et cohésion de groupe.~~
+   ✅ **Livré (domaine).** `TacticalEnemyAi` : cible d'abord (blessure, appétit de rôle, distance
+   en départage), déplacement ensuite (serrer la cible contre ne pas se détacher du groupe).
+   Départages stables partout, pour qu'un même combat rejoué donne la même chose.
 9. Traduction spatiale des Lois à effet de rang.
 10. Garde-fou de surface à la génération.
 11. Frontend : rendu des unités, ordre d'initiative, prévisualisation de portée et de zone,
