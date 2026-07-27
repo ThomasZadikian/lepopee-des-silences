@@ -8,6 +8,20 @@ namespace Leds.GameEngine.Infrastructure.Combats.EncounterComposition;
 
 public sealed class EncounterCompositionPolicy : IEncounterCompositionPolicy
 {
+    /// <summary>
+    /// Nombre maximum d'ennemis engagés simultanément (SFD v2, §5). Passé de 4 à 5 pour que le
+    /// palier Fatal puisse mettre une équipe de quatre en infériorité numérique.
+    /// </summary>
+    /// <remarks>
+    /// Plafond commun aux deux systèmes de combat. La SFD envisageait de le rendre dépendant du
+    /// mode — l'ATB restant à un chiffre plus bas — mais ce plafond est appliqué à la composition
+    /// de la rencontre, en amont du combat, donc avant que le mode n'entre en jeu. Le rendre
+    /// dépendant du mode obligerait à faire descendre <c>Run.CombatMode</c> jusque dans la
+    /// génération de brouillon, pour une différence d'un ennemi au seul palier Fatal.
+    /// // BALANCE KNOB
+    /// </remarks>
+    private const int MaxEnemiesPerEncounter = 5;
+
     private static readonly IReadOnlyDictionary<int, int> BaseBudgetByRiskLevel = new Dictionary<int, int>
     {
         [1] = 2,
@@ -77,10 +91,10 @@ public sealed class EncounterCompositionPolicy : IEncounterCompositionPolicy
             _ => SelectCombatEnemies(eligible, budget, context),
         };
 
-        // Hard cap: never field more than 4 enemies at once.
-        if (selected.Count > 4)
+        // Plafond dur : jamais plus de MaxEnemiesPerEncounter combattants adverses à la fois.
+        if (selected.Count > MaxEnemiesPerEncounter)
         {
-            selected = selected.Take(4).ToList();
+            selected = selected.Take(MaxEnemiesPerEncounter).ToList();
         }
 
         return new EncounterCompositionResult(
@@ -194,16 +208,21 @@ public sealed class EncounterCompositionPolicy : IEncounterCompositionPolicy
     /// </summary>
     private static int GetMaxEnemiesForEarlyRun(EncounterCompositionContext context)
     {
-        // Low risk (Calme/Tendu): max 2 enemies
+        // Risque faible (Calme/Tendu) : 2 ennemis au plus
         if (context.RiskLevel <= 2)
             return 2;
 
-        // Medium risk (Dangereux): max 3 enemies
+        // Risque moyen (Dangereux) : 3
         if (context.RiskLevel <= 3)
             return 3;
 
-        // High risk (Perilleux/Fatal): up to 4 enemies
-        return 4;
+        // Risque élevé (Périlleux) : 4
+        if (context.RiskLevel <= 4)
+            return 4;
+
+        // Fatal : le plafond plein. C'est le seul palier qui peut submerger une équipe de
+        // quatre en nombre — la contrepartie du pari que représente « provoquer le destin ».
+        return MaxEnemiesPerEncounter;
     }
 
     // Elite = one strong "preferred" enemy (gets a stat bonus applied later, see

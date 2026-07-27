@@ -22,6 +22,12 @@ namespace Leds.GameEngine.Infrastructure.Combats.EncounterDrafts;
 /// </summary>
 public sealed class DeterministicEncounterEnemySelector : IEncounterEnemySelector
 {
+    // ⚠ CETTE TABLE N'EST PAS CELLE QUI TOURNE.
+    // Ce sélecteur est enregistré au conteneur mais aucun code de production ne l'injecte :
+    // la composition des rencontres passe par EncounterCompositionPolicy, appelée par
+    // CombatEncounterDraftGenerator. Les effectifs réels y sont définis
+    // (GetMaxEnemiesForEarlyRun + MaxEnemiesPerEncounter), et ils vont désormais jusqu'à 5.
+    // Les valeurs ci-dessous n'ont pas suivi et ne doivent pas servir de référence.
     private static readonly IReadOnlyDictionary<int, int> MaxEnemyCountByRiskLevel = new Dictionary<int, int>
     {
         [1] = 1, [2] = 1, [3] = 2, [4] = 2, [5] = 3,

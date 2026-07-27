@@ -195,7 +195,12 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
         // call the promulgator at all).
         await _palaceLawPromulgator.PromulgateForRoomTransitionAsync(run, run.CurrentRoom, cancellationToken);
 
+        // Plafond d'équipe (SFD v2, §5) : le porteur et au plus trois compagnons. Le roster
+        // permanent n'est pas plafonné — le joueur recrute autant qu'il veut — mais seuls les
+        // MaxPartySize premiers partent en run. L'ordre du roster fait foi, et le personnage
+        // principal en est la tête (cf. snapshot.Characters.FirstOrDefault() plus haut).
         var characterSnapshots = snapshot.Characters
+            .Take(Run.MaxPartySize)
             .Select(c =>
             {
                 var statSnapshot = RunCharacterStatSnapshot.Create(

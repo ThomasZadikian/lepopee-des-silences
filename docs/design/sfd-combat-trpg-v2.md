@@ -146,10 +146,12 @@ L'échelle actuelle est dans
 Il faut étendre l'échelle et décider ce que devient l'escorte d'Elite : un Elite accompagné de
 quatre sbires devient possible là où le format actuel ne le permet pas.
 
-> **À trancher** : ce plafond de 5 s'applique-t-il aussi à l'ATB ? Le sélecteur de rencontre est
-> en amont des deux systèmes. **Recommandation** : plafond dépendant du mode — l'ATB reste à 3,
-> son affichage et son modèle de rangs ayant été calibrés pour ça. Le tactique va à 5.
-> Valeurs en `// BALANCE KNOB`.
+> **Tranché : plafond commun aux deux systèmes.** La composition de la rencontre est décidée en
+> amont du combat, avant que le mode n'entre en jeu ; le rendre dépendant du mode obligerait à
+> faire descendre `Run.CombatMode` jusque dans la génération de brouillon, pour une différence
+> d'un seul ennemi au seul palier Fatal. L'échelle réelle est
+> `EncounterCompositionPolicy.GetMaxEnemiesForEarlyRun` : 2 / 2 / 3 / 4 / 5 selon le palier.
+> À rouvrir si l'ATB se révèle illisible à cinq.
 
 ---
 
@@ -327,7 +329,6 @@ n'est introduite.
 
 ## 18. Points à trancher à l'implémentation
 
-- Plafond de 5 ennemis : global ou dépendant du mode (§5).
 - Coefficients du bonus de mouvement dérivé de la Vitesse.
 - Tables `BALANCE KNOB` : surface et sévérité de terrain par palier, nombre d'ennemis par palier.
 - Rayon exact et règles de collision du déploiement allié.
@@ -344,7 +345,10 @@ n'est introduite.
    deux crochets d'ordonnancement (`InterruptAction`, `AwardTempoMomentum`) qu'un moteur à ordre de
    tour fixe neutralise. `Combat` l'implémente ; `CombatSkillEffectResolver` ne connaît plus que le
    contrat. Aucun changement de comportement côté ATB.
-2. Passage à 4 personnages (transverse ATB + tactique) et extension de l'échelle d'ennemis.
+2. ~~Passage à 4 personnages (transverse ATB + tactique) et extension de l'échelle d'ennemis.~~
+   ✅ **Livré.** `Run.MaxPartySize = 4` appliqué à la composition d'équipe au lancement (elle ne
+   l'était nulle part : la run embarquait tout le roster). Plafond d'ennemis porté à 5 dans
+   `EncounterCompositionPolicy`, atteignable au seul palier Fatal.
 3. Agrégat `TacticalCombat` : initiative, économie d'action, état de grille.
 4. Vidage/restauration des nœuds au chargement et à la sortie du combat.
 5. Déploiement : allié autour du jeton, ennemi par famille sur rayon 8–20.

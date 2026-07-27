@@ -19,6 +19,18 @@ public sealed class Run
     public const int DefaultRunItemCapacity = 6;
 
     /// <summary>
+    /// Nombre maximum de personnages jouables engagés dans une run — le porteur et jusqu'à trois
+    /// compagnons.
+    /// </summary>
+    /// <remarks>
+    /// Vaut pour les deux systèmes de combat (cf. SFD v2, §5) : le tactique en a besoin pour que
+    /// le déploiement tienne sur une grille, et l'ATB s'y aligne pour que la composition d'équipe
+    /// ne dépende pas du mode choisi. Le roster permanent du joueur, lui, n'est pas plafonné :
+    /// il peut recruter autant de compagnons qu'il veut, seuls les quatre premiers partent.
+    /// </remarks>
+    public const int MaxPartySize = 4;
+
+    /// <summary>
     /// Minimum number of rooms that must pass between two uses of "Déni permanent" —
     /// see <see cref="CanUseLawDenial"/>.
     /// </summary>

@@ -20,7 +20,9 @@ namespace Leds.GameEngine.Application.DevTools;
 public sealed class DevToolsRunDebugService : IDevToolsRunDebugService
 {
     private const int MaxAdvanceRoomCount = 10;
-    private const int MaxPartySize = 5;
+    /// <summary>Reprend le plafond d'équipe du domaine plutôt que d'en tenir un second, qui a
+    /// silencieusement divergé (il valait 5 quand la règle est passée à 4).</summary>
+    private const int MaxPartySize = Run.MaxPartySize;
     private const int MaxDebugVitality = 999;
     private const int MaxDebugGuard = 999;
 
