@@ -143,8 +143,11 @@ L'échelle actuelle est dans
 `Infrastructure/Combats/EncounterDrafts/DeterministicEncounterEnemySelector.cs` :
 `{1:1, 2:1, 3:2, 4:2, 5:3}`, avec `Elite`/`RoomBoss`/`Rare` forcés à 1.
 
-Il faut étendre l'échelle et décider ce que devient l'escorte d'Elite : un Elite accompagné de
-quatre sbires devient possible là où le format actuel ne le permet pas.
+**Livré** : l'escorte d'Elite suit désormais le palier de risque comme une rencontre ordinaire —
+l'Elite occupe une place, le reste de l'effectif autorisé peut l'accompagner. Elle était bornée à
+un seul accompagnateur, ce qui rendait un nœud Elite systématiquement moins fourni qu'un combat
+normal de même palier. La règle « strictement plus faible que l'Elite » est conservée : l'escorte
+ne doit jamais transformer le nœud en combat à deux menaces équivalentes.
 
 > **Tranché : plafond commun aux deux systèmes.** La composition de la rencontre est décidée en
 > amont du combat, avant que le mode n'entre en jeu ; le rendre dépendant du mode obligerait à

@@ -84,7 +84,7 @@ public sealed class EncounterCompositionPolicy : IEncounterCompositionPolicy
         var selected = context.EncounterType switch
         {
             "Combat" => SelectCombatEnemies(eligible, budget, context),
-            "Elite" => SelectEliteEnemies(eligible, budget, out preferredEnemyKey),
+            "Elite" => SelectEliteEnemies(eligible, budget, context, out preferredEnemyKey),
             "Rare" => SelectRareEnemies(eligible, out preferredEnemyKey),
             "RoomBoss" => SelectRoomBossEnemies(eligible),
             "FinalBoss" => SelectRoomBossEnemies(eligible),
@@ -230,7 +230,8 @@ public sealed class EncounterCompositionPolicy : IEncounterCompositionPolicy
     // weaker enemy. Unlike the old logic, the escort is never allowed to be an equal or
     // stronger pick — if no strictly-weaker candidate fits the budget, the Elite fields alone.
     private static IReadOnlyCollection<CatalogEnemyDefinition> SelectEliteEnemies(
-        List<CatalogEnemyDefinition> eligible, int budget, out string? preferredEnemyKey)
+        List<CatalogEnemyDefinition> eligible, int budget, EncounterCompositionContext context,
+        out string? preferredEnemyKey)
     {
         var preferred = eligible
             .FirstOrDefault(e => e.Tags.Contains("elite", StringComparer.OrdinalIgnoreCase)
@@ -243,19 +244,38 @@ public sealed class EncounterCompositionPolicy : IEncounterCompositionPolicy
 
         preferredEnemyKey = preferred.Key;
 
-        var cost = GetArchetypeCost(preferred.Archetype);
-        var remaining = budget - cost;
+        var remaining = budget - GetArchetypeCost(preferred.Archetype);
 
-        var escort = eligible
+        // L'escorte suit le palier de risque, comme une rencontre ordinaire : l'Elite occupe une
+        // place, le reste de l'effectif autorisé peut l'accompagner. Elle restait auparavant
+        // bornée à un seul accompagnateur, ce qui rendait un nœud Elite systématiquement moins
+        // fourni qu'un combat normal de même palier — d'autant plus depuis que le plafond est
+        // monté à MaxEnemiesPerEncounter.
+        var maxEscorts = Math.Max(0, GetMaxEnemiesForEarlyRun(context) - 1);
+
+        var squad = new List<CatalogEnemyDefinition> { preferred };
+
+        // Strictement plus faible que l'Elite : l'escorte ne doit jamais lui voler la vedette,
+        // ni transformer le nœud en combat à deux menaces équivalentes.
+        var candidates = eligible
             .Where(e => e.Key != preferred.Key && e.BaseDifficulty < preferred.BaseDifficulty)
-            .Where(e => GetArchetypeCost(e.Archetype) <= remaining)
             .OrderByDescending(e => e.BaseDifficulty)
-            .ThenBy(e => e.Key, StringComparer.Ordinal)
-            .FirstOrDefault();
+            .ThenBy(e => e.Key, StringComparer.Ordinal);
 
-        return escort is not null
-            ? new[] { preferred, escort }
-            : new[] { preferred };
+        foreach (var candidate in candidates)
+        {
+            if (squad.Count - 1 >= maxEscorts)
+                break;
+
+            var candidateCost = GetArchetypeCost(candidate.Archetype);
+            if (candidateCost > remaining)
+                continue;
+
+            squad.Add(candidate);
+            remaining -= candidateCost;
+        }
+
+        return squad;
     }
 
     // Rare = always exactly one enemy, keyed off the catalog's Rarity field (not the
