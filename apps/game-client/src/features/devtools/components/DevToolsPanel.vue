@@ -53,7 +53,9 @@ async function loadAllSkills() {
 async function refreshServerState() {
   await runStore.loadRun(props.runId);
 
-  if (runStore.currentRun?.activeCombatId) {
+  // `activeCombatId` est partagé par les deux systèmes de combat, mais `/current-combat` ne
+  // sert que l'ATB : l'interroger pendant un combat tactique produit un 404 par construction.
+  if (runStore.currentRun?.activeCombatId && runStore.currentRun.combatMode !== 'Tactical') {
     await combatStore.loadCurrentCombat(props.runId);
   } else {
     combatStore.clearCombat();

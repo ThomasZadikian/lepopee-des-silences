@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 
+import { HttpError } from '../../../shared/api/httpClient';
 import { combatApi } from '../api/combatApi';
 import { useCombatPlayback } from '../composables/useCombatPlayback';
 
@@ -122,7 +123,13 @@ export const useTacticalCombatStore = defineStore('tacticalCombat', () => {
       await playback.play(response.events ?? [], response.combat, () => performance.now());
     } catch (caught) {
       playback.stop();
-      error.value = caught instanceof Error ? caught.message : String(caught);
+
+      // Le code HTTP accompagne le message : un refus du domaine (409) et une panne serveur
+      // (500) demandent des réactions opposées, et « aucun message » n'aide personne à
+      // trancher entre les deux.
+      error.value = caught instanceof HttpError
+        ? `[${caught.status}] ${caught.message}`
+        : caught instanceof Error ? caught.message : String(caught);
     } finally {
       isLoading.value = false;
     }

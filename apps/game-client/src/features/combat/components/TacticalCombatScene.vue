@@ -432,7 +432,15 @@ function onCanvasMove(event: MouseEvent) {
 }
 
 function renderLoop(timestamp: number) {
-  paintCanvas(timestamp);
+  // La frame suivante est demandée quoi qu'il arrive : sans ce garde-fou, une seule erreur de
+  // peinture arrête la boucle définitivement et fige tout le champ de bataille, ce qui est
+  // toujours pire que d'avoir sauté une image.
+  try {
+    paintCanvas(timestamp);
+  } catch (error) {
+    console.error('[combat tactique] frame ignorée', error);
+  }
+
   frameHandle = globalThis.requestAnimationFrame(renderLoop);
 }
 

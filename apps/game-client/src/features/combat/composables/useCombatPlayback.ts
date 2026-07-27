@@ -102,11 +102,18 @@ export function useCombatPlayback() {
   ): { x: number; y: number } {
     const current = walk.value;
 
-    if (current && current.combatantId === combatantId) {
+    if (current && current.combatantId === combatantId && current.path.length > 0) {
       const progress = (now - current.startedAt) / STEP_MS;
-      const from = Math.min(current.path.length - 1, Math.floor(progress));
+
+      // `now` vient de l'horodatage de `requestAnimationFrame`, qui date du DÉBUT de la frame
+      // et peut donc précéder le `performance.now()` relevé au lancement de la marche. Sans ce
+      // plancher, la progression passe négative, l'index aussi, et la lecture d'une case
+      // inexistante fait tomber toute la boucle de rendu.
+      const step = Math.max(0, Math.floor(progress));
+      const from = Math.min(current.path.length - 1, step);
       const to = Math.min(current.path.length - 1, from + 1);
-      const fraction = Math.min(1, progress - from);
+      const fraction = Math.max(0, Math.min(1, progress - step));
+
       const a = current.path[from];
       const b = current.path[to];
 
@@ -152,21 +159,6 @@ export function useCombatPlayback() {
 
     const allyIds = new Set(finalState.allies.map((a) => a.combatant.id));
 
-    // Chaque figure qui se déplace est ramenée à son point de départ le temps de la lecture.
-    const startPins: Record<string, { x: number; y: number }> = {};
-    for (const event of events) {
-      if (event.kind !== 'Move' || event.path.length === 0) continue;
-      if (startPins[event.actorId]) continue;
-
-      const settled = [...finalState.allies, ...finalState.enemies]
-        .find((c) => c.combatant.id === event.actorId);
-      if (!settled) continue;
-
-      // Le chemin n'inclut pas l'origine : on la reconstitue depuis la position d'arrivée en
-      // remontant, ce qui revient à prendre la case précédant le premier pas.
-      startPins[event.actorId] = { x: settled.x, y: settled.y };
-    }
-
     isPlaying.value = true;
 
     try {
@@ -178,9 +170,13 @@ export function useCombatPlayback() {
         if (!actorIsAlly) await wait(THINK_MS);
 
         if (event.kind === 'Move' && event.path.length > 0) {
-          const origin = pinned.value[event.actorId] ?? startPins[event.actorId];
+          // Le chemin serveur ne contient que les cases foulées, origine exclue. Celle-ci vient
+          // du relevé pris avant l'appel ; à défaut, on part de la première case du trajet —
+          // une case d'écart, jamais un saut à travers le plateau.
+          const origin = pinned.value[event.actorId] ?? event.path[0];
+
           const path = [
-            origin ?? { x: event.path[0].x, y: event.path[0].y },
+            { x: origin.x, y: origin.y },
             ...event.path.map((s) => ({ x: s.x, y: s.y })),
           ];
 
