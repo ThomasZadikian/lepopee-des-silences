@@ -352,7 +352,12 @@ n'est introduite.
    ✅ **Livré.** `Run.MaxPartySize = 4` appliqué à la composition d'équipe au lancement (elle ne
    l'était nulle part : la run embarquait tout le roster). Plafond d'ennemis porté à 5 dans
    `EncounterCompositionPolicy`, atteignable au seul palier Fatal.
-3. Agrégat `TacticalCombat` : initiative, économie d'action, état de grille.
+3. ~~Agrégat `TacticalCombat` : initiative, économie d'action, état de grille.~~
+   ✅ **Livré (domaine).** `TacticalBattlefield` (terrain figé, nœuds exclus), `GridPosition`,
+   `TacticalMovement` (budget dérivé de la Vitesse, Dijkstra à coût d'élévation, ligne de vue),
+   `TacticalCombat` (initiative par Vitesse recalculée chaque round, deux actions indépendantes,
+   avantage de hauteur, victoire/défaite) et `CombatTime` (unité de temps partagée, extraite
+   d'`AtbConstants`). Restent à faire : persistance EF, couche Application, déploiement initial.
 4. Vidage/restauration des nœuds au chargement et à la sortie du combat.
 5. Déploiement : allié autour du jeton, ennemi par famille sur rayon 8–20.
 6. Portée, zones d'effet, réinterprétation spatiale des modes de ciblage.

@@ -26,5 +26,10 @@ public static class AtbConstants
     /// side — mirror kept in sync in the catalog service's CatalogSeedRunner (a
     /// separate deployable that cannot reference this constant directly).
     /// </summary>
-    public const int TicksPerTurn = 2500;
+    /// <remarks>
+    /// Délègue désormais à <see cref="CombatTime.TicksPerTurn"/> : l'échelle du temps de combat
+    /// est commune aux deux systèmes, elle n'appartient pas à l'ATB. Conservé ici pour ne pas
+    /// toucher aux points d'appel existants, et parce que c'est le nom que le code ATB emploie.
+    /// </remarks>
+    public const int TicksPerTurn = CombatTime.TicksPerTurn;
 }
