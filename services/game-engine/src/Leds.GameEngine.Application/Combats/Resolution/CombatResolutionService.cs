@@ -17,7 +17,12 @@ public interface ICombatResolutionService
     /// Applique LA conséquence métier d'une fin de combat (victoire ou défaite),
     /// quel que soit le point d'entrée. Source unique de vérité.
     /// </summary>
-    Task<RewardOffer?> ApplyOutcomeAsync(Run run, Combat combat, DateTimeOffset now, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Applique l'issue d'un combat à la run. Prend un <see cref="ICombatContext"/> et non un
+    /// <see cref="Combat"/> : la clôture ne lit que le statut, les ennemis et l'identifiant —
+    /// trois choses que les deux systèmes de combat exposent à l'identique.
+    /// </summary>
+    Task<RewardOffer?> ApplyOutcomeAsync(Run run, ICombatContext combat, DateTimeOffset now, CancellationToken cancellationToken = default);
 }
 
 public sealed class CombatResolutionService : ICombatResolutionService
@@ -41,7 +46,7 @@ public sealed class CombatResolutionService : ICombatResolutionService
 
     public async Task<RewardOffer?> ApplyOutcomeAsync(
         Run run,
-        Combat combat,
+        ICombatContext combat,
         DateTimeOffset now,
         CancellationToken cancellationToken = default)
     {
@@ -76,7 +81,7 @@ public sealed class CombatResolutionService : ICombatResolutionService
         }
     }
 
-    private async Task<RewardOffer> CreateRewardOfferAsync(Run run, Combat combat, MapNode? combatNode, CancellationToken cancellationToken)
+    private async Task<RewardOffer> CreateRewardOfferAsync(Run run, ICombatContext combat, MapNode? combatNode, CancellationToken cancellationToken)
     {
         var source = combatNode?.EventType switch
         {

@@ -58,6 +58,13 @@ export function useCombatPlayback() {
   const isPlaying = ref(false);
 
   /**
+   * « X utilise Y » — annoncé pendant toute la durée du geste, pas le temps d'un éclair.
+   * Sans lui, un tour ennemi se résume à des chiffres qui montent sans qu'on sache de quoi ils
+   * viennent ; c'est le rôle que tient déjà le bandeau côté ATB.
+   */
+  const actionBanner = ref<string | null>(null);
+
+  /**
    * Positions surchargées pendant la lecture.
    *
    * L'état final du serveur place déjà chaque figure à son arrivée. Tant que la chronologie
@@ -79,6 +86,7 @@ export function useCombatPlayback() {
     timers = [];
     walk.value = null;
     pinned.value = {};
+    actionBanner.value = null;
     isPlaying.value = false;
   }
 
@@ -193,16 +201,24 @@ export function useCombatPlayback() {
         if (event.kind === 'Skill') {
           const at = now();
 
+          actionBanner.value = event.skillName
+            ? `${event.actorName} — ${event.skillName}`
+            : event.actorName;
+
           for (const impact of event.impacts) {
             pushFloat(impact.x, impact.y, impact.vitalityDelta, allyIds.has(impact.combatantId), at);
           }
 
-          if (!actorIsAlly) await wait(SETTLE_MS);
+          // Le bandeau tient pendant toute la retombée du coup, même pour un allié : c'est le
+          // temps qu'il faut au joueur pour lire ce qui vient de se produire.
+          await wait(actorIsAlly ? FLOAT_MS / 2 : SETTLE_MS);
+          actionBanner.value = null;
         }
       }
     } finally {
       walk.value = null;
       pinned.value = {};
+      actionBanner.value = null;
       isPlaying.value = false;
     }
   }
@@ -222,6 +238,7 @@ export function useCombatPlayback() {
   return {
     walk,
     floats,
+    actionBanner,
     isPlaying: computed(() => isPlaying.value),
     positionOf,
     pruneFloats,

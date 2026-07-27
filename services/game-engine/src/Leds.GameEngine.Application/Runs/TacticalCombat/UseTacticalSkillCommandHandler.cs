@@ -3,6 +3,9 @@ using Leds.GameEngine.Application.Combats;
 using Leds.GameEngine.Application.Combats.Actions;
 using Leds.GameEngine.Application.Combats.Dtos;
 using Leds.GameEngine.Application.Combats.Effects;
+using Leds.GameEngine.Application.Combats.Resolution;
+using Leds.GameEngine.Application.Rewards.Ports;
+using Leds.GameEngine.Domain.Rewards;
 using Leds.GameEngine.Application.Common.Exceptions;
 using Leds.GameEngine.Application.Runs.Dtos;
 using Leds.GameEngine.Domain.Combats;
@@ -28,15 +31,21 @@ public sealed class UseTacticalSkillCommandHandler
 {
     private readonly IRunRepository _runRepository;
     private readonly ICombatSkillEffectResolver _effectResolver;
+    private readonly ICombatResolutionService _combatResolution;
+    private readonly IRewardOfferRepository _rewardOfferRepository;
     private readonly IClock _clock;
 
     public UseTacticalSkillCommandHandler(
         IRunRepository runRepository,
         ICombatSkillEffectResolver effectResolver,
+        ICombatResolutionService combatResolution,
+        IRewardOfferRepository rewardOfferRepository,
         IClock clock)
     {
         _runRepository = runRepository;
         _effectResolver = effectResolver;
+        _combatResolution = combatResolution;
+        _rewardOfferRepository = rewardOfferRepository;
         _clock = clock;
     }
 
@@ -103,7 +112,14 @@ public sealed class UseTacticalSkillCommandHandler
         combat.CompleteIfAllEnemiesDefeated();
         combat.FailIfAllAlliesDefeated();
 
+        var rewardOffer = await SettleAsync(run, combat, cancellationToken);
+
         await _runRepository.UpdateAsync(run, cancellationToken);
+
+        if (rewardOffer is not null)
+        {
+            await _rewardOfferRepository.AddAsync(run.Id, rewardOffer, cancellationToken);
+        }
 
         var actionEntry = new CombatLogEntryDto(
             OccurredAtUtc: _clock.UtcNow.UtcDateTime,
@@ -119,5 +135,31 @@ public sealed class UseTacticalSkillCommandHandler
             [actionEntry, .. resolution.LogEntries],
             [TacticalCombatEventDto.Skill(
                 actorId, actor.DisplayName, skill.Key, skill.DisplayName, impacts)]);
+    }
+
+    /// <summary>
+    /// Reporte l'état du protagoniste dans la run, puis applique l'issue du combat s'il vient
+    /// de s'achever.
+    /// </summary>
+    /// <remarks>
+    /// Sans cet appel, un combat tactique gagné laissait la run figée : le statut de l'agrégat
+    /// passait bien à « Completed », mais rien ne créait l'offre de récompense ni ne rendait la
+    /// main à l'exploration. C'est exactement ce que fait la pile ATB après chaque action ; le
+    /// service de résolution est commun aux deux depuis qu'il prend un `ICombatContext`.
+    /// </remarks>
+    private async Task<RewardOffer?> SettleAsync(
+        Run run,
+        Domain.Combats.Tactical.TacticalCombat combat,
+        CancellationToken cancellationToken)
+    {
+        var protagonist = combat.Allies.FirstOrDefault(a => a.Side == CombatantSide.Player);
+        if (protagonist is not null)
+        {
+            run.PlayerState.SyncFromCombat(
+                protagonist.CurrentVitality, protagonist.Guard, protagonist.Mana, protagonist.Charge);
+        }
+
+        return await _combatResolution.ApplyOutcomeAsync(
+            run, combat, _clock.UtcNow, cancellationToken);
     }
 }

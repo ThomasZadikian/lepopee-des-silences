@@ -501,6 +501,14 @@ onBeforeUnmount(() => {
     </header>
 
     <div class="tbattle__board">
+      <!-- « X — Sort » pendant toute la durée du geste : sans lui, un tour ennemi n'est qu'une
+           suite de chiffres dont on ignore la cause. -->
+      <Transition name="tbattle-banner">
+        <p v-if="store.playback.actionBanner" class="tbattle__banner">
+          {{ store.playback.actionBanner }}
+        </p>
+      </Transition>
+
       <canvas
         ref="canvasEl"
         class="tbattle__canvas"
@@ -628,6 +636,34 @@ onBeforeUnmount(() => {
   display: block;
   width: 100%;
   height: 100%;
+}
+
+.tbattle__banner {
+  position: absolute;
+  top: 6%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 0.4rem 1.1rem;
+  border: 1px solid rgb(230 194 115 / 45%);
+  border-radius: 999px;
+  background: rgb(9 11 22 / 88%);
+  color: #f4f1ff;
+  font-variant: small-caps;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.tbattle-banner-enter-active,
+.tbattle-banner-leave-active { transition: opacity 160ms ease-out; }
+.tbattle-banner-enter-from,
+.tbattle-banner-leave-to { opacity: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .tbattle-banner-enter-active,
+  .tbattle-banner-leave-active { transition: none; }
 }
 
 .tbattle__actions {

@@ -1261,14 +1261,21 @@ public sealed class Run
         ResolveCurrentEvent();
     }
 
+    /// <summary>
+    /// Clôt le combat en cours sur une victoire, quel que soit le système qui l'a mené : ce qui
+    /// suit — récompense, journal, sortie de salle — ne dépend pas de la façon dont on s'est
+    /// battu.
+    /// </summary>
     public void CompleteActiveCombat()
     {
-        if (_activeCombat is null)
+        var status = _activeCombat?.Status ?? _activeTacticalCombat?.Status;
+
+        if (status is null)
         {
             throw new DomainException("Run has no active combat.");
         }
 
-        if (_activeCombat.Status != CombatStatus.Completed)
+        if (status != CombatStatus.Completed)
         {
             throw new DomainException("Active combat must be completed before resolving combat victory.");
         }
@@ -1282,14 +1289,17 @@ public sealed class Run
         ResolveCurrentEvent();
     }
 
+    /// <inheritdoc cref="CompleteActiveCombat"/>
     public void FailActiveCombat(DateTimeOffset endedAt)
     {
-        if (_activeCombat is null)
+        var status = _activeCombat?.Status ?? _activeTacticalCombat?.Status;
+
+        if (status is null)
         {
             throw new DomainException("Run has no active combat.");
         }
 
-        if (_activeCombat.Status != CombatStatus.Failed)
+        if (status != CombatStatus.Failed)
         {
             throw new DomainException("Active combat must be failed before resolving combat defeat.");
         }

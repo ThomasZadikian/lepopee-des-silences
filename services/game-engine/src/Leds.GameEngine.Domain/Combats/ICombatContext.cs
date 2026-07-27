@@ -36,6 +36,13 @@ public interface ICombatContext
     /// (<see cref="Combatant.TickStatusEffects"/>) sert les deux. Un moteur tour par tour avance
     /// simplement d'un tour entier à la fois.
     /// </summary>
+    /// <summary>
+    /// Actif, gagné ou perdu. Exposé ici parce que la clôture d'un combat — récompense,
+    /// journal, sortie de salle — est une affaire de run, identique quel que soit le système
+    /// qui a produit l'issue.
+    /// </summary>
+    CombatStatus Status { get; }
+
     int CurrentTick { get; }
 
     /// <summary>Numéro de tour courant. Entre dans la graine des tirages déterministes.</summary>
