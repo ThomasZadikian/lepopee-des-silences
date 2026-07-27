@@ -365,8 +365,18 @@ n'est introduite.
    le rôle est déjà authoré sur chaque créature, et les familles ayant des mélanges de rôles
    cohérents, leur caractère émerge sans nouveau contenu. La fourchette 8–20 se relâche par
    paliers si la salle ne l'offre pas, avec un plancher à 2 cases.
-6. Portée, zones d'effet, réinterprétation spatiale des modes de ciblage.
-7. Élévation en combat (coût, ligne de vue, bonus distance).
+6. ~~Portée, zones d'effet, réinterprétation spatiale des modes de ciblage.~~
+   ✅ **Livré (domaine).** `TacticalTargeting` : quatre formes (`Single`/`Cross`/`Diamond`/`Map`),
+   portée en distance de Manhattan, ligne de vue exigée pour les compétences à distance, tir ami
+   interdit sauf en portée carte. Les modes du catalogue sont traduits **conservativement** :
+   `AllEnemies`/`AllAllies` deviennent un losange, pas une portée carte — promouvoir chaque sort
+   de groupe existant en arme à double tranchant serait une décision de game design, pas une
+   traduction.
+7. ~~Élévation en combat (coût, ligne de vue, bonus distance).~~
+   ✅ **Livré (domaine).** Coût de déplacement (`TacticalBattlefield.StepCost`), ligne de vue
+   coupée par les crêtes (`TacticalMovement.HasLineOfSight`), avantage de hauteur
+   (`TacticalCombat.HasHeightAdvantage`). Reste à appliquer le bonus de +5% au calcul de dégâts,
+   ce qui suppose de faire descendre la notion de portée dans le noyau de résolution.
 8. IA de déplacement et cohésion de groupe.
 9. Traduction spatiale des Lois à effet de rang.
 10. Garde-fou de surface à la génération.
