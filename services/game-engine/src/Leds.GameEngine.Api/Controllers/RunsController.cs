@@ -12,6 +12,7 @@ using Leds.GameEngine.Application.Runs.GetRunById;
 using Leds.GameEngine.Application.Runs.GetRunInventory;
 using Leds.GameEngine.Application.Runs.GetRunReputation;
 using Leds.GameEngine.Application.Runs.MoveParty;
+using Leds.GameEngine.Application.Runs.TacticalCombat;
 using Leds.GameEngine.Application.Runs.Search;
 using Leds.GameEngine.Application.Runs.MoveToNextRoom;
 using Leds.GameEngine.Application.Runs.PourRunItemLiquid;
@@ -372,6 +373,60 @@ public sealed class RunsController : ControllerBase
         return Ok(response);
     }
 
+    /// <summary>
+    /// Déplace le combattant tactique actif. Ne consomme pas son action.
+    /// </summary>
+    [HttpPost("{runId:guid}/tactical-combat/move")]
+    [ProducesResponseType(typeof(TacticalCombatResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<TacticalCombatResponse>> MoveTacticalCombatant(
+        Guid runId,
+        [FromBody] MoveTacticalCombatantRequest request,
+        CancellationToken cancellationToken)
+    {
+        var command = new MoveTacticalCombatantCommand(runId, request.TargetX, request.TargetY);
+        var response = await _sender.Send(command, cancellationToken);
+
+        return Ok(response);
+    }
+
+    /// <summary>
+    /// Fait agir le combattant tactique actif sur une case. Ne consomme pas son déplacement.
+    /// </summary>
+    [HttpPost("{runId:guid}/tactical-combat/skill")]
+    [ProducesResponseType(typeof(TacticalCombatResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<TacticalCombatResponse>> UseTacticalSkill(
+        Guid runId,
+        [FromBody] UseTacticalSkillRequest request,
+        CancellationToken cancellationToken)
+    {
+        var command = new UseTacticalSkillCommand(
+            runId, request.SkillKey, request.TargetX, request.TargetY);
+        var response = await _sender.Send(command, cancellationToken);
+
+        return Ok(response);
+    }
+
+    /// <summary>
+    /// Clôt le tour du combattant actif et joue les tours ennemis qui suivent. Sans corps :
+    /// passer la main ne demande aucun paramètre.
+    /// </summary>
+    [HttpPost("{runId:guid}/tactical-combat/end-turn")]
+    [ProducesResponseType(typeof(TacticalCombatResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<TacticalCombatResponse>> EndTacticalTurn(
+        Guid runId,
+        CancellationToken cancellationToken)
+    {
+        var response = await _sender.Send(new EndTacticalTurnCommand(runId), cancellationToken);
+
+        return Ok(response);
+    }
+
     [HttpPost("{runId:guid}/nodes/{nodeId:guid}/enter")]
     [ProducesResponseType(typeof(EnterGridNodeResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -454,6 +509,10 @@ public sealed record StartRunRequest(
     RunCombatMode CombatMode = RunCombatMode.Atb);
 
 public sealed record MovePartyRequest(int TargetX, int TargetY);
+
+public sealed record MoveTacticalCombatantRequest(int TargetX, int TargetY);
+
+public sealed record UseTacticalSkillRequest(string SkillKey, int TargetX, int TargetY);
 
 public sealed record UseCaliceInfiniRequest(Guid? TargetCombatantId);
 

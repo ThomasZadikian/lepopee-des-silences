@@ -1226,6 +1226,22 @@ public sealed class Run
         _activeTacticalCombat = combat;
     }
 
+    /// <summary>
+    /// Le combat tactique en cours, ou une erreur explicite s'il n'y en a pas. Les commandes
+    /// tactiques passent toutes par là plutôt que de déréférencer
+    /// <see cref="ActiveTacticalCombat"/> : une run en combat ATB doit refuser une action
+    /// tactique avec un message qui dit pourquoi, pas avec une exception de référence nulle.
+    /// </summary>
+    public Combats.Tactical.TacticalCombat RequireActiveTacticalCombat()
+    {
+        if (_activeTacticalCombat is null)
+        {
+            throw new DomainException("Run has no active tactical combat.");
+        }
+
+        return _activeTacticalCombat;
+    }
+
     public void CompleteActiveCombat(CombatId combatId)
     {
         if (!HasActiveCombat)
