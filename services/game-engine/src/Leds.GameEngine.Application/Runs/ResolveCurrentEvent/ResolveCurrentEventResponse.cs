@@ -10,4 +10,9 @@ public sealed record ResolveCurrentEventResponse(
     CombatEncounterDraftDto? EncounterDraft = null,
     CombatRuntimeDto? Combat = null,
     NpcDialogueViewDto? NpcDialogue = null,
-    TacticalCombatRuntimeDto? TacticalCombat = null);
+    TacticalCombatRuntimeDto? TacticalCombat = null,
+    /// <summary>
+    /// La mise en scène des tours ennemis déjà joués à l'ouverture, quand l'initiative revient
+    /// à l'adversaire.
+    /// </summary>
+    IReadOnlyList<TacticalCombatEventDto>? TacticalEvents = null);

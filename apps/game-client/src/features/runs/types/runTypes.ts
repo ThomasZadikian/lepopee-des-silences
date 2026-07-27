@@ -333,6 +333,10 @@ export type ResolveCurrentEventResponse = {
   tacticalCombat?:
     | import('../../combat/types/combatContracts').TacticalCombatRuntimeDto
     | null;
+  /** Tours ennemis déjà joués à l'ouverture, quand l'initiative revient à l'adversaire. */
+  tacticalEvents?:
+    | import('../../combat/types/combatContracts').TacticalCombatEventDto[]
+    | null;
   npcDialogue?: NpcDialogueViewDto | null;
 };
 

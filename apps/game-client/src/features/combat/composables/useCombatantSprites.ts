@@ -1,5 +1,7 @@
 import { ROSTER_IDS, getCombatantSprite } from '../../palace-map/composables/bestiaire';
 
+import type { PropKind } from '../../palace-map/composables/useTerrainSprites';
+
 /**
  * Fait le pont entre les clés de combattant du serveur et les figures peintes du bestiaire.
  *
@@ -17,6 +19,9 @@ const PROTAGONIST_FIGURE = 'porteur';
 const DOMAIN_PREFIXES = ['enemy.', 'companion.', 'ally.', 'npc.', 'boss.'];
 
 const rosterIds = new Set(ROSTER_IDS);
+
+/** Clés déjà signalées, pour ne pas noyer la console à soixante images par seconde. */
+const warned = new Set<string>();
 
 /**
  * Normalise un libellé en identifiant candidat : minuscules, accents retirés, tout ce qui
@@ -77,6 +82,20 @@ export function figureIdFor(sourceKey: string, displayName: string): string | nu
 }
 
 /**
+ * La silhouette d'exploration qui tient lieu de figure quand le bestiaire ne couvre pas encore
+ * une créature.
+ *
+ * Le Palais possède déjà des figures pour ses cases de rencontre : c'est ce que le joueur voit
+ * sur la carte avant d'engager. Les réemployer garde le combat dans le même monde visuel,
+ * là où une forme abstraite signalerait surtout que quelque chose manque.
+ */
+export function fallbackPropFor(archetype: string, isBoss: boolean): PropKind {
+  if (isBoss) return 'boss';
+
+  return archetype.toLowerCase() === 'elite' ? 'elite' : 'monster';
+}
+
+/**
  * Le sprite peint d'un combattant, ou `null` si le bestiaire ne le couvre pas encore.
  *
  * La variante dérive de l'identifiant du combattant plutôt que d'un compteur : deux créatures
@@ -89,7 +108,20 @@ export function combatantSprite(
   combatantId: string,
 ): HTMLCanvasElement | null {
   const figureId = figureIdFor(sourceKey, displayName);
-  if (!figureId) return null;
+
+  if (!figureId) {
+    // Signalé une fois par clé : c'est la seule façon de savoir QUELLE créature manque, plutôt
+    // que de le déduire d'une capture d'écran.
+    if (!warned.has(sourceKey)) {
+      warned.add(sourceKey);
+      console.warn(
+        `[bestiaire] aucune figure peinte pour « ${displayName} » (${sourceKey}) — `
+        + 'repli sur la silhouette d\'exploration.',
+      );
+    }
+
+    return null;
+  }
 
   let hash = 0;
   for (let i = 0; i < combatantId.length; i += 1) {

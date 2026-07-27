@@ -305,7 +305,14 @@ export const useRunStore = defineStore('run', () => {
     // Le combat tactique arrive dans la même réponse, mais dans son propre champ : les deux
     // systèmes n'exposent pas la même chose, et un seul des deux est jamais renseigné.
     if (resolveResponse.tacticalCombat) {
-      useTacticalCombatStore().setCombat(resolveResponse.tacticalCombat);
+      const tactical = useTacticalCombatStore();
+      tactical.setCombat(resolveResponse.tacticalCombat);
+
+      // Quand la créature la plus rapide ouvre le bal, le serveur a déjà joué son tour : il
+      // reste à le montrer, sans quoi le joueur reprend la main devant un plateau qui a bougé
+      // sans lui.
+      void tactical.playOpening(
+        resolveResponse.tacticalEvents ?? [], resolveResponse.tacticalCombat);
     }
 
     await refreshPendingRewardIfNeeded();

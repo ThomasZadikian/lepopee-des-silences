@@ -1,8 +1,8 @@
 using Leds.GameEngine.Application.Abstractions;
 using Leds.GameEngine.Application.Combats;
 using Leds.GameEngine.Application.Combats.Actions;
+using Leds.GameEngine.Application.Combats.Tactical;
 using Leds.GameEngine.Application.Combats.Dtos;
-using Leds.GameEngine.Application.Combats.Effects;
 using Leds.GameEngine.Application.Combats.Resolution;
 using Leds.GameEngine.Application.Rewards.Ports;
 using Leds.GameEngine.Domain.Rewards;
@@ -26,6 +26,8 @@ namespace Leds.GameEngine.Application.Runs.TacticalCombat;
 /// <c>AdvanceCombatTurnCommand</c> — le tactique les résout <b>en une fois, côté serveur</b>.
 /// Le tour par tour n'a pas d'horloge à faire couler : laisser le client redemander tour après
 /// tour n'apporterait qu'un aller-retour réseau par ennemi, sans rien changer au résultat.
+/// L'enchaînement lui-même vit dans <see cref="ITacticalEnemyTurnDriver"/>, parce que
+/// l'ouverture du combat en a besoin autant que la fin de tour.
 /// </para>
 /// <para>
 /// La contrepartie, c'est que le client recevrait un saut d'état incompréhensible : figures
@@ -36,28 +38,21 @@ namespace Leds.GameEngine.Application.Runs.TacticalCombat;
 public sealed class EndTacticalTurnCommandHandler
     : IRequestHandler<EndTacticalTurnCommand, TacticalCombatResponse>
 {
-    /// <summary>
-    /// Plafond de sécurité sur les tours ennemis enchaînés. Un combat réel n'en produit qu'une
-    /// poignée (5 ennemis au plus) ; ce garde-fou n'existe que pour qu'un état incohérent
-    /// échoue franchement au lieu de boucler indéfiniment dans une requête HTTP.
-    /// </summary>
-    private const int MaxChainedEnemyTurns = 64;
-
     private readonly IRunRepository _runRepository;
-    private readonly ICombatSkillEffectResolver _effectResolver;
+    private readonly ITacticalEnemyTurnDriver _enemyTurns;
     private readonly ICombatResolutionService _combatResolution;
     private readonly IRewardOfferRepository _rewardOfferRepository;
     private readonly IClock _clock;
 
     public EndTacticalTurnCommandHandler(
         IRunRepository runRepository,
-        ICombatSkillEffectResolver effectResolver,
+        ITacticalEnemyTurnDriver enemyTurns,
         ICombatResolutionService combatResolution,
         IRewardOfferRepository rewardOfferRepository,
         IClock clock)
     {
         _runRepository = runRepository;
-        _effectResolver = effectResolver;
+        _enemyTurns = enemyTurns;
         _combatResolution = combatResolution;
         _rewardOfferRepository = rewardOfferRepository;
         _clock = clock;
@@ -71,31 +66,20 @@ public sealed class EndTacticalTurnCommandHandler
             ?? throw new NotFoundException("Run", request.RunId);
 
         var combat = run.RequireActiveTacticalCombat();
-        var log = new List<CombatLogEntryDto>();
-        var events = new List<TacticalCombatEventDto>();
 
         combat.AdvanceToNextCombatant();
 
-        var guard = 0;
+        var enemyTurns = _enemyTurns.PlayWhileEnemyHasInitiative(combat);
 
-        while (combat.Status == CombatStatus.Active && IsEnemyTurn(combat))
+        var protagonist = combat.Allies.FirstOrDefault(a => a.Side == CombatantSide.Player);
+        if (protagonist is not null)
         {
-            if (++guard > MaxChainedEnemyTurns)
-                throw new InvalidOperationException(
-                    "Tactical enemy turns did not settle; aborting to avoid an endless loop.");
-
-            log.AddRange(PlayEnemyTurn(combat, events));
-
-            combat.CompleteIfAllEnemiesDefeated();
-            combat.FailIfAllAlliesDefeated();
-
-            if (combat.Status != CombatStatus.Active)
-                break;
-
-            combat.AdvanceToNextCombatant();
+            run.PlayerState.SyncFromCombat(
+                protagonist.CurrentVitality, protagonist.Guard, protagonist.Mana, protagonist.Charge);
         }
 
-        var rewardOffer = await SettleAsync(run, combat, cancellationToken);
+        var rewardOffer = await _combatResolution.ApplyOutcomeAsync(
+            run, combat, _clock.UtcNow, cancellationToken);
 
         await _runRepository.UpdateAsync(run, cancellationToken);
 
@@ -107,126 +91,7 @@ public sealed class EndTacticalTurnCommandHandler
         return new TacticalCombatResponse(
             RunDto.FromDomain(run),
             TacticalCombatRuntimeDto.FromDomain(combat, CombatItemHelper.GetUsableBattleItems(run)),
-            log,
-            events);
-    }
-
-    private static bool IsEnemyTurn(Domain.Combats.Tactical.TacticalCombat combat) =>
-        combat.ActiveCombatantId is { } id && combat.Enemies.Any(e => e.Id.Value == id);
-
-    /// <summary>
-    /// Un tour ennemi : choisir une proie, marcher vers elle, frapper si elle est à portée.
-    /// </summary>
-    /// <remarks>
-    /// L'ordre — cible, puis chemin — vient de <see cref="TacticalEnemyAi"/> : une créature hors
-    /// de portée avance quand même plutôt que de gâcher son tour sur place.
-    /// </remarks>
-    private IReadOnlyCollection<CombatLogEntryDto> PlayEnemyTurn(
-        Domain.Combats.Tactical.TacticalCombat combat,
-        List<TacticalCombatEventDto> events)
-    {
-        var log = new List<CombatLogEntryDto>();
-
-        var actorId = combat.ActiveCombatantId!.Value;
-        var actor = combat.Enemies.First(e => e.Id.Value == actorId);
-
-        var prey = TacticalEnemyAi.ChooseTarget(combat, actorId);
-        if (prey is null)
-            return log;
-
-        var destination = TacticalEnemyAi.ChooseDestination(combat, actorId, prey);
-
-        if (destination != combat.PositionOf(actorId))
-        {
-            var move = combat.MoveActiveCombatant(destination);
-            events.Add(TacticalCombatEventDto.Move(actorId, actor.DisplayName, move.Path));
-
-            log.Add(new CombatLogEntryDto(
-                OccurredAtUtc: _clock.UtcNow.UtcDateTime,
-                Type: "TacticalMove",
-                Message: $"{actor.DisplayName} avance en ({destination.X}, {destination.Y}) "
-                         + $"pour {move.Cost} de mouvement.",
-                ActorId: actorId,
-                SkillKey: null,
-                TargetIds: []));
-        }
-
-        var strike = ChooseReachableSkill(combat, actor, prey);
-        if (strike is null)
-            return log;
-
-        var targets = new[] { prey };
-
-        var before = TacticalImpactRecorder.Capture(targets);
-        var resolution = _effectResolver.Resolve(combat, actor, strike, targets);
-        var impacts = TacticalImpactRecorder.Diff(before, targets, combat);
-
-        combat.MarkActiveCombatantActed();
-
-        events.Add(TacticalCombatEventDto.Skill(
-            actorId, actor.DisplayName, strike.Key, strike.DisplayName, impacts));
-
-        log.Add(new CombatLogEntryDto(
-            OccurredAtUtc: _clock.UtcNow.UtcDateTime,
-            Type: "ActionAccepted",
-            Message: $"« {strike.DisplayName} » lancé par {actor.DisplayName}.",
-            ActorId: actorId,
-            SkillKey: strike.Key,
-            TargetIds: [prey.Id.Value]));
-
-        log.AddRange(resolution.LogEntries);
-
-        return log;
-    }
-
-    /// <summary>
-    /// La compétence offensive la plus puissante qui atteigne réellement la proie depuis la case
-    /// où l'ennemi vient de se poster, ou <c>null</c> s'il est encore trop loin.
-    /// </summary>
-    private static CombatantSkill? ChooseReachableSkill(
-        Domain.Combats.Tactical.TacticalCombat combat, Combatant actor, Combatant prey)
-    {
-        var origin = combat.PositionOf(actor.Id.Value);
-        var target = combat.PositionOf(prey.Id.Value);
-
-        return actor.Skills
-            .Where(s => TacticalTargeting.IsHostile(s.TargetingType))
-            .Where(s =>
-            {
-                var (range, needsSight) = TacticalRange.For(s);
-                return TacticalTargeting.IsInRange(
-                    combat.Battlefield, origin, target, range, needsSight);
-            })
-            .OrderByDescending(s => s.BasePower)
-            // Départage stable : sans lui, deux compétences de même puissance dépendraient de
-            // l'ordre d'énumération et le même combat rejoué divergerait.
-            .ThenBy(s => s.Key, StringComparer.Ordinal)
-            .FirstOrDefault();
-    }
-
-    /// <summary>
-    /// Reporte l'état du protagoniste dans la run, puis applique l'issue du combat s'il vient
-    /// de s'achever.
-    /// </summary>
-    /// <remarks>
-    /// Sans cet appel, un combat tactique gagné laissait la run figée : le statut de l'agrégat
-    /// passait bien à « Completed », mais rien ne créait l'offre de récompense ni ne rendait la
-    /// main à l'exploration. C'est exactement ce que fait la pile ATB après chaque action ; le
-    /// service de résolution est commun aux deux depuis qu'il prend un `ICombatContext`.
-    /// </remarks>
-    private async Task<RewardOffer?> SettleAsync(
-        Run run,
-        Domain.Combats.Tactical.TacticalCombat combat,
-        CancellationToken cancellationToken)
-    {
-        var protagonist = combat.Allies.FirstOrDefault(a => a.Side == CombatantSide.Player);
-        if (protagonist is not null)
-        {
-            run.PlayerState.SyncFromCombat(
-                protagonist.CurrentVitality, protagonist.Guard, protagonist.Mana, protagonist.Charge);
-        }
-
-        return await _combatResolution.ApplyOutcomeAsync(
-            run, combat, _clock.UtcNow, cancellationToken);
+            enemyTurns.LogEntries,
+            enemyTurns.Events);
     }
 }

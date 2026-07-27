@@ -143,6 +143,19 @@ export const useTacticalCombatStore = defineStore('tacticalCombat', () => {
 
   const endTurn = (runId: string) => execute(() => combatApi.endTacticalTurn(runId));
 
+  /**
+   * Rejoue les tours ennemis déjà résolus à l'ouverture du combat. Pas d'appel réseau : le
+   * serveur les a joués en créant le combat, on n'en montre que la mise en scène.
+   */
+  async function playOpening(
+    events: TacticalCombatEventDto[],
+    state: TacticalCombatRuntimeDto,
+  ) {
+    if (events.length === 0) return;
+
+    await playback.play(events, state, () => performance.now());
+  }
+
   return {
     combat,
     logEntries,
@@ -163,5 +176,6 @@ export const useTacticalCombatStore = defineStore('tacticalCombat', () => {
     moveTo,
     useSkillAt,
     endTurn,
+    playOpening,
   };
 });

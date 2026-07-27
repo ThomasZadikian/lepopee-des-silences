@@ -27,7 +27,7 @@ import {
   projectToScreen,
   reachableCellsFrom,
 } from '../composables/useTacticalBattlePlan';
-import { combatantSprite } from '../composables/useCombatantSprites';
+import { combatantSprite, fallbackPropFor } from '../composables/useCombatantSprites';
 import { FLOAT_MS, FLOAT_RISE_PX } from '../composables/useCombatPlayback';
 import { useTacticalCombatStore } from '../stores/useTacticalCombatStore';
 
@@ -197,34 +197,23 @@ function buildCombatantPlan(now: number) {
         elevation,
         screenX,
         screenY,
+        // À défaut de figure peinte, la silhouette que le Palais emploie déjà sur sa carte
+        // d'exploration pour cette même créature.
         sprite: combatantSprite(
           unit.combatant.sourceKey, unit.combatant.displayName, unit.combatant.id,
-        ),
+        ) ?? getSprite({
+          kind: 'prop',
+          theme: roomTheme.value,
+          prop: unit.combatant.side === 'Enemy'
+            ? fallbackPropFor(unit.combatant.archetype, false)
+            : 'npc',
+        }),
         // Le +0,5 place la figure entre sa propre tuile et la suivante : elle couvre le sol
         // sur lequel elle se tient sans masquer ce qui est peint devant elle.
         sortKey: ((at.x + at.y) * 4) + elevation + 0.5,
       };
     })
     .sort((a, b) => a.sortKey - b.sortKey);
-}
-
-/** Une silhouette de repli, pour un combattant que le bestiaire peint ne couvre pas encore. */
-function paintPlaceholderFigure(
-  ctx: CanvasRenderingContext2D,
-  x: number, baseY: number, width: number, hostile: boolean,
-) {
-  const w = width * 0.28;
-  const h = width * 0.5;
-
-  ctx.save();
-  ctx.fillStyle = hostile ? '#8e2b32' : '#6a6fb0';
-  ctx.strokeStyle = '#efedf7';
-  ctx.lineWidth = Math.max(1, width * 0.012);
-  ctx.beginPath();
-  ctx.ellipse(x, baseY - h * 0.15, w / 2, h * 0.42, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.stroke();
-  ctx.restore();
 }
 
 /** Jauge de vitalité + nom, peints au-dessus d'une figure. */
@@ -322,20 +311,17 @@ function paintCanvas(timestamp: number) {
 
     if (entry.unit.combatant.status === 'Defeated') ctx.globalAlpha = 0.32;
 
-    if (entry.sprite) {
-      // Les figures sont cuites sur la toile haute : même ancre que les décors.
-      ctx.drawImage(
-        entry.sprite,
-        entry.screenX - (destW / 2),
-        groundY - (propH * PROP_GROUND_ANCHOR_RATIO),
-        destW,
-        propH,
-      );
-      paintCombatantChrome(ctx, entry, groundY - (propH * 0.42), destW);
-    } else {
-      paintPlaceholderFigure(ctx, entry.screenX, groundY, destW, entry.unit.combatant.side === 'Enemy');
-      paintCombatantChrome(ctx, entry, groundY - (destW * 0.58), destW);
-    }
+    // Figures du bestiaire et silhouettes d'exploration sont toutes deux cuites sur la toile
+    // haute : même ancre que les décors, dans les deux cas.
+    ctx.drawImage(
+      entry.sprite,
+      entry.screenX - (destW / 2),
+      groundY - (propH * PROP_GROUND_ANCHOR_RATIO),
+      destW,
+      propH,
+    );
+
+    paintCombatantChrome(ctx, entry, groundY - (propH * 0.42), destW);
 
     ctx.globalAlpha = 1;
   }

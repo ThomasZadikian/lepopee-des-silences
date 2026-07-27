@@ -40,6 +40,7 @@ public sealed class ResolveCurrentEventCommandHandler
     private readonly ICombatEncounterDraftGenerator _encounterDraftGenerator;
     private readonly ICombatFactory _combatFactory;
     private readonly ITacticalCombatFactory _tacticalCombatFactory;
+    private readonly ITacticalEnemyTurnDriver _tacticalEnemyTurns;
     private readonly IRewardOfferRepository _rewardOfferRepository;
     private readonly Leds.GameEngine.Application.Rewards.RewardOfferFactory.RewardOfferFactory _rewardOfferFactory;
     private readonly IEnemyCombatTurnResolver _enemyTurnResolver;
@@ -56,6 +57,7 @@ public sealed class ResolveCurrentEventCommandHandler
         ICombatEncounterDraftGenerator encounterDraftGenerator,
         ICombatFactory combatFactory,
         ITacticalCombatFactory tacticalCombatFactory,
+        ITacticalEnemyTurnDriver tacticalEnemyTurns,
         IRewardOfferRepository rewardOfferRepository,
         Leds.GameEngine.Application.Rewards.RewardOfferFactory.RewardOfferFactory rewardOfferFactory,
         IEnemyCombatTurnResolver enemyTurnResolver,
@@ -71,6 +73,7 @@ public sealed class ResolveCurrentEventCommandHandler
         _encounterDraftGenerator = encounterDraftGenerator;
         _combatFactory = combatFactory;
         _tacticalCombatFactory = tacticalCombatFactory;
+        _tacticalEnemyTurns = tacticalEnemyTurns;
         _rewardOfferRepository = rewardOfferRepository;
         _rewardOfferFactory = rewardOfferFactory;
         _enemyTurnResolver = enemyTurnResolver;
@@ -122,6 +125,7 @@ public sealed class ResolveCurrentEventCommandHandler
         CombatEncounterDraftDto? encounterDraftDto = null;
         CombatRuntimeDto? combatRuntimeDto = null;
         TacticalCombatRuntimeDto? tacticalCombatDto = null;
+        IReadOnlyList<TacticalCombatEventDto>? tacticalEvents = null;
         ResolvedNodeEventContent? resolvedContent = null;
         RewardOffer? pendingRewardOffer = null;
         NpcDialogueViewDto? npcDialogue = null;
@@ -228,6 +232,12 @@ public sealed class ResolveCurrentEventCommandHandler
                     combatId, roster, room, selectedNode.Id, run.Id, _clock.UtcNow.UtcDateTime);
 
                 run.StartTacticalCombat(tacticalCombat);
+
+                // Si la créature la plus rapide ouvre le bal, elle doit jouer maintenant :
+                // le joueur n'a pas la main, et rien d'autre ne la lui rendrait — le combat
+                // resterait figé avant même son premier tour.
+                var openingTurns = _tacticalEnemyTurns.PlayWhileEnemyHasInitiative(tacticalCombat);
+                tacticalEvents = openingTurns.Events;
 
                 tacticalCombatDto = TacticalCombatRuntimeDto.FromDomain(
                     tacticalCombat, CombatItemHelper.GetUsableBattleItems(run));
@@ -349,7 +359,8 @@ public sealed class ResolveCurrentEventCommandHandler
             encounterDraftDto,
             combatRuntimeDto,
             npcDialogue,
-            tacticalCombatDto);
+            tacticalCombatDto,
+            tacticalEvents);
     }
 
     private async Task<NpcDialogueViewDto?> BuildNpcDialogueAsync(
