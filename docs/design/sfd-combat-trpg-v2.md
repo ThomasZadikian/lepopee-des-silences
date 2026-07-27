@@ -359,7 +359,12 @@ n'est introduite.
    avantage de hauteur, victoire/défaite) et `CombatTime` (unité de temps partagée, extraite
    d'`AtbConstants`). Restent à faire : persistance EF, couche Application, déploiement initial.
 4. Vidage/restauration des nœuds au chargement et à la sortie du combat.
-5. Déploiement : allié autour du jeton, ennemi par famille sur rayon 8–20.
+5. ~~Déploiement : allié autour du jeton, ennemi par famille sur rayon 8–20.~~
+   ✅ **Livré (domaine).** `TacticalDeployment`, entièrement ordinal — aucun tirage aléatoire,
+   donc reproductible sans graine. Le placement ennemi suit le **rôle** plutôt que la famille :
+   le rôle est déjà authoré sur chaque créature, et les familles ayant des mélanges de rôles
+   cohérents, leur caractère émerge sans nouveau contenu. La fourchette 8–20 se relâche par
+   paliers si la salle ne l'offre pas, avec un plancher à 2 cases.
 6. Portée, zones d'effet, réinterprétation spatiale des modes de ciblage.
 7. Élévation en combat (coût, ligne de vue, bonus distance).
 8. IA de déplacement et cohésion de groupe.
