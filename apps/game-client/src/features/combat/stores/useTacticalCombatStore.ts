@@ -2,10 +2,12 @@ import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 
 import { combatApi } from '../api/combatApi';
+import { useCombatPlayback } from '../composables/useCombatPlayback';
 
 import type {
   CombatLogEntryDto,
   CombatantSkillRuntimeDto,
+  TacticalCombatEventDto,
   TacticalCombatRuntimeDto,
   TacticalCombatantRuntimeDto,
 } from '../types/combatContracts';
@@ -19,6 +21,8 @@ import type {
  * chaque store à rester inerte selon le mode.
  */
 export const useTacticalCombatStore = defineStore('tacticalCombat', () => {
+  const playback = useCombatPlayback();
+
   const combat = ref<TacticalCombatRuntimeDto | null>(null);
   const logEntries = ref<CombatLogEntryDto[]>([]);
   const isLoading = ref(false);
@@ -38,8 +42,14 @@ export const useTacticalCombatStore = defineStore('tacticalCombat', () => {
     return allCombatants.value.find((c) => c.combatant.id === activeId) ?? null;
   });
 
-  /** Le joueur n'a la main que si le combattant actif est de son camp. */
-  const isPlayerTurn = computed(() => activeCombatant.value?.combatant.side === 'Player');
+  /**
+   * Le joueur n'a la main que si le combattant actif est de son camp <b>et</b> que plus rien ne
+   * se joue à l'écran : cliquer au milieu d'une marche adverse produirait un ordre fondé sur un
+   * plateau que le joueur ne voit pas encore.
+   */
+  const isPlayerTurn = computed(
+    () => activeCombatant.value?.combatant.side === 'Player' && !playback.isPlaying.value,
+  );
 
   const activeSkills = computed<CombatantSkillRuntimeDto[]>(
     () => activeCombatant.value?.combatant.skills ?? [],
@@ -76,6 +86,7 @@ export const useTacticalCombatStore = defineStore('tacticalCombat', () => {
   }
 
   function clearCombat() {
+    playback.reset();
     combat.value = null;
     logEntries.value = [];
     selectedSkillKey.value = null;
@@ -94,15 +105,23 @@ export const useTacticalCombatStore = defineStore('tacticalCombat', () => {
   async function execute(action: () => Promise<{
     combat: TacticalCombatRuntimeDto;
     logEntries: CombatLogEntryDto[];
+    events: TacticalCombatEventDto[];
   }>) {
     isLoading.value = true;
     error.value = null;
 
     try {
+      // Épingler AVANT d'appliquer : le nouvel état place déjà chaque figure à son arrivée, et
+      // sans ce relevé la marche partirait de sa destination.
+      playback.pinBefore(combat.value);
+
       const response = await action();
       setCombat(response.combat);
       logEntries.value = [...logEntries.value, ...response.logEntries];
+
+      await playback.play(response.events ?? [], response.combat, () => performance.now());
     } catch (caught) {
+      playback.stop();
       error.value = caught instanceof Error ? caught.message : String(caught);
     } finally {
       isLoading.value = false;
@@ -130,6 +149,7 @@ export const useTacticalCombatStore = defineStore('tacticalCombat', () => {
     initiativeQueue,
     isPlayerTurn,
     occupantAt,
+    playback,
     setCombat,
     clearCombat,
     selectSkill,

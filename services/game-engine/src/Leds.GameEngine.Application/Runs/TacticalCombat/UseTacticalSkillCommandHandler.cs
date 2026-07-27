@@ -89,7 +89,12 @@ public sealed class UseTacticalSkillCommandHandler
         if (targets.Count == 0)
             throw new ConflictException("Aucune cible valide dans la zone visée.");
 
+        // Relevé avant résolution : le noyau partagé n'annonce pas ses chiffres, on les mesure.
+        var before = TacticalImpactRecorder.Capture(targets);
+
         var resolution = _effectResolver.Resolve(combat, actor, skill, targets);
+
+        var impacts = TacticalImpactRecorder.Diff(before, targets, combat);
 
         combat.MarkActiveCombatantActed();
 
@@ -111,6 +116,8 @@ public sealed class UseTacticalSkillCommandHandler
         return new TacticalCombatResponse(
             RunDto.FromDomain(run),
             TacticalCombatRuntimeDto.FromDomain(combat, CombatItemHelper.GetUsableBattleItems(run)),
-            [actionEntry, .. resolution.LogEntries]);
+            [actionEntry, .. resolution.LogEntries],
+            [TacticalCombatEventDto.Skill(
+                actorId, actor.DisplayName, skill.Key, skill.DisplayName, impacts)]);
     }
 }

@@ -173,11 +173,14 @@ public sealed class TacticalCombat : ICombatContext
         RebuildInitiativeOrder();
     }
 
+    /// <summary>Ce qu'a coûté un déplacement, et par où il est passé.</summary>
+    public sealed record TacticalMoveResult(int Cost, IReadOnlyList<GridPosition> Path);
+
     /// <summary>
     /// Déplace le combattant actif. Échoue si la case est hors de portée, occupée, ou s'il s'est
     /// déjà déplacé ce tour. Ne consomme pas son action : se déplacer et agir sont indépendants.
     /// </summary>
-    public int MoveActiveCombatant(GridPosition destination)
+    public TacticalMoveResult MoveActiveCombatant(GridPosition destination)
     {
         EnsureActive();
 
@@ -203,9 +206,18 @@ public sealed class TacticalCombat : ICombatContext
         if (!reachable.TryGetValue(destination, out var cost))
             throw new DomainException($"{destination} is out of this combatant's movement range.");
 
+        // Le chemin est renvoyé avec le coût : le client doit pouvoir montrer le trajet réel,
+        // qui contourne murs et montées, plutôt que de faire glisser la figure en ligne droite.
+        var path = TacticalMovement.PathTo(
+            Battlefield,
+            origin,
+            destination,
+            TacticalMovement.BudgetFor(combatant.EffectiveSpeed),
+            occupied) ?? [destination];
+
         _positions[combatantId] = destination;
         _turnStates[combatantId] = state with { HasMoved = true };
-        return cost;
+        return new TacticalMoveResult(cost, path);
     }
 
     /// <summary>

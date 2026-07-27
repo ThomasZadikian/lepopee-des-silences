@@ -87,6 +87,71 @@ public static class TacticalMovement
     }
 
     /// <summary>
+    /// Le chemin réellement emprunté de <paramref name="origin"/> à <paramref name="destination"/>,
+    /// case par case, destination comprise et origine exclue. <c>null</c> si la destination est
+    /// hors de portée.
+    /// </summary>
+    /// <remarks>
+    /// Le trajet n'est presque jamais la ligne droite que le joueur imagine : un mur ou une
+    /// montée le détournent. Il doit donc être <b>montré</b>, pas déduit — d'où ce chemin
+    /// explicite, que le client rejoue pas à pas plutôt que de téléporter la figure.
+    /// </remarks>
+    public static IReadOnlyList<GridPosition>? PathTo(
+        TacticalBattlefield battlefield,
+        GridPosition origin,
+        GridPosition destination,
+        int budget,
+        IReadOnlySet<GridPosition> occupied)
+    {
+        ArgumentNullException.ThrowIfNull(battlefield);
+        ArgumentNullException.ThrowIfNull(occupied);
+
+        if (destination == origin)
+            return [];
+
+        var best = new Dictionary<GridPosition, int> { [origin] = 0 };
+        var cameFrom = new Dictionary<GridPosition, GridPosition>();
+
+        var frontier = new PriorityQueue<GridPosition, int>();
+        frontier.Enqueue(origin, 0);
+
+        while (frontier.TryDequeue(out var current, out var currentCost))
+        {
+            if (currentCost > best.GetValueOrDefault(current, int.MaxValue))
+                continue;
+
+            foreach (var neighbour in current.Neighbours())
+            {
+                if (!battlefield.IsWalkable(neighbour) || occupied.Contains(neighbour))
+                    continue;
+
+                var cost = currentCost + battlefield.StepCost(current, neighbour);
+                if (cost > budget || cost >= best.GetValueOrDefault(neighbour, int.MaxValue))
+                    continue;
+
+                best[neighbour] = cost;
+                cameFrom[neighbour] = current;
+                frontier.Enqueue(neighbour, cost);
+            }
+        }
+
+        if (!best.ContainsKey(destination))
+            return null;
+
+        var path = new List<GridPosition>();
+        var step = destination;
+
+        while (step != origin)
+        {
+            path.Add(step);
+            step = cameFrom[step];
+        }
+
+        path.Reverse();
+        return path;
+    }
+
+    /// <summary>
     /// Ligne de vue entre deux cases. Coupée par une case non praticable, ou par une crête
     /// strictement plus haute que ses deux extrémités — une butte entre deux tireurs les sépare,
     /// mais tirer depuis ou vers le sommet reste possible (cf. SFD v2, §10).

@@ -224,8 +224,36 @@ export type TacticalCombatRuntimeDto = {
   usableBattleItems: CombatUsableItemDto[];
 };
 
+/** Ce qu'un combattant a encaissé, à l'endroit où il l'a encaissé. */
+export type TacticalImpactDto = {
+  combatantId: string;
+  x: number;
+  y: number;
+  /** Vitalité perdue ; négative pour un soin. */
+  vitalityDelta: number;
+  defeated: boolean;
+};
+
+/**
+ * Un moment du combat, décrit assez précisément pour être rejoué.
+ *
+ * Le serveur résout un tour entier d'un coup ; cette chronologie permet d'en jouer la mise en
+ * scène — marche case par case, temps de réflexion adverse, chiffres qui s'envolent — sans que
+ * la décision, elle, soit rejouée.
+ */
+export type TacticalCombatEventDto = {
+  kind: 'Move' | 'Skill';
+  actorId: string;
+  actorName: string;
+  path: Array<{ x: number; y: number }>;
+  skillKey: string | null;
+  skillName: string | null;
+  impacts: TacticalImpactDto[];
+};
+
 export type TacticalCombatResponse = {
   run: unknown;
   combat: TacticalCombatRuntimeDto;
   logEntries: CombatLogEntryDto[];
+  events: TacticalCombatEventDto[];
 };

@@ -37,21 +37,27 @@ public sealed class MoveTacticalCombatantCommandHandler
 
         // Le domaine valide portée, praticabilité et occupation, et renvoie le coût réel du
         // trajet — plus élevé qu'à vol d'oiseau dès qu'il faut monter.
-        var cost = combat.MoveActiveCombatant(destination);
+        var move = combat.MoveActiveCombatant(destination);
 
         await _runRepository.UpdateAsync(run, cancellationToken);
 
         var logEntry = new CombatLogEntryDto(
             OccurredAtUtc: _clock.UtcNow.UtcDateTime,
             Type: "TacticalMove",
-            Message: $"Déplacement en ({destination.X}, {destination.Y}) pour {cost} de mouvement.",
+            Message: $"Déplacement en ({destination.X}, {destination.Y}) pour {move.Cost} de mouvement.",
             ActorId: actorId,
             SkillKey: null,
             TargetIds: []);
 
+        var actor = combat.Allies.Concat(combat.Enemies)
+            .FirstOrDefault(c => c.Id.Value == actorId);
+
         return new TacticalCombatResponse(
             RunDto.FromDomain(run),
             TacticalCombatRuntimeDto.FromDomain(combat, CombatItemHelper.GetUsableBattleItems(run)),
-            [logEntry]);
+            [logEntry],
+            // Le trajet réel, pour que la figure marche au lieu de se téléporter.
+            [TacticalCombatEventDto.Move(
+                actorId ?? Guid.Empty, actor?.DisplayName ?? string.Empty, move.Path)]);
     }
 }

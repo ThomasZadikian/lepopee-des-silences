@@ -28,6 +28,7 @@ import {
   reachableCellsFrom,
 } from '../composables/useTacticalBattlePlan';
 import { combatantSprite } from '../composables/useCombatantSprites';
+import { FLOAT_MS, FLOAT_RISE_PX } from '../composables/useCombatPlayback';
 import { useTacticalCombatStore } from '../stores/useTacticalCombatStore';
 
 const props = defineProps<{
@@ -179,13 +180,16 @@ const drawPlan = computed(() => {
  * Les combattants, dans l'ordre du peintre — mêmes clés de profondeur que le terrain, pour
  * qu'une figure devant une tuile haute ne passe pas derrière elle.
  */
-const combatantPlan = computed(() => {
+function buildCombatantPlan(now: number) {
   if (!battlefield.value || canvasSize.value.width === 0) return [];
 
   return store.allCombatants
     .map((unit) => {
-      const elevation = elevationAt(unit.x, unit.y);
-      const { screenX, screenY } = projectToScreen(unit.x, unit.y, projectionParams.value);
+      // La position affichée n'est pas celle du serveur tant que la chronologie se joue : une
+      // figure en marche est interpolée entre deux cases, pas posée sur sa destination.
+      const at = store.playback.positionOf(unit.combatant.id, { x: unit.x, y: unit.y }, now);
+      const elevation = elevationAt(Math.round(at.x), Math.round(at.y));
+      const { screenX, screenY } = projectToScreen(at.x, at.y, projectionParams.value);
 
       return {
         unit,
@@ -197,11 +201,11 @@ const combatantPlan = computed(() => {
         ),
         // Le +0,5 place la figure entre sa propre tuile et la suivante : elle couvre le sol
         // sur lequel elle se tient sans masquer ce qui est peint devant elle.
-        sortKey: ((unit.x + unit.y) * 4) + elevation + 0.5,
+        sortKey: ((at.x + at.y) * 4) + elevation + 0.5,
       };
     })
     .sort((a, b) => a.sortKey - b.sortKey);
-});
+}
 
 /** Une silhouette de repli, pour un combattant que le bestiaire peint ne couvre pas encore. */
 function paintPlaceholderFigure(
@@ -225,7 +229,7 @@ function paintPlaceholderFigure(
 /** Jauge de vitalité + nom, peints au-dessus d'une figure. */
 function paintCombatantChrome(
   ctx: CanvasRenderingContext2D,
-  entry: (typeof combatantPlan.value)[number],
+  entry: ReturnType<typeof buildCombatantPlan>[number],
   topY: number,
   width: number,
 ) {
@@ -311,7 +315,7 @@ function paintCanvas(timestamp: number) {
     ctx.globalAlpha = 1;
   }
 
-  for (const entry of combatantPlan.value) {
+  for (const entry of buildCombatantPlan(timestamp)) {
     const lift = elevationLiftPx(entry.elevation);
     const groundY = entry.screenY - lift;
 
@@ -337,6 +341,37 @@ function paintCanvas(timestamp: number) {
 
   if (!prefersReducedMotion) {
     drawAmbient(ctx, canvas.width, canvas.height, roomTheme.value, timestamp);
+  }
+
+  paintFloatingNumbers(ctx, timestamp);
+}
+
+/**
+ * Les chiffres montent en dernier, en espace écran : ni un mur ni une figure ne doit pouvoir
+ * cacher ce qu'un coup vient de coûter.
+ */
+function paintFloatingNumbers(ctx: CanvasRenderingContext2D, timestamp: number) {
+  store.playback.pruneFloats(timestamp);
+
+  const { destW } = spriteDest.value;
+
+  for (const float of store.playback.floats) {
+    const progress = (timestamp - float.bornAt) / FLOAT_MS;
+    const { screenX, screenY } = projectToScreen(float.x, float.y, projectionParams.value);
+    const lift = elevationLiftPx(elevationAt(float.x, float.y));
+
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, 1 - progress);
+    ctx.font = `600 ${Math.max(13, Math.round(destW * 0.17))}px ui-monospace, monospace`;
+    ctx.textAlign = 'center';
+    ctx.lineWidth = 3.5;
+    ctx.strokeStyle = 'rgba(4, 5, 10, 0.9)';
+
+    const y = screenY - lift - (destW * 0.5) - (progress * FLOAT_RISE_PX);
+    ctx.strokeText(float.text, screenX, y);
+    ctx.fillStyle = float.color;
+    ctx.fillText(float.text, screenX, y);
+    ctx.restore();
   }
 }
 

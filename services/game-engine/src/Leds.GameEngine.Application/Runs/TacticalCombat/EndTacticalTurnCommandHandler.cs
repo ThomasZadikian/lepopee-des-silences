@@ -22,8 +22,12 @@ namespace Leds.GameEngine.Application.Runs.TacticalCombat;
 /// Contrairement à l'ATB — où les tours ennemis sont pilotés en temps réel par le client via
 /// <c>AdvanceCombatTurnCommand</c> — le tactique les résout <b>en une fois, côté serveur</b>.
 /// Le tour par tour n'a pas d'horloge à faire couler : laisser le client redemander tour après
-/// tour n'apporterait qu'un aller-retour réseau par ennemi, sans rien changer au résultat. Le
-/// journal renvoyé contient de quoi rejouer la séquence à l'écran.
+/// tour n'apporterait qu'un aller-retour réseau par ennemi, sans rien changer au résultat.
+/// </para>
+/// <para>
+/// La contrepartie, c'est que le client recevrait un saut d'état incompréhensible : figures
+/// téléportées, dégâts sans cause. D'où la chronologie renvoyée à côté de l'état final — la
+/// décision est prise et définitive, seule sa mise en scène reste à jouer, au rythme du client.
 /// </para>
 /// </remarks>
 public sealed class EndTacticalTurnCommandHandler
@@ -59,6 +63,7 @@ public sealed class EndTacticalTurnCommandHandler
 
         var combat = run.RequireActiveTacticalCombat();
         var log = new List<CombatLogEntryDto>();
+        var events = new List<TacticalCombatEventDto>();
 
         combat.AdvanceToNextCombatant();
 
@@ -70,7 +75,7 @@ public sealed class EndTacticalTurnCommandHandler
                 throw new InvalidOperationException(
                     "Tactical enemy turns did not settle; aborting to avoid an endless loop.");
 
-            log.AddRange(PlayEnemyTurn(combat));
+            log.AddRange(PlayEnemyTurn(combat, events));
 
             combat.CompleteIfAllEnemiesDefeated();
             combat.FailIfAllAlliesDefeated();
@@ -86,7 +91,8 @@ public sealed class EndTacticalTurnCommandHandler
         return new TacticalCombatResponse(
             RunDto.FromDomain(run),
             TacticalCombatRuntimeDto.FromDomain(combat, CombatItemHelper.GetUsableBattleItems(run)),
-            log);
+            log,
+            events);
     }
 
     private static bool IsEnemyTurn(Domain.Combats.Tactical.TacticalCombat combat) =>
@@ -100,7 +106,8 @@ public sealed class EndTacticalTurnCommandHandler
     /// de portée avance quand même plutôt que de gâcher son tour sur place.
     /// </remarks>
     private IReadOnlyCollection<CombatLogEntryDto> PlayEnemyTurn(
-        Domain.Combats.Tactical.TacticalCombat combat)
+        Domain.Combats.Tactical.TacticalCombat combat,
+        List<TacticalCombatEventDto> events)
     {
         var log = new List<CombatLogEntryDto>();
 
@@ -115,13 +122,14 @@ public sealed class EndTacticalTurnCommandHandler
 
         if (destination != combat.PositionOf(actorId))
         {
-            var cost = combat.MoveActiveCombatant(destination);
+            var move = combat.MoveActiveCombatant(destination);
+            events.Add(TacticalCombatEventDto.Move(actorId, actor.DisplayName, move.Path));
 
             log.Add(new CombatLogEntryDto(
                 OccurredAtUtc: _clock.UtcNow.UtcDateTime,
                 Type: "TacticalMove",
                 Message: $"{actor.DisplayName} avance en ({destination.X}, {destination.Y}) "
-                         + $"pour {cost} de mouvement.",
+                         + $"pour {move.Cost} de mouvement.",
                 ActorId: actorId,
                 SkillKey: null,
                 TargetIds: []));
@@ -132,9 +140,15 @@ public sealed class EndTacticalTurnCommandHandler
             return log;
 
         var targets = new[] { prey };
+
+        var before = TacticalImpactRecorder.Capture(targets);
         var resolution = _effectResolver.Resolve(combat, actor, strike, targets);
+        var impacts = TacticalImpactRecorder.Diff(before, targets, combat);
 
         combat.MarkActiveCombatantActed();
+
+        events.Add(TacticalCombatEventDto.Skill(
+            actorId, actor.DisplayName, strike.Key, strike.DisplayName, impacts));
 
         log.Add(new CombatLogEntryDto(
             OccurredAtUtc: _clock.UtcNow.UtcDateTime,
