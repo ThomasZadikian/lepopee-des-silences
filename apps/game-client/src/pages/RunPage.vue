@@ -4,6 +4,8 @@ import { useRoute, useRouter } from 'vue-router';
 
 import GameShellLayout from '../app/layouts/GameShellLayout.vue';
 import CombatScene from '../features/combat/components/CombatScene.vue';
+import TacticalCombatScene from '../features/combat/components/TacticalCombatScene.vue';
+import { useTacticalCombatStore } from '../features/combat/stores/useTacticalCombatStore';
 import { useCombatStore } from '../features/combat/stores/useCombatStore';
 import EliseOverlay from '../features/elise/EliseOverlay.vue';
 import EventChoiceResultPanel from '../features/events/components/EventChoiceResultPanel.vue';
@@ -34,6 +36,7 @@ const route = useRoute();
 const router = useRouter();
 const runStore = useRunStore();
 const combatStore = useCombatStore();
+const tacticalCombatStore = useTacticalCombatStore();
 const uiStore = useGameUiStore();
 const playerStore = usePlayerStore();
 const devToolsEnabled = import.meta.env.DEV === true &&
@@ -122,6 +125,7 @@ const drawersRef = ref<HTMLElement | null>(null);
 
 async function handleLeaveRun() {
   combatStore.clearCombat();
+  tacticalCombatStore.clearCombat();
   runStore.clearCurrentRun();
   await router.replace('/');
 }
@@ -274,6 +278,16 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
       </template>
 
       <!-- ── Combat phase ── -->
+      <!-- Le mode de combat est fixé pour toute la run : une seule des deux scènes existe. -->
+      <template v-else-if="isCombatPhase && tacticalCombatStore.combat">
+        <TacticalCombatScene
+          :run-id="runStore.currentRun.id"
+          :theme="runStore.currentRun.currentRoom?.theme"
+          @combat-completed="runStore.handleCombatCompleted"
+          @combat-failed="runStore.handleCombatFailed"
+        />
+      </template>
+
       <template v-else-if="isCombatPhase && runStore.currentRun.activeCombatId">
         <CombatScene
           :run-id="runStore.currentRun.id"

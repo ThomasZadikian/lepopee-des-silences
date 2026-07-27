@@ -8,6 +8,7 @@ import {
 } from '../../rewards/types/rewardTypes';
 
 import { runApi } from '../api/runApi';
+import { useTacticalCombatStore } from '../../combat/stores/useTacticalCombatStore';
 import { partyWalkDurationMs } from '../../palace-map/composables/usePartyTokenPath';
 import {
   unwrapRunResponse,
@@ -300,6 +301,12 @@ export const useRunStore = defineStore('run', () => {
     npcDialogueEnded.value = false;
     activeCombat.value = resolveResponse.startedCombat ?? null;
     combatRuntime.value = resolveResponse.combat ?? null;
+
+    // Le combat tactique arrive dans la même réponse, mais dans son propre champ : les deux
+    // systèmes n'exposent pas la même chose, et un seul des deux est jamais renseigné.
+    if (resolveResponse.tacticalCombat) {
+      useTacticalCombatStore().setCombat(resolveResponse.tacticalCombat);
+    }
 
     await refreshPendingRewardIfNeeded();
   }

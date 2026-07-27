@@ -329,6 +329,10 @@ export type ResolveCurrentEventResponse = {
   startedCombat?: CombatInstanceDto | null;
   encounterDraft?: import('../../combat/types/combatContracts').CombatEncounterDraftDto | null;
   combat?: import('../../combat/types/combatContracts').CombatRuntimeDto | null;
+  /** Renseigné à la place de `combat` quand la run est en mode de combat Tactique. */
+  tacticalCombat?:
+    | import('../../combat/types/combatContracts').TacticalCombatRuntimeDto
+    | null;
   npcDialogue?: NpcDialogueViewDto | null;
 };
 

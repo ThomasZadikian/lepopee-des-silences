@@ -183,3 +183,49 @@ export type UseItemInCombatResponse = {
   canProgressRun: boolean;
   runStatus: string;
 };
+// ─── Combat tactique ────────────────────────────────────────────────────────
+//
+// Volontairement distinct de `CombatRuntimeDto` : les deux systèmes n'exposent
+// pas la même chose. L'ATB envoie un tick et des jauges ; le tactique envoie un
+// terrain, des positions et un ordre d'initiative annoncé à l'avance — cette
+// prévisibilité est la contrepartie de l'abandon du tempo.
+
+/** Le terrain de combat : la salle d'exploration vidée de ses nœuds. */
+export type TacticalBattlefieldDto = {
+  width: number;
+  height: number;
+  /** Élévations, à plat, rangées en row-major (`y * width + x`). */
+  elevation: number[];
+  /** Praticabilité, même indexation. Une case fausse est un trou ou un obstacle. */
+  walkable: boolean[];
+};
+
+export type TacticalCombatantRuntimeDto = {
+  combatant: CombatantRuntimeDto;
+  x: number;
+  y: number;
+  /** Les deux sont indépendants : renoncer à l'un ne pénalise pas l'autre. */
+  hasMoved: boolean;
+  hasActed: boolean;
+  /** Nombre de cases atteignables ce tour, à terrain plat. */
+  movementBudget: number;
+};
+
+export type TacticalCombatRuntimeDto = {
+  id: string;
+  status: CombatStatus;
+  roundNumber: number;
+  activeCombatantId: string | null;
+  /** Ordre d'action du round, du plus rapide au plus lent. */
+  initiativeOrder: string[];
+  battlefield: TacticalBattlefieldDto;
+  allies: TacticalCombatantRuntimeDto[];
+  enemies: TacticalCombatantRuntimeDto[];
+  usableBattleItems: CombatUsableItemDto[];
+};
+
+export type TacticalCombatResponse = {
+  run: unknown;
+  combat: TacticalCombatRuntimeDto;
+  logEntries: CombatLogEntryDto[];
+};

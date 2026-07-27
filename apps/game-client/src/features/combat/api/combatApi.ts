@@ -2,6 +2,7 @@ import { gameEngineApi } from '../../../shared/api/gameEngineApi';
 import { HttpError } from '../../../shared/api/httpClient';
 import type {
   CombatRuntimeDto,
+  TacticalCombatResponse,
   UseCombatSkillRequest,
   UseCombatSkillResponse,
   UseItemInCombatResponse,
@@ -38,6 +39,31 @@ export const combatApi = {
     advanceCombat(runId: string, combatId: string) {
     return gameEngineApi.post<UseCombatSkillResponse>(
       `/api/v2/runs/${runId}/combats/${combatId}/advance`,
+      {},
+    );
+  },
+
+  // ── Combat tactique ──
+  // Une seule route par action, sans identifiant de combat dans l'URL : la run
+  // ne porte qu'un combat à la fois, le serveur sait déjà lequel.
+
+  moveTacticalCombatant(runId: string, targetX: number, targetY: number) {
+    return gameEngineApi.post<TacticalCombatResponse, { targetX: number; targetY: number }>(
+      `/api/v2/runs/${runId}/tactical-combat/move`,
+      { targetX, targetY },
+    );
+  },
+
+  useTacticalSkill(runId: string, skillKey: string, targetX: number, targetY: number) {
+    return gameEngineApi.post<
+      TacticalCombatResponse,
+      { skillKey: string; targetX: number; targetY: number }
+    >(`/api/v2/runs/${runId}/tactical-combat/skill`, { skillKey, targetX, targetY });
+  },
+
+  endTacticalTurn(runId: string) {
+    return gameEngineApi.post<TacticalCombatResponse>(
+      `/api/v2/runs/${runId}/tactical-combat/end-turn`,
       {},
     );
   },
