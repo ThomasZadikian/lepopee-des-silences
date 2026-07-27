@@ -22,7 +22,13 @@ public sealed record TacticalBattlefieldDto(
     int Width,
     int Height,
     IReadOnlyList<int> Elevation,
-    IReadOnlyList<bool> Walkable);
+    IReadOnlyList<bool> Walkable,
+    /// <summary>
+    /// La case appartient-elle à la salle ? Distinct de <c>Walkable</c> : une case du vide et
+    /// une case encombrée sont toutes deux infranchissables, mais seule la seconde porte un
+    /// obstacle à peindre.
+    /// </summary>
+    IReadOnlyList<bool> Floor);
 
 /// <summary>
 /// L'état d'un combat tactique tel que le client doit l'afficher.
@@ -54,6 +60,7 @@ public sealed record TacticalCombatRuntimeDto(
         var field = combat.Battlefield;
         var elevation = new int[field.Width * field.Height];
         var walkable = new bool[field.Width * field.Height];
+        var floor = new bool[field.Width * field.Height];
 
         for (var y = 0; y < field.Height; y++)
         {
@@ -62,8 +69,10 @@ public sealed record TacticalCombatRuntimeDto(
                 var cell = new GridPosition(x, y);
                 var index = (y * field.Width) + x;
                 walkable[index] = field.IsWalkable(cell);
-                // ElevationAt lève hors du champ praticable : ne l'interroger que là où il répond.
-                elevation[index] = walkable[index] ? field.ElevationAt(cell) : 0;
+                floor[index] = field.IsFloor(cell);
+                // Toute case de la salle porte son relief, obstacle compris : un éboulis se
+                // peint sur la tuile qui le supporte, pas au niveau zéro.
+                elevation[index] = floor[index] ? field.ElevationAt(cell) : 0;
             }
         }
 
@@ -74,7 +83,7 @@ public sealed record TacticalCombatRuntimeDto(
             ActiveCombatantId: combat.ActiveCombatantId,
             InitiativeOrder: combat.InitiativeOrder,
             Battlefield: new TacticalBattlefieldDto(
-                field.Width, field.Height, elevation, walkable),
+                field.Width, field.Height, elevation, walkable, floor),
             Allies: [.. combat.Allies.Select(c => Project(combat, c))],
             Enemies: [.. combat.Enemies.Select(c => Project(combat, c))],
             UsableBattleItems: usableItems ?? []);

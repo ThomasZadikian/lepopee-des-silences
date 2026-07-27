@@ -168,6 +168,7 @@ const drawPlan = computed(() => {
     gridHeight: field.height,
     elevation: field.elevation,
     walkable: field.walkable,
+    floor: field.floor,
     theme: roomTheme.value,
     ambientTint: 'neutral',
     reachableCells: reachableCells.value,

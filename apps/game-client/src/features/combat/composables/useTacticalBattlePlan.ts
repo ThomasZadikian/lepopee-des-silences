@@ -40,8 +40,13 @@ export type BuildBattlePlanInput = {
   gridHeight: number;
   /** À plat, row-major (`y * gridWidth + x`). */
   elevation: number[];
-  /** Même indexation. Une case fausse est un trou ou un obstacle. */
+  /** Même indexation. Une case fausse porte un obstacle ou n'est pas dans la salle. */
   walkable: boolean[];
+  /**
+   * La case appartient-elle à la salle ? Sans cette distinction, tout ce qui borde la salle
+   * reçoit un sprite d'obstacle et le plateau se retrouve noyé sous un décor inexistant.
+   */
+  floor?: boolean[];
   theme: RoomTheme;
   ambientTint: FloorTint;
   /** Cases où le combattant actif peut se rendre ce tour. Clés « x,y ». */
@@ -69,6 +74,15 @@ const isWalkable = (input: BuildBattlePlanInput, x: number, y: number): boolean 
   return input.walkable[(y * input.gridWidth) + x] ?? false;
 };
 
+/** Faute de masque, on retombe sur « praticable = dans la salle » : aucun obstacle peint. */
+const isFloor = (input: BuildBattlePlanInput, x: number, y: number): boolean => {
+  if (x < 0 || y < 0 || x >= input.gridWidth || y >= input.gridHeight) return false;
+
+  return input.floor
+    ? input.floor[(y * input.gridWidth) + x] ?? false
+    : isWalkable(input, x, y);
+};
+
 /**
  * Profondeur du peintre. L'élévation entre dans la clé pour qu'une case haute et proche ne se
  * fasse pas recouvrir par une case basse et lointaine.
@@ -88,6 +102,10 @@ export function buildBattlePlan(input: BuildBattlePlanInput): BattleDrawPlanEntr
 
   for (let y = 0; y < input.gridHeight; y += 1) {
     for (let x = 0; x < input.gridWidth; x += 1) {
+      // Hors de la salle : rien du tout. Ni sol, ni obstacle — le vide se peint en ne peignant
+      // pas, et c'est ce qui donne au champ de bataille ses vrais bords.
+      if (!isFloor(input, x, y)) continue;
+
       const cellKey = battleCellKey(x, y);
       const elevation = elevationAt(input, x, y);
       const { screenX, screenY } = projectToScreen(x, y, projection);
@@ -95,7 +113,7 @@ export function buildBattlePlan(input: BuildBattlePlanInput): BattleDrawPlanEntr
       const sortKey = sortKeyFor(x, y, elevation);
 
       if (!walkable) {
-        // Une case impraticable est un obstacle : un éboulis, un mur, un vide. Elle se peint
+        // Une case de la salle qu'on ne peut pas fouler porte un obstacle. Elle se peint
         // toujours à la profondeur maximale pour ne jamais être traversée du regard.
         entries.push({
           cellKey,
@@ -120,10 +138,11 @@ export function buildBattlePlan(input: BuildBattlePlanInput): BattleDrawPlanEntr
           theme: input.theme,
           elevation,
           surfaceSeed: surfaceSeedFor(x, y),
-          // Une falaise se dessine là où la case avant-gauche ou avant-droite sort du champ :
-          // c'est ce qui donne au champ de bataille de vrais bords plutôt qu'un damier flottant.
-          cliffLeft: !isWalkable(input, x, y + 1),
-          cliffRight: !isWalkable(input, x + 1, y),
+          // Une falaise se dessine là où la case avant-gauche ou avant-droite sort de la SALLE,
+          // pas là où elle est simplement encombrée : un éboulis voisin ne creuse pas un
+          // précipice. C'est ce qui donne au champ de bataille de vrais bords.
+          cliffLeft: !isFloor(input, x, y + 1),
+          cliffRight: !isFloor(input, x + 1, y),
         },
         screenX,
         screenY,

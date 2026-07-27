@@ -34,6 +34,7 @@ public static class TacticalCombatPersistenceMapper
         var field = combat.Battlefield;
         var elevation = new List<string>(field.Width * field.Height);
         var walkable = new List<string>(field.Width * field.Height);
+        var floor = new List<string>(field.Width * field.Height);
 
         for (var y = 0; y < field.Height; y++)
         {
@@ -42,6 +43,7 @@ public static class TacticalCombatPersistenceMapper
                 var cell = new GridPosition(x, y);
                 var isWalkable = field.IsWalkable(cell);
                 walkable.Add(isWalkable ? "1" : "0");
+                floor.Add(field.IsFloor(cell) ? "1" : "0");
                 // Hors du praticable, l'élévation n'est pas définie : on écrit un 0 neutre, que
                 // la relecture ne réintroduira jamais comme du sol (c'est walkable qui tranche).
                 elevation.Add((isWalkable ? field.ElevationAt(cell) : 0)
@@ -80,6 +82,7 @@ public static class TacticalCombatPersistenceMapper
             TacticalHeight = field.Height,
             TacticalElevationCsv = string.Join(',', elevation),
             TacticalWalkableCsv = string.Join(',', walkable),
+            TacticalFloorCsv = string.Join(',', floor),
             TacticalRoundNumber = combat.RoundNumber,
             TacticalActiveIndex = combat.InitiativeOrder.Count == 0
                 ? 0
@@ -117,7 +120,14 @@ public static class TacticalCombatPersistenceMapper
             .Select(v => v != 0)
             .ToArray();
 
-        var battlefield = TacticalBattlefield.Rehydrate(width, height, elevation, walkable);
+        // `TacticalFloorCsv` est arrivé après les premières colonnes tactiques : absent, la
+        // reconstruction retombe sur « praticable = dans la salle ».
+        var floor = string.IsNullOrWhiteSpace(entity.TacticalFloorCsv)
+            ? null
+            : ParseIntCsv(entity.TacticalFloorCsv, width * height).Select(v => v != 0).ToArray();
+
+        var battlefield = TacticalBattlefield.Rehydrate(
+            width, height, elevation, walkable, floor);
 
         var combatants = entity.Combatants.Select(CombatPersistenceMapper.ToDomain).ToList();
 

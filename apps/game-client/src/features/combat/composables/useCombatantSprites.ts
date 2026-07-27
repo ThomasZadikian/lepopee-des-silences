@@ -63,6 +63,16 @@ export function figureIdFor(sourceKey: string, displayName: string): string | nu
   const condensed = fromName.replace(FILLER, '-');
   if (rosterIds.has(condensed)) return condensed;
 
+  // Dernier recours : les variantes du catalogue portent un suffixe que le bestiaire ne connaît
+  // pas — `enemy.imperatrice-vipere` face à la figure `imperatrice`. On retire les segments par
+  // la fin jusqu'à retomber sur la famille. Une variante ressemble à sa souche : lui prêter sa
+  // figure est bien plus juste que la silhouette anonyme du repli.
+  const segments = stripped.split('-');
+  for (let keep = segments.length - 1; keep >= 1; keep -= 1) {
+    const prefix = segments.slice(0, keep).join('-');
+    if (rosterIds.has(prefix)) return prefix;
+  }
+
   return null;
 }
 

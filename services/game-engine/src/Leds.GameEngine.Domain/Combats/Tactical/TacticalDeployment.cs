@@ -162,18 +162,16 @@ public static class TacticalDeployment
     private static List<(GridPosition Cell, int Distance)> EngagementCells(
         TacticalBattlefield battlefield, IReadOnlyCollection<GridPosition> allyPositions)
     {
+        // Seules les cases réellement reliées aux alliés sont éligibles. Une salle trouée
+        // d'obstacles enferme des cases praticables mais isolées : un ennemi posé là ne peut
+        // ni avancer ni être atteint, et le combat ne peut plus se terminer.
+        var connected = CellsConnectedTo(battlefield, allyPositions);
+
         var all = new List<(GridPosition Cell, int Distance)>();
 
-        for (var y = 0; y < battlefield.Height; y++)
+        foreach (var cell in connected)
         {
-            for (var x = 0; x < battlefield.Width; x++)
-            {
-                var cell = new GridPosition(x, y);
-                if (!battlefield.IsWalkable(cell))
-                    continue;
-
-                all.Add((cell, allyPositions.Min(a => a.ManhattanDistanceTo(cell))));
-            }
+            all.Add((cell, allyPositions.Min(a => a.ManhattanDistanceTo(cell))));
         }
 
         var ideal = all
@@ -194,6 +192,38 @@ public static class TacticalDeployment
         }
 
         return all.Where(c => c.Distance > 0).ToList();
+    }
+
+    /// <summary>
+    /// Toutes les cases praticables que l'on peut atteindre en marchant depuis les alliés.
+    /// </summary>
+    /// <remarks>
+    /// Simple parcours en largeur : le coût de déplacement n'entre pas en jeu ici, seule
+    /// l'existence d'un chemin compte. Un ennemi peut mettre dix tours à traverser la salle,
+    /// tant qu'il peut la traverser.
+    /// </remarks>
+    private static HashSet<GridPosition> CellsConnectedTo(
+        TacticalBattlefield battlefield, IReadOnlyCollection<GridPosition> allyPositions)
+    {
+        var seen = new HashSet<GridPosition>(allyPositions);
+        var frontier = new Queue<GridPosition>(allyPositions);
+
+        while (frontier.Count > 0)
+        {
+            foreach (var neighbour in frontier.Dequeue().Neighbours())
+            {
+                if (!battlefield.IsWalkable(neighbour) || !seen.Add(neighbour))
+                    continue;
+
+                frontier.Enqueue(neighbour);
+            }
+        }
+
+        // Les cases des alliés eux-mêmes ne sont pas des emplacements de déploiement ennemi ;
+        // le filtre de distance s'en charge, mais autant ne pas les proposer du tout.
+        seen.ExceptWith(allyPositions);
+
+        return seen;
     }
 
     /// <summary>

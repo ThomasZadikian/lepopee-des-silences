@@ -25,13 +25,16 @@ public sealed class TacticalBattlefield
 {
     private readonly int[] _elevation;
     private readonly bool[] _walkable;
+    private readonly bool[] _isFloor;
 
-    private TacticalBattlefield(int width, int height, int[] elevation, bool[] walkable)
+    private TacticalBattlefield(
+        int width, int height, int[] elevation, bool[] walkable, bool[] isFloor)
     {
         Width = width;
         Height = height;
         _elevation = elevation;
         _walkable = walkable;
+        _isFloor = isFloor;
     }
 
     public int Width { get; }
@@ -49,6 +52,22 @@ public sealed class TacticalBattlefield
     /// </summary>
     public bool IsWalkable(GridPosition position)
         => Contains(position) && _walkable[Index(position)];
+
+    /// <summary>
+    /// La case appartient-elle à la salle ?
+    /// </summary>
+    /// <remarks>
+    /// Distinct de <see cref="IsWalkable"/>, et la distinction compte : une case du vide et une
+    /// case encombrée sont toutes deux infranchissables, mais l'une n'existe pas et l'autre
+    /// porte un obstacle. Les confondre fait pousser un éboulis sur chaque case hors de la
+    /// salle — la salle entière se retrouve alors ceinturée de décor qui n'existe pas.
+    /// </remarks>
+    public bool IsFloor(GridPosition position)
+        => Contains(position) && _isFloor[Index(position)];
+
+    /// <summary>Une case de la salle rendue infranchissable par ce qui l'encombre.</summary>
+    public bool IsObstacle(GridPosition position)
+        => IsFloor(position) && !_walkable[Index(position)];
 
     public int ElevationAt(GridPosition position)
         => Contains(position) ? _elevation[Index(position)] : 0;
@@ -74,6 +93,7 @@ public sealed class TacticalBattlefield
         var size = grid.Width * grid.Height;
         var elevation = new int[size];
         var walkable = new bool[size];
+        var isFloor = new bool[size];
 
         for (var y = 0; y < grid.Height; y++)
         {
@@ -82,15 +102,20 @@ public sealed class TacticalBattlefield
                 var index = (y * grid.Width) + x;
                 elevation[index] = grid.ElevationAt(x, y);
                 walkable[index] = grid.IsWalkable(x, y);
+                isFloor[index] = grid.IsFloor(x, y);
             }
         }
 
-        return new TacticalBattlefield(grid.Width, grid.Height, elevation, walkable);
+        return new TacticalBattlefield(grid.Width, grid.Height, elevation, walkable, isFloor);
     }
 
     /// <summary>Reconstruit un champ de bataille depuis sa forme persistée.</summary>
     public static TacticalBattlefield Rehydrate(
-        int width, int height, IReadOnlyList<int> elevation, IReadOnlyList<bool> walkable)
+        int width,
+        int height,
+        IReadOnlyList<int> elevation,
+        IReadOnlyList<bool> walkable,
+        IReadOnlyList<bool>? isFloor = null)
     {
         if (width <= 0 || height <= 0)
             throw new DomainException("A tactical battlefield must have a positive width and height.");
@@ -101,6 +126,12 @@ public sealed class TacticalBattlefield
                 $"Tactical battlefield terrain must hold exactly {size} cells "
                 + $"(got {elevation.Count} elevation / {walkable.Count} walkable).");
 
-        return new TacticalBattlefield(width, height, [.. elevation], [.. walkable]);
+        // Repli sur « praticable = dans la salle » pour les combats enregistrés avant que la
+        // distinction n'existe : ils perdent leurs obstacles, jamais leur forme.
+        var floor = isFloor is null || isFloor.Count != size
+            ? walkable.ToArray()
+            : isFloor.ToArray();
+
+        return new TacticalBattlefield(width, height, [.. elevation], [.. walkable], floor);
     }
 }

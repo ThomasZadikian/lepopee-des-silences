@@ -51,6 +51,9 @@ public sealed class CombatEntity
     /// <summary>Praticabilité, row-major, « 1 »/« 0 » séparés par des virgules.</summary>
     public string? TacticalWalkableCsv { get; set; }
 
+    /// <summary>Appartenance à la salle, même convention. Distincte de la praticabilité.</summary>
+    public string? TacticalFloorCsv { get; set; }
+
     public int? TacticalRoundNumber { get; set; }
     public int? TacticalActiveIndex { get; set; }
 

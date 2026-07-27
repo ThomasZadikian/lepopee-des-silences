@@ -196,8 +196,10 @@ export type TacticalBattlefieldDto = {
   height: number;
   /** Élévations, à plat, rangées en row-major (`y * width + x`). */
   elevation: number[];
-  /** Praticabilité, même indexation. Une case fausse est un trou ou un obstacle. */
+  /** Praticabilité, même indexation. Une case fausse porte un obstacle ou est hors salle. */
   walkable: boolean[];
+  /** La case appartient-elle à la salle ? C'est elle qui distingue un obstacle du vide. */
+  floor: boolean[];
 };
 
 export type TacticalCombatantRuntimeDto = {
