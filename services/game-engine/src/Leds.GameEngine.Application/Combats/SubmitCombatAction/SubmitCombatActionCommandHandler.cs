@@ -122,7 +122,7 @@ public sealed class SubmitCombatActionCommandHandler
         var effectResolution = _effectResolver.Resolve(
             combat, validationResult.Actor!, validationResult.Skill!, validationResult.Targets);
 
-        AdvanceCombat(effectResolution.Combat);
+        AdvanceCombat(combat);
 
         var playerActionRecords = CombatMetricsCalculator.CalculateActionRecords(
             combat.Id.Value, combat.TurnNumber,
@@ -132,9 +132,9 @@ public sealed class SubmitCombatActionCommandHandler
         var allActionRecords = new List<CombatActionRecord>();
         allActionRecords.AddRange(playerActionRecords);
 
-        AdvancePastEnemyTurns(effectResolution.Combat);
+        AdvancePastEnemyTurns(combat);
 
-        var finalCombat = effectResolution.Combat;
+        var finalCombat = combat;
         var combatCompleted = finalCombat.Status == CombatStatus.Completed;
         var combatFailed = finalCombat.Status == CombatStatus.Failed;
         RewardOffer? rewardOffer = null;

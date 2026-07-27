@@ -122,14 +122,14 @@ public sealed class UseCombatSkillCommandHandler
             validationResult.Targets);
 
         // ATB: the actor spends its gauge and enters recovery (heavier skills recover slower).
-        effectResolution.Combat.RegisterActionTaken(
+        run.ActiveCombat.RegisterActionTaken(
             validationResult.Actor!.Id.Value,
             AtbActionMath.RecoveryTicks(validationResult.Skill!.BasePower, validationResult.Actor!.BaseStatSnapshot.Recovery));
 
         var mirrorLogEntries = ResolveMirrorCopyIfTriggered(
-            effectResolution.Combat, validationResult.Actor!, validationResult.Skill!);
+            run.ActiveCombat, validationResult.Actor!, validationResult.Skill!);
 
-        var progressionLogEntries = AdvanceCombat(effectResolution.Combat, now.UtcDateTime);
+        var progressionLogEntries = AdvanceCombat(run.ActiveCombat, now.UtcDateTime);
 
         var allActionRecords = new List<CombatActionRecord>();
         var playerActionRecords = CombatMetricsCalculator.CalculateActionRecords(
@@ -145,7 +145,7 @@ public sealed class UseCombatSkillCommandHandler
         // ATB: the player's action resolves the player's turn only. Enemy turns are
         // driven by the client in real time via AdvanceCombatTurnCommand as gauges fill.
         var enemyTurnLogEntries = Array.Empty<CombatLogEntryDto>();
-        var finalCombat = effectResolution.Combat;
+        var finalCombat = run.ActiveCombat;
         var combatCompleted = finalCombat.Status == CombatStatus.Completed;
         var combatFailed = finalCombat.Status == CombatStatus.Failed;
 

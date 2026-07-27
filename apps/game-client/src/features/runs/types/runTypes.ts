@@ -1,3 +1,9 @@
+/**
+ * Système de combat d'une run : barre de temps continue, ou tactique tour par tour sur la
+ * grille d'exploration. Choisi au lancement, fixe pour toute la durée de la run.
+ */
+export type RunCombatMode = 'Atb' | 'Tactical';
+
 /** The 5 named combat danger tiers (see backend RiskTier). Only meaningful for
  * combat-flavored nodes (Combat/Elite/Rare/RoomBoss/FinalBoss) — null otherwise. */
 export type CombatRiskTier = 'Calme' | 'Tendu' | 'Dangereux' | 'Perilleux' | 'Fatal';
@@ -164,6 +170,12 @@ export type RunDto = {
   journalEnabled?: boolean;
   /** Auto-written journal entries for this run, one per event, tagged with the room they happened in. */
   journalEntries?: RunJournalEntryDto[] | null;
+  /**
+   * Système de combat de la run, choisi à son lancement et fixe pour sa durée (cf. SFD v2, §3).
+   * Décide quel écran de combat monter. Absent sur les runs antérieures au choix : les traiter
+   * comme 'Atb', qui était alors le seul système.
+   */
+  combatMode?: RunCombatMode;
   /** true when the player owns the "Déni permanent" permanent item — gates the law-revoke UI. */
   lawDenialEnabled?: boolean;
   /** true when law denial is currently usable: owned, and cooldown (10 rooms) has elapsed. */

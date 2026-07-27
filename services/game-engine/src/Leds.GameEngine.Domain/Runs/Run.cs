@@ -84,6 +84,12 @@ public sealed class Run
     public bool LawDenialEnabled { get; private set; }
 
     /// <summary>
+    /// Le système de combat de cette run — ATB ou tactique — choisi à son lancement et fixe
+    /// pour toute sa durée (cf. SFD v2, §3). L'exploration est identique dans les deux cas.
+    /// </summary>
+    public RunCombatMode CombatMode { get; private set; }
+
+    /// <summary>
     /// <see cref="CurrentRoomIndex"/> at which "Déni permanent" was last used this run, or
     /// <c>null</c> if never used. Gates <see cref="CanUseLawDenial"/> via <see cref="LawDenialCooldownRooms"/>.
     /// </summary>
@@ -211,6 +217,7 @@ public sealed class Run
         int guardBonusPercent = 0,
         bool journalEnabled = false,
         bool lawDenialEnabled = false,
+        RunCombatMode combatMode = RunCombatMode.Atb,
         int? lawDenialLastUsedRoomIndex = null,
         int reputationGainBonusPercent = 0,
         bool himLitProtectionEnabled = false,
@@ -253,6 +260,7 @@ public sealed class Run
         GuardBonusPercent = guardBonusPercent;
         JournalEnabled = journalEnabled;
         LawDenialEnabled = lawDenialEnabled;
+        CombatMode = combatMode;
         LawDenialLastUsedRoomIndex = lawDenialLastUsedRoomIndex;
         ReputationGainBonusPercent = reputationGainBonusPercent;
         HimLitProtectionEnabled = himLitProtectionEnabled;
@@ -683,6 +691,7 @@ public sealed class Run
         int guardBonusPercent = 0,
         bool journalEnabled = false,
         bool lawDenialEnabled = false,
+        RunCombatMode combatMode = RunCombatMode.Atb,
         int reputationGainBonusPercent = 0,
         bool himLitProtectionEnabled = false,
         int healingBonusPercent = 0,
@@ -787,6 +796,7 @@ public sealed class Run
             guardBonusPercent: guardBonusPercent,
             journalEnabled: journalEnabled,
             lawDenialEnabled: lawDenialEnabled,
+            combatMode: combatMode,
             reputationGainBonusPercent: reputationGainBonusPercent,
             himLitProtectionEnabled: himLitProtectionEnabled,
             healingBonusPercent: healingBonusPercent,
@@ -2485,6 +2495,7 @@ public sealed class Run
         bool journalEnabled = false,
         IEnumerable<RunJournalEntry>? journalEntries = null,
         bool lawDenialEnabled = false,
+        RunCombatMode combatMode = RunCombatMode.Atb,
         int? lawDenialLastUsedRoomIndex = null,
         int reputationGainBonusPercent = 0,
         bool himLitProtectionEnabled = false,
@@ -2499,7 +2510,7 @@ public sealed class Run
     {
         var firstRoom = rooms.First();
 
-        var run = new Run(id, playerId, seed, generatorVersion, markovMatrixVersion, status, firstRoom, startedAt, maxHp, currentHp, attack, defense, speed, focus, currentRoomIndex, activeCombatId, pendingRewardOfferId, runItemCapacity, typedDamageReductions, hitChanceBonusPercent, dotDurationReductionPercent, dotDamageReductionPercent, dotDamageBonusPercent, magicDamageBonusPercent, magicDamageReductionPercent, criticalChanceBonusPercent, guardBonusPercent, journalEnabled, lawDenialEnabled, lawDenialLastUsedRoomIndex, reputationGainBonusPercent, himLitProtectionEnabled, healingBonusPercent, caliceInfiniEnabled, caliceInfiniLastUsedRoomIndex, magicAttack, magicDefense, lastPromulgationFloorIndex, forgottenSkillKey);
+        var run = new Run(id, playerId, seed, generatorVersion, markovMatrixVersion, status, firstRoom, startedAt, maxHp, currentHp, attack, defense, speed, focus, currentRoomIndex, activeCombatId, pendingRewardOfferId, runItemCapacity, typedDamageReductions, hitChanceBonusPercent, dotDurationReductionPercent, dotDamageReductionPercent, dotDamageBonusPercent, magicDamageBonusPercent, magicDamageReductionPercent, criticalChanceBonusPercent, guardBonusPercent, journalEnabled, lawDenialEnabled, combatMode, lawDenialLastUsedRoomIndex, reputationGainBonusPercent, himLitProtectionEnabled, healingBonusPercent, caliceInfiniEnabled, caliceInfiniLastUsedRoomIndex, magicAttack, magicDefense, lastPromulgationFloorIndex, forgottenSkillKey);
         foreach (var room in rooms.Skip(1))
         {
             run._rooms.Add(room);

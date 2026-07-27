@@ -19,7 +19,7 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
     }
 
     public CombatSkillEffectResolution Resolve(
-        Combat combat,
+        ICombatContext combat,
         Combatant actor,
         CombatantSkill skill,
         IReadOnlyCollection<Combatant> targets)
@@ -96,7 +96,7 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
 
         // Apply the durable status(es) (poison/regen/buff/control) on top, if declared.
         ApplySkillStatus(combat, actor, skill, targets, logEntries, attackLanded, hitTargetIds);
-        return new CombatSkillEffectResolution(logEntries, combat);
+        return new CombatSkillEffectResolution(logEntries);
     }
 
     private static void ConsumeResources(Combatant actor, CombatantSkill skill)
@@ -123,7 +123,7 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
             : Math.Max(0, (int)Math.Round(baseCost * (1.0 - reductionPercent / 100.0)));
 
     private static void ResolveHeal(
-        Combat combat,
+        ICombatContext combat,
         Combatant actor,
         CombatantSkill skill,
         IReadOnlyCollection<Combatant> targets,
@@ -213,7 +213,7 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
     // copiés, pas les StatusEffects qu'ils portent (ex. un debuff attaché à un sort
     // copié ne s'appliquerait pas) — non modélisé pour l'instant.
     private static void ResolveCopySkills(
-        Combat combat,
+        ICombatContext combat,
         Combatant actor,
         CombatantSkill skill,
         IReadOnlyCollection<Combatant> targets,
@@ -250,7 +250,7 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
     // BasePower encode ici un pourcentage (25 = +25%), même degré de liberté
     // contextuelle par EffectType que Heal ("% des PV max")/Création ("nb de tours").
     private static void ResolveExtendDotDuration(
-        Combat combat,
+        ICombatContext combat,
         Combatant actor,
         CombatantSkill skill,
         IReadOnlyCollection<Combatant> targets,
@@ -286,7 +286,7 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
     }
 
     private static void ApplySkillStatus(
-        Combat combat,
+        ICombatContext combat,
         Combatant actor,
         CombatantSkill skill,
         IReadOnlyCollection<Combatant> targets,
@@ -342,14 +342,14 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
                 if (target.Side != actor.Side)
                 {
                     // Momentum: landing a debuff on an opponent earns a tempo boost.
-                    actor.GainTempoMomentum(TempoMomentumCalibration.DebuffAppliedGainPerMille);
+                    combat.AwardTempoMomentum(actor, TempoMomentumCalibration.DebuffAppliedGainPerMille);
                 }
             }
         }
     }
 
     private static void ApplyStatusEffectSpec(
-        Combat combat, CombatantSkill skill, SkillStatusEffectSpec spec, Combatant recipient, Combatant caster)
+        ICombatContext combat, CombatantSkill skill, SkillStatusEffectSpec spec, Combatant recipient, Combatant caster)
     {
         // Equipment-driven DOT resistance (e.g. Main de Khasma) shortens the
         // duration of an incoming DamageOverTime effect; the per-tick damage
@@ -434,7 +434,7 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
 
     /// <returns>The ids of every target actually struck (not missed) by this skill.</returns>
     private HashSet<Guid> ResolveDamage(
-        Combat combat,
+        ICombatContext combat,
         Combatant actor,
         CombatantSkill skill,
         IReadOnlyCollection<Combatant> targets,
@@ -542,7 +542,7 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
                     [target]));
 
                 // Momentum: an aggressive, impactful hit earns the actor a faster follow-up.
-                actor.GainTempoMomentum(TempoMomentumCalibration.CriticalHitGainPerMille);
+                combat.AwardTempoMomentum(actor, TempoMomentumCalibration.CriticalHitGainPerMille);
             }
 
             AddEffectivenessLog(actor, skill, target, outcome.Effectiveness, logEntries);
@@ -583,7 +583,7 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
                 if (guardBefore > 0 && target.Guard == 0)
                 {
                     // Momentum: breaking through a target's guard entirely earns a tempo boost.
-                    actor.GainTempoMomentum(TempoMomentumCalibration.GuardBreakGainPerMille);
+                    combat.AwardTempoMomentum(actor, TempoMomentumCalibration.GuardBreakGainPerMille);
                 }
             }
 
@@ -613,7 +613,7 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
             else if (staggers)
             {
                 // Interruption: push the target's ATB gauge back (bigger if it was charging).
-                combat.ApplyAtbInterruption(target.Id.Value);
+                combat.InterruptAction(target.Id.Value);
                 logEntries.Add(CreateLog(
                     "AtbStagger",
                     $"{target.DisplayName}'s momentum is broken.",
@@ -749,7 +749,7 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
     /// +20% ; les attaques et sorts de zone infligent -20%", both sides. Mono-target =
     /// SingleEnemy/SingleAlly; area-of-effect = AllEnemies/AllAllies. Any other
     /// targeting type (e.g. Self) is neither and stays at 1.0.</summary>
-    private static double DuelDamageAsymmetryMultiplier(Combat combat, CombatantSkill skill)
+    private static double DuelDamageAsymmetryMultiplier(ICombatContext combat, CombatantSkill skill)
     {
         if (!combat.DuelDamageAsymmetryEnabled)
             return 1.0;
@@ -821,7 +821,7 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
         logEntries.Add(CreateLog(type, message, actor, skill, [target]));
     }
 
-    private static string BuildCritSeed(Combat combat, Combatant actor, Combatant target, CombatantSkill skill)
+    private static string BuildCritSeed(ICombatContext combat, Combatant actor, Combatant target, CombatantSkill skill)
     {
         return string.Join(
             '|',
@@ -833,7 +833,7 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
             skill.Key);
     }
 
-    private static string BuildHitSeed(Combat combat, Combatant actor, Combatant target, CombatantSkill skill)
+    private static string BuildHitSeed(ICombatContext combat, Combatant actor, Combatant target, CombatantSkill skill)
     {
         return string.Join(
             '|',

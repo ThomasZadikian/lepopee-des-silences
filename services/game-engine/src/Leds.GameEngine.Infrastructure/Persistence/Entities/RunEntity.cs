@@ -32,6 +32,11 @@ public sealed class RunEntity
     public int GuardBonusPercent { get; set; }
     public bool JournalEnabled { get; set; }
     public bool LawDenialEnabled { get; set; }
+
+    /// <summary>Système de combat de la run (« Atb » ou « Tactical »), fixe pour sa durée.
+    /// Stocké en texte, comme <see cref="Status"/> : lisible en base et robuste à une
+    /// réorganisation de l'enum.</summary>
+    public string CombatMode { get; set; } = string.Empty;
     public int? LawDenialLastUsedRoomIndex { get; set; }
     public int? LastPromulgationFloorIndex { get; set; }
     public string? ForgottenSkillKey { get; set; }

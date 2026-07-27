@@ -183,6 +183,7 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
             guardBonusPercent: effectiveStats.GuardBonusPercent,
             journalEnabled: journalEnabled,
             lawDenialEnabled: lawDenialEnabled,
+            combatMode: request.CombatMode,
             reputationGainBonusPercent: reputationGainBonusPercent,
             himLitProtectionEnabled: himLitProtectionEnabled,
             healingBonusPercent: healingBonusPercent,

@@ -66,17 +66,22 @@ est déjà correctement isolé et reste intouché.
 
 ## 3. Sélection du mode de combat
 
-> ⚠️ **Seul point non tranché de cette SFD.** Le mécanisme de choix de la v1 s'appuyait sur un
-> sélecteur au lancement de run qui a depuis été supprimé.
+> ✅ **Tranché et implémenté.** Champ `Run.CombatMode` (`Atb` | `Tactical`), choisi au lancement
+> de la run et fixe pour toute sa durée.
 
-**Recommandation** : un champ `Run.CombatMode` (`Atb` | `Tactical`), choisi au lancement de la
-run et fixe pour toute sa durée. C'est un **nouveau** champ, distinct du `RunExplorationMode`
-supprimé — l'exploration reste uniformément sur grille dans les deux cas, seuls les combats
-diffèrent. Aucun changement de mode en cours de run.
+C'est un **nouveau** champ, distinct du `RunExplorationMode` supprimé : l'exploration reste
+uniformément sur grille dans les deux cas.
 
-Toute la couche hors-combat (grille d'exploration, nœuds, brouillard, fouille, récompenses,
-PNJ, marchands, Lois, réputation, monnaie, Éclats) est **rigoureusement identique** dans les
-deux modes.
+Câblage livré : `RunCombatMode` (domaine) → `Run.StartNew` / `Rehydrate` → colonne `combat_mode`
+(migration `AddRunCombatMode`, texte, défaut `Atb`) → `StartRunCommand` → `POST /runs` →
+`RunDto.CombatMode`. Omettre le champ donne l'ATB, le système historique.
+
+Les runs antérieures à ce choix se relisent en ATB — la valeur par défaut de la colonne le dit
+explicitement, et la relecture retombe sur `Atb` pour toute valeur inconnue.
+
+Aucun changement de mode en cours de run n'est prévu. Toute la couche hors-combat (grille
+d'exploration, nœuds, brouillard, fouille, récompenses, PNJ, marchands, Lois, réputation,
+monnaie, Éclats) est **rigoureusement identique** dans les deux modes.
 
 ---
 
@@ -322,7 +327,6 @@ n'est introduite.
 
 ## 18. Points à trancher à l'implémentation
 
-- Mécanisme de sélection du mode de combat (§3) — **le seul point de conception encore ouvert**.
 - Plafond de 5 ennemis : global ou dépendant du mode (§5).
 - Coefficients du bonus de mouvement dérivé de la Vitesse.
 - Tables `BALANCE KNOB` : surface et sévérité de terrain par palier, nombre d'ennemis par palier.
@@ -335,9 +339,11 @@ n'est introduite.
 
 ## 19. Ordre de chantier recommandé
 
-1. **Extraction du noyau de résolution partagé** hors de `Combat.cs` / `Combatant.cs`.
-   *Prérequis de tout le reste. Aucun changement de comportement attendu côté ATB — la suite de
-   tests existante est le filet.*
+1. ~~**Extraction du noyau de résolution partagé** hors de `Combat.cs` / `Combatant.cs`.~~
+   ✅ **Livré.** `ICombatContext` (domaine) porte les 14 membres que la résolution consomme, plus
+   deux crochets d'ordonnancement (`InterruptAction`, `AwardTempoMomentum`) qu'un moteur à ordre de
+   tour fixe neutralise. `Combat` l'implémente ; `CombatSkillEffectResolver` ne connaît plus que le
+   contrat. Aucun changement de comportement côté ATB.
 2. Passage à 4 personnages (transverse ATB + tactique) et extension de l'échelle d'ennemis.
 3. Agrégat `TacticalCombat` : initiative, économie d'action, état de grille.
 4. Vidage/restauration des nœuds au chargement et à la sortie du combat.

@@ -27,6 +27,7 @@ using Leds.GameEngine.Application.Runs.SyncPartySkills;
 using Leds.GameEngine.Application.Runs.SyncPartyStats;
 using Leds.GameEngine.Application.Runs.UseRunItem;
 using MediatR;
+using Leds.GameEngine.Domain.Runs;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Leds.GameEngine.Api.Controllers;
@@ -49,7 +50,7 @@ public sealed class RunsController : ControllerBase
         [FromBody] StartRunRequest request,
         CancellationToken cancellationToken)
     {
-        var command = new StartRunCommand(request.PlayerId);
+        var command = new StartRunCommand(request.PlayerId, request.CombatMode);
 
         var response = await _sender.Send(command, cancellationToken);
 
@@ -444,7 +445,13 @@ public sealed class RunsController : ControllerBase
     }
 }
 
-public sealed record StartRunRequest(Guid PlayerId);
+/// <summary>
+/// Lance une run. <c>CombatMode</c> fixe le système de combat pour toute sa durée : « Atb »
+/// (défaut, système historique) ou « Tactical ». Omettre le champ revient à choisir l'ATB.
+/// </summary>
+public sealed record StartRunRequest(
+    Guid PlayerId,
+    RunCombatMode CombatMode = RunCombatMode.Atb);
 
 public sealed record MovePartyRequest(int TargetX, int TargetY);
 

@@ -211,8 +211,21 @@ describe('useRunStore actions', () => {
 
     await store.startRun();
 
-    expect(runApi.startRun).toHaveBeenCalledWith(expect.any(String));
+    // Sans mode explicite, on n'en impose aucun : le serveur retient l'ATB, système historique.
+    expect(runApi.startRun).toHaveBeenCalledWith(expect.any(String), undefined);
     expect(store.currentRun?.id).toBe('run-1');
+  });
+
+  it('startRun forwards the chosen combat mode', async () => {
+    const store = useRunStore();
+
+    vi.mocked(runApi.startRun).mockResolvedValue({
+      run: { id: 'run-1', status: 'Active', currentRoom: {} },
+    } as any);
+
+    await store.startRun('Tactical');
+
+    expect(runApi.startRun).toHaveBeenCalledWith(expect.any(String), 'Tactical');
   });
 
   it('clearCurrentRun resets all run state', () => {

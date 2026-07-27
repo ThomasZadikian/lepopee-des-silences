@@ -48,6 +48,7 @@ public sealed record RunDto(
     bool JournalEnabled = false,
     IReadOnlyCollection<RunJournalEntryDto>? JournalEntries = null,
     bool LawDenialEnabled = false,
+    string CombatMode = "Atb",
     bool CanUseLawDenial = false,
     bool CaliceInfiniEnabled = false,
     bool CanUseCaliceInfini = false)
@@ -96,6 +97,7 @@ public sealed record RunDto(
             JournalEnabled: run.JournalEnabled,
             JournalEntries: run.JournalEntries.Select(RunJournalEntryDto.FromDomain).ToArray(),
             LawDenialEnabled: run.LawDenialEnabled,
+            CombatMode: run.CombatMode.ToString(),
             CanUseLawDenial: run.CanUseLawDenial,
             CaliceInfiniEnabled: run.CaliceInfiniEnabled,
             CanUseCaliceInfini: run.CanUseCaliceInfini);

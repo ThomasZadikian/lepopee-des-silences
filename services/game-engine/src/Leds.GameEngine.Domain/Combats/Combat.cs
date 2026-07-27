@@ -8,7 +8,13 @@ using Leds.GameEngine.Domain.Runs;
 
 namespace Leds.GameEngine.Domain.Combats;
 
-public sealed class Combat
+/// <summary>
+/// L'agrégat de combat ATB : barre de temps continue, tempo vivant, coût d'investissement,
+/// momentum. Il implémente <see cref="ICombatContext"/> pour que le noyau de résolution partagé
+/// puisse travailler dessus sans rien connaître de son ordonnancement — l'agrégat tactique
+/// implémentera le même contrat, en frère et non en héritier (cf. SFD v2, §2).
+/// </summary>
+public sealed class Combat : ICombatContext
 {
     private Combat(
         CombatId id,
@@ -611,6 +617,19 @@ public sealed class Combat
 
         target.SetAtbGauge(AtbActionMath.Interrupt(target.AtbGauge));
     }
+
+    /// <inheritdoc />
+    /// <remarks>Crochet d'ordonnancement : en ATB, interrompre revient à repousser la jauge.</remarks>
+    void ICombatContext.InterruptAction(Guid targetId) => ApplyAtbInterruption(targetId);
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// Crochet d'ordonnancement : le momentum est propre au tempo ATB. Il transite par le contexte
+    /// plutôt que d'être appelé directement sur le combattant, pour qu'un moteur à ordre de tour
+    /// fixe puisse le neutraliser sans que le noyau de résolution ait à distinguer les deux cas.
+    /// </remarks>
+    void ICombatContext.AwardTempoMomentum(Combatant combatant, int amountPerMille)
+        => combatant.GainTempoMomentum(amountPerMille);
 
     /// <summary>
     /// "Time flows" while the player holds: advances the clock by a fixed delta,
