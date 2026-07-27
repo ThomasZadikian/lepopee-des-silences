@@ -85,3 +85,46 @@ export function isoUnit(p: {
 export function projectToScreen(x: number, y: number, p: {
   canvasWidth: number; canvasHeight: number; gridWidth: number; gridHeight: number;
 }): { screenX: number; screenY: number };
+
+// ── Couche combat tactique (lot design_handoff_combat) ────────────────────────────────
+// Le .d.ts livré enveloppait tout dans `declare module './tilecraft' { … }`, ce qui prive
+// le fichier de tout export de premier niveau : TypeScript ne le voit alors plus comme le
+// module de déclaration de tilecraft.js ("File is not a module", TS2306). Les déclarations
+// sont donc reportées ici au format du dépôt — export direct, sans wrapper.
+
+export type RiskTier = {
+  label: string; accent: string; enemies: number; fog: number; ambient: number; grade: number;
+};
+export const RISK_TIERS: Record<string, RiskTier>;
+export const RISK_KEYS: string[];
+export function riskTier(key: string): RiskTier;
+
+export const HIGHLIGHT_VARIANTS: string[];
+export const ALLY_RIM: string;
+export const ENEMY_RIM: string;
+export const ALLY_ROLES: string[];
+
+/** Désaturation du décor : à appeler APRÈS les tuiles, AVANT les surbrillances et les unités. */
+export function drawCombatGrade(
+  ctx: CanvasRenderingContext2D, w: number, h: number, amount?: number, tint?: string,
+): void;
+export function drawUnitRing(
+  ctx: CanvasRenderingContext2D, dx: number, dy: number, dw: number, dh: number,
+  options?: { side?: 'ally' | 'enemy'; hp?: number; active?: boolean; downed?: boolean; elevation?: number },
+  t?: number,
+): void;
+export function drawActionPips(
+  ctx: CanvasRenderingContext2D, cx: number, cy: number, moved: boolean, acted: boolean, t?: number,
+): void;
+export function drawDissolveFx(
+  ctx: CanvasRenderingContext2D, dx: number, dy: number, dw: number, dh: number,
+  p: number, color?: string, elevation?: number,
+): void;
+export function drawDeployFx(
+  ctx: CanvasRenderingContext2D, dx: number, dy: number, dw: number, dh: number,
+  p: number, color?: string, elevation?: number,
+): void;
+export function drawImpactFx(
+  ctx: CanvasRenderingContext2D, dx: number, dy: number, dw: number, dh: number,
+  p: number, color?: string, elevation?: number,
+): void;

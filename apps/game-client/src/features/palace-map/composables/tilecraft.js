@@ -1057,13 +1057,10 @@ function paintMass(ctx, poly, th, R, o = {}) {
   ctx.stroke(path);
 }
 
-function obstacleSilhouette(kind, R, level = TILE.MAX) {
+function obstacleSilhouette(kind, R, elev = TILE.MAX) {
   const cx = TILE.W / 2;
-  // Assise sur la face du dessus de SA case. Cette valeur était figée à TILE.MAX, ce qui allait
-  // de pair avec un socle lui aussi toujours cuit à TILE.MAX ; maintenant que le socle suit
-  // l'élévation réelle (cf. bakeObstacle), la masse doit suivre le même palier, sinon elle
-  // flotte de (TILE.MAX - level) * TILE.STEP px au-dessus de sa propre tuile.
-  const base = centerY(level) + 4;
+  // Assis sur la face du dessus de SA case, pas sur celle d'un socle imaginaire à TILE.MAX.
+  const base = centerY(Math.max(0, Math.min(TILE.MAX, elev))) + 4;
   const P = (x, y) => ({ x, y });
   switch (kind) {
     case 'monolith':
@@ -1177,9 +1174,10 @@ function wallKind(th, variant) {
   return list[((variant | 0) % list.length + list.length) % list.length];
 }
 
-function bakeObstacle(name, variant, grain, elevation) {
+function bakeObstacle(name, variant, grain, elevation = 0) {
   const th = theme(name);
   const kind = wallKind(th, variant);
+  const elev = Math.max(0, Math.min(TILE.MAX, elevation));
   const R = makeRng(hashSeed('wall:' + name + ':' + kind));
   // Même toile haute que les décors : une silhouette de mur monte bien au-dessus de la
   // tuile et serait tronquée à plat sur la toile de sol. À blitter avec le rect "prop".
@@ -1188,36 +1186,29 @@ function bakeObstacle(name, variant, grain, elevation) {
   if (!ctx) return cv;
   ctx.translate(0, PROP_EXTRA_H);
 
-  // ⚠ DIVERGENCE ASSUMÉE vis-à-vis du handoff — à reporter à chaque rafraîchissement.
-  // La version livrée cuisait le socle à `TILE.MAX` en toutes circonstances ("un mur ne doit
-  // jamais paraître plus bas que le sol voisin"). Effet de bord : un obstacle posé sur une
-  // case de niveau 0 recevait quand même un piédestal de trois paliers qui n'existe nulle
-  // part dans le terrain, donc TOUS les obstacles lisaient comme des tours — y compris les
-  // silhouettes délibérément basses du moteur (éboulis, rocher, tronc couché), qui ne
-  // pouvaient jamais jouer leur rôle de simple barrage au sol.
-  // Le socle suit désormais l'élévation réelle de la case. La préoccupation d'origine reste
-  // traitée, mais là où elle appartient : l'ordre de tri, qui garde les obstacles à
-  // MAX_ELEVATION côté plan de dessin, donc un mur ne passe jamais derrière un sol voisin.
-  const level = Math.max(0, Math.min(TILE.MAX, elevation | 0));
-  paintRisers(ctx, level, th, R, { grain });
-  const c = corners(level);
+  // ⚠ DIVERGENCE ASSUMÉE vis-à-vis des premiers lots — à reporter à chaque rafraîchissement.
+  // Le socle suit l'ÉLÉVATION RÉELLE de la case. Le cuire toujours à TILE.MAX donnait un
+  // piédestal de trois paliers à tout obstacle posé au niveau 0 : tout lisait comme une tour,
+  // et les silhouettes basses (éboulis, rocher, tronc couché) perdaient leur rôle de barrage.
+  paintRisers(ctx, elev, th, R, { grain });
+  const c = corners(elev);
   ctx.save();
-  ctx.clip(diamondPath(level, 0.5));
+  ctx.clip(diamondPath(elev, 0.5));
   const g = ctx.createLinearGradient(c.left.x, c.top.y, c.right.x, c.bottom.y);
   g.addColorStop(0, rgba(shade(th.riser, 0.14), 1));
   g.addColorStop(1, rgba(th.riserDeep, 1));
-  ctx.fillStyle = g; ctx.fill(diamondPath(level, -1));
+  ctx.fillStyle = g; ctx.fill(diamondPath(elev, -1));
   speckle(ctx, c.cx - c.hw, c.cy - c.hh, TILE.W, TILE.H, R, Math.round(320 * grain), th.glow, '#000000');
   ctx.restore();
   ctx.strokeStyle = rgba(th.glow, 0.18); ctx.lineWidth = 1.6;
-  ctx.stroke(diamondPath(level));
+  ctx.stroke(diamondPath(elev));
 
   // Halo froid derrière la masse : détache la silhouette du fond, même en salle sombre.
   const sty = WALL_STYLE[kind] ?? { striation: 'masonry' };
   ctx.save();
   ctx.shadowColor = rgba(th.accent, 0.5);
   ctx.shadowBlur = 16;
-  for (const poly of obstacleSilhouette(kind, R, level)) paintMass(ctx, poly, th, R, { rim: 0.3, ...sty });
+  for (const poly of obstacleSilhouette(kind, R, elev)) paintMass(ctx, poly, th, R, { rim: 0.3, ...sty });
   ctx.restore();
   return cv;
 }
@@ -1854,11 +1845,18 @@ function bakeProp(name, propKind, grain) {
 }
 
 // ── Surbrillances de gameplay (couche séparée) ───────────────────────────────────────
+// Chaque variante doit se lire sans sa couleur : remplissage, hachure, chevron ou croix.
+// Deux variantes qui ne diffèrent que par la teinte se confondent dès que la salle est chaude.
 const HL = {
   move: { col: '#a6c8ff', fill: 0.16, line: 0.7 },
-  attack: { col: '#ff9b86', fill: 0.18, line: 0.75 },
+  attack: { col: '#ff9b86', fill: 0.14, line: 0.75 },
   cursor: { col: '#ffd98a', fill: 0.10, line: 0.95 },
   path: { col: '#ffe9b8', fill: 0.26, line: 0.5 },
+  aoe: { col: '#ff6a4a', fill: 0.36, line: 0.95 },
+  threat: { col: '#d24a5e', fill: 0, line: 0.5 },
+  blocked: { col: '#7d7896', fill: 0.09, line: 0.55 },
+  height: { col: '#7ef0d0', fill: 0.11, line: 0.8 },
+  occupied: { col: '#9aa2c4', fill: 0.05, line: 0.4 },
 };
 function bakeHighlight(variant, elev) {
   const spec = HL[variant] ?? HL.move;
@@ -1867,17 +1865,35 @@ function bakeHighlight(variant, elev) {
   if (!ctx) return cv;
   const c = corners(elev);
   const p = diamondPath(elev, 3);
-  const g = ctx.createLinearGradient(c.top.x, c.top.y, c.bottom.x, c.bottom.y);
-  g.addColorStop(0, rgba(spec.col, spec.fill * 1.5));
-  g.addColorStop(1, rgba(spec.col, spec.fill * 0.4));
-  ctx.fillStyle = g;
-  ctx.fill(p);
+  if (spec.fill > 0) {
+    const g = ctx.createLinearGradient(c.top.x, c.top.y, c.bottom.x, c.bottom.y);
+    g.addColorStop(0, rgba(spec.col, spec.fill * 1.5));
+    g.addColorStop(1, rgba(spec.col, spec.fill * 0.4));
+    ctx.fillStyle = g;
+    ctx.fill(p);
+  }
+  // Menace : hachure et non aplat. Une case tenue par l'ennemi n'est pas une case offerte —
+  // elle ne doit jamais avoir la même matière qu'une case de déplacement.
+  if (variant === 'threat') {
+    ctx.save();
+    ctx.clip(p);
+    for (let i = -TILE.W; i < TILE.W; i += 8) {
+      ctx.beginPath();
+      ctx.moveTo(c.cx + i, c.cy - TILE.H);
+      ctx.lineTo(c.cx + i + TILE.H * 2, c.cy + TILE.H);
+      ctx.strokeStyle = rgba(spec.col, 0.3);
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
   ctx.save();
-  ctx.shadowColor = rgba(spec.col, 0.8);
-  ctx.shadowBlur = 10;
+  ctx.shadowColor = rgba(spec.col, variant === 'occupied' ? 0.25 : 0.8);
+  ctx.shadowBlur = variant === 'occupied' ? 4 : 10;
   ctx.strokeStyle = rgba(spec.col, spec.line);
-  ctx.lineWidth = variant === 'cursor' ? 2.6 : 1.8;
+  ctx.lineWidth = (variant === 'cursor' || variant === 'aoe') ? 2.6 : 1.8;
   if (variant === 'cursor') ctx.setLineDash([9, 6]);
+  if (variant === 'threat') ctx.setLineDash([5, 4]);
   ctx.stroke(p);
   ctx.restore();
   if (variant === 'cursor') {
@@ -1886,8 +1902,36 @@ function bakeHighlight(variant, elev) {
       ctx.beginPath(); ctx.arc(c[k].x, c[k].y, 2.4, 0, Math.PI * 2); ctx.fill();
     }
   }
+  if (variant === 'aoe') {
+    // Double contour : l'impact se distingue de la portée même en pleine lumière de forge.
+    ctx.strokeStyle = rgba('#ffe0d0', 0.6);
+    ctx.lineWidth = 1.2;
+    ctx.stroke(diamondPath(elev, 15));
+  }
+  if (variant === 'blocked') {
+    ctx.strokeStyle = rgba('#d5d0e8', 0.7);
+    ctx.lineWidth = 2.4; ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(c.cx - 13, c.cy - 7); ctx.lineTo(c.cx + 13, c.cy + 7);
+    ctx.moveTo(c.cx + 13, c.cy - 7); ctx.lineTo(c.cx - 13, c.cy + 7);
+    ctx.stroke();
+  }
+  if (variant === 'height') {
+    // Trois chevrons montants : le bonus de hauteur se lit comme une direction, pas une couleur.
+    for (let i = 0; i < 3; i++) {
+      const yy = c.cy + 7 - i * 7;
+      ctx.beginPath();
+      ctx.moveTo(c.cx - 10, yy); ctx.lineTo(c.cx, yy - 5.5); ctx.lineTo(c.cx + 10, yy);
+      ctx.strokeStyle = rgba(spec.col, 0.8 - i * 0.2);
+      ctx.lineWidth = 2; ctx.lineJoin = 'round';
+      ctx.stroke();
+    }
+  }
   return cv;
 }
+
+/** Variantes de surbrillance disponibles, dans l'ordre de la grammaire de lecture. */
+export const HIGHLIGHT_VARIANTS = Object.keys(HL);
 
 function bakeParty(elev) {
   const cv = makeCanvas(SPRITE_W, SPRITE_H);
@@ -1950,6 +1994,245 @@ function bakeFloor(key, grain) {
 }
 
 // ── Cache ────────────────────────────────────────────────────────────────────────────
+export const ALLY_RIM = '#8fc3ff';
+export const ENEMY_RIM = '#ff5a3c';
+export const ALLY_ROLES = ['guard', 'bruiser', 'skirmisher', 'mystic'];
+
+// Quatre archétypes alliés, opposés point par point les uns aux autres ET au PNJ encapuchonné :
+// il faut pouvoir dire qui est qui à la taille d'une case, de l'autre bout du plateau.
+//   guard       — pavois plein hauteur, casque à fente. Silhouette : rectangle.
+//   bruiser     — épaules énormes, tête enfoncée, hache posée au sol. Silhouette : trapèze.
+//   skirmisher  — penché en avant, cape fendue, deux lames. Silhouette : oblique étroite.
+//   mystic      — fuseau élancé, tête NUE (c'est ce qui le sépare du PNJ), focus en lévitation.
+// Le corps est reteinté par la salle ; le liseré reste le même bleu partout — c'est du signal
+// de camp, pas de l'ambiance. Même règle que le rouge des yeux du bestiaire.
+function bakeUnit(name, role, grain) {
+  const th = theme(name);
+  const R = makeRng(hashSeed('unit:' + name + ':' + role));
+  const cv = makeCanvas(SPRITE_W, PROP_SPRITE_H);
+  const ctx = cv.getContext('2d');
+  if (!ctx) return cv;
+  ctx.translate(0, PROP_EXTRA_H);
+  const cx = TILE.W / 2, base = centerY(0) + 4;
+  const P = (x, y) => ({ x, y });
+  const cloth = mix(th.riser, '#2b3348', 0.62);
+  const clothDeep = shade(cloth, -0.5);
+  const steel = mix(th.riser, '#8d97ad', 0.55);
+  const steelDeep = shade(steel, -0.45);
+  const skin = mix(th.top, '#e8cdb4', 0.7);
+
+  ctx.fillStyle = rgba('#000000', 0.42);
+  ctx.beginPath(); ctx.ellipse(cx, base - 1, 22, 9, 0, 0, Math.PI * 2); ctx.fill();
+
+  const rim = (path, a = 0.5) => {
+    ctx.strokeStyle = rgba(ALLY_RIM, a); ctx.lineWidth = 1.3; ctx.stroke(path);
+  };
+  const legs = (spread, h) => {
+    ctx.save();
+    ctx.shadowColor = rgba('#000000', 0.55); ctx.shadowBlur = 7;
+    paintMass(ctx, [P(cx - spread, base), P(cx - spread + 3, base - h), P(cx - 2, base - h), P(cx - 3, base)], th, R, { base: clothDeep, rim: 0.1 });
+    paintMass(ctx, [P(cx + 3, base), P(cx + 2, base - h), P(cx + spread - 3, base - h), P(cx + spread, base)], th, R, { base: clothDeep, rim: 0.1 });
+    ctx.restore();
+  };
+
+  if (role === 'guard') {
+    legs(13, 26);
+    ctx.save();
+    ctx.shadowColor = rgba('#000000', 0.6); ctx.shadowBlur = 9;
+    paintMass(ctx, [P(cx - 13, base - 24), P(cx - 15, base - 62), P(cx + 14, base - 62), P(cx + 12, base - 24)], th, R, { base: cloth, deep: clothDeep, rim: 0.14 });
+    ctx.restore();
+    // Casque : calotte + fente horizontale unique. Aucune capuche, aucun drapé.
+    const helm = new Path2D();
+    helm.moveTo(cx - 10, base - 60);
+    helm.quadraticCurveTo(cx - 11, base - 80, cx, base - 82);
+    helm.quadraticCurveTo(cx + 11, base - 80, cx + 10, base - 60);
+    helm.closePath();
+    ctx.fillStyle = rgba(steel, 1); ctx.fill(helm); rim(helm, 0.55);
+    ctx.fillStyle = rgba('#05070e', 0.95);
+    ctx.fillRect(cx - 8, base - 71, 16, 3.4);
+    ctx.fillStyle = rgba(ALLY_RIM, 0.5);
+    ctx.fillRect(cx - 8, base - 71, 16, 1.1);
+    // Pavois : la pièce qui porte la silhouette. Devant tout le reste, plein hauteur.
+    const sh = new Path2D();
+    sh.moveTo(cx - 24, base - 74);
+    sh.lineTo(cx + 4, base - 76);
+    sh.lineTo(cx + 6, base - 16);
+    sh.quadraticCurveTo(cx - 10, base - 2, cx - 25, base - 16);
+    sh.closePath();
+    ctx.save();
+    ctx.shadowColor = rgba('#000000', 0.65); ctx.shadowBlur = 10;
+    const sg = ctx.createLinearGradient(cx - 25, 0, cx + 6, 0);
+    sg.addColorStop(0, rgba(shade(steel, 0.16), 1));
+    sg.addColorStop(0.65, rgba(steel, 1));
+    sg.addColorStop(1, rgba(steelDeep, 1));
+    ctx.fillStyle = sg; ctx.fill(sh);
+    ctx.restore();
+    rim(sh, 0.6);
+    ctx.save();
+    ctx.clip(sh);
+    for (let i = 0; i < 5; i++) {
+      ctx.beginPath();
+      ctx.moveTo(cx - 24 + i * 7, base - 76);
+      ctx.lineTo(cx - 22 + i * 7, base - 8);
+      ctx.strokeStyle = rgba('#000000', R2(R, 0.1, 0.24)); ctx.lineWidth = R2(R, 0.8, 1.8);
+      ctx.stroke();
+    }
+    ctx.restore();
+    ctx.beginPath(); ctx.ellipse(cx - 10, base - 45, 7, 9, 0, 0, Math.PI * 2);
+    ctx.fillStyle = rgba(shade(steel, 0.24), 1); ctx.fill();
+    ctx.strokeStyle = rgba(ALLY_RIM, 0.45); ctx.lineWidth = 1.2; ctx.stroke();
+    return cv;
+  }
+
+  if (role === 'bruiser') {
+    legs(16, 24);
+    // Hache : haft en diagonale, fer posé au sol — élargit la silhouette vers le bas-droit.
+    ctx.beginPath();
+    ctx.moveTo(cx + 8, base - 62); ctx.lineTo(cx + 27, base - 2);
+    ctx.strokeStyle = rgba('#3a2a1c', 0.95); ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.stroke();
+    ctx.save();
+    ctx.shadowColor = rgba('#000000', 0.5); ctx.shadowBlur = 6;
+    const axe = new Path2D();
+    axe.moveTo(cx + 10, base - 58);
+    axe.quadraticCurveTo(cx + 30, base - 66, cx + 32, base - 40);
+    axe.quadraticCurveTo(cx + 22, base - 44, cx + 13, base - 50);
+    axe.closePath();
+    ctx.fillStyle = rgba(steel, 1); ctx.fill(axe);
+    ctx.restore();
+    rim(axe, 0.5);
+    ctx.save();
+    ctx.shadowColor = rgba('#000000', 0.62); ctx.shadowBlur = 10;
+    // Torse : très large aux épaules, resserré à la taille. L'inverse exact de la robe du PNJ.
+    paintMass(ctx, [P(cx - 12, base - 22), P(cx - 25, base - 58), P(cx - 18, base - 68),
+      P(cx + 18, base - 68), P(cx + 25, base - 58), P(cx + 12, base - 22)], th, R,
+    { base: cloth, deep: clothDeep, rim: 0.16 });
+    ctx.restore();
+    for (const sx of [-1, 1]) {
+      const pl = new Path2D();
+      pl.moveTo(cx + sx * 15, base - 66);
+      pl.quadraticCurveTo(cx + sx * 30, base - 64, cx + sx * 27, base - 50);
+      pl.quadraticCurveTo(cx + sx * 19, base - 54, cx + sx * 14, base - 58);
+      pl.closePath();
+      ctx.fillStyle = rgba(steel, 1); ctx.fill(pl); rim(pl, 0.45);
+    }
+    // Tête enfoncée entre les épaules : elle dépasse à peine, c'est ce qui fait la masse.
+    ctx.beginPath(); ctx.ellipse(cx, base - 74, 9, 8.5, 0, 0, Math.PI * 2);
+    ctx.fillStyle = rgba(shade(skin, -0.25), 1); ctx.fill();
+    ctx.strokeStyle = rgba(ALLY_RIM, 0.4); ctx.lineWidth = 1.1; ctx.stroke();
+    ctx.fillStyle = rgba('#0a0710', 0.8);
+    ctx.fillRect(cx - 7, base - 77, 14, 2.6);
+    return cv;
+  }
+
+  if (role === 'skirmisher') {
+    // Penché vers l'avant : tout le corps est en biais, aucune verticale.
+    ctx.save();
+    ctx.shadowColor = rgba('#000000', 0.5); ctx.shadowBlur = 7;
+    paintMass(ctx, [P(cx - 12, base), P(cx - 7, base - 24), P(cx - 1, base - 24), P(cx - 4, base)], th, R, { base: clothDeep, rim: 0.1 });
+    paintMass(ctx, [P(cx + 6, base), P(cx + 3, base - 24), P(cx + 10, base - 24), P(cx + 15, base)], th, R, { base: clothDeep, rim: 0.1 });
+    ctx.restore();
+    // Cape courte fendue, qui traîne derrière — donne le sens de la course.
+    const cape = new Path2D();
+    cape.moveTo(cx + 2, base - 58);
+    cape.quadraticCurveTo(cx + 22, base - 46, cx + 26, base - 14);
+    cape.lineTo(cx + 17, base - 20);
+    cape.lineTo(cx + 14, base - 8);
+    cape.lineTo(cx + 8, base - 26);
+    cape.closePath();
+    ctx.fillStyle = rgba(mix(cloth, th.accent, 0.28), 0.92); ctx.fill(cape); rim(cape, 0.35);
+    ctx.save();
+    ctx.shadowColor = rgba('#000000', 0.55); ctx.shadowBlur = 8;
+    paintMass(ctx, [P(cx - 9, base - 22), P(cx - 14, base - 48), P(cx - 6, base - 60),
+      P(cx + 7, base - 58), P(cx + 8, base - 44), P(cx + 6, base - 22)], th, R,
+    { base: cloth, deep: clothDeep, rim: 0.15 });
+    ctx.restore();
+    // Deux lames courtes, tenues basses, en opposition — jamais un bâton.
+    for (const [x0, y0, x1, y1] of [[-13, -40, -25, -18], [9, -44, 21, -30]]) {
+      ctx.beginPath();
+      ctx.moveTo(cx + x0, base + y0); ctx.lineTo(cx + x1, base + y1);
+      ctx.strokeStyle = rgba(shade(steel, 0.2), 0.95); ctx.lineWidth = 2.6; ctx.lineCap = 'round';
+      ctx.stroke();
+      ctx.strokeStyle = rgba(ALLY_RIM, 0.45); ctx.lineWidth = 1; ctx.stroke();
+    }
+    // Tête baissée, masque bas sur le visage, une seule fente d'yeux.
+    ctx.beginPath(); ctx.ellipse(cx - 3, base - 66, 7.5, 8, -0.2, 0, Math.PI * 2);
+    ctx.fillStyle = rgba(clothDeep, 1); ctx.fill();
+    ctx.strokeStyle = rgba(ALLY_RIM, 0.45); ctx.lineWidth = 1.1; ctx.stroke();
+    ctx.fillStyle = rgba(ALLY_RIM, 0.6);
+    ctx.fillRect(cx - 9, base - 68, 12, 1.8);
+    return cv;
+  }
+
+  // mystic — fuseau, tête nue, focus détaché du corps.
+  ctx.save();
+  ctx.shadowColor = rgba('#000000', 0.55); ctx.shadowBlur = 9;
+  const robe = new Path2D();
+  robe.moveTo(cx - 17, base - 1);
+  robe.quadraticCurveTo(cx - 12, base - 36, cx - 8, base - 58);
+  robe.quadraticCurveTo(cx, base - 66, cx + 8, base - 58);
+  robe.quadraticCurveTo(cx + 12, base - 36, cx + 17, base - 1);
+  robe.closePath();
+  const rg = ctx.createLinearGradient(cx - 17, 0, cx + 17, 0);
+  rg.addColorStop(0, rgba(shade(cloth, 0.14), 1));
+  rg.addColorStop(0.66, rgba(cloth, 1));
+  rg.addColorStop(1, rgba(clothDeep, 1));
+  ctx.fillStyle = rg; ctx.fill(robe);
+  ctx.restore();
+  rim(robe, 0.4);
+  ctx.save();
+  ctx.clip(robe);
+  for (let i = 0; i < 6; i++) {
+    const x = cx - 13 + i * 5;
+    ctx.beginPath();
+    ctx.moveTo(x, base - 2);
+    ctx.quadraticCurveTo(x + R2(R, -3, 3), base - 32, x + R2(R, -2, 3), base - 56);
+    ctx.strokeStyle = rgba(R() > 0.5 ? '#000000' : ALLY_RIM, R() > 0.5 ? 0.18 : 0.1);
+    ctx.lineWidth = R2(R, 0.8, 1.7); ctx.stroke();
+  }
+  ctx.restore();
+  // Épaulière asymétrique : casse la symétrie de la robe, éloigne encore du PNJ.
+  const pau = new Path2D();
+  pau.moveTo(cx - 8, base - 58);
+  pau.quadraticCurveTo(cx - 22, base - 56, cx - 18, base - 44);
+  pau.quadraticCurveTo(cx - 12, base - 50, cx - 7, base - 52);
+  pau.closePath();
+  ctx.fillStyle = rgba(steel, 0.95); ctx.fill(pau); rim(pau, 0.45);
+  // Tête NUE — c'est le point de séparation d'avec le PNJ encapuchonné.
+  ctx.beginPath(); ctx.ellipse(cx + 1, base - 68, 6.6, 7.6, 0, 0, Math.PI * 2);
+  ctx.fillStyle = rgba(skin, 1); ctx.fill();
+  ctx.strokeStyle = rgba(ALLY_RIM, 0.4); ctx.lineWidth = 1; ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(cx - 6, base - 73);
+  ctx.quadraticCurveTo(cx + 2, base - 79, cx + 8, base - 70);
+  ctx.quadraticCurveTo(cx + 2, base - 74, cx - 6, base - 73);
+  ctx.fillStyle = rgba(shade(cloth, -0.3), 1); ctx.fill();
+  // Focus en lévitation au-dessus de la paume ouverte : le seul élément détaché du corps.
+  const fx = cx + 19, fy = base - 62;
+  const fg = ctx.createRadialGradient(fx, fy, 0.5, fx, fy, 13);
+  fg.addColorStop(0, rgba('#ffffff', 0.9));
+  fg.addColorStop(0.35, rgba(th.glow, 0.6));
+  fg.addColorStop(1, rgba(th.glow, 0));
+  ctx.fillStyle = fg;
+  ctx.beginPath(); ctx.arc(fx, fy, 13, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = rgba('#fff8e8', 0.95);
+  ctx.beginPath(); ctx.arc(fx, fy, 2.6, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(cx + 9, base - 50);
+  ctx.quadraticCurveTo(cx + 18, base - 54, fx - 1, fy + 7);
+  ctx.strokeStyle = rgba(cloth, 1); ctx.lineWidth = 4.5; ctx.lineCap = 'round'; ctx.stroke();
+  ctx.strokeStyle = rgba(ALLY_RIM, 0.3); ctx.lineWidth = 1.2; ctx.stroke();
+  return cv;
+}
+
+/** Trousse de peinture partagée : `bestiaire.js` peint ses combattants avec exactement les
+ *  mêmes outils que les tuiles et les décors, sinon les jetons se détachent du plateau. */
+export const PAINT = {
+  rgba, mix, shade, paintMass, makeCanvas, centerY, corners, diamondPath,
+  hashSeed, makeRng, R2, theme,
+  TILE, SPRITE_W, SPRITE_H, PROP_SPRITE_H, PROP_EXTRA_H,
+  GROUND_ANCHOR_RATIO, PROP_GROUND_ANCHOR_RATIO,
+};
+
 export function spriteKeyToString(k) {
   switch (k.kind) {
     case 'floor':
@@ -1961,6 +2244,7 @@ export function spriteKeyToString(k) {
     case 'prop': return `p:${k.theme}:${k.prop}`;
     case 'highlight': return `h:${k.variant}:${k.elevation}`;
     case 'party': return `y:${k.elevation}`;
+    case 'unit': return `u:${k.theme}:${k.role}`;
     default: return 'unknown';
   }
 }
@@ -1978,6 +2262,7 @@ export function createTileForge(options = {}) {
       case 'prop': cv = bakeProp(key.theme, key.prop, grain); break;
       case 'highlight': cv = bakeHighlight(key.variant, key.elevation ?? 0); break;
       case 'party': cv = bakeParty(key.elevation ?? 0); break;
+      case 'unit': cv = bakeUnit(key.theme, key.role, grain); break;
       default: cv = bakeFloor(key, grain);
     }
     cache.set(id, cv);
@@ -2457,6 +2742,188 @@ export function drawFogOfWar(ctx, w, h, centers, radius, name, t = 0) {
 /** Rayon de vision par défaut, en pixels écran, pour n cases autour d'une unité. */
 export function visionRadius(cells, isoUnitX) {
   return isoUnitX * (cells + 0.55);
+}
+
+// ── Combat tactique : chrome de grille (100 % runtime, zéro variante de cache) ────────
+
+/** Étalonnage de combat : le décor perd sa saturation pour que les unités et les
+ *  surbrillances dominent. À appeler APRÈS les tuiles et les décors, AVANT les
+ *  surbrillances et les unités — c'est l'ordre qui fait la bascule, pas l'opacité. */
+export function drawCombatGrade(ctx, w, h, amount = 1, tint = '#0b0d1a') {
+  if (amount <= 0) return;
+  ctx.save();
+  ctx.globalCompositeOperation = 'saturation';
+  ctx.globalAlpha = Math.min(1, amount) * 0.82;
+  ctx.fillStyle = '#808080';
+  ctx.fillRect(0, 0, w, h);
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.globalAlpha = Math.min(1, amount) * 0.28;
+  ctx.fillStyle = tint;
+  ctx.fillRect(0, 0, w, h);
+  ctx.restore();
+}
+
+/** Paliers de risque : ils se voient sur le plateau, pas seulement dans une table. */
+export const RISK_TIERS = {
+  calm: { label: 'Calme', accent: '#7fb4a8', enemies: 2, fog: 0.5, ambient: 0.6, grade: 0.75 },
+  tense: { label: 'Tendu', accent: '#c9a24a', enemies: 3, fog: 0.75, ambient: 0.9, grade: 0.85 },
+  grim: { label: 'Sombre', accent: '#d2703c', enemies: 4, fog: 1, ambient: 1.25, grade: 0.95 },
+  fatal: { label: 'Fatal', accent: '#e0344a', enemies: 5, fog: 1.35, ambient: 1.7, grade: 1 },
+};
+export const RISK_KEYS = Object.keys(RISK_TIERS);
+export function riskTier(key) { return RISK_TIERS[key] ?? RISK_TIERS.tense; }
+
+/** Anneau au sol d'une unité : camp, PV, tour actif, état à terre. Posé sur le rect « sol ». */
+export function drawUnitRing(ctx, dx, dy, dw, dh, o = {}, t = 0) {
+  const side = o.side === 'enemy' ? ENEMY_RIM : ALLY_RIM;
+  const cx = dx + dw / 2;
+  const cy = dy + dh * anchorRatioAt(o.elevation ?? 0);
+  const rw = dw * 0.30, rh = rw * 0.5;
+  ctx.save();
+  ctx.fillStyle = rgba('#000000', 0.35);
+  ctx.beginPath(); ctx.ellipse(cx, cy + 1, rw * 1.02, rh * 1.02, 0, 0, Math.PI * 2); ctx.fill();
+  if (o.active) {
+    // Halo respirant : l'unité qui a la main se repère sans lire la colonne d'initiative.
+    const pulse = 0.5 + 0.5 * Math.sin(t * 0.004);
+    const g = ctx.createRadialGradient(cx, cy, rw * 0.2, cx, cy, rw * (1.7 + pulse * 0.4));
+    g.addColorStop(0, rgba(side, 0.32));
+    g.addColorStop(1, rgba(side, 0));
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.ellipse(cx, cy, rw * 2.1, rh * 2.1, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = rgba('#fff3d4', 0.5 + pulse * 0.4);
+    ctx.lineWidth = 1.6;
+    ctx.setLineDash([7, 5]);
+    ctx.lineDashOffset = -t * 0.02;
+    ctx.beginPath(); ctx.ellipse(cx, cy, rw * 1.32, rh * 1.32, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  ctx.strokeStyle = rgba('#05070e', 0.7); ctx.lineWidth = 3.4;
+  ctx.beginPath(); ctx.ellipse(cx, cy, rw, rh, 0, 0, Math.PI * 2); ctx.stroke();
+  const hp = Math.max(0, Math.min(1, o.hp ?? 1));
+  ctx.strokeStyle = rgba(side, 0.22); ctx.lineWidth = 2.6;
+  ctx.beginPath(); ctx.ellipse(cx, cy, rw, rh, 0, 0, Math.PI * 2); ctx.stroke();
+  if (hp > 0) {
+    // L'arc de PV court sur l'anneau : la santé du plateau se lit sans survol.
+    const col = hp > 0.5 ? side : (hp > 0.25 ? '#e8b04a' : '#ff5a3c');
+    ctx.strokeStyle = rgba(col, 0.95); ctx.lineWidth = 2.8; ctx.lineCap = 'round';
+    ctx.shadowColor = rgba(col, 0.8); ctx.shadowBlur = 6;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, rw, rh, 0, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * hp);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+  }
+  if (o.downed) {
+    ctx.strokeStyle = rgba('#8b8398', 0.8); ctx.lineWidth = 2.4; ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(cx - rw * 0.6, cy - rh * 0.6); ctx.lineTo(cx + rw * 0.6, cy + rh * 0.6);
+    ctx.moveTo(cx + rw * 0.6, cy - rh * 0.6); ctx.lineTo(cx - rw * 0.6, cy + rh * 0.6);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+/** Les deux pastilles d'économie d'action, flottant au-dessus de l'unité active.
+ *  Éteinte = dépensée. C'est le seul endroit où l'état du tour est affiché. */
+export function drawActionPips(ctx, cx, cy, moved, acted, t = 0) {
+  const pips = [{ on: !moved, col: '#8fc3ff' }, { on: !acted, col: '#ffd98a' }];
+  const gap = 13;
+  const pulse = 0.5 + 0.5 * Math.sin(t * 0.005);
+  ctx.save();
+  pips.forEach((p, i) => {
+    const x = cx + (i - 0.5) * gap;
+    ctx.beginPath(); ctx.arc(x, cy, 5.2, 0, Math.PI * 2);
+    ctx.fillStyle = rgba('#05070e', 0.7); ctx.fill();
+    if (p.on) {
+      ctx.shadowColor = rgba(p.col, 0.9); ctx.shadowBlur = 8 + pulse * 5;
+      ctx.fillStyle = rgba(p.col, 0.95);
+      ctx.beginPath(); ctx.arc(x, cy, 3.4, 0, Math.PI * 2); ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+    ctx.strokeStyle = rgba(p.on ? p.col : '#5c5872', p.on ? 0.9 : 0.5);
+    ctx.lineWidth = 1.3;
+    ctx.beginPath(); ctx.arc(x, cy, 5.2, 0, Math.PI * 2); ctx.stroke();
+  });
+  ctx.restore();
+}
+
+/** Un nœud d'exploration qui s'efface à l'entrée en combat : il se défait en particules
+ *  qui montent. `p` de 0 (intact) à 1 (disparu). */
+export function drawDissolveFx(ctx, dx, dy, dw, dh, p, color = '#dcb45c', elev = 0) {
+  if (p <= 0 || p >= 1) return;
+  const cx = dx + dw / 2;
+  const cy = dy + dh * anchorRatioAt(elev);
+  const s = dw / SPRITE_W;
+  const R = makeRng(hashSeed('dissolve'));
+  ctx.save();
+  for (let i = 0; i < 22; i++) {
+    const a = R() * Math.PI * 2;
+    const rr = R2(R, 4, 26) * s;
+    const lift = R2(R, 40, 130) * s * p;
+    const life = Math.max(0, 1 - p * R2(R, 0.9, 1.6));
+    ctx.fillStyle = rgba(color, life * 0.7);
+    ctx.beginPath();
+    ctx.arc(cx + Math.cos(a) * rr, cy - lift + Math.sin(a) * rr * 0.4, R2(R, 0.8, 2.2) * s * life, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+/** Une unité qui se pose sur la grille : l'anneau se resserre, la poussière se lève.
+ *  `p` de 0 (loin) à 1 (posée). */
+export function drawDeployFx(ctx, dx, dy, dw, dh, p, color = '#8fc3ff', elev = 0) {
+  if (p <= 0 || p >= 1) return;
+  const cx = dx + dw / 2;
+  const cy = dy + dh * anchorRatioAt(elev);
+  const rw = dw * 0.30;
+  const k = 1 - p;
+  ctx.save();
+  ctx.strokeStyle = rgba(color, 0.2 + 0.7 * p);
+  ctx.lineWidth = 1.6 + k * 2;
+  ctx.shadowColor = rgba(color, 0.8); ctx.shadowBlur = 12;
+  const r = rw * (1 + k * 3.2);
+  ctx.beginPath(); ctx.ellipse(cx, cy, r, r * 0.5, 0, 0, Math.PI * 2); ctx.stroke();
+  ctx.shadowBlur = 0;
+  if (p > 0.6) {
+    const d = (p - 0.6) / 0.4;
+    const R = makeRng(hashSeed('deploy'));
+    for (let i = 0; i < 12; i++) {
+      const a = R() * Math.PI * 2;
+      const rr = rw * (0.6 + d * 1.8);
+      ctx.fillStyle = rgba(color, (1 - d) * 0.5);
+      ctx.beginPath();
+      ctx.arc(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr * 0.45 - d * 8, R2(R, 1, 2.4) * (1 - d), 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  ctx.restore();
+}
+
+/** Impact d'une compétence sur une case. `p` de 0 à 1. */
+export function drawImpactFx(ctx, dx, dy, dw, dh, p, color = '#ff6a4a', elev = 0) {
+  if (p <= 0 || p >= 1) return;
+  const cx = dx + dw / 2;
+  const cy = dy + dh * anchorRatioAt(elev);
+  const s = dw / SPRITE_W;
+  const fade = 1 - p;
+  ctx.save();
+  const g = ctx.createRadialGradient(cx, cy, 1, cx, cy, 34 * s * (0.4 + p));
+  g.addColorStop(0, rgba('#ffffff', fade * 0.8));
+  g.addColorStop(0.4, rgba(color, fade * 0.6));
+  g.addColorStop(1, rgba(color, 0));
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.ellipse(cx, cy, 40 * s * (0.4 + p), 20 * s * (0.4 + p), 0, 0, Math.PI * 2); ctx.fill();
+  const R = makeRng(hashSeed('impact'));
+  for (let i = 0; i < 10; i++) {
+    const a = R() * Math.PI * 2;
+    const rr = 40 * s * p * R2(R, 0.5, 1.2);
+    ctx.strokeStyle = rgba(color, fade * 0.8);
+    ctx.lineWidth = 1.8 * fade;
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(a) * rr * 0.5, cy + Math.sin(a) * rr * 0.25);
+    ctx.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr * 0.5);
+    ctx.stroke();
+  }
+  ctx.restore();
 }
 
 // ── Projection (identique à celle du client) ─────────────────────────────────────────
