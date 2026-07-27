@@ -51,7 +51,21 @@ public sealed class RunsController : ControllerBase
         [FromBody] StartRunRequest request,
         CancellationToken cancellationToken)
     {
-        var command = new StartRunCommand(request.PlayerId, request.CombatMode);
+        // Le mode arrive en chaîne : System.Text.Json ne convertit pas une chaîne en enum sans
+        // convertisseur, et en enregistrer un globalement changerait la sérialisation de TOUS
+        // les enums de l'API. Une valeur absente vaut « Atb » ; une valeur non reconnue est
+        // refusée plutôt que rabattue en silence sur l'ATB — c'est précisément ce silence qui
+        // ferait croire au joueur qu'il a choisi le combat tactique alors qu'il joue l'autre.
+        var combatMode = RunCombatMode.Atb;
+
+        if (!string.IsNullOrWhiteSpace(request.CombatMode)
+            && !Enum.TryParse(request.CombatMode, ignoreCase: true, out combatMode))
+        {
+            return BadRequest(
+                $"Unknown combat mode '{request.CombatMode}'. Expected 'Atb' or 'Tactical'.");
+        }
+
+        var command = new StartRunCommand(request.PlayerId, combatMode);
 
         var response = await _sender.Send(command, cancellationToken);
 
@@ -506,7 +520,7 @@ public sealed class RunsController : ControllerBase
 /// </summary>
 public sealed record StartRunRequest(
     Guid PlayerId,
-    RunCombatMode CombatMode = RunCombatMode.Atb);
+    string? CombatMode = null);
 
 public sealed record MovePartyRequest(int TargetX, int TargetY);
 

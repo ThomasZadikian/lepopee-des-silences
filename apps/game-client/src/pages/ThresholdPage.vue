@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { useRunStore } from '../features/runs/stores/runStore';
+import type { RunCombatMode } from '../features/runs/types/runTypes';
 
 const router   = useRouter();
 const runStore = useRunStore();
@@ -18,8 +19,14 @@ async function resumeRun() {
   if (runStore.currentRun?.id) await router.push(`/run/${run.id}`);
 }
 
+/**
+ * Le style de combat se choisit une fois, au lancement, et vaut pour toute la run — le
+ * changer en cours de route reviendrait à changer de jeu au milieu d'une partie.
+ */
+const combatMode = ref<RunCombatMode>('Atb');
+
 async function startRun() {
-  await runStore.startRun();
+  await runStore.startRun(combatMode.value);
   const runId = runStore.currentRun?.id;
   if (!runId) return;
   await router.push(`/run/${runId}`);
@@ -272,6 +279,22 @@ const isNeuf    = computed(() => openPanel.value === 'neuf');
               <p class="es-body" style="margin-bottom: 22px">
                 Une nouvelle architecture s'écrira sous tes pas. Tu repars avec ton Tome — rien d'autre.
               </p>
+              <fieldset class="combat-mode">
+                <legend class="combat-mode__legend">Style de combat</legend>
+
+                <label class="combat-mode__option" :class="{ 'combat-mode__option--on': combatMode === 'Atb' }">
+                  <input v-model="combatMode" type="radio" value="Atb" name="combat-mode">
+                  <span class="combat-mode__name">Tempo</span>
+                  <span class="combat-mode__hint">Les jauges coulent en temps réel. Agir tôt coûte, attendre paie.</span>
+                </label>
+
+                <label class="combat-mode__option" :class="{ 'combat-mode__option--on': combatMode === 'Tactical' }">
+                  <input v-model="combatMode" type="radio" value="Tactical" name="combat-mode">
+                  <span class="combat-mode__name">Tactique</span>
+                  <span class="combat-mode__hint">Tour par tour sur la grille de la salle. Se déplacer, puis agir.</span>
+                </label>
+              </fieldset>
+
               <div style="display: flex; gap: 10px">
                 <button class="es-btn es-btn--ghost" style="flex: 1" @click="showConfirm = null">
                   Annuler
@@ -407,6 +430,47 @@ const isNeuf    = computed(() => openPanel.value === 'neuf');
 }
 .ribbon__chip--gold  { color: oklch(0.90 0.11 86);  border-color: var(--gold-dim);  background: oklch(0.56 0.12 84 / 0.26); }
 .ribbon__chip--frost { color: oklch(0.90 0.11 276); border-color: var(--frost-dim); background: oklch(0.56 0.12 276 / 0.26); }
+
+.combat-mode {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 0 20px;
+  padding: 0;
+  border: 0;
+}
+
+.combat-mode__legend {
+  padding: 0 0 8px;
+  font-variant: small-caps;
+  letter-spacing: 0.09em;
+  opacity: 0.7;
+}
+
+.combat-mode__option {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas: 'radio name' 'radio hint';
+  gap: 0 10px;
+  padding: 9px 12px;
+  border: 1px solid var(--frost-dim);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 140ms ease-out, border-color 140ms ease-out;
+}
+
+.combat-mode__option input { grid-area: radio; align-self: center; accent-color: var(--frost); }
+.combat-mode__name { grid-area: name; color: var(--frost); }
+.combat-mode__hint { grid-area: hint; font-size: 0.82em; opacity: 0.68; }
+
+.combat-mode__option--on {
+  border-color: var(--frost);
+  background: oklch(0.56 0.12 276 / 0.18);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .combat-mode__option { transition: none; }
+}
 
 .ribbon__heading {
   margin: 0;
