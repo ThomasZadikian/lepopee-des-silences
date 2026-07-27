@@ -62,6 +62,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<PlayerStatMerger>();
         services.AddScoped<IInterludeNodeProvider, DefaultInterludeNodeProvider>();
         services.AddSingleton<ICombatFactory, CombatFactory>();
+        services.AddSingleton<Combats.Tactical.ITacticalCombatFactory, Combats.Tactical.TacticalCombatFactory>();
         services.AddScoped<IPalacePublicIndicatorProjectionService, PalacePublicIndicatorProjectionService>();
         services.AddScoped<IDevToolsRunDebugService, DevToolsRunDebugService>();
         services.AddScoped<IDevToolsPsycheService, DevToolsPsycheService>();

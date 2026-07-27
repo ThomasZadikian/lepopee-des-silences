@@ -7,6 +7,7 @@ using Leds.GameEngine.Application.Combats.EncounterDrafts;
 using Leds.GameEngine.Application.Combats.EnemyTurns;
 using Leds.GameEngine.Application.Combats.Ports;
 using Leds.GameEngine.Application.Combats.Resolution;
+using Leds.GameEngine.Application.Combats.Tactical;
 using Leds.GameEngine.Application.Common.Exceptions;
 using Leds.GameEngine.Application.Events.Contracts;
 using Leds.GameEngine.Application.Events.Dtos;
@@ -38,6 +39,7 @@ public sealed class ResolveCurrentEventCommandHandler
     private readonly ICombatInstanceFactory _combatInstanceFactory;
     private readonly ICombatEncounterDraftGenerator _encounterDraftGenerator;
     private readonly ICombatFactory _combatFactory;
+    private readonly ITacticalCombatFactory _tacticalCombatFactory;
     private readonly IRewardOfferRepository _rewardOfferRepository;
     private readonly Leds.GameEngine.Application.Rewards.RewardOfferFactory.RewardOfferFactory _rewardOfferFactory;
     private readonly IEnemyCombatTurnResolver _enemyTurnResolver;
@@ -53,6 +55,7 @@ public sealed class ResolveCurrentEventCommandHandler
         ICombatInstanceFactory combatInstanceFactory,
         ICombatEncounterDraftGenerator encounterDraftGenerator,
         ICombatFactory combatFactory,
+        ITacticalCombatFactory tacticalCombatFactory,
         IRewardOfferRepository rewardOfferRepository,
         Leds.GameEngine.Application.Rewards.RewardOfferFactory.RewardOfferFactory rewardOfferFactory,
         IEnemyCombatTurnResolver enemyTurnResolver,
@@ -67,6 +70,7 @@ public sealed class ResolveCurrentEventCommandHandler
         _combatInstanceFactory = combatInstanceFactory;
         _encounterDraftGenerator = encounterDraftGenerator;
         _combatFactory = combatFactory;
+        _tacticalCombatFactory = tacticalCombatFactory;
         _rewardOfferRepository = rewardOfferRepository;
         _rewardOfferFactory = rewardOfferFactory;
         _enemyTurnResolver = enemyTurnResolver;
@@ -117,6 +121,7 @@ public sealed class ResolveCurrentEventCommandHandler
 
         CombatEncounterDraftDto? encounterDraftDto = null;
         CombatRuntimeDto? combatRuntimeDto = null;
+        TacticalCombatRuntimeDto? tacticalCombatDto = null;
         ResolvedNodeEventContent? resolvedContent = null;
         RewardOffer? pendingRewardOffer = null;
         NpcDialogueViewDto? npcDialogue = null;
@@ -195,7 +200,7 @@ public sealed class ResolveCurrentEventCommandHandler
             encounterDraftDto = CombatEncounterDraftDto.FromDomain(draft);
             var skillEffects = await BuildSkillEffectsAsync(run, draft, cancellationToken);
 
-            var combatRuntime = _combatFactory.CreateFromDraft(
+            var roster = _combatFactory.BuildRoster(
                 combatId, draft, run.PlayerState, run.RunModifiers,
                 attackPower: run.Attack, defense: run.Defense, speed: run.Speed,
                 palaceRoomState: room.PalaceState, focus: run.Focus,
@@ -214,17 +219,55 @@ public sealed class ResolveCurrentEventCommandHandler
                 healingBonusPercent: run.HealingBonusPercent,
                 forgottenSkillKey: run.ForgottenSkillKey);
 
-            // ATB: bake Markov tempo + opening gauges, then elect the opener.
-            _atbPreparer.PrepareNewCombat(combatRuntime, run);
+            // Le roster est constitué ; reste à décider du déroulé. C'est ici, et nulle part
+            // ailleurs, que les deux systèmes de combat divergent (SFD v2, §2) : mêmes ennemis,
+            // mêmes stats, mêmes Lois — seule la façon de s'affronter change.
+            if (run.CombatMode == RunCombatMode.Tactical)
+            {
+                var tacticalCombat = _tacticalCombatFactory.CreateFromRoster(
+                    combatId, roster, room, selectedNode.Id, run.Id, _clock.UtcNow.UtcDateTime);
 
-            run.StartCombat(combatRuntime);
-            // ATB: enemy turns (including the opening, if an enemy is up first) are
-            // driven by the client in real time via AdvanceCombatTurnCommand.
-            if (combatRuntime.Status != CombatStatus.Active)
-                pendingRewardOffer = await _combatResolution.ApplyOutcomeAsync(run, combatRuntime, _clock.UtcNow, cancellationToken);
+                run.StartTacticalCombat(tacticalCombat);
 
-            combatRuntimeDto = CombatRuntimeDto.FromDomain(
-                combatRuntime, CombatItemHelper.GetUsableBattleItems(run));
+                tacticalCombatDto = TacticalCombatRuntimeDto.FromDomain(
+                    tacticalCombat, CombatItemHelper.GetUsableBattleItems(run));
+            }
+            else
+            {
+                var combatRuntime = Combat.Create(
+                    combatId,
+                    new RunId(draft.RunId),
+                    new RoomId(draft.RoomId),
+                    new NodeId(draft.NodeId),
+                    roster.Allies,
+                    roster.Enemies,
+                    roster.HitCounterDoubleDamageEnabled,
+                    roster.FirstHitCriticalEnabled,
+                    roster.LowHpDamageAmplificationEnabled,
+                    roster.DotDurationExtensionTicks,
+                    roster.DuelDamageAsymmetryEnabled,
+                    roster.DotMagnitudeBonus,
+                    roster.HealingBlocked,
+                    roster.FalaiseWindEnabled,
+                    roster.PostDeathBasicAttackOnlyEnabled,
+                    roster.TapisPropreEnabled,
+                    roster.ThirdCupHealCorruptionEnabled,
+                    roster.PresentationsEnabled,
+                    roster.MiroirEnabled,
+                    roster.ForgottenSkillKey);
+
+                // ATB: bake Markov tempo + opening gauges, then elect the opener.
+                _atbPreparer.PrepareNewCombat(combatRuntime, run);
+
+                run.StartCombat(combatRuntime);
+                // ATB: enemy turns (including the opening, if an enemy is up first) are
+                // driven by the client in real time via AdvanceCombatTurnCommand.
+                if (combatRuntime.Status != CombatStatus.Active)
+                    pendingRewardOffer = await _combatResolution.ApplyOutcomeAsync(run, combatRuntime, _clock.UtcNow, cancellationToken);
+
+                combatRuntimeDto = CombatRuntimeDto.FromDomain(
+                    combatRuntime, CombatItemHelper.GetUsableBattleItems(run));
+            }
         }
         else if (selectedNode.EventType == NodeEventType.Item)
         {
@@ -305,7 +348,8 @@ public sealed class ResolveCurrentEventCommandHandler
             outcome,
             encounterDraftDto,
             combatRuntimeDto,
-            npcDialogue);
+            npcDialogue,
+            tacticalCombatDto);
     }
 
     private async Task<NpcDialogueViewDto?> BuildNpcDialogueAsync(

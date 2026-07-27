@@ -31,6 +31,40 @@ public sealed class CombatEntity
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
 
+    /// <summary>
+    /// « Atb » ou « Tactical ». Discriminant du déroulé : les colonnes <c>Tactical*</c> ne sont
+    /// renseignées que pour le second, les colonnes ATB (tick, jauges) que pour le premier.
+    /// </summary>
+    /// <remarks>
+    /// Une seule table pour les deux systèmes, parce que tout ce qui compte vraiment — les
+    /// combattants et leur état — leur est commun et vit déjà dans <see cref="Combatants"/>.
+    /// Une table parallèle aurait dupliqué cette relation sans rien gagner.
+    /// </remarks>
+    public string Kind { get; set; } = "Atb";
+
+    public int? TacticalWidth { get; set; }
+    public int? TacticalHeight { get; set; }
+
+    /// <summary>Élévations, row-major, séparées par des virgules.</summary>
+    public string? TacticalElevationCsv { get; set; }
+
+    /// <summary>Praticabilité, row-major, « 1 »/« 0 » séparés par des virgules.</summary>
+    public string? TacticalWalkableCsv { get; set; }
+
+    public int? TacticalRoundNumber { get; set; }
+    public int? TacticalActiveIndex { get; set; }
+
+    /// <summary>Identifiants dans l'ordre d'initiative, séparés par des points-virgules.</summary>
+    public string? TacticalInitiativeOrderCsv { get; set; }
+
+    /// <summary>Positions, au format « guid:x,y », séparées par des points-virgules.</summary>
+    public string? TacticalPositionsCsv { get; set; }
+
+    /// <summary>
+    /// États de tour, au format « guid:déplacé,agi » (0/1), séparés par des points-virgules.
+    /// </summary>
+    public string? TacticalTurnStatesCsv { get; set; }
+
     public RunEntity? Run { get; set; }
     public List<CombatantEntity> Combatants { get; set; } = [];
 }

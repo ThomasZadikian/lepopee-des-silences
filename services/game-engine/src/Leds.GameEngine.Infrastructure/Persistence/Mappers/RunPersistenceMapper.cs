@@ -120,9 +120,13 @@ public static class RunPersistenceMapper
             ActiveCurses = run.ActiveCurse is not null
                 ? [ToActiveCurseEntity(run.ActiveCurse, run.Id.Value)]
                 : [],
+            // Une run ne porte qu'un combat à la fois, mais il peut être de l'un ou l'autre
+            // système. Les deux se rangent dans la même table, discriminés par `Kind`.
             ActiveCombat = run.ActiveCombat is not null
                 ? CombatPersistenceMapper.ToEntity(run.ActiveCombat, run.Id.Value)
-                : null,
+                : run.ActiveTacticalCombat is not null
+                    ? TacticalCombatPersistenceMapper.ToEntity(run.ActiveTacticalCombat, run.Id.Value)
+                    : null,
             PlayerState = PlayerRuntimeStatePersistenceMapper.ToEntity(run.PlayerState, run.Id.Value),
             InventoryItems = run.RunItems.Select(item => new RunItemEntity
             {
@@ -393,8 +397,15 @@ public static class RunPersistenceMapper
                 snapshotRunModifierIds);
         }
 
-        var activeCombat = entity.ActiveCombat is not null
+        var isTacticalCombat = entity.ActiveCombat?.Kind
+            == TacticalCombatPersistenceMapper.KindDiscriminator;
+
+        var activeCombat = entity.ActiveCombat is not null && !isTacticalCombat
             ? CombatPersistenceMapper.ToDomain(entity.ActiveCombat)
+            : null;
+
+        var activeTacticalCombat = entity.ActiveCombat is not null && isTacticalCombat
+            ? TacticalCombatPersistenceMapper.ToDomain(entity.ActiveCombat)
             : null;
 
         var playerState = entity.PlayerState is not null
@@ -496,6 +507,7 @@ public static class RunPersistenceMapper
             lawDenialLastUsedRoomIndex: entity.LawDenialLastUsedRoomIndex,
             lastPromulgationFloorIndex: entity.LastPromulgationFloorIndex,
             forgottenSkillKey: entity.ForgottenSkillKey,
+            activeTacticalCombat: activeTacticalCombat,
             suspendedSevereLawModifierIds: string.IsNullOrWhiteSpace(entity.SuspendedSevereLawModifierIdsJson)
                 ? null
                 : JsonSerializer.Deserialize<Guid[]>(entity.SuspendedSevereLawModifierIdsJson),

@@ -613,6 +613,7 @@ public sealed class InterludeTransitionTests
             combatFactory.Object,
             new Mock<ICombatEncounterDraftGenerator>().Object,
             new Mock<ICombatFactory>().Object,
+            Mock.Of<Leds.GameEngine.Application.Combats.Tactical.ITacticalCombatFactory>(),
             new Mock<IRewardOfferRepository>().Object,
             new Leds.GameEngine.Application.Rewards.RewardOfferFactory.RewardOfferFactory(
                 new Mock<Leds.GameEngine.Application.Combats.ICombatRiskProfileResolver>().Object,

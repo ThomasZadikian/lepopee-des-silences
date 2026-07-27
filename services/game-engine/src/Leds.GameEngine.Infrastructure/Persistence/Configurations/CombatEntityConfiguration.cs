@@ -41,6 +41,17 @@ public sealed class CombatEntityConfiguration : IEntityTypeConfiguration<CombatE
         builder.Property(c => c.CreatedAtUtc).HasColumnName("created_at_utc");
         builder.Property(c => c.UpdatedAtUtc).HasColumnName("updated_at_utc");
 
+        builder.Property(c => c.Kind).HasColumnName("kind").HasMaxLength(16).HasDefaultValue("Atb");
+        builder.Property(c => c.TacticalWidth).HasColumnName("tactical_width");
+        builder.Property(c => c.TacticalHeight).HasColumnName("tactical_height");
+        builder.Property(c => c.TacticalElevationCsv).HasColumnName("tactical_elevation_csv");
+        builder.Property(c => c.TacticalWalkableCsv).HasColumnName("tactical_walkable_csv");
+        builder.Property(c => c.TacticalRoundNumber).HasColumnName("tactical_round_number");
+        builder.Property(c => c.TacticalActiveIndex).HasColumnName("tactical_active_index");
+        builder.Property(c => c.TacticalInitiativeOrderCsv).HasColumnName("tactical_initiative_order_csv");
+        builder.Property(c => c.TacticalPositionsCsv).HasColumnName("tactical_positions_csv");
+        builder.Property(c => c.TacticalTurnStatesCsv).HasColumnName("tactical_turn_states_csv");
+
         builder.HasIndex(c => c.RunId);
         builder.HasIndex(c => c.Status);
     }

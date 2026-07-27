@@ -113,6 +113,70 @@ public sealed class CombatFactory : ICombatFactory
         int magicDefense = 0,
         string? forgottenSkillKey = null)
     {
+        var roster = BuildRoster(
+            combatId, draft, playerState, runModifiers, attackPower, defense, speed,
+            palaceRoomState, focus, skillEffects, typedDamageReductions, hitChanceBonusPercent,
+            dotDurationReductionPercent, dotDamageReductionPercent, dotDamageBonusPercent,
+            magicDamageBonusPercent, magicDamageReductionPercent, criticalChanceBonusPercent,
+            guardBonusPercent, himLitProtectionEnabled, healingBonusPercent, magicAttack,
+            magicDefense, forgottenSkillKey);
+
+        return Combat.Create(
+            combatId,
+            new RunId(draft.RunId),
+            new RoomId(draft.RoomId),
+            new NodeId(draft.NodeId),
+            roster.Allies,
+            roster.Enemies,
+            roster.HitCounterDoubleDamageEnabled,
+            roster.FirstHitCriticalEnabled,
+            roster.LowHpDamageAmplificationEnabled,
+            roster.DotDurationExtensionTicks,
+            roster.DuelDamageAsymmetryEnabled,
+            roster.DotMagnitudeBonus,
+            roster.HealingBlocked,
+            roster.FalaiseWindEnabled,
+            roster.PostDeathBasicAttackOnlyEnabled,
+            roster.TapisPropreEnabled,
+            roster.ThirdCupHealCorruptionEnabled,
+            roster.PresentationsEnabled,
+            roster.MiroirEnabled,
+            roster.ForgottenSkillKey);
+    }
+
+    /// <summary>
+    /// Constitue les deux camps sans décider de la façon dont ils s'affronteront. C'est le
+    /// travail réel de cette fabrique : mise à l'échelle des stats, résolution des compétences,
+    /// application des Lois du Palais. L'emballage en <see cref="Combat"/> (ATB) ou en
+    /// <see cref="Domain.Combats.Tactical.TacticalCombat"/> vient après, et ne fait que ranger
+    /// ce roster dans le déroulé voulu (cf. SFD v2, §2 et <see cref="CombatRoster"/>).
+    /// </summary>
+    public CombatRoster BuildRoster(
+        CombatId combatId,
+        CombatEncounterDraft draft,
+        PlayerRuntimeState? playerState = null,
+        IReadOnlyCollection<RunModifier>? runModifiers = null,
+        int attackPower = 0,
+        int defense = 0,
+        int speed = 10,
+        PalaceRoomState palaceRoomState = PalaceRoomState.Neutral,
+        int focus = 0,
+        IReadOnlyDictionary<string, IReadOnlyList<SkillStatusEffectSpec>>? skillEffects = null,
+        IReadOnlyDictionary<EmotionalType, int>? typedDamageReductions = null,
+        int hitChanceBonusPercent = 0,
+        int dotDurationReductionPercent = 0,
+        int dotDamageReductionPercent = 0,
+        int dotDamageBonusPercent = 0,
+        int magicDamageBonusPercent = 0,
+        int magicDamageReductionPercent = 0,
+        int criticalChanceBonusPercent = 0,
+        int guardBonusPercent = 0,
+        bool himLitProtectionEnabled = false,
+        int healingBonusPercent = 0,
+        int magicAttack = 0,
+        int magicDefense = 0,
+        string? forgottenSkillKey = null)
+    {
         // Sum all unconsumed StartingGuardBonus modifiers (e.g. Éclat de garde: +8 garde).
         var guardBonus = runModifiers?
             .Where(m => m.Type == RunModifierType.StartingGuardBonus && !m.IsConsumed)
@@ -359,11 +423,7 @@ public sealed class CombatFactory : ICombatFactory
             var mirrorLowHpDamageAmplificationEnabled = activeModifiers
                 .Any(m => m.Type == RunModifierType.DamageAmplificationBelowHpThreshold && !m.IsConsumed);
 
-            return Combat.Create(
-                combatId,
-                new RunId(draft.RunId),
-                new RoomId(draft.RoomId),
-                new NodeId(draft.NodeId),
+            return new CombatRoster(
                 allies,
                 mirroredEnemies,
                 mirrorHitCounterDoubleDamageEnabled,
@@ -488,11 +548,7 @@ public sealed class CombatFactory : ICombatFactory
         var lowHpDamageAmplificationEnabled = activeModifiers
             .Any(m => m.Type == RunModifierType.DamageAmplificationBelowHpThreshold && !m.IsConsumed);
 
-        return Combat.Create(
-            combatId,
-            new RunId(draft.RunId),
-            new RoomId(draft.RoomId),
-            new NodeId(draft.NodeId),
+        return new CombatRoster(
             allies,
             enemies,
             hitCounterDoubleDamageEnabled,

@@ -50,6 +50,7 @@ public sealed class Run
     private readonly List<RunModifier> _runModifiers = [];
     private readonly List<Guid> _suspendedSevereLawModifierIds = [];
     private Combat? _activeCombat;
+    private Combats.Tactical.TacticalCombat? _activeTacticalCombat;
     private ActiveCurse? _activeCurse;
     private RunSnapshot? _roomSnapshot;
     private RunPlayerSnapshot? _playerSnapshot;
@@ -301,13 +302,26 @@ public sealed class Run
 
     public CombatId? ActiveCombatId { get; private set; }
 
-    public bool HasActiveCombat => ActiveCombatId.HasValue || _activeCombat is not null;
+    public bool HasActiveCombat =>
+        ActiveCombatId.HasValue || _activeCombat is not null || _activeTacticalCombat is not null;
 
     /// <summary>
     /// The active combat runtime domain object, if any.
     /// Set via <see cref="StartCombat"/>.
     /// </summary>
     public Combat? ActiveCombat => _activeCombat;
+
+    /// <summary>
+    /// Le combat tactique en cours, le cas échéant. Renseigné par <see cref="StartTacticalCombat"/>.
+    /// </summary>
+    /// <remarks>
+    /// Deux emplacements distincts plutôt qu'un seul typé sur une abstraction commune : les deux
+    /// agrégats sont frères et n'ont ni le même déroulé ni la même surface (cf. SFD v2, §2). Une
+    /// run n'en porte jamais qu'un à la fois — celui que <see cref="CombatMode"/> désigne — et
+    /// <see cref="HasActiveCombat"/> couvre les deux, si bien que les gardes existantes contre
+    /// deux combats simultanés valent aussi entre les modes.
+    /// </remarks>
+    public Combats.Tactical.TacticalCombat? ActiveTacticalCombat => _activeTacticalCombat;
 
     public RewardOfferId? PendingRewardOfferId { get; private set; }
 
@@ -1168,6 +1182,50 @@ public sealed class Run
         _activeCombat = combat;
     }
 
+    /// <summary>
+    /// Attache un combat tactique à la run. Jumeau exact de <see cref="StartCombat"/> : mêmes
+    /// gardes, même invariant « un seul combat à la fois ». Les deux systèmes se partagent
+    /// <see cref="ActiveCombatId"/> précisément pour que cet invariant reste unique — une run ne
+    /// peut jamais porter un combat ATB et un combat tactique en même temps.
+    /// </summary>
+    public void StartTacticalCombat(Combats.Tactical.TacticalCombat combat)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+
+        if (combat.Id.Value == Guid.Empty)
+        {
+            throw new DomainException("Combat id is required.");
+        }
+
+        if (combat.RunId != Id)
+        {
+            throw new DomainException("Combat does not belong to this run.");
+        }
+
+        if (combat.Status != CombatStatus.Active)
+        {
+            throw new DomainException("Combat must be active to be started.");
+        }
+
+        if (Status != RunStatus.Active)
+        {
+            throw new DomainException("Run must be active to start a combat.");
+        }
+
+        if (_activeTacticalCombat is not null || _activeCombat is not null)
+        {
+            throw new DomainException("Run already has an active combat.");
+        }
+
+        if (ActiveCombatId.HasValue && ActiveCombatId.Value != combat.Id)
+        {
+            throw new DomainException("Combat does not match the active run combat.");
+        }
+
+        ActiveCombatId = combat.Id;
+        _activeTacticalCombat = combat;
+    }
+
     public void CompleteActiveCombat(CombatId combatId)
     {
         if (!HasActiveCombat)
@@ -1182,6 +1240,7 @@ public sealed class Run
 
         ActiveCombatId = null;
         _activeCombat = null;
+        _activeTacticalCombat = null;
 
         ResolveCurrentEvent();
     }
@@ -1202,6 +1261,7 @@ public sealed class Run
 
         ActiveCombatId = null;
         _activeCombat = null;
+        _activeTacticalCombat = null;
 
         ResolveCurrentEvent();
     }
@@ -1220,6 +1280,7 @@ public sealed class Run
 
         ActiveCombatId = null;
         _activeCombat = null;
+        _activeTacticalCombat = null;
         Status = RunStatus.Failed;
         EndedAt = endedAt;
     }
@@ -1798,6 +1859,7 @@ public sealed class Run
 
         ActiveCombatId = null;
         _activeCombat = null;
+        _activeTacticalCombat = null;
         Status = RunStatus.Failed;
         EndedAt = endedAt;
     }
@@ -2263,6 +2325,7 @@ public sealed class Run
 
         ActiveCombatId = null;
         _activeCombat = null;
+        _activeTacticalCombat = null;
         PendingRewardOfferId = null;
         Status = RunStatus.Interlude;
     }
@@ -2518,7 +2581,8 @@ public sealed class Run
         int magicDefense = 0,
         int? lastPromulgationFloorIndex = null,
         string? forgottenSkillKey = null,
-        IEnumerable<Guid>? suspendedSevereLawModifierIds = null)
+        IEnumerable<Guid>? suspendedSevereLawModifierIds = null,
+        Combats.Tactical.TacticalCombat? activeTacticalCombat = null)
     {
         var firstRoom = rooms.First();
 
@@ -2551,6 +2615,7 @@ public sealed class Run
         }
 
         run._activeCombat = activeCombat;
+        run._activeTacticalCombat = activeTacticalCombat;
 
         if (runItems is not null)
         {

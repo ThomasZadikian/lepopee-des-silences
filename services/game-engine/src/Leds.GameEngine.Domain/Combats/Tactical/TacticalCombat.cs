@@ -272,10 +272,13 @@ public sealed class TacticalCombat : ICombatContext
     public int DotMagnitudeBonus { get; private init; }
     public int DotDurationExtensionTicks { get; private init; }
 
-    private bool HitCounterDoubleDamageEnabled { get; init; }
-    private bool FirstHitCriticalEnabled { get; init; }
-    private int HitCounter { get; set; }
-    private bool HasFirstHitLanded { get; set; }
+    // Lisibles depuis l'extérieur uniquement pour la persistance : `HitCounter` et
+    // `HasFirstHitLanded` sont des compteurs de Loi en cours de combat. Les perdre à chaque
+    // sauvegarde relancerait « une frappe sur N » à zéro à chaque rechargement de partie.
+    public bool HitCounterDoubleDamageEnabled { get; private init; }
+    public bool FirstHitCriticalEnabled { get; private init; }
+    public int HitCounter { get; private set; }
+    public bool HasFirstHitLanded { get; private set; }
 
     public bool RegisterLandedHit()
     {
@@ -387,6 +390,77 @@ public sealed class TacticalCombat : ICombatContext
             DotMagnitudeBonus = dotMagnitudeBonus,
             HealingBlocked = healingBlocked,
         };
+    }
+
+    /// <summary>
+    /// Reconstruit un combat tactique depuis sa forme persistée.
+    /// </summary>
+    /// <remarks>
+    /// L'ordre d'initiative est <b>restauré</b>, pas recalculé : un combattant peut avoir vu sa
+    /// Vitesse changer en cours de round (statut, Loi), et le recalculer ici ferait sauter son
+    /// tour à quelqu'un simplement parce que la partie a été rechargée. L'ordre n'est refait
+    /// qu'au passage au round suivant, comme en jeu.
+    /// </remarks>
+    public static TacticalCombat Rehydrate(
+        CombatId id,
+        RunId runId,
+        RoomId roomId,
+        NodeId nodeId,
+        TacticalBattlefield battlefield,
+        IReadOnlyCollection<Combatant> allies,
+        IReadOnlyCollection<Combatant> enemies,
+        IReadOnlyDictionary<Guid, GridPosition> positions,
+        IReadOnlyDictionary<Guid, TacticalTurnState> turnStates,
+        IReadOnlyList<Guid> initiativeOrder,
+        int activeIndex,
+        int roundNumber,
+        CombatStatus status,
+        DateTime createdAtUtc,
+        bool hitCounterDoubleDamageEnabled = false,
+        bool firstHitCriticalEnabled = false,
+        bool lowHpDamageAmplificationEnabled = false,
+        int dotDurationExtensionTicks = 0,
+        bool duelDamageAsymmetryEnabled = false,
+        int dotMagnitudeBonus = 0,
+        bool healingBlocked = false,
+        int hitCounter = 0,
+        bool hasFirstHitLanded = false,
+        int currentTick = 0)
+    {
+        ArgumentNullException.ThrowIfNull(battlefield);
+        ArgumentNullException.ThrowIfNull(positions);
+        ArgumentNullException.ThrowIfNull(turnStates);
+        ArgumentNullException.ThrowIfNull(initiativeOrder);
+
+        var combat = new TacticalCombat(
+            id, runId, roomId, nodeId, battlefield,
+            [.. allies], [.. enemies],
+            positions.ToDictionary(p => p.Key, p => p.Value),
+            createdAtUtc)
+        {
+            Status = status,
+            RoundNumber = roundNumber,
+            HitCounterDoubleDamageEnabled = hitCounterDoubleDamageEnabled,
+            FirstHitCriticalEnabled = firstHitCriticalEnabled,
+            LowHpDamageAmplificationEnabled = lowHpDamageAmplificationEnabled,
+            DotDurationExtensionTicks = dotDurationExtensionTicks,
+            DuelDamageAsymmetryEnabled = duelDamageAsymmetryEnabled,
+            DotMagnitudeBonus = dotMagnitudeBonus,
+            HealingBlocked = healingBlocked,
+            HitCounter = hitCounter,
+            HasFirstHitLanded = hasFirstHitLanded,
+            CurrentTick = currentTick,
+        };
+
+        combat._initiativeOrder = [.. initiativeOrder];
+        combat._activeIndex = activeIndex;
+
+        foreach (var (combatantId, turnState) in turnStates)
+        {
+            combat._turnStates[combatantId] = turnState;
+        }
+
+        return combat;
     }
 
     // ── Garde-fous ──────────────────────────────────────────────────────────────────────────

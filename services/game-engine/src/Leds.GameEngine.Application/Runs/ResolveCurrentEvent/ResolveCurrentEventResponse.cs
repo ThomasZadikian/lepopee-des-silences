@@ -9,4 +9,5 @@ public sealed record ResolveCurrentEventResponse(
     ResolvedNodeEventOutcomeDto Outcome,
     CombatEncounterDraftDto? EncounterDraft = null,
     CombatRuntimeDto? Combat = null,
-    NpcDialogueViewDto? NpcDialogue = null);
+    NpcDialogueViewDto? NpcDialogue = null,
+    TacticalCombatRuntimeDto? TacticalCombat = null);
