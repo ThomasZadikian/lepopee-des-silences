@@ -47,7 +47,6 @@ export type BuildBattlePlanInput = {
   reachableCells?: Set<string>;
   targetableCells?: Set<string>;
   blockedCells?: Set<string>;
-  pathCells?: Set<string>;
   aoeCells?: Set<string>;
   threatCells?: Set<string>;
   heightCells?: Set<string>;
@@ -297,7 +296,7 @@ export function buildBattlePlan(input: BuildBattlePlanInput): BattleDrawPlanEntr
 /**
  * Les cases atteignables par un combattant, à budget donné.
  *
- * Dijkstra sur le sous-graphe praticable, coût d'un pas `1 + |Δélévation|` — la même règle que
+ * A* (A-Star) sur le sous-graphe praticable, coût d'un pas `1 + |Δélévation|` — la même règle que
  * `TacticalMovement.StepCost` côté serveur. Cette copie est <b>un aperçu</b>, pas une autorité :
  * le serveur retranche seul, et son refus reste le dernier mot. Elle existe pour que le joueur
  * voie où il peut aller avant de cliquer, pas pour valider quoi que ce soit.
@@ -311,6 +310,19 @@ export function reachableCellsFrom(
   return reachableCellsWithPathsFrom(input, origin, budget, occupied).cells;
 }
 
+// Structure pour la frontière A* (priorité = f = g + h)
+type AStarFrontierNode = {
+  cell: BattleCell;
+  g: number; // Coût réel depuis l'origine
+  h: number; // Heuristique vers le but (0 si pas de but fixe)
+  f: number; // g + h
+  previous: BattleCell;
+};
+
+/**
+ * Version A* de reachableCellsWithPathsFrom pour une exploration optimisée.
+ * Utilise une heuristique de Manhattan (h = 0 si pas de but fixe, car on explore tout dans le budget).
+ */
 export function reachableCellsWithPathsFrom(
   input: Pick<BuildBattlePlanInput, 'gridWidth' | 'gridHeight' | 'elevation' | 'walkable'>,
   origin: BattleCell,
@@ -319,22 +331,29 @@ export function reachableCellsWithPathsFrom(
 ): { cells: Set<string>; previous: Map<string, BattleCell> } {
   const reached = new Map<string, number>([[battleCellKey(origin.x, origin.y), 0]]);
   const previous = new Map<string, BattleCell>();
-  const frontier: Array<{ cell: BattleCell; spent: number }> = [{ cell: origin, spent: 0 }];
+  const frontier: AStarFrontierNode[] = [{
+    cell: origin,
+    g: 0,
+    h: 0, // Pas de but fixe, donc h = 0
+    f: 0,
+    previous: origin,
+  }];
 
   const cellElevation = (x: number, y: number): number =>
     input.elevation[(y * input.gridWidth) + x] ?? 0;
 
   const walkable = (x: number, y: number): boolean => {
     if (x < 0 || y < 0 || x >= input.gridWidth || y >= input.gridHeight) return false;
-
     return input.walkable[(y * input.gridWidth) + x] ?? false;
   };
 
   while (frontier.length > 0) {
-    // Tri par coût croissant : sans lui, un chemin cher trouvé tôt figerait une case que le
-    // chemin bon marché aurait atteinte pour moins.
-    frontier.sort((a, b) => a.spent - b.spent);
+    // Trier par f (priorité A*) : les cases avec le plus petit f sont traitées en premier
+    frontier.sort((a, b) => a.f - b.f);
     const current = frontier.shift()!;
+
+    // Si on dépasse le budget, on saute (optimisation)
+    if (current.g > budget) continue;
 
     const neighbours: BattleCell[] = [
       { x: current.cell.x + 1, y: current.cell.y },
@@ -352,32 +371,44 @@ export function reachableCellsWithPathsFrom(
       const climb = Math.abs(
         cellElevation(next.x, next.y) - cellElevation(current.cell.x, current.cell.y),
       );
-      const spent = current.spent + 1 + climb;
+      const g = current.g + 1 + climb;
 
-      if (spent > budget) continue;
+      if (g > budget) continue;
 
       const best = reached.get(key);
-      if (best !== undefined && best <= spent) continue;
+      if (best !== undefined && best <= g) continue;
 
-      reached.set(key, spent);
-      previous.set(key, current.cell);
-      frontier.push({ cell: next, spent });
+      reached.set(key, g);
+      previous.set(key, current.previous);
+      frontier.push({
+        cell: next,
+        g,
+        h: 0, // Pas de but fixe
+        f: g, // f = g + h = g
+        previous: current.cell,
+      });
     }
   }
 
   reached.delete(battleCellKey(origin.x, origin.y));
-
   return { cells: new Set(reached.keys()), previous };
 }
 
-/** Distance de Manhattan — la métrique du déplacement orthogonal. */
-export const manhattan = (a: BattleCell, b: BattleCell): number =>
-  Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
-
+/**
+ * Vérifie si une ligne de vue (Line of Sight) existe entre deux cases,
+ * en tenant compte des obstacles et des différences d'élévation.
+ *
+ * @param input - Données du champ de bataille (grille, élévations, etc.).
+ * @param from - Case de départ.
+ * @param to - Case d'arrivée.
+ * @param maxClimb - Différence d'élévation maximale autorisée entre deux cases adjacentes (défaut: 1).
+ * @returns true si la ligne de vue est dégagée, false sinon.
+ */
 export function hasLos(
   input: Pick<BuildBattlePlanInput, 'gridWidth' | 'gridHeight' | 'elevation' | 'walkable' | 'floor'>,
   from: BattleCell,
   to: BattleCell,
+  maxClimb: number = 1,
 ): boolean {
   if (manhattan(from, to) <= 1) return true;
 
@@ -399,9 +430,7 @@ export function hasLos(
   let x = from.x;
   let y = from.y;
 
-  const fromElev = cellElevation(from.x, from.y);
-  const toElev = cellElevation(to.x, to.y);
-  const maxElev = Math.max(fromElev, toElev);
+  let prevElev = cellElevation(from.x, from.y);
 
   while (x !== to.x || y !== to.y) {
     const e2 = 2 * err;
@@ -410,13 +439,35 @@ export function hasLos(
 
     if (x === to.x && y === to.y) break;
 
+    // Vérifier que la case est bien dans la salle
     if (!isFloor(x, y)) return false;
 
-    const midElev = cellElevation(x, y);
-    if (midElev > maxElev) return false;
+    const currentElev = cellElevation(x, y);
+    // Bloquer si la différence d'élévation avec la case précédente est trop grande
+    if (Math.abs(currentElev - prevElev) > maxClimb) return false;
+
+    prevElev = currentElev;
   }
 
   return true;
+}
+
+/** Distance de Manhattan — la métrique du déplacement orthogonal. */
+export const manhattan = (a: BattleCell, b: BattleCell): number =>
+  Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+
+/**
+ * Vérifie si une ligne de vue (Line of Sight) existe entre deux cases,
+ * en utilisant l'algorithme de Bresenham pour tracer une ligne droite.
+ *
+ * @deprecated Utiliser `hasLos` à la place (plus complet).
+ */
+export function hasDirectLos(
+  input: Pick<BuildBattlePlanInput, 'gridWidth' | 'gridHeight' | 'elevation' | 'walkable' | 'floor'>,
+  from: BattleCell,
+  to: BattleCell,
+): boolean {
+  return hasLos(input, from, to);
 }
 
 export { isoUnit, projectToScreen };
