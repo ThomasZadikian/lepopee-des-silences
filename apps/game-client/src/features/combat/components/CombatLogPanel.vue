@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { ref, watch, computed } from 'vue';
 import type { CombatLogEntryDto } from '../types/combatContracts';
 
 const props = defineProps<{
@@ -18,6 +18,51 @@ watch(() => props.entries.length, () => {
 function toggle() {
   isOpen.value = !isOpen.value;
 }
+
+/**
+ * Retourne l'icône correspondante à un type de log (O-015).
+ */
+function getLogIcon(type: string): string {
+  const icons: Record<string, string> = {
+    DamageApplied: '⚔️',
+    GuardGained: '🛡️',
+    HealApplied: '❤️',
+    TargetDefeated: '💀',
+    CriticalHit: '🎯',
+    WeaknessHit: '💥',
+    ResistedHit: '🛡️',
+    ImmuneHit: '🚫',
+    StatusApplied: '✨',
+    SkillUsed: '🔮',
+    ItemUsed: '🎒',
+    ActionAccepted: '✅',
+    TurnAdvanced: '🔄',
+    EnemyTurnResolved: '🤖',
+    CombatCompleted: '🏆',
+    CombatFailed: '💔',
+    AttackMissed: '🎭',
+    TacticalMove: '👣',
+  };
+  return icons[type] ?? '📜';
+}
+
+/**
+ * Retourne la classe CSS pour l'icône en fonction du type de log.
+ */
+function getIconClass(type: string): string {
+  const classes: Record<string, string> = {
+    DamageApplied: 'combat-log__icon--damage',
+    GuardGained: 'combat-log__icon--guard',
+    HealApplied: 'combat-log__icon--heal',
+    TargetDefeated: 'combat-log__icon--defeat',
+    CriticalHit: 'combat-log__icon--critical',
+    WeaknessHit: 'combat-log__icon--weakness',
+    StatusApplied: 'combat-log__icon--status',
+    CombatCompleted: 'combat-log__icon--victory',
+    CombatFailed: 'combat-log__icon--defeat',
+  };
+  return classes[type] ?? '';
+}
 </script>
 
 <template>
@@ -25,7 +70,7 @@ function toggle() {
     <button class="combat-log__tab" @click="toggle">
       <span class="es-label">Journal de combat</span>
       <span class="es-mono">{{ entries.length }}</span>
-      <span class="combat-log__chevron">{{ isOpen ? '▾' : '▴' }}</span>
+      <span class="combat-log__chevron">{{ isOpen ? '\u25be' : '\u25b4' }}</span>
     </button>
 
     <div v-show="isOpen" ref="logContainer" class="combat-log__entries">
@@ -35,6 +80,9 @@ function toggle() {
         class="combat-log__entry"
         :class="'combat-log__entry--' + entry.type.toLowerCase()"
       >
+        <span class="combat-log__icon" :class="getIconClass(entry.type)">
+          {{ getLogIcon(entry.type) }}
+        </span>
         <span class="combat-log__type">{{ entry.type }}</span>
         <span class="combat-log__msg">{{ entry.message }}</span>
       </div>
@@ -83,7 +131,7 @@ function toggle() {
 
 .combat-log__entry {
   display: grid;
-  grid-template-columns: 5.5rem 1fr;
+  grid-template-columns: 2rem 5.5rem 1fr;
   gap: var(--space-2);
   font-family: var(--font-mono);
   font-size: 0.72rem;
@@ -96,13 +144,27 @@ function toggle() {
   border-bottom: none;
 }
 
+/* Icône de log (O-015) */
+.combat-log__icon {
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.combat-log__icon--damage { color: var(--blood); }
+.combat-log__icon--guard { color: var(--frost); }
+.combat-log__icon--heal { color: var(--sap); }
+.combat-log__icon--defeat { color: var(--gold); }
+.combat-log__icon--critical { color: var(--gold); font-weight: 700; }
+.combat-log__icon--weakness { color: var(--sap); }
+.combat-log__icon--status { color: var(--arcane); }
+.combat-log__icon--victory { color: var(--gold); }
+
 .combat-log__type {
   color: var(--ink-4);
   letter-spacing: 0.05em;
 }
 
 .combat-log__msg {
-  margin-left: 5rem;
   color: var(--ink-3);
   word-break: break-word;
 }

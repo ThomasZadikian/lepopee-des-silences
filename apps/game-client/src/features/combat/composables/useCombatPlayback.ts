@@ -15,13 +15,15 @@ import type {
  * Aucune de ces durées n'est cosmétique. Le temps de réflexion donne à l'adversaire l'air de
  * décider plutôt que de réagir ; le pas de marche rend le trajet lisible, en particulier quand
  * il contourne un mur ; la pause finale laisse le coup se déposer avant que la main revienne.
+ *
+ * Optimisé pour O-014 : timings dynamiques en fonction de la distance.
  */
 
 /** Avant qu'un ennemi n'entame son tour : il regarde le terrain. // BALANCE KNOB */
 export const THINK_MS = 520;
 
-/** Par case franchie. // BALANCE KNOB */
-export const STEP_MS = 145;
+/** Par case franchie (base). // BALANCE KNOB */
+export const BASE_STEP_MS = 145;
 
 /** Après le geste d'un ennemi, avant de passer la main. // BALANCE KNOB */
 export const SETTLE_MS = 620;
@@ -128,6 +130,21 @@ export function useCombatPlayback() {
     ];
   }
 
+  /**
+   * Calcule le timing dynamique pour un pas de déplacement (O-014).
+   * - Déplacements courts (1-2 cases) : plus rapides (70% de BASE_STEP_MS).
+   * - Déplacements longs (5+ cases) : plus lents (130% de BASE_STEP_MS).
+   * - Déplacements moyens : timing de base.
+   */
+  function getDynamicStepMs(pathLength: number): number {
+    if (pathLength <= 2) {
+      return Math.floor(BASE_STEP_MS * 0.7); // 101ms pour les déplacements courts
+    } else if (pathLength >= 5) {
+      return Math.floor(BASE_STEP_MS * 1.3); // 188ms pour les déplacements longs
+    }
+    return BASE_STEP_MS; // 145ms pour les déplacements moyens
+  }
+
   /** La position d'un combattant à cet instant : interpolée s'il marche, épinglée sinon. */
   function positionOf(
     combatantId: string,
@@ -137,7 +154,9 @@ export function useCombatPlayback() {
     const current = walk.value;
 
     if (current && current.combatantId === combatantId && current.path.length > 0) {
-      const progress = (now - current.startedAt) / STEP_MS;
+      // O-014: Utiliser un timing dynamique basé sur la longueur du chemin
+      const stepMs = getDynamicStepMs(current.path.length);
+      const progress = (now - current.startedAt) / stepMs;
 
       // `now` vient de l'horodatage de `requestAnimationFrame`, qui date du DÉBUT de la frame
       // et peut donc précéder le `performance.now()` relevé au lancement de la marche. Sans ce
@@ -183,6 +202,8 @@ export function useCombatPlayback() {
   /**
    * Déroule une chronologie. Résout quand tout est joué — l'appelant peut alors rendre la main
    * au joueur en sachant que plus rien ne bouge.
+   *
+   * Optimisé pour O-014 : utilise des timings dynamiques pour les déplacements.
    */
   async function play(
     events: readonly TacticalCombatEventDto[],
@@ -214,8 +235,10 @@ export function useCombatPlayback() {
             ...event.path.map((s) => ({ x: s.x, y: s.y })),
           ];
 
+          // O-014: Utiliser un timing dynamique basé sur la longueur du chemin
+          const stepMs = getDynamicStepMs(path.length - 1); // -1 car origin est ajoutée
           walk.value = { combatantId: event.actorId, path, startedAt: now() };
-          await wait(event.path.length * STEP_MS);
+          await wait((path.length - 1) * stepMs); // -1 car origin n'est pas comptée dans le chemin
           walk.value = null;
 
           // Arrivé : la figure reste où le serveur l'a mise.
