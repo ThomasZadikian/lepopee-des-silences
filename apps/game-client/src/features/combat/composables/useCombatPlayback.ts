@@ -35,15 +35,28 @@ export type FloatingNumber = {
   x: number;
   y: number;
   text: string;
-  /** Rouge quand un allié encaisse, ambre quand c'est l'adversaire — la référence de conception. */
   color: string;
   bornAt: number;
 };
 
-/** Le déplacement en cours, s'il y en a un : l'interpolation vit ici, pas dans le rendu. */
+export type ImpactEffect = {
+  id: number;
+  x: number;
+  y: number;
+  color: string;
+  bornAt: number;
+};
+
+export type PendingSort = {
+  skillKey: string;
+  x: number;
+  y: number;
+  casterX: number;
+  casterY: number;
+};
+
 export type WalkAnimation = {
   combatantId: string;
-  /** Position de départ incluse, pour que le premier pas parte du bon endroit. */
   path: Array<{ x: number; y: number }>;
   startedAt: number;
 };
@@ -55,25 +68,16 @@ const HEAL_COLOR = '#86dcb4';
 export function useCombatPlayback() {
   const walk = shallowRef<WalkAnimation | null>(null);
   const floats = ref<FloatingNumber[]>([]);
+  const impacts = ref<ImpactEffect[]>([]);
+  const pendingSorts = ref<PendingSort[]>([]);
   const isPlaying = ref(false);
 
-  /**
-   * « X utilise Y » — annoncé pendant toute la durée du geste, pas le temps d'un éclair.
-   * Sans lui, un tour ennemi se résume à des chiffres qui montent sans qu'on sache de quoi ils
-   * viennent ; c'est le rôle que tient déjà le bandeau côté ATB.
-   */
   const actionBanner = ref<string | null>(null);
 
-  /**
-   * Positions surchargées pendant la lecture.
-   *
-   * L'état final du serveur place déjà chaque figure à son arrivée. Tant que la chronologie
-   * n'est pas jouée, on la ré-épingle à son point de départ : sans cela, la figure serait déjà
-   * arrivée avant même que sa marche ne commence.
-   */
   const pinned = ref<Record<string, { x: number; y: number }>>({});
 
   let floatSeq = 0;
+  let impactSeq = 0;
   let timers: ReturnType<typeof globalThis.setTimeout>[] = [];
 
   const wait = (ms: number) =>
@@ -87,19 +91,41 @@ export function useCombatPlayback() {
     walk.value = null;
     pinned.value = {};
     actionBanner.value = null;
+    pendingSorts.value = [];
     isPlaying.value = false;
   }
 
   function reset() {
     stop();
     floats.value = [];
+    impacts.value = [];
   }
 
-  /** Efface les chiffres arrivés au bout de leur vie. Appelé depuis la boucle de rendu. */
   function pruneFloats(now: number) {
     if (floats.value.length === 0) return;
 
     floats.value = floats.value.filter((f) => now - f.bornAt < FLOAT_MS);
+  }
+
+  const IMPACT_MS = 800;
+
+  function pruneImpacts(now: number) {
+    if (impacts.value.length === 0) return;
+
+    impacts.value = impacts.value.filter((i) => now - i.bornAt < IMPACT_MS);
+  }
+
+  function pushImpact(x: number, y: number, targetIsAlly: boolean, now: number) {
+    impacts.value = [
+      ...impacts.value,
+      {
+        id: (impactSeq += 1),
+        x,
+        y,
+        color: targetIsAlly ? ALLY_HIT_COLOR : ENEMY_HIT_COLOR,
+        bornAt: now,
+      },
+    ];
   }
 
   /** La position d'un combattant à cet instant : interpolée s'il marche, épinglée sinon. */
@@ -205,12 +231,27 @@ export function useCombatPlayback() {
             ? `${event.actorName} — ${event.skillName}`
             : event.actorName;
 
+          const actorPos = pinned.value[event.actorId] ?? event.path[0] ?? null;
+
           for (const impact of event.impacts) {
             pushFloat(impact.x, impact.y, impact.vitalityDelta, allyIds.has(impact.combatantId), at);
+            pushImpact(impact.x, impact.y, allyIds.has(impact.combatantId), at);
           }
 
-          // Le bandeau tient pendant toute la retombée du coup, même pour un allié : c'est le
-          // temps qu'il faut au joueur pour lire ce qui vient de se produire.
+          if (event.skillKey && event.impacts.length > 0) {
+            const center = event.impacts[0];
+            pendingSorts.value = [
+              ...pendingSorts.value,
+              {
+                skillKey: event.skillKey,
+                x: center.x,
+                y: center.y,
+                casterX: actorPos?.x ?? center.x,
+                casterY: actorPos?.y ?? center.y,
+              },
+            ];
+          }
+
           await wait(actorIsAlly ? FLOAT_MS / 2 : SETTLE_MS);
           actionBanner.value = null;
         }
@@ -235,13 +276,23 @@ export function useCombatPlayback() {
     pinned.value = pins;
   }
 
+  function consumeSorts(): PendingSort[] {
+    const sorts = pendingSorts.value;
+    pendingSorts.value = [];
+    return sorts;
+  }
+
   return {
     walk,
     floats,
+    impacts,
+    pendingSorts,
     actionBanner,
     isPlaying: computed(() => isPlaying.value),
     positionOf,
     pruneFloats,
+    pruneImpacts,
+    consumeSorts,
     play,
     pinBefore,
     reset,

@@ -11,26 +11,18 @@ namespace Leds.GameEngine.Domain.Combats.Tactical;
 public static class TacticalMovement
 {
     /// <summary>
-    /// Budget de déplacement d'un combattant : une base d'archétype, plus un bonus dérivé de la
-    /// Vitesse. La référence est 10 — en dessous on est ralenti, au-dessus on gagne une case tous
-    /// les quatre points (cf. SFD v2, §9).
+    /// Budget de déplacement d'un combattant.
     /// </summary>
-    /// <remarks>// BALANCE KNOB</remarks>
-    public const int SpeedReference = 10;
-
-    /// <inheritdoc cref="SpeedReference"/>
-    public const int SpeedPointsPerExtraCell = 4;
-
-    /// <summary>Budget de base, faute d'archétype connu. // BALANCE KNOB</summary>
-    public const int BaseMovement = 4;
+    /// <remarks>
+    /// La vitesse ne pilote plus le budget de déplacement : un combatant recevra à terme une
+    /// statistique « Déplacement » distincte. En attendant, le budget est une constante unique
+    /// pour tout le bestiaire (cf. BALANCE KNOB ci-dessous).
+    /// </remarks>
+    public const int BaseMovement = 4; // BALANCE KNOB
 
     public static int BudgetFor(int effectiveSpeed, int baseMovement = BaseMovement)
     {
-        // Division entière vers moins l'infini : un combattant plus lent que la référence perd
-        // bien des cases au lieu d'être arrondi vers le haut par troncature.
-        var delta = effectiveSpeed - SpeedReference;
-        var bonus = (int)Math.Floor(delta / (double)SpeedPointsPerExtraCell);
-        return Math.Max(1, baseMovement + bonus);
+        return Math.Max(1, baseMovement);
     }
 
     /// <summary>

@@ -429,9 +429,7 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
           <p class="es-kicker">Run terminée</p>
           <h3 class="es-h2">{{ runStore.currentRun.status === 'Failed' ? 'Défaite définitive' : 'Le Tome se referme' }}</h3>
           <p class="es-lede es-dim">
-            {{ runStore.currentRun.status === 'Failed'
-              ? 'Tous les alliés ont été vaincus. Cette run est perdue définitivement.'
-              : 'La traversée est terminée. Le bilan détaillé sera intégré dans une prochaine version.' }}
+            {{ runStore.currentRun.status === 'Failed' ? 'Tous les alliés ont été vaincus. Cette run est perdue définitivement.' : 'La traversée est terminée. Le bilan détaillé sera intégré dans une prochaine version.' }}
           </p>
           <button class="es-btn es-btn--blood" @click="handleLeaveRun">
             Quitter la run

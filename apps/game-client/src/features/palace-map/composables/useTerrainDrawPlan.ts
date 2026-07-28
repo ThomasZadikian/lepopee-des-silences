@@ -50,13 +50,13 @@ function hiddenFor(
 
 // BALANCE KNOB — shrinks the whole diamond inward so the outermost tile's own half-width/
 // half-height never reaches the canvas edge (mirrors the old CSS ISO_FIT).
-const ISO_FIT = 0.82;
+const ISO_FIT = 0.92;
 // BALANCE KNOB — the same, for height. The tile size used to be derived from the canvas WIDTH
 // alone, so on a wide-but-short viewport the board's vertical span (plus a tile's own height
 // and the lift of a level-3 tile) ran off the bottom and the frontmost cell was clipped. The
 // unit is now whichever of the two constraints is tighter. Lower than ISO_FIT because a 2:1
 // diamond spends its height budget on the tile body and the elevation lift, not just spacing.
-const ISO_FIT_V = 0.72;
+const ISO_FIT_V = 0.74;
 // The board's vertical center sits a bit below the canvas's true center, clearing the
 // top-tabs chrome that overlays the top-left corner (mirrors the old CSS ISO_V_CENTER).
 const ISO_V_CENTER = 0.56;

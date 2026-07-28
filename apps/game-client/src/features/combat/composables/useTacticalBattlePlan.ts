@@ -3,10 +3,11 @@ import {
   projectToScreen,
   type ProjectionParams,
 } from '../../palace-map/composables/useTerrainDrawPlan';
-import type {
-  FloorTint,
-  RoomTheme,
-  SpriteKey,
+import {
+  TERRAIN_SPRITE_CONSTANTS,
+  type FloorTint,
+  type RoomTheme,
+  type SpriteKey,
 } from '../../palace-map/composables/useTerrainSprites';
 
 /**
@@ -38,22 +39,19 @@ export type BuildBattlePlanInput = {
   canvasHeight: number;
   gridWidth: number;
   gridHeight: number;
-  /** À plat, row-major (`y * gridWidth + x`). */
   elevation: number[];
-  /** Même indexation. Une case fausse porte un obstacle ou n'est pas dans la salle. */
   walkable: boolean[];
-  /**
-   * La case appartient-elle à la salle ? Sans cette distinction, tout ce qui borde la salle
-   * reçoit un sprite d'obstacle et le plateau se retrouve noyé sous un décor inexistant.
-   */
   floor?: boolean[];
   theme: RoomTheme;
   ambientTint: FloorTint;
-  /** Cases où le combattant actif peut se rendre ce tour. Clés « x,y ». */
   reachableCells?: Set<string>;
-  /** Cases couvertes par la compétence armée. Clés « x,y ». */
   targetableCells?: Set<string>;
-  /** La case sous le pointeur. */
+  blockedCells?: Set<string>;
+  pathCells?: Set<string>;
+  aoeCells?: Set<string>;
+  threatCells?: Set<string>;
+  heightCells?: Set<string>;
+  occupiedCells?: Set<string>;
   hoveredCell?: BattleCell | null;
 };
 
@@ -113,8 +111,28 @@ export function buildBattlePlan(input: BuildBattlePlanInput): BattleDrawPlanEntr
       const sortKey = sortKeyFor(x, y, elevation);
 
       if (!walkable) {
-        // Une case de la salle qu'on ne peut pas fouler porte un obstacle. Elle se peint
-        // toujours à la profondeur maximale pour ne jamais être traversée du regard.
+        // Une case de la salle qu'on ne peut pas fouler porte un obstacle. On peint
+        // d'abord le sol (pour que l'obstacle ne flotte pas dans le vide), puis
+        // l'obstacle par-dessus avec la même clé de profondeur que l'exploration.
+        entries.push({
+          cellKey,
+          x,
+          y,
+          spriteKey: {
+            kind: 'floor',
+            tint: input.ambientTint,
+            theme: input.theme,
+            elevation,
+            surfaceSeed: surfaceSeedFor(x, y),
+            cliffLeft: !isFloor(input, x, y + 1),
+            cliffRight: !isFloor(input, x + 1, y),
+          },
+          screenX,
+          screenY,
+          elevation,
+          sortKey,
+        });
+
         entries.push({
           cellKey,
           x,
@@ -123,7 +141,7 @@ export function buildBattlePlan(input: BuildBattlePlanInput): BattleDrawPlanEntr
           screenX,
           screenY,
           elevation,
-          sortKey: sortKeyFor(x, y, 3),
+          sortKey: sortKey + TERRAIN_SPRITE_CONSTANTS.MAX_ELEVATION,
         });
         continue;
       }
@@ -165,6 +183,19 @@ export function buildBattlePlan(input: BuildBattlePlanInput): BattleDrawPlanEntr
         });
       }
 
+      if (input.threatCells?.has(cellKey)) {
+        entries.push({
+          cellKey: `${cellKey}:threat`,
+          x,
+          y,
+          spriteKey: { kind: 'highlight', variant: 'threat', elevation },
+          screenX,
+          screenY,
+          elevation,
+          sortKey: sortKey + 0.12,
+        });
+      }
+
       // La zone d'effet passe par-dessus la zone de déplacement : quand une compétence est
       // armée, c'est elle que le joueur doit lire.
       if (input.targetableCells?.has(cellKey)) {
@@ -177,6 +208,71 @@ export function buildBattlePlan(input: BuildBattlePlanInput): BattleDrawPlanEntr
           screenY,
           elevation,
           sortKey: sortKey + 0.2,
+        });
+      }
+
+      if (input.blockedCells?.has(cellKey)) {
+        entries.push({
+          cellKey: `${cellKey}:blocked`,
+          x,
+          y,
+          spriteKey: { kind: 'highlight', variant: 'blocked', elevation },
+          screenX,
+          screenY,
+          elevation,
+          sortKey: sortKey + 0.21,
+        });
+      }
+
+      if (input.pathCells?.has(cellKey)) {
+        entries.push({
+          cellKey: `${cellKey}:path`,
+          x,
+          y,
+          spriteKey: { kind: 'highlight', variant: 'path', elevation },
+          screenX,
+          screenY,
+          elevation,
+          sortKey: sortKey + 0.24,
+        });
+      }
+
+      if (input.aoeCells?.has(cellKey)) {
+        entries.push({
+          cellKey: `${cellKey}:aoe`,
+          x,
+          y,
+          spriteKey: { kind: 'highlight', variant: 'aoe', elevation },
+          screenX,
+          screenY,
+          elevation,
+          sortKey: sortKey + 0.26,
+        });
+      }
+
+      if (input.heightCells?.has(cellKey)) {
+        entries.push({
+          cellKey: `${cellKey}:height`,
+          x,
+          y,
+          spriteKey: { kind: 'highlight', variant: 'height', elevation },
+          screenX,
+          screenY,
+          elevation,
+          sortKey: sortKey + 0.28,
+        });
+      }
+
+      if (input.occupiedCells?.has(cellKey) && !input.aoeCells?.has(cellKey)) {
+        entries.push({
+          cellKey: `${cellKey}:occupied`,
+          x,
+          y,
+          spriteKey: { kind: 'highlight', variant: 'occupied', elevation },
+          screenX,
+          screenY,
+          elevation,
+          sortKey: sortKey + 0.29,
         });
       }
 
@@ -212,7 +308,17 @@ export function reachableCellsFrom(
   budget: number,
   occupied: ReadonlySet<string>,
 ): Set<string> {
+  return reachableCellsWithPathsFrom(input, origin, budget, occupied).cells;
+}
+
+export function reachableCellsWithPathsFrom(
+  input: Pick<BuildBattlePlanInput, 'gridWidth' | 'gridHeight' | 'elevation' | 'walkable'>,
+  origin: BattleCell,
+  budget: number,
+  occupied: ReadonlySet<string>,
+): { cells: Set<string>; previous: Map<string, BattleCell> } {
   const reached = new Map<string, number>([[battleCellKey(origin.x, origin.y), 0]]);
+  const previous = new Map<string, BattleCell>();
   const frontier: Array<{ cell: BattleCell; spent: number }> = [{ cell: origin, spent: 0 }];
 
   const cellElevation = (x: number, y: number): number =>
@@ -254,17 +360,63 @@ export function reachableCellsFrom(
       if (best !== undefined && best <= spent) continue;
 
       reached.set(key, spent);
+      previous.set(key, current.cell);
       frontier.push({ cell: next, spent });
     }
   }
 
   reached.delete(battleCellKey(origin.x, origin.y));
 
-  return new Set(reached.keys());
+  return { cells: new Set(reached.keys()), previous };
 }
 
 /** Distance de Manhattan — la métrique du déplacement orthogonal. */
 export const manhattan = (a: BattleCell, b: BattleCell): number =>
   Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+
+export function hasLos(
+  input: Pick<BuildBattlePlanInput, 'gridWidth' | 'gridHeight' | 'elevation' | 'walkable' | 'floor'>,
+  from: BattleCell,
+  to: BattleCell,
+): boolean {
+  if (manhattan(from, to) <= 1) return true;
+
+  const isFloor = (x: number, y: number): boolean => {
+    if (x < 0 || y < 0 || x >= input.gridWidth || y >= input.gridHeight) return false;
+    return input.floor
+      ? input.floor[(y * input.gridWidth) + x] ?? false
+      : input.walkable[(y * input.gridWidth) + x] ?? false;
+  };
+
+  const cellElevation = (x: number, y: number): number =>
+    input.elevation[(y * input.gridWidth) + x] ?? 0;
+
+  const dx = Math.abs(to.x - from.x);
+  const dy = Math.abs(to.y - from.y);
+  const sx = from.x < to.x ? 1 : -1;
+  const sy = from.y < to.y ? 1 : -1;
+  let err = dx - dy;
+  let x = from.x;
+  let y = from.y;
+
+  const fromElev = cellElevation(from.x, from.y);
+  const toElev = cellElevation(to.x, to.y);
+  const maxElev = Math.max(fromElev, toElev);
+
+  while (x !== to.x || y !== to.y) {
+    const e2 = 2 * err;
+    if (e2 > -dy) { err -= dy; x += sx; }
+    if (e2 < dx) { err += dx; y += sy; }
+
+    if (x === to.x && y === to.y) break;
+
+    if (!isFloor(x, y)) return false;
+
+    const midElev = cellElevation(x, y);
+    if (midElev > maxElev) return false;
+  }
+
+  return true;
+}
 
 export { isoUnit, projectToScreen };

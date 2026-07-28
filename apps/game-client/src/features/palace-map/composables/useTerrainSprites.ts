@@ -94,7 +94,9 @@ export function resolveRoomVisual(
 export type HiddenState = 'none' | 'hint' | 'revealed';
 /** Pre-contact danger tell. `none` is the ambush: deliberately identical to plain floor. */
 export type DangerTell = 'none' | 'tracks' | 'glow' | 'blight';
-export type HighlightVariant = 'move' | 'attack' | 'cursor' | 'path';
+export type HighlightVariant =
+  | 'move' | 'attack' | 'cursor' | 'path'
+  | 'aoe' | 'threat' | 'blocked' | 'height' | 'occupied';
 /**
  * Décor vertical. Les sept premiers sont les décors de salle ; les suivants sont les décors
  * d'événement, un par type de nœud (voir `NODE_PROP`).
