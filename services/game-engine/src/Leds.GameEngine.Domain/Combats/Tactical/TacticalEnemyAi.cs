@@ -35,6 +35,9 @@ public static class TacticalEnemyAi
     /// <summary>Poids de l'isolement dans le choix de la case. // BALANCE KNOB</summary>
     public const double CohesionWeight = 0.5;
 
+    /// <summary>Seuil de PV pour déclencher la fuite (30%). // O-008</summary>
+    private const double LowHpThreshold = 0.3;
+
     /// <summary>
     /// Ce que le rôle d'une cible la rend désirable. Les soutiens en tête : les laisser vivre,
     /// c'est laisser le reste du groupe se relever indéfiniment.
@@ -90,7 +93,7 @@ public static class TacticalEnemyAi
     }
 
     /// <summary>
-    /// Où <paramref name="actorId"/> se poste pour s'en prendre à <paramref name="target"/>.
+    /// Où <paramref name="actorId"/> se poste pour s'en prendre à <paramref name="target"/>. 
     /// Renvoie sa position actuelle s'il n'a rien de mieux à faire que rester là.
     /// </summary>
     /// <remarks>
@@ -98,6 +101,8 @@ public static class TacticalEnemyAi
     /// fonce seul dans la mêlée meurt isolé, ce qui rend les familles à soutien inopérantes —
     /// un soigneur ne soigne que ce qui reste à sa portée. D'où la pénalité d'isolement, qui ne
     /// se déclenche qu'au-delà d'un rayon de confort.
+    /// 
+    /// Modifié pour O-008 : fuir si PV bas.
     /// </remarks>
     public static GridPosition ChooseDestination(
         TacticalCombat combat, Guid actorId, Combatant target)
@@ -126,6 +131,21 @@ public static class TacticalEnemyAi
             .Select(e => combat.PositionOf(e.Id.Value))
             .ToList();
 
+        // O-008: Fuir si PV bas
+        var isLowHp = actor.CurrentVitality <= actor.MaxVitality * LowHpThreshold;
+        var shouldFlee = isLowHp && kin.Count > 0; // Ne fuir que s'il y a des alliés pour se cacher derrière
+
+        if (shouldFlee)
+        {
+            // Se déplacer loin de la cible ET vers les alliés
+            return reachable.Keys
+                .OrderBy(cell => FleeCostOf(cell, targetCell, kin))
+                .ThenBy(cell => cell.Y)
+                .ThenBy(cell => cell.X)
+                .First();
+        }
+
+        // Comportement normal : se rapprocher de la cible
         return reachable.Keys
             .OrderBy(cell => CostOf(cell, targetCell, kin))
             .ThenBy(cell => cell.Y)
@@ -145,5 +165,19 @@ public static class TacticalEnemyAi
         var isolation = Math.Max(0, solitude - CohesionComfortRadius);
 
         return toTarget + (isolation * CohesionWeight);
+    }
+
+    /// <summary>
+    /// Coût pour fuir : maximiser la distance à la cible et minimiser l'isolement.
+    /// </summary>
+    private static double FleeCostOf(
+        GridPosition cell, GridPosition targetCell, IReadOnlyCollection<GridPosition> kin)
+    {
+        var fromTarget = cell.ManhattanDistanceTo(targetCell);
+        var toKin = kin.Count > 0 ? kin.Min(k => cell.ManhattanDistanceTo(k)) : 0;
+
+        // Privilégier les cases éloignées de la cible et proches des alliés
+        // Note: on inverse fromTarget pour fuir (plus la distance est grande, plus le coût est bas)
+        return -fromTarget + (toKin * 0.5);
     }
 }

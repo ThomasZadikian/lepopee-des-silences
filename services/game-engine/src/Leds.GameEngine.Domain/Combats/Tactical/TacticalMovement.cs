@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+
 namespace Leds.GameEngine.Domain.Combats.Tactical;
 
 /// <summary>
@@ -14,11 +16,17 @@ public static class TacticalMovement
     /// Budget de déplacement d'un combattant.
     /// </summary>
     /// <remarks>
-    /// La vitesse ne pilote plus le budget de déplacement : un combatant recevra à terme une
+    /// La vitesse ne pilote plus le budget de déplacement : un combattant recevra à terme une
     /// statistique « Déplacement » distincte. En attendant, le budget est une constante unique
     /// pour tout le bestiaire (cf. BALANCE KNOB ci-dessous).
     /// </remarks>
     public const int BaseMovement = 4; // BALANCE KNOB
+
+    /// <summary>
+    /// Cache des résultats de Line of Sight pour éviter les recalculs (O-010).
+    /// Clé : "fromX,fromY-toX,toY", Valeur : résultat booléen.
+    /// </summary>
+    private static readonly ConcurrentDictionary<string, bool> LineOfSightCache = new();
 
     public static int BudgetFor(int effectiveSpeed, int baseMovement = BaseMovement)
     {
@@ -79,7 +87,7 @@ public static class TacticalMovement
     }
 
     /// <summary>
-    /// Le chemin réellement emprunté de <paramref name="origin"/> à <paramref name="destination"/>,
+    /// Le chemin réellement emprunté de <paramref name="origin"/> à <paramref name="destination"/>, 
     /// case par case, destination comprise et origine exclue. <c>null</c> si la destination est
     /// hors de portée.
     /// </summary>
@@ -147,6 +155,8 @@ public static class TacticalMovement
     /// Ligne de vue entre deux cases. Coupée par une case non praticable, ou par une crête
     /// strictement plus haute que ses deux extrémités — une butte entre deux tireurs les sépare,
     /// mais tirer depuis ou vers le sommet reste possible (cf. SFD v2, §10).
+    /// 
+    /// Optimisé pour O-010 : utilise un cache statique pour éviter les recalculs.
     /// </summary>
     public static bool HasLineOfSight(
         TacticalBattlefield battlefield, GridPosition from, GridPosition to)
@@ -157,21 +167,43 @@ public static class TacticalMovement
         if (from.ManhattanDistanceTo(to) <= 1)
             return true;
 
+        // O-010: Utiliser le cache pour les paires de cases fréquemment vérifiées
+        var cacheKey = $"{from.X},{from.Y}-{to.X},{to.Y}";
+        if (LineOfSightCache.TryGetValue(cacheKey, out var cachedResult))
+            return cachedResult;
+
         var ceiling = Math.Max(battlefield.ElevationAt(from), battlefield.ElevationAt(to));
 
+        bool result = true;
         foreach (var cell in TraceLine(from, to))
         {
             if (cell == from || cell == to)
                 continue;
 
             if (!battlefield.IsWalkable(cell))
-                return false;
+            {
+                result = false;
+                break;
+            }
 
             if (battlefield.ElevationAt(cell) > ceiling)
-                return false;
+            {
+                result = false;
+                break;
+            }
         }
 
-        return true;
+        // Stocker le résultat dans le cache
+        LineOfSightCache.TryAdd(cacheKey, result);
+        return result;
+    }
+
+    /// <summary>
+    /// Efface le cache de Line of Sight (utile pour les tests ou après un changement de terrain).
+    /// </summary>
+    public static void ClearLineOfSightCache()
+    {
+        LineOfSightCache.Clear();
     }
 
     /// <summary>Bresenham arrondi : les cases traversées par le segment, extrémités comprises.</summary>

@@ -9,6 +9,8 @@ import type { PropKind } from '../../palace-map/composables/useTerrainSprites';
  * nomme ses créatures `enemy.sentinelle-seuil`, le bestiaire peint les nomme
  * `sentinelle-seuil`. Retirer le préfixe suffit dans l'immense majorité des cas — le reste est
  * du rattrapage, et le rattrapage doit rester visible plutôt que silencieux.
+ *
+ * Optimisé pour O-012 : Lazy Loading des sprites + cache.
  */
 
 /** Le protagoniste n'a pas de clé de catalogue : il porte la sienne, en dur côté moteur. */
@@ -23,6 +25,9 @@ const rosterIds = new Set(ROSTER_IDS);
 /** Clés déjà signalées, pour ne pas noyer la console à soixante images par seconde. */
 const warned = new Set<string>();
 
+/** Cache des sprites déjà chargés (O-012). */
+const spriteCache = new Map<string, HTMLCanvasElement | null>();
+
 /**
  * Normalise un libellé en identifiant candidat : minuscules, accents retirés, tout ce qui
  * n'est pas alphanumérique replié en tirets. « Sentinelle du Seuil » → `sentinelle-du-seuil`.
@@ -30,7 +35,7 @@ const warned = new Set<string>();
 function slugify(label: string): string {
   return label
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
@@ -101,12 +106,20 @@ export function fallbackPropFor(archetype: string, isBoss: boolean): PropKind {
  * La variante dérive de l'identifiant du combattant plutôt que d'un compteur : deux créatures
  * de la même espèce sur le même champ de bataille doivent différer, et se ressembler encore
  * après un rechargement de partie.
+ *
+ * Optimisé pour O-012 : Lazy Loading + cache des sprites.
  */
 export function combatantSprite(
   sourceKey: string,
   displayName: string,
   combatantId: string,
 ): HTMLCanvasElement | null {
+  // O-012: Vérifier le cache en premier
+  const cacheKey = `${sourceKey}-${combatantId}`;
+  if (spriteCache.has(cacheKey)) {
+    return spriteCache.get(cacheKey)!;
+  }
+
   const figureId = figureIdFor(sourceKey, displayName);
 
   if (!figureId) {
@@ -120,6 +133,8 @@ export function combatantSprite(
       );
     }
 
+    // O-012: Stocker null dans le cache pour éviter de recalculer
+    spriteCache.set(cacheKey, null);
     return null;
   }
 
@@ -128,5 +143,26 @@ export function combatantSprite(
     hash = (hash * 31 + combatantId.charCodeAt(i)) | 0;
   }
 
-  return getCombatantSprite(figureId, Math.abs(hash) % 3);
+  const sprite = getCombatantSprite(figureId, Math.abs(hash) % 3);
+
+  // O-012: Stocker dans le cache pour les prochains appels
+  spriteCache.set(cacheKey, sprite);
+
+  return sprite;
+}
+
+/**
+ * Efface le cache des sprites (utile pour les tests ou après un changement de thème).
+ */
+export function clearSpriteCache(): void {
+  spriteCache.clear();
+}
+
+/**
+ * Précharge les sprites pour une liste de combattants (utile pour éviter le lazy loading en combat).
+ */
+export function preloadSprites(combatants: Array<{ sourceKey: string; displayName: string; id: string }>): void {
+  for (const combatant of combatants) {
+    combatantSprite(combatant.sourceKey, combatant.displayName, combatant.id);
+  }
 }
