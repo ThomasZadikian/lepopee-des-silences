@@ -1,0 +1,19 @@
+// Déclaration de type pour sorts.js (pour corriger TS7016)
+
+declare module '../../palace-map/composables/sorts' {
+  export const SORTS: Record<string, any>;
+  export const SORT_IDS: string[];
+  
+  export type SortShape = 'single' | 'cross' | 'diamond' | 'map';
+  
+  export interface SortCell {
+    x: number;
+    y: number;
+    d: number;
+    cx?: number;
+    cy?: number;
+  }
+  
+  export function shapeCells(shape: SortShape, x: number, y: number): SortCell[] | null;
+  export function playSort(sortKey: string, battlefield: any, target: { x: number; y: number }): void;
+}

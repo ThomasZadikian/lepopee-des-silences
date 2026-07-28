@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue';
-import type { CombatLogEntryDto } from '../types/combatContracts';
+import { ref, watch } from 'vue';
+import type { CombatLogEntryDto, LogEntryType } from '../types/combatContracts';
 
 const props = defineProps<{
   entries: CombatLogEntryDto[];
@@ -22,26 +22,25 @@ function toggle() {
 /**
  * Retourne l'icône correspondante à un type de log (O-015).
  */
-function getLogIcon(type: string): string {
-  const icons: Record<string, string> = {
+function getLogIcon(type: LogEntryType): string {
+  const icons: Partial<Record<LogEntryType, string>> = {
+    ActionAccepted: '✅',
+    AttackMissed: '🎭',
+    CombatCompleted: '🏆',
+    CombatFailed: '💔',
+    CriticalHit: '🎯',
     DamageApplied: '⚔️',
+    EnemyTurnResolved: '🤖',
     GuardGained: '🛡️',
     HealApplied: '❤️',
+    ItemUsed: '🎒',
+    SkillUsed: '🔮',
+    StatusApplied: '✨',
     TargetDefeated: '💀',
-    CriticalHit: '🎯',
+    TurnAdvanced: '🔄',
     WeaknessHit: '💥',
     ResistedHit: '🛡️',
     ImmuneHit: '🚫',
-    StatusApplied: '✨',
-    SkillUsed: '🔮',
-    ItemUsed: '🎒',
-    ActionAccepted: '✅',
-    TurnAdvanced: '🔄',
-    EnemyTurnResolved: '🤖',
-    CombatCompleted: '🏆',
-    CombatFailed: '💔',
-    AttackMissed: '🎭',
-    TacticalMove: '👣',
   };
   return icons[type] ?? '📜';
 }
@@ -49,7 +48,7 @@ function getLogIcon(type: string): string {
 /**
  * Retourne la classe CSS pour l'icône en fonction du type de log.
  */
-function getIconClass(type: string): string {
+function getIconClass(type: LogEntryType): string {
   const classes: Record<string, string> = {
     DamageApplied: 'combat-log__icon--damage',
     GuardGained: 'combat-log__icon--guard',

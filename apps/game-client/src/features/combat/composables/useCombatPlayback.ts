@@ -17,6 +17,8 @@ import type {
  * il contourne un mur ; la pause finale laisse le coup se déposer avant que la main revienne.
  *
  * Optimisé pour O-014 : timings dynamiques en fonction de la distance.
+ * Optimisé pour O-017 : transitions entre les tours (fondu).
+ * Optimisé pour O-018 : timings spécifiques pour les ennemis.
  */
 
 /** Avant qu'un ennemi n'entame son tour : il regarde le terrain. // BALANCE KNOB */
@@ -31,6 +33,14 @@ export const SETTLE_MS = 620;
 /** Durée de vie d'un chiffre flottant, et hauteur de sa montée. */
 export const FLOAT_MS = 1100;
 export const FLOAT_RISE_PX = 30;
+
+/** Durée de la transition entre les tours (fondu). // O-017 */
+export const TURN_TRANSITION_MS = 300;
+
+/** Multiplicateur de timing pour les ennemis (O-018). */
+export const ENEMY_STEP_MULTIPLIER = 1.2; // 20% plus lent
+/** Multiplicateur de timing pour le settle des ennemis (O-018). */
+export const ENEMY_SETTLE_MULTIPLIER = 1.5; // 50% plus long
 
 export type FloatingNumber = {
   id: number;
@@ -78,6 +88,10 @@ export function useCombatPlayback() {
 
   const pinned = ref<Record<string, { x: number; y: number }>>({});
 
+  // O-017: État de transition entre les tours
+  const isTransitioning = ref(false);
+  const transitionPhase = ref<'fadeOut' | 'fadeIn' | null>(null);
+
   let floatSeq = 0;
   let impactSeq = 0;
   let timers: ReturnType<typeof globalThis.setTimeout>[] = [];
@@ -95,6 +109,9 @@ export function useCombatPlayback() {
     actionBanner.value = null;
     pendingSorts.value = [];
     isPlaying.value = false;
+    // O-017: Réinitialiser l'état de transition
+    isTransitioning.value = false;
+    transitionPhase.value = null;
   }
 
   function reset() {
@@ -131,18 +148,25 @@ export function useCombatPlayback() {
   }
 
   /**
-   * Calcule le timing dynamique pour un pas de déplacement (O-014).
+   * Calcule le timing dynamique pour un pas de déplacement (O-014 + O-018).
    * - Déplacements courts (1-2 cases) : plus rapides (70% de BASE_STEP_MS).
    * - Déplacements longs (5+ cases) : plus lents (130% de BASE_STEP_MS).
-   * - Déplacements moyens : timing de base.
+   * - Ennemis : 20% plus lents (ENEMY_STEP_MULTIPLIER).
    */
-  function getDynamicStepMs(pathLength: number): number {
-    if (pathLength <= 2) {
-      return Math.floor(BASE_STEP_MS * 0.7); // 101ms pour les déplacements courts
-    } else if (pathLength >= 5) {
-      return Math.floor(BASE_STEP_MS * 1.3); // 188ms pour les déplacements longs
+  function getDynamicStepMs(pathLength: number, isEnemy: boolean = false): number {
+    let baseStep = BASE_STEP_MS;
+    
+    // O-018: Les ennemis sont plus lents
+    if (isEnemy) {
+      baseStep = Math.floor(BASE_STEP_MS * ENEMY_STEP_MULTIPLIER);
     }
-    return BASE_STEP_MS; // 145ms pour les déplacements moyens
+    
+    if (pathLength <= 2) {
+      return Math.floor(baseStep * 0.7); // 101ms pour les déplacements courts
+    } else if (pathLength >= 5) {
+      return Math.floor(baseStep * 1.3); // 188ms pour les déplacements longs
+    }
+    return baseStep; // 145ms pour les déplacements moyens
   }
 
   /** La position d'un combattant à cet instant : interpolée s'il marche, épinglée sinon. */
@@ -154,8 +178,9 @@ export function useCombatPlayback() {
     const current = walk.value;
 
     if (current && current.combatantId === combatantId && current.path.length > 0) {
-      // O-014: Utiliser un timing dynamique basé sur la longueur du chemin
-      const stepMs = getDynamicStepMs(current.path.length);
+      // O-014 + O-018: Utiliser un timing dynamique basé sur la longueur du chemin et le type (allié/ennemi)
+      const isEnemy = !current.combatantId.startsWith('player') && !current.combatantId.startsWith('ally');
+      const stepMs = getDynamicStepMs(current.path.length, isEnemy);
       const progress = (now - current.startedAt) / stepMs;
 
       // `now` vient de l'horodatage de `requestAnimationFrame`, qui date du DÉBUT de la frame
@@ -204,6 +229,8 @@ export function useCombatPlayback() {
    * au joueur en sachant que plus rien ne bouge.
    *
    * Optimisé pour O-014 : utilise des timings dynamiques pour les déplacements.
+   * Optimisé pour O-017 : ajoute des transitions entre les tours.
+   * Optimisé pour O-018 : timings spécifiques pour les ennemis.
    */
   async function play(
     events: readonly TacticalCombatEventDto[],
@@ -220,6 +247,17 @@ export function useCombatPlayback() {
       for (const event of events) {
         const actorIsAlly = allyIds.has(event.actorId);
 
+        // O-017: Transition de fondu avant le tour d'un ennemi
+        if (!actorIsAlly) {
+          isTransitioning.value = true;
+          transitionPhase.value = 'fadeOut';
+          await wait(TURN_TRANSITION_MS / 2);
+          transitionPhase.value = 'fadeIn';
+          await wait(TURN_TRANSITION_MS / 2);
+          isTransitioning.value = false;
+          transitionPhase.value = null;
+        }
+
         // L'adversaire prend le temps de décider. Un allié agit sur ordre du joueur : il n'a
         // rien à peser, et le faire attendre passerait pour de la latence.
         if (!actorIsAlly) await wait(THINK_MS);
@@ -235,8 +273,8 @@ export function useCombatPlayback() {
             ...event.path.map((s) => ({ x: s.x, y: s.y })),
           ];
 
-          // O-014: Utiliser un timing dynamique basé sur la longueur du chemin
-          const stepMs = getDynamicStepMs(path.length - 1); // -1 car origin est ajoutée
+          // O-014 + O-018: Utiliser un timing dynamique basé sur la longueur du chemin et le type (allié/ennemi)
+          const stepMs = getDynamicStepMs(path.length - 1, !actorIsAlly); // !actorIsAlly = isEnemy
           walk.value = { combatantId: event.actorId, path, startedAt: now() };
           await wait((path.length - 1) * stepMs); // -1 car origin n'est pas comptée dans le chemin
           walk.value = null;
@@ -275,7 +313,9 @@ export function useCombatPlayback() {
             ];
           }
 
-          await wait(actorIsAlly ? FLOAT_MS / 2 : SETTLE_MS);
+          // O-018: Temps de settle plus long pour les ennemis
+          const settleMs = actorIsAlly ? SETTLE_MS / 2 : SETTLE_MS * ENEMY_SETTLE_MULTIPLIER;
+          await wait(settleMs);
           actionBanner.value = null;
         }
       }
@@ -284,6 +324,9 @@ export function useCombatPlayback() {
       pinned.value = {};
       actionBanner.value = null;
       isPlaying.value = false;
+      // O-017: Réinitialiser l'état de transition
+      isTransitioning.value = false;
+      transitionPhase.value = null;
     }
   }
 
@@ -312,6 +355,8 @@ export function useCombatPlayback() {
     pendingSorts,
     actionBanner,
     isPlaying: computed(() => isPlaying.value),
+    isTransitioning: computed(() => isTransitioning.value), // O-017
+    transitionPhase: computed(() => transitionPhase.value), // O-017
     positionOf,
     pruneFloats,
     pruneImpacts,

@@ -174,8 +174,18 @@ export const useTacticalCombatStore = defineStore('tacticalCombat', () => {
         // Vérifier la ligne de vue pour les compétences qui nécessitent une vue dégagée
         if (skill.targetingType === 'SingleEnemy' || skill.targetingType === 'SingleAlly') {
           const combatant = activeCombatant.value;
-          if (combatant && !hasLos(battlefield, { x: combatant.x, y: combatant.y }, { x: nx, y: ny })) {
-            continue; // Case bloquée par un obstacle
+          if (combatant) {
+            // Corriger TS2345 : passer un objet avec gridWidth/gridHeight
+            const battlefieldInput = {
+              gridWidth: battlefield.width,
+              gridHeight: battlefield.height,
+              elevation: battlefield.elevation,
+              walkable: battlefield.walkable,
+              floor: battlefield.floor,
+            };
+            if (!hasLos(battlefieldInput, { x: combatant.x, y: combatant.y }, { x: nx, y: ny })) {
+              continue; // Case bloquée par un obstacle
+            }
           }
         }
 

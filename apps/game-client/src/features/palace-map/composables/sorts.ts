@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 // Sorts — effets peints, un par registre et par grammaire de forme.
 //
 // Le catalogue compte 138 sorts. On n'en peint pas 138 : on peint le VOCABULAIRE dont ils

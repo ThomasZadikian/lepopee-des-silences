@@ -52,6 +52,7 @@ export type BuildBattlePlanInput = {
   heightCells?: Set<string>;
   occupiedCells?: Set<string>;
   hoveredCell?: BattleCell | null;
+  pathCells?: Set<string>; // Ajout pour TS2339/TS2353
 };
 
 export const battleCellKey = (x: number, y: number): string => `${x},${y}`;

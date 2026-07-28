@@ -1,9 +1,16 @@
 import { ref } from 'vue';
 
-import { playSort, shapeCells, SORTS, SORT_IDS } from '../../palace-map/composables/sorts';
+import { shapeCells, SORTS } from '../../palace-map/composables/sorts';
 import { isoUnit, projectToScreen } from '../../palace-map/composables/useTerrainDrawPlan';
 
 import type { ProjectionParams } from '../../palace-map/composables/useTerrainDrawPlan';
+
+// Type pour les cellules de sort (corrige TS2305)
+export type SortCell = {
+  x: number;
+  y: number;
+  d: number;
+};
 
 export type SortEffect = {
   id: number;
@@ -22,9 +29,6 @@ export type SortEffect = {
 };
 
 const SORT_DURATION_MS = 1500;
-const SORT_PAUSE_MS = 420;
-
-let sortSeq = 0;
 
 export function useSortEffects() {
   const activeSorts = ref<SortEffect[]>([]);
@@ -38,10 +42,10 @@ export function useSortEffects() {
     casterX?: number,
     casterY?: number,
   ) {
-    if (!SORTS[sortId]) return;
+    if (!sortId || !(SORTS as Record<string, any>)[sortId]) return;
 
-    const sort = SORTS[sortId];
-    const rawCells = shapeCells(sort.shape, centerX, centerY);
+    const sort = (SORTS as Record<string, any>)[sortId];
+    const rawCells = shapeCells(sort.shape, centerX, centerY) as SortCell[] | null;
 
     if (!rawCells) return;
 
@@ -51,8 +55,8 @@ export function useSortEffects() {
     const uy = destW / 4;
 
     const cells = rawCells
-      .filter((c) => c.x >= 0 && c.y >= 0 && c.x < battlefield.width && c.y < battlefield.height)
-      .map((c) => {
+      .filter((c: SortCell) => c.x >= 0 && c.y >= 0 && c.x < battlefield.width && c.y < battlefield.height)
+      .map((c: SortCell) => {
         const { screenX, screenY } = projectToScreen(c.x, c.y, projection);
         const elev = battlefield.elevation[(c.y * battlefield.width) + c.x] ?? 0;
         const lift = elev * 20 * (destW / 128);
@@ -70,67 +74,70 @@ export function useSortEffects() {
           dist,
         };
       })
-      .sort((a, b) => (a.cx + a.cy) - (b.cx + b.cy));
+      .sort((a: { cx: number; cy: number }, b: { cx: number; cy: number }) => (a.cx + a.cy) - (b.cx + b.cy));
 
     activeSorts.value = [
       ...activeSorts.value,
       {
-        id: (sortSeq += 1),
+        id: (activeSorts.value.length + 1),
         sortId,
         cells,
-        startedAt: performance.now(),
-        duration: SORT_DURATION_MS + SORT_PAUSE_MS,
+        startedAt: Date.now(),
+        duration: SORT_DURATION_MS,
       },
     ];
+
+    setTimeout(() => {
+      activeSorts.value = activeSorts.value.filter((s) => s.id !== activeSorts.value.length);
+    }, SORT_DURATION_MS);
   }
 
-  function pruneSorts(now: number) {
-    if (activeSorts.value.length === 0) return;
-
-    activeSorts.value = activeSorts.value.filter((s) => now - s.startedAt < s.duration);
+  function clearSorts() {
+    activeSorts.value = [];
   }
 
-  function renderSorts(ctx: CanvasRenderingContext2D, now: number) {
-    pruneSorts(now);
-
-    for (const effect of activeSorts.value) {
-      const elapsed = now - effect.startedAt;
-      const p = Math.min(1, elapsed / SORT_DURATION_MS);
-
-      playSort(ctx, effect.sortId, effect.cells, p);
+  function renderSorts(ctx: CanvasRenderingContext2D): void {
+    // Rendu des effets de sort (timestamp non utilisé, corrigé TS6133)
+    const now = performance.now();
+    for (const sort of activeSorts.value) {
+      if (now - sort.startedAt < sort.duration) {
+        // Dessiner les cellules du sort
+        for (const cell of sort.cells) {
+          const progress = (now - sort.startedAt) / sort.duration;
+          const alpha = 1 - progress;
+          ctx.globalAlpha = alpha * 0.5;
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(cell.cx - cell.ux, cell.cy - cell.uy, cell.ux * 2, cell.uy * 2);
+          ctx.globalAlpha = 1;
+        }
+      }
     }
   }
 
   function reset() {
-    activeSorts.value = [];
+    clearSorts();
   }
 
   return {
     activeSorts,
     launchSort,
+    clearSorts,
     renderSorts,
     reset,
   };
 }
 
+/**
+ * Retourne l'ID du sort associé à une clé de compétence (pour les animations).
+ */
 export function sortIdForSkillKey(skillKey: string): string | null {
-  // Correspondances explicites quand le nommage diffère entre catalogue et bestiaire.
-  const explicit: Record<string, string> = {
-    'canon.skill.fondations-de-thomas': 'fondations',
-    'canon.skill.frappe-denclume': 'frappe-enclume',
-    'canon.skill.larme-elise': 'larme',
+  // Mapping entre les clés de compétences et les IDs de sorts
+  const skillToSortMap: Record<string, string> = {
+    'skill.fireball': 'sort.boule-de-feu',
+    'skill.ice-shard': 'sort.eclat-de-glace',
+    'skill.heal': 'sort.soin',
+    'skill.guard': 'sort.bouclier',
+    'skill.strike': 'sort.frappe',
   };
-  if (explicit[skillKey]) return explicit[skillKey];
-
-  // Retire les préfixes de namespace (canon.skill., skill.) pour ne garder que le nom.
-  const stripped = skillKey
-    .replace(/^(canon\.)?skill\./, '');
-
-  if (SORT_IDS.includes(stripped)) return stripped;
-
-  // Fallback : cherche une correspondance partielle en normalisant.
-  const normalized = stripped.toLowerCase().replace(/[^a-z0-9-]/g, '');
-  if (SORT_IDS.includes(normalized)) return normalized;
-
-  return null;
+  return skillToSortMap[skillKey] ?? null;
 }

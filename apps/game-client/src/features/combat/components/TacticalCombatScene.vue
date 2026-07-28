@@ -47,7 +47,7 @@ import {
   type BattleCell,
 } from '../composables/useTacticalBattlePlan';
 import { combatantSprite, fallbackPropFor } from '../composables/useCombatantSprites';
-import { FLOAT_MS, FLOAT_RISE_PX } from '../composables/useCombatPlayback';
+import { FLOAT_MS, FLOAT_RISE_PX, useCombatPlayback } from '../composables/useCombatPlayback';
 import { sortIdForSkillKey, useSortEffects } from '../composables/useSortEffects';
 import { useTacticalCombatStore } from '../stores/useTacticalCombatStore';
 import { SORTS } from '../../palace-map/composables/sorts';
@@ -69,6 +69,7 @@ const emit = defineEmits<{
 const store = useTacticalCombatStore();
 const { getSprite } = useTerrainSprites();
 const sortEffects = useSortEffects();
+const playback = useCombatPlayback();
 
 const canvasEl = ref<HTMLCanvasElement | null>(null);
 const canvasSize = ref({ width: 0, height: 0 });
@@ -199,7 +200,7 @@ type TacticalSkillProfile = {
 
 function skillProfile(skill: CombatantSkillRuntimeDto): TacticalSkillProfile {
   const sortId = sortIdForSkillKey(skill.key);
-  const sort = sortId ? SORTS[sortId] : null;
+  const sort = sortId ? (SORTS as Record<string, any>)[sortId] : null;
 
   if (sort) {
     const shape = sort.shape as TacticalShape;
@@ -1049,7 +1050,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <section v-if="store.combat" class="tbattle">
+  <section v-if="store.combat" class="tbattle" :class="{ 'tbattle--transitioning': playback.isTransitioning }">
     <!-- ── Initiative rail (left) ── -->
     <aside class="tbattle__initiative-rail">
       <span class="tbattle__round">Round {{ store.combat.roundNumber }}</span>
@@ -1210,6 +1211,11 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .tbattle {
+
+.tbattle--transitioning {
+  opacity: 0.5;
+  transition: opacity 300ms ease-in-out;
+}
   display: grid;
   grid-template-columns: 170px 1fr 180px;
   grid-template-rows: 1fr auto;
