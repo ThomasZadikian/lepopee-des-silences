@@ -41,7 +41,7 @@ describe('CombatActionSummary', () => {
 
   it('displays the message for each entry', () => {
     const wrapper = mountSummary([makeEntry('SkillUsed', 'Hero uses Frappe')]);
-    expect(wrapper.find('.cas__msg').text()).toBe('Hero uses Frappe');
+    expect(wrapper.find('.cas__text').text()).toBe('Hero uses Frappe');
   });
 
   it('applies action class for SkillUsed entries', () => {
@@ -94,9 +94,9 @@ describe('CombatActionSummary', () => {
     expect(wrapper.find('.cas__entry').classes()).toContain('cas__entry--failed');
   });
 
-  it('shows KO badge for TargetDefeated entries', () => {
+  it('keeps defeated entries text-only', () => {
     const wrapper = mountSummary([makeEntry('TargetDefeated', 'Defeated')]);
-    expect(wrapper.find('.cas__badge').text()).toBe('KO');
+    expect(wrapper.find('.cas__badge').exists()).toBe(false);
   });
 
   it('does not show KO badge for non-TargetDefeated entries', () => {
@@ -104,14 +104,14 @@ describe('CombatActionSummary', () => {
     expect(wrapper.find('.cas__badge').exists()).toBe(false);
   });
 
-  it('shows arrow for SkillUsed entries', () => {
+  it('keeps SkillUsed entries text-only', () => {
     const wrapper = mountSummary([makeEntry('SkillUsed', 'Action')]);
-    expect(wrapper.find('.cas__arrow').exists()).toBe(true);
+    expect(wrapper.find('.cas__arrow').exists()).toBe(false);
   });
 
-  it('shows arrow for ItemUsed entries', () => {
+  it('keeps ItemUsed entries text-only', () => {
     const wrapper = mountSummary([makeEntry('ItemUsed', 'Item used')]);
-    expect(wrapper.find('.cas__arrow').exists()).toBe(true);
+    expect(wrapper.find('.cas__arrow').exists()).toBe(false);
   });
 
   it('does not show arrow for DamageApplied entries', () => {

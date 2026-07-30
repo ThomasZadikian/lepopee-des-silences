@@ -808,7 +808,7 @@ function paintCanvas(timestamp: number) {
   }
 
   paintImpacts(ctx, timestamp);
-  paintSorts(ctx, timestamp);
+  paintSorts(ctx);
   paintFloatingNumbers(ctx, timestamp);
   paintCombatCartouche(ctx, tier);
 }
@@ -839,7 +839,7 @@ function paintImpacts(ctx: CanvasRenderingContext2D, timestamp: number) {
   }
 }
 
-function paintSorts(ctx: CanvasRenderingContext2D, timestamp: number) {
+function paintSorts(ctx: CanvasRenderingContext2D) {
   const field = battlefield.value;
   if (!field) return;
 
@@ -859,7 +859,7 @@ function paintSorts(ctx: CanvasRenderingContext2D, timestamp: number) {
     );
   }
 
-  sortEffects.renderSorts(ctx, timestamp);
+  sortEffects.renderSorts(ctx);
 }
 
 /**

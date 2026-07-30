@@ -1,33 +1,48 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { mount } from '@vue/test-utils';
-import { ref, computed } from 'vue';
+import { createPinia } from 'pinia';
+import { computed, ref } from 'vue';
+import { shallowMount } from '@vue/test-utils';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { useDevTools } from '../composables/useDevTools';
 import DevToolsPanel from './DevToolsPanel.vue';
 
-// Mock useDevTools avec des Ref/ComputedRef valides
 vi.mock('../composables/useDevTools', () => ({
-  useDevTools: () => ({
+  useDevTools: vi.fn(),
+}));
+
+function devToolsState(errorMessage: string | null = null) {
+  return {
     token: ref(''),
     hasToken: computed(() => false),
-    status: ref('unknown'),
+    status: ref<'unknown'>('unknown'),
     statusEnvironment: ref<string | null>(null),
     isLoading: ref(false),
     message: ref<string | null>(null),
-    error: ref<string | null>(null),
+    error: ref<string | null>(errorMessage),
     saveToken: vi.fn(),
     clearToken: vi.fn(),
     checkStatus: vi.fn(),
     runAction: vi.fn().mockResolvedValue(false),
-  }),
-}));
+  };
+}
 
 function mountPanel() {
-  return mount(DevToolsPanel);
+  return shallowMount(DevToolsPanel, {
+    props: {
+      runId: 'run-1',
+      combat: null,
+    },
+    global: {
+      plugins: [createPinia()],
+    },
+  });
 }
 
 describe('DevToolsPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(useDevTools).mockReturnValue(devToolsState());
   });
 
   it('renders correctly', () => {
@@ -36,20 +51,7 @@ describe('DevToolsPanel', () => {
   });
 
   it('displays error message when devTools.error exists', async () => {
-    const { useDevTools } = await import('../composables/useDevTools');
-    vi.mocked(useDevTools).mockReturnValueOnce({
-      token: ref(''),
-      hasToken: computed(() => false),
-      status: ref('unknown'),
-      statusEnvironment: ref<string | null>(null),
-      isLoading: ref(false),
-      message: ref<string | null>(null),
-      error: ref('Token devtools absent.'),
-      saveToken: vi.fn(),
-      clearToken: vi.fn(),
-      checkStatus: vi.fn(),
-      runAction: vi.fn().mockResolvedValue(false),
-    });
+    vi.mocked(useDevTools).mockReturnValueOnce(devToolsState('Token devtools absent.'));
 
     const wrapper = mountPanel();
     expect(wrapper.text()).toContain('Token devtools absent.');

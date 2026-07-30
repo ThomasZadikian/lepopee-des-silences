@@ -116,13 +116,6 @@ async function handleExitMidRoom() {
   if (ok) await router.replace('/');
 }
 
-// Clicking anywhere outside the open drawers closes them — except on the
-// map itself (its own click handling for choosing/deselecting nodes stays
-// authoritative) and on the status ribbon (whose buttons already toggle
-// their own drawer; letting this listener also fire there would reopen a
-// drawer the same click just closed).
-const drawersRef = ref<HTMLElement | null>(null);
-
 async function handleLeaveRun() {
   combatStore.clearCombat();
   tacticalCombatStore.clearCombat();
@@ -228,7 +221,7 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
           <EliseOverlay :message="runStore.lastOutcome?.description" />
 
           <!-- Drawers (right, absolute positioned) — a click outside all of them closes whichever is open -->
-          <div ref="drawersRef">
+          <div>
             <!-- Inventory drawer -->
             <Transition name="slide">
               <InventoryDrawer

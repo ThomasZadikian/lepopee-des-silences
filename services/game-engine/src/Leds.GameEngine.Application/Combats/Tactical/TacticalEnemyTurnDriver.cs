@@ -174,7 +174,8 @@ public sealed class TacticalEnemyTurnDriver : ITacticalEnemyTurnDriver
             .ToList();
 
         // O-009: Considérer les compétences utilitaires (buffs/débuffs)
-        var bestUtilitySkill = ChooseBestUtilitySkill(combat, actor, offensiveSkills.Count > 0);
+        var bestUtilitySkill = ChooseBestUtilitySkill(
+            combat, actor, prey, offensiveSkills.Count > 0);
         if (bestUtilitySkill != null)
             return bestUtilitySkill;
 
@@ -225,7 +226,10 @@ public sealed class TacticalEnemyTurnDriver : ITacticalEnemyTurnDriver
     /// Choisit la meilleure compétence utilitaire en fonction du contexte (O-009).
     /// </summary>
     private CombatantSkill? ChooseBestUtilitySkill(
-        TacticalCombat combat, Combatant actor, bool hasOffensiveSkills)
+        TacticalCombat combat,
+        Combatant actor,
+        Combatant prey,
+        bool hasOffensiveSkills)
     {
         // Si pas de compétences offensives, toujours utiliser un utilitaire
         if (!hasOffensiveSkills)
