@@ -74,9 +74,14 @@ public sealed class UseTacticalSkillCommandHandler
                 $"'{actor.DisplayName}' does not know skill '{request.SkillKey}'.");
 
         var origin = combat.PositionOf(actorId);
-        var target = new GridPosition(request.TargetX, request.TargetY);
-
         var tactical = TacticalSkillProfile.For(skill);
+        var requestedTarget = new GridPosition(request.TargetX, request.TargetY);
+        var target = skill.TargetingType == "Self" || tactical.AreaShape == TacticalAreaShape.Map
+            ? origin
+            : requestedTarget;
+
+        if (tactical.OncePerCombat && combat.HasUsedOnceSkill(skill.Key))
+            throw new ConflictException($"« {skill.DisplayName} » a déjà été utilisé dans ce combat.");
 
         if (!TacticalTargeting.IsInRange(
                 combat.Battlefield,
@@ -108,6 +113,9 @@ public sealed class UseTacticalSkillCommandHandler
         var resolution = _effectResolver.Resolve(combat, actor, skill, targets);
 
         var impacts = TacticalImpactRecorder.Diff(before, targets, combat);
+
+        if (tactical.OncePerCombat)
+            combat.MarkOnceSkillUsed(skill.Key);
 
         combat.MarkActiveCombatantActed();
 

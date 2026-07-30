@@ -1150,7 +1150,11 @@ onBeforeUnmount(() => {
               type="button"
               class="tbattle__skill"
               :class="{ 'tbattle__skill--armed': skill.key === store.selectedSkillKey }"
-              :disabled="(store.activeCombatant?.hasActed ?? true) || store.isLoading"
+              :disabled="
+                (store.activeCombatant?.hasActed ?? true)
+                  || store.isLoading
+                  || store.combat?.usedOnceSkillKeys.includes(skill.key)
+              "
               :title="`${skill.displayName} — ${skill.category === 'Magic' ? 'magique' : 'physique'}, ${skillMeta(skill)}, PP ${skill.manaCost}`"
               @click="store.selectSkill(skill.key)"
             >

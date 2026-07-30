@@ -471,6 +471,10 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasColumnType("text")
                         .HasColumnName("tactical_turn_states_csv");
 
+                    b.Property<string>("TacticalUsedOnceSkillKeysCsv")
+                        .HasColumnType("text")
+                        .HasColumnName("tactical_used_once_skill_keys_csv");
+
                     b.Property<string>("TacticalWalkableCsv")
                         .HasColumnType("text")
                         .HasColumnName("tactical_walkable_csv");

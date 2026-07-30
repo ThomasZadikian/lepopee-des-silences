@@ -2577,7 +2577,7 @@ public sealed class CatalogSeedRunner
 
         await UpsertSkillAsync("canon.skill.se-taire", "Se taire",
             "Ne rien dire. Ne pas prier. L'acte de silence. Inutile contre la chair — dévastateur contre ce qui se nourrit de la voix.",
-            "Silence", "Self", "Status", mana: 0, power: 0, cancellationToken,
+            "Silence", "AllEnemies", "Status", mana: 0, power: 0, cancellationToken,
             effects: new[] { new SkillEffectSpec("Silence", null, 0, 3) },
             category: "Magic");
 

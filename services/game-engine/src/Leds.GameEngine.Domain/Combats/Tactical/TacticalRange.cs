@@ -40,6 +40,9 @@ public static class TacticalRange
     {
         ArgumentNullException.ThrowIfNull(skill);
 
+        if (skill.TargetingType == "Self")
+            return (0, false);
+
         // Le soutien d'abord : un soin magique doit se lire comme un soin, pas comme un sort
         // offensif à longue portée.
         if (skill.SkillType is "Heal" or "Defense")

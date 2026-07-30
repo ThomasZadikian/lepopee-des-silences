@@ -229,6 +229,7 @@ export type TacticalCombatRuntimeDto = {
   allies: TacticalCombatantRuntimeDto[];
   enemies: TacticalCombatantRuntimeDto[];
   usableBattleItems: CombatUsableItemDto[];
+  usedOnceSkillKeys: string[];
 };
 
 /** Ce qu'un combattant a encaissé, à l'endroit où il l'a encaissé. */

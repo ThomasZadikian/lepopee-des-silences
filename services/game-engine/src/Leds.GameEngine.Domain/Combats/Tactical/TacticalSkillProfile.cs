@@ -6,7 +6,8 @@ namespace Leds.GameEngine.Domain.Combats.Tactical;
 public sealed record TacticalSkillProfile(
     int Range,
     TacticalAreaShape AreaShape,
-    bool RequiresLineOfSight)
+    bool RequiresLineOfSight,
+    bool OncePerCombat = false)
 {
     private static readonly IReadOnlyDictionary<string, TacticalSkillProfile> AuthoredProfiles =
         new Dictionary<string, TacticalSkillProfile>(StringComparer.Ordinal)
@@ -21,7 +22,8 @@ public sealed record TacticalSkillProfile(
             ["canon.skill.silence-partage"] = new(
                 Range: int.MaxValue,
                 AreaShape: TacticalAreaShape.Map,
-                RequiresLineOfSight: false),
+                RequiresLineOfSight: false,
+                OncePerCombat: true),
             ["canon.skill.se-taire"] = Ranged(3, TacticalAreaShape.Diamond),
             ["canon.skill.flamme-froide"] = Ranged(3, TacticalAreaShape.Cross),
             ["canon.skill.regard-infantile"] = Ranged(4, TacticalAreaShape.Single),

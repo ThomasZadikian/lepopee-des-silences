@@ -49,7 +49,8 @@ public sealed record TacticalCombatRuntimeDto(
     TacticalBattlefieldDto Battlefield,
     IReadOnlyCollection<TacticalCombatantRuntimeDto> Allies,
     IReadOnlyCollection<TacticalCombatantRuntimeDto> Enemies,
-    IReadOnlyCollection<CombatUsableItemDto> UsableBattleItems)
+    IReadOnlyCollection<CombatUsableItemDto> UsableBattleItems,
+    IReadOnlyCollection<string> UsedOnceSkillKeys)
 {
     public static TacticalCombatRuntimeDto FromDomain(
         TacticalCombat combat,
@@ -86,7 +87,8 @@ public sealed record TacticalCombatRuntimeDto(
                 field.Width, field.Height, elevation, walkable, floor),
             Allies: [.. combat.Allies.Select(c => Project(combat, c))],
             Enemies: [.. combat.Enemies.Select(c => Project(combat, c))],
-            UsableBattleItems: usableItems ?? []);
+            UsableBattleItems: usableItems ?? [],
+            UsedOnceSkillKeys: [.. combat.UsedOnceSkillKeys]);
     }
 
     private static TacticalCombatantRuntimeDto Project(

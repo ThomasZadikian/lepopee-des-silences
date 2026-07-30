@@ -27,6 +27,7 @@ public sealed class TacticalSkillProfileTests
         profile.Range.Should().Be(expectedRange);
         profile.AreaShape.Should().Be(expectedShape);
         profile.RequiresLineOfSight.Should().Be(expectedLineOfSight);
+        profile.OncePerCombat.Should().Be(skillKey == "canon.skill.silence-partage");
     }
 
     [Fact]
@@ -41,7 +42,22 @@ public sealed class TacticalSkillProfileTests
         profile.Should().Be(new TacticalSkillProfile(
             Range: TacticalRange.Ranged,
             AreaShape: TacticalAreaShape.Diamond,
-            RequiresLineOfSight: true));
+            RequiresLineOfSight: true,
+            OncePerCombat: false));
+    }
+
+    [Fact]
+    public void For_ShouldKeepSelfTargetingOnTheCasterCell()
+    {
+        var profile = TacticalSkillProfile.For(CreateSkill(
+            "canon.skill.self",
+            category: "Magic",
+            skillType: "Buff",
+            targetingType: "Self"));
+
+        profile.Range.Should().Be(0);
+        profile.AreaShape.Should().Be(TacticalAreaShape.Single);
+        profile.RequiresLineOfSight.Should().BeFalse();
     }
 
     private static CombatantSkill CreateSkill(
