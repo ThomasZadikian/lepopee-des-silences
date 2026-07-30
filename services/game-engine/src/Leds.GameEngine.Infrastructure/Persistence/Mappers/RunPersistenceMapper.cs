@@ -53,7 +53,6 @@ public static class RunPersistenceMapper
             GuardBonusPercent = run.GuardBonusPercent,
             JournalEnabled = run.JournalEnabled,
             LawDenialEnabled = run.LawDenialEnabled,
-            CombatMode = run.CombatMode.ToString(),
             LawDenialLastUsedRoomIndex = run.LawDenialLastUsedRoomIndex,
             LastPromulgationFloorIndex = run.LastPromulgationFloorIndex,
             ForgottenSkillKey = run.ForgottenSkillKey,
@@ -503,7 +502,6 @@ public static class RunPersistenceMapper
             journalEnabled: entity.JournalEnabled,
             journalEntries: journalEntries,
             lawDenialEnabled: entity.LawDenialEnabled,
-            combatMode: ParseCombatMode(entity.CombatMode),
             lawDenialLastUsedRoomIndex: entity.LawDenialLastUsedRoomIndex,
             lastPromulgationFloorIndex: entity.LastPromulgationFloorIndex,
             forgottenSkillKey: entity.ForgottenSkillKey,
@@ -981,15 +979,5 @@ public static class RunPersistenceMapper
         string Name,
         string Version,
         string[] Domains);
-
-    /// <summary>
-    /// Relit le mode de combat stocké. Les runs créées avant l'introduction du choix portent une
-    /// colonne vide : elles retombent sur l'ATB, qui était alors le seul système — la relecture
-    /// d'une sauvegarde ancienne ne doit pas la basculer en tactique.
-    /// </summary>
-    private static RunCombatMode ParseCombatMode(string? stored) =>
-        Enum.TryParse<RunCombatMode>(stored, ignoreCase: true, out var mode)
-            ? mode
-            : RunCombatMode.Atb;
 
 }

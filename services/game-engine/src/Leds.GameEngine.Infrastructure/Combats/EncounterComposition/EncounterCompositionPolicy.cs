@@ -16,7 +16,7 @@ public sealed class EncounterCompositionPolicy : IEncounterCompositionPolicy
     /// Plafond commun aux deux systèmes de combat. La SFD envisageait de le rendre dépendant du
     /// mode — l'ATB restant à un chiffre plus bas — mais ce plafond est appliqué à la composition
     /// de la rencontre, en amont du combat, donc avant que le mode n'entre en jeu. Le rendre
-    /// dépendant du mode obligerait à faire descendre <c>Run.CombatMode</c> jusque dans la
+    /// dépendant du moteur obligerait à faire descendre ce détail jusque dans la
     /// génération de brouillon, pour une différence d'un ennemi au seul palier Fatal.
     /// // BALANCE KNOB
     /// </remarks>

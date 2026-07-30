@@ -1,4 +1,8 @@
-import { ROSTER_IDS, getCombatantSprite } from '../../palace-map/composables/bestiaire';
+import {
+  ROSTER,
+  ROSTER_IDS,
+  getCombatantSprite,
+} from '../../palace-map/composables/bestiaire';
 
 import type { PropKind } from '../../palace-map/composables/useTerrainSprites';
 
@@ -18,9 +22,23 @@ const PROTAGONIST_KEY = 'player.self';
 const PROTAGONIST_FIGURE = 'porteur';
 
 /** Préfixes de domaine que le bestiaire ne connaît pas. */
-const DOMAIN_PREFIXES = ['enemy.', 'companion.', 'ally.', 'npc.', 'boss.'];
+const DOMAIN_PREFIXES = [
+  'canon.enemy.',
+  'character.',
+  'enemy.',
+  'companion.',
+  'ally.',
+  'npc.',
+  'boss.',
+];
 
 const rosterIds = new Set(ROSTER_IDS);
+const figureByCatalogKey = new Map(
+  Object.entries(ROSTER)
+    .filter((entry): entry is [string, (typeof ROSTER)[string] & { catalogKey: string }] =>
+      typeof entry[1].catalogKey === 'string' && entry[1].catalogKey.length > 0)
+    .map(([figureId, entry]) => [entry.catalogKey, figureId]),
+);
 
 /** Clés déjà signalées, pour ne pas noyer la console à soixante images par seconde. */
 const warned = new Set<string>();
@@ -59,6 +77,9 @@ const FILLER = /-(du|de|des|la|le|les|d|l|au|aux)-/g;
  */
 export function figureIdFor(sourceKey: string, displayName: string): string | null {
   if (sourceKey === PROTAGONIST_KEY) return PROTAGONIST_FIGURE;
+
+  const catalogFigure = figureByCatalogKey.get(sourceKey);
+  if (catalogFigure) return catalogFigure;
 
   const stripped = DOMAIN_PREFIXES.reduce(
     (key, prefix) => (key.startsWith(prefix) ? key.slice(prefix.length) : key),

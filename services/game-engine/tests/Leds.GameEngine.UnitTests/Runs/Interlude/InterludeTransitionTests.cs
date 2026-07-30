@@ -610,7 +610,6 @@ public sealed class InterludeTransitionTests
             nodeEventResolverDispatcher.Object,
             eventContentResolver.Object,
             catalogGateway.Object,
-            combatFactory.Object,
             new Mock<ICombatEncounterDraftGenerator>().Object,
             new Mock<ICombatFactory>().Object,
             Mock.Of<Leds.GameEngine.Application.Combats.Tactical.ITacticalCombatFactory>(),
@@ -620,9 +619,6 @@ public sealed class InterludeTransitionTests
                 new Mock<Leds.GameEngine.Application.Combats.ICombatRiskProfileResolver>().Object,
                 Mock.Of<ICatalogContentGateway>(),
                 new EnemyLootRewardBuilder(Mock.Of<ICatalogContentGateway>())),
-            Mock.Of<IEnemyCombatTurnResolver>(),
-             Mock.Of<ICombatResolutionService>(),
-            Mock.Of<Leds.GameEngine.Application.Combats.Atb.IAtbCombatPreparer>(),
             Mock.Of<IClock>());
 
         var act = () => handler.Handle(

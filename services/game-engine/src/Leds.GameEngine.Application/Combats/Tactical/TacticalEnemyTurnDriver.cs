@@ -34,6 +34,11 @@ public interface ITacticalEnemyTurnDriver
 /// </remarks>
 public sealed class TacticalEnemyTurnDriver : ITacticalEnemyTurnDriver
 {
+    private sealed record EnemySkillPlan(
+        CombatantSkill Skill,
+        GridPosition Target,
+        IReadOnlyCollection<Combatant> Targets);
+
     /// <summary>
     /// Plafond de sécurité sur les tours enchaînés. Un combat réel n'en produit qu'une poignée ;
     /// ce garde-fou n'existe que pour qu'un état incohérent échoue franchement au lieu de
@@ -125,28 +130,45 @@ public sealed class TacticalEnemyTurnDriver : ITacticalEnemyTurnDriver
                 TargetIds: []));
         }
 
-        var strike = ChooseReachableSkill(combat, actor, prey);
-        if (strike is null)
+        var action = ChooseAction(combat, actor, prey);
+        if (action is null)
+        {
+            log.Add(new CombatLogEntryDto(
+                OccurredAtUtc: _clock.UtcNow.UtcDateTime,
+                Type: "EnemyTurnResolved",
+                Message: $"{actor.DisplayName} avance, mais reste hors de portée.",
+                ActorId: actorId,
+                SkillKey: null,
+                TargetIds: []));
             return log;
+        }
 
-        var targets = new[] { prey };
+        var before = Runs.TacticalCombat.TacticalImpactRecorder.Capture(action.Targets);
+        var resolution = _effectResolver.Resolve(combat, actor, action.Skill, action.Targets);
+        var impacts = Runs.TacticalCombat.TacticalImpactRecorder.Diff(
+            before, action.Targets, combat);
 
-        var before = Runs.TacticalCombat.TacticalImpactRecorder.Capture(targets);
-        var resolution = _effectResolver.Resolve(combat, actor, strike, targets);
-        var impacts = Runs.TacticalCombat.TacticalImpactRecorder.Diff(before, targets, combat);
+        var tactical = TacticalSkillProfile.For(action.Skill);
+        if (tactical.OncePerCombat)
+            combat.MarkOnceSkillUsed(action.Skill.Key);
 
         combat.MarkActiveCombatantActed();
 
         events.Add(TacticalCombatEventDto.Skill(
-            actorId, actor.DisplayName, strike.Key, strike.DisplayName, impacts));
+            actorId,
+            actor.DisplayName,
+            action.Skill.Key,
+            action.Skill.DisplayName,
+            action.Target,
+            impacts));
 
         log.Add(new CombatLogEntryDto(
             OccurredAtUtc: _clock.UtcNow.UtcDateTime,
             Type: "ActionAccepted",
-            Message: $"\u00ab {strike.DisplayName} \u00bb lancé par {actor.DisplayName}.",
+            Message: $"\u00ab {action.Skill.DisplayName} \u00bb lancé par {actor.DisplayName}.",
             ActorId: actorId,
-            SkillKey: strike.Key,
-            TargetIds: [prey.Id.Value]));
+            SkillKey: action.Skill.Key,
+            TargetIds: [.. action.Targets.Select(t => t.Id.Value)]));
 
         log.AddRange(resolution.LogEntries);
 
@@ -155,140 +177,111 @@ public sealed class TacticalEnemyTurnDriver : ITacticalEnemyTurnDriver
 
     /// <summary>
     /// La compétence offensive ou utilitaire la plus adaptée que l'ennemi peut utiliser.
-    /// Priorise les buffs/débuffs si nécessaire (O-009), et évite les AoE alliées (O-007).
+    /// Priorise les soins et protections nécessaires, puis l'action offensive la plus forte.
+    /// Les zones et les camps passent par les mêmes règles que les actions du joueur.
     /// </summary>
-    private CombatantSkill? ChooseReachableSkill(
+    private EnemySkillPlan? ChooseAction(
         Domain.Combats.Tactical.TacticalCombat combat, Combatant actor, Combatant prey)
     {
-        var origin = combat.PositionOf(actor.Id.Value);
-        var target = combat.PositionOf(prey.Id.Value);
-
-        // O-009: Séparer les compétences en offensives et utilitaires
-        var offensiveSkills = actor.Skills
+        var offensivePlans = actor.Skills
             .Where(s => TacticalTargeting.IsHostile(s.TargetingType))
-            .Where(s =>
-            {
-                var (range, needsSight) = TacticalRange.For(s);
-                return TacticalTargeting.IsInRange(combat.Battlefield, origin, target, range, needsSight);
-            })
+            .Select(s => BuildPlan(combat, actor, s, prey))
+            .Where(p => p is not null)
+            .Cast<EnemySkillPlan>()
             .ToList();
 
-        // O-009: Considérer les compétences utilitaires (buffs/débuffs)
-        var bestUtilitySkill = ChooseBestUtilitySkill(combat, actor, offensiveSkills.Count > 0);
-        if (bestUtilitySkill != null)
-            return bestUtilitySkill;
+        var utility = ChooseBestUtilityPlan(combat, actor, offensivePlans.Count > 0);
+        if (utility is not null)
+            return utility;
 
-        // O-007: Éviter les AoE qui touchent des alliés
-        var safeOffensiveSkills = offensiveSkills
-            .Where(s =>
-            {
-                var shape = TacticalTargeting.ShapeForCatalogTargeting(s.TargetingType);
-                // Les compétences Single/Cross ne risquent pas de toucher des alliés
-                if (shape == TacticalAreaShape.Single || shape == TacticalAreaShape.Cross)
-                    return true;
-
-                // Pour les AoE (Diamond, Map), vérifier si des alliés sont dans la zone
-                var affectedCells = TacticalTargeting.CellsInArea(combat.Battlefield, target, shape);
-                var targets = TacticalTargeting.ResolveTargets(
-                    combat, affectedCells, actor.Side, true, shape);
-
-                // Si des alliés sont dans la zone, exclure cette compétence (O-007)
-                return !targets.Any(t => t.Side == actor.Side);
-            })
-            .ToList();
-
-        // Sinon, utiliser une compétence offensive sûre
-        return safeOffensiveSkills
-            .OrderByDescending(s => s.BasePower)
-            .ThenBy(s => s.Key, StringComparer.Ordinal)
+        return offensivePlans
+            .OrderByDescending(p => p.Skill.BasePower)
+            .ThenBy(p => p.Skill.Key, StringComparer.Ordinal)
             .FirstOrDefault();
     }
 
-    /// <summary>
-    /// Trouve la meilleure cible pour une compétence utilitaire (buff/débuff).
-    /// </summary>
-    private static GridPosition FindBestAllyTarget(
-        TacticalCombat combat, Combatant actor, CombatantSkill skill)
+    private static EnemySkillPlan? BuildPlan(
+        TacticalCombat combat,
+        Combatant actor,
+        CombatantSkill skill,
+        Combatant intendedTarget)
     {
-        if (skill.TargetingType == "Self")
-            return combat.PositionOf(actor.Id.Value);
+        var tactical = TacticalSkillProfile.For(skill);
+        if (tactical.OncePerCombat && combat.HasUsedOnceSkill(skill.Key))
+            return null;
 
-        // Pour SingleAlly/AllAllies, cibler l'allié le plus blessé ou le plus proche
-        return combat.Enemies
-            .Where(e => !e.IsDefeated && e.Id.Value != actor.Id.Value)
-            .OrderBy(e => e.CurrentVitality) // Priorité aux alliés les plus blessés
-            .Select(e => combat.PositionOf(e.Id.Value))
-            .FirstOrDefault();
+        var origin = combat.PositionOf(actor.Id.Value);
+        var center = skill.TargetingType == "Self" || tactical.AreaShape == TacticalAreaShape.Map
+            ? origin
+            : combat.PositionOf(intendedTarget.Id.Value);
+
+        if (!TacticalTargeting.IsInRange(
+                combat.Battlefield,
+                origin,
+                center,
+                tactical.Range,
+                tactical.RequiresLineOfSight))
+            return null;
+
+        var affectedCells = tactical.AreaShape == TacticalAreaShape.Map
+            ? null
+            : TacticalTargeting.CellsInArea(combat.Battlefield, center, tactical.AreaShape);
+        var targets = TacticalTargeting.ResolveTargets(
+            combat,
+            affectedCells,
+            actor.Side,
+            TacticalTargeting.IsHostile(skill.TargetingType),
+            tactical.AreaShape);
+
+        return targets.Count == 0 ? null : new EnemySkillPlan(skill, center, targets);
     }
 
     /// <summary>
     /// Choisit la meilleure compétence utilitaire en fonction du contexte (O-009).
     /// </summary>
-    private CombatantSkill? ChooseBestUtilitySkill(
-        TacticalCombat combat, Combatant actor, bool hasOffensiveSkills)
+    private EnemySkillPlan? ChooseBestUtilityPlan(
+        TacticalCombat combat,
+        Combatant actor,
+        bool hasOffensiveSkills)
     {
-        // Si pas de compétences offensives, toujours utiliser un utilitaire
-        if (!hasOffensiveSkills)
-        {
-            return actor.Skills
-                .Where(s => !TacticalTargeting.IsHostile(s.TargetingType))
-                .OrderByDescending(s => s.BasePower) // Priorité aux buffs les plus puissants
-                .ThenBy(s => s.Key, StringComparer.Ordinal)
-                .FirstOrDefault();
-        }
+        var allies = combat.Enemies.Where(e => !e.IsDefeated).ToList();
+        var utilitySkills = actor.Skills
+            .Where(s => !TacticalTargeting.IsHostile(s.TargetingType))
+            .ToList();
 
-        // Vérifier si un allié a besoin d'un soin
-        var woundedAlly = combat.Enemies
-            .Where(e => !e.IsDefeated && e.Id.Value != actor.Id.Value)
-            .FirstOrDefault(e => e.CurrentVitality <= e.MaxVitality * HealThreshold);
+        var wounded = allies
+            .Where(e => e.CurrentVitality <= e.MaxVitality * HealThreshold)
+            .OrderBy(e => e.CurrentVitality / (double)e.MaxVitality)
+            .ThenBy(e => e.Id.Value)
+            .ToList();
+        var healingPlan = utilitySkills
+            .Where(s => s.SkillType == "Heal" || s.EffectType == "Heal")
+            .SelectMany(s => wounded.Select(target => BuildPlan(combat, actor, s, target)))
+            .FirstOrDefault(p => p is not null);
+        if (healingPlan is not null)
+            return healingPlan;
 
-        if (woundedAlly != null)
-        {
-            var healSkill = actor.Skills
-                .FirstOrDefault(s =>
-                    s.SkillType == "Heal" &&
-                    TacticalTargeting.IsInRange(
-                        combat.Battlefield,
-                        combat.PositionOf(actor.Id.Value),
-                        combat.PositionOf(woundedAlly.Id.Value),
-                        TacticalRange.For(s).range,
-                        TacticalRange.For(s).needsSight));
-            if (healSkill != null)
-                return healSkill;
-        }
+        var exposed = allies
+            .Where(e => e.Guard <= e.MaxVitality * GuardThreshold)
+            .OrderBy(e => e.Guard)
+            .ThenBy(e => e.Id.Value)
+            .ToList();
+        var guardPlan = utilitySkills
+            .Where(s => s.SkillType == "Guard" || s.EffectType == "Guard")
+            .SelectMany(s => exposed.Select(target => BuildPlan(combat, actor, s, target)))
+            .FirstOrDefault(p => p is not null);
+        if (guardPlan is not null)
+            return guardPlan;
 
-        // Vérifier si un allié a besoin de garde
-        var lowGuardAlly = combat.Enemies
-            .Where(e => !e.IsDefeated && e.Id.Value != actor.Id.Value)
-            .FirstOrDefault(e => e.Guard <= e.MaxVitality * GuardThreshold);
+        if (hasOffensiveSkills)
+            return null;
 
-        if (lowGuardAlly != null)
-        {
-            var guardSkill = actor.Skills
-                .FirstOrDefault(s =>
-                    s.SkillType == "Guard" &&
-                    TacticalTargeting.IsInRange(
-                        combat.Battlefield,
-                        combat.PositionOf(actor.Id.Value),
-                        combat.PositionOf(lowGuardAlly.Id.Value),
-                        TacticalRange.For(s).range,
-                        TacticalRange.For(s).needsSight));
-            if (guardSkill != null)
-                return guardSkill;
-        }
-
-        // Sinon, utiliser un débuff si possible
-        var debuffSkill = actor.Skills
-            .FirstOrDefault(s => s.SkillType == "Debuff" || s.SkillType == "Status");
-        if (debuffSkill != null)
-        {
-            // Vérifier que la cible est en portée
-            var (range, needsSight) = TacticalRange.For(debuffSkill);
-            var targetPos = combat.PositionOf(prey.Id.Value);
-            if (TacticalTargeting.IsInRange(combat.Battlefield, combat.PositionOf(actor.Id.Value), targetPos, range, needsSight))
-                return debuffSkill;
-        }
-
-        return null; // Pas de compétence utilitaire nécessaire
+        return utilitySkills
+            .Select(s => BuildPlan(combat, actor, s, actor))
+            .Where(p => p is not null)
+            .Cast<EnemySkillPlan>()
+            .OrderByDescending(p => p.Skill.BasePower)
+            .ThenBy(p => p.Skill.Key, StringComparer.Ordinal)
+            .FirstOrDefault();
     }
 }

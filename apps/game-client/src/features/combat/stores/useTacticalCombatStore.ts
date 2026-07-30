@@ -4,7 +4,7 @@ import { computed, ref } from 'vue';
 import { HttpError } from '../../../shared/api/httpClient';
 import { combatApi } from '../api/combatApi';
 import { useCombatPlayback } from '../composables/useCombatPlayback';
-import { battleCellKey, reachableCellsFrom, hasLos, manhattan } from '../composables/useTacticalBattlePlan';
+import { battleCellKey, reachableCellsFrom } from '../composables/useTacticalBattlePlan';
 
 import type {
   CombatLogEntryDto,
@@ -124,108 +124,6 @@ export const useTacticalCombatStore = defineStore('tacticalCombat', () => {
   });
 
   /**
-   * Cases cibles pour la prévisualisation AoE (U-002).
-   * Calculées en fonction de la compétence sélectionnée et de la position de la souris.
-   */
-  const aoePreviewCells = ref<Set<string>>(new Set());
-
-  /**
-   * Met à jour la prévisualisation AoE pour une compétence et une position donnée.
-   * @param skill La compétence sélectionnée (ou null pour désactiver).
-   * @param x Coordonnée X de la cible.
-   * @param y Coordonnée Y de la cible.
-   */
-  function updateAoePreview(skill: CombatantSkillRuntimeDto | null, x: number, y: number) {
-    if (!skill || !combat.value) {
-      aoePreviewCells.value = new Set();
-      return;
-    }
-
-    // Calculer les cases AoE en fonction du type de ciblage
-    const battlefield = combat.value.battlefield;
-    const center = { x, y };
-    const cells = new Set<string>();
-
-    // Ajouter la case centrale
-    cells.add(battleCellKey(x, y));
-
-    // Calculer la portée et la forme de l'AoE
-    const range = getSkillRange(skill);
-    const shape = getSkillShape(skill);
-
-    if (shape === 'Single') {
-      // Pas d'AoE, juste la case cible
-      aoePreviewCells.value = cells;
-      return;
-    }
-
-    // Pour les autres formes, calculer les cases dans la portée
-    for (let dy = -range; dy <= range; dy++) {
-      for (let dx = -range; dx <= range; dx++) {
-        const nx = x + dx;
-        const ny = y + dy;
-
-        // Vérifier que la case est dans la grille
-        if (nx < 0 || ny < 0 || nx >= battlefield.width || ny >= battlefield.height) continue;
-
-        // Vérifier la distance de Manhattan
-        if (manhattan(center, { x: nx, y: ny }) > range) continue;
-
-        // Vérifier la ligne de vue pour les compétences qui nécessitent une vue dégagée
-        if (skill.targetingType === 'SingleEnemy' || skill.targetingType === 'SingleAlly') {
-          const combatant = activeCombatant.value;
-          if (combatant) {
-            // Corriger TS2345 : passer un objet avec gridWidth/gridHeight
-            const battlefieldInput = {
-              gridWidth: battlefield.width,
-              gridHeight: battlefield.height,
-              elevation: battlefield.elevation,
-              walkable: battlefield.walkable,
-              floor: battlefield.floor,
-            };
-            if (!hasLos(battlefieldInput, { x: combatant.x, y: combatant.y }, { x: nx, y: ny })) {
-              continue; // Case bloquée par un obstacle
-            }
-          }
-        }
-
-        cells.add(battleCellKey(nx, ny));
-      }
-    }
-
-    aoePreviewCells.value = cells;
-  }
-
-  /**
-   * Retourne la portée d'une compétence en fonction de son type.
-   */
-  function getSkillRange(skill: CombatantSkillRuntimeDto): number {
-    // Portée par défaut en fonction du type de ciblage
-    const ranges: Record<string, number> = {
-      Self: 0,
-      SingleEnemy: 3,
-      SingleAlly: 3,
-      AllEnemies: 2,
-      AllAllies: 2,
-    };
-    return ranges[skill.targetingType] ?? 3;
-  }
-
-  /**
-   * Retourne la forme de l'AoE en fonction du type de ciblage.
-   */
-  function getSkillShape(skill: CombatantSkillRuntimeDto): 'Single' | 'Cross' | 'Diamond' | 'Map' {
-    const shapes: Record<string, 'Single' | 'Cross' | 'Diamond' | 'Map'> = {
-      Self: 'Single',
-      SingleEnemy: 'Single',
-      SingleAlly: 'Single',
-      AllEnemies: 'Diamond',
-      AllAllies: 'Diamond',
-    };
-    return shapes[skill.targetingType] ?? 'Single';
-  }
-
-  /**
    * Indique si une action est en cours de sélection (U-001).
    */
   const hasPendingAction = computed<boolean>(() => {
@@ -241,7 +139,6 @@ export const useTacticalCombatStore = defineStore('tacticalCombat', () => {
     combat.value = next;
     // Une compétence armée n'a plus de sens dès que le tour change de main.
     selectedSkillKey.value = null;
-    aoePreviewCells.value = new Set(); // Réinitialiser la prévisualisation AoE
     // Réinitialiser le cache des cases atteignables
     reachableCellsCache.value.clear();
   }
@@ -252,16 +149,11 @@ export const useTacticalCombatStore = defineStore('tacticalCombat', () => {
     logEntries.value = [];
     selectedSkillKey.value = null;
     error.value = null;
-    aoePreviewCells.value = new Set();
     reachableCellsCache.value.clear();
   }
 
   function selectSkill(skillKey: string | null) {
     selectedSkillKey.value = selectedSkillKey.value === skillKey ? null : skillKey;
-    // Réinitialiser la prévisualisation AoE si aucune compétence n'est sélectionnée
-    if (!selectedSkillKey.value) {
-      aoePreviewCells.value = new Set();
-    }
   }
 
   /**
@@ -269,7 +161,6 @@ export const useTacticalCombatStore = defineStore('tacticalCombat', () => {
    */
   function cancelAction() {
     selectedSkillKey.value = null;
-    aoePreviewCells.value = new Set();
   }
 
   /**
@@ -346,8 +237,6 @@ export const useTacticalCombatStore = defineStore('tacticalCombat', () => {
     selectedSkillKey,
     selectedSkill,
     hasPendingAction, // Exposé pour l'UI (U-001)
-    aoePreviewCells, // Exposé pour l'UI (U-002)
-    updateAoePreview, // Exposé pour l'UI (U-002)
     activeCombatant,
     activeSkills,
     allCombatants,

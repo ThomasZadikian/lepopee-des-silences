@@ -49,8 +49,11 @@ import {
 import { combatantSprite, fallbackPropFor } from '../composables/useCombatantSprites';
 import { FLOAT_MS, FLOAT_RISE_PX, useCombatPlayback } from '../composables/useCombatPlayback';
 import { sortIdForSkillKey, useSortEffects } from '../composables/useSortEffects';
+import {
+  tacticalSkillProfile,
+  type TacticalShape,
+} from '../composables/useTacticalSkillProfile';
 import { useTacticalCombatStore } from '../stores/useTacticalCombatStore';
-import { SORTS } from '../../palace-map/composables/sorts';
 
 import type { CombatantSkillRuntimeDto } from '../types/combatContracts';
 
@@ -190,36 +193,8 @@ const occupiedKeys = computed(
     ),
 );
 
-type TacticalShape = 'single' | 'cross' | 'diamond' | 'map';
-
-type TacticalSkillProfile = {
-  range: number;
-  shape: TacticalShape;
-  ranged: boolean;
-};
-
-function skillProfile(skill: CombatantSkillRuntimeDto): TacticalSkillProfile {
-  const sortId = sortIdForSkillKey(skill.key);
-  const sort = sortId ? (SORTS as Record<string, any>)[sortId] : null;
-
-  if (sort) {
-    const shape = sort.shape as TacticalShape;
-
-    return { range: sort.range, shape, ranged: sort.range > 1 || shape === 'map' };
-  }
-
-  const range = skill.skillType === 'Heal' || skill.skillType === 'Guard'
-    ? 3
-    : skill.category === 'Magic' ? 4 : 1;
-  const shape = skill.targetingType === 'AllEnemies' || skill.targetingType === 'AllAllies'
-    ? 'map'
-    : 'single';
-
-  return { range, shape, ranged: range > 1 || skill.category === 'Magic' };
-}
-
 function skillShapeLabel(skill: CombatantSkillRuntimeDto): string {
-  switch (skillProfile(skill).shape) {
+  switch (tacticalSkillProfile(skill).shape) {
     case 'cross':
       return 'croix';
     case 'diamond':
@@ -233,7 +208,7 @@ function skillShapeLabel(skill: CombatantSkillRuntimeDto): string {
 }
 
 function skillMeta(skill: CombatantSkillRuntimeDto): string {
-  const profile = skillProfile(skill);
+  const profile = tacticalSkillProfile(skill);
   const power = skill.basePower > 0 ? ` · ${skill.basePower}` : '';
 
   return `P${profile.range} · ${skillShapeLabel(skill)}${power}`;
@@ -348,7 +323,7 @@ const rangePreview = computed<Map<string, boolean>>(() => {
 
   if (!field || !active || !skill || !store.isPlayerTurn || active.hasActed) return new Map();
 
-  const profile = skillProfile(skill);
+  const profile = tacticalSkillProfile(skill);
   const cells = new Map<string, boolean>();
 
   for (let y = 0; y < field.height; y += 1) {
@@ -361,7 +336,7 @@ const rangePreview = computed<Map<string, boolean>>(() => {
 
       cells.set(
         battleCellKey(x, y),
-        profile.ranged ? canSeeCell(active, { x, y }) : true,
+        profile.requiresLineOfSight ? canSeeCell(active, { x, y }) : true,
       );
     }
   }
@@ -409,10 +384,8 @@ const aoeCells = computed<Set<string>>(() => {
 
   if (rangePreview.value.get(battleCellKey(hovered.x, hovered.y)) !== true) return new Set();
 
-  return new Set(
-    shapeCells(skillProfile(skill).shape, hovered.x, hovered.y)
-      .map((cell) => battleCellKey(cell.x, cell.y)),
-  );
+  return new Set(shapeCells(tacticalSkillProfile(skill).shape, hovered.x, hovered.y)
+    .map((cell) => battleCellKey(cell.x, cell.y)));
 });
 
 const heightCells = computed<Set<string>>(() => {
@@ -421,9 +394,9 @@ const heightCells = computed<Set<string>>(() => {
   const hovered = hoveredCell.value;
   if (!active || !skill || !hovered) return new Set();
 
-  const profile = skillProfile(skill);
+  const profile = tacticalSkillProfile(skill);
   const targetKey = battleCellKey(hovered.x, hovered.y);
-  if (!profile.ranged || rangePreview.value.get(targetKey) !== true) return new Set();
+  if (!profile.requiresLineOfSight || rangePreview.value.get(targetKey) !== true) return new Set();
   if (elevationAt(active.x, active.y) <= elevationAt(hovered.x, hovered.y)) return new Set();
 
   return new Set([battleCellKey(active.x, active.y)]);
@@ -474,7 +447,7 @@ const threatCells = computed<Set<string>>(() => {
 
       const maxRange = Math.max(
         1,
-        ...enemy.combatant.skills.map((skill) => skillProfile(skill).range),
+        ...enemy.combatant.skills.map((skill) => tacticalSkillProfile(skill).range),
       );
       for (let dy = -maxRange; dy <= maxRange; dy += 1) {
         for (let dx = -maxRange; dx <= maxRange; dx += 1) {
@@ -808,7 +781,7 @@ function paintCanvas(timestamp: number) {
   }
 
   paintImpacts(ctx, timestamp);
-  paintSorts(ctx, timestamp);
+  paintSorts(ctx);
   paintFloatingNumbers(ctx, timestamp);
   paintCombatCartouche(ctx, tier);
 }
@@ -839,7 +812,7 @@ function paintImpacts(ctx: CanvasRenderingContext2D, timestamp: number) {
   }
 }
 
-function paintSorts(ctx: CanvasRenderingContext2D, timestamp: number) {
+function paintSorts(ctx: CanvasRenderingContext2D) {
   const field = battlefield.value;
   if (!field) return;
 
@@ -852,14 +825,19 @@ function paintSorts(ctx: CanvasRenderingContext2D, timestamp: number) {
       sortId,
       sort.x,
       sort.y,
-      { width: field.width, height: field.height, elevation: field.elevation },
+      {
+        width: field.width,
+        height: field.height,
+        elevation: field.elevation,
+        floor: field.floor,
+      },
       projectionParams.value,
       sort.casterX,
       sort.casterY,
     );
   }
 
-  sortEffects.renderSorts(ctx, timestamp);
+  sortEffects.renderSorts(ctx);
 }
 
 /**
@@ -1177,7 +1155,11 @@ onBeforeUnmount(() => {
               type="button"
               class="tbattle__skill"
               :class="{ 'tbattle__skill--armed': skill.key === store.selectedSkillKey }"
-              :disabled="(store.activeCombatant?.hasActed ?? true) || store.isLoading"
+              :disabled="
+                (store.activeCombatant?.hasActed ?? true)
+                  || store.isLoading
+                  || store.combat?.usedOnceSkillKeys.includes(skill.key)
+              "
               :title="`${skill.displayName} — ${skill.category === 'Magic' ? 'magique' : 'physique'}, ${skillMeta(skill)}, PP ${skill.manaCost}`"
               @click="store.selectSkill(skill.key)"
             >

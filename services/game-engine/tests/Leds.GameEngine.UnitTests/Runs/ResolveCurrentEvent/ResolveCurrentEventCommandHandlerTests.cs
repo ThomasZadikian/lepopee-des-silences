@@ -4,11 +4,9 @@ using Leds.GameEngine.Application.Catalog;
 using Leds.GameEngine.Application.Catalog.Contracts;
 using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Application.Combats;
-using Leds.GameEngine.Application.Combats.Atb;
 using Leds.GameEngine.Application.Combats.EncounterDrafts;
-using Leds.GameEngine.Application.Combats.EnemyTurns;
 using Leds.GameEngine.Application.Combats.Ports;
-using Leds.GameEngine.Application.Combats.Resolution;
+using Leds.GameEngine.Application.Combats.Tactical;
 using Leds.GameEngine.Application.Common.Exceptions;
 using Leds.GameEngine.Application.Events.Contracts;
 using Leds.GameEngine.Application.Events.Dtos;
@@ -31,6 +29,16 @@ namespace Leds.GameEngine.UnitTests.Runs.ResolveCurrentEvent;
 
 public sealed class ResolveCurrentEventCommandHandlerTests
 {
+    private static ITacticalEnemyTurnDriver CreateTacticalEnemyTurnDriver()
+    {
+        var driver = new Mock<ITacticalEnemyTurnDriver>();
+        driver
+            .Setup(service => service.PlayWhileEnemyHasInitiative(
+                It.IsAny<Leds.GameEngine.Domain.Combats.Tactical.TacticalCombat>()))
+            .Returns(new TacticalEnemyTurnsResult([], []));
+        return driver.Object;
+    }
+
     private static Mock<INodeEventResolverDispatcher> CreateDispatcherMock(
         NodeEventResolutionKind resolutionKind = NodeEventResolutionKind.NarrativeFragmentRevealed)
     {
@@ -82,16 +90,12 @@ public sealed class ResolveCurrentEventCommandHandlerTests
             dispatcher.Object,
             CreateContentResolverMock().Object,
             CreateCatalogGatewayMock().Object,
-            CreateCombatFactoryMock().Object,
             CreateEncounterDraftGeneratorMock().Object,
             combatFactory?.Object ?? new Mock<ICombatFactory>().Object,
-            Mock.Of<Leds.GameEngine.Application.Combats.Tactical.ITacticalCombatFactory>(),
-            Mock.Of<Leds.GameEngine.Application.Combats.Tactical.ITacticalEnemyTurnDriver>(),
+            new TacticalCombatFactory(),
+            CreateTacticalEnemyTurnDriver(),
             new Mock<IRewardOfferRepository>().Object,
             new RewardOfferFactory(new Mock<Leds.GameEngine.Application.Combats.ICombatRiskProfileResolver>().Object, Mock.Of<ICatalogContentGateway>(), new EnemyLootRewardBuilder(Mock.Of<ICatalogContentGateway>())),
-            Mock.Of<IEnemyCombatTurnResolver>(),
-            Mock.Of<ICombatResolutionService>(),
-            Mock.Of<IAtbCombatPreparer>(),
             Mock.Of<IClock>());
     }
 
@@ -359,16 +363,12 @@ public sealed class ResolveCurrentEventCommandHandlerTests
             dispatcher.Object,
             contentResolver.Object,
             catalogGateway.Object,
-            combatFactory.Object,
             draftGenerator.Object,
             runtimeFactoryMock.Object,
-            Mock.Of<Leds.GameEngine.Application.Combats.Tactical.ITacticalCombatFactory>(),
-            Mock.Of<Leds.GameEngine.Application.Combats.Tactical.ITacticalEnemyTurnDriver>(),
+            new TacticalCombatFactory(),
+            CreateTacticalEnemyTurnDriver(),
             new Mock<IRewardOfferRepository>().Object,
             new RewardOfferFactory(new Mock<Leds.GameEngine.Application.Combats.ICombatRiskProfileResolver>().Object, Mock.Of<ICatalogContentGateway>(), new EnemyLootRewardBuilder(Mock.Of<ICatalogContentGateway>())),
-            Mock.Of<IEnemyCombatTurnResolver>(),
-            Mock.Of<ICombatResolutionService>(),
-            Mock.Of<IAtbCombatPreparer>(),
             Mock.Of<IClock>());
 
         var response = await handler.Handle(
@@ -456,16 +456,12 @@ public sealed class ResolveCurrentEventCommandHandlerTests
             dispatcher.Object,
             CreateContentResolverMock().Object,
             catalogGateway.Object,
-            CreateCombatFactoryMock().Object,
             draftGenerator.Object,
             runtimeFactoryMock.Object,
-            Mock.Of<Leds.GameEngine.Application.Combats.Tactical.ITacticalCombatFactory>(),
-            Mock.Of<Leds.GameEngine.Application.Combats.Tactical.ITacticalEnemyTurnDriver>(),
+            new TacticalCombatFactory(),
+            CreateTacticalEnemyTurnDriver(),
             new Mock<IRewardOfferRepository>().Object,
             new RewardOfferFactory(new Mock<Leds.GameEngine.Application.Combats.ICombatRiskProfileResolver>().Object, Mock.Of<ICatalogContentGateway>(), new EnemyLootRewardBuilder(Mock.Of<ICatalogContentGateway>())),
-            Mock.Of<IEnemyCombatTurnResolver>(),
-            Mock.Of<ICombatResolutionService>(),
-            Mock.Of<IAtbCombatPreparer>(),
             Mock.Of<IClock>());
 
         var response = await handler.Handle(
@@ -474,7 +470,7 @@ public sealed class ResolveCurrentEventCommandHandlerTests
 
         response.EncounterDraft.Should().NotBeNull();
         response.EncounterDraft!.EncounterType.Should().Be("FinalBoss");
-        response.Combat.Should().NotBeNull();
+        response.TacticalCombat.Should().NotBeNull();
         response.Outcome.NarrativeFragments.Should().Contain(f =>
             f.Speaker == "Him'Lit"
             && f.Text == "Tiens. Une neuvième chambre, et vous tenez encore debout.");
@@ -578,16 +574,12 @@ public sealed class ResolveCurrentEventCommandHandlerTests
             dispatcher.Object,
             contentResolver.Object,
             catalogGateway.Object,
-            combatFactory.Object,
             draftGenerator.Object,
             runtimeFactoryMock.Object,
-            Mock.Of<Leds.GameEngine.Application.Combats.Tactical.ITacticalCombatFactory>(),
-            Mock.Of<Leds.GameEngine.Application.Combats.Tactical.ITacticalEnemyTurnDriver>(),
+            new TacticalCombatFactory(),
+            CreateTacticalEnemyTurnDriver(),
             new Mock<IRewardOfferRepository>().Object,
             new RewardOfferFactory(new Mock<Leds.GameEngine.Application.Combats.ICombatRiskProfileResolver>().Object, Mock.Of<ICatalogContentGateway>(), new EnemyLootRewardBuilder(Mock.Of<ICatalogContentGateway>())),
-            Mock.Of<IEnemyCombatTurnResolver>(),
-            Mock.Of<ICombatResolutionService>(),
-            Mock.Of<IAtbCombatPreparer>(),
             Mock.Of<IClock>());
 
         var response = await handler.Handle(
@@ -598,11 +590,10 @@ public sealed class ResolveCurrentEventCommandHandlerTests
         response.EncounterDraft!.EncounterType.Should().Be("Combat");
         response.EncounterDraft.Enemies.Should().Contain(e =>
             e.EnemyKey == "enemy.threshold.doubt-fragment");
-        response.Combat.Should().NotBeNull();
-        response.Run.ActiveCombatId.Should().Be(combatInstance.Id.Value);
-        response.Combat!.Id.Should().Be(combatInstance.Id.Value);
-        run.ActiveCombat.Should().NotBeNull();
-        run.ActiveCombat!.Id.Should().Be(combatInstance.Id);
+        response.TacticalCombat.Should().NotBeNull();
+        response.Run.ActiveCombatId.Should().Be(response.TacticalCombat!.Id);
+        run.ActiveTacticalCombat.Should().NotBeNull();
+        run.ActiveTacticalCombat!.Id.Value.Should().Be(response.TacticalCombat.Id);
     }
 
     [Fact]

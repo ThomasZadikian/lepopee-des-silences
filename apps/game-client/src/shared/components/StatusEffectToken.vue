@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 
 import type { StatusEffectKind } from '../../features/combat/types/combatContracts';
-import { ticksToTurns } from '../../features/combat/constants/atb';
+import { ticksToTurns } from '../../features/combat/constants/combatTime';
 
 const props = withDefaults(
   defineProps<{
@@ -36,7 +36,6 @@ const KIND_META: Record<string, { color: string; label: string; shape: Shape; ve
   'StatModifier-': { color: 'oklch(0.78 0.16 25)', label: 'Affaiblissement', shape: 'chevDown' },
   Stun: { color: 'oklch(0.80 0.13 300)', label: 'Étourdissement', shape: 'aster' },
   Silence: { color: 'oklch(0.80 0.13 300)', label: 'Silence', shape: 'silence' },
-  AtbLock: { color: 'oklch(0.80 0.13 300)', label: 'Jauge bloquée', shape: 'lock' },
   SkillGrant: { color: 'oklch(0.70 0.15 300)', label: 'Sort emprunté', shape: 'diamond' },
 };
 

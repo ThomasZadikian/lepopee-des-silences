@@ -42,6 +42,16 @@ export const ENEMY_STEP_MULTIPLIER = 1.2; // 20% plus lent
 /** Multiplicateur de timing pour le settle des ennemis (O-018). */
 export const ENEMY_SETTLE_MULTIPLIER = 1.5; // 50% plus long
 
+export function dynamicStepDurationMs(pathLength: number, isEnemy = false): number {
+  const baseStep = isEnemy
+    ? Math.floor(BASE_STEP_MS * ENEMY_STEP_MULTIPLIER)
+    : BASE_STEP_MS;
+
+  if (pathLength <= 2) return Math.floor(baseStep * 0.7);
+  if (pathLength >= 5) return Math.floor(baseStep * 1.3);
+  return baseStep;
+}
+
 export type FloatingNumber = {
   id: number;
   x: number;
@@ -71,6 +81,7 @@ export type WalkAnimation = {
   combatantId: string;
   path: Array<{ x: number; y: number }>;
   startedAt: number;
+  isEnemy: boolean;
 };
 
 const ALLY_HIT_COLOR = '#ff8f7a';
@@ -153,22 +164,6 @@ export function useCombatPlayback() {
    * - Déplacements longs (5+ cases) : plus lents (130% de BASE_STEP_MS).
    * - Ennemis : 20% plus lents (ENEMY_STEP_MULTIPLIER).
    */
-  function getDynamicStepMs(pathLength: number, isEnemy: boolean = false): number {
-    let baseStep = BASE_STEP_MS;
-    
-    // O-018: Les ennemis sont plus lents
-    if (isEnemy) {
-      baseStep = Math.floor(BASE_STEP_MS * ENEMY_STEP_MULTIPLIER);
-    }
-    
-    if (pathLength <= 2) {
-      return Math.floor(baseStep * 0.7); // 101ms pour les déplacements courts
-    } else if (pathLength >= 5) {
-      return Math.floor(baseStep * 1.3); // 188ms pour les déplacements longs
-    }
-    return baseStep; // 145ms pour les déplacements moyens
-  }
-
   /** La position d'un combattant à cet instant : interpolée s'il marche, épinglée sinon. */
   function positionOf(
     combatantId: string,
@@ -178,9 +173,7 @@ export function useCombatPlayback() {
     const current = walk.value;
 
     if (current && current.combatantId === combatantId && current.path.length > 0) {
-      // O-014 + O-018: Utiliser un timing dynamique basé sur la longueur du chemin et le type (allié/ennemi)
-      const isEnemy = !current.combatantId.startsWith('player') && !current.combatantId.startsWith('ally');
-      const stepMs = getDynamicStepMs(current.path.length, isEnemy);
+      const stepMs = dynamicStepDurationMs(current.path.length - 1, current.isEnemy);
       const progress = (now - current.startedAt) / stepMs;
 
       // `now` vient de l'horodatage de `requestAnimationFrame`, qui date du DÉBUT de la frame
@@ -240,6 +233,7 @@ export function useCombatPlayback() {
     if (events.length === 0) return;
 
     const allyIds = new Set(finalState.allies.map((a) => a.combatant.id));
+    let previousActorId: string | null = null;
 
     isPlaying.value = true;
 
@@ -247,8 +241,11 @@ export function useCombatPlayback() {
       for (const event of events) {
         const actorIsAlly = allyIds.has(event.actorId);
 
-        // O-017: Transition de fondu avant le tour d'un ennemi
-        if (!actorIsAlly) {
+        const beginsEnemyTurn = !actorIsAlly && event.actorId !== previousActorId;
+
+        // Un déplacement et la compétence qui le suit appartiennent au même tour : la
+        // transition et le temps de réflexion ne se jouent qu'une fois pour cette paire.
+        if (beginsEnemyTurn) {
           isTransitioning.value = true;
           transitionPhase.value = 'fadeOut';
           await wait(TURN_TRANSITION_MS / 2);
@@ -260,7 +257,8 @@ export function useCombatPlayback() {
 
         // L'adversaire prend le temps de décider. Un allié agit sur ordre du joueur : il n'a
         // rien à peser, et le faire attendre passerait pour de la latence.
-        if (!actorIsAlly) await wait(THINK_MS);
+        if (beginsEnemyTurn) await wait(THINK_MS);
+        previousActorId = event.actorId;
 
         if (event.kind === 'Move' && event.path.length > 0) {
           // Le chemin serveur ne contient que les cases foulées, origine exclue. Celle-ci vient
@@ -274,8 +272,13 @@ export function useCombatPlayback() {
           ];
 
           // O-014 + O-018: Utiliser un timing dynamique basé sur la longueur du chemin et le type (allié/ennemi)
-          const stepMs = getDynamicStepMs(path.length - 1, !actorIsAlly); // !actorIsAlly = isEnemy
-          walk.value = { combatantId: event.actorId, path, startedAt: now() };
+          const stepMs = dynamicStepDurationMs(path.length - 1, !actorIsAlly);
+          walk.value = {
+            combatantId: event.actorId,
+            path,
+            startedAt: now(),
+            isEnemy: !actorIsAlly,
+          };
           await wait((path.length - 1) * stepMs); // -1 car origin n'est pas comptée dans le chemin
           walk.value = null;
 
@@ -299,16 +302,19 @@ export function useCombatPlayback() {
             pushImpact(impact.x, impact.y, allyIds.has(impact.combatantId), at);
           }
 
-          if (event.skillKey && event.impacts.length > 0) {
-            const center = event.impacts[0];
+          if (
+            event.skillKey
+              && typeof event.targetX === 'number'
+              && typeof event.targetY === 'number'
+          ) {
             pendingSorts.value = [
               ...pendingSorts.value,
               {
                 skillKey: event.skillKey,
-                x: center.x,
-                y: center.y,
-                casterX: actorPos?.x ?? center.x,
-                casterY: actorPos?.y ?? center.y,
+                x: event.targetX,
+                y: event.targetY,
+                casterX: actorPos?.x ?? event.targetX,
+                casterY: actorPos?.y ?? event.targetY,
               },
             ];
           }

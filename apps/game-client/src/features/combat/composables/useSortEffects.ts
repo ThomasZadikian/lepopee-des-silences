@@ -1,6 +1,6 @@
 import { ref } from 'vue';
 
-import { shapeCells, SORTS } from '../../palace-map/composables/sorts';
+import { playSort, shapeCells, SORTS } from '../../palace-map/composables/sorts';
 import { isoUnit, projectToScreen } from '../../palace-map/composables/useTerrainDrawPlan';
 
 import type { ProjectionParams } from '../../palace-map/composables/useTerrainDrawPlan';
@@ -26,18 +26,32 @@ export type SortEffect = {
   }>;
   startedAt: number;
   duration: number;
+  from: { x: number; y: number } | null;
 };
 
 const SORT_DURATION_MS = 1500;
+const renderPaintedSort = playSort as unknown as (
+  ctx: CanvasRenderingContext2D,
+  id: string,
+  cells: SortEffect['cells'],
+  progress: number,
+  from: SortEffect['from'],
+) => void;
 
 export function useSortEffects() {
   const activeSorts = ref<SortEffect[]>([]);
+  let effectSequence = 0;
 
   function launchSort(
     sortId: string,
     centerX: number,
     centerY: number,
-    battlefield: { width: number; height: number; elevation: number[] },
+    battlefield: {
+      width: number;
+      height: number;
+      elevation: number[];
+      floor?: boolean[];
+    },
     projection: ProjectionParams,
     casterX?: number,
     casterY?: number,
@@ -45,9 +59,15 @@ export function useSortEffects() {
     if (!sortId || !(SORTS as Record<string, any>)[sortId]) return;
 
     const sort = (SORTS as Record<string, any>)[sortId];
-    const rawCells = shapeCells(sort.shape, centerX, centerY) as SortCell[] | null;
-
-    if (!rawCells) return;
+    const shapedCells = shapeCells(sort.shape, centerX, centerY) as SortCell[] | null;
+    const rawCells = shapedCells ?? Array.from(
+      { length: battlefield.width * battlefield.height },
+      (_, index) => ({
+        x: index % battlefield.width,
+        y: Math.floor(index / battlefield.width),
+        d: 0,
+      }),
+    ).filter((_, index) => battlefield.floor?.[index] ?? true);
 
     const { isoUnitX } = isoUnit(projection);
     const destW = isoUnitX * 2.05;
@@ -76,20 +96,21 @@ export function useSortEffects() {
       })
       .sort((a: { cx: number; cy: number }, b: { cx: number; cy: number }) => (a.cx + a.cy) - (b.cx + b.cy));
 
+    const from = casterX !== undefined && casterY !== undefined
+      ? projectToScreen(casterX, casterY, projection)
+      : null;
+
     activeSorts.value = [
       ...activeSorts.value,
       {
-        id: (activeSorts.value.length + 1),
+        id: (effectSequence += 1),
         sortId,
         cells,
-        startedAt: Date.now(),
+        startedAt: performance.now(),
         duration: SORT_DURATION_MS,
+        from: from ? { x: from.screenX, y: from.screenY } : null,
       },
     ];
-
-    setTimeout(() => {
-      activeSorts.value = activeSorts.value.filter((s) => s.id !== activeSorts.value.length);
-    }, SORT_DURATION_MS);
   }
 
   function clearSorts() {
@@ -97,20 +118,14 @@ export function useSortEffects() {
   }
 
   function renderSorts(ctx: CanvasRenderingContext2D): void {
-    // Rendu des effets de sort (timestamp non utilisé, corrigé TS6133)
     const now = performance.now();
+    activeSorts.value = activeSorts.value.filter(
+      (sort) => now - sort.startedAt < sort.duration,
+    );
+
     for (const sort of activeSorts.value) {
-      if (now - sort.startedAt < sort.duration) {
-        // Dessiner les cellules du sort
-        for (const cell of sort.cells) {
-          const progress = (now - sort.startedAt) / sort.duration;
-          const alpha = 1 - progress;
-          ctx.globalAlpha = alpha * 0.5;
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(cell.cx - cell.ux, cell.cy - cell.uy, cell.ux * 2, cell.uy * 2);
-          ctx.globalAlpha = 1;
-        }
-      }
+      const progress = (now - sort.startedAt) / sort.duration;
+      renderPaintedSort(ctx, sort.sortId, sort.cells, progress, sort.from);
     }
   }
 
@@ -131,13 +146,21 @@ export function useSortEffects() {
  * Retourne l'ID du sort associé à une clé de compétence (pour les animations).
  */
 export function sortIdForSkillKey(skillKey: string): string | null {
-  // Mapping entre les clés de compétences et les IDs de sorts
   const skillToSortMap: Record<string, string> = {
-    'skill.fireball': 'sort.boule-de-feu',
-    'skill.ice-shard': 'sort.eclat-de-glace',
-    'skill.heal': 'sort.soin',
-    'skill.guard': 'sort.bouclier',
-    'skill.strike': 'sort.frappe',
+    'canon.skill.fondations-de-thomas': 'fondations',
+    'canon.skill.rempart': 'rempart',
+    'canon.skill.dictee': 'dictee',
+    'canon.skill.impulsivite': 'impulsivite',
+    'canon.skill.frappe-denclume': 'frappe-enclume',
+    'canon.skill.larme-elise': 'larme',
+    'canon.skill.berceuse-inversee': 'berceuse-inversee',
+    'canon.skill.silence-partage': 'silence-partage',
+    'canon.skill.se-taire': 'se-taire',
+    'canon.skill.flamme-froide': 'flamme-froide',
+    'canon.skill.regard-infantile': 'regard-infantile',
+    'canon.skill.injection-blanche': 'injection-blanche',
+    'canon.skill.curee': 'curee',
+    'canon.skill.vol-a-la-tire': 'vol-a-la-tire',
   };
   return skillToSortMap[skillKey] ?? null;
 }

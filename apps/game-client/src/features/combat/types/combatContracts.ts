@@ -19,6 +19,7 @@ export type TargetingType =
   | 'AllAllies';
 
 export type SkillCategory = 'Physical' | 'Magic';
+export type TacticalAreaShape = 'Single' | 'Cross' | 'Diamond' | 'Map';
 
 export type CombatantSkillRuntimeDto = {
   key: string;
@@ -33,6 +34,10 @@ export type CombatantSkillRuntimeDto = {
   category: SkillCategory;
   /** The skill's OWN "élément" — null for basic attacks / untyped skills. */
   emotionalType?: EmotionalType | null;
+  /** Server-owned tactical contract. The client must not infer these values independently. */
+  tacticalRange: number;
+  tacticalAreaShape: TacticalAreaShape;
+  requiresLineOfSight: boolean;
 };
 
 export type CombatantRuntimeDto = {
@@ -71,7 +76,6 @@ export type StatusEffectKind =
   | 'StatModifier'
   | 'Stun'
   | 'Silence'
-  | 'AtbLock'
   | 'SkillGrant';
 
 export type CombatantStatusEffectDto = {
@@ -136,7 +140,6 @@ export type LogEntryType =
   | 'WeaknessHit'
   | 'ResistedHit'
   | 'ImmuneHit'
-  | 'AtbStagger'
   | 'StatusApplied';
 
 export type CombatLogEntryDto = {
@@ -185,10 +188,8 @@ export type UseItemInCombatResponse = {
 };
 // ─── Combat tactique ────────────────────────────────────────────────────────
 //
-// Volontairement distinct de `CombatRuntimeDto` : les deux systèmes n'exposent
-// pas la même chose. L'ATB envoie un tick et des jauges ; le tactique envoie un
-// terrain, des positions et un ordre d'initiative annoncé à l'avance — cette
-// prévisibilité est la contrepartie de l'abandon du tempo.
+// Le runtime tactique expose le terrain, les positions et l'ordre d'initiative
+// annoncé à l'avance.
 
 /** Le terrain de combat : la salle d'exploration vidée de ses nœuds. */
 export type TacticalBattlefieldDto = {
@@ -224,6 +225,7 @@ export type TacticalCombatRuntimeDto = {
   allies: TacticalCombatantRuntimeDto[];
   enemies: TacticalCombatantRuntimeDto[];
   usableBattleItems: CombatUsableItemDto[];
+  usedOnceSkillKeys: string[];
 };
 
 /** Ce qu'un combattant a encaissé, à l'endroit où il l'a encaissé. */
@@ -250,6 +252,8 @@ export type TacticalCombatEventDto = {
   path: Array<{ x: number; y: number }>;
   skillKey: string | null;
   skillName: string | null;
+  targetX: number | null;
+  targetY: number | null;
   impacts: TacticalImpactDto[];
 };
 

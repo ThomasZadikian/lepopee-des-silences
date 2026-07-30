@@ -15,15 +15,13 @@ type TutorialSection = {
 
 const sections: TutorialSection[] = [
   {
-    title: 'Le tour de jeu — la jauge ATB',
+    title: 'Le tour de jeu — le combat tactique',
     color: 'var(--gold)',
     paragraphs: [
-      "Le combat n'avance pas par tours figés : chaque combattant remplit sa propre jauge d'action, tick après tick, et agit dès qu'elle atteint son seuil. Plus votre Vitesse effective (base + buffs/debuffs actifs) est élevée, plus la jauge se remplit vite.",
-      "Investir massivement dans l'Attaque et la Défense a un coût : au-delà d'un certain total combiné, chaque point supplémentaire ralentit légèrement votre rythme d'action. Impossible de tout maximiser à la fois — puissance et célérité se négocient.",
-      "Votre vitesse RELATIVE compte aussi : être plus rapide que la moyenne du camp adverse accélère votre jauge (jusqu'à +50%), être plus lent la ralentit d'autant.",
-      "Un coup marquant — critique, garde brisée, débuff posé sur l'adversaire — déclenche un Momentum : un accélérateur temporaire qui rapproche votre prochaine action.",
-      "L'humeur dominante du Palais influence discrètement le tempo de la salle et de chaque camp ; dans ses états les plus instables (dissocié, fragmenté), une part d'irrégularité déterministe s'ajoute — toujours la même pour une seed donnée, mais imprévisible à l'œil.",
-      "Quand un sort ou un statut dure « X tours » (poison, garde continue, buffs...), cela correspond à une durée fixe de l'horloge — pas à X actions du combattant concerné. Un personnage rapide peut agir plusieurs fois pendant cette fenêtre, un personnage lent une seule fois, voire aucune : la vitesse effective détermine combien d'actions tiennent dans ce même intervalle.",
+      "Chaque round annonce son ordre d'initiative. La Vitesse décide qui agit en premier ; quand tous les combattants encore debout ont joué, un nouveau round commence.",
+      "À son tour, un combattant dispose d'un déplacement et d'une action indépendants. Il peut les effectuer dans l'ordre de son choix, ou renoncer à l'un sans perdre l'autre.",
+      "Les obstacles, le relief, la portée et la ligne de vue déterminent les cases valides. Les zones d'effet sont montrées avant validation : cible unique, croix, losange ou carte entière.",
+      "Les statuts exprimés en tours diminuent au fil des rounds. Un effet de trois tours reste donc lisible et prévisible pour les deux camps.",
     ],
   },
   {

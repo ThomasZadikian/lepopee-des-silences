@@ -27,6 +27,7 @@ public sealed class TacticalCombat : ICombatContext
     private readonly List<Combatant> _enemies;
     private readonly Dictionary<Guid, GridPosition> _positions;
     private readonly Dictionary<Guid, TacticalTurnState> _turnStates = new();
+    private readonly HashSet<string> _usedOnceSkillKeys = new(StringComparer.Ordinal);
     private List<Guid> _initiativeOrder = [];
     private int _activeIndex;
 
@@ -77,6 +78,7 @@ public sealed class TacticalCombat : ICombatContext
     /// être affiché : sa prévisibilité est la contrepartie de l'abandon du tempo ATB.
     /// </summary>
     public IReadOnlyList<Guid> InitiativeOrder => _initiativeOrder.AsReadOnly();
+    public IReadOnlySet<string> UsedOnceSkillKeys => _usedOnceSkillKeys;
 
     public Guid? ActiveCombatantId =>
         _activeIndex >= 0 && _activeIndex < _initiativeOrder.Count
@@ -113,6 +115,20 @@ public sealed class TacticalCombat : ICombatContext
 
     public TacticalTurnState TurnStateOf(Guid combatantId) =>
         _turnStates.GetValueOrDefault(combatantId, TacticalTurnState.Fresh);
+
+    public bool HasUsedOnceSkill(string skillKey) =>
+        _usedOnceSkillKeys.Contains(skillKey);
+
+    public void MarkOnceSkillUsed(string skillKey)
+    {
+        EnsureActive();
+
+        if (string.IsNullOrWhiteSpace(skillKey))
+            throw new DomainException("Once-per-combat skill key is required.");
+
+        if (!_usedOnceSkillKeys.Add(skillKey))
+            throw new DomainException($"Skill '{skillKey}' has already been used in this combat.");
+    }
 
     //  Déroulé 
 
@@ -464,7 +480,8 @@ public sealed class TacticalCombat : ICombatContext
         bool healingBlocked = false,
         int hitCounter = 0,
         bool hasFirstHitLanded = false,
-        int currentTick = 0)
+        int currentTick = 0,
+        IEnumerable<string>? usedOnceSkillKeys = null)
     {
         ArgumentNullException.ThrowIfNull(battlefield);
         ArgumentNullException.ThrowIfNull(positions);
@@ -497,6 +514,12 @@ public sealed class TacticalCombat : ICombatContext
         foreach (var (combatantId, turnState) in turnStates)
         {
             combat._turnStates[combatantId] = turnState;
+        }
+
+        foreach (var skillKey in usedOnceSkillKeys ?? [])
+        {
+            if (!string.IsNullOrWhiteSpace(skillKey))
+                combat._usedOnceSkillKeys.Add(skillKey);
         }
 
         return combat;

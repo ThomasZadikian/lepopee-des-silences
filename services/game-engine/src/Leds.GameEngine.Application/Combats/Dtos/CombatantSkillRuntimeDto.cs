@@ -1,5 +1,6 @@
 using Leds.GameEngine.Application.Combats.Typing;
 using Leds.GameEngine.Domain.Combats;
+using Leds.GameEngine.Domain.Combats.Tactical;
 
 namespace Leds.GameEngine.Application.Combats.Dtos;
 
@@ -16,11 +17,15 @@ public sealed record CombatantSkillRuntimeDto(
     string Category = "Physical",
     // The skill's OWN "élément" (registre émotionnel) — null for basic attacks and
     // any skill without a declared type (see EmotionalTypeProfileProvider.SkillTypesByKey).
-    string? EmotionalType = null)
+    string? EmotionalType = null,
+    int TacticalRange = 1,
+    string TacticalAreaShape = "Single",
+    bool RequiresLineOfSight = false)
 {
     public static CombatantSkillRuntimeDto FromDomain(CombatantSkill skill)
     {
         var hasType = EmotionalTypeProfileProvider.TryResolveIntrinsicType(skill, out var type);
+        var tactical = TacticalSkillProfile.For(skill);
 
         return new CombatantSkillRuntimeDto(
             Key: skill.Key,
@@ -33,6 +38,9 @@ public sealed record CombatantSkillRuntimeDto(
             BasePower: skill.BasePower,
             Tags: skill.Tags,
             Category: skill.Category,
-            EmotionalType: hasType ? type.ToString() : null);
+            EmotionalType: hasType ? type.ToString() : null,
+            TacticalRange: tactical.Range,
+            TacticalAreaShape: tactical.AreaShape.ToString(),
+            RequiresLineOfSight: tactical.RequiresLineOfSight);
     }
 }
