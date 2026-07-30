@@ -28,7 +28,6 @@ using Leds.GameEngine.Application.Runs.SyncPartySkills;
 using Leds.GameEngine.Application.Runs.SyncPartyStats;
 using Leds.GameEngine.Application.Runs.UseRunItem;
 using MediatR;
-using Leds.GameEngine.Domain.Runs;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Leds.GameEngine.Api.Controllers;
@@ -46,26 +45,11 @@ public sealed class RunsController : ControllerBase
 
     [HttpPost]
     [ProducesResponseType(typeof(StartRunResponse), StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<StartRunResponse>> StartRun(
         [FromBody] StartRunRequest request,
         CancellationToken cancellationToken)
     {
-        // Le mode arrive en chaîne : System.Text.Json ne convertit pas une chaîne en enum sans
-        // convertisseur, et en enregistrer un globalement changerait la sérialisation de TOUS
-        // les enums de l'API. Une valeur absente vaut « Atb » ; une valeur non reconnue est
-        // refusée plutôt que rabattue en silence sur l'ATB — c'est précisément ce silence qui
-        // ferait croire au joueur qu'il a choisi le combat tactique alors qu'il joue l'autre.
-        var combatMode = RunCombatMode.Atb;
-
-        if (!string.IsNullOrWhiteSpace(request.CombatMode)
-            && !Enum.TryParse(request.CombatMode, ignoreCase: true, out combatMode))
-        {
-            return BadRequest(
-                $"Unknown combat mode '{request.CombatMode}'. Expected 'Atb' or 'Tactical'.");
-        }
-
-        var command = new StartRunCommand(request.PlayerId, combatMode);
+        var command = new StartRunCommand(request.PlayerId);
 
         var response = await _sender.Send(command, cancellationToken);
 
@@ -515,12 +499,9 @@ public sealed class RunsController : ControllerBase
 }
 
 /// <summary>
-/// Lance une run. <c>CombatMode</c> fixe le système de combat pour toute sa durée : « Atb »
-/// (défaut, système historique) ou « Tactical ». Omettre le champ revient à choisir l'ATB.
+/// Lance une run avec le système de combat tactique.
 /// </summary>
-public sealed record StartRunRequest(
-    Guid PlayerId,
-    string? CombatMode = null);
+public sealed record StartRunRequest(Guid PlayerId);
 
 public sealed record MovePartyRequest(int TargetX, int TargetY);
 

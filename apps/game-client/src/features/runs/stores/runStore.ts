@@ -18,7 +18,6 @@ import {
   type PermanentItemCandidateDto,
   type ResolveCurrentEventResponse,
   type ResumableRunDto,
-  type RunCombatMode,
   type RunDto,
 } from '../types/runTypes';
 
@@ -444,13 +443,13 @@ export const useRunStore = defineStore('run', () => {
   // Run lifecycle
   // -------------------------------------------------------------------------
 
-  async function startRun(combatMode?: RunCombatMode) {
+  async function startRun() {
     await execute(async () => {
       // Vider currentRun avant l'appel pour que, si l'API échoue,
       // le composant appelant ne navigue pas vers l'ancienne run.
       currentRun.value = null;
 
-      const response = await runApi.startRun(demoPlayerId, combatMode);
+      const response = await runApi.startRun(demoPlayerId);
       const run = unwrapRunResponse(response);
 
       lastChoiceResult.value = null;

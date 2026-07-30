@@ -717,7 +717,7 @@ public sealed class Run
         int guardBonusPercent = 0,
         bool journalEnabled = false,
         bool lawDenialEnabled = false,
-        RunCombatMode combatMode = RunCombatMode.Atb,
+        RunCombatMode combatMode = RunCombatMode.Tactical,
         int reputationGainBonusPercent = 0,
         bool himLitProtectionEnabled = false,
         int healingBonusPercent = 0,

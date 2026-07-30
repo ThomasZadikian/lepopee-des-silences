@@ -170,11 +170,7 @@ export type RunDto = {
   journalEnabled?: boolean;
   /** Auto-written journal entries for this run, one per event, tagged with the room they happened in. */
   journalEntries?: RunJournalEntryDto[] | null;
-  /**
-   * Système de combat de la run, choisi à son lancement et fixe pour sa durée (cf. SFD v2, §3).
-   * Décide quel écran de combat monter. Absent sur les runs antérieures au choix : les traiter
-   * comme 'Atb', qui était alors le seul système.
-   */
+  /** Système de combat persisté. 'Atb' identifie uniquement une sauvegarde historique. */
   combatMode?: RunCombatMode;
   /** true when the player owns the "Déni permanent" permanent item — gates the law-revoke UI. */
   lawDenialEnabled?: boolean;

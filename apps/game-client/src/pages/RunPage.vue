@@ -3,7 +3,6 @@ import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import GameShellLayout from '../app/layouts/GameShellLayout.vue';
-import CombatScene from '../features/combat/components/CombatScene.vue';
 import TacticalCombatScene from '../features/combat/components/TacticalCombatScene.vue';
 import { useTacticalCombatStore } from '../features/combat/stores/useTacticalCombatStore';
 import { useCombatStore } from '../features/combat/stores/useCombatStore';
@@ -271,7 +270,7 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
       </template>
 
       <!-- ── Combat phase ── -->
-      <!-- Le mode de combat est fixé pour toute la run : une seule des deux scènes existe. -->
+      <!-- Le T-RPG est l'unique scène de combat jouable. -->
       <template v-else-if="isCombatPhase && tacticalCombatStore.combat">
         <TacticalCombatScene
           :run-id="runStore.currentRun.id"
@@ -282,14 +281,26 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
         />
       </template>
 
-      <template v-else-if="isCombatPhase && runStore.currentRun.activeCombatId">
-        <CombatScene
-          :run-id="runStore.currentRun.id"
-          :combat-id="runStore.currentRun.activeCombatId"
-          @combat-completed="runStore.handleCombatCompleted"
-          @combat-failed="runStore.handleCombatFailed"
-          @leave-run="handleLeaveRun"
-        />
+      <template v-else-if="isCombatPhase && runStore.currentRun.combatMode === 'Atb'">
+        <section class="phase-center">
+          <p class="es-kicker">Combat incompatible</p>
+          <h3 class="es-h2">Cette run appartient à l'ancien système de combat.</h3>
+          <p class="es-lede es-dim">
+            Le combat tactique est désormais le seul mode jouable. Abandonne cette sauvegarde
+            historique pour recommencer une descente compatible.
+          </p>
+          <button class="es-btn es-btn--blood" @click="requestAbandon">
+            Abandonner cette run
+          </button>
+        </section>
+      </template>
+
+      <template v-else-if="isCombatPhase">
+        <section class="phase-center">
+          <p class="es-kicker">Combat tactique</p>
+          <h3 class="es-h2">Le champ de bataille se met en place.</h3>
+          <p class="es-lede es-dim">Préparation de l'ordre d'initiative…</p>
+        </section>
       </template>
 
       <!-- ── Reward phase ── -->

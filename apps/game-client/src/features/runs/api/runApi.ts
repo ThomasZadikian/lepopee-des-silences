@@ -5,7 +5,6 @@ import type {
   GenerateNextNodesResponse,
   GetPermanentItemCandidatesResponse,
   ResolveCurrentEventResponse,
-  RunCombatMode,
   RunResponse,
   StartRunResponse,
 } from '../types/runTypes';
@@ -16,14 +15,11 @@ import type {
 } from '../../interlude/interludeTypes';
 
 export const runApi = {
-  /**
-   * Lance une run. `combatMode` fixe le système de combat pour toute sa durée (cf. SFD v2, §3) ;
-   * il n'est plus modifiable ensuite. Omis, le serveur retient 'Atb', le système historique.
-   */
-  startRun(playerId: string, combatMode?: RunCombatMode) {
-    return gameEngineApi.post<StartRunResponse, { playerId: string; combatMode?: RunCombatMode }>(
+  /** Lance une run avec le système de combat tactique. */
+  startRun(playerId: string) {
+    return gameEngineApi.post<StartRunResponse, { playerId: string }>(
       '/api/v2/runs',
-      combatMode ? { playerId, combatMode } : { playerId },
+      { playerId },
     );
   },
 

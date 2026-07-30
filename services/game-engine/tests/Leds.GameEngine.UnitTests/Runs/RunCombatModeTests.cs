@@ -7,8 +7,8 @@ using Leds.GameEngine.UnitTests.Common.Factories;
 namespace Leds.GameEngine.UnitTests.Runs;
 
 /// <summary>
-/// Le choix du système de combat (cf. SFD v2, §3) : fixé au lancement, jamais modifié ensuite,
-/// et sans effet sur quoi que ce soit d'autre que la manière de jouer les combats.
+/// Le système tactique est le seul mode créé pour les nouvelles runs. L'ATB reste relisible
+/// pendant la période de transition des sauvegardes historiques.
 /// </summary>
 public sealed class RunCombatModeTests
 {
@@ -35,11 +35,9 @@ public sealed class RunCombatModeTests
     }
 
     [Fact]
-    public void StartNew_ShouldDefaultToAtb_WhenModeIsNotSpecified()
+    public void StartNew_ShouldDefaultToTactical_WhenModeIsNotSpecified()
     {
-        // L'ATB était le seul système avant ce choix : ne pas le préciser doit continuer de
-        // donner exactement le jeu d'avant.
-        StartRun().CombatMode.Should().Be(RunCombatMode.Atb);
+        StartRun().CombatMode.Should().Be(RunCombatMode.Tactical);
     }
 
     [Theory]
