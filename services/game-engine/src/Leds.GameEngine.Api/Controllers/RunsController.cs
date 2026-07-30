@@ -26,6 +26,7 @@ using Leds.GameEngine.Application.Runs.StartRun;
 using Leds.GameEngine.Application.Runs.SyncPartySkills;
 using Leds.GameEngine.Application.Runs.SyncPartyStats;
 using Leds.GameEngine.Application.Runs.UseRunItem;
+using Leds.GameEngine.Application.Runs.UseGrimoire;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -220,6 +221,22 @@ public sealed class RunsController : ControllerBase
     {
         var command = new UseRunItemCommand(runId, itemId);
         var response = await _sender.Send(command, cancellationToken);
+        return Ok(response);
+    }
+
+    [HttpPost("{runId:guid}/inventory/{itemId:guid}/read-grimoire")]
+    [ProducesResponseType(typeof(UseGrimoireResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<UseGrimoireResponse>> UseGrimoire(
+        Guid runId,
+        Guid itemId,
+        [FromBody] UseGrimoireRequest request,
+        CancellationToken cancellationToken)
+    {
+        var response = await _sender.Send(
+            new UseGrimoireCommand(runId, itemId, request.CharacterId),
+            cancellationToken);
         return Ok(response);
     }
 
@@ -545,6 +562,8 @@ public sealed record UseTacticalItemRequest(
     int TargetX,
     int TargetY,
     Guid? TargetCombatantId = null);
+
+public sealed record UseGrimoireRequest(Guid CharacterId);
 
 public sealed record UseCaliceInfiniRequest(Guid? TargetCombatantId);
 

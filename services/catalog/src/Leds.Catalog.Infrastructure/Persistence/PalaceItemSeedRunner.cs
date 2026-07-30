@@ -422,22 +422,27 @@ public sealed partial class CatalogSeedRunner
         // Grimoires
         P("item.tome-marees", "Tome des marées", "Apprend temporairement Déluge mineur.",
             "Consumable", "Grimoire", "Epic", "UseOutsideCombat", stack: 20, outside: true, pool: "loot.imperatrice",
+            effectRunType: "GrantTemporarySkill",
             effects: [Fx("GrantTemporarySkill", "User", null, "SkillKey", "Run", behavior: "skill.temp.deluge-mineur")]),
         P("item.feuillet-copiste", "Feuillet du copiste", "Apprend temporairement Écriture appliquée.",
             "Consumable", "Grimoire", "Rare", "UseOutsideCombat", stack: 20, outside: true, pool: "Labyrinthe",
+            effectRunType: "GrantTemporarySkill",
             effects: [Fx("GrantTemporarySkill", "User", null, "SkillKey", "Run", behavior: "skill.temp.ecriture-appliquee")]),
         P("item.braise-volee", "Braise volée", "Apprend temporairement Souffle emprunté ; si l'offrande supérieure est connue, accorde 8 points de compétence.",
-            "Consumable", "Grimoire", "Rare", "UseOutsideCombat", stack: 20, outside: true, pool: "room.enfer3", effects:
+            "Consumable", "Grimoire", "Rare", "UseOutsideCombat", stack: 20, outside: true, pool: "room.enfer3",
+            effectRunType: "GrantTemporarySkill", effects:
             [
                 Fx("GrantTemporarySkill", "User", null, "SkillKey", "Run", "skill:not-known:souffle-forge", behavior: "skill.temp.souffle-emprunte"),
                 Fx("GrantSkillPoints", "Team", 8, "Flat", "Immediate", "skill:known:souffle-forge")
             ]),
         P("item.retable-portatif", "Retable portatif", "Apprend temporairement Prière ; en présence de Pénitents, crée une Station près du lanceur.",
-            "Consumable", "Grimoire", "Uncommon", "UseOutsideCombat", stack: 20, outside: true, pool: "Montagne", effects:
-            [Fx("GrantTemporarySkill", "User", null, "SkillKey", "Run", behavior: "canon.skill.priere-aspiration")]),
+            "Consumable", "Grimoire", "Uncommon", "UseOutsideCombat", stack: 20, outside: true, pool: "Montagne",
+            effectRunType: "GrantTemporarySkill",
+            effects: [Fx("GrantTemporarySkill", "User", null, "SkillKey", "Run", behavior: "canon.skill.priere-aspiration")]),
         P("item.carnet-croquis", "Carnet de croquis", "Apprend temporairement Construction éphémère.",
-            "Consumable", "Grimoire", "Epic", "UseOutsideCombat", stack: 1, outside: true, pool: "room.cellule", effects:
-            [Fx("GrantTemporarySkill", "User", null, "SkillKey", "Run", behavior: "skill.temp.construction-ephemere")]),
+            "Consumable", "Grimoire", "Epic", "UseOutsideCombat", stack: 1, outside: true, pool: "room.cellule",
+            effectRunType: "GrantTemporarySkill",
+            effects: [Fx("GrantTemporarySkill", "User", null, "SkillKey", "Run", behavior: "skill.temp.construction-ephemere")]),
 
         // Instruments météo
         P("item.girouette-os", "Girouette d'os", "Hors combat, trois charges par run : relance la météo de la salle actuelle.",

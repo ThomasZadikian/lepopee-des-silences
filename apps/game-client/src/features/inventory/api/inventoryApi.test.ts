@@ -26,6 +26,17 @@ describe('inventoryApi', () => {
     expect(gameEngineApi.post).toHaveBeenCalledWith('/api/v2/runs/run-1/inventory/item-1/use');
   });
 
+  it('readGrimoire sends the selected character', async () => {
+    vi.mocked(gameEngineApi.post).mockResolvedValueOnce({});
+
+    await inventoryApi.readGrimoire('run-1', 'grimoire-1', 'character-1');
+
+    expect(gameEngineApi.post).toHaveBeenCalledWith(
+      '/api/v2/runs/run-1/inventory/grimoire-1/read-grimoire',
+      { characterId: 'character-1' },
+    );
+  });
+
   it('returns the API response for getRunInventory', async () => {
     const mockResponse = { items: [{ id: 'item-1' }] };
     vi.mocked(gameEngineApi.get).mockResolvedValueOnce(mockResponse);

@@ -5,12 +5,21 @@ export interface RunItemDto {
   definitionKey: string;
   displayName: string;
   description: string;
-  type: 'Consumable' | 'Passive' | 'Fragment';
+  type: 'Consumable' | 'Passive' | 'Fragment' | 'Equipment' | 'Relic' | 'Grimoire' | 'WeatherInstrument' | 'SkillEssence' | 'Weapon';
   rarity: 'Common' | 'Uncommon' | 'Rare' | 'Epic';
   quantity: number;
   effectType: string;
   effectAmount: number;
   isUsable: boolean;
+}
+
+export interface UseGrimoireResponse {
+  runId: string;
+  itemId: string;
+  characterId: string;
+  grantedSkillKey?: string | null;
+  teamSkillPointsGranted: number;
+  itemDepleted: boolean;
 }
 
 export interface GetRunInventoryResponse {

@@ -2561,6 +2561,27 @@ public sealed partial class CatalogSeedRunner
             effects: new[] { new SkillEffectSpec("StatModifier", null, -4, 3, Stat: "Defense") },
             category: "Magic");
 
+        await UpsertSkillAsync("skill.temp.deluge-mineur", "Déluge mineur",
+            "Une vague compacte frappe une zone en losange.",
+            "Damage", "Area", "Damage", mana: 9, power: 20, cancellationToken,
+            category: "Magic", cooldown: 2, emotionalRegister: "Tristesse");
+
+        await UpsertSkillAsync("skill.temp.ecriture-appliquee", "Écriture appliquée",
+            "Un signe bref lacère une cible et prolonge sa douleur.",
+            "Damage", "SingleEnemy", "Damage", mana: 7, power: 18, cancellationToken,
+            effects: [new SkillEffectSpec("DamageOverTime", null, 4, TicksPerTurn * 3, TickInterval: TicksPerTurn)],
+            category: "Magic", cooldown: 1, emotionalRegister: "Silence");
+
+        await UpsertSkillAsync("skill.temp.souffle-emprunte", "Souffle emprunté",
+            "Une flamme volée jaillit en croix.",
+            "Damage", "Area", "Damage", mana: 8, power: 21, cancellationToken,
+            category: "Magic", cooldown: 2, emotionalRegister: "Colere");
+
+        await UpsertSkillAsync("skill.temp.construction-ephemere", "Construction éphémère",
+            "Érige une garde provisoire sur une cible proche.",
+            "Guard", "SingleAlly", "Guard", mana: 6, power: 18, cancellationToken,
+            category: "Magic", cooldown: 2, emotionalRegister: "Neutral");
+
         await UpsertSkillAsync("canon.skill.transmutation", "Transmutation",
             "Plomb, or, mercure, soufre, sel. L'art alchimique réordonne la matière de l'instant.",
             "Buff", "Self", "Buff", mana: 6, power: 0, cancellationToken,

@@ -146,6 +146,10 @@ internal static class CanonicalTacticalSkillContracts
             ["canon.skill.maree-montante"] = new(3, "Diamond", true),
             ["canon.skill.lame-de-fond"] = new(1, "Single", false),
             ["canon.skill.lame-de-fond-renforcee"] = new(1, "Single", false),
+            ["skill.temp.deluge-mineur"] = new(3, "Diamond", true),
+            ["skill.temp.ecriture-appliquee"] = new(4, "Single", true),
+            ["skill.temp.souffle-emprunte"] = new(3, "Cross", true),
+            ["skill.temp.construction-ephemere"] = new(2, "Single", true),
         };
 
     public static CanonicalTacticalSkillContract Require(string skillKey) =>

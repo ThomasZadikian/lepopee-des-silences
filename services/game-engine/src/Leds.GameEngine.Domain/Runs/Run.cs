@@ -502,6 +502,72 @@ public sealed class Run
         character.ReplaceSkills(skills);
     }
 
+    private static readonly HashSet<string> GrimoireTemporarySkillKeys =
+    [
+        "skill.temp.deluge-mineur",
+        "skill.temp.ecriture-appliquee",
+        "skill.temp.souffle-emprunte",
+        "canon.skill.priere-aspiration",
+        "skill.temp.construction-ephemere"
+    ];
+
+    /// <summary>
+    /// Consumes a grimoire outside combat and replaces the character's dedicated
+    /// third temporary slot. The two ordinary additional slots are untouched.
+    /// </summary>
+    public bool GrantGrimoireSkill(
+        RunItemId itemId,
+        Guid characterId,
+        PlayerRuntimeSkill runtimeSkill,
+        RunCharacterSkillSnapshot snapshotSkill)
+    {
+        if (HasActiveCombat)
+            throw new DomainException("A grimoire can only be read outside combat.");
+
+        var item = _runItems.FirstOrDefault(candidate => candidate.Id == itemId)
+            ?? throw new DomainException($"Item '{itemId.Value}' not found in run inventory.");
+        if (item.Type != RunItemType.Grimoire
+            || item.EffectType != RunItemEffectType.GrantTemporarySkill)
+        {
+            throw new DomainException($"Item '{item.DefinitionKey}' is not a usable grimoire.");
+        }
+
+        var character = PlayerSnapshot?.Characters.FirstOrDefault(c => c.CharacterId == characterId)
+            ?? throw new DomainException($"Character '{characterId}' was not found in this run.");
+
+        var characterSkills = character.Skills
+            .Where(skill => !GrimoireTemporarySkillKeys.Contains(skill.SkillDefinitionKey))
+            .Append(snapshotSkill)
+            .ToArray();
+        character.ReplaceSkills(characterSkills);
+
+        if (PlayerSnapshot!.Characters.First().CharacterId == characterId)
+        {
+            var playerSkills = PlayerState.Skills
+                .Where(skill => !GrimoireTemporarySkillKeys.Contains(skill.Key))
+                .Append(runtimeSkill)
+                .ToArray();
+            PlayerState.ReplaceSkills(playerSkills);
+        }
+
+        item.ConsumeOne();
+        return item.Quantity == 0;
+    }
+
+    public bool ConsumeGrimoire(RunItemId itemId)
+    {
+        if (HasActiveCombat)
+            throw new DomainException("A grimoire can only be read outside combat.");
+
+        var item = _runItems.FirstOrDefault(candidate => candidate.Id == itemId)
+            ?? throw new DomainException($"Item '{itemId.Value}' not found in run inventory.");
+        if (item.Type != RunItemType.Grimoire)
+            throw new DomainException($"Item '{item.DefinitionKey}' is not a grimoire.");
+
+        item.ConsumeOne();
+        return item.Quantity == 0;
+    }
+
     public int MaxHp { get; private set; }
 
     public int CurrentHp { get; private set; }
