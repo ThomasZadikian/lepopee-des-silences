@@ -638,7 +638,7 @@ public sealed class PlayerCharacterTests
     [Fact]
     public void EquipItem_ShouldAllowOneWeaponOneAccessoryAndThreeRelics()
     {
-        var character = CreateCharacter();
+        var character = CreateCharacterWithSkills("skill.a");
         foreach (var key in new[] { "weapon.a", "accessory.a", "relic.a", "relic.b", "relic.c" })
             character.AddItem(PlayerCharacterItem.Create(key, DateTimeOffset.UtcNow));
 
@@ -654,7 +654,7 @@ public sealed class PlayerCharacterTests
     [Fact]
     public void EquipItem_ShouldRejectASecondWeapon()
     {
-        var character = CreateCharacter();
+        var character = CreateCharacterWithSkills("skill.a");
         character.AddItem(PlayerCharacterItem.Create("weapon.a", DateTimeOffset.UtcNow));
         character.AddItem(PlayerCharacterItem.Create("weapon.b", DateTimeOffset.UtcNow));
         character.EquipItem("weapon.a", EquipmentSlotKind.Weapon);

@@ -27,7 +27,6 @@ public sealed class PlayerCharacterSkillEntity
     public DateTimeOffset UnlockedAtUtc { get; set; }
     public string? Source { get; set; }
     public bool IsEquipped { get; set; }
-    public string EquipmentSlot { get; set; } = "Relic";
 
     public PlayerCharacterEntity PlayerCharacter { get; set; } = null!;
 }
@@ -52,6 +51,7 @@ public sealed class PlayerCharacterItemEntity
     public DateTimeOffset AcquiredAtUtc { get; set; }
     public string? Source { get; set; }
     public bool IsEquipped { get; set; }
+    public string EquipmentSlot { get; set; } = "Relic";
 
     public PlayerCharacterEntity PlayerCharacter { get; set; } = null!;
 }
