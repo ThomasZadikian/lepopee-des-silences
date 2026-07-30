@@ -9,7 +9,9 @@ public sealed record TacticalCombatantRuntimeDto(
     int Y,
     bool HasMoved,
     bool HasActed,
-    int MovementBudget);
+    int MovementBudget,
+    string Facing,
+    IReadOnlyDictionary<string, int> SkillCooldowns);
 
 /// <summary>
 /// Le terrain une fois la salle vidée de ses nœuds : reliefs et trous, rien d'autre.
@@ -105,6 +107,8 @@ public sealed record TacticalCombatRuntimeDto(
             Y: position.Y,
             HasMoved: turn.HasMoved,
             HasActed: turn.HasActed,
-            MovementBudget: TacticalMovement.BudgetFor(combatant.EffectiveSpeed));
+            MovementBudget: TacticalMovement.BudgetFor(combatant.EffectiveMovement),
+            Facing: combat.FacingOf(combatant.Id.Value).ToString(),
+            SkillCooldowns: combat.CooldownsOf(combatant.Id.Value));
     }
 }

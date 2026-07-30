@@ -1,5 +1,11 @@
 # SFD — Mode de combat T-RPG (v2.0)
 
+> **Document historique.** Plusieurs règles de cette version ont été remplacées
+> pendant l'arbitrage d'intégration finale, notamment le maintien de l'ATB,
+> l'initiative par round et le mouvement dérivé de la Vitesse. La référence
+> d'implémentation est désormais
+> [`sfd-combat-trpg-canonique.md`](./sfd-combat-trpg-canonique.md).
+
 > Remplace `sfd-combat-trpg-v1.md`. La v1 a été écrite avant trois chantiers qui l'ont
 > périmée par endroits : la suppression du mode d'exploration Classique, l'arrivée du terrain
 > mécanique en exploration, et l'arrivée du système de rangs Front/Back. Les sections

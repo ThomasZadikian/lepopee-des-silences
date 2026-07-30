@@ -27,7 +27,8 @@ public sealed record EnemyDefinitionDto(
     int Menace = 0,
     string Rarity = "Common",
     string? Registre = null,
-    IReadOnlyCollection<string>? BoundRoomKeys = null)
+    IReadOnlyCollection<string>? BoundRoomKeys = null,
+    int Movement = 4)
 {
     public static EnemyDefinitionDto FromDomain(IEnemyDefinition definition)
     {
@@ -56,6 +57,7 @@ public sealed record EnemyDefinitionDto(
             definition.Menace,
             definition.Rarity,
             definition.Registre,
-            definition.BoundRoomKeys.ToArray());
+            definition.BoundRoomKeys.ToArray(),
+            definition.Movement);
     }
 }

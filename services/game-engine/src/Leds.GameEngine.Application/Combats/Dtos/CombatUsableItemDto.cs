@@ -12,4 +12,7 @@ public sealed record CombatUsableItemDto(
     string EffectType,
     int EffectAmount,
     int Quantity,
-    string TargetingType);
+    string TargetingType,
+    int TacticalRange,
+    string TacticalAreaShape,
+    bool RequiresLineOfSight);

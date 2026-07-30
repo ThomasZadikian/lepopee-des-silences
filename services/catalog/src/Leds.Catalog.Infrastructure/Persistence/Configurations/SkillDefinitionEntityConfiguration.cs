@@ -37,6 +37,11 @@ public sealed class SkillDefinitionEntityConfiguration : IEntityTypeConfiguratio
         builder.Property(e => e.CastTime).HasColumnName("cast_time");
         builder.Property(e => e.RecoveryTime).HasColumnName("recovery_time");
         builder.Property(e => e.Cooldown).HasColumnName("cooldown");
+        builder.Property(e => e.TacticalRange).HasColumnName("tactical_range").HasDefaultValue(1).IsRequired();
+        builder.Property(e => e.TacticalAreaShape).HasColumnName("tactical_area_shape").HasMaxLength(16).HasDefaultValue("Single").IsRequired();
+        builder.Property(e => e.RequiresLineOfSight).HasColumnName("requires_line_of_sight").HasDefaultValue(false).IsRequired();
+        builder.Property(e => e.IsUltimate).HasColumnName("is_ultimate").HasDefaultValue(false).IsRequired();
+        builder.Property(e => e.EmotionalRegister).HasColumnName("emotional_register").HasMaxLength(32).HasDefaultValue("Neutral").IsRequired();
         builder.Property(e => e.EffectSetId).HasColumnName("effect_set_id");
         builder.Property(e => e.BaseWeight).HasColumnName("base_weight").HasDefaultValue(1);
         builder.Property(e => e.SelectionGroup).HasColumnName("selection_group").HasMaxLength(64);

@@ -154,7 +154,10 @@ public static class RunPersistenceMapper
                 IsContainer = item.IsContainer,
                 ContainerCapacity = item.ContainerCapacity,
                 IsLiquid = item.IsLiquid,
-                ContainedLiquidDefinitionKey = item.ContainedLiquidDefinitionKey
+                ContainedLiquidDefinitionKey = item.ContainedLiquidDefinitionKey,
+                TacticalRange = item.TacticalRange,
+                TacticalAreaShape = item.TacticalAreaShape,
+                RequiresLineOfSight = item.RequiresLineOfSight
             }).ToList(),
             RunModifiers = run.RunModifiers.Select(m => new RunModifierEntity
             {
@@ -343,7 +346,15 @@ public static class RunPersistenceMapper
             EffectType = skill.EffectType,
             ManaCost = skill.ManaCost,
             ChargeCost = skill.ChargeCost,
-            BasePower = skill.BasePower
+            BasePower = skill.BasePower,
+            Category = skill.Category,
+            BasePowerIsPercentOfMaxVitality = skill.BasePowerIsPercentOfMaxVitality,
+            TacticalRange = skill.TacticalRange,
+            TacticalAreaShape = skill.TacticalAreaShape,
+            RequiresLineOfSight = skill.RequiresLineOfSight,
+            Cooldown = skill.Cooldown,
+            IsUltimate = skill.IsUltimate,
+            EmotionalRegister = skill.EmotionalRegister
         };
     }
 
@@ -436,7 +447,10 @@ public static class RunPersistenceMapper
             isContainer: item.IsContainer,
             containerCapacity: item.ContainerCapacity,
             isLiquid: item.IsLiquid,
-            containedLiquidDefinitionKey: item.ContainedLiquidDefinitionKey)).ToList();
+            containedLiquidDefinitionKey: item.ContainedLiquidDefinitionKey,
+            tacticalRange: item.TacticalRange,
+            tacticalAreaShape: item.TacticalAreaShape,
+            requiresLineOfSight: item.RequiresLineOfSight)).ToList();
 
         var runModifiers = entity.RunModifiers.Select(m => RunModifier.Rehydrate(
             new RunModifierId(m.Id),
@@ -808,7 +822,15 @@ public static class RunPersistenceMapper
             entity.EffectType,
             entity.ManaCost,
             entity.ChargeCost,
-            entity.BasePower);
+            entity.BasePower,
+            entity.Category,
+            entity.BasePowerIsPercentOfMaxVitality,
+            entity.TacticalRange,
+            entity.TacticalAreaShape,
+            entity.RequiresLineOfSight,
+            entity.Cooldown,
+            entity.IsUltimate,
+            entity.EmotionalRegister);
     }
 
     // -----------------------------------------------------------------------

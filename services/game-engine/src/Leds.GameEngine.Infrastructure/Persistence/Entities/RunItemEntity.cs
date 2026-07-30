@@ -28,6 +28,9 @@ public sealed class RunItemEntity
     public int? ContainerCapacity { get; set; }
     public bool IsLiquid { get; set; }
     public string? ContainedLiquidDefinitionKey { get; set; }
+    public int TacticalRange { get; set; } = 1;
+    public string TacticalAreaShape { get; set; } = "Single";
+    public bool RequiresLineOfSight { get; set; }
 
     public RunEntity? Run { get; set; }
 }

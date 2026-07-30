@@ -18,4 +18,5 @@ public sealed record CombatEncounterDraftAlly(
     int Charge = 0,
     IReadOnlyCollection<CombatEncounterDraftSkill>? Skills = null,
     int MagicAttack = 0,
-    int MagicDefense = 0);
+    int MagicDefense = 0,
+    int Movement = 4);

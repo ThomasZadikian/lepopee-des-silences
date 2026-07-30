@@ -31,6 +31,11 @@ public sealed class SkillDefinitionEntity
     public int CastTime { get; set; }
     public int RecoveryTime { get; set; }
     public int Cooldown { get; set; }
+    public int TacticalRange { get; set; } = 1;
+    public string TacticalAreaShape { get; set; } = "Single";
+    public bool RequiresLineOfSight { get; set; }
+    public bool IsUltimate { get; set; }
+    public string EmotionalRegister { get; set; } = "Neutral";
     public Guid? EffectSetId { get; set; }
     public int BaseWeight { get; set; } = 1;
     public string? SelectionGroup { get; set; }

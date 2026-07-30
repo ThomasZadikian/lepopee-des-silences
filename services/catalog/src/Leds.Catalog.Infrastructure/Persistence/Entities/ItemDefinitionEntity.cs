@@ -35,6 +35,14 @@ public sealed class ItemDefinitionEntity
     /// </summary>
     public string? EffectRunType { get; set; }
 
+    // Mandatory tactical contract for combat-usable items. Equipment can also
+    // define the basic attack contract when it represents a weapon.
+    public int TacticalRange { get; set; } = 1;
+    public string TacticalAreaShape { get; set; } = "Single";
+    public bool RequiresLineOfSight { get; set; }
+    public int? BasicAttackPower { get; set; }
+    public string? BasicAttackCategory { get; set; }
+
     public int Price { get; set; }
 
     // ── Équipement et sac permanent (equipment-sfd-0.1) ──────────────────────

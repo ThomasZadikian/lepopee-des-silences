@@ -70,6 +70,7 @@ public sealed class CombatEntity
 
     /// <summary>Clés des compétences à usage unique déjà consommées, séparées par des points-virgules.</summary>
     public string? TacticalUsedOnceSkillKeysCsv { get; set; }
+    public string? TacticalSkillCooldownsCsv { get; set; }
 
     public RunEntity? Run { get; set; }
     public List<CombatantEntity> Combatants { get; set; } = [];

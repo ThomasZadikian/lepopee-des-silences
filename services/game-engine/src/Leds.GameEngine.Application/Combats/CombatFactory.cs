@@ -2,6 +2,7 @@ using Leds.GameEngine.Application.Combats.EncounterDrafts;
 using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Combats.Atb;
 using Leds.GameEngine.Domain.Combats.StatusEffects;
+using Leds.GameEngine.Domain.Combats.Tactical;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
@@ -267,7 +268,13 @@ public sealed class CombatFactory : ICombatFactory
                             ScalePlayerSkillPower(s.EffectType, s.BasePower, attackPowerMultiplier),
                             statusEffects: EffectFor(skillEffects, s.Key),
                             category: s.Category,
-                            basePowerIsPercentOfMaxVitality: s.BasePowerIsPercentOfMaxVitality))
+                            basePowerIsPercentOfMaxVitality: s.BasePowerIsPercentOfMaxVitality,
+                            tacticalRange: s.TacticalRange,
+                            tacticalAreaShape: ParseTacticalAreaShape(s.TacticalAreaShape),
+                            requiresLineOfSight: s.RequiresLineOfSight,
+                            cooldown: s.Cooldown,
+                            isUltimate: s.IsUltimate,
+                            emotionalRegister: s.EmotionalRegister))
                         .ToArray()
                         ?? GetDefaultAllySkills(attackPowerMultiplier, skillEffects);
 
@@ -328,7 +335,14 @@ public sealed class CombatFactory : ICombatFactory
                             s.ChargeCost,
                             ScalePlayerSkillPower(s.EffectType, s.BasePower, attackPowerMultiplier),
                             statusEffects: EffectFor(skillEffects, s.Key),
-                            basePowerIsPercentOfMaxVitality: s.BasePowerIsPercentOfMaxVitality))
+                            category: s.Category,
+                            basePowerIsPercentOfMaxVitality: s.BasePowerIsPercentOfMaxVitality,
+                            tacticalRange: s.TacticalRange,
+                            tacticalAreaShape: ParseTacticalAreaShape(s.TacticalAreaShape),
+                            requiresLineOfSight: s.RequiresLineOfSight,
+                            cooldown: s.Cooldown,
+                            isUltimate: s.IsUltimate,
+                            emotionalRegister: s.EmotionalRegister))
                         .ToArray()
                     : GetDefaultAllySkills(attackPowerMultiplier, skillEffects);
 
@@ -354,7 +368,8 @@ public sealed class CombatFactory : ICombatFactory
                     focus: ally.Focus,
                     maxMana: ally.Mana,
                     magicAttack: ally.MagicAttack,
-                    magicDefense: ally.MagicDefense);
+                    magicDefense: ally.MagicDefense,
+                    movement: ally.Movement);
 
                 // Companions keep their own emotional type (no item override).
                 companion.ApplyAttackTypeOverride(null);
@@ -491,7 +506,13 @@ public sealed class CombatFactory : ICombatFactory
                             s.Tags,
                             EffectFor(skillEffects, s.Key),
                             category: s.Category,
-                            basePowerIsPercentOfMaxVitality: s.BasePowerIsPercentOfMaxVitality);
+                            basePowerIsPercentOfMaxVitality: s.BasePowerIsPercentOfMaxVitality,
+                            tacticalRange: s.TacticalRange,
+                            tacticalAreaShape: ParseTacticalAreaShape(s.TacticalAreaShape),
+                            requiresLineOfSight: s.RequiresLineOfSight,
+                            cooldown: s.Cooldown,
+                            isUltimate: s.IsUltimate,
+                            emotionalRegister: s.EmotionalRegister);
                     })
                     .ToArray();
 
@@ -512,6 +533,7 @@ public sealed class CombatFactory : ICombatFactory
                         focus: scaledFocus,
                         magicAttack: scaledMagicAttack,
                         magicDefense: scaledMagicDefense,
+                        movement: enemy.Movement,
                         // Base PP = 85% of (scaled) Vitality — enemies "cast freely" (see
                         // CombatSkillEffectResolver.ConsumeResources), so this is purely
                         // informational, but stays consistent with the player-side rule
@@ -985,6 +1007,15 @@ public sealed class CombatFactory : ICombatFactory
     {
         return string.Equals(effectType, "Damage", StringComparison.OrdinalIgnoreCase) ||
             string.Equals(effectType, "DamageVitality", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static TacticalAreaShape ParseTacticalAreaShape(string value)
+    {
+        if (Enum.TryParse<TacticalAreaShape>(value, ignoreCase: true, out var shape))
+            return shape;
+
+        throw new DomainException(
+            $"Unsupported tactical area shape '{value}'. Expected Single, Cross, Diamond or Map.");
     }
 
     private static IReadOnlyCollection<CombatantSkill> GetDefaultAllySkills(

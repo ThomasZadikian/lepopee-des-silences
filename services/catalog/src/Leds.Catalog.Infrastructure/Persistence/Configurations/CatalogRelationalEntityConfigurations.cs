@@ -39,6 +39,7 @@ public sealed class EnemyStatBlockEntityConfiguration : IEntityTypeConfiguration
         builder.Property(e => e.Charge).HasColumnName("charge");
         builder.Property(e => e.MagicAttack).HasColumnName("magic_attack").HasDefaultValue(0);
         builder.Property(e => e.MagicDefense).HasColumnName("magic_defense").HasDefaultValue(0);
+        builder.Property(e => e.Movement).HasColumnName("movement").HasDefaultValue(4);
         builder.HasIndex(e => e.EnemyDefinitionId).IsUnique();
         builder.HasOne(e => e.EnemyDefinition)
             .WithOne(e => e.StatBlock)

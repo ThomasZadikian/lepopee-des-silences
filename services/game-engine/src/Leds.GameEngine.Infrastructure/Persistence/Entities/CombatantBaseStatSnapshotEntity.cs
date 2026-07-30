@@ -16,6 +16,7 @@ public sealed class CombatantBaseStatSnapshotEntity
     public int Charge { get; set; }
     public int MagicAttack { get; set; }
     public int MagicDefense { get; set; }
+    public int Movement { get; set; } = 4;
     public int? AtbReadyThreshold { get; set; }
     public DateTime CreatedAtUtc { get; set; }
 

@@ -485,6 +485,7 @@ public sealed class Combatant
         int magicAttack = 0,
         int magicDefense = 0,
         int mana = 0,
+        int movement = 4,
         CombatRow row = CombatRow.Front)
     {
         var id = CombatantId.New();
@@ -500,7 +501,8 @@ public sealed class Combatant
             mana: mana,
             charge: 0,
             magicAttack: magicAttack,
-            magicDefense: magicDefense);
+            magicDefense: magicDefense,
+            movement: movement);
 
         var runtimeState = CombatantRuntimeState.Create(
             currentVitality: maxVitality,
@@ -548,6 +550,7 @@ public sealed class Combatant
         int? maxMana = null,
         int magicAttack = 0,
         int magicDefense = 0,
+        int movement = 4,
         CombatRow row = CombatRow.Front)
     {
         if (id.Value == Guid.Empty)
@@ -594,7 +597,8 @@ public sealed class Combatant
             mana: mana,
             charge: charge,
             magicAttack: magicAttack,
-            magicDefense: magicDefense);
+            magicDefense: magicDefense,
+            movement: movement);
 
         var runtimeState = CombatantRuntimeState.Create(
             currentVitality: currentVitality,
@@ -631,6 +635,17 @@ public sealed class Combatant
         Status = CombatantStatus.Defeated;
         CurrentVitality = 0;
         RuntimeState.MarkDefeated();
+    }
+
+    public void Revive(int vitality)
+    {
+        if (!IsDefeated)
+            throw new DomainException("Only a defeated combatant can be revived.");
+
+        RuntimeState.Revive(MaxVitality, vitality);
+        CurrentVitality = RuntimeState.CurrentVitality;
+        Guard = RuntimeState.CurrentGuard;
+        Status = CombatantStatus.Active;
     }
 
     public void ApplyDamage(int amount)
@@ -831,6 +846,20 @@ public sealed class Combatant
     /// <summary>Active durable effects (poison, regen, buffs/debuffs, stun…).</summary>
     public IReadOnlyCollection<CombatStatusEffect> StatusEffects => _statusEffects.AsReadOnly();
 
+    public bool DispelOneStatusStack(Func<CombatStatusEffect, bool> predicate)
+    {
+        ArgumentNullException.ThrowIfNull(predicate);
+
+        var effect = _statusEffects.FirstOrDefault(predicate);
+        if (effect is null)
+            return false;
+
+        if (effect.RemoveOneStack())
+            _statusEffects.Remove(effect);
+
+        return true;
+    }
+
     /// <summary>
     /// Applies a status effect. Re-applying the same key adds stacks; remaining
     /// duration is NEVER refreshed by re-applying (see CombatStatusEffect.Reinforce) —
@@ -880,7 +909,8 @@ public sealed class Combatant
                         var reduced = DotDamageReductionPercent > 0
                             ? Math.Max(0, (int)Math.Round(amount * (1.0 - Math.Min(DotDamageReductionPercent, 100) / 100.0)))
                             : amount;
-                        ApplyVitalityDamage(reduced); // DoT bypasses guard
+                        if (reduced > 0)
+                            ApplyDamage(reduced);
                         events.Add(new StatusTickEvent(effect.Key, effect.DisplayName, effect.Kind, reduced, false));
                     }
                     else if (effect.Kind == StatusEffectKind.HealOverTime && CurrentVitality < MaxVitality)
@@ -930,8 +960,10 @@ public sealed class Combatant
     public int EffectiveAttackPower => Math.Max(0, EffectiveStat(CombatStat.AttackPower, BaseStatSnapshot.AttackPower));
     public int EffectiveDefense => Math.Max(0, EffectiveStat(CombatStat.Defense, BaseStatSnapshot.Defense));
     public int EffectiveSpeed => Math.Max(1, EffectiveStat(CombatStat.Speed, BaseStatSnapshot.Speed));
+    public int EffectiveMovement => Math.Max(1, EffectiveStat(CombatStat.Movement, BaseStatSnapshot.Movement));
     public int EffectiveFocus => Math.Max(0, EffectiveStat(CombatStat.Focus, BaseStatSnapshot.Focus)
         + (int)Math.Round(BaseStatSnapshot.Focus * RowFocusBonusPercent / 100.0));
+    public int EffectiveEvasion => Math.Max(0, EffectiveStat(CombatStat.Evasion, 0));
     public int EffectiveMagicAttack => Math.Max(0, EffectiveStat(CombatStat.MagicAttack, BaseStatSnapshot.MagicAttack));
     public int EffectiveMagicDefense => Math.Max(0, EffectiveStat(CombatStat.MagicDefense, BaseStatSnapshot.MagicDefense));
 

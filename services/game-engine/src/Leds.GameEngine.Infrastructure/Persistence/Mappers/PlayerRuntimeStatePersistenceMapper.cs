@@ -34,7 +34,13 @@ public static class PlayerRuntimeStatePersistenceMapper
             ChargeCost = skill.ChargeCost,
             BasePower = skill.BasePower,
             Category = skill.Category,
-            BasePowerIsPercentOfMaxVitality = skill.BasePowerIsPercentOfMaxVitality
+            BasePowerIsPercentOfMaxVitality = skill.BasePowerIsPercentOfMaxVitality,
+            TacticalRange = skill.TacticalRange,
+            TacticalAreaShape = skill.TacticalAreaShape,
+            RequiresLineOfSight = skill.RequiresLineOfSight,
+            Cooldown = skill.Cooldown,
+            IsUltimate = skill.IsUltimate,
+            EmotionalRegister = skill.EmotionalRegister
         };
     }
 
@@ -62,6 +68,12 @@ public static class PlayerRuntimeStatePersistenceMapper
             entity.ChargeCost,
             entity.BasePower,
             entity.Category,
-            entity.BasePowerIsPercentOfMaxVitality);
+            entity.BasePowerIsPercentOfMaxVitality,
+            entity.TacticalRange,
+            entity.TacticalAreaShape,
+            entity.RequiresLineOfSight,
+            entity.Cooldown,
+            entity.IsUltimate,
+            entity.EmotionalRegister);
     }
 }

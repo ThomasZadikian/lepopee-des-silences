@@ -16,9 +16,7 @@ public static class TacticalMovement
     /// Budget de déplacement d'un combattant.
     /// </summary>
     /// <remarks>
-    /// La vitesse ne pilote plus le budget de déplacement : un combattant recevra à terme une
-    /// statistique « Déplacement » distincte. En attendant, le budget est une constante unique
-    /// pour tout le bestiaire (cf. BALANCE KNOB ci-dessous).
+    /// Repli de migration pour les combattants dont le catalogue n'a pas encore été ré-authoré.
     /// </remarks>
     public const int BaseMovement = 4; // BALANCE KNOB
 
@@ -28,9 +26,9 @@ public static class TacticalMovement
     /// </summary>
     private static readonly ConcurrentDictionary<string, bool> LineOfSightCache = new();
 
-    public static int BudgetFor(int effectiveSpeed, int baseMovement = BaseMovement)
+    public static int BudgetFor(int effectiveMovement)
     {
-        return Math.Max(1, baseMovement);
+        return Math.Max(1, effectiveMovement);
     }
 
     /// <summary>
@@ -45,10 +43,12 @@ public static class TacticalMovement
         TacticalBattlefield battlefield,
         GridPosition origin,
         int budget,
-        IReadOnlySet<GridPosition> occupied)
+        IReadOnlySet<GridPosition> occupied,
+        IReadOnlySet<GridPosition>? traversableOccupied = null)
     {
         ArgumentNullException.ThrowIfNull(battlefield);
         ArgumentNullException.ThrowIfNull(occupied);
+        traversableOccupied ??= new HashSet<GridPosition>();
 
         var best = new Dictionary<GridPosition, int> { [origin] = 0 };
         if (budget <= 0)
@@ -68,7 +68,8 @@ public static class TacticalMovement
 
             foreach (var neighbour in current.Neighbours())
             {
-                if (!battlefield.IsWalkable(neighbour) || occupied.Contains(neighbour))
+                if (!battlefield.IsWalkable(neighbour)
+                    || (occupied.Contains(neighbour) && !traversableOccupied.Contains(neighbour)))
                     continue;
 
                 var cost = currentCost + battlefield.StepCost(current, neighbour);
@@ -83,7 +84,9 @@ public static class TacticalMovement
             }
         }
 
-        return best;
+        return best
+            .Where(pair => pair.Key == origin || !occupied.Contains(pair.Key))
+            .ToDictionary();
     }
 
     /// <summary>
@@ -101,13 +104,17 @@ public static class TacticalMovement
         GridPosition origin,
         GridPosition destination,
         int budget,
-        IReadOnlySet<GridPosition> occupied)
+        IReadOnlySet<GridPosition> occupied,
+        IReadOnlySet<GridPosition>? traversableOccupied = null)
     {
         ArgumentNullException.ThrowIfNull(battlefield);
         ArgumentNullException.ThrowIfNull(occupied);
+        traversableOccupied ??= new HashSet<GridPosition>();
 
         if (destination == origin)
             return [];
+        if (occupied.Contains(destination))
+            return null;
 
         var best = new Dictionary<GridPosition, int> { [origin] = 0 };
         var cameFrom = new Dictionary<GridPosition, GridPosition>();
@@ -122,7 +129,8 @@ public static class TacticalMovement
 
             foreach (var neighbour in current.Neighbours())
             {
-                if (!battlefield.IsWalkable(neighbour) || occupied.Contains(neighbour))
+                if (!battlefield.IsWalkable(neighbour)
+                    || (occupied.Contains(neighbour) && !traversableOccupied.Contains(neighbour)))
                     continue;
 
                 var cost = currentCost + battlefield.StepCost(current, neighbour);
@@ -175,7 +183,7 @@ public static class TacticalMovement
         var ceiling = Math.Max(battlefield.ElevationAt(from), battlefield.ElevationAt(to));
 
         bool result = true;
-        foreach (var cell in TraceLine(from, to))
+        foreach (var cell in CellsOnLine(from, to))
         {
             if (cell == from || cell == to)
                 continue;
@@ -207,7 +215,7 @@ public static class TacticalMovement
     }
 
     /// <summary>Bresenham arrondi : les cases traversées par le segment, extrémités comprises.</summary>
-    private static IEnumerable<GridPosition> TraceLine(GridPosition from, GridPosition to)
+    public static IEnumerable<GridPosition> CellsOnLine(GridPosition from, GridPosition to)
     {
         var dx = Math.Abs(to.X - from.X);
         var dy = Math.Abs(to.Y - from.Y);

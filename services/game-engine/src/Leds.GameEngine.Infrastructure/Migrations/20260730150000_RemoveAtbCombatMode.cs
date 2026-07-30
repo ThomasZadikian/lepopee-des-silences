@@ -12,20 +12,19 @@ public partial class RemoveAtbCombatMode : Migration
 {
     protected override void Up(MigrationBuilder migrationBuilder)
     {
-        // Une sauvegarde ATB ne peut pas être convertie sans réinterpréter son tour courant.
-        // On la clôt donc explicitement avant de supprimer son runtime et le sélecteur de mode.
+        // Une sauvegarde contenant encore un runtime ATB est incompatible avec le
+        // contrat T-RPG canonique et doit être supprimée entièrement.
         migrationBuilder.Sql(
             """
             UPDATE runs
-            SET status = 'Abandoned',
-                ended_at_utc = COALESCE(ended_at_utc, CURRENT_TIMESTAMP),
-                active_combat_id = NULL,
-                updated_at_utc = CURRENT_TIMESTAMP
-            WHERE LOWER(combat_mode) = 'atb'
-              AND status NOT IN ('Completed', 'Failed', 'Abandoned');
+            SET active_combat_id = NULL
+            WHERE LOWER(combat_mode) = 'atb';
 
             DELETE FROM run_active_combats
             WHERE LOWER(kind) = 'atb';
+
+            DELETE FROM runs
+            WHERE LOWER(combat_mode) = 'atb';
             """);
 
         migrationBuilder.DropColumn(

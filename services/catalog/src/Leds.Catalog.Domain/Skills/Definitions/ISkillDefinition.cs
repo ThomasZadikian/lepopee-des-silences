@@ -19,6 +19,18 @@ public interface ISkillDefinition : ICatalogContent
 
     int BasePower { get; }
 
+    int TacticalRange { get; }
+
+    string TacticalAreaShape { get; }
+
+    bool RequiresLineOfSight { get; }
+
+    int Cooldown { get; }
+
+    bool IsUltimate { get; }
+
+    string EmotionalRegister { get; }
+
     IReadOnlyList<SkillEffectSpec> Effects { get; }
 
     bool BasePowerIsPercentOfMaxVitality { get; }

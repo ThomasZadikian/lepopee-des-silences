@@ -91,7 +91,7 @@ public static class TacticalCombatPersistenceMapper
                     .IndexOf(combat.ActiveCombatantId ?? Guid.Empty)),
             TacticalInitiativeOrderCsv = string.Join(';', combat.InitiativeOrder),
             TacticalPositionsCsv = string.Join(';', combat.Positions
-                .Select(p => $"{p.Key}:{p.Value.X},{p.Value.Y}")),
+                .Select(p => $"{p.Key}:{p.Value.X},{p.Value.Y},{combat.FacingOf(p.Key)}")),
             TacticalTurnStatesCsv = string.Join(';', combat.Allies.Concat(combat.Enemies)
                 .Select(c =>
                 {
@@ -99,6 +99,9 @@ public static class TacticalCombatPersistenceMapper
                     return $"{c.Id.Value}:{(turn.HasMoved ? 1 : 0)},{(turn.HasActed ? 1 : 0)}";
                 })),
             TacticalUsedOnceSkillKeysCsv = string.Join(';', combat.UsedOnceSkillKeys),
+            TacticalSkillCooldownsCsv = string.Join(';', combat.Allies.Concat(combat.Enemies)
+                .SelectMany(c => combat.CooldownsOf(c.Id.Value)
+                    .Select(pair => $"{c.Id.Value}:{pair.Key},{pair.Value}"))),
 
             Combatants = [.. combat.Allies.Concat(combat.Enemies)
                 .Select(c => CombatPersistenceMapper.ToEntity(c, combat.Id.Value))],
@@ -171,7 +174,9 @@ public static class TacticalCombatPersistenceMapper
             entity.HitCounter,
             entity.HasFirstHitLanded,
             entity.CurrentTick,
-            ParseStringList(entity.TacticalUsedOnceSkillKeysCsv));
+            ParseStringList(entity.TacticalUsedOnceSkillKeysCsv),
+            ParseFacings(entity.TacticalPositionsCsv),
+            ParseSkillCooldowns(entity.TacticalSkillCooldownsCsv));
     }
 
     private static int[] ParseIntCsv(string? csv, int expectedLength)
@@ -220,6 +225,47 @@ public static class TacticalCombatPersistenceMapper
         }
 
         return positions;
+    }
+
+    private static Dictionary<Guid, TacticalFacing> ParseFacings(string? csv)
+    {
+        var facings = new Dictionary<Guid, TacticalFacing>();
+        if (string.IsNullOrWhiteSpace(csv))
+            return facings;
+
+        foreach (var entry in csv.Split(';', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var separator = entry.IndexOf(':');
+            var id = Guid.Parse(entry[..separator]);
+            var values = entry[(separator + 1)..].Split(',');
+            facings[id] = values.Length >= 3
+                ? Enum.Parse<TacticalFacing>(values[2])
+                : TacticalFacing.South;
+        }
+
+        return facings;
+    }
+
+    private static Dictionary<(Guid CombatantId, string SkillKey), int> ParseSkillCooldowns(
+        string? csv)
+    {
+        var cooldowns = new Dictionary<(Guid CombatantId, string SkillKey), int>();
+        if (string.IsNullOrWhiteSpace(csv))
+            return cooldowns;
+
+        foreach (var entry in csv.Split(';', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var idSeparator = entry.IndexOf(':');
+            var valueSeparator = entry.LastIndexOf(',');
+            var combatantId = Guid.Parse(entry[..idSeparator]);
+            var skillKey = entry[(idSeparator + 1)..valueSeparator];
+            var remaining = int.Parse(
+                entry[(valueSeparator + 1)..],
+                CultureInfo.InvariantCulture);
+            cooldowns[(combatantId, skillKey)] = remaining;
+        }
+
+        return cooldowns;
     }
 
     private static Dictionary<Guid, TacticalCombat.TacticalTurnState> ParseTurnStates(string? csv)

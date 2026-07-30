@@ -67,9 +67,17 @@ public sealed class EndTacticalTurnCommandHandler
 
         var combat = run.RequireActiveTacticalCombat();
 
-        combat.AdvanceToNextCombatant();
+        // L'issue se fige à la fin du tour actif. La défaite a priorité si un
+        // sacrifice élimine simultanément le dernier allié et le dernier ennemi.
+        combat.FailIfAllAlliesDefeated();
+        combat.CompleteIfAllEnemiesDefeated();
 
-        var enemyTurns = _enemyTurns.PlayWhileEnemyHasInitiative(combat);
+        if (combat.Status == CombatStatus.Active)
+            combat.AdvanceToNextCombatant();
+
+        var enemyTurns = combat.Status == CombatStatus.Active
+            ? _enemyTurns.PlayWhileEnemyHasInitiative(combat)
+            : new TacticalEnemyTurnsResult([], []);
 
         var protagonist = combat.Allies.FirstOrDefault(a => a.Side == CombatantSide.Player);
         if (protagonist is not null)

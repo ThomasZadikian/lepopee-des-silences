@@ -13,6 +13,12 @@ public sealed class PlayerRuntimeSkillEntity
     public int BasePower { get; set; }
     public string Category { get; set; } = "Physical";
     public bool BasePowerIsPercentOfMaxVitality { get; set; }
+    public int TacticalRange { get; set; } = 1;
+    public string TacticalAreaShape { get; set; } = "Single";
+    public bool RequiresLineOfSight { get; set; }
+    public int Cooldown { get; set; }
+    public bool IsUltimate { get; set; }
+    public string EmotionalRegister { get; set; } = "Neutral";
 
     public PlayerRuntimeStateEntity? PlayerState { get; set; }
 }

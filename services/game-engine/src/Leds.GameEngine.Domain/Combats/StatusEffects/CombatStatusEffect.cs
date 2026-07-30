@@ -107,8 +107,8 @@ public sealed class CombatStatusEffect
             throw new DomainException("Status effect key is required.");
         if (!isPermanent && durationTicks <= 0)
             throw new DomainException("Status effect duration must be positive.");
-        if (stacks < 1)
-            throw new DomainException("Status effect must have at least one stack.");
+        if (stacks is < 1 or > 5)
+            throw new DomainException("Status effect stacks must be between one and five.");
 
         // Floor so nothing ticks faster than ~once every 2s, whatever the data says.
         var interval = tickInterval <= 0 ? 0 : Math.Max(tickInterval, MinTickInterval);
@@ -150,9 +150,18 @@ public sealed class CombatStatusEffect
     /// duration is <see cref="ExtendDuration"/>, an explicit skill/effect mechanic
     /// (e.g. l'Écrivain's "Écriture continuelle").
     /// </summary>
-    public void Reinforce(int additionalStacks, int maxStacks = 99)
+    public void Reinforce(int additionalStacks, int maxStacks = 5)
     {
         Stacks = System.Math.Clamp(Stacks + System.Math.Max(0, additionalStacks), 1, maxStacks);
+    }
+
+    public bool RemoveOneStack()
+    {
+        if (Stacks <= 1)
+            return true;
+
+        Stacks--;
+        return false;
     }
 
     /// <summary>

@@ -81,15 +81,20 @@ public sealed class PlayerSkillMerger
                     ? new MergedCharacterSkill(
                         fromCatalog.Key, fromCatalog.DisplayName, fromCatalog.SkillType, fromCatalog.TargetingType,
                         fromCatalog.EffectType, fromCatalog.ManaCost, fromCatalog.ChargeCost, fromCatalog.BasePower,
-                        fromCatalog.Category, fromCatalog.BasePowerIsPercentOfMaxVitality)
+                        fromCatalog.Category, fromCatalog.BasePowerIsPercentOfMaxVitality,
+                        fromCatalog.TacticalRange, fromCatalog.TacticalAreaShape,
+                        fromCatalog.RequiresLineOfSight, fromCatalog.Cooldown,
+                        fromCatalog.IsUltimate, fromCatalog.EmotionalRegister)
                     : new MergedCharacterSkill(
                         fallback.SkillDefinitionKey, fallback.DisplayName, fallback.SkillType, fallback.TargetingMode,
                         fallback.EffectType, fallback.ManaCost, fallback.ChargeCost, fallback.BasePower,
-                        "Physical", false);
+                        "Physical", false, 1, "Single", false, 0, false, "Neutral");
             })
             .Concat(grantedSkills.Select(s => new MergedCharacterSkill(
                 s.Key, s.DisplayName, s.SkillType, s.TargetingType, s.EffectType, s.ManaCost, s.ChargeCost,
-                s.BasePower, s.Category, s.BasePowerIsPercentOfMaxVitality)))
+                s.BasePower, s.Category, s.BasePowerIsPercentOfMaxVitality,
+                s.TacticalRange, s.TacticalAreaShape, s.RequiresLineOfSight, s.Cooldown,
+                s.IsUltimate, s.EmotionalRegister)))
             .ToArray();
     }
 
@@ -129,4 +134,10 @@ public sealed record MergedCharacterSkill(
     int ChargeCost,
     int BasePower,
     string Category,
-    bool BasePowerIsPercentOfMaxVitality);
+    bool BasePowerIsPercentOfMaxVitality,
+    int TacticalRange,
+    string TacticalAreaShape,
+    bool RequiresLineOfSight,
+    int Cooldown,
+    bool IsUltimate,
+    string EmotionalRegister);

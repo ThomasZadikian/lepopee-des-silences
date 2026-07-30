@@ -20,7 +20,10 @@ public static class CombatItemHelper
                 i.EffectType.ToString(),
                 i.EffectAmount,
                 i.Quantity,
-                i.BattleTargetingType))
+                i.BattleTargetingType,
+                i.TacticalRange,
+                i.TacticalAreaShape,
+                i.RequiresLineOfSight))
             .ToArray();
     }
 }

@@ -2250,6 +2250,12 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("is_usable_outside_combat");
 
+                    b.Property<bool>("RequiresLineOfSight")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("requires_line_of_sight");
+
                     b.Property<string>("Lifecycle")
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)")
@@ -2280,6 +2286,20 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                     b.Property<Guid?>("SourceRewardOptionId")
                         .HasColumnType("uuid")
                         .HasColumnName("source_reward_option_id");
+
+                    b.Property<string>("TacticalAreaShape")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasDefaultValue("Single")
+                        .HasColumnName("tactical_area_shape");
+
+                    b.Property<int>("TacticalRange")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("tactical_range");
 
                     b.Property<string>("Type")
                         .IsRequired()

@@ -26,7 +26,9 @@ public sealed class TacticalCombat : ICombatContext
     private readonly List<Combatant> _allies;
     private readonly List<Combatant> _enemies;
     private readonly Dictionary<Guid, GridPosition> _positions;
+    private readonly Dictionary<Guid, TacticalFacing> _facings;
     private readonly Dictionary<Guid, TacticalTurnState> _turnStates = new();
+    private readonly Dictionary<(Guid CombatantId, string SkillKey), int> _skillCooldowns = new();
     private readonly HashSet<string> _usedOnceSkillKeys = new(StringComparer.Ordinal);
     private List<Guid> _initiativeOrder = [];
     private int _activeIndex;
@@ -40,7 +42,8 @@ public sealed class TacticalCombat : ICombatContext
         List<Combatant> allies,
         List<Combatant> enemies,
         Dictionary<Guid, GridPosition> positions,
-        DateTime createdAtUtc)
+        DateTime createdAtUtc,
+        Dictionary<Guid, TacticalFacing>? facings = null)
     {
         Id = id;
         RunId = runId;
@@ -50,6 +53,7 @@ public sealed class TacticalCombat : ICombatContext
         _allies = allies;
         _enemies = enemies;
         _positions = positions;
+        _facings = facings ?? positions.Keys.ToDictionary(id => id, _ => TacticalFacing.South);
         CreatedAtUtc = createdAtUtc;
         Status = CombatStatus.Active;
         RoundNumber = 1;
@@ -100,6 +104,86 @@ public sealed class TacticalCombat : ICombatContext
             .Select(c => _positions[c.Id.Value])
             .ToHashSet();
 
+    public IReadOnlyDictionary<Guid, TacticalFacing> Facings => _facings;
+
+    public TacticalFacing FacingOf(Guid combatantId) =>
+        _facings.TryGetValue(combatantId, out var facing)
+            ? facing
+            : throw new DomainException($"Combatant '{combatantId}' has no tactical facing.");
+
+    public void OrientToward(Guid combatantId, GridPosition target)
+    {
+        var origin = PositionOf(combatantId);
+        var dx = target.X - origin.X;
+        var dy = target.Y - origin.Y;
+        if (dx == 0 && dy == 0)
+            return;
+
+        _facings[combatantId] = Math.Abs(dx) > Math.Abs(dy)
+            ? (dx > 0 ? TacticalFacing.East : TacticalFacing.West)
+            : (dy > 0 ? TacticalFacing.South : TacticalFacing.North);
+    }
+
+    public TacticalAttackArc AttackArcOf(Guid attackerId, Guid targetId)
+    {
+        var attacker = PositionOf(attackerId);
+        var target = PositionOf(targetId);
+        var dx = Math.Sign(attacker.X - target.X);
+        var dy = Math.Sign(attacker.Y - target.Y);
+        var (fx, fy) = FacingOf(targetId) switch
+        {
+            TacticalFacing.North => (0, -1),
+            TacticalFacing.East => (1, 0),
+            TacticalFacing.South => (0, 1),
+            TacticalFacing.West => (-1, 0),
+            _ => (0, 0)
+        };
+        var dot = (fx * dx) + (fy * dy);
+
+        return dot switch
+        {
+            > 0 => TacticalAttackArc.Face,
+            < 0 => TacticalAttackArc.Back,
+            _ => TacticalAttackArc.Flank
+        };
+    }
+
+    private void OrientInitialFormations()
+    {
+        foreach (var combatant in AllCombatants.Where(c => !c.IsDefeated))
+        {
+            var nearestOpponent = AllCombatants
+                .Where(other => !other.IsDefeated && other.Side != combatant.Side)
+                .OrderBy(other => PositionOf(combatant.Id.Value)
+                    .ManhattanDistanceTo(PositionOf(other.Id.Value)))
+                .ThenBy(other => other.Id.Value)
+                .FirstOrDefault();
+
+            if (nearestOpponent is not null)
+                OrientToward(combatant.Id.Value, PositionOf(nearestOpponent.Id.Value));
+        }
+    }
+
+    public void OrientTowardNearestVisibleEnemy(Guid combatantId)
+    {
+        var combatant = RequireCombatant(combatantId);
+        var origin = PositionOf(combatantId);
+        var nearest = AllCombatants
+            .Where(other => !other.IsDefeated && other.Side != combatant.Side)
+            .Where(other =>
+            {
+                var position = PositionOf(other.Id.Value);
+                return Battlefield.ElevationAt(origin) > Battlefield.ElevationAt(position)
+                    || TacticalMovement.HasLineOfSight(Battlefield, origin, position);
+            })
+            .OrderBy(other => origin.ManhattanDistanceTo(PositionOf(other.Id.Value)))
+            .ThenBy(other => other.Id.Value)
+            .FirstOrDefault();
+
+        if (nearest is not null)
+            OrientToward(combatantId, PositionOf(nearest.Id.Value));
+    }
+
     //  conomie d'action 
 
     /// <summary>
@@ -118,6 +202,14 @@ public sealed class TacticalCombat : ICombatContext
 
     public bool HasUsedOnceSkill(string skillKey) =>
         _usedOnceSkillKeys.Contains(skillKey);
+
+    public int RemainingCooldown(Guid combatantId, string skillKey) =>
+        _skillCooldowns.GetValueOrDefault((combatantId, skillKey), 0);
+
+    public IReadOnlyDictionary<string, int> CooldownsOf(Guid combatantId) =>
+        _skillCooldowns
+            .Where(pair => pair.Key.CombatantId == combatantId && pair.Value > 0)
+            .ToDictionary(pair => pair.Key.SkillKey, pair => pair.Value, StringComparer.Ordinal);
 
     public void MarkOnceSkillUsed(string skillKey)
     {
@@ -148,6 +240,71 @@ public sealed class TacticalCombat : ICombatContext
             .ToList();
 
         _activeIndex = 0;
+    }
+
+    /// <summary>
+    /// Recalcule immédiatement tout l'ordre après une variation de Vitesse effective.
+    /// Le curseur repart au premier combattant et chaque activation redevient disponible :
+    /// un combattant déjà joué peut donc rejouer, conformément au contrat canonique.
+    /// </summary>
+    public void RecalculateInitiativeAfterSpeedChange()
+    {
+        EnsureActive();
+        _turnStates.Clear();
+        RebuildInitiativeOrder();
+        BeginActiveActivation();
+    }
+
+    public IReadOnlyDictionary<Guid, int> CaptureEffectiveSpeeds() =>
+        AllCombatants.ToDictionary(c => c.Id.Value, c => c.EffectiveSpeed);
+
+    public bool HaveEffectiveSpeedsChanged(IReadOnlyDictionary<Guid, int> before)
+    {
+        ArgumentNullException.ThrowIfNull(before);
+
+        return AllCombatants.Any(c =>
+            !before.TryGetValue(c.Id.Value, out var previous)
+            || previous != c.EffectiveSpeed);
+    }
+
+    /// <summary>
+    /// Réanime un allié sur la première case libre trouvée par anneaux autour de
+    /// l'utilisateur, puis reconstruit immédiatement toute l'initiative.
+    /// </summary>
+    public GridPosition ReviveNear(Guid defeatedAllyId, Guid userId, int vitality)
+    {
+        EnsureActive();
+
+        var ally = _allies.FirstOrDefault(c => c.Id.Value == defeatedAllyId)
+            ?? throw new DomainException("Only an ally from this combat can be revived.");
+        if (!ally.IsDefeated)
+            throw new DomainException("The selected ally is not defeated.");
+
+        var origin = PositionOf(userId);
+        var occupied = OccupiedCells();
+        var destination = Enumerable.Range(0, Battlefield.Height)
+            .SelectMany(y => Enumerable.Range(0, Battlefield.Width)
+                .Select(x => new GridPosition(x, y)))
+            .Where(Battlefield.IsWalkable)
+            .Where(cell => !occupied.Contains(cell))
+            .Where(cell => cell != origin)
+            .OrderBy(cell => origin.ManhattanDistanceTo(cell))
+            .ThenBy(cell => cell.Y)
+            .ThenBy(cell => cell.X)
+            .FirstOrDefault();
+
+        if (destination == default
+            && (!Battlefield.IsWalkable(destination) || occupied.Contains(destination)))
+        {
+            throw new DomainException("No free cell is available to revive this ally.");
+        }
+
+        ally.Revive(vitality);
+        _positions[defeatedAllyId] = destination;
+        _turnStates.Clear();
+        RebuildInitiativeOrder();
+        BeginActiveActivation();
+        return destination;
     }
 
     /// <summary>
@@ -184,6 +341,9 @@ public sealed class TacticalCombat : ICombatContext
     {
         EnsureActive();
 
+        if (ActiveCombatantId is { } outgoingId && !TurnStateOf(outgoingId).HasActed)
+            OrientTowardNearestVisibleEnemy(outgoingId);
+
         // Filtrer les combattants vaincus de l'ordre d'initiative pour éviter les incohérences
         _initiativeOrder = _initiativeOrder.Where(id => !IsDefeated(id)).ToList();
 
@@ -206,6 +366,8 @@ public sealed class TacticalCombat : ICombatContext
             }
         }
         while (IsDefeated(_initiativeOrder[_activeIndex]));
+
+        BeginActiveActivation();
     }
 
     private void BeginNextRound()
@@ -214,10 +376,40 @@ public sealed class TacticalCombat : ICombatContext
         CurrentTick += CombatTime.TicksPerTurn;
         _turnStates.Clear();
         RebuildInitiativeOrder();
+        BeginActiveActivation();
+    }
+
+    private void BeginActiveActivation()
+    {
+        if (ActiveCombatantId is not { } combatantId)
+            return;
+
+        foreach (var key in _skillCooldowns.Keys
+                     .Where(key => key.CombatantId == combatantId)
+                     .ToArray())
+        {
+            var remaining = _skillCooldowns[key] - 1;
+            if (remaining <= 0)
+                _skillCooldowns.Remove(key);
+            else
+                _skillCooldowns[key] = remaining;
+        }
+
+        var combatant = RequireCombatant(combatantId);
+        if (!combatant.IsDefeated && combatant.MaxMana != int.MaxValue)
+        {
+            var regenerated = Math.Max(1, (int)Math.Floor(combatant.MaxMana * 0.05));
+            combatant.GainMana(regenerated);
+        }
     }
 
     /// <summary>Ce qu'a coûté un déplacement, et par où il est passé.</summary>
     public sealed record TacticalMoveResult(int Cost, IReadOnlyList<GridPosition> Path);
+    public sealed record TacticalForcedMoveResult(
+        IReadOnlyList<GridPosition> Path,
+        int CollisionDamage,
+        int FallDamage,
+        bool EliminatedByVoid);
 
     /// <summary>
     /// Déplace le combattant actif. Échoue si la case est hors de portée, occupée, ou s'il s'est
@@ -239,12 +431,17 @@ public sealed class TacticalCombat : ICombatContext
 
         var occupied = OccupiedCells().ToHashSet();
         occupied.Remove(origin); // on ne se bloque pas soi-même
+        var traversableAllies = AllCombatants
+            .Where(c => !c.IsDefeated && c.Id.Value != combatantId && c.Side == combatant.Side)
+            .Select(c => PositionOf(c.Id.Value))
+            .ToHashSet();
 
         var reachable = TacticalMovement.ReachableCells(
             Battlefield,
             origin,
-            TacticalMovement.BudgetFor(combatant.EffectiveSpeed),
-            occupied);
+            TacticalMovement.BudgetFor(combatant.EffectiveMovement),
+            occupied,
+            traversableAllies);
 
         if (!reachable.TryGetValue(destination, out var cost))
             throw new DomainException($"{destination} is out of this combatant's movement range.");
@@ -255,19 +452,102 @@ public sealed class TacticalCombat : ICombatContext
             Battlefield,
             origin,
             destination,
-            TacticalMovement.BudgetFor(combatant.EffectiveSpeed),
-            occupied) ?? [destination];
+            TacticalMovement.BudgetFor(combatant.EffectiveMovement),
+            occupied,
+            traversableAllies) ?? [destination];
 
         _positions[combatantId] = destination;
         _turnStates[combatantId] = state with { HasMoved = true };
         return new TacticalMoveResult(cost, path);
     }
 
+    public TacticalForcedMoveResult ForceMove(
+        Guid combatantId,
+        int deltaX,
+        int deltaY,
+        int distance)
+    {
+        EnsureActive();
+        if (Math.Abs(deltaX) + Math.Abs(deltaY) != 1)
+            throw new DomainException("Forced movement direction must be orthogonal.");
+        if (distance < 1)
+            throw new DomainException("Forced movement distance must be positive.");
+
+        var pushed = RequireCombatant(combatantId);
+        if (pushed.IsDefeated)
+            throw new DomainException("A defeated combatant cannot be pushed.");
+
+        var current = PositionOf(combatantId);
+        var path = new List<GridPosition>();
+        var fallDamage = 0;
+
+        for (var step = 0; step < distance; step++)
+        {
+            var next = new GridPosition(current.X + deltaX, current.Y + deltaY);
+            if (!Battlefield.Contains(next) || !Battlefield.IsFloor(next))
+            {
+                pushed.MarkDefeated();
+                return new TacticalForcedMoveResult(path, 0, fallDamage, true);
+            }
+
+            var occupant = AllCombatants.FirstOrDefault(c =>
+                !c.IsDefeated
+                && c.Id.Value != combatantId
+                && PositionOf(c.Id.Value) == next);
+            if (!Battlefield.IsWalkable(next) || occupant is not null)
+            {
+                var remaining = distance - step;
+                var collisionDamage = EnvironmentalDamage(pushed.MaxVitality, remaining);
+                ApplyEnvironmentalDamage(pushed, collisionDamage);
+                if (occupant is not null)
+                    ApplyEnvironmentalDamage(occupant, Round(collisionDamage / 2.0));
+
+                return new TacticalForcedMoveResult(
+                    path,
+                    collisionDamage,
+                    fallDamage,
+                    false);
+            }
+
+            var descendedLevels = Math.Max(
+                0,
+                Battlefield.ElevationAt(current) - Battlefield.ElevationAt(next));
+            if (descendedLevels > 0)
+            {
+                var stepFallDamage = EnvironmentalDamage(
+                    pushed.MaxVitality,
+                    descendedLevels);
+                fallDamage += stepFallDamage;
+                ApplyEnvironmentalDamage(pushed, stepFallDamage);
+                if (pushed.IsDefeated)
+                    return new TacticalForcedMoveResult(path, 0, fallDamage, false);
+            }
+
+            current = next;
+            _positions[combatantId] = current;
+            path.Add(current);
+        }
+
+        return new TacticalForcedMoveResult(path, 0, fallDamage, false);
+    }
+
+    private static int EnvironmentalDamage(int maxVitality, int units) =>
+        Round(maxVitality * 0.05 * units);
+
+    private static int Round(double value) =>
+        (int)Math.Round(value, MidpointRounding.AwayFromZero);
+
+    private static void ApplyEnvironmentalDamage(Combatant combatant, int amount)
+    {
+        if (amount > 0 && !combatant.IsDefeated)
+            combatant.ApplyDamage(amount);
+    }
+
     /// <summary>
     /// Marque l'action du combattant actif comme dépensée. Le noyau de résolution a déjà fait le
     /// travail : cet agrégat n'enregistre que la consommation.
     /// </summary>
-    public void MarkActiveCombatantActed()
+    public void MarkActiveCombatantActed(CombatantSkill? usedSkill = null)
     {
         EnsureActive();
 
@@ -279,6 +559,9 @@ public sealed class TacticalCombat : ICombatContext
             throw new DomainException("This combatant has already acted this turn.");
 
         _turnStates[combatantId] = state with { HasActed = true };
+
+        if (usedSkill is { Cooldown: > 0 })
+            _skillCooldowns[(combatantId, usedSkill.Key)] = usedSkill.Cooldown;
     }
 
     /// <summary>Portée effective entre deux combattants, en distance de Manhattan.</summary>
@@ -430,7 +713,7 @@ public sealed class TacticalCombat : ICombatContext
             positions[combatant.Id.Value] = position;
         }
 
-        return new TacticalCombat(
+        var combat = new TacticalCombat(
             id, runId, roomId, nodeId, battlefield,
             [.. allies.Select(a => a.Combatant)],
             [.. enemies.Select(e => e.Combatant)],
@@ -445,6 +728,9 @@ public sealed class TacticalCombat : ICombatContext
             DotMagnitudeBonus = dotMagnitudeBonus,
             HealingBlocked = healingBlocked,
         };
+        combat.OrientInitialFormations();
+        combat.BeginActiveActivation();
+        return combat;
     }
 
     /// <summary>
@@ -481,7 +767,9 @@ public sealed class TacticalCombat : ICombatContext
         int hitCounter = 0,
         bool hasFirstHitLanded = false,
         int currentTick = 0,
-        IEnumerable<string>? usedOnceSkillKeys = null)
+        IEnumerable<string>? usedOnceSkillKeys = null,
+        IReadOnlyDictionary<Guid, TacticalFacing>? facings = null,
+        IReadOnlyDictionary<(Guid CombatantId, string SkillKey), int>? skillCooldowns = null)
     {
         ArgumentNullException.ThrowIfNull(battlefield);
         ArgumentNullException.ThrowIfNull(positions);
@@ -492,7 +780,8 @@ public sealed class TacticalCombat : ICombatContext
             id, runId, roomId, nodeId, battlefield,
             [.. allies], [.. enemies],
             positions.ToDictionary(p => p.Key, p => p.Value),
-            createdAtUtc)
+            createdAtUtc,
+            facings?.ToDictionary(pair => pair.Key, pair => pair.Value))
         {
             Status = status,
             RoundNumber = roundNumber,
@@ -519,7 +808,14 @@ public sealed class TacticalCombat : ICombatContext
         foreach (var skillKey in usedOnceSkillKeys ?? [])
         {
             if (!string.IsNullOrWhiteSpace(skillKey))
-                combat._usedOnceSkillKeys.Add(skillKey);
+            combat._usedOnceSkillKeys.Add(skillKey);
+        }
+
+        foreach (var (key, remaining) in skillCooldowns
+                     ?? new Dictionary<(Guid CombatantId, string SkillKey), int>())
+        {
+            if (remaining > 0)
+                combat._skillCooldowns[key] = remaining;
         }
 
         return combat;

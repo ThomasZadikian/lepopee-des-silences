@@ -223,6 +223,7 @@ public static class CombatPersistenceMapper
             Charge = snapshot.Charge,
             MagicAttack = snapshot.MagicAttack,
             MagicDefense = snapshot.MagicDefense,
+            Movement = snapshot.Movement,
             AtbReadyThreshold = snapshot.AtbReadyThreshold,
             CreatedAtUtc = snapshot.CreatedAtUtc
         };
@@ -270,6 +271,12 @@ public static class CombatPersistenceMapper
             Tags = JsonSerializer.Serialize(skill.Tags),
             Category = skill.Category,
             BasePowerIsPercentOfMaxVitality = skill.BasePowerIsPercentOfMaxVitality,
+            TacticalRange = skill.TacticalRange,
+            TacticalAreaShape = skill.TacticalAreaShape.ToString(),
+            RequiresLineOfSight = skill.RequiresLineOfSight,
+            Cooldown = skill.Cooldown,
+            IsUltimate = skill.IsUltimate,
+            EmotionalRegister = skill.EmotionalRegister,
             StatusEffectsJson = skill.StatusEffects is { Count: > 0 }
                 ? JsonSerializer.Serialize(skill.StatusEffects)
                 : null
@@ -393,7 +400,8 @@ public static class CombatPersistenceMapper
             entity.AtbReadyThreshold,
             entity.CreatedAtUtc,
             entity.MagicAttack,
-            entity.MagicDefense);
+            entity.MagicDefense,
+            entity.Movement);
     }
 
     public static CombatantRuntimeState ToDomainRuntimeState(CombatantRuntimeStateEntity entity)
@@ -440,6 +448,12 @@ public static class CombatPersistenceMapper
             tags,
             statusEffects,
             category: entity.Category,
-            basePowerIsPercentOfMaxVitality: entity.BasePowerIsPercentOfMaxVitality);
+            basePowerIsPercentOfMaxVitality: entity.BasePowerIsPercentOfMaxVitality,
+            tacticalRange: entity.TacticalRange,
+            tacticalAreaShape: Enum.Parse<Domain.Combats.Tactical.TacticalAreaShape>(entity.TacticalAreaShape),
+            requiresLineOfSight: entity.RequiresLineOfSight,
+            cooldown: entity.Cooldown,
+            isUltimate: entity.IsUltimate,
+            emotionalRegister: entity.EmotionalRegister);
     }
 }

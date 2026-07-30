@@ -78,8 +78,8 @@ public sealed class TacticalEnemyTurnDriver : ITacticalEnemyTurnDriver
 
             log.AddRange(PlayOneTurn(combat, events));
 
-            combat.CompleteIfAllEnemiesDefeated();
             combat.FailIfAllAlliesDefeated();
+            combat.CompleteIfAllEnemiesDefeated();
 
             if (combat.Status != CombatStatus.Active)
                 break;
@@ -144,7 +144,16 @@ public sealed class TacticalEnemyTurnDriver : ITacticalEnemyTurnDriver
         }
 
         var before = Runs.TacticalCombat.TacticalImpactRecorder.Capture(action.Targets);
+        var speedsBefore = combat.CaptureEffectiveSpeeds();
+        combat.OrientToward(actorId, action.Target);
         var resolution = _effectResolver.Resolve(combat, actor, action.Skill, action.Targets);
+        foreach (var affected in action.Targets)
+        {
+            var facingTarget = TacticalSkillProfile.For(action.Skill).AreaShape == TacticalAreaShape.Single
+                ? combat.PositionOf(actorId)
+                : action.Target;
+            combat.OrientToward(affected.Id.Value, facingTarget);
+        }
         var impacts = Runs.TacticalCombat.TacticalImpactRecorder.Diff(
             before, action.Targets, combat);
 
@@ -152,7 +161,10 @@ public sealed class TacticalEnemyTurnDriver : ITacticalEnemyTurnDriver
         if (tactical.OncePerCombat)
             combat.MarkOnceSkillUsed(action.Skill.Key);
 
-        combat.MarkActiveCombatantActed();
+        combat.MarkActiveCombatantActed(action.Skill);
+
+        if (combat.HaveEffectiveSpeedsChanged(speedsBefore))
+            combat.RecalculateInitiativeAfterSpeedChange();
 
         events.Add(TacticalCombatEventDto.Skill(
             actorId,
@@ -209,29 +221,42 @@ public sealed class TacticalEnemyTurnDriver : ITacticalEnemyTurnDriver
         var tactical = TacticalSkillProfile.For(skill);
         if (tactical.OncePerCombat && combat.HasUsedOnceSkill(skill.Key))
             return null;
+        if (combat.RemainingCooldown(actor.Id.Value, skill.Key) > 0)
+            return null;
 
         var origin = combat.PositionOf(actor.Id.Value);
-        var center = skill.TargetingType == "Self" || tactical.AreaShape == TacticalAreaShape.Map
+        var intendedCenter = skill.TargetingType == "Self" || tactical.AreaShape == TacticalAreaShape.Map
             ? origin
             : combat.PositionOf(intendedTarget.Id.Value);
 
         if (!TacticalTargeting.IsInRange(
                 combat.Battlefield,
                 origin,
-                center,
+                intendedCenter,
                 tactical.Range,
                 tactical.RequiresLineOfSight))
             return null;
 
+        var interceptor = tactical.RequiresLineOfSight
+            && tactical.AreaShape != TacticalAreaShape.Map
+                ? TacticalTargeting.FindInterceptor(combat, origin, intendedCenter)
+                : null;
+        var center = interceptor is null
+            ? intendedCenter
+            : combat.PositionOf(interceptor.Id.Value);
         var affectedCells = tactical.AreaShape == TacticalAreaShape.Map
             ? null
             : TacticalTargeting.CellsInArea(combat.Battlefield, center, tactical.AreaShape);
         var targets = TacticalTargeting.ResolveTargets(
-            combat,
-            affectedCells,
-            actor.Side,
-            TacticalTargeting.IsHostile(skill.TargetingType),
-            tactical.AreaShape);
+                combat,
+                affectedCells,
+                actor.Side,
+                TacticalTargeting.IsHostile(skill.TargetingType),
+                tactical.AreaShape)
+            .ToList();
+
+        if (interceptor is not null && targets.All(t => t.Id != interceptor.Id))
+            targets.Add(interceptor);
 
         return targets.Count == 0 ? null : new EnemySkillPlan(skill, center, targets);
     }

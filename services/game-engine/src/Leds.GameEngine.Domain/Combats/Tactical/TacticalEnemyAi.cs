@@ -118,12 +118,17 @@ public static class TacticalEnemyAi
 
         var occupied = combat.OccupiedCells().ToHashSet();
         occupied.Remove(origin);
+        var traversableAllies = combat.Enemies
+            .Where(e => !e.IsDefeated && e.Id.Value != actorId)
+            .Select(e => combat.PositionOf(e.Id.Value))
+            .ToHashSet();
 
         var reachable = TacticalMovement.ReachableCells(
             combat.Battlefield,
             origin,
-            TacticalMovement.BudgetFor(actor.EffectiveSpeed),
-            occupied);
+            TacticalMovement.BudgetFor(actor.EffectiveMovement),
+            occupied,
+            traversableAllies);
 
         // Les congénères encore debout, hors soi-même : la référence de cohésion.
         var kin = combat.Enemies

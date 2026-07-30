@@ -1527,6 +1527,11 @@ public sealed class Run
 
         if (existing is not null)
         {
+            if (!existing.CanAddQuantity(item.Quantity))
+            {
+                return false;
+            }
+
             existing.AddQuantity(item.Quantity);
             return true;
         }
@@ -1554,6 +1559,41 @@ public sealed class Run
         bool isContainer = false,
         int? containerCapacity = null,
         bool isLiquid = false)
+        => EnrichLastAddedItem(
+            definitionVersion,
+            narrativeText,
+            category,
+            usageMode,
+            lifecycle,
+            maxStack,
+            effectSetKey,
+            isUsableInCombat,
+            isUsableOutsideCombat,
+            sourceRewardOptionId,
+            isContainer,
+            containerCapacity,
+            isLiquid,
+            tacticalRange: 1,
+            tacticalAreaShape: "Single",
+            requiresLineOfSight: false);
+
+    public void EnrichLastAddedItem(
+        string definitionVersion,
+        string? narrativeText,
+        string category,
+        string usageMode,
+        string lifecycle,
+        int maxStack,
+        string? effectSetKey,
+        bool isUsableInCombat,
+        bool isUsableOutsideCombat,
+        Guid sourceRewardOptionId,
+        bool isContainer,
+        int? containerCapacity,
+        bool isLiquid,
+        int tacticalRange,
+        string tacticalAreaShape,
+        bool requiresLineOfSight)
     {
         var lastItem = _runItems.LastOrDefault();
         if (lastItem is null) return;
@@ -1583,7 +1623,10 @@ public sealed class Run
             isContainer: isContainer,
             containerCapacity: containerCapacity,
             isLiquid: isLiquid,
-            containedLiquidDefinitionKey: lastItem.ContainedLiquidDefinitionKey);
+            containedLiquidDefinitionKey: lastItem.ContainedLiquidDefinitionKey,
+            tacticalRange: tacticalRange,
+            tacticalAreaShape: tacticalAreaShape,
+            requiresLineOfSight: requiresLineOfSight);
 
         var index = _runItems.FindIndex(i => i.Id == lastItem.Id);
         if (index >= 0)

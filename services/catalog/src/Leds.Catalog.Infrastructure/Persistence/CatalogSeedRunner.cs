@@ -15,7 +15,7 @@ namespace Leds.Catalog.Infrastructure.Persistence;
 /// CONFIDENTIAL — local-only canon content (IP). Git-ignored. Idempotent: upsert by
 /// key, updates only when the version differs.
 /// </summary>
-public sealed class CatalogSeedRunner 
+public sealed partial class CatalogSeedRunner
 {
     private static readonly JsonSerializerOptions J = new(JsonSerializerDefaults.Web)
     {
@@ -85,6 +85,7 @@ public sealed class CatalogSeedRunner
         await SeedBestiaireEchosDEmotionsAsync(cancellationToken);
         await SeedBestiaireImperatriceDeLaFalaiseAsync(cancellationToken);
         await SeedCanonItemsAsync(cancellationToken);
+        await SeedPalaceItemsAsync(cancellationToken);
         await SeedCanonCursesAsync(cancellationToken);
         await PruneCanonLawPlaceholdersAsync(cancellationToken);
         await SeedLoisMajeuresAsync(cancellationToken);
@@ -102,6 +103,7 @@ public sealed class CatalogSeedRunner
         await SeedCanonBossesAsync(cancellationToken);
         await SeedCanonRoomTypesAsync(cancellationToken);
         await SeedCanonLootAsync(cancellationToken);
+        await SeedPalaceItemLootAsync(cancellationToken);
         await SeedRewardTemplatesAsync(cancellationToken);
 
         // Sauvegarde inconditionnelle : les SeedCanon*Async ajoutent au change-tracker
@@ -4331,10 +4333,20 @@ public sealed class CatalogSeedRunner
     int mana, int power, CancellationToken cancellationToken,
     IReadOnlyList<SkillEffectSpec>? effects = null,
     string category = "Physical",
-    bool basePowerIsPercentOfMaxVitality = false)
+    bool basePowerIsPercentOfMaxVitality = false,
+    int tacticalRange = 1,
+    string tacticalAreaShape = "Single",
+    bool requiresLineOfSight = false,
+    int cooldown = 0,
+    bool isUltimate = false,
+    string emotionalRegister = "Neutral")
     {
         const string version = "canon-1.0.0";
         var now = DateTime.UtcNow;
+        var tacticalContract = CanonicalTacticalSkillContracts.Require(key);
+        tacticalRange = tacticalContract.Range;
+        tacticalAreaShape = tacticalContract.AreaShape;
+        requiresLineOfSight = tacticalContract.RequiresLineOfSight;
         var effectsJson = JsonSerializer.Serialize(effects ?? [], J);
         var existing = await _ctx.SkillDefinitions.FirstOrDefaultAsync(s => s.Key == key, cancellationToken);
         if (existing is null)
@@ -4362,6 +4374,12 @@ public sealed class CatalogSeedRunner
                 Power = power,
                 Accuracy = 100,
                 ActionCost = 10,
+                TacticalRange = tacticalRange,
+                TacticalAreaShape = tacticalAreaShape,
+                RequiresLineOfSight = requiresLineOfSight,
+                Cooldown = cooldown,
+                IsUltimate = isUltimate,
+                EmotionalRegister = emotionalRegister,
                 BaseWeight = 1,
                 EffectsJson = effectsJson,
                 CreatedAtUtc = now,
@@ -4376,6 +4394,12 @@ public sealed class CatalogSeedRunner
         existing.EffectType = effectType; existing.Category = category; existing.CostType = mana > 0 ? "Mana" : "None";
         existing.ManaCost = mana; existing.BasePower = power; existing.Power = power;
         existing.BasePowerIsPercentOfMaxVitality = basePowerIsPercentOfMaxVitality;
+        existing.TacticalRange = tacticalRange;
+        existing.TacticalAreaShape = tacticalAreaShape;
+        existing.RequiresLineOfSight = requiresLineOfSight;
+        existing.Cooldown = cooldown;
+        existing.IsUltimate = isUltimate;
+        existing.EmotionalRegister = emotionalRegister;
         existing.EffectsJson = effectsJson;
         existing.UpdatedAtUtc = now;
     }

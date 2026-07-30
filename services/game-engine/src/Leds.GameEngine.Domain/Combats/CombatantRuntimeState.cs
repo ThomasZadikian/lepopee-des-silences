@@ -221,6 +221,18 @@ public sealed class CombatantRuntimeState
         Touch();
     }
 
+    public void Revive(int maxVitality, int vitality)
+    {
+        if (!IsDefeated)
+            throw new DomainException("Only a defeated combatant can be revived.");
+        if (vitality <= 0)
+            throw new DomainException("Revive vitality must be greater than zero.");
+
+        CurrentVitality = Math.Min(maxVitality, vitality);
+        CurrentGuard = 0;
+        Touch();
+    }
+
     public void GainMana(int amount)
     {
         if (amount < 0)

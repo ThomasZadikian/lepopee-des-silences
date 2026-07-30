@@ -19,7 +19,8 @@ public sealed class CombatantBaseStatSnapshot
         int? atbReadyThreshold,
         DateTime createdAtUtc,
         int magicAttack,
-        int magicDefense)
+        int magicDefense,
+        int movement)
     {
         Id = id;
         MaxVitality = maxVitality;
@@ -36,6 +37,7 @@ public sealed class CombatantBaseStatSnapshot
         CreatedAtUtc = createdAtUtc;
         MagicAttack = magicAttack;
         MagicDefense = magicDefense;
+        Movement = movement;
     }
 
     public Guid Id { get; }
@@ -57,6 +59,7 @@ public sealed class CombatantBaseStatSnapshot
     // the Bestiaire chantier).
     public int MagicAttack { get; }
     public int MagicDefense { get; }
+    public int Movement { get; }
 
     public static CombatantBaseStatSnapshot Create(
         int maxVitality,
@@ -71,7 +74,8 @@ public sealed class CombatantBaseStatSnapshot
         int charge,
         int? atbReadyThreshold = null,
         int magicAttack = 0,
-        int magicDefense = 0)
+        int magicDefense = 0,
+        int movement = 4)
     {
         if (maxVitality <= 0)
             throw new DomainException("Max vitality must be greater than zero.");
@@ -109,6 +113,9 @@ public sealed class CombatantBaseStatSnapshot
         if (magicDefense < 0)
             throw new DomainException("Magic defense cannot be negative.");
 
+        if (movement < 1)
+            throw new DomainException("Movement must be at least one.");
+
         return new CombatantBaseStatSnapshot(
             Guid.NewGuid(),
             maxVitality,
@@ -124,7 +131,8 @@ public sealed class CombatantBaseStatSnapshot
             atbReadyThreshold,
             DateTime.UtcNow,
             magicAttack,
-            magicDefense);
+            magicDefense,
+            movement);
     }
 
     public static CombatantBaseStatSnapshot Rehydrate(
@@ -142,7 +150,8 @@ public sealed class CombatantBaseStatSnapshot
         int? atbReadyThreshold,
         DateTime createdAtUtc,
         int magicAttack = 0,
-        int magicDefense = 0)
+        int magicDefense = 0,
+        int movement = 4)
     {
         return new CombatantBaseStatSnapshot(
             id,
@@ -159,6 +168,7 @@ public sealed class CombatantBaseStatSnapshot
             atbReadyThreshold,
             createdAtUtc,
             magicAttack,
-            magicDefense);
+            magicDefense,
+            movement);
     }
 }

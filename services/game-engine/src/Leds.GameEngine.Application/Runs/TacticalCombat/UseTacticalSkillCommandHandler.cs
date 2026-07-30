@@ -73,10 +73,29 @@ public sealed class UseTacticalSkillCommandHandler
             ?? throw new DomainException(
                 $"'{actor.DisplayName}' does not know skill '{request.SkillKey}'.");
 
+        if (combat.RemainingCooldown(actorId, skill.Key) > 0)
+            throw new ConflictException(
+                $"« {skill.DisplayName} » est encore en recharge pour "
+                + $"{combat.RemainingCooldown(actorId, skill.Key)} activation(s).");
+
+        var effectiveManaCost = Math.Max(
+            0,
+            (int)Math.Round(
+                skill.ManaCost * (1.0 - actor.EffectiveSkillCostReductionPercent / 100.0))
+            + actor.EffectiveFlatManaCostBonus);
+        var missingMana = Math.Max(0, effectiveManaCost - actor.Mana);
+        var vitalityCost = missingMana * 2;
+        if (vitalityCost > 0 && !request.ConfirmVitalitySacrifice)
+        {
+            throw new ConflictException(
+                $"Confirmation requise : « {skill.DisplayName} » consommera "
+                + $"{vitalityCost} Vitalité pour remplacer {missingMana} Mana manquante.");
+        }
+
         var origin = combat.PositionOf(actorId);
         var tactical = TacticalSkillProfile.For(skill);
         var requestedTarget = new GridPosition(request.TargetX, request.TargetY);
-        var target = skill.TargetingType == "Self" || tactical.AreaShape == TacticalAreaShape.Map
+        var intendedTarget = skill.TargetingType == "Self" || tactical.AreaShape == TacticalAreaShape.Map
             ? origin
             : requestedTarget;
 
@@ -86,43 +105,62 @@ public sealed class UseTacticalSkillCommandHandler
         if (!TacticalTargeting.IsInRange(
                 combat.Battlefield,
                 origin,
-                target,
+                intendedTarget,
                 tactical.Range,
                 tactical.RequiresLineOfSight))
         {
             throw new ConflictException(
-                $"La case ({target.X}, {target.Y}) est hors de portée de « {skill.DisplayName} ».");
+                $"La case ({intendedTarget.X}, {intendedTarget.Y}) est hors de portée de « {skill.DisplayName} ».");
         }
 
         var shape = tactical.AreaShape;
         var hostile = TacticalTargeting.IsHostile(skill.TargetingType);
+        var interceptor = tactical.RequiresLineOfSight && shape != TacticalAreaShape.Map
+            ? TacticalTargeting.FindInterceptor(combat, origin, intendedTarget)
+            : null;
+        var target = interceptor is null
+            ? intendedTarget
+            : combat.PositionOf(interceptor.Id.Value);
 
         var affectedCells = shape == TacticalAreaShape.Map
             ? null
             : TacticalTargeting.CellsInArea(combat.Battlefield, target, shape);
 
         var targets = TacticalTargeting.ResolveTargets(
-            combat, affectedCells, actor.Side, hostile, shape);
+                combat, affectedCells, actor.Side, hostile, shape)
+            .ToList();
+
+        if (interceptor is not null && targets.All(t => t.Id != interceptor.Id))
+            targets.Add(interceptor);
 
         if (targets.Count == 0)
             throw new ConflictException("Aucune cible valide dans la zone visée.");
 
+        combat.OrientToward(actorId, target);
+
         // Relevé avant résolution : le noyau partagé n'annonce pas ses chiffres, on les mesure.
         var before = TacticalImpactRecorder.Capture(targets);
+        var speedsBefore = combat.CaptureEffectiveSpeeds();
 
         var resolution = _effectResolver.Resolve(combat, actor, skill, targets);
+
+        foreach (var affected in targets)
+        {
+            var facingTarget = interceptor is not null && affected.Id == interceptor.Id
+                ? origin
+                : shape == TacticalAreaShape.Single ? origin : target;
+            combat.OrientToward(affected.Id.Value, facingTarget);
+        }
 
         var impacts = TacticalImpactRecorder.Diff(before, targets, combat);
 
         if (tactical.OncePerCombat)
             combat.MarkOnceSkillUsed(skill.Key);
 
-        combat.MarkActiveCombatantActed();
+        combat.MarkActiveCombatantActed(skill);
 
-        // Un combat gagné ou perdu ne doit pas rester « actif » : le reste de la pile (offre de
-        // récompense, sortie de salle) se déclenche sur le statut, comme en ATB.
-        combat.CompleteIfAllEnemiesDefeated();
-        combat.FailIfAllAlliesDefeated();
+        if (combat.HaveEffectiveSpeedsChanged(speedsBefore))
+            combat.RecalculateInitiativeAfterSpeedChange();
 
         var rewardOffer = await SettleAsync(run, combat, cancellationToken);
 

@@ -1009,7 +1009,13 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
                     e.IsPermanent))
                 .ToArray(),
             Category: source.Category,
-            BasePowerIsPercentOfMaxVitality: source.BasePowerIsPercentOfMaxVitality);
+            BasePowerIsPercentOfMaxVitality: source.BasePowerIsPercentOfMaxVitality,
+            TacticalRange: source.TacticalRange,
+            TacticalAreaShape: source.TacticalAreaShape,
+            RequiresLineOfSight: source.RequiresLineOfSight,
+            Cooldown: source.Cooldown,
+            IsUltimate: source.IsUltimate,
+            EmotionalRegister: source.EmotionalRegister);
     }
 
     private static CatalogEnemyDefinition MapToCatalogEnemyDefinition(
@@ -1037,7 +1043,8 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
             Menace: source.Menace,
             Rarity: source.Rarity,
             Registre: source.Registre,
-            BoundRoomKeys: source.BoundRoomKeys);
+            BoundRoomKeys: source.BoundRoomKeys,
+            Movement: source.Movement);
     }
 
     private static PalaceLawDefinitionSnapshot MapToPalaceLawDefinitionSnapshot(
@@ -1108,7 +1115,12 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
             source.IsLiquid,
             source.EffectValue,
             source.EffectRunType,
-            source.ReadablePages);
+            source.ReadablePages,
+            source.TacticalRange,
+            source.TacticalAreaShape,
+            source.RequiresLineOfSight,
+            source.BasicAttackPower,
+            source.BasicAttackCategory);
     }
 
     private static CatalogEffectSetSnapshot MapToCatalogEffectSetSnapshot(
@@ -1603,7 +1615,12 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
         bool IsLiquid = false,
         int EffectValue = 0,
         string? EffectRunType = null,
-        IReadOnlyCollection<string>? ReadablePages = null);
+        IReadOnlyCollection<string>? ReadablePages = null,
+        int TacticalRange = 1,
+        string TacticalAreaShape = "Single",
+        bool RequiresLineOfSight = false,
+        int? BasicAttackPower = null,
+        string? BasicAttackCategory = null);
 
     private sealed record CatalogItemEquipmentEffectHttpResponse(
         string Kind,

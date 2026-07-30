@@ -403,8 +403,34 @@ public sealed class RunsController : ControllerBase
         CancellationToken cancellationToken)
     {
         var command = new UseTacticalSkillCommand(
-            runId, request.SkillKey, request.TargetX, request.TargetY);
+            runId,
+            request.SkillKey,
+            request.TargetX,
+            request.TargetY,
+            request.ConfirmVitalitySacrifice);
         var response = await _sender.Send(command, cancellationToken);
+
+        return Ok(response);
+    }
+
+    /// <summary>
+    /// Utilise un objet de l'inventaire partagé. L'objet consomme l'action, jamais le déplacement.
+    /// </summary>
+    [HttpPost("{runId:guid}/tactical-combat/item")]
+    [ProducesResponseType(typeof(TacticalCombatResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<TacticalCombatResponse>> UseTacticalItem(
+        Guid runId,
+        [FromBody] UseTacticalItemRequest request,
+        CancellationToken cancellationToken)
+    {
+        var response = await _sender.Send(new UseTacticalItemCommand(
+            runId,
+            request.ItemId,
+            request.TargetX,
+            request.TargetY,
+            request.TargetCombatantId), cancellationToken);
 
         return Ok(response);
     }
@@ -508,7 +534,17 @@ public sealed record MovePartyRequest(int TargetX, int TargetY);
 
 public sealed record MoveTacticalCombatantRequest(int TargetX, int TargetY);
 
-public sealed record UseTacticalSkillRequest(string SkillKey, int TargetX, int TargetY);
+public sealed record UseTacticalSkillRequest(
+    string SkillKey,
+    int TargetX,
+    int TargetY,
+    bool ConfirmVitalitySacrifice = false);
+
+public sealed record UseTacticalItemRequest(
+    Guid ItemId,
+    int TargetX,
+    int TargetY,
+    Guid? TargetCombatantId = null);
 
 public sealed record UseCaliceInfiniRequest(Guid? TargetCombatantId);
 

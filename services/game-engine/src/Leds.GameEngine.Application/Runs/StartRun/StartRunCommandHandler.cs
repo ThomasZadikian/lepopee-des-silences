@@ -149,7 +149,13 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
                 chargeCost: s.ChargeCost,
                 basePower: s.BasePower,
                 category: s.Category,
-                basePowerIsPercentOfMaxVitality: s.BasePowerIsPercentOfMaxVitality))
+                basePowerIsPercentOfMaxVitality: s.BasePowerIsPercentOfMaxVitality,
+                tacticalRange: s.TacticalRange,
+                tacticalAreaShape: s.TacticalAreaShape,
+                requiresLineOfSight: s.RequiresLineOfSight,
+                cooldown: s.Cooldown,
+                isUltimate: s.IsUltimate,
+                emotionalRegister: s.EmotionalRegister))
             .ToArray();
 
         var run = Run.StartNew(

@@ -8,5 +8,9 @@ namespace Leds.GameEngine.Application.Runs.TacticalCombat;
 /// positionnement, là où l'ATB frappe « tous les ennemis » sans notion de distance.
 /// </summary>
 public sealed record UseTacticalSkillCommand(
-    Guid RunId, string SkillKey, int TargetX, int TargetY)
+    Guid RunId,
+    string SkillKey,
+    int TargetX,
+    int TargetY,
+    bool ConfirmVitalitySacrifice = false)
     : IRequest<TacticalCombatResponse>;

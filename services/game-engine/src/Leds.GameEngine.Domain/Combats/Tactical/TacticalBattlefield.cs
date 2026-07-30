@@ -74,11 +74,18 @@ public sealed class TacticalBattlefield
 
     /// <summary>
     /// Coût de déplacement pour entrer sur <paramref name="to"/> depuis <paramref name="from"/> :
-    /// une case de base, plus une par palier d'élévation franchi. Gravir coûte donc autant que
-    /// descendre — le terrain freine dans les deux sens (cf. SFD v2, §9 et §11).
+    /// une case sur terrain plat, deux points pour toute montée, zéro pour toute descente.
     /// </summary>
     public int StepCost(GridPosition from, GridPosition to)
-        => 1 + Math.Abs(ElevationAt(to) - ElevationAt(from));
+    {
+        var delta = ElevationAt(to) - ElevationAt(from);
+        return delta switch
+        {
+            > 0 => 2,
+            < 0 => 0,
+            _ => 1
+        };
+    }
 
     private int Index(GridPosition position) => (position.Y * Width) + position.X;
 

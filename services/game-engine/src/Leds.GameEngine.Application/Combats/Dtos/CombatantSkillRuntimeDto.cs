@@ -1,6 +1,4 @@
-using Leds.GameEngine.Application.Combats.Typing;
 using Leds.GameEngine.Domain.Combats;
-using Leds.GameEngine.Domain.Combats.Tactical;
 
 namespace Leds.GameEngine.Application.Combats.Dtos;
 
@@ -20,13 +18,12 @@ public sealed record CombatantSkillRuntimeDto(
     string? EmotionalType = null,
     int TacticalRange = 1,
     string TacticalAreaShape = "Single",
-    bool RequiresLineOfSight = false)
+    bool RequiresLineOfSight = false,
+    int Cooldown = 0,
+    bool IsUltimate = false)
 {
     public static CombatantSkillRuntimeDto FromDomain(CombatantSkill skill)
     {
-        var hasType = EmotionalTypeProfileProvider.TryResolveIntrinsicType(skill, out var type);
-        var tactical = TacticalSkillProfile.For(skill);
-
         return new CombatantSkillRuntimeDto(
             Key: skill.Key,
             DisplayName: skill.DisplayName,
@@ -38,9 +35,11 @@ public sealed record CombatantSkillRuntimeDto(
             BasePower: skill.BasePower,
             Tags: skill.Tags,
             Category: skill.Category,
-            EmotionalType: hasType ? type.ToString() : null,
-            TacticalRange: tactical.Range,
-            TacticalAreaShape: tactical.AreaShape.ToString(),
-            RequiresLineOfSight: tactical.RequiresLineOfSight);
+            EmotionalType: skill.EmotionalRegister,
+            TacticalRange: skill.TacticalRange,
+            TacticalAreaShape: skill.TacticalAreaShape.ToString(),
+            RequiresLineOfSight: skill.RequiresLineOfSight,
+            Cooldown: skill.Cooldown,
+            IsUltimate: skill.IsUltimate);
     }
 }

@@ -53,6 +53,7 @@ public sealed class CombatEntityConfiguration : IEntityTypeConfiguration<CombatE
         builder.Property(c => c.TacticalPositionsCsv).HasColumnName("tactical_positions_csv");
         builder.Property(c => c.TacticalTurnStatesCsv).HasColumnName("tactical_turn_states_csv");
         builder.Property(c => c.TacticalUsedOnceSkillKeysCsv).HasColumnName("tactical_used_once_skill_keys_csv");
+        builder.Property(c => c.TacticalSkillCooldownsCsv).HasColumnName("tactical_skill_cooldowns_csv");
 
         builder.HasIndex(c => c.RunId);
         builder.HasIndex(c => c.Status);

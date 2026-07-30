@@ -22,4 +22,5 @@ public sealed record CatalogEnemyDefinitionHttpResponse(
     int Menace = 0,
     string Rarity = "Common",
     string? Registre = null,
-    IReadOnlyCollection<string>? BoundRoomKeys = null);
+    IReadOnlyCollection<string>? BoundRoomKeys = null,
+    int Movement = 4);

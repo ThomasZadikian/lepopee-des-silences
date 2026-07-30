@@ -6,7 +6,10 @@ public enum CombatStat
     AttackPower,
     Defense,
     Speed,
+    Movement,
     Focus,
+    // Flat percentage points subtracted from attacks aimed at this combatant.
+    Evasion,
     // Authored base stats (mirror AttackPower/Defense) driving the Magic-category
     // damage ratio in CombatSkillEffectResolver.StatModifierDamageMultiplier —
     // symmetric to how AttackPower/Defense drive the Physical-category ratio.

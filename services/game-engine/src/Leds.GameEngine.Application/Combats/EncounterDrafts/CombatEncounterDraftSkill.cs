@@ -12,4 +12,10 @@ public sealed record CombatEncounterDraftSkill(
     int BasePower,
     IReadOnlyCollection<string> Tags,
     string Category = "Physical",
-    bool BasePowerIsPercentOfMaxVitality = false);
+    bool BasePowerIsPercentOfMaxVitality = false,
+    int TacticalRange = 1,
+    string TacticalAreaShape = "Single",
+    bool RequiresLineOfSight = false,
+    int Cooldown = 0,
+    bool IsUltimate = false,
+    string EmotionalRegister = "Neutral");

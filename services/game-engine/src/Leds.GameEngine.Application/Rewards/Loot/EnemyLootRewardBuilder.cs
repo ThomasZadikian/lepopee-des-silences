@@ -79,12 +79,14 @@ public sealed class EnemyLootRewardBuilder
 
             var item = itemResult.Value;
             var runItemRarity = MapToRunItemRarity(item.Rarity);
-            var runItemEffectType = item.IsUsableInCombat ? "Heal" : "None";
+            var runItemEffectType = string.IsNullOrWhiteSpace(item.EffectRunType)
+                ? "None"
+                : item.EffectRunType;
             choices.Add(RewardChoice.Create(
                 RewardType.TemporaryItem,
                 item.DisplayName,
                 item.Description,
-                $"item:{item.Key}:{item.DisplayName}:{item.Description}:Consumable:{runItemRarity}:{runItemEffectType}:0",
+                $"item:{item.Key}:{item.DisplayName}:{item.Description}:Consumable:{runItemRarity}:{runItemEffectType}:{item.EffectValue}",
                 loot.SourceEnemyKey,
                 loot.SourceEnemyDisplayName));
         }
@@ -92,13 +94,12 @@ public sealed class EnemyLootRewardBuilder
         return choices;
     }
 
-    // Catalog rarities (Common/Uncommon/Rare/Epic/Legendary/Unique) are a superset of
-    // RunItemRarity (Common/Uncommon/Rare/Epic only) — anything above Epic collapses to
-    // Epic rather than throwing when a run item is materialized from catalog loot.
+    // Unique remains a catalog-only rarity. Runtime distinguishes Legendary because
+    // the Palace SFD uses it for several authored drops.
     private static string MapToRunItemRarity(string catalogRarity) => catalogRarity switch
     {
-        "Common" or "Uncommon" or "Rare" or "Epic" => catalogRarity,
-        _ => "Epic"
+        "Common" or "Uncommon" or "Rare" or "Epic" or "Legendary" => catalogRarity,
+        _ => "Legendary"
     };
 
     /// <summary>

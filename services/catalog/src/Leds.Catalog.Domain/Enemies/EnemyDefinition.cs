@@ -36,7 +36,8 @@ public sealed class EnemyDefinition : CatalogContentBase, IEnemyDefinition
         int menace,
         string rarity,
         string? registre,
-        IReadOnlyCollection<string> boundRoomKeys)
+        IReadOnlyCollection<string> boundRoomKeys,
+        int movement)
         : base(id, key, name, description, version, status)
     {
         Archetype = archetype;
@@ -58,6 +59,7 @@ public sealed class EnemyDefinition : CatalogContentBase, IEnemyDefinition
         Rarity = rarity;
         Registre = registre;
         _boundRoomKeys = boundRoomKeys.ToList();
+        Movement = movement;
     }
 
     public string Archetype { get; }
@@ -73,6 +75,7 @@ public sealed class EnemyDefinition : CatalogContentBase, IEnemyDefinition
     public int Defense { get; }
 
     public int Speed { get; }
+    public int Movement { get; }
 
     public int Focus { get; }
 
@@ -145,7 +148,8 @@ public sealed class EnemyDefinition : CatalogContentBase, IEnemyDefinition
         int menace = 0,
         string rarity = "Common",
         string? registre = null,
-        IReadOnlyCollection<string>? boundRoomKeys = null)
+        IReadOnlyCollection<string>? boundRoomKeys = null,
+        int movement = 4)
     {
         var desc = CatalogContentDescription.From(description);
 
@@ -187,6 +191,11 @@ public sealed class EnemyDefinition : CatalogContentBase, IEnemyDefinition
         if (speed < 1)
         {
             throw new DomainException("Enemy definition speed must be at least 1.");
+        }
+
+        if (movement < 1)
+        {
+            throw new DomainException("Enemy definition movement must be at least 1.");
         }
 
         if (focus < 0)
@@ -265,6 +274,7 @@ public sealed class EnemyDefinition : CatalogContentBase, IEnemyDefinition
             menace,
             rarity.Trim(),
             string.IsNullOrWhiteSpace(registre) ? null : registre.Trim(),
-            distinctBoundRoomKeys);
+            distinctBoundRoomKeys,
+            movement);
     }
 }

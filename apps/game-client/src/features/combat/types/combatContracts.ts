@@ -101,7 +101,10 @@ export type CombatUsableItemDto = {
   effectType: string;
   effectAmount: number;
   quantity: number;
-  targetingType: 'Self' | 'SingleAlly';
+  targetingType: 'Self' | 'SingleAlly' | 'DefeatedAlly';
+  tacticalRange: number;
+  tacticalAreaShape: 'Single' | 'Cross' | 'Diamond' | 'Map';
+  requiresLineOfSight: boolean;
 };
 
 export type CombatStatus = 'Active' | 'Completed' | 'Failed';
@@ -246,7 +249,7 @@ export type TacticalImpactDto = {
  * la décision, elle, soit rejouée.
  */
 export type TacticalCombatEventDto = {
-  kind: 'Move' | 'Skill';
+  kind: 'Move' | 'Skill' | 'Item';
   actorId: string;
   actorName: string;
   path: Array<{ x: number; y: number }>;
