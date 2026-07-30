@@ -10,7 +10,6 @@ public sealed record CompanionKitSpec(
     int StartingGuard,
     int Speed,
     int Initiative,
-    int Recovery,
     int Focus,
     int Mana,
     int Charge,

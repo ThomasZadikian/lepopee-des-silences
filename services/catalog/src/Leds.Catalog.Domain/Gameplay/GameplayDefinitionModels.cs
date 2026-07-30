@@ -31,7 +31,6 @@ public sealed record EnemyStatBlock(
     int StartingGuard,
     int Speed,
     int Initiative,
-    int Recovery,
     int Focus)
 {
     public static EnemyStatBlock Create(
@@ -41,7 +40,6 @@ public sealed record EnemyStatBlock(
         int startingGuard,
         int speed,
         int initiative = 0,
-        int recovery = 0,
         int focus = 0)
     {
         if (maxVitality <= 0) throw new DomainException("Enemy max vitality must be greater than 0.");
@@ -50,10 +48,9 @@ public sealed record EnemyStatBlock(
         if (startingGuard < 0) throw new DomainException("Enemy starting guard cannot be negative.");
         if (speed <= 0) throw new DomainException("Enemy speed must be greater than 0.");
         if (initiative < 0) throw new DomainException("Enemy initiative cannot be negative.");
-        if (recovery < 0) throw new DomainException("Enemy recovery cannot be negative.");
         if (focus < 0) throw new DomainException("Enemy focus cannot be negative.");
 
-        return new EnemyStatBlock(maxVitality, attackPower, defense, startingGuard, speed, initiative, recovery, focus);
+        return new EnemyStatBlock(maxVitality, attackPower, defense, startingGuard, speed, initiative, focus);
     }
 }
 

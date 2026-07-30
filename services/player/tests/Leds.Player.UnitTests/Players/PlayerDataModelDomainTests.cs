@@ -17,7 +17,7 @@ public sealed class PlayerDataModelDomainTests
         statBlock.StartingGuard.Should().Be(0);
         statBlock.Speed.Should().Be(10);
         statBlock.Initiative.Should().Be(10);
-        statBlock.Recovery.Should().Be(5);
+        statBlock.Focus.Should().Be(0);
     }
 
     [Fact]

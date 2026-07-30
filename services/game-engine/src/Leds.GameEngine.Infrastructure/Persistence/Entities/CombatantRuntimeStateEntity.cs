@@ -9,13 +9,7 @@ public sealed class CombatantRuntimeStateEntity
     public int CurrentFocus { get; set; }
     public int CurrentMana { get; set; }
     public int MaxMana { get; set; } = int.MaxValue;
-    public int CurrentCharge { get; set; }
-    public int? AtbGaugeValue { get; set; }
-    public int? ActionRecoveryUntilTick { get; set; }
-    public int? AtbFillPerTick { get; set; }
-    public int? AtbTempoRoomFactorPerMille { get; set; }
-    public int? AtbTempoCombatantFactorPerMille { get; set; }
-    public int TempoMomentumPerMille { get; set; }
+    public decimal CurrentCharge { get; set; }
     public double ThreatValue { get; set; }
     public Guid? LastAttackerId { get; set; }
     public bool TookPowerfulHitSinceLastAction { get; set; }

@@ -7,6 +7,5 @@ public sealed record CatalogEnemyStatBlockSnapshot(
     int StartingGuard,
     int Speed,
     int Initiative,
-    int Recovery,
     int Focus,
     int Movement = 4);

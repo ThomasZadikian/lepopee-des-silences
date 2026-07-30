@@ -107,7 +107,6 @@ public sealed class PlayerCharacter
             startingGuard: 0,
             speed: 10,
             initiative: 10,
-            recovery: 5,
             focus: 0,
             mana: baseMana,
             charge: baseCharge,
@@ -284,7 +283,6 @@ public sealed class PlayerCharacter
             startingGuard: 0,
             speed: 10,
             initiative: 10,
-            recovery: 5,
             focus: 0,
             mana: baseMana,
             charge: baseCharge);

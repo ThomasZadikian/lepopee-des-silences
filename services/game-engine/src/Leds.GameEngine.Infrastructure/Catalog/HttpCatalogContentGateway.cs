@@ -1383,7 +1383,7 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
 
     private static CatalogCompanionKit MapCompanionKit(CatalogCompanionKitHttpResponse s) =>
         new(s.MaxVitality, s.AttackPower, s.Defense, s.StartingGuard, s.Speed,
-            s.Initiative, s.Recovery, s.Focus, s.Mana, s.Charge, s.SkillKeys ?? [],
+            s.Initiative, s.Focus, s.Mana, s.Charge, s.SkillKeys ?? [],
             s.MagicAttack, s.MagicDefense);
 
     private static CatalogNpcPersona MapNpcPersona(CatalogNpcPersonaHttpResponse s) =>
@@ -1790,7 +1790,6 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
         int StartingGuard,
         int Speed,
         int Initiative,
-        int Recovery,
         int Focus,
         int Mana,
         int Charge,

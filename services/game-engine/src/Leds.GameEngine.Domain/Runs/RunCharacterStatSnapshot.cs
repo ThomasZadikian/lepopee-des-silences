@@ -12,7 +12,6 @@ public sealed class RunCharacterStatSnapshot
         int startingGuard,
         int speed,
         int initiative,
-        int recovery,
         int focus,
         int mana,
         int charge,
@@ -26,7 +25,6 @@ public sealed class RunCharacterStatSnapshot
         StartingGuard = startingGuard;
         Speed = speed;
         Initiative = initiative;
-        Recovery = recovery;
         Focus = focus;
         Mana = mana;
         Charge = charge;
@@ -41,7 +39,6 @@ public sealed class RunCharacterStatSnapshot
     public int StartingGuard { get; private set; }
     public int Speed { get; private set; }
     public int Initiative { get; private set; }
-    public int Recovery { get; private set; }
     public int Focus { get; private set; }
     public int Mana { get; private set; }
     public int Charge { get; private set; }
@@ -55,7 +52,6 @@ public sealed class RunCharacterStatSnapshot
         int startingGuard,
         int speed,
         int initiative,
-        int recovery,
         int focus,
         int mana,
         int charge,
@@ -80,9 +76,6 @@ public sealed class RunCharacterStatSnapshot
         if (initiative < 0)
             throw new DomainException("Initiative cannot be negative.");
 
-        if (recovery < 0)
-            throw new DomainException("Recovery cannot be negative.");
-
         if (focus < 0)
             throw new DomainException("Focus cannot be negative.");
 
@@ -106,7 +99,6 @@ public sealed class RunCharacterStatSnapshot
             startingGuard,
             speed,
             initiative,
-            recovery,
             focus,
             mana,
             charge,
@@ -124,7 +116,6 @@ public sealed class RunCharacterStatSnapshot
             startingGuard: 0,
             speed: 10,
             initiative: 10,
-            recovery: 5,
             focus: 0,
             mana: 0,
             charge: 0,
@@ -144,7 +135,6 @@ public sealed class RunCharacterStatSnapshot
         int startingGuard,
         int speed,
         int initiative,
-        int recovery,
         int focus,
         int mana,
         int charge,
@@ -169,9 +159,6 @@ public sealed class RunCharacterStatSnapshot
         if (initiative < 0)
             throw new DomainException("Initiative cannot be negative.");
 
-        if (recovery < 0)
-            throw new DomainException("Recovery cannot be negative.");
-
         if (focus < 0)
             throw new DomainException("Focus cannot be negative.");
 
@@ -193,7 +180,6 @@ public sealed class RunCharacterStatSnapshot
         StartingGuard = startingGuard;
         Speed = speed;
         Initiative = initiative;
-        Recovery = recovery;
         Focus = focus;
         Mana = mana;
         Charge = charge;
@@ -209,7 +195,6 @@ public sealed class RunCharacterStatSnapshot
         int startingGuard,
         int speed,
         int initiative,
-        int recovery,
         int focus,
         int mana,
         int charge,
@@ -224,7 +209,6 @@ public sealed class RunCharacterStatSnapshot
             startingGuard,
             speed,
             initiative,
-            recovery,
             focus,
             mana,
             charge,

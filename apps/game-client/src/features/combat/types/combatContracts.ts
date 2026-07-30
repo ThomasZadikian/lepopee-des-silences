@@ -101,13 +101,13 @@ export type CombatUsableItemDto = {
   effectType: string;
   effectAmount: number;
   quantity: number;
-  targetingType: 'Self' | 'SingleAlly' | 'DefeatedAlly';
+  targetingType: 'Self' | 'SingleAlly' | 'DefeatedAlly' | 'SingleEnemy' | 'AllEnemies';
   tacticalRange: number;
   tacticalAreaShape: 'Single' | 'Cross' | 'Diamond' | 'Map';
   requiresLineOfSight: boolean;
 };
 
-export type CombatStatus = 'Active' | 'Completed' | 'Failed';
+export type CombatStatus = 'Active' | 'Completed' | 'Failed' | 'Escaped';
 
 export type CombatRuntimeDto = {
   id: string;
@@ -229,6 +229,10 @@ export type TacticalCombatRuntimeDto = {
   enemies: TacticalCombatantRuntimeDto[];
   usableBattleItems: CombatUsableItemDto[];
   usedOnceSkillKeys: string[];
+  /** Sortie de fuite, uniquement pour les combats normaux. */
+  escape: { x: number; y: number } | null;
+  /** Palier figé à l'ouverture ; il ne baisse pas avec les morts. */
+  riskTier: 'Calme' | 'Tendu' | 'Dangereux' | 'Perilleux' | 'Fatal';
 };
 
 /** Ce qu'un combattant a encaissé, à l'endroit où il l'a encaissé. */

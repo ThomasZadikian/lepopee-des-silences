@@ -292,7 +292,6 @@ public sealed class NpcEventChoiceResolver : ICurrentEventChoiceResolver
                     startingGuard: kit?.StartingGuard ?? 0,
                     speed: kit?.Speed ?? 10,
                     initiative: kit?.Initiative ?? 10,
-                    recovery: kit?.Recovery ?? 5,
                     focus: kit?.Focus ?? 0,
                     mana: kit?.Mana ?? 0,
                     charge: kit?.Charge ?? 0,

@@ -20,14 +20,14 @@ public abstract class CanonBossBehaviorBase : IBossBehavior
     protected static double HpFraction(Combatant c)
         => c.MaxVitality > 0 ? (double)c.CurrentVitality / c.MaxVitality : 0.0;
 
-    protected static IReadOnlyList<Combatant> LivingPlayers(Combat combat)
+    protected static IReadOnlyList<Combatant> LivingPlayers(ICombatContext combat)
         => combat.Allies.Where(a => !a.IsDefeated).ToArray();
 
     /// <summary>The weakest living player (focus-fire / finisher target). Null if none.
     /// Ties (equal current vitality — e.g. nobody's been hit yet) are broken by a
     /// deterministic per-candidate hash, never by array position, so this doesn't
     /// silently default to the protagonist every time.</summary>
-    protected static Combatant? LowestHpPlayer(Combat combat, Combatant boss)
+    protected static Combatant? LowestHpPlayer(ICombatContext combat, Combatant boss)
         => LivingPlayers(combat)
             .OrderBy(a => a.CurrentVitality)
             .ThenBy(a => DeterministicTieKey(combat, boss, a))
@@ -35,7 +35,7 @@ public abstract class CanonBossBehaviorBase : IBossBehavior
 
     /// <summary>The healthiest living player (best target for control / drain). Null if none.
     /// Same deterministic tie-break as <see cref="LowestHpPlayer"/>.</summary>
-    protected static Combatant? HighestHpPlayer(Combat combat, Combatant boss)
+    protected static Combatant? HighestHpPlayer(ICombatContext combat, Combatant boss)
         => LivingPlayers(combat)
             .OrderByDescending(a => a.CurrentVitality)
             .ThenBy(a => DeterministicTieKey(combat, boss, a))
@@ -43,7 +43,7 @@ public abstract class CanonBossBehaviorBase : IBossBehavior
 
     /// <summary>The living player with the lowest EffectiveDefense (best target for a physical opener). Null if none.
     /// Same deterministic tie-break as <see cref="LowestHpPlayer"/>.</summary>
-    protected static Combatant? LeastDefendedPlayer(Combat combat, Combatant boss)
+    protected static Combatant? LeastDefendedPlayer(ICombatContext combat, Combatant boss)
         => LivingPlayers(combat)
             .OrderBy(a => a.EffectiveDefense)
             .ThenBy(a => DeterministicTieKey(combat, boss, a))
@@ -53,7 +53,7 @@ public abstract class CanonBossBehaviorBase : IBossBehavior
     /// A reproducible-but-not-array-order hash used to break exact ties in HP-based
     /// target selection (turn 1, nobody hurt yet, etc.).
     /// </summary>
-    protected static double DeterministicTieKey(Combat combat, Combatant actor, Combatant candidate)
+    protected static double DeterministicTieKey(ICombatContext combat, Combatant actor, Combatant candidate)
         => DeterministicCombatRoll.UnitInterval(
             $"boss-target:{combat.Id.Value}:{combat.TurnNumber}:{actor.Id.Value}:{candidate.Id.Value}");
 
@@ -76,7 +76,7 @@ public abstract class CanonBossBehaviorBase : IBossBehavior
             : null;
 
     /// <summary>Builds a decision hitting every living player (AoE skill on the boss's opposing side).</summary>
-    protected static BossActionDecision? OnAllPlayers(Combatant boss, string skillKey, Combat combat)
+    protected static BossActionDecision? OnAllPlayers(Combatant boss, string skillKey, ICombatContext combat)
     {
         var targets = LivingPlayers(combat);
         return targets.Count > 0 && Owns(boss, skillKey)
@@ -85,7 +85,7 @@ public abstract class CanonBossBehaviorBase : IBossBehavior
     }
 
     /// <summary>Builds a decision hitting every living combatant on the boss's own side (team buff/guard).</summary>
-    protected static BossActionDecision? OnAllAllies(Combatant boss, string skillKey, Combat combat)
+    protected static BossActionDecision? OnAllAllies(Combatant boss, string skillKey, ICombatContext combat)
     {
         var targets = combat.Enemies.Where(e => !e.IsDefeated).ToArray();
         return targets.Length > 0 && Owns(boss, skillKey)
@@ -94,14 +94,14 @@ public abstract class CanonBossBehaviorBase : IBossBehavior
     }
 
     /// <summary>The fastest living player (Speed stat), tie-broken deterministically.</summary>
-    protected static Combatant? FastestPlayer(Combat combat, Combatant boss)
+    protected static Combatant? FastestPlayer(ICombatContext combat, Combatant boss)
         => LivingPlayers(combat)
             .OrderByDescending(a => a.EffectiveSpeed)
             .ThenBy(a => DeterministicTieKey(combat, boss, a))
             .FirstOrDefault();
 
     /// <summary>The most-wounded living combatant on the boss's own side, excluding the boss itself. Null if none other survive.</summary>
-    protected static Combatant? MostWoundedAlly(Combat combat, Combatant boss)
+    protected static Combatant? MostWoundedAlly(ICombatContext combat, Combatant boss)
         => combat.Enemies
             .Where(e => !e.IsDefeated && e.Id.Value != boss.Id.Value)
             .OrderBy(e => HpFraction(e))
@@ -118,26 +118,26 @@ public abstract class CanonBossBehaviorBase : IBossBehavior
         => combatant.StatusEffects.Any(e => e.Kind == StatusEffectKind.StatModifier && e.Magnitude > 0);
 
     /// <summary>The slowest living player (Speed stat), tie-broken deterministically.</summary>
-    protected static Combatant? SlowestPlayer(Combat combat, Combatant boss)
+    protected static Combatant? SlowestPlayer(ICombatContext combat, Combatant boss)
         => LivingPlayers(combat)
             .OrderBy(a => a.EffectiveSpeed)
             .ThenBy(a => DeterministicTieKey(combat, boss, a))
             .FirstOrDefault();
 
     /// <summary>The living player with the lowest EffectiveMagicDefense — the softest opener for a Magic-category mark/DoT.</summary>
-    protected static Combatant? LowestMagicDefensePlayer(Combat combat, Combatant boss)
+    protected static Combatant? LowestMagicDefensePlayer(ICombatContext combat, Combatant boss)
         => LivingPlayers(combat)
             .OrderBy(a => a.EffectiveMagicDefense)
             .ThenBy(a => DeterministicTieKey(combat, boss, a))
             .FirstOrDefault();
 
     /// <summary>The living player currently carrying a status effect with the given key (case-insensitive). Null if none.</summary>
-    protected static Combatant? PlayerWithStatus(Combat combat, string statusKey)
+    protected static Combatant? PlayerWithStatus(ICombatContext combat, string statusKey)
         => LivingPlayers(combat).FirstOrDefault(p =>
             p.StatusEffects.Any(e => string.Equals(e.Key, statusKey, StringComparison.OrdinalIgnoreCase)));
 
     /// <summary>The living player NOT currently affected by any DamageOverTime effect. Null if everyone already is.</summary>
-    protected static Combatant? PlayerWithoutDot(Combat combat, Combatant boss)
+    protected static Combatant? PlayerWithoutDot(ICombatContext combat, Combatant boss)
         => LivingPlayers(combat)
             .Where(p => p.StatusEffects.All(e => e.Kind != StatusEffectKind.DamageOverTime))
             .OrderBy(a => DeterministicTieKey(combat, boss, a))
@@ -148,7 +148,7 @@ public abstract class CanonBossBehaviorBase : IBossBehavior
     /// lowest current Mana, but only if that Mana is below <paramref name="threshold"/>.
     /// Null if no other ally survives or nobody is actually starved.
     /// </summary>
-    protected static Combatant? MostManaStarvedAlly(Combat combat, Combatant boss, int threshold)
+    protected static Combatant? MostManaStarvedAlly(ICombatContext combat, Combatant boss, int threshold)
     {
         var candidate = combat.Enemies
             .Where(e => !e.IsDefeated && e.Id.Value != boss.Id.Value)
@@ -165,7 +165,7 @@ public abstract class CanonBossBehaviorBase : IBossBehavior
     /// <see cref="DeterministicTieKey"/>, but for weighted-choice AI branches (e.g.
     /// "55% Éclaboussure, else Corps de verre") instead of ordering ties.
     /// </summary>
-    protected static bool Chance(Combat combat, Combatant boss, string tag, double probability)
+    protected static bool Chance(ICombatContext combat, Combatant boss, string tag, double probability)
         => DeterministicCombatRoll.UnitInterval(
             $"boss-chance:{tag}:{combat.Id.Value}:{combat.TurnNumber}:{boss.Id.Value}") < probability;
 
@@ -185,7 +185,7 @@ public abstract class CanonBossBehaviorBase : IBossBehavior
     /// just hit them, when their 4-skill kit has no dedicated defensive/self skill to
     /// react with instead.
     /// </summary>
-    protected static Combatant? LastAttacker(Combat combat, Combatant boss)
+    protected static Combatant? LastAttacker(ICombatContext combat, Combatant boss)
     {
         if (boss.LastAttackerId is not { } attackerId) return null;
         return combat.Allies.Concat(combat.Enemies)

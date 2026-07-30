@@ -283,7 +283,7 @@ public sealed class PlayerProfileTests
         var now = DateTimeOffset.UtcNow;
         var statBlock = PlayerCharacterStatBlock.Create(
             maxVitality: 100, attackPower: 12, defense: 6, startingGuard: 0,
-            speed: 10, initiative: 10, recovery: 5, focus: 0, mana: 0, charge: 0);
+            speed: 10, initiative: 10,focus: 0, mana: 0, charge: 0);
 
         profile.RecruitCompanion("character.thomas", "Thomas", statBlock, ["skill.basic.guard"], now);
 
@@ -301,7 +301,7 @@ public sealed class PlayerProfileTests
         var now = DateTimeOffset.UtcNow;
         var statBlock = PlayerCharacterStatBlock.Create(
             maxVitality: 100, attackPower: 12, defense: 6, startingGuard: 0,
-            speed: 10, initiative: 10, recovery: 5, focus: 0, mana: 0, charge: 0);
+            speed: 10, initiative: 10,focus: 0, mana: 0, charge: 0);
 
         profile.RecruitCompanion("character.thomas", "Thomas", statBlock, ["skill.basic.guard"], now);
         profile.RecruitCompanion("character.thomas", "Thomas", statBlock, ["skill.basic.guard"], now);
@@ -321,7 +321,7 @@ public sealed class PlayerProfileTests
         // 1 point left unspent going into recruitment — must not be confused with the catch-up grant.
         var statBlock = PlayerCharacterStatBlock.Create(
             maxVitality: 85, attackPower: 15, defense: 4, startingGuard: 0,
-            speed: 13, initiative: 12, recovery: 4, focus: 3, mana: 15, charge: 0);
+            speed: 13, initiative: 12,focus: 3, mana: 15, charge: 0);
 
         profile.RecruitCompanion("character.mane", "Mané", statBlock, ["skill.basic.strike"], now);
 
@@ -336,7 +336,7 @@ public sealed class PlayerProfileTests
         var now = DateTimeOffset.UtcNow;
         var statBlock = PlayerCharacterStatBlock.Create(
             maxVitality: 85, attackPower: 15, defense: 4, startingGuard: 0,
-            speed: 13, initiative: 12, recovery: 4, focus: 3, mana: 15, charge: 0);
+            speed: 13, initiative: 12,focus: 3, mana: 15, charge: 0);
 
         profile.RecruitCompanion("character.mane", "Mané", statBlock, ["skill.basic.strike"], now);
 
@@ -352,7 +352,7 @@ public sealed class PlayerProfileTests
         var protagonist = profile.Roster.Characters.Single();
         var firstCompanionStatBlock = PlayerCharacterStatBlock.Create(
             maxVitality: 110, attackPower: 8, defense: 12, startingGuard: 8,
-            speed: 8, initiative: 8, recovery: 6, focus: 2, mana: 14, charge: 0);
+            speed: 8, initiative: 8,focus: 2, mana: 14, charge: 0);
         profile.RecruitCompanion("character.thomas", "Thomas", firstCompanionStatBlock, ["skill.basic.guard"], now);
         var thomas = profile.Roster.Characters.Single(c => c.DefinitionKey == "character.thomas");
         profile.AwardStatPoint(now, amount: 4);
@@ -362,7 +362,7 @@ public sealed class PlayerProfileTests
         // Thomas now has 3 points invested, well ahead of the still-untouched protagonist.
         var secondCompanionStatBlock = PlayerCharacterStatBlock.Create(
             maxVitality: 85, attackPower: 15, defense: 4, startingGuard: 0,
-            speed: 13, initiative: 12, recovery: 4, focus: 3, mana: 15, charge: 0);
+            speed: 13, initiative: 12,focus: 3, mana: 15, charge: 0);
 
         profile.RecruitCompanion("character.mane", "Mané", secondCompanionStatBlock, ["skill.basic.strike"], now);
 

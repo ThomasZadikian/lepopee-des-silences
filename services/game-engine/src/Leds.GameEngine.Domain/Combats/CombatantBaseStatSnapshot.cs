@@ -12,11 +12,9 @@ public sealed class CombatantBaseStatSnapshot
         int startingGuard,
         int speed,
         int initiative,
-        int recovery,
         int focus,
         int mana,
         int charge,
-        int? atbReadyThreshold,
         DateTime createdAtUtc,
         int magicAttack,
         int magicDefense,
@@ -29,11 +27,9 @@ public sealed class CombatantBaseStatSnapshot
         StartingGuard = startingGuard;
         Speed = speed;
         Initiative = initiative;
-        Recovery = recovery;
         Focus = focus;
         Mana = mana;
         Charge = charge;
-        AtbReadyThreshold = atbReadyThreshold;
         CreatedAtUtc = createdAtUtc;
         MagicAttack = magicAttack;
         MagicDefense = magicDefense;
@@ -47,11 +43,9 @@ public sealed class CombatantBaseStatSnapshot
     public int StartingGuard { get; }
     public int Speed { get; }
     public int Initiative { get; }
-    public int Recovery { get; }
     public int Focus { get; }
     public int Mana { get; }
     public int Charge { get; }
-    public int? AtbReadyThreshold { get; }
     public DateTime CreatedAtUtc { get; }
     // Authored base stats mirroring AttackPower/Defense — default 0, which keeps
     // the Magic-category damage ratio neutral (see CombatSkillEffectResolver) for
@@ -68,11 +62,9 @@ public sealed class CombatantBaseStatSnapshot
         int startingGuard,
         int speed,
         int initiative,
-        int recovery,
         int focus,
         int mana,
         int charge,
-        int? atbReadyThreshold = null,
         int magicAttack = 0,
         int magicDefense = 0,
         int movement = 4)
@@ -94,9 +86,6 @@ public sealed class CombatantBaseStatSnapshot
 
         if (initiative < 0)
             throw new DomainException("Initiative cannot be negative.");
-
-        if (recovery < 0)
-            throw new DomainException("Recovery cannot be negative.");
 
         if (focus < 0)
             throw new DomainException("Focus cannot be negative.");
@@ -124,11 +113,9 @@ public sealed class CombatantBaseStatSnapshot
             startingGuard,
             speed,
             initiative,
-            recovery,
             focus,
             mana,
             charge,
-            atbReadyThreshold,
             DateTime.UtcNow,
             magicAttack,
             magicDefense,
@@ -143,11 +130,9 @@ public sealed class CombatantBaseStatSnapshot
         int startingGuard,
         int speed,
         int initiative,
-        int recovery,
         int focus,
         int mana,
         int charge,
-        int? atbReadyThreshold,
         DateTime createdAtUtc,
         int magicAttack = 0,
         int magicDefense = 0,
@@ -161,11 +146,9 @@ public sealed class CombatantBaseStatSnapshot
             startingGuard,
             speed,
             initiative,
-            recovery,
             focus,
             mana,
             charge,
-            atbReadyThreshold,
             createdAtUtc,
             magicAttack,
             magicDefense,

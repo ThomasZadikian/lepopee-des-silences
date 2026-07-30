@@ -19,7 +19,6 @@ public sealed class EnemyStatBlockEntity
     public int StartingGuard { get; set; }
     public int Speed { get; set; }
     public int Initiative { get; set; }
-    public int Recovery { get; set; }
     public int Focus { get; set; }
     public int Mana { get; set; }
     public int Charge { get; set; }

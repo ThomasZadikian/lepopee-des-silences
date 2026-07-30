@@ -1,6 +1,5 @@
 using Leds.GameEngine.Application.Combats.EncounterDrafts;
 using Leds.GameEngine.Domain.Combats;
-using Leds.GameEngine.Domain.Combats.Atb;
 using Leds.GameEngine.Domain.Combats.StatusEffects;
 using Leds.GameEngine.Domain.Combats.Tactical;
 using Leds.GameEngine.Domain.Nodes;
@@ -18,64 +17,13 @@ public sealed class CombatFactory : ICombatFactory
     /// <summary>"Loi du Reflet" — the mirrored enemy copy's stats, as a fraction of the original.</summary>
     private const double MirrorCombatCopyStatMultiplier = 0.6;
 
-    /// <summary>Base PP design rule: every combatant's Mana is 85% of its (scaled)
+    /// <summary>Base Mana design rule: every combatant's Mana is 85% of its (scaled)
     /// MaxVitality — see PlayerCharacterStatBlock.CreateDefaultPorteur for the
     /// player/companion side of the same rule.</summary>
     private const double EnemyManaToVitalityRatio = 0.85;
 
     private readonly EnemyStatScaler _enemyStatScaler = new();
 
-    public Combat CreateFromDraft(
-        CombatEncounterDraft draft,
-        PlayerRuntimeState? playerState = null,
-        IReadOnlyCollection<RunModifier>? runModifiers = null,
-        int attackPower = 0,
-        int defense = 0,
-        int speed = 10,
-        PalaceRoomState palaceRoomState = PalaceRoomState.Neutral,
-        int focus = 0,
-        IReadOnlyDictionary<string, IReadOnlyList<SkillStatusEffectSpec>>? skillEffects = null,
-        IReadOnlyDictionary<EmotionalType, int>? typedDamageReductions = null,
-        int hitChanceBonusPercent = 0,
-        int dotDurationReductionPercent = 0,
-        int dotDamageReductionPercent = 0,
-        int dotDamageBonusPercent = 0,
-        int magicDamageBonusPercent = 0,
-        int magicDamageReductionPercent = 0,
-        int criticalChanceBonusPercent = 0,
-        int guardBonusPercent = 0,
-        bool himLitProtectionEnabled = false,
-        int healingBonusPercent = 0,
-        int magicAttack = 0,
-        int magicDefense = 0,
-        string? forgottenSkillKey = null)
-    {
-        return CreateFromDraft(
-            CombatId.New(),
-            draft,
-            playerState,
-            runModifiers,
-            attackPower,
-            defense,
-            speed,
-            palaceRoomState,
-            focus,
-            skillEffects,
-            typedDamageReductions,
-            hitChanceBonusPercent,
-            dotDurationReductionPercent,
-            dotDamageReductionPercent,
-            dotDamageBonusPercent,
-            magicDamageBonusPercent,
-            magicDamageReductionPercent,
-            criticalChanceBonusPercent,
-            guardBonusPercent,
-            himLitProtectionEnabled,
-            healingBonusPercent,
-            magicAttack,
-            magicDefense,
-            forgottenSkillKey);
-    }
     private static (double VitalityMultiplier, double PowerMultiplier, int GuardBonus) EncounterBonus(string encounterType)
     {
         return encounterType switch
@@ -88,69 +36,10 @@ public sealed class CombatFactory : ICombatFactory
     }
 
 
-    public Combat CreateFromDraft(
-        CombatId combatId,
-        CombatEncounterDraft draft,
-        PlayerRuntimeState? playerState = null,
-        IReadOnlyCollection<RunModifier>? runModifiers = null,
-        int attackPower = 0,
-        int defense = 0,
-        int speed = 10,
-        PalaceRoomState palaceRoomState = PalaceRoomState.Neutral,
-        int focus = 0,
-        IReadOnlyDictionary<string, IReadOnlyList<SkillStatusEffectSpec>>? skillEffects = null,
-        IReadOnlyDictionary<EmotionalType, int>? typedDamageReductions = null,
-        int hitChanceBonusPercent = 0,
-        int dotDurationReductionPercent = 0,
-        int dotDamageReductionPercent = 0,
-        int dotDamageBonusPercent = 0,
-        int magicDamageBonusPercent = 0,
-        int magicDamageReductionPercent = 0,
-        int criticalChanceBonusPercent = 0,
-        int guardBonusPercent = 0,
-        bool himLitProtectionEnabled = false,
-        int healingBonusPercent = 0,
-        int magicAttack = 0,
-        int magicDefense = 0,
-        string? forgottenSkillKey = null)
-    {
-        var roster = BuildRoster(
-            combatId, draft, playerState, runModifiers, attackPower, defense, speed,
-            palaceRoomState, focus, skillEffects, typedDamageReductions, hitChanceBonusPercent,
-            dotDurationReductionPercent, dotDamageReductionPercent, dotDamageBonusPercent,
-            magicDamageBonusPercent, magicDamageReductionPercent, criticalChanceBonusPercent,
-            guardBonusPercent, himLitProtectionEnabled, healingBonusPercent, magicAttack,
-            magicDefense, forgottenSkillKey);
-
-        return Combat.Create(
-            combatId,
-            new RunId(draft.RunId),
-            new RoomId(draft.RoomId),
-            new NodeId(draft.NodeId),
-            roster.Allies,
-            roster.Enemies,
-            roster.HitCounterDoubleDamageEnabled,
-            roster.FirstHitCriticalEnabled,
-            roster.LowHpDamageAmplificationEnabled,
-            roster.DotDurationExtensionTicks,
-            roster.DuelDamageAsymmetryEnabled,
-            roster.DotMagnitudeBonus,
-            roster.HealingBlocked,
-            roster.FalaiseWindEnabled,
-            roster.PostDeathBasicAttackOnlyEnabled,
-            roster.TapisPropreEnabled,
-            roster.ThirdCupHealCorruptionEnabled,
-            roster.PresentationsEnabled,
-            roster.MiroirEnabled,
-            roster.ForgottenSkillKey);
-    }
-
     /// <summary>
     /// Constitue les deux camps sans décider de la façon dont ils s'affronteront. C'est le
     /// travail réel de cette fabrique : mise à l'échelle des stats, résolution des compétences,
-    /// application des Lois du Palais. L'emballage en <see cref="Combat"/> (ATB) ou en
-    /// <see cref="Domain.Combats.Tactical.TacticalCombat"/> vient après, et ne fait que ranger
-    /// ce roster dans le déroulé voulu (cf. SFD v2, §2 et <see cref="CombatRoster"/>).
+    /// application des Lois du Palais. Le combat tactique place ensuite ce roster sur la grille.
     /// </summary>
     public CombatRoster BuildRoster(
         CombatId combatId,
@@ -534,7 +423,7 @@ public sealed class CombatFactory : ICombatFactory
                         magicAttack: scaledMagicAttack,
                         magicDefense: scaledMagicDefense,
                         movement: enemy.Movement,
-                        // Base PP = 85% of (scaled) Vitality — enemies "cast freely" (see
+                        // Base Mana = 85% of (scaled) Vitality — enemies "cast freely" (see
                         // CombatSkillEffectResolver.ConsumeResources), so this is purely
                         // informational, but stays consistent with the player-side rule
                         // and scales automatically with depth/difficulty instead of
@@ -591,10 +480,9 @@ public sealed class CombatFactory : ICombatFactory
 
     /// <summary>
     /// "Loi du Sablier Renversé" (law.sablier, Durée: Salle) — "les combattants les plus
-    /// lents agissent en premier, les plus rapides en dernier. L'ATB coule à l'envers."
+    /// lents agissent en premier, les plus rapides en dernier."
     /// Mirrors every combatant's base Speed around the roster's [min, max] range via a
-    /// flat Speed StatModifier, so the existing (Speed-driven) ATB tempo formula produces
-    /// a genuinely reversed turn order without needing its own inversion path. Re-derived
+    /// flat Speed StatModifier, producing a genuinely reversed initiative order. Re-derived
     /// fresh for every combat in the room for as long as the law's RunModifier
     /// (UntilRoomEnds) stays unconsumed — same pattern as RoomClimate/AttackTypeOverride.
     /// </summary>
@@ -630,12 +518,8 @@ public sealed class CombatFactory : ICombatFactory
     /// <summary>
     /// "Loi de la File Indienne" (law.file-indienne, Durée: Salle) — "aucun combattant
     /// ne peut agir une seconde fois tant que tous les combattants n'ont pas agi une
-    /// fois. L'ATB devient un tour par tour strict, ordonné par Initiative." A true
-    /// lockstep round-robin would require bypassing the ATB scheduler entirely — instead
-    /// (documented simplification, same approach as Sablier Renversé): every combatant's
-    /// Speed is flattened to the roster's average via a flat StatModifier, so ATB fill
-    /// rates converge and turns cycle in Initiative order — the scheduler's existing
-    /// tie-break — approximating a strict round-robin rather than reimplementing it.
+    /// fois." Every combatant's Speed is flattened to the roster's average via a flat
+    /// StatModifier, so Initiative becomes the stable tie-break.
     /// </summary>
     private static void ApplyStrictInitiativeOrder(IEnumerable<Combatant> combatants)
     {
@@ -667,7 +551,7 @@ public sealed class CombatFactory : ICombatFactory
     /// <summary>"Loi de la Destinée" (law.destinee, Durée: Salle) — "TOUS les combattants
     /// (équipe et ennemis) reçoivent « Une destinée cruelle »" for the room. Reuses the
     /// exact same permanent effect bundle as the existing legendary player skill
-    /// canon.skill.destinee-cruelle (+20% Attack/Defense/Speed/Focus, -15% ATB tempo,
+    /// canon.skill.destinee-cruelle (+20% Attack/Defense/Speed/Focus, -15% additional Speed,
     /// 10%-max-HP DoT with no end) per the compendium's own note ("application
     /// universelle du seul sort canon permanent"), applied to every combatant instead
     /// of just the caster.</summary>
@@ -696,7 +580,7 @@ public sealed class CombatFactory : ICombatFactory
                 currentTick: 0,
                 durationTicks: 0,
                 magnitude: -15,
-                stat: CombatStat.AtbTempoModifier,
+                stat: CombatStat.Speed,
                 isPermanent: true));
 
             combatant.ApplyStatusEffect(CombatStatusEffect.Create(
@@ -706,7 +590,7 @@ public sealed class CombatFactory : ICombatFactory
                 currentTick: 0,
                 durationTicks: 0,
                 magnitude: 10,
-                tickInterval: AtbConstants.TicksPerTurn,
+                tickInterval: CombatTime.TicksPerTurn,
                 isMagnitudePercentOfMax: true,
                 isPermanent: true));
         }
@@ -865,7 +749,7 @@ public sealed class CombatFactory : ICombatFactory
             .Where(m => m.Type == RunModifierType.DotDurationExtension && !m.IsConsumed)
             .Sum(m => m.Value);
 
-        return (int)Math.Round(bonusTurns * AtbConstants.TicksPerTurn);
+        return (int)Math.Round(bonusTurns * CombatTime.TicksPerTurn);
     }
 
     private static bool ComputeDuelDamageAsymmetryEnabled(IReadOnlyCollection<RunModifier> activeModifiers)
@@ -958,7 +842,7 @@ public sealed class CombatFactory : ICombatFactory
     /// Mina's legendary "Protection de Him'Lit" (owned — not equipped): a permanent,
     /// innate buff/debuff bundle applied to the protagonist at the start of every combat,
     /// narratively "a ward that wasn't quite meant for you" — +10 guard, +5% attack power,
-    /// +5% speed, -10% ATB tempo, -5% skill mana/charge cost.
+    /// +5% speed, -10% additional speed, -5% skill mana/charge cost.
     /// </summary>
     private static void ApplyHimLitProtection(Combatant protagonist)
     {
@@ -981,8 +865,8 @@ public sealed class CombatFactory : ICombatFactory
         protagonist.ApplyStatusEffect(CombatStatusEffect.Create(
             key: "himlit-protection:tempo", displayName: DisplayName,
             kind: StatusEffectKind.StatModifier, currentTick: 0, durationTicks: 0,
-            magnitude: -10, stat: CombatStat.AtbTempoModifier,
-            isPermanent: true));
+            magnitude: -10, stat: CombatStat.Speed,
+            isMagnitudePercentOfBaseStat: true, isPermanent: true));
 
         protagonist.ApplyStatusEffect(CombatStatusEffect.Create(
             key: "himlit-protection:cost", displayName: DisplayName,

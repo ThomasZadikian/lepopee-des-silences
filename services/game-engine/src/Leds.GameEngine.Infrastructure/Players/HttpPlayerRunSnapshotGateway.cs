@@ -52,7 +52,6 @@ public sealed class HttpPlayerRunSnapshotGateway : IPlayerRunSnapshotGateway
                             StartingGuard: c.Stats.StartingGuard,
                             Speed: c.Stats.Speed,
                             Initiative: c.Stats.Initiative,
-                            Recovery: c.Stats.Recovery,
                             Focus: c.Stats.Focus,
                             Mana: c.Stats.Mana,
                             Charge: c.Stats.Charge,
@@ -65,7 +64,6 @@ public sealed class HttpPlayerRunSnapshotGateway : IPlayerRunSnapshotGateway
                             StartingGuard: 0,
                             Speed: 10,
                             Initiative: 10,
-                            Recovery: 5,
                             Focus: 0,
                             Mana: c.BaseMana,
                             Charge: c.BaseCharge);
@@ -125,7 +123,6 @@ public sealed class HttpPlayerRunSnapshotGateway : IPlayerRunSnapshotGateway
         int StartingGuard,
         int Speed,
         int Initiative,
-        int Recovery,
         int Focus,
         int Mana,
         int Charge,

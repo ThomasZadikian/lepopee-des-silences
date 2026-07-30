@@ -1,9 +1,13 @@
+using Leds.Player.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
 namespace Leds.Player.Infrastructure.Persistence.Migrations;
 
+[DbContext(typeof(PlayerDbContext))]
+[Migration("20260730193000_AddTypedEquipmentSlots")]
 public partial class AddTypedEquipmentSlots : Migration
 {
     protected override void Up(MigrationBuilder migrationBuilder)

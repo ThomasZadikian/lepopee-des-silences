@@ -16,6 +16,6 @@ public interface ITacticalCombatFactory
         CombatRoster roster,
         Room room,
         NodeId nodeId,
-        RunId runId,
+        Run run,
         DateTime createdAtUtc);
 }

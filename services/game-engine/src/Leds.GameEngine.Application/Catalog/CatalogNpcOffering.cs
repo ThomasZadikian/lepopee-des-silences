@@ -18,7 +18,6 @@ public sealed record CatalogCompanionKit(
     int StartingGuard,
     int Speed,
     int Initiative,
-    int Recovery,
     int Focus,
     int Mana,
     int Charge,

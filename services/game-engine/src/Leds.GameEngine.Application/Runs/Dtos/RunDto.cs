@@ -67,7 +67,7 @@ public sealed record RunDto(
                 .Where(indicator => !indicator.IsExpired)
                 .Select(PalacePublicIndicatorDto.FromDomain)
                 .ToArray();
-        var currentRoomDto = RoomDto.FromDomain(run.CurrentRoom, run.RunModifiers);
+        var currentRoomDto = RoomDto.FromDomain(run.CurrentRoom, run.RunModifiers, run.GroundItems);
 
         return new RunDto(
             run.Id.Value,

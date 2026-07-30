@@ -1,4 +1,6 @@
 using Leds.GameEngine.Domain.Common;
+using Leds.GameEngine.Domain.Combats.StatusEffects;
+using Leds.GameEngine.Domain.Combats.Typing;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
@@ -11,9 +13,8 @@ namespace Leds.GameEngine.Domain.Combats.Tactical;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Frère de <see cref="Combat"/>, pas héritier (cf. SFD v2, §2). Les deux implémentent
-/// <see cref="ICombatContext"/> pour que le noyau de résolution — dégâts, statuts, DoT, lois —
-/// serve les deux sans rien connaître de leur ordonnancement.
+/// Implémente <see cref="ICombatContext"/> afin que le noyau de résolution — dégâts,
+/// statuts, DoT et Lois — reste indépendant de l’interface et de la persistance.
 /// </para>
 /// <para>
 /// Ce que cet agrégat ne fait pas, volontairement : pas de jauge, pas de tempo, pas de momentum,
@@ -29,7 +30,11 @@ public sealed class TacticalCombat : ICombatContext
     private readonly Dictionary<Guid, TacticalFacing> _facings;
     private readonly Dictionary<Guid, TacticalTurnState> _turnStates = new();
     private readonly Dictionary<(Guid CombatantId, string SkillKey), int> _skillCooldowns = new();
+    private readonly Dictionary<Guid, int> _activationCounts = new();
+    private readonly Dictionary<Guid, bool> _lastActivationUsedMagic = new();
+    private readonly HashSet<Guid> _cannotRevive = [];
     private readonly HashSet<string> _usedOnceSkillKeys = new(StringComparer.Ordinal);
+    private readonly Dictionary<Guid, HashSet<string>> _equippedItemKeys;
     private List<Guid> _initiativeOrder = [];
     private int _activeIndex;
 
@@ -43,7 +48,10 @@ public sealed class TacticalCombat : ICombatContext
         List<Combatant> enemies,
         Dictionary<Guid, GridPosition> positions,
         DateTime createdAtUtc,
-        Dictionary<Guid, TacticalFacing>? facings = null)
+        Dictionary<Guid, TacticalFacing>? facings = null,
+        GridPosition? escapePosition = null,
+        RiskTier riskTier = RiskTier.Calme,
+        IReadOnlyDictionary<Guid, IReadOnlyCollection<string>>? equippedItemKeys = null)
     {
         Id = id;
         RunId = runId;
@@ -54,7 +62,19 @@ public sealed class TacticalCombat : ICombatContext
         _enemies = enemies;
         _positions = positions;
         _facings = facings ?? positions.Keys.ToDictionary(id => id, _ => TacticalFacing.South);
+        foreach (var combatantId in positions.Keys)
+        {
+            _activationCounts[combatantId] = 0;
+            _lastActivationUsedMagic[combatantId] = false;
+        }
         CreatedAtUtc = createdAtUtc;
+        EscapePosition = escapePosition;
+        RiskTier = riskTier;
+        _equippedItemKeys = (equippedItemKeys
+                ?? new Dictionary<Guid, IReadOnlyCollection<string>>())
+            .ToDictionary(
+                pair => pair.Key,
+                pair => pair.Value.ToHashSet(StringComparer.OrdinalIgnoreCase));
         Status = CombatStatus.Active;
         RoundNumber = 1;
 
@@ -91,6 +111,22 @@ public sealed class TacticalCombat : ICombatContext
 
     public bool HasLivingAllies => _allies.Any(a => !a.IsDefeated);
     public bool HasLivingEnemies => _enemies.Any(e => !e.IsDefeated);
+    public GridPosition? EscapePosition { get; }
+    public bool CanEscape => EscapePosition.HasValue && Status == CombatStatus.Active;
+    public RiskTier RiskTier { get; }
+    public IReadOnlyDictionary<Guid, IReadOnlyCollection<string>> EquippedItemKeys =>
+        _equippedItemKeys.ToDictionary(
+            pair => pair.Key,
+            pair => (IReadOnlyCollection<string>)pair.Value.ToArray());
+
+    public bool HasEquippedItem(Guid combatantId, string itemKey) =>
+        _equippedItemKeys.TryGetValue(combatantId, out var keys)
+        && keys.Contains(itemKey);
+    public IReadOnlyDictionary<Guid, int> ActivationCounts => _activationCounts;
+    public IReadOnlyDictionary<Guid, bool> LastActivationUsedMagic => _lastActivationUsedMagic;
+    public IReadOnlySet<Guid> CannotRevive => _cannotRevive;
+    public int StatusClockFor(Guid combatantId) =>
+        _activationCounts.GetValueOrDefault(combatantId) * CombatTime.TicksPerTurn;
 
     //  Positions 
 
@@ -105,6 +141,7 @@ public sealed class TacticalCombat : ICombatContext
             .ToHashSet();
 
     public IReadOnlyDictionary<Guid, TacticalFacing> Facings => _facings;
+    public IReadOnlyDictionary<Guid, GridPosition> Positions => _positions;
 
     public TacticalFacing FacingOf(Guid combatantId) =>
         _facings.TryGetValue(combatantId, out var facing)
@@ -203,6 +240,9 @@ public sealed class TacticalCombat : ICombatContext
     public bool HasUsedOnceSkill(string skillKey) =>
         _usedOnceSkillKeys.Contains(skillKey);
 
+    public bool TryConsumeEquipmentTrigger(Guid combatantId, string triggerKey) =>
+        _usedOnceSkillKeys.Add($"equipment-trigger:{combatantId:N}:{triggerKey}");
+
     public int RemainingCooldown(Guid combatantId, string skillKey) =>
         _skillCooldowns.GetValueOrDefault((combatantId, skillKey), 0);
 
@@ -279,6 +319,8 @@ public sealed class TacticalCombat : ICombatContext
             ?? throw new DomainException("Only an ally from this combat can be revived.");
         if (!ally.IsDefeated)
             throw new DomainException("The selected ally is not defeated.");
+        if (_cannotRevive.Contains(defeatedAllyId))
+            throw new DomainException("This ally cannot be revived during this combat.");
 
         var origin = PositionOf(userId);
         var occupied = OccupiedCells();
@@ -314,11 +356,45 @@ public sealed class TacticalCombat : ICombatContext
     /// <param name="combatantId">L'ID du combattant vaincu.</param>
     public void OnCombatantDefeated(Guid combatantId)
     {
+        var wasActive = ActiveCombatantId == combatantId;
+        var defeated = RequireCombatant(combatantId);
+        if (HasEquippedItem(combatantId, "item.diapason-audela"))
+        {
+            _cannotRevive.Add(combatantId);
+            var recipientSide = defeated.Side;
+            foreach (var ally in AllCombatants.Where(combatant =>
+                         !combatant.IsDefeated && combatant.Side == recipientSide))
+            {
+                foreach (var stat in new[]
+                         {
+                             CombatStat.AttackPower,
+                             CombatStat.Defense,
+                             CombatStat.Speed,
+                             CombatStat.Movement,
+                             CombatStat.Focus,
+                             CombatStat.MagicAttack,
+                             CombatStat.MagicDefense
+                         })
+                {
+                    ally.ApplyStatusEffect(CombatStatusEffect.Create(
+                        $"equipment.diapason-audela.{stat}",
+                        "Résonance de l’au-delà",
+                        StatusEffectKind.StatModifier,
+                        StatusClockFor(ally.Id.Value),
+                        1,
+                        magnitude: 10,
+                        stat: stat,
+                        isMagnitudePercentOfBaseStat: true,
+                        isPermanent: true));
+                }
+            }
+        }
+
         // Retirer le combattant de l'ordre d'initiative
         _initiativeOrder.Remove(combatantId);
 
         // Si c'était le combattant actif, avancer au suivant
-        if (ActiveCombatantId == combatantId)
+        if (wasActive)
         {
             AdvanceToNextCombatant();
         }
@@ -373,7 +449,6 @@ public sealed class TacticalCombat : ICombatContext
     private void BeginNextRound()
     {
         RoundNumber++;
-        CurrentTick += CombatTime.TicksPerTurn;
         _turnStates.Clear();
         RebuildInitiativeOrder();
         BeginActiveActivation();
@@ -383,6 +458,9 @@ public sealed class TacticalCombat : ICombatContext
     {
         if (ActiveCombatantId is not { } combatantId)
             return;
+
+        _activationCounts[combatantId] = _activationCounts.GetValueOrDefault(combatantId) + 1;
+        CurrentTick++;
 
         foreach (var key in _skillCooldowns.Keys
                      .Where(key => key.CombatantId == combatantId)
@@ -396,10 +474,180 @@ public sealed class TacticalCombat : ICombatContext
         }
 
         var combatant = RequireCombatant(combatantId);
+        var speedsBefore = CaptureEffectiveSpeeds();
+        var wasAlive = !combatant.IsDefeated;
+        var statusTicks = combatant.TickStatusEffects(StatusClockFor(combatantId));
+        AwardPeriodicCharge(combatant, statusTicks, wasAlive);
+        if (combatant.IsDefeated)
+        {
+            RegisterCombatantDefeated();
+            OnCombatantDefeated(combatantId);
+            CompleteIfAllEnemiesDefeated();
+            FailIfAllAlliesDefeated();
+            return;
+        }
+
+        if (HaveEffectiveSpeedsChanged(speedsBefore))
+        {
+            _turnStates.Clear();
+            RebuildInitiativeOrder();
+            BeginActiveActivation();
+            return;
+        }
+
+        if (HasEquippedItem(combatantId, "item.gants-service-muet")
+            && !_lastActivationUsedMagic.GetValueOrDefault(combatantId))
+        {
+            combatant.ApplyStatusEffect(CombatStatusEffect.Create(
+                "equipment.gants-service-muet.conditional-defense",
+                "Service muet",
+                StatusEffectKind.StatModifier,
+                StatusClockFor(combatantId),
+                CombatTime.TicksPerTurn,
+                magnitude: 10,
+                stat: CombatStat.Defense,
+                isMagnitudePercentOfBaseStat: true));
+        }
+        _lastActivationUsedMagic[combatantId] = false;
+
         if (!combatant.IsDefeated && combatant.MaxMana != int.MaxValue)
         {
             var regenerated = Math.Max(1, (int)Math.Floor(combatant.MaxMana * 0.05));
             combatant.GainMana(regenerated);
+        }
+
+        ApplyMetronomeIfActive();
+        ApplyFalaiseWindIfActive();
+
+        if (Status == CombatStatus.Active
+            && ActiveCombatantId == combatantId
+            && combatant.IsActivationBlocked)
+        {
+            ConsumeBasicAttackRestriction();
+            MarkActiveCombatantActed();
+            AdvanceToNextCombatant();
+        }
+    }
+
+    private void ApplyMetronomeIfActive()
+    {
+        if (CurrentTick % 5 != 0
+            || !_allies.Any(ally =>
+                !ally.IsDefeated
+                && HasEquippedItem(ally.Id.Value, "item.metronome-choeur")))
+        {
+            return;
+        }
+
+        var target = _enemies
+            .Where(enemy => !enemy.IsDefeated)
+            .OrderByDescending(enemy => enemy.EffectiveSpeed)
+            .ThenBy(enemy => enemy.Id.Value)
+            .FirstOrDefault();
+        if (target is null)
+            return;
+
+        target.ApplyStatusEffect(CombatStatusEffect.Create(
+            "equipment.metronome-choeur.silence",
+            "Silence du métronome",
+            StatusEffectKind.Silence,
+            StatusClockFor(target.Id.Value),
+            CombatTime.TicksPerTurn));
+    }
+
+    private void ApplyFalaiseWindIfActive()
+    {
+        if (!FalaiseWindEnabled
+            || DeterministicCombatRoll.UnitInterval(
+                $"falaise|{Id.Value:N}|{CurrentTick}") >= 0.10)
+        {
+            return;
+        }
+
+        var living = AllCombatants
+            .Where(candidate => !candidate.IsDefeated)
+            .OrderBy(candidate => candidate.Id.Value)
+            .ToArray();
+        if (living.Length == 0)
+            return;
+
+        var sample = DeterministicCombatRoll.UnitInterval(
+            $"falaise-cible|{Id.Value:N}|{CurrentTick}");
+        var pushed = living[Math.Min(living.Length - 1, (int)(sample * living.Length))];
+        var position = PositionOf(pushed.Id.Value);
+        var direction = new[]
+            {
+                (Dx: -1, Dy: 0, Distance: position.X),
+                (Dx: 1, Dy: 0, Distance: Battlefield.Width - 1 - position.X),
+                (Dx: 0, Dy: -1, Distance: position.Y),
+                (Dx: 0, Dy: 1, Distance: Battlefield.Height - 1 - position.Y)
+            }
+            .OrderBy(candidate => candidate.Distance)
+            .ThenBy(candidate => candidate.Dy)
+            .ThenBy(candidate => candidate.Dx)
+            .First();
+
+        ForceMove(pushed.Id.Value, direction.Dx, direction.Dy, 1);
+        if (!pushed.IsDefeated)
+            return;
+
+        RegisterCombatantDefeated();
+        OnCombatantDefeated(pushed.Id.Value);
+        CompleteIfAllEnemiesDefeated();
+        FailIfAllAlliesDefeated();
+    }
+
+    private void AwardPeriodicCharge(
+        Combatant holder,
+        IReadOnlyCollection<StatusTickEvent> ticks,
+        bool wasAlive)
+    {
+        foreach (var tick in ticks.Where(tick => !tick.Expired && tick.Amount > 0))
+        {
+            var sources = tick.StackSourceIds
+                .Where(sourceId => sourceId.HasValue && sourceId.Value != holder.Id.Value)
+                .Select(sourceId => sourceId!.Value)
+                .ToArray();
+
+            if (sources.Length > 0)
+            {
+                var total = 0.3m + (0.1m * Math.Max(0, tick.StackCount - 1));
+                foreach (var group in sources.GroupBy(sourceId => sourceId))
+                {
+                    var source = AllCombatants.FirstOrDefault(
+                        candidate => candidate.Id.Value == group.Key);
+                    if (source is null)
+                        continue;
+
+                    var share = Math.Round(
+                        total * group.Count() / tick.StackCount,
+                        1,
+                        MidpointRounding.AwayFromZero);
+                    source.GainCharge(share);
+                }
+            }
+
+            if (tick.Kind == StatusEffectKind.DamageOverTime
+                && !holder.IsDefeated)
+            {
+                holder.GainCharge(0.3m);
+            }
+        }
+
+        if (wasAlive && holder.IsDefeated)
+        {
+            var firstSourceId = ticks
+                .FirstOrDefault(tick =>
+                    !tick.Expired
+                    && tick.Amount > 0
+                    && tick.Kind == StatusEffectKind.DamageOverTime)
+                ?.FirstStackSourceId;
+            if (firstSourceId.HasValue)
+            {
+                AllCombatants.FirstOrDefault(candidate =>
+                        candidate.Id.Value == firstSourceId.Value)
+                    ?.GainCharge(0.3m);
+            }
         }
     }
 
@@ -439,7 +687,9 @@ public sealed class TacticalCombat : ICombatContext
         var reachable = TacticalMovement.ReachableCells(
             Battlefield,
             origin,
-            TacticalMovement.BudgetFor(combatant.EffectiveMovement),
+            TacticalMovement.BudgetFor(combatant.HasTacticalSlow
+                ? Math.Max(1, combatant.EffectiveMovement / 2)
+                : combatant.EffectiveMovement),
             occupied,
             traversableAllies);
 
@@ -452,12 +702,21 @@ public sealed class TacticalCombat : ICombatContext
             Battlefield,
             origin,
             destination,
-            TacticalMovement.BudgetFor(combatant.EffectiveMovement),
+            TacticalMovement.BudgetFor(combatant.HasTacticalSlow
+                ? Math.Max(1, combatant.EffectiveMovement / 2)
+                : combatant.EffectiveMovement),
             occupied,
             traversableAllies) ?? [destination];
 
         _positions[combatantId] = destination;
         _turnStates[combatantId] = state with { HasMoved = true };
+
+        // Une seule unité alliée vivante suffit à évacuer le groupe. La fuite est immédiate à
+        // l'arrivée : aucun ennemi ne reçoit un tour supplémentaire après que la sortie est
+        // atteinte.
+        if (combatant.Side == CombatantSide.Player && EscapePosition == destination)
+            Status = CombatStatus.Escaped;
+
         return new TacticalMoveResult(cost, path);
     }
 
@@ -559,6 +818,11 @@ public sealed class TacticalCombat : ICombatContext
             throw new DomainException("This combatant has already acted this turn.");
 
         _turnStates[combatantId] = state with { HasActed = true };
+        FindCombatant(combatantId).MarkActedThisCombat();
+        _lastActivationUsedMagic[combatantId] = string.Equals(
+            usedSkill?.Category,
+            "Magic",
+            StringComparison.OrdinalIgnoreCase);
 
         if (usedSkill is { Cooldown: > 0 })
             _skillCooldowns[(combatantId, usedSkill.Key)] = usedSkill.Cooldown;
@@ -606,6 +870,15 @@ public sealed class TacticalCombat : ICombatContext
 
     public bool LowHpDamageAmplificationEnabled { get; private init; }
     public bool HealingBlocked { get; private init; }
+    public bool PostDeathBasicAttackOnlyEnabled { get; private init; }
+    public bool NextActionRestrictedToBasicAttack { get; private set; }
+    public bool TapisPropreEnabled { get; private init; }
+    public bool ThirdCupHealCorruptionEnabled { get; private init; }
+    public bool FalaiseWindEnabled { get; private init; }
+    public bool PresentationsEnabled { get; private init; }
+    public bool MiroirEnabled { get; private init; }
+    public bool HasMirrorTriggered { get; private set; }
+    public string? ForgottenSkillKey { get; private init; }
     public bool DuelDamageAsymmetryEnabled { get; private init; }
     public int DotMagnitudeBonus { get; private init; }
     public int DotDurationExtensionTicks { get; private init; }
@@ -621,7 +894,7 @@ public sealed class TacticalCombat : ICombatContext
     public bool RegisterLandedHit()
     {
         HitCounter++;
-        return HitCounterDoubleDamageEnabled && HitCounter % Combat.HitCounterTrigger == 0;
+        return HitCounterDoubleDamageEnabled && HitCounter % CombatRules.HitCounterTrigger == 0;
     }
 
     public bool TryConsumeFirstHitCritical()
@@ -634,39 +907,52 @@ public sealed class TacticalCombat : ICombatContext
     }
 
     /// <inheritdoc />
-    /// <remarks>
-    /// « Loi de l'Éloge Funèbre » — pas encore portée au tactique. Elle arme la restriction du
-    /// <i>prochain agissant</i>, notion qui dépend de l'ordonnancement : en ATB c'est celui dont
-    /// la jauge se remplit, ici ce serait le suivant dans l'initiative. Câbler la mécanique sans
-    /// avoir tranché ce point produirait une règle qui diffère silencieusement d'un mode à
-    /// l'autre.
-    /// </remarks>
+    /// <remarks>Arme la restriction du prochain combattant dans l'ordre d'initiative.</remarks>
     public void RegisterCombatantDefeated()
     {
-        // Volontairement sans effet — voir la remarque.
+        if (PostDeathBasicAttackOnlyEnabled)
+            NextActionRestrictedToBasicAttack = true;
     }
 
-    /// <inheritdoc />
-    /// <remarks>« Loi de la Troisième Tasse » — même statut que ci-dessus, en attente.</remarks>
+    public void ConsumeBasicAttackRestriction() =>
+        NextActionRestrictedToBasicAttack = false;
+
+    public bool TryConsumeMirrorTrigger(Combatant caster)
+    {
+        if (!MiroirEnabled || HasMirrorTriggered || caster.Side != CombatantSide.Player)
+            return false;
+
+        HasMirrorTriggered = true;
+        return true;
+    }
+
+    public Combatant? GetFastestLivingEnemy() => _enemies
+        .Where(enemy => !enemy.IsDefeated)
+        .OrderByDescending(enemy => enemy.EffectiveSpeed)
+        .ThenBy(enemy => enemy.Id.Value)
+        .FirstOrDefault();
+
     public (int HealAmount, bool Triggered) ApplyThirdCupRollIfActive(Combatant target, int healAmount)
-        => (healAmount, false);
-
-    /// <inheritdoc />
-    /// <remarks>
-    /// Sans objet : l'ordre de tour est fixe. Il n'y a pas de jauge à repousser, et retirer son
-    /// tour à une cible serait une mécanique bien plus violente qu'en ATB — à concevoir comme
-    /// telle si on la veut, pas à hériter par accident.
-    /// </remarks>
-    public void InterruptAction(Guid targetId)
     {
-        // Volontairement sans effet — voir la remarque.
-    }
+        if (!ThirdCupHealCorruptionEnabled)
+            return (healAmount, false);
 
-    /// <inheritdoc />
-    /// <remarks>Sans objet : le momentum accélère une reprise de main, notion propre au tempo ATB.</remarks>
-    public void AwardTempoMomentum(Combatant combatant, int amountPerMille)
-    {
-        // Volontairement sans effet — voir la remarque.
+        var seed = $"troisieme-tasse|{Id.Value:N}|{target.Id.Value:N}|{CurrentTick}";
+        if (DeterministicCombatRoll.UnitInterval(seed) >= 0.10)
+            return (healAmount, false);
+
+        target.ApplyStatusEffect(CombatStatusEffect.Create(
+            "troisieme-tasse-poison",
+            "Poison léger (Troisième Tasse)",
+            StatusEffectKind.DamageOverTime,
+            StatusClockFor(target.Id.Value),
+            CombatTime.TicksPerTurn * 4,
+            magnitude: 3,
+            tickInterval: CombatTime.TicksPerTurn));
+
+        return (Math.Max(
+            1,
+            (int)Math.Round(healAmount * 0.5, MidpointRounding.AwayFromZero)), true);
     }
 
     //  Fabrique 
@@ -686,7 +972,17 @@ public sealed class TacticalCombat : ICombatContext
         int dotDurationExtensionTicks = 0,
         bool duelDamageAsymmetryEnabled = false,
         int dotMagnitudeBonus = 0,
-        bool healingBlocked = false)
+        bool healingBlocked = false,
+        bool postDeathBasicAttackOnlyEnabled = false,
+        bool tapisPropreEnabled = false,
+        bool thirdCupHealCorruptionEnabled = false,
+        GridPosition? escapePosition = null,
+        RiskTier riskTier = RiskTier.Calme,
+        IReadOnlyDictionary<Guid, IReadOnlyCollection<string>>? equippedItemKeys = null,
+        bool falaiseWindEnabled = false,
+        bool presentationsEnabled = false,
+        bool miroirEnabled = false,
+        string? forgottenSkillKey = null)
     {
         ArgumentNullException.ThrowIfNull(battlefield);
 
@@ -718,7 +1014,10 @@ public sealed class TacticalCombat : ICombatContext
             [.. allies.Select(a => a.Combatant)],
             [.. enemies.Select(e => e.Combatant)],
             positions,
-            createdAtUtc)
+            createdAtUtc,
+            escapePosition: escapePosition,
+            riskTier: riskTier,
+            equippedItemKeys: equippedItemKeys)
         {
             HitCounterDoubleDamageEnabled = hitCounterDoubleDamageEnabled,
             FirstHitCriticalEnabled = firstHitCriticalEnabled,
@@ -727,6 +1026,13 @@ public sealed class TacticalCombat : ICombatContext
             DuelDamageAsymmetryEnabled = duelDamageAsymmetryEnabled,
             DotMagnitudeBonus = dotMagnitudeBonus,
             HealingBlocked = healingBlocked,
+            PostDeathBasicAttackOnlyEnabled = postDeathBasicAttackOnlyEnabled,
+            TapisPropreEnabled = tapisPropreEnabled,
+            ThirdCupHealCorruptionEnabled = thirdCupHealCorruptionEnabled,
+            FalaiseWindEnabled = falaiseWindEnabled,
+            PresentationsEnabled = presentationsEnabled,
+            MiroirEnabled = miroirEnabled,
+            ForgottenSkillKey = forgottenSkillKey,
         };
         combat.OrientInitialFormations();
         combat.BeginActiveActivation();
@@ -764,12 +1070,27 @@ public sealed class TacticalCombat : ICombatContext
         bool duelDamageAsymmetryEnabled = false,
         int dotMagnitudeBonus = 0,
         bool healingBlocked = false,
+        bool postDeathBasicAttackOnlyEnabled = false,
+        bool nextActionRestrictedToBasicAttack = false,
+        bool tapisPropreEnabled = false,
+        bool thirdCupHealCorruptionEnabled = false,
         int hitCounter = 0,
         bool hasFirstHitLanded = false,
         int currentTick = 0,
         IEnumerable<string>? usedOnceSkillKeys = null,
         IReadOnlyDictionary<Guid, TacticalFacing>? facings = null,
-        IReadOnlyDictionary<(Guid CombatantId, string SkillKey), int>? skillCooldowns = null)
+        IReadOnlyDictionary<(Guid CombatantId, string SkillKey), int>? skillCooldowns = null,
+        GridPosition? escapePosition = null,
+        RiskTier riskTier = RiskTier.Calme,
+        IReadOnlyDictionary<Guid, IReadOnlyCollection<string>>? equippedItemKeys = null,
+        IReadOnlyDictionary<Guid, int>? activationCounts = null,
+        IReadOnlyDictionary<Guid, bool>? lastActivationUsedMagic = null,
+        IReadOnlyCollection<Guid>? cannotRevive = null,
+        bool falaiseWindEnabled = false,
+        bool presentationsEnabled = false,
+        bool miroirEnabled = false,
+        bool hasMirrorTriggered = false,
+        string? forgottenSkillKey = null)
     {
         ArgumentNullException.ThrowIfNull(battlefield);
         ArgumentNullException.ThrowIfNull(positions);
@@ -781,7 +1102,10 @@ public sealed class TacticalCombat : ICombatContext
             [.. allies], [.. enemies],
             positions.ToDictionary(p => p.Key, p => p.Value),
             createdAtUtc,
-            facings?.ToDictionary(pair => pair.Key, pair => pair.Value))
+            facings?.ToDictionary(pair => pair.Key, pair => pair.Value),
+            escapePosition,
+            riskTier,
+            equippedItemKeys)
         {
             Status = status,
             RoundNumber = roundNumber,
@@ -792,6 +1116,15 @@ public sealed class TacticalCombat : ICombatContext
             DuelDamageAsymmetryEnabled = duelDamageAsymmetryEnabled,
             DotMagnitudeBonus = dotMagnitudeBonus,
             HealingBlocked = healingBlocked,
+            PostDeathBasicAttackOnlyEnabled = postDeathBasicAttackOnlyEnabled,
+            NextActionRestrictedToBasicAttack = nextActionRestrictedToBasicAttack,
+            TapisPropreEnabled = tapisPropreEnabled,
+            ThirdCupHealCorruptionEnabled = thirdCupHealCorruptionEnabled,
+            FalaiseWindEnabled = falaiseWindEnabled,
+            PresentationsEnabled = presentationsEnabled,
+            MiroirEnabled = miroirEnabled,
+            HasMirrorTriggered = hasMirrorTriggered,
+            ForgottenSkillKey = forgottenSkillKey,
             HitCounter = hitCounter,
             HasFirstHitLanded = hasFirstHitLanded,
             CurrentTick = currentTick,
@@ -817,6 +1150,18 @@ public sealed class TacticalCombat : ICombatContext
             if (remaining > 0)
                 combat._skillCooldowns[key] = remaining;
         }
+
+        foreach (var combatantId in combat._positions.Keys)
+        {
+            combat._activationCounts[combatantId] = Math.Max(
+                0,
+                activationCounts?.GetValueOrDefault(combatantId) ?? 0);
+            combat._lastActivationUsedMagic[combatantId] =
+                lastActivationUsedMagic?.GetValueOrDefault(combatantId) ?? false;
+        }
+
+        foreach (var combatantId in cannotRevive ?? [])
+            combat._cannotRevive.Add(combatantId);
 
         return combat;
     }

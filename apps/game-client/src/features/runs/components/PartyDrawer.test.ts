@@ -109,15 +109,15 @@ describe('PartyDrawer', () => {
     expect(wrapper.text()).toContain('10');
   });
 
-  it('shows PP stat when mana > 0', () => {
+  it('shows Mana stat when mana > 0', () => {
     const wrapper = mountDrawer([baseAlly]);
-    expect(wrapper.text()).toContain('PP');
+    expect(wrapper.text()).toContain('Mana');
     expect(wrapper.text()).toContain('5');
   });
 
-  it('shows PP stat even when mana is 0 (a core resource, not a transient buff)', () => {
+  it('shows Mana stat even when mana is 0 (a core resource, not a transient buff)', () => {
     const wrapper = mountDrawer([{ ...baseAlly, mana: 0 }]);
-    expect(wrapper.text()).toContain('PP');
+    expect(wrapper.text()).toContain('Mana');
   });
 
   it('shows charge stat when charge > 0', () => {

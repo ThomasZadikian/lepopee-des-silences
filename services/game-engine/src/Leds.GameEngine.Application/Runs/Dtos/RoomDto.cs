@@ -29,7 +29,10 @@ public sealed record RoomDto(
     string? CatalogNarrative = null,
     RoomGridDto? Grid = null)
 {
-    public static RoomDto FromDomain(Room room, IReadOnlyCollection<RunModifier>? runModifiers = null)
+    public static RoomDto FromDomain(
+        Room room,
+        IReadOnlyCollection<RunModifier>? runModifiers = null,
+        IReadOnlyCollection<RunItem>? groundItems = null)
     {
         var activeClimate = ResolveActiveClimate(room, runModifiers ?? []);
 
@@ -65,7 +68,14 @@ public sealed record RoomDto(
             room.CatalogBinding?.Key,
             room.CatalogBinding?.DisplayName,
             room.CatalogBinding?.NarrativeText,
-            RoomGridDto.FromDomain(room.Grid, room.CanChallengeBossRemotely, room.CanSearchAtPartyPosition, room.HintCells));
+            RoomGridDto.FromDomain(
+                room.Grid,
+                room.CanChallengeBossRemotely,
+                room.CanSearchAtPartyPosition,
+                room.HintCells,
+                (groundItems ?? [])
+                    .Where(item => item.GroundRoomId == room.Id.Value)
+                    .ToArray()));
     }
 
     private static string? ResolveActiveClimate(
@@ -123,13 +133,15 @@ public sealed record RoomGridDto(
     // player is meant to see that a slab rings hollow and choose whether to spend budget
     // finding out what is under it. Withholding the position entirely (as this DTO first did)
     // left nothing to notice, so nothing could motivate a search.
-    IReadOnlyCollection<int[]> HintCells)
+    IReadOnlyCollection<int[]> HintCells,
+    IReadOnlyCollection<GroundItemDto> GroundItems)
 {
     public static RoomGridDto FromDomain(
         RoomGrid grid,
         bool canChallengeBossRemotely,
         bool canSearch,
-        IReadOnlyCollection<(int X, int Y)> hintCells)
+        IReadOnlyCollection<(int X, int Y)> hintCells,
+        IReadOnlyCollection<RunItem> groundItems)
     {
         return new RoomGridDto(
             grid.Width,
@@ -144,8 +156,28 @@ public sealed record RoomGridDto(
             grid.Obstacles.Select(cell => new[] { cell.X, cell.Y }).ToArray(),
             grid.FloorMask.ToArray(),
             canSearch,
-            hintCells.Select(cell => new[] { cell.X, cell.Y }).ToArray());
+            hintCells.Select(cell => new[] { cell.X, cell.Y }).ToArray(),
+            groundItems.Select(GroundItemDto.FromDomain).ToArray());
     }
+}
+
+public sealed record GroundItemDto(
+    Guid Id,
+    string DefinitionKey,
+    string DisplayName,
+    string Rarity,
+    int Quantity,
+    int X,
+    int Y)
+{
+    public static GroundItemDto FromDomain(RunItem item) => new(
+        item.Id.Value,
+        item.DefinitionKey,
+        item.DisplayName,
+        item.Rarity.ToString(),
+        item.Quantity,
+        item.GroundX!.Value,
+        item.GroundY!.Value);
 }
 
 public sealed record PalaceRoomStateDto(

@@ -29,7 +29,6 @@ public sealed class SkillDefinitionEntity
     public int Accuracy { get; set; } = 100;
     public int ActionCost { get; set; } = 10;
     public int CastTime { get; set; }
-    public int RecoveryTime { get; set; }
     public int Cooldown { get; set; }
     public int TacticalRange { get; set; } = 1;
     public string TacticalAreaShape { get; set; } = "Single";

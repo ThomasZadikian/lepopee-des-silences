@@ -7,9 +7,8 @@ export const statLabels: Record<PlayerStatKind, string> = {
   StartingGuard: 'Garde initiale',
   Speed:         'Vitesse',
   Initiative:    'Initiative',
-  Recovery:      'Récupération',
   Focus:         'Focus',
-  Mana:          'PP (Mana)',
+  Mana:          'Mana',
   Charge:        'Charge',
   MagicAttack:   'Attaque magique',
   MagicDefense:  'Défense magique',
@@ -24,7 +23,6 @@ export const statValueKeys: Record<PlayerStatKind, keyof PlayerCharacterStatsVie
   StartingGuard: 'startingGuard',
   Speed:         'speed',
   Initiative:    'initiative',
-  Recovery:      'recovery',
   Focus:         'focus',
   Mana:          'mana',
   Charge:        'charge',
@@ -39,7 +37,6 @@ export const statDescriptions: Record<PlayerStatKind, string> = {
   StartingGuard: "Garde initiale accordée en début de combat, absorbée avant que les dégâts n'atteignent vos points de vie.",
   Speed:         "Détermine votre place dans l'ordre d'initiative de chaque round.",
   Initiative:    'Avantage de départ qui départage les combattants de même vitesse.',
-  Recovery:      'Améliore votre résistance aux effets qui retardent ou entravent vos actions.',
   Focus:         'Augmente vos chances de coup critique.',
   Mana:          'Réserve d\'énergie consommée pour lancer la plupart des sorts.',
   Charge:        'Réserve consommée par certains sorts puissants nécessitant une charge préalable.',
@@ -52,7 +49,7 @@ export function statValue(stats: PlayerCharacterStatsView | undefined, stat: Pla
 }
 
 // Mirrors PlayerCharacterStatBlock.WithIncrementedStat (services/player) — Vitality
-// and PP/Mana grant a bigger jump per point than the other stats.
+// and Mana grant a bigger jump per point than the other stats.
 export const statPointIncrements: Record<PlayerStatKind, number> = {
   MaxVitality:   10,
   AttackPower:   1,
@@ -60,7 +57,6 @@ export const statPointIncrements: Record<PlayerStatKind, number> = {
   StartingGuard: 1,
   Speed:         1,
   Initiative:    1,
-  Recovery:      1,
   Focus:         1,
   Mana:          5,
   Charge:        1,
@@ -79,7 +75,6 @@ export const statRadarMax: Record<PlayerStatKind, number> = {
   StartingGuard: 30,
   Speed:         40,
   Initiative:    40,
-  Recovery:      35,
   Focus:         30,
   Mana:          150,
   Charge:        30,

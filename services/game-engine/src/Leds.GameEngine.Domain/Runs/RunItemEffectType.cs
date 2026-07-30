@@ -14,7 +14,7 @@ public enum RunItemEffectType
     // (e.g. Rêve d'Erina: +5% team Speed). EffectAmount is a whole percentage.
     TeamSpeedBonus = 8,
     // Restores the same whole percentage of both max Vitality and max Mana at
-    // once (e.g. Majordome's Tasse de thé: 35% PV + 35% PP). EffectAmount is
+    // once (e.g. Majordome's Tasse de thé: 35% PV + 35% Mana). EffectAmount is
     // that shared percentage.
     HealAndManaRestorePercent = 9,
 

@@ -19,15 +19,7 @@ public sealed class CombatantRuntimeStateEntityConfiguration : IEntityTypeConfig
         builder.Property(e => e.CurrentFocus).HasColumnName("current_focus").IsRequired();
         builder.Property(e => e.CurrentMana).HasColumnName("current_mana").IsRequired();
         builder.Property(e => e.MaxMana).HasColumnName("max_mana").HasDefaultValue(int.MaxValue).IsRequired();
-        builder.Property(e => e.CurrentCharge).HasColumnName("current_charge").IsRequired();
-        // Legacy CLR members remain temporarily readable by the old aggregate mapper,
-        // but are no longer part of the canonical tactical persistence model.
-        builder.Ignore(e => e.AtbGaugeValue);
-        builder.Ignore(e => e.ActionRecoveryUntilTick);
-        builder.Ignore(e => e.AtbFillPerTick);
-        builder.Ignore(e => e.AtbTempoRoomFactorPerMille);
-        builder.Ignore(e => e.AtbTempoCombatantFactorPerMille);
-        builder.Property(e => e.TempoMomentumPerMille).HasColumnName("tempo_momentum_per_mille").HasDefaultValue(0).IsRequired();
+        builder.Property(e => e.CurrentCharge).HasColumnName("current_charge").HasPrecision(4, 1).IsRequired();
         builder.Property(e => e.ThreatValue).HasColumnName("threat_value").HasDefaultValue(0d).IsRequired();
         builder.Property(e => e.LastAttackerId).HasColumnName("last_attacker_id");
         builder.Property(e => e.TookPowerfulHitSinceLastAction)

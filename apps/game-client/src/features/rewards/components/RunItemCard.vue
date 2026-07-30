@@ -36,7 +36,7 @@ function effectLabel(effectType: string, effectAmount: number): string {
     case 'ChargeRestore':     return `+${effectAmount} Charge`;
     case 'NextCombatGuard':   return `+${effectAmount} Garde (prochain combat)`;
     case 'NarrativeFragment': return 'Fragment narratif';
-    case 'HealAndManaRestorePercent': return `+${effectAmount}% PV et PP`;
+    case 'HealAndManaRestorePercent': return `+${effectAmount}% Vitalité et Mana`;
     default:                  return '';
   }
 }

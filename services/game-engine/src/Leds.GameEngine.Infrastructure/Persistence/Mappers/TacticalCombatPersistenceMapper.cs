@@ -13,20 +13,12 @@ namespace Leds.GameEngine.Infrastructure.Persistence.Mappers;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Les combattants passent par <see cref="CombatPersistenceMapper"/> sans rien de spécifique :
-/// ce sont exactement les mêmes objets qu'en ATB, avec les mêmes stats et les mêmes statuts.
-/// Seul ce qui est propre au déroulé tactique — terrain, positions, ordre d'initiative, état de
-/// tour — est sérialisé ici.
-/// </para>
-/// <para>
 /// Format CSV plutôt que tables jointes, par cohérence avec <c>RoomGrid</c> côté exploration :
 /// un combat est toujours chargé en entier avec son agrégat, jamais interrogé par morceaux.
 /// </para>
 /// </remarks>
 public static class TacticalCombatPersistenceMapper
 {
-    public const string KindDiscriminator = "Tactical";
-
     public static CombatEntity ToEntity(TacticalCombat combat, Guid runId)
     {
         ArgumentNullException.ThrowIfNull(combat);
@@ -57,10 +49,8 @@ public static class TacticalCombatPersistenceMapper
             RunId = runId,
             RoomId = combat.RoomId.Value,
             NodeId = combat.NodeId.Value,
-            Kind = KindDiscriminator,
             Status = combat.Status.ToString(),
 
-            // Les colonnes de tempo ATB n'ont pas de sens ici : le tactique compte en rounds.
             TurnNumber = combat.RoundNumber,
             CurrentTick = combat.CurrentTick,
 
@@ -73,6 +63,15 @@ public static class TacticalCombatPersistenceMapper
             DuelDamageAsymmetryEnabled = combat.DuelDamageAsymmetryEnabled,
             DotMagnitudeBonus = combat.DotMagnitudeBonus,
             HealingBlocked = combat.HealingBlocked,
+            PostDeathBasicAttackOnlyEnabled = combat.PostDeathBasicAttackOnlyEnabled,
+            NextActionRestrictedToBasicAttack = combat.NextActionRestrictedToBasicAttack,
+            TapisPropreEnabled = combat.TapisPropreEnabled,
+            ThirdCupHealCorruptionEnabled = combat.ThirdCupHealCorruptionEnabled,
+            FalaiseWindEnabled = combat.FalaiseWindEnabled,
+            PresentationsEnabled = combat.PresentationsEnabled,
+            MiroirEnabled = combat.MiroirEnabled,
+            HasMirrorTriggered = combat.HasMirrorTriggered,
+            ForgottenSkillKey = combat.ForgottenSkillKey,
 
             ActiveCombatantId = combat.ActiveCombatantId,
             CreatedAtUtc = combat.CreatedAtUtc,
@@ -102,6 +101,20 @@ public static class TacticalCombatPersistenceMapper
             TacticalSkillCooldownsCsv = string.Join(';', combat.Allies.Concat(combat.Enemies)
                 .SelectMany(c => combat.CooldownsOf(c.Id.Value)
                     .Select(pair => $"{c.Id.Value}:{pair.Key},{pair.Value}"))),
+            TacticalEscapeX = combat.EscapePosition?.X,
+            TacticalEscapeY = combat.EscapePosition?.Y,
+            TacticalRiskTier = combat.RiskTier.ToString(),
+            TacticalEquippedItemsCsv = string.Join(';', combat.EquippedItemKeys
+                .Where(pair => pair.Value.Count > 0)
+                .Select(pair => $"{pair.Key}:{string.Join(',', pair.Value)}")),
+            TacticalActivationCountsCsv = string.Join(
+                ';',
+                combat.ActivationCounts.Select(pair => $"{pair.Key}:{pair.Value}")),
+            TacticalLastMagicCsv = string.Join(
+                ';',
+                combat.LastActivationUsedMagic.Select(pair =>
+                    $"{pair.Key}:{(pair.Value ? 1 : 0)}")),
+            TacticalCannotReviveCsv = string.Join(';', combat.CannotRevive),
 
             Combatants = [.. combat.Allies.Concat(combat.Enemies)
                 .Select(c => CombatPersistenceMapper.ToEntity(c, combat.Id.Value))],
@@ -135,8 +148,7 @@ public static class TacticalCombatPersistenceMapper
 
         var combatants = entity.Combatants.Select(CombatPersistenceMapper.ToDomain).ToList();
 
-        // Même ordonnancement stable qu'en ATB : le protagoniste d'abord, pour que l'ordre
-        // d'affichage ne dépende pas de celui que la base a rendu.
+        // Ordonnancement stable pour que l'affichage ne dépende pas de celui rendu par la base.
         var allies = combatants
             .Where(c => c.Side == CombatantSide.Player)
             .OrderBy(c => string.Equals(c.SourceKey, "player.self", StringComparison.OrdinalIgnoreCase) ? 0 : 1)
@@ -171,12 +183,31 @@ public static class TacticalCombatPersistenceMapper
             entity.DuelDamageAsymmetryEnabled,
             entity.DotMagnitudeBonus,
             entity.HealingBlocked,
+            entity.PostDeathBasicAttackOnlyEnabled,
+            entity.NextActionRestrictedToBasicAttack,
+            entity.TapisPropreEnabled,
+            entity.ThirdCupHealCorruptionEnabled,
             entity.HitCounter,
             entity.HasFirstHitLanded,
             entity.CurrentTick,
             ParseStringList(entity.TacticalUsedOnceSkillKeysCsv),
             ParseFacings(entity.TacticalPositionsCsv),
-            ParseSkillCooldowns(entity.TacticalSkillCooldownsCsv));
+            ParseSkillCooldowns(entity.TacticalSkillCooldownsCsv),
+            entity.TacticalEscapeX.HasValue && entity.TacticalEscapeY.HasValue
+                ? new GridPosition(entity.TacticalEscapeX.Value, entity.TacticalEscapeY.Value)
+                : null,
+            string.IsNullOrWhiteSpace(entity.TacticalRiskTier)
+                ? RiskTier.Calme
+                : Enum.Parse<RiskTier>(entity.TacticalRiskTier),
+            ParseEquippedItems(entity.TacticalEquippedItemsCsv),
+            ParseActivationCounts(entity.TacticalActivationCountsCsv),
+            ParseBooleanMap(entity.TacticalLastMagicCsv),
+            ParseGuidList(entity.TacticalCannotReviveCsv),
+            entity.FalaiseWindEnabled,
+            entity.PresentationsEnabled,
+            entity.MiroirEnabled,
+            entity.HasMirrorTriggered,
+            entity.ForgottenSkillKey);
     }
 
     private static int[] ParseIntCsv(string? csv, int expectedLength)
@@ -266,6 +297,59 @@ public static class TacticalCombatPersistenceMapper
         }
 
         return cooldowns;
+    }
+
+    private static Dictionary<Guid, IReadOnlyCollection<string>> ParseEquippedItems(string? csv)
+    {
+        var items = new Dictionary<Guid, IReadOnlyCollection<string>>();
+        if (string.IsNullOrWhiteSpace(csv))
+            return items;
+
+        foreach (var entry in csv.Split(';', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var separator = entry.IndexOf(':');
+            if (separator <= 0)
+                continue;
+
+            items[Guid.Parse(entry[..separator])] = entry[(separator + 1)..]
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        }
+
+        return items;
+    }
+
+    private static Dictionary<Guid, int> ParseActivationCounts(string? csv)
+    {
+        var counts = new Dictionary<Guid, int>();
+        if (string.IsNullOrWhiteSpace(csv))
+            return counts;
+
+        foreach (var entry in csv.Split(';', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var separator = entry.IndexOf(':');
+            if (separator > 0)
+                counts[Guid.Parse(entry[..separator])] = int.Parse(
+                    entry[(separator + 1)..],
+                    CultureInfo.InvariantCulture);
+        }
+
+        return counts;
+    }
+
+    private static Dictionary<Guid, bool> ParseBooleanMap(string? csv)
+    {
+        var values = new Dictionary<Guid, bool>();
+        if (string.IsNullOrWhiteSpace(csv))
+            return values;
+
+        foreach (var entry in csv.Split(';', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var separator = entry.IndexOf(':');
+            if (separator > 0)
+                values[Guid.Parse(entry[..separator])] = entry[(separator + 1)..] == "1";
+        }
+
+        return values;
     }
 
     private static Dictionary<Guid, TacticalCombat.TacticalTurnState> ParseTurnStates(string? csv)

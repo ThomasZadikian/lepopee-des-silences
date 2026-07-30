@@ -31,17 +31,6 @@ public sealed class CombatEntity
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
 
-    /// <summary>
-    /// « Atb » ou « Tactical ». Discriminant du déroulé : les colonnes <c>Tactical*</c> ne sont
-    /// renseignées que pour le second, les colonnes ATB (tick, jauges) que pour le premier.
-    /// </summary>
-    /// <remarks>
-    /// Une seule table pour les deux systèmes, parce que tout ce qui compte vraiment — les
-    /// combattants et leur état — leur est commun et vit déjà dans <see cref="Combatants"/>.
-    /// Une table parallèle aurait dupliqué cette relation sans rien gagner.
-    /// </remarks>
-    public string Kind { get; set; } = "Tactical";
-
     public int? TacticalWidth { get; set; }
     public int? TacticalHeight { get; set; }
 
@@ -71,6 +60,13 @@ public sealed class CombatEntity
     /// <summary>Clés des compétences à usage unique déjà consommées, séparées par des points-virgules.</summary>
     public string? TacticalUsedOnceSkillKeysCsv { get; set; }
     public string? TacticalSkillCooldownsCsv { get; set; }
+    public int? TacticalEscapeX { get; set; }
+    public int? TacticalEscapeY { get; set; }
+    public string? TacticalRiskTier { get; set; }
+    public string? TacticalEquippedItemsCsv { get; set; }
+    public string? TacticalActivationCountsCsv { get; set; }
+    public string? TacticalLastMagicCsv { get; set; }
+    public string? TacticalCannotReviveCsv { get; set; }
 
     public RunEntity? Run { get; set; }
     public List<CombatantEntity> Combatants { get; set; } = [];

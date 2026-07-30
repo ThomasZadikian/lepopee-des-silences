@@ -22,10 +22,8 @@ using Leds.GameEngine.Domain.Markov;
 using Leds.GameEngine.Domain.Selection;
 using Leds.GameEngine.Infrastructure.Catalog;
 using Leds.GameEngine.Infrastructure.Combats;
-using Leds.GameEngine.Infrastructure.Combats.Actions;
 using Leds.GameEngine.Infrastructure.Combats.EncounterComposition;
 using Leds.GameEngine.Infrastructure.Combats.EncounterDrafts;
-using Leds.GameEngine.Infrastructure.Combats.Targeting;
 using Leds.GameEngine.Infrastructure.Events.Resolution;
 using Leds.GameEngine.Infrastructure.Generation;
 using Leds.GameEngine.Infrastructure.Generation.Psyche;
@@ -142,15 +140,11 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IEventContentResolutionStrategy, MerchantEventContentResolutionStrategy>();
         services.AddSingleton<IEventContentResolutionStrategy, RareEventContentResolutionStrategy>();
 
-        services.AddSingleton<ICombatInstanceFactory, CombatInstanceFactory>();
 
-        services.AddSingleton<ICombatTargetingRuleValidator, CombatTargetingRuleValidator>();
-        services.AddSingleton<ICombatSkillActionValidator, CombatSkillActionValidator>();
         services.AddSingleton<ICombatantTypeProfileProvider, EmotionalTypeProfileProvider>();
         services.AddSingleton<ICombatSkillEffectResolver, CombatSkillEffectResolver>();
         services.AddSingleton<Leds.GameEngine.Application.Combats.EnemyTurns.Ai.IEnemyActionPlanner,
             Leds.GameEngine.Application.Combats.EnemyTurns.Ai.UtilityEnemyActionPlanner>();
-        services.AddSingleton<IEnemyCombatTurnResolver, EnemyCombatTurnResolver>();
         RegisterCanonBossBehaviors(services);
         services.AddSingleton<IEncounterCompositionPolicy, EncounterCompositionPolicy>();
         services.AddSingleton<IEncounterEnemySelector, DeterministicEncounterEnemySelector>();

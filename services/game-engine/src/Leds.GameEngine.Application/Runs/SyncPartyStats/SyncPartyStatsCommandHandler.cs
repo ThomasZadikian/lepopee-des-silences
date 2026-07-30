@@ -87,7 +87,6 @@ public sealed class SyncPartyStatsCommandHandler
                     startingGuard: character.Stats.StartingGuard,
                     speed: effectiveStats.Speed,
                     initiative: character.Stats.Initiative,
-                    recovery: character.Stats.Recovery,
                     focus: effectiveStats.Focus,
                     mana: effectiveStats.Mana,
                     charge: effectiveStats.Charge,

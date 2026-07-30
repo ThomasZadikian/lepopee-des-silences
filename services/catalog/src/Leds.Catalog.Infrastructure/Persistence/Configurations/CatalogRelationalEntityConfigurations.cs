@@ -33,7 +33,6 @@ public sealed class EnemyStatBlockEntityConfiguration : IEntityTypeConfiguration
         builder.Property(e => e.StartingGuard).HasColumnName("starting_guard");
         builder.Property(e => e.Speed).HasColumnName("speed");
         builder.Property(e => e.Initiative).HasColumnName("initiative");
-        builder.Property(e => e.Recovery).HasColumnName("recovery");
         builder.Property(e => e.Focus).HasColumnName("focus");
         builder.Property(e => e.Mana).HasColumnName("mana");
         builder.Property(e => e.Charge).HasColumnName("charge");

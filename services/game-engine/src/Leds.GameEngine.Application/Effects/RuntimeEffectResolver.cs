@@ -134,7 +134,6 @@ public sealed class RuntimeEffectResolver : IRuntimeEffectResolver
             Domain.Effects.EffectType.ModifyDefense => RunModifierType.DefenseBonus,
             Domain.Effects.EffectType.ModifySpeed => RunModifierType.SpeedBonus,
             Domain.Effects.EffectType.ModifyInitiative => RunModifierType.InitiativeBonus,
-            Domain.Effects.EffectType.ModifyRecovery => RunModifierType.RecoveryBonus,
             Domain.Effects.EffectType.RestoreFocus => RunModifierType.FocusBonus,
             _ => throw new DomainException(
                 $"Cannot map effect type '{effectType}' to a RunModifierType."),

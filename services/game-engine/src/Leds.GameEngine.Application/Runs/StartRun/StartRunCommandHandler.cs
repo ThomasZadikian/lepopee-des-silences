@@ -232,7 +232,6 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
                 startingGuard: character.Stats.StartingGuard,
                 speed: effective.Speed,
                 initiative: character.Stats.Initiative,
-                recovery: character.Stats.Recovery,
                 focus: effective.Focus,
                 mana: effective.Mana,
                 charge: effective.Charge,
@@ -264,7 +263,8 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
                 definitionKey: character.DefinitionKey,
                 displayName: character.DisplayName,
                 statBlock: statSnapshot,
-                skills: skillSnapshots));
+                skills: skillSnapshots,
+                equippedItemKeys: character.EquippedItems));
         }
 
         var playerSnapshot = RunPlayerSnapshot.Create(

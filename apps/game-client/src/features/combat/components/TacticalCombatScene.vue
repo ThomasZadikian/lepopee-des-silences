@@ -70,6 +70,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (event: 'combat-completed'): void;
   (event: 'combat-failed'): void;
+  (event: 'combat-escaped'): void;
 }>();
 
 const store = useTacticalCombatStore();
@@ -632,6 +633,33 @@ function highlightAlpha(
   }
 }
 
+function paintEscape(ctx: CanvasRenderingContext2D, destW: number, destH: number, timestamp: number) {
+  const exit = store.combat?.escape;
+  if (!exit) return;
+
+  const { screenX, screenY } = projectToScreen(exit.x, exit.y, projectionParams.value);
+  const lift = elevationLiftPx(elevationAt(exit.x, exit.y));
+  const pulse = prefersReducedMotion ? 1 : 0.88 + (Math.sin(timestamp * 0.003) * 0.12);
+
+  ctx.save();
+  ctx.translate(screenX, screenY - lift);
+  ctx.scale(pulse, pulse);
+  ctx.strokeStyle = '#b9e7d1';
+  ctx.fillStyle = 'rgba(75, 176, 130, .24)';
+  ctx.shadowColor = '#70d4a8';
+  ctx.shadowBlur = destW * 0.16;
+  ctx.lineWidth = Math.max(2, destW * 0.025);
+  ctx.beginPath();
+  ctx.ellipse(0, 0, destW * 0.32, destH * 0.18, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.font = `600 ${Math.max(10, Math.round(destW * 0.11))}px ui-monospace, monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#e3fff1';
+  ctx.fillText('SORTIE', 0, -(destH * 0.18));
+  ctx.restore();
+}
+
 function paintCanvas(timestamp: number) {
   const canvas = canvasEl.value;
   if (!canvas || canvasSize.value.width === 0) return;
@@ -653,8 +681,13 @@ function paintCanvas(timestamp: number) {
   const terrainPlan = drawPlan.value.filter((entry) => entry.spriteKey.kind !== 'highlight');
   const highlightPlan = drawPlan.value.filter((entry) => entry.spriteKey.kind === 'highlight');
 
-  const enemyCount = store.combat?.enemies.filter((e) => e.combatant.status !== 'Defeated').length ?? 0;
-  const tierKey = enemyCount <= 2 ? 'calm' : enemyCount <= 3 ? 'tense' : enemyCount <= 4 ? 'grim' : 'fatal';
+  const tierKey = {
+    Calme: 'calm',
+    Tendu: 'tense',
+    Dangereux: 'grim',
+    Perilleux: 'grim',
+    Fatal: 'fatal',
+  }[store.combat?.riskTier ?? 'Calme'];
   const tier = RISK_TIERS[tierKey] ?? RISK_TIERS.calm;
 
   // Vignette : peinte avant le terrain et les combattants pour qu'elle
@@ -804,6 +837,8 @@ function paintCanvas(timestamp: number) {
     ctx.drawImage(sprite, dx, entry.screenY - (destH * GROUND_ANCHOR_RATIO), destW, destH);
     ctx.restore();
   }
+
+  paintEscape(ctx, destW, destH, timestamp);
 
   // ── Ambiance / FX / chiffres ─────────────────────────────────────────────
   if (!prefersReducedMotion) {
@@ -1008,6 +1043,7 @@ watch(
   (status) => {
     if (status === 'Completed') emit('combat-completed');
     if (status === 'Failed') emit('combat-failed');
+    if (status === 'Escaped') emit('combat-escaped');
   },
 );
 
@@ -1178,7 +1214,7 @@ onBeforeUnmount(() => {
             {{ store.activeCombatant?.combatant?.displayName ?? '—' }}
           </strong>
           <span class="tbattle__active-stat">
-            PP {{ store.activeCombatant?.combatant?.mana ?? '—' }}
+            Mana {{ store.activeCombatant?.combatant?.mana ?? '—' }}
           </span>
           <span class="tbattle__active-stat" :class="{ 'tbattle__active-stat--spent': store.activeCombatant?.hasMoved }">
             {{
@@ -1209,7 +1245,7 @@ onBeforeUnmount(() => {
                   || store.isLoading
                   || store.combat?.usedOnceSkillKeys.includes(skill.key)
               "
-              :title="`${skill.displayName} — ${skill.category === 'Magic' ? 'magique' : 'physique'}, ${skillMeta(skill)}, PP ${skill.manaCost}`"
+              :title="`${skill.displayName} — ${skill.category === 'Magic' ? 'magique' : 'physique'}, ${skillMeta(skill)}, Mana ${skill.manaCost}`"
               @click="store.selectSkill(skill.key)"
             >
               <span class="tbattle__skill-name">{{ skill.displayName }}</span>

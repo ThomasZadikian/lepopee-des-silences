@@ -72,7 +72,6 @@ public sealed class PlayerSeedRunner
                         StartingGuard = 0,
                         Speed = 10,
                         Initiative = 10,
-                        Recovery = 5,
                         Focus = 15,
                         // Mirrors PlayerCharacterStatBlock.CreateDefaultPorteur() — this demo
                         // seed builds its EF entity directly instead of going through that

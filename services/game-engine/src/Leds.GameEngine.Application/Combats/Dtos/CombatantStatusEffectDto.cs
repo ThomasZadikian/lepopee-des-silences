@@ -5,7 +5,7 @@ public sealed record CombatantStatusEffectDto(
     string Key,
     string DisplayName,
     // DamageOverTime | HealOverTime | GuardOverTime | StatModifier | Stun | Silence |
-    // AtbLock | SkillGrant
+    // TurnLock | SkillGrant
     string Kind,
     string Stat,   // AttackPower | Defense | Speed | Focus | ... | None
     int Magnitude,
@@ -15,7 +15,7 @@ public sealed record CombatantStatusEffectDto(
     bool IsMagnitudePercentOfBaseStat,
     // What ONE tick deals/heals/guards right now (already resolves %-of-max-HP and
     // stacks) — for a status tooltip showing "real damage per tick". 0 for non-periodic
-    // effects (StatModifier/Stun/Silence/AtbLock/SkillGrant).
+    // effects (StatModifier/Stun/Silence/TurnLock/SkillGrant).
     int PerTickAmount,
     // Ticks remaining until this effect ends, from the combat's CurrentTick — null
     // when IsPermanent (never ends on its own).

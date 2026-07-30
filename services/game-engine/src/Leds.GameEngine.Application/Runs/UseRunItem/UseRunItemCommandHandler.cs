@@ -56,8 +56,6 @@ public sealed class UseRunItemCommandHandler
             EffectAmount: amount,
             ItemDepleted: depleted,
             UsedInCombat: false,
-            PlayerState: PlayerRuntimeStateDto.FromDomain(run.PlayerState),
-            Combat: null,
-            LogEntries: null);
+            PlayerState: PlayerRuntimeStateDto.FromDomain(run.PlayerState));
     }
 }

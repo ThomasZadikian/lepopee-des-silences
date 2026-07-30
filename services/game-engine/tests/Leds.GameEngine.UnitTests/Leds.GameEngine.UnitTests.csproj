@@ -30,6 +30,31 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Historical continuous-time combat specifications were retired with the
+         tactical-only runtime. Tactical tests remain compiled below by default. -->
+    <Compile Remove="Combats\Actions\**\*.cs" />
+    <Compile Remove="Combats\SubmitCombatAction\**\*.cs" />
+    <Compile Remove="Combats\Targeting\**\*.cs" />
+    <Compile Remove="Combats\EnemyTurns\EnemyCombatTurnResolverTests.cs" />
+    <Compile Remove="Combats\CombatFactoryTests.cs" />
+    <Compile Remove="Combats\CombatHoldTickTests.cs" />
+    <Compile Remove="Combats\CombatInstanceTests.cs" />
+    <Compile Remove="Combats\CombatMultiEnemyFlowTests.cs" />
+    <Compile Remove="Combats\CombatTests.cs" />
+    <Compile Remove="Combats\CombatantTests.cs" />
+    <Compile Remove="Combats\Effects\CombatSkillEffectResolver*.cs" />
+    <Compile Remove="Combats\Typing\CombatSkillEffectResolverTypingTests.cs" />
+    <Compile Remove="Combats\Resolution\CombatResolutionServiceTests.cs" />
+    <Compile Remove="Combats\EnemyTurns\*BehaviorsTests.cs" />
+    <Compile Remove="Combats\EnemyTurns\BossBehaviorTests.cs" />
+    <Compile Remove="Combats\EnemyTurns\ImperatriceDeLaFalaiseBehaviorTests.cs" />
+    <Compile Remove="Runs\Reposition\**\*.cs" />
+    <Compile Remove="Runs\UseCombatSkill\**\*.cs" />
+    <Compile Remove="Runs\RunCombatCompletionTests.cs" />
+    <Compile Remove="Runs\RunCombatTests.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Folder Include="Events\ResolveNodeEvent\" />
   </ItemGroup>
 

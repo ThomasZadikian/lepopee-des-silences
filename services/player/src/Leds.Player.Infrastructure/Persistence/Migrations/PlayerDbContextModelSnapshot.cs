@@ -259,12 +259,6 @@ namespace Leds.Player.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("player_character_id");
 
-                    b.Property<int>("Recovery")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(5)
-                        .HasColumnName("recovery");
-
                     b.Property<int>("Speed")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")

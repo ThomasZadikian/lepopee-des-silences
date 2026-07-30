@@ -24,11 +24,6 @@ public enum CombatStat
     // Percentage points added to the caster's DamageOverTime damage dealt (see
     // Combatant.EffectiveDotDamageBonusPercent) — l'Écrivain's "Plume d'écrivain".
     DotDamageBonus,
-    // Percentage modifier applied directly to ATB fill-per-tick (see
-    // Combatant.RecalculateAtbFillPerTick), independent of the Speed stat — e.g.
-    // "Une destinée cruelle" boosts Speed +20% (a stat) while separately slowing
-    // the ATB gauge itself by -15% (this virtual stat).
-    AtbTempoModifier,
     // Percentage points subtracted from a Player-side skill's mana/charge cost at cast
     // time (see CombatSkillEffectResolver.ConsumeResources) — e.g. Mina's "Protection
     // de Him'Lit" reduces cost by 5%. Negative-only in practice; a positive magnitude

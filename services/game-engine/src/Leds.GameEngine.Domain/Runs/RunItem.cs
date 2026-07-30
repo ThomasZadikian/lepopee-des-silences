@@ -34,7 +34,10 @@ public sealed class RunItem
         string? containedLiquidDefinitionKey,
         int tacticalRange,
         string tacticalAreaShape,
-        bool requiresLineOfSight)
+        bool requiresLineOfSight,
+        Guid? groundRoomId,
+        int? groundX,
+        int? groundY)
     {
         Id = id;
         DefinitionKey = definitionKey;
@@ -66,6 +69,9 @@ public sealed class RunItem
             ? "Single"
             : tacticalAreaShape.Trim();
         RequiresLineOfSight = requiresLineOfSight;
+        GroundRoomId = groundRoomId;
+        GroundX = groundX;
+        GroundY = groundY;
     }
 
     public RunItemId Id { get; }
@@ -99,6 +105,10 @@ public sealed class RunItem
     public int TacticalRange { get; }
     public string TacticalAreaShape { get; }
     public bool RequiresLineOfSight { get; }
+    public Guid? GroundRoomId { get; private set; }
+    public int? GroundX { get; private set; }
+    public int? GroundY { get; private set; }
+    public bool IsOnGround => GroundRoomId.HasValue && GroundX.HasValue && GroundY.HasValue;
 
     public static RunItem Create(
         string definitionKey,
@@ -148,7 +158,10 @@ public sealed class RunItem
             containedLiquidDefinitionKey: null,
             tacticalRange: 1,
             tacticalAreaShape: "Single",
-            requiresLineOfSight: false);
+            requiresLineOfSight: false,
+            groundRoomId: null,
+            groundX: null,
+            groundY: null);
     }
 
     public static RunItem Rehydrate(
@@ -179,7 +192,10 @@ public sealed class RunItem
         string? containedLiquidDefinitionKey = null,
         int tacticalRange = 1,
         string tacticalAreaShape = "Single",
-        bool requiresLineOfSight = false)
+        bool requiresLineOfSight = false,
+        Guid? groundRoomId = null,
+        int? groundX = null,
+        int? groundY = null)
     {
         return new RunItem(
             id, definitionKey, displayName, description,
@@ -187,7 +203,8 @@ public sealed class RunItem
             definitionVersion, narrativeText, category, usageMode, lifecycle,
             maxStack, effectSetKey, effectSummary, isUsableInCombat, isUsableOutsideCombat,
             sourceRewardOptionId, isContainer, containerCapacity, isLiquid, containedLiquidDefinitionKey,
-            tacticalRange, tacticalAreaShape, requiresLineOfSight);
+            tacticalRange, tacticalAreaShape, requiresLineOfSight,
+            groundRoomId, groundX, groundY);
     }
 
     public void AddQuantity(int amount)
@@ -260,6 +277,25 @@ public sealed class RunItem
         IsConsumableType(Type)
         && Quantity > 0
         && IsBattleItem;
+
+    public void PlaceOnGround(Guid roomId, int x, int y)
+    {
+        if (roomId == Guid.Empty)
+            throw new DomainException("Ground item room is required.");
+        if (x < 0 || y < 0)
+            throw new DomainException("Ground item coordinates cannot be negative.");
+
+        GroundRoomId = roomId;
+        GroundX = x;
+        GroundY = y;
+    }
+
+    public void CollectFromGround()
+    {
+        GroundRoomId = null;
+        GroundX = null;
+        GroundY = null;
+    }
 
     private static bool IsStackableType(RunItemType type) => type is
         RunItemType.Consumable

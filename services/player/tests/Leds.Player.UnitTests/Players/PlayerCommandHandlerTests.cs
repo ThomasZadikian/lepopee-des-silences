@@ -189,7 +189,7 @@ public sealed class PlayerCommandHandlerTests
             new RecruitCompanionCommand(
                 profile.Id.Value, "character.thomas", "Thomas",
                 MaxVitality: 100, AttackPower: 12, Defense: 6, StartingGuard: 0,
-                Speed: 10, Initiative: 10, Recovery: 5, Focus: 0, Mana: 0, Charge: 0,
+                Speed: 10, Initiative: 10,Focus: 0, Mana: 0, Charge: 0,
                 SkillKeys: ["skill.basic.guard"]),
             CancellationToken.None);
 

@@ -6,4 +6,9 @@ public sealed record StatusTickEvent(
     string DisplayName,
     StatusEffectKind Kind,
     int Amount,    // damage dealt / vitality healed (0 for non-periodic)
-    bool Expired); // true if the effect ended on this tick
+    bool Expired,  // true if the effect ended on this tick
+    IReadOnlyList<Guid?> StackSourceIds)
+{
+    public int StackCount => StackSourceIds.Count;
+    public Guid? FirstStackSourceId => StackSourceIds.FirstOrDefault();
+}

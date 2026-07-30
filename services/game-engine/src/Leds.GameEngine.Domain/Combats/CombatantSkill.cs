@@ -200,4 +200,24 @@ public sealed record CombatantSkill
             IsUltimate,
             EmotionalRegister);
     }
+
+    public CombatantSkill WithoutResourceCosts() => new(
+        Key,
+        DisplayName,
+        SkillType,
+        TargetingType,
+        EffectType,
+        0,
+        0,
+        BasePower,
+        Tags,
+        StatusEffects,
+        Category,
+        BasePowerIsPercentOfMaxVitality,
+        TacticalRange,
+        TacticalAreaShape,
+        RequiresLineOfSight,
+        0,
+        false,
+        EmotionalRegister);
 }

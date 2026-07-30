@@ -131,8 +131,8 @@ public sealed partial class CatalogSeedRunner
         item.TacticalRange = definition.TacticalRange;
         item.TacticalAreaShape = definition.TacticalShape;
         item.RequiresLineOfSight = definition.RequiresLineOfSight;
-        item.BasicAttackPower = null;
-        item.BasicAttackCategory = null;
+        item.BasicAttackPower = definition.BasicAttackPower;
+        item.BasicAttackCategory = definition.BasicAttackCategory;
         item.Price = 0;
         item.EquipmentEffectsJson = equipmentEffectsJson;
         item.IsContainer = false;
@@ -198,6 +198,33 @@ public sealed partial class CatalogSeedRunner
 
     private static readonly IReadOnlyList<PalaceItemSeed> PalaceItems =
     [
+        // Armes — elles remplacent le contrat de l'attaque de base.
+        P("item.weapon.lame-seuil", "Lame du Seuil",
+            "Une lame courte, fiable dans les couloirs étroits du Palais.",
+            "Equipment", "Weapon", "Common", "Equip",
+            range: 1, shape: "Single", los: false,
+            basicAttackPower: 11, basicAttackCategory: "Physical"),
+        P("item.weapon.lance-pelerin", "Lance du Pèlerin",
+            "Une hampe longue qui permet de frapper au-delà de la première case.",
+            "Equipment", "Weapon", "Uncommon", "Equip", pool: "Montagne",
+            range: 2, shape: "Single", los: true,
+            basicAttackPower: 10, basicAttackCategory: "Physical"),
+        P("item.weapon.arc-relieur", "Arc du Relieur",
+            "Ses traits suivent les lignes que le Palais accepte encore de montrer.",
+            "Equipment", "Weapon", "Uncommon", "Equip", pool: "Labyrinthe",
+            range: 5, shape: "Single", los: true,
+            basicAttackPower: 9, basicAttackCategory: "Physical"),
+        P("item.weapon.marteau-forge", "Marteau de la Forge",
+            "Lent et brutal, conçu pour briser la Garde au contact.",
+            "Equipment", "Weapon", "Rare", "Equip", pool: "Enfers",
+            range: 1, shape: "Single", los: false,
+            basicAttackPower: 14, basicAttackCategory: "Physical"),
+        P("item.weapon.baton-silences", "Bâton des Silences",
+            "Canalise une frappe magique à travers les salles du Palais.",
+            "Equipment", "Weapon", "Rare", "Equip", pool: "Palier,Labyrinthe",
+            range: 4, shape: "Single", los: true,
+            basicAttackPower: 12, basicAttackCategory: "Magic"),
+
         // Accessoires
         P("item.gants-service-muet", "Gants du service muet",
             "+5% Défense ; +10% supplémentaires si aucune compétence magique n'a été utilisée à l'activation précédente.",
@@ -500,28 +527,28 @@ public sealed partial class CatalogSeedRunner
 
     private static readonly IReadOnlyList<PalaceLootTableSeed> PalaceLootTables =
     [
-        L("canon.enemy.veilleur-tapis", "Veilleur du Tapis", ("item.gants-service-muet", 10), ("item.the-seuil", 12), ("item.epingle-protocole", 5)),
+        L("canon.enemy.veilleur-tapis", "Veilleur du Tapis", ("item.gants-service-muet", 10), ("item.the-seuil", 12), ("item.epingle-protocole", 5), ("item.weapon.lame-seuil", 8)),
         L("canon.enemy.porteur-plateau", "Porteur de Plateau", ("item.eau-carafe", 18), ("item.the-seuil", 12)),
         L("canon.enemy.echo-politesse", "l'Écho de Politesse", ("item.fiole-brume", 14), ("item.epingle-protocole", 6)),
         L("canon.enemy.sentinelle-seuil", "la Sentinelle du Seuil", ("item.gants-service-muet", 15), ("item.tapis-poche", 3)),
         L("canon.enemy.copiste-aveugle", "Copiste Aveugle", ("item.feuillet-copiste", 6), ("item.encrier-poche", 9)),
         L("canon.enemy.encrier-vivant", "l'Encrier Vivant", ("item.encrier-poche", 16)),
         L("canon.enemy.page-inachevee", "la Page Inachevée", ("item.feuillet-copiste", 8), ("item.larme-violacee", 3)),
-        L("canon.enemy.relieur", "le Relieur", ("item.aiguille-relieur", 20), ("item.feuillet-copiste", 15), ("item.cicatrice-encre", 100)),
+        L("canon.enemy.relieur", "le Relieur", ("item.aiguille-relieur", 20), ("item.feuillet-copiste", 15), ("item.cicatrice-encre", 100), ("item.weapon.arc-relieur", 8)),
         L("canon.enemy.squelette-souvenir", "le Squelette de Souvenir", ("item.osselet-grave", 14), ("item.dent-de-lait", 6)),
         L("canon.enemy.porteur-cendre", "le Porteur de Cendre", ("item.osselet-grave", 22), ("item.girouette-os", 7)),
         L("canon.enemy.choeur-muet", "le Chœur Muet", ("item.grain-choeur", 18), ("item.metronome-choeur", 6), ("item.larme-violacee", 5)),
         L("canon.enemy.berger-ordres", "le Berger d'Ordres", ("item.flacon-orage", 6), ("item.iris-amethyste", 2)),
         L("canon.enemy.agneau-inverse", "l'Agneau Inversé", ("item.fiole-brume", 8)),
         L("canon.enemy.creation-instable", "la Création Instable", ("item.gantelet-trempe", 10)),
-        L("canon.enemy.marteau-vivant", "le Marteau Vivant", ("item.braise-volee", 9), ("item.gantelet-trempe", 12), ("item.eclat-ecarlate", 2)),
+        L("canon.enemy.marteau-vivant", "le Marteau Vivant", ("item.braise-volee", 9), ("item.gantelet-trempe", 12), ("item.eclat-ecarlate", 2), ("item.weapon.marteau-forge", 10)),
         L("canon.enemy.sentinelle-fonte", "la Sentinelle de Fonte", ("item.cendrier-forgeron", 12)),
         L("canon.enemy.scorie-rampante", "la Scorie Rampante", ("item.cendrier-forgeron", 8)),
         L("canon.enemy.infirmiere-deni", "l'Infirmière du Déni", ("item.compresse-blanche", 25)),
         L("canon.enemy.souvenir-alite", "le Souvenir Alité", ("item.compresse-blanche", 20), ("item.boite-musique-felee", 2)),
         L("canon.enemy.regisseur-blanc", "le Régisseur des Couloirs Blancs", ("item.clef-sans-porte", 15), ("item.compresse-blanche", 20)),
-        L("canon.enemy.pelerin-sans-visage", "le Pèlerin Sans Visage", ("item.grain-chapelet", 30), ("item.retable-portatif", 5)),
-        L("canon.enemy.prieur-lituique", "le Prieur Lituique", ("item.retable-portatif", 14)),
+        L("canon.enemy.pelerin-sans-visage", "le Pèlerin Sans Visage", ("item.grain-chapelet", 30), ("item.retable-portatif", 5), ("item.weapon.lance-pelerin", 9)),
+        L("canon.enemy.prieur-lituique", "le Prieur Lituique", ("item.retable-portatif", 14), ("item.weapon.baton-silences", 7)),
         L("canon.enemy.frayeur-exhumee", "la Frayeur Exhumée", ("item.pierre-accalmie", 12), ("item.fleche-meridienne", 1)),
         L("canon.enemy.promeneur-fige", "le Promeneur Figé", ("item.dent-de-lait", 5)),
         L("canon.enemy.jardinier-sans-ombre", "le Jardinier Sans Ombre", ("item.ombrelle-jardinier", 18)),
@@ -560,11 +587,14 @@ public sealed partial class CatalogSeedRunner
         int baseWeight = 100,
         int? minDepth = null,
         IReadOnlyList<PalaceEffect>? effects = null,
-        IReadOnlyList<ItemEquipmentEffect>? equipmentEffects = null)
+        IReadOnlyList<ItemEquipmentEffect>? equipmentEffects = null,
+        int? basicAttackPower = null,
+        string? basicAttackCategory = null)
         => new(
             key, name, description, category, itemType, rarity, usageMode, lifecycle,
             stack, combat, outside, range, shape, los, effectValue, effectRunType,
-            pool, baseWeight, minDepth, $"palace-items:{rarity}", effects ?? [], equipmentEffects);
+            pool, baseWeight, minDepth, $"palace-items:{rarity}", effects ?? [], equipmentEffects,
+            basicAttackPower, basicAttackCategory);
 
     private sealed record PalaceItemSeed(
         string Key,
@@ -588,7 +618,9 @@ public sealed partial class CatalogSeedRunner
         int? MinDepth,
         string SelectionGroup,
         IReadOnlyList<PalaceEffect> Effects,
-        IReadOnlyList<ItemEquipmentEffect>? EquipmentEffects);
+        IReadOnlyList<ItemEquipmentEffect>? EquipmentEffects,
+        int? BasicAttackPower,
+        string? BasicAttackCategory);
 
     private sealed record PalaceEffect(
         string Type,

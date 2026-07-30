@@ -20,14 +20,12 @@ public sealed class CombatantBaseStatSnapshotEntityConfiguration : IEntityTypeCo
         builder.Property(e => e.StartingGuard).HasColumnName("starting_guard").IsRequired();
         builder.Property(e => e.Speed).HasColumnName("speed").IsRequired();
         builder.Property(e => e.Initiative).HasColumnName("initiative").IsRequired();
-        builder.Property(e => e.Recovery).HasColumnName("recovery").IsRequired();
         builder.Property(e => e.Focus).HasColumnName("focus").IsRequired();
         builder.Property(e => e.Mana).HasColumnName("mana").IsRequired();
         builder.Property(e => e.Charge).HasColumnName("charge").IsRequired();
         builder.Property(e => e.MagicAttack).HasColumnName("magic_attack").IsRequired().HasDefaultValue(0);
         builder.Property(e => e.MagicDefense).HasColumnName("magic_defense").IsRequired().HasDefaultValue(0);
         builder.Property(e => e.Movement).HasColumnName("movement").IsRequired().HasDefaultValue(4);
-        builder.Property(e => e.AtbReadyThreshold).HasColumnName("atb_ready_threshold");
         builder.Property(e => e.CreatedAtUtc).HasColumnName("created_at_utc");
 
         builder.HasIndex(e => e.CombatantId).IsUnique();

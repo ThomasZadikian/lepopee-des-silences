@@ -3,6 +3,7 @@ using Leds.GameEngine.Application.Combats;
 using Leds.GameEngine.Application.Combats.Actions;
 using Leds.GameEngine.Application.Combats.Dtos;
 using Leds.GameEngine.Application.Combats.Resolution;
+using Leds.GameEngine.Application.Combats.Tactical;
 using Leds.GameEngine.Application.Common.Exceptions;
 using Leds.GameEngine.Application.Rewards.Ports;
 using Leds.GameEngine.Application.Runs.Dtos;
@@ -57,6 +58,24 @@ public sealed class UseTacticalItemCommandHandler
             throw new ConflictException("Only an allied active combatant can use the shared inventory.");
         if (combat.TurnStateOf(actorId).HasActed)
             throw new ConflictException("This combatant has already acted this turn.");
+        if (combat.NextActionRestrictedToBasicAttack)
+            throw new ConflictException(
+                "Loi de l'Éloge Funèbre : seule une attaque basique est permise après une mort.");
+
+        if (TacticalEquipmentAbilityCatalog.TryResolve(
+                combat,
+                actorId,
+                request.ItemId,
+                out var equipmentAbility))
+        {
+            return await UseEquipmentAbilityAsync(
+                run,
+                combat,
+                actor,
+                equipmentAbility,
+                new GridPosition(request.TargetX, request.TargetY),
+                cancellationToken);
+        }
 
         var item = run.RunItems.FirstOrDefault(i => i.Id.Value == request.ItemId)
             ?? throw new NotFoundException("Run item", request.ItemId);
@@ -83,15 +102,20 @@ public sealed class UseTacticalItemCommandHandler
             item.ConsumeOne();
 
             var impacts = TacticalImpactRecorder.Diff(before, [defeated], combat);
+            TacticalChargeRules.AwardUsefulAction(actor, [defeated], impacts);
+            combat.MarkActiveCombatantActed();
             return await PersistAndRespond(
                 run, combat, actor, item, destination, [defeated], impacts, cancellationToken);
         }
 
+        var effectiveItemRange = actor.HasTacticalSlow
+            ? Math.Max(1, item.TacticalRange / 2)
+            : item.TacticalRange;
         if (!TacticalTargeting.IsInRange(
                 combat.Battlefield,
                 origin,
                 requestedTarget,
-                item.TacticalRange,
+                effectiveItemRange,
                 item.RequiresLineOfSight))
         {
             throw new ConflictException(
@@ -123,11 +147,112 @@ public sealed class UseTacticalItemCommandHandler
             combat.OrientToward(target.Id.Value, shape == TacticalAreaShape.Single ? origin : targetCell);
 
         var targetImpacts = TacticalImpactRecorder.Diff(beforeTargets, targets, combat);
+        TacticalChargeRules.AwardUsefulAction(actor, targets, targetImpacts);
         item.ConsumeOne();
         combat.MarkActiveCombatantActed();
 
         return await PersistAndRespond(
             run, combat, actor, item, targetCell, targets, targetImpacts, cancellationToken);
+    }
+
+    private async Task<TacticalCombatResponse> UseEquipmentAbilityAsync(
+        Run run,
+        Domain.Combats.Tactical.TacticalCombat combat,
+        Combatant actor,
+        TacticalEquipmentAbilityCatalog.Ability ability,
+        GridPosition requestedTarget,
+        CancellationToken cancellationToken)
+    {
+        if (combat.HasUsedOnceSkill(ability.UseKey))
+            throw new ConflictException($"« {ability.DisplayName} » a déjà été utilisé dans ce combat.");
+
+        var origin = combat.PositionOf(actor.Id.Value);
+        var targets = new List<Combatant>();
+        var targetCell = requestedTarget;
+
+        switch (ability.ItemKey)
+        {
+            case "item.aiguille-arret":
+                targets.AddRange(combat.Enemies.Where(enemy => !enemy.IsDefeated));
+                foreach (var target in targets)
+                {
+                    target.ApplyStatusEffect(CombatStatusEffect.Create(
+                        "equipment.temporal-slow.aiguille-arret",
+                        "Temps ralenti",
+                        StatusEffectKind.StatModifier,
+                        combat.StatusClockFor(target.Id.Value),
+                        CombatTime.TicksPerTurn * 2,
+                        magnitude: -50,
+                        stat: CombatStat.Speed,
+                        isMagnitudePercentOfBaseStat: true));
+                }
+
+                targetCell = origin;
+                break;
+
+            case "item.aiguille-relieur":
+                if (!TacticalTargeting.IsInRange(
+                        combat.Battlefield,
+                        origin,
+                        requestedTarget,
+                        ability.Range,
+                        ability.RequiresLineOfSight))
+                {
+                    throw new ConflictException("La cible de l’Aiguille du Relieur est hors de portée.");
+                }
+
+                var target = combat.Enemies.FirstOrDefault(enemy =>
+                    !enemy.IsDefeated
+                    && combat.PositionOf(enemy.Id.Value) == requestedTarget)
+                    ?? throw new ConflictException("L’Aiguille du Relieur exige un ennemi vivant.");
+                var now = combat.StatusClockFor(target.Id.Value);
+                var periodicEffects = target.StatusEffects
+                    .Where(effect => effect.Kind == StatusEffectKind.DamageOverTime)
+                    .ToArray();
+                if (periodicEffects.Length == 0)
+                    throw new ConflictException("Cette cible ne porte aucun effet périodique à prolonger.");
+
+                foreach (var effect in periodicEffects)
+                {
+                    var remaining = Math.Max(1, effect.ExpiresAtTick - now);
+                    var extension = (int)Math.Ceiling(remaining * 0.25);
+                    effect.ExtendDuration(effect.ExpiresAtTick + extension);
+                }
+
+                targets.Add(target);
+                combat.OrientToward(actor.Id.Value, requestedTarget);
+                break;
+
+            default:
+                throw new ConflictException($"L’effet de « {ability.DisplayName} » n’est pas implémenté.");
+        }
+
+        combat.MarkOnceSkillUsed(ability.UseKey);
+        combat.MarkActiveCombatantActed();
+
+        await _runRepository.UpdateAsync(run, cancellationToken);
+
+        var log = new CombatLogEntryDto(
+            _clock.UtcNow.UtcDateTime,
+            "TacticalEquipmentUsed",
+            $"{actor.DisplayName} active « {ability.DisplayName} ».",
+            actor.Id.Value,
+            ability.ItemKey,
+            [.. targets.Select(target => target.Id.Value)]);
+
+        return new TacticalCombatResponse(
+            RunDto.FromDomain(run),
+            TacticalCombatRuntimeDto.FromDomain(
+                combat,
+                CombatItemHelper.GetUsableBattleItems(run, combat)),
+            [log],
+            [TacticalCombatEventDto.Item(
+                actor.Id.Value,
+                actor.DisplayName,
+                ability.ItemKey,
+                ability.DisplayName,
+                targetCell,
+                [])]);
     }
 
     private static void ApplyEffect(
@@ -222,7 +347,7 @@ public sealed class UseTacticalItemCommandHandler
         if (protagonist is not null)
         {
             run.PlayerState.SyncFromCombat(
-                protagonist.CurrentVitality, protagonist.Guard, protagonist.Mana, protagonist.Charge);
+                protagonist.CurrentVitality, protagonist.Guard, protagonist.Mana, 0);
         }
 
         var rewardOffer = await _combatResolution.ApplyOutcomeAsync(
@@ -241,7 +366,7 @@ public sealed class UseTacticalItemCommandHandler
 
         return new TacticalCombatResponse(
             RunDto.FromDomain(run),
-            TacticalCombatRuntimeDto.FromDomain(combat, CombatItemHelper.GetUsableBattleItems(run)),
+            TacticalCombatRuntimeDto.FromDomain(combat, CombatItemHelper.GetUsableBattleItems(run, combat)),
             [log],
             [TacticalCombatEventDto.Item(
                 actor.Id.Value,

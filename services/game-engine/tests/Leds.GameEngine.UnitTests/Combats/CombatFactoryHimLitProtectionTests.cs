@@ -67,18 +67,22 @@ public sealed class CombatFactoryHimLitProtectionTests
 
         var protagonist = combat.Allies.Single();
         protagonist.EffectiveAttackPower.Should().Be(21); // 20 + 5%
-        protagonist.EffectiveSpeed.Should().Be(10);        // 10 + 5% rounds down to 10
+        protagonist.EffectiveSpeed.Should().Be(9); // +5% and -10% on the base stat
     }
 
     [Fact]
-    public void CreateFromDraft_ShouldReduceAtbTempoByTenPercent_WhenHimLitProtectionEnabled()
+    public void CreateFromDraft_ShouldApplyTheAdditionalSpeedPenalty_WhenHimLitProtectionEnabled()
     {
         var factory = new CombatFactory();
         var draft = CreateDraftWithProtagonist();
 
         var combat = factory.CreateFromDraft(draft, himLitProtectionEnabled: true);
 
-        combat.Allies.Single().EffectiveAtbTempoModifierPercent.Should().Be(-10);
+        combat.Allies.Single().StatusEffects.Should().Contain(effect =>
+            effect.Key == "himlit-protection:tempo"
+            && effect.Stat == CombatStat.Speed
+            && effect.Magnitude == -10
+            && effect.IsMagnitudePercentOfBaseStat);
     }
 
     [Fact]

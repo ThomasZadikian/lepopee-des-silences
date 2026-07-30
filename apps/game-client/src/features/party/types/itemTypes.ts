@@ -8,4 +8,9 @@ export type ItemDefinitionView = {
   effectRunType: string | null;
   effectValue: number;
   readablePages?: string[] | null;
+  tacticalRange?: number;
+  tacticalAreaShape?: string;
+  requiresLineOfSight?: boolean;
+  basicAttackPower?: number | null;
+  basicAttackCategory?: string | null;
 };

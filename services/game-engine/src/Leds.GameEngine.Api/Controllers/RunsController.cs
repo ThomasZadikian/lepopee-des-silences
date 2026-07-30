@@ -11,6 +11,7 @@ using Leds.GameEngine.Application.Runs.GetRunById;
 using Leds.GameEngine.Application.Runs.GetRunInventory;
 using Leds.GameEngine.Application.Runs.GetRunReputation;
 using Leds.GameEngine.Application.Runs.MoveParty;
+using Leds.GameEngine.Application.Runs.SwapGroundItem;
 using Leds.GameEngine.Application.Runs.TacticalCombat;
 using Leds.GameEngine.Application.Runs.Search;
 using Leds.GameEngine.Application.Runs.MoveToNextRoom;
@@ -355,6 +356,23 @@ public sealed class RunsController : ControllerBase
         return Ok(response);
     }
 
+    [HttpPost("{runId:guid}/ground-items/{groundItemId:guid}/swap")]
+    [ProducesResponseType(typeof(SwapGroundItemResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<SwapGroundItemResponse>> SwapGroundItem(
+        Guid runId,
+        Guid groundItemId,
+        [FromBody] SwapGroundItemRequest request,
+        CancellationToken cancellationToken)
+    {
+        var response = await _sender.Send(
+            new SwapGroundItemCommand(runId, groundItemId, request.HeldItemId),
+            cancellationToken);
+
+        return Ok(response);
+    }
+
     /// <summary>
     /// Searches the ground around the party for hidden nodes, spending movement budget.
     /// No body: the party can only ever search where it already stands.
@@ -548,6 +566,7 @@ public sealed class RunsController : ControllerBase
 public sealed record StartRunRequest(Guid PlayerId);
 
 public sealed record MovePartyRequest(int TargetX, int TargetY);
+public sealed record SwapGroundItemRequest(Guid HeldItemId);
 
 public sealed record MoveTacticalCombatantRequest(int TargetX, int TargetY);
 

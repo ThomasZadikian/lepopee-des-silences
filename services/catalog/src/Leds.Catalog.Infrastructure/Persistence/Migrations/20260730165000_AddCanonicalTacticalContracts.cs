@@ -1,9 +1,13 @@
+using Leds.Catalog.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
 namespace Leds.Catalog.Infrastructure.Persistence.Migrations;
 
+[DbContext(typeof(CatalogDbContext))]
+[Migration("20260730165000_AddCanonicalTacticalContracts")]
 public partial class AddCanonicalTacticalContracts : Migration
 {
     protected override void Up(MigrationBuilder migrationBuilder)

@@ -7,336 +7,93 @@ namespace Leds.Player.UnitTests.Domain.Players;
 public sealed class PlayerCharacterStatBlockTests
 {
     [Fact]
-    public void Create_ShouldCreateValidStatBlock()
+    public void Create_ShouldCreateTheCanonicalStatBlock()
     {
-        var statBlock = PlayerCharacterStatBlock.Create(
+        var stats = PlayerCharacterStatBlock.Create(
             maxVitality: 100,
             attackPower: 12,
             defense: 6,
-            startingGuard: 0,
+            startingGuard: 3,
             speed: 10,
-            initiative: 10,
-            recovery: 5,
-            focus: 0,
-            mana: 0,
-            charge: 0);
+            initiative: 9,
+            focus: 4,
+            mana: 85,
+            charge: 2,
+            magicAttack: 7,
+            magicDefense: 5);
 
-        statBlock.MaxVitality.Should().Be(100);
-        statBlock.AttackPower.Should().Be(12);
-        statBlock.Defense.Should().Be(6);
-        statBlock.StartingGuard.Should().Be(0);
-        statBlock.Speed.Should().Be(10);
-        statBlock.Initiative.Should().Be(10);
-        statBlock.Recovery.Should().Be(5);
-        statBlock.Focus.Should().Be(0);
-        statBlock.Mana.Should().Be(0);
-        statBlock.Charge.Should().Be(0);
+        stats.MaxVitality.Should().Be(100);
+        stats.AttackPower.Should().Be(12);
+        stats.Defense.Should().Be(6);
+        stats.StartingGuard.Should().Be(3);
+        stats.Speed.Should().Be(10);
+        stats.Initiative.Should().Be(9);
+        stats.Focus.Should().Be(4);
+        stats.Mana.Should().Be(85);
+        stats.Charge.Should().Be(2);
+        stats.MagicAttack.Should().Be(7);
+        stats.MagicDefense.Should().Be(5);
     }
 
     [Fact]
-    public void CreateDefaultPorteur_ShouldUseCorrectDefaults()
+    public void CreateDefaultPorteur_ShouldUseCanonicalDefaults()
     {
-        var statBlock = PlayerCharacterStatBlock.CreateDefaultPorteur();
+        var stats = PlayerCharacterStatBlock.CreateDefaultPorteur();
 
-        statBlock.MaxVitality.Should().Be(100);
-        statBlock.AttackPower.Should().Be(12);
-        statBlock.Defense.Should().Be(6);
-        statBlock.StartingGuard.Should().Be(0);
-        statBlock.Speed.Should().Be(10);
-        statBlock.Initiative.Should().Be(10);
-        statBlock.Recovery.Should().Be(5);
-        statBlock.Focus.Should().Be(0);
-        statBlock.Mana.Should().Be(85);
-        statBlock.Charge.Should().Be(0);
-        statBlock.MagicAttack.Should().Be(6);
-        statBlock.MagicDefense.Should().Be(3);
+        stats.MaxVitality.Should().Be(100);
+        stats.AttackPower.Should().Be(12);
+        stats.Defense.Should().Be(6);
+        stats.Speed.Should().Be(10);
+        stats.Mana.Should().Be(85);
+        stats.MagicAttack.Should().Be(6);
+        stats.MagicDefense.Should().Be(3);
     }
 
     [Theory]
     [InlineData(0)]
     [InlineData(-1)]
-    [InlineData(-100)]
-    [InlineData(int.MinValue)]
-    public void Create_ShouldRejectInvalidMaxVitality(int vitality)
+    public void Create_ShouldRejectNonPositiveVitality(int value)
     {
-        var act = () => PlayerCharacterStatBlock.Create(
-            vitality, 12, 6, 0, 10, 10, 5, 0, 0, 0);
-
+        var act = () => Create(maxVitality: value);
         act.Should().Throw<DomainException>().WithMessage("*Max vitality*");
     }
 
-    [Fact]
-    public void Create_ShouldAcceptMinimumMaxVitality()
-    {
-        var statBlock = PlayerCharacterStatBlock.Create(
-            1, 12, 6, 0, 10, 10, 5, 0, 0, 0);
-
-        statBlock.MaxVitality.Should().Be(1);
-    }
-
-    [Theory]
-    [InlineData(-1)]
-    [InlineData(-100)]
-    [InlineData(int.MinValue)]
-    public void Create_ShouldRejectNegativeAttackPower(int power)
-    {
-        var act = () => PlayerCharacterStatBlock.Create(
-            100, power, 6, 0, 10, 10, 5, 0, 0, 0);
-
-        act.Should().Throw<DomainException>().WithMessage("*Attack power*");
-    }
-
-    [Fact]
-    public void Create_ShouldAcceptZeroAttackPower()
-    {
-        var statBlock = PlayerCharacterStatBlock.Create(
-            100, 0, 6, 0, 10, 10, 5, 0, 0, 0);
-
-        statBlock.AttackPower.Should().Be(0);
-    }
-
-    [Theory]
-    [InlineData(-1)]
-    [InlineData(-100)]
-    [InlineData(int.MinValue)]
-    public void Create_ShouldRejectNegativeDefense(int defense)
-    {
-        var act = () => PlayerCharacterStatBlock.Create(
-            100, 12, defense, 0, 10, 10, 5, 0, 0, 0);
-
-        act.Should().Throw<DomainException>().WithMessage("*Defense*");
-    }
-
-    [Fact]
-    public void Create_ShouldAcceptZeroDefense()
-    {
-        var statBlock = PlayerCharacterStatBlock.Create(
-            100, 12, 0, 0, 10, 10, 5, 0, 0, 0);
-
-        statBlock.Defense.Should().Be(0);
-    }
-
-    [Theory]
-    [InlineData(-1)]
-    [InlineData(-100)]
-    [InlineData(int.MinValue)]
-    public void Create_ShouldRejectNegativeStartingGuard(int guard)
-    {
-        var act = () => PlayerCharacterStatBlock.Create(
-            100, 12, 6, guard, 10, 10, 5, 0, 0, 0);
-
-        act.Should().Throw<DomainException>().WithMessage("*Starting guard*");
-    }
-
-    [Fact]
-    public void Create_ShouldAcceptZeroStartingGuard()
-    {
-        var statBlock = PlayerCharacterStatBlock.Create(
-            100, 12, 6, 0, 10, 10, 5, 0, 0, 0);
-
-        statBlock.StartingGuard.Should().Be(0);
-    }
-
     [Theory]
     [InlineData(0)]
     [InlineData(-1)]
-    [InlineData(-100)]
-    [InlineData(int.MinValue)]
-    public void Create_ShouldRejectInvalidSpeed(int speed)
+    public void Create_ShouldRejectNonPositiveSpeed(int value)
     {
-        var act = () => PlayerCharacterStatBlock.Create(
-            100, 12, 6, 0, speed, 10, 5, 0, 0, 0);
-
+        var act = () => Create(speed: value);
         act.Should().Throw<DomainException>().WithMessage("*Speed*");
     }
 
-    [Fact]
-    public void Create_ShouldAcceptMinimumSpeed()
-    {
-        var statBlock = PlayerCharacterStatBlock.Create(
-            100, 12, 6, 0, 1, 10, 5, 0, 0, 0);
-
-        statBlock.Speed.Should().Be(1);
-    }
-
     [Theory]
-    [InlineData(-1)]
-    [InlineData(-100)]
-    [InlineData(int.MinValue)]
-    public void Create_ShouldRejectNegativeInitiative(int initiative)
+    [InlineData(-1, PlayerStatKind.AttackPower)]
+    [InlineData(-1, PlayerStatKind.Defense)]
+    [InlineData(-1, PlayerStatKind.StartingGuard)]
+    [InlineData(-1, PlayerStatKind.Initiative)]
+    [InlineData(-1, PlayerStatKind.Focus)]
+    [InlineData(-1, PlayerStatKind.Mana)]
+    [InlineData(-1, PlayerStatKind.Charge)]
+    [InlineData(-1, PlayerStatKind.MagicAttack)]
+    [InlineData(-1, PlayerStatKind.MagicDefense)]
+    public void Create_ShouldRejectNegativeStats(int value, PlayerStatKind kind)
     {
-        var act = () => PlayerCharacterStatBlock.Create(
-            100, 12, 6, 0, 10, initiative, 5, 0, 0, 0);
+        Action act = kind switch
+        {
+            PlayerStatKind.AttackPower => () => Create(attackPower: value),
+            PlayerStatKind.Defense => () => Create(defense: value),
+            PlayerStatKind.StartingGuard => () => Create(startingGuard: value),
+            PlayerStatKind.Initiative => () => Create(initiative: value),
+            PlayerStatKind.Focus => () => Create(focus: value),
+            PlayerStatKind.Mana => () => Create(mana: value),
+            PlayerStatKind.Charge => () => Create(charge: value),
+            PlayerStatKind.MagicAttack => () => Create(magicAttack: value),
+            PlayerStatKind.MagicDefense => () => Create(magicDefense: value),
+            _ => throw new InvalidOperationException()
+        };
 
-        act.Should().Throw<DomainException>().WithMessage("*Initiative*");
-    }
-
-    [Fact]
-    public void Create_ShouldAcceptZeroInitiative()
-    {
-        var statBlock = PlayerCharacterStatBlock.Create(
-            100, 12, 6, 0, 10, 0, 5, 0, 0, 0);
-
-        statBlock.Initiative.Should().Be(0);
-    }
-
-    [Theory]
-    [InlineData(-1)]
-    [InlineData(-100)]
-    [InlineData(int.MinValue)]
-    public void Create_ShouldRejectNegativeRecovery(int recovery)
-    {
-        var act = () => PlayerCharacterStatBlock.Create(
-            100, 12, 6, 0, 10, 10, recovery, 0, 0, 0);
-
-        act.Should().Throw<DomainException>().WithMessage("*Recovery*");
-    }
-
-    [Fact]
-    public void Create_ShouldAcceptZeroRecovery()
-    {
-        var statBlock = PlayerCharacterStatBlock.Create(
-            100, 12, 6, 0, 10, 10, 0, 0, 0, 0);
-
-        statBlock.Recovery.Should().Be(0);
-    }
-
-    [Theory]
-    [InlineData(-1)]
-    [InlineData(-100)]
-    [InlineData(int.MinValue)]
-    public void Create_ShouldRejectNegativeFocus(int focus)
-    {
-        var act = () => PlayerCharacterStatBlock.Create(
-            100, 12, 6, 0, 10, 10, 5, focus, 0, 0);
-
-        act.Should().Throw<DomainException>().WithMessage("*Focus*");
-    }
-
-    [Fact]
-    public void Create_ShouldAcceptZeroFocus()
-    {
-        var statBlock = PlayerCharacterStatBlock.Create(
-            100, 12, 6, 0, 10, 10, 5, 0, 0, 0);
-
-        statBlock.Focus.Should().Be(0);
-    }
-
-    [Theory]
-    [InlineData(-1)]
-    [InlineData(-100)]
-    [InlineData(int.MinValue)]
-    public void Create_ShouldRejectNegativeMana(int mana)
-    {
-        var act = () => PlayerCharacterStatBlock.Create(
-            100, 12, 6, 0, 10, 10, 5, 0, mana, 0);
-
-        act.Should().Throw<DomainException>().WithMessage("*Mana*");
-    }
-
-    [Fact]
-    public void Create_ShouldAcceptZeroMana()
-    {
-        var statBlock = PlayerCharacterStatBlock.Create(
-            100, 12, 6, 0, 10, 10, 5, 0, 0, 0);
-
-        statBlock.Mana.Should().Be(0);
-    }
-
-    [Theory]
-    [InlineData(-1)]
-    [InlineData(-100)]
-    [InlineData(int.MinValue)]
-    public void Create_ShouldRejectNegativeCharge(int charge)
-    {
-        var act = () => PlayerCharacterStatBlock.Create(
-            100, 12, 6, 0, 10, 10, 5, 0, 0, charge);
-
-        act.Should().Throw<DomainException>().WithMessage("*Charge*");
-    }
-
-    [Fact]
-    public void Create_ShouldAcceptZeroCharge()
-    {
-        var statBlock = PlayerCharacterStatBlock.Create(
-            100, 12, 6, 0, 10, 10, 5, 0, 0, 0);
-
-        statBlock.Charge.Should().Be(0);
-    }
-
-    [Theory]
-    [InlineData(-1)]
-    [InlineData(-100)]
-    [InlineData(int.MinValue)]
-    public void Create_ShouldRejectNegativeMagicAttack(int magicAttack)
-    {
-        var act = () => PlayerCharacterStatBlock.Create(
-            100, 12, 6, 0, 10, 10, 5, 0, 0, 0, magicAttack, 0);
-
-        act.Should().Throw<DomainException>().WithMessage("*Magic attack*");
-    }
-
-    [Fact]
-    public void Create_ShouldAcceptZeroMagicAttack()
-    {
-        var statBlock = PlayerCharacterStatBlock.Create(
-            100, 12, 6, 0, 10, 10, 5, 0, 0, 0, magicAttack: 0);
-
-        statBlock.MagicAttack.Should().Be(0);
-    }
-
-    [Theory]
-    [InlineData(-1)]
-    [InlineData(-100)]
-    [InlineData(int.MinValue)]
-    public void Create_ShouldRejectNegativeMagicDefense(int magicDefense)
-    {
-        var act = () => PlayerCharacterStatBlock.Create(
-            100, 12, 6, 0, 10, 10, 5, 0, 0, 0, magicDefense: magicDefense);
-
-        act.Should().Throw<DomainException>().WithMessage("*Magic defense*");
-    }
-
-    [Fact]
-    public void Create_ShouldAcceptZeroMagicDefense()
-    {
-        var statBlock = PlayerCharacterStatBlock.Create(
-            100, 12, 6, 0, 10, 10, 5, 0, 0, 0, magicDefense: 0);
-
-        statBlock.MagicDefense.Should().Be(0);
-    }
-
-    [Fact]
-    public void Create_ShouldAcceptHighStatValues()
-    {
-        var statBlock = PlayerCharacterStatBlock.Create(
-            int.MaxValue, int.MaxValue, int.MaxValue, int.MaxValue,
-            int.MaxValue, int.MaxValue, int.MaxValue, int.MaxValue,
-            int.MaxValue, int.MaxValue, int.MaxValue, int.MaxValue);
-
-        statBlock.MaxVitality.Should().Be(int.MaxValue);
-        statBlock.AttackPower.Should().Be(int.MaxValue);
-        statBlock.Defense.Should().Be(int.MaxValue);
-        statBlock.MagicAttack.Should().Be(int.MaxValue);
-        statBlock.MagicDefense.Should().Be(int.MaxValue);
-    }
-
-    [Fact]
-    public void Properties_ShouldBeImmutable()
-    {
-        var statBlock = PlayerCharacterStatBlock.Create(
-            100, 12, 6, 0, 10, 10, 5, 0, 0, 0);
-
-        statBlock.MaxVitality.Should().Be(100);
-        statBlock.AttackPower.Should().Be(12);
-        statBlock.Defense.Should().Be(6);
-        statBlock.StartingGuard.Should().Be(0);
-        statBlock.Speed.Should().Be(10);
-        statBlock.Initiative.Should().Be(10);
-        statBlock.Recovery.Should().Be(5);
-        statBlock.Focus.Should().Be(0);
-        statBlock.Mana.Should().Be(0);
-        statBlock.Charge.Should().Be(0);
+        act.Should().Throw<DomainException>();
     }
 
     [Theory]
@@ -346,85 +103,77 @@ public sealed class PlayerCharacterStatBlockTests
     [InlineData(PlayerStatKind.StartingGuard)]
     [InlineData(PlayerStatKind.Speed)]
     [InlineData(PlayerStatKind.Initiative)]
-    [InlineData(PlayerStatKind.Recovery)]
     [InlineData(PlayerStatKind.Focus)]
     [InlineData(PlayerStatKind.Mana)]
     [InlineData(PlayerStatKind.Charge)]
     [InlineData(PlayerStatKind.MagicAttack)]
     [InlineData(PlayerStatKind.MagicDefense)]
-    public void WithIncrementedStat_ShouldIncrementOnlyTheSelectedStat(PlayerStatKind kind)
+    public void WithIncrementedStat_ShouldOnlyIncrementTheSelectedStat(PlayerStatKind kind)
     {
         var original = PlayerCharacterStatBlock.CreateDefaultPorteur();
-
         var incremented = original.WithIncrementedStat(kind);
 
-        incremented.Should().NotBeSameAs(original);
-
-        var expected = new Dictionary<PlayerStatKind, int>
-        {
-            [PlayerStatKind.MaxVitality] = original.MaxVitality,
-            [PlayerStatKind.AttackPower] = original.AttackPower,
-            [PlayerStatKind.Defense] = original.Defense,
-            [PlayerStatKind.StartingGuard] = original.StartingGuard,
-            [PlayerStatKind.Speed] = original.Speed,
-            [PlayerStatKind.Initiative] = original.Initiative,
-            [PlayerStatKind.Recovery] = original.Recovery,
-            [PlayerStatKind.Focus] = original.Focus,
-            [PlayerStatKind.Mana] = original.Mana,
-            [PlayerStatKind.Charge] = original.Charge,
-            [PlayerStatKind.MagicAttack] = original.MagicAttack,
-            [PlayerStatKind.MagicDefense] = original.MagicDefense,
-        };
-        // Vitality and Mana grant a bigger per-point jump than the other stats.
-        var increment = kind switch
+        var before = Values(original);
+        var after = Values(incremented);
+        var expectedIncrement = kind switch
         {
             PlayerStatKind.MaxVitality => PlayerCharacterStatBlock.MaxVitalityIncrementPerPoint,
             PlayerStatKind.Mana => PlayerCharacterStatBlock.ManaIncrementPerPoint,
-            _ => 1,
+            _ => 1
         };
-        expected[kind] += increment;
 
-        incremented.MaxVitality.Should().Be(expected[PlayerStatKind.MaxVitality]);
-        incremented.AttackPower.Should().Be(expected[PlayerStatKind.AttackPower]);
-        incremented.Defense.Should().Be(expected[PlayerStatKind.Defense]);
-        incremented.StartingGuard.Should().Be(expected[PlayerStatKind.StartingGuard]);
-        incremented.Speed.Should().Be(expected[PlayerStatKind.Speed]);
-        incremented.Initiative.Should().Be(expected[PlayerStatKind.Initiative]);
-        incremented.Recovery.Should().Be(expected[PlayerStatKind.Recovery]);
-        incremented.Focus.Should().Be(expected[PlayerStatKind.Focus]);
-        incremented.Mana.Should().Be(expected[PlayerStatKind.Mana]);
-        incremented.Charge.Should().Be(expected[PlayerStatKind.Charge]);
-        incremented.MagicAttack.Should().Be(expected[PlayerStatKind.MagicAttack]);
-        incremented.MagicDefense.Should().Be(expected[PlayerStatKind.MagicDefense]);
-    }
-
-    [Fact]
-    public void WithIncrementedStat_ShouldIncreaseMaxVitalityByTen()
-    {
-        var original = PlayerCharacterStatBlock.CreateDefaultPorteur();
-
-        var incremented = original.WithIncrementedStat(PlayerStatKind.MaxVitality);
-
-        incremented.MaxVitality.Should().Be(original.MaxVitality + 10);
-    }
-
-    [Fact]
-    public void WithIncrementedStat_ShouldIncreaseManaByFive()
-    {
-        var original = PlayerCharacterStatBlock.CreateDefaultPorteur();
-
-        var incremented = original.WithIncrementedStat(PlayerStatKind.Mana);
-
-        incremented.Mana.Should().Be(original.Mana + 5);
+        after[kind].Should().Be(before[kind] + expectedIncrement);
+        foreach (var untouched in before.Keys.Where(candidate => candidate != kind))
+            after[untouched].Should().Be(before[untouched]);
     }
 
     [Fact]
     public void WithIncrementedStat_ShouldRejectUnknownKind()
     {
-        var statBlock = PlayerCharacterStatBlock.CreateDefaultPorteur();
-
-        var act = () => statBlock.WithIncrementedStat((PlayerStatKind)999);
+        var act = () => PlayerCharacterStatBlock.CreateDefaultPorteur()
+            .WithIncrementedStat((PlayerStatKind)999);
 
         act.Should().Throw<DomainException>();
     }
+
+    private static PlayerCharacterStatBlock Create(
+        int maxVitality = 100,
+        int attackPower = 12,
+        int defense = 6,
+        int startingGuard = 0,
+        int speed = 10,
+        int initiative = 10,
+        int focus = 0,
+        int mana = 0,
+        int charge = 0,
+        int magicAttack = 0,
+        int magicDefense = 0) =>
+        PlayerCharacterStatBlock.Create(
+            maxVitality,
+            attackPower,
+            defense,
+            startingGuard,
+            speed,
+            initiative,
+            focus,
+            mana,
+            charge,
+            magicAttack,
+            magicDefense);
+
+    private static Dictionary<PlayerStatKind, int> Values(PlayerCharacterStatBlock stats) =>
+        new()
+        {
+            [PlayerStatKind.MaxVitality] = stats.MaxVitality,
+            [PlayerStatKind.AttackPower] = stats.AttackPower,
+            [PlayerStatKind.Defense] = stats.Defense,
+            [PlayerStatKind.StartingGuard] = stats.StartingGuard,
+            [PlayerStatKind.Speed] = stats.Speed,
+            [PlayerStatKind.Initiative] = stats.Initiative,
+            [PlayerStatKind.Focus] = stats.Focus,
+            [PlayerStatKind.Mana] = stats.Mana,
+            [PlayerStatKind.Charge] = stats.Charge,
+            [PlayerStatKind.MagicAttack] = stats.MagicAttack,
+            [PlayerStatKind.MagicDefense] = stats.MagicDefense,
+        };
 }

@@ -13,7 +13,7 @@ public sealed class PlayerStatMergerTests
 {
     private static PlayerRunSnapshotCharacterStats CreateStats() => new(
         MaxVitality: 100, AttackPower: 12, Defense: 6, StartingGuard: 0,
-        Speed: 10, Initiative: 10, Recovery: 5, Focus: 2, Mana: 20, Charge: 3,
+        Speed: 10, Initiative: 10,Focus: 2, Mana: 20, Charge: 3,
         MagicAttack: 4, MagicDefense: 3);
 
     [Fact]

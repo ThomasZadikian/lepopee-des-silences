@@ -18,7 +18,6 @@ public sealed class PlayerCharacterStatBlockEntityConfiguration : IEntityTypeCon
         builder.Property(s => s.StartingGuard).HasColumnName("starting_guard").HasDefaultValue(0);
         builder.Property(s => s.Speed).HasColumnName("speed").HasDefaultValue(10);
         builder.Property(s => s.Initiative).HasColumnName("initiative").HasDefaultValue(10);
-        builder.Property(s => s.Recovery).HasColumnName("recovery").HasDefaultValue(5);
         builder.Property(s => s.Focus).HasColumnName("focus").HasDefaultValue(0);
         builder.Property(s => s.Mana).HasColumnName("mana").HasDefaultValue(0);
         builder.Property(s => s.Charge).HasColumnName("charge").HasDefaultValue(0);

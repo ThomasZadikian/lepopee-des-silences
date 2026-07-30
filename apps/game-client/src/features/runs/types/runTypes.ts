@@ -99,6 +99,18 @@ export type RoomGridDto = {
    * or reward: the player sees a slab that rings hollow and decides whether to spend budget
    * finding out what is under it. */
   hintCells: [number, number][];
+  /** Objects physically present in the room. They are collected by crossing their cell. */
+  groundItems: GroundItemDto[];
+};
+
+export type GroundItemDto = {
+  id: string;
+  definitionKey: string;
+  displayName: string;
+  rarity: string;
+  quantity: number;
+  x: number;
+  y: number;
 };
 
 export type RoomDto = {
@@ -192,6 +204,16 @@ export type RunItemDto = {
   effectType: string;
   effectAmount: number;
   isUsable?: boolean;
+};
+
+export type MovePartyResponse = {
+  run: RunDto;
+  collectedItemIds: string[];
+  blockedItemIds: string[];
+};
+
+export type SwapGroundItemResponse = {
+  run: RunDto;
 };
 
 export type RunPartyMemberSkillDto = {

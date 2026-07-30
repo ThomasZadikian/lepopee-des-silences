@@ -41,6 +41,9 @@ public sealed class RunItemEntityConfiguration : IEntityTypeConfiguration<RunIte
         builder.Property(item => item.TacticalRange).HasColumnName("tactical_range").HasDefaultValue(1);
         builder.Property(item => item.TacticalAreaShape).HasColumnName("tactical_area_shape").HasMaxLength(16).HasDefaultValue("Single").IsRequired();
         builder.Property(item => item.RequiresLineOfSight).HasColumnName("requires_line_of_sight").HasDefaultValue(false);
+        builder.Property(item => item.GroundRoomId).HasColumnName("ground_room_id");
+        builder.Property(item => item.GroundX).HasColumnName("ground_x");
+        builder.Property(item => item.GroundY).HasColumnName("ground_y");
 
         builder.HasOne(item => item.Run)
             .WithMany(run => run.InventoryItems)
@@ -50,5 +53,6 @@ public sealed class RunItemEntityConfiguration : IEntityTypeConfiguration<RunIte
         builder.HasIndex(item => item.RunId);
         builder.HasIndex(item => item.DefinitionKey);
         builder.HasIndex(item => item.SourceRewardOptionId);
+        builder.HasIndex(item => new { item.GroundRoomId, item.GroundX, item.GroundY });
     }
 }

@@ -24,9 +24,8 @@ public sealed class CombatantEntityConfiguration : IEntityTypeConfiguration<Comb
         builder.Property(c => c.BaseGuard).HasColumnName("base_guard");
         builder.Property(c => c.Mana).HasColumnName("mana");
         builder.Property(c => c.MaxMana).HasColumnName("max_mana").HasDefaultValue(int.MaxValue);
-        builder.Property(c => c.Charge).HasColumnName("charge");
+        builder.Property(c => c.Charge).HasColumnName("charge").HasPrecision(4, 1);
         builder.Property(c => c.Status).HasColumnName("status").HasMaxLength(32).IsRequired();
-        builder.Property(c => c.Row).HasColumnName("row").HasMaxLength(16).HasDefaultValue("Front").IsRequired();
         builder.Property(c => c.HasActedThisCombat).HasColumnName("has_acted_this_combat").HasDefaultValue(false);
         builder.Property(c => c.AttackTypeOverride).HasColumnName("attack_type_override");
         builder.Property(c => c.TypedDamageReductionsJson).HasColumnName("typed_damage_reductions_json");

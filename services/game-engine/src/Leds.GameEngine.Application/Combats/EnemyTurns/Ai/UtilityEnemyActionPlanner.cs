@@ -5,7 +5,7 @@ namespace Leds.GameEngine.Application.Combats.EnemyTurns.Ai;
 
 public sealed class UtilityEnemyActionPlanner : IEnemyActionPlanner
 {
-    public EnemyActionPlan? Plan(Combat combat, Combatant actor)
+    public EnemyActionPlan? Plan(ICombatContext combat, Combatant actor)
     {
         var weights = ArchetypeWeights.For(actor.Archetype);
         var players = combat.Allies.Where(c => !c.IsDefeated).ToArray();
@@ -34,7 +34,7 @@ public sealed class UtilityEnemyActionPlanner : IEnemyActionPlanner
         => skill.ManaCost <= actor.Mana && skill.ChargeCost <= actor.Charge;
 
     private static IReadOnlyCollection<Guid> ResolveTargets(
-        Combat combat, Combatant actor, CombatantSkill skill, IReadOnlyList<Combatant> players, IReadOnlyList<Combatant> team)
+        ICombatContext combat, Combatant actor, CombatantSkill skill, IReadOnlyList<Combatant> players, IReadOnlyList<Combatant> team)
     {
         switch ((skill.TargetingType ?? string.Empty).Trim())
         {
@@ -64,7 +64,7 @@ public sealed class UtilityEnemyActionPlanner : IEnemyActionPlanner
     /// protagonist) when nobody's hurt or threatening yet.
     /// </summary>
     private static Combatant? PickOffenseTarget(
-        Combat combat, Combatant actor, CombatantSkill skill, IReadOnlyList<Combatant> players)
+        ICombatContext combat, Combatant actor, CombatantSkill skill, IReadOnlyList<Combatant> players)
     {
         Combatant? best = null;
         var bestScore = double.NegativeInfinity;
@@ -77,7 +77,7 @@ public sealed class UtilityEnemyActionPlanner : IEnemyActionPlanner
     }
 
     private static double ScoreSkill(
-        Combat combat, Combatant actor, CombatantSkill skill, IReadOnlyCollection<Guid> targets,
+        ICombatContext combat, Combatant actor, CombatantSkill skill, IReadOnlyCollection<Guid> targets,
         ArchetypeWeights w, IReadOnlyList<Combatant> players, IReadOnlyList<Combatant> team)
     {
         switch (Categorize(skill))
@@ -116,7 +116,7 @@ public sealed class UtilityEnemyActionPlanner : IEnemyActionPlanner
     /// favoring array position (see <see cref="PickOffenseTarget"/>).
     /// </summary>
     private static double OffenseTargetScore(
-        Combat combat, Combatant actor, CombatantSkill skill, Combatant target, IReadOnlyList<Combatant> candidates)
+        ICombatContext combat, Combatant actor, CombatantSkill skill, Combatant target, IReadOnlyList<Combatant> candidates)
     {
         var effective = Math.Max(1, skill.BasePower - target.Guard);
         var baseScore = effective >= target.CurrentVitality ? 120.0 : WoundedFraction(target) * 40.0;

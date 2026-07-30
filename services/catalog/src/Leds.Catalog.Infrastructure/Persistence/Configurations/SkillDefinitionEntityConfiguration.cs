@@ -35,7 +35,6 @@ public sealed class SkillDefinitionEntityConfiguration : IEntityTypeConfiguratio
         builder.Property(e => e.Accuracy).HasColumnName("accuracy").HasDefaultValue(100);
         builder.Property(e => e.ActionCost).HasColumnName("action_cost").HasDefaultValue(10);
         builder.Property(e => e.CastTime).HasColumnName("cast_time");
-        builder.Property(e => e.RecoveryTime).HasColumnName("recovery_time");
         builder.Property(e => e.Cooldown).HasColumnName("cooldown");
         builder.Property(e => e.TacticalRange).HasColumnName("tactical_range").HasDefaultValue(1).IsRequired();
         builder.Property(e => e.TacticalAreaShape).HasColumnName("tactical_area_shape").HasMaxLength(16).HasDefaultValue("Single").IsRequired();

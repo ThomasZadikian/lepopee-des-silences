@@ -73,7 +73,14 @@ public sealed class EndTacticalTurnCommandHandler
         combat.CompleteIfAllEnemiesDefeated();
 
         if (combat.Status == CombatStatus.Active)
+        {
+            if (combat.ActiveCombatantId is { } activeId
+                && !combat.TurnStateOf(activeId).HasActed)
+            {
+                combat.ConsumeBasicAttackRestriction();
+            }
             combat.AdvanceToNextCombatant();
+        }
 
         var enemyTurns = combat.Status == CombatStatus.Active
             ? _enemyTurns.PlayWhileEnemyHasInitiative(combat)
@@ -83,7 +90,7 @@ public sealed class EndTacticalTurnCommandHandler
         if (protagonist is not null)
         {
             run.PlayerState.SyncFromCombat(
-                protagonist.CurrentVitality, protagonist.Guard, protagonist.Mana, protagonist.Charge);
+                protagonist.CurrentVitality, protagonist.Guard, protagonist.Mana, 0);
         }
 
         var rewardOffer = await _combatResolution.ApplyOutcomeAsync(
@@ -98,7 +105,7 @@ public sealed class EndTacticalTurnCommandHandler
 
         return new TacticalCombatResponse(
             RunDto.FromDomain(run),
-            TacticalCombatRuntimeDto.FromDomain(combat, CombatItemHelper.GetUsableBattleItems(run)),
+            TacticalCombatRuntimeDto.FromDomain(combat, CombatItemHelper.GetUsableBattleItems(run, combat)),
             enemyTurns.LogEntries,
             enemyTurns.Events);
     }

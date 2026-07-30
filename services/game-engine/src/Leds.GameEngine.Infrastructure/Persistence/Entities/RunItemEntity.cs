@@ -31,6 +31,9 @@ public sealed class RunItemEntity
     public int TacticalRange { get; set; } = 1;
     public string TacticalAreaShape { get; set; } = "Single";
     public bool RequiresLineOfSight { get; set; }
+    public Guid? GroundRoomId { get; set; }
+    public int? GroundX { get; set; }
+    public int? GroundY { get; set; }
 
     public RunEntity? Run { get; set; }
 }

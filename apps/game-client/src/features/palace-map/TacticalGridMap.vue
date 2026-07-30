@@ -155,6 +155,40 @@ function paintPathMarker(
   ctx.restore();
 }
 
+/** A small physical pickup marker: deliberately painted rather than rendered as a floating UI
+ * badge, so rewards belong to the room and can be collected by walking through them. */
+function paintGroundItems(
+  ctx: CanvasRenderingContext2D,
+  destW: number,
+  destH: number,
+  timestamp: number,
+) {
+  const g = grid.value;
+  if (!g) return;
+
+  for (const item of g.groundItems ?? []) {
+    if (!isRevealed(item.x, item.y)) continue;
+    const { screenX, screenY } = projectToScreen(item.x, item.y, projectionParams.value);
+    const elevation = g.elevation[(item.y * g.width) + item.x] ?? 0;
+    const cy = screenY - elevationLiftPx(elevation) - (destH * 0.12);
+    const pulse = 1 + (Math.sin((timestamp * 0.003) + item.x + item.y) * 0.08);
+    const radius = Math.max(5, destW * 0.105) * pulse;
+
+    ctx.save();
+    ctx.shadowColor = item.rarity === 'Legendary' ? '#ffd778' : '#a9c9ff';
+    ctx.shadowBlur = radius * 1.4;
+    ctx.fillStyle = item.rarity === 'Legendary' ? 'rgba(255,205,105,.92)' : 'rgba(210,224,255,.9)';
+    ctx.beginPath();
+    ctx.moveTo(screenX, cy - radius);
+    ctx.lineTo(screenX + radius * 0.7, cy);
+    ctx.lineTo(screenX, cy + radius);
+    ctx.lineTo(screenX - radius * 0.7, cy);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
 /**
  * Whether `entry` is painted in front of `target` AND actually covers it. Only things that
  * genuinely rise off the ground can hide anything — a flat floor tile never does — so the test
@@ -537,6 +571,7 @@ function paintCanvas(timestamp: number) {
     }
   }
 
+  paintGroundItems(ctx, destW, destH, timestamp);
   paintFogOfWar(ctx, canvas.width, canvas.height, timestamp);
   drawAmbient(ctx, canvas.width, canvas.height, paintedTheme.value, timestamp * AMBIENT_TIME_SCALE);
 }

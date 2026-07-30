@@ -1,4 +1,3 @@
-using Leds.GameEngine.Domain.Combats.Atb;
 using Leds.GameEngine.Domain.Combats.StatusEffects;
 using Leds.GameEngine.Domain.Combats.Typing;
 using Leds.GameEngine.Domain.Common;
@@ -19,12 +18,11 @@ public sealed class Combatant
         int baseGuard,
         int mana,
         int maxMana,
-        int charge,
+        decimal charge,
         CombatantStatus status,
         IReadOnlyCollection<CombatantSkill> skills,
         CombatantBaseStatSnapshot baseStatSnapshot,
         CombatantRuntimeState runtimeState,
-        CombatRow row = CombatRow.Front,
         bool hasActedThisCombat = false)
     {
         Id = id;
@@ -44,7 +42,6 @@ public sealed class Combatant
         _permanentSkills = skills;
         BaseStatSnapshot = baseStatSnapshot;
         RuntimeState = runtimeState;
-        Row = row;
     }
 
     public CombatantId Id { get; }
@@ -64,58 +61,19 @@ public sealed class Combatant
 
     public int Mana { get; private set; }
     public int MaxMana { get; }
-    public int Charge { get; private set; }
+    public decimal Charge { get; private set; }
     public CombatantStatus Status { get; private set; }
 
     /// <summary>
-    /// Positioning rank (Front/Back). Front is the default. Mutable mid-combat via
-    /// <see cref="SetRow"/> (the "Repositionnement" action, which consumes the whole
-    /// turn) — unlike the equipment-driven modifiers above, this is not baked once at
-    /// combat creation.
-    /// </summary>
-    public CombatRow Row { get; private set; }
-
-    /// <summary>
-    /// Changes this combatant's row. Called by the Reposition combat action; costs
-    /// the actor's whole turn (enforced by the caller via RegisterAtbAction), not by
-    /// this method itself.
-    /// </summary>
-    public void SetRow(CombatRow row)
-    {
-        Row = row;
-    }
-
-    /// <summary>
     /// "Loi du Tapis Propre" (law.tapis-propre): true once this combatant has taken
-    /// any action (of any kind) in the current combat. Set by <see cref="RegisterAtbAction"/>,
-    /// so a first turn spent on Reposition/buff/heal still counts as "having acted" —
+    /// any action (of any kind) in the current combat. A first turn spent on movement,
+    /// buff or heal still counts as "having acted" —
     /// only a Damage-type skill is gated while this is false (see
     /// CombatSkillActionValidator).
     /// </summary>
     public bool HasActedThisCombat { get; private set; }
 
-    /// <summary>ATB fill-per-tick bonus (%) from being in the Back row (faster turns).</summary>
-    public int RowAtbFillBonusPercent => Row == CombatRow.Back ? 5 : 0;
-
-    /// <summary>Focus bonus (%) from being in the Back row.</summary>
-    public int RowFocusBonusPercent => Row == CombatRow.Back ? 3 : 0;
-
-    /// <summary>Incoming physical damage reduction (%) from being in the Back row (defensive mitigation).</summary>
-    public int RowIncomingPhysicalDamageReductionPercent => Row == CombatRow.Back ? 5 : 0;
-
-    /// <summary>
-    /// Healing received reduction (%) while in the Back row — the strategic
-    /// counterweight to Back row's other benefits, so an all-Back-row team isn't
-    /// a free lunch (proposed alongside the rest of the ruleset, confirmed by the
-    /// player).
-    /// </summary>
-    public int RowHealingReceivedReductionPercent => Row == CombatRow.Back ? 10 : 0;
-
-    /// <summary>Physical damage dealt reduction (%) when THIS combatant attacks while in the Back row.</summary>
-    public int RowPhysicalDamageDealtReductionPercent => Row == CombatRow.Back ? 15 : 0;
-
-    /// <summary>Accuracy penalty (percentage points) on all attacks when THIS combatant is in the Back row.</summary>
-    public int RowAccuracyPenaltyPercent => Row == CombatRow.Back ? 5 : 0;
+    public void MarkActedThisCombat() => HasActedThisCombat = true;
 
     private readonly IReadOnlyCollection<CombatantSkill> _permanentSkills;
 
@@ -301,86 +259,10 @@ public sealed class Combatant
         => CriticalChanceBonusPercent + EffectiveStat(CombatStat.CriticalChanceBonus, 0);
 
     /// <summary>
-    /// Percentage modifier applied directly to ATB fill-per-tick, purely skill-driven
-    /// (no equipment channel exists for this) — e.g. "Une destinée cruelle" (-15%,
-    /// permanent). Independent of the Speed stat: a combatant can have both a Speed
-    /// buff AND a separate tempo penalty active at once.
-    /// </summary>
-    public int EffectiveAtbTempoModifierPercent => EffectiveStat(CombatStat.AtbTempoModifier, 0);
-
-    /// <summary>
     /// Percentage points subtracted from a skill's mana/charge cost at cast time — e.g.
     /// Mina's "Protection de Him'Lit" (-5%, permanent). See CombatSkillEffectResolver.
     /// </summary>
     public int EffectiveSkillCostReductionPercent => EffectiveStat(CombatStat.SkillCostReductionPercent, 0);
-
-    // ── ATB (Active Time Battle) ──────────────────────────────────────────────
-
-    /// <summary>Current ATB gauge (0 = empty). Sourced from runtime state (persisted).</summary>
-    public int AtbGauge => RuntimeState.AtbGaugeValue ?? 0;
-
-    /// <summary>Absolute tick before which this combatant cannot fill its gauge (post-action recovery).</summary>
-    public int AtbRecoveryUntilTick => RuntimeState.ActionRecoveryUntilTick ?? 0;
-
-    /// <summary>
-    /// Effective gauge gained per tick (Markov tempo, baked at combat preparation).
-    /// Sourced from runtime state (persisted); defaults to a neutral 10 until baked.
-    /// </summary>
-    public int AtbFillPerTick => RuntimeState.AtbFillPerTick ?? 10;
-
-    public void SetAtbFillPerTick(int fillPerTick) => RuntimeState.SetAtbFillPerTick(fillPerTick);
-
-    public void SetAtbGauge(int value) => RuntimeState.SetAtbGauge(value);
-
-    /// <summary>Markov room/side tempo factors (per-mille, 1000 = neutral), baked once at combat prep.</summary>
-    public int AtbTempoRoomFactorPerMille => RuntimeState.AtbTempoRoomFactorPerMille ?? 1000;
-    public int AtbTempoCombatantFactorPerMille => RuntimeState.AtbTempoCombatantFactorPerMille ?? 1000;
-
-    public void SetAtbTempoFactors(int roomFactorPerMille, int combatantFactorPerMille)
-        => RuntimeState.SetAtbTempoFactors(roomFactorPerMille, combatantFactorPerMille);
-
-    /// <summary>Current tempo momentum (per-mille bonus) from recent impactful actions.</summary>
-    public int TempoMomentumPerMille => RuntimeState.TempoMomentumPerMille;
-
-    public void GainTempoMomentum(int amountPerMille)
-        => RuntimeState.GainTempoMomentum(amountPerMille, TempoMomentumCalibration.MaxPerMille);
-
-    /// <summary>Decays momentum toward zero as ticks pass without this combatant acting.</summary>
-    public void DecayTempoMomentum(int deltaTicks)
-    {
-        if (deltaTicks <= 0) return;
-
-        var pointsLost = deltaTicks / TempoMomentumCalibration.DecayTicksPerPoint;
-        if (pointsLost > 0)
-            RuntimeState.DecayTempoMomentum((int)Math.Min(pointsLost, int.MaxValue));
-    }
-
-    /// <summary>
-    /// Recomputes the current ATB fill rate from EFFECTIVE stats (Speed, Attack,
-    /// Defense — including any active buff/debuff or equipment %), the opposing
-    /// side's current average Speed, and accumulated momentum. Called by
-    /// <see cref="Combat"/> whenever the clock advances, so tempo always
-    /// reflects the fight's live state rather than a value frozen at creation.
-    /// </summary>
-    public void RecalculateAtbFillPerTick(double opponentAverageEffectiveSpeed)
-    {
-        var fill = AtbTempoFormula.ComputeFillPerTick(
-            EffectiveSpeed,
-            EffectiveAttackPower,
-            EffectiveDefense,
-            opponentAverageEffectiveSpeed,
-            AtbTempoRoomFactorPerMille,
-            AtbTempoCombatantFactorPerMille,
-            TempoMomentumPerMille);
-
-        // Applied as a separate multiplicative layer on top of the formula above —
-        // distinct from the Speed stat itself (see EffectiveAtbTempoModifierPercent).
-        // Row's ATB bonus stacks in the same layer as the tempo modifier.
-        var modified = (int)Math.Max(1, Math.Round(
-            fill * (1.0 + (EffectiveAtbTempoModifierPercent + RowAtbFillBonusPercent) / 100.0)));
-
-        SetAtbFillPerTick(modified);
-    }
 
     // ── Threat (enemy targeting) ────────────────────────────────────────────
 
@@ -403,19 +285,6 @@ public sealed class Combatant
     public bool ConsumePowerfulHitSinceLastAction() => RuntimeState.ConsumePowerfulHitSinceLastAction();
 
     /// <summary>
-    /// Records that this combatant just acted: its gauge is consumed and it enters
-    /// recovery until <paramref name="currentTick"/> + <paramref name="recoveryTicks"/>.
-    /// </summary>
-    public void RegisterAtbAction(int currentTick, int recoveryTicks)
-    {
-        RuntimeState.SetAtbGauge(0);
-        RuntimeState.SetActionRecovery(recoveryTicks > 0 ? currentTick + recoveryTicks : null);
-        // Momentum is a burst reward for the NEXT turn — it is spent in full once acted on.
-        RuntimeState.ResetTempoMomentum();
-        HasActedThisCombat = true;
-    }
-
-    /// <summary>
     /// Immutable stat values frozen at combat creation.
     /// Canonical source for base/max/starting values.
     /// </summary>
@@ -433,8 +302,7 @@ public sealed class Combatant
         string archetype,
         int maxVitality,
         int baseGuard = 0,
-        IReadOnlyCollection<CombatantSkill>? skills = null,
-        CombatRow row = CombatRow.Front)
+        IReadOnlyCollection<CombatantSkill>? skills = null)
     {
         var id = CombatantId.New();
         var snapshot = CombatantBaseStatSnapshot.Create(
@@ -444,7 +312,6 @@ public sealed class Combatant
             startingGuard: baseGuard,
             speed: 10,
             initiative: 0,
-            recovery: 0,
             focus: 0,
             mana: 0,
             charge: 0);
@@ -469,8 +336,7 @@ public sealed class Combatant
             CombatantStatus.Active,
             skills?.ToArray() ?? Array.Empty<CombatantSkill>(),
             snapshot,
-            runtimeState,
-            row);
+            runtimeState);
     }
 
     public static Combatant CreateEnemy(
@@ -487,8 +353,7 @@ public sealed class Combatant
         int magicAttack = 0,
         int magicDefense = 0,
         int mana = 0,
-        int movement = 4,
-        CombatRow row = CombatRow.Front)
+        int movement = 4)
     {
         var id = CombatantId.New();
         var snapshot = CombatantBaseStatSnapshot.Create(
@@ -498,7 +363,6 @@ public sealed class Combatant
             startingGuard: startingGuard,
             speed: speed,
             initiative: 0,
-            recovery: 0,
             focus: focus,
             mana: mana,
             charge: 0,
@@ -528,8 +392,7 @@ public sealed class Combatant
             CombatantStatus.Active,
             skills?.ToArray() ?? Array.Empty<CombatantSkill>(),
             snapshot,
-            runtimeState,
-            row);
+            runtimeState);
     }
 
     public static Combatant Create(
@@ -543,7 +406,7 @@ public sealed class Combatant
         int guard,
         int baseGuard,
         int mana,
-        int charge,
+        decimal charge,
         IReadOnlyCollection<CombatantSkill>? skills = null,
         int attackPower = 0,
         int defense = 0,
@@ -552,8 +415,7 @@ public sealed class Combatant
         int? maxMana = null,
         int magicAttack = 0,
         int magicDefense = 0,
-        int movement = 4,
-        CombatRow row = CombatRow.Front)
+        int movement = 4)
     {
         if (id.Value == Guid.Empty)
             throw new DomainException("Combatant id is required.");
@@ -594,10 +456,9 @@ public sealed class Combatant
             startingGuard: baseGuard,
             speed: speed,
             initiative: 0,
-            recovery: 0,
             focus: focus,
             mana: mana,
-            charge: charge,
+            charge: (int)Math.Floor(charge),
             magicAttack: magicAttack,
             magicDefense: magicDefense,
             movement: movement);
@@ -727,7 +588,7 @@ public sealed class Combatant
         int guard,
         int baseGuard,
         int mana,
-        int charge,
+        decimal charge,
         CombatantStatus status,
         IReadOnlyCollection<CombatantSkill> skills,
         CombatantBaseStatSnapshot? baseStatSnapshot = null,
@@ -743,7 +604,6 @@ public sealed class Combatant
         int dotDamageBonusPercent = 0,
         int maxMana = int.MaxValue,
         int healingBonusPercent = 0,
-        CombatRow row = CombatRow.Front,
         bool hasActedThisCombat = false)
     {
         var snapshot = baseStatSnapshot ?? CombatantBaseStatSnapshot.Rehydrate(
@@ -755,10 +615,8 @@ public sealed class Combatant
             10,
             0,
             0,
-            0,
             mana,
-            charge,
-            null,
+            (int)Math.Floor(charge),
             DateTime.UtcNow);
 
         var state = runtimeState ?? CombatantRuntimeState.Rehydrate(
@@ -768,12 +626,10 @@ public sealed class Combatant
             0,
             mana,
             charge,
-            null,
-            null,
             DateTime.UtcNow,
             maxMana: maxMana);
 
-        var combatant = new Combatant(id, sourceKey, displayName, side, archetype, maxVitality, currentVitality, guard, baseGuard, mana, runtimeState?.MaxMana ?? maxMana, charge, status, skills, snapshot, state, row, hasActedThisCombat);
+        var combatant = new Combatant(id, sourceKey, displayName, side, archetype, maxVitality, currentVitality, guard, baseGuard, mana, runtimeState?.MaxMana ?? maxMana, charge, status, skills, snapshot, state, hasActedThisCombat);
         combatant.AttackTypeOverride = attackTypeOverride;
         combatant.TypedDamageReductionPercent = typedDamageReductionPercent ?? new Dictionary<EmotionalType, int>();
         combatant.ApplyEquipmentCombatModifiers(
@@ -814,12 +670,12 @@ public sealed class Combatant
         Mana = RuntimeState.CurrentMana;
     }
 
-    public void GainCharge(int amount)
+    public void GainCharge(decimal amount)
     {
         if (amount < 0)
             throw new DomainException("Charge gain amount cannot be negative.");
 
-        Charge += amount;
+        Charge = Math.Min(5m, Charge + Math.Round(amount, 1));
         RuntimeState.GainCharge(amount);
     }
 
@@ -880,7 +736,7 @@ public sealed class Combatant
             e => string.Equals(e.Key, effect.Key, StringComparison.OrdinalIgnoreCase));
 
         if (existing is not null)
-            existing.Reinforce(effect.Stacks);
+            existing.Reinforce(effect);
         else
             _statusEffects.Add(effect);
     }
@@ -913,17 +769,23 @@ public sealed class Combatant
                             : amount;
                         if (reduced > 0)
                             ApplyDamage(reduced);
-                        events.Add(new StatusTickEvent(effect.Key, effect.DisplayName, effect.Kind, reduced, false));
+                        events.Add(new StatusTickEvent(
+                            effect.Key, effect.DisplayName, effect.Kind, reduced, false,
+                            effect.StackSourceIds));
                     }
                     else if (effect.Kind == StatusEffectKind.HealOverTime && CurrentVitality < MaxVitality)
                     {
                         ApplyHeal(amount);
-                        events.Add(new StatusTickEvent(effect.Key, effect.DisplayName, effect.Kind, amount, false));
+                        events.Add(new StatusTickEvent(
+                            effect.Key, effect.DisplayName, effect.Kind, amount, false,
+                            effect.StackSourceIds));
                     }
                     else if (effect.Kind == StatusEffectKind.GuardOverTime)
                     {
                         GainGuard(amount);
-                        events.Add(new StatusTickEvent(effect.Key, effect.DisplayName, effect.Kind, amount, false));
+                        events.Add(new StatusTickEvent(
+                            effect.Key, effect.DisplayName, effect.Kind, amount, false,
+                            effect.StackSourceIds));
                     }
                 }
             }
@@ -931,7 +793,9 @@ public sealed class Combatant
             if (effect.IsExpired(currentTick))
             {
                 _statusEffects.Remove(effect);
-                events.Add(new StatusTickEvent(effect.Key, effect.DisplayName, effect.Kind, 0, true));
+                events.Add(new StatusTickEvent(
+                    effect.Key, effect.DisplayName, effect.Kind, 0, true,
+                    effect.StackSourceIds));
             }
         }
 
@@ -963,17 +827,15 @@ public sealed class Combatant
     public int EffectiveDefense => Math.Max(0, EffectiveStat(CombatStat.Defense, BaseStatSnapshot.Defense));
     public int EffectiveSpeed => Math.Max(1, EffectiveStat(CombatStat.Speed, BaseStatSnapshot.Speed));
     public int EffectiveMovement => Math.Max(1, EffectiveStat(CombatStat.Movement, BaseStatSnapshot.Movement));
-    public int EffectiveFocus => Math.Max(0, EffectiveStat(CombatStat.Focus, BaseStatSnapshot.Focus)
-        + (int)Math.Round(BaseStatSnapshot.Focus * RowFocusBonusPercent / 100.0));
+    public int EffectiveFocus => Math.Max(0, EffectiveStat(CombatStat.Focus, BaseStatSnapshot.Focus));
     public int EffectiveEvasion => Math.Max(0, EffectiveStat(CombatStat.Evasion, 0));
     public int EffectiveMagicAttack => Math.Max(0, EffectiveStat(CombatStat.MagicAttack, BaseStatSnapshot.MagicAttack));
     public int EffectiveMagicDefense => Math.Max(0, EffectiveStat(CombatStat.MagicDefense, BaseStatSnapshot.MagicDefense));
 
-    // Control flags consumed by the ATB scheduler / action validation (tranche 3+).
+    // Control flags consumed by tactical action validation.
     public bool IsStunned => _statusEffects.Any(e => e.Kind == StatusEffectKind.Stun);
     public bool IsSilenced => _statusEffects.Any(e => e.Kind == StatusEffectKind.Silence);
-    // Silence blocks the next action exactly like Stun (see "Silence", canon skill) —
-    // both freeze the gauge here; IsStunned/IsSilenced stay distinct properties for
-    // logging/UI, but gate identically for scheduling purposes.
-    public bool IsAtbLocked => IsStunned || IsSilenced || _statusEffects.Any(e => e.Kind == StatusEffectKind.AtbLock);
+    public bool HasTacticalSlow => _statusEffects.Any(e =>
+        e.Key.StartsWith("equipment.temporal-slow", StringComparison.OrdinalIgnoreCase));
+    public bool IsActivationBlocked => IsStunned || IsSilenced;
 }

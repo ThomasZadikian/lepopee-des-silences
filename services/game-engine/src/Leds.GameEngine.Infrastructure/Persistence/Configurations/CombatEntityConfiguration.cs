@@ -41,7 +41,6 @@ public sealed class CombatEntityConfiguration : IEntityTypeConfiguration<CombatE
         builder.Property(c => c.CreatedAtUtc).HasColumnName("created_at_utc");
         builder.Property(c => c.UpdatedAtUtc).HasColumnName("updated_at_utc");
 
-        builder.Property(c => c.Kind).HasColumnName("kind").HasMaxLength(16).HasDefaultValue("Tactical");
         builder.Property(c => c.TacticalWidth).HasColumnName("tactical_width");
         builder.Property(c => c.TacticalHeight).HasColumnName("tactical_height");
         builder.Property(c => c.TacticalElevationCsv).HasColumnName("tactical_elevation_csv");
@@ -54,6 +53,13 @@ public sealed class CombatEntityConfiguration : IEntityTypeConfiguration<CombatE
         builder.Property(c => c.TacticalTurnStatesCsv).HasColumnName("tactical_turn_states_csv");
         builder.Property(c => c.TacticalUsedOnceSkillKeysCsv).HasColumnName("tactical_used_once_skill_keys_csv");
         builder.Property(c => c.TacticalSkillCooldownsCsv).HasColumnName("tactical_skill_cooldowns_csv");
+        builder.Property(c => c.TacticalEscapeX).HasColumnName("tactical_escape_x");
+        builder.Property(c => c.TacticalEscapeY).HasColumnName("tactical_escape_y");
+        builder.Property(c => c.TacticalRiskTier).HasColumnName("tactical_risk_tier").HasMaxLength(32);
+        builder.Property(c => c.TacticalEquippedItemsCsv).HasColumnName("tactical_equipped_items_csv");
+        builder.Property(c => c.TacticalActivationCountsCsv).HasColumnName("tactical_activation_counts_csv");
+        builder.Property(c => c.TacticalLastMagicCsv).HasColumnName("tactical_last_magic_csv");
+        builder.Property(c => c.TacticalCannotReviveCsv).HasColumnName("tactical_cannot_revive_csv");
 
         builder.HasIndex(c => c.RunId);
         builder.HasIndex(c => c.Status);
