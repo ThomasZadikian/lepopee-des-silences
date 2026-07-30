@@ -19,6 +19,7 @@ export type TargetingType =
   | 'AllAllies';
 
 export type SkillCategory = 'Physical' | 'Magic';
+export type TacticalAreaShape = 'Single' | 'Cross' | 'Diamond' | 'Map';
 
 export type CombatantSkillRuntimeDto = {
   key: string;
@@ -33,6 +34,10 @@ export type CombatantSkillRuntimeDto = {
   category: SkillCategory;
   /** The skill's OWN "élément" — null for basic attacks / untyped skills. */
   emotionalType?: EmotionalType | null;
+  /** Server-owned tactical contract. The client must not infer these values independently. */
+  tacticalRange: number;
+  tacticalAreaShape: TacticalAreaShape;
+  requiresLineOfSight: boolean;
 };
 
 export type CombatantRuntimeDto = {
