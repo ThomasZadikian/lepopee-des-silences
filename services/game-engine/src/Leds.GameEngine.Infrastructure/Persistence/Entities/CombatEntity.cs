@@ -40,7 +40,7 @@ public sealed class CombatEntity
     /// combattants et leur état — leur est commun et vit déjà dans <see cref="Combatants"/>.
     /// Une table parallèle aurait dupliqué cette relation sans rien gagner.
     /// </remarks>
-    public string Kind { get; set; } = "Atb";
+    public string Kind { get; set; } = "Tactical";
 
     public int? TacticalWidth { get; set; }
     public int? TacticalHeight { get; set; }

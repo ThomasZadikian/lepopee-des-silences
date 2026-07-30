@@ -420,6 +420,7 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
             ? StatModifierDamageMultiplier(skill, caster, recipient)
                 * MagicCategoryDamageMultiplier(skill, caster, recipient)
                 * PhysicalCategoryDamageMultiplier(skill, caster)
+                * FireDamageMultiplier(skill, caster)
                 * RowDamageMultiplier(skill, caster, recipient)
             : 1.0;
 
@@ -521,6 +522,7 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
                     StatModifierDamageMultiplier(skill, actor, target)
                     * MagicCategoryDamageMultiplier(skill, actor, target)
                     * PhysicalCategoryDamageMultiplier(skill, actor)
+                    * FireDamageMultiplier(skill, actor)
                     * RowDamageMultiplier(skill, actor, target)
                     * DuelDamageAsymmetryMultiplier(combat, skill));
 
@@ -530,6 +532,7 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
                     basePower,
                     MagicCategoryDamageMultiplier(skill, actor, target)
                     * PhysicalCategoryDamageMultiplier(skill, actor)
+                    * FireDamageMultiplier(skill, actor)
                     * DuelDamageAsymmetryMultiplier(combat, skill)
                     * (hasHeightAdvantage ? 1.05 : 1.0)
                     * DamageMultiplierFor(attackArc));
@@ -792,6 +795,21 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
         }
 
         return Math.Max(0.0, 1.0 + actor.EffectivePhysicalDamageBonusPercent / 100.0);
+    }
+
+    private static double FireDamageMultiplier(CombatantSkill skill, Combatant actor)
+    {
+        var isFire = skill.Tags.Any(tag =>
+                string.Equals(tag, "fire", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(tag, "feu", StringComparison.OrdinalIgnoreCase))
+            || skill.Key.Contains("flamme", StringComparison.OrdinalIgnoreCase)
+            || skill.Key.Contains("cendre", StringComparison.OrdinalIgnoreCase)
+            || skill.Key.Contains("forge", StringComparison.OrdinalIgnoreCase)
+            || skill.Key.Contains("souffle", StringComparison.OrdinalIgnoreCase);
+
+        return isFire
+            ? Math.Max(0.0, 1.0 + actor.EffectiveFireDamageBonusPercent / 100.0)
+            : 1.0;
     }
 
     /// <summary>

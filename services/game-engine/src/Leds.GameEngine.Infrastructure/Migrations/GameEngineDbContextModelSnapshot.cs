@@ -390,7 +390,7 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasMaxLength(16)
                         .HasColumnType("character varying(16)")
-                        .HasDefaultValue("Atb")
+                        .HasDefaultValue("Tactical")
                         .HasColumnName("kind");
 
                     b.Property<bool>("LowHpDamageAmplificationEnabled")
@@ -753,26 +753,6 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
-
-                    b.Property<int?>("ActionRecoveryUntilTick")
-                        .HasColumnType("integer")
-                        .HasColumnName("action_recovery_until_tick");
-
-                    b.Property<int?>("AtbFillPerTick")
-                        .HasColumnType("integer")
-                        .HasColumnName("atb_fill_per_tick");
-
-                    b.Property<int?>("AtbGaugeValue")
-                        .HasColumnType("integer")
-                        .HasColumnName("atb_gauge_value");
-
-                    b.Property<int?>("AtbTempoCombatantFactorPerMille")
-                        .HasColumnType("integer")
-                        .HasColumnName("atb_tempo_combatant_factor_per_mille");
-
-                    b.Property<int?>("AtbTempoRoomFactorPerMille")
-                        .HasColumnType("integer")
-                        .HasColumnName("atb_tempo_room_factor_per_mille");
 
                     b.Property<Guid>("CombatantId")
                         .HasColumnType("uuid")

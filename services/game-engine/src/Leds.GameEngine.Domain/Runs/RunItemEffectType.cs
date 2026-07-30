@@ -25,5 +25,10 @@ public enum RunItemEffectType
     HealPercentAndCleanseDot = 12,
     HealPercentAndSilence = 13,
     RevivePercent = 14,
-    HealPercentAndEvasion = 15
+    HealPercentAndEvasion = 15,
+    ForceWeatherOrage = 16,
+    ForceWeatherAccalmie = 17,
+    RerollWeather = 18,
+    GrantTeamSkillPoints = 19,
+    GrantTemporarySkill = 20
 }

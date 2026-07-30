@@ -83,8 +83,13 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
         var mainCharacter = snapshot.Characters.FirstOrDefault()
             ?? throw new InvalidOperationException("Player snapshot has no available characters.");
 
-        var equipmentEffects = await _skillMerger.CollectEquippedItemEffectsAsync(
+        var equippedDefinitions = await _skillMerger.ResolveEquippedItemsAsync(
             mainCharacter.EquippedItems, cancellationToken);
+        var equipmentEffects = equippedDefinitions
+            .SelectMany(item => item.EquipmentEffects ?? [])
+            .ToArray();
+        var equippedWeapon = equippedDefinitions.FirstOrDefault(item =>
+            string.Equals(item.ItemType, "Weapon", StringComparison.OrdinalIgnoreCase));
 
         var effectiveStats = _statMerger.ComputeEffectiveStats(mainCharacter.Stats, equipmentEffects);
 
@@ -136,7 +141,11 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
                 && e.Amount is not null)
             .Sum(e => e.Amount!.Value);
 
-        var mergedSkills = await _skillMerger.MergeSkillsAsync(mainCharacter, equipmentEffects, cancellationToken);
+        var mergedSkills = await _skillMerger.MergeSkillsAsync(
+            mainCharacter,
+            equipmentEffects,
+            cancellationToken,
+            equippedWeapon);
 
         var playerSkills = mergedSkills
             .Select(s => PlayerRuntimeSkill.Create(
@@ -204,44 +213,59 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
         // permanent n'est pas plafonné — le joueur recrute autant qu'il veut — mais seuls les
         // MaxPartySize premiers partent en run. L'ordre du roster fait foi, et le personnage
         // principal en est la tête (cf. snapshot.Characters.FirstOrDefault() plus haut).
-        var characterSnapshots = snapshot.Characters
-            .Take(Run.MaxPartySize)
-            .Select(c =>
-            {
-                var statSnapshot = RunCharacterStatSnapshot.Create(
-                    maxVitality: c.Stats.MaxVitality,
-                    attackPower: c.Stats.AttackPower,
-                    defense: c.Stats.Defense,
-                    startingGuard: c.Stats.StartingGuard,
-                    speed: c.Stats.Speed,
-                    initiative: c.Stats.Initiative,
-                    recovery: c.Stats.Recovery,
-                    focus: c.Stats.Focus,
-                    mana: c.Stats.Mana,
-                    charge: c.Stats.Charge,
-                    magicAttack: c.Stats.MagicAttack,
-                    magicDefense: c.Stats.MagicDefense);
+        var characterSnapshots = new List<RunCharacterSnapshot>();
+        foreach (var character in snapshot.Characters.Take(Run.MaxPartySize))
+        {
+            var definitions = await _skillMerger.ResolveEquippedItemsAsync(
+                character.EquippedItems, cancellationToken);
+            var effects = definitions.SelectMany(item => item.EquipmentEffects ?? []).ToArray();
+            var effective = _statMerger.ComputeEffectiveStats(character.Stats, effects);
+            var weapon = definitions.FirstOrDefault(item =>
+                string.Equals(item.ItemType, "Weapon", StringComparison.OrdinalIgnoreCase));
+            var skills = await _skillMerger.MergeSkillsAsync(
+                character, effects, cancellationToken, weapon);
 
-                var skillSnapshots = c.Skills
-                    .Select(s => RunCharacterSkillSnapshot.Create(
-                        skillDefinitionKey: s.SkillDefinitionKey,
-                        displayName: s.DisplayName,
-                        skillType: s.SkillType,
-                        targetingMode: s.TargetingMode,
-                        effectType: s.EffectType,
-                        manaCost: s.ManaCost,
-                        chargeCost: s.ChargeCost,
-                        basePower: s.BasePower))
-                    .ToArray();
+            var statSnapshot = RunCharacterStatSnapshot.Create(
+                maxVitality: effective.MaxVitality,
+                attackPower: effective.AttackPower,
+                defense: effective.Defense,
+                startingGuard: character.Stats.StartingGuard,
+                speed: effective.Speed,
+                initiative: character.Stats.Initiative,
+                recovery: character.Stats.Recovery,
+                focus: effective.Focus,
+                mana: effective.Mana,
+                charge: effective.Charge,
+                magicAttack: effective.MagicAttack,
+                magicDefense: effective.MagicDefense);
 
-                return RunCharacterSnapshot.Create(
-                    characterId: c.CharacterId,
-                    definitionKey: c.DefinitionKey,
-                    displayName: c.DisplayName,
-                    statBlock: statSnapshot,
-                    skills: skillSnapshots);
-            })
-            .ToArray();
+            var skillSnapshots = skills
+                .Select(s => RunCharacterSkillSnapshot.Create(
+                    skillDefinitionKey: s.Key,
+                    displayName: s.DisplayName,
+                    skillType: s.SkillType,
+                    targetingMode: s.TargetingType,
+                    effectType: s.EffectType,
+                    manaCost: s.ManaCost,
+                    chargeCost: s.ChargeCost,
+                    basePower: s.BasePower,
+                    category: s.Category,
+                    basePowerIsPercentOfMaxVitality: s.BasePowerIsPercentOfMaxVitality,
+                    tacticalRange: s.TacticalRange,
+                    tacticalAreaShape: s.TacticalAreaShape,
+                    requiresLineOfSight: s.RequiresLineOfSight,
+                    cooldown: s.Cooldown,
+                    isUltimate: s.IsUltimate,
+                    emotionalRegister: s.EmotionalRegister))
+                .ToArray();
+
+            characterSnapshots.Add(RunCharacterSnapshot.Create(
+                characterId: character.CharacterId,
+                definitionKey: character.DefinitionKey,
+                displayName: character.DisplayName,
+                statBlock: statSnapshot,
+                skills: skillSnapshots));
+        }
 
         var playerSnapshot = RunPlayerSnapshot.Create(
             playerId: snapshot.PlayerId,

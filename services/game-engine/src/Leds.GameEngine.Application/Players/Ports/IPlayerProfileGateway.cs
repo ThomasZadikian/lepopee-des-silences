@@ -10,7 +10,12 @@ public interface IPlayerProfileGateway
 
     Task<PlayerProfileView> UnequipSkillAsync(Guid playerId, Guid characterId, string skillKey, CancellationToken cancellationToken);
 
-    Task<PlayerProfileView> EquipItemAsync(Guid playerId, Guid characterId, string itemKey, CancellationToken cancellationToken);
+    Task<PlayerProfileView> EquipItemAsync(
+        Guid playerId,
+        Guid characterId,
+        string itemKey,
+        string slot,
+        CancellationToken cancellationToken);
 
     Task<PlayerProfileView> UnequipItemAsync(Guid playerId, Guid characterId, string itemKey, CancellationToken cancellationToken);
 

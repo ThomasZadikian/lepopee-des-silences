@@ -1,8 +1,5 @@
 using FluentAssertions;
 using Leds.GameEngine.Application.Abstractions;
-using Leds.GameEngine.Application.Combats;
-using Leds.GameEngine.Application.Combats.Dtos;
-using Leds.GameEngine.Application.Combats.EnemyTurns;
 using Leds.GameEngine.Application.Common.Exceptions;
 using Leds.GameEngine.Application.Runs.UseRunItem;
 using Leds.GameEngine.Domain.Combats;
@@ -33,8 +30,7 @@ public sealed class UseRunItemCommandHandlerTests
         var runRepo = new Mock<IRunRepository>();
         runRepo.Setup(r => r.GetByIdAsync(run.Id, It.IsAny<CancellationToken>())).ReturnsAsync(run);
 
-        var enemyResolver = CreateNoOpEnemyTurnResolver();
-        var handler = new UseRunItemCommandHandler(runRepo.Object, enemyResolver.Object);
+        var handler = new UseRunItemCommandHandler(runRepo.Object);
 
         var result = await handler.Handle(
             new UseRunItemCommand(run.Id.Value, item.Id.Value),
@@ -58,9 +54,7 @@ public sealed class UseRunItemCommandHandlerTests
         runRepo.Setup(r => r.GetByIdAsync(It.IsAny<RunId>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Run?)null);
 
-        var handler = new UseRunItemCommandHandler(
-            runRepo.Object,
-            CreateNoOpEnemyTurnResolver().Object);
+        var handler = new UseRunItemCommandHandler(runRepo.Object);
 
         var act = () => handler.Handle(
             new UseRunItemCommand(Guid.NewGuid(), Guid.NewGuid()),
@@ -77,9 +71,7 @@ public sealed class UseRunItemCommandHandlerTests
         var runRepo = new Mock<IRunRepository>();
         runRepo.Setup(r => r.GetByIdAsync(run.Id, It.IsAny<CancellationToken>())).ReturnsAsync(run);
 
-        var handler = new UseRunItemCommandHandler(
-            runRepo.Object,
-            CreateNoOpEnemyTurnResolver().Object);
+        var handler = new UseRunItemCommandHandler(runRepo.Object);
 
         var act = () => handler.Handle(
             new UseRunItemCommand(run.Id.Value, Guid.NewGuid()),
@@ -106,7 +98,7 @@ public sealed class UseRunItemCommandHandlerTests
         var runRepo = new Mock<IRunRepository>();
         runRepo.Setup(r => r.GetByIdAsync(run.Id, It.IsAny<CancellationToken>())).ReturnsAsync(run);
 
-        var handler = new UseRunItemCommandHandler(runRepo.Object, CreateNoOpEnemyTurnResolver().Object);
+        var handler = new UseRunItemCommandHandler(runRepo.Object);
 
         var result = await handler.Handle(
             new UseRunItemCommand(run.Id.Value, item.Id.Value),
@@ -116,7 +108,7 @@ public sealed class UseRunItemCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ShouldAdvanceCombatTurn_WhenUsedInCombat()
+    public async Task Handle_ShouldRejectLegacyInventoryUse_WhenCombatIsActive()
     {
         var strikeSkill = CombatantSkill.Create(
             "skill.basic.strike", "Frappe", "Damage", "SingleEnemy", "Damage", 0, 0, 10);
@@ -148,14 +140,15 @@ public sealed class UseRunItemCommandHandlerTests
         runRepo.Setup(r => r.GetByIdAsync(run.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(run);
 
-        var handler = new UseRunItemCommandHandler(runRepo.Object, CreateNoOpEnemyTurnResolver().Object);
+        var handler = new UseRunItemCommandHandler(runRepo.Object);
 
-        var result = await handler.Handle(
+        var act = () => handler.Handle(
             new UseRunItemCommand(run.Id.Value, item.Id.Value),
             CancellationToken.None);
 
-        result.UsedInCombat.Should().BeTrue();
-        runRepo.Verify(r => r.UpdateAsync(run, It.IsAny<CancellationToken>()), Times.Once);
+        await act.Should().ThrowAsync<Leds.GameEngine.Domain.Common.DomainException>()
+            .WithMessage("*tactical*");
+        runRepo.Verify(r => r.UpdateAsync(run, It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -176,7 +169,7 @@ public sealed class UseRunItemCommandHandlerTests
         var runRepo = new Mock<IRunRepository>();
         runRepo.Setup(r => r.GetByIdAsync(run.Id, It.IsAny<CancellationToken>())).ReturnsAsync(run);
 
-        var handler = new UseRunItemCommandHandler(runRepo.Object, CreateNoOpEnemyTurnResolver().Object);
+        var handler = new UseRunItemCommandHandler(runRepo.Object);
 
         var result = await handler.Handle(
             new UseRunItemCommand(run.Id.Value, item.Id.Value),
@@ -204,7 +197,7 @@ public sealed class UseRunItemCommandHandlerTests
         var runRepo = new Mock<IRunRepository>();
         runRepo.Setup(r => r.GetByIdAsync(run.Id, It.IsAny<CancellationToken>())).ReturnsAsync(run);
 
-        var handler = new UseRunItemCommandHandler(runRepo.Object, CreateNoOpEnemyTurnResolver().Object);
+        var handler = new UseRunItemCommandHandler(runRepo.Object);
 
         var result = await handler.Handle(
             new UseRunItemCommand(run.Id.Value, item.Id.Value),
@@ -214,17 +207,4 @@ public sealed class UseRunItemCommandHandlerTests
         result.LogEntries.Should().BeNull();
     }
 
-    private static Mock<IEnemyCombatTurnResolver> CreateNoOpEnemyTurnResolver()
-    {
-        var resolver = new Mock<IEnemyCombatTurnResolver>();
-        resolver.Setup(r => r.Resolve(It.IsAny<Combat>()))
-            .Returns((Combat combat) => new EnemyCombatTurnResolution(
-                WasResolved: false,
-                ActorId: combat.ActiveCombatantId?.Value,
-                SkillKey: null,
-                TargetIds: [],
-                LogEntries: [],
-                Combat: CombatRuntimeDto.FromDomain(combat)));
-        return resolver;
-    }
 }

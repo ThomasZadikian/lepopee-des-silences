@@ -39,6 +39,7 @@ export type PlayerCharacterItemView = {
   acquiredAtUtc: string;
   source: string | null;
   isEquipped: boolean;
+  slot?: 'Weapon' | 'Accessory' | 'Relic';
 };
 
 export type PlayerCharacterView = {

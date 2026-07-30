@@ -86,6 +86,7 @@ public sealed partial class CatalogSeedRunner
         await SeedBestiaireImperatriceDeLaFalaiseAsync(cancellationToken);
         await SeedCanonItemsAsync(cancellationToken);
         await SeedPalaceItemsAsync(cancellationToken);
+        await SeedCanonicalWeaponsAsync(cancellationToken);
         await SeedCanonCursesAsync(cancellationToken);
         await PruneCanonLawPlaceholdersAsync(cancellationToken);
         await SeedLoisMajeuresAsync(cancellationToken);
@@ -6669,6 +6670,9 @@ public sealed partial class CatalogSeedRunner
                 new LootEntry("canon.item.lanterne", 55),
                 new LootEntry("canon.item.cendre-benite", 35),
                 new LootEntry("canon.item.poussiere-de-tombe", 25),
+                new LootEntry("weapon.lame-seuil", 12),
+                new LootEntry("weapon.arc-souvenir", 8),
+                new LootEntry("weapon.baton-resonance", 8),
             }, cancellationToken);
     }
 

@@ -86,6 +86,11 @@ public sealed record RoomDto(
             2 => "Rain",
             3 => "Heatwave",
             4 => "Hail",
+            5 => "Brume",
+            6 => "Orage",
+            7 => "PluieDeCendres",
+            8 => "PluieViolacee",
+            9 => "Accalmie",
             _ => null
         };
     }

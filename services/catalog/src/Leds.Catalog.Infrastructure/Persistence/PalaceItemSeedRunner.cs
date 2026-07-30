@@ -87,9 +87,10 @@ public sealed partial class CatalogSeedRunner
             });
         }
 
-        var equipmentEffectsJson = JsonSerializer.Serialize(
-            definition.EquipmentEffects ?? [],
-            J);
+        var equipmentEffects = (definition.EquipmentEffects ?? [])
+            .Concat(DeriveAlwaysOnEquipmentEffects(definition))
+            .ToArray();
+        var equipmentEffectsJson = JsonSerializer.Serialize(equipmentEffects, J);
         var item = await _ctx.ItemDefinitions
             .FirstOrDefaultAsync(i => i.Key == definition.Key, cancellationToken);
 
@@ -139,6 +140,49 @@ public sealed partial class CatalogSeedRunner
         item.IsLiquid = false;
         item.ReadablePagesJson = "[]";
         item.UpdatedAtUtc = _now;
+    }
+
+    private static IReadOnlyCollection<ItemEquipmentEffect> DeriveAlwaysOnEquipmentEffects(
+        PalaceItemSeed definition)
+    {
+        if (definition.UsageMode is not ("Equip" or "Passive"))
+            return [];
+
+        var derived = new List<ItemEquipmentEffect>();
+        foreach (var effect in definition.Effects.Where(effect =>
+                     effect.Type == "StatModifier"
+                     && effect.Target == "Wearer"
+                     && effect.Condition is null
+                     && effect.Value.HasValue
+                     && effect.Duration == "WhileEquipped"))
+        {
+            var kind = effect.ValueMode == "Percent"
+                ? ItemEquipmentEffectKind.StatBonusPercent
+                : ItemEquipmentEffectKind.StatBonus;
+            var amount = decimal.ToInt32(effect.Value!.Value);
+            string[] stats = effect.BehaviorTag switch
+            {
+                "attack" => ["AttackPower"],
+                "defense" => ["Defense"],
+                "speed" => ["Speed"],
+                "focus" => ["Focus"],
+                "magic-attack" => ["MagicAttack"],
+                "magic-defense" => ["MagicDefense"],
+                "mana" => ["Mana"],
+                "vitality" => ["MaxVitality"],
+                "all-stats" =>
+                [
+                    "MaxVitality", "AttackPower", "Defense", "Speed",
+                    "Focus", "MagicAttack", "MagicDefense", "Mana"
+                ],
+                _ => Array.Empty<string>()
+            };
+
+            derived.AddRange(stats.Select(stat =>
+                new ItemEquipmentEffect(kind, stat, amount)));
+        }
+
+        return derived;
     }
 
     private static PalaceEffect Fx(
@@ -297,33 +341,35 @@ public sealed partial class CatalogSeedRunner
         // Progression
         P("item.grain-chapelet", "Grain de chapelet", "+2 points de compétence à chaque membre de l'équipe.",
             "Consumable", "SkillEssence", "Common", "UseOutsideCombat", stack: 20, outside: true,
+            effectRunType: "GrantTeamSkillPoints", effectValue: 2,
             effects: [Fx("GrantSkillPoints", "Team", 2, "Flat", "Immediate")]),
         P("item.osselet-grave", "Osselet gravé", "+5 points de compétence à l'équipe, ou +7 dans la Calamité.",
             "Consumable", "SkillEssence", "Uncommon", "UseOutsideCombat", stack: 20, outside: true, pool: "Enfers", effects:
+            // Calamité (+7) is resolved from the current room by the game engine.
             [
                 Fx("GrantSkillPoints", "Team", 5, "Flat", "Immediate", "room:not-enfer1"),
                 Fx("GrantSkillPoints", "Team", 7, "Flat", "Immediate", "room:enfer1")
-            ]),
+            ], effectRunType: "GrantTeamSkillPoints", effectValue: 5),
         P("item.cristal-resonance", "Cristal de résonance",
             "+10 points de compétence à l'équipe ; les prochains Gardiens de Crystal commencent avec +2 Résonance, cumulable cinq fois.",
             "Consumable", "SkillEssence", "Rare", "UseOutsideCombat", stack: 20, outside: true, pool: "SousTerrains,CaverneCrystal", effects:
             [
                 Fx("GrantSkillPoints", "Team", 10, "Flat", "Immediate"),
                 Fx("NextEncounterModifier", "CrystalGuardians", 2, "Flat", "UntilTriggered", "max-stacks:5", behavior: "resonance")
-            ]),
+            ], effectRunType: "GrantTeamSkillPoints", effectValue: 10),
         P("item.page-arrachee", "Page arrachée",
             "Au choix : +15 points de compétence à l'équipe ou un troisième emplacement de compétence temporaire pour la run.",
             "Consumable", "SkillEssence", "Epic", "UseOutsideCombat", stack: 1, outside: true, pool: "room.palier", effects:
             [
                 Fx("Choice", "User", null, "Choice", "Immediate", behavior: "team-skill-points:15|temporary-skill-slot:+1")
-            ]),
+            ], effectRunType: "GrantTeamSkillPoints", effectValue: 15),
         P("item.dent-de-lait", "Dent de lait",
             "+1 point de compétence à l'équipe ; 10% de chance déterministe d'accorder +4 supplémentaires.",
             "Consumable", "SkillEssence", "Common", "UseOutsideCombat", stack: 20, outside: true, effects:
             [
                 Fx("GrantSkillPoints", "Team", 1, "Flat", "Immediate"),
                 Fx("GrantSkillPoints", "Team", 4, "Flat", "Immediate", "deterministic-chance:10")
-            ]),
+            ], effectRunType: "GrantTeamSkillPoints", effectValue: 1),
 
         // Reliques
         P("item.cahier-noir", "Cahier noir",
@@ -395,13 +441,16 @@ public sealed partial class CatalogSeedRunner
 
         // Instruments météo
         P("item.girouette-os", "Girouette d'os", "Hors combat, trois charges par run : relance la météo de la salle actuelle.",
-            "Equipment", "WeatherInstrument", "Uncommon", "UseOutsideCombat", outside: true, effects:
+            "Consumable", "WeatherInstrument", "Uncommon", "UseOutsideCombat", stack: 3, outside: true,
+            effectRunType: "RerollWeather", effects:
             [Fx("RerollWeather", "CurrentRoom", 3, "RunCharges", "Run", "room:not-weather-immune")]),
         P("item.flacon-orage", "Flacon d'orage", "Impose Orage pendant trois salles ; une salle immunisée consomme tout de même une charge de durée.",
-            "Consumable", "WeatherInstrument", "Rare", "UseOutsideCombat", stack: 20, outside: true, effects:
+            "Consumable", "WeatherInstrument", "Rare", "UseOutsideCombat", stack: 20, outside: true,
+            effectRunType: "ForceWeatherOrage", effectValue: 3, effects:
             [Fx("ForceWeather", "NextRooms", 3, "Rooms", "3Rooms", "room:not-weather-immune", behavior: "Orage;immune-room-consumes-duration")]),
         P("item.pierre-accalmie", "Pierre d'accalmie", "Impose Accalmie dans la salle actuelle.",
-            "Consumable", "WeatherInstrument", "Rare", "UseOutsideCombat", stack: 20, outside: true, pool: "Montagne", effects:
+            "Consumable", "WeatherInstrument", "Rare", "UseOutsideCombat", stack: 20, outside: true,
+            effectRunType: "ForceWeatherAccalmie", effectValue: 1, pool: "Montagne", effects:
             [Fx("ForceWeather", "CurrentRoom", 1, "Room", "CurrentRoom", "room:not-weather-immune", behavior: "Accalmie")]),
         P("item.barometre-palais", "Baromètre du Palais",
             "Révèle la météo de la prochaine salle ; une fois par étage, permet de choisir cette météo.",

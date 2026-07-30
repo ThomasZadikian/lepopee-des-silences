@@ -42,6 +42,8 @@ public enum CombatStat
     // to MagicDamageBonus (see CombatSkillEffectResolver.PhysicalCategoryDamageMultiplier).
     // "Loi du Silence Dû" (law.silence-du) is its only source today.
     PhysicalDamageBonus,
+    // Percentage points added to skills authored as fire attacks.
+    FireDamageBonus,
     // Flat (not percentage) mana cost added to every Player-side skill cast, on top of
     // SkillCostReductionPercent's percentage reduction — see
     // Combatant.EffectiveFlatManaCostBonus / CombatSkillEffectResolver.ConsumeResources.

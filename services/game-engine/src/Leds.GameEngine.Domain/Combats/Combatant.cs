@@ -253,6 +253,8 @@ public sealed class Combatant
     /// </summary>
     public int EffectiveHealingBonusPercent
         => HealingBonusPercent + EffectiveStat(CombatStat.HealingBonus, 0);
+    public int EffectiveFireDamageBonusPercent
+        => EffectiveStat(CombatStat.FireDamageBonus, 0);
 
     /// <summary>
     /// Total DoT-damage-dealt bonus (%): permanent equipment component (e.g. Plume

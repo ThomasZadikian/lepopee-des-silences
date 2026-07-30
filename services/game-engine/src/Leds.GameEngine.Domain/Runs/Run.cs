@@ -1006,6 +1006,8 @@ public sealed class Run
             ? RunStatus.BossReached
             : RunStatus.Active;
 
+        ApplyForcedWeatherPlanToCurrentRoom();
+
         return FloorIndex != previousFloorIndex
             ? ConsumeFloorEndModifiers()
             : FloorEndModifierConsumptionResult.None;
@@ -1498,7 +1500,8 @@ public sealed class Run
 
         var existing = _runItems.FirstOrDefault(i =>
             i.DefinitionKey == item.DefinitionKey &&
-            i.Type == RunItemType.Consumable);
+            i.Type == item.Type &&
+            i.EffectiveMaxStack > 1);
 
         if (existing is not null)
         {
@@ -1523,7 +1526,8 @@ public sealed class Run
 
         var existing = _runItems.FirstOrDefault(i =>
             i.DefinitionKey == item.DefinitionKey &&
-            i.Type == RunItemType.Consumable);
+            i.Type == item.Type &&
+            i.EffectiveMaxStack > 1);
 
         if (existing is not null)
         {
@@ -1683,6 +1687,100 @@ public sealed class Run
             throw new DomainException("Cannot add a modifier to a closed run.");
 
         _runModifiers.Add(modifier);
+    }
+
+    public void ForceWeather(int climateValue, int roomCount, string sourceKey)
+    {
+        if (HasActiveCombat)
+            throw new DomainException("Weather cannot be changed during combat.");
+        if (climateValue is < 5 or > 9)
+            throw new DomainException("Unsupported canonical weather.");
+        if (roomCount <= 0)
+            throw new DomainException("Forced weather duration must be positive.");
+
+        ConsumeActiveModifiers(RunModifierType.ForcedWeatherPlan);
+        AddRunModifier(RunModifier.Create(
+            RunModifierType.ForcedWeatherPlan,
+            climateValue * 100 + roomCount,
+            RunModifierDuration.UntilRunEnds,
+            "Item",
+            sourceKey,
+            stackPolicy: "Replace"));
+        ApplyForcedWeatherPlanToCurrentRoom();
+    }
+
+    public void RerollCurrentWeather(string sourceKey)
+    {
+        var current = _runModifiers
+            .Where(m => m.Type == RunModifierType.RoomClimate
+                && !m.IsConsumed
+                && m.ExpiresAtRoomId == CurrentRoom.Id.Value)
+            .OrderByDescending(m => m.CreatedAtUtc)
+            .FirstOrDefault();
+        var next = current?.Value switch
+        {
+            5 => 6,
+            6 => 7,
+            7 => 8,
+            8 => 9,
+            _ => 5
+        };
+
+        ReplaceCurrentRoomWeather(next, sourceKey);
+    }
+
+    private void ApplyForcedWeatherPlanToCurrentRoom()
+    {
+        var plan = _runModifiers
+            .Where(m => m.Type == RunModifierType.ForcedWeatherPlan && !m.IsConsumed)
+            .OrderByDescending(m => m.CreatedAtUtc)
+            .FirstOrDefault();
+        if (plan is null)
+            return;
+
+        var encoded = (int)Math.Round(plan.Value);
+        var climate = encoded / 100;
+        var remaining = encoded % 100;
+        ReplaceCurrentRoomWeather(climate, plan.SourceKey);
+        plan.Consume(DateTime.UtcNow);
+
+        if (remaining > 1)
+        {
+            AddRunModifier(RunModifier.Create(
+                RunModifierType.ForcedWeatherPlan,
+                climate * 100 + remaining - 1,
+                RunModifierDuration.UntilRunEnds,
+                plan.SourceType,
+                plan.SourceKey,
+                stackPolicy: "Replace"));
+        }
+    }
+
+    private void ReplaceCurrentRoomWeather(int climateValue, string sourceKey)
+    {
+        foreach (var modifier in _runModifiers.Where(m =>
+            m.Type == RunModifierType.RoomClimate
+            && !m.IsConsumed
+            && m.ExpiresAtRoomId == CurrentRoom.Id.Value))
+        {
+            modifier.Consume(DateTime.UtcNow);
+        }
+
+        AddRunModifier(RunModifier.Create(
+            RunModifierType.RoomClimate,
+            climateValue,
+            RunModifierDuration.UntilRoomEnds,
+            "Item",
+            sourceKey,
+            stackPolicy: "Replace",
+            expiresAtRoomId: CurrentRoom.Id.Value));
+    }
+
+    private void ConsumeActiveModifiers(RunModifierType type)
+    {
+        var now = DateTime.UtcNow;
+        foreach (var modifier in _runModifiers.Where(m => m.Type == type && !m.IsConsumed))
+            modifier.Consume(now);
     }
 
     /// <summary>
@@ -2343,7 +2441,24 @@ public sealed class Run
             throw new DomainException("Calice infini is still on cooldown.");
         }
 
-        if (_activeCombat is not null && targetCombatantId is not null)
+        if (_activeTacticalCombat is not null && targetCombatantId is not null)
+        {
+            var target = _activeTacticalCombat.Allies
+                .FirstOrDefault(a => a.Id.Value == targetCombatantId.Value);
+
+            if (target is null)
+            {
+                throw new DomainException($"No ally combatant with id '{targetCombatantId.Value}'.");
+            }
+
+            if (!target.IsDefeated)
+            {
+                target.ApplyHeal(ApplyHealingBonus(
+                    PercentOf(target.MaxVitality, 50),
+                    target.EffectiveHealingBonusPercent));
+            }
+        }
+        else if (_activeCombat is not null && targetCombatantId is not null)
         {
             var target = _activeCombat.Allies
                 .FirstOrDefault(a => a.Id.Value == targetCombatantId.Value);
@@ -2430,6 +2545,9 @@ public sealed class Run
     {
         if (Status is RunStatus.Completed or RunStatus.Failed or RunStatus.Abandoned)
             throw new DomainException("Cannot use items on a closed run.");
+        if (HasActiveCombat)
+            throw new DomainException(
+                "During tactical combat, items must be used through the tactical targeting action.");
 
         var item = _runItems.FirstOrDefault(i => i.Id == itemId)
             ?? throw new DomainException($"Item '{itemId.Value}' not found in run inventory.");
@@ -2437,24 +2555,18 @@ public sealed class Run
         var consumablesRestricted = _runModifiers
             .Any(m => m.Type == RunModifierType.ConsumablesRestrictedInCombat && !m.IsConsumed);
 
-        if (_activeCombat is not null && consumablesRestricted)
-            throw new DomainException("Loi des Poches Cousues: no consumable can be used in combat in this room.");
-
-        // ConsumeOne validates Type == Consumable and Quantity > 0.
+        // ConsumeOne validates a consumable-like type and a positive quantity.
         item.ConsumeOne();
 
         // Bonus only applies out of combat (the "in combat" branch above already threw
         // if consumablesRestricted and _activeCombat is not null, so reaching here with
         // _activeCombat null and the modifier active is exactly the law's "hors combat"
         // half).
-        var effectAmount = consumablesRestricted && _activeCombat is null
+        var effectAmount = consumablesRestricted
             ? (int)Math.Round(item.EffectAmount * (1.0 + ConsumablesRestrictedBonusPercent / 100.0), MidpointRounding.AwayFromZero)
             : item.EffectAmount;
 
         ApplyItemEffectToPlayerState(item, effectAmount);
-
-        if (_activeCombat is not null)
-            ApplyItemEffectToCombatant(item, _activeCombat, effectAmount);
 
         var depleted = item.Quantity == 0;
         return (item.EffectType, effectAmount, depleted);
@@ -2496,9 +2608,26 @@ public sealed class Run
                 }
                 break;
 
+            case RunItemEffectType.ForceWeatherOrage:
+                ForceWeather(6, Math.Max(1, effectAmount), item.DefinitionKey);
+                break;
+
+            case RunItemEffectType.ForceWeatherAccalmie:
+                ForceWeather(9, 1, item.DefinitionKey);
+                break;
+
+            case RunItemEffectType.RerollWeather:
+                RerollCurrentWeather(item.DefinitionKey);
+                break;
+
+            case RunItemEffectType.GrantTeamSkillPoints:
+                // Persistent progression is credited by the application handler.
+                break;
+
             case RunItemEffectType.None:
             case RunItemEffectType.NextCombatGuard:
             case RunItemEffectType.NarrativeFragment:
+            case RunItemEffectType.GrantTemporarySkill:
                 // These effect types are not manually activatable from inventory.
                 throw new DomainException(
                     $"Item effect '{item.EffectType}' cannot be triggered manually from inventory.");

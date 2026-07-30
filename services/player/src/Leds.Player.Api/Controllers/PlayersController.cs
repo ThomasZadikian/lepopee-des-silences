@@ -105,9 +105,10 @@ public sealed class PlayersController : ControllerBase
         Guid playerId,
         Guid characterId,
         string itemKey,
+        [FromQuery] EquipmentSlotKind slot,
         CancellationToken cancellationToken)
     {
-        var command = new EquipItemCommand(playerId, characterId, itemKey);
+        var command = new EquipItemCommand(playerId, characterId, itemKey, slot);
         var response = await _sender.Send(command, cancellationToken);
 
         return Ok(response);

@@ -86,7 +86,7 @@ public sealed class EnemyLootRewardBuilder
                 RewardType.TemporaryItem,
                 item.DisplayName,
                 item.Description,
-                $"item:{item.Key}:{item.DisplayName}:{item.Description}:Consumable:{runItemRarity}:{runItemEffectType}:{item.EffectValue}",
+                $"item:{item.Key}:{item.DisplayName}:{item.Description}:{MapToRunItemType(item.ItemType, item.Category)}:{runItemRarity}:{runItemEffectType}:{item.EffectValue}",
                 loot.SourceEnemyKey,
                 loot.SourceEnemyDisplayName));
         }
@@ -100,6 +100,19 @@ public sealed class EnemyLootRewardBuilder
     {
         "Common" or "Uncommon" or "Rare" or "Epic" or "Legendary" => catalogRarity,
         _ => "Legendary"
+    };
+
+    private static string MapToRunItemType(string itemType, string category) => itemType switch
+    {
+        "Weapon" => nameof(RunItemType.Weapon),
+        "Accessory" => nameof(RunItemType.Equipment),
+        "Relic" or "Heritage" => nameof(RunItemType.Relic),
+        "Grimoire" => nameof(RunItemType.Grimoire),
+        "WeatherInstrument" => nameof(RunItemType.WeatherInstrument),
+        "SkillEssence" => nameof(RunItemType.SkillEssence),
+        _ when string.Equals(category, "Relic", StringComparison.OrdinalIgnoreCase)
+            => nameof(RunItemType.Relic),
+        _ => nameof(RunItemType.Consumable)
     };
 
     /// <summary>

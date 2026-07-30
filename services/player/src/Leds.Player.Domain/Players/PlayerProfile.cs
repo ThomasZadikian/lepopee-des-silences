@@ -127,16 +127,23 @@ public sealed class PlayerProfile
     /// Equips a permanent-backpack item on a character. The item must already be owned
     /// (present in the permanent backpack) — equipping isn't how an item is acquired.
     /// </summary>
-    public void EquipItem(PlayerCharacterId characterId, string itemKey, DateTimeOffset now)
+    public void EquipItem(
+        PlayerCharacterId characterId,
+        string itemKey,
+        EquipmentSlotKind slot,
+        DateTimeOffset now)
     {
         if (!HasPermanentItem(itemKey))
             throw new DomainException($"Item '{itemKey}' is not in the permanent backpack.");
 
         var character = Roster.GetRequired(characterId);
-        character.AddItem(PlayerCharacterItem.Create(itemKey, now));
-        character.EquipItem(itemKey);
+        character.AddItem(PlayerCharacterItem.Create(itemKey, now, slot: slot));
+        character.EquipItem(itemKey, slot);
         Touch(now);
     }
+
+    public void EquipItem(PlayerCharacterId characterId, string itemKey, DateTimeOffset now)
+        => EquipItem(characterId, itemKey, EquipmentSlotKind.Relic, now);
 
     public void UnequipItem(PlayerCharacterId characterId, string itemKey, DateTimeOffset now)
     {

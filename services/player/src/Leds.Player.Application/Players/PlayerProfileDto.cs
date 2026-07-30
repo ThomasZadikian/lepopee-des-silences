@@ -92,7 +92,8 @@ public sealed record PlayerCharacterItemDto(
     string ItemKey,
     DateTimeOffset AcquiredAtUtc,
     string? Source,
-    bool IsEquipped)
+    bool IsEquipped,
+    string Slot)
 {
     public static PlayerCharacterItemDto FromDomain(PlayerCharacterItem item)
     {
@@ -100,7 +101,8 @@ public sealed record PlayerCharacterItemDto(
             item.ItemDefinitionKey,
             item.AcquiredAtUtc,
             item.Source,
-            item.IsEquipped);
+            item.IsEquipped,
+            item.Slot.ToString());
     }
 }
 

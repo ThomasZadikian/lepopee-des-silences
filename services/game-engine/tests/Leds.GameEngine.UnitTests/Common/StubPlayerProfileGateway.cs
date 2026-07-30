@@ -53,7 +53,12 @@ public sealed class StubPlayerProfileGateway : IPlayerProfileGateway
     public Task<PlayerProfileView> SpendStatPointAsync(Guid playerId, Guid characterId, string stat, CancellationToken cancellationToken)
         => Task.FromResult(EmptyProfile(playerId));
 
-    public Task<PlayerProfileView> EquipItemAsync(Guid playerId, Guid characterId, string itemKey, CancellationToken cancellationToken)
+    public Task<PlayerProfileView> EquipItemAsync(
+        Guid playerId,
+        Guid characterId,
+        string itemKey,
+        string slot,
+        CancellationToken cancellationToken)
     {
         EquippedItems.Add((playerId, characterId, itemKey));
         return Task.FromResult(EmptyProfile(playerId));

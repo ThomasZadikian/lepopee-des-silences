@@ -56,13 +56,12 @@ public sealed class SyncPartyStatsCommandHandler
         for (var i = 0; i < snapshot.Characters.Count; i++)
         {
             var character = snapshot.Characters.ElementAt(i);
+            var equipmentEffects = await _skillMerger.CollectEquippedItemEffectsAsync(
+                character.EquippedItems, cancellationToken);
+            var effectiveStats = _statMerger.ComputeEffectiveStats(character.Stats, equipmentEffects);
 
             if (i == 0)
             {
-                var equipmentEffects = await _skillMerger.CollectEquippedItemEffectsAsync(
-                    character.EquippedItems, cancellationToken);
-                var effectiveStats = _statMerger.ComputeEffectiveStats(character.Stats, equipmentEffects);
-
                 run.ReplacePlayerStats(
                     maxVitality: effectiveStats.MaxVitality,
                     maxMana: effectiveStats.Mana,
@@ -80,23 +79,20 @@ public sealed class SyncPartyStatsCommandHandler
 
             if (existingSnapshotCharacter is not null)
             {
-                // Raw (non-equipment-adjusted) stats for every character, protagonist
-                // included — mirrors StartRunCommandHandler's uniform treatment of
-                // RunCharacterSnapshot for all roster members.
                 run.ReplaceCharacterStats(
                     character.CharacterId,
-                    maxVitality: character.Stats.MaxVitality,
-                    attackPower: character.Stats.AttackPower,
-                    defense: character.Stats.Defense,
+                    maxVitality: effectiveStats.MaxVitality,
+                    attackPower: effectiveStats.AttackPower,
+                    defense: effectiveStats.Defense,
                     startingGuard: character.Stats.StartingGuard,
-                    speed: character.Stats.Speed,
+                    speed: effectiveStats.Speed,
                     initiative: character.Stats.Initiative,
                     recovery: character.Stats.Recovery,
-                    focus: character.Stats.Focus,
-                    mana: character.Stats.Mana,
-                    charge: character.Stats.Charge,
-                    magicAttack: character.Stats.MagicAttack,
-                    magicDefense: character.Stats.MagicDefense);
+                    focus: effectiveStats.Focus,
+                    mana: effectiveStats.Mana,
+                    charge: effectiveStats.Charge,
+                    magicAttack: effectiveStats.MagicAttack,
+                    magicDefense: effectiveStats.MagicDefense);
             }
         }
 

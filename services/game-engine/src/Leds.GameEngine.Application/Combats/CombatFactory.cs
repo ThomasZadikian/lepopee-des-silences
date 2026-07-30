@@ -239,7 +239,7 @@ public sealed class CombatFactory : ICombatFactory
         // "Loi de la Marée Haute" (law.maree-haute, Pluie violacée): "+1 dégât par tour à
         // tous les DoT" — baked into Combat at creation, consumed by
         // CombatSkillEffectResolver.ApplyStatusEffectSpec for every newly-applied DoT.
-        var dotMagnitudeBonus = activeClimate == RoomClimate.PluieViolacee ? 1 : 0;
+        var dotMagnitudeBonus = 0;
 
         // Equipment-driven percentage bonus on top of the Law/climate-derived guard
         // above (e.g. Bague de Iris: +20% — 0 guard stays 0, 100 becomes 120).
@@ -724,7 +724,11 @@ public sealed class CombatFactory : ICombatFactory
     /// </summary>
     private static void ApplyClimateStatBundle(RoomClimate? climate, IEnumerable<Combatant> combatants)
     {
-        if (climate is not (RoomClimate.Brume or RoomClimate.Orage or RoomClimate.PluieDeCendres))
+        if (climate is not (
+            RoomClimate.Brume
+            or RoomClimate.Orage
+            or RoomClimate.PluieDeCendres
+            or RoomClimate.PluieViolacee))
             return;
 
         foreach (var combatant in combatants)
@@ -738,8 +742,9 @@ public sealed class CombatFactory : ICombatFactory
                         kind: StatusEffectKind.StatModifier,
                         currentTick: 0,
                         durationTicks: 0,
-                        magnitude: -3,
+                        magnitude: -25,
                         stat: CombatStat.Focus,
+                        isMagnitudePercentOfBaseStat: true,
                         isPermanent: true));
                     break;
 
@@ -771,7 +776,19 @@ public sealed class CombatFactory : ICombatFactory
                         kind: StatusEffectKind.StatModifier,
                         currentTick: 0,
                         durationTicks: 0,
-                        magnitude: 15,
+                        magnitude: 25,
+                        stat: CombatStat.FireDamageBonus,
+                        isPermanent: true));
+                    break;
+
+                case RoomClimate.PluieViolacee:
+                    combatant.ApplyStatusEffect(CombatStatusEffect.Create(
+                        key: "climat-pluie-violacee:periodic-damage",
+                        displayName: "Pluie violacée",
+                        kind: StatusEffectKind.StatModifier,
+                        currentTick: 0,
+                        durationTicks: 0,
+                        magnitude: 25,
                         stat: CombatStat.DotDamageBonus,
                         isPermanent: true));
                     break;
@@ -908,6 +925,7 @@ public sealed class CombatFactory : ICombatFactory
             6 => RoomClimate.Orage,
             7 => RoomClimate.PluieDeCendres,
             8 => RoomClimate.PluieViolacee,
+            9 => RoomClimate.Accalmie,
             _ => null
         };
     }
@@ -921,7 +939,8 @@ public sealed class CombatFactory : ICombatFactory
         Brume,
         Orage,
         PluieDeCendres,
-        PluieViolacee
+        PluieViolacee,
+        Accalmie
     }
 
     private static string NormalizeCombatEffectType(string skillKey, string effectType)

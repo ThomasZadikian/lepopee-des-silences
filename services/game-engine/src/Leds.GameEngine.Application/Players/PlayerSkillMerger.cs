@@ -45,6 +45,22 @@ public sealed class PlayerSkillMerger
         return effects;
     }
 
+    public async Task<IReadOnlyCollection<CatalogItemDefinitionSnapshot>> ResolveEquippedItemsAsync(
+        IReadOnlyCollection<string> equippedItemKeys,
+        CancellationToken cancellationToken)
+    {
+        var definitions = new List<CatalogItemDefinitionSnapshot>();
+        foreach (var itemKey in equippedItemKeys)
+        {
+            var result = await _catalogGateway.GetItemDefinitionByKeyAsync(
+                itemKey, cancellationToken);
+            if (result.IsSuccess)
+                definitions.Add(result.Value);
+        }
+
+        return definitions;
+    }
+
     /// <summary>
     /// mainCharacter.Skills comes from player-service's run-snapshot, which only
     /// guarantees the equipped skill KEY is correct — DisplayName/EffectType/BasePower
@@ -57,7 +73,8 @@ public sealed class PlayerSkillMerger
     public async Task<IReadOnlyCollection<MergedCharacterSkill>> MergeSkillsAsync(
         PlayerRunSnapshotCharacter character,
         IReadOnlyCollection<CatalogItemEquipmentEffect> equipmentEffects,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        CatalogItemDefinitionSnapshot? equippedWeapon = null)
     {
         var grantedSkillKeys = equipmentEffects
             .Where(e => string.Equals(e.Kind, "GrantSkill", StringComparison.OrdinalIgnoreCase)
@@ -77,7 +94,7 @@ public sealed class PlayerSkillMerger
                 var fromCatalog = catalogLearnedSkills.FirstOrDefault(
                     s => string.Equals(s.Key, fallback.SkillDefinitionKey, StringComparison.OrdinalIgnoreCase));
 
-                return fromCatalog is not null
+                var merged = fromCatalog is not null
                     ? new MergedCharacterSkill(
                         fromCatalog.Key, fromCatalog.DisplayName, fromCatalog.SkillType, fromCatalog.TargetingType,
                         fromCatalog.EffectType, fromCatalog.ManaCost, fromCatalog.ChargeCost, fromCatalog.BasePower,
@@ -89,6 +106,8 @@ public sealed class PlayerSkillMerger
                         fallback.SkillDefinitionKey, fallback.DisplayName, fallback.SkillType, fallback.TargetingMode,
                         fallback.EffectType, fallback.ManaCost, fallback.ChargeCost, fallback.BasePower,
                         "Physical", false, 1, "Single", false, 0, false, "Neutral");
+
+                return ApplyWeaponContract(merged, equippedWeapon);
             })
             .Concat(grantedSkills.Select(s => new MergedCharacterSkill(
                 s.Key, s.DisplayName, s.SkillType, s.TargetingType, s.EffectType, s.ManaCost, s.ChargeCost,
@@ -96,6 +115,32 @@ public sealed class PlayerSkillMerger
                 s.TacticalRange, s.TacticalAreaShape, s.RequiresLineOfSight, s.Cooldown,
                 s.IsUltimate, s.EmotionalRegister)))
             .ToArray();
+    }
+
+    private static MergedCharacterSkill ApplyWeaponContract(
+        MergedCharacterSkill skill,
+        CatalogItemDefinitionSnapshot? weapon)
+    {
+        if (!string.Equals(skill.Key, "skill.basic.strike", StringComparison.OrdinalIgnoreCase)
+            || weapon is null
+            || !string.Equals(weapon.ItemType, "Weapon", StringComparison.OrdinalIgnoreCase))
+        {
+            return skill;
+        }
+
+        return skill with
+        {
+            DisplayName = $"Attaque — {weapon.DisplayName}",
+            BasePower = weapon.BasicAttackPower ?? 10,
+            Category = string.IsNullOrWhiteSpace(weapon.BasicAttackCategory)
+                ? "Physical"
+                : weapon.BasicAttackCategory,
+            TacticalRange = Math.Max(1, weapon.TacticalRange),
+            TacticalAreaShape = string.IsNullOrWhiteSpace(weapon.TacticalAreaShape)
+                ? "Single"
+                : weapon.TacticalAreaShape,
+            RequiresLineOfSight = weapon.RequiresLineOfSight
+        };
     }
 
     private async Task<IReadOnlyCollection<CatalogSkillDefinition>> CollectGrantedSkillsAsync(

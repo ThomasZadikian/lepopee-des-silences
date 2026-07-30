@@ -46,10 +46,17 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
         return await ReadProfileAsync(response, playerId, cancellationToken);
     }
 
-    public async Task<PlayerProfileView> EquipItemAsync(Guid playerId, Guid characterId, string itemKey, CancellationToken cancellationToken)
+    public async Task<PlayerProfileView> EquipItemAsync(
+        Guid playerId,
+        Guid characterId,
+        string itemKey,
+        string slot,
+        CancellationToken cancellationToken)
     {
         var response = await _httpClient.PostAsync(
-            $"/api/v2/players/{playerId}/characters/{characterId}/items/{itemKey}/equip", content: null, cancellationToken);
+            $"/api/v2/players/{playerId}/characters/{characterId}/items/{itemKey}/equip?slot={Uri.EscapeDataString(slot)}",
+            content: null,
+            cancellationToken);
 
         return await ReadProfileAsync(response, playerId, cancellationToken);
     }
@@ -279,7 +286,7 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
                         c.Stats.MagicDefense),
                     MaxEquippedSkills: c.MaxEquippedSkills,
                     Items: (c.Items ?? [])
-                        .Select(i => new PlayerCharacterItemView(i.ItemKey, i.AcquiredAtUtc, i.Source, i.IsEquipped))
+                        .Select(i => new PlayerCharacterItemView(i.ItemKey, i.AcquiredAtUtc, i.Source, i.IsEquipped, i.Slot))
                         .ToArray(),
                     MaxEquippedItems: c.MaxEquippedItems,
                     CharacterType: c.CharacterType))
@@ -355,7 +362,8 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
         string ItemKey,
         DateTimeOffset AcquiredAtUtc,
         string? Source,
-        bool IsEquipped);
+        bool IsEquipped,
+        string Slot = "Relic");
 
     private sealed record PlayerPermanentItemResponse(
         string ItemDefinitionKey,

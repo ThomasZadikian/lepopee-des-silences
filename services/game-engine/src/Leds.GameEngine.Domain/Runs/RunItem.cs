@@ -81,7 +81,7 @@ public sealed class RunItem
     public string? Lifecycle { get; }
     public int Quantity { get; private set; }
     public int? MaxStack { get; }
-    public int EffectiveMaxStack => Type == RunItemType.Consumable
+    public int EffectiveMaxStack => IsStackableType(Type)
         ? Math.Clamp(MaxStack ?? CanonicalConsumableStackLimit, 1, CanonicalConsumableStackLimit)
         : 1;
     public RunItemEffectType EffectType { get; }
@@ -207,7 +207,7 @@ public sealed class RunItem
 
     public void ConsumeOne()
     {
-        if (Type != RunItemType.Consumable)
+        if (!IsConsumableType(Type))
             throw new DomainException(
                 $"Item '{DefinitionKey}' is not consumable and cannot be used from inventory.");
 
@@ -257,9 +257,17 @@ public sealed class RunItem
         : "SingleAlly";
 
     public bool IsUsable =>
-        Type == RunItemType.Consumable
+        IsConsumableType(Type)
         && Quantity > 0
         && IsBattleItem;
+
+    private static bool IsStackableType(RunItemType type) => type is
+        RunItemType.Consumable
+        or RunItemType.Grimoire
+        or RunItemType.WeatherInstrument
+        or RunItemType.SkillEssence;
+
+    private static bool IsConsumableType(RunItemType type) => IsStackableType(type);
 
     private static bool IsCombatEffect(RunItemEffectType effectType) => effectType is
         RunItemEffectType.Heal

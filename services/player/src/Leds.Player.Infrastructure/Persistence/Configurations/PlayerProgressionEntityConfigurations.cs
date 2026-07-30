@@ -84,6 +84,7 @@ public sealed class PlayerCharacterItemEntityConfiguration : IEntityTypeConfigur
         builder.Property(i => i.AcquiredAtUtc).HasColumnName("acquired_at_utc");
         builder.Property(i => i.Source).HasColumnName("source").HasMaxLength(64);
         builder.Property(i => i.IsEquipped).HasColumnName("is_equipped").HasDefaultValue(false);
+        builder.Property(i => i.EquipmentSlot).HasColumnName("equipment_slot").HasMaxLength(16).HasDefaultValue("Relic").IsRequired();
         builder.HasIndex(i => new { i.PlayerCharacterId, i.ItemDefinitionKey }).IsUnique();
         builder.HasOne(i => i.PlayerCharacter)
             .WithMany(c => c.Items)

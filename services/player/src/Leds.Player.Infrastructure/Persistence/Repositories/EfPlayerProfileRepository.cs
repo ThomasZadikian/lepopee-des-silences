@@ -345,7 +345,14 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
                     .ToArray();
 
             var items = c.Items
-                .Select(i => PlayerCharacterItem.Create(i.ItemDefinitionKey, i.AcquiredAtUtc, i.Source, i.IsEquipped))
+                .Select(i => PlayerCharacterItem.Create(
+                    i.ItemDefinitionKey,
+                    i.AcquiredAtUtc,
+                    i.Source,
+                    i.IsEquipped,
+                    Enum.TryParse<EquipmentSlotKind>(i.EquipmentSlot, true, out var slot)
+                        ? slot
+                        : EquipmentSlotKind.Relic))
                 .ToArray();
 
             return PlayerCharacter.Rehydrate(
@@ -451,7 +458,8 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
             ItemDefinitionKey = item.ItemDefinitionKey,
             AcquiredAtUtc = item.AcquiredAtUtc,
             Source = item.Source,
-            IsEquipped = item.IsEquipped
+            IsEquipped = item.IsEquipped,
+            EquipmentSlot = item.Slot.ToString()
         };
     }
 

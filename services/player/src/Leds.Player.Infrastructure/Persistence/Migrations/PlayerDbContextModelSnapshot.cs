@@ -123,6 +123,14 @@ namespace Leds.Player.Infrastructure.Persistence.Migrations
                         .HasDefaultValue(false)
                         .HasColumnName("is_equipped");
 
+                    b.Property<string>("EquipmentSlot")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasDefaultValue("Relic")
+                        .HasColumnName("equipment_slot");
+
                     b.Property<string>("ItemDefinitionKey")
                         .IsRequired()
                         .HasMaxLength(160)

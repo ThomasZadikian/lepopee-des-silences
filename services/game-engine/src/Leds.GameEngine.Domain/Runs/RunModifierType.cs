@@ -167,4 +167,10 @@ public enum RunModifierType
     /// Run.TryConsumeItemNodeRerollCharge, called from RerollItemRewardOfferCommandHandler).
     /// Unused charges still expire normally at floor end via ConsumeFloorEndModifiers.</summary>
     ItemNodeRerollCharge = 43,
+
+    /// <summary>
+    /// Encodes an explicit multi-room weather plan as climate*100 + rooms remaining.
+    /// It survives normal room climate replacement and is consumed one room at a time.
+    /// </summary>
+    ForcedWeatherPlan = 44,
 }
