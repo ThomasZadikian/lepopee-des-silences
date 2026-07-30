@@ -2160,7 +2160,12 @@ public sealed class CatalogSeedRunner
                     MaxVitality: 80, AttackPower: 4, Defense: 6, StartingGuard: 0,
                     // Mana = 85% of MaxVitality (design rule, see PlayerCharacterStatBlock.CreateDefaultPorteur).
                     Speed: 9, Initiative: 8, Recovery: 5, Focus: 7, Mana: 68, Charge: 0,
-                    SkillKeys: new[] { "skill.basic.strike", "canon.skill.baiser-delise" },
+                    SkillKeys: new[]
+                    {
+                        "skill.basic.strike",
+                        "canon.skill.baiser-delise",
+                        "canon.skill.silence-partage",
+                    },
                     MagicAttack: 15, MagicDefense: 9))
         };
 
@@ -4228,9 +4233,9 @@ public sealed class CatalogSeedRunner
             category: "Magic");
 
         await UpsertSkillAsync("canon.skill.silence-partage", "Silence partagé",
-            "Le seul répit qu'il connaisse. Il le partage.",
-            "Heal", "AllAllies", "Heal", mana: 12, power: 6, cancellationToken,
-            category: "Magic", basePowerIsPercentOfMaxVitality: true);
+            "Une onde de silence traverse toute la salle et n'épargne aucun camp.",
+            "Damage", "AllEnemies", "Damage", mana: 12, power: 8, cancellationToken,
+            category: "Magic");
 
         await UpsertEnemyAsync(
             "canon.enemy.echo-colere", "Écho de Colère",
@@ -4266,7 +4271,7 @@ public sealed class CatalogSeedRunner
             depthMin: 3, depthMax: 10, riskMin: 2, riskMax: 4,
             roomTypes: new[] { "Memory" },
             tags: new[] { "bestiaire", "melancolie", "echos-d-emotions", "dissonance", "dot" },
-            skillKeys: new[] { "canon.skill.poids", "canon.skill.sursaut-memoriel", "canon.skill.constat-tardif", "canon.skill.silence-partage" },
+            skillKeys: new[] { "canon.skill.poids", "canon.skill.sursaut-memoriel", "canon.skill.constat-tardif" },
             vitality: 80, attack: 7, defense: 9, guard: 0, speed: 3, focus: 6,
             cancellationToken,
             magicAttack: 11, magicDefense: 11, initiative: 2, mana: 22, menace: 5,

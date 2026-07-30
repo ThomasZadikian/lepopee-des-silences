@@ -45,6 +45,27 @@ public sealed class CombatantSkillRuntimeDtoTests
         dto.RequiresLineOfSight.Should().BeTrue();
     }
 
+    [Fact]
+    public void FromDomain_ShouldExposeAuthoredDesignProfile()
+    {
+        var skill = CombatantSkill.Create(
+            key: "canon.skill.flamme-froide",
+            displayName: "Flamme froide",
+            skillType: "Damage",
+            targetingType: "SingleEnemy",
+            effectType: "Damage",
+            manaCost: 8,
+            chargeCost: 0,
+            basePower: 22,
+            category: "Magic");
+
+        var dto = CombatantSkillRuntimeDto.FromDomain(skill);
+
+        dto.TacticalRange.Should().Be(3);
+        dto.TacticalAreaShape.Should().Be("Cross");
+        dto.RequiresLineOfSight.Should().BeTrue();
+    }
+
     private static CombatantSkill CreateSkill(
         string category,
         string skillType,

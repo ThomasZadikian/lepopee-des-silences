@@ -76,16 +76,20 @@ public sealed class UseTacticalSkillCommandHandler
         var origin = combat.PositionOf(actorId);
         var target = new GridPosition(request.TargetX, request.TargetY);
 
-        var (range, requiresLineOfSight) = TacticalRange.For(skill);
+        var tactical = TacticalSkillProfile.For(skill);
 
         if (!TacticalTargeting.IsInRange(
-                combat.Battlefield, origin, target, range, requiresLineOfSight))
+                combat.Battlefield,
+                origin,
+                target,
+                tactical.Range,
+                tactical.RequiresLineOfSight))
         {
             throw new ConflictException(
                 $"La case ({target.X}, {target.Y}) est hors de portée de « {skill.DisplayName} ».");
         }
 
-        var shape = TacticalTargeting.ShapeForCatalogTargeting(skill.TargetingType);
+        var shape = tactical.AreaShape;
         var hostile = TacticalTargeting.IsHostile(skill.TargetingType);
 
         var affectedCells = shape == TacticalAreaShape.Map

@@ -1,7 +1,6 @@
 using Leds.GameEngine.Application.Combats.Typing;
 using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Combats.Tactical;
-using TacticalRangeRules = Leds.GameEngine.Domain.Combats.Tactical.TacticalRange;
 
 namespace Leds.GameEngine.Application.Combats.Dtos;
 
@@ -26,8 +25,7 @@ public sealed record CombatantSkillRuntimeDto(
     public static CombatantSkillRuntimeDto FromDomain(CombatantSkill skill)
     {
         var hasType = EmotionalTypeProfileProvider.TryResolveIntrinsicType(skill, out var type);
-        var (range, requiresLineOfSight) = TacticalRangeRules.For(skill);
-        var areaShape = TacticalTargeting.ShapeForCatalogTargeting(skill.TargetingType);
+        var tactical = TacticalSkillProfile.For(skill);
 
         return new CombatantSkillRuntimeDto(
             Key: skill.Key,
@@ -41,8 +39,8 @@ public sealed record CombatantSkillRuntimeDto(
             Tags: skill.Tags,
             Category: skill.Category,
             EmotionalType: hasType ? type.ToString() : null,
-            TacticalRange: range,
-            TacticalAreaShape: areaShape.ToString(),
-            RequiresLineOfSight: requiresLineOfSight);
+            TacticalRange: tactical.Range,
+            TacticalAreaShape: tactical.AreaShape.ToString(),
+            RequiresLineOfSight: tactical.RequiresLineOfSight);
     }
 }
