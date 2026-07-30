@@ -302,16 +302,19 @@ export function useCombatPlayback() {
             pushImpact(impact.x, impact.y, allyIds.has(impact.combatantId), at);
           }
 
-          if (event.skillKey && event.impacts.length > 0) {
-            const center = event.impacts[0];
+          if (
+            event.skillKey
+              && typeof event.targetX === 'number'
+              && typeof event.targetY === 'number'
+          ) {
             pendingSorts.value = [
               ...pendingSorts.value,
               {
                 skillKey: event.skillKey,
-                x: center.x,
-                y: center.y,
-                casterX: actorPos?.x ?? center.x,
-                casterY: actorPos?.y ?? center.y,
+                x: event.targetX,
+                y: event.targetY,
+                casterX: actorPos?.x ?? event.targetX,
+                casterY: actorPos?.y ?? event.targetY,
               },
             ];
           }

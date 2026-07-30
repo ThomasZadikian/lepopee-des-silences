@@ -825,7 +825,12 @@ function paintSorts(ctx: CanvasRenderingContext2D) {
       sortId,
       sort.x,
       sort.y,
-      { width: field.width, height: field.height, elevation: field.elevation },
+      {
+        width: field.width,
+        height: field.height,
+        elevation: field.elevation,
+        floor: field.floor,
+      },
       projectionParams.value,
       sort.casterX,
       sort.casterY,

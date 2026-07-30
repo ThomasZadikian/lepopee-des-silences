@@ -36,6 +36,8 @@ public sealed record TacticalCombatEventDto(
     IReadOnlyList<TacticalStepDto> Path,
     string? SkillKey,
     string? SkillName,
+    int? TargetX,
+    int? TargetY,
     IReadOnlyList<TacticalImpactDto> Impacts)
 {
     public const string MoveKind = "Move";
@@ -44,13 +46,15 @@ public sealed record TacticalCombatEventDto(
     public static TacticalCombatEventDto Move(
         Guid actorId, string actorName, IEnumerable<Domain.Combats.Tactical.GridPosition> path) =>
         new(MoveKind, actorId, actorName,
-            [.. path.Select(p => new TacticalStepDto(p.X, p.Y))], null, null, []);
+            [.. path.Select(p => new TacticalStepDto(p.X, p.Y))],
+            null, null, null, null, []);
 
     public static TacticalCombatEventDto Skill(
         Guid actorId,
         string actorName,
         string skillKey,
         string skillName,
+        Domain.Combats.Tactical.GridPosition target,
         IReadOnlyList<TacticalImpactDto> impacts) =>
-        new(SkillKind, actorId, actorName, [], skillKey, skillName, impacts);
+        new(SkillKind, actorId, actorName, [], skillKey, skillName, target.X, target.Y, impacts);
 }

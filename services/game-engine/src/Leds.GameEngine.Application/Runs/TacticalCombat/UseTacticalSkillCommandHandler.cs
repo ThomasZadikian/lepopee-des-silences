@@ -146,7 +146,12 @@ public sealed class UseTacticalSkillCommandHandler
             TacticalCombatRuntimeDto.FromDomain(combat, CombatItemHelper.GetUsableBattleItems(run)),
             [actionEntry, .. resolution.LogEntries],
             [TacticalCombatEventDto.Skill(
-                actorId, actor.DisplayName, skill.Key, skill.DisplayName, impacts)]);
+                actorId,
+                actor.DisplayName,
+                skill.Key,
+                skill.DisplayName,
+                target,
+                impacts)]);
     }
 
     /// <summary>

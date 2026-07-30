@@ -256,6 +256,8 @@ export type TacticalCombatEventDto = {
   path: Array<{ x: number; y: number }>;
   skillKey: string | null;
   skillName: string | null;
+  targetX: number | null;
+  targetY: number | null;
   impacts: TacticalImpactDto[];
 };
 

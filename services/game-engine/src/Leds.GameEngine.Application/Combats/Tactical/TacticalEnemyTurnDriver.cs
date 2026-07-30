@@ -36,6 +36,7 @@ public sealed class TacticalEnemyTurnDriver : ITacticalEnemyTurnDriver
 {
     private sealed record EnemySkillPlan(
         CombatantSkill Skill,
+        GridPosition Target,
         IReadOnlyCollection<Combatant> Targets);
 
     /// <summary>
@@ -158,6 +159,7 @@ public sealed class TacticalEnemyTurnDriver : ITacticalEnemyTurnDriver
             actor.DisplayName,
             action.Skill.Key,
             action.Skill.DisplayName,
+            action.Target,
             impacts));
 
         log.Add(new CombatLogEntryDto(
@@ -231,7 +233,7 @@ public sealed class TacticalEnemyTurnDriver : ITacticalEnemyTurnDriver
             TacticalTargeting.IsHostile(skill.TargetingType),
             tactical.AreaShape);
 
-        return targets.Count == 0 ? null : new EnemySkillPlan(skill, targets);
+        return targets.Count == 0 ? null : new EnemySkillPlan(skill, center, targets);
     }
 
     /// <summary>
