@@ -818,7 +818,7 @@ public sealed class TacticalCombat : ICombatContext
             throw new DomainException("This combatant has already acted this turn.");
 
         _turnStates[combatantId] = state with { HasActed = true };
-        FindCombatant(combatantId).MarkActedThisCombat();
+        RequireCombatant(combatantId).MarkActedThisCombat();
         _lastActivationUsedMagic[combatantId] = string.Equals(
             usedSkill?.Category,
             "Magic",

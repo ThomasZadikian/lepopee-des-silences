@@ -486,8 +486,7 @@ public sealed class Combatant
             CombatantStatus.Active,
             skills?.ToArray() ?? Array.Empty<CombatantSkill>(),
             snapshot,
-            runtimeState,
-            row);
+            runtimeState);
     }
 
     public void MarkDefeated()
