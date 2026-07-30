@@ -75,22 +75,15 @@ const groups: StatusGroup[] = [
         kind: 'Stun',
         nom: 'Étourdissement',
         engine: 'Stun',
-        desc: 'Incapable d’agir. La jauge ATB se fige et le tour est sauté tant que l’effet dure.',
+        desc: 'Incapable d’agir. Son action est perdue tant que l’effet dure.',
         rule: 'bloque toute action · purge à la fin',
       },
       {
         kind: 'Silence',
         nom: 'Silence',
         engine: 'Silence',
-        desc: 'Plus aucune compétence à souffle. Seule la frappe nue reste possible — la jauge, elle, continue de monter.',
-        rule: 'bloque les skills · ATB continue',
-      },
-      {
-        kind: 'AtbLock',
-        nom: 'Jauge bloquée',
-        engine: 'AtbLock',
-        desc: 'La readiness gèle : prêt mais retenu, hors du temps. La surcharge ⚡ ne s’accumule plus.',
-        rule: 'fige l’ATB sans la vider',
+        desc: 'Plus aucune compétence à souffle. Seule la frappe nue reste possible.',
+        rule: 'bloque les compétences',
       },
     ],
   },
@@ -108,8 +101,7 @@ const groups: StatusGroup[] = [
       <h1 class="es-h1" style="font-size: clamp(30px, 4.4vw, 52px); margin-top: 12px">Les statuts</h1>
       <RuleOrnament style="width: 150px; margin: 16px 0" />
       <p class="es-lede es-dim" style="max-width: 52ch">
-        Six familles d’effets, accumulées en <em>stacks</em> et résorbées en <em>ticks</em>. Le temps ne
-        s’arrête pas pour les compter — il continue de remplir les jauges.
+        Les effets s’accumulent en <em>stacks</em> et se résorbent au fil des tours tactiques.
       </p>
 
       <section v-for="group in groups" :key="group.title" class="statuts-group">

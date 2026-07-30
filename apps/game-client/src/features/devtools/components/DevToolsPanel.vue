@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 
-import { useCombatStore } from '../../combat/stores/useCombatStore';
-import type { CombatRuntimeDto } from '../../combat/types/combatContracts';
 import { demoPlayerId, useRunStore } from '../../runs/stores/runStore';
 import { skillsApi } from '../../party/api/skillsApi';
 import { usePlayerStore } from '../../party/stores/playerStore';
@@ -10,7 +8,6 @@ import type { SkillDefinitionView } from '../../party/types/skillTypes';
 import { devToolsApi } from '../api/devToolsApi';
 import { useDevTools } from '../composables/useDevTools';
 import type { DevToolsRunPsycheResponse, PalaceRoomStateKey, RoomClimateKey } from '../types/devToolsTypes';
-import CombatDevToolsSection from './CombatDevToolsSection.vue';
 import DevToolsTokenGate from './DevToolsTokenGate.vue';
 import PlayerDevToolsSection from './PlayerDevToolsSection.vue';
 import PsycheDevToolsSection from './PsycheDevToolsSection.vue';
@@ -18,7 +15,6 @@ import RunDevToolsSection from './RunDevToolsSection.vue';
 
 const props = defineProps<{
   runId: string;
-  combat: CombatRuntimeDto | null;
 }>();
 
 const emit = defineEmits<{
@@ -26,7 +22,6 @@ const emit = defineEmits<{
 }>();
 
 const runStore = useRunStore();
-const combatStore = useCombatStore();
 const playerStore = usePlayerStore();
 const devTools = useDevTools();
 const psyche = ref<DevToolsRunPsycheResponse | null>(null);
@@ -52,15 +47,6 @@ async function loadAllSkills() {
 
 async function refreshServerState() {
   await runStore.loadRun(props.runId);
-
-  // `activeCombatId` est partagé par les deux systèmes de combat, mais `/current-combat` ne
-  // sert que l'ATB : l'interroger pendant un combat tactique produit un 404 par construction.
-  if (runStore.currentRun?.activeCombatId && runStore.currentRun.combatMode !== 'Tactical') {
-    await combatStore.loadCurrentCombat(props.runId);
-  } else {
-    combatStore.clearCombat();
-  }
-
   await playerStore.loadProfile(); // garde le profil joueur synchro après chaque action (sorts / points)
   await reloadPsyche(); // garde la vue psyché synchro après chaque action (ex. advance rooms)
 }
@@ -137,28 +123,6 @@ function clearCurses() {
   void execute((token) => devToolsApi.clearCurses(token, props.runId), 'Curses effacees.');
 }
 
-function killEnemies() {
-  void execute((token) => devToolsApi.killEnemies(token, props.runId), 'Enemies neutralises.');
-}
-
-function killEnemy(combatantId: string) {
-  void execute((token) => devToolsApi.killEnemy(token, props.runId, combatantId), 'Enemy neutralise.');
-}
-
-function setVitals(combatantId: string, vitality: number, guard: number) {
-  void execute(
-    (token) => devToolsApi.setVitals(token, props.runId, combatantId, vitality, guard),
-    'Vitals appliquees.',
-  );
-}
-
-function applyStatus(combatantId: string, statusKey: string, stacks: number, duration: number) {
-  void execute(
-    (token) => devToolsApi.applyStatus(token, props.runId, combatantId, statusKey, stacks, duration),
-    'Status applique.',
-  );
-}
-
 function unlockSkill(characterId: string, skillKey: string) {
   void execute(
     (token) => devToolsApi.unlockSkill(token, demoPlayerId, characterId, skillKey),
@@ -223,16 +187,6 @@ function awardStatPoints(amount: number) {
       :disabled="!devTools.hasToken.value"
       :is-loading="devTools.isLoading.value"
       @refresh="refreshPsyche"
-    />
-
-    <CombatDevToolsSection
-      :combat="props.combat"
-      :disabled="!devTools.hasToken.value"
-      :is-loading="devTools.isLoading.value"
-      @kill-enemies="killEnemies"
-      @kill-enemy="killEnemy"
-      @set-vitals="setVitals"
-      @apply-status="applyStatus"
     />
 
     <PlayerDevToolsSection

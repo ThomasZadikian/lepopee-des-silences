@@ -1921,12 +1921,6 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                     b.Property<int?>("CaliceInfiniLastUsedRoomIndex")
                         .HasColumnType("integer");
 
-                    b.Property<string>("CombatMode")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)")
-                        .HasColumnName("combat_mode");
-
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at_utc");

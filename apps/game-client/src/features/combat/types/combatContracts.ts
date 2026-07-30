@@ -76,7 +76,6 @@ export type StatusEffectKind =
   | 'StatModifier'
   | 'Stun'
   | 'Silence'
-  | 'AtbLock'
   | 'SkillGrant';
 
 export type CombatantStatusEffectDto = {
@@ -141,7 +140,6 @@ export type LogEntryType =
   | 'WeaknessHit'
   | 'ResistedHit'
   | 'ImmuneHit'
-  | 'AtbStagger'
   | 'StatusApplied';
 
 export type CombatLogEntryDto = {
@@ -190,10 +188,8 @@ export type UseItemInCombatResponse = {
 };
 // ─── Combat tactique ────────────────────────────────────────────────────────
 //
-// Volontairement distinct de `CombatRuntimeDto` : les deux systèmes n'exposent
-// pas la même chose. L'ATB envoie un tick et des jauges ; le tactique envoie un
-// terrain, des positions et un ordre d'initiative annoncé à l'avance — cette
-// prévisibilité est la contrepartie de l'abandon du tempo.
+// Le runtime tactique expose le terrain, les positions et l'ordre d'initiative
+// annoncé à l'avance.
 
 /** Le terrain de combat : la salle d'exploration vidée de ses nœuds. */
 export type TacticalBattlefieldDto = {

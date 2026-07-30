@@ -1,12 +1,9 @@
 ﻿using Leds.GameEngine.Application.Abstractions;
 using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Application.Combats;
-using Leds.GameEngine.Application.Combats.Atb;
 using Leds.GameEngine.Application.Combats.Dtos;
 using Leds.GameEngine.Application.Combats.EncounterDrafts;
-using Leds.GameEngine.Application.Combats.EnemyTurns;
 using Leds.GameEngine.Application.Combats.Ports;
-using Leds.GameEngine.Application.Combats.Resolution;
 using Leds.GameEngine.Application.Combats.Tactical;
 using Leds.GameEngine.Application.Common.Exceptions;
 using Leds.GameEngine.Application.Events.Contracts;
@@ -36,16 +33,12 @@ public sealed class ResolveCurrentEventCommandHandler
     private readonly INodeEventResolverDispatcher _nodeEventResolverDispatcher;
     private readonly IEventContentResolver _eventContentResolver;
     private readonly ICatalogContentGateway _catalogContentGateway;
-    private readonly ICombatInstanceFactory _combatInstanceFactory;
     private readonly ICombatEncounterDraftGenerator _encounterDraftGenerator;
     private readonly ICombatFactory _combatFactory;
     private readonly ITacticalCombatFactory _tacticalCombatFactory;
     private readonly ITacticalEnemyTurnDriver _tacticalEnemyTurns;
     private readonly IRewardOfferRepository _rewardOfferRepository;
     private readonly Leds.GameEngine.Application.Rewards.RewardOfferFactory.RewardOfferFactory _rewardOfferFactory;
-    private readonly IEnemyCombatTurnResolver _enemyTurnResolver;
-    private readonly ICombatResolutionService _combatResolution;
-    private readonly IAtbCombatPreparer _atbPreparer;
     private readonly IClock _clock;
 
     public ResolveCurrentEventCommandHandler(
@@ -53,32 +46,24 @@ public sealed class ResolveCurrentEventCommandHandler
         INodeEventResolverDispatcher nodeEventResolverDispatcher,
         IEventContentResolver eventContentResolver,
         ICatalogContentGateway catalogContentGateway,
-        ICombatInstanceFactory combatInstanceFactory,
         ICombatEncounterDraftGenerator encounterDraftGenerator,
         ICombatFactory combatFactory,
         ITacticalCombatFactory tacticalCombatFactory,
         ITacticalEnemyTurnDriver tacticalEnemyTurns,
         IRewardOfferRepository rewardOfferRepository,
         Leds.GameEngine.Application.Rewards.RewardOfferFactory.RewardOfferFactory rewardOfferFactory,
-        IEnemyCombatTurnResolver enemyTurnResolver,
-        ICombatResolutionService combatResolution,
-        IAtbCombatPreparer atbPreparer,
         IClock clock)
     {
         _runRepository = runRepository;
         _nodeEventResolverDispatcher = nodeEventResolverDispatcher;
         _eventContentResolver = eventContentResolver;
         _catalogContentGateway = catalogContentGateway;
-        _combatInstanceFactory = combatInstanceFactory;
         _encounterDraftGenerator = encounterDraftGenerator;
         _combatFactory = combatFactory;
         _tacticalCombatFactory = tacticalCombatFactory;
         _tacticalEnemyTurns = tacticalEnemyTurns;
         _rewardOfferRepository = rewardOfferRepository;
         _rewardOfferFactory = rewardOfferFactory;
-        _enemyTurnResolver = enemyTurnResolver;
-        _combatResolution = combatResolution;
-        _atbPreparer = atbPreparer;
         _clock = clock;
     }
 
@@ -123,7 +108,6 @@ public sealed class ResolveCurrentEventCommandHandler
             or NodeEventResolutionKind.FinalBossEncounterStarted;
 
         CombatEncounterDraftDto? encounterDraftDto = null;
-        CombatRuntimeDto? combatRuntimeDto = null;
         TacticalCombatRuntimeDto? tacticalCombatDto = null;
         IReadOnlyList<TacticalCombatEventDto>? tacticalEvents = null;
         ResolvedNodeEventContent? resolvedContent = null;
@@ -223,61 +207,19 @@ public sealed class ResolveCurrentEventCommandHandler
                 healingBonusPercent: run.HealingBonusPercent,
                 forgottenSkillKey: run.ForgottenSkillKey);
 
-            // Le roster est constitué ; reste à décider du déroulé. C'est ici, et nulle part
-            // ailleurs, que les deux systèmes de combat divergent (SFD v2, §2) : mêmes ennemis,
-            // mêmes stats, mêmes Lois — seule la façon de s'affronter change.
-            if (run.CombatMode == RunCombatMode.Tactical)
-            {
-                var tacticalCombat = _tacticalCombatFactory.CreateFromRoster(
-                    combatId, roster, room, selectedNode.Id, run.Id, _clock.UtcNow.UtcDateTime);
+            var tacticalCombat = _tacticalCombatFactory.CreateFromRoster(
+                combatId, roster, room, selectedNode.Id, run.Id, _clock.UtcNow.UtcDateTime);
 
-                run.StartTacticalCombat(tacticalCombat);
+            run.StartTacticalCombat(tacticalCombat);
 
-                // Si la créature la plus rapide ouvre le bal, elle doit jouer maintenant :
-                // le joueur n'a pas la main, et rien d'autre ne la lui rendrait — le combat
-                // resterait figé avant même son premier tour.
-                var openingTurns = _tacticalEnemyTurns.PlayWhileEnemyHasInitiative(tacticalCombat);
-                tacticalEvents = openingTurns.Events;
+            // Si la créature la plus rapide ouvre le bal, elle doit jouer maintenant :
+            // le joueur n'a pas la main, et rien d'autre ne la lui rendrait — le combat
+            // resterait figé avant même son premier tour.
+            var openingTurns = _tacticalEnemyTurns.PlayWhileEnemyHasInitiative(tacticalCombat);
+            tacticalEvents = openingTurns.Events;
 
-                tacticalCombatDto = TacticalCombatRuntimeDto.FromDomain(
-                    tacticalCombat, CombatItemHelper.GetUsableBattleItems(run));
-            }
-            else
-            {
-                var combatRuntime = Combat.Create(
-                    combatId,
-                    new RunId(draft.RunId),
-                    new RoomId(draft.RoomId),
-                    new NodeId(draft.NodeId),
-                    roster.Allies,
-                    roster.Enemies,
-                    roster.HitCounterDoubleDamageEnabled,
-                    roster.FirstHitCriticalEnabled,
-                    roster.LowHpDamageAmplificationEnabled,
-                    roster.DotDurationExtensionTicks,
-                    roster.DuelDamageAsymmetryEnabled,
-                    roster.DotMagnitudeBonus,
-                    roster.HealingBlocked,
-                    roster.FalaiseWindEnabled,
-                    roster.PostDeathBasicAttackOnlyEnabled,
-                    roster.TapisPropreEnabled,
-                    roster.ThirdCupHealCorruptionEnabled,
-                    roster.PresentationsEnabled,
-                    roster.MiroirEnabled,
-                    roster.ForgottenSkillKey);
-
-                // ATB: bake Markov tempo + opening gauges, then elect the opener.
-                _atbPreparer.PrepareNewCombat(combatRuntime, run);
-
-                run.StartCombat(combatRuntime);
-                // ATB: enemy turns (including the opening, if an enemy is up first) are
-                // driven by the client in real time via AdvanceCombatTurnCommand.
-                if (combatRuntime.Status != CombatStatus.Active)
-                    pendingRewardOffer = await _combatResolution.ApplyOutcomeAsync(run, combatRuntime, _clock.UtcNow, cancellationToken);
-
-                combatRuntimeDto = CombatRuntimeDto.FromDomain(
-                    combatRuntime, CombatItemHelper.GetUsableBattleItems(run));
-            }
+            tacticalCombatDto = TacticalCombatRuntimeDto.FromDomain(
+                tacticalCombat, CombatItemHelper.GetUsableBattleItems(run));
         }
         else if (selectedNode.EventType == NodeEventType.Item)
         {
@@ -357,7 +299,6 @@ public sealed class ResolveCurrentEventCommandHandler
             RunDto.FromDomain(run),
             outcome,
             encounterDraftDto,
-            combatRuntimeDto,
             npcDialogue,
             tacticalCombatDto,
             tacticalEvents);

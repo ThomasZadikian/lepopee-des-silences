@@ -1,7 +1,6 @@
 using Leds.GameEngine.Application.Abstractions;
 using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Application.Combats.Actions;
-using Leds.GameEngine.Application.Combats.Atb;
 using Leds.GameEngine.Application.Combats.Effects;
 using Leds.GameEngine.Application.Combats.EncounterComposition;
 using Leds.GameEngine.Application.Combats.EncounterDrafts;
@@ -148,8 +147,6 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<ICombatTargetingRuleValidator, CombatTargetingRuleValidator>();
         services.AddSingleton<ICombatSkillActionValidator, CombatSkillActionValidator>();
         services.AddSingleton<ICombatantTypeProfileProvider, EmotionalTypeProfileProvider>();
-        services.AddSingleton<IAtbTempoProvider, MarkovAtbTempoProvider>();
-        services.AddScoped<IAtbCombatPreparer, AtbCombatPreparer>();
         services.AddSingleton<ICombatSkillEffectResolver, CombatSkillEffectResolver>();
         services.AddSingleton<Leds.GameEngine.Application.Combats.EnemyTurns.Ai.IEnemyActionPlanner,
             Leds.GameEngine.Application.Combats.EnemyTurns.Ai.UtilityEnemyActionPlanner>();

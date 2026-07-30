@@ -6,7 +6,6 @@ using Leds.GameEngine.Application.Runs.ConfirmPermanentItemSelection;
 using Leds.GameEngine.Application.Runs.EmptyRunItemContainer;
 using Leds.GameEngine.Application.Runs.EnterGridNode;
 using Leds.GameEngine.Application.Runs.ExitMidRoom;
-using Leds.GameEngine.Application.Runs.GetCurrentCombat;
 using Leds.GameEngine.Application.Runs.GetPermanentItemCandidates;
 using Leds.GameEngine.Application.Runs.GetRunById;
 using Leds.GameEngine.Application.Runs.GetRunInventory;
@@ -67,20 +66,6 @@ public sealed class RunsController : ControllerBase
         CancellationToken cancellationToken)
     {
         var query = new GetRunByIdQuery(runId);
-
-        var response = await _sender.Send(query, cancellationToken);
-
-        return Ok(response);
-    }
-
-    [HttpGet("{runId:guid}/current-combat")]
-    [ProducesResponseType(typeof(CombatRuntimeDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<CombatRuntimeDto>> GetCurrentCombat(
-        Guid runId,
-        CancellationToken cancellationToken)
-    {
-        var query = new GetCurrentCombatQuery(runId);
 
         var response = await _sender.Send(query, cancellationToken);
 
@@ -373,6 +358,22 @@ public sealed class RunsController : ControllerBase
 
     /// <summary>
     /// Déplace le combattant tactique actif. Ne consomme pas son action.
+    /// </summary>
+    [HttpGet("{runId:guid}/tactical-combat")]
+    [ProducesResponseType(typeof(TacticalCombatRuntimeDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<TacticalCombatRuntimeDto>> GetCurrentTacticalCombat(
+        Guid runId,
+        CancellationToken cancellationToken)
+    {
+        var response = await _sender.Send(
+            new GetCurrentTacticalCombatQuery(runId), cancellationToken);
+
+        return Ok(response);
+    }
+
+    /// <summary>
+    /// Déplace le combattant tactique actif sans consommer son action.
     /// </summary>
     [HttpPost("{runId:guid}/tactical-combat/move")]
     [ProducesResponseType(typeof(TacticalCombatResponse), StatusCodes.Status200OK)]

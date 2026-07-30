@@ -1,9 +1,3 @@
-/**
- * Système de combat d'une run : barre de temps continue, ou tactique tour par tour sur la
- * grille d'exploration. Choisi au lancement, fixe pour toute la durée de la run.
- */
-export type RunCombatMode = 'Atb' | 'Tactical';
-
 /** The 5 named combat danger tiers (see backend RiskTier). Only meaningful for
  * combat-flavored nodes (Combat/Elite/Rare/RoomBoss/FinalBoss) — null otherwise. */
 export type CombatRiskTier = 'Calme' | 'Tendu' | 'Dangereux' | 'Perilleux' | 'Fatal';
@@ -170,8 +164,6 @@ export type RunDto = {
   journalEnabled?: boolean;
   /** Auto-written journal entries for this run, one per event, tagged with the room they happened in. */
   journalEntries?: RunJournalEntryDto[] | null;
-  /** Système de combat persisté. 'Atb' identifie uniquement une sauvegarde historique. */
-  combatMode?: RunCombatMode;
   /** true when the player owns the "Déni permanent" permanent item — gates the law-revoke UI. */
   lawDenialEnabled?: boolean;
   /** true when law denial is currently usable: owned, and cooldown (10 rooms) has elapsed. */
@@ -262,28 +254,6 @@ export type ResumableRunDto = {
   status: string;
 };
 
-export type CombatantSnapshotDto = {
-  id: string;
-  templateKey: string;
-  displayName: string;
-  side: string;
-  maxHealth: number;
-  currentHealth: number;
-  attack: number;
-  defense: number;
-  speed: number;
-  isDefeated: boolean;
-};
-
-export type CombatInstanceDto = {
-  id: string;
-  state: string;
-  round: number;
-  currentActorId?: string | null;
-  combatants: CombatantSnapshotDto[];
-  turnOrder: string[];
-};
-
 export type NarrativeFragmentDto = {
   speaker: string;
   text: string;
@@ -322,10 +292,7 @@ export type ResolvedNodeEventOutcomeDto = {
 export type ResolveCurrentEventResponse = {
   run: RunDto;
   outcome: ResolvedNodeEventOutcomeDto;
-  startedCombat?: CombatInstanceDto | null;
   encounterDraft?: import('../../combat/types/combatContracts').CombatEncounterDraftDto | null;
-  combat?: import('../../combat/types/combatContracts').CombatRuntimeDto | null;
-  /** Renseigné à la place de `combat` quand la run est en mode de combat Tactique. */
   tacticalCombat?:
     | import('../../combat/types/combatContracts').TacticalCombatRuntimeDto
     | null;

@@ -9,10 +9,10 @@ import {
 
 import { runApi } from '../api/runApi';
 import { useTacticalCombatStore } from '../../combat/stores/useTacticalCombatStore';
+import { combatApi } from '../../combat/api/combatApi';
 import { partyWalkDurationMs } from '../../palace-map/composables/usePartyTokenPath';
 import {
   unwrapRunResponse,
-  type CombatInstanceDto,
   type NarrativeFragmentDto,
   type NpcDialogueViewDto,
   type PermanentItemCandidateDto,
@@ -20,8 +20,6 @@ import {
   type ResumableRunDto,
   type RunDto,
 } from '../types/runTypes';
-
-import type { CombatRuntimeDto } from '../../combat/types/combatContracts';
 
 import { eventChoiceApi } from '../../events/api/eventChoiceApi';
 import {
@@ -72,8 +70,6 @@ export const useRunStore = defineStore('run', () => {
   const npcDialogue = ref<NpcDialogueViewDto | null>(null);
   const npcDialogueEchoes = ref<NarrativeFragmentDto[]>([]);
   const npcDialogueEnded = ref(false);
-  const activeCombat = ref<CombatInstanceDto | null>(null);
-  const combatRuntime = shallowRef<CombatRuntimeDto | null>(null);
   const lastChoiceResult = ref<CurrentEventChoiceResultDto | null>(null);
 
   const currentInterlude = ref<InterludeDto | null>(null);
@@ -298,11 +294,6 @@ export const useRunStore = defineStore('run', () => {
     npcDialogue.value = resolveResponse.npcDialogue ?? null;
     npcDialogueEchoes.value = [];
     npcDialogueEnded.value = false;
-    activeCombat.value = resolveResponse.startedCombat ?? null;
-    combatRuntime.value = resolveResponse.combat ?? null;
-
-    // Le combat tactique arrive dans la même réponse, mais dans son propre champ : les deux
-    // systèmes n'exposent pas la même chose, et un seul des deux est jamais renseigné.
     if (resolveResponse.tacticalCombat) {
       const tactical = useTacticalCombatStore();
       tactical.setCombat(resolveResponse.tacticalCombat);
@@ -357,8 +348,12 @@ export const useRunStore = defineStore('run', () => {
       npcDialogue.value = resolveResponse.npcDialogue ?? null;
       npcDialogueEchoes.value = [];
       npcDialogueEnded.value = false;
-      activeCombat.value = resolveResponse.startedCombat ?? null;
-      combatRuntime.value = resolveResponse.combat ?? null;
+      if (resolveResponse.tacticalCombat) {
+        const tactical = useTacticalCombatStore();
+        tactical.setCombat(resolveResponse.tacticalCombat);
+        void tactical.playOpening(
+          resolveResponse.tacticalEvents ?? [], resolveResponse.tacticalCombat);
+      }
 
       await refreshPendingRewardIfNeeded();
     });
@@ -457,8 +452,7 @@ export const useRunStore = defineStore('run', () => {
       pendingRewardOffer.value = null;
       lastOutcome.value = null;
       resetNpcDialogue();
-      activeCombat.value = null;
-      combatRuntime.value = null;
+      useTacticalCombatStore().clearCombat();
       currentInterlude.value = null;
       permanentItemCandidates.value = [];
       isPermanentItemSelectionResolved.value = false;
@@ -485,8 +479,11 @@ export const useRunStore = defineStore('run', () => {
       currentInterlude.value = null;
       resetNpcDialogue();
 
-      if (!run.activeCombatId) {
-        activeCombat.value = null;
+      const tactical = useTacticalCombatStore();
+      if (run.activeCombatId) {
+        tactical.setCombat(await combatApi.getCurrentTacticalCombat(run.id));
+      } else {
+        tactical.clearCombat();
       }
 
       await refreshPendingRewardIfNeeded();
@@ -518,7 +515,6 @@ export const useRunStore = defineStore('run', () => {
       currentRun.value = unwrapRunResponse(response);
       lastOutcome.value = null;
       resetNpcDialogue();
-      activeCombat.value = null;
 
       await refreshPendingRewardIfNeeded();
     });
@@ -549,8 +545,7 @@ export const useRunStore = defineStore('run', () => {
 
       lastChoiceResult.value = null;
       currentRun.value = run;
-      activeCombat.value = null;
-      combatRuntime.value = null;
+      useTacticalCombatStore().clearCombat();
       lastOutcome.value = null;
 
       await refreshPendingRewardIfNeeded();
@@ -567,8 +562,7 @@ export const useRunStore = defineStore('run', () => {
 
       lastChoiceResult.value = null;
       currentRun.value = run;
-      activeCombat.value = null;
-      combatRuntime.value = null;
+      useTacticalCombatStore().clearCombat();
       lastOutcome.value = null;
       pendingRewardOffer.value = null;
     });
@@ -598,7 +592,6 @@ export const useRunStore = defineStore('run', () => {
 
       lastChoiceResult.value = null;
       lastOutcome.value = null;
-      activeCombat.value = null;
 
       await refreshPendingRewardIfNeeded();
 
@@ -659,7 +652,6 @@ export const useRunStore = defineStore('run', () => {
       currentInterlude.value = null;
       lastOutcome.value = null;
       resetNpcDialogue();
-      activeCombat.value = null;
       lastChoiceResult.value = null;
     } catch (caught) {
       error.value = caught instanceof Error
@@ -801,8 +793,7 @@ export const useRunStore = defineStore('run', () => {
     pendingRewardOffer.value = null;
     lastOutcome.value = null;
     resetNpcDialogue();
-    activeCombat.value = null;
-    combatRuntime.value = null;
+    useTacticalCombatStore().clearCombat();
     lastChoiceResult.value = null;
     currentInterlude.value = null;
     error.value = null;
@@ -858,7 +849,6 @@ export const useRunStore = defineStore('run', () => {
 
       lastChoiceResult.value = choiceResult;
       lastOutcome.value = null;
-      activeCombat.value = null;
       pushReputationEffects(choiceResult?.appliedEffects);
 
       await refreshPendingRewardIfNeeded();
@@ -933,8 +923,6 @@ export const useRunStore = defineStore('run', () => {
     npcDialogue,
     npcDialogueEchoes,
     npcDialogueEnded,
-    activeCombat,
-    combatRuntime,
     pendingRewardOffer,
     currentInterlude,
     isEnteringInterlude,

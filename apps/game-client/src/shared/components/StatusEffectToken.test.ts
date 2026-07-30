@@ -40,11 +40,6 @@ describe('StatusEffectToken', () => {
     expect(wrapper.find('.sigil__slash').exists()).toBe(true);
   });
 
-  it('renders the lock sigil for AtbLock', () => {
-    const wrapper = mount(StatusEffectToken, { props: { kind: 'AtbLock' } });
-    expect(wrapper.find('.sigil__tube').exists()).toBe(true);
-  });
-
   it('renders the ring sigil for GuardOverTime', () => {
     const wrapper = mount(StatusEffectToken, { props: { kind: 'GuardOverTime' } });
     expect(wrapper.find('.sigil__ring').exists()).toBe(true);

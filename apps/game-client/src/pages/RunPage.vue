@@ -5,7 +5,6 @@ import { useRoute, useRouter } from 'vue-router';
 import GameShellLayout from '../app/layouts/GameShellLayout.vue';
 import TacticalCombatScene from '../features/combat/components/TacticalCombatScene.vue';
 import { useTacticalCombatStore } from '../features/combat/stores/useTacticalCombatStore';
-import { useCombatStore } from '../features/combat/stores/useCombatStore';
 import EliseOverlay from '../features/elise/EliseOverlay.vue';
 import EventChoiceResultPanel from '../features/events/components/EventChoiceResultPanel.vue';
 import EventOutcomePanel from '../features/events/components/EventOutcomePanel.vue';
@@ -34,7 +33,6 @@ import { useGameUiStore } from '../shared/stores/useGameUiStore';
 const route = useRoute();
 const router = useRouter();
 const runStore = useRunStore();
-const combatStore = useCombatStore();
 const tacticalCombatStore = useTacticalCombatStore();
 const uiStore = useGameUiStore();
 const playerStore = usePlayerStore();
@@ -116,7 +114,6 @@ async function handleExitMidRoom() {
 }
 
 async function handleLeaveRun() {
-  combatStore.clearCombat();
   tacticalCombatStore.clearCombat();
   runStore.clearCurrentRun();
   await router.replace('/');
@@ -279,20 +276,6 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
           @combat-completed="runStore.handleCombatCompleted"
           @combat-failed="runStore.handleCombatFailed"
         />
-      </template>
-
-      <template v-else-if="isCombatPhase && runStore.currentRun.combatMode === 'Atb'">
-        <section class="phase-center">
-          <p class="es-kicker">Combat incompatible</p>
-          <h3 class="es-h2">Cette run appartient à l'ancien système de combat.</h3>
-          <p class="es-lede es-dim">
-            Le combat tactique est désormais le seul mode jouable. Abandonne cette sauvegarde
-            historique pour recommencer une descente compatible.
-          </p>
-          <button class="es-btn es-btn--blood" @click="requestAbandon">
-            Abandonner cette run
-          </button>
-        </section>
       </template>
 
       <template v-else-if="isCombatPhase">
@@ -460,7 +443,6 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
           :is="DevToolsPanel"
           v-if="showDevTools && DevToolsPanel"
           :run-id="runStore.currentRun.id"
-          :combat="combatStore.combat"
           @close="showDevTools = false"
         />
       </Teleport>
