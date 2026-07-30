@@ -9,14 +9,26 @@ public sealed record SkillDefinitionDto(
     int ManaCost, int ChargeCost, int BasePower,
     IReadOnlyCollection<SkillEffectSpecDto> Effects,
     string Category = "Physical",
-    bool BasePowerIsPercentOfMaxVitality = false)
+    bool BasePowerIsPercentOfMaxVitality = false,
+    int TacticalRange = 1,
+    string TacticalAreaShape = "Single",
+    bool RequiresLineOfSight = false,
+    int Cooldown = 0,
+    bool IsUltimate = false,
+    string EmotionalRegister = "Neutral")
 {
     public static SkillDefinitionDto FromDomain(ISkillDefinition d) => new(
         d.Id.Value, d.Key.Value, d.Name.Value, d.Description.Value, d.Version.Value, d.Status.ToString(),
         d.SkillType, d.TargetingType, d.EffectType, d.ManaCost, d.ChargeCost, d.BasePower,
         d.Effects.Select(SkillEffectSpecDto.FromDomain).ToArray(),
         d.Category,
-        d.BasePowerIsPercentOfMaxVitality);
+        d.BasePowerIsPercentOfMaxVitality,
+        d.TacticalRange,
+        d.TacticalAreaShape,
+        d.RequiresLineOfSight,
+        d.Cooldown,
+        d.IsUltimate,
+        d.EmotionalRegister);
 }
 
 public sealed record SkillEffectSpecDto(

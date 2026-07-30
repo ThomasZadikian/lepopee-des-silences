@@ -13,9 +13,8 @@ public sealed record CombatantRuntimeDto(
     int CurrentVitality,
     int Guard,
     int Mana,
-    int Charge,
+    decimal Charge,
     string Status,
-    string Row,
     string AttackType,
     IReadOnlyCollection<string> WeakTo,
     IReadOnlyCollection<string> ResistantTo,
@@ -26,8 +25,6 @@ public sealed record CombatantRuntimeDto(
     int Focus,
     int MagicAttack,
     int MagicDefense,
-    int AtbGauge,
-    int AtbFillPerTick,
     double ThreatValue,
     IReadOnlyCollection<CombatantStatusEffectDto> StatusEffects,
     IReadOnlyCollection<CombatantSkillRuntimeDto> Skills)
@@ -52,7 +49,6 @@ public sealed record CombatantRuntimeDto(
             Mana: combatant.Mana,
             Charge: combatant.Charge,
             Status: combatant.Status.ToString(),
-            Row: combatant.Row.ToString(),
             AttackType: profile.AttackType.ToString(),
             WeakTo: profile.WeakTo.Select(t => t.ToString()).ToArray(),
             ResistantTo: profile.ResistantTo.Select(t => t.ToString()).ToArray(),
@@ -64,8 +60,6 @@ public sealed record CombatantRuntimeDto(
             Focus: combatant.EffectiveFocus,
             MagicAttack: combatant.EffectiveMagicAttack,
             MagicDefense: combatant.EffectiveMagicDefense,
-            AtbGauge: combatant.AtbGauge,
-            AtbFillPerTick: combatant.AtbFillPerTick,
             ThreatValue: combatant.ThreatValue,
             StatusEffects: combatant.StatusEffects
                 .Select(e => new CombatantStatusEffectDto(

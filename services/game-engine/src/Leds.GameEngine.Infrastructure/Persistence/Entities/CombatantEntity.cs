@@ -14,15 +14,8 @@ public sealed class CombatantEntity
     public int BaseGuard { get; set; }
     public int Mana { get; set; }
     public int MaxMana { get; set; } = int.MaxValue;
-    public int Charge { get; set; }
+    public decimal Charge { get; set; }
     public string Status { get; set; } = string.Empty;
-
-    /// <summary>
-    /// Positioning rank (CombatRow enum name: "Front"/"Back"). Mutable mid-combat via
-    /// the Reposition action — unlike the equipment-driven modifiers below, this is
-    /// not baked once at combat creation.
-    /// </summary>
-    public string Row { get; set; } = "Front";
 
     /// <summary>
     /// "Loi du Tapis Propre": true once this combatant has taken any action (of any

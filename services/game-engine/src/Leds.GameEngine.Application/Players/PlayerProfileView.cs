@@ -28,7 +28,8 @@ public sealed record PlayerCharacterItemView(
     string ItemKey,
     DateTimeOffset AcquiredAtUtc,
     string? Source,
-    bool IsEquipped);
+    bool IsEquipped,
+    string Slot = "Relic");
 
 public sealed record PlayerPermanentItemView(
     string ItemDefinitionKey,
@@ -43,7 +44,6 @@ public sealed record PlayerCharacterStatsView(
     int StartingGuard,
     int Speed,
     int Initiative,
-    int Recovery,
     int Focus,
     int Mana,
     int Charge,

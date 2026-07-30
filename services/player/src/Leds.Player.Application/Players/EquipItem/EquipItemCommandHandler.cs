@@ -21,7 +21,11 @@ public sealed class EquipItemCommandHandler : IRequestHandler<EquipItemCommand, 
         var profile = await _repository.GetByIdAsync(new PlayerId(request.PlayerId), cancellationToken)
             ?? throw new NotFoundException("Player", request.PlayerId);
 
-        profile.EquipItem(new PlayerCharacterId(request.CharacterId), request.ItemKey, _timeProvider.GetUtcNow());
+        profile.EquipItem(
+            new PlayerCharacterId(request.CharacterId),
+            request.ItemKey,
+            request.Slot,
+            _timeProvider.GetUtcNow());
 
         await _repository.SaveAsync(profile, cancellationToken);
 

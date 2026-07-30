@@ -1,63 +1,50 @@
-﻿using Leds.GameEngine.Application.Abstractions;
-using Leds.GameEngine.Application.Combats;
-using Leds.GameEngine.Application.Combats.Actions;
-using Leds.GameEngine.Application.Combats.Dtos;
-using Leds.GameEngine.Application.Combats.EnemyTurns;
+using Leds.GameEngine.Application.Abstractions;
 using Leds.GameEngine.Application.Common.Exceptions;
+using Leds.GameEngine.Application.Players.Ports;
 using Leds.GameEngine.Application.Runs.Dtos;
-using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Runs;
 using MediatR;
 
 namespace Leds.GameEngine.Application.Runs.UseRunItem;
 
+/// <summary>
+/// Uses an item outside combat. Combat item use belongs exclusively to the tactical
+/// command, which owns grid targeting, interception and action consumption.
+/// </summary>
 public sealed class UseRunItemCommandHandler
     : IRequestHandler<UseRunItemCommand, UseRunItemResponse>
 {
     private readonly IRunRepository _runRepository;
-    private readonly IEnemyCombatTurnResolver _enemyTurnResolver;
+    private readonly IPlayerProfileGateway? _playerProfileGateway;
 
     public UseRunItemCommandHandler(
         IRunRepository runRepository,
-        IEnemyCombatTurnResolver enemyTurnResolver)
+        IPlayerProfileGateway? playerProfileGateway = null)
     {
         _runRepository = runRepository;
-        _enemyTurnResolver = enemyTurnResolver;
+        _playerProfileGateway = playerProfileGateway;
     }
 
     public async Task<UseRunItemResponse> Handle(
         UseRunItemCommand request,
         CancellationToken cancellationToken)
     {
-        var runId = new RunId(request.RunId);
-        var itemId = new RunItemId(request.ItemId);
-
-        var run = await _runRepository.GetByIdAsync(runId, cancellationToken)
+        var run = await _runRepository.GetByIdAsync(
+                new RunId(request.RunId), cancellationToken)
             ?? throw new NotFoundException("Run", request.RunId);
 
-        var wasInCombat = run.HasActiveCombat;
+        var (effectType, amount, depleted) = run.UseItem(new RunItemId(request.ItemId));
 
-        var (effectType, amount, depleted) = run.UseItem(itemId);
-
-        // En combat, l'utilisation d'un objet compte comme l'action du joueur :
-        // avance le tour et résout les tours ennemis automatiquement.
-        IReadOnlyCollection<CombatLogEntryDto>? logEntries = null;
-        CombatRuntimeDto? combatDto = null;
-
-        if (wasInCombat && run.ActiveCombat is not null)
+        if (effectType == RunItemEffectType.GrantTeamSkillPoints)
         {
-            var combat = run.ActiveCombat;
-            var logs = new List<CombatLogEntryDto>();
+            if (_playerProfileGateway is null)
+                throw new InvalidOperationException(
+                    "Player profile gateway is required for progression items.");
 
-            logs.AddRange(AdvanceCombat(combat));
-
-            if (combat.Status == CombatStatus.Active)
-                logs.AddRange(ResolveEnemyTurns(combat));
-
-            SyncPlayerStateFromCombat(run, combat);
-
-            logEntries = logs;
-            CombatRuntimeDto.FromDomain(combat, CombatItemHelper.GetUsableBattleItems(run));
+            await _playerProfileGateway.AwardStatPointsAsync(
+                run.PlayerId,
+                amount,
+                cancellationToken);
         }
 
         await _runRepository.UpdateAsync(run, cancellationToken);
@@ -68,55 +55,7 @@ public sealed class UseRunItemCommandHandler
             EffectType: effectType.ToString(),
             EffectAmount: amount,
             ItemDepleted: depleted,
-            UsedInCombat: wasInCombat,
-            PlayerState: PlayerRuntimeStateDto.FromDomain(run.PlayerState),
-            Combat: combatDto,
-            LogEntries: logEntries);
-    }
-
-    private static IReadOnlyCollection<CombatLogEntryDto> AdvanceCombat(Combat combat)
-    {
-        combat.CompleteIfAllEnemiesDefeated();
-        combat.FailIfAllAlliesDefeated();
-
-        if (combat.Status != CombatStatus.Active)
-            return [];
-
-        // Real-time ATB: elect by readiness, never fast-forward (the clock moves time).
-        combat.ElectActiveByReadiness();
-        return [];
-    }
-
-    private IReadOnlyCollection<CombatLogEntryDto> ResolveEnemyTurns(Combat combat)
-    {
-        var logs = new List<CombatLogEntryDto>();
-        var maxAutoTurns = combat.Allies.Concat(combat.Enemies).Count(c => !c.IsDefeated) + 1;
-        var count = 0;
-
-        while (combat.Status == CombatStatus.Active)
-        {
-            var active = combat.GetActiveCombatant();
-            if (active is null || active.Side != CombatantSide.Enemy) break;
-            if (count++ >= maxAutoTurns) break;
-
-            var resolution = _enemyTurnResolver.Resolve(combat);
-            logs.AddRange(resolution.LogEntries);
-
-            if (!resolution.WasResolved) break;
-        }
-
-        return logs;
-    }
-
-    private static void SyncPlayerStateFromCombat(Run run, Combat combat)
-    {
-        var player = combat.Allies.FirstOrDefault(a => a.Side == CombatantSide.Player);
-        if (player is null) return;
-
-        run.PlayerState.SyncFromCombat(
-            player.CurrentVitality,
-            player.Guard,
-            player.Mana,
-            player.Charge);
+            UsedInCombat: false,
+            PlayerState: PlayerRuntimeStateDto.FromDomain(run.PlayerState));
     }
 }

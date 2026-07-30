@@ -46,10 +46,17 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
         return await ReadProfileAsync(response, playerId, cancellationToken);
     }
 
-    public async Task<PlayerProfileView> EquipItemAsync(Guid playerId, Guid characterId, string itemKey, CancellationToken cancellationToken)
+    public async Task<PlayerProfileView> EquipItemAsync(
+        Guid playerId,
+        Guid characterId,
+        string itemKey,
+        string slot,
+        CancellationToken cancellationToken)
     {
         var response = await _httpClient.PostAsync(
-            $"/api/v2/players/{playerId}/characters/{characterId}/items/{itemKey}/equip", content: null, cancellationToken);
+            $"/api/v2/players/{playerId}/characters/{characterId}/items/{itemKey}/equip?slot={Uri.EscapeDataString(slot)}",
+            content: null,
+            cancellationToken);
 
         return await ReadProfileAsync(response, playerId, cancellationToken);
     }
@@ -174,7 +181,7 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
     public async Task<PlayerProfileView> RecruitCompanionAsync(
         Guid playerId, string companionDefinitionKey, string displayName,
         int maxVitality, int attackPower, int defense, int startingGuard,
-        int speed, int initiative, int recovery, int focus, int mana, int charge,
+        int speed, int initiative, int focus, int mana, int charge,
         IReadOnlyCollection<string> skillKeys, CancellationToken cancellationToken,
         int magicAttack = 0, int magicDefense = 0)
     {
@@ -182,7 +189,7 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
             $"/api/v2/internal/players/{playerId}/companions/{companionDefinitionKey}/recruit",
             new RecruitCompanionRequestBody(
                 displayName, maxVitality, attackPower, defense, startingGuard,
-                speed, initiative, recovery, focus, mana, charge, skillKeys,
+                speed, initiative, focus, mana, charge, skillKeys,
                 magicAttack, magicDefense),
             cancellationToken);
 
@@ -271,7 +278,6 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
                         c.Stats.StartingGuard,
                         c.Stats.Speed,
                         c.Stats.Initiative,
-                        c.Stats.Recovery,
                         c.Stats.Focus,
                         c.Stats.Mana,
                         c.Stats.Charge,
@@ -279,7 +285,7 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
                         c.Stats.MagicDefense),
                     MaxEquippedSkills: c.MaxEquippedSkills,
                     Items: (c.Items ?? [])
-                        .Select(i => new PlayerCharacterItemView(i.ItemKey, i.AcquiredAtUtc, i.Source, i.IsEquipped))
+                        .Select(i => new PlayerCharacterItemView(i.ItemKey, i.AcquiredAtUtc, i.Source, i.IsEquipped, i.Slot))
                         .ToArray(),
                     MaxEquippedItems: c.MaxEquippedItems,
                     CharacterType: c.CharacterType))
@@ -309,7 +315,6 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
         int StartingGuard,
         int Speed,
         int Initiative,
-        int Recovery,
         int Focus,
         int Mana,
         int Charge,
@@ -355,7 +360,8 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
         string ItemKey,
         DateTimeOffset AcquiredAtUtc,
         string? Source,
-        bool IsEquipped);
+        bool IsEquipped,
+        string Slot = "Relic");
 
     private sealed record PlayerPermanentItemResponse(
         string ItemDefinitionKey,
@@ -370,7 +376,6 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
         int StartingGuard,
         int Speed,
         int Initiative,
-        int Recovery,
         int Focus,
         int Mana,
         int Charge,

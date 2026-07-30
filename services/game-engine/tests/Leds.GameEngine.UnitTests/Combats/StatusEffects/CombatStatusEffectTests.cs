@@ -170,11 +170,11 @@ public sealed class CombatStatusEffectTests
     [Fact]
     public void Reinforce_ShouldClampStacks_ToMaxStacks()
     {
-        var effect = CombatStatusEffect.Create("poison", "Poison", StatusEffectKind.DamageOverTime, 0, 5000, stacks: 50);
+        var effect = CombatStatusEffect.Create("poison", "Poison", StatusEffectKind.DamageOverTime, 0, 5000, stacks: 4);
 
         effect.Reinforce(100, maxStacks: 99);
 
-        effect.Stacks.Should().Be(99);
+        effect.Stacks.Should().Be(5);
     }
 
     [Fact]

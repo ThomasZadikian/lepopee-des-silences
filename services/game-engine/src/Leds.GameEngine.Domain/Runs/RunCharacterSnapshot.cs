@@ -12,7 +12,8 @@ public sealed class RunCharacterSnapshot
         string definitionKey,
         string displayName,
         RunCharacterStatSnapshot statBlock,
-        IReadOnlyCollection<RunCharacterSkillSnapshot> skills)
+        IReadOnlyCollection<RunCharacterSkillSnapshot> skills,
+        IReadOnlyCollection<string>? equippedItemKeys = null)
     {
         Id = id;
         CharacterId = characterId;
@@ -20,6 +21,11 @@ public sealed class RunCharacterSnapshot
         DisplayName = displayName;
         StatBlock = statBlock;
         _skills.AddRange(skills);
+        EquippedItemKeys = (equippedItemKeys ?? [])
+            .Where(key => !string.IsNullOrWhiteSpace(key))
+            .Select(key => key.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
     }
 
     public Guid Id { get; }
@@ -28,13 +34,15 @@ public sealed class RunCharacterSnapshot
     public string DisplayName { get; }
     public RunCharacterStatSnapshot StatBlock { get; }
     public IReadOnlyCollection<RunCharacterSkillSnapshot> Skills => _skills.AsReadOnly();
+    public IReadOnlyCollection<string> EquippedItemKeys { get; }
 
     public static RunCharacterSnapshot Create(
         Guid characterId,
         string definitionKey,
         string displayName,
         RunCharacterStatSnapshot statBlock,
-        IReadOnlyCollection<RunCharacterSkillSnapshot> skills)
+        IReadOnlyCollection<RunCharacterSkillSnapshot> skills,
+        IReadOnlyCollection<string>? equippedItemKeys = null)
     {
         if (characterId == Guid.Empty)
             throw new DomainException("Character id is required.");
@@ -54,7 +62,8 @@ public sealed class RunCharacterSnapshot
             definitionKey.Trim(),
             displayName.Trim(),
             statBlock,
-            skills);
+            skills,
+            equippedItemKeys);
     }
 
     /// <summary>
@@ -77,8 +86,10 @@ public sealed class RunCharacterSnapshot
         string definitionKey,
         string displayName,
         RunCharacterStatSnapshot statBlock,
-        IReadOnlyCollection<RunCharacterSkillSnapshot> skills)
+        IReadOnlyCollection<RunCharacterSkillSnapshot> skills,
+        IReadOnlyCollection<string>? equippedItemKeys = null)
     {
-        return new RunCharacterSnapshot(id, characterId, definitionKey, displayName, statBlock, skills);
+        return new RunCharacterSnapshot(
+            id, characterId, definitionKey, displayName, statBlock, skills, equippedItemKeys);
     }
 }

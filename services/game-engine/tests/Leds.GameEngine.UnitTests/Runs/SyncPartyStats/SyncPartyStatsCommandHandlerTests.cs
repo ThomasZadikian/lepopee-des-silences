@@ -30,7 +30,7 @@ public sealed class SyncPartyStatsCommandHandlerTests
                 "Le Porteur",
                 Stats: new PlayerRunSnapshotCharacterStats(
                     MaxVitality: 150, AttackPower: 20, Defense: 9, StartingGuard: 0,
-                    Speed: 14, Initiative: 10, Recovery: 5, Focus: 3, Mana: 25, Charge: 4),
+                    Speed: 14, Initiative: 10,Focus: 3, Mana: 25, Charge: 4),
                 Skills: []),
             new PlayerRunSnapshotCharacter(
                 companionId,
@@ -38,7 +38,7 @@ public sealed class SyncPartyStatsCommandHandlerTests
                 "Mané",
                 Stats: new PlayerRunSnapshotCharacterStats(
                     MaxVitality: 95, AttackPower: 16, Defense: 5, StartingGuard: 2,
-                    Speed: 9, Initiative: 8, Recovery: 4, Focus: 1, Mana: 5, Charge: 1),
+                    Speed: 9, Initiative: 8,Focus: 1, Mana: 5, Charge: 1),
                 Skills: [])
         ]);
 
@@ -50,7 +50,7 @@ public sealed class SyncPartyStatsCommandHandlerTests
 
         var statBlock = RunCharacterStatSnapshot.Create(
             maxVitality: 100, attackPower: 12, defense: 6, startingGuard: 0,
-            speed: 10, initiative: 10, recovery: 5, focus: 0, mana: 0, charge: 0);
+            speed: 10, initiative: 10,focus: 0, mana: 0, charge: 0);
 
         var skills = new[]
         {

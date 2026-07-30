@@ -2,7 +2,7 @@
 
 /// <summary>
 /// Représentation d'un objet consommable utilisable pendant un combat,
-/// exposé dans <see cref="CombatRuntimeDto"/> pour que le frontend
+/// exposé dans le runtime tactique pour que le frontend
 /// l'affiche aux côtés des compétences.
 /// </summary>
 public sealed record CombatUsableItemDto(
@@ -12,4 +12,7 @@ public sealed record CombatUsableItemDto(
     string EffectType,
     int EffectAmount,
     int Quantity,
-    string TargetingType);
+    string TargetingType,
+    int TacticalRange,
+    string TacticalAreaShape,
+    bool RequiresLineOfSight);

@@ -67,7 +67,7 @@ public sealed record RunDto(
                 .Where(indicator => !indicator.IsExpired)
                 .Select(PalacePublicIndicatorDto.FromDomain)
                 .ToArray();
-        var currentRoomDto = RoomDto.FromDomain(run.CurrentRoom, run.RunModifiers);
+        var currentRoomDto = RoomDto.FromDomain(run.CurrentRoom, run.RunModifiers, run.GroundItems);
 
         return new RunDto(
             run.Id.Value,
@@ -186,7 +186,10 @@ public sealed record RunItemDto(
     bool IsContainer = false,
     int? ContainerCapacity = null,
     bool IsLiquid = false,
-    string? ContainedLiquidDefinitionKey = null)
+    string? ContainedLiquidDefinitionKey = null,
+    int TacticalRange = 1,
+    string TacticalAreaShape = "Single",
+    bool RequiresLineOfSight = false)
 {
     public static RunItemDto FromDomain(RunItem item) => new(
         item.Id.Value,
@@ -201,5 +204,8 @@ public sealed record RunItemDto(
         item.IsContainer,
         item.ContainerCapacity,
         item.IsLiquid,
-        item.ContainedLiquidDefinitionKey);
+        item.ContainedLiquidDefinitionKey,
+        item.TacticalRange,
+        item.TacticalAreaShape,
+        item.RequiresLineOfSight);
 }

@@ -27,6 +27,26 @@ const TYPE_LABELS: Record<string, { displayName: string; description: string }> 
     displayName: 'Grêle',
     description: 'La grêle rend les effets persistants plus menaçants dans cette Room.',
   },
+  Accalmie: {
+    displayName: 'Accalmie',
+    description: 'Le Palais suspend momentanément toute influence météorologique.',
+  },
+  Brume: {
+    displayName: 'Brume',
+    description: 'Le Focus de tous les combattants est réduit de 25 %.',
+  },
+  Orage: {
+    displayName: 'Orage',
+    description: 'Les dégâts magiques de tous les combattants sont augmentés de 15 %.',
+  },
+  PluieDeCendres: {
+    displayName: 'Pluie de cendres',
+    description: 'Les dégâts de feu augmentent de 25 %, tandis que les soins diminuent de 25 %.',
+  },
+  PluieViolacee: {
+    displayName: 'Pluie violacée',
+    description: 'Les dégâts périodiques de tous les combattants sont augmentés de 25 %.',
+  },
 };
 
 export function resolveRoomClimateDisplay(

@@ -130,7 +130,6 @@ public sealed class TestPlayerRunSnapshotGateway : IPlayerRunSnapshotGateway
                     StartingGuard: 0,
                     Speed: 10,
                     Initiative: 10,
-                    Recovery: 5,
                     Focus: 0,
                     Mana: 0,
                     Charge: 0),

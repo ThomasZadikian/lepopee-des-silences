@@ -37,6 +37,11 @@ public sealed class ItemDefinitionEntityConfiguration : IEntityTypeConfiguration
         builder.Property(e => e.Duration).HasColumnName("duration").HasMaxLength(64).IsRequired().HasComment("Legacy compatibility column. Use lifecycle/usage_mode/effect_set_id for data-model-0.1 definitions.");
         builder.Property(e => e.EffectValue).HasColumnName("effect_value").HasComment("Legacy compatibility column. Canonical effects live in catalog_effect_sets/catalog_effect_definitions.");
         builder.Property(e => e.EffectRunType).HasColumnName("effect_run_type").HasMaxLength(32);
+        builder.Property(e => e.TacticalRange).HasColumnName("tactical_range").HasDefaultValue(1);
+        builder.Property(e => e.TacticalAreaShape).HasColumnName("tactical_area_shape").HasMaxLength(16).HasDefaultValue("Single").IsRequired();
+        builder.Property(e => e.RequiresLineOfSight).HasColumnName("requires_line_of_sight").HasDefaultValue(false);
+        builder.Property(e => e.BasicAttackPower).HasColumnName("basic_attack_power");
+        builder.Property(e => e.BasicAttackCategory).HasColumnName("basic_attack_category").HasMaxLength(16);
         builder.Property(e => e.Price).HasColumnName("price");
         builder.Property(e => e.EquipmentEffectsJson).HasColumnName("equipment_effects_json").HasColumnType("jsonb");
         builder.Property(e => e.IsContainer).HasColumnName("is_container").HasDefaultValue(false);

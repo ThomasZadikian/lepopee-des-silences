@@ -6,7 +6,7 @@ namespace Leds.GameEngine.Domain.Combats;
 /// <summary>
 /// The durable status effect a skill applies to its targets (poison, regen,
 /// buff/debuff, stun…). Null on skills that only deal instant damage/heal/guard.
-/// Durations and intervals are in ATB ticks.
+/// Durations and intervals use the catalog's activation-compatible duration unit.
 /// </summary>
 public sealed record SkillStatusEffectSpec(
     string Key,

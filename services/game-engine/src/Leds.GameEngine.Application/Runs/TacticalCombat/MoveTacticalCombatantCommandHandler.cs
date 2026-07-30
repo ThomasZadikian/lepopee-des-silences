@@ -39,6 +39,9 @@ public sealed class MoveTacticalCombatantCommandHandler
         // trajet — plus élevé qu'à vol d'oiseau dès qu'il faut monter.
         var move = combat.MoveActiveCombatant(destination);
 
+        if (combat.Status == Leds.GameEngine.Domain.Combats.CombatStatus.Escaped)
+            run.EscapeActiveCombat();
+
         await _runRepository.UpdateAsync(run, cancellationToken);
 
         var logEntry = new CombatLogEntryDto(
@@ -54,7 +57,7 @@ public sealed class MoveTacticalCombatantCommandHandler
 
         return new TacticalCombatResponse(
             RunDto.FromDomain(run),
-            TacticalCombatRuntimeDto.FromDomain(combat, CombatItemHelper.GetUsableBattleItems(run)),
+            TacticalCombatRuntimeDto.FromDomain(combat, CombatItemHelper.GetUsableBattleItems(run, combat)),
             [logEntry],
             // Le trajet réel, pour que la figure marche au lieu de se téléporter.
             [TacticalCombatEventDto.Move(

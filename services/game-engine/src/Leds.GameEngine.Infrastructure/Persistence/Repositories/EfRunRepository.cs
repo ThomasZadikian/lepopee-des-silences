@@ -112,63 +112,6 @@ public sealed class EfRunRepository : IRunRepository
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task UpdateActiveCombatStateAsync(Run run, CancellationToken cancellationToken)
-    {
-        var combat = run.ActiveCombat;
-        if (combat is null)
-        {
-            return;
-        }
-
-        var combatId = combat.Id.Value;
-
-        // Load ONLY the small combat subtree (not the run/map). Cost is constant
-        // per tick and does NOT grow with run progress (kills the "Room 3" curve).
-        var existingCombat = await _dbContext.Combats
-            .AsSplitQuery()
-            .Include(c => c.Combatants)
-                .ThenInclude(cb => cb.RuntimeState)
-            .FirstOrDefaultAsync(c => c.Id == combatId, cancellationToken);
-
-        if (existingCombat is null)
-        {
-            // Combat row already gone (completed/removed on the full path) — the
-            // authoritative state was persisted there, nothing hot to save.
-            return;
-        }
-
-        var incomingCombat = CombatPersistenceMapper.ToEntity(combat, run.Id.Value);
-
-        // Combat scalars: Status, TurnNumber, CurrentTick, ActiveCombatantId, …
-        // SetValues copies every mapped scalar by name, so new columns (e.g. ATB)
-        // are covered automatically — no field-by-field maintenance.
-        _dbContext.Entry(existingCombat).CurrentValues.SetValues(incomingCombat);
-
-        var incomingById = incomingCombat.Combatants.ToDictionary(c => c.Id);
-
-        foreach (var existingCombatant in existingCombat.Combatants)
-        {
-            if (!incomingById.TryGetValue(existingCombatant.Id, out var incomingCombatant))
-            {
-                continue; // combatant membership is fixed during a fight
-            }
-
-            // Combatant scalars: CurrentVitality, Guard, Mana, Charge, Status,
-            // AttackTypeOverride, … (skills & base stats are immutable mid-combat).
-            _dbContext.Entry(existingCombatant).CurrentValues.SetValues(incomingCombatant);
-
-            if (existingCombatant.RuntimeState is not null && incomingCombatant.RuntimeState is not null)
-            {
-                // Runtime ATB state: AtbGaugeValue, ActionRecoveryUntilTick,
-                // AtbFillPerTick, CurrentGuard, CurrentVitality, … all via SetValues.
-                _dbContext.Entry(existingCombatant.RuntimeState)
-                    .CurrentValues.SetValues(incomingCombatant.RuntimeState);
-            }
-        }
-
-        await _dbContext.SaveChangesAsync(cancellationToken);
-    }
-
     private void UpdateRooms(RunEntity existing, RunEntity incoming)
     {
         var existingRoomIds = existing.Rooms.Select(r => r.Id).ToHashSet();
@@ -311,13 +254,34 @@ public sealed class EfRunRepository : IRunRepository
                     Id = Guid.NewGuid(),
                     RunId = existing.Id,
                     DefinitionKey = incomingItem.DefinitionKey,
+                    DefinitionVersion = incomingItem.DefinitionVersion,
                     DisplayName = incomingItem.DisplayName,
                     Description = incomingItem.Description,
+                    NarrativeText = incomingItem.NarrativeText,
                     Type = incomingItem.Type,
                     Rarity = incomingItem.Rarity,
+                    Category = incomingItem.Category,
                     Quantity = incomingItem.Quantity,
+                    MaxStack = incomingItem.MaxStack,
+                    UsageMode = incomingItem.UsageMode,
+                    Lifecycle = incomingItem.Lifecycle,
                     EffectType = incomingItem.EffectType,
                     EffectAmount = incomingItem.EffectAmount,
+                    EffectSetKey = incomingItem.EffectSetKey,
+                    EffectSummary = incomingItem.EffectSummary,
+                    IsUsableInCombat = incomingItem.IsUsableInCombat,
+                    IsUsableOutsideCombat = incomingItem.IsUsableOutsideCombat,
+                    SourceRewardOptionId = incomingItem.SourceRewardOptionId,
+                    IsContainer = incomingItem.IsContainer,
+                    ContainerCapacity = incomingItem.ContainerCapacity,
+                    IsLiquid = incomingItem.IsLiquid,
+                    ContainedLiquidDefinitionKey = incomingItem.ContainedLiquidDefinitionKey,
+                    TacticalRange = incomingItem.TacticalRange,
+                    TacticalAreaShape = incomingItem.TacticalAreaShape,
+                    RequiresLineOfSight = incomingItem.RequiresLineOfSight,
+                    GroundRoomId = incomingItem.GroundRoomId,
+                    GroundX = incomingItem.GroundX,
+                    GroundY = incomingItem.GroundY,
                     CreatedAtUtc = incomingItem.CreatedAtUtc
                 };
                 existing.InventoryItems.Add(newItem);
@@ -326,6 +290,10 @@ public sealed class EfRunRepository : IRunRepository
 
             // Only mutable field is Quantity (stacking consumables).
             existingItem.Quantity = incomingItem.Quantity;
+            existingItem.ContainedLiquidDefinitionKey = incomingItem.ContainedLiquidDefinitionKey;
+            existingItem.GroundRoomId = incomingItem.GroundRoomId;
+            existingItem.GroundX = incomingItem.GroundX;
+            existingItem.GroundY = incomingItem.GroundY;
         }
     }
 

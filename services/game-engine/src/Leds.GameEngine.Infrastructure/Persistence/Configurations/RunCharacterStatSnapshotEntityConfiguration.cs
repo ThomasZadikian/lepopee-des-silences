@@ -20,7 +20,6 @@ public sealed class RunCharacterStatSnapshotEntityConfiguration : IEntityTypeCon
         builder.Property(e => e.StartingGuard).HasColumnName("starting_guard").IsRequired();
         builder.Property(e => e.Speed).HasColumnName("speed").IsRequired();
         builder.Property(e => e.Initiative).HasColumnName("initiative").IsRequired();
-        builder.Property(e => e.Recovery).HasColumnName("recovery").IsRequired();
         builder.Property(e => e.Focus).HasColumnName("focus").IsRequired();
         builder.Property(e => e.Mana).HasColumnName("mana").IsRequired();
         builder.Property(e => e.Charge).HasColumnName("charge").IsRequired();

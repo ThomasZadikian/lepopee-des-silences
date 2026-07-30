@@ -342,7 +342,12 @@ public sealed class Room
     /// <see cref="EnterNodeAtPartyPosition"/> performs, minus the choice.
     /// </para>
     /// </summary>
-    public void MoveParty(int targetX, int targetY)
+    public sealed record PartyMoveResult(
+        IReadOnlyList<(int X, int Y)> TraversedCells,
+        int SpentMovement,
+        NodeId? TriggeredNodeId);
+
+    public PartyMoveResult MoveParty(int targetX, int targetY)
     {
         if (State is not RoomState.Active)
         {
@@ -367,7 +372,13 @@ public sealed class Room
             throw new DomainException("Not enough movement budget remaining for this move.");
         }
 
+        var movementBefore = Grid.MovementBudgetRemaining;
         var triggered = Grid.MoveTo(route.Path, route.Cost, _nodes);
+        var traversed = route.Path
+            .TakeWhile(cell =>
+                cell != (Grid.PartyX, Grid.PartyY))
+            .Append((Grid.PartyX, Grid.PartyY))
+            .ToArray();
 
         if (triggered is not null)
         {
@@ -375,6 +386,11 @@ public sealed class Room
             _currentGridNodeId = triggered.Id;
             State = RoomState.NodeSelected;
         }
+
+        return new PartyMoveResult(
+            traversed,
+            movementBefore - Grid.MovementBudgetRemaining,
+            triggered?.Id);
     }
 
     // BALANCE KNOB — how far a search reaches, in cells (Chebyshev: the 8 cells around the

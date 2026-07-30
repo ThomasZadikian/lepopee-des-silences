@@ -112,6 +112,7 @@ public sealed class CombatEncounterDraftGenerator : ICombatEncounterDraftGenerat
                     MagicAttack: ScaleStat(e.MagicAttack, statMultiplier),
                     MagicDefense: ScaleStat(e.MagicDefense, statMultiplier),
                     Mana: e.Mana,
+                    Movement: e.Movement,
                     Skills: e.SkillKeys
                         .Select(sk => skillLookup.GetValueOrDefault(sk))
                         .Where(s => s is not null)
@@ -127,7 +128,13 @@ public sealed class CombatEncounterDraftGenerator : ICombatEncounterDraftGenerat
                             BasePower: s.BasePower,
                             Tags: s.Tags,
                             Category: s.Category,
-                            BasePowerIsPercentOfMaxVitality: s.BasePowerIsPercentOfMaxVitality))
+                            BasePowerIsPercentOfMaxVitality: s.BasePowerIsPercentOfMaxVitality,
+                            TacticalRange: s.TacticalRange,
+                            TacticalAreaShape: s.TacticalAreaShape,
+                            RequiresLineOfSight: s.RequiresLineOfSight,
+                            Cooldown: s.Cooldown,
+                            IsUltimate: s.IsUltimate,
+                            EmotionalRegister: s.EmotionalRegister))
                         .ToArray());
             })
             .ToArray();

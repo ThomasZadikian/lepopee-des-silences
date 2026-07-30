@@ -28,7 +28,6 @@ public sealed class RecruitCompanionCommandHandler : IRequestHandler<RecruitComp
             request.StartingGuard,
             request.Speed,
             request.Initiative,
-            request.Recovery,
             request.Focus,
             request.Mana,
             request.Charge,

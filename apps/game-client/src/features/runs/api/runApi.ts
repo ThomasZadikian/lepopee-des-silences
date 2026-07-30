@@ -4,9 +4,11 @@ import type {
   ConfirmPermanentItemSelectionResponse,
   GenerateNextNodesResponse,
   GetPermanentItemCandidatesResponse,
+  MovePartyResponse,
   ResolveCurrentEventResponse,
   RunResponse,
   StartRunResponse,
+  SwapGroundItemResponse,
 } from '../types/runTypes';
 
 import type {
@@ -113,9 +115,16 @@ export const runApi = {
   },
 
   moveParty(runId: string, targetX: number, targetY: number) {
-    return gameEngineApi.post<RunResponse, { targetX: number; targetY: number }>(
+    return gameEngineApi.post<MovePartyResponse, { targetX: number; targetY: number }>(
       `/api/v2/runs/${runId}/party/move`,
       { targetX, targetY },
+    );
+  },
+
+  swapGroundItem(runId: string, groundItemId: string, heldItemId: string) {
+    return gameEngineApi.post<SwapGroundItemResponse, { heldItemId: string }>(
+      `/api/v2/runs/${runId}/ground-items/${groundItemId}/swap`,
+      { heldItemId },
     );
   },
 

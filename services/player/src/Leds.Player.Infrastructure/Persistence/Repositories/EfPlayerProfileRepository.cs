@@ -297,7 +297,6 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
         statBlock.StartingGuard = character.StatBlock.StartingGuard;
         statBlock.Speed = character.StatBlock.Speed;
         statBlock.Initiative = character.StatBlock.Initiative;
-        statBlock.Recovery = character.StatBlock.Recovery;
         statBlock.Focus = character.StatBlock.Focus;
         statBlock.Mana = character.StatBlock.Mana;
         statBlock.Charge = character.StatBlock.Charge;
@@ -317,7 +316,6 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
                     startingGuard: 0,
                     speed: 10,
                     initiative: 10,
-                    recovery: 5,
                     focus: 0,
                     mana: c.BaseMana,
                     charge: c.BaseCharge)
@@ -328,7 +326,6 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
                     c.StatBlock.StartingGuard,
                     c.StatBlock.Speed,
                     c.StatBlock.Initiative,
-                    c.StatBlock.Recovery,
                     c.StatBlock.Focus,
                     c.StatBlock.Mana,
                     c.StatBlock.Charge,
@@ -345,7 +342,14 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
                     .ToArray();
 
             var items = c.Items
-                .Select(i => PlayerCharacterItem.Create(i.ItemDefinitionKey, i.AcquiredAtUtc, i.Source, i.IsEquipped))
+                .Select(i => PlayerCharacterItem.Create(
+                    i.ItemDefinitionKey,
+                    i.AcquiredAtUtc,
+                    i.Source,
+                    i.IsEquipped,
+                    Enum.TryParse<EquipmentSlotKind>(i.EquipmentSlot, true, out var slot)
+                        ? slot
+                        : EquipmentSlotKind.Relic))
                 .ToArray();
 
             return PlayerCharacter.Rehydrate(
@@ -409,7 +413,6 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
             StartingGuard = character.StatBlock.StartingGuard,
             Speed = character.StatBlock.Speed,
             Initiative = character.StatBlock.Initiative,
-            Recovery = character.StatBlock.Recovery,
             Focus = character.StatBlock.Focus,
             Mana = character.StatBlock.Mana,
             Charge = character.StatBlock.Charge,
@@ -451,7 +454,8 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
             ItemDefinitionKey = item.ItemDefinitionKey,
             AcquiredAtUtc = item.AcquiredAtUtc,
             Source = item.Source,
-            IsEquipped = item.IsEquipped
+            IsEquipped = item.IsEquipped,
+            EquipmentSlot = item.Slot.ToString()
         };
     }
 

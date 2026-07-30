@@ -8,6 +8,7 @@ public sealed class RunCharacterSnapshotEntity
     public string DefinitionKey { get; set; } = string.Empty;
     public string DisplayName { get; set; } = string.Empty;
     public int SnapshotOrder { get; set; }
+    public string? EquippedItemKeysCsv { get; set; }
     public RunPlayerSnapshotEntity? PlayerSnapshot { get; set; }
     public RunCharacterStatSnapshotEntity? StatBlock { get; set; }
     public List<RunCharacterSkillSnapshotEntity> Skills { get; set; } = [];

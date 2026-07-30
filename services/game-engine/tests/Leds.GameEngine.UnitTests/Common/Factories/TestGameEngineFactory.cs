@@ -179,7 +179,6 @@ public static class TestGameEngineFactory
             startingGuard: 0,
             speed: 10,
             initiative: 10,
-            recovery: 5,
             focus: 0,
             mana: 0,
             charge: 0);

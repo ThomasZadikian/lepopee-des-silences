@@ -15,7 +15,7 @@ namespace Leds.Catalog.Infrastructure.Persistence;
 /// CONFIDENTIAL — local-only canon content (IP). Git-ignored. Idempotent: upsert by
 /// key, updates only when the version differs.
 /// </summary>
-public sealed class CatalogSeedRunner 
+public sealed partial class CatalogSeedRunner
 {
     private static readonly JsonSerializerOptions J = new(JsonSerializerDefaults.Web)
     {
@@ -28,11 +28,10 @@ public sealed class CatalogSeedRunner
 
     /// <summary>
     /// Authoring convention only, mirrored from the game-engine service's
-    /// AtbConstants.TicksPerTurn (catalog and game-engine are separate deployables
+    /// CombatTime.TicksPerTurn (catalog and game-engine are separate deployables
     /// with no shared assembly for this). "1 tour" in a skill/status duration means
-    /// this many ticks of the ATB clock — NOT "1 action taken": fill-per-tick varies
-    /// per combatant (Speed, investment, relative tempo, momentum), so a fast
-    /// combatant can act many times within "N tours" while a slow one acts once or
+    /// this many legacy-compatible duration units. The tactical engine converts them
+    /// into activations of the status holder.
     /// not at all. Keep this value in sync with the game-engine constant by hand.
     /// </summary>
     private const int TicksPerTurn = 2500;
@@ -85,6 +84,8 @@ public sealed class CatalogSeedRunner
         await SeedBestiaireEchosDEmotionsAsync(cancellationToken);
         await SeedBestiaireImperatriceDeLaFalaiseAsync(cancellationToken);
         await SeedCanonItemsAsync(cancellationToken);
+        await SeedPalaceItemsAsync(cancellationToken);
+        await SeedCanonicalWeaponsAsync(cancellationToken);
         await SeedCanonCursesAsync(cancellationToken);
         await PruneCanonLawPlaceholdersAsync(cancellationToken);
         await SeedLoisMajeuresAsync(cancellationToken);
@@ -102,6 +103,7 @@ public sealed class CatalogSeedRunner
         await SeedCanonBossesAsync(cancellationToken);
         await SeedCanonRoomTypesAsync(cancellationToken);
         await SeedCanonLootAsync(cancellationToken);
+        await SeedPalaceItemLootAsync(cancellationToken);
         await SeedRewardTemplatesAsync(cancellationToken);
 
         // Sauvegarde inconditionnelle : les SeedCanon*Async ajoutent au change-tracker
@@ -1464,7 +1466,7 @@ public sealed class CatalogSeedRunner
                 CompanionKit: new CompanionKitSpec(
                     MaxVitality: 85, AttackPower: 15, Defense: 4, StartingGuard: 0,
                     // Mana = 85% of MaxVitality (design rule, see PlayerCharacterStatBlock.CreateDefaultPorteur).
-                    Speed: 13, Initiative: 12, Recovery: 4, Focus: 3, Mana: 72, Charge: 0,
+                    Speed: 13, Initiative: 12, Focus: 3, Mana: 72, Charge: 0,
                     SkillKeys: new[] { "skill.basic.strike", "canon.skill.impulsivite" },
                     MagicAttack: 3, MagicDefense: 2))
         };
@@ -1543,7 +1545,7 @@ public sealed class CatalogSeedRunner
                 CompanionKit: new CompanionKitSpec(
                     MaxVitality: 110, AttackPower: 8, Defense: 12, StartingGuard: 8,
                     // Mana = 85% of MaxVitality (design rule, see PlayerCharacterStatBlock.CreateDefaultPorteur).
-                    Speed: 8, Initiative: 8, Recovery: 6, Focus: 2, Mana: 94, Charge: 0,
+                    Speed: 8, Initiative: 8, Focus: 2, Mana: 94, Charge: 0,
                     SkillKeys: new[] { "skill.basic.strike", "skill.basic.guard", "canon.skill.fondations-de-thomas" },
                     MagicAttack: 4, MagicDefense: 11))
         };
@@ -2070,7 +2072,7 @@ public sealed class CatalogSeedRunner
                 CompanionKit: new CompanionKitSpec(
                     MaxVitality: 65, AttackPower: 5, Defense: 5, StartingGuard: 2,
                     // Mana = 85% of MaxVitality (design rule, see PlayerCharacterStatBlock.CreateDefaultPorteur).
-                    Speed: 10, Initiative: 9, Recovery: 5, Focus: 5, Mana: 55, Charge: 0,
+                    Speed: 10, Initiative: 9, Focus: 5, Mana: 55, Charge: 0,
                     SkillKeys: new[] { "skill.basic.strike", "canon.skill.veillee-de-mina" },
                     MagicAttack: 12, MagicDefense: 8))
         };
@@ -2159,7 +2161,7 @@ public sealed class CatalogSeedRunner
                 CompanionKit: new CompanionKitSpec(
                     MaxVitality: 80, AttackPower: 4, Defense: 6, StartingGuard: 0,
                     // Mana = 85% of MaxVitality (design rule, see PlayerCharacterStatBlock.CreateDefaultPorteur).
-                    Speed: 9, Initiative: 8, Recovery: 5, Focus: 7, Mana: 68, Charge: 0,
+                    Speed: 9, Initiative: 8, Focus: 7, Mana: 68, Charge: 0,
                     SkillKeys: new[]
                     {
                         "skill.basic.strike",
@@ -2261,7 +2263,7 @@ public sealed class CatalogSeedRunner
                 CompanionKit: new CompanionKitSpec(
                     MaxVitality: 90, AttackPower: 13, Defense: 5, StartingGuard: 0,
                     // Mana = 85% of MaxVitality (design rule, see PlayerCharacterStatBlock.CreateDefaultPorteur).
-                    Speed: 14, Initiative: 14, Recovery: 4, Focus: 6, Mana: 77, Charge: 0,
+                    Speed: 14, Initiative: 14, Focus: 6, Mana: 77, Charge: 0,
                     SkillKeys: new[] { "skill.basic.strike", "canon.skill.vol-a-la-tire" },
                     MagicAttack: 4, MagicDefense: 4))
         };
@@ -2463,7 +2465,6 @@ public sealed class CatalogSeedRunner
                 StartingGuard = guard,
                 Speed = speed,
                 Initiative = initiative,
-                Recovery = 0,
                 Focus = focus,
                 Mana = mana,
                 Charge = 0,
@@ -2557,6 +2558,27 @@ public sealed class CatalogSeedRunner
             "Drain", "SingleEnemy", "Debuff", mana: 4, power: 12, cancellationToken,
             effects: new[] { new SkillEffectSpec("StatModifier", null, -4, 3, Stat: "Defense") },
             category: "Magic");
+
+        await UpsertSkillAsync("skill.temp.deluge-mineur", "Déluge mineur",
+            "Une vague compacte frappe une zone en losange.",
+            "Damage", "Area", "Damage", mana: 9, power: 20, cancellationToken,
+            category: "Magic", cooldown: 2, emotionalRegister: "Tristesse");
+
+        await UpsertSkillAsync("skill.temp.ecriture-appliquee", "Écriture appliquée",
+            "Un signe bref lacère une cible et prolonge sa douleur.",
+            "Damage", "SingleEnemy", "Damage", mana: 7, power: 18, cancellationToken,
+            effects: [new SkillEffectSpec("DamageOverTime", null, 4, TicksPerTurn * 3, TickInterval: TicksPerTurn)],
+            category: "Magic", cooldown: 1, emotionalRegister: "Silence");
+
+        await UpsertSkillAsync("skill.temp.souffle-emprunte", "Souffle emprunté",
+            "Une flamme volée jaillit en croix.",
+            "Damage", "Area", "Damage", mana: 8, power: 21, cancellationToken,
+            category: "Magic", cooldown: 2, emotionalRegister: "Colere");
+
+        await UpsertSkillAsync("skill.temp.construction-ephemere", "Construction éphémère",
+            "Érige une garde provisoire sur une cible proche.",
+            "Guard", "SingleAlly", "Guard", mana: 6, power: 18, cancellationToken,
+            category: "Magic", cooldown: 2, emotionalRegister: "Neutral");
 
         await UpsertSkillAsync("canon.skill.transmutation", "Transmutation",
             "Plomb, or, mercure, soufre, sel. L'art alchimique réordonne la matière de l'instant.",
@@ -2663,7 +2685,7 @@ public sealed class CatalogSeedRunner
             },
             category: "Magic");
 
-        // "Impulsivité" (Mané) : +5% vitesse (charge d'ATB), +5% dégâts (attaque), mais
+        // "Impulsivité" (Mané) : +5% vitesse, +5% dégâts (attaque), mais
         // -10% défense pendant 5 tours — auto-buff/débuff, donc AppliesToActor sur les
         // trois effets. StatusKey explicite sur chacun (sinon collision, cf.
         // "Connaissance académique" plus haut).
@@ -2682,7 +2704,7 @@ public sealed class CatalogSeedRunner
             category: "Physical");
 
         // "Favorite de Elise" (Mané, sort légendaire) : +10% défense et +10% vitesse
-        // (charge d'ATB) pendant 5 tours, et restaure instantanément 15% des PV max —
+        // pendant 5 tours, et restaure instantanément 15% des PV max —
         // le seul sort canon à combiner un effet instantané (Heal, BasePower en % des
         // PV max) avec des buffs durables sur soi.
         // StatusKey explicite sur chaque effet (sinon collision, cf. "Connaissance académique").
@@ -2733,7 +2755,7 @@ public sealed class CatalogSeedRunner
             category: "Physical");
 
         // "Contemplation infinie" : "3 charges complètes" = 3 tours par notre convention
-        // partagée (voir AtbConstants.TicksPerTurn côté moteur).
+        // partagée (voir CombatTime.TicksPerTurn côté moteur).
         await UpsertSkillAsync("canon.skill.contemplation-infinie", "Contemplation infinie",
             "En se perdant dans les méandres du Palais, la vérité apparaît, mais la clairvoyance pousse à l'immobilité.",
             "Debuff", "SingleEnemy", "Debuff", mana: 18, power: 0, cancellationToken,
@@ -2744,9 +2766,7 @@ public sealed class CatalogSeedRunner
             },
             category: "Magic");
 
-        // "Silence" : bloque complètement la prochaine action de la cible (voir
-        // Combatant.IsAtbLocked / Combat.cs — désormais câblé, contrairement à l'ancien
-        // "Se taire" dont le Silence n'était encore branché nulle part).
+        // "Silence" : neutralise complètement la prochaine activation de la cible.
         await UpsertSkillAsync("canon.skill.silence", "Silence",
             "Le silence n'est pas seulement une manière de réfléchir, mais il est également une punition à ceux qui se montrent trop agressifs.",
             "Debuff", "SingleEnemy", "Debuff", mana: 14, power: 0, cancellationToken,
@@ -2836,9 +2856,8 @@ public sealed class CatalogSeedRunner
 
         // "Une destinée cruelle" : transformation permanente (jusqu'à la mort) — le
         // seul sort canon à utiliser IsPermanent: true. +20% à Attaque/Défense/Vitesse/
-        // Focus, ET séparément -15% sur la vitesse de remplissage de jauge ATB elle-même
-        // (AtbTempoModifier, indépendant du stat Vitesse — voir Combatant.
-        // RecalculateAtbFillPerTick), ET un DoT de 10% des PV max par tour, sans fin.
+        // Focus, avec un malus additionnel de 15% à la Vitesse, ET un DoT de 10%
+        // des PV max par tour, sans fin.
         await UpsertSkillAsync("canon.skill.destinee-cruelle", "Une destinée cruelle",
             "Il faut parfois savoir chercher au plus profond de soi pour repousser ses limites, quel qu'en soit le prix.",
             "Buff", "Self", "Buff", mana: 30, power: 0, cancellationToken,
@@ -2848,7 +2867,7 @@ public sealed class CatalogSeedRunner
                 new SkillEffectSpec("StatModifier", "canon.skill.destinee-cruelle:defense", 20, 0, Stat: "Defense", MagnitudeIsPercentOfBaseStat: true, AppliesToActor: true, IsPermanent: true),
                 new SkillEffectSpec("StatModifier", "canon.skill.destinee-cruelle:speed", 20, 0, Stat: "Speed", MagnitudeIsPercentOfBaseStat: true, AppliesToActor: true, IsPermanent: true),
                 new SkillEffectSpec("StatModifier", "canon.skill.destinee-cruelle:focus", 20, 0, Stat: "Focus", MagnitudeIsPercentOfBaseStat: true, AppliesToActor: true, IsPermanent: true),
-                new SkillEffectSpec("StatModifier", "canon.skill.destinee-cruelle:tempo", -15, 0, Stat: "AtbTempoModifier", AppliesToActor: true, IsPermanent: true),
+                new SkillEffectSpec("StatModifier", "canon.skill.destinee-cruelle:tempo", -15, 0, Stat: "Speed", MagnitudeIsPercentOfBaseStat: true, AppliesToActor: true, IsPermanent: true),
                 new SkillEffectSpec("DamageOverTime", "canon.skill.destinee-cruelle:dot", 10, 0, TickInterval: TicksPerTurn, MagnitudeIsPercentOfMax: true, AppliesToActor: true, IsPermanent: true)
             },
             category: "Magic");
@@ -2991,10 +3010,7 @@ public sealed class CatalogSeedRunner
             },
             category: "Magic");
 
-        // Chute de marbre (Sentinelle du Seuil) : frappe lourde. La doc décrit -1 tour
-        // d'ATB pour la Sentinelle elle-même (coût d'auto-interruption) — non câblé
-        // (aucun effet "auto-interruption" authorable aujourd'hui), simplification à
-        // assumer/affiner plus tard.
+        // Chute de marbre (Sentinelle du Seuil) : frappe lourde.
         await UpsertSkillAsync("canon.skill.chute-de-marbre", "Chute de marbre",
             "Frappe lourde mono-cible. Elle doit se redresser.",
             "Damage", "SingleEnemy", "Damage", mana: 6, power: 18, cancellationToken,
@@ -3315,15 +3331,12 @@ public sealed class CatalogSeedRunner
             "Heal", "SingleAlly", "Heal", mana: 10, power: 8, cancellationToken,
             category: "Magic", basePowerIsPercentOfMaxVitality: true);
 
-        // "Berceuse inversée" : la doc cible Initiative (-4 brut) — Initiative n'est
-        // qu'une valeur de départ figée pour l'ordre d'engagement côté moteur, pas un
-        // canal de StatModifier modifiable en combat. Approximé par AtbTempoModifier
-        // (ralentit directement le remplissage de la jauge ATB), même intention
-        // (retarder les tours adverses) par un autre levier déjà câblé.
+        // "Berceuse inversée" réduit temporairement la Vitesse et déclenche donc
+        // immédiatement le recalcul de l'ordre tactique.
         await UpsertSkillAsync("canon.skill.berceuse-inversee", "Berceuse inversée",
             "Le sommeil monte sans qu'aucun son ne l'annonce.",
             "Debuff", "AllEnemies", "Debuff", mana: 12, power: 0, cancellationToken,
-            effects: new[] { new SkillEffectSpec("StatModifier", null, -15, TicksPerTurn * 3, Stat: "AtbTempoModifier") },
+            effects: new[] { new SkillEffectSpec("StatModifier", null, -15, TicksPerTurn * 3, Stat: "Speed", MagnitudeIsPercentOfBaseStat: true) },
             category: "Magic");
 
         // "Note tenue" : la doc décrit un tour de canalisation puis des dégâts
@@ -3462,13 +3475,11 @@ public sealed class CatalogSeedRunner
             "Buff", "Self", "Guard", mana: 0, power: 8, cancellationToken,
             category: "Physical");
 
-        // "Regard fixe" : la doc cible Initiative (-3 brut) — non modifiable en
-        // combat côté moteur (voir la même note pour Berceuse inversée, famille
-        // Squelettes de Souvenirs). Approximé par AtbTempoModifier, même intention.
+        // "Regard fixe" réduit temporairement la Vitesse.
         await UpsertSkillAsync("canon.skill.regard-fixe", "Regard fixe",
             "Vous l'avez regardé trop longtemps.",
             "Debuff", "SingleEnemy", "Debuff", mana: 6, power: 0, cancellationToken,
-            effects: new[] { new SkillEffectSpec("StatModifier", null, -12, TicksPerTurn * 3, Stat: "AtbTempoModifier") },
+            effects: new[] { new SkillEffectSpec("StatModifier", null, -12, TicksPerTurn * 3, Stat: "Speed", MagnitudeIsPercentOfBaseStat: true) },
             category: "Magic");
 
         await UpsertSkillAsync("canon.skill.belement-a-lenvers", "Bêlement à l'envers",
@@ -3911,15 +3922,13 @@ public sealed class CatalogSeedRunner
             effects: new[] { new SkillEffectSpec("StatModifier", null, -8, TicksPerTurn * 3, Stat: "Defense") },
             category: "Magic");
 
-        // "Posture finale" : la doc cible Initiative (-4 brut) — non modifiable en
-        // combat côté moteur (même substitution que Berceuse inversée/Regard fixe) ;
-        // approximée par AtbTempoModifier.
+        // "Posture finale" réduit temporairement Vitesse et Focus.
         await UpsertSkillAsync("canon.skill.posture-finale", "Posture finale",
             "Elle a vu.",
             "Debuff", "SingleEnemy", "Debuff", mana: 10, power: 0, cancellationToken,
             effects: new[]
             {
-                new SkillEffectSpec("StatModifier", "canon.skill.posture-finale:tempo", -12, TicksPerTurn * 3, Stat: "AtbTempoModifier"),
+                new SkillEffectSpec("StatModifier", "canon.skill.posture-finale:tempo", -12, TicksPerTurn * 3, Stat: "Speed", MagnitudeIsPercentOfBaseStat: true),
                 new SkillEffectSpec("StatModifier", "canon.skill.posture-finale:focus", -3, TicksPerTurn * 3, Stat: "Focus")
             },
             category: "Magic");
@@ -4199,7 +4208,7 @@ public sealed class CatalogSeedRunner
         await UpsertSkillAsync("canon.skill.frisson", "Frisson",
             "Quelque chose a bougé derrière vous.",
             "Damage", "SingleEnemy", "Damage", mana: 6, power: 9, cancellationToken,
-            effects: new[] { new SkillEffectSpec("StatModifier", null, -12, TicksPerTurn * 2, Stat: "AtbTempoModifier") },
+            effects: new[] { new SkillEffectSpec("StatModifier", null, -12, TicksPerTurn * 2, Stat: "Speed", MagnitudeIsPercentOfBaseStat: true) },
             category: "Magic");
 
         // "Porte fermée" : la doc ajoute un verrou de rang — sans objet côté moteur
@@ -4331,10 +4340,20 @@ public sealed class CatalogSeedRunner
     int mana, int power, CancellationToken cancellationToken,
     IReadOnlyList<SkillEffectSpec>? effects = null,
     string category = "Physical",
-    bool basePowerIsPercentOfMaxVitality = false)
+    bool basePowerIsPercentOfMaxVitality = false,
+    int tacticalRange = 1,
+    string tacticalAreaShape = "Single",
+    bool requiresLineOfSight = false,
+    int cooldown = 0,
+    bool isUltimate = false,
+    string emotionalRegister = "Neutral")
     {
         const string version = "canon-1.0.0";
         var now = DateTime.UtcNow;
+        var tacticalContract = CanonicalTacticalSkillContracts.Require(key);
+        tacticalRange = tacticalContract.Range;
+        tacticalAreaShape = tacticalContract.AreaShape;
+        requiresLineOfSight = tacticalContract.RequiresLineOfSight;
         var effectsJson = JsonSerializer.Serialize(effects ?? [], J);
         var existing = await _ctx.SkillDefinitions.FirstOrDefaultAsync(s => s.Key == key, cancellationToken);
         if (existing is null)
@@ -4362,6 +4381,12 @@ public sealed class CatalogSeedRunner
                 Power = power,
                 Accuracy = 100,
                 ActionCost = 10,
+                TacticalRange = tacticalRange,
+                TacticalAreaShape = tacticalAreaShape,
+                RequiresLineOfSight = requiresLineOfSight,
+                Cooldown = cooldown,
+                IsUltimate = isUltimate,
+                EmotionalRegister = emotionalRegister,
                 BaseWeight = 1,
                 EffectsJson = effectsJson,
                 CreatedAtUtc = now,
@@ -4376,6 +4401,12 @@ public sealed class CatalogSeedRunner
         existing.EffectType = effectType; existing.Category = category; existing.CostType = mana > 0 ? "Mana" : "None";
         existing.ManaCost = mana; existing.BasePower = power; existing.Power = power;
         existing.BasePowerIsPercentOfMaxVitality = basePowerIsPercentOfMaxVitality;
+        existing.TacticalRange = tacticalRange;
+        existing.TacticalAreaShape = tacticalAreaShape;
+        existing.RequiresLineOfSight = requiresLineOfSight;
+        existing.Cooldown = cooldown;
+        existing.IsUltimate = isUltimate;
+        existing.EmotionalRegister = emotionalRegister;
         existing.EffectsJson = effectsJson;
         existing.UpdatedAtUtc = now;
     }
@@ -4531,7 +4562,7 @@ public sealed class CatalogSeedRunner
             effectRunType: "Heal");
 
         await UpsertItemAsync("canon.item.tasse-de-the", "Tasse de thé",
-            "Toujours chaude, quelle que soit l'heure — comme si le Majordome savait, avant vous, que vous en auriez besoin. Redonne 35% des PV et des PP maximum.",
+            "Toujours chaude, quelle que soit l'heure — comme si le Majordome savait, avant vous, que vous en auriez besoin. Redonne 35% de la Vitalité et de la Mana maximales.",
             "Consumable", "Potion", "Rare", "RunOnly", true, 35, cancellationToken,
             effectRunType: "HealAndManaRestorePercent");
 
@@ -4860,7 +4891,7 @@ public sealed class CatalogSeedRunner
             narrativeText: "Article XLIX — Le temps du Palais n'a pas de sens privilégié. "
                 + "Aujourd'hui, il remonte. Les lents ont assez attendu.",
             description: "L'initiative est inversée pour la salle : les combattants les plus "
-                + "lents agissent en premier, les plus rapides en dernier. L'ATB coule à l'envers.",
+                + "lents agissent en premier, les plus rapides en dernier.",
             rarity: "Épique",
             polarity: "Neutre",
             isMajeure: false,
@@ -4914,7 +4945,7 @@ public sealed class CatalogSeedRunner
                 + "c'était parfois maintenant, et pour tout le monde.",
             description: "Pour la salle, TOUS les combattants (équipe et ennemis) reçoivent "
                 + "« Une destinée cruelle » : +20% Attaque, Défense, Vitesse et Focus "
-                + "permanents (durée du combat), -15% sur la vitesse de remplissage ATB — et "
+                + "permanents (durée du combat), -15% de Vitesse supplémentaire — et "
                 + "un DoT de 10% des PV max par tour, sans fin.",
             rarity: "Légendaire",
             polarity: "DoubleTranchant",
@@ -4960,8 +4991,8 @@ public sealed class CatalogSeedRunner
             narrativeText: "Article XVI — Chacun son tour. Le Palais a l'éternité ; vous, un "
                 + "peu moins ; raison de plus pour faire la queue.",
             description: "Aucun combattant ne peut agir une seconde fois tant que tous les "
-                + "combattants n'ont pas agi une fois. L'ATB devient un tour par tour strict, "
-                + "ordonné par Initiative (approximé en jeu : la Vitesse de tous les "
+                + "combattants n'ont pas agi une fois. Le combat devient un tour par tour strict, "
+                + "ordonné par Initiative (la Vitesse de tous les "
                 + "combattants est ramenée à la moyenne du groupe).",
             rarity: "Rare",
             polarity: "Neutre",
@@ -5142,8 +5173,7 @@ public sealed class CatalogSeedRunner
             narrativeText: "Article XIX — La forge a brûlé quelque chose aujourd'hui. Le Palais "
                 + "porte le deuil, et le deuil ne console pas.",
             description: "Climat de la salle : Pluie de cendres. Tous les soins sont réduits de "
-                + "25% ; tous les dégâts de feu gagnent +15% (réinterprété en bonus de dégâts "
-                + "DoT — aucun type élémentaire feu n'existe dans le moteur).",
+                + "25% ; tous les dégâts de feu gagnent +25%.",
             rarity: "Peu commun",
             polarity: "Sévère",
             isMajeure: false,
@@ -5159,7 +5189,7 @@ public sealed class CatalogSeedRunner
             narrativeText: "Article XII — La mer a des droits sur toute chose entamée. Ce qui "
                 + "saigne saignera un peu plus, par égard pour Elle.",
             description: "Climat de la salle : Pluie violacée. Tous les DoT (joueur et ennemis) "
-                + "infligent +1 dégât par tour. (La SFD prévoit aussi qu'à la Falaise la "
+                + "infligent +25% de dégâts. (À la Falaise, la "
                 + "probabilité d'apparition de l'Impératrice passe à 100% — non modélisé, "
                 + "aucune pondération de rencontre par room-key n'est câblée pour cette loi.)",
             rarity: "Peu commun",
@@ -6645,6 +6675,9 @@ public sealed class CatalogSeedRunner
                 new LootEntry("canon.item.lanterne", 55),
                 new LootEntry("canon.item.cendre-benite", 35),
                 new LootEntry("canon.item.poussiere-de-tombe", 25),
+                new LootEntry("weapon.lame-seuil", 12),
+                new LootEntry("weapon.arc-souvenir", 8),
+                new LootEntry("weapon.baton-resonance", 8),
             }, cancellationToken);
     }
 

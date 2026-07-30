@@ -160,6 +160,7 @@ public static class PalaceLawMapper
             "orage" or "accords" => 6,
             "pluie-de-cendres" or "pluie de cendres" or "deuil-sec" => 7,
             "pluie-violacee" or "pluie violacee" or "pluie-violacée" or "pluie violacée" or "maree-haute" or "marée-haute" => 8,
+            "accalmie" or "repit" or "répit" => 9,
             _ => throw new DomainException("ApplyRoomClimate requires a supported climate condition.")
         };
     }

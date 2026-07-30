@@ -24,11 +24,44 @@ function itemDisplayName(itemKey: string): string {
   return allItems.value.find((i) => i.key === itemKey)?.displayName ?? itemKey;
 }
 
+function weaponContract(itemKey: string): string | null {
+  const item = allItems.value.find((candidate) => candidate.key === itemKey);
+  if (!item || item.itemType !== 'Weapon') return null;
+  const category = item.basicAttackCategory === 'Magic' ? 'magique' : 'physique';
+  const lineOfSight = item.requiresLineOfSight ? ' · ligne de vue' : '';
+  return `${item.basicAttackPower ?? 10} puissance · portée ${item.tacticalRange ?? 1} · ${category}${lineOfSight}`;
+}
+
 const equippedItems = computed(() => props.character.items.filter((i) => i.isEquipped));
-// Scoped to the character being managed here — NOT playerStore's protagonist-only getter,
-// otherwise a companion's loadout stayed stuck at "full" (or "empty") based on the
-// protagonist's own equipped count instead of its own.
-const isItemLoadoutFull = computed(() => equippedItems.value.length >= props.character.maxEquippedItems);
+const slotLimits = { Weapon: 1, Accessory: 1, Relic: 3 } as const;
+
+function slotFor(itemKey: string): keyof typeof slotLimits | null {
+  const definition = allItems.value.find((item) => item.key === itemKey);
+  const type = definition?.itemType;
+  if (type === 'Weapon') return 'Weapon';
+  if (type === 'Accessory') return 'Accessory';
+  if (type === 'Relic' || type === 'Heritage' || definition?.category === 'Relic') return 'Relic';
+  // Permanent inventory only contains equippable run rewards. Keep legacy
+  // entries usable while their catalog metadata is loading or being migrated.
+  if (!definition) {
+    return props.character.items.find((item) => item.itemKey === itemKey)?.slot ?? 'Relic';
+  }
+  return null;
+}
+
+function slotLabel(slot: keyof typeof slotLimits): string {
+  return slot === 'Weapon' ? 'Arme' : slot === 'Accessory' ? 'Accessoire' : 'Relique';
+}
+
+function isSlotFull(itemKey: string): boolean {
+  const slot = slotFor(itemKey);
+  if (!slot) return true;
+  return equippedItems.value.filter((item) => (item.slot ?? 'Relic') === slot).length >= slotLimits[slot];
+}
+
+const equippablePermanentItems = computed(() =>
+  playerStore.permanentItems.filter((item) => slotFor(item.itemDefinitionKey) !== null),
+);
 
 function isEquippedOnCharacter(itemKey: string): boolean {
   return props.character.items.some((i) => i.itemKey === itemKey && i.isEquipped);
@@ -39,7 +72,7 @@ function toggleItem(itemKey: string, isEquipped: boolean) {
   if (isEquipped) {
     playerStore.unequipItem(props.character.id, itemKey);
   } else {
-    if (isItemLoadoutFull.value) return;
+    if (isSlotFull(itemKey)) return;
     playerStore.equipItem(props.character.id, itemKey);
   }
 }
@@ -59,6 +92,10 @@ function toggleItem(itemKey: string, isEquipped: boolean) {
         <li v-for="item in equippedItems" :key="item.itemKey" class="imk-row">
           <div class="imk-row__info">
             <span class="imk-row__name">{{ itemDisplayName(item.itemKey) }}</span>
+            <span class="imk-row__slot">{{ slotLabel(item.slot ?? 'Relic') }}</span>
+            <small v-if="weaponContract(item.itemKey)" class="imk-row__contract">
+              {{ weaponContract(item.itemKey) }}
+            </small>
           </div>
           <button
             type="button"
@@ -76,14 +113,20 @@ function toggleItem(itemKey: string, isEquipped: boolean) {
     <!-- ── Section 2: permanent backpack (all owned items) ── -->
     <section class="imk-section">
       <h4 class="imk-section__title">Sac permanent</h4>
-      <ul v-if="playerStore.permanentItems.length" class="imk-list">
+      <ul v-if="equippablePermanentItems.length" class="imk-list">
         <li
-          v-for="permanentItem in playerStore.permanentItems"
+          v-for="permanentItem in equippablePermanentItems"
           :key="permanentItem.itemDefinitionKey"
           class="imk-row"
         >
           <div class="imk-row__info">
             <span class="imk-row__name">{{ itemDisplayName(permanentItem.itemDefinitionKey) }}</span>
+            <span v-if="slotFor(permanentItem.itemDefinitionKey)" class="imk-row__slot">
+              {{ slotLabel(slotFor(permanentItem.itemDefinitionKey)!) }}
+            </span>
+            <small v-if="weaponContract(permanentItem.itemDefinitionKey)" class="imk-row__contract">
+              {{ weaponContract(permanentItem.itemDefinitionKey) }}
+            </small>
           </div>
           <button
             type="button"
@@ -91,7 +134,7 @@ function toggleItem(itemKey: string, isEquipped: boolean) {
             :class="{ 'imk-toggle--active': isEquippedOnCharacter(permanentItem.itemDefinitionKey) }"
             :disabled="
               playerStore.isLoading ||
-              (!isEquippedOnCharacter(permanentItem.itemDefinitionKey) && isItemLoadoutFull)
+              (!isEquippedOnCharacter(permanentItem.itemDefinitionKey) && isSlotFull(permanentItem.itemDefinitionKey))
             "
             @click="toggleItem(permanentItem.itemDefinitionKey, isEquippedOnCharacter(permanentItem.itemDefinitionKey))"
           >
@@ -126,6 +169,21 @@ function toggleItem(itemKey: string, isEquipped: boolean) {
   padding-bottom: 6px;
   border-bottom: 1px solid var(--line-soft);
   margin: 0;
+}
+
+.imk-row__slot {
+  margin-left: 0.5rem;
+  color: var(--ink-4);
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.imk-row__contract {
+  display: block;
+  margin-top: 0.2rem;
+  color: var(--ink-4);
+  font-size: 0.72rem;
 }
 
 .imk-section__count {

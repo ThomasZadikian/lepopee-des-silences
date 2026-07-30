@@ -12,7 +12,6 @@ export type PlayerCharacterStatsView = {
   startingGuard: number;
   speed: number;
   initiative: number;
-  recovery: number;
   focus: number;
   mana: number;
   charge: number;
@@ -27,7 +26,6 @@ export type PlayerStatKind =
   | 'StartingGuard'
   | 'Speed'
   | 'Initiative'
-  | 'Recovery'
   | 'Focus'
   | 'Mana'
   | 'Charge'
@@ -39,6 +37,7 @@ export type PlayerCharacterItemView = {
   acquiredAtUtc: string;
   source: string | null;
   isEquipped: boolean;
+  slot?: 'Weapon' | 'Accessory' | 'Relic';
 };
 
 export type PlayerCharacterView = {

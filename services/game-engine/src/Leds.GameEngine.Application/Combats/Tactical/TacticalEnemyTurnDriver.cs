@@ -1,6 +1,7 @@
 using Leds.GameEngine.Application.Combats.Actions;
 using Leds.GameEngine.Application.Combats.Dtos;
 using Leds.GameEngine.Application.Combats.Effects;
+using Leds.GameEngine.Application.Combats.EnemyTurns.Bossing;
 using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Combats.Tactical;
 using Leds.SharedBuildingBlocks.Time;
@@ -54,11 +55,16 @@ public sealed class TacticalEnemyTurnDriver : ITacticalEnemyTurnDriver
 
     private readonly ICombatSkillEffectResolver _effectResolver;
     private readonly IClock _clock;
+    private readonly IReadOnlyCollection<IBossBehavior> _bossBehaviors;
 
-    public TacticalEnemyTurnDriver(ICombatSkillEffectResolver effectResolver, IClock clock)
+    public TacticalEnemyTurnDriver(
+        ICombatSkillEffectResolver effectResolver,
+        IClock clock,
+        IEnumerable<IBossBehavior> bossBehaviors)
     {
         _effectResolver = effectResolver;
         _clock = clock;
+        _bossBehaviors = bossBehaviors.ToArray();
     }
 
     public TacticalEnemyTurnsResult PlayWhileEnemyHasInitiative(
@@ -78,8 +84,8 @@ public sealed class TacticalEnemyTurnDriver : ITacticalEnemyTurnDriver
 
             log.AddRange(PlayOneTurn(combat, events));
 
-            combat.CompleteIfAllEnemiesDefeated();
             combat.FailIfAllAlliesDefeated();
+            combat.CompleteIfAllEnemiesDefeated();
 
             if (combat.Status != CombatStatus.Active)
                 break;
@@ -133,6 +139,7 @@ public sealed class TacticalEnemyTurnDriver : ITacticalEnemyTurnDriver
         var action = ChooseAction(combat, actor, prey);
         if (action is null)
         {
+            combat.ConsumeBasicAttackRestriction();
             log.Add(new CombatLogEntryDto(
                 OccurredAtUtc: _clock.UtcNow.UtcDateTime,
                 Type: "EnemyTurnResolved",
@@ -144,15 +151,40 @@ public sealed class TacticalEnemyTurnDriver : ITacticalEnemyTurnDriver
         }
 
         var before = Runs.TacticalCombat.TacticalImpactRecorder.Capture(action.Targets);
+        var speedsBefore = combat.CaptureEffectiveSpeeds();
+        if (combat.PresentationsEnabled && !actor.HasActedThisCombat)
+        {
+            log.Add(new CombatLogEntryDto(
+                _clock.UtcNow.UtcDateTime,
+                "ActionForecast",
+                $"{actor.DisplayName} annonce « {action.Skill.DisplayName} » et sa cible.",
+                actorId,
+                action.Skill.Key,
+                [.. action.Targets.Select(target => target.Id.Value)]));
+        }
+        combat.OrientToward(actorId, action.Target);
+        if (combat.NextActionRestrictedToBasicAttack)
+            combat.ConsumeBasicAttackRestriction();
         var resolution = _effectResolver.Resolve(combat, actor, action.Skill, action.Targets);
+        foreach (var affected in action.Targets)
+        {
+            var facingTarget = TacticalSkillProfile.For(action.Skill).AreaShape == TacticalAreaShape.Single
+                ? combat.PositionOf(actorId)
+                : action.Target;
+            combat.OrientToward(affected.Id.Value, facingTarget);
+        }
         var impacts = Runs.TacticalCombat.TacticalImpactRecorder.Diff(
             before, action.Targets, combat);
+        Runs.TacticalCombat.TacticalChargeRules.AwardUsefulAction(actor, action.Targets, impacts);
 
         var tactical = TacticalSkillProfile.For(action.Skill);
         if (tactical.OncePerCombat)
             combat.MarkOnceSkillUsed(action.Skill.Key);
 
-        combat.MarkActiveCombatantActed();
+        combat.MarkActiveCombatantActed(action.Skill);
+
+        if (combat.HaveEffectiveSpeedsChanged(speedsBefore))
+            combat.RecalculateInitiativeAfterSpeedChange();
 
         events.Add(TacticalCombatEventDto.Skill(
             actorId,
@@ -183,7 +215,33 @@ public sealed class TacticalEnemyTurnDriver : ITacticalEnemyTurnDriver
     private EnemySkillPlan? ChooseAction(
         Domain.Combats.Tactical.TacticalCombat combat, Combatant actor, Combatant prey)
     {
+        var scripted = _bossBehaviors.FirstOrDefault(behavior =>
+                string.Equals(behavior.BossKey, actor.SourceKey, StringComparison.OrdinalIgnoreCase))
+            ?.DecideAction(new BossDecisionContext(combat, actor));
+        if (scripted is not null)
+        {
+            var scriptedSkill = actor.Skills.FirstOrDefault(skill =>
+                string.Equals(skill.Key, scripted.SkillKey, StringComparison.OrdinalIgnoreCase)
+                && CanUseSkillUnderLaws(combat, actor, skill));
+            var scriptedTarget = scripted.TargetIds
+                .Select(id => combat.Allies.Concat(combat.Enemies)
+                    .FirstOrDefault(candidate => candidate.Id.Value == id && !candidate.IsDefeated))
+                .FirstOrDefault(candidate => candidate is not null);
+            if (scriptedSkill is not null && scriptedTarget is not null)
+            {
+                var plan = BuildPlan(combat, actor, scriptedSkill, scriptedTarget);
+                if (plan is not null)
+                    return plan;
+            }
+        }
+
         var offensivePlans = actor.Skills
+            .Where(s => CanUseSkillUnderLaws(combat, actor, s))
+            .Where(s => string.IsNullOrWhiteSpace(combat.ForgottenSkillKey)
+                        || !string.Equals(
+                            s.Key,
+                            combat.ForgottenSkillKey,
+                            StringComparison.OrdinalIgnoreCase))
             .Where(s => TacticalTargeting.IsHostile(s.TargetingType))
             .Select(s => BuildPlan(combat, actor, s, prey))
             .Where(p => p is not null)
@@ -195,9 +253,33 @@ public sealed class TacticalEnemyTurnDriver : ITacticalEnemyTurnDriver
             return utility;
 
         return offensivePlans
-            .OrderByDescending(p => p.Skill.BasePower)
+            .OrderByDescending(p => SkillPriority(combat, actor, p.Skill))
             .ThenBy(p => p.Skill.Key, StringComparer.Ordinal)
             .FirstOrDefault();
+    }
+
+    private static double SkillPriority(
+        TacticalCombat combat,
+        Combatant actor,
+        CombatantSkill skill)
+    {
+        var rare = skill.IsUltimate
+            || skill.Tags.Any(tag =>
+                string.Equals(tag, "Rare", StringComparison.OrdinalIgnoreCase));
+        var rareMultiplier = combat.RiskTier switch
+        {
+            RiskTier.Calme => rare ? 0.6 : 1.0,
+            RiskTier.Tendu => rare ? 0.9 : 1.0,
+            RiskTier.Dangereux or RiskTier.Perilleux => rare ? 1.25 : 1.0,
+            _ => rare ? 1.6 : 1.0
+        };
+        var familyAggression = actor.Archetype.ToLowerInvariant() switch
+        {
+            "rupture" or "skirmisher" or "bruiser" => 1.15,
+            "support" or "guard" => 0.9,
+            _ => 1.0
+        };
+        return skill.BasePower * rareMultiplier * familyAggression;
     }
 
     private static EnemySkillPlan? BuildPlan(
@@ -209,31 +291,69 @@ public sealed class TacticalEnemyTurnDriver : ITacticalEnemyTurnDriver
         var tactical = TacticalSkillProfile.For(skill);
         if (tactical.OncePerCombat && combat.HasUsedOnceSkill(skill.Key))
             return null;
+        if (combat.RemainingCooldown(actor.Id.Value, skill.Key) > 0)
+            return null;
+        if (skill.ChargeCost > actor.Charge)
+            return null;
+
+        var missingMana = Math.Max(0, skill.ManaCost - actor.Mana);
+        var lethalSacrifice = missingMana * 2 >= actor.CurrentVitality && missingMana > 0;
+        if (lethalSacrifice && !MayChooseLethalSacrifice(combat, actor))
+            return null;
 
         var origin = combat.PositionOf(actor.Id.Value);
-        var center = skill.TargetingType == "Self" || tactical.AreaShape == TacticalAreaShape.Map
+        var intendedCenter = skill.TargetingType == "Self" || tactical.AreaShape == TacticalAreaShape.Map
             ? origin
             : combat.PositionOf(intendedTarget.Id.Value);
 
+        var effectiveRange = actor.HasTacticalSlow
+            ? Math.Max(1, tactical.Range / 2)
+            : tactical.Range;
         if (!TacticalTargeting.IsInRange(
                 combat.Battlefield,
                 origin,
-                center,
-                tactical.Range,
+                intendedCenter,
+                effectiveRange,
                 tactical.RequiresLineOfSight))
             return null;
 
+        var interceptor = tactical.RequiresLineOfSight
+            && tactical.AreaShape != TacticalAreaShape.Map
+                ? TacticalTargeting.FindInterceptor(combat, origin, intendedCenter)
+                : null;
+        var center = interceptor is null
+            ? intendedCenter
+            : combat.PositionOf(interceptor.Id.Value);
         var affectedCells = tactical.AreaShape == TacticalAreaShape.Map
             ? null
             : TacticalTargeting.CellsInArea(combat.Battlefield, center, tactical.AreaShape);
         var targets = TacticalTargeting.ResolveTargets(
-            combat,
-            affectedCells,
-            actor.Side,
-            TacticalTargeting.IsHostile(skill.TargetingType),
-            tactical.AreaShape);
+                combat,
+                affectedCells,
+                actor.Side,
+                TacticalTargeting.IsHostile(skill.TargetingType),
+                tactical.AreaShape)
+            .ToList();
+
+        if (interceptor is not null && targets.All(t => t.Id != interceptor.Id))
+            targets.Add(interceptor);
 
         return targets.Count == 0 ? null : new EnemySkillPlan(skill, center, targets);
+    }
+
+    private static bool MayChooseLethalSacrifice(
+        TacticalCombat combat,
+        Combatant actor)
+    {
+        if ((int)combat.RiskTier < (int)RiskTier.Dangereux)
+            return false;
+
+        var familyAllowsSacrifice = actor.Archetype.ToLowerInvariant() switch
+        {
+            "support" or "guard" or "fragile" => combat.RiskTier == RiskTier.Fatal,
+            _ => true
+        };
+        return familyAllowsSacrifice;
     }
 
     /// <summary>
@@ -246,6 +366,12 @@ public sealed class TacticalEnemyTurnDriver : ITacticalEnemyTurnDriver
     {
         var allies = combat.Enemies.Where(e => !e.IsDefeated).ToList();
         var utilitySkills = actor.Skills
+            .Where(s => CanUseSkillUnderLaws(combat, actor, s))
+            .Where(s => string.IsNullOrWhiteSpace(combat.ForgottenSkillKey)
+                        || !string.Equals(
+                            s.Key,
+                            combat.ForgottenSkillKey,
+                            StringComparison.OrdinalIgnoreCase))
             .Where(s => !TacticalTargeting.IsHostile(s.TargetingType))
             .ToList();
 
@@ -283,5 +409,27 @@ public sealed class TacticalEnemyTurnDriver : ITacticalEnemyTurnDriver
             .OrderByDescending(p => p.Skill.BasePower)
             .ThenBy(p => p.Skill.Key, StringComparer.Ordinal)
             .FirstOrDefault();
+    }
+
+    private static bool CanUseSkillUnderLaws(
+        TacticalCombat combat,
+        Combatant actor,
+        CombatantSkill skill)
+    {
+        if (combat.NextActionRestrictedToBasicAttack
+            && !string.Equals(
+                skill.Key,
+                "skill.basic.strike",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        return !combat.TapisPropreEnabled
+            || actor.HasActedThisCombat
+            || !string.Equals(
+                skill.SkillType,
+                "Damage",
+                StringComparison.OrdinalIgnoreCase);
     }
 }

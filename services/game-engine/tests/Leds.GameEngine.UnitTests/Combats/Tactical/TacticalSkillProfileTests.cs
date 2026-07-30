@@ -6,44 +6,22 @@ namespace Leds.GameEngine.UnitTests.Combats.Tactical;
 
 public sealed class TacticalSkillProfileTests
 {
-    [Theory]
-    [InlineData("canon.skill.rempart", 2, TacticalAreaShape.Cross, true)]
-    [InlineData("canon.skill.flamme-froide", 3, TacticalAreaShape.Cross, true)]
-    [InlineData("canon.skill.berceuse-inversee", 3, TacticalAreaShape.Diamond, true)]
-    [InlineData("canon.skill.frappe-denclume", 1, TacticalAreaShape.Cross, false)]
-    [InlineData("canon.skill.silence-partage", int.MaxValue, TacticalAreaShape.Map, false)]
-    public void For_ShouldUseAuthoredDesignProfile(
-        string skillKey,
-        int expectedRange,
-        TacticalAreaShape expectedShape,
-        bool expectedLineOfSight)
+    [Fact]
+    public void For_ShouldUseCatalogContract()
     {
         var profile = TacticalSkillProfile.For(CreateSkill(
-            skillKey,
+            "canon.skill.test",
             category: "Physical",
             skillType: "Damage",
-            targetingType: "SingleEnemy"));
-
-        profile.Range.Should().Be(expectedRange);
-        profile.AreaShape.Should().Be(expectedShape);
-        profile.RequiresLineOfSight.Should().Be(expectedLineOfSight);
-        profile.OncePerCombat.Should().Be(skillKey == "canon.skill.silence-partage");
-    }
-
-    [Fact]
-    public void For_ShouldDeriveFallbackForSkillsWithoutAuthoredProfile()
-    {
-        var profile = TacticalSkillProfile.For(CreateSkill(
-            "canon.skill.non-authoree",
-            category: "Magic",
-            skillType: "Damage",
-            targetingType: "AllEnemies"));
+            targetingType: "SingleEnemy",
+            tacticalRange: 3,
+            tacticalAreaShape: TacticalAreaShape.Cross,
+            requiresLineOfSight: true));
 
         profile.Should().Be(new TacticalSkillProfile(
-            Range: TacticalRange.Ranged,
-            AreaShape: TacticalAreaShape.Diamond,
-            RequiresLineOfSight: true,
-            OncePerCombat: false));
+            Range: 3,
+            AreaShape: TacticalAreaShape.Cross,
+            RequiresLineOfSight: true));
     }
 
     [Fact]
@@ -53,7 +31,8 @@ public sealed class TacticalSkillProfileTests
             "canon.skill.self",
             category: "Magic",
             skillType: "Buff",
-            targetingType: "Self"));
+            targetingType: "Self",
+            tacticalRange: 0));
 
         profile.Range.Should().Be(0);
         profile.AreaShape.Should().Be(TacticalAreaShape.Single);
@@ -64,7 +43,10 @@ public sealed class TacticalSkillProfileTests
         string key,
         string category,
         string skillType,
-        string targetingType) =>
+        string targetingType,
+        int tacticalRange = 1,
+        TacticalAreaShape tacticalAreaShape = TacticalAreaShape.Single,
+        bool requiresLineOfSight = false) =>
         CombatantSkill.Create(
             key: key,
             displayName: "Geste test",
@@ -74,5 +56,8 @@ public sealed class TacticalSkillProfileTests
             manaCost: 0,
             chargeCost: 0,
             basePower: 10,
-            category: category);
+            category: category,
+            tacticalRange: tacticalRange,
+            tacticalAreaShape: tacticalAreaShape,
+            requiresLineOfSight: requiresLineOfSight);
 }

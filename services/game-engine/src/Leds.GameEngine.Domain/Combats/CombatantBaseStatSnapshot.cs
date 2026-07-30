@@ -12,14 +12,13 @@ public sealed class CombatantBaseStatSnapshot
         int startingGuard,
         int speed,
         int initiative,
-        int recovery,
         int focus,
         int mana,
         int charge,
-        int? atbReadyThreshold,
         DateTime createdAtUtc,
         int magicAttack,
-        int magicDefense)
+        int magicDefense,
+        int movement)
     {
         Id = id;
         MaxVitality = maxVitality;
@@ -28,14 +27,13 @@ public sealed class CombatantBaseStatSnapshot
         StartingGuard = startingGuard;
         Speed = speed;
         Initiative = initiative;
-        Recovery = recovery;
         Focus = focus;
         Mana = mana;
         Charge = charge;
-        AtbReadyThreshold = atbReadyThreshold;
         CreatedAtUtc = createdAtUtc;
         MagicAttack = magicAttack;
         MagicDefense = magicDefense;
+        Movement = movement;
     }
 
     public Guid Id { get; }
@@ -45,11 +43,9 @@ public sealed class CombatantBaseStatSnapshot
     public int StartingGuard { get; }
     public int Speed { get; }
     public int Initiative { get; }
-    public int Recovery { get; }
     public int Focus { get; }
     public int Mana { get; }
     public int Charge { get; }
-    public int? AtbReadyThreshold { get; }
     public DateTime CreatedAtUtc { get; }
     // Authored base stats mirroring AttackPower/Defense — default 0, which keeps
     // the Magic-category damage ratio neutral (see CombatSkillEffectResolver) for
@@ -57,6 +53,7 @@ public sealed class CombatantBaseStatSnapshot
     // the Bestiaire chantier).
     public int MagicAttack { get; }
     public int MagicDefense { get; }
+    public int Movement { get; }
 
     public static CombatantBaseStatSnapshot Create(
         int maxVitality,
@@ -65,13 +62,12 @@ public sealed class CombatantBaseStatSnapshot
         int startingGuard,
         int speed,
         int initiative,
-        int recovery,
         int focus,
         int mana,
         int charge,
-        int? atbReadyThreshold = null,
         int magicAttack = 0,
-        int magicDefense = 0)
+        int magicDefense = 0,
+        int movement = 4)
     {
         if (maxVitality <= 0)
             throw new DomainException("Max vitality must be greater than zero.");
@@ -91,9 +87,6 @@ public sealed class CombatantBaseStatSnapshot
         if (initiative < 0)
             throw new DomainException("Initiative cannot be negative.");
 
-        if (recovery < 0)
-            throw new DomainException("Recovery cannot be negative.");
-
         if (focus < 0)
             throw new DomainException("Focus cannot be negative.");
 
@@ -109,6 +102,9 @@ public sealed class CombatantBaseStatSnapshot
         if (magicDefense < 0)
             throw new DomainException("Magic defense cannot be negative.");
 
+        if (movement < 1)
+            throw new DomainException("Movement must be at least one.");
+
         return new CombatantBaseStatSnapshot(
             Guid.NewGuid(),
             maxVitality,
@@ -117,14 +113,13 @@ public sealed class CombatantBaseStatSnapshot
             startingGuard,
             speed,
             initiative,
-            recovery,
             focus,
             mana,
             charge,
-            atbReadyThreshold,
             DateTime.UtcNow,
             magicAttack,
-            magicDefense);
+            magicDefense,
+            movement);
     }
 
     public static CombatantBaseStatSnapshot Rehydrate(
@@ -135,14 +130,13 @@ public sealed class CombatantBaseStatSnapshot
         int startingGuard,
         int speed,
         int initiative,
-        int recovery,
         int focus,
         int mana,
         int charge,
-        int? atbReadyThreshold,
         DateTime createdAtUtc,
         int magicAttack = 0,
-        int magicDefense = 0)
+        int magicDefense = 0,
+        int movement = 4)
     {
         return new CombatantBaseStatSnapshot(
             id,
@@ -152,13 +146,12 @@ public sealed class CombatantBaseStatSnapshot
             startingGuard,
             speed,
             initiative,
-            recovery,
             focus,
             mana,
             charge,
-            atbReadyThreshold,
             createdAtUtc,
             magicAttack,
-            magicDefense);
+            magicDefense,
+            movement);
     }
 }

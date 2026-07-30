@@ -5,4 +5,4 @@ namespace Leds.GameEngine.Application.DevTools;
 
 public sealed record DevToolsRunDebugResult(string Message, RunDto Run);
 
-public sealed record DevToolsCombatDebugResult(string Message, CombatRuntimeDto Combat);
+public sealed record DevToolsCombatDebugResult(string Message, TacticalCombatRuntimeDto Combat);

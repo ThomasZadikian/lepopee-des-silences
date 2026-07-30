@@ -2,8 +2,8 @@ using Leds.GameEngine.Application.Combats.Actions;
 using Leds.GameEngine.Application.Combats.EnemyTurns.Ai;
 using Leds.GameEngine.Application.Combats.Typing;
 using Leds.GameEngine.Domain.Combats;
-using Leds.GameEngine.Domain.Combats.Atb;
 using Leds.GameEngine.Domain.Combats.StatusEffects;
+using Leds.GameEngine.Domain.Combats.Tactical;
 using Leds.GameEngine.Domain.Combats.Typing;
 using Leds.GameEngine.Domain.Common;
 
@@ -11,6 +11,7 @@ namespace Leds.GameEngine.Application.Combats.Effects;
 
 public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
 {
+    private sealed record ResourcePayment(int VitalityCost, bool IsLethal);
     private readonly ICombatantTypeProfileProvider _typeProfileProvider;
 
     public CombatSkillEffectResolver(ICombatantTypeProfileProvider? typeProfileProvider = null)
@@ -33,7 +34,9 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
 
         // Players pay mana/charge to cast (enemies cast freely); affordability was
         // already validated for player-side actors.
-        ConsumeResources(actor, skill);
+        var payment = ConsumeResources(actor, skill);
+        if (payment.IsLethal)
+            skill = skill.WithPowerMultiplier(1.5);
 
         // Gates AppliesToActor status effects (e.g. a self-buff on hit) and, per-target,
         // which targets actually receive a Damage skill's attached status effects (DoT,
@@ -96,14 +99,23 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
 
         // Apply the durable status(es) (poison/regen/buff/control) on top, if declared.
         ApplySkillStatus(combat, actor, skill, targets, logEntries, attackLanded, hitTargetIds);
+
+        if (payment.IsLethal && !actor.IsDefeated)
+        {
+            actor.ApplyVitalityDamage(actor.CurrentVitality);
+            logEntries.Add(CreateLog(
+                "LethalManaSacrifice",
+                $"{actor.DisplayName} sacrifices all remaining Vitality to complete {skill.DisplayName}.",
+                actor,
+                skill,
+                [actor]));
+        }
+
         return new CombatSkillEffectResolution(logEntries);
     }
 
-    private static void ConsumeResources(Combatant actor, CombatantSkill skill)
+    private static ResourcePayment ConsumeResources(Combatant actor, CombatantSkill skill)
     {
-        if (actor.Side != CombatantSide.Player)
-            return; // enemies cast freely
-
         // Mina's "Protection de Him'Lit" (-5%, permanent) is the only source of this
         // today — see Combatant.EffectiveSkillCostReductionPercent.
         var reductionPercent = actor.EffectiveSkillCostReductionPercent;
@@ -113,8 +125,21 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
         var manaCost = Math.Max(0, ApplyCostReduction(skill.ManaCost, reductionPercent) + actor.EffectiveFlatManaCostBonus);
         var chargeCost = ApplyCostReduction(skill.ChargeCost, reductionPercent);
 
-        actor.SpendMana(manaCost);
+        if (actor.Charge < chargeCost)
+            throw new DomainException(
+                $"{actor.DisplayName} does not have enough Charge for {skill.DisplayName}.");
+
+        var missingMana = Math.Max(0, manaCost - actor.Mana);
+        var vitalityCost = missingMana * 2;
+        var isLethal = vitalityCost >= actor.CurrentVitality && vitalityCost > 0;
+
+        actor.SpendMana(Math.Min(actor.Mana, manaCost));
         actor.SpendCharge(chargeCost);
+
+        if (vitalityCost > 0 && !isLethal)
+            actor.ApplyVitalityDamage(vitalityCost);
+
+        return new ResourcePayment(vitalityCost, isLethal);
     }
 
     private static int ApplyCostReduction(int baseCost, int reductionPercent) =>
@@ -137,11 +162,8 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
             var baseHealAmount = skill.BasePowerIsPercentOfMaxVitality
                 ? (int)Math.Round(target.MaxVitality * (skill.BasePower / 100.0))
                 : skill.BasePower;
-            // Back row's -10% healing received malus — the strategic counterweight to
-            // the row's other benefits (see Combatant.RowHealingReceivedReductionPercent).
             var healAmount = (int)Math.Round(baseHealAmount
-                * (1.0 + actor.EffectiveHealingBonusPercent / 100.0)
-                * (1.0 - target.RowHealingReceivedReductionPercent / 100.0));
+                * (1.0 + actor.EffectiveHealingBonusPercent / 100.0));
 
             // "Loi de la Troisième Tasse": may halve healAmount and apply a light
             // poison to the target. No-op when the law is inactive.
@@ -219,7 +241,7 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
         IReadOnlyCollection<Combatant> targets,
         List<CombatLogEntryDto> logEntries)
     {
-        var durationTicks = AtbConstants.TicksPerTurn * Math.Max(1, skill.BasePower);
+        var durationTicks = CombatTime.TicksPerTurn * Math.Max(1, skill.BasePower);
 
         foreach (var target in targets)
         {
@@ -341,8 +363,6 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
 
                 if (target.Side != actor.Side)
                 {
-                    // Momentum: landing a debuff on an opponent earns a tempo boost.
-                    combat.AwardTempoMomentum(actor, TempoMomentumCalibration.DebuffAppliedGainPerMille);
                 }
             }
         }
@@ -351,6 +371,9 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
     private static void ApplyStatusEffectSpec(
         ICombatContext combat, CombatantSkill skill, SkillStatusEffectSpec spec, Combatant recipient, Combatant caster)
     {
+        var recipientClock = combat is TacticalCombat tacticalClock
+            ? tacticalClock.StatusClockFor(recipient.Id.Value)
+            : combat.CurrentTick;
         // Equipment-driven DOT resistance (e.g. Main de Khasma) shortens the
         // duration of an incoming DamageOverTime effect; the per-tick damage
         // reduction itself is applied later, at tick time (Combatant.TickStatusEffects).
@@ -379,7 +402,25 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
             && combat.Enemies.Any(e => !e.IsDefeated
                 && string.Equals(e.SourceKey, "canon.enemy.porteur-plateau", StringComparison.OrdinalIgnoreCase)))
         {
-            durationTicks += AtbConstants.TicksPerTurn;
+            durationTicks += CombatTime.TicksPerTurn;
+        }
+
+        if (!spec.IsPermanent
+            && combat is TacticalCombat tacticalEquipment
+            && caster.Side != recipient.Side
+            && tacticalEquipment.HasEquippedItem(caster.Id.Value, "item.epingle-protocole"))
+        {
+            durationTicks += CombatTime.TicksPerTurn;
+        }
+
+        if (spec.Kind == StatusEffectKind.DamageOverTime
+            && !spec.IsPermanent
+            && combat is TacticalCombat tacticalInk
+            && tacticalInk.HasEquippedItem(caster.Id.Value, "item.encrier-poche")
+            && recipient.StatusEffects.All(effect =>
+                !string.Equals(effect.Key, spec.Key, StringComparison.OrdinalIgnoreCase)))
+        {
+            durationTicks += CombatTime.TicksPerTurn;
         }
 
         // Flat-magnitude DoTs (poison/burn/ink...) are attack rolls like any other
@@ -394,7 +435,7 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
             ? StatModifierDamageMultiplier(skill, caster, recipient)
                 * MagicCategoryDamageMultiplier(skill, caster, recipient)
                 * PhysicalCategoryDamageMultiplier(skill, caster)
-                * RowDamageMultiplier(skill, caster, recipient)
+                * FireDamageMultiplier(skill, caster)
             : 1.0;
 
         // Equipment/skill-driven DOT damage bonus (e.g. l'Écrivain's Plume d'écrivain)
@@ -420,7 +461,7 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
             key: spec.Key,
             displayName: spec.DisplayName,
             kind: spec.Kind,
-            currentTick: combat.CurrentTick,
+            currentTick: recipientClock,
             durationTicks: durationTicks,
             magnitude: magnitude,
             stacks: spec.Stacks,
@@ -429,7 +470,8 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
             emotionalType: spec.EmotionalType,
             isMagnitudePercentOfMax: spec.MagnitudeIsPercentOfMax,
             isMagnitudePercentOfBaseStat: spec.MagnitudeIsPercentOfBaseStat,
-            isPermanent: spec.IsPermanent));
+            isPermanent: spec.IsPermanent,
+            sourceCombatantId: caster.Id.Value));
     }
 
     /// <returns>The ids of every target actually struck (not missed) by this skill.</returns>
@@ -451,8 +493,13 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
 
         foreach (var target in targets)
         {
+            var attackArc = combat is TacticalCombat tactical
+                ? tactical.AttackArcOf(actor.Id.Value, target.Id.Value)
+                : TacticalAttackArc.Face;
             var hitChance = HitChanceCalibration.HitChanceFromBonus(
-                actor.HitChanceBonusPercent - RowAccuracyPenaltyPercent(actor, target));
+                actor.HitChanceBonusPercent
+                - target.EffectiveEvasion
+                + AccuracyBonusFor(attackArc));
             var hitRoll = DeterministicCombatRoll.UnitInterval(BuildHitSeed(combat, actor, target, skill));
 
             if (hitRoll >= hitChance)
@@ -479,25 +526,49 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
 
             var defenderProfile = _typeProfileProvider.Resolve(target);
             var critRoll = DeterministicCombatRoll.UnitInterval(BuildCritSeed(combat, actor, target, skill));
+            var hasHeightAdvantage = combat is TacticalCombat tacticalCombat
+                && tacticalCombat.HasHeightAdvantage(actor.Id.Value, target.Id.Value);
 
-            // Attack buffs (actor) and defense buffs (target) shift the hit before
-            // type/crit are applied.
-            var basePower = ApplyStatMultiplier(
-                skill.BasePower,
-                StatModifierDamageMultiplier(skill, actor, target)
+            var basePower = combat is TacticalCombat
+                ? TacticalBasePower(combat, actor, target, skill)
+                : ApplyStatMultiplier(
+                    skill.BasePower,
+                    StatModifierDamageMultiplier(skill, actor, target)
                     * MagicCategoryDamageMultiplier(skill, actor, target)
                     * PhysicalCategoryDamageMultiplier(skill, actor)
-                    * RowDamageMultiplier(skill, actor, target)
+                    * FireDamageMultiplier(skill, actor)
                     * DuelDamageAsymmetryMultiplier(combat, skill));
 
-            var effectiveCritChance = isFirstHitCritical ? 1.0 : critChance;
+            if (combat is TacticalCombat)
+            {
+                basePower = ApplyStatMultiplier(
+                    basePower,
+                    MagicCategoryDamageMultiplier(skill, actor, target)
+                    * PhysicalCategoryDamageMultiplier(skill, actor)
+                    * FireDamageMultiplier(skill, actor)
+                    * DuelDamageAsymmetryMultiplier(combat, skill)
+                    * (hasHeightAdvantage ? 1.05 : 1.0)
+                    * DamageMultiplierFor(attackArc));
+            }
+
+            var effectiveCritChance = isFirstHitCritical
+                ? 1.0
+                : Math.Min(
+                    CriticalHitCalibration.MaxCritChance,
+                    critChance
+                    + (hasHeightAdvantage ? 0.04 : 0.0)
+                    + CriticalChanceBonusFor(attackArc));
 
             var outcome = DamageCalculator.Calculate(
                 basePower,
                 attackType,
                 defenderProfile,
                 effectiveCritChance,
-                critRoll);
+                critRoll,
+                minimumDamage: combat is TacticalCombat ? 0 : 1,
+                critMultiplier: combat is TacticalCombat
+                    ? CriticalHitCalibration.TacticalCritMultiplier
+                    : CriticalHitCalibration.CritMultiplier);
 
             outcome = ApplyEquipmentDamageReduction(outcome, target, attackType);
 
@@ -516,12 +587,12 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
             // 25% of its max vitality — checked against vitality as it stood BEFORE
             // this hit lands, symmetric across both sides.
             if (combat.LowHpDamageAmplificationEnabled && outcome.FinalAmount > 0
-                && target.CurrentVitality * 100 < target.MaxVitality * Combat.LowHpDamageAmplificationThresholdPercent)
+                && target.CurrentVitality * 100 < target.MaxVitality * CombatRules.LowHpDamageAmplificationThresholdPercent)
             {
                 outcome = outcome with
                 {
                     FinalAmount = (int)Math.Round(
-                        outcome.FinalAmount * (1.0 + Combat.LowHpDamageAmplificationBonusPercent / 100.0))
+                        outcome.FinalAmount * (1.0 + CombatRules.LowHpDamageAmplificationBonusPercent / 100.0))
                 };
             }
 
@@ -542,7 +613,6 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
                     [target]));
 
                 // Momentum: an aggressive, impactful hit earns the actor a faster follow-up.
-                combat.AwardTempoMomentum(actor, TempoMomentumCalibration.CriticalHitGainPerMille);
             }
 
             AddEffectivenessLog(actor, skill, target, outcome.Effectiveness, logEntries);
@@ -555,6 +625,26 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
 
             var guardBefore = target.Guard;
             var vitalityBefore = target.CurrentVitality;
+
+            if (combat is TacticalCombat hornCombat
+                && hornCombat.DistanceBetween(actor.Id.Value, target.Id.Value) <= 1
+                && hornCombat.HasEquippedItem(target.Id.Value, "item.cornes-ivoire")
+                && hornCombat.TryConsumeEquipmentTrigger(target.Id.Value, "cornes-ivoire:first-melee"))
+            {
+                var reflected = (int)Math.Round(
+                    outcome.FinalAmount * 0.5,
+                    MidpointRounding.AwayFromZero);
+                if (reflected > 0)
+                    actor.ApplyDamage(reflected);
+
+                logEntries.Add(CreateLog(
+                    "EquipmentTriggered",
+                    $"Les Petites cornes d’ivoire annulent l’attaque et renvoient {reflected} dégâts à {actor.DisplayName}.",
+                    target,
+                    skill,
+                    [actor]));
+                continue;
+            }
 
             target.ApplyDamage(outcome.FinalAmount);
 
@@ -583,7 +673,6 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
                 if (guardBefore > 0 && target.Guard == 0)
                 {
                     // Momentum: breaking through a target's guard entirely earns a tempo boost.
-                    combat.AwardTempoMomentum(actor, TempoMomentumCalibration.GuardBreakGainPerMille);
                 }
             }
 
@@ -602,6 +691,8 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
                 // "Loi de l'Éloge Funèbre": arms the next actor's basic-attack-only
                 // restriction. No-op when the law isn't active.
                 combat.RegisterCombatantDefeated();
+                if (combat is TacticalCombat defeatTacticalCombat)
+                    defeatTacticalCombat.OnCombatantDefeated(target.Id.Value);
 
                 logEntries.Add(CreateLog(
                     "TargetDefeated",
@@ -612,10 +703,8 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
             }
             else if (staggers)
             {
-                // Interruption: push the target's ATB gauge back (bigger if it was charging).
-                combat.InterruptAction(target.Id.Value);
                 logEntries.Add(CreateLog(
-                    "AtbStagger",
+                    "Stagger",
                     $"{target.DisplayName}'s momentum is broken.",
                     actor,
                     skill,
@@ -671,6 +760,46 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
         return Math.Clamp(multiplier, 0.25, 3.0);
     }
 
+    private static int TacticalBasePower(
+        ICombatContext combat,
+        Combatant actor,
+        Combatant target,
+        CombatantSkill skill)
+    {
+        var isMagic = string.Equals(skill.Category, "Magic", StringComparison.OrdinalIgnoreCase);
+        var attack = isMagic ? actor.EffectiveMagicAttack : actor.EffectiveAttackPower;
+        var defense = isMagic ? target.EffectiveMagicDefense : target.EffectiveDefense;
+        var variationRoll = DeterministicCombatRoll.UnitInterval(
+            BuildVariationSeed(combat, actor, target, skill));
+
+        return TacticalDamageFormula.CalculateBaseDamage(
+            skill.BasePower,
+            attack,
+            defense,
+            variationRoll);
+    }
+
+    private static int AccuracyBonusFor(TacticalAttackArc arc) => arc switch
+    {
+        TacticalAttackArc.Flank => 10,
+        TacticalAttackArc.Back => 20,
+        _ => 0
+    };
+
+    private static double CriticalChanceBonusFor(TacticalAttackArc arc) => arc switch
+    {
+        TacticalAttackArc.Flank => 0.02,
+        TacticalAttackArc.Back => 0.04,
+        _ => 0.0
+    };
+
+    private static double DamageMultiplierFor(TacticalAttackArc arc) => arc switch
+    {
+        TacticalAttackArc.Flank => 1.05,
+        TacticalAttackArc.Back => 1.10,
+        _ => 1.0
+    };
+
     // Magic-category skills (e.g. Pomenian's "Connaissance académique") are boosted
     // by the caster's magic damage bonus and mitigated by the target's magic damage
     // reduction; Physical-category skills are untouched by either.
@@ -699,50 +828,19 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
         return Math.Max(0.0, 1.0 + actor.EffectivePhysicalDamageBonusPercent / 100.0);
     }
 
-    /// <summary>
-    /// Row positioning's damage-side effects: the attacker's own -15% physical damage
-    /// dealt malus while in the Back row, the target's -5% incoming physical damage
-    /// reduction while in the Back row (both Physical-category only), and the "tir à
-    /// l'aveugle" stacking malus (-5% damage) when the attacker is in Back row AND
-    /// targets a Back-row combatant — confirmed by the player to apply to both
-    /// Physical and Magic. In practice the Physical half of that stacking malus never
-    /// fires: Physical skills can never target a Back-row combatant at all (see
-    /// CombatTargetingRuleValidator's "hors de portée" rule) — kept as specified
-    /// rather than special-cased away.
-    /// </summary>
-    private static double RowDamageMultiplier(CombatantSkill skill, Combatant actor, Combatant target)
+    private static double FireDamageMultiplier(CombatantSkill skill, Combatant actor)
     {
-        var multiplier = 1.0;
+        var isFire = skill.Tags.Any(tag =>
+                string.Equals(tag, "fire", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(tag, "feu", StringComparison.OrdinalIgnoreCase))
+            || skill.Key.Contains("flamme", StringComparison.OrdinalIgnoreCase)
+            || skill.Key.Contains("cendre", StringComparison.OrdinalIgnoreCase)
+            || skill.Key.Contains("forge", StringComparison.OrdinalIgnoreCase)
+            || skill.Key.Contains("souffle", StringComparison.OrdinalIgnoreCase);
 
-        if (string.Equals(skill.Category, "Physical", StringComparison.OrdinalIgnoreCase))
-        {
-            multiplier *= 1.0 - actor.RowPhysicalDamageDealtReductionPercent / 100.0;
-            multiplier *= 1.0 - target.RowIncomingPhysicalDamageReductionPercent / 100.0;
-        }
-
-        if (actor.Row == CombatRow.Back && target.Row == CombatRow.Back)
-        {
-            multiplier *= 0.95;
-        }
-
-        return Math.Max(0.0, multiplier);
-    }
-
-    /// <summary>
-    /// Row positioning's accuracy-side effects: the attacker's own -5% accuracy malus
-    /// on all attacks while in the Back row, plus an additional -5% "tir à l'aveugle"
-    /// malus when targeting another Back-row combatant while also in the Back row.
-    /// </summary>
-    private static int RowAccuracyPenaltyPercent(Combatant actor, Combatant target)
-    {
-        var penalty = actor.RowAccuracyPenaltyPercent;
-
-        if (actor.Row == CombatRow.Back && target.Row == CombatRow.Back)
-        {
-            penalty += 5;
-        }
-
-        return penalty;
+        return isFire
+            ? Math.Max(0.0, 1.0 + actor.EffectiveFireDamageBonusPercent / 100.0)
+            : 1.0;
     }
 
     /// <summary>"Loi du Duel" (law.duel): "les attaques et sorts mono-cibles infligent
@@ -756,8 +854,8 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
 
         return skill.TargetingType switch
         {
-            "SingleEnemy" or "SingleAlly" => 1.0 + Combat.DuelSingleTargetBonusPercent / 100.0,
-            "AllEnemies" or "AllAllies" => 1.0 - Combat.DuelAreaOfEffectPenaltyPercent / 100.0,
+            "SingleEnemy" or "SingleAlly" => 1.0 + CombatRules.DuelSingleTargetBonusPercent / 100.0,
+            "AllEnemies" or "AllAllies" => 1.0 - CombatRules.DuelAreaOfEffectPenaltyPercent / 100.0,
             _ => 1.0
         };
     }
@@ -838,6 +936,19 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
         return string.Join(
             '|',
             "hit",
+            combat.Id.Value.ToString("N"),
+            combat.TurnNumber.ToString(),
+            actor.Id.Value.ToString("N"),
+            target.Id.Value.ToString("N"),
+            skill.Key);
+    }
+
+    private static string BuildVariationSeed(
+        ICombatContext combat, Combatant actor, Combatant target, CombatantSkill skill)
+    {
+        return string.Join(
+            '|',
+            "variation",
             combat.Id.Value.ToString("N"),
             combat.TurnNumber.ToString(),
             actor.Id.Value.ToString("N"),

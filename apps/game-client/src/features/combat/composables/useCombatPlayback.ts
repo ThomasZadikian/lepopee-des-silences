@@ -288,7 +288,7 @@ export function useCombatPlayback() {
           continue;
         }
 
-        if (event.kind === 'Skill') {
+        if (event.kind === 'Skill' || event.kind === 'Item') {
           const at = now();
 
           actionBanner.value = event.skillName
@@ -303,6 +303,8 @@ export function useCombatPlayback() {
           }
 
           if (
+            event.kind === 'Skill'
+              &&
             event.skillKey
               && typeof event.targetX === 'number'
               && typeof event.targetY === 'number'

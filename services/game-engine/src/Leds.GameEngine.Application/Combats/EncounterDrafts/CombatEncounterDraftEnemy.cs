@@ -17,4 +17,5 @@ public sealed record CombatEncounterDraftEnemy(
     int Focus = 0,
     int MagicAttack = 0,
     int MagicDefense = 0,
-    int Mana = 0);
+    int Mana = 0,
+    int Movement = 4);

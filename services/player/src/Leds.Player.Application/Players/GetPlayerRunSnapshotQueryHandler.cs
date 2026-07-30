@@ -51,7 +51,6 @@ public sealed class GetPlayerRunSnapshotQueryHandler
                     c.StatBlock.StartingGuard,
                     c.StatBlock.Speed,
                     c.StatBlock.Initiative,
-                    c.StatBlock.Recovery,
                     c.StatBlock.Focus,
                     c.StatBlock.Mana,
                     c.StatBlock.Charge,

@@ -71,6 +71,12 @@ public sealed class EfSkillDefinitionReadStore : ISkillDefinitionReadStore
             Enum.Parse<CatalogContentStatus>(entity.Status),
             effects,
             category: entity.Category,
-            basePowerIsPercentOfMaxVitality: entity.BasePowerIsPercentOfMaxVitality);
+            basePowerIsPercentOfMaxVitality: entity.BasePowerIsPercentOfMaxVitality,
+            tacticalRange: entity.TacticalRange,
+            tacticalAreaShape: entity.TacticalAreaShape,
+            requiresLineOfSight: entity.RequiresLineOfSight,
+            cooldown: entity.Cooldown,
+            isUltimate: entity.IsUltimate,
+            emotionalRegister: entity.EmotionalRegister);
     }
 }

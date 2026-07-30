@@ -105,8 +105,14 @@ public static class TacticalTargeting
     {
         ArgumentNullException.ThrowIfNull(battlefield);
 
-        if (origin.ManhattanDistanceTo(target) > range)
+        var elevationDifference = Math.Abs(
+            battlefield.ElevationAt(origin) - battlefield.ElevationAt(target));
+        if (origin.ManhattanDistanceTo(target) + elevationDifference > range)
             return false;
+
+        // A higher attacker has plunging sight over intervening obstacles.
+        if (battlefield.ElevationAt(origin) > battlefield.ElevationAt(target))
+            return true;
 
         return !requiresLineOfSight
             || TacticalMovement.HasLineOfSight(battlefield, origin, target);
@@ -152,6 +158,40 @@ public static class TacticalTargeting
             .Where(c => cells.Contains(combat.PositionOf(c.Id.Value)))
             .Where(c => hostileOnly ? c.Side != casterSide : c.Side == casterSide)
             .ToList();
+    }
+
+    /// <summary>
+    /// Returns the first living combatant crossed by a line-of-sight effect before
+    /// its intended centre. Plunging sight bypasses interception.
+    /// </summary>
+    public static Combatant? FindInterceptor(
+        TacticalCombat combat,
+        GridPosition origin,
+        GridPosition intendedCenter)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+
+        if (combat.Battlefield.ElevationAt(origin)
+            > combat.Battlefield.ElevationAt(intendedCenter))
+        {
+            return null;
+        }
+
+        var occupants = combat.Allies
+            .Concat(combat.Enemies)
+            .Where(c => !c.IsDefeated)
+            .ToDictionary(c => combat.PositionOf(c.Id.Value));
+
+        foreach (var cell in TacticalMovement.CellsOnLine(origin, intendedCenter))
+        {
+            if (cell == origin || cell == intendedCenter)
+                continue;
+
+            if (occupants.TryGetValue(cell, out var interceptor))
+                return interceptor;
+        }
+
+        return null;
     }
 
     /// <summary>

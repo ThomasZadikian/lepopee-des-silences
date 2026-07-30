@@ -55,7 +55,10 @@ import {
 } from '../composables/useTacticalSkillProfile';
 import { useTacticalCombatStore } from '../stores/useTacticalCombatStore';
 
-import type { CombatantSkillRuntimeDto } from '../types/combatContracts';
+import type {
+  CombatantSkillRuntimeDto,
+  CombatUsableItemDto,
+} from '../types/combatContracts';
 
 const props = defineProps<{
   runId: string;
@@ -67,6 +70,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (event: 'combat-completed'): void;
   (event: 'combat-failed'): void;
+  (event: 'combat-escaped'): void;
 }>();
 
 const store = useTacticalCombatStore();
@@ -214,6 +218,14 @@ function skillMeta(skill: CombatantSkillRuntimeDto): string {
   return `P${profile.range} · ${skillShapeLabel(skill)}${power}`;
 }
 
+function itemShape(item: CombatUsableItemDto): TacticalShape {
+  return item.tacticalAreaShape.toLowerCase() as TacticalShape;
+}
+
+function itemMeta(item: CombatUsableItemDto): string {
+  return `P${item.tacticalRange} · ${itemShape(item)} · ×${item.quantity}`;
+}
+
 function isFloorCell(x: number, y: number): boolean {
   const field = battlefield.value;
   if (!field || x < 0 || y < 0 || x >= field.width || y >= field.height) return false;
@@ -284,7 +296,10 @@ const reachPreview = computed(() => {
   const field = battlefield.value;
   const active = store.activeCombatant;
 
-  if (!field || !active || !store.isPlayerTurn || active.hasMoved || store.selectedSkillKey) {
+  if (
+    !field || !active || !store.isPlayerTurn || active.hasMoved
+      || store.selectedSkillKey || store.selectedItemId
+  ) {
     return { cells: new Set<string>(), previous: new Map<string, BattleCell>() };
   }
 
@@ -320,23 +335,36 @@ const rangePreview = computed<Map<string, boolean>>(() => {
   const field = battlefield.value;
   const active = store.activeCombatant;
   const skill = store.selectedSkill;
+  const item = store.selectedItem;
 
-  if (!field || !active || !skill || !store.isPlayerTurn || active.hasActed) return new Map();
+  if (!field || !active || (!skill && !item) || !store.isPlayerTurn || active.hasActed) {
+    return new Map();
+  }
 
-  const profile = tacticalSkillProfile(skill);
+  const profile = skill
+    ? tacticalSkillProfile(skill)
+    : {
+        range: item!.tacticalRange,
+        shape: itemShape(item!),
+        requiresLineOfSight: item!.requiresLineOfSight,
+      };
   const cells = new Map<string, boolean>();
 
   for (let y = 0; y < field.height; y += 1) {
     for (let x = 0; x < field.width; x += 1) {
       if (!isWalkableCell(x, y)) continue;
 
+      const elevationCost = Math.abs(elevationAt(active.x, active.y) - elevationAt(x, y));
       const inRange = profile.shape === 'map'
-        || manhattan(active, { x, y }) <= profile.range;
+        || manhattan(active, { x, y }) + elevationCost <= profile.range;
       if (!inRange) continue;
 
       cells.set(
         battleCellKey(x, y),
-        profile.requiresLineOfSight ? canSeeCell(active, { x, y }) : true,
+        profile.requiresLineOfSight
+          ? elevationAt(active.x, active.y) > elevationAt(x, y)
+            || canSeeCell(active, { x, y })
+          : true,
       );
     }
   }
@@ -359,7 +387,7 @@ const blockedCells = computed<Set<string>>(() =>
 const pathCells = computed<Set<string>>(() => {
   const active = store.activeCombatant;
   const hovered = hoveredCell.value;
-  if (!active || !hovered || store.selectedSkillKey) return new Set();
+  if (!active || !hovered || store.selectedSkillKey || store.selectedItemId) return new Set();
 
   const targetKey = battleCellKey(hovered.x, hovered.y);
   if (!reachPreview.value.cells.has(targetKey)) return new Set();
@@ -379,22 +407,27 @@ const pathCells = computed<Set<string>>(() => {
 const aoeCells = computed<Set<string>>(() => {
   const active = store.activeCombatant;
   const skill = store.selectedSkill;
+  const item = store.selectedItem;
   const hovered = hoveredCell.value;
-  if (!active || !skill || !hovered) return new Set();
+  if (!active || (!skill && !item) || !hovered) return new Set();
 
   if (rangePreview.value.get(battleCellKey(hovered.x, hovered.y)) !== true) return new Set();
 
-  return new Set(shapeCells(tacticalSkillProfile(skill).shape, hovered.x, hovered.y)
+  const shape = skill ? tacticalSkillProfile(skill).shape : itemShape(item!);
+  return new Set(shapeCells(shape, hovered.x, hovered.y)
     .map((cell) => battleCellKey(cell.x, cell.y)));
 });
 
 const heightCells = computed<Set<string>>(() => {
   const active = store.activeCombatant;
   const skill = store.selectedSkill;
+  const item = store.selectedItem;
   const hovered = hoveredCell.value;
-  if (!active || !skill || !hovered) return new Set();
+  if (!active || (!skill && !item) || !hovered) return new Set();
 
-  const profile = tacticalSkillProfile(skill);
+  const profile = skill
+    ? tacticalSkillProfile(skill)
+    : { requiresLineOfSight: item!.requiresLineOfSight };
   const targetKey = battleCellKey(hovered.x, hovered.y);
   if (!profile.requiresLineOfSight || rangePreview.value.get(targetKey) !== true) return new Set();
   if (elevationAt(active.x, active.y) <= elevationAt(hovered.x, hovered.y)) return new Set();
@@ -600,6 +633,33 @@ function highlightAlpha(
   }
 }
 
+function paintEscape(ctx: CanvasRenderingContext2D, destW: number, destH: number, timestamp: number) {
+  const exit = store.combat?.escape;
+  if (!exit) return;
+
+  const { screenX, screenY } = projectToScreen(exit.x, exit.y, projectionParams.value);
+  const lift = elevationLiftPx(elevationAt(exit.x, exit.y));
+  const pulse = prefersReducedMotion ? 1 : 0.88 + (Math.sin(timestamp * 0.003) * 0.12);
+
+  ctx.save();
+  ctx.translate(screenX, screenY - lift);
+  ctx.scale(pulse, pulse);
+  ctx.strokeStyle = '#b9e7d1';
+  ctx.fillStyle = 'rgba(75, 176, 130, .24)';
+  ctx.shadowColor = '#70d4a8';
+  ctx.shadowBlur = destW * 0.16;
+  ctx.lineWidth = Math.max(2, destW * 0.025);
+  ctx.beginPath();
+  ctx.ellipse(0, 0, destW * 0.32, destH * 0.18, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.font = `600 ${Math.max(10, Math.round(destW * 0.11))}px ui-monospace, monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#e3fff1';
+  ctx.fillText('SORTIE', 0, -(destH * 0.18));
+  ctx.restore();
+}
+
 function paintCanvas(timestamp: number) {
   const canvas = canvasEl.value;
   if (!canvas || canvasSize.value.width === 0) return;
@@ -621,8 +681,13 @@ function paintCanvas(timestamp: number) {
   const terrainPlan = drawPlan.value.filter((entry) => entry.spriteKey.kind !== 'highlight');
   const highlightPlan = drawPlan.value.filter((entry) => entry.spriteKey.kind === 'highlight');
 
-  const enemyCount = store.combat?.enemies.filter((e) => e.combatant.status !== 'Defeated').length ?? 0;
-  const tierKey = enemyCount <= 2 ? 'calm' : enemyCount <= 3 ? 'tense' : enemyCount <= 4 ? 'grim' : 'fatal';
+  const tierKey = {
+    Calme: 'calm',
+    Tendu: 'tense',
+    Dangereux: 'grim',
+    Perilleux: 'grim',
+    Fatal: 'fatal',
+  }[store.combat?.riskTier ?? 'Calme'];
   const tier = RISK_TIERS[tierKey] ?? RISK_TIERS.calm;
 
   // Vignette : peinte avant le terrain et les combattants pour qu'elle
@@ -772,6 +837,8 @@ function paintCanvas(timestamp: number) {
     ctx.drawImage(sprite, dx, entry.screenY - (destH * GROUND_ANCHOR_RATIO), destW, destH);
     ctx.restore();
   }
+
+  paintEscape(ctx, destW, destH, timestamp);
 
   // ── Ambiance / FX / chiffres ─────────────────────────────────────────────
   if (!prefersReducedMotion) {
@@ -933,6 +1000,23 @@ function onCanvasClick(event: MouseEvent) {
     return;
   }
 
+  if (store.selectedItemId) {
+    const defeated = store.allCombatants.find(
+      (unit) =>
+        unit.x === cell.x
+          && unit.y === cell.y
+          && unit.combatant.status === 'Defeated',
+    );
+    void store.useItemAt(
+      props.runId,
+      store.selectedItemId,
+      cell.x,
+      cell.y,
+      defeated?.combatant.id,
+    );
+    return;
+  }
+
   void store.moveTo(props.runId, cell.x, cell.y);
 }
 
@@ -959,6 +1043,7 @@ watch(
   (status) => {
     if (status === 'Completed') emit('combat-completed');
     if (status === 'Failed') emit('combat-failed');
+    if (status === 'Escaped') emit('combat-escaped');
   },
 );
 
@@ -1129,7 +1214,7 @@ onBeforeUnmount(() => {
             {{ store.activeCombatant?.combatant?.displayName ?? '—' }}
           </strong>
           <span class="tbattle__active-stat">
-            PP {{ store.activeCombatant?.combatant?.mana ?? '—' }}
+            Mana {{ store.activeCombatant?.combatant?.mana ?? '—' }}
           </span>
           <span class="tbattle__active-stat" :class="{ 'tbattle__active-stat--spent': store.activeCombatant?.hasMoved }">
             {{
@@ -1160,11 +1245,24 @@ onBeforeUnmount(() => {
                   || store.isLoading
                   || store.combat?.usedOnceSkillKeys.includes(skill.key)
               "
-              :title="`${skill.displayName} — ${skill.category === 'Magic' ? 'magique' : 'physique'}, ${skillMeta(skill)}, PP ${skill.manaCost}`"
+              :title="`${skill.displayName} — ${skill.category === 'Magic' ? 'magique' : 'physique'}, ${skillMeta(skill)}, Mana ${skill.manaCost}`"
               @click="store.selectSkill(skill.key)"
             >
               <span class="tbattle__skill-name">{{ skill.displayName }}</span>
               <span class="tbattle__skill-meta">{{ skillMeta(skill) }}</span>
+            </button>
+            <button
+              v-for="item in store.usableItems"
+              :key="item.itemId"
+              type="button"
+              class="tbattle__skill tbattle__item"
+              :class="{ 'tbattle__item--armed': item.itemId === store.selectedItemId }"
+              :disabled="(store.activeCombatant?.hasActed ?? true) || store.isLoading"
+              :title="`${item.displayName} — ${itemMeta(item)}`"
+              @click="store.selectItem(item.itemId)"
+            >
+              <span class="tbattle__skill-name">{{ item.displayName }}</span>
+              <span class="tbattle__skill-meta">{{ itemMeta(item) }}</span>
             </button>
           </template>
           <span v-else class="tbattle__skills-placeholder" />
@@ -1180,7 +1278,10 @@ onBeforeUnmount(() => {
         </button>
       </div>
 
-      <p v-if="store.isPlayerTurn && store.selectedSkillKey" class="tbattle__hint">
+      <p
+        v-if="store.isPlayerTurn && (store.selectedSkillKey || store.selectedItemId)"
+        class="tbattle__hint"
+      >
         Clique une case dans la zone rouge pour lancer.
       </p>
       <p v-else-if="store.isPlayerTurn" class="tbattle__hint">
@@ -1507,6 +1608,8 @@ onBeforeUnmount(() => {
 }
 
 .tbattle__skill--armed { background: rgb(224 96 94 / 22%); border-color: #e0605e; }
+.tbattle__item { border-color: rgb(102 185 171 / 45%); }
+.tbattle__item--armed { background: rgb(102 185 171 / 22%); border-color: #66b9ab; }
 .tbattle__skill:disabled { opacity: 0.35; cursor: not-allowed; }
 .tbattle__skill-name { font-weight: 600; }
 .tbattle__skill-meta { font-size: 0.62rem; opacity: 0.55; font-variant-numeric: tabular-nums; }

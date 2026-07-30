@@ -19,7 +19,7 @@ public sealed class NpcEventChoiceResolverTests
 
         var statBlock = RunCharacterStatSnapshot.Create(
             maxVitality: 100, attackPower: 12, defense: 6, startingGuard: 0,
-            speed: 10, initiative: 10, recovery: 5, focus: 0, mana: 0, charge: 0);
+            speed: 10, initiative: 10,focus: 0, mana: 0, charge: 0);
         var character = RunCharacterSnapshot.Create(
             characterId: Guid.NewGuid(), definitionKey: "character.player.self",
             displayName: "Le Porteur", statBlock: statBlock, skills: []);

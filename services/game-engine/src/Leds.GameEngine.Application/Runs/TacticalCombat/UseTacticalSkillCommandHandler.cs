@@ -73,10 +73,57 @@ public sealed class UseTacticalSkillCommandHandler
             ?? throw new DomainException(
                 $"'{actor.DisplayName}' does not know skill '{request.SkillKey}'.");
 
+        if (!string.IsNullOrWhiteSpace(combat.ForgottenSkillKey)
+            && string.Equals(
+                skill.Key,
+                combat.ForgottenSkillKey,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ConflictException(
+                $"Loi de l’Oubli Partiel : « {skill.DisplayName} » est oubliée pour cet étage.");
+        }
+
+        if (combat.TapisPropreEnabled
+            && !actor.HasActedThisCombat
+            && string.Equals(skill.SkillType, "Damage", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ConflictException(
+                "Loi du Tapis Propre : la première activation ne peut pas être une attaque.");
+        }
+
+        if (combat.NextActionRestrictedToBasicAttack
+            && !string.Equals(skill.Key, "skill.basic.strike", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ConflictException(
+                "Loi de l'Éloge Funèbre : seule une attaque basique est permise après une mort.");
+        }
+
+        if (combat.RemainingCooldown(actorId, skill.Key) > 0)
+            throw new ConflictException(
+                $"« {skill.DisplayName} » est encore en recharge pour "
+                + $"{combat.RemainingCooldown(actorId, skill.Key)} activation(s).");
+
+        var effectiveManaCost = Math.Max(
+            0,
+            (int)Math.Round(
+                skill.ManaCost * (1.0 - actor.EffectiveSkillCostReductionPercent / 100.0))
+            + actor.EffectiveFlatManaCostBonus);
+        var missingMana = Math.Max(0, effectiveManaCost - actor.Mana);
+        var vitalityCost = missingMana * 2;
+        if (vitalityCost > 0 && !request.ConfirmVitalitySacrifice)
+        {
+            throw new ConflictException(
+                $"Confirmation requise : « {skill.DisplayName} » consommera "
+                + $"{vitalityCost} Vitalité pour remplacer {missingMana} Mana manquante.");
+        }
+
         var origin = combat.PositionOf(actorId);
         var tactical = TacticalSkillProfile.For(skill);
+        var effectiveRange = actor.HasTacticalSlow
+            ? Math.Max(1, tactical.Range / 2)
+            : tactical.Range;
         var requestedTarget = new GridPosition(request.TargetX, request.TargetY);
-        var target = skill.TargetingType == "Self" || tactical.AreaShape == TacticalAreaShape.Map
+        var intendedTarget = skill.TargetingType == "Self" || tactical.AreaShape == TacticalAreaShape.Map
             ? origin
             : requestedTarget;
 
@@ -86,43 +133,129 @@ public sealed class UseTacticalSkillCommandHandler
         if (!TacticalTargeting.IsInRange(
                 combat.Battlefield,
                 origin,
-                target,
-                tactical.Range,
+                intendedTarget,
+                effectiveRange,
                 tactical.RequiresLineOfSight))
         {
             throw new ConflictException(
-                $"La case ({target.X}, {target.Y}) est hors de portée de « {skill.DisplayName} ».");
+                $"La case ({intendedTarget.X}, {intendedTarget.Y}) est hors de portée de « {skill.DisplayName} ».");
         }
 
         var shape = tactical.AreaShape;
         var hostile = TacticalTargeting.IsHostile(skill.TargetingType);
+        var interceptor = tactical.RequiresLineOfSight && shape != TacticalAreaShape.Map
+            ? TacticalTargeting.FindInterceptor(combat, origin, intendedTarget)
+            : null;
+        var target = interceptor is null
+            ? intendedTarget
+            : combat.PositionOf(interceptor.Id.Value);
 
         var affectedCells = shape == TacticalAreaShape.Map
             ? null
             : TacticalTargeting.CellsInArea(combat.Battlefield, target, shape);
 
         var targets = TacticalTargeting.ResolveTargets(
-            combat, affectedCells, actor.Side, hostile, shape);
+                combat, affectedCells, actor.Side, hostile, shape)
+            .ToList();
+
+        if (interceptor is not null && targets.All(t => t.Id != interceptor.Id))
+            targets.Add(interceptor);
 
         if (targets.Count == 0)
             throw new ConflictException("Aucune cible valide dans la zone visée.");
 
+        combat.OrientToward(actorId, target);
+
         // Relevé avant résolution : le noyau partagé n'annonce pas ses chiffres, on les mesure.
         var before = TacticalImpactRecorder.Capture(targets);
+        var speedsBefore = combat.CaptureEffectiveSpeeds();
 
+        if (combat.NextActionRestrictedToBasicAttack)
+            combat.ConsumeBasicAttackRestriction();
         var resolution = _effectResolver.Resolve(combat, actor, skill, targets);
+        var logEntries = new List<CombatLogEntryDto>(resolution.LogEntries);
+        var events = new List<TacticalCombatEventDto>();
+
+        foreach (var affected in targets)
+        {
+            var facingTarget = interceptor is not null && affected.Id == interceptor.Id
+                ? origin
+                : shape == TacticalAreaShape.Single ? origin : target;
+            combat.OrientToward(affected.Id.Value, facingTarget);
+        }
 
         var impacts = TacticalImpactRecorder.Diff(before, targets, combat);
+        TacticalChargeRules.AwardUsefulAction(actor, targets, impacts);
+        events.Add(TacticalCombatEventDto.Skill(
+            actorId,
+            actor.DisplayName,
+            skill.Key,
+            skill.DisplayName,
+            target,
+            impacts));
+
+        if (combat.TryConsumeMirrorTrigger(actor)
+            && combat.GetFastestLivingEnemy() is { } mirror)
+        {
+            var mirrorHostile = TacticalTargeting.IsHostile(skill.TargetingType);
+            var mirrorTargets = (mirrorHostile
+                    ? combat.Allies.Where(candidate => !candidate.IsDefeated)
+                        .OrderBy(candidate => combat.DistanceBetween(
+                            mirror.Id.Value,
+                            candidate.Id.Value))
+                        .ThenBy(candidate => candidate.Id.Value)
+                        .Take(1)
+                    : [mirror])
+                .ToList();
+
+            if (tactical.AreaShape == TacticalAreaShape.Map)
+            {
+                mirrorTargets = combat.Allies.Concat(combat.Enemies)
+                    .Where(candidate => !candidate.IsDefeated)
+                    .ToList();
+            }
+
+            if (mirrorTargets.Count > 0)
+            {
+                var mirrorTarget = tactical.AreaShape == TacticalAreaShape.Map
+                    ? combat.PositionOf(mirror.Id.Value)
+                    : combat.PositionOf(mirrorTargets[0].Id.Value);
+                var mirrorBefore = TacticalImpactRecorder.Capture(mirrorTargets);
+                combat.OrientToward(mirror.Id.Value, mirrorTarget);
+                var mirrorResolution = _effectResolver.Resolve(
+                    combat,
+                    mirror,
+                    skill.WithoutResourceCosts(),
+                    mirrorTargets);
+                var mirrorImpacts = TacticalImpactRecorder.Diff(
+                    mirrorBefore,
+                    mirrorTargets,
+                    combat);
+                logEntries.Add(new CombatLogEntryDto(
+                    _clock.UtcNow.UtcDateTime,
+                    "PalaceLaw",
+                    $"Loi du Miroir : {mirror.DisplayName} répète « {skill.DisplayName} ».",
+                    mirror.Id.Value,
+                    skill.Key,
+                    [.. mirrorTargets.Select(candidate => candidate.Id.Value)]));
+                logEntries.AddRange(mirrorResolution.LogEntries);
+                events.Add(TacticalCombatEventDto.Skill(
+                    mirror.Id.Value,
+                    mirror.DisplayName,
+                    skill.Key,
+                    skill.DisplayName,
+                    mirrorTarget,
+                    mirrorImpacts));
+            }
+        }
 
         if (tactical.OncePerCombat)
             combat.MarkOnceSkillUsed(skill.Key);
 
-        combat.MarkActiveCombatantActed();
+        combat.MarkActiveCombatantActed(skill);
 
-        // Un combat gagné ou perdu ne doit pas rester « actif » : le reste de la pile (offre de
-        // récompense, sortie de salle) se déclenche sur le statut, comme en ATB.
-        combat.CompleteIfAllEnemiesDefeated();
-        combat.FailIfAllAlliesDefeated();
+        if (combat.HaveEffectiveSpeedsChanged(speedsBefore))
+            combat.RecalculateInitiativeAfterSpeedChange();
 
         var rewardOffer = await SettleAsync(run, combat, cancellationToken);
 
@@ -143,15 +276,9 @@ public sealed class UseTacticalSkillCommandHandler
 
         return new TacticalCombatResponse(
             RunDto.FromDomain(run),
-            TacticalCombatRuntimeDto.FromDomain(combat, CombatItemHelper.GetUsableBattleItems(run)),
-            [actionEntry, .. resolution.LogEntries],
-            [TacticalCombatEventDto.Skill(
-                actorId,
-                actor.DisplayName,
-                skill.Key,
-                skill.DisplayName,
-                target,
-                impacts)]);
+            TacticalCombatRuntimeDto.FromDomain(combat, CombatItemHelper.GetUsableBattleItems(run, combat)),
+            [actionEntry, .. logEntries],
+            events);
     }
 
     /// <summary>
@@ -173,7 +300,7 @@ public sealed class UseTacticalSkillCommandHandler
         if (protagonist is not null)
         {
             run.PlayerState.SyncFromCombat(
-                protagonist.CurrentVitality, protagonist.Guard, protagonist.Mana, protagonist.Charge);
+                protagonist.CurrentVitality, protagonist.Guard, protagonist.Mana, 0);
         }
 
         return await _combatResolution.ApplyOutcomeAsync(

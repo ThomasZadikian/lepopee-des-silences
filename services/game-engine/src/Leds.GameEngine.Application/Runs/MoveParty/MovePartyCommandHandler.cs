@@ -24,10 +24,13 @@ public sealed class MovePartyCommandHandler : IRequestHandler<MovePartyCommand, 
         var run = await _runRepository.GetByIdAsync(runId, cancellationToken)
             ?? throw new NotFoundException("Run", request.RunId);
 
-        run.MoveParty(request.TargetX, request.TargetY);
+        var pickups = run.MoveParty(request.TargetX, request.TargetY);
 
         await _runRepository.UpdateAsync(run, cancellationToken);
 
-        return new MovePartyResponse(RunDto.FromDomain(run));
+        return new MovePartyResponse(
+            RunDto.FromDomain(run),
+            pickups.CollectedItemIds.Select(id => id.Value).ToArray(),
+            pickups.BlockedItemIds.Select(id => id.Value).ToArray());
     }
 }

@@ -25,6 +25,24 @@ export const combatApi = {
     >(`/api/v2/runs/${runId}/tactical-combat/skill`, { skillKey, targetX, targetY });
   },
 
+  useTacticalItem(
+    runId: string,
+    itemId: string,
+    targetX: number,
+    targetY: number,
+    targetCombatantId?: string,
+  ) {
+    return gameEngineApi.post<
+      TacticalCombatResponse,
+      { itemId: string; targetX: number; targetY: number; targetCombatantId?: string }
+    >(`/api/v2/runs/${runId}/tactical-combat/item`, {
+      itemId,
+      targetX,
+      targetY,
+      targetCombatantId,
+    });
+  },
+
   endTacticalTurn(runId: string) {
     return gameEngineApi.post<TacticalCombatResponse>(
       `/api/v2/runs/${runId}/tactical-combat/end-turn`,

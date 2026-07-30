@@ -90,6 +90,7 @@ public sealed class EfEnemyDefinitionReadStore : IEnemyDefinitionReadStore
             menace: entity.MenaceLevel,
             rarity: entity.Rarity,
             registre: entity.Registre,
-            boundRoomKeys: boundRoomKeys);
+            boundRoomKeys: boundRoomKeys,
+            movement: entity.StatBlock?.Movement ?? 4);
     }
 }

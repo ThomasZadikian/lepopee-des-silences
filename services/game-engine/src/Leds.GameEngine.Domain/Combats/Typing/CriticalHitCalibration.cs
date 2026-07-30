@@ -16,6 +16,9 @@ public static class CriticalHitCalibration
     /// <summary>Damage multiplier applied on a critical hit.</summary>
     public const double CritMultiplier = 1.5;
 
+    /// <summary>Canonical critical multiplier for tactical combat.</summary>
+    public const double TacticalCritMultiplier = 1.6;
+
     /// <summary>
     /// Maps an attacker's Focus to a critical chance in [0, <see cref="MaxCritChance"/>].
     /// </summary>

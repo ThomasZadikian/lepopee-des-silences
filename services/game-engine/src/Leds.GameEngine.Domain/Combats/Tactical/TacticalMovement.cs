@@ -1,5 +1,3 @@
-using System.Collections.Concurrent;
-
 namespace Leds.GameEngine.Domain.Combats.Tactical;
 
 /// <summary>
@@ -16,21 +14,13 @@ public static class TacticalMovement
     /// Budget de déplacement d'un combattant.
     /// </summary>
     /// <remarks>
-    /// La vitesse ne pilote plus le budget de déplacement : un combattant recevra à terme une
-    /// statistique « Déplacement » distincte. En attendant, le budget est une constante unique
-    /// pour tout le bestiaire (cf. BALANCE KNOB ci-dessous).
+    /// Repli de migration pour les combattants dont le catalogue n'a pas encore été ré-authoré.
     /// </remarks>
     public const int BaseMovement = 4; // BALANCE KNOB
 
-    /// <summary>
-    /// Cache des résultats de Line of Sight pour éviter les recalculs (O-010).
-    /// Clé : "fromX,fromY-toX,toY", Valeur : résultat booléen.
-    /// </summary>
-    private static readonly ConcurrentDictionary<string, bool> LineOfSightCache = new();
-
-    public static int BudgetFor(int effectiveSpeed, int baseMovement = BaseMovement)
+    public static int BudgetFor(int effectiveMovement)
     {
-        return Math.Max(1, baseMovement);
+        return Math.Max(1, effectiveMovement);
     }
 
     /// <summary>
@@ -45,10 +35,12 @@ public static class TacticalMovement
         TacticalBattlefield battlefield,
         GridPosition origin,
         int budget,
-        IReadOnlySet<GridPosition> occupied)
+        IReadOnlySet<GridPosition> occupied,
+        IReadOnlySet<GridPosition>? traversableOccupied = null)
     {
         ArgumentNullException.ThrowIfNull(battlefield);
         ArgumentNullException.ThrowIfNull(occupied);
+        traversableOccupied ??= new HashSet<GridPosition>();
 
         var best = new Dictionary<GridPosition, int> { [origin] = 0 };
         if (budget <= 0)
@@ -68,7 +60,8 @@ public static class TacticalMovement
 
             foreach (var neighbour in current.Neighbours())
             {
-                if (!battlefield.IsWalkable(neighbour) || occupied.Contains(neighbour))
+                if (!battlefield.IsWalkable(neighbour)
+                    || (occupied.Contains(neighbour) && !traversableOccupied.Contains(neighbour)))
                     continue;
 
                 var cost = currentCost + battlefield.StepCost(current, neighbour);
@@ -83,7 +76,9 @@ public static class TacticalMovement
             }
         }
 
-        return best;
+        return best
+            .Where(pair => pair.Key == origin || !occupied.Contains(pair.Key))
+            .ToDictionary();
     }
 
     /// <summary>
@@ -101,13 +96,17 @@ public static class TacticalMovement
         GridPosition origin,
         GridPosition destination,
         int budget,
-        IReadOnlySet<GridPosition> occupied)
+        IReadOnlySet<GridPosition> occupied,
+        IReadOnlySet<GridPosition>? traversableOccupied = null)
     {
         ArgumentNullException.ThrowIfNull(battlefield);
         ArgumentNullException.ThrowIfNull(occupied);
+        traversableOccupied ??= new HashSet<GridPosition>();
 
         if (destination == origin)
             return [];
+        if (occupied.Contains(destination))
+            return null;
 
         var best = new Dictionary<GridPosition, int> { [origin] = 0 };
         var cameFrom = new Dictionary<GridPosition, GridPosition>();
@@ -122,7 +121,8 @@ public static class TacticalMovement
 
             foreach (var neighbour in current.Neighbours())
             {
-                if (!battlefield.IsWalkable(neighbour) || occupied.Contains(neighbour))
+                if (!battlefield.IsWalkable(neighbour)
+                    || (occupied.Contains(neighbour) && !traversableOccupied.Contains(neighbour)))
                     continue;
 
                 var cost = currentCost + battlefield.StepCost(current, neighbour);
@@ -155,8 +155,6 @@ public static class TacticalMovement
     /// Ligne de vue entre deux cases. Coupée par une case non praticable, ou par une crête
     /// strictement plus haute que ses deux extrémités — une butte entre deux tireurs les sépare,
     /// mais tirer depuis ou vers le sommet reste possible (cf. SFD v2, §10).
-    /// 
-    /// Optimisé pour O-010 : utilise un cache statique pour éviter les recalculs.
     /// </summary>
     public static bool HasLineOfSight(
         TacticalBattlefield battlefield, GridPosition from, GridPosition to)
@@ -167,15 +165,10 @@ public static class TacticalMovement
         if (from.ManhattanDistanceTo(to) <= 1)
             return true;
 
-        // O-010: Utiliser le cache pour les paires de cases fréquemment vérifiées
-        var cacheKey = $"{from.X},{from.Y}-{to.X},{to.Y}";
-        if (LineOfSightCache.TryGetValue(cacheKey, out var cachedResult))
-            return cachedResult;
-
         var ceiling = Math.Max(battlefield.ElevationAt(from), battlefield.ElevationAt(to));
 
         bool result = true;
-        foreach (var cell in TraceLine(from, to))
+        foreach (var cell in CellsOnLine(from, to))
         {
             if (cell == from || cell == to)
                 continue;
@@ -193,21 +186,13 @@ public static class TacticalMovement
             }
         }
 
-        // Stocker le résultat dans le cache
-        LineOfSightCache.TryAdd(cacheKey, result);
         return result;
     }
 
-    /// <summary>
-    /// Efface le cache de Line of Sight (utile pour les tests ou après un changement de terrain).
-    /// </summary>
-    public static void ClearLineOfSightCache()
-    {
-        LineOfSightCache.Clear();
-    }
+    public static void ClearLineOfSightCache() { }
 
     /// <summary>Bresenham arrondi : les cases traversées par le segment, extrémités comprises.</summary>
-    private static IEnumerable<GridPosition> TraceLine(GridPosition from, GridPosition to)
+    public static IEnumerable<GridPosition> CellsOnLine(GridPosition from, GridPosition to)
     {
         var dx = Math.Abs(to.X - from.X);
         var dy = Math.Abs(to.Y - from.Y);

@@ -12,10 +12,10 @@ public sealed record CombatEncounterDraftAlly(
     int StartingGuard = 0,
     int Speed = 10,
     int Initiative = 0,
-    int Recovery = 0,
     int Focus = 0,
     int Mana = 0,
     int Charge = 0,
     IReadOnlyCollection<CombatEncounterDraftSkill>? Skills = null,
     int MagicAttack = 0,
-    int MagicDefense = 0);
+    int MagicDefense = 0,
+    int Movement = 4);

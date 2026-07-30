@@ -67,15 +67,30 @@ public sealed class EndTacticalTurnCommandHandler
 
         var combat = run.RequireActiveTacticalCombat();
 
-        combat.AdvanceToNextCombatant();
+        // L'issue se fige à la fin du tour actif. La défaite a priorité si un
+        // sacrifice élimine simultanément le dernier allié et le dernier ennemi.
+        combat.FailIfAllAlliesDefeated();
+        combat.CompleteIfAllEnemiesDefeated();
 
-        var enemyTurns = _enemyTurns.PlayWhileEnemyHasInitiative(combat);
+        if (combat.Status == CombatStatus.Active)
+        {
+            if (combat.ActiveCombatantId is { } activeId
+                && !combat.TurnStateOf(activeId).HasActed)
+            {
+                combat.ConsumeBasicAttackRestriction();
+            }
+            combat.AdvanceToNextCombatant();
+        }
+
+        var enemyTurns = combat.Status == CombatStatus.Active
+            ? _enemyTurns.PlayWhileEnemyHasInitiative(combat)
+            : new TacticalEnemyTurnsResult([], []);
 
         var protagonist = combat.Allies.FirstOrDefault(a => a.Side == CombatantSide.Player);
         if (protagonist is not null)
         {
             run.PlayerState.SyncFromCombat(
-                protagonist.CurrentVitality, protagonist.Guard, protagonist.Mana, protagonist.Charge);
+                protagonist.CurrentVitality, protagonist.Guard, protagonist.Mana, 0);
         }
 
         var rewardOffer = await _combatResolution.ApplyOutcomeAsync(
@@ -90,7 +105,7 @@ public sealed class EndTacticalTurnCommandHandler
 
         return new TacticalCombatResponse(
             RunDto.FromDomain(run),
-            TacticalCombatRuntimeDto.FromDomain(combat, CombatItemHelper.GetUsableBattleItems(run)),
+            TacticalCombatRuntimeDto.FromDomain(combat, CombatItemHelper.GetUsableBattleItems(run, combat)),
             enemyTurns.LogEntries,
             enemyTurns.Events);
     }

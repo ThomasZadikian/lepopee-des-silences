@@ -8,6 +8,7 @@ import { battleCellKey, reachableCellsFrom } from '../composables/useTacticalBat
 
 import type {
   CombatLogEntryDto,
+  CombatUsableItemDto,
   CombatantSkillRuntimeDto,
   TacticalCombatEventDto,
   TacticalCombatRuntimeDto,
@@ -33,6 +34,7 @@ export const useTacticalCombatStore = defineStore('tacticalCombat', () => {
 
   /** La compétence armée, en attente d'une case. `null` = mode déplacement. */
   const selectedSkillKey = ref<string | null>(null);
+  const selectedItemId = ref<string | null>(null);
 
   // Cache pour les cases atteignables (optimisation O-002)
   const reachableCellsCache = ref<Map<string, Set<string>>>(new Map());
@@ -66,6 +68,14 @@ export const useTacticalCombatStore = defineStore('tacticalCombat', () => {
 
     return activeSkills.value.find((s) => s.key === selectedSkillKey.value) ?? null;
   });
+
+  const usableItems = computed<CombatUsableItemDto[]>(
+    () => combat.value?.usableBattleItems ?? [],
+  );
+
+  const selectedItem = computed<CombatUsableItemDto | null>(() =>
+    usableItems.value.find((item) => item.itemId === selectedItemId.value) ?? null,
+  );
 
   /**
    * L'ordre d'action du round, résolu en combattants. Ce que le joueur doit
@@ -127,7 +137,7 @@ export const useTacticalCombatStore = defineStore('tacticalCombat', () => {
    * Indique si une action est en cours de sélection (U-001).
    */
   const hasPendingAction = computed<boolean>(() => {
-    return selectedSkillKey.value !== null;
+    return selectedSkillKey.value !== null || selectedItemId.value !== null;
   });
 
   const occupantAt = (x: number, y: number): TacticalCombatantRuntimeDto | null =>
@@ -139,6 +149,7 @@ export const useTacticalCombatStore = defineStore('tacticalCombat', () => {
     combat.value = next;
     // Une compétence armée n'a plus de sens dès que le tour change de main.
     selectedSkillKey.value = null;
+    selectedItemId.value = null;
     // Réinitialiser le cache des cases atteignables
     reachableCellsCache.value.clear();
   }
@@ -148,12 +159,19 @@ export const useTacticalCombatStore = defineStore('tacticalCombat', () => {
     combat.value = null;
     logEntries.value = [];
     selectedSkillKey.value = null;
+    selectedItemId.value = null;
     error.value = null;
     reachableCellsCache.value.clear();
   }
 
   function selectSkill(skillKey: string | null) {
     selectedSkillKey.value = selectedSkillKey.value === skillKey ? null : skillKey;
+    selectedItemId.value = null;
+  }
+
+  function selectItem(itemId: string | null) {
+    selectedItemId.value = selectedItemId.value === itemId ? null : itemId;
+    selectedSkillKey.value = null;
   }
 
   /**
@@ -161,6 +179,7 @@ export const useTacticalCombatStore = defineStore('tacticalCombat', () => {
    */
   function cancelAction() {
     selectedSkillKey.value = null;
+    selectedItemId.value = null;
   }
 
   /**
@@ -213,6 +232,16 @@ export const useTacticalCombatStore = defineStore('tacticalCombat', () => {
   const useSkillAt = (runId: string, skillKey: string, x: number, y: number) =>
     execute(() => combatApi.useTacticalSkill(runId, skillKey, x, y));
 
+  const useItemAt = (
+    runId: string,
+    itemId: string,
+    x: number,
+    y: number,
+    targetCombatantId?: string,
+  ) => execute(() => combatApi.useTacticalItem(
+    runId, itemId, x, y, targetCombatantId,
+  ));
+
   const endTurn = (runId: string) => execute(() => combatApi.endTacticalTurn(runId));
 
   /**
@@ -236,6 +265,9 @@ export const useTacticalCombatStore = defineStore('tacticalCombat', () => {
     isExecuting, // Exposé pour l'UI (ex: désactiver les boutons)
     selectedSkillKey,
     selectedSkill,
+    selectedItemId,
+    selectedItem,
+    usableItems,
     hasPendingAction, // Exposé pour l'UI (U-001)
     activeCombatant,
     activeSkills,
@@ -249,9 +281,11 @@ export const useTacticalCombatStore = defineStore('tacticalCombat', () => {
     setCombat,
     clearCombat,
     selectSkill,
+    selectItem,
     cancelAction, // Exposé pour l'UI (U-001)
     moveTo,
     useSkillAt,
+    useItemAt,
     endTurn,
     playOpening,
   };

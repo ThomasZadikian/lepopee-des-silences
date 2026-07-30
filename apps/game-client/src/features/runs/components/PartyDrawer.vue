@@ -37,7 +37,6 @@ const modifierTypeLabels: Record<string, string> = {
   ModifyDefense:            'Défense',
   ModifySpeed:              'Vitesse',
   ModifyInitiative:         'Initiative',
-  ModifyRecovery:           'Récupération',
 };
 
 function modifierLabel(mod: RunModifierDto): string {
@@ -130,7 +129,7 @@ function rarityTone(rarity: string): string {
                 </span>
                 <span class="party-card__stat">
                   <StatTooltip :text="statDescriptions.Mana" placement="bottom">
-                    <span class="party-card__stat-k">PP</span>
+                    <span class="party-card__stat-k">Mana</span>
                   </StatTooltip>
                   <span class="party-card__stat-v">{{ member.mana }}</span>
                 </span>

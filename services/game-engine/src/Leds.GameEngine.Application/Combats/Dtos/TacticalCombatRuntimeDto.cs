@@ -9,7 +9,9 @@ public sealed record TacticalCombatantRuntimeDto(
     int Y,
     bool HasMoved,
     bool HasActed,
-    int MovementBudget);
+    int MovementBudget,
+    string Facing,
+    IReadOnlyDictionary<string, int> SkillCooldowns);
 
 /// <summary>
 /// Le terrain une fois la salle vidée de ses nœuds : reliefs et trous, rien d'autre.
@@ -34,11 +36,7 @@ public sealed record TacticalBattlefieldDto(
 /// L'état d'un combat tactique tel que le client doit l'afficher.
 /// </summary>
 /// <remarks>
-/// Volontairement <b>pas</b> une variante de <see cref="CombatRuntimeDto"/> : les deux systèmes
-/// n'exposent pas la même chose. L'ATB envoie un tick et des jauges ; le tactique envoie un
-/// terrain, des positions et un ordre d'initiative annoncé à l'avance — cette prévisibilité est
-/// la contrepartie de l'abandon du tempo (SFD v2, §7). Les fondre en un seul DTO obligerait la
-/// moitié des champs à être nuls à tout instant.
+/// Expose le terrain, les positions et l'ordre d'initiative annoncé à l'avance.
 /// </remarks>
 public sealed record TacticalCombatRuntimeDto(
     Guid Id,
@@ -50,7 +48,9 @@ public sealed record TacticalCombatRuntimeDto(
     IReadOnlyCollection<TacticalCombatantRuntimeDto> Allies,
     IReadOnlyCollection<TacticalCombatantRuntimeDto> Enemies,
     IReadOnlyCollection<CombatUsableItemDto> UsableBattleItems,
-    IReadOnlyCollection<string> UsedOnceSkillKeys)
+    IReadOnlyCollection<string> UsedOnceSkillKeys,
+    TacticalEscapeDto? Escape,
+    string RiskTier)
 {
     public static TacticalCombatRuntimeDto FromDomain(
         TacticalCombat combat,
@@ -88,7 +88,11 @@ public sealed record TacticalCombatRuntimeDto(
             Allies: [.. combat.Allies.Select(c => Project(combat, c))],
             Enemies: [.. combat.Enemies.Select(c => Project(combat, c))],
             UsableBattleItems: usableItems ?? [],
-            UsedOnceSkillKeys: [.. combat.UsedOnceSkillKeys]);
+            UsedOnceSkillKeys: [.. combat.UsedOnceSkillKeys],
+            Escape: combat.EscapePosition is { } exit
+                ? new TacticalEscapeDto(exit.X, exit.Y)
+                : null,
+            RiskTier: combat.RiskTier.ToString());
     }
 
     private static TacticalCombatantRuntimeDto Project(
@@ -98,13 +102,18 @@ public sealed record TacticalCombatRuntimeDto(
         var turn = combat.TurnStateOf(combatant.Id.Value);
 
         return new TacticalCombatantRuntimeDto(
-            // Le combattant lui-même se sérialise exactement comme en ATB : c'est le même
-            // bestiaire, les mêmes stats, les mêmes statuts. Seul son placement est neuf.
+            // Même bestiaire, mêmes stats et mêmes statuts, enrichis du placement tactique.
             Combatant: CombatantRuntimeDto.FromDomain(combatant, combat.CurrentTick),
             X: position.X,
             Y: position.Y,
             HasMoved: turn.HasMoved,
             HasActed: turn.HasActed,
-            MovementBudget: TacticalMovement.BudgetFor(combatant.EffectiveSpeed));
+            MovementBudget: TacticalMovement.BudgetFor(combatant.HasTacticalSlow
+                ? Math.Max(1, combatant.EffectiveMovement / 2)
+                : combatant.EffectiveMovement),
+            Facing: combat.FacingOf(combatant.Id.Value).ToString(),
+            SkillCooldowns: combat.CooldownsOf(combatant.Id.Value));
     }
 }
+
+public sealed record TacticalEscapeDto(int X, int Y);

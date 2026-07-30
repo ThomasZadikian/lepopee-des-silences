@@ -8,7 +8,6 @@ public enum PlayerStatKind
     StartingGuard,
     Speed,
     Initiative,
-    Recovery,
     Focus,
     Mana,
     Charge,

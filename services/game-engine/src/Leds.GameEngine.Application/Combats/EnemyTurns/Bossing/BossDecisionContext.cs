@@ -11,4 +11,4 @@ namespace Leds.GameEngine.Application.Combats.EnemyTurns.Bossing;
 /// </summary>
 /// <param name="Combat">The active combat aggregate (read-only intent — behaviors must not mutate it).</param>
 /// <param name="Boss">The boss combatant whose turn is being resolved.</param>
-public sealed record BossDecisionContext(Combat Combat, Combatant Boss);
+public sealed record BossDecisionContext(ICombatContext Combat, Combatant Boss);

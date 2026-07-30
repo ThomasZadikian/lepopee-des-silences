@@ -180,6 +180,53 @@ public sealed class SkillDefinitionTests
     }
 
     [Fact]
+    public void Create_ShouldCarryExplicitTacticalContract()
+    {
+        var def = SkillDefinition.Create(
+            "skill.test", "Name", "Desc", "1.0.0", "Damage", "SingleEnemy", "Damage", 5, 3, 10,
+            tacticalRange: 4,
+            tacticalAreaShape: "Cross",
+            requiresLineOfSight: true,
+            cooldown: 2,
+            isUltimate: true,
+            emotionalRegister: "Effroi");
+
+        def.TacticalRange.Should().Be(4);
+        def.TacticalAreaShape.Should().Be("Cross");
+        def.RequiresLineOfSight.Should().BeTrue();
+        def.Cooldown.Should().Be(2);
+        def.IsUltimate.Should().BeTrue();
+        def.EmotionalRegister.Should().Be("Effroi");
+    }
+
+    [Theory]
+    [InlineData("Line")]
+    [InlineData("")]
+    [InlineData("Cone")]
+    public void Create_ShouldThrow_WhenTacticalAreaShapeIsUnsupported(string shape)
+    {
+        var act = () => SkillDefinition.Create(
+            "skill.test", "Name", "Desc", "1.0.0", "Damage", "SingleEnemy", "Damage", 5, 0, 10,
+            tacticalAreaShape: shape);
+
+        act.Should()
+            .Throw<DomainException>()
+            .WithMessage("Skill definition tactical area shape must be Single, Cross, Diamond or Map.");
+    }
+
+    [Fact]
+    public void Create_ShouldThrow_WhenCooldownIsNegative()
+    {
+        var act = () => SkillDefinition.Create(
+            "skill.test", "Name", "Desc", "1.0.0", "Damage", "SingleEnemy", "Damage", 5, 0, 10,
+            cooldown: -1);
+
+        act.Should()
+            .Throw<DomainException>()
+            .WithMessage("Skill definition cooldown cannot be negative.");
+    }
+
+    [Fact]
     public void Activate_ShouldSetStatusToActive()
     {
         var def = SkillDefinition.Create(

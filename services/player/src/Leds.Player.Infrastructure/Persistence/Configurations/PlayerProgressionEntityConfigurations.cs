@@ -18,7 +18,6 @@ public sealed class PlayerCharacterStatBlockEntityConfiguration : IEntityTypeCon
         builder.Property(s => s.StartingGuard).HasColumnName("starting_guard").HasDefaultValue(0);
         builder.Property(s => s.Speed).HasColumnName("speed").HasDefaultValue(10);
         builder.Property(s => s.Initiative).HasColumnName("initiative").HasDefaultValue(10);
-        builder.Property(s => s.Recovery).HasColumnName("recovery").HasDefaultValue(5);
         builder.Property(s => s.Focus).HasColumnName("focus").HasDefaultValue(0);
         builder.Property(s => s.Mana).HasColumnName("mana").HasDefaultValue(0);
         builder.Property(s => s.Charge).HasColumnName("charge").HasDefaultValue(0);
@@ -84,6 +83,7 @@ public sealed class PlayerCharacterItemEntityConfiguration : IEntityTypeConfigur
         builder.Property(i => i.AcquiredAtUtc).HasColumnName("acquired_at_utc");
         builder.Property(i => i.Source).HasColumnName("source").HasMaxLength(64);
         builder.Property(i => i.IsEquipped).HasColumnName("is_equipped").HasDefaultValue(false);
+        builder.Property(i => i.EquipmentSlot).HasColumnName("equipment_slot").HasMaxLength(16).HasDefaultValue("Relic").IsRequired();
         builder.HasIndex(i => new { i.PlayerCharacterId, i.ItemDefinitionKey }).IsUnique();
         builder.HasOne(i => i.PlayerCharacter)
             .WithMany(c => c.Items)

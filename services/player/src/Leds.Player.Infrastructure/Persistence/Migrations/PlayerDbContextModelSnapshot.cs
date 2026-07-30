@@ -123,6 +123,14 @@ namespace Leds.Player.Infrastructure.Persistence.Migrations
                         .HasDefaultValue(false)
                         .HasColumnName("is_equipped");
 
+                    b.Property<string>("EquipmentSlot")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasDefaultValue("Relic")
+                        .HasColumnName("equipment_slot");
+
                     b.Property<string>("ItemDefinitionKey")
                         .IsRequired()
                         .HasMaxLength(160)
@@ -250,12 +258,6 @@ namespace Leds.Player.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("PlayerCharacterId")
                         .HasColumnType("uuid")
                         .HasColumnName("player_character_id");
-
-                    b.Property<int>("Recovery")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(5)
-                        .HasColumnName("recovery");
 
                     b.Property<int>("Speed")
                         .ValueGeneratedOnAdd()

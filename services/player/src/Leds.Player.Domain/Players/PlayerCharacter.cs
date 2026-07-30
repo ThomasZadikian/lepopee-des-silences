@@ -18,7 +18,11 @@ public sealed class PlayerCharacter
     /// Base number of active equipment slots (accessories and backpacks share the same pool —
     /// SFD "Système d'équipement et sac permanent" § 7, Annexe A point 3).
     /// </summary>
-    public const int MaxEquippedItems = 3;
+    public const int MaxEquippedWeapons = 1;
+    public const int MaxEquippedAccessories = 1;
+    public const int MaxEquippedRelics = 3;
+    public const int MaxEquippedItems =
+        MaxEquippedWeapons + MaxEquippedAccessories + MaxEquippedRelics;
 
     private readonly List<PlayerCharacterSkill> _skills;
     private readonly List<PlayerCharacterItem> _items;
@@ -103,7 +107,6 @@ public sealed class PlayerCharacter
             startingGuard: 0,
             speed: 10,
             initiative: 10,
-            recovery: 5,
             focus: 0,
             mana: baseMana,
             charge: baseCharge,
@@ -224,18 +227,29 @@ public sealed class PlayerCharacter
         _items.Add(item);
     }
 
-    public void EquipItem(string itemKey)
+    public void EquipItem(string itemKey, EquipmentSlotKind slot)
     {
         var item = FindItem(itemKey);
 
         if (item.IsEquipped)
             return;
 
-        if (EquippedItemCount >= MaxEquippedItems)
-            throw new DomainException($"Cannot equip more than {MaxEquippedItems} items.");
+        var equippedInSlot = _items.Count(i => i.IsEquipped && i.Slot == slot);
+        var slotLimit = slot switch
+        {
+            EquipmentSlotKind.Weapon => MaxEquippedWeapons,
+            EquipmentSlotKind.Accessory => MaxEquippedAccessories,
+            EquipmentSlotKind.Relic => MaxEquippedRelics,
+            _ => throw new DomainException($"Unsupported equipment slot '{slot}'.")
+        };
+        if (equippedInSlot >= slotLimit)
+            throw new DomainException(
+                $"Cannot equip more than {slotLimit} item(s) in slot {slot}.");
 
-        item.Equip();
+        item.Equip(slot);
     }
+
+    public void EquipItem(string itemKey) => EquipItem(itemKey, EquipmentSlotKind.Relic);
 
     public void UnequipItem(string itemKey)
     {
@@ -269,7 +283,6 @@ public sealed class PlayerCharacter
             startingGuard: 0,
             speed: 10,
             initiative: 10,
-            recovery: 5,
             focus: 0,
             mana: baseMana,
             charge: baseCharge);

@@ -23,7 +23,9 @@ public static class DamageCalculator
         EmotionalType attackType,
         CombatantTypeProfile defender,
         double critChance,
-        double critRoll)
+        double critRoll,
+        int minimumDamage = 1,
+        double critMultiplier = CriticalHitCalibration.CritMultiplier)
     {
         if (basePower < 0)
         {
@@ -39,9 +41,9 @@ public static class DamageCalculator
             && critChance > 0
             && critRoll < critChance;
 
-        var critMultiplier = isCritical ? CriticalHitCalibration.CritMultiplier : 1.0;
+        var appliedCritMultiplier = isCritical ? critMultiplier : 1.0;
 
-        var scaled = basePower * typeMultiplier * critMultiplier;
+        var scaled = basePower * typeMultiplier * appliedCritMultiplier;
         var finalAmount = (int)Math.Round(scaled, MidpointRounding.AwayFromZero);
 
         if (effectiveness == DamageEffectiveness.Immune)
@@ -49,10 +51,10 @@ public static class DamageCalculator
             // Immunity always zeroes the hit.
             finalAmount = 0;
         }
-        else if (basePower > 0 && finalAmount < 1)
+        else if (basePower > 0 && finalAmount < minimumDamage)
         {
             // A non-immune hit from a damaging skill always lands for at least 1.
-            finalAmount = 1;
+            finalAmount = minimumDamage;
         }
 
         return new DamageOutcome(finalAmount, basePower, effectiveness, typeMultiplier, isCritical);

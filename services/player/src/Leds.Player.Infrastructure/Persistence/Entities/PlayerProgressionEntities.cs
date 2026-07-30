@@ -10,7 +10,6 @@ public sealed class PlayerCharacterStatBlockEntity
     public int StartingGuard { get; set; }
     public int Speed { get; set; } = 10;
     public int Initiative { get; set; } = 10;
-    public int Recovery { get; set; } = 5;
     public int Focus { get; set; }
     public int Mana { get; set; }
     public int Charge { get; set; }
@@ -28,6 +27,7 @@ public sealed class PlayerCharacterSkillEntity
     public DateTimeOffset UnlockedAtUtc { get; set; }
     public string? Source { get; set; }
     public bool IsEquipped { get; set; }
+    public string EquipmentSlot { get; set; } = "Relic";
 
     public PlayerCharacterEntity PlayerCharacter { get; set; } = null!;
 }

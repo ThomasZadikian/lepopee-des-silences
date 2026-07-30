@@ -1,34 +1,25 @@
 using FluentAssertions;
 using Leds.GameEngine.Application.Combats.Dtos;
 using Leds.GameEngine.Domain.Combats;
+using Leds.GameEngine.Domain.Combats.Tactical;
 
 namespace Leds.GameEngine.UnitTests.Combats;
 
 public sealed class CombatantSkillRuntimeDtoTests
 {
     [Fact]
-    public void FromDomain_ShouldExposeMeleeSingleTargetContract()
+    public void FromDomain_ShouldExposeMandatoryTacticalContract()
     {
         var dto = CombatantSkillRuntimeDto.FromDomain(CreateSkill(
             category: "Physical",
             skillType: "Damage",
-            targetingType: "SingleEnemy"));
+            targetingType: "SingleEnemy",
+            tacticalRange: 2,
+            tacticalAreaShape: TacticalAreaShape.Cross,
+            requiresLineOfSight: true));
 
-        dto.TacticalRange.Should().Be(1);
-        dto.TacticalAreaShape.Should().Be("Single");
-        dto.RequiresLineOfSight.Should().BeFalse();
-    }
-
-    [Fact]
-    public void FromDomain_ShouldExposeRangedAreaContract()
-    {
-        var dto = CombatantSkillRuntimeDto.FromDomain(CreateSkill(
-            category: "Magic",
-            skillType: "Damage",
-            targetingType: "AllEnemies"));
-
-        dto.TacticalRange.Should().Be(4);
-        dto.TacticalAreaShape.Should().Be("Diamond");
+        dto.TacticalRange.Should().Be(2);
+        dto.TacticalAreaShape.Should().Be("Cross");
         dto.RequiresLineOfSight.Should().BeTrue();
     }
 
@@ -38,7 +29,9 @@ public sealed class CombatantSkillRuntimeDtoTests
         var dto = CombatantSkillRuntimeDto.FromDomain(CreateSkill(
             category: "Magic",
             skillType: "Heal",
-            targetingType: "SingleAlly"));
+            targetingType: "SingleAlly",
+            tacticalRange: 3,
+            requiresLineOfSight: true));
 
         dto.TacticalRange.Should().Be(3);
         dto.TacticalAreaShape.Should().Be("Single");
@@ -57,7 +50,10 @@ public sealed class CombatantSkillRuntimeDtoTests
             manaCost: 8,
             chargeCost: 0,
             basePower: 22,
-            category: "Magic");
+            category: "Magic",
+            tacticalRange: 3,
+            tacticalAreaShape: TacticalAreaShape.Cross,
+            requiresLineOfSight: true);
 
         var dto = CombatantSkillRuntimeDto.FromDomain(skill);
 
@@ -69,7 +65,10 @@ public sealed class CombatantSkillRuntimeDtoTests
     private static CombatantSkill CreateSkill(
         string category,
         string skillType,
-        string targetingType) =>
+        string targetingType,
+        int tacticalRange = 1,
+        TacticalAreaShape tacticalAreaShape = TacticalAreaShape.Single,
+        bool requiresLineOfSight = false) =>
         CombatantSkill.Create(
             key: "skill.contract.test",
             displayName: "Geste test",
@@ -79,5 +78,8 @@ public sealed class CombatantSkillRuntimeDtoTests
             manaCost: 0,
             chargeCost: 0,
             basePower: 10,
-            category: category);
+            category: category,
+            tacticalRange: tacticalRange,
+            tacticalAreaShape: tacticalAreaShape,
+            requiresLineOfSight: requiresLineOfSight);
 }

@@ -208,7 +208,7 @@ public sealed class ResolveCurrentEventCommandHandler
                 forgottenSkillKey: run.ForgottenSkillKey);
 
             var tacticalCombat = _tacticalCombatFactory.CreateFromRoster(
-                combatId, roster, room, selectedNode.Id, run.Id, _clock.UtcNow.UtcDateTime);
+                combatId, roster, room, selectedNode.Id, run, _clock.UtcNow.UtcDateTime);
 
             run.StartTacticalCombat(tacticalCombat);
 
@@ -360,7 +360,8 @@ public sealed class ResolveCurrentEventCommandHandler
 
         // CombatRiskTier is generated directly on combat-flavored nodes (MapRoomGenerator) —
         // no more rescale from the raw 0-100 RiskLevel needed at resolve time.
-        var catalogRiskLevel = (int)(selectedNode.CombatRiskTier ?? Leds.GameEngine.Domain.Combats.RiskTier.Tendu);
+        var generatedRiskTier = selectedNode.CombatRiskTier
+            ?? Leds.GameEngine.Domain.Combats.RiskTier.Tendu;
 
         var enemyCount = encounterType switch
         {
@@ -368,7 +369,29 @@ public sealed class ResolveCurrentEventCommandHandler
             "Rare" => 1,
             "RoomBoss" => 1,
             "FinalBoss" => 1,
-            _ => catalogRiskLevel >= 3 ? 2 : 1
+            _ => generatedRiskTier switch
+            {
+                Leds.GameEngine.Domain.Combats.RiskTier.Calme => 2,
+                Leds.GameEngine.Domain.Combats.RiskTier.Tendu => 3,
+                Leds.GameEngine.Domain.Combats.RiskTier.Dangereux
+                    or Leds.GameEngine.Domain.Combats.RiskTier.Perilleux => 4,
+                _ => 5
+            }
+        };
+        var catalogRiskLevel = encounterType switch
+        {
+            "Elite" => (int)Leds.GameEngine.Domain.Combats.RiskTier.Dangereux,
+            "RoomBoss" or "FinalBoss" => (int)Leds.GameEngine.Domain.Combats.RiskTier.Fatal,
+            "Rare" => Math.Max(
+                (int)Leds.GameEngine.Domain.Combats.RiskTier.Tendu,
+                (int)generatedRiskTier),
+            _ => enemyCount switch
+            {
+                <= 2 => (int)Leds.GameEngine.Domain.Combats.RiskTier.Calme,
+                3 => (int)Leds.GameEngine.Domain.Combats.RiskTier.Tendu,
+                4 => (int)Leds.GameEngine.Domain.Combats.RiskTier.Dangereux,
+                _ => (int)Leds.GameEngine.Domain.Combats.RiskTier.Fatal
+            }
         };
 
         var draftContext = new CombatEncounterDraftContext(
@@ -393,7 +416,7 @@ public sealed class ResolveCurrentEventCommandHandler
 
     // Builds the combat party from the run roster: Characters[0] is the protagonist
     // (its stats already drive PlayerState/run stats), the rest are companions
-    // (up to 4), each with its own kit. Total party is capped at 5.
+    // (up to 3), each with its own kit. Total party is capped at 4.
     private static IReadOnlyCollection<CombatEncounterDraftAlly> BuildPartyAllies(Run run)
     {
         var characters = run.PlayerSnapshot?.Characters.ToArray() ?? [];
@@ -402,7 +425,7 @@ public sealed class ResolveCurrentEventCommandHandler
             return []; // generator falls back to the default protagonist
         }
 
-        var allies = new List<CombatEncounterDraftAlly>(capacity: 5);
+        var allies = new List<CombatEncounterDraftAlly>(capacity: Run.MaxPartySize);
 
         var protagonist = characters[0];
         allies.Add(new CombatEncounterDraftAlly(
@@ -417,7 +440,6 @@ public sealed class ResolveCurrentEventCommandHandler
             StartingGuard: protagonist.StatBlock.StartingGuard,
             Speed: protagonist.StatBlock.Speed,
             Initiative: protagonist.StatBlock.Initiative,
-            Recovery: protagonist.StatBlock.Recovery,
             Focus: protagonist.StatBlock.Focus,
             Mana: protagonist.StatBlock.Mana,
             Charge: protagonist.StatBlock.Charge,
@@ -425,7 +447,7 @@ public sealed class ResolveCurrentEventCommandHandler
             MagicDefense: protagonist.StatBlock.MagicDefense,
             Skills: MapCharacterSkills(protagonist)));
 
-        foreach (var companion in characters.Skip(1).Take(4))
+        foreach (var companion in characters.Skip(1).Take(Run.MaxPartySize - 1))
         {
             allies.Add(new CombatEncounterDraftAlly(
                 AllyKey: $"companion.{companion.CharacterId:N}",
@@ -439,7 +461,6 @@ public sealed class ResolveCurrentEventCommandHandler
                 StartingGuard: companion.StatBlock.StartingGuard,
                 Speed: companion.StatBlock.Speed,
                 Initiative: companion.StatBlock.Initiative,
-                Recovery: companion.StatBlock.Recovery,
                 Focus: companion.StatBlock.Focus,
                 Mana: companion.StatBlock.Mana,
                 Charge: companion.StatBlock.Charge,

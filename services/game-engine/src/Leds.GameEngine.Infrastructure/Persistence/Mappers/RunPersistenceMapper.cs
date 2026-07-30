@@ -119,15 +119,11 @@ public static class RunPersistenceMapper
             ActiveCurses = run.ActiveCurse is not null
                 ? [ToActiveCurseEntity(run.ActiveCurse, run.Id.Value)]
                 : [],
-            // Une run ne porte qu'un combat à la fois, mais il peut être de l'un ou l'autre
-            // système. Les deux se rangent dans la même table, discriminés par `Kind`.
-            ActiveCombat = run.ActiveCombat is not null
-                ? CombatPersistenceMapper.ToEntity(run.ActiveCombat, run.Id.Value)
-                : run.ActiveTacticalCombat is not null
-                    ? TacticalCombatPersistenceMapper.ToEntity(run.ActiveTacticalCombat, run.Id.Value)
-                    : null,
+            ActiveCombat = run.ActiveTacticalCombat is not null
+                ? TacticalCombatPersistenceMapper.ToEntity(run.ActiveTacticalCombat, run.Id.Value)
+                : null,
             PlayerState = PlayerRuntimeStatePersistenceMapper.ToEntity(run.PlayerState, run.Id.Value),
-            InventoryItems = run.RunItems.Select(item => new RunItemEntity
+            InventoryItems = run.PersistedRunItems.Select(item => new RunItemEntity
             {
                 Id = item.Id.Value,
                 RunId = run.Id.Value,
@@ -154,7 +150,13 @@ public static class RunPersistenceMapper
                 IsContainer = item.IsContainer,
                 ContainerCapacity = item.ContainerCapacity,
                 IsLiquid = item.IsLiquid,
-                ContainedLiquidDefinitionKey = item.ContainedLiquidDefinitionKey
+                ContainedLiquidDefinitionKey = item.ContainedLiquidDefinitionKey,
+                TacticalRange = item.TacticalRange,
+                TacticalAreaShape = item.TacticalAreaShape,
+                RequiresLineOfSight = item.RequiresLineOfSight,
+                GroundRoomId = item.GroundRoomId,
+                GroundX = item.GroundX,
+                GroundY = item.GroundY
             }).ToList(),
             RunModifiers = run.RunModifiers.Select(m => new RunModifierEntity
             {
@@ -300,6 +302,7 @@ public static class RunPersistenceMapper
             DefinitionKey = snapshot.DefinitionKey,
             DisplayName = snapshot.DisplayName,
             SnapshotOrder = order,
+            EquippedItemKeysCsv = string.Join(';', snapshot.EquippedItemKeys),
             StatBlock = snapshot.StatBlock is not null
                 ? ToStatSnapshotEntity(snapshot.StatBlock, entityId)
                 : null,
@@ -321,7 +324,6 @@ public static class RunPersistenceMapper
             StartingGuard = stat.StartingGuard,
             Speed = stat.Speed,
             Initiative = stat.Initiative,
-            Recovery = stat.Recovery,
             Focus = stat.Focus,
             Mana = stat.Mana,
             Charge = stat.Charge,
@@ -343,7 +345,15 @@ public static class RunPersistenceMapper
             EffectType = skill.EffectType,
             ManaCost = skill.ManaCost,
             ChargeCost = skill.ChargeCost,
-            BasePower = skill.BasePower
+            BasePower = skill.BasePower,
+            Category = skill.Category,
+            BasePowerIsPercentOfMaxVitality = skill.BasePowerIsPercentOfMaxVitality,
+            TacticalRange = skill.TacticalRange,
+            TacticalAreaShape = skill.TacticalAreaShape,
+            RequiresLineOfSight = skill.RequiresLineOfSight,
+            Cooldown = skill.Cooldown,
+            IsUltimate = skill.IsUltimate,
+            EmotionalRegister = skill.EmotionalRegister
         };
     }
 
@@ -396,14 +406,7 @@ public static class RunPersistenceMapper
                 snapshotRunModifierIds);
         }
 
-        var isTacticalCombat = entity.ActiveCombat?.Kind
-            == TacticalCombatPersistenceMapper.KindDiscriminator;
-
-        var activeCombat = entity.ActiveCombat is not null && !isTacticalCombat
-            ? CombatPersistenceMapper.ToDomain(entity.ActiveCombat)
-            : null;
-
-        var activeTacticalCombat = entity.ActiveCombat is not null && isTacticalCombat
+        var activeTacticalCombat = entity.ActiveCombat is not null
             ? TacticalCombatPersistenceMapper.ToDomain(entity.ActiveCombat)
             : null;
 
@@ -436,7 +439,13 @@ public static class RunPersistenceMapper
             isContainer: item.IsContainer,
             containerCapacity: item.ContainerCapacity,
             isLiquid: item.IsLiquid,
-            containedLiquidDefinitionKey: item.ContainedLiquidDefinitionKey)).ToList();
+            containedLiquidDefinitionKey: item.ContainedLiquidDefinitionKey,
+            tacticalRange: item.TacticalRange,
+            tacticalAreaShape: item.TacticalAreaShape,
+            requiresLineOfSight: item.RequiresLineOfSight,
+            groundRoomId: item.GroundRoomId,
+            groundX: item.GroundX,
+            groundY: item.GroundY)).ToList();
 
         var runModifiers = entity.RunModifiers.Select(m => RunModifier.Rehydrate(
             new RunModifierId(m.Id),
@@ -481,7 +490,6 @@ public static class RunPersistenceMapper
             activePalaceLaws,
             entity.PreSuspendStatus is not null ? Enum.Parse<RunStatus>(entity.PreSuspendStatus) : null,
             snapshot,
-            activeCombat,
             playerState,
             runItems,
             runModifiers,
@@ -776,7 +784,12 @@ public static class RunPersistenceMapper
             entity.DefinitionKey,
             entity.DisplayName,
             statBlock,
-            skills);
+            skills,
+            string.IsNullOrWhiteSpace(entity.EquippedItemKeysCsv)
+                ? []
+                : entity.EquippedItemKeysCsv.Split(
+                    ';',
+                    StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
     }
 
     private static RunCharacterStatSnapshot ToDomainCharacterStatSnapshot(RunCharacterStatSnapshotEntity entity)
@@ -789,7 +802,6 @@ public static class RunPersistenceMapper
             entity.StartingGuard,
             entity.Speed,
             entity.Initiative,
-            entity.Recovery,
             entity.Focus,
             entity.Mana,
             entity.Charge,
@@ -808,7 +820,15 @@ public static class RunPersistenceMapper
             entity.EffectType,
             entity.ManaCost,
             entity.ChargeCost,
-            entity.BasePower);
+            entity.BasePower,
+            entity.Category,
+            entity.BasePowerIsPercentOfMaxVitality,
+            entity.TacticalRange,
+            entity.TacticalAreaShape,
+            entity.RequiresLineOfSight,
+            entity.Cooldown,
+            entity.IsUltimate,
+            entity.EmotionalRegister);
     }
 
     // -----------------------------------------------------------------------

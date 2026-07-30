@@ -14,7 +14,21 @@ public enum RunItemEffectType
     // (e.g. Rêve d'Erina: +5% team Speed). EffectAmount is a whole percentage.
     TeamSpeedBonus = 8,
     // Restores the same whole percentage of both max Vitality and max Mana at
-    // once (e.g. Majordome's Tasse de thé: 35% PV + 35% PP). EffectAmount is
+    // once (e.g. Majordome's Tasse de thé: 35% PV + 35% Mana). EffectAmount is
     // that shared percentage.
-    HealAndManaRestorePercent = 9
+    HealAndManaRestorePercent = 9,
+
+    // Canonical Palace consumables. Keeping these semantics explicit prevents
+    // catalog loot from degrading into a generic zero-point heal.
+    HealPercent = 10,
+    ConditionalHealOrPoison = 11,
+    HealPercentAndCleanseDot = 12,
+    HealPercentAndSilence = 13,
+    RevivePercent = 14,
+    HealPercentAndEvasion = 15,
+    ForceWeatherOrage = 16,
+    ForceWeatherAccalmie = 17,
+    RerollWeather = 18,
+    GrantTeamSkillPoints = 19,
+    GrantTemporarySkill = 20
 }

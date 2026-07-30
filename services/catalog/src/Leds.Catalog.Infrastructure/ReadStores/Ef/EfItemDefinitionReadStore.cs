@@ -108,6 +108,11 @@ public sealed class EfItemDefinitionReadStore : IItemTemplateReadStore, IItemDef
             IsLiquid: entity.IsLiquid,
             EffectValue: entity.EffectValue,
             EffectRunType: entity.EffectRunType,
-            ReadablePages: readablePages);
+            ReadablePages: readablePages,
+            TacticalRange: entity.TacticalRange,
+            TacticalAreaShape: entity.TacticalAreaShape,
+            RequiresLineOfSight: entity.RequiresLineOfSight,
+            BasicAttackPower: entity.BasicAttackPower,
+            BasicAttackCategory: entity.BasicAttackCategory);
     }
 }

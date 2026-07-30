@@ -54,7 +54,13 @@ public sealed record CombatEncounterDraftSkillDto(
     int ManaCost,
     int ChargeCost,
     int BasePower,
-    IReadOnlyCollection<string> Tags)
+    IReadOnlyCollection<string> Tags,
+    int TacticalRange = 1,
+    string TacticalAreaShape = "Single",
+    bool RequiresLineOfSight = false,
+    int Cooldown = 0,
+    bool IsUltimate = false,
+    string EmotionalRegister = "Neutral")
 {
     public static CombatEncounterDraftSkillDto FromDomain(CombatEncounterDraftSkill skill)
     {
@@ -68,6 +74,12 @@ public sealed record CombatEncounterDraftSkillDto(
             ManaCost: skill.ManaCost,
             ChargeCost: skill.ChargeCost,
             BasePower: skill.BasePower,
-            Tags: skill.Tags);
+            Tags: skill.Tags,
+            TacticalRange: skill.TacticalRange,
+            TacticalAreaShape: skill.TacticalAreaShape,
+            RequiresLineOfSight: skill.RequiresLineOfSight,
+            Cooldown: skill.Cooldown,
+            IsUltimate: skill.IsUltimate,
+            EmotionalRegister: skill.EmotionalRegister);
     }
 }

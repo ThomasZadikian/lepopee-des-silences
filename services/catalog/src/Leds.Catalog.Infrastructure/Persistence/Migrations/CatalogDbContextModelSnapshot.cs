@@ -656,10 +656,6 @@ namespace Leds.Catalog.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("max_vitality");
 
-                    b.Property<int>("Recovery")
-                        .HasColumnType("integer")
-                        .HasColumnName("recovery");
-
                     b.Property<int>("Speed")
                         .HasColumnType("integer")
                         .HasColumnName("speed");
@@ -2744,10 +2740,6 @@ namespace Leds.Catalog.Infrastructure.Persistence.Migrations
                     b.Property<int>("Power")
                         .HasColumnType("integer")
                         .HasColumnName("power");
-
-                    b.Property<int>("RecoveryTime")
-                        .HasColumnType("integer")
-                        .HasColumnName("recovery_time");
 
                     b.Property<string>("SelectionGroup")
                         .HasMaxLength(64)

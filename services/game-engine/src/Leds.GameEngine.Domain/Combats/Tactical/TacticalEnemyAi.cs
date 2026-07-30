@@ -70,7 +70,10 @@ public static class TacticalEnemyAi
             .Select(a => new
             {
                 Candidate = a,
-                Score = ScoreTarget(a, origin.ManhattanDistanceTo(combat.PositionOf(a.Id.Value))),
+                Score = ScoreTarget(
+                    a,
+                    origin.ManhattanDistanceTo(combat.PositionOf(a.Id.Value)),
+                    combat.RiskTier),
             })
             .OrderByDescending(x => x.Score)
             // Départage stable : sans lui, deux cibles au même score dépendraient de l'ordre
@@ -81,15 +84,22 @@ public static class TacticalEnemyAi
             .FirstOrDefault();
     }
 
-    private static double ScoreTarget(Combatant target, int distance)
+    private static double ScoreTarget(Combatant target, int distance, RiskTier riskTier)
     {
         var woundedness = target.MaxVitality <= 0
             ? 0
             : 1.0 - (target.CurrentVitality / (double)target.MaxVitality);
 
-        return (woundedness * WoundWeight)
-               + RoleAppetiteFor(target.Archetype)
-               - (distance * DistancePenalty);
+        var aggression = riskTier switch
+        {
+            RiskTier.Calme => 0.8,
+            RiskTier.Tendu => 1.0,
+            RiskTier.Dangereux or RiskTier.Perilleux => 1.2,
+            _ => 1.4
+        };
+        return (woundedness * WoundWeight * aggression)
+               + (RoleAppetiteFor(target.Archetype) * aggression)
+               - (distance * DistancePenalty / aggression);
     }
 
     /// <summary>
@@ -118,12 +128,19 @@ public static class TacticalEnemyAi
 
         var occupied = combat.OccupiedCells().ToHashSet();
         occupied.Remove(origin);
+        var traversableAllies = combat.Enemies
+            .Where(e => !e.IsDefeated && e.Id.Value != actorId)
+            .Select(e => combat.PositionOf(e.Id.Value))
+            .ToHashSet();
 
         var reachable = TacticalMovement.ReachableCells(
             combat.Battlefield,
             origin,
-            TacticalMovement.BudgetFor(actor.EffectiveSpeed),
-            occupied);
+            TacticalMovement.BudgetFor(actor.HasTacticalSlow
+                ? Math.Max(1, actor.EffectiveMovement / 2)
+                : actor.EffectiveMovement),
+            occupied,
+            traversableAllies);
 
         // Les congénères encore debout, hors soi-même : la référence de cohésion.
         var kin = combat.Enemies
@@ -132,14 +149,21 @@ public static class TacticalEnemyAi
             .ToList();
 
         // O-008: Fuir si PV bas
-        var isLowHp = actor.CurrentVitality <= actor.MaxVitality * LowHpThreshold;
+        var retreatThreshold = combat.RiskTier switch
+        {
+            RiskTier.Calme => 0.40,
+            RiskTier.Tendu => LowHpThreshold,
+            RiskTier.Dangereux or RiskTier.Perilleux => 0.20,
+            _ => 0.10
+        };
+        var isLowHp = actor.CurrentVitality <= actor.MaxVitality * retreatThreshold;
         var shouldFlee = isLowHp && kin.Count > 0; // Ne fuir que s'il y a des alliés pour se cacher derrière
 
         if (shouldFlee)
         {
             // Se déplacer loin de la cible ET vers les alliés
             return reachable.Keys
-                .OrderBy(cell => FleeCostOf(cell, targetCell, kin))
+                .OrderBy(cell => FleeCostOf(cell, targetCell, kin, combat.RiskTier))
                 .ThenBy(cell => cell.Y)
                 .ThenBy(cell => cell.X)
                 .First();
@@ -147,14 +171,17 @@ public static class TacticalEnemyAi
 
         // Comportement normal : se rapprocher de la cible
         return reachable.Keys
-            .OrderBy(cell => CostOf(cell, targetCell, kin))
+            .OrderBy(cell => CostOf(cell, targetCell, kin, combat.RiskTier))
             .ThenBy(cell => cell.Y)
             .ThenBy(cell => cell.X)
             .First();
     }
 
     private static double CostOf(
-        GridPosition cell, GridPosition targetCell, IReadOnlyCollection<GridPosition> kin)
+        GridPosition cell,
+        GridPosition targetCell,
+        IReadOnlyCollection<GridPosition> kin,
+        RiskTier riskTier)
     {
         var toTarget = cell.ManhattanDistanceTo(targetCell);
 
@@ -164,20 +191,31 @@ public static class TacticalEnemyAi
         var solitude = kin.Min(k => cell.ManhattanDistanceTo(k));
         var isolation = Math.Max(0, solitude - CohesionComfortRadius);
 
-        return toTarget + (isolation * CohesionWeight);
+        var cohesion = riskTier switch
+        {
+            RiskTier.Calme => CohesionWeight * 0.8,
+            RiskTier.Tendu => CohesionWeight,
+            RiskTier.Dangereux or RiskTier.Perilleux => CohesionWeight * 1.3,
+            _ => CohesionWeight * 1.6
+        };
+        return toTarget + (isolation * cohesion);
     }
 
     /// <summary>
     /// Coût pour fuir : maximiser la distance à la cible et minimiser l'isolement.
     /// </summary>
     private static double FleeCostOf(
-        GridPosition cell, GridPosition targetCell, IReadOnlyCollection<GridPosition> kin)
+        GridPosition cell,
+        GridPosition targetCell,
+        IReadOnlyCollection<GridPosition> kin,
+        RiskTier riskTier)
     {
         var fromTarget = cell.ManhattanDistanceTo(targetCell);
         var toKin = kin.Count > 0 ? kin.Min(k => cell.ManhattanDistanceTo(k)) : 0;
 
         // Privilégier les cases éloignées de la cible et proches des alliés
         // Note: on inverse fromTarget pour fuir (plus la distance est grande, plus le coût est bas)
-        return -fromTarget + (toKin * 0.5);
+        var cohesion = (int)riskTier >= (int)RiskTier.Dangereux ? 0.8 : 0.5;
+        return -fromTarget + (toKin * cohesion);
     }
 }

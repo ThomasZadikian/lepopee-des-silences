@@ -11,12 +11,6 @@ namespace Leds.GameEngine.Application.Combats.Tactical;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Le pendant ATB de cette classe n'existe pas — l'ATB n'a besoin de rien de plus que le roster,
-/// et son emballage tient en un appel dans <see cref="CombatFactory"/>. Le tactique demande deux
-/// choses que l'ATB ignore : sur quoi on se bat, et où chacun se tient. C'est exactement la
-/// frontière d'indépendance de la SFD v2 §2 — le déroulé diffère, le roster ne bouge pas.
-/// </para>
-/// <para>
 /// Le champ de bataille est la salle d'exploration <b>vidée de ses nœuds</b> : reliefs, trous et
 /// obstacles subsistent, le reste s'efface. C'est ce que
 /// <see cref="TacticalBattlefield.FromRoomGrid"/> fait, et c'est pourquoi le combat tactique
@@ -30,7 +24,7 @@ public sealed class TacticalCombatFactory : ITacticalCombatFactory
         CombatRoster roster,
         Room room,
         NodeId nodeId,
-        RunId runId,
+        Run run,
         DateTime createdAtUtc)
     {
         ArgumentNullException.ThrowIfNull(roster);
@@ -52,10 +46,31 @@ public sealed class TacticalCombatFactory : ITacticalCombatFactory
             battlefield,
             allyCells,
             [.. enemies.Select(e => e.Archetype)]);
+        var equipment = allies.ToDictionary(
+            ally => ally.Id.Value,
+            ally => (IReadOnlyCollection<string>)(run.PlayerSnapshot?.Characters
+                .FirstOrDefault(character =>
+                    string.Equals(
+                        character.DefinitionKey,
+                        ally.SourceKey,
+                        StringComparison.OrdinalIgnoreCase))
+                ?.EquippedItemKeys.ToArray() ?? []));
+
+        var selectedNode = room.GetNode(nodeId);
+        var riskTier = selectedNode.EventType switch
+        {
+            NodeEventType.RoomBoss or NodeEventType.FinalBoss => RiskTier.Fatal,
+            NodeEventType.Elite => RiskTier.Dangereux,
+            NodeEventType.Rare => enemies.Length <= 2 ? RiskTier.Tendu : TierFromCount(enemies.Length),
+            _ => TierFromCount(enemies.Length)
+        };
+        var escapePosition = selectedNode.EventType == NodeEventType.Combat
+            ? ResolveEscapePosition(battlefield, allyCells, enemyCells)
+            : null;
 
         return TacticalCombat.Create(
             combatId,
-            runId,
+            run.Id,
             room.Id,
             nodeId,
             battlefield,
@@ -68,6 +83,81 @@ public sealed class TacticalCombatFactory : ITacticalCombatFactory
             roster.DotDurationExtensionTicks,
             roster.DuelDamageAsymmetryEnabled,
             roster.DotMagnitudeBonus,
-            roster.HealingBlocked);
+            roster.HealingBlocked,
+            roster.PostDeathBasicAttackOnlyEnabled,
+            roster.TapisPropreEnabled,
+            roster.ThirdCupHealCorruptionEnabled,
+            escapePosition,
+            riskTier,
+            equipment,
+            roster.FalaiseWindEnabled,
+            roster.PresentationsEnabled,
+            roster.MiroirEnabled,
+            roster.ForgottenSkillKey);
+    }
+
+    private static RiskTier TierFromCount(int enemyCount) => enemyCount switch
+    {
+        <= 2 => RiskTier.Calme,
+        3 => RiskTier.Tendu,
+        4 => RiskTier.Dangereux,
+        _ => RiskTier.Fatal
+    };
+
+    private static GridPosition? ResolveEscapePosition(
+        TacticalBattlefield battlefield,
+        IReadOnlyCollection<GridPosition> allies,
+        IReadOnlyCollection<GridPosition> enemies)
+    {
+        var allyX = allies.Average(cell => cell.X);
+        var allyY = allies.Average(cell => cell.Y);
+        var enemyX = enemies.Average(cell => cell.X);
+        var enemyY = enemies.Average(cell => cell.Y);
+        var dx = enemyX - allyX;
+        var dy = enemyY - allyY;
+
+        var border = Enumerable.Range(0, battlefield.Width)
+            .SelectMany(x => new[]
+            {
+                new GridPosition(x, 0),
+                new GridPosition(x, battlefield.Height - 1)
+            })
+            .Concat(Enumerable.Range(1, Math.Max(0, battlefield.Height - 2))
+                .SelectMany(y => new[]
+                {
+                    new GridPosition(0, y),
+                    new GridPosition(battlefield.Width - 1, y)
+                }))
+            .Distinct()
+            .Where(battlefield.IsWalkable)
+            .ToArray();
+
+        var reachable = allies
+            .SelectMany(origin => TacticalMovement.ReachableCells(
+                battlefield,
+                origin,
+                battlefield.Width * battlefield.Height * 4,
+                new HashSet<GridPosition>()).Keys)
+            .ToHashSet();
+
+        var accessible = border.Where(reachable.Contains).ToArray();
+        if (accessible.Length == 0)
+            return null;
+
+        // Projection vers le bord situé derrière le centre ennemi. Si ce bord est impraticable,
+        // le tri retombe naturellement sur la case de bord accessible la plus proche.
+        var ideal = Math.Abs(dx) >= Math.Abs(dy)
+            ? new GridPosition(dx >= 0 ? battlefield.Width - 1 : 0,
+                Math.Clamp((int)Math.Round(enemyY), 0, battlefield.Height - 1))
+            : new GridPosition(
+                Math.Clamp((int)Math.Round(enemyX), 0, battlefield.Width - 1),
+                dy >= 0 ? battlefield.Height - 1 : 0);
+
+        return accessible
+            .OrderBy(cell => cell.ManhattanDistanceTo(ideal))
+            .ThenByDescending(cell => ((cell.X - allyX) * dx) + ((cell.Y - allyY) * dy))
+            .ThenBy(cell => cell.Y)
+            .ThenBy(cell => cell.X)
+            .First();
     }
 }

@@ -19,18 +19,11 @@ public sealed class CombatantRuntimeStateEntityConfiguration : IEntityTypeConfig
         builder.Property(e => e.CurrentFocus).HasColumnName("current_focus").IsRequired();
         builder.Property(e => e.CurrentMana).HasColumnName("current_mana").IsRequired();
         builder.Property(e => e.MaxMana).HasColumnName("max_mana").HasDefaultValue(int.MaxValue).IsRequired();
-        builder.Property(e => e.CurrentCharge).HasColumnName("current_charge").IsRequired();
-        builder.Property(e => e.AtbGaugeValue).HasColumnName("atb_gauge_value");
-        builder.Property(e => e.ActionRecoveryUntilTick).HasColumnName("action_recovery_until_tick");
-        builder.Property(e => e.AtbFillPerTick).HasColumnName("atb_fill_per_tick");
-        builder.Property(e => e.AtbTempoRoomFactorPerMille).HasColumnName("atb_tempo_room_factor_per_mille");
-        builder.Property(e => e.AtbTempoCombatantFactorPerMille).HasColumnName("atb_tempo_combatant_factor_per_mille");
-        builder.Property(e => e.TempoMomentumPerMille).HasColumnName("tempo_momentum_per_mille").HasDefaultValue(0).IsRequired();
+        builder.Property(e => e.CurrentCharge).HasColumnName("current_charge").HasPrecision(4, 1).IsRequired();
         builder.Property(e => e.ThreatValue).HasColumnName("threat_value").HasDefaultValue(0d).IsRequired();
         builder.Property(e => e.LastAttackerId).HasColumnName("last_attacker_id");
         builder.Property(e => e.TookPowerfulHitSinceLastAction)
             .HasColumnName("took_powerful_hit_since_last_action").HasDefaultValue(false).IsRequired();
-        builder.Property(e => e.UpdatedAtUtc).HasColumnName("updated_at_utc");
         builder.Property(e => e.UpdatedAtUtc).HasColumnName("updated_at_utc");
 
         builder.HasIndex(e => e.CombatantId).IsUnique();

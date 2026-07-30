@@ -4,7 +4,13 @@ public sealed record CatalogSkillDefinitionHttpResponse(
     IReadOnlyCollection<string> Tags,
     IReadOnlyCollection<CatalogSkillEffectSpecHttpResponse>? Effects = null,
     string Category = "Physical",
-    bool BasePowerIsPercentOfMaxVitality = false);
+    bool BasePowerIsPercentOfMaxVitality = false,
+    int TacticalRange = 1,
+    string TacticalAreaShape = "Single",
+    bool RequiresLineOfSight = false,
+    int Cooldown = 0,
+    bool IsUltimate = false,
+    string EmotionalRegister = "Neutral");
 
 public sealed record CatalogSkillEffectSpecHttpResponse(
     string Kind,

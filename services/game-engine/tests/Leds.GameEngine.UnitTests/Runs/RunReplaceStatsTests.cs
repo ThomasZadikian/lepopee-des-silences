@@ -59,7 +59,7 @@ public sealed class RunReplaceStatsTests
         run.ReplaceCharacterStats(
             character.CharacterId,
             maxVitality: 120, attackPower: 15, defense: 8, startingGuard: 3,
-            speed: 12, initiative: 11, recovery: 6, focus: 2, mana: 10, charge: 1,
+            speed: 12, initiative: 11,focus: 2, mana: 10, charge: 1,
             magicAttack: 5, magicDefense: 4);
 
         character.StatBlock.MaxVitality.Should().Be(120);
@@ -68,7 +68,6 @@ public sealed class RunReplaceStatsTests
         character.StatBlock.StartingGuard.Should().Be(3);
         character.StatBlock.Speed.Should().Be(12);
         character.StatBlock.Initiative.Should().Be(11);
-        character.StatBlock.Recovery.Should().Be(6);
         character.StatBlock.Focus.Should().Be(2);
         character.StatBlock.Mana.Should().Be(10);
         character.StatBlock.Charge.Should().Be(1);
@@ -84,7 +83,7 @@ public sealed class RunReplaceStatsTests
         var act = () => run.ReplaceCharacterStats(
             Guid.NewGuid(),
             maxVitality: 120, attackPower: 15, defense: 8, startingGuard: 3,
-            speed: 12, initiative: 11, recovery: 6, focus: 2, mana: 10, charge: 1,
+            speed: 12, initiative: 11,focus: 2, mana: 10, charge: 1,
             magicAttack: 5, magicDefense: 4);
 
         act.Should().Throw<DomainException>().WithMessage("*was not found*");

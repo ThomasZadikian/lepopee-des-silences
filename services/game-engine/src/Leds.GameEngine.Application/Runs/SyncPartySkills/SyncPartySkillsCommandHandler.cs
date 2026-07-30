@@ -55,10 +55,15 @@ public sealed class SyncPartySkillsCommandHandler
         {
             var character = snapshot.Characters.ElementAt(i);
 
-            var equipmentEffects = await _skillMerger.CollectEquippedItemEffectsAsync(
+            var equippedDefinitions = await _skillMerger.ResolveEquippedItemsAsync(
                 character.EquippedItems, cancellationToken);
+            var equipmentEffects = equippedDefinitions
+                .SelectMany(item => item.EquipmentEffects ?? [])
+                .ToArray();
+            var weapon = equippedDefinitions.SingleOrDefault(item =>
+                string.Equals(item.ItemType, "Weapon", StringComparison.OrdinalIgnoreCase));
             var mergedSkills = await _skillMerger.MergeSkillsAsync(
-                character, equipmentEffects, cancellationToken);
+                character, equipmentEffects, cancellationToken, weapon);
 
             if (i == 0)
             {
@@ -73,7 +78,13 @@ public sealed class SyncPartySkillsCommandHandler
                         chargeCost: s.ChargeCost,
                         basePower: s.BasePower,
                         category: s.Category,
-                        basePowerIsPercentOfMaxVitality: s.BasePowerIsPercentOfMaxVitality))
+                        basePowerIsPercentOfMaxVitality: s.BasePowerIsPercentOfMaxVitality,
+                        tacticalRange: s.TacticalRange,
+                        tacticalAreaShape: s.TacticalAreaShape,
+                        requiresLineOfSight: s.RequiresLineOfSight,
+                        cooldown: s.Cooldown,
+                        isUltimate: s.IsUltimate,
+                        emotionalRegister: s.EmotionalRegister))
                     .ToArray());
             }
 
@@ -91,7 +102,15 @@ public sealed class SyncPartySkillsCommandHandler
                         effectType: s.EffectType,
                         manaCost: s.ManaCost,
                         chargeCost: s.ChargeCost,
-                        basePower: s.BasePower))
+                        basePower: s.BasePower,
+                        category: s.Category,
+                        basePowerIsPercentOfMaxVitality: s.BasePowerIsPercentOfMaxVitality,
+                        tacticalRange: s.TacticalRange,
+                        tacticalAreaShape: s.TacticalAreaShape,
+                        requiresLineOfSight: s.RequiresLineOfSight,
+                        cooldown: s.Cooldown,
+                        isUltimate: s.IsUltimate,
+                        emotionalRegister: s.EmotionalRegister))
                     .ToArray());
             }
         }

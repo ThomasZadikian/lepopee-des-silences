@@ -4,6 +4,8 @@ namespace Leds.GameEngine.Domain.Runs;
 
 public sealed class RunItem
 {
+    public const int CanonicalConsumableStackLimit = 20;
+
     private RunItem(
         RunItemId id,
         string definitionKey,
@@ -29,7 +31,13 @@ public sealed class RunItem
         bool isContainer,
         int? containerCapacity,
         bool isLiquid,
-        string? containedLiquidDefinitionKey)
+        string? containedLiquidDefinitionKey,
+        int tacticalRange,
+        string tacticalAreaShape,
+        bool requiresLineOfSight,
+        Guid? groundRoomId,
+        int? groundX,
+        int? groundY)
     {
         Id = id;
         DefinitionKey = definitionKey;
@@ -48,7 +56,7 @@ public sealed class RunItem
         EffectAmount = effectAmount;
         EffectSetKey = effectSetKey;
         EffectSummary = effectSummary;
-        IsUsableInCombat = isUsableInCombat ?? (effectType is RunItemEffectType.Heal or RunItemEffectType.ManaRestore or RunItemEffectType.ChargeRestore or RunItemEffectType.HealAndManaRestorePercent);
+        IsUsableInCombat = isUsableInCombat ?? IsCombatEffect(effectType);
         IsUsableOutsideCombat = isUsableOutsideCombat ?? true;
         SourceRewardOptionId = sourceRewardOptionId;
         CreatedAtUtc = createdAtUtc;
@@ -56,6 +64,14 @@ public sealed class RunItem
         ContainerCapacity = containerCapacity;
         IsLiquid = isLiquid;
         ContainedLiquidDefinitionKey = containedLiquidDefinitionKey;
+        TacticalRange = Math.Max(0, tacticalRange);
+        TacticalAreaShape = string.IsNullOrWhiteSpace(tacticalAreaShape)
+            ? "Single"
+            : tacticalAreaShape.Trim();
+        RequiresLineOfSight = requiresLineOfSight;
+        GroundRoomId = groundRoomId;
+        GroundX = groundX;
+        GroundY = groundY;
     }
 
     public RunItemId Id { get; }
@@ -71,6 +87,9 @@ public sealed class RunItem
     public string? Lifecycle { get; }
     public int Quantity { get; private set; }
     public int? MaxStack { get; }
+    public int EffectiveMaxStack => IsStackableType(Type)
+        ? Math.Clamp(MaxStack ?? CanonicalConsumableStackLimit, 1, CanonicalConsumableStackLimit)
+        : 1;
     public RunItemEffectType EffectType { get; }
     public int EffectAmount { get; }
     public string? EffectSetKey { get; }
@@ -83,6 +102,13 @@ public sealed class RunItem
     public int? ContainerCapacity { get; }
     public bool IsLiquid { get; }
     public string? ContainedLiquidDefinitionKey { get; private set; }
+    public int TacticalRange { get; }
+    public string TacticalAreaShape { get; }
+    public bool RequiresLineOfSight { get; }
+    public Guid? GroundRoomId { get; private set; }
+    public int? GroundX { get; private set; }
+    public int? GroundY { get; private set; }
+    public bool IsOnGround => GroundRoomId.HasValue && GroundX.HasValue && GroundY.HasValue;
 
     public static RunItem Create(
         string definitionKey,
@@ -129,7 +155,13 @@ public sealed class RunItem
             isContainer: isContainer,
             containerCapacity: containerCapacity,
             isLiquid: isLiquid,
-            containedLiquidDefinitionKey: null);
+            containedLiquidDefinitionKey: null,
+            tacticalRange: 1,
+            tacticalAreaShape: "Single",
+            requiresLineOfSight: false,
+            groundRoomId: null,
+            groundX: null,
+            groundY: null);
     }
 
     public static RunItem Rehydrate(
@@ -157,26 +189,42 @@ public sealed class RunItem
         bool isContainer = false,
         int? containerCapacity = null,
         bool isLiquid = false,
-        string? containedLiquidDefinitionKey = null)
+        string? containedLiquidDefinitionKey = null,
+        int tacticalRange = 1,
+        string tacticalAreaShape = "Single",
+        bool requiresLineOfSight = false,
+        Guid? groundRoomId = null,
+        int? groundX = null,
+        int? groundY = null)
     {
         return new RunItem(
             id, definitionKey, displayName, description,
             type, rarity, quantity, effectType, effectAmount, createdAtUtc,
             definitionVersion, narrativeText, category, usageMode, lifecycle,
             maxStack, effectSetKey, effectSummary, isUsableInCombat, isUsableOutsideCombat,
-            sourceRewardOptionId, isContainer, containerCapacity, isLiquid, containedLiquidDefinitionKey);
+            sourceRewardOptionId, isContainer, containerCapacity, isLiquid, containedLiquidDefinitionKey,
+            tacticalRange, tacticalAreaShape, requiresLineOfSight,
+            groundRoomId, groundX, groundY);
     }
 
     public void AddQuantity(int amount)
     {
         if (amount <= 0)
             throw new DomainException("Quantity to add must be positive.");
+
+        if (!CanAddQuantity(amount))
+            throw new DomainException(
+                $"Item '{DefinitionKey}' cannot exceed its stack limit of {EffectiveMaxStack}.");
+
         Quantity += amount;
     }
 
+    public bool CanAddQuantity(int amount)
+        => amount > 0 && Quantity <= EffectiveMaxStack - amount;
+
     public void ConsumeOne()
     {
-        if (Type != RunItemType.Consumable)
+        if (!IsConsumableType(Type))
             throw new DomainException(
                 $"Item '{DefinitionKey}' is not consumable and cannot be used from inventory.");
 
@@ -213,14 +261,60 @@ public sealed class RunItem
       RunItemEffectType.Heal
       or RunItemEffectType.ManaRestore
       or RunItemEffectType.ChargeRestore
-      or RunItemEffectType.HealAndManaRestorePercent;
+      or RunItemEffectType.HealAndManaRestorePercent
+      or RunItemEffectType.HealPercent
+      or RunItemEffectType.ConditionalHealOrPoison
+      or RunItemEffectType.HealPercentAndCleanseDot
+      or RunItemEffectType.HealPercentAndSilence
+      or RunItemEffectType.RevivePercent
+      or RunItemEffectType.HealPercentAndEvasion;
 
-    public string BattleTargetingType => EffectType == RunItemEffectType.Heal
-        ? "SingleAlly"
-        : "Self";
+    public string BattleTargetingType => EffectType == RunItemEffectType.RevivePercent
+        ? "DefeatedAlly"
+        : "SingleAlly";
 
     public bool IsUsable =>
-        Type == RunItemType.Consumable
+        IsConsumableType(Type)
         && Quantity > 0
         && IsBattleItem;
+
+    public void PlaceOnGround(Guid roomId, int x, int y)
+    {
+        if (roomId == Guid.Empty)
+            throw new DomainException("Ground item room is required.");
+        if (x < 0 || y < 0)
+            throw new DomainException("Ground item coordinates cannot be negative.");
+
+        GroundRoomId = roomId;
+        GroundX = x;
+        GroundY = y;
+    }
+
+    public void CollectFromGround()
+    {
+        GroundRoomId = null;
+        GroundX = null;
+        GroundY = null;
+    }
+
+    private static bool IsStackableType(RunItemType type) => type is
+        RunItemType.Consumable
+        or RunItemType.Grimoire
+        or RunItemType.WeatherInstrument
+        or RunItemType.SkillEssence;
+
+    private static bool IsConsumableType(RunItemType type) => IsStackableType(type);
+
+    private static bool IsCombatEffect(RunItemEffectType effectType) => effectType is
+        RunItemEffectType.Heal
+        or RunItemEffectType.Guard
+        or RunItemEffectType.ManaRestore
+        or RunItemEffectType.ChargeRestore
+        or RunItemEffectType.HealAndManaRestorePercent
+        or RunItemEffectType.HealPercent
+        or RunItemEffectType.ConditionalHealOrPoison
+        or RunItemEffectType.HealPercentAndCleanseDot
+        or RunItemEffectType.HealPercentAndSilence
+        or RunItemEffectType.RevivePercent
+        or RunItemEffectType.HealPercentAndEvasion;
 }

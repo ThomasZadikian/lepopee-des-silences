@@ -27,6 +27,7 @@ const isLoading = ref(false);
 const error = ref<string | null>(null);
 const readablePagesByKey = ref<Record<string, string[]>>({});
 const isReaderOpen = ref(false);
+const selectedCharacterId = ref('');
 
 onMounted(async () => {
   try {
@@ -73,7 +74,7 @@ function getEffectLabel(effectType: string, effectAmount: number): string {
     case 'ChargeRestore':     return `+${effectAmount} Charge`;
     case 'NextCombatGuard':   return `+${effectAmount} Garde (prochain combat)`;
     case 'NarrativeFragment': return 'Fragment narratif';
-    case 'HealAndManaRestorePercent': return `+${effectAmount}% PV et PP`;
+    case 'HealAndManaRestorePercent': return `+${effectAmount}% Vitalité et Mana`;
     default:                  return '';
   }
 }
@@ -94,6 +95,7 @@ function getEffectTone(effectType: string): string {
 
 function selectItem(item: RunItemDto) {
   selectedItem.value = item;
+  selectedCharacterId.value ||= runStore.currentRun?.party?.members[0]?.id ?? '';
   error.value = null;
 }
 
@@ -107,6 +109,25 @@ async function useItem() {
     selectedItem.value = null;
   } catch (err) {
     error.value = err instanceof Error ? err.message : "L'utilisation a échoué.";
+  } finally {
+    isLoading.value = false;
+  }
+}
+
+async function readGrimoire() {
+  if (!selectedItem.value || !selectedCharacterId.value) return;
+  isLoading.value = true;
+  error.value = null;
+  try {
+    await inventoryApi.readGrimoire(
+      props.runId,
+      selectedItem.value.id,
+      selectedCharacterId.value,
+    );
+    await runStore.loadRun(props.runId);
+    selectedItem.value = null;
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'La lecture a échoué.';
   } finally {
     isLoading.value = false;
   }
@@ -225,6 +246,26 @@ async function useItem() {
 
         <!-- Actions -->
         <div class="bsd-sheet__actions">
+          <label v-if="selectedItem.type === 'Grimoire'" class="bsd-sheet__target">
+            Lecteur
+            <select v-model="selectedCharacterId">
+              <option
+                v-for="member in runStore.currentRun?.party?.members ?? []"
+                :key="member.id"
+                :value="member.id"
+              >
+                {{ member.displayName }}
+              </option>
+            </select>
+          </label>
+          <button
+            v-if="selectedItem.type === 'Grimoire'"
+            class="bsd-action-btn bsd-action-btn--read"
+            :disabled="isLoading || !selectedCharacterId"
+            @click="readGrimoire"
+          >
+            {{ isLoading ? 'Lecture…' : 'Apprendre' }}
+          </button>
           <button
             v-if="selectedItemPages"
             class="bsd-action-btn bsd-action-btn--read"
@@ -240,7 +281,7 @@ async function useItem() {
           >
             {{ isLoading ? 'Utilisation…' : 'Utiliser' }}
           </button>
-          <p v-if="!selectedItem.isUsable && !selectedItemPages" class="bsd-sheet__unusable">
+          <p v-if="!selectedItem.isUsable && !selectedItemPages && selectedItem.type !== 'Grimoire'" class="bsd-sheet__unusable">
             Cet objet ne peut pas être utilisé actuellement.
           </p>
         </div>

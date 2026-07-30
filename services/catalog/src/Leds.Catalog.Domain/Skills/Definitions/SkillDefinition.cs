@@ -23,7 +23,13 @@ public sealed class SkillDefinition : CatalogContentBase, ISkillDefinition
         int chargeCost,
         int basePower,
         IReadOnlyList<SkillEffectSpec> effects,
-        bool basePowerIsPercentOfMaxVitality = false)
+        bool basePowerIsPercentOfMaxVitality,
+        int tacticalRange,
+        string tacticalAreaShape,
+        bool requiresLineOfSight,
+        int cooldown,
+        bool isUltimate,
+        string emotionalRegister)
         : base(id, key, name, description, version, status)
     {
         SkillType = skillType;
@@ -35,6 +41,12 @@ public sealed class SkillDefinition : CatalogContentBase, ISkillDefinition
         BasePower = basePower;
         Effects = effects;
         BasePowerIsPercentOfMaxVitality = basePowerIsPercentOfMaxVitality;
+        TacticalRange = tacticalRange;
+        TacticalAreaShape = tacticalAreaShape;
+        RequiresLineOfSight = requiresLineOfSight;
+        Cooldown = cooldown;
+        IsUltimate = isUltimate;
+        EmotionalRegister = emotionalRegister;
     }
 
     public string SkillType { get; }
@@ -50,6 +62,12 @@ public sealed class SkillDefinition : CatalogContentBase, ISkillDefinition
     public int ChargeCost { get; }
 
     public int BasePower { get; }
+    public int TacticalRange { get; }
+    public string TacticalAreaShape { get; }
+    public bool RequiresLineOfSight { get; }
+    public int Cooldown { get; }
+    public bool IsUltimate { get; }
+    public string EmotionalRegister { get; }
     public IReadOnlyList<SkillEffectSpec> Effects { get; }
     /// <summary>When true, BasePower is a percentage of the target's MaxVitality (instant
     /// heal), not a flat amount — e.g. Mané's "Favorite de Elise" (+15% PV instantly).</summary>
@@ -69,7 +87,13 @@ public sealed class SkillDefinition : CatalogContentBase, ISkillDefinition
         CatalogContentStatus status = CatalogContentStatus.Draft,
         IReadOnlyList<SkillEffectSpec>? effects = null,
         string category = "Physical",
-        bool basePowerIsPercentOfMaxVitality = false)
+        bool basePowerIsPercentOfMaxVitality = false,
+        int tacticalRange = 1,
+        string tacticalAreaShape = "Single",
+        bool requiresLineOfSight = false,
+        int cooldown = 0,
+        bool isUltimate = false,
+        string emotionalRegister = "Neutral")
     {
         if (string.IsNullOrWhiteSpace(skillType))
         {
@@ -101,6 +125,27 @@ public sealed class SkillDefinition : CatalogContentBase, ISkillDefinition
             throw new DomainException("Skill definition base power cannot be negative.");
         }
 
+        if (tacticalRange < 0)
+        {
+            throw new DomainException("Skill definition tactical range cannot be negative.");
+        }
+
+        var normalizedShape = tacticalAreaShape?.Trim();
+        if (normalizedShape is not ("Single" or "Cross" or "Diamond" or "Map"))
+        {
+            throw new DomainException("Skill definition tactical area shape must be Single, Cross, Diamond or Map.");
+        }
+
+        if (cooldown < 0)
+        {
+            throw new DomainException("Skill definition cooldown cannot be negative.");
+        }
+
+        if (string.IsNullOrWhiteSpace(emotionalRegister))
+        {
+            throw new DomainException("Skill definition emotional register is required.");
+        }
+
         var desc = CatalogContentDescription.From(description);
 
         if (desc.IsEmpty)
@@ -123,6 +168,12 @@ public sealed class SkillDefinition : CatalogContentBase, ISkillDefinition
             chargeCost,
             basePower,
             effects ?? [],
-            basePowerIsPercentOfMaxVitality);
+            basePowerIsPercentOfMaxVitality,
+            tacticalRange,
+            normalizedShape,
+            requiresLineOfSight,
+            cooldown,
+            isUltimate,
+            emotionalRegister.Trim());
     }
 }

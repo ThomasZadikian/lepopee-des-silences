@@ -10,7 +10,12 @@ public interface IPlayerProfileGateway
 
     Task<PlayerProfileView> UnequipSkillAsync(Guid playerId, Guid characterId, string skillKey, CancellationToken cancellationToken);
 
-    Task<PlayerProfileView> EquipItemAsync(Guid playerId, Guid characterId, string itemKey, CancellationToken cancellationToken);
+    Task<PlayerProfileView> EquipItemAsync(
+        Guid playerId,
+        Guid characterId,
+        string itemKey,
+        string slot,
+        CancellationToken cancellationToken);
 
     Task<PlayerProfileView> UnequipItemAsync(Guid playerId, Guid characterId, string itemKey, CancellationToken cancellationToken);
 
@@ -45,7 +50,7 @@ public interface IPlayerProfileGateway
     Task<PlayerProfileView> RecruitCompanionAsync(
         Guid playerId, string companionDefinitionKey, string displayName,
         int maxVitality, int attackPower, int defense, int startingGuard,
-        int speed, int initiative, int recovery, int focus, int mana, int charge,
+        int speed, int initiative, int focus, int mana, int charge,
         IReadOnlyCollection<string> skillKeys, CancellationToken cancellationToken,
         int magicAttack = 0, int magicDefense = 0);
 

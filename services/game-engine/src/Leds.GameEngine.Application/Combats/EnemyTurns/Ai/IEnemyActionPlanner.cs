@@ -9,5 +9,5 @@ namespace Leds.GameEngine.Application.Combats.EnemyTurns.Ai;
 /// </summary>
 public interface IEnemyActionPlanner
 {
-    EnemyActionPlan? Plan(Combat combat, Combatant actor);
+    EnemyActionPlan? Plan(ICombatContext combat, Combatant actor);
 }

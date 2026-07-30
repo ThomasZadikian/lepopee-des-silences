@@ -32,6 +32,7 @@ public sealed class GetCurrentTacticalCombatQueryHandler
                 $"No active tactical combat was found for run '{request.RunId}'.");
 
         return TacticalCombatRuntimeDto.FromDomain(
-            run.ActiveTacticalCombat, CombatItemHelper.GetUsableBattleItems(run));
+            run.ActiveTacticalCombat,
+            CombatItemHelper.GetUsableBattleItems(run, run.ActiveTacticalCombat));
     }
 }

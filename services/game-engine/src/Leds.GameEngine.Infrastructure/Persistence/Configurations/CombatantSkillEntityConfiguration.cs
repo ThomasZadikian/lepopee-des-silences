@@ -26,6 +26,12 @@ public sealed class CombatantSkillEntityConfiguration : IEntityTypeConfiguration
         builder.Property(s => s.Category).HasColumnName("category").HasMaxLength(16).HasDefaultValue("Physical").IsRequired();
         builder.Property(s => s.BasePowerIsPercentOfMaxVitality).HasColumnName("base_power_is_percent_of_max_vitality").HasDefaultValue(false).IsRequired();
         builder.Property(s => s.StatusEffectsJson).HasColumnName("status_effects_json");
+        builder.Property(s => s.TacticalRange).HasColumnName("tactical_range").HasDefaultValue(1);
+        builder.Property(s => s.TacticalAreaShape).HasColumnName("tactical_area_shape").HasMaxLength(16).HasDefaultValue("Single").IsRequired();
+        builder.Property(s => s.RequiresLineOfSight).HasColumnName("requires_line_of_sight").HasDefaultValue(false);
+        builder.Property(s => s.Cooldown).HasColumnName("cooldown").HasDefaultValue(0);
+        builder.Property(s => s.IsUltimate).HasColumnName("is_ultimate").HasDefaultValue(false);
+        builder.Property(s => s.EmotionalRegister).HasColumnName("emotional_register").HasMaxLength(32).HasDefaultValue("Neutral").IsRequired();
 
         builder.HasOne(s => s.Combatant)
             .WithMany(c => c.Skills)

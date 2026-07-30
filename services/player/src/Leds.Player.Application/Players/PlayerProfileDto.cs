@@ -92,7 +92,8 @@ public sealed record PlayerCharacterItemDto(
     string ItemKey,
     DateTimeOffset AcquiredAtUtc,
     string? Source,
-    bool IsEquipped)
+    bool IsEquipped,
+    string Slot)
 {
     public static PlayerCharacterItemDto FromDomain(PlayerCharacterItem item)
     {
@@ -100,7 +101,8 @@ public sealed record PlayerCharacterItemDto(
             item.ItemDefinitionKey,
             item.AcquiredAtUtc,
             item.Source,
-            item.IsEquipped);
+            item.IsEquipped,
+            item.Slot.ToString());
     }
 }
 
@@ -127,7 +129,6 @@ public sealed record PlayerCharacterStatsDto(
     int StartingGuard,
     int Speed,
     int Initiative,
-    int Recovery,
     int Focus,
     int Mana,
     int Charge,
@@ -143,7 +144,6 @@ public sealed record PlayerCharacterStatsDto(
             statBlock.StartingGuard,
             statBlock.Speed,
             statBlock.Initiative,
-            statBlock.Recovery,
             statBlock.Focus,
             statBlock.Mana,
             statBlock.Charge,

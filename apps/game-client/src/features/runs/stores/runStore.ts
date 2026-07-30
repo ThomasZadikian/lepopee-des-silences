@@ -90,6 +90,8 @@ export const useRunStore = defineStore('run', () => {
   const isExitingMidRoom = ref(false);
   const isAbandoningRun = ref(false);
   const runActionError = ref<string | null>(null);
+  const groundPickupNotice = ref<string | null>(null);
+  const pendingGroundPickupIds = ref<string[]>([]);
 
   const isLoading = ref(false);
   const error = ref<string | null>(null);
@@ -259,6 +261,12 @@ export const useRunStore = defineStore('run', () => {
 
       const response = await runApi.moveParty(currentRun.value!.id, x, y);
       currentRun.value = unwrapRunResponse(response);
+      pendingGroundPickupIds.value = response.blockedItemIds;
+      groundPickupNotice.value = response.blockedItemIds.length > 0
+        ? 'Besace pleine : choisissez l’objet à conserver.'
+        : response.collectedItemIds.length > 0
+          ? `${response.collectedItemIds.length} objet${response.collectedItemIds.length > 1 ? 's' : ''} ramassé${response.collectedItemIds.length > 1 ? 's' : ''}.`
+          : null;
 
       // Walking onto a contact node selects it server-side mid-move (an ambush does not wait
       // to be clicked), which leaves the room in NodeSelected exactly like enterGridNode does.
@@ -280,6 +288,32 @@ export const useRunStore = defineStore('run', () => {
 
       await resolveSelectedNodeIfAny();
     });
+  }
+
+  async function swapGroundItem(groundItemId: string, heldItemId: string) {
+    if (!currentRun.value) return;
+
+    await execute(async () => {
+      const response = await runApi.swapGroundItem(
+        currentRun.value!.id,
+        groundItemId,
+        heldItemId,
+      );
+      currentRun.value = unwrapRunResponse(response);
+      pendingGroundPickupIds.value = pendingGroundPickupIds.value
+        .filter((itemId) => itemId !== groundItemId);
+      groundPickupNotice.value = pendingGroundPickupIds.value.length > 0
+        ? 'Besace pleine : choisissez l’objet à conserver.'
+        : 'Objet échangé. L’objet écarté reste au sol.';
+    });
+  }
+
+  function keepInventoryForGroundItem(groundItemId: string) {
+    pendingGroundPickupIds.value = pendingGroundPickupIds.value
+      .filter((itemId) => itemId !== groundItemId);
+    groundPickupNotice.value = pendingGroundPickupIds.value.length > 0
+      ? 'Besace pleine : choisissez l’objet à conserver.'
+      : 'Objet laissé au sol.';
   }
 
   /** Turns a server-side node selection into an actual outcome. Shared by every path that can
@@ -564,6 +598,28 @@ export const useRunStore = defineStore('run', () => {
       currentRun.value = run;
       useTacticalCombatStore().clearCombat();
       lastOutcome.value = null;
+      pendingRewardOffer.value = null;
+    });
+  }
+
+  async function handleCombatEscaped() {
+    if (!currentRun.value) return;
+
+    await execute(async () => {
+      const response = await runApi.getRun(currentRun.value!.id);
+      currentRun.value = unwrapRunResponse(response);
+      useTacticalCombatStore().clearCombat();
+      lastOutcome.value = {
+        nodeId: '',
+        eventTypes: ['Combat'],
+        primaryEventType: 'Combat',
+        title: 'Fuite réussie',
+        description: 'L’équipe évacue la salle. L’événement est résolu sans récompense.',
+        resolutionKind: 'Escaped',
+        riskLevel: 0,
+        rewardProfile: 'none',
+        requiresPlayerChoice: false,
+      };
       pendingRewardOffer.value = null;
     });
   }
@@ -949,6 +1005,7 @@ export const useRunStore = defineStore('run', () => {
     selectReward,
     handleCombatCompleted,
     handleCombatFailed,
+    handleCombatEscaped,
     refreshPendingRewardIfNeeded,
     continueAfterOutcome,
     continueAfterChoiceResult,
@@ -962,6 +1019,8 @@ export const useRunStore = defineStore('run', () => {
     removePalaceLaw,
     wagerNode,
     movePartyTo,
+    swapGroundItem,
+    keepInventoryForGroundItem,
     searchParty,
     enterGridNode,
     challengeBossRemotely,
@@ -975,6 +1034,8 @@ export const useRunStore = defineStore('run', () => {
     isExitingMidRoom,
     isAbandoningRun,
     runActionError,
+    groundPickupNotice,
+    pendingGroundPickupIds,
     loadResumableRun,
     saveAndExitCurrentRun,
     exitMidRoom,

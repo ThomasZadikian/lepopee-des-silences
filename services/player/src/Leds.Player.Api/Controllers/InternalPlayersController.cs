@@ -102,7 +102,7 @@ public sealed class InternalPlayersController : ControllerBase
         var command = new RecruitCompanionCommand(
             playerId, companionKey, request.DisplayName,
             request.MaxVitality, request.AttackPower, request.Defense, request.StartingGuard,
-            request.Speed, request.Initiative, request.Recovery, request.Focus, request.Mana, request.Charge,
+            request.Speed, request.Initiative, request.Focus, request.Mana, request.Charge,
             request.SkillKeys, request.MagicAttack, request.MagicDefense);
         var response = await _sender.Send(command, cancellationToken);
 
@@ -241,7 +241,6 @@ public sealed record RecruitCompanionRequest(
     int StartingGuard,
     int Speed,
     int Initiative,
-    int Recovery,
     int Focus,
     int Mana,
     int Charge,

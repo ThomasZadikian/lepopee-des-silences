@@ -94,7 +94,10 @@ public sealed class SelectRewardCommandHandler
                         sourceRewardOptionId: selectedChoice.Id.Value,
                         isContainer: def.IsContainer,
                         containerCapacity: def.ContainerCapacity,
-                        isLiquid: def.IsLiquid);
+                        isLiquid: def.IsLiquid,
+                        tacticalRange: def.TacticalRange,
+                        tacticalAreaShape: def.TacticalAreaShape,
+                        requiresLineOfSight: def.RequiresLineOfSight);
 
                     run.AppendJournalEntry(RunJournalNarrator.DescribeItemFound(
                         run.CurrentRoom.CatalogBinding?.DisplayName, def.DisplayName));

@@ -148,6 +148,12 @@ const activeRoomClimate = computed(() =>
   ?? runStore.currentRun?.currentRoom?.climate
   ?? null,
 );
+const pendingGroundItem = computed(() => {
+  const itemId = runStore.pendingGroundPickupIds[0];
+  if (!itemId) return null;
+  return runStore.currentRun?.currentRoom?.grid?.groundItems
+    ?.find((item) => item.id === itemId) ?? null;
+});
 
 function getRouteRunId(): string | null {
   const rawRunId = route.params.runId;
@@ -199,6 +205,52 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
               @toggle-laws="uiStore.toggleLaws"
             />
           </div>
+          <Transition name="fade">
+            <p v-if="runStore.groundPickupNotice" class="ground-pickup-notice">
+              {{ runStore.groundPickupNotice }}
+            </p>
+          </Transition>
+
+          <Teleport to="body">
+            <section
+              v-if="pendingGroundItem"
+              class="ground-choice"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="ground-choice-title"
+            >
+              <div class="ground-choice__panel">
+                <p class="es-kicker">Besace pleine</p>
+                <h3 id="ground-choice-title" class="es-h2">
+                  {{ pendingGroundItem.displayName }}
+                </h3>
+                <p class="es-lede es-dim">
+                  Choisissez un objet à déposer sur cette case, ou laissez ce butin au sol.
+                </p>
+                <div class="ground-choice__items">
+                  <button
+                    v-for="item in runStore.currentRun.inventoryItems"
+                    :key="item.id"
+                    type="button"
+                    class="ground-choice__item"
+                    :disabled="runStore.isLoading"
+                    @click="runStore.swapGroundItem(pendingGroundItem.id, item.id)"
+                  >
+                    <span>{{ item.displayName }}</span>
+                    <small>{{ item.quantity > 1 ? `×${item.quantity} · ` : '' }}{{ item.rarity }}</small>
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  class="es-btn"
+                  :disabled="runStore.isLoading"
+                  @click="runStore.keepInventoryForGroundItem(pendingGroundItem.id)"
+                >
+                  Laisser {{ pendingGroundItem.displayName }} au sol
+                </button>
+              </div>
+            </section>
+          </Teleport>
 
           <!-- Bottom ribbon -->
           <RunStatusRibbon
@@ -275,6 +327,7 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
           :room-id="runStore.currentRun.currentRoom?.id"
           @combat-completed="runStore.handleCombatCompleted"
           @combat-failed="runStore.handleCombatFailed"
+          @combat-escaped="runStore.handleCombatEscaped"
         />
       </template>
 
@@ -490,6 +543,74 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
 .phase-map__canvas {
   height: 100%;
   overflow: hidden;
+}
+
+.ground-pickup-notice {
+  position: absolute;
+  z-index: 12;
+  left: 50%;
+  bottom: 88px;
+  transform: translateX(-50%);
+  max-width: min(520px, calc(100% - 32px));
+  margin: 0;
+  padding: 10px 16px;
+  border: 1px solid color-mix(in oklch, var(--gold), transparent 45%);
+  border-radius: 999px;
+  background: oklch(0.16 0.025 270 / 0.94);
+  color: var(--ivory);
+  box-shadow: 0 10px 32px oklch(0 0 0 / 0.38);
+  text-align: center;
+}
+
+.ground-choice {
+  position: fixed;
+  z-index: 9200;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: oklch(0.06 0.018 270 / 0.78);
+  backdrop-filter: blur(5px);
+}
+
+.ground-choice__panel {
+  width: min(620px, 100%);
+  max-height: min(720px, calc(100vh - 48px));
+  overflow: auto;
+  padding: clamp(24px, 5vw, 42px);
+  border: 1px solid color-mix(in oklch, var(--gold), transparent 45%);
+  border-radius: 18px;
+  background: oklch(0.14 0.025 275 / 0.98);
+  box-shadow: 0 26px 80px oklch(0 0 0 / 0.62);
+}
+
+.ground-choice__items {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 10px;
+  margin: 24px 0;
+}
+
+.ground-choice__item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 13px 15px;
+  border: 1px solid oklch(0.55 0.04 270 / 0.55);
+  border-radius: 10px;
+  background: oklch(0.19 0.025 275);
+  color: var(--ivory);
+  text-align: left;
+  cursor: pointer;
+}
+
+.ground-choice__item:hover {
+  border-color: var(--gold);
+  background: oklch(0.23 0.04 275);
+}
+
+.ground-choice__item small {
+  color: var(--gold);
 }
 
 .phase-center {

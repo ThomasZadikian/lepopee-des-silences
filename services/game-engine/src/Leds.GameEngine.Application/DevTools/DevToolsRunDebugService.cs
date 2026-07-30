@@ -8,8 +8,8 @@ using Leds.GameEngine.Application.PalaceLaws;
 using Leds.GameEngine.Application.Rewards.Ports;
 using Leds.GameEngine.Application.Runs.Dtos;
 using Leds.GameEngine.Domain.Combats;
-using Leds.GameEngine.Domain.Combats.Atb;
 using Leds.GameEngine.Domain.Combats.StatusEffects;
+using Leds.GameEngine.Domain.Combats.Tactical;
 using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.PalaceLaws;
 using Leds.GameEngine.Domain.Rooms;
@@ -242,7 +242,6 @@ public sealed class DevToolsRunDebugService : IDevToolsRunDebugService
             startingGuard: kit.StartingGuard,
             speed: kit.Speed,
             initiative: kit.Initiative,
-            recovery: kit.Recovery,
             focus: kit.Focus,
             mana: kit.Mana,
             charge: kit.Charge);
@@ -330,7 +329,7 @@ public sealed class DevToolsRunDebugService : IDevToolsRunDebugService
             await _rewardOfferRepository.AddAsync(run.Id, rewardOffer, cancellationToken);
         }
 
-        return new DevToolsCombatDebugResult("Enemies killed.", CombatRuntimeDto.FromDomain(combat));
+        return new DevToolsCombatDebugResult("Enemies killed.", TacticalCombatRuntimeDto.FromDomain(combat));
     }
 
     public async Task<DevToolsCombatDebugResult> KillCurrentCombatEnemyAsync(
@@ -354,7 +353,7 @@ public sealed class DevToolsRunDebugService : IDevToolsRunDebugService
             await _rewardOfferRepository.AddAsync(run.Id, rewardOffer, cancellationToken);
         }
 
-        return new DevToolsCombatDebugResult("Enemies killed.", CombatRuntimeDto.FromDomain(combat));
+        return new DevToolsCombatDebugResult("Enemies killed.", TacticalCombatRuntimeDto.FromDomain(combat));
     }
 
     public async Task<DevToolsCombatDebugResult> SetCurrentCombatantVitalsAsync(
@@ -381,7 +380,7 @@ public sealed class DevToolsRunDebugService : IDevToolsRunDebugService
         combat.FailIfAllAlliesDefeated();
 
         await _runRepository.UpdateAsync(run, cancellationToken);
-        return new DevToolsCombatDebugResult("Combatant vitals updated.", CombatRuntimeDto.FromDomain(combat));
+        return new DevToolsCombatDebugResult("Combatant vitals updated.", TacticalCombatRuntimeDto.FromDomain(combat));
     }
 
     public async Task<DevToolsCombatDebugResult> ApplyCombatantStatusAsync(
@@ -406,33 +405,35 @@ public sealed class DevToolsRunDebugService : IDevToolsRunDebugService
         combat.FailIfAllAlliesDefeated();
 
         await _runRepository.UpdateAsync(run, cancellationToken);
-        return new DevToolsCombatDebugResult($"Status '{statusKey}' applied.", CombatRuntimeDto.FromDomain(combat));
+        return new DevToolsCombatDebugResult($"Status '{statusKey}' applied.", TacticalCombatRuntimeDto.FromDomain(combat));
     }
 
     // Presets keyed by statusKey so devtools can apply realistic effects by name.
-    // Durations/intervals are in ATB ticks (threshold = 50000; ~200-340 ticks/clock).
+    // Durations/intervals use the combat status clock.
     private static CombatStatusEffect BuildDebugStatus(string statusKey, int stacks, int durationTicks, int currentTick)
     {
         var key = statusKey.Trim().ToLowerInvariant();
         // The devtools UI sends a coarse 1-99 "duration"; scale each unit to ~1000
-        // ATB ticks so effects last a meaningful amount of real time.
+        // duration units so effects last a meaningful number of activations.
         var dur = durationTicks > 0 ? durationTicks * 1000 : 6000;
         var s = Math.Max(1, stacks);
 
         return key switch
         {
-            "poison" => CombatStatusEffect.Create("poison", "Poison", StatusEffectKind.DamageOverTime, currentTick, dur, magnitude: 8, stacks: s, tickInterval: AtbConstants.TicksPerTurn),
+            "poison" => CombatStatusEffect.Create("poison", "Poison", StatusEffectKind.DamageOverTime, currentTick, dur, magnitude: 8, stacks: s, tickInterval: CombatTime.TicksPerTurn),
             "burn" => CombatStatusEffect.Create("burn", "Brûlure", StatusEffectKind.DamageOverTime, currentTick, dur, magnitude: 12, stacks: s, tickInterval: 3000),
-            "regen" => CombatStatusEffect.Create("regen", "Régénération", StatusEffectKind.HealOverTime, currentTick, dur, magnitude: 10, stacks: s, tickInterval: AtbConstants.TicksPerTurn),
+            "regen" => CombatStatusEffect.Create("regen", "Régénération", StatusEffectKind.HealOverTime, currentTick, dur, magnitude: 10, stacks: s, tickInterval: CombatTime.TicksPerTurn),
             "atk-up" => CombatStatusEffect.Create("atk-up", "Attaque +", StatusEffectKind.StatModifier, currentTick, dur, magnitude: 8, stacks: s, stat: CombatStat.AttackPower),
             "atk-down" => CombatStatusEffect.Create("atk-down", "Attaque −", StatusEffectKind.StatModifier, currentTick, dur, magnitude: -8, stacks: s, stat: CombatStat.AttackPower),
             "def-up" => CombatStatusEffect.Create("def-up", "Défense +", StatusEffectKind.StatModifier, currentTick, dur, magnitude: 8, stacks: s, stat: CombatStat.Defense),
             "def-down" => CombatStatusEffect.Create("def-down", "Défense −", StatusEffectKind.StatModifier, currentTick, dur, magnitude: -8, stacks: s, stat: CombatStat.Defense),
             "stun" => CombatStatusEffect.Create("stun", "Étourdi", StatusEffectKind.Stun, currentTick, dur, stacks: s),
             "silence" => CombatStatusEffect.Create("silence", "Silence", StatusEffectKind.Silence, currentTick, dur, stacks: s),
-            "atb-lock" => CombatStatusEffect.Create("atb-lock", "Jauge bloquée", StatusEffectKind.AtbLock, currentTick, dur, stacks: s),
+            "slow" => CombatStatusEffect.Create(
+                "debug.slow", "Ralentissement", StatusEffectKind.StatModifier, currentTick, dur,
+                magnitude: -50, stacks: s, stat: CombatStat.Speed, isMagnitudePercentOfBaseStat: true),
             _ => throw new DomainException(
-                $"Unknown debug status '{statusKey}'. Try: poison, burn, regen, atk-up, atk-down, def-up, def-down, stun, silence, atb-lock.")
+                $"Unknown debug status '{statusKey}'. Try: poison, burn, regen, atk-up, atk-down, def-up, def-down, stun, silence, slow.")
         };
     }
 
@@ -442,9 +443,9 @@ public sealed class DevToolsRunDebugService : IDevToolsRunDebugService
             ?? throw new NotFoundException("Run", runId);
     }
 
-    private static Combat GetActiveCombat(Run run)
+    private static TacticalCombat GetActiveCombat(Run run)
     {
-        return run.ActiveCombat ?? throw new DomainException("Run has no active combat.");
+        return run.ActiveTacticalCombat ?? throw new DomainException("Run has no active tactical combat.");
     }
 
     private static bool IsClosed(Run run)

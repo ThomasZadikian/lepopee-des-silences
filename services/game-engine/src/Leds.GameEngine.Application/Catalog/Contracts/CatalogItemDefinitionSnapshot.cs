@@ -23,7 +23,12 @@ public sealed record CatalogItemDefinitionSnapshot(
     bool IsLiquid = false,
     int EffectValue = 0,
     string? EffectRunType = null,
-    IReadOnlyCollection<string>? ReadablePages = null);
+    IReadOnlyCollection<string>? ReadablePages = null,
+    int TacticalRange = 1,
+    string TacticalAreaShape = "Single",
+    bool RequiresLineOfSight = false,
+    int? BasicAttackPower = null,
+    string? BasicAttackCategory = null);
 
 public sealed record CatalogItemEquipmentEffect(
     string Kind,

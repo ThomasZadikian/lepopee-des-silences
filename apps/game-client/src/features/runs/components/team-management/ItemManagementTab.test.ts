@@ -37,7 +37,7 @@ function baseCharacter(overrides: Partial<PlayerCharacterView> = {}): PlayerChar
     skills: [],
     stats: {
       maxVitality: 100, attackPower: 12, defense: 6, startingGuard: 0,
-      speed: 10, initiative: 10, recovery: 5, focus: 0, mana: 0, charge: 0,
+      speed: 10, initiative: 10,focus: 0, mana: 0, charge: 0,
     },
     maxEquippedItems: 3,
     items: [
@@ -104,6 +104,41 @@ describe('ItemManagementTab', () => {
     const wrapper = mount(ItemManagementTab, { props: { character } });
 
     expect(wrapper.find('.imk-section__title').text()).toContain('1 / 3');
+  });
+
+  it('shows the tactical contract of a weapon', async () => {
+    vi.mocked(itemsApi.listActive).mockResolvedValue({
+      items: [{
+        key: 'item.relic.tome',
+        displayName: 'Bâton des Silences',
+        description: '',
+        category: 'Equipment',
+        itemType: 'Weapon',
+        rarity: 'Rare',
+        effectRunType: null,
+        effectValue: 0,
+        tacticalRange: 4,
+        tacticalAreaShape: 'Single',
+        requiresLineOfSight: true,
+        basicAttackPower: 12,
+        basicAttackCategory: 'Magic',
+      }],
+    });
+    const character = baseCharacter({
+      items: [{
+        itemKey: 'item.relic.tome',
+        acquiredAtUtc: '2026-01-01T00:00:00Z',
+        source: 'run',
+        isEquipped: true,
+        slot: 'Weapon',
+      }],
+    });
+    usePlayerStore().profile = baseProfile(character);
+
+    const wrapper = mount(ItemManagementTab, { props: { character } });
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('12 puissance · portée 4 · magique · ligne de vue');
   });
 
   it('lists every permanently-owned item in the backpack section, regardless of equip state', () => {

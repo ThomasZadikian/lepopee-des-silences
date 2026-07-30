@@ -11,6 +11,7 @@ using Leds.GameEngine.Application.Runs.GetRunById;
 using Leds.GameEngine.Application.Runs.GetRunInventory;
 using Leds.GameEngine.Application.Runs.GetRunReputation;
 using Leds.GameEngine.Application.Runs.MoveParty;
+using Leds.GameEngine.Application.Runs.SwapGroundItem;
 using Leds.GameEngine.Application.Runs.TacticalCombat;
 using Leds.GameEngine.Application.Runs.Search;
 using Leds.GameEngine.Application.Runs.MoveToNextRoom;
@@ -26,6 +27,7 @@ using Leds.GameEngine.Application.Runs.StartRun;
 using Leds.GameEngine.Application.Runs.SyncPartySkills;
 using Leds.GameEngine.Application.Runs.SyncPartyStats;
 using Leds.GameEngine.Application.Runs.UseRunItem;
+using Leds.GameEngine.Application.Runs.UseGrimoire;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -223,6 +225,22 @@ public sealed class RunsController : ControllerBase
         return Ok(response);
     }
 
+    [HttpPost("{runId:guid}/inventory/{itemId:guid}/read-grimoire")]
+    [ProducesResponseType(typeof(UseGrimoireResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<UseGrimoireResponse>> UseGrimoire(
+        Guid runId,
+        Guid itemId,
+        [FromBody] UseGrimoireRequest request,
+        CancellationToken cancellationToken)
+    {
+        var response = await _sender.Send(
+            new UseGrimoireCommand(runId, itemId, request.CharacterId),
+            cancellationToken);
+        return Ok(response);
+    }
+
     [HttpPost("{runId:guid}/inventory/{containerItemId:guid}/pour")]
     [ProducesResponseType(typeof(PourRunItemLiquidResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -338,6 +356,23 @@ public sealed class RunsController : ControllerBase
         return Ok(response);
     }
 
+    [HttpPost("{runId:guid}/ground-items/{groundItemId:guid}/swap")]
+    [ProducesResponseType(typeof(SwapGroundItemResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<SwapGroundItemResponse>> SwapGroundItem(
+        Guid runId,
+        Guid groundItemId,
+        [FromBody] SwapGroundItemRequest request,
+        CancellationToken cancellationToken)
+    {
+        var response = await _sender.Send(
+            new SwapGroundItemCommand(runId, groundItemId, request.HeldItemId),
+            cancellationToken);
+
+        return Ok(response);
+    }
+
     /// <summary>
     /// Searches the ground around the party for hidden nodes, spending movement budget.
     /// No body: the party can only ever search where it already stands.
@@ -403,8 +438,34 @@ public sealed class RunsController : ControllerBase
         CancellationToken cancellationToken)
     {
         var command = new UseTacticalSkillCommand(
-            runId, request.SkillKey, request.TargetX, request.TargetY);
+            runId,
+            request.SkillKey,
+            request.TargetX,
+            request.TargetY,
+            request.ConfirmVitalitySacrifice);
         var response = await _sender.Send(command, cancellationToken);
+
+        return Ok(response);
+    }
+
+    /// <summary>
+    /// Utilise un objet de l'inventaire partagé. L'objet consomme l'action, jamais le déplacement.
+    /// </summary>
+    [HttpPost("{runId:guid}/tactical-combat/item")]
+    [ProducesResponseType(typeof(TacticalCombatResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<TacticalCombatResponse>> UseTacticalItem(
+        Guid runId,
+        [FromBody] UseTacticalItemRequest request,
+        CancellationToken cancellationToken)
+    {
+        var response = await _sender.Send(new UseTacticalItemCommand(
+            runId,
+            request.ItemId,
+            request.TargetX,
+            request.TargetY,
+            request.TargetCombatantId), cancellationToken);
 
         return Ok(response);
     }
@@ -505,10 +566,23 @@ public sealed class RunsController : ControllerBase
 public sealed record StartRunRequest(Guid PlayerId);
 
 public sealed record MovePartyRequest(int TargetX, int TargetY);
+public sealed record SwapGroundItemRequest(Guid HeldItemId);
 
 public sealed record MoveTacticalCombatantRequest(int TargetX, int TargetY);
 
-public sealed record UseTacticalSkillRequest(string SkillKey, int TargetX, int TargetY);
+public sealed record UseTacticalSkillRequest(
+    string SkillKey,
+    int TargetX,
+    int TargetY,
+    bool ConfirmVitalitySacrifice = false);
+
+public sealed record UseTacticalItemRequest(
+    Guid ItemId,
+    int TargetX,
+    int TargetY,
+    Guid? TargetCombatantId = null);
+
+public sealed record UseGrimoireRequest(Guid CharacterId);
 
 public sealed record UseCaliceInfiniRequest(Guid? TargetCombatantId);
 

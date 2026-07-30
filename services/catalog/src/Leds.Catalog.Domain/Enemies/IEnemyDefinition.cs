@@ -20,6 +20,8 @@ public interface IEnemyDefinition : ICatalogContent
 
     int Speed { get; }
 
+    int Movement { get; }
+
     int Focus { get; }
 
     IReadOnlyCollection<string> Tags { get; }

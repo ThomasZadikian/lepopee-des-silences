@@ -5,7 +5,7 @@ using Leds.GameEngine.Domain.Common;
 namespace Leds.GameEngine.Domain.Combats.StatusEffects;
 
 /// <summary>
-/// A durable effect on a combatant that ticks with the ATB clock. Periodic effects
+/// A durable effect on a combatant that advances with holder activations. Periodic effects
 /// (DoT/HoT) apply <see cref="Magnitude"/> × <see cref="Stacks"/> every
 /// <see cref="TickInterval"/> ticks; all effects end at <see cref="ExpiresAtTick"/>.
 /// Stat modifiers and control effects have <see cref="TickInterval"/> = 0.
@@ -26,7 +26,8 @@ public sealed class CombatStatusEffect
         bool isMagnitudePercentOfMax,
         bool isMagnitudePercentOfBaseStat,
         IReadOnlyCollection<CombatantSkill>? grantedSkills,
-        bool isPermanent)
+        bool isPermanent,
+        IReadOnlyCollection<Guid?>? stackSourceIds)
     {
         Key = key;
         DisplayName = displayName;
@@ -34,7 +35,9 @@ public sealed class CombatStatusEffect
         EmotionalType = emotionalType;
         Stat = stat;
         Magnitude = magnitude;
-        Stacks = stacks;
+        _stackSourceIds = stackSourceIds?.Take(5).ToList() ?? [];
+        while (_stackSourceIds.Count < stacks)
+            _stackSourceIds.Add(null);
         TickInterval = tickInterval;
         NextTickAtTick = nextTickAtTick;
         ExpiresAtTick = expiresAtTick;
@@ -44,6 +47,7 @@ public sealed class CombatStatusEffect
         IsPermanent = isPermanent;
     }
     private const int MinTickInterval = 1400;
+    private readonly List<Guid?> _stackSourceIds;
 
     public string Key { get; }
     public string DisplayName { get; }
@@ -51,7 +55,9 @@ public sealed class CombatStatusEffect
     public EmotionalType? EmotionalType { get; }
     public CombatStat Stat { get; }
     public int Magnitude { get; }
-    public int Stacks { get; private set; }
+    public int Stacks => _stackSourceIds.Count;
+    public IReadOnlyList<Guid?> StackSourceIds => _stackSourceIds.AsReadOnly();
+    public Guid? FirstStackSourceId => _stackSourceIds.FirstOrDefault();
     public int TickInterval { get; }
     public int NextTickAtTick { get; private set; }
     public int ExpiresAtTick { get; private set; }
@@ -84,7 +90,7 @@ public sealed class CombatStatusEffect
         && (Kind is StatusEffectKind.DamageOverTime or StatusEffectKind.HealOverTime or StatusEffectKind.GuardOverTime);
 
     /// <summary>
-    /// Creates a new effect anchored to the current ATB tick. <paramref name="durationTicks"/>
+    /// Creates a new effect anchored to the holder's status clock. <paramref name="durationTicks"/>
     /// is how long it lasts; <paramref name="tickInterval"/> = 0 for non-periodic effects.
     /// </summary>
     public static CombatStatusEffect Create(
@@ -101,14 +107,15 @@ public sealed class CombatStatusEffect
         bool isMagnitudePercentOfMax = false,
         bool isMagnitudePercentOfBaseStat = false,
         IReadOnlyCollection<CombatantSkill>? grantedSkills = null,
-        bool isPermanent = false)
+        bool isPermanent = false,
+        Guid? sourceCombatantId = null)
     {
         if (string.IsNullOrWhiteSpace(key))
             throw new DomainException("Status effect key is required.");
         if (!isPermanent && durationTicks <= 0)
             throw new DomainException("Status effect duration must be positive.");
-        if (stacks < 1)
-            throw new DomainException("Status effect must have at least one stack.");
+        if (stacks is < 1 or > 5)
+            throw new DomainException("Status effect stacks must be between one and five.");
 
         // Floor so nothing ticks faster than ~once every 2s, whatever the data says.
         var interval = tickInterval <= 0 ? 0 : Math.Max(tickInterval, MinTickInterval);
@@ -129,7 +136,8 @@ public sealed class CombatStatusEffect
             isMagnitudePercentOfMax,
             isMagnitudePercentOfBaseStat,
             grantedSkills,
-            isPermanent);
+            isPermanent,
+            Enumerable.Repeat(sourceCombatantId, stacks).ToArray());
     }
 
     public static CombatStatusEffect Rehydrate(
@@ -138,8 +146,9 @@ public sealed class CombatStatusEffect
         bool isMagnitudePercentOfMax = false,
         bool isMagnitudePercentOfBaseStat = false,
         IReadOnlyCollection<CombatantSkill>? grantedSkills = null,
-        bool isPermanent = false)
-        => new(key, displayName, kind, emotionalType, stat, magnitude, stacks, tickInterval, nextTickAtTick, expiresAtTick, isMagnitudePercentOfMax, isMagnitudePercentOfBaseStat, grantedSkills, isPermanent);
+        bool isPermanent = false,
+        IReadOnlyCollection<Guid?>? stackSourceIds = null)
+        => new(key, displayName, kind, emotionalType, stat, magnitude, stacks, tickInterval, nextTickAtTick, expiresAtTick, isMagnitudePercentOfMax, isMagnitudePercentOfBaseStat, grantedSkills, isPermanent, stackSourceIds);
 
     public bool IsExpired(int currentTick) => !IsPermanent && currentTick >= ExpiresAtTick;
 
@@ -150,9 +159,36 @@ public sealed class CombatStatusEffect
     /// duration is <see cref="ExtendDuration"/>, an explicit skill/effect mechanic
     /// (e.g. l'Écrivain's "Écriture continuelle").
     /// </summary>
-    public void Reinforce(int additionalStacks, int maxStacks = 99)
+    public void Reinforce(CombatStatusEffect reinforcement, int maxStacks = 5)
     {
-        Stacks = System.Math.Clamp(Stacks + System.Math.Max(0, additionalStacks), 1, maxStacks);
+        ArgumentNullException.ThrowIfNull(reinforcement);
+        var cappedMaximum = Math.Min(5, Math.Max(1, maxStacks));
+        foreach (var sourceId in reinforcement.StackSourceIds)
+        {
+            if (_stackSourceIds.Count >= cappedMaximum)
+                break;
+            _stackSourceIds.Add(sourceId);
+        }
+    }
+
+    public void Reinforce(int additionalStacks, int maxStacks = 5)
+    {
+        var cappedMaximum = Math.Min(5, Math.Max(1, maxStacks));
+        for (var index = 0; index < Math.Max(0, additionalStacks); index++)
+        {
+            if (_stackSourceIds.Count >= cappedMaximum)
+                break;
+            _stackSourceIds.Add(null);
+        }
+    }
+
+    public bool RemoveOneStack()
+    {
+        if (Stacks <= 1)
+            return true;
+
+        _stackSourceIds.RemoveAt(_stackSourceIds.Count - 1);
+        return false;
     }
 
     /// <summary>

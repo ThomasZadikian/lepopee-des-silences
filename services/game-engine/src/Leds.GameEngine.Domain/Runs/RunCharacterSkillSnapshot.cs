@@ -13,7 +13,15 @@ public sealed class RunCharacterSkillSnapshot
         string effectType,
         int manaCost,
         int chargeCost,
-        int basePower)
+        int basePower,
+        string category,
+        bool basePowerIsPercentOfMaxVitality,
+        int tacticalRange,
+        string tacticalAreaShape,
+        bool requiresLineOfSight,
+        int cooldown,
+        bool isUltimate,
+        string emotionalRegister)
     {
         Id = id;
         SkillDefinitionKey = skillDefinitionKey;
@@ -24,6 +32,14 @@ public sealed class RunCharacterSkillSnapshot
         ManaCost = manaCost;
         ChargeCost = chargeCost;
         BasePower = basePower;
+        Category = category;
+        BasePowerIsPercentOfMaxVitality = basePowerIsPercentOfMaxVitality;
+        TacticalRange = tacticalRange;
+        TacticalAreaShape = tacticalAreaShape;
+        RequiresLineOfSight = requiresLineOfSight;
+        Cooldown = cooldown;
+        IsUltimate = isUltimate;
+        EmotionalRegister = emotionalRegister;
     }
 
     public Guid Id { get; }
@@ -35,6 +51,14 @@ public sealed class RunCharacterSkillSnapshot
     public int ManaCost { get; }
     public int ChargeCost { get; }
     public int BasePower { get; }
+    public string Category { get; }
+    public bool BasePowerIsPercentOfMaxVitality { get; }
+    public int TacticalRange { get; }
+    public string TacticalAreaShape { get; }
+    public bool RequiresLineOfSight { get; }
+    public int Cooldown { get; }
+    public bool IsUltimate { get; }
+    public string EmotionalRegister { get; }
 
     public static RunCharacterSkillSnapshot Create(
         string skillDefinitionKey,
@@ -44,7 +68,15 @@ public sealed class RunCharacterSkillSnapshot
         string effectType,
         int manaCost = 0,
         int chargeCost = 0,
-        int basePower = 0)
+        int basePower = 0,
+        string category = "Physical",
+        bool basePowerIsPercentOfMaxVitality = false,
+        int tacticalRange = 1,
+        string tacticalAreaShape = "Single",
+        bool requiresLineOfSight = false,
+        int cooldown = 0,
+        bool isUltimate = false,
+        string emotionalRegister = "Neutral")
     {
         if (string.IsNullOrWhiteSpace(skillDefinitionKey))
             throw new DomainException("Skill definition key is required.");
@@ -61,7 +93,15 @@ public sealed class RunCharacterSkillSnapshot
             effectType,
             manaCost,
             chargeCost,
-            basePower);
+            basePower,
+            category,
+            basePowerIsPercentOfMaxVitality,
+            tacticalRange,
+            tacticalAreaShape,
+            requiresLineOfSight,
+            cooldown,
+            isUltimate,
+            emotionalRegister);
     }
 
     public static RunCharacterSkillSnapshot Rehydrate(
@@ -73,7 +113,15 @@ public sealed class RunCharacterSkillSnapshot
         string effectType,
         int manaCost = 0,
         int chargeCost = 0,
-        int basePower = 0)
+        int basePower = 0,
+        string category = "Physical",
+        bool basePowerIsPercentOfMaxVitality = false,
+        int tacticalRange = 1,
+        string tacticalAreaShape = "Single",
+        bool requiresLineOfSight = false,
+        int cooldown = 0,
+        bool isUltimate = false,
+        string emotionalRegister = "Neutral")
     {
         return new RunCharacterSkillSnapshot(
             id,
@@ -84,6 +132,14 @@ public sealed class RunCharacterSkillSnapshot
             effectType,
             manaCost,
             chargeCost,
-            basePower);
+            basePower,
+            category,
+            basePowerIsPercentOfMaxVitality,
+            tacticalRange,
+            tacticalAreaShape,
+            requiresLineOfSight,
+            cooldown,
+            isUltimate,
+            emotionalRegister);
     }
 }

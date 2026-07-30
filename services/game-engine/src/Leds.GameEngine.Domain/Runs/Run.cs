@@ -23,9 +23,8 @@ public sealed class Run
     /// compagnons.
     /// </summary>
     /// <remarks>
-    /// Vaut pour les deux systèmes de combat (cf. SFD v2, §5) : le tactique en a besoin pour que
-    /// le déploiement tienne sur une grille, et l'ATB s'y aligne pour que la composition d'équipe
-    /// ne dépende pas du mode choisi. Le roster permanent du joueur, lui, n'est pas plafonné :
+    /// Le tactique en a besoin pour que le déploiement tienne sur une grille. Le roster permanent
+    /// du joueur, lui, n'est pas plafonné :
     /// il peut recruter autant de compagnons qu'il veut, seuls les quatre premiers partent.
     /// </remarks>
     public const int MaxPartySize = 4;
@@ -49,7 +48,6 @@ public sealed class Run
     private readonly List<RunItem> _runItems = [];
     private readonly List<RunModifier> _runModifiers = [];
     private readonly List<Guid> _suspendedSevereLawModifierIds = [];
-    private Combat? _activeCombat;
     private Combats.Tactical.TacticalCombat? _activeTacticalCombat;
     private ActiveCurse? _activeCurse;
     private RunSnapshot? _roomSnapshot;
@@ -176,7 +174,14 @@ public sealed class Run
     public bool ShouldForceCompliantPromulgation =>
         _activePalaceLaws.Count(law => law.Polarity == PalaceLawPolarity.Severe) >= SoupapeSevereThreshold;
 
-    public IReadOnlyCollection<RunItem> RunItems => _runItems.AsReadOnly();
+    public IReadOnlyCollection<RunItem> RunItems =>
+        _runItems.Where(item => !item.IsOnGround).ToArray();
+
+    public IReadOnlyCollection<RunItem> GroundItems =>
+        _runItems.Where(item => item.IsOnGround).ToArray();
+
+    /// <summary>Persistence-only view containing inventory and room-local ground loot.</summary>
+    public IReadOnlyCollection<RunItem> PersistedRunItems => _runItems.AsReadOnly();
 
     public int RunItemCapacity { get; }
 
@@ -295,13 +300,7 @@ public sealed class Run
     public CombatId? ActiveCombatId { get; private set; }
 
     public bool HasActiveCombat =>
-        ActiveCombatId.HasValue || _activeCombat is not null || _activeTacticalCombat is not null;
-
-    /// <summary>
-    /// The active combat runtime domain object, if any.
-    /// Set via <see cref="StartCombat"/>.
-    /// </summary>
-    public Combat? ActiveCombat => _activeCombat;
+        ActiveCombatId.HasValue || _activeTacticalCombat is not null;
 
     /// <summary>
     /// Le combat tactique en cours, le cas échéant. Renseigné par <see cref="StartTacticalCombat"/>.
@@ -502,6 +501,72 @@ public sealed class Run
         character.ReplaceSkills(skills);
     }
 
+    private static readonly HashSet<string> GrimoireTemporarySkillKeys =
+    [
+        "skill.temp.deluge-mineur",
+        "skill.temp.ecriture-appliquee",
+        "skill.temp.souffle-emprunte",
+        "canon.skill.priere-aspiration",
+        "skill.temp.construction-ephemere"
+    ];
+
+    /// <summary>
+    /// Consumes a grimoire outside combat and replaces the character's dedicated
+    /// third temporary slot. The two ordinary additional slots are untouched.
+    /// </summary>
+    public bool GrantGrimoireSkill(
+        RunItemId itemId,
+        Guid characterId,
+        PlayerRuntimeSkill runtimeSkill,
+        RunCharacterSkillSnapshot snapshotSkill)
+    {
+        if (HasActiveCombat)
+            throw new DomainException("A grimoire can only be read outside combat.");
+
+        var item = _runItems.FirstOrDefault(candidate => candidate.Id == itemId)
+            ?? throw new DomainException($"Item '{itemId.Value}' not found in run inventory.");
+        if (item.Type != RunItemType.Grimoire
+            || item.EffectType != RunItemEffectType.GrantTemporarySkill)
+        {
+            throw new DomainException($"Item '{item.DefinitionKey}' is not a usable grimoire.");
+        }
+
+        var character = PlayerSnapshot?.Characters.FirstOrDefault(c => c.CharacterId == characterId)
+            ?? throw new DomainException($"Character '{characterId}' was not found in this run.");
+
+        var characterSkills = character.Skills
+            .Where(skill => !GrimoireTemporarySkillKeys.Contains(skill.SkillDefinitionKey))
+            .Append(snapshotSkill)
+            .ToArray();
+        character.ReplaceSkills(characterSkills);
+
+        if (PlayerSnapshot!.Characters.First().CharacterId == characterId)
+        {
+            var playerSkills = PlayerState.Skills
+                .Where(skill => !GrimoireTemporarySkillKeys.Contains(skill.Key))
+                .Append(runtimeSkill)
+                .ToArray();
+            PlayerState.ReplaceSkills(playerSkills);
+        }
+
+        item.ConsumeOne();
+        return item.Quantity == 0;
+    }
+
+    public bool ConsumeGrimoire(RunItemId itemId)
+    {
+        if (HasActiveCombat)
+            throw new DomainException("A grimoire can only be read outside combat.");
+
+        var item = _runItems.FirstOrDefault(candidate => candidate.Id == itemId)
+            ?? throw new DomainException($"Item '{itemId.Value}' not found in run inventory.");
+        if (item.Type != RunItemType.Grimoire)
+            throw new DomainException($"Item '{item.DefinitionKey}' is not a grimoire.");
+
+        item.ConsumeOne();
+        return item.Quantity == 0;
+    }
+
     public int MaxHp { get; private set; }
 
     public int CurrentHp { get; private set; }
@@ -564,7 +629,6 @@ public sealed class Run
         int startingGuard,
         int speed,
         int initiative,
-        int recovery,
         int focus,
         int mana,
         int charge,
@@ -576,7 +640,7 @@ public sealed class Run
 
         character.StatBlock.ReplaceStats(
             maxVitality, attackPower, defense, startingGuard, speed,
-            initiative, recovery, focus, mana, charge, magicAttack, magicDefense);
+            initiative, focus, mana, charge, magicAttack, magicDefense);
     }
 
     /// <summary>
@@ -872,11 +936,35 @@ public sealed class Run
     /// Moves the party toward the given cell within the current grid room. Delegates entirely
     /// to <see cref="Room.MoveParty"/>.
     /// </summary>
-    public void MoveParty(int targetX, int targetY)
+    public sealed record GroundPickupResult(
+        IReadOnlyCollection<RunItemId> CollectedItemIds,
+        IReadOnlyCollection<RunItemId> BlockedItemIds);
+
+    public GroundPickupResult MoveParty(int targetX, int targetY)
     {
         EnsureActive();
 
-        CurrentRoom.MoveParty(targetX, targetY);
+        var move = CurrentRoom.MoveParty(targetX, targetY);
+        var collected = new List<RunItemId>();
+        var blocked = new List<RunItemId>();
+
+        foreach (var cell in move.TraversedCells)
+        {
+            foreach (var item in _runItems
+                         .Where(candidate =>
+                             candidate.GroundRoomId == CurrentRoom.Id.Value
+                             && candidate.GroundX == cell.X
+                             && candidate.GroundY == cell.Y)
+                         .ToArray())
+            {
+                if (TryCollectGroundItem(item))
+                    collected.Add(item.Id);
+                else
+                    blocked.Add(item.Id);
+            }
+        }
+
+        return new GroundPickupResult(collected, blocked);
     }
 
     /// <summary>
@@ -991,6 +1079,8 @@ public sealed class Run
         }
 
         var previousFloorIndex = FloorIndex;
+        _runItems.RemoveAll(item =>
+            item.GroundRoomId == CurrentRoom.Id.Value);
 
         // "Loi du Répit" (law.repit): laws suspended for the room now being left resume —
         // done before the floor-end sweep below so a resumed UntilFloorEnds modifier can
@@ -1005,6 +1095,8 @@ public sealed class Run
         Status = nextRoom.RoomType == RoomType.Final
             ? RunStatus.BossReached
             : RunStatus.Active;
+
+        ApplyForcedWeatherPlanToCurrentRoom();
 
         return FloorIndex != previousFloorIndex
             ? ConsumeFloorEndModifiers()
@@ -1111,69 +1203,8 @@ public sealed class Run
         }
     }
 
-    public void SetActiveCombat(CombatId combatId)
-    {
-        if (combatId.Value == Guid.Empty)
-        {
-            throw new DomainException("Combat id is required.");
-        }
-
-        if (Status != RunStatus.Active)
-        {
-            throw new DomainException("Run must be active to set an active combat.");
-        }
-
-        if (HasActiveCombat)
-        {
-            throw new DomainException("Run already has an active combat.");
-        }
-
-        ActiveCombatId = combatId;
-    }
-
-    public void StartCombat(Combat combat)
-    {
-        ArgumentNullException.ThrowIfNull(combat);
-
-        if (combat.Id.Value == Guid.Empty)
-        {
-            throw new DomainException("Combat id is required.");
-        }
-
-        if (combat.RunId != Id)
-        {
-            throw new DomainException("Combat does not belong to this run.");
-        }
-
-        if (combat.Status != CombatStatus.Active)
-        {
-            throw new DomainException("Combat must be active to be started.");
-        }
-
-        if (Status != RunStatus.Active)
-        {
-            throw new DomainException("Run must be active to start a combat.");
-        }
-
-        if (_activeCombat is not null)
-        {
-            throw new DomainException("Run already has an active combat.");
-        }
-
-        if (ActiveCombatId.HasValue && ActiveCombatId.Value != combat.Id)
-        {
-            throw new DomainException("Combat does not match the active run combat.");
-        }
-
-        ActiveCombatId = combat.Id;
-        _activeCombat = combat;
-    }
-
     /// <summary>
-    /// Attache un combat tactique à la run. Jumeau exact de <see cref="StartCombat"/> : mêmes
-    /// gardes, même invariant « un seul combat à la fois ». Les deux systèmes se partagent
-    /// <see cref="ActiveCombatId"/> précisément pour que cet invariant reste unique — une run ne
-    /// peut jamais porter un combat ATB et un combat tactique en même temps.
+    /// Attache le combat tactique à la run en garantissant l'unicité du combat actif.
     /// </summary>
     public void StartTacticalCombat(Combats.Tactical.TacticalCombat combat)
     {
@@ -1199,7 +1230,7 @@ public sealed class Run
             throw new DomainException("Run must be active to start a combat.");
         }
 
-        if (_activeTacticalCombat is not null || _activeCombat is not null)
+        if (_activeTacticalCombat is not null)
         {
             throw new DomainException("Run already has an active combat.");
         }
@@ -1216,8 +1247,7 @@ public sealed class Run
     /// <summary>
     /// Le combat tactique en cours, ou une erreur explicite s'il n'y en a pas. Les commandes
     /// tactiques passent toutes par là plutôt que de déréférencer
-    /// <see cref="ActiveTacticalCombat"/> : une run en combat ATB doit refuser une action
-    /// tactique avec un message qui dit pourquoi, pas avec une exception de référence nulle.
+    /// <see cref="ActiveTacticalCombat"/>.
     /// </summary>
     public Combats.Tactical.TacticalCombat RequireActiveTacticalCombat()
     {
@@ -1242,20 +1272,17 @@ public sealed class Run
         }
 
         ActiveCombatId = null;
-        _activeCombat = null;
         _activeTacticalCombat = null;
 
         ResolveCurrentEvent();
     }
 
     /// <summary>
-    /// Clôt le combat en cours sur une victoire, quel que soit le système qui l'a mené : ce qui
-    /// suit — récompense, journal, sortie de salle — ne dépend pas de la façon dont on s'est
-    /// battu.
+    /// Clôt le combat tactique en cours sur une victoire.
     /// </summary>
     public void CompleteActiveCombat()
     {
-        var status = _activeCombat?.Status ?? _activeTacticalCombat?.Status;
+        var status = _activeTacticalCombat?.Status;
 
         if (status is null)
         {
@@ -1270,7 +1297,6 @@ public sealed class Run
         OnCombatWon();
 
         ActiveCombatId = null;
-        _activeCombat = null;
         _activeTacticalCombat = null;
 
         ResolveCurrentEvent();
@@ -1279,7 +1305,7 @@ public sealed class Run
     /// <inheritdoc cref="CompleteActiveCombat"/>
     public void FailActiveCombat(DateTimeOffset endedAt)
     {
-        var status = _activeCombat?.Status ?? _activeTacticalCombat?.Status;
+        var status = _activeTacticalCombat?.Status;
 
         if (status is null)
         {
@@ -1292,10 +1318,24 @@ public sealed class Run
         }
 
         ActiveCombatId = null;
-        _activeCombat = null;
         _activeTacticalCombat = null;
         Status = RunStatus.Failed;
         EndedAt = endedAt;
+    }
+
+    /// <summary>
+    /// Résout un combat normal par la sortie tactique. L'événement est consommé, sans victoire,
+    /// sans récompense et sans déclencher les effets de fin de combat gagnée.
+    /// </summary>
+    public void EscapeActiveCombat()
+    {
+        if (_activeTacticalCombat?.Status != CombatStatus.Escaped)
+            throw new DomainException("Active tactical combat must be escaped before resolving a flee.");
+
+        ActiveCombatId = null;
+        _activeTacticalCombat = null;
+        PendingRewardOfferId = null;
+        ResolveCurrentEvent();
     }
 
     public void SetPendingRewardOffer(RewardOfferId rewardOfferId)
@@ -1496,9 +1536,12 @@ public sealed class Run
     {
         ArgumentNullException.ThrowIfNull(item);
 
+        item.CollectFromGround();
         var existing = _runItems.FirstOrDefault(i =>
             i.DefinitionKey == item.DefinitionKey &&
-            i.Type == RunItemType.Consumable);
+            i.Type == item.Type &&
+            !i.IsOnGround &&
+            i.EffectiveMaxStack > 1);
 
         if (existing is not null)
         {
@@ -1521,23 +1564,110 @@ public sealed class Run
     {
         ArgumentNullException.ThrowIfNull(item);
 
+        item.CollectFromGround();
         var existing = _runItems.FirstOrDefault(i =>
             i.DefinitionKey == item.DefinitionKey &&
-            i.Type == RunItemType.Consumable);
+            i.Type == item.Type &&
+            !i.IsOnGround &&
+            i.EffectiveMaxStack > 1);
 
         if (existing is not null)
         {
+            if (!existing.CanAddQuantity(item.Quantity))
+            {
+                return false;
+            }
+
             existing.AddQuantity(item.Quantity);
             return true;
         }
 
-        if (_runItems.Count >= RunItemCapacity)
+        if (RunItems.Count >= RunItemCapacity)
         {
             return false;
         }
 
         _runItems.Add(item);
         return true;
+    }
+
+    private bool TryCollectGroundItem(RunItem groundItem)
+    {
+        var stack = _runItems.FirstOrDefault(item =>
+            !item.IsOnGround
+            && item.DefinitionKey == groundItem.DefinitionKey
+            && item.Type == groundItem.Type
+            && item.EffectiveMaxStack > 1);
+
+        if (stack is not null)
+        {
+            if (!stack.CanAddQuantity(groundItem.Quantity))
+                return false;
+
+            stack.AddQuantity(groundItem.Quantity);
+            _runItems.Remove(groundItem);
+            ApplyItemGrantModifiers(
+                groundItem.EffectType,
+                groundItem.EffectAmount,
+                groundItem.DefinitionKey);
+            return true;
+        }
+
+        if (RunItems.Count >= RunItemCapacity)
+            return false;
+
+        groundItem.CollectFromGround();
+        ApplyItemGrantModifiers(
+            groundItem.EffectType,
+            groundItem.EffectAmount,
+            groundItem.DefinitionKey);
+        return true;
+    }
+
+    /// <summary>
+    /// Resolves the explicit inventory choice made after a ground pickup was blocked.
+    /// The selected held item is left on the exact loot cell and the ground item takes
+    /// its inventory slot, so the operation never deletes loot or exceeds capacity.
+    /// </summary>
+    public void SwapGroundItemIntoInventory(RunItemId groundItemId, RunItemId heldItemId)
+    {
+        EnsureActive();
+
+        if (groundItemId == heldItemId)
+            throw new DomainException("Ground and held items must be different.");
+
+        var groundItem = _runItems.FirstOrDefault(item => item.Id == groundItemId)
+            ?? throw new DomainException("Ground item was not found.");
+        var heldItem = _runItems.FirstOrDefault(item => item.Id == heldItemId)
+            ?? throw new DomainException("Held item was not found.");
+
+        if (!groundItem.IsOnGround || groundItem.GroundRoomId != CurrentRoom.Id.Value)
+            throw new DomainException("The selected ground item is not in the current room.");
+        if (heldItem.IsOnGround)
+            throw new DomainException("The selected replacement is not held in the inventory.");
+
+        var groundX = groundItem.GroundX!.Value;
+        var groundY = groundItem.GroundY!.Value;
+
+        ConsumeItemGrantModifiers(heldItem.DefinitionKey);
+        heldItem.PlaceOnGround(CurrentRoom.Id.Value, groundX, groundY);
+        groundItem.CollectFromGround();
+        ApplyItemGrantModifiers(
+            groundItem.EffectType,
+            groundItem.EffectAmount,
+            groundItem.DefinitionKey);
+    }
+
+    private void ConsumeItemGrantModifiers(string definitionKey)
+    {
+        var now = DateTime.UtcNow;
+        foreach (var modifier in _runModifiers.Where(modifier =>
+                     !modifier.IsConsumed
+                     && string.Equals(modifier.SourceType, "RunItem", StringComparison.Ordinal)
+                     && string.Equals(modifier.SourceKey, definitionKey, StringComparison.Ordinal)))
+        {
+            modifier.Consume(now);
+        }
     }
 
     public void EnrichLastAddedItem(
@@ -1554,6 +1684,41 @@ public sealed class Run
         bool isContainer = false,
         int? containerCapacity = null,
         bool isLiquid = false)
+        => EnrichLastAddedItem(
+            definitionVersion,
+            narrativeText,
+            category,
+            usageMode,
+            lifecycle,
+            maxStack,
+            effectSetKey,
+            isUsableInCombat,
+            isUsableOutsideCombat,
+            sourceRewardOptionId,
+            isContainer,
+            containerCapacity,
+            isLiquid,
+            tacticalRange: 1,
+            tacticalAreaShape: "Single",
+            requiresLineOfSight: false);
+
+    public void EnrichLastAddedItem(
+        string definitionVersion,
+        string? narrativeText,
+        string category,
+        string usageMode,
+        string lifecycle,
+        int maxStack,
+        string? effectSetKey,
+        bool isUsableInCombat,
+        bool isUsableOutsideCombat,
+        Guid sourceRewardOptionId,
+        bool isContainer,
+        int? containerCapacity,
+        bool isLiquid,
+        int tacticalRange,
+        string tacticalAreaShape,
+        bool requiresLineOfSight)
     {
         var lastItem = _runItems.LastOrDefault();
         if (lastItem is null) return;
@@ -1583,7 +1748,13 @@ public sealed class Run
             isContainer: isContainer,
             containerCapacity: containerCapacity,
             isLiquid: isLiquid,
-            containedLiquidDefinitionKey: lastItem.ContainedLiquidDefinitionKey);
+            containedLiquidDefinitionKey: lastItem.ContainedLiquidDefinitionKey,
+            tacticalRange: tacticalRange,
+            tacticalAreaShape: tacticalAreaShape,
+            requiresLineOfSight: requiresLineOfSight,
+            groundRoomId: lastItem.GroundRoomId,
+            groundX: lastItem.GroundX,
+            groundY: lastItem.GroundY);
 
         var index = _runItems.FindIndex(i => i.Id == lastItem.Id);
         if (index >= 0)
@@ -1640,6 +1811,100 @@ public sealed class Run
             throw new DomainException("Cannot add a modifier to a closed run.");
 
         _runModifiers.Add(modifier);
+    }
+
+    public void ForceWeather(int climateValue, int roomCount, string sourceKey)
+    {
+        if (HasActiveCombat)
+            throw new DomainException("Weather cannot be changed during combat.");
+        if (climateValue is < 5 or > 9)
+            throw new DomainException("Unsupported canonical weather.");
+        if (roomCount <= 0)
+            throw new DomainException("Forced weather duration must be positive.");
+
+        ConsumeActiveModifiers(RunModifierType.ForcedWeatherPlan);
+        AddRunModifier(RunModifier.Create(
+            RunModifierType.ForcedWeatherPlan,
+            climateValue * 100 + roomCount,
+            RunModifierDuration.UntilRunEnds,
+            "Item",
+            sourceKey,
+            stackPolicy: "Replace"));
+        ApplyForcedWeatherPlanToCurrentRoom();
+    }
+
+    public void RerollCurrentWeather(string sourceKey)
+    {
+        var current = _runModifiers
+            .Where(m => m.Type == RunModifierType.RoomClimate
+                && !m.IsConsumed
+                && m.ExpiresAtRoomId == CurrentRoom.Id.Value)
+            .OrderByDescending(m => m.CreatedAtUtc)
+            .FirstOrDefault();
+        var next = current?.Value switch
+        {
+            5 => 6,
+            6 => 7,
+            7 => 8,
+            8 => 9,
+            _ => 5
+        };
+
+        ReplaceCurrentRoomWeather(next, sourceKey);
+    }
+
+    private void ApplyForcedWeatherPlanToCurrentRoom()
+    {
+        var plan = _runModifiers
+            .Where(m => m.Type == RunModifierType.ForcedWeatherPlan && !m.IsConsumed)
+            .OrderByDescending(m => m.CreatedAtUtc)
+            .FirstOrDefault();
+        if (plan is null)
+            return;
+
+        var encoded = (int)Math.Round(plan.Value);
+        var climate = encoded / 100;
+        var remaining = encoded % 100;
+        ReplaceCurrentRoomWeather(climate, plan.SourceKey);
+        plan.Consume(DateTime.UtcNow);
+
+        if (remaining > 1)
+        {
+            AddRunModifier(RunModifier.Create(
+                RunModifierType.ForcedWeatherPlan,
+                climate * 100 + remaining - 1,
+                RunModifierDuration.UntilRunEnds,
+                plan.SourceType,
+                plan.SourceKey,
+                stackPolicy: "Replace"));
+        }
+    }
+
+    private void ReplaceCurrentRoomWeather(int climateValue, string sourceKey)
+    {
+        foreach (var modifier in _runModifiers.Where(m =>
+            m.Type == RunModifierType.RoomClimate
+            && !m.IsConsumed
+            && m.ExpiresAtRoomId == CurrentRoom.Id.Value))
+        {
+            modifier.Consume(DateTime.UtcNow);
+        }
+
+        AddRunModifier(RunModifier.Create(
+            RunModifierType.RoomClimate,
+            climateValue,
+            RunModifierDuration.UntilRoomEnds,
+            "Item",
+            sourceKey,
+            stackPolicy: "Replace",
+            expiresAtRoomId: CurrentRoom.Id.Value));
+    }
+
+    private void ConsumeActiveModifiers(RunModifierType type)
+    {
+        var now = DateTime.UtcNow;
+        foreach (var modifier in _runModifiers.Where(m => m.Type == type && !m.IsConsumed))
+            modifier.Consume(now);
     }
 
     /// <summary>
@@ -1736,12 +2001,37 @@ public sealed class Run
             effectType,
             effectAmount);
 
-        if (!TryAddRunItem(item))
-        {
-            throw new DomainException("Le sac est plein — il n'y a plus de place pour cet objet.");
-        }
+        var position = FindGroundDropPosition();
+        item.PlaceOnGround(CurrentRoom.Id.Value, position.X, position.Y);
+        _runItems.Add(item);
+    }
 
-        ApplyItemGrantModifiers(effectType, effectAmount, definitionKey);
+    private (int X, int Y) FindGroundDropPosition()
+    {
+        var grid = CurrentRoom.Grid;
+        var occupiedGround = GroundItems
+            .Where(item => item.GroundRoomId == CurrentRoom.Id.Value)
+            .Select(item => (item.GroundX!.Value, item.GroundY!.Value))
+            .ToHashSet();
+        var nodeCells = CurrentRoom.Nodes
+            .Where(node => node.State != NodeState.Resolved)
+            .Select(node => (node.Lane, node.Row))
+            .ToHashSet();
+
+        var candidate = Enumerable.Range(0, grid.Height)
+            .SelectMany(y => Enumerable.Range(0, grid.Width).Select(x => (X: x, Y: y)))
+            .Where(cell => grid.IsWalkable(cell.X, cell.Y))
+            .Where(cell => cell != (grid.PartyX, grid.PartyY))
+            .Where(cell => !occupiedGround.Contains(cell))
+            .Where(cell => !nodeCells.Contains(cell))
+            .OrderBy(cell => Math.Abs(cell.X - grid.PartyX) + Math.Abs(cell.Y - grid.PartyY))
+            .ThenBy(cell => cell.Y)
+            .ThenBy(cell => cell.X)
+            .Select(cell => ((int X, int Y)?)cell)
+            .FirstOrDefault();
+
+        return candidate
+            ?? throw new DomainException("No free grid cell is available for this loot.");
     }
 
     /// <summary>
@@ -1856,25 +2146,6 @@ public sealed class Run
             attack: Attack,
             defense: Defense,
             speed: Speed);
-    }
-
-    public void FailActiveCombat(CombatId combatId, DateTimeOffset endedAt)
-    {
-        if (!HasActiveCombat)
-        {
-            throw new DomainException("Run has no active combat.");
-        }
-
-        if (ActiveCombatId != combatId)
-        {
-            throw new DomainException("Combat does not match the active run combat.");
-        }
-
-        ActiveCombatId = null;
-        _activeCombat = null;
-        _activeTacticalCombat = null;
-        Status = RunStatus.Failed;
-        EndedAt = endedAt;
     }
 
     private void EnsureActive()
@@ -2300,9 +2571,9 @@ public sealed class Run
             throw new DomainException("Calice infini is still on cooldown.");
         }
 
-        if (_activeCombat is not null && targetCombatantId is not null)
+        if (_activeTacticalCombat is not null && targetCombatantId is not null)
         {
-            var target = _activeCombat.Allies
+            var target = _activeTacticalCombat.Allies
                 .FirstOrDefault(a => a.Id.Value == targetCombatantId.Value);
 
             if (target is null)
@@ -2312,7 +2583,9 @@ public sealed class Run
 
             if (!target.IsDefeated)
             {
-                target.ApplyHeal(ApplyHealingBonus(PercentOf(target.MaxVitality, 50), target.EffectiveHealingBonusPercent));
+                target.ApplyHeal(ApplyHealingBonus(
+                    PercentOf(target.MaxVitality, 50),
+                    target.EffectiveHealingBonusPercent));
             }
         }
         else
@@ -2337,7 +2610,6 @@ public sealed class Run
             return;
 
         ActiveCombatId = null;
-        _activeCombat = null;
         _activeTacticalCombat = null;
         PendingRewardOfferId = null;
         Status = RunStatus.Interlude;
@@ -2387,6 +2659,9 @@ public sealed class Run
     {
         if (Status is RunStatus.Completed or RunStatus.Failed or RunStatus.Abandoned)
             throw new DomainException("Cannot use items on a closed run.");
+        if (HasActiveCombat)
+            throw new DomainException(
+                "During tactical combat, items must be used through the tactical targeting action.");
 
         var item = _runItems.FirstOrDefault(i => i.Id == itemId)
             ?? throw new DomainException($"Item '{itemId.Value}' not found in run inventory.");
@@ -2394,24 +2669,16 @@ public sealed class Run
         var consumablesRestricted = _runModifiers
             .Any(m => m.Type == RunModifierType.ConsumablesRestrictedInCombat && !m.IsConsumed);
 
-        if (_activeCombat is not null && consumablesRestricted)
-            throw new DomainException("Loi des Poches Cousues: no consumable can be used in combat in this room.");
-
-        // ConsumeOne validates Type == Consumable and Quantity > 0.
+        // ConsumeOne validates a consumable-like type and a positive quantity.
         item.ConsumeOne();
 
         // Bonus only applies out of combat (the "in combat" branch above already threw
-        // if consumablesRestricted and _activeCombat is not null, so reaching here with
-        // _activeCombat null and the modifier active is exactly the law's "hors combat"
-        // half).
-        var effectAmount = consumablesRestricted && _activeCombat is null
+        // Reaching this branch means the item is used outside combat.
+        var effectAmount = consumablesRestricted
             ? (int)Math.Round(item.EffectAmount * (1.0 + ConsumablesRestrictedBonusPercent / 100.0), MidpointRounding.AwayFromZero)
             : item.EffectAmount;
 
         ApplyItemEffectToPlayerState(item, effectAmount);
-
-        if (_activeCombat is not null)
-            ApplyItemEffectToCombatant(item, _activeCombat, effectAmount);
 
         var depleted = item.Quantity == 0;
         return (item.EffectType, effectAmount, depleted);
@@ -2453,9 +2720,26 @@ public sealed class Run
                 }
                 break;
 
+            case RunItemEffectType.ForceWeatherOrage:
+                ForceWeather(6, Math.Max(1, effectAmount), item.DefinitionKey);
+                break;
+
+            case RunItemEffectType.ForceWeatherAccalmie:
+                ForceWeather(9, 1, item.DefinitionKey);
+                break;
+
+            case RunItemEffectType.RerollWeather:
+                RerollCurrentWeather(item.DefinitionKey);
+                break;
+
+            case RunItemEffectType.GrantTeamSkillPoints:
+                // Persistent progression is credited by the application handler.
+                break;
+
             case RunItemEffectType.None:
             case RunItemEffectType.NextCombatGuard:
             case RunItemEffectType.NarrativeFragment:
+            case RunItemEffectType.GrantTemporarySkill:
                 // These effect types are not manually activatable from inventory.
                 throw new DomainException(
                     $"Item effect '{item.EffectType}' cannot be triggered manually from inventory.");
@@ -2463,50 +2747,6 @@ public sealed class Run
             default:
                 throw new DomainException(
                     $"Unsupported item effect type: '{item.EffectType}'.");
-        }
-    }
-
-    private static void ApplyItemEffectToCombatant(RunItem item, Combat combat, int effectAmount)
-    {
-        var playerCombatant = combat.Allies
-            .FirstOrDefault(a => a.Side == CombatantSide.Player);
-
-        if (playerCombatant is null || playerCombatant.IsDefeated)
-            return;
-
-        switch (item.EffectType)
-        {
-            case RunItemEffectType.Heal:
-                playerCombatant.ApplyHeal(ApplyHealingBonus(effectAmount, playerCombatant.EffectiveHealingBonusPercent));
-                break;
-
-            case RunItemEffectType.Guard:
-                playerCombatant.GainGuard(effectAmount);
-                break;
-
-            case RunItemEffectType.ManaRestore:
-                playerCombatant.GainMana(effectAmount);
-                break;
-
-            case RunItemEffectType.ChargeRestore:
-                playerCombatant.GainCharge(effectAmount);
-                break;
-
-            case RunItemEffectType.HealAndManaRestorePercent:
-                var healAmount = ApplyHealingBonus(
-                    PercentOf(playerCombatant.MaxVitality, effectAmount),
-                    playerCombatant.EffectiveHealingBonusPercent);
-                if (healAmount > 0 && playerCombatant.CurrentVitality < playerCombatant.MaxVitality)
-                {
-                    playerCombatant.ApplyHeal(healAmount);
-                }
-
-                var manaAmount = PercentOf(playerCombatant.MaxMana, effectAmount);
-                if (manaAmount > 0)
-                {
-                    playerCombatant.GainMana(manaAmount);
-                }
-                break;
         }
     }
 
@@ -2564,7 +2804,6 @@ public sealed class Run
         IEnumerable<ActivePalaceLaw> activePalaceLaws,
         RunStatus? preSuspendStatus,
         RunSnapshotData? snapshot,
-        Combat? activeCombat = null,
         PlayerRuntimeState? playerState = null,
         IEnumerable<RunItem>? runItems = null,
         IEnumerable<RunModifier>? runModifiers = null,
@@ -2626,7 +2865,6 @@ public sealed class Run
                 snapshot.RunModifierIds ?? []);
         }
 
-        run._activeCombat = activeCombat;
         run._activeTacticalCombat = activeTacticalCombat;
 
         if (runItems is not null)
