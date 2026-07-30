@@ -174,13 +174,13 @@ public sealed class UseTacticalItemCommandHandler
         {
             case "item.aiguille-arret":
                 targets.AddRange(combat.Enemies.Where(enemy => !enemy.IsDefeated));
-                foreach (var target in targets)
+                foreach (var affectedTarget in targets)
                 {
-                    target.ApplyStatusEffect(CombatStatusEffect.Create(
+                    affectedTarget.ApplyStatusEffect(CombatStatusEffect.Create(
                         "equipment.temporal-slow.aiguille-arret",
                         "Temps ralenti",
                         StatusEffectKind.StatModifier,
-                        combat.StatusClockFor(target.Id.Value),
+                        combat.StatusClockFor(affectedTarget.Id.Value),
                         CombatTime.TicksPerTurn * 2,
                         magnitude: -50,
                         stat: CombatStat.Speed,

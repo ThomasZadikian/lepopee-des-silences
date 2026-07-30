@@ -2,6 +2,7 @@ using Leds.GameEngine.Application.Combats.EncounterDrafts;
 using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Combats.StatusEffects;
 using Leds.GameEngine.Domain.Combats.Tactical;
+using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;

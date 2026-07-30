@@ -11,7 +11,6 @@ using Leds.Player.Application.Players.UpsertNpcReputationScores;
 using Leds.Player.Application.Players.HasClaimedNpcOffering;
 using Leds.Player.Application.Players.RecruitCompanion;
 using Leds.Player.Application.Players.SetPermanentItemContent;
-using Leds.Player.Application.Players.UpsertNpcReputationScores;
 using Leds.Player.Application.Players.UnlockSkill;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;

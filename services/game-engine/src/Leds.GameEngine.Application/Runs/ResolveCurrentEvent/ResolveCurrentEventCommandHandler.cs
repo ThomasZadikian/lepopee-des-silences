@@ -166,8 +166,6 @@ public sealed class ResolveCurrentEventCommandHandler
 
             var combatId = CombatId.New();
 
-            run.SetActiveCombat(combatId);
-
             var draft = await GenerateEncounterDraft(
                 run, room, selectedNode, resolutionResult, cancellationToken);
 

@@ -3,6 +3,7 @@ using Leds.GameEngine.Application.Catalog.Contracts;
 using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Rewards;
+using Leds.GameEngine.Domain.Runs;
 using Leds.GameEngine.Domain.Selection;
 
 namespace Leds.GameEngine.Application.Rewards.Loot;

@@ -68,9 +68,10 @@ public sealed class NpcEncounterSelector : INpcEncounterSelector
     // n'est pas affecté par ce filtre.
     private static bool IsBoundRoomCompatible(CatalogNpcDefinition npc, string? roomKey)
     {
-        if (npc.BoundRoomKeys.Count == 0)
+        var boundRoomKeys = npc.BoundRoomKeys ?? [];
+        if (boundRoomKeys.Count == 0)
             return true;
-        return roomKey != null && npc.BoundRoomKeys.Contains(roomKey, StringComparer.OrdinalIgnoreCase);
+        return roomKey != null && boundRoomKeys.Contains(roomKey, StringComparer.OrdinalIgnoreCase);
     }
 
     // An NPC already recruited as a companion never appears again as a fresh encounter —
