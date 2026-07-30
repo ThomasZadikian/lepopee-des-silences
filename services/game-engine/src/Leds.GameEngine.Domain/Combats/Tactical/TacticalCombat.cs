@@ -27,6 +27,7 @@ public sealed class TacticalCombat : ICombatContext
     private readonly List<Combatant> _enemies;
     private readonly Dictionary<Guid, GridPosition> _positions;
     private readonly Dictionary<Guid, TacticalTurnState> _turnStates = new();
+    private readonly HashSet<string> _usedOnceSkillKeys = new(StringComparer.Ordinal);
     private List<Guid> _initiativeOrder = [];
     private int _activeIndex;
 
@@ -73,10 +74,11 @@ public sealed class TacticalCombat : ICombatContext
     private IEnumerable<Combatant> AllCombatants => _allies.Concat(_enemies);
 
     /// <summary>
-    /// L'ordre d'action du round, du plus rapide au plus lent. Exposé parce qu'il doit être
-    /// affiché : sa prévisibilité est la contrepartie de l'abandon du tempo ATB.
+    /// L'ordre d'action du round, du plus rapide au plus lent. Exposé parce qu'il doit
+    /// être affiché : sa prévisibilité est la contrepartie de l'abandon du tempo ATB.
     /// </summary>
     public IReadOnlyList<Guid> InitiativeOrder => _initiativeOrder.AsReadOnly();
+    public IReadOnlySet<string> UsedOnceSkillKeys => _usedOnceSkillKeys;
 
     public Guid? ActiveCombatantId =>
         _activeIndex >= 0 && _activeIndex < _initiativeOrder.Count
@@ -86,14 +88,7 @@ public sealed class TacticalCombat : ICombatContext
     public bool HasLivingAllies => _allies.Any(a => !a.IsDefeated);
     public bool HasLivingEnemies => _enemies.Any(e => !e.IsDefeated);
 
-    // ── Positions ───────────────────────────────────────────────────────────────────────────
-
-    public GridPosition PositionOf(Guid combatantId) =>
-        _positions.TryGetValue(combatantId, out var position)
-            ? position
-            : throw new DomainException($"Combatant '{combatantId}' is not on the battlefield.");
-
-    public IReadOnlyDictionary<Guid, GridPosition> Positions => _positions.AsReadOnly();
+    //  Positions 
 
     /// <summary>
     /// Cases tenues par un combattant encore debout. Un combattant à terre libère la sienne :
@@ -105,7 +100,7 @@ public sealed class TacticalCombat : ICombatContext
             .Select(c => _positions[c.Id.Value])
             .ToHashSet();
 
-    // ── Économie d'action ───────────────────────────────────────────────────────────────────
+    //  conomie d'action 
 
     /// <summary>
     /// L'état du tour d'un combattant : s'est-il déplacé, a-t-il agi. Les deux sont indépendants
@@ -121,7 +116,21 @@ public sealed class TacticalCombat : ICombatContext
     public TacticalTurnState TurnStateOf(Guid combatantId) =>
         _turnStates.GetValueOrDefault(combatantId, TacticalTurnState.Fresh);
 
-    // ── Déroulé ─────────────────────────────────────────────────────────────────────────────
+    public bool HasUsedOnceSkill(string skillKey) =>
+        _usedOnceSkillKeys.Contains(skillKey);
+
+    public void MarkOnceSkillUsed(string skillKey)
+    {
+        EnsureActive();
+
+        if (string.IsNullOrWhiteSpace(skillKey))
+            throw new DomainException("Once-per-combat skill key is required.");
+
+        if (!_usedOnceSkillKeys.Add(skillKey))
+            throw new DomainException($"Skill '{skillKey}' has already been used in this combat.");
+    }
+
+    //  Déroulé 
 
     /// <summary>
     /// Recalcule l'ordre d'initiative : Vitesse effective décroissante, égalités tranchées par
@@ -142,16 +151,50 @@ public sealed class TacticalCombat : ICombatContext
     }
 
     /// <summary>
+    /// Appelé lorsqu'un combattant est vaincu pour le retirer immédiatement de l'ordre d'initiative.
+    /// Cela évite les incohérences où un combattant mort pourrait encore avoir son tour.
+    /// </summary>
+    /// <param name="combatantId">L'ID du combattant vaincu.</param>
+    public void OnCombatantDefeated(Guid combatantId)
+    {
+        // Retirer le combattant de l'ordre d'initiative
+        _initiativeOrder.Remove(combatantId);
+
+        // Si c'était le combattant actif, avancer au suivant
+        if (ActiveCombatantId == combatantId)
+        {
+            AdvanceToNextCombatant();
+        }
+        // Sinon, ajuster l'index si nécessaire (ex: si on a retiré un combattant avant l'actif)
+        else if (_activeIndex >= _initiativeOrder.Count)
+        {
+            _activeIndex = Math.Max(0, _initiativeOrder.Count - 1);
+        }
+    }
+
+    /// <summary>
     /// Passe la main au combattant suivant. En fin de liste, ouvre un nouveau round : l'horloge
     /// avance d'un tour plein, les statuts sont réévalués par l'appelant, et l'initiative est
     /// recalculée — un ralentissement subi en cours de round ne prend effet qu'au round suivant,
     /// ce qui garde l'ordre affiché honnête.
+    ///
+    /// Modifié pour filtrer les combattants vaincus (O-005).
     /// </summary>
     public void AdvanceToNextCombatant()
     {
         EnsureActive();
 
-        // Un combattant tombé pendant le round ne doit pas récupérer la main.
+        // Filtrer les combattants vaincus de l'ordre d'initiative pour éviter les incohérences
+        _initiativeOrder = _initiativeOrder.Where(id => !IsDefeated(id)).ToList();
+
+        // Si plus personne, commencer un nouveau round
+        if (_initiativeOrder.Count == 0)
+        {
+            BeginNextRound();
+            return;
+        }
+
+        // Passer au suivant (en tenant compte du filtre)
         do
         {
             _activeIndex++;
@@ -252,7 +295,7 @@ public sealed class TacticalCombat : ICombatContext
     public bool HasLineOfSight(Guid fromId, Guid toId)
         => TacticalMovement.HasLineOfSight(Battlefield, PositionOf(fromId), PositionOf(toId));
 
-    // ── Issue ───────────────────────────────────────────────────────────────────────────────
+    //  Issue 
 
     public void CompleteIfAllEnemiesDefeated()
     {
@@ -266,11 +309,11 @@ public sealed class TacticalCombat : ICombatContext
             Status = CombatStatus.Failed;
     }
 
-    // ── ICombatContext ──────────────────────────────────────────────────────────────────────
+    //  ICombatContext 
 
     /// <summary>
     /// Temps courant, en ticks. Le tactique partage l'unité de l'ATB pour que les durées de
-    /// statut et de DoT soient authorées une seule fois : un round avance d'un tour plein.
+    /// statut et de DoT soient authorisées une seule fois : un round avance d'un tour plein.
     /// </summary>
     public int CurrentTick { get; private set; }
 
@@ -343,7 +386,7 @@ public sealed class TacticalCombat : ICombatContext
         // Volontairement sans effet — voir la remarque.
     }
 
-    // ── Fabrique ────────────────────────────────────────────────────────────────────────────
+    //  Fabrique 
 
     public static TacticalCombat Create(
         CombatId id,
@@ -437,7 +480,8 @@ public sealed class TacticalCombat : ICombatContext
         bool healingBlocked = false,
         int hitCounter = 0,
         bool hasFirstHitLanded = false,
-        int currentTick = 0)
+        int currentTick = 0,
+        IEnumerable<string>? usedOnceSkillKeys = null)
     {
         ArgumentNullException.ThrowIfNull(battlefield);
         ArgumentNullException.ThrowIfNull(positions);
@@ -472,10 +516,16 @@ public sealed class TacticalCombat : ICombatContext
             combat._turnStates[combatantId] = turnState;
         }
 
+        foreach (var skillKey in usedOnceSkillKeys ?? [])
+        {
+            if (!string.IsNullOrWhiteSpace(skillKey))
+                combat._usedOnceSkillKeys.Add(skillKey);
+        }
+
         return combat;
     }
 
-    // ── Garde-fous ──────────────────────────────────────────────────────────────────────────
+    //  Garde-fous 
 
     private void EnsureActive()
     {
@@ -488,4 +538,9 @@ public sealed class TacticalCombat : ICombatContext
     private Combatant RequireCombatant(Guid combatantId) =>
         AllCombatants.FirstOrDefault(c => c.Id.Value == combatantId)
         ?? throw new DomainException($"Combatant '{combatantId}' is not part of this combat.");
+
+    public GridPosition PositionOf(Guid combatantId) =>
+        _positions.TryGetValue(combatantId, out var position)
+            ? position
+            : throw new DomainException($"Combatant '{combatantId}' is not on the battlefield.");
 }

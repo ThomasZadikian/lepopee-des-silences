@@ -4,6 +4,7 @@ import { computed, ref } from 'vue';
 import { HttpError } from '../../../shared/api/httpClient';
 import { combatApi } from '../api/combatApi';
 import { useCombatPlayback } from '../composables/useCombatPlayback';
+import { battleCellKey, reachableCellsFrom } from '../composables/useTacticalBattlePlan';
 
 import type {
   CombatLogEntryDto,
@@ -28,9 +29,13 @@ export const useTacticalCombatStore = defineStore('tacticalCombat', () => {
   const logEntries = ref<CombatLogEntryDto[]>([]);
   const isLoading = ref(false);
   const error = ref<string | null>(null);
+  const isExecuting = ref(false); // Verrou pour éviter les actions concurrentielles
 
   /** La compétence armée, en attente d'une case. `null` = mode déplacement. */
   const selectedSkillKey = ref<string | null>(null);
+
+  // Cache pour les cases atteignables (optimisation O-002)
+  const reachableCellsCache = ref<Map<string, Set<string>>>(new Map());
 
   const allCombatants = computed<TacticalCombatantRuntimeDto[]>(() =>
     combat.value ? [...combat.value.allies, ...combat.value.enemies] : [],
@@ -75,6 +80,56 @@ export const useTacticalCombatStore = defineStore('tacticalCombat', () => {
       .filter((c): c is TacticalCombatantRuntimeDto => c !== undefined);
   });
 
+  /**
+   * Cases occupées par des combattants encore en vie (pour éviter les déplacements invalides).
+   */
+  const occupiedCells = computed<Set<string>>(() => {
+    const occupied = new Set<string>();
+    for (const combatant of allCombatants.value) {
+      if (combatant.combatant.status !== 'Defeated') {
+        occupied.add(battleCellKey(combatant.x, combatant.y));
+      }
+    }
+    return occupied;
+  });
+
+  /**
+   * Cases atteignables par le combattant actif (avec cache pour optimisation).
+   */
+  const reachableCells = computed<Set<string>>(() => {
+    const combatant = activeCombatant.value;
+    if (!combatant) return new Set();
+
+    const cacheKey = `${combatant.combatant.id}-${combatant.movementBudget}`;
+    if (reachableCellsCache.value.has(cacheKey)) {
+      return reachableCellsCache.value.get(cacheKey)!;
+    }
+
+    const battlefieldInput = {
+      gridWidth: combat.value?.battlefield.width ?? 0,
+      gridHeight: combat.value?.battlefield.height ?? 0,
+      elevation: combat.value?.battlefield.elevation ?? [],
+      walkable: combat.value?.battlefield.walkable ?? [],
+    };
+
+    const reachable = reachableCellsFrom(
+      battlefieldInput,
+      { x: combatant.x, y: combatant.y },
+      combatant.movementBudget,
+      occupiedCells.value
+    );
+
+    reachableCellsCache.value.set(cacheKey, reachable);
+    return reachable;
+  });
+
+  /**
+   * Indique si une action est en cours de sélection (U-001).
+   */
+  const hasPendingAction = computed<boolean>(() => {
+    return selectedSkillKey.value !== null;
+  });
+
   const occupantAt = (x: number, y: number): TacticalCombatantRuntimeDto | null =>
     allCombatants.value.find(
       (c) => c.x === x && c.y === y && c.combatant.status !== 'Defeated',
@@ -84,6 +139,8 @@ export const useTacticalCombatStore = defineStore('tacticalCombat', () => {
     combat.value = next;
     // Une compétence armée n'a plus de sens dès que le tour change de main.
     selectedSkillKey.value = null;
+    // Réinitialiser le cache des cases atteignables
+    reachableCellsCache.value.clear();
   }
 
   function clearCombat() {
@@ -92,6 +149,7 @@ export const useTacticalCombatStore = defineStore('tacticalCombat', () => {
     logEntries.value = [];
     selectedSkillKey.value = null;
     error.value = null;
+    reachableCellsCache.value.clear();
   }
 
   function selectSkill(skillKey: string | null) {
@@ -99,15 +157,28 @@ export const useTacticalCombatStore = defineStore('tacticalCombat', () => {
   }
 
   /**
+   * Annule l'action en cours (U-001).
+   */
+  function cancelAction() {
+    selectedSkillKey.value = null;
+  }
+
+  /**
    * Enveloppe commune aux trois actions. Aucune pré-validation côté client :
    * portée, budget et occupation sont tranchés par le domaine, dont le message
    * d'erreur remonte tel quel — même patron optimiste que `runStore`.
+   *
+   * Modifié pour éviter les appels concurrentiels (O-004).
    */
   async function execute(action: () => Promise<{
     combat: TacticalCombatRuntimeDto;
     logEntries: CombatLogEntryDto[];
     events: TacticalCombatEventDto[];
   }>) {
+    // Si une action est déjà en cours, ignorer (O-004)
+    if (isExecuting.value) return;
+
+    isExecuting.value = true;
     isLoading.value = true;
     error.value = null;
 
@@ -131,6 +202,7 @@ export const useTacticalCombatStore = defineStore('tacticalCombat', () => {
         ? `[${caught.status}] ${caught.message}`
         : caught instanceof Error ? caught.message : String(caught);
     } finally {
+      isExecuting.value = false;
       isLoading.value = false;
     }
   }
@@ -161,18 +233,23 @@ export const useTacticalCombatStore = defineStore('tacticalCombat', () => {
     logEntries,
     isLoading,
     error,
+    isExecuting, // Exposé pour l'UI (ex: désactiver les boutons)
     selectedSkillKey,
     selectedSkill,
+    hasPendingAction, // Exposé pour l'UI (U-001)
     activeCombatant,
     activeSkills,
     allCombatants,
     initiativeQueue,
     isPlayerTurn,
     occupantAt,
+    occupiedCells, // Exposé pour l'UI (O-006)
+    reachableCells, // Exposé pour l'UI (O-006)
     playback,
     setCombat,
     clearCombat,
     selectSkill,
+    cancelAction, // Exposé pour l'UI (U-001)
     moveTo,
     useSkillAt,
     endTurn,

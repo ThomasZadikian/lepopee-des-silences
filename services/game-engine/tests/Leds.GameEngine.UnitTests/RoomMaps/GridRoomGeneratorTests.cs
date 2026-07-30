@@ -44,16 +44,16 @@ public sealed class GridRoomGeneratorTests
         var room = await sut.GenerateAsync(Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, random);
 
         room.Grid.Should().NotBeNull();
-        room.Grid!.Width.Should().Be(10);
-        room.Grid.Height.Should().Be(8);
+        room.Grid!.Width.Should().Be(14);
+        room.Grid.Height.Should().Be(10);
         room.Grid.PartyX.Should().Be(0);
-        room.Grid.PartyY.Should().Be(4);
+        room.Grid.PartyY.Should().Be(5);
 
         // The budget is no longer the template's constant: it is derived from the cheapest route
         // to the boss on the room actually generated, plus slack. Asserted as the contract that
         // matters (never below the template floor, always a full budget at spawn) rather than as
         // a magic number, which would break whenever the shape or obstacle rolls shift.
-        room.Grid.MovementBudget.Should().BeGreaterThanOrEqualTo(26);
+        room.Grid.MovementBudget.Should().BeGreaterThanOrEqualTo(42);
         room.Grid.MovementBudgetRemaining.Should().Be(room.Grid.MovementBudget);
     }
 
@@ -189,7 +189,7 @@ public sealed class GridRoomGeneratorTests
 
         var room = await sut.GenerateAsync(Seed, GeneratorVersion, roomDepth: 0, RoomType.Threshold, random);
 
-        room.TotalNodeCount.Should().BeInRange(10, 14);
+        room.TotalNodeCount.Should().BeInRange(14, 20);
     }
 
     [Fact]

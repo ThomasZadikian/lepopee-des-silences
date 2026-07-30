@@ -471,6 +471,10 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasColumnType("text")
                         .HasColumnName("tactical_turn_states_csv");
 
+                    b.Property<string>("TacticalUsedOnceSkillKeysCsv")
+                        .HasColumnType("text")
+                        .HasColumnName("tactical_used_once_skill_keys_csv");
+
                     b.Property<string>("TacticalWalkableCsv")
                         .HasColumnType("text")
                         .HasColumnName("tactical_walkable_csv");
@@ -1916,12 +1920,6 @@ namespace Leds.GameEngine.Infrastructure.Migrations
 
                     b.Property<int?>("CaliceInfiniLastUsedRoomIndex")
                         .HasColumnType("integer");
-
-                    b.Property<string>("CombatMode")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)")
-                        .HasColumnName("combat_mode");
 
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone")

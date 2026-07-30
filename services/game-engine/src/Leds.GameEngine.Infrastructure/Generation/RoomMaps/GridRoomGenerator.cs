@@ -333,7 +333,7 @@ public sealed class GridRoomGenerator : IGridRoomGenerator
         int width, int height, int startX, int startY, bool[] floor, Random random)
     {
         var elevation = new int[width * height];
-        var peakCount = Math.Max(1, (int)Math.Round((width * height) / 18.0));
+        var peakCount = Math.Max(1, (int)Math.Round((width * height) / 30.0));
         var peaks = new List<(int X, int Y, int Height)>();
 
         for (var i = 0; i < peakCount; i++)

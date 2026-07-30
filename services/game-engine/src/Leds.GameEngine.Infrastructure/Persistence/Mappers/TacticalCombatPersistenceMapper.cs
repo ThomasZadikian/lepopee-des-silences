@@ -98,6 +98,7 @@ public static class TacticalCombatPersistenceMapper
                     var turn = combat.TurnStateOf(c.Id.Value);
                     return $"{c.Id.Value}:{(turn.HasMoved ? 1 : 0)},{(turn.HasActed ? 1 : 0)}";
                 })),
+            TacticalUsedOnceSkillKeysCsv = string.Join(';', combat.UsedOnceSkillKeys),
 
             Combatants = [.. combat.Allies.Concat(combat.Enemies)
                 .Select(c => CombatPersistenceMapper.ToEntity(c, combat.Id.Value))],
@@ -169,7 +170,8 @@ public static class TacticalCombatPersistenceMapper
             entity.HealingBlocked,
             entity.HitCounter,
             entity.HasFirstHitLanded,
-            entity.CurrentTick);
+            entity.CurrentTick,
+            ParseStringList(entity.TacticalUsedOnceSkillKeysCsv));
     }
 
     private static int[] ParseIntCsv(string? csv, int expectedLength)
@@ -193,6 +195,11 @@ public static class TacticalCombatPersistenceMapper
         string.IsNullOrWhiteSpace(csv)
             ? []
             : [.. csv.Split(';', StringSplitOptions.RemoveEmptyEntries).Select(Guid.Parse)];
+
+    private static List<string> ParseStringList(string? csv) =>
+        string.IsNullOrWhiteSpace(csv)
+            ? []
+            : [.. csv.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)];
 
     private static Dictionary<Guid, GridPosition> ParsePositions(string? csv)
     {

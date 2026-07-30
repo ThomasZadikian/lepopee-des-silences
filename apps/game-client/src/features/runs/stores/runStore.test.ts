@@ -4,6 +4,7 @@ import { useRunStore } from './runStore';
 import { runApi } from '../api/runApi';
 import { rewardApi } from '../../rewards/api/rewardApi';
 import { eventChoiceApi } from '../../events/api/eventChoiceApi';
+import { combatApi } from '../../combat/api/combatApi';
 
 vi.mock('../api/runApi', () => ({
   runApi: {
@@ -45,10 +46,17 @@ vi.mock('../../events/api/eventChoiceApi', () => ({
   },
 }));
 
+vi.mock('../../combat/api/combatApi', () => ({
+  combatApi: {
+    getCurrentTacticalCombat: vi.fn(),
+  },
+}));
+
 describe('useRunStore computed properties', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
     vi.clearAllMocks();
+    vi.mocked(combatApi.getCurrentTacticalCombat).mockResolvedValue(null as any);
   });
 
   it('currentRoom returns null when no run', () => {
@@ -200,6 +208,7 @@ describe('useRunStore actions', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
     vi.clearAllMocks();
+    vi.mocked(combatApi.getCurrentTacticalCombat).mockResolvedValue(null as any);
   });
 
   it('startRun calls the API with the demo player id', async () => {
@@ -211,21 +220,30 @@ describe('useRunStore actions', () => {
 
     await store.startRun();
 
-    // Sans mode explicite, on n'en impose aucun : le serveur retient l'ATB, système historique.
-    expect(runApi.startRun).toHaveBeenCalledWith(expect.any(String), undefined);
+    expect(runApi.startRun).toHaveBeenCalledWith(expect.any(String));
     expect(store.currentRun?.id).toBe('run-1');
   });
 
-  it('startRun forwards the chosen combat mode', async () => {
+  it('loadRun restores the active tactical combat', async () => {
     const store = useRunStore();
+    const run = {
+      id: 'run-1',
+      status: 'Active',
+      activeCombatId: 'combat-1',
+      pendingRewardOfferId: null,
+      currentRoom: {},
+    };
 
-    vi.mocked(runApi.startRun).mockResolvedValue({
-      run: { id: 'run-1', status: 'Active', currentRoom: {} },
+    vi.mocked(runApi.getRun).mockResolvedValue({ run } as any);
+    vi.mocked(combatApi.getCurrentTacticalCombat).mockResolvedValue({
+      id: 'combat-1',
+      allies: [],
+      enemies: [],
     } as any);
 
-    await store.startRun('Tactical');
+    await store.loadRun('run-1');
 
-    expect(runApi.startRun).toHaveBeenCalledWith(expect.any(String), 'Tactical');
+    expect(combatApi.getCurrentTacticalCombat).toHaveBeenCalledWith('run-1');
   });
 
   it('clearCurrentRun resets all run state', () => {
@@ -234,8 +252,6 @@ describe('useRunStore actions', () => {
     store.pendingRewardOffer = { id: 'offer-1' } as any;
     store.lastOutcome = { id: 'outcome-1' } as any;
     store.npcDialogue = { nodeKey: 'npc-1' } as any;
-    store.activeCombat = { id: 'combat-1' } as any;
-    store.combatRuntime = { id: 'combat-1' } as any;
     store.lastChoiceResult = { id: 'result-1' } as any;
     store.currentInterlude = { id: 'interlude-1' } as any;
     store.error = 'error';
@@ -246,8 +262,6 @@ describe('useRunStore actions', () => {
     expect(store.pendingRewardOffer).toBeNull();
     expect(store.lastOutcome).toBeNull();
     expect(store.npcDialogue).toBeNull();
-    expect(store.activeCombat).toBeNull();
-    expect(store.combatRuntime).toBeNull();
     expect(store.lastChoiceResult).toBeNull();
     expect(store.currentInterlude).toBeNull();
     expect(store.error).toBeNull();
@@ -449,7 +463,6 @@ describe('useRunStore actions', () => {
     vi.mocked(runApi.resolveCurrentEvent).mockResolvedValue({
       run: { id: 'run-1', status: 'RoomResolved', currentRoom: { state: 'Completed' } },
       outcome: { title: 'Boss vaincu' },
-      startedCombat: null,
     } as any);
 
     await store.challengeBossRemotely();

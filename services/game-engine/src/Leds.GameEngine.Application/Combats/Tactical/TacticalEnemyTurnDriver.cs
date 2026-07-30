@@ -34,12 +34,23 @@ public interface ITacticalEnemyTurnDriver
 /// </remarks>
 public sealed class TacticalEnemyTurnDriver : ITacticalEnemyTurnDriver
 {
+    private sealed record EnemySkillPlan(
+        CombatantSkill Skill,
+        GridPosition Target,
+        IReadOnlyCollection<Combatant> Targets);
+
     /// <summary>
     /// Plafond de sécurité sur les tours enchaînés. Un combat réel n'en produit qu'une poignée ;
     /// ce garde-fou n'existe que pour qu'un état incohérent échoue franchement au lieu de
     /// boucler indéfiniment dans une requête HTTP.
     /// </summary>
     private const int MaxChainedEnemyTurns = 64;
+
+    /// <summary>Seuil de PV pour déclencher un soin (50%).</summary>
+    private const double HealThreshold = 0.5;
+
+    /// <summary>Seuil de garde pour déclencher un buff (30% de la garde max).</summary>
+    private const double GuardThreshold = 0.3;
 
     private readonly ICombatSkillEffectResolver _effectResolver;
     private readonly IClock _clock;
@@ -119,28 +130,45 @@ public sealed class TacticalEnemyTurnDriver : ITacticalEnemyTurnDriver
                 TargetIds: []));
         }
 
-        var strike = ChooseReachableSkill(combat, actor, prey);
-        if (strike is null)
+        var action = ChooseAction(combat, actor, prey);
+        if (action is null)
+        {
+            log.Add(new CombatLogEntryDto(
+                OccurredAtUtc: _clock.UtcNow.UtcDateTime,
+                Type: "EnemyTurnResolved",
+                Message: $"{actor.DisplayName} avance, mais reste hors de portée.",
+                ActorId: actorId,
+                SkillKey: null,
+                TargetIds: []));
             return log;
+        }
 
-        var targets = new[] { prey };
+        var before = Runs.TacticalCombat.TacticalImpactRecorder.Capture(action.Targets);
+        var resolution = _effectResolver.Resolve(combat, actor, action.Skill, action.Targets);
+        var impacts = Runs.TacticalCombat.TacticalImpactRecorder.Diff(
+            before, action.Targets, combat);
 
-        var before = Runs.TacticalCombat.TacticalImpactRecorder.Capture(targets);
-        var resolution = _effectResolver.Resolve(combat, actor, strike, targets);
-        var impacts = Runs.TacticalCombat.TacticalImpactRecorder.Diff(before, targets, combat);
+        var tactical = TacticalSkillProfile.For(action.Skill);
+        if (tactical.OncePerCombat)
+            combat.MarkOnceSkillUsed(action.Skill.Key);
 
         combat.MarkActiveCombatantActed();
 
         events.Add(TacticalCombatEventDto.Skill(
-            actorId, actor.DisplayName, strike.Key, strike.DisplayName, impacts));
+            actorId,
+            actor.DisplayName,
+            action.Skill.Key,
+            action.Skill.DisplayName,
+            action.Target,
+            impacts));
 
         log.Add(new CombatLogEntryDto(
             OccurredAtUtc: _clock.UtcNow.UtcDateTime,
             Type: "ActionAccepted",
-            Message: $"« {strike.DisplayName} » lancé par {actor.DisplayName}.",
+            Message: $"\u00ab {action.Skill.DisplayName} \u00bb lancé par {actor.DisplayName}.",
             ActorId: actorId,
-            SkillKey: strike.Key,
-            TargetIds: [prey.Id.Value]));
+            SkillKey: action.Skill.Key,
+            TargetIds: [.. action.Targets.Select(t => t.Id.Value)]));
 
         log.AddRange(resolution.LogEntries);
 
@@ -148,27 +176,112 @@ public sealed class TacticalEnemyTurnDriver : ITacticalEnemyTurnDriver
     }
 
     /// <summary>
-    /// La compétence offensive la plus puissante qui atteigne réellement la proie depuis la case
-    /// où l'ennemi vient de se poster, ou <c>null</c> s'il est encore trop loin.
+    /// La compétence offensive ou utilitaire la plus adaptée que l'ennemi peut utiliser.
+    /// Priorise les soins et protections nécessaires, puis l'action offensive la plus forte.
+    /// Les zones et les camps passent par les mêmes règles que les actions du joueur.
     /// </summary>
-    private static CombatantSkill? ChooseReachableSkill(
+    private EnemySkillPlan? ChooseAction(
         Domain.Combats.Tactical.TacticalCombat combat, Combatant actor, Combatant prey)
     {
-        var origin = combat.PositionOf(actor.Id.Value);
-        var target = combat.PositionOf(prey.Id.Value);
-
-        return actor.Skills
+        var offensivePlans = actor.Skills
             .Where(s => TacticalTargeting.IsHostile(s.TargetingType))
-            .Where(s =>
-            {
-                var (range, needsSight) = TacticalRange.For(s);
-                return TacticalTargeting.IsInRange(
-                    combat.Battlefield, origin, target, range, needsSight);
-            })
-            .OrderByDescending(s => s.BasePower)
-            // Départage stable : sans lui, deux compétences de même puissance dépendraient de
-            // l'ordre d'énumération et le même combat rejoué divergerait.
-            .ThenBy(s => s.Key, StringComparer.Ordinal)
+            .Select(s => BuildPlan(combat, actor, s, prey))
+            .Where(p => p is not null)
+            .Cast<EnemySkillPlan>()
+            .ToList();
+
+        var utility = ChooseBestUtilityPlan(combat, actor, offensivePlans.Count > 0);
+        if (utility is not null)
+            return utility;
+
+        return offensivePlans
+            .OrderByDescending(p => p.Skill.BasePower)
+            .ThenBy(p => p.Skill.Key, StringComparer.Ordinal)
+            .FirstOrDefault();
+    }
+
+    private static EnemySkillPlan? BuildPlan(
+        TacticalCombat combat,
+        Combatant actor,
+        CombatantSkill skill,
+        Combatant intendedTarget)
+    {
+        var tactical = TacticalSkillProfile.For(skill);
+        if (tactical.OncePerCombat && combat.HasUsedOnceSkill(skill.Key))
+            return null;
+
+        var origin = combat.PositionOf(actor.Id.Value);
+        var center = skill.TargetingType == "Self" || tactical.AreaShape == TacticalAreaShape.Map
+            ? origin
+            : combat.PositionOf(intendedTarget.Id.Value);
+
+        if (!TacticalTargeting.IsInRange(
+                combat.Battlefield,
+                origin,
+                center,
+                tactical.Range,
+                tactical.RequiresLineOfSight))
+            return null;
+
+        var affectedCells = tactical.AreaShape == TacticalAreaShape.Map
+            ? null
+            : TacticalTargeting.CellsInArea(combat.Battlefield, center, tactical.AreaShape);
+        var targets = TacticalTargeting.ResolveTargets(
+            combat,
+            affectedCells,
+            actor.Side,
+            TacticalTargeting.IsHostile(skill.TargetingType),
+            tactical.AreaShape);
+
+        return targets.Count == 0 ? null : new EnemySkillPlan(skill, center, targets);
+    }
+
+    /// <summary>
+    /// Choisit la meilleure compétence utilitaire en fonction du contexte (O-009).
+    /// </summary>
+    private EnemySkillPlan? ChooseBestUtilityPlan(
+        TacticalCombat combat,
+        Combatant actor,
+        bool hasOffensiveSkills)
+    {
+        var allies = combat.Enemies.Where(e => !e.IsDefeated).ToList();
+        var utilitySkills = actor.Skills
+            .Where(s => !TacticalTargeting.IsHostile(s.TargetingType))
+            .ToList();
+
+        var wounded = allies
+            .Where(e => e.CurrentVitality <= e.MaxVitality * HealThreshold)
+            .OrderBy(e => e.CurrentVitality / (double)e.MaxVitality)
+            .ThenBy(e => e.Id.Value)
+            .ToList();
+        var healingPlan = utilitySkills
+            .Where(s => s.SkillType == "Heal" || s.EffectType == "Heal")
+            .SelectMany(s => wounded.Select(target => BuildPlan(combat, actor, s, target)))
+            .FirstOrDefault(p => p is not null);
+        if (healingPlan is not null)
+            return healingPlan;
+
+        var exposed = allies
+            .Where(e => e.Guard <= e.MaxVitality * GuardThreshold)
+            .OrderBy(e => e.Guard)
+            .ThenBy(e => e.Id.Value)
+            .ToList();
+        var guardPlan = utilitySkills
+            .Where(s => s.SkillType == "Guard" || s.EffectType == "Guard")
+            .SelectMany(s => exposed.Select(target => BuildPlan(combat, actor, s, target)))
+            .FirstOrDefault(p => p is not null);
+        if (guardPlan is not null)
+            return guardPlan;
+
+        if (hasOffensiveSkills)
+            return null;
+
+        return utilitySkills
+            .Select(s => BuildPlan(combat, actor, s, actor))
+            .Where(p => p is not null)
+            .Cast<EnemySkillPlan>()
+            .OrderByDescending(p => p.Skill.BasePower)
+            .ThenBy(p => p.Skill.Key, StringComparer.Ordinal)
             .FirstOrDefault();
     }
 }

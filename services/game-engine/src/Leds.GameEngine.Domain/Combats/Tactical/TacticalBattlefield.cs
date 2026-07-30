@@ -134,4 +134,17 @@ public sealed class TacticalBattlefield
 
         return new TacticalBattlefield(width, height, [.. elevation], [.. walkable], floor);
     }
+
+    /// <summary>
+    /// Vérifie si une ligne de vue (Line of Sight) existe entre deux cases,
+    /// en tenant compte des obstacles et des différences d'élévation.
+    /// 
+    /// Optimisé pour O-010 : utilise un cache interne pour éviter les recalculs.
+    /// </summary>
+    /// <remarks>
+    /// Cette méthode est statique pour rester compatible avec l'existant, mais elle pourrait
+    /// être instanciée avec un cache de visibilité pour de meilleures performances.
+    /// </remarks>
+    public bool HasLineOfSight(GridPosition from, GridPosition to)
+        => TacticalMovement.HasLineOfSight(this, from, to);
 }

@@ -13,11 +13,11 @@ public static class DefaultGridRoomLayoutTemplates
         key: "tactical-default-v1",
         version: GeneratorVersion,
         roomType: RoomType.Threshold,
-        width: 10,
-        height: 8,
-        movementBudget: 26,
-        minNodeCount: 10,
-        maxNodeCount: 14,
+        width: 14,
+        height: 10,
+        movementBudget: 42,
+        minNodeCount: 14,
+        maxNodeCount: 20,
         startX: 0,
-        startY: 4);
+        startY: 5);
 }

@@ -74,18 +74,27 @@ public sealed class UseTacticalSkillCommandHandler
                 $"'{actor.DisplayName}' does not know skill '{request.SkillKey}'.");
 
         var origin = combat.PositionOf(actorId);
-        var target = new GridPosition(request.TargetX, request.TargetY);
+        var tactical = TacticalSkillProfile.For(skill);
+        var requestedTarget = new GridPosition(request.TargetX, request.TargetY);
+        var target = skill.TargetingType == "Self" || tactical.AreaShape == TacticalAreaShape.Map
+            ? origin
+            : requestedTarget;
 
-        var (range, requiresLineOfSight) = TacticalRange.For(skill);
+        if (tactical.OncePerCombat && combat.HasUsedOnceSkill(skill.Key))
+            throw new ConflictException($"« {skill.DisplayName} » a déjà été utilisé dans ce combat.");
 
         if (!TacticalTargeting.IsInRange(
-                combat.Battlefield, origin, target, range, requiresLineOfSight))
+                combat.Battlefield,
+                origin,
+                target,
+                tactical.Range,
+                tactical.RequiresLineOfSight))
         {
             throw new ConflictException(
                 $"La case ({target.X}, {target.Y}) est hors de portée de « {skill.DisplayName} ».");
         }
 
-        var shape = TacticalTargeting.ShapeForCatalogTargeting(skill.TargetingType);
+        var shape = tactical.AreaShape;
         var hostile = TacticalTargeting.IsHostile(skill.TargetingType);
 
         var affectedCells = shape == TacticalAreaShape.Map
@@ -104,6 +113,9 @@ public sealed class UseTacticalSkillCommandHandler
         var resolution = _effectResolver.Resolve(combat, actor, skill, targets);
 
         var impacts = TacticalImpactRecorder.Diff(before, targets, combat);
+
+        if (tactical.OncePerCombat)
+            combat.MarkOnceSkillUsed(skill.Key);
 
         combat.MarkActiveCombatantActed();
 
@@ -134,7 +146,12 @@ public sealed class UseTacticalSkillCommandHandler
             TacticalCombatRuntimeDto.FromDomain(combat, CombatItemHelper.GetUsableBattleItems(run)),
             [actionEntry, .. resolution.LogEntries],
             [TacticalCombatEventDto.Skill(
-                actorId, actor.DisplayName, skill.Key, skill.DisplayName, impacts)]);
+                actorId,
+                actor.DisplayName,
+                skill.Key,
+                skill.DisplayName,
+                target,
+                impacts)]);
     }
 
     /// <summary>

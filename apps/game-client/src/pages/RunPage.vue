@@ -3,10 +3,8 @@ import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import GameShellLayout from '../app/layouts/GameShellLayout.vue';
-import CombatScene from '../features/combat/components/CombatScene.vue';
 import TacticalCombatScene from '../features/combat/components/TacticalCombatScene.vue';
 import { useTacticalCombatStore } from '../features/combat/stores/useTacticalCombatStore';
-import { useCombatStore } from '../features/combat/stores/useCombatStore';
 import EliseOverlay from '../features/elise/EliseOverlay.vue';
 import EventChoiceResultPanel from '../features/events/components/EventChoiceResultPanel.vue';
 import EventOutcomePanel from '../features/events/components/EventOutcomePanel.vue';
@@ -35,7 +33,6 @@ import { useGameUiStore } from '../shared/stores/useGameUiStore';
 const route = useRoute();
 const router = useRouter();
 const runStore = useRunStore();
-const combatStore = useCombatStore();
 const tacticalCombatStore = useTacticalCombatStore();
 const uiStore = useGameUiStore();
 const playerStore = usePlayerStore();
@@ -116,15 +113,7 @@ async function handleExitMidRoom() {
   if (ok) await router.replace('/');
 }
 
-// Clicking anywhere outside the open drawers closes them — except on the
-// map itself (its own click handling for choosing/deselecting nodes stays
-// authoritative) and on the status ribbon (whose buttons already toggle
-// their own drawer; letting this listener also fire there would reopen a
-// drawer the same click just closed).
-const drawersRef = ref<HTMLElement | null>(null);
-
 async function handleLeaveRun() {
-  combatStore.clearCombat();
   tacticalCombatStore.clearCombat();
   runStore.clearCurrentRun();
   await router.replace('/');
@@ -228,7 +217,7 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
           <EliseOverlay :message="runStore.lastOutcome?.description" />
 
           <!-- Drawers (right, absolute positioned) — a click outside all of them closes whichever is open -->
-          <div ref="drawersRef">
+          <div>
             <!-- Inventory drawer -->
             <Transition name="slide">
               <InventoryDrawer
@@ -278,7 +267,7 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
       </template>
 
       <!-- ── Combat phase ── -->
-      <!-- Le mode de combat est fixé pour toute la run : une seule des deux scènes existe. -->
+      <!-- Le T-RPG est l'unique scène de combat jouable. -->
       <template v-else-if="isCombatPhase && tacticalCombatStore.combat">
         <TacticalCombatScene
           :run-id="runStore.currentRun.id"
@@ -289,14 +278,12 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
         />
       </template>
 
-      <template v-else-if="isCombatPhase && runStore.currentRun.activeCombatId">
-        <CombatScene
-          :run-id="runStore.currentRun.id"
-          :combat-id="runStore.currentRun.activeCombatId"
-          @combat-completed="runStore.handleCombatCompleted"
-          @combat-failed="runStore.handleCombatFailed"
-          @leave-run="handleLeaveRun"
-        />
+      <template v-else-if="isCombatPhase">
+        <section class="phase-center">
+          <p class="es-kicker">Combat tactique</p>
+          <h3 class="es-h2">Le champ de bataille se met en place.</h3>
+          <p class="es-lede es-dim">Préparation de l'ordre d'initiative…</p>
+        </section>
       </template>
 
       <!-- ── Reward phase ── -->
@@ -429,9 +416,7 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
           <p class="es-kicker">Run terminée</p>
           <h3 class="es-h2">{{ runStore.currentRun.status === 'Failed' ? 'Défaite définitive' : 'Le Tome se referme' }}</h3>
           <p class="es-lede es-dim">
-            {{ runStore.currentRun.status === 'Failed'
-              ? 'Tous les alliés ont été vaincus. Cette run est perdue définitivement.'
-              : 'La traversée est terminée. Le bilan détaillé sera intégré dans une prochaine version.' }}
+            {{ runStore.currentRun.status === 'Failed' ? 'Tous les alliés ont été vaincus. Cette run est perdue définitivement.' : 'La traversée est terminée. Le bilan détaillé sera intégré dans une prochaine version.' }}
           </p>
           <button class="es-btn es-btn--blood" @click="handleLeaveRun">
             Quitter la run
@@ -458,7 +443,6 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
           :is="DevToolsPanel"
           v-if="showDevTools && DevToolsPanel"
           :run-id="runStore.currentRun.id"
-          :combat="combatStore.combat"
           @close="showDevTools = false"
         />
       </Teleport>

@@ -8,7 +8,6 @@ public sealed record ResolveCurrentEventResponse(
     RunDto Run,
     ResolvedNodeEventOutcomeDto Outcome,
     CombatEncounterDraftDto? EncounterDraft = null,
-    CombatRuntimeDto? Combat = null,
     NpcDialogueViewDto? NpcDialogue = null,
     TacticalCombatRuntimeDto? TacticalCombat = null,
     /// <summary>
