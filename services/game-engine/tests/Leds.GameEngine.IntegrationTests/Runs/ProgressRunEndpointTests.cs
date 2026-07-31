@@ -1,6 +1,6 @@
 using FluentAssertions;
 using Leds.GameEngine.Application.Combats.Dtos;
-using Leds.GameEngine.Application.Combats.SubmitCombatAction;
+using Leds.GameEngine.Application.Runs.TacticalCombat;
 using Leds.GameEngine.Application.Runs.ProgressRun;
 using Leds.GameEngine.Application.Runs.ResolveCurrentEvent;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -210,65 +210,71 @@ public sealed class ProgressRunEndpointTests : RunIntegrationTestBase, IClassFix
         Guid runId, Guid combatId)
     {
         var combatResponse = await Client.GetAsync(
-            $"/api/v2/runs/{runId}/combats/{combatId}");
+            $"/api/v2/runs/{runId}/tactical-combat");
 
         combatResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var combat = await combatResponse.Content
-            .ReadFromJsonAsync<CombatInstanceDto>();
+            .ReadFromJsonAsync<TacticalCombatRuntimeDto>();
 
         combat.Should().NotBeNull();
 
-        while (true)
+        while (combat!.Status != "Completed")
         {
-            var activeActor = combat!.Combatants.FirstOrDefault(c =>
-                c.Id == combat.CurrentActorId &&
-                c.Side == "Player" &&
-                !c.IsDefeated);
+            var isPlayerTurn = combat.Allies.Any(a => a.Combatant.Id == combat.ActiveCombatantId);
 
-            activeActor.Should().NotBeNull(
-                because: "the legacy facade should expose the canonical active player combatant");
-
-            var enemy = combat.Combatants.FirstOrDefault(c =>
-                c.Side == "Enemy" &&
-                !c.IsDefeated);
-
-            enemy.Should().NotBeNull(
-                because: "an in-progress combat should have at least one living enemy target");
-
-            var actionResponse = await Client.PostAsJsonAsync(
-                $"/api/v2/runs/{runId}/combats/{combatId}/actions",
-                new { ActorId = activeActor!.Id, TargetId = enemy!.Id, ActionType = "BasicAttack" });
-
-            var actionBody = await actionResponse.Content.ReadAsStringAsync();
-
-            actionResponse.StatusCode.Should().Be(
-                HttpStatusCode.OK,
-                because: actionBody);
-
-            var actionResult = await actionResponse.Content
-                .ReadFromJsonAsync<SubmitCombatActionResponse>();
-
-            actionResult.Should().NotBeNull();
-
-            if (actionResult!.Result.CombatState == "Completed" || actionResult.Run.ActiveCombatId is null)
+            if (isPlayerTurn)
             {
-                break;
+                var enemy = combat.Enemies.FirstOrDefault(e => e.Combatant.CurrentVitality > 0);
+
+                enemy.Should().NotBeNull(
+                    because: "an in-progress combat should have at least one living enemy target");
+
+                var skillResponse = await Client.PostAsJsonAsync(
+                    $"/api/v2/runs/{runId}/tactical-combat/skill",
+                    new { SkillKey = "skill.basic.strike", TargetX = enemy!.X, TargetY = enemy.Y });
+
+                var skillBody = await skillResponse.Content.ReadAsStringAsync();
+
+                skillResponse.StatusCode.Should().Be(
+                    HttpStatusCode.OK,
+                    because: skillBody);
+
+                var skillResult = await skillResponse.Content
+                    .ReadFromJsonAsync<TacticalCombatResponse>();
+
+                skillResult.Should().NotBeNull();
+
+                if (skillResult!.Combat.Status == "Completed")
+                {
+                    break;
+                }
+
+                combat = skillResult.Combat;
             }
+            else
+            {
+                var endTurnResponse = await Client.PostAsync(
+                    $"/api/v2/runs/{runId}/tactical-combat/end-turn", null);
 
-            combatResponse = await Client.GetAsync(
-                $"/api/v2/runs/{runId}/combats/{combatId}");
+                var endTurnBody = await endTurnResponse.Content.ReadAsStringAsync();
 
-            var combatBody = await combatResponse.Content.ReadAsStringAsync();
+                endTurnResponse.StatusCode.Should().Be(
+                    HttpStatusCode.OK,
+                    because: endTurnBody);
 
-            combatResponse.StatusCode.Should().Be(
-                HttpStatusCode.OK,
-                because: combatBody);
+                var endTurnResult = await endTurnResponse.Content
+                    .ReadFromJsonAsync<TacticalCombatResponse>();
 
-            combat = await combatResponse.Content
-                .ReadFromJsonAsync<CombatInstanceDto>();
+                endTurnResult.Should().NotBeNull();
 
-            combat.Should().NotBeNull();
+                if (endTurnResult!.Combat.Status == "Completed")
+                {
+                    break;
+                }
+
+                combat = endTurnResult.Combat;
+            }
         }
     }
 

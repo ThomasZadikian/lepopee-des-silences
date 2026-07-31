@@ -4,7 +4,6 @@ using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Application.Combats;
 using Leds.GameEngine.Application.Combats.EncounterDrafts;
 using Leds.GameEngine.Application.Combats.EnemyTurns;
-using Leds.GameEngine.Application.Combats.Ports;
 using Leds.GameEngine.Application.Combats.Resolution;
 using Leds.GameEngine.Application.Events.ChooseEventOption;
 using Leds.GameEngine.Application.Events.Ports;
@@ -603,7 +602,7 @@ public sealed class InterludeTransitionTests
         var nodeEventResolverDispatcher = new Mock<INodeEventResolverDispatcher>();
         var eventContentResolver = new Mock<IEventContentResolver>();
         var catalogGateway = new Mock<ICatalogContentGateway>();
-        var combatFactory = new Mock<ICombatInstanceFactory>();
+        var tacticalCombatFactory = Mock.Of<Leds.GameEngine.Application.Combats.Tactical.ITacticalCombatFactory>();
 
         var handler = new ResolveCurrentEventCommandHandler(
             repo.Object,

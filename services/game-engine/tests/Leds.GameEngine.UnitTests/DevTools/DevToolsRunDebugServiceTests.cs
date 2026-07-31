@@ -5,6 +5,7 @@ using Leds.GameEngine.Application.Combats.Resolution;
 using Leds.GameEngine.Application.DevTools;
 using Leds.GameEngine.Application.Rewards.Ports;
 using Leds.GameEngine.Domain.Combats;
+using Leds.GameEngine.Domain.Combats.Tactical;
 using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rooms;
@@ -25,8 +26,8 @@ public sealed class DevToolsRunDebugServiceTests
 
         var result = await service.KillAllCurrentCombatEnemiesAsync(setup.Run.Id.Value);
 
-        result.Combat.Enemies.Should().OnlyContain(enemy => enemy.Status == "Defeated" && enemy.CurrentVitality == 0);
-        result.Combat.Allies.Should().OnlyContain(ally => ally.Status == "Active" && ally.CurrentVitality > 0);
+        result.Combat.Enemies.Should().OnlyContain(enemy => enemy.Combatant.Status == "Defeated" && enemy.Combatant.CurrentVitality == 0);
+        result.Combat.Allies.Should().OnlyContain(ally => ally.Combatant.Status == "Active" && ally.Combatant.CurrentVitality > 0);
         result.Combat.Status.Should().Be("Completed");
     }
 
@@ -39,8 +40,8 @@ public sealed class DevToolsRunDebugServiceTests
 
         var result = await service.KillCurrentCombatEnemyAsync(setup.Run.Id.Value, targetEnemy.Id.Value);
 
-        result.Combat.Enemies.Single(enemy => enemy.Id == targetEnemy.Id.Value).Status.Should().Be("Defeated");
-        result.Combat.Enemies.Single(enemy => enemy.Id != targetEnemy.Id.Value).Status.Should().Be("Active");
+        result.Combat.Enemies.Single(enemy => enemy.Combatant.Id == targetEnemy.Id.Value).Combatant.Status.Should().Be("Defeated");
+        result.Combat.Enemies.Single(enemy => enemy.Combatant.Id != targetEnemy.Id.Value).Combatant.Status.Should().Be("Active");
         result.Combat.Status.Should().Be("Active");
     }
 
@@ -58,9 +59,9 @@ public sealed class DevToolsRunDebugServiceTests
             guard: 99);
 
         var updatedAlly = result.Combat.Allies.Single();
-        updatedAlly.CurrentVitality.Should().Be(1);
-        updatedAlly.Guard.Should().Be(99);
-        updatedAlly.Status.Should().Be("Active");
+        updatedAlly.Combatant.CurrentVitality.Should().Be(1);
+        updatedAlly.Combatant.Guard.Should().Be(99);
+        updatedAlly.Combatant.Status.Should().Be("Active");
     }
 
     [Fact]
@@ -92,7 +93,7 @@ public sealed class DevToolsRunDebugServiceTests
             Mock.Of<IRewardOfferRepository>());
     }
 
-    private static (Run Run, Combat Combat) CreateRunWithActiveCombat(int enemyCount)
+    private static (Run Run, TacticalCombat Combat) CreateRunWithActiveCombat(int enemyCount)
     {
         var runWithNode = TestGameEngineFactory.CreateRunWithSelectedTargetNode(NodeEventType.Combat);
         var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100, 0, []);
@@ -100,15 +101,9 @@ public sealed class DevToolsRunDebugServiceTests
             .Select(index => Combatant.CreateEnemy($"enemy.{index}", $"Enemy {index}", "Guard", 80, []))
             .ToArray();
 
-        var combat = Combat.Create(
-            CombatId.New(),
-            runWithNode.Run.Id,
-            RoomId.New(),
-            NodeId.New(),
-            [ally],
-            enemies);
+        var (run, combat) = TestTacticalCombatHelper.CreateRunWithCombat(
+            runWithNode.Run, [ally], enemies);
 
-        runWithNode.Run.StartCombat(combat);
-        return (runWithNode.Run, combat);
+        return (run, combat);
     }
 }

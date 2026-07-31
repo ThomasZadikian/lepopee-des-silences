@@ -12,21 +12,19 @@ public partial class RemoveLegacyCombatSchema : Migration
 {
     protected override void Up(MigrationBuilder migrationBuilder)
     {
-        migrationBuilder.DropColumn("kind", "run_active_combats");
-        migrationBuilder.DropColumn("atb_ready_threshold", "run_combatant_base_stat_snapshots");
-        migrationBuilder.DropColumn("recovery", "run_combatant_base_stat_snapshots");
-        migrationBuilder.DropColumn("row", "run_combatants");
-        migrationBuilder.DropColumn("atb_gauge_value", "run_combatant_runtime_states");
-        migrationBuilder.DropColumn("action_recovery_until_tick", "run_combatant_runtime_states");
-        migrationBuilder.DropColumn("atb_fill_per_tick", "run_combatant_runtime_states");
-        migrationBuilder.DropColumn("atb_tempo_room_factor_per_mille", "run_combatant_runtime_states");
-        migrationBuilder.DropColumn("atb_tempo_combatant_factor_per_mille", "run_combatant_runtime_states");
-        migrationBuilder.DropColumn("tempo_momentum_per_mille", "run_combatant_runtime_states");
-        migrationBuilder.DropColumn("recovery", "run_character_stat_snapshots");
-        migrationBuilder.AlterColumn<decimal>(
-            "charge", "run_combatants", type: "numeric(4,1)", nullable: false);
-        migrationBuilder.AlterColumn<decimal>(
-            "current_charge", "run_combatant_runtime_states", type: "numeric(4,1)", nullable: false);
+        migrationBuilder.Sql("ALTER TABLE run_active_combats DROP COLUMN IF EXISTS kind;");
+        migrationBuilder.Sql("ALTER TABLE run_combatant_base_stat_snapshots DROP COLUMN IF EXISTS atb_ready_threshold;");
+        migrationBuilder.Sql("ALTER TABLE run_combatant_base_stat_snapshots DROP COLUMN IF EXISTS recovery;");
+        migrationBuilder.Sql("ALTER TABLE run_combatants DROP COLUMN IF EXISTS row;");
+        migrationBuilder.Sql("ALTER TABLE run_combatant_runtime_states DROP COLUMN IF EXISTS atb_gauge_value;");
+        migrationBuilder.Sql("ALTER TABLE run_combatant_runtime_states DROP COLUMN IF EXISTS action_recovery_until_tick;");
+        migrationBuilder.Sql("ALTER TABLE run_combatant_runtime_states DROP COLUMN IF EXISTS atb_fill_per_tick;");
+        migrationBuilder.Sql("ALTER TABLE run_combatant_runtime_states DROP COLUMN IF EXISTS atb_tempo_room_factor_per_mille;");
+        migrationBuilder.Sql("ALTER TABLE run_combatant_runtime_states DROP COLUMN IF EXISTS atb_tempo_combatant_factor_per_mille;");
+        migrationBuilder.Sql("ALTER TABLE run_combatant_runtime_states DROP COLUMN IF EXISTS tempo_momentum_per_mille;");
+        migrationBuilder.Sql("ALTER TABLE run_character_stat_snapshots DROP COLUMN IF EXISTS recovery;");
+        migrationBuilder.Sql("ALTER TABLE run_combatants ALTER COLUMN charge TYPE numeric(4,1);");
+        migrationBuilder.Sql("ALTER TABLE run_combatant_runtime_states ALTER COLUMN current_charge TYPE numeric(4,1);");
     }
 
     protected override void Down(MigrationBuilder migrationBuilder)

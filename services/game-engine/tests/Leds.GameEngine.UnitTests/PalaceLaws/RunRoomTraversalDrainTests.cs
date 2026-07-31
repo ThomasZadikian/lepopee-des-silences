@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Leds.GameEngine.Domain.Combats;
+using Leds.GameEngine.Domain.Combats.Tactical;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
@@ -79,11 +80,12 @@ public sealed class RunRoomTraversalDrainTests
     [Fact]
     public void CompleteActiveCombat_ShouldRestoreFivePercentMaxVitality_WhenTheModifierIsActive()
     {
-        var (run, combat) = CreateRunWithSelectedNodeAndCombat();
+        var (run, combat, enemy) = CreateRunWithSelectedNodeAndCombat();
         run.AddRunModifier(CreateDrainModifier());
         run.ApplyVitalityLoss(run.MaxHp / 2);
         var hpBefore = run.CurrentHp;
-        combat.MarkCompleted();
+        combat.OnCombatantDefeated(enemy.Id.Value);
+        combat.CompleteIfAllEnemiesDefeated();
 
         run.CompleteActiveCombat();
 
@@ -93,10 +95,11 @@ public sealed class RunRoomTraversalDrainTests
     [Fact]
     public void CompleteActiveCombat_ShouldNotRestoreVitality_WhenTheModifierIsNotActive()
     {
-        var (run, combat) = CreateRunWithSelectedNodeAndCombat();
+        var (run, combat, enemy) = CreateRunWithSelectedNodeAndCombat();
         run.ApplyVitalityLoss(run.MaxHp / 2);
         var hpBefore = run.CurrentHp;
-        combat.MarkCompleted();
+        combat.OnCombatantDefeated(enemy.Id.Value);
+        combat.CompleteIfAllEnemiesDefeated();
 
         run.CompleteActiveCombat();
 
@@ -106,23 +109,23 @@ public sealed class RunRoomTraversalDrainTests
     [Fact]
     public void CompleteActiveCombat_ShouldNotRestoreVitality_WhenAlreadyAtFullHp()
     {
-        var (run, combat) = CreateRunWithSelectedNodeAndCombat();
+        var (run, combat, enemy) = CreateRunWithSelectedNodeAndCombat();
         run.AddRunModifier(CreateDrainModifier());
-        combat.MarkCompleted();
+        combat.OnCombatantDefeated(enemy.Id.Value);
+        combat.CompleteIfAllEnemiesDefeated();
 
         run.CompleteActiveCombat();
 
         run.CurrentHp.Should().Be(run.MaxHp);
     }
 
-    private static (Run Run, Combat Combat) CreateRunWithSelectedNodeAndCombat()
+    private static (Run Run, TacticalCombat Combat, Combatant Enemy) CreateRunWithSelectedNodeAndCombat()
     {
         var run = TestGameEngineFactory.CreateRunWithSelectedTargetNode(NodeEventType.Combat).Run;
         var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
         var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 80);
-        var combat = Combat.Create(CombatId.New(), run.Id, RoomId.New(), NodeId.New(), [ally], [enemy]);
-        run.StartCombat(combat);
+        var (_, combat) = TestTacticalCombatHelper.CreateRunWithCombat(run, [ally], [enemy]);
 
-        return (run, combat);
+        return (run, combat, enemy);
     }
 }

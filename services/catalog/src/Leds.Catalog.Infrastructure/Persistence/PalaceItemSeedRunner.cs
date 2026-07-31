@@ -35,6 +35,12 @@ public sealed partial class CatalogSeedRunner
         PalaceItemSeed definition,
         CancellationToken cancellationToken)
     {
+        var item = await _ctx.ItemDefinitions
+            .FirstOrDefaultAsync(i => i.Key == definition.Key, cancellationToken);
+
+        if (item is not null)
+            return;
+
         var effectSetKey = $"effect.{definition.Key}";
         var effectSet = await _ctx.EffectSets
             .Include(e => e.Effects)
@@ -54,16 +60,6 @@ public sealed partial class CatalogSeedRunner
                 UpdatedAtUtc = _now
             };
             _ctx.EffectSets.Add(effectSet);
-        }
-        else
-        {
-            effectSet.DisplayName = definition.Name;
-            effectSet.Description = definition.Description;
-            effectSet.Version = PalaceItemVersion;
-            effectSet.Status = "Active";
-            effectSet.UpdatedAtUtc = _now;
-            _ctx.EffectDefinitions.RemoveRange(effectSet.Effects);
-            effectSet.Effects.Clear();
         }
 
         for (var index = 0; index < definition.Effects.Count; index++)
@@ -91,19 +87,13 @@ public sealed partial class CatalogSeedRunner
             .Concat(DeriveAlwaysOnEquipmentEffects(definition))
             .ToArray();
         var equipmentEffectsJson = JsonSerializer.Serialize(equipmentEffects, J);
-        var item = await _ctx.ItemDefinitions
-            .FirstOrDefaultAsync(i => i.Key == definition.Key, cancellationToken);
-
-        if (item is null)
+        item = new ItemDefinitionEntity
         {
-            item = new ItemDefinitionEntity
-            {
-                Id = Guid.NewGuid(),
-                Key = definition.Key,
-                CreatedAtUtc = _now
-            };
-            _ctx.ItemDefinitions.Add(item);
-        }
+            Id = Guid.NewGuid(),
+            Key = definition.Key,
+            CreatedAtUtc = _now
+        };
+        _ctx.ItemDefinitions.Add(item);
 
         item.Name = definition.Name;
         item.DisplayName = definition.Name;

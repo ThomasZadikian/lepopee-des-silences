@@ -6,6 +6,8 @@ using Leds.GameEngine.Application.Players.Ports;
 using Leds.GameEngine.Application.Runs.ExitMidRoom;
 using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Common;
+using Leds.GameEngine.Domain.Nodes;
+using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
 using Leds.GameEngine.UnitTests.Common.Factories;
 using Microsoft.Extensions.Logging;
@@ -108,7 +110,10 @@ public sealed class ExitMidRoomCommandHandlerTests
     public async Task Handle_ShouldThrowDomainException_WhenRunHasActiveCombat()
     {
         var run = CreateActiveRunWithSomeProgression();
-        run.SetActiveCombat(new CombatId(Guid.NewGuid()));
+        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+        var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 80);
+        var combat = TestTacticalCombatHelper.Create(run.Id, RoomId.New(), NodeId.New(), [ally], [enemy]);
+        run.StartTacticalCombat(combat);
 
         var (handler, _, _) = CreateHandler(run);
 

@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Leds.GameEngine.Domain.Combats;
+using Leds.GameEngine.Domain.Combats.Tactical;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
@@ -27,7 +28,7 @@ public sealed class EfRunRepositoryCombatTests : IDisposable
     public async Task SaveAndLoad_ShouldRestoreEquivalentActiveCombat()
     {
         var run = CreateTestRunWithCombat();
-        var combat = run.ActiveCombat!;
+        var combat = run.ActiveTacticalCombat!;
 
         await _repository.AddAsync(run, CancellationToken.None);
 
@@ -37,10 +38,10 @@ public sealed class EfRunRepositoryCombatTests : IDisposable
         var loaded = await verifyRepository.GetByIdAsync(run.Id, CancellationToken.None);
 
         loaded.Should().NotBeNull();
-        loaded!.ActiveCombat.Should().NotBeNull();
+        loaded!.ActiveTacticalCombat.Should().NotBeNull();
         loaded.ActiveCombatId.Should().NotBeNull();
 
-        var loadedCombat = loaded.ActiveCombat!;
+        var loadedCombat = loaded.ActiveTacticalCombat!;
         loadedCombat.Id.Should().Be(combat.Id);
         loadedCombat.RunId.Should().Be(combat.RunId);
         loadedCombat.RoomId.Should().Be(combat.RoomId);
@@ -84,7 +85,7 @@ public sealed class EfRunRepositoryCombatTests : IDisposable
     public async Task SaveAndLoad_ShouldRestoreCombatantSkills()
     {
         var run = CreateTestRunWithCombat();
-        var combat = run.ActiveCombat!;
+        var combat = run.ActiveTacticalCombat!;
         var ally = combat.Allies.First();
 
         await _repository.AddAsync(run, CancellationToken.None);
@@ -94,7 +95,7 @@ public sealed class EfRunRepositoryCombatTests : IDisposable
         var verifyRepository = new EfRunRepository(verifyContext);
         var loaded = await verifyRepository.GetByIdAsync(run.Id, CancellationToken.None);
 
-        var loadedAlly = loaded!.ActiveCombat!.Allies.First();
+        var loadedAlly = loaded!.ActiveTacticalCombat!.Allies.First();
         loadedAlly.Skills.Should().HaveCount(ally.Skills.Count);
 
         foreach (var originalSkill in ally.Skills)
@@ -120,7 +121,9 @@ public sealed class EfRunRepositoryCombatTests : IDisposable
         run.EnterGridNode(node1.Id.Value);
         await _repository.AddAsync(run, CancellationToken.None);
 
-        run.ActiveCombat!.MarkCompleted();
+        foreach (var enemy in run.ActiveTacticalCombat!.Enemies)
+            enemy.ApplyDamage(999);
+        run.ActiveTacticalCombat!.CompleteIfAllEnemiesDefeated();
         run.CompleteActiveCombat();
         await _repository.UpdateAsync(run, CancellationToken.None);
 
@@ -130,7 +133,7 @@ public sealed class EfRunRepositoryCombatTests : IDisposable
         var loaded = await verifyRepository.GetByIdAsync(run.Id, CancellationToken.None);
 
         loaded.Should().NotBeNull();
-        loaded!.ActiveCombat.Should().BeNull();
+        loaded!.ActiveTacticalCombat.Should().BeNull();
         loaded.ActiveCombatId.Should().BeNull();
     }
 
@@ -167,10 +170,25 @@ public sealed class EfRunRepositoryCombatTests : IDisposable
 
         var run = Run.StartNew(Guid.NewGuid(), "test-seed", "1.0.0", "1.0.0", room, DateTimeOffset.UtcNow);
 
-        var combatId = CombatId.New();
-        var combat = Combat.Create(combatId, run.Id, room.Id, node1.Id, [ally], [enemy]);
+        var battlefield = TacticalBattlefield.Rehydrate(
+            4, 2,
+            Enumerable.Repeat(0, 8).ToArray(),
+            Enumerable.Repeat(true, 8).ToArray(),
+            Enumerable.Repeat(true, 8).ToArray());
 
-        run.StartCombat(combat);
+        var allyPosition = new GridPosition(0, 0);
+        var enemyPosition = new GridPosition(3, 0);
+        var combat = TacticalCombat.Create(
+            CombatId.New(),
+            run.Id,
+            room.Id,
+            node1.Id,
+            battlefield,
+            [(ally, allyPosition)],
+            [(enemy, enemyPosition)],
+            DateTime.UtcNow);
+
+        run.StartTacticalCombat(combat);
 
         return run;
     }

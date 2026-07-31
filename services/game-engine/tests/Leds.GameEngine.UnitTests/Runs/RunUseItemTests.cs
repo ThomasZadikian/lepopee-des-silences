@@ -1,5 +1,6 @@
 ﻿using FluentAssertions;
 using Leds.GameEngine.Domain.Combats;
+using Leds.GameEngine.Domain.Combats.Tactical;
 using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rooms;
@@ -207,13 +208,14 @@ public sealed class RunUseItemTests
         sourceType: "PalaceLaw",
         sourceKey: "law-poches-cousues");
 
-    private static (Run Run, Combat Combat) CreateRunWithActiveCombat()
+    private static (Run Run, TacticalCombat Combat) CreateRunWithActiveCombat()
     {
         var run = TestGameEngineFactory.CreateRunWithSelectedTargetNode(NodeEventType.Combat).Run;
         var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
         var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 80);
-        var combat = Combat.Create(CombatId.New(), run.Id, RoomId.New(), NodeId.New(), [ally], [enemy]);
-        run.StartCombat(combat);
+        var combat = TestTacticalCombatHelper.Create(
+            run.Id, RoomId.New(), NodeId.New(), [ally], [enemy]);
+        run.StartTacticalCombat(combat);
 
         return (run, combat);
     }

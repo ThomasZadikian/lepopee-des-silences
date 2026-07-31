@@ -70,11 +70,6 @@ public sealed class ResolveCurrentEventCommandHandlerTests
         return new Mock<ICatalogContentGateway>();
     }
 
-    private static Mock<ICombatInstanceFactory> CreateCombatFactoryMock()
-    {
-        return new Mock<ICombatInstanceFactory>();
-    }
-
     private static Mock<ICombatEncounterDraftGenerator> CreateEncounterDraftGeneratorMock()
     {
         return new Mock<ICombatEncounterDraftGenerator>();
@@ -329,34 +324,7 @@ public sealed class ResolveCurrentEventCommandHandlerTests
             .Setup(g => g.GenerateAsync(It.IsAny<CombatEncounterDraftContext>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(expectedDraft);
 
-        var combatFactory = new Mock<ICombatInstanceFactory>();
-        var combatants = new CombatantSnapshot[]
-        {
-            CombatantSnapshot.Create("player.self", "Player", CombatantSide.Player, 100, 10, 5, 7),
-            CombatantSnapshot.Create("enemy-shadow-v1", "Shadow", CombatantSide.Enemy, 30, 8, 4, 6)
-        };
-        var combatInstance = CombatInstance.Create(combatants);
-        combatFactory
-            .Setup(f => f.CreateFromEnemyTemplate(It.IsAny<EnemyTemplateSnapshot>()))
-            .Returns(combatInstance);
-
-        var runtimeFactoryMock = new Mock<ICombatFactory>();
-        runtimeFactoryMock
-            .Setup(f => f.CreateFromDraft(
-                It.IsAny<CombatId>(),
-                It.IsAny<CombatEncounterDraft>(),
-                It.IsAny<PlayerRuntimeState?>(),
-                It.IsAny<IReadOnlyCollection<RunModifier>?>(),
-                It.IsAny<int>(),
-                It.IsAny<int>(),
-                It.IsAny<int>(),
-                It.IsAny<PalaceRoomState>(),
-                It.IsAny<int>()))
-            .Returns((CombatId combatId, CombatEncounterDraft draft, PlayerRuntimeState? playerState,
-                IReadOnlyCollection<RunModifier>? runModifiers, int attackPower, int defense, int speed,
-                PalaceRoomState palaceRoomState, int focus) =>
-                new CombatFactory().CreateFromDraft(
-                    combatId, draft, playerState, runModifiers, attackPower, defense, speed, palaceRoomState, focus));
+        var runtimeFactory = new CombatFactory();
 
         var handler = new ResolveCurrentEventCommandHandler(
             repository.Object,
@@ -364,7 +332,7 @@ public sealed class ResolveCurrentEventCommandHandlerTests
             contentResolver.Object,
             catalogGateway.Object,
             draftGenerator.Object,
-            runtimeFactoryMock.Object,
+            runtimeFactory,
             new TacticalCombatFactory(),
             CreateTacticalEnemyTurnDriver(),
             new Mock<IRewardOfferRepository>().Object,
@@ -433,23 +401,7 @@ public sealed class ResolveCurrentEventCommandHandlerTests
             .Setup(g => g.GenerateAsync(It.IsAny<CombatEncounterDraftContext>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(expectedDraft);
 
-        var runtimeFactoryMock = new Mock<ICombatFactory>();
-        runtimeFactoryMock
-            .Setup(f => f.CreateFromDraft(
-                It.IsAny<CombatId>(),
-                It.IsAny<CombatEncounterDraft>(),
-                It.IsAny<PlayerRuntimeState?>(),
-                It.IsAny<IReadOnlyCollection<RunModifier>?>(),
-                It.IsAny<int>(),
-                It.IsAny<int>(),
-                It.IsAny<int>(),
-                It.IsAny<PalaceRoomState>(),
-                It.IsAny<int>()))
-            .Returns((CombatId combatId, CombatEncounterDraft draft, PlayerRuntimeState? playerState,
-                IReadOnlyCollection<RunModifier>? runModifiers, int attackPower, int defense, int speed,
-                PalaceRoomState palaceRoomState, int focus) =>
-                new CombatFactory().CreateFromDraft(
-                    combatId, draft, playerState, runModifiers, attackPower, defense, speed, palaceRoomState, focus));
+        var runtimeFactory = new CombatFactory();
 
         var handler = new ResolveCurrentEventCommandHandler(
             repository.Object,
@@ -457,7 +409,7 @@ public sealed class ResolveCurrentEventCommandHandlerTests
             CreateContentResolverMock().Object,
             catalogGateway.Object,
             draftGenerator.Object,
-            runtimeFactoryMock.Object,
+            runtimeFactory,
             new TacticalCombatFactory(),
             CreateTacticalEnemyTurnDriver(),
             new Mock<IRewardOfferRepository>().Object,
@@ -540,34 +492,7 @@ public sealed class ResolveCurrentEventCommandHandlerTests
             .Setup(g => g.GenerateAsync(It.IsAny<CombatEncounterDraftContext>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(expectedDraft);
 
-        var combatFactory = new Mock<ICombatInstanceFactory>();
-        var combatants = new CombatantSnapshot[]
-        {
-            CombatantSnapshot.Create("player.self", "Player", CombatantSide.Player, 100, 10, 5, 7),
-            CombatantSnapshot.Create("enemy-shadow-v1", "Shadow", CombatantSide.Enemy, 30, 8, 4, 6)
-        };
-        var combatInstance = CombatInstance.Create(combatants);
-        combatFactory
-            .Setup(f => f.CreateFromEnemyTemplate(It.IsAny<EnemyTemplateSnapshot>()))
-            .Returns(combatInstance);
-
-        var runtimeFactoryMock = new Mock<ICombatFactory>();
-        runtimeFactoryMock
-            .Setup(f => f.CreateFromDraft(
-                It.IsAny<CombatId>(),
-                It.IsAny<CombatEncounterDraft>(),
-                It.IsAny<PlayerRuntimeState?>(),
-                It.IsAny<IReadOnlyCollection<RunModifier>?>(),
-                It.IsAny<int>(),
-                It.IsAny<int>(),
-                It.IsAny<int>(),
-                It.IsAny<PalaceRoomState>(),
-                It.IsAny<int>()))
-            .Returns((CombatId combatId, CombatEncounterDraft draft, PlayerRuntimeState? playerState,
-                IReadOnlyCollection<RunModifier>? runModifiers, int attackPower, int defense, int speed,
-                PalaceRoomState palaceRoomState, int focus) =>
-                new CombatFactory().CreateFromDraft(
-                    combatId, draft, playerState, runModifiers, attackPower, defense, speed, palaceRoomState, focus));
+        var runtimeFactory = new CombatFactory();
 
         var handler = new ResolveCurrentEventCommandHandler(
             repository.Object,
@@ -575,7 +500,7 @@ public sealed class ResolveCurrentEventCommandHandlerTests
             contentResolver.Object,
             catalogGateway.Object,
             draftGenerator.Object,
-            runtimeFactoryMock.Object,
+            runtimeFactory,
             new TacticalCombatFactory(),
             CreateTacticalEnemyTurnDriver(),
             new Mock<IRewardOfferRepository>().Object,

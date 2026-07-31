@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Leds.GameEngine.Application.Combats;
 using Leds.GameEngine.Application.Combats.EncounterDrafts;
+using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Combats.StatusEffects;
 
 namespace Leds.GameEngine.UnitTests.Combats;
@@ -34,51 +35,51 @@ public sealed class CombatFactoryHimLitProtectionTests
     }
 
     [Fact]
-    public void CreateFromDraft_ShouldNotAlterProtagonist_WhenHimLitProtectionDisabled()
+    public void BuildRoster_ShouldNotAlterProtagonist_WhenHimLitProtectionDisabled()
     {
         var factory = new CombatFactory();
         var draft = CreateDraftWithProtagonist();
 
-        var combat = factory.CreateFromDraft(draft, attackPower: 12, speed: 10, himLitProtectionEnabled: false);
+        var roster = factory.BuildRoster(CombatId.New(), draft, attackPower: 12, speed: 10, himLitProtectionEnabled: false);
 
-        var protagonist = combat.Allies.Single();
+        var protagonist = roster.Allies.Single();
         protagonist.Guard.Should().Be(0);
         protagonist.StatusEffects.Should().BeEmpty();
     }
 
     [Fact]
-    public void CreateFromDraft_ShouldGrantTenFlatGuard_WhenHimLitProtectionEnabled()
+    public void BuildRoster_ShouldGrantTenFlatGuard_WhenHimLitProtectionEnabled()
     {
         var factory = new CombatFactory();
         var draft = CreateDraftWithProtagonist();
 
-        var combat = factory.CreateFromDraft(draft, himLitProtectionEnabled: true);
+        var roster = factory.BuildRoster(CombatId.New(), draft, himLitProtectionEnabled: true);
 
-        combat.Allies.Single().Guard.Should().Be(10);
+        roster.Allies.Single().Guard.Should().Be(10);
     }
 
     [Fact]
-    public void CreateFromDraft_ShouldBoostAttackPowerAndSpeed_ByFivePercent_WhenHimLitProtectionEnabled()
+    public void BuildRoster_ShouldBoostAttackPowerAndSpeed_ByFivePercent_WhenHimLitProtectionEnabled()
     {
         var factory = new CombatFactory();
         var draft = CreateDraftWithProtagonist();
 
-        var combat = factory.CreateFromDraft(draft, attackPower: 20, speed: 10, himLitProtectionEnabled: true);
+        var roster = factory.BuildRoster(CombatId.New(), draft, attackPower: 20, speed: 10, himLitProtectionEnabled: true);
 
-        var protagonist = combat.Allies.Single();
+        var protagonist = roster.Allies.Single();
         protagonist.EffectiveAttackPower.Should().Be(21); // 20 + 5%
         protagonist.EffectiveSpeed.Should().Be(9); // +5% and -10% on the base stat
     }
 
     [Fact]
-    public void CreateFromDraft_ShouldApplyTheAdditionalSpeedPenalty_WhenHimLitProtectionEnabled()
+    public void BuildRoster_ShouldApplyTheAdditionalSpeedPenalty_WhenHimLitProtectionEnabled()
     {
         var factory = new CombatFactory();
         var draft = CreateDraftWithProtagonist();
 
-        var combat = factory.CreateFromDraft(draft, himLitProtectionEnabled: true);
+        var roster = factory.BuildRoster(CombatId.New(), draft, himLitProtectionEnabled: true);
 
-        combat.Allies.Single().StatusEffects.Should().Contain(effect =>
+        roster.Allies.Single().StatusEffects.Should().Contain(effect =>
             effect.Key == "himlit-protection:tempo"
             && effect.Stat == CombatStat.Speed
             && effect.Magnitude == -10
@@ -86,32 +87,32 @@ public sealed class CombatFactoryHimLitProtectionTests
     }
 
     [Fact]
-    public void CreateFromDraft_ShouldReduceSkillCostByFivePercent_WhenHimLitProtectionEnabled()
+    public void BuildRoster_ShouldReduceSkillCostByFivePercent_WhenHimLitProtectionEnabled()
     {
         var factory = new CombatFactory();
         var draft = CreateDraftWithProtagonist();
 
-        var combat = factory.CreateFromDraft(draft, himLitProtectionEnabled: true);
+        var roster = factory.BuildRoster(CombatId.New(), draft, himLitProtectionEnabled: true);
 
-        combat.Allies.Single().EffectiveSkillCostReductionPercent.Should().Be(-5);
+        roster.Allies.Single().EffectiveSkillCostReductionPercent.Should().Be(-5);
     }
 
     [Fact]
-    public void CreateFromDraft_ShouldApplyPermanentStatusEffects_WhenHimLitProtectionEnabled()
+    public void BuildRoster_ShouldApplyPermanentStatusEffects_WhenHimLitProtectionEnabled()
     {
         var factory = new CombatFactory();
         var draft = CreateDraftWithProtagonist();
 
-        var combat = factory.CreateFromDraft(draft, himLitProtectionEnabled: true);
+        var roster = factory.BuildRoster(CombatId.New(), draft, himLitProtectionEnabled: true);
 
-        var protagonist = combat.Allies.Single();
+        var protagonist = roster.Allies.Single();
         protagonist.StatusEffects.Should().HaveCount(4);
         protagonist.StatusEffects.Should().OnlyContain(effect =>
             effect.Kind == StatusEffectKind.StatModifier && effect.IsPermanent);
     }
 
     [Fact]
-    public void CreateFromDraft_ShouldNotAffectCompanions_WhenHimLitProtectionEnabled()
+    public void BuildRoster_ShouldNotAffectCompanions_WhenHimLitProtectionEnabled()
     {
         var factory = new CombatFactory();
         var protagonist = new CombatEncounterDraftAlly(
@@ -127,9 +128,9 @@ public sealed class CombatFactoryHimLitProtectionTests
             RoomType: "Threshold", RoomIndex: 1, RiskLevel: 3, EncounterType: "Combat",
             Enemies: new[] { enemy }, Allies: new[] { protagonist, companion });
 
-        var combat = factory.CreateFromDraft(draft, himLitProtectionEnabled: true);
+        var roster = factory.BuildRoster(CombatId.New(), draft, himLitProtectionEnabled: true);
 
-        var companionCombatant = combat.Allies.Single(a => a.SourceKey == "companion.mane");
+        var companionCombatant = roster.Allies.Single(a => a.SourceKey == "companion.mane");
         companionCombatant.Guard.Should().Be(0);
         companionCombatant.StatusEffects.Should().BeEmpty();
     }

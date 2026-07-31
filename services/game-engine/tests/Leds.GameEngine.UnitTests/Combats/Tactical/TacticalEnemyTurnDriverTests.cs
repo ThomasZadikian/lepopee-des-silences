@@ -48,7 +48,7 @@ public sealed class TacticalEnemyTurnDriverTests
         var clock = Mock.Of<IClock>(
             c => c.UtcNow == DateTimeOffset.Parse("2026-07-30T10:00:00Z"));
 
-        var driver = new TacticalEnemyTurnDriver(resolver.Object, clock);
+        var driver = new TacticalEnemyTurnDriver(resolver.Object, clock, bossBehaviors: []);
         driver.PlayWhileEnemyHasInitiative(combat);
 
         resolvedTargets.Should().ContainSingle()

@@ -194,7 +194,10 @@ public sealed class ExitMidRoomTests
     public void ExitMidRoom_ShouldFail_WhenRunHasActiveCombat()
     {
         var run = CreateRunWithSomeProgression();
-        run.SetActiveCombat(new CombatId(Guid.NewGuid()));
+        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+        var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 80);
+        var combat = TestTacticalCombatHelper.Create(run.Id, RoomId.New(), NodeId.New(), [ally], [enemy]);
+        run.StartTacticalCombat(combat);
 
         var act = () => run.ExitMidRoom(DateTimeOffset.UtcNow);
 

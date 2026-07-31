@@ -3,6 +3,7 @@ using Leds.GameEngine.Application.Abstractions;
 using Leds.GameEngine.Application.Common.Exceptions;
 using Leds.GameEngine.Application.Runs.UseRunItem;
 using Leds.GameEngine.Domain.Combats;
+using Leds.GameEngine.Domain.Combats.Tactical;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Runs;
 using Leds.GameEngine.UnitTests.Common.Factories;
@@ -116,14 +117,9 @@ public sealed class UseRunItemCommandHandlerTests
         var run = runWithNode.Run;
         var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100, 0, [strikeSkill]);
         var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 80, []);
-        var combat = Combat.Create(
-            CombatId.New(),
-            run.Id,
-            Domain.Rooms.RoomId.New(),
-            NodeId.New(),
-            [ally],
-            [enemy]);
-        run.StartCombat(combat);
+        var combat = TestTacticalCombatHelper.Create(
+            run.Id, Domain.Rooms.RoomId.New(), NodeId.New(), [ally], [enemy]);
+        run.StartTacticalCombat(combat);
 
         var item = RunItem.Create(
             "item.consumable.minor-heal",
@@ -203,8 +199,6 @@ public sealed class UseRunItemCommandHandlerTests
             new UseRunItemCommand(run.Id.Value, item.Id.Value),
             CancellationToken.None);
 
-        result.Combat.Should().BeNull();
-        result.LogEntries.Should().BeNull();
     }
 
 }

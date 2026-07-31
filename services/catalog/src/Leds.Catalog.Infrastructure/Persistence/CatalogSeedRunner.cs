@@ -2483,57 +2483,6 @@ public sealed partial class CatalogSeedRunner
             return;
         }
 
-        // Refresh metadata + stats (canon is authoritative for its own keys).
-        existing.Name = name;
-        existing.DisplayName = name;
-        existing.Description = description;
-        existing.NarrativeText = description;
-        existing.Version = version;
-        existing.Status = "Active";
-        existing.Archetype = archetype;
-        existing.Family = family;
-        existing.Rank = rank;
-        existing.Role = role;
-        existing.BaseDifficulty = isElite ? 2 : 1;
-        existing.MinRiskLevel = riskMin;
-        existing.MaxRiskLevel = riskMax;
-        existing.MinDepth = depthMin;
-        existing.MaxDepth = depthMax;
-        existing.IsElite = isElite;
-        existing.Rarity = rarity;
-        existing.Registre = registre;
-        existing.MenaceLevel = menace;
-        existing.BoundRoomKeysJson = JsonSerializer.Serialize(boundRoomKeys ?? Array.Empty<string>());
-        existing.CompatibleRoomTypesJson = JsonSerializer.Serialize(roomTypes);
-        existing.TagsJson = JsonSerializer.Serialize(tags);
-        existing.SkillKeysJson = JsonSerializer.Serialize(skillKeys);
-        existing.UpdatedAtUtc = now;
-
-        existing.StatBlock ??= new EnemyStatBlockEntity
-        {
-            Id = Guid.NewGuid(),
-            EnemyDefinitionId = existing.Id
-        };
-        existing.StatBlock.MaxVitality = vitality;
-        existing.StatBlock.AttackPower = attack;
-        existing.StatBlock.Defense = defense;
-        existing.StatBlock.StartingGuard = guard;
-        existing.StatBlock.Speed = speed;
-        existing.StatBlock.Focus = focus;
-        existing.StatBlock.Initiative = initiative;
-        existing.StatBlock.Mana = mana;
-        existing.StatBlock.MagicAttack = magicAttack;
-        existing.StatBlock.MagicDefense = magicDefense;
-
-        var desired = skillKeys.Distinct(StringComparer.OrdinalIgnoreCase).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        foreach (var skillKey in desired.Where(k => existing.SkillLinks.All(l => !string.Equals(l.SkillDefinitionKey, k, StringComparison.OrdinalIgnoreCase))))
-        {
-            existing.SkillLinks.Add(new EnemySkillLinkEntity
-            {
-                EnemyDefinitionId = existing.Id,
-                SkillDefinitionKey = skillKey
-            });
-        }
     }
 
     // ── SORTS CANON ───────────────────────────────────────────────────────────
@@ -4356,59 +4305,42 @@ public sealed partial class CatalogSeedRunner
         requiresLineOfSight = tacticalContract.RequiresLineOfSight;
         var effectsJson = JsonSerializer.Serialize(effects ?? [], J);
         var existing = await _ctx.SkillDefinitions.FirstOrDefaultAsync(s => s.Key == key, cancellationToken);
-        if (existing is null)
-        {
-            _ctx.SkillDefinitions.Add(new SkillDefinitionEntity
-            {
-                Id = Guid.NewGuid(),
-                Key = key,
-                Name = name,
-                DisplayName = name,
-                Description = description,
-                NarrativeText = description,
-                Version = version,
-                Status = "Active",
-                SkillType = skillType,
-                TargetingType = targeting,
-                TargetingMode = targeting,
-                EffectType = effectType,
-                Category = category,
-                CostType = mana > 0 ? "Mana" : "None",
-                ManaCost = mana,
-                ChargeCost = 0,
-                BasePower = power,
-                BasePowerIsPercentOfMaxVitality = basePowerIsPercentOfMaxVitality,
-                Power = power,
-                Accuracy = 100,
-                ActionCost = 10,
-                TacticalRange = tacticalRange,
-                TacticalAreaShape = tacticalAreaShape,
-                RequiresLineOfSight = requiresLineOfSight,
-                Cooldown = cooldown,
-                IsUltimate = isUltimate,
-                EmotionalRegister = emotionalRegister,
-                BaseWeight = 1,
-                EffectsJson = effectsJson,
-                CreatedAtUtc = now,
-                UpdatedAtUtc = now
-            });
+        if (existing is not null)
             return;
-        }
-        existing.Name = name; existing.DisplayName = name;
-        existing.Description = description; existing.NarrativeText = description;
-        existing.Version = version; existing.Status = "Active";
-        existing.SkillType = skillType; existing.TargetingType = targeting; existing.TargetingMode = targeting;
-        existing.EffectType = effectType; existing.Category = category; existing.CostType = mana > 0 ? "Mana" : "None";
-        existing.ManaCost = mana; existing.BasePower = power; existing.Power = power;
-        existing.BasePowerIsPercentOfMaxVitality = basePowerIsPercentOfMaxVitality;
-        existing.TacticalRange = tacticalRange;
-        existing.TacticalAreaShape = tacticalAreaShape;
-        existing.RequiresLineOfSight = requiresLineOfSight;
-        existing.Cooldown = cooldown;
-        existing.IsUltimate = isUltimate;
-        existing.EmotionalRegister = emotionalRegister;
-        existing.EffectsJson = effectsJson;
-        existing.UpdatedAtUtc = now;
+        _ctx.SkillDefinitions.Add(new SkillDefinitionEntity
+        {
+            Id = Guid.NewGuid(),
+            Key = key,
+            Name = name,
+            DisplayName = name,
+            Description = description,
+            NarrativeText = description,
+            Version = version,
+            Status = "Active",
+            SkillType = skillType,
+            TargetingType = targeting,
+            TargetingMode = targeting,
+            EffectType = effectType,
+            Category = category,
+            CostType = mana > 0 ? "Mana" : "None",
+            ManaCost = mana,
+            ChargeCost = 0,
+            BasePower = power,
+            BasePowerIsPercentOfMaxVitality = basePowerIsPercentOfMaxVitality,
+            Power = power,
+            Accuracy = 100,
+            ActionCost = 10,
+            TacticalRange = tacticalRange,
+            TacticalAreaShape = tacticalAreaShape,
+            RequiresLineOfSight = requiresLineOfSight,
+            Cooldown = cooldown,
+            IsUltimate = isUltimate,
+            EmotionalRegister = emotionalRegister,
+            BaseWeight = 1,
+            EffectsJson = effectsJson,
+            CreatedAtUtc = now,
+            UpdatedAtUtc = now
+        });
     }
 
     // ── OBJETS CANON ──────────────────────────────────────────────────────────
@@ -4713,20 +4645,6 @@ public sealed partial class CatalogSeedRunner
             });
             return;
         }
-        existing.Name = name; existing.DisplayName = name;
-        existing.Description = description; existing.NarrativeText = description;
-        existing.Version = version; existing.Status = "Active";
-        existing.Category = category; existing.ItemType = itemType; existing.Rarity = rarity;
-        existing.UsageMode = usableInCombat ? "UseInCombat" : "NotUsable";
-        existing.Lifecycle = lifecycle; existing.Duration = duration;
-        existing.IsUsableInCombat = usableInCombat; existing.EffectValue = effectValue;
-        existing.EffectRunType = effectRunType;
-        existing.EquipmentEffectsJson = equipmentEffectsJson;
-        existing.IsContainer = isContainer;
-        existing.ContainerCapacity = containerCapacity;
-        existing.IsLiquid = isLiquid;
-        existing.ReadablePagesJson = readablePagesJson;
-        existing.UpdatedAtUtc = now;
     }
     // ── MALÉDICTIONS CANON ────────────────────────────────────────────────────
     private async Task SeedCanonCursesAsync(CancellationToken cancellationToken)
@@ -4780,10 +4698,6 @@ public sealed partial class CatalogSeedRunner
             });
             return;
         }
-        existing.DisplayName = name; existing.Description = description; existing.NarrativeText = description;
-        existing.Severity = severity; existing.Duration = duration; existing.Trigger = trigger;
-        existing.MinDepth = minDepth; existing.Version = version; existing.Status = "Active";
-        existing.UpdatedAtUtc = now;
     }
     // ── LOIS DU PALAIS CANON (arrêtés papaux) ─────────────────────────────────
     // Lois du Palais Phase 6: prune the 5 placeholder "canon.law.*" laws (Arrêté 153-2,
@@ -5765,52 +5679,39 @@ public sealed partial class CatalogSeedRunner
         var exclusionKeysJson = JsonSerializer.Serialize(exclusionKeys ?? []);
 
         var existing = await _ctx.PalaceLawDefinitions.FirstOrDefaultAsync(l => l.Key == key, cancellationToken);
-        if (existing is null)
-        {
-            _ctx.PalaceLawDefinitions.Add(new PalaceLawDefinitionEntity
-            {
-                Id = Guid.NewGuid(),
-                Key = key,
-                Name = name,
-                DisplayName = name,
-                Description = description,
-                NarrativeText = narrativeText,
-                Version = version,
-                Status = "Active",
-                Scope = "Run",
-                Duration = duration,
-                Trigger = "OnApplied",
-                Severity = polarity == "Sévère" || polarity == "DoubleTranchant" ? 2 : 1,
-                Visibility = "Visible",
-                Priority = 0,
-                EffectSetId = null,
-                BaseWeight = baseWeight,
-                MinDepth = minDepth,
-                MaxDepth = maxDepth,
-                SelectionGroup = selectionGroup,
-                ImpactDomainsJson = domainsJson,
-                Rarity = rarity,
-                Polarity = polarity,
-                IsMajeure = isMajeure,
-                RoomKey = roomKey,
-                IsCumulExempt = isCumulExempt,
-                ExclusionKeysJson = exclusionKeysJson,
-                CreatedAtUtc = now,
-                UpdatedAtUtc = now
-            });
+        if (existing is not null)
             return;
-        }
-
-        existing.Name = name; existing.DisplayName = name;
-        existing.Description = description; existing.NarrativeText = narrativeText;
-        existing.Version = version; existing.Status = "Active";
-        existing.Duration = duration; existing.Priority = 0;
-        existing.MinDepth = minDepth; existing.MaxDepth = maxDepth;
-        existing.SelectionGroup = selectionGroup; existing.ImpactDomainsJson = domainsJson;
-        existing.Rarity = rarity; existing.Polarity = polarity; existing.IsMajeure = isMajeure;
-        existing.RoomKey = roomKey; existing.IsCumulExempt = isCumulExempt;
-        existing.ExclusionKeysJson = exclusionKeysJson; existing.BaseWeight = baseWeight;
-        existing.UpdatedAtUtc = now;
+        _ctx.PalaceLawDefinitions.Add(new PalaceLawDefinitionEntity
+        {
+            Id = Guid.NewGuid(),
+            Key = key,
+            Name = name,
+            DisplayName = name,
+            Description = description,
+            NarrativeText = narrativeText,
+            Version = version,
+            Status = "Active",
+            Scope = "Run",
+            Duration = duration,
+            Trigger = "OnApplied",
+            Severity = polarity == "Sévère" || polarity == "DoubleTranchant" ? 2 : 1,
+            Visibility = "Visible",
+            Priority = 0,
+            EffectSetId = null,
+            BaseWeight = baseWeight,
+            MinDepth = minDepth,
+            MaxDepth = maxDepth,
+            SelectionGroup = selectionGroup,
+            ImpactDomainsJson = domainsJson,
+            Rarity = rarity,
+            Polarity = polarity,
+            IsMajeure = isMajeure,
+            RoomKey = roomKey,
+            IsCumulExempt = isCumulExempt,
+            ExclusionKeysJson = exclusionKeysJson,
+            CreatedAtUtc = now,
+            UpdatedAtUtc = now
+        });
     }
 
     // ── SALLES CANON (lieux) ──────────────────────────────────────────────────

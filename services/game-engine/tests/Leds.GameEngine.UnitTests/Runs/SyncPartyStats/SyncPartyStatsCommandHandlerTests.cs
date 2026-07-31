@@ -7,6 +7,8 @@ using Leds.GameEngine.Application.Players.Ports;
 using Leds.GameEngine.Application.Runs.SyncPartyStats;
 using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Common;
+using Leds.GameEngine.Domain.Nodes;
+using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
 using Leds.GameEngine.UnitTests.Common.Factories;
 using Moq;
@@ -135,13 +137,11 @@ public sealed class SyncPartyStatsCommandHandlerTests
     public async Task Handle_ShouldThrowDomainException_WhenCombatIsActive()
     {
         var run = CreateRunWithProtagonistAndCompanion(out _, out _);
-        var combat = CombatInstance.Create(new[]
-        {
-            CombatantSnapshot.Create("p", "Player", CombatantSide.Player, 40, 12, 6, 10),
-            CombatantSnapshot.Create("e", "Enemy", CombatantSide.Enemy, 30, 8, 4, 6),
-        });
         TestGameEngineFactory.EnterNode(run, run.CurrentRoom.AvailableNodes.First());
-        run.SetActiveCombat(combat.Id);
+        var ally = Combatant.CreateAlly("p", "Player", "Fighter", 40);
+        var enemy = Combatant.CreateEnemy("e", "Enemy", "Guard", 30);
+        var combat = TestTacticalCombatHelper.Create(run.Id, RoomId.New(), NodeId.New(), [ally], [enemy]);
+        run.StartTacticalCombat(combat);
 
         var repo = new Mock<IRunRepository>();
         repo.Setup(r => r.GetByIdAsync(run.Id, It.IsAny<CancellationToken>())).ReturnsAsync(run);
