@@ -261,6 +261,30 @@ function elevationAt(x: number, y: number): number {
   return field.elevation[(y * field.width) + x] ?? 0;
 }
 
+/**
+ * Élévation lissée à une position fractionnaire (unité en cours de marche) : interpole
+ * bilinéairement entre les 4 cases voisines, comme la position écran elle-même l'est déjà.
+ * Sans ça, franchir la frontière entre deux cases de hauteurs différentes fait sauter
+ * l'altitude d'un coup à mi-pas alors que le glissement horizontal reste continu — la
+ * figure semble s'enfoncer dans le sol. `elevationAt` reste la source pour le sortKey
+ * (toujours ancré sur la case de destination entière, voir buildCombatantPlan).
+ */
+function elevationAtFractional(x: number, y: number): number {
+  const x0 = Math.floor(x);
+  const y0 = Math.floor(y);
+  const fx = x - x0;
+  const fy = y - y0;
+
+  const e00 = elevationAt(x0, y0);
+  const e10 = elevationAt(x0 + 1, y0);
+  const e01 = elevationAt(x0, y0 + 1);
+  const e11 = elevationAt(x0 + 1, y0 + 1);
+
+  const top = e00 + ((e10 - e00) * fx);
+  const bottom = e01 + ((e11 - e01) * fx);
+  return top + ((bottom - top) * fy);
+}
+
 const occupiedKeys = computed(
   () =>
     new Set(
@@ -896,11 +920,15 @@ function buildCombatantPlan(now: number) {
       // figure en marche est interpolée entre deux cases, pas posée sur sa destination.
       const at = store.playback.positionOf(unit.combatant.id, { x: unit.x, y: unit.y }, now);
       const elevation = elevationAt(Math.round(at.x), Math.round(at.y));
+      // Hauteur affichée : lissée en continu le long du même chemin fractionnaire que
+      // screenX/screenY, pour ne jamais sauter d'un palier à l'autre à mi-pas.
+      const liftElevation = elevationAtFractional(at.x, at.y);
       const { screenX, screenY } = projectToScreen(at.x, at.y, projectionParams.value);
 
       return {
         unit,
         elevation,
+        liftElevation,
         screenX,
         screenY,
         // À défaut de figure peinte, la silhouette que le Palais emploie déjà sur sa carte
@@ -1168,7 +1196,7 @@ function paintCanvas(timestamp: number) {
     } else {
       // ── Combattant ──
       const { entry, isActive, side, hpRatio, downed } = item;
-      const lift = elevationLiftPx(entry.elevation);
+      const lift = elevationLiftPx(entry.liftElevation);
       const groundY = entry.screenY - lift;
 
       if (deploying && deployStartedAt.value !== null) {
@@ -1521,6 +1549,9 @@ watch(
   { immediate: true },
 );
 
+// N'auto-replace le panneau que si le joueur ne l'a pas déplacé lui-même
+// (placePanelNearActive s'auto-garde déjà sur panelWasDragged) — un déplacement
+// ou une fin de tour ne doit jamais annuler un positionnement manuel.
 watch(
   [
     () => store.combat?.activeCombatantId,
@@ -1530,7 +1561,6 @@ watch(
     () => canvasSize.value.height,
   ],
   () => {
-    panelWasDragged.value = false;
     globalThis.requestAnimationFrame(() => placePanelNearActive());
   },
 );

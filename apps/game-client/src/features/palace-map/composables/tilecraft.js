@@ -2753,22 +2753,25 @@ export function drawCombatGrade(ctx, w, h, amount = 1, tint = '#0b0d1a') {
   if (amount <= 0) return;
   ctx.save();
   ctx.globalCompositeOperation = 'saturation';
-  ctx.globalAlpha = Math.min(1, amount) * 0.82;
+  ctx.globalAlpha = Math.min(1, amount) * 0.55;
   ctx.fillStyle = '#808080';
   ctx.fillRect(0, 0, w, h);
   ctx.globalCompositeOperation = 'source-over';
-  ctx.globalAlpha = Math.min(1, amount) * 0.28;
+  ctx.globalAlpha = Math.min(1, amount) * 0.18;
   ctx.fillStyle = tint;
   ctx.fillRect(0, 0, w, h);
   ctx.restore();
 }
 
-/** Paliers de risque : ils se voient sur le plateau, pas seulement dans une table. */
+/** Paliers de risque : ils se voient sur le plateau, pas seulement dans une table.
+ *  `grade` reste discret aux paliers calmes (le cas courant) et ne monte franchement
+ *  qu'à l'approche du Fatal — sinon tout combat, même le plus anodin, se lit comme
+ *  désaturé à l'écran, ce qui casse l'alignement visuel avec l'exploration. */
 export const RISK_TIERS = {
-  calm: { label: 'Calme', accent: '#7fb4a8', enemies: 2, fog: 0.5, ambient: 0.6, grade: 0.75 },
-  tense: { label: 'Tendu', accent: '#c9a24a', enemies: 3, fog: 0.75, ambient: 0.9, grade: 0.85 },
-  grim: { label: 'Sombre', accent: '#d2703c', enemies: 4, fog: 1, ambient: 1.25, grade: 0.95 },
-  fatal: { label: 'Fatal', accent: '#e0344a', enemies: 5, fog: 1.35, ambient: 1.7, grade: 1 },
+  calm: { label: 'Calme', accent: '#7fb4a8', enemies: 2, fog: 0.5, ambient: 0.6, grade: 0.3 },
+  tense: { label: 'Tendu', accent: '#c9a24a', enemies: 3, fog: 0.75, ambient: 0.9, grade: 0.45 },
+  grim: { label: 'Sombre', accent: '#d2703c', enemies: 4, fog: 1, ambient: 1.25, grade: 0.65 },
+  fatal: { label: 'Fatal', accent: '#e0344a', enemies: 5, fog: 1.35, ambient: 1.7, grade: 0.85 },
 };
 export const RISK_KEYS = Object.keys(RISK_TIERS);
 export function riskTier(key) { return RISK_TIERS[key] ?? RISK_TIERS.tense; }

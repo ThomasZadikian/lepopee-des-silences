@@ -351,6 +351,7 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
         <TacticalCombatScene
           :run-id="runStore.currentRun.id"
           :theme="runStore.currentRun.currentRoom?.theme"
+          :catalog-room-key="runStore.currentRun.currentRoom?.catalogRoomKey ?? undefined"
           :room-id="runStore.currentRun.currentRoom?.id"
           @combat-completed="runStore.handleCombatCompleted"
           @combat-failed="runStore.handleCombatFailed"

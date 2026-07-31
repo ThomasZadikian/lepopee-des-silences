@@ -3,8 +3,10 @@ import {
   projectToScreen,
   type ProjectionParams,
 } from '../../palace-map/composables/useTerrainDrawPlan';
+import { hashSeed } from '../../palace-map/composables/usePalaceTerrain';
 import {
   TERRAIN_SPRITE_CONSTANTS,
+  obstacleVariantCount,
   type FloorTint,
   type RoomTheme,
   type SpriteKey,
@@ -111,37 +113,25 @@ export function buildBattlePlan(input: BuildBattlePlanInput): BattleDrawPlanEntr
       const sortKey = sortKeyFor(x, y, elevation);
 
       if (!walkable) {
-        // Une case de la salle qu'on ne peut pas fouler porte un obstacle. On peint
-        // d'abord le sol (pour que l'obstacle ne flotte pas dans le vide), puis
-        // l'obstacle par-dessus avec la même clé de profondeur que l'exploration.
+        // Comme en exploration : le sprite d'obstacle est un remplacement complet du
+        // sol (il peint déjà son propre socle), pas une silhouette posée par-dessus —
+        // peindre un sol séparé dessous fait apparaître une géométrie de falaise qui
+        // ne correspond à rien une fois l'obstacle dessiné.
+        const wallVariants = obstacleVariantCount(input.theme);
         entries.push({
           cellKey,
           x,
           y,
           spriteKey: {
-            kind: 'floor',
-            tint: input.ambientTint,
+            kind: 'obstacle',
             theme: input.theme,
+            variant: wallVariants > 0 ? hashSeed(cellKey) % wallVariants : 0,
             elevation,
-            surfaceSeed: surfaceSeedFor(x, y),
-            cliffLeft: !isFloor(input, x, y + 1),
-            cliffRight: !isFloor(input, x + 1, y),
           },
           screenX,
           screenY,
           elevation,
-          sortKey,
-        });
-
-        entries.push({
-          cellKey,
-          x,
-          y,
-          spriteKey: { kind: 'obstacle', theme: input.theme, elevation },
-          screenX,
-          screenY,
-          elevation,
-          sortKey: sortKey + TERRAIN_SPRITE_CONSTANTS.MAX_ELEVATION,
+          sortKey: sortKeyFor(x, y, TERRAIN_SPRITE_CONSTANTS.MAX_ELEVATION),
         });
         continue;
       }
