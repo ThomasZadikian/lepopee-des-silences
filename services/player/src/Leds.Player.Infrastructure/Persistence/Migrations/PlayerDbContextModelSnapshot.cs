@@ -253,6 +253,12 @@ namespace Leds.Player.Infrastructure.Persistence.Migrations
                         .HasDefaultValue(0)
                         .HasColumnName("mana");
 
+                    b.Property<int>("Movement")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(4)
+                        .HasColumnName("movement");
+
                     b.Property<int>("MaxVitality")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")

@@ -18,10 +18,8 @@ import type {
 /**
  * L'état d'un combat tactique côté client.
  *
- * Séparé du store ATB à dessein : celui-ci porte ~900 lignes de machinerie
- * d'animation accrochées au tempo (jauges, tick, file d'attente d'effets), qui
- * n'ont aucun sens dans un tour par tour. Les fondre obligerait la moitié de
- * chaque store à rester inerte selon le mode.
+ * Store canonique du combat tour par tour : positions, initiative, ressources
+ * d'activation et chronologie de mise en scène.
  */
 export const useTacticalCombatStore = defineStore('tacticalCombat', () => {
   const playback = useCombatPlayback();
@@ -80,7 +78,7 @@ export const useTacticalCombatStore = defineStore('tacticalCombat', () => {
   /**
    * L'ordre d'action du round, résolu en combattants. Ce que le joueur doit
    * pouvoir lire d'un coup d'œil : c'est la contrepartie annoncée de l'abandon
-   * du tempo ATB.
+   * de l'ancien tempo temps-réel.
    */
   const initiativeQueue = computed<TacticalCombatantRuntimeDto[]>(() => {
     if (!combat.value) return [];

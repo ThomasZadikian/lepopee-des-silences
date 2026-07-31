@@ -25,6 +25,7 @@ public sealed record RunPartySnapshotDto(
                     Guard: isMain ? playerState.Guard : 0,
                     Mana: isMain ? playerState.Mana : character.StatBlock.Mana,
                     Charge: isMain ? playerState.Charge : character.StatBlock.Charge,
+                    Movement: character.StatBlock.Movement,
                     IsActive: isMain,
                     IsDefeated: isMain && playerState.IsDefeated,
                     Skills: character.Skills
@@ -48,7 +49,8 @@ public sealed record RunPartyMemberDto(
     int Charge,
     bool IsActive,
     bool IsDefeated,
-    IReadOnlyCollection<RunPartyMemberSkillDto> Skills);
+    IReadOnlyCollection<RunPartyMemberSkillDto> Skills,
+    int Movement = 4);
 
 public sealed record RunPartyMemberSkillDto(
     string Key,
@@ -58,7 +60,8 @@ public sealed record RunPartyMemberSkillDto(
     string EffectType,
     int ManaCost,
     int ChargeCost,
-    int BasePower)
+    int BasePower,
+    string TemporarySlot = "Permanent")
 {
     public static RunPartyMemberSkillDto FromDomain(RunCharacterSkillSnapshot skill) => new(
         skill.SkillDefinitionKey,
@@ -68,5 +71,6 @@ public sealed record RunPartyMemberSkillDto(
         skill.EffectType,
         skill.ManaCost,
         skill.ChargeCost,
-        skill.BasePower);
+        skill.BasePower,
+        skill.TemporarySlot);
 }

@@ -236,7 +236,8 @@ public sealed class StartRunCommandHandler : IRequestHandler<StartRunCommand, St
                 mana: effective.Mana,
                 charge: effective.Charge,
                 magicAttack: effective.MagicAttack,
-                magicDefense: effective.MagicDefense);
+                magicDefense: effective.MagicDefense,
+                movement: effective.Movement);
 
             var skillSnapshots = skills
                 .Select(s => RunCharacterSkillSnapshot.Create(

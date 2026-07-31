@@ -21,7 +21,8 @@ public sealed class RunCharacterSkillSnapshot
         bool requiresLineOfSight,
         int cooldown,
         bool isUltimate,
-        string emotionalRegister)
+        string emotionalRegister,
+        string temporarySlot)
     {
         Id = id;
         SkillDefinitionKey = skillDefinitionKey;
@@ -40,6 +41,7 @@ public sealed class RunCharacterSkillSnapshot
         Cooldown = cooldown;
         IsUltimate = isUltimate;
         EmotionalRegister = emotionalRegister;
+        TemporarySlot = temporarySlot;
     }
 
     public Guid Id { get; }
@@ -59,6 +61,7 @@ public sealed class RunCharacterSkillSnapshot
     public int Cooldown { get; }
     public bool IsUltimate { get; }
     public string EmotionalRegister { get; }
+    public string TemporarySlot { get; }
 
     public static RunCharacterSkillSnapshot Create(
         string skillDefinitionKey,
@@ -76,7 +79,8 @@ public sealed class RunCharacterSkillSnapshot
         bool requiresLineOfSight = false,
         int cooldown = 0,
         bool isUltimate = false,
-        string emotionalRegister = "Neutral")
+        string emotionalRegister = "Neutral",
+        string temporarySlot = "Permanent")
     {
         if (string.IsNullOrWhiteSpace(skillDefinitionKey))
             throw new DomainException("Skill definition key is required.");
@@ -101,7 +105,8 @@ public sealed class RunCharacterSkillSnapshot
             requiresLineOfSight,
             cooldown,
             isUltimate,
-            emotionalRegister);
+            emotionalRegister,
+            temporarySlot);
     }
 
     public static RunCharacterSkillSnapshot Rehydrate(
@@ -121,7 +126,8 @@ public sealed class RunCharacterSkillSnapshot
         bool requiresLineOfSight = false,
         int cooldown = 0,
         bool isUltimate = false,
-        string emotionalRegister = "Neutral")
+        string emotionalRegister = "Neutral",
+        string temporarySlot = "Permanent")
     {
         return new RunCharacterSkillSnapshot(
             id,
@@ -140,6 +146,7 @@ public sealed class RunCharacterSkillSnapshot
             requiresLineOfSight,
             cooldown,
             isUltimate,
-            emotionalRegister);
+            emotionalRegister,
+            temporarySlot);
     }
 }

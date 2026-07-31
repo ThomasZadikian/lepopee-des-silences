@@ -328,7 +328,8 @@ public static class RunPersistenceMapper
             Mana = stat.Mana,
             Charge = stat.Charge,
             MagicAttack = stat.MagicAttack,
-            MagicDefense = stat.MagicDefense
+            MagicDefense = stat.MagicDefense,
+            Movement = stat.Movement
         };
     }
 
@@ -353,7 +354,8 @@ public static class RunPersistenceMapper
             RequiresLineOfSight = skill.RequiresLineOfSight,
             Cooldown = skill.Cooldown,
             IsUltimate = skill.IsUltimate,
-            EmotionalRegister = skill.EmotionalRegister
+            EmotionalRegister = skill.EmotionalRegister,
+            TemporarySlot = skill.TemporarySlot
         };
     }
 
@@ -806,7 +808,8 @@ public static class RunPersistenceMapper
             entity.Mana,
             entity.Charge,
             entity.MagicAttack,
-            entity.MagicDefense);
+            entity.MagicDefense,
+            entity.Movement);
     }
 
     private static RunCharacterSkillSnapshot ToDomainCharacterSkillSnapshot(RunCharacterSkillSnapshotEntity entity)
@@ -828,7 +831,8 @@ public static class RunPersistenceMapper
             entity.RequiresLineOfSight,
             entity.Cooldown,
             entity.IsUltimate,
-            entity.EmotionalRegister);
+            entity.EmotionalRegister,
+            entity.TemporarySlot);
     }
 
     // -----------------------------------------------------------------------

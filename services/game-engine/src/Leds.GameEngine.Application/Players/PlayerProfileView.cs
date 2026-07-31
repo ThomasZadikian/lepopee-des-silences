@@ -48,7 +48,8 @@ public sealed record PlayerCharacterStatsView(
     int Mana,
     int Charge,
     int MagicAttack = 0,
-    int MagicDefense = 0);
+    int MagicDefense = 0,
+    int Movement = 4);
 
 public sealed record PlayerProgressionView(
     int UnspentStatPoints,

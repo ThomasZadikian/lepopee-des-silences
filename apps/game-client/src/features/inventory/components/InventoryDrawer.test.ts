@@ -102,6 +102,21 @@ describe('InventoryDrawer', () => {
     expect(wrapper.text()).toContain('+20 Vitalité');
   });
 
+  it('displays the tactical contract when supplied by the run API', async () => {
+    const item = {
+      ...baseItem,
+      tacticalRange: 2,
+      tacticalAreaShape: 'Diamond' as const,
+      requiresLineOfSight: true,
+    };
+    const wrapper = mountDrawer([item]);
+    await wrapper.find('.bsd-cell').trigger('click');
+
+    expect(wrapper.text()).toContain('Portée 2');
+    expect(wrapper.text()).toContain('losange (rayon 2)');
+    expect(wrapper.text()).toContain('Ligne de vue requise');
+  });
+
   it('shows use button for usable items', async () => {
     const wrapper = mountDrawer([baseItem]);
     await wrapper.find('.bsd-cell').trigger('click');

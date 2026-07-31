@@ -20,7 +20,8 @@ public sealed class PlayerCharacterStatBlockTests
             mana: 85,
             charge: 2,
             magicAttack: 7,
-            magicDefense: 5);
+            magicDefense: 5,
+            movement: 6);
 
         stats.MaxVitality.Should().Be(100);
         stats.AttackPower.Should().Be(12);
@@ -33,6 +34,7 @@ public sealed class PlayerCharacterStatBlockTests
         stats.Charge.Should().Be(2);
         stats.MagicAttack.Should().Be(7);
         stats.MagicDefense.Should().Be(5);
+        stats.Movement.Should().Be(6);
     }
 
     [Fact]
@@ -47,6 +49,7 @@ public sealed class PlayerCharacterStatBlockTests
         stats.Mana.Should().Be(85);
         stats.MagicAttack.Should().Be(6);
         stats.MagicDefense.Should().Be(3);
+        stats.Movement.Should().Be(4);
     }
 
     [Theory]
@@ -68,13 +71,21 @@ public sealed class PlayerCharacterStatBlockTests
     }
 
     [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void Create_ShouldRejectMovementBelowOne(int value)
+    {
+        var act = () => Create(movement: value);
+        act.Should().Throw<DomainException>().WithMessage("*Movement*");
+    }
+
+    [Theory]
     [InlineData(-1, PlayerStatKind.AttackPower)]
     [InlineData(-1, PlayerStatKind.Defense)]
     [InlineData(-1, PlayerStatKind.StartingGuard)]
     [InlineData(-1, PlayerStatKind.Initiative)]
     [InlineData(-1, PlayerStatKind.Focus)]
     [InlineData(-1, PlayerStatKind.Mana)]
-    [InlineData(-1, PlayerStatKind.Charge)]
     [InlineData(-1, PlayerStatKind.MagicAttack)]
     [InlineData(-1, PlayerStatKind.MagicDefense)]
     public void Create_ShouldRejectNegativeStats(int value, PlayerStatKind kind)
@@ -87,7 +98,6 @@ public sealed class PlayerCharacterStatBlockTests
             PlayerStatKind.Initiative => () => Create(initiative: value),
             PlayerStatKind.Focus => () => Create(focus: value),
             PlayerStatKind.Mana => () => Create(mana: value),
-            PlayerStatKind.Charge => () => Create(charge: value),
             PlayerStatKind.MagicAttack => () => Create(magicAttack: value),
             PlayerStatKind.MagicDefense => () => Create(magicDefense: value),
             _ => throw new InvalidOperationException()
@@ -105,7 +115,6 @@ public sealed class PlayerCharacterStatBlockTests
     [InlineData(PlayerStatKind.Initiative)]
     [InlineData(PlayerStatKind.Focus)]
     [InlineData(PlayerStatKind.Mana)]
-    [InlineData(PlayerStatKind.Charge)]
     [InlineData(PlayerStatKind.MagicAttack)]
     [InlineData(PlayerStatKind.MagicDefense)]
     public void WithIncrementedStat_ShouldOnlyIncrementTheSelectedStat(PlayerStatKind kind)
@@ -147,7 +156,8 @@ public sealed class PlayerCharacterStatBlockTests
         int mana = 0,
         int charge = 0,
         int magicAttack = 0,
-        int magicDefense = 0) =>
+        int magicDefense = 0,
+        int movement = 4) =>
         PlayerCharacterStatBlock.Create(
             maxVitality,
             attackPower,
@@ -159,7 +169,8 @@ public sealed class PlayerCharacterStatBlockTests
             mana,
             charge,
             magicAttack,
-            magicDefense);
+            magicDefense,
+            movement);
 
     private static Dictionary<PlayerStatKind, int> Values(PlayerCharacterStatBlock stats) =>
         new()
@@ -172,7 +183,6 @@ public sealed class PlayerCharacterStatBlockTests
             [PlayerStatKind.Initiative] = stats.Initiative,
             [PlayerStatKind.Focus] = stats.Focus,
             [PlayerStatKind.Mana] = stats.Mana,
-            [PlayerStatKind.Charge] = stats.Charge,
             [PlayerStatKind.MagicAttack] = stats.MagicAttack,
             [PlayerStatKind.MagicDefense] = stats.MagicDefense,
         };

@@ -47,6 +47,12 @@ onMounted(async () => {
 const selectedItemPages = computed(() =>
   selectedItem.value ? readablePagesByKey.value[selectedItem.value.definitionKey] : undefined,
 );
+const selectedReader = computed(() =>
+  runStore.currentRun?.party?.members.find((member) => member.id === selectedCharacterId.value),
+);
+const selectedReaderGrimoireSkill = computed(() =>
+  selectedReader.value?.skills.find((skill) => skill.temporarySlot === 'Grimoire'),
+);
 
 function getRarityTone(rarity: string): string {
   switch (rarity) {
@@ -90,6 +96,15 @@ function getEffectTone(effectType: string): string {
     case 'NarrativeFragment': return 'gold';
     case 'Damage':            return 'blood';
     default:                  return '';
+  }
+}
+
+function tacticalShapeLabel(shape?: RunItemDto['tacticalAreaShape']): string {
+  switch (shape) {
+    case 'Cross': return 'croix (rayon 1)';
+    case 'Diamond': return 'losange (rayon 2)';
+    case 'Map': return 'carte entière';
+    default: return 'case';
   }
 }
 
@@ -244,6 +259,17 @@ async function readGrimoire() {
           </span>
         </div>
 
+        <div
+          v-if="typeof selectedItem.tacticalRange === 'number'"
+          class="bsd-sheet__contract"
+        >
+          <span>Portée {{ selectedItem.tacticalRange }}</span>
+          <span>{{ tacticalShapeLabel(selectedItem.tacticalAreaShape) }}</span>
+          <span>
+            {{ selectedItem.requiresLineOfSight ? 'Ligne de vue requise' : 'Ignore la ligne de vue' }}
+          </span>
+        </div>
+
         <!-- Actions -->
         <div class="bsd-sheet__actions">
           <label v-if="selectedItem.type === 'Grimoire'" class="bsd-sheet__target">
@@ -258,6 +284,12 @@ async function readGrimoire() {
               </option>
             </select>
           </label>
+          <p
+            v-if="selectedItem.type === 'Grimoire' && selectedReaderGrimoireSkill"
+            class="bsd-sheet__warning"
+          >
+            Remplacera {{ selectedReaderGrimoireSkill.displayName }} dans l’emplacement temporaire III.
+          </p>
           <button
             v-if="selectedItem.type === 'Grimoire'"
             class="bsd-action-btn bsd-action-btn--read"
@@ -611,6 +643,22 @@ async function readGrimoire() {
 .bsd-effect-value--gold  { color: var(--gold, oklch(.72 .1 85)); }
 .bsd-effect-value--blood { color: var(--blood, oklch(.52 .15 20)); }
 
+.bsd-sheet__contract {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding: 4px 0;
+}
+
+.bsd-sheet__contract span {
+  padding: 3px 6px;
+  border: 1px solid var(--line-soft, oklch(.32 .022 60 / .5));
+  border-radius: 999px;
+  color: var(--ink-3);
+  font-family: var(--font-mono, monospace);
+  font-size: 9px;
+}
+
 .bsd-sheet__actions {
   padding-top: 2px;
   display: flex;
@@ -662,6 +710,13 @@ async function readGrimoire() {
   letter-spacing: 0.1em;
   color: var(--ink-4, oklch(.45 .015 275));
   margin: 0;
+}
+
+.bsd-sheet__warning {
+  margin: 0;
+  color: var(--gold, oklch(.72 .1 85));
+  font-size: 10px;
+  line-height: 1.4;
 }
 
 .bsd-sheet__error {

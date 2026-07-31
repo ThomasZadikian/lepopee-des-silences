@@ -9,7 +9,6 @@ export const statLabels: Record<PlayerStatKind, string> = {
   Initiative:    'Initiative',
   Focus:         'Focus',
   Mana:          'Mana',
-  Charge:        'Charge',
   MagicAttack:   'Attaque magique',
   MagicDefense:  'Défense magique',
 };
@@ -25,7 +24,6 @@ export const statValueKeys: Record<PlayerStatKind, keyof PlayerCharacterStatsVie
   Initiative:    'initiative',
   Focus:         'focus',
   Mana:          'mana',
-  Charge:        'charge',
   MagicAttack:   'magicAttack',
   MagicDefense:  'magicDefense',
 };
@@ -39,7 +37,6 @@ export const statDescriptions: Record<PlayerStatKind, string> = {
   Initiative:    'Avantage de départ qui départage les combattants de même vitesse.',
   Focus:         'Augmente vos chances de coup critique.',
   Mana:          'Réserve d\'énergie consommée pour lancer la plupart des sorts.',
-  Charge:        'Réserve consommée par certains sorts puissants nécessitant une charge préalable.',
   MagicAttack:   'Puissance des sorts de catégorie Magique. Symétrique à Attaque, mais pour les dégâts magiques uniquement.',
   MagicDefense:  'Réduit les dégâts magiques subis, symétriquement à Défense pour les dégâts physiques.',
 };
@@ -59,7 +56,6 @@ export const statPointIncrements: Record<PlayerStatKind, number> = {
   Initiative:    1,
   Focus:         1,
   Mana:          5,
-  Charge:        1,
   MagicAttack:   1,
   MagicDefense:  1,
 };
@@ -77,7 +73,6 @@ export const statRadarMax: Record<PlayerStatKind, number> = {
   Initiative:    40,
   Focus:         30,
   Mana:          150,
-  Charge:        30,
   MagicAttack:   40,
   MagicDefense:  40,
 };

@@ -45,14 +45,33 @@ function shapeLabel(shape: string | undefined): string {
 function equipmentEffects(itemKey: string): string[] {
   const item = allItems.value.find((candidate) => candidate.key === itemKey);
   return (item?.equipmentEffects ?? []).map((effect) => {
-    if (effect.kind === 'StatModifier') {
+    if (['StatModifier', 'StatBonus', 'StatBonusPercent'].includes(effect.kind)) {
       const amount = effect.amount ?? 0;
-      return `${amount >= 0 ? '+' : ''}${amount} ${effect.statKind ?? 'statistique'}`;
+      const unit = effect.kind === 'StatBonusPercent' ? '%' : '';
+      return `${amount >= 0 ? '+' : ''}${amount}${unit} ${statLabel(effect.statKind)}`;
     }
     if (effect.kind === 'GrantSkill') return `Compétence : ${effect.skillKey ?? 'inconnue'}`;
     if (effect.kind === 'Affinity') return `Affinité : ${effect.affinityRegister ?? 'neutre'}`;
     return effect.kind;
   });
+}
+
+function statLabel(stat: string | null | undefined): string {
+  const labels: Record<string, string> = {
+    MaxVitality: 'Vitalité',
+    AttackPower: 'Attaque',
+    Defense: 'Défense',
+    Guard: 'Garde',
+    Speed: 'Vitesse',
+    Initiative: 'Initiative',
+    Focus: 'Focus',
+    Mana: 'Mana',
+    MagicAttack: 'Attaque magique',
+    MagicDefense: 'Défense magique',
+    Movement: 'Déplacement',
+    RunItemCapacity: 'Capacité de besace',
+  };
+  return stat ? (labels[stat] ?? stat) : 'statistique';
 }
 
 const equippedItems = computed(() => props.character.items.filter((i) => i.isEquipped));

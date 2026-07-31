@@ -91,7 +91,8 @@ public sealed class SyncPartyStatsCommandHandler
                     mana: effectiveStats.Mana,
                     charge: effectiveStats.Charge,
                     magicAttack: effectiveStats.MagicAttack,
-                    magicDefense: effectiveStats.MagicDefense);
+                    magicDefense: effectiveStats.MagicDefense,
+                    movement: effectiveStats.Movement);
             }
         }
 

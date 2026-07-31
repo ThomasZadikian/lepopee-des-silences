@@ -443,6 +443,7 @@ public sealed class ResolveCurrentEventCommandHandler
             Charge: protagonist.StatBlock.Charge,
             MagicAttack: protagonist.StatBlock.MagicAttack,
             MagicDefense: protagonist.StatBlock.MagicDefense,
+            Movement: protagonist.StatBlock.Movement,
             Skills: MapCharacterSkills(protagonist)));
 
         foreach (var companion in characters.Skip(1).Take(Run.MaxPartySize - 1))
@@ -464,6 +465,7 @@ public sealed class ResolveCurrentEventCommandHandler
                 Charge: companion.StatBlock.Charge,
                 MagicAttack: companion.StatBlock.MagicAttack,
                 MagicDefense: companion.StatBlock.MagicDefense,
+                Movement: companion.StatBlock.Movement,
                 Skills: MapCharacterSkills(companion)));
         }
 

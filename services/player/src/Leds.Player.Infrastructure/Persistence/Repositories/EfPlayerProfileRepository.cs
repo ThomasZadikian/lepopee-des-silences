@@ -302,6 +302,7 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
         statBlock.Charge = character.StatBlock.Charge;
         statBlock.MagicAttack = character.StatBlock.MagicAttack;
         statBlock.MagicDefense = character.StatBlock.MagicDefense;
+        statBlock.Movement = character.StatBlock.Movement;
     }
 
     private static PlayerProfile ToDomain(PlayerProfileEntity entity)
@@ -330,7 +331,8 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
                     c.StatBlock.Mana,
                     c.StatBlock.Charge,
                     c.StatBlock.MagicAttack,
-                    c.StatBlock.MagicDefense);
+                    c.StatBlock.MagicDefense,
+                    c.StatBlock.Movement);
 
             var skills = c.Skills.Count == 0
                 ? (JsonSerializer.Deserialize<List<string>>(c.SkillKeysJson) ?? [])
@@ -417,7 +419,8 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
             Mana = character.StatBlock.Mana,
             Charge = character.StatBlock.Charge,
             MagicAttack = character.StatBlock.MagicAttack,
-            MagicDefense = character.StatBlock.MagicDefense
+            MagicDefense = character.StatBlock.MagicDefense,
+            Movement = character.StatBlock.Movement
         };
     }
 

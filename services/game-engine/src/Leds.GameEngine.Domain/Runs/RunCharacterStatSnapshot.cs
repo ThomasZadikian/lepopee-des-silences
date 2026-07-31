@@ -16,7 +16,8 @@ public sealed class RunCharacterStatSnapshot
         int mana,
         int charge,
         int magicAttack,
-        int magicDefense)
+        int magicDefense,
+        int movement)
     {
         Id = id;
         MaxVitality = maxVitality;
@@ -30,6 +31,7 @@ public sealed class RunCharacterStatSnapshot
         Charge = charge;
         MagicAttack = magicAttack;
         MagicDefense = magicDefense;
+        Movement = movement;
     }
 
     public Guid Id { get; }
@@ -44,6 +46,7 @@ public sealed class RunCharacterStatSnapshot
     public int Charge { get; private set; }
     public int MagicAttack { get; private set; }
     public int MagicDefense { get; private set; }
+    public int Movement { get; private set; }
 
     public static RunCharacterStatSnapshot Create(
         int maxVitality,
@@ -56,7 +59,8 @@ public sealed class RunCharacterStatSnapshot
         int mana,
         int charge,
         int magicAttack = 0,
-        int magicDefense = 0)
+        int magicDefense = 0,
+        int movement = 4)
     {
         if (maxVitality <= 0)
             throw new DomainException("Max vitality must be greater than zero.");
@@ -91,6 +95,9 @@ public sealed class RunCharacterStatSnapshot
         if (magicDefense < 0)
             throw new DomainException("Magic defense cannot be negative.");
 
+        if (movement < 1)
+            throw new DomainException("Movement must be at least one.");
+
         return new RunCharacterStatSnapshot(
             Guid.NewGuid(),
             maxVitality,
@@ -103,7 +110,8 @@ public sealed class RunCharacterStatSnapshot
             mana,
             charge,
             magicAttack,
-            magicDefense);
+            magicDefense,
+            movement);
     }
 
     public static RunCharacterStatSnapshot CreateDefault()
@@ -120,7 +128,8 @@ public sealed class RunCharacterStatSnapshot
             mana: 0,
             charge: 0,
             magicAttack: 0,
-            magicDefense: 0);
+            magicDefense: 0,
+            movement: 4);
     }
 
     /// <summary>
@@ -139,7 +148,8 @@ public sealed class RunCharacterStatSnapshot
         int mana,
         int charge,
         int magicAttack,
-        int magicDefense)
+        int magicDefense,
+        int movement = 4)
     {
         if (maxVitality <= 0)
             throw new DomainException("Max vitality must be greater than zero.");
@@ -174,6 +184,9 @@ public sealed class RunCharacterStatSnapshot
         if (magicDefense < 0)
             throw new DomainException("Magic defense cannot be negative.");
 
+        if (movement < 1)
+            throw new DomainException("Movement must be at least one.");
+
         MaxVitality = maxVitality;
         AttackPower = attackPower;
         Defense = defense;
@@ -185,6 +198,7 @@ public sealed class RunCharacterStatSnapshot
         Charge = charge;
         MagicAttack = magicAttack;
         MagicDefense = magicDefense;
+        Movement = movement;
     }
 
     public static RunCharacterStatSnapshot Rehydrate(
@@ -199,7 +213,8 @@ public sealed class RunCharacterStatSnapshot
         int mana,
         int charge,
         int magicAttack = 0,
-        int magicDefense = 0)
+        int magicDefense = 0,
+        int movement = 4)
     {
         return new RunCharacterStatSnapshot(
             id,
@@ -213,6 +228,7 @@ public sealed class RunCharacterStatSnapshot
             mana,
             charge,
             magicAttack,
-            magicDefense);
+            magicDefense,
+            movement);
     }
 }

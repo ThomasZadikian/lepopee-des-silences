@@ -88,7 +88,8 @@ public sealed class UseGrimoireCommandHandler
             skill.EffectType, skill.ManaCost, skill.ChargeCost, skill.BasePower,
             skill.Category, skill.BasePowerIsPercentOfMaxVitality,
             skill.TacticalRange, skill.TacticalAreaShape, skill.RequiresLineOfSight,
-            skill.Cooldown, skill.IsUltimate, skill.EmotionalRegister);
+            skill.Cooldown, skill.IsUltimate, skill.EmotionalRegister,
+            temporarySlot: "Grimoire");
 
     private static RunCharacterSkillSnapshot ToSnapshotSkill(CatalogSkillDefinition skill) =>
         RunCharacterSkillSnapshot.Create(

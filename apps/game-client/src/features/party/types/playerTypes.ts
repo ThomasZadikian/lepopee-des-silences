@@ -17,6 +17,7 @@ export type PlayerCharacterStatsView = {
   charge: number;
   magicAttack?: number;
   magicDefense?: number;
+  movement?: number;
 };
 
 export type PlayerStatKind =
@@ -28,7 +29,6 @@ export type PlayerStatKind =
   | 'Initiative'
   | 'Focus'
   | 'Mana'
-  | 'Charge'
   | 'MagicAttack'
   | 'MagicDefense';
 

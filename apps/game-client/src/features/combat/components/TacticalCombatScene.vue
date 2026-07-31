@@ -49,6 +49,7 @@ import {
 import { combatantSprite, fallbackPropFor } from '../composables/useCombatantSprites';
 import { FLOAT_MS, FLOAT_RISE_PX, useCombatPlayback } from '../composables/useCombatPlayback';
 import { sortIdForSkillKey, useSortEffects } from '../composables/useSortEffects';
+import { ticksToTurns } from '../constants/combatTime';
 import {
   tacticalSkillProfile,
   type TacticalShape,
@@ -56,8 +57,10 @@ import {
 import { useTacticalCombatStore } from '../stores/useTacticalCombatStore';
 
 import type {
+  CombatantRuntimeDto,
   CombatantSkillRuntimeDto,
   CombatUsableItemDto,
+  EmotionalType,
 } from '../types/combatContracts';
 
 const props = defineProps<{
@@ -79,14 +82,19 @@ const sortEffects = useSortEffects();
 const playback = useCombatPlayback();
 
 const canvasEl = ref<HTMLCanvasElement | null>(null);
+const battleEl = ref<HTMLElement | null>(null);
+const panelEl = ref<HTMLElement | null>(null);
 const canvasSize = ref({ width: 0, height: 0 });
 const hoveredCell = ref<{ x: number; y: number } | null>(null);
+const panelPosition = ref({ x: 190, y: 24 });
+const panelWasDragged = ref(false);
 
 const DEPLOY_DURATION_MS = 1200;
 const deployStartedAt = ref<number | null>(null);
 
 let frameHandle = 0;
 let observer: ResizeObserver | null = null;
+let stopPanelDrag: (() => void) | null = null;
 
 const prefersReducedMotion =
   typeof globalThis.matchMedia === 'function'
@@ -103,6 +111,71 @@ const projectionParams = computed(() => ({
   gridWidth: battlefield.value?.width ?? 1,
   gridHeight: battlefield.value?.height ?? 1,
 }));
+
+const panelStyle = computed(() => ({
+  left: `${panelPosition.value.x}px`,
+  top: `${panelPosition.value.y}px`,
+}));
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
+function placePanelNearActive(force = false) {
+  if (panelWasDragged.value && !force) return;
+  const host = battleEl.value;
+  const active = store.activeCombatant;
+  if (!host || !active || canvasSize.value.width <= 0) return;
+
+  const projected = projectToScreen(active.x, active.y, projectionParams.value);
+  const panelWidth = Math.min(720, Math.max(360, host.clientWidth - 380));
+  const panelHeight = panelEl.value?.offsetHeight ?? 190;
+  const desiredX = 170 + projected.screenX + 32;
+  const desiredY = projected.screenY - (panelHeight / 2);
+
+  panelPosition.value = {
+    x: clamp(desiredX, 178, Math.max(178, host.clientWidth - panelWidth - 188)),
+    y: clamp(desiredY, 12, Math.max(12, host.clientHeight - panelHeight - 12)),
+  };
+  panelWasDragged.value = false;
+}
+
+function beginPanelDrag(event: PointerEvent) {
+  if (event.button !== 0 || !battleEl.value || !panelEl.value) return;
+  event.preventDefault();
+
+  const hostBounds = battleEl.value.getBoundingClientRect();
+  const panelBounds = panelEl.value.getBoundingClientRect();
+  const offsetX = event.clientX - panelBounds.left;
+  const offsetY = event.clientY - panelBounds.top;
+
+  const move = (next: PointerEvent) => {
+    if (!battleEl.value || !panelEl.value) return;
+    panelPosition.value = {
+      x: clamp(
+        next.clientX - hostBounds.left - offsetX,
+        0,
+        Math.max(0, battleEl.value.clientWidth - panelEl.value.offsetWidth),
+      ),
+      y: clamp(
+        next.clientY - hostBounds.top - offsetY,
+        0,
+        Math.max(0, battleEl.value.clientHeight - panelEl.value.offsetHeight),
+      ),
+    };
+    panelWasDragged.value = true;
+  };
+  const end = () => {
+    globalThis.removeEventListener('pointermove', move);
+    globalThis.removeEventListener('pointerup', end);
+    stopPanelDrag = null;
+  };
+
+  stopPanelDrag?.();
+  stopPanelDrag = end;
+  globalThis.addEventListener('pointermove', move);
+  globalThis.addEventListener('pointerup', end, { once: true });
+}
 
 const spriteDest = computed(() => {
   const { isoUnitX } = isoUnit(projectionParams.value);
@@ -261,12 +334,26 @@ function facingLabel(facing: 'North' | 'East' | 'South' | 'West' | undefined): s
   }
 }
 
+function riskTierLabel(tier: string | undefined): string {
+  if (tier === 'Dangereux' || tier === 'Perilleux') return 'Sombre';
+  return tier ?? 'Calme';
+}
+
 function itemShape(item: CombatUsableItemDto): TacticalShape {
   return item.tacticalAreaShape.toLowerCase() as TacticalShape;
 }
 
 function itemMeta(item: CombatUsableItemDto): string {
   return `P${item.tacticalRange} · ${itemShape(item)} · ×${item.quantity}`;
+}
+
+function itemEffectLabel(effectType: string): string {
+  if (effectType.includes('Heal')) return 'Soin';
+  if (effectType.includes('Mana')) return 'Mana';
+  if (effectType.includes('Charge')) return 'Charge';
+  if (effectType.includes('Guard')) return 'Garde';
+  if (effectType.includes('Revive')) return 'Réanimation';
+  return effectType;
 }
 
 function isFloorCell(x: number, y: number): boolean {
@@ -461,6 +548,169 @@ const aoeCells = computed<Set<string>>(() => {
     .map((cell) => battleCellKey(cell.x, cell.y)));
 });
 
+type AttackArc = 'Face' | 'Flanc' | 'Dos';
+
+function attackArc(
+  attacker: { x: number; y: number },
+  target: { x: number; y: number; facing: 'North' | 'East' | 'South' | 'West' },
+): AttackArc {
+  const dx = Math.sign(attacker.x - target.x);
+  const dy = Math.sign(attacker.y - target.y);
+  const direction = target.facing === 'North' ? [0, -1]
+    : target.facing === 'East' ? [1, 0]
+      : target.facing === 'South' ? [0, 1]
+        : [-1, 0];
+  const dot = (direction[0] * dx) + (direction[1] * dy);
+  return dot > 0 ? 'Face' : dot < 0 ? 'Dos' : 'Flanc';
+}
+
+function cellsOnLine(from: BattleCell, to: BattleCell): BattleCell[] {
+  const steps = Math.max(Math.abs(to.x - from.x), Math.abs(to.y - from.y));
+  if (steps === 0) return [from];
+  return Array.from({ length: steps + 1 }, (_, index) => {
+    const ratio = index / steps;
+    return {
+      x: Math.round(from.x + ((to.x - from.x) * ratio)),
+      y: Math.round(from.y + ((to.y - from.y) * ratio)),
+    };
+  });
+}
+
+function affinityLabel(
+  emotionalType: EmotionalType | null | undefined,
+  target: CombatantRuntimeDto,
+): { label: string; multiplier: number } {
+  if (!emotionalType || emotionalType === 'Neutral') return { label: 'Neutre', multiplier: 1 };
+  if (target.immuneTo?.includes(emotionalType)) return { label: 'Immunité', multiplier: 0 };
+  if (target.weakTo?.includes(emotionalType)) return { label: 'Faiblesse', multiplier: 1.5 };
+  if (target.resistantTo?.includes(emotionalType)) return { label: 'Résistance', multiplier: 0.75 };
+  return { label: 'Neutre', multiplier: 1 };
+}
+
+const targetPreview = computed(() => {
+  const actor = store.activeCombatant;
+  const skill = store.selectedSkill;
+  const item = store.selectedItem;
+  const hovered = hoveredCell.value;
+  if (
+    !actor || (!skill && !item) || !hovered
+      || !targetableCells.value.has(battleCellKey(hovered.x, hovered.y))
+  ) {
+    return null;
+  }
+
+  const profile = skill
+    ? tacticalSkillProfile(skill)
+    : {
+        shape: itemShape(item!),
+        requiresLineOfSight: item!.requiresLineOfSight,
+      };
+  const intended = store.occupantAt(hovered.x, hovered.y)
+    ?? (item?.targetingType === 'DefeatedAlly'
+      ? store.allCombatants.find(
+          (unit) =>
+            unit.x === hovered.x
+              && unit.y === hovered.y
+              && unit.combatant.status === 'Defeated',
+        ) ?? null
+      : null);
+  let interceptor = null as typeof intended;
+  const origin = { x: actor.x, y: actor.y };
+  const hasPlungingSight = elevationAt(actor.x, actor.y) > elevationAt(hovered.x, hovered.y);
+
+  if (profile.requiresLineOfSight && profile.shape !== 'map' && !hasPlungingSight) {
+    for (const cell of cellsOnLine(origin, hovered).slice(1, -1)) {
+      const occupant = store.occupantAt(cell.x, cell.y);
+      if (occupant) {
+        interceptor = occupant;
+        break;
+      }
+    }
+  }
+
+  const recipient = interceptor ?? intended;
+  if (!recipient) {
+    return {
+      target: 'Case vide',
+      interception: null,
+      affinity: '—',
+      position: '—',
+      accuracy: null,
+      critical: null,
+      damage: null,
+      effect: null,
+      height: hasPlungingSight,
+    };
+  }
+
+  const arc = attackArc(actor, recipient);
+  const accuracyArcBonus = arc === 'Dos' ? 20 : arc === 'Flanc' ? 10 : 0;
+  const damageArcMultiplier = arc === 'Dos' ? 1.10 : arc === 'Flanc' ? 1.05 : 1;
+  const critArcBonus = arc === 'Dos' ? 4 : arc === 'Flanc' ? 2 : 0;
+  const rollTarget = intended ?? recipient;
+  const accuracy = clamp(
+    90
+      + (actor.combatant.hitChanceBonusPercent ?? 0)
+      - (rollTarget.combatant.evasion ?? 0)
+      + accuracyArcBonus,
+    0,
+    100,
+  );
+  const height = elevationAt(actor.x, actor.y) > elevationAt(recipient.x, recipient.y);
+  const critical = clamp(
+    (actor.combatant.focus ?? 0)
+      + (actor.combatant.criticalChanceBonusPercent ?? 0)
+      + critArcBonus
+      + (height ? 4 : 0),
+    0,
+    50,
+  );
+  const affinity = affinityLabel(skill?.emotionalType, recipient.combatant);
+  const attack = skill?.category === 'Magic'
+    ? (actor.combatant.magicAttack ?? 0)
+    : (actor.combatant.attackPower ?? 0);
+  const defense = skill?.category === 'Magic'
+    ? (recipient.combatant.magicDefense ?? 0)
+    : (recipient.combatant.defense ?? 0);
+  const situational = affinity.multiplier * damageArcMultiplier * (height ? 1.05 : 1);
+  const minimumBase = defense <= 0
+    ? (skill?.basePower ?? 0) * 1.15
+    : (skill?.basePower ?? 0) * (attack / defense) * 0.85;
+  const maximumBase = defense <= 0
+    ? (skill?.basePower ?? 0) * 1.15
+    : (skill?.basePower ?? 0) * (attack / defense) * 1.15;
+  const damage = skill?.effectType === 'Damage'
+    ? `${Math.max(0, Math.round(minimumBase * situational))}–${Math.max(0, Math.round(maximumBase * situational))}`
+    : null;
+  const percentItemEffect = item?.effectType.toLowerCase().includes('percent') ?? false;
+  const itemAmount = item
+    ? percentItemEffect
+      ? Math.max(1, Math.round(recipient.combatant.maxVitality * item.effectAmount / 100))
+      : item.effectAmount
+    : 0;
+  const effect = item
+    ? item.effectType === 'RevivePercent'
+      ? `Réanimation à ${item.effectAmount} %`
+      : `${itemEffectLabel(item.effectType)} ${itemAmount}`
+    : skill && skill.effectType !== 'Damage'
+      ? `${skill.effectType} ${skill.basePower}`
+      : null;
+
+  return {
+    target: recipient.combatant.displayName,
+    interception: interceptor
+      ? `${interceptor.combatant.displayName} intercepte ${intended?.combatant.displayName ?? 'la case'}`
+      : null,
+    affinity: affinity.label,
+    position: arc,
+    accuracy: skill ? accuracy : null,
+    critical: skill ? critical : null,
+    damage,
+    effect,
+    height,
+  };
+});
+
 const heightCells = computed<Set<string>>(() => {
   const active = store.activeCombatant;
   const skill = store.selectedSkill;
@@ -574,6 +824,9 @@ function buildCombatantPlan(now: number) {
   if (!battlefield.value || canvasSize.value.width === 0) return [];
 
   return store.allCombatants
+    // À zéro Vitalité l'unité quitte immédiatement la grille. Elle reste dans le runtime
+    // et l'initiative afin qu'un objet ou une compétence puisse la réanimer.
+    .filter((unit) => unit.combatant.status !== 'Defeated')
     .map((unit) => {
       // La position affichée n'est pas celle du serveur tant que la chronologie se joue : une
       // figure en marche est interpolée entre deux cases, pas posée sur sa destination.
@@ -644,6 +897,53 @@ function paintCombatantChrome(
   ctx.strokeText(combatant.displayName, entry.screenX, barY - 3);
   ctx.fillText(combatant.displayName, entry.screenX, barY - 3);
 
+  ctx.restore();
+}
+
+function paintFacingArrow(
+  ctx: CanvasRenderingContext2D,
+  entry: ReturnType<typeof buildCombatantPlan>[number],
+  groundY: number,
+  width: number,
+) {
+  const delta = entry.unit.facing === 'North' ? { x: 0, y: -1 }
+    : entry.unit.facing === 'East' ? { x: 1, y: 0 }
+      : entry.unit.facing === 'South' ? { x: 0, y: 1 }
+        : { x: -1, y: 0 };
+  const origin = projectToScreen(entry.unit.x, entry.unit.y, projectionParams.value);
+  const destination = projectToScreen(
+    entry.unit.x + delta.x,
+    entry.unit.y + delta.y,
+    projectionParams.value,
+  );
+  const dx = destination.screenX - origin.screenX;
+  const dy = destination.screenY - origin.screenY;
+  const length = Math.max(1, Math.hypot(dx, dy));
+  const ux = dx / length;
+  const uy = dy / length;
+  const radius = width * 0.34;
+  const tipX = entry.screenX + (ux * radius);
+  const tipY = groundY + (uy * radius * 0.55);
+  const sideX = -uy * width * 0.055;
+  const sideY = ux * width * 0.055;
+
+  ctx.save();
+  ctx.fillStyle = entry.unit.combatant.side === 'Enemy' ? '#e0605e' : '#86dcb4';
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.75)';
+  ctx.lineWidth = Math.max(1, width * 0.012);
+  ctx.beginPath();
+  ctx.moveTo(tipX, tipY);
+  ctx.lineTo(
+    entry.screenX + (ux * radius * 0.62) + sideX,
+    groundY + (uy * radius * 0.34) + sideY,
+  );
+  ctx.lineTo(
+    entry.screenX + (ux * radius * 0.62) - sideX,
+    groundY + (uy * radius * 0.34) - sideY,
+  );
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
   ctx.restore();
 }
 
@@ -837,6 +1137,7 @@ function paintCanvas(timestamp: number) {
         { side, hp: hpRatio, active: isActive, downed, elevation: 0 },
         prefersReducedMotion ? 0 : timestamp,
       );
+      paintFacingArrow(ctx, entry, groundY, destW);
 
       const bob = !prefersReducedMotion && !deploying
         ? Math.sin((timestamp * 0.0016) + entry.unit.x) * 1.6
@@ -1156,6 +1457,20 @@ watch(
   { immediate: true },
 );
 
+watch(
+  [
+    () => store.combat?.activeCombatantId,
+    () => store.activeCombatant?.x,
+    () => store.activeCombatant?.y,
+    () => canvasSize.value.width,
+    () => canvasSize.value.height,
+  ],
+  () => {
+    panelWasDragged.value = false;
+    globalThis.requestAnimationFrame(() => placePanelNearActive());
+  },
+);
+
 onMounted(() => {
   const canvas = canvasEl.value;
   if (!canvas?.parentElement) return;
@@ -1173,13 +1488,19 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   globalThis.cancelAnimationFrame(frameHandle);
+  stopPanelDrag?.();
   observer?.disconnect();
   observer = null;
 });
 </script>
 
 <template>
-  <section v-if="store.combat" class="tbattle" :class="{ 'tbattle--transitioning': playback.isTransitioning }">
+  <section
+    v-if="store.combat"
+    ref="battleEl"
+    class="tbattle"
+    :class="{ 'tbattle--transitioning': playback.isTransitioning }"
+  >
     <!-- ── Initiative rail (left) ── -->
     <aside class="tbattle__initiative-rail">
       <span class="tbattle__round">Round {{ store.combat.roundNumber }}</span>
@@ -1239,7 +1560,7 @@ onBeforeUnmount(() => {
     </aside>
 
     <!-- ── Bottom bar: portraits + skills ── -->
-    <footer class="tbattle__bottom">
+    <footer ref="panelEl" class="tbattle__bottom" :style="panelStyle">
       <!-- Portrait cards : toujours visibles -->
       <div class="tbattle__portraits">
         <div
@@ -1275,7 +1596,12 @@ onBeforeUnmount(() => {
 
       <!-- Skills + controls : toujours visibles, grisés hors tour joueur -->
       <div class="tbattle__controls">
-        <div class="tbattle__active-info">
+        <div
+          class="tbattle__active-info"
+          title="Faire glisser le panneau"
+          @pointerdown="beginPanelDrag"
+        >
+          <span class="tbattle__drag-handle" aria-hidden="true">⠿</span>
           <strong class="tbattle__active-name">
             {{ store.activeCombatant?.combatant?.displayName ?? '—' }}
           </strong>
@@ -1287,6 +1613,9 @@ onBeforeUnmount(() => {
           </span>
           <span class="tbattle__active-stat">
             Face {{ facingLabel(store.activeCombatant?.facing) }}
+          </span>
+          <span class="tbattle__risk-tier">
+            Palier {{ riskTierLabel(store.combat?.riskTier) }}
           </span>
           <span class="tbattle__active-stat" :class="{ 'tbattle__active-stat--spent': store.activeCombatant?.hasMoved }">
             {{
@@ -1301,6 +1630,36 @@ onBeforeUnmount(() => {
                 ? (store.activeCombatant.hasActed ? 'A agi' : 'Action')
                 : '—'
             }}
+          </span>
+          <button
+            v-if="panelWasDragged"
+            type="button"
+            class="tbattle__panel-reset"
+            title="Replacer près de l’unité active"
+            @pointerdown.stop
+            @click="placePanelNearActive(true)"
+          >
+            Recentrer
+          </button>
+        </div>
+
+        <div
+          v-if="store.activeCombatant?.combatant.statusEffects?.length"
+          class="tbattle__statuses"
+          aria-label="États actifs"
+        >
+          <span
+            v-for="status in store.activeCombatant.combatant.statusEffects"
+            :key="status.key"
+            class="tbattle__status"
+            :title="`${status.displayName} · magnitude ${status.magnitude}`"
+          >
+            {{ status.displayName }}
+            <b v-if="status.stacks > 1">×{{ status.stacks }}</b>
+            <small v-if="status.ticksRemaining !== null">
+              {{ ticksToTurns(status.ticksRemaining) }} t.
+            </small>
+            <small v-else>permanent</small>
           </span>
         </div>
 
@@ -1363,6 +1722,24 @@ onBeforeUnmount(() => {
       </div>
 
       <p
+        v-if="targetPreview"
+        class="tbattle__preview"
+        aria-live="polite"
+      >
+        <strong>{{ targetPreview.target }}</strong>
+        <span v-if="targetPreview.interception" class="tbattle__preview-warning">
+          {{ targetPreview.interception }}
+        </span>
+        <span>Position {{ targetPreview.position }}</span>
+        <span v-if="targetPreview.height">Hauteur +5 % dégâts · +4 critique</span>
+        <span>Affinité {{ targetPreview.affinity }}</span>
+        <span v-if="targetPreview.accuracy !== null">Précision {{ targetPreview.accuracy }} %</span>
+        <span v-if="targetPreview.critical !== null">Critique {{ targetPreview.critical }} %</span>
+        <span v-if="targetPreview.damage">Dégâts {{ targetPreview.damage }}</span>
+        <span v-if="targetPreview.effect">{{ targetPreview.effect }}</span>
+      </p>
+
+      <p
         v-if="store.isPlayerTurn && (store.selectedSkillKey || store.selectedItemId)"
         class="tbattle__hint"
       >
@@ -1378,20 +1755,20 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .tbattle {
+  position: relative;
+  display: grid;
+  grid-template-columns: 170px 1fr 180px;
+  grid-template-rows: 1fr;
+  grid-template-areas:
+    "initiative board log";
+  height: 100%;
+  min-height: 0;
+  gap: 0;
+}
 
 .tbattle--transitioning {
   opacity: 0.5;
   transition: opacity 300ms ease-in-out;
-}
-  display: grid;
-  grid-template-columns: 170px 1fr 180px;
-  grid-template-rows: 1fr auto;
-  grid-template-areas:
-    "initiative board log"
-    "bottom     bottom bottom";
-  height: 100%;
-  min-height: 0;
-  gap: 0;
 }
 
 /* ── Initiative rail (left) ──────────────────────────────────────────────── */
@@ -1547,14 +1924,20 @@ onBeforeUnmount(() => {
 
 /* ── Bottom bar: portraits + skills ─────────────────────────────────────── */
 .tbattle__bottom {
-  grid-area: bottom;
+  position: absolute;
+  z-index: 8;
+  width: min(720px, calc(100% - 380px));
+  max-height: min(46vh, 330px);
+  overflow: auto;
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
   padding: 0.45rem 0.75rem;
-  border-top: 1px solid rgb(255 255 255 / 10%);
-  background: rgb(9 11 22 / 70%);
-  backdrop-filter: blur(6px);
+  border: 1px solid rgb(230 194 115 / 28%);
+  border-radius: 8px;
+  background: rgb(9 11 22 / 90%);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 14px 44px rgb(0 0 0 / 45%);
 }
 
 .tbattle__portraits {
@@ -1659,6 +2042,21 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: baseline;
   gap: 0.5rem;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+
+.tbattle__active-info:active { cursor: grabbing; }
+.tbattle__drag-handle { color: #e6c273; opacity: 0.65; }
+
+.tbattle__panel-reset {
+  border: 0;
+  background: transparent;
+  color: #e6c273;
+  cursor: pointer;
+  font-size: 0.65rem;
+  margin-left: auto;
 }
 
 .tbattle__active-name { color: #e6c273; font-size: 0.85rem; }
@@ -1670,6 +2068,37 @@ onBeforeUnmount(() => {
 }
 
 .tbattle__active-stat--spent { opacity: 0.35; text-decoration: line-through; }
+
+.tbattle__risk-tier {
+  padding: 0.12rem 0.38rem;
+  border: 1px solid rgb(230 194 115 / 35%);
+  border-radius: 999px;
+  color: #e6c273;
+  font-size: 0.65rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.tbattle__statuses {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  width: 100%;
+}
+
+.tbattle__status {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.2rem;
+  padding: 0.15rem 0.35rem;
+  border: 1px solid rgb(230 194 115 / 30%);
+  border-radius: 999px;
+  background: rgb(230 194 115 / 8%);
+  color: #eee9dc;
+  font-size: 0.65rem;
+}
+
+.tbattle__status small { opacity: 0.6; }
 
 .tbattle__skills { display: flex; gap: 0.50rem; flex-wrap: wrap; align-items: center; min-height: calc(0.5rem + 0.78rem + 0.62rem + 0.1rem); }
 
@@ -1713,6 +2142,19 @@ onBeforeUnmount(() => {
 }
 
 .tbattle__hint { margin: 0; font-size: 0.72rem; opacity: 0.45; }
+.tbattle__preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.75rem;
+  margin: 0;
+  padding: 0.35rem 0.5rem;
+  border-radius: 4px;
+  background: rgb(255 255 255 / 5%);
+  color: rgb(244 241 255 / 72%);
+  font-size: 0.68rem;
+}
+.tbattle__preview strong { color: #f4f1ff; }
+.tbattle__preview-warning { color: #e0605e; }
 .tbattle__waiting { opacity: 0.6; font-style: italic; margin: 0; font-size: 0.8rem; }
 .tbattle__error { color: #e0605e; margin: 0; font-size: 0.8rem; }
 </style>

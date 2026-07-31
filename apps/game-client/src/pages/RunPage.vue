@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue';
+import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import GameShellLayout from '../app/layouts/GameShellLayout.vue';
@@ -47,6 +47,9 @@ const showingTransition = ref(false);
 const transitionResult = ref<CurrentEventChoiceResultDto | null>(null);
 const transitionAfterChoice = ref(false);
 const showDevTools = ref(false);
+const phaseVeilVisible = ref(false);
+const phaseVeilKey = ref(0);
+let phaseVeilTimer: ReturnType<typeof globalThis.setTimeout> | null = null;
 
 async function handleEventContinue() {
   const outcome = runStore.lastOutcome;
@@ -139,6 +142,24 @@ const showInventoryDrawer = computed(() => uiStore.activeDrawer === 'besace');
 const showPartyDrawer = computed(() => uiStore.activeDrawer === 'party' && !isCombatPhase.value);
 const showJournalModal = computed(() => uiStore.activeDrawer === 'journal');
 
+watch(
+  () => runStore.gameplayPhase,
+  (phase, previous) => {
+    if (!previous || phase === previous) return;
+    phaseVeilKey.value += 1;
+    phaseVeilVisible.value = true;
+    if (phaseVeilTimer) globalThis.clearTimeout(phaseVeilTimer);
+    phaseVeilTimer = globalThis.setTimeout(() => {
+      phaseVeilVisible.value = false;
+      phaseVeilTimer = null;
+    }, 800);
+  },
+);
+
+onBeforeUnmount(() => {
+  if (phaseVeilTimer) globalThis.clearTimeout(phaseVeilTimer);
+});
+
 watch(showPartyDrawer, (isOpen) => {
   if (isOpen) void playerStore.loadProfile();
 });
@@ -181,6 +202,12 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
   <GameShellLayout :hide-top-bar="isCombatPhase">
     <template v-if="runStore.currentRun && runStore.currentRun.currentRoom">
       <RoomClimateEffects :climate="activeRoomClimate" />
+      <div
+        v-if="phaseVeilVisible"
+        :key="phaseVeilKey"
+        class="phase-veil"
+        aria-hidden="true"
+      />
 
       <Teleport to="body">
         <ReputationEffectPopup
@@ -535,6 +562,23 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
 </template>
 
 <style scoped>
+.phase-veil {
+  position: absolute;
+  z-index: 8990;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 50% 48%, transparent 0 12%, oklch(0.08 0.02 270 / 0.72) 66%),
+    oklch(0.08 0.02 270 / 0.18);
+  animation: palace-dissolve 800ms ease-in-out both;
+}
+
+@keyframes palace-dissolve {
+  0% { opacity: 0; backdrop-filter: blur(0); }
+  45% { opacity: 1; backdrop-filter: blur(7px) saturate(0.35); }
+  100% { opacity: 0; backdrop-filter: blur(0); }
+}
+
 .phase-map {
   position: relative;
   height: 100%;

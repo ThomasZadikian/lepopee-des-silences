@@ -27,7 +27,10 @@ public sealed record CombatantRuntimeDto(
     int MagicDefense,
     double ThreatValue,
     IReadOnlyCollection<CombatantStatusEffectDto> StatusEffects,
-    IReadOnlyCollection<CombatantSkillRuntimeDto> Skills)
+    IReadOnlyCollection<CombatantSkillRuntimeDto> Skills,
+    int HitChanceBonusPercent = 0,
+    int Evasion = 0,
+    int CriticalChanceBonusPercent = 0)
 {
     // Stateless pure provider; safe to share. Resolves the emotional type and
     // affinities (honours an item-driven AttackTypeOverride on the combatant).
@@ -61,6 +64,9 @@ public sealed record CombatantRuntimeDto(
             MagicAttack: combatant.EffectiveMagicAttack,
             MagicDefense: combatant.EffectiveMagicDefense,
             ThreatValue: combatant.ThreatValue,
+            HitChanceBonusPercent: combatant.HitChanceBonusPercent,
+            Evasion: combatant.EffectiveEvasion,
+            CriticalChanceBonusPercent: combatant.EffectiveCriticalChanceBonusPercent,
             StatusEffects: combatant.StatusEffects
                 .Select(e => new CombatantStatusEffectDto(
                     e.Key,

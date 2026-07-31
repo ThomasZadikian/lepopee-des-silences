@@ -535,7 +535,9 @@ public sealed class Run
             ?? throw new DomainException($"Character '{characterId}' was not found in this run.");
 
         var characterSkills = character.Skills
-            .Where(skill => !GrimoireTemporarySkillKeys.Contains(skill.SkillDefinitionKey))
+            .Where(skill =>
+                !string.Equals(skill.TemporarySlot, "Grimoire", StringComparison.OrdinalIgnoreCase)
+                && !GrimoireTemporarySkillKeys.Contains(skill.SkillDefinitionKey))
             .Append(snapshotSkill)
             .ToArray();
         character.ReplaceSkills(characterSkills);
@@ -633,14 +635,15 @@ public sealed class Run
         int mana,
         int charge,
         int magicAttack,
-        int magicDefense)
+        int magicDefense,
+        int movement = 4)
     {
         var character = PlayerSnapshot?.Characters.FirstOrDefault(c => c.CharacterId == characterId)
             ?? throw new DomainException($"Character '{characterId}' was not found in this run's player snapshot.");
 
         character.StatBlock.ReplaceStats(
             maxVitality, attackPower, defense, startingGuard, speed,
-            initiative, focus, mana, charge, magicAttack, magicDefense);
+            initiative, focus, mana, charge, magicAttack, magicDefense, movement);
     }
 
     /// <summary>

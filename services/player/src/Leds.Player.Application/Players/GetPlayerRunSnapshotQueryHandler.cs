@@ -55,7 +55,8 @@ public sealed class GetPlayerRunSnapshotQueryHandler
                     c.StatBlock.Mana,
                     c.StatBlock.Charge,
                     c.StatBlock.MagicAttack,
-                    c.StatBlock.MagicDefense),
+                    c.StatBlock.MagicDefense,
+                    c.StatBlock.Movement),
                 c.EquippedItemKeys.ToArray())).ToArray());
     }
 }

@@ -56,7 +56,8 @@ public sealed class HttpPlayerRunSnapshotGateway : IPlayerRunSnapshotGateway
                             Mana: c.Stats.Mana,
                             Charge: c.Stats.Charge,
                             MagicAttack: c.Stats.MagicAttack,
-                            MagicDefense: c.Stats.MagicDefense)
+                            MagicDefense: c.Stats.MagicDefense,
+                            Movement: c.Stats.Movement)
                         : new PlayerRunSnapshotCharacterStats(
                             MaxVitality: c.MaxVitality,
                             AttackPower: 12,
@@ -66,7 +67,8 @@ public sealed class HttpPlayerRunSnapshotGateway : IPlayerRunSnapshotGateway
                             Initiative: 10,
                             Focus: 0,
                             Mana: c.BaseMana,
-                            Charge: c.BaseCharge);
+                            Charge: 0,
+                            Movement: 4);
 
                     var skills = c.Skills is { Count: > 0 }
                         ? c.Skills.Select(s => new PlayerRunSnapshotCharacterSkill(
@@ -127,7 +129,8 @@ public sealed class HttpPlayerRunSnapshotGateway : IPlayerRunSnapshotGateway
         int Mana,
         int Charge,
         int MagicAttack = 0,
-        int MagicDefense = 0);
+        int MagicDefense = 0,
+        int Movement = 4);
 
     private sealed record PlayerRunSnapshotCharacterSkillResponse(
         string SkillDefinitionKey,

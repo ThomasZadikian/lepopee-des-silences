@@ -14,7 +14,7 @@ public sealed class PlayerStatMergerTests
     private static PlayerRunSnapshotCharacterStats CreateStats() => new(
         MaxVitality: 100, AttackPower: 12, Defense: 6, StartingGuard: 0,
         Speed: 10, Initiative: 10,Focus: 2, Mana: 20, Charge: 3,
-        MagicAttack: 4, MagicDefense: 3);
+        MagicAttack: 4, MagicDefense: 3, Movement: 4);
 
     [Fact]
     public void ComputeEffectiveStats_ShouldReturnRawStats_WhenNoEquipmentEffects()
@@ -32,6 +32,7 @@ public sealed class PlayerStatMergerTests
         result.MagicDefense.Should().Be(3);
         result.Mana.Should().Be(20);
         result.Charge.Should().Be(3);
+        result.Movement.Should().Be(4);
         result.GuardBonusPercent.Should().Be(0);
     }
 
@@ -76,5 +77,22 @@ public sealed class PlayerStatMergerTests
         var result = merger.ComputeEffectiveStats(CreateStats(), effects);
 
         result.GuardBonusPercent.Should().Be(20);
+    }
+
+    [Fact]
+    public void ComputeEffectiveStats_ShouldApplyAdditiveMovementBonuses_WithAMinimumOfOne()
+    {
+        var merger = new PlayerStatMerger();
+        var bonus = new[]
+        {
+            new CatalogItemEquipmentEffect("StatBonus", StatKind: "Movement", Amount: 2, SkillKey: null, AffinityRegister: null),
+        };
+        var excessivePenalty = new[]
+        {
+            new CatalogItemEquipmentEffect("StatBonus", StatKind: "Movement", Amount: -20, SkillKey: null, AffinityRegister: null),
+        };
+
+        merger.ComputeEffectiveStats(CreateStats(), bonus).Movement.Should().Be(6);
+        merger.ComputeEffectiveStats(CreateStats(), excessivePenalty).Movement.Should().Be(1);
     }
 }
