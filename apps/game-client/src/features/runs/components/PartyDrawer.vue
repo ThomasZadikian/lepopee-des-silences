@@ -72,6 +72,19 @@ function rarityTone(rarity: string): string {
   if (r.includes('rare')) return 'es-chip--frost';
   return '';
 }
+
+const temporarySlots = [
+  { key: 'Temporary1', label: 'Temp. I' },
+  { key: 'Temporary2', label: 'Temp. II' },
+  { key: 'Grimoire', label: 'Temp. III' },
+] as const;
+
+function temporarySkill(
+  member: RunPartyMemberDto,
+  slot: typeof temporarySlots[number]['key'],
+) {
+  return member.skills.find((skill) => skill.temporarySlot === slot);
+}
 </script>
 
 <template>
@@ -134,10 +147,14 @@ function rarityTone(rarity: string): string {
                   <span class="party-card__stat-v">{{ member.mana }}</span>
                 </span>
                 <span v-if="member.charge > 0" class="party-card__stat">
-                  <StatTooltip :text="statDescriptions.Charge" placement="bottom">
+                  <StatTooltip text="Jauge tactique limitée à 5, générée par les actions utiles pendant le combat." placement="bottom">
                     <span class="party-card__stat-k">CHARGE</span>
                   </StatTooltip>
                   <span class="party-card__stat-v">{{ member.charge }}</span>
+                </span>
+                <span class="party-card__stat">
+                  <span class="party-card__stat-k">MVT</span>
+                  <span class="party-card__stat-v">{{ member.movement ?? 4 }}</span>
                 </span>
               </div>
             </div>
@@ -159,9 +176,24 @@ function rarityTone(rarity: string): string {
                 v-for="skill in member.skills"
                 :key="skill.key"
                 class="party-card__skill"
+                :class="{ 'party-card__skill--temporary': skill.temporarySlot && skill.temporarySlot !== 'Permanent' }"
                 :title="`${skill.displayName} · ${skill.skillType} · ${skill.targetingMode}`"
               >
                 {{ skill.displayName }}
+                <small v-if="skill.temporarySlot && skill.temporarySlot !== 'Permanent'">
+                  {{ skill.temporarySlot === 'Grimoire' ? 'Temp. III' : skill.temporarySlot.replace('Temporary', 'Temp. ') }}
+                </small>
+              </span>
+            </div>
+            <div class="party-card__temporary-slots" aria-label="Compétences temporaires">
+              <span
+                v-for="slot in temporarySlots"
+                :key="slot.key"
+                class="party-card__temporary-slot"
+                :class="{ 'party-card__temporary-slot--filled': temporarySkill(member, slot.key) }"
+              >
+                <small>{{ slot.label }}</small>
+                {{ temporarySkill(member, slot.key)?.displayName ?? 'Libre' }}
               </span>
             </div>
           </article>
@@ -460,6 +492,50 @@ function rarityTone(rarity: string): string {
   border: 1px solid var(--line-soft);
   border-radius: 2px;
   padding: 1px 5px;
+}
+
+.party-card__skill small {
+  margin-left: 4px;
+  color: var(--gold);
+  font-size: 8px;
+}
+
+.party-card__skill--temporary {
+  border-color: oklch(0.65 0.08 85 / 0.5);
+  color: var(--ink-2);
+}
+
+.party-card__temporary-slots {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.party-card__temporary-slot {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 4px 5px;
+  border: 1px dashed var(--line-soft);
+  border-radius: 3px;
+  color: var(--ink-4);
+  font-size: 9px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.party-card__temporary-slot small {
+  color: var(--gold);
+  font-family: var(--caps, var(--font));
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.party-card__temporary-slot--filled {
+  border-style: solid;
+  border-color: oklch(0.65 0.08 85 / 0.5);
+  color: var(--ink-2);
 }
 
 /* ── Modifiers ── */

@@ -64,6 +64,14 @@ function itemSlotLabel(slot: string | undefined): string {
           </StatTooltip>
           <span class="tov-stat__value">{{ statValue(character.stats, stat) }}</span>
         </div>
+        <div class="tov-stat tov-stat--tactical">
+          <span class="tov-stat__label">Déplacement</span>
+          <span class="tov-stat__value">{{ character.stats.movement ?? 4 }}</span>
+        </div>
+        <div class="tov-stat tov-stat--resource">
+          <span class="tov-stat__label">Charge</span>
+          <span class="tov-stat__value">0 / 5</span>
+        </div>
       </div>
 
       <div class="tov-card__skills">
@@ -164,6 +172,14 @@ function itemSlotLabel(slot: string | undefined): string {
   font-family: var(--font-mono, monospace);
   font-size: 12px;
   color: var(--ink-2);
+}
+
+.tov-stat--tactical {
+  border: 1px solid oklch(0.65 0.08 85 / 0.35);
+}
+
+.tov-stat--resource {
+  border: 1px solid oklch(0.55 0.08 232 / 0.35);
 }
 
 .tov-card__skills {

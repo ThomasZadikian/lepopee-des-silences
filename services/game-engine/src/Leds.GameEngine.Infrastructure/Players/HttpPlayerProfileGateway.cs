@@ -282,7 +282,8 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
                         c.Stats.Mana,
                         c.Stats.Charge,
                         c.Stats.MagicAttack,
-                        c.Stats.MagicDefense),
+                        c.Stats.MagicDefense,
+                        c.Stats.Movement),
                     MaxEquippedSkills: c.MaxEquippedSkills,
                     Items: (c.Items ?? [])
                         .Select(i => new PlayerCharacterItemView(i.ItemKey, i.AcquiredAtUtc, i.Source, i.IsEquipped, i.Slot))
@@ -380,7 +381,8 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
         int Mana,
         int Charge,
         int MagicAttack = 0,
-        int MagicDefense = 0);
+        int MagicDefense = 0,
+        int Movement = 4);
 
     private sealed record PlayerProgressionResponse(
         int UnspentStatPoints,

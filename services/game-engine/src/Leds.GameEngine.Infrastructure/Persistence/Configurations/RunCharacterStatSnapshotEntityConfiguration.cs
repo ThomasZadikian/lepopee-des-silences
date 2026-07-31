@@ -25,6 +25,7 @@ public sealed class RunCharacterStatSnapshotEntityConfiguration : IEntityTypeCon
         builder.Property(e => e.Charge).HasColumnName("charge").IsRequired();
         builder.Property(e => e.MagicAttack).HasColumnName("magic_attack").HasDefaultValue(0);
         builder.Property(e => e.MagicDefense).HasColumnName("magic_defense").HasDefaultValue(0);
+        builder.Property(e => e.Movement).HasColumnName("movement").HasDefaultValue(4).IsRequired();
 
         builder.HasIndex(e => e.CharacterSnapshotId).IsUnique();
     }

@@ -23,6 +23,7 @@ public sealed class PlayerCharacterStatBlockEntityConfiguration : IEntityTypeCon
         builder.Property(s => s.Charge).HasColumnName("charge").HasDefaultValue(0);
         builder.Property(s => s.MagicAttack).HasColumnName("magic_attack").HasDefaultValue(0);
         builder.Property(s => s.MagicDefense).HasColumnName("magic_defense").HasDefaultValue(0);
+        builder.Property(s => s.Movement).HasColumnName("movement").HasDefaultValue(4).IsRequired();
         builder.HasIndex(s => s.PlayerCharacterId).IsUnique();
         builder.HasOne(s => s.PlayerCharacter)
             .WithOne(c => c.StatBlock)

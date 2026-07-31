@@ -52,7 +52,10 @@ public sealed class PlayerStatMerger
             MagicAttack: EffectiveStat("MagicAttack", stats.MagicAttack),
             MagicDefense: EffectiveStat("MagicDefense", stats.MagicDefense),
             Mana: EffectiveStat("Mana", stats.Mana),
-            Charge: EffectiveStat("Charge", stats.Charge),
+            // Charge is no longer allocatable, but this merger preserves the current run
+            // value. Combat creation/reset remains the owner of the canonical 0..5 gauge.
+            Charge: stats.Charge,
+            Movement: Math.Max(1, EffectiveStat("Movement", stats.Movement)),
             RunItemCapacity: EffectiveStat("RunItemCapacity", Run.DefaultRunItemCapacity),
             // e.g. Bague de Iris: +20% of whatever Guard the protagonist would otherwise
             // start combat with (Law/climate-derived — see CombatFactory's guardBonus).
@@ -70,5 +73,6 @@ public sealed record EffectiveCharacterStats(
     int MagicDefense,
     int Mana,
     int Charge,
+    int Movement,
     int RunItemCapacity,
     int GuardBonusPercent);

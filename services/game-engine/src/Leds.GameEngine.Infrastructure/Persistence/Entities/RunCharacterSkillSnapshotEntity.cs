@@ -20,6 +20,7 @@ public sealed class RunCharacterSkillSnapshotEntity
     public int Cooldown { get; set; }
     public bool IsUltimate { get; set; }
     public string EmotionalRegister { get; set; } = "Neutral";
+    public string TemporarySlot { get; set; } = "Permanent";
 
     public RunCharacterSnapshotEntity? CharacterSnapshot { get; set; }
 }

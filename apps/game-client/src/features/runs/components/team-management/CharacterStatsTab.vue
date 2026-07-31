@@ -134,6 +134,19 @@ function cancelChoices() {
       </div>
     </header>
 
+    <div class="cst-tactical-resources">
+      <div class="cst-resource">
+        <span class="es-label">Déplacement</span>
+        <strong>{{ character.stats.movement ?? 4 }}</strong>
+        <small>Base tactique, modifiée par l’équipement et les statuts.</small>
+      </div>
+      <div class="cst-resource">
+        <span class="es-label">Charge</span>
+        <strong>0 / 5</strong>
+        <small>Jauge de combat fixe, remise à zéro après chaque affrontement.</small>
+      </div>
+    </div>
+
     <div class="cst-body">
       <StatRadarChart :values="radarValues" :preview-values="radarPreviewValues" class="cst-radar" />
 
@@ -239,6 +252,33 @@ function cancelChoices() {
   grid-template-columns: minmax(240px, 340px) 1fr;
   gap: 24px;
   align-items: start;
+}
+
+.cst-tactical-resources {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.cst-resource {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line-soft);
+  border-radius: 5px;
+  background: oklch(0.24 0.015 283 / 0.35);
+}
+
+.cst-resource strong {
+  color: var(--gold);
+  font-family: var(--font-mono, monospace);
+}
+
+.cst-resource small {
+  grid-column: 1 / -1;
+  color: var(--ink-4);
+  font-size: 11px;
 }
 
 .cst-radar {

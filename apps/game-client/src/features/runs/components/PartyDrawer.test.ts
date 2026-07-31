@@ -204,6 +204,29 @@ describe('PartyDrawer', () => {
     expect(wrapper.text()).toContain('Frappe');
   });
 
+  it('shows the three dedicated temporary slots and their assigned skill', () => {
+    const ally = {
+      ...baseAlly,
+      skills: [
+        ...baseAlly.skills,
+        {
+          key: 'skill.temp.grimoire',
+          displayName: 'Souffle emprunté',
+          skillType: 'Damage',
+          targetingMode: 'Single',
+          temporarySlot: 'Grimoire' as const,
+        },
+      ],
+    };
+    const wrapper = mountDrawer([ally]);
+
+    expect(wrapper.findAll('.party-card__temporary-slot')).toHaveLength(3);
+    expect(wrapper.text()).toContain('Temp. I');
+    expect(wrapper.text()).toContain('Temp. II');
+    expect(wrapper.text()).toContain('Temp. III');
+    expect(wrapper.text()).toContain('Souffle emprunté');
+  });
+
   it('hides skills section when no skills', () => {
     const ally = { ...baseAlly, skills: [] };
     const wrapper = mountDrawer([ally]);

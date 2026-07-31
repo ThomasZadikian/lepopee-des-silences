@@ -133,7 +133,8 @@ public sealed record PlayerCharacterStatsDto(
     int Mana,
     int Charge,
     int MagicAttack,
-    int MagicDefense)
+    int MagicDefense,
+    int Movement = 4)
 {
     public static PlayerCharacterStatsDto FromDomain(PlayerCharacterStatBlock statBlock)
     {
@@ -148,7 +149,8 @@ public sealed record PlayerCharacterStatsDto(
             statBlock.Mana,
             statBlock.Charge,
             statBlock.MagicAttack,
-            statBlock.MagicDefense);
+            statBlock.MagicDefense,
+            statBlock.Movement);
     }
 }
 

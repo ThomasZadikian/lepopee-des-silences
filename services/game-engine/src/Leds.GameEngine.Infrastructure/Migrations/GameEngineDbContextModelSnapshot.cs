@@ -588,6 +588,12 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("mana");
 
+                    b.Property<int>("Movement")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(4)
+                        .HasColumnName("movement");
+
                     b.Property<int>("MaxVitality")
                         .HasColumnType("integer")
                         .HasColumnName("max_vitality");
@@ -1899,6 +1905,14 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)")
                         .HasColumnName("targeting_mode");
+
+                    b.Property<string>("TemporarySlot")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasDefaultValue("Permanent")
+                        .HasColumnName("temporary_slot");
 
                     b.HasKey("Id");
 

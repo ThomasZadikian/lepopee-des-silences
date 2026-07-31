@@ -10,7 +10,6 @@ public enum PlayerStatKind
     Initiative,
     Focus,
     Mana,
-    Charge,
     MagicAttack,
     MagicDefense
 }

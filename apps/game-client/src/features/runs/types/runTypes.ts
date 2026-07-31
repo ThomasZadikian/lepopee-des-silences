@@ -204,6 +204,9 @@ export type RunItemDto = {
   effectType: string;
   effectAmount: number;
   isUsable?: boolean;
+  tacticalRange?: number;
+  tacticalAreaShape?: 'Single' | 'Cross' | 'Diamond' | 'Map';
+  requiresLineOfSight?: boolean;
 };
 
 export type MovePartyResponse = {
@@ -225,6 +228,7 @@ export type RunPartyMemberSkillDto = {
   manaCost: number;
   chargeCost: number;
   basePower: number;
+  temporarySlot?: 'Permanent' | 'Temporary1' | 'Temporary2' | 'Grimoire';
 };
 
 export type RunPartyMemberDto = {
@@ -236,6 +240,7 @@ export type RunPartyMemberDto = {
   guard: number;
   mana: number;
   charge: number;
+  movement?: number;
   isActive: boolean;
   isDefeated: boolean;
   skills: RunPartyMemberSkillDto[];
