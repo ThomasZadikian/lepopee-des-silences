@@ -2,26 +2,47 @@
 import { onMounted, ref } from 'vue';
 import type { PlayerCharacterView } from '../../../party/types/playerTypes';
 import type { SkillDefinitionView } from '../../../party/types/skillTypes';
+import type { ItemDefinitionView } from '../../../party/types/itemTypes';
 import { statDescriptions, statLabels, statOrder, statValue } from '../../../party/constants/statDescriptions';
 import { skillsApi } from '../../../party/api/skillsApi';
+import { itemsApi } from '../../../party/api/itemsApi';
 import StatTooltip from '../../../../shared/components/StatTooltip.vue';
 import ChipBadge from '../../../../shared/components/ChipBadge.vue';
 
 defineProps<{ characters: PlayerCharacterView[] }>();
 
 const allSkills = ref<SkillDefinitionView[]>([]);
+const allItems = ref<ItemDefinitionView[]>([]);
 
-onMounted(async () => {
-  try {
-    const response = await skillsApi.listActive();
-    allSkills.value = response.skills;
-  } catch {
-    // Best-effort: fall back to raw keys below if the catalog lookup fails.
-  }
+onMounted(() => {
+  // Each catalog lookup is best-effort and independent: a slow/unavailable item
+  // endpoint must not make the skill names regress to raw keys (or vice versa).
+  void skillsApi.listActive()
+    .then((response) => { allSkills.value = response.skills; })
+    .catch(() => undefined);
+  void itemsApi.listActive()
+    .then((response) => { allItems.value = response.items; })
+    .catch(() => undefined);
 });
 
 function skillDisplayName(skillKey: string): string {
   return allSkills.value.find((s) => s.key === skillKey)?.displayName ?? skillKey;
+}
+
+function skillContract(skillKey: string): string | null {
+  const skill = allSkills.value.find((candidate) => candidate.key === skillKey);
+  if (!skill) return null;
+  const sight = skill.requiresLineOfSight ? ' · vue' : '';
+  const cooldown = (skill.cooldown ?? 0) > 0 ? ` · recharge ${skill.cooldown}` : '';
+  return `P${skill.tacticalRange ?? 1} · ${skill.tacticalAreaShape ?? 'Single'}${sight}${cooldown}`;
+}
+
+function itemDisplayName(itemKey: string): string {
+  return allItems.value.find((item) => item.key === itemKey)?.displayName ?? itemKey;
+}
+
+function itemSlotLabel(slot: string | undefined): string {
+  return slot === 'Weapon' ? 'Arme' : slot === 'Accessory' ? 'Accessoire' : 'Relique';
 }
 </script>
 
@@ -53,10 +74,30 @@ function skillDisplayName(skillKey: string): string {
             :key="skill.skillKey"
             class="es-chip"
           >
-            {{ skillDisplayName(skill.skillKey) }}
+            <span>{{ skillDisplayName(skill.skillKey) }}</span>
+            <small v-if="skillContract(skill.skillKey)" class="tov-card__chip-meta">
+              {{ skillContract(skill.skillKey) }}
+            </small>
           </span>
           <span v-if="!character.skills.some((s) => s.isEquipped)" class="tov-empty">
             Aucun sort équipé.
+          </span>
+        </div>
+      </div>
+
+      <div class="tov-card__skills">
+        <span class="es-label">Équipement</span>
+        <div class="tov-card__skill-chips">
+          <span
+            v-for="item in character.items.filter((candidate) => candidate.isEquipped)"
+            :key="item.itemKey"
+            class="es-chip tov-card__equipment-chip"
+          >
+            <span>{{ itemDisplayName(item.itemKey) }}</span>
+            <small class="tov-card__chip-meta">{{ itemSlotLabel(item.slot) }}</small>
+          </span>
+          <span v-if="!character.items.some((item) => item.isEquipped)" class="tov-empty">
+            Aucun objet équipé.
           </span>
         </div>
       </div>
@@ -135,6 +176,22 @@ function skillDisplayName(skillKey: string): string {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+}
+
+.tov-card__skill-chips .es-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tov-card__chip-meta {
+  opacity: 0.6;
+  font-family: var(--font-mono, monospace);
+  font-size: 9px;
+}
+
+.tov-card__equipment-chip {
+  border-color: oklch(0.65 0.08 85 / 0.45);
 }
 
 .tov-empty {

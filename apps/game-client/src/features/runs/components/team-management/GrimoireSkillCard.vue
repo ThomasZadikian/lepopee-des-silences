@@ -19,6 +19,7 @@ const emit = defineEmits<{ toggleEquip: [key: string] }>();
   >
     <div class="grimoire-card__head">
       <span class="grimoire-card__name">{{ skill.displayName }}</span>
+      <span v-if="skill.isUltimate" class="grimoire-chip grimoire-chip--ultimate">Ultime</span>
       <span class="grimoire-chip">{{ categoryLabel(skill.effectType) }}</span>
       <span class="grimoire-chip grimoire-chip--muted">{{ skill.category === 'Magic' ? 'Magique' : 'Physique' }}</span>
     </div>
@@ -33,6 +34,13 @@ const emit = defineEmits<{ toggleEquip: [key: string] }>();
       <span>Puissance : {{ skill.basePower }}{{ skill.basePowerIsPercentOfMaxVitality ? '% PV max' : '' }}</span>
       <span v-if="skill.manaCost > 0">Mana : {{ skill.manaCost }}</span>
       <span v-if="skill.chargeCost > 0">Charge : {{ skill.chargeCost }}</span>
+      <span>Portée : {{ skill.tacticalRange ?? 1 }}</span>
+      <span>Zone : {{ skill.tacticalAreaShape ?? 'Single' }}</span>
+      <span>{{ skill.requiresLineOfSight ? 'Ligne de vue' : 'Sans ligne de vue' }}</span>
+      <span v-if="(skill.cooldown ?? 0) > 0">Recharge : {{ skill.cooldown }} tours</span>
+      <span v-if="skill.emotionalRegister && skill.emotionalRegister !== 'Neutral'">
+        Registre : {{ skill.emotionalRegister }}
+      </span>
     </div>
 
     <template v-if="isKnown">
@@ -103,6 +111,11 @@ const emit = defineEmits<{ toggleEquip: [key: string] }>();
   color: var(--ink-4);
 }
 
+.grimoire-chip--ultimate {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
 .grimoire-card__desc {
   margin: 0;
   font-size: 12px;
@@ -120,6 +133,7 @@ const emit = defineEmits<{ toggleEquip: [key: string] }>();
 
 .grimoire-card__stats {
   display: flex;
+  flex-wrap: wrap;
   gap: 12px;
   font-family: var(--font-mono, monospace);
   font-size: 11px;

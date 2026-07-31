@@ -18,11 +18,27 @@ export const combatApi = {
     );
   },
 
-  useTacticalSkill(runId: string, skillKey: string, targetX: number, targetY: number) {
+  useTacticalSkill(
+    runId: string,
+    skillKey: string,
+    targetX: number,
+    targetY: number,
+    confirmVitalitySacrifice = false,
+  ) {
     return gameEngineApi.post<
       TacticalCombatResponse,
-      { skillKey: string; targetX: number; targetY: number }
-    >(`/api/v2/runs/${runId}/tactical-combat/skill`, { skillKey, targetX, targetY });
+      {
+        skillKey: string;
+        targetX: number;
+        targetY: number;
+        confirmVitalitySacrifice: boolean;
+      }
+    >(`/api/v2/runs/${runId}/tactical-combat/skill`, {
+      skillKey,
+      targetX,
+      targetY,
+      confirmVitalitySacrifice,
+    });
   },
 
   useTacticalItem(

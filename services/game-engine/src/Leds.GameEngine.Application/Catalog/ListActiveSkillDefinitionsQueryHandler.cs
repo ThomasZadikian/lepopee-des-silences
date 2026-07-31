@@ -53,7 +53,13 @@ public sealed class ListActiveSkillDefinitionsQueryHandler
                     e.MagnitudeIsPercentOfBaseStat,
                     e.AppliesToActor,
                     e.IsPermanent)).ToArray(),
-                acquisitionHints.TryGetValue(d.Key, out var hints) ? hints : [])).ToArray());
+                acquisitionHints.TryGetValue(d.Key, out var hints) ? hints : [],
+                d.TacticalRange,
+                d.TacticalAreaShape,
+                d.RequiresLineOfSight,
+                d.Cooldown,
+                d.IsUltimate,
+                d.EmotionalRegister)).ToArray());
     }
 
     /// <summary>

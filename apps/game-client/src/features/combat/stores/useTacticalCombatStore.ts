@@ -229,8 +229,15 @@ export const useTacticalCombatStore = defineStore('tacticalCombat', () => {
   const moveTo = (runId: string, x: number, y: number) =>
     execute(() => combatApi.moveTacticalCombatant(runId, x, y));
 
-  const useSkillAt = (runId: string, skillKey: string, x: number, y: number) =>
-    execute(() => combatApi.useTacticalSkill(runId, skillKey, x, y));
+  const useSkillAt = (
+    runId: string,
+    skillKey: string,
+    x: number,
+    y: number,
+    confirmVitalitySacrifice = false,
+  ) => execute(() => combatApi.useTacticalSkill(
+    runId, skillKey, x, y, confirmVitalitySacrifice,
+  ));
 
   const useItemAt = (
     runId: string,

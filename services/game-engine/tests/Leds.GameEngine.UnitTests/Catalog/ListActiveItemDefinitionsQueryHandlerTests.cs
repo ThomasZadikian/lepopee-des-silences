@@ -20,7 +20,17 @@ public sealed class ListActiveItemDefinitionsQueryHandlerTests
                     "canon.item.monocle-pomenian", "canon-1.0.0", "Le monocle de Pomenian",
                     "Une lentille gravée.", null, "Equipment", "Accessory", "Epic",
                     "NotUsable", "PersistentMeta", "Additive", 1, false, false, null,
-                    IsPermanentEligible: true, EffectValue: 0, EffectRunType: null)
+                    IsPermanentEligible: true,
+                    EquipmentEffects:
+                    [
+                        new CatalogItemEquipmentEffect(
+                            "StatModifier", "Focus", 4, null, null)
+                    ],
+                    EffectValue: 0,
+                    EffectRunType: null,
+                    TacticalRange: 2,
+                    TacticalAreaShape: "Diamond",
+                    RequiresLineOfSight: true)
             });
 
         var handler = new ListActiveItemDefinitionsQueryHandler(catalogGateway.Object);
@@ -34,6 +44,11 @@ public sealed class ListActiveItemDefinitionsQueryHandlerTests
         item.Category.Should().Be("Equipment");
         item.ItemType.Should().Be("Accessory");
         item.Rarity.Should().Be("Epic");
+        item.TacticalRange.Should().Be(2);
+        item.TacticalAreaShape.Should().Be("Diamond");
+        item.RequiresLineOfSight.Should().BeTrue();
+        item.EquipmentEffects.Should().ContainSingle()
+            .Which.StatKind.Should().Be("Focus");
     }
 
     [Fact]

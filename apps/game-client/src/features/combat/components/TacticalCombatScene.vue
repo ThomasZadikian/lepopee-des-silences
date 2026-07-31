@@ -218,6 +218,49 @@ function skillMeta(skill: CombatantSkillRuntimeDto): string {
   return `P${profile.range} · ${skillShapeLabel(skill)}${power}`;
 }
 
+function effectiveManaCost(skill: CombatantSkillRuntimeDto): number {
+  return skill.effectiveManaCost ?? skill.manaCost;
+}
+
+function remainingCooldown(skill: CombatantSkillRuntimeDto): number {
+  return store.activeCombatant?.skillCooldowns[skill.key] ?? 0;
+}
+
+function missingMana(skill: CombatantSkillRuntimeDto): number {
+  return Math.max(0, effectiveManaCost(skill) - (store.activeCombatant?.combatant.mana ?? 0));
+}
+
+function vitalitySacrifice(skill: CombatantSkillRuntimeDto): number {
+  return missingMana(skill) * 2;
+}
+
+function skillCostMeta(skill: CombatantSkillRuntimeDto): string {
+  const parts = [`${effectiveManaCost(skill)} Mana`];
+  if (skill.chargeCost > 0) parts.push(`${skill.chargeCost} Charge`);
+  const cooldown = remainingCooldown(skill);
+  if (cooldown > 0) parts.push(`Recharge ${cooldown}`);
+  return parts.join(' · ');
+}
+
+function skillUnavailable(skill: CombatantSkillRuntimeDto): boolean {
+  const actor = store.activeCombatant;
+  return (actor?.hasActed ?? true)
+    || store.isLoading
+    || (store.combat?.usedOnceSkillKeys.includes(skill.key) ?? false)
+    || remainingCooldown(skill) > 0
+    || (actor?.combatant.charge ?? 0) < skill.chargeCost;
+}
+
+function facingLabel(facing: 'North' | 'East' | 'South' | 'West' | undefined): string {
+  switch (facing) {
+    case 'North': return 'nord';
+    case 'East': return 'est';
+    case 'South': return 'sud';
+    case 'West': return 'ouest';
+    default: return '—';
+  }
+}
+
 function itemShape(item: CombatUsableItemDto): TacticalShape {
   return item.tacticalAreaShape.toLowerCase() as TacticalShape;
 }
@@ -996,7 +1039,30 @@ function onCanvasClick(event: MouseEvent) {
   // Une compétence armée détourne le clic : c'est ce qui distingue « où aller » de « quoi
   // frapper » sans exiger un second bouton.
   if (store.selectedSkillKey) {
-    void store.useSkillAt(props.runId, store.selectedSkillKey, cell.x, cell.y);
+    const skill = store.selectedSkill;
+    if (!skill || skillUnavailable(skill)) return;
+
+    const sacrifice = vitalitySacrifice(skill);
+    if (sacrifice > 0) {
+      const actorVitality = store.activeCombatant?.combatant.currentVitality ?? 0;
+      const lethalNotice = sacrifice >= actorVitality
+        ? ' Le lanceur mourra après la résolution et la compétence gagnera 50 % de puissance.'
+        : '';
+      const accepted = globalThis.confirm(
+        `Mana insuffisante : « ${skill.displayName} » consommera exactement `
+        + `${sacrifice} Vitalité (${missingMana(skill)} Mana manquante).`
+        + `${lethalNotice}\n\nConfirmer le sacrifice ?`,
+      );
+      if (!accepted) return;
+    }
+
+    void store.useSkillAt(
+      props.runId,
+      store.selectedSkillKey,
+      cell.x,
+      cell.y,
+      sacrifice > 0,
+    );
     return;
   }
 
@@ -1216,6 +1282,12 @@ onBeforeUnmount(() => {
           <span class="tbattle__active-stat">
             Mana {{ store.activeCombatant?.combatant?.mana ?? '—' }}
           </span>
+          <span class="tbattle__active-stat">
+            Charge {{ store.activeCombatant?.combatant?.charge ?? '—' }} / 5
+          </span>
+          <span class="tbattle__active-stat">
+            Face {{ facingLabel(store.activeCombatant?.facing) }}
+          </span>
           <span class="tbattle__active-stat" :class="{ 'tbattle__active-stat--spent': store.activeCombatant?.hasMoved }">
             {{
               store.activeCombatant
@@ -1239,17 +1311,29 @@ onBeforeUnmount(() => {
               :key="skill.key"
               type="button"
               class="tbattle__skill"
-              :class="{ 'tbattle__skill--armed': skill.key === store.selectedSkillKey }"
-              :disabled="
-                (store.activeCombatant?.hasActed ?? true)
-                  || store.isLoading
-                  || store.combat?.usedOnceSkillKeys.includes(skill.key)
+              :class="{
+                'tbattle__skill--armed': skill.key === store.selectedSkillKey,
+                'tbattle__skill--ultimate': skill.isUltimate,
+                'tbattle__skill--sacrifice': vitalitySacrifice(skill) > 0,
+              }"
+              :disabled="skillUnavailable(skill)"
+              :title="
+                `${skill.displayName} — ${skill.category === 'Magic' ? 'magique' : 'physique'}, `
+                  + `${skillMeta(skill)}, ${skillCostMeta(skill)}`
+                  + (vitalitySacrifice(skill) > 0
+                    ? ` — sacrifice : ${vitalitySacrifice(skill)} Vitalité`
+                    : '')
               "
-              :title="`${skill.displayName} — ${skill.category === 'Magic' ? 'magique' : 'physique'}, ${skillMeta(skill)}, Mana ${skill.manaCost}`"
               @click="store.selectSkill(skill.key)"
             >
-              <span class="tbattle__skill-name">{{ skill.displayName }}</span>
+              <span class="tbattle__skill-name">
+                {{ skill.isUltimate ? 'Ultime · ' : '' }}{{ skill.displayName }}
+              </span>
               <span class="tbattle__skill-meta">{{ skillMeta(skill) }}</span>
+              <span class="tbattle__skill-cost">{{ skillCostMeta(skill) }}</span>
+              <span v-if="vitalitySacrifice(skill) > 0" class="tbattle__skill-warning">
+                −{{ vitalitySacrifice(skill) }} Vitalité
+              </span>
             </button>
             <button
               v-for="item in store.usableItems"
@@ -1608,11 +1692,15 @@ onBeforeUnmount(() => {
 }
 
 .tbattle__skill--armed { background: rgb(224 96 94 / 22%); border-color: #e0605e; }
+.tbattle__skill--ultimate { border-color: rgb(230 194 115 / 55%); }
+.tbattle__skill--sacrifice:not(:disabled) { border-color: rgb(224 96 94 / 70%); }
 .tbattle__item { border-color: rgb(102 185 171 / 45%); }
 .tbattle__item--armed { background: rgb(102 185 171 / 22%); border-color: #66b9ab; }
 .tbattle__skill:disabled { opacity: 0.35; cursor: not-allowed; }
 .tbattle__skill-name { font-weight: 600; }
 .tbattle__skill-meta { font-size: 0.62rem; opacity: 0.55; font-variant-numeric: tabular-nums; }
+.tbattle__skill-cost { font-size: 0.62rem; color: #e6c273; font-variant-numeric: tabular-nums; }
+.tbattle__skill-warning { font-size: 0.62rem; color: #e0605e; font-variant-numeric: tabular-nums; }
 
 .tbattle__end-turn {
   font-weight: 600;

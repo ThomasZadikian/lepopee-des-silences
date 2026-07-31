@@ -38,6 +38,10 @@ export type CombatantSkillRuntimeDto = {
   tacticalRange: number;
   tacticalAreaShape: TacticalAreaShape;
   requiresLineOfSight: boolean;
+  cooldown: number;
+  isUltimate: boolean;
+  /** Cost after the active combatant's equipment and statuses have been applied. */
+  effectiveManaCost?: number | null;
 };
 
 export type CombatantRuntimeDto = {
@@ -215,6 +219,9 @@ export type TacticalCombatantRuntimeDto = {
   hasActed: boolean;
   /** Nombre de cases atteignables ce tour, à terrain plat. */
   movementBudget: number;
+  facing: 'North' | 'East' | 'South' | 'West';
+  /** Remaining owner activations before each skill can be used again. */
+  skillCooldowns: Record<string, number>;
 };
 
 export type TacticalCombatRuntimeDto = {

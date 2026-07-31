@@ -13,7 +13,13 @@ public sealed record SkillDefinitionView(
     string Category,
     bool BasePowerIsPercentOfMaxVitality,
     IReadOnlyCollection<SkillEffectView> Effects,
-    IReadOnlyCollection<string> AcquisitionHints);
+    IReadOnlyCollection<string> AcquisitionHints,
+    int TacticalRange = 1,
+    string TacticalAreaShape = "Single",
+    bool RequiresLineOfSight = false,
+    int Cooldown = 0,
+    bool IsUltimate = false,
+    string EmotionalRegister = "Neutral");
 
 public sealed record SkillEffectView(
     string Kind,

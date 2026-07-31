@@ -75,7 +75,17 @@ public sealed record CombatantRuntimeDto(
                     e.IsPermanent))
                 .ToArray(),
             Skills: combatant.Skills
-                .Select(CombatantSkillRuntimeDto.FromDomain)
+                .Select(skill => CombatantSkillRuntimeDto.FromDomain(skill) with
+                {
+                    // The confirmation shown by the tactical client must quote the exact
+                    // sacrifice, including active item/status cost modifiers.
+                    EffectiveManaCost = Math.Max(
+                        0,
+                        (int)Math.Round(
+                            skill.ManaCost
+                            * (1.0 - combatant.EffectiveSkillCostReductionPercent / 100.0))
+                        + combatant.EffectiveFlatManaCostBonus)
+                })
                 .ToArray());
     }
 }

@@ -62,6 +62,7 @@ export type PlayerPermanentItemView = {
   itemDefinitionKey: string;
   sourceRunId: string | null;
   acquiredAtUtc: string;
+  containedLiquidDefinitionKey?: string | null;
 };
 
 export type PlayerProfileView = {

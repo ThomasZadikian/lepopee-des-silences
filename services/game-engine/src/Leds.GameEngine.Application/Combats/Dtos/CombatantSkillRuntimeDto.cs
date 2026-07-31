@@ -20,7 +20,8 @@ public sealed record CombatantSkillRuntimeDto(
     string TacticalAreaShape = "Single",
     bool RequiresLineOfSight = false,
     int Cooldown = 0,
-    bool IsUltimate = false)
+    bool IsUltimate = false,
+    int? EffectiveManaCost = null)
 {
     public static CombatantSkillRuntimeDto FromDomain(CombatantSkill skill)
     {

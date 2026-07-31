@@ -29,11 +29,46 @@ function weaponContract(itemKey: string): string | null {
   if (!item || item.itemType !== 'Weapon') return null;
   const category = item.basicAttackCategory === 'Magic' ? 'magique' : 'physique';
   const lineOfSight = item.requiresLineOfSight ? ' · ligne de vue' : '';
-  return `${item.basicAttackPower ?? 10} puissance · portée ${item.tacticalRange ?? 1} · ${category}${lineOfSight}`;
+  return `${item.basicAttackPower ?? 10} puissance · portée ${item.tacticalRange ?? 1}`
+    + ` · ${category}${lineOfSight} · ${shapeLabel(item.tacticalAreaShape)}`;
+}
+
+function shapeLabel(shape: string | undefined): string {
+  switch (shape) {
+    case 'Cross': return 'croix';
+    case 'Diamond': return 'losange';
+    case 'Map': return 'carte';
+    default: return 'case';
+  }
+}
+
+function equipmentEffects(itemKey: string): string[] {
+  const item = allItems.value.find((candidate) => candidate.key === itemKey);
+  return (item?.equipmentEffects ?? []).map((effect) => {
+    if (effect.kind === 'StatModifier') {
+      const amount = effect.amount ?? 0;
+      return `${amount >= 0 ? '+' : ''}${amount} ${effect.statKind ?? 'statistique'}`;
+    }
+    if (effect.kind === 'GrantSkill') return `Compétence : ${effect.skillKey ?? 'inconnue'}`;
+    if (effect.kind === 'Affinity') return `Affinité : ${effect.affinityRegister ?? 'neutre'}`;
+    return effect.kind;
+  });
 }
 
 const equippedItems = computed(() => props.character.items.filter((i) => i.isEquipped));
 const slotLimits = { Weapon: 1, Accessory: 1, Relic: 3 } as const;
+const equipmentSlots = computed(() => {
+  const weapons = equippedItems.value.filter((item) => (item.slot ?? slotFor(item.itemKey)) === 'Weapon');
+  const accessories = equippedItems.value.filter((item) => (item.slot ?? slotFor(item.itemKey)) === 'Accessory');
+  const relics = equippedItems.value.filter((item) => (item.slot ?? slotFor(item.itemKey)) === 'Relic');
+  return [
+    { key: 'weapon', label: 'Arme', item: weapons[0] },
+    { key: 'accessory', label: 'Accessoire', item: accessories[0] },
+    { key: 'relic-1', label: 'Relique I', item: relics[0] },
+    { key: 'relic-2', label: 'Relique II', item: relics[1] },
+    { key: 'relic-3', label: 'Relique III', item: relics[2] },
+  ];
+});
 
 function slotFor(itemKey: string): keyof typeof slotLimits | null {
   const definition = allItems.value.find((item) => item.key === itemKey);
@@ -85,29 +120,43 @@ function toggleItem(itemKey: string, isEquipped: boolean) {
     <!-- ── Section 1: currently equipped ── -->
     <section class="imk-section">
       <h4 class="imk-section__title">
-        Objets équipés
+        Objets équipés · contrat tactique
         <span class="imk-section__count">{{ equippedItems.length }} / {{ character.maxEquippedItems }}</span>
       </h4>
-      <ul v-if="equippedItems.length" class="imk-list">
-        <li v-for="item in equippedItems" :key="item.itemKey" class="imk-row">
-          <div class="imk-row__info">
-            <span class="imk-row__name">{{ itemDisplayName(item.itemKey) }}</span>
-            <span class="imk-row__slot">{{ slotLabel(item.slot ?? 'Relic') }}</span>
-            <small v-if="weaponContract(item.itemKey)" class="imk-row__contract">
-              {{ weaponContract(item.itemKey) }}
-            </small>
-          </div>
-          <button
-            type="button"
-            class="imk-toggle imk-toggle--active"
-            :disabled="playerStore.isLoading"
-            @click="toggleItem(item.itemKey, true)"
-          >
-            Déséquiper
-          </button>
+      <ul class="imk-slots">
+        <li
+          v-for="slot in equipmentSlots"
+          :key="slot.key"
+          class="imk-slot"
+          :class="{ 'imk-slot--empty': !slot.item }"
+        >
+          <span class="imk-slot__label">{{ slot.label }}</span>
+          <template v-if="slot.item">
+            <div class="imk-row__info">
+              <span class="imk-row__name">{{ itemDisplayName(slot.item.itemKey) }}</span>
+              <small v-if="weaponContract(slot.item.itemKey)" class="imk-row__contract">
+                {{ weaponContract(slot.item.itemKey) }}
+              </small>
+              <small
+                v-for="effect in equipmentEffects(slot.item.itemKey)"
+                :key="effect"
+                class="imk-row__effect"
+              >
+                {{ effect }}
+              </small>
+            </div>
+            <button
+              type="button"
+              class="imk-toggle imk-toggle--active"
+              :disabled="playerStore.isLoading"
+              @click="toggleItem(slot.item.itemKey, true)"
+            >
+              Déséquiper
+            </button>
+          </template>
+          <span v-else class="imk-slot__empty">Emplacement libre</span>
         </li>
       </ul>
-      <p v-else class="imk-empty">Aucun objet équipé.</p>
     </section>
 
     <!-- ── Section 2: permanent backpack (all owned items) ── -->
@@ -126,6 +175,19 @@ function toggleItem(itemKey: string, isEquipped: boolean) {
             </span>
             <small v-if="weaponContract(permanentItem.itemDefinitionKey)" class="imk-row__contract">
               {{ weaponContract(permanentItem.itemDefinitionKey) }}
+            </small>
+            <small
+              v-for="effect in equipmentEffects(permanentItem.itemDefinitionKey)"
+              :key="effect"
+              class="imk-row__effect"
+            >
+              {{ effect }}
+            </small>
+            <small
+              v-if="permanentItem.containedLiquidDefinitionKey"
+              class="imk-row__effect"
+            >
+              Contenu : {{ itemDisplayName(permanentItem.containedLiquidDefinitionKey) }}
             </small>
           </div>
           <button
@@ -186,6 +248,12 @@ function toggleItem(itemKey: string, isEquipped: boolean) {
   font-size: 0.72rem;
 }
 
+.imk-row__effect {
+  display: block;
+  color: var(--frost, var(--ink-3));
+  font-size: 0.7rem;
+}
+
 .imk-section__count {
   float: right;
   font-family: var(--font-mono, monospace);
@@ -201,6 +269,47 @@ function toggleItem(itemKey: string, isEquipped: boolean) {
   gap: 6px;
 }
 
+.imk-slots {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(185px, 1fr));
+  gap: 8px;
+}
+
+.imk-slot {
+  min-height: 96px;
+  padding: 10px;
+  border: 1px solid var(--line-soft);
+  border-radius: 5px;
+  background: oklch(0.24 0.015 283 / 0.35);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.imk-slot--empty {
+  border-style: dashed;
+  opacity: 0.7;
+}
+
+.imk-slot__label {
+  font-family: var(--font-caps, var(--font));
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.imk-slot__empty {
+  margin: auto 0;
+  font-size: 11px;
+  font-style: italic;
+  color: var(--ink-4);
+}
+
 .imk-row {
   display: flex;
   align-items: center;
@@ -213,8 +322,13 @@ function toggleItem(itemKey: string, isEquipped: boolean) {
 
 .imk-row__info {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-start;
   gap: 8px;
+}
+
+.imk-slot .imk-toggle {
+  margin-top: auto;
 }
 
 .imk-row__name {

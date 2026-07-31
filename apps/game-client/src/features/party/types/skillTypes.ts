@@ -25,4 +25,10 @@ export type SkillDefinitionView = {
   basePowerIsPercentOfMaxVitality: boolean;
   effects: SkillEffectView[];
   acquisitionHints: string[];
+  tacticalRange?: number;
+  tacticalAreaShape?: 'Single' | 'Cross' | 'Diamond' | 'Map';
+  requiresLineOfSight?: boolean;
+  cooldown?: number;
+  isUltimate?: boolean;
+  emotionalRegister?: string;
 };

@@ -65,4 +65,31 @@ describe('GrimoireSkillCard', () => {
 
     expect(wrapper.emitted('toggleEquip')).toEqual([['skill.xyz']]);
   });
+
+  it('shows the complete tactical contract received from the catalog', () => {
+    const wrapper = mount(GrimoireSkillCard, {
+      props: {
+        skill: skill({
+          tacticalRange: 4,
+          tacticalAreaShape: 'Diamond',
+          requiresLineOfSight: true,
+          cooldown: 2,
+          isUltimate: true,
+          emotionalRegister: 'Effroi',
+          manaCost: 12,
+          chargeCost: 3,
+        }),
+        isKnown: true,
+        isEquipped: false,
+        disabled: false,
+      },
+    });
+
+    expect(wrapper.text()).toContain('Ultime');
+    expect(wrapper.text()).toContain('Portée : 4');
+    expect(wrapper.text()).toContain('Zone : Diamond');
+    expect(wrapper.text()).toContain('Ligne de vue');
+    expect(wrapper.text()).toContain('Recharge : 2 tours');
+    expect(wrapper.text()).toContain('Registre : Effroi');
+  });
 });

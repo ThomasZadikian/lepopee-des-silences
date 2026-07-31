@@ -28,6 +28,20 @@ public sealed class ListActiveItemDefinitionsQueryHandler
                 d.Rarity,
                 d.EffectRunType,
                 d.EffectValue,
-                d.ReadablePages)).ToArray());
+                d.ReadablePages,
+                (d.EquipmentEffects ?? []).Select(effect => new ItemEquipmentEffectView(
+                    effect.Kind,
+                    effect.StatKind,
+                    effect.Amount,
+                    effect.SkillKey,
+                    effect.AffinityRegister)).ToArray(),
+                d.IsContainer,
+                d.ContainerCapacity,
+                d.IsLiquid,
+                d.TacticalRange,
+                d.TacticalAreaShape,
+                d.RequiresLineOfSight,
+                d.BasicAttackPower,
+                d.BasicAttackCategory)).ToArray());
     }
 }

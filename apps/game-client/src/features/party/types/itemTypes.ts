@@ -13,4 +13,14 @@ export type ItemDefinitionView = {
   requiresLineOfSight?: boolean;
   basicAttackPower?: number | null;
   basicAttackCategory?: string | null;
+  equipmentEffects?: Array<{
+    kind: string;
+    statKind?: string | null;
+    amount?: number | null;
+    skillKey?: string | null;
+    affinityRegister?: string | null;
+  }>;
+  isContainer?: boolean;
+  containerCapacity?: number | null;
+  isLiquid?: boolean;
 };
