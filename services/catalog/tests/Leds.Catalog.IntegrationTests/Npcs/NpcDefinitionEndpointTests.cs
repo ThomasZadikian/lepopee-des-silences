@@ -50,7 +50,6 @@ public sealed class NpcDefinitionEndpointTests
         var majordome = payload!.Definitions.Should().ContainSingle(d => d.Key == "npc.majordome").Subject;
 
         majordome.BoundRoomKeys.Should().BeEmpty();
-        majordome.Offerings.Should().BeEmpty();
     }
 
     private sealed record ListNpcDefinitionsResponse(IReadOnlyCollection<NpcDefinitionResponseDto> Definitions);

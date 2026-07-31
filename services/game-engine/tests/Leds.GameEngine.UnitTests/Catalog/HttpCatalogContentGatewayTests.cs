@@ -171,36 +171,6 @@ public sealed class HttpCatalogContentGatewayTests
     }
 
     [Fact]
-    public async Task GetEnemyTemplateByKeyAsync_ShouldThrowCatalogGatewayException_WhenUsingHttpGateway()
-    {
-        var handler = CreateMockHandler("", HttpStatusCode.OK);
-        var client = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost:5193") };
-        var gateway = new HttpCatalogContentGateway(client);
-
-        var act = async () => await gateway.GetEnemyTemplateByKeyAsync("enemy-shadow-v1");
-
-        var exception = await act.Should()
-            .ThrowAsync<CatalogGatewayException>();
-
-        exception.Which.Message.Should().Contain("Failed to deserialize Catalog Service response");
-    }
-
-    [Fact]
-    public async Task GetSkillTemplateByKeyAsync_ShouldThrowCatalogGatewayException_WhenUsingHttpGateway()
-    {
-        var handler = CreateMockHandler("", HttpStatusCode.OK);
-        var client = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost:5193") };
-        var gateway = new HttpCatalogContentGateway(client);
-
-        var act = async () => await gateway.GetSkillTemplateByKeyAsync("skill-shadow-strike-v1");
-
-        var exception = await act.Should()
-            .ThrowAsync<CatalogGatewayException>();
-
-        exception.Which.Message.Should().Contain("Failed to deserialize Catalog Service response");
-    }
-
-    [Fact]
     public async Task GetItemTemplateByKeyAsync_ShouldThrowCatalogGatewayException_WhenUsingHttpGateway()
     {
         var handler = CreateMockHandler("", HttpStatusCode.OK);
@@ -208,21 +178,6 @@ public sealed class HttpCatalogContentGatewayTests
         var gateway = new HttpCatalogContentGateway(client);
 
         var act = async () => await gateway.GetItemTemplateByKeyAsync("item-memory-fragment-v1");
-
-        var exception = await act.Should()
-            .ThrowAsync<CatalogGatewayException>();
-
-        exception.Which.Message.Should().Contain("Failed to deserialize Catalog Service response");
-    }
-
-    [Fact]
-    public async Task GetEventTemplateByKeyAsync_ShouldThrowCatalogGatewayException_WhenUsingHttpGateway()
-    {
-        var handler = CreateMockHandler("", HttpStatusCode.OK);
-        var client = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost:5193") };
-        var gateway = new HttpCatalogContentGateway(client);
-
-        var act = async () => await gateway.GetEventTemplateByKeyAsync("event-combat-shadow-v1");
 
         var exception = await act.Should()
             .ThrowAsync<CatalogGatewayException>();
@@ -1602,23 +1557,6 @@ public sealed class HttpCatalogContentGatewayTests
         await act.Should()
             .ThrowAsync<CatalogGatewayException>()
             .WithMessage("*500*");
-    }
-
-    // ── Template methods use the HTTP catalog gateway ─────────────────────
-
-    [Fact]
-    public async Task GetSkillTemplateByKeyAsync_ShouldStillThrow_WhenUsingHttpGateway()
-    {
-        var handler = CreateMockHandler("", HttpStatusCode.OK);
-        var client = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost:5193") };
-        var gateway = new HttpCatalogContentGateway(client);
-
-        var act = async () => await gateway.GetSkillTemplateByKeyAsync("skill-shadow-strike-v1");
-
-        var exception = await act.Should()
-            .ThrowAsync<CatalogGatewayException>();
-
-        exception.Which.Message.Should().Contain("Failed to deserialize Catalog Service response");
     }
 
     private static Mock<HttpMessageHandler> CreateMockHandler(string content, HttpStatusCode statusCode)

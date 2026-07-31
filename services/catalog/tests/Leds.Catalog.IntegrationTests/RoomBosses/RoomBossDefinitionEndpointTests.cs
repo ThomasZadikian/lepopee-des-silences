@@ -37,14 +37,14 @@ public sealed class RoomBossDefinitionEndpointTests
 
         payload.Definitions.Select(definition => definition.Key)
             .Should()
-            .Contain("boss.threshold.warden");
+            .Contain("canon.boss.grand-cardinal.threshold");
     }
 
     [Fact]
     public async Task GetRoomBossDefinitionByKey_ShouldReturnDefinition_WhenKeyExists()
     {
         var response = await _client.GetAsync(
-            "/api/v2/catalog/room-boss-definitions/boss.threshold.warden");
+            "/api/v2/catalog/room-boss-definitions/canon.boss.grand-cardinal.threshold");
 
         var body = await response.Content.ReadAsStringAsync();
 
@@ -58,12 +58,12 @@ public sealed class RoomBossDefinitionEndpointTests
         payload.Should().NotBeNull();
         payload!.Definition.Should().NotBeNull();
 
-        payload.Definition!.Key.Should().Be("boss.threshold.warden");
-        payload.Definition.Name.Should().Be("Warden of the Threshold");
+        payload.Definition!.Key.Should().Be("canon.boss.grand-cardinal.threshold");
+        payload.Definition.Name.Should().Be("Le Grand Cardinal");
         payload.Definition.Status.Should().Be("Active");
         payload.Definition.RoomType.Should().Be("Threshold");
-        payload.Definition.BaseDifficulty.Should().Be(1);
-        payload.Definition.Tags.Should().Contain("sentinel");
+        payload.Definition.BaseDifficulty.Should().Be(2);
+        payload.Definition.Tags.Should().Contain("boss");
     }
 
     [Fact]
@@ -109,7 +109,7 @@ public sealed class RoomBossDefinitionEndpointTests
         payload!.Definition.Should().NotBeNull();
 
         payload.Definition!.RoomType.Should().Be("Threshold");
-        payload.Definition.BaseDifficulty.Should().Be(1);
+        payload.Definition.BaseDifficulty.Should().Be(2);
     }
 
     [Fact]

@@ -61,55 +61,6 @@ public sealed class HttpCatalogContentGatewayIntegrationTests : IAsyncLifetime
     // ── Templates ─────────────────────────────────────────────────────
 
     [Fact]
-    public async Task GetEnemyTemplateByKeyAsync_ShouldReturnSeededTemplate()
-    {
-        var result = await _gateway.GetEnemyTemplateByKeyAsync("enemy-shadow-wolf");
-
-        result.IsSuccess.Should().BeTrue();
-        result.Value.Key.Should().Be("enemy-shadow-wolf");
-        result.Value.Name.Should().Be("Loup d\u2019Ombre");
-        result.Value.Status.Should().Be("Active");
-    }
-
-    [Fact]
-    public async Task GetEnemyTemplateByKeyAsync_ShouldFail_ForUnknownKey()
-    {
-        var result = await _gateway.GetEnemyTemplateByKeyAsync("enemy-nonexistent");
-
-        result.IsFailure.Should().BeTrue();
-        result.Error.Code.Should().Be("catalog.enemy_template_not_found");
-    }
-
-    [Fact]
-    public async Task GetEnemyTemplateByKeyAsync_ShouldFail_ForEmptyKey()
-    {
-        var result = await _gateway.GetEnemyTemplateByKeyAsync("");
-
-        result.IsFailure.Should().BeTrue();
-        result.Error.Code.Should().Be("catalog.enemy_template_key_required");
-    }
-
-    [Fact]
-    public async Task GetSkillTemplateByKeyAsync_ShouldReturnSeededTemplate()
-    {
-        var result = await _gateway.GetSkillTemplateByKeyAsync("skill-shadow-bite");
-
-        result.IsSuccess.Should().BeTrue();
-        result.Value.Key.Should().Be("skill-shadow-bite");
-        result.Value.Name.Should().Be("Morsure d\u2019Ombre");
-        result.Value.Status.Should().Be("Active");
-    }
-
-    [Fact]
-    public async Task GetSkillTemplateByKeyAsync_ShouldFail_ForUnknownKey()
-    {
-        var result = await _gateway.GetSkillTemplateByKeyAsync("skill-nonexistent");
-
-        result.IsFailure.Should().BeTrue();
-        result.Error.Code.Should().Be("catalog.skill_template_not_found");
-    }
-
-    [Fact]
     public async Task GetItemTemplateByKeyAsync_ShouldFail_ForUnknownKey()
     {
         // Item templates reuse ItemDefinitionEntity; no dedicated item templates are seeded.
@@ -117,26 +68,6 @@ public sealed class HttpCatalogContentGatewayIntegrationTests : IAsyncLifetime
 
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("catalog.item_template_not_found");
-    }
-
-    [Fact]
-    public async Task GetEventTemplateByKeyAsync_ShouldReturnSeededTemplate()
-    {
-        var result = await _gateway.GetEventTemplateByKeyAsync("event-memory-threshold-v1");
-
-        result.IsSuccess.Should().BeTrue();
-        result.Value.Key.Should().Be("event-memory-threshold-v1");
-        result.Value.Name.Should().Be("Mémoire du seuil");
-        result.Value.Status.Should().Be("Active");
-    }
-
-    [Fact]
-    public async Task GetEventTemplateByKeyAsync_ShouldFail_ForUnknownKey()
-    {
-        var result = await _gateway.GetEventTemplateByKeyAsync("event-nonexistent");
-
-        result.IsFailure.Should().BeTrue();
-        result.Error.Code.Should().Be("catalog.event_template_not_found");
     }
 
     // ── Palace Laws ───────────────────────────────────────────────────

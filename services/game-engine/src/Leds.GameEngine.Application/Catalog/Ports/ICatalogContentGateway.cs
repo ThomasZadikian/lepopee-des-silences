@@ -9,19 +9,7 @@ namespace Leds.GameEngine.Application.Catalog.Ports;
 /// </summary>
 public interface ICatalogContentGateway
 {
-    Task<Result<EnemyTemplateSnapshot>> GetEnemyTemplateByKeyAsync(
-        string key,
-        CancellationToken cancellationToken = default);
-
-    Task<Result<SkillTemplateSnapshot>> GetSkillTemplateByKeyAsync(
-        string key,
-        CancellationToken cancellationToken = default);
-
     Task<Result<ItemTemplateSnapshot>> GetItemTemplateByKeyAsync(
-        string key,
-        CancellationToken cancellationToken = default);
-
-    Task<Result<EventTemplateSnapshot>> GetEventTemplateByKeyAsync(
         string key,
         CancellationToken cancellationToken = default);
 

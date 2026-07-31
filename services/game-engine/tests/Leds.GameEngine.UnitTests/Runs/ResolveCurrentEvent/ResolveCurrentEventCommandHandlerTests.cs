@@ -299,17 +299,6 @@ public sealed class ResolveCurrentEventCommandHandlerTests
         catalogGateway
             .Setup(g => g.ListSkillDefinitionsByKeysAsync(It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Array.Empty<CatalogSkillDefinition>());
-        catalogGateway
-            .Setup(g => g.GetEventTemplateByKeyAsync("event-combat-shadow-v1", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result<EventTemplateSnapshot>.Success(new EventTemplateSnapshot(
-                "event-combat-shadow-v1", "Test Event", "", "1.0.0", "Active", "Combat",
-                "CombatStarted", It.IsAny<int>(), It.IsAny<int>(), false, new[] { "combat" })));
-        catalogGateway
-            .Setup(g => g.GetEnemyTemplateByKeyAsync("enemy-shadow-v1", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result<EnemyTemplateSnapshot>.Success(new EnemyTemplateSnapshot(
-                "enemy-shadow-v1", "Shadow", "", "1.0.0", "Active", 30, 8, 4, 6, "Shadow",
-                new[] { "skill-shadow-strike-v1" })));
-
         var draftEnemy = new CatalogEnemyDefinition(
             "enemy.threshold.doubt-fragment", "Fragment de Doute", "", "Fragile",
             new[] { "Threshold" }, 1, 1, 2, new[] { "fragile" }, new[] { "skill.basic.strike" });
@@ -483,17 +472,6 @@ public sealed class ResolveCurrentEventCommandHandlerTests
         catalogGateway
             .Setup(g => g.ListSkillDefinitionsByKeysAsync(It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Array.Empty<CatalogSkillDefinition>());
-        catalogGateway
-            .Setup(g => g.GetEventTemplateByKeyAsync("event-combat-shadow-v1", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result<EventTemplateSnapshot>.Success(new EventTemplateSnapshot(
-                "event-combat-shadow-v1", "Test Event", "", "1.0.0", "Active", "Combat",
-                "CombatStarted", It.IsAny<int>(), It.IsAny<int>(), false, new[] { "combat" })));
-        catalogGateway
-            .Setup(g => g.GetEnemyTemplateByKeyAsync("enemy-shadow-v1", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result<EnemyTemplateSnapshot>.Success(new EnemyTemplateSnapshot(
-                "enemy-shadow-v1", "Shadow", "", "1.0.0", "Active", 30, 8, 4, 6, "Shadow",
-                new[] { "skill-shadow-strike-v1" })));
-
         var draftEnemy = new CatalogEnemyDefinition(
             "enemy.threshold.doubt-fragment", "Fragment de Doute", "", "Fragile",
             new[] { "Threshold" }, 1, 1, 2, new[] { "fragile" }, new[] { "skill.basic.strike" });

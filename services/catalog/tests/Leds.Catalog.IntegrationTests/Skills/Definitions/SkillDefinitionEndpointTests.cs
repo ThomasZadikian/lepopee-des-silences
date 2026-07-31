@@ -40,10 +40,8 @@ public sealed class SkillDefinitionEndpointTests
         payload.Definitions.Select(d => d.Key)
             .Should()
             .Contain("skill.basic.strike")
-            .And.Contain("skill.basic.guard")
-            .And.Contain("skill.basic.weaken")
-            .And.Contain("skill.basic.disrupt")
-            .And.Contain("skill.basic.focus");
+            .And.Contain("canon.skill.flamme-froide")
+            .And.Contain("canon.skill.brume");
     }
 
     [Fact]
@@ -69,7 +67,7 @@ public sealed class SkillDefinitionEndpointTests
         payload.Definition.SkillType.Should().Be("Damage");
         payload.Definition.TargetingType.Should().Be("SingleEnemy");
         payload.Definition.EffectType.Should().Be("Damage");
-        payload.Definition.ManaCost.Should().Be(5);
+        payload.Definition.ManaCost.Should().Be(0);
         payload.Definition.ChargeCost.Should().Be(0);
         payload.Definition.BasePower.Should().Be(10);
     }
@@ -143,8 +141,7 @@ public sealed class SkillDefinitionEndpointTests
         payload!.Definitions.Should().NotBeEmpty();
         payload.Definitions.Select(d => d.Key)
             .Should()
-            .Contain("skill.basic.weaken")
-            .And.Contain("skill.basic.disrupt");
+            .Contain("canon.skill.brume");
     }
 
     [Fact]
@@ -165,7 +162,7 @@ public sealed class SkillDefinitionEndpointTests
     {
         var response = await _client.PostAsJsonAsync(
             "/api/v2/catalog/skill-definitions/batch/by-keys",
-            new { keys = new[] { "skill.basic.strike", "skill.basic.guard" } });
+            new { keys = new[] { "skill.basic.strike", "canon.skill.flamme-froide" } });
 
         var body = await response.Content.ReadAsStringAsync();
 
@@ -180,7 +177,7 @@ public sealed class SkillDefinitionEndpointTests
         payload.Definitions.Select(d => d.Key)
             .Should()
             .Contain("skill.basic.strike")
-            .And.Contain("skill.basic.guard");
+            .And.Contain("canon.skill.flamme-froide");
     }
 
     [Fact]

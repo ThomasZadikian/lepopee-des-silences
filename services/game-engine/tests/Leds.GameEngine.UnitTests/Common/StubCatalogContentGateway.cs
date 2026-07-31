@@ -10,148 +10,6 @@ namespace Leds.GameEngine.UnitTests.Common;
 
 public sealed class StubCatalogContentGateway : ICatalogContentGateway
 {
-    private static readonly IReadOnlyDictionary<string, EnemyTemplateSnapshot> EnemyTemplates =
-        new Dictionary<string, EnemyTemplateSnapshot>(StringComparer.OrdinalIgnoreCase)
-        {
-            ["enemy-shadow-v1"] = new EnemyTemplateSnapshot(
-                Key: "enemy-shadow-v1",
-                Name: "Shadow",
-                Description: "A basic shadow enemy",
-                Version: "1.0.0",
-                Status: "Active",
-                BaseHealth: 30,
-                BaseAttack: 8,
-                BaseDefense: 3,
-                BaseSpeed: 5,
-                Affinity: "Neutral",
-                SkillKeys: ["skill.basic.strike"]),
-            ["enemy-void-walker-v1"] = new EnemyTemplateSnapshot(
-                Key: "enemy-void-walker-v1",
-                Name: "Void Walker",
-                Description: "A void-infused walker",
-                Version: "1.0.0",
-                Status: "Active",
-                BaseHealth: 45,
-                BaseAttack: 12,
-                BaseDefense: 5,
-                BaseSpeed: 4,
-                Affinity: "Void",
-                SkillKeys: ["skill.basic.strike", "skill.basic.shield"]),
-            ["enemy-rare-v1"] = new EnemyTemplateSnapshot(
-                Key: "enemy-rare-v1",
-                Name: "Rare Echo",
-                Description: "A rare combat apparition",
-                Version: "1.0.0",
-                Status: "Active",
-                BaseHealth: 55,
-                BaseAttack: 14,
-                BaseDefense: 5,
-                BaseSpeed: 6,
-                Affinity: "Neutral",
-                SkillKeys: ["skill.basic.strike"]),
-            ["boss.threshold.warden-v1"] = new EnemyTemplateSnapshot(
-                Key: "boss.threshold.warden-v1",
-                Name: "Gardien du Seuil",
-                Description: "Premier gardien de la run. Veille sur le seuil du Palais des Silences.",
-                Version: "1.0.0",
-                Status: "Active",
-                BaseHealth: 120,
-                BaseAttack: 18,
-                BaseDefense: 10,
-                BaseSpeed: 6,
-                Affinity: "Neutral",
-                SkillKeys: ["skill-boss-void-slam-v1"]),
-            ["boss.forest.rootbound-memory-v1"] = new EnemyTemplateSnapshot(
-                Key: "boss.forest.rootbound-memory-v1",
-                Name: "Gardien des Racines",
-                Description: "Mémoire organique du Palais. Ses racines plongent dans les silences oubliés.",
-                Version: "1.0.0",
-                Status: "Active",
-                BaseHealth: 100,
-                BaseAttack: 14,
-                BaseDefense: 8,
-                BaseSpeed: 5,
-                Affinity: "Nature",
-                SkillKeys: ["skill-boss-void-slam-v1"]),
-            ["boss.rupture.fractured-echo-v1"] = new EnemyTemplateSnapshot(
-                Key: "boss.rupture.fractured-echo-v1",
-                Name: "Fragment de Rupture",
-                Description: "Instable et agressif. Une brèche dans la cohérence du Palais.",
-                Version: "1.0.0",
-                Status: "Active",
-                BaseHealth: 110,
-                BaseAttack: 20,
-                BaseDefense: 6,
-                BaseSpeed: 8,
-                Affinity: "Chaos",
-                SkillKeys: ["skill-boss-void-slam-v1"]),
-            ["boss.silence.mute-herald-v1"] = new EnemyTemplateSnapshot(
-                Key: "boss.silence.mute-herald-v1",
-                Name: "Voix Éteinte",
-                Description: "Systémique, mutique. Altère les règles de la pièce par sa seule présence.",
-                Version: "1.0.0",
-                Status: "Active",
-                BaseHealth: 90,
-                BaseAttack: 16,
-                BaseDefense: 12,
-                BaseSpeed: 4,
-                Affinity: "Void",
-                SkillKeys: ["skill-boss-void-slam-v1"]),
-            ["boss.memory.archivist-v1"] = new EnemyTemplateSnapshot(
-                Key: "boss.memory.archivist-v1",
-                Name: "Archiviste des Échos",
-                Description: "Lié au Tome et aux fragments de mémoire. Connaît chaque silence.",
-                Version: "1.0.0",
-                Status: "Active",
-                BaseHealth: 95,
-                BaseAttack: 15,
-                BaseDefense: 9,
-                BaseSpeed: 6,
-                Affinity: "Neutral",
-                SkillKeys: ["skill-boss-void-slam-v1"]),
-            ["boss.antechamber.last-door-v1"] = new EnemyTemplateSnapshot(
-                Key: "boss.antechamber.last-door-v1",
-                Name: "Gardien de l'Antichambre",
-                Description: "Avant-poste du Final. Aucun pèlerin n'a franchi cette porte.",
-                Version: "1.0.0",
-                Status: "Active",
-                BaseHealth: 140,
-                BaseAttack: 22,
-                BaseDefense: 14,
-                BaseSpeed: 5,
-                Affinity: "Neutral",
-                SkillKeys: ["skill-boss-void-slam-v1"]),
-            ["boss.final.himlit-v1"] = new EnemyTemplateSnapshot(
-                Key: "boss.final.himlit-v1",
-                Name: "Him'Lit",
-                Description: "Le silence originel. La source du Palais.",
-                Version: "1.0.0",
-                Status: "Active",
-                BaseHealth: 200,
-                BaseAttack: 28,
-                BaseDefense: 18,
-                BaseSpeed: 7,
-                Affinity: "Void",
-                SkillKeys: ["skill-boss-void-slam-v1"])
-        };
-
-    private static readonly IReadOnlyDictionary<string, SkillTemplateSnapshot> SkillTemplates =
-        new Dictionary<string, SkillTemplateSnapshot>(StringComparer.OrdinalIgnoreCase)
-        {
-            ["skill-boss-void-slam-v1"] = new SkillTemplateSnapshot(
-                Key: "skill-boss-void-slam-v1",
-                Name: "Void Slam",
-                Description: "Frappe du vide. Puissante attaque de boss.",
-                Version: "1.0.0",
-                Status: "Active",
-                SkillType: "Damage",
-                Power: 14,
-                Cost: 1,
-                CostType: "Charge",
-                TargetingMode: "SingleEnemy",
-                EffectTags: ["boss", "damage", "void"])
-        };
-
     private static readonly IReadOnlyDictionary<string, ItemTemplateSnapshot> ItemTemplates =
         new Dictionary<string, ItemTemplateSnapshot>(StringComparer.OrdinalIgnoreCase)
         {
@@ -177,46 +35,6 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 EffectTags: ["light"])
         };
 
-    private static readonly IReadOnlyDictionary<string, EventTemplateSnapshot> EventTemplates =
-        new Dictionary<string, EventTemplateSnapshot>(StringComparer.OrdinalIgnoreCase)
-        {
-            ["event-combat-shadow-v1"] = new EventTemplateSnapshot(
-                Key: "event-combat-shadow-v1",
-                Name: "Combat Shadow",
-                Description: "A basic shadow combat encounter",
-                Version: "1.0.0",
-                Status: "Active",
-                Type: "Combat",
-                DefaultOutcomeKind: "Combat",
-                MinRiskLevel: 1,
-                MaxRiskLevel: 3,
-                RequiresPlayerChoice: false,
-                NarrativeTags: ["combat", "shadow"]),
-            ["event-rare-encounter-v1"] = EventTemplate("event-rare-encounter-v1", "Rare Encounter", "Rare"),
-            ["event-boss.threshold.warden-v1"] = EventTemplate("event-boss.threshold.warden-v1", "Threshold Warden", "RoomBoss"),
-            ["event-boss.forest.rootbound-memory-v1"] = EventTemplate("event-boss.forest.rootbound-memory-v1", "Rootbound Memory", "RoomBoss"),
-            ["event-boss.rupture.fractured-echo-v1"] = EventTemplate("event-boss.rupture.fractured-echo-v1", "Fractured Echo", "RoomBoss"),
-            ["event-boss.silence.mute-herald-v1"] = EventTemplate("event-boss.silence.mute-herald-v1", "Mute Herald", "RoomBoss"),
-            ["event-boss.memory.archivist-v1"] = EventTemplate("event-boss.memory.archivist-v1", "Archivist", "RoomBoss"),
-            ["event-boss.antechamber.last-door-v1"] = EventTemplate("event-boss.antechamber.last-door-v1", "Last Door", "RoomBoss"),
-            ["event-boss.final.himlit-v1"] = EventTemplate("event-boss.final.himlit-v1", "Him'Lit", "RoomBoss")
-        };
-
-    private static EventTemplateSnapshot EventTemplate(string key, string name, string type)
-    {
-        return new EventTemplateSnapshot(
-            Key: key,
-            Name: name,
-            Description: name,
-            Version: "1.0.0",
-            Status: "Active",
-            Type: type,
-            DefaultOutcomeKind: type,
-            MinRiskLevel: 1,
-            MaxRiskLevel: 5,
-            RequiresPlayerChoice: false,
-            NarrativeTags: [type.ToLowerInvariant()]);
-    }
 
     private static readonly IReadOnlyDictionary<string, PalaceLawDefinitionSnapshot> PalaceLawDefinitions =
         new Dictionary<string, PalaceLawDefinitionSnapshot>(StringComparer.OrdinalIgnoreCase)
@@ -610,28 +428,6 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
                 RewardOption("Heal", "Soin du marchand", "Soin du marchand", null, null, 12)])
         };
 
-    public Task<Result<EnemyTemplateSnapshot>> GetEnemyTemplateByKeyAsync(
-        string key,
-        CancellationToken cancellationToken = default)
-    {
-        return Task.FromResult(GetByKey(
-            EnemyTemplates,
-            key,
-            "catalog.enemy_template_not_found",
-            "Enemy template was not found."));
-    }
-
-    public Task<Result<SkillTemplateSnapshot>> GetSkillTemplateByKeyAsync(
-        string key,
-        CancellationToken cancellationToken = default)
-    {
-        return Task.FromResult(GetByKey(
-            SkillTemplates,
-            key,
-            "catalog.skill_template_not_found",
-            "Skill template was not found."));
-    }
-
     public Task<Result<ItemTemplateSnapshot>> GetItemTemplateByKeyAsync(
         string key,
         CancellationToken cancellationToken = default)
@@ -641,17 +437,6 @@ public sealed class StubCatalogContentGateway : ICatalogContentGateway
             key,
             "catalog.item_template_not_found",
             "Item template was not found."));
-    }
-
-    public Task<Result<EventTemplateSnapshot>> GetEventTemplateByKeyAsync(
-        string key,
-        CancellationToken cancellationToken = default)
-    {
-        return Task.FromResult(GetByKey(
-            EventTemplates,
-            key,
-            "catalog.event_template_not_found",
-            "Event template was not found."));
     }
 
     public Task<Result<PalaceLawDefinitionSnapshot>> GetPalaceLawDefinitionByKeyAsync(

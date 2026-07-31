@@ -63,7 +63,7 @@ public sealed class EnemyDefinitionEndpointTests
         payload.Definition.Name.Should().Be("Sentinelle du Seuil");
         payload.Definition.Status.Should().Be("Active");
         payload.Definition.Archetype.Should().Be("Bruiser");
-        payload.Definition.BaseDifficulty.Should().Be(1);
+        payload.Definition.BaseDifficulty.Should().Be(2);
         payload.Definition.MinRiskLevel.Should().Be(1);
         payload.Definition.MaxRiskLevel.Should().Be(4);
         payload.Definition.CompatibleRoomTypes.Should().Contain("Silence");

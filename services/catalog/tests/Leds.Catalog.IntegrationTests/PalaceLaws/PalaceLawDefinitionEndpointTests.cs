@@ -37,14 +37,14 @@ public sealed class PalaceLawDefinitionEndpointTests
 
         payload.Definitions.Select(definition => definition.Key)
             .Should()
-            .Contain("law-silence-v1");
+            .Contain("law.silence-du");
     }
 
     [Fact]
     public async Task GetPalaceLawByKey_ShouldReturnDefinition_WhenKeyExists()
     {
         var response = await _client.GetAsync(
-            "/api/v2/catalog/palace-laws/law-silence-v1");
+            "/api/v2/catalog/palace-laws/law.silence-du");
 
         var body = await response.Content.ReadAsStringAsync();
 
@@ -58,12 +58,11 @@ public sealed class PalaceLawDefinitionEndpointTests
         payload.Should().NotBeNull();
         payload!.Definition.Should().NotBeNull();
 
-        payload.Definition!.Key.Should().Be("law-silence-v1");
-        payload.Definition.Name.Should().Be("Loi du Silence");
+        payload.Definition!.Key.Should().Be("law.silence-du");
+        payload.Definition.Name.Should().Be("Loi du Silence Dû");
         payload.Definition.Status.Should().Be("Active");
         payload.Definition.Visibility.Should().Be("Visible");
-        payload.Definition.ImpactDomains.Should().Contain("Generation");
-        payload.Definition.ImpactDomains.Should().Contain("Narrative");
+        payload.Definition.ImpactDomains.Should().Contain("Combat");
     }
 
     [Fact]
