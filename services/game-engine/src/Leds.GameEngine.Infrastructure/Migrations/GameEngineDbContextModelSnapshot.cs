@@ -588,12 +588,6 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("mana");
 
-                    b.Property<int>("Movement")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(4)
-                        .HasColumnName("movement");
-
                     b.Property<int>("MaxVitality")
                         .HasColumnType("integer")
                         .HasColumnName("max_vitality");
@@ -2017,6 +2011,12 @@ namespace Leds.GameEngine.Infrastructure.Migrations
                     b.Property<int>("MaxVitality")
                         .HasColumnType("integer")
                         .HasColumnName("max_vitality");
+
+                    b.Property<int>("Movement")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(4)
+                        .HasColumnName("movement");
 
                     b.Property<int>("Speed")
                         .HasColumnType("integer")

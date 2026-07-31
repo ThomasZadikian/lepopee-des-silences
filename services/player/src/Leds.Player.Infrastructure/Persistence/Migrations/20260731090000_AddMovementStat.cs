@@ -11,12 +11,16 @@ namespace Leds.Player.Infrastructure.Persistence.Migrations;
 public partial class AddMovementStat : Migration
 {
     protected override void Up(MigrationBuilder migrationBuilder)
-        => migrationBuilder.AddColumn<int>(
-            "movement",
-            "player_character_stat_blocks",
-            nullable: false,
-            defaultValue: 4);
+        => migrationBuilder.Sql(
+            """
+            ALTER TABLE player_character_stat_blocks
+            ADD COLUMN IF NOT EXISTS movement integer NOT NULL DEFAULT 4;
+            """);
 
     protected override void Down(MigrationBuilder migrationBuilder)
-        => migrationBuilder.DropColumn("movement", "player_character_stat_blocks");
+        => migrationBuilder.Sql(
+            """
+            ALTER TABLE player_character_stat_blocks
+            DROP COLUMN IF EXISTS movement;
+            """);
 }

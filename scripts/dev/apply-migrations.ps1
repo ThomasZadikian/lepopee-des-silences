@@ -15,11 +15,25 @@ $repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 Write-Host "=== Applying EF Core Migrations ===" -ForegroundColor Cyan
 Write-Host ""
 
+# Pin the CLI to the exact EF runtime version used by every service. This avoids
+# global dotnet-ef drift between workstations.
+Write-Host "Restoring repository-local EF Core tools..." -ForegroundColor DarkGray
+Push-Location $repoRoot
+try {
+    dotnet tool restore
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "  ERROR: EF Core tool restore failed." -ForegroundColor Red
+        exit 1
+    }
+} finally {
+    Pop-Location
+}
+
 # Game Engine
 Write-Host "[1/3] Applying Game Engine migrations..." -ForegroundColor Yellow
 Push-Location "$repoRoot\services\game-engine"
 try {
-    dotnet ef database update `
+    dotnet tool run dotnet-ef database update `
         --project src\Leds.GameEngine.Infrastructure `
         --startup-project src\Leds.GameEngine.Api `
         --context GameEngineDbContext
@@ -37,7 +51,7 @@ Write-Host "[2/3] Applying Catalog migrations..." -ForegroundColor Yellow
 if (Test-Path "$repoRoot\services\catalog\src\Leds.Catalog.Infrastructure\Persistence\Migrations") {
     Push-Location "$repoRoot\services\catalog"
     try {
-        dotnet ef database update `
+        dotnet tool run dotnet-ef database update `
             --project src\Leds.Catalog.Infrastructure `
             --startup-project src\Leds.Catalog.Api `
             --context CatalogDbContext
@@ -58,7 +72,7 @@ Write-Host "[3/3] Player Service..." -ForegroundColor Yellow
 if (Test-Path "$repoRoot\services\player\src\Leds.Player.Infrastructure\Persistence\Migrations") {
     Push-Location "$repoRoot\services\player"
     try {
-        dotnet ef database update `
+        dotnet tool run dotnet-ef database update `
             --project src\Leds.Player.Infrastructure `
             --startup-project src\Leds.Player.Api `
             --context PlayerDbContext
