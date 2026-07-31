@@ -6,6 +6,7 @@ using Leds.GameEngine.Domain.Combats.StatusEffects;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
+using Leds.GameEngine.UnitTests.Common.Factories;
 
 namespace Leds.GameEngine.UnitTests.Combats.EnemyTurns;
 
@@ -37,7 +38,7 @@ public sealed class FauxHabitantsDuJardinBehaviorsTests
         var hero2 = Combatant.CreateAlly("player.2", "Hero2", "Fighter", 100);
         var promeneur = Combatant.CreateEnemy(
             "canon.enemy.promeneur-fige", "Promeneur", "Skirmisher", 38, [salut, conversation, pasdepromenade, sifflotement]);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [hero1, hero2], [promeneur]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [hero1, hero2], [promeneur]);
 
         var decision = new PromeneurFigeBossBehavior().DecideAction(new BossDecisionContext(combat, promeneur));
 
@@ -63,7 +64,7 @@ public sealed class FauxHabitantsDuJardinBehaviorsTests
         var emondage = CreateSkill("canon.skill.emondage", "Damage", "SingleEnemy", 11);
         var hero = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
         var jardinier = Combatant.CreateEnemy("canon.enemy.jardinier-sans-ombre", "Jardinier", "Disruptor", 74, [emondage]);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [hero], [jardinier]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [hero], [jardinier]);
 
         hero.ApplyStatusEffect(CombatStatusEffect.Create(
             "buff.attack", "Buff Attaque", StatusEffectKind.StatModifier,
@@ -86,7 +87,7 @@ public sealed class FauxHabitantsDuJardinBehaviorsTests
         var hero = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
         var jardinier = Combatant.CreateEnemy("canon.enemy.jardinier-sans-ombre", "Jardinier", "Disruptor", 74, [greffe]);
         var promeneur = Combatant.CreateEnemy("canon.enemy.promeneur-fige", "Promeneur", "Skirmisher", 38, []);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [hero], [jardinier, promeneur]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [hero], [jardinier, promeneur]);
         promeneur.ApplyDamage(25); // 13/38 HP ~= 34%, under 50%
 
         var decision = new JardinierSansOmbreBossBehavior().DecideAction(new BossDecisionContext(combat, jardinier));
@@ -103,7 +104,7 @@ public sealed class FauxHabitantsDuJardinBehaviorsTests
         var weak = Combatant.CreateAlly("player.1", "Weak", "Fighter", 100);
         var strong = Combatant.CreateAlly("player.2", "Strong", "Fighter", 100);
         var jardinier = Combatant.CreateEnemy("canon.enemy.jardinier-sans-ombre", "Jardinier", "Disruptor", 74, [secateur]);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [weak, strong], [jardinier]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [weak, strong], [jardinier]);
         weak.ApplyDamage(60);
 
         var decision = new JardinierSansOmbreBossBehavior().DecideAction(new BossDecisionContext(combat, jardinier));

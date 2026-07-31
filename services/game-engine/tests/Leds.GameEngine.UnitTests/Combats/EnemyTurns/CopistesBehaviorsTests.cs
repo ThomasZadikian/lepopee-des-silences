@@ -6,6 +6,7 @@ using Leds.GameEngine.Domain.Combats.StatusEffects;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
+using Leds.GameEngine.UnitTests.Common.Factories;
 
 namespace Leds.GameEngine.UnitTests.Combats.EnemyTurns;
 
@@ -37,7 +38,7 @@ public sealed class CopistesBehaviorsTests
             maxVitality: 100, currentVitality: 100, guard: 0, baseGuard: 0, mana: 0, charge: 0,
             magicDefense: 20);
         var copiste = Combatant.CreateEnemy("canon.enemy.copiste-aveugle", "Copiste", "Disruptor", 46, [dictee]);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [soft, tough], [copiste]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [soft, tough], [copiste]);
 
         var decision = new CopisteAveugleBossBehavior().DecideAction(new BossDecisionContext(combat, copiste));
 
@@ -53,8 +54,8 @@ public sealed class CopistesBehaviorsTests
         var marked = Combatant.CreateAlly("player.1", "Marked", "Fighter", 100);
         var other = Combatant.CreateAlly("player.2", "Other", "Fighter", 100);
         var copiste = Combatant.CreateEnemy("canon.enemy.copiste-aveugle", "Copiste", "Disruptor", 46, [sursaut]);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [marked, other], [copiste]);
-        combat.AdvanceTurn(); // turn 2
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [marked, other], [copiste]);
+        TestTacticalCombatHelper.AdvanceRounds(combat, 1); // turn 2
 
         marked.ApplyStatusEffect(CombatStatusEffect.Create(
             "canon.skill.dictee:StatModifier", "Dictée", StatusEffectKind.StatModifier,
@@ -75,10 +76,8 @@ public sealed class CopistesBehaviorsTests
         var hero = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
         var copiste = Combatant.CreateEnemy(
             "canon.enemy.copiste-aveugle", "Copiste", "Disruptor", 46, [lecture, plume], mana: 20);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [hero], [copiste]);
-        combat.AdvanceTurn();
-        combat.AdvanceTurn();
-        combat.AdvanceTurn(); // turn 4, past the scripted opening
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [hero], [copiste]);
+        TestTacticalCombatHelper.AdvanceRounds(combat, 3); // turn 4, past the scripted opening
         copiste.SpendMana(15); // 5 mana left, under the 10 threshold
 
         var decision = new CopisteAveugleBossBehavior().DecideAction(new BossDecisionContext(combat, copiste));
@@ -94,8 +93,12 @@ public sealed class CopistesBehaviorsTests
         var hero = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
         var encrier = Combatant.CreateEnemy("canon.enemy.encrier-vivant", "Encrier", "Support", 58, [recharge]);
         var starvedAlly = Combatant.CreateEnemy("canon.enemy.copiste-aveugle", "Copiste", "Disruptor", 46, [], mana: 20);
-        starvedAlly.SpendMana(9); // 11/20 mana, under the 12 threshold
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [hero], [encrier, starvedAlly]);
+        // TacticalCombat.Create immediately begins the first active combatant's turn,
+        // which regenerates 5% of MaxMana (here +1) — whoever that turns out to be per
+        // initiative order. Spend enough that the fixture stays under the 12 threshold
+        // even if starvedAlly itself gets that regen tick (20-10=10, +1 worst case = 11).
+        starvedAlly.SpendMana(10);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [hero], [encrier, starvedAlly]);
 
         var decision = new EncrierVivantBossBehavior().DecideAction(new BossDecisionContext(combat, encrier));
 
@@ -110,7 +113,7 @@ public sealed class CopistesBehaviorsTests
         var encre = CreateSkill("canon.skill.encre-vive", "Debuff", "SingleEnemy", 0, "Magic");
         var hero = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
         var encrier = Combatant.CreateEnemy("canon.enemy.encrier-vivant", "Encrier", "Support", 58, [encre]);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [hero], [encrier]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [hero], [encrier]);
 
         var decision = new EncrierVivantBossBehavior().DecideAction(new BossDecisionContext(combat, encrier));
 
@@ -127,7 +130,7 @@ public sealed class CopistesBehaviorsTests
         var hero1 = Combatant.CreateAlly("player.1", "Hero1", "Fighter", 100);
         var hero2 = Combatant.CreateAlly("player.2", "Hero2", "Fighter", 100);
         var encrier = Combatant.CreateEnemy("canon.enemy.encrier-vivant", "Encrier", "Support", 58, [encre, corps]);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [hero1, hero2], [encrier]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [hero1, hero2], [encrier]);
 
         // Every living player already carries a DoT, so the "mark undotted" branch
         // is skipped, and there are only 2 opponents (< 3), so the chance-gated
@@ -156,7 +159,7 @@ public sealed class CopistesBehaviorsTests
         var silenced = Combatant.CreateAlly("player.1", "Silenced", "Fighter", 100);
         var other = Combatant.CreateAlly("player.2", "Other", "Fighter", 100);
         var page = Combatant.CreateEnemy("canon.enemy.page-inachevee", "Page", "Disruptor", 36, [phrase, silence]);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [silenced, other], [page]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [silenced, other], [page]);
 
         silenced.ApplyStatusEffect(CombatStatusEffect.Create(
             "silence", "Silence", StatusEffectKind.Silence, currentTick: 0, durationTicks: 5000));
@@ -181,7 +184,7 @@ public sealed class CopistesBehaviorsTests
             maxVitality: 100, currentVitality: 100, guard: 0, baseGuard: 0, mana: 0, charge: 0,
             speed: 20);
         var page = Combatant.CreateEnemy("canon.enemy.page-inachevee", "Page", "Disruptor", 36, [silence]);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [slow, fast], [page]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [slow, fast], [page]);
 
         var decision = new PageInacheveeBossBehavior().DecideAction(new BossDecisionContext(combat, page));
 
@@ -197,7 +200,7 @@ public sealed class CopistesBehaviorsTests
         var couture = CreateSkill("canon.skill.couture", "Damage", "SingleEnemy", 16);
         var hero = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
         var relieur = Combatant.CreateEnemy("canon.enemy.relieur", "Relieur", "Bruiser", 92, [ecriture, couture]);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [hero], [relieur]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [hero], [relieur]);
 
         hero.ApplyStatusEffect(CombatStatusEffect.Create(
             "dot1", "DoT 1", StatusEffectKind.DamageOverTime,
@@ -221,7 +224,7 @@ public sealed class CopistesBehaviorsTests
         var weak = Combatant.CreateAlly("player.1", "Weak", "Fighter", 40);
         var strong = Combatant.CreateAlly("player.2", "Strong", "Fighter", 100);
         var relieur = Combatant.CreateEnemy("canon.enemy.relieur", "Relieur", "Bruiser", 92, [reliure]);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [weak, strong], [relieur]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [weak, strong], [relieur]);
 
         var decision = new RelieurBossBehavior().DecideAction(new BossDecisionContext(combat, relieur));
 
@@ -243,8 +246,8 @@ public sealed class CopistesBehaviorsTests
             maxVitality: 100, currentVitality: 100, guard: 0, baseGuard: 0, mana: 0, charge: 0,
             speed: 18);
         var relieur = Combatant.CreateEnemy("canon.enemy.relieur", "Relieur", "Bruiser", 92, [couture]);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [slow, fast], [relieur]);
-        combat.AdvanceTurn();
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [slow, fast], [relieur]);
+        TestTacticalCombatHelper.AdvanceRounds(combat, 1);
 
         var decision = new RelieurBossBehavior().DecideAction(new BossDecisionContext(combat, relieur));
 

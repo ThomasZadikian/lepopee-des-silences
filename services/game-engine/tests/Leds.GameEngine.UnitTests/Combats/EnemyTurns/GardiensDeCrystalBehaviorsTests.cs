@@ -5,6 +5,7 @@ using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
+using Leds.GameEngine.UnitTests.Common.Factories;
 
 namespace Leds.GameEngine.UnitTests.Combats.EnemyTurns;
 
@@ -30,7 +31,7 @@ public sealed class GardiensDeCrystalBehaviorsTests
         var hero = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
         var gardien = Combatant.CreateEnemy("canon.enemy.gardien-intemporel", "Gardien", "Bruiser", 130, [rempart]);
         var eclat = Combatant.CreateEnemy("canon.enemy.eclat-eveille", "Éclat", "Skirmisher", 44, []);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [hero], [gardien, eclat]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [hero], [gardien, eclat]);
 
         var decision = new GardienIntemporelBossBehavior().DecideAction(new BossDecisionContext(combat, gardien));
 
@@ -46,7 +47,7 @@ public sealed class GardiensDeCrystalBehaviorsTests
         var poing = CreateSkill("canon.skill.poing-de-crystal", "Damage", "SingleEnemy", 17);
         var hero = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
         var gardien = Combatant.CreateEnemy("canon.enemy.gardien-intemporel", "Gardien", "Bruiser", 130, [refraction, poing]);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [hero], [gardien]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [hero], [gardien]);
 
         var decision = new GardienIntemporelBossBehavior().DecideAction(new BossDecisionContext(combat, gardien));
 
@@ -61,7 +62,7 @@ public sealed class GardiensDeCrystalBehaviorsTests
         var facette = CreateSkill("canon.skill.facette", "Buff", "Self", 0, "Magic");
         var hero = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
         var eclat = Combatant.CreateEnemy("canon.enemy.eclat-eveille", "Éclat", "Skirmisher", 44, [facette], mana: 30);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [hero], [eclat]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [hero], [eclat]);
 
         var decision = new EclatEveilleBossBehavior().DecideAction(new BossDecisionContext(combat, eclat));
 
@@ -76,8 +77,8 @@ public sealed class GardiensDeCrystalBehaviorsTests
         var pulsation = CreateSkill("canon.skill.pulsation", "Damage", "SingleEnemy", 12, "Magic");
         var hero = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
         var eclat = Combatant.CreateEnemy("canon.enemy.eclat-eveille", "Éclat", "Skirmisher", 44, [pulsation], mana: 30);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [hero], [eclat]);
-        combat.AdvanceTurn();
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [hero], [eclat]);
+        TestTacticalCombatHelper.AdvanceRounds(combat, 1);
 
         var decision = new EclatEveilleBossBehavior().DecideAction(new BossDecisionContext(combat, eclat));
 
@@ -92,9 +93,8 @@ public sealed class GardiensDeCrystalBehaviorsTests
         var flamme = CreateSkill("canon.skill.flamme-seraphine", "Damage", "SingleEnemy", 34, "Magic");
         var hero = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
         var eclat = Combatant.CreateEnemy("canon.enemy.eclat-eveille", "Éclat", "Skirmisher", 44, [flamme], mana: 30);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [hero], [eclat]);
-        combat.AdvanceTurn();
-        combat.AdvanceTurn(); // turn 3
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [hero], [eclat]);
+        TestTacticalCombatHelper.AdvanceRounds(combat, 2); // turn 3
 
         var decision = new EclatEveilleBossBehavior().DecideAction(new BossDecisionContext(combat, eclat));
 
@@ -109,9 +109,8 @@ public sealed class GardiensDeCrystalBehaviorsTests
         var prisme = CreateSkill("canon.skill.prisme", "Buff", "Self", 12, "Magic");
         var hero = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
         var eclat = Combatant.CreateEnemy("canon.enemy.eclat-eveille", "Éclat", "Skirmisher", 44, [prisme], mana: 30);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [hero], [eclat]);
-        combat.AdvanceTurn();
-        combat.AdvanceTurn(); // turn 3
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [hero], [eclat]);
+        TestTacticalCombatHelper.AdvanceRounds(combat, 2); // turn 3
         eclat.SpendMana(20); // 10 mana left, under the 12 reserve
 
         var decision = new EclatEveilleBossBehavior().DecideAction(new BossDecisionContext(combat, eclat));

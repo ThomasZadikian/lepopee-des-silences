@@ -1,13 +1,14 @@
 using FluentAssertions;
 using Leds.GameEngine.Application.Combats.Effects;
 using Leds.GameEngine.Domain.Combats;
-using Leds.GameEngine.Domain.Combats.Atb;
 using Leds.GameEngine.Domain.Combats.StatusEffects;
+using Leds.GameEngine.Domain.Combats.Tactical;
 using Leds.GameEngine.Domain.Combats.Typing;
 using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
+using Leds.GameEngine.UnitTests.Common.Factories;
 
 namespace Leds.GameEngine.UnitTests.Combats.Effects;
 
@@ -24,7 +25,10 @@ public sealed class CombatSkillEffectResolverTests
         var result = _resolver.Resolve(combat, ally, skill, [enemy]);
 
         result.LogEntries.Should().NotBeEmpty();
-        enemy.CurrentVitality.Should().Be(70);
+        // TacticalDamageFormula.CalculateBaseDamage: a defenseless target (default
+        // Defense=0) ignores the attack/defense ratio entirely and forces the upper
+        // 115% variation instead — round(10 * 1.15) = 12.
+        enemy.CurrentVitality.Should().Be(68);
     }
 
     [Fact]
@@ -36,7 +40,7 @@ public sealed class CombatSkillEffectResolverTests
         var result = _resolver.Resolve(combat, ally, skill, [enemy]);
 
         result.LogEntries.Should().NotBeEmpty();
-        enemy.CurrentVitality.Should().Be(70);
+        enemy.CurrentVitality.Should().Be(68);
     }
 
     [Fact]
@@ -49,7 +53,9 @@ public sealed class CombatSkillEffectResolverTests
         _resolver.Resolve(combat, ally, skill, [enemy]);
 
         enemy.Guard.Should().Be(0);
-        enemy.CurrentVitality.Should().Be(73);
+        // base = round(12 * 1.15) = 14 (defenseless target, forced 115% variation);
+        // 5 absorbed by guard, 9 spills into vitality.
+        enemy.CurrentVitality.Should().Be(71);
     }
 
     [Fact]
@@ -70,31 +76,37 @@ public sealed class CombatSkillEffectResolverTests
             CombatantId.New(), "player.self", "Hero", CombatantSide.Player, "Fighter",
             maxVitality: 100, currentVitality: 100, guard: 0, baseGuard: 0, mana: 0, charge: 0,
             attackPower: 20);
+        ally.ApplyEquipmentCombatModifiers(hitChanceBonusPercent: 100, dotDurationReductionPercent: 0, dotDamageReductionPercent: 0); // guaranteed hit chance
         var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 80);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
         var skill = CreateSkill("skill.basic.strike", "Damage", 10);
 
         _resolver.Resolve(combat, ally, skill, [enemy]);
 
-        // multiplier = (20 baseline + 20 attack) / (20 baseline + 0 defense) = 2.0.
-        enemy.CurrentVitality.Should().Be(80 - 20);
+        // The target's Defense is still 0 here, so TacticalDamageFormula ignores the
+        // attack/defense ratio (and thus the actor's AttackPower) entirely and forces
+        // the upper 115% variation: round(10 * 1.15) = 12.
+        enemy.CurrentVitality.Should().Be(80 - 12);
     }
 
     [Fact]
     public void Resolve_ShouldReduceDamage_WhenTargetDefenseIsAboveBaseline()
     {
         var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+        ally.ApplyEquipmentCombatModifiers(hitChanceBonusPercent: 100, dotDurationReductionPercent: 0, dotDamageReductionPercent: 0); // guaranteed hit chance
         var enemy = Combatant.Create(
             CombatantId.New(), "enemy.sentinel", "Sentinel", CombatantSide.Enemy, "Guard",
             maxVitality: 80, currentVitality: 80, guard: 0, baseGuard: 0, mana: 0, charge: 0,
             defense: 20);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
         var skill = CreateSkill("skill.basic.strike", "Damage", 10);
 
         _resolver.Resolve(combat, ally, skill, [enemy]);
 
-        // multiplier = (20 baseline + 0 attack) / (20 baseline + 20 defense) = 0.5.
-        enemy.CurrentVitality.Should().Be(80 - 5);
+        // ratio = attack(0) / defense(20) = 0 — the actor's AttackPower defaults to 0
+        // here, so TacticalDamageFormula's ratio zeroes the base damage entirely
+        // regardless of the random variation roll.
+        enemy.CurrentVitality.Should().Be(80);
     }
 
     [Fact]
@@ -104,19 +116,19 @@ public sealed class CombatSkillEffectResolverTests
             CombatantId.New(), "player.self", "Hero", CombatantSide.Player, "Fighter",
             maxVitality: 100, currentVitality: 100, guard: 0, baseGuard: 0, mana: 0, charge: 0,
             attackPower: 20, magicAttack: 0);
+        ally.ApplyEquipmentCombatModifiers(hitChanceBonusPercent: 100, dotDurationReductionPercent: 0, dotDamageReductionPercent: 0); // guaranteed hit chance
         var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 80);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
         var skill = CombatantSkill.Create(
             "canon.skill.flamme-froide", "Flamme froide", "Damage", "SingleEnemy", "Damage",
             manaCost: 8, chargeCost: 0, basePower: 10, category: "Magic");
 
         _resolver.Resolve(combat, ally, skill, [enemy]);
 
-        // A high physical AttackPower must NOT boost a Magic-category skill: the
-        // physical stat is ignored here, only MagicAttack (0) applies, so the ratio
-        // stays neutral — (20 baseline + 0 magic attack) / (20 baseline + 0 magic
-        // defense) = 1.0.
-        enemy.CurrentVitality.Should().Be(80 - 10);
+        // A high physical AttackPower must NOT boost a Magic-category skill: only
+        // MagicAttack (0) is read here. The target's MagicDefense is also 0, so
+        // TacticalDamageFormula ignores the ratio and forces round(10 * 1.15) = 12.
+        enemy.CurrentVitality.Should().Be(80 - 12);
     }
 
     [Fact]
@@ -126,35 +138,39 @@ public sealed class CombatSkillEffectResolverTests
             CombatantId.New(), "player.self", "Hero", CombatantSide.Player, "Fighter",
             maxVitality: 100, currentVitality: 100, guard: 0, baseGuard: 0, mana: 0, charge: 0,
             magicAttack: 20);
+        ally.ApplyEquipmentCombatModifiers(hitChanceBonusPercent: 100, dotDurationReductionPercent: 0, dotDamageReductionPercent: 0); // guaranteed hit chance
         var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 80);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
         var skill = CombatantSkill.Create(
             "canon.skill.flamme-froide", "Flamme froide", "Damage", "SingleEnemy", "Damage",
             manaCost: 8, chargeCost: 0, basePower: 10, category: "Magic");
 
         _resolver.Resolve(combat, ally, skill, [enemy]);
 
-        // multiplier = (20 baseline + 20 magic attack) / (20 baseline + 0 magic defense) = 2.0.
-        enemy.CurrentVitality.Should().Be(80 - 20);
+        // Target's MagicDefense is still 0, so TacticalDamageFormula ignores the
+        // ratio (and thus the actor's MagicAttack) and forces round(10 * 1.15) = 12.
+        enemy.CurrentVitality.Should().Be(80 - 12);
     }
 
     [Fact]
     public void Resolve_ShouldReduceMagicDamage_WhenTargetMagicDefenseIsAboveBaseline()
     {
         var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+        ally.ApplyEquipmentCombatModifiers(hitChanceBonusPercent: 100, dotDurationReductionPercent: 0, dotDamageReductionPercent: 0); // guaranteed hit chance
         var enemy = Combatant.Create(
             CombatantId.New(), "enemy.sentinel", "Sentinel", CombatantSide.Enemy, "Guard",
             maxVitality: 80, currentVitality: 80, guard: 0, baseGuard: 0, mana: 0, charge: 0,
             magicDefense: 20);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
         var skill = CombatantSkill.Create(
             "canon.skill.flamme-froide", "Flamme froide", "Damage", "SingleEnemy", "Damage",
             manaCost: 8, chargeCost: 0, basePower: 10, category: "Magic");
 
         _resolver.Resolve(combat, ally, skill, [enemy]);
 
-        // multiplier = (20 baseline + 0 magic attack) / (20 baseline + 20 magic defense) = 0.5.
-        enemy.CurrentVitality.Should().Be(80 - 5);
+        // ratio = magicAttack(0) / magicDefense(20) = 0 — the actor's MagicAttack
+        // defaults to 0, so the ratio zeroes the base damage entirely.
+        enemy.CurrentVitality.Should().Be(80);
     }
 
     [Fact]
@@ -164,18 +180,20 @@ public sealed class CombatSkillEffectResolverTests
             CombatantId.New(), "player.self", "Hero", CombatantSide.Player, "Fighter",
             maxVitality: 100, currentVitality: 100, guard: 0, baseGuard: 0, mana: 0, charge: 0,
             magicAttack: 30);
+        ally.ApplyEquipmentCombatModifiers(hitChanceBonusPercent: 100, dotDurationReductionPercent: 0, dotDamageReductionPercent: 0); // guaranteed hit chance
         var enemy = Combatant.Create(
             CombatantId.New(), "enemy.sentinel", "Sentinel", CombatantSide.Enemy, "Guard",
             maxVitality: 80, currentVitality: 80, guard: 0, baseGuard: 0, mana: 0, charge: 0,
             magicDefense: 30);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
         var skill = CreateSkill("skill.basic.strike", "Damage", 10);
 
         _resolver.Resolve(combat, ally, skill, [enemy]);
 
-        // Physical-category skill: MagicAttack/MagicDefense are irrelevant, ratio
-        // stays neutral at (20 baseline + 0 attack) / (20 baseline + 0 defense) = 1.0.
-        enemy.CurrentVitality.Should().Be(70);
+        // Physical-category skill: MagicAttack/MagicDefense are irrelevant here — the
+        // actor's (Physical) AttackPower and target's Defense are both 0, so
+        // TacticalDamageFormula forces round(10 * 1.15) = 12.
+        enemy.CurrentVitality.Should().Be(68);
     }
 
     [Fact]
@@ -267,7 +285,7 @@ public sealed class CombatSkillEffectResolverTests
 
         var act = () => _resolver.Resolve(combat, ally, skill, [enemy]);
 
-        act.Should().Throw<DomainException>().WithMessage("Unsupported skill effect type: Unknown");
+        act.Should().Throw<DomainException>().WithMessage("Unsupported skill effect type: Unknown*");
     }
 
     [Fact]
@@ -329,8 +347,8 @@ public sealed class CombatSkillEffectResolverTests
         var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
         ally.ApplyDamage(50);
         var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 80);
-        var combat = Combat.Create(
-            CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(),
+        var combat = TestTacticalCombatHelper.Create(
+            RunId.New(), RoomId.New(), NodeId.New(),
             [ally], [enemy],
             hitCounterDoubleDamageEnabled: false,
             firstHitCriticalEnabled: false,
@@ -353,7 +371,7 @@ public sealed class CombatSkillEffectResolverTests
         var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
         ally.ApplyDamage(50);
         var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 80);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
         var skill = CreateSkill("skill.heal", "Heal", 15);
 
         _resolver.Resolve(combat, ally, skill, [ally]);
@@ -380,8 +398,8 @@ public sealed class CombatSkillEffectResolverTests
             var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
             ally.ApplyDamage(50);
             var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 80);
-            var combat = Combat.Create(
-                CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy],
+            var combat = TestTacticalCombatHelper.Create(
+                RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy],
                 thirdCupHealCorruptionEnabled: true);
             var skill = CreateSkill("skill.heal", "Heal", 20);
 
@@ -405,8 +423,8 @@ public sealed class CombatSkillEffectResolverTests
             var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
             ally.ApplyDamage(50);
             var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 80);
-            var combat = Combat.Create(
-                CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy],
+            var combat = TestTacticalCombatHelper.Create(
+                RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy],
                 thirdCupHealCorruptionEnabled: true);
             var skill = CreateSkill("skill.heal", "Heal", 20);
 
@@ -430,8 +448,8 @@ public sealed class CombatSkillEffectResolverTests
             var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
             ally.ApplyDamage(50);
             var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 80);
-            var combat = Combat.Create(
-                CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy],
+            var combat = TestTacticalCombatHelper.Create(
+                RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy],
                 thirdCupHealCorruptionEnabled: false);
             var skill = CreateSkill("skill.heal", "Heal", 20);
 
@@ -464,9 +482,12 @@ public sealed class CombatSkillEffectResolverTests
     {
         var caster = Combatant.CreateEnemy("canon.enemy.encrier-vivant", "Encrier", "Support", 58, mana: 26);
         var ally = Combatant.CreateEnemy("canon.enemy.copiste-aveugle", "Copiste", "Skirmisher", 46, mana: 20);
-        ally.SpendMana(15); // 5/20 mana remaining
         var enemy = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [enemy], [caster, ally]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [enemy], [caster, ally]);
+        // Spent AFTER combat creation (not before) so the outcome doesn't depend on
+        // whether TacticalCombat's activation-mana-regen picked this combatant as the
+        // first active one — always leaves exactly 5/20 mana regardless.
+        ally.SpendMana(ally.Mana - 5);
         var skill = CombatantSkill.Create(
             "canon.skill.recharge", "Recharge", "Buff", "SingleAlly", "RestoreMana",
             manaCost: 0, chargeCost: 0, basePower: 8, category: "Magic");
@@ -481,9 +502,10 @@ public sealed class CombatSkillEffectResolverTests
     {
         var caster = Combatant.CreateEnemy("canon.enemy.encrier-vivant", "Encrier", "Support", 58, mana: 26);
         var ally = Combatant.CreateEnemy("canon.enemy.copiste-aveugle", "Copiste", "Skirmisher", 46, mana: 20);
-        ally.SpendMana(4); // 16/20 mana remaining
         var enemy = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [enemy], [caster, ally]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [enemy], [caster, ally]);
+        // Spent AFTER combat creation — see Resolve_ShouldRestoreMana_WhenEffectTypeIsRestoreMana.
+        ally.SpendMana(ally.Mana - 16);
         var skill = CombatantSkill.Create(
             "canon.skill.recharge", "Recharge", "Buff", "SingleAlly", "RestoreMana",
             manaCost: 0, chargeCost: 0, basePower: 8, category: "Magic");
@@ -499,7 +521,7 @@ public sealed class CombatSkillEffectResolverTests
         var (combat, ally, _) = CreateCombat();
         ally.ApplyDamage(50);
         ally.ApplyEquipmentCombatModifiers(
-            hitChanceBonusPercent: 0, dotDurationReductionPercent: 0, dotDamageReductionPercent: 0,
+            hitChanceBonusPercent: 100, dotDurationReductionPercent: 0, dotDamageReductionPercent: 0,
             healingBonusPercent: 15);
         var skill = CreateSkill("skill.heal", "Heal", 20);
 
@@ -517,7 +539,7 @@ public sealed class CombatSkillEffectResolverTests
             "canon.skill.flamme-froide", "Flamme froide", "Damage", "SingleEnemy", "Damage",
             manaCost: 8, chargeCost: 0, basePower: 22);
         var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 80, skills: [enemySkill]);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
         var skill = CombatantSkill.Create(
             "canon.skill.creation", "Création", "Buff", "SingleEnemy", "CopySkills",
             manaCost: 20, chargeCost: 0, basePower: 10);
@@ -533,11 +555,11 @@ public sealed class CombatSkillEffectResolverTests
     {
         var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
         ally.ApplyEquipmentCombatModifiers(
-            hitChanceBonusPercent: 0, dotDurationReductionPercent: 0, dotDamageReductionPercent: 0,
+            hitChanceBonusPercent: 100, dotDurationReductionPercent: 0, dotDamageReductionPercent: 0,
             magicDamageBonusPercent: 0, magicDamageReductionPercent: 0, criticalChanceBonusPercent: 0,
             dotDamageBonusPercent: 50);
         var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 100);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
         var skill = CombatantSkill.Create(
             "canon.skill.plume", "Plume empoisonnée", "Debuff", "SingleEnemy", "Debuff",
             manaCost: 0, chargeCost: 0, basePower: 0,
@@ -562,7 +584,7 @@ public sealed class CombatSkillEffectResolverTests
             maxVitality: 100, currentVitality: 100, guard: 0, baseGuard: 0, mana: 0, charge: 0,
             magicAttack: 20);
         var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 100);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
         var skill = CombatantSkill.Create(
             "canon.skill.encre-vive", "Encre vive", "Debuff", "SingleEnemy", "Debuff",
             manaCost: 0, chargeCost: 0, basePower: 0, category: "Magic",
@@ -588,7 +610,7 @@ public sealed class CombatSkillEffectResolverTests
             maxVitality: 100, currentVitality: 100, guard: 0, baseGuard: 0, mana: 0, charge: 0,
             magicAttack: 40);
         var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 100);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
         var skill = CombatantSkill.Create(
             "canon.skill.plume", "Plume empoisonnée", "Debuff", "SingleEnemy", "Debuff",
             manaCost: 0, chargeCost: 0, basePower: 0,
@@ -619,7 +641,7 @@ public sealed class CombatSkillEffectResolverTests
         ally.ApplyEquipmentCombatModifiers(
             hitChanceBonusPercent: 100, dotDurationReductionPercent: 0, dotDamageReductionPercent: 0);
         var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 80);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
         var skill = CombatantSkill.Create(
             "canon.skill.destinee-cruelle", "Une destinée cruelle", "Damage", "SingleEnemy", "Damage",
             manaCost: 0, chargeCost: 0, basePower: 10, category: "Magic",
@@ -641,7 +663,7 @@ public sealed class CombatSkillEffectResolverTests
     {
         var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
         var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 100);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
         enemy.ApplyStatusEffect(CombatStatusEffect.Create(
             "poison", "Poison", StatusEffectKind.DamageOverTime,
             currentTick: combat.CurrentTick, durationTicks: 1000, magnitude: 10, tickInterval: 1400));
@@ -666,9 +688,10 @@ public sealed class CombatSkillEffectResolverTests
 
         _resolver.Resolve(combat, enemy, skill, [ally]);
 
-        // Neutral type match for player.self (no weak/resist to Mémoire) => 20 raw,
-        // then -15% equipment reduction => 17 (rounded).
-        ally.CurrentVitality.Should().Be(83);
+        // ally.EffectiveDefense is 0, so TacticalDamageFormula forces
+        // round(20 * 1.15) = 23; neutral type match for player.self (no weak/resist to
+        // Mémoire) leaves it at 23, then -15% equipment reduction => round(23*0.85) = 20.
+        ally.CurrentVitality.Should().Be(80);
     }
 
     [Fact]
@@ -701,7 +724,7 @@ public sealed class CombatSkillEffectResolverTests
         // outcome occurs, rather than forcing one via a hardcoded seed.
         var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
         var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 80);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
         var skill = CombatantSkill.Create(
             "skill.liberte-retrouvee", "La liberté retrouvée", "Damage", "SingleEnemy", "Damage",
             manaCost: 0, chargeCost: 0, basePower: 10,
@@ -735,7 +758,7 @@ public sealed class CombatSkillEffectResolverTests
         // Resolve_ShouldGrantAppliesToActorEffect_OnlyWhenTheAttackActuallyLands above.
         var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
         var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 100);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
         var skill = CombatantSkill.Create(
             "canon.skill.plume", "Plume empoisonnée", "Damage", "SingleEnemy", "Damage",
             manaCost: 0, chargeCost: 0, basePower: 10,
@@ -768,7 +791,7 @@ public sealed class CombatSkillEffectResolverTests
         var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
         var enemyA = Combatant.CreateEnemy("enemy.sentinel-a", "Sentinel A", "Guard", 100);
         var enemyB = Combatant.CreateEnemy("enemy.sentinel-b", "Sentinel B", "Guard", 100);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemyA, enemyB]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemyA, enemyB]);
         var skill = CombatantSkill.Create(
             "canon.skill.plume-aoe", "Plume empoisonnée (zone)", "Damage", "AllEnemies", "Damage",
             manaCost: 0, chargeCost: 0, basePower: 10,
@@ -807,7 +830,7 @@ public sealed class CombatSkillEffectResolverTests
         // this fix.
         var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
         var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 100);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
         var skill = CombatantSkill.Create(
             "canon.skill.plume", "Plume empoisonnée", "Debuff", "SingleEnemy", "Debuff",
             manaCost: 0, chargeCost: 0, basePower: 0,
@@ -829,18 +852,20 @@ public sealed class CombatSkillEffectResolverTests
     {
         var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
         ally.ApplyEquipmentCombatModifiers(
-            hitChanceBonusPercent: 0, dotDurationReductionPercent: 0, dotDamageReductionPercent: 0,
+            hitChanceBonusPercent: 100, dotDurationReductionPercent: 0, dotDamageReductionPercent: 0,
             magicDamageBonusPercent: 50, magicDamageReductionPercent: 0);
         var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 200);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
         var skill = CombatantSkill.Create(
             "canon.skill.flamme-froide", "Flamme froide", "Damage", "SingleEnemy", "Damage",
             manaCost: 0, chargeCost: 0, basePower: 10, category: "Magic");
 
         _resolver.Resolve(combat, ally, skill, [enemy]);
 
-        // baseline multiplier = (20 + 0) / (20 + 0) = 1.0; Magic bonus = +50% => 15 damage.
-        enemy.CurrentVitality.Should().Be(200 - 15);
+        // enemy's Defense/MagicDefense are 0, so TacticalDamageFormula forces
+        // round(10 * 1.15) = 12; Magic bonus +50% is then applied on top of that
+        // base: round(12 * 1.5) = 18.
+        enemy.CurrentVitality.Should().Be(200 - 18);
     }
 
     [Fact]
@@ -849,17 +874,18 @@ public sealed class CombatSkillEffectResolverTests
         var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
         var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 200);
         enemy.ApplyEquipmentCombatModifiers(
-            hitChanceBonusPercent: 0, dotDurationReductionPercent: 0, dotDamageReductionPercent: 0,
+            hitChanceBonusPercent: 100, dotDurationReductionPercent: 0, dotDamageReductionPercent: 0,
             magicDamageBonusPercent: 0, magicDamageReductionPercent: 20);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
         var skill = CombatantSkill.Create(
             "canon.skill.flamme-froide", "Flamme froide", "Damage", "SingleEnemy", "Damage",
             manaCost: 0, chargeCost: 0, basePower: 10, category: "Magic");
 
         _resolver.Resolve(combat, ally, skill, [enemy]);
 
-        // baseline multiplier = 1.0; Magic reduction = -20% => 8 damage.
-        enemy.CurrentVitality.Should().Be(200 - 8);
+        // base = round(10 * 1.15) = 12 (defense/magicDefense both 0); Magic reduction
+        // -20% applied on top: round(12 * 0.80) = round(9.6) = 10.
+        enemy.CurrentVitality.Should().Be(200 - 10);
     }
 
     [Fact]
@@ -867,18 +893,19 @@ public sealed class CombatSkillEffectResolverTests
     {
         var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
         ally.ApplyEquipmentCombatModifiers(
-            hitChanceBonusPercent: 0, dotDurationReductionPercent: 0, dotDamageReductionPercent: 0,
+            hitChanceBonusPercent: 100, dotDurationReductionPercent: 0, dotDamageReductionPercent: 0,
             magicDamageBonusPercent: 50, magicDamageReductionPercent: 0);
         var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 200);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
         var skill = CombatantSkill.Create(
             "skill.basic.strike", "Frappe", "Damage", "SingleEnemy", "Damage",
             manaCost: 0, chargeCost: 0, basePower: 10, category: "Physical");
 
         _resolver.Resolve(combat, ally, skill, [enemy]);
 
-        // Physical skill: the actor's Magic damage bonus must not apply => raw 10 damage.
-        enemy.CurrentVitality.Should().Be(200 - 10);
+        // Physical skill: the actor's Magic damage bonus must not apply — base stays
+        // at round(10 * 1.15) = 12 (defense is 0).
+        enemy.CurrentVitality.Should().Be(200 - 12);
     }
 
     // ---------------------------------------------------------------------------
@@ -893,16 +920,18 @@ public sealed class CombatSkillEffectResolverTests
             key: "law-silence-du:physical-damage", displayName: "Silence dû",
             kind: StatusEffectKind.StatModifier, currentTick: 0, durationTicks: 0,
             magnitude: 8, stat: CombatStat.PhysicalDamageBonus, isPermanent: true));
+        ally.ApplyEquipmentCombatModifiers(hitChanceBonusPercent: 100, dotDurationReductionPercent: 0, dotDamageReductionPercent: 0); // guaranteed hit chance
         var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 200);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
         var skill = CombatantSkill.Create(
             "skill.basic.strike", "Frappe", "Damage", "SingleEnemy", "Damage",
             manaCost: 0, chargeCost: 0, basePower: 10, category: "Physical");
 
         _resolver.Resolve(combat, ally, skill, [enemy]);
 
-        // baseline multiplier = 1.0; Physical bonus = +8% => round(10 * 1.08) = 11 damage.
-        enemy.CurrentVitality.Should().Be(200 - 11);
+        // base = round(10 * 1.15) = 12 (defense is 0); Physical bonus +8% applied on
+        // top: round(12 * 1.08) = round(12.96) = 13.
+        enemy.CurrentVitality.Should().Be(200 - 13);
     }
 
     [Fact]
@@ -913,15 +942,18 @@ public sealed class CombatSkillEffectResolverTests
             key: "law-silence-du:physical-damage", displayName: "Silence dû",
             kind: StatusEffectKind.StatModifier, currentTick: 0, durationTicks: 0,
             magnitude: 8, stat: CombatStat.PhysicalDamageBonus, isPermanent: true));
+        ally.ApplyEquipmentCombatModifiers(hitChanceBonusPercent: 100, dotDurationReductionPercent: 0, dotDamageReductionPercent: 0); // guaranteed hit chance
         var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 200);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
         var skill = CombatantSkill.Create(
             "canon.skill.flamme-froide", "Flamme froide", "Damage", "SingleEnemy", "Damage",
             manaCost: 0, chargeCost: 0, basePower: 10, category: "Magic");
 
         _resolver.Resolve(combat, ally, skill, [enemy]);
 
-        enemy.CurrentVitality.Should().Be(200 - 10);
+        // Magic-category skill: the actor's Physical damage bonus must not apply —
+        // base stays at round(10 * 1.15) = 12 (defense is 0).
+        enemy.CurrentVitality.Should().Be(200 - 12);
     }
 
     [Fact]
@@ -933,8 +965,9 @@ public sealed class CombatSkillEffectResolverTests
             key: "law-silence-du:mana-cost", displayName: "Silence dû",
             kind: StatusEffectKind.StatModifier, currentTick: 0, durationTicks: 0,
             magnitude: 2, stat: CombatStat.FlatManaCostBonus, isPermanent: true));
+        ally.ApplyEquipmentCombatModifiers(hitChanceBonusPercent: 100, dotDurationReductionPercent: 0, dotDamageReductionPercent: 0); // guaranteed hit chance
         var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 200);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
         var skill = CombatantSkill.Create(
             "skill.basic.strike", "Frappe", "Damage", "SingleEnemy", "Damage",
             manaCost: 3, chargeCost: 0, basePower: 10, category: "Physical");
@@ -961,8 +994,9 @@ public sealed class CombatSkillEffectResolverTests
         var result = _resolver.Resolve(combat, ally, skill, [enemy]);
 
         result.LogEntries.Should().Contain(entry => entry.Type == "CriticalHit");
-        // CritMultiplier is 1.5x — 10 base power becomes 15.
-        enemy.CurrentVitality.Should().Be(80 - 15);
+        // base = round(10 * 1.15) = 12 (defense is 0); TacticalCritMultiplier is 1.6x
+        // (not the ATB 1.5x) — round(12 * 1.6) = 19.2 -> 19.
+        enemy.CurrentVitality.Should().Be(80 - 19);
     }
 
     [Fact]
@@ -1010,13 +1044,14 @@ public sealed class CombatSkillEffectResolverTests
         var (combat, ally, enemy) = CreateThirteenthHitCombat(hitCounterDoubleDamageEnabled: true);
         var skill = CreateSkill("skill.basic.strike", "Damage", 10);
 
-        for (var i = 0; i < Combat.HitCounterTrigger; i++)
+        for (var i = 0; i < CombatRules.HitCounterTrigger; i++)
         {
             _resolver.Resolve(combat, ally, skill, [enemy]);
         }
 
-        // 12 normal hits of 10 + the 13th hit doubled to 20 = 140 total.
-        enemy.CurrentVitality.Should().Be(1000 - 140);
+        // Each hit's base = round(10 * 1.15) = 12 (defense is 0): 12 normal hits of 12
+        // + the 13th hit doubled to 24 = 168 total.
+        enemy.CurrentVitality.Should().Be(1000 - 168);
     }
 
     [Fact]
@@ -1025,13 +1060,14 @@ public sealed class CombatSkillEffectResolverTests
         var (combat, ally, enemy) = CreateThirteenthHitCombat(hitCounterDoubleDamageEnabled: false);
         var skill = CreateSkill("skill.basic.strike", "Damage", 10);
 
-        for (var i = 0; i < Combat.HitCounterTrigger; i++)
+        for (var i = 0; i < CombatRules.HitCounterTrigger; i++)
         {
             _resolver.Resolve(combat, ally, skill, [enemy]);
         }
 
-        // 13 normal hits of 10 = 130 total, none doubled.
-        enemy.CurrentVitality.Should().Be(1000 - 130);
+        // Each hit's base = round(10 * 1.15) = 12 (defense is 0): 13 normal hits of
+        // 12 = 156 total, none doubled.
+        enemy.CurrentVitality.Should().Be(1000 - 156);
     }
 
     [Fact]
@@ -1041,7 +1077,7 @@ public sealed class CombatSkillEffectResolverTests
         var skill = CreateSkill("skill.basic.strike", "Damage", 10);
 
         CombatSkillEffectResolution lastResult = null!;
-        for (var i = 0; i < Combat.HitCounterTrigger; i++)
+        for (var i = 0; i < CombatRules.HitCounterTrigger; i++)
         {
             lastResult = _resolver.Resolve(combat, ally, skill, [enemy]);
         }
@@ -1064,8 +1100,9 @@ public sealed class CombatSkillEffectResolverTests
 
         _resolver.Resolve(combat, ally, skill, [enemy]);
 
-        // 20 base damage amplified by +15% = 23.
-        enemy.CurrentVitality.Should().Be(40 - 23);
+        // base = round(20 * 1.15) = 23 (defense is 0); Curée amplifies the final
+        // outcome by +15%: round(23 * 1.15) = round(26.45) = 26.
+        enemy.CurrentVitality.Should().Be(40 - 26);
     }
 
     [Fact]
@@ -1076,7 +1113,9 @@ public sealed class CombatSkillEffectResolverTests
 
         _resolver.Resolve(combat, ally, skill, [enemy]);
 
-        enemy.CurrentVitality.Should().Be(100 - 10);
+        // base = round(10 * 1.15) = 12 (defense is 0); above the threshold, no
+        // amplification applies.
+        enemy.CurrentVitality.Should().Be(100 - 12);
     }
 
     [Fact]
@@ -1088,7 +1127,8 @@ public sealed class CombatSkillEffectResolverTests
 
         _resolver.Resolve(combat, ally, skill, [enemy]);
 
-        enemy.CurrentVitality.Should().Be(20 - 10);
+        // base = round(10 * 1.15) = 12 (defense is 0); law disabled, no amplification.
+        enemy.CurrentVitality.Should().Be(20 - 12);
     }
 
     // ---------------------------------------------------------------------------
@@ -1101,8 +1141,8 @@ public sealed class CombatSkillEffectResolverTests
     {
         var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
         var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 100);
-        var combat = Combat.Create(
-            CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(),
+        var combat = TestTacticalCombatHelper.Create(
+            RunId.New(), RoomId.New(), NodeId.New(),
             [ally], [enemy],
             hitCounterDoubleDamageEnabled: false,
             firstHitCriticalEnabled: false,
@@ -1128,7 +1168,7 @@ public sealed class CombatSkillEffectResolverTests
     {
         var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
         var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 100);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
         var skill = CombatantSkill.Create(
             "canon.skill.plume", "Plume empoisonnée", "Debuff", "SingleEnemy", "Debuff",
             manaCost: 0, chargeCost: 0, basePower: 0,
@@ -1147,7 +1187,7 @@ public sealed class CombatSkillEffectResolverTests
     // ---------------------------------------------------------------------------
     // "Le Protocole" (Bestiaire, Veilleurs du Seuil) — while a living Porteur de
     // Plateau is present among the enemies, debuffs an enemy inflicts on a player
-    // last 1 extra turn (AtbConstants.TicksPerTurn).
+    // last 1 extra turn (CombatTime.TicksPerTurn).
     // ---------------------------------------------------------------------------
 
     [Fact]
@@ -1156,7 +1196,12 @@ public sealed class CombatSkillEffectResolverTests
         var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
         var enemy = Combatant.CreateEnemy("canon.enemy.veilleur-tapis", "Veilleur du Tapis", "Guard", 100);
         var porteur = Combatant.CreateEnemy("canon.enemy.porteur-plateau", "Porteur de Plateau", "Support", 50);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy, porteur]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy, porteur]);
+        // TacticalCombat clocks a status effect's expiry from the recipient's own
+        // activation-based clock (StatusClockFor), not a shared tick 0 — capture it
+        // before resolving so the expected expiry doesn't depend on which combatant
+        // happened to activate first at combat creation.
+        var baseline = combat.StatusClockFor(ally.Id.Value);
         var skill = CombatantSkill.Create(
             "canon.skill.etouffement-feutre", "Étouffement feutré", "Debuff", "SingleEnemy", "Debuff",
             manaCost: 0, chargeCost: 0, basePower: 0,
@@ -1169,7 +1214,7 @@ public sealed class CombatSkillEffectResolverTests
 
         _resolver.Resolve(combat, enemy, skill, [ally]);
 
-        ally.StatusEffects.Should().ContainSingle(e => e.Key == "slow" && e.ExpiresAtTick == 5000 + AtbConstants.TicksPerTurn);
+        ally.StatusEffects.Should().ContainSingle(e => e.Key == "slow" && e.ExpiresAtTick == baseline + 5000 + CombatTime.TicksPerTurn);
     }
 
     [Fact]
@@ -1177,7 +1222,8 @@ public sealed class CombatSkillEffectResolverTests
     {
         var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
         var enemy = Combatant.CreateEnemy("canon.enemy.veilleur-tapis", "Veilleur du Tapis", "Guard", 100);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
+        var baseline = combat.StatusClockFor(ally.Id.Value);
         var skill = CombatantSkill.Create(
             "canon.skill.etouffement-feutre", "Étouffement feutré", "Debuff", "SingleEnemy", "Debuff",
             manaCost: 0, chargeCost: 0, basePower: 0,
@@ -1190,7 +1236,7 @@ public sealed class CombatSkillEffectResolverTests
 
         _resolver.Resolve(combat, enemy, skill, [ally]);
 
-        ally.StatusEffects.Should().ContainSingle(e => e.Key == "slow" && e.ExpiresAtTick == 5000);
+        ally.StatusEffects.Should().ContainSingle(e => e.Key == "slow" && e.ExpiresAtTick == baseline + 5000);
     }
 
     [Fact]
@@ -1200,7 +1246,8 @@ public sealed class CombatSkillEffectResolverTests
         var enemy = Combatant.CreateEnemy("canon.enemy.veilleur-tapis", "Veilleur du Tapis", "Guard", 100);
         var porteur = Combatant.CreateEnemy("canon.enemy.porteur-plateau", "Porteur de Plateau", "Support", 10);
         porteur.ApplyDamage(10);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy, porteur]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy, porteur]);
+        var baseline = combat.StatusClockFor(ally.Id.Value);
         var skill = CombatantSkill.Create(
             "canon.skill.etouffement-feutre", "Étouffement feutré", "Debuff", "SingleEnemy", "Debuff",
             manaCost: 0, chargeCost: 0, basePower: 0,
@@ -1213,7 +1260,7 @@ public sealed class CombatSkillEffectResolverTests
 
         _resolver.Resolve(combat, enemy, skill, [ally]);
 
-        ally.StatusEffects.Should().ContainSingle(e => e.Key == "slow" && e.ExpiresAtTick == 5000);
+        ally.StatusEffects.Should().ContainSingle(e => e.Key == "slow" && e.ExpiresAtTick == baseline + 5000);
     }
 
     // ---------------------------------------------------------------------------
@@ -1226,8 +1273,8 @@ public sealed class CombatSkillEffectResolverTests
     {
         var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
         var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 100);
-        var combat = Combat.Create(
-            CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(),
+        var combat = TestTacticalCombatHelper.Create(
+            RunId.New(), RoomId.New(), NodeId.New(),
             [ally], [enemy],
             hitCounterDoubleDamageEnabled: false,
             firstHitCriticalEnabled: false,
@@ -1255,7 +1302,7 @@ public sealed class CombatSkillEffectResolverTests
     {
         var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
         var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 100);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
         var skill = CombatantSkill.Create(
             "canon.skill.plume", "Plume empoisonnée", "Debuff", "SingleEnemy", "Debuff",
             manaCost: 0, chargeCost: 0, basePower: 0,
@@ -1284,8 +1331,9 @@ public sealed class CombatSkillEffectResolverTests
 
         _resolver.Resolve(combat, ally, skill, [enemy]);
 
-        // 10 base power +20% = 12.
-        enemy.CurrentVitality.Should().Be(80 - 12);
+        // base = round(10 * 1.15) = 12 (defense is 0); mono-target +20% applied on
+        // top: round(12 * 1.2) = 14.4 -> 14.
+        enemy.CurrentVitality.Should().Be(80 - 14);
     }
 
     [Fact]
@@ -1297,9 +1345,10 @@ public sealed class CombatSkillEffectResolverTests
 
         _resolver.Resolve(combat, ally, skill, [enemyA, enemyB]);
 
-        // 10 base power -20% = 8.
-        enemyA.CurrentVitality.Should().Be(80 - 8);
-        enemyB.CurrentVitality.Should().Be(80 - 8);
+        // base = round(10 * 1.15) = 12 (defense is 0); area-of-effect -20% applied on
+        // top: round(12 * 0.8) = round(9.6) = 10.
+        enemyA.CurrentVitality.Should().Be(80 - 10);
+        enemyB.CurrentVitality.Should().Be(80 - 10);
     }
 
     [Fact]
@@ -1311,17 +1360,18 @@ public sealed class CombatSkillEffectResolverTests
 
         _resolver.Resolve(combat, ally, skill, [enemy]);
 
-        enemy.CurrentVitality.Should().Be(80 - 10);
+        // base = round(10 * 1.15) = 12 (defense is 0); law disabled, no change.
+        enemy.CurrentVitality.Should().Be(80 - 12);
     }
 
-    private static (Combat Combat, Combatant Ally, Combatant Enemy) CreateDuelCombat(
+    private static (TacticalCombat Combat, Combatant Ally, Combatant Enemy) CreateDuelCombat(
         bool duelDamageAsymmetryEnabled)
     {
         var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
         ally.ApplyEquipmentCombatModifiers(100, 0, 0); // guaranteed hit chance
         var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 80);
-        var combat = Combat.Create(
-            CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(),
+        var combat = TestTacticalCombatHelper.Create(
+            RunId.New(), RoomId.New(), NodeId.New(),
             [ally], [enemy],
             hitCounterDoubleDamageEnabled: false,
             firstHitCriticalEnabled: false,
@@ -1332,15 +1382,15 @@ public sealed class CombatSkillEffectResolverTests
         return (combat, ally, enemy);
     }
 
-    private static (Combat Combat, Combatant Ally, Combatant EnemyA, Combatant EnemyB) CreateDuelCombatWithTwoEnemies(
+    private static (TacticalCombat Combat, Combatant Ally, Combatant EnemyA, Combatant EnemyB) CreateDuelCombatWithTwoEnemies(
         bool duelDamageAsymmetryEnabled)
     {
         var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
         ally.ApplyEquipmentCombatModifiers(100, 0, 0); // guaranteed hit chance
         var enemyA = Combatant.CreateEnemy("enemy.sentinel-a", "Sentinel A", "Guard", 80);
         var enemyB = Combatant.CreateEnemy("enemy.sentinel-b", "Sentinel B", "Guard", 80);
-        var combat = Combat.Create(
-            CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(),
+        var combat = TestTacticalCombatHelper.Create(
+            RunId.New(), RoomId.New(), NodeId.New(),
             [ally], [enemyA, enemyB],
             hitCounterDoubleDamageEnabled: false,
             firstHitCriticalEnabled: false,
@@ -1351,14 +1401,14 @@ public sealed class CombatSkillEffectResolverTests
         return (combat, ally, enemyA, enemyB);
     }
 
-    private static (Combat Combat, Combatant Ally, Combatant Enemy) CreateLowHpAmplificationCombat(
+    private static (TacticalCombat Combat, Combatant Ally, Combatant Enemy) CreateLowHpAmplificationCombat(
         bool lowHpDamageAmplificationEnabled, int enemyMaxVitality)
     {
         var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
         ally.ApplyEquipmentCombatModifiers(100, 0, 0); // guaranteed hit chance
         var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", enemyMaxVitality);
-        var combat = Combat.Create(
-            CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(),
+        var combat = TestTacticalCombatHelper.Create(
+            RunId.New(), RoomId.New(), NodeId.New(),
             [ally], [enemy],
             hitCounterDoubleDamageEnabled: false,
             firstHitCriticalEnabled: false,
@@ -1367,7 +1417,7 @@ public sealed class CombatSkillEffectResolverTests
         return (combat, ally, enemy);
     }
 
-    private static (Combat Combat, Combatant Ally, Combatant Enemy) CreateThirteenthHitCombat(
+    private static (TacticalCombat Combat, Combatant Ally, Combatant Enemy) CreateThirteenthHitCombat(
         bool hitCounterDoubleDamageEnabled)
     {
         var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
@@ -1377,115 +1427,49 @@ public sealed class CombatSkillEffectResolverTests
         ally.ApplyEquipmentCombatModifiers(100, 0, 0);
 
         var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 1000);
-        var combat = Combat.Create(
-            CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(),
-            [ally], [enemy], hitCounterDoubleDamageEnabled);
+        var combat = TestTacticalCombatHelper.Create(
+            RunId.New(), RoomId.New(), NodeId.New(),
+            [ally], [enemy], hitCounterDoubleDamageEnabled: hitCounterDoubleDamageEnabled);
 
         return (combat, ally, enemy);
     }
 
-    private static (Combat Combat, Combatant Ally, Combatant Enemy) CreateFirstHitCriticalCombat()
+    private static (TacticalCombat Combat, Combatant Ally, Combatant Enemy) CreateFirstHitCriticalCombat()
     {
         var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+        ally.ApplyEquipmentCombatModifiers(hitChanceBonusPercent: 100, dotDurationReductionPercent: 0, dotDamageReductionPercent: 0); // guaranteed hit chance
         var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 80);
-        var combat = Combat.Create(
-            CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(),
+        var combat = TestTacticalCombatHelper.Create(
+            RunId.New(), RoomId.New(), NodeId.New(),
             [ally], [enemy], hitCounterDoubleDamageEnabled: false, firstHitCriticalEnabled: true);
 
         return (combat, ally, enemy);
     }
 
-    private static (Combat Combat, Combatant Ally, Combatant EnemyA, Combatant EnemyB) CreateFirstHitCriticalCombatWithTwoEnemies()
+    private static (TacticalCombat Combat, Combatant Ally, Combatant EnemyA, Combatant EnemyB) CreateFirstHitCriticalCombatWithTwoEnemies()
     {
         var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+        ally.ApplyEquipmentCombatModifiers(hitChanceBonusPercent: 100, dotDurationReductionPercent: 0, dotDamageReductionPercent: 0); // guaranteed hit chance
         var enemyA = Combatant.CreateEnemy("enemy.sentinel-a", "Sentinel A", "Guard", 80);
         var enemyB = Combatant.CreateEnemy("enemy.sentinel-b", "Sentinel B", "Guard", 80);
-        var combat = Combat.Create(
-            CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(),
+        var combat = TestTacticalCombatHelper.Create(
+            RunId.New(), RoomId.New(), NodeId.New(),
             [ally], [enemyA, enemyB], hitCounterDoubleDamageEnabled: false, firstHitCriticalEnabled: true);
 
         return (combat, ally, enemyA, enemyB);
     }
 
-    // -----------------------------------------------------------------------
-    // Row (Front/Back positioning)
-    // -----------------------------------------------------------------------
-
-    [Fact]
-    public void Resolve_ShouldReduceDamageDealt_WhenActorIsInBackRow_ForPhysicalSkill()
+    private static (TacticalCombat Combat, Combatant Ally, Combatant Enemy) CreateCombat()
     {
         var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
-        ally.ApplyEquipmentCombatModifiers(100, 0, 0); // guaranteed hit chance
-        ally.SetRow(CombatRow.Back);
-        var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 100);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
-        var skill = CreateSkill("skill.basic.strike", "Damage", 40);
-
-        _resolver.Resolve(combat, ally, skill, [enemy]);
-
-        // -15% physical damage dealt while in Back row: round(40 * 0.85) = 34.
-        enemy.CurrentVitality.Should().Be(100 - 34);
-    }
-
-    [Fact]
-    public void Resolve_ShouldReduceDamageTaken_WhenTargetIsInBackRow_ForPhysicalSkill()
-    {
-        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
-        ally.ApplyEquipmentCombatModifiers(100, 0, 0); // guaranteed hit chance
-        var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 100);
-        enemy.SetRow(CombatRow.Back);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
-        var skill = CreateSkill("skill.basic.strike", "Damage", 40);
-
-        _resolver.Resolve(combat, ally, skill, [enemy]);
-
-        // -5% incoming physical damage while in Back row: round(40 * 0.95) = 38.
-        enemy.CurrentVitality.Should().Be(100 - 38);
-    }
-
-    [Fact]
-    public void Resolve_ShouldApplyStackingBlindShotMalus_WhenBothActorAndTargetAreInBackRow_ForMagicSkill()
-    {
-        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
-        ally.ApplyEquipmentCombatModifiers(100, 0, 0); // guaranteed hit chance
-        ally.SetRow(CombatRow.Back);
-        var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 100);
-        enemy.SetRow(CombatRow.Back);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
-        var skill = CombatantSkill.Create(
-            "canon.skill.flamme-froide", "Flamme froide", "Damage", "SingleEnemy", "Damage",
-            manaCost: 0, chargeCost: 0, basePower: 40, category: "Magic");
-
-        _resolver.Resolve(combat, ally, skill, [enemy]);
-
-        // "Tir à l'aveugle": both sides in Back row against a Magic skill applies the
-        // extra -5% damage malus alone (the -15%/-5% physical-only terms don't apply
-        // to a Magic skill) — round(40 * 0.95) = 38.
-        enemy.CurrentVitality.Should().Be(100 - 38);
-    }
-
-    [Fact]
-    public void Resolve_ShouldReduceHealing_WhenTargetIsInBackRow()
-    {
-        var (combat, ally, _) = CreateCombat();
-        ally.ApplyDamage(60); // 100 -> 40, leaves room to heal
-        ally.SetRow(CombatRow.Back);
-        var skill = CombatantSkill.Create(
-            "canon.skill.soin", "Soin", "Heal", "SingleAlly", "Heal",
-            manaCost: 0, chargeCost: 0, basePower: 50);
-
-        _resolver.Resolve(combat, ally, skill, [ally]);
-
-        // -10% healing received while in Back row: round(50 * 0.9) = 45.
-        ally.CurrentVitality.Should().Be(40 + 45);
-    }
-
-    private static (Combat Combat, Combatant Ally, Combatant Enemy) CreateCombat()
-    {
-        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
+        // Guaranteed hit chance on both sides: the tactical resolver rolls a real
+        // hit/miss chance (baseline 90%) per attack, which the old ATB-era Combat this
+        // fixture was written against never had — pin it so single-shot damage
+        // assertions below aren't ~10% flaky.
+        ally.ApplyEquipmentCombatModifiers(hitChanceBonusPercent: 100, dotDurationReductionPercent: 0, dotDamageReductionPercent: 0);
         var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 80);
-        var combat = Combat.Create(
-            CombatId.New(),
+        enemy.ApplyEquipmentCombatModifiers(hitChanceBonusPercent: 100, dotDurationReductionPercent: 0, dotDamageReductionPercent: 0);
+        var combat = TestTacticalCombatHelper.Create(
             RunId.New(),
             RoomId.New(),
             NodeId.New(),

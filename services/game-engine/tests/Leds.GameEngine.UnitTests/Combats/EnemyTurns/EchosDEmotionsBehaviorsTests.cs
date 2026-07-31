@@ -6,6 +6,7 @@ using Leds.GameEngine.Domain.Combats.StatusEffects;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
+using Leds.GameEngine.UnitTests.Common.Factories;
 
 namespace Leds.GameEngine.UnitTests.Combats.EnemyTurns;
 
@@ -29,7 +30,7 @@ public sealed class EchosDEmotionsBehaviorsTests
         var explosion = CreateSkill("canon.skill.explosion", "Damage", "AllEnemies", 20, "Magic");
         var hero = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
         var echo = Combatant.CreateEnemy("canon.enemy.echo-colere", "Écho", "Bruiser", 60, [explosion], mana: 16);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [hero], [echo]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [hero], [echo]);
         echo.ApplyDamage(35); // 25/60 HP ~= 42%, under 50%
 
         var decision = new EchoColereBossBehavior().DecideAction(new BossDecisionContext(combat, echo));
@@ -45,7 +46,7 @@ public sealed class EchosDEmotionsBehaviorsTests
         var constatSec = CreateSkill("canon.skill.constat-sec", "Debuff", "SingleEnemy", 0, "Magic");
         var hero = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
         var echo = Combatant.CreateEnemy("canon.enemy.echo-colere", "Écho", "Bruiser", 60, [constatSec]);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [hero], [echo]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [hero], [echo]);
         echo.RecordLastAttacker(hero.Id.Value);
 
         var decision = new EchoColereBossBehavior().DecideAction(new BossDecisionContext(combat, echo));
@@ -61,7 +62,7 @@ public sealed class EchosDEmotionsBehaviorsTests
         var montee = CreateSkill("canon.skill.montee", "Buff", "Self", 0);
         var hero = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
         var echo = Combatant.CreateEnemy("canon.enemy.echo-colere", "Écho", "Bruiser", 60, [montee]);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [hero], [echo]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [hero], [echo]);
 
         var decision = new EchoColereBossBehavior().DecideAction(new BossDecisionContext(combat, echo));
 
@@ -76,8 +77,8 @@ public sealed class EchosDEmotionsBehaviorsTests
         var saccade = CreateSkill("canon.skill.saccade", "Buff", "Self", 6);
         var hero = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
         var echo = Combatant.CreateEnemy("canon.enemy.echo-peur", "Écho", "Disruptor", 42, [saccade]);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [hero], [echo]);
-        combat.AdvanceTurn(); // turn 2 (even)
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [hero], [echo]);
+        TestTacticalCombatHelper.AdvanceRounds(combat, 1); // turn 2 (even)
 
         var decision = new EchoPeurBossBehavior().DecideAction(new BossDecisionContext(combat, echo));
 
@@ -92,7 +93,7 @@ public sealed class EchosDEmotionsBehaviorsTests
         var nevrose = CreateSkill("canon.skill.nevrose", "Damage", "SingleEnemy", 10, "Magic");
         var hero = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
         var echo = Combatant.CreateEnemy("canon.enemy.echo-peur", "Écho", "Disruptor", 42, [nevrose]);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [hero], [echo]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [hero], [echo]);
         // turn 1 (odd) already
 
         var decision = new EchoPeurBossBehavior().DecideAction(new BossDecisionContext(combat, echo));
@@ -115,7 +116,7 @@ public sealed class EchosDEmotionsBehaviorsTests
             maxVitality: 100, currentVitality: 100, guard: 0, baseGuard: 0, mana: 0, charge: 0,
             speed: 18);
         var echo = Combatant.CreateEnemy("canon.enemy.echo-tristesse", "Écho", "Support", 80, [poids]);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [slow, fast], [echo]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [slow, fast], [echo]);
 
         var decision = new EchoTristesseBossBehavior().DecideAction(new BossDecisionContext(combat, echo));
 
@@ -130,7 +131,7 @@ public sealed class EchosDEmotionsBehaviorsTests
         var silencePartage = CreateSkill("canon.skill.silence-partage", "Heal", "AllAllies", 6, "Magic");
         var hero = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
         var echo = Combatant.CreateEnemy("canon.enemy.echo-tristesse", "Écho", "Support", 80, [silencePartage]);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [hero], [echo]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [hero], [echo]);
         echo.ApplyDamage(50); // 30/80 HP ~= 37.5%, under 40%
 
         var decision = new EchoTristesseBossBehavior().DecideAction(new BossDecisionContext(combat, echo));

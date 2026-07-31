@@ -106,7 +106,10 @@ public sealed class UseTacticalSkillCommandHandler
         var effectiveManaCost = Math.Max(
             0,
             (int)Math.Round(
-                skill.ManaCost * (1.0 - actor.EffectiveSkillCostReductionPercent / 100.0))
+                // EffectiveSkillCostReductionPercent is negative for a beneficial reduction
+                // (e.g. -5 for Mina's "Protection de Him'Lit"), so adding it (not subtracting)
+                // is what shrinks the cost.
+                skill.ManaCost * (1.0 + actor.EffectiveSkillCostReductionPercent / 100.0))
             + actor.EffectiveFlatManaCostBonus);
         var missingMana = Math.Max(0, effectiveManaCost - actor.Mana);
         var vitalityCost = missingMana * 2;

@@ -89,7 +89,10 @@ public sealed record CombatantRuntimeDto(
                         0,
                         (int)Math.Round(
                             skill.ManaCost
-                            * (1.0 - combatant.EffectiveSkillCostReductionPercent / 100.0))
+                            // EffectiveSkillCostReductionPercent is negative for a beneficial
+                            // reduction (e.g. -5 for Mina's "Protection de Him'Lit"), so adding
+                            // it (not subtracting) is what shrinks the cost.
+                            * (1.0 + combatant.EffectiveSkillCostReductionPercent / 100.0))
                         + combatant.EffectiveFlatManaCostBonus)
                 })
                 .ToArray());

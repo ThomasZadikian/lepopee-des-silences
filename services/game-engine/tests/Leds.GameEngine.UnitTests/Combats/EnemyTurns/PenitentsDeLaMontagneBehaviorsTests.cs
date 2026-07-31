@@ -6,6 +6,7 @@ using Leds.GameEngine.Domain.Combats.StatusEffects;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
+using Leds.GameEngine.UnitTests.Common.Factories;
 
 namespace Leds.GameEngine.UnitTests.Combats.EnemyTurns;
 
@@ -30,7 +31,7 @@ public sealed class PenitentsDeLaMontagneBehaviorsTests
         var weak = Combatant.CreateAlly("player.1", "Weak", "Fighter", 40);
         var strong = Combatant.CreateAlly("player.2", "Strong", "Fighter", 100);
         var pelerin = Combatant.CreateEnemy("canon.enemy.pelerin-sans-visage", "Pèlerin", "Skirmisher", 42, [priere]);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [weak, strong], [pelerin]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [weak, strong], [pelerin]);
 
         var decision = new PelerinSansVisageBossBehavior().DecideAction(new BossDecisionContext(combat, pelerin));
 
@@ -45,7 +46,7 @@ public sealed class PenitentsDeLaMontagneBehaviorsTests
         var repentir = CreateSkill("canon.skill.repentir", "Buff", "Self", 0, "Magic");
         var hero = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
         var pelerin = Combatant.CreateEnemy("canon.enemy.pelerin-sans-visage", "Pèlerin", "Skirmisher", 42, [repentir]);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [hero], [pelerin]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [hero], [pelerin]);
         pelerin.ApplyDamage(25); // 17/42 HP ~= 40%, under 50%
 
         var decision = new PelerinSansVisageBossBehavior().DecideAction(new BossDecisionContext(combat, pelerin));
@@ -68,10 +69,8 @@ public sealed class PenitentsDeLaMontagneBehaviorsTests
             maxVitality: 100, currentVitality: 100, guard: 0, baseGuard: 0, mana: 0, charge: 0,
             magicDefense: 20);
         var pelerin = Combatant.CreateEnemy("canon.enemy.pelerin-sans-visage", "Pèlerin", "Skirmisher", 42, [chapelet]);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [soft, tough], [pelerin]);
-        combat.AdvanceTurn();
-        combat.AdvanceTurn();
-        combat.AdvanceTurn(); // turn 4, past the two opening turns
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [soft, tough], [pelerin]);
+        TestTacticalCombatHelper.AdvanceRounds(combat, 3); // turn 4, past the two opening turns
 
         var decision = new PelerinSansVisageBossBehavior().DecideAction(new BossDecisionContext(combat, pelerin));
 
@@ -86,7 +85,7 @@ public sealed class PenitentsDeLaMontagneBehaviorsTests
         var encens = CreateSkill("canon.skill.encens-inverse", "Debuff", "AllEnemies", 0, "Magic");
         var hero = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
         var prieur = Combatant.CreateEnemy("canon.enemy.prieur-lituique", "Prieur", "Support", 72, [encens]);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [hero], [prieur]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [hero], [prieur]);
 
         var decision = new PrieurLituiqueBossBehavior().DecideAction(new BossDecisionContext(combat, prieur));
 
@@ -101,8 +100,8 @@ public sealed class PenitentsDeLaMontagneBehaviorsTests
         var oraison = CreateSkill("canon.skill.oraison-cousue", "Damage", "SingleEnemy", 18, "Magic");
         var hero = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
         var prieur = Combatant.CreateEnemy("canon.enemy.prieur-lituique", "Prieur", "Support", 72, [oraison]);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [hero], [prieur]);
-        combat.AdvanceTurn(); // move past the turn-1 opener
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [hero], [prieur]);
+        TestTacticalCombatHelper.AdvanceRounds(combat, 1); // move past the turn-1 opener
 
         hero.ApplyStatusEffect(CombatStatusEffect.Create(
             "debuff.defense", "Défense entamée", StatusEffectKind.StatModifier,
@@ -121,9 +120,8 @@ public sealed class PenitentsDeLaMontagneBehaviorsTests
         var derniere = CreateSkill("canon.skill.derniere-priere", "Drain", "SingleEnemy", 18, "Magic");
         var hero = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
         var prieur = Combatant.CreateEnemy("canon.enemy.prieur-lituique", "Prieur", "Support", 72, [derniere]);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [hero], [prieur]);
-        for (var i = 0; i < 6; i++)
-            combat.AdvanceTurn();
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [hero], [prieur]);
+        TestTacticalCombatHelper.AdvanceRounds(combat, 6);
 
         var decision = new PrieurLituiqueBossBehavior().DecideAction(new BossDecisionContext(combat, prieur));
 
@@ -145,7 +143,7 @@ public sealed class PenitentsDeLaMontagneBehaviorsTests
             maxVitality: 100, currentVitality: 100, guard: 0, baseGuard: 0, mana: 0, charge: 0,
             focus: 15);
         var frayeur = Combatant.CreateEnemy("canon.enemy.frayeur-exhumee", "Frayeur", "Bruiser", 104, [posture]);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [dull, sharp], [frayeur]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [dull, sharp], [frayeur]);
 
         var decision = new FrayeurExhumeeBossBehavior().DecideAction(new BossDecisionContext(combat, frayeur));
 
@@ -160,8 +158,8 @@ public sealed class PenitentsDeLaMontagneBehaviorsTests
         var nevrose = CreateSkill("canon.skill.nevrose", "Damage", "SingleEnemy", 10, "Magic");
         var hero = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
         var frayeur = Combatant.CreateEnemy("canon.enemy.frayeur-exhumee", "Frayeur", "Bruiser", 104, [nevrose]);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [hero], [frayeur]);
-        combat.AdvanceTurn();
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [hero], [frayeur]);
+        TestTacticalCombatHelper.AdvanceRounds(combat, 1);
 
         var decision = new FrayeurExhumeeBossBehavior().DecideAction(new BossDecisionContext(combat, frayeur));
 

@@ -7,6 +7,7 @@ using Leds.GameEngine.Application.Players.Ports;
 using Leds.GameEngine.Application.Rewards.Loot;
 using Leds.GameEngine.Application.Rewards.RewardOfferFactory;
 using Leds.GameEngine.Domain.Combats;
+using Leds.GameEngine.Domain.Combats.Tactical;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
@@ -26,7 +27,7 @@ public sealed class CombatResolutionServiceTests
             new EnemyLootRewardBuilder(Mock.Of<ICatalogContentGateway>()));
     }
 
-    private static (Run Run, Combat Combat) CreateReadyCombat(
+    private static (Run Run, TacticalCombat Combat) CreateReadyCombat(
         NodeEventType eventType, bool journalEnabled = false)
     {
         Run run;
@@ -50,32 +51,30 @@ public sealed class CombatResolutionServiceTests
 
         var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100, 0, []);
         var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 80, []);
-        var combat = Combat.Create(
-            CombatId.New(),
-            run.Id,
-            RoomId.New(),
-            NodeId.New(),
-            [ally],
-            [enemy]);
+        var combat = TestTacticalCombatHelper.Create(run.Id, RoomId.New(), NodeId.New(), [ally], [enemy]);
 
-        run.StartCombat(combat);
+        run.StartTacticalCombat(combat);
 
         return (run, combat);
     }
 
-    private static (Run Run, Combat Combat) CreateCompletedCombat(
+    private static (Run Run, TacticalCombat Combat) CreateCompletedCombat(
         NodeEventType eventType, bool journalEnabled = false)
     {
         var (run, combat) = CreateReadyCombat(eventType, journalEnabled);
-        combat.MarkCompleted();
+        var enemy = combat.Enemies.Single();
+        enemy.ApplyVitalityDamage(enemy.CurrentVitality);
+        combat.CompleteIfAllEnemiesDefeated();
         return (run, combat);
     }
 
-    private static (Run Run, Combat Combat) CreateFailedCombat(
+    private static (Run Run, TacticalCombat Combat) CreateFailedCombat(
         NodeEventType eventType, bool journalEnabled = false)
     {
         var (run, combat) = CreateReadyCombat(eventType, journalEnabled);
-        combat.MarkFailed();
+        var ally = combat.Allies.Single();
+        ally.ApplyVitalityDamage(ally.CurrentVitality);
+        combat.FailIfAllAlliesDefeated();
         return (run, combat);
     }
 

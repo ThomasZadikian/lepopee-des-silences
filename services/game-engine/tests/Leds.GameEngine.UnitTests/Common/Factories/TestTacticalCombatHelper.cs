@@ -19,7 +19,16 @@ public static class TestTacticalCombatHelper
         RoomId roomId,
         NodeId nodeId,
         Combatant[] allies,
-        Combatant[] enemies)
+        Combatant[] enemies,
+        CombatId? combatId = null,
+        bool hitCounterDoubleDamageEnabled = false,
+        bool firstHitCriticalEnabled = false,
+        bool lowHpDamageAmplificationEnabled = false,
+        int dotDurationExtensionTicks = 0,
+        bool duelDamageAsymmetryEnabled = false,
+        int dotMagnitudeBonus = 0,
+        bool healingBlocked = false,
+        bool thirdCupHealCorruptionEnabled = false)
     {
         var grid = RoomGrid.CreateInitial(
             width: 4, height: 4, movementBudget: 26,
@@ -36,14 +45,40 @@ public static class TestTacticalCombatHelper
             .ToArray();
 
         return TacticalCombat.Create(
-            CombatId.New(),
+            combatId ?? CombatId.New(),
             runId,
             roomId,
             nodeId,
             battlefield,
             allyPositions,
             enemyPositions,
-            DateTime.UtcNow);
+            DateTime.UtcNow,
+            hitCounterDoubleDamageEnabled: hitCounterDoubleDamageEnabled,
+            firstHitCriticalEnabled: firstHitCriticalEnabled,
+            lowHpDamageAmplificationEnabled: lowHpDamageAmplificationEnabled,
+            dotDurationExtensionTicks: dotDurationExtensionTicks,
+            duelDamageAsymmetryEnabled: duelDamageAsymmetryEnabled,
+            dotMagnitudeBonus: dotMagnitudeBonus,
+            healingBlocked: healingBlocked,
+            thirdCupHealCorruptionEnabled: thirdCupHealCorruptionEnabled);
+    }
+
+    /// <summary>
+    /// Advances <paramref name="combat"/> by exactly <paramref name="rounds"/> full rounds
+    /// (<see cref="TacticalCombat.RoundNumber"/>, aliased as <c>TurnNumber</c>) — the
+    /// replacement for the old ATB <c>Combat.AdvanceTurn()</c>, which incremented a flat
+    /// per-call tick. <see cref="TacticalCombat.AdvanceToNextCombatant"/> only increments
+    /// the round once every combatant in the initiative order has acted, so looping until
+    /// <see cref="TacticalCombat.RoundNumber"/> reaches the target keeps the call correct
+    /// regardless of how many combatants are in the fixture.
+    /// </summary>
+    public static void AdvanceRounds(TacticalCombat combat, int rounds)
+    {
+        var target = combat.RoundNumber + rounds;
+        while (combat.RoundNumber < target)
+        {
+            combat.AdvanceToNextCombatant();
+        }
     }
 
     public static (Run Run, TacticalCombat Combat) CreateRunWithCombat(

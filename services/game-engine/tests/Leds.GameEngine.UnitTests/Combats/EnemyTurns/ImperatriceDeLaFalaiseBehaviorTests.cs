@@ -6,6 +6,7 @@ using Leds.GameEngine.Domain.Combats.StatusEffects;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
+using Leds.GameEngine.UnitTests.Common.Factories;
 
 namespace Leds.GameEngine.UnitTests.Combats.EnemyTurns;
 
@@ -29,7 +30,7 @@ public sealed class ImperatriceDeLaFalaiseBehaviorTests
         var deluge = CreateSkill("canon.skill.deluge-du-styx", "Debuff", "AllEnemies", 0, "Magic");
         var hero = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
         var imperatrice = Combatant.CreateEnemy("canon.enemy.imperatrice", "Impératrice", "Bruiser", 240, [deluge]);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [hero], [imperatrice]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [hero], [imperatrice]);
 
         var decision = new ImperatriceBossBehavior().DecideAction(new BossDecisionContext(combat, imperatrice));
 
@@ -45,8 +46,8 @@ public sealed class ImperatriceDeLaFalaiseBehaviorTests
         var maree = CreateSkill("canon.skill.maree-montante", "Debuff", "AllEnemies", 0, "Magic");
         var hero = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
         var imperatrice = Combatant.CreateEnemy("canon.enemy.imperatrice", "Impératrice", "Bruiser", 240, [lame, maree]);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [hero], [imperatrice]);
-        combat.AdvanceTurn(); // move past the turn-1 opener; hero stays at full HP
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [hero], [imperatrice]);
+        TestTacticalCombatHelper.AdvanceRounds(combat, 1); // move past the turn-1 opener; hero stays at full HP
 
         var decision = new ImperatriceBossBehavior().DecideAction(new BossDecisionContext(combat, imperatrice));
 
@@ -61,8 +62,8 @@ public sealed class ImperatriceDeLaFalaiseBehaviorTests
         var symphonie = CreateSkill("canon.skill.symphonie-des-enfers", "Damage", "AllEnemies", 6, "Magic");
         var hero = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
         var imperatrice = Combatant.CreateEnemy("canon.enemy.imperatrice", "Impératrice", "Bruiser", 240, [symphonie]);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [hero], [imperatrice]);
-        combat.AdvanceTurn();
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [hero], [imperatrice]);
+        TestTacticalCombatHelper.AdvanceRounds(combat, 1);
         imperatrice.ApplyDamage(120); // 120/240 = 50%, at or below 60%
 
         var decision = new ImperatriceBossBehavior().DecideAction(new BossDecisionContext(combat, imperatrice));
@@ -79,8 +80,8 @@ public sealed class ImperatriceDeLaFalaiseBehaviorTests
         var lame = CreateSkill("canon.skill.lame-de-fond", "Damage", "SingleEnemy", 26);
         var hero = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
         var imperatrice = Combatant.CreateEnemy("canon.enemy.imperatrice", "Impératrice", "Bruiser", 240, [lameRenforcee, lame]);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [hero], [imperatrice]);
-        combat.AdvanceTurn();
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [hero], [imperatrice]);
+        TestTacticalCombatHelper.AdvanceRounds(combat, 1);
         imperatrice.ApplyDamage(210); // 30/240 = 12.5%, under 25%
         hero.ApplyDamage(20); // hero is now damaged, so Lame de fond can target it
 

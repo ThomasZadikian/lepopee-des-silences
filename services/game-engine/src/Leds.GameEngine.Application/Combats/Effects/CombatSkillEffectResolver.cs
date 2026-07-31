@@ -145,7 +145,9 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
     private static int ApplyCostReduction(int baseCost, int reductionPercent) =>
         reductionPercent == 0
             ? baseCost
-            : Math.Max(0, (int)Math.Round(baseCost * (1.0 - reductionPercent / 100.0)));
+            // reductionPercent is negative for a beneficial reduction (e.g. -5 for Mina's
+            // "Protection de Him'Lit"), so adding it (not subtracting) is what shrinks cost.
+            : Math.Max(0, (int)Math.Round(baseCost * (1.0 + reductionPercent / 100.0)));
 
     private static void ResolveHeal(
         ICombatContext combat,

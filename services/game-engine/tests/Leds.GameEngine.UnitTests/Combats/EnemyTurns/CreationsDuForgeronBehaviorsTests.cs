@@ -6,6 +6,7 @@ using Leds.GameEngine.Domain.Combats.StatusEffects;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
+using Leds.GameEngine.UnitTests.Common.Factories;
 
 namespace Leds.GameEngine.UnitTests.Combats.EnemyTurns;
 
@@ -27,17 +28,35 @@ public sealed class CreationsDuForgeronBehaviorsTests
     [Fact]
     public void CreationInstable_ShouldPunishItsLastAttacker()
     {
-        var foyer = CreateSkill("canon.skill.foyer-ouvert", "Debuff", "SingleEnemy", 0, "Magic");
-        var hero = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
-        var creation = Combatant.CreateEnemy("canon.enemy.creation-instable", "Création", "Bruiser", 78, [foyer]);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [hero], [creation]);
-        creation.RecordLastAttacker(hero.Id.Value);
+        // "canon.skill.foyer-ouvert" against the last attacker only fires 65% of the
+        // time (Chance-gated, keyed off the combat/boss ids) — the fixture's boss only
+        // owns that one skill, so a miss falls through to a null decision (neither
+        // "coup-de-plaque" nor "redressement" is in its kit here). Assert the expected
+        // behavior over many fresh combats rather than a single roll, so the test
+        // isn't at the mercy of one random id landing on the losing 35%.
+        const int trials = 300;
+        var hits = 0;
 
-        var decision = new CreationInstableBossBehavior().DecideAction(new BossDecisionContext(combat, creation));
+        for (var i = 0; i < trials; i++)
+        {
+            var foyer = CreateSkill("canon.skill.foyer-ouvert", "Debuff", "SingleEnemy", 0, "Magic");
+            var hero = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
+            var creation = Combatant.CreateEnemy("canon.enemy.creation-instable", "Création", "Bruiser", 78, [foyer]);
+            var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [hero], [creation]);
+            creation.RecordLastAttacker(hero.Id.Value);
 
-        decision.Should().NotBeNull();
-        decision!.SkillKey.Should().Be("canon.skill.foyer-ouvert");
-        decision.TargetIds.Should().BeEquivalentTo(new[] { hero.Id.Value });
+            var decision = new CreationInstableBossBehavior().DecideAction(new BossDecisionContext(combat, creation));
+
+            if (decision is not null
+                && decision.SkillKey == "canon.skill.foyer-ouvert"
+                && decision.TargetIds.SequenceEqual(new[] { hero.Id.Value }))
+            {
+                hits++;
+            }
+        }
+
+        hits.Should().BeGreaterThan(trials / 2,
+            "a 65% chance-gated reaction should fire the overwhelming majority of the time across many combats");
     }
 
     [Fact]
@@ -47,7 +66,7 @@ public sealed class CreationsDuForgeronBehaviorsTests
         var redressement = CreateSkill("canon.skill.redressement", "Buff", "Self", 0, "Physical");
         var hero = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
         var creation = Combatant.CreateEnemy("canon.enemy.creation-instable", "Création", "Bruiser", 78, [coup, redressement]);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [hero], [creation]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [hero], [creation]);
 
         var decision = new CreationInstableBossBehavior().DecideAction(new BossDecisionContext(combat, creation));
 
@@ -61,7 +80,7 @@ public sealed class CreationsDuForgeronBehaviorsTests
         var souffle = CreateSkill("canon.skill.souffle-de-la-forge", "Damage", "SingleEnemy", 10, "Physical");
         var hero = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
         var marteau = Combatant.CreateEnemy("canon.enemy.marteau-vivant", "Marteau", "Bruiser", 64, [souffle]);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [hero], [marteau]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [hero], [marteau]);
 
         marteau.ApplyStatusEffect(CombatStatusEffect.Create(
             "canon.skill.transmutation-alliee:attack", "Transmutation", StatusEffectKind.StatModifier,
@@ -80,7 +99,7 @@ public sealed class CreationsDuForgeronBehaviorsTests
         var coupdegrace = CreateSkill("canon.skill.coup-de-grace-forgeron", "Damage", "SingleEnemy", 22);
         var hero = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
         var marteau = Combatant.CreateEnemy("canon.enemy.marteau-vivant", "Marteau", "Bruiser", 64, [coupdegrace]);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [hero], [marteau]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [hero], [marteau]);
 
         hero.ApplyStatusEffect(CombatStatusEffect.Create(
             "burn", "Brûlure", StatusEffectKind.DamageOverTime,
@@ -99,7 +118,7 @@ public sealed class CreationsDuForgeronBehaviorsTests
         var cadence = CreateSkill("canon.skill.cadence", "Buff", "Self", 0);
         var hero = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
         var marteau = Combatant.CreateEnemy("canon.enemy.marteau-vivant", "Marteau", "Bruiser", 64, [cadence]);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [hero], [marteau]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [hero], [marteau]);
 
         var decision = new MarteauVivantBossBehavior().DecideAction(new BossDecisionContext(combat, marteau));
 
@@ -115,7 +134,7 @@ public sealed class CreationsDuForgeronBehaviorsTests
         var hero = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
         var sentinelle = Combatant.CreateEnemy("canon.enemy.sentinelle-fonte", "Sentinelle", "Support", 82, [transmutation]);
         var marteau = Combatant.CreateEnemy("canon.enemy.marteau-vivant", "Marteau", "Bruiser", 64, []);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [hero], [sentinelle, marteau]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [hero], [sentinelle, marteau]);
 
         var decision = new SentinelleFonteBossBehavior().DecideAction(new BossDecisionContext(combat, sentinelle));
 
@@ -137,8 +156,8 @@ public sealed class CreationsDuForgeronBehaviorsTests
             maxVitality: 100, currentVitality: 100, guard: 0, baseGuard: 0, mana: 0, charge: 0,
             defense: 2);
         var sentinelle = Combatant.CreateEnemy("canon.enemy.sentinelle-fonte", "Sentinelle", "Support", 82, [scorie]);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [sturdy, frail], [sentinelle]);
-        combat.AdvanceTurn(); // move past the turn-1 opener (no Marteau Vivant present anyway)
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [sturdy, frail], [sentinelle]);
+        TestTacticalCombatHelper.AdvanceRounds(combat, 1); // move past the turn-1 opener (no Marteau Vivant present anyway)
 
         var decision = new SentinelleFonteBossBehavior().DecideAction(new BossDecisionContext(combat, sentinelle));
 
@@ -159,7 +178,7 @@ public sealed class CreationsDuForgeronBehaviorsTests
         var contact = CreateSkill("canon.skill.contact", "Damage", "SingleEnemy", 8);
         var hero = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
         var scorie = Combatant.CreateEnemy("canon.enemy.scorie-rampante", "Scorie", "Skirmisher", 30, [laitier, eclat, contact]);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [hero], [scorie]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [hero], [scorie]);
 
         hero.ApplyStatusEffect(CombatStatusEffect.Create(
             "burn", "Brûlure", StatusEffectKind.DamageOverTime,
@@ -179,7 +198,7 @@ public sealed class CreationsDuForgeronBehaviorsTests
         var contact = CreateSkill("canon.skill.contact", "Damage", "SingleEnemy", 8);
         var hero = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
         var scorie = Combatant.CreateEnemy("canon.enemy.scorie-rampante", "Scorie", "Skirmisher", 30, [reformation, contact]);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [hero], [scorie]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [hero], [scorie]);
         scorie.ApplyDamage(20); // 10/30 HP ~= 33%, under 40%
 
         var decision = new ScorieRampanteBossBehavior().DecideAction(new BossDecisionContext(combat, scorie));

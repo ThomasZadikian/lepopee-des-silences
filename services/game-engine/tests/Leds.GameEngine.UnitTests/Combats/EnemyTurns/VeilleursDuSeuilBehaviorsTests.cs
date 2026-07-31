@@ -6,6 +6,7 @@ using Leds.GameEngine.Domain.Combats.StatusEffects;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
+using Leds.GameEngine.UnitTests.Common.Factories;
 
 namespace Leds.GameEngine.UnitTests.Combats.EnemyTurns;
 
@@ -33,7 +34,7 @@ public sealed class VeilleursDuSeuilBehaviorsTests
         var hero = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
         var veilleur1 = Combatant.CreateEnemy("canon.enemy.veilleur-tapis", "Veilleur 1", "Guard", 62, [rempart, tapis]);
         var veilleur2 = Combatant.CreateEnemy("canon.enemy.veilleur-tapis", "Veilleur 2", "Guard", 62, [rempart, tapis]);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [hero], [veilleur1, veilleur2]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [hero], [veilleur1, veilleur2]);
 
         var decision = new VeilleurTapisBossBehavior().DecideAction(new BossDecisionContext(combat, veilleur1));
 
@@ -49,7 +50,7 @@ public sealed class VeilleursDuSeuilBehaviorsTests
         var etouffement = CreateSkill("canon.skill.etouffement-feutre", "Debuff", "SingleEnemy", 0, "Magic");
         var hero = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
         var veilleur = Combatant.CreateEnemy("canon.enemy.veilleur-tapis", "Veilleur", "Guard", 62, [tapis, etouffement]);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [hero], [veilleur]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [hero], [veilleur]);
         // TurnNumber starts at 1 (odd) → alternation picks Pli du tapis.
 
         var decision = new VeilleurTapisBossBehavior().DecideAction(new BossDecisionContext(combat, veilleur));
@@ -67,8 +68,8 @@ public sealed class VeilleursDuSeuilBehaviorsTests
         var hero = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
         var veilleur1 = Combatant.CreateEnemy("canon.enemy.veilleur-tapis", "Veilleur 1", "Guard", 62, [tapis, seuil]);
         var veilleur2 = Combatant.CreateEnemy("canon.enemy.veilleur-tapis", "Veilleur 2", "Guard", 62, []);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [hero], [veilleur1, veilleur2]);
-        combat.AdvanceTurn();
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [hero], [veilleur1, veilleur2]);
+        TestTacticalCombatHelper.AdvanceRounds(combat, 1);
 
         var decision = new VeilleurTapisBossBehavior().DecideAction(new BossDecisionContext(combat, veilleur1));
 
@@ -84,7 +85,7 @@ public sealed class VeilleursDuSeuilBehaviorsTests
         var hero = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
         var porteur = Combatant.CreateEnemy("canon.enemy.porteur-plateau", "Porteur", "Support", 44, [service]);
         var veilleur = Combatant.CreateEnemy("canon.enemy.veilleur-tapis", "Veilleur", "Guard", 60, []);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [hero], [porteur, veilleur]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [hero], [porteur, veilleur]);
         veilleur.ApplyDamage(50); // 10/60 ~= 16.7% HP, well under 60%
 
         var decision = new PorteurPlateauBossBehavior().DecideAction(new BossDecisionContext(combat, porteur));
@@ -101,7 +102,7 @@ public sealed class VeilleursDuSeuilBehaviorsTests
         var hero = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
         var porteur = Combatant.CreateEnemy("canon.enemy.porteur-plateau", "Porteur", "Support", 44, [etiquette]);
         var veilleur = Combatant.CreateEnemy("canon.enemy.veilleur-tapis", "Veilleur", "Guard", 62, []);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [hero], [porteur, veilleur]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [hero], [porteur, veilleur]);
 
         var decision = new PorteurPlateauBossBehavior().DecideAction(new BossDecisionContext(combat, porteur));
 
@@ -117,7 +118,7 @@ public sealed class VeilleursDuSeuilBehaviorsTests
         var hero1 = Combatant.CreateAlly("player.1", "Hero1", "Fighter", 100);
         var hero2 = Combatant.CreateAlly("player.2", "Hero2", "Fighter", 100);
         var echo = Combatant.CreateEnemy("canon.enemy.echo-politesse", "Écho", "Disruptor", 38, [brume]);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [hero1, hero2], [echo]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [hero1, hero2], [echo]);
 
         var decision = new EchoPolitesseBossBehavior().DecideAction(new BossDecisionContext(combat, echo));
 
@@ -133,8 +134,8 @@ public sealed class VeilleursDuSeuilBehaviorsTests
         var formule = CreateSkill("canon.skill.formule-creuse", "Damage", "SingleEnemy", 13, "Magic");
         var hero = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
         var echo = Combatant.CreateEnemy("canon.enemy.echo-politesse", "Écho", "Disruptor", 38, [courbette, formule]);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [hero], [echo]);
-        combat.AdvanceTurn(); // move past the turn-1 special case
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [hero], [echo]);
+        TestTacticalCombatHelper.AdvanceRounds(combat, 1); // move past the turn-1 special case
         echo.ApplyDamage(30); // 8/38 HP ~= 21%, under 50%
 
         var decision = new EchoPolitesseBossBehavior().DecideAction(new BossDecisionContext(combat, echo));
@@ -150,8 +151,8 @@ public sealed class VeilleursDuSeuilBehaviorsTests
         var formule = CreateSkill("canon.skill.formule-creuse", "Damage", "SingleEnemy", 13, "Magic");
         var hero = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
         var echo = Combatant.CreateEnemy("canon.enemy.echo-politesse", "Écho", "Disruptor", 38, [formule]);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [hero], [echo]);
-        combat.AdvanceTurn();
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [hero], [echo]);
+        TestTacticalCombatHelper.AdvanceRounds(combat, 1);
 
         var decision = new EchoPolitesseBossBehavior().DecideAction(new BossDecisionContext(combat, echo));
 
@@ -168,8 +169,8 @@ public sealed class VeilleursDuSeuilBehaviorsTests
         var hero1 = Combatant.CreateAlly("player.1", "Hero1", "Fighter", 100);
         var hero2 = Combatant.CreateAlly("player.2", "Hero2", "Fighter", 100);
         var sentinelle = Combatant.CreateEnemy("canon.enemy.sentinelle-seuil", "Sentinelle", "Bruiser", 88, [verdict, chute]);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [hero1, hero2], [sentinelle]);
-        combat.AdvanceTurn(); // move past the turn-1 special case
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [hero1, hero2], [sentinelle]);
+        TestTacticalCombatHelper.AdvanceRounds(combat, 1); // move past the turn-1 special case
 
         hero1.ApplyStatusEffect(CombatStatusEffect.Create(
             "debuff.defense", "Défense entamée", StatusEffectKind.StatModifier,
@@ -192,8 +193,8 @@ public sealed class VeilleursDuSeuilBehaviorsTests
         var chute = CreateSkill("canon.skill.chute-de-marbre", "Damage", "SingleEnemy", 18);
         var hero = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
         var sentinelle = Combatant.CreateEnemy("canon.enemy.sentinelle-seuil", "Sentinelle", "Bruiser", 88, [verdict, chute]);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [hero], [sentinelle]);
-        combat.AdvanceTurn();
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [hero], [sentinelle]);
+        TestTacticalCombatHelper.AdvanceRounds(combat, 1);
 
         hero.ApplyStatusEffect(CombatStatusEffect.Create(
             "debuff.defense", "Défense entamée", StatusEffectKind.StatModifier,
@@ -212,7 +213,7 @@ public sealed class VeilleursDuSeuilBehaviorsTests
         var chute = CreateSkill("canon.skill.chute-de-marbre", "Damage", "SingleEnemy", 18);
         var hero = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
         var sentinelle = Combatant.CreateEnemy("canon.enemy.sentinelle-seuil", "Sentinelle", "Bruiser", 88, [socle, chute]);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [hero], [sentinelle]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [hero], [sentinelle]);
 
         var decision = new SentinelleSeuilBossBehavior().DecideAction(new BossDecisionContext(combat, sentinelle));
 

@@ -6,6 +6,7 @@ using Leds.GameEngine.Domain.Combats.StatusEffects;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
+using Leds.GameEngine.UnitTests.Common.Factories;
 
 namespace Leds.GameEngine.UnitTests.Combats.EnemyTurns;
 
@@ -35,7 +36,7 @@ public sealed class SqueletteDeSouvenirsBehaviorsTests
         var hero = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
         var squelette = Combatant.CreateEnemy("canon.enemy.squelette-souvenir", "Squelette", "Skirmisher", 34, [griffe, effondrement]);
         var porteur = Combatant.CreateEnemy("canon.enemy.porteur-cendre", "Porteur", "Support", 66, []);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [hero], [squelette, porteur]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [hero], [squelette, porteur]);
         squelette.ApplyDamage(30); // 4/34 HP ~= 12%, under 20%
 
         var decision = new SqueletteSouvenirBossBehavior().DecideAction(new BossDecisionContext(combat, squelette));
@@ -55,7 +56,7 @@ public sealed class SqueletteDeSouvenirsBehaviorsTests
         var hero = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
         var squelette = Combatant.CreateEnemy(
             "canon.enemy.squelette-souvenir", "Squelette", "Skirmisher", 34, [griffe, fragment, etreinte, effondrement]);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [hero], [squelette]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [hero], [squelette]);
         squelette.ApplyDamage(30); // under 20% HP, but alone
 
         var decision = new SqueletteSouvenirBossBehavior().DecideAction(new BossDecisionContext(combat, squelette));
@@ -74,7 +75,7 @@ public sealed class SqueletteDeSouvenirsBehaviorsTests
         var tough = Combatant.CreateAlly("player.2", "Tough", "Fighter", 100);
         var squelette = Combatant.CreateEnemy(
             "canon.enemy.squelette-souvenir", "Squelette", "Skirmisher", 34, [griffe, fragment, etreinte]);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [weak, tough], [squelette]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [weak, tough], [squelette]);
         weak.ApplyDamage(60);
 
         var decision = new SqueletteSouvenirBossBehavior().DecideAction(new BossDecisionContext(combat, squelette));
@@ -90,7 +91,7 @@ public sealed class SqueletteDeSouvenirsBehaviorsTests
         var hero = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
         var porteur = Combatant.CreateEnemy("canon.enemy.porteur-cendre", "Porteur", "Support", 66, [fardeau]);
         var squelette = Combatant.CreateEnemy("canon.enemy.squelette-souvenir", "Squelette", "Skirmisher", 34, []);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [hero], [porteur, squelette]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [hero], [porteur, squelette]);
         squelette.ApplyDamage(30); // 4/34 HP ~= 12%, under 40%
 
         var decision = new PorteurCendreBossBehavior().DecideAction(new BossDecisionContext(combat, porteur));
@@ -107,7 +108,7 @@ public sealed class SqueletteDeSouvenirsBehaviorsTests
         var sursaut = CreateSkill("canon.skill.sursaut-memoriel", "Damage", "SingleEnemy", 12, "Magic");
         var hero = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
         var porteur = Combatant.CreateEnemy("canon.enemy.porteur-cendre", "Porteur", "Support", 66, [jet, sursaut]);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [hero], [porteur]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [hero], [porteur]);
 
         var decision = new PorteurCendreBossBehavior().DecideAction(new BossDecisionContext(combat, porteur));
 
@@ -124,7 +125,11 @@ public sealed class SqueletteDeSouvenirsBehaviorsTests
         var silenced = Combatant.CreateAlly("player.1", "Silenced", "Fighter", 100);
         var other = Combatant.CreateAlly("player.2", "Other", "Fighter", 100);
         var choeur = Combatant.CreateEnemy("canon.enemy.choeur-muet", "Chœur", "Disruptor", 74, [note, silenceSkill]);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [silenced, other], [choeur]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [silenced, other], [choeur]);
+        // Move past the turn-1 "berceuse d'ouverture" opener (80% chance, needs a skill
+        // this fixture's boss doesn't own) so the silenced-target priority below is what
+        // actually decides the turn, matching this test's "Regardless" intent.
+        TestTacticalCombatHelper.AdvanceRounds(combat, 1);
 
         silenced.ApplyStatusEffect(CombatStatusEffect.Create(
             "canon.skill.silence:Silence", "Silence", StatusEffectKind.Silence, currentTick: 0, durationTicks: 5000));
@@ -143,7 +148,7 @@ public sealed class SqueletteDeSouvenirsBehaviorsTests
         var silenceSkill = CreateSkill("canon.skill.silence", "Debuff", "SingleEnemy", 0, "Magic");
         var hero = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
         var choeur = Combatant.CreateEnemy("canon.enemy.choeur-muet", "Chœur", "Disruptor", 74, [berceuse, silenceSkill]);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [hero], [choeur]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [hero], [choeur]);
 
         var decision = new ChoeurMuetBossBehavior().DecideAction(new BossDecisionContext(combat, choeur));
 
@@ -157,8 +162,8 @@ public sealed class SqueletteDeSouvenirsBehaviorsTests
         var lecture = CreateSkill("canon.skill.lecture-des-silences", "Damage", "SingleEnemy", 15, "Magic");
         var hero = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
         var choeur = Combatant.CreateEnemy("canon.enemy.choeur-muet", "Chœur", "Disruptor", 74, [lecture]);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [hero], [choeur]);
-        combat.AdvanceTurn();
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [hero], [choeur]);
+        TestTacticalCombatHelper.AdvanceRounds(combat, 1);
 
         var decision = new ChoeurMuetBossBehavior().DecideAction(new BossDecisionContext(combat, choeur));
 

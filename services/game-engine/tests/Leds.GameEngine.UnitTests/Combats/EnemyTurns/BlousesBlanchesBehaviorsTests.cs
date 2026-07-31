@@ -6,6 +6,7 @@ using Leds.GameEngine.Domain.Combats.StatusEffects;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
+using Leds.GameEngine.UnitTests.Common.Factories;
 
 namespace Leds.GameEngine.UnitTests.Combats.EnemyTurns;
 
@@ -29,7 +30,7 @@ public sealed class BlousesBlanchesBehaviorsTests
         var placebo = CreateSkill("canon.skill.placebo", "Buff", "Self", 10, "Magic");
         var hero = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
         var infirmiere = Combatant.CreateEnemy("canon.enemy.infirmiere-deni", "Infirmière", "Disruptor", 68, [placebo]);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [hero], [infirmiere]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [hero], [infirmiere]);
 
         var decision = new InfirmiereDeniBossBehavior().DecideAction(new BossDecisionContext(combat, infirmiere));
 
@@ -45,8 +46,8 @@ public sealed class BlousesBlanchesBehaviorsTests
         var anagramme = CreateSkill("canon.skill.anagramme", "Damage", "SingleEnemy", 17, "Magic");
         var hero = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
         var infirmiere = Combatant.CreateEnemy("canon.enemy.infirmiere-deni", "Infirmière", "Disruptor", 68, [bordage, anagramme]);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [hero], [infirmiere]);
-        combat.AdvanceTurn(); // move past the turn-1 opener
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [hero], [infirmiere]);
+        TestTacticalCombatHelper.AdvanceRounds(combat, 1); // move past the turn-1 opener
 
         var decision = new InfirmiereDeniBossBehavior().DecideAction(new BossDecisionContext(combat, infirmiere));
 
@@ -61,7 +62,7 @@ public sealed class BlousesBlanchesBehaviorsTests
         var nevrose = CreateSkill("canon.skill.nevrose", "Damage", "SingleEnemy", 10, "Magic");
         var hero = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
         var souvenir = Combatant.CreateEnemy("canon.enemy.souvenir-alite", "Souvenir", "Skirmisher", 56, [nevrose]);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [hero], [souvenir]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [hero], [souvenir]);
 
         var decision = new SouvenirAliteBossBehavior().DecideAction(new BossDecisionContext(combat, souvenir));
 
@@ -84,7 +85,7 @@ public sealed class BlousesBlanchesBehaviorsTests
             maxVitality: 100, currentVitality: 100, guard: 0, baseGuard: 0, mana: 0, charge: 0,
             defense: 2);
         var souvenir = Combatant.CreateEnemy("canon.enemy.souvenir-alite", "Souvenir", "Skirmisher", 56, [visite, drap]);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [sturdy, frail], [souvenir]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [sturdy, frail], [souvenir]);
 
         foreach (var hero in new[] { sturdy, frail })
         {
@@ -107,7 +108,7 @@ public sealed class BlousesBlanchesBehaviorsTests
         var weak = Combatant.CreateAlly("player.1", "Weak", "Fighter", 40);
         var strong = Combatant.CreateAlly("player.2", "Strong", "Fighter", 100);
         var regisseur = Combatant.CreateEnemy("canon.enemy.regisseur-blanc", "Régisseur", "Support", 96, [contemplation]);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [weak, strong], [regisseur]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [weak, strong], [regisseur]);
 
         var decision = new RegisseurBlancBossBehavior().DecideAction(new BossDecisionContext(combat, regisseur));
 
@@ -122,7 +123,7 @@ public sealed class BlousesBlanchesBehaviorsTests
         var tourdeclef = CreateSkill("canon.skill.tour-de-clef", "Debuff", "SingleEnemy", 0, "Magic");
         var hero = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
         var regisseur = Combatant.CreateEnemy("canon.enemy.regisseur-blanc", "Régisseur", "Support", 96, [tourdeclef]);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [hero], [regisseur]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [hero], [regisseur]);
 
         hero.ApplyStatusEffect(CombatStatusEffect.Create(
             "canon.skill.contemplation-infinie:StatModifier", "Contemplation infinie", StatusEffectKind.StatModifier,
@@ -141,7 +142,7 @@ public sealed class BlousesBlanchesBehaviorsTests
         var extinction = CreateSkill("canon.skill.extinction-des-feux", "Damage", "SingleEnemy", 24, "Magic");
         var hero = Combatant.CreateAlly("player.1", "Hero", "Fighter", 100);
         var regisseur = Combatant.CreateEnemy("canon.enemy.regisseur-blanc", "Régisseur", "Support", 96, [extinction]);
-        var combat = Combat.Create(CombatId.New(), RunId.New(), RoomId.New(), NodeId.New(), [hero], [regisseur]);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [hero], [regisseur]);
 
         hero.ApplyStatusEffect(CombatStatusEffect.Create(
             "canon.skill.contemplation-infinie:StatModifier", "Contemplation infinie", StatusEffectKind.StatModifier,
