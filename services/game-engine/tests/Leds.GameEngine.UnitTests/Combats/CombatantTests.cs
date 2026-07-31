@@ -39,117 +39,34 @@ public sealed class CombatantTests
     }
 
     [Fact]
-    public void GainTempoMomentum_ShouldAccumulate_UpToTheCap()
-    {
-        var combatant = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
-
-        combatant.GainTempoMomentum(300);
-        combatant.GainTempoMomentum(300);
-
-        combatant.TempoMomentumPerMille.Should().Be(500, because: "momentum is capped at 500 per-mille.");
-    }
-
-    [Fact]
-    public void DecayTempoMomentum_ShouldReduceOverElapsedTicks()
-    {
-        var combatant = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
-        combatant.GainTempoMomentum(100);
-
-        combatant.DecayTempoMomentum(50); // 50 ticks / 10 ticks-per-point = 5 points lost.
-
-        combatant.TempoMomentumPerMille.Should().Be(95);
-    }
-
-    [Fact]
-    public void DecayTempoMomentum_ShouldNeverGoBelowZero()
-    {
-        var combatant = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
-        combatant.GainTempoMomentum(20);
-
-        combatant.DecayTempoMomentum(1000);
-
-        combatant.TempoMomentumPerMille.Should().Be(0);
-    }
-
-    [Fact]
-    public void RegisterAtbAction_ShouldResetTempoMomentum_ToZero()
-    {
-        var combatant = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
-        combatant.GainTempoMomentum(200);
-
-        combatant.RegisterAtbAction(currentTick: 0, recoveryTicks: 10);
-
-        combatant.TempoMomentumPerMille.Should().Be(0);
-    }
-
-    [Fact]
     public void HasActedThisCombat_ShouldBeFalse_OnANewlyCreatedCombatant()
     {
         Combatant.CreateAlly("player.self", "Hero", "Fighter", 100).HasActedThisCombat.Should().BeFalse();
     }
 
     [Fact]
-    public void RegisterAtbAction_ShouldSetHasActedThisCombat_ToTrue()
+    public void MarkActedThisCombat_ShouldSetHasActedThisCombat_ToTrue()
     {
         var combatant = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
 
-        combatant.RegisterAtbAction(currentTick: 0, recoveryTicks: 10);
+        combatant.MarkActedThisCombat();
 
         combatant.HasActedThisCombat.Should().BeTrue();
     }
 
     [Fact]
-    public void RecalculateAtbFillPerTick_ShouldReactToLiveEffectiveSpeed()
-    {
-        var combatant = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 80, speed: 10);
-
-        combatant.RecalculateAtbFillPerTick(opponentAverageEffectiveSpeed: 10);
-        var before = combatant.AtbFillPerTick;
-
-        combatant.ApplyStatusEffect(Leds.GameEngine.Domain.Combats.StatusEffects.CombatStatusEffect.Create(
-            "speed-buff", "Speed Buff", Leds.GameEngine.Domain.Combats.StatusEffects.StatusEffectKind.StatModifier,
-            currentTick: 0, durationTicks: 6000, magnitude: 10, stat: Leds.GameEngine.Domain.Combats.StatusEffects.CombatStat.Speed));
-
-        combatant.RecalculateAtbFillPerTick(opponentAverageEffectiveSpeed: 10);
-
-        combatant.AtbFillPerTick.Should().BeGreaterThan(before,
-            because: "tempo must react live to a mid-combat Speed buff, not stay frozen at the pre-buff value.");
-    }
-
-    [Fact]
-    public void RecalculateAtbFillPerTick_ShouldApplyAtbTempoModifier_IndependentlyOfSpeedStat()
-    {
-        var combatant = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 80, speed: 10);
-        combatant.RecalculateAtbFillPerTick(opponentAverageEffectiveSpeed: 10);
-        var before = combatant.AtbFillPerTick;
-
-        // "Une destinée cruelle": Speed itself is unaffected here (no StatModifier(Speed)
-        // active) — only the separate ATB tempo modifier slows the gauge.
-        combatant.ApplyStatusEffect(Leds.GameEngine.Domain.Combats.StatusEffects.CombatStatusEffect.Create(
-            "destinee-cruelle:tempo", "Une destinée cruelle", Leds.GameEngine.Domain.Combats.StatusEffects.StatusEffectKind.StatModifier,
-            currentTick: 0, durationTicks: 0, magnitude: -15,
-            stat: Leds.GameEngine.Domain.Combats.StatusEffects.CombatStat.AtbTempoModifier, isPermanent: true));
-
-        combatant.RecalculateAtbFillPerTick(opponentAverageEffectiveSpeed: 10);
-
-        combatant.EffectiveSpeed.Should().Be(10, because: "the Speed stat itself must stay untouched.");
-        combatant.AtbFillPerTick.Should().BeLessThan(before,
-            because: "AtbTempoModifier slows the gauge directly, independently of Speed.");
-    }
-
-    [Fact]
-    public void IsAtbLocked_ShouldBeTrue_WhenSilenced()
+    public void IsActivationBlocked_ShouldBeTrue_WhenSilenced()
     {
         var combatant = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
 
-        combatant.IsAtbLocked.Should().BeFalse();
+        combatant.IsActivationBlocked.Should().BeFalse();
 
         combatant.ApplyStatusEffect(Leds.GameEngine.Domain.Combats.StatusEffects.CombatStatusEffect.Create(
             "silence", "Silence", Leds.GameEngine.Domain.Combats.StatusEffects.StatusEffectKind.Silence,
             currentTick: 0, durationTicks: 2500));
 
         combatant.IsSilenced.Should().BeTrue();
-        combatant.IsAtbLocked.Should().BeTrue(because: "Silence blocks the next action exactly like Stun.");
+        combatant.IsActivationBlocked.Should().BeTrue(because: "Silence blocks the next action exactly like Stun.");
     }
 
     [Fact]
@@ -561,75 +478,4 @@ public sealed class CombatantTests
         combatant.Skills.Should().NotContain(s => s.Key == "canon.skill.flamme-froide");
     }
 
-    // -----------------------------------------------------------------------
-    // Row (Front/Back positioning)
-    // -----------------------------------------------------------------------
-
-    [Fact]
-    public void Row_ShouldDefaultToFront()
-    {
-        var combatant = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
-
-        combatant.Row.Should().Be(CombatRow.Front);
-        combatant.RowAtbFillBonusPercent.Should().Be(0);
-        combatant.RowFocusBonusPercent.Should().Be(0);
-        combatant.RowIncomingPhysicalDamageReductionPercent.Should().Be(0);
-        combatant.RowHealingReceivedReductionPercent.Should().Be(0);
-        combatant.RowPhysicalDamageDealtReductionPercent.Should().Be(0);
-        combatant.RowAccuracyPenaltyPercent.Should().Be(0);
-    }
-
-    [Fact]
-    public void SetRow_ShouldSwitchToBack_AndExposeAllBackRowBonusesAndMaluses()
-    {
-        var combatant = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
-
-        combatant.SetRow(CombatRow.Back);
-
-        combatant.Row.Should().Be(CombatRow.Back);
-        combatant.RowAtbFillBonusPercent.Should().Be(5);
-        combatant.RowFocusBonusPercent.Should().Be(3);
-        combatant.RowIncomingPhysicalDamageReductionPercent.Should().Be(5);
-        combatant.RowHealingReceivedReductionPercent.Should().Be(10);
-        combatant.RowPhysicalDamageDealtReductionPercent.Should().Be(15);
-        combatant.RowAccuracyPenaltyPercent.Should().Be(5);
-    }
-
-    [Fact]
-    public void SetRow_ShouldBeMutableBackToFront()
-    {
-        var combatant = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
-        combatant.SetRow(CombatRow.Back);
-
-        combatant.SetRow(CombatRow.Front);
-
-        combatant.Row.Should().Be(CombatRow.Front);
-        combatant.RowPhysicalDamageDealtReductionPercent.Should().Be(0);
-    }
-
-    [Fact]
-    public void EffectiveFocus_ShouldIncludeRowFocusBonus_WhenInBackRow()
-    {
-        var combatant = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 80, focus: 10);
-        var frontFocus = combatant.EffectiveFocus;
-
-        combatant.SetRow(CombatRow.Back);
-
-        combatant.EffectiveFocus.Should().BeGreaterThan(frontFocus,
-            because: "Back row grants +3% Focus on top of the base value.");
-    }
-
-    [Fact]
-    public void RecalculateAtbFillPerTick_ShouldBeFaster_WhenInBackRow()
-    {
-        var combatant = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 80, speed: 10);
-        combatant.RecalculateAtbFillPerTick(opponentAverageEffectiveSpeed: 10);
-        var frontFill = combatant.AtbFillPerTick;
-
-        combatant.SetRow(CombatRow.Back);
-        combatant.RecalculateAtbFillPerTick(opponentAverageEffectiveSpeed: 10);
-
-        combatant.AtbFillPerTick.Should().BeGreaterThan(frontFill,
-            because: "Back row grants +5% ATB fill-per-tick speed.");
-    }
 }

@@ -30,15 +30,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Extensively tests removed ATB-era Combatant mechanics (AtbFillPerTick,
-         TempoMomentum, RegisterAtbAction, Row/SetRow/CombatRow, Row*Percent bonuses) —
-         needs a full rewrite against whatever Combatant surface is current, not a
-         mechanical fixture swap. Flagged as its own follow-up (Combatant currently has
-         zero unit coverage as a result). -->
-    <Compile Remove="Combats\CombatantTests.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
     <Folder Include="Events\ResolveNodeEvent\" />
   </ItemGroup>
 
