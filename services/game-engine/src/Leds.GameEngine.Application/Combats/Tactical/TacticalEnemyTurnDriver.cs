@@ -41,6 +41,31 @@ public sealed class TacticalEnemyTurnDriver : ITacticalEnemyTurnDriver
         IReadOnlyCollection<Combatant> Targets);
 
     /// <summary>
+    /// Les cases qu'un geste adverse s'apprête à couvrir, pour que le joueur puisse les lire
+    /// avant que le coup ne parte.
+    /// </summary>
+    /// <remarks>
+    /// La forme fait foi : c'est elle que la résolution emploiera. On y adjoint les cases des
+    /// cibles réellement retenues, parce qu'une interception (SFD §6.4) peut ramener dans la
+    /// liste un combattant situé hors de la zone nominale, et qu'il serait malhonnête de le
+    /// frapper sans l'avoir annoncé. Une forme <c>carte</c> ne s'annonce pas case par case —
+    /// on se rabat sur les seules cibles, faute de quoi le plateau entier clignoterait.
+    /// </remarks>
+    private static IReadOnlyList<GridPosition> TelegraphCellsFor(
+        Domain.Combats.Tactical.TacticalCombat combat, EnemySkillPlan action)
+    {
+        var shape = TacticalSkillProfile.For(action.Skill).AreaShape;
+
+        var cells = shape == TacticalAreaShape.Map
+            ? []
+            : TacticalTargeting.CellsInArea(combat.Battlefield, action.Target, shape);
+
+        return [.. cells
+            .Concat(action.Targets.Select(t => combat.PositionOf(t.Id.Value)))
+            .Distinct()];
+    }
+
+    /// <summary>
     /// Plafond de sécurité sur les tours enchaînés. Un combat réel n'en produit qu'une poignée ;
     /// ce garde-fou n'existe que pour qu'un état incohérent échoue franchement au lieu de
     /// boucler indéfiniment dans une requête HTTP.
@@ -165,6 +190,12 @@ public sealed class TacticalEnemyTurnDriver : ITacticalEnemyTurnDriver
         combat.OrientToward(actorId, action.Target);
         if (combat.NextActionRestrictedToBasicAttack)
             combat.ConsumeBasicAttackRestriction();
+
+        // La zone est relevée AVANT la résolution : une cible vaincue quitte aussitôt la grille
+        // (SFD §20.1) et sa case ne figurerait plus dans l'annonce, alors que c'est précisément
+        // là que le coup est parti.
+        var telegraph = TelegraphCellsFor(combat, action);
+
         var resolution = _effectResolver.Resolve(combat, actor, action.Skill, action.Targets);
         foreach (var affected in action.Targets)
         {
@@ -174,7 +205,7 @@ public sealed class TacticalEnemyTurnDriver : ITacticalEnemyTurnDriver
             combat.OrientToward(affected.Id.Value, facingTarget);
         }
         var impacts = Runs.TacticalCombat.TacticalImpactRecorder.Diff(
-            before, action.Targets, combat);
+            before, action.Targets, combat, resolution.LogEntries);
         Runs.TacticalCombat.TacticalChargeRules.AwardUsefulAction(actor, action.Targets, impacts);
 
         var tactical = TacticalSkillProfile.For(action.Skill);
@@ -192,7 +223,8 @@ public sealed class TacticalEnemyTurnDriver : ITacticalEnemyTurnDriver
             action.Skill.Key,
             action.Skill.DisplayName,
             action.Target,
-            impacts));
+            impacts,
+            telegraph));
 
         log.Add(new CombatLogEntryDto(
             OccurredAtUtc: _clock.UtcNow.UtcDateTime,

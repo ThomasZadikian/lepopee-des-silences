@@ -7,7 +7,13 @@ public sealed record TacticalImpactDto(
     int Y,
     /// <summary>Vitalité perdue. Négative pour un soin — la même case sert aux deux.</summary>
     int VitalityDelta,
-    bool Defeated);
+    bool Defeated,
+    /// <summary>
+    /// Le coup est parti mais n'a pas touché. Sans ce drapeau, une esquive est indistinguable
+    /// d'une compétence sans effet chiffré : dans les deux cas la vitalité ne bouge pas, et
+    /// le joueur voit une action se lancer sans jamais savoir pourquoi elle n'a rien fait.
+    /// </summary>
+    bool Missed = false);
 
 /// <summary>Une case du trajet, dans l'ordre où elle est foulée.</summary>
 public sealed record TacticalStepDto(int X, int Y);
@@ -38,17 +44,36 @@ public sealed record TacticalCombatEventDto(
     string? SkillName,
     int? TargetX,
     int? TargetY,
-    IReadOnlyList<TacticalImpactDto> Impacts)
+    IReadOnlyList<TacticalImpactDto> Impacts,
+    /// <summary>
+    /// Les cases que ce geste va couvrir, annoncées <b>avant</b> qu'il ne parte.
+    /// </summary>
+    /// <remarks>
+    /// C'est la seule information qu'aucun état ne porte : une fois le coup résolu, la zone a
+    /// disparu et il n'en reste que les conséquences. Renseignée par le serveur plutôt que
+    /// devinée côté client, parce que lui seul connaît la forme réellement employée et les
+    /// cibles réellement retenues — et parce qu'une cible manquée doit tout de même figurer
+    /// dans la zone annoncée. Pour un déplacement, c'est le trajet lui-même.
+    /// </remarks>
+    IReadOnlyList<TacticalStepDto>? TelegraphCells = null)
 {
     public const string MoveKind = "Move";
     public const string SkillKind = "Skill";
     public const string ItemKind = "Item";
 
+    private static IReadOnlyList<TacticalStepDto> Cells(
+        IEnumerable<Domain.Combats.Tactical.GridPosition> cells) =>
+        [.. cells.Select(p => new TacticalStepDto(p.X, p.Y))];
+
     public static TacticalCombatEventDto Move(
-        Guid actorId, string actorName, IEnumerable<Domain.Combats.Tactical.GridPosition> path) =>
-        new(MoveKind, actorId, actorName,
-            [.. path.Select(p => new TacticalStepDto(p.X, p.Y))],
-            null, null, null, null, []);
+        Guid actorId, string actorName, IEnumerable<Domain.Combats.Tactical.GridPosition> path)
+    {
+        // Le trajet EST l'annonce : le montrer avant de l'emprunter dit d'où la créature va
+        // surgir, ce qui devient illisible une fois qu'elle est arrivée.
+        var steps = Cells(path);
+
+        return new(MoveKind, actorId, actorName, steps, null, null, null, null, [], steps);
+    }
 
     public static TacticalCombatEventDto Skill(
         Guid actorId,
@@ -56,8 +81,10 @@ public sealed record TacticalCombatEventDto(
         string skillKey,
         string skillName,
         Domain.Combats.Tactical.GridPosition target,
-        IReadOnlyList<TacticalImpactDto> impacts) =>
-        new(SkillKind, actorId, actorName, [], skillKey, skillName, target.X, target.Y, impacts);
+        IReadOnlyList<TacticalImpactDto> impacts,
+        IEnumerable<Domain.Combats.Tactical.GridPosition>? telegraphCells = null) =>
+        new(SkillKind, actorId, actorName, [], skillKey, skillName, target.X, target.Y, impacts,
+            telegraphCells is null ? [new TacticalStepDto(target.X, target.Y)] : Cells(telegraphCells));
 
     public static TacticalCombatEventDto Item(
         Guid actorId,
@@ -65,6 +92,8 @@ public sealed record TacticalCombatEventDto(
         string itemKey,
         string itemName,
         Domain.Combats.Tactical.GridPosition target,
-        IReadOnlyList<TacticalImpactDto> impacts) =>
-        new(ItemKind, actorId, actorName, [], itemKey, itemName, target.X, target.Y, impacts);
+        IReadOnlyList<TacticalImpactDto> impacts,
+        IEnumerable<Domain.Combats.Tactical.GridPosition>? telegraphCells = null) =>
+        new(ItemKind, actorId, actorName, [], itemKey, itemName, target.X, target.Y, impacts,
+            telegraphCells is null ? [new TacticalStepDto(target.X, target.Y)] : Cells(telegraphCells));
 }

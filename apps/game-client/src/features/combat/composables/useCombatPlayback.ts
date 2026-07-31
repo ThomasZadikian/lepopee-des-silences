@@ -37,6 +37,29 @@ export const FLOAT_RISE_PX = 30;
 /** Durée de la transition entre les tours (fondu). // O-017 */
 export const TURN_TRANSITION_MS = 300;
 
+/**
+ * Durée pendant laquelle la zone d'un geste adverse reste allumée avant qu'il ne parte.
+ *
+ * C'est un temps de lecture, pas une temporisation : sans lui, l'adversaire se déplace et
+ * frappe dans le même souffle, et le joueur découvre la portée d'une compétence en la
+ * subissant. Calé assez haut pour qu'on ait le temps de compter les cases, assez bas pour
+ * qu'une file de six créatures ne devienne pas une attente. // BALANCE KNOB
+ */
+export const TELEGRAPH_MS = 1200;
+
+/**
+ * L'annonce d'un geste à venir : ce que l'adversaire s'apprête à couvrir.
+ *
+ * Vit ici et non dans le rendu parce que sa durée fait partie du rythme du combat, au même
+ * titre que le pas de marche ou la retombée d'un coup.
+ */
+export type Telegraph = {
+  /** `Move` trace un trajet, une action trace une zone d'impact — deux lectures distinctes. */
+  kind: 'Move' | 'Skill' | 'Item';
+  cells: Array<{ x: number; y: number }>;
+  label: string;
+};
+
 /** Multiplicateur de timing pour les ennemis (O-018). */
 export const ENEMY_STEP_MULTIPLIER = 1.2; // 20% plus lent
 /** Multiplicateur de timing pour le settle des ennemis (O-018). */
@@ -87,6 +110,8 @@ export type WalkAnimation = {
 const ALLY_HIT_COLOR = '#ff8f7a';
 const ENEMY_HIT_COLOR = '#ffd98a';
 const HEAL_COLOR = '#86dcb4';
+/** Gris froid : un coup manqué n'est pas une quantité, il ne doit pas se lire comme un chiffre. */
+const MISS_COLOR = '#c3c0d6';
 
 export function useCombatPlayback() {
   const walk = shallowRef<WalkAnimation | null>(null);
@@ -102,6 +127,9 @@ export function useCombatPlayback() {
   // O-017: État de transition entre les tours
   const isTransitioning = ref(false);
   const transitionPhase = ref<'fadeOut' | 'fadeIn' | null>(null);
+
+  /** La zone annoncée par le geste adverse en cours de préparation. */
+  const telegraph = shallowRef<Telegraph | null>(null);
 
   let floatSeq = 0;
   let impactSeq = 0;
@@ -119,6 +147,7 @@ export function useCombatPlayback() {
     pinned.value = {};
     actionBanner.value = null;
     pendingSorts.value = [];
+    telegraph.value = null;
     isPlaying.value = false;
     // O-017: Réinitialiser l'état de transition
     isTransitioning.value = false;
@@ -198,7 +227,7 @@ export function useCombatPlayback() {
   }
 
   function pushFloat(
-    x: number, y: number, delta: number, targetIsAlly: boolean, now: number,
+    x: number, y: number, delta: number, targetIsAlly: boolean, now: number, missed = false,
   ) {
     // Un soin monte en vert avec un signe explicite : « +8 » et « −8 » ne doivent jamais se
     // confondre d'un coup d'œil.
@@ -210,11 +239,41 @@ export function useCombatPlayback() {
         id: (floatSeq += 1),
         x,
         y,
-        text: healed ? `+${Math.abs(delta)}` : `−${delta}`,
-        color: healed ? HEAL_COLOR : targetIsAlly ? ALLY_HIT_COLOR : ENEMY_HIT_COLOR,
+        // Un coup manqué monte en toutes lettres et en gris : c'est un événement, pas une
+        // quantité, et rien ne doit laisser croire qu'il a coûté quelque chose.
+        text: missed ? 'Manqué' : healed ? `+${Math.abs(delta)}` : `−${delta}`,
+        color: missed
+          ? MISS_COLOR
+          : healed ? HEAL_COLOR : targetIsAlly ? ALLY_HIT_COLOR : ENEMY_HIT_COLOR,
         bornAt: now,
       },
     ];
+  }
+
+  /**
+   * Allume la zone du geste à venir, laisse au joueur le temps de la lire, puis l'éteint.
+   *
+   * Un geste sans cases annoncées (chronologie tronquée, ancien serveur) retombe sur le simple
+   * temps de réflexion : mieux vaut une pause muette qu'une annonce vide.
+   */
+  async function announce(event: TacticalCombatEventDto) {
+    const cells = event.telegraphCells ?? [];
+
+    if (cells.length === 0) {
+      await wait(THINK_MS);
+      return;
+    }
+
+    telegraph.value = {
+      kind: event.kind,
+      cells: cells.map((cell) => ({ x: cell.x, y: cell.y })),
+      label: event.kind === 'Move'
+        ? `${event.actorName} se déplace`
+        : `${event.actorName} prépare « ${event.skillName ?? '…'} »`,
+    };
+
+    await wait(TELEGRAPH_MS);
+    telegraph.value = null;
   }
 
   /**
@@ -255,9 +314,12 @@ export function useCombatPlayback() {
           transitionPhase.value = null;
         }
 
-        // L'adversaire prend le temps de décider. Un allié agit sur ordre du joueur : il n'a
-        // rien à peser, et le faire attendre passerait pour de la latence.
-        if (beginsEnemyTurn) await wait(THINK_MS);
+        // L'adversaire annonce avant d'agir — chaque geste, pas seulement le premier du tour :
+        // un déplacement puis une frappe sont deux zones différentes, et c'est justement la
+        // seconde que le joueur doit pouvoir lire. Un allié agit sur ordre du joueur, qui vient
+        // de désigner sa cible : lui montrer sa propre zone ne lui apprendrait rien et le faire
+        // attendre passerait pour de la latence.
+        if (!actorIsAlly) await announce(event);
         previousActorId = event.actorId;
 
         if (event.kind === 'Move' && event.path.length > 0) {
@@ -298,8 +360,10 @@ export function useCombatPlayback() {
           const actorPos = pinned.value[event.actorId] ?? event.path[0] ?? null;
 
           for (const impact of event.impacts) {
-            pushFloat(impact.x, impact.y, impact.vitalityDelta, allyIds.has(impact.combatantId), at);
-            pushImpact(impact.x, impact.y, allyIds.has(impact.combatantId), at);
+            const targetIsAlly = allyIds.has(impact.combatantId);
+            pushFloat(impact.x, impact.y, impact.vitalityDelta, targetIsAlly, at, impact.missed);
+            // Un coup manqué n'a rien percuté : pas d'onde d'impact, seulement la mention.
+            if (!impact.missed) pushImpact(impact.x, impact.y, targetIsAlly, at);
           }
 
           if (
@@ -331,6 +395,7 @@ export function useCombatPlayback() {
       walk.value = null;
       pinned.value = {};
       actionBanner.value = null;
+      telegraph.value = null;
       isPlaying.value = false;
       // O-017: Réinitialiser l'état de transition
       isTransitioning.value = false;
@@ -362,6 +427,7 @@ export function useCombatPlayback() {
     impacts,
     pendingSorts,
     actionBanner,
+    telegraph,
     isPlaying: computed(() => isPlaying.value),
     isTransitioning: computed(() => isTransitioning.value), // O-017
     transitionPhase: computed(() => transitionPhase.value), // O-017

@@ -251,6 +251,11 @@ export type TacticalImpactDto = {
   /** Vitalité perdue ; négative pour un soin. */
   vitalityDelta: number;
   defeated: boolean;
+  /**
+   * Le coup est parti mais n'a pas touché. Sans ce drapeau, une esquive est indistinguable
+   * d'une action sans effet chiffré : dans les deux cas la vitalité ne bouge pas.
+   */
+  missed: boolean;
 };
 
 /**
@@ -270,6 +275,13 @@ export type TacticalCombatEventDto = {
   targetX: number | null;
   targetY: number | null;
   impacts: TacticalImpactDto[];
+  /**
+   * Les cases que ce geste va couvrir, montrées <b>avant</b> qu'il ne parte.
+   *
+   * C'est la seule information qu'aucun état ne porte : une fois le coup résolu, la zone a
+   * disparu et il n'en reste que les conséquences. Pour un déplacement, c'est le trajet.
+   */
+  telegraphCells: Array<{ x: number; y: number }> | null;
 };
 
 export type TacticalCombatResponse = {

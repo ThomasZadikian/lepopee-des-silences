@@ -790,6 +790,66 @@ const threatCells = computed<Set<string>>(() => {
   return cells;
 });
 
+/**
+ * La portée de déplacement de l'allié survolé.
+ *
+ * L'ennemi survolé montre déjà son emprise complète (déplacement + portée) via
+ * <c>threatCells</c> ; un allié, lui, ne montrait rien tant qu'il n'était pas l'unité active.
+ * On répond ici à la même question posée dans l'autre sens — « jusqu'où celui-là peut-il aller
+ * quand son tour viendra ? » — sans reprendre la hachure rouge, qui ne veut dire que menace.
+ * L'unité active en est exclue : sa portée est déjà peinte en permanence.
+ */
+const hoveredAllyCells = computed<Set<string>>(() => {
+  const field = battlefield.value;
+  const hovered = hoveredCell.value;
+  if (!field || !hovered) return new Set();
+  // Une compétence armée détourne toute la lecture du plateau vers sa propre zone.
+  if (store.selectedSkillKey || store.selectedItemId) return new Set();
+
+  const ally = (store.combat?.allies ?? []).find(
+    (unit) => unit.x === hovered.x
+      && unit.y === hovered.y
+      && unit.combatant.status !== 'Defeated',
+  );
+
+  if (!ally || ally.combatant.id === store.combat?.activeCombatantId) return new Set();
+  // Un allié qui a déjà bougé ne va plus nulle part ; l'annoncer autrement serait faux.
+  if (ally.hasMoved) return new Set();
+
+  const occupied = new Set(occupiedKeys.value);
+  occupied.delete(battleCellKey(ally.x, ally.y));
+
+  return reachableCellsFrom(
+    {
+      gridWidth: field.width,
+      gridHeight: field.height,
+      elevation: field.elevation,
+      walkable: field.walkable,
+    },
+    ally,
+    ally.movementBudget,
+    occupied,
+  );
+});
+
+/**
+ * Les cases qu'un geste adverse annoncé s'apprête à couvrir, le temps de l'annonce.
+ * Un trajet se lit comme un trajet, une action comme un impact.
+ */
+const telegraphMoveCells = computed<Set<string>>(() => {
+  const announced = store.playback.telegraph;
+  if (!announced || announced.kind !== 'Move') return new Set();
+
+  return new Set(announced.cells.map((cell) => battleCellKey(cell.x, cell.y)));
+});
+
+const telegraphImpactCells = computed<Set<string>>(() => {
+  const announced = store.playback.telegraph;
+  if (!announced || announced.kind === 'Move') return new Set();
+
+  return new Set(announced.cells.map((cell) => battleCellKey(cell.x, cell.y)));
+});
+
 const drawPlan = computed(() => {
   const field = battlefield.value;
   if (!field || canvasSize.value.width === 0) return [];
@@ -804,11 +864,15 @@ const drawPlan = computed(() => {
     floor: field.floor,
     theme: roomTheme.value,
     ambientTint: 'neutral',
-    reachableCells: reachableCells.value,
+    // La portée de l'allié survolé emprunte la même surbrillance que le déplacement du
+    // combattant actif : c'est la même information, lue à l'avance sur quelqu'un d'autre.
+    reachableCells: new Set([...reachableCells.value, ...hoveredAllyCells.value]),
     targetableCells: targetableCells.value,
     blockedCells: blockedCells.value,
-    pathCells: pathCells.value,
-    aoeCells: aoeCells.value,
+    // Un trajet annoncé se peint comme un trajet — la même surbrillance que l'aperçu de
+    // déplacement du joueur, pour qu'il n'y ait qu'une seule grammaire à apprendre.
+    pathCells: new Set([...pathCells.value, ...telegraphMoveCells.value]),
+    aoeCells: new Set([...aoeCells.value, ...telegraphImpactCells.value]),
     threatCells: threatCells.value,
     heightCells: heightCells.value,
     occupiedCells: occupiedHighlightCells.value,
@@ -1525,9 +1589,15 @@ onBeforeUnmount(() => {
 
     <!-- ── Central board ── -->
     <div class="tbattle__board">
+      <!-- Deux temps dans le même bandeau : « X prépare Y » pendant que sa zone s'allume, puis
+           « X — Y » pendant que le coup retombe. L'annonce prime, c'est elle qui est urgente. -->
       <Transition name="tbattle-banner">
-        <p v-if="store.playback.actionBanner" class="tbattle__banner">
-          {{ store.playback.actionBanner }}
+        <p
+          v-if="store.playback.telegraph || store.playback.actionBanner"
+          class="tbattle__banner"
+          :class="{ 'tbattle__banner--telegraph': store.playback.telegraph }"
+        >
+          {{ store.playback.telegraph?.label ?? store.playback.actionBanner }}
         </p>
       </Transition>
 
@@ -1857,6 +1927,12 @@ onBeforeUnmount(() => {
   white-space: nowrap;
   pointer-events: none;
   z-index: 2;
+}
+
+/* L'annonce se distingue du compte rendu : bord rouge, elle prévient au lieu de raconter. */
+.tbattle__banner--telegraph {
+  border-color: rgb(224 96 94 / 65%);
+  color: #ffd8d0;
 }
 
 .tbattle-banner-enter-active,

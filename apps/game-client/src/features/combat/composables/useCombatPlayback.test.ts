@@ -4,6 +4,7 @@ import {
   BASE_STEP_MS,
   dynamicStepDurationMs,
   ENEMY_STEP_MULTIPLIER,
+  TURN_TRANSITION_MS,
   useCombatPlayback,
 } from './useCombatPlayback';
 
@@ -34,5 +35,90 @@ describe('tactical combat playback', () => {
       { x: 1, y: 0 },
       100 + (dynamicStepDurationMs(1, false) / 2),
     ).x).toBeCloseTo(0.5);
+  });
+});
+
+describe('annonce du geste adverse', () => {
+  const enemyId = '11111111-1111-1111-1111-111111111111';
+  const allyId = '22222222-2222-2222-2222-222222222222';
+
+  const stateWith = (allies: string[]) => ({
+    allies: allies.map((id) => ({ combatant: { id } })),
+    enemies: [],
+  } as never);
+
+  const skillEvent = (actorId: string, overrides = {}) => ({
+    kind: 'Skill' as const,
+    actorId,
+    actorName: 'Sentinelle',
+    path: [],
+    skillKey: 'skill.strike',
+    skillName: 'Frappe',
+    targetX: 2,
+    targetY: 3,
+    impacts: [],
+    telegraphCells: [{ x: 2, y: 3 }, { x: 3, y: 3 }],
+    ...overrides,
+  });
+
+  it('allume la zone adverse avant le geste, puis l’éteint', async () => {
+    const playback = useCombatPlayback();
+    const seen: Array<number> = [];
+
+    const running = playback.play([skillEvent(enemyId)], stateWith([allyId]), () => 0);
+
+    // Relevé pendant l'annonce : la zone doit être lisible AVANT la résolution. On laisse
+    // passer la transition de tour (TURN_TRANSITION_MS), qui précède l'annonce.
+    await new Promise((resolve) => setTimeout(resolve, TURN_TRANSITION_MS + 100));
+    seen.push(playback.telegraph.value?.cells.length ?? 0);
+    expect(playback.telegraph.value?.label).toContain('prépare');
+
+    await running;
+    seen.push(playback.telegraph.value?.cells.length ?? 0);
+
+    expect(seen).toEqual([2, 0]);
+  });
+
+  it('n’annonce jamais le geste d’un allié : le joueur vient de le commander', async () => {
+    const playback = useCombatPlayback();
+
+    const running = playback.play([skillEvent(allyId)], stateWith([allyId]), () => 0);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+
+    expect(playback.telegraph.value).toBeNull();
+    await running;
+  });
+});
+
+describe('coup manqué', () => {
+  it('écrit « Manqué » plutôt qu’un zéro, et sans onde d’impact', async () => {
+    const playback = useCombatPlayback();
+    const enemyId = '33333333-3333-3333-3333-333333333333';
+    const allyId = '44444444-4444-4444-4444-444444444444';
+
+    await playback.play(
+      [{
+        kind: 'Skill' as const,
+        actorId: enemyId,
+        actorName: 'Sentinelle',
+        path: [],
+        skillKey: 'skill.strike',
+        skillName: 'Frappe',
+        targetX: 1,
+        targetY: 1,
+        telegraphCells: null,
+        impacts: [
+          { combatantId: allyId, x: 1, y: 1, vitalityDelta: 0, defeated: false, missed: true },
+        ],
+      }] as never,
+      { allies: [{ combatant: { id: allyId } }], enemies: [] } as never,
+      () => 0,
+    );
+
+    expect(playback.floats.value).toHaveLength(1);
+    expect(playback.floats.value[0].text).toBe('Manqué');
+    // Rien n'a été percuté : aucune onde ne doit partir de la case.
+    expect(playback.impacts.value).toHaveLength(0);
   });
 });

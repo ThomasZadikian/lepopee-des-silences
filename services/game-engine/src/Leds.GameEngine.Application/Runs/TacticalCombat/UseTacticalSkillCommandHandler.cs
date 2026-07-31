@@ -184,7 +184,7 @@ public sealed class UseTacticalSkillCommandHandler
             combat.OrientToward(affected.Id.Value, facingTarget);
         }
 
-        var impacts = TacticalImpactRecorder.Diff(before, targets, combat);
+        var impacts = TacticalImpactRecorder.Diff(before, targets, combat, resolution.LogEntries);
         TacticalChargeRules.AwardUsefulAction(actor, targets, impacts);
         events.Add(TacticalCombatEventDto.Skill(
             actorId,
@@ -230,7 +230,8 @@ public sealed class UseTacticalSkillCommandHandler
                 var mirrorImpacts = TacticalImpactRecorder.Diff(
                     mirrorBefore,
                     mirrorTargets,
-                    combat);
+                    combat,
+                    mirrorResolution.LogEntries);
                 logEntries.Add(new CombatLogEntryDto(
                     _clock.UtcNow.UtcDateTime,
                     "PalaceLaw",
