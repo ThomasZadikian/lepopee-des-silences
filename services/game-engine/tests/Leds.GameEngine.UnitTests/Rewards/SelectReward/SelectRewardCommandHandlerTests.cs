@@ -6,6 +6,7 @@ using Leds.GameEngine.Application.Rewards.Ports;
 using Leds.GameEngine.Application.Rewards.Loot;
 using Leds.GameEngine.Application.Rewards.RewardOfferFactory;
 using Leds.GameEngine.Application.Rewards.SelectReward;
+using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rewards;
@@ -26,7 +27,7 @@ public sealed class SelectRewardCommandHandlerTests
         var run = TestGameEngineFactory.CreateRun();
 
         var factory = CreateFactory();
-        var offer = factory.CreateCombatRewardOffer(RewardSource.Combat, NodeEventType.Combat, riskLevel: 25);
+        var offer = factory.CreateCombatRewardOffer(RewardSource.Combat, NodeEventType.Combat, riskLevel: (int)RiskTier.Tendu);
 
         run.SetPendingRewardOffer(offer.Id);
 
@@ -113,7 +114,7 @@ public sealed class SelectRewardCommandHandlerTests
             currentHp: 20);
 
         var factory = CreateFactory();
-        var offer = factory.CreateCombatRewardOffer(RewardSource.Combat, NodeEventType.Combat, riskLevel: 25);
+        var offer = factory.CreateCombatRewardOffer(RewardSource.Combat, NodeEventType.Combat, riskLevel: (int)RiskTier.Tendu);
         run.SetPendingRewardOffer(offer.Id);
 
         var runRepository = new Mock<IRunRepository>();
@@ -137,7 +138,9 @@ public sealed class SelectRewardCommandHandlerTests
             new SelectRewardCommand(run.Id.Value, healChoice.Id.Value),
             CancellationToken.None);
 
-        run.CurrentHp.Should().Be(36);
+        // Tendu tier: baseHeal = (2-1)*5+10 = 15, DifficultyMultiplier = 1.15 ->
+        // ceiling(15*1.15) = 18 healed, capped at MaxHp (20+18=38, well under 40).
+        run.CurrentHp.Should().Be(38);
     }
 
     [Fact]
@@ -264,7 +267,7 @@ public sealed class SelectRewardCommandHandlerTests
         var offer = factory.CreateCombatRewardOffer(
             Leds.GameEngine.Domain.Rewards.RewardSource.Combat,
             NodeEventType.Combat,
-            riskLevel: 25);
+            riskLevel: (int)RiskTier.Tendu);
 
         run.SetPendingRewardOffer(offer.Id);
 

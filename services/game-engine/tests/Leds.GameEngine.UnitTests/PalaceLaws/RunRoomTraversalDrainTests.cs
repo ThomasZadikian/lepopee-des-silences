@@ -84,6 +84,10 @@ public sealed class RunRoomTraversalDrainTests
         run.AddRunModifier(CreateDrainModifier());
         run.ApplyVitalityLoss(run.MaxHp / 2);
         var hpBefore = run.CurrentHp;
+        // OnCombatantDefeated is post-defeat bookkeeping (initiative removal) — it does
+        // not itself reduce vitality. HasLivingEnemies (and so CompleteIfAllEnemiesDefeated)
+        // reads Combatant.IsDefeated, which only flips once damage brings vitality to zero.
+        enemy.ApplyVitalityDamage(enemy.CurrentVitality);
         combat.OnCombatantDefeated(enemy.Id.Value);
         combat.CompleteIfAllEnemiesDefeated();
 
@@ -98,6 +102,10 @@ public sealed class RunRoomTraversalDrainTests
         var (run, combat, enemy) = CreateRunWithSelectedNodeAndCombat();
         run.ApplyVitalityLoss(run.MaxHp / 2);
         var hpBefore = run.CurrentHp;
+        // OnCombatantDefeated is post-defeat bookkeeping (initiative removal) — it does
+        // not itself reduce vitality. HasLivingEnemies (and so CompleteIfAllEnemiesDefeated)
+        // reads Combatant.IsDefeated, which only flips once damage brings vitality to zero.
+        enemy.ApplyVitalityDamage(enemy.CurrentVitality);
         combat.OnCombatantDefeated(enemy.Id.Value);
         combat.CompleteIfAllEnemiesDefeated();
 
@@ -111,6 +119,10 @@ public sealed class RunRoomTraversalDrainTests
     {
         var (run, combat, enemy) = CreateRunWithSelectedNodeAndCombat();
         run.AddRunModifier(CreateDrainModifier());
+        // OnCombatantDefeated is post-defeat bookkeeping (initiative removal) — it does
+        // not itself reduce vitality. HasLivingEnemies (and so CompleteIfAllEnemiesDefeated)
+        // reads Combatant.IsDefeated, which only flips once damage brings vitality to zero.
+        enemy.ApplyVitalityDamage(enemy.CurrentVitality);
         combat.OnCombatantDefeated(enemy.Id.Value);
         combat.CompleteIfAllEnemiesDefeated();
 

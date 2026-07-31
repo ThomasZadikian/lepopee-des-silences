@@ -98,7 +98,7 @@ public sealed class ProgressRunCommandHandlerTests
     {
         var run = TestGameEngineFactory.CreateRun();
         var offer = new RewardOfferFactory(new CombatRiskProfileResolver(), Mock.Of<ICatalogContentGateway>(), new EnemyLootRewardBuilder(Mock.Of<ICatalogContentGateway>()))
-            .CreateCombatRewardOffer(RewardSource.Combat, NodeEventType.Combat, riskLevel: 25);
+            .CreateCombatRewardOffer(RewardSource.Combat, NodeEventType.Combat, riskLevel: (int)RiskTier.Tendu);
         run.SetPendingRewardOffer(offer.Id);
 
         var handler = CreateHandler(run);

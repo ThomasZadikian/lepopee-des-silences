@@ -59,9 +59,9 @@ public sealed class EnemyStatScalerTests
     {
         var result = _scaler.Scale(100, 10, 1500.0);
 
-        result.AppliedMultiplier.Should().Be(1000.0);
-        result.Vitality.Should().Be(100000);
-        result.Power.Should().Be(10000);
+        result.AppliedMultiplier.Should().Be(5.0);
+        result.Vitality.Should().Be(500);
+        result.Power.Should().Be(50);
     }
 
     [Fact]

@@ -7,6 +7,7 @@ using Leds.GameEngine.Application.Rewards.Ports;
 using Leds.GameEngine.Application.Rewards.Loot;
 using Leds.GameEngine.Application.Rewards.RewardOfferFactory;
 using Leds.GameEngine.Application.Rewards.SelectReward;
+using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Rewards;
 using Leds.GameEngine.Domain.Runs;
 using Leds.GameEngine.UnitTests.Common.Factories;
@@ -33,7 +34,7 @@ public sealed class SelectRewardItemEnrichmentTests
             initialRoom: room,
             startedAt: DateTimeOffset.UtcNow);
         var factory = CreateFactory();
-        var offer = factory.CreateCombatRewardOffer(RewardSource.Combat, Domain.Nodes.NodeEventType.Combat, 25);
+        var offer = factory.CreateCombatRewardOffer(RewardSource.Combat, Domain.Nodes.NodeEventType.Combat, (int)RiskTier.Tendu);
         run.SetPendingRewardOffer(offer.Id);
 
         var runRepo = new Mock<IRunRepository>();
@@ -81,7 +82,7 @@ public sealed class SelectRewardItemEnrichmentTests
             startedAt: DateTimeOffset.UtcNow,
             journalEnabled: true);
         var factory = CreateFactory();
-        var offer = factory.CreateCombatRewardOffer(RewardSource.Combat, Domain.Nodes.NodeEventType.Combat, 25);
+        var offer = factory.CreateCombatRewardOffer(RewardSource.Combat, Domain.Nodes.NodeEventType.Combat, (int)RiskTier.Tendu);
         run.SetPendingRewardOffer(offer.Id);
 
         var runRepo = new Mock<IRunRepository>();
@@ -122,7 +123,7 @@ public sealed class SelectRewardItemEnrichmentTests
             initialRoom: room,
             startedAt: DateTimeOffset.UtcNow);
         var factory = CreateFactory();
-        var offer = factory.CreateCombatRewardOffer(RewardSource.Combat, Domain.Nodes.NodeEventType.Combat, 25);
+        var offer = factory.CreateCombatRewardOffer(RewardSource.Combat, Domain.Nodes.NodeEventType.Combat, (int)RiskTier.Tendu);
         run.SetPendingRewardOffer(offer.Id);
 
         var runRepo = new Mock<IRunRepository>();
@@ -161,7 +162,7 @@ public sealed class SelectRewardItemEnrichmentTests
             startedAt: DateTimeOffset.UtcNow,
             currentHp: 20);
         var factory = CreateFactory();
-        var offer = factory.CreateCombatRewardOffer(RewardSource.Combat, Domain.Nodes.NodeEventType.Combat, 25);
+        var offer = factory.CreateCombatRewardOffer(RewardSource.Combat, Domain.Nodes.NodeEventType.Combat, (int)RiskTier.Tendu);
         run.SetPendingRewardOffer(offer.Id);
 
         var runRepo = new Mock<IRunRepository>();

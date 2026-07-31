@@ -6,6 +6,7 @@ using Leds.GameEngine.Application.Common.Exceptions;
 using Leds.GameEngine.Application.Rewards.Loot;
 using Leds.GameEngine.Application.Rewards.Ports;
 using Leds.GameEngine.Application.Rewards.RerollItemRewardOffer;
+using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.PalaceLaws;
@@ -127,7 +128,7 @@ public sealed class RerollItemRewardOfferCommandHandlerTests
         var run = TestGameEngineFactory.CreateRun();
         run.PromulgateLaw(CreateChandelleLaw());
 
-        var combatOffer = CreateFactory().CreateCombatRewardOffer(RewardSource.Combat, NodeEventType.Combat, riskLevel: 25);
+        var combatOffer = CreateFactory().CreateCombatRewardOffer(RewardSource.Combat, NodeEventType.Combat, riskLevel: (int)RiskTier.Tendu);
         run.SetPendingRewardOffer(combatOffer.Id);
 
         var (runRepository, rewardRepository) = CreateRepositories(run, combatOffer);

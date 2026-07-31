@@ -291,6 +291,14 @@ public sealed class ResolveCurrentEventCommandHandlerTests
                     RiskLevel: selectedNode.RiskLevel)));
 
         var catalogGateway = new Mock<ICatalogContentGateway>();
+
+        // BuildSkillEffectsAsync always looks up enemy/party skill keys against the
+        // catalog to enrich them with status effects; an unconfigured mock returns null
+        // here (Moq's default for a reference-type Task<T> result), which NREs on the
+        // foreach inside it. An empty catalog is a legitimate answer for these tests.
+        catalogGateway
+            .Setup(g => g.ListSkillDefinitionsByKeysAsync(It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Array.Empty<CatalogSkillDefinition>());
         catalogGateway
             .Setup(g => g.GetEventTemplateByKeyAsync("event-combat-shadow-v1", It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result<EventTemplateSnapshot>.Success(new EventTemplateSnapshot(
@@ -384,6 +392,14 @@ public sealed class ResolveCurrentEventCommandHandlerTests
                 }));
 
         var catalogGateway = new Mock<ICatalogContentGateway>();
+
+        // BuildSkillEffectsAsync always looks up enemy/party skill keys against the
+        // catalog to enrich them with status effects; an unconfigured mock returns null
+        // here (Moq's default for a reference-type Task<T> result), which NREs on the
+        // foreach inside it. An empty catalog is a legitimate answer for these tests.
+        catalogGateway
+            .Setup(g => g.ListSkillDefinitionsByKeysAsync(It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Array.Empty<CatalogSkillDefinition>());
         catalogGateway
             .Setup(g => g.ListNpcDefinitionsAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new[] { himlitNpc });
@@ -459,6 +475,14 @@ public sealed class ResolveCurrentEventCommandHandlerTests
                     RiskLevel: selectedNode.RiskLevel)));
 
         var catalogGateway = new Mock<ICatalogContentGateway>();
+
+        // BuildSkillEffectsAsync always looks up enemy/party skill keys against the
+        // catalog to enrich them with status effects; an unconfigured mock returns null
+        // here (Moq's default for a reference-type Task<T> result), which NREs on the
+        // foreach inside it. An empty catalog is a legitimate answer for these tests.
+        catalogGateway
+            .Setup(g => g.ListSkillDefinitionsByKeysAsync(It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Array.Empty<CatalogSkillDefinition>());
         catalogGateway
             .Setup(g => g.GetEventTemplateByKeyAsync("event-combat-shadow-v1", It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result<EventTemplateSnapshot>.Success(new EventTemplateSnapshot(

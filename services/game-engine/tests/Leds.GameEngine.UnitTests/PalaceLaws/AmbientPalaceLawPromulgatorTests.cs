@@ -104,6 +104,14 @@ public sealed class AmbientPalaceLawPromulgatorTests
             "law-majeure-active", "Loi majeure active", "1.0.0",
             domains: [PalaceLawDomain.Combat], isMajeure: true));
 
+        // Run.PromulgateLaw is the single entry point for ALL promulgations (ambient or
+        // direct), and unconditionally marks this floor's guaranteed draw as used. Without
+        // crossing into a new floor, the promulgator call below would fall through to the
+        // 20%-per-room random roll (keyed off nextRoom's randomly generated Id) instead of
+        // the guaranteed path this test means to exercise — advance a full floor so the
+        // guaranteed draw is available again for the SUT's own call.
+        AdvanceRooms(run, 10);
+
         var sut = CreateSut(
             CreateLaw("law-majeure-b", isMajeure: true),
             CreateLaw("law-ordinary"));

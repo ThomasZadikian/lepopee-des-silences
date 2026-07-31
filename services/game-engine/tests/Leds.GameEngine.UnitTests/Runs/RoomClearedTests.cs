@@ -7,6 +7,7 @@ using Leds.GameEngine.Application.Rewards.Loot;
 using Leds.GameEngine.Application.Rewards.RewardOfferFactory;
 using Leds.GameEngine.Application.Rewards.SelectReward;
 using Leds.GameEngine.Application.Runs.ProgressRun;
+using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rewards;
@@ -48,7 +49,7 @@ public sealed class RoomClearedTests
         var offer = factory.CreateCombatRewardOffer(
             RewardSource.RoomBoss,
             NodeEventType.RoomBoss,
-            riskLevel: 85);
+            riskLevel: (int)RiskTier.Fatal);
 
         run.SetPendingRewardOffer(offer.Id);
 
@@ -235,7 +236,7 @@ public sealed class RoomClearedTests
         var offer = factory.CreateCombatRewardOffer(
             RewardSource.RoomBoss,
             NodeEventType.RoomBoss,
-            riskLevel: 85);
+            riskLevel: (int)RiskTier.Fatal);
 
         run.SetPendingRewardOffer(offer.Id);
 
@@ -260,7 +261,7 @@ public sealed class RoomClearedTests
         var offer = factory.CreateCombatRewardOffer(
             RewardSource.Combat,
             NodeEventType.Combat,
-            riskLevel: 25);
+            riskLevel: (int)RiskTier.Tendu);
 
         run.SetPendingRewardOffer(offer.Id);
 
@@ -294,7 +295,7 @@ public sealed class RoomClearedTests
         var offer = factory.CreateCombatRewardOffer(
             RewardSource.Combat,
             NodeEventType.Combat,
-            riskLevel: 25);
+            riskLevel: (int)RiskTier.Tendu);
 
         run.SetPendingRewardOffer(offer.Id);
 

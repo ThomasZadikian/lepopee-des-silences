@@ -3,6 +3,7 @@ using Leds.GameEngine.Application.Abstractions;
 using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Application.Combats;
 using Leds.GameEngine.Application.Events.ChooseEventOption;
+using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Application.PalaceLaws.Ports;
 using Leds.GameEngine.Application.Rewards.Ports;
 using Leds.GameEngine.Application.Rewards.Loot;
@@ -154,7 +155,7 @@ public sealed class CurrentRoomIndexHandlerTests
         var offer = factory.CreateCombatRewardOffer(
             RewardSource.Combat,
             NodeEventType.Combat,
-            riskLevel: 25);
+            riskLevel: (int)RiskTier.Tendu);
 
         run.SetPendingRewardOffer(offer.Id);
 

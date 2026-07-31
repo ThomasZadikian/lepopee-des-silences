@@ -301,8 +301,11 @@ public sealed class NpcEventChoiceResolverTests
         result.Accepted.Should().BeTrue();
         run.GetNpcRelationship("npc.other").Should().NotBeNull();
         run.GetNpcRelationship("npc.other")!.RelationshipScore.Should().Be(250);
-        // The active encounter (with the offering giver) must not be redirected.
-        run.ActiveNpcKey.Should().Be(OfferingGiverKey);
+        // The ReputationBoost offering adjusts npc.other's score, not the offering giver's —
+        // it never redirects the active encounter to npc.other. The encounter with the
+        // offering giver still ends normally afterward (every stub dialogue choice here has
+        // a null NextNodeKey), so ActiveNpcKey clears to null like any other completed choice.
+        run.ActiveNpcKey.Should().BeNull();
     }
 
     [Fact]

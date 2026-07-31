@@ -52,7 +52,7 @@ public sealed class CombatStatusEffectTests
     {
         var act = () => CombatStatusEffect.Create("poison", "Poison", StatusEffectKind.DamageOverTime, 0, 5000, stacks: 0);
 
-        act.Should().Throw<DomainException>().WithMessage("Status effect must have at least one stack.");
+        act.Should().Throw<DomainException>().WithMessage("Status effect stacks must be between one and five.");
     }
 
     [Fact]

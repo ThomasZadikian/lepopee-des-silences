@@ -230,9 +230,15 @@ public sealed class RunUseItemTests
 
         var act = () => run.UseItem(item.Id);
 
+        // Now that tactical combat is wired in, ANY active combat blocks UseItem
+        // outright (items route through the tactical targeting action instead) — this
+        // check fires before the Poches Cousues modifier is even read, so its specific
+        // message no longer surfaces here. The modifier's in-combat block is redundant
+        // with this blanket rule; its only remaining effect is the out-of-combat +25%
+        // boost, covered by the tests below.
         act.Should()
             .Throw<DomainException>()
-            .WithMessage("*Poches Cousues*");
+            .WithMessage("*tactical targeting action*");
         item.Quantity.Should().Be(2, because: "a rejected use must not consume a charge.");
     }
 
@@ -270,14 +276,19 @@ public sealed class RunUseItemTests
     }
 
     [Fact]
-    public void UseItem_ShouldNotThrowOrBoost_WhenNoConsumablesRestrictedModifierIsActive()
+    public void UseItem_ShouldThrow_WhenRunHasActiveCombat_EvenWithoutTheConsumablesRestrictedModifier()
     {
         var (run, _) = CreateRunWithActiveCombat();
         var item = CreateHealPotion();
         run.AddRunItem(item);
 
-        var (_, amount, _) = run.UseItem(item.Id);
+        // Tactical combat blocks UseItem unconditionally — the Poches Cousues modifier
+        // was never the actual gate; it happened to always be present in the old
+        // scenario this test used to cover.
+        var act = () => run.UseItem(item.Id);
 
-        amount.Should().Be(10);
+        act.Should()
+            .Throw<DomainException>()
+            .WithMessage("*tactical targeting action*");
     }
 }

@@ -19,7 +19,11 @@ public sealed class EnemyLootRewardBuilderTests
             "seed-1", Guid.NewGuid(), Guid.NewGuid(), [enemy]);
 
         choices.Count.Should().BeInRange(1, 6);
-        choices.Should().OnlyContain(c => c.SourceEnemyKey == "enemy.forest.chimere-serpentaire");
+        var fromEnemy = choices.Where(c => c.SourceEnemyKey == "enemy.forest.chimere-serpentaire").ToList();
+        fromEnemy.Count.Should().BeInRange(1, 3);
+        choices.Should().OnlyContain(
+            c => c.SourceEnemyKey == "enemy.forest.chimere-serpentaire" || c.SourceEnemyKey == null,
+            because: "a single enemy's table can roll short of MinLootCount, which pads from the generic fallback pool (null source)");
     }
 
     [Fact]
@@ -183,13 +187,23 @@ public sealed class EnemyLootRewardBuilderTests
     public async Task BuildAsync_ShouldCapEffectiveDropChance_AtOneHundredPercent()
     {
         var enemy = Combatant.CreateEnemy("enemy.forest.chimere-serpentaire", "Chimere Serpentaire", "Beast", 20);
+        const int trials = 50;
+        var hits = 0;
 
-        var choices = await CreateBuilder().BuildAsync(
-            "seed-invitation-cap", Guid.NewGuid(), Guid.NewGuid(), [enemy], lootChanceBonusPercent: 1000);
+        for (var i = 0; i < trials; i++)
+        {
+            var choices = await CreateBuilder().BuildAsync(
+                $"seed-invitation-cap-{i}", Guid.NewGuid(), Guid.NewGuid(), [enemy], lootChanceBonusPercent: 1000);
 
-        // An enormous bonus clamps every entry's effective drop chance at 100% — the
-        // enemy's lowest-probability entry must roll every time (never silently exceed
-        // 100% and throw or behave oddly).
-        choices.Should().Contain(c => c.PayloadKey.Contains("venin-cristallise"));
+            if (choices.Any(c => c.PayloadKey.Contains("venin-cristallise"))) hits++;
+        }
+
+        // An enormous bonus clamps every entry's effective drop chance at 100% (never
+        // silently exceeds 100% and throws or behaves oddly) — this enemy's table has 4
+        // entries, so all 4 hit. But the per-enemy loot cap (MaxPerEnemy = 3) then trims
+        // those 4 hits down to 3 via a uniform random shuffle, so no single item is
+        // guaranteed on any one seed; across many trials it should still survive the trim
+        // (3-in-4 chance) the overwhelming majority of the time.
+        hits.Should().BeGreaterThan(trials / 2);
     }
 }

@@ -297,6 +297,11 @@ public sealed class RunPromulgationTests
         var run = CreateRunWithMultipleSkills();
         run.PromulgateLaw(CreateOubliPartielLaw());
 
+        // A room can only be left once its boss is cleared — EnterInterlude enforces
+        // RunStatus.RoomResolved.
+        TestGameEngineFactory.EnterNode(run, run.CurrentRoom.Nodes.Single(n => n.IsBoss));
+        run.ResolveCurrentEvent();
+
         run.EnterInterlude();
         var result = run.MoveToNextRoom(TestGameEngineFactory.CreateThresholdRoom(depth: run.CurrentDepth + 1));
 
@@ -379,6 +384,11 @@ public sealed class RunPromulgationTests
     {
         var run = TestGameEngineFactory.CreateRun();
         run.PromulgateLaw(CreatePreteurLaw());
+
+        // A room can only be left once its boss is cleared — EnterInterlude enforces
+        // RunStatus.RoomResolved.
+        TestGameEngineFactory.EnterNode(run, run.CurrentRoom.Nodes.Single(n => n.IsBoss));
+        run.ResolveCurrentEvent();
 
         run.EnterInterlude();
         var result = run.MoveToNextRoom(TestGameEngineFactory.CreateThresholdRoom(depth: run.CurrentDepth + 1));
@@ -471,6 +481,14 @@ public sealed class RunPromulgationTests
     public void PromulgateLaw_ShouldNotSuspendClementeLawModifiers_WhenRepitIsPromulgated()
     {
         var run = TestGameEngineFactory.CreateRun();
+
+        // The cumulative cap (EnforceCumulCap) is only 1 active law on a fresh run
+        // (1 + CurrentRoomIndex/2). Promulgating a second law here would otherwise evict
+        // the first outright — a mechanism unrelated to what this test exercises (Répit's
+        // Severe-only filter) — and produce the same Consumed=true this test is trying to
+        // rule out, but for the wrong reason. Two rooms in raises the cap to 2.
+        AdvanceRooms(run, 2);
+
         run.PromulgateLaw(CreateLawWithPolarity("law-clemente-test", PalaceLawPolarity.Clemente));
 
         run.PromulgateLaw(CreateRepitLaw());
@@ -488,6 +506,11 @@ public sealed class RunPromulgationTests
         run.PromulgateLaw(CreateRepitLaw());
         var severeModifier = run.RunModifiers.Single(m => m.SourceKey == "law-severe-test");
         severeModifier.IsConsumed.Should().BeTrue();
+
+        // A room can only be left once its boss is cleared — EnterInterlude enforces
+        // RunStatus.RoomResolved.
+        TestGameEngineFactory.EnterNode(run, run.CurrentRoom.Nodes.Single(n => n.IsBoss));
+        run.ResolveCurrentEvent();
 
         run.EnterInterlude();
         run.MoveToNextRoom(TestGameEngineFactory.CreateThresholdRoom(depth: run.CurrentDepth + 1));

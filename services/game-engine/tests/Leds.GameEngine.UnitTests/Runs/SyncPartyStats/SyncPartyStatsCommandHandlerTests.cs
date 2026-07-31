@@ -50,7 +50,15 @@ public sealed class SyncPartyStatsCommandHandlerTests
         protagonistId = Guid.NewGuid();
         companionId = Guid.NewGuid();
 
-        var statBlock = RunCharacterStatSnapshot.Create(
+        // Each character needs its own RunCharacterStatSnapshot instance — it's a mutable
+        // object with private setters (see ReplaceStats), and RunCharacterSnapshot.Create
+        // stores the reference as-is without copying. Sharing one instance between the
+        // protagonist and the companion would make a later ReplaceStats call for one
+        // silently overwrite the other's stats too, since they'd be the same object.
+        var protagonistStatBlock = RunCharacterStatSnapshot.Create(
+            maxVitality: 100, attackPower: 12, defense: 6, startingGuard: 0,
+            speed: 10, initiative: 10,focus: 0, mana: 0, charge: 0);
+        var companionStatBlock = RunCharacterStatSnapshot.Create(
             maxVitality: 100, attackPower: 12, defense: 6, startingGuard: 0,
             speed: 10, initiative: 10,focus: 0, mana: 0, charge: 0);
 
@@ -63,10 +71,10 @@ public sealed class SyncPartyStatsCommandHandlerTests
 
         var protagonist = RunCharacterSnapshot.Create(
             characterId: protagonistId, definitionKey: "character.player.self", displayName: "Le Porteur",
-            statBlock: statBlock, skills: skills);
+            statBlock: protagonistStatBlock, skills: skills);
         var companion = RunCharacterSnapshot.Create(
             characterId: companionId, definitionKey: "character.mane", displayName: "Mané",
-            statBlock: statBlock, skills: skills);
+            statBlock: companionStatBlock, skills: skills);
 
         var snapshot = RunPlayerSnapshot.Create(
             playerId: run.PlayerId, displayName: "Joueur",

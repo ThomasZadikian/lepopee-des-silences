@@ -1,6 +1,7 @@
 using Leds.GameEngine.Application.Abstractions;
 using Leds.GameEngine.Application.Common.Exceptions;
 using Leds.GameEngine.Application.Runs.Dtos;
+using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Runs;
 using MediatR;
 
@@ -23,6 +24,12 @@ public sealed class EnterGridNodeCommandHandler : IRequestHandler<EnterGridNodeC
 
         var run = await _runRepository.GetByIdAsync(runId, cancellationToken)
             ?? throw new NotFoundException("Run", request.RunId);
+
+        if (run.Status == RunStatus.Interlude)
+        {
+            throw new DomainException(
+                "Cannot enter a node: run is in Interlude. Navigate the interlude hub or enter the next room.");
+        }
 
         run.EnterGridNode(request.NodeId);
 

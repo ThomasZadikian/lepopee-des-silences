@@ -2004,42 +2004,16 @@ public sealed class Run
             effectType,
             effectAmount);
 
-        var position = FindGroundDropPosition();
-        item.PlaceOnGround(CurrentRoom.Id.Value, position.X, position.Y);
-        _runItems.Add(item);
-    }
-
-    private (int X, int Y) FindGroundDropPosition()
-    {
-        var grid = CurrentRoom.Grid;
-        var occupiedGround = GroundItems
-            .Where(item => item.GroundRoomId == CurrentRoom.Id.Value)
-            .Select(item => (item.GroundX!.Value, item.GroundY!.Value))
-            .ToHashSet();
-        var nodeCells = CurrentRoom.Nodes
-            .Where(node => node.State != NodeState.Resolved)
-            .Select(node => (node.Lane, node.Row))
-            .ToHashSet();
-
-        var candidate = Enumerable.Range(0, grid.Height)
-            .SelectMany(y => Enumerable.Range(0, grid.Width).Select(x => (X: x, Y: y)))
-            .Where(cell => grid.IsWalkable(cell.X, cell.Y))
-            .Where(cell => cell != (grid.PartyX, grid.PartyY))
-            .Where(cell => !occupiedGround.Contains(cell))
-            .Where(cell => !nodeCells.Contains(cell))
-            .OrderBy(cell => Math.Abs(cell.X - grid.PartyX) + Math.Abs(cell.Y - grid.PartyY))
-            .ThenBy(cell => cell.Y)
-            .ThenBy(cell => cell.X)
-            .Select(cell => ((int X, int Y)?)cell)
-            .FirstOrDefault();
-
-        return candidate
-            ?? throw new DomainException("No free grid cell is available for this loot.");
+        // Straight into the inventory, not onto the ground: this item is the reward the
+        // player already chose from a curated offer, not something to walk over and collect.
+        // AddRunItem also applies the grant modifiers (Guard bonus, attack-type override, …)
+        // immediately, matching every other reward-selection path.
+        AddRunItem(item);
     }
 
     /// <summary>
     /// Translates certain RunItemEffectTypes into a permanent (until-run-ends)
-    /// RunModifier at the moment the item is granted — whether picked up as loot
+    /// RunModifier at the moment the item is granted — whether selected as a reward
     /// (<see cref="AddRunItemFromPayload"/>) or given by an NPC (<see cref="AddRunItem"/>).
     /// </summary>
     private void ApplyItemGrantModifiers(RunItemEffectType effectType, int effectAmount, string definitionKey)

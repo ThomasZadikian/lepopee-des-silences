@@ -12,6 +12,34 @@ namespace Leds.GameEngine.UnitTests.Runs.MoveToNextRoom;
 
 public sealed class MoveToNextRoomCommandHandlerTests
 {
+    /// <summary>
+    /// Advances a fresh run through 9 rooms (defeating each boss) so it sits at depth 9 —
+    /// the room right before crossing the first floor boundary (<c>FloorLengthInRooms</c> is
+    /// 10). The *OnFloorEnd tests below need a transition that actually crosses a boundary,
+    /// and <c>MoveToNextRoom</c> only ever accepts <c>CurrentDepth + 1</c> — so reaching
+    /// depth 9 for real is the only way to make depth 10 both valid and floor-crossing.
+    /// </summary>
+    private static Run CreateRunAtFloorEnd()
+    {
+        var run = TestGameEngineFactory.CreateRun();
+
+        for (var i = 0; i < 9; i++)
+        {
+            var bossNode = run.CurrentRoom.Nodes.Single(n => n.IsBoss);
+            TestGameEngineFactory.EnterNode(run, bossNode);
+            run.ResolveCurrentEvent();
+
+            run.EnterInterlude();
+            run.MoveToNextRoom(TestGameEngineFactory.CreateThresholdRoom(depth: run.CurrentDepth + 1));
+        }
+
+        var finalBossNode = run.CurrentRoom.Nodes.Single(n => n.IsBoss);
+        TestGameEngineFactory.EnterNode(run, finalBossNode);
+        run.ResolveCurrentEvent();
+
+        return run;
+    }
+
     [Fact]
     public async Task Handle_ShouldMoveRunToNextRoom_WhenCurrentRoomIsCompleted()
     {
@@ -87,7 +115,7 @@ public sealed class MoveToNextRoomCommandHandlerTests
     [Fact]
     public async Task Handle_ShouldAwardStatPoints_WhenOubliPartielPayoutIsDueOnFloorEnd()
     {
-        var run = TestGameEngineFactory.CreateRunWithCompletedCurrentRoom();
+        var run = CreateRunAtFloorEnd();
         run.AddRunModifier(RunModifier.Create(
             RunModifierType.SkillForgotten,
             1,
@@ -96,8 +124,8 @@ public sealed class MoveToNextRoomCommandHandlerTests
             sourceKey: "law.oubli-partiel"));
         run.EnterInterlude();
 
-        // FloorLengthInRooms is 10 — CreateRunWithCompletedCurrentRoom leaves the run on
-        // room index 0, so a next room at depth 10 crosses exactly one floor boundary.
+        // CreateRunAtFloorEnd() leaves the run at depth 9, so a next room at depth 10
+        // is both a valid +1 step and crosses exactly one floor boundary.
         var nextRoom = TestGameEngineFactory.CreateThresholdRoom(depth: 10);
 
         var repository = new Mock<IRunRepository>();
@@ -194,14 +222,14 @@ public sealed class MoveToNextRoomCommandHandlerTests
     [Fact]
     public async Task Handle_ShouldClawBackAFractionOfCurrency_WhenPreteurClawbackIsDueOnFloorEnd()
     {
-        var run = TestGameEngineFactory.CreateRunWithCompletedCurrentRoom();
+        var run = CreateRunAtFloorEnd();
         run.AddRunModifier(RunModifier.Create(
             RunModifierType.CurrencyGainBonusPercent, 50, RunModifierDuration.UntilFloorEnds,
             sourceType: "PalaceLaw", sourceKey: "law.preteur"));
         run.EnterInterlude();
 
-        // FloorLengthInRooms is 10 — CreateRunWithCompletedCurrentRoom leaves the run on
-        // room index 0, so a next room at depth 10 crosses exactly one floor boundary.
+        // CreateRunAtFloorEnd() leaves the run at depth 9, so a next room at depth 10
+        // is both a valid +1 step and crosses exactly one floor boundary.
         var nextRoom = TestGameEngineFactory.CreateThresholdRoom(depth: 10);
 
         var repository = new Mock<IRunRepository>();
@@ -226,7 +254,7 @@ public sealed class MoveToNextRoomCommandHandlerTests
     [Fact]
     public async Task Handle_ShouldNotAttemptAClawback_WhenPreteurBalanceIsZero()
     {
-        var run = TestGameEngineFactory.CreateRunWithCompletedCurrentRoom();
+        var run = CreateRunAtFloorEnd();
         run.AddRunModifier(RunModifier.Create(
             RunModifierType.CurrencyGainBonusPercent, 50, RunModifierDuration.UntilFloorEnds,
             sourceType: "PalaceLaw", sourceKey: "law.preteur"));

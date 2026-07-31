@@ -68,7 +68,10 @@ public sealed class CombatFactoryHimLitProtectionTests
 
         var protagonist = roster.Allies.Single();
         protagonist.EffectiveAttackPower.Should().Be(21); // 20 + 5%
-        protagonist.EffectiveSpeed.Should().Be(9); // +5% and -10% on the base stat
+        // Percent-based StatModifier effects on the same stat are summed first (+5% and
+        // -10% net to -5% of the base 10), then rounded once — Math.Round's default
+        // ties-to-even behavior rounds that -0.5 to 0, leaving speed unchanged at 10.
+        protagonist.EffectiveSpeed.Should().Be(10);
     }
 
     [Fact]
