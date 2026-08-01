@@ -42,6 +42,8 @@ public sealed class ListActiveItemDefinitionsQueryHandler
                 d.TacticalAreaShape,
                 d.RequiresLineOfSight,
                 d.BasicAttackPower,
-                d.BasicAttackCategory)).ToArray());
+                d.BasicAttackCategory,
+                d.PalaceShardCost,
+                d.HimLitShardCost)).ToArray());
     }
 }

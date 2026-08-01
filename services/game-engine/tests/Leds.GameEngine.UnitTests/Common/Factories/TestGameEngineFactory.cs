@@ -14,7 +14,8 @@ public static class TestGameEngineFactory
         int lane = 0,
         IReadOnlyCollection<NodeId>? parentNodeIds = null,
         bool isBoss = false,
-        NodeState initialState = NodeState.Available)
+        NodeState initialState = NodeState.Available,
+        Leds.GameEngine.Domain.Combats.RiskTier? combatRiskTier = null)
     {
         return MapNode.Create(
             eventType,
@@ -24,7 +25,8 @@ public static class TestGameEngineFactory
             lane,
             parentNodeIds ?? Array.Empty<NodeId>(),
             isBoss,
-            initialState);
+            initialState,
+            combatRiskTier);
     }
 
     /// <summary>
@@ -59,7 +61,8 @@ public static class TestGameEngineFactory
     public static TestRoomWithTargetNode CreateThresholdRoomWithTargetInitialNode(
         NodeEventType targetInitialEventType,
         int depth = 0,
-        int movementBudget = 10)
+        int movementBudget = 10,
+        Leds.GameEngine.Domain.Combats.RiskTier? targetCombatRiskTier = null)
     {
         var roomType = RoomType.Threshold;
 
@@ -77,7 +80,8 @@ public static class TestGameEngineFactory
             row: 0,
             lane: 1,
             isBoss: false,
-            initialState: NodeState.Available);
+            initialState: NodeState.Available,
+            combatRiskTier: targetCombatRiskTier);
 
         var alternativeInitialNode = CreateMapNode(
             eventType: NodeEventType.Item,

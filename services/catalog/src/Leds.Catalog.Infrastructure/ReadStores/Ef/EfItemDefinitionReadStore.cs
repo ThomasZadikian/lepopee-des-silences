@@ -82,6 +82,7 @@ public sealed class EfItemDefinitionReadStore : IItemTemplateReadStore, IItemDef
             entity.EquipmentEffectsJson ?? "[]", JsonOptions) ?? [];
         var readablePages = JsonSerializer.Deserialize<List<string>>(
             entity.ReadablePagesJson ?? "[]", JsonOptions) ?? [];
+        var (palaceShardCost, himLitShardCost) = ItemPricing.ForRarity(entity.Rarity);
 
         return new ItemDefinitionDto(
             entity.Id,
@@ -113,6 +114,8 @@ public sealed class EfItemDefinitionReadStore : IItemTemplateReadStore, IItemDef
             TacticalAreaShape: entity.TacticalAreaShape,
             RequiresLineOfSight: entity.RequiresLineOfSight,
             BasicAttackPower: entity.BasicAttackPower,
-            BasicAttackCategory: entity.BasicAttackCategory);
+            BasicAttackCategory: entity.BasicAttackCategory,
+            PalaceShardCost: palaceShardCost,
+            HimLitShardCost: himLitShardCost);
     }
 }

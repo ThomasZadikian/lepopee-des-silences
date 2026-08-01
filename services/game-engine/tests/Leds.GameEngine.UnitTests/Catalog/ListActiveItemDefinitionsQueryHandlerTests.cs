@@ -30,7 +30,9 @@ public sealed class ListActiveItemDefinitionsQueryHandlerTests
                     EffectRunType: null,
                     TacticalRange: 2,
                     TacticalAreaShape: "Diamond",
-                    RequiresLineOfSight: true)
+                    RequiresLineOfSight: true,
+                    PalaceShardCost: 500,
+                    HimLitShardCost: 25)
             });
 
         var handler = new ListActiveItemDefinitionsQueryHandler(catalogGateway.Object);
@@ -47,6 +49,8 @@ public sealed class ListActiveItemDefinitionsQueryHandlerTests
         item.TacticalRange.Should().Be(2);
         item.TacticalAreaShape.Should().Be("Diamond");
         item.RequiresLineOfSight.Should().BeTrue();
+        item.PalaceShardCost.Should().Be(500);
+        item.HimLitShardCost.Should().Be(25);
         item.EquipmentEffects.Should().ContainSingle()
             .Which.StatKind.Should().Be("Focus");
     }

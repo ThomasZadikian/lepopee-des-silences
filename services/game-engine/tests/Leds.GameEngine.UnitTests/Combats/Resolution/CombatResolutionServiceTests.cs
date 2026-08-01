@@ -158,6 +158,99 @@ public sealed class CombatResolutionServiceTests
         offer.Should().NotBeNull();
     }
 
+    /// <summary>
+    /// Builds a ready-to-resolve combat whose triggering node has an explicit
+    /// <see cref="RiskTier"/> — the default test fixtures leave CombatRiskTier null
+    /// (falls back to Tendu in CombatResolutionService), so "Éclats de Him'Lit" tests
+    /// need a node built with a real tier instead.
+    /// </summary>
+    private static (Run Run, TacticalCombat Combat) CreateReadyCombatWithRiskTier(RiskTier riskTier, int enemyCount = 1)
+    {
+        var roomWithTargetNode = TestGameEngineFactory.CreateThresholdRoomWithTargetInitialNode(
+            NodeEventType.Combat, targetCombatRiskTier: riskTier);
+
+        var run = Run.StartNew(
+            playerId: Guid.NewGuid(),
+            seed: "seed-unit-test-him-lit",
+            generatorVersion: "gen-test",
+            markovMatrixVersion: "markov-test",
+            initialRoom: roomWithTargetNode.Room,
+            startedAt: DateTimeOffset.UtcNow);
+
+        TestGameEngineFactory.EnterNode(run, roomWithTargetNode.TargetNode);
+
+        var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100, 0, []);
+        var enemies = Enumerable.Range(0, enemyCount)
+            .Select(i => Combatant.CreateEnemy($"enemy.sentinel.{i}", "Sentinel", "Guard", 80, []))
+            .ToArray();
+        var combat = TestTacticalCombatHelper.Create(run.Id, RoomId.New(), NodeId.New(), [ally], enemies);
+
+        run.StartTacticalCombat(combat);
+
+        return (run, combat);
+    }
+
+    private static (Run Run, TacticalCombat Combat) CreateCompletedCombatWithRiskTier(RiskTier riskTier, int enemyCount = 1)
+    {
+        var (run, combat) = CreateReadyCombatWithRiskTier(riskTier, enemyCount);
+        foreach (var enemy in combat.Enemies)
+        {
+            enemy.ApplyVitalityDamage(enemy.CurrentVitality);
+        }
+        combat.CompleteIfAllEnemiesDefeated();
+        return (run, combat);
+    }
+
+    [Fact]
+    public async Task ApplyOutcomeAsync_ShouldAwardTwoHimLitShardsPerEnemy_WhenCombatIsFatalTier()
+    {
+        var (run, combat) = CreateCompletedCombatWithRiskTier(RiskTier.Fatal, enemyCount: 3);
+        var gateway = new Mock<IPlayerProfileGateway>();
+        var service = new CombatResolutionService(CreateRewardOfferFactory(), gateway.Object, Mock.Of<IOutboxWriter>(), Mock.Of<ILogger<CombatResolutionService>>());
+
+        await service.ApplyOutcomeAsync(run, combat, DateTimeOffset.UtcNow);
+
+        gateway.Verify(g => g.AwardHimLitCurrencyAsync(run.PlayerId, 6, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ApplyOutcomeAsync_ShouldAwardOneHimLitShardPerEnemy_WhenCombatIsPerilleuxTier()
+    {
+        var (run, combat) = CreateCompletedCombatWithRiskTier(RiskTier.Perilleux, enemyCount: 2);
+        var gateway = new Mock<IPlayerProfileGateway>();
+        var service = new CombatResolutionService(CreateRewardOfferFactory(), gateway.Object, Mock.Of<IOutboxWriter>(), Mock.Of<ILogger<CombatResolutionService>>());
+
+        await service.ApplyOutcomeAsync(run, combat, DateTimeOffset.UtcNow);
+
+        gateway.Verify(g => g.AwardHimLitCurrencyAsync(run.PlayerId, 2, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ApplyOutcomeAsync_ShouldNotAwardHimLitShards_WhenCombatIsBelowPerilleuxTier()
+    {
+        var (run, combat) = CreateCompletedCombatWithRiskTier(RiskTier.Dangereux);
+        var gateway = new Mock<IPlayerProfileGateway>();
+        var service = new CombatResolutionService(CreateRewardOfferFactory(), gateway.Object, Mock.Of<IOutboxWriter>(), Mock.Of<ILogger<CombatResolutionService>>());
+
+        await service.ApplyOutcomeAsync(run, combat, DateTimeOffset.UtcNow);
+
+        gateway.Verify(g => g.AwardHimLitCurrencyAsync(It.IsAny<Guid>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ApplyOutcomeAsync_ShouldStillReturnRewardOffer_WhenHimLitGatewayThrows()
+    {
+        var (run, combat) = CreateCompletedCombatWithRiskTier(RiskTier.Fatal);
+        var gateway = new Mock<IPlayerProfileGateway>();
+        gateway.Setup(g => g.AwardHimLitCurrencyAsync(It.IsAny<Guid>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new HttpRequestException("Player Service unreachable"));
+        var service = new CombatResolutionService(CreateRewardOfferFactory(), gateway.Object, Mock.Of<IOutboxWriter>(), Mock.Of<ILogger<CombatResolutionService>>());
+
+        var offer = await service.ApplyOutcomeAsync(run, combat, DateTimeOffset.UtcNow);
+
+        offer.Should().NotBeNull();
+    }
+
     [Fact]
     public async Task ApplyOutcomeAsync_ShouldAppendJournalEntry_OnVictory_WhenJournalEnabled()
     {

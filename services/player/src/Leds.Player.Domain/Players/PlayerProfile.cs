@@ -298,6 +298,27 @@ public sealed class PlayerProfile
         return succeeded;
     }
 
+    /// <summary>
+    /// Awards "Éclats de Him'Lit". Profile-level, mirrors AwardCurrency.
+    /// </summary>
+    public void AwardHimLitCurrency(DateTimeOffset now, int amount)
+    {
+        Progression.AwardHimLitCurrency(amount);
+        Touch(now);
+    }
+
+    /// <summary>
+    /// Spends "Éclats de Him'Lit" if affordable. Profile-level, mirrors TrySpendCurrency.
+    /// </summary>
+    public bool TrySpendHimLitCurrency(DateTimeOffset now, int amount)
+    {
+        var succeeded = Progression.TrySpendHimLitCurrency(amount);
+        if (succeeded)
+            Touch(now);
+
+        return succeeded;
+    }
+
     public void SpendStatPoint(PlayerCharacterId characterId, PlayerStatKind kind, DateTimeOffset now)
     {
         if (Progression.UnspentStatPoints <= 0)

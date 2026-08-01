@@ -64,6 +64,7 @@ public sealed class CombatResolutionService : ICombatResolutionService
                 var rewardOffer = await CreateRewardOfferAsync(run, combat, combatNode, cancellationToken);
                 run.SetPendingRewardOffer(rewardOffer.Id);
                 await AwardCombatEclatsAsync(run, rewardOffer, cancellationToken);
+                await AwardHimLitShardsAsync(run, combat, combatNode, cancellationToken);
                 return rewardOffer;
 
             case CombatStatus.Failed:
@@ -135,6 +136,44 @@ public sealed class CombatResolutionService : ICombatResolutionService
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to award combat Éclats for player {PlayerId}", run.PlayerId);
+        }
+    }
+
+    /// <summary>
+    /// "Éclats de Him'Lit": a combat at the Périlleux or Fatal danger tier grants 1 or 2
+    /// shards per enemy defeated. combat.Enemies.Count is the enemy headcount for the
+    /// fight — safe here since this only runs on CombatStatus.Completed (victory), so
+    /// every enemy in the roster is, by definition, defeated. Must never block or fail
+    /// combat resolution: mirrors AwardCombatEclatsAsync's non-blocking try/catch.
+    /// </summary>
+    private async Task AwardHimLitShardsAsync(Run run, ICombatContext combat, MapNode? combatNode, CancellationToken cancellationToken)
+    {
+        var riskTier = combatNode?.CombatRiskTier ?? RiskTier.Tendu;
+        var shardsPerEnemy = riskTier switch
+        {
+            RiskTier.Perilleux => 1,
+            RiskTier.Fatal => 2,
+            _ => 0
+        };
+
+        if (shardsPerEnemy <= 0)
+        {
+            return;
+        }
+
+        var amount = shardsPerEnemy * combat.Enemies.Count;
+        if (amount <= 0)
+        {
+            return;
+        }
+
+        try
+        {
+            await _playerProfileGateway.AwardHimLitCurrencyAsync(run.PlayerId, amount, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to award combat Éclats de Him'Lit for player {PlayerId}", run.PlayerId);
         }
     }
 }

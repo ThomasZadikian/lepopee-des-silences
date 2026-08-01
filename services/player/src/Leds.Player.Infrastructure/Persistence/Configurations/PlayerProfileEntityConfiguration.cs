@@ -22,6 +22,7 @@ public sealed class PlayerProfileEntityConfiguration : IEntityTypeConfiguration<
         builder.Property(p => p.UnspentStatPoints).HasColumnName("unspent_stat_points").HasDefaultValue(0);
         builder.Property(p => p.TotalStatPointsEarned).HasColumnName("total_stat_points_earned").HasDefaultValue(0);
         builder.Property(p => p.PalaceShardCount).HasColumnName("palace_shard_count").HasDefaultValue(0);
+        builder.Property(p => p.HimLitShardCount).HasColumnName("him_lit_shard_count").HasDefaultValue(0);
         builder.Property(p => p.CreatedAtUtc).HasColumnName("created_at_utc");
         builder.Property(p => p.UpdatedAtUtc).HasColumnName("updated_at_utc");
 

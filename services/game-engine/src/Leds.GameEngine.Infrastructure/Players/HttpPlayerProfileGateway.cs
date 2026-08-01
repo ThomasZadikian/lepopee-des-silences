@@ -144,6 +144,30 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
         return dto?.Succeeded ?? false;
     }
 
+    public async Task<PlayerProfileView> AwardHimLitCurrencyAsync(Guid playerId, int amount, CancellationToken cancellationToken)
+    {
+        var response = await _httpClient.PostAsJsonAsync(
+            $"/api/v2/internal/players/{playerId}/him-lit-currency/award", new AwardCurrencyRequestBody(amount), cancellationToken);
+
+        return await ReadProfileAsync(response, playerId, cancellationToken);
+    }
+
+    public async Task<bool> TrySpendHimLitCurrencyAsync(Guid playerId, int amount, CancellationToken cancellationToken)
+    {
+        var response = await _httpClient.PostAsJsonAsync(
+            $"/api/v2/internal/players/{playerId}/him-lit-currency/spend", new SpendCurrencyRequestBody(amount), cancellationToken);
+
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            throw new NotFoundException("Player", playerId);
+        }
+
+        response.EnsureSuccessStatusCode();
+
+        var dto = await response.Content.ReadFromJsonAsync<SpendCurrencyResponse>(cancellationToken);
+        return dto?.Succeeded ?? false;
+    }
+
     public async Task<bool> HasClaimedNpcOfferingAsync(Guid playerId, string npcKey, string offeringKey, CancellationToken cancellationToken)
     {
         var response = await _httpClient.GetAsync(
@@ -294,7 +318,8 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
             Progression: new PlayerProgressionView(
                 dto.Progression.UnspentStatPoints,
                 dto.Progression.TotalStatPointsEarned,
-                dto.Progression.PalaceShardCount),
+                dto.Progression.PalaceShardCount,
+                dto.Progression.HimLitShardCount),
             PermanentItems: (dto.PermanentItems ?? [])
                 .Select(i => new PlayerPermanentItemView(i.ItemDefinitionKey, i.SourceRunId, i.AcquiredAtUtc, i.ContainedLiquidDefinitionKey))
                 .ToArray());
@@ -387,7 +412,8 @@ public sealed class HttpPlayerProfileGateway : IPlayerProfileGateway
     private sealed record PlayerProgressionResponse(
         int UnspentStatPoints,
         int TotalStatPointsEarned,
-        int PalaceShardCount = 0);
+        int PalaceShardCount = 0,
+        int HimLitShardCount = 0);
 
     private sealed record NpcReputationScoreResponse(
         string NpcKey,

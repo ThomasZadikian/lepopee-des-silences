@@ -56,6 +56,17 @@ function equipmentEffects(itemKey: string): string[] {
   });
 }
 
+function itemCostLabel(itemKey: string): string | null {
+  const item = allItems.value.find((candidate) => candidate.key === itemKey);
+  const palaceShardCost = item?.palaceShardCost ?? 0;
+  const himLitShardCost = item?.himLitShardCost ?? 0;
+  if (palaceShardCost <= 0 && himLitShardCost <= 0) return null;
+  const parts = [];
+  if (palaceShardCost > 0) parts.push(`${palaceShardCost} Éclats du Palais`);
+  if (himLitShardCost > 0) parts.push(`${himLitShardCost} Éclats de Him'Lit`);
+  return parts.join(' · ');
+}
+
 function statLabel(stat: string | null | undefined): string {
   const labels: Record<string, string> = {
     MaxVitality: 'Vitalité',
@@ -163,6 +174,9 @@ function toggleItem(itemKey: string, isEquipped: boolean) {
               >
                 {{ effect }}
               </small>
+              <small v-if="itemCostLabel(slot.item.itemKey)" class="imk-row__cost">
+                {{ itemCostLabel(slot.item.itemKey) }}
+              </small>
             </div>
             <button
               type="button"
@@ -207,6 +221,9 @@ function toggleItem(itemKey: string, isEquipped: boolean) {
               class="imk-row__effect"
             >
               Contenu : {{ itemDisplayName(permanentItem.containedLiquidDefinitionKey) }}
+            </small>
+            <small v-if="itemCostLabel(permanentItem.itemDefinitionKey)" class="imk-row__cost">
+              {{ itemCostLabel(permanentItem.itemDefinitionKey) }}
             </small>
           </div>
           <button
@@ -270,6 +287,12 @@ function toggleItem(itemKey: string, isEquipped: boolean) {
 .imk-row__effect {
   display: block;
   color: var(--frost, var(--ink-3));
+  font-size: 0.7rem;
+}
+
+.imk-row__cost {
+  display: block;
+  color: var(--gold, var(--ink-3));
   font-size: 0.7rem;
 }
 

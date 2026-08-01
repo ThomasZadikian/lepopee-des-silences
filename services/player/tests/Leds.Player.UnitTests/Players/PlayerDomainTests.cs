@@ -140,6 +140,78 @@ public sealed class PlayerProfileTests
     }
 
     [Fact]
+    public void AwardHimLitCurrency_ShouldIncrementProgressionAndTouchProfile()
+    {
+        var createdAt = DateTimeOffset.UtcNow;
+        var profile = PlayerProfile.Create("Test", createdAt);
+        var awardedAt = createdAt.AddMinutes(5);
+
+        profile.AwardHimLitCurrency(awardedAt, 25);
+
+        profile.Progression.HimLitShardCount.Should().Be(25);
+        profile.UpdatedAtUtc.Should().Be(awardedAt);
+    }
+
+    [Fact]
+    public void AwardHimLitCurrency_ShouldAccumulateAcrossMultipleAwards()
+    {
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+
+        profile.AwardHimLitCurrency(DateTimeOffset.UtcNow, 25);
+        profile.AwardHimLitCurrency(DateTimeOffset.UtcNow, 50);
+
+        profile.Progression.HimLitShardCount.Should().Be(75);
+    }
+
+    [Fact]
+    public void AwardHimLitCurrency_ShouldRejectNonPositiveAmount()
+    {
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+
+        var act = () => profile.AwardHimLitCurrency(DateTimeOffset.UtcNow, 0);
+
+        act.Should().Throw<DomainException>().WithMessage("*Currency amount*");
+    }
+
+    [Fact]
+    public void TrySpendHimLitCurrency_ShouldDecrementAndReturnTrue_WhenAffordable()
+    {
+        var createdAt = DateTimeOffset.UtcNow;
+        var profile = PlayerProfile.Create("Test", createdAt);
+        profile.AwardHimLitCurrency(createdAt, 100);
+        var spentAt = createdAt.AddMinutes(5);
+
+        var succeeded = profile.TrySpendHimLitCurrency(spentAt, 30);
+
+        succeeded.Should().BeTrue();
+        profile.Progression.HimLitShardCount.Should().Be(70);
+        profile.UpdatedAtUtc.Should().Be(spentAt);
+    }
+
+    [Fact]
+    public void TrySpendHimLitCurrency_ShouldReturnFalseAndLeaveBalanceUnchanged_WhenInsufficientFunds()
+    {
+        var createdAt = DateTimeOffset.UtcNow;
+        var profile = PlayerProfile.Create("Test", createdAt);
+        profile.AwardHimLitCurrency(createdAt, 10);
+
+        var succeeded = profile.TrySpendHimLitCurrency(createdAt.AddMinutes(5), 30);
+
+        succeeded.Should().BeFalse();
+        profile.Progression.HimLitShardCount.Should().Be(10);
+    }
+
+    [Fact]
+    public void TrySpendHimLitCurrency_ShouldRejectNonPositiveAmount()
+    {
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+
+        var act = () => profile.TrySpendHimLitCurrency(DateTimeOffset.UtcNow, 0);
+
+        act.Should().Throw<DomainException>().WithMessage("*Currency amount*");
+    }
+
+    [Fact]
     public void SpendStatPoint_ShouldRejectWhenNoPointsAvailable()
     {
         var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);

@@ -71,6 +71,7 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
             UnspentStatPoints = profile.Progression.UnspentStatPoints,
             TotalStatPointsEarned = profile.Progression.TotalStatPointsEarned,
             PalaceShardCount = profile.Progression.PalaceShardCount,
+            HimLitShardCount = profile.Progression.HimLitShardCount,
             CreatedAtUtc = profile.CreatedAtUtc,
             UpdatedAtUtc = profile.UpdatedAtUtc,
             Characters = profile.Roster.Characters.Select(c => new PlayerCharacterEntity
@@ -108,6 +109,7 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
         existing.UnspentStatPoints = incoming.Progression.UnspentStatPoints;
         existing.TotalStatPointsEarned = incoming.Progression.TotalStatPointsEarned;
         existing.PalaceShardCount = incoming.Progression.PalaceShardCount;
+        existing.HimLitShardCount = incoming.Progression.HimLitShardCount;
         existing.UpdatedAtUtc = incoming.UpdatedAtUtc;
 
         var incomingCharacterIds = incoming.Roster.Characters.Select(c => c.Id.Value).ToHashSet();
@@ -375,7 +377,8 @@ public sealed class EfPlayerProfileRepository : IPlayerProfileRepository
             entity.TotalRunsAbandoned,
             entity.UnspentStatPoints,
             entity.TotalStatPointsEarned,
-            entity.PalaceShardCount);
+            entity.PalaceShardCount,
+            entity.HimLitShardCount);
 
         var permanentUnlocks = entity.PermanentUnlocks
             .Select(u => PlayerPermanentUnlock.Create(u.UnlockKey, u.UnlockType, u.SourceRunId, u.UnlockedAtUtc))

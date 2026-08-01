@@ -161,7 +161,8 @@ public sealed record PlayerProgressionDto(
     int TotalRunsAbandoned,
     int UnspentStatPoints,
     int TotalStatPointsEarned,
-    int PalaceShardCount)
+    int PalaceShardCount,
+    int HimLitShardCount)
 {
     public static PlayerProgressionDto FromDomain(PlayerProgression progression)
     {
@@ -172,6 +173,7 @@ public sealed record PlayerProgressionDto(
             progression.TotalRunsAbandoned,
             progression.UnspentStatPoints,
             progression.TotalStatPointsEarned,
-            progression.PalaceShardCount);
+            progression.PalaceShardCount,
+            progression.HimLitShardCount);
     }
 }

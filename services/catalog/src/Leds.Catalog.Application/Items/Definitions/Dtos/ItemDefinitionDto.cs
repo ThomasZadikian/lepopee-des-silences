@@ -32,7 +32,9 @@ public sealed record ItemDefinitionDto(
     string TacticalAreaShape = "Single",
     bool RequiresLineOfSight = false,
     int? BasicAttackPower = null,
-    string? BasicAttackCategory = null);
+    string? BasicAttackCategory = null,
+    int PalaceShardCost = 0,
+    int HimLitShardCost = 0);
 
 public sealed record ItemEquipmentEffectDto(
     string Kind,

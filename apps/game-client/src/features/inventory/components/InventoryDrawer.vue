@@ -26,6 +26,7 @@ const selectedItem = ref<RunItemDto | null>(null);
 const isLoading = ref(false);
 const error = ref<string | null>(null);
 const readablePagesByKey = ref<Record<string, string[]>>({});
+const costByKey = ref<Record<string, { palaceShardCost: number; himLitShardCost: number }>>({});
 const isReaderOpen = ref(false);
 const selectedCharacterId = ref('');
 
@@ -33,12 +34,18 @@ onMounted(async () => {
   try {
     const { items: catalogItems } = await itemsApi.listActive();
     const byKey: Record<string, string[]> = {};
+    const costs: Record<string, { palaceShardCost: number; himLitShardCost: number }> = {};
     for (const item of catalogItems) {
       if (item.readablePages && item.readablePages.length > 0) {
         byKey[item.key] = item.readablePages;
       }
+      costs[item.key] = {
+        palaceShardCost: item.palaceShardCost ?? 0,
+        himLitShardCost: item.himLitShardCost ?? 0,
+      };
     }
     readablePagesByKey.value = byKey;
+    costByKey.value = costs;
   } catch {
     // Best-effort: a failed catalog fetch just hides the "Lire" affordance.
   }
@@ -46,6 +53,9 @@ onMounted(async () => {
 
 const selectedItemPages = computed(() =>
   selectedItem.value ? readablePagesByKey.value[selectedItem.value.definitionKey] : undefined,
+);
+const selectedItemCost = computed(() =>
+  selectedItem.value ? costByKey.value[selectedItem.value.definitionKey] : undefined,
 );
 const selectedReader = computed(() =>
   runStore.currentRun?.party?.members.find((member) => member.id === selectedCharacterId.value),
@@ -267,6 +277,20 @@ async function readGrimoire() {
           <span>{{ tacticalShapeLabel(selectedItem.tacticalAreaShape) }}</span>
           <span>
             {{ selectedItem.requiresLineOfSight ? 'Ligne de vue requise' : 'Ignore la ligne de vue' }}
+          </span>
+        </div>
+
+        <!-- Price -->
+        <div
+          v-if="selectedItemCost && (selectedItemCost.palaceShardCost > 0 || selectedItemCost.himLitShardCost > 0)"
+          class="bsd-sheet__cost"
+        >
+          <span class="bsd-effect-label">Valeur</span>
+          <span v-if="selectedItemCost.palaceShardCost > 0" class="bsd-cost-value">
+            {{ selectedItemCost.palaceShardCost }} Éclats du Palais
+          </span>
+          <span v-if="selectedItemCost.himLitShardCost > 0" class="bsd-cost-value">
+            {{ selectedItemCost.himLitShardCost }} Éclats de Him'Lit
           </span>
         </div>
 
@@ -642,6 +666,18 @@ async function readGrimoire() {
 .bsd-effect-value--frost { color: var(--frost, oklch(.70 .07 232)); }
 .bsd-effect-value--gold  { color: var(--gold, oklch(.72 .1 85)); }
 .bsd-effect-value--blood { color: var(--blood, oklch(.52 .15 20)); }
+
+.bsd-sheet__cost {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.bsd-cost-value {
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+  color: var(--gold, oklch(.72 .1 85));
+}
 
 .bsd-sheet__contract {
   display: flex;

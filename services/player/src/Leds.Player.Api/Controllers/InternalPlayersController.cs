@@ -1,8 +1,10 @@
 using Leds.Player.Application.Players;
 using Leds.Player.Application.Players.AddPermanentItems;
 using Leds.Player.Application.Players.AwardCurrency;
+using Leds.Player.Application.Players.AwardHimLitCurrency;
 using Leds.Player.Application.Players.AwardStatPoint;
 using Leds.Player.Application.Players.SpendCurrency;
+using Leds.Player.Application.Players.SpendHimLitCurrency;
 using Leds.Player.Application.Players.ClaimNpcOffering;
 using Leds.Player.Application.Players.ClearPermanentItemContent;
 using Leds.Player.Application.Players.GetNpcReputationScores;
@@ -68,6 +70,36 @@ public sealed class InternalPlayersController : ControllerBase
         CancellationToken cancellationToken)
     {
         var command = new SpendCurrencyCommand(playerId, request.Amount);
+        var response = await _sender.Send(command, cancellationToken);
+
+        return Ok(response);
+    }
+
+    [HttpPost("{playerId:guid}/him-lit-currency/award")]
+    [ProducesResponseType(typeof(PlayerProfileDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<PlayerProfileDto>> AwardHimLitCurrency(
+        Guid playerId,
+        [FromBody] AwardHimLitCurrencyRequest request,
+        CancellationToken cancellationToken)
+    {
+        var command = new AwardHimLitCurrencyCommand(playerId, request.Amount);
+        var response = await _sender.Send(command, cancellationToken);
+
+        return Ok(response);
+    }
+
+    /// <summary>Spends "Éclats de Him'Lit" if affordable. 200 with Succeeded=false on
+    /// insolvency — not a 4xx, mirrors SpendCurrency.</summary>
+    [HttpPost("{playerId:guid}/him-lit-currency/spend")]
+    [ProducesResponseType(typeof(SpendHimLitCurrencyResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<SpendHimLitCurrencyResult>> SpendHimLitCurrency(
+        Guid playerId,
+        [FromBody] SpendHimLitCurrencyRequest request,
+        CancellationToken cancellationToken)
+    {
+        var command = new SpendHimLitCurrencyCommand(playerId, request.Amount);
         var response = await _sender.Send(command, cancellationToken);
 
         return Ok(response);
@@ -229,6 +261,10 @@ public sealed record AwardStatPointsRequest(int Amount);
 public sealed record AwardCurrencyRequest(int Amount);
 
 public sealed record SpendCurrencyRequest(int Amount);
+
+public sealed record AwardHimLitCurrencyRequest(int Amount);
+
+public sealed record SpendHimLitCurrencyRequest(int Amount);
 
 public sealed record UnlockSkillRequest(string? Source);
 

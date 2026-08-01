@@ -28,7 +28,9 @@ public sealed record CatalogItemDefinitionSnapshot(
     string TacticalAreaShape = "Single",
     bool RequiresLineOfSight = false,
     int? BasicAttackPower = null,
-    string? BasicAttackCategory = null);
+    string? BasicAttackCategory = null,
+    int PalaceShardCost = 0,
+    int HimLitShardCost = 0);
 
 public sealed record CatalogItemEquipmentEffect(
     string Kind,

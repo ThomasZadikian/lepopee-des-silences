@@ -23,4 +23,6 @@ export type ItemDefinitionView = {
   isContainer?: boolean;
   containerCapacity?: number | null;
   isLiquid?: boolean;
+  palaceShardCost?: number;
+  himLitShardCost?: number;
 };

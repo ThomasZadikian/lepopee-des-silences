@@ -12,11 +12,14 @@ public sealed class StubPlayerProfileGateway : IPlayerProfileGateway
 {
     private readonly HashSet<string> _claimedOfferings = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<Guid, int> _currencyBalances = new();
+    private readonly Dictionary<Guid, int> _himLitCurrencyBalances = new();
 
     public List<(Guid PlayerId, Guid CharacterId, string SkillKey, string Source)> UnlockedSkills { get; } = [];
     public List<(Guid PlayerId, int Amount)> AwardedStatPoints { get; } = [];
     public List<(Guid PlayerId, int Amount)> AwardedCurrency { get; } = [];
     public List<(Guid PlayerId, int Amount, bool Succeeded)> SpentCurrencyAttempts { get; } = [];
+    public List<(Guid PlayerId, int Amount)> AwardedHimLitCurrency { get; } = [];
+    public List<(Guid PlayerId, int Amount, bool Succeeded)> SpentHimLitCurrencyAttempts { get; } = [];
     public List<(Guid PlayerId, string NpcKey, string OfferingKey, Guid? SourceRunId)> ClaimedOfferings { get; } = [];
     public List<(Guid PlayerId, string NpcKey, string MilestoneKey, Guid? SourceRunId)> GrantedMilestones { get; } = [];
     public List<(Guid PlayerId, Guid CharacterId, string ItemKey)> EquippedItems { get; } = [];
@@ -31,9 +34,13 @@ public sealed class StubPlayerProfileGateway : IPlayerProfileGateway
 
     public void SeedCurrencyBalance(Guid playerId, int amount) => _currencyBalances[playerId] = amount;
 
+    public void SeedHimLitCurrencyBalance(Guid playerId, int amount) => _himLitCurrencyBalances[playerId] = amount;
+
     private static string Key(Guid playerId, string npcKey, string offeringKey) => $"{playerId}|{npcKey}|{offeringKey}";
 
     private int GetBalance(Guid playerId) => _currencyBalances.GetValueOrDefault(playerId);
+
+    private int GetHimLitBalance(Guid playerId) => _himLitCurrencyBalances.GetValueOrDefault(playerId);
 
     public Task AwardStatPointAsync(Guid playerId, CancellationToken cancellationToken)
     {
@@ -118,6 +125,24 @@ public sealed class StubPlayerProfileGateway : IPlayerProfileGateway
         return Task.FromResult(succeeded);
     }
 
+    public Task<PlayerProfileView> AwardHimLitCurrencyAsync(Guid playerId, int amount, CancellationToken cancellationToken)
+    {
+        AwardedHimLitCurrency.Add((playerId, amount));
+        _himLitCurrencyBalances[playerId] = GetHimLitBalance(playerId) + amount;
+        return Task.FromResult(EmptyProfile(playerId));
+    }
+
+    public Task<bool> TrySpendHimLitCurrencyAsync(Guid playerId, int amount, CancellationToken cancellationToken)
+    {
+        var balance = GetHimLitBalance(playerId);
+        var succeeded = balance >= amount;
+        if (succeeded)
+            _himLitCurrencyBalances[playerId] = balance - amount;
+
+        SpentHimLitCurrencyAttempts.Add((playerId, amount, succeeded));
+        return Task.FromResult(succeeded);
+    }
+
     public Task<bool> HasClaimedNpcOfferingAsync(Guid playerId, string npcKey, string offeringKey, CancellationToken cancellationToken)
         => Task.FromResult(_claimedOfferings.Contains(Key(playerId, npcKey, offeringKey)));
 
@@ -162,5 +187,5 @@ public sealed class StubPlayerProfileGateway : IPlayerProfileGateway
     }
 
     private PlayerProfileView EmptyProfile(Guid playerId) => new(
-        playerId, "Stub Player", [], new PlayerProgressionView(0, 0, GetBalance(playerId)));
+        playerId, "Stub Player", [], new PlayerProgressionView(0, 0, GetBalance(playerId), GetHimLitBalance(playerId)));
 }

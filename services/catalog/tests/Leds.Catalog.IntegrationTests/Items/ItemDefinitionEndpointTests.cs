@@ -106,6 +106,32 @@ public sealed class ItemDefinitionEndpointTests
         payload.Definitions.Should().Contain(d => d.Key == "canon.item.tome-38");
     }
 
+    [Fact]
+    public async Task GetItemDefinitionByKey_ShouldExposeFixedRarityCost_ForUniqueItem()
+    {
+        // canon.item.tome-38 is seeded with Rarity="Unique" → 1000 Éclats du Palais + 75 Éclats de Him'Lit.
+        var response = await _client.GetAsync("/api/v2/catalog/item-definitions/canon.item.tome-38");
+        var payload = await response.Content.ReadFromJsonAsync<GetItemDefinitionByKeyResponse>();
+
+        payload.Should().NotBeNull();
+        payload!.Definition.Should().NotBeNull();
+        payload.Definition!.PalaceShardCost.Should().Be(1000);
+        payload.Definition.HimLitShardCost.Should().Be(75);
+    }
+
+    [Fact]
+    public async Task GetItemDefinitionByKey_ShouldExposeFixedRarityCost_ForRareItem()
+    {
+        // canon.item.carnet-pomenian is seeded with Rarity="Rare" → 350 Éclats du Palais, no Him'Lit.
+        var response = await _client.GetAsync("/api/v2/catalog/item-definitions/canon.item.carnet-pomenian");
+        var payload = await response.Content.ReadFromJsonAsync<GetItemDefinitionByKeyResponse>();
+
+        payload.Should().NotBeNull();
+        payload!.Definition.Should().NotBeNull();
+        payload.Definition!.PalaceShardCost.Should().Be(350);
+        payload.Definition.HimLitShardCost.Should().Be(0);
+    }
+
     private sealed record ListActiveItemDefinitionsResponse(IReadOnlyCollection<ItemDefinitionResponseDto> Definitions);
 
     private sealed record GetItemDefinitionByKeyResponse(ItemDefinitionResponseDto? Definition);
@@ -115,5 +141,6 @@ public sealed class ItemDefinitionEndpointTests
         string Category, string ItemType, string Rarity, string UsageMode, string Lifecycle, string StackPolicy,
         int MaxStack, bool IsUsableInCombat, bool IsUsableOutsideCombat, string? EffectSetKey, string Status,
         bool IsPermanentEligible, IReadOnlyCollection<object> EquipmentEffects,
-        bool IsContainer, int? ContainerCapacity, bool IsLiquid);
+        bool IsContainer, int? ContainerCapacity, bool IsLiquid,
+        int PalaceShardCost, int HimLitShardCost);
 }

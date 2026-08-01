@@ -11,6 +11,7 @@ using Leds.Player.Application.Players.HasClaimedNpcOffering;
 using Leds.Player.Application.Players.RecruitCompanion;
 using Leds.Player.Application.Players.SetPermanentItemContent;
 using Leds.Player.Application.Players.SpendCurrency;
+using Leds.Player.Application.Players.SpendHimLitCurrency;
 using Leds.Player.Application.Players.UnequipItem;
 using Leds.Player.Domain.Players;
 using Moq;
@@ -315,6 +316,46 @@ public sealed class PlayerCommandHandlerTests
 
         response.Succeeded.Should().BeFalse();
         response.Profile.Progression.PalaceShardCount.Should().Be(10);
+        repository.Verify(r => r.SaveAsync(It.IsAny<PlayerProfile>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task SpendHimLitCurrency_ShouldDecrementAndPersist_WhenAffordable()
+    {
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+        profile.AwardHimLitCurrency(DateTimeOffset.UtcNow, 100);
+        var repository = new Mock<IPlayerProfileRepository>();
+        repository.Setup(r => r.GetByIdAsync(profile.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(profile);
+
+        var handler = new SpendHimLitCurrencyCommandHandler(repository.Object, TimeProvider.System);
+
+        var response = await handler.Handle(
+            new SpendHimLitCurrencyCommand(profile.Id.Value, 30),
+            CancellationToken.None);
+
+        response.Succeeded.Should().BeTrue();
+        response.Profile.Progression.HimLitShardCount.Should().Be(70);
+        repository.Verify(r => r.SaveAsync(It.IsAny<PlayerProfile>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task SpendHimLitCurrency_ShouldReturnFailureAndNotPersist_WhenInsufficientFunds()
+    {
+        var profile = PlayerProfile.Create("Test", DateTimeOffset.UtcNow);
+        profile.AwardHimLitCurrency(DateTimeOffset.UtcNow, 10);
+        var repository = new Mock<IPlayerProfileRepository>();
+        repository.Setup(r => r.GetByIdAsync(profile.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(profile);
+
+        var handler = new SpendHimLitCurrencyCommandHandler(repository.Object, TimeProvider.System);
+
+        var response = await handler.Handle(
+            new SpendHimLitCurrencyCommand(profile.Id.Value, 30),
+            CancellationToken.None);
+
+        response.Succeeded.Should().BeFalse();
+        response.Profile.Progression.HimLitShardCount.Should().Be(10);
         repository.Verify(r => r.SaveAsync(It.IsAny<PlayerProfile>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 }

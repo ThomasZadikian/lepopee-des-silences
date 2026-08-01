@@ -39,6 +39,15 @@ public interface IPlayerProfileGateway
     /// an expected outcome for callers like "Loi de l'Impôt du Seuil".</summary>
     Task<bool> TrySpendCurrencyAsync(Guid playerId, int amount, CancellationToken cancellationToken);
 
+    /// <summary>Awards a flat amount of the player's second persistent currency
+    /// ("Éclats de Him'Lit") — earned only from Périlleux/Fatal-tier combat victories.
+    /// Mirrors AwardCurrencyAsync exactly (separate currency, not a generalized type).</summary>
+    Task<PlayerProfileView> AwardHimLitCurrencyAsync(Guid playerId, int amount, CancellationToken cancellationToken);
+
+    /// <summary>Spends "Éclats de Him'Lit" if the player can afford it. Mirrors
+    /// TrySpendCurrencyAsync exactly.</summary>
+    Task<bool> TrySpendHimLitCurrencyAsync(Guid playerId, int amount, CancellationToken cancellationToken);
+
     Task<bool> HasClaimedNpcOfferingAsync(Guid playerId, string npcKey, string offeringKey, CancellationToken cancellationToken);
 
     Task ClaimNpcOfferingAsync(Guid playerId, string npcKey, string offeringKey, Guid? sourceRunId, CancellationToken cancellationToken);

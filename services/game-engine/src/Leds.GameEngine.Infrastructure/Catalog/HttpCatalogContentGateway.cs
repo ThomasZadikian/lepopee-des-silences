@@ -1014,7 +1014,9 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
             source.TacticalAreaShape,
             source.RequiresLineOfSight,
             source.BasicAttackPower,
-            source.BasicAttackCategory);
+            source.BasicAttackCategory,
+            source.PalaceShardCost,
+            source.HimLitShardCost);
     }
 
     private static CatalogEffectSetSnapshot MapToCatalogEffectSetSnapshot(
@@ -1460,7 +1462,9 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
         string TacticalAreaShape = "Single",
         bool RequiresLineOfSight = false,
         int? BasicAttackPower = null,
-        string? BasicAttackCategory = null);
+        string? BasicAttackCategory = null,
+        int PalaceShardCost = 0,
+        int HimLitShardCost = 0);
 
     private sealed record CatalogItemEquipmentEffectHttpResponse(
         string Kind,
