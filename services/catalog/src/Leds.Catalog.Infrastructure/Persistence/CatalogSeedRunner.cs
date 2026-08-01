@@ -290,11 +290,15 @@ public sealed partial class CatalogSeedRunner
                 new NpcDialogueChoice("accepter-tasse-majordome", "Accepter la tasse du majordome",
                     new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) },
                     new[] { C(ConsequenceKind.GrantOffering, offering: "offer.majordome.tasse-majordome") }, null),
+                new NpcDialogueChoice("accepter-sceau", "Accepter le Sceau de l'invité reconnu",
+                    new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 2000) },
+                    new[] { C(ConsequenceKind.Narrative, frag: "Il presse un sceau de cire froide dans votre paume. « Ceux qui l'oublient ne reviennent pas. Vous, si. »"),
+                            C(ConsequenceKind.GrantOffering, offering: "offer.majordome.sceau-invite") }, null),
                 new NpcDialogueChoice("don-decliner", "Remercier et repartir", Array.Empty<DialogueRequirement>(),
                     new[] { C(ConsequenceKind.Narrative, frag: "Il incline la tête. « À votre service. »") }, null)
             });
 
-        var graph = new NpcDialogueGraph("npc.majordome.dialogue", "1.3", "seuil",
+        var graph = new NpcDialogueGraph("npc.majordome.dialogue", "1.4", "seuil",
             new Dictionary<string, NpcDialogueNode> { ["seuil"] = seuil, ["confidence"] = confidence, ["don"] = don });
 
         var offerings = new[]
@@ -304,13 +308,16 @@ public sealed partial class CatalogSeedRunner
             new NpcOffering("offer.majordome.tasse-the", NpcOfferingKind.Item, "canon.item.tasse-de-the", 1, false,
                 new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 250) }),
             new NpcOffering("offer.majordome.tasse-majordome", NpcOfferingKind.Item, "canon.item.tasse-du-majordome", 1, true,
-                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) })
+                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) }),
+            // Héritage — reconnu par le gardien du seuil lui-même.
+            new NpcOffering("offer.majordome.sceau-invite", NpcOfferingKind.Item, "item.sceau-invite", 1, true,
+                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 2000) })
         };
 
         // TODO(utilisateur) : liaison à une Room précise non fournie à ce stade — ne pas
         // inventer, compléter une fois le contenu reçu.
         var n = await UpsertNpcAsync("npc.majordome", "Le Majordome",
-            "Une présence du seuil : il accueille, il sert, il veille. Et il n'oublie rien.", "1.3",
+            "Une présence du seuil : il accueille, il sert, il veille. Et il n'oublie rien.", "1.4",
             EmotionalRegister.Silence, true, persona, wounds, graph, ct,
             offerings: offerings);
 
@@ -1064,22 +1071,29 @@ public sealed partial class CatalogSeedRunner
                 new NpcDialogueChoice("accepter-pierre", "Accepter la Pierre antique",
                     new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 250) },
                     new[] { C(ConsequenceKind.GrantOffering, offering: "offer.ouchian.pierre") }, null),
+                new NpcDialogueChoice("accepter-eclat", "Accepter l'Éclat de la Faille",
+                    new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) },
+                    new[] { C(ConsequenceKind.Narrative, frag: "Il vous tend un dernier fragment, plus froid que les autres. « Celui-ci ne vient pas d'un temple. Il vient d'une faille — une vraie. Ne le perdez pas. »"),
+                            C(ConsequenceKind.GrantOffering, offering: "offer.ouchian.eclat-faille") }, null),
                 new NpcDialogueChoice("don-decliner", "Remercier et poursuivre votre chemin", Array.Empty<DialogueRequirement>(),
                     new[] { C(ConsequenceKind.Narrative, frag: "La pierre retourne dans une poche, sans un geste de plus. « Elle a attendu plus longtemps que ça. »") }, null)
             });
 
-        var graph = new NpcDialogueGraph("npc.ouchian.dialogue", "1.0", "rencontre",
+        var graph = new NpcDialogueGraph("npc.ouchian.dialogue", "1.1", "rencontre",
             new Dictionary<string, NpcDialogueNode> { ["rencontre"] = rencontre, ["recherche"] = recherche, ["don"] = don });
 
         var offerings = new[]
         {
             new NpcOffering("offer.ouchian.pierre", NpcOfferingKind.Item, "canon.item.pierre-antique", 1, true,
-                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 250) })
+                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 250) }),
+            // Héritage — un géologue est le seul à vraiment parler de failles.
+            new NpcOffering("offer.ouchian.eclat-faille", NpcOfferingKind.Item, "item.eclat-faille", 1, true,
+                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) })
         };
 
         return await UpsertNpcAsync("npc.ouchian", "Ouchian",
             "Un géologue spécialisé dans les vieux temples. Calme et méthodique, il consacre sa vie à prouver qu'un passé a existé avant le Palais — et refuse d'entendre que ce passé pourrait n'être qu'une de ses inventions.",
-            "1.0", EmotionalRegister.Memoire, true, persona, wounds, graph, ct,
+            "1.1", EmotionalRegister.Memoire, true, persona, wounds, graph, ct,
             offerings: offerings);
     }
 
@@ -1527,11 +1541,15 @@ public sealed partial class CatalogSeedRunner
                 new NpcDialogueChoice("accepter-compagnon", "Lui demander de vous accompagner",
                     new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) },
                     new[] { C(ConsequenceKind.GrantOffering, offering: "offer.thomas.compagnon") }, null),
+                new NpcDialogueChoice("accepter-medaille", "Accepter la Médaille de fin d'année",
+                    new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 2000) },
+                    new[] { C(ConsequenceKind.Narrative, frag: "Il détache une médaille ternie de son col et la pose dans votre main. « On me l'a donnée, un jour, pour avoir tenu bon. Elle vous ira mieux qu'à moi, désormais. »"),
+                            C(ConsequenceKind.GrantOffering, offering: "offer.thomas.medaille") }, null),
                 new NpcDialogueChoice("don-decliner", "Le remercier et poursuivre votre chemin", Array.Empty<DialogueRequirement>(),
                     new[] { C(ConsequenceKind.Narrative, frag: "Vous n'êtes pas encore prêt à recevoir ce présent. Il hoche la tête, sans un mot, et retourne à la contemplation des murs.") }, null)
             });
 
-        var graph = new NpcDialogueGraph("npc.thomas.dialogue", "1.0", "rencontre",
+        var graph = new NpcDialogueGraph("npc.thomas.dialogue", "1.1", "rencontre",
             new Dictionary<string, NpcDialogueNode> { ["rencontre"] = rencontre, ["conversation"] = conversation, ["don"] = don });
 
         var offerings = new[]
@@ -1547,12 +1565,15 @@ public sealed partial class CatalogSeedRunner
                     // Mana = 85% of MaxVitality (design rule, see PlayerCharacterStatBlock.CreateDefaultPorteur).
                     Speed: 8, Initiative: 8, Focus: 2, Mana: 94, Charge: 0,
                     SkillKeys: new[] { "skill.basic.strike", "skill.basic.guard", "canon.skill.fondations-de-thomas" },
-                    MagicAttack: 4, MagicDefense: 11))
+                    MagicAttack: 4, MagicDefense: 11)),
+            // Héritage — un dernier présent, une fois qu'il vous accompagne vraiment.
+            new NpcOffering("offer.thomas.medaille", NpcOfferingKind.Item, "item.medaille-fin-annee", 1, true,
+                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 2000) })
         };
 
         return await UpsertNpcAsync("npc.thomas", "Thomas",
             "La première projection de l'Architecte, et celle qui lui ressemble le plus. Calme, équilibré, conscient de ce qu'est le Palais — il a fait la paix avec son statut et aide désormais les aventuriers qui croisent sa route.",
-            "1.0", EmotionalRegister.Memoire, true, persona, wounds, graph, ct,
+            "1.1", EmotionalRegister.Memoire, true, persona, wounds, graph, ct,
             offerings: offerings);
     }
 
@@ -1953,11 +1974,15 @@ public sealed partial class CatalogSeedRunner
                 new NpcDialogueChoice("accepter-deni", "Accepter le Déni permanent",
                     new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) },
                     new[] { C(ConsequenceKind.GrantOffering, offering: "offer.erika.deni-permanent") }, null),
+                new NpcDialogueChoice("accepter-memoire", "Lui demander de vous parler de la faille",
+                    new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 2000) },
+                    new[] { C(ConsequenceKind.Narrative, frag: "Elle vous regarde longuement, puis cède. « D'accord. Je vais te montrer ce que je sais. Tu t'en souviendras, à chaque seuil que tu franchiras. »"),
+                            C(ConsequenceKind.GrantOffering, offering: "offer.erika.memoire") }, null),
                 new NpcDialogueChoice("don-decliner", "La remercier et poursuivre votre chemin", Array.Empty<DialogueRequirement>(),
                     new[] { C(ConsequenceKind.Narrative, frag: "Elle range ce qu'elle tenait, sans se départir de son calme. « Une prochaine fois, alors. »") }, null)
             });
 
-        var graph = new NpcDialogueGraph("npc.erika.dialogue", "1.0", "rencontre",
+        var graph = new NpcDialogueGraph("npc.erika.dialogue", "1.1", "rencontre",
             new Dictionary<string, NpcDialogueNode>
             {
                 ["rencontre"] = rencontre,
@@ -1972,12 +1997,15 @@ public sealed partial class CatalogSeedRunner
             new NpcOffering("offer.erika.competence", NpcOfferingKind.StatPoint, null, 10, true,
                 new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 250) }),
             new NpcOffering("offer.erika.deni-permanent", NpcOfferingKind.Item, "canon.item.deni-permanent", 1, true,
-                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) })
+                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 1000) }),
+            // Héritage — le plus intime de ses dons : ce qu'elle sait de la faille.
+            new NpcOffering("offer.erika.memoire", NpcOfferingKind.Item, "item.memoire-erika", 1, true,
+                new[] { new DialogueRequirement(DialogueRequirementKind.RelationshipScoreAtLeast, RequiredRelationshipScore: 2000) })
         };
 
         return await UpsertNpcAsync("npc.erika", "Erika",
             "Une femme de caractère, installée dans le Hall d'entrée, qui accueille les voyageurs et leur explique le fonctionnement du Palais. Elle prétend venir d'un autre monde, et semble en savoir bien plus qu'elle ne le laisse paraître — jusqu'à l'emplacement d'une faille que personne d'autre ne semble connaître.",
-            "1.0", EmotionalRegister.Memoire, true, persona, wounds, graph, ct,
+            "1.1", EmotionalRegister.Memoire, true, persona, wounds, graph, ct,
             boundRoomKeys: new[] { "room.halldentree" },
             offerings: offerings);
     }
