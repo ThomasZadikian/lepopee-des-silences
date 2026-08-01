@@ -4,9 +4,13 @@ import { onMounted, ref } from 'vue';
 import { demoPlayerId, useRunStore } from '../../runs/stores/runStore';
 import { skillsApi } from '../../party/api/skillsApi';
 import { itemsApi } from '../../party/api/itemsApi';
+import { lawsApi } from '../../palace-laws/api/lawsApi';
+import { cursesApi } from '../../palace-laws/api/cursesApi';
 import { usePlayerStore } from '../../party/stores/playerStore';
 import type { SkillDefinitionView } from '../../party/types/skillTypes';
 import type { ItemDefinitionView } from '../../party/types/itemTypes';
+import type { PalaceLawDefinitionView } from '../../palace-laws/types/lawTypes';
+import type { CurseDefinitionView } from '../../palace-laws/types/curseTypes';
 import { devToolsApi } from '../api/devToolsApi';
 import { useDevTools } from '../composables/useDevTools';
 import type { DevToolsRunPsycheResponse, PalaceRoomStateKey, RoomClimateKey } from '../types/devToolsTypes';
@@ -27,6 +31,8 @@ const devTools = useDevTools();
 const psyche = ref<DevToolsRunPsycheResponse | null>(null);
 const allSkills = ref<SkillDefinitionView[]>([]);
 const allItems = ref<ItemDefinitionView[]>([]);
+const allLaws = ref<PalaceLawDefinitionView[]>([]);
+const allCurses = ref<CurseDefinitionView[]>([]);
 
 onMounted(() => {
   if (devTools.hasToken.value) {
@@ -36,6 +42,8 @@ onMounted(() => {
   void playerStore.loadProfile();
   void loadAllSkills();
   void loadAllItems();
+  void loadAllLaws();
+  void loadAllCurses();
 });
 
 async function loadAllSkills() {
@@ -53,6 +61,24 @@ async function loadAllItems() {
     allItems.value = response.items;
   } catch {
     // best-effort : la fenêtre Objets affiche juste une liste vide en cas d'échec
+  }
+}
+
+async function loadAllLaws() {
+  try {
+    const response = await lawsApi.listActive();
+    allLaws.value = response.laws;
+  } catch {
+    // best-effort : la fenêtre Lois affiche juste une liste vide en cas d'échec
+  }
+}
+
+async function loadAllCurses() {
+  try {
+    const response = await cursesApi.listAvailable();
+    allCurses.value = response.curses;
+  } catch {
+    // best-effort : la fenêtre Malédictions affiche juste une liste vide en cas d'échec
   }
 }
 
@@ -191,6 +217,8 @@ function awardStatPoints(amount: number) {
       :characters="playerStore.profile?.characters ?? []"
       :all-skills="allSkills"
       :all-items="allItems"
+      :all-laws="allLaws"
+      :all-curses="allCurses"
       :psyche="psyche"
       @advance-room="advanceRoom"
       @advance-rooms="advanceRooms"

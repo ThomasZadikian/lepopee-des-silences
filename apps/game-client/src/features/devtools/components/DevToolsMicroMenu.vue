@@ -4,6 +4,8 @@ import PageOverlayModal from '../../../shared/components/PageOverlayModal.vue';
 import type { PlayerCharacterView } from '../../party/types/playerTypes';
 import type { SkillDefinitionView } from '../../party/types/skillTypes';
 import type { ItemDefinitionView } from '../../party/types/itemTypes';
+import type { PalaceLawDefinitionView } from '../../palace-laws/types/lawTypes';
+import type { CurseDefinitionView } from '../../palace-laws/types/curseTypes';
 import type { DevToolsRunPsycheResponse, PalaceRoomStateKey, RoomClimateKey } from '../types/devToolsTypes';
 import SkillsDevToolsWindow from '../windows/SkillsDevToolsWindow.vue';
 import ItemsDevToolsWindow from '../windows/ItemsDevToolsWindow.vue';
@@ -21,6 +23,8 @@ const props = defineProps<{
   characters: PlayerCharacterView[];
   allSkills: SkillDefinitionView[];
   allItems: ItemDefinitionView[];
+  allLaws: PalaceLawDefinitionView[];
+  allCurses: CurseDefinitionView[];
   psyche: DevToolsRunPsycheResponse | null;
 }>();
 
@@ -123,6 +127,7 @@ const activeWindow = ref<WindowKey | null>(null);
         v-else-if="activeWindow === 'lois'"
         :disabled="props.disabled"
         :is-loading="props.isLoading"
+        :all-laws="props.allLaws"
         @activate-law="(key) => emit('activateLaw', key)"
         @clear-laws="emit('clearLaws')"
       />
@@ -130,6 +135,7 @@ const activeWindow = ref<WindowKey | null>(null);
         v-else-if="activeWindow === 'malediction'"
         :disabled="props.disabled"
         :is-loading="props.isLoading"
+        :all-curses="props.allCurses"
         @activate-curse="(key) => emit('activateCurse', key)"
         @clear-curses="emit('clearCurses')"
       />

@@ -17,6 +17,8 @@ function mountMenu() {
       characters: [],
       allSkills: [],
       allItems: [],
+      allLaws: [],
+      allCurses: [],
       psyche: null,
     },
     global: {
