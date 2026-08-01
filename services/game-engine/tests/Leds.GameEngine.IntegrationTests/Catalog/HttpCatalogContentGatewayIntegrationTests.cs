@@ -125,10 +125,10 @@ public sealed class HttpCatalogContentGatewayIntegrationTests : IAsyncLifetime
     [Fact]
     public async Task GetItemDefinitionByKeyAsync_ShouldReturnSeededItem()
     {
-        var result = await _gateway.GetItemDefinitionByKeyAsync("item.consumable.minor-heal");
+        var result = await _gateway.GetItemDefinitionByKeyAsync("canon.item.tome-38");
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Key.Should().Be("item.consumable.minor-heal");
+        result.Value.Key.Should().Be("canon.item.tome-38");
     }
 
     [Fact]
@@ -145,10 +145,10 @@ public sealed class HttpCatalogContentGatewayIntegrationTests : IAsyncLifetime
     [Fact]
     public async Task GetEffectSetByKeyAsync_ShouldReturnSeededEffectSet()
     {
-        var result = await _gateway.GetEffectSetByKeyAsync("effect.item.minor-heal");
+        var result = await _gateway.GetEffectSetByKeyAsync("effect.law.silence-du");
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Key.Should().Be("effect.item.minor-heal");
+        result.Value.Key.Should().Be("effect.law.silence-du");
     }
 
     [Fact]
@@ -165,10 +165,10 @@ public sealed class HttpCatalogContentGatewayIntegrationTests : IAsyncLifetime
     [Fact]
     public async Task GetRewardTemplateByKeyAsync_ShouldReturnSeededTemplate()
     {
-        var result = await _gateway.GetRewardTemplateByKeyAsync("reward.combat.default");
+        var result = await _gateway.GetRewardTemplateByKeyAsync("reward.item.default");
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Key.Should().Be("reward.combat.default");
+        result.Value.Key.Should().Be("reward.item.default");
     }
 
     [Fact]
@@ -185,10 +185,10 @@ public sealed class HttpCatalogContentGatewayIntegrationTests : IAsyncLifetime
     [Fact]
     public async Task GetEnemyDefinitionByKeyAsync_ShouldReturnSeededEnemy()
     {
-        var result = await _gateway.GetEnemyDefinitionByKeyAsync("enemy.threshold.echo");
+        var result = await _gateway.GetEnemyDefinitionByKeyAsync("canon.enemy.lamiz");
 
         result.Should().NotBeNull();
-        result!.Key.Should().Be("enemy.threshold.echo");
+        result!.Key.Should().Be("canon.enemy.lamiz");
     }
 
     [Fact]
