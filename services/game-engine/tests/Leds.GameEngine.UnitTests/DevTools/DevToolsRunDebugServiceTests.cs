@@ -1,7 +1,9 @@
 using FluentAssertions;
 using Leds.GameEngine.Application.Abstractions;
+using Leds.GameEngine.Application.Catalog.Contracts;
 using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Application.Combats.Resolution;
+using Leds.GameEngine.Application.Common.Exceptions;
 using Leds.GameEngine.Application.DevTools;
 using Leds.GameEngine.Application.Rewards.Ports;
 using Leds.GameEngine.Domain.Combats;
@@ -12,6 +14,8 @@ using Leds.GameEngine.Domain.Rooms;
 using Leds.GameEngine.Domain.Runs;
 using Leds.GameEngine.UnitTests.Common;
 using Leds.GameEngine.UnitTests.Common.Factories;
+using Leds.SharedBuildingBlocks.Errors;
+using Leds.SharedBuildingBlocks.Results;
 using Moq;
 
 namespace Leds.GameEngine.UnitTests.DevTools;
@@ -80,7 +84,70 @@ public sealed class DevToolsRunDebugServiceTests
         await act.Should().ThrowAsync<DomainException>();
     }
 
-    private static async Task<DevToolsRunDebugService> CreateServiceAsync(Run run)
+    [Fact]
+    public async Task AddDebugItem_ShouldGrantCatalogItemToTheRunInventory()
+    {
+        var run = TestGameEngineFactory.CreateRun();
+        var catalogGateway = new Mock<ICatalogContentGateway>();
+        catalogGateway
+            .Setup(gateway => gateway.GetItemDefinitionByKeyAsync("item.the-seuil", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<CatalogItemDefinitionSnapshot>.Success(new CatalogItemDefinitionSnapshot(
+                Key: "item.the-seuil",
+                Version: "1",
+                DisplayName: "Thé du seuil",
+                Description: "Restaure 25% de Vitalité maximale.",
+                NarrativeText: null,
+                Category: "Consumable",
+                ItemType: "Consumable",
+                Rarity: "Common",
+                UsageMode: "UseAnywhere",
+                Lifecycle: "RuntimeRunOnly",
+                StackPolicy: "Additive",
+                MaxStack: 20,
+                IsUsableInCombat: true,
+                IsUsableOutsideCombat: true,
+                EffectSetKey: null,
+                EffectValue: 25,
+                EffectRunType: "HealPercent")));
+        var service = await CreateServiceAsync(run, catalogGateway.Object);
+
+        var result = await service.AddDebugItemAsync(run.Id.Value, "item.the-seuil", quantity: 3);
+
+        var grantedItem = result.Run.InventoryItems.Should().ContainSingle().Subject;
+        grantedItem.DefinitionKey.Should().Be("item.the-seuil");
+        grantedItem.DisplayName.Should().Be("Thé du seuil");
+        grantedItem.Quantity.Should().Be(3);
+    }
+
+    [Fact]
+    public async Task AddDebugItem_ShouldRejectUnknownItemKey()
+    {
+        var run = TestGameEngineFactory.CreateRun();
+        var catalogGateway = new Mock<ICatalogContentGateway>();
+        catalogGateway
+            .Setup(gateway => gateway.GetItemDefinitionByKeyAsync("item.nonexistent", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<CatalogItemDefinitionSnapshot>.Failure(
+                Error.Create("item.not_found", "Item not found.")));
+        var service = await CreateServiceAsync(run, catalogGateway.Object);
+
+        var act = () => service.AddDebugItemAsync(run.Id.Value, "item.nonexistent", quantity: 1);
+
+        await act.Should().ThrowAsync<NotFoundException>();
+    }
+
+    [Fact]
+    public async Task AddDebugItem_ShouldRejectQuantityOutOfRange()
+    {
+        var run = TestGameEngineFactory.CreateRun();
+        var service = await CreateServiceAsync(run);
+
+        var act = () => service.AddDebugItemAsync(run.Id.Value, "item.the-seuil", quantity: 0);
+
+        await act.Should().ThrowAsync<DomainException>();
+    }
+
+    private static async Task<DevToolsRunDebugService> CreateServiceAsync(
+        Run run, ICatalogContentGateway? catalogContentGateway = null)
     {
         var runRepository = new StubRunRepository();
         await runRepository.AddAsync(run, CancellationToken.None);
@@ -88,7 +155,7 @@ public sealed class DevToolsRunDebugServiceTests
         return new DevToolsRunDebugService(
             runRepository,
             Mock.Of<IRunGenerator>(),
-            Mock.Of<ICatalogContentGateway>(),
+            catalogContentGateway ?? Mock.Of<ICatalogContentGateway>(),
             Mock.Of<ICombatResolutionService>(),
             Mock.Of<IRewardOfferRepository>());
     }

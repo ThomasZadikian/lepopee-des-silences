@@ -40,6 +40,11 @@ describe('RunDevToolsSection', () => {
     expect(wrapper.text()).toContain('Curses');
   });
 
+  it('displays Items section', () => {
+    const wrapper = mountSection();
+    expect(wrapper.text()).toContain('Items');
+  });
+
   it('emits advanceRoom when button is clicked', async () => {
     const wrapper = mountSection();
     const btn = wrapper.findAll('button').find((b) => b.text().includes('Advance room'));
@@ -209,5 +214,32 @@ describe('RunDevToolsSection', () => {
     const select = wrapper.findAll('select')[2];
     const options = select.findAll('option');
     expect(options.length).toBe(5);
+  });
+
+  it('emits addItem with trimmed key and default quantity', async () => {
+    const wrapper = mountSection();
+    const inputs = wrapper.findAll('input:not([type="number"])');
+    await inputs[2]!.setValue('item.the-seuil');
+    const btn = wrapper.findAll('button').find((b) => b.text().includes('Ajouter a la besace'));
+    if (btn) await btn.trigger('click');
+    expect(wrapper.emitted('addItem')).toBeDefined();
+    expect(wrapper.emitted('addItem')![0]).toEqual(['item.the-seuil', 1]);
+  });
+
+  it('emits addItem with the chosen quantity, clamped to [1,99]', async () => {
+    const wrapper = mountSection();
+    const inputs = wrapper.findAll('input:not([type="number"])');
+    await inputs[2]!.setValue('item.the-seuil');
+    const numberInputs = wrapper.findAll('input[type="number"]');
+    await numberInputs[numberInputs.length - 1]!.setValue(150);
+    const btn = wrapper.findAll('button').find((b) => b.text().includes('Ajouter a la besace'));
+    if (btn) await btn.trigger('click');
+    expect(wrapper.emitted('addItem')![0]).toEqual(['item.the-seuil', 99]);
+  });
+
+  it('disables addItem when the item key is empty', () => {
+    const wrapper = mountSection();
+    const btn = wrapper.findAll('button').find((b) => b.text().includes('Ajouter a la besace'));
+    expect((btn!.element as HTMLButtonElement).disabled).toBe(true);
   });
 });

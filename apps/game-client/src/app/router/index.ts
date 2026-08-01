@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router';
 
+import BesacePage from '../../pages/BesacePage.vue';
 import EquipmentPage from '../../pages/EquipmentPage.vue';
 import GrimoirePage from '../../pages/GrimoirePage.vue';
 import ManifestationsPage from '../../pages/ManifestationsPage.vue';
@@ -63,6 +64,11 @@ export const router = createRouter({
       path: '/equipement',
       name: 'equipement',
       component: EquipmentPage,
+    },
+    {
+      path: '/besace',
+      name: 'besace',
+      component: BesacePage,
     },
   ],
 });

@@ -173,6 +173,17 @@ public static class DevToolsEndpointRouteBuilderExtensions
             return TypedResults.Ok(result);
         });
 
+        group.MapPost("/runs/{runId:guid}/items/add", async Task<Ok<DevToolsRunDebugResult>> (
+            Guid runId,
+            DevToolsAddItemRequest request,
+            IDevToolsRunDebugService service,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await service.AddDebugItemAsync(
+                runId, request.ItemDefinitionKey, request.Quantity <= 0 ? 1 : request.Quantity, cancellationToken);
+            return TypedResults.Ok(result);
+        });
+
         group.MapPost("/runs/{runId:guid}/combats/current/combatants/{combatantId:guid}/status", async Task<Ok<DevToolsCombatDebugResult>> (
             Guid runId,
             Guid combatantId,
@@ -229,3 +240,5 @@ public sealed record DevToolsApplyStatusRequest(string StatusKey, int Stacks, in
 public sealed record DevToolsAwardStatPointsRequest(int Amount);
 
 public sealed record DevToolsAddCompanionRequest(string CompanionNpcKey);
+
+public sealed record DevToolsAddItemRequest(string ItemDefinitionKey, int Quantity);

@@ -139,6 +139,13 @@ const props = withDefaults(defineProps<{
       <path d="M12 3 L19 5.5 V11.5 C19 16 16 19 12 21 C8 19 5 16 5 11.5 V5.5 Z" />
     </template>
 
+    <!-- besace : sac à rabat -->
+    <template v-else-if="props.kind === 'besace'">
+      <path d="M6 2.5 L3 6.5 V20 a2 2 0 0 0 2 2 H19 a2 2 0 0 0 2 -2 V6.5 L18 2.5 Z" />
+      <path d="M3 6.5 H21" />
+      <path d="M9 10.5 a3 3 0 0 0 6 0" />
+    </template>
+
     <!-- fallback générique -->
     <template v-else>
       <circle cx="12" cy="12" r="8" stroke-dasharray="2.5 4" opacity="0.85" />

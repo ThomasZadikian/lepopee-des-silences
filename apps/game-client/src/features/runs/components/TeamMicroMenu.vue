@@ -6,14 +6,16 @@ import TeamPage from '../../../pages/TeamPage.vue';
 import StatsPage from '../../../pages/StatsPage.vue';
 import GrimoirePage from '../../../pages/GrimoirePage.vue';
 import EquipmentPage from '../../../pages/EquipmentPage.vue';
+import BesacePage from '../../../pages/BesacePage.vue';
 
-type MenuKey = 'equipe' | 'statistiques' | 'grimoire' | 'equipement';
+type MenuKey = 'equipe' | 'statistiques' | 'grimoire' | 'equipement' | 'besace';
 
 const entries: { key: MenuKey; label: string; icon: string }[] = [
   { key: 'equipe', label: 'Équipe', icon: 'equipe' },
   { key: 'statistiques', label: 'Statistiques', icon: 'statistiques' },
   { key: 'grimoire', label: 'Grimoire', icon: 'grimoire' },
   { key: 'equipement', label: 'Équipement', icon: 'equipement' },
+  { key: 'besace', label: 'La Besace', icon: 'besace' },
 ];
 
 // These open as a modal overlaying the game board instead of navigating away — the
@@ -42,6 +44,7 @@ const activeModal = ref<MenuKey | null>(null);
       <StatsPage v-else-if="activeModal === 'statistiques'" embedded />
       <GrimoirePage v-else-if="activeModal === 'grimoire'" embedded />
       <EquipmentPage v-else-if="activeModal === 'equipement'" embedded />
+      <BesacePage v-else-if="activeModal === 'besace'" embedded />
     </PageOverlayModal>
   </Teleport>
 </template>

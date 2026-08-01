@@ -17,6 +17,7 @@ function mountMenu() {
         StatsPage: pageStub('stats-page'),
         GrimoirePage: pageStub('grimoire-page'),
         EquipmentPage: pageStub('equipment-page'),
+        BesacePage: pageStub('besace-page'),
       },
     },
   });
@@ -30,13 +31,13 @@ describe('TeamMicroMenu', () => {
   it('renders one button per destination', () => {
     const wrapper = mountMenu();
     const buttons = wrapper.findAll('.micro-menu__btn');
-    expect(buttons).toHaveLength(4);
+    expect(buttons).toHaveLength(5);
   });
 
   it('gives each button a tooltip label', () => {
     const wrapper = mountMenu();
     const titles = wrapper.findAll('.micro-menu__btn').map((btn) => btn.attributes('title'));
-    expect(titles).toEqual(['Équipe', 'Statistiques', 'Grimoire', 'Équipement']);
+    expect(titles).toEqual(['Équipe', 'Statistiques', 'Grimoire', 'Équipement', 'La Besace']);
   });
 
   it('shows no modal by default', () => {
@@ -66,6 +67,12 @@ describe('TeamMicroMenu', () => {
     const wrapper = mountMenu();
     await wrapper.findAll('.micro-menu__btn')[3].trigger('click');
     expect(document.querySelector('.stub-equipment-page')).not.toBeNull();
+  });
+
+  it('opens the Besace page as a modal overlay', async () => {
+    const wrapper = mountMenu();
+    await wrapper.findAll('.micro-menu__btn')[4].trigger('click');
+    expect(document.querySelector('.stub-besace-page')).not.toBeNull();
   });
 
   it('marks the button for the currently open modal as active', async () => {

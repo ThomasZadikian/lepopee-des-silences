@@ -19,6 +19,7 @@ const emit = defineEmits<{
   clearCurses: [];
   addAlly: [companionNpcKey: string];
   removeAlly: [];
+  addItem: [itemDefinitionKey: string, quantity: number];
 }>();
 
 const roomCount = ref(3);
@@ -26,6 +27,12 @@ const palaceState = ref<PalaceRoomStateKey>('Silent');
 const climate = ref<RoomClimateKey>('Heatwave');
 const lawKey = ref('');
 const curseKey = ref('');
+const itemKey = ref('');
+const itemQuantity = ref(1);
+
+function clampItemQuantity(): number {
+  return Math.min(99, Math.max(1, Number(itemQuantity.value) || 1));
+}
 
 const companionOptions: { key: string; label: string }[] = [
   { key: 'npc.thomas', label: 'Thomas' },
@@ -127,6 +134,21 @@ function confirmAndClearCurses() {
       <button class="devtools-btn devtools-btn--danger" :disabled="props.disabled || props.isLoading" @click="confirmAndClearCurses">
         Clear curses
       </button>
+    </div>
+
+    <div class="devtools-card">
+      <h3>Items</h3>
+      <input v-model="itemKey" class="devtools-input" placeholder="item.the-seuil">
+      <div class="devtools-inline-form">
+        <input v-model.number="itemQuantity" class="devtools-input devtools-input--small" type="number" min="1" max="99">
+        <button
+          class="devtools-btn"
+          :disabled="props.disabled || props.isLoading || !itemKey.trim()"
+          @click="emit('addItem', itemKey.trim(), clampItemQuantity())"
+        >
+          + Ajouter a la besace
+        </button>
+      </div>
     </div>
   </section>
 </template>

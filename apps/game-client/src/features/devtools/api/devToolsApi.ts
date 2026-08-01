@@ -133,6 +133,14 @@ export const devToolsApi = {
     return post<DevToolsRunResponse>(token, `/api/dev/v2/runs/${runId}/party/remove-ally`);
   },
 
+  addItem(token: string, runId: string, itemDefinitionKey: string, quantity: number) {
+    return post<DevToolsRunResponse>(
+      token,
+      `/api/dev/v2/runs/${runId}/items/add`,
+      { itemDefinitionKey, quantity },
+    );
+  },
+
   applyStatus(
     token: string,
     runId: string,

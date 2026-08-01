@@ -152,7 +152,9 @@ public sealed class CombatSkillEffectResolverEquippedItemTests
             CombatantId.New(), "player.self", "Hero", CombatantSide.Player, "Fighter",
             maxVitality: 30, currentVitality: 30, guard: 0, baseGuard: 0, mana: 0, charge: 0,
             skills: [ultimate]);
+        ally.ApplyEquipmentCombatModifiers(hitChanceBonusPercent: 100, dotDurationReductionPercent: 0, dotDamageReductionPercent: 0);
         var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 100);
+        enemy.ApplyEquipmentCombatModifiers(hitChanceBonusPercent: 100, dotDurationReductionPercent: 0, dotDamageReductionPercent: 0);
         var combat = TestTacticalCombatHelper.Create(
             RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy],
             equippedItemKeys: new Dictionary<Guid, IReadOnlyCollection<string>>
@@ -181,7 +183,9 @@ public sealed class CombatSkillEffectResolverEquippedItemTests
             CombatantId.New(), "player.self", "Hero", CombatantSide.Player, "Fighter",
             maxVitality: 30, currentVitality: 30, guard: 0, baseGuard: 0, mana: 0, charge: 0,
             skills: [ultimate]);
+        ally.ApplyEquipmentCombatModifiers(hitChanceBonusPercent: 100, dotDurationReductionPercent: 0, dotDamageReductionPercent: 0);
         var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 100);
+        enemy.ApplyEquipmentCombatModifiers(hitChanceBonusPercent: 100, dotDurationReductionPercent: 0, dotDamageReductionPercent: 0);
         var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
         var lethalSkill = CreateSkill("skill.basic.strike", "Damage", 100);
 

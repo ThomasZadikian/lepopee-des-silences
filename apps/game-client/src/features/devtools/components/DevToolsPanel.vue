@@ -95,6 +95,13 @@ function removeAlly() {
   void execute((token) => devToolsApi.removeAlly(token, props.runId), 'Allié retiré (prochain combat).');
 }
 
+function addItem(itemDefinitionKey: string, quantity: number) {
+  void execute(
+    (token) => devToolsApi.addItem(token, props.runId, itemDefinitionKey, quantity),
+    'Objet ajouté à la besace.',
+  );
+}
+
 function advanceRooms(count: number) {
   void execute((token) => devToolsApi.advanceRooms(token, props.runId, count), `${count} rooms avancees.`);
 }
@@ -180,6 +187,7 @@ function awardStatPoints(amount: number) {
       @clear-curses="clearCurses"
       @add-ally="addAlly"
       @remove-ally="removeAlly"
+      @add-item="addItem"
     />
 
     <PsycheDevToolsSection

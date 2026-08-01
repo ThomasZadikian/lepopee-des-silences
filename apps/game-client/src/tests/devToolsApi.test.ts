@@ -54,6 +54,21 @@ describe('devToolsApi', () => {
     );
   });
 
+  it('posts item grant payloads to the besace endpoint', async () => {
+    await devToolsApi.addItem('local-token', 'run-1', 'item.the-seuil', 3);
+
+    expect(httpRequest).toHaveBeenCalledWith(
+      '/api/dev/v2/runs/run-1/items/add',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ itemDefinitionKey: 'item.the-seuil', quantity: 3 }),
+        headers: expect.objectContaining({
+          'X-Leds-DevTools-Token': 'local-token',
+        }),
+      }),
+    );
+  });
+
   it('maps protected or unavailable endpoints to a generic devtools error', async () => {
     vi.mocked(httpRequest).mockRejectedValueOnce(new HttpError('Forbidden', 403, null));
 

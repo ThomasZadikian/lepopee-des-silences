@@ -25,6 +25,7 @@ public sealed class DevToolsRunDebugService : IDevToolsRunDebugService
     private const int MaxPartySize = Run.MaxPartySize;
     private const int MaxDebugVitality = 999;
     private const int MaxDebugGuard = 999;
+    private const int MaxDebugItemQuantity = 99;
 
     private readonly IRunRepository _runRepository;
     private readonly IRunGenerator _runGenerator;
@@ -308,6 +309,59 @@ public sealed class DevToolsRunDebugService : IDevToolsRunDebugService
             "Last companion removed from the roster (effective next combat).",
             RunDto.FromDomain(run));
     }
+
+    public async Task<DevToolsRunDebugResult> AddDebugItemAsync(
+        Guid runId,
+        string itemDefinitionKey,
+        int quantity,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(itemDefinitionKey))
+            throw new DomainException("Item definition key is required.");
+        if (quantity is < 1 or > MaxDebugItemQuantity)
+            throw new DomainException($"Item quantity must be between 1 and {MaxDebugItemQuantity}.");
+
+        var run = await GetRunAsync(runId, cancellationToken);
+
+        var itemResult = await _catalogContentGateway.GetItemDefinitionByKeyAsync(
+            itemDefinitionKey.Trim(), cancellationToken);
+        if (itemResult.IsFailure)
+            throw new NotFoundException("Item definition", itemDefinitionKey);
+
+        var itemDef = itemResult.Value;
+        // Same defensive Category/Rarity/EffectRunType mapping as NpcEventChoiceResolver's
+        // "Item" offering — these are free-authored catalog strings, not enum-backed at rest.
+        run.AddRunItem(RunItem.Create(
+            itemDef.Key, itemDef.DisplayName, itemDef.Description,
+            MapCategoryToRunItemType(itemDef.Category),
+            MapToRunItemRarity(itemDef.Rarity),
+            quantity: quantity,
+            MapToRunItemEffectType(itemDef.EffectRunType),
+            effectAmount: itemDef.EffectValue,
+            isContainer: itemDef.IsContainer,
+            containerCapacity: itemDef.ContainerCapacity,
+            isLiquid: itemDef.IsLiquid));
+
+        await _runRepository.UpdateAsync(run, cancellationToken);
+        return new DevToolsRunDebugResult(
+            $"'{itemDef.DisplayName}' added to the besace (×{quantity}).",
+            RunDto.FromDomain(run));
+    }
+
+    private static RunItemType MapCategoryToRunItemType(string category) =>
+        string.Equals(category, "Consumable", StringComparison.OrdinalIgnoreCase)
+            ? RunItemType.Consumable
+            : RunItemType.Passive;
+
+    private static RunItemRarity MapToRunItemRarity(string rarity) =>
+        Enum.TryParse<RunItemRarity>(rarity, ignoreCase: true, out var parsed)
+            ? parsed
+            : RunItemRarity.Epic;
+
+    private static RunItemEffectType MapToRunItemEffectType(string? effectRunType) =>
+        !string.IsNullOrWhiteSpace(effectRunType) && Enum.TryParse<RunItemEffectType>(effectRunType, ignoreCase: true, out var parsed)
+            ? parsed
+            : RunItemEffectType.None;
 
     public async Task<DevToolsCombatDebugResult> KillAllCurrentCombatEnemiesAsync(
         Guid runId,
