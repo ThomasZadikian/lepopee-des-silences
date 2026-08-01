@@ -3,15 +3,15 @@ import { onMounted, ref } from 'vue';
 
 import { demoPlayerId, useRunStore } from '../../runs/stores/runStore';
 import { skillsApi } from '../../party/api/skillsApi';
+import { itemsApi } from '../../party/api/itemsApi';
 import { usePlayerStore } from '../../party/stores/playerStore';
 import type { SkillDefinitionView } from '../../party/types/skillTypes';
+import type { ItemDefinitionView } from '../../party/types/itemTypes';
 import { devToolsApi } from '../api/devToolsApi';
 import { useDevTools } from '../composables/useDevTools';
 import type { DevToolsRunPsycheResponse, PalaceRoomStateKey, RoomClimateKey } from '../types/devToolsTypes';
 import DevToolsTokenGate from './DevToolsTokenGate.vue';
-import PlayerDevToolsSection from './PlayerDevToolsSection.vue';
-import PsycheDevToolsSection from './PsycheDevToolsSection.vue';
-import RunDevToolsSection from './RunDevToolsSection.vue';
+import DevToolsMicroMenu from './DevToolsMicroMenu.vue';
 
 const props = defineProps<{
   runId: string;
@@ -26,6 +26,7 @@ const playerStore = usePlayerStore();
 const devTools = useDevTools();
 const psyche = ref<DevToolsRunPsycheResponse | null>(null);
 const allSkills = ref<SkillDefinitionView[]>([]);
+const allItems = ref<ItemDefinitionView[]>([]);
 
 onMounted(() => {
   if (devTools.hasToken.value) {
@@ -34,6 +35,7 @@ onMounted(() => {
   }
   void playerStore.loadProfile();
   void loadAllSkills();
+  void loadAllItems();
 });
 
 async function loadAllSkills() {
@@ -41,7 +43,16 @@ async function loadAllSkills() {
     const response = await skillsApi.listActive();
     allSkills.value = response.skills;
   } catch {
-    // best-effort : la section joueur affiche juste une liste vide en cas d'échec
+    // best-effort : la fenêtre Sorts affiche juste une liste vide en cas d'échec
+  }
+}
+
+async function loadAllItems() {
+  try {
+    const response = await itemsApi.listActive();
+    allItems.value = response.items;
+  } catch {
+    // best-effort : la fenêtre Objets affiche juste une liste vide en cas d'échec
   }
 }
 
@@ -174,9 +185,13 @@ function awardStatPoints(amount: number) {
       {{ devTools.error.value }}
     </p>
 
-    <RunDevToolsSection
+    <DevToolsMicroMenu
       :disabled="!devTools.hasToken.value"
       :is-loading="devTools.isLoading.value"
+      :characters="playerStore.profile?.characters ?? []"
+      :all-skills="allSkills"
+      :all-items="allItems"
+      :psyche="psyche"
       @advance-room="advanceRoom"
       @advance-rooms="advanceRooms"
       @force-palace-state="forcePalaceState"
@@ -188,22 +203,9 @@ function awardStatPoints(amount: number) {
       @add-ally="addAlly"
       @remove-ally="removeAlly"
       @add-item="addItem"
-    />
-
-    <PsycheDevToolsSection
-      :psyche="psyche"
-      :disabled="!devTools.hasToken.value"
-      :is-loading="devTools.isLoading.value"
-      @refresh="refreshPsyche"
-    />
-
-    <PlayerDevToolsSection
-      :disabled="!devTools.hasToken.value"
-      :is-loading="devTools.isLoading.value"
-      :characters="playerStore.profile?.characters ?? []"
-      :all-skills="allSkills"
       @unlock-skill="unlockSkill"
       @award-stat-points="awardStatPoints"
+      @refresh-psyche="refreshPsyche"
     />
   </aside>
 </template>
@@ -214,7 +216,7 @@ function awardStatPoints(amount: number) {
   top: 14px;
   right: 14px;
   z-index: 9100;
-  width: min(520px, calc(100vw - 28px));
+  width: min(360px, calc(100vw - 28px));
   max-height: calc(100vh - 28px);
   overflow: auto;
   display: flex;
@@ -369,6 +371,173 @@ function awardStatPoints(amount: number) {
   grid-template-columns: minmax(0, 1fr) 76px 76px auto;
 }
 
+/* Nav — the "micro-menu bis": one button per devtools window, opening a full
+   PageOverlayModal instead of cramming every action into this sidebar. */
+.devtools-micro-menu {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.devtools-micro-menu__btn {
+  min-width: 56px;
+  padding: 10px 8px;
+  border: 1px solid oklch(0.72 0.12 85 / 0.35);
+  border-radius: 6px;
+  background: oklch(0.2 0.035 270 / 0.85);
+  color: var(--ink-2, #e8e2d5);
+  font-family: var(--font-caps, var(--font));
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.devtools-micro-menu__btn:hover {
+  border-color: var(--gold, #d7b56d);
+  color: var(--gold, #d7b56d);
+}
+
+.devtools-micro-menu__btn--active {
+  border-color: var(--gold, #d7b56d);
+  background: oklch(0.55 0.08 85 / 0.18);
+  color: var(--gold, #d7b56d);
+}
+
+/* Windows — content rendered inside PageOverlayModal for each devtools element. */
+.devtools-window {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 8px 30px 24px 4px;
+  color: var(--ink-2, #e8e2d5);
+}
+
+.devtools-window__head h2 {
+  margin: 0 0 6px;
+  font-size: 22px;
+  color: var(--gold, #d7b56d);
+}
+
+.devtools-window__head p {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--ink-4, #a49a88);
+}
+
+.devtools-window__body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 640px;
+}
+
+/* Catalog browsing (Sorts/Objets/Compagnons) — a filterable grid on the left,
+   a detail sheet with the full description and the action button on the right. */
+.devtools-catalog-layout {
+  display: grid;
+  grid-template-columns: minmax(260px, 1.4fr) minmax(260px, 1fr);
+  gap: 20px;
+  align-items: start;
+  max-width: none;
+}
+
+.devtools-catalog-toolbar {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.devtools-catalog-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 10px;
+  max-height: 54vh;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.devtools-catalog-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 13px;
+  border: 1px solid oklch(0.72 0.12 85 / 0.2);
+  border-radius: 6px;
+  background: oklch(0.18 0.03 270 / 0.74);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.devtools-catalog-cell:hover {
+  border-color: oklch(0.72 0.12 85 / 0.45);
+}
+
+.devtools-catalog-cell--sel {
+  border-color: var(--gold, #d7b56d);
+  background: oklch(0.55 0.08 85 / 0.12);
+}
+
+.devtools-catalog-cell__name {
+  font-size: 13px;
+  color: var(--ink-2, #e8e2d5);
+}
+
+.devtools-catalog-cell__meta {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-4, #a49a88);
+}
+
+.devtools-catalog-sheet {
+  padding: 16px 18px;
+  border: 1px solid oklch(0.72 0.12 85 / 0.3);
+  border-radius: 8px;
+  background: oklch(0.15 0.03 270 / 0.9);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  position: sticky;
+  top: 0;
+}
+
+.devtools-catalog-sheet__name {
+  margin: 0;
+  font-size: 17px;
+  color: var(--gold, #d7b56d);
+}
+
+.devtools-catalog-sheet__desc {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink-3, #cdbfa7);
+}
+
+.devtools-catalog-sheet__facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.devtools-catalog-fact {
+  padding: 3px 7px;
+  border: 1px solid oklch(0.72 0.12 85 / 0.25);
+  border-radius: 999px;
+  font-size: 10px;
+  font-family: var(--font-mono, monospace);
+  color: var(--ink-3, #cdbfa7);
+}
+
+.devtools-catalog-empty {
+  color: var(--ink-4, #a49a88);
+  font-size: 12px;
+  padding: 20px 0;
+}
+
 @media (max-width: 720px) {
   .devtools-panel {
     top: 0;
@@ -389,6 +558,12 @@ function awardStatPoints(amount: number) {
   .devtools-inline-form {
     align-items: stretch;
     flex-direction: column;
+  }
+}
+
+@media (max-width: 860px) {
+  .devtools-catalog-layout {
+    grid-template-columns: 1fr;
   }
 }
 </style>
