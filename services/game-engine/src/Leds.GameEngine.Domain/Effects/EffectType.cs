@@ -94,4 +94,6 @@ public enum EffectType
     EnableItemNodeReroll,
     /// <summary>"Loi du Répit" (law.repit) → RunModifierType.SuspendSevereLaws.</summary>
     EnableSuspendSevereLaws,
+    /// <summary>"Édit des Portes Ouvertes" (law.portes-ouvertes) → RunModifierType.UpcomingRoomNamesRevealEnabled.</summary>
+    EnableUpcomingRoomNamesReveal,
 }

@@ -186,6 +186,83 @@ public sealed class DeterministicRunGenerator : IRunGenerator
     }
 
     /// <summary>
+    /// "Édit des Portes Ouvertes" (law.portes-ouvertes). Replays the exact same room-identity
+    /// resolution chain as <see cref="ResolveNextRoomAsync"/> (reachability graph, then the
+    /// legacy per-theme fallback), one depth at a time for the rest of the current floor,
+    /// without generating room shapes or touching persistence. Since neither path depends on
+    /// anything but (seed, catalog room graph, visited room keys so far), chaining a locally
+    /// simulated "visited keys" list forward reproduces exactly what real play will resolve —
+    /// this is a genuine forecast, not an approximation.
+    /// </summary>
+    public async Task<IReadOnlyList<UpcomingRoomPreview>> PreviewUpcomingRoomNamesAsync(
+        Run run,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(run);
+
+        var roomsRemainingInFloor = Run.FloorLengthInRooms - (run.CurrentRoomIndex % Run.FloorLengthInRooms) - 1;
+        if (roomsRemainingInFloor <= 0)
+        {
+            return [];
+        }
+
+        var definitions = await _catalogContentGateway.ListRoomDefinitionsAsync(cancellationToken);
+        var worlds = await _catalogContentGateway.ListWorldDefinitionsAsync(cancellationToken);
+        var themeAffinities = await _catalogContentGateway.ListRoomThemeAffinitiesAsync(cancellationToken);
+
+        var visitedKeys = run.Rooms
+            .Select(r => r.CatalogBinding?.Key)
+            .Where(key => key is not null)
+            .Select(key => key!)
+            .ToList();
+
+        var currentDefinition = run.CurrentRoom.CatalogBinding is { } currentBinding
+            ? definitions.FirstOrDefault(d => string.Equals(d.Key, currentBinding.Key, StringComparison.OrdinalIgnoreCase))
+            : null;
+        var currentRoomType = run.CurrentRoom.RoomType;
+
+        var bossInterval = run.HimLitProtectionEnabled
+            ? (int)Math.Round(CatalogMarkovRoomTypeResolver.BossInterval / 1.5)
+            : CatalogMarkovRoomTypeResolver.BossInterval;
+
+        var results = new List<UpcomingRoomPreview>(roomsRemainingInFloor);
+
+        for (var i = 0; i < roomsRemainingInFloor; i++)
+        {
+            var depth = run.CurrentRoomIndex + 1 + i;
+
+            var selected = currentDefinition is not null && !string.IsNullOrWhiteSpace(currentDefinition.WorldKey)
+                ? _roomReachabilitySelector.SelectNextRoom(
+                    currentDefinition, definitions, worlds, themeAffinities, depth, visitedKeys, run.Seed)
+                : null;
+
+            if (selected is null)
+            {
+                var themeKey = await _catalogRoomTypeResolver.ResolveNextRoomTypeKeyAsync(
+                    run.Seed, depth, currentRoomType.ToString(), cancellationToken, bossInterval);
+
+                selected = SelectRoomDefinition(definitions, themeKey, depth, run.Seed);
+                currentRoomType = MapThemeToScaffold(themeKey);
+            }
+
+            if (selected is null)
+            {
+                // No catalog room matched — that room slot stays purely procedural, with
+                // no name to reveal (mirrors AttachCatalogRoomAsync's no-op when unmatched).
+                results.Add(new UpcomingRoomPreview(depth, Key: null, DisplayName: null));
+                currentDefinition = null;
+                continue;
+            }
+
+            results.Add(new UpcomingRoomPreview(depth, selected.Key, selected.DisplayName));
+            visitedKeys.Add(selected.Key);
+            currentDefinition = selected;
+        }
+
+        return results;
+    }
+
+    /// <summary>
     /// Refonte des Rooms (SFD § 5) : quand la salle courante est liée à une RoomDefinition
     /// appartenant à un Monde, la salle suivante vient de son graphe de réachabilité
     /// explicite plutôt que du tirage par thème. Le contenu sans Monde assigné (ex. les

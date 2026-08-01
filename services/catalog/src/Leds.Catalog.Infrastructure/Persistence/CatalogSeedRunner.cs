@@ -5371,16 +5371,19 @@ public sealed partial class CatalogSeedRunner
         await _ctx.SaveChangesAsync(cancellationToken);
     }
 
-    // Chapitre VII — Édits cléments. 4 of its 5 laws are seeded: Pas Léger (reuses
+    // Chapitre VII — Édits cléments. All 5 of its laws are now seeded: Pas Léger (reuses
     // SpeedBonus), Hôte Généreux (reuses StartingGuardBonus), Souvenir Doux (reuses the
-    // AllyHealingBonus mechanic), and — added this pass — "Édit de la Chandelle"
-    // (law.chandelle, RunModifierType.ItemNodeRerollCharge — a free reroll of the pending
-    // item-node reward offer, see Run.TryConsumeItemNodeRerollCharge and
-    // RerollItemRewardOfferCommandHandler on the game-engine side). NOT seeded: "Édit des
-    // Portes Ouvertes" (law.portes-ouvertes, reveals the full floor layout — needs a
-    // map-reveal feature spanning backend + frontend; rooms are generated lazily one at a
-    // time based on the player's node choice, so there is no "future floor" data to
-    // reveal without a redesign of room generation).
+    // AllyHealingBonus mechanic), "Édit de la Chandelle" (law.chandelle,
+    // RunModifierType.ItemNodeRerollCharge — a free reroll of the pending item-node reward
+    // offer, see Run.TryConsumeItemNodeRerollCharge and RerollItemRewardOfferCommandHandler
+    // on the game-engine side), and — added this pass — "Édit des Portes Ouvertes"
+    // (law.portes-ouvertes, RunModifierType.UpcomingRoomNamesRevealEnabled). Descoped from
+    // "révèle tout le layout de l'étage" (the full grid/node architecture) to revealing the
+    // upcoming rooms' NAMES only: rooms are still generated lazily one at a time, but a
+    // room's catalog *identity* for the rest of the floor is already fully deterministic
+    // from (seed, catalog room graph, visited room keys) — see
+    // IRunGenerator.PreviewUpcomingRoomNamesAsync / GetUpcomingRoomsQuery on the
+    // game-engine side — so this reveals real upcoming room names, not a guess.
     private async Task SeedEditsClementsAsync(CancellationToken cancellationToken)
     {
         await UpsertCompendiumLawAsync(
@@ -5447,12 +5450,29 @@ public sealed partial class CatalogSeedRunner
             impactDomains: ["Rewards"],
             cancellationToken);
 
+        await UpsertCompendiumLawAsync(
+            key: "law.portes-ouvertes",
+            name: "Édit des Portes Ouvertes",
+            narrativeText: "Article II — Il n'est pas interdit de savoir ce qui vous "
+                + "attend. C'est juste rarement utile.",
+            description: "Les noms des prochaines salles de l'étage sont révélés à "
+                + "l'équipe (pas leur contenu).",
+            rarity: "Peu commun",
+            polarity: "Clémente",
+            isMajeure: false,
+            minDepth: null,
+            duration: "UntilFloorEnds",
+            selectionGroup: "law.edit",
+            impactDomains: ["Narrative"],
+            cancellationToken);
+
         await _ctx.SaveChangesAsync(cancellationToken);
 
         await UpsertLawEffectAsync("law.pas-leger", "ModifySpeed", 0.10m, "UntilFloorEnds", null, cancellationToken);
         await UpsertLawEffectAsync("law.hote-genereux", "AddStartingGuard", 10m, "UntilFloorEnds", null, cancellationToken);
         await UpsertLawEffectAsync("law.souvenir-doux", "EnableAllyHealingBonus", 20m, "UntilFloorEnds", null, cancellationToken);
         await UpsertLawEffectAsync("law.chandelle", "EnableItemNodeReroll", 1m, "UntilFloorEnds", null, cancellationToken);
+        await UpsertLawEffectAsync("law.portes-ouvertes", "EnableUpcomingRoomNamesReveal", 1m, "UntilFloorEnds", null, cancellationToken);
 
         await _ctx.SaveChangesAsync(cancellationToken);
     }

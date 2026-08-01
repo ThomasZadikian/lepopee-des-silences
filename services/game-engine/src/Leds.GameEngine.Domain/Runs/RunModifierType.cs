@@ -172,4 +172,13 @@ public enum RunModifierType
     /// It survives normal room climate replacement and is consumed one room at a time.
     /// </summary>
     ForcedWeatherPlan = 44,
+
+    /// <summary>"Édit des Portes Ouvertes" (law.portes-ouvertes) — gates
+    /// GetUpcomingRoomsQuery: while active, the player can query the names of the
+    /// remaining rooms in the current floor. See IRunGenerator.PreviewUpcomingRoomNamesAsync
+    /// — the room *identities* for the rest of a floor are already fully deterministic
+    /// from (seed, world graph, visited room keys), so this reveals real upcoming names,
+    /// not a guess; only each room's internal grid/nodes stay hidden until actually
+    /// entered.</summary>
+    UpcomingRoomNamesRevealEnabled = 45,
 }

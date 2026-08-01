@@ -1,8 +1,11 @@
 <script setup lang="ts">
+import { ref, watchEffect } from 'vue';
 import RoomClimatePanel from '../room-climate/RoomClimatePanel.vue';
 import type { ActivePalaceLawDto, ActiveCurseDto, RoomClimateStateDto } from '../runs/types/runTypes';
+import { upcomingRoomsApi } from './api/upcomingRoomsApi';
+import type { UpcomingRoomDto } from './types/upcomingRoomsTypes';
 
-defineProps<{
+const props = defineProps<{
   laws?: ActivePalaceLawDto[] | null;
   curses?: ActiveCurseDto[] | null;
   roomClimate?: RoomClimateStateDto | null;
@@ -11,9 +14,31 @@ defineProps<{
   lawDenialEnabled?: boolean;
   /** true when "Déni permanent" is currently usable (owned, cooldown elapsed). */
   canUseLawDenial?: boolean;
+  /** Needed to fetch the "Édit des Portes Ouvertes" upcoming-rooms preview. */
+  runId?: string | null;
 }>()
 
 const emit = defineEmits<{ close: []; revokeLaw: [lawKey: string] }>()
+
+// "Édit des Portes Ouvertes" (law.portes-ouvertes): while active, reveals the names of
+// the rest of the floor's rooms — fetched on demand rather than carried on the run DTO,
+// since it's a dedicated, law-gated preview endpoint.
+const upcomingRooms = ref<UpcomingRoomDto[]>([])
+
+watchEffect(async () => {
+  const hasPortesOuvertes = props.laws?.some(law => law.key === 'law.portes-ouvertes') ?? false
+  if (!hasPortesOuvertes || !props.runId) {
+    upcomingRooms.value = []
+    return
+  }
+
+  try {
+    const response = await upcomingRoomsApi.getUpcomingRooms(props.runId)
+    upcomingRooms.value = response.isRevealed ? response.rooms : []
+  } catch {
+    upcomingRooms.value = []
+  }
+})
 
 function domainTone(domain: string): 'blood' | 'frost' | 'gold' | '' {
   const d = domain?.toLowerCase() ?? ''
@@ -151,6 +176,18 @@ function durationLabel(d: string | null | undefined): string {
               <span v-if="law.polarity" class="es-chip">{{ law.polarity }}</span>
             </div>
             <p class="lp-law__desc">{{ law.description }}</p>
+            <ul
+              v-if="law.key === 'law.portes-ouvertes' && upcomingRooms.length"
+              class="lp-law__rooms"
+            >
+              <li
+                v-for="room in upcomingRooms"
+                :key="room.roomIndex"
+                class="lp-law__room"
+              >
+                {{ room.displayName ?? '???' }}
+              </li>
+            </ul>
             <button
               v-if="lawDenialEnabled"
               class="lp-law__revoke"
@@ -424,6 +461,29 @@ function durationLabel(d: string | null | undefined): string {
   line-height: 1.55;
   color: var(--ink-3);
   margin: 0;
+}
+
+.lp-law__rooms {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.lp-law__room {
+  font-size: 11.5px;
+  color: var(--ink-4);
+  padding-left: 12px;
+  position: relative;
+}
+
+.lp-law__room::before {
+  content: '·';
+  position: absolute;
+  left: 2px;
+  color: var(--gold-dim, oklch(.65 .09 84 / .6));
 }
 
 .lp-law__revoke {

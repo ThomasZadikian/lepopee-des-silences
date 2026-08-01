@@ -312,6 +312,7 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
             <Transition name="slide">
                 <LawsPopover
                   v-if="showLaws"
+                  :run-id="runStore.currentRun.id"
                   :laws="runStore.currentRun.activePalaceLaws"
                   :curses="runStore.currentRun.activeCurses"
                   :room-climate="runStore.currentRun.currentRoom.activeClimate ?? runStore.currentRun.currentRoom.climate ?? null"

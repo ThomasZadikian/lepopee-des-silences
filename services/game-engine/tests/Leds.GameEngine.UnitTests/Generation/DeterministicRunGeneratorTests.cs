@@ -298,4 +298,163 @@ public sealed class DeterministicRunGeneratorTests
 
         generator.MarkovMatrixVersion.Should().Be("markov-room-type-0.1.0");
     }
+
+    private static StubCatalogContentGateway CreateWorldGraphGateway()
+    {
+        // A single-branch chain (each room has exactly one reachable room, so
+        // RoomReachabilitySelector's eligible.Length==1 shortcut applies — no RNG tie-break
+        // to replicate). "room.c" is a dead end, which loops back to the World's entry room
+        // per SFD § 5.4 (ResolveWorldEntryRoom) — exercising the loop is part of the point.
+        CatalogRoomDefinition Room(string key, string[] reachable) => new(
+            Key: key,
+            DisplayName: $"Salle {key}",
+            Description: "desc",
+            NarrativeText: "narrative",
+            RoomFamily: "Palais intérieur",
+            RoomRarity: "Common",
+            Theme: "Welcome",
+            MinDepth: 0,
+            MaxDepth: 9,
+            BaseWeight: 1,
+            EnemyPoolKey: null,
+            RewardPoolKey: null,
+            LawPoolKey: null,
+            CursePoolKey: null,
+            BossDefinitionKey: null,
+            IsUnique: false,
+            WorldKey: "palais",
+            IsWorldEntryRoom: key == "room.halldentree",
+            TriggersStrictChain: false,
+            ReachableRoomKeys: reachable);
+
+        return new StubCatalogContentGateway
+        {
+            WorldDefinitions = [new CatalogWorldDefinition("palais", "Palais", "room.halldentree")],
+            RoomDefinitions =
+            [
+                Room("room.halldentree", ["room.a"]),
+                Room("room.a", ["room.b"]),
+                Room("room.b", ["room.c"]),
+                Room("room.c", []),
+            ]
+        };
+    }
+
+    /// <summary>
+    /// Rebuilds a Run sitting right after <paramref name="rooms"/>' last room, entirely via
+    /// <see cref="Run.Rehydrate"/> — bypassing the node/combat/Interlude state machine, which
+    /// the preview logic itself never touches (it only reads room identity/history). This
+    /// mirrors exactly the information <see cref="DeterministicRunGenerator.GenerateNextRoomAsync"/>
+    /// and <see cref="DeterministicRunGenerator.PreviewUpcomingRoomNamesAsync"/> read.
+    /// </summary>
+    private static Run RehydrateRunAt(string seed, string generatorVersion, string markovMatrixVersion, IReadOnlyList<Room> rooms)
+    {
+        var lastRoom = rooms[^1];
+
+        return Run.Rehydrate(
+            id: RunId.New(),
+            playerId: Guid.NewGuid(),
+            seed: seed,
+            generatorVersion: generatorVersion,
+            markovMatrixVersion: markovMatrixVersion,
+            status: RunStatus.Active,
+            currentRoomId: lastRoom.Id,
+            activeCombatId: null,
+            pendingRewardOfferId: null,
+            maxHp: 100,
+            currentHp: 100,
+            attack: 10,
+            defense: 10,
+            speed: 10,
+            focus: 10,
+            startedAt: DateTimeOffset.UtcNow,
+            endedAt: null,
+            savedAt: null,
+            currentRoomIndex: rooms.Count - 1,
+            rooms: rooms,
+            memoryFragments: [],
+            activePalaceLaws: [],
+            preSuspendStatus: null,
+            snapshot: null);
+    }
+
+    [Fact]
+    public async Task PreviewUpcomingRoomNames_ShouldMatchActualSequentialGeneration()
+    {
+        var catalogGateway = CreateWorldGraphGateway();
+        var generator = TestGeneratorFactory.CreateDeterministicRunGenerator(catalogGateway);
+
+        var initialRoom = await generator.GenerateInitialRoomAsync("seed-preview");
+        var run = Run.StartNew(
+            Guid.NewGuid(),
+            "seed-preview",
+            generator.GeneratorVersion,
+            generator.MarkovMatrixVersion,
+            initialRoom,
+            DateTimeOffset.UtcNow);
+
+        var preview = await generator.PreviewUpcomingRoomNamesAsync(run);
+
+        // 9 rooms remain in the floor (10 rooms/floor, already sitting on room 0).
+        preview.Should().HaveCount(9);
+
+        var rooms = new List<Room> { initialRoom };
+        var actualKeys = new List<string?>();
+
+        for (var i = 0; i < 9; i++)
+        {
+            var runAtDepth = RehydrateRunAt("seed-preview", generator.GeneratorVersion, generator.MarkovMatrixVersion, rooms);
+            var nextRoom = await generator.GenerateNextRoomAsync(runAtDepth);
+
+            actualKeys.Add(nextRoom.CatalogBinding?.Key);
+            rooms.Add(nextRoom);
+        }
+
+        preview.Select(p => p.Key).Should().BeEquivalentTo(actualKeys, options => options.WithStrictOrdering());
+    }
+
+    [Fact]
+    public async Task PreviewUpcomingRoomNames_ShouldReturnDisplayNamesMatchingTheCatalog()
+    {
+        var catalogGateway = CreateWorldGraphGateway();
+        var generator = TestGeneratorFactory.CreateDeterministicRunGenerator(catalogGateway);
+
+        var initialRoom = await generator.GenerateInitialRoomAsync("seed-preview-names");
+        var run = Run.StartNew(
+            Guid.NewGuid(),
+            "seed-preview-names",
+            generator.GeneratorVersion,
+            generator.MarkovMatrixVersion,
+            initialRoom,
+            DateTimeOffset.UtcNow);
+
+        var preview = await generator.PreviewUpcomingRoomNamesAsync(run);
+
+        preview.Select(p => p.Key).Should().Equal(
+            "room.a", "room.b", "room.c", "room.halldentree", "room.a", "room.b", "room.c", "room.halldentree", "room.a");
+        preview.First().DisplayName.Should().Be("Salle room.a");
+    }
+
+    [Fact]
+    public async Task PreviewUpcomingRoomNames_ShouldReturnEmpty_WhenAlreadyOnTheLastRoomOfTheFloor()
+    {
+        var generator = TestGeneratorFactory.CreateDeterministicRunGenerator();
+        var initialRoom = await generator.GenerateInitialRoomAsync("seed-preview-last");
+
+        var rooms = new List<Room> { initialRoom };
+
+        for (var i = 0; i < 9; i++)
+        {
+            var runAtDepth = RehydrateRunAt("seed-preview-last", generator.GeneratorVersion, generator.MarkovMatrixVersion, rooms);
+            var nextRoom = await generator.GenerateNextRoomAsync(runAtDepth);
+            rooms.Add(nextRoom);
+        }
+
+        var run = RehydrateRunAt("seed-preview-last", generator.GeneratorVersion, generator.MarkovMatrixVersion, rooms);
+        run.CurrentRoomIndex.Should().Be(9, because: "the floor is 10 rooms long (0..9).");
+
+        var preview = await generator.PreviewUpcomingRoomNamesAsync(run);
+
+        preview.Should().BeEmpty();
+    }
 }

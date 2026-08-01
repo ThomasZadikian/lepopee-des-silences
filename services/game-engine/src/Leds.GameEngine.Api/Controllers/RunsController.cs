@@ -10,6 +10,7 @@ using Leds.GameEngine.Application.Runs.GetPermanentItemCandidates;
 using Leds.GameEngine.Application.Runs.GetRunById;
 using Leds.GameEngine.Application.Runs.GetRunInventory;
 using Leds.GameEngine.Application.Runs.GetRunReputation;
+using Leds.GameEngine.Application.Runs.GetUpcomingRooms;
 using Leds.GameEngine.Application.Runs.MoveParty;
 using Leds.GameEngine.Application.Runs.SwapGroundItem;
 using Leds.GameEngine.Application.Runs.TacticalCombat;
@@ -278,6 +279,19 @@ public sealed class RunsController : ControllerBase
         CancellationToken cancellationToken)
     {
         var query = new GetRunReputationQuery(runId);
+        var response = await _sender.Send(query, cancellationToken);
+
+        return Ok(response);
+    }
+
+    [HttpGet("{runId:guid}/upcoming-rooms")]
+    [ProducesResponseType(typeof(GetUpcomingRoomsResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<GetUpcomingRoomsResponse>> GetUpcomingRooms(
+        Guid runId,
+        CancellationToken cancellationToken)
+    {
+        var query = new GetUpcomingRoomsQuery(runId);
         var response = await _sender.Send(query, cancellationToken);
 
         return Ok(response);
