@@ -61,6 +61,7 @@ import type {
   CombatantSkillRuntimeDto,
   CombatUsableItemDto,
   EmotionalType,
+  TacticalCombatantRuntimeDto,
 } from '../types/combatContracts';
 
 const props = defineProps<{
@@ -361,6 +362,14 @@ function facingLabel(facing: 'North' | 'East' | 'South' | 'West' | undefined): s
 function riskTierLabel(tier: string | undefined): string {
   if (tier === 'Dangereux' || tier === 'Perilleux') return 'Sombre';
   return tier ?? 'Calme';
+}
+
+/**
+ * La vitalité à afficher pour un combattant, telle que la mise en scène en cours l'a déjà
+ * révélée — jamais le total final avant que le coup qui l'explique n'ait atterri à l'écran.
+ */
+function displayedVitality(unit: TacticalCombatantRuntimeDto): number {
+  return store.playback.vitalsOf(unit.combatant.id, unit.combatant.currentVitality);
 }
 
 function itemShape(item: CombatUsableItemDto): TacticalShape {
@@ -960,7 +969,8 @@ function paintCombatantChrome(
 ) {
   const { combatant } = entry.unit;
   const hostile = combatant.side === 'Enemy';
-  const ratio = Math.max(0, Math.min(1, combatant.currentVitality / Math.max(1, combatant.maxVitality)));
+  const displayedVitality = store.playback.vitalsOf(combatant.id, combatant.currentVitality);
+  const ratio = Math.max(0, Math.min(1, displayedVitality / Math.max(1, combatant.maxVitality)));
 
   const barW = width * 0.46;
   const barH = Math.max(3, width * 0.035);
@@ -1125,9 +1135,31 @@ function paintCanvas(timestamp: number) {
   }[store.combat?.riskTier ?? 'Calme'];
   const tier = RISK_TIERS[tierKey] ?? RISK_TIERS.calm;
 
-  // Vignette : peinte avant le terrain et les combattants pour qu'elle
-  // assombrisse le décor sans désaturer les unités ni les barres de vie.
-  drawCombatGrade(ctx, canvas.width, canvas.height, tier.grade, tier.accent);
+  // Vignette : peinte avant le terrain et les combattants pour qu'elle assombrisse le décor
+  // sans désaturer les unités ni les barres de vie. Confinée à l'empreinte du plateau (clip) :
+  // peinte plein cadre, elle désaturait tout le ciel/arrière-plan autour d'un petit plateau,
+  // ce qui se lisait comme une désaturation générale bien plus marquée que voulu.
+  if (terrainPlan.length > 0) {
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (const entry of terrainPlan) {
+      minX = Math.min(minX, entry.screenX);
+      maxX = Math.max(maxX, entry.screenX);
+      minY = Math.min(minY, entry.screenY);
+      maxY = Math.max(maxY, entry.screenY);
+    }
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(
+      minX - destW,
+      minY - destH - propH,
+      (maxX - minX) + destW * 2,
+      (maxY - minY) + destH + propH * 2,
+    );
+    ctx.clip();
+    drawCombatGrade(ctx, canvas.width, canvas.height, tier.grade, tier.accent);
+    ctx.restore();
+  }
 
   const deploying = deployStartedAt.value !== null
     && (timestamp - deployStartedAt.value) < DEPLOY_DURATION_MS;
@@ -1157,7 +1189,8 @@ function paintCanvas(timestamp: number) {
 
   for (const entry of combatantEntries) {
     const isActive = entry.unit.combatant.id === store.combat?.activeCombatantId;
-    const hpRatio = Math.max(0, Math.min(1, entry.unit.combatant.currentVitality / Math.max(1, entry.unit.combatant.maxVitality)));
+    const displayedVitality = store.playback.vitalsOf(entry.unit.combatant.id, entry.unit.combatant.currentVitality);
+    const hpRatio = Math.max(0, Math.min(1, displayedVitality / Math.max(1, entry.unit.combatant.maxVitality)));
 
     items.push({
       kind: 'combatant',
@@ -1611,7 +1644,7 @@ onBeforeUnmount(() => {
           <span class="tbattle__initiative-rank">{{ index + 1 }}</span>
           <span class="tbattle__initiative-name">{{ unit.combatant.displayName }}</span>
           <span class="tbattle__initiative-hp">
-            {{ unit.combatant.currentVitality }}/{{ unit.combatant.maxVitality }}
+            {{ displayedVitality(unit) }}/{{ unit.combatant.maxVitality }}
           </span>
         </li>
       </ol>
@@ -1683,12 +1716,12 @@ onBeforeUnmount(() => {
             <div class="tbattle__portrait-hp-bar">
               <div
                 class="tbattle__portrait-hp-fill"
-                :class="{ 'tbattle__portrait-hp-fill--low': unit.combatant.currentVitality / Math.max(1, unit.combatant.maxVitality) < 0.3 }"
-                :style="{ width: `${Math.max(0, Math.min(100, (unit.combatant.currentVitality / Math.max(1, unit.combatant.maxVitality)) * 100))}%` }"
+                :class="{ 'tbattle__portrait-hp-fill--low': displayedVitality(unit) / Math.max(1, unit.combatant.maxVitality) < 0.3 }"
+                :style="{ width: `${Math.max(0, Math.min(100, (displayedVitality(unit) / Math.max(1, unit.combatant.maxVitality)) * 100))}%` }"
               />
             </div>
             <span class="tbattle__portrait-hp-text">
-              {{ unit.combatant.currentVitality }}/{{ unit.combatant.maxVitality }}
+              {{ displayedVitality(unit) }}/{{ unit.combatant.maxVitality }}
             </span>
           </div>
         </div>

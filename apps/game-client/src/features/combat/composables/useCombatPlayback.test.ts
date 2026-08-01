@@ -91,6 +91,52 @@ describe('annonce du geste adverse', () => {
   });
 });
 
+describe('vitalité affichée pendant la lecture', () => {
+  const enemyAId = '55555555-5555-5555-5555-555555555555';
+  const enemyBId = '66666666-6666-6666-6666-666666666666';
+  const allyId = '77777777-7777-7777-7777-777777777777';
+
+  const hitEvent = (actorId: string, delta: number) => ({
+    kind: 'Skill' as const,
+    actorId,
+    actorName: 'Ennemi',
+    path: [],
+    skillKey: 'skill.strike',
+    skillName: 'Frappe',
+    targetX: 1,
+    targetY: 1,
+    telegraphCells: null,
+    impacts: [
+      { combatantId: allyId, x: 1, y: 1, vitalityDelta: delta, defeated: false, missed: false },
+    ],
+  });
+
+  it('ne montre pas le total final avant que le premier coup n’ait atterri', async () => {
+    const playback = useCombatPlayback();
+    // Deux ennemis, 18 PV chacun : `combat.value` (donc `finalState` ici) arrive déjà
+    // décrémenté des deux coups — c'est le bug remonté : la barre ne doit perdre les 36 PV
+    // que progressivement, jamais les deux d'un coup au tout début du tour.
+    const finalState = {
+      allies: [{ combatant: { id: allyId, currentVitality: 64 } }],
+      enemies: [],
+    } as never;
+
+    const running = playback.play(
+      [hitEvent(enemyAId, 18), hitEvent(enemyBId, 18)],
+      finalState,
+      () => 0,
+    );
+
+    // La chronologie n'a encore rien joué (le premier `await wait(...)` n'a pas résolu), mais
+    // le relevé de départ, lui, est déjà posé de façon synchrone.
+    expect(playback.vitalsOf(allyId, 64)).toBe(100);
+
+    await running;
+
+    expect(playback.vitalsOf(allyId, 64)).toBe(64);
+  });
+});
+
 describe('coup manqué', () => {
   it('écrit « Manqué » plutôt qu’un zéro, et sans onde d’impact', async () => {
     const playback = useCombatPlayback();

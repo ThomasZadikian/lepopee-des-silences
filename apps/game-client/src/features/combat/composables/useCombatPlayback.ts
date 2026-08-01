@@ -124,6 +124,19 @@ export function useCombatPlayback() {
 
   const pinned = ref<Record<string, { x: number; y: number }>>({});
 
+  /**
+   * Vitalité affichée pendant une chronologie, par combattant.
+   *
+   * Le serveur résout un tour entier (les deux ennemis compris) avant de répondre : sans ce
+   * relevé, `combat.value` porte déjà le total final dès la réponse, et la barre de vie du
+   * joueur s'effondre au premier instant du tour ennemi — avant même que le premier ennemi
+   * n'ait animé son geste. Reconstruit la vitalité de départ en additionnant les
+   * `vitalityDelta` de la chronologie (positif = perdu) par-dessus la valeur finale, puis les
+   * retranche un à un au fil de la lecture, pour que la barre ne bouge qu'au moment exact où
+   * le coup qui l'explique atterrit.
+   */
+  const displayVitals = ref<Record<string, number>>({});
+
   // O-017: État de transition entre les tours
   const isTransitioning = ref(false);
   const transitionPhase = ref<'fadeOut' | 'fadeIn' | null>(null);
@@ -145,6 +158,7 @@ export function useCombatPlayback() {
     timers = [];
     walk.value = null;
     pinned.value = {};
+    displayVitals.value = {};
     actionBanner.value = null;
     pendingSorts.value = [];
     telegraph.value = null;
@@ -152,6 +166,12 @@ export function useCombatPlayback() {
     // O-017: Réinitialiser l'état de transition
     isTransitioning.value = false;
     transitionPhase.value = null;
+  }
+
+  /** La vitalité d'un combattant à cet instant : reconstruite pendant la lecture, réelle sinon. */
+  function vitalsOf(combatantId: string, settled: number): number {
+    const tracked = displayVitals.value[combatantId];
+    return tracked === undefined ? settled : tracked;
   }
 
   function reset() {
@@ -294,6 +314,22 @@ export function useCombatPlayback() {
     const allyIds = new Set(finalState.allies.map((a) => a.combatant.id));
     let previousActorId: string | null = null;
 
+    // Reconstruit la vitalité de départ (avant cette chronologie) en additionnant, par
+    // combattant, tout ce que la chronologie lui fera perdre ou lui rendra par-dessus l'état
+    // final déjà reçu — voir la doc de `displayVitals` plus haut.
+    const startingVitals: Record<string, number> = {};
+    for (const combatant of [...finalState.allies, ...finalState.enemies]) {
+      startingVitals[combatant.combatant.id] = combatant.combatant.currentVitality;
+    }
+    for (const event of events) {
+      for (const impact of event.impacts) {
+        if (impact.missed) continue;
+        startingVitals[impact.combatantId] =
+          (startingVitals[impact.combatantId] ?? 0) + impact.vitalityDelta;
+      }
+    }
+    displayVitals.value = startingVitals;
+
     isPlaying.value = true;
 
     try {
@@ -362,6 +398,15 @@ export function useCombatPlayback() {
           for (const impact of event.impacts) {
             const targetIsAlly = allyIds.has(impact.combatantId);
             pushFloat(impact.x, impact.y, impact.vitalityDelta, targetIsAlly, at, impact.missed);
+            // La barre ne s'effondre qu'ici, au moment exact où ce coup précis atterrit —
+            // jamais avant, quel que soit l'ordre dans lequel `combat.value` a déjà tout reçu.
+            if (!impact.missed) {
+              displayVitals.value = {
+                ...displayVitals.value,
+                [impact.combatantId]:
+                  (displayVitals.value[impact.combatantId] ?? 0) - impact.vitalityDelta,
+              };
+            }
             // Un coup manqué n'a rien percuté : pas d'onde d'impact, seulement la mention.
             if (!impact.missed) pushImpact(impact.x, impact.y, targetIsAlly, at);
           }
@@ -432,6 +477,7 @@ export function useCombatPlayback() {
     isTransitioning: computed(() => isTransitioning.value), // O-017
     transitionPhase: computed(() => transitionPhase.value), // O-017
     positionOf,
+    vitalsOf,
     pruneFloats,
     pruneImpacts,
     consumeSorts,
