@@ -143,6 +143,55 @@ public sealed class CombatSkillEffectResolverEquippedItemTests
     }
 
     [Fact]
+    public void Resolve_ShouldCastWearersUltimateForFree_OnDeath_WhenWearerHasDiapasonDeLAuDela()
+    {
+        var ultimate = CombatantSkill.Create(
+            "canon.skill.ultimate", "Ultime", "Damage", "SingleEnemy", "Damage",
+            manaCost: 999, chargeCost: 999, basePower: 10, isUltimate: true);
+        var ally = Combatant.Create(
+            CombatantId.New(), "player.self", "Hero", CombatantSide.Player, "Fighter",
+            maxVitality: 30, currentVitality: 30, guard: 0, baseGuard: 0, mana: 0, charge: 0,
+            skills: [ultimate]);
+        var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 100);
+        var combat = TestTacticalCombatHelper.Create(
+            RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy],
+            equippedItemKeys: new Dictionary<Guid, IReadOnlyCollection<string>>
+            {
+                [ally.Id.Value] = ["item.diapason-audela"]
+            });
+        var lethalSkill = CreateSkill("skill.basic.strike", "Damage", 100);
+
+        _resolver.Resolve(combat, enemy, lethalSkill, [ally]);
+
+        ally.Status.Should().Be(CombatantStatus.Defeated);
+        // The ultimate's manaCost/chargeCost (999/999) would normally be unaffordable —
+        // proof the free-cast bypasses ConsumeResources entirely, per
+        // "ignore-all-costs-and-cooldown". A defenseless enemy forces the 115% variation:
+        // round(10 * 1.15) = 12.
+        enemy.CurrentVitality.Should().Be(88);
+    }
+
+    [Fact]
+    public void Resolve_ShouldNotCastAnything_OnDeath_WithoutDiapasonDeLAuDela()
+    {
+        var ultimate = CombatantSkill.Create(
+            "canon.skill.ultimate", "Ultime", "Damage", "SingleEnemy", "Damage",
+            manaCost: 0, chargeCost: 0, basePower: 10, isUltimate: true);
+        var ally = Combatant.Create(
+            CombatantId.New(), "player.self", "Hero", CombatantSide.Player, "Fighter",
+            maxVitality: 30, currentVitality: 30, guard: 0, baseGuard: 0, mana: 0, charge: 0,
+            skills: [ultimate]);
+        var enemy = Combatant.CreateEnemy("enemy.sentinel", "Sentinel", "Guard", 100);
+        var combat = TestTacticalCombatHelper.Create(RunId.New(), RoomId.New(), NodeId.New(), [ally], [enemy]);
+        var lethalSkill = CreateSkill("skill.basic.strike", "Damage", 100);
+
+        _resolver.Resolve(combat, enemy, lethalSkill, [ally]);
+
+        ally.Status.Should().Be(CombatantStatus.Defeated);
+        enemy.CurrentVitality.Should().Be(100);
+    }
+
+    [Fact]
     public void Resolve_ShouldExtendFirstSilenceApplication_WhenCasterHasGrainDuChoeur()
     {
         var ally = Combatant.CreateAlly("player.self", "Hero", "Fighter", 100);
@@ -165,5 +214,11 @@ public sealed class CombatSkillEffectResolverEquippedItemTests
         _resolver.Resolve(combat, ally, skill, [enemy]);
 
         enemy.StatusEffects.Should().ContainSingle(e => e.Key == "silence" && e.ExpiresAtTick == 5000);
+    }
+
+    private static CombatantSkill CreateSkill(string key, string effectType, int basePower)
+    {
+        return CombatantSkill.Create(
+            key, key, effectType, "SingleEnemy", effectType, 0, 0, basePower);
     }
 }

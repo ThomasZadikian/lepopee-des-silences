@@ -29,6 +29,8 @@ public static class TacticalEquipmentAbilityCatalog
                 "Aiguille du Relieur", 999, TacticalAreaShape.Single, true, "SingleEnemy"),
             ["item.aiguille-arret"] = (
                 "Aiguille d'arrêt", 999, TacticalAreaShape.Map, false, "AllEnemies"),
+            ["item.iris-amethyste"] = (
+                "Iris améthyste", 2, TacticalAreaShape.Diamond, true, "SingleEnemy"),
         };
 
     public static IReadOnlyCollection<CombatUsableItemDto> GetUsable(TacticalCombat combat)

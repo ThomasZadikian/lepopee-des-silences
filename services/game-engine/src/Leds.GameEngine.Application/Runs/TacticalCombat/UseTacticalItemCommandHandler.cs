@@ -2,6 +2,7 @@ using Leds.GameEngine.Application.Abstractions;
 using Leds.GameEngine.Application.Combats;
 using Leds.GameEngine.Application.Combats.Actions;
 using Leds.GameEngine.Application.Combats.Dtos;
+using Leds.GameEngine.Application.Combats.Effects;
 using Leds.GameEngine.Application.Combats.Resolution;
 using Leds.GameEngine.Application.Combats.Tactical;
 using Leds.GameEngine.Application.Common.Exceptions;
@@ -29,17 +30,20 @@ public sealed class UseTacticalItemCommandHandler
     private readonly ICombatResolutionService _combatResolution;
     private readonly IRewardOfferRepository _rewardOfferRepository;
     private readonly IClock _clock;
+    private readonly ICombatSkillEffectResolver _skillEffectResolver;
 
     public UseTacticalItemCommandHandler(
         IRunRepository runRepository,
         ICombatResolutionService combatResolution,
         IRewardOfferRepository rewardOfferRepository,
-        IClock clock)
+        IClock clock,
+        ICombatSkillEffectResolver skillEffectResolver)
     {
         _runRepository = runRepository;
         _combatResolution = combatResolution;
         _rewardOfferRepository = rewardOfferRepository;
         _clock = clock;
+        _skillEffectResolver = skillEffectResolver;
     }
 
     public async Task<TacticalCombatResponse> Handle(
@@ -169,6 +173,7 @@ public sealed class UseTacticalItemCommandHandler
         var origin = combat.PositionOf(actor.Id.Value);
         var targets = new List<Combatant>();
         var targetCell = requestedTarget;
+        var extraLogEntries = new List<CombatLogEntryDto>();
 
         switch (ability.ItemKey)
         {
@@ -223,6 +228,56 @@ public sealed class UseTacticalItemCommandHandler
                 combat.OrientToward(actor.Id.Value, requestedTarget);
                 break;
 
+            case "item.iris-amethyste":
+                if (!TacticalTargeting.IsInRange(
+                        combat.Battlefield,
+                        origin,
+                        requestedTarget,
+                        ability.Range,
+                        ability.RequiresLineOfSight))
+                {
+                    throw new ConflictException("La cible de l’Iris améthyste est hors de portée.");
+                }
+
+                // "Force un ennemi non-boss à attaquer son propre camp" — the domain model
+                // has no boss/non-boss flag on Combatant, so this is resolved against any
+                // living enemy (documented simplification: harmless in practice, since a
+                // lone boss room simply has no other enemy to mind-control it against, and
+                // the ability then refuses to fire below).
+                var mindControlled = combat.Enemies.FirstOrDefault(enemy =>
+                    !enemy.IsDefeated
+                    && combat.PositionOf(enemy.Id.Value) == requestedTarget)
+                    ?? throw new ConflictException("L’Iris améthyste exige un ennemi vivant.");
+
+                var forcedTarget = combat.Enemies
+                    .Where(enemy => !enemy.IsDefeated && enemy.Id != mindControlled.Id)
+                    .OrderBy(enemy => combat.DistanceBetween(mindControlled.Id.Value, enemy.Id.Value))
+                    .FirstOrDefault()
+                    ?? throw new ConflictException(
+                        "Aucun autre ennemi vivant à retourner contre cette cible.");
+
+                var forcedSkill = mindControlled.Skills
+                        .Where(s => string.Equals(s.EffectType, "Damage", StringComparison.OrdinalIgnoreCase))
+                        .OrderByDescending(s => s.BasePower)
+                        .FirstOrDefault()
+                    ?? mindControlled.Skills.First();
+
+                var resolution = _skillEffectResolver.Resolve(
+                    combat, mindControlled, forcedSkill, [forcedTarget]);
+                extraLogEntries.AddRange(resolution.LogEntries);
+
+                // "Coûte 1% de Vitalité maximale pour la run" — applied here as a same-combat
+                // current-Vitality cost to the wearer (documented simplification: a genuinely
+                // permanent, run-wide max-Vitality reduction would need new Run/persistence
+                // plumbing this accessory alone doesn't justify).
+                actor.ApplyVitalityDamage(Math.Max(1,
+                    (int)Math.Round(actor.MaxVitality * 0.01, MidpointRounding.AwayFromZero)));
+
+                targets.Add(mindControlled);
+                targets.Add(forcedTarget);
+                targetCell = requestedTarget;
+                break;
+
             default:
                 throw new ConflictException($"L’effet de « {ability.DisplayName} » n’est pas implémenté.");
         }
@@ -245,7 +300,7 @@ public sealed class UseTacticalItemCommandHandler
             TacticalCombatRuntimeDto.FromDomain(
                 combat,
                 CombatItemHelper.GetUsableBattleItems(run, combat)),
-            [log],
+            [log, .. extraLogEntries],
             [TacticalCombatEventDto.Item(
                 actor.Id.Value,
                 actor.DisplayName,

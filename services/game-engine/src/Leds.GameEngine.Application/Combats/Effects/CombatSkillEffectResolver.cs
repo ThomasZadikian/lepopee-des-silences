@@ -719,7 +719,10 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
                 // restriction. No-op when the law isn't active.
                 combat.RegisterCombatantDefeated();
                 if (combat is TacticalCombat defeatTacticalCombat)
+                {
                     defeatTacticalCombat.OnCombatantDefeated(target.Id.Value);
+                    TryCastFreeSignatureSkillOnDefeat(defeatTacticalCombat, target, logEntries);
+                }
 
                 logEntries.Add(CreateLog(
                     "TargetDefeated",
@@ -740,6 +743,46 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
         }
 
         return hitTargetIds;
+    }
+
+    /// <summary>
+    /// "Diapason de l'au-delà" (item.diapason-audela): "lancement gratuit du sort signature"
+    /// on the wearer's death. No authored field designates a "signature skill", so the
+    /// wearer's IsUltimate-flagged skill is used as the best available proxy — same
+    /// convention as any other narrative shorthand resolved against existing data instead of
+    /// new authoring. Cast directly via ResolveDamage (bypassing ConsumeResources entirely,
+    /// per "ignore-all-costs-and-cooldown") at the nearest living opposing combatant.
+    /// Damage-only: a status-only ultimate silently no-ops (documented simplification —
+    /// re-entering the full status-application pipeline from inside a defeat callback isn't
+    /// worth the complexity for a single accessory).
+    /// </summary>
+    private void TryCastFreeSignatureSkillOnDefeat(
+        TacticalCombat combat, Combatant defeated, List<CombatLogEntryDto> logEntries)
+    {
+        if (!combat.HasEquippedItem(defeated.Id.Value, "item.diapason-audela")
+            || !combat.TryConsumeEquipmentTrigger(defeated.Id.Value, "diapason-audela:signature-cast"))
+            return;
+
+        var signatureSkill = defeated.Skills.FirstOrDefault(s => s.IsUltimate);
+        if (signatureSkill is null || ResolveEffectType(signatureSkill) != "Damage")
+            return;
+
+        var opposingSide = defeated.Side == CombatantSide.Player ? CombatantSide.Enemy : CombatantSide.Player;
+        var nearestTarget = combat.Allies.Concat(combat.Enemies)
+            .Where(c => !c.IsDefeated && c.Side == opposingSide)
+            .OrderBy(c => combat.DistanceBetween(defeated.Id.Value, c.Id.Value))
+            .FirstOrDefault();
+        if (nearestTarget is null)
+            return;
+
+        logEntries.Add(CreateLog(
+            "EquipmentTriggered",
+            $"Le Diapason de l'au-delà lance {signatureSkill.DisplayName} gratuitement.",
+            defeated,
+            signatureSkill,
+            [nearestTarget]));
+
+        ResolveDamage(combat, defeated, signatureSkill, [nearestTarget], logEntries);
     }
 
     // Equipment-driven typed damage reduction (e.g. Craie créatrice: -15% Mémoire),
