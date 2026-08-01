@@ -1520,6 +1520,11 @@ public sealed class Run
                 AddMemoryFragment(choice.PayloadKey);
                 break;
 
+            case RewardType.Decline:
+                // No-op: the player walked away from the offer (e.g. a merchant's
+                // "Refuser") without spending anything or receiving anything.
+                break;
+
             default:
                 throw new DomainException($"Reward type '{choice.RewardType}' is not supported.");
         }

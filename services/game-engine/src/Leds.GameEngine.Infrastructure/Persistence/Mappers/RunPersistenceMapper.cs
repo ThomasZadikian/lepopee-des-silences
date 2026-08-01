@@ -861,6 +861,8 @@ public static class RunPersistenceMapper
                 PayloadKey = choice.PayloadKey,
                 SourceEnemyKey = choice.SourceEnemyKey,
                 SourceEnemyDisplayName = choice.SourceEnemyDisplayName,
+                PalaceShardCost = choice.PalaceShardCost,
+                HimLitShardCost = choice.HimLitShardCost,
                 IsSelected = false,
                 SelectionOrder = index
             }).ToList()
@@ -947,7 +949,9 @@ public static class RunPersistenceMapper
             entity.Description,
             entity.PayloadKey ?? string.Empty,
             entity.SourceEnemyKey,
-            entity.SourceEnemyDisplayName);
+            entity.SourceEnemyDisplayName,
+            entity.PalaceShardCost,
+            entity.HimLitShardCost);
     }
     private static readonly JsonSerializerOptions NpcJsonOptions = new()
     {

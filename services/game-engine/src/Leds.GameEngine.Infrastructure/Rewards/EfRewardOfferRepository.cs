@@ -78,6 +78,8 @@ public sealed class EfRewardOfferRepository : IRewardOfferRepository
                     PayloadKey = choice.PayloadKey,
                     SourceEnemyKey = choice.SourceEnemyKey,
                     SourceEnemyDisplayName = choice.SourceEnemyDisplayName,
+                    PalaceShardCost = choice.PalaceShardCost,
+                    HimLitShardCost = choice.HimLitShardCost,
                     IsSelected = rewardOffer.SelectedChoiceId?.Value == choice.Id.Value,
                     SelectionOrder = index
                 });

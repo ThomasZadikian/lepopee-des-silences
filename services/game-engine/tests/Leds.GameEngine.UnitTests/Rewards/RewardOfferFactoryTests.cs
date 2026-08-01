@@ -519,4 +519,67 @@ public sealed class RewardOfferFactoryTests
 
         offer.Choices.Should().HaveCount(4);
     }
+
+    // -----------------------------------------------------------------------
+    // Merchant purchase offer — real catalog items priced by rarity tier, always
+    // with a free "Refuser" choice so the player is never forced into a purchase.
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public async Task CreateMerchantRewardOfferAsync_ShouldPriceEachItemByItsRarity_AndIncludeAFreeDeclineChoice()
+    {
+        var options = new[]
+        {
+            CreateOption("common-item") with { ItemRarity = "Common" },
+            CreateOption("epic-item") with { ItemRarity = "Epic" },
+        };
+        var gateway = CreateGatewayWithItemPool(options, maxChoices: 2);
+
+        var offer = await CreateFactory(gateway.Object).CreateMerchantRewardOfferAsync(
+            riskLevel: 25, runSeed: "seed-merchant", runId: Guid.NewGuid(), nodeId: Guid.NewGuid());
+
+        offer.Choices.Should().HaveCount(3, because: "2 sampled items + the always-free Refuser choice");
+
+        var commonChoice = offer.Choices.Single(c => c.PayloadKey.Contains("common-item"));
+        commonChoice.PalaceShardCost.Should().Be(150);
+        commonChoice.HimLitShardCost.Should().Be(0);
+
+        var epicChoice = offer.Choices.Single(c => c.PayloadKey.Contains("epic-item"));
+        epicChoice.PalaceShardCost.Should().Be(500);
+        epicChoice.HimLitShardCost.Should().Be(25);
+
+        var declineChoice = offer.Choices.Single(c => c.RewardType == RewardType.Decline);
+        declineChoice.PalaceShardCost.Should().Be(0);
+        declineChoice.HimLitShardCost.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task CreateMerchantRewardOfferAsync_ShouldFallBackToFreeHardcodedChoices_WhenCatalogPoolIsUnavailable()
+    {
+        // CreateFactory() with no gateway hits the unconfigured Mock.Of<ICatalogContentGateway>()
+        // default, mirroring how the item-node fallback is exercised above.
+        var offer = await CreateFactory().CreateMerchantRewardOfferAsync(
+            riskLevel: 25, runSeed: "seed-merchant-fallback", runId: Guid.NewGuid(), nodeId: Guid.NewGuid());
+
+        offer.Choices.Should().Contain(c => c.RewardType == RewardType.Decline);
+        offer.Choices.Where(c => c.RewardType != RewardType.Decline)
+            .Should().OnlyContain(c => c.PalaceShardCost == 0 && c.HimLitShardCost == 0,
+            because: "the hardcoded fallback pool predates real pricing and stays free.");
+    }
+
+    [Fact]
+    public async Task CreateMerchantRewardOfferAsync_ShouldBeDeterministic_ForTheSameSeedRunAndNode()
+    {
+        var options = Enumerable.Range(1, 6).Select(i => CreateOption($"opt-{i}")).ToList();
+        var gateway = CreateGatewayWithItemPool(options, maxChoices: 3);
+        var runId = Guid.NewGuid();
+        var nodeId = Guid.NewGuid();
+
+        var first = await CreateFactory(gateway.Object).CreateMerchantRewardOfferAsync(
+            riskLevel: 25, runSeed: "seed-merchant-det", runId: runId, nodeId: nodeId);
+        var second = await CreateFactory(gateway.Object).CreateMerchantRewardOfferAsync(
+            riskLevel: 25, runSeed: "seed-merchant-det", runId: runId, nodeId: nodeId);
+
+        first.Choices.Select(c => c.PayloadKey).Should().Equal(second.Choices.Select(c => c.PayloadKey));
+    }
 }

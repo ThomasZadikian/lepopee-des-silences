@@ -433,6 +433,32 @@ public sealed class RunTests
     }
 
     [Fact]
+    public void ApplyReward_ShouldBeANoOp_WhenRewardTypeIsDecline()
+    {
+        var run = Run.StartNew(
+            Guid.NewGuid(),
+            "reward-decline-seed",
+            "gen-test",
+            "markov-test",
+            TestGameEngineFactory.CreateThresholdRoom(),
+            DateTimeOffset.UtcNow,
+            maxHp: 40,
+            currentHp: 20);
+        run.SetPendingRewardOffer(RewardOfferId.New());
+
+        var choice = RewardChoice.Create(
+            RewardType.Decline,
+            "Refuser",
+            "Tu quittes le marchand les mains vides.",
+            "decline:merchant");
+
+        run.ApplyReward(choice);
+
+        run.CurrentHp.Should().Be(20, because: "declining a merchant offer must not heal, damage, or grant anything");
+        run.RunItems.Should().BeEmpty();
+    }
+
+    [Fact]
     public void ApplyReward_ShouldThrow_WhenNoPendingReward()
     {
         var run = TestGameEngineFactory.CreateRun();

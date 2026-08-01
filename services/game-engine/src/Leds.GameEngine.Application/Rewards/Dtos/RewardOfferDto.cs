@@ -57,7 +57,9 @@ public sealed record RewardChoiceDto(
     string Label,
     string Description,
     string PayloadKey,
-    string? SourceEnemyDisplayName)
+    string? SourceEnemyDisplayName,
+    int PalaceShardCost = 0,
+    int HimLitShardCost = 0)
 {
     public static RewardChoiceDto FromDomain(RewardChoice choice)
     {
@@ -67,7 +69,9 @@ public sealed record RewardChoiceDto(
             choice.Label,
             choice.Description,
             choice.PayloadKey,
-            choice.SourceEnemyDisplayName);
+            choice.SourceEnemyDisplayName,
+            choice.PalaceShardCost,
+            choice.HimLitShardCost);
     }
 }
 

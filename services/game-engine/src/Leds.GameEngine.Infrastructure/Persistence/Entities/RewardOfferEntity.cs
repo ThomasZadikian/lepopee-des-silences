@@ -34,6 +34,8 @@ public sealed class RewardOptionEntity
     public string? EffectSetVersion { get; set; }
     public int? BaseAmount { get; set; }
     public int? ScaledAmount { get; set; }
+    public int PalaceShardCost { get; set; }
+    public int HimLitShardCost { get; set; }
     public bool IsSelected { get; set; }
     public int SelectionOrder { get; set; }
 

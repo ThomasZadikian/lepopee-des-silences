@@ -2,6 +2,7 @@ using FluentAssertions;
 using Leds.GameEngine.Application.Abstractions;
 using Leds.GameEngine.Application.Combats;
 using Leds.GameEngine.Application.Events.ChooseEventOption;
+using Leds.GameEngine.Application.Players.Ports;
 using Leds.GameEngine.Application.Rewards.Ports;
 using Leds.GameEngine.Application.Rewards.Loot;
 using Leds.GameEngine.Application.Rewards.RewardOfferFactory;
@@ -75,7 +76,7 @@ public sealed class RoomClearedTests
             .Setup(r => r.GetByIdAsync(offer.Id, CancellationToken.None))
             .ReturnsAsync(offer);
 
-        var handler = new SelectRewardCommandHandler(runRepository.Object, rewardRepository.Object, Mock.Of<ICatalogContentGateway>());
+        var handler = new SelectRewardCommandHandler(runRepository.Object, rewardRepository.Object, Mock.Of<ICatalogContentGateway>(), Mock.Of<IPlayerProfileGateway>());
         var choiceId = offer.Choices.First().Id;
 
         await handler.Handle(
@@ -101,7 +102,7 @@ public sealed class RoomClearedTests
             .Setup(r => r.GetByIdAsync(offer.Id, CancellationToken.None))
             .ReturnsAsync(offer);
 
-        var handler = new SelectRewardCommandHandler(runRepository.Object, rewardRepository.Object, Mock.Of<ICatalogContentGateway>());
+        var handler = new SelectRewardCommandHandler(runRepository.Object, rewardRepository.Object, Mock.Of<ICatalogContentGateway>(), Mock.Of<IPlayerProfileGateway>());
         var choiceId = offer.Choices.First().Id;
 
         await handler.Handle(
@@ -128,7 +129,7 @@ public sealed class RoomClearedTests
             .Setup(r => r.GetByIdAsync(offer.Id, CancellationToken.None))
             .ReturnsAsync(offer);
 
-        var handler = new SelectRewardCommandHandler(runRepository.Object, rewardRepository.Object, Mock.Of<ICatalogContentGateway>());
+        var handler = new SelectRewardCommandHandler(runRepository.Object, rewardRepository.Object, Mock.Of<ICatalogContentGateway>(), Mock.Of<IPlayerProfileGateway>());
         var choiceId = offer.Choices.First().Id;
 
         await handler.Handle(
@@ -154,7 +155,7 @@ public sealed class RoomClearedTests
             .Setup(r => r.GetByIdAsync(offer.Id, CancellationToken.None))
             .ReturnsAsync(offer);
 
-        var handler = new SelectRewardCommandHandler(runRepository.Object, rewardRepository.Object, Mock.Of<ICatalogContentGateway>());
+        var handler = new SelectRewardCommandHandler(runRepository.Object, rewardRepository.Object, Mock.Of<ICatalogContentGateway>(), Mock.Of<IPlayerProfileGateway>());
         var choiceId = offer.Choices.First().Id;
 
         var response = await handler.Handle(
@@ -180,7 +181,7 @@ public sealed class RoomClearedTests
             .Setup(r => r.GetByIdAsync(offer.Id, CancellationToken.None))
             .ReturnsAsync(offer);
 
-        var handler = new SelectRewardCommandHandler(runRepository.Object, rewardRepository.Object, Mock.Of<ICatalogContentGateway>());
+        var handler = new SelectRewardCommandHandler(runRepository.Object, rewardRepository.Object, Mock.Of<ICatalogContentGateway>(), Mock.Of<IPlayerProfileGateway>());
         var choiceId = offer.Choices.First().Id;
 
         await handler.Handle(
@@ -275,7 +276,7 @@ public sealed class RoomClearedTests
             .Setup(r => r.GetByIdAsync(offer.Id, CancellationToken.None))
             .ReturnsAsync(offer);
 
-        var handler = new SelectRewardCommandHandler(runRepository.Object, rewardRepository.Object, Mock.Of<ICatalogContentGateway>());
+        var handler = new SelectRewardCommandHandler(runRepository.Object, rewardRepository.Object, Mock.Of<ICatalogContentGateway>(), Mock.Of<IPlayerProfileGateway>());
         var choiceId = offer.Choices.First().Id;
 
         var response = await handler.Handle(
@@ -309,7 +310,7 @@ public sealed class RoomClearedTests
             .Setup(r => r.GetByIdAsync(offer.Id, CancellationToken.None))
             .ReturnsAsync(offer);
 
-        var handler = new SelectRewardCommandHandler(runRepository.Object, rewardRepository.Object, Mock.Of<ICatalogContentGateway>());
+        var handler = new SelectRewardCommandHandler(runRepository.Object, rewardRepository.Object, Mock.Of<ICatalogContentGateway>(), Mock.Of<IPlayerProfileGateway>());
         var choiceId = offer.Choices.First().Id;
 
         await handler.Handle(

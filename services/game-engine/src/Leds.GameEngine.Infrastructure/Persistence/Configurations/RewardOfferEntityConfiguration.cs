@@ -56,6 +56,8 @@ public sealed class RewardOptionEntityConfiguration : IEntityTypeConfiguration<R
         builder.Property(o => o.EffectSetVersion).HasColumnName("effect_set_version").HasMaxLength(32);
         builder.Property(o => o.BaseAmount).HasColumnName("base_amount");
         builder.Property(o => o.ScaledAmount).HasColumnName("scaled_amount");
+        builder.Property(o => o.PalaceShardCost).HasColumnName("palace_shard_cost").HasDefaultValue(0);
+        builder.Property(o => o.HimLitShardCost).HasColumnName("him_lit_shard_cost").HasDefaultValue(0);
         builder.Property(o => o.IsSelected).HasColumnName("is_selected").HasDefaultValue(false);
         builder.Property(o => o.SelectionOrder).HasColumnName("selection_order").HasDefaultValue(0);
 

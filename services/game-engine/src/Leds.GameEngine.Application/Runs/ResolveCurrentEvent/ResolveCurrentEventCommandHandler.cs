@@ -238,8 +238,12 @@ public sealed class ResolveCurrentEventCommandHandler
         }
         else if (selectedNode.EventType == NodeEventType.Merchant)
         {
-            var merchantRewardOffer = _rewardOfferFactory.CreateMerchantRewardOffer(
-                selectedNode.RiskLevel);
+            var merchantRewardOffer = await _rewardOfferFactory.CreateMerchantRewardOfferAsync(
+                selectedNode.RiskLevel,
+                run.Seed,
+                run.Id.Value,
+                selectedNode.Id.Value,
+                cancellationToken);
 
             run.SetPendingRewardOffer(merchantRewardOffer.Id);
             pendingRewardOffer = merchantRewardOffer;

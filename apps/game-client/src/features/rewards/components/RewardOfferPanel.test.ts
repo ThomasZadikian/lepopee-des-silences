@@ -24,9 +24,9 @@ const baseOffer: RewardOfferDto = {
   ],
 };
 
-function mountPanel(offer: RewardOfferDto, isLoading = false) {
+function mountPanel(offer: RewardOfferDto, isLoading = false, errorMessage: string | null = null) {
   return mount(RewardOfferPanel, {
-    props: { offer, isLoading },
+    props: { offer, isLoading, errorMessage },
     global: {
       stubs: {
         ChipBadge: { template: '<span><slot /></span>' },
@@ -222,5 +222,62 @@ describe('RewardOfferPanel', () => {
     expect(popoverText).toContain('30%');
     expect(popoverText).toContain('Cendre bénite');
     expect(popoverText).toContain('40%');
+  });
+
+  // ── Merchant purchase: price display + insufficient-funds error handling ──
+
+  const merchantOffer: RewardOfferDto = {
+    ...baseOffer,
+    choices: [
+      {
+        id: 'c-item',
+        rewardType: 'TemporaryItem',
+        label: 'Objet du marchand',
+        description: 'Un objet à vendre.',
+        palaceShardCost: 500,
+        himLitShardCost: 25,
+      },
+      {
+        id: 'c-decline',
+        rewardType: 'Decline',
+        label: 'Refuser',
+        description: "Tu quittes le marchand les mains vides.",
+      },
+    ],
+  };
+
+  it('shows the price on a merchant choice with a cost', () => {
+    const wrapper = mountPanel(merchantOffer);
+    expect(wrapper.text()).toContain('500 Éclats du Palais');
+    expect(wrapper.text()).toContain("25 Éclats de Him'Lit");
+  });
+
+  it('does not show a price on a free choice', () => {
+    const wrapper = mountPanel(baseOffer);
+    expect(wrapper.text()).not.toContain('Éclats du Palais');
+  });
+
+  it('labels a Decline choice as "Renoncer" and shows no price for it', () => {
+    const wrapper = mountPanel(merchantOffer);
+    const cards = wrapper.findAll('.rop-card');
+    const declineCard = cards[1];
+    expect(declineCard.text()).toContain('Renoncer');
+  });
+
+  it('displays the error message and does not crash after a failed purchase', async () => {
+    const wrapper = mountPanel(merchantOffer, false, 'Fonds insuffisants pour cet achat.');
+    expect(wrapper.text()).toContain('Fonds insuffisants pour cet achat.');
+  });
+
+  it('re-enables the confirm button after an errorMessage appears post-selection', async () => {
+    const wrapper = mountPanel(merchantOffer);
+    await wrapper.findAll('.rop-card')[0].trigger('click');
+    await wrapper.find('.es-btn--lg').trigger('click');
+    expect(wrapper.emitted('selectReward')).toEqual([['c-item']]);
+
+    await wrapper.setProps({ errorMessage: 'Fonds insuffisants pour cet achat.' });
+
+    const button = wrapper.find('.es-btn--lg');
+    expect(button.text()).not.toContain('✓');
   });
 });

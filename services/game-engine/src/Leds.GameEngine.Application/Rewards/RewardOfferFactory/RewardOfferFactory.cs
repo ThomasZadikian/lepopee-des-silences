@@ -141,10 +141,61 @@ public sealed class RewardOfferFactory
         return option.PayloadKey ?? $"heal:{option.BaseAmount}";
     }
 
-    public RewardOffer CreateMerchantRewardOffer(int riskLevel)
+    /// <summary>
+    /// Creates a real merchant purchase offer: a handful of catalog items sampled
+    /// deterministically from the same authored pool item nodes draw from
+    /// ("reward.item.default"), each priced by its rarity tier (see
+    /// <see cref="ItemPricing"/>), plus an always-free "Refuser" choice so the
+    /// player is never forced into buying something to leave the node — affordability
+    /// is checked and the currencies are actually deducted in SelectRewardCommandHandler,
+    /// not here (this factory only builds the offer, it never touches player state).
+    /// Falls back to the small hardcoded free heal/guard items (no cost) if the
+    /// catalog template is unreachable or empty, same safety net as item nodes.
+    /// </summary>
+    public async Task<RewardOffer> CreateMerchantRewardOfferAsync(
+        int riskLevel,
+        string runSeed,
+        Guid runId,
+        Guid nodeId,
+        CancellationToken cancellationToken = default)
     {
-        var choices = CreateMerchantRewardChoices(riskLevel);
+        var templateResult = await _catalogContentGateway.GetRewardTemplateByKeyAsync(
+            ItemRewardTemplateKey, cancellationToken);
+
+        List<RewardChoice> choices;
+        if (templateResult is null || templateResult.IsFailure || templateResult.Value.Options.Count == 0)
+        {
+            choices = CreateMerchantRewardChoices(riskLevel);
+        }
+        else
+        {
+            var template = templateResult.Value;
+            var sampled = SampleOptionsDeterministically(
+                template.Options, template.MaxChoices, runSeed, runId, nodeId, rerollNonce: 0);
+
+            choices = sampled.Select(BuildMerchantRewardChoiceFromOption).ToList();
+        }
+
+        choices.Add(RewardChoice.Create(
+            RewardType.Decline,
+            "Refuser",
+            "Tu quittes le marchand les mains vides. Rien n'est prélevé.",
+            "decline:merchant"));
+
         return RewardOffer.Create(RewardSource.NodeEvent, choices);
+    }
+
+    private static RewardChoice BuildMerchantRewardChoiceFromOption(CatalogRewardTemplateOptionSnapshot option)
+    {
+        var (palaceShardCost, himLitShardCost) = ItemPricing.ForRarity(option.ItemRarity);
+
+        return RewardChoice.Create(
+            RewardType.TemporaryItem,
+            option.Label,
+            option.Description,
+            BuildPayloadKey(option),
+            palaceShardCost: palaceShardCost,
+            himLitShardCost: himLitShardCost);
     }
 
     /// <summary>Catalog key for the item-node reward pool. "Loi de la Chandelle"

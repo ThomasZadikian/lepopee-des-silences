@@ -3,13 +3,14 @@ import ChipBadge from '@/shared/components/ChipBadge.vue'
 import EliseComment from '@/shared/components/EliseComment.vue'
 import RuleOrnament from '@/shared/components/RuleOrnament.vue'
 import SigilIcon from '@/shared/components/SigilIcon.vue'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import DefeatedEnemyList from './DefeatedEnemyList.vue'
 import type { RewardOfferDto } from '../types/rewardTypes'
 
 const props = defineProps<{
   offer: RewardOfferDto
   isLoading?: boolean
+  errorMessage?: string | null
 }>()
 
 const defeatedEnemies = computed(() => props.offer.defeatedEnemies ?? [])
@@ -32,6 +33,7 @@ const REWARD_TYPE_LABELS: Record<string, string> = {
   TemporaryItem:    'Objet temporaire',
   StatBonus:        'Bonus de stat',
   MemoryFragment:   'Fragment mémoriel',
+  Decline:          'Renoncer',
 }
 
 const sourceLabel = computed(() =>
@@ -51,6 +53,8 @@ type NormalizedCard = {
   rewardType: string | undefined
   tone: 'gold' | 'frost' | null
   sourceEnemyDisplayName: string | null | undefined
+  palaceShardCost: number
+  himLitShardCost: number
 }
 
 function getTone(rarity?: string, rewardType?: string): 'gold' | 'frost' | null {
@@ -75,6 +79,8 @@ const normalizedCards = computed<NormalizedCard[]>(() => {
       rewardType: c.rewardType,
       tone: getTone(c.rarity, c.rewardType),
       sourceEnemyDisplayName: c.sourceEnemyDisplayName,
+      palaceShardCost: c.palaceShardCost ?? 0,
+      himLitShardCost: c.himLitShardCost ?? 0,
     })
   }
 
@@ -90,6 +96,8 @@ const normalizedCards = computed<NormalizedCard[]>(() => {
       rewardType: o.rewardType ?? o.type,
       tone: getTone(o.rarity, o.rewardType ?? o.type),
       sourceEnemyDisplayName: null,
+      palaceShardCost: 0,
+      himLitShardCost: 0,
     })
   }
 
@@ -116,6 +124,20 @@ function confirmChoice() {
   if (chosen.value == null || isExpiredOrSelected.value) return
   taken.value = true
   emit('selectReward', chosen.value.id)
+}
+
+// A failed purchase (insufficient funds) never selects the offer server-side —
+// re-enable the confirm button so the player can pick a cheaper item or "Renoncer".
+watch(() => props.errorMessage, (message) => {
+  if (message) taken.value = false
+})
+
+function costLabel(card: NormalizedCard): string | null {
+  if (card.palaceShardCost <= 0 && card.himLitShardCost <= 0) return null
+  const parts: string[] = []
+  if (card.palaceShardCost > 0) parts.push(`${card.palaceShardCost} Éclats du Palais`)
+  if (card.himLitShardCost > 0) parts.push(`${card.himLitShardCost} Éclats de Him'Lit`)
+  return parts.join(' · ')
 }
 
 function rewardTypeLabel(rewardType?: string): string {
@@ -267,9 +289,19 @@ const confirmBtnClass = computed(() =>
             <p class="es-body" style="font-size: 13.5px; text-align: center; flex: 1">
               {{ card.description }}
             </p>
+
+            <p
+              v-if="costLabel(card)"
+              class="es-label"
+              style="text-align: center; margin-top: 12px; color: var(--gold)"
+            >
+              {{ costLabel(card) }}
+            </p>
           </div>
         </div>
       </div>
+
+      <p v-if="errorMessage" class="rop-purchase-error">{{ errorMessage }}</p>
 
       <!-- Footer actions -->
       <div v-if="!isExpiredOrSelected" class="es-row" style="justify-content: center; gap: 14px; flex: 0 0 auto; margin-top: 8px">
@@ -469,6 +501,13 @@ const confirmBtnClass = computed(() =>
   align-items: center;
   justify-content: center;
   transition: border-color 0.24s, box-shadow 0.24s;
+}
+
+.rop-purchase-error {
+  text-align: center;
+  color: var(--blood, oklch(.52 .15 20));
+  font-size: 0.8rem;
+  margin: 4px 0 0;
 }
 
 .rop-resolved-note {

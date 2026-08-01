@@ -3,6 +3,7 @@ using Leds.GameEngine.Application.Abstractions;
 using Leds.GameEngine.Application.Catalog.Contracts;
 using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Application.Combats;
+using Leds.GameEngine.Application.Players.Ports;
 using Leds.GameEngine.Application.Rewards.Ports;
 using Leds.GameEngine.Application.Rewards.Loot;
 using Leds.GameEngine.Application.Rewards.RewardOfferFactory;
@@ -52,7 +53,7 @@ public sealed class SelectRewardItemEnrichmentTests
                 "Additive", 99, true, true, null)));
 
         var handler = new SelectRewardCommandHandler(
-            runRepo.Object, rewardRepo.Object, catalogGateway.Object);
+            runRepo.Object, rewardRepo.Object, catalogGateway.Object, Mock.Of<IPlayerProfileGateway>());
 
         var itemChoice = offer.Choices.First(c => c.RewardType == RewardType.TemporaryItem);
 
@@ -100,7 +101,7 @@ public sealed class SelectRewardItemEnrichmentTests
                 "Additive", 99, true, true, null)));
 
         var handler = new SelectRewardCommandHandler(
-            runRepo.Object, rewardRepo.Object, catalogGateway.Object);
+            runRepo.Object, rewardRepo.Object, catalogGateway.Object, Mock.Of<IPlayerProfileGateway>());
 
         var itemChoice = offer.Choices.First(c => c.RewardType == RewardType.TemporaryItem);
 
@@ -138,7 +139,7 @@ public sealed class SelectRewardItemEnrichmentTests
             .ReturnsAsync(Result<CatalogItemDefinitionSnapshot>.Failure(Error.Create("catalog.item_definition_not_found", "not found")));
 
         var handler = new SelectRewardCommandHandler(
-            runRepo.Object, rewardRepo.Object, catalogGateway.Object);
+            runRepo.Object, rewardRepo.Object, catalogGateway.Object, Mock.Of<IPlayerProfileGateway>());
 
         var itemChoice = offer.Choices.First(c => c.RewardType == RewardType.TemporaryItem);
 
@@ -174,7 +175,7 @@ public sealed class SelectRewardItemEnrichmentTests
         var catalogGateway = new Mock<ICatalogContentGateway>();
 
         var handler = new SelectRewardCommandHandler(
-            runRepo.Object, rewardRepo.Object, catalogGateway.Object);
+            runRepo.Object, rewardRepo.Object, catalogGateway.Object, Mock.Of<IPlayerProfileGateway>());
 
         var healChoice = offer.Choices.First(c => c.RewardType == RewardType.Heal);
 

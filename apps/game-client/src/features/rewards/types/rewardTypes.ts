@@ -20,6 +20,9 @@ export type RewardChoiceDto = {
   isSelected?: boolean;
   /** Which enemy this loot came from; null/absent means it came from the generic fallback pool. */
   sourceEnemyDisplayName?: string | null;
+  /** Non-zero only for merchant purchase choices. */
+  palaceShardCost?: number;
+  himLitShardCost?: number;
 };
 
 export type RewardOptionDto = {

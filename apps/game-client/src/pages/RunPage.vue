@@ -374,6 +374,7 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
           v-if="runStore.pendingRewardOffer"
           :offer="runStore.pendingRewardOffer"
           :is-loading="runStore.isLoading"
+          :error-message="runStore.error"
           @select-reward="runStore.selectReward"
         />
         <section v-else class="phase-center">

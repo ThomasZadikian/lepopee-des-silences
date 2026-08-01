@@ -14,6 +14,12 @@ public sealed class StubPlayerProfileGateway : IPlayerProfileGateway
     private readonly Dictionary<Guid, int> _currencyBalances = new();
     private readonly Dictionary<Guid, int> _himLitCurrencyBalances = new();
 
+    /// <summary>When true, <see cref="TrySpendHimLitCurrencyAsync"/> always fails
+    /// regardless of balance — simulates a player-service call that fails for reasons
+    /// other than a stale affordability pre-check (used to test refund-on-partial-failure
+    /// logic in callers that spend two currencies non-atomically).</summary>
+    public bool ForceHimLitSpendFailure { get; set; }
+
     public List<(Guid PlayerId, Guid CharacterId, string SkillKey, string Source)> UnlockedSkills { get; } = [];
     public List<(Guid PlayerId, int Amount)> AwardedStatPoints { get; } = [];
     public List<(Guid PlayerId, int Amount)> AwardedCurrency { get; } = [];
@@ -135,7 +141,7 @@ public sealed class StubPlayerProfileGateway : IPlayerProfileGateway
     public Task<bool> TrySpendHimLitCurrencyAsync(Guid playerId, int amount, CancellationToken cancellationToken)
     {
         var balance = GetHimLitBalance(playerId);
-        var succeeded = balance >= amount;
+        var succeeded = !ForceHimLitSpendFailure && balance >= amount;
         if (succeeded)
             _himLitCurrencyBalances[playerId] = balance - amount;
 

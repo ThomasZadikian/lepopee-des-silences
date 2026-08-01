@@ -117,4 +117,40 @@ public sealed class RewardChoiceTests
         choice.SourceEnemyKey.Should().Be("enemy.forest.chimere-serpentaire");
         choice.SourceEnemyDisplayName.Should().Be("Chimere Serpentaire");
     }
+
+    [Fact]
+    public void Create_ShouldDefaultCurrencyCosts_ToZero()
+    {
+        var choice = RewardChoice.Create(RewardType.Heal, "Soin", "Restaure 15 PV.", "heal:15");
+
+        choice.PalaceShardCost.Should().Be(0);
+        choice.HimLitShardCost.Should().Be(0);
+    }
+
+    [Fact]
+    public void Create_ShouldCarryCurrencyCosts_WhenProvided()
+    {
+        var choice = RewardChoice.Create(
+            RewardType.TemporaryItem,
+            "Objet du marchand",
+            "Un objet à vendre.",
+            "item:item.consumable.marchand:...",
+            palaceShardCost: 500,
+            himLitShardCost: 25);
+
+        choice.PalaceShardCost.Should().Be(500);
+        choice.HimLitShardCost.Should().Be(25);
+    }
+
+    [Theory]
+    [InlineData(-1, 0)]
+    [InlineData(0, -1)]
+    public void Create_ShouldThrow_WhenEitherCostIsNegative(int palaceShardCost, int himLitShardCost)
+    {
+        var act = () => RewardChoice.Create(
+            RewardType.TemporaryItem, "Label", "Desc", "payload",
+            palaceShardCost: palaceShardCost, himLitShardCost: himLitShardCost);
+
+        act.Should().Throw<DomainException>().WithMessage("Reward choice cost cannot be negative.");
+    }
 }

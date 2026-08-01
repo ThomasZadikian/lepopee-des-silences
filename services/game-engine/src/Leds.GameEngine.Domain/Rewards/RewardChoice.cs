@@ -11,7 +11,9 @@ public sealed class RewardChoice
         string description,
         string payloadKey,
         string? sourceEnemyKey,
-        string? sourceEnemyDisplayName)
+        string? sourceEnemyDisplayName,
+        int palaceShardCost,
+        int himLitShardCost)
     {
         Id = id;
         RewardType = rewardType;
@@ -20,6 +22,8 @@ public sealed class RewardChoice
         PayloadKey = payloadKey;
         SourceEnemyKey = sourceEnemyKey;
         SourceEnemyDisplayName = sourceEnemyDisplayName;
+        PalaceShardCost = palaceShardCost;
+        HimLitShardCost = himLitShardCost;
     }
 
     public RewardChoiceId Id { get; }
@@ -37,6 +41,14 @@ public sealed class RewardChoice
 
     public string? SourceEnemyDisplayName { get; }
 
+    /// <summary>Cost in "Éclats du Palais" to select this choice. Zero for every
+    /// reward that isn't a merchant purchase.</summary>
+    public int PalaceShardCost { get; }
+
+    /// <summary>Cost in "Éclats de Him'Lit" to select this choice. Zero for every
+    /// reward that isn't a merchant purchase of an Epic+ item.</summary>
+    public int HimLitShardCost { get; }
+
     public static RewardChoice Rehydrate(
         RewardChoiceId id,
         RewardType rewardType,
@@ -44,9 +56,13 @@ public sealed class RewardChoice
         string description,
         string payloadKey,
         string? sourceEnemyKey = null,
-        string? sourceEnemyDisplayName = null)
+        string? sourceEnemyDisplayName = null,
+        int palaceShardCost = 0,
+        int himLitShardCost = 0)
     {
-        return new RewardChoice(id, rewardType, label, description, payloadKey, sourceEnemyKey, sourceEnemyDisplayName);
+        return new RewardChoice(
+            id, rewardType, label, description, payloadKey,
+            sourceEnemyKey, sourceEnemyDisplayName, palaceShardCost, himLitShardCost);
     }
 
     public static RewardChoice Create(
@@ -55,7 +71,9 @@ public sealed class RewardChoice
         string description,
         string payloadKey,
         string? sourceEnemyKey = null,
-        string? sourceEnemyDisplayName = null)
+        string? sourceEnemyDisplayName = null,
+        int palaceShardCost = 0,
+        int himLitShardCost = 0)
     {
         if (string.IsNullOrWhiteSpace(label))
         {
@@ -72,6 +90,11 @@ public sealed class RewardChoice
             throw new DomainException("Reward choice payload key is required.");
         }
 
+        if (palaceShardCost < 0 || himLitShardCost < 0)
+        {
+            throw new DomainException("Reward choice cost cannot be negative.");
+        }
+
         return new RewardChoice(
             RewardChoiceId.New(),
             rewardType,
@@ -79,6 +102,8 @@ public sealed class RewardChoice
             description.Trim(),
             payloadKey.Trim(),
             string.IsNullOrWhiteSpace(sourceEnemyKey) ? null : sourceEnemyKey.Trim(),
-            string.IsNullOrWhiteSpace(sourceEnemyDisplayName) ? null : sourceEnemyDisplayName.Trim());
+            string.IsNullOrWhiteSpace(sourceEnemyDisplayName) ? null : sourceEnemyDisplayName.Trim(),
+            palaceShardCost,
+            himLitShardCost);
     }
 }

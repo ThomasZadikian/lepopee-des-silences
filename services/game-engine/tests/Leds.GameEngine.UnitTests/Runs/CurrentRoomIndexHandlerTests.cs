@@ -5,6 +5,7 @@ using Leds.GameEngine.Application.Combats;
 using Leds.GameEngine.Application.Events.ChooseEventOption;
 using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Application.PalaceLaws.Ports;
+using Leds.GameEngine.Application.Players.Ports;
 using Leds.GameEngine.Application.Rewards.Ports;
 using Leds.GameEngine.Application.Rewards.Loot;
 using Leds.GameEngine.Application.Rewards.RewardOfferFactory;
@@ -172,7 +173,8 @@ public sealed class CurrentRoomIndexHandlerTests
         var handler = new SelectRewardCommandHandler(
             runRepository.Object,
             rewardRepository.Object,
-            Mock.Of<ICatalogContentGateway>());
+            Mock.Of<ICatalogContentGateway>(),
+            Mock.Of<IPlayerProfileGateway>());
 
         var choiceId = offer.Choices.First().Id;
 

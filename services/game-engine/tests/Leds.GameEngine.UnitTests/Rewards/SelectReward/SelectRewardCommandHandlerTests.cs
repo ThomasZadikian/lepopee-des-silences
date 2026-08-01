@@ -1,7 +1,9 @@
 using FluentAssertions;
 using Leds.GameEngine.Application.Abstractions;
+using Leds.GameEngine.Application.Catalog.Contracts;
 using Leds.GameEngine.Application.Combats;
 using Leds.GameEngine.Application.Common.Exceptions;
+using Leds.GameEngine.Application.Players.Ports;
 using Leds.GameEngine.Application.Rewards.Ports;
 using Leds.GameEngine.Application.Rewards.Loot;
 using Leds.GameEngine.Application.Rewards.RewardOfferFactory;
@@ -12,7 +14,10 @@ using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rewards;
 using Leds.GameEngine.Domain.Runs;
 using Leds.GameEngine.Application.Catalog.Ports;
+using Leds.GameEngine.UnitTests.Common;
 using Leds.GameEngine.UnitTests.Common.Factories;
+using Leds.SharedBuildingBlocks.Errors;
+using Leds.SharedBuildingBlocks.Results;
 using Moq;
 
 namespace Leds.GameEngine.UnitTests.Rewards.SelectReward;
@@ -52,7 +57,8 @@ public sealed class SelectRewardCommandHandlerTests
         var handler = new SelectRewardCommandHandler(
             runRepository.Object,
             rewardRepository.Object,
-            Mock.Of<ICatalogContentGateway>());
+            Mock.Of<ICatalogContentGateway>(),
+            Mock.Of<IPlayerProfileGateway>());
 
         var choiceId = offer.Choices.First().Id;
 
@@ -83,7 +89,8 @@ public sealed class SelectRewardCommandHandlerTests
         var handler = new SelectRewardCommandHandler(
             runRepository.Object,
             rewardRepository.Object,
-            Mock.Of<ICatalogContentGateway>());
+            Mock.Of<ICatalogContentGateway>(),
+            Mock.Of<IPlayerProfileGateway>());
 
         var choiceId = offer.Choices.First().Id;
 
@@ -130,7 +137,8 @@ public sealed class SelectRewardCommandHandlerTests
         var handler = new SelectRewardCommandHandler(
             runRepository.Object,
             rewardRepository.Object,
-            Mock.Of<ICatalogContentGateway>());
+            Mock.Of<ICatalogContentGateway>(),
+            Mock.Of<IPlayerProfileGateway>());
 
         var healChoice = offer.Choices.First(c => c.RewardType == RewardType.Heal);
 
@@ -158,7 +166,8 @@ public sealed class SelectRewardCommandHandlerTests
         var handler = new SelectRewardCommandHandler(
             runRepository.Object,
             rewardRepository.Object,
-            Mock.Of<ICatalogContentGateway>());
+            Mock.Of<ICatalogContentGateway>(),
+            Mock.Of<IPlayerProfileGateway>());
 
         var act = () => handler.Handle(
             new SelectRewardCommand(run.Id.Value, Guid.NewGuid()),
@@ -187,7 +196,8 @@ public sealed class SelectRewardCommandHandlerTests
         var handler = new SelectRewardCommandHandler(
             runRepository.Object,
             rewardRepository.Object,
-            Mock.Of<ICatalogContentGateway>());
+            Mock.Of<ICatalogContentGateway>(),
+            Mock.Of<IPlayerProfileGateway>());
 
         var act = () => handler.Handle(
             new SelectRewardCommand(run.Id.Value, Guid.NewGuid()),
@@ -218,7 +228,8 @@ public sealed class SelectRewardCommandHandlerTests
         var handler = new SelectRewardCommandHandler(
             runRepository.Object,
             rewardRepository.Object,
-            Mock.Of<ICatalogContentGateway>());
+            Mock.Of<ICatalogContentGateway>(),
+            Mock.Of<IPlayerProfileGateway>());
 
         var act = () => handler.Handle(
             new SelectRewardCommand(run.Id.Value, choiceId.Value),
@@ -244,7 +255,8 @@ public sealed class SelectRewardCommandHandlerTests
         var handler = new SelectRewardCommandHandler(
             runRepository.Object,
             rewardRepository.Object,
-            Mock.Of<ICatalogContentGateway>());
+            Mock.Of<ICatalogContentGateway>(),
+            Mock.Of<IPlayerProfileGateway>());
 
         var act = () => handler.Handle(
             new SelectRewardCommand(runId, Guid.NewGuid()),
@@ -284,7 +296,8 @@ public sealed class SelectRewardCommandHandlerTests
         var handler = new SelectRewardCommandHandler(
             runRepository.Object,
             rewardRepository.Object,
-            Mock.Of<ICatalogContentGateway>());
+            Mock.Of<ICatalogContentGateway>(),
+            Mock.Of<IPlayerProfileGateway>());
 
         var choiceId = offer.Choices.First().Id;
 
@@ -326,7 +339,8 @@ public sealed class SelectRewardCommandHandlerTests
         var handler = new SelectRewardCommandHandler(
             runRepository.Object,
             rewardRepository.Object,
-            Mock.Of<ICatalogContentGateway>());
+            Mock.Of<ICatalogContentGateway>(),
+            Mock.Of<IPlayerProfileGateway>());
 
         var act = () => handler.Handle(
             new SelectRewardCommand(run.Id.Value, Guid.NewGuid()),
@@ -335,5 +349,162 @@ public sealed class SelectRewardCommandHandlerTests
         await act.Should()
             .ThrowAsync<NotFoundException>()
             .WithMessage($"RewardOffer with id '{fakeOfferId.Value}' was not found.");
+    }
+
+    // ── Merchant purchase (choices with a real currency cost) ──────────────────
+
+    private static (Run run, RewardOffer offer, RewardChoice purchaseChoice, RewardChoice declineChoice)
+        CreateRunWithMerchantOffer(int palaceShardCost, int himLitShardCost)
+    {
+        var run = TestGameEngineFactory.CreateRun();
+
+        var purchaseChoice = RewardChoice.Create(
+            RewardType.TemporaryItem,
+            "Baume de mémoire",
+            "Restaure une partie de la vitalité.",
+            "item:item.consumable.minor-heal:Baume de mémoire:Restaure une partie de la vitalité.:Consumable:Common:Heal:15",
+            palaceShardCost: palaceShardCost,
+            himLitShardCost: himLitShardCost);
+
+        var declineChoice = RewardChoice.Create(
+            RewardType.Decline,
+            "Refuser",
+            "Tu quittes le marchand les mains vides.",
+            "decline:merchant");
+
+        var offer = RewardOffer.Create(RewardSource.NodeEvent, [purchaseChoice, declineChoice]);
+        run.SetPendingRewardOffer(offer.Id);
+
+        return (run, offer, purchaseChoice, declineChoice);
+    }
+
+    private static SelectRewardCommandHandler CreateHandler(
+        Run run, RewardOffer offer, StubPlayerProfileGateway playerProfileGateway)
+    {
+        var runRepository = new Mock<IRunRepository>();
+        runRepository.Setup(repo => repo.GetByIdAsync(run.Id, CancellationToken.None)).ReturnsAsync(run);
+
+        var rewardRepository = new Mock<IRewardOfferRepository>();
+        rewardRepository.Setup(repo => repo.GetByIdAsync(offer.Id, CancellationToken.None)).ReturnsAsync(offer);
+
+        // Item enrichment (post-purchase) looks up the catalog definition; not the focus
+        // of these tests, so make it a clean miss rather than an unconfigured-mock NRE.
+        var catalogGateway = new Mock<ICatalogContentGateway>();
+        catalogGateway
+            .Setup(g => g.GetItemDefinitionByKeyAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<CatalogItemDefinitionSnapshot>.Failure(Error.Create("not_found", "not found")));
+
+        return new SelectRewardCommandHandler(
+            runRepository.Object, rewardRepository.Object, catalogGateway.Object, playerProfileGateway);
+    }
+
+    [Fact]
+    public async Task Handle_ShouldGrantItemAndDeductBothCurrencies_WhenPurchaseIsAffordable()
+    {
+        var (run, offer, purchaseChoice, _) = CreateRunWithMerchantOffer(palaceShardCost: 500, himLitShardCost: 25);
+
+        var playerProfileGateway = new StubPlayerProfileGateway();
+        playerProfileGateway.SeedCurrencyBalance(run.PlayerId, 500);
+        playerProfileGateway.SeedHimLitCurrencyBalance(run.PlayerId, 25);
+
+        var handler = CreateHandler(run, offer, playerProfileGateway);
+
+        await handler.Handle(
+            new SelectRewardCommand(run.Id.Value, purchaseChoice.Id.Value),
+            CancellationToken.None);
+
+        playerProfileGateway.SpentCurrencyAttempts.Should().ContainSingle()
+            .Which.Should().Be((run.PlayerId, 500, true));
+        playerProfileGateway.SpentHimLitCurrencyAttempts.Should().ContainSingle()
+            .Which.Should().Be((run.PlayerId, 25, true));
+        run.RunItems.Should().ContainSingle(i => i.DefinitionKey == "item.consumable.minor-heal");
+        offer.State.Should().Be(RewardOfferState.Selected);
+        run.HasPendingRewardOffer.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Handle_ShouldThrowAndLeaveOfferPending_WhenPalaceShardsAreInsufficient()
+    {
+        var (run, offer, purchaseChoice, _) = CreateRunWithMerchantOffer(palaceShardCost: 500, himLitShardCost: 25);
+
+        var playerProfileGateway = new StubPlayerProfileGateway();
+        playerProfileGateway.SeedCurrencyBalance(run.PlayerId, 100);
+        playerProfileGateway.SeedHimLitCurrencyBalance(run.PlayerId, 25);
+
+        var handler = CreateHandler(run, offer, playerProfileGateway);
+
+        var act = () => handler.Handle(
+            new SelectRewardCommand(run.Id.Value, purchaseChoice.Id.Value),
+            CancellationToken.None);
+
+        await act.Should()
+            .ThrowAsync<DomainException>()
+            .WithMessage("Fonds insuffisants pour cet achat.");
+
+        playerProfileGateway.SpentCurrencyAttempts.Should().BeEmpty(
+            because: "the pre-check must reject before any spend is attempted");
+        playerProfileGateway.SpentHimLitCurrencyAttempts.Should().BeEmpty();
+        run.RunItems.Should().BeEmpty();
+        offer.State.Should().Be(RewardOfferState.Pending,
+            because: "a failed purchase must leave the offer selectable again");
+        run.HasPendingRewardOffer.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Handle_ShouldRefundPalaceShards_WhenHimLitSpendFailsDespitePassingPreCheck()
+    {
+        // The player-service balance read at pre-check time says the purchase is
+        // affordable, but the actual Him'Lit spend call fails anyway (e.g. a concurrent
+        // spend elsewhere, or any other transient player-service failure) — the Palace
+        // shards already spent for this purchase must be handed back rather than lost.
+        var (run, offer, purchaseChoice, _) = CreateRunWithMerchantOffer(palaceShardCost: 500, himLitShardCost: 25);
+
+        var playerProfileGateway = new StubPlayerProfileGateway
+        {
+            ForceHimLitSpendFailure = true
+        };
+        playerProfileGateway.SeedCurrencyBalance(run.PlayerId, 500);
+        playerProfileGateway.SeedHimLitCurrencyBalance(run.PlayerId, 25);
+
+        var handler = CreateHandler(run, offer, playerProfileGateway);
+
+        var act = () => handler.Handle(
+            new SelectRewardCommand(run.Id.Value, purchaseChoice.Id.Value),
+            CancellationToken.None);
+
+        await act.Should()
+            .ThrowAsync<DomainException>()
+            .WithMessage("Fonds insuffisants pour cet achat.");
+
+        playerProfileGateway.SpentCurrencyAttempts.Should().ContainSingle()
+            .Which.Should().Be((run.PlayerId, 500, true));
+        playerProfileGateway.SpentHimLitCurrencyAttempts.Should().ContainSingle()
+            .Which.Should().Be((run.PlayerId, 25, false));
+        playerProfileGateway.AwardedCurrency.Should().ContainSingle()
+            .Which.Should().Be((run.PlayerId, 500), because: "the failed purchase must refund the Palace shards already spent");
+        run.RunItems.Should().BeEmpty();
+        offer.State.Should().Be(RewardOfferState.Pending);
+    }
+
+    [Fact]
+    public async Task Handle_ShouldApplyDeclineAsNoOp_WithoutTouchingCurrency()
+    {
+        var (run, offer, _, declineChoice) = CreateRunWithMerchantOffer(palaceShardCost: 500, himLitShardCost: 25);
+
+        var playerProfileGateway = new StubPlayerProfileGateway();
+        // No balance seeded at all — declining must never touch the currency gateway.
+
+        var handler = CreateHandler(run, offer, playerProfileGateway);
+
+        var response = await handler.Handle(
+            new SelectRewardCommand(run.Id.Value, declineChoice.Id.Value),
+            CancellationToken.None);
+
+        playerProfileGateway.SpentCurrencyAttempts.Should().BeEmpty();
+        playerProfileGateway.SpentHimLitCurrencyAttempts.Should().BeEmpty();
+        run.RunItems.Should().BeEmpty();
+        response.Run.PendingRewardOfferId.Should().BeNull();
+        offer.State.Should().Be(RewardOfferState.Selected);
+        offer.SelectedChoiceId.Should().Be(declineChoice.Id);
     }
 }
