@@ -62,9 +62,11 @@ public sealed class GameEngineApiFactory : WebApplicationFactory<Program>, IAsyn
         {
             services.RemoveAll<ICatalogContentGateway>();
             services.RemoveAll<IPlayerRunSnapshotGateway>();
+            services.RemoveAll<IPlayerProfileGateway>();
 
             services.AddSingleton<ICatalogContentGateway, StubCatalogContentGateway>();
             services.AddSingleton<IPlayerRunSnapshotGateway, TestPlayerRunSnapshotGateway>();
+            services.AddSingleton<IPlayerProfileGateway, StubPlayerProfileGateway>();
         });
     }
 

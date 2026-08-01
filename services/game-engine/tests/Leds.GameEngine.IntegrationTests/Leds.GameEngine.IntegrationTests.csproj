@@ -35,6 +35,7 @@
 
   <ItemGroup>
     <Compile Include="..\Leds.GameEngine.UnitTests\Common\StubCatalogContentGateway.cs" Link="Common\StubCatalogContentGateway.cs" />
+    <Compile Include="..\Leds.GameEngine.UnitTests\Common\StubPlayerProfileGateway.cs" Link="Common\StubPlayerProfileGateway.cs" />
   </ItemGroup>
 
   <ItemGroup>
