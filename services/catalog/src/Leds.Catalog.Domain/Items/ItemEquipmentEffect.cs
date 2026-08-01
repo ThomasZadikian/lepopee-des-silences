@@ -12,4 +12,9 @@ public sealed record ItemEquipmentEffect(
     string? StatKind = null,
     int? Amount = null,
     string? SkillKey = null,
-    EmotionalRegister? AffinityRegister = null);
+    EmotionalRegister? AffinityRegister = null,
+    // "key:value" condition gating this effect (e.g. "room:Montagne", "weather:Accalmie") —
+    // null means always-on while equipped. Only StatBonus/StatBonusPercent kinds currently
+    // support a condition; game-engine re-evaluates it fresh every combat instead of baking
+    // it into the character's static run-start stats (see PlayerStatMerger/CombatFactory).
+    string? Condition = null);

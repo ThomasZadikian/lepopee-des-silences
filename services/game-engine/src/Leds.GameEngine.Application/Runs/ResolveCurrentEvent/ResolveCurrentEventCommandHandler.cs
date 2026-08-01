@@ -1,4 +1,5 @@
 ﻿using Leds.GameEngine.Application.Abstractions;
+using Leds.GameEngine.Application.Catalog.Contracts;
 using Leds.GameEngine.Application.Catalog.Ports;
 using Leds.GameEngine.Application.Combats;
 using Leds.GameEngine.Application.Combats.Dtos;
@@ -185,6 +186,7 @@ public sealed class ResolveCurrentEventCommandHandler
 
             encounterDraftDto = CombatEncounterDraftDto.FromDomain(draft);
             var skillEffects = await BuildSkillEffectsAsync(run, draft, cancellationToken);
+            var conditionalEquipmentEffects = await ResolveConditionalEquipmentEffectsAsync(run, cancellationToken);
 
             var roster = _combatFactory.BuildRoster(
                 combatId, draft, run.PlayerState, run.RunModifiers,
@@ -203,7 +205,9 @@ public sealed class ResolveCurrentEventCommandHandler
                 guardBonusPercent: run.GuardBonusPercent,
                 himLitProtectionEnabled: run.HimLitProtectionEnabled,
                 healingBonusPercent: run.HealingBonusPercent,
-                forgottenSkillKey: run.ForgottenSkillKey);
+                forgottenSkillKey: run.ForgottenSkillKey,
+                roomTheme: room.Theme,
+                conditionalEquipmentEffects: conditionalEquipmentEffects);
 
             var tacticalCombat = _tacticalCombatFactory.CreateFromRoster(
                 combatId, roster, room, selectedNode.Id, run, _clock.UtcNow.UtcDateTime);
@@ -518,6 +522,27 @@ public sealed class ResolveCurrentEventCommandHandler
             if (specs.Count > 0) dict[d.Key] = specs;
         }
         return dict;
+    }
+
+    /// <summary>
+    /// Room/weather-conditional equipment effects (e.g. Boussole du Pèlerin, Couronne de sel)
+    /// carried by whatever the protagonist has equipped right now — re-evaluated fresh every
+    /// combat by CombatFactory instead of being baked into PlayerStatMerger's static run-start
+    /// stats (see that class's Condition filter).
+    /// </summary>
+    private async Task<IReadOnlyCollection<CatalogItemEquipmentEffect>> ResolveConditionalEquipmentEffectsAsync(
+        Run run, CancellationToken ct)
+    {
+        var equippedItemKeys = run.PlayerSnapshot?.Characters.FirstOrDefault()?.EquippedItemKeys;
+        if (equippedItemKeys is not { Count: > 0 })
+            return [];
+
+        var itemDefinitions = await _catalogContentGateway.ListActiveItemDefinitionsAsync(ct);
+        return itemDefinitions
+            .Where(item => equippedItemKeys.Contains(item.Key))
+            .SelectMany(item => item.EquipmentEffects ?? [])
+            .Where(effect => effect.Condition is not null)
+            .ToArray();
     }
 
     private static IReadOnlyList<SkillStatusEffectSpec> ToStatusSpecs(CatalogSkillDefinition d)

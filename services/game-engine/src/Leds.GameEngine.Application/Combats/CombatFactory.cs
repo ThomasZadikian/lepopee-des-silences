@@ -1,3 +1,4 @@
+using Leds.GameEngine.Application.Catalog.Contracts;
 using Leds.GameEngine.Application.Combats.EncounterDrafts;
 using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Combats.StatusEffects;
@@ -66,7 +67,9 @@ public sealed class CombatFactory : ICombatFactory
         int healingBonusPercent = 0,
         int magicAttack = 0,
         int magicDefense = 0,
-        string? forgottenSkillKey = null)
+        string? forgottenSkillKey = null,
+        string? roomTheme = null,
+        IReadOnlyCollection<CatalogItemEquipmentEffect>? conditionalEquipmentEffects = null)
     {
         // Sum all unconsumed StartingGuardBonus modifiers (e.g. Éclat de garde: +8 garde).
         var guardBonus = runModifiers?
@@ -266,6 +269,15 @@ public sealed class CombatFactory : ICombatFactory
                 return companion;
             })
             .ToArray();
+
+        // Room/weather-conditional equipment bonuses (e.g. Boussole du Pèlerin) only ever
+        // target the protagonist's own equipment, never companions.
+        var protagonistAllyKey = draft.Allies.FirstOrDefault(a => a.IsProtagonist)?.AllyKey;
+        var protagonistCombatant = protagonistAllyKey is null
+            ? null
+            : allies.FirstOrDefault(a => a.SourceKey == protagonistAllyKey);
+        ApplyConditionalEquipmentStatBundle(
+            protagonistCombatant, roomTheme, activeClimate, conditionalEquipmentEffects ?? []);
 
         var (bossVitalityMultiplier, bossPowerMultiplier, bossGuardBonus) = EncounterBonus(draft.EncounterType);
 
@@ -593,6 +605,72 @@ public sealed class CombatFactory : ICombatFactory
                 magnitude: 10,
                 tickInterval: CombatTime.TicksPerTurn,
                 isMagnitudePercentOfMax: true,
+                isPermanent: true));
+        }
+    }
+
+    /// <summary>StatKind strings authored on conditional equipment effects (e.g. "AttackPower",
+    /// "MagicAttack") that have a matching CombatStat "base stat" usable with
+    /// isMagnitudePercentOfBaseStat. "MaxVitality"/"Mana" are intentionally absent — CombatStat
+    /// has no equivalent virtual stat for them (documented simplification: an "all-stats"
+    /// conditional bonus like Ombrelle du jardinier's only reaches 6 of its 8 named stats).</summary>
+    private static readonly IReadOnlyDictionary<string, CombatStat> ConditionalEquipmentStatKinds =
+        new Dictionary<string, CombatStat>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["AttackPower"] = CombatStat.AttackPower,
+            ["Defense"] = CombatStat.Defense,
+            ["Speed"] = CombatStat.Speed,
+            ["Focus"] = CombatStat.Focus,
+            ["MagicAttack"] = CombatStat.MagicAttack,
+            ["MagicDefense"] = CombatStat.MagicDefense,
+        };
+
+    /// <summary>
+    /// Room/weather-conditional equipment StatBonus/StatBonusPercent effects (e.g. Boussole
+    /// du Pèlerin's "+10% Vitesse dans la Montagne", Couronne de sel's weather-gated magic
+    /// attack) — excluded from PlayerStatMerger's static run-start bake (see its Condition
+    /// filter) and re-evaluated fresh here against the room actually entered and the climate
+    /// actually rolled for this combat, instead of being baked into a static run-start stat.
+    /// </summary>
+    private static void ApplyConditionalEquipmentStatBundle(
+        Combatant? protagonist,
+        string? roomTheme,
+        RoomClimate? climate,
+        IReadOnlyCollection<CatalogItemEquipmentEffect> conditionalEquipmentEffects)
+    {
+        if (protagonist is null || conditionalEquipmentEffects.Count == 0)
+            return;
+
+        foreach (var effect in conditionalEquipmentEffects)
+        {
+            if (effect.Condition is not { } condition
+                || effect.StatKind is not { } statKind
+                || effect.Amount is not { } amount
+                || !ConditionalEquipmentStatKinds.TryGetValue(statKind, out var stat))
+                continue;
+
+            var isPercent = string.Equals(effect.Kind, "StatBonusPercent", StringComparison.OrdinalIgnoreCase);
+            if (!isPercent && !string.Equals(effect.Kind, "StatBonus", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            var matches = condition.StartsWith("room:", StringComparison.OrdinalIgnoreCase)
+                ? string.Equals(condition["room:".Length..], roomTheme, StringComparison.OrdinalIgnoreCase)
+                : condition.StartsWith("weather:", StringComparison.OrdinalIgnoreCase)
+                    ? climate is not null
+                        && string.Equals(condition["weather:".Length..], climate.Value.ToString(), StringComparison.OrdinalIgnoreCase)
+                    : false;
+            if (!matches)
+                continue;
+
+            protagonist.ApplyStatusEffect(CombatStatusEffect.Create(
+                key: $"conditional-equip:{condition}:{statKind}",
+                displayName: "Effet d'équipement conditionnel",
+                kind: StatusEffectKind.StatModifier,
+                currentTick: 0,
+                durationTicks: 0,
+                magnitude: amount,
+                stat: stat,
+                isMagnitudePercentOfBaseStat: isPercent,
                 isPermanent: true));
         }
     }

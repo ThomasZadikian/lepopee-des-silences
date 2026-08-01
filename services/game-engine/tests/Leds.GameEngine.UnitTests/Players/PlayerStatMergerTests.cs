@@ -95,4 +95,38 @@ public sealed class PlayerStatMergerTests
         merger.ComputeEffectiveStats(CreateStats(), bonus).Movement.Should().Be(6);
         merger.ComputeEffectiveStats(CreateStats(), excessivePenalty).Movement.Should().Be(1);
     }
+
+    [Fact]
+    public void ComputeEffectiveStats_ShouldExcludeConditionalStatBonus_FromTheStaticBake()
+    {
+        var merger = new PlayerStatMerger();
+        var effects = new[]
+        {
+            new CatalogItemEquipmentEffect(
+                "StatBonus", StatKind: "AttackPower", Amount: 5, SkillKey: null, AffinityRegister: null,
+                Condition: "room:Montagne"),
+        };
+
+        var result = merger.ComputeEffectiveStats(CreateStats(), effects);
+
+        // Conditional effects are re-evaluated fresh every combat by CombatFactory instead
+        // of being baked into this static run-start computation.
+        result.AttackPower.Should().Be(12);
+    }
+
+    [Fact]
+    public void ComputeEffectiveStats_ShouldExcludeConditionalStatBonusPercent_FromTheStaticBake()
+    {
+        var merger = new PlayerStatMerger();
+        var effects = new[]
+        {
+            new CatalogItemEquipmentEffect(
+                "StatBonusPercent", StatKind: "Speed", Amount: 10, SkillKey: null, AffinityRegister: null,
+                Condition: "weather:PluieViolacee"),
+        };
+
+        var result = merger.ComputeEffectiveStats(CreateStats(), effects);
+
+        result.Speed.Should().Be(10);
+    }
 }

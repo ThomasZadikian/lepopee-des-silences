@@ -41,8 +41,10 @@ public sealed record ItemEquipmentEffectDto(
     string? StatKind,
     int? Amount,
     string? SkillKey,
-    string? AffinityRegister)
+    string? AffinityRegister,
+    string? Condition = null)
 {
     public static ItemEquipmentEffectDto FromDomain(ItemEquipmentEffect effect) => new(
-        effect.Kind.ToString(), effect.StatKind, effect.Amount, effect.SkillKey, effect.AffinityRegister?.ToString());
+        effect.Kind.ToString(), effect.StatKind, effect.Amount, effect.SkillKey, effect.AffinityRegister?.ToString(),
+        effect.Condition);
 }

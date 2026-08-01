@@ -1,3 +1,4 @@
+using Leds.GameEngine.Application.Catalog.Contracts;
 using Leds.GameEngine.Application.Combats.EncounterDrafts;
 using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Combats.Typing;
@@ -35,5 +36,7 @@ public interface ICombatFactory
         int healingBonusPercent = 0,
         int magicAttack = 0,
         int magicDefense = 0,
-        string? forgottenSkillKey = null);
+        string? forgottenSkillKey = null,
+        string? roomTheme = null,
+        IReadOnlyCollection<CatalogItemEquipmentEffect>? conditionalEquipmentEffects = null);
 }

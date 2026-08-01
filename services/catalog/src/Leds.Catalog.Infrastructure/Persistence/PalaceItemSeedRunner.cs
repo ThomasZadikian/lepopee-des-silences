@@ -146,33 +146,53 @@ public sealed partial class CatalogSeedRunner
                      && effect.Value.HasValue
                      && effect.Duration == "WhileEquipped"))
         {
-            var kind = effect.ValueMode == "Percent"
-                ? ItemEquipmentEffectKind.StatBonusPercent
-                : ItemEquipmentEffectKind.StatBonus;
-            var amount = decimal.ToInt32(effect.Value!.Value);
-            string[] stats = effect.BehaviorTag switch
-            {
-                "attack" => ["AttackPower"],
-                "defense" => ["Defense"],
-                "speed" => ["Speed"],
-                "focus" => ["Focus"],
-                "magic-attack" => ["MagicAttack"],
-                "magic-defense" => ["MagicDefense"],
-                "mana" => ["Mana"],
-                "vitality" => ["MaxVitality"],
-                "all-stats" =>
-                [
-                    "MaxVitality", "AttackPower", "Defense", "Speed",
-                    "Focus", "MagicAttack", "MagicDefense", "Mana"
-                ],
-                _ => Array.Empty<string>()
-            };
+            derived.AddRange(DeriveStatEffects(effect, condition: null));
+        }
 
-            derived.AddRange(stats.Select(stat =>
-                new ItemEquipmentEffect(kind, stat, amount)));
+        // Conditional bonuses (e.g. Boussole du Pèlerin's "+10% Vitesse dans la
+        // Montagne", Couronne de sel's weather-gated magic attack) carry their raw
+        // "room:X"/"weather:X" condition through to game-engine instead of being
+        // baked into PlayerStatMerger's static run-start stats — CombatFactory
+        // re-evaluates them fresh every combat against the current room/climate.
+        foreach (var effect in definition.Effects.Where(effect =>
+                     effect.Type == "StatModifier"
+                     && effect.Target == "Wearer"
+                     && effect.Condition is { } condition
+                     && (condition.StartsWith("room:") || condition.StartsWith("weather:"))
+                     && effect.Value.HasValue
+                     && effect.Duration is "WhileEquipped" or "WhileWeatherActive"))
+        {
+            derived.AddRange(DeriveStatEffects(effect, effect.Condition));
         }
 
         return derived;
+    }
+
+    private static IEnumerable<ItemEquipmentEffect> DeriveStatEffects(PalaceEffect effect, string? condition)
+    {
+        var kind = effect.ValueMode == "Percent"
+            ? ItemEquipmentEffectKind.StatBonusPercent
+            : ItemEquipmentEffectKind.StatBonus;
+        var amount = decimal.ToInt32(effect.Value!.Value);
+        string[] stats = effect.BehaviorTag switch
+        {
+            "attack" => ["AttackPower"],
+            "defense" => ["Defense"],
+            "speed" => ["Speed"],
+            "focus" => ["Focus"],
+            "magic-attack" => ["MagicAttack"],
+            "magic-defense" => ["MagicDefense"],
+            "mana" => ["Mana"],
+            "vitality" => ["MaxVitality"],
+            "all-stats" =>
+            [
+                "MaxVitality", "AttackPower", "Defense", "Speed",
+                "Focus", "MagicAttack", "MagicDefense", "Mana"
+            ],
+            _ => Array.Empty<string>()
+        };
+
+        return stats.Select(stat => new ItemEquipmentEffect(kind, stat, amount, Condition: condition));
     }
 
     private static PalaceEffect Fx(

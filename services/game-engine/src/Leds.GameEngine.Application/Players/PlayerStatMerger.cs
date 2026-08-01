@@ -21,7 +21,10 @@ public sealed class PlayerStatMerger
         var statBonuses = equipmentEffects
             .Where(e => string.Equals(e.Kind, "StatBonus", StringComparison.OrdinalIgnoreCase)
                 && e.StatKind is not null
-                && e.Amount is not null)
+                && e.Amount is not null
+                // Conditional effects (room:/weather:) are re-evaluated fresh every combat by
+                // CombatFactory instead of being baked into this static run-start computation.
+                && e.Condition is null)
             .GroupBy(e => e.StatKind!, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => g.Sum(e => e.Amount!.Value), StringComparer.OrdinalIgnoreCase);
 
@@ -34,7 +37,8 @@ public sealed class PlayerStatMerger
         var statBonusPercents = equipmentEffects
             .Where(e => string.Equals(e.Kind, "StatBonusPercent", StringComparison.OrdinalIgnoreCase)
                 && e.StatKind is not null
-                && e.Amount is not null)
+                && e.Amount is not null
+                && e.Condition is null)
             .GroupBy(e => e.StatKind!, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => g.Sum(e => e.Amount!.Value), StringComparer.OrdinalIgnoreCase);
 

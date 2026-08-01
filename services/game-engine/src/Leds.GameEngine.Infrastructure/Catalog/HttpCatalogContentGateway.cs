@@ -1002,7 +1002,7 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
             source.EffectSetKey,
             source.IsPermanentEligible,
             source.EquipmentEffects?
-                .Select(e => new CatalogItemEquipmentEffect(e.Kind, e.StatKind, e.Amount, e.SkillKey, e.AffinityRegister))
+                .Select(e => new CatalogItemEquipmentEffect(e.Kind, e.StatKind, e.Amount, e.SkillKey, e.AffinityRegister, e.Condition))
                 .ToArray(),
             source.IsContainer,
             source.ContainerCapacity,
@@ -1471,7 +1471,8 @@ public sealed class HttpCatalogContentGateway : ICatalogContentGateway
         string? StatKind,
         int? Amount,
         string? SkillKey,
-        string? AffinityRegister);
+        string? AffinityRegister,
+        string? Condition = null);
 
     private sealed record GetEffectSetByKeyHttpResponse(
         CatalogEffectSetHttpResponse? Definition);

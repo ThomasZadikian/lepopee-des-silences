@@ -37,4 +37,8 @@ public sealed record CatalogItemEquipmentEffect(
     string? StatKind,
     int? Amount,
     string? SkillKey,
-    string? AffinityRegister);
+    string? AffinityRegister,
+    // "key:value" (e.g. "room:Montagne", "weather:Accalmie") — null means always-on
+    // while equipped. Re-evaluated fresh every combat (see CombatFactory), never
+    // baked into PlayerStatMerger's static run-start stats.
+    string? Condition = null);
