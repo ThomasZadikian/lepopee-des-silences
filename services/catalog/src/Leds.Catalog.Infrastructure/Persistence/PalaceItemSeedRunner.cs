@@ -165,6 +165,22 @@ public sealed partial class CatalogSeedRunner
             derived.AddRange(DeriveStatEffects(effect, effect.Condition));
         }
 
+        // Encrier de poche's "+5% dégâts des effets périodiques [appliqués par le
+        // porteur]" — the DamageOverTime-duration half of this item ("leur première
+        // application dure une activation supplémentaire") is handled directly in
+        // CombatSkillEffectResolver via a hardcoded item-key check (same convention as
+        // Épingle du protocole/Grain du chœur), since it isn't a stat bonus.
+        foreach (var effect in definition.Effects.Where(effect =>
+                     effect.Type == "PeriodicDamageModifier"
+                     && effect.Target == "EffectsAppliedByWearer"
+                     && effect.Value.HasValue
+                     && effect.Duration == "WhileEquipped"))
+        {
+            derived.Add(new ItemEquipmentEffect(
+                ItemEquipmentEffectKind.DotDamageBonusPercent,
+                Amount: decimal.ToInt32(effect.Value!.Value)));
+        }
+
         return derived;
     }
 

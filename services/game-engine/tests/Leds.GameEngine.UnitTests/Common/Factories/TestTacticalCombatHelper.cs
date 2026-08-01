@@ -28,7 +28,8 @@ public static class TestTacticalCombatHelper
         bool duelDamageAsymmetryEnabled = false,
         int dotMagnitudeBonus = 0,
         bool healingBlocked = false,
-        bool thirdCupHealCorruptionEnabled = false)
+        bool thirdCupHealCorruptionEnabled = false,
+        IReadOnlyDictionary<Guid, IReadOnlyCollection<string>>? equippedItemKeys = null)
     {
         var grid = RoomGrid.CreateInitial(
             width: 4, height: 4, movementBudget: 26,
@@ -60,7 +61,8 @@ public static class TestTacticalCombatHelper
             duelDamageAsymmetryEnabled: duelDamageAsymmetryEnabled,
             dotMagnitudeBonus: dotMagnitudeBonus,
             healingBlocked: healingBlocked,
-            thirdCupHealCorruptionEnabled: thirdCupHealCorruptionEnabled);
+            thirdCupHealCorruptionEnabled: thirdCupHealCorruptionEnabled,
+            equippedItemKeys: equippedItemKeys);
     }
 
     /// <summary>

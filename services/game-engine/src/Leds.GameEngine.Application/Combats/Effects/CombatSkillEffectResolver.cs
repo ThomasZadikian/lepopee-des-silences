@@ -34,7 +34,7 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
 
         // Players pay mana/charge to cast (enemies cast freely); affordability was
         // already validated for player-side actors.
-        var payment = ConsumeResources(actor, skill);
+        var payment = ConsumeResources(combat, actor, skill);
         if (payment.IsLethal)
             skill = skill.WithPowerMultiplier(1.5);
 
@@ -114,7 +114,7 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
         return new CombatSkillEffectResolution(logEntries);
     }
 
-    private static ResourcePayment ConsumeResources(Combatant actor, CombatantSkill skill)
+    private static ResourcePayment ConsumeResources(ICombatContext combat, Combatant actor, CombatantSkill skill)
     {
         // Mina's "Protection de Him'Lit" (-5%, permanent) is the only source of this
         // today — see Combatant.EffectiveSkillCostReductionPercent.
@@ -122,7 +122,19 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
         // "Loi du Silence Dû" (law.silence-du): "les sorts coûtent +2 mana" — a flat bonus
         // added on top of the percentage reduction above, distinct unit (see
         // Combatant.EffectiveFlatManaCostBonus).
-        var manaCost = Math.Max(0, ApplyCostReduction(skill.ManaCost, reductionPercent) + actor.EffectiveFlatManaCostBonus);
+        var flatManaCostBonus = actor.EffectiveFlatManaCostBonus;
+        // "Grain du chœur" (item.grain-choeur): "les compétences de registre Silence
+        // coûtent -2 Mana" — register-specific, so it can't live on the generic
+        // EffectiveFlatManaCostBonus stat (that one applies to every skill regardless of
+        // register); checked directly against the equipped item, same hardcoded-item-key
+        // convention already used for Épingle du protocole/Encrier de poche below.
+        if (string.Equals(skill.EmotionalRegister, "Silence", StringComparison.OrdinalIgnoreCase)
+            && combat is TacticalCombat tacticalChoeur
+            && tacticalChoeur.HasEquippedItem(actor.Id.Value, "item.grain-choeur"))
+        {
+            flatManaCostBonus -= 2;
+        }
+        var manaCost = Math.Max(0, ApplyCostReduction(skill.ManaCost, reductionPercent) + flatManaCostBonus);
         var chargeCost = ApplyCostReduction(skill.ChargeCost, reductionPercent);
 
         if (actor.Charge < chargeCost)
@@ -419,6 +431,19 @@ public sealed class CombatSkillEffectResolver : ICombatSkillEffectResolver
             && !spec.IsPermanent
             && combat is TacticalCombat tacticalInk
             && tacticalInk.HasEquippedItem(caster.Id.Value, "item.encrier-poche")
+            && recipient.StatusEffects.All(effect =>
+                !string.Equals(effect.Key, spec.Key, StringComparison.OrdinalIgnoreCase)))
+        {
+            durationTicks += CombatTime.TicksPerTurn;
+        }
+
+        // "Grain du chœur" (item.grain-choeur): "le Silence appliqué dure une activation
+        // supplémentaire" — only on its first application (same "first-stack" convention
+        // as Encrier de poche above), not re-extended on every stack refresh.
+        if (spec.Kind == StatusEffectKind.Silence
+            && !spec.IsPermanent
+            && combat is TacticalCombat tacticalChoeurDuration
+            && tacticalChoeurDuration.HasEquippedItem(caster.Id.Value, "item.grain-choeur")
             && recipient.StatusEffects.All(effect =>
                 !string.Equals(effect.Key, spec.Key, StringComparison.OrdinalIgnoreCase)))
         {
