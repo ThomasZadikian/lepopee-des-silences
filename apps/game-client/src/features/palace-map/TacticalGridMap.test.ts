@@ -196,6 +196,50 @@ describe('TacticalGridMap', () => {
     expect(wrapper.emitted('wagerNode')).toEqual([['node-1']]);
   });
 
+  it('hides the room-wide difficulty tab when no combat node is still available', () => {
+    const room = makeRoom({
+      nodes: [makeNode({ row: 2, lane: 2, state: 'Resolved', combatRiskTier: 'Tendu' })],
+    });
+    const wrapper = mount(TacticalGridMap, { props: { room } });
+    expect(wrapper.find('.tgrid__difficulty-tab').exists()).toBe(false);
+  });
+
+  it('shows the room-wide difficulty tab when a combat node is still available', () => {
+    const room = makeRoom({
+      nodes: [makeNode({ row: 2, lane: 2, state: 'Available', combatRiskTier: 'Tendu' })],
+    });
+    const wrapper = mount(TacticalGridMap, { props: { room } });
+    expect(wrapper.find('.tgrid__difficulty-tab').exists()).toBe(true);
+  });
+
+  it('opens the difficulty popover with all 5 tiers on click', async () => {
+    const room = makeRoom({
+      nodes: [makeNode({ row: 2, lane: 2, state: 'Available', combatRiskTier: 'Tendu' })],
+    });
+    const wrapper = mount(TacticalGridMap, { props: { room } });
+    expect(wrapper.find('.tgrid__difficulty-popover').exists()).toBe(false);
+
+    await wrapper.find('.tgrid__difficulty-tab').trigger('click');
+
+    const options = wrapper.findAll('.tgrid__difficulty-option');
+    expect(options).toHaveLength(5);
+    expect(options.map((o) => o.text())).toEqual(['Calme', 'Tendu', 'Dangereux', 'Périlleux', 'Fatal']);
+  });
+
+  it('emits setRoomRiskTier and closes the popover when a tier is chosen', async () => {
+    const room = makeRoom({
+      nodes: [makeNode({ row: 2, lane: 2, state: 'Available', combatRiskTier: 'Tendu' })],
+    });
+    const wrapper = mount(TacticalGridMap, { props: { room } });
+    await wrapper.find('.tgrid__difficulty-tab').trigger('click');
+
+    const fatalOption = wrapper.findAll('.tgrid__difficulty-option').find((o) => o.text() === 'Fatal');
+    await fatalOption!.trigger('click');
+
+    expect(wrapper.emitted('setRoomRiskTier')).toEqual([['Fatal']]);
+    expect(wrapper.find('.tgrid__difficulty-popover').exists()).toBe(false);
+  });
+
   it('the info overlay (kicker/budget/boss banner) is collapsed by default', () => {
     const wrapper = mount(TacticalGridMap, { props: { room: makeRoom() } });
     expect(wrapper.find('.tgrid__info-overlay--collapsed').exists()).toBe(true);

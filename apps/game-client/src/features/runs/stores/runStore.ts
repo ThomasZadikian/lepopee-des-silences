@@ -248,6 +248,15 @@ export const useRunStore = defineStore('run', () => {
     });
   }
 
+  async function setRoomRiskTier(tier: string) {
+    if (!currentRun.value) return;
+
+    await execute(async () => {
+      const response = await runApi.setRoomRiskTier(currentRun.value!.id, tier);
+      currentRun.value = unwrapRunResponse(response);
+    });
+  }
+
   // -------------------------------------------------------------------------
   // Tactical grid exploration
   // -------------------------------------------------------------------------
@@ -1018,6 +1027,7 @@ export const useRunStore = defineStore('run', () => {
     confirmPermanentItemSelection,
     removePalaceLaw,
     wagerNode,
+    setRoomRiskTier,
     movePartyTo,
     swapGroundItem,
     keepInventoryForGroundItem,

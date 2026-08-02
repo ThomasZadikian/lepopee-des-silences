@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 import SigilIcon from '../../shared/components/SigilIcon.vue';
-import type { NodeDto, RoomDto } from '../runs/types/runTypes';
+import type { CombatRiskTier, NodeDto, RoomDto } from '../runs/types/runTypes';
 import { usePalaceTerrain } from './composables/usePalaceTerrain';
 import { usePartyTokenPath } from './composables/usePartyTokenPath';
 import { useNodePresentation, NODE_TILE_TONE, RISK_TIER_DISPLAY } from './composables/useNodePresentation';
@@ -39,6 +39,7 @@ const emit = defineEmits<{
   moveRequest: [x: number, y: number, plannedSteps: number];
   enterNode: [nodeId: string];
   wagerNode: [nodeId: string];
+  setRoomRiskTier: [tier: string];
   challengeBoss: [];
   search: [];
   toggleLaws: [];
@@ -759,6 +760,29 @@ const standingNodeRiskDisplay = computed(() => {
   return RISK_TIER_DISPLAY[node.combatRiskTier] ?? null;
 });
 
+// ── Room-wide difficulty selector ──────────────────────────────────────────────────
+// Combat nodes trigger on contact — there's no per-node confirmation drawer to pick a
+// difficulty from anymore, so this lets the player set every still-available combat
+// node's tier once for the whole room instead of walking in blind.
+const RISK_TIER_ORDER: CombatRiskTier[] = ['Calme', 'Tendu', 'Dangereux', 'Perilleux', 'Fatal'];
+
+const pendingCombatNodes = computed(() =>
+  props.room.nodes.filter((node) =>
+    COMBAT_NODE_TYPES.has(node.type) && node.combatRiskTier && node.state === 'Available'));
+
+const showDifficultySelector = computed(() => pendingCombatNodes.value.length > 0);
+
+const isDifficultyOpen = ref(false);
+
+function toggleDifficultyOpen() {
+  isDifficultyOpen.value = !isDifficultyOpen.value;
+}
+
+function chooseRoomRiskTier(tier: CombatRiskTier) {
+  isDifficultyOpen.value = false;
+  emit('setRoomRiskTier', tier);
+}
+
 // ── Node side panel: opens itself when the party steps onto an available node ──────
 // Opens on the side of the screen the party ISN'T standing near, so it never covers
 // the ground the player is about to look at next.
@@ -923,6 +947,33 @@ function toggleInfoCollapsed() {
           <span class="es-kicker">Lois</span>
           <span v-if="influenceCount" class="tgrid__laws-tab-count">{{ influenceCount }}</span>
         </button>
+
+        <div v-if="showDifficultySelector" class="tgrid__difficulty-tab-wrap">
+          <button
+            type="button"
+            class="tgrid__difficulty-tab"
+            :class="{ 'tgrid__difficulty-tab--open': isDifficultyOpen }"
+            @click="toggleDifficultyOpen"
+          >
+            <span class="es-kicker">Difficulté</span>
+          </button>
+
+          <div v-if="isDifficultyOpen" class="tgrid__difficulty-popover">
+            <p class="tgrid__difficulty-popover-hint">
+              Choisis le palier de danger des combats de cette salle.
+            </p>
+            <button
+              v-for="tier in RISK_TIER_ORDER"
+              :key="tier"
+              type="button"
+              class="tgrid__difficulty-option"
+              @click="chooseRoomRiskTier(tier)"
+            >
+              <span :class="['tgrid__difficulty-option-dot', RISK_TIER_DISPLAY[tier].cls]" />
+              {{ RISK_TIER_DISPLAY[tier].text }}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -1219,6 +1270,81 @@ function toggleInfoCollapsed() {
   background: oklch(0.30 0.06 85 / 0.3);
   border-radius: 10px;
   padding: 1px 6px;
+}
+
+.tgrid__difficulty-tab-wrap {
+  position: relative;
+}
+
+.tgrid__difficulty-tab {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  border: 1px solid var(--line-soft);
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+  padding: 4px 12px;
+  background: oklch(0.20 0.04 272 / 0.9);
+  color: var(--ink-3);
+  cursor: pointer;
+}
+
+.tgrid__difficulty-tab:hover,
+.tgrid__difficulty-tab--open {
+  background: oklch(0.20 0.04 272 / 1);
+  color: var(--ink-2);
+}
+
+.tgrid__difficulty-popover {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 200px;
+  padding: 10px;
+  border: 1px solid var(--line-soft);
+  border-radius: 4px;
+  background: oklch(0.16 0.04 272 / 0.98);
+  box-shadow: 0 8px 24px -6px oklch(0 0 0 / 0.5);
+  z-index: 20;
+}
+
+.tgrid__difficulty-popover-hint {
+  margin: 0 0 4px;
+  font-size: 0.7rem;
+  color: var(--ink-4);
+  line-height: 1.35;
+}
+
+.tgrid__difficulty-option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 5px 8px;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--ink-2);
+  font-family: var(--font-caps, var(--font));
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tgrid__difficulty-option:hover {
+  background: oklch(0.24 0.04 272 / 0.8);
+}
+
+.tgrid__difficulty-option-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
 }
 
 .tgrid__info-alert-dot {

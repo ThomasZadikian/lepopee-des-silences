@@ -227,6 +227,7 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
               @move-request="runStore.movePartyTo"
               @enter-node="runStore.enterGridNode"
               @wager-node="runStore.wagerNode"
+              @set-room-risk-tier="runStore.setRoomRiskTier"
               @challenge-boss="runStore.challengeBossRemotely"
               @search="runStore.searchParty"
               @toggle-laws="uiStore.toggleLaws"

@@ -114,6 +114,13 @@ export const runApi = {
     );
   },
 
+  setRoomRiskTier(runId: string, tier: string) {
+    return gameEngineApi.post<RunResponse, { tier: string }>(
+      `/api/v2/runs/${runId}/rooms/current/risk-tier`,
+      { tier },
+    );
+  },
+
   moveParty(runId: string, targetX: number, targetY: number) {
     return gameEngineApi.post<MovePartyResponse, { targetX: number; targetY: number }>(
       `/api/v2/runs/${runId}/party/move`,
