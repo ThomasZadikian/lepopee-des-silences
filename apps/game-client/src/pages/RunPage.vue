@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import GameShellLayout from '../app/layouts/GameShellLayout.vue';
@@ -36,17 +36,11 @@ const runStore = useRunStore();
 const tacticalCombatStore = useTacticalCombatStore();
 const uiStore = useGameUiStore();
 const playerStore = usePlayerStore();
-const devToolsEnabled = import.meta.env.DEV === true &&
-  import.meta.env.VITE_GAME_CLIENT_DEVTOOLS_ENABLED === 'true';
-const DevToolsPanel = devToolsEnabled
-  ? defineAsyncComponent(() => import('../features/devtools/components/DevToolsPanel.vue'))
-  : null;
 
 // ── Synthetic "Choix accompli" transition ──────────────────────────────────
 const showingTransition = ref(false);
 const transitionResult = ref<CurrentEventChoiceResultDto | null>(null);
 const transitionAfterChoice = ref(false);
-const showDevTools = ref(false);
 const phaseVeilVisible = ref(false);
 const phaseVeilKey = ref(0);
 let phaseVeilTimer: ReturnType<typeof globalThis.setTimeout> | null = null;
@@ -523,24 +517,6 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
         <TeamMicroMenu />
       </Teleport>
 
-      <!-- Devtools are development-only and require VITE_GAME_CLIENT_DEVTOOLS_ENABLED=true. -->
-      <Teleport v-if="devToolsEnabled" to="body">
-        <button
-          type="button"
-          class="devtools-float-toggle"
-          :aria-expanded="showDevTools"
-          @click="showDevTools = !showDevTools"
-        >
-          DevTools
-        </button>
-        <component
-          :is="DevToolsPanel"
-          v-if="showDevTools && DevToolsPanel"
-          :run-id="runStore.currentRun.id"
-          @close="showDevTools = false"
-        />
-      </Teleport>
-
       <!-- ── Abandon confirmation diptych ── -->
       <DecisionDiptych
         v-model="showConfirmAbandon"
@@ -686,25 +662,4 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
   margin-top: var(--space-4);
 }
 
-.devtools-float-toggle {
-  position: fixed;
-  right: 18px;
-  bottom: 18px;
-  z-index: 9090;
-  border: 1px solid oklch(0.72 0.12 85 / 0.55);
-  border-radius: 999px;
-  padding: 9px 13px;
-  background: oklch(0.16 0.03 270 / 0.92);
-  color: var(--gold, #d7b56d);
-  font-family: var(--caps, monospace);
-  font-size: 11px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  cursor: pointer;
-  box-shadow: 0 8px 30px oklch(0 0 0 / 0.4);
-}
-
-.devtools-float-toggle:hover {
-  background: oklch(0.23 0.04 270 / 0.96);
-}
 </style>

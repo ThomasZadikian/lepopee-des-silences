@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
+import { createPinia, setActivePinia } from 'pinia';
 
 import TeamMicroMenu from './TeamMicroMenu.vue';
 
@@ -24,6 +25,10 @@ function mountMenu() {
 }
 
 describe('TeamMicroMenu', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+  });
+
   afterEach(() => {
     document.body.innerHTML = '';
   });
@@ -92,5 +97,52 @@ describe('TeamMicroMenu', () => {
     closeBtn.click();
     await wrapper.vm.$nextTick();
     expect(document.querySelector('.pom-backdrop')).toBeNull();
+  });
+
+  it('hides the DevTools entry when devtools are disabled (the default)', () => {
+    const wrapper = mountMenu();
+    expect(wrapper.find('.micro-menu__btn--devtools').exists()).toBe(false);
+  });
+});
+
+// DevToolsPanel is folded into this same menu (see task: move the floating DevTools button) —
+// isDevToolsEnabled() is read once at module scope, so flipping it requires a fresh dynamic
+// import per the env stub, same pattern as isDevToolsEnabled.test.ts.
+describe('TeamMicroMenu — DevTools entry (enabled)', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    vi.stubEnv('DEV', true);
+    vi.stubEnv('VITE_GAME_CLIENT_DEVTOOLS_ENABLED', 'true');
+  });
+
+  afterEach(() => {
+    document.body.innerHTML = '';
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
+
+  it('shows a distinctly styled DevTools button in the menu, off by default', async () => {
+    const { default: EnabledTeamMicroMenu } = await import('./TeamMicroMenu.vue');
+    const wrapper = mount(EnabledTeamMicroMenu, {
+      attachTo: document.body,
+      global: {
+        stubs: {
+          TeamPage: pageStub('team-page'),
+          StatsPage: pageStub('stats-page'),
+          GrimoirePage: pageStub('grimoire-page'),
+          EquipmentPage: pageStub('equipment-page'),
+          BesacePage: pageStub('besace-page'),
+        },
+      },
+    });
+
+    const devBtn = wrapper.find('.micro-menu__btn--devtools');
+    expect(devBtn.exists()).toBe(true);
+    expect(devBtn.attributes('aria-expanded')).toBe('false');
+
+    // No active run in a fresh store, so the panel itself never mounts — this only asserts
+    // the toggle's own state, not DevToolsPanel's internals.
+    await devBtn.trigger('click');
+    expect(devBtn.attributes('aria-expanded')).toBe('true');
   });
 });

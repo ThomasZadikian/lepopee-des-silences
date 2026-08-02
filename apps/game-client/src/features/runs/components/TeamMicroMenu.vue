@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { defineAsyncComponent, ref } from 'vue';
 import SigilIcon from '../../../shared/components/SigilIcon.vue';
 import PageOverlayModal from '../../../shared/components/PageOverlayModal.vue';
 import TeamPage from '../../../pages/TeamPage.vue';
@@ -7,6 +7,8 @@ import StatsPage from '../../../pages/StatsPage.vue';
 import GrimoirePage from '../../../pages/GrimoirePage.vue';
 import EquipmentPage from '../../../pages/EquipmentPage.vue';
 import BesacePage from '../../../pages/BesacePage.vue';
+import { useRunStore } from '../stores/runStore';
+import { isDevToolsEnabled } from '../../devtools/utils/isDevToolsEnabled';
 
 type MenuKey = 'equipe' | 'statistiques' | 'grimoire' | 'equipement' | 'besace';
 
@@ -21,6 +23,15 @@ const entries: { key: MenuKey; label: string; icon: string }[] = [
 // These open as a modal overlaying the game board instead of navigating away — the
 // player should never have to leave the map to check their character.
 const activeModal = ref<MenuKey | null>(null);
+
+// DevTools used to float on its own in the opposite corner, overlapping the combat scene.
+// Folded into the same menu (development-only, requires VITE_GAME_CLIENT_DEVTOOLS_ENABLED=true).
+const runStore = useRunStore();
+const devToolsEnabled = isDevToolsEnabled();
+const DevToolsPanel = devToolsEnabled
+  ? defineAsyncComponent(() => import('../../devtools/components/DevToolsPanel.vue'))
+  : null;
+const showDevTools = ref(false);
 </script>
 
 <template>
@@ -36,6 +47,18 @@ const activeModal = ref<MenuKey | null>(null);
     >
       <SigilIcon :kind="entry.icon" :size="20" />
     </button>
+
+    <button
+      v-if="devToolsEnabled"
+      type="button"
+      class="micro-menu__btn micro-menu__btn--devtools"
+      :class="{ 'micro-menu__btn--active': showDevTools }"
+      :aria-expanded="showDevTools"
+      title="DevTools"
+      @click="showDevTools = !showDevTools"
+    >
+      <SigilIcon kind="statistiques" :size="20" />
+    </button>
   </nav>
 
   <Teleport to="body">
@@ -46,6 +69,13 @@ const activeModal = ref<MenuKey | null>(null);
       <EquipmentPage v-else-if="activeModal === 'equipement'" embedded />
       <BesacePage v-else-if="activeModal === 'besace'" embedded />
     </PageOverlayModal>
+
+    <component
+      :is="DevToolsPanel"
+      v-if="devToolsEnabled && showDevTools && DevToolsPanel && runStore.currentRun"
+      :run-id="runStore.currentRun.id"
+      @close="showDevTools = false"
+    />
   </Teleport>
 </template>
 
@@ -90,5 +120,24 @@ const activeModal = ref<MenuKey | null>(null);
   color: var(--gold);
   border-color: var(--gold);
   background: oklch(0.55 0.08 85 / 0.16);
+}
+
+/* Distinct from the character-management entries (gold) — a clear "this is a dev-only
+   control" tell, and a small gap sets it apart from the regular menu group. */
+.micro-menu__btn--devtools {
+  margin-left: 6px;
+  border-color: oklch(0.62 0.19 35 / 0.55);
+  color: oklch(0.68 0.19 35);
+}
+
+.micro-menu__btn--devtools:hover {
+  color: oklch(0.75 0.2 35);
+  border-color: oklch(0.75 0.2 35);
+}
+
+.micro-menu__btn--devtools.micro-menu__btn--active {
+  color: oklch(0.75 0.2 35);
+  border-color: oklch(0.75 0.2 35);
+  background: oklch(0.55 0.19 35 / 0.2);
 }
 </style>
