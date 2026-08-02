@@ -19,10 +19,15 @@ const props = withDefaults(
     /** Ticks remaining from the combat's current tick — null/undefined when unknown or permanent. */
     ticksRemaining?: number | null;
     isPermanent?: boolean;
+    /** Which stat a StatModifier affects (see CombatStat on the server) — ignored for other kinds. */
+    stat?: string;
+    /** True when `magnitude` is a percentage of the base stat, not a flat delta. */
+    isMagnitudePercentOfBaseStat?: boolean;
   }>(),
   {
     magnitude: 0, stacks: 1, px: 40, meta: false, durLabel: '',
     perTickAmount: 0, ticksRemaining: null, isPermanent: false,
+    stat: '', isMagnitudePercentOfBaseStat: false,
   },
 );
 
@@ -76,6 +81,34 @@ const durationLine = computed(() => {
 const perTickLine = computed(() => {
   if (!kindMeta.value.verb || props.perTickAmount === 0) return null;
   return `${kindMeta.value.verb} : ${props.perTickAmount} / tour`;
+});
+
+const STAT_LABELS: Record<string, string> = {
+  AttackPower: 'Attaque',
+  Defense: 'Défense',
+  Speed: 'Vitesse',
+  Movement: 'Déplacement',
+  Focus: 'Focus',
+  Evasion: 'Évasion',
+  MagicAttack: 'Attaque magique',
+  MagicDefense: 'Défense magique',
+  MagicDamageBonus: 'Dégâts magiques',
+  MagicDamageReduction: 'Réduction dégâts magiques',
+  CriticalChanceBonus: 'Chance de critique',
+  DotDamageBonus: 'Dégâts continus infligés',
+  SkillCostReductionPercent: 'Coût des sorts',
+  HealingBonus: 'Soins prodigués',
+  PhysicalDamageBonus: 'Dégâts physiques',
+  FireDamageBonus: 'Dégâts de feu',
+  FlatManaCostBonus: 'Coût en mana',
+};
+
+const statModifierLine = computed(() => {
+  if (props.kind !== 'StatModifier' || !props.stat || props.stat === 'None') return null;
+  const label = STAT_LABELS[props.stat] ?? props.stat;
+  const sign = props.magnitude >= 0 ? '+' : '';
+  const unit = props.isMagnitudePercentOfBaseStat ? '%' : '';
+  return `${label} : ${sign}${props.magnitude}${unit}`;
 });
 </script>
 
@@ -154,6 +187,7 @@ const perTickLine = computed(() => {
 
     <div class="sigil__bubble" role="tooltip">
       <div class="sigil__bubble-title">{{ showStacks ? `${kindMeta.label} ×${stacks}` : kindMeta.label }}</div>
+      <div v-if="statModifierLine" class="sigil__bubble-line">{{ statModifierLine }}</div>
       <div v-if="perTickLine" class="sigil__bubble-line">{{ perTickLine }}</div>
       <div v-if="durationLine" class="sigil__bubble-line">{{ durationLine }}</div>
     </div>

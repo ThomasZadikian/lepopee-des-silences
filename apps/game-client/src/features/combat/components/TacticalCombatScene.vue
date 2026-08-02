@@ -63,6 +63,7 @@ import { useTacticalCombatStore } from '../stores/useTacticalCombatStore';
 import type {
   CombatantRuntimeDto,
   CombatantSkillRuntimeDto,
+  CombatantStatusEffectDto,
   CombatUsableItemDto,
   EmotionalType,
   TacticalCombatantRuntimeDto,
@@ -375,6 +376,26 @@ function facingLabel(facing: 'North' | 'East' | 'South' | 'West' | undefined): s
 function riskTierLabel(tier: string | undefined): string {
   if (tier === 'Dangereux' || tier === 'Perilleux') return 'Sombre';
   return tier ?? 'Calme';
+}
+
+const STAT_MODIFIER_LABELS: Record<string, string> = {
+  AttackPower: 'Attaque', Defense: 'Défense', Speed: 'Vitesse', Movement: 'Déplacement',
+  Focus: 'Focus', Evasion: 'Évasion', MagicAttack: 'Attaque magique', MagicDefense: 'Défense magique',
+  MagicDamageBonus: 'Dégâts magiques', MagicDamageReduction: 'Réduction dégâts magiques',
+  CriticalChanceBonus: 'Chance de critique', DotDamageBonus: 'Dégâts continus infligés',
+  SkillCostReductionPercent: 'Coût des sorts', HealingBonus: 'Soins prodigués',
+  PhysicalDamageBonus: 'Dégâts physiques', FireDamageBonus: 'Dégâts de feu',
+  FlatManaCostBonus: 'Coût en mana',
+};
+
+function statusTitle(status: CombatantStatusEffectDto): string {
+  if (status.kind === 'StatModifier' && status.stat && status.stat !== 'None') {
+    const label = STAT_MODIFIER_LABELS[status.stat] ?? status.stat;
+    const sign = status.magnitude >= 0 ? '+' : '';
+    const unit = status.isMagnitudePercentOfBaseStat ? '%' : '';
+    return `${status.displayName} · ${label} ${sign}${status.magnitude}${unit}`;
+  }
+  return `${status.displayName} · magnitude ${status.magnitude}`;
 }
 
 /**
@@ -1747,6 +1768,8 @@ onBeforeUnmount(() => {
               :key="status.key"
               :kind="status.kind"
               :magnitude="status.magnitude"
+              :stat="status.stat"
+              :is-magnitude-percent-of-base-stat="status.isMagnitudePercentOfBaseStat"
               :stacks="status.stacks"
               :px="20"
               :per-tick-amount="status.perTickAmount"
@@ -1815,7 +1838,7 @@ onBeforeUnmount(() => {
             v-for="status in store.activeCombatant.combatant.statusEffects"
             :key="status.key"
             class="tbattle__status"
-            :title="`${status.displayName} · magnitude ${status.magnitude}`"
+            :title="statusTitle(status)"
           >
             {{ status.displayName }}
             <b v-if="status.stacks > 1">×{{ status.stacks }}</b>

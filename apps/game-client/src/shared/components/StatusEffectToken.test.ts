@@ -131,4 +131,26 @@ describe('StatusEffectToken', () => {
     const wrapper = mount(StatusEffectToken, { props: { kind: 'DamageOverTime' } });
     expect(wrapper.find('.sigil__ticks').exists()).toBe(false);
   });
+
+  it('shows the affected stat and flat amount in the hover bubble for a StatModifier', () => {
+    const wrapper = mount(StatusEffectToken, {
+      props: { kind: 'StatModifier', magnitude: -8, stat: 'Defense' },
+    });
+    expect(wrapper.find('.sigil__bubble').text()).toContain('Défense : -8');
+  });
+
+  it('shows the percent unit when the StatModifier magnitude is a percent of base stat', () => {
+    const wrapper = mount(StatusEffectToken, {
+      props: {
+        kind: 'StatModifier', magnitude: 15, stat: 'AttackPower',
+        isMagnitudePercentOfBaseStat: true,
+      },
+    });
+    expect(wrapper.find('.sigil__bubble').text()).toContain('Attaque : +15%');
+  });
+
+  it('does not show a stat line when stat is missing or None', () => {
+    const wrapper = mount(StatusEffectToken, { props: { kind: 'StatModifier', magnitude: 5 } });
+    expect(wrapper.find('.sigil__bubble').text()).not.toContain(':');
+  });
 });
