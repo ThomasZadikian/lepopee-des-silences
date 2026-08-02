@@ -1,6 +1,7 @@
 import { computed, ref, shallowRef } from 'vue';
 
 import type {
+  CombatantStatusEffectDto,
   TacticalCombatEventDto,
   TacticalCombatRuntimeDto,
 } from '../types/combatContracts';
@@ -137,6 +138,18 @@ export function useCombatPlayback() {
    */
   const displayVitals = ref<Record<string, number>>({});
 
+  /**
+   * États actifs affichés pendant une chronologie, par combattant.
+   *
+   * Contrairement à la vitalité, la chronologie ne détaille pas quel geste applique, empile ou
+   * expire un état (`TacticalImpactDto` ne porte qu'un delta de vitalité) — impossible de la
+   * reconstruire coup par coup. On fige donc la liste telle qu'elle était juste avant l'action
+   * (voir `pinBefore`) pendant toute la lecture, et on la relâche une fois la chronologie
+   * terminée : un stack de dégât continu ou un affaiblissement n'apparaît/ne change qu'une fois
+   * le geste qui l'explique effectivement joué à l'écran, jamais dès la réponse serveur.
+   */
+  const displayStatusEffects = ref<Record<string, CombatantStatusEffectDto[]>>({});
+
   // O-017: État de transition entre les tours
   const isTransitioning = ref(false);
   const transitionPhase = ref<'fadeOut' | 'fadeIn' | null>(null);
@@ -159,6 +172,7 @@ export function useCombatPlayback() {
     walk.value = null;
     pinned.value = {};
     displayVitals.value = {};
+    displayStatusEffects.value = {};
     actionBanner.value = null;
     pendingSorts.value = [];
     telegraph.value = null;
@@ -171,6 +185,15 @@ export function useCombatPlayback() {
   /** La vitalité d'un combattant à cet instant : reconstruite pendant la lecture, réelle sinon. */
   function vitalsOf(combatantId: string, settled: number): number {
     const tracked = displayVitals.value[combatantId];
+    return tracked === undefined ? settled : tracked;
+  }
+
+  /** Les états actifs d'un combattant à cet instant : figés pendant la lecture, réels sinon. */
+  function statusEffectsOf(
+    combatantId: string,
+    settled: CombatantStatusEffectDto[],
+  ): CombatantStatusEffectDto[] {
+    const tracked = displayStatusEffects.value[combatantId];
     return tracked === undefined ? settled : tracked;
   }
 
@@ -309,7 +332,12 @@ export function useCombatPlayback() {
     finalState: TacticalCombatRuntimeDto,
     now: () => number,
   ): Promise<void> {
-    if (events.length === 0) return;
+    if (events.length === 0) {
+      // Rien à rejouer : relâche immédiatement le gel posé par `pinBefore`, sans quoi les
+      // états actifs resteraient figés sur leur valeur d'avant l'action indéfiniment.
+      displayStatusEffects.value = {};
+      return;
+    }
 
     const allyIds = new Set(finalState.allies.map((a) => a.combatant.id));
     let previousActorId: string | null = null;
@@ -439,6 +467,9 @@ export function useCombatPlayback() {
     } finally {
       walk.value = null;
       pinned.value = {};
+      // Relâche le gel : les états actifs affichés redeviennent la vérité reçue du serveur,
+      // maintenant que la mise en scène qui y menait a fini de jouer.
+      displayStatusEffects.value = {};
       actionBanner.value = null;
       telegraph.value = null;
       isPlaying.value = false;
@@ -448,16 +479,23 @@ export function useCombatPlayback() {
     }
   }
 
-  /** Épingle les positions de départ AVANT que le nouvel état ne soit appliqué. */
+  /**
+   * Épingle les positions ET les états actifs de départ AVANT que le nouvel état ne soit
+   * appliqué — voir la doc de `displayStatusEffects` pour pourquoi ces derniers ne peuvent pas
+   * se reconstruire coup par coup comme la vitalité.
+   */
   function pinBefore(state: TacticalCombatRuntimeDto | null) {
     if (!state) return;
 
     const pins: Record<string, { x: number; y: number }> = {};
+    const statusPins: Record<string, CombatantStatusEffectDto[]> = {};
     for (const unit of [...state.allies, ...state.enemies]) {
       pins[unit.combatant.id] = { x: unit.x, y: unit.y };
+      statusPins[unit.combatant.id] = unit.combatant.statusEffects ?? [];
     }
 
     pinned.value = pins;
+    displayStatusEffects.value = statusPins;
   }
 
   function consumeSorts(): PendingSort[] {
@@ -478,6 +516,7 @@ export function useCombatPlayback() {
     transitionPhase: computed(() => transitionPhase.value), // O-017
     positionOf,
     vitalsOf,
+    statusEffectsOf,
     pruneFloats,
     pruneImpacts,
     consumeSorts,

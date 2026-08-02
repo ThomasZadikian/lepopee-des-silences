@@ -406,6 +406,15 @@ function displayedVitality(unit: TacticalCombatantRuntimeDto): number {
   return store.playback.vitalsOf(unit.combatant.id, unit.combatant.currentVitality);
 }
 
+/**
+ * Les états actifs à afficher pour ce combattant, tels que la mise en scène en cours les a déjà
+ * révélés — jamais un stack ou un affaiblissement tout neuf avant que le geste qui l'applique
+ * n'ait atterri à l'écran (voir `useCombatPlayback.statusEffectsOf`).
+ */
+function displayedStatusEffects(unit: TacticalCombatantRuntimeDto): CombatantStatusEffectDto[] {
+  return store.playback.statusEffectsOf(unit.combatant.id, unit.combatant.statusEffects ?? []);
+}
+
 function itemShape(item: CombatUsableItemDto): TacticalShape {
   return item.tacticalAreaShape.toLowerCase() as TacticalShape;
 }
@@ -1760,11 +1769,11 @@ onBeforeUnmount(() => {
             </span>
           </div>
           <div
-            v-if="unit.combatant.statusEffects?.length"
+            v-if="displayedStatusEffects(unit).length"
             class="tbattle__portrait-statuses"
           >
             <StatusEffectToken
-              v-for="status in unit.combatant.statusEffects"
+              v-for="status in displayedStatusEffects(unit)"
               :key="status.key"
               :kind="status.kind"
               :magnitude="status.magnitude"
@@ -1830,12 +1839,12 @@ onBeforeUnmount(() => {
         </div>
 
         <div
-          v-if="store.activeCombatant?.combatant.statusEffects?.length"
+          v-if="store.activeCombatant && displayedStatusEffects(store.activeCombatant).length"
           class="tbattle__statuses"
           aria-label="États actifs"
         >
           <span
-            v-for="status in store.activeCombatant.combatant.statusEffects"
+            v-for="status in displayedStatusEffects(store.activeCombatant!)"
             :key="status.key"
             class="tbattle__status"
             :title="statusTitle(status)"

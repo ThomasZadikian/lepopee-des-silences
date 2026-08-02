@@ -137,6 +137,75 @@ describe('vitalité affichée pendant la lecture', () => {
   });
 });
 
+describe('états actifs affichés pendant la lecture', () => {
+  const enemyId = '88888888-8888-8888-8888-888888888888';
+  const allyId = '99999999-9999-9999-9999-999999999999';
+
+  const hitEvent = (overrides = {}) => ({
+    kind: 'Skill' as const,
+    actorId: enemyId,
+    actorName: 'Ennemi',
+    path: [],
+    skillKey: 'skill.poison',
+    skillName: 'Poison',
+    targetX: 1,
+    targetY: 1,
+    telegraphCells: null,
+    impacts: [],
+    ...overrides,
+  });
+
+  const dotStatus = (stacks: number) => ([{
+    key: 'status.poison',
+    displayName: 'Poison',
+    kind: 'DamageOverTime' as const,
+    stat: 'None',
+    magnitude: 0,
+    stacks,
+    isMagnitudePercentOfBaseStat: false,
+    perTickAmount: 4,
+    ticksRemaining: 3000,
+    isPermanent: false,
+  }]);
+
+  it('ne montre pas un nouveau stack avant que le geste qui l’applique n’ait fini de jouer', async () => {
+    const playback = useCombatPlayback();
+
+    // État précédent : un seul stack de Poison sur l'allié.
+    playback.pinBefore({
+      allies: [{ x: 1, y: 1, combatant: { id: allyId, statusEffects: dotStatus(1) } }],
+      enemies: [],
+    } as never);
+
+    // Le nouvel état (déjà reçu du serveur) porte le deuxième stack — c'est le bug remonté :
+    // il ne doit apparaître qu'une fois le geste de l'ennemi effectivement joué à l'écran.
+    const finalState = {
+      allies: [{ combatant: { id: allyId, statusEffects: dotStatus(2) } }],
+      enemies: [],
+    } as never;
+
+    const running = playback.play([hitEvent()], finalState, () => 0);
+
+    expect(playback.statusEffectsOf(allyId, dotStatus(2))[0].stacks).toBe(1);
+
+    await running;
+
+    expect(playback.statusEffectsOf(allyId, dotStatus(2))[0].stacks).toBe(2);
+  });
+
+  it('relâche immédiatement le gel quand il n’y a aucun événement à rejouer', async () => {
+    const playback = useCombatPlayback();
+    playback.pinBefore({
+      allies: [{ x: 1, y: 1, combatant: { id: allyId, statusEffects: dotStatus(1) } }],
+      enemies: [],
+    } as never);
+
+    await playback.play([], { allies: [], enemies: [] } as never, () => 0);
+
+    expect(playback.statusEffectsOf(allyId, dotStatus(2))[0].stacks).toBe(2);
+  });
+});
+
 describe('coup manqué', () => {
   it('écrit « Manqué » plutôt qu’un zéro, et sans onde d’impact', async () => {
     const playback = useCombatPlayback();
