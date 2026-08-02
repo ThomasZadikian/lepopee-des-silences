@@ -47,6 +47,9 @@ import {
   type BattleCell,
 } from '../composables/useTacticalBattlePlan';
 import StatusEffectToken from '../../../shared/components/StatusEffectToken.vue';
+import SkillDetailModal from '../../../shared/components/SkillDetailModal.vue';
+import { skillsApi } from '../../party/api/skillsApi';
+import type { SkillDefinitionView } from '../../party/types/skillTypes';
 import { combatantSprite, fallbackPropFor } from '../composables/useCombatantSprites';
 import { FLOAT_MS, FLOAT_RISE_PX, useCombatPlayback } from '../composables/useCombatPlayback';
 import { sortIdForSkillKey, useSortEffects } from '../composables/useSortEffects';
@@ -90,6 +93,15 @@ const canvasSize = ref({ width: 0, height: 0 });
 const hoveredCell = ref<{ x: number; y: number } | null>(null);
 const panelPosition = ref({ x: 190, y: 24 });
 const panelWasDragged = ref(false);
+
+// Journal : clic sur une entrée liée à un sort ouvre son descriptif complet.
+const skillCatalog = ref<Map<string, SkillDefinitionView>>(new Map());
+const inspectedSkill = ref<SkillDefinitionView | null>(null);
+
+function openSkillDetail(skillKey: string | null) {
+  if (!skillKey) return;
+  inspectedSkill.value = skillCatalog.value.get(skillKey) ?? null;
+}
 
 const DEPLOY_DURATION_MS = 1200;
 const deployStartedAt = ref<number | null>(null);
@@ -1582,6 +1594,14 @@ watch(
 );
 
 onMounted(() => {
+  skillsApi.listActive()
+    .then((response) => {
+      skillCatalog.value = new Map(response.skills.map((skill) => [skill.key, skill]));
+    })
+    .catch(() => {
+      // Best-effort: a failed catalog fetch just disables the journal's skill links.
+    });
+
   const canvas = canvasEl.value;
   if (!canvas?.parentElement) return;
 
@@ -1671,9 +1691,20 @@ onBeforeUnmount(() => {
           class="tbattle__log-entry"
         >
           {{ entry.message }}
+          <button
+            v-if="entry.skillKey"
+            type="button"
+            class="tbattle__log-skill-link"
+            title="Voir le descriptif du sort"
+            @click="openSkillDetail(entry.skillKey)"
+          >
+            ⓘ
+          </button>
         </p>
       </div>
     </aside>
+
+    <SkillDetailModal :skill="inspectedSkill" @close="inspectedSkill = null" />
 
     <!-- ── Bottom bar: portraits + skills ── -->
     <footer ref="panelEl" class="tbattle__bottom" :style="panelStyle">
@@ -2058,6 +2089,20 @@ onBeforeUnmount(() => {
   font-size: 0.68rem;
   opacity: 0.55;
   line-height: 1.3;
+}
+
+.tbattle__log-skill-link {
+  all: unset;
+  cursor: pointer;
+  margin-left: 4px;
+  font-size: 0.72rem;
+  color: var(--gold);
+  opacity: 0.8;
+}
+
+.tbattle__log-skill-link:hover {
+  opacity: 1;
+  text-decoration: underline;
 }
 
 /* ── Bottom bar: portraits + skills ─────────────────────────────────────── */
