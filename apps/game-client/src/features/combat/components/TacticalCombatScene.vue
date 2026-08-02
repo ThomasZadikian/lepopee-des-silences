@@ -103,6 +103,43 @@ function openSkillDetail(skillKey: string | null) {
   inspectedSkill.value = skillCatalog.value.get(skillKey) ?? null;
 }
 
+// Hover description for a skill button — teleported to <body> (like the loot popover) because
+// the action bar lives inside the draggable panel, which clips overflow on both axes.
+const hoveredSkillKey = ref<string | null>(null);
+const skillTooltipStyle = ref<{ left: string; bottom: string }>({ left: '0px', bottom: '0px' });
+const hoveredSkill = computed<CombatantSkillRuntimeDto | null>(() =>
+  store.activeSkills.find((s) => s.key === hoveredSkillKey.value) ?? null,
+);
+const hoveredSkillDescription = computed(() =>
+  hoveredSkillKey.value ? skillCatalog.value.get(hoveredSkillKey.value)?.description ?? null : null,
+);
+
+const SKILL_TOOLTIP_WIDTH = 260;
+const SKILL_TOOLTIP_GAP = 10;
+const SKILL_TOOLTIP_MARGIN = 8;
+
+function showSkillTooltip(skillKey: string, target: EventTarget | null) {
+  const el = target instanceof HTMLElement ? target : null;
+  if (!el) return;
+
+  const rect = el.getBoundingClientRect();
+  const left = Math.max(
+    SKILL_TOOLTIP_MARGIN,
+    Math.min(
+      rect.left + (rect.width / 2) - (SKILL_TOOLTIP_WIDTH / 2),
+      globalThis.innerWidth - SKILL_TOOLTIP_WIDTH - SKILL_TOOLTIP_MARGIN,
+    ),
+  );
+  const bottom = Math.max(SKILL_TOOLTIP_MARGIN, globalThis.innerHeight - rect.top + SKILL_TOOLTIP_GAP);
+
+  skillTooltipStyle.value = { left: `${left}px`, bottom: `${bottom}px` };
+  hoveredSkillKey.value = skillKey;
+}
+
+function hideSkillTooltip() {
+  hoveredSkillKey.value = null;
+}
+
 const DEPLOY_DURATION_MS = 1200;
 const deployStartedAt = ref<number | null>(null);
 
@@ -1779,6 +1816,7 @@ onBeforeUnmount(() => {
               :is-magnitude-percent-of-base-stat="status.isMagnitudePercentOfBaseStat"
               :stacks="status.stacks"
               :px="20"
+              teleport-bubble
               :per-tick-amount="status.perTickAmount"
               :ticks-remaining="status.ticksRemaining"
               :is-permanent="status.isPermanent"
@@ -1869,13 +1907,10 @@ onBeforeUnmount(() => {
                 'tbattle__skill--sacrifice': vitalitySacrifice(skill) > 0,
               }"
               :disabled="skillUnavailable(skill)"
-              :title="
-                `${skill.displayName} — ${skill.category === 'Magic' ? 'magique' : 'physique'}, `
-                  + `${skillMeta(skill)}, ${skillCostMeta(skill)}`
-                  + (vitalitySacrifice(skill) > 0
-                    ? ` — sacrifice : ${vitalitySacrifice(skill)} Vitalité`
-                    : '')
-              "
+              @mouseenter="showSkillTooltip(skill.key, $event.currentTarget)"
+              @mouseleave="hideSkillTooltip"
+              @focus="showSkillTooltip(skill.key, $event.currentTarget)"
+              @blur="hideSkillTooltip"
               @click="store.selectSkill(skill.key)"
             >
               <span class="tbattle__skill-name">
@@ -1903,6 +1938,29 @@ onBeforeUnmount(() => {
           </template>
           <span v-else class="tbattle__skills-placeholder" />
         </div>
+
+        <Teleport to="body">
+          <div
+            v-if="hoveredSkill"
+            class="tbattle__skill-tooltip"
+            role="tooltip"
+            :style="{ left: skillTooltipStyle.left, bottom: skillTooltipStyle.bottom }"
+          >
+            <div class="tbattle__skill-tooltip-title">
+              {{ hoveredSkill.isUltimate ? 'Ultime · ' : '' }}{{ hoveredSkill.displayName }}
+            </div>
+            <p v-if="hoveredSkillDescription" class="tbattle__skill-tooltip-desc">
+              {{ hoveredSkillDescription }}
+            </p>
+            <div class="tbattle__skill-tooltip-meta">
+              {{ hoveredSkill.category === 'Magic' ? 'Magique' : 'Physique' }}
+              · {{ skillMeta(hoveredSkill) }} · {{ skillCostMeta(hoveredSkill) }}
+            </div>
+            <div v-if="vitalitySacrifice(hoveredSkill) > 0" class="tbattle__skill-tooltip-warning">
+              Sacrifice : −{{ vitalitySacrifice(hoveredSkill) }} Vitalité
+            </div>
+          </div>
+        </Teleport>
 
         <button
           type="button"
@@ -2378,4 +2436,50 @@ onBeforeUnmount(() => {
 .tbattle__preview-warning { color: #e0605e; }
 .tbattle__waiting { opacity: 0.6; font-style: italic; margin: 0; font-size: 0.8rem; }
 .tbattle__error { color: #e0605e; margin: 0; font-size: 0.8rem; }
+</style>
+
+<!-- Unscoped: teleported to <body>, outside this component's scoped-style DOM subtree — the
+     draggable action panel (.tbattle__bottom) clips overflow on both axes, so this tooltip has
+     to live outside it entirely rather than merely escape it visually. -->
+<style>
+.tbattle__skill-tooltip {
+  position: fixed;
+  z-index: 300;
+  width: 260px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid rgb(230 194 115 / 35%);
+  background: rgb(9 11 22 / 96%);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 14px 44px rgb(0 0 0 / 45%);
+  color: rgb(244 241 255 / 88%);
+  font-family: var(--font, serif);
+  pointer-events: none;
+}
+
+.tbattle__skill-tooltip-title {
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: #e6c273;
+  margin-bottom: 4px;
+}
+
+.tbattle__skill-tooltip-desc {
+  margin: 0 0 6px;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: rgb(244 241 255 / 72%);
+}
+
+.tbattle__skill-tooltip-meta {
+  font-size: 0.68rem;
+  letter-spacing: 0.02em;
+  color: rgb(244 241 255 / 55%);
+}
+
+.tbattle__skill-tooltip-warning {
+  margin-top: 4px;
+  font-size: 0.68rem;
+  color: #e0605e;
+}
 </style>

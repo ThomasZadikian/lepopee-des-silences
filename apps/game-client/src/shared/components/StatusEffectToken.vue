@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onBeforeUnmount, ref } from 'vue';
 
 import type { StatusEffectKind } from '../../features/combat/types/combatContracts';
 import { ticksToTurns } from '../../features/combat/constants/combatTime';
@@ -23,13 +23,63 @@ const props = withDefaults(
     stat?: string;
     /** True when `magnitude` is a percentage of the base stat, not a flat delta. */
     isMagnitudePercentOfBaseStat?: boolean;
+    /** Teleports the hover bubble to <body>, fixed-positioned from the trigger's own rect,
+     * instead of the plain CSS-anchored bubble. Needed wherever the token sits inside an
+     * `overflow` ancestor (the combat portrait row scrolls horizontally, which silently clips
+     * the vertical axis too) — see TacticalCombatScene.vue's portraits. */
+    teleportBubble?: boolean;
   }>(),
   {
     magnitude: 0, stacks: 1, px: 40, meta: false, durLabel: '',
     perTickAmount: 0, ticksRemaining: null, isPermanent: false,
-    stat: '', isMagnitudePercentOfBaseStat: false,
+    stat: '', isMagnitudePercentOfBaseStat: false, teleportBubble: false,
   },
 );
+
+const rootEl = ref<HTMLElement | null>(null);
+const isHovered = ref(false);
+const bubbleStyle = ref<{ left: string; bottom: string }>({ left: '0px', bottom: '0px' });
+
+const BUBBLE_WIDTH = 220;
+const BUBBLE_GAP = 8;
+const VIEWPORT_MARGIN = 8;
+
+function computeBubblePosition() {
+  const el = rootEl.value;
+  if (!el) return;
+
+  const rect = el.getBoundingClientRect();
+  const left = Math.max(
+    VIEWPORT_MARGIN,
+    Math.min(
+      rect.left + (rect.width / 2) - (BUBBLE_WIDTH / 2),
+      window.innerWidth - BUBBLE_WIDTH - VIEWPORT_MARGIN,
+    ),
+  );
+  const bottom = Math.max(VIEWPORT_MARGIN, window.innerHeight - rect.top + BUBBLE_GAP);
+
+  bubbleStyle.value = { left: `${left}px`, bottom: `${bottom}px` };
+}
+
+function showTeleportedBubble() {
+  if (!props.teleportBubble) return;
+  computeBubblePosition();
+  isHovered.value = true;
+  window.addEventListener('scroll', computeBubblePosition, true);
+  window.addEventListener('resize', computeBubblePosition);
+}
+
+function hideTeleportedBubble() {
+  if (!props.teleportBubble) return;
+  isHovered.value = false;
+  window.removeEventListener('scroll', computeBubblePosition, true);
+  window.removeEventListener('resize', computeBubblePosition);
+}
+
+onBeforeUnmount(() => {
+  window.removeEventListener('scroll', computeBubblePosition, true);
+  window.removeEventListener('resize', computeBubblePosition);
+});
 
 type Shape = 'drop' | 'plus' | 'chevUp' | 'chevDown' | 'aster' | 'silence' | 'lock' | 'ring' | 'diamond';
 
@@ -113,7 +163,16 @@ const statModifierLine = computed(() => {
 </script>
 
 <template>
-  <div class="sigil" :style="{ '--sigil-px': px + 'px' }" tabindex="0">
+  <div
+    ref="rootEl"
+    class="sigil"
+    :style="{ '--sigil-px': px + 'px' }"
+    tabindex="0"
+    @mouseenter="showTeleportedBubble"
+    @mouseleave="hideTeleportedBubble"
+    @focus="showTeleportedBubble"
+    @blur="hideTeleportedBubble"
+  >
     <div class="sigil__chip">
       <div class="sigil__glow" :style="{ background: `radial-gradient(circle at 50% 38%, ${glow}, transparent 72%)` }" />
       <div class="sigil__hairline" :style="{ background: kindMeta.color }" />
@@ -185,12 +244,26 @@ const statModifierLine = computed(() => {
 
     <div v-if="meta" class="sigil__meta">{{ label }}</div>
 
-    <div class="sigil__bubble" role="tooltip">
+    <div v-if="!teleportBubble" class="sigil__bubble" role="tooltip">
       <div class="sigil__bubble-title">{{ showStacks ? `${kindMeta.label} ×${stacks}` : kindMeta.label }}</div>
       <div v-if="statModifierLine" class="sigil__bubble-line">{{ statModifierLine }}</div>
       <div v-if="perTickLine" class="sigil__bubble-line">{{ perTickLine }}</div>
       <div v-if="durationLine" class="sigil__bubble-line">{{ durationLine }}</div>
     </div>
+
+    <Teleport v-if="teleportBubble" to="body">
+      <div
+        v-if="isHovered"
+        class="sigil__bubble sigil__bubble--teleported"
+        role="tooltip"
+        :style="{ left: bubbleStyle.left, bottom: bubbleStyle.bottom }"
+      >
+        <div class="sigil__bubble-title">{{ showStacks ? `${kindMeta.label} ×${stacks}` : kindMeta.label }}</div>
+        <div v-if="statModifierLine" class="sigil__bubble-line">{{ statModifierLine }}</div>
+        <div v-if="perTickLine" class="sigil__bubble-line">{{ perTickLine }}</div>
+        <div v-if="durationLine" class="sigil__bubble-line">{{ durationLine }}</div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -347,5 +420,20 @@ const statModifierLine = computed(() => {
   .sigil__bubble {
     transition: none;
   }
+}
+</style>
+
+<!-- Unscoped: teleported to <body>, outside this component's scoped-style DOM subtree — same
+     pattern as DefeatedEnemyRow's `.del-pop`. Overrides the scoped `.sigil__bubble` base rule's
+     position/opacity/visibility, which still applies here since Teleport moves the DOM node but
+     keeps its scope attribute. -->
+<style>
+.sigil__bubble--teleported {
+  position: fixed !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  transform: none !important;
+  pointer-events: none;
+  z-index: 300;
 }
 </style>

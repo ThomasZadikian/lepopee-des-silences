@@ -153,4 +153,38 @@ describe('StatusEffectToken', () => {
     const wrapper = mount(StatusEffectToken, { props: { kind: 'StatModifier', magnitude: 5 } });
     expect(wrapper.find('.sigil__bubble').text()).not.toContain(':');
   });
+
+  // ── teleportBubble: escapes an overflow-clipping ancestor (combat's portrait row) ──
+
+  it('does not render the plain CSS bubble when teleportBubble is set', () => {
+    const wrapper = mount(StatusEffectToken, {
+      props: { kind: 'DamageOverTime', teleportBubble: true },
+    });
+    expect(wrapper.find('.sigil__bubble').exists()).toBe(false);
+  });
+
+  it('teleports the bubble to <body> on hover and removes it on mouseleave', async () => {
+    const wrapper = mount(StatusEffectToken, {
+      props: { kind: 'DamageOverTime', perTickAmount: 7, teleportBubble: true },
+      attachTo: document.body,
+    });
+
+    expect(document.body.querySelector('.sigil__bubble--teleported')).toBeNull();
+
+    await wrapper.find('.sigil').trigger('mouseenter');
+    const bubble = document.body.querySelector('.sigil__bubble--teleported');
+    expect(bubble).not.toBeNull();
+    expect(bubble?.textContent).toContain('Dégâts réels : 7 / tour');
+
+    await wrapper.find('.sigil').trigger('mouseleave');
+    expect(document.body.querySelector('.sigil__bubble--teleported')).toBeNull();
+
+    wrapper.unmount();
+  });
+
+  it('renders the plain CSS bubble by default (teleportBubble off)', () => {
+    const wrapper = mount(StatusEffectToken, { props: { kind: 'DamageOverTime' } });
+    expect(wrapper.find('.sigil__bubble').exists()).toBe(true);
+    expect(document.body.querySelector('.sigil__bubble--teleported')).toBeNull();
+  });
 });
