@@ -21,7 +21,7 @@ describe('tactical combat playback', () => {
     expect(dynamicStepDurationMs(3, false)).toBe(BASE_STEP_MS);
   });
 
-  it('interpolates an ally with the side carried by the playback event', () => {
+  it('holds an ally on its cell until the full step duration elapses, then jumps — no continuous glide', () => {
     const playback = useCombatPlayback();
     playback.walk.value = {
       combatantId: '8e9d05b4-fba0-49fb-81bf-ef88ab0db35a',
@@ -30,11 +30,21 @@ describe('tactical combat playback', () => {
       isEnemy: false,
     };
 
+    const stepMs = dynamicStepDurationMs(1, false);
+
+    // Aligned with usePartyTokenPath (exploration): case-by-case stepping, never a fractional
+    // in-between position — this is the mid-step read that used to report x≈0.5.
     expect(playback.positionOf(
       '8e9d05b4-fba0-49fb-81bf-ef88ab0db35a',
       { x: 1, y: 0 },
-      100 + (dynamicStepDurationMs(1, false) / 2),
-    ).x).toBeCloseTo(0.5);
+      100 + (stepMs / 2),
+    ).x).toBe(0);
+
+    expect(playback.positionOf(
+      '8e9d05b4-fba0-49fb-81bf-ef88ab0db35a',
+      { x: 1, y: 0 },
+      100 + stepMs,
+    ).x).toBe(1);
   });
 });
 

@@ -26,6 +26,12 @@ import {
 } from './composables/useTerrainSprites';
 import { buildDrawPlan, isoUnit, projectToScreen, screenToCell } from './composables/useTerrainDrawPlan';
 import { buildMovementRange } from './composables/useMovementRange';
+import { getCombatantSprite } from './composables/bestiaire';
+
+// The same painted figure the player sees standing in for them in combat (see
+// useCombatantSprites.ts's PROTAGONIST_FIGURE) — used here too, so the party token on the
+// exploration map is the player's actual character asset rather than an abstract marker.
+const PARTY_FIGURE_ID = 'porteur';
 
 const props = defineProps<{
   room: RoomDto;
@@ -485,13 +491,21 @@ function paintCanvas(timestamp: number) {
   ].filter((entry): entry is NonNullable<typeof entry> => entry !== undefined);
 
   for (const entry of drawPlan.value) {
-    const sprite = getSprite(entry.spriteKey);
+    const key = entry.spriteKey;
+    const sprite = key.kind === 'party' ? getCombatantSprite(PARTY_FIGURE_ID) : getSprite(key);
     const dx = entry.screenX - (destW / 2);
 
     const occludes = seeThroughTargets.some((target) => occludesTarget(entry, target, destW, destH));
     if (occludes) ctx.globalAlpha = OCCLUDER_ALPHA;
 
-    const key = entry.spriteKey;
+    if (key.kind === 'party') {
+      // Baked on the tall "prop" canvas, same as any combatant figure — the short floor/
+      // highlight rect would squash it and misplace its ground anchor.
+      const propDy = entry.screenY - (propH * PROP_GROUND_ANCHOR_RATIO);
+      ctx.drawImage(sprite, dx, propDy, destW, propH);
+      ctx.globalAlpha = 1;
+      continue;
+    }
 
     if (usesPropRect(key)) {
       // Scenery rides its tile's elevation; a wall stands ON the ground, so its own cell

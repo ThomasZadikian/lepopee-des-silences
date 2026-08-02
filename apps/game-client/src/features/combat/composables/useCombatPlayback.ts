@@ -236,7 +236,15 @@ export function useCombatPlayback() {
    * - Déplacements longs (5+ cases) : plus lents (130% de BASE_STEP_MS).
    * - Ennemis : 20% plus lents (ENEMY_STEP_MULTIPLIER).
    */
-  /** La position d'un combattant à cet instant : interpolée s'il marche, épinglée sinon. */
+  /**
+   * La position d'un combattant à cet instant : posée case par case s'il marche, épinglée
+   * sinon — jamais interpolée en continu entre deux cases.
+   *
+   * Aligné sur `usePartyTokenPath` (exploration) : la figure tient chaque case le temps de
+   * `stepMs` avant de sauter d'un bloc à la suivante, plutôt que de glisser en continu d'une
+   * case à l'autre. Un glissé continu se lit comme flou/approximatif à côté du pas net de
+   * l'exploration ; la case par case est le rythme voulu partout, pas seulement hors combat.
+   */
   function positionOf(
     combatantId: string,
     settled: { x: number; y: number },
@@ -253,17 +261,9 @@ export function useCombatPlayback() {
       // plancher, la progression passe négative, l'index aussi, et la lecture d'une case
       // inexistante fait tomber toute la boucle de rendu.
       const step = Math.max(0, Math.floor(progress));
-      const from = Math.min(current.path.length - 1, step);
-      const to = Math.min(current.path.length - 1, from + 1);
-      const fraction = Math.max(0, Math.min(1, progress - step));
+      const at = Math.min(current.path.length - 1, step);
 
-      const a = current.path[from];
-      const b = current.path[to];
-
-      return {
-        x: a.x + (b.x - a.x) * fraction,
-        y: a.y + (b.y - a.y) * fraction,
-      };
+      return { x: current.path[at].x, y: current.path[at].y };
     }
 
     return pinned.value[combatantId] ?? settled;

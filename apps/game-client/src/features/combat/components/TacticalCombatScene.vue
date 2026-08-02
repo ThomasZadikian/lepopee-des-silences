@@ -23,7 +23,6 @@ import { screenToCell } from '../../palace-map/composables/useTerrainDrawPlan';
 import {
   drawAmbient,
   drawBackdrop,
-  drawCombatGrade,
   drawUnitRing,
   drawActionPips,
   drawImpactFx,
@@ -1186,11 +1185,10 @@ function paintCanvas(timestamp: number) {
     ctx.restore();
   }
 
-  // Vignette : peinte avant le terrain et les combattants, en plein cadre (jamais confinée au
-  // plateau) — seuls le fond et les particules d'ambiance sont déjà posés à ce stade, donc seuls
-  // eux sont désaturés. Le terrain et les combattants, peints juste après en pixels opaques,
-  // recouvrent entièrement cette couche et n'en héritent jamais la désaturation.
-  drawCombatGrade(ctx, canvas.width, canvas.height, tier.grade, tier.accent);
+  // Le voile de désaturation (drawCombatGrade) a été retiré : même désaturé seulement en arrière-
+  // plan, il lisait comme un écart de qualité avec l'exploration. La difficulté du palier de
+  // risque doit se lire ailleurs (particules, teintes d'ambiance...) plutôt que par un filtre
+  // global sur l'image — voir `tier.accent`/`tier.ambient`, déjà utilisés par drawAmbient.
 
   const deploying = deployStartedAt.value !== null
     && (timestamp - deployStartedAt.value) < DEPLOY_DURATION_MS;
