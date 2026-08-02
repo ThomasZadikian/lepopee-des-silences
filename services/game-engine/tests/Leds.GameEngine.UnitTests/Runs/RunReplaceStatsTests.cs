@@ -19,7 +19,7 @@ public sealed class RunReplaceStatsTests
         run.ReplacePlayerStats(
             maxVitality: 150, maxMana: 40, charge: 6,
             attack: 20, defense: 10, speed: 15, focus: 4,
-            magicAttack: 8, magicDefense: 7);
+            magicAttack: 8, magicDefense: 7, guardBonusPercent: 12);
 
         run.MaxHp.Should().Be(150);
         run.CurrentHp.Should().Be(150);
@@ -29,6 +29,7 @@ public sealed class RunReplaceStatsTests
         run.Focus.Should().Be(4);
         run.MagicAttack.Should().Be(8);
         run.MagicDefense.Should().Be(7);
+        run.GuardBonusPercent.Should().Be(12);
 
         run.PlayerState.MaxVitality.Should().Be(150);
         run.PlayerState.CurrentVitality.Should().Be(150);
@@ -45,7 +46,7 @@ public sealed class RunReplaceStatsTests
         var act = () => run.ReplacePlayerStats(
             maxVitality: 0, maxMana: 40, charge: 6,
             attack: 20, defense: 10, speed: 15, focus: 4,
-            magicAttack: 8, magicDefense: 7);
+            magicAttack: 8, magicDefense: 7, guardBonusPercent: 0);
 
         act.Should().Throw<DomainException>().WithMessage("*Max vitality*");
     }
@@ -73,6 +74,22 @@ public sealed class RunReplaceStatsTests
         character.StatBlock.Charge.Should().Be(1);
         character.StatBlock.MagicAttack.Should().Be(5);
         character.StatBlock.MagicDefense.Should().Be(4);
+    }
+
+    [Fact]
+    public void ReplaceCharacterStats_ShouldReplaceEquippedItemKeys_WhenProvided()
+    {
+        var run = TestGameEngineFactory.CreateRunWithPlayerSnapshot();
+        var character = run.PlayerSnapshot!.Characters.First();
+
+        run.ReplaceCharacterStats(
+            character.CharacterId,
+            maxVitality: 120, attackPower: 15, defense: 8, startingGuard: 3,
+            speed: 12, initiative: 11, focus: 2, mana: 10, charge: 1,
+            magicAttack: 5, magicDefense: 4,
+            equippedItemKeys: ["item.new-ring", "item.new-cloak"]);
+
+        character.EquippedItemKeys.Should().BeEquivalentTo(["item.new-ring", "item.new-cloak"]);
     }
 
     [Fact]

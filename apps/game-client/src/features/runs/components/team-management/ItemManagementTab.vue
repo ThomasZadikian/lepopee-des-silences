@@ -4,10 +4,12 @@ import type { PlayerCharacterView } from '../../../party/types/playerTypes';
 import type { ItemDefinitionView } from '../../../party/types/itemTypes';
 import { usePlayerStore } from '../../../party/stores/playerStore';
 import { itemsApi } from '../../../party/api/itemsApi';
+import { useRunStore } from '../../stores/runStore';
 
 const props = defineProps<{ character: PlayerCharacterView }>();
 
 const playerStore = usePlayerStore();
+const runStore = useRunStore();
 
 const allItems = ref<ItemDefinitionView[]>([]);
 
@@ -132,13 +134,21 @@ function isEquippedOnCharacter(itemKey: string): boolean {
   return props.character.items.some((i) => i.itemKey === itemKey && i.isEquipped);
 }
 
-function toggleItem(itemKey: string, isEquipped: boolean) {
+async function toggleItem(itemKey: string, isEquipped: boolean) {
   if (playerStore.isLoading) return;
   if (isEquipped) {
-    playerStore.unequipItem(props.character.id, itemKey);
+    await playerStore.unequipItem(props.character.id, itemKey);
   } else {
     if (isSlotFull(itemKey)) return;
-    playerStore.equipItem(props.character.id, itemKey);
+    await playerStore.equipItem(props.character.id, itemKey);
+  }
+
+  // Mid-run resync: makes the new loadout's base stats apply to the run's next
+  // combat instead of only the player's next run. Silently skipped during an
+  // active combat (backend rejects it there — equip still updates the
+  // permanent profile, it just takes effect once the fight ends).
+  if (runStore.currentRun && !runStore.shouldShowCombatScene) {
+    await runStore.syncPartyStats();
   }
 }
 </script>

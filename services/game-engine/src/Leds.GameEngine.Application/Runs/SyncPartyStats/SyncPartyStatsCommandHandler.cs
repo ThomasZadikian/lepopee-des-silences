@@ -71,7 +71,8 @@ public sealed class SyncPartyStatsCommandHandler
                     speed: effectiveStats.Speed,
                     focus: effectiveStats.Focus,
                     magicAttack: effectiveStats.MagicAttack,
-                    magicDefense: effectiveStats.MagicDefense);
+                    magicDefense: effectiveStats.MagicDefense,
+                    guardBonusPercent: effectiveStats.GuardBonusPercent);
             }
 
             var existingSnapshotCharacter = run.PlayerSnapshot?.Characters
@@ -92,7 +93,8 @@ public sealed class SyncPartyStatsCommandHandler
                     charge: effectiveStats.Charge,
                     magicAttack: effectiveStats.MagicAttack,
                     magicDefense: effectiveStats.MagicDefense,
-                    movement: effectiveStats.Movement);
+                    movement: effectiveStats.Movement,
+                    equippedItemKeys: character.EquippedItems);
             }
         }
 

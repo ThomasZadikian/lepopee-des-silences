@@ -604,7 +604,8 @@ public sealed class Run
         int speed,
         int focus,
         int magicAttack,
-        int magicDefense)
+        int magicDefense,
+        int guardBonusPercent)
     {
         PlayerState.ReplaceEffectiveStats(maxVitality, maxMana, charge);
 
@@ -616,6 +617,7 @@ public sealed class Run
         Focus = focus;
         MagicAttack = magicAttack;
         MagicDefense = magicDefense;
+        GuardBonusPercent = guardBonusPercent;
     }
 
     /// <summary>
@@ -636,7 +638,8 @@ public sealed class Run
         int charge,
         int magicAttack,
         int magicDefense,
-        int movement = 4)
+        int movement = 4,
+        IReadOnlyCollection<string>? equippedItemKeys = null)
     {
         var character = PlayerSnapshot?.Characters.FirstOrDefault(c => c.CharacterId == characterId)
             ?? throw new DomainException($"Character '{characterId}' was not found in this run's player snapshot.");
@@ -644,6 +647,9 @@ public sealed class Run
         character.StatBlock.ReplaceStats(
             maxVitality, attackPower, defense, startingGuard, speed,
             initiative, focus, mana, charge, magicAttack, magicDefense, movement);
+
+        if (equippedItemKeys is not null)
+            character.ReplaceEquippedItemKeys(equippedItemKeys);
     }
 
     /// <summary>
@@ -682,7 +688,12 @@ public sealed class Run
     public int MagicDamageBonusPercent { get; }
     public int MagicDamageReductionPercent { get; }
     public int CriticalChanceBonusPercent { get; }
-    public int GuardBonusPercent { get; }
+
+    /// <summary>
+    /// Computed once at run start from equipped items; can be raised mid-run by
+    /// <see cref="ReplacePlayerStats"/> (equipment mid-run resync).
+    /// </summary>
+    public int GuardBonusPercent { get; private set; }
 
     /// <summary>
     /// Percentage bonus applied to positive NPC relationship-score gains (e.g. Mina's

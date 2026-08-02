@@ -46,6 +46,7 @@ import {
   reachableCellsWithPathsFrom,
   type BattleCell,
 } from '../composables/useTacticalBattlePlan';
+import StatusEffectToken from '../../../shared/components/StatusEffectToken.vue';
 import { combatantSprite, fallbackPropFor } from '../composables/useCombatantSprites';
 import { FLOAT_MS, FLOAT_RISE_PX, useCombatPlayback } from '../composables/useCombatPlayback';
 import { sortIdForSkillKey, useSortEffects } from '../composables/useSortEffects';
@@ -1724,6 +1725,22 @@ onBeforeUnmount(() => {
               {{ displayedVitality(unit) }}/{{ unit.combatant.maxVitality }}
             </span>
           </div>
+          <div
+            v-if="unit.combatant.statusEffects?.length"
+            class="tbattle__portrait-statuses"
+          >
+            <StatusEffectToken
+              v-for="status in unit.combatant.statusEffects"
+              :key="status.key"
+              :kind="status.kind"
+              :magnitude="status.magnitude"
+              :stacks="status.stacks"
+              :px="20"
+              :per-tick-amount="status.perTickAmount"
+              :ticks-remaining="status.ticksRemaining"
+              :is-permanent="status.isPermanent"
+            />
+          </div>
         </div>
       </div>
 
@@ -2168,6 +2185,14 @@ onBeforeUnmount(() => {
   font-size: 0.58rem;
   opacity: 0.5;
   font-variant-numeric: tabular-nums;
+}
+
+.tbattle__portrait-statuses {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2px;
+  margin-top: 2px;
 }
 
 .tbattle__controls {

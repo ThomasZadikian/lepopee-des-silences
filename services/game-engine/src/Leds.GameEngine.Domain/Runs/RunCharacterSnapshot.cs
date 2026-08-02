@@ -21,11 +21,7 @@ public sealed class RunCharacterSnapshot
         DisplayName = displayName;
         StatBlock = statBlock;
         _skills.AddRange(skills);
-        EquippedItemKeys = (equippedItemKeys ?? [])
-            .Where(key => !string.IsNullOrWhiteSpace(key))
-            .Select(key => key.Trim())
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToArray();
+        EquippedItemKeys = NormalizeEquippedItemKeys(equippedItemKeys);
     }
 
     public Guid Id { get; }
@@ -34,7 +30,7 @@ public sealed class RunCharacterSnapshot
     public string DisplayName { get; }
     public RunCharacterStatSnapshot StatBlock { get; }
     public IReadOnlyCollection<RunCharacterSkillSnapshot> Skills => _skills.AsReadOnly();
-    public IReadOnlyCollection<string> EquippedItemKeys { get; }
+    public IReadOnlyCollection<string> EquippedItemKeys { get; private set; }
 
     public static RunCharacterSnapshot Create(
         Guid characterId,
@@ -78,6 +74,27 @@ public sealed class RunCharacterSnapshot
 
         _skills.Clear();
         _skills.AddRange(skills);
+    }
+
+    /// <summary>
+    /// Equipment mid-run resync (equip/unequip a permanent item from the run): replaces
+    /// this character's snapshotted item-key list so equipment-keyed triggers (e.g.
+    /// <c>equipment.*</c> combat triggers, conditional room/weather item effects) read
+    /// the freshly-equipped loadout instead of the one frozen at <see cref="Run.StartNew"/>.
+    /// </summary>
+    public void ReplaceEquippedItemKeys(IReadOnlyCollection<string>? equippedItemKeys)
+    {
+        EquippedItemKeys = NormalizeEquippedItemKeys(equippedItemKeys);
+    }
+
+    private static IReadOnlyCollection<string> NormalizeEquippedItemKeys(
+        IReadOnlyCollection<string>? equippedItemKeys)
+    {
+        return (equippedItemKeys ?? [])
+            .Where(key => !string.IsNullOrWhiteSpace(key))
+            .Select(key => key.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
     }
 
     public static RunCharacterSnapshot Rehydrate(

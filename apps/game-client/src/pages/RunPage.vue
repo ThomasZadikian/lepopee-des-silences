@@ -508,8 +508,10 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
       </template>
 
       <!-- ── Micro-menu (Équipe/Statistiques/Grimoire/Équipement) ── -->
+      <!-- Kept visible during combat too: équiper un objet permanent doit rester
+           accessible pendant toute la run, combat compris. -->
       <Teleport to="body">
-        <TeamMicroMenu v-if="!isCombatPhase" />
+        <TeamMicroMenu />
       </Teleport>
 
       <!-- Devtools are development-only and require VITE_GAME_CLIENT_DEVTOOLS_ENABLED=true. -->
