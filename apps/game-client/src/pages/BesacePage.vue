@@ -72,6 +72,75 @@ const selectedReaderGrimoireSkill = computed(() =>
   selectedReader.value?.skills.find((skill) => skill.temporarySlot === 'Grimoire'),
 );
 
+// Weapon/Equipment/Relic run items map to a permanent equipment slot (see
+// EnemyLootRewardBuilder.MapToRunItemType on the server for the reverse mapping).
+// Anything else (consumables, grimoires, fragments...) can't be equipped at all.
+const equipSlotLabels = { Weapon: 'Arme', Accessory: 'Accessoire', Relic: 'Relique' } as const;
+type EquipSlot = keyof typeof equipSlotLabels;
+const slotLimits: Record<EquipSlot, number> = { Weapon: 1, Accessory: 1, Relic: 3 };
+
+function equipSlotFor(item: RunItemDto): EquipSlot | null {
+  if (item.type === 'Weapon') return 'Weapon';
+  if (item.type === 'Equipment') return 'Accessory';
+  if (item.type === 'Relic') return 'Relic';
+  return null;
+}
+
+const selectedItemEquipSlot = computed(() =>
+  selectedItem.value ? equipSlotFor(selectedItem.value) : null,
+);
+
+// Equipping requires the item to already be in the player's permanent backpack
+// (see PlayerProfile.EquipItem, server-side) — a freshly-found run item only
+// gets there if it's kept as a permanent keepsake at the end of this run.
+const selectedItemIsPermanentlyOwned = computed(() =>
+  Boolean(
+    selectedItem.value &&
+      playerStore.permanentItems.some(
+        (owned) => owned.itemDefinitionKey === selectedItem.value!.definitionKey,
+      ),
+  ),
+);
+
+const equipTargetCharacter = computed(() =>
+  playerStore.profile?.characters.find((c) => c.id === selectedCharacterId.value),
+);
+
+const isEquippedOnTarget = computed(() =>
+  Boolean(
+    selectedItem.value &&
+      equipTargetCharacter.value?.items.some(
+        (i) => i.itemKey === selectedItem.value!.definitionKey && i.isEquipped,
+      ),
+  ),
+);
+
+const isTargetSlotFull = computed(() => {
+  const slot = selectedItemEquipSlot.value;
+  const character = equipTargetCharacter.value;
+  if (!slot || !character) return true;
+  return character.items.filter((i) => i.isEquipped && (i.slot ?? 'Relic') === slot).length >= slotLimits[slot];
+});
+
+async function toggleEquip() {
+  if (!selectedItem.value || !selectedCharacterId.value || playerStore.isLoading) return;
+  const itemKey = selectedItem.value.definitionKey;
+  if (isEquippedOnTarget.value) {
+    await playerStore.unequipItem(selectedCharacterId.value, itemKey);
+  } else {
+    if (isTargetSlotFull.value) return;
+    await playerStore.equipItem(selectedCharacterId.value, itemKey);
+  }
+
+  // Mid-run resync: makes the new loadout's base stats apply to the run's next
+  // combat instead of only the player's next run. Silently skipped during an
+  // active combat (backend rejects it there — equip still updates the
+  // permanent profile, it just takes effect once the fight ends).
+  if (runStore.currentRun && !runStore.shouldShowCombatScene) {
+    await runStore.syncPartyStats();
+  }
+}
+
 function getRarityTone(rarity: string): string {
   switch (rarity) {
     case 'Uncommon': return 'sap';
@@ -305,6 +374,38 @@ async function readGrimoire() {
               >
                 {{ isLoading ? 'Lecture…' : 'Apprendre' }}
               </button>
+
+              <template v-if="selectedItemEquipSlot">
+                <p v-if="!selectedItemIsPermanentlyOwned" class="besace-sheet__unusable">
+                  Cet objet rejoindra ton sac permanent si tu le conserves à la fin de la
+                  traversée — équipe-le alors depuis l'onglet Équipement.
+                </p>
+                <template v-else>
+                  <label class="besace-sheet__target">
+                    Porteur
+                    <select v-model="selectedCharacterId">
+                      <option
+                        v-for="member in runStore.currentRun?.party?.members ?? []"
+                        :key="member.id"
+                        :value="member.id"
+                      >
+                        {{ member.displayName }}
+                      </option>
+                    </select>
+                  </label>
+                  <button
+                    class="besace-action-btn besace-action-btn--read"
+                    :class="{ 'besace-action-btn--use': isEquippedOnTarget }"
+                    :disabled="playerStore.isLoading || !selectedCharacterId || (!isEquippedOnTarget && isTargetSlotFull)"
+                    @click="toggleEquip"
+                  >
+                    {{ isEquippedOnTarget ? 'Déséquiper' : `Équiper (${equipSlotLabels[selectedItemEquipSlot]})` }}
+                  </button>
+                  <p v-if="!isEquippedOnTarget && isTargetSlotFull" class="besace-sheet__unusable">
+                    Emplacement {{ equipSlotLabels[selectedItemEquipSlot] }} déjà occupé sur ce personnage.
+                  </p>
+                </template>
+              </template>
               <button
                 v-if="selectedItemPages"
                 class="besace-action-btn besace-action-btn--read"
@@ -321,7 +422,7 @@ async function readGrimoire() {
                 {{ isLoading ? 'Utilisation…' : 'Utiliser' }}
               </button>
               <p
-                v-if="!canUseSelectedItem && !selectedItemPages && selectedItem.type !== 'Grimoire'"
+                v-if="!canUseSelectedItem && !selectedItemPages && !selectedItemEquipSlot && selectedItem.type !== 'Grimoire'"
                 class="besace-sheet__unusable"
               >
                 {{ selectedItem.effectType === 'RevivePercent'

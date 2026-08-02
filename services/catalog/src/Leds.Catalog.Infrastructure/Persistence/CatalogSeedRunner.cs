@@ -6624,9 +6624,20 @@ public sealed partial class CatalogSeedRunner
                 new LootEntry("canon.item.lanterne", 55),
                 new LootEntry("canon.item.cendre-benite", 35),
                 new LootEntry("canon.item.poussiere-de-tombe", 25),
+                // Every canonical weapon (see CanonicalWeaponSeedRunner) needs at least one
+                // live acquisition path, or it can never reach a player's permanent backpack
+                // to be equipped. This fallback pool is the only reward pool whose payload
+                // format can carry an equipment item (see RewardOfferFactory's
+                // "reward.item.default" for why item nodes/merchants can't). Odds scale down
+                // with rarity, same convention as the legendary trinkets below.
                 new LootEntry("weapon.lame-seuil", 12),
                 new LootEntry("weapon.arc-souvenir", 8),
                 new LootEntry("weapon.baton-resonance", 8),
+                new LootEntry("weapon.dagues-murmure", 10),
+                new LootEntry("weapon.lance-pelerin", 10),
+                new LootEntry("weapon.espadon-cendre", 6),
+                new LootEntry("weapon.arbalete-protocole", 6),
+                new LootEntry("weapon.grimoire-orage", 3),
             }, cancellationToken);
     }
 
