@@ -306,6 +306,32 @@ public sealed class MapNode
     }
 
     /// <summary>
+    /// Room-wide difficulty selector: sets this node's tier directly to the chosen value,
+    /// in either direction — unlike <see cref="RaiseRisk"/>'s one-step-up-only "provoquer
+    /// le destin" wager, this lets the player pick a difficulty once for the whole room
+    /// before any of its combat nodes is triggered on contact.
+    /// </summary>
+    public void SetCombatRiskTier(RiskTier tier)
+    {
+        if (!IsCombatFlavored(EventType))
+        {
+            throw new DomainException($"Only combat-flavored nodes can have their risk tier set; '{EventType}' is not one.");
+        }
+
+        if (CombatRiskTier is null)
+        {
+            throw new DomainException("This combat node has no CombatRiskTier to set.");
+        }
+
+        if (State != NodeState.Available)
+        {
+            throw new DomainException("Only an available MapNode's risk tier can be set.");
+        }
+
+        CombatRiskTier = tier;
+    }
+
+    /// <summary>
     /// Every grid node starts <see cref="NodeState.Available"/> (free exploration has no
     /// row-unlock progression to replay), used when rolling back a room (e.g. mid-room exit).
     /// </summary>

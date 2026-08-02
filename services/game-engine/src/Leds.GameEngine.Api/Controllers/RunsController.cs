@@ -24,11 +24,13 @@ using Leds.GameEngine.Application.Runs.UseCaliceInfini;
 using Leds.GameEngine.Application.Runs.ResolveCurrentEvent;
 using Leds.GameEngine.Application.Runs.ResumeRun;
 using Leds.GameEngine.Application.Runs.SaveAndExitRun;
+using Leds.GameEngine.Application.Runs.SetRoomRiskTier;
 using Leds.GameEngine.Application.Runs.StartRun;
 using Leds.GameEngine.Application.Runs.SyncPartySkills;
 using Leds.GameEngine.Application.Runs.SyncPartyStats;
 using Leds.GameEngine.Application.Runs.UseRunItem;
 using Leds.GameEngine.Application.Runs.UseGrimoire;
+using Leds.GameEngine.Domain.Combats;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -355,6 +357,29 @@ public sealed class RunsController : ControllerBase
         return Ok(response);
     }
 
+    /// <summary>Room-wide difficulty selector: sets every still-available combat-flavored
+    /// node in the current room to the chosen tier at once.</summary>
+    [HttpPost("{runId:guid}/rooms/current/risk-tier")]
+    [ProducesResponseType(typeof(SetRoomRiskTierResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<SetRoomRiskTierResponse>> SetRoomRiskTier(
+        Guid runId,
+        [FromBody] SetRoomRiskTierRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!Enum.TryParse<RiskTier>(request.Tier, ignoreCase: true, out var tier))
+        {
+            return BadRequest($"Unknown risk tier '{request.Tier}'.");
+        }
+
+        var command = new SetRoomRiskTierCommand(runId, tier);
+        var response = await _sender.Send(command, cancellationToken);
+
+        return Ok(response);
+    }
+
     [HttpPost("{runId:guid}/party/move")]
     [ProducesResponseType(typeof(MovePartyResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -581,6 +606,7 @@ public sealed record StartRunRequest(Guid PlayerId);
 
 public sealed record MovePartyRequest(int TargetX, int TargetY);
 public sealed record SwapGroundItemRequest(Guid HeldItemId);
+public sealed record SetRoomRiskTierRequest(string Tier);
 
 public sealed record MoveTacticalCombatantRequest(int TargetX, int TargetY);
 

@@ -947,6 +947,19 @@ public sealed class Run
     }
 
     /// <summary>
+    /// Room-wide difficulty selector: since combat nodes trigger on contact (no per-node
+    /// confirmation step in grid exploration), this lets the player pick a danger tier once
+    /// for the whole room instead of committing blind to whatever a node's generated tier
+    /// happened to be. Delegates entirely to <see cref="Room.SetDesiredRiskTierForPendingCombatNodes"/>.
+    /// </summary>
+    public void SetRoomDesiredRiskTier(RiskTier tier)
+    {
+        EnsureActive();
+
+        CurrentRoom.SetDesiredRiskTierForPendingCombatNodes(tier);
+    }
+
+    /// <summary>
     /// Moves the party toward the given cell within the current grid room. Delegates entirely
     /// to <see cref="Room.MoveParty"/>.
     /// </summary>

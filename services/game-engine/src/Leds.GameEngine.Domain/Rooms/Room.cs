@@ -1,3 +1,4 @@
+using Leds.GameEngine.Domain.Combats;
 using Leds.GameEngine.Domain.Common;
 using Leds.GameEngine.Domain.Nodes;
 
@@ -318,6 +319,22 @@ public sealed class Room
     {
         return _nodes.FirstOrDefault(n => n.Id == nodeId)
             ?? throw new DomainException("Node does not belong to this room.");
+    }
+
+    /// <summary>
+    /// Room-wide difficulty selector: sets every still-available combat-flavored node's
+    /// tier to the chosen value at once — a node already resolved, or already committed to
+    /// (Selected), keeps whatever tier it had. Silently a no-op if the room has no such node
+    /// left (e.g. every combat already resolved) rather than throwing, since "set the room's
+    /// difficulty" is a broad player intent, not a per-node action.
+    /// </summary>
+    public void SetDesiredRiskTierForPendingCombatNodes(RiskTier tier)
+    {
+        foreach (var node in _nodes.Where(n =>
+                     MapNode.IsCombatFlavored(n.EventType) && n.State == NodeState.Available))
+        {
+            node.SetCombatRiskTier(tier);
+        }
     }
 
     /// <summary>
