@@ -2726,6 +2726,29 @@ public sealed class Run
                 }
                 break;
 
+            // These four are combat-only in their secondary effect (dispelling a DoT stack,
+            // applying Silence/Evasion) — those statuses don't exist outside combat, so only
+            // the shared heal-percent component applies here. Mirrors UseTacticalItemCommandHandler's
+            // ApplyEffect, minus the combat-only status application.
+            case RunItemEffectType.HealPercent:
+            case RunItemEffectType.ConditionalHealOrPoison:
+            case RunItemEffectType.HealPercentAndCleanseDot:
+            case RunItemEffectType.HealPercentAndSilence:
+            case RunItemEffectType.HealPercentAndEvasion:
+                var healPercentAmount = ApplyHealingBonus(PercentOf(PlayerState.MaxVitality, effectAmount), HealingBonusPercent);
+                if (healPercentAmount > 0)
+                {
+                    PlayerState.Heal(healPercentAmount);
+                    CurrentHp = PlayerState.CurrentVitality;
+                }
+                break;
+
+            case RunItemEffectType.RevivePercent:
+                // Requires a defeated ally to target — meaningless outside a tactical
+                // combat's targeting action (see UseTacticalItemCommandHandler).
+                throw new DomainException(
+                    $"Item effect '{item.EffectType}' can only be used in combat, targeting a defeated ally.");
+
             case RunItemEffectType.ForceWeatherOrage:
                 ForceWeather(6, Math.Max(1, effectAmount), item.DefinitionKey);
                 break;

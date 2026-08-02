@@ -196,6 +196,56 @@ public sealed class RunUseItemTests
         run.PlayerState.Mana.Should().Be(10 + 7);
     }
 
+    // ── Objets HealPercent hors combat (régression : "Unsupported item effect type") ──
+    // ApplyEffect (UseTacticalItemCommandHandler) supporte déjà ces types en combat ;
+    // ApplyItemEffectToPlayerState (hors combat) ne les gérait pas, alors que
+    // RunItem.IsUsable/isUsable ne distingue jamais "utilisable en combat seulement".
+
+    [Theory]
+    [InlineData(RunItemEffectType.HealPercent)]
+    [InlineData(RunItemEffectType.ConditionalHealOrPoison)]
+    [InlineData(RunItemEffectType.HealPercentAndCleanseDot)]
+    [InlineData(RunItemEffectType.HealPercentAndSilence)]
+    [InlineData(RunItemEffectType.HealPercentAndEvasion)]
+    public void UseItem_ShouldHealByPercentOfMaxVitality_ForEveryHealPercentVariant(
+        RunItemEffectType effectType)
+    {
+        var room = TestGameEngineFactory.CreateThresholdRoom();
+        var run = Run.StartNew(
+            Guid.NewGuid(), "seed-heal-percent", "gen-test", "markov-test", room, DateTimeOffset.UtcNow,
+            maxHp: 40, currentHp: 20);
+        var item = RunItem.Create(
+            "item.heal-percent-test.v1", "Onguent", "",
+            RunItemType.Consumable, RunItemRarity.Common,
+            quantity: 1,
+            effectType: effectType,
+            effectAmount: 25);
+        run.AddRunItem(item);
+
+        run.UseItem(item.Id);
+
+        run.PlayerState.CurrentVitality.Should().Be(20 + 10); // 25% of 40 max HP
+    }
+
+    [Fact]
+    public void UseItem_ShouldThrowAClearMessage_WhenEffectIsRevivePercent()
+    {
+        var run = TestGameEngineFactory.CreateRun();
+        var item = RunItem.Create(
+            "item.revive-test.v1", "Réserve de dernier recours", "",
+            RunItemType.Consumable, RunItemRarity.Rare,
+            quantity: 1,
+            effectType: RunItemEffectType.RevivePercent,
+            effectAmount: 50);
+        run.AddRunItem(item);
+
+        var act = () => run.UseItem(item.Id);
+
+        act.Should()
+            .Throw<DomainException>()
+            .WithMessage("*only be used in combat*defeated ally*");
+    }
+
     // ---------------------------------------------------------------------------
     // "Loi des Poches Cousues" (RunModifierType.ConsumablesRestrictedInCombat):
     // blocks consumables in combat, boosts them +25% out of combat.

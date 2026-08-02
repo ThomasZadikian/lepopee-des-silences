@@ -126,6 +126,12 @@ function tacticalShapeLabel(shape?: RunItemDto['tacticalAreaShape']): string {
   }
 }
 
+// RevivePercent items require a defeated ally to target — meaningless outside
+// a tactical combat's targeting action (see Run.ApplyItemEffectToPlayerState),
+// so the button is hidden here even when the backend still reports isUsable.
+const canUseSelectedItem = computed(() =>
+  Boolean(selectedItem.value?.isUsable && selectedItem.value.effectType !== 'RevivePercent'));
+
 function selectItem(item: RunItemDto) {
   selectedItem.value = selectedItem.value?.id === item.id ? null : item;
   selectedCharacterId.value ||= runStore.currentRun?.party?.members[0]?.id ?? '';
@@ -307,7 +313,7 @@ async function readGrimoire() {
                 Lire
               </button>
               <button
-                v-if="selectedItem.isUsable"
+                v-if="canUseSelectedItem"
                 class="besace-action-btn besace-action-btn--use"
                 :disabled="isLoading"
                 @click="useItem"
@@ -315,10 +321,12 @@ async function readGrimoire() {
                 {{ isLoading ? 'Utilisation…' : 'Utiliser' }}
               </button>
               <p
-                v-if="!selectedItem.isUsable && !selectedItemPages && selectedItem.type !== 'Grimoire'"
+                v-if="!canUseSelectedItem && !selectedItemPages && selectedItem.type !== 'Grimoire'"
                 class="besace-sheet__unusable"
               >
-                Cet objet ne peut pas être utilisé actuellement.
+                {{ selectedItem.effectType === 'RevivePercent'
+                  ? "Cet objet ne peut être utilisé qu'en combat, sur un allié à terre."
+                  : "Cet objet ne peut pas être utilisé actuellement." }}
               </p>
             </div>
 
