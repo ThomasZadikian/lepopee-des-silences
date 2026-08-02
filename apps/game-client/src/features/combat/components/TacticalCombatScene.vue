@@ -1136,31 +1136,19 @@ function paintCanvas(timestamp: number) {
   }[store.combat?.riskTier ?? 'Calme'];
   const tier = RISK_TIERS[tierKey] ?? RISK_TIERS.calm;
 
-  // Vignette : peinte avant le terrain et les combattants pour qu'elle assombrisse le décor
-  // sans désaturer les unités ni les barres de vie. Confinée à l'empreinte du plateau (clip) :
-  // peinte plein cadre, elle désaturait tout le ciel/arrière-plan autour d'un petit plateau,
-  // ce qui se lisait comme une désaturation générale bien plus marquée que voulu.
-  if (terrainPlan.length > 0) {
-    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-    for (const entry of terrainPlan) {
-      minX = Math.min(minX, entry.screenX);
-      maxX = Math.max(maxX, entry.screenX);
-      minY = Math.min(minY, entry.screenY);
-      maxY = Math.max(maxY, entry.screenY);
-    }
-
+  // Ambiance (particules) : peinte ICI, avant la vignette et avant le terrain, pour qu'elle
+  // fasse partie du "fond" désaturé — comme le ciel/décor, mais jamais les dalles ni les unités.
+  if (!prefersReducedMotion) {
     ctx.save();
-    ctx.beginPath();
-    ctx.rect(
-      minX - destW,
-      minY - destH - propH,
-      (maxX - minX) + destW * 2,
-      (maxY - minY) + destH + propH * 2,
-    );
-    ctx.clip();
-    drawCombatGrade(ctx, canvas.width, canvas.height, tier.grade, tier.accent);
+    drawAmbient(ctx, canvas.width, canvas.height, roomTheme.value, timestamp);
     ctx.restore();
   }
+
+  // Vignette : peinte avant le terrain et les combattants, en plein cadre (jamais confinée au
+  // plateau) — seuls le fond et les particules d'ambiance sont déjà posés à ce stade, donc seuls
+  // eux sont désaturés. Le terrain et les combattants, peints juste après en pixels opaques,
+  // recouvrent entièrement cette couche et n'en héritent jamais la désaturation.
+  drawCombatGrade(ctx, canvas.width, canvas.height, tier.grade, tier.accent);
 
   const deploying = deployStartedAt.value !== null
     && (timestamp - deployStartedAt.value) < DEPLOY_DURATION_MS;
@@ -1310,13 +1298,7 @@ function paintCanvas(timestamp: number) {
 
   paintEscape(ctx, destW, destH, timestamp);
 
-  // ── Ambiance / FX / chiffres ─────────────────────────────────────────────
-  if (!prefersReducedMotion) {
-    ctx.save();
-    drawAmbient(ctx, canvas.width, canvas.height, roomTheme.value, timestamp);
-    ctx.restore();
-  }
-
+  // ── FX / chiffres ─────────────────────────────────────────────────────────
   paintImpacts(ctx, timestamp);
   paintSorts(ctx);
   paintFloatingNumbers(ctx, timestamp);
