@@ -6,6 +6,7 @@ import PalaceAtmosphere from '../shared/components/PalaceAtmosphere.vue';
 import RuleOrnament from '../shared/components/RuleOrnament.vue';
 import BookReader from '../shared/components/BookReader.vue';
 import { useRunStore } from '../features/runs/stores/runStore';
+import { usePlayerStore } from '../features/party/stores/playerStore';
 import type { RunItemDto } from '../features/runs/types/runTypes';
 import { inventoryApi } from '../features/inventory/api/inventoryApi';
 import { itemsApi } from '../features/party/api/itemsApi';
@@ -14,6 +15,10 @@ const props = defineProps<{ embedded?: boolean }>();
 
 const router = useRouter();
 const runStore = useRunStore();
+const playerStore = usePlayerStore();
+
+const palaceShardCount = computed(() => playerStore.profile?.progression.palaceShardCount ?? 0);
+const himLitShardCount = computed(() => playerStore.profile?.progression.himLitShardCount ?? 0);
 
 const items = computed<RunItemDto[]>(() => runStore.currentRun?.inventoryItems ?? []);
 const capacity = computed(() => runStore.currentRun?.runItemCapacity ?? null);
@@ -31,6 +36,9 @@ const isReaderOpen = ref(false);
 const selectedCharacterId = ref('');
 
 onMounted(async () => {
+  if (!playerStore.profile) {
+    void playerStore.loadProfile();
+  }
   try {
     const { items: catalogItems } = await itemsApi.listActive();
     const byKey: Record<string, string[]> = {};
@@ -176,6 +184,17 @@ async function readGrimoire() {
         </span>
       </div>
       <RuleOrnament style="width: 150px; margin: 16px 0" />
+
+      <section class="besace-currency" aria-label="Monnaie">
+        <div class="besace-currency__item">
+          <span class="besace-currency__label">Éclats du Palais</span>
+          <span class="besace-currency__value besace-currency__value--gold">{{ palaceShardCount }}</span>
+        </div>
+        <div class="besace-currency__item">
+          <span class="besace-currency__label">Éclats de Him'Lit</span>
+          <span class="besace-currency__value besace-currency__value--frost">{{ himLitShardCount }}</span>
+        </div>
+      </section>
 
       <p v-if="!runStore.currentRun" class="besace-page__status">Aucune run active.</p>
       <p v-else-if="items.length === 0" class="besace-page__status">Ton sac est vide.</p>
@@ -383,6 +402,41 @@ async function readGrimoire() {
 }
 
 .besace-page__capacity--full { color: var(--blood); }
+
+.besace-currency {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.besace-currency__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border: 1px solid var(--line-soft, oklch(.32 .022 60 / .5));
+  border-radius: 6px;
+  background: linear-gradient(180deg, oklch(.30 .034 60 / .38), oklch(.25 .028 60 / .30));
+}
+
+.besace-currency__label {
+  font-family: var(--font-caps, var(--font));
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-4, oklch(.45 .015 275));
+}
+
+.besace-currency__value {
+  font-family: var(--font-mono, monospace);
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-2, oklch(.78 .02 275));
+}
+
+.besace-currency__value--gold  { color: var(--gold, oklch(.72 .1 85)); }
+.besace-currency__value--frost { color: var(--frost, oklch(.70 .07 232)); }
 
 .besace-page__status {
   margin-top: 40px;
