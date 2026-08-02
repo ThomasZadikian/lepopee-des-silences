@@ -24,9 +24,14 @@ const baseOffer: RewardOfferDto = {
   ],
 };
 
-function mountPanel(offer: RewardOfferDto, isLoading = false, errorMessage: string | null = null) {
+function mountPanel(
+  offer: RewardOfferDto,
+  isLoading = false,
+  errorMessage: string | null = null,
+  currency?: { palaceShardCount?: number; himLitShardCount?: number },
+) {
   return mount(RewardOfferPanel, {
-    props: { offer, isLoading, errorMessage },
+    props: { offer, isLoading, errorMessage, ...currency },
     global: {
       stubs: {
         ChipBadge: { template: '<span><slot /></span>' },
@@ -279,5 +284,24 @@ describe('RewardOfferPanel', () => {
 
     const button = wrapper.find('.es-btn--lg');
     expect(button.text()).not.toContain('✓');
+  });
+
+  // ── Player currency display (only relevant when the offer has a cost) ──
+
+  it('shows the player\'s current currency balance when the offer has a cost', () => {
+    const wrapper = mountPanel(merchantOffer, false, null, { palaceShardCount: 340, himLitShardCount: 12 });
+    expect(wrapper.find('.rop-currency').exists()).toBe(true);
+    expect(wrapper.text()).toContain('340');
+    expect(wrapper.text()).toContain('12');
+  });
+
+  it('hides the currency balance when no choice in the offer has a cost', () => {
+    const wrapper = mountPanel(baseOffer, false, null, { palaceShardCount: 340, himLitShardCount: 12 });
+    expect(wrapper.find('.rop-currency').exists()).toBe(false);
+  });
+
+  it('defaults the currency balance to 0 when not provided', () => {
+    const wrapper = mountPanel(merchantOffer);
+    expect(wrapper.find('.rop-currency').text()).toContain('0');
   });
 });

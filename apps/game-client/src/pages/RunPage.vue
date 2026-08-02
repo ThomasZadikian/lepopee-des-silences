@@ -163,6 +163,12 @@ onBeforeUnmount(() => {
 watch(showPartyDrawer, (isOpen) => {
   if (isOpen) void playerStore.loadProfile();
 });
+
+// Keeps the currency shown on a reward/merchant offer accurate — including right
+// after a purchase deducts shards, since selectReward() doesn't refresh playerStore itself.
+watch(() => runStore.pendingRewardOffer, (offer) => {
+  if (offer) void playerStore.loadProfile();
+});
 const showLaws = computed(() => uiStore.isLawsOpen);
 const activeRoomClimate = computed(() =>
   runStore.currentRun?.currentRoom?.activeClimate
@@ -376,6 +382,8 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
           :offer="runStore.pendingRewardOffer"
           :is-loading="runStore.isLoading"
           :error-message="runStore.error"
+          :palace-shard-count="playerStore.profile?.progression.palaceShardCount ?? 0"
+          :him-lit-shard-count="playerStore.profile?.progression.himLitShardCount ?? 0"
           @select-reward="runStore.selectReward"
         />
         <section v-else class="phase-center">

@@ -7,11 +7,17 @@ import { computed, ref, watch } from 'vue'
 import DefeatedEnemyList from './DefeatedEnemyList.vue'
 import type { RewardOfferDto } from '../types/rewardTypes'
 
-const props = defineProps<{
-  offer: RewardOfferDto
-  isLoading?: boolean
-  errorMessage?: string | null
-}>()
+const props = withDefaults(
+  defineProps<{
+    offer: RewardOfferDto
+    isLoading?: boolean
+    errorMessage?: string | null
+    /** The player's current currency balance — shown only when at least one card has a cost (merchant offers). */
+    palaceShardCount?: number
+    himLitShardCount?: number
+  }>(),
+  { palaceShardCount: 0, himLitShardCount: 0 },
+)
 
 const defeatedEnemies = computed(() => props.offer.defeatedEnemies ?? [])
 
@@ -104,6 +110,10 @@ const normalizedCards = computed<NormalizedCard[]>(() => {
   return cards
 })
 
+const hasAnyCost = computed(() =>
+  normalizedCards.value.some(c => c.palaceShardCost > 0 || c.himLitShardCost > 0),
+)
+
 // ── UI state ──────────────────────────────────────────────────────────────
 const selectedId = ref<string | null>(null)
 const taken = ref(false)
@@ -189,6 +199,11 @@ const confirmBtnClass = computed(() =>
           <span v-if="sourceLabel" class="rop-source-chip">{{ sourceLabel }}</span>
           <span v-if="isExpiredOrSelected" class="rop-state-chip">
             {{ offer.state === 'Selected' ? 'Sélectionné' : 'Expiré' }}
+          </span>
+          <span v-if="hasAnyCost" class="rop-currency">
+            <span class="rop-currency__value rop-currency__value--gold">{{ palaceShardCount }}</span> Éclats du Palais
+            <span class="rop-currency__sep">·</span>
+            <span class="rop-currency__value rop-currency__value--frost">{{ himLitShardCount }}</span> Éclats de Him'Lit
           </span>
         </div>
         <span class="es-kicker">Une faveur, une seule</span>
@@ -374,9 +389,14 @@ const confirmBtnClass = computed(() =>
 .rop-main {
   flex: 1;
   min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  /* Reward offers can carry more cards than fit a short viewport (merchant offers,
+     combat loot with the defeated-enemies sidebar) — scroll instead of clipping
+     content past the window edge. */
+  overflow-y: auto;
 }
 
 /* ── Meta row (source + state) ── */
@@ -411,6 +431,22 @@ const confirmBtnClass = computed(() =>
   padding: 2px 8px;
   background: oklch(0.55 0.08 85 / 0.1);
 }
+
+.rop-currency {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.68rem;
+  letter-spacing: 0.02em;
+  color: var(--ink-4);
+  border: 1px solid var(--line-soft);
+  border-radius: 3px;
+  padding: 2px 9px;
+  background: oklch(0.22 0.03 60 / 0.6);
+}
+
+.rop-currency__sep { margin: 0 4px; opacity: 0.5; }
+.rop-currency__value { font-weight: 600; }
+.rop-currency__value--gold { color: var(--gold); }
+.rop-currency__value--frost { color: var(--frost); }
 
 /* ── Cards grid (wraps for 4-6 loot cards, single row for 3 or fewer) ── */
 .rop-cards__grid {
