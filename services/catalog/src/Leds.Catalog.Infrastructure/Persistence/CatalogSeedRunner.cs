@@ -6699,10 +6699,11 @@ public sealed partial class CatalogSeedRunner
     // "Loi de la Chandelle" (law.chandelle) needs an item-node reward pool larger than
     // what's shown per offer, so a reroll can draw a genuinely different subset (see
     // RewardOfferFactory.CreateItemRewardOfferAsync/SampleOptionsDeterministically on
-    // the game-engine side). Today the pool below is exactly 3 options — the same 3
-    // TemporaryItem/Heal choices previously hardcoded directly in RewardOfferFactory —
-    // so a reroll currently returns the same 3 back (documented, not a bug): once a
-    // larger authored item list is added here, rerolls will draw real variety.
+    // the game-engine side). Options here go through the thin "item:<key>:<name>:
+    // <desc>:<type>:<rarity>:<effectType>:<amount>" reward payload (see
+    // Run.AddRunItemFromPayload), which only supports simple RunItem fields — no
+    // equipment effects, no container/vitality-cost mechanics — so every option below
+    // is a plain consumable, distinct from the richer items combat loot can produce.
     private async Task SeedRewardTemplatesAsync(CancellationToken cancellationToken)
     {
         await UpsertItemRewardTemplateAsync(
@@ -6724,6 +6725,22 @@ public sealed partial class CatalogSeedRunner
                     "Heal", "Souffle du passé",
                     "Récupère des PV proportionnels au risque de la salle.",
                     null, 10, null, null, null),
+                new RewardTemplateOptionSpec(
+                    "TemporaryItem", "Flacon de mana",
+                    "Restaure une réserve de mana, utilisable en combat.",
+                    "item.consumable.mana-flask", 12, "Consumable", "Common", "ManaRestore"),
+                new RewardTemplateOptionSpec(
+                    "TemporaryItem", "Étincelle de charge",
+                    "Recharge instantanément une jauge de charge.",
+                    "item.consumable.charge-spark", 2, "Consumable", "Uncommon", "ChargeRestore"),
+                new RewardTemplateOptionSpec(
+                    "TemporaryItem", "Onguent de convalescence",
+                    "Restaure un pourcentage de la vitalité maximale.",
+                    "item.consumable.convalescence-balm", 25, "Consumable", "Uncommon", "HealPercent"),
+                new RewardTemplateOptionSpec(
+                    "TemporaryItem", "Réserve de dernier recours",
+                    "Relève un allié à terre avec une fraction de sa vitalité.",
+                    "item.consumable.emergency-reserve", 30, "Consumable", "Rare", "RevivePercent"),
             ],
             cancellationToken);
     }
