@@ -448,6 +448,26 @@ function manaPercent(combatant: { mana: number; maxMana: number }): number {
 }
 
 /**
+ * Vitalité affichée en pourcentage de son maximum — extrait de la barre de PV des portraits
+ * pour que `guardPercent` puisse s'y référer sans dupliquer le calcul.
+ */
+function vitalityPercent(unit: TacticalCombatantRuntimeDto): number {
+  return Math.max(
+    0, Math.min(100, (displayedVitality(unit) / Math.max(1, unit.combatant.maxVitality)) * 100));
+}
+
+/**
+ * Garde en pourcentage du même maximum que la vitalité (la Garde se compte dans la même unité
+ * de points) — bornée pour que vitalité + garde ne dépasse jamais 100% de la barre, quand une
+ * Garde généreuse pousse le total au-delà du plein.
+ */
+function guardPercent(unit: TacticalCombatantRuntimeDto): number {
+  const remaining = 100 - vitalityPercent(unit);
+  const raw = (unit.combatant.guard / Math.max(1, unit.combatant.maxVitality)) * 100;
+  return Math.max(0, Math.min(remaining, raw));
+}
+
+/**
  * Les états actifs à afficher pour ce combattant, tels que la mise en scène en cours les a déjà
  * révélés — jamais un stack ou un affaiblissement tout neuf avant que le geste qui l'applique
  * n'ait atterri à l'écran (voir `useCombatPlayback.statusEffectsOf`).
@@ -1820,6 +1840,13 @@ onBeforeUnmount(() => {
             <span class="tbattle__portrait-initial">
               {{ unit.combatant.displayName.charAt(0) }}
             </span>
+            <span
+              v-if="unit.combatant.guard > 0"
+              class="tbattle__portrait-guard-badge"
+              title="Garde"
+            >
+              {{ unit.combatant.guard }}
+            </span>
           </div>
           <span class="tbattle__portrait-name">{{ unit.combatant.displayName }}</span>
           <div class="tbattle__portrait-hp">
@@ -1827,7 +1854,12 @@ onBeforeUnmount(() => {
               <div
                 class="tbattle__portrait-hp-fill"
                 :class="{ 'tbattle__portrait-hp-fill--low': displayedVitality(unit) / Math.max(1, unit.combatant.maxVitality) < 0.3 }"
-                :style="{ width: `${Math.max(0, Math.min(100, (displayedVitality(unit) / Math.max(1, unit.combatant.maxVitality)) * 100))}%` }"
+                :style="{ width: `${vitalityPercent(unit)}%` }"
+              />
+              <div
+                v-if="unit.combatant.guard > 0"
+                class="tbattle__portrait-guard-fill"
+                :style="{ width: `${guardPercent(unit)}%` }"
               />
             </div>
             <span class="tbattle__portrait-hp-text">
@@ -2296,6 +2328,7 @@ onBeforeUnmount(() => {
 .tbattle__portrait--downed { opacity: 0.35; }
 
 .tbattle__portrait-frame {
+  position: relative;
   width: 32px;
   height: 32px;
   border-radius: 50%;
@@ -2304,6 +2337,26 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   background: rgb(255 255 255 / 6%);
+}
+
+/* Un chiffre lisible directement sur le cadre — la garde doit se voir sans avoir à croiser
+   la barre de PV avec le texte en dessous, d'un simple coup d'œil sur la file. */
+.tbattle__portrait-guard-badge {
+  position: absolute;
+  bottom: -4px;
+  right: -4px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 3px;
+  border-radius: 8px;
+  background: #ffcc33;
+  color: #221a05;
+  border: 1px solid rgb(9 11 22 / 90%);
+  font-size: 0.56rem;
+  font-weight: 700;
+  line-height: 13px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
 }
 
 .tbattle__portrait--enemy .tbattle__portrait-frame {
@@ -2335,6 +2388,7 @@ onBeforeUnmount(() => {
 }
 
 .tbattle__portrait-hp-bar {
+  display: flex;
   width: 100%;
   height: 3px;
   background: rgb(255 255 255 / 10%);
@@ -2345,12 +2399,19 @@ onBeforeUnmount(() => {
 .tbattle__portrait-hp-fill {
   height: 100%;
   background: #86dcb4;
-  border-radius: 2px;
   transition: width 200ms ease;
 }
 
 .tbattle__portrait-hp-fill--low {
   background: #e0605e;
+}
+
+/* Garde : un segment jaune accolé à la vitalité, dans la même barre — visible d'un coup
+   d'œil sans devoir lire un second chiffre séparé (voir aussi le badge sur le cadre). */
+.tbattle__portrait-guard-fill {
+  height: 100%;
+  background: #ffcc33;
+  transition: width 200ms ease;
 }
 
 .tbattle__portrait-hp-text {
