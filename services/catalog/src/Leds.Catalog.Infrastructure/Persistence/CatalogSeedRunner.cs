@@ -2533,7 +2533,7 @@ public sealed partial class CatalogSeedRunner
         await UpsertSkillAsync("canon.skill.priere-aspiration", "Prière",
             "Une prière lituique aspire la conscience. Elle restaure — mais nourrit ce qui rôde, et gonfle l'Égo.",
             "Drain", "SingleEnemy", "Debuff", mana: 4, power: 12, cancellationToken,
-            effects: new[] { new SkillEffectSpec("StatModifier", null, -4, 3, Stat: "Defense") },
+            effects: new[] { new SkillEffectSpec("StatModifier", null, -4, TicksPerTurn * 3, Stat: "Defense") },
             category: "Magic");
 
         await UpsertSkillAsync("skill.temp.deluge-mineur", "Déluge mineur",
@@ -2560,13 +2560,13 @@ public sealed partial class CatalogSeedRunner
         await UpsertSkillAsync("canon.skill.transmutation", "Transmutation",
             "Plomb, or, mercure, soufre, sel. L'art alchimique réordonne la matière de l'instant.",
             "Buff", "Self", "Buff", mana: 6, power: 0, cancellationToken,
-            effects: new[] { new SkillEffectSpec("StatModifier", null, 4, 3, Stat: "AttackPower") },
+            effects: new[] { new SkillEffectSpec("StatModifier", null, 4, TicksPerTurn * 3, Stat: "AttackPower") },
             category: "Magic");
 
         await UpsertSkillAsync("canon.skill.brume", "Brume",
             "Le brouillard non-naturel se lève. Portée et précision s'effondrent — pour tous.",
             "Debuff", "AllEnemies", "Debuff", mana: 7, power: 0, cancellationToken,
-            effects: new[] { new SkillEffectSpec("StatModifier", null, -4, 3, Stat: "Focus") },
+            effects: new[] { new SkillEffectSpec("StatModifier", null, -4, TicksPerTurn * 3, Stat: "Focus") },
             category: "Magic");
 
         await UpsertSkillAsync("canon.skill.flamme-seraphine", "Flamme Séraphine",
