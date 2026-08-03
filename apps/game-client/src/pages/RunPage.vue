@@ -355,7 +355,6 @@ watch(() => route.params.runId, async () => { await loadRunFromRoute(); });
           :theme="runStore.currentRun.currentRoom?.theme"
           :catalog-room-key="runStore.currentRun.currentRoom?.catalogRoomKey ?? undefined"
           :room-id="runStore.currentRun.currentRoom?.id"
-          :nodes="runStore.currentRun.currentRoom?.nodes"
           @combat-completed="runStore.handleCombatCompleted"
           @combat-failed="runStore.handleCombatFailed"
           @combat-escaped="runStore.handleCombatEscaped"

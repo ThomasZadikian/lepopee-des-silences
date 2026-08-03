@@ -67,16 +67,12 @@ import type {
   EmotionalType,
   TacticalCombatantRuntimeDto,
 } from '../types/combatContracts';
-import type { NodeDto } from '../../runs/types/runTypes';
 
 const props = defineProps<{
   runId: string;
   theme?: string;
   catalogRoomKey?: string;
   roomId?: string;
-  /** The room's own nodes — used only to keep unresolved encounters/scenery visible as decor
-   * on the battlefield (see buildBattlePlan's nodesByCell), never for click/interaction. */
-  nodes?: NodeDto[];
 }>();
 
 const emit = defineEmits<{
@@ -159,16 +155,6 @@ const battlefield = computed(() => store.combat?.battlefield ?? null);
 const roomTheme = computed<RoomTheme>(() =>
   resolveRoomVisual(props.catalogRoomKey, (props.theme ?? 'Threshold') as RenderTheme),
 );
-
-// Unresolved room nodes, by cell — decor only (see buildBattlePlan's nodesByCell), never
-// interactive here, unlike exploration's own nodesByCell (useGridCells).
-const battlefieldNodesByCell = computed(() => {
-  const map = new Map<string, NodeDto>();
-  for (const node of props.nodes ?? []) {
-    map.set(battleCellKey(node.lane, node.row), node);
-  }
-  return map;
-});
 
 const projectionParams = computed(() => ({
   canvasWidth: canvasSize.value.width,
@@ -1003,7 +989,6 @@ const drawPlan = computed(() => {
     heightCells: heightCells.value,
     occupiedCells: occupiedHighlightCells.value,
     hoveredCell: hoveredCell.value,
-    nodesByCell: battlefieldNodesByCell.value,
   });
 });
 

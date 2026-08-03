@@ -4,7 +4,6 @@ import {
   type ProjectionParams,
 } from '../../palace-map/composables/useTerrainDrawPlan';
 import { hashSeed } from '../../palace-map/composables/usePalaceTerrain';
-import { propKindFor } from '../../palace-map/composables/useNodePresentation';
 import {
   TERRAIN_SPRITE_CONSTANTS,
   obstacleVariantCount,
@@ -18,11 +17,9 @@ import {
  *
  * Fonction pure, sans canvas ni DOM — c'est ce qui la rend testable sans navigateur, comme son
  * homologue d'exploration (`buildDrawPlan`). Elle réutilise la même projection isométrique et
- * la même forge de tuiles : le terrain de combat EST la salle d'exploration. Ce qu'elle
- * n'emprunte pas, ce sont les préoccupations d'INTERACTION de l'exploration — brouillard,
- * caches à fouiller, clic sur un nœud — qui n'ont plus cours une fois le combat engagé ; mais
- * les nœuds non résolus restent peints en décor (torches, silhouettes de rencontre...), sans
- * quoi le plateau de combat lit comme vidé à côté de la même salle en exploration.
+ * la même forge de tuiles : le terrain de combat EST la salle d'exploration, vidée de ses
+ * nœuds. Ce qu'elle n'emprunte pas, ce sont les préoccupations d'exploration — nœuds, brouillard,
+ * caches à fouiller — qui n'ont plus cours une fois le combat engagé.
  */
 
 export type BattleCell = { x: number; y: number };
@@ -38,9 +35,6 @@ export type BattleDrawPlanEntry = {
   /** Ordre du peintre : le fond et le bas d'abord. */
   sortKey: number;
 };
-
-/** Juste assez du nœud pour choisir son décor — voir `propKindFor`. */
-export type BattleNode = { type: string; isBoss?: boolean; contactBehavior?: string; state?: string };
 
 export type BuildBattlePlanInput = {
   canvasWidth: number;
@@ -61,9 +55,6 @@ export type BuildBattlePlanInput = {
   occupiedCells?: Set<string>;
   hoveredCell?: BattleCell | null;
   pathCells?: Set<string>; // Ajout pour TS2339/TS2353
-  /** Les nœuds non résolus de la salle, par case — mêmes silhouettes qu'en exploration
-   * (`useTerrainDrawPlan`'s prop pass) pour que le plateau de combat ne lise pas comme vidé. */
-  nodesByCell?: Map<string, BattleNode>;
 };
 
 export const battleCellKey = (x: number, y: number): string => `${x},${y}`;
@@ -166,26 +157,6 @@ export function buildBattlePlan(input: BuildBattlePlanInput): BattleDrawPlanEntr
         elevation,
         sortKey,
       });
-
-      // Décor de nœud non résolu — même silhouette qu'en exploration (torche, marchand,
-      // guetteur...) pour qu'une autre rencontre de la salle, pas encore engagée, reste visible
-      // depuis le champ de bataille plutôt que de disparaître dès le premier coup porté.
-      const node = input.nodesByCell?.get(cellKey);
-      if (node && node.state !== 'Resolved') {
-        const prop = propKindFor(node);
-        if (prop) {
-          entries.push({
-            cellKey: `${cellKey}:prop`,
-            x,
-            y,
-            spriteKey: { kind: 'prop', theme: input.theme, prop },
-            screenX,
-            screenY,
-            elevation,
-            sortKey: sortKey + 0.45,
-          });
-        }
-      }
 
       // Les surbrillances se posent juste au-dessus de leur tuile, jamais au-dessus de la
       // suivante — d'où l'incrément fractionnaire.
