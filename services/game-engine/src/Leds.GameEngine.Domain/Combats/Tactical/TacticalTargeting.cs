@@ -105,9 +105,15 @@ public static class TacticalTargeting
     {
         ArgumentNullException.ThrowIfNull(battlefield);
 
+        // A single step of elevation (up OR down) is the everyday case — two adjacent tiles a
+        // stair apart must stay attackable at melee range, or the most ordinary terrain on the
+        // board would make basic attacks miss for a reason no player can see on screen. Only
+        // elevation beyond that first step — a real cliff, two steps or more — actually eats
+        // into range, same idea as the extra reach it takes to close real distance.
         var elevationDifference = Math.Abs(
             battlefield.ElevationAt(origin) - battlefield.ElevationAt(target));
-        if (origin.ManhattanDistanceTo(target) + elevationDifference > range)
+        var elevationPenalty = Math.Max(0, elevationDifference - 1);
+        if (origin.ManhattanDistanceTo(target) + elevationPenalty > range)
             return false;
 
         // A higher attacker has plunging sight over intervening obstacles.
