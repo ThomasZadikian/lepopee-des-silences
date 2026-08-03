@@ -188,4 +188,98 @@ public sealed class SelectRewardItemEnrichmentTests
             p => p.GetItemDefinitionByKeyAsync(It.IsAny<string>(), default),
             Times.Never);
     }
+
+    // Regression: the reward payload carries no tactical fields, so every granted item used to
+    // fall back to TacticalRange 1 — usable only on an adjacent ally, which made "heal a
+    // teammate who isn't standing next to me" impossible in practice (see RunItem.Create).
+    [Fact]
+    public async Task Handle_ShouldGrantAUsableTacticalRange_ForASingleAllyTargetedItem()
+    {
+        var room = TestGameEngineFactory.CreateThresholdRoom();
+        var run = Run.StartNew(
+            playerId: Guid.NewGuid(),
+            seed: "seed-tactical-range",
+            generatorVersion: "gen-test",
+            markovMatrixVersion: "markov-test",
+            initialRoom: room,
+            startedAt: DateTimeOffset.UtcNow);
+        var factory = CreateFactory();
+        var offer = factory.CreateCombatRewardOffer(RewardSource.Combat, Domain.Nodes.NodeEventType.Combat, (int)RiskTier.Tendu);
+        run.SetPendingRewardOffer(offer.Id);
+
+        var runRepo = new Mock<IRunRepository>();
+        runRepo.Setup(r => r.GetByIdAsync(run.Id, default)).ReturnsAsync(run);
+
+        var rewardRepo = new Mock<IRewardOfferRepository>();
+        rewardRepo.Setup(r => r.GetByIdAsync(offer.Id, default)).ReturnsAsync(offer);
+
+        var catalogGateway = new Mock<ICatalogContentGateway>();
+        catalogGateway
+            .Setup(p => p.GetItemDefinitionByKeyAsync("item.consumable.minor-heal", default))
+            .ReturnsAsync(Result<CatalogItemDefinitionSnapshot>.Success(new CatalogItemDefinitionSnapshot(
+                "item.consumable.minor-heal", "1.0", "Baume", "Soin", null,
+                "Consumable", "Heal", "Common", "UseInCombat", "RuntimeRunOnly",
+                "Additive", 99, true, true, null,
+                // Matches CatalogSeedRunner.UpsertItemAsync's now-corrected default for a
+                // usable-in-combat consumable — see the "Handle_ShouldNotEnrich..." tests
+                // above for the case where the catalog lookup fails and RunItem.Create's own
+                // fallback default (also bumped) is what actually reaches the player.
+                TacticalRange: 4)));
+
+        var handler = new SelectRewardCommandHandler(
+            runRepo.Object, rewardRepo.Object, catalogGateway.Object, Mock.Of<IPlayerProfileGateway>());
+
+        var itemChoice = offer.Choices.First(c => c.RewardType == RewardType.TemporaryItem);
+
+        await handler.Handle(
+            new SelectRewardCommand(run.Id.Value, itemChoice.Id.Value),
+            default);
+
+        var addedItem = run.RunItems.Last();
+        addedItem.BattleTargetingType.Should().Be("SingleAlly");
+        addedItem.TacticalRange.Should().BeGreaterThan(1);
+    }
+
+    // Regression: items granted through "reward.item.default" (item nodes, merchant) have no
+    // matching catalog ItemDefinition row at all — GetItemDefinitionByKeyAsync always fails for
+    // them, so enrichment never runs and RunItem.Create's own fallback default is what actually
+    // reaches the player. That fallback used to be TacticalRange 1 (see RunItem.Create).
+    [Fact]
+    public async Task Handle_ShouldStillGrantAUsableTacticalRange_WhenCatalogEnrichmentFails()
+    {
+        var room = TestGameEngineFactory.CreateThresholdRoom();
+        var run = Run.StartNew(
+            playerId: Guid.NewGuid(),
+            seed: "seed-tactical-range-no-catalog",
+            generatorVersion: "gen-test",
+            markovMatrixVersion: "markov-test",
+            initialRoom: room,
+            startedAt: DateTimeOffset.UtcNow);
+        var factory = CreateFactory();
+        var offer = factory.CreateCombatRewardOffer(RewardSource.Combat, Domain.Nodes.NodeEventType.Combat, (int)RiskTier.Tendu);
+        run.SetPendingRewardOffer(offer.Id);
+
+        var runRepo = new Mock<IRunRepository>();
+        runRepo.Setup(r => r.GetByIdAsync(run.Id, default)).ReturnsAsync(run);
+
+        var rewardRepo = new Mock<IRewardOfferRepository>();
+        rewardRepo.Setup(r => r.GetByIdAsync(offer.Id, default)).ReturnsAsync(offer);
+
+        var catalogGateway = new Mock<ICatalogContentGateway>();
+        catalogGateway
+            .Setup(p => p.GetItemDefinitionByKeyAsync(It.IsAny<string>(), default))
+            .ReturnsAsync(Result<CatalogItemDefinitionSnapshot>.Failure(Error.Create("catalog.item_definition_not_found", "not found")));
+
+        var handler = new SelectRewardCommandHandler(
+            runRepo.Object, rewardRepo.Object, catalogGateway.Object, Mock.Of<IPlayerProfileGateway>());
+
+        var itemChoice = offer.Choices.First(c => c.RewardType == RewardType.TemporaryItem);
+
+        await handler.Handle(
+            new SelectRewardCommand(run.Id.Value, itemChoice.Id.Value),
+            default);
+
+        var addedItem = run.RunItems.Last();
+        addedItem.TacticalRange.Should().BeGreaterThan(1);
+    }
 }

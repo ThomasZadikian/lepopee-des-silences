@@ -156,7 +156,14 @@ public sealed class RunItem
             containerCapacity: containerCapacity,
             isLiquid: isLiquid,
             containedLiquidDefinitionKey: null,
-            tacticalRange: 1,
+            // Every current caller (reward payloads, NPC grants, devtools) has no per-item
+            // tactical data to pass — the reward payload format doesn't carry it (see
+            // RewardOfferFactory's "reward.item.default" comment). Range 1 left a support item
+            // (BattleTargetingType "SingleAlly") usable only on an adjacent ally, which in
+            // practice meant "cannot select the ally I actually want to heal" as soon as the
+            // party wasn't standing shoulder to shoulder. 4 keeps it a deliberate throw across
+            // part of the battlefield rather than the whole map, without requiring adjacency.
+            tacticalRange: 4,
             tacticalAreaShape: "Single",
             requiresLineOfSight: false,
             groundRoomId: null,

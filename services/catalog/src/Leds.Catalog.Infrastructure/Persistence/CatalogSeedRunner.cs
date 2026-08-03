@@ -4668,6 +4668,11 @@ public sealed partial class CatalogSeedRunner
                 ReadablePagesJson = readablePagesJson,
                 Price = 0,
                 BaseWeight = 1,
+                // Left unset, TacticalRange defaults to 1 (see ItemDefinitionEntity) — usable
+                // only on an adjacent cell. For a SingleAlly-targeted item (any heal/guard/
+                // restore consumable) that meant "cannot select the ally I actually want to
+                // target" as soon as the party wasn't standing shoulder to shoulder.
+                TacticalRange = usableInCombat ? 4 : 1,
                 CreatedAtUtc = now,
                 UpdatedAtUtc = now
             });
