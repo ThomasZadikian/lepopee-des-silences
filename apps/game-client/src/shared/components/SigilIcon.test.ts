@@ -123,6 +123,11 @@ describe('SigilIcon', () => {
     expect(wrapper.html()).toContain('path');
   });
 
+  it('renders vitalite sigil (heart + pulse)', () => {
+    const wrapper = mountIcon('vitalite');
+    expect(wrapper.findAll('path').length).toBe(2);
+  });
+
   it('renders fallback for unknown kind', () => {
     const wrapper = mountIcon('unknown-kind');
     expect(wrapper.html()).toContain('circle');

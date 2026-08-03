@@ -146,6 +146,12 @@ const props = withDefaults(defineProps<{
       <path d="M9 10.5 a3 3 0 0 0 6 0" />
     </template>
 
+    <!-- vitalité : cœur + pouls -->
+    <template v-else-if="props.kind === 'vitalite'">
+      <path d="M12 20 C6 15.5 3 12 3 8.4 A4.4 4.4 0 0 1 12 6.8 A4.4 4.4 0 0 1 21 8.4 C21 12 18 15.5 12 20 Z" />
+      <path d="M6.5 11.5 H9.5 L11 9 L13 14 L14.5 11.5 H17.5" />
+    </template>
+
     <!-- fallback générique -->
     <template v-else>
       <circle cx="12" cy="12" r="8" stroke-dasharray="2.5 4" opacity="0.85" />

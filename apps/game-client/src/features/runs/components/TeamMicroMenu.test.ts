@@ -33,16 +33,22 @@ describe('TeamMicroMenu', () => {
     document.body.innerHTML = '';
   });
 
-  it('renders one button per destination', () => {
+  // The live team-status button (État de l'équipe) only shows while not in combat — with no
+  // run loaded at all, gameplayPhase resolves to 'Loading' (not 'Combat'), so it renders by
+  // default here, ahead of the five destination buttons.
+
+  it('renders the vitals button plus one per destination', () => {
     const wrapper = mountMenu();
     const buttons = wrapper.findAll('.micro-menu__btn');
-    expect(buttons).toHaveLength(5);
+    expect(buttons).toHaveLength(6);
   });
 
   it('gives each button a tooltip label', () => {
     const wrapper = mountMenu();
     const titles = wrapper.findAll('.micro-menu__btn').map((btn) => btn.attributes('title'));
-    expect(titles).toEqual(['Équipe', 'Statistiques', 'Grimoire', 'Équipement', 'La Besace']);
+    expect(titles).toEqual([
+      "État de l'équipe", 'Équipe', 'Statistiques', 'Grimoire', 'Équipement', 'La Besace',
+    ]);
   });
 
   it('shows no modal by default', () => {
@@ -52,45 +58,45 @@ describe('TeamMicroMenu', () => {
 
   it('opens the Équipe page as a modal overlay instead of navigating', async () => {
     const wrapper = mountMenu();
-    await wrapper.findAll('.micro-menu__btn')[0].trigger('click');
+    await wrapper.findAll('.micro-menu__btn')[1].trigger('click');
     expect(document.querySelector('.stub-team-page')).not.toBeNull();
   });
 
   it('opens the Statistiques page as a modal overlay', async () => {
     const wrapper = mountMenu();
-    await wrapper.findAll('.micro-menu__btn')[1].trigger('click');
+    await wrapper.findAll('.micro-menu__btn')[2].trigger('click');
     expect(document.querySelector('.stub-stats-page')).not.toBeNull();
   });
 
   it('opens the Grimoire page as a modal overlay', async () => {
     const wrapper = mountMenu();
-    await wrapper.findAll('.micro-menu__btn')[2].trigger('click');
+    await wrapper.findAll('.micro-menu__btn')[3].trigger('click');
     expect(document.querySelector('.stub-grimoire-page')).not.toBeNull();
   });
 
   it('opens the Équipement page as a modal overlay', async () => {
     const wrapper = mountMenu();
-    await wrapper.findAll('.micro-menu__btn')[3].trigger('click');
+    await wrapper.findAll('.micro-menu__btn')[4].trigger('click');
     expect(document.querySelector('.stub-equipment-page')).not.toBeNull();
   });
 
   it('opens the Besace page as a modal overlay', async () => {
     const wrapper = mountMenu();
-    await wrapper.findAll('.micro-menu__btn')[4].trigger('click');
+    await wrapper.findAll('.micro-menu__btn')[5].trigger('click');
     expect(document.querySelector('.stub-besace-page')).not.toBeNull();
   });
 
   it('marks the button for the currently open modal as active', async () => {
     const wrapper = mountMenu();
     const buttons = wrapper.findAll('.micro-menu__btn');
-    await buttons[0].trigger('click');
-    expect(buttons[0].classes()).toContain('micro-menu__btn--active');
-    expect(buttons[1].classes()).not.toContain('micro-menu__btn--active');
+    await buttons[1].trigger('click');
+    expect(buttons[1].classes()).toContain('micro-menu__btn--active');
+    expect(buttons[2].classes()).not.toContain('micro-menu__btn--active');
   });
 
   it('closes the modal when PageOverlayModal emits close', async () => {
     const wrapper = mountMenu();
-    await wrapper.findAll('.micro-menu__btn')[0].trigger('click');
+    await wrapper.findAll('.micro-menu__btn')[1].trigger('click');
     expect(document.querySelector('.pom-backdrop')).not.toBeNull();
 
     const closeBtn = document.querySelector('.pom-close') as HTMLButtonElement;
@@ -102,6 +108,25 @@ describe('TeamMicroMenu', () => {
   it('hides the DevTools entry when devtools are disabled (the default)', () => {
     const wrapper = mountMenu();
     expect(wrapper.find('.micro-menu__btn--devtools').exists()).toBe(false);
+  });
+
+  // ── État de l'équipe: opens the run's live PartyDrawer (rendered by RunPage.vue) via the
+  // shared gameUi store, instead of the persistent character sheet the other buttons open. ──
+
+  it('toggles the party drawer flag in the shared UI store', async () => {
+    const wrapper = mountMenu();
+    const { useGameUiStore } = await import('../../../shared/stores/useGameUiStore');
+    const uiStore = useGameUiStore();
+
+    const vitalsButton = wrapper.findAll('.micro-menu__btn')[0];
+    expect(uiStore.activeDrawer).toBeNull();
+
+    await vitalsButton.trigger('click');
+    expect(uiStore.activeDrawer).toBe('party');
+    expect(vitalsButton.classes()).toContain('micro-menu__btn--active');
+
+    await vitalsButton.trigger('click');
+    expect(uiStore.activeDrawer).toBeNull();
   });
 });
 

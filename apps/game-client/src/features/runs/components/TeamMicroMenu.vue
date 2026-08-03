@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { defineAsyncComponent, ref } from 'vue';
+import { computed, defineAsyncComponent, ref } from 'vue';
 import SigilIcon from '../../../shared/components/SigilIcon.vue';
 import PageOverlayModal from '../../../shared/components/PageOverlayModal.vue';
 import TeamPage from '../../../pages/TeamPage.vue';
@@ -8,6 +8,7 @@ import GrimoirePage from '../../../pages/GrimoirePage.vue';
 import EquipmentPage from '../../../pages/EquipmentPage.vue';
 import BesacePage from '../../../pages/BesacePage.vue';
 import { useRunStore } from '../stores/runStore';
+import { useGameUiStore } from '../../../shared/stores/useGameUiStore';
 import { isDevToolsEnabled } from '../../devtools/utils/isDevToolsEnabled';
 
 type MenuKey = 'equipe' | 'statistiques' | 'grimoire' | 'equipement' | 'besace';
@@ -32,10 +33,30 @@ const DevToolsPanel = devToolsEnabled
   ? defineAsyncComponent(() => import('../../devtools/components/DevToolsPanel.vue'))
   : null;
 const showDevTools = ref(false);
+
+// "Équipe" above opens the persistent character sheet (TeamPage — base stats, loadout).
+// This opens the run's own live vitals (current HP/mana/guard, active modifiers/curses —
+// see PartyDrawer.vue, rendered by RunPage.vue) — the window players were missing during
+// exploration. It already existed behind RunStatusRibbon's collapsed tab; this just puts it
+// somewhere always visible. PartyDrawer is deliberately combat-only-excluded (portraits cover
+// that during combat), so the entry hides there rather than opening a dead drawer.
+const uiStore = useGameUiStore();
+const isExploring = computed(() => runStore.gameplayPhase !== 'Combat');
 </script>
 
 <template>
   <nav class="micro-menu" aria-label="Menu de gestion du personnage">
+    <button
+      v-if="isExploring"
+      type="button"
+      class="micro-menu__btn"
+      :class="{ 'micro-menu__btn--active': uiStore.activeDrawer === 'party' }"
+      title="État de l'équipe"
+      @click="uiStore.toggleParty()"
+    >
+      <SigilIcon kind="vitalite" :size="20" />
+    </button>
+
     <button
       v-for="entry in entries"
       :key="entry.key"
