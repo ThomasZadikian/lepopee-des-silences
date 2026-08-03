@@ -47,6 +47,14 @@ export const TURN_TRANSITION_MS = 300;
 export const TICK_SETTLE_MS = 400;
 
 /**
+ * Pause entre deux impacts d'un même tick — sans elle, plusieurs DoT/HoT empilés sur la même
+ * cible (ou deux cibles différentes touchées à l'instant du même tick) font s'envoler leurs
+ * chiffres au même pixel et au même instant, et l'un efface visuellement l'autre. Chaque
+ * impact se lit donc l'un après l'autre plutôt que tous à la fois. // BALANCE KNOB
+ */
+export const TICK_IMPACT_STAGGER_MS = 260;
+
+/**
  * Durée pendant laquelle la zone d'un geste adverse reste allumée avant qu'il ne parte.
  *
  * C'est un temps de lecture, pas une temporisation : sans lui, l'adversaire se déplace et
@@ -427,8 +435,10 @@ export function useCombatPlayback() {
         previousActorId = event.actorId;
 
         if (event.kind === 'Tick') {
-          const at = now();
-          for (const impact of event.impacts) {
+          const tickImpacts = event.impacts;
+          for (let i = 0; i < tickImpacts.length; i += 1) {
+            const impact = tickImpacts[i];
+            const at = now();
             const targetIsAlly = allyIds.has(impact.combatantId);
             const guardAbsorbed = impact.guardAbsorbed ?? 0;
             if (guardAbsorbed > 0) pushGuardFloat(impact.x, impact.y, guardAbsorbed, at);
@@ -445,6 +455,9 @@ export function useCombatPlayback() {
               };
               pushImpact(impact.x, impact.y, targetIsAlly, at);
             }
+            // Plusieurs ticks à la fois (plusieurs DoT/HoT empilés) se lisent l'un après
+            // l'autre, jamais tous d'un coup au même pixel — voir TICK_IMPACT_STAGGER_MS.
+            if (i < tickImpacts.length - 1) await wait(TICK_IMPACT_STAGGER_MS);
           }
           await wait(TICK_SETTLE_MS);
           continue;

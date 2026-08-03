@@ -4,6 +4,7 @@ import {
   BASE_STEP_MS,
   dynamicStepDurationMs,
   ENEMY_STEP_MULTIPLIER,
+  TICK_IMPACT_STAGGER_MS,
   TICK_SETTLE_MS,
   TURN_TRANSITION_MS,
   useCombatPlayback,
@@ -409,5 +410,43 @@ describe('tick de DoT/HoT — pas de décision d’acteur, mais un chiffre s’e
     );
 
     expect(performance.now() - start).toBeGreaterThanOrEqual(TICK_SETTLE_MS - 20);
+  });
+
+  it('fait s’envoler un chiffre distinct pour chaque impact d’un même tick, plutôt que de les fusionner', async () => {
+    const playback = useCombatPlayback();
+
+    await playback.play(
+      [tickEvent({
+        impacts: [
+          { combatantId: enemyId, x: 2, y: 2, vitalityDelta: 5, defeated: false, missed: false },
+          { combatantId: enemyId, x: 2, y: 2, vitalityDelta: 3, defeated: false, missed: false },
+        ],
+      })],
+      { allies: [], enemies: [{ combatant: { id: enemyId } }] } as never,
+      () => 0,
+    );
+
+    expect(playback.floats.value).toHaveLength(2);
+    expect(playback.floats.value.map((f) => f.text)).toEqual(['−5', '−3']);
+  });
+
+  it('attend TICK_IMPACT_STAGGER_MS entre deux impacts du même tick avant d’enchaîner', async () => {
+    const playback = useCombatPlayback();
+    const start = performance.now();
+
+    await playback.play(
+      [tickEvent({
+        impacts: [
+          { combatantId: enemyId, x: 2, y: 2, vitalityDelta: 5, defeated: false, missed: false },
+          { combatantId: enemyId, x: 2, y: 2, vitalityDelta: 3, defeated: false, missed: false },
+        ],
+      })],
+      { allies: [], enemies: [{ combatant: { id: enemyId } }] } as never,
+      () => 0,
+    );
+
+    expect(performance.now() - start).toBeGreaterThanOrEqual(
+      TICK_IMPACT_STAGGER_MS + TICK_SETTLE_MS - 20,
+    );
   });
 });
