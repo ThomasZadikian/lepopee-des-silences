@@ -1641,12 +1641,40 @@ function renderLoop(timestamp: number) {
 }
 
 // Le combat s'achève côté serveur ; la page parente décide de la suite (récompense, sortie).
+//
+// Le statut final (combat.status) arrive dans la même réponse que la chronologie qui y mène —
+// et le store l'applique AVANT que cette chronologie n'ait fini de se jouer (voir
+// useTacticalCombatStore.execute : setCombat() puis seulement ensuite playback.play()). Émettre
+// l'événement dès que le statut change ferait donc basculer la page parente vers l'écran de fin
+// pendant que le coup fatal du tour ennemi est encore en train de s'animer — la run se refermait
+// avant même que l'ennemi n'ait eu le temps d'agir à l'écran. On attend que playback.isPlaying
+// retombe à false, quel que soit l'ordre dans lequel les deux watchers ci-dessous se déclenchent.
+let pendingTerminalStatus: 'Completed' | 'Failed' | 'Escaped' | null = null;
+
+function emitTerminalStatus(status: 'Completed' | 'Failed' | 'Escaped') {
+  if (status === 'Completed') emit('combat-completed');
+  if (status === 'Failed') emit('combat-failed');
+  if (status === 'Escaped') emit('combat-escaped');
+}
+
 watch(
   () => store.combat?.status,
   (status) => {
-    if (status === 'Completed') emit('combat-completed');
-    if (status === 'Failed') emit('combat-failed');
-    if (status === 'Escaped') emit('combat-escaped');
+    if (status !== 'Completed' && status !== 'Failed' && status !== 'Escaped') return;
+    if (store.playback.isPlaying) {
+      pendingTerminalStatus = status;
+    } else {
+      emitTerminalStatus(status);
+    }
+  },
+);
+
+watch(
+  () => store.playback.isPlaying,
+  (isPlaying) => {
+    if (isPlaying || !pendingTerminalStatus) return;
+    emitTerminalStatus(pendingTerminalStatus);
+    pendingTerminalStatus = null;
   },
 );
 
@@ -1880,10 +1908,9 @@ onBeforeUnmount(() => {
           <span v-if="unit.combatant.focus !== undefined" class="tbattle__portrait-focus">
             Focus {{ unit.combatant.focus }}
           </span>
-          <div
-            v-if="displayedStatusEffects(unit).length"
-            class="tbattle__portrait-statuses"
-          >
+          <!-- Toujours rendu, même vide : sans quoi la carte change de hauteur chaque fois
+               qu'un statut apparaît ou expire, et pousse/écrase les barres au-dessus. -->
+          <div class="tbattle__portrait-statuses">
             <StatusEffectToken
               v-for="status in displayedStatusEffects(unit)"
               :key="status.key"
@@ -2459,8 +2486,12 @@ onBeforeUnmount(() => {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
+  align-content: flex-start;
   gap: 2px;
   margin-top: 2px;
+  /* Réservé même vide (un StatusEffectToken à px=20 fait 20px) — la carte ne doit jamais
+     changer de hauteur au gré des statuts qui apparaissent ou expirent. */
+  min-height: 20px;
 }
 
 .tbattle__controls {
