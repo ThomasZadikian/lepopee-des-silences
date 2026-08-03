@@ -340,6 +340,24 @@ describe('useRunStore actions', () => {
     expect(store.gameplayPhase).toBe('Completed');
   });
 
+  it('grantPermanentItem sends a single-item request without resolving the end-of-run selection', async () => {
+    // Equipping a run-found weapon mid-run grants it right away (see BesacePage's
+    // toggleEquip) — this must never mark the end-of-run ceremony as resolved, or every
+    // OTHER eligible item found later this run would silently lose its keepsake screen.
+    const store = useRunStore();
+    store.currentRun = { id: 'run-1', status: 'Active' } as any;
+
+    vi.mocked(runApi.confirmPermanentItemSelection).mockResolvedValue({
+      runId: 'run-1',
+      confirmedItemDefinitionKeys: ['weapon.lame-seuil'],
+    });
+
+    await store.grantPermanentItem('weapon.lame-seuil');
+
+    expect(runApi.confirmPermanentItemSelection).toHaveBeenCalledWith('run-1', ['weapon.lame-seuil']);
+    expect(store.isPermanentItemSelectionResolved).toBe(false);
+  });
+
   it('continueAfterOutcome dismisses the outcome without calling progressRun when combat is already active', async () => {
     const store = useRunStore();
     // Him'Lit (FinalBoss) starts combat in the same response as his taunt lines —

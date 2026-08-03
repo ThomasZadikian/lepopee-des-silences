@@ -36,9 +36,9 @@ const isReaderOpen = ref(false);
 const selectedCharacterId = ref('');
 
 onMounted(async () => {
-  if (!playerStore.profile) {
-    void playerStore.loadProfile();
-  }
+  // Toujours rafraîchi à l'ouverture : un profil déjà en cache peut dater d'avant qu'un
+  // objet trouvé plus tôt cette run n'ait rejoint le sac permanent (voir grantPermanentItem).
+  void playerStore.loadProfile();
   try {
     const { items: catalogItems } = await itemsApi.listActive();
     const byKey: Record<string, string[]> = {};
@@ -91,8 +91,10 @@ const selectedItemEquipSlot = computed(() =>
 );
 
 // Equipping requires the item to already be in the player's permanent backpack
-// (see PlayerProfile.EquipItem, server-side) — a freshly-found run item only
-// gets there if it's kept as a permanent keepsake at the end of this run.
+// (see PlayerProfile.EquipItem, server-side) — a freshly-found run item normally only
+// gets there through the end-of-run keepsake ceremony, but toggleEquip() grants it right
+// away the moment the player actually tries to equip it (see grantPermanentItem), so this
+// no longer gates the equip button — only informs the player what equipping will also do.
 const selectedItemIsPermanentlyOwned = computed(() =>
   Boolean(
     selectedItem.value &&
@@ -129,6 +131,18 @@ async function toggleEquip() {
     await playerStore.unequipItem(selectedCharacterId.value, itemKey);
   } else {
     if (isTargetSlotFull.value) return;
+
+    // Equipping has always required permanent ownership on the server (see
+    // PlayerProfile.EquipItem) — a run-found item only got there through the end-of-run
+    // keepsake ceremony. Granting it here, right before equipping, is what makes gear found
+    // THIS run usable THIS run: same endpoint that ceremony uses, just fired for one item
+    // the moment it's actually needed instead of waiting for the run to end. No-op if the
+    // item is already permanently owned.
+    if (!selectedItemIsPermanentlyOwned.value) {
+      await runStore.grantPermanentItem(itemKey);
+      await playerStore.loadProfile();
+    }
+
     await playerStore.equipItem(selectedCharacterId.value, itemKey);
   }
 
@@ -376,35 +390,33 @@ async function readGrimoire() {
               </button>
 
               <template v-if="selectedItemEquipSlot">
-                <p v-if="!selectedItemIsPermanentlyOwned" class="besace-sheet__unusable">
-                  Cet objet rejoindra ton sac permanent si tu le conserves à la fin de la
-                  traversée — équipe-le alors depuis l'onglet Équipement.
+                <p v-if="!selectedItemIsPermanentlyOwned" class="besace-sheet__warning">
+                  L'équiper le fera rejoindre ton sac permanent — il te suivra dans tes
+                  prochaines traversées aussi.
                 </p>
-                <template v-else>
-                  <label class="besace-sheet__target">
-                    Porteur
-                    <select v-model="selectedCharacterId">
-                      <option
-                        v-for="member in runStore.currentRun?.party?.members ?? []"
-                        :key="member.id"
-                        :value="member.id"
-                      >
-                        {{ member.displayName }}
-                      </option>
-                    </select>
-                  </label>
-                  <button
-                    class="besace-action-btn besace-action-btn--read"
-                    :class="{ 'besace-action-btn--use': isEquippedOnTarget }"
-                    :disabled="playerStore.isLoading || !selectedCharacterId || (!isEquippedOnTarget && isTargetSlotFull)"
-                    @click="toggleEquip"
-                  >
-                    {{ isEquippedOnTarget ? 'Déséquiper' : `Équiper (${equipSlotLabels[selectedItemEquipSlot]})` }}
-                  </button>
-                  <p v-if="!isEquippedOnTarget && isTargetSlotFull" class="besace-sheet__unusable">
-                    Emplacement {{ equipSlotLabels[selectedItemEquipSlot] }} déjà occupé sur ce personnage.
-                  </p>
-                </template>
+                <label class="besace-sheet__target">
+                  Porteur
+                  <select v-model="selectedCharacterId">
+                    <option
+                      v-for="member in runStore.currentRun?.party?.members ?? []"
+                      :key="member.id"
+                      :value="member.id"
+                    >
+                      {{ member.displayName }}
+                    </option>
+                  </select>
+                </label>
+                <button
+                  class="besace-action-btn besace-action-btn--read"
+                  :class="{ 'besace-action-btn--use': isEquippedOnTarget }"
+                  :disabled="playerStore.isLoading || !selectedCharacterId || (!isEquippedOnTarget && isTargetSlotFull)"
+                  @click="toggleEquip"
+                >
+                  {{ isEquippedOnTarget ? 'Déséquiper' : `Équiper (${equipSlotLabels[selectedItemEquipSlot]})` }}
+                </button>
+                <p v-if="!isEquippedOnTarget && isTargetSlotFull" class="besace-sheet__unusable">
+                  Emplacement {{ equipSlotLabels[selectedItemEquipSlot] }} déjà occupé sur ce personnage.
+                </p>
               </template>
               <button
                 v-if="selectedItemPages"

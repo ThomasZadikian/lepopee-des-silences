@@ -221,6 +221,23 @@ export const useRunStore = defineStore('run', () => {
     }
   }
 
+  /**
+   * Grants ONE run-found item as a permanent keepsake right away, outside of the end-of-run
+   * selection ceremony — the shortcut behind "équiper un objet trouvé cette run" (Besace calls
+   * this right before equipItem, since equipping has always required permanent ownership on
+   * the server). Deliberately does NOT touch `isPermanentItemSelectionResolved`: unlike
+   * `confirmPermanentItemSelection` below, this can fire many times over the course of a run and
+   * must never short-circuit the real end-of-run screen for every OTHER eligible item found
+   * later. Same underlying endpoint, same idempotent domain rule (no-op if already owned).
+   */
+  async function grantPermanentItem(itemDefinitionKey: string) {
+    if (!currentRun.value) return;
+
+    await execute(async () => {
+      await runApi.confirmPermanentItemSelection(currentRun.value!.id, [itemDefinitionKey]);
+    });
+  }
+
   async function confirmPermanentItemSelection(itemDefinitionKeys: string[]) {
     if (!currentRun.value) return;
 
@@ -1025,6 +1042,7 @@ export const useRunStore = defineStore('run', () => {
     loadInterlude,
     enterNextRoom,
     confirmPermanentItemSelection,
+    grantPermanentItem,
     removePalaceLaw,
     wagerNode,
     setRoomRiskTier,
