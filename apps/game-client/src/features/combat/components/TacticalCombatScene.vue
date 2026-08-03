@@ -2052,7 +2052,16 @@ onBeforeUnmount(() => {
               <span class="tbattle__skill-meta">{{ itemMeta(item) }}</span>
             </button>
           </template>
-          <span v-else class="tbattle__skills-placeholder" />
+          <!-- Même structure qu'un vrai bouton de compétence (nom + méta + coût), juste
+               rendue invisible — pas un simple espace réservé approximatif. Sans ça, le
+               panneau change de hauteur à chaque bascule joueur/ennemi : les vrais boutons
+               empilent 3 lignes de texte, un espace réservé plus court les faisait
+               "sauter" au tour suivant. -->
+          <div v-else class="tbattle__skill tbattle__skill--phantom" aria-hidden="true">
+            <span class="tbattle__skill-name">&nbsp;</span>
+            <span class="tbattle__skill-meta">&nbsp;</span>
+            <span class="tbattle__skill-cost">&nbsp;</span>
+          </div>
         </div>
 
         <Teleport to="body">
@@ -2602,7 +2611,7 @@ onBeforeUnmount(() => {
 
 .tbattle__status small { opacity: 0.6; }
 
-.tbattle__skills { display: flex; gap: 0.50rem; flex-wrap: wrap; align-items: center; min-height: calc(0.5rem + 0.78rem + 0.62rem + 0.1rem); }
+.tbattle__skills { display: flex; gap: 0.50rem; flex-wrap: wrap; align-items: center; }
 
 .tbattle__skill,
 .tbattle__end-turn {
@@ -2632,6 +2641,7 @@ onBeforeUnmount(() => {
 .tbattle__skill-meta { font-size: 0.62rem; opacity: 0.55; font-variant-numeric: tabular-nums; }
 .tbattle__skill-cost { font-size: 0.62rem; color: #e6c273; font-variant-numeric: tabular-nums; }
 .tbattle__skill-warning { font-size: 0.62rem; color: #e0605e; font-variant-numeric: tabular-nums; }
+.tbattle__skill--phantom { visibility: hidden; }
 
 .tbattle__end-turn {
   font-weight: 600;
