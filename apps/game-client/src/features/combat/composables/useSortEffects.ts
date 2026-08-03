@@ -164,3 +164,18 @@ export function sortIdForSkillKey(skillKey: string): string | null {
   };
   return skillToSortMap[skillKey] ?? null;
 }
+
+/**
+ * Repli générique quand aucune peinture dédiée n'existe pour ce sort (voir sorts.ts : le
+ * catalogue en compte 138, 19 sont peints à la main) — correct sur sa forme et sa couleur
+ * (physique/magique) plutôt que silencieux. `category`/`tacticalAreaShape` viennent de la
+ * définition catalogue du sort, pas du combattant qui l'a lancé : la forme est une propriété
+ * du sort, pas de qui le joue. `TacticalAreaShape` côté backend n'a que 4 valeurs (Single,
+ * Cross, Diamond, Map), donc ce repli ne peut jamais désigner un `generique-*` absent de
+ * sorts.ts.
+ */
+export function fallbackSortId(category: string | undefined, tacticalAreaShape: string | undefined): string {
+  const flavor = category === 'Magic' ? 'magique' : 'physique';
+  const shape = (tacticalAreaShape ?? 'Single').toLowerCase();
+  return `generique-${flavor}-${shape}`;
+}

@@ -783,6 +783,30 @@ export const SORTS = {
       }
     },
   },
+
+  // ═══ GÉNÉRIQUE — le vocabulaire lui-même, pour les ~117 sorts du catalogue qui n'ont pas
+  // encore leur peinture dédiée (voir la note en tête de fichier : 138 sorts, 21 peints). Sans
+  // ceci un sort non couvert s'exécutait en silence visuel complet ; un flash générique, correct
+  // sur sa forme et sa couleur (physique/magique), bat un geste qui ne se voit pas du tout —
+  // le remplacer par un effet dédié reste la bonne prochaine étape, au cas par cas.
+  ...Object.fromEntries(['single', 'cross', 'diamond', 'map'].flatMap((shape) => (
+    [['physique', '#c8394a'], ['magique', '#8b9dcf']].map(([flavor, col]) => [
+      `generique-${flavor}-${shape}`,
+      {
+        name: `Geste ${flavor === 'physique' ? 'physique' : 'magique'} générique`,
+        caster: null, side: null, registre: null, shape, range: 0, dmg: 0, col,
+        note: 'Repli générique : pas encore de peinture dédiée pour ce sort.',
+        fx(k) {
+          const { ctx, cx, cy, ux, uy, p, d, center } = k;
+          const lp = local(p, d, 0.12);
+          const e = env(lp, 0.14, 0.2);
+          groundGlow(ctx, cx, cy, ux, uy, k.col, (center ? 0.4 : 0.24) * e, 1.4);
+          groundRing(ctx, cx, cy, ux, uy, 0.3 + p * 2.4, k.col, 0.4 * (1 - p), 1.8);
+          if (center) shaft(ctx, cx, cy, ux, uy, ux * 1.2 * e, k.col, 0.22 * e, 0.36);
+        },
+      },
+    ])
+  ))),
 };
 
 export const SORT_IDS = Object.keys(SORTS);

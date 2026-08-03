@@ -51,7 +51,7 @@ import { skillsApi } from '../../party/api/skillsApi';
 import type { SkillDefinitionView } from '../../party/types/skillTypes';
 import { combatantSprite, fallbackPropFor } from '../composables/useCombatantSprites';
 import { FLOAT_MS, FLOAT_RISE_PX, useCombatPlayback } from '../composables/useCombatPlayback';
-import { sortIdForSkillKey, useSortEffects } from '../composables/useSortEffects';
+import { fallbackSortId, sortIdForSkillKey, useSortEffects } from '../composables/useSortEffects';
 import { ticksToTurns } from '../constants/combatTime';
 import {
   tacticalSkillProfile,
@@ -1429,8 +1429,8 @@ function paintSorts(ctx: CanvasRenderingContext2D) {
 
   const pending = store.playback.consumeSorts();
   for (const sort of pending) {
-    const sortId = sortIdForSkillKey(sort.skillKey);
-    if (!sortId) continue;
+    const def = skillCatalog.value.get(sort.skillKey);
+    const sortId = sortIdForSkillKey(sort.skillKey) ?? fallbackSortId(def?.category, def?.tacticalAreaShape);
 
     sortEffects.launchSort(
       sortId,

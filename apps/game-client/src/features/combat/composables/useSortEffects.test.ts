@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { SORTS } from '../../palace-map/composables/sorts';
-import { sortIdForSkillKey } from './useSortEffects';
+import { fallbackSortId, sortIdForSkillKey } from './useSortEffects';
 
 const MAPPED_SKILLS = [
   'canon.skill.fondations-de-thomas',
@@ -30,5 +30,35 @@ describe('tactical spell effects', () => {
 
   it('does not invent an effect for an unpainted skill', () => {
     expect(sortIdForSkillKey('canon.skill.inconnue')).toBeNull();
+  });
+});
+
+describe('fallbackSortId — repli générique pour les sorts non peints', () => {
+  const shapes = ['Single', 'Cross', 'Diamond', 'Map'] as const;
+  const categories = [
+    { category: 'Magic', flavor: 'magique' },
+    { category: 'Physical', flavor: 'physique' },
+    { category: undefined, flavor: 'physique' },
+  ] as const;
+
+  it.each(shapes.flatMap((shape) => categories.map((c) => [shape, c] as const)))(
+    'maps shape=%s category=%s to a painted generic entry',
+    (shape, { category, flavor }) => {
+      const sortId = fallbackSortId(category, shape);
+
+      expect(sortId).toBe(`generique-${flavor}-${shape.toLowerCase()}`);
+      expect(SORTS).toHaveProperty(sortId);
+    },
+  );
+
+  it('defaults to a physical single-target repli when the shape is missing', () => {
+    const sortId = fallbackSortId(undefined, undefined);
+
+    expect(sortId).toBe('generique-physique-single');
+    expect(SORTS).toHaveProperty(sortId);
+  });
+
+  it('is case-insensitive on the tactical area shape', () => {
+    expect(fallbackSortId('Magic', 'DIAMOND')).toBe('generique-magique-diamond');
   });
 });
