@@ -5,6 +5,7 @@ import { createPinia, setActivePinia } from 'pinia';
 
 import GrimoirePage from './GrimoirePage.vue';
 import { usePlayerStore } from '../features/party/stores/playerStore';
+import { playerApi } from '../features/party/api/playerApi';
 import type { PlayerProfileView } from '../features/party/types/playerTypes';
 
 const mockRouter = { back: vi.fn() };
@@ -66,6 +67,9 @@ describe('GrimoirePage', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
     vi.clearAllMocks();
+    // La page rafraîchit systématiquement le profil à l'ouverture (voir GrimoirePage.vue) —
+    // sans quoi ce mock non résolu écraserait le profil préréglé par chaque test avec undefined.
+    vi.mocked(playerApi.getProfile).mockResolvedValue(baseProfile());
   });
 
   it('shows the page title and the Grimoire content once loaded', async () => {
@@ -84,5 +88,23 @@ describe('GrimoirePage', () => {
 
     await wrapper.find('.grimoire-page__back').trigger('click');
     expect(mockRouter.back).toHaveBeenCalledOnce();
+  });
+
+  it('refreshes a stale cached profile on mount, instead of leaving a just-recruited companion invisible', async () => {
+    // A profile loaded earlier this session (e.g. before a companion NPC event resolved)
+    // must not survive as the truth once this page is opened — see GrimoirePage.vue.
+    usePlayerStore().profile = baseProfile();
+    const freshProfile = baseProfile();
+    freshProfile.characters.push({
+      ...freshProfile.characters[0],
+      id: 'char-2',
+      displayName: 'La Compagne',
+    });
+    vi.mocked(playerApi.getProfile).mockResolvedValue(freshProfile);
+
+    const wrapper = mount(GrimoirePage);
+    await flushPromises();
+
+    expect(wrapper.find('.character-picker').exists()).toBe(true);
   });
 });

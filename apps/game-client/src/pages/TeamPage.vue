@@ -14,7 +14,10 @@ const props = defineProps<{ embedded?: boolean }>();
 const characters = computed(() => playerStore.profile?.characters ?? []);
 
 onMounted(async () => {
-  if (!playerStore.profile) await playerStore.loadProfile();
+  // Toujours rafraîchi à l'ouverture : un profil déjà en cache (visite précédente, autre
+  // page) peut dater d'avant qu'un compagnon n'ait été recruté en cours de run — s'arrêter
+  // au premier chargement laissait la liste des personnages figée sur son état d'alors.
+  await playerStore.loadProfile();
 });
 </script>
 

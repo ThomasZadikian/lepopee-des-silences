@@ -5,6 +5,7 @@ import { createPinia, setActivePinia } from 'pinia';
 
 import TeamPage from './TeamPage.vue';
 import { usePlayerStore } from '../features/party/stores/playerStore';
+import { playerApi } from '../features/party/api/playerApi';
 import type { PlayerProfileView } from '../features/party/types/playerTypes';
 
 const mockRouter = { back: vi.fn() };
@@ -58,6 +59,9 @@ describe('TeamPage', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
     vi.clearAllMocks();
+    // La page rafraîchit systématiquement le profil à l'ouverture (voir TeamPage.vue) —
+    // sans quoi ce mock non résolu écraserait le profil préréglé par chaque test avec undefined.
+    vi.mocked(playerApi.getProfile).mockResolvedValue(baseProfile());
   });
 
   it('shows the page title', async () => {
@@ -83,5 +87,23 @@ describe('TeamPage', () => {
 
     await wrapper.find('.team-page__back').trigger('click');
     expect(mockRouter.back).toHaveBeenCalledOnce();
+  });
+
+  it('refreshes a stale cached profile on mount, instead of leaving a just-recruited companion invisible', async () => {
+    // A profile loaded earlier this session (e.g. before a companion NPC event resolved)
+    // must not survive as the truth once this page is opened — see TeamPage.vue.
+    usePlayerStore().profile = baseProfile();
+    const freshProfile = baseProfile();
+    freshProfile.characters.push({
+      ...freshProfile.characters[0],
+      id: 'char-2',
+      displayName: 'La Compagne',
+    });
+    vi.mocked(playerApi.getProfile).mockResolvedValue(freshProfile);
+
+    const wrapper = mount(TeamPage);
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('La Compagne');
   });
 });
