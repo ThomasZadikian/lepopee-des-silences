@@ -266,7 +266,7 @@ export type TacticalImpactDto = {
  * la décision, elle, soit rejouée.
  */
 export type TacticalCombatEventDto = {
-  kind: 'Move' | 'Skill' | 'Item';
+  kind: 'Move' | 'Skill' | 'Item' | 'Tick';
   actorId: string;
   actorName: string;
   path: Array<{ x: number; y: number }>;

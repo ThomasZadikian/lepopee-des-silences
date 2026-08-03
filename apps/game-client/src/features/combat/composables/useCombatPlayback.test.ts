@@ -4,6 +4,7 @@ import {
   BASE_STEP_MS,
   dynamicStepDurationMs,
   ENEMY_STEP_MULTIPLIER,
+  TICK_SETTLE_MS,
   TURN_TRANSITION_MS,
   useCombatPlayback,
 } from './useCombatPlayback';
@@ -245,5 +246,89 @@ describe('coup manqué', () => {
     expect(playback.floats.value[0].text).toBe('Manqué');
     // Rien n'a été percuté : aucune onde ne doit partir de la case.
     expect(playback.impacts.value).toHaveLength(0);
+  });
+});
+
+describe('tick de DoT/HoT — pas de décision d’acteur, mais un chiffre s’envole quand même', () => {
+  const enemyId = '10101010-1010-1010-1010-101010101010';
+  const allyId = '20202020-2020-2020-2020-202020202020';
+
+  const tickEvent = (overrides = {}) => ({
+    kind: 'Tick' as const,
+    actorId: enemyId,
+    actorName: 'Empoisonné',
+    path: [],
+    skillKey: null,
+    skillName: null,
+    targetX: null,
+    targetY: null,
+    telegraphCells: null,
+    impacts: [
+      // Same sign convention as any other impact: positive delta = damage, negative = healed.
+      { combatantId: enemyId, x: 2, y: 2, vitalityDelta: 5, defeated: false, missed: false },
+    ],
+    ...overrides,
+  });
+
+  it('fait s’envoler un chiffre de dégâts pour le tick, sans annonce ni bannière d’action', async () => {
+    const playback = useCombatPlayback();
+
+    const running = playback.play(
+      [tickEvent()],
+      { allies: [{ combatant: { id: allyId } }], enemies: [{ combatant: { id: enemyId } }] } as never,
+      () => 0,
+    );
+
+    // Le tick n'a pas de zone à annoncer : aucun temps de réflexion, aucune bannière — il vient
+    // du même souffle que la transition de tour, pas d'une décision qu'on lirait avant coup.
+    expect(playback.telegraph.value).toBeNull();
+    expect(playback.actionBanner.value).toBeNull();
+
+    await running;
+
+    expect(playback.floats.value).toHaveLength(1);
+    expect(playback.floats.value[0].text).toBe('−5');
+    expect(playback.impacts.value).toHaveLength(1);
+  });
+
+  it('inflige bien le delta à la vitalité affichée, comme un impact normal', async () => {
+    const playback = useCombatPlayback();
+
+    await playback.play(
+      [tickEvent()],
+      { allies: [], enemies: [{ combatant: { id: enemyId, currentVitality: 25 } }] } as never,
+      () => 0,
+    );
+
+    expect(playback.vitalsOf(enemyId, 25)).toBe(25);
+  });
+
+  it('marque un soin de tick en vert avec un signe explicite', async () => {
+    const playback = useCombatPlayback();
+
+    await playback.play(
+      [tickEvent({
+        impacts: [
+          { combatantId: enemyId, x: 2, y: 2, vitalityDelta: -6, defeated: false, missed: false },
+        ],
+      })],
+      { allies: [], enemies: [{ combatant: { id: enemyId } }] } as never,
+      () => 0,
+    );
+
+    expect(playback.floats.value[0].text).toBe('+6');
+  });
+
+  it('marque une pause de lecture après le tick avant d’enchaîner', async () => {
+    const playback = useCombatPlayback();
+    const start = performance.now();
+
+    await playback.play(
+      [tickEvent()],
+      { allies: [], enemies: [{ combatant: { id: enemyId } }] } as never,
+      () => 0,
+    );
+
+    expect(performance.now() - start).toBeGreaterThanOrEqual(TICK_SETTLE_MS - 20);
   });
 });

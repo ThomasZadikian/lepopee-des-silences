@@ -75,4 +75,47 @@ public static class TacticalImpactRecorder
 
         return impacts;
     }
+
+    /// <summary>
+    /// The DoT/HoT ticks a combatant's own activation just resolved (see
+    /// <c>TacticalCombat.LastActivationStatusTicks</c>), as its own timeline event — or null
+    /// when nothing periodic dealt damage or healing this activation. Called right after every
+    /// <c>AdvanceToNextCombatant()</c>, the only place ticks are ever applied.
+    /// </summary>
+    public static TacticalCombatEventDto? BuildTickEvent(Domain.Combats.Tactical.TacticalCombat combat)
+    {
+        if (combat.LastActivationCombatantId is not { } combatantId)
+            return null;
+
+        var damageOrHealing = combat.LastActivationStatusTicks
+            .Where(tick => !tick.Expired
+                && tick.Amount > 0
+                && tick.Kind is Domain.Combats.StatusEffects.StatusEffectKind.DamageOverTime
+                    or Domain.Combats.StatusEffects.StatusEffectKind.HealOverTime)
+            .ToArray();
+        if (damageOrHealing.Length == 0)
+            return null;
+
+        var combatant = combat.Allies.Concat(combat.Enemies)
+            .FirstOrDefault(c => c.Id.Value == combatantId);
+        if (combatant is null)
+            return null;
+
+        var position = combat.PositionOf(combatantId);
+        var impacts = damageOrHealing
+            .Select(tick => new TacticalImpactDto(
+                combatantId,
+                position.X,
+                position.Y,
+                // Same sign convention as every other impact (see TacticalImpactDto: "Vitalité
+                // perdue. Négative pour un soin"): damage over time is a POSITIVE vitality
+                // delta, healing over time the reverse.
+                tick.Kind == Domain.Combats.StatusEffects.StatusEffectKind.DamageOverTime
+                    ? tick.Amount
+                    : -tick.Amount,
+                Defeated: combatant.IsDefeated))
+            .ToArray();
+
+        return TacticalCombatEventDto.Tick(combatantId, combatant.DisplayName, position, impacts);
+    }
 }

@@ -116,6 +116,9 @@ public sealed class TacticalEnemyTurnDriver : ITacticalEnemyTurnDriver
                 break;
 
             combat.AdvanceToNextCombatant();
+            var tick = Runs.TacticalCombat.TacticalImpactRecorder.BuildTickEvent(combat);
+            if (tick is not null)
+                events.Add(tick);
         }
 
         return new TacticalEnemyTurnsResult(log, events);

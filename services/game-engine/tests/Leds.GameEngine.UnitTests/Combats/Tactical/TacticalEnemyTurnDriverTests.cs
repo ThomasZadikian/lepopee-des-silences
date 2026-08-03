@@ -1,7 +1,9 @@
 using FluentAssertions;
+using Leds.GameEngine.Application.Combats.Dtos;
 using Leds.GameEngine.Application.Combats.Effects;
 using Leds.GameEngine.Application.Combats.Tactical;
 using Leds.GameEngine.Domain.Combats;
+using Leds.GameEngine.Domain.Combats.StatusEffects;
 using Leds.GameEngine.Domain.Combats.Tactical;
 using Leds.GameEngine.Domain.Nodes;
 using Leds.GameEngine.Domain.Rooms;
@@ -13,6 +15,42 @@ namespace Leds.GameEngine.UnitTests.Combats.Tactical;
 
 public sealed class TacticalEnemyTurnDriverTests
 {
+    /// <summary>
+    /// A DoT ticking on the SECOND enemy's activation (handed off to mid-chain by the first
+    /// enemy's own end of turn) must surface as its own Tick event — this is what lets the
+    /// client show a floating damage number for a DoT tick with no actor decision behind it,
+    /// same as any other impact (see TacticalImpactRecorder.BuildTickEvent).
+    /// </summary>
+    [Fact]
+    public void PlayWhileEnemyHasInitiative_ShouldSurfaceATickEvent_WhenADotFiresOnAChainedHandoff()
+    {
+        var fast = Combatant.CreateEnemy("enemy.fast", "Rapide", "Skirmisher", 30, speed: 30);
+        var dotted = Combatant.CreateEnemy("enemy.dotted", "Empoisonné", "Guard", 30, speed: 20);
+        var player = Combatant.CreateAlly("player.self", "Ariane", "Bruiser", 40);
+        var combat = CreateCombat(fast, dotted, player);
+
+        // Anchored at currentTick 0 with a one-turn interval: fires the instant `dotted`
+        // activates for the very first time (StatusClockFor is per-combatant, starting at 0).
+        dotted.ApplyStatusEffect(CombatStatusEffect.Create(
+            "test.poison", "Poison", StatusEffectKind.DamageOverTime,
+            currentTick: 0, durationTicks: CombatTime.TicksPerTurn * 10,
+            magnitude: 5, tickInterval: CombatTime.TicksPerTurn));
+
+        var resolver = new Mock<ICombatSkillEffectResolver>();
+        var clock = Mock.Of<IClock>(
+            c => c.UtcNow == DateTimeOffset.Parse("2026-08-03T10:00:00Z"));
+        var driver = new TacticalEnemyTurnDriver(resolver.Object, clock, bossBehaviors: []);
+
+        var result = driver.PlayWhileEnemyHasInitiative(combat);
+
+        var tick = result.Events.Should().ContainSingle(e => e.Kind == TacticalCombatEventDto.TickKind)
+            .Which;
+        tick.ActorId.Should().Be(dotted.Id.Value);
+        tick.Impacts.Should().ContainSingle();
+        tick.Impacts[0].VitalityDelta.Should().Be(5);
+        tick.Impacts[0].Defeated.Should().BeFalse();
+    }
+
     [Fact]
     public void PlayWhileEnemyHasInitiative_ShouldApplyHealToEnemyAlly_NotPlayerPrey()
     {

@@ -72,6 +72,7 @@ public sealed class EndTacticalTurnCommandHandler
         combat.FailIfAllAlliesDefeated();
         combat.CompleteIfAllEnemiesDefeated();
 
+        TacticalCombatEventDto? handoffTick = null;
         if (combat.Status == CombatStatus.Active)
         {
             if (combat.ActiveCombatantId is { } activeId
@@ -80,11 +81,16 @@ public sealed class EndTacticalTurnCommandHandler
                 combat.ConsumeBasicAttackRestriction();
             }
             combat.AdvanceToNextCombatant();
+            handoffTick = TacticalImpactRecorder.BuildTickEvent(combat);
         }
 
         var enemyTurns = combat.Status == CombatStatus.Active
             ? _enemyTurns.PlayWhileEnemyHasInitiative(combat)
             : new TacticalEnemyTurnsResult([], []);
+
+        var events = handoffTick is null
+            ? enemyTurns.Events
+            : (IReadOnlyList<TacticalCombatEventDto>)[handoffTick, .. enemyTurns.Events];
 
         var protagonist = combat.Allies.FirstOrDefault(a => a.Side == CombatantSide.Player);
         if (protagonist is not null)
@@ -107,6 +113,6 @@ public sealed class EndTacticalTurnCommandHandler
             RunDto.FromDomain(run),
             TacticalCombatRuntimeDto.FromDomain(combat, CombatItemHelper.GetUsableBattleItems(run, combat)),
             enemyTurns.LogEntries,
-            enemyTurns.Events);
+            events);
     }
 }

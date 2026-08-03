@@ -39,6 +39,14 @@ export const FLOAT_RISE_PX = 30;
 export const TURN_TRANSITION_MS = 300;
 
 /**
+ * Pause après un tick de DoT/HoT — assez pour que le chiffre qui vient de s'envoler se lise
+ * avant que la chronologie n'enchaîne, sans le temps de réflexion ni le settle d'une vraie
+ * action : personne n'a rien décidé, un statut vient seulement de faire ce pour quoi il a été
+ * posé. // BALANCE KNOB
+ */
+export const TICK_SETTLE_MS = 400;
+
+/**
  * Durée pendant laquelle la zone d'un geste adverse reste allumée avant qu'il ne parte.
  *
  * C'est un temps de lecture, pas une temporisation : sans lui, l'adversaire se déplace et
@@ -55,8 +63,12 @@ export const TELEGRAPH_MS = 1200;
  * titre que le pas de marche ou la retombée d'un coup.
  */
 export type Telegraph = {
-  /** `Move` trace un trajet, une action trace une zone d'impact — deux lectures distinctes. */
-  kind: 'Move' | 'Skill' | 'Item';
+  /**
+   * `Move` trace un trajet, une action trace une zone d'impact — deux lectures distinctes.
+   * `Tick` ne s'annonce jamais (voir `play()`) mais figure ici pour que ce type reste celui
+   * de `TacticalCombatEventDto['kind']` sans conversion.
+   */
+  kind: 'Move' | 'Skill' | 'Item' | 'Tick';
   cells: Array<{ x: number; y: number }>;
   label: string;
 };
@@ -382,9 +394,28 @@ export function useCombatPlayback() {
         // un déplacement puis une frappe sont deux zones différentes, et c'est justement la
         // seconde que le joueur doit pouvoir lire. Un allié agit sur ordre du joueur, qui vient
         // de désigner sa cible : lui montrer sa propre zone ne lui apprendrait rien et le faire
-        // attendre passerait pour de la latence.
-        if (!actorIsAlly) await announce(event);
+        // attendre passerait pour de la latence. Un tick n'est ni l'un ni l'autre — personne ne
+        // vient de choisir quoi que ce soit, il n'a pas de zone à annoncer.
+        if (!actorIsAlly && event.kind !== 'Tick') await announce(event);
         previousActorId = event.actorId;
+
+        if (event.kind === 'Tick') {
+          const at = now();
+          for (const impact of event.impacts) {
+            const targetIsAlly = allyIds.has(impact.combatantId);
+            pushFloat(impact.x, impact.y, impact.vitalityDelta, targetIsAlly, at, impact.missed);
+            if (!impact.missed) {
+              displayVitals.value = {
+                ...displayVitals.value,
+                [impact.combatantId]:
+                  (displayVitals.value[impact.combatantId] ?? 0) - impact.vitalityDelta,
+              };
+              pushImpact(impact.x, impact.y, targetIsAlly, at);
+            }
+          }
+          await wait(TICK_SETTLE_MS);
+          continue;
+        }
 
         if (event.kind === 'Move' && event.path.length > 0) {
           // Le chemin serveur ne contient que les cases foulées, origine exclue. Celle-ci vient

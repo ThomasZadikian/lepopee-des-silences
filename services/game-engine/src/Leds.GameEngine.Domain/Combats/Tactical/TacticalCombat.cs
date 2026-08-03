@@ -32,6 +32,13 @@ public sealed class TacticalCombat : ICombatContext
     private readonly Dictionary<(Guid CombatantId, string SkillKey), int> _skillCooldowns = new();
     private readonly Dictionary<Guid, int> _activationCounts = new();
     private readonly Dictionary<Guid, bool> _lastActivationUsedMagic = new();
+    // Consumed by whichever application handler just called AdvanceToNextCombatant
+    // (EndTacticalTurnCommandHandler, TacticalEnemyTurnDriver) to surface DoT/HoT ticks as
+    // their own timeline event — see BeginActiveActivation. Overwritten every activation, so
+    // it only ever reflects the most recent one; that is also the only one a single top-level
+    // AdvanceToNextCombatant call ever reports back to.
+    private Guid? _lastActivationCombatantId;
+    private IReadOnlyCollection<StatusTickEvent> _lastActivationStatusTicks = [];
     private readonly HashSet<Guid> _cannotRevive = [];
     private readonly HashSet<string> _usedOnceSkillKeys = new(StringComparer.Ordinal);
     private readonly Dictionary<Guid, HashSet<string>> _equippedItemKeys;
@@ -124,6 +131,9 @@ public sealed class TacticalCombat : ICombatContext
         && keys.Contains(itemKey);
     public IReadOnlyDictionary<Guid, int> ActivationCounts => _activationCounts;
     public IReadOnlyDictionary<Guid, bool> LastActivationUsedMagic => _lastActivationUsedMagic;
+    /// <summary>Who the most recent activation's DoT/HoT/guard ticks (if any) landed on.</summary>
+    public Guid? LastActivationCombatantId => _lastActivationCombatantId;
+    public IReadOnlyCollection<StatusTickEvent> LastActivationStatusTicks => _lastActivationStatusTicks;
     public IReadOnlySet<Guid> CannotRevive => _cannotRevive;
     public int StatusClockFor(Guid combatantId) =>
         _activationCounts.GetValueOrDefault(combatantId) * CombatTime.TicksPerTurn;
@@ -477,6 +487,8 @@ public sealed class TacticalCombat : ICombatContext
         var speedsBefore = CaptureEffectiveSpeeds();
         var wasAlive = !combatant.IsDefeated;
         var statusTicks = combatant.TickStatusEffects(StatusClockFor(combatantId));
+        _lastActivationCombatantId = combatantId;
+        _lastActivationStatusTicks = statusTicks;
         AwardPeriodicCharge(combatant, statusTicks, wasAlive);
         if (combatant.IsDefeated)
         {

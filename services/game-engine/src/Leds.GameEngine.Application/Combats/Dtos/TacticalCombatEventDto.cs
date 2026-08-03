@@ -60,6 +60,7 @@ public sealed record TacticalCombatEventDto(
     public const string MoveKind = "Move";
     public const string SkillKind = "Skill";
     public const string ItemKind = "Item";
+    public const string TickKind = "Tick";
 
     private static IReadOnlyList<TacticalStepDto> Cells(
         IEnumerable<Domain.Combats.Tactical.GridPosition> cells) =>
@@ -96,4 +97,17 @@ public sealed record TacticalCombatEventDto(
         IEnumerable<Domain.Combats.Tactical.GridPosition>? telegraphCells = null) =>
         new(ItemKind, actorId, actorName, [], itemKey, itemName, target.X, target.Y, impacts,
             telegraphCells is null ? [new TacticalStepDto(target.X, target.Y)] : Cells(telegraphCells));
+
+    /// <summary>
+    /// A DoT/HoT tick landing on whoever's activation just began — no actor decision, no path,
+    /// no telegraph, just what a status effect did to its owner on its own. <paramref
+    /// name="impacts"/> carries one entry per periodic effect that dealt damage or healing this
+    /// activation (several stacked DoTs can tick in the same one).
+    /// </summary>
+    public static TacticalCombatEventDto Tick(
+        Guid combatantId,
+        string combatantName,
+        Domain.Combats.Tactical.GridPosition position,
+        IReadOnlyList<TacticalImpactDto> impacts) =>
+        new(TickKind, combatantId, combatantName, [], null, null, position.X, position.Y, impacts, null);
 }
