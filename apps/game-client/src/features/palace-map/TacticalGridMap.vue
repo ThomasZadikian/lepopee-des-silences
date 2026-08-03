@@ -500,8 +500,12 @@ function paintCanvas(timestamp: number) {
 
     if (key.kind === 'party') {
       // Baked on the tall "prop" canvas, same as any combatant figure — the short floor/
-      // highlight rect would squash it and misplace its ground anchor.
-      const propDy = entry.screenY - (propH * PROP_GROUND_ANCHOR_RATIO);
+      // highlight rect would squash it and misplace its ground anchor. Standing on a raised
+      // tile has to lift the figure by the same amount as that tile's own elevation, or the
+      // party reads as floating above the ground / sunk below it depending on the cell —
+      // exactly like every other elevated entry (see the 'prop' branch below).
+      const lift = elevationLiftPx(entry.elevation);
+      const propDy = entry.screenY - (propH * PROP_GROUND_ANCHOR_RATIO) - lift;
       ctx.drawImage(sprite, dx, propDy, destW, propH);
       ctx.globalAlpha = 1;
       continue;
