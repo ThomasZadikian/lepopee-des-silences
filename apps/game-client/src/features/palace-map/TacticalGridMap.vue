@@ -797,28 +797,74 @@ function chooseRoomRiskTier(tier: CombatRiskTier) {
   emit('setRoomRiskTier', tier);
 }
 
-// ── Node side panel: opens itself when the party steps onto an available node ──────
-// Opens on the side of the screen the party ISN'T standing near, so it never covers
-// the ground the player is about to look at next.
-const panelSide = computed<'left' | 'right'>(() => {
-  const g = grid.value;
-  if (!g) return 'right';
-  return g.partyX < g.width / 2 ? 'right' : 'left';
-});
+// ── Node popup: opens itself, anchored directly over the node, when the party steps onto
+// an available one ──────────────────────────────────────────────────────────────────────
+// Teleported to <body> and positioned from the canvas container's own rect + the node's
+// projected screen position, rather than docked to a screen edge — a fixed side panel used
+// to fight with the micro-menu whenever both wanted the same corner. Same teleport-and-
+// measure technique as StatusEffectToken's `teleportBubble` and the combat skill tooltip.
+const NODE_POPUP_WIDTH = 260;
+const NODE_POPUP_GAP = 16;
+const NODE_POPUP_VIEWPORT_MARGIN = 12;
 
-const isPanelCollapsed = ref(false);
+const nodePopupStyle = ref<{ left: string; bottom: string }>({ left: '0px', bottom: '0px' });
+const nodePopupArrowLeft = ref('50%');
+const isNodePopupDismissed = ref(false);
+
+const showNodePopup = computed(() => Boolean(standingNode.value) && !isNodePopupDismissed.value);
+
+function computeNodePopupPosition() {
+  const containerEl = canvasContainerEl.value;
+  const g = grid.value;
+  if (!containerEl || !g) return;
+
+  const rect = containerEl.getBoundingClientRect();
+  const { screenX, screenY } = projectToScreen(g.partyX, g.partyY, projectionParams.value);
+  const elevation = g.elevation[(g.partyY * g.width) + g.partyX] ?? 0;
+  // Anchored above the party's own head, not the tile's centre — otherwise the popup would
+  // sit squarely over the figure it's describing.
+  const anchorX = rect.left + screenX;
+  const anchorY = rect.top + screenY - elevationLiftPx(elevation) - spriteDest.value.propH * 0.72;
+
+  const left = Math.max(
+    NODE_POPUP_VIEWPORT_MARGIN,
+    Math.min(
+      anchorX - (NODE_POPUP_WIDTH / 2),
+      window.innerWidth - NODE_POPUP_WIDTH - NODE_POPUP_VIEWPORT_MARGIN,
+    ),
+  );
+  const bottom = Math.max(NODE_POPUP_VIEWPORT_MARGIN, window.innerHeight - anchorY + NODE_POPUP_GAP);
+
+  nodePopupStyle.value = { left: `${left}px`, bottom: `${bottom}px` };
+  // The little tail stays under the actual node position even when the card itself got
+  // clamped away from centre near a viewport edge.
+  nodePopupArrowLeft.value = `${Math.max(16, Math.min(anchorX - left, NODE_POPUP_WIDTH - 16))}px`;
+}
 
 watch(
   () => standingNode.value?.id ?? null,
   (nodeId, previousNodeId) => {
     if (nodeId && nodeId !== previousNodeId) {
-      isPanelCollapsed.value = false;
+      isNodePopupDismissed.value = false;
     }
   },
 );
 
-function togglePanelCollapsed() {
-  isPanelCollapsed.value = !isPanelCollapsed.value;
+watch([showNodePopup, canvasSize], () => {
+  if (showNodePopup.value) computeNodePopupPosition();
+}, { flush: 'post' });
+
+onMounted(() => {
+  window.addEventListener('resize', computeNodePopupPosition);
+  window.addEventListener('scroll', computeNodePopupPosition, true);
+});
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', computeNodePopupPosition);
+  window.removeEventListener('scroll', computeNodePopupPosition, true);
+});
+
+function dismissNodePopup() {
+  isNodePopupDismissed.value = true;
 }
 
 // ── Top info overlay (kicker + movement budget + boss banner) ──────────────────────
@@ -849,51 +895,56 @@ function toggleInfoCollapsed() {
         @mouseleave="onCanvasMouseLeave"
       />
 
-      <div
-        v-if="standingNode"
-        class="tgrid__node-panel"
-        :class="[`tgrid__node-panel--${panelSide}`, { 'tgrid__node-panel--collapsed': isPanelCollapsed }]"
-      >
-        <button
-          type="button"
-          class="tgrid__node-panel-toggle"
-          :aria-label="isPanelCollapsed ? 'Ouvrir le panneau du nœud' : 'Réduire le panneau du nœud'"
-          @click="togglePanelCollapsed"
-        >
-          <span v-if="panelSide === 'right'">{{ isPanelCollapsed ? '◂' : '▸' }}</span>
-          <span v-else>{{ isPanelCollapsed ? '▸' : '◂' }}</span>
-        </button>
-
-        <div v-if="!isPanelCollapsed" class="tgrid__node-panel-body">
-          <div class="tgrid__node-panel-header">
-            <SigilIcon :kind="sigilKindFor(standingNode)" :size="22" />
-            <span class="es-kicker">{{ nodeTypeLabel(standingNode) }}</span>
-          </div>
-
-          <p class="tgrid__node-panel-desc">{{ nodeTypeDescription(standingNode) }}</p>
-
-          <div v-if="standingNodeRiskDisplay" class="tgrid__node-panel-risk">
-            <span class="es-label">Danger</span>
-            <span :class="['tgrid__node-panel-risk-value', standingNodeRiskDisplay.cls]">
-              {{ standingNodeRiskDisplay.text }}
-            </span>
-          </div>
-
-          <div class="tgrid__node-panel-actions">
+      <Teleport to="body">
+        <Transition name="tgrid-node-popup">
+          <div
+            v-if="showNodePopup && standingNode"
+            class="tgrid__node-popup"
+            :style="nodePopupStyle"
+            role="dialog"
+            :aria-label="nodeTypeLabel(standingNode)"
+          >
             <button
-              v-if="canWagerStandingNode"
               type="button"
-              class="es-btn es-btn--ghost"
-              @click="emit('wagerNode', standingNode.id)"
+              class="tgrid__node-popup-close"
+              aria-label="Fermer"
+              @click="dismissNodePopup"
             >
-              Provoquer le destin
+              ×
             </button>
-            <button type="button" class="es-btn" @click="emit('enterNode', standingNode.id)">
-              Entrer →
-            </button>
+
+            <div class="tgrid__node-popup-header">
+              <SigilIcon :kind="sigilKindFor(standingNode)" :size="22" />
+              <span class="es-kicker">{{ nodeTypeLabel(standingNode) }}</span>
+            </div>
+
+            <p class="tgrid__node-popup-desc">{{ nodeTypeDescription(standingNode) }}</p>
+
+            <div v-if="standingNodeRiskDisplay" class="tgrid__node-popup-risk">
+              <span class="es-label">Danger</span>
+              <span :class="['tgrid__node-popup-risk-value', standingNodeRiskDisplay.cls]">
+                {{ standingNodeRiskDisplay.text }}
+              </span>
+            </div>
+
+            <div class="tgrid__node-popup-actions">
+              <button
+                v-if="canWagerStandingNode"
+                type="button"
+                class="es-btn es-btn--ghost"
+                @click="emit('wagerNode', standingNode.id)"
+              >
+                Provoquer le destin
+              </button>
+              <button type="button" class="es-btn" @click="emit('enterNode', standingNode.id)">
+                Entrer →
+              </button>
+            </div>
+
+            <div class="tgrid__node-popup-arrow" :style="{ left: nodePopupArrowLeft }" />
           </div>
-        </div>
-      </div>
+        </Transition>
+      </Teleport>
 
       <div class="tgrid__top-tabs">
         <div
@@ -1056,86 +1107,63 @@ function toggleInfoCollapsed() {
   }
 }
 
-/* ── Node side panel ─────────────────────────────────────────────────────────── */
-.tgrid__node-panel {
-  position: absolute;
-  top: 0;
-  bottom: 0;
+/* ── Node popup: anchored directly over the standing node, teleported to <body> ─────── */
+.tgrid__node-popup {
+  position: fixed;
   width: 260px;
-  max-width: 80%;
-  display: flex;
-  z-index: 110;
-  transition: width 0.2s ease;
-}
-
-.tgrid__node-panel--right {
-  right: 0;
-  flex-direction: row;
-}
-
-.tgrid__node-panel--left {
-  left: 0;
-  flex-direction: row-reverse;
-}
-
-.tgrid__node-panel--collapsed {
-  width: 26px;
-}
-
-.tgrid__node-panel-toggle {
-  flex: 0 0 auto;
-  width: 26px;
-  border: none;
-  border-left: 1px solid var(--line-soft);
-  border-right: 1px solid var(--line-soft);
-  cursor: pointer;
-  background: color-mix(in oklch, var(--panel), var(--frost) 10%);
-  color: var(--frost);
-  font-size: 0.9rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.tgrid__node-panel-toggle:hover {
-  background: color-mix(in oklch, var(--panel), var(--frost) 18%);
-}
-
-.tgrid__node-panel-body {
-  flex: 1;
-  min-width: 0;
+  max-width: calc(100vw - 24px);
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
-  background: oklch(0.22 0.04 272 / 0.92);
-  border-left: 1px solid var(--line-soft);
-  border-right: 1px solid var(--line-soft);
+  background: oklch(0.22 0.04 272 / 0.96);
+  border: 1px solid var(--line-soft);
+  border-radius: 10px;
   backdrop-filter: blur(8px);
-  overflow-y: auto;
+  box-shadow: 0 14px 34px -10px oklch(0.08 0.02 270 / 0.65);
+  z-index: 220;
+  transform-origin: bottom center;
 }
 
-.tgrid__node-panel-header {
+.tgrid__node-popup-close {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  border: none;
+  background: none;
+  color: var(--ink-4);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+
+.tgrid__node-popup-close:hover {
+  color: var(--frost);
+}
+
+.tgrid__node-popup-header {
   display: flex;
   align-items: center;
   gap: var(--space-2);
   color: var(--frost);
+  padding-right: var(--space-4);
 }
 
-.tgrid__node-panel-desc {
+.tgrid__node-popup-desc {
   margin: 0;
   color: var(--ink-3);
   font-size: 0.82rem;
   line-height: 1.5;
 }
 
-.tgrid__node-panel-risk {
+.tgrid__node-popup-risk {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
 }
 
-.tgrid__node-panel-risk-value {
+.tgrid__node-popup-risk-value {
   font-family: var(--font);
   font-size: 0.9rem;
 }
@@ -1146,16 +1174,47 @@ function toggleInfoCollapsed() {
 .tgrid__risk--critical { color: var(--blood); }
 .tgrid__risk--fatal { color: var(--blood); font-weight: 600; }
 
-.tgrid__node-panel-actions {
-  margin-top: auto;
+.tgrid__node-popup-actions {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
 }
 
-.tgrid__node-panel-actions .es-btn {
+.tgrid__node-popup-actions .es-btn {
   width: 100%;
   justify-content: center;
+}
+
+/* Little tail pointing down toward the node — its own `left` is set inline per-frame so it
+   stays under the node even when the card is clamped away from centre near a viewport edge. */
+.tgrid__node-popup-arrow {
+  position: absolute;
+  bottom: -7px;
+  width: 14px;
+  height: 14px;
+  margin-left: -7px;
+  background: oklch(0.22 0.04 272 / 0.96);
+  border-right: 1px solid var(--line-soft);
+  border-bottom: 1px solid var(--line-soft);
+  transform: rotate(45deg);
+}
+
+.tgrid-node-popup-enter-active,
+.tgrid-node-popup-leave-active {
+  transition: opacity 0.16s ease, transform 0.16s ease;
+}
+
+.tgrid-node-popup-enter-from,
+.tgrid-node-popup-leave-to {
+  opacity: 0;
+  transform: scale(0.92) translateY(6px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tgrid-node-popup-enter-active,
+  .tgrid-node-popup-leave-active {
+    transition: none;
+  }
 }
 
 /* ── Hover tooltip ────────────────────────────────────────────────────────────── */

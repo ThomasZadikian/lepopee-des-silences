@@ -107,93 +107,107 @@ describe('TacticalGridMap', () => {
     expect(wrapper.findAll('.tgrid__node-icon')).toHaveLength(0);
   });
 
-  it('shows the node side panel when the party is on an available node', () => {
+  // The node popup is Teleport-ed to <body> (anchored around the node instead of docked to a
+  // screen edge — see TacticalGridMap.vue's "Node popup" section), so it has to be queried from
+  // the document rather than from the wrapper's own element, same technique as
+  // StatusEffectToken.test.ts's teleportBubble tests.
+
+  it('shows the node popup when the party is on an available node', () => {
     const node = makeNode({ row: 0, lane: 0, state: 'Available' });
     const room = makeRoom({ nodes: [node] });
-    const wrapper = mount(TacticalGridMap, { props: { room } });
-    expect(wrapper.find('.tgrid__node-panel').exists()).toBe(true);
+    const wrapper = mount(TacticalGridMap, { props: { room }, attachTo: document.body });
+
+    expect(document.body.querySelector('.tgrid__node-popup')).not.toBeNull();
+
+    wrapper.unmount();
   });
 
-  it('does not show the node side panel when the party cell has no node', () => {
-    const wrapper = mount(TacticalGridMap, { props: { room: makeRoom() } });
-    expect(wrapper.find('.tgrid__node-panel').exists()).toBe(false);
+  it('does not show the node popup when the party cell has no node', () => {
+    const wrapper = mount(TacticalGridMap, { props: { room: makeRoom() }, attachTo: document.body });
+
+    expect(document.body.querySelector('.tgrid__node-popup')).toBeNull();
+
+    wrapper.unmount();
   });
 
-  it('opens the panel on the right when the party is in the left half of the grid', () => {
-    const node = makeNode({ row: 0, lane: 0, state: 'Available' });
-    const room = makeRoom({ nodes: [node] }, { partyX: 0, partyY: 0 });
-    const wrapper = mount(TacticalGridMap, { props: { room } });
-    expect(wrapper.find('.tgrid__node-panel--right').exists()).toBe(true);
-    expect(wrapper.find('.tgrid__node-panel--left').exists()).toBe(false);
-  });
+  it('dismisses the node popup and reopens it when stepping onto a new node', async () => {
+    const nodeA = makeNode({ id: 'node-a', row: 0, lane: 0, state: 'Available' });
+    const nodeB = makeNode({ id: 'node-b', row: 0, lane: 1, state: 'Available' });
+    const room = makeRoom({ nodes: [nodeA, nodeB] }, { partyX: 0, partyY: 0 });
+    const wrapper = mount(TacticalGridMap, { props: { room }, attachTo: document.body });
 
-  it('opens the panel on the left when the party is in the right half of the grid', () => {
-    const node = makeNode({ row: 0, lane: 2, state: 'Available' });
-    const room = makeRoom(
-      { nodes: [node] },
-      { partyX: 2, partyY: 0, revealedCells: [[0, 0], [1, 0], [2, 0]] },
-    );
-    const wrapper = mount(TacticalGridMap, { props: { room } });
-    expect(wrapper.find('.tgrid__node-panel--left').exists()).toBe(true);
-    expect(wrapper.find('.tgrid__node-panel--right').exists()).toBe(false);
-  });
+    expect(document.body.querySelector('.tgrid__node-popup')).not.toBeNull();
 
-  it('collapses and reopens the node panel', async () => {
-    const node = makeNode({ row: 0, lane: 0, state: 'Available' });
-    const room = makeRoom({ nodes: [node] });
-    const wrapper = mount(TacticalGridMap, { props: { room } });
+    await document.body.querySelector<HTMLButtonElement>('.tgrid__node-popup-close')?.click();
+    // The popup is wrapped in a <Transition>, so it only leaves the DOM once its leave
+    // transition resolves — a real timer tick, not just a Vue nextTick (see InventoryDrawer's
+    // BesacePage tests for the same pattern with transition-wrapped elements).
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(document.body.querySelector('.tgrid__node-popup')).toBeNull();
 
-    expect(wrapper.find('.tgrid__node-panel-body').exists()).toBe(true);
+    await wrapper.setProps({
+      room: makeRoom({ nodes: [nodeA, nodeB] }, { partyX: 1, partyY: 0 }),
+    });
+    expect(document.body.querySelector('.tgrid__node-popup')).not.toBeNull();
 
-    await wrapper.find('.tgrid__node-panel-toggle').trigger('click');
-    expect(wrapper.find('.tgrid__node-panel--collapsed').exists()).toBe(true);
-    expect(wrapper.find('.tgrid__node-panel-body').exists()).toBe(false);
-
-    await wrapper.find('.tgrid__node-panel-toggle').trigger('click');
-    expect(wrapper.find('.tgrid__node-panel--collapsed').exists()).toBe(false);
-    expect(wrapper.find('.tgrid__node-panel-body').exists()).toBe(true);
+    wrapper.unmount();
   });
 
   it('emits enterNode when the "Entrer" button is clicked', async () => {
     const node = makeNode({ row: 0, lane: 0, state: 'Available' });
     const room = makeRoom({ nodes: [node] });
-    const wrapper = mount(TacticalGridMap, { props: { room } });
-    const enterButton = wrapper.findAll('button').find((b) => b.text().includes('Entrer'));
-    await enterButton!.trigger('click');
+    const wrapper = mount(TacticalGridMap, { props: { room }, attachTo: document.body });
+    const enterButton = Array.from(document.body.querySelectorAll('button'))
+      .find((b) => b.textContent?.includes('Entrer'));
+    await (enterButton as HTMLButtonElement).click();
     expect(wrapper.emitted('enterNode')).toEqual([['node-1']]);
+
+    wrapper.unmount();
   });
 
   it('shows the wager button for a combat-flavored node below Fatal', () => {
     const node = makeNode({ row: 0, lane: 0, state: 'Available', combatRiskTier: 'Tendu' });
     const room = makeRoom({ nodes: [node] });
-    const wrapper = mount(TacticalGridMap, { props: { room } });
-    const wagerButton = wrapper.findAll('button').find((b) => b.text().includes('Provoquer le destin'));
+    const wrapper = mount(TacticalGridMap, { props: { room }, attachTo: document.body });
+    const wagerButton = Array.from(document.body.querySelectorAll('button'))
+      .find((b) => b.textContent?.includes('Provoquer le destin'));
     expect(wagerButton).toBeDefined();
+
+    wrapper.unmount();
   });
 
   it('hides the wager button for a node already at Fatal risk', () => {
     const node = makeNode({ row: 0, lane: 0, state: 'Available', combatRiskTier: 'Fatal' });
     const room = makeRoom({ nodes: [node] });
-    const wrapper = mount(TacticalGridMap, { props: { room } });
-    const wagerButton = wrapper.findAll('button').find((b) => b.text().includes('Provoquer le destin'));
+    const wrapper = mount(TacticalGridMap, { props: { room }, attachTo: document.body });
+    const wagerButton = Array.from(document.body.querySelectorAll('button'))
+      .find((b) => b.textContent?.includes('Provoquer le destin'));
     expect(wagerButton).toBeUndefined();
+
+    wrapper.unmount();
   });
 
   it('hides the wager button for a non-combat node', () => {
     const node = makeNode({ row: 0, lane: 0, state: 'Available', type: 'Item', combatRiskTier: null });
     const room = makeRoom({ nodes: [node] });
-    const wrapper = mount(TacticalGridMap, { props: { room } });
-    const wagerButton = wrapper.findAll('button').find((b) => b.text().includes('Provoquer le destin'));
+    const wrapper = mount(TacticalGridMap, { props: { room }, attachTo: document.body });
+    const wagerButton = Array.from(document.body.querySelectorAll('button'))
+      .find((b) => b.textContent?.includes('Provoquer le destin'));
     expect(wagerButton).toBeUndefined();
+
+    wrapper.unmount();
   });
 
   it('emits wagerNode when the wager button is clicked', async () => {
     const node = makeNode({ row: 0, lane: 0, state: 'Available', combatRiskTier: 'Tendu' });
     const room = makeRoom({ nodes: [node] });
-    const wrapper = mount(TacticalGridMap, { props: { room } });
-    const wagerButton = wrapper.findAll('button').find((b) => b.text().includes('Provoquer le destin'));
-    await wagerButton!.trigger('click');
+    const wrapper = mount(TacticalGridMap, { props: { room }, attachTo: document.body });
+    const wagerButton = Array.from(document.body.querySelectorAll('button'))
+      .find((b) => b.textContent?.includes('Provoquer le destin'));
+    await (wagerButton as HTMLButtonElement).click();
     expect(wrapper.emitted('wagerNode')).toEqual([['node-1']]);
+
+    wrapper.unmount();
   });
 
   it('hides the room-wide difficulty tab when no combat node is still available', () => {
