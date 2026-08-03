@@ -54,6 +54,7 @@ export type CombatantRuntimeDto = {
   currentVitality: number;
   guard: number;
   mana: number;
+  maxMana: number;
   charge: number;
   status: CombatantStatus;
   attackType?: EmotionalType;

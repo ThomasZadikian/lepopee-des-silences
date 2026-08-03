@@ -442,6 +442,11 @@ function displayedVitality(unit: TacticalCombatantRuntimeDto): number {
   return store.playback.vitalsOf(unit.combatant.id, unit.combatant.currentVitality);
 }
 
+/** Mana en pourcentage de son maximum, bornée à [0, 100] — même clamp que la barre de PV. */
+function manaPercent(combatant: { mana: number; maxMana: number }): number {
+  return Math.max(0, Math.min(100, (combatant.mana / Math.max(1, combatant.maxMana)) * 100));
+}
+
 /**
  * Les états actifs à afficher pour ce combattant, tels que la mise en scène en cours les a déjà
  * révélés — jamais un stack ou un affaiblissement tout neuf avant que le geste qui l'applique
@@ -1829,6 +1834,20 @@ onBeforeUnmount(() => {
               {{ displayedVitality(unit) }}/{{ unit.combatant.maxVitality }}
             </span>
           </div>
+          <div v-if="unit.combatant.maxMana > 0" class="tbattle__portrait-mana" title="Mana">
+            <div class="tbattle__portrait-mana-bar">
+              <div
+                class="tbattle__portrait-mana-fill"
+                :style="{ width: `${manaPercent(unit.combatant)}%` }"
+              />
+            </div>
+            <span class="tbattle__portrait-mana-text">
+              {{ unit.combatant.mana }}/{{ unit.combatant.maxMana }}
+            </span>
+          </div>
+          <span v-if="unit.combatant.focus !== undefined" class="tbattle__portrait-focus">
+            Focus {{ unit.combatant.focus }}
+          </span>
           <div
             v-if="displayedStatusEffects(unit).length"
             class="tbattle__portrait-statuses"
@@ -1862,8 +1881,20 @@ onBeforeUnmount(() => {
           <strong class="tbattle__active-name">
             {{ store.activeCombatant?.combatant?.displayName ?? '—' }}
           </strong>
-          <span class="tbattle__active-stat">
-            Mana {{ store.activeCombatant?.combatant?.mana ?? '—' }}
+          <div v-if="store.activeCombatant" class="tbattle__active-resource" title="Mana">
+            <span class="tbattle__active-resource-label">Mana</span>
+            <div class="tbattle__active-resource-bar">
+              <div
+                class="tbattle__active-resource-fill tbattle__active-resource-fill--mana"
+                :style="{ width: `${manaPercent(store.activeCombatant.combatant)}%` }"
+              />
+            </div>
+            <span class="tbattle__active-resource-text">
+              {{ store.activeCombatant.combatant.mana }}/{{ store.activeCombatant.combatant.maxMana }}
+            </span>
+          </div>
+          <span v-if="store.activeCombatant?.combatant?.focus !== undefined" class="tbattle__active-stat">
+            Focus {{ store.activeCombatant.combatant.focus }}
           </span>
           <span class="tbattle__active-stat">
             Charge {{ store.activeCombatant?.combatant?.charge ?? '—' }} / 5
@@ -2223,13 +2254,13 @@ onBeforeUnmount(() => {
 .tbattle__bottom {
   position: absolute;
   z-index: 8;
-  width: min(720px, calc(100% - 380px));
+  width: min(760px, calc(100% - 380px));
   max-height: min(46vh, 330px);
   overflow: auto;
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
-  padding: 0.45rem 0.75rem;
+  gap: 0.65rem;
+  padding: 0.75rem 1rem;
   border: 1px solid rgb(230 194 115 / 28%);
   border-radius: 8px;
   background: rgb(9 11 22 / 90%);
@@ -2239,7 +2270,7 @@ onBeforeUnmount(() => {
 
 .tbattle__portraits {
   display: flex;
-  gap: 0.5rem;
+  gap: 0.65rem;
   overflow-x: auto;
 }
 
@@ -2247,9 +2278,9 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
-  min-width: 72px;
-  padding: 0.3rem 0.4rem;
+  gap: 4px;
+  min-width: 80px;
+  padding: 0.45rem 0.55rem;
   border: 1px solid rgb(255 255 255 / 12%);
   border-radius: 4px;
   background: rgb(255 255 255 / 4%);
@@ -2328,6 +2359,41 @@ onBeforeUnmount(() => {
   font-variant-numeric: tabular-nums;
 }
 
+.tbattle__portrait-mana {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  width: 100%;
+}
+
+.tbattle__portrait-mana-bar {
+  width: 100%;
+  height: 3px;
+  background: rgb(255 255 255 / 10%);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.tbattle__portrait-mana-fill {
+  height: 100%;
+  background: #7ec4e8;
+  border-radius: 2px;
+  transition: width 200ms ease;
+}
+
+.tbattle__portrait-mana-text {
+  font-size: 0.58rem;
+  opacity: 0.5;
+  font-variant-numeric: tabular-nums;
+}
+
+.tbattle__portrait-focus {
+  font-size: 0.58rem;
+  opacity: 0.55;
+  white-space: nowrap;
+}
+
 .tbattle__portrait-statuses {
   display: flex;
   flex-wrap: wrap;
@@ -2339,14 +2405,16 @@ onBeforeUnmount(() => {
 .tbattle__controls {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: 0.9rem;
   flex-wrap: wrap;
 }
 
 .tbattle__active-info {
   display: flex;
-  align-items: baseline;
-  gap: 0.5rem;
+  align-items: center;
+  gap: 0.75rem;
+  row-gap: 0.4rem;
+  flex-wrap: wrap;
   cursor: grab;
   user-select: none;
   touch-action: none;
@@ -2354,6 +2422,43 @@ onBeforeUnmount(() => {
 
 .tbattle__active-info:active { cursor: grabbing; }
 .tbattle__drag-handle { color: #e6c273; opacity: 0.65; }
+
+/* Mana : même vocabulaire visuel que la barre de PV des portraits (fond sombre, remplissage
+   coloré, texte discret dessous), en un peu plus large pour rester lisible à cette échelle. */
+.tbattle__active-resource {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.tbattle__active-resource-label {
+  font-size: 0.72rem;
+  opacity: 0.75;
+  white-space: nowrap;
+}
+
+.tbattle__active-resource-bar {
+  width: 72px;
+  height: 6px;
+  background: rgb(255 255 255 / 10%);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.tbattle__active-resource-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 200ms ease;
+}
+
+.tbattle__active-resource-fill--mana { background: #7ec4e8; }
+
+.tbattle__active-resource-text {
+  font-size: 0.72rem;
+  opacity: 0.65;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
 
 .tbattle__panel-reset {
   border: 0;
