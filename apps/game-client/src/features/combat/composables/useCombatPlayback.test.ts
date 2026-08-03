@@ -249,6 +249,85 @@ describe('coup manqué', () => {
   });
 });
 
+describe('garde absorbée — un coup entièrement encaissé n’est plus invisible', () => {
+  const enemyId = '55554444-5555-4444-5555-444455554444';
+  const allyId = '66665555-6666-5555-6666-555566665555';
+
+  const guardEvent = (impacts: unknown[]) => ({
+    kind: 'Skill' as const,
+    actorId: enemyId,
+    actorName: 'Sentinelle',
+    path: [],
+    skillKey: 'skill.strike',
+    skillName: 'Frappe',
+    targetX: 1,
+    targetY: 1,
+    telegraphCells: null,
+    impacts,
+  });
+
+  it('fait s’envoler un chiffre de garde, jamais un « −0 », quand un coup est entièrement absorbé', async () => {
+    const playback = useCombatPlayback();
+
+    await playback.play(
+      [guardEvent([
+        { combatantId: allyId, x: 1, y: 1, vitalityDelta: 0, defeated: false, missed: false, guardAbsorbed: 8 },
+      ])] as never,
+      { allies: [{ combatant: { id: allyId } }], enemies: [] } as never,
+      () => 0,
+    );
+
+    expect(playback.floats.value).toHaveLength(1);
+    expect(playback.floats.value[0].text).toBe('−8');
+    expect(playback.floats.value[0].kind).toBe('guard');
+  });
+
+  it('montre le chiffre de garde ET le chiffre de dégâts quand un coup déborde sur la vitalité', async () => {
+    const playback = useCombatPlayback();
+
+    await playback.play(
+      [guardEvent([
+        { combatantId: allyId, x: 1, y: 1, vitalityDelta: 7, defeated: false, missed: false, guardAbsorbed: 5 },
+      ])] as never,
+      { allies: [{ combatant: { id: allyId } }], enemies: [] } as never,
+      () => 0,
+    );
+
+    const texts = playback.floats.value.map((f) => `${f.kind ?? 'damage'}:${f.text}`);
+    expect(texts).toEqual(expect.arrayContaining(['guard:−5', 'damage:−7']));
+  });
+
+  it('ne montre aucun chiffre de garde quand rien n’a été absorbé', async () => {
+    const playback = useCombatPlayback();
+
+    await playback.play(
+      [guardEvent([
+        { combatantId: allyId, x: 1, y: 1, vitalityDelta: 6, defeated: false, missed: false, guardAbsorbed: 0 },
+      ])] as never,
+      { allies: [{ combatant: { id: allyId } }], enemies: [] } as never,
+      () => 0,
+    );
+
+    expect(playback.floats.value).toHaveLength(1);
+    expect(playback.floats.value[0].kind ?? 'damage').toBe('damage');
+  });
+
+  it('reste rétro-compatible avec une réponse serveur qui ne porte pas encore guardAbsorbed', async () => {
+    const playback = useCombatPlayback();
+
+    await playback.play(
+      [guardEvent([
+        { combatantId: allyId, x: 1, y: 1, vitalityDelta: 4, defeated: false, missed: false },
+      ])] as never,
+      { allies: [{ combatant: { id: allyId } }], enemies: [] } as never,
+      () => 0,
+    );
+
+    expect(playback.floats.value).toHaveLength(1);
+    expect(playback.floats.value[0].kind ?? 'damage').toBe('damage');
+  });
+});
+
 describe('tick de DoT/HoT — pas de décision d’acteur, mais un chiffre s’envole quand même', () => {
   const enemyId = '10101010-1010-1010-1010-101010101010';
   const allyId = '20202020-2020-2020-2020-202020202020';

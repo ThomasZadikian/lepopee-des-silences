@@ -1436,6 +1436,24 @@ function paintSorts(ctx: CanvasRenderingContext2D) {
   sortEffects.renderSorts(ctx);
 }
 
+// Même silhouette que le bouclier de SigilIcon ('equipement'), pour que « la Garde a absorbé »
+// se lise dans le même vocabulaire visuel que partout ailleurs dans le jeu plutôt que
+// d'inventer un second symbole pour la même idée.
+const SHIELD_GLYPH_PATH = new Path2D(
+  'M12 3 L19 5.5 V11.5 C19 16 16 19 12 21 C8 19 5 16 5 11.5 V5.5 Z',
+);
+
+function drawShieldGlyph(
+  ctx: CanvasRenderingContext2D, cx: number, cy: number, size: number, color: string,
+) {
+  ctx.save();
+  ctx.translate(cx - (size / 2), cy - (size / 2));
+  ctx.scale(size / 24, size / 24);
+  ctx.fillStyle = color;
+  ctx.fill(SHIELD_GLYPH_PATH);
+  ctx.restore();
+}
+
 /**
  * Les chiffres montent en dernier, en espace écran : ni un mur ni une figure ne doit pouvoir
  * cacher ce qu'un coup vient de coûter.
@@ -1458,6 +1476,14 @@ function paintFloatingNumbers(ctx: CanvasRenderingContext2D, timestamp: number) 
     ctx.strokeStyle = 'rgba(4, 5, 10, 0.9)';
 
     const y = screenY - lift - (destW * 0.5) - (progress * FLOAT_RISE_PX);
+
+    if (float.kind === 'guard') {
+      const shieldSize = Math.max(12, Math.round(destW * 0.16));
+      const gap = shieldSize * 0.25;
+      const textWidth = ctx.measureText(float.text).width;
+      drawShieldGlyph(ctx, screenX - (textWidth / 2) - gap - (shieldSize / 2), y, shieldSize, float.color);
+    }
+
     ctx.strokeText(float.text, screenX, y);
     ctx.fillStyle = float.color;
     ctx.fillText(float.text, screenX, y);

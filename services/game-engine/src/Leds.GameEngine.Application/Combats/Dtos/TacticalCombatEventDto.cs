@@ -13,7 +13,14 @@ public sealed record TacticalImpactDto(
     /// d'une compétence sans effet chiffré : dans les deux cas la vitalité ne bouge pas, et
     /// le joueur voit une action se lancer sans jamais savoir pourquoi elle n'a rien fait.
     /// </summary>
-    bool Missed = false);
+    bool Missed = false,
+    /// <summary>
+    /// Ce que la Garde a encaissé à la place de la vitalité. Un coup entièrement absorbé laisse
+    /// <see cref="VitalityDelta"/> à zéro — sans ce champ, il serait aussi indistinguable d'une
+    /// action sans effet que ne l'est un coup manqué, mais avec la mauvaise cause affichée
+    /// (rien ne dirait que la Garde a fait son travail).
+    /// </summary>
+    int GuardAbsorbed = 0);
 
 /// <summary>Une case du trajet, dans l'ordre où elle est foulée.</summary>
 public sealed record TacticalStepDto(int X, int Y);

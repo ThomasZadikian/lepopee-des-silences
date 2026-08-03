@@ -16,10 +16,10 @@ namespace Leds.GameEngine.Application.Runs.TacticalCombat;
 /// </remarks>
 public static class TacticalImpactRecorder
 {
-    public sealed record Snapshot(Guid CombatantId, int Vitality, bool WasDefeated);
+    public sealed record Snapshot(Guid CombatantId, int Vitality, bool WasDefeated, int Guard);
 
     public static IReadOnlyList<Snapshot> Capture(IEnumerable<Combatant> targets) =>
-        [.. targets.Select(t => new Snapshot(t.Id.Value, t.CurrentVitality, t.IsDefeated))];
+        [.. targets.Select(t => new Snapshot(t.Id.Value, t.CurrentVitality, t.IsDefeated, t.Guard))];
 
     /// <summary>Type de ligne de journal émis par le noyau de résolution sur un jet raté.</summary>
     private const string MissLogType = "AttackMissed";
@@ -59,18 +59,25 @@ public static class TacticalImpactRecorder
 
             var delta = snapshot.Vitality - target.CurrentVitality;
             var newlyDefeated = target.IsDefeated && !snapshot.WasDefeated;
+            // The Guard ledger only ever goes down from a hit (it's restored to base at the
+            // start of a round, never mid-resolution) — anything it lost this diff is exactly
+            // what it kept off the vitality total below.
+            var guardAbsorbed = Math.Max(0, snapshot.Guard - target.Guard);
 
             // Manquée ET intacte : une cible qu'un second effet de la même compétence a
             // touchée a bien perdu de la vitalité, et c'est ce chiffre-là qui doit s'afficher.
-            var missed = delta == 0 && missedIds.Contains(snapshot.CombatantId);
+            var missed = delta == 0 && guardAbsorbed == 0 && missedIds.Contains(snapshot.CombatantId);
 
-            if (delta == 0 && !newlyDefeated && !missed)
+            // Un coup entièrement absorbé laisse la vitalité intacte (delta == 0) mais n'est
+            // pas rien : la Garde a fait exactement ce pour quoi elle existe, et guardAbsorbed
+            // porte seul la preuve qu'il s'est passé quelque chose.
+            if (delta == 0 && !newlyDefeated && !missed && guardAbsorbed == 0)
                 continue;
 
             var position = combat.PositionOf(snapshot.CombatantId);
 
             impacts.Add(new TacticalImpactDto(
-                snapshot.CombatantId, position.X, position.Y, delta, newlyDefeated, missed));
+                snapshot.CombatantId, position.X, position.Y, delta, newlyDefeated, missed, guardAbsorbed));
         }
 
         return impacts;

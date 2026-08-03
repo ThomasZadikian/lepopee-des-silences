@@ -256,6 +256,13 @@ export type TacticalImpactDto = {
    * d'une action sans effet chiffré : dans les deux cas la vitalité ne bouge pas.
    */
   missed: boolean;
+  /**
+   * Ce que la Garde a encaissé à la place de la vitalité. Un coup entièrement absorbé laisse
+   * `vitalityDelta` à zéro — sans ce champ, il se lirait comme une action sans effet plutôt
+   * que comme la Garde ayant fait exactement son travail. Optionnel : absent (donc 0) pour
+   * toute réponse serveur antérieure à ce champ.
+   */
+  guardAbsorbed?: number;
 };
 
 /**

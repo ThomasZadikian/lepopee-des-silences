@@ -95,6 +95,10 @@ export type FloatingNumber = {
   text: string;
   color: string;
   bornAt: number;
+  /** `guard` paints a small shield glyph beside the number (see TacticalCombatScene's
+   * paintFloatingNumbers) — what Garde absorbed reads as a distinct event from a real hit,
+   * never as a duller version of the same one. */
+  kind?: 'damage' | 'guard';
 };
 
 export type ImpactEffect = {
@@ -125,6 +129,9 @@ const ENEMY_HIT_COLOR = '#ffd98a';
 const HEAL_COLOR = '#86dcb4';
 /** Gris froid : un coup manqué n'est pas une quantité, il ne doit pas se lire comme un chiffre. */
 const MISS_COLOR = '#c3c0d6';
+/** Jaune franc, associé au petit bouclier peint à côté (voir paintFloatingNumbers) — jamais
+ * confondu avec ENEMY_HIT_COLOR malgré la parenté de teinte, l'icône fait la différence. */
+const GUARD_COLOR = '#ffcc33';
 
 export function useCombatPlayback() {
   const walk = shallowRef<WalkAnimation | null>(null);
@@ -306,6 +313,26 @@ export function useCombatPlayback() {
   }
 
   /**
+   * Ce que la Garde vient d'encaisser — un événement en soi, jamais une variante plus terne
+   * d'un coup normal : sans lui, un coup entièrement absorbé (vitalité inchangée) ne laissait
+   * absolument rien voir, comme si l'action n'avait eu aucun effet.
+   */
+  function pushGuardFloat(x: number, y: number, amount: number, now: number) {
+    floats.value = [
+      ...floats.value,
+      {
+        id: (floatSeq += 1),
+        x,
+        y,
+        text: `−${amount}`,
+        color: GUARD_COLOR,
+        bornAt: now,
+        kind: 'guard',
+      },
+    ];
+  }
+
+  /**
    * Allume la zone du geste à venir, laisse au joueur le temps de la lire, puis l'éteint.
    *
    * Un geste sans cases annoncées (chronologie tronquée, ancien serveur) retombe sur le simple
@@ -403,7 +430,13 @@ export function useCombatPlayback() {
           const at = now();
           for (const impact of event.impacts) {
             const targetIsAlly = allyIds.has(impact.combatantId);
-            pushFloat(impact.x, impact.y, impact.vitalityDelta, targetIsAlly, at, impact.missed);
+            const guardAbsorbed = impact.guardAbsorbed ?? 0;
+            if (guardAbsorbed > 0) pushGuardFloat(impact.x, impact.y, guardAbsorbed, at);
+            // Une garde qui absorbe tout laisse la vitalité intacte — un « −0 » ne dirait rien
+            // que le chiffre de garde ci-dessus ne dise déjà mieux.
+            if (impact.missed || impact.vitalityDelta !== 0) {
+              pushFloat(impact.x, impact.y, impact.vitalityDelta, targetIsAlly, at, impact.missed);
+            }
             if (!impact.missed) {
               displayVitals.value = {
                 ...displayVitals.value,
@@ -456,7 +489,13 @@ export function useCombatPlayback() {
 
           for (const impact of event.impacts) {
             const targetIsAlly = allyIds.has(impact.combatantId);
-            pushFloat(impact.x, impact.y, impact.vitalityDelta, targetIsAlly, at, impact.missed);
+            const guardAbsorbed = impact.guardAbsorbed ?? 0;
+            if (guardAbsorbed > 0) pushGuardFloat(impact.x, impact.y, guardAbsorbed, at);
+            // Un coup entièrement absorbé laisse la vitalité intacte — un « −0 » ne dirait rien
+            // que le chiffre de garde ci-dessus ne dise déjà mieux.
+            if (impact.missed || impact.vitalityDelta !== 0) {
+              pushFloat(impact.x, impact.y, impact.vitalityDelta, targetIsAlly, at, impact.missed);
+            }
             // La barre ne s'effondre qu'ici, au moment exact où ce coup précis atterrit —
             // jamais avant, quel que soit l'ordre dans lequel `combat.value` a déjà tout reçu.
             if (!impact.missed) {
