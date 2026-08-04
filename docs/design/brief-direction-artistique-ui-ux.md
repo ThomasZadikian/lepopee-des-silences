@@ -1,3 +1,16 @@
+> ⚠️ **DOCUMENT REMPLACÉ (2026-08).** La direction artistique proposée ici (rouages, or/laiton,
+> architecture gothique à arches, `PalaceAtmosphere`) a été abandonnée après itération avec
+> Claude Design. La référence désormais unique pour toute l'UI hors-combat est
+> `direction-visuelle-palais-respire.md` — noir froid + un seul accent pastel mint, "le Palais
+> respire" plutôt que "le Palais est une machine". Ce document est conservé uniquement pour sa
+> réflexion écran par écran (idée directrice par page), une partie ayant survécu au changement de
+> palette — mais **plus aucune valeur de couleur, de matière ou de typographie qu'il contient ne
+> doit être reprise dans le code.**
+>
+> Le brief de superposition des nœuds (`brief-superposition-noeuds.md`, écrit après celui-ci) reste
+> lui pleinement valide : sa mécanique (3 formes, carte assombrie/bloquée) a été implémentée telle
+> quelle par Claude Design, seule la palette de son habillage change.
+
 # Brief Claude Design — univers graphique, UI et UX (hors combat/bestiaire/salles)
 
 > Document de transmission, au même titre que `brief-direction-artistique-combat.md` (créatures et
