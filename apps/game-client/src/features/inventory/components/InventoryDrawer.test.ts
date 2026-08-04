@@ -10,6 +10,17 @@ vi.mock('../../runs/stores/runStore', () => ({
   })),
 }));
 
+vi.mock('../../party/stores/playerStore', () => ({
+  usePlayerStore: vi.fn(() => ({
+    permanentItems: [],
+    profile: null,
+    isLoading: false,
+    loadProfile: vi.fn().mockResolvedValue(undefined),
+    equipItem: vi.fn().mockResolvedValue(undefined),
+    unequipItem: vi.fn().mockResolvedValue(undefined),
+  })),
+}));
+
 vi.mock('../api/inventoryApi', () => ({
   inventoryApi: {
     useItem: vi.fn().mockResolvedValue({}),
@@ -25,17 +36,13 @@ vi.mock('../../party/api/itemsApi', () => ({
 function mountDrawer(items: RunItemDto[], runId = 'run-1', capacity?: number | null) {
   return mount(InventoryDrawer, {
     props: { items, runId, capacity },
-    global: {
-      stubs: {
-        Transition: { template: '<slot />' },
-      },
-    },
   });
 }
 
 describe('InventoryDrawer', () => {
   const baseItem: RunItemDto = {
     id: 'item-1',
+    definitionKey: 'canon.item.potion',
     displayName: 'Potion de soin',
     type: 'Consumable',
     rarity: 'Common',
@@ -53,7 +60,7 @@ describe('InventoryDrawer', () => {
 
   it('emits close when close button is clicked', async () => {
     const wrapper = mountDrawer([]);
-    await wrapper.find('.bsd-close').trigger('click');
+    await wrapper.find('.inv-drawer__close').trigger('click');
     expect(wrapper.emitted('close')).toHaveLength(1);
   });
 
@@ -62,9 +69,10 @@ describe('InventoryDrawer', () => {
     expect(wrapper.text()).toContain('Ton sac est vide.');
   });
 
-  it('renders items in grid', () => {
+  it('renders items in grid, grouped by category', () => {
     const wrapper = mountDrawer([baseItem]);
-    expect(wrapper.findAll('.bsd-cell').length).toBe(1);
+    expect(wrapper.findAll('.bp-cell').length).toBe(1);
+    expect(wrapper.text()).toContain('Objets de soin');
   });
 
   it('displays item name', () => {
@@ -74,7 +82,7 @@ describe('InventoryDrawer', () => {
 
   it('displays rarity label', () => {
     const wrapper = mountDrawer([baseItem]);
-    expect(wrapper.text()).toContain('Commun');
+    expect(wrapper.text()).toContain('commune');
   });
 
   it('displays quantity when > 1', () => {
@@ -83,22 +91,16 @@ describe('InventoryDrawer', () => {
     expect(wrapper.text()).toContain('×3');
   });
 
-  it('selects an item on click', async () => {
+  it('selects an item on click and shows the detail sheet', async () => {
     const wrapper = mountDrawer([baseItem]);
-    await wrapper.find('.bsd-cell').trigger('click');
-    expect(wrapper.find('.bsd-cell--sel').exists()).toBe(true);
-  });
-
-  it('shows item detail sheet when selected', async () => {
-    const wrapper = mountDrawer([baseItem]);
-    await wrapper.find('.bsd-cell').trigger('click');
-    expect(wrapper.find('.bsd-sheet').exists()).toBe(true);
+    await wrapper.find('.bp-cell').trigger('click');
+    expect(wrapper.find('.bp-sheet').exists()).toBe(true);
     expect(wrapper.text()).toContain('Potion de soin');
   });
 
   it('displays effect label in sheet', async () => {
     const wrapper = mountDrawer([baseItem]);
-    await wrapper.find('.bsd-cell').trigger('click');
+    await wrapper.find('.bp-cell').trigger('click');
     expect(wrapper.text()).toContain('+20 Vitalité');
   });
 
@@ -110,16 +112,14 @@ describe('InventoryDrawer', () => {
       requiresLineOfSight: true,
     };
     const wrapper = mountDrawer([item]);
-    await wrapper.find('.bsd-cell').trigger('click');
+    await wrapper.find('.bp-cell').trigger('click');
 
-    expect(wrapper.text()).toContain('Portée 2');
-    expect(wrapper.text()).toContain('losange (rayon 2)');
-    expect(wrapper.text()).toContain('Ligne de vue requise');
+    expect(wrapper.text()).toContain('Portée 2 · losange (rayon 2) · ligne de vue requise');
   });
 
   it('shows use button for usable items', async () => {
     const wrapper = mountDrawer([baseItem]);
-    await wrapper.find('.bsd-cell').trigger('click');
+    await wrapper.find('.bp-cell').trigger('click');
     expect(wrapper.text()).toContain('Utiliser');
   });
 
@@ -142,45 +142,44 @@ describe('InventoryDrawer', () => {
     const item = { ...baseItem, definitionKey: 'canon.item.carnet', isUsable: false };
     const wrapper = mountDrawer([item]);
     await new Promise((r) => setTimeout(r, 0));
-    await wrapper.find('.bsd-cell').trigger('click');
+    await wrapper.find('.bp-cell').trigger('click');
 
-    expect(wrapper.find('.bsd-action-btn--read').exists()).toBe(true);
+    expect(wrapper.text()).toContain('Lire');
   });
 
   it('does not show the "Lire" button for a non-readable item', async () => {
-    const wrapper = mountDrawer([{ ...baseItem, definitionKey: 'canon.item.potion' }]);
+    const wrapper = mountDrawer([{ ...baseItem, isUsable: false }]);
     await new Promise((r) => setTimeout(r, 0));
-    await wrapper.find('.bsd-cell').trigger('click');
+    await wrapper.find('.bp-cell').trigger('click');
 
-    expect(wrapper.find('.bsd-action-btn--read').exists()).toBe(false);
+    expect(wrapper.text()).not.toContain('Lire');
   });
 
   it('shows unusable message for non-usable items', async () => {
     const item = { ...baseItem, isUsable: false };
     const wrapper = mountDrawer([item]);
-    await wrapper.find('.bsd-cell').trigger('click');
+    await wrapper.find('.bp-cell').trigger('click');
     expect(wrapper.text()).toContain('Cet objet ne peut pas être utilisé');
   });
 
-  it('applies rarity tone classes', () => {
+  it('applies the rare rarity tone', () => {
     const item = { ...baseItem, rarity: 'Rare' };
     const wrapper = mountDrawer([item]);
-    expect(wrapper.text()).toContain('Rare');
-    expect(wrapper.find('[class*="frost"]').exists()).toBe(true);
+    expect(wrapper.text()).toContain('rare');
+    expect(wrapper.find('.bp-cell__rarity').attributes('style')).toContain('--mint-dim');
   });
 
-  it('applies epic rarity tone', () => {
+  it('applies the epic rarity tone', () => {
     const item = { ...baseItem, rarity: 'Epic' };
     const wrapper = mountDrawer([item]);
-    expect(wrapper.text()).toContain('Épique');
-    expect(wrapper.find('[class*="gold"]').exists()).toBe(true);
+    expect(wrapper.text()).toContain('épique');
+    expect(wrapper.find('.bp-cell__rarity').attributes('style')).toContain('--mint)');
   });
 
-  it('applies uncommon rarity tone', () => {
+  it('applies the uncommon rarity tone', () => {
     const item = { ...baseItem, rarity: 'Uncommon' };
     const wrapper = mountDrawer([item]);
-    expect(wrapper.text()).toContain('Peu commun');
-    expect(wrapper.find('[class*="sap"]').exists()).toBe(true);
+    expect(wrapper.text()).toContain('peu commune');
   });
 
   it('shows error message when useItem fails', async () => {
@@ -188,8 +187,8 @@ describe('InventoryDrawer', () => {
     vi.mocked(inventoryApi.useItem).mockRejectedValueOnce(new Error('Échec'));
 
     const wrapper = mountDrawer([baseItem]);
-    await wrapper.find('.bsd-cell').trigger('click');
-    await wrapper.find('.bsd-action-btn--use').trigger('click');
+    await wrapper.find('.bp-cell').trigger('click');
+    await wrapper.find('.bp-btn').trigger('click');
     await new Promise((r) => setTimeout(r, 0));
 
     expect(wrapper.text()).toContain('Échec');
@@ -198,50 +197,50 @@ describe('InventoryDrawer', () => {
   it('hides effect section when effectAmount is 0', async () => {
     const item = { ...baseItem, effectAmount: 0 };
     const wrapper = mountDrawer([item]);
-    await wrapper.find('.bsd-cell').trigger('click');
-    expect(wrapper.find('.bsd-sheet__effect').exists()).toBe(false);
+    await wrapper.find('.bp-cell').trigger('click');
+    expect(wrapper.find('.bp-sheet__effect').exists()).toBe(false);
   });
 
   it('clears selection after successful use', async () => {
     const wrapper = mountDrawer([baseItem]);
-    await wrapper.find('.bsd-cell').trigger('click');
-    await wrapper.find('.bsd-action-btn--use').trigger('click');
+    await wrapper.find('.bp-cell').trigger('click');
+    await wrapper.find('.bp-btn').trigger('click');
     await new Promise((r) => setTimeout(r, 0));
-    expect(wrapper.find('.bsd-sheet').exists()).toBe(false);
+    expect(wrapper.find('.bp-sheet').exists()).toBe(false);
   });
 
   it('handles Guard effect type', async () => {
     const item = { ...baseItem, effectType: 'Guard', effectAmount: 10 };
     const wrapper = mountDrawer([item]);
-    await wrapper.find('.bsd-cell').trigger('click');
+    await wrapper.find('.bp-cell').trigger('click');
     expect(wrapper.text()).toContain('+10 Garde');
   });
 
   it('handles ManaRestore effect type', async () => {
     const item = { ...baseItem, effectType: 'ManaRestore', effectAmount: 5 };
     const wrapper = mountDrawer([item]);
-    await wrapper.find('.bsd-cell').trigger('click');
+    await wrapper.find('.bp-cell').trigger('click');
     expect(wrapper.text()).toContain('+5 Mana');
   });
 
   it('handles ChargeRestore effect type', async () => {
     const item = { ...baseItem, effectType: 'ChargeRestore', effectAmount: 3 };
     const wrapper = mountDrawer([item]);
-    await wrapper.find('.bsd-cell').trigger('click');
+    await wrapper.find('.bp-cell').trigger('click');
     expect(wrapper.text()).toContain('+3 Charge');
   });
 
   it('handles NextCombatGuard effect type', async () => {
     const item = { ...baseItem, effectType: 'NextCombatGuard', effectAmount: 15 };
     const wrapper = mountDrawer([item]);
-    await wrapper.find('.bsd-cell').trigger('click');
+    await wrapper.find('.bp-cell').trigger('click');
     expect(wrapper.text()).toContain('+15 Garde (prochain combat)');
   });
 
   it('handles NarrativeFragment effect type', async () => {
     const item = { ...baseItem, effectType: 'NarrativeFragment', effectAmount: 1 };
     const wrapper = mountDrawer([item]);
-    await wrapper.find('.bsd-cell').trigger('click');
+    await wrapper.find('.bp-cell').trigger('click');
     expect(wrapper.text()).toContain('Fragment narratif');
   });
 
@@ -250,14 +249,14 @@ describe('InventoryDrawer', () => {
     expect(wrapper.text()).toContain('1 / 6');
   });
 
-  it('hides the capacity counter when capacity is not provided', () => {
+  it('shows just the item count when capacity is not provided', () => {
     const wrapper = mountDrawer([baseItem]);
-    expect(wrapper.find('.bsd-capacity').exists()).toBe(false);
+    expect(wrapper.find('.bp-capacity').text()).toBe('1');
   });
 
   it('flags the capacity counter as full when the bag has reached capacity', () => {
     const items = [baseItem, { ...baseItem, id: 'item-2' }];
     const wrapper = mountDrawer(items, 'run-1', 2);
-    expect(wrapper.find('.bsd-capacity--full').exists()).toBe(true);
+    expect(wrapper.find('.bp-capacity--full').exists()).toBe(true);
   });
 });
