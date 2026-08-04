@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router';
 
 import PalaceAtmosphere from '../shared/components/PalaceAtmosphere.vue';
 import RuleOrnament from '../shared/components/RuleOrnament.vue';
+import SealGlyph from '../shared/components/SealGlyph.vue';
 import BookReader from '../shared/components/BookReader.vue';
 import { useRunStore } from '../features/runs/stores/runStore';
 import { usePlayerStore } from '../features/party/stores/playerStore';
@@ -124,36 +125,56 @@ const isTargetSlotFull = computed(() => {
   return character.items.filter((i) => i.isEquipped && (i.slot ?? 'Relic') === slot).length >= slotLimits[slot];
 });
 
+// Drives the equip sceau's transient "en cours" ring — separate from playerStore.isLoading,
+// which also flips for unrelated fetches elsewhere on the page and would make the stamp
+// animation replay at the wrong moments.
+const equipBusy = ref(false);
+
 async function toggleEquip() {
   if (!selectedItem.value || !selectedCharacterId.value || playerStore.isLoading) return;
   const itemKey = selectedItem.value.definitionKey;
-  if (isEquippedOnTarget.value) {
-    await playerStore.unequipItem(selectedCharacterId.value, itemKey);
-  } else {
-    if (isTargetSlotFull.value) return;
+  equipBusy.value = true;
+  try {
+    if (isEquippedOnTarget.value) {
+      await playerStore.unequipItem(selectedCharacterId.value, itemKey);
+    } else {
+      if (isTargetSlotFull.value) return;
 
-    // Equipping has always required permanent ownership on the server (see
-    // PlayerProfile.EquipItem) — a run-found item only got there through the end-of-run
-    // keepsake ceremony. Granting it here, right before equipping, is what makes gear found
-    // THIS run usable THIS run: same endpoint that ceremony uses, just fired for one item
-    // the moment it's actually needed instead of waiting for the run to end. No-op if the
-    // item is already permanently owned.
-    if (!selectedItemIsPermanentlyOwned.value) {
-      await runStore.grantPermanentItem(itemKey);
-      await playerStore.loadProfile();
+      // Equipping has always required permanent ownership on the server (see
+      // PlayerProfile.EquipItem) — a run-found item only got there through the end-of-run
+      // keepsake ceremony. Granting it here, right before equipping, is what makes gear found
+      // THIS run usable THIS run: same endpoint that ceremony uses, just fired for one item
+      // the moment it's actually needed instead of waiting for the run to end. No-op if the
+      // item is already permanently owned.
+      if (!selectedItemIsPermanentlyOwned.value) {
+        await runStore.grantPermanentItem(itemKey);
+        await playerStore.loadProfile();
+      }
+
+      await playerStore.equipItem(selectedCharacterId.value, itemKey);
     }
 
-    await playerStore.equipItem(selectedCharacterId.value, itemKey);
-  }
-
-  // Mid-run resync: makes the new loadout's base stats apply to the run's next
-  // combat instead of only the player's next run. Silently skipped during an
-  // active combat (backend rejects it there — equip still updates the
-  // permanent profile, it just takes effect once the fight ends).
-  if (runStore.currentRun && !runStore.shouldShowCombatScene) {
-    await runStore.syncPartyStats();
+    // Mid-run resync: makes the new loadout's base stats apply to the run's next
+    // combat instead of only the player's next run. Silently skipped during an
+    // active combat (backend rejects it there — equip still updates the
+    // permanent profile, it just takes effect once the fight ends).
+    if (runStore.currentRun && !runStore.shouldShowCombatScene) {
+      await runStore.syncPartyStats();
+    }
+  } finally {
+    equipBusy.value = false;
   }
 }
+
+function sealToneFor(rarity: string): 'sap' | 'frost' | 'gold' | 'ink' {
+  const tone = getRarityTone(rarity);
+  return tone === '' ? 'ink' : (tone as 'sap' | 'frost' | 'gold');
+}
+
+const equipSealState = computed<'idle' | 'confirming' | 'confirmed'>(() => {
+  if (equipBusy.value) return 'confirming';
+  return isEquippedOnTarget.value ? 'confirmed' : 'idle';
+});
 
 function getRarityTone(rarity: string): string {
   switch (rarity) {
@@ -390,10 +411,19 @@ async function readGrimoire() {
               </button>
 
               <template v-if="selectedItemEquipSlot">
-                <p v-if="!selectedItemIsPermanentlyOwned" class="besace-sheet__warning">
-                  L'équiper le fera rejoindre ton sac permanent — il te suivra dans tes
-                  prochaines traversées aussi.
-                </p>
+                <div class="besace-sheet__seal">
+                  <SealGlyph
+                    kind="equipement"
+                    :tone="sealToneFor(selectedItem.rarity)"
+                    :size="56"
+                    :sigil-size="24"
+                    :state="equipSealState"
+                  />
+                  <p v-if="!selectedItemIsPermanentlyOwned" class="besace-sheet__warning" style="margin: 0">
+                    L'équiper le fera rejoindre ton sac permanent — il te suivra dans tes
+                    prochaines traversées aussi.
+                  </p>
+                </div>
                 <label class="besace-sheet__target">
                   Porteur
                   <select v-model="selectedCharacterId">
@@ -795,6 +825,13 @@ async function readGrimoire() {
   color: var(--gold, oklch(.72 .1 85));
   font-size: 10px;
   line-height: 1.4;
+}
+
+.besace-sheet__seal {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 2px;
 }
 
 .besace-sheet__error {

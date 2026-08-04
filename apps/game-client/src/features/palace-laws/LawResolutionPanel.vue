@@ -2,6 +2,7 @@
 import ChipBadge from '@/shared/components/ChipBadge.vue'
 import EliseComment from '@/shared/components/EliseComment.vue'
 import RuleOrnament from '@/shared/components/RuleOrnament.vue'
+import SealGlyph from '@/shared/components/SealGlyph.vue'
 import SigilIcon from '@/shared/components/SigilIcon.vue'
 import LawsPopover from './LawsPopover.vue'
 import { computed, ref } from 'vue'
@@ -44,6 +45,9 @@ const sealButtonText = computed(() => {
   if (!requiresChoice.value || lawApplicationChoice.value) return 'Apposer le sceau & inscrire au Tome'
   return 'Loi indisponible'
 })
+const sealState = computed<'idle' | 'confirming' | 'confirmed'>(() =>
+  sealed.value ? 'confirmed' : stamping.value ? 'confirming' : 'idle',
+)
 
 const openFragments = ref<Set<number>>(new Set([0]))
 function toggleFragment(i: number) {
@@ -110,42 +114,15 @@ function proceed() {
         </span>
 
         <!-- Seal circle -->
-        <div
-          :class="['vlo-seal', sealed && 'vlo-seal--done']"
-        >
-          <!-- Inner ring -->
-          <div class="vlo-seal__ring" />
-
-          <!-- Sigil -->
-          <div
-            class="vlo-seal__sigil"
-            :style="{ opacity: sealed ? 1 : 0.55, color: 'var(--gold)' }"
-          >
-            <SigilIcon kind="loi" :size="86" :stroke-width="1" />
-          </div>
-
-          <!-- Stamp ring (animates in) -->
-          <div :class="['vlo-stamp', stamping && 'vlo-stamp--go']" />
-
-          <!-- Checkmark badge (appears when sealed) -->
-          <div :class="['vlo-check', sealed && 'vlo-check--show']">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M3 8l4 4 6-7" />
-            </svg>
-          </div>
-
-          <!-- SVG arc text -->
-          <svg class="vlo-art" viewBox="0 0 218 218" fill="none" aria-hidden="true">
-            <path id="vlo-arc-top" d="M 30 109 A 79 79 0 0 1 188 109" fill="none" />
-            <path id="vlo-arc-bot" d="M 188 109 A 79 79 0 0 1 30 109" fill="none" />
-            <text font-family="var(--caps, 'Marcellus SC', serif)" font-size="9" letter-spacing="3" fill="currentColor" opacity="0.4" text-anchor="middle">
-              <textPath href="#vlo-arc-top" startOffset="50%">Édit du Palais</textPath>
-            </text>
-            <text font-family="var(--mono, 'JetBrains Mono', monospace)" font-size="7.5" letter-spacing="2" fill="currentColor" opacity="0.3" text-anchor="middle">
-              <textPath href="#vlo-arc-bot" startOffset="50%">v{{ outcome.riskLevel ?? '1' }}.0</textPath>
-            </text>
-          </svg>
-        </div>
+        <SealGlyph
+          kind="loi"
+          tone="gold"
+          :size="218"
+          :sigil-size="86"
+          top-text="Édit du Palais"
+          :bottom-text="`v${outcome.riskLevel ?? '1'}.0`"
+          :state="sealState"
+        />
 
         <!-- Law title -->
         <h3 class="es-h3" style="font-size: 27px; text-align: center; margin-top: 22px; margin-bottom: 14px; color: var(--gold)">
@@ -346,101 +323,6 @@ function proceed() {
   flex-direction: column;
   align-items: center;
   padding: 34px 30px;
-}
-
-/* ── Seal circle ── */
-.vlo-seal {
-  position: relative;
-  width: 218px;
-  height: 218px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 40% 35%, oklch(0.72 0.12 84 / 0.18), oklch(0.55 0.08 84 / 0.08) 55%, transparent 80%);
-  border: 1px solid var(--gold-dim);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  transition: border-color 0.4s, box-shadow 0.4s;
-}
-
-.vlo-seal--done {
-  border-color: var(--gold);
-  box-shadow: 0 0 48px -12px oklch(0.72 0.12 84 / 0.5);
-}
-
-/* Inner dashed ring */
-.vlo-seal__ring {
-  position: absolute;
-  inset: 12px;
-  border-radius: 50%;
-  border: 1px dashed var(--gold-dim);
-  pointer-events: none;
-}
-
-.vlo-seal--done .vlo-seal__ring {
-  border-color: oklch(0.72 0.12 84 / 0.5);
-}
-
-/* Sigil container (centered) */
-.vlo-seal__sigil {
-  position: absolute;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: opacity 0.4s;
-}
-
-/* Stamp ring animation */
-.vlo-stamp {
-  position: absolute;
-  inset: -4px;
-  border-radius: 50%;
-  border: 3px solid var(--gold);
-  opacity: 0;
-  transform: scale(0.6);
-  pointer-events: none;
-}
-
-.vlo-stamp--go {
-  animation: vloStamp 0.46s cubic-bezier(0.22, 0.8, 0.4, 1) forwards;
-}
-
-@keyframes vloStamp {
-  0%   { opacity: 0; transform: scale(0.6); }
-  50%  { opacity: 1; transform: scale(1.05); }
-  100% { opacity: 0; transform: scale(1.18); }
-}
-
-/* Gold checkmark badge (bottom right of seal) */
-.vlo-check {
-  position: absolute;
-  bottom: 10px;
-  right: 10px;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: var(--gold);
-  color: var(--void);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transform: scale(0);
-  transition: transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);
-  pointer-events: none;
-}
-
-.vlo-check--show {
-  transform: scale(1);
-}
-
-/* SVG arc text overlay */
-.vlo-art {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  color: var(--gold);
 }
 
 /* ── Info panel ── */

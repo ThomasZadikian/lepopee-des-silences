@@ -2,7 +2,7 @@
 import ChipBadge from '@/shared/components/ChipBadge.vue'
 import EliseComment from '@/shared/components/EliseComment.vue'
 import RuleOrnament from '@/shared/components/RuleOrnament.vue'
-import SigilIcon from '@/shared/components/SigilIcon.vue'
+import SealGlyph from '@/shared/components/SealGlyph.vue'
 import { computed, ref, watch } from 'vue'
 import DefeatedEnemyList from './DefeatedEnemyList.vue'
 import type { RewardOfferDto } from '../types/rewardTypes'
@@ -160,10 +160,17 @@ function sigilKind(tone: 'gold' | 'frost' | null): string {
   return 'recompense'
 }
 
-function accentOf(tone: 'gold' | 'frost' | null): string {
-  if (tone === 'gold') return 'var(--gold)'
-  if (tone === 'frost') return 'var(--frost)'
-  return 'var(--ink-3)'
+function sealTone(tone: 'gold' | 'frost' | null): 'gold' | 'frost' | 'ink' {
+  return tone ?? 'ink'
+}
+
+// Choisir une carte n'est qu'une intention (déjà lisible via rop-card--sel) ; le sceau ne
+// s'anime qu'au moment où ce choix devient irréversible — le clic sur « Emporter ».
+function sealState(card: NormalizedCard): 'idle' | 'confirming' | 'confirmed' {
+  if (selectedId.value !== card.id) return 'idle'
+  if (isExpiredOrSelected.value) return 'confirmed'
+  if (taken.value) return 'confirming'
+  return 'idle'
 }
 
 function cardShadow(card: NormalizedCard, selected: boolean): string {
@@ -267,22 +274,14 @@ const confirmBtnClass = computed(() =>
             </div>
 
             <div style="display: flex; justify-content: center; margin: 4px 0 20px">
-              <div
-                class="rop-card__icon"
-                :style="{
-                  border: '1px solid ' + (selectedId === card.id ? accentOf(card.tone) : 'var(--line)'),
-                  boxShadow: selectedId === card.id
-                    ? '0 0 30px -6px ' + accentOf(card.tone)
-                    : 'none',
-                  color: accentOf(card.tone),
-                }"
-              >
-                <SigilIcon
-                  :kind="sigilKind(card.tone)"
-                  :size="38"
-                  :stroke-width="1.3"
-                />
-              </div>
+              <SealGlyph
+                :kind="sigilKind(card.tone)"
+                :tone="sealTone(card.tone)"
+                :size="92"
+                :sigil-size="38"
+                :sigil-stroke-width="1.3"
+                :state="sealState(card)"
+              />
             </div>
 
             <h3
@@ -526,17 +525,6 @@ const confirmBtnClass = computed(() =>
   color: transparent;
   font-size: 12px;
   transition: all 0.2s;
-}
-
-/* Icon circle */
-.rop-card__icon {
-  width: 92px;
-  height: 92px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: border-color 0.24s, box-shadow 0.24s;
 }
 
 .rop-purchase-error {
