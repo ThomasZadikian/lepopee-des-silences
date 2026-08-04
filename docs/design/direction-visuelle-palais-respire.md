@@ -30,18 +30,25 @@
 |---|---|---|
 | Fond général | `--void` | `#0c0d12` |
 | Cartes/panneaux | `--panel` | `#15171a` |
-| Survol/relief | `--panel-2` | `#1b1e22` |
-| Texte principal | `--ink` | `#e8e6e2` |
-| Texte atténué | `--ink-2` | `#c3c0ba` |
-| Texte discret | `--ink-3` | `#8f8d8a` |
-| Texte très discret | `--ink-4` | `#605e5c` |
-| Texte quasi invisible | `--ink-5` | `#403f3d` |
-| Bordure | `--line` | `rgba(150,150,150,.18)` |
-| Bordure discrète | `--line-soft` | `rgba(150,150,150,.10)` |
+| Survol/relief | `--panel-2` | `#1c1f24` |
+| Texte principal | `--ink` | `#f2f1ee` |
+| Texte atténué | `--ink-2` | `#d6d3cc` |
+| Texte discret | `--ink-3` | `#a6a39c` |
+| Texte très discret | `--ink-4` | `#726f6a` |
+| Texte quasi invisible | `--ink-5` | `#4a4744` |
+| Bordure | `--line` | `rgba(190,190,190,.24)` |
+| Bordure discrète | `--line-soft` | `rgba(190,190,190,.14)` |
 | **Accent unique** | `--mint` | `#bfe3e0` |
 | Accent atténué | `--mint-dim` | `#8fc4bf` |
-| Alerte/perte | `--danger` | `#a35b52` |
+| Alerte/perte | `--danger` | `#c07268` |
 | Alerte atténuée | `--danger-dim` | `#8a4c45` |
+| Ton secondaire neutre (perte de réputation, jamais un danger) | `--mauve` / `--mauve-dim` | `#c9c2e8` / `#b6acdc` |
+
+> Révisé (2e passe Claude Design) : les valeurs `--ink-*`/`--line*`/`--panel-2`/`--danger` ont été
+> éclaircies d'un cran sur l'ensemble des écrans pour le contraste — c'est un correctif de
+> lisibilité globale, pas un changement de direction. `--mauve` est apparu à cette passe : un ton
+> secondaire pour ce qui est triste/mélancolique sans être une alerte (perte de réputation) —
+> distinct de `--danger`, qui reste réservé à ce qui menace/coûte concrètement.
 
 `--mint` est **le seul accent vif** de toute l'interface hors-combat — réservé aux interactions
 actives, à l'information positive, aux transitions/passages. **Ne jamais l'utiliser en décor.**
