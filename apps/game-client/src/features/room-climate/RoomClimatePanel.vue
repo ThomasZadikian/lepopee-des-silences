@@ -14,9 +14,8 @@ const display = computed(() => resolveRoomClimateDisplay(props.climate));
 <template>
   <section class="rcp-root" aria-label="Climat de Room">
     <div class="rcp-head">
-      <span class="es-kicker">Climat de Room</span>
-      <span v-if="display" class="es-chip es-chip--frost">Actif</span>
-      <span v-else class="es-chip">Aucun</span>
+      <span class="rcp-kicker">Climat de Room</span>
+      <span class="rcp-status" :class="{ 'rcp-status--active': display }">{{ display ? 'Actif' : 'Aucun' }}</span>
     </div>
 
     <div v-if="display" class="rcp-card">
@@ -49,10 +48,10 @@ const display = computed(() => resolveRoomClimateDisplay(props.climate));
 
 <style scoped>
 .rcp-root {
-  padding: var(--space-3);
-  border: 1px solid color-mix(in oklch, var(--frost), transparent 68%);
-  border-radius: var(--radius-sm);
-  background: oklch(0.16 0.035 272 / 0.64);
+  padding: 12px 14px;
+  background: var(--panel-2);
+  border: 1px solid var(--line-soft);
+  margin-bottom: 22px;
 }
 
 .rcp-head,
@@ -61,25 +60,44 @@ const display = computed(() => resolveRoomClimateDisplay(props.climate));
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-2);
+  gap: 8px;
 }
+
+.rcp-kicker {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+}
+
+.rcp-status {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+}
+
+.rcp-status--active { color: var(--mint-dim); }
 
 .rcp-card {
   display: grid;
-  gap: var(--space-2);
-  margin-top: var(--space-2);
+  gap: 6px;
+  margin-top: 8px;
 }
 
 .rcp-card__head strong {
   font-family: var(--font-display);
+  font-style: italic;
   color: var(--ink);
-  font-size: 1rem;
+  font-size: 14px;
 }
 
 .rcp-card__type,
 .rcp-meta {
   font-family: var(--font-mono);
-  font-size: 0.68rem;
+  font-size: 10px;
   color: var(--ink-4);
 }
 
@@ -87,29 +105,27 @@ const display = computed(() => resolveRoomClimateDisplay(props.climate));
 .rcp-empty {
   margin: 0;
   color: var(--ink-3);
-  font-size: 0.78rem;
-  line-height: 1.45;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .rcp-meta {
   display: grid;
   gap: 4px;
-  margin: 0;
+  margin: 4px 0 0;
 }
 
 .rcp-meta dt,
-.rcp-meta dd {
-  margin: 0;
-}
+.rcp-meta dd { margin: 0; }
 
 .rcp-meta dt {
   color: var(--ink-5);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: .08em;
 }
 
 .rcp-meta dd {
-  color: var(--frost-dim);
+  color: var(--ink-3);
   text-align: right;
 }
 </style>
