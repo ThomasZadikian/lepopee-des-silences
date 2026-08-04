@@ -2173,7 +2173,7 @@ onBeforeUnmount(() => {
 .tbattle__initiative {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 5px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -2323,7 +2323,7 @@ onBeforeUnmount(() => {
   position: absolute;
   z-index: 8;
   width: min(760px, calc(100% - 380px));
-  max-height: min(46vh, 330px);
+  max-height: min(46vh, 550px);
   overflow: auto;
   display: flex;
   flex-direction: column;
@@ -2338,7 +2338,7 @@ onBeforeUnmount(() => {
 
 .tbattle__portraits {
   display: flex;
-  gap: 0.65rem;
+  gap: 0.5rem;
   overflow-x: auto;
 }
 
