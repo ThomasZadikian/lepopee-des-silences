@@ -7,10 +7,6 @@ defineProps<{
 <template>
   <aside v-if="message" class="elise-overlay">
     <div class="elise-overlay__frame">
-      <div class="es-corner es-corner--frost tl" />
-      <div class="es-corner es-corner--frost tr" />
-      <div class="es-corner es-corner--frost bl" />
-      <div class="es-corner es-corner--frost br" />
       <p class="elise-overlay__name">Elise</p>
       <p class="elise-overlay__text">{{ message }}</p>
     </div>
@@ -28,20 +24,18 @@ defineProps<{
 }
 
 .elise-overlay__frame {
-  position: relative;
   padding: var(--space-3) var(--space-4);
-  background: oklch(0.22 0.04 272 / 0.85);
+  background: var(--panel);
   backdrop-filter: blur(6px);
-  border: 1px solid var(--line-soft);
-  border-radius: var(--radius-sm);
+  border-left: 2px solid var(--mint-dim);
 }
 
 .elise-overlay__name {
-  font-family: var(--font-caps);
-  font-size: 0.56rem;
-  letter-spacing: 0.22em;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--frost-dim);
+  color: var(--mint-dim);
   margin: 0 0 var(--space-1);
 }
 
@@ -51,5 +45,6 @@ defineProps<{
   line-height: 1.5;
   color: var(--ink-2);
   margin: 0;
+  font-style: italic;
 }
 </style>

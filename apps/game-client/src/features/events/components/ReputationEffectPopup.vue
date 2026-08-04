@@ -58,29 +58,26 @@ watch(
   align-items: baseline;
   gap: 8px;
   padding: 6px 12px;
-  border-radius: 999px;
-  border: 1px solid var(--line, oklch(.35 .025 60 / .6));
-  background: oklch(.18 .02 60 / .85);
+  border: 1px solid var(--line);
+  background: var(--panel);
   backdrop-filter: blur(6px);
-  box-shadow: 0 8px 24px -10px oklch(0 0 0 / .6);
 }
 
 .rep-pill__amount {
-  font-family: var(--font-mono, monospace);
+  font-family: var(--font-mono);
   font-size: 13px;
-  font-weight: 600;
 }
 
 .rep-pill__label {
-  font-family: var(--font-caps, var(--font));
+  font-family: var(--font-mono);
   font-size: 9.5px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--ink-4, oklch(.45 .015 275));
+  color: var(--ink-4);
 }
 
-.rep-pill--gain .rep-pill__amount { color: var(--sap, oklch(.70 .09 162)); }
-.rep-pill--loss .rep-pill__amount { color: var(--blood, oklch(.52 .15 20)); }
+.rep-pill--gain .rep-pill__amount { color: var(--mint-dim); }
+.rep-pill--loss .rep-pill__amount { color: var(--mauve-dim); }
 
 .rep-pop-enter-active,
 .rep-pop-leave-active {

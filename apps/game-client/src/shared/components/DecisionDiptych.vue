@@ -71,7 +71,7 @@ watch(() => props.modelValue, (open) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: oklch(0.10 0.03 272 / 0.8);
+  background: rgba(0, 0, 0, 0.8);
   backdrop-filter: blur(6px);
 }
 
@@ -96,7 +96,6 @@ watch(() => props.modelValue, (open) => {
 .diptych__side--cancel {
   background: var(--panel);
   border: 1px solid var(--line);
-  border-radius: var(--radius-md) 0 0 var(--radius-md);
   border-right: none;
 }
 
@@ -106,28 +105,27 @@ watch(() => props.modelValue, (open) => {
 
 .diptych__side--confirm {
   background: var(--panel);
-  border: 1px solid var(--edge-frost);
-  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  border: 1px solid var(--mint-dim);
   border-left: none;
-  color: var(--frost);
+  color: var(--mint-dim);
 }
 
 .diptych__side--confirm:hover {
-  background: var(--card-sel-frost);
+  background: var(--panel-2);
 }
 
 .diptych__side--danger {
-  border-color: color-mix(in oklch, var(--blood), transparent 50%);
-  color: var(--blood);
+  border-color: var(--danger-dim);
+  color: var(--danger-dim);
 }
 
 .diptych__side--danger:hover {
-  background: var(--wash-blood);
+  background: var(--panel-2);
 }
 
 .diptych__label {
-  font-family: var(--font-caps);
-  font-size: 0.72rem;
+  font-family: var(--font-mono);
+  font-size: 10px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }

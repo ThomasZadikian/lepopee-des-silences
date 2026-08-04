@@ -38,14 +38,4 @@ describe('EliseOverlay', () => {
     expect(wrapper.find('.elise-overlay').exists()).toBe(false);
   });
 
-  it('renders corner decorations', () => {
-    const wrapper = mountOverlay('Test');
-    expect(wrapper.findAll('.es-corner').length).toBe(4);
-  });
-
-  it('applies frost corner class', () => {
-    const wrapper = mountOverlay('Test');
-    const corners = wrapper.findAll('.es-corner--frost');
-    expect(corners.length).toBe(4);
-  });
 });
