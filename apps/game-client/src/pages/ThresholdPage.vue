@@ -2,317 +2,137 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
-import SealGlyph from '../shared/components/SealGlyph.vue';
+import LivingWalls from '../shared/components/LivingWalls.vue';
 import { useRunStore } from '../features/runs/stores/runStore';
 
 const router   = useRouter();
 const runStore = useRunStore();
 
 const resumableRun = computed(() => runStore.resumableRun);
+const hasResumable = computed(() => Boolean(resumableRun.value));
 
 onMounted(() => { runStore.loadResumableRun(); });
 
-// Lequel des deux gestes fondateurs est en cours — sépare le sceau qui doit tamponner de
-// celui qui doit rester immobile, plutôt que de faire réagir les deux rubans à la fois sur
-// le seul drapeau générique runStore.isLoading.
-const pendingAction = ref<'reprise' | 'neuf' | null>(null);
+const showConfirm = ref(false);
+const isTransitioning = ref(false);
+const transitionLabel = ref('');
+
+function startTransition(label: string) {
+  transitionLabel.value = label;
+  isTransitioning.value = true;
+}
 
 async function resumeRun() {
   const run = resumableRun.value;
   if (!run) return;
-  pendingAction.value = 'reprise';
+  startTransition('Vous reprenez votre traversée…');
   try {
     await runStore.loadRun(run.id);
     if (runStore.currentRun?.id) await router.push(`/run/${run.id}`);
   } finally {
-    pendingAction.value = null;
+    isTransitioning.value = false;
   }
 }
 
 async function startRun() {
-  pendingAction.value = 'neuf';
+  startTransition('Vous franchissez le seuil…');
   try {
     await runStore.startRun();
     const runId = runStore.currentRun?.id;
     if (!runId) return;
     await router.push(`/run/${runId}`);
   } finally {
-    pendingAction.value = null;
+    isTransitioning.value = false;
   }
 }
 
-function formatSavedAt(savedAt: string): string {
-  try {
-    return new Intl.DateTimeFormat('fr-FR', {
-      day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
-    }).format(new Date(savedAt));
-  } catch { return '—'; }
+function onClickReprendre() {
+  if (hasResumable.value) resumeRun();
 }
 
-// ── UI accordéons rubans ──────────────────────────────────────────────────
-type PanelId = 'reprise' | 'neuf' | null;
-const openPanel  = ref<PanelId>('reprise');
-const showConfirm = ref<'reprise' | 'neuf' | null>(null);
-
-function togglePanel(id: PanelId) {
-  openPanel.value = openPanel.value === id ? null : id;
+function onClickNouvelle() {
+  if (hasResumable.value) showConfirm.value = true;
+  else startRun();
 }
-const isReprise = computed(() => openPanel.value === 'reprise');
-const isNeuf    = computed(() => openPanel.value === 'neuf');
+
+function confirmAbandon() {
+  showConfirm.value = false;
+  startRun();
+}
+
+/** Constante du monde du Palais (structure fixe à 27 salles) — pas une donnée de run. */
+const TOTAL_ROOMS = 27;
 </script>
 
 <template>
   <main class="threshold-screen">
-    <!-- Atmosphère -->
-    <div class="es-atmos" />
-    <div class="es-vignette" />
-    <div class="es-grain" />
+    <LivingWalls veins motes />
 
     <div class="threshold-content">
-
-      <!-- En-tête -->
-      <span class="es-kicker" style="color: var(--ink-4)">Seuil du Palais</span>
-
-      <!-- Filet losange -->
-      <div class="es-rule threshold-rule">
-        <span class="es-lozenge" />
+      <div class="threshold-title-block">
+        <span class="threshold-kicker">Le Palais</span>
+        <h1 class="threshold-title">L'Épopée des Silences</h1>
+        <div class="threshold-title-rule" />
       </div>
 
-      <h1 class="es-h1 threshold-title">L'ÉPOPÉE DES SILENCES</h1>
-      <p class="es-lede threshold-tagline">
-        Deux portes au seuil. L'une retient ta descente&nbsp;; l'autre l'efface pour mieux la réécrire.
-      </p>
-
-      <!-- Diptyque-rubans -->
-      <div class="threshold-ribbons">
-
-        <!-- ── Ruban Reprise ── -->
-        <div
-          :class="['ribbon', 'es-panel', isReprise && 'ribbon--open ribbon--gold']"
-          :style="isReprise ? { borderColor: 'var(--gold)' } : {}"
+      <div class="threshold-links">
+        <button
+          type="button"
+          class="threshold-link"
+          :class="{ 'threshold-link--disabled': !hasResumable }"
+          :disabled="!hasResumable"
+          @click="onClickReprendre"
         >
-          <div class="ribbon__head" @click="togglePanel('reprise')">
-            <div class="ribbon__head-left">
-              <SealGlyph
-                kind="seuil"
-                tone="gold"
-                :size="46"
-                :sigil-size="20"
-                :sigil-stroke-width="1.5"
-                :state="pendingAction === 'reprise' ? 'confirming' : 'idle'"
-              />
-              <div>
-                <span class="ribbon__chip ribbon__chip--gold">Run en cours</span>
-                <h3
-                  class="es-h3 ribbon__heading"
-                  :style="{ color: isReprise ? 'var(--ink)' : 'var(--ink-2)' }"
-                >Reprendre la descente</h3>
-              </div>
-            </div>
-            <div class="ribbon__head-right">
-              <span
-                v-if="resumableRun"
-                class="es-mono ribbon__seed"
-                style="color: var(--gold)"
-              >{{ resumableRun.seed }}</span>
-              <span v-else-if="runStore.isLoadingResumableRun" class="es-label">Vérification…</span>
-              <span v-else class="es-label" style="color: var(--ink-4)">Aucune run</span>
-              <svg
-                :style="{ transform: isReprise ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform .25s', color: 'var(--gold)' }"
-                width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-              ><polyline points="6 9 12 15 18 9" /></svg>
-            </div>
-          </div>
+          <span class="threshold-link__glyph">◈</span>
+          <span class="threshold-link__label">Reprendre la traversée</span>
+        </button>
 
-          <!-- Corps : affiché seulement si une run est disponible -->
-          <div class="ribbon__body" :style="{ maxHeight: isReprise ? '320px' : '0', opacity: isReprise ? 1 : 0 }">
-            <div class="ribbon__body-inner">
-              <div class="ribbon__divider" />
+        <div class="threshold-links__divider" />
 
-              <template v-if="resumableRun">
-                <div class="ribbon__stats">
-                  <div class="ribbon__stat">
-                    <span class="es-label" style="color: var(--ink-4)">Seed</span>
-                    <span class="es-mono ribbon__stat-value">{{ resumableRun.seed }}</span>
-                  </div>
-                  <div class="ribbon__stat">
-                    <span class="es-label" style="color: var(--ink-4)">Salle</span>
-                    <span class="es-mono ribbon__stat-value">{{ resumableRun.currentRoomNumber }}</span>
-                  </div>
-                  <div class="ribbon__stat">
-                    <span class="es-label" style="color: var(--ink-4)">Sauvegardée</span>
-                    <span class="ribbon__stat-value" style="font-size: 13px; color: var(--ink-2)">
-                      {{ formatSavedAt(resumableRun.savedAt) }}
-                    </span>
-                  </div>
-                </div>
-                <button
-                  class="es-btn ribbon__btn"
-                  style="border-color: var(--gold); color: var(--gold)"
-                  :disabled="runStore.isLoading"
-                  @click.stop="showConfirm = 'reprise'"
-                >
-                  {{ runStore.isLoading ? 'Chargement…' : 'Reprendre →' }}
-                </button>
-              </template>
+        <button type="button" class="threshold-link" @click="onClickNouvelle">
+          <span class="threshold-link__glyph">○</span>
+          <span class="threshold-link__label">Nouvelle traversée</span>
+        </button>
+      </div>
 
-              <template v-else-if="runStore.isLoadingResumableRun">
-                <span class="es-label" style="color: var(--ink-4)">Recherche d'une run en cours…</span>
-              </template>
+      <div v-if="resumableRun" class="threshold-info">
+        <span>Semence <span class="threshold-info__value">{{ resumableRun.seed }}</span></span>
+        <span class="threshold-info__sep">·</span>
+        <span>Salle <span class="threshold-info__value">{{ resumableRun.currentRoomNumber }}</span> / {{ TOTAL_ROOMS }}</span>
+      </div>
 
-              <template v-else>
-                <p class="es-body" style="color: var(--ink-3); font-size: 14px; margin: 0 0 18px">
-                  Aucune descente suspendue. Lance une nouvelle run pour commencer.
-                </p>
-                <button class="es-btn" disabled style="opacity: 0.3">Reprendre →</button>
-              </template>
-            </div>
-          </div>
-        </div>
+      <p v-if="runStore.error" class="threshold-error">{{ runStore.error }}</p>
+    </div>
 
-        <!-- ── Ruban Nouveau seuil ── -->
-        <div
-          :class="['ribbon', 'es-panel', isNeuf && 'ribbon--open ribbon--frost']"
-          :style="isNeuf ? { borderColor: 'var(--frost)' } : {}"
-        >
-          <div class="ribbon__head" @click="togglePanel('neuf')">
-            <div class="ribbon__head-left">
-              <SealGlyph
-                kind="rare"
-                tone="frost"
-                :size="46"
-                :sigil-size="20"
-                :state="pendingAction === 'neuf' ? 'confirming' : 'idle'"
-              />
-              <div>
-                <span class="ribbon__chip ribbon__chip--frost">Seed inédite</span>
-                <h3
-                  class="es-h3 ribbon__heading"
-                  :style="{ color: isNeuf ? 'var(--ink)' : 'var(--ink-2)' }"
-                >Franchir un nouveau seuil</h3>
-              </div>
-            </div>
-            <div class="ribbon__head-right">
-              <span class="es-mono ribbon__seed" style="color: var(--frost)">à générer</span>
-              <svg
-                :style="{ transform: isNeuf ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform .25s', color: 'var(--frost)' }"
-                width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-              ><polyline points="6 9 12 15 18 9" /></svg>
-            </div>
-          </div>
-
-          <div class="ribbon__body" :style="{ maxHeight: isNeuf ? '320px' : '0', opacity: isNeuf ? 1 : 0 }">
-            <div class="ribbon__body-inner">
-              <div class="ribbon__divider" />
-              <p class="es-body" style="font-size: 14px; margin: 0 0 16px; max-width: 540px">
-                Une seed inédite réécrit l'architecture du Palais&nbsp;: pièces, lois, ennemis.
-                Tu repars avec ton Tome — rien d'autre.
+    <!-- ── Modale de confirmation ── -->
+    <Teleport to="body">
+      <Transition name="threshold-flood">
+        <div v-if="showConfirm" class="confirm-backdrop" @click.self="showConfirm = false">
+          <div class="confirm-dialog">
+            <div class="confirm-dialog__body">
+              <h2 class="confirm-dialog__title">Abandonner la traversée&nbsp;?</h2>
+              <p class="confirm-dialog__desc">
+                La traversée en cours — semence {{ resumableRun?.seed }}, salle {{ resumableRun?.currentRoomNumber }} sur {{ TOTAL_ROOMS }} — sera perdue. Le Palais n'attend pas deux fois.
               </p>
-              <div class="ribbon__stats" style="margin-bottom: 20px">
-                <div class="ribbon__stat">
-                  <span class="es-label" style="color: var(--ink-4)">Difficulté</span>
-                  <span class="ribbon__stat-value" style="color: var(--frost)">Stable · 4 choix</span>
-                </div>
-                <div class="ribbon__stat">
-                  <span class="es-label" style="color: var(--ink-4)">Seed</span>
-                  <span class="ribbon__stat-value" style="color: var(--frost)">attribuée au départ</span>
-                </div>
-              </div>
-
-              <button
-                class="es-btn ribbon__btn"
-                style="border-color: var(--frost); color: var(--frost); margin-top: 18px"
-                :disabled="runStore.isLoading"
-                @click.stop="showConfirm = 'neuf'"
-              >
-                {{ runStore.isLoading ? 'Génération…' : 'Générer une run →' }}
+            </div>
+            <div class="confirm-dialog__actions">
+              <button type="button" class="confirm-btn confirm-btn--cancel" @click="showConfirm = false">
+                Annuler
+              </button>
+              <button type="button" class="confirm-btn confirm-btn--danger" @click="confirmAbandon">
+                Abandonner
               </button>
             </div>
           </div>
         </div>
-      </div><!-- /ribbons -->
+      </Transition>
+    </Teleport>
 
-      <!-- Elise -->
-      <div class="threshold-elise">
-        <div class="threshold-elise__name">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
-            <circle cx="12" cy="12" r="8" /><circle cx="12" cy="12" r="3.2" />
-          </svg>
-          ELISE
-          <span style="color: var(--ink-4); letter-spacing: 0.18em; margin-left: 4px">· au seuil</span>
-        </div>
-        <p class="threshold-elise__line">
-          Te revoilà. Le Palais n'a rien oublié de la dernière fois — <em>moi non plus</em>.
-        </p>
-      </div>
-
-      <p v-if="runStore.error" class="threshold-error">{{ runStore.error }}</p>
-    </div><!-- /threshold-content -->
-
-    <!-- ── Modale de confirmation ── -->
+    <!-- ── Transition plein écran ── -->
     <Teleport to="body">
-      <Transition name="overlay">
-        <div v-if="showConfirm" class="confirm-backdrop" @click.self="showConfirm = null">
-          <div class="confirm-dialog" @click.stop>
-
-            <!-- Reprendre -->
-            <template v-if="showConfirm === 'reprise' && resumableRun">
-              <span class="ribbon__chip ribbon__chip--gold" style="margin-bottom: 14px; display: inline-flex">
-                Reprise
-              </span>
-              <h2 class="es-h2" style="margin-bottom: 14px">Reprendre la descente&nbsp;?</h2>
-              <p class="es-body" style="margin-bottom: 22px">
-                Tu replonges depuis la salle
-                <strong>{{ resumableRun.currentRoomNumber }}</strong>,
-                seed <span class="es-mono" style="color: var(--gold); font-size: 13px">{{ resumableRun.seed }}</span>.
-                Sauvegarde du {{ formatSavedAt(resumableRun.savedAt) }}.
-              </p>
-              <div style="display: flex; gap: 10px">
-                <button class="es-btn es-btn--ghost" style="flex: 1" @click="showConfirm = null">
-                  Pas encore
-                </button>
-                <button
-                  class="es-btn"
-                  style="flex: 1.5; border-color: var(--gold); color: var(--gold)"
-                  :disabled="runStore.isLoading"
-                  @click="resumeRun()"
-                >
-                  {{ runStore.isLoading ? 'Chargement…' : 'Reprendre →' }}
-                </button>
-              </div>
-            </template>
-
-            <!-- Nouveau seuil -->
-            <template v-else-if="showConfirm === 'neuf'">
-              <span class="ribbon__chip ribbon__chip--frost" style="margin-bottom: 14px; display: inline-flex">
-                Nouveau seuil
-              </span>
-              <h2 class="es-h2" style="margin-bottom: 14px">Effacer pour réécrire&nbsp;?</h2>
-              <p class="es-body" style="margin-bottom: 22px">
-                Une nouvelle architecture s'écrira sous tes pas. Tu repars avec ton Tome — rien d'autre.
-              </p>
-              <div class="combat-mode-notice">
-                <span class="combat-mode-notice__name">Combat tactique</span>
-                <span class="combat-mode-notice__hint">
-                  Tour par tour sur la grille de la salle. Se déplacer, puis agir.
-                </span>
-              </div>
-
-              <div style="display: flex; gap: 10px">
-                <button class="es-btn es-btn--ghost" style="flex: 1" @click="showConfirm = null">
-                  Annuler
-                </button>
-                <button
-                  class="es-btn"
-                  style="flex: 1.5; border-color: var(--frost); color: var(--frost)"
-                  :disabled="runStore.isLoading"
-                  @click="startRun()"
-                >
-                  {{ runStore.isLoading ? 'Génération…' : 'Générer une run →' }}
-                </button>
-              </div>
-            </template>
-          </div>
+      <Transition name="threshold-flood">
+        <div v-if="isTransitioning" class="threshold-transition">
+          <span class="threshold-transition__label">{{ transitionLabel }}</span>
         </div>
       </Transition>
     </Teleport>
@@ -320,218 +140,139 @@ const isNeuf    = computed(() => openPanel.value === 'neuf');
 </template>
 
 <style scoped>
-/* ── Écran ── */
 .threshold-screen {
   position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 100dvh;
+  width: 100%;
+  height: 100dvh;
   overflow: hidden;
-  background:
-    radial-gradient(70% 52% at 20% 12%, var(--wash-frost), transparent 60%),
-    radial-gradient(64% 56% at 86% 80%, var(--wash-blood), transparent 58%),
-    radial-gradient(58% 50% at 60% 26%, var(--wash-sap),   transparent 60%),
-    radial-gradient(56% 50% at 12% 92%, var(--wash-gold),  transparent 60%),
-    radial-gradient(150% 130% at 50% -10%, oklch(0.310 0.058 272) 0%, var(--bg) 48%, var(--void) 100%);
+  background: var(--void);
   color: var(--ink);
   font-family: var(--font);
   -webkit-font-smoothing: antialiased;
 }
 
-/* ── Contenu centré ── */
 .threshold-content {
   position: relative;
-  z-index: 5;
+  z-index: 3;
+  width: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: var(--space-8) var(--space-6);
-  width: min(860px, 96vw);
+  justify-content: center;
+  gap: 46px;
+  padding: 40px 20px;
 }
 
-/* ── En-tête ── */
-.threshold-rule {
-  width: 200px;
-  margin: 18px 0 16px;
+.threshold-title-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.threshold-kicker {
+  font-size: 11px;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--ink-4);
 }
 
 .threshold-title {
-  text-align: center;
-  margin-bottom: 8px;
-}
-
-.threshold-tagline {
-  margin-bottom: 40px;
-  text-align: center;
-  max-width: 560px;
-  color: var(--ink-3);
+  margin: 0;
+  font-family: var(--font-display);
   font-style: italic;
+  font-weight: 400;
+  font-size: clamp(34px, 5vw, 50px);
+  letter-spacing: 0.01em;
+  color: var(--ink);
 }
 
-/* ── Rubans ── */
-.threshold-ribbons {
+.threshold-title-rule {
+  width: 120px;
+  height: 1px;
+  background: var(--mint-dim);
+  animation: threshold-title-glow 6s ease-in-out infinite;
+}
+
+@keyframes threshold-title-glow {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.7; }
+}
+
+.threshold-links {
+  display: flex;
+  align-items: stretch;
+}
+
+.threshold-link {
+  all: unset;
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  width: 100%;
-}
-
-.ribbon {
-  overflow: hidden;
-  transition: border-color .25s;
-  padding: 0;
-}
-
-.ribbon__head {
-  display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 18px 24px;
+  gap: 10px;
+  padding: 0 52px;
   cursor: pointer;
-  user-select: none;
+  color: var(--ink-2);
+  transition: color .6s cubic-bezier(0.5, 0, 0.5, 1);
 }
 
-.ribbon__head-left {
+.threshold-link:hover:not(.threshold-link--disabled) {
+  color: var(--mint);
+}
+
+.threshold-link:hover:not(.threshold-link--disabled) .threshold-link__glyph {
+  color: var(--mint);
+}
+
+.threshold-link--disabled {
+  cursor: not-allowed;
+  color: var(--ink-5);
+}
+
+.threshold-link__glyph {
+  font-size: 16px;
+  color: var(--ink-4);
+  transition: color .6s;
+}
+
+.threshold-link--disabled .threshold-link__glyph {
+  color: var(--ink-5);
+}
+
+.threshold-link__label {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.threshold-links__divider {
+  width: 1px;
+  background: linear-gradient(var(--void), var(--line), var(--void));
+}
+
+.threshold-info {
   display: flex;
   align-items: center;
   gap: 16px;
-}
-
-.ribbon__head-right {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.ribbon__chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 3px 9px;
-  border-radius: 3px;
-  font-family: var(--font-caps);
-  font-size: 11px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  border: 1px solid var(--line);
-  background: oklch(0.32 0.028 268 / 0.5);
-  color: var(--ink-2);
-  margin-bottom: 6px;
-}
-.ribbon__chip--gold  { color: oklch(0.90 0.11 86);  border-color: var(--gold-dim);  background: oklch(0.56 0.12 84 / 0.26); }
-.ribbon__chip--frost { color: oklch(0.90 0.11 276); border-color: var(--frost-dim); background: oklch(0.56 0.12 276 / 0.26); }
-
-.combat-mode-notice {
-  display: grid;
-  gap: 3px;
-  margin: 0 0 20px;
-  padding: 9px 12px;
-  border: 1px solid var(--frost-dim);
-  border-radius: 6px;
-  background: oklch(0.56 0.12 276 / 0.12);
-}
-
-.combat-mode-notice__name { color: var(--frost); }
-.combat-mode-notice__hint { font-size: 0.82em; opacity: 0.68; }
-
-.ribbon__heading {
-  margin: 0;
-  transition: color .2s;
-}
-
-.ribbon__seed {
-  font-size: 13px;
-}
-
-/* corps expansible */
-.ribbon__body {
-  overflow: hidden;
-  transition: max-height .32s ease, opacity .24s ease;
-}
-
-.ribbon__body-inner {
-  padding: 0 24px 22px;
-}
-
-.ribbon__divider {
-  height: 2px;
-  margin-bottom: 18px;
-  filter: blur(0.4px);
-  background: linear-gradient(90deg, transparent, var(--line-strong) 18%, var(--line-strong) 82%, transparent);
-}
-
-.ribbon__stats {
-  display: flex;
-  gap: 28px;
-  margin-bottom: 18px;
-}
-
-.ribbon__stat {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.ribbon__stat-value {
-  font-size: 13px;
-  color: var(--ink);
+  padding: 11px 22px;
+  border-top: 1px solid var(--line-soft);
+  border-bottom: 1px solid var(--line-soft);
   font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-3);
 }
 
-.ribbon__btn {
-  font-family: var(--font-caps);
-}
+.threshold-info__sep { color: var(--ink-5); }
+.threshold-info__value { color: var(--ink-2); }
 
-/* ── Elise ── */
-.threshold-elise {
-  position: relative;
-  margin-top: 32px;
-  width: 100%;
-  padding: 16px 20px 16px 22px;
-  border-radius: 4px;
-  background: linear-gradient(90deg, oklch(0.40 0.08 268 / 0.42), oklch(0.26 0.028 268 / 0.6));
-  border: 1px solid var(--frost-dim);
-  border-left-width: 3px;
-  border-left-color: var(--frost);
-  box-shadow: 0 0 60px -18px oklch(0.70 0.10 268 / 0.5);
-  backdrop-filter: blur(3px);
-}
-
-.threshold-elise__name {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-family: var(--font-caps);
-  font-size: 11px;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--frost);
-  margin-bottom: 7px;
-}
-
-.threshold-elise__line {
-  font-size: 15px;
-  line-height: 1.56;
-  color: var(--ink);
-  font-style: italic;
-  margin: 0;
-}
-
-.threshold-elise__line em {
-  color: var(--frost);
-  font-style: normal;
-  font-weight: 500;
-}
-
-/* ── Erreur ── */
 .threshold-error {
-  color: var(--blood);
+  color: var(--danger);
   font-size: 0.78rem;
-  margin-top: var(--space-3);
 }
 
-/* ── Modale ── */
+/* ── Modale de confirmation ── */
 .confirm-backdrop {
   position: fixed;
   inset: 0;
@@ -539,25 +280,93 @@ const isNeuf    = computed(() => openPanel.value === 'neuf');
   display: flex;
   align-items: center;
   justify-content: center;
-  background: oklch(0.14 0.030 272 / 0.72);
-  backdrop-filter: blur(6px);
+  background: oklch(0.05 0.008 262 / 0.7);
+  backdrop-filter: blur(3px);
 }
 
 .confirm-dialog {
-  position: relative;
-  width: min(500px, 92vw);
-  padding: 36px 38px;
-  border-radius: 5px;
-  background: linear-gradient(180deg, var(--raise), var(--panel));
-  border: 1px solid var(--frost-dim);
-  box-shadow:
-    0 30px 66px -30px oklch(0.10 0.03 272 / 0.7),
-    0 12px 30px -18px oklch(0.10 0.03 272 / 0.5),
-    0 0 64px -22px var(--wash-frost);
+  width: 400px;
+  background: var(--panel);
+  border: 1px solid var(--line);
 }
 
-.overlay-enter-active,
-.overlay-leave-active { transition: opacity .2s ease; }
-.overlay-enter-from,
-.overlay-leave-to     { opacity: 0; }
+.confirm-dialog__body {
+  padding: 28px 26px 20px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.confirm-dialog__title {
+  margin: 0 0 10px;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 22px;
+  color: var(--ink);
+}
+
+.confirm-dialog__desc {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--ink-3);
+}
+
+.confirm-dialog__actions {
+  display: flex;
+  padding: 16px 26px 22px;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.confirm-btn {
+  padding: 9px 18px;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--ink-3);
+  font-family: var(--font);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: border-color .4s, background .4s;
+}
+
+.confirm-btn--cancel:hover { border-color: var(--ink-3); }
+
+.confirm-btn--danger {
+  border-color: var(--danger-dim);
+  color: var(--danger-dim);
+}
+
+.confirm-btn--danger:hover {
+  background: oklch(0.5 0.1 20 / 0.14);
+}
+
+/* ── Transition plein écran ── */
+.threshold-transition {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 50% 55%, var(--mint) 0%, var(--void) 74%);
+}
+
+.threshold-transition__label {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 20px;
+  letter-spacing: 0.02em;
+  color: var(--void);
+}
+
+.threshold-flood-enter-active { transition: opacity 1.2s cubic-bezier(0.5, 0, 0.5, 1); }
+.threshold-flood-leave-active { transition: opacity .3s ease; }
+.threshold-flood-enter-from,
+.threshold-flood-leave-to { opacity: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .threshold-title-rule { animation: none; }
+}
 </style>

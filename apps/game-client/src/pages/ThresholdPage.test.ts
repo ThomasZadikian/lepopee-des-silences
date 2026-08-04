@@ -46,26 +46,13 @@ describe('ThresholdPage tactical-only flow', () => {
     document.body.innerHTML = '';
   });
 
-  it('presents tactical combat without an ATB choice', async () => {
+  it('starts a run directly (no resumable run) without an ATB choice', async () => {
     const wrapper = mount(ThresholdPage, { attachTo: document.body });
-    await wrapper.findAll('.ribbon__head')[1].trigger('click');
-    await wrapper.find('.ribbon__btn').trigger('click');
-
-    expect(document.body.textContent).toContain('Combat tactique');
-    expect(document.body.textContent).not.toContain('Tempo');
-    expect(document.body.querySelector('input[value="Atb"]')).toBeNull();
-  });
-
-  it('starts a run without sending a combat-mode argument', async () => {
-    const wrapper = mount(ThresholdPage, { attachTo: document.body });
-    await wrapper.findAll('.ribbon__head')[1].trigger('click');
-    await wrapper.find('.ribbon__btn').trigger('click');
-
-    const generate = [...document.body.querySelectorAll('.confirm-dialog button')]
-      .find((button) => button.textContent?.includes('Générer une run'));
-    generate?.click();
+    await wrapper.findAll('.threshold-link')[1].trigger('click');
     await flushPromises();
 
+    expect(document.body.textContent).not.toContain('Tempo');
+    expect(document.body.querySelector('input[value="Atb"]')).toBeNull();
     expect(runStore.startRun).toHaveBeenCalledWith();
     expect(router.push).toHaveBeenCalledWith('/run/run-tactical');
   });
