@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 
 import PalaceAtmosphere from '../shared/components/PalaceAtmosphere.vue';
 import RuleOrnament from '../shared/components/RuleOrnament.vue';
+import SealGlyph from '../shared/components/SealGlyph.vue';
 import EmotionalTypeBadge from '../features/combat/components/EmotionalTypeBadge.vue';
 import { reputationApi } from '../features/reputation/api/reputationApi';
 import type { NpcReputationDto } from '../features/reputation/types/reputationTypes';
@@ -48,6 +49,26 @@ function stateTone(state: string): string {
 
 function offeringKindLabel(kind: string): string {
   return OFFERING_KIND_LABELS[kind] ?? kind;
+}
+
+// Le sceau lit l'état comme un verdict plutôt qu'une simple étiquette : Latent n'a encore
+// rien à sceller (dormant), Tendu est le seul état encore vivant/en mouvement (l'anneau de
+// tampon rejoue à chaque affichage), Rompu est aussi définitif qu'une loi gravée au Tome —
+// irrévocable, donc scellé.
+const STATE_SEAL_TONES: Record<string, 'sap' | 'gold' | 'blood'> = {
+  Latent: 'sap',
+  Tendu: 'gold',
+  Rompu: 'blood',
+};
+
+function stateSealTone(state: string): 'sap' | 'gold' | 'blood' | 'ink' {
+  return STATE_SEAL_TONES[state] ?? 'ink';
+}
+
+function stateSealState(state: string): 'idle' | 'confirming' | 'confirmed' {
+  if (state === 'Rompu') return 'confirmed';
+  if (state === 'Tendu') return 'confirming';
+  return 'idle';
 }
 
 onMounted(async () => {
@@ -97,12 +118,22 @@ onMounted(async () => {
               <span class="reputation-card__name">{{ npc.displayName }}</span>
               <EmotionalTypeBadge :type="npc.emotionalRegister" />
             </div>
-            <span
-              class="reputation-card__state"
-              :style="{ '--state-color': stateTone(npc.aggregateState) }"
-            >
-              ● {{ stateLabel(npc.aggregateState) }}
-            </span>
+            <div class="reputation-card__verdict">
+              <SealGlyph
+                kind="pnj"
+                :tone="stateSealTone(npc.aggregateState)"
+                :size="46"
+                :sigil-size="19"
+                :sigil-stroke-width="1.5"
+                :state="stateSealState(npc.aggregateState)"
+              />
+              <span
+                class="reputation-card__state"
+                :style="{ '--state-color': stateTone(npc.aggregateState) }"
+              >
+                {{ stateLabel(npc.aggregateState) }}
+              </span>
+            </div>
           </header>
 
           <div class="reputation-card__stats">
@@ -242,10 +273,17 @@ onMounted(async () => {
   line-height: 1.2;
 }
 
-.reputation-card__state {
+.reputation-card__verdict {
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.reputation-card__state {
   font-family: var(--font-caps);
-  font-size: 10px;
+  font-size: 9px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--state-color);

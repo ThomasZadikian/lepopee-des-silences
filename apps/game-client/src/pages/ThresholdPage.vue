@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
+import SealGlyph from '../shared/components/SealGlyph.vue';
 import { useRunStore } from '../features/runs/stores/runStore';
 
 const router   = useRouter();
@@ -11,18 +12,33 @@ const resumableRun = computed(() => runStore.resumableRun);
 
 onMounted(() => { runStore.loadResumableRun(); });
 
+// Lequel des deux gestes fondateurs est en cours — sépare le sceau qui doit tamponner de
+// celui qui doit rester immobile, plutôt que de faire réagir les deux rubans à la fois sur
+// le seul drapeau générique runStore.isLoading.
+const pendingAction = ref<'reprise' | 'neuf' | null>(null);
+
 async function resumeRun() {
   const run = resumableRun.value;
   if (!run) return;
-  await runStore.loadRun(run.id);
-  if (runStore.currentRun?.id) await router.push(`/run/${run.id}`);
+  pendingAction.value = 'reprise';
+  try {
+    await runStore.loadRun(run.id);
+    if (runStore.currentRun?.id) await router.push(`/run/${run.id}`);
+  } finally {
+    pendingAction.value = null;
+  }
 }
 
 async function startRun() {
-  await runStore.startRun();
-  const runId = runStore.currentRun?.id;
-  if (!runId) return;
-  await router.push(`/run/${runId}`);
+  pendingAction.value = 'neuf';
+  try {
+    await runStore.startRun();
+    const runId = runStore.currentRun?.id;
+    if (!runId) return;
+    await router.push(`/run/${runId}`);
+  } finally {
+    pendingAction.value = null;
+  }
 }
 
 function formatSavedAt(savedAt: string): string {
@@ -77,12 +93,14 @@ const isNeuf    = computed(() => openPanel.value === 'neuf');
         >
           <div class="ribbon__head" @click="togglePanel('reprise')">
             <div class="ribbon__head-left">
-              <div class="ribbon__node" :style="{ borderColor: 'var(--gold)', color: 'var(--gold)' }">
-                <!-- Sigil seuil -->
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
-                  <path d="M5 20.5 V11 a7 7 0 0 1 14 0 V20.5" />
-                </svg>
-              </div>
+              <SealGlyph
+                kind="seuil"
+                tone="gold"
+                :size="46"
+                :sigil-size="20"
+                :sigil-stroke-width="1.5"
+                :state="pendingAction === 'reprise' ? 'confirming' : 'idle'"
+              />
               <div>
                 <span class="ribbon__chip ribbon__chip--gold">Run en cours</span>
                 <h3
@@ -159,12 +177,13 @@ const isNeuf    = computed(() => openPanel.value === 'neuf');
         >
           <div class="ribbon__head" @click="togglePanel('neuf')">
             <div class="ribbon__head-left">
-              <div class="ribbon__node" :style="{ borderColor: 'var(--frost)', color: 'var(--frost)' }">
-                <!-- Sigil étoile -->
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-                  <path d="M12 2.5 L13.7 10.3 L21.5 12 L13.7 13.7 L12 21.5 L10.3 13.7 L2.5 12 L10.3 10.3 Z" />
-                </svg>
-              </div>
+              <SealGlyph
+                kind="rare"
+                tone="frost"
+                :size="46"
+                :sigil-size="20"
+                :state="pendingAction === 'neuf' ? 'confirming' : 'idle'"
+              />
               <div>
                 <span class="ribbon__chip ribbon__chip--frost">Seed inédite</span>
                 <h3
@@ -383,18 +402,6 @@ const isNeuf    = computed(() => openPanel.value === 'neuf');
   display: flex;
   align-items: center;
   gap: 14px;
-}
-
-.ribbon__node {
-  width: 46px;
-  height: 46px;
-  border-radius: 50%;
-  border: 1px solid;
-  background: radial-gradient(circle at 50% 34%, var(--raise), oklch(0.20 0.026 270));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
 }
 
 .ribbon__chip {

@@ -383,6 +383,18 @@ async function readGrimoire() {
             </div>
 
             <div class="besace-sheet__actions">
+              <div v-if="selectedItem.type === 'Grimoire'" class="besace-sheet__seal">
+                <SealGlyph
+                  kind="grimoire"
+                  :tone="sealToneFor(selectedItem.rarity)"
+                  :size="56"
+                  :sigil-size="24"
+                  :state="isLoading ? 'confirming' : 'idle'"
+                />
+                <p class="besace-sheet__warning" style="margin: 0">
+                  La lecture consume le grimoire et inscrit le sort au grimoire du lecteur.
+                </p>
+              </div>
               <label v-if="selectedItem.type === 'Grimoire'" class="besace-sheet__target">
                 Lecteur
                 <select v-model="selectedCharacterId">
