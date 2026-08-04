@@ -109,11 +109,9 @@ const isExploring = computed(() => runStore.gameplayPhase !== 'Combat');
   display: flex;
   gap: 4px;
   padding: 10px;
-  background: oklch(0.16 0.03 270 / 0.92);
+  background: var(--panel);
   border-top: 1px solid var(--line-soft);
   border-right: 1px solid var(--line-soft);
-  border-radius: 0 8px 0 0;
-  box-shadow: 0 8px 30px oklch(0 0 0 / 0.4);
 }
 
 .micro-menu__btn {
@@ -123,9 +121,8 @@ const isExploring = computed(() => runStore.gameplayPhase !== 'Combat');
   width: 40px;
   height: 40px;
   padding: 0;
-  border-radius: 6px;
   border: 1px solid var(--line-soft);
-  background: oklch(0.24 0.015 283 / 0.5);
+  background: var(--panel-2);
   color: var(--ink-3);
   cursor: pointer;
   text-decoration: none;
@@ -138,9 +135,9 @@ const isExploring = computed(() => runStore.gameplayPhase !== 'Combat');
 }
 
 .micro-menu__btn--active {
-  color: var(--gold);
-  border-color: var(--gold);
-  background: oklch(0.55 0.08 85 / 0.16);
+  color: var(--mint-dim);
+  border-color: var(--mint-dim);
+  background: var(--panel-2);
 }
 
 /* Distinct from the character-management entries (gold) — a clear "this is a dev-only

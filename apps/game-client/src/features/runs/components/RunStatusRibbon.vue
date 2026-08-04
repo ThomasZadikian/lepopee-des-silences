@@ -35,31 +35,23 @@ const isCollapsed = ref(true);
 
   <div v-else class="status-ribbon">
     <div class="status-ribbon__info">
-      <span class="es-chip es-chip--gold">Salle {{ run.currentRoomNumber }}</span>
-      <span class="es-chip">{{ run.currentRoom?.roomType ?? '—' }}</span>
+      <span class="sr-chip sr-chip--mint">Salle {{ run.currentRoomNumber }}</span>
+      <span class="sr-chip">{{ run.currentRoom?.roomType ?? '—' }}</span>
       <RoomClimateBadge
         :climate="run.currentRoom?.activeClimate ?? run.currentRoom?.climate ?? null"
         @open="emit('openInfluences')"
       />
       <button
         v-if="run.activePalaceLaws?.length"
-        class="es-chip es-chip--frost sr-chip-btn"
+        class="sr-chip sr-chip--mint sr-chip-btn"
         :title="`${run.activePalaceLaws.length} loi(s) active(s) — cliquer pour voir`"
         @click="emit('openInfluences')"
       >
         {{ run.activePalaceLaws.length }} loi{{ run.activePalaceLaws.length > 1 ? 's' : '' }}
       </button>
       <button
-        v-if="run.activeCurses?.length"
-        class="es-chip es-chip--blood sr-chip-btn"
-        :title="`${run.activeCurses.length} malédiction(s) active(s) — cliquer pour voir`"
-        @click="emit('openInfluences')"
-      >
-        {{ run.activeCurses.length }} malédiction{{ run.activeCurses.length > 1 ? 's' : '' }}
-      </button>
-      <button
         v-if="run.activeModifiers?.length"
-        class="es-chip sr-chip-btn"
+        class="sr-chip sr-chip-btn"
         :title="`${run.activeModifiers.length} modificateur(s) actif(s) — cliquer pour voir`"
         @click="emit('openInfluences')"
       >
@@ -133,15 +125,14 @@ const isCollapsed = ref(true);
   height: 22px;
   margin: 4px;
   border: 1px solid var(--line-soft);
-  border-radius: 4px;
-  background: oklch(0.20 0.04 60 / 0.85);
+  background: var(--panel);
   color: var(--ink-3);
   cursor: pointer;
   z-index: var(--z-panel);
 }
 
 .status-ribbon-tab:hover {
-  color: var(--gold);
+  color: var(--mint-dim);
 }
 
 .status-ribbon__collapse {
@@ -159,7 +150,7 @@ const isCollapsed = ref(true);
   flex-wrap: nowrap;
   gap: var(--space-3);
   padding: var(--space-1) var(--space-3);
-  background: oklch(0.20 0.04 60 / 0.85);
+  background: var(--panel);
   backdrop-filter: blur(8px);
   border-top: 1px solid var(--line-soft);
   z-index: var(--z-panel);
@@ -189,10 +180,23 @@ const isCollapsed = ref(true);
   height: auto;
 }
 
+.sr-chip {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border: 1px solid var(--ink-5);
+  color: var(--ink-4);
+}
+
+.sr-chip--mint { border-color: var(--mint-dim); color: var(--mint-dim); }
+
 .sr-chip-btn {
   cursor: pointer;
-  border: none;
-  background: inherit;
+  background: transparent;
   font: inherit;
   transition: opacity .15s;
 }

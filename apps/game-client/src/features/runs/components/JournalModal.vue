@@ -130,7 +130,7 @@ function goToNextPage() {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: oklch(0.08 0.02 60 / 0.72);
+  background: rgba(0, 0, 0, 0.72);
   backdrop-filter: blur(4px);
   padding: var(--space-4);
 }
@@ -142,27 +142,23 @@ function goToNextPage() {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--line-strong);
-  background: linear-gradient(180deg, var(--panel), var(--bg-2));
-  box-shadow: var(--shadow-deep);
+  border: 1px solid var(--line);
+  background: var(--panel);
 }
 
 .jm-close {
+  all: unset;
   position: absolute;
-  top: 14px;
-  right: 14px;
+  top: 16px;
+  right: 16px;
   z-index: 2;
-  background: none;
-  border: none;
   cursor: pointer;
   color: var(--ink-4);
-  font-size: 14px;
-  padding: 6px;
-  border-radius: 3px;
+  font-size: 12px;
+  padding: 4px;
   transition: color .15s;
 }
-.jm-close:hover { color: var(--ink); }
+.jm-close:hover { color: var(--mint-dim); }
 
 .jm-scroll {
   overflow-y: auto;
@@ -170,58 +166,54 @@ function goToNextPage() {
 }
 
 .jm-eyebrow {
-  font-family: var(--font);
-  font-size: 11px;
-  letter-spacing: 0.22em;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--ink-4);
 }
 
 .jm-title {
-  font-family: var(--display);
-  font-weight: 500;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 400;
   font-size: clamp(26px, 3.6vw, 38px);
   line-height: 1.1;
-  letter-spacing: 0.01em;
   margin: 10px 0 0;
   color: var(--ink);
 }
 
-/* ── Empty state (Elise-style quote card) ── */
+/* ── Empty state ── */
 .jm-empty-quote {
   margin-top: 28px;
   padding: 15px 20px;
-  border-radius: 4px;
-  border-left: 3px solid var(--frost);
-  background: linear-gradient(90deg, oklch(0.36 0.07 252 / 0.4), oklch(0.22 0.024 58 / 0.6));
-  backdrop-filter: blur(3px);
-  box-shadow: 0 0 50px -20px oklch(0.66 0.1 252 / 0.5);
+  border-left: 2px solid var(--mint-dim);
+  background: var(--panel-2);
 }
 
 .jm-empty-quote__speaker {
-  font-family: var(--font);
+  font-family: var(--font-mono);
   font-size: 10px;
-  letter-spacing: 0.2em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--frost);
+  color: var(--mint-dim);
   margin-bottom: 6px;
 }
 
 .jm-empty-quote__text {
   font-size: 15px;
   line-height: 1.55;
-  color: var(--ink);
+  color: var(--ink-2);
   font-style: italic;
   max-width: 560px;
 }
 
 .jm-empty-quote__text em {
-  color: var(--frost);
+  color: var(--mint-dim);
   font-style: normal;
-  font-weight: 500;
 }
 
-/* ── Section header (diamond dividers, à la carte du Palais) ── */
+/* ── Section header ── */
 .jm-section-header {
   position: relative;
   display: flex;
@@ -231,31 +223,23 @@ function goToNextPage() {
 }
 
 .jm-section-header__line {
-  height: 2px;
+  height: 1px;
   flex: 1 1 0%;
-  filter: blur(0.4px);
-}
-.jm-section-header__line--left {
-  background: linear-gradient(90deg, transparent, var(--frost-dim));
-}
-.jm-section-header__line--right {
-  background: linear-gradient(90deg, var(--frost-dim), transparent);
+  background: var(--line);
 }
 
 .jm-section-header__diamond {
-  width: 9px;
-  height: 9px;
-  border-radius: 2px;
+  width: 6px;
+  height: 6px;
   transform: rotate(45deg);
-  background: radial-gradient(circle at 40% 35%, oklch(0.88 0.08 252), var(--frost-dim));
-  box-shadow: 0 0 14px oklch(0.68 0.1 252 / 0.6);
+  background: var(--mint-dim);
   flex-shrink: 0;
 }
 
 .jm-section-header__label {
-  font-family: var(--font);
-  font-size: 11px;
-  letter-spacing: 0.22em;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--ink-3);
   white-space: nowrap;
@@ -272,9 +256,8 @@ function goToNextPage() {
   left: 14px;
   top: 6px;
   bottom: 6px;
-  width: 2px;
-  background: linear-gradient(var(--gold), var(--gold-deep) 55%, var(--frost));
-  opacity: 0.45;
+  width: 1px;
+  background: var(--line);
 }
 
 .jm-point {
@@ -286,15 +269,13 @@ function goToNextPage() {
 
 .jm-point__marker {
   position: absolute;
-  left: 6px;
+  left: 9px;
   top: 4px;
-  width: 16px;
-  height: 16px;
-  border-radius: 3px;
+  width: 10px;
+  height: 10px;
   transform: rotate(45deg);
-  background: radial-gradient(circle at 50% 32%, oklch(0.54 0.12 64), oklch(0.28 0.07 58));
-  border: 1px solid var(--gold);
-  box-shadow: 0 0 16px -2px oklch(0.74 0.13 64 / 0.6);
+  background: var(--void);
+  border: 1px solid var(--mint-dim);
   z-index: 2;
 }
 
@@ -303,9 +284,8 @@ function goToNextPage() {
   line-height: 1.6;
   font-style: italic;
   color: var(--ink-2);
-  background: oklch(0.30 0.024 268 / 0.35);
-  border-left: 2px solid var(--line-strong);
-  border-radius: 3px;
+  background: var(--panel-2);
+  border-left: 1px solid var(--line-soft);
   padding: 10px 16px;
   margin: 0;
 }
@@ -322,9 +302,8 @@ function goToNextPage() {
 }
 
 .jm-pager__status {
-  font-family: var(--font);
+  font-family: var(--font-mono);
   font-size: 11px;
-  letter-spacing: 0.08em;
   color: var(--ink-4);
   white-space: nowrap;
 }
@@ -339,19 +318,18 @@ function goToNextPage() {
 }
 
 .jm-overview__dot {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: var(--line-strong);
   border: none;
   cursor: pointer;
   padding: 0;
-  transition: transform .15s, background .15s, box-shadow .15s;
+  transition: transform .15s, background .15s;
 }
 
 .jm-overview__dot--active {
-  background: var(--gold);
-  box-shadow: 0 0 6px -1px var(--gold);
-  transform: scale(1.3);
+  background: var(--mint-dim);
+  transform: scale(1.4);
 }
 </style>

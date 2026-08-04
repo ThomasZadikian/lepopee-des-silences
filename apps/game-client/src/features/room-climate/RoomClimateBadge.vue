@@ -17,7 +17,7 @@ const display = computed(() => resolveRoomClimateDisplay(props.climate));
 
 <template>
   <button
-    class="es-chip es-chip--frost rcb-root"
+    class="rcb-root"
     :class="{ 'rcb-root--empty': !display }"
     :title="display ? `Climat actif : ${display.displayName}` : 'Aucun climat actif dans cette Room.'"
     @click="emit('open')"
@@ -29,12 +29,26 @@ const display = computed(() => resolveRoomClimateDisplay(props.climate));
 
 <style scoped>
 .rcb-root {
-  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
   gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border: 1px solid var(--mint-dim);
+  color: var(--mint-dim);
+  background: transparent;
+  cursor: pointer;
+  transition: opacity .15s;
 }
 
+.rcb-root:hover { opacity: .8; }
+
 .rcb-root--empty {
-  opacity: 0.72;
+  border-color: var(--ink-5);
+  color: var(--ink-4);
 }
 
 .rcb-root__label {

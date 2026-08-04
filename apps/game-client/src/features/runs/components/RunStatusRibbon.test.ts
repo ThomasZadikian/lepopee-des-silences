@@ -96,12 +96,6 @@ describe('RunStatusRibbon', () => {
     expect(wrapper.text()).toContain('2 lois');
   });
 
-  it('shows curses button when curses exist', async () => {
-    const run = { ...baseRun, activeCurses: [{ id: 'c1', curseDefinitionKey: 'curse-1', displayName: 'Curse 1' }] };
-    const wrapper = await mountExpandedRibbon(run);
-    expect(wrapper.text()).toContain('1 malédiction');
-  });
-
   it('shows modifiers button when modifiers exist', async () => {
     const run = { ...baseRun, activeModifiers: [{ id: 'm1', type: 'AddStartingGuard', value: 5, duration: 'UntilRunEnds', sourceType: 'Item' }] };
     const wrapper = await mountExpandedRibbon(run);
@@ -182,11 +176,6 @@ describe('RunStatusRibbon', () => {
   it('hides laws button when no laws', async () => {
     const wrapper = await mountExpandedRibbon(baseRun);
     expect(wrapper.text()).not.toContain('loi');
-  });
-
-  it('hides curses button when no curses', async () => {
-    const wrapper = await mountExpandedRibbon(baseRun);
-    expect(wrapper.text()).not.toContain('malédiction');
   });
 
   it('hides modifiers button when no modifiers', async () => {
