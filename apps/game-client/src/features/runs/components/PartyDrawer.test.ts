@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import PartyDrawer from './PartyDrawer.vue';
-import type { RunPartyMemberDto, RunModifierDto, ActivePalaceLawDto, ActiveCurseDto, RunItemDto } from '../types/runTypes';
+import type { RunPartyMemberDto, RunModifierDto, RunItemDto } from '../types/runTypes';
 
 beforeEach(() => {
   setActivePinia(createPinia());
@@ -12,14 +12,12 @@ beforeEach(() => {
 function mountDrawer(
   allies: RunPartyMemberDto[] | null = null,
   modifiers: RunModifierDto[] | null = null,
-  laws: ActivePalaceLawDto[] | null = null,
-  curses: ActiveCurseDto[] | null = null,
   items: RunItemDto[] | null = null,
   caliceInfiniEnabled = false,
   canUseCaliceInfini = false,
 ) {
   return mount(PartyDrawer, {
-    props: { allies, modifiers, laws, curses, items, caliceInfiniEnabled, canUseCaliceInfini },
+    props: { allies, modifiers, items, caliceInfiniEnabled, canUseCaliceInfini },
     global: {
       stubs: {
         Transition: { template: '<slot />' },
@@ -48,24 +46,6 @@ describe('PartyDrawer', () => {
     value: 5,
     duration: 'UntilRunEnds',
     sourceType: 'Item',
-  };
-
-  const baseLaw: ActivePalaceLawDto = {
-    key: 'law-aegis-v1',
-    displayName: 'Loi d\'Aegis',
-    domains: ['Combat'],
-    version: 'v1',
-    description: 'Protège les alliés.',
-    rarity: 'Commun',
-    polarity: 'Neutre',
-  };
-
-  const baseCurse: ActiveCurseDto = {
-    id: 'curse-1',
-    curseDefinitionKey: 'curse.old-wound',
-    displayName: 'Blessure ancienne',
-    severity: 'Moderate',
-    description: 'Une vieille blessure qui ne guérit pas.',
   };
 
   const baseItem: RunItemDto = {
@@ -150,39 +130,27 @@ describe('PartyDrawer', () => {
     expect(wrapper.text()).toContain('+5');
   });
 
-  it('displays curses section', () => {
-    const wrapper = mountDrawer(null, null, null, [baseCurse]);
-    expect(wrapper.text()).toContain('Malédictions');
-    expect(wrapper.text()).toContain('Blessure ancienne');
-  });
-
-  it('displays laws section', () => {
-    const wrapper = mountDrawer(null, null, [baseLaw]);
-    expect(wrapper.text()).toContain('Lois du Palais');
-    expect(wrapper.text()).toContain('Loi d\'Aegis');
-  });
-
   it('displays items section', () => {
-    const wrapper = mountDrawer(null, null, null, null, [baseItem]);
+    const wrapper = mountDrawer(null, null, [baseItem]);
     expect(wrapper.text()).toContain('Objets de run');
     expect(wrapper.text()).toContain('Potion de soin');
   });
 
   it('shows quantity for items with quantity > 1', () => {
     const item = { ...baseItem, quantity: 3 };
-    const wrapper = mountDrawer(null, null, null, null, [item]);
+    const wrapper = mountDrawer(null, null, [item]);
     expect(wrapper.text()).toContain('×3');
   });
 
   it('shows rarity tone for epic items', () => {
     const item = { ...baseItem, rarity: 'Epic' };
-    const wrapper = mountDrawer(null, null, null, null, [item]);
-    const chip = wrapper.find('.party-drawer__item .es-chip');
-    expect(chip.classes()).toContain('es-chip--gold');
+    const wrapper = mountDrawer(null, null, [item]);
+    const chip = wrapper.find('.party-drawer__item .pd-chip');
+    expect(chip.classes()).toContain('pd-chip--mint');
   });
 
   it('shows empty state when all sections are empty', () => {
-    const wrapper = mountDrawer([], [], [], [], []);
+    const wrapper = mountDrawer([], [], []);
     expect(wrapper.text()).toContain('Aucune donnée d\'équipe disponible.');
   });
 
@@ -246,24 +214,24 @@ describe('PartyDrawer', () => {
   });
 
   it('handles null props gracefully', () => {
-    const wrapper = mountDrawer(null, null, null, null, null);
+    const wrapper = mountDrawer(null, null, null);
     expect(wrapper.exists()).toBe(true);
   });
 
   it('does not show the Calice infini button when the player does not own it', () => {
-    const wrapper = mountDrawer(null, null, null, null, null, false, false);
+    const wrapper = mountDrawer(null, null, null, false, false);
     expect(wrapper.text()).not.toContain('Calice infini');
   });
 
   it('shows an enabled Calice infini button when usable', () => {
-    const wrapper = mountDrawer(null, null, null, null, null, true, true);
+    const wrapper = mountDrawer(null, null, null, true, true);
     const button = wrapper.findAll('button').find((b) => b.text().includes('Calice infini'));
     expect(button).toBeTruthy();
     expect(button!.attributes('disabled')).toBeUndefined();
   });
 
   it('disables the Calice infini button while on cooldown', () => {
-    const wrapper = mountDrawer(null, null, null, null, null, true, false);
+    const wrapper = mountDrawer(null, null, null, true, false);
     const button = wrapper.findAll('button').find((b) => b.text().includes('Calice infini'));
     expect(button).toBeTruthy();
     expect(button!.attributes('disabled')).toBeDefined();
