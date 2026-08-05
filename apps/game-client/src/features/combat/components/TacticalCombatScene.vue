@@ -1904,8 +1904,11 @@ onBeforeUnmount(() => {
       @close="isItemMenuOpen = false"
     />
 
-    <!-- ── Bottom bar: sorts + objets — ancrée, jamais flottante ── -->
-    <footer class="tbattle__bottom">
+    <!-- ── Bottom bar: sorts + objets — ancrée, jamais flottante. Se rétracte entièrement
+         pendant le tour adverse (rien à y montrer, le bandeau d'action au-dessus du plateau
+         porte déjà l'annonce) : le plateau récupère tout l'espace, façon plan large cinématique
+         sur l'action ennemie plutôt qu'un HUD figé en arrière-plan. ── -->
+    <footer class="tbattle__bottom" :class="{ 'tbattle__bottom--collapsed': !store.isPlayerTurn }">
       <!-- Skills + controls : toujours visibles, grisés hors tour joueur -->
       <div class="tbattle__controls">
         <div
@@ -1930,12 +1933,7 @@ onBeforeUnmount(() => {
 
         <div class="tbattle__skills-section">
           <span class="tbattle__rail-label">Compétences</span>
-          <!-- v-show, jamais v-if/v-else : les boutons restent montés en permanence et sont
-               simplement masqués hors tour joueur, avec la hauteur de la rangée réservée par
-               .tbattle__skills (min-height) — sans ça, la bascule entre le vrai contenu et un
-               bloc « fantôme » différent forçait Vue à démonter/remonter toute la rangée à
-               chaque changement de tour, qui « clignotait » d'un tour à l'autre. -->
-          <div class="tbattle__skills" v-show="store.isPlayerTurn">
+          <div class="tbattle__skills">
             <button
               v-for="(skill, index) in store.activeSkills"
               :key="skill.key"
@@ -2051,16 +2049,14 @@ onBeforeUnmount(() => {
         </template>
       </div>
 
-      <p
-        v-if="store.isPlayerTurn && (store.selectedSkillKey || store.selectedItemId)"
-        class="tbattle__hint"
-      >
+      <!-- Rien pour le tour adverse : la barre entière se rétracte alors (voir
+           .tbattle__bottom--collapsed), le bandeau d'annonce au-dessus du plateau suffit. -->
+      <p v-if="store.selectedSkillKey || store.selectedItemId" class="tbattle__hint">
         Clique une case dans la zone rouge pour lancer.
       </p>
-      <p v-else-if="store.isPlayerTurn" class="tbattle__hint">
+      <p v-else class="tbattle__hint">
         Clique une case en surbrillance pour t’y rendre.
       </p>
-      <p v-else class="tbattle__waiting">L'adversaire agit…</p>
     </footer>
   </section>
 </template>
@@ -2285,11 +2281,15 @@ onBeforeUnmount(() => {
   text-decoration: underline;
 }
 
-/* ── Bottom bar: sorts + objets — ancrée en ligne de grille, jamais en survol libre ── */
+/* ── Bottom bar: sorts + objets — ancrée en ligne de grille, jamais en survol libre ──
+   Se rétracte à hauteur zéro pendant le tour adverse (voir --collapsed) : max-height est ce
+   qui s'anime ("auto" ne se transitionne pas), padding/opacity suivent pour que ça se lise
+   comme un repli, pas une simple découpe. */
 .tbattle__bottom {
   grid-area: hud;
   width: 100%;
   max-height: min(42vh, 480px);
+  opacity: 1;
   overflow: auto;
   display: flex;
   flex-direction: column;
@@ -2299,6 +2299,21 @@ onBeforeUnmount(() => {
   background: rgba(12, 13, 18, .92);
   backdrop-filter: blur(12px);
   box-shadow: 0 -8px 28px rgba(0, 0, 0, .35);
+  transition: max-height 280ms ease, opacity 200ms ease, padding 280ms ease, border-top-width 280ms ease;
+}
+
+.tbattle__bottom--collapsed {
+  max-height: 0;
+  opacity: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  border-top-width: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tbattle__bottom { transition: none; }
 }
 
 /* ── Portraits : section dédiée du rail d'initiative, empilée verticalement ── */
@@ -2514,9 +2529,6 @@ onBeforeUnmount(() => {
 
 .tbattle__skills-section { display: flex; flex-direction: column; gap: 0.35rem; }
 
-/* Hauteur plancher sur une rangée de cartes, réservée que la rangée soit visible ou masquée
-   (v-show) — le panneau ne doit jamais changer de hauteur en perdant tout son contenu hors
-   tour joueur. */
 .tbattle__skills {
   display: flex;
   gap: 0.55rem;
@@ -2668,7 +2680,6 @@ onBeforeUnmount(() => {
 .tbattle__preview--empty { visibility: hidden; }
 .tbattle__preview strong { color: var(--ink); }
 .tbattle__preview-warning { color: var(--danger); }
-.tbattle__waiting { opacity: 0.6; font-style: italic; margin: 0; font-size: 0.8rem; }
 .tbattle__error { color: var(--danger); margin: 0; font-size: 0.8rem; }
 </style>
 
