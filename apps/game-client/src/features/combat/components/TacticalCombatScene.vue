@@ -329,6 +329,29 @@ function skillShapeLabel(skill: CombatantSkillRuntimeDto): string {
   }
 }
 
+// Couleur de la hotbar : le registre émotionnel du sort (même glyphe/teinte que
+// EmotionalTypeBadge, dupliqué ici volontairement — la barre veut le seul glyphe coloré, pas
+// la puce complète, qui ferait doublon avec la bordure teintée du bouton). Un sort sans
+// registre (attaque de base) reste neutre : la couleur porte une vraie information, elle
+// n'est pas décorative.
+const SKILL_TYPE_META: Record<string, { glyph: string; color: string }> = {
+  Effroi: { glyph: '✶', color: 'oklch(0.62 0.20 18)' },
+  Deni: { glyph: '◇', color: 'oklch(0.78 0.13 78)' },
+  Melancolie: { glyph: '❍', color: 'oklch(0.70 0.11 248)' },
+  Rupture: { glyph: '⟡', color: 'oklch(0.66 0.19 38)' },
+  Memoire: { glyph: '◈', color: 'oklch(0.84 0.11 86)' },
+  Silence: { glyph: '○', color: 'oklch(0.80 0.02 272)' },
+  Folie: { glyph: '✳', color: 'oklch(0.64 0.22 340)' },
+};
+
+function skillTypeMeta(skill: CombatantSkillRuntimeDto): { glyph: string; color: string } | null {
+  return skill.emotionalType ? SKILL_TYPE_META[skill.emotionalType] ?? null : null;
+}
+
+function skillAccent(skill: CombatantSkillRuntimeDto): string {
+  return skillTypeMeta(skill)?.color ?? 'var(--ink-4)';
+}
+
 function skillMeta(skill: CombatantSkillRuntimeDto): string {
   const profile = tacticalSkillProfile(skill);
   const power = skill.basePower > 0 ? ` · ${skill.basePower}` : '';
@@ -980,9 +1003,14 @@ function buildCombatantPlan(now: number) {
   if (!battlefield.value || canvasSize.value.width === 0) return [];
 
   return store.allCombatants
-    // À zéro Vitalité l'unité quitte immédiatement la grille. Elle reste dans le runtime
-    // et l'initiative afin qu'un objet ou une compétence puisse la réanimer.
-    .filter((unit) => unit.combatant.status !== 'Defeated')
+    // À zéro Vitalité affichée l'unité quitte la grille. Elle reste dans le runtime et
+    // l'initiative afin qu'un objet ou une compétence puisse la réanimer. Le filtre lit la
+    // vitalité de la mise en scène (comme la barre de PV juste en dessous), jamais le statut
+    // brut du serveur : sans ça, une unité tuée pendant le tour adverse quittait le plateau
+    // dès la réponse API — avant même que le tour ennemi qui l'explique n'ait été rejoué.
+    .filter((unit) =>
+      unit.combatant.status !== 'Defeated'
+        || store.playback.vitalsOf(unit.combatant.id, unit.combatant.currentVitality) > 0)
     .map((unit) => {
       // La position affichée n'est pas celle du serveur tant que la chronologie se joue : une
       // figure en marche est interpolée entre deux cases, pas posée sur sa destination.
@@ -1900,13 +1928,20 @@ onBeforeUnmount(() => {
           </span>
         </div>
 
-        <div class="tbattle__skills">
-          <template v-if="store.isPlayerTurn">
+        <div class="tbattle__skills-section">
+          <span class="tbattle__rail-label">Compétences</span>
+          <!-- v-show, jamais v-if/v-else : les boutons restent montés en permanence et sont
+               simplement masqués hors tour joueur, avec la hauteur de la rangée réservée par
+               .tbattle__skills (min-height) — sans ça, la bascule entre le vrai contenu et un
+               bloc « fantôme » différent forçait Vue à démonter/remonter toute la rangée à
+               chaque changement de tour, qui « clignotait » d'un tour à l'autre. -->
+          <div class="tbattle__skills" v-show="store.isPlayerTurn">
             <button
               v-for="(skill, index) in store.activeSkills"
               :key="skill.key"
               type="button"
               class="tbattle__skill"
+              :style="{ '--skill-accent': skillAccent(skill) }"
               :class="{
                 'tbattle__skill--armed': skill.key === store.selectedSkillKey,
                 'tbattle__skill--ultimate': skill.isUltimate,
@@ -1919,12 +1954,17 @@ onBeforeUnmount(() => {
               @blur="hideSkillTooltip"
               @click="store.selectSkill(skill.key)"
             >
-              <span class="tbattle__skill-slot">{{ index + 1 }}</span>
+              <span class="tbattle__skill-slot">
+                <span class="tbattle__skill-slot-num">{{ index + 1 }}</span>
+                <span v-if="skillTypeMeta(skill)" class="tbattle__skill-glyph">
+                  {{ skillTypeMeta(skill)!.glyph }}
+                </span>
+              </span>
               <span class="tbattle__skill-name">
                 {{ skill.isUltimate ? 'Ultime · ' : '' }}{{ skill.displayName }}
               </span>
-              <span class="tbattle__skill-meta">{{ skillMeta(skill) }}</span>
               <span class="tbattle__skill-cost">{{ skillCostMeta(skill) }}</span>
+              <span class="tbattle__skill-meta">{{ skillMeta(skill) }}</span>
               <span v-if="vitalitySacrifice(skill) > 0" class="tbattle__skill-warning">
                 −{{ vitalitySacrifice(skill) }} Vitalité
               </span>
@@ -1937,10 +1977,13 @@ onBeforeUnmount(() => {
               :disabled="(store.activeCombatant?.hasActed ?? true) || store.isLoading"
               @click="isItemMenuOpen = true"
             >
-              <span class="tbattle__skill-slot">{{ store.activeSkills.length + 1 }}</span>
+              <span class="tbattle__skill-slot">
+                <span class="tbattle__skill-slot-num">{{ store.activeSkills.length + 1 }}</span>
+              </span>
               <span class="tbattle__skill-name">
                 {{ store.selectedItem ? store.selectedItem.displayName : 'Objets' }}
               </span>
+              <span class="tbattle__skill-cost"></span>
               <span class="tbattle__skill-meta">
                 {{
                   store.selectedItem
@@ -1949,17 +1992,6 @@ onBeforeUnmount(() => {
                 }}
               </span>
             </button>
-          </template>
-          <!-- Même structure qu'un vrai bouton de compétence (nom + méta + coût), juste
-               rendue invisible — pas un simple espace réservé approximatif. Sans ça, le
-               panneau change de hauteur à chaque bascule joueur/ennemi : les vrais boutons
-               empilent 3 lignes de texte, un espace réservé plus court les faisait
-               "sauter" au tour suivant. -->
-          <div v-else class="tbattle__skill tbattle__skill--phantom" aria-hidden="true">
-            <span class="tbattle__skill-slot">&nbsp;</span>
-            <span class="tbattle__skill-name">&nbsp;</span>
-            <span class="tbattle__skill-meta">&nbsp;</span>
-            <span class="tbattle__skill-cost">&nbsp;</span>
           </div>
         </div>
 
@@ -2069,6 +2101,10 @@ onBeforeUnmount(() => {
 /* ── Initiative rail (left) ──────────────────────────────────────────────── */
 .tbattle__initiative-rail {
   grid-area: initiative;
+  /* Cette colonne s'étend sur les deux lignes de la grille (voir .tbattle grid-template-areas).
+     Sans min-height:0, sa taille de contenu minimale (les portraits empilés) presse la ligne
+     "hud" à grandir à ses dépens — le plateau, en 1fr, en paie le prix et paraît minuscule. */
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -2211,6 +2247,8 @@ onBeforeUnmount(() => {
 /* ── Log rail (right) ───────────────────────────────────────────────────── */
 .tbattle__log-rail {
   grid-area: log;
+  /* Même raison que .tbattle__initiative-rail : cette colonne spanne aussi les deux lignes. */
+  min-height: 0;
   display: flex;
   flex-direction: column;
   padding: 0.6rem 0.5rem;
@@ -2474,71 +2512,127 @@ onBeforeUnmount(() => {
 
 .tbattle__status small { opacity: 0.6; }
 
-.tbattle__skills { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: stretch; }
+.tbattle__skills-section { display: flex; flex-direction: column; gap: 0.35rem; }
+
+/* Hauteur plancher sur une rangée de cartes, réservée que la rangée soit visible ou masquée
+   (v-show) — le panneau ne doit jamais changer de hauteur en perdant tout son contenu hors
+   tour joueur. */
+.tbattle__skills {
+  display: flex;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+  align-items: stretch;
+  min-height: 3.6rem;
+}
 
 /* Emplacements numérotés façon hotbar (XCOM/BG3) plutôt qu'une rangée de boutons texte qui
-   s'enroule : largeur minimale commune, badge de rang toujours au même endroit — l'œil
-   retrouve un sort au même emplacement d'un tour à l'autre. */
+   s'enroule : largeur commune, badge de rang toujours au même endroit — l'œil retrouve un sort
+   au même emplacement d'un tour à l'autre. Chaque carte porte la couleur de son registre
+   émotionnel (voir SKILL_TYPE_META) en bordure gauche ET en fond très atténué — un sort sans
+   registre (attaque de base) reste délibérément neutre, la couleur est une information, pas
+   un décor systématique. */
 .tbattle__skill,
 .tbattle__end-turn {
-  padding: 0.3rem 0.6rem;
+  padding: 0.4rem 0.65rem;
   border: 1px solid var(--line);
-  border-radius: 4px;
+  border-radius: 6px;
   background: var(--panel-2);
   color: inherit;
   cursor: pointer;
   font-size: 0.78rem;
-  transition: border-color 120ms ease, background 120ms ease;
+  transition: border-color 120ms ease, background 120ms ease, transform 120ms ease;
 }
 
 .tbattle__skill {
+  --skill-accent: var(--ink-4);
   position: relative;
-  display: inline-flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.1rem;
-  min-width: 108px;
-  padding-left: 1.5rem;
+  display: grid;
+  grid-template-columns: 26px 1fr auto;
+  grid-template-rows: auto auto;
+  align-items: center;
+  column-gap: 0.6rem;
+  row-gap: 1px;
+  width: 184px;
+  border-left: 3px solid var(--skill-accent);
+  background: color-mix(in oklch, var(--skill-accent), var(--panel-2) 90%);
 }
 
 .tbattle__skill-slot {
-  position: absolute;
-  top: 0.3rem;
-  left: 0.45rem;
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+}
+
+.tbattle__skill-slot-num {
   font-family: var(--font-mono);
   font-size: 0.6rem;
   color: var(--ink-4);
   font-variant-numeric: tabular-nums;
 }
 
-.tbattle__skill:hover:not(:disabled) { border-color: var(--line-strong); }
+.tbattle__skill-glyph {
+  font-size: 0.85rem;
+  line-height: 1;
+  color: var(--skill-accent);
+}
 
-/* Le sort armé = l'attaque sur le point d'être engagée : seule teinte de ce groupe à porter
-   la couleur "attaque" de la grammaire tactique. */
+.tbattle__skill:hover:not(:disabled) {
+  border-color: var(--line-strong);
+  transform: translateY(-1px);
+}
+
+/* Le sort armé = l'attaque sur le point d'être engagée : bordure/fond passent à la couleur
+   "attaque" de la grammaire tactique, par-dessus la teinte de registre émotionnel. */
 .tbattle__skill--armed {
   background: color-mix(in oklch, var(--tactical-attack), var(--panel-2) 74%);
   border-color: var(--tactical-attack);
 }
 
-/* Ultime = interaction spéciale mise en avant, pas une info tactique de grille : suit
-   l'accent mint réservé aux interactions actives. */
-.tbattle__skill--ultimate { border-color: var(--mint-dim); }
-.tbattle__skill--ultimate .tbattle__skill-slot { color: var(--mint-dim); }
+/* Ultime = interaction spéciale mise en avant : liseré mint en plus de la couleur de
+   registre, jamais à sa place — c'est une mise en avant, pas une nouvelle catégorie. */
+.tbattle__skill--ultimate { box-shadow: inset 0 0 0 1px var(--mint-dim); }
 
 .tbattle__skill--sacrifice:not(:disabled) { border-color: color-mix(in oklch, var(--danger), transparent 25%); }
 
-.tbattle__item { border-color: color-mix(in oklch, var(--mint-dim), transparent 45%); }
+.tbattle__item {
+  --skill-accent: var(--mint-dim);
+}
+
 .tbattle__item--armed {
   background: color-mix(in oklch, var(--mint-dim), var(--panel-2) 78%);
   border-color: var(--mint-dim);
 }
 
-.tbattle__skill:disabled { opacity: 0.35; cursor: not-allowed; }
-.tbattle__skill-name { font-weight: 600; }
-.tbattle__skill-meta { font-size: 0.62rem; opacity: 0.55; font-variant-numeric: tabular-nums; }
-.tbattle__skill-cost { font-size: 0.62rem; color: var(--tactical-cursor); font-variant-numeric: tabular-nums; }
-.tbattle__skill-warning { font-size: 0.62rem; color: var(--danger); font-variant-numeric: tabular-nums; }
-.tbattle__skill--phantom { visibility: hidden; }
+.tbattle__skill:disabled { opacity: 0.4; cursor: not-allowed; }
+.tbattle__skill:disabled:hover { transform: none; }
+.tbattle__skill-name { grid-column: 2; grid-row: 1; font-weight: 600; }
+.tbattle__skill-meta {
+  grid-column: 2;
+  grid-row: 2;
+  font-size: 0.62rem;
+  opacity: 0.55;
+  font-variant-numeric: tabular-nums;
+}
+.tbattle__skill-cost {
+  grid-column: 3;
+  grid-row: 1;
+  font-size: 0.62rem;
+  color: var(--tactical-cursor);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.tbattle__skill-warning {
+  grid-column: 3;
+  grid-row: 2;
+  font-size: 0.6rem;
+  color: var(--danger);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
 
 .tbattle__end-turn {
   font-weight: 600;
