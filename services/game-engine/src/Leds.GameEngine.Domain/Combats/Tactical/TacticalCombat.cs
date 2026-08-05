@@ -464,47 +464,67 @@ public sealed class TacticalCombat : ICombatContext
         BeginActiveActivation();
     }
 
+    /// <summary>
+    /// Plafond de sécurité sur les réactivations enchaînées quand la Vitesse change en cours
+    /// d'activation (un statut qui expire au tic peut faire bouger l'ordre). Un cas réel n'en
+    /// redemande qu'une poignée ; ce garde-fou n'existe que pour qu'un statut mal réglé (Vitesse
+    /// qui se réapplique elle-même à chaque tic, par exemple) échoue franchement au lieu de
+    /// boucler indéfiniment dans une requête HTTP — même logique que
+    /// <c>TacticalEnemyTurnDriver.MaxChainedEnemyTurns</c>.
+    /// </summary>
+    private const int MaxSpeedSettleRetries = 64;
+
     private void BeginActiveActivation()
     {
-        if (ActiveCombatantId is not { } combatantId)
-            return;
+        Guid combatantId;
+        Combatant combatant;
+        var guard = 0;
 
-        _activationCounts[combatantId] = _activationCounts.GetValueOrDefault(combatantId) + 1;
-        CurrentTick++;
-
-        foreach (var key in _skillCooldowns.Keys
-                     .Where(key => key.CombatantId == combatantId)
-                     .ToArray())
+        while (true)
         {
-            var remaining = _skillCooldowns[key] - 1;
-            if (remaining <= 0)
-                _skillCooldowns.Remove(key);
-            else
-                _skillCooldowns[key] = remaining;
-        }
+            if (ActiveCombatantId is not { } activeId)
+                return;
+            combatantId = activeId;
 
-        var combatant = RequireCombatant(combatantId);
-        var speedsBefore = CaptureEffectiveSpeeds();
-        var wasAlive = !combatant.IsDefeated;
-        var statusTicks = combatant.TickStatusEffects(StatusClockFor(combatantId));
-        _lastActivationCombatantId = combatantId;
-        _lastActivationStatusTicks = statusTicks;
-        AwardPeriodicCharge(combatant, statusTicks, wasAlive);
-        if (combatant.IsDefeated)
-        {
-            RegisterCombatantDefeated();
-            OnCombatantDefeated(combatantId);
-            CompleteIfAllEnemiesDefeated();
-            FailIfAllAlliesDefeated();
-            return;
-        }
+            _activationCounts[combatantId] = _activationCounts.GetValueOrDefault(combatantId) + 1;
+            CurrentTick++;
 
-        if (HaveEffectiveSpeedsChanged(speedsBefore))
-        {
+            foreach (var key in _skillCooldowns.Keys
+                         .Where(key => key.CombatantId == combatantId)
+                         .ToArray())
+            {
+                var remaining = _skillCooldowns[key] - 1;
+                if (remaining <= 0)
+                    _skillCooldowns.Remove(key);
+                else
+                    _skillCooldowns[key] = remaining;
+            }
+
+            combatant = RequireCombatant(combatantId);
+            var speedsBefore = CaptureEffectiveSpeeds();
+            var wasAlive = !combatant.IsDefeated;
+            var statusTicks = combatant.TickStatusEffects(StatusClockFor(combatantId));
+            _lastActivationCombatantId = combatantId;
+            _lastActivationStatusTicks = statusTicks;
+            AwardPeriodicCharge(combatant, statusTicks, wasAlive);
+            if (combatant.IsDefeated)
+            {
+                RegisterCombatantDefeated();
+                OnCombatantDefeated(combatantId);
+                CompleteIfAllEnemiesDefeated();
+                FailIfAllAlliesDefeated();
+                return;
+            }
+
+            if (!HaveEffectiveSpeedsChanged(speedsBefore))
+                break;
+
+            if (++guard > MaxSpeedSettleRetries)
+                throw new InvalidOperationException(
+                    "Tactical combatant activation did not settle after repeated speed changes; aborting to avoid an endless loop.");
+
             _turnStates.Clear();
             RebuildInitiativeOrder();
-            BeginActiveActivation();
-            return;
         }
 
         if (HasEquippedItem(combatantId, "item.gants-service-muet")
