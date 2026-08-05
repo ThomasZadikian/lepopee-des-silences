@@ -2,6 +2,7 @@ import { ref } from 'vue';
 
 import { playSort, shapeCells, SORTS } from '../../palace-map/composables/sorts';
 import { isoUnit, projectToScreen } from '../../palace-map/composables/useTerrainDrawPlan';
+import { PACE } from './useCombatPlayback';
 
 import type { ProjectionParams } from '../../palace-map/composables/useTerrainDrawPlan';
 
@@ -29,7 +30,7 @@ export type SortEffect = {
   from: { x: number; y: number } | null;
 };
 
-const SORT_DURATION_MS = 1500;
+const SORT_DURATION_MS = Math.round(1500 * PACE);
 const renderPaintedSort = playSort as unknown as (
   ctx: CanvasRenderingContext2D,
   id: string,

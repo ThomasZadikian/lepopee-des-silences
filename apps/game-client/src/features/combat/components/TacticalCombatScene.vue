@@ -52,7 +52,7 @@ import CombatItemMenu from './CombatItemMenu.vue';
 import { skillsApi } from '../../party/api/skillsApi';
 import type { SkillDefinitionView } from '../../party/types/skillTypes';
 import { combatantSprite, fallbackPropFor } from '../composables/useCombatantSprites';
-import { FLOAT_MS, FLOAT_RISE_PX, useCombatPlayback } from '../composables/useCombatPlayback';
+import { FLOAT_MS, FLOAT_RISE_PX, IMPACT_MS, PACE, useCombatPlayback } from '../composables/useCombatPlayback';
 import { fallbackSortId, sortIdForSkillKey, useSortEffects } from '../composables/useSortEffects';
 import { ticksToTurns } from '../constants/combatTime';
 import {
@@ -172,7 +172,7 @@ function hideSkillTooltip() {
   hoveredSkillKey.value = null;
 }
 
-const DEPLOY_DURATION_MS = 1200;
+const DEPLOY_DURATION_MS = Math.round(1200 * PACE);
 const deployStartedAt = ref<number | null>(null);
 
 let frameHandle = 0;
@@ -1210,9 +1210,6 @@ function paintCanvas(timestamp: number) {
 
   const { destW, destH, propH } = spriteDest.value;
 
-  const terrainPlan = drawPlan.value.filter((entry) => entry.spriteKey.kind !== 'highlight');
-  const highlightPlan = drawPlan.value.filter((entry) => entry.spriteKey.kind === 'highlight');
-
   const tierKey = {
     Calme: 'calm',
     Tendu: 'tense',
@@ -1240,11 +1237,15 @@ function paintCanvas(timestamp: number) {
 
   const combatantEntries = buildCombatantPlan(timestamp);
 
-  // ── Fusion terrain + combattants, triés front→back ──────────────────────
-  // Les deux passent dans LE MÊME tableau trié par sortKey : un obstacle haut
-  // placé devant une unité la recouvre ; un sol plat derrière l'unité reste
-  // derrière. C'est le contrat du painter's algorithm sur une grille iso.
-  type TerrainItem = { kind: 'terrain'; entry: typeof terrainPlan[number]; sprite: HTMLCanvasElement };
+  // ── Fusion terrain + surbrillances + combattants, triés front→back ──────
+  // Les trois passent dans LE MÊME tableau trié par sortKey : un obstacle haut placé devant
+  // une case en surbrillance (ou une unité) la recouvre ; une case plate derrière reste
+  // derrière. C'est le contrat du painter's algorithm sur une grille iso — buildBattlePlan
+  // calcule déjà le sortKey des surbrillances pour qu'elles s'y intègrent (terrain + un petit
+  // epsilon selon la variante), il ne fallait pas les en sortir dans une passe "toujours
+  // par-dessus" séparée : ça les faisait flotter au-dessus des piliers/blocs surélevés au lieu
+  // d'être masquées par eux comme n'importe quel autre élément du décor.
+  type TerrainItem = { kind: 'terrain'; entry: (typeof drawPlan.value)[number]; sprite: HTMLCanvasElement };
   type CombatantItem = {
     kind: 'combatant';
     entry: (typeof combatantEntries)[number];
@@ -1255,7 +1256,7 @@ function paintCanvas(timestamp: number) {
   };
   type SceneItem = TerrainItem | CombatantItem;
 
-  const items: SceneItem[] = terrainPlan.map((entry) => ({
+  const items: SceneItem[] = drawPlan.value.map((entry) => ({
     kind: 'terrain' as const,
     entry,
     sprite: getSprite(entry.spriteKey),
@@ -1296,6 +1297,16 @@ function paintCanvas(timestamp: number) {
         if (entry.spriteKey.kind === 'prop' && entry.spriteKey.prop === 'star') {
           drawStarFx(ctx, dx, propDy, destW, propH, timestamp);
         }
+        continue;
+      }
+
+      // Surbrillances (mouvement/ciblage/zone…) : mêmes coordonnées qu'une case de sol, avec
+      // en plus leur pulsation d'alpha propre — voir highlightAlpha.
+      if (entry.spriteKey.kind === 'highlight') {
+        ctx.save();
+        ctx.globalAlpha = highlightAlpha(entry, timestamp);
+        ctx.drawImage(sprite, dx, entry.screenY - (destH * GROUND_ANCHOR_RATIO), destW, destH);
+        ctx.restore();
         continue;
       }
 
@@ -1370,17 +1381,6 @@ function paintCanvas(timestamp: number) {
     }
   }
 
-  // ── Highlights (semi-transparents, toujours par-dessus le terrain) ──────
-  for (const entry of highlightPlan) {
-    const sprite = getSprite(entry.spriteKey);
-    const dx = entry.screenX - (destW / 2);
-
-    ctx.save();
-    ctx.globalAlpha = highlightAlpha(entry, timestamp);
-    ctx.drawImage(sprite, dx, entry.screenY - (destH * GROUND_ANCHOR_RATIO), destW, destH);
-    ctx.restore();
-  }
-
   paintEscape(ctx, destW, destH, timestamp);
 
   // ── FX / chiffres ─────────────────────────────────────────────────────────
@@ -1394,7 +1394,6 @@ function paintImpacts(ctx: CanvasRenderingContext2D, timestamp: number) {
   store.playback.pruneImpacts(timestamp);
 
   const { destW, propH } = spriteDest.value;
-  const IMPACT_MS = 800;
 
   for (const impact of store.playback.impacts) {
     const progress = (timestamp - impact.bornAt) / IMPACT_MS;
@@ -2299,7 +2298,9 @@ onBeforeUnmount(() => {
   background: rgba(12, 13, 18, .92);
   backdrop-filter: blur(12px);
   box-shadow: 0 -8px 28px rgba(0, 0, 0, .35);
-  transition: max-height 280ms ease, opacity 200ms ease, padding 280ms ease, border-top-width 280ms ease;
+  /* 280ms/200ms de base × PACE (1.25, voir useCombatPlayback.ts) : ce repli fait partie de la
+     mise en scène, il suit le même rythme que le reste plutôt qu'un minutage isolé. */
+  transition: max-height 350ms ease, opacity 250ms ease, padding 350ms ease, border-top-width 350ms ease;
 }
 
 .tbattle__bottom--collapsed {

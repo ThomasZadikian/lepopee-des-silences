@@ -22,21 +22,36 @@ import type {
  * Optimisé pour O-018 : timings spécifiques pour les ennemis.
  */
 
+/**
+ * Multiplicateur global de rythme, appliqué à toutes les durées de mise en scène du combat
+ * (ici, mais aussi useSortEffects et TacticalCombatScene, qui l'importent) — un seul cadran
+ * plutôt que de retoucher chaque BALANCE KNOB séparément. >1 ralentit l'ensemble, <1
+ * l'accélère. // BALANCE KNOB
+ */
+export const PACE = 1.25;
+
 /** Avant qu'un ennemi n'entame son tour : il regarde le terrain. // BALANCE KNOB */
-export const THINK_MS = 520;
+export const THINK_MS = Math.round(520 * PACE);
 
 /** Par case franchie (base). // BALANCE KNOB */
-export const BASE_STEP_MS = 145;
+export const BASE_STEP_MS = Math.round(145 * PACE);
 
 /** Après le geste d'un ennemi, avant de passer la main. // BALANCE KNOB */
-export const SETTLE_MS = 620;
+export const SETTLE_MS = Math.round(620 * PACE);
 
 /** Durée de vie d'un chiffre flottant, et hauteur de sa montée. */
-export const FLOAT_MS = 1100;
+export const FLOAT_MS = Math.round(1100 * PACE);
 export const FLOAT_RISE_PX = 30;
 
+/**
+ * Durée de vie d'une onde d'impact — partagée entre la file qui la conserve ici (pruneImpacts)
+ * et le rendu qui la fait s'estomper (TacticalCombatScene.paintImpacts). Deux copies de cette
+ * valeur qui divergent font disparaître l'impact d'un coup, avant la fin de son fondu.
+ */
+export const IMPACT_MS = Math.round(800 * PACE);
+
 /** Durée de la transition entre les tours (fondu). // O-017 */
-export const TURN_TRANSITION_MS = 300;
+export const TURN_TRANSITION_MS = Math.round(300 * PACE);
 
 /**
  * Pause après un tick de DoT/HoT — assez pour que le chiffre qui vient de s'envoler se lise
@@ -44,7 +59,7 @@ export const TURN_TRANSITION_MS = 300;
  * action : personne n'a rien décidé, un statut vient seulement de faire ce pour quoi il a été
  * posé. // BALANCE KNOB
  */
-export const TICK_SETTLE_MS = 400;
+export const TICK_SETTLE_MS = Math.round(400 * PACE);
 
 /**
  * Pause entre deux impacts d'un même tick — sans elle, plusieurs DoT/HoT empilés sur la même
@@ -52,7 +67,7 @@ export const TICK_SETTLE_MS = 400;
  * chiffres au même pixel et au même instant, et l'un efface visuellement l'autre. Chaque
  * impact se lit donc l'un après l'autre plutôt que tous à la fois. // BALANCE KNOB
  */
-export const TICK_IMPACT_STAGGER_MS = 260;
+export const TICK_IMPACT_STAGGER_MS = Math.round(260 * PACE);
 
 /**
  * Durée pendant laquelle la zone d'un geste adverse reste allumée avant qu'il ne parte.
@@ -62,7 +77,7 @@ export const TICK_IMPACT_STAGGER_MS = 260;
  * subissant. Calé assez haut pour qu'on ait le temps de compter les cases, assez bas pour
  * qu'une file de six créatures ne devienne pas une attente. // BALANCE KNOB
  */
-export const TELEGRAPH_MS = 1200;
+export const TELEGRAPH_MS = Math.round(1200 * PACE);
 
 /**
  * L'annonce d'un geste à venir : ce que l'adversaire s'apprête à couvrir.
@@ -235,8 +250,6 @@ export function useCombatPlayback() {
 
     floats.value = floats.value.filter((f) => now - f.bornAt < FLOAT_MS);
   }
-
-  const IMPACT_MS = 800;
 
   function pruneImpacts(now: number) {
     if (impacts.value.length === 0) return;
