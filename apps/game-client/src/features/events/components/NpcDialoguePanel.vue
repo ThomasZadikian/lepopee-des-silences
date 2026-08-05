@@ -25,8 +25,21 @@ const speaker = computed(() => props.dialogue?.speaker ?? 'Une présence');
 const lines = computed(() => props.dialogue?.lines ?? []);
 const choices = computed(() => props.dialogue?.choices ?? []);
 
-// ── Typewriter ──────────────────────────────────────────────────────────────
-const displayed = ref('');
+// ── Bubble history ───────────────────────────────────────────────────────────
+// Chaque réplique devient une bulle qui reste affichée — les précédentes s'estompent
+// mais ne disparaissent pas — au lieu de s'écraser à chaque nouvelle ligne/nœud.
+type Bubble = { id: number; kind: 'npc' | 'player'; text: string };
+const bubbles = ref<Bubble[]>([]);
+let bubbleSeq = 0;
+let lastNpcKey: string | null | undefined;
+
+function pushBubble(kind: Bubble['kind'], text: string) {
+  if (!text) return;
+  bubbles.value = [...bubbles.value, { id: bubbleSeq++, kind, text }];
+}
+
+// ── Typewriter (ligne en cours de frappe, pas encore une bulle scellée) ──────
+const typingText = ref('');
 const lineIndex = ref(0);
 const typing = ref(false);
 const showChoices = ref(false);
@@ -37,12 +50,18 @@ function clearTimer() { if (timer) { clearInterval(timer); timer = undefined; } 
 function typeLine(text: string) {
   clearTimer();
   typing.value = true;
-  displayed.value = '';
+  typingText.value = '';
   let i = 0;
   timer = setInterval(() => {
     i++;
-    displayed.value = text.slice(0, i);
-    if (i >= text.length) { clearTimer(); typing.value = false; afterLine(); }
+    typingText.value = text.slice(0, i);
+    if (i >= text.length) {
+      clearTimer();
+      typing.value = false;
+      pushBubble('npc', typingText.value);
+      typingText.value = '';
+      afterLine();
+    }
   }, 26);
 }
 
@@ -64,7 +83,9 @@ function advance() {
   if (typing.value) {
     clearTimer();
     typing.value = false;
-    displayed.value = lines.value[lineIndex.value] ?? '';
+    const fullLine = lines.value[lineIndex.value] ?? '';
+    pushBubble('npc', fullLine);
+    typingText.value = '';
     afterLine();
     return;
   }
@@ -76,6 +97,8 @@ function advance() {
 
 function pick(choiceId: string) {
   if (props.isLoading) return;
+  const choice = choices.value.find((c) => c.choiceId === choiceId);
+  if (choice) pushBubble('player', choice.label);
   showChoices.value = false;
   emit('selectChoice', choiceId);
 }
@@ -99,7 +122,17 @@ function react() {
   setTimeout(() => { flashKind.value = 'none'; }, 620);
 }
 
-watch(() => props.dialogue, () => { startNode(); }, { immediate: true });
+watch(() => props.dialogue, (dialogue) => {
+  if (!dialogue) return;
+  // Une nouvelle rencontre (PNJ différent, ou reprise après une rencontre déjà refermée)
+  // efface l'historique — un nouveau nœud de la même rencontre s'y ajoute.
+  if (dialogue.npcKey !== lastNpcKey) {
+    bubbles.value = [];
+    bubbleSeq = 0;
+    lastNpcKey = dialogue.npcKey;
+  }
+  startNode();
+}, { immediate: true });
 watch(() => props.echoes, (e) => { if (e && e.length) react(); });
 watch(() => props.ended, (v) => { if (v) showChoices.value = false; });
 
@@ -147,14 +180,25 @@ onBeforeUnmount(() => { clearTimer(); window.removeEventListener('keydown', onKe
     <!-- Bottom stack -->
     <div class="npc-wrap">
       <div class="npc-box" @click="advance">
-        <span class="es-corner tl" /><span class="es-corner tr" />
-        <span class="es-corner bl" /><span class="es-corner br" />
+        <div class="npc-history">
+          <div
+            v-for="(bubble, i) in bubbles"
+            :key="bubble.id"
+            class="npc-bubble"
+            :class="[
+              bubble.kind === 'player' ? 'npc-bubble--player' : 'npc-bubble--npc',
+              (i < bubbles.length - 1 || typing) && 'npc-bubble--dim',
+            ]"
+          >
+            <span class="npc-bubble__speaker">{{ bubble.kind === 'player' ? 'Toi' : speaker }}</span>
+            <p class="npc-bubble__text">{{ bubble.text }}</p>
+          </div>
 
-        <div class="npc-speaker-tag">{{ speaker }}</div>
-
-        <p class="npc-line">
-          {{ displayed }}<span v-if="typing" class="npc-caret">▌</span>
-        </p>
+          <div v-if="typing" class="npc-bubble npc-bubble--npc">
+            <span class="npc-bubble__speaker">{{ speaker }}</span>
+            <p class="npc-bubble__text">{{ typingText }}<span class="npc-caret">▌</span></p>
+          </div>
+        </div>
 
         <div v-if="echoes && echoes.length" class="npc-echoes">
           <p
@@ -267,16 +311,28 @@ onBeforeUnmount(() => { clearTimer(); window.removeEventListener('keydown', onKe
 
 /* Box */
 .npc-box {
-  position: relative; width: min(820px, 92vw); min-height: 184px; padding: 30px 38px 28px; cursor: pointer;
+  position: relative; width: min(820px, 92vw); max-height: 46vh; padding: 30px 38px 28px; cursor: pointer;
+  overflow-y: auto;
   background: linear-gradient(180deg, rgba(20,16,34,.86), rgba(12,9,22,.92));
   border: 1px solid var(--line); border-radius: 18px;
   box-shadow: 0 30px 80px -30px #000, inset 0 1px 0 rgba(255,255,255,.04); backdrop-filter: blur(4px);
   transition: border-color .5s ease, box-shadow .5s ease;
 }
 .mood-rompu .npc-box { border-color: rgba(255,90,90,.4); box-shadow: 0 30px 80px -30px #000, 0 0 50px -18px rgba(255,60,60,.5); }
-.npc-speaker-tag { font-family: var(--caps, var(--display)); font-size: 11px; letter-spacing: .26em; text-transform: uppercase; color: #b79bff; opacity: .85; margin-bottom: 12px; }
-.mood-rompu .npc-speaker-tag { color: #ff5a5a; }
-.npc-line { margin: 0; font-family: var(--display); font-size: 25px; line-height: 1.5; color: var(--ink); font-style: italic; min-height: 1.5em; }
+
+.npc-history { display: flex; flex-direction: column; gap: 16px; }
+
+.npc-bubble { transition: opacity .4s ease; }
+.npc-bubble--dim { opacity: .4; }
+.npc-bubble--player { align-self: flex-end; text-align: right; max-width: 80%; }
+
+.npc-bubble__speaker { display: block; font-family: var(--caps, var(--display)); font-size: 11px; letter-spacing: .26em; text-transform: uppercase; color: #b79bff; opacity: .85; margin-bottom: 8px; }
+.mood-rompu .npc-bubble__speaker { color: #ff5a5a; }
+.npc-bubble--player .npc-bubble__speaker { color: var(--ink-4); }
+
+.npc-bubble__text { margin: 0; font-family: var(--display); font-size: 22px; line-height: 1.5; color: var(--ink); font-style: italic; min-height: 1.4em; }
+.npc-bubble--player .npc-bubble__text { color: var(--ink-2); font-size: 16px; }
+
 .npc-caret { display: inline-block; width: .5ch; color: #b79bff; animation: npcBlink 1s steps(1) infinite; }
 .mood-rompu .npc-caret { color: #ff5a5a; }
 @keyframes npcBlink { 50% { opacity: 0; } }
